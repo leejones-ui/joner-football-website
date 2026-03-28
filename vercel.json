@@ -1,0 +1,32 @@
+{
+  "redirects": [
+    { "source": "/jfp", "destination": "/training#jfp", "permanent": true },
+    { "source": "/jfp/", "destination": "/training#jfp", "permanent": true },
+    { "source": "/protraining", "destination": "/training#pro-training", "permanent": true },
+    { "source": "/protraining/", "destination": "/training#pro-training", "permanent": true },
+    { "source": "/jonersjuniors", "destination": "/training#joners-juniors", "permanent": true },
+    { "source": "/jonersjuniors/", "destination": "/training#joners-juniors", "permanent": true },
+    { "source": "/thehq", "destination": "/hq", "permanent": true },
+    { "source": "/thehq/", "destination": "/hq", "permanent": true },
+    { "source": "/elitecampbookings", "destination": "/camps", "permanent": true },
+    { "source": "/elitecampbookings/", "destination": "/camps", "permanent": true },
+    { "source": "/jfonlinecoachescourse", "destination": "/workshops/coaches-course", "permanent": true },
+    { "source": "/jfonlinecoachescourse/", "destination": "/workshops/coaches-course", "permanent": true },
+    { "source": "/sacramento-california-april-2026/", "destination": "/camps/sacramento-april-2026", "permanent": true },
+    { "source": "/portland-oregon-april-2026/", "destination": "/camps/portland-april-2026", "permanent": true },
+    { "source": "/thecompleteplayerexperience/", "destination": "/camps/la-complete-player-june-2026", "permanent": true },
+    { "source": "/houston2026/", "destination": "/camps/houston-june-2026", "permanent": true },
+    { "source": "/dallas2026/", "destination": "/camps/dallas-june-2026", "permanent": true },
+    { "source": "/sydneyjuly2026/", "destination": "/camps/sydney-july-2026", "permanent": true },
+    { "source": "/houston-texas-november-2025-joner-football/", "destination": "/camps", "permanent": true },
+    { "source": "/training-enquiries/", "destination": "/training", "permanent": true },
+    { "source": "/generel-enquiries/", "destination": "/about", "permanent": true },
+    { "source": "/juniors-enquiries/", "destination": "/training#joners-juniors", "permanent": true },
+    { "source": "/new-coaching-role/", "destination": "/about", "permanent": true },
+    { "source": "/lee-jones-head-coach-owner/", "destination": "/about", "permanent": true },
+    { "source": "/what-we-offer/", "destination": "/about", "permanent": true },
+    { "source": "/our-coaches/", "destination": "/about", "permanent": true },
+    { "source": "/training-agreement/", "destination": "/terms", "permanent": true },
+    { "source": "/cart/", "destination": "/shop", "permanent": true }
+  ]
+}

@@ -1,0 +1,48 @@
+---
+const cards = [
+  {
+    heading: "I'M A PLAYER",
+    text: "Access 1,500+ drills and train with Coach Joner",
+    cta: "Start Training",
+    href: "/app",
+    emoji: "⚽",
+  },
+  {
+    heading: "I'M A COACH",
+    text: "Workshops, session plans, and coaching methodology",
+    cta: "Explore Workshops",
+    href: "/workshops",
+    emoji: "📋",
+  },
+  {
+    heading: "I'M A PARENT",
+    text: "Elite camps worldwide and junior programs in Sydney",
+    cta: "Find a Program",
+    href: "/training",
+    emoji: "🏅",
+  },
+]
+---
+
+<section class="bg-joner-black py-16 md:py-24">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <h2 class="section-heading text-white text-center mb-4">Who Are You?</h2>
+    <p class="text-gray-400 text-center mb-12 font-body">Find your path to better football</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {cards.map((card) => (
+        <a href={card.href} class="group block border border-gray-800 hover:border-joner-red p-8 transition-all duration-200 hover:-translate-y-1">
+          <!-- Placeholder image area -->
+          <div class="bg-joner-gray h-48 mb-6 flex items-center justify-center text-6xl">
+            {card.emoji}
+          </div>
+          <h3 class="font-heading text-2xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">
+            {card.heading}
+          </h3>
+          <p class="text-gray-400 font-body text-sm mb-6 leading-relaxed">{card.text}</p>
+          <span class="btn-red text-sm inline-block">{card.cta}</span>
+        </a>
+      ))}
+    </div>
+  </div>
+</section>

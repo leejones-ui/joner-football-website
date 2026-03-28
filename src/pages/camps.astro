@@ -1,0 +1,18 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import EmailCapture from '../components/EmailCapture.astro'
+---
+<BaseLayout title="Football Camps Worldwide | Joner Football" description="Elite football training camps across the USA, Australia, and beyond. Book your spot now.">
+  <section class="min-h-screen flex items-center justify-center bg-joner-black py-24">
+    <div class="text-center px-4">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Book Now</p>
+      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase mb-6">Camps</h1>
+      <p class="text-gray-400 font-body mb-8 max-w-lg mx-auto">Full camps page coming soon. In the meantime, check current bookings below.</p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="/camps/sacramento-april-2026" class="btn-red text-sm px-6 py-3">Sacramento — April 2026</a>
+        <a href="/camps/portland-april-2026" class="btn-outline text-sm px-6 py-3">Portland — April 2026</a>
+      </div>
+    </div>
+  </section>
+  <EmailCapture />
+</BaseLayout>

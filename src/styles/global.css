@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { @apply bg-joner-black text-white font-body; }
+  h1, h2, h3, h4, h5, h6 { @apply font-heading uppercase tracking-wide; }
+}
+
+@layer components {
+  .btn-red {
+    @apply bg-joner-red text-white font-heading font-bold uppercase tracking-wider px-6 py-3 inline-block transition-colors duration-200;
+  }
+  .btn-red:hover { @apply bg-red-800; }
+  .btn-outline {
+    @apply border-2 border-white text-white font-heading font-bold uppercase tracking-wider px-6 py-3 inline-block transition-all duration-200;
+  }
+  .btn-outline:hover { @apply bg-white text-joner-black; }
+  .section-heading {
+    @apply font-heading text-3xl md:text-4xl lg:text-5xl font-bold uppercase tracking-wider;
+  }
+}

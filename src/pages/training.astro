@@ -1,0 +1,436 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import EmailCapture from '../components/EmailCapture.astro'
+---
+
+<BaseLayout
+  title="Sydney Training Programs | Joner Football"
+  description="JFP, Professional Training, and Joners Juniors. Australia's premier football development facility at The HQ, Belrose."
+>
+
+  <!-- Hero -->
+  <section class="relative min-h-[60vh] flex items-center justify-center bg-joner-gray overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-90"></div>
+    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
+    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Sydney, Australia</p>
+      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
+        Sydney Training<br/>Programs
+      </h1>
+      <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto">
+        From grassroots to professional. Train at Australia's premier football development facility.
+      </p>
+    </div>
+  </section>
+
+  <!-- Programs overview nav -->
+  <section class="bg-joner-black border-b border-gray-800 sticky top-16 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex overflow-x-auto gap-0 scrollbar-hide">
+        <a href="#jfp" class="flex-shrink-0 px-6 py-4 text-sm font-heading uppercase tracking-wider text-gray-400 hover:text-white hover:bg-joner-gray border-b-2 border-transparent hover:border-joner-red transition-all whitespace-nowrap">JFP Program</a>
+        <a href="#pro-training" class="flex-shrink-0 px-6 py-4 text-sm font-heading uppercase tracking-wider text-gray-400 hover:text-white hover:bg-joner-gray border-b-2 border-transparent hover:border-joner-red transition-all whitespace-nowrap">Professional Training</a>
+        <a href="#joners-juniors" class="flex-shrink-0 px-6 py-4 text-sm font-heading uppercase tracking-wider text-gray-400 hover:text-white hover:bg-joner-gray border-b-2 border-transparent hover:border-joner-red transition-all whitespace-nowrap">Joners Juniors</a>
+        <a href="#game-analysis" class="flex-shrink-0 px-6 py-4 text-sm font-heading uppercase tracking-wider text-gray-400 hover:text-white hover:bg-joner-gray border-b-2 border-transparent hover:border-joner-red transition-all whitespace-nowrap">Game Analysis</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== JFP ===== -->
+  <section id="jfp" class="bg-joner-black py-20 md:py-28 scroll-mt-32">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+        <!-- Image placeholder -->
+        <div class="bg-joner-gray h-96 lg:h-full min-h-80 flex items-center justify-center border border-gray-800 order-2 lg:order-1">
+          <div class="text-center p-8">
+            <div class="text-6xl mb-4">⚽</div>
+            <p class="text-gray-500 text-sm font-body">JFP training photo<br/>coming soon</p>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="order-1 lg:order-2">
+          <div class="inline-block bg-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-white mb-4">Flagship Program</div>
+          <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase mb-4">
+            Joner Football<br/>Performance
+          </h2>
+          <p class="text-joner-red font-heading text-sm uppercase tracking-wider mb-6">Running since 2013</p>
+          <p class="text-gray-300 font-body leading-relaxed mb-8">
+            Since its launch in 2013, the Joner Football Performance Program has been dedicated to helping players reach their full potential, both on and off the pitch. Thousands of players developed, many going on to elite youth squads, professional and international competition. Ages 8+ and all ability levels.
+          </p>
+
+          <!-- Schedule -->
+          <div class="border-l-4 border-joner-red pl-6 mb-8">
+            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-3">Schedule</h3>
+            <p class="text-gray-400 font-body text-sm mb-1">Monday to Saturday, term-by-term</p>
+            <p class="text-gray-400 font-body text-sm mb-1">10-week terms</p>
+            <p class="text-gray-400 font-body text-sm">Train up to 3 times per week</p>
+          </div>
+
+          <!-- Locations -->
+          <div class="border-l-4 border-gray-700 pl-6 mb-8">
+            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-3">Locations</h3>
+            <div class="space-y-2">
+              <div class="flex items-start gap-2">
+                <span class="text-joner-red mt-0.5 flex-shrink-0">▸</span>
+                <p class="text-gray-400 font-body text-sm"><strong class="text-white">Afternoon sessions:</strong> The HQ, 20 Narabang Way, Belrose (indoor, all weather)</p>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-joner-red mt-0.5 flex-shrink-0">▸</span>
+                <p class="text-gray-400 font-body text-sm"><strong class="text-white">Morning sessions:</strong> North Turramurra & Rydalmere Park</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- What makes JFP different -->
+          <div class="bg-joner-gray border border-gray-700 p-6 mb-8">
+            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-4">What Makes JFP Different</h3>
+            <ul class="space-y-3">
+              {[
+                'Max 6 players per group — grouped by age first, then ability',
+                'Individual Player Reports every term',
+                'Game Analysis Service exclusive to JF players',
+                'Players pushed into older groups when they dominate',
+                'Professional standard coaching — qualified, experienced team',
+              ].map((point) => (
+                <li class="flex items-start gap-3">
+                  <span class="text-joner-red font-bold flex-shrink-0">✓</span>
+                  <span class="text-gray-300 font-body text-sm">{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <!-- Partnerships -->
+          <div class="flex gap-4 mb-8">
+            <div class="bg-joner-gray border border-gray-700 px-4 py-3 text-center flex-1">
+              <div class="font-heading text-white font-bold text-sm">FPA</div>
+              <div class="text-gray-500 text-xs font-body mt-1">Strength & Conditioning</div>
+            </div>
+            <div class="bg-joner-gray border border-gray-700 px-4 py-3 text-center flex-1">
+              <div class="font-heading text-white font-bold text-sm">FullNinety</div>
+              <div class="text-gray-500 text-xs font-body mt-1">Tactical Analysis</div>
+            </div>
+          </div>
+
+          <!-- Head coach -->
+          <div class="border border-joner-red/30 bg-joner-red/5 p-6 mb-8">
+            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-3">Head Coach</h3>
+            <div class="flex items-center gap-4">
+              <div class="bg-joner-gray w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0">
+                <span class="text-2xl">👤</span>
+              </div>
+              <div>
+                <div class="font-heading text-white font-bold">Dean McDonnell</div>
+                <div class="text-gray-400 text-sm font-body">Head Coach, JFP</div>
+                <a href="tel:0426885924" class="text-joner-red text-sm font-body hover:underline">0426 885 924</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- FAQ -->
+          <div class="mb-8">
+            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-4">FAQ</h3>
+            <div class="space-y-4">
+              {[
+                { q: 'Will bad weather cancel the session?', a: 'No. Only extreme storms. Afternoon sessions at The HQ are fully indoor.' },
+                { q: "Who will be in my child's group?", a: 'Players are grouped by age first, then ability. Max 6 per group. If a player dominates their group, we push them up to the older age group.' },
+                { q: 'How many times a week can my child train?', a: 'Up to 3 times per week depending on schedule and goals.' },
+              ].map((item) => (
+                <div class="border-b border-gray-800 pb-4">
+                  <dt class="font-heading text-white text-sm font-semibold mb-1">{item.q}</dt>
+                  <dd class="text-gray-400 font-body text-sm">{item.a}</dd>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <p class="text-gray-500 font-body text-sm italic mb-6">Dedicated players only. Limited spots available.</p>
+          <a href="#jfp-form" class="btn-red text-sm">Apply Now</a>
+        </div>
+      </div>
+
+      <!-- JFP Enquiry Form -->
+      <div id="jfp-form" class="mt-16 max-w-2xl mx-auto bg-joner-gray border border-gray-700 p-8 scroll-mt-32">
+        <h3 class="font-heading text-white text-2xl font-bold uppercase mb-2">Apply for JFP</h3>
+        <p class="text-gray-400 font-body text-sm mb-6">Fill in your details and a coach will be in touch.</p>
+        <form method="POST" action="#" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="text" name="parent_name" placeholder="Parent name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="text" name="player_name" placeholder="Player name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="tel" name="phone" placeholder="Phone number" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="text" name="player_age" placeholder="Player age" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="text" name="experience" placeholder="Current club / experience level" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+          </div>
+          <textarea name="message" placeholder="Anything else we should know?" rows="3" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
+          <button type="submit" class="btn-red text-sm w-full">Submit Application</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PROFESSIONAL TRAINING ===== -->
+  <section id="pro-training" class="bg-joner-gray py-20 md:py-28 scroll-mt-32">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+
+        <!-- Content -->
+        <div>
+          <div class="inline-block bg-joner-black border border-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-joner-red mb-4">Elite Level</div>
+          <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase mb-6">
+            Professional<br/>Training
+          </h2>
+          <p class="text-gray-300 font-body leading-relaxed mb-8">
+            Since 2013, Joner Football has worked with hundreds of professional players — from established athletes at the highest level to young professionals breaking into the ranks. Under the direct guidance of Coach Lee 'Joner' Jones, the focus is on fine-tuning a player's game or preparing them for upcoming seasons. Professional players from around the world trust the Joner Football methodology.
+          </p>
+
+          <div class="mb-8">
+            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-4">Who It's For</h3>
+            <ul class="space-y-3">
+              {[
+                'A-League / NPL / International level players',
+                'Young professionals breaking into senior squads',
+                'Established pros looking to sharpen specific skills',
+              ].map((point) => (
+                <li class="flex items-start gap-3">
+                  <span class="text-joner-red font-bold flex-shrink-0">▸</span>
+                  <span class="text-gray-300 font-body text-sm">{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div class="border-l-4 border-joner-red pl-6 mb-8">
+            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-3">What to Expect</h3>
+            <p class="text-gray-400 font-body text-sm mb-2">1-on-1 and small group sessions</p>
+            <p class="text-gray-400 font-body text-sm mb-2">Highly detailed, technical sessions tailored to each player</p>
+            <p class="text-gray-400 font-body text-sm">Direct coaching from Lee Jones</p>
+          </div>
+
+          <a href="#pro-form" class="btn-red text-sm">Enquire Now</a>
+        </div>
+
+        <!-- Image placeholder -->
+        <div class="bg-joner-black h-96 flex items-center justify-center border border-gray-800">
+          <div class="text-center p-8">
+            <div class="text-6xl mb-4">🏆</div>
+            <p class="text-gray-500 text-sm font-body">Pro training footage<br/>coming soon</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pro enquiry form -->
+      <div id="pro-form" class="mt-16 max-w-2xl mx-auto bg-joner-black border border-gray-700 p-8 scroll-mt-32">
+        <h3 class="font-heading text-white text-2xl font-bold uppercase mb-2">Professional Training Enquiry</h3>
+        <p class="text-gray-400 font-body text-sm mb-6">Tell us about yourself and Lee will be in touch.</p>
+        <form method="POST" action="#" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="text" name="name" placeholder="Your name" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="email" name="email" placeholder="Email address" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+          </div>
+          <input type="text" name="current_club" placeholder="Current club / team" class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+          <input type="text" name="level" placeholder="Current level (A-League / NPL / Other)" class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+          <textarea name="goals" placeholder="What are you looking to work on?" rows="4" class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
+          <button type="submit" class="btn-red text-sm w-full">Send Enquiry</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== JONERS JUNIORS ===== -->
+  <section id="joners-juniors" class="bg-joner-black py-20 md:py-28 scroll-mt-32">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+        <!-- Image placeholder -->
+        <div class="bg-joner-gray h-80 flex items-center justify-center border border-gray-800 order-2 lg:order-1">
+          <div class="text-center p-8">
+            <div class="text-6xl mb-4">⭐</div>
+            <p class="text-gray-500 text-sm font-body">Joners Juniors photo<br/>coming soon</p>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="order-1 lg:order-2">
+          <div class="inline-block bg-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-white mb-4">Entry Level</div>
+          <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase mb-4">
+            Joners Juniors
+          </h2>
+          <p class="text-joner-red font-heading text-sm uppercase tracking-wider mb-6">First touch starts here</p>
+          <p class="text-gray-300 font-body leading-relaxed mb-8">
+            The entry-level program for boys and girls. A structured introduction to football basics in a fun, safe, indoor environment. The pathway into the Joner Football Performance program.
+          </p>
+
+          <!-- Schedule info cards -->
+          <div class="grid grid-cols-2 gap-4 mb-8">
+            <div class="bg-joner-gray border border-gray-700 p-4 text-center">
+              <div class="font-heading text-joner-red text-lg font-bold">Saturday</div>
+              <div class="text-gray-400 text-xs font-body mt-1">9:15am & 10:00am</div>
+            </div>
+            <div class="bg-joner-gray border border-gray-700 p-4 text-center">
+              <div class="font-heading text-joner-red text-lg font-bold">$220</div>
+              <div class="text-gray-400 text-xs font-body mt-1">Per 10-week term</div>
+            </div>
+          </div>
+
+          <!-- Classes -->
+          <div class="border-l-4 border-joner-red pl-6 mb-8">
+            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-3">Classes</h3>
+            <div class="space-y-3">
+              <div>
+                <div class="text-white font-body text-sm font-semibold">9:15am — 10:00am</div>
+                <div class="text-gray-400 font-body text-xs">Open class — all welcome</div>
+              </div>
+              <div>
+                <div class="text-white font-body text-sm font-semibold">10:00am — 10:45am</div>
+                <div class="text-gray-400 font-body text-xs">By selection only — coach invitation required</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Location -->
+          <div class="bg-joner-gray border border-gray-700 p-4 mb-8">
+            <div class="flex items-start gap-3">
+              <span class="text-joner-red text-lg flex-shrink-0">📍</span>
+              <div>
+                <div class="font-heading text-white font-semibold text-sm">Joner Football HQ</div>
+                <div class="text-gray-400 font-body text-sm">20 Narabang Way, Belrose (Unit 2)</div>
+                <div class="text-gray-500 font-body text-xs mt-1">Indoor facility — never cancelled for weather</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- What's included -->
+          <div class="mb-8">
+            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-4">What's Included</h3>
+            <ul class="space-y-2">
+              {[
+                'Introduction to football basics',
+                'Structured program by qualified coaches',
+                'Fun, safe indoor environment',
+                'Parent viewing area available',
+                'Joner Football training jersey provided',
+              ].map((point) => (
+                <li class="flex items-start gap-3">
+                  <span class="text-joner-red font-bold flex-shrink-0">✓</span>
+                  <span class="text-gray-300 font-body text-sm">{point}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <!-- What to bring -->
+          <div class="bg-joner-gray border border-gray-700 p-4 mb-8">
+            <h3 class="font-heading text-white font-semibold uppercase tracking-wide text-xs mb-3">What to Bring</h3>
+            <div class="grid grid-cols-2 gap-2">
+              {['Football boots or indoor trainers', 'Drinks bottle', 'Black shorts', 'White socks'].map((item) => (
+                <div class="text-gray-400 text-xs font-body flex items-center gap-1">
+                  <span class="text-joner-red">▸</span> {item}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <!-- FAQ -->
+          <div class="mb-8">
+            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-4">FAQ</h3>
+            <div class="space-y-4">
+              {[
+                { q: 'Will bad weather cancel training?', a: 'No. The facility is fully indoor.' },
+                { q: 'Is there a parent waiting area?', a: 'Yes. Parents are advised to stay and watch from the parent viewing area.' },
+                { q: 'What age is this for?', a: 'Joners Juniors is designed as the entry point for young players looking to develop their basics before progressing into JFP.' },
+              ].map((item) => (
+                <div class="border-b border-gray-800 pb-4">
+                  <dt class="font-heading text-white text-sm font-semibold mb-1">{item.q}</dt>
+                  <dd class="text-gray-400 font-body text-sm">{item.a}</dd>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-4 items-start">
+            <a href="#juniors-form" class="btn-red text-sm">Book Your Spot</a>
+            <a href="mailto:jonersjuniors@jonerfootball.com" class="btn-outline text-sm border-gray-600 text-gray-300 hover:border-white hover:text-white">
+              jonersjuniors@jonerfootball.com
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Juniors booking form -->
+      <div id="juniors-form" class="mt-16 max-w-2xl mx-auto bg-joner-gray border border-gray-700 p-8 scroll-mt-32">
+        <h3 class="font-heading text-white text-2xl font-bold uppercase mb-2">Book a Spot — Joners Juniors</h3>
+        <p class="text-gray-400 font-body text-sm mb-6">Payment processed securely. A place will be confirmed once we receive your details.</p>
+        <form method="POST" action="#" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="text" name="parent_name" placeholder="Parent / guardian name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="text" name="child_name" placeholder="Child's name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="tel" name="phone" placeholder="Phone number" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+          </div>
+          <input type="text" name="child_age" placeholder="Child's age" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+          <select name="class_preference" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red">
+            <option value="">Preferred class time</option>
+            <option value="9:15am">9:15am — 10:00am (Open class)</option>
+            <option value="10:00am">10:00am — 10:45am (By selection)</option>
+          </select>
+          <button type="submit" class="btn-red text-sm w-full">Book My Spot — $220/term</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== GAME ANALYSIS ===== -->
+  <section id="game-analysis" class="bg-joner-gray py-16 scroll-mt-32">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div class="inline-block bg-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-white mb-4">Exclusive to JF Players</div>
+      <h2 class="section-heading text-white mb-4">Game Analysis</h2>
+      <p class="text-gray-400 font-body leading-relaxed mb-8 max-w-2xl mx-auto">
+        Detailed game analysis and video breakdowns available to JFP players. Understand your game at a deeper level. Our partnership with FullNinety brings professional-grade tactical analysis to your development journey.
+      </p>
+      <a href="#jfp-form" class="btn-red text-sm">Available for JFP Players</a>
+    </div>
+  </section>
+
+  <!-- ===== INDIVIDUAL PLAYER REPORTS ===== -->
+  <section class="bg-joner-black py-16">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="border border-joner-red/50 bg-joner-red/5 p-8 md:p-12 text-center">
+        <div class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">What Sets JFP Apart</div>
+        <h2 class="section-heading text-white mb-4">Individual Player Reports</h2>
+        <p class="text-gray-300 font-body leading-relaxed max-w-2xl mx-auto">
+          Every JFP player receives a detailed individual performance report at the end of each term. Track progress, identify areas for improvement, and set goals for the next term. Professional-grade feedback for every player.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PARTNERSHIPS BAR ===== -->
+  <section class="bg-joner-gray border-y border-gray-800 py-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <p class="text-center text-gray-500 font-heading text-xs uppercase tracking-widest mb-6">Official Partners</p>
+      <div class="flex flex-col sm:flex-row justify-center gap-8">
+        <div class="text-center">
+          <div class="bg-joner-black border border-gray-700 px-8 py-4 inline-block mb-2">
+            <span class="font-heading text-white font-bold text-xl">FPA</span>
+          </div>
+          <p class="text-gray-500 text-xs font-body">Strength & Conditioning Partner</p>
+        </div>
+        <div class="text-center">
+          <div class="bg-joner-black border border-gray-700 px-8 py-4 inline-block mb-2">
+            <span class="font-heading text-white font-bold text-xl">FullNinety</span>
+          </div>
+          <p class="text-gray-500 text-xs font-body">Tactical Analysis Partner</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <EmailCapture />
+</BaseLayout>

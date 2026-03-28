@@ -1,0 +1,69 @@
+---
+const camps = [
+  {
+    city: 'Sacramento, California',
+    flag: '🇺🇸',
+    dates: 'April 2026',
+    ages: 'Ages 8-18',
+    price: 'From $155 USD',
+    href: '/camps/sacramento-april-2026',
+    cta: 'Book Now',
+  },
+  {
+    city: 'Portland, Oregon',
+    flag: '🇺🇸',
+    dates: 'April 2026',
+    ages: 'Ages 8-18',
+    price: 'From $155 USD',
+    href: '/camps/portland-april-2026',
+    cta: 'Book Now',
+  },
+  {
+    city: 'Los Angeles, California',
+    flag: '🇺🇸',
+    dates: 'June 2026',
+    ages: 'Ages 13-18 (ECNL/MLS Next)',
+    price: 'By acceptance only',
+    href: '/camps/la-complete-player-june-2026',
+    cta: 'Apply Now',
+  },
+]
+---
+
+<section class="bg-joner-black py-16 md:py-24">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-12">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Global Camps</p>
+      <h2 class="section-heading text-white mb-4">World Recognised Camps</h2>
+      <p class="text-gray-400 font-body">Training camps across the globe. Limited spots.</p>
+    </div>
+
+    <div class="flex overflow-x-auto gap-6 pb-4 md:grid md:grid-cols-3 md:overflow-visible scrollbar-hide">
+      {camps.map((camp) => (
+        <div class="flex-shrink-0 w-72 md:w-auto border border-gray-800 hover:border-joner-red transition-colors duration-200 group">
+          <!-- Image placeholder -->
+          <div class="bg-joner-gray h-48 flex items-center justify-center">
+            <div class="text-center">
+              <div class="text-4xl mb-2">{camp.flag}</div>
+              <p class="text-gray-500 text-xs font-body">Photo coming soon</p>
+            </div>
+          </div>
+          <!-- Content -->
+          <div class="p-6">
+            <div class="text-xs text-joner-red font-heading uppercase tracking-wider mb-2">{camp.dates}</div>
+            <h3 class="font-heading text-lg font-bold text-white mb-1 group-hover:text-joner-red transition-colors">{camp.city}</h3>
+            <p class="text-gray-500 text-sm font-body mb-1">{camp.ages}</p>
+            <p class="text-gray-400 text-sm font-body font-semibold mb-4">{camp.price}</p>
+            <a href={camp.href} class="btn-red text-sm w-full text-center block">{camp.cta}</a>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <div class="text-center mt-10">
+      <a href="/camps" class="text-joner-red font-heading font-semibold uppercase tracking-wider text-sm hover:text-red-400 transition-colors">
+        See All Camps →
+      </a>
+    </div>
+  </div>
+</section>
