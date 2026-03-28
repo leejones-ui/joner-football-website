@@ -2,15 +2,201 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
 ---
-<BaseLayout title="The Joner Football HQ | Belrose, Sydney" description="Brand new indoor training facility. 20 Narabang Way, Belrose. Home of JFP and Joners Juniors.">
-  <section class="min-h-screen flex items-center justify-center bg-joner-black py-24">
-    <div class="text-center px-4 max-w-2xl mx-auto">
+
+<BaseLayout
+  title="The Joner Football HQ | Belrose, Sydney"
+  description="Brand new indoor training facility at 20 Narabang Way, Belrose. Home of JFP and Joners Juniors. All-weather training."
+>
+
+  <!-- Hero -->
+  <section class="relative min-h-[60vh] flex items-center justify-center bg-joner-gray overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-90"></div>
+    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
+
+    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
       <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Belrose, Sydney</p>
-      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase mb-6">The HQ</h1>
-      <p class="text-gray-400 font-body mb-8">Brand new indoor training facility. 20 Narabang Way, Belrose, 2085. Home of JFP afternoon sessions and Joners Juniors.</p>
-      <p class="text-gray-500 font-body text-sm mb-8">Full HQ page — photos and facility details — coming soon.</p>
-      <a href="/training" class="btn-red text-sm px-6 py-3">View Training Programs</a>
+      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
+        The Joner<br/>Football HQ
+      </h1>
+      <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto mb-8">
+        Brand new indoor training facility. Professional standard surface. All-weather training.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="/training" class="btn-red text-base px-8 py-4">View Training Programs</a>
+        <a href="#location" class="btn-outline text-base px-8 py-4">Get Directions</a>
+      </div>
     </div>
   </section>
+
+  <!-- Facility photos (placeholders) -->
+  <section class="bg-joner-black py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="bg-joner-gray aspect-video flex items-center justify-center lg:col-span-2 lg:row-span-2">
+          <div class="text-center">
+            <div class="text-6xl mb-4">🏟️</div>
+            <p class="text-gray-500 text-sm font-body">HQ main pitch photo<br/>coming soon</p>
+          </div>
+        </div>
+        <div class="bg-joner-gray aspect-video flex items-center justify-center">
+          <p class="text-gray-500 text-xs font-body text-center">Training photo<br/>coming soon</p>
+        </div>
+        <div class="bg-joner-gray aspect-video flex items-center justify-center">
+          <p class="text-gray-500 text-xs font-body text-center">Facility photo<br/>coming soon</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Facility features -->
+  <section class="bg-joner-gray py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">The Facility</p>
+        <h2 class="section-heading text-white mb-4">What's at The HQ</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="bg-joner-black border border-gray-800 p-8 text-center">
+          <div class="text-4xl mb-4">⚽</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Indoor Pitch</h3>
+          <p class="text-gray-400 text-sm font-body">Professional standard synthetic surface. Train in any weather.</p>
+        </div>
+        <div class="bg-joner-black border border-gray-800 p-8 text-center">
+          <div class="text-4xl mb-4">☔</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">All Weather</h3>
+          <p class="text-gray-400 text-sm font-body">Fully indoor facility. Sessions never cancelled for weather.</p>
+        </div>
+        <div class="bg-joner-black border border-gray-800 p-8 text-center">
+          <div class="text-4xl mb-4">👀</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Parent Viewing</h3>
+          <p class="text-gray-400 text-sm font-body">Dedicated parent viewing area. Watch your player train.</p>
+        </div>
+        <div class="bg-joner-black border border-gray-800 p-8 text-center">
+          <div class="text-4xl mb-4">🎽</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Apparel Pickup</h3>
+          <p class="text-gray-400 text-sm font-body">Joner Apparel collection point. Order online, collect here.</p>
+        </div>
+        <div class="bg-joner-black border border-gray-800 p-8 text-center">
+          <div class="text-4xl mb-4">🅿️</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Parking</h3>
+          <p class="text-gray-400 text-sm font-body">On-site parking available for drop-off and collection.</p>
+        </div>
+        <div class="bg-joner-black border border-gray-800 p-8 text-center">
+          <div class="text-4xl mb-4">🏆</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Pro Standard</h3>
+          <p class="text-gray-400 text-sm font-body">The same facility used for professional player sessions.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What happens here -->
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Programs</p>
+        <h2 class="section-heading text-white mb-4">What Happens at The HQ</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="border border-gray-800 p-8 hover:border-joner-red transition-colors">
+          <h3 class="font-heading text-xl font-bold text-white uppercase mb-2">JFP Afternoon Sessions</h3>
+          <p class="text-gray-400 font-body text-sm mb-4">Monday to Saturday. The flagship Joner Football Performance program.</p>
+          <a href="/training#jfp" class="text-joner-red font-heading text-sm uppercase tracking-wider hover:underline">Learn More →</a>
+        </div>
+        <div class="border border-gray-800 p-8 hover:border-joner-red transition-colors">
+          <h3 class="font-heading text-xl font-bold text-white uppercase mb-2">Joners Juniors</h3>
+          <p class="text-gray-400 font-body text-sm mb-4">Saturdays. Entry-level program for young players starting their journey.</p>
+          <a href="/training#joners-juniors" class="text-joner-red font-heading text-sm uppercase tracking-wider hover:underline">Learn More →</a>
+        </div>
+        <div class="border border-gray-800 p-8 hover:border-joner-red transition-colors">
+          <h3 class="font-heading text-xl font-bold text-white uppercase mb-2">Professional Sessions</h3>
+          <p class="text-gray-400 font-body text-sm mb-4">By appointment. 1-on-1 training for professional and elite players.</p>
+          <a href="/training#pro-training" class="text-joner-red font-heading text-sm uppercase tracking-wider hover:underline">Enquire →</a>
+        </div>
+        <div class="border border-gray-800 p-8 hover:border-joner-red transition-colors">
+          <h3 class="font-heading text-xl font-bold text-white uppercase mb-2">Camp Events</h3>
+          <p class="text-gray-400 font-body text-sm mb-4">Holiday camps and intensive training events throughout the year.</p>
+          <a href="/camps" class="text-joner-red font-heading text-sm uppercase tracking-wider hover:underline">View Camps →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Location -->
+  <section id="location" class="bg-joner-gray py-16 md:py-24 scroll-mt-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Location</p>
+          <h2 class="section-heading text-white mb-6">Find Us</h2>
+
+          <div class="space-y-6">
+            <div class="flex items-start gap-4">
+              <span class="text-joner-red text-xl flex-shrink-0">📍</span>
+              <div>
+                <div class="font-heading text-white font-bold">Address</div>
+                <div class="text-gray-400 font-body">Unit 2, 20 Narabang Way<br/>Belrose, NSW 2085</div>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4">
+              <span class="text-joner-red text-xl flex-shrink-0">🚗</span>
+              <div>
+                <div class="font-heading text-white font-bold">Parking</div>
+                <div class="text-gray-400 font-body">On-site parking available in front of the unit.</div>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4">
+              <span class="text-joner-red text-xl flex-shrink-0">📞</span>
+              <div>
+                <div class="font-heading text-white font-bold">Contact</div>
+                <div class="text-gray-400 font-body">
+                  JFP: <a href="tel:0426885924" class="text-joner-red hover:underline">0426 885 924</a> (Dean)<br/>
+                  Juniors: <a href="mailto:jonersjuniors@jonerfootball.com" class="text-joner-red hover:underline">jonersjuniors@jonerfootball.com</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-8">
+            <a href="https://maps.google.com/?q=20+Narabang+Way+Belrose" target="_blank" rel="noopener" class="btn-red text-sm">
+              Open in Google Maps
+            </a>
+          </div>
+        </div>
+
+        <!-- Map placeholder -->
+        <div class="bg-joner-black border border-gray-800 aspect-video flex items-center justify-center">
+          <div class="text-center">
+            <div class="text-5xl mb-4">🗺️</div>
+            <p class="text-gray-500 font-body text-sm">Google Maps embed<br/>coming soon</p>
+            <a href="https://maps.google.com/?q=20+Narabang+Way+Belrose" target="_blank" rel="noopener" class="text-joner-red text-sm font-body hover:underline mt-2 inline-block">
+              View on Google Maps →
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="bg-joner-red py-12 md:py-16">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
+        Start Training at The HQ
+      </h2>
+      <p class="text-white/80 font-body mb-6">
+        Join the Joner Football family. Limited spots available.
+      </p>
+      <a href="/training" class="btn-outline text-base px-8 py-4 border-white text-white hover:bg-white hover:text-joner-red">
+        View Training Programs
+      </a>
+    </div>
+  </section>
+
   <EmailCapture />
+
 </BaseLayout>

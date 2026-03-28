@@ -1,18 +1,262 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
+
+const camps = [
+  {
+    city: 'Sacramento',
+    state: 'California',
+    country: 'USA',
+    flag: '🇺🇸',
+    dates: 'April 5-6, 2026',
+    ages: 'Ages 8-18',
+    price: 'From $155 USD',
+    spots: 'Limited spots',
+    href: '/camps/sacramento-april-2026',
+    region: 'usa',
+  },
+  {
+    city: 'Portland',
+    state: 'Oregon',
+    country: 'USA',
+    flag: '🇺🇸',
+    dates: 'April 11-12, 2026',
+    ages: 'Ages 8-18',
+    price: 'From $155 USD',
+    spots: 'Limited spots',
+    href: '/camps/portland-april-2026',
+    region: 'usa',
+  },
+  {
+    city: 'Los Angeles',
+    state: 'California',
+    country: 'USA',
+    flag: '🇺🇸',
+    dates: 'June 15-19, 2026',
+    ages: 'Ages 13-18 (ECNL/MLS Next)',
+    price: 'By acceptance only',
+    spots: 'The Complete Player Experience',
+    href: '/camps/la-complete-player-june-2026',
+    region: 'usa',
+    featured: true,
+  },
+  {
+    city: 'Houston',
+    state: 'Texas',
+    country: 'USA',
+    flag: '🇺🇸',
+    dates: 'June 2026',
+    ages: 'Ages 8-18',
+    price: 'From $155 USD',
+    spots: 'Coming soon',
+    href: '/camps/houston-june-2026',
+    region: 'usa',
+  },
+  {
+    city: 'Dallas',
+    state: 'Texas',
+    country: 'USA',
+    flag: '🇺🇸',
+    dates: 'June 2026',
+    ages: 'Ages 8-18',
+    price: 'From $155 USD',
+    spots: 'Coming soon',
+    href: '/camps/dallas-june-2026',
+    region: 'usa',
+  },
+  {
+    city: 'Sydney',
+    state: 'NSW',
+    country: 'Australia',
+    flag: '🇦🇺',
+    dates: 'July 2026',
+    ages: 'Ages 8-18',
+    price: 'AUD pricing TBC',
+    spots: 'Coming soon',
+    href: '/camps/sydney-july-2026',
+    region: 'australia',
+  },
+]
 ---
-<BaseLayout title="Football Camps Worldwide | Joner Football" description="Elite football training camps across the USA, Australia, and beyond. Book your spot now.">
-  <section class="min-h-screen flex items-center justify-center bg-joner-black py-24">
-    <div class="text-center px-4">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Book Now</p>
-      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase mb-6">Camps</h1>
-      <p class="text-gray-400 font-body mb-8 max-w-lg mx-auto">Full camps page coming soon. In the meantime, check current bookings below.</p>
-      <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <a href="/camps/sacramento-april-2026" class="btn-red text-sm px-6 py-3">Sacramento — April 2026</a>
-        <a href="/camps/portland-april-2026" class="btn-outline text-sm px-6 py-3">Portland — April 2026</a>
+
+<BaseLayout
+  title="Football Camps Worldwide | Joner Football"
+  description="Elite football training camps across the USA, Australia, and beyond. Train with Coach Joner. Limited spots available."
+>
+
+  <!-- Hero -->
+  <section class="relative min-h-[50vh] flex items-center justify-center bg-joner-gray overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-90"></div>
+    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
+
+    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Global Training Camps</p>
+      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
+        World Recognised<br/>Camps
+      </h1>
+      <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto">
+        Training camps across the globe. Train with Coach Joner and the Joner Football methodology. Limited spots available.
+      </p>
+    </div>
+  </section>
+
+  <!-- Filter bar (placeholder - would need JS for functionality) -->
+  <section class="bg-joner-black border-b border-gray-800 sticky top-16 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex flex-wrap gap-3 justify-center">
+        <button class="px-4 py-2 bg-joner-red text-white font-heading text-xs uppercase tracking-wider">All Camps</button>
+        <button class="px-4 py-2 border border-gray-700 text-gray-400 font-heading text-xs uppercase tracking-wider hover:border-white hover:text-white transition-colors">USA</button>
+        <button class="px-4 py-2 border border-gray-700 text-gray-400 font-heading text-xs uppercase tracking-wider hover:border-white hover:text-white transition-colors">Australia</button>
+        <button class="px-4 py-2 border border-gray-700 text-gray-400 font-heading text-xs uppercase tracking-wider hover:border-white hover:text-white transition-colors">2026</button>
       </div>
     </div>
   </section>
+
+  <!-- Camp cards grid -->
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <!-- Featured camp (LA Complete Player) -->
+      <div class="mb-12">
+        <p class="text-joner-red font-heading text-xs uppercase tracking-widest mb-4 text-center">Featured</p>
+        <div class="border-2 border-joner-red bg-joner-gray p-6 md:p-10">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            <div class="bg-joner-black h-64 flex items-center justify-center">
+              <div class="text-center">
+                <div class="text-5xl mb-3">🇺🇸</div>
+                <p class="text-gray-500 text-sm font-body">LA camp photos<br/>coming soon</p>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center gap-3 mb-3">
+                <span class="bg-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-white">Elite Level</span>
+                <span class="text-gray-500 font-body text-sm">June 15-19, 2026</span>
+              </div>
+              <h2 class="font-heading text-3xl md:text-4xl font-bold text-white uppercase mb-2">The Complete Player Experience</h2>
+              <p class="text-joner-red font-heading text-sm uppercase tracking-wider mb-4">Los Angeles, California</p>
+              <p class="text-gray-400 font-body mb-6">
+                An elite 5-day immersive training experience for serious players aged 13-18. ECNL and MLS Next level. By acceptance only.
+              </p>
+              <div class="flex flex-wrap gap-4 mb-6">
+                <div class="text-center">
+                  <div class="font-heading text-white font-bold">Ages 13-18</div>
+                  <div class="text-gray-500 text-xs font-body">ECNL / MLS Next</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-heading text-white font-bold">5 Days</div>
+                  <div class="text-gray-500 text-xs font-body">Intensive</div>
+                </div>
+                <div class="text-center">
+                  <div class="font-heading text-white font-bold">Acceptance Only</div>
+                  <div class="text-gray-500 text-xs font-body">Application required</div>
+                </div>
+              </div>
+              <a href="/camps/la-complete-player-june-2026" class="btn-red text-sm">Apply Now</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- All camps grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {camps.filter(c => !c.featured).map((camp) => (
+          <div class="border border-gray-800 hover:border-joner-red transition-colors group">
+            <!-- Image placeholder -->
+            <div class="bg-joner-gray h-48 flex items-center justify-center relative">
+              <div class="text-center">
+                <div class="text-4xl mb-2">{camp.flag}</div>
+                <p class="text-gray-500 text-xs font-body">Photo coming soon</p>
+              </div>
+              {camp.spots === 'Limited spots' && (
+                <div class="absolute top-3 right-3 bg-joner-red px-2 py-1 font-heading text-xs uppercase tracking-wider text-white">
+                  Limited Spots
+                </div>
+              )}
+            </div>
+            <!-- Content -->
+            <div class="p-6">
+              <div class="text-xs text-joner-red font-heading uppercase tracking-wider mb-2">{camp.dates}</div>
+              <h3 class="font-heading text-xl font-bold text-white mb-1 group-hover:text-joner-red transition-colors">
+                {camp.city}, {camp.state}
+              </h3>
+              <p class="text-gray-500 text-sm font-body mb-1">{camp.ages}</p>
+              <p class="text-gray-400 text-sm font-body font-semibold mb-4">{camp.price}</p>
+              <a href={camp.href} class="btn-red text-sm w-full text-center block">
+                {camp.spots === 'Coming soon' ? 'Register Interest' : 'Book Now'}
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- What to expect -->
+  <section class="bg-joner-gray py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">At Every Camp</p>
+        <h2 class="section-heading text-white">What to Expect</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="text-center p-6">
+          <div class="text-4xl mb-4">⚽</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Elite Training</h3>
+          <p class="text-gray-400 text-sm font-body">World-class coaching methodology. Technical focus. Individual attention.</p>
+        </div>
+        <div class="text-center p-6">
+          <div class="text-4xl mb-4">👨‍🏫</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Coach Joner</h3>
+          <p class="text-gray-400 text-sm font-body">Train directly with Lee Jones. Hands-on coaching. Personal feedback.</p>
+        </div>
+        <div class="text-center p-6">
+          <div class="text-4xl mb-4">📊</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Small Groups</h3>
+          <p class="text-gray-400 text-sm font-body">Limited numbers. Grouped by age and ability. Maximum development.</p>
+        </div>
+        <div class="text-center p-6">
+          <div class="text-4xl mb-4">🎁</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Camp Kit</h3>
+          <p class="text-gray-400 text-sm font-body">Joner Football training kit included. Professional experience.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Past camps gallery placeholder -->
+  <section class="bg-joner-black py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Gallery</p>
+        <h2 class="section-heading text-white">Past Camps</h2>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[1,2,3,4,5,6,7,8].map(() => (
+          <div class="bg-joner-gray aspect-square flex items-center justify-center">
+            <p class="text-gray-600 text-xs font-body text-center">Photo<br/>coming soon</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="bg-joner-red py-12 md:py-16">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
+        Don't Miss Out
+      </h2>
+      <p class="text-white/80 font-body mb-6">
+        Camps sell out fast. Register your interest to be first in line.
+      </p>
+      <a href="#camps-notify" class="btn-outline text-base px-8 py-4 border-white text-white hover:bg-white hover:text-joner-red">
+        Notify Me of New Camps
+      </a>
+    </div>
+  </section>
+
   <EmailCapture />
+
 </BaseLayout>

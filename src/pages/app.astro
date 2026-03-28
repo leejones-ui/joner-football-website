@@ -2,14 +2,428 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
 ---
-<BaseLayout title="The Joner Football App | Download Free" description="1,500+ drills, session plans, and coaching content. Download the Joner Football app free on iOS and Android.">
-  <section class="min-h-screen flex items-center justify-center bg-joner-black py-24">
-    <div class="text-center px-4">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Coming Soon</p>
-      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase mb-6">App Page</h1>
-      <p class="text-gray-400 font-body mb-8">Full page in progress. Download the app at:</p>
-      <a href="https://app.jonerfootball.com" class="btn-red text-base px-8 py-4">Download Free Now</a>
+
+<BaseLayout
+  title="Joner Football App | 1,500+ Drills, Session Plans, Coaching"
+  description="The world's best football coaching app. 1,500+ drills, session plans, follow-along programs, and coaching methodology. Download free on iOS and Android."
+>
+
+  <!-- Hero -->
+  <section class="relative min-h-[80vh] flex items-center justify-center bg-joner-gray overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-90"></div>
+    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
+
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+
+        <!-- Text content -->
+        <div class="text-center lg:text-left">
+          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">The App</p>
+          <h1 class="font-heading text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
+            Your Complete<br/>Training Platform
+          </h1>
+          <p class="text-gray-300 font-body text-lg md:text-xl mb-8 max-w-lg">
+            1,500+ drills. Session plans. Follow-along programs. Coaches section. Everything you need to take your game to the next level.
+          </p>
+
+          <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
+            <a href="https://app.jonerfootball.com" class="btn-red text-base px-8 py-4 text-center">
+              Download Free
+            </a>
+            <button id="watch-video-btn" class="btn-outline text-base px-8 py-4 text-center">
+              Watch How It Works
+            </button>
+          </div>
+
+          <!-- Store badges -->
+          <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+            <a href="https://apps.apple.com/app/joner-football" target="_blank" rel="noopener"
+              class="bg-black border border-gray-700 rounded-lg px-4 py-2 flex items-center gap-3 hover:border-white transition-colors">
+              <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              <div>
+                <div class="text-white text-xs leading-none">Download on the</div>
+                <div class="text-white font-semibold text-sm">App Store</div>
+              </div>
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=com.jonerfootball" target="_blank" rel="noopener"
+              class="bg-black border border-gray-700 rounded-lg px-4 py-2 flex items-center gap-3 hover:border-white transition-colors">
+              <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M3 20.5v-17c0-.83.94-1.3 1.6-.8l14 8.5c.6.4.6 1.2 0 1.6l-14 8.5c-.66.5-1.6.03-1.6-.8z"/></svg>
+              <div>
+                <div class="text-white text-xs leading-none">Get it on</div>
+                <div class="text-white font-semibold text-sm">Google Play</div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- Phone mockup -->
+        <div class="flex justify-center">
+          <div class="relative">
+            <div class="bg-joner-black border-4 border-gray-700 rounded-3xl w-72 h-[580px] flex items-center justify-center shadow-2xl">
+              <div class="text-center px-6">
+                <div class="text-6xl mb-4">📱</div>
+                <p class="text-gray-400 text-sm font-body">App screenshots<br/>coming soon</p>
+                <div class="mt-6 space-y-2">
+                  <div class="bg-joner-red h-2 rounded w-full"></div>
+                  <div class="bg-gray-700 h-2 rounded w-3/4"></div>
+                  <div class="bg-gray-700 h-2 rounded w-1/2"></div>
+                </div>
+              </div>
+            </div>
+            <div class="absolute -inset-4 bg-joner-red/10 rounded-3xl blur-xl -z-10"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
+
+  <!-- Social proof strip -->
+  <section class="bg-joner-black border-y border-gray-800 py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-wrap justify-center gap-8 md:gap-16 text-center">
+        <div>
+          <div class="font-heading text-2xl text-joner-red font-bold">50,000+</div>
+          <div class="text-gray-500 text-xs uppercase tracking-wider font-body">Downloads</div>
+        </div>
+        <div>
+          <div class="font-heading text-2xl text-white font-bold">4.8★</div>
+          <div class="text-gray-500 text-xs uppercase tracking-wider font-body">App Store Rating</div>
+        </div>
+        <div>
+          <div class="font-heading text-2xl text-white font-bold">1,500+</div>
+          <div class="text-gray-500 text-xs uppercase tracking-wider font-body">Training Drills</div>
+        </div>
+        <div>
+          <div class="font-heading text-2xl text-white font-bold">15+</div>
+          <div class="text-gray-500 text-xs uppercase tracking-wider font-body">Countries</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What's Inside -->
+  <section class="bg-joner-gray py-20 md:py-28">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">What's Inside</p>
+        <h2 class="section-heading text-white mb-4">Everything You Need</h2>
+        <p class="text-gray-400 font-body max-w-2xl mx-auto">
+          From individual drills to complete training programs. For players, coaches, and parents.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Feature 1 -->
+        <div class="bg-joner-black border border-gray-800 p-8 hover:border-joner-red transition-colors group">
+          <div class="text-4xl mb-4">🎯</div>
+          <h3 class="font-heading text-xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">1,500+ Drills</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            Every technique, every position. Ball mastery, first touch, weak foot, 1v1 moves, finishing, and more. New drills added regularly.
+          </p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="bg-joner-black border border-gray-800 p-8 hover:border-joner-red transition-colors group">
+          <div class="text-4xl mb-4">📄</div>
+          <h3 class="font-heading text-xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">Session Plans</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            Ready-to-print PDF session plans for coaches. Structured training sessions you can run straight away. Saves hours of planning.
+          </p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="bg-joner-black border border-gray-800 p-8 hover:border-joner-red transition-colors group">
+          <div class="text-4xl mb-4">▶️</div>
+          <h3 class="font-heading text-xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">Follow-Along Programs</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            Guided video programs you train alongside Coach Joner. Set up, press play, and follow along. Like having a personal trainer.
+          </p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="bg-joner-black border border-gray-800 p-8 hover:border-joner-red transition-colors group">
+          <div class="text-4xl mb-4">🧠</div>
+          <h3 class="font-heading text-xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">Coaches Section</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            Behind-the-scenes coaching methodology. Learn how and why Joner Football trains the way it does. Level up your coaching.
+          </p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="bg-joner-black border border-gray-800 p-8 hover:border-joner-red transition-colors group">
+          <div class="text-4xl mb-4">📡</div>
+          <h3 class="font-heading text-xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">Weekly Live Sessions</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            Train live with Lee every week. Real-time coaching, Q&A, and community. Replays available if you miss it.
+          </p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="bg-joner-black border border-gray-800 p-8 hover:border-joner-red transition-colors group">
+          <div class="text-4xl mb-4">👥</div>
+          <h3 class="font-heading text-xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">Team Subscriptions</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            Train your whole squad. Bulk pricing for teams and clubs. Give every player access to world-class training content.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section class="bg-joner-black py-20 md:py-28">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Pricing</p>
+        <h2 class="section-heading text-white mb-4">Simple, Fair Pricing</h2>
+        <p class="text-gray-400 font-body">Cancel anytime. No commitment.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Free -->
+        <div class="border border-gray-800 p-8 text-center">
+          <div class="font-heading text-lg text-gray-400 uppercase tracking-wider mb-2">Free</div>
+          <div class="font-heading text-4xl text-white font-bold mb-2">$0</div>
+          <div class="text-gray-500 text-sm font-body mb-6">Forever</div>
+          <ul class="space-y-3 mb-8 text-left">
+            <li class="flex items-start gap-2">
+              <span class="text-joner-red flex-shrink-0">✓</span>
+              <span class="text-gray-400 text-sm font-body">Access to free section</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-joner-red flex-shrink-0">✓</span>
+              <span class="text-gray-400 text-sm font-body">Sample drills and content</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-joner-red flex-shrink-0">✓</span>
+              <span class="text-gray-400 text-sm font-body">No credit card required</span>
+            </li>
+          </ul>
+          <a href="https://app.jonerfootball.com/categories/category-vpi8uazway4" class="btn-outline text-sm w-full text-center block">
+            Start Free
+          </a>
+        </div>
+
+        <!-- Monthly (highlighted) -->
+        <div class="border-2 border-joner-red p-8 text-center relative">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-joner-red px-4 py-1 font-heading text-xs uppercase tracking-wider">
+            Most Flexible
+          </div>
+          <div class="font-heading text-lg text-joner-red uppercase tracking-wider mb-2">Monthly</div>
+          <div class="font-heading text-4xl text-white font-bold mb-2">$14.99</div>
+          <div class="text-gray-500 text-sm font-body mb-6">Per month</div>
+          <ul class="space-y-3 mb-8 text-left">
+            <li class="flex items-start gap-2">
+              <span class="text-joner-red flex-shrink-0">✓</span>
+              <span class="text-gray-400 text-sm font-body">Full app access</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-joner-red flex-shrink-0">✓</span>
+              <span class="text-gray-400 text-sm font-body">1,500+ drills</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-joner-red flex-shrink-0">✓</span>
+              <span class="text-gray-400 text-sm font-body">Session plans</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-joner-red flex-shrink-0">✓</span>
+              <span class="text-gray-400 text-sm font-body">Follow-along programs</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-joner-red flex-shrink-0">✓</span>
+              <span class="text-gray-400 text-sm font-body">Coaches section</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-joner-red flex-shrink-0">✓</span>
+              <span class="text-gray-400 text-sm font-body">Weekly live sessions</span>
+            </li>
+          </ul>
+          <a href="https://app.jonerfootball.com" class="btn-red text-sm w-full text-center block">
+            Subscribe Monthly
+          </a>
+        </div>
+
+        <!-- Annual -->
+        <div class="border border-gray-800 p-8 text-center bg-joner-gray relative">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-600 px-4 py-1 font-heading text-xs uppercase tracking-wider text-white">
+            Best Value
+          </div>
+          <div class="font-heading text-lg text-gray-400 uppercase tracking-wider mb-2">Annual</div>
+          <div class="font-heading text-4xl text-white font-bold mb-2">$99.99</div>
+          <div class="text-gray-500 text-sm font-body mb-1">Per year</div>
+          <div class="text-green-500 text-xs font-body font-semibold mb-6">Save 44%</div>
+          <ul class="space-y-3 mb-8 text-left">
+            <li class="flex items-start gap-2">
+              <span class="text-joner-red flex-shrink-0">✓</span>
+              <span class="text-gray-400 text-sm font-body">Everything in Monthly</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-joner-red flex-shrink-0">✓</span>
+              <span class="text-gray-400 text-sm font-body">44% savings vs monthly</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-joner-red flex-shrink-0">✓</span>
+              <span class="text-gray-400 text-sm font-body">Lock in your rate</span>
+            </li>
+          </ul>
+          <a href="https://app.jonerfootball.com" class="btn-red text-sm w-full text-center block">
+            Subscribe Annually
+          </a>
+        </div>
+      </div>
+
+      <p class="text-center text-gray-600 text-sm font-body mt-8">
+        Team or club? <a href="/teams" class="text-joner-red hover:underline">Get a quote for bulk subscriptions →</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="bg-joner-gray py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Testimonials</p>
+        <h2 class="section-heading text-white">What Users Say</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="border border-gray-700 p-8">
+          <div class="text-joner-red text-4xl font-heading leading-none mb-4">"</div>
+          <p class="text-gray-300 font-body text-base leading-relaxed mb-6 italic">
+            The session plans alone are worth the subscription. Changed how I run my academy. My players are improving faster than ever.
+          </p>
+          <div class="border-t border-gray-700 pt-4">
+            <div class="font-heading text-white font-semibold">Coach Dave R.</div>
+            <div class="text-joner-red text-xs font-heading uppercase tracking-wide">Academy Coach</div>
+            <div class="text-gray-500 text-xs font-body mt-0.5">California, USA</div>
+          </div>
+        </div>
+
+        <div class="border border-gray-700 p-8">
+          <div class="text-joner-red text-4xl font-heading leading-none mb-4">"</div>
+          <p class="text-gray-300 font-body text-base leading-relaxed mb-6 italic">
+            My son uses this every day. The follow-along programs are perfect. He can train independently and actually enjoys it.
+          </p>
+          <div class="border-t border-gray-700 pt-4">
+            <div class="font-heading text-white font-semibold">Michelle T.</div>
+            <div class="text-joner-red text-xs font-heading uppercase tracking-wide">Parent</div>
+            <div class="text-gray-500 text-xs font-body mt-0.5">Sydney, Australia</div>
+          </div>
+        </div>
+
+        <div class="border border-gray-700 p-8">
+          <div class="text-joner-red text-4xl font-heading leading-none mb-4">"</div>
+          <p class="text-gray-300 font-body text-base leading-relaxed mb-6 italic">
+            Joner's drills are different to anything else out there. Technical, detailed, and you can feel the improvement immediately.
+          </p>
+          <div class="border-t border-gray-700 pt-4">
+            <div class="font-heading text-white font-semibold">James K.</div>
+            <div class="text-joner-red text-xs font-heading uppercase tracking-wide">Player</div>
+            <div class="text-gray-500 text-xs font-body mt-0.5">Melbourne, Australia</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="bg-joner-black py-20 md:py-28">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">FAQ</p>
+        <h2 class="section-heading text-white">Common Questions</h2>
+      </div>
+
+      <div class="space-y-6">
+        <div class="border-b border-gray-800 pb-6">
+          <h3 class="font-heading text-white font-semibold text-lg mb-2">Is there a free section?</h3>
+          <p class="text-gray-400 font-body">
+            Yes! The app has a free section with sample drills and content. No credit card required. Download the app and start training right away.
+          </p>
+        </div>
+
+        <div class="border-b border-gray-800 pb-6">
+          <h3 class="font-heading text-white font-semibold text-lg mb-2">What age is this for?</h3>
+          <p class="text-gray-400 font-body">
+            All ages. From juniors learning the basics to professionals fine-tuning their technique. The app has content for every level.
+          </p>
+        </div>
+
+        <div class="border-b border-gray-800 pb-6">
+          <h3 class="font-heading text-white font-semibold text-lg mb-2">Can I use this for my team?</h3>
+          <p class="text-gray-400 font-body">
+            Yes! We offer team and club subscriptions with bulk pricing. <a href="/teams" class="text-joner-red hover:underline">Contact us for a quote.</a>
+          </p>
+        </div>
+
+        <div class="border-b border-gray-800 pb-6">
+          <h3 class="font-heading text-white font-semibold text-lg mb-2">Can I cancel anytime?</h3>
+          <p class="text-gray-400 font-body">
+            Yes. Cancel your subscription anytime with no penalties. You'll keep access until the end of your billing period.
+          </p>
+        </div>
+
+        <div class="border-b border-gray-800 pb-6">
+          <h3 class="font-heading text-white font-semibold text-lg mb-2">What devices does it work on?</h3>
+          <p class="text-gray-400 font-body">
+            iOS and Android phones and tablets. You can also access content via the web at app.jonerfootball.com.
+          </p>
+        </div>
+
+        <div class="pb-6">
+          <h3 class="font-heading text-white font-semibold text-lg mb-2">Do I need equipment?</h3>
+          <p class="text-gray-400 font-body">
+            Most drills just need a ball and a small space. Some programs use cones or markers but they're not essential.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="bg-joner-red py-16 md:py-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase mb-4">
+        Start Training Today
+      </h2>
+      <p class="text-white/80 font-body text-lg mb-8">
+        Join 50,000+ players and coaches worldwide.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="https://app.jonerfootball.com" class="btn-outline text-base px-8 py-4 border-white text-white hover:bg-white hover:text-joner-red">
+          Download Free
+        </a>
+      </div>
+    </div>
+  </section>
+
   <EmailCapture />
+
+  <!-- Video modal (placeholder) -->
+  <div id="video-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90">
+    <div class="max-w-4xl w-full mx-4">
+      <div class="flex justify-end mb-4">
+        <button id="close-video-btn" class="text-white hover:text-joner-red">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="bg-joner-gray aspect-video flex items-center justify-center">
+        <p class="text-gray-500 font-body">Video coming soon</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const watchBtn = document.getElementById('watch-video-btn')
+    const closeBtn = document.getElementById('close-video-btn')
+    const modal = document.getElementById('video-modal')
+
+    watchBtn?.addEventListener('click', () => { modal?.classList.remove('hidden'); modal?.classList.add('flex') })
+    closeBtn?.addEventListener('click', () => { modal?.classList.add('hidden'); modal?.classList.remove('flex') })
+    modal?.addEventListener('click', (e) => { if (e.target === modal) { modal.classList.add('hidden'); modal.classList.remove('flex') } })
+  </script>
+
 </BaseLayout>
