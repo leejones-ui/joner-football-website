@@ -1,25 +1,59 @@
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  html { scroll-behavior: smooth; }
-  body { @apply bg-joner-black text-white font-body; }
-  h1, h2, h3, h4, h5, h6 { @apply font-heading uppercase tracking-wide; }
+@theme {
+  --color-joner-red: #E30613;
+  --color-joner-black: #0A0A0A;
+  --color-joner-white: #FFFFFF;
+  --color-joner-gray: #1A1A1A;
+  --color-joner-gray-light: #F5F5F5;
+  --font-heading: 'Oswald', sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
 }
 
-@layer components {
-  .btn-red {
-    @apply bg-joner-red text-white font-heading font-bold uppercase tracking-wider px-6 py-3 inline-block transition-colors duration-200;
-  }
-  .btn-red:hover { @apply bg-red-800; }
-  .btn-outline {
-    @apply border-2 border-white text-white font-heading font-bold uppercase tracking-wider px-6 py-3 inline-block transition-all duration-200;
-  }
-  .btn-outline:hover { @apply bg-white text-joner-black; }
-  .section-heading {
-    @apply font-heading text-3xl md:text-4xl lg:text-5xl font-bold uppercase tracking-wider;
-  }
+/* Base */
+html { scroll-behavior: smooth; }
+body { background-color: #0A0A0A; color: white; font-family: 'DM Sans', system-ui, sans-serif; }
+h1, h2, h3, h4, h5, h6 { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Utility classes we use everywhere */
+.btn-red {
+  background-color: #E30613;
+  color: white;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.75rem 1.5rem;
+  display: inline-block;
+  transition: background-color 0.2s;
+  cursor: pointer;
 }
+.btn-red:hover { background-color: #b3000e; }
+
+.btn-outline {
+  border: 2px solid white;
+  color: white;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.75rem 1.5rem;
+  display: inline-block;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.btn-outline:hover { background-color: white; color: #0A0A0A; }
+
+.section-heading {
+  font-family: 'Oswald', sans-serif;
+  font-size: clamp(1.75rem, 4vw, 3rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Scrollbar hide utility */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
