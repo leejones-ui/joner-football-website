@@ -4,39 +4,16 @@ import EmailCapture from '../components/EmailCapture.astro'
 
 const camps = [
   {
-    city: 'Sacramento',
-    state: 'California',
-    country: 'USA',
-    flag: '🇺🇸',
-    dates: 'April 5-6, 2026',
-    ages: 'Ages 8-18',
-    price: 'From $155 USD',
-    spots: 'Limited spots',
-    href: '/camps/sacramento-april-2026',
-    region: 'usa',
-  },
-  {
-    city: 'Portland',
-    state: 'Oregon',
-    country: 'USA',
-    flag: '🇺🇸',
-    dates: 'April 11-12, 2026',
-    ages: 'Ages 8-18',
-    price: 'From $155 USD',
-    spots: 'Limited spots',
-    href: '/camps/portland-april-2026',
-    region: 'usa',
-  },
-  {
     city: 'Los Angeles',
     state: 'California',
     country: 'USA',
     flag: '🇺🇸',
-    dates: 'June 15-19, 2026',
+    dates: 'June 22-24, 2026',
     ages: 'Ages 13-18 (ECNL/MLS Next)',
     price: 'By acceptance only',
     spots: 'The Complete Player Experience',
-    href: '/camps/la-complete-player-june-2026',
+    venue: 'Gol Soccer Complex, North Hollywood',
+    href: '#la-apply',
     region: 'usa',
     featured: true,
   },
@@ -47,9 +24,9 @@ const camps = [
     flag: '🇺🇸',
     dates: 'June 2026',
     ages: 'Ages 8-18',
-    price: 'From $155 USD',
+    price: 'Pricing TBC',
     spots: 'Coming soon',
-    href: '/camps/houston-june-2026',
+    href: '#camps-notify',
     region: 'usa',
   },
   {
@@ -57,11 +34,11 @@ const camps = [
     state: 'Texas',
     country: 'USA',
     flag: '🇺🇸',
-    dates: 'June 2026',
+    dates: 'June/July 2026',
     ages: 'Ages 8-18',
-    price: 'From $155 USD',
+    price: 'Pricing TBC',
     spots: 'Coming soon',
-    href: '/camps/dallas-june-2026',
+    href: '#camps-notify',
     region: 'usa',
   },
   {
@@ -69,11 +46,11 @@ const camps = [
     state: 'NSW',
     country: 'Australia',
     flag: '🇦🇺',
-    dates: 'July 2026',
+    dates: 'July 2026 ft M Grande',
     ages: 'Ages 8-18',
     price: 'AUD pricing TBC',
     spots: 'Coming soon',
-    href: '/camps/sydney-july-2026',
+    href: '#camps-notify',
     region: 'australia',
   },
 ]
@@ -130,12 +107,12 @@ const camps = [
             <div>
               <div class="flex items-center gap-3 mb-3">
                 <span class="bg-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-white">Elite Level</span>
-                <span class="text-gray-500 font-body text-sm">June 15-19, 2026</span>
+                <span class="text-gray-500 font-body text-sm">June 22-24, 2026</span>
               </div>
               <h2 class="font-heading text-3xl md:text-4xl font-bold text-white uppercase mb-2">The Complete Player Experience</h2>
-              <p class="text-joner-red font-heading text-sm uppercase tracking-wider mb-4">Los Angeles, California</p>
+              <p class="text-joner-red font-heading text-sm uppercase tracking-wider mb-4">Gol Soccer Complex, North Hollywood, CA</p>
               <p class="text-gray-400 font-body mb-6">
-                An elite 5-day immersive training experience for serious players aged 13-18. ECNL and MLS Next level. By acceptance only.
+                An elite 3-day immersive training experience for serious players aged 13-18. ECNL and MLS Next level. By acceptance only.
               </p>
               <div class="flex flex-wrap gap-4 mb-6">
                 <div class="text-center">
@@ -143,7 +120,7 @@ const camps = [
                   <div class="text-gray-500 text-xs font-body">ECNL / MLS Next</div>
                 </div>
                 <div class="text-center">
-                  <div class="font-heading text-white font-bold">5 Days</div>
+                  <div class="font-heading text-white font-bold">3 Days</div>
                   <div class="text-gray-500 text-xs font-body">Intensive</div>
                 </div>
                 <div class="text-center">
@@ -151,7 +128,7 @@ const camps = [
                   <div class="text-gray-500 text-xs font-body">Application required</div>
                 </div>
               </div>
-              <a href="/camps/la-complete-player-june-2026" class="btn-red text-sm">Apply Now</a>
+              <a href="#la-apply" class="btn-red text-sm">Apply Now</a>
             </div>
           </div>
         </div>

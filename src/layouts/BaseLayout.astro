@@ -6,12 +6,44 @@ import Footer from '../components/Footer.astro'
 export interface Props {
   title?: string
   description?: string
+  canonical?: string
+  ogImage?: string
+  schema?: object | object[]
 }
 
 const {
   title = 'Joner Football | Technique Above Everything',
   description = 'Elite football training, global camps, and the #1 football coaching app. Train with 2.1 million footballers worldwide.',
+  canonical,
+  ogImage = 'https://jonerfootball.com/images/og-default.jpg',
+  schema,
 } = Astro.props
+
+const canonicalURL = canonical || `https://jonerfootball.com${Astro.url.pathname}`
+
+const orgSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Joner Football",
+  "url": "https://jonerfootball.com",
+  "logo": "https://jonerfootball.com/images/logo.png",
+  "sameAs": [
+    "https://www.instagram.com/jonerfootball/",
+    "https://www.youtube.com/@jonerfootball",
+    "https://www.facebook.com/Jonerfootball/",
+    "https://www.tiktok.com/@jonerfootball"
+  ],
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "telephone": "+61-404-780-351",
+    "contactType": "customer service",
+    "email": "leejones@jonerfootball.com"
+  }
+}
+
+const allSchemas = schema
+  ? Array.isArray(schema) ? [orgSchema, ...schema] : [orgSchema, schema]
+  : [orgSchema]
 ---
 
 <!DOCTYPE html>
@@ -22,10 +54,30 @@ const {
     <meta name="description" content={description} />
     <title>{title}</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="canonical" href={canonicalURL} />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Joner Football" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
 
     <!-- Google Fonts preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Schema.org JSON-LD -->
+    {allSchemas.map((s) => (
+      <script type="application/ld+json" set:html={JSON.stringify(s)} />
+    ))}
 
     <!-- GA4 -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-H73LP37D8D"></script>

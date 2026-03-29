@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://jonerfootball.com/sitemap-index.xml
