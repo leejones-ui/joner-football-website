@@ -2,6 +2,63 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
 
+const campSchemas = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": "Joner Football Camp — LA Complete Player Experience",
+    "startDate": "2026-06-22",
+    "endDate": "2026-06-24",
+    "location": {
+      "@type": "Place",
+      "name": "Gol Soccer Complex",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "North Hollywood",
+        "addressRegion": "CA",
+        "addressCountry": "US"
+      }
+    },
+    "organizer": { "@type": "Organization", "name": "Joner Football" }
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": "Joner Football Camp — Houston",
+    "startDate": "2026-06",
+    "location": {
+      "@type": "Place",
+      "name": "Houston, Texas",
+      "address": { "@type": "PostalAddress", "addressLocality": "Houston", "addressRegion": "TX", "addressCountry": "US" }
+    },
+    "organizer": { "@type": "Organization", "name": "Joner Football" }
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": "Joner Football Camp — Dallas",
+    "startDate": "2026-06",
+    "location": {
+      "@type": "Place",
+      "name": "Dallas, Texas",
+      "address": { "@type": "PostalAddress", "addressLocality": "Dallas", "addressRegion": "TX", "addressCountry": "US" }
+    },
+    "organizer": { "@type": "Organization", "name": "Joner Football" }
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": "Joner Football Camp — Sydney ft M Grande",
+    "startDate": "2026-07",
+    "location": {
+      "@type": "Place",
+      "name": "Sydney, Australia",
+      "address": { "@type": "PostalAddress", "addressLocality": "Sydney", "addressRegion": "NSW", "addressCountry": "AU" }
+    },
+    "organizer": { "@type": "Organization", "name": "Joner Football" }
+  }
+]
+
 const camps = [
   {
     city: 'Los Angeles',
@@ -58,7 +115,8 @@ const camps = [
 
 <BaseLayout
   title="Football Camps Worldwide | Joner Football"
-  description="Elite football training camps across the USA, Australia, and beyond. Train with Coach Joner. Limited spots available."
+  description="Joner Football elite training camps in USA, Australia, and worldwide. Limited spots. Ages 8-18. Book now for 2026 camps in California, Texas, and Sydney."
+  schema={campSchemas}
 >
 
   <!-- Hero -->
@@ -210,11 +268,15 @@ const camps = [
       </div>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[1,2,3,4,5,6,7,8].map(() => (
-          <div class="bg-joner-gray aspect-square flex items-center justify-center">
-            <p class="text-gray-600 text-xs font-body text-center">Photo<br/>coming soon</p>
+        {[1,2,3,4,5,6,7,8].map((n) => (
+          <div class="bg-joner-gray aspect-square overflow-hidden">
+            <img src={`/images/camps/gallery-${n}.webp`} alt={`Joner Football training camp action photo ${n}`} class="w-full h-full object-cover hover:scale-105 transition-transform duration-300" loading="lazy" />
           </div>
         ))}
+      </div>
+
+      <div class="text-center mt-8">
+        <p class="text-gray-400 font-body">Based in Sydney? <a href="/training" class="text-joner-red hover:underline font-semibold">Train with us year-round →</a></p>
       </div>
     </div>
   </section>

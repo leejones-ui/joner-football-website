@@ -1,11 +1,30 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
+
+const localBizSchema = {
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "Joner Football HQ",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Unit 2, 20 Narabang Way",
+    "addressLocality": "Belrose",
+    "addressRegion": "NSW",
+    "postalCode": "2085",
+    "addressCountry": "AU"
+  },
+  "telephone": "+61-426-885-924",
+  "url": "https://jonerfootball.com/hq",
+  "openingHours": "Mo-Sa",
+  "priceRange": "$$"
+}
 ---
 
 <BaseLayout
   title="Sydney Training Programs | Joner Football"
-  description="JFP, Professional Training, and Joners Juniors. Australia's premier football development facility at The HQ, Belrose."
+  description="Sydney football training programs at Joner Football. JFP Performance program, professional training, and Joners Juniors. Indoor facility at Belrose. Ages 8+."
+  schema={localBizSchema}
 >
 
   <!-- Hero -->
@@ -40,12 +59,9 @@ import EmailCapture from '../components/EmailCapture.astro'
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-        <!-- Image placeholder -->
-        <div class="bg-joner-gray h-96 lg:h-full min-h-80 flex items-center justify-center border border-gray-800 order-2 lg:order-1">
-          <div class="text-center p-8">
-            <div class="text-6xl mb-4">⚽</div>
-            <p class="text-gray-500 text-sm font-body">JFP training photo<br/>coming soon</p>
-          </div>
+        <!-- JFP photo -->
+        <div class="bg-joner-gray h-96 lg:h-full min-h-80 border border-gray-800 order-2 lg:order-1 overflow-hidden">
+          <img src="/images/training/jfp-session.webp" alt="Joner Football Performance small group training session at The HQ" class="w-full h-full object-cover" loading="lazy" />
         </div>
 
         <!-- Content -->
@@ -215,12 +231,9 @@ import EmailCapture from '../components/EmailCapture.astro'
           <a href="#pro-form" class="btn-red text-sm">Enquire Now</a>
         </div>
 
-        <!-- Image placeholder -->
-        <div class="bg-joner-black h-96 flex items-center justify-center border border-gray-800">
-          <div class="text-center p-8">
-            <div class="text-6xl mb-4">🏆</div>
-            <p class="text-gray-500 text-sm font-body">Pro training footage<br/>coming soon</p>
-          </div>
+        <!-- Pro training photo -->
+        <div class="bg-joner-black h-96 border border-gray-800 overflow-hidden">
+          <img src="/images/training/pro-training.webp" alt="Lee Jones coaching a professional football player at Joner Football" class="w-full h-full object-cover" loading="lazy" />
         </div>
       </div>
 
@@ -246,12 +259,9 @@ import EmailCapture from '../components/EmailCapture.astro'
   <section id="joners-juniors" class="bg-joner-black py-20 md:py-28 scroll-mt-32">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-        <!-- Image placeholder -->
-        <div class="bg-joner-gray h-80 flex items-center justify-center border border-gray-800 order-2 lg:order-1">
-          <div class="text-center p-8">
-            <div class="text-6xl mb-4">⭐</div>
-            <p class="text-gray-500 text-sm font-body">Joners Juniors photo<br/>coming soon</p>
-          </div>
+        <!-- Joners Juniors photo -->
+        <div class="bg-joner-gray h-80 border border-gray-800 order-2 lg:order-1 overflow-hidden">
+          <img src="/images/training/juniors.webp" alt="Young players at Joners Juniors football training session" class="w-full h-full object-cover" loading="lazy" />
         </div>
 
         <!-- Content -->
@@ -407,6 +417,22 @@ import EmailCapture from '../components/EmailCapture.astro'
         <p class="text-gray-300 font-body leading-relaxed max-w-2xl mx-auto">
           Every JFP player receives a detailed individual performance report at the end of each term. Track progress, identify areas for improvement, and set goals for the next term. Professional-grade feedback for every player.
         </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cross-links -->
+  <section class="bg-joner-black py-12">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="border border-gray-800 p-6 text-center hover:border-joner-red transition-colors">
+          <p class="text-gray-300 font-body text-sm mb-3">Continue your training at home with the Joner Football App</p>
+          <a href="/app" class="text-joner-red font-heading text-sm uppercase tracking-wider hover:underline">Download the App →</a>
+        </div>
+        <div class="border border-gray-800 p-6 text-center hover:border-joner-red transition-colors">
+          <p class="text-gray-300 font-body text-sm mb-3">Take your development further at our global camps</p>
+          <a href="/camps" class="text-joner-red font-heading text-sm uppercase tracking-wider hover:underline">View Camps →</a>
+        </div>
       </div>
     </div>
   </section>

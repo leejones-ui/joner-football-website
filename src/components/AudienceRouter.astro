@@ -5,21 +5,24 @@ const cards = [
     text: "Access 1,500+ drills and train with Coach Joner",
     cta: "Start Training",
     href: "/app",
-    emoji: "⚽",
+    image: "/images/homepage/audience-player.webp",
+    alt: "Joner Football player training with ball at feet",
   },
   {
     heading: "I'M A COACH",
     text: "Workshops, session plans, and coaching methodology",
     cta: "Explore Workshops",
     href: "/workshops",
-    emoji: "📋",
+    image: "/images/homepage/audience-coach.webp",
+    alt: "Lee Jones coaching at Joner Football",
   },
   {
     heading: "I'M A PARENT",
     text: "Elite camps worldwide and junior programs in Sydney",
     cta: "Find a Program",
     href: "/training",
-    emoji: "🏅",
+    image: "/images/homepage/audience-parent.webp",
+    alt: "Young player training at Joner Football indoor facility",
   },
 ]
 ---
@@ -31,16 +34,17 @@ const cards = [
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       {cards.map((card) => (
-        <a href={card.href} class="group block border border-gray-800 hover:border-joner-red p-8 transition-all duration-200 hover:-translate-y-1">
-          <!-- Placeholder image area -->
-          <div class="bg-joner-gray h-48 mb-6 flex items-center justify-center text-6xl">
-            {card.emoji}
+        <a href={card.href} class="group block border border-gray-800 hover:border-joner-red transition-all duration-200 hover:-translate-y-1 overflow-hidden">
+          <div class="h-48 overflow-hidden">
+            <img src={card.image} alt={card.alt} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
           </div>
-          <h3 class="font-heading text-2xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">
-            {card.heading}
-          </h3>
-          <p class="text-gray-400 font-body text-sm mb-6 leading-relaxed">{card.text}</p>
-          <span class="btn-red text-sm inline-block">{card.cta}</span>
+          <div class="p-8">
+            <h3 class="font-heading text-2xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">
+              {card.heading}
+            </h3>
+            <p class="text-gray-400 font-body text-sm mb-6 leading-relaxed">{card.text}</p>
+            <span class="btn-red text-sm inline-block">{card.cta}</span>
+          </div>
         </a>
       ))}
     </div>

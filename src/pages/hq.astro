@@ -1,11 +1,30 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
+
+const localBizSchema = {
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "Joner Football HQ",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Unit 2, 20 Narabang Way",
+    "addressLocality": "Belrose",
+    "addressRegion": "NSW",
+    "postalCode": "2085",
+    "addressCountry": "AU"
+  },
+  "telephone": "+61-426-885-924",
+  "url": "https://jonerfootball.com/hq",
+  "openingHours": "Mo-Sa",
+  "priceRange": "$$"
+}
 ---
 
 <BaseLayout
   title="The Joner Football HQ | Belrose, Sydney"
-  description="Brand new indoor training facility at 20 Narabang Way, Belrose. Home of JFP and Joners Juniors. All-weather training."
+  description="The Joner Football HQ — brand new indoor training facility at 20 Narabang Way, Belrose, Sydney. Professional standard surface. All-weather training."
+  schema={localBizSchema}
 >
 
   <!-- Hero -->
@@ -32,17 +51,14 @@ import EmailCapture from '../components/EmailCapture.astro'
   <section class="bg-joner-black py-16">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="bg-joner-gray aspect-video flex items-center justify-center lg:col-span-2 lg:row-span-2">
-          <div class="text-center">
-            <div class="text-6xl mb-4">🏟️</div>
-            <p class="text-gray-500 text-sm font-body">HQ main pitch photo<br/>coming soon</p>
-          </div>
+        <div class="bg-joner-gray aspect-video lg:col-span-2 lg:row-span-2 overflow-hidden">
+          <img src="/images/hq/main-pitch.webp" alt="Joner Football HQ indoor training pitch at Belrose, Sydney" class="w-full h-full object-cover" loading="eager" />
         </div>
-        <div class="bg-joner-gray aspect-video flex items-center justify-center">
-          <p class="text-gray-500 text-xs font-body text-center">Training photo<br/>coming soon</p>
+        <div class="bg-joner-gray aspect-video overflow-hidden">
+          <img src="/images/hq/training-action.webp" alt="Players training at Joner Football HQ indoor facility" class="w-full h-full object-cover" loading="lazy" />
         </div>
-        <div class="bg-joner-gray aspect-video flex items-center justify-center">
-          <p class="text-gray-500 text-xs font-body text-center">Facility photo<br/>coming soon</p>
+        <div class="bg-joner-gray aspect-video overflow-hidden">
+          <img src="/images/hq/facility.webp" alt="Joner Football HQ facility in Belrose" class="w-full h-full object-cover" loading="lazy" />
         </div>
       </div>
     </div>
@@ -168,15 +184,18 @@ import EmailCapture from '../components/EmailCapture.astro'
           </div>
         </div>
 
-        <!-- Map placeholder -->
-        <div class="bg-joner-black border border-gray-800 aspect-video flex items-center justify-center">
-          <div class="text-center">
-            <div class="text-5xl mb-4">🗺️</div>
-            <p class="text-gray-500 font-body text-sm">Google Maps embed<br/>coming soon</p>
-            <a href="https://maps.google.com/?q=20+Narabang+Way+Belrose" target="_blank" rel="noopener" class="text-joner-red text-sm font-body hover:underline mt-2 inline-block">
-              View on Google Maps →
-            </a>
-          </div>
+        <!-- Google Maps -->
+        <div class="border border-gray-800 overflow-hidden">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3319.5!2d151.2164!3d-33.7394!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2s20+Narabang+Way+Belrose+NSW+2085!5e0!3m2!1sen!2sau"
+            width="100%"
+            height="400"
+            style="border:0;"
+            allowfullscreen=""
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            title="Joner Football HQ location at 20 Narabang Way, Belrose">
+          </iframe>
         </div>
       </div>
     </div>

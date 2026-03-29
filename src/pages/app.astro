@@ -1,11 +1,30 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
+
+const appSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Joner Football App",
+  "operatingSystem": "iOS, Android",
+  "applicationCategory": "SportsApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "AUD"
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "ratingCount": "50000"
+  }
+}
 ---
 
 <BaseLayout
   title="Joner Football App | 1,500+ Drills, Session Plans, Coaching"
-  description="The world's best football coaching app. 1,500+ drills, session plans, follow-along programs, and coaching methodology. Download free on iOS and Android."
+  description="Download the Joner Football App — 1,500+ drills, session plans, follow-along programs, coaches section, and weekly live sessions. Free section available."
+  schema={appSchema}
 >
 
   <!-- Hero -->
@@ -56,19 +75,11 @@ import EmailCapture from '../components/EmailCapture.astro'
           </div>
         </div>
 
-        <!-- Phone mockup -->
+        <!-- Phone mockup with real screenshot -->
         <div class="flex justify-center">
           <div class="relative">
-            <div class="bg-joner-black border-4 border-gray-700 rounded-3xl w-72 h-[580px] flex items-center justify-center shadow-2xl">
-              <div class="text-center px-6">
-                <div class="text-6xl mb-4">📱</div>
-                <p class="text-gray-400 text-sm font-body">App screenshots<br/>coming soon</p>
-                <div class="mt-6 space-y-2">
-                  <div class="bg-joner-red h-2 rounded w-full"></div>
-                  <div class="bg-gray-700 h-2 rounded w-3/4"></div>
-                  <div class="bg-gray-700 h-2 rounded w-1/2"></div>
-                </div>
-              </div>
+            <div class="bg-joner-black border-4 border-gray-700 rounded-3xl w-72 h-[580px] overflow-hidden shadow-2xl">
+              <img src="/images/app/screenshot-1.webp" alt="Joner Football App showing drill library with 1500+ training drills" class="w-full h-full object-cover object-top" />
             </div>
             <div class="absolute -inset-4 bg-joner-red/10 rounded-3xl blur-xl -z-10"></div>
           </div>
@@ -249,9 +260,14 @@ import EmailCapture from '../components/EmailCapture.astro'
         </div>
       </div>
 
-      <p class="text-center text-gray-600 text-sm font-body mt-8">
-        Team or club? <a href="/teams" class="text-joner-red hover:underline">Get a quote for bulk subscriptions →</a>
-      </p>
+      <div class="flex flex-col sm:flex-row justify-center gap-6 mt-8 text-center">
+        <p class="text-gray-600 text-sm font-body">
+          Team or club? <a href="/teams" class="text-joner-red hover:underline">Get a quote for bulk subscriptions →</a>
+        </p>
+        <p class="text-gray-600 text-sm font-body">
+          Meet Coach Joner in person. <a href="/camps" class="text-joner-red hover:underline">View our global camps →</a>
+        </p>
+      </div>
     </div>
   </section>
 
