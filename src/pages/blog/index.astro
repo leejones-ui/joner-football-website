@@ -1,11 +1,95 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import EmailCapture from '../../components/EmailCapture.astro'
+
+const posts = [
+  {
+    title: '10 Football Drills You Can Do Alone at Home',
+    slug: 'football-drills-at-home',
+    excerpt: 'You don\'t need a full pitch or a training partner to improve. These 10 drills will sharpen your technique from your backyard, garage, or living room.',
+    date: 'March 28, 2026',
+    readTime: '6 min read',
+    category: 'Drills',
+    image: '/images/training/jfp-session.webp',
+  },
+  {
+    title: 'How to Improve Your First Touch in Football',
+    slug: 'improve-first-touch-football',
+    excerpt: 'Your first touch determines everything that happens next. Here\'s how to develop a first touch that gives you time, space, and control under pressure.',
+    date: 'March 25, 2026',
+    readTime: '7 min read',
+    category: 'Player Development',
+    image: '/images/homepage/audience-player.webp',
+  },
+  {
+    title: 'The Best Football Training Program for Kids (Ages 8-12)',
+    slug: 'football-training-for-kids',
+    excerpt: 'Not all football training programs are equal. Here\'s what to look for when choosing a program for your child — and why technical focus matters most.',
+    date: 'March 22, 2026',
+    readTime: '6 min read',
+    category: 'Player Development',
+    image: '/images/training/juniors.webp',
+  },
+  {
+    title: 'What Makes a Great Football Coach? 5 Things to Look For',
+    slug: 'what-makes-great-football-coach',
+    excerpt: 'Great coaches aren\'t just loud voices on the sideline. Here are five qualities that separate good coaches from truly great ones.',
+    date: 'March 19, 2026',
+    readTime: '5 min read',
+    category: 'Coaching Tips',
+    image: '/images/about/lee-coaching.webp',
+  },
+  {
+    title: 'Football Camp Packing List — Everything Your Child Needs',
+    slug: 'football-camp-packing-list',
+    excerpt: 'Heading to a football camp? Here\'s everything your child needs to pack — plus a few things most parents forget.',
+    date: 'March 16, 2026',
+    readTime: '4 min read',
+    category: 'Camp Stories',
+    image: '/images/camps/la-camp.webp',
+  },
+]
 ---
-<BaseLayout title="Football Training Tips & Coaching Blog | Joner Football" description="Football drills, coaching tips, and player development from Joner Football.">
-  <section class="min-h-screen flex items-center justify-center bg-joner-black py-24">
-    <div class="text-center px-4">
-      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase mb-4">Blog</h1>
-      <p class="text-gray-400 font-body mb-4">Drills, coaching tips, and player development content. Coming soon.</p>
+
+<BaseLayout
+  title="Football Training Tips & Coaching Blog | Joner Football"
+  description="Football drills, coaching tips, and player development from Joner Football. Expert advice from Coach Joner and the team."
+>
+  <!-- Hero -->
+  <section class="bg-joner-gray py-20 md:py-24 relative">
+    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
+    <div class="max-w-4xl mx-auto px-4 text-center">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">The Blog</p>
+      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase mb-4">Drills, Tips & Stories</h1>
+      <p class="text-gray-400 font-body text-lg">Training advice from the Joner Football coaching team</p>
     </div>
   </section>
+
+  <!-- Posts grid -->
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {posts.map((post) => (
+          <a href={`/blog/${post.slug}`} class="group border border-gray-800 hover:border-joner-red transition-all duration-200 hover:-translate-y-1 overflow-hidden">
+            <div class="h-48 overflow-hidden bg-joner-gray">
+              <img src={post.image} alt={post.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+            </div>
+            <div class="p-6">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="bg-joner-red/20 text-joner-red px-2 py-0.5 font-heading text-xs uppercase tracking-wider">{post.category}</span>
+                <span class="text-gray-600 text-xs font-body">{post.readTime}</span>
+              </div>
+              <h2 class="font-heading text-lg font-bold text-white mb-2 group-hover:text-joner-red transition-colors uppercase leading-tight">
+                {post.title}
+              </h2>
+              <p class="text-gray-400 font-body text-sm leading-relaxed mb-3">{post.excerpt}</p>
+              <div class="text-gray-600 text-xs font-body">{post.date}</div>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <EmailCapture />
 </BaseLayout>
