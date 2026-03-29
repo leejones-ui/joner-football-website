@@ -85,6 +85,7 @@ const camps = [
     spots: 'Coming soon',
     href: '#camps-notify',
     region: 'usa',
+    image: '/images/camps/houston-camp.webp',
   },
   {
     city: 'Dallas',
@@ -97,6 +98,7 @@ const camps = [
     spots: 'Coming soon',
     href: '#camps-notify',
     region: 'usa',
+    image: '/images/camps/dallas-camp.webp',
   },
   {
     city: 'Sydney',
@@ -109,6 +111,7 @@ const camps = [
     spots: 'Coming soon',
     href: '#camps-notify',
     region: 'australia',
+    image: '/images/camps/sydney-camp.webp',
   },
 ]
 ---
@@ -121,7 +124,10 @@ const camps = [
 
   <!-- Hero -->
   <section class="relative min-h-[50vh] flex items-center justify-center bg-joner-gray overflow-hidden">
-    <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-90"></div>
+    <div class="absolute inset-0">
+      <img src="/images/camps/hero-bg.webp" alt="Joner Football elite training camp group photo" class="w-full h-full object-cover" />
+      <div class="absolute inset-0 bg-gradient-to-b from-joner-black/70 via-joner-black/50 to-joner-black/80"></div>
+    </div>
     <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
 
     <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
@@ -156,11 +162,8 @@ const camps = [
         <p class="text-joner-red font-heading text-xs uppercase tracking-widest mb-4 text-center">Featured</p>
         <div class="border-2 border-joner-red bg-joner-gray p-6 md:p-10">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            <div class="bg-joner-black h-64 flex items-center justify-center">
-              <div class="text-center">
-                <div class="text-5xl mb-3">🇺🇸</div>
-                <p class="text-gray-500 text-sm font-body">LA camp photos<br/>coming soon</p>
-              </div>
+            <div class="bg-joner-black h-64 overflow-hidden">
+              <img src="/images/camps/la-camp.webp" alt="Joner Football LA Complete Player Experience camp in North Hollywood" class="w-full h-full object-cover" loading="lazy" />
             </div>
             <div>
               <div class="flex items-center gap-3 mb-3">
@@ -196,15 +199,13 @@ const camps = [
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {camps.filter(c => !c.featured).map((camp) => (
           <div class="border border-gray-800 hover:border-joner-red transition-colors group">
-            <!-- Image placeholder -->
-            <div class="bg-joner-gray h-48 flex items-center justify-center relative">
-              <div class="text-center">
-                <div class="text-4xl mb-2">{camp.flag}</div>
-                <p class="text-gray-500 text-xs font-body">Photo coming soon</p>
-              </div>
-              {camp.spots === 'Limited spots' && (
-                <div class="absolute top-3 right-3 bg-joner-red px-2 py-1 font-heading text-xs uppercase tracking-wider text-white">
-                  Limited Spots
+            <!-- Camp image -->
+            <div class="bg-joner-gray h-48 overflow-hidden relative">
+              <img src={camp.image} alt={`Joner Football training camp in ${camp.city}, ${camp.state}`} class="w-full h-full object-cover" loading="lazy" />
+              <div class="absolute top-3 left-3 text-2xl">{camp.flag}</div>
+              {camp.spots === 'Coming soon' && (
+                <div class="absolute top-3 right-3 bg-gray-800/80 px-2 py-1 font-heading text-xs uppercase tracking-wider text-white">
+                  Coming Soon
                 </div>
               )}
             </div>
