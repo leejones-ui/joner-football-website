@@ -1,14 +1,111 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import EmailCapture from '../../components/EmailCapture.astro'
+
+const courseSchema = {
+  "@context": "https://schema.org",
+  "@type": "Course",
+  "name": "Online Coaches Course",
+  "description": "Application-based online coaching workshop teaching the Joner Football methodology. Learn session structure, drill design, and coaching philosophy.",
+  "provider": {
+    "@type": "Organization",
+    "name": "Joner Football",
+    "url": "https://jonerfootball.com"
+  },
+  "url": "https://jonerfootball.com/workshops/coaches-course",
+  "courseMode": "online",
+  "isAccessibleForFree": false
+}
 ---
-<BaseLayout title="Workshops | Joner Football" description="Online Coaches Course and Mindset Seminars from Joner Football.">
-  <section class="min-h-screen flex items-center justify-center bg-joner-black py-24">
-    <div class="text-center px-4">
-      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase mb-6">Workshops</h1>
-      <div class="flex flex-col sm:flex-row gap-4 justify-center mt-8">
-        <a href="/workshops/coaches-course" class="btn-red text-sm px-6 py-3">Online Coaches Course</a>
-        <a href="/workshops/mindset-seminars" class="btn-outline text-sm px-6 py-3">Mindset Seminars</a>
+
+<BaseLayout
+  title="Workshops | Joner Football"
+  description="Joner Football workshops — online coaches course and mindset seminars. Level up your coaching and mental game with the Joner Football methodology."
+  schema={courseSchema}
+>
+
+  <!-- Hero -->
+  <section class="relative min-h-[50vh] flex items-center justify-center bg-joner-gray overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-90"></div>
+    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
+
+    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Workshops & Seminars</p>
+      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
+        Level Up<br/>Your Game
+      </h1>
+      <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto">
+        Coaching workshops and mindset seminars from Joner Football. Whether you coach or you play, sharpen the way you think about the game.
+      </p>
+    </div>
+  </section>
+
+  <!-- Workshop Cards -->
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+        <!-- Card 1: Online Coaches Course -->
+        <div class="border border-gray-800 hover:border-joner-red transition-colors group">
+          <div class="bg-joner-gray h-64 flex items-center justify-center relative overflow-hidden">
+            <img src="/images/training/jfp-session.webp" alt="Joner Football coaching session" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" loading="lazy" />
+            <div class="absolute inset-0 bg-gradient-to-t from-joner-black/80 to-transparent"></div>
+            <div class="absolute top-3 left-3 bg-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-white">
+              Application Only
+            </div>
+          </div>
+          <div class="p-8">
+            <p class="text-joner-red font-heading text-xs uppercase tracking-widest mb-3">For Coaches</p>
+            <h2 class="font-heading text-2xl md:text-3xl font-bold text-white uppercase mb-4 group-hover:text-joner-red transition-colors">
+              Online Coaches Course
+            </h2>
+            <p class="text-gray-400 font-body leading-relaxed mb-6">
+              An application-based coaching workshop built around the Joner Football methodology. Learn how to structure sessions, design drills, and coach with purpose. Built for serious coaches who want to level up.
+            </p>
+            <a href="/workshops/coaches-course" class="btn-red text-sm">Learn More</a>
+          </div>
+        </div>
+
+        <!-- Card 2: Mindset Seminars -->
+        <div class="border border-gray-800 hover:border-joner-red transition-colors group">
+          <div class="bg-joner-gray h-64 flex items-center justify-center relative">
+            <div class="text-center">
+              <div class="text-5xl mb-3">🧠</div>
+              <p class="text-gray-500 text-sm font-body">Seminar photo<br/>coming soon</p>
+            </div>
+          </div>
+          <div class="p-8">
+            <p class="text-joner-red font-heading text-xs uppercase tracking-widest mb-3">For Players & Coaches</p>
+            <h2 class="font-heading text-2xl md:text-3xl font-bold text-white uppercase mb-4 group-hover:text-joner-red transition-colors">
+              Mindset Seminars
+            </h2>
+            <p class="text-gray-400 font-body leading-relaxed mb-6">
+              Mental performance workshops covering resilience, confidence under pressure, and the elite mindset. The side of football most people ignore — but the best players master.
+            </p>
+            <a href="/workshops/mindset-seminars" class="btn-red text-sm">Learn More</a>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
+
+  <!-- App Coaches Section CTA -->
+  <section class="bg-joner-gray py-16">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div class="border border-joner-red/50 bg-joner-red/5 p-8 md:p-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Already a Coach?</p>
+        <h2 class="section-heading text-white mb-4">Coaches Section in the App</h2>
+        <p class="text-gray-300 font-body leading-relaxed max-w-2xl mx-auto mb-8">
+          Access the Coaches Section inside the Joner Football App. Session plans, drill libraries, coaching methodology, and more — all at your fingertips.
+        </p>
+        <a href="https://app.jonerfootball.com" target="_blank" rel="noopener" class="btn-red text-sm px-8 py-4">
+          Open the Joner Football App
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <EmailCapture />
+
 </BaseLayout>

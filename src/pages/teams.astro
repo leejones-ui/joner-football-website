@@ -1,12 +1,281 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import EmailCapture from '../components/EmailCapture.astro'
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Team Subscriptions | Joner Football",
+  "description": "Team and club subscriptions for the Joner Football App. Give every player access to 1,500+ drills, session plans, and coaching methodology.",
+  "url": "https://jonerfootball.com/teams"
+}
 ---
-<BaseLayout title="Team & Club Subscriptions | Joner Football App" description="Bulk app subscriptions for teams and clubs. Train your whole squad.">
-  <section class="min-h-screen flex items-center justify-center bg-joner-black py-24">
-    <div class="text-center px-4">
-      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase mb-4">Train Your Whole Squad</h1>
-      <p class="text-gray-400 font-body mb-8 max-w-lg mx-auto">Team and club subscriptions for the Joner Football App. Custom pricing for your squad size.</p>
-      <a href="mailto:info@jonerfootball.com?subject=Team Subscription Enquiry" class="btn-red text-sm px-6 py-3">Get a Quote</a>
+
+<BaseLayout
+  title="Team Subscriptions | Joner Football"
+  description="Team and club subscriptions for the Joner Football App. Give every player access to 1,500+ drills, session plans, and coaching methodology."
+  schema={schema}
+>
+
+  <!-- Hero -->
+  <section class="relative min-h-[50vh] flex items-center justify-center bg-joner-gray overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-90"></div>
+    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
+
+    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Team Subscriptions</p>
+      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
+        Train Your<br/>Whole Squad
+      </h1>
+      <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto mb-8">
+        Team and club subscriptions for the Joner Football App
+      </p>
+      <a href="#get-a-quote" class="btn-red text-base px-8 py-4 inline-block text-center">
+        Get a Quote
+      </a>
     </div>
   </section>
+
+  <!-- Why Teams Love It -->
+  <section class="bg-joner-black py-20 md:py-28">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Benefits</p>
+        <h2 class="section-heading text-white mb-4">Why Teams Love It</h2>
+        <p class="text-gray-400 font-body max-w-2xl mx-auto">
+          Give every player on your squad access to the world's best football training content.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="bg-joner-gray border border-gray-800 p-8 hover:border-joner-red transition-colors group">
+          <div class="text-joner-red font-heading text-3xl font-bold mb-3">01</div>
+          <h3 class="font-heading text-xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">1,500+ Drills Access</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            Every player gets full access to the entire drill library. Ball mastery, first touch, finishing, 1v1 moves, weak foot — everything.
+          </p>
+        </div>
+
+        <div class="bg-joner-gray border border-gray-800 p-8 hover:border-joner-red transition-colors group">
+          <div class="text-joner-red font-heading text-3xl font-bold mb-3">02</div>
+          <h3 class="font-heading text-xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">Coach Session Plans</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            Ready-to-print PDF session plans. Structured training sessions your coaches can run straight away. Saves hours of planning every week.
+          </p>
+        </div>
+
+        <div class="bg-joner-gray border border-gray-800 p-8 hover:border-joner-red transition-colors group">
+          <div class="text-joner-red font-heading text-3xl font-bold mb-3">03</div>
+          <h3 class="font-heading text-xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">Independent Training</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            Players train on their own between sessions with follow-along programs. More touches on the ball, faster development.
+          </p>
+        </div>
+
+        <div class="bg-joner-gray border border-gray-800 p-8 hover:border-joner-red transition-colors group">
+          <div class="text-joner-red font-heading text-3xl font-bold mb-3">04</div>
+          <h3 class="font-heading text-xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">Track Development</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            Monitor your squad's progress with structured programs. See who's putting in the work and how players are developing over time.
+          </p>
+        </div>
+
+        <div class="bg-joner-gray border border-gray-800 p-8 hover:border-joner-red transition-colors group lg:col-span-2 lg:flex lg:items-start lg:gap-6">
+          <div class="text-joner-red font-heading text-3xl font-bold mb-3 lg:mb-0">05</div>
+          <div>
+            <h3 class="font-heading text-xl font-bold text-white mb-2 group-hover:text-joner-red transition-colors">One Subscription, Whole Squad</h3>
+            <p class="text-gray-400 font-body text-sm leading-relaxed">
+              One team subscription covers every player. No individual accounts to manage. Simple pricing based on your squad size. The more players, the better the rate.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="bg-joner-gray py-20 md:py-28">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Process</p>
+        <h2 class="section-heading text-white mb-4">How It Works</h2>
+        <p class="text-gray-400 font-body max-w-2xl mx-auto">
+          Getting your team set up is simple. Three steps and you're training.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="text-center">
+          <div class="w-16 h-16 border-2 border-joner-red flex items-center justify-center mx-auto mb-6">
+            <span class="text-joner-red font-heading text-2xl font-bold">1</span>
+          </div>
+          <h3 class="font-heading text-lg font-bold text-white uppercase mb-3">Tell Us Your Team Size</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            Fill in the form below with your club or team details and the number of players you want to give access to.
+          </p>
+        </div>
+
+        <div class="text-center">
+          <div class="w-16 h-16 border-2 border-joner-red flex items-center justify-center mx-auto mb-6">
+            <span class="text-joner-red font-heading text-2xl font-bold">2</span>
+          </div>
+          <h3 class="font-heading text-lg font-bold text-white uppercase mb-3">Custom Pricing Quote</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            We'll get back to you with a custom quote based on your squad size. Bulk pricing means significant savings per player.
+          </p>
+        </div>
+
+        <div class="text-center">
+          <div class="w-16 h-16 border-2 border-joner-red flex items-center justify-center mx-auto mb-6">
+            <span class="text-joner-red font-heading text-2xl font-bold">3</span>
+          </div>
+          <h3 class="font-heading text-lg font-bold text-white uppercase mb-3">Onboard in Minutes</h3>
+          <p class="text-gray-400 font-body text-sm leading-relaxed">
+            Once confirmed, we set up your team. Every player gets their own login and full access to the <a href="/app" class="text-joner-red hover:underline">Joner Football App</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Who It's For -->
+  <section class="bg-joner-black py-20 md:py-28">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">For Teams of All Sizes</p>
+        <h2 class="section-heading text-white mb-4">Who It's For</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="border border-gray-800 p-8 text-center hover:border-joner-red transition-colors">
+          <div class="text-4xl mb-4">⚽</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Club Coaches</h3>
+          <p class="text-gray-400 text-sm font-body">Teams of 10–50+ players. Give your whole squad professional training content.</p>
+        </div>
+
+        <div class="border border-gray-800 p-8 text-center hover:border-joner-red transition-colors">
+          <div class="text-4xl mb-4">🏫</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Academies</h3>
+          <p class="text-gray-400 text-sm font-body">Football academies and development programs looking to supplement on-field coaching.</p>
+        </div>
+
+        <div class="border border-gray-800 p-8 text-center hover:border-joner-red transition-colors">
+          <div class="text-4xl mb-4">📚</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Schools</h3>
+          <p class="text-gray-400 text-sm font-body">School football programs and PE departments wanting structured training resources.</p>
+        </div>
+
+        <div class="border border-gray-800 p-8 text-center hover:border-joner-red transition-colors">
+          <div class="text-4xl mb-4">🏆</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Associations</h3>
+          <p class="text-gray-400 text-sm font-body">State and national football associations. Scale world-class training across your entire organisation.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Form -->
+  <section id="get-a-quote" class="bg-joner-gray py-20 md:py-28 scroll-mt-20">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Get Started</p>
+        <h2 class="section-heading text-white mb-4">Get a Quote</h2>
+        <p class="text-gray-400 font-body max-w-xl mx-auto">
+          Tell us about your team and we'll send you a custom pricing quote.
+        </p>
+      </div>
+
+      <form
+        method="POST"
+        action="#"
+        class="space-y-6"
+      >
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label for="name" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Name</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              placeholder="Your name"
+              required
+              class="w-full bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm focus:outline-none focus:border-joner-red placeholder-gray-500"
+            />
+          </div>
+          <div>
+            <label for="email" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Email</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              placeholder="Your email"
+              required
+              class="w-full bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm focus:outline-none focus:border-joner-red placeholder-gray-500"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label for="club" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Club / Team Name</label>
+            <input
+              type="text"
+              id="club"
+              name="club"
+              placeholder="Your club or team"
+              required
+              class="w-full bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm focus:outline-none focus:border-joner-red placeholder-gray-500"
+            />
+          </div>
+          <div>
+            <label for="players" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Number of Players</label>
+            <input
+              type="number"
+              id="players"
+              name="players"
+              placeholder="e.g. 25"
+              min="1"
+              required
+              class="w-full bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm focus:outline-none focus:border-joner-red placeholder-gray-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label for="message" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Message</label>
+          <textarea
+            id="message"
+            name="message"
+            rows="5"
+            placeholder="Tell us about your team and what you're looking for..."
+            class="w-full bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 resize-vertical"
+          ></textarea>
+        </div>
+
+        <div class="text-center">
+          <button type="submit" class="btn-red text-base px-10 py-4">
+            Get a Quote
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="bg-joner-red py-12 md:py-16">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
+        See What's Inside the App
+      </h2>
+      <p class="text-white/80 font-body mb-6">
+        Check out the full feature list and try the free section before committing your team.
+      </p>
+      <a href="/app" class="btn-outline text-base px-8 py-4 border-white text-white hover:bg-white hover:text-joner-red inline-block">
+        Explore the App
+      </a>
+    </div>
+  </section>
+
+  <EmailCapture />
+
 </BaseLayout>

@@ -1,13 +1,311 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  "name": "About Lee Jones & Joner Football",
+  "description": "About Lee Jones and Joner Football. Voted Top 10 Technical Trainers in the World. From Sydney to global.",
+  "url": "https://jonerfootball.com/about",
+  "mainEntity": {
+    "@type": "Person",
+    "name": "Lee Jones",
+    "jobTitle": "Founder & Head Coach",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "Joner Football"
+    }
+  }
+}
 ---
-<BaseLayout title="About Lee Jones | Joner Football" description="The story of Joner Football. Lee Jones — voted Top 10 Technical Trainers in the World (2017).">
-  <section class="min-h-screen flex items-center justify-center bg-joner-black py-24">
-    <div class="text-center px-4">
-      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase mb-4">About</h1>
-      <p class="text-gray-400 font-body mb-4 max-w-lg mx-auto">Full about page — Lee's story, Dean McDonnell, the coaching team, and partnerships — coming soon.</p>
+
+<BaseLayout
+  title="About Lee Jones & Joner Football | Joner Football"
+  description="About Lee Jones and Joner Football. Voted Top 10 Technical Trainers in the World. From Sydney to global. The Joner Football story."
+  schema={schema}
+>
+
+  <!-- Hero -->
+  <section class="relative min-h-[60vh] flex items-center justify-center bg-joner-gray overflow-hidden">
+    <div class="absolute inset-0">
+      <img
+        src="/images/about/lee-coaching.webp"
+        alt="Lee Jones coaching at Joner Football"
+        class="w-full h-full object-cover"
+      />
+      <div class="absolute inset-0 bg-gradient-to-b from-joner-black/80 via-joner-black/60 to-joner-black/80"></div>
+    </div>
+    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
+    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">From Sydney to the World</p>
+      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
+        The Joner<br/>Football Story
+      </h1>
+      <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto">
+        From Sydney to the world. Technique above everything.
+      </p>
     </div>
   </section>
+
+  <!-- Lee's Story -->
+  <section class="bg-joner-black py-20 md:py-28">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+
+        <!-- Content -->
+        <div>
+          <div class="inline-block bg-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-white mb-4">The Founder</div>
+          <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase mb-6">
+            Lee 'Joner' Jones
+          </h2>
+
+          <p class="text-gray-300 font-body leading-relaxed mb-6">
+            Lee Jones started Joner Football in Sydney, Australia with one mission — technique above everything. What began as individual coaching sessions has grown into a global football development brand with over 2.1 million followers, 50,000+ app downloads, and training <a href="/camps" class="text-joner-red hover:underline">camps across 15+ countries</a>.
+          </p>
+
+          <div class="border-l-4 border-joner-red pl-6 mb-6">
+            <p class="text-white font-heading text-lg uppercase tracking-wide">
+              In 2017, Joner Football was voted Top 10 Technical Trainers in the World.
+            </p>
+          </div>
+
+          <p class="text-gray-300 font-body leading-relaxed mb-6">
+            Today, Joner Football operates out of a state-of-the-art indoor facility in Belrose, Sydney, runs the Joner Football Performance program, delivers elite camps worldwide, and provides the <a href="/app" class="text-joner-red hover:underline">Joner Football App</a> — the most comprehensive football training platform available, with 1,500+ drills used by players and coaches around the globe.
+          </p>
+
+          <p class="text-gray-300 font-body leading-relaxed mb-8">
+            Lee's coaching philosophy is simple: master the ball, and the game opens up. Every drill, every session, every camp is built around technical excellence, high intensity, and genuine player development.
+          </p>
+
+          <!-- Stats -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-joner-gray border border-gray-700 p-4 text-center">
+              <div class="font-heading text-joner-red text-2xl font-bold">2.1M+</div>
+              <div class="text-gray-500 text-xs font-body mt-1">Followers</div>
+            </div>
+            <div class="bg-joner-gray border border-gray-700 p-4 text-center">
+              <div class="font-heading text-white text-2xl font-bold">50K+</div>
+              <div class="text-gray-500 text-xs font-body mt-1">App Downloads</div>
+            </div>
+            <div class="bg-joner-gray border border-gray-700 p-4 text-center">
+              <div class="font-heading text-white text-2xl font-bold">15+</div>
+              <div class="text-gray-500 text-xs font-body mt-1">Countries</div>
+            </div>
+            <div class="bg-joner-gray border border-gray-700 p-4 text-center">
+              <div class="font-heading text-white text-2xl font-bold">1,500+</div>
+              <div class="text-gray-500 text-xs font-body mt-1">Drills</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image placeholder -->
+        <div class="bg-joner-gray h-96 lg:h-full min-h-96 flex items-center justify-center border border-gray-800">
+          <div class="text-center p-8">
+            <div class="text-6xl mb-4">⚽</div>
+            <p class="text-gray-500 text-sm font-body">Lee Jones photo<br/>coming soon</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Head Coach — Dean McDonnell -->
+  <section class="bg-joner-gray py-20 md:py-28">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+
+        <!-- Image placeholder -->
+        <div class="bg-joner-black h-96 flex items-center justify-center border border-gray-800 order-2 lg:order-1">
+          <div class="text-center p-8">
+            <div class="text-6xl mb-4">👤</div>
+            <p class="text-gray-500 text-sm font-body">Dean McDonnell photo<br/>coming soon</p>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="order-1 lg:order-2">
+          <div class="inline-block bg-joner-black border border-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-joner-red mb-4">Head Coach</div>
+          <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase mb-6">
+            Dean McDonnell
+          </h2>
+
+          <p class="text-gray-300 font-body leading-relaxed mb-8">
+            Dean McDonnell is the Head Coach of the Joner Football Performance program. With a deep background in player development and a passion for technical coaching, Dean leads the JFP team across all Sydney training locations.
+          </p>
+
+          <div class="border border-joner-red/30 bg-joner-red/5 p-6">
+            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-3">Contact Dean</h3>
+            <div class="flex items-center gap-4">
+              <div class="bg-joner-gray w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0">
+                <span class="text-2xl">👤</span>
+              </div>
+              <div>
+                <div class="font-heading text-white font-bold">Dean McDonnell</div>
+                <div class="text-gray-400 text-sm font-body">Head Coach, JFP</div>
+                <a href="tel:0426885924" class="text-joner-red text-sm font-body hover:underline">0426 885 924</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- The Coaching Team -->
+  <section class="bg-joner-black py-20 md:py-28">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">The Team</p>
+        <h2 class="section-heading text-white mb-4">Our Coaching Team</h2>
+        <p class="text-gray-400 font-body max-w-3xl mx-auto text-lg leading-relaxed">
+          Our team of qualified, experienced coaches deliver every session to a professional standard. Grouped by age and ability, with a maximum of 6 players per group, every player gets the attention they deserve.
+        </p>
+      </div>
+
+      <!-- Team photo -->
+      <div class="mb-12">
+        <img
+          src="/images/about/coaching-team.webp"
+          alt="The Joner Football coaching team"
+          class="w-full h-auto object-cover border border-gray-800"
+        />
+      </div>
+
+      <!-- Key differentiators -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div class="bg-joner-gray border border-gray-800 p-8 text-center">
+          <div class="font-heading text-joner-red text-3xl font-bold mb-2">6</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Max Per Group</h3>
+          <p class="text-gray-400 text-sm font-body">Small groups, maximum attention. Every player matters.</p>
+        </div>
+        <div class="bg-joner-gray border border-gray-800 p-8 text-center">
+          <div class="font-heading text-joner-red text-3xl font-bold mb-2">100%</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Qualified Coaches</h3>
+          <p class="text-gray-400 text-sm font-body">Every coach is qualified, experienced, and committed to development.</p>
+        </div>
+        <div class="bg-joner-gray border border-gray-800 p-8 text-center">
+          <div class="font-heading text-joner-red text-3xl font-bold mb-2">Pro</div>
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Standard</h3>
+          <p class="text-gray-400 text-sm font-body">Professional standard delivery. Every session. Every time.</p>
+        </div>
+      </div>
+
+      <!-- Placeholder for additional coach profiles -->
+      <div class="border border-gray-800 border-dashed p-8 text-center">
+        <p class="text-gray-500 font-body text-sm">Individual coach profiles coming soon.</p>
+      </div>
+
+      <div class="text-center mt-12">
+        <a href="/training" class="btn-red text-sm">View Training Programs</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Continue training at home CTA -->
+  <section class="bg-joner-red py-12 md:py-16">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
+        Continue Your Training at Home
+      </h2>
+      <p class="text-white/80 font-body mb-6">
+        Continue your training at home with the Joner Football App. 1,500+ drills, session plans, and follow-along programs.
+      </p>
+      <a href="/app" class="btn-outline text-base px-8 py-4 border-white text-white hover:bg-white hover:text-joner-red">
+        Explore the App
+      </a>
+    </div>
+  </section>
+
+  <!-- Partnerships -->
+  <section class="bg-joner-gray border-y border-gray-800 py-16 md:py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Partnerships</p>
+        <h2 class="section-heading text-white">Official Partners</h2>
+      </div>
+
+      <div class="flex flex-col sm:flex-row justify-center gap-8">
+        <div class="text-center">
+          <div class="bg-joner-black border border-gray-700 px-8 py-4 inline-block mb-2">
+            <span class="font-heading text-white font-bold text-xl">FPA</span>
+          </div>
+          <p class="text-gray-500 text-xs font-body">Strength & Conditioning Partner</p>
+        </div>
+        <div class="text-center">
+          <div class="bg-joner-black border border-gray-700 px-8 py-4 inline-block mb-2">
+            <span class="font-heading text-white font-bold text-xl">FullNinety</span>
+          </div>
+          <p class="text-gray-500 text-xs font-body">Tactical Analysis Partner</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact" class="bg-joner-black py-20 md:py-28 scroll-mt-32">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Get in Touch</p>
+        <h2 class="section-heading text-white">Contact Us</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+
+        <!-- General -->
+        <div class="bg-joner-gray border border-gray-800 p-6 text-center">
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">General Enquiries</h3>
+          <a href="mailto:leejones@jonerfootball.com" class="text-joner-red font-body text-sm hover:underline break-all">
+            leejones@jonerfootball.com
+          </a>
+        </div>
+
+        <!-- Training -->
+        <div class="bg-joner-gray border border-gray-800 p-6 text-center">
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">Training Enquiries</h3>
+          <a href="/training" class="text-joner-red font-body text-sm hover:underline">
+            View Training Programs
+          </a>
+        </div>
+
+        <!-- Camps -->
+        <div class="bg-joner-gray border border-gray-800 p-6 text-center">
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">Camp Enquiries</h3>
+          <a href="/camps" class="text-joner-red font-body text-sm hover:underline">
+            View Camps
+          </a>
+        </div>
+
+        <!-- Joners Juniors -->
+        <div class="bg-joner-gray border border-gray-800 p-6 text-center">
+          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">Joners Juniors</h3>
+          <a href="mailto:jonersjuniors@jonerfootball.com" class="text-joner-red font-body text-sm hover:underline break-all">
+            jonersjuniors@jonerfootball.com
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Careers -->
+  <section class="bg-joner-gray py-16 md:py-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div class="border border-joner-red/50 bg-joner-red/5 p-8 md:p-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Careers</p>
+        <h2 class="section-heading text-white mb-4">Join the Team</h2>
+        <p class="text-gray-300 font-body leading-relaxed max-w-2xl mx-auto mb-8">
+          Think you've got what it takes to coach at Joner Football? We're always looking for passionate, qualified coaches.
+        </p>
+        <a href="mailto:leejones@jonerfootball.com?subject=Coaching%20Application%20-%20Joner%20Football" class="btn-red text-sm">
+          Apply Now — leejones@jonerfootball.com
+        </a>
+      </div>
+    </div>
+  </section>
+
   <EmailCapture />
+
 </BaseLayout>

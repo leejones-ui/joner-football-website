@@ -1,12 +1,237 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import EmailCapture from '../../components/EmailCapture.astro'
+
+const courseSchema = {
+  "@context": "https://schema.org",
+  "@type": "Course",
+  "name": "Online Coaches Course — Joner Football",
+  "description": "Application-based online coaching course teaching the Joner Football methodology. Learn session structure, drill design, age-group coaching, and the mental side of the game.",
+  "provider": {
+    "@type": "Organization",
+    "name": "Joner Football",
+    "url": "https://jonerfootball.com"
+  },
+  "url": "https://jonerfootball.com/workshops/coaches-course",
+  "courseMode": "online",
+  "isAccessibleForFree": false
+}
 ---
-<BaseLayout title="Online Coaches Course | Joner Football" description="Application-based online coaching workshop. Learn the Joner Football methodology.">
-  <section class="min-h-screen flex items-center justify-center bg-joner-black py-24">
-    <div class="text-center px-4">
-      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase mb-4">Online Coaches Course</h1>
-      <p class="text-gray-400 font-body mb-8 max-w-lg mx-auto">Application-based coaching workshop for serious football coaches. Full page coming soon.</p>
-      <a href="mailto:info@jonerfootball.com?subject=Coaches Course Enquiry" class="btn-red text-sm px-6 py-3">Apply Now</a>
+
+<BaseLayout
+  title="Online Coaches Course | Joner Football"
+  description="Learn the Joner Football coaching methodology. Application-based online course covering session structure, drill design, age-group coaching, and more."
+  schema={courseSchema}
+>
+
+  <!-- Hero -->
+  <section class="relative min-h-[60vh] flex items-center justify-center bg-joner-gray overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-90"></div>
+    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
+
+    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Workshop</p>
+      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
+        Online Coaches<br/>Course
+      </h1>
+      <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto">
+        Learn the Joner Football methodology. Application only.
+      </p>
     </div>
   </section>
+
+  <!-- What You'll Learn -->
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Course Content</p>
+        <h2 class="section-heading text-white">What You'll Learn</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[
+          {
+            title: 'The Methodology',
+            text: 'Understand the Joner Football coaching philosophy — why technique comes first, and how to build sessions around it.',
+          },
+          {
+            title: 'Session Structure',
+            text: 'Learn how to plan and deliver structured training sessions that maximise player development and engagement.',
+          },
+          {
+            title: 'Drill Design',
+            text: 'Create purposeful drills that develop specific technical skills. Learn the principles behind effective drill design.',
+          },
+          {
+            title: 'Age-Group Coaching',
+            text: 'Adapt your coaching approach for different age groups — from under-8s through to senior players.',
+          },
+          {
+            title: 'Small-Group Training',
+            text: 'Master the art of coaching small groups. Learn how to maximise touches, intensity, and individual attention.',
+          },
+          {
+            title: 'The Mental Side',
+            text: 'Understand how to develop confidence, resilience, and a growth mindset in your players through your coaching.',
+          },
+        ].map((item) => (
+          <div class="border border-gray-800 p-6 hover:border-joner-red transition-colors">
+            <div class="w-10 h-1 bg-joner-red mb-4"></div>
+            <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">{item.title}</h3>
+            <p class="text-gray-400 text-sm font-body leading-relaxed">{item.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Who It's For -->
+  <section class="bg-joner-gray py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div>
+          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Who It's For</p>
+          <h2 class="section-heading text-white mb-6">Built for Serious Coaches</h2>
+          <p class="text-gray-300 font-body leading-relaxed mb-8">
+            This course is designed for coaches who want to improve the way they train players. Whether you're working at grassroots or academy level, the methodology applies.
+          </p>
+
+          <ul class="space-y-4">
+            {[
+              'Grassroots coaches looking to elevate their sessions',
+              'Academy coaches wanting a proven technical methodology',
+              'Aspiring professional coaches building their toolkit',
+              'Parent coaches who want to do it properly',
+            ].map((point) => (
+              <li class="flex items-start gap-3">
+                <span class="text-joner-red font-bold flex-shrink-0">▸</span>
+                <span class="text-gray-300 font-body text-sm">{point}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div class="bg-joner-black h-80 flex items-center justify-center border border-gray-800">
+          <div class="text-center p-8">
+            <div class="text-6xl mb-4">🎓</div>
+            <p class="text-gray-500 text-sm font-body">Course preview<br/>coming soon</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What's Included -->
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">What's Included</p>
+        <h2 class="section-heading text-white">Everything You Need</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { title: 'Course Library', text: 'Full video course library with modules you can revisit at any time.' },
+          { title: 'Session Plan Templates', text: 'Ready-to-use session plan templates built around the Joner Football methodology.' },
+          { title: 'Video Breakdowns', text: 'Detailed video breakdowns of drills, sessions, and coaching techniques.' },
+          { title: 'App Discount', text: 'Exclusive discount on the Joner Football App Coaches Section subscription.' },
+        ].map((item) => (
+          <div class="text-center p-6 border border-gray-800">
+            <div class="w-10 h-1 bg-joner-red mx-auto mb-4"></div>
+            <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3 text-sm">{item.title}</h3>
+            <p class="text-gray-400 text-sm font-body">{item.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="bg-joner-gray py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">What Coaches Say</p>
+        <h2 class="section-heading text-white">Testimonials</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div class="border border-gray-700 p-8">
+          <div class="w-10 h-1 bg-joner-red mb-6"></div>
+          <p class="text-gray-300 font-body leading-relaxed italic mb-6">
+            "Completely changed how I run my sessions. The methodology is clear, practical, and the results with my players have been immediate. Best coaching development I've done."
+          </p>
+          <div class="flex items-center gap-3">
+            <div class="bg-joner-black w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
+              <span class="text-lg">👤</span>
+            </div>
+            <div>
+              <div class="font-heading text-white font-bold text-sm">James T.</div>
+              <div class="text-gray-500 text-xs font-body">Grassroots Coach, Manchester, UK</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="border border-gray-700 p-8">
+          <div class="w-10 h-1 bg-joner-red mb-6"></div>
+          <p class="text-gray-300 font-body leading-relaxed italic mb-6">
+            "I've been coaching academy level for years but this course gave me a whole new framework. The drill design module alone was worth it. Highly recommend to any coach serious about development."
+          </p>
+          <div class="flex items-center gap-3">
+            <div class="bg-joner-black w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
+              <span class="text-lg">👤</span>
+            </div>
+            <div>
+              <div class="font-heading text-white font-bold text-sm">Matt R.</div>
+              <div class="text-gray-500 text-xs font-body">Academy Coach, Sydney, Australia</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Application Form -->
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="bg-joner-gray border border-gray-700 p-8 md:p-10">
+        <h2 class="font-heading text-white text-2xl md:text-3xl font-bold uppercase mb-2">Apply Now</h2>
+        <p class="text-gray-400 font-body text-sm mb-8">This course is application only. Fill in your details and we'll be in touch.</p>
+
+        <form method="POST" action="#" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="text" name="name" placeholder="Full name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="tel" name="phone" placeholder="Phone number" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="text" name="coaching_role" placeholder="Current coaching role" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+          </div>
+          <input type="text" name="club_name" placeholder="Club name" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+          <textarea name="why_join" placeholder="Why do you want to join this course?" rows="4" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
+          <button type="submit" class="btn-red text-sm w-full">Submit Application</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Internal Links -->
+  <section class="bg-joner-gray py-12">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <a href="/app" class="border border-gray-700 hover:border-joner-red p-6 transition-colors group block">
+          <p class="text-joner-red font-heading text-xs uppercase tracking-widest mb-2">The App</p>
+          <h3 class="font-heading text-white font-bold uppercase group-hover:text-joner-red transition-colors mb-2">Joner Football App</h3>
+          <p class="text-gray-400 font-body text-sm">1,500+ drills, session plans, and the Coaches Section.</p>
+        </a>
+        <a href="/training" class="border border-gray-700 hover:border-joner-red p-6 transition-colors group block">
+          <p class="text-joner-red font-heading text-xs uppercase tracking-widest mb-2">Training</p>
+          <h3 class="font-heading text-white font-bold uppercase group-hover:text-joner-red transition-colors mb-2">Sydney Training Programs</h3>
+          <p class="text-gray-400 font-body text-sm">JFP, Professional Training, and Joners Juniors in Sydney.</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <EmailCapture />
+
 </BaseLayout>
