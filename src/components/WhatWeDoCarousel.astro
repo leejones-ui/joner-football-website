@@ -1,0 +1,244 @@
+---
+const slides = [
+  {
+    title: "ELITE TRAINING PROGRAMS",
+    subtitle: "Sydney-based. World-class coaching.",
+    link: "/training",
+    image: "/images/training/hero-bg.webp",
+    cta: "Explore Training"
+  },
+  {
+    title: "WORLD RECOGNISED CAMPS",
+    subtitle: "15+ countries. Limited spots.",
+    link: "/camps",
+    image: "/images/camps/hero-bg.webp",
+    cta: "View Camps"
+  },
+  {
+    title: "1,500+ DRILLS ON YOUR PHONE",
+    subtitle: "The Joner Football App.",
+    link: "/app",
+    image: "/images/app/screenshot-1.webp",
+    cta: "Get the App"
+  },
+  {
+    title: "PROFESSIONAL PLAYER COACHING",
+    subtitle: "Train with Coach Joner.",
+    link: "/training#pro-training",
+    image: "/images/training/pro-training.webp",
+    cta: "Learn More"
+  },
+  {
+    title: "FIRST TOUCH STARTS HERE",
+    subtitle: "Joners Juniors. Ages 5+.",
+    link: "/training#joners-juniors",
+    image: "/images/training/juniors.webp",
+    cta: "Joners Juniors"
+  },
+  {
+    title: "THE JONER FOOTBALL HQ",
+    subtitle: "Brand new indoor facility. Belrose, Sydney.",
+    link: "/hq",
+    image: "/images/hq/main-pitch.webp",
+    cta: "Visit The HQ"
+  },
+  {
+    title: "LEVEL UP YOUR COACHING",
+    subtitle: "Workshops and courses for coaches.",
+    link: "/workshops",
+    image: "/images/homepage/audience-coach.webp",
+    cta: "View Workshops"
+  },
+  {
+    title: "JONER APPAREL",
+    subtitle: "On-field and off-field gear.",
+    link: "/shop",
+    image: "/images/homepage/audience-player.webp",
+    cta: "Shop Now"
+  }
+]
+---
+
+<section class="relative w-full overflow-hidden bg-joner-black" id="what-we-do-carousel">
+  <!-- Section label -->
+  <div class="absolute top-4 left-1/2 -translate-x-1/2 z-20">
+    <span class="text-xs font-heading uppercase tracking-[0.3em] text-white/60">What We Do</span>
+  </div>
+
+  <!-- Carousel viewport -->
+  <div class="relative h-[65vh] md:h-[70vh]" id="carousel-viewport">
+    {slides.map((slide, i) => (
+      <a
+        href={slide.link}
+        class="carousel-slide absolute inset-0 transition-opacity duration-700 ease-in-out flex items-center justify-center"
+        style={`opacity: ${i === 0 ? 1 : 0}; z-index: ${i === 0 ? 10 : 1}; pointer-events: ${i === 0 ? 'auto' : 'none'};`}
+        data-slide-index={i}
+      >
+        <!-- Background image -->
+        <img
+          src={slide.image}
+          alt={`Joner Football ${slide.title.toLowerCase()}`}
+          class="absolute inset-0 w-full h-full object-cover object-center"
+          loading={i === 0 ? "eager" : "lazy"}
+        />
+        <!-- Dark overlay -->
+        <div class="absolute inset-0 bg-gradient-to-t from-joner-black via-joner-black/60 to-joner-black/30"></div>
+
+        <!-- Content -->
+        <div class="relative z-10 text-center px-6 max-w-4xl mx-auto flex flex-col items-center justify-center">
+          <h2 class="font-heading text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none tracking-tight mb-3 md:mb-4">
+            {slide.title}
+          </h2>
+          <p class="text-gray-300 text-base sm:text-lg md:text-xl font-body font-light mb-6 md:mb-8 max-w-lg">
+            {slide.subtitle}
+          </p>
+          <span class="inline-block bg-joner-red text-white font-heading text-sm uppercase tracking-wider px-6 py-3 hover:bg-red-700 transition-colors">
+            {slide.cta}
+          </span>
+        </div>
+
+        <!-- Red accent line bottom -->
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-joner-red"></div>
+      </a>
+    ))}
+  </div>
+
+  <!-- Navigation arrows -->
+  <button
+    id="carousel-prev"
+    class="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-black/50 hover:bg-joner-red/80 text-white transition-colors rounded-full backdrop-blur-sm"
+    aria-label="Previous slide"
+  >
+    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+  </button>
+  <button
+    id="carousel-next"
+    class="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-black/50 hover:bg-joner-red/80 text-white transition-colors rounded-full backdrop-blur-sm"
+    aria-label="Next slide"
+  >
+    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+  </button>
+
+  <!-- Dot navigation -->
+  <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2" id="carousel-dots">
+    {slides.map((_, i) => (
+      <button
+        class={`carousel-dot w-2.5 h-2.5 rounded-full transition-all duration-300 ${i === 0 ? 'bg-joner-red w-8' : 'bg-white/40 hover:bg-white/70'}`}
+        data-dot-index={i}
+        aria-label={`Go to slide ${i + 1}`}
+      />
+    ))}
+  </div>
+</section>
+
+<script>
+  const slides = document.querySelectorAll('.carousel-slide')
+  const dots = document.querySelectorAll('.carousel-dot')
+  const prevBtn = document.getElementById('carousel-prev')
+  const nextBtn = document.getElementById('carousel-next')
+  const viewport = document.getElementById('carousel-viewport')
+
+  let current = 0
+  let autoplayTimer: ReturnType<typeof setInterval> | null = null
+  let isPaused = false
+
+  function goToSlide(index: number) {
+    const total = slides.length
+    const next = ((index % total) + total) % total
+
+    slides.forEach((slide, i) => {
+      const el = slide as HTMLElement
+      if (i === next) {
+        el.style.opacity = '1'
+        el.style.zIndex = '10'
+        el.style.pointerEvents = 'auto'
+      } else {
+        el.style.opacity = '0'
+        el.style.zIndex = '1'
+        el.style.pointerEvents = 'none'
+      }
+    })
+
+    dots.forEach((dot, i) => {
+      if (i === next) {
+        dot.classList.add('bg-joner-red', 'w-8')
+        dot.classList.remove('bg-white/40', 'hover:bg-white/70')
+      } else {
+        dot.classList.remove('bg-joner-red', 'w-8')
+        dot.classList.add('bg-white/40', 'hover:bg-white/70')
+      }
+    })
+
+    current = next
+  }
+
+  function startAutoplay() {
+    stopAutoplay()
+    autoplayTimer = setInterval(() => {
+      if (!isPaused) goToSlide(current + 1)
+    }, 3500)
+  }
+
+  function stopAutoplay() {
+    if (autoplayTimer) clearInterval(autoplayTimer)
+  }
+
+  // Arrow buttons
+  prevBtn?.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    goToSlide(current - 1)
+    startAutoplay()
+  })
+
+  nextBtn?.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    goToSlide(current + 1)
+    startAutoplay()
+  })
+
+  // Dot buttons
+  dots.forEach(dot => {
+    dot.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const index = parseInt((dot as HTMLElement).dataset.dotIndex || '0')
+      goToSlide(index)
+      startAutoplay()
+    })
+  })
+
+  // Pause on hover/touch
+  viewport?.addEventListener('mouseenter', () => { isPaused = true })
+  viewport?.addEventListener('mouseleave', () => { isPaused = false })
+
+  // Swipe support
+  let touchStartX = 0
+  let touchEndX = 0
+
+  viewport?.addEventListener('touchstart', (e) => {
+    touchStartX = (e as TouchEvent).changedTouches[0].screenX
+    isPaused = true
+  }, { passive: true })
+
+  viewport?.addEventListener('touchend', (e) => {
+    touchEndX = (e as TouchEvent).changedTouches[0].screenX
+    const diff = touchStartX - touchEndX
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) goToSlide(current + 1)
+      else goToSlide(current - 1)
+    }
+    isPaused = false
+    startAutoplay()
+  }, { passive: true })
+
+  // Keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') { goToSlide(current - 1); startAutoplay() }
+    if (e.key === 'ArrowRight') { goToSlide(current + 1); startAutoplay() }
+  })
+
+  // Start
+  startAutoplay()
+</script>

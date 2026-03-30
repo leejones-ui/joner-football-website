@@ -72,7 +72,7 @@ const posts = [
         {posts.map((post) => (
           <a href={`/blog/${post.slug}`} class="group border border-gray-800 hover:border-joner-red transition-all duration-200 hover:-translate-y-1 overflow-hidden">
             <div class="h-48 overflow-hidden bg-joner-gray">
-              <img src={post.image} alt={post.title} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+              <img src={post.image} alt={post.title} class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" />
             </div>
             <div class="p-6">
               <div class="flex items-center gap-3 mb-3">

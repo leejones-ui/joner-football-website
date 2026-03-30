@@ -125,7 +125,7 @@ const camps = [
   <!-- Hero -->
   <section class="relative min-h-[50vh] flex items-center justify-center bg-joner-gray overflow-hidden">
     <div class="absolute inset-0">
-      <img src="/images/camps/hero-bg.webp" alt="Joner Football elite training camp group photo" class="w-full h-full object-cover" />
+      <img src="/images/camps/hero-bg.webp" alt="Joner Football elite training camp group photo" class="w-full h-full object-cover object-center" />
       <div class="absolute inset-0 bg-gradient-to-b from-joner-black/70 via-joner-black/50 to-joner-black/80"></div>
     </div>
     <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
@@ -163,7 +163,7 @@ const camps = [
         <div class="border-2 border-joner-red bg-joner-gray p-6 md:p-10">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             <div class="bg-joner-black h-64 overflow-hidden">
-              <img src="/images/camps/la-camp.webp" alt="Joner Football LA Complete Player Experience camp in North Hollywood" class="w-full h-full object-cover" loading="lazy" />
+              <img src="/images/camps/la-camp.webp" alt="Joner Football LA Complete Player Experience camp in North Hollywood" class="w-full h-full object-cover object-center" loading="lazy" />
             </div>
             <div>
               <div class="flex items-center gap-3 mb-3">
@@ -201,7 +201,7 @@ const camps = [
           <div class="border border-gray-800 hover:border-joner-red transition-colors group">
             <!-- Camp image -->
             <div class="bg-joner-gray h-48 overflow-hidden relative">
-              <img src={camp.image} alt={`Joner Football training camp in ${camp.city}, ${camp.state}`} class="w-full h-full object-cover" loading="lazy" />
+              <img src={camp.image} alt={`Joner Football training camp in ${camp.city}, ${camp.state}`} class="w-full h-full object-cover object-center" loading="lazy" />
               <div class="absolute top-3 left-3 text-2xl">{camp.flag}</div>
               {camp.spots === 'Coming soon' && (
                 <div class="absolute top-3 right-3 bg-gray-800/80 px-2 py-1 font-heading text-xs uppercase tracking-wider text-white">
@@ -271,7 +271,7 @@ const camps = [
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[1,2,3,4,5,6,7,8].map((n) => (
           <div class="bg-joner-gray aspect-square overflow-hidden">
-            <img src={`/images/camps/gallery-${n}.webp`} alt={`Joner Football training camp action photo ${n}`} class="w-full h-full object-cover hover:scale-105 transition-transform duration-300" loading="lazy" />
+            <img src={`/images/camps/gallery-${n}.webp`} alt={`Joner Football training camp action photo ${n}`} class="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-300" loading="lazy" />
           </div>
         ))}
       </div>
