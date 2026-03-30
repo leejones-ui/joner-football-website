@@ -1,12 +1,158 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 ---
-<BaseLayout title="Joner Technique Test | How Good Are You?" description="Take the free Joner Football technique test. Find out where you rank.">
-  <section class="min-h-screen flex items-center justify-center bg-joner-black py-24">
-    <div class="text-center px-4">
-      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase mb-4">Technique Test</h1>
-      <p class="text-gray-400 font-body mb-8">Find out where you rank. Free.</p>
-      <a href="https://is.gd/jonertechtest" target="_blank" class="btn-red text-sm px-6 py-3">Take the Test</a>
+<BaseLayout title="Joner Technique Test | How Good Are You?" description="Take the free Joner Football technique test. Find out where your technique ranks among footballers worldwide.">
+
+  <!-- EMAIL GATE SECTION -->
+  <section id="gate" class="min-h-screen flex items-center justify-center bg-joner-black py-24">
+    <div class="max-w-xl mx-auto text-center px-4">
+      <h1 class="font-heading text-4xl md:text-6xl lg:text-7xl font-bold text-white uppercase mb-4 leading-tight">
+        THE JONER FOOTBALL TECHNIQUE TEST
+      </h1>
+      <p class="text-gray-400 font-body text-lg md:text-xl mb-10">
+        Find out where your technique ranks. Enter your details to take the test.
+      </p>
+      <form id="gate-form" method="POST" action="https://api.brevo.com/v3/contacts" data-brevo-form data-form-name="technique-test-gate" class="max-w-md mx-auto space-y-4">
+        <input
+          type="text"
+          name="name"
+          placeholder="Your Name"
+          required
+          class="w-full px-5 py-3 bg-white/10 border border-gray-700 rounded text-white font-body placeholder-gray-500 focus:outline-none focus:border-[#E30613] transition-colors"
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Your Email"
+          required
+          class="w-full px-5 py-3 bg-white/10 border border-gray-700 rounded text-white font-body placeholder-gray-500 focus:outline-none focus:border-[#E30613] transition-colors"
+        />
+        <button type="submit" class="btn-red w-full text-sm px-6 py-3 font-heading uppercase tracking-wider">
+          Take the Test
+        </button>
+      </form>
     </div>
   </section>
+
+  <!-- TEST SECTION (hidden initially) -->
+  <section id="test-section" class="bg-joner-black py-12 px-4 transition-opacity duration-700 ease-in-out" style="display:none; opacity:0;">
+    <div class="max-w-5xl mx-auto">
+      <h2 class="font-heading text-3xl md:text-4xl font-bold text-white uppercase text-center mb-8">
+        Your Technique Test
+      </h2>
+      <div class="w-full bg-white rounded-lg overflow-hidden">
+        <iframe
+          id="test-iframe"
+          src="https://is.gd/jonertechtest"
+          title="Joner Football Technique Test"
+          class="w-full border-0"
+          style="height: 800px; min-height: 600px;"
+          loading="lazy"
+          allow="fullscreen"
+        ></iframe>
+      </div>
+      <p class="text-gray-500 font-body text-sm text-center mt-4">
+        If the test doesn't load,
+        <a href="https://is.gd/jonertechtest" target="_blank" rel="noopener noreferrer" class="text-[#E30613] underline hover:text-red-400 transition-colors">
+          click here to open it directly
+        </a>.
+      </p>
+    </div>
+  </section>
+
+  <!-- CTA SECTION -->
+  <section id="cta-section" class="bg-joner-black py-20 px-4" style="display:none; opacity:0;">
+    <div class="max-w-3xl mx-auto text-center transition-opacity duration-700 ease-in-out">
+      <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase mb-4">
+        Want to improve your technique?
+      </h2>
+      <p class="text-gray-400 font-body text-lg mb-10">
+        Take your game to the next level with Joner Football.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a href="/app" class="btn-red text-sm px-8 py-3 font-heading uppercase tracking-wider">
+          Download the App
+        </a>
+        <a href="/training" class="btn-outline text-sm px-8 py-3 font-heading uppercase tracking-wider">
+          Train in Sydney
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', function () {
+      var gate = document.getElementById('gate');
+      var form = document.getElementById('gate-form');
+      var testSection = document.getElementById('test-section');
+      var ctaSection = document.getElementById('cta-section');
+
+      // Mark as custom-handled so the shared Brevo handler skips it
+      form.setAttribute('data-brevo-custom', 'true');
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        var name = form.querySelector('input[name="name"]').value.trim();
+        var email = form.querySelector('input[name="email"]').value.trim();
+
+        if (!name || !email) return;
+
+        // Build submission data
+        var data = {
+          name: name,
+          email: email,
+          _form: 'technique-test-gate',
+          _page: window.location.pathname,
+          _submitted: new Date().toISOString()
+        };
+
+        // Store in localStorage as backup
+        try {
+          localStorage.setItem('joner_tech_test_name', name);
+          localStorage.setItem('joner_tech_test_email', email);
+          var stored = JSON.parse(localStorage.getItem('brevo_submissions') || '[]');
+          stored.push(data);
+          localStorage.setItem('brevo_submissions', JSON.stringify(stored));
+        } catch (err) {
+          // localStorage not available, continue anyway
+        }
+
+        // Submit to Brevo (fire-and-forget, don't block the UX)
+        try {
+          fetch('https://api.brevo.com/v3/contacts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(data)
+          });
+        } catch (err) {
+          // Submission stored in localStorage as backup
+        }
+
+        // Hide the gate
+        gate.style.transition = 'opacity 0.5s ease';
+        gate.style.opacity = '0';
+
+        setTimeout(function () {
+          gate.style.display = 'none';
+
+          // Show the test section
+          testSection.style.display = 'block';
+          // Force reflow before transition
+          testSection.offsetHeight;
+          testSection.style.opacity = '1';
+
+          // Show the CTA section
+          ctaSection.style.display = 'block';
+          ctaSection.offsetHeight;
+          ctaSection.style.opacity = '1';
+
+          // Scroll to top of test
+          testSection.scrollIntoView({ behavior: 'smooth' });
+        }, 500);
+      });
+    });
+  </script>
+
 </BaseLayout>
