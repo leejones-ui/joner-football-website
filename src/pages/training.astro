@@ -243,18 +243,18 @@ const localBizSchema = {
         <p class="text-gray-400 font-body text-sm mb-6">Fill in your details and a coach will be in touch.</p>
         <form method="POST" action="https://api.brevo.com/v3/contacts" data-brevo-form data-form-name="jfp-application" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" name="parent_name" placeholder="Parent name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
-            <input type="text" name="player_name" placeholder="Player name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="text" name="parent_name" placeholder="Parent name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+            <input type="text" name="player_name" placeholder="Player name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
-            <input type="tel" name="phone" placeholder="Phone number" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+            <input type="tel" name="phone" placeholder="Phone number" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" name="player_age" placeholder="Player age" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
-            <input type="text" name="experience" placeholder="Current club / experience level" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="text" name="player_age" placeholder="Player age" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+            <input type="text" name="experience" placeholder="Current club / experience level" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
           </div>
-          <textarea name="message" placeholder="Anything else we should know?" rows="3" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
+          <textarea name="message" placeholder="Anything else we should know?" rows="3" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
           <button type="submit" class="btn-red text-sm w-full">Submit Application</button>
         </form>
       </div>
@@ -533,12 +533,12 @@ const localBizSchema = {
         <p class="text-gray-400 font-body text-sm mb-6">Tell us about yourself and Lee will be in touch.</p>
         <form method="POST" action="https://api.brevo.com/v3/contacts" data-brevo-form data-form-name="pro-training-enquiry" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" name="name" placeholder="Your name" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
-            <input type="email" name="email" placeholder="Email address" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="text" name="name" placeholder="Your name" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+            <input type="email" name="email" placeholder="Email address" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
           </div>
-          <input type="text" name="current_club" placeholder="Current club / team" class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
-          <input type="text" name="level" placeholder="Current level (A-League / NPL / Other)" class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
-          <textarea name="goals" placeholder="What are you looking to work on?" rows="4" class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
+          <input type="text" name="current_club" placeholder="Current club / team" class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          <input type="text" name="level" placeholder="Current level (A-League / NPL / Other)" class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          <textarea name="goals" placeholder="What are you looking to work on?" rows="4" class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
           <button type="submit" class="btn-red text-sm w-full">Send Enquiry</button>
         </form>
       </div>
@@ -667,15 +667,15 @@ const localBizSchema = {
         <p class="text-gray-400 font-body text-sm mb-6">Payment processed securely. A place will be confirmed once we receive your details.</p>
         <form method="POST" action="https://api.brevo.com/v3/contacts" data-brevo-form data-form-name="joners-juniors-booking" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" name="parent_name" placeholder="Parent / guardian name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
-            <input type="text" name="child_name" placeholder="Child's name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="text" name="parent_name" placeholder="Parent / guardian name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+            <input type="text" name="child_name" placeholder="Child's name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
-            <input type="tel" name="phone" placeholder="Phone number" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+            <input type="tel" name="phone" placeholder="Phone number" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
           </div>
-          <input type="text" name="child_age" placeholder="Child's age" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
-          <select name="class_preference" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red">
+          <input type="text" name="child_age" placeholder="Child's age" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          <select name="class_preference" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red min-h-[44px]">
             <option value="">Preferred class time</option>
             <option value="9:15am">9:15am — 10:00am (Open class)</option>
             <option value="10:00am">10:00am — 10:45am (By selection)</option>

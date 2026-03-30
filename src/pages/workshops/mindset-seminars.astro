@@ -162,10 +162,10 @@ const seminarSchema = {
 
         <form method="POST" action="https://api.brevo.com/v3/contacts" data-brevo-form data-form-name="mindset-seminars-interest" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" name="name" placeholder="Full name" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
-            <input type="email" name="email" placeholder="Email address" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500" />
+            <input type="text" name="name" placeholder="Full name" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+            <input type="email" name="email" placeholder="Email address" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
           </div>
-          <select name="role" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red">
+          <select name="role" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red min-h-[44px]">
             <option value="" disabled selected>I am a...</option>
             <option value="player">Player</option>
             <option value="coach">Coach</option>

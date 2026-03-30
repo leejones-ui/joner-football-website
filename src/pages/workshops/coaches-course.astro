@@ -235,14 +235,14 @@ const courseSchema = {
               name="full_name"
               placeholder="Full name"
               required
-              class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500"
+              class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]"
             />
             <input
               type="email"
               name="email"
               placeholder="Email address"
               required
-              class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500"
+              class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]"
             />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -250,12 +250,12 @@ const courseSchema = {
               type="tel"
               name="phone"
               placeholder="Phone number"
-              class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500"
+              class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]"
             />
             <select
               name="coaching_experience"
               required
-              class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red appearance-none"
+              class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red appearance-none min-h-[44px]"
             >
               <option value="" disabled selected class="text-gray-500">Coaching experience</option>
               <option value="none">None</option>
@@ -268,14 +268,14 @@ const courseSchema = {
             type="text"
             name="current_role"
             placeholder="Current coaching role"
-            class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500"
+            class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]"
           />
           <textarea
             name="why_join"
             placeholder="Why do you want to join this course?"
             rows="4"
             required
-            class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"
+            class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"
           ></textarea>
           <button type="submit" class="btn-red text-sm w-full">Submit Application</button>
         </form>
