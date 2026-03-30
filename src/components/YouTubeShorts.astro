@@ -1,0 +1,42 @@
+---
+const shorts = [
+  { id: 'thGALzJxkhI', title: 'Joner Football Training Short' },
+  { id: 'NbQPRwr2Mkg', title: 'Joner Football Drill Short' },
+  { id: 'm02-RtnBvko', title: 'Joner Football Skills Short' },
+  { id: 'McC0ZQHJM_I', title: 'Joner Football Technique Short' },
+]
+---
+
+<section class="bg-joner-black py-16 md:py-24">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-10">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">@jonerfootball</p>
+      <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase">Latest from Joner</h2>
+    </div>
+
+    <!-- Horizontal scrollable row of vertical (9:16) shorts -->
+    <div class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory">
+      {shorts.map((short) => (
+        <div class="flex-shrink-0 snap-start w-[220px] sm:w-[260px] md:w-[280px]">
+          <div class="relative w-full" style="aspect-ratio: 9/16;">
+            <iframe
+              srcdoc={`<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/${short.id}?autoplay=1><img src=https://img.youtube.com/vi/${short.id}/0.jpg alt='${short.title}'><span>&#x25BA;</span></a>`}
+              src={`https://www.youtube.com/embed/${short.id}`}
+              title={short.title}
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+              class="absolute inset-0 w-full h-full border border-gray-800 hover:border-joner-red transition-colors"
+            ></iframe>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <div class="text-center mt-8">
+      <a href="https://www.youtube.com/@jonerfootball" target="_blank" rel="noopener" class="text-joner-red font-heading text-sm uppercase tracking-wider hover:underline">
+        Watch More on YouTube &rarr;
+      </a>
+    </div>
+  </div>
+</section>

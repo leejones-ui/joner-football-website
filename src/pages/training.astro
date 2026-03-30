@@ -57,6 +57,66 @@ const localBizSchema = {
     </div>
   </section>
 
+  <!-- ===== TRAINING HIGHLIGHT VIDEOS ===== -->
+  <section class="bg-joner-black py-16 md:py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-10">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">See It In Action</p>
+        <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase">Training Highlights</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- How I Coach -->
+        <div>
+          <div class="relative w-full" style="aspect-ratio: 16/9;">
+            <iframe
+              srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/D13QAvWlZWg?autoplay=1><img src=https://img.youtube.com/vi/D13QAvWlZWg/hqdefault.jpg alt='How I Coach'><span>&#x25BA;</span></a>"
+              src="https://www.youtube.com/embed/D13QAvWlZWg"
+              title="How I Coach — Joner Football"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+              class="absolute inset-0 w-full h-full border border-gray-800"
+            ></iframe>
+          </div>
+          <p class="font-heading text-white text-sm uppercase tracking-wider mt-3">How I Coach</p>
+        </div>
+
+        <!-- Pro Soccer Drills -->
+        <div>
+          <div class="relative w-full" style="aspect-ratio: 16/9;">
+            <iframe
+              srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/1a1EOdqwF54?autoplay=1><img src=https://img.youtube.com/vi/1a1EOdqwF54/hqdefault.jpg alt='Pro Soccer Drills'><span>&#x25BA;</span></a>"
+              src="https://www.youtube.com/embed/1a1EOdqwF54"
+              title="Pro Soccer Drills — Joner Football"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+              class="absolute inset-0 w-full h-full border border-gray-800"
+            ></iframe>
+          </div>
+          <p class="font-heading text-white text-sm uppercase tracking-wider mt-3">Pro Soccer Drills</p>
+        </div>
+
+        <!-- Passing Drill Combo -->
+        <div>
+          <div class="relative w-full" style="aspect-ratio: 16/9;">
+            <iframe
+              srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/J8uguy9_OQ4?autoplay=1><img src=https://img.youtube.com/vi/J8uguy9_OQ4/hqdefault.jpg alt='Passing Drill Combo'><span>&#x25BA;</span></a>"
+              src="https://www.youtube.com/embed/J8uguy9_OQ4"
+              title="Passing Drill Combo — Joner Football"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+              class="absolute inset-0 w-full h-full border border-gray-800"
+            ></iframe>
+          </div>
+          <p class="font-heading text-white text-sm uppercase tracking-wider mt-3">Passing Drill Combo</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ===== JFP ===== -->
   <section id="jfp" class="bg-joner-black py-20 md:py-28 scroll-mt-32">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -121,12 +181,20 @@ const localBizSchema = {
           </div>
 
           <!-- Partnerships -->
-          <div class="flex gap-4 mb-8">
-            <div class="bg-joner-gray border border-gray-700 px-4 py-3 text-center flex-1">
+          <div class="grid grid-cols-2 gap-4 mb-8">
+            <div class="bg-joner-gray border border-gray-700 px-4 py-3 text-center">
+              <div class="font-heading text-white font-bold text-sm">Mizuno</div>
+              <div class="text-gray-500 text-xs font-body mt-1">Official Equipment</div>
+            </div>
+            <div class="bg-joner-gray border border-gray-700 px-4 py-3 text-center">
+              <div class="font-heading text-white font-bold text-sm">SKLZ</div>
+              <div class="text-gray-500 text-xs font-body mt-1">Training Equipment</div>
+            </div>
+            <div class="bg-joner-gray border border-gray-700 px-4 py-3 text-center">
               <div class="font-heading text-white font-bold text-sm">FPA</div>
               <div class="text-gray-500 text-xs font-body mt-1">Strength & Conditioning</div>
             </div>
-            <div class="bg-joner-gray border border-gray-700 px-4 py-3 text-center flex-1">
+            <div class="bg-joner-gray border border-gray-700 px-4 py-3 text-center">
               <div class="font-heading text-white font-bold text-sm">FullNinety</div>
               <div class="text-gray-500 text-xs font-body mt-1">Tactical Analysis</div>
             </div>
@@ -189,6 +257,225 @@ const localBizSchema = {
           <textarea name="message" placeholder="Anything else we should know?" rows="3" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
           <button type="submit" class="btn-red text-sm w-full">Submit Application</button>
         </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== JFP PLAYER PATHWAY ===== -->
+  <section class="bg-joner-gray py-20 md:py-28 overflow-hidden">
+    <style>
+      @keyframes pulseGlow {
+        0%, 100% { box-shadow: 0 0 15px rgba(227, 6, 19, 0.3), 0 0 30px rgba(227, 6, 19, 0.1); }
+        50% { box-shadow: 0 0 25px rgba(227, 6, 19, 0.5), 0 0 50px rgba(227, 6, 19, 0.2); }
+      }
+      @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .pathway-node {
+        animation: fadeUp 0.6s ease-out both;
+      }
+      .pathway-node:nth-child(1) { animation-delay: 0.1s; }
+      .pathway-node:nth-child(2) { animation-delay: 0.3s; }
+      .pathway-node:nth-child(3) { animation-delay: 0.5s; }
+      .pathway-glow {
+        animation: pulseGlow 3s ease-in-out infinite;
+      }
+      .benefit-card {
+        animation: fadeUp 0.5s ease-out both;
+      }
+      .benefit-card:nth-child(1) { animation-delay: 0.7s; }
+      .benefit-card:nth-child(2) { animation-delay: 0.8s; }
+      .benefit-card:nth-child(3) { animation-delay: 0.9s; }
+      .benefit-card:nth-child(4) { animation-delay: 1.0s; }
+      .benefit-card:nth-child(5) { animation-delay: 1.1s; }
+      .benefit-card:nth-child(6) { animation-delay: 1.2s; }
+    </style>
+
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Section header -->
+      <div class="text-center mb-16">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">The Journey</p>
+        <h2 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase leading-none mb-4">
+          JFP Player Pathway
+        </h2>
+        <p class="text-gray-400 font-body text-lg max-w-2xl mx-auto">
+          From first touch to professional career. Every stage is designed to develop the complete footballer.
+        </p>
+      </div>
+
+      <!-- ====== PATHWAY VISUAL ====== -->
+      <div class="relative">
+
+        <!-- === STAGE 1: JONERS JUNIORS === -->
+        <div class="pathway-node flex flex-col items-center mb-4">
+          <div class="relative bg-joner-black border-2 border-joner-red rounded-lg p-6 md:p-8 max-w-lg w-full text-center pathway-glow">
+            <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-joner-red px-4 py-1 rounded-full">
+              <span class="font-heading text-white text-xs uppercase tracking-widest">Stage 1</span>
+            </div>
+            <div class="text-4xl mb-3 mt-2">&#9917;</div>
+            <h3 class="font-heading text-white text-xl md:text-2xl font-bold uppercase mb-2">Joners Juniors</h3>
+            <p class="text-gray-400 font-body text-sm">First touch starts here. Building foundations in a fun, safe environment.</p>
+          </div>
+        </div>
+
+        <!-- Connector line 1 -->
+        <div class="flex justify-center mb-4">
+          <div class="w-1 h-12 md:h-16 bg-gradient-to-b from-joner-red to-joner-red/60 rounded-full"></div>
+        </div>
+        <!-- Arrow -->
+        <div class="flex justify-center mb-4">
+          <div class="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[12px] border-t-joner-red"></div>
+        </div>
+
+        <!-- === STAGE 2: 6-8 YEAR OLD PROGRAM === -->
+        <div class="pathway-node flex flex-col items-center mb-4">
+          <div class="relative bg-joner-black border-2 border-joner-red/70 rounded-lg p-6 md:p-8 max-w-lg w-full text-center">
+            <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-joner-red px-4 py-1 rounded-full">
+              <span class="font-heading text-white text-xs uppercase tracking-widest">Stage 2</span>
+            </div>
+            <div class="text-4xl mb-3 mt-2">&#127947;</div>
+            <h3 class="font-heading text-white text-xl md:text-2xl font-bold uppercase mb-2">Joner 6-8 Year Old Program</h3>
+            <p class="text-gray-400 font-body text-sm">Structured development bridging juniors into serious training. Technique, confidence, game understanding.</p>
+          </div>
+        </div>
+
+        <!-- Connector line 2 -->
+        <div class="flex justify-center mb-4">
+          <div class="w-1 h-12 md:h-16 bg-gradient-to-b from-joner-red/60 to-joner-red rounded-full"></div>
+        </div>
+        <!-- Arrow -->
+        <div class="flex justify-center mb-4">
+          <div class="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[12px] border-t-joner-red"></div>
+        </div>
+
+        <!-- === STAGE 3: JFP (Central Hub) === -->
+        <div class="pathway-node flex flex-col items-center mb-6">
+          <div class="relative bg-joner-black border-[3px] border-joner-red rounded-xl p-8 md:p-10 max-w-xl w-full text-center pathway-glow" style="box-shadow: 0 0 40px rgba(227, 6, 19, 0.3), 0 0 80px rgba(227, 6, 19, 0.1);">
+            <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-joner-red px-5 py-1.5 rounded-full">
+              <span class="font-heading text-white text-xs uppercase tracking-widest">Flagship</span>
+            </div>
+            <div class="text-5xl mb-3 mt-2">&#127942;</div>
+            <h3 class="font-heading text-white text-2xl md:text-3xl font-bold uppercase mb-2">
+              Joner Football<br/>Performance
+            </h3>
+            <p class="text-gray-400 font-body text-sm mb-4">The complete development program. Ages 8+ | Max 6 per group | Since 2013</p>
+            <div class="flex justify-center gap-3 flex-wrap">
+              <span class="bg-joner-red/20 border border-joner-red/40 text-joner-red font-heading text-xs uppercase px-3 py-1 rounded-full">10-Week Terms</span>
+              <span class="bg-joner-red/20 border border-joner-red/40 text-joner-red font-heading text-xs uppercase px-3 py-1 rounded-full">Player Reports</span>
+              <span class="bg-joner-red/20 border border-joner-red/40 text-joner-red font-heading text-xs uppercase px-3 py-1 rounded-full">Elite Coaching</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Branching connector from JFP -->
+        <div class="flex justify-center mb-2">
+          <div class="w-1 h-8 bg-joner-red rounded-full"></div>
+        </div>
+        <!-- Horizontal spread line (desktop) -->
+        <div class="hidden md:flex justify-center mb-2">
+          <div class="h-1 bg-joner-red rounded-full" style="width: min(90%, 800px);"></div>
+        </div>
+        <!-- Vertical connectors down to benefit cards (desktop) -->
+        <div class="hidden md:flex justify-center mb-6" style="width: min(90%, 800px); margin-left: auto; margin-right: auto;">
+          <div class="flex justify-between w-full px-4">
+            <div class="w-1 h-6 bg-joner-red/60 rounded-full"></div>
+            <div class="w-1 h-6 bg-joner-red/60 rounded-full"></div>
+            <div class="w-1 h-6 bg-joner-red/60 rounded-full"></div>
+            <div class="w-1 h-6 bg-joner-red/60 rounded-full"></div>
+            <div class="w-1 h-6 bg-joner-red/60 rounded-full"></div>
+            <div class="w-1 h-6 bg-joner-red/60 rounded-full"></div>
+          </div>
+        </div>
+
+        <!-- === BENEFITS FAN-OUT === -->
+        <div class="text-center mb-6">
+          <span class="font-heading text-joner-red text-xs uppercase tracking-[0.25em]">What JFP Unlocks</span>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 max-w-4xl mx-auto mb-6">
+          <!-- Benefit 1: App -->
+          <div class="benefit-card group relative bg-joner-black border border-gray-700 hover:border-joner-red rounded-lg p-5 text-center transition-all duration-300 hover:shadow-[0_0_20px_rgba(227,6,19,0.2)]">
+            <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">&#128241;</div>
+            <h4 class="font-heading text-white text-sm font-bold uppercase mb-1">Joner App</h4>
+            <p class="text-gray-500 font-body text-xs leading-relaxed">Train anywhere. 500+ drills at your fingertips.</p>
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-joner-red/50 md:hidden"></div>
+          </div>
+
+          <!-- Benefit 2: S&C (FPA) -->
+          <div class="benefit-card group relative bg-joner-black border border-gray-700 hover:border-joner-red rounded-lg p-5 text-center transition-all duration-300 hover:shadow-[0_0_20px_rgba(227,6,19,0.2)]">
+            <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">&#128170;</div>
+            <h4 class="font-heading text-white text-sm font-bold uppercase mb-1">S&C (FPA)</h4>
+            <p class="text-gray-500 font-body text-xs leading-relaxed">Professional strength & conditioning partnership.</p>
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-joner-red/50 md:hidden"></div>
+          </div>
+
+          <!-- Benefit 3: FullNinety -->
+          <div class="benefit-card group relative bg-joner-black border border-gray-700 hover:border-joner-red rounded-lg p-5 text-center transition-all duration-300 hover:shadow-[0_0_20px_rgba(227,6,19,0.2)]">
+            <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">&#128202;</div>
+            <h4 class="font-heading text-white text-sm font-bold uppercase mb-1">FullNinety</h4>
+            <p class="text-gray-500 font-body text-xs leading-relaxed">Professional-grade tactical analysis platform.</p>
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-joner-red/50 md:hidden"></div>
+          </div>
+
+          <!-- Benefit 4: Game Analysis -->
+          <div class="benefit-card group relative bg-joner-black border border-gray-700 hover:border-joner-red rounded-lg p-5 text-center transition-all duration-300 hover:shadow-[0_0_20px_rgba(227,6,19,0.2)]">
+            <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">&#127909;</div>
+            <h4 class="font-heading text-white text-sm font-bold uppercase mb-1">Game Analysis</h4>
+            <p class="text-gray-500 font-body text-xs leading-relaxed">Video breakdowns of your match performance.</p>
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-joner-red/50 md:hidden"></div>
+          </div>
+
+          <!-- Benefit 5: Mentorship -->
+          <div class="benefit-card group relative bg-joner-black border border-gray-700 hover:border-joner-red rounded-lg p-5 text-center transition-all duration-300 hover:shadow-[0_0_20px_rgba(227,6,19,0.2)]">
+            <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">&#129309;</div>
+            <h4 class="font-heading text-white text-sm font-bold uppercase mb-1">Mentorship</h4>
+            <p class="text-gray-500 font-body text-xs leading-relaxed">Guidance from experienced coaches who care.</p>
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-joner-red/50 md:hidden"></div>
+          </div>
+
+          <!-- Benefit 6: High Level Training -->
+          <div class="benefit-card group relative bg-joner-black border border-gray-700 hover:border-joner-red rounded-lg p-5 text-center transition-all duration-300 hover:shadow-[0_0_20px_rgba(227,6,19,0.2)]">
+            <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">&#9889;</div>
+            <h4 class="font-heading text-white text-sm font-bold uppercase mb-1">High Level Training</h4>
+            <p class="text-gray-500 font-body text-xs leading-relaxed">Elite sessions. Max 6. Pushed to your limit.</p>
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-joner-red/50 md:hidden"></div>
+          </div>
+        </div>
+
+        <!-- Converging lines to final goal -->
+        <div class="hidden md:flex justify-center mt-2 mb-2">
+          <div class="h-1 bg-joner-red/60 rounded-full" style="width: min(60%, 500px);"></div>
+        </div>
+        <div class="flex justify-center mb-4">
+          <div class="w-1 h-10 md:h-14 bg-gradient-to-b from-joner-red/60 to-joner-red rounded-full"></div>
+        </div>
+        <!-- Arrow -->
+        <div class="flex justify-center mb-6">
+          <div class="w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[14px] border-t-joner-red"></div>
+        </div>
+
+        <!-- === FINAL DESTINATION: A CAREER IN FOOTBALL === -->
+        <div class="pathway-node flex flex-col items-center" style="animation-delay: 1.5s;">
+          <div class="relative w-full max-w-2xl">
+            <!-- Outer glow ring -->
+            <div class="absolute inset-0 bg-joner-red/10 rounded-2xl blur-xl"></div>
+            <div class="relative bg-gradient-to-b from-joner-black via-joner-black to-joner-red/10 border-2 border-joner-red rounded-2xl p-8 md:p-12 text-center pathway-glow" style="box-shadow: 0 0 60px rgba(227, 6, 19, 0.25), 0 0 120px rgba(227, 6, 19, 0.1);">
+              <div class="text-5xl md:text-6xl mb-4">&#127775;</div>
+              <h3 class="font-heading text-joner-red text-xs uppercase tracking-[0.3em] mb-3">The Goal</h3>
+              <p class="font-heading text-white text-3xl md:text-4xl lg:text-5xl font-bold uppercase leading-tight mb-4">
+                A Career In<br/>Football
+              </p>
+              <p class="text-gray-400 font-body text-sm md:text-base max-w-md mx-auto mb-6">
+                From grassroots to the professional stage. This is the pathway that has launched careers since 2013.
+              </p>
+              <a href="#jfp-form" class="inline-block bg-joner-red hover:bg-red-700 text-white font-heading text-sm uppercase tracking-wider px-8 py-3 transition-colors">
+                Start Your Journey
+              </a>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
@@ -444,15 +731,27 @@ const localBizSchema = {
   <section class="bg-joner-gray border-y border-gray-800 py-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <p class="text-center text-gray-500 font-heading text-xs uppercase tracking-widest mb-6">Official Partners</p>
-      <div class="flex flex-col sm:flex-row justify-center gap-8">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-4xl mx-auto">
         <div class="text-center">
-          <div class="bg-joner-black border border-gray-700 px-8 py-4 inline-block mb-2">
+          <div class="bg-joner-black border border-gray-700 px-6 py-4 inline-block mb-2">
+            <span class="font-heading text-white font-bold text-xl">Mizuno</span>
+          </div>
+          <p class="text-gray-500 text-xs font-body">Official Equipment Partner</p>
+        </div>
+        <div class="text-center">
+          <div class="bg-joner-black border border-gray-700 px-6 py-4 inline-block mb-2">
+            <span class="font-heading text-white font-bold text-xl">SKLZ</span>
+          </div>
+          <p class="text-gray-500 text-xs font-body">Training Equipment Partner</p>
+        </div>
+        <div class="text-center">
+          <div class="bg-joner-black border border-gray-700 px-6 py-4 inline-block mb-2">
             <span class="font-heading text-white font-bold text-xl">FPA</span>
           </div>
           <p class="text-gray-500 text-xs font-body">Strength & Conditioning Partner</p>
         </div>
         <div class="text-center">
-          <div class="bg-joner-black border border-gray-700 px-8 py-4 inline-block mb-2">
+          <div class="bg-joner-black border border-gray-700 px-6 py-4 inline-block mb-2">
             <span class="font-heading text-white font-bold text-xl">FullNinety</span>
           </div>
           <p class="text-gray-500 text-xs font-body">Tactical Analysis Partner</p>

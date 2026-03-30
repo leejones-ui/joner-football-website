@@ -6,6 +6,7 @@ import SocialProofBar from '../components/SocialProofBar.astro'
 import AudienceRouter from '../components/AudienceRouter.astro'
 import TechniqueTestCTA from '../components/TechniqueTestCTA.astro'
 import AppShowcase from '../components/AppShowcase.astro'
+import YouTubeShorts from '../components/YouTubeShorts.astro'
 import CampHighlights from '../components/CampHighlights.astro'
 import TestimonialCarousel from '../components/TestimonialCarousel.astro'
 import EmailCapture from '../components/EmailCapture.astro'
@@ -21,7 +22,34 @@ import EmailCapture from '../components/EmailCapture.astro'
   <AudienceRouter />
   <TechniqueTestCTA />
   <AppShowcase />
+  <YouTubeShorts />
   <CampHighlights />
   <TestimonialCarousel />
+
+  <!-- Partners Bar -->
+  <section class="bg-joner-black border-t border-gray-800 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <p class="text-center text-gray-500 font-heading text-xs uppercase tracking-widest mb-6">Official Partners</p>
+      <div class="flex flex-wrap justify-center gap-6">
+        <div class="bg-joner-gray border border-gray-800 px-6 py-3 text-center">
+          <div class="font-heading text-white font-bold text-sm">Mizuno</div>
+          <div class="text-gray-400 text-xs font-body mt-1">Official Equipment Partner</div>
+        </div>
+        <div class="bg-joner-gray border border-gray-800 px-6 py-3 text-center">
+          <div class="font-heading text-white font-bold text-sm">SKLZ</div>
+          <div class="text-gray-400 text-xs font-body mt-1">Training Equipment Partner</div>
+        </div>
+        <div class="bg-joner-gray border border-gray-800 px-6 py-3 text-center">
+          <div class="font-heading text-white font-bold text-sm">FPA</div>
+          <div class="text-gray-400 text-xs font-body mt-1">Strength & Conditioning Partner</div>
+        </div>
+        <div class="bg-joner-gray border border-gray-800 px-6 py-3 text-center">
+          <div class="font-heading text-white font-bold text-sm">FullNinety</div>
+          <div class="text-gray-400 text-xs font-body mt-1">Tactical Analysis Partner</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <EmailCapture />
 </BaseLayout>
