@@ -217,67 +217,87 @@ const schema = {
     </div>
   </section>
 
-  <!-- Contact -->
+  <!-- Contact Forms -->
   <section id="contact" class="bg-joner-black py-20 md:py-28 scroll-mt-32">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-16">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
         <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Get in Touch</p>
         <h2 class="section-heading text-white">Contact Us</h2>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+      <!-- Form tabs -->
+      <div class="flex flex-wrap gap-2 mb-8 justify-center">
+        <button class="contact-tab px-4 py-2 font-heading text-xs uppercase tracking-wider bg-joner-red text-white" data-tab="general">General Enquiry</button>
+        <button class="contact-tab px-4 py-2 font-heading text-xs uppercase tracking-wider border border-gray-700 text-gray-400 hover:border-white hover:text-white transition-colors" data-tab="training">Training Enquiry</button>
+        <button class="contact-tab px-4 py-2 font-heading text-xs uppercase tracking-wider border border-gray-700 text-gray-400 hover:border-white hover:text-white transition-colors" data-tab="coaching">Coaching Application</button>
+      </div>
 
-        <!-- General -->
-        <div class="bg-joner-gray border border-gray-800 p-6 text-center">
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">General Enquiries</h3>
-          <a href="mailto:leejones@jonerfootball.com" class="text-joner-red font-body text-sm hover:underline break-all">
-            leejones@jonerfootball.com
-          </a>
-        </div>
+      <!-- General Enquiry Form -->
+      <div class="contact-form-panel" id="form-general">
+        <form method="POST" action="https://api.brevo.com/v3/contacts" data-brevo-form data-form-name="general-enquiry" class="space-y-4 bg-joner-gray border border-gray-800 p-6 md:p-8">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="text" name="name" placeholder="Full name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+            <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          </div>
+          <input type="tel" name="phone" placeholder="Phone number" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          <textarea name="message" placeholder="Your message" required rows="5" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
+          <button type="submit" class="btn-red text-sm w-full">Send Enquiry</button>
+        </form>
+      </div>
 
-        <!-- Training -->
-        <div class="bg-joner-gray border border-gray-800 p-6 text-center">
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">Training Enquiries</h3>
-          <a href="/training" class="text-joner-red font-body text-sm hover:underline">
-            View Training Programs
-          </a>
-        </div>
+      <!-- Training Enquiry Form -->
+      <div class="contact-form-panel hidden" id="form-training">
+        <form method="POST" action="https://api.brevo.com/v3/contacts" data-brevo-form data-form-name="training-enquiry" class="space-y-4 bg-joner-gray border border-gray-800 p-6 md:p-8">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="text" name="name" placeholder="Full name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+            <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="tel" name="phone" placeholder="Phone number" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+            <input type="text" name="player_age" placeholder="Player's age" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          </div>
+          <input type="text" name="club" placeholder="Club / team (optional)" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          <textarea name="message" placeholder="Tell us about the player and what you are looking for" required rows="4" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
+          <button type="submit" class="btn-red text-sm w-full">Submit Training Enquiry</button>
+        </form>
+      </div>
 
-        <!-- Camps -->
-        <div class="bg-joner-gray border border-gray-800 p-6 text-center">
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">Camp Enquiries</h3>
-          <a href="/camps" class="text-joner-red font-body text-sm hover:underline">
-            View Camps
-          </a>
-        </div>
-
-        <!-- Joners Juniors -->
-        <div class="bg-joner-gray border border-gray-800 p-6 text-center">
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">Joners Juniors</h3>
-          <a href="mailto:jonersjuniors@jonerfootball.com" class="text-joner-red font-body text-sm hover:underline break-all">
-            jonersjuniors@jonerfootball.com
-          </a>
-        </div>
-
+      <!-- Coaching Application Form -->
+      <div class="contact-form-panel hidden" id="form-coaching">
+        <form method="POST" action="https://api.brevo.com/v3/contacts" data-brevo-form data-form-name="coaching-application" class="space-y-4 bg-joner-gray border border-gray-800 p-6 md:p-8">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input type="text" name="name" placeholder="Full name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+            <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          </div>
+          <input type="tel" name="phone" placeholder="Phone number" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          <input type="text" name="experience" placeholder="Coaching experience (years and level)" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          <input type="text" name="qualifications" placeholder="Qualifications (e.g. UEFA B, FFA C)" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          <textarea name="why_jf" placeholder="Why do you want to coach at Joner Football?" required rows="4" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
+          <button type="submit" class="btn-red text-sm w-full">Submit Application</button>
+        </form>
       </div>
     </div>
   </section>
 
-  <!-- Careers -->
-  <section class="bg-joner-gray py-16 md:py-20">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <div class="border border-joner-red/50 bg-joner-red/5 p-8 md:p-12">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Careers</p>
-        <h2 class="section-heading text-white mb-4">Join the Team</h2>
-        <p class="text-gray-300 font-body leading-relaxed max-w-2xl mx-auto mb-8">
-          Think you've got what it takes to coach at Joner Football? We're always looking for passionate, qualified coaches.
-        </p>
-        <a href="mailto:leejones@jonerfootball.com?subject=Coaching%20Application%20-%20Joner%20Football" class="btn-red text-sm">
-          Apply Now
-        </a>
-      </div>
-    </div>
-  </section>
+  <script>
+    document.querySelectorAll('.contact-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const target = (tab as HTMLElement).dataset.tab
+
+        // Update tab styles
+        document.querySelectorAll('.contact-tab').forEach(t => {
+          t.classList.remove('bg-joner-red', 'text-white')
+          t.classList.add('border', 'border-gray-700', 'text-gray-400')
+        })
+        tab.classList.add('bg-joner-red', 'text-white')
+        tab.classList.remove('border', 'border-gray-700', 'text-gray-400')
+
+        // Show target form
+        document.querySelectorAll('.contact-form-panel').forEach(p => p.classList.add('hidden'))
+        document.getElementById(`form-${target}`)?.classList.remove('hidden')
+      })
+    })
+  </script>
 
   <EmailCapture />
 
