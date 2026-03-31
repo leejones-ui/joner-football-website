@@ -1,0 +1,23 @@
+export default {
+  name: 'camp',
+  title: 'Camp',
+  type: 'document',
+  fields: [
+    { name: 'title', title: 'Title', type: 'string', validation: (Rule: any) => Rule.required() },
+    { name: 'slug', title: 'Slug', type: 'slug', options: { source: 'title' } },
+    { name: 'city', title: 'City', type: 'string' },
+    { name: 'state', title: 'State/Region', type: 'string' },
+    { name: 'country', title: 'Country', type: 'string' },
+    { name: 'dates', title: 'Dates', type: 'string' },
+    { name: 'startDate', title: 'Start Date', type: 'date' },
+    { name: 'endDate', title: 'End Date', type: 'date' },
+    { name: 'ages', title: 'Ages', type: 'string' },
+    { name: 'price', title: 'Price', type: 'string' },
+    { name: 'venue', title: 'Venue', type: 'string' },
+    { name: 'description', title: 'Description', type: 'text' },
+    { name: 'featured', title: 'Featured', type: 'boolean' },
+    { name: 'image', title: 'Image', type: 'image', options: { hotspot: true } },
+    { name: 'bookingUrl', title: 'Booking URL', type: 'url' },
+    { name: 'status', title: 'Status', type: 'string', options: { list: ['upcoming', 'open', 'sold-out', 'completed'] } },
+  ],
+}
