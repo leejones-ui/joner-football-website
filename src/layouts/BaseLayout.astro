@@ -116,7 +116,7 @@ const allSchemas = schema
     <!-- Mobile sticky bottom bar -->
     <div class="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-joner-black border-t border-gray-800 p-3">
       <a href="/app" class="btn-red w-full text-center block text-sm">
-        Download the App — Free
+        Download the App
       </a>
     </div>
 
@@ -171,7 +171,7 @@ const allSchemas = schema
                 showSuccess(form, btn);
               })
               .catch(function () {
-                // Even on error, we have localStorage backup — show success
+                // Even on error, we have localStorage backup. Show success
                 // Once real Brevo webhooks are wired, swap this to showError
                 showSuccess(form, btn);
               });
