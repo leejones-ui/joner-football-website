@@ -1,6 +1,19 @@
 ---
 const slides = [
   {
+    title: "TECHNIQUE ABOVE EVERYTHING",
+    titleHtml: 'TECHNIQUE<br/><span class="text-joner-red">ABOVE</span><br/>EVERYTHING',
+    subtitle: "Train with Coach Joner. Elite drills, global camps, and the world's best football coaching app.",
+    subtitleTop: "2.1 Million Footballers Worldwide",
+    link: "",
+    image: "/images/homepage/hero-bg.webp",
+    cta: "Start Training Free",
+    ctaLink: "/app",
+    cta2: "Book a Camp",
+    cta2Link: "/camps",
+    isHero: true,
+  },
+  {
     title: "ELITE TRAINING PROGRAMS",
     subtitle: "Sydney-based. World-class coaching.",
     link: "/training",
@@ -59,51 +72,71 @@ const slides = [
 ]
 ---
 
-<section class="relative w-full overflow-hidden bg-joner-black" id="what-we-do-carousel">
-  <!-- Section label -->
-  <div class="absolute top-4 left-1/2 -translate-x-1/2 z-20">
-    <span class="text-xs font-heading uppercase tracking-[0.3em] text-white/60">What We Do</span>
-  </div>
-
-  <!-- Carousel viewport -->
-  <div class="relative h-[65vh] md:h-[70vh]" id="carousel-viewport">
+<section class="relative w-full overflow-hidden bg-joner-black" id="hero-carousel">
+  <!-- Carousel viewport - full viewport height -->
+  <div class="relative min-h-screen" id="carousel-viewport">
     {slides.map((slide, i) => (
-      <a
-        href={slide.link}
+      <div
         class="carousel-slide absolute inset-0 transition-opacity duration-700 ease-in-out flex items-center justify-center"
         style={`opacity: ${i === 0 ? 1 : 0}; z-index: ${i === 0 ? 10 : 1}; pointer-events: ${i === 0 ? 'auto' : 'none'};`}
         data-slide-index={i}
       >
-        <!-- Background image -->
+        {/* Background image */}
         <img
           src={slide.image}
           alt={`Joner Football ${slide.title.toLowerCase()}`}
           class="absolute inset-0 w-full h-full object-cover object-center"
           loading={i === 0 ? "eager" : "lazy"}
         />
-        <!-- Dark overlay -->
-        <div class="absolute inset-0 bg-gradient-to-t from-joner-black via-joner-black/60 to-joner-black/30"></div>
+        {/* Dark overlay */}
+        <div class={`absolute inset-0 ${slide.isHero ? 'bg-gradient-to-b from-joner-black/80 via-joner-black/60 to-joner-black/90' : 'bg-gradient-to-t from-joner-black via-joner-black/60 to-joner-black/30'}`}></div>
 
-        <!-- Content -->
-        <div class="relative z-10 text-center px-6 max-w-4xl mx-auto flex flex-col items-center justify-center">
-          <h2 class="font-heading text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none tracking-tight mb-3 md:mb-4">
-            {slide.title}
-          </h2>
-          <p class="text-gray-300 text-base sm:text-lg md:text-xl font-body font-light mb-6 md:mb-8 max-w-lg">
+        {/* Red accent line at top */}
+        <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
+
+        {/* Content */}
+        <div class="relative z-10 text-center px-4 sm:px-6 max-w-5xl mx-auto flex flex-col items-center justify-center">
+          {slide.isHero && slide.subtitleTop && (
+            <p class="text-joner-red font-heading text-sm md:text-base uppercase tracking-widest mb-4 font-semibold">
+              {slide.subtitleTop}
+            </p>
+          )}
+
+          {slide.isHero ? (
+            <h1 class="font-heading text-5xl sm:text-7xl lg:text-9xl font-bold text-white uppercase leading-none tracking-tight mb-6" set:html={slide.titleHtml} />
+          ) : (
+            <h2 class="font-heading text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none tracking-tight mb-3 md:mb-4">
+              {slide.title}
+            </h2>
+          )}
+
+          <p class={`text-gray-300 font-body font-light ${slide.isHero ? 'text-lg md:text-xl mb-10 max-w-xl' : 'text-base sm:text-lg md:text-xl mb-6 md:mb-8 max-w-lg'}`}>
             {slide.subtitle}
           </p>
-          <span class="inline-block bg-joner-red text-white font-heading text-sm uppercase tracking-wider px-6 py-3 hover:bg-red-700 transition-colors">
-            {slide.cta}
-          </span>
+
+          {slide.isHero ? (
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <a href={slide.ctaLink} class="btn-red text-base px-8 py-4 w-full sm:w-auto text-center">
+                {slide.cta}
+              </a>
+              <a href={slide.cta2Link} class="btn-outline text-base px-8 py-4 w-full sm:w-auto text-center">
+                {slide.cta2}
+              </a>
+            </div>
+          ) : (
+            <a href={slide.link} class="inline-block bg-joner-red text-white font-heading text-sm uppercase tracking-wider px-6 py-3 hover:bg-red-700 transition-colors">
+              {slide.cta}
+            </a>
+          )}
         </div>
 
-        <!-- Red accent line bottom -->
+        {/* Red accent line bottom */}
         <div class="absolute bottom-0 left-0 right-0 h-1 bg-joner-red"></div>
-      </a>
+      </div>
     ))}
   </div>
 
-  <!-- Navigation arrows -->
+  {/* Navigation arrows */}
   <button
     id="carousel-prev"
     class="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-20 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-black/50 hover:bg-joner-red/80 text-white transition-colors rounded-full backdrop-blur-sm"
@@ -119,7 +152,7 @@ const slides = [
     <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
   </button>
 
-  <!-- Dot navigation -->
+  {/* Dot navigation */}
   <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2" id="carousel-dots">
     {slides.map((_, i) => (
       <button
@@ -129,6 +162,13 @@ const slides = [
       />
     ))}
   </div>
+
+  {/* Scroll indicator on first slide */}
+  <div class="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 animate-bounce" id="scroll-indicator">
+    <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+    </svg>
+  </div>
 </section>
 
 <script>
@@ -137,6 +177,7 @@ const slides = [
   const prevBtn = document.getElementById('carousel-prev')
   const nextBtn = document.getElementById('carousel-next')
   const viewport = document.getElementById('carousel-viewport')
+  const scrollIndicator = document.getElementById('scroll-indicator')
 
   let current = 0
   let autoplayTimer: ReturnType<typeof setInterval> | null = null
@@ -169,6 +210,11 @@ const slides = [
       }
     })
 
+    // Show scroll indicator only on first slide
+    if (scrollIndicator) {
+      scrollIndicator.style.opacity = next === 0 ? '1' : '0'
+    }
+
     current = next
   }
 
@@ -176,7 +222,7 @@ const slides = [
     stopAutoplay()
     autoplayTimer = setInterval(() => {
       if (!isPaused) goToSlide(current + 1)
-    }, 3500)
+    }, 4500)
   }
 
   function stopAutoplay() {
