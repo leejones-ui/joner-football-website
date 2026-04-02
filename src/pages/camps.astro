@@ -217,7 +217,8 @@ const camps = [
               </h3>
               <p class="text-gray-500 text-sm font-body mb-1">{camp.ages}</p>
               <p class="text-gray-400 text-sm font-body font-semibold mb-4">{camp.price}</p>
-              <a href={camp.href} class="btn-red text-sm w-full text-center block">
+              <!-- STRIPE PAYMENT LINK NEEDED, Lee to provide -->
+              <a href={camp.spots === 'Coming soon' ? '#camps-notify' : `mailto:lee@jonerfootball.com?subject=Camp Booking: ${camp.city}`} class="btn-red text-sm w-full text-center block" data-payment={camp.spots === 'Coming soon' ? undefined : 'pending'}>
                 {camp.spots === 'Coming soon' ? 'Register Interest' : 'Book Now'}
               </a>
             </div>

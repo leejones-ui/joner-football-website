@@ -572,8 +572,8 @@ const localBizSchema = {
               <div class="text-gray-400 text-xs font-body mt-1">9:15am & 10:00am</div>
             </div>
             <div class="bg-joner-gray border border-gray-700 p-4 text-center">
-              <div class="font-heading text-joner-red text-lg font-bold">$220</div>
-              <div class="text-gray-400 text-xs font-body mt-1">Per 10-week term</div>
+              <div class="font-heading text-joner-red text-lg font-bold">10 Weeks</div>
+              <div class="text-gray-400 text-xs font-body mt-1">Per term</div>
             </div>
           </div>
 
@@ -680,7 +680,8 @@ const localBizSchema = {
             <option value="9:15am">9:15am to 10:00am (Open class)</option>
             <option value="10:00am">10:00am to 10:45am (By selection)</option>
           </select>
-          <button type="submit" class="btn-red text-sm w-full">Book My Spot ($220/term)</button>
+          <!-- STRIPE PAYMENT LINK NEEDED, Lee to provide -->
+          <button type="submit" class="btn-red text-sm w-full" data-payment="pending">Book My Spot</button>
         </form>
       </div>
     </div>
