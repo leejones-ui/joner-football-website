@@ -54,7 +54,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Oswald', sans-serif; text-transform: uppe
   letter-spacing: 0.05em;
 }
 
-/* Global image fitting – prevent stretched / squished images */
+/* Global image fitting, prevent stretched or squished images */
 img { object-fit: cover; object-position: center; }
 
 /* Scrollbar hide utility */

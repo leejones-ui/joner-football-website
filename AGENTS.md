@@ -1,29 +1,29 @@
-# JEFFREY — OVERNIGHT BUILD BRIEF (NIGHT 2)
-## March 29/30 2026 — You smashed it last night. Tonight we go deeper.
+# JEFFREY , OVERNIGHT BUILD BRIEF (NIGHT 2)
+## March 29/30 2026 , You smashed it last night. Tonight we go deeper.
 
 ---
 
-## STATUS CHECK — WHAT'S DONE
+## STATUS CHECK , WHAT'S DONE
 
-✅ Homepage — fully built
-✅ Training page — fully built (JFP, Pro Training, Joners Juniors, Game Analysis, Reports, Partnerships)
-✅ Camps page — fully built (all 6 camps, filters, "What to Expect", gallery placeholder)
-✅ App page — fully built (features, pricing, FAQ, testimonials)
-✅ HQ page — fully built (facility details, programs, location, Google Maps link)
-✅ Nav + Footer — working across all pages
-✅ Meta Pixel — installed
-✅ GA4 — installed (G-H73LP37D8D)
+✅ Homepage , fully built
+✅ Training page , fully built (JFP, Pro Training, Joners Juniors, Game Analysis, Reports, Partnerships)
+✅ Camps page , fully built (all 6 camps, filters, "What to Expect", gallery placeholder)
+✅ App page , fully built (features, pricing, FAQ, testimonials)
+✅ HQ page , fully built (facility details, programs, location, Google Maps link)
+✅ Nav + Footer , working across all pages
+✅ Meta Pixel , installed
+✅ GA4 , installed (G-H73LP37D8D)
 
-🟡 Workshops hub — stub (just two links)
-🟡 About — stub (placeholder text only)
-🟡 Shop — stub (just two links)
-🟡 Blog — not checked / likely stub
-🟡 Teams — not checked / likely stub
-🟡 Workshops sub-pages — not checked
+🟡 Workshops hub , stub (just two links)
+🟡 About , stub (placeholder text only)
+🟡 Shop , stub (just two links)
+🟡 Blog , not checked / likely stub
+🟡 Teams , not checked / likely stub
+🟡 Workshops sub-pages , not checked
 
 ---
 
-## TONIGHT'S WORK — IN ORDER
+## TONIGHT'S WORK , IN ORDER
 
 ---
 
@@ -44,9 +44,9 @@ https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball
 
 **Fix these EVERYWHERE they appear:** Homepage, App page, HQ page, footer, and any other page with download CTAs.
 
-**Also fix:** The free section link on the App page pricing section currently goes to `https://app.jonerfootball.com/categories/category-vpi8uazway4` — this is CORRECT. Keep it.
+**Also fix:** The free section link on the App page pricing section currently goes to `https://app.jonerfootball.com/categories/category-vpi8uazway4` , this is CORRECT. Keep it.
 
-#### 2. Fix Camp Dates — REMOVE APRIL CAMPS
+#### 2. Fix Camp Dates , REMOVE APRIL CAMPS
 
 **IMPORTANT:** Sacramento and Portland camps will be FINISHED by the time this website goes live. REMOVE them from the camps page entirely.
 
@@ -63,13 +63,13 @@ You've listed pricing as:
 - Monthly: $14.99
 - Annual: $99.99
 
-**DO NOT display specific prices.** Lee's rule is never mention specific app pricing on the website — pricing varies by region and Uscreen handles it. Replace the pricing cards with:
+**DO NOT display specific prices.** Lee's rule is never mention specific app pricing on the website , pricing varies by region and Uscreen handles it. Replace the pricing cards with:
 
 - **Free:** "Access the free section. No credit card required." → [Start Free]
 - **Full Access:** "Monthly and annual plans available. Start with a free trial." → [View Plans] → links to app.jonerfootball.com
 - Remove the exact dollar amounts. Keep the "Save 44%" messaging if you want but don't show the numbers.
 
-#### 4. Homepage — App Store Badges
+#### 4. Homepage , App Store Badges
 The App Store and Google Play badge images need to be real badge assets, not text. Download the official badge SVGs:
 - Apple: https://developer.apple.com/app-store/marketing/guidelines/ (get the black "Download on the App Store" badge)
 - Google: https://play.google.com/intl/en_us/badges/ (get the "Get it on Google Play" badge)
@@ -151,12 +151,12 @@ Go through every page that's already built and add/fix the following:
 
 **Page-specific meta descriptions (use these exactly):**
 
-- **Homepage:** "Joner Football — elite football coaching, 1,500+ training drills, global camps, and the world's best coaching app. Train with Coach Joner. Technique above everything."
+- **Homepage:** "Joner Football , elite football coaching, 1,500+ training drills, global camps, and the world's best coaching app. Train with Coach Joner. Technique above everything."
 - **Training:** "Sydney football training programs at Joner Football. JFP Performance program, professional training, and Joners Juniors. Indoor facility at Belrose. Ages 8+."
 - **Camps:** "Joner Football elite training camps in USA, Australia, and worldwide. Limited spots. Ages 8-18. Book now for 2026 camps in California, Texas, and Sydney."
-- **App:** "Download the Joner Football App — 1,500+ drills, session plans, follow-along programs, coaches section, and weekly live sessions. Free section available."
-- **HQ:** "The Joner Football HQ — brand new indoor training facility at 20 Narabang Way, Belrose, Sydney. Professional standard surface. All-weather training."
-- **Workshops:** "Joner Football workshops — online coaches course and mindset seminars. Level up your coaching and mental game with the Joner Football methodology."
+- **App:** "Download the Joner Football App , 1,500+ drills, session plans, follow-along programs, coaches section, and weekly live sessions. Free section available."
+- **HQ:** "The Joner Football HQ , brand new indoor training facility at 20 Narabang Way, Belrose, Sydney. Professional standard surface. All-weather training."
+- **Workshops:** "Joner Football workshops , online coaches course and mindset seminars. Level up your coaching and mental game with the Joner Football methodology."
 - **Shop:** "Joner Football official apparel and training resources. Shop the collection and download the training app."
 - **About:** "About Lee Jones and Joner Football. Voted Top 10 Technical Trainers in the World. From Sydney to global. The Joner Football story."
 
@@ -164,7 +164,7 @@ Go through every page that's already built and add/fix the following:
 
 Add JSON-LD schema to the `<head>` of each page:
 
-**BaseLayout (every page) — Organization schema:**
+**BaseLayout (every page) , Organization schema:**
 ```json
 {
   "@context": "https://schema.org",
@@ -187,7 +187,7 @@ Add JSON-LD schema to the `<head>` of each page:
 }
 ```
 
-**Training page + HQ page — LocalBusiness schema:**
+**Training page + HQ page , LocalBusiness schema:**
 ```json
 {
   "@context": "https://schema.org",
@@ -208,12 +208,12 @@ Add JSON-LD schema to the `<head>` of each page:
 }
 ```
 
-**Each camp — Event schema (add to camps page for each camp):**
+**Each camp , Event schema (add to camps page for each camp):**
 ```json
 {
   "@context": "https://schema.org",
   "@type": "Event",
-  "name": "Joner Football Camp — LA Complete Player Experience",
+  "name": "Joner Football Camp , LA Complete Player Experience",
   "startDate": "2026-06-22",
   "endDate": "2026-06-24",
   "location": {
@@ -234,7 +234,7 @@ Add JSON-LD schema to the `<head>` of each page:
 ```
 Repeat for each camp with correct details.
 
-**Workshops — Course schema:**
+**Workshops , Course schema:**
 ```json
 {
   "@context": "https://schema.org",
@@ -248,7 +248,7 @@ Repeat for each camp with correct details.
 }
 ```
 
-**App page — SoftwareApplication schema:**
+**App page , SoftwareApplication schema:**
 ```json
 {
   "@context": "https://schema.org",
@@ -311,7 +311,7 @@ Sitemap: https://jonerfootball.com/sitemap.xml
 
 ### PHASE 4: BUILD THE REMAINING PAGES
 
-#### A. About Page (`/about`) — FULL BUILD
+#### A. About Page (`/about`) , FULL BUILD
 
 This page needs real content, not a placeholder.
 
@@ -321,15 +321,15 @@ This page needs real content, not a placeholder.
 - Sub: "From Sydney to the world. Technique above everything."
 
 **Lee's Story Section:**
-Lee Jones started Joner Football in Sydney, Australia with one mission — technique above everything. What began as individual coaching sessions has grown into a global football development brand with over 2.1 million followers, 50,000+ app downloads, and training camps across 15+ countries.
+Lee Jones started Joner Football in Sydney, Australia with one mission , technique above everything. What began as individual coaching sessions has grown into a global football development brand with over 2.1 million followers, 50,000+ app downloads, and training camps across 15+ countries.
 
 In 2017, Joner Football was voted Top 10 Technical Trainers in the World.
 
-Today, Joner Football operates out of a state-of-the-art indoor facility in Belrose, Sydney, runs the Joner Football Performance program, delivers elite camps worldwide, and provides the Joner Football App — the most comprehensive football training platform available, with 1,500+ drills used by players and coaches around the globe.
+Today, Joner Football operates out of a state-of-the-art indoor facility in Belrose, Sydney, runs the Joner Football Performance program, delivers elite camps worldwide, and provides the Joner Football App , the most comprehensive football training platform available, with 1,500+ drills used by players and coaches around the globe.
 
 Lee's coaching philosophy is simple: master the ball, and the game opens up. Every drill, every session, every camp is built around technical excellence, high intensity, and genuine player development.
 
-**Head Coach — Dean McDonnell Section:**
+**Head Coach , Dean McDonnell Section:**
 Dean McDonnell is the Head Coach of the Joner Football Performance program. With a deep background in player development and a passion for technical coaching, Dean leads the JFP team across all Sydney training locations.
 
 Contact Dean: 0426 885 924
@@ -337,11 +337,11 @@ Contact Dean: 0426 885 924
 **The Coaching Team Section:**
 "Our team of qualified, experienced coaches deliver every session to a professional standard. Grouped by age and ability, with a maximum of 6 players per group, every player gets the attention they deserve."
 
-(Placeholder for additional coach profiles — Lee will provide names and bios)
+(Placeholder for additional coach profiles , Lee will provide names and bios)
 
 **Partnerships Section:**
-- **FPA** — Strength & Conditioning. Professional physical development integrated into the JFP program.
-- **FullNinety** — Tactical Analysis. Game analysis and video breakdowns for JFP players.
+- **FPA** , Strength & Conditioning. Professional physical development integrated into the JFP program.
+- **FullNinety** , Tactical Analysis. Game analysis and video breakdowns for JFP players.
 
 **Contact Section (anchor: #contact):**
 - General enquiries: leejones@jonerfootball.com
@@ -356,7 +356,7 @@ Contact Dean: 0426 885 924
 
 ---
 
-#### B. Workshops Hub Page (`/workshops`) — FULL BUILD
+#### B. Workshops Hub Page (`/workshops`) , FULL BUILD
 
 Currently just two links. Build it properly.
 
@@ -379,12 +379,12 @@ Card 2: Mindset Seminars
 - CTA: **[Learn More]** → /workshops/mindset-seminars
 
 **App Coaches Section CTA:**
-"Already a coach? Access the Coaches Section inside the Joner Football App — mentoring clips, session plans, and analysis breakdowns."
+"Already a coach? Access the Coaches Section inside the Joner Football App , mentoring clips, session plans, and analysis breakdowns."
 - CTA: **[Access in App]** → https://app.jonerfootball.com
 
 ---
 
-#### C. Online Coaches Course Page (`/workshops/coaches-course`) — FULL BUILD
+#### C. Online Coaches Course Page (`/workshops/coaches-course`) , FULL BUILD
 
 **Hero:**
 - Heading: **"ONLINE COACHES COURSE"**
@@ -396,7 +396,7 @@ Card 2: Mindset Seminars
 - Drill design and session planning principles
 - How to coach different age groups and ability levels
 - Managing small groups for maximum development
-- The mental side of coaching — building confidence in players
+- The mental side of coaching , building confidence in players
 
 **Who It's For:**
 - Grassroots coaches looking to improve their sessions
@@ -412,8 +412,8 @@ Card 2: Mindset Seminars
 
 **Testimonials:**
 (Use placeholder quotes for now)
-- "Completely changed how I approach training. My players are more engaged and improving faster." — Coach, UK
-- "The session plan templates alone saved me hours every week." — Academy Coach, Sydney
+- "Completely changed how I approach training. My players are more engaged and improving faster." , Coach, UK
+- "The session plan templates alone saved me hours every week." , Academy Coach, Sydney
 
 **Application Form:**
 - Name
@@ -427,7 +427,7 @@ Card 2: Mindset Seminars
 
 ---
 
-#### D. Mindset Seminars Page (`/workshops/mindset-seminars`) — FULL BUILD
+#### D. Mindset Seminars Page (`/workshops/mindset-seminars`) , FULL BUILD
 
 **Hero:**
 - Heading: **"MINDSET SEMINARS"**
@@ -436,7 +436,7 @@ Card 2: Mindset Seminars
 **What It Covers:**
 - Mental resilience and dealing with setbacks
 - Confidence building on and off the pitch
-- Pressure performance — performing when it matters
+- Pressure performance , performing when it matters
 - Pre-match preparation and routines
 - Goal setting and self-motivation
 - The mindset of elite players
@@ -458,7 +458,7 @@ Card 2: Mindset Seminars
 
 ---
 
-#### E. Shop Page (`/shop`) — FULL BUILD
+#### E. Shop Page (`/shop`) , FULL BUILD
 
 **Hero:**
 - Heading: **"SHOP"**
@@ -467,9 +467,9 @@ Card 2: Mindset Seminars
 **Three Sections:**
 
 Section 1: Joner Apparel
-- Photo grid or banner showing apparel (if photos available on Mac Mini, use them — otherwise placeholder)
+- Photo grid or banner showing apparel (if photos available on Mac Mini, use them , otherwise placeholder)
 - Text: "Official Joner Football training gear, match wear, and off-field apparel."
-- Text: "Collect in person at The HQ — 20 Narabang Way, Belrose"
+- Text: "Collect in person at The HQ , 20 Narabang Way, Belrose"
 - CTA: **[Shop Apparel]** → https://apparel.jonerfootball.com
 
 Section 2: Training App
@@ -484,7 +484,7 @@ Section 3: Books (Coming Soon)
 
 ---
 
-#### F. Teams / Club Subscriptions Page (`/teams`) — FULL BUILD
+#### F. Teams / Club Subscriptions Page (`/teams`) , FULL BUILD
 
 **Hero:**
 - Heading: **"TRAIN YOUR WHOLE SQUAD"**
@@ -519,7 +519,7 @@ Section 3: Books (Coming Soon)
 
 ---
 
-#### G. Blog Page (`/blog`) — STRUCTURE + FIRST 5 POSTS
+#### G. Blog Page (`/blog`) , STRUCTURE + FIRST 5 POSTS
 
 Set up the blog infrastructure and write 5 SEO-targeted posts. These should be proper articles, 600-800 words each, targeting long-tail search terms.
 
@@ -549,7 +549,7 @@ Set up the blog infrastructure and write 5 SEO-targeted posts. These should be p
 - Cover: technical knowledge, communication, adaptability, passion, player-centred approach
 - Mention: Joner Football coaching team, Online Coaches Course
 
-**Post 5: "Football Camp Packing List — Everything Your Child Needs"**
+**Post 5: "Football Camp Packing List , Everything Your Child Needs"**
 - Target keyword: "football camp packing list"
 - Cover: boots, shin guards, water, sunscreen, attitude, what to expect at a camp
 - Mention: Joner Football camps, link to /camps
@@ -610,12 +610,12 @@ If not there, add it.
 
 ## RULES FOR TONIGHT
 
-1. **Photos first.** The site looks 10x better with real photos. Browse the Mac Mini folders and get images onto every page before anything else structural. Optimize for web — WebP format, compressed.
+1. **Photos first.** The site looks 10x better with real photos. Browse the Mac Mini folders and get images onto every page before anything else structural. Optimize for web , WebP format, compressed.
 2. **SEO as you go.** Every time you touch a page, add the meta tags, schema, and alt tags before moving on. Don't leave it as a separate pass.
 3. **No specific app pricing anywhere.** Remove the $14.99 and $99.99 from the app page. Link to the app and let Uscreen handle pricing display.
 4. **Commit after every page.** Don't batch. Push to GitHub after finishing each page so nothing is lost.
 5. **All links must work.** Before you finish tonight, click every link on every page. No broken links, no placeholder hrefs, no "#" links that go nowhere. If a page doesn't exist yet, either build it or link to the closest relevant page.
-6. **Canonical URLs should use jonerfootball.com** (the real domain), not the Vercel staging URL. We're building for production — the DNS swap will make these correct.
+6. **Canonical URLs should use jonerfootball.com** (the real domain), not the Vercel staging URL. We're building for production , the DNS swap will make these correct.
 
 ---
 
@@ -623,16 +623,16 @@ If not there, add it.
 
 If you can't finish everything, here's what matters most:
 
-1. Fix the broken links and wrong prices (Phase 1) — 30 mins
-2. Add real photos from the Mac Mini (Phase 2) — 1-2 hours
-3. SEO on all existing pages (Phase 3) — 1-2 hours
-4. About page (Phase 4A) — 1 hour
-5. Workshops hub + both sub-pages (Phase 4B/C/D) — 1.5 hours
-6. Shop page (Phase 4E) — 30 mins
-7. Teams page (Phase 4F) — 30 mins
-8. Blog structure + 5 posts (Phase 4G) — 2-3 hours
-9. Google Maps embed (Phase 5) — 15 mins
-10. GA4 tracking verification (Phase 6) — 15 mins
+1. Fix the broken links and wrong prices (Phase 1) , 30 mins
+2. Add real photos from the Mac Mini (Phase 2) , 1-2 hours
+3. SEO on all existing pages (Phase 3) , 1-2 hours
+4. About page (Phase 4A) , 1 hour
+5. Workshops hub + both sub-pages (Phase 4B/C/D) , 1.5 hours
+6. Shop page (Phase 4E) , 30 mins
+7. Teams page (Phase 4F) , 30 mins
+8. Blog structure + 5 posts (Phase 4G) , 2-3 hours
+9. Google Maps embed (Phase 5) , 15 mins
+10. GA4 tracking verification (Phase 6) , 15 mins
 
 That's roughly 8-10 hours of work. If you finish early: go back through every page on mobile view and check nothing is broken, overlapping, or hard to tap.
 
@@ -640,7 +640,7 @@ That's roughly 8-10 hours of work. If you finish early: go back through every pa
 
 ## WHEN YOU'RE DONE
 
-Run a Lighthouse audit on the homepage and training page. Target: 90+ on Performance, Accessibility, Best Practices, and SEO. Screenshot the results and save them — Lee will want to see these.
+Run a Lighthouse audit on the homepage and training page. Target: 90+ on Performance, Accessibility, Best Practices, and SEO. Screenshot the results and save them , Lee will want to see these.
 
 Lee checks the staging URL in the morning. Make it count. 🔥
 

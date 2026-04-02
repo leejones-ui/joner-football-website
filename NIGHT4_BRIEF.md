@@ -1,4 +1,4 @@
-# NIGHT 4 BUILD BRIEF — April 1, 2026
+# NIGHT 4 BUILD BRIEF , April 1, 2026
 
 ## LEE'S BIO (from live site jonerfootball.com)
 

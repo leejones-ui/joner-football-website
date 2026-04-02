@@ -1,4 +1,4 @@
-# JEFFREY — OVERNIGHT BUILD BRIEF (NIGHT 3)
+# JEFFREY , OVERNIGHT BUILD BRIEF (NIGHT 3)
 ## March 31 / April 1 2026
 
 Read skills/joner-website/SKILL.md context. This brief builds on top of it.
@@ -13,7 +13,7 @@ Read skills/joner-website/SKILL.md context. This brief builds on top of it.
 
 ## PRIORITY ORDER
 
-### 1. JONER FOOTBALL LOGO — TOP LEFT OF EVERY PAGE
+### 1. JONER FOOTBALL LOGO , TOP LEFT OF EVERY PAGE
 The "JONER FOOTBALL" text in nav needs to be the actual logo image.
 - Get logo from current live site (jonerfootball.com) or find in public/images/
 - Place top left in nav, clickable to homepage
@@ -21,7 +21,7 @@ The "JONER FOOTBALL" text in nav needs to be the actual logo image.
 - White version on dark nav
 - It's in Nav.astro so one change fixes all pages
 
-### 2. HOMEPAGE IMAGE CAROUSEL — "WHAT WE DO" SLIDER
+### 2. HOMEPAGE IMAGE CAROUSEL , "WHAT WE DO" SLIDER
 Full-width image slider between Hero and Social Proof Bar (or replace hero if better).
 
 8 slides, each full-width with text overlay:
@@ -36,7 +36,7 @@ Full-width image slider between Hero and Social Proof Bar (or replace hero if be
 
 Design: 60-70vh, auto-play 3-4s, pause on hover/touch, nav dots + arrows, swipeable mobile, dark overlay on images, lightweight (Embla/CSS scroll-snap), lazy-load.
 
-### 3. APP PRICING — 4 PLANS + COMPARISON TABLE
+### 3. APP PRICING , 4 PLANS + COMPARISON TABLE
 
 Replace current /app pricing with:
 
@@ -69,11 +69,11 @@ Embed from youtube.com/@jonerfootball:
 - HQ: facility tour video
 Use lazy loading iframes.
 
-### 6. PARTNERS — ADD MIZUNO + SKLZ
+### 6. PARTNERS , ADD MIZUNO + SKLZ
 Full list: Mizuno, SKLZ, FPA, FullNinety
 Show logos + one-line descriptions on Training page (bottom), About page, optionally homepage.
 
-### 7. ABOUT PAGE — REMOVE DEAN
+### 7. ABOUT PAGE , REMOVE DEAN
 Remove Dean's section/photo/bio/phone from About page.
 Dean stays on Training page under JFP only.
 
@@ -97,7 +97,7 @@ Physical pickup note: The HQ, Unit 2, 20 Narabang Way, Belrose.
 ### 10. BREVO FORM INTEGRATION
 Wire all forms to Brevo webhooks. Test submissions.
 
-### 11. COACHES COURSE PAGE — FULL BUILD
+### 11. COACHES COURSE PAGE , FULL BUILD
 Hero, "What You'll Learn" (6 points), "Who It's For", "What's Included", testimonials, application form.
 
 ### 12. HOMEPAGE APP SCREENSHOTS
