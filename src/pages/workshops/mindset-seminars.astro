@@ -160,7 +160,7 @@ const seminarSchema = {
         <h2 class="font-heading text-white text-2xl md:text-3xl font-bold uppercase mb-2">Register Interest</h2>
         <p class="text-gray-400 font-body text-sm mb-8">Be the first to know when the next mindset seminar is announced.</p>
 
-        <form method="POST" action="https://api.brevo.com/v3/contacts" data-brevo-form data-form-name="mindset-seminars-interest" class="space-y-4">
+        <form method="POST" action="/api/subscribe" data-brevo-form data-form-name="mindset-seminars-interest" data-list-id="11" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input type="text" name="name" placeholder="Full name" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
             <input type="email" name="email" placeholder="Email address" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />

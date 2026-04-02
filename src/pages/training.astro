@@ -241,7 +241,7 @@ const localBizSchema = {
       <div id="jfp-form" class="mt-16 max-w-2xl mx-auto bg-joner-gray border border-gray-700 p-8 scroll-mt-32">
         <h3 class="font-heading text-white text-2xl font-bold uppercase mb-2">Apply for JFP</h3>
         <p class="text-gray-400 font-body text-sm mb-6">Fill in your details and a coach will be in touch.</p>
-        <form method="POST" action="https://api.brevo.com/v3/contacts" data-brevo-form data-form-name="jfp-application" class="space-y-4">
+        <form method="POST" action="/api/subscribe" data-brevo-form data-form-name="jfp-application" data-list-id="2" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input type="text" name="parent_name" placeholder="Parent name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
             <input type="text" name="player_name" placeholder="Player name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
@@ -531,7 +531,7 @@ const localBizSchema = {
       <div id="pro-form" class="mt-16 max-w-2xl mx-auto bg-joner-black border border-gray-700 p-8 scroll-mt-32">
         <h3 class="font-heading text-white text-2xl font-bold uppercase mb-2">Professional Training Enquiry</h3>
         <p class="text-gray-400 font-body text-sm mb-6">Tell us about yourself and Lee will be in touch.</p>
-        <form method="POST" action="https://api.brevo.com/v3/contacts" data-brevo-form data-form-name="pro-training-enquiry" class="space-y-4">
+        <form method="POST" action="/api/subscribe" data-brevo-form data-form-name="pro-training-enquiry" data-list-id="2" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input type="text" name="name" placeholder="Your name" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
             <input type="email" name="email" placeholder="Email address" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
@@ -665,7 +665,7 @@ const localBizSchema = {
       <div id="juniors-form" class="mt-16 max-w-2xl mx-auto bg-joner-gray border border-gray-700 p-8 scroll-mt-32">
         <h3 class="font-heading text-white text-2xl font-bold uppercase mb-2">Book a Spot, Joners Juniors</h3>
         <p class="text-gray-400 font-body text-sm mb-6">Payment processed securely. A place will be confirmed once we receive your details.</p>
-        <form method="POST" action="https://api.brevo.com/v3/contacts" data-brevo-form data-form-name="joners-juniors-booking" class="space-y-4">
+        <form method="POST" action="/api/subscribe" data-brevo-form data-form-name="joners-juniors-booking" data-list-id="2" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input type="text" name="parent_name" placeholder="Parent / guardian name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
             <input type="text" name="child_name" placeholder="Child's name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
