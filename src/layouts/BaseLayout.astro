@@ -186,5 +186,39 @@ const allSchemas = schema
         });
       })();
     </script>
+  <!-- Global Brevo form handler -->
+  <script is:inline>
+    (function () {
+      function initBrevoForms() {
+        document.querySelectorAll('[data-brevo-form]').forEach(function (form) {
+          if (form._brevoInit) return;
+          form._brevoInit = true;
+          form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var btn = form.querySelector('button[type="submit"]');
+            var formData = new FormData(form);
+            var email = formData.get('email') || '';
+            var firstName = formData.get('first_name') || formData.get('firstName') || '';
+            var listId = Number(form.getAttribute('data-list-id') || '2');
+            if (!email) return;
+            if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+            fetch('/api/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: email, firstName: firstName, listId: listId })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function() { form.innerHTML = '<p style="color:#4ade80;font-size:14px;padding:8px 0;">Done. Welcome to the team.</p>'; })
+            .catch(function() { if (btn) { btn.disabled = false; btn.textContent = 'Try Again'; } });
+          });
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initBrevoForms);
+      } else {
+        initBrevoForms();
+      }
+    })();
+  </script>
   </body>
 </html>
