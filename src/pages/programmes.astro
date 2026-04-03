@@ -16,12 +16,12 @@ const programmeSchema = {
 }
 
 const programmes = [
-  { name: 'Juggling Programme', days: '2 days', desc: 'Build your foundation. Ball feel, coordination, and touch.', num: 1 },
-  { name: 'Fast Feet Programme', days: '10 days', desc: 'Quick feet that leave defenders guessing.', num: 2 },
-  { name: 'Passing & First Touch Programme', days: '50 days', desc: 'The foundation of everything. Control under pressure. Crisp passing.', num: 3 },
-  { name: 'Dribbling Programme', days: '10 days', desc: 'Beat any defender. Close control and changes of direction.', num: 4 },
-  { name: 'Weak Foot Programme', days: '14 days', desc: 'Double your options on the pitch.', num: 5 },
-  { name: 'Score More Goals Programme', days: '14 days', desc: 'Turn chances into goals. Finishing technique and composure.', num: 6 },
+  { name: 'Juggling Programme', days: '2 days', sessions: '', desc: 'Build your foundation. Ball feel, coordination, and touch.', num: 1, image: '/images/programmes/juggling-program.jpg' },
+  { name: 'Fast Feet Programme', days: '7 days', sessions: '7 sessions', desc: 'Quick feet that leave defenders guessing.', num: 2, image: '/images/programmes/fast-feet-program.jpg' },
+  { name: 'Passing & First Touch Programme', days: '50 days', sessions: '13 sessions', desc: 'The foundation of everything. Control under pressure. Crisp passing.', num: 3, image: '/images/programmes/passing-first-touch-program.jpg' },
+  { name: 'Dribbling Programme', days: '10 days', sessions: '8 sessions', desc: 'Beat any defender. Close control and changes of direction.', num: 4, image: '/images/programmes/dribbling-program.jpg' },
+  { name: 'Weak Foot Programme', days: '14 days', sessions: '11 sessions', desc: 'Double your options on the pitch.', num: 5, image: '/images/programmes/weak-foot-program.jpg' },
+  { name: 'Score More Goals Programme', days: '14 days', sessions: '9 sessions', desc: 'Turn chances into goals. Finishing technique and composure.', num: 6, image: '/images/programmes/score-more-goals-program.jpg' },
 ]
 
 const steps = [
@@ -72,11 +72,11 @@ const faqs = [
     <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-95"></div>
     <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full text-center">
       <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">100-Day Development Programme</p>
-      <h1 class="font-heading text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
-        Your Unfair Advantage<br/>Starts Here
+      <h1 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase leading-tight mb-6">
+        While Other Kids Watch YouTube Highlights, Yours Will Be Creating Them.
       </h1>
       <p class="text-gray-300 font-body text-lg md:text-xl mb-8 max-w-2xl mx-auto">
-        The complete structured training pathway for players of all levels. 100 days. 6 programmes. Real results, guaranteed.
+        100 Days From Now, Your Child Will Be Unrecognisable On The Pitch
       </p>
       <a href={checkoutUrl} class="btn-red text-base md:text-lg px-10 py-4 text-center">
         Start the Programme Now
@@ -110,9 +110,12 @@ const faqs = [
             <div class={`ml-6 md:ml-0 md:w-[calc(50%-2rem)] bg-joner-gray border border-gray-800 p-6 ${i % 2 === 0 ? 'md:mr-auto md:pr-6' : 'md:ml-auto md:pl-6'}`}>
               <div class="flex items-center gap-3 mb-2">
                 <h3 class="font-heading text-lg text-white font-bold uppercase">{prog.name}</h3>
-                <span class="text-joner-red font-heading text-xs uppercase tracking-wider whitespace-nowrap">{prog.days}</span>
+                <span class="text-joner-red font-heading text-xs uppercase tracking-wider whitespace-nowrap">{prog.days}{prog.sessions ? ` · ${prog.sessions}` : ''}</span>
               </div>
-              <p class="text-gray-400 font-body text-sm">{prog.desc}</p>
+              <p class="text-gray-400 font-body text-sm mb-4">{prog.desc}</p>
+              <div class="phone-frame mx-auto mt-2">
+                <img src={prog.image} alt={prog.name} loading="lazy" />
+              </div>
             </div>
           </div>
         ))}
@@ -132,9 +135,13 @@ const faqs = [
           <span class="bg-yellow-500 text-joner-black font-heading text-xs uppercase tracking-wider font-bold px-3 py-1">Bonus</span>
         </div>
         <h3 class="font-heading text-xl text-white uppercase font-bold mb-2 mt-2">12-Week Advanced Strength & Conditioning Programme</h3>
-        <p class="text-gray-400 font-body text-sm leading-relaxed">
+        <p class="text-joner-red font-heading text-xs uppercase tracking-wider mb-3">12 weeks · 36 sessions</p>
+        <p class="text-gray-400 font-body text-sm leading-relaxed mb-4">
           For older players ready to take their physical game to the next level. Football-specific speed, strength, and stamina. Start this alongside or after your 100-day journey. Annual members only.
         </p>
+        <div class="phone-frame mx-auto mt-2">
+          <img src="/images/programmes/sc-program.jpg" alt="Strength & Conditioning Programme" loading="lazy" />
+        </div>
       </div>
 
       <!-- CTA -->
@@ -239,6 +246,12 @@ const faqs = [
             <span class="text-white font-body text-sm">{feature}</span>
           </div>
         ))}
+      </div>
+      <!-- App library screenshot -->
+      <div class="flex justify-center mt-12">
+        <div class="phone-frame">
+          <img src="/images/programmes/programmes-category.jpg" alt="Joner Football App programme library" loading="lazy" />
+        </div>
       </div>
     </div>
   </section>
@@ -459,4 +472,19 @@ const faqs = [
     </div>
   </section>
 
+  <style>
+    .phone-frame {
+      position: relative;
+      display: inline-block;
+      border-radius: 2rem;
+      border: 3px solid #333;
+      overflow: hidden;
+      box-shadow: 0 0 0 6px #1a1a1a, 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .phone-frame img {
+      display: block;
+      width: 200px;
+      height: auto;
+    }
+  </style>
 </BaseLayout>
