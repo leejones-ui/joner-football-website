@@ -66,7 +66,7 @@ const faqs = [
 
   <section class="relative flex items-center bg-joner-gray overflow-hidden">
     <div class="absolute inset-0">
-      <img src="/images/programmes/lee-coaching-red.jpg" alt="Lee Joner coaching" class="w-full h-full object-cover object-center opacity-30" />
+      <img src="/images/programmes/lee-hero-red.jpg" alt="Lee Joner coaching" class="w-full h-full object-cover object-center opacity-30" />
       <div class="absolute inset-0 bg-gradient-to-b from-joner-black/80 via-joner-black/70 to-joner-black"></div>
     </div>
     <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full text-center">
@@ -112,8 +112,8 @@ const faqs = [
                 <span class="text-joner-red font-heading text-xs uppercase tracking-wider whitespace-nowrap">{prog.days}{prog.sessions ? ` · ${prog.sessions}` : ''}</span>
               </div>
               <p class="text-gray-400 font-body text-sm mb-4">{prog.desc}</p>
-              <div class="phone-frame mx-auto mt-2">
-                <img src={prog.image} alt={prog.name} loading="lazy" />
+              <div style="display:inline-block;border-radius:1.5rem;border:3px solid #333;overflow:hidden;box-shadow:0 0 0 5px #1a1a1a,0 15px 30px rgba(0,0,0,0.6);margin:0 auto;margin-top:0.5rem;">
+                <img src={prog.image} alt={prog.name} loading="lazy" style="display:block;width:140px;height:auto;" />
               </div>
             </div>
           </div>
@@ -138,7 +138,7 @@ const faqs = [
         <p class="text-gray-400 font-body text-sm leading-relaxed mb-4">
           For older players ready to take their physical game to the next level. Football-specific speed, strength, and stamina. Start this alongside or after your 100-day journey. Annual members only.
         </p>
-        <div class="phone-frame mx-auto mt-2">
+        <div style="display:inline-block;border-radius:1.5rem;border:3px solid #333;overflow:hidden;box-shadow:0 0 0 5px #1a1a1a,0 15px 30px rgba(0,0,0,0.6);margin:0 auto;margin-top:0.5rem;">
           <img src="/images/programmes/sc-program.jpg" alt="Strength & Conditioning Program" loading="lazy" />
         </div>
       </div>
@@ -248,7 +248,7 @@ const faqs = [
       </div>
       <!-- App library screenshot -->
       <div class="flex justify-center mt-12">
-        <div class="phone-frame">
+        <div style="display:inline-block;border-radius:1.5rem;border:3px solid #333;overflow:hidden;box-shadow:0 0 0 5px #1a1a1a,0 15px 30px rgba(0,0,0,0.6);">
           <img src="/images/programmes/programs-category.jpg" alt="Joner Football App program library" loading="lazy" />
         </div>
       </div>
