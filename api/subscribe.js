@@ -70,7 +70,7 @@ export default async function handler(req, res) {
 
         <!-- Header -->
         <tr><td style="padding-bottom:32px;">
-          <img src="https://jonerfootball.com/images/joner-logo.png" alt="Joner Football" height="40" style="height:40px;" onerror="this.style.display='none'" />
+          <p style="margin:0;font-size:22px;font-weight:bold;color:#CC0000;letter-spacing:2px;text-transform:uppercase;">JONER FOOTBALL</p>
         </td></tr>
 
         <!-- Intro -->
