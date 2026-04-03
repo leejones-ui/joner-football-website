@@ -778,3 +778,38 @@ const localBizSchema = {
 
   <EmailCapture />
 </BaseLayout>
+
+<script is:inline>
+  (function() {
+    function handleForms() {
+      document.querySelectorAll('[data-brevo-form]').forEach(function(form) {
+        if (form._init) return;
+        form._init = true;
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var btn = form.querySelector('button[type="submit"]');
+          var formData = new FormData(form);
+          var email = formData.get('email') || '';
+          var firstName = formData.get('first_name') || formData.get('parent_name') || '';
+          var listId = Number(form.getAttribute('data-list-id') || '2');
+          if (!email) return;
+          if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+          fetch('/api/subscribe', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email: email, firstName: firstName, listId: listId})
+          })
+          .then(function(r) { return r.json(); })
+          .then(function() { form.innerHTML = '<p style="color:#4ade80;padding:12px 0;font-size:14px;">Done! We\'ll be in touch soon.</p>'; })
+          .catch(function() { if (btn) { btn.disabled = false; btn.textContent = 'Submit Application'; } });
+        });
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', handleForms);
+    } else {
+      handleForms();
+    }
+  })();
+</script>
