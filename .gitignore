@@ -23,3 +23,5 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 .vercel
+public/videos/app/*.mp4
+public/videos/app/*.webm
