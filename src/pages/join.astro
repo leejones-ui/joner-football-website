@@ -1,0 +1,235 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const pricingSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Join Joner Football App",
+  "description": "Choose your plan and start training with the world's #1 football training app."
+}
+---
+
+<BaseLayout
+  title="Join Joner Football | Plans and Pricing"
+  description="Choose your Joner Football plan. Monthly, Annual, Coaches, or Club pricing. Start your 7-day free trial today."
+  schema={pricingSchema}
+>
+
+  <!-- Hero -->
+  <section class="bg-joner-black pt-20 pb-12">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">CHOOSE YOUR PLAN</p>
+      <h1 class="font-heading text-5xl md:text-6xl font-bold text-white uppercase leading-none mb-6">
+        START TRAINING TODAY
+      </h1>
+      <p class="text-gray-300 font-body text-lg max-w-2xl mx-auto">
+        Your first 7 days are free. Cancel anytime. Pick the plan that fits your game.
+      </p>
+    </div>
+  </section>
+
+  <!-- Pricing Cards -->
+  <section class="bg-joner-black pb-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        <!-- Monthly -->
+        <div class="bg-joner-gray border border-gray-800 p-8 flex flex-col">
+          <p class="text-gray-400 font-heading text-sm uppercase tracking-widest mb-2">MONTHLY</p>
+          <div class="mb-6">
+            <span class="font-heading text-4xl font-bold text-white">$23.99</span>
+            <span class="text-gray-400 font-body text-sm">/month</span>
+          </div>
+          <p class="text-gray-400 font-body text-sm leading-relaxed mb-8 flex-1">
+            Full access to every drill, session, and program.
+          </p>
+          <a href="https://app.jonerfootball.com/join_us" class="btn-red text-center text-sm py-3 w-full">START FREE TRIAL</a>
+        </div>
+
+        <!-- Annual (Best Value) -->
+        <div class="bg-joner-gray border-2 border-joner-red p-8 flex flex-col relative shadow-[0_0_30px_rgba(227,6,19,0.2)]">
+          <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-joner-red px-4 py-1">
+            <span class="font-heading text-xs font-bold text-white uppercase tracking-wider">BEST VALUE</span>
+          </div>
+          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-2">ANNUAL</p>
+          <div class="mb-2">
+            <span class="font-heading text-4xl font-bold text-white">$204.99</span>
+            <span class="text-gray-400 font-body text-sm">/year</span>
+          </div>
+          <p class="text-joner-red font-body text-sm font-semibold mb-6">Less than $4 a week</p>
+          <p class="text-gray-400 font-body text-sm leading-relaxed mb-8 flex-1">
+            Everything in Monthly. Save 29% with annual billing.
+          </p>
+          <a href="https://app.jonerfootball.com/join_us" class="btn-red text-center text-sm py-3 w-full">START FREE TRIAL</a>
+        </div>
+
+        <!-- Coaches -->
+        <div class="bg-joner-gray border border-gray-800 p-8 flex flex-col">
+          <p class="text-gray-400 font-heading text-sm uppercase tracking-widest mb-2">COACHES</p>
+          <div class="mb-6">
+            <span class="font-heading text-4xl font-bold text-white">$319.99</span>
+            <span class="text-gray-400 font-body text-sm">/year</span>
+          </div>
+          <p class="text-gray-400 font-body text-sm leading-relaxed mb-8 flex-1">
+            Full access plus the complete coaches library. Session plans, progressions, small group formats.
+          </p>
+          <a href="https://app.jonerfootball.com/join_us" class="btn-red text-center text-sm py-3 w-full">START COACHING</a>
+        </div>
+
+        <!-- Clubs & Academies -->
+        <div class="bg-joner-gray border border-gray-800 p-8 flex flex-col">
+          <p class="text-gray-400 font-heading text-sm uppercase tracking-widest mb-2">CLUBS AND ACADEMIES</p>
+          <div class="mb-6">
+            <span class="font-heading text-4xl font-bold text-white">Contact Us</span>
+          </div>
+          <p class="text-gray-400 font-body text-sm leading-relaxed mb-8 flex-1">
+            Custom pricing for teams, clubs, and academy programs. Bulk licences available.
+          </p>
+          <a href="mailto:leejones@jonerfootball.com" class="btn-outline text-center text-sm py-3 w-full">GET IN TOUCH</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison Table -->
+  <section class="bg-joner-gray py-20 md:py-28">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="section-heading text-white">COMPARE PLANS</h2>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[640px]">
+          <thead>
+            <tr class="border-b border-gray-700">
+              <th class="py-4 px-4 font-heading text-sm text-gray-400 uppercase tracking-wider">Feature</th>
+              <th class="py-4 px-4 font-heading text-sm text-white uppercase tracking-wider text-center">Monthly</th>
+              <th class="py-4 px-4 font-heading text-sm text-joner-red uppercase tracking-wider text-center">Annual</th>
+              <th class="py-4 px-4 font-heading text-sm text-white uppercase tracking-wider text-center">Coaches</th>
+              <th class="py-4 px-4 font-heading text-sm text-white uppercase tracking-wider text-center">Clubs</th>
+            </tr>
+          </thead>
+          <tbody class="font-body text-sm">
+            <tr class="border-b border-gray-800">
+              <td class="py-3 px-4 text-gray-300">1,500+ Drills</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+            </tr>
+            <tr class="border-b border-gray-800">
+              <td class="py-3 px-4 text-gray-300">Session Plans</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+            </tr>
+            <tr class="border-b border-gray-800">
+              <td class="py-3 px-4 text-gray-300">Follow-Along Programs</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+            </tr>
+            <tr class="border-b border-gray-800">
+              <td class="py-3 px-4 text-gray-300">Daily Challenges</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+            </tr>
+            <tr class="border-b border-gray-800">
+              <td class="py-3 px-4 text-gray-300">Offline Downloads</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+            </tr>
+            <tr class="border-b border-gray-800">
+              <td class="py-3 px-4 text-gray-300">Coaches Library</td>
+              <td class="py-3 px-4 text-center text-gray-600">N</td>
+              <td class="py-3 px-4 text-center text-gray-600">N</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+            </tr>
+            <tr class="border-b border-gray-800">
+              <td class="py-3 px-4 text-gray-300">Small Group Formats</td>
+              <td class="py-3 px-4 text-center text-gray-600">N</td>
+              <td class="py-3 px-4 text-center text-gray-600">N</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+            </tr>
+            <tr class="border-b border-gray-800">
+              <td class="py-3 px-4 text-gray-300">Bulk Licences</td>
+              <td class="py-3 px-4 text-center text-gray-600">N</td>
+              <td class="py-3 px-4 text-center text-gray-600">N</td>
+              <td class="py-3 px-4 text-center text-gray-600">N</td>
+              <td class="py-3 px-4 text-center text-green-400">Y</td>
+            </tr>
+            <tr>
+              <td class="py-3 px-4 text-gray-300">Free Trial</td>
+              <td class="py-3 px-4 text-center text-gray-300">7 days</td>
+              <td class="py-3 px-4 text-center text-gray-300">7 days</td>
+              <td class="py-3 px-4 text-center text-gray-300">7 days</td>
+              <td class="py-3 px-4 text-center text-gray-600">N</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="bg-joner-black py-20 md:py-28">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">FAQ</p>
+        <h2 class="section-heading text-white">COMMON QUESTIONS</h2>
+      </div>
+
+      <div class="space-y-6">
+        <div class="border-b border-gray-800 pb-6">
+          <h3 class="font-heading text-white font-semibold text-lg mb-2">Can I cancel anytime?</h3>
+          <p class="text-gray-400 font-body">Yes. Cancel before your trial ends and you will not be charged.</p>
+        </div>
+
+        <div class="border-b border-gray-800 pb-6">
+          <h3 class="font-heading text-white font-semibold text-lg mb-2">What is the difference between Monthly and Annual?</h3>
+          <p class="text-gray-400 font-body">Same access. Annual saves you 29%.</p>
+        </div>
+
+        <div class="border-b border-gray-800 pb-6">
+          <h3 class="font-heading text-white font-semibold text-lg mb-2">What do coaches get that players do not?</h3>
+          <p class="text-gray-400 font-body">The full coaching library including session plans, progressions, and formats designed for groups.</p>
+        </div>
+
+        <div class="border-b border-gray-800 pb-6">
+          <h3 class="font-heading text-white font-semibold text-lg mb-2">Can I use it offline?</h3>
+          <p class="text-gray-400 font-body">Yes. Download any session to your phone.</p>
+        </div>
+
+        <div class="pb-6">
+          <h3 class="font-heading text-white font-semibold text-lg mb-2">Is there a family plan?</h3>
+          <p class="text-gray-400 font-body">Not yet. Each subscription is for one account.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="bg-joner-red py-16 md:py-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase mb-4">
+        READY TO TRAIN?
+      </h2>
+      <p class="text-white/80 font-body text-lg mb-8">
+        7 days free. No commitment. Just better football.
+      </p>
+      <a href="https://app.jonerfootball.com/join_us" class="bg-white text-joner-red font-heading text-base uppercase tracking-wider px-8 py-4 hover:bg-gray-100 transition-colors inline-block">
+        START FREE TRIAL
+      </a>
+    </div>
+  </section>
+
+</BaseLayout>
