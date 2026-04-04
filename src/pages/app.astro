@@ -30,10 +30,20 @@ const appSchema = {
 
   <!-- SECTION 1: Hero -->
   <section class="relative min-h-[90vh] flex items-center bg-joner-gray overflow-hidden">
-    <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-95"></div>
-    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
+    <video
+      autoplay
+      muted
+      loop
+      playsinline
+      class="absolute inset-0 w-full h-full object-cover z-0"
+      style="opacity: 0.4;"
+    >
+      <source src="https://res.cloudinary.com/dmzisjwdf/video/upload/v1775278435/joner-website/hero-video.mp4" type="video/mp4" />
+    </video>
+    <div class="absolute inset-0 bg-black/60 z-[1]"></div>
+    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red z-[2]"></div>
 
-    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
+    <div class="relative z-[2] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
         <!-- Text content -->
@@ -152,7 +162,7 @@ const appSchema = {
           <p class="text-gray-400 font-body text-base leading-relaxed mb-8 flex-1">
             Stop spending hours building session plans from scratch. The Joner Football App gives you a complete library of ready-made sessions, drills, and progressions. Run better training for your team or small group every single week without the prep time.
           </p>
-          <a href="https://app.jonerfootball.com/join_us" class="btn-red text-center text-sm px-6 py-3">START COACHING SMARTER</a>
+          <a href="https://app.jonerfootball.com/checkout/new?o=202578" class="btn-red text-center text-sm px-6 py-3">START COACHING SMARTER</a>
         </div>
 
         <!-- Parents -->
@@ -339,7 +349,7 @@ const appSchema = {
         </div>
       </div>
 
-      <a href="https://app.jonerfootball.com/join_us" class="btn-red text-base px-8 py-4">EXPLORE THE COACHES PLAN</a>
+      <a href="https://app.jonerfootball.com/checkout/new?o=202578" class="btn-red text-base px-8 py-4">EXPLORE THE COACHES PLAN</a>
     </div>
   </section>
 
