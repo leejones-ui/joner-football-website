@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import PhoneFrame from '../components/PhoneFrame.astro'
+import EmailCapture from '../components/EmailCapture.astro'
 
 const appSchema = {
   "@context": "https://schema.org",
@@ -411,6 +412,8 @@ const appSchema = {
       </div>
     </div>
   </section>
+
+  <EmailCapture />
 
   <!-- SECTION 7: Final CTA Block -->
   <section class="bg-joner-black py-20 md:py-28">
