@@ -106,26 +106,34 @@ try {
   <!-- Posts grid -->
   <section class="bg-joner-black py-16 md:py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-        {posts.map((post) => (
-          <a href={`/blog/${post.slug}`} class="group border border-gray-800 hover:border-joner-red transition-all duration-200 hover:-translate-y-1 overflow-hidden">
-            <div class="h-40 sm:h-44 md:h-48 overflow-hidden bg-joner-gray">
-              <img src={post.image} alt={post.title} class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-            </div>
-            <div class="p-6">
-              <div class="flex items-center gap-3 mb-3">
-                <span class="bg-joner-red/20 text-joner-red px-2 py-0.5 font-heading text-xs uppercase tracking-wider">{post.category}</span>
-                <span class="text-gray-600 text-xs font-body">{post.readTime}</span>
+      {posts.length === 0 ? (
+        <div class="text-center py-20">
+          <p class="font-heading text-2xl text-white uppercase mb-4">No Posts Yet</p>
+          <p class="text-gray-400 font-body">New content is on the way. In the meantime, train with the app.</p>
+          <a href="/app" class="btn-red inline-block mt-6">Try the App Free</a>
+        </div>
+      ) : (
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          {posts.map((post) => (
+            <a href={`/blog/${post.slug}`} class="group border border-gray-800 hover:border-joner-red transition-all duration-200 hover:-translate-y-1 overflow-hidden">
+              <div class="h-40 sm:h-44 md:h-48 overflow-hidden bg-joner-gray">
+                <img src={post.image} alt={post.title} class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" />
               </div>
-              <h2 class="font-heading text-lg font-bold text-white mb-2 group-hover:text-joner-red transition-colors uppercase leading-tight">
-                {post.title}
-              </h2>
-              <p class="text-gray-400 font-body text-sm leading-relaxed mb-3">{post.excerpt}</p>
-              <div class="text-gray-600 text-xs font-body">{post.date}</div>
-            </div>
-          </a>
-        ))}
-      </div>
+              <div class="p-6">
+                <div class="flex items-center gap-3 mb-3">
+                  <span class="bg-joner-red/20 text-joner-red px-2 py-0.5 font-heading text-xs uppercase tracking-wider">{post.category}</span>
+                  <span class="text-gray-600 text-xs font-body">{post.readTime}</span>
+                </div>
+                <h2 class="font-heading text-lg font-bold text-white mb-2 group-hover:text-joner-red transition-colors uppercase leading-tight">
+                  {post.title}
+                </h2>
+                <p class="text-gray-400 font-body text-sm leading-relaxed mb-3">{post.excerpt}</p>
+                <div class="text-gray-600 text-xs font-body">{post.date}</div>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   </section>
 

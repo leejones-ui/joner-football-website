@@ -1,0 +1,49 @@
+---
+import BlogPost from '../../layouts/BlogPost.astro'
+import { sanityClient } from '../../lib/sanityClient'
+
+export async function getStaticPaths() {
+  try {
+    const posts = await sanityClient.fetch(
+      `*[_type == "blogPost" && defined(slug.current)] {
+        "slug": slug.current,
+        title,
+        excerpt,
+        body,
+        publishedAt,
+        category,
+        "image": coverImage.asset->url
+      }`
+    )
+    return posts.map((post: any) => ({
+      params: { slug: post.slug },
+      props: { post },
+    }))
+  } catch (e) {
+    console.error('Sanity fetch failed for blog paths:', e)
+    return []
+  }
+}
+
+const { post } = Astro.props
+
+const formattedDate = post.publishedAt
+  ? new Date(post.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  : ''
+---
+
+<BlogPost
+  title={post.title}
+  description={post.excerpt || ''}
+  date={post.publishedAt || ''}
+  category={post.category || ''}
+  readTime=""
+  image={post.image || '/images/training/jfp-session.webp'}
+  imageAlt={post.title}
+>
+  {post.body ? (
+    <Fragment set:html={post.body.replace(/\n\n/g, '</p><p>').replace(/^/, '<p>').replace(/$/, '</p>')} />
+  ) : (
+    <p>Content coming soon.</p>
+  )}
+</BlogPost>
