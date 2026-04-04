@@ -68,7 +68,7 @@ const screenshots = [
       <div class="flex md:hidden gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scroll-px-4 -mx-4 px-4 no-scrollbar">
         {screenshots.map((s) => (
           <div class="flex-shrink-0 snap-center">
-            <div class="w-48 rounded-[2rem] border-[5px] border-gray-800 bg-joner-black shadow-2xl overflow-hidden">
+            <div class="w-40 sm:w-48 rounded-[2rem] border-[5px] border-gray-800 bg-joner-black shadow-2xl overflow-hidden">
               <div class="bg-joner-black flex justify-center pt-2 pb-1">
                 <div class="w-16 h-1.5 bg-gray-800 rounded-full"></div>
               </div>
@@ -92,10 +92,10 @@ const screenshots = [
     <!-- Features + CTA -->
     <div class="max-w-4xl mx-auto">
       <!-- Feature grid -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-10">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-10">
         {features.map((f) => (
-          <div class="flex items-start gap-3 bg-joner-black/50 rounded-xl p-3 border border-gray-800/50">
-            <span class="text-xl flex-shrink-0">{f.icon}</span>
+          <div class="flex items-start gap-2 sm:gap-3 bg-joner-black/50 rounded-xl p-3 border border-gray-800/50">
+            <span class="text-lg sm:text-xl flex-shrink-0">{f.icon}</span>
             <div>
               <div class="font-heading text-white font-semibold text-sm">{f.label}</div>
               <div class="text-gray-500 text-xs font-body mt-0.5">{f.desc}</div>

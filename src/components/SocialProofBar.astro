@@ -9,10 +9,10 @@ const stats = [
 
 <section class="bg-joner-gray-light border-y border-gray-200">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-0 md:divide-x md:divide-gray-300">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-0 md:divide-x md:divide-gray-300">
       {stats.map((stat) => (
-        <div class="text-center px-4 py-2">
-          <div class="font-heading text-3xl md:text-4xl font-bold text-joner-black">{stat.number}</div>
+        <div class="text-center px-2 sm:px-4 py-2">
+          <div class="font-heading text-2xl sm:text-3xl md:text-4xl font-bold text-joner-black">{stat.number}</div>
           <div class="font-body text-sm text-gray-500 uppercase tracking-wider mt-1">{stat.label}</div>
         </div>
       ))}
