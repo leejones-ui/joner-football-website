@@ -4,8 +4,12 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 <BaseLayout title="Joner Technique Test | How Good Are You?" description="Take the free Joner Football technique test. Find out where your technique ranks among footballers worldwide.">
 
   <!-- EMAIL GATE SECTION -->
-  <section id="gate" class="min-h-screen flex items-center justify-center bg-joner-black py-24">
-    <div class="max-w-xl mx-auto text-center px-4">
+  <section id="gate" class="relative min-h-[500px] flex items-center justify-center py-24 overflow-hidden">
+    <div class="absolute inset-0">
+      <img src="/images/training/lee-coaching-action.webp" alt="Joner Football training" class="w-full h-full object-cover object-center" />
+      <div class="absolute inset-0" style="background:rgba(0,0,0,0.7)"></div>
+    </div>
+    <div class="relative z-10 max-w-xl mx-auto text-center px-4">
       <h1 class="font-heading text-4xl md:text-6xl lg:text-7xl font-bold text-white uppercase mb-4 leading-tight">
         THE JONER FOOTBALL TECHNIQUE TEST
       </h1>
