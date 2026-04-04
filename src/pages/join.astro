@@ -7,6 +7,163 @@ const pricingSchema = {
   "name": "Join Joner Football App",
   "description": "Choose your plan and start training with the world's #1 football training app."
 }
+
+const plans = [
+  {
+    name: 'Monthly',
+    badge: 'Perfect for trying us out',
+    price: '$23.99',
+    period: '/month',
+    trial: '7-day FREE trial',
+    cta: 'Start Free Trial',
+    ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
+    highlight: false,
+    features: [
+      { name: '1,500+ Training Videos', included: true },
+      { name: 'New Content Weekly', included: true },
+      { name: 'Daily Challenges', included: true },
+      { name: 'Community Access', included: true },
+      { name: 'Live Sessions', included: true },
+      { name: 'Follow-along Training Programs', included: true },
+      { name: 'Age Specific Training Content', included: true },
+      { name: 'Create Playlist', included: true },
+      { name: 'Offline Downloads', included: true },
+      { name: 'Watch History', included: true },
+      { name: 'Streaks and Badges', included: true },
+      { name: 'Create Notes', included: true },
+      { name: 'Free Trial', included: true },
+      { name: 'DM Lee Directly', included: false },
+      { name: 'Team Training', included: false },
+      { name: 'Coaches Section', included: false },
+    ],
+  },
+  {
+    name: 'Annual',
+    badge: 'MOST POPULAR',
+    badgeSub: 'Save $83/year',
+    price: '$204.99',
+    period: '/year',
+    trial: '7-day FREE trial',
+    cta: 'Start Free Trial',
+    ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
+    highlight: true,
+    features: [
+      { name: '1,500+ Training Videos', included: true },
+      { name: 'New Content Weekly', included: true },
+      { name: 'Daily Challenges', included: true },
+      { name: 'Community Access', included: true },
+      { name: 'Live Sessions', included: true },
+      { name: 'Follow-along Training Programs', included: true },
+      { name: 'Age Specific Training Content', included: true },
+      { name: 'Create Playlist', included: true },
+      { name: 'Offline Downloads', included: true },
+      { name: 'Watch History', included: true },
+      { name: 'Streaks and Badges', included: true },
+      { name: 'Create Notes', included: true },
+      { name: 'Free Trial', included: true },
+      { name: 'DM Lee Directly', included: true },
+      { name: 'Team Training Videos', included: true },
+      { name: 'Coaches Section', included: false },
+    ],
+  },
+  {
+    name: 'Coaches',
+    badge: 'Everything + Coaches Content',
+    badgeLabel: 'For The Coaches',
+    price: '$319.99',
+    period: '/year',
+    trial: 'Full access from day one',
+    cta: 'Join Now',
+    ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
+    highlight: false,
+    features: [
+      { name: '1,500+ Training Videos', included: true },
+      { name: 'New Content Weekly', included: true },
+      { name: 'Daily Challenges', included: true },
+      { name: 'Community Access', included: true },
+      { name: 'Live Sessions', included: true },
+      { name: 'Follow-along Training Programs', included: true },
+      { name: 'Age Specific Training Content', included: true },
+      { name: 'Create Playlist', included: true },
+      { name: 'Offline Downloads', included: true },
+      { name: 'Watch History', included: true },
+      { name: 'Streaks and Badges', included: true },
+      { name: 'Create Notes', included: true },
+      { name: 'DM Lee Directly', included: true },
+      { name: 'Team Training Videos', included: true },
+      { name: 'Coaches-Only Section', included: true },
+      { name: 'PDF Season Plans', included: true },
+      { name: 'Advanced Team Training', included: true },
+      { name: 'Pro Player Sessions', included: true },
+      { name: 'Workshop Discounts', included: true },
+      { name: 'Coaching Templates', included: true },
+    ],
+  },
+]
+
+const teamFeatures = [
+  'Custom onboarding with Lee',
+  'Multi-seat Licences',
+  'Transferable seats',
+  'Bulk player access',
+  'Dedicated community page',
+  'Single-invoice for whole team',
+  'Flexible billing Monthly/Yearly',
+  'Priority support',
+  'Usage analytics',
+  'Dedicated account rep',
+  'Bespoke training plans',
+]
+
+const comparisonFeatures = [
+  { name: '1,500+ Training Videos', monthly: true, annual: true, coaches: true },
+  { name: 'New Videos Every Week', monthly: true, annual: true, coaches: true },
+  { name: 'Daily Challenges', monthly: true, annual: true, coaches: true },
+  { name: 'Community Access', monthly: true, annual: true, coaches: true },
+  { name: 'Live Training Sessions', monthly: true, annual: true, coaches: true },
+  { name: 'Follow-along Training Programs', monthly: true, annual: true, coaches: true },
+  { name: 'Age Specific Training Content', monthly: true, annual: true, coaches: true },
+  { name: 'Create Playlist', monthly: true, annual: true, coaches: true },
+  { name: 'Offline Downloads', monthly: true, annual: true, coaches: true },
+  { name: 'Watch History', monthly: true, annual: true, coaches: true },
+  { name: 'Streaks and Badges', monthly: true, annual: true, coaches: true },
+  { name: 'Create Notes', monthly: true, annual: true, coaches: true },
+  { name: 'Free Trial', monthly: true, annual: true, coaches: false },
+  { name: 'DM Lee Directly', monthly: false, annual: true, coaches: true },
+  { name: 'Team Training Videos', monthly: false, annual: true, coaches: true },
+  { name: 'Advanced Team Training', monthly: false, annual: false, coaches: true },
+  { name: 'PDF Season Plans', monthly: false, annual: false, coaches: true },
+  { name: 'Coaches-Only Section', monthly: false, annual: false, coaches: true },
+  { name: 'Pro Player Training', monthly: false, annual: false, coaches: true },
+  { name: 'Workshop Discounts', monthly: false, annual: false, coaches: true },
+]
+
+const faqs = [
+  {
+    q: 'Can I cancel anytime?',
+    a: 'Yes. Cancel before your trial ends and you will not be charged.',
+  },
+  {
+    q: 'What is the difference between Monthly and Annual?',
+    a: 'Same full access. Annual saves you $83 per year.',
+  },
+  {
+    q: 'What do Coaches get that players do not?',
+    a: 'The full coaching library including session plans, PDF season plans, advanced team training, and coaching templates.',
+  },
+  {
+    q: 'Can I use it offline?',
+    a: 'Yes. Download any session to your phone.',
+  },
+  {
+    q: 'Is there a family plan?',
+    a: 'Not yet. Each subscription covers one account.',
+  },
+  {
+    q: 'Can I DM Lee directly?',
+    a: 'Yes, Annual and Coaches members can DM Lee directly in the app.',
+  },
+]
 ---
 
 <BaseLayout
@@ -16,76 +173,107 @@ const pricingSchema = {
 >
 
   <!-- Hero -->
-  <section class="bg-joner-black pt-20 pb-12">
+  <section class="bg-[#0A0A0A] pt-24 pb-14">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">CHOOSE YOUR PLAN</p>
-      <h1 class="font-heading text-5xl md:text-6xl font-bold text-white uppercase leading-none mb-6">
-        START TRAINING TODAY
+      <h1 class="font-heading text-5xl md:text-6xl font-bold text-white uppercase leading-none mb-4">
+        CHOOSE YOUR PLAN
       </h1>
       <p class="text-gray-300 font-body text-lg max-w-2xl mx-auto">
-        Your first 7 days are free. Cancel anytime. Pick the plan that fits your game.
+        Start your free trial today. Cancel anytime.
       </p>
     </div>
   </section>
 
   <!-- Pricing Cards -->
-  <section class="bg-joner-black pb-20">
+  <section class="bg-[#0A0A0A] pb-20">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
 
-        <!-- Monthly -->
-        <div class="bg-joner-gray border border-gray-800 p-8 flex flex-col">
-          <p class="text-gray-400 font-heading text-sm uppercase tracking-widest mb-2">MONTHLY</p>
-          <div class="mb-6">
-            <span class="font-heading text-4xl font-bold text-white">$23.99</span>
-            <span class="text-gray-400 font-body text-sm">/month</span>
-          </div>
-          <p class="text-gray-400 font-body text-sm leading-relaxed mb-8 flex-1">
-            Full access to every drill, session, and program.
-          </p>
-          <a href="https://app.jonerfootball.com/join_us" class="btn-red text-center text-sm py-3 w-full">START FREE TRIAL</a>
-        </div>
+        {plans.map((plan) => (
+          <div class:list={[
+            'rounded-lg p-8 flex flex-col relative',
+            plan.highlight
+              ? 'bg-[#111111] border-2 border-[#CC0000] shadow-[0_0_40px_rgba(204,0,0,0.25)] lg:scale-105 lg:-my-2 z-10'
+              : 'bg-[#111111] border border-gray-800',
+          ]}>
+            {/* Badge */}
+            {plan.highlight ? (
+              <div class="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-[#CC0000] px-4 py-1.5 rounded-full">
+                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                <span class="font-heading text-xs font-bold text-white uppercase tracking-wider">MOST POPULAR</span>
+              </div>
+            ) : null}
 
-        <!-- Annual (Best Value) -->
-        <div class="bg-joner-gray border-2 border-joner-red p-8 flex flex-col relative shadow-[0_0_30px_rgba(227,6,19,0.2)]">
-          <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-joner-red px-4 py-1">
-            <span class="font-heading text-xs font-bold text-white uppercase tracking-wider">BEST VALUE</span>
+            {/* Plan name */}
+            <p class:list={[
+              'font-heading text-sm uppercase tracking-widest mb-1',
+              plan.highlight ? 'text-[#CC0000] mt-2' : 'text-gray-400',
+            ]}>
+              {plan.badgeLabel || plan.name}
+            </p>
+
+            {/* Sub badge */}
+            <p class="text-gray-500 font-body text-xs mb-4">{plan.badge}{plan.badgeSub ? ` · ${plan.badgeSub}` : ''}</p>
+
+            {/* Price */}
+            <div class="mb-2">
+              <span class="font-heading text-4xl font-bold text-white">{plan.price}</span>
+              <span class="text-gray-400 font-body text-sm">{plan.period}</span>
+            </div>
+
+            {/* Trial */}
+            <p class="text-gray-400 font-body text-sm mb-6">{plan.trial}</p>
+
+            {/* CTA */}
+            <a
+              href={plan.ctaUrl}
+              class="bg-[#CC0000] hover:bg-[#AA0000] text-white font-heading text-sm uppercase tracking-wider px-6 py-3.5 text-center transition-colors mb-8 rounded"
+            >
+              {plan.cta}
+            </a>
+
+            {/* Features */}
+            <ul class="space-y-3 flex-1">
+              {plan.features.map((f) => (
+                <li class="flex items-start gap-2.5 text-sm font-body">
+                  {f.included ? (
+                    <svg class="w-5 h-5 text-[#22C55E] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  ) : (
+                    <svg class="w-5 h-5 text-[#6B7280] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  )}
+                  <span class={f.included ? 'text-gray-200' : 'text-gray-500'}>{f.name}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-2">ANNUAL</p>
+        ))}
+
+        {/* Teams and Clubs Card */}
+        <div class="bg-[#111111] border border-gray-800 rounded-lg p-8 flex flex-col">
+          <p class="text-gray-400 font-heading text-sm uppercase tracking-widest mb-1">Teams and Clubs</p>
+          <p class="text-gray-500 font-body text-xs mb-4">For teams, academies and clubs</p>
+
           <div class="mb-2">
-            <span class="font-heading text-4xl font-bold text-white">$204.99</span>
-            <span class="text-gray-400 font-body text-sm">/year</span>
+            <span class="font-heading text-3xl font-bold text-white">Custom pricing</span>
           </div>
-          <p class="text-joner-red font-body text-sm font-semibold mb-6">Less than $4 a week</p>
-          <p class="text-gray-400 font-body text-sm leading-relaxed mb-8 flex-1">
-            Everything in Monthly. Save 29% with annual billing.
-          </p>
-          <a href="https://app.jonerfootball.com/join_us" class="btn-red text-center text-sm py-3 w-full">START FREE TRIAL</a>
-        </div>
 
-        <!-- Coaches -->
-        <div class="bg-joner-gray border border-gray-800 p-8 flex flex-col">
-          <p class="text-gray-400 font-heading text-sm uppercase tracking-widest mb-2">COACHES</p>
-          <div class="mb-6">
-            <span class="font-heading text-4xl font-bold text-white">$319.99</span>
-            <span class="text-gray-400 font-body text-sm">/year</span>
-          </div>
-          <p class="text-gray-400 font-body text-sm leading-relaxed mb-8 flex-1">
-            Full access plus the complete coaches library. Session plans, progressions, small group formats.
-          </p>
-          <a href="https://app.jonerfootball.com/join_us" class="btn-red text-center text-sm py-3 w-full">START COACHING</a>
-        </div>
+          <p class="text-gray-400 font-body text-sm mb-6">Bulk discounts available</p>
 
-        <!-- Clubs & Academies -->
-        <div class="bg-joner-gray border border-gray-800 p-8 flex flex-col">
-          <p class="text-gray-400 font-heading text-sm uppercase tracking-widest mb-2">CLUBS AND ACADEMIES</p>
-          <div class="mb-6">
-            <span class="font-heading text-4xl font-bold text-white">Contact Us</span>
-          </div>
-          <p class="text-gray-400 font-body text-sm leading-relaxed mb-8 flex-1">
-            Custom pricing for teams, clubs, and academy programs. Bulk licences available.
-          </p>
-          <a href="mailto:leejones@jonerfootball.com" class="btn-outline text-center text-sm py-3 w-full">GET IN TOUCH</a>
+          <a
+            href="https://jonerfootball.com/clubpricing/"
+            class="bg-[#CC0000] hover:bg-[#AA0000] text-white font-heading text-sm uppercase tracking-wider px-6 py-3.5 text-center transition-colors mb-8 rounded"
+          >
+            Contact Sales
+          </a>
+
+          <ul class="space-y-3 flex-1">
+            {teamFeatures.map((f) => (
+              <li class="flex items-start gap-2.5 text-sm font-body">
+                <svg class="w-5 h-5 text-[#22C55E] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                <span class="text-gray-200">{f}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
       </div>
@@ -93,87 +281,54 @@ const pricingSchema = {
   </section>
 
   <!-- Comparison Table -->
-  <section class="bg-joner-gray py-20 md:py-28">
+  <section class="bg-[#111111] py-20 md:py-28">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-12">
-        <h2 class="section-heading text-white">COMPARE PLANS</h2>
+        <h2 class="font-heading text-3xl md:text-4xl font-bold text-white uppercase">COMPARE PLANS</h2>
       </div>
+
+      {/* Mobile rotate hint */}
+      <p class="text-gray-500 font-body text-sm text-center mb-6 md:hidden">
+        Rotate your phone to landscape to see the full comparison table
+      </p>
 
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[640px]">
           <thead>
             <tr class="border-b border-gray-700">
               <th class="py-4 px-4 font-heading text-sm text-gray-400 uppercase tracking-wider">Feature</th>
-              <th class="py-4 px-4 font-heading text-sm text-white uppercase tracking-wider text-center">Monthly</th>
-              <th class="py-4 px-4 font-heading text-sm text-joner-red uppercase tracking-wider text-center">Annual</th>
-              <th class="py-4 px-4 font-heading text-sm text-white uppercase tracking-wider text-center">Coaches</th>
-              <th class="py-4 px-4 font-heading text-sm text-white uppercase tracking-wider text-center">Clubs</th>
+              <th class="py-4 px-4 font-heading text-sm text-white uppercase tracking-wider text-center">Monthly<br/><span class="text-gray-500 text-xs font-body normal-case">$23.99/mo</span></th>
+              <th class="py-4 px-4 font-heading text-sm text-[#CC0000] uppercase tracking-wider text-center">Annual<br/><span class="text-gray-500 text-xs font-body normal-case">$204.99/yr</span></th>
+              <th class="py-4 px-4 font-heading text-sm text-white uppercase tracking-wider text-center">Coaches<br/><span class="text-gray-500 text-xs font-body normal-case">$319.99/yr</span></th>
             </tr>
           </thead>
           <tbody class="font-body text-sm">
-            <tr class="border-b border-gray-800">
-              <td class="py-3 px-4 text-gray-300">1,500+ Drills</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-            </tr>
-            <tr class="border-b border-gray-800">
-              <td class="py-3 px-4 text-gray-300">Session Plans</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-            </tr>
-            <tr class="border-b border-gray-800">
-              <td class="py-3 px-4 text-gray-300">Follow-Along Programs</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-            </tr>
-            <tr class="border-b border-gray-800">
-              <td class="py-3 px-4 text-gray-300">Daily Challenges</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-            </tr>
-            <tr class="border-b border-gray-800">
-              <td class="py-3 px-4 text-gray-300">Offline Downloads</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-            </tr>
-            <tr class="border-b border-gray-800">
-              <td class="py-3 px-4 text-gray-300">Coaches Library</td>
-              <td class="py-3 px-4 text-center text-gray-600">N</td>
-              <td class="py-3 px-4 text-center text-gray-600">N</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-            </tr>
-            <tr class="border-b border-gray-800">
-              <td class="py-3 px-4 text-gray-300">Small Group Formats</td>
-              <td class="py-3 px-4 text-center text-gray-600">N</td>
-              <td class="py-3 px-4 text-center text-gray-600">N</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-            </tr>
-            <tr class="border-b border-gray-800">
-              <td class="py-3 px-4 text-gray-300">Bulk Licences</td>
-              <td class="py-3 px-4 text-center text-gray-600">N</td>
-              <td class="py-3 px-4 text-center text-gray-600">N</td>
-              <td class="py-3 px-4 text-center text-gray-600">N</td>
-              <td class="py-3 px-4 text-center text-green-400">Y</td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 text-gray-300">Free Trial</td>
-              <td class="py-3 px-4 text-center text-gray-300">7 days</td>
-              <td class="py-3 px-4 text-center text-gray-300">7 days</td>
-              <td class="py-3 px-4 text-center text-gray-300">7 days</td>
-              <td class="py-3 px-4 text-center text-gray-600">N</td>
-            </tr>
+            {comparisonFeatures.map((row, i) => (
+              <tr class={i < comparisonFeatures.length - 1 ? 'border-b border-gray-800' : ''}>
+                <td class="py-3 px-4 text-gray-300">{row.name}</td>
+                <td class="py-3 px-4 text-center">
+                  {row.monthly ? (
+                    <svg class="w-5 h-5 text-[#22C55E] inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  ) : (
+                    <svg class="w-5 h-5 text-[#6B7280] inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  )}
+                </td>
+                <td class="py-3 px-4 text-center">
+                  {row.annual ? (
+                    <svg class="w-5 h-5 text-[#22C55E] inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  ) : (
+                    <svg class="w-5 h-5 text-[#6B7280] inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  )}
+                </td>
+                <td class="py-3 px-4 text-center">
+                  {row.coaches ? (
+                    <svg class="w-5 h-5 text-[#22C55E] inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  ) : (
+                    <svg class="w-5 h-5 text-[#6B7280] inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -181,44 +336,26 @@ const pricingSchema = {
   </section>
 
   <!-- FAQ -->
-  <section class="bg-joner-black py-20 md:py-28">
+  <section class="bg-[#0A0A0A] py-20 md:py-28">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-12">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">FAQ</p>
-        <h2 class="section-heading text-white">COMMON QUESTIONS</h2>
+        <p class="text-[#CC0000] font-heading text-sm uppercase tracking-widest mb-3">FAQ</p>
+        <h2 class="font-heading text-3xl md:text-4xl font-bold text-white uppercase">COMMON QUESTIONS</h2>
       </div>
 
       <div class="space-y-6">
-        <div class="border-b border-gray-800 pb-6">
-          <h3 class="font-heading text-white font-semibold text-lg mb-2">Can I cancel anytime?</h3>
-          <p class="text-gray-400 font-body">Yes. Cancel before your trial ends and you will not be charged.</p>
-        </div>
-
-        <div class="border-b border-gray-800 pb-6">
-          <h3 class="font-heading text-white font-semibold text-lg mb-2">What is the difference between Monthly and Annual?</h3>
-          <p class="text-gray-400 font-body">Same access. Annual saves you 29%.</p>
-        </div>
-
-        <div class="border-b border-gray-800 pb-6">
-          <h3 class="font-heading text-white font-semibold text-lg mb-2">What do coaches get that players do not?</h3>
-          <p class="text-gray-400 font-body">The full coaching library including session plans, progressions, and formats designed for groups.</p>
-        </div>
-
-        <div class="border-b border-gray-800 pb-6">
-          <h3 class="font-heading text-white font-semibold text-lg mb-2">Can I use it offline?</h3>
-          <p class="text-gray-400 font-body">Yes. Download any session to your phone.</p>
-        </div>
-
-        <div class="pb-6">
-          <h3 class="font-heading text-white font-semibold text-lg mb-2">Is there a family plan?</h3>
-          <p class="text-gray-400 font-body">Not yet. Each subscription is for one account.</p>
-        </div>
+        {faqs.map((faq, i) => (
+          <div class={i < faqs.length - 1 ? 'border-b border-gray-800 pb-6' : 'pb-6'}>
+            <h3 class="font-heading text-white font-semibold text-lg mb-2">{faq.q}</h3>
+            <p class="text-gray-400 font-body">{faq.a}</p>
+          </div>
+        ))}
       </div>
     </div>
   </section>
 
   <!-- Final CTA -->
-  <section class="bg-joner-red py-16 md:py-20">
+  <section class="bg-[#CC0000] py-16 md:py-20">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
       <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase mb-4">
         READY TO TRAIN?
@@ -226,7 +363,7 @@ const pricingSchema = {
       <p class="text-white/80 font-body text-lg mb-8">
         7 days free. No commitment. Just better football.
       </p>
-      <a href="https://app.jonerfootball.com/join_us" class="bg-white text-joner-red font-heading text-base uppercase tracking-wider px-8 py-4 hover:bg-gray-100 transition-colors inline-block">
+      <a href="https://app.jonerfootball.com/checkout/new?o=183092" class="bg-white text-[#CC0000] font-heading text-base uppercase tracking-wider px-8 py-4 hover:bg-gray-100 transition-colors inline-block rounded">
         START FREE TRIAL
       </a>
     </div>
