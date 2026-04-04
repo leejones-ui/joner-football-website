@@ -103,18 +103,25 @@ const appSchema = {
   <!-- Social proof bar -->
   <section class="bg-joner-black border-y border-gray-800 py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+      <div class="flex flex-wrap justify-center items-center gap-y-6 gap-x-4 sm:gap-x-6 text-center">
         <div>
-          <div class="font-heading text-3xl text-joner-red font-bold">380,000+</div>
-          <div class="text-gray-500 text-xs uppercase tracking-wider font-body mt-1">YouTube Subscribers</div>
+          <div class="font-heading text-3xl text-white font-bold">380,000+</div>
+          <div class="text-[#999999] text-xs uppercase tracking-wider font-body mt-1">YouTube Subscribers</div>
         </div>
+        <span class="hidden sm:block text-[#CC0000] text-2xl leading-none">&bull;</span>
         <div>
           <div class="font-heading text-3xl text-white font-bold">1,500+</div>
-          <div class="text-gray-500 text-xs uppercase tracking-wider font-body mt-1">Drills and Sessions</div>
+          <div class="text-[#999999] text-xs uppercase tracking-wider font-body mt-1">Drills and Sessions</div>
         </div>
+        <span class="hidden sm:block text-[#CC0000] text-2xl leading-none">&bull;</span>
+        <div>
+          <div class="font-heading text-3xl text-white font-bold">50,000+</div>
+          <div class="text-[#999999] text-xs uppercase tracking-wider font-body mt-1">Downloads</div>
+        </div>
+        <span class="hidden sm:block text-[#CC0000] text-2xl leading-none">&bull;</span>
         <div>
           <div class="font-heading text-3xl text-white font-bold">50+</div>
-          <div class="text-gray-500 text-xs uppercase tracking-wider font-body mt-1">Countries Worldwide</div>
+          <div class="text-[#999999] text-xs uppercase tracking-wider font-body mt-1">Countries Worldwide</div>
         </div>
       </div>
     </div>
@@ -206,6 +213,35 @@ const appSchema = {
     </div>
   </section>
 
+  <!-- LEE GUARANTEE SECTION -->
+  <section class="bg-joner-gray py-20 md:py-28 border-t-4 border-[#CC0000]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div>
+          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">FROM THE FOUNDER</p>
+          <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">MY PERSONAL GUARANTEE</h2>
+          <p class="text-gray-300 font-body text-lg mb-6">I have been coaching players, coaches and parents for over 20 years. I built this app for one reason.</p>
+          <p class="text-gray-400 font-body text-base leading-relaxed mb-8">
+            Whether you are a player trying to reach the next level, a coach who wants to run better sessions, or a parent wanting to give your child every possible advantage. I guarantee this app will make a difference. Follow the programs. Do the work. If you are not improving within 100 days, I will extend your membership for free. That is how confident I am.
+          </p>
+          <div class="mb-8">
+            <p class="font-heading text-2xl text-white italic">Lee Jones</p>
+            <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-1">Founder, Joner Football</p>
+          </div>
+          <a href="https://jonerfootball.com/join/" class="btn-red text-base px-8 py-4">START MY 100-DAY JOURNEY</a>
+        </div>
+        <div class="flex justify-center lg:justify-end">
+          <img
+            src="/images/programmes/lee-coaching-red.jpg"
+            alt="Lee Jones coaching on the pitch"
+            class="w-full max-w-md rounded-lg shadow-2xl"
+            loading="lazy"
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- SECTION 4: Feature Showcase -->
   <section class="bg-joner-gray py-20 md:py-28">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -243,6 +279,32 @@ const appSchema = {
           <h3 class="font-heading text-xl font-bold text-white mb-3">OFFLINE DOWNLOADS</h3>
           <p class="text-gray-400 font-body text-sm leading-relaxed">Download sessions to your phone. Train anywhere, even without wifi.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSIDE THE APP: Screenshots -->
+  <section class="bg-joner-black py-20 md:py-28">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">INSIDE THE APP</p>
+        <h2 class="section-heading text-white">EVERYTHING ORGANISED. EVERYTHING READY.</h2>
+      </div>
+
+      <div class="flex gap-6 overflow-x-auto pb-4 md:grid md:grid-cols-4 md:gap-8 md:overflow-visible md:pb-0 scrollbar-hide">
+        {[
+          { src: '/images/app/screenshot-1.webp', label: 'Drill Library' },
+          { src: '/images/app/screenshot-3.webp', label: 'Session Plans' },
+          { src: '/images/app/screenshot-5.webp', label: 'Programme View' },
+          { src: '/images/app/screenshot-7.webp', label: 'Daily Training' },
+        ].map((item) => (
+          <div class="flex-shrink-0 w-56 md:w-auto text-center">
+            <div class="bg-gray-900 border-[5px] border-gray-700 rounded-[2rem] overflow-hidden shadow-2xl">
+              <img src={item.src} alt={item.label} class="w-full h-auto" loading="lazy" />
+            </div>
+            <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-4">{item.label}</p>
+          </div>
+        ))}
       </div>
     </div>
   </section>
@@ -322,6 +384,28 @@ const appSchema = {
             <div class="text-gray-500 text-xs font-body mt-0.5">Melbourne, Australia</div>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEE COACHING IMAGES -->
+  <section class="bg-joner-black py-20 md:py-28">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="section-heading text-white">TRUSTED BY PLAYERS AND COACHES WORLDWIDE</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[
+          '/images/programmes/lee-coaching-black.jpg',
+          '/images/programmes/lee-coaching-red.jpg',
+          '/images/programmes/lee-coaching-group.jpg',
+        ].map((src) => (
+          <div class="relative aspect-square overflow-hidden rounded-lg">
+            <img src={src} alt="Lee Jones coaching" class="w-full h-full object-cover" loading="lazy" />
+            <div class="absolute inset-0 bg-black/20"></div>
+          </div>
+        ))}
       </div>
     </div>
   </section>
