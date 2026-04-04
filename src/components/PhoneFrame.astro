@@ -9,7 +9,7 @@ const { videoSrc, alt = 'App preview', class: className = '' } = Astro.props
 ---
 
 <div class:list={['phone-frame', className]}>
-  <div class="bg-joner-black border-[6px] border-gray-700 rounded-[2.5rem] overflow-hidden shadow-2xl relative">
+  <div class="bg-joner-black border-[6px] border-gray-700 rounded-[2.5rem] overflow-hidden shadow-2xl relative w-full h-full">
     <!-- Notch -->
     <div class="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-joner-black rounded-b-2xl z-10"></div>
     <!-- Video -->
@@ -18,7 +18,7 @@ const { videoSrc, alt = 'App preview', class: className = '' } = Astro.props
       muted
       loop
       playsinline
-      class="w-full h-full object-cover"
+      style="width:100%;height:100%;object-fit:cover"
       aria-label={alt}
     >
       <source src={videoSrc} type="video/mp4" />
