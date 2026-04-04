@@ -335,6 +335,29 @@ const faqs = [
     </div>
   </section>
 
+  <!-- Coaching Photos -->
+  <section class="bg-[#0A0A0A] py-20 md:py-28">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="font-heading text-3xl md:text-4xl font-bold text-white uppercase">TRUSTED BY PLAYERS AND COACHES WORLDWIDE</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[
+          { src: '/images/programmes/lee-coaching-black.jpg', caption: '1-on-1 Coaching' },
+          { src: '/images/programmes/lee-coaching-red.jpg', caption: 'Group Sessions' },
+          { src: '/images/programmes/lee-coaching-group.jpg', caption: 'Worldwide Impact' },
+        ].map((item) => (
+          <div class="relative aspect-square overflow-hidden rounded-lg group">
+            <img src={item.src} alt={item.caption} class="w-full h-full object-cover" loading="lazy" />
+            <div class="absolute inset-0 bg-black/30"></div>
+            <p class="absolute bottom-4 left-4 font-heading text-sm md:text-base text-white uppercase tracking-wider">{item.caption}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
   <!-- FAQ -->
   <section class="bg-[#0A0A0A] py-20 md:py-28">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
