@@ -20,7 +20,7 @@ const shorts = [
         <div class="flex-shrink-0 snap-start w-[160px] sm:w-[220px] md:w-[280px]">
           <div class="relative w-full" style="aspect-ratio: 9/16;">
             <iframe
-              srcdoc={`<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/${short.id}?autoplay=1><img src=https://img.youtube.com/vi/${short.id}/0.jpg alt='${short.title}'><span>&#x25BA;</span></a>`}
+              srcdoc={`<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img{position:absolute;width:100%;height:100%;object-fit:cover;top:0;left:0}span{position:absolute;width:100%;top:50%;transform:translateY(-50%);text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/${short.id}?autoplay=1><img src=https://img.youtube.com/vi/${short.id}/0.jpg alt='${short.title}'><span>&#x25BA;</span></a>`}
               src={`https://www.youtube.com/embed/${short.id}`}
               title={short.title}
               loading="lazy"
