@@ -116,110 +116,173 @@ const allSchemas = schema
 
     <!-- Mobile sticky bottom bar -->
     <div class="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-joner-black border-t border-gray-800 p-3">
-      <a href="/app" class="btn-red w-full text-center block text-sm">
+      <a href="https://jonerfootball.com/join/" class="btn-red w-full text-center block text-sm">
         Download the App
       </a>
     </div>
 
-    <!-- Brevo form handler -->
     <script is:inline>
       (function () {
-        document.querySelectorAll('[data-brevo-form]').forEach(function (form) {
-          if (form.hasAttribute('data-brevo-custom')) return;
+        var COMMON_DOMAINS = [
+          'gmail.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'yahoo.com', 'live.com',
+          'bigpond.com', 'me.com', 'mac.com', 'aol.com', 'yahoo.com.au', 'hotmail.com.au', 'outlook.com.au'
+        ];
 
-          form.addEventListener('submit', function (e) {
-            e.preventDefault();
+        function levenshtein(a, b) {
+          var matrix = [];
+          for (var i = 0; i <= b.length; i++) matrix[i] = [i];
+          for (var j = 0; j <= a.length; j++) matrix[0][j] = j;
+          for (var i2 = 1; i2 <= b.length; i2++) {
+            for (var j2 = 1; j2 <= a.length; j2++) {
+              if (b.charAt(i2 - 1) === a.charAt(j2 - 1)) matrix[i2][j2] = matrix[i2 - 1][j2 - 1];
+              else matrix[i2][j2] = Math.min(matrix[i2 - 1][j2 - 1] + 1, matrix[i2][j2 - 1] + 1, matrix[i2 - 1][j2] + 1);
+            }
+          }
+          return matrix[b.length][a.length];
+        }
 
-            var btn = form.querySelector('button[type="submit"]');
-            var originalText = btn.textContent;
+        function getEmailSuggestion(email) {
+          var trimmed = String(email || '').trim().toLowerCase();
+          if (!trimmed || trimmed.indexOf('@') === -1) return null;
+          var parts = trimmed.split('@');
+          if (parts.length !== 2) return null;
+          var local = parts[0];
+          var domain = parts[1];
+          if (!local || !domain) return null;
 
-            var formData = new FormData(form);
-            var email = formData.get('email') || '';
-            var firstName = formData.get('first_name') || '';
-            var listId = form.getAttribute('data-list-id') || '2';
+          var exactFixes = {
+            'gmal.com': 'gmail.com', 'gmial.com': 'gmail.com', 'gmai.com': 'gmail.com', 'gmail.con': 'gmail.com', 'gmail,com': 'gmail.com', 'gnail.com': 'gmail.com',
+            'hotmial.com': 'hotmail.com', 'hotmal.com': 'hotmail.com', 'hotmail.con': 'hotmail.com',
+            'outlok.com': 'outlook.com', 'outloo.com': 'outlook.com', 'outlook.con': 'outlook.com',
+            'iclod.com': 'icloud.com', 'icloud.con': 'icloud.com',
+            'yaho.com': 'yahoo.com', 'yahoo.con': 'yahoo.com',
+            'bigpond.con': 'bigpond.com', 'live.con': 'live.com'
+          };
 
-            btn.disabled = true;
-            btn.textContent = 'Sending...';
-            btn.classList.add('opacity-70', 'cursor-not-allowed');
+          if (exactFixes[domain]) return local + '@' + exactFixes[domain];
 
-            fetch('/api/subscribe', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: email, firstName: firstName, listId: Number(listId) }),
-            })
-              .then(function (res) { return res.json(); })
+          for (var i = 0; i < COMMON_DOMAINS.length; i++) {
+            if (levenshtein(domain, COMMON_DOMAINS[i]) <= 2) return local + '@' + COMMON_DOMAINS[i];
+          }
+          return null;
+        }
+
+        function validateEmail(email) {
+          var trimmed = String(email || '').trim().toLowerCase();
+          var basicPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+          if (!trimmed) return { valid: false, message: 'Email is required.' };
+          if (!basicPattern.test(trimmed)) return { valid: false, message: 'Enter a valid email address.' };
+          if (trimmed.indexOf('..') !== -1) return { valid: false, message: 'Enter a valid email address.' };
+          var domain = trimmed.split('@')[1] || '';
+          var tld = domain.split('.').pop();
+          if (!tld || tld.length < 2) return { valid: false, message: 'Enter a valid email address.' };
+          var suggestion = getEmailSuggestion(trimmed);
+          if (suggestion && suggestion !== trimmed) return { valid: false, message: 'Did you mean ' + suggestion + '?', suggestion: suggestion };
+          return { valid: true, email: trimmed };
+        }
+
+        function ensureFeedbackNode(input) {
+          var next = input.nextElementSibling;
+          if (next && next.classList && next.classList.contains('email-feedback')) return next;
+          var node = document.createElement('p');
+          node.className = 'email-feedback text-xs font-body mt-2';
+          input.insertAdjacentElement('afterend', node);
+          return node;
+        }
+
+        function setFeedback(input, state) {
+          if (!input) return state;
+          var node = ensureFeedbackNode(input);
+          if (state.valid) {
+            node.textContent = '';
+            node.className = 'email-feedback text-xs font-body mt-2';
+            input.setCustomValidity('');
+          } else {
+            node.textContent = state.message || 'Enter a valid email address.';
+            node.className = 'email-feedback text-xs font-body mt-2 text-amber-400';
+            input.setCustomValidity(state.message || 'Enter a valid email address.');
+          }
+          return state;
+        }
+
+        function protectEmailInput(input) {
+          if (!input || input._emailGuardInit) return;
+          input._emailGuardInit = true;
+          function runValidation() {
+            var value = String(input.value || '').trim();
+            if (!value) {
+              input.setCustomValidity('');
+              var node = input.nextElementSibling;
+              if (node && node.classList && node.classList.contains('email-feedback')) node.textContent = '';
+              return { valid: true };
+            }
+            return setFeedback(input, validateEmail(value));
+          }
+          input.addEventListener('blur', runValidation);
+          input.addEventListener('input', function () {
+            input.setCustomValidity('');
+            var node = input.nextElementSibling;
+            if (node && node.classList && node.classList.contains('email-feedback')) node.textContent = '';
+          });
+        }
+
+        window.JonerEmailGuard = { validateEmail: validateEmail, setFeedback: setFeedback, protectEmailInput: protectEmailInput };
+
+        function initBrevoForms() {
+          document.querySelectorAll('[data-brevo-form] input[type="email"], [data-brevo-form] input[name="email"]').forEach(protectEmailInput);
+          document.querySelectorAll('[data-brevo-form]').forEach(function (form) {
+            if (form._brevoInit || form.hasAttribute('data-brevo-custom')) return;
+            form._brevoInit = true;
+            form.addEventListener('submit', function (e) {
+              e.preventDefault();
+              var btn = form.querySelector('button[type="submit"]');
+              var originalText = btn ? btn.textContent : 'Submit';
+              var formData = new FormData(form);
+              var emailInput = form.querySelector('input[name="email"], input[type="email"]');
+              var rawEmail = formData.get('email') || '';
+              var validation = validateEmail(rawEmail);
+              var firstName = formData.get('first_name') || formData.get('firstName') || formData.get('parent_name') || '';
+              var listId = Number(form.getAttribute('data-list-id') || '2');
+
+              if (emailInput) setFeedback(emailInput, validation);
+              if (!validation.valid) {
+                if (emailInput && typeof emailInput.reportValidity === 'function') emailInput.reportValidity();
+                return;
+              }
+
+              if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Sending...';
+                btn.classList.add('opacity-70', 'cursor-not-allowed');
+              }
+
+              fetch('/api/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: validation.email, firstName: firstName, listId: listId })
+              })
+              .then(function (r) { return r.json(); })
               .then(function (data) {
-                if (data.success) {
-                  showSuccess(form);
+                if (data && data.success) {
+                  form.innerHTML = '<p style="color:#4ade80;font-size:14px;padding:8px 0;">Done. Welcome to the team.</p>';
                 } else {
-                  showError(btn, originalText);
+                  throw new Error((data && data.error) || 'Something went wrong');
                 }
               })
-              .catch(function () {
-                showError(btn, originalText);
+              .catch(function (err) {
+                if (emailInput && err && err.message) setFeedback(emailInput, { valid: false, message: err.message });
+                if (btn) {
+                  btn.disabled = false;
+                  btn.textContent = originalText;
+                  btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                }
               });
-
-            function showSuccess(form) {
-              var msg = document.createElement('div');
-              msg.className = 'text-center py-6';
-              msg.innerHTML =
-                '<div class="text-green-400 font-heading text-lg uppercase tracking-wider mb-2">Thank you!</div>' +
-                '<p class="text-gray-400 font-body text-sm">We\'ll be in touch.</p>';
-              form.innerHTML = '';
-              form.appendChild(msg);
-            }
-
-            function showError(btn, originalText) {
-              btn.disabled = false;
-              btn.textContent = originalText;
-              btn.classList.remove('opacity-70', 'cursor-not-allowed');
-              if (!form.querySelector('.brevo-error')) {
-                var err = document.createElement('p');
-                err.className = 'brevo-error text-red-400 text-sm font-body text-center mt-3';
-                err.textContent = 'Something went wrong. Please try again.';
-                btn.parentNode.insertBefore(err, btn.nextSibling);
-                setTimeout(function () {
-                  if (err.parentNode) err.parentNode.removeChild(err);
-                }, 5000);
-              }
-            }
+            });
           });
-        });
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initBrevoForms);
+        else initBrevoForms();
       })();
     </script>
-  <!-- Global Brevo form handler -->
-  <script is:inline>
-    (function () {
-      function initBrevoForms() {
-        document.querySelectorAll('[data-brevo-form]').forEach(function (form) {
-          if (form._brevoInit) return;
-          form._brevoInit = true;
-          form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            var btn = form.querySelector('button[type="submit"]');
-            var formData = new FormData(form);
-            var email = formData.get('email') || '';
-            var firstName = formData.get('first_name') || formData.get('firstName') || '';
-            var listId = Number(form.getAttribute('data-list-id') || '2');
-            if (!email) return;
-            if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
-            fetch('/api/subscribe', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: email, firstName: firstName, listId: listId })
-            })
-            .then(function(r) { return r.json(); })
-            .then(function() { form.innerHTML = '<p style="color:#4ade80;font-size:14px;padding:8px 0;">Done. Welcome to the team.</p>'; })
-            .catch(function() { if (btn) { btn.disabled = false; btn.textContent = 'Try Again'; } });
-          });
-        });
-      }
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initBrevoForms);
-      } else {
-        initBrevoForms();
-      }
-    })();
-  </script>
   </body>
 </html>
