@@ -2,7 +2,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
 
-const checkoutUrl = 'https://app.jonerfootball.com/checkout/new?o=183092&utm_source=website&utm_medium=programs_page'
+const checkoutUrl = 'https://jonerfootball.com/join/?utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme'
+const annualCheckoutUrl = 'https://app.jonerfootball.com/checkout/new?o=183092&utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme_annual'
 
 const programSchema = {
   "@context": "https://schema.org",
@@ -78,9 +79,14 @@ const faqs = [
       <p class="text-gray-300 font-body text-lg md:text-xl mb-8 max-w-2xl mx-auto">
         100 Days From Now, Your Child Will Be Unrecognisable On The Pitch
       </p>
-      <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base md:text-lg px-10 py-4 text-center">
-        Start the Program Now
-      </a>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base md:text-lg px-10 py-4 text-center">
+          Start Your Free Trial
+        </a>
+        <a href={annualCheckoutUrl} target="_blank" rel="noopener noreferrer" class="border border-white text-white hover:bg-white hover:text-joner-black transition px-8 py-4 font-heading uppercase tracking-wide text-sm text-center w-full sm:w-auto">
+          Go Annual Now
+        </a>
+      </div>
     </div>
   </section>
 
@@ -147,7 +153,7 @@ const faqs = [
       <!-- CTA -->
       <div class="text-center mt-14">
         <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red w-full sm:w-auto text-base md:text-lg px-10 py-4 text-center inline-block">
-          Start the Program Now
+          Start Your Free Trial
         </a>
       </div>
     </div>
@@ -169,7 +175,7 @@ const faqs = [
       <!-- CTA -->
       <div class="text-center mt-10">
         <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red w-full sm:w-auto text-base md:text-lg px-10 py-4 text-center inline-block">
-          Start the Program Now
+          Start Your Free Trial
         </a>
       </div>
     </div>
@@ -196,7 +202,7 @@ const faqs = [
       <!-- CTA -->
       <div class="text-center mt-10">
         <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red w-full sm:w-auto text-base md:text-lg px-10 py-4 text-center inline-block">
-          Start the Program Now
+          Start Your Free Trial
         </a>
       </div>
     </div>
@@ -490,4 +496,23 @@ const faqs = [
       height: auto;
     }
   </style>
+  <script is:inline>
+    document.addEventListener("DOMContentLoaded", () => {
+      const trackClicks = (selector, eventName, destination) => {
+        document.querySelectorAll(selector).forEach((link) => {
+          link.addEventListener("click", () => {
+            if (typeof window !== "undefined" && typeof window.fbq === "function") {
+              window.fbq("trackCustom", eventName, {
+                page: "programmes",
+                destination,
+              })
+            }
+          })
+        })
+      }
+
+      trackClicks('a[href*="utm_campaign=100_day_programme"]', 'ProgrammesCTAClick', 'join')
+      trackClicks('a[href*="utm_campaign=100_day_programme_annual"]', 'ProgrammesAnnualClick', 'annual_checkout')
+    })
+  </script>
 </BaseLayout>

@@ -3,6 +3,55 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
+  function levenshtein(a, b) {
+    const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i])
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b[i - 1] === a[j - 1]) matrix[i][j] = matrix[i - 1][j - 1]
+        else matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+      }
+    }
+    return matrix[b.length][a.length]
+  }
+
+  function suggestEmail(email) {
+    const commonDomains = [
+      'gmail.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'yahoo.com', 'live.com',
+      'bigpond.com', 'me.com', 'mac.com', 'aol.com', 'yahoo.com.au', 'hotmail.com.au', 'outlook.com.au'
+    ]
+    const exactFixes = {
+      'gmal.com': 'gmail.com', 'gmial.com': 'gmail.com', 'gmai.com': 'gmail.com', 'gmail.con': 'gmail.com', 'gmail,com': 'gmail.com', 'gnail.com': 'gmail.com',
+      'hotmial.com': 'hotmail.com', 'hotmal.com': 'hotmail.com', 'hotmail.con': 'hotmail.com',
+      'outlok.com': 'outlook.com', 'outloo.com': 'outlook.com', 'outlook.con': 'outlook.com',
+      'iclod.com': 'icloud.com', 'icloud.con': 'icloud.com',
+      'yaho.com': 'yahoo.com', 'yahoo.con': 'yahoo.com',
+      'bigpond.con': 'bigpond.com', 'live.con': 'live.com'
+    }
+
+    const [local, domain] = String(email || '').split('@')
+    if (!local || !domain) return null
+    if (exactFixes[domain]) return `${local}@${exactFixes[domain]}`
+    for (const candidate of commonDomains) {
+      if (levenshtein(domain, candidate) <= 2) return `${local}@${candidate}`
+    }
+    return null
+  }
+
+  function validateEmail(rawEmail) {
+    const email = String(rawEmail || '').trim().toLowerCase()
+    const basicPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+    if (!email) return { valid: false, message: 'Email is required' }
+    if (!basicPattern.test(email)) return { valid: false, message: 'Enter a valid email address' }
+    if (email.includes('..')) return { valid: false, message: 'Enter a valid email address' }
+    const domain = email.split('@')[1] || ''
+    const tld = domain.split('.').pop()
+    if (!tld || tld.length < 2) return { valid: false, message: 'Enter a valid email address' }
+    const suggestion = suggestEmail(email)
+    if (suggestion && suggestion !== email) return { valid: false, message: `Did you mean ${suggestion}?`, suggestion }
+    return { valid: true, email }
+  }
+
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey) {
     return res.status(500).json({ error: 'Server configuration error' })
@@ -10,15 +59,16 @@ export default async function handler(req, res) {
 
   try {
     const { email, firstName, listId } = req.body
+    const validation = validateEmail(email)
 
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' })
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.message, suggestion: validation.suggestion || null })
     }
 
     const listIds = listId ? [Number(listId)] : [2]
 
     const body = {
-      email,
+      email: validation.email,
       listIds,
       updateEnabled: true,
     }
@@ -57,7 +107,7 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           sender: { name: 'Lee — Joner Football', email: 'leejones@jonerfootball.com' },
-          to: [{ email }],
+          to: [{ email: validation.email }],
           subject: 'Your 2 free sessions are inside',
           htmlContent: `
 <!DOCTYPE html>

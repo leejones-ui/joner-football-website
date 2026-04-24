@@ -162,7 +162,19 @@ const cards = [
               data._submitted = new Date().toISOString();
               try { var s = JSON.parse(localStorage.getItem('brevo_submissions') || '[]'); s.push(data); localStorage.setItem('brevo_submissions', JSON.stringify(s)); } catch(e){}
               btn.disabled = true; btn.textContent = 'Sending...';
+              var emailInput = form.querySelector('input[name="email"], input[type="email"]');
               var email = formData.get('email') || '';
+              if (window.JonerEmailGuard && emailInput) {
+                window.JonerEmailGuard.protectEmailInput(emailInput);
+                var validation = window.JonerEmailGuard.validateEmail(email);
+                window.JonerEmailGuard.setFeedback(emailInput, validation);
+                if (!validation.valid) {
+                  if (typeof emailInput.reportValidity === 'function') emailInput.reportValidity();
+                  btn.disabled = false; btn.textContent = 'Submit';
+                  return;
+                }
+                email = validation.email;
+              }
               var firstName = formData.get('first_name') || '';
               var listId = form.getAttribute('data-list-id') || '2';
               fetch('/api/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, firstName: firstName, listId: Number(listId) }) })
