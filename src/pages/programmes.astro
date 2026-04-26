@@ -42,22 +42,22 @@ const programs = [
   {
     title: 'Ball Mastery',
     text: 'Build control, confidence and comfort on the ball with daily touches and technical repetition.',
-    image: '/images/programmes/juggling-program.jpg'
+    image: '/images/programmes/claude-design/insideProgram.png'
   },
   {
     title: 'First Touch + Passing',
     text: 'Improve receiving, scanning, passing detail and the ability to play quicker under pressure.',
-    image: '/images/programmes/passing-first-touch-program.jpg'
+    image: '/images/programmes/claude-design/nightField.png'
   },
   {
     title: 'Weak Foot',
     text: 'Turn your weaker side into a real weapon with progressive weak foot training.',
-    image: '/images/programmes/weak-foot-program.jpg'
+    image: '/images/programmes/claude-design/coachingCircle.png'
   },
   {
     title: 'Score More Goals',
     text: 'Develop finishing technique, composure, ball striking and movement in front of goal.',
-    image: '/images/programmes/score-more-goals-program.jpg'
+    image: '/images/programmes/claude-design/leePhones.png'
   },
 ]
 
@@ -98,10 +98,8 @@ const faqs = [
   schema={programSchema}
 >
   <section class="relative overflow-hidden bg-joner-black">
-    <div class="absolute inset-0">
-      <img src="/images/programmes/lee-hero-jf.jpg" alt="Lee Jones coaching a Joner Football session" class="h-full w-full object-cover opacity-45" style="object-position: 70% center;" />
-      <div class="absolute inset-0 bg-gradient-to-b from-joner-black/75 via-joner-black/80 to-joner-black"></div>
-    </div>
+    <div class="absolute -right-32 -top-20 hidden h-[900px] w-[520px] rotate-12 bg-joner-red/25 lg:block"></div>
+    <div class="absolute right-28 top-0 hidden h-full w-1 rotate-12 bg-joner-red lg:block"></div>
 
     <div class="relative z-10 mx-auto grid min-h-[620px] max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 lg:py-24">
       <div>
@@ -122,8 +120,8 @@ const faqs = [
       </div>
 
       <div class="relative hidden lg:block">
-        <div class="border-2 border-joner-red bg-joner-black p-4 shadow-2xl shadow-black/50">
-          <img src="/images/programmes/programmes-category.jpg" alt="Joner Football App 100 Day Program screen" class="mx-auto max-h-[520px] w-auto object-contain" />
+        <div class="border-2 border-joner-red bg-joner-black shadow-2xl shadow-black/50">
+          <img src="/images/programmes/claude-design/hero100Days.png" alt="100 Days To Your Best Football design" class="mx-auto w-full object-contain" />
         </div>
         <div class="absolute -left-4 top-8 bg-joner-red px-5 py-3 font-heading text-sm font-bold uppercase tracking-[0.18em] text-white">Start Today</div>
       </div>
@@ -198,12 +196,39 @@ const faqs = [
     </div>
   </section>
 
-  <section class="bg-white py-16 text-joner-black md:py-24">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="mb-12 text-center">
-        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">How It Works</p>
-        <h2 class="section-heading text-joner-black">20 Minutes A Day. 100 Days Straight.</h2>
+  <section class="relative overflow-hidden bg-joner-black py-16 text-white md:py-24">
+    <img src="/images/programmes/claude-design/coachingCircle.png" alt="Coach Joner teaching a player huddle" loading="lazy" class="absolute inset-0 h-full w-full object-cover opacity-35" />
+    <div class="absolute inset-0 bg-gradient-to-b from-joner-black/70 to-joner-black/95"></div>
+    <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="max-w-3xl">
+        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">What You Get</p>
+        <h2 class="font-heading text-4xl font-bold uppercase leading-none text-white md:text-6xl">Academy Level Coaching, <span class="text-joner-red">In Your Pocket.</span></h2>
       </div>
+      <div class="mt-12 grid border border-white/15 md:grid-cols-4">
+        {audiences.map((item) => (
+          <div class="border-b border-white/15 bg-joner-black/55 p-7 md:border-b-0 md:border-r last:border-r-0">
+            <h3 class="mb-3 font-heading text-xl font-bold uppercase text-white">{item.title}</h3>
+            <p class="font-body text-sm leading-relaxed text-gray-300">{item.text}</p>
+          </div>
+        ))}
+        <div class="bg-joner-red p-7">
+          <h3 class="mb-3 font-heading text-xl font-bold uppercase text-white">The Standard</h3>
+          <p class="font-body text-sm leading-relaxed text-white/90">No random scrolling. No dead reps. One clear plan to follow for the next 100 days.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-white text-joner-black">
+    <div class="relative flex min-h-[360px] items-center overflow-hidden">
+      <img src="/images/programmes/claude-design/nightField.png" alt="Coach Joner on the pitch at night" loading="lazy" class="absolute inset-0 h-full w-full object-cover" />
+      <div class="absolute inset-0 bg-gradient-to-r from-joner-black/85 via-joner-black/60 to-joner-black/20"></div>
+      <div class="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-white"><span class="text-joner-red">■</span> How It Works</p>
+        <h2 class="max-w-3xl font-heading text-4xl font-bold uppercase leading-none text-white md:text-6xl">20 Minutes A Day. <span class="text-joner-red">100 Days Straight.</span></h2>
+      </div>
+    </div>
+    <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 md:py-24">
       <div class="grid gap-0 border-t-2 border-joner-black md:grid-cols-4">
         {steps.map(([title, text], index) => (
           <div class="border-b border-gray-200 p-7 md:border-r last:border-r-0">
@@ -218,7 +243,7 @@ const faqs = [
 
   <section class="bg-joner-black py-16 md:py-24">
     <div class="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
-      <img src="/images/programmes/lee-coaching-black.jpg" alt="Lee Jones coaching football players" loading="lazy" class="h-[420px] w-full object-cover" style="object-position: center 20%;" />
+      <img src="/images/programmes/claude-design/leePhones.png" alt="Coach Lee Jones with the Joner Football app" loading="lazy" class="w-full object-contain" />
       <div>
         <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Built By Lee Jones</p>
         <h2 class="section-heading mb-6 text-white">Pro Level Detail. Made Simple For Every Player.</h2>
