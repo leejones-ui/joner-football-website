@@ -1,358 +1,812 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import EmailCapture from '../components/EmailCapture.astro'
 
-const ctaUrl = 'https://app.jonerfootball.com?utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme'
+const APP_LINK = 'https://jonerfootball.com/join/?utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme'
+const ANNUAL_LINK = 'https://app.jonerfootball.com/checkout/new?o=183092&utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme_annual'
 
-const programSchema = {
+const schema = {
   '@context': 'https://schema.org',
   '@type': 'Course',
   name: 'Joner Football 100 Day Development Program',
-  description: 'A structured 100 day football training plan for parents, players and coaches inside the Joner Football App.',
+  description: 'A structured 100 day football training pathway for parents, players and coaches inside the Joner Football App. Six progressive programs built by Lee Jones.',
   provider: {
     '@type': 'Organization',
     name: 'Joner Football',
-    url: 'https://jonerfootball.com'
-  }
+    url: 'https://jonerfootball.com',
+  },
 }
 
 const proof = [
-  ['140+', 'Countries'],
-  ['12,000+', 'Players'],
-  ['1,500+', 'Drills'],
-  ['4.9', 'App rating'],
-]
-
-const audiences = [
-  {
-    title: 'For Parents',
-    text: 'Give your child a proven plan they can follow at home, in the garden, at the park or before team training.'
-  },
-  {
-    title: 'For Players',
-    text: 'Train with purpose every day. Improve your touch, weak foot, control, passing and finishing with sessions you can follow on your phone.'
-  },
-  {
-    title: 'For Coaches',
-    text: 'Use the program as extra player homework, technical development or a structured pathway for individuals in your team.'
-  },
+  ['50,000+', 'PLAYERS'],
+  ['15+', 'COUNTRIES'],
+  ['1,500+', 'VIDEOS'],
+  ['100', 'DAY GUARANTEE'],
 ]
 
 const programs = [
-  {
-    title: 'Ball Mastery',
-    text: 'Build control, confidence and comfort on the ball with daily touches and technical repetition.',
-    image: '/images/programmes/claude-design/insideProgram.png'
-  },
-  {
-    title: 'First Touch + Passing',
-    text: 'Improve receiving, scanning, passing detail and the ability to play quicker under pressure.',
-    image: '/images/programmes/claude-design/nightField.png'
-  },
-  {
-    title: 'Weak Foot',
-    text: 'Turn your weaker side into a real weapon with progressive weak foot training.',
-    image: '/images/programmes/claude-design/coachingCircle.png'
-  },
-  {
-    title: 'Score More Goals',
-    text: 'Develop finishing technique, composure, ball striking and movement in front of goal.',
-    image: '/images/programmes/claude-design/leePhones.png'
-  },
+  { num: '01', title: 'Juggling Program',         duration: '2 days',  sessions: null,          body: 'Build your foundation. Ball feel, coordination, and touch.' },
+  { num: '02', title: 'Fast Feet Program',        duration: '7 days',  sessions: '7 sessions',  body: 'Quick feet that leave defenders guessing.' },
+  { num: '03', title: 'Passing & First Touch',    duration: '50 days', sessions: '13 sessions', body: 'The foundation of everything. Control under pressure. Crisp passing.' },
+  { num: '04', title: 'Dribbling Program',        duration: '10 days', sessions: '8 sessions',  body: 'Beat any defender. Close control and changes of direction.' },
+  { num: '05', title: 'Weak Foot Program',        duration: '14 days', sessions: '11 sessions', body: 'Double your options on the pitch.' },
+  { num: '06', title: 'Score More Goals',         duration: '14 days', sessions: '9 sessions',  body: 'Turn chances into goals. Finishing technique and composure.' },
 ]
 
-const steps = [
-  ['Download The App', 'Get the Joner Football App on your phone and open the 100 Day Program.'],
-  ['Follow The Session', 'Watch the video, copy the detail and complete the work at your own level.'],
-  ['Build The Habit', 'Train consistently, track progress and move through the full 100 day pathway.'],
-  ['See The Difference', 'Cleaner touch. Sharper technique. More confidence. Better football.'],
-]
-
-const results = [
-  'Better first touch',
-  'More control under pressure',
-  'A stronger weak foot',
-  'Cleaner ball striking',
-  'More confidence when the ball comes to you',
+const differences = [
+  { num: '01', title: 'Random Drills vs. Structured Pathway', body: 'YouTube gives random drills with no context. This is a 100-day system with progressive difficulty.' },
+  { num: '02', title: 'Watching vs. Doing',                   body: 'Every session is designed to be done, not just watched. 20 minutes to an hour, a ball, a small space.' },
+  { num: '03', title: 'Hope vs. Guarantee',                   body: 'We do not just hope it works. We guarantee it. 100 days. Annual members only.' },
 ]
 
 const testimonials = [
-  ['My son finally had a plan to follow. He stopped guessing what to train and started improving properly.', 'Parent of U12 player'],
-  ['The weak foot section changed my game. I actually trust it now.', 'Academy player'],
-  ['I use Joner Football sessions with my players every week. The detail is top level.', 'Grassroots coach'],
+  { quote: 'The 6 Week Passing & 1st Touch Program completely changed my game.', who: 'Ben Garrard',  role: 'Player, USA' },
+  { quote: 'The Fast Feet Program was so easy to follow, no equipment needed and I saw a huge improvement.', who: 'Jeff Jones', role: 'Player, England' },
+  { quote: 'You are the best Joner. Always trying to add and improve an already amazing brand. Hats off to you and the team.', who: 'Henry Santos', role: 'Coach, USA' },
 ]
 
 const faqs = [
-  ['Who is the 100 Day Program for?', 'It is for players who want to improve their technique with a clear plan. Parents can use it to guide their child, players can follow it alone and coaches can use it as extra development work.'],
-  ['How long does each session take?', 'Most sessions are designed to be short and focused. Around 20 minutes a day is enough if the player trains with intent.'],
-  ['Do I need much equipment?', 'No. A ball, a small space and a phone is enough for most sessions. Cones or markers help, but they are not essential.'],
-  ['Is this for beginners or advanced players?', 'Both. The details matter at every level. Younger players can build the foundation, advanced players can sharpen the quality.'],
-  ['Where do I access the program?', 'Inside the Joner Football App.'],
-  ['Can coaches use this with their players?', 'Yes. Coaches can use it as player homework, individual development or extra technical work between team sessions.'],
+  { q: 'What ages and levels is this for?',                 a: 'The programs work for players of all ages and levels. Whether you are 10 or 30, just starting out or playing at a high level, the structured pathway meets you where you are and builds from there.' },
+  { q: 'How long are the sessions?',                        a: 'Sessions run from 20 minutes up to an hour, depending on the program and the day. Designed to fit around work, school and team training.' },
+  { q: 'Do I need any equipment?',                          a: 'Each program will clearly tell you what you need to complete it. Everything is based around minimal equipment.' },
+  { q: 'What if I already train with a team?',              a: 'This is individual development. The extra work that separates good players from great ones. It complements team training, it does not replace it.' },
+  { q: 'How does the 100-day guarantee work?',              a: 'Annual members only. Follow the program for 100 days. If you do not see improvement, we give you an extra 100 days free and you can DM Lee directly inside the app.' },
+  { q: 'Are the programs available on monthly?',            a: 'The structured 100-day pathway and the guarantee are exclusive to Annual members. Monthly members access the full video library. Move to Annual to access the programs.' },
+  { q: 'What about the S&C program?',                       a: 'The 12-Week Advanced Strength & Conditioning Program is included with Annual membership. Designed for older players ready to take their physical development seriously.' },
 ]
 ---
 
 <BaseLayout
-  title="100 Day Football Program | Joner Football"
-  description="A structured 100 day football training plan for parents, players and coaches. Improve ball mastery, first touch, weak foot and finishing inside the Joner Football App."
-  schema={programSchema}
+  title="100 Day Development Program | Joner Football"
+  description="A structured 100 day football pathway for parents, players and coaches. Six progressive programs built by Lee Jones inside the Joner Football App."
+  schema={schema}
 >
-  <section class="relative overflow-hidden bg-joner-black">
-    <div class="absolute -right-32 -top-20 hidden h-[900px] w-[520px] rotate-12 bg-joner-red/25 lg:block"></div>
-    <div class="absolute right-28 top-0 hidden h-full w-1 rotate-12 bg-joner-red lg:block"></div>
-
-    <div class="relative z-10 mx-auto grid min-h-[620px] max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 lg:py-24">
-      <div>
-        <p class="mb-4 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">The 100 Day Development Program</p>
-        <h1 class="mb-6 max-w-3xl font-heading text-5xl font-bold uppercase leading-[0.9] text-white sm:text-6xl lg:text-7xl">
-          100 Days To Better Football
+  {/* HERO ============================================================ */}
+  <section class="p100-hero">
+    <div class="p100-hero__grid">
+      <div class="p100-hero__image">
+        <img src="/images/programmes/100-day/hero-cropped.png" alt="Coach Lee Jones training a young player" />
+        <div class="p100-hero__fade"></div>
+      </div>
+      <div class="p100-hero__copy">
+        <span class="p100-eyebrow">The 100 Day Development Program</span>
+        <h1 class="p100-h1">
+          While other kids watch <span class="p100-hook">YouTube highlights</span>, yours will be <span class="p100-hook">creating them</span>.
         </h1>
-        <p class="max-w-2xl font-body text-lg leading-relaxed text-gray-200 sm:text-xl">
-          A structured football training plan built by Lee Jones to help players improve their ball mastery, first touch, weak foot and finishing inside the Joner Football App.
+        <p class="p100-lede">
+          100 days from now, your child will be unrecognisable on the pitch. A structured pathway built by Lee Jones inside the Joner Football App.
         </p>
-        <p class="mt-4 max-w-xl font-body text-sm uppercase tracking-[0.18em] text-gray-400">
-          For parents, players and coaches who want a clear plan, not random drills.
-        </p>
-        <div class="mt-8 flex flex-col gap-4 sm:flex-row">
-          <a href={ctaUrl} target="_blank" rel="noopener noreferrer" class="btn-red px-9 py-4 text-center text-base">Start The 100 Day Program</a>
-          <a href="#inside" class="border border-white px-9 py-4 text-center font-heading text-sm uppercase tracking-wide text-white transition hover:bg-white hover:text-joner-black">See What Is Inside</a>
+        <div class="p100-cta-row">
+          <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
+          <a class="p100-btn p100-btn--outline" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual Now</a>
         </div>
-      </div>
-
-      <div class="relative hidden lg:block">
-        <div class="border-2 border-joner-red bg-joner-black shadow-2xl shadow-black/50">
-          <img src="/images/programmes/claude-design/hero100Days.png" alt="100 Days To Your Best Football design" class="mx-auto w-full object-contain" />
-        </div>
-        <div class="absolute -left-4 top-8 bg-joner-red px-5 py-3 font-heading text-sm font-bold uppercase tracking-[0.18em] text-white">Start Today</div>
       </div>
     </div>
-  </section>
-
-  <section class="border-y border-gray-800 bg-joner-black">
-    <div class="mx-auto grid max-w-7xl grid-cols-2 px-4 sm:px-6 lg:grid-cols-4 lg:px-8">
-      {proof.map(([number, label]) => (
-        <div class="border-gray-800 py-6 text-center lg:border-r last:border-r-0">
-          <div class="font-heading text-3xl font-bold uppercase text-joner-red sm:text-4xl">{number}</div>
-          <div class="mt-2 font-heading text-xs uppercase tracking-[0.22em] text-gray-400">{label}</div>
-        </div>
-      ))}
-    </div>
-  </section>
-
-  <section class="bg-white py-16 text-joner-black md:py-24">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-      <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Why It Works</p>
-      <h2 class="section-heading mb-5 max-w-4xl text-joner-black">Most Players Train Hard. The Best Players Train With A Plan.</h2>
-      <div class="max-w-3xl space-y-4 font-body text-lg leading-relaxed text-gray-700">
-        <p>Random drills only get you so far.</p>
-        <p>The 100 Day Program gives players a clear daily structure. Every session has a purpose. Every week builds on the last. Every touch moves them closer to becoming cleaner, sharper and more confident on the ball.</p>
-      </div>
-
-      <div class="mt-10 grid gap-5 md:grid-cols-3">
-        {audiences.map((item) => (
-          <div class="border border-gray-200 bg-gray-50 p-7">
-            <h3 class="mb-3 font-heading text-xl font-bold uppercase text-joner-black">{item.title}</h3>
-            <p class="font-body text-gray-700">{item.text}</p>
+    <div class="p100-stat-strip">
+      <div class="p100-stat-row">
+        {proof.map(([n, l]) => (
+          <div class="p100-stat">
+            <div class="p100-stat__num">{n}</div>
+            <div class="p100-stat__label">{l}</div>
           </div>
         ))}
       </div>
     </div>
   </section>
 
-  <section class="bg-joner-black py-16 md:py-24">
-    <div class="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
-      <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">The Line</p>
-      <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white sm:text-5xl lg:text-6xl">
-        While Other Kids Watch YouTube Highlights, Yours Will Be Creating Them.
+  {/* PATHWAY ========================================================= */}
+  <section class="p100-section p100-section--black p100-pathway">
+    <div class="p100-container p100-center">
+      <span class="p100-eyebrow">The 100 Day Pathway</span>
+      <h2 class="p100-h2">
+        Six programs. One clear path. <span class="p100-hook">Complete footballer.</span>
       </h2>
-      <div class="mx-auto mt-7 max-w-2xl space-y-4 font-body text-lg leading-relaxed text-gray-300">
-        <p>That is the standard.</p>
-        <p>Not more scrolling. Not another random drill saved to camera roll. A real 100 day development plan players can actually follow.</p>
+      <p class="p100-lede p100-lede--center">
+        Done in order. Every day planned. Every skill built on the last. Rest days built in between. This is what transforms a player.
+      </p>
+      <img
+        class="p100-pathway__img"
+        src="/images/programmes/100-day/pathway.png"
+        alt="The 100 Day Pathway, Juggling, Fast Feet, Passing and First Touch, Dribbling, Weak Foot, Score More Goals"
+      />
+      <div class="p100-cta-row p100-cta-row--center">
+        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
       </div>
-      <a href={ctaUrl} target="_blank" rel="noopener noreferrer" class="btn-red mt-8 inline-block px-9 py-4 text-center">Start The Program</a>
     </div>
   </section>
 
-  <section id="inside" class="bg-joner-gray py-16 md:py-24">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="mb-12 max-w-3xl">
-        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">What Is Inside</p>
-        <h2 class="section-heading mb-5 text-white">Four Programs. One Complete System.</h2>
-        <p class="font-body text-lg leading-relaxed text-gray-300">The 100 Day Program brings together four key areas every serious player needs. Ball mastery, first touch, weak foot and finishing.</p>
+  {/* WHAT CHANGES IN THE PLAYER ====================================== */}
+  <section class="p100-section p100-section--ink">
+    <div class="p100-container p100-center">
+      <span class="p100-eyebrow">The Transformation</span>
+      <h2 class="p100-h2">
+        What changes in <span class="p100-hook">the player</span>.
+      </h2>
+      <p class="p100-lede p100-lede--center">
+        100 days from now: cleaner technique, sharper feet, a stronger weak foot and more confidence on the ball.
+      </p>
+      <img
+        class="p100-pathway__img"
+        src="/images/programmes/100-day/what-changes.png"
+        alt="What changes in the player, before vs after"
+      />
+      <div class="p100-cta-row p100-cta-row--center">
+        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start the 100 Days</a>
+      </div>
+    </div>
+  </section>
+
+  {/* PROGRAMS ======================================================== */}
+  <section class="p100-section p100-section--white">
+    <div class="p100-container">
+      <div class="p100-eyebrow-bar"><span class="p100-eyebrow">The Programs</span></div>
+      <h2 class="p100-h2 p100-h2--ink">
+        Six structured programs. <span class="p100-hook">One complete pathway.</span>
+      </h2>
+      <p class="p100-lede p100-lede--ink">
+        Done in order. Every session is short, focused and clearly demonstrated. Press play and train. 20 minutes to an hour, a ball and a small space.
+      </p>
+      <div class="p100-programs">
+        {programs.map((p) => (
+          <article class="p100-program">
+            <div class="p100-program__head">
+              <div class="p100-program__num">{p.num}</div>
+              <div class="p100-program__meta">
+                {p.duration}{p.sessions ? ` · ${p.sessions}` : ''}
+              </div>
+            </div>
+            <h3 class="p100-program__title">{p.title}</h3>
+            <p class="p100-program__body">{p.body}</p>
+          </article>
+        ))}
       </div>
 
-      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {programs.map((program, index) => (
-          <article class="overflow-hidden border border-gray-800 bg-joner-black">
-            <img src={program.image} alt={`${program.title} inside the Joner Football 100 Day Program`} loading="lazy" class="h-48 w-full object-cover" />
-            <div class="p-6">
-              <div class="mb-4 font-heading text-4xl font-bold text-joner-red">0{index + 1}</div>
-              <h3 class="mb-3 font-heading text-xl font-bold uppercase text-white">{program.title}</h3>
-              <p class="font-body text-sm leading-relaxed text-gray-400">{program.text}</p>
+      <div class="p100-bonus">
+        <div class="p100-bonus__tag">Bonus</div>
+        <div class="p100-bonus__copy">
+          <div class="p100-bonus__title">12-Week Advanced Strength &amp; Conditioning</div>
+          <div class="p100-bonus__sub">12 weeks · 36 sessions. Football-specific speed, strength and stamina. Annual members only.</div>
+        </div>
+        <a class="p100-btn p100-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Open with Annual</a>
+      </div>
+
+      <div class="p100-cta-row p100-cta-row--center">
+        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start the Pathway Free</a>
+      </div>
+    </div>
+  </section>
+
+  {/* INSIDE THE APP ================================================== */}
+  <section class="p100-section p100-section--black">
+    <div class="p100-container p100-center">
+      <span class="p100-eyebrow">Inside the App</span>
+      <h2 class="p100-h2">
+        Structured programs. <span class="p100-hook">Step-by-step sessions.</span> Track your progress.
+      </h2>
+      <p class="p100-lede p100-lede--center">
+        Each program lives inside the Joner Football App with full video sessions, weekly content, daily challenges and progress tracking.
+      </p>
+      <img
+        class="p100-pathway__img"
+        src="/images/programmes/100-day/inside-the-app.png"
+        alt="Inside the Joner Football App, program library and session screens"
+      />
+      <div class="p100-cta-row p100-cta-row--center">
+        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Open in the App</a>
+      </div>
+    </div>
+  </section>
+
+  {/* DIFFERENCE ====================================================== */}
+  <section class="p100-section p100-section--black">
+    <div class="p100-container">
+      <span class="p100-eyebrow">The Difference</span>
+      <h2 class="p100-h2">
+        This is not just <span class="p100-hook">another training app</span>.
+      </h2>
+      <div class="p100-diff">
+        {differences.map((d) => (
+          <article class="p100-diff__card">
+            <div class="p100-diff__num">{d.num}</div>
+            <h3 class="p100-diff__title">{d.title}</h3>
+            <p class="p100-diff__body">{d.body}</p>
+          </article>
+        ))}
+      </div>
+      <div class="p100-cta-row p100-cta-row--center">
+        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start the Pathway</a>
+      </div>
+    </div>
+  </section>
+
+  {/* REALITY ========================================================= */}
+  <section class="p100-section p100-section--white">
+    <div class="p100-reality">
+      <div class="p100-reality__copy">
+        <span class="p100-eyebrow">The Reality</span>
+        <h2 class="p100-h2 p100-h2--ink">
+          Team training is <span class="p100-hook">not enough</span>.
+        </h2>
+        <div class="p100-reality__body">
+          <p>You train once or twice a week with your team. But so does every other player.</p>
+          <p>The players who stand out, the ones who get picked, who make the squad, who catch the coach's eye, they do extra work. Individual work. Structured work.</p>
+          <p>You need a plan. A proper program designed by a professional coach. Sessions run from 20 minutes up to an hour. That is exactly what this is.</p>
+        </div>
+        <div class="p100-cta-row">
+          <a class="p100-btn p100-btn--outline-ink" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
+        </div>
+      </div>
+      <div class="p100-reality__image">
+        <img src="/images/programmes/100-day/lee-phones.png" alt="Coach Lee Jones training inside the Joner Football App" />
+      </div>
+    </div>
+  </section>
+
+  {/* GUARANTEE ======================================================= */}
+  <section class="p100-guarantee">
+    <img class="p100-guarantee__bg" src="/images/programmes/100-day/coaching-circle.png" alt="" aria-hidden="true" />
+    <div class="p100-guarantee__overlay"></div>
+    <div class="p100-guarantee__grid">
+      <div>
+        <div class="p100-guarantee__badge">
+          <div class="p100-guarantee__num">100</div>
+          <div class="p100-guarantee__day">Day Guarantee</div>
+          <div class="p100-guarantee__sub">Annual members only</div>
+        </div>
+      </div>
+      <div>
+        <span class="p100-eyebrow">The Guarantee</span>
+        <h2 class="p100-h2">
+          My 100-day promise <span class="p100-hook">to you</span>.
+        </h2>
+        <div class="p100-guarantee__body">
+          <p>I have coached thousands of players across 15+ countries. I have spent years building these programs. I know they work.</p>
+          <p>Commit to the full 100-day program. Follow the plan. Do the sessions. If you do not see real, visible improvement in your game, I will give you an extra <strong>100 days FREE</strong>. And you can DM me directly inside the app.</p>
+          <p class="p100-guarantee__sig"><span class="p100-guarantee__sig-bar"></span>Lee, Founder Joner Football</p>
+        </div>
+        <div class="p100-cta-row">
+          <a class="p100-btn p100-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual Now</a>
+          <a class="p100-btn p100-btn--outline" href={APP_LINK} target="_blank" rel="noopener">Start Free Trial</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* TESTIMONIALS ==================================================== */}
+  <section class="p100-section p100-section--ink">
+    <div class="p100-container">
+      <span class="p100-eyebrow">Real players. Real progress.</span>
+      <h2 class="p100-h2">
+        Trusted by players in <span class="p100-hook">15+ countries</span>.
+      </h2>
+      <div class="p100-testi">
+        {testimonials.map((t, i) => (
+          <article class={`p100-testi__card ${i === 1 ? 'p100-testi__card--dark' : ''}`}>
+            <div class="p100-testi__mark">&ldquo;</div>
+            <div class="p100-testi__quote">"{t.quote}"</div>
+            <div class="p100-testi__attr">
+              <span class="p100-testi__bar"></span>
+              <div>
+                <div class="p100-testi__who">{t.who}</div>
+                <div class="p100-testi__role">{t.role}</div>
+              </div>
             </div>
           </article>
         ))}
       </div>
-    </div>
-  </section>
-
-  <section class="relative overflow-hidden bg-joner-black py-16 text-white md:py-24">
-    <img src="/images/programmes/claude-design/coachingCircle.png" alt="Coach Joner teaching a player huddle" loading="lazy" class="absolute inset-0 h-full w-full object-cover opacity-35" />
-    <div class="absolute inset-0 bg-gradient-to-b from-joner-black/70 to-joner-black/95"></div>
-    <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="max-w-3xl">
-        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">What You Get</p>
-        <h2 class="font-heading text-4xl font-bold uppercase leading-none text-white md:text-6xl">Academy Level Coaching, <span class="text-joner-red">In Your Pocket.</span></h2>
-      </div>
-      <div class="mt-12 grid border border-white/15 md:grid-cols-4">
-        {audiences.map((item) => (
-          <div class="border-b border-white/15 bg-joner-black/55 p-7 md:border-b-0 md:border-r last:border-r-0">
-            <h3 class="mb-3 font-heading text-xl font-bold uppercase text-white">{item.title}</h3>
-            <p class="font-body text-sm leading-relaxed text-gray-300">{item.text}</p>
-          </div>
-        ))}
-        <div class="bg-joner-red p-7">
-          <h3 class="mb-3 font-heading text-xl font-bold uppercase text-white">The Standard</h3>
-          <p class="font-body text-sm leading-relaxed text-white/90">No random scrolling. No dead reps. One clear plan to follow for the next 100 days.</p>
-        </div>
+      <div class="p100-cta-row p100-cta-row--center">
+        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start the Program Now</a>
       </div>
     </div>
   </section>
 
-  <section class="bg-white text-joner-black">
-    <div class="relative flex min-h-[360px] items-center overflow-hidden">
-      <img src="/images/programmes/claude-design/nightField.png" alt="Coach Joner on the pitch at night" loading="lazy" class="absolute inset-0 h-full w-full object-cover" />
-      <div class="absolute inset-0 bg-gradient-to-r from-joner-black/85 via-joner-black/60 to-joner-black/20"></div>
-      <div class="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-white"><span class="text-joner-red">■</span> How It Works</p>
-        <h2 class="max-w-3xl font-heading text-4xl font-bold uppercase leading-none text-white md:text-6xl">20 Minutes A Day. <span class="text-joner-red">100 Days Straight.</span></h2>
-      </div>
-    </div>
-    <div class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 md:py-24">
-      <div class="grid gap-0 border-t-2 border-joner-black md:grid-cols-4">
-        {steps.map(([title, text], index) => (
-          <div class="border-b border-gray-200 p-7 md:border-r last:border-r-0">
-            <div class="mb-5 font-heading text-5xl font-bold text-joner-red">0{index + 1}</div>
-            <h3 class="mb-3 font-heading text-xl font-bold uppercase text-joner-black">{title}</h3>
-            <p class="font-body text-gray-700">{text}</p>
-          </div>
+  {/* FAQ ============================================================= */}
+  <section class="p100-section p100-section--black">
+    <div class="p100-faq">
+      <span class="p100-eyebrow">FAQ</span>
+      <h2 class="p100-h2">
+        Common <span class="p100-hook">questions</span>.
+      </h2>
+      <div class="p100-faq__list">
+        {faqs.map((f, i) => (
+          <details class="p100-faq__item" open={i === 0}>
+            <summary class="p100-faq__summary">
+              <span>{f.q}</span>
+              <span class="p100-faq__toggle" aria-hidden="true">+</span>
+            </summary>
+            <div class="p100-faq__body">{f.a}</div>
+          </details>
         ))}
       </div>
-    </div>
-  </section>
-
-  <section class="bg-joner-black py-16 md:py-24">
-    <div class="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
-      <img src="/images/programmes/claude-design/leePhones.png" alt="Coach Lee Jones with the Joner Football app" loading="lazy" class="w-full object-contain" />
-      <div>
-        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Built By Lee Jones</p>
-        <h2 class="section-heading mb-6 text-white">Pro Level Detail. Made Simple For Every Player.</h2>
-        <div class="space-y-4 font-body text-lg leading-relaxed text-gray-300">
-          <p>Lee Jones has coached players all over the world, from grassroots kids to elite professionals.</p>
-          <p>The 100 Day Program takes the same technical detail Lee uses on the pitch and turns it into a simple daily plan any player can follow.</p>
-        </div>
-        <blockquote class="mt-8 border-l-4 border-joner-red pl-6 font-heading text-2xl font-bold uppercase leading-tight text-white">
-          This is the system I wish I had when I was younger. No fluff. No wasted touches. Just proper technique work, every day.
-        </blockquote>
-        <p class="mt-5 font-heading text-lg uppercase tracking-wide text-white">Lee Jones</p>
-        <p class="font-body text-sm text-gray-500">Founder, Joner Football</p>
+      <div class="p100-cta-row p100-cta-row--center">
+        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
       </div>
     </div>
   </section>
 
-  <section class="bg-joner-gray py-16 md:py-24">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-      <p class="mb-3 text-center font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Who It Is For</p>
-      <h2 class="section-heading mx-auto mb-10 max-w-3xl text-center text-white">If You Want To Improve, This Is For You.</h2>
-      <div class="grid gap-5 md:grid-cols-4">
-        <div class="border border-gray-800 bg-joner-black p-6">
-          <h3 class="mb-3 font-heading text-lg font-bold uppercase text-white">Parents</h3>
-          <p class="font-body text-sm text-gray-400">You want your child doing the right work between team sessions.</p>
-        </div>
-        <div class="border border-gray-800 bg-joner-black p-6">
-          <h3 class="mb-3 font-heading text-lg font-bold uppercase text-white">Players</h3>
-          <p class="font-body text-sm text-gray-400">You want to feel sharper, cleaner and more confident every time you touch the ball.</p>
-        </div>
-        <div class="border border-gray-800 bg-joner-black p-6">
-          <h3 class="mb-3 font-heading text-lg font-bold uppercase text-white">Coaches</h3>
-          <p class="font-body text-sm text-gray-400">You want a simple way to give your players extra technical work away from training.</p>
-        </div>
-        <div class="border border-joner-red bg-joner-black p-6">
-          <h3 class="mb-3 font-heading text-lg font-bold uppercase text-joner-red">Not For</h3>
-          <p class="font-body text-sm text-gray-400">This is not for players who want shortcuts. It works when you do the sessions.</p>
-        </div>
+  {/* FINAL CTA ======================================================= */}
+  <section class="p100-final">
+    <img class="p100-final__bg" src="/images/programmes/100-day/hero-2.png" alt="" aria-hidden="true" />
+    <div class="p100-final__overlay"></div>
+    <div class="p100-final__inner">
+      <span class="p100-eyebrow">Your Next Level</span>
+      <h2 class="p100-final__h">
+        Your next level <span class="p100-hook">starts today</span>.
+      </h2>
+      <p class="p100-final__lede">Pick a program. Follow the plan. Watch yourself improve. Guaranteed.</p>
+      <div class="p100-cta-row p100-cta-row--center">
+        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start the Program Now</a>
+        <a class="p100-btn p100-btn--outline" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual</a>
       </div>
+      <p class="p100-final__support">100-day guarantee. Annual members only.</p>
     </div>
   </section>
-
-  <section class="bg-white py-16 text-joner-black md:py-24">
-    <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-      <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">The Result</p>
-      <h2 class="section-heading mb-8 text-joner-black">100 Days From Now, Your Game Can Look Different.</h2>
-      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {results.map((result) => (
-          <div class="border border-gray-200 bg-gray-50 p-5 font-heading text-base font-bold uppercase text-joner-black">{result}</div>
-        ))}
-      </div>
-      <p class="mt-8 font-body text-lg text-gray-700">That is what daily technical work does.</p>
-      <a href={ctaUrl} target="_blank" rel="noopener noreferrer" class="btn-red mt-8 inline-block px-9 py-4 text-center">Start The 100 Day Program</a>
-    </div>
-  </section>
-
-  <section class="bg-joner-black py-16 md:py-24">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-      <p class="mb-3 text-center font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Real Players. Real Progress.</p>
-      <h2 class="section-heading mb-10 text-center text-white">Trusted By Parents, Players And Coaches.</h2>
-      <div class="grid gap-6 md:grid-cols-3">
-        {testimonials.map(([quote, who]) => (
-          <figure class="border border-gray-800 bg-joner-gray p-7">
-            <blockquote class="font-body text-lg leading-relaxed text-gray-200">“{quote}”</blockquote>
-            <figcaption class="mt-6 border-t border-gray-800 pt-4 font-heading text-sm uppercase tracking-wide text-joner-red">{who}</figcaption>
-          </figure>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <section class="bg-joner-gray py-16 md:py-24">
-    <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-      <p class="mb-3 text-center font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Questions</p>
-      <h2 class="section-heading mb-12 text-center text-white">Common Questions</h2>
-      <div class="space-y-6">
-        {faqs.map(([question, answer], index) => (
-          <div class={index < faqs.length - 1 ? 'border-b border-gray-800 pb-6' : 'pb-6'}>
-            <h3 class="mb-2 font-heading text-lg font-semibold uppercase text-white">{question}</h3>
-            <p class="font-body leading-relaxed text-gray-400">{answer}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <EmailCapture />
-
-  <section class="bg-joner-red py-16 md:py-20">
-    <div class="mx-auto max-w-4xl px-4 text-center sm:px-6">
-      <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-white/80">Start Today</p>
-      <h2 class="mb-5 font-heading text-4xl font-bold uppercase leading-tight text-white md:text-6xl">Give The Next 100 Days A Plan.</h2>
-      <p class="mx-auto mb-8 max-w-2xl font-body text-lg text-white/85">Open the Joner Football App, start Day 1 and follow the system.</p>
-      <a href={ctaUrl} target="_blank" rel="noopener noreferrer" class="inline-block bg-white px-10 py-4 font-heading text-base uppercase tracking-wider text-joner-red transition hover:bg-gray-100">Start The 100 Day Program</a>
-      <p class="mt-5 font-body text-sm text-white/75">Train better today. Play better tomorrow.</p>
-    </div>
-  </section>
-
-  <script is:inline>
-    document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('a[href*="100_day_programme"]').forEach((link) => {
-        link.addEventListener('click', () => {
-          if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
-            window.fbq('trackCustom', 'ProgrammesCTAClick', {
-              page: 'programmes',
-              destination: 'app',
-            })
-          }
-        })
-      })
-    })
-  </script>
 </BaseLayout>
+
+<style is:global>
+  /* 100 Day Development Program landing page styles.
+     Page-scoped class prefix: p100-*. Kanit display + Joner red palette. */
+  @import url('https://fonts.googleapis.com/css2?family=Kanit:ital,wght@1,600;1,900&display=swap');
+
+  :root {
+    --p100-red: #CC0000;
+    --p100-red-hover: #B30000;
+    --p100-black: #000000;
+    --p100-ink-90: #0A0A0A;
+    --p100-display: 'Kanit', 'Oswald', 'Impact', 'Arial Narrow Bold', sans-serif;
+  }
+
+  /* Hide global mobile sticky bar on this page; we use our own dense CTA stack. */
+  /* (kept on for now; remove if it overlaps too much) */
+
+  /* Eyebrow + Hook + base typography ------------------------------- */
+  .p100-eyebrow {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 600;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--p100-red);
+    display: inline-block;
+  }
+  .p100-hook { color: var(--p100-red); }
+
+  .p100-h1 {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase;
+    color: #fff;
+    font-size: clamp(2.25rem, 5.4vw, 4.75rem);
+    line-height: 0.92;
+    letter-spacing: -0.015em;
+    margin: 18px 0 0;
+    text-wrap: balance;
+  }
+  .p100-h2 {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase;
+    color: #fff;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    line-height: 0.98;
+    letter-spacing: -0.005em;
+    margin: 14px 0 0;
+    text-wrap: balance;
+  }
+  .p100-h2--ink { color: #000; }
+  .p100-lede {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    color: rgba(255,255,255,0.82);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    margin-top: 18px;
+    max-width: 640px;
+  }
+  .p100-lede--center { margin-left: auto; margin-right: auto; }
+  .p100-lede--ink { color: rgba(0,0,0,0.74); }
+
+  .p100-section {
+    padding: 96px 20px;
+  }
+  .p100-section--black { background: #000; color: #fff; }
+  .p100-section--ink { background: var(--p100-ink-90); color: #fff; }
+  .p100-section--white { background: #fff; color: #000; }
+
+  .p100-container { max-width: 1280px; margin: 0 auto; }
+  .p100-center { text-align: center; }
+
+  .p100-cta-row { display: flex; gap: 14px; margin-top: 32px; flex-wrap: wrap; }
+  .p100-cta-row--center { justify-content: center; }
+
+  /* Buttons -------------------------------------------------------- */
+  .p100-btn {
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    gap: 10px;
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 1.0625rem;
+    padding: 20px 32px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 120ms, color 120ms, transform 80ms, border-color 120ms;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .p100-btn:active { transform: translateY(1px); }
+  .p100-btn--red {
+    background: var(--p100-red); color: #fff; border-color: var(--p100-red);
+  }
+  .p100-btn--red:hover { background: var(--p100-red-hover); border-color: var(--p100-red-hover); }
+  .p100-btn--outline {
+    background: transparent; color: #fff; border-color: #fff;
+  }
+  .p100-btn--outline:hover { background: #fff; color: #000; }
+  .p100-btn--outline-ink {
+    background: transparent; color: #000; border-color: #000;
+  }
+  .p100-btn--outline-ink:hover { background: #000; color: #fff; }
+
+  /* HERO ----------------------------------------------------------- */
+  .p100-hero { background: #000; position: relative; }
+  .p100-hero__grid {
+    max-width: 1440px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0; align-items: stretch;
+  }
+  .p100-hero__image { position: relative; min-height: 560px; }
+  .p100-hero__image img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .p100-hero__fade {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(0,0,0,0) 60%, #000 100%);
+  }
+  .p100-hero__copy {
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 72px 48px 72px 36px; background: #000;
+  }
+
+  /* Hero stat strip */
+  .p100-stat-strip {
+    border-top: 1px solid rgba(255,255,255,0.12);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    background: #000;
+  }
+  .p100-stat-row {
+    max-width: 1280px; margin: 0 auto; padding: 0 20px;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+  }
+  .p100-stat {
+    padding: 22px 16px;
+    border-right: 1px solid rgba(255,255,255,0.12);
+    text-align: center;
+  }
+  .p100-stat:last-child { border-right: none; }
+  .p100-stat__num {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    color: var(--p100-red);
+    font-size: clamp(1.5rem, 3vw, 2.25rem); line-height: 1;
+  }
+  .p100-stat__label {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 600;
+    font-size: 11px; letter-spacing: 0.22em;
+    color: rgba(255,255,255,0.7);
+    margin-top: 8px;
+  }
+
+  /* PATHWAY / WHATCHANGES / INSIDE -------------------------------- */
+  .p100-pathway__img {
+    width: 100%; max-width: 1280px;
+    height: auto; display: block;
+    margin: 40px auto 0;
+  }
+
+  /* PROGRAMS ------------------------------------------------------- */
+  .p100-eyebrow-bar {
+    display: inline-block;
+    border-bottom: 3px solid var(--p100-red);
+    padding-bottom: 10px;
+    margin-bottom: 24px;
+  }
+  .p100-programs {
+    margin-top: 48px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+    background: rgba(0,0,0,0.12);
+    border: 1px solid rgba(0,0,0,0.12);
+  }
+  .p100-program {
+    background: #fff; padding: 30px 26px;
+    min-height: 240px;
+    display: flex; flex-direction: column;
+  }
+  .p100-program__head { display: flex; align-items: baseline; gap: 14px; }
+  .p100-program__num {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    color: var(--p100-red);
+    font-size: 48px; line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .p100-program__meta {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 11.5px;
+    color: rgba(0,0,0,0.55);
+  }
+  .p100-program__title {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase;
+    font-size: 22px; letter-spacing: 0.02em; line-height: 1.05;
+    color: #000;
+    margin: 14px 0 10px;
+  }
+  .p100-program__body {
+    font-size: 14.5px; line-height: 1.6;
+    color: rgba(0,0,0,0.72); margin: 0; flex: 1;
+  }
+
+  .p100-bonus {
+    margin-top: 24px;
+    padding: 30px 28px;
+    background: #000; color: #fff;
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 24px; align-items: center;
+  }
+  .p100-bonus__tag {
+    display: inline-block; padding: 8px 12px;
+    background: var(--p100-red); color: #fff;
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.18em; font-size: 11px;
+    align-self: start;
+  }
+  .p100-bonus__title {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase;
+    font-size: clamp(1.125rem, 2.2vw, 1.5rem);
+    letter-spacing: 0.02em;
+  }
+  .p100-bonus__sub { font-size: 14px; color: rgba(255,255,255,0.75); margin-top: 6px; }
+
+  /* DIFFERENCE ----------------------------------------------------- */
+  .p100-diff {
+    margin-top: 48px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+    background: rgba(255,255,255,0.14);
+    border: 1px solid rgba(255,255,255,0.14);
+  }
+  .p100-diff__card {
+    background: var(--p100-ink-90); padding: 32px 28px; min-height: 240px;
+    display: flex; flex-direction: column;
+  }
+  .p100-diff__num {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    color: var(--p100-red);
+    font-size: 14px; letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .p100-diff__title {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase;
+    font-size: 22px; letter-spacing: 0.02em; line-height: 1.1;
+    color: #fff;
+    margin: 14px 0 14px;
+    text-wrap: balance;
+  }
+  .p100-diff__body { font-size: 14.5px; line-height: 1.6; color: rgba(255,255,255,0.78); margin: 0; flex: 1; }
+
+  /* REALITY -------------------------------------------------------- */
+  .p100-reality {
+    max-width: 1180px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+  }
+  .p100-reality__copy { color: #000; }
+  .p100-reality__body {
+    font-size: 1.0625rem; line-height: 1.65;
+    color: rgba(0,0,0,0.74); margin-top: 22px; max-width: 560px;
+  }
+  .p100-reality__body p { margin: 0 0 14px; }
+  .p100-reality__body p:last-child { margin: 0; }
+  .p100-reality__image img { width: 100%; height: auto; display: block; }
+
+  /* GUARANTEE ------------------------------------------------------ */
+  .p100-guarantee {
+    position: relative;
+    background: #000; color: #fff;
+    overflow: hidden;
+  }
+  .p100-guarantee__bg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%; object-fit: cover; opacity: 0.22;
+  }
+  .p100-guarantee__overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.92));
+  }
+  .p100-guarantee__grid {
+    position: relative;
+    max-width: 1180px; margin: 0 auto;
+    padding: 120px 20px;
+    display: grid; grid-template-columns: 1fr 1.1fr; gap: 64px; align-items: center;
+  }
+  .p100-guarantee__badge {
+    border: 3px solid var(--p100-red);
+    padding: 40px 28px; text-align: center;
+    background: rgba(0,0,0,0.55);
+  }
+  .p100-guarantee__num {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    color: var(--p100-red);
+    font-size: clamp(4rem, 10vw, 7rem); line-height: 0.85;
+    letter-spacing: -0.02em;
+  }
+  .p100-guarantee__day {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase;
+    font-size: clamp(1.5rem, 3vw, 2.25rem);
+    letter-spacing: 0.04em; margin-top: 6px;
+  }
+  .p100-guarantee__sub {
+    font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 14px;
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.18em;
+  }
+  .p100-guarantee__body {
+    font-size: 1.0625rem; line-height: 1.65;
+    color: rgba(255,255,255,0.82); margin-top: 22px; max-width: 600px;
+  }
+  .p100-guarantee__body p { margin: 0 0 14px; }
+  .p100-guarantee__body p:last-child { margin: 0; }
+  .p100-guarantee__sig {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.06em; font-size: 18px; color: #fff;
+    display: inline-flex; align-items: center; gap: 10px;
+  }
+  .p100-guarantee__sig-bar { width: 24px; height: 2px; background: var(--p100-red); display: inline-block; }
+
+  /* TESTIMONIALS --------------------------------------------------- */
+  .p100-testi {
+    margin-top: 48px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+  }
+  .p100-testi__card {
+    border: 1px solid rgba(255,255,255,0.14);
+    padding: 32px 28px;
+    display: flex; flex-direction: column; gap: 24px; min-height: 300px;
+    background: transparent;
+  }
+  .p100-testi__card--dark { background: #000; }
+  .p100-testi__mark {
+    color: var(--p100-red);
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    font-size: 48px; line-height: 0.6; height: 24px;
+  }
+  .p100-testi__quote {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase;
+    font-size: clamp(1.0625rem, 1.6vw, 1.25rem); line-height: 1.2;
+    letter-spacing: 0.01em; color: #fff; flex: 1;
+  }
+  .p100-testi__attr {
+    display: flex; align-items: center; gap: 10px;
+    padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.14);
+  }
+  .p100-testi__bar { width: 24px; height: 2px; background: var(--p100-red); display: inline-block; }
+  .p100-testi__who {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase; letter-spacing: 0.12em; font-size: 13px; color: #fff;
+  }
+  .p100-testi__role { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 3px; letter-spacing: 0.06em; }
+
+  /* FAQ ------------------------------------------------------------ */
+  .p100-faq { max-width: 920px; margin: 0 auto; }
+  .p100-faq__list { margin-top: 40px; }
+  .p100-faq__item {
+    border-top: 1px solid rgba(255,255,255,0.15);
+  }
+  .p100-faq__item:last-child { border-bottom: 1px solid rgba(255,255,255,0.15); }
+  .p100-faq__summary {
+    list-style: none; cursor: pointer;
+    padding: 22px 0;
+    display: flex; justify-content: space-between; align-items: center; gap: 20px;
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase;
+    font-size: 18px; letter-spacing: 0.03em; color: #fff;
+  }
+  .p100-faq__summary::-webkit-details-marker { display: none; }
+  .p100-faq__toggle {
+    color: var(--p100-red); font-size: 24px; font-weight: 700;
+    transition: transform 160ms;
+    line-height: 1;
+  }
+  .p100-faq__item[open] .p100-faq__toggle { transform: rotate(45deg); }
+  .p100-faq__body {
+    padding-bottom: 22px;
+    font-size: 15.5px; line-height: 1.65;
+    color: rgba(255,255,255,0.78); max-width: 760px;
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+
+  /* FINAL CTA ------------------------------------------------------ */
+  .p100-final {
+    position: relative; background: #000; color: #fff;
+    overflow: hidden;
+  }
+  .p100-final__bg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%; object-fit: cover; opacity: 0.32;
+  }
+  .p100-final__overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.92) 100%);
+  }
+  .p100-final__inner {
+    position: relative;
+    max-width: 1000px; margin: 0 auto;
+    padding: 128px 20px; text-align: center;
+  }
+  .p100-final__h {
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase; color: #fff;
+    font-size: clamp(2.5rem, 7vw, 6rem); line-height: 0.92;
+    letter-spacing: -0.01em;
+    margin: 18px 0 0; text-wrap: balance;
+  }
+  .p100-final__lede {
+    font-size: 1.125rem; line-height: 1.55;
+    margin: 22px auto 0; color: rgba(255,255,255,0.85);
+    max-width: 620px;
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+  .p100-final__support {
+    margin-top: 22px;
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.22em;
+    font-size: 12.5px; color: rgba(255,255,255,0.7);
+  }
+
+  /* RESPONSIVE ----------------------------------------------------- */
+  @media (max-width: 1024px) {
+    .p100-programs { grid-template-columns: repeat(2, 1fr); }
+    .p100-diff { grid-template-columns: 1fr; }
+    .p100-testi { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 900px) {
+    .p100-hero__grid { grid-template-columns: 1fr; }
+    .p100-hero__image { min-height: 360px; }
+    .p100-hero__copy { padding: 48px 24px; }
+    .p100-reality { grid-template-columns: 1fr; gap: 36px; }
+    .p100-guarantee__grid { grid-template-columns: 1fr; gap: 40px; padding: 80px 20px; }
+    .p100-programs { grid-template-columns: 1fr; }
+    .p100-bonus { grid-template-columns: 1fr; gap: 16px; text-align: left; }
+  }
+  @media (max-width: 520px) {
+    .p100-stat-row { grid-template-columns: 1fr 1fr; }
+    .p100-stat:nth-child(2) { border-right: none; }
+    .p100-stat:nth-child(1), .p100-stat:nth-child(2) { border-bottom: 1px solid rgba(255,255,255,0.12); }
+    .p100-section { padding: 72px 20px; }
+  }
+</style>
