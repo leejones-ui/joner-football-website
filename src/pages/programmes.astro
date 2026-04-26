@@ -2,458 +2,302 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
 
-const checkoutUrl = 'https://jonerfootball.com/join/?utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme'
-const annualCheckoutUrl = 'https://app.jonerfootball.com/checkout/new?o=183092&utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme_annual'
+const ctaUrl = 'https://app.jonerfootball.com?utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme'
 
 const programSchema = {
-  "@context": "https://schema.org",
-  "@type": "Course",
-  "name": "Joner Football 100-Day Development Program",
-  "description": "Structured football training programs followed by thousands of players in 15+ countries. Real results in 100 days, guaranteed.",
-  "provider": {
-    "@type": "Organization",
-    "name": "Joner Football",
-    "url": "https://jonerfootball.com"
+  '@context': 'https://schema.org',
+  '@type': 'Course',
+  name: 'Joner Football 100 Day Development Program',
+  description: 'A structured 100 day football training plan for parents, players and coaches inside the Joner Football App.',
+  provider: {
+    '@type': 'Organization',
+    name: 'Joner Football',
+    url: 'https://jonerfootball.com'
   }
 }
 
+const proof = [
+  ['140+', 'Countries'],
+  ['12,000+', 'Players'],
+  ['1,500+', 'Drills'],
+  ['4.9', 'App rating'],
+]
+
+const audiences = [
+  {
+    title: 'For Parents',
+    text: 'Give your child a proven plan they can follow at home, in the garden, at the park or before team training.'
+  },
+  {
+    title: 'For Players',
+    text: 'Train with purpose every day. Improve your touch, weak foot, control, passing and finishing with sessions you can follow on your phone.'
+  },
+  {
+    title: 'For Coaches',
+    text: 'Use the program as extra player homework, technical development or a structured pathway for individuals in your team.'
+  },
+]
+
 const programs = [
-  { name: 'Juggling Program', days: '2 days', sessions: '', desc: 'Build your foundation. Ball feel, coordination, and touch.', num: 1, image: '/images/programmes/juggling-program.jpg' },
-  { name: 'Fast Feet Program', days: '7 days', sessions: '7 sessions', desc: 'Quick feet that leave defenders guessing.', num: 2, image: '/images/programmes/fast-feet-program.jpg' },
-  { name: 'Passing & First Touch Program', days: '50 days', sessions: '13 sessions', desc: 'The foundation of everything. Control under pressure. Crisp passing.', num: 3, image: '/images/programmes/passing-first-touch-program.jpg' },
-  { name: 'Dribbling Program', days: '10 days', sessions: '8 sessions', desc: 'Beat any defender. Close control and changes of direction.', num: 4, image: '/images/programmes/dribbling-program.jpg' },
-  { name: 'Weak Foot Program', days: '14 days', sessions: '11 sessions', desc: 'Double your options on the pitch.', num: 5, image: '/images/programmes/weak-foot-program.jpg' },
-  { name: 'Score More Goals Program', days: '14 days', sessions: '9 sessions', desc: 'Turn chances into goals. Finishing technique and composure.', num: 6, image: '/images/programmes/score-more-goals-program.jpg' },
+  {
+    title: 'Ball Mastery',
+    text: 'Build control, confidence and comfort on the ball with daily touches and technical repetition.',
+    image: '/images/programmes/juggling-program.jpg'
+  },
+  {
+    title: 'First Touch + Passing',
+    text: 'Improve receiving, scanning, passing detail and the ability to play quicker under pressure.',
+    image: '/images/programmes/passing-first-touch-program.jpg'
+  },
+  {
+    title: 'Weak Foot',
+    text: 'Turn your weaker side into a real weapon with progressive weak foot training.',
+    image: '/images/programmes/weak-foot-program.jpg'
+  },
+  {
+    title: 'Score More Goals',
+    text: 'Develop finishing technique, composure, ball striking and movement in front of goal.',
+    image: '/images/programmes/score-more-goals-program.jpg'
+  },
 ]
 
 const steps = [
-  { title: 'Choose Your Starting Point', desc: 'Begin with Juggling. Two days to build your foundation.' },
-  { title: 'Follow The Plan', desc: 'Each session is short, focused, clearly demonstrated. Press play and train.' },
-  { title: 'Rest and Recover', desc: 'Rest days are built in. Progress requires recovery.' },
-  { title: 'Move Through The Pathway', desc: 'Complete each program before moving to the next. 100 days. One complete footballer.' },
+  ['Download The App', 'Get the Joner Football App on your phone and open the 100 Day Program.'],
+  ['Follow The Session', 'Watch the video, copy the detail and complete the work at your own level.'],
+  ['Build The Habit', 'Train consistently, track progress and move through the full 100 day pathway.'],
+  ['See The Difference', 'Cleaner touch. Sharper technique. More confidence. Better football.'],
 ]
 
-const appFeatures = [
-  '1,500+ training videos',
-  'New content every week',
-  'Daily challenges',
-  'Live training sessions',
-  'Age-specific content',
-  'DM Lee directly (Annual only)',
-  'Team training videos (Annual only)',
-  'Offline downloads',
-  'Streaks and progress tracking',
+const results = [
+  'Better first touch',
+  'More control under pressure',
+  'A stronger weak foot',
+  'Cleaner ball striking',
+  'More confidence when the ball comes to you',
+]
+
+const testimonials = [
+  ['My son finally had a plan to follow. He stopped guessing what to train and started improving properly.', 'Parent of U12 player'],
+  ['The weak foot section changed my game. I actually trust it now.', 'Academy player'],
+  ['I use Joner Football sessions with my players every week. The detail is top level.', 'Grassroots coach'],
 ]
 
 const faqs = [
-  { q: 'What ages and levels is this for?', a: 'The programs work for players of all ages and levels. Whether you are 10 or 30, just starting out or playing at a high level, the structured pathway meets you where you are and builds from there.' },
-  { q: 'How long are the sessions?', a: '20-30 minutes. Designed to fit around work, school, and team training.' },
-  { q: 'Do I need any equipment?', a: 'Each program will clearly tell you what you need to complete it. Everything is based around minimal equipment.' },
-  { q: 'What if I already train with a team?', a: 'This is individual development. The extra work that separates good players from great ones. It complements team training, it does not replace it.' },
-  { q: 'How does the 100-day guarantee work?', a: 'Annual members only. Follow the program for 100 days. If you do not see improvement, we give you an extra 100 days free and you can DM Lee directly inside the app.' },
-  { q: 'Are the programs available on monthly?', a: 'The structured 100-day pathway and the guarantee are exclusive to Annual members. Monthly members access the 1,500+ video library. Upgrade to Annual to access the programs.' },
-  { q: 'What currency is pricing in?', a: 'All prices are in Australian Dollars (AUD).' },
-  { q: 'What about the S&C program?', a: 'The 12-Week Advanced Strength and Conditioning Program is included with Annual membership. Designed for older players ready to take their physical development seriously.' },
+  ['Who is the 100 Day Program for?', 'It is for players who want to improve their technique with a clear plan. Parents can use it to guide their child, players can follow it alone and coaches can use it as extra development work.'],
+  ['How long does each session take?', 'Most sessions are designed to be short and focused. Around 20 minutes a day is enough if the player trains with intent.'],
+  ['Do I need much equipment?', 'No. A ball, a small space and a phone is enough for most sessions. Cones or markers help, but they are not essential.'],
+  ['Is this for beginners or advanced players?', 'Both. The details matter at every level. Younger players can build the foundation, advanced players can sharpen the quality.'],
+  ['Where do I access the program?', 'Inside the Joner Football App.'],
+  ['Can coaches use this with their players?', 'Yes. Coaches can use it as player homework, individual development or extra technical work between team sessions.'],
 ]
 ---
 
 <BaseLayout
-  title="100-Day Football Program | Joner Football"
-  description="Structured football training programs followed by thousands of players in 15+ countries. 6 programs, 100 days, guaranteed results. For players of all ages and levels."
+  title="100 Day Football Program | Joner Football"
+  description="A structured 100 day football training plan for parents, players and coaches. Improve ball mastery, first touch, weak foot and finishing inside the Joner Football App."
   schema={programSchema}
 >
-
-  <!-- SECTION 1: HERO -->
-
-
-  <section class="relative flex items-center bg-joner-gray overflow-hidden min-h-[600px]">
+  <section class="relative overflow-hidden bg-joner-black">
     <div class="absolute inset-0">
-      <img src="/images/programmes/lee-hero-jf.jpg" alt="Lee Joner coaching" class="w-full h-full object-cover opacity-60" style="object-position: 70% center;" />
-      <div class="absolute inset-0 bg-gradient-to-b from-joner-black/80 via-joner-black/70 to-joner-black"></div>
+      <img src="/images/programmes/lee-hero-jf.jpg" alt="Lee Jones coaching a Joner Football session" class="h-full w-full object-cover opacity-45" style="object-position: 70% center;" />
+      <div class="absolute inset-0 bg-gradient-to-b from-joner-black/75 via-joner-black/80 to-joner-black"></div>
     </div>
-    <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full text-center">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">100-Day Development Program</p>
-      <h1 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase leading-tight mb-6">
+
+    <div class="relative z-10 mx-auto grid min-h-[620px] max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 lg:py-24">
+      <div>
+        <p class="mb-4 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">The 100 Day Development Program</p>
+        <h1 class="mb-6 max-w-3xl font-heading text-5xl font-bold uppercase leading-[0.9] text-white sm:text-6xl lg:text-7xl">
+          100 Days To Better Football
+        </h1>
+        <p class="max-w-2xl font-body text-lg leading-relaxed text-gray-200 sm:text-xl">
+          A structured football training plan built by Lee Jones to help players improve their ball mastery, first touch, weak foot and finishing inside the Joner Football App.
+        </p>
+        <p class="mt-4 max-w-xl font-body text-sm uppercase tracking-[0.18em] text-gray-400">
+          For parents, players and coaches who want a clear plan, not random drills.
+        </p>
+        <div class="mt-8 flex flex-col gap-4 sm:flex-row">
+          <a href={ctaUrl} target="_blank" rel="noopener noreferrer" class="btn-red px-9 py-4 text-center text-base">Start The 100 Day Program</a>
+          <a href="#inside" class="border border-white px-9 py-4 text-center font-heading text-sm uppercase tracking-wide text-white transition hover:bg-white hover:text-joner-black">See What Is Inside</a>
+        </div>
+      </div>
+
+      <div class="relative hidden lg:block">
+        <div class="border-2 border-joner-red bg-joner-black p-4 shadow-2xl shadow-black/50">
+          <img src="/images/programmes/programmes-category.jpg" alt="Joner Football App 100 Day Program screen" class="mx-auto max-h-[520px] w-auto object-contain" />
+        </div>
+        <div class="absolute -left-4 top-8 bg-joner-red px-5 py-3 font-heading text-sm font-bold uppercase tracking-[0.18em] text-white">Start Today</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="border-y border-gray-800 bg-joner-black">
+    <div class="mx-auto grid max-w-7xl grid-cols-2 px-4 sm:px-6 lg:grid-cols-4 lg:px-8">
+      {proof.map(([number, label]) => (
+        <div class="border-gray-800 py-6 text-center lg:border-r last:border-r-0">
+          <div class="font-heading text-3xl font-bold uppercase text-joner-red sm:text-4xl">{number}</div>
+          <div class="mt-2 font-heading text-xs uppercase tracking-[0.22em] text-gray-400">{label}</div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="bg-white py-16 text-joner-black md:py-24">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Why It Works</p>
+      <h2 class="section-heading mb-5 max-w-4xl text-joner-black">Most Players Train Hard. The Best Players Train With A Plan.</h2>
+      <div class="max-w-3xl space-y-4 font-body text-lg leading-relaxed text-gray-700">
+        <p>Random drills only get you so far.</p>
+        <p>The 100 Day Program gives players a clear daily structure. Every session has a purpose. Every week builds on the last. Every touch moves them closer to becoming cleaner, sharper and more confident on the ball.</p>
+      </div>
+
+      <div class="mt-10 grid gap-5 md:grid-cols-3">
+        {audiences.map((item) => (
+          <div class="border border-gray-200 bg-gray-50 p-7">
+            <h3 class="mb-3 font-heading text-xl font-bold uppercase text-joner-black">{item.title}</h3>
+            <p class="font-body text-gray-700">{item.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
+      <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">The Line</p>
+      <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white sm:text-5xl lg:text-6xl">
         While Other Kids Watch YouTube Highlights, Yours Will Be Creating Them.
-      </h1>
-      <p class="text-gray-300 font-body text-lg md:text-xl mb-8 max-w-2xl mx-auto">
-        100 Days From Now, Your Child Will Be Unrecognisable On The Pitch
-      </p>
-      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-        <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base md:text-lg px-10 py-4 text-center">
-          Start Your Free Trial
-        </a>
-        <a href={annualCheckoutUrl} target="_blank" rel="noopener noreferrer" class="border border-white text-white hover:bg-white hover:text-joner-black transition px-8 py-4 font-heading uppercase tracking-wide text-sm text-center w-full sm:w-auto">
-          Go Annual Now
-        </a>
+      </h2>
+      <div class="mx-auto mt-7 max-w-2xl space-y-4 font-body text-lg leading-relaxed text-gray-300">
+        <p>That is the standard.</p>
+        <p>Not more scrolling. Not another random drill saved to camera roll. A real 100 day development plan players can actually follow.</p>
       </div>
+      <a href={ctaUrl} target="_blank" rel="noopener noreferrer" class="btn-red mt-8 inline-block px-9 py-4 text-center">Start The Program</a>
     </div>
   </section>
 
-  <!-- SECTION 2: THE 100-DAY PATHWAY -->
-  <section class="bg-joner-black py-16 md:py-24">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-14">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">The System</p>
-        <h2 class="section-heading text-white mb-4">The Complete 100-Day Development Plan</h2>
-        <p class="text-gray-400 font-body max-w-2xl mx-auto">
-          Six structured programs. Done in order. Every day planned. Every skill built on the last. Rest days built in between. This is what transforms a player.
-        </p>
+  <section id="inside" class="bg-joner-gray py-16 md:py-24">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="mb-12 max-w-3xl">
+        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">What Is Inside</p>
+        <h2 class="section-heading mb-5 text-white">Four Programs. One Complete System.</h2>
+        <p class="font-body text-lg leading-relaxed text-gray-300">The 100 Day Program brings together four key areas every serious player needs. Ball mastery, first touch, weak foot and finishing.</p>
       </div>
 
-      <!-- Vertical timeline -->
-      <div class="relative">
-        <!-- Connecting line -->
-        <div class="absolute left-6 md:left-1/2 top-0 bottom-0 w-0.5 bg-gray-800 md:-translate-x-px"></div>
-
-        {programs.map((prog, i) => (
-          <div class="relative flex items-start mb-10 last:mb-0">
-            <!-- Number badge -->
-            <div class="relative z-10 flex-shrink-0 w-12 h-12 bg-joner-red rounded-full flex items-center justify-center md:absolute md:left-1/2 md:-translate-x-1/2">
-              <span class="font-heading text-white text-lg font-bold">{prog.num}</span>
+      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {programs.map((program, index) => (
+          <article class="overflow-hidden border border-gray-800 bg-joner-black">
+            <img src={program.image} alt={`${program.title} inside the Joner Football 100 Day Program`} loading="lazy" class="h-48 w-full object-cover" />
+            <div class="p-6">
+              <div class="mb-4 font-heading text-4xl font-bold text-joner-red">0{index + 1}</div>
+              <h3 class="mb-3 font-heading text-xl font-bold uppercase text-white">{program.title}</h3>
+              <p class="font-body text-sm leading-relaxed text-gray-400">{program.text}</p>
             </div>
-            <!-- Content card -->
-            <div class={`ml-6 md:ml-0 md:w-[calc(50%-2rem)] bg-joner-gray border border-gray-800 p-6 ${i % 2 === 0 ? 'md:mr-auto md:pr-6' : 'md:ml-auto md:pl-6'}`}>
-              <div class="flex items-center gap-3 mb-2">
-                <h3 class="font-heading text-lg text-white font-bold uppercase">{prog.name}</h3>
-                <span class="text-joner-red font-heading text-xs uppercase tracking-wider whitespace-nowrap">{prog.days}{prog.sessions ? ` · ${prog.sessions}` : ''}</span>
-              </div>
-              <p class="text-gray-400 font-body text-sm mb-4">{prog.desc}</p>
-              <div style="display:inline-block;border-radius:1.5rem;border:3px solid #333;overflow:hidden;box-shadow:0 0 0 5px #1a1a1a,0 15px 30px rgba(0,0,0,0.6);margin:0 auto;margin-top:0.5rem;">
-                <img src={prog.image} alt={prog.name} loading="lazy" style="display:block;width:140px;height:auto;" />
-              </div>
-            </div>
-          </div>
+          </article>
         ))}
-
-        <!-- Total badge -->
-        <div class="relative z-10 mt-10 text-center">
-          <div class="inline-block bg-joner-gray border-2 border-joner-red px-6 py-4">
-            <p class="font-heading text-white text-lg uppercase font-bold">100 Days of Training</p>
-            <p class="text-gray-400 font-body text-sm mt-1">With rest days built in between every program.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- BONUS -->
-      <div class="mt-14 border-2 border-yellow-500/40 bg-joner-gray p-8 relative">
-        <div class="absolute -top-4 left-6">
-          <span class="bg-yellow-500 text-joner-black font-heading text-xs uppercase tracking-wider font-bold px-3 py-1">Bonus</span>
-        </div>
-        <h3 class="font-heading text-xl text-white uppercase font-bold mb-2 mt-2">12-Week Advanced Strength & Conditioning Program</h3>
-        <p class="text-joner-red font-heading text-xs uppercase tracking-wider mb-3">12 weeks · 36 sessions</p>
-        <p class="text-gray-400 font-body text-sm leading-relaxed mb-4">
-          For older players ready to take their physical game to the next level. Football-specific speed, strength, and stamina. Start this alongside or after your 100-day journey. Annual members only.
-        </p>
-        <div style="display:inline-block;border-radius:1.5rem;border:3px solid #333;overflow:hidden;box-shadow:0 0 0 5px #1a1a1a,0 15px 30px rgba(0,0,0,0.6);margin:0 auto;margin-top:0.5rem;">
-          <img src="/images/programmes/sc-program.jpg" alt="Strength & Conditioning Program" loading="lazy" />
-        </div>
-      </div>
-
-      <!-- CTA -->
-      <div class="text-center mt-14">
-        <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red w-full sm:w-auto text-base md:text-lg px-10 py-4 text-center inline-block">
-          Start Your Free Trial
-        </a>
       </div>
     </div>
   </section>
 
-  <!-- SECTION 3: THE PROBLEM -->
-  <section class="bg-joner-gray py-16 md:py-24">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-10">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">The Reality</p>
-        <h2 class="section-heading text-white">Team Training Is Not Enough</h2>
+  <section class="bg-white py-16 text-joner-black md:py-24">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="mb-12 text-center">
+        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">How It Works</p>
+        <h2 class="section-heading text-joner-black">20 Minutes A Day. 100 Days Straight.</h2>
       </div>
-      <div class="text-gray-300 font-body text-base md:text-lg leading-relaxed space-y-4">
-        <p>You train once or twice a week with your team. But so does every other player.</p>
-        <p>The players who stand out, the ones who get picked, who make the squad, who catch the coach's eye, they do extra work. Individual work. Structured work.</p>
-        <p>But what should you actually be doing? Random YouTube drills? The same thing every day? Hoping for the best?</p>
-        <p class="text-white font-semibold">You need a plan. A proper program designed by a professional coach. That is exactly what this is.</p>
-      </div>
-      <!-- CTA -->
-      <div class="text-center mt-10">
-        <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red w-full sm:w-auto text-base md:text-lg px-10 py-4 text-center inline-block">
-          Start Your Free Trial
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <!-- SECTION 4: HOW IT WORKS -->
-  <section class="bg-joner-black py-16 md:py-24">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-14">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">How It Works</p>
-        <h2 class="section-heading text-white">Simple. Structured. It Just Works.</h2>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {steps.map((step, i) => (
-          <div class="bg-joner-gray border border-gray-800 p-6 text-center">
-            <div class="w-10 h-10 bg-joner-red rounded-full flex items-center justify-center mx-auto mb-4">
-              <span class="font-heading text-white text-lg font-bold">{i + 1}</span>
-            </div>
-            <h3 class="font-heading text-base text-white font-bold uppercase mb-2">{step.title}</h3>
-            <p class="text-gray-400 font-body text-sm">{step.desc}</p>
+      <div class="grid gap-0 border-t-2 border-joner-black md:grid-cols-4">
+        {steps.map(([title, text], index) => (
+          <div class="border-b border-gray-200 p-7 md:border-r last:border-r-0">
+            <div class="mb-5 font-heading text-5xl font-bold text-joner-red">0{index + 1}</div>
+            <h3 class="mb-3 font-heading text-xl font-bold uppercase text-joner-black">{title}</h3>
+            <p class="font-body text-gray-700">{text}</p>
           </div>
         ))}
       </div>
-      <!-- CTA -->
-      <div class="text-center mt-10">
-        <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red w-full sm:w-auto text-base md:text-lg px-10 py-4 text-center inline-block">
-          Start Your Free Trial
-        </a>
-      </div>
     </div>
   </section>
 
-  <!-- SECTION 5: WHAT MAKES THIS DIFFERENT -->
-  <section class="bg-joner-gray py-16 md:py-24">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-14">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">The Difference</p>
-        <h2 class="section-heading text-white">This Is Not Just Another Training App</h2>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-joner-black border border-gray-800 p-8">
-          <h3 class="font-heading text-lg text-white font-bold uppercase mb-3">Random Drills vs. Structured Pathway</h3>
-          <p class="text-gray-400 font-body text-sm leading-relaxed">
-            YouTube gives random drills with no context. This is a 100-day system with progressive difficulty.
-          </p>
-        </div>
-        <div class="bg-joner-black border border-gray-800 p-8">
-          <h3 class="font-heading text-lg text-white font-bold uppercase mb-3">Watching vs. Doing</h3>
-          <p class="text-gray-400 font-body text-sm leading-relaxed">
-            Every session is designed to be done, not just watched. 20-30 minutes, a ball, a small space.
-          </p>
-        </div>
-        <div class="bg-joner-black border border-gray-800 p-8">
-          <h3 class="font-heading text-lg text-white font-bold uppercase mb-3">Hope vs. Guarantee</h3>
-          <p class="text-gray-400 font-body text-sm leading-relaxed">
-            We do not just hope it works. We guarantee it. 100 days. Annual members only.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- SECTION 6: WHATS IN THE APP -->
   <section class="bg-joner-black py-16 md:py-24">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-14">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Full Access</p>
-        <h2 class="section-heading text-white">Plus Everything Else Inside The App</h2>
+    <div class="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
+      <img src="/images/programmes/lee-coaching-black.jpg" alt="Lee Jones coaching football players" loading="lazy" class="h-[420px] w-full object-cover" style="object-position: center 20%;" />
+      <div>
+        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Built By Lee Jones</p>
+        <h2 class="section-heading mb-6 text-white">Pro Level Detail. Made Simple For Every Player.</h2>
+        <div class="space-y-4 font-body text-lg leading-relaxed text-gray-300">
+          <p>Lee Jones has coached players all over the world, from grassroots kids to elite professionals.</p>
+          <p>The 100 Day Program takes the same technical detail Lee uses on the pitch and turns it into a simple daily plan any player can follow.</p>
+        </div>
+        <blockquote class="mt-8 border-l-4 border-joner-red pl-6 font-heading text-2xl font-bold uppercase leading-tight text-white">
+          This is the system I wish I had when I was younger. No fluff. No wasted touches. Just proper technique work, every day.
+        </blockquote>
+        <p class="mt-5 font-heading text-lg uppercase tracking-wide text-white">Lee Jones</p>
+        <p class="font-body text-sm text-gray-500">Founder, Joner Football</p>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {appFeatures.map((feature) => (
-          <div class="bg-joner-gray border border-gray-800 px-6 py-4 flex items-center gap-3">
-            <span class="text-joner-red text-lg">&#10003;</span>
-            <span class="text-white font-body text-sm">{feature}</span>
-          </div>
+    </div>
+  </section>
+
+  <section class="bg-joner-gray py-16 md:py-24">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <p class="mb-3 text-center font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Who It Is For</p>
+      <h2 class="section-heading mx-auto mb-10 max-w-3xl text-center text-white">If You Want To Improve, This Is For You.</h2>
+      <div class="grid gap-5 md:grid-cols-4">
+        <div class="border border-gray-800 bg-joner-black p-6">
+          <h3 class="mb-3 font-heading text-lg font-bold uppercase text-white">Parents</h3>
+          <p class="font-body text-sm text-gray-400">You want your child doing the right work between team sessions.</p>
+        </div>
+        <div class="border border-gray-800 bg-joner-black p-6">
+          <h3 class="mb-3 font-heading text-lg font-bold uppercase text-white">Players</h3>
+          <p class="font-body text-sm text-gray-400">You want to feel sharper, cleaner and more confident every time you touch the ball.</p>
+        </div>
+        <div class="border border-gray-800 bg-joner-black p-6">
+          <h3 class="mb-3 font-heading text-lg font-bold uppercase text-white">Coaches</h3>
+          <p class="font-body text-sm text-gray-400">You want a simple way to give your players extra technical work away from training.</p>
+        </div>
+        <div class="border border-joner-red bg-joner-black p-6">
+          <h3 class="mb-3 font-heading text-lg font-bold uppercase text-joner-red">Not For</h3>
+          <p class="font-body text-sm text-gray-400">This is not for players who want shortcuts. It works when you do the sessions.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-white py-16 text-joner-black md:py-24">
+    <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+      <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">The Result</p>
+      <h2 class="section-heading mb-8 text-joner-black">100 Days From Now, Your Game Can Look Different.</h2>
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {results.map((result) => (
+          <div class="border border-gray-200 bg-gray-50 p-5 font-heading text-base font-bold uppercase text-joner-black">{result}</div>
         ))}
       </div>
-      <!-- App library screenshot -->
-      <div class="flex justify-center mt-12">
-        <div style="display:inline-block;border-radius:1.5rem;border:3px solid #333;overflow:hidden;box-shadow:0 0 0 5px #1a1a1a,0 15px 30px rgba(0,0,0,0.6);">
-          <img src="/images/programmes/programmes-category.jpg" alt="Joner Football App program library" loading="lazy" style="width:160px;height:auto;border-radius:1rem;margin:0 auto;display:block;" />
-        </div>
+      <p class="mt-8 font-body text-lg text-gray-700">That is what daily technical work does.</p>
+      <a href={ctaUrl} target="_blank" rel="noopener noreferrer" class="btn-red mt-8 inline-block px-9 py-4 text-center">Start The 100 Day Program</a>
+    </div>
+  </section>
+
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <p class="mb-3 text-center font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Real Players. Real Progress.</p>
+      <h2 class="section-heading mb-10 text-center text-white">Trusted By Parents, Players And Coaches.</h2>
+      <div class="grid gap-6 md:grid-cols-3">
+        {testimonials.map(([quote, who]) => (
+          <figure class="border border-gray-800 bg-joner-gray p-7">
+            <blockquote class="font-body text-lg leading-relaxed text-gray-200">“{quote}”</blockquote>
+            <figcaption class="mt-6 border-t border-gray-800 pt-4 font-heading text-sm uppercase tracking-wide text-joner-red">{who}</figcaption>
+          </figure>
+        ))}
       </div>
     </div>
   </section>
 
-  <!-- SECTION 7: SOCIAL PROOF -->
-  <section class="bg-joner-gray border-y border-gray-800 py-16 md:py-24">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-14">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Global Community</p>
-        <h2 class="section-heading text-white">Trusted By Players In 15+ Countries</h2>
-        <img src="/images/programmes/lee-coaching-group.jpg" alt="Lee Joner coaching players" class="mt-8 w-full max-w-2xl mx-auto rounded-lg object-cover h-64 md:h-80" />
-      </div>
-
-      <div class="grid grid-cols-3 gap-3 sm:gap-6 text-center mb-14">
-        <div>
-          <div class="font-heading text-2xl sm:text-3xl md:text-4xl text-joner-red font-bold">50,000+</div>
-          <div class="text-gray-500 text-xs uppercase tracking-wider font-body mt-1">Players</div>
-        </div>
-        <div>
-          <div class="font-heading text-2xl sm:text-3xl md:text-4xl text-white font-bold">15+</div>
-          <div class="text-gray-500 text-xs uppercase tracking-wider font-body mt-1">Countries</div>
-        </div>
-        <div>
-          <div class="font-heading text-2xl sm:text-3xl md:text-4xl text-white font-bold">1,500+</div>
-          <div class="text-gray-500 text-xs uppercase tracking-wider font-body mt-1">Videos</div>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- ADD TESTIMONIAL HERE: Name, result, quote -->
-        <div class="border border-gray-700 p-8">
-          <div class="text-joner-red text-4xl font-heading leading-none mb-4">"</div>
-          <p class="text-gray-300 font-body text-base leading-relaxed mb-6 italic">
-            The 6 Week Passing &amp; 1st Touch Program completely changed my game.
-          </p>
-          <div class="border-t border-gray-700 pt-4">
-            <div class="font-heading text-white font-semibold">Ben Garrard</div>
-            <div class="text-gray-500 text-xs font-body mt-0.5">USA</div>
-          </div>
-        </div>
-        <div class="border border-gray-700 p-8">
-          <div class="text-joner-red text-4xl font-heading leading-none mb-4">"</div>
-          <p class="text-gray-300 font-body text-base leading-relaxed mb-6 italic">
-            The Fast Feet Program was so easy to follow, no equipment needed and I saw a huge improvement.
-          </p>
-          <div class="border-t border-gray-700 pt-4">
-            <div class="font-heading text-white font-semibold">Jeff Jones</div>
-            <div class="text-gray-500 text-xs font-body mt-0.5">England</div>
-          </div>
-        </div>
-        <div class="border border-gray-700 p-8">
-          <div class="text-joner-red text-4xl font-heading leading-none mb-4">"</div>
-          <p class="text-gray-300 font-body text-base leading-relaxed mb-6 italic">
-            You are the best Joner. Always trying to add and improve an already amazing brand. Hats off to you and the team.
-          </p>
-          <div class="border-t border-gray-700 pt-4">
-            <div class="font-heading text-white font-semibold">Henry Santos</div>
-            <div class="text-joner-red text-xs font-heading uppercase tracking-wide">Coach</div>
-            <div class="text-gray-500 text-xs font-body mt-0.5">USA</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- CTA -->
-      <div class="text-center mt-10">
-        <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red w-full sm:w-auto text-base md:text-lg px-10 py-4 text-center inline-block">
-          Start the Program Now
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <!-- SECTION 8: THE GUARANTEE -->
-  <section class="bg-gray-950 py-16 md:py-24 border-y border-gray-800">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-10">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">The Guarantee</p>
-        <h2 class="section-heading text-white">My 100-Day Promise To You</h2>
-      </div>
-      <div class="text-gray-300 font-body text-base md:text-lg leading-relaxed space-y-4 max-w-2xl mx-auto">
-        <p>I have coached thousands of players across 15+ countries. I have spent years building these programs. I know they work.</p>
-        <p>So here is my promise: commit to the full 100-day program. Follow the plan. Do the sessions.</p>
-        <p>If you do not see real, visible improvement in your game, I will give you an extra 100 days FREE. And you can DM me directly inside the app with your progress and I will personally review it with you.</p>
-        <p class="text-white font-semibold">That is how much I believe in this.</p>
-      </div>
-      <div class="mt-8 flex flex-col sm:flex-row items-center gap-6">
-        <img src="/images/programmes/lee-coaching-black.jpg" alt="Lee Joner" class="w-24 h-24 rounded-full object-cover border-2 border-joner-red flex-shrink-0" style="object-position: center 20%;" />
-        <div>
-          <p class="font-heading text-white text-xl uppercase tracking-wider">Lee</p>
-          <p class="text-gray-400 font-body text-sm">Founder, Joner Football</p>
-          <p class="text-gray-600 font-body text-xs mt-2">100-Day Guarantee applies to Annual plan members only.</p>
-        </div>
-      </div>
-      <!-- CTA -->
-      <div class="text-center mt-10">
-        <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red w-full sm:w-auto text-base md:text-lg px-10 py-4 text-center inline-block">
-          Start the Program Now
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <!-- SECTION 9: PRICING -->
   <section class="bg-joner-gray py-16 md:py-24">
-    <div class="max-w-lg mx-auto px-4 sm:px-6">
-      <div class="text-center mb-10">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Get Started</p>
-        <h2 class="section-heading text-white">One Plan. Everything Included.</h2>
-      </div>
-
-      <div class="bg-joner-black border-2 border-joner-red p-8 md:p-10">
-        <div class="text-center mb-6">
-          <h3 class="font-heading text-2xl text-white uppercase font-bold mb-1">Annual Plan</h3>
-          <div class="font-heading text-4xl text-joner-red font-bold">$204.99</div>
-          <p class="text-gray-500 font-body text-sm">AUD/year</p>
-        </div>
-
-        <ul class="space-y-3 mb-8">
-          <li class="flex items-start gap-3 text-gray-300 font-body text-sm">
-            <span class="text-joner-red mt-0.5">&#10003;</span>Full 100-day structured program pathway
-          </li>
-          <li class="flex items-start gap-3 text-gray-300 font-body text-sm">
-            <span class="text-joner-red mt-0.5">&#10003;</span>All 6 training programs
-          </li>
-          <li class="flex items-start gap-3 text-gray-300 font-body text-sm">
-            <span class="text-joner-red mt-0.5">&#10003;</span>BONUS: 12-Week Advanced S&C Program
-          </li>
-          <li class="flex items-start gap-3 text-gray-300 font-body text-sm">
-            <span class="text-joner-red mt-0.5">&#10003;</span>100-Day Improvement Guarantee
-          </li>
-          <li class="flex items-start gap-3 text-gray-300 font-body text-sm">
-            <span class="text-joner-red mt-0.5">&#10003;</span>1,500+ training videos
-          </li>
-          <li class="flex items-start gap-3 text-gray-300 font-body text-sm">
-            <span class="text-joner-red mt-0.5">&#10003;</span>DM Lee directly
-          </li>
-          <li class="flex items-start gap-3 text-gray-300 font-body text-sm">
-            <span class="text-joner-red mt-0.5">&#10003;</span>Team training videos
-          </li>
-          <li class="flex items-start gap-3 text-gray-300 font-body text-sm">
-            <span class="text-joner-red mt-0.5">&#10003;</span>New content every week
-          </li>
-          <li class="flex items-start gap-3 text-gray-300 font-body text-sm">
-            <span class="text-joner-red mt-0.5">&#10003;</span>Daily challenges and live sessions
-          </li>
-        </ul>
-
-        <p class="text-center text-gray-400 font-body text-sm mb-6">Less than $4 a week</p>
-
-        <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red w-full text-center block py-4 text-sm md:text-base">
-          Start the Program Now
-        </a>
-        <p class="text-gray-400 font-body text-xs text-center mt-4">
-          Already on Monthly? Upgrade to Annual in the app settings to unlock the full program pathway.
-        </p>
-        <p class="text-gray-600 font-body text-xs text-center mt-2">
-          Want to see all plan options? Visit <a href="https://jonerfootball.com/join/" class="text-joner-red hover:underline">jonerfootball.com/join</a>
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- SECTION 10: EMAIL CAPTURE -->
-  <section class="bg-joner-black py-16 md:py-20">
-    <div class="max-w-xl mx-auto px-4 sm:px-6">
-      <div class="bg-joner-gray border border-joner-red/30 p-8 md:p-10">
-        <div class="border-l-4 border-joner-red pl-6 mb-8">
-          <h2 class="font-heading text-2xl md:text-3xl font-bold text-white uppercase mb-3">Still Not Sold?</h2>
-          <p class="text-gray-400 font-body text-sm leading-relaxed">
-            Enter your email and I will send you two full sessions from inside the program. See exactly what it is like before you commit. Free.
-          </p>
-        </div>
-        <form data-brevo-form data-list-id="33" class="space-y-4">
-          <input type="email" name="email" placeholder="Your email address" required
-            class="w-full bg-joner-black border border-gray-700 text-white font-body px-4 py-3 text-sm focus:border-joner-red focus:outline-none" />
-          <input type="text" name="first_name" placeholder="Your first name"
-            class="w-full bg-joner-black border border-gray-700 text-white font-body px-4 py-3 text-sm focus:border-joner-red focus:outline-none" />
-          <button type="submit" class="btn-red w-full text-center py-3">Send Me The Free Sessions</button>
-          <p class="text-gray-600 font-body text-xs text-center">No spam. Just football.</p>
-        </form>
-      </div>
-    </div>
-  </section>
-
-  <!-- SECTION 11: FAQ -->
-  <section class="bg-joner-gray py-16 md:py-24">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">FAQ</p>
-        <h2 class="section-heading text-white">Common Questions</h2>
-      </div>
+    <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+      <p class="mb-3 text-center font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Questions</p>
+      <h2 class="section-heading mb-12 text-center text-white">Common Questions</h2>
       <div class="space-y-6">
-        {faqs.map((faq, i) => (
-          <div class={i < faqs.length - 1 ? 'border-b border-gray-800 pb-6' : 'pb-6'}>
-            <h3 class="font-heading text-white font-semibold text-lg mb-2">{faq.q}</h3>
-            <p class="text-gray-400 font-body">{faq.a}</p>
+        {faqs.map(([question, answer], index) => (
+          <div class={index < faqs.length - 1 ? 'border-b border-gray-800 pb-6' : 'pb-6'}>
+            <h3 class="mb-2 font-heading text-lg font-semibold uppercase text-white">{question}</h3>
+            <p class="font-body leading-relaxed text-gray-400">{answer}</p>
           </div>
         ))}
       </div>
@@ -462,57 +306,28 @@ const faqs = [
 
   <EmailCapture />
 
-  <!-- SECTION 12: FINAL CTA -->
   <section class="bg-joner-red py-16 md:py-20">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-      <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase mb-4">
-        Your Next Level Starts Today
-      </h2>
-      <p class="text-white/80 font-body text-lg mb-4">
-        Pick a program. Follow the plan. Watch yourself improve. Guaranteed.
-      </p>
-      <p class="text-white font-body text-base font-semibold mb-8">
-        
-      </p>
-      <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="bg-white text-joner-red font-heading text-base md:text-lg uppercase tracking-wider px-10 py-4 hover:bg-gray-100 transition-colors inline-block">
-        Start the Program Now
-      </a>
-      <p class="text-white/60 font-body text-sm mt-4">Less than $4 a week. 100-day guarantee.</p>
+    <div class="mx-auto max-w-4xl px-4 text-center sm:px-6">
+      <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-white/80">Start Today</p>
+      <h2 class="mb-5 font-heading text-4xl font-bold uppercase leading-tight text-white md:text-6xl">Give The Next 100 Days A Plan.</h2>
+      <p class="mx-auto mb-8 max-w-2xl font-body text-lg text-white/85">Open the Joner Football App, start Day 1 and follow the system.</p>
+      <a href={ctaUrl} target="_blank" rel="noopener noreferrer" class="inline-block bg-white px-10 py-4 font-heading text-base uppercase tracking-wider text-joner-red transition hover:bg-gray-100">Start The 100 Day Program</a>
+      <p class="mt-5 font-body text-sm text-white/75">Train better today. Play better tomorrow.</p>
     </div>
   </section>
 
-  <style is:global>
-    .phone-frame {
-      position: relative;
-      display: inline-block;
-      border-radius: 2rem;
-      border: 3px solid #333;
-      overflow: hidden;
-      box-shadow: 0 0 0 6px #1a1a1a, 0 20px 40px rgba(0,0,0,0.5);
-    }
-    .phone-frame img {
-      display: block;
-      width: 200px;
-      height: auto;
-    }
-  </style>
   <script is:inline>
-    document.addEventListener("DOMContentLoaded", () => {
-      const trackClicks = (selector, eventName, destination) => {
-        document.querySelectorAll(selector).forEach((link) => {
-          link.addEventListener("click", () => {
-            if (typeof window !== "undefined" && typeof window.fbq === "function") {
-              window.fbq("trackCustom", eventName, {
-                page: "programmes",
-                destination,
-              })
-            }
-          })
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('a[href*="100_day_programme"]').forEach((link) => {
+        link.addEventListener('click', () => {
+          if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
+            window.fbq('trackCustom', 'ProgrammesCTAClick', {
+              page: 'programmes',
+              destination: 'app',
+            })
+          }
         })
-      }
-
-      trackClicks('a[href*="utm_campaign=100_day_programme"]', 'ProgrammesCTAClick', 'join')
-      trackClicks('a[href*="utm_campaign=100_day_programme_annual"]', 'ProgrammesAnnualClick', 'annual_checkout')
+      })
     })
   </script>
 </BaseLayout>
