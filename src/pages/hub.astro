@@ -116,14 +116,16 @@ const hubTiles = [
   .hub-page { background: #000; color: #fff; overflow: hidden; }
   .hub-shell { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
   .hub-eyebrow { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; letter-spacing: .2em; color: #E30613; font-size: .8rem; font-weight: 600; }
-  .hub-hero { position: relative; min-height: clamp(560px, 56.25vw, 720px); display: flex; align-items: center; overflow: hidden; background: #000; }
-  .hub-hero__media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+  /* Aspect-ratio container guarantees the image never gets a shorter box than its
+     natural ratio, which is what was clipping Lee's head on the live site. */
+  .hub-hero { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 720px; min-height: 380px; display: flex; align-items: center; overflow: hidden; background: #000; isolation: isolate; }
+  .hub-hero__media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% 35%; display: block; z-index: 1; }
   .hub-hero__media--mobile { display: none; }
-  .hub-hero__scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.86) 0%, rgba(0,0,0,.54) 42%, rgba(0,0,0,.08) 100%); }
-  .hub-hero__inner { position: relative; z-index: 1; width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: 80px 0; }
-  .hub-hero__title { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(4rem, 10vw, 8rem); line-height: .86; max-width: 760px; margin: 0; }
-  .hub-hero__rule { width: min(420px, 70vw); height: 5px; background: #E30613; margin: 26px 0 18px; }
-  .hub-hero__sub { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: clamp(1rem, 2vw, 1.45rem); letter-spacing: .04em; color: rgba(255,255,255,.9); margin: 0; }
+  .hub-hero__scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,.6) 35%, rgba(0,0,0,.15) 60%, rgba(0,0,0,0) 80%); z-index: 2; }
+  .hub-hero__inner { position: relative; z-index: 3; height: 100%; width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: clamp(24px, 5vw, 64px) 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+  .hub-hero__title { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.5rem, 7vw, 6rem); line-height: .92; letter-spacing: -0.01em; max-width: 12ch; margin: 0; text-shadow: 0 2px 30px rgba(0,0,0,.5); }
+  .hub-hero__rule { width: 56px; height: 4px; background: #E30613; margin-top: clamp(20px, 2.5vw, 28px); }
+  .hub-hero__sub { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: clamp(.95rem, 1.6vw, 1.25rem); letter-spacing: .04em; color: rgba(255,255,255,.92); margin: clamp(16px, 2vw, 24px) 0 0; }
   .hub-actions { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 34px; }
   .hub-btn { display: inline-flex; align-items: center; justify-content: center; padding: 18px 26px; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-weight: 700; letter-spacing: .04em; border: 2px solid transparent; text-decoration: none; }
   .hub-btn--red { background: #E30613; border-color: #E30613; color: #fff; }
@@ -180,12 +182,6 @@ const hubTiles = [
   .hub-coming h2 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: clamp(2rem, 4vw, 3.4rem); line-height: .92; margin: 12px 0; }
   .hub-coming p:not(.hub-eyebrow) { color: rgba(255,255,255,.76); line-height: 1.6; }
   @media (max-width: 900px) {
-    .hub-hero { min-height: 720px; }
-    .hub-hero__media--desktop { display: none; }
-    .hub-hero__media--mobile { display: block; object-position: center 30%; }
-    .hub-hero__scrim { background: linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.9)); }
-    .hub-hero__inner { padding: 120px 0 40px; }
-    .hub-hero__title { font-size: clamp(3.4rem, 17vw, 5.6rem); }
     .hub-actions, .hub-app-cta__buttons { flex-direction: column; }
     .hub-btn { width: 100%; }
     .hub-strip__grid { grid-template-columns: 1fr 1fr; }
@@ -195,5 +191,16 @@ const hubTiles = [
     .hub-welcome { padding: 42px 0; }
     .hub-welcome__copy { padding-left: 18px; }
     .hub-section { padding: 72px 0; }
+  }
+  /* Hero stack switch happens earlier than the rest of the responsive layout, so the
+     portrait phone image never grows into a 1000px-tall hero on small tablets. */
+  @media (max-width: 720px) {
+    .hub-hero { aspect-ratio: auto; max-height: none; min-height: 0; flex-direction: column; align-items: stretch; }
+    .hub-hero__media--desktop { display: none; }
+    .hub-hero__media--mobile { display: block; position: relative; inset: auto; width: 100%; height: auto; aspect-ratio: 1067 / 1600; object-fit: cover; object-position: 50% 25%; }
+    .hub-hero__scrim { display: none; }
+    .hub-hero__inner { position: relative; width: 100%; max-width: none; padding: 32px 22px 40px; background: #000; height: auto; align-items: flex-start; }
+    .hub-hero__title { font-size: clamp(2.6rem, 12vw, 4.4rem); max-width: 100%; }
+    .hub-hero__rule { width: 56px; }
   }
 </style>
