@@ -1,227 +1,92 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 
-const url = new URL(Astro.request.url)
-const isEmbed = url.searchParams.get('embed') === 'true'
+const APP_LINK = 'https://app.jonerfootball.com'
+const JOIN_LINK = 'https://jonerfootball.com/join/?utm_source=website&utm_medium=hub&utm_campaign=hub_app_cta'
+const TECHNIQUE_LINK = '/technique-test'
 
-const cards = [
+const primaryTiles = [
   {
+    eyebrow: 'Start here',
     title: 'Technique Test',
-    description: 'Test your technical ability. Get your score.',
-    icon: '🎯',
-    link: '/technique-test',
-    color: 'border-red-600',
-    badge: 'Free',
+    text: 'Find your level, spot the gaps and get a clear next step for your training.',
+    href: TECHNIQUE_LINK,
+    cta: 'Take the test',
+    image: '/images/app/app-iphone-mockup.png',
   },
   {
+    eyebrow: 'This week',
     title: 'Weekly Challenge',
-    description: 'New challenge every week. Film it. Share it. Win prizes.',
-    icon: '🏆',
-    link: 'https://app.jonerfootball.com',
-    color: 'border-white',
-    badge: 'App',
+    text: 'One simple football challenge each week. Ball, wall, small space, proper work.',
+    href: APP_LINK,
+    cta: 'Open challenge',
+    image: '/images/programmes/100-day/hero-2.png',
   },
-  {
-    title: 'Football Quiz',
-    description: 'Test your football knowledge. Weekly quiz in the app.',
-    icon: '🧠',
-    link: 'https://app.jonerfootball.com',
-    color: 'border-red-600',
-    badge: 'App',
-  },
-  {
-    title: 'Free Drill of the Week',
-    description: 'One free drill every week. No account needed.',
-    icon: '⚽',
-    link: 'https://app.jonerfootball.com',
-    color: 'border-white',
-    badge: 'Free',
-  },
-  {
-    title: 'Latest Blog',
-    description: 'Training tips, coaching insights, and football culture.',
-    icon: '📝',
-    link: '/blog',
-    color: 'border-white',
-  },
-  {
-    title: 'Ask Lee',
-    description: 'Submit your question. Lee answers in the app.',
-    icon: '💬',
-    link: 'https://app.jonerfootball.com',
-    color: 'border-red-600',
-    badge: 'App',
-  },
-  {
-    title: 'Camp Announcements',
-    description: 'Upcoming camps, new locations, early bird access.',
-    icon: '📣',
-    link: '/camps',
-    color: 'border-red-600',
-  },
-  {
-    title: 'New on App',
-    description: 'Latest drills, programs, and content added this week.',
-    icon: '🆕',
-    link: 'https://app.jonerfootball.com',
-    color: 'border-white',
-    badge: 'App',
-  },
-  {
-    title: 'Latest Drop',
-    description: 'New Joner Apparel and gear releases.',
-    icon: '🔥',
-    link: '/shop',
-    color: 'border-red-600',
-  },
+]
+
+const hubTiles = [
+  { title: 'Weekly Blogs', text: 'Short training ideas, player mindset and coaching notes from the Joner Football world.', href: '/blog', tag: 'Read' },
+  { title: 'Latest Camps', text: 'See upcoming Joner Football camps, new cities and live booking pages.', href: '/camps', tag: 'Book' },
+  { title: 'Drill Of The Week', text: 'One free drill from the Joner Football system. Try it, then take the full session inside the app.', href: APP_LINK, tag: 'Free' },
+  { title: 'Football IQ Quiz', text: 'Five quick questions for players and parents. Test how well you really understand the game.', href: APP_LINK, tag: 'Quiz' },
+  { title: 'Free Coach Notes', text: 'A simple cue, drill idea or session thought for coaches who want sharper players.', href: '/blog', tag: 'Coaches' },
+  { title: 'Kids Game App', text: 'A new Joner Football game is coming. First looks and updates will live here.', href: '#game', tag: 'Soon' },
 ]
 ---
 
-{isEmbed ? (
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Joner Football Hub</title>
-      <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-      <link rel="stylesheet" href="/src/styles/global.css" />
-    </head>
-    <body class="bg-joner-black text-white">
-      <main class="min-h-screen">
-        <Fragment set:html={`<!-- Hub Content (Embed Mode) -->`} />
-        <!-- Hub header -->
-        <div class="px-4 pt-8 pb-4 text-center">
-          <h1 class="font-heading text-3xl font-bold text-white uppercase tracking-tight mb-2">Joner Football Hub</h1>
-          <p class="text-gray-400 font-body text-sm">Everything Joner Football. All in one place.</p>
-        </div>
-
-        <!-- Card grid -->
-        <div class="px-4 pb-8">
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
-            {cards.map((card) => (
-              <a href={card.link} class={`block border-l-4 ${card.color} bg-[#111111] p-5 hover:bg-[#1a1a1a] transition-colors group`} target={card.link.startsWith('http') ? '_blank' : undefined} rel={card.link.startsWith('http') ? 'noopener' : undefined}>
-                <div class="flex items-start gap-4">
-                  <span class="text-3xl flex-shrink-0">{card.icon}</span>
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1">
-                      <h2 class="font-heading text-white font-bold uppercase text-sm tracking-wide group-hover:text-joner-red transition-colors">{card.title}</h2>
-                      {card.badge && (
-                        <span class={`font-heading text-[10px] uppercase tracking-wider px-1.5 py-0.5 ${card.badge === 'Free' ? 'bg-green-600/20 text-green-400' : 'bg-joner-red/20 text-joner-red'}`}>{card.badge}</span>
-                      )}
-                    </div>
-                    <p class="text-gray-400 font-body text-xs leading-relaxed">{card.description}</p>
-                  </div>
-                </div>
-              </a>
-            ))}
+<BaseLayout
+  title="Joner Football Hub | Free Training, Technique Test, Camps & App"
+  description="The free Joner Football Hub. Technique test, weekly football challenges, blogs, latest camps, coach notes and app links in one place."
+>
+  <main class="hub-page">
+    <section class="hub-hero">
+      <div class="hub-hero__bg"></div>
+      <div class="hub-shell hub-hero__grid">
+        <div class="hub-hero__copy">
+          <p class="hub-eyebrow">Free football tools, challenges and ideas</p>
+          <h1>Joner Football Hub</h1>
+          <p class="hub-lede">Your free home for the Technique Test, weekly challenges, training blogs, coach notes, camps and quick links back into the Joner Football App.</p>
+          <div class="hub-actions">
+            <a href={TECHNIQUE_LINK} class="hub-btn hub-btn--red">Take The Technique Test</a>
+            <a href={APP_LINK} target="_blank" rel="noopener" class="hub-btn hub-btn--outline">Open The App</a>
           </div>
         </div>
-
-        <!-- Email capture -->
-        <div class="bg-[#111111] border-t border-gray-800 px-4 py-10">
-          <div class="max-w-md mx-auto text-center">
-            <h2 class="font-heading text-xl font-bold text-white uppercase mb-2">Stay in the Loop</h2>
-            <p class="text-gray-400 font-body text-sm mb-6">Get 10 free training videos and weekly updates from Coach Joner.</p>
-            <form data-brevo-form data-form-name="hub-email-capture" data-list-id="2" class="flex flex-col sm:flex-row gap-3">
-              <input type="email" name="email" placeholder="Your email" required class="flex-1 bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-              <button type="submit" class="btn-red text-sm px-6 min-h-[44px]">Subscribe</button>
-            </form>
-
-            <!-- App badges -->
-            <div class="flex justify-center gap-4 mt-8">
-              <a href="https://apps.apple.com/au/app/joner-football-app/id6737069275" target="_blank" rel="noopener" class="bg-black border border-gray-700 rounded-lg px-3 py-2 flex items-center gap-2 hover:border-white transition-colors">
-                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-                <div>
-                  <div class="text-white text-[9px] leading-none">Download on the</div>
-                  <div class="text-white font-semibold text-xs">App Store</div>
-                </div>
-              </a>
-              <a href="https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball" target="_blank" rel="noopener" class="bg-black border border-gray-700 rounded-lg px-3 py-2 flex items-center gap-2 hover:border-white transition-colors">
-                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M3 20.5v-17c0-.83.94-1.3 1.6-.8l14 8.5c.6.4.6 1.2 0 1.6l-14 8.5c-.66.5-1.6.03-1.6-.8z"/></svg>
-                <div>
-                  <div class="text-white text-[9px] leading-none">Get it on</div>
-                  <div class="text-white font-semibold text-xs">Google Play</div>
-                </div>
-              </a>
-            </div>
+        <div class="hub-hero__card">
+          <div class="hub-phone-card">
+            <span>Today inside the Hub</span>
+            <strong>Technique Test</strong>
+            <p>Find your level in minutes, then start training with more purpose.</p>
+            <a href={TECHNIQUE_LINK}>Start now</a>
           </div>
         </div>
-      </main>
-
-      <!-- Brevo form handler (inline for embed) -->
-      <script is:inline>
-        (function () {
-          document.querySelectorAll('[data-brevo-form]').forEach(function (form) {
-            form.addEventListener('submit', function (e) {
-              e.preventDefault();
-              var btn = form.querySelector('button[type="submit"]');
-              var formData = new FormData(form);
-              var data = {};
-              formData.forEach(function (v, k) { data[k] = v; });
-              data._form = form.getAttribute('data-form-name') || 'hub';
-              data._submitted = new Date().toISOString();
-              try { var s = JSON.parse(localStorage.getItem('brevo_submissions') || '[]'); s.push(data); localStorage.setItem('brevo_submissions', JSON.stringify(s)); } catch(e){}
-              btn.disabled = true; btn.textContent = 'Sending...';
-              var emailInput = form.querySelector('input[name="email"], input[type="email"]');
-              var email = formData.get('email') || '';
-              if (window.JonerEmailGuard && emailInput) {
-                window.JonerEmailGuard.protectEmailInput(emailInput);
-                var validation = window.JonerEmailGuard.validateEmail(email);
-                window.JonerEmailGuard.setFeedback(emailInput, validation);
-                if (!validation.valid) {
-                  if (typeof emailInput.reportValidity === 'function') emailInput.reportValidity();
-                  btn.disabled = false; btn.textContent = 'Submit';
-                  return;
-                }
-                email = validation.email;
-              }
-              var firstName = formData.get('first_name') || '';
-              var listId = form.getAttribute('data-list-id') || '2';
-              fetch('/api/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, firstName: firstName, listId: Number(listId) }) })
-                .then(function(r) { return r.json(); })
-                .then(function(d) { form.innerHTML = '<p class="text-green-400 font-heading text-sm uppercase py-2">Subscribed. Welcome to the team.</p>'; })
-                .catch(function() { form.innerHTML = '<p class="text-red-400 font-heading text-sm uppercase py-2">Something went wrong. Please try again.</p>'; });
-            });
-          });
-        })();
-      </script>
-    </body>
-  </html>
-) : (
-  <BaseLayout
-    title="Hub | Joner Football"
-    description="The Joner Football Hub. Technique tests, weekly challenges, free drills, blog, camp announcements, and everything Joner Football in one place."
-  >
-    <!-- Hub header -->
-    <section class="bg-joner-black pt-16 pb-8">
-      <div class="max-w-5xl mx-auto px-4 text-center">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">The Hub</p>
-        <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-4">
-          Joner Football<br/>Hub
-        </h1>
-        <p class="text-gray-400 font-body text-lg max-w-xl mx-auto">
-          Everything Joner Football. All in one place.
-        </p>
       </div>
     </section>
 
-    <!-- Card grid -->
-    <section class="bg-joner-black py-8 md:py-12">
-      <div class="max-w-5xl mx-auto px-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {cards.map((card) => (
-            <a href={card.link} class={`block border-l-4 ${card.color} bg-[#111111] p-6 hover:bg-[#1a1a1a] transition-colors group`} target={card.link.startsWith('http') ? '_blank' : undefined} rel={card.link.startsWith('http') ? 'noopener' : undefined}>
-              <div class="flex items-start gap-4">
-                <span class="text-3xl flex-shrink-0">{card.icon}</span>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-1">
-                    <h2 class="font-heading text-white font-bold uppercase text-sm tracking-wide group-hover:text-joner-red transition-colors">{card.title}</h2>
-                    {card.badge && (
-                      <span class={`font-heading text-[10px] uppercase tracking-wider px-1.5 py-0.5 ${card.badge === 'Free' ? 'bg-green-600/20 text-green-400' : 'bg-joner-red/20 text-joner-red'}`}>{card.badge}</span>
-                    )}
-                  </div>
-                  <p class="text-gray-400 font-body text-sm leading-relaxed">{card.description}</p>
-                </div>
+    <section class="hub-strip">
+      <div class="hub-shell hub-strip__grid">
+        <div><strong>Free</strong><span>No payment needed</span></div>
+        <div><strong>Weekly</strong><span>Fresh ideas and challenges</span></div>
+        <div><strong>Useful</strong><span>Players, parents and coaches</span></div>
+        <div><strong>App linked</strong><span>Easy route back inside</span></div>
+      </div>
+    </section>
+
+    <section class="hub-section hub-section--black">
+      <div class="hub-shell">
+        <div class="hub-section-head">
+          <p class="hub-eyebrow">Featured</p>
+          <h2>Start with these.</h2>
+        </div>
+        <div class="hub-feature-grid">
+          {primaryTiles.map((tile) => (
+            <a class="hub-feature" href={tile.href} target={tile.href.startsWith('http') ? '_blank' : undefined} rel={tile.href.startsWith('http') ? 'noopener' : undefined}>
+              <img src={tile.image} alt="" loading="lazy" />
+              <div class="hub-feature__shade"></div>
+              <div class="hub-feature__copy">
+                <span>{tile.eyebrow}</span>
+                <h3>{tile.title}</h3>
+                <p>{tile.text}</p>
+                <strong>{tile.cta}</strong>
               </div>
             </a>
           ))}
@@ -229,34 +94,112 @@ const cards = [
       </div>
     </section>
 
-    <!-- Email capture + App badges -->
-    <section class="bg-[#111111] border-t border-gray-800 py-16">
-      <div class="max-w-md mx-auto px-4 text-center">
-        <h2 class="font-heading text-2xl md:text-3xl font-bold text-white uppercase mb-3">Stay in the Loop</h2>
-        <p class="text-gray-400 font-body text-sm mb-8">Get 10 free training videos and weekly updates from Coach Joner.</p>
-        <form data-brevo-form data-form-name="hub-email-capture" data-list-id="2" class="flex flex-col sm:flex-row gap-3 mb-10">
-          <input type="email" name="email" placeholder="Your email" required class="flex-1 bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-          <button type="submit" class="btn-red text-sm px-6 min-h-[44px]">Subscribe</button>
-        </form>
-
-        <!-- App badges -->
-        <div class="flex justify-center gap-4">
-          <a href="https://apps.apple.com/au/app/joner-football-app/id6737069275" target="_blank" rel="noopener" class="bg-black border border-gray-700 rounded-lg px-4 py-2 flex items-center gap-3 hover:border-white transition-colors">
-            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-            <div>
-              <div class="text-white text-xs leading-none">Download on the</div>
-              <div class="text-white font-semibold text-sm">App Store</div>
-            </div>
-          </a>
-          <a href="https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball" target="_blank" rel="noopener" class="bg-black border border-gray-700 rounded-lg px-4 py-2 flex items-center gap-3 hover:border-white transition-colors">
-            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M3 20.5v-17c0-.83.94-1.3 1.6-.8l14 8.5c.6.4.6 1.2 0 1.6l-14 8.5c-.66.5-1.6.03-1.6-.8z"/></svg>
-            <div>
-              <div class="text-white text-xs leading-none">Get it on</div>
-              <div class="text-white font-semibold text-sm">Google Play</div>
-            </div>
-          </a>
+    <section class="hub-section hub-section--white">
+      <div class="hub-shell">
+        <div class="hub-section-head hub-section-head--dark">
+          <p class="hub-eyebrow">Explore</p>
+          <h2>Everything in the Hub.</h2>
+          <p>Keep it simple. Pick one thing, use it, then get back to training.</p>
+        </div>
+        <div class="hub-tile-grid">
+          {hubTiles.map((tile) => (
+            <a class="hub-tile" href={tile.href} target={tile.href.startsWith('http') ? '_blank' : undefined} rel={tile.href.startsWith('http') ? 'noopener' : undefined}>
+              <span>{tile.tag}</span>
+              <h3>{tile.title}</h3>
+              <p>{tile.text}</p>
+            </a>
+          ))}
         </div>
       </div>
     </section>
-  </BaseLayout>
-)}
+
+    <section class="hub-section hub-app-cta">
+      <div class="hub-shell hub-app-cta__grid">
+        <div>
+          <p class="hub-eyebrow">Back inside the app</p>
+          <h2>Already a member? Jump straight back in.</h2>
+          <p>The Hub gives free value. The full Joner Football system lives inside the app with programs, full sessions and weekly content.</p>
+        </div>
+        <div class="hub-app-cta__buttons">
+          <a href={APP_LINK} target="_blank" rel="noopener" class="hub-btn hub-btn--red">I Am A Member</a>
+          <a href={JOIN_LINK} class="hub-btn hub-btn--outline">I Need To Sign Up</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="game" class="hub-game">
+      <div class="hub-shell">
+        <p class="hub-eyebrow">Coming soon</p>
+        <h2>Joner Football Kids Game App</h2>
+        <p>A football game for kids is coming next. First looks, updates and launch links will live in the Hub.</p>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<style is:global>
+  .hub-page { background: #000; color: #fff; overflow: hidden; }
+  .hub-shell { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
+  .hub-eyebrow { font-family: var(--font-heading); text-transform: uppercase; letter-spacing: .2em; color: #E30613; font-size: .8rem; font-weight: 800; }
+  .hub-hero { position: relative; min-height: 760px; display: flex; align-items: center; background: #000; }
+  .hub-hero__bg { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.86), rgba(0,0,0,.58)), url('/images/programmes/100-day/hero-cropped.png') center/cover; opacity: .95; }
+  .hub-hero__grid { position: relative; display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; width: 100%; }
+  .hub-hero h1 { font-family: var(--font-heading); text-transform: uppercase; font-size: clamp(4rem, 10vw, 8rem); line-height: .86; max-width: 760px; margin: 18px 0; }
+  .hub-lede { font-size: 1.15rem; line-height: 1.6; color: rgba(255,255,255,.82); max-width: 620px; }
+  .hub-actions { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 34px; }
+  .hub-btn { display: inline-flex; align-items: center; justify-content: center; padding: 18px 26px; font-family: var(--font-heading); text-transform: uppercase; font-weight: 900; letter-spacing: .04em; border: 2px solid transparent; text-decoration: none; }
+  .hub-btn--red { background: #E30613; border-color: #E30613; color: #fff; }
+  .hub-btn--outline { color: #fff; border-color: #fff; }
+  .hub-phone-card { border: 2px solid #E30613; background: rgba(0,0,0,.72); padding: 34px; box-shadow: 0 24px 80px rgba(0,0,0,.45); max-width: 420px; margin-left: auto; }
+  .hub-phone-card span { font-family: var(--font-heading); color: #E30613; text-transform: uppercase; letter-spacing: .18em; font-size: .78rem; }
+  .hub-phone-card strong { display: block; font-family: var(--font-heading); font-size: 3rem; line-height: .9; text-transform: uppercase; margin-top: 14px; }
+  .hub-phone-card p { color: rgba(255,255,255,.78); line-height: 1.55; }
+  .hub-phone-card a { color: #fff; font-family: var(--font-heading); text-transform: uppercase; }
+  .hub-strip { border-top: 1px solid rgba(255,255,255,.14); border-bottom: 1px solid rgba(255,255,255,.14); }
+  .hub-strip__grid { display: grid; grid-template-columns: repeat(4,1fr); padding-top: 0; padding-bottom: 0; }
+  .hub-strip__grid div { padding: 22px 16px; border-right: 1px solid rgba(255,255,255,.14); text-align: center; }
+  .hub-strip__grid div:last-child { border-right: 0; }
+  .hub-strip strong { display: block; color: #E30613; font-family: var(--font-heading); font-size: 1.8rem; text-transform: uppercase; }
+  .hub-strip span { display: block; color: rgba(255,255,255,.66); font-size: .85rem; }
+  .hub-section { padding: 96px 0; }
+  .hub-section--black { background: #050505; }
+  .hub-section--white { background: #fff; color: #000; }
+  .hub-section-head { margin-bottom: 34px; }
+  .hub-section-head h2, .hub-app-cta h2, .hub-game h2 { font-family: var(--font-heading); text-transform: uppercase; font-size: clamp(2.4rem, 5vw, 4.8rem); line-height: .92; margin: 12px 0; }
+  .hub-section-head--dark p:not(.hub-eyebrow) { color: rgba(0,0,0,.68); font-size: 1.05rem; }
+  .hub-feature-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 22px; }
+  .hub-feature { min-height: 430px; position: relative; overflow: hidden; display: flex; align-items: flex-end; text-decoration: none; color: #fff; border: 1px solid rgba(255,255,255,.18); }
+  .hub-feature img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
+  .hub-feature:hover img { transform: scale(1.04); }
+  .hub-feature__shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.92)); }
+  .hub-feature__copy { position: relative; padding: 34px; max-width: 560px; }
+  .hub-feature__copy span, .hub-tile span { color: #E30613; font-family: var(--font-heading); text-transform: uppercase; letter-spacing: .18em; font-size: .75rem; }
+  .hub-feature__copy h3, .hub-tile h3 { font-family: var(--font-heading); text-transform: uppercase; font-size: 2rem; line-height: .95; margin: 10px 0; }
+  .hub-feature__copy p { color: rgba(255,255,255,.8); line-height: 1.55; }
+  .hub-feature__copy strong { font-family: var(--font-heading); text-transform: uppercase; }
+  .hub-tile-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: rgba(0,0,0,.14); border: 1px solid rgba(0,0,0,.14); }
+  .hub-tile { background: #fff; color: #000; padding: 30px; min-height: 230px; text-decoration: none; }
+  .hub-tile:hover { background: #f5f5f5; }
+  .hub-tile p { color: rgba(0,0,0,.68); line-height: 1.55; }
+  .hub-app-cta { background: #0A0A0A; padding: 88px 0; }
+  .hub-app-cta__grid { display: grid; grid-template-columns: 1fr auto; gap: 38px; align-items: center; }
+  .hub-app-cta p:not(.hub-eyebrow), .hub-game p { color: rgba(255,255,255,.76); max-width: 640px; line-height: 1.6; }
+  .hub-app-cta__buttons { display: flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+  .hub-game { background: #E30613; color: #fff; padding: 86px 0; text-align: center; }
+  .hub-game .hub-eyebrow { color: rgba(255,255,255,.78); }
+  .hub-game p { margin-left: auto; margin-right: auto; }
+  @media (max-width: 900px) {
+    .hub-hero { min-height: 720px; }
+    .hub-hero__bg { background: linear-gradient(180deg, rgba(0,0,0,.32), rgba(0,0,0,.9)), url('/images/programmes/100-day/hero-cropped.png') 42% center/cover; }
+    .hub-hero__grid { grid-template-columns: 1fr; padding-top: 120px; padding-bottom: 40px; }
+    .hub-hero__card { display: none; }
+    .hub-hero h1 { font-size: clamp(3.4rem, 17vw, 5.6rem); }
+    .hub-actions, .hub-app-cta__buttons { flex-direction: column; }
+    .hub-btn { width: 100%; }
+    .hub-strip__grid { grid-template-columns: 1fr 1fr; }
+    .hub-strip__grid div:nth-child(2) { border-right: 0; }
+    .hub-strip__grid div:nth-child(1), .hub-strip__grid div:nth-child(2) { border-bottom: 1px solid rgba(255,255,255,.14); }
+    .hub-feature-grid, .hub-tile-grid, .hub-app-cta__grid { grid-template-columns: 1fr; }
+    .hub-section { padding: 72px 0; }
+  }
+</style>
