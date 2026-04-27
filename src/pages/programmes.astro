@@ -158,7 +158,10 @@ const faqs = [
         <div class="p100-guarantee__body">
           <p>I have coached thousands of players across 15+ countries. I have spent years building these programs. I know they work.</p>
           <p>Commit to the full 100-day program. Follow the plan. Do the sessions. If you do not see real, visible improvement in your game, I will give you an extra <strong>100 days FREE</strong>. And you can DM me directly inside the app.</p>
-          <p class="p100-guarantee__sig"><span class="p100-guarantee__sig-bar"></span>Lee, Founder Joner Football</p>
+          <div class="p100-guarantee__sig-wrap">
+            <img class="p100-guarantee__avatar" src="/images/programmes/100-day/lee-phones.png" alt="Lee Jones" loading="lazy" />
+            <p class="p100-guarantee__sig"><span class="p100-guarantee__sig-bar"></span>Lee, Founder Joner Football</p>
+          </div>
         </div>
         <div class="p100-cta-row">
           <a class="p100-btn p100-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual Now</a>
@@ -653,12 +656,29 @@ const faqs = [
   }
   .p100-guarantee__body p { margin: 0 0 14px; }
   .p100-guarantee__body p:last-child { margin: 0; }
+  .p100-guarantee__sig-wrap {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 20px;
+  }
+  .p100-guarantee__avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 999px;
+    object-fit: cover;
+    object-position: center;
+    border: 3px solid var(--p100-red);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+    flex: 0 0 auto;
+  }
   .p100-guarantee__sig {
     font-family: var(--p100-display);
     font-style: italic; font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0.06em; font-size: 18px; color: #fff;
     display: inline-flex; align-items: center; gap: 10px;
+    margin: 0;
   }
   .p100-guarantee__sig-bar { width: 24px; height: 2px; background: var(--p100-red); display: inline-block; }
 
@@ -823,6 +843,8 @@ const faqs = [
     }
     .p100-reality { grid-template-columns: 1fr; gap: 36px; }
     .p100-guarantee__grid { grid-template-columns: 1fr; gap: 40px; padding: 80px 20px; }
+    .p100-guarantee__sig-wrap { align-items: center; gap: 12px; }
+    .p100-guarantee__avatar { width: 58px; height: 58px; }
     .p100-programs { grid-template-columns: 1fr; }
     .p100-bonus { grid-template-columns: 1fr; gap: 16px; text-align: left; }
   }
