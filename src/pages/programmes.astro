@@ -17,7 +17,7 @@ const schema = {
 }
 
 const proof = [
-  ['50,000+', 'PLAYERS'],
+  ['50,000+', 'DOWNLOADS'],
   ['15+', 'COUNTRIES'],
   ['1,500+', 'VIDEOS'],
   ['100', 'DAY PLAN'],
@@ -94,8 +94,8 @@ const faqs = [
   </section>
 
   {/* REALITY ========================================================= */}
-  <section class="p100-section p100-section--white">
-    <div class="p100-reality">
+  <section class="p100-reality-section">
+    <div class="p100-reality-bleed">
       <div class="p100-reality__copy">
         <span class="p100-eyebrow">The Reality</span>
         <h2 class="p100-h2 p100-h2--ink">
@@ -591,19 +591,39 @@ const faqs = [
   }
   .p100-diff__body { font-size: 14.5px; line-height: 1.6; color: rgba(255,255,255,0.78); margin: 0; flex: 1; }
 
-  /* REALITY -------------------------------------------------------- */
-  .p100-reality {
-    max-width: 1180px; margin: 0 auto;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+  /* REALITY (full-bleed image right) -------------------------------- */
+  .p100-reality-section { background: #fff; color: #000; }
+  .p100-reality-bleed {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    align-items: stretch;
+    min-height: 560px;
   }
-  .p100-reality__copy { color: #000; }
+  .p100-reality__copy {
+    color: #000;
+    display: flex; flex-direction: column; justify-content: center;
+    padding-block: 96px;
+    padding-inline-start: max(20px, calc((100vw - 1280px) / 2 + 20px));
+    padding-inline-end: 56px;
+  }
   .p100-reality__body {
     font-size: 1.0625rem; line-height: 1.65;
     color: rgba(0,0,0,0.74); margin-top: 22px; max-width: 560px;
   }
   .p100-reality__body p { margin: 0 0 14px; }
   .p100-reality__body p:last-child { margin: 0; }
-  .p100-reality__image img { width: 100%; height: auto; display: block; }
+  .p100-reality__image {
+    position: relative;
+    min-height: 100%;
+    background: #000;
+  }
+  .p100-reality__image img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover; object-position: center;
+    display: block;
+  }
 
   /* GUARANTEE ------------------------------------------------------ */
   .p100-guarantee {
@@ -841,7 +861,9 @@ const faqs = [
       width: 100%;
       padding: 18px 22px;
     }
-    .p100-reality { grid-template-columns: 1fr; gap: 36px; }
+    .p100-reality-bleed { grid-template-columns: 1fr; min-height: auto; }
+    .p100-reality__copy { padding: 64px 20px 56px; padding-inline-start: 20px; padding-inline-end: 20px; }
+    .p100-reality__image { min-height: 360px; }
     .p100-guarantee__grid { grid-template-columns: 1fr; gap: 40px; padding: 80px 20px; }
     .p100-guarantee__sig-wrap { align-items: center; gap: 12px; }
     .p100-guarantee__avatar { width: 58px; height: 58px; }
