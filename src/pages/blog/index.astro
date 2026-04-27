@@ -52,7 +52,7 @@ const hardcodedPosts = [
     readTime: '6 min read',
     category: 'Parents',
     audience: 'Parents',
-    image: '/images/training/juniors.webp',
+    image: '/images/homepage/audience-parent.webp',
   },
   {
     title: 'What Makes a Great Football Coach? 5 Things to Look For',
@@ -62,7 +62,7 @@ const hardcodedPosts = [
     readTime: '5 min read',
     category: 'Coaches',
     audience: 'Coaches',
-    image: '/images/about/lee-coaching.webp',
+    image: '/images/homepage/audience-coach.webp',
   },
   {
     title: 'Football Camp Packing List: Everything Your Child Needs',
@@ -152,7 +152,7 @@ const blogGroups = [
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
                 {group.posts.map((post) => (
                   <a href={`/blog/${post.slug}`} class="group border border-gray-800 hover:border-joner-red transition-all duration-200 hover:-translate-y-1 overflow-hidden bg-joner-black">
-                    <div class="h-40 sm:h-44 md:h-48 overflow-hidden bg-joner-gray">
+                    <div class="aspect-video overflow-hidden bg-joner-gray">
                       <img src={post.image} alt={post.title} class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" />
                     </div>
                     <div class="p-6">
