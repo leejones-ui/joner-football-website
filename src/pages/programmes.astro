@@ -95,12 +95,10 @@ const faqs = [
 
   {/* REALITY ========================================================= */}
   <section class="p100-reality-section">
-    <img class="p100-reality__bg" src="/images/programmes/100-day/reality-bg.png" alt="Coach Lee Jones training inside the Joner Football App" />
-    <div class="p100-reality__overlay"></div>
-    <div class="p100-reality__inner">
+    <div class="p100-reality-bleed">
       <div class="p100-reality__copy">
         <span class="p100-eyebrow">The Reality</span>
-        <h2 class="p100-h2">
+        <h2 class="p100-h2 p100-h2--ink">
           Team training is <span class="p100-hook">not enough</span>.
         </h2>
         <div class="p100-reality__body">
@@ -109,8 +107,11 @@ const faqs = [
           <p>You need a plan. A proper program designed by a professional coach. Sessions run from 20 minutes up to an hour. That is exactly what this is.</p>
         </div>
         <div class="p100-cta-row">
-          <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
+          <a class="p100-btn p100-btn--outline-ink" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
         </div>
+      </div>
+      <div class="p100-reality__image">
+        <img src="/images/programmes/100-day/lee-phones.png" alt="Coach Lee Jones training inside the Joner Football App" />
       </div>
     </div>
   </section>
@@ -590,49 +591,38 @@ const faqs = [
   }
   .p100-diff__body { font-size: 14.5px; line-height: 1.6; color: rgba(255,255,255,0.78); margin: 0; flex: 1; }
 
-  /* REALITY (full-bleed photo with text overlay on the left) -------- */
-  .p100-reality-section {
-    position: relative;
-    background: #000;
-    color: #fff;
-    overflow: hidden;
-    min-height: clamp(520px, 60vw, 720px);
-    display: flex;
-  }
-  .p100-reality__bg {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    object-fit: cover; object-position: center right;
-    display: block;
-  }
-  .p100-reality__overlay {
-    position: absolute; inset: 0;
-    background:
-      linear-gradient(90deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.78) 28%, rgba(0,0,0,0.18) 58%, rgba(0,0,0,0) 75%);
-  }
-  .p100-reality__inner {
-    position: relative;
-    width: 100%;
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 96px 20px;
-    display: flex;
-    align-items: center;
+  /* REALITY (full-bleed image right) -------------------------------- */
+  .p100-reality-section { background: #fff; color: #000; }
+  .p100-reality-bleed {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    align-items: stretch;
+    min-height: 560px;
   }
   .p100-reality__copy {
-    max-width: 560px;
-    display: flex; flex-direction: column;
+    color: #000;
+    display: flex; flex-direction: column; justify-content: center;
+    padding-block: 96px;
+    padding-inline-start: max(20px, calc((100vw - 1280px) / 2 + 20px));
+    padding-inline-end: 56px;
   }
   .p100-reality__body {
     font-size: 1.0625rem; line-height: 1.65;
-    color: rgba(255,255,255,0.85);
-    margin-top: 22px;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    color: rgba(0,0,0,0.74); margin-top: 22px; max-width: 560px;
   }
   .p100-reality__body p { margin: 0 0 14px; }
   .p100-reality__body p:last-child { margin: 0; }
-  .p100-reality-section .p100-h2 {
-    text-shadow: 0 2px 18px rgba(0,0,0,0.55);
+  .p100-reality__image {
+    position: relative;
+    min-height: 100%;
+    background: #000;
+  }
+  .p100-reality__image img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover; object-position: center;
+    display: block;
   }
 
   /* GUARANTEE ------------------------------------------------------ */
@@ -871,13 +861,9 @@ const faqs = [
       width: 100%;
       padding: 18px 22px;
     }
-    .p100-reality-section { min-height: 640px; }
-    .p100-reality__bg { object-position: 70% center; }
-    .p100-reality__overlay {
-      background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.7) 45%, rgba(0,0,0,0.92) 100%);
-    }
-    .p100-reality__inner { padding: 56px 22px; align-items: flex-end; }
-    .p100-reality__copy { max-width: 100%; }
+    .p100-reality-bleed { grid-template-columns: 1fr; min-height: auto; }
+    .p100-reality__copy { padding: 64px 20px 56px; padding-inline-start: 20px; padding-inline-end: 20px; }
+    .p100-reality__image { min-height: 360px; }
     .p100-guarantee__grid { grid-template-columns: 1fr; gap: 40px; padding: 80px 20px; }
     .p100-guarantee__sig-wrap { align-items: center; gap: 12px; }
     .p100-guarantee__avatar { width: 58px; height: 58px; }
