@@ -140,34 +140,35 @@ const faqs = [
     </div>
   </section>
 
-  {/* GUARANTEE ======================================================= */}
-  <section class="p100-guarantee">
-    <img class="p100-guarantee__bg" src="/images/programmes/100-day/coaching-circle.png" alt="" aria-hidden="true" />
-    <div class="p100-guarantee__overlay"></div>
-    <div class="p100-guarantee__grid">
-      <div>
-        <div class="p100-guarantee__badge">
-          <div class="p100-guarantee__num">100</div>
-          <div class="p100-guarantee__day">Day Guarantee</div>
-          <div class="p100-guarantee__sub">Annual members only</div>
-        </div>
-      </div>
-      <div>
-        <span class="p100-eyebrow">The Guarantee</span>
-        <h2 class="p100-h2">
-          My 100-day promise <span class="p100-hook">to you</span>.
-        </h2>
-        <div class="p100-guarantee__body">
-          <p>I have coached thousands of players across 15+ countries. I have spent years building these programs. I know they work.</p>
-          <p>Commit to the full 100-day program. Follow the plan. Do the sessions. If you do not see real, visible improvement in your game, I will give you an extra <strong>100 days FREE</strong>. And you can DM me directly inside the app.</p>
-          <div class="p100-guarantee__sig-wrap">
-            <img class="p100-guarantee__avatar" src="/images/programmes/100-day/lee-avatar.jpg" alt="Lee Jones" loading="lazy" />
-            <p class="p100-guarantee__sig"><span class="p100-guarantee__sig-bar"></span>Lee, Founder Joner Football</p>
+  {/* GUARANTEE (full-bleed photo + overlaid badge and copy on desktop, stack on mobile) */}
+  <section class="guar-hero" aria-label="The 100 Day Guarantee">
+    <div class="guar-hero__media">
+      <img src="/images/programmes/100-day/guarantee-clean.png" alt="Coach Lee Jones with players, showing the Joner Football App" />
+      <div class="guar-hero__scrim" aria-hidden="true"></div>
+      <div class="guar-hero__inner">
+        <div class="guar-hero__stack">
+          <div class="guar-badge">
+            <div class="guar-badge__num">100</div>
+            <div class="guar-badge__lbl">Day Guarantee</div>
+            <div class="guar-badge__sub">Annual Members Only</div>
           </div>
-        </div>
-        <div class="p100-cta-row">
-          <a class="p100-btn p100-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual Now</a>
-          <a class="p100-btn p100-btn--outline" href={APP_LINK} target="_blank" rel="noopener">Start Free Trial</a>
+          <div class="guar-copy">
+            <p class="guar-copy__eyebrow">The Guarantee</p>
+            <h2 class="guar-copy__title">
+              My 100-day promise <span class="accent">to you.</span>
+            </h2>
+            <div class="guar-copy__body">
+              <p>Commit to the full 100-day program. Follow the plan. Do the sessions. If you do not see real, visible improvement in your game, I will give you an extra <strong>100 days FREE</strong>.</p>
+            </div>
+            <div class="guar-copy__signoff">
+              <img class="guar-copy__avatar" src="/images/programmes/100-day/lee-avatar.jpg" alt="Lee Jones" loading="lazy" />
+              Lee, Founder Joner Football
+            </div>
+            <div class="guar-copy__ctas">
+              <a class="guar-btn guar-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual Now</a>
+              <a class="guar-btn guar-btn--ghost" href={APP_LINK} target="_blank" rel="noopener">Start Free Trial</a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -709,82 +710,179 @@ const faqs = [
     .reality-hero__body { max-width: 100%; }
   }
 
-  /* GUARANTEE ------------------------------------------------------ */
-  .p100-guarantee {
+  /* GUARANTEE HERO (single image at native ratio, badge + copy overlaid left) */
+  .guar-hero {
     position: relative;
-    background: #000; color: #fff;
+    width: 100%;
+    background: #000;
     overflow: hidden;
   }
-  .p100-guarantee__bg {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%; object-fit: cover; opacity: 0.22;
-  }
-  .p100-guarantee__overlay {
-    position: absolute; inset: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.92));
-  }
-  .p100-guarantee__grid {
+  .guar-hero__media {
     position: relative;
-    max-width: 1180px; margin: 0 auto;
-    padding: 120px 20px;
-    display: grid; grid-template-columns: 1fr 1.1fr; gap: 64px; align-items: center;
+    width: 100%;
+    max-width: 1672px;
+    margin: 0 auto;
+    aspect-ratio: 1672 / 941;
+    background: #000;
   }
-  .p100-guarantee__badge {
+  .guar-hero__media > img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+  }
+  .guar-hero__scrim {
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 60%;
+    background: linear-gradient(90deg,
+      rgba(0,0,0,0.86) 0%,
+      rgba(0,0,0,0.74) 30%,
+      rgba(0,0,0,0.45) 65%,
+      rgba(0,0,0,0)    100%);
+    pointer-events: none;
+  }
+  .guar-hero__inner {
+    position: absolute; inset: 0;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: clamp(28px, 4vw, 64px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: clamp(20px, 2.4vw, 32px);
+  }
+  .guar-hero__stack {
+    width: clamp(300px, 46%, 560px);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(18px, 2vw, 26px);
+  }
+
+  .guar-badge {
     border: 3px solid var(--p100-red);
-    padding: 40px 28px; text-align: center;
+    padding: clamp(20px, 2.2vw, 32px) clamp(18px, 2vw, 28px);
+    text-align: center;
     background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    width: 100%;
+    max-width: 280px;
   }
-  .p100-guarantee__num {
-    font-family: var(--p100-display);
-    font-style: italic; font-weight: 900;
+  .guar-badge__num {
     color: var(--p100-red);
-    font-size: clamp(4rem, 10vw, 7rem); line-height: 0.85;
-    letter-spacing: -0.02em;
-  }
-  .p100-guarantee__day {
     font-family: var(--p100-display);
     font-style: italic; font-weight: 900;
-    text-transform: uppercase;
-    font-size: clamp(1.5rem, 3vw, 2.25rem);
-    letter-spacing: 0.04em; margin-top: 6px;
+    line-height: 0.85; letter-spacing: -0.02em;
+    font-size: clamp(3rem, 5vw, 4.5rem);
+    margin: 0;
   }
-  .p100-guarantee__sub {
-    font-size: 14px; color: rgba(255,255,255,0.7); margin-top: 14px;
+  .guar-badge__lbl {
+    color: #fff;
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: clamp(1.0625rem, 1.4vw, 1.375rem);
+    margin: 4px 0 0;
+    line-height: 1.05;
+  }
+  .guar-badge__sub {
+    color: rgba(255,255,255,0.72);
     font-family: var(--p100-display);
     font-style: italic; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.18em;
+    font-size: 11px;
+    margin: 10px 0 0;
   }
-  .p100-guarantee__body {
-    font-size: 1.0625rem; line-height: 1.65;
-    color: rgba(255,255,255,0.82); margin-top: 22px; max-width: 600px;
+
+  .guar-copy { color: #fff; width: 100%; }
+  .guar-copy__eyebrow {
+    color: var(--p100-red);
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.22em;
+    font-size: 12px;
+    margin: 0 0 clamp(10px, 1.4vw, 14px);
   }
-  .p100-guarantee__body p { margin: 0 0 14px; }
-  .p100-guarantee__body p:last-child { margin: 0; }
-  .p100-guarantee__sig-wrap {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-top: 20px;
-  }
-  .p100-guarantee__avatar {
-    width: 64px;
-    height: 64px;
-    border-radius: 999px;
-    object-fit: cover;
-    object-position: center;
-    border: 3px solid var(--p100-red);
-    box-shadow: 0 10px 28px rgba(0,0,0,0.45);
-    flex: 0 0 auto;
-  }
-  .p100-guarantee__sig {
+  .guar-copy__title {
+    margin: 0;
+    color: #fff;
     font-family: var(--p100-display);
     font-style: italic; font-weight: 900;
     text-transform: uppercase;
-    letter-spacing: 0.06em; font-size: 18px; color: #fff;
-    display: inline-flex; align-items: center; gap: 10px;
-    margin: 0;
+    line-height: 0.95; letter-spacing: -0.01em;
+    font-size: clamp(1.625rem, 3.2vw, 2.625rem);
+    text-wrap: balance;
+    text-shadow: 0 2px 24px rgba(0,0,0,0.6);
   }
-  .p100-guarantee__sig-bar { width: 24px; height: 2px; background: var(--p100-red); display: inline-block; }
+  .guar-copy__title .accent { color: var(--p100-red); }
+  .guar-copy__body {
+    margin: clamp(14px, 1.6vw, 18px) 0 0;
+    color: rgba(255,255,255,0.86);
+    font-family: 'DM Sans', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: clamp(0.875rem, 0.95vw, 0.9375rem);
+    line-height: 1.55;
+  }
+  .guar-copy__body p { margin: 0 0 12px; }
+  .guar-copy__body p:last-child { margin-bottom: 0; }
+  .guar-copy__body strong { color: #fff; font-weight: 700; }
+  .guar-copy__signoff {
+    margin-top: clamp(16px, 2vw, 22px);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    font-size: clamp(11px, 1vw, 13px);
+    color: #fff;
+  }
+  .guar-copy__avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: #000;
+    border: 2px solid var(--p100-red);
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .guar-copy__ctas {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    margin-top: clamp(22px, 2.4vw, 30px);
+  }
+  .guar-btn {
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    padding: 16px 26px;
+    border: 2px solid;
+    text-decoration: none;
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.9375rem;
+    transition: background 120ms, color 120ms, transform 80ms;
+    cursor: pointer;
+  }
+  .guar-btn--red { background: var(--p100-red); color: #fff; border-color: var(--p100-red); }
+  .guar-btn--red:hover { background: var(--p100-red-hover); border-color: var(--p100-red-hover); }
+  .guar-btn--ghost { background: transparent; color: #fff; border-color: #fff; }
+  .guar-btn--ghost:hover { background: #fff; color: #000; }
+  .guar-btn:active { transform: translateY(1px); }
+
+  /* Mobile guarantee: stack image on top, copy block below */
+  @media (max-width: 900px) {
+    .guar-hero__scrim { display: none; }
+    .guar-hero__inner {
+      position: relative; inset: auto;
+      padding: 32px 22px 44px;
+      background: #000;
+      align-items: stretch;
+    }
+    .guar-hero__stack { width: 100%; max-width: 100%; }
+    .guar-badge { max-width: 320px; margin: 0 auto; }
+    .guar-copy__title { font-size: clamp(1.875rem, 7vw, 2.5rem); }
+  }
 
   /* TESTIMONIALS --------------------------------------------------- */
   .p100-testi {
@@ -945,9 +1043,6 @@ const faqs = [
       width: 100%;
       padding: 18px 22px;
     }
-    .p100-guarantee__grid { grid-template-columns: 1fr; gap: 40px; padding: 80px 20px; }
-    .p100-guarantee__sig-wrap { align-items: center; gap: 12px; }
-    .p100-guarantee__avatar { width: 58px; height: 58px; }
     .p100-programs { grid-template-columns: 1fr; }
     .p100-bonus { grid-template-columns: 1fr; gap: 16px; text-align: left; }
   }
