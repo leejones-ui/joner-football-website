@@ -20,7 +20,7 @@ const proof = [
   ['50,000+', 'PLAYERS'],
   ['15+', 'COUNTRIES'],
   ['1,500+', 'VIDEOS'],
-  ['100', 'DAY GUARANTEE'],
+  ['100', 'DAY PLAN'],
 ]
 
 const programs = [
@@ -35,7 +35,7 @@ const programs = [
 const differences = [
   { num: '01', title: 'Random Drills vs. Structured Pathway', body: 'YouTube gives random drills with no context. This is a 100-day system with progressive difficulty.' },
   { num: '02', title: 'Watching vs. Doing',                   body: 'Every session is designed to be done, not just watched. 20 minutes to an hour, a ball, a small space.' },
-  { num: '03', title: 'Hope vs. Guarantee',                   body: 'We do not just hope it works. We guarantee it. 100 days. Annual members only.' },
+  { num: '03', title: 'Guesswork vs. Daily Progress',              body: 'Each session gives the player a clear job to complete, so progress is easier to see and easier to repeat.' },
 ]
 
 const testimonials = [
@@ -93,6 +93,30 @@ const faqs = [
     </div>
   </section>
 
+  {/* REALITY ========================================================= */}
+  <section class="p100-section p100-section--white">
+    <div class="p100-reality">
+      <div class="p100-reality__copy">
+        <span class="p100-eyebrow">The Reality</span>
+        <h2 class="p100-h2 p100-h2--ink">
+          Team training is <span class="p100-hook">not enough</span>.
+        </h2>
+        <div class="p100-reality__body">
+          <p>You train once or twice a week with your team. But so does every other player.</p>
+          <p>The players who stand out, the ones who get picked, who make the squad, who catch the coach's eye, they do extra work. Individual work. Structured work.</p>
+          <p>You need a plan. A proper program designed by a professional coach. Sessions run from 20 minutes up to an hour. That is exactly what this is.</p>
+        </div>
+        <div class="p100-cta-row">
+          <a class="p100-btn p100-btn--outline-ink" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
+        </div>
+      </div>
+      <div class="p100-reality__image">
+        <img src="/images/programmes/100-day/lee-phones.png" alt="Coach Lee Jones training inside the Joner Football App" />
+      </div>
+    </div>
+  </section>
+
+
   {/* PATHWAY ========================================================= */}
   <section class="p100-section p100-section--black p100-pathway">
     <div class="p100-container p100-center">
@@ -114,26 +138,36 @@ const faqs = [
     </div>
   </section>
 
-  {/* WHAT CHANGES IN THE PLAYER ====================================== */}
-  <section class="p100-section p100-section--ink">
-    <div class="p100-container p100-center">
-      <span class="p100-eyebrow">The Transformation</span>
-      <h2 class="p100-h2">
-        What changes in <span class="p100-hook">the player</span>.
-      </h2>
-      <p class="p100-lede p100-lede--center">
-        100 days from now: cleaner technique, sharper feet, a stronger weak foot and more confidence on the ball.
-      </p>
-      <img
-        class="p100-pathway__img"
-        src="/images/programmes/100-day/what-changes.png"
-        alt="What changes in the player, before vs after"
-      />
-      <div class="p100-cta-row p100-cta-row--center">
-        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start the 100 Days</a>
+  {/* GUARANTEE ======================================================= */}
+  <section class="p100-guarantee">
+    <img class="p100-guarantee__bg" src="/images/programmes/100-day/coaching-circle.png" alt="" aria-hidden="true" />
+    <div class="p100-guarantee__overlay"></div>
+    <div class="p100-guarantee__grid">
+      <div>
+        <div class="p100-guarantee__badge">
+          <div class="p100-guarantee__num">100</div>
+          <div class="p100-guarantee__day">Day Guarantee</div>
+          <div class="p100-guarantee__sub">Annual members only</div>
+        </div>
+      </div>
+      <div>
+        <span class="p100-eyebrow">The Guarantee</span>
+        <h2 class="p100-h2">
+          My 100-day promise <span class="p100-hook">to you</span>.
+        </h2>
+        <div class="p100-guarantee__body">
+          <p>I have coached thousands of players across 15+ countries. I have spent years building these programs. I know they work.</p>
+          <p>Commit to the full 100-day program. Follow the plan. Do the sessions. If you do not see real, visible improvement in your game, I will give you an extra <strong>100 days FREE</strong>. And you can DM me directly inside the app.</p>
+          <p class="p100-guarantee__sig"><span class="p100-guarantee__sig-bar"></span>Lee, Founder Joner Football</p>
+        </div>
+        <div class="p100-cta-row">
+          <a class="p100-btn p100-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual Now</a>
+          <a class="p100-btn p100-btn--outline" href={APP_LINK} target="_blank" rel="noopener">Start Free Trial</a>
+        </div>
       </div>
     </div>
   </section>
+
 
   {/* PROGRAMS ======================================================== */}
   <section class="p100-section p100-section--white">
@@ -218,59 +252,6 @@ const faqs = [
     </div>
   </section>
 
-  {/* REALITY ========================================================= */}
-  <section class="p100-section p100-section--white">
-    <div class="p100-reality">
-      <div class="p100-reality__copy">
-        <span class="p100-eyebrow">The Reality</span>
-        <h2 class="p100-h2 p100-h2--ink">
-          Team training is <span class="p100-hook">not enough</span>.
-        </h2>
-        <div class="p100-reality__body">
-          <p>You train once or twice a week with your team. But so does every other player.</p>
-          <p>The players who stand out, the ones who get picked, who make the squad, who catch the coach's eye, they do extra work. Individual work. Structured work.</p>
-          <p>You need a plan. A proper program designed by a professional coach. Sessions run from 20 minutes up to an hour. That is exactly what this is.</p>
-        </div>
-        <div class="p100-cta-row">
-          <a class="p100-btn p100-btn--outline-ink" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
-        </div>
-      </div>
-      <div class="p100-reality__image">
-        <img src="/images/programmes/100-day/lee-phones.png" alt="Coach Lee Jones training inside the Joner Football App" />
-      </div>
-    </div>
-  </section>
-
-  {/* GUARANTEE ======================================================= */}
-  <section class="p100-guarantee">
-    <img class="p100-guarantee__bg" src="/images/programmes/100-day/coaching-circle.png" alt="" aria-hidden="true" />
-    <div class="p100-guarantee__overlay"></div>
-    <div class="p100-guarantee__grid">
-      <div>
-        <div class="p100-guarantee__badge">
-          <div class="p100-guarantee__num">100</div>
-          <div class="p100-guarantee__day">Day Guarantee</div>
-          <div class="p100-guarantee__sub">Annual members only</div>
-        </div>
-      </div>
-      <div>
-        <span class="p100-eyebrow">The Guarantee</span>
-        <h2 class="p100-h2">
-          My 100-day promise <span class="p100-hook">to you</span>.
-        </h2>
-        <div class="p100-guarantee__body">
-          <p>I have coached thousands of players across 15+ countries. I have spent years building these programs. I know they work.</p>
-          <p>Commit to the full 100-day program. Follow the plan. Do the sessions. If you do not see real, visible improvement in your game, I will give you an extra <strong>100 days FREE</strong>. And you can DM me directly inside the app.</p>
-          <p class="p100-guarantee__sig"><span class="p100-guarantee__sig-bar"></span>Lee, Founder Joner Football</p>
-        </div>
-        <div class="p100-cta-row">
-          <a class="p100-btn p100-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual Now</a>
-          <a class="p100-btn p100-btn--outline" href={APP_LINK} target="_blank" rel="noopener">Start Free Trial</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
   {/* TESTIMONIALS ==================================================== */}
   <section class="p100-section p100-section--ink">
     <div class="p100-container">
@@ -332,12 +313,12 @@ const faqs = [
       <h2 class="p100-final__h">
         Your next level <span class="p100-hook">starts today</span>.
       </h2>
-      <p class="p100-final__lede">Pick a program. Follow the plan. Watch yourself improve. Guaranteed.</p>
+      <p class="p100-final__lede">Pick a program. Follow the plan. Watch yourself improve.</p>
       <div class="p100-cta-row p100-cta-row--center">
         <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start the Program Now</a>
         <a class="p100-btn p100-btn--outline" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual</a>
       </div>
-      <p class="p100-final__support">100-day guarantee. Annual members only.</p>
+      <p class="p100-final__support">Built for parents, players and coaches.</p>
     </div>
   </section>
 </BaseLayout>
