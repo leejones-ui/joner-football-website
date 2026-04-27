@@ -593,24 +593,28 @@ const faqs = [
   }
   .p100-diff__body { font-size: 14.5px; line-height: 1.6; color: rgba(255,255,255,0.78); margin: 0; flex: 1; }
 
-  /* REALITY HERO (single full-bleed image, copy overlaid on left dark zone) */
+  /* REALITY HERO (single image at native ratio, copy overlaid on left dark zone) */
   .reality-hero {
     position: relative;
     width: 100%;
     background: #000;
     overflow: hidden;
   }
+  /* Inner wrapper caps the image at its native pixel width so it never
+     upscales (which causes blur) and never crops (no forced max-height). */
   .reality-hero__media {
     position: relative;
     width: 100%;
+    max-width: 1672px;
+    margin: 0 auto;
     aspect-ratio: 1672 / 941;
-    max-height: 760px;
     background: #000;
   }
   .reality-hero__media img {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
-    object-fit: cover; object-position: 50% 50%;
+    object-fit: contain;
+    object-position: center;
     display: block;
   }
   .reality-hero__scrim {
