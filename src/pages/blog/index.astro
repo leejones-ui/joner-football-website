@@ -5,12 +5,23 @@ import { sanityClient } from '../../lib/sanityClient'
 
 const hardcodedPosts = [
   {
+    title: 'I Tested 5 Viral Football Drills. Only One Of Them Was Actually Football.',
+    slug: 'viral-football-drills',
+    excerpt: 'A viral drill is not automatically a good drill. I tested five of them and only one really trained the game.',
+    date: 'April 27, 2026',
+    readTime: '8 min read',
+    category: 'Coaches',
+    audience: 'Coaches',
+    image: '/images/blog/viral-football-drills.jpg',
+  },
+  {
     title: 'Why Coachability Is the Most Important Trait in Football',
     slug: 'coachability-most-important-trait-football',
     excerpt: 'The one trait that separates players who make it from players who don\'t. It\'s not speed, strength, or even technique. It\'s coachability.',
     date: 'April 1, 2026',
     readTime: '6 min read',
-    category: 'Player Development',
+    category: 'Players',
+    audience: 'Players',
     image: '/images/training/jfp-session.webp',
   },
   {
@@ -19,7 +30,8 @@ const hardcodedPosts = [
     excerpt: 'You don\'t need a full pitch or a training partner to improve. These 10 drills will sharpen your technique from your backyard, garage, or living room.',
     date: 'March 28, 2026',
     readTime: '6 min read',
-    category: 'Drills',
+    category: 'Players',
+    audience: 'Players',
     image: '/images/training/jfp-session.webp',
   },
   {
@@ -28,7 +40,8 @@ const hardcodedPosts = [
     excerpt: 'Your first touch determines everything that happens next. Here\'s how to develop a first touch that gives you time, space, and control under pressure.',
     date: 'March 25, 2026',
     readTime: '7 min read',
-    category: 'Player Development',
+    category: 'Players',
+    audience: 'Players',
     image: '/images/homepage/audience-player.webp',
   },
   {
@@ -37,7 +50,8 @@ const hardcodedPosts = [
     excerpt: 'Not all football training programs are equal. Here\'s what to look for when choosing a program for your child, and why technical focus matters most.',
     date: 'March 22, 2026',
     readTime: '6 min read',
-    category: 'Player Development',
+    category: 'Parents',
+    audience: 'Parents',
     image: '/images/training/juniors.webp',
   },
   {
@@ -46,7 +60,8 @@ const hardcodedPosts = [
     excerpt: 'Great coaches aren\'t just loud voices on the sideline. Here are five qualities that separate good coaches from truly great ones.',
     date: 'March 19, 2026',
     readTime: '5 min read',
-    category: 'Coaching Tips',
+    category: 'Coaches',
+    audience: 'Coaches',
     image: '/images/about/lee-coaching.webp',
   },
   {
@@ -55,7 +70,8 @@ const hardcodedPosts = [
     excerpt: 'Heading to a football camp? Here\'s everything your child needs to pack, plus a few things most parents forget.',
     date: 'March 16, 2026',
     readTime: '4 min read',
-    category: 'Camp Stories',
+    category: 'Parents',
+    audience: 'Parents',
     image: '/images/camps/la-camp.webp',
   },
 ]
@@ -81,12 +97,20 @@ try {
       date: p.publishedAt ? new Date(p.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '',
       readTime: '',
       category: p.category || '',
+      audience: p.category || 'World Football',
       image: p.image || '/images/training/jfp-session.webp',
     }))
   }
 } catch (e) {
   console.error('Sanity fetch failed, using hardcoded posts')
 }
+
+const blogGroups = [
+  { title: 'Parents', intro: 'Practical reads for parents helping their child train better.', posts: posts.filter((post: any) => post.audience === 'Parents') },
+  { title: 'Players', intro: 'Training ideas for players who want sharper technique.', posts: posts.filter((post: any) => post.audience === 'Players') },
+  { title: 'Coaches', intro: 'Coach notes, session ideas and player development thinking.', posts: posts.filter((post: any) => post.audience === 'Coaches') },
+  { title: 'World Football', intro: 'Bigger football ideas, trends and talking points.', posts: posts.filter((post: any) => post.audience === 'World Football') },
+]
 ---
 
 <BaseLayout
@@ -97,9 +121,9 @@ try {
   <section class="bg-joner-gray py-20 md:py-24 relative">
     <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
     <div class="max-w-4xl mx-auto px-4 text-center">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">The Blog</p>
-      <h1 class="font-heading text-3xl sm:text-5xl md:text-7xl font-bold text-white uppercase mb-4">Drills, Tips & Stories</h1>
-      <p class="text-gray-400 font-body text-lg">Training advice from the Joner Football coaching team</p>
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Joner Football Hub</p>
+      <h1 class="font-heading text-3xl sm:text-5xl md:text-7xl font-bold text-white uppercase mb-4">Joner Blogs</h1>
+      <p class="text-gray-400 font-body text-lg">My words, my videos and my football ideas, sorted for parents, players, coaches and world football.</p>
     </div>
   </section>
 
@@ -113,28 +137,37 @@ try {
           <a href="/app" class="btn-red inline-block mt-6">Try the App Free</a>
         </div>
       ) : (
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          {posts.map((post) => (
-            <a href={`/blog/${post.slug}`} class="group border border-gray-800 hover:border-joner-red transition-all duration-200 hover:-translate-y-1 overflow-hidden">
-              <div class="h-40 sm:h-44 md:h-48 overflow-hidden bg-joner-gray">
-                <img src={post.image} alt={post.title} class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+        <div class="space-y-16">
+          {blogGroups.map((group) => group.posts.length > 0 && (
+            <section>
+              <div class="mb-6 border-l-4 border-joner-red pl-4">
+                <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase leading-none">{group.title}</h2>
+                <p class="text-gray-400 font-body mt-2">{group.intro}</p>
               </div>
-              <div class="p-6">
-                <div class="flex items-center gap-3 mb-3">
-                  <span class="bg-joner-red/20 text-joner-red px-2 py-0.5 font-heading text-xs uppercase tracking-wider">{post.category}</span>
-                  <span class="text-gray-600 text-xs font-body">{post.readTime}</span>
-                </div>
-                <h2 class="font-heading text-lg font-bold text-white mb-2 group-hover:text-joner-red transition-colors uppercase leading-tight">
-                  {post.title}
-                </h2>
-                <p class="text-gray-400 font-body text-sm leading-relaxed mb-3">{post.excerpt}</p>
-                <div class="text-gray-600 text-xs font-body">{post.date}</div>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+                {group.posts.map((post) => (
+                  <a href={`/blog/${post.slug}`} class="group border border-gray-800 hover:border-joner-red transition-all duration-200 hover:-translate-y-1 overflow-hidden bg-joner-black">
+                    <div class="h-40 sm:h-44 md:h-48 overflow-hidden bg-joner-gray">
+                      <img src={post.image} alt={post.title} class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                    </div>
+                    <div class="p-6">
+                      <div class="flex items-center gap-3 mb-3">
+                        <span class="bg-joner-red/20 text-joner-red px-2 py-0.5 font-heading text-xs uppercase tracking-wider">{post.category}</span>
+                        <span class="text-gray-600 text-xs font-body">{post.readTime}</span>
+                      </div>
+                      <h3 class="font-heading text-lg font-bold text-white mb-2 group-hover:text-joner-red transition-colors uppercase leading-tight">
+                        {post.title}
+                      </h3>
+                      <p class="text-gray-400 font-body text-sm leading-relaxed mb-3">{post.excerpt}</p>
+                      <div class="text-joner-red font-heading text-xs uppercase tracking-wider">Read blog</div>
+                    </div>
+                  </a>
+                ))}
               </div>
-            </a>
+            </section>
           ))}
         </div>
-      )}
-    </div>
+      )}    </div>
   </section>
 
   <!-- App CTA -->
