@@ -5,32 +5,16 @@ const APP_LINK = 'https://app.jonerfootball.com'
 const JOIN_LINK = 'https://jonerfootball.com/join/?utm_source=website&utm_medium=hub&utm_campaign=hub_app_cta'
 const TECHNIQUE_LINK = '/technique-test'
 
-const primaryTiles = [
-  {
-    eyebrow: 'Start here',
-    title: 'Technique Test',
-    text: 'Find your level, spot the gaps and get a clear next step for your training.',
-    href: TECHNIQUE_LINK,
-    cta: 'Take the test',
-    image: '/images/app/app-iphone-mockup.png',
-  },
-  {
-    eyebrow: 'This week',
-    title: 'Weekly Challenge',
-    text: 'One simple football challenge each week. Ball, wall, small space, proper work.',
-    href: APP_LINK,
-    cta: 'Open challenge',
-    image: '/images/programmes/100-day/hero-2.png',
-  },
-]
-
 const hubTiles = [
-  { title: 'Weekly Blogs', text: 'Short training ideas, player mindset and coaching notes from the Joner Football world.', href: '/blog', tag: 'Read' },
+  { title: 'Joner Blogs', text: 'Weekly training ideas, player mindset and coaching notes from the Joner Football world.', href: '/blog', tag: 'Read' },
+  { title: 'Technique Test', text: 'Find your level, spot the gaps and get a clear next step for your training.', href: TECHNIQUE_LINK, tag: 'Free' },
+  { title: 'Open The App', text: 'Already a member? Jump straight back inside the full Joner Football training system.', href: APP_LINK, tag: 'App' },
+  { title: '100 Day Program Challenge', text: 'Start the 100 Day pathway and build your game with a clear daily plan.', href: APP_LINK, tag: 'Challenge' },
   { title: 'Latest Camps', text: 'See upcoming Joner Football camps, new cities and live booking pages.', href: '/camps', tag: 'Book' },
+  { title: 'Football Quiz', text: 'Five quick questions for players and parents. Test how well you really understand the game.', href: APP_LINK, tag: 'Quiz' },
   { title: 'Drill Of The Week', text: 'One free drill from the Joner Football system. Try it, then take the full session inside the app.', href: APP_LINK, tag: 'Free' },
-  { title: 'Football IQ Quiz', text: 'Five quick questions for players and parents. Test how well you really understand the game.', href: APP_LINK, tag: 'Quiz' },
   { title: 'Free Coach Notes', text: 'A simple cue, drill idea or session thought for coaches who want sharper players.', href: '/blog', tag: 'Coaches' },
-  { title: 'Books', text: 'Joner 50 Drills, the Penguin book when it launches, and future book updates in one place.', href: '#books', tag: 'Books' },
+  { title: 'Giveaways', text: 'Future Hub giveaways, challenges and prizes will live here when they go live.', href: APP_LINK, tag: 'Soon' },
 ]
 ---
 
@@ -45,17 +29,21 @@ const hubTiles = [
         <div class="hub-hero__copy">
           <h1>Joner Football Hub</h1>
           <p class="hub-lede">All things Joner Football for free.</p>
-          <div class="hub-actions">
-            <a href={TECHNIQUE_LINK} class="hub-btn hub-btn--red">Take The Technique Test</a>
-            <a href={APP_LINK} target="_blank" rel="noopener" class="hub-btn hub-btn--outline">Open The App</a>
-          </div>
+
         </div>
-        <div class="hub-hero__card">
-          <div class="hub-phone-card">
-            <span>Today inside the Hub</span>
-            <strong>Technique Test</strong>
-            <p>Find your level in minutes, then start training with more purpose.</p>
-            <a href={TECHNIQUE_LINK}>Start now</a>
+
+      </div>
+    </section>
+    <section class="hub-welcome">
+      <div class="hub-shell hub-welcome__inner">
+        <div class="hub-welcome__copy">
+          <p>Welcome to the Joner Football Hub. Every week I will be adding free blogs, football challenges, drills, quizzes, giveaways and updates from across the Joner Football world. Use it to test yourself, find something useful, then get back on the ball and do the work.</p>
+          <div class="hub-signoff">
+            <img src="/images/programmes/100-day/lee-avatar.jpg" alt="Lee Jones" loading="lazy" />
+            <div>
+              <strong>Lee Jones</strong>
+              <span>Owner of Joner Football</span>
+            </div>
           </div>
         </div>
       </div>
@@ -70,35 +58,12 @@ const hubTiles = [
       </div>
     </section>
 
-    <section class="hub-section hub-section--black">
-      <div class="hub-shell">
-        <div class="hub-section-head">
-          <p class="hub-eyebrow">Featured</p>
-          <h2>Start with these.</h2>
-        </div>
-        <div class="hub-feature-grid">
-          {primaryTiles.map((tile) => (
-            <a class="hub-feature" href={tile.href} target={tile.href.startsWith('http') ? '_blank' : undefined} rel={tile.href.startsWith('http') ? 'noopener' : undefined}>
-              <img src={tile.image} alt="" loading="lazy" />
-              <div class="hub-feature__shade"></div>
-              <div class="hub-feature__copy">
-                <span>{tile.eyebrow}</span>
-                <h3>{tile.title}</h3>
-                <p>{tile.text}</p>
-                <strong>{tile.cta}</strong>
-              </div>
-            </a>
-          ))}
-        </div>
-      </div>
-    </section>
-
     <section class="hub-section hub-section--white">
       <div class="hub-shell">
         <div class="hub-section-head hub-section-head--dark">
           <p class="hub-eyebrow">Explore</p>
-          <h2>Everything in the Hub.</h2>
-          <p>Keep it simple. Pick one thing, use it, then get back to training.</p>
+          <h2>Choose where you want to go.</h2>
+          <p>Live links first. Coming soon projects stay at the bottom.</p>
         </div>
         <div class="hub-tile-grid">
           {hubTiles.map((tile) => (
@@ -154,7 +119,7 @@ const hubTiles = [
   .hub-eyebrow { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .2em; color: #E30613; font-size: .8rem; font-weight: 600; }
   .hub-hero { position: relative; min-height: 760px; display: flex; align-items: center; background: #000; }
   .hub-hero__bg { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.86), rgba(0,0,0,.52)), url('/images/hub-hero-lee.jpg') center/cover; opacity: .95; }
-  .hub-hero__grid { position: relative; display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; width: 100%; }
+  .hub-hero__grid { position: relative; display: grid; grid-template-columns: 1fr; gap: 48px; align-items: center; width: 100%; }
   .hub-hero h1 { font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: clamp(4rem, 10vw, 8rem); line-height: .86; max-width: 760px; margin: 18px 0; }
   .hub-lede { font-size: 1.15rem; line-height: 1.6; color: rgba(255,255,255,.82); max-width: 620px; }
   .hub-actions { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 34px; }
@@ -166,6 +131,14 @@ const hubTiles = [
   .hub-phone-card strong { display: block; font-family: 'Oswald', sans-serif; font-size: 3rem; line-height: .9; text-transform: uppercase; margin-top: 14px; }
   .hub-phone-card p { color: rgba(255,255,255,.78); line-height: 1.55; }
   .hub-phone-card a { color: #fff; font-family: 'Oswald', sans-serif; text-transform: uppercase; }
+  .hub-welcome { background: #fff; color: #000; padding: 58px 0; }
+  .hub-welcome__inner { max-width: 900px; }
+  .hub-welcome__copy { border-left: 5px solid #E30613; padding-left: 26px; }
+  .hub-welcome__copy p { font-size: clamp(1.1rem, 2.2vw, 1.45rem); line-height: 1.55; margin: 0; color: rgba(0,0,0,.78); }
+  .hub-signoff { display: flex; align-items: center; gap: 14px; margin-top: 26px; }
+  .hub-signoff img { width: 62px; height: 62px; border-radius: 999px; object-fit: cover; border: 3px solid #E30613; }
+  .hub-signoff strong { display: block; font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: 1.1rem; color: #000; }
+  .hub-signoff span { display: block; color: rgba(0,0,0,.62); font-size: .92rem; }
   .hub-strip { border-top: 1px solid rgba(255,255,255,.14); border-bottom: 1px solid rgba(255,255,255,.14); }
   .hub-strip__grid { display: grid; grid-template-columns: repeat(4,1fr); padding-top: 0; padding-bottom: 0; }
   .hub-strip__grid div { padding: 22px 16px; border-right: 1px solid rgba(255,255,255,.14); text-align: center; }
@@ -215,6 +188,8 @@ const hubTiles = [
     .hub-strip__grid div:nth-child(2) { border-right: 0; }
     .hub-strip__grid div:nth-child(1), .hub-strip__grid div:nth-child(2) { border-bottom: 1px solid rgba(255,255,255,.14); }
     .hub-feature-grid, .hub-tile-grid, .hub-app-cta__grid, .hub-coming__grid { grid-template-columns: 1fr; }
+    .hub-welcome { padding: 42px 0; }
+    .hub-welcome__copy { padding-left: 18px; }
     .hub-section { padding: 72px 0; }
   }
 </style>
