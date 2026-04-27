@@ -73,7 +73,7 @@ const faqs = [
           While other kids watch <span class="p100-hook">YouTube highlights</span>, yours will be <span class="p100-hook">creating them</span>.
         </h1>
         <p class="p100-lede">
-          100 days from now, your child will be unrecognisable on the pitch. A structured pathway built by Lee Jones inside the Joner Football App.
+          100 days of structured football training for parents, players and coaches who want a proper plan inside the Joner Football App.
         </p>
         <div class="p100-cta-row">
           <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
@@ -795,9 +795,51 @@ const faqs = [
     .p100-testi { grid-template-columns: 1fr; }
   }
   @media (max-width: 900px) {
-    .p100-hero__grid { grid-template-columns: 1fr; }
-    .p100-hero__image { min-height: 360px; }
-    .p100-hero__copy { padding: 48px 24px; }
+    .p100-hero__grid {
+      grid-template-columns: 1fr;
+      position: relative;
+      min-height: 720px;
+      overflow: hidden;
+    }
+    .p100-hero__image {
+      position: absolute;
+      inset: 0;
+      min-height: 100%;
+    }
+    .p100-hero__image img {
+      object-position: 42% center;
+      opacity: 0.86;
+    }
+    .p100-hero__fade {
+      background: linear-gradient(180deg, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.96) 100%);
+    }
+    .p100-hero__copy {
+      position: relative;
+      z-index: 2;
+      justify-content: flex-end;
+      min-height: 720px;
+      padding: 120px 22px 44px;
+      background: transparent;
+    }
+    .p100-hero .p100-h1 {
+      font-size: clamp(2.5rem, 13vw, 4.2rem);
+      line-height: 0.9;
+      text-shadow: 0 3px 18px rgba(0,0,0,0.55);
+    }
+    .p100-hero .p100-lede {
+      font-size: 1rem;
+      line-height: 1.5;
+      color: rgba(255,255,255,0.9);
+      text-shadow: 0 2px 12px rgba(0,0,0,0.55);
+    }
+    .p100-hero .p100-cta-row {
+      flex-direction: column;
+      gap: 12px;
+    }
+    .p100-hero .p100-btn {
+      width: 100%;
+      padding: 18px 22px;
+    }
     .p100-reality { grid-template-columns: 1fr; gap: 36px; }
     .p100-guarantee__grid { grid-template-columns: 1fr; gap: 40px; padding: 80px 20px; }
     .p100-programs { grid-template-columns: 1fr; }
