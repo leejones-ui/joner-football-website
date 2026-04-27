@@ -1,207 +1,144 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-
-const APP_LINK = 'https://app.jonerfootball.com'
-const JOIN_LINK = 'https://jonerfootball.com/join/?utm_source=website&utm_medium=hub&utm_campaign=hub_app_cta'
-const TECHNIQUE_LINK = '/technique-test'
-
-const hubTiles = [
-  { title: 'Joner Blogs', text: 'Weekly training ideas, player mindset and coaching notes from the Joner Football world.', href: '/blog', tag: 'Read' },
-  { title: 'Technique Test', text: 'Find your level, spot the gaps and get a clear next step for your training.', href: TECHNIQUE_LINK, tag: 'Free' },
-  { title: 'Open The App', text: 'Already a member? Jump straight back inside the full Joner Football training system.', href: APP_LINK, tag: 'App' },
-  { title: '100 Day Program Challenge', text: 'Start the 100 Day pathway and build your game with a clear daily plan.', href: APP_LINK, tag: 'Challenge' },
-  { title: 'Latest Camps', text: 'See upcoming Joner Football camps, new cities and live booking pages.', href: '/camps', tag: 'Book' },
-  { title: 'Football Quiz', text: 'Five quick questions for players and parents. Test how well you really understand the game.', href: APP_LINK, tag: 'Quiz' },
-  { title: 'Drill Of The Week', text: 'One free drill from the Joner Football system. Try it, then take the full session inside the app.', href: APP_LINK, tag: 'Free' },
-  { title: 'Coaches Resources', text: 'Free coaching ideas, session notes and player development resources for coaches.', href: '/blog', tag: 'Coaches' },
-  { title: 'Giveaways', text: 'Future Hub giveaways, challenges and prizes will live here when they go live.', href: APP_LINK, tag: 'Soon' },
-]
+import HubContent from '../components/HubContent.astro'
 ---
 
 <BaseLayout
   title="Joner Football Hub | Free Training, Technique Test, Camps & App"
-  description="The free Joner Football Hub. Technique test, weekly football challenges, blogs, latest camps, coach notes and app links in one place."
+  description="The free Joner Football Hub. Enter your name and email to access free Joner Football blogs, challenges, coach resources and app links."
 >
-  <main class="hub-page">
-    <section class="hub-hero" aria-label="Joner Football Hub">
-      <img class="hub-hero__media hub-hero__media--desktop" src="/images/hub-hero-desktop.jpg" alt="Joner Football Hub" loading="eager" />
-      <img class="hub-hero__media hub-hero__media--mobile" src="/images/hub-hero-lee.jpg" alt="Joner Football Hub" loading="eager" />
-      <div class="hub-hero__scrim" aria-hidden="true"></div>
-      <div class="hub-hero__inner">
-        <h1 class="hub-hero__title">Joner<br/>Football<br/>Hub</h1>
-        <div class="hub-hero__rule" aria-hidden="true"></div>
-        <p class="hub-hero__sub">All things Joner Football for FREE.</p>
+  <main class="hub-gate-page">
+    <section class="hub-gate" id="hub-gate">
+      <div class="hub-gate__media" aria-hidden="true">
+        <img src="/images/hub-hero-desktop.jpg" alt="" loading="eager" />
       </div>
-    </section>
-    <section class="hub-welcome">
-      <div class="hub-shell hub-welcome__inner">
-        <div class="hub-welcome__copy">
-          <p>Welcome to the Joner Football Hub. Every week I will be adding free blogs, football challenges, drills, quizzes, giveaways and updates from across the Joner Football world. Use it to test yourself, find something useful, then get back on the ball and do the work.</p>
-          <div class="hub-signoff">
-            <img src="/images/programmes/100-day/lee-avatar.jpg" alt="Lee Jones" loading="lazy" />
-            <div>
-              <strong>Lee Jones</strong>
-              <span>Owner of Joner Football</span>
-            </div>
-          </div>
+      <div class="hub-gate__scrim" aria-hidden="true"></div>
+      <div class="hub-gate__inner">
+        <div class="hub-gate__copy">
+          <p class="hub-gate__eyebrow">Joner Football Hub</p>
+          <h1>Get free access to the Hub.</h1>
+          <p>Blogs, challenges, coach resources, giveaways and weekly Joner Football ideas. Pop your details in once and you are in.</p>
         </div>
+        <form class="hub-gate__form" id="hub-access-form" data-brevo-custom data-list-id="2" novalidate>
+          <h2>Enter The Hub</h2>
+          <label>
+            <span>Name</span>
+            <input type="text" name="firstName" autocomplete="given-name" placeholder="Your name" required />
+          </label>
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" autocomplete="email" placeholder="you@email.com" required />
+          </label>
+          <p class="hub-gate__note">Use your real email. If there is a typo, we will ask you to fix it before you enter.</p>
+          <button type="submit">Enter Free Hub</button>
+          <p class="hub-gate__message" id="hub-access-message" role="status" aria-live="polite"></p>
+        </form>
       </div>
     </section>
 
-    <section class="hub-strip">
-      <div class="hub-shell hub-strip__grid">
-        <div><strong>Free</strong><span>No payment needed</span></div>
-        <div><strong>Weekly</strong><span>Fresh ideas and challenges</span></div>
-        <div><strong>Useful</strong><span>Players, parents and coaches</span></div>
-        <div><strong>App access</strong><span>Jump back inside</span></div>
-      </div>
-    </section>
-
-    <section class="hub-section hub-section--white">
-      <div class="hub-shell">
-        <div class="hub-section-head hub-section-head--dark">
-          <p class="hub-eyebrow">Live now</p>
-          <p>Pick a free tool, read a blog, take a challenge or jump back inside the app.</p>
-        </div>
-        <div class="hub-tile-grid">
-          {hubTiles.map((tile) => (
-            <a class="hub-tile" href={tile.href} target={tile.href.startsWith('http') ? '_blank' : undefined} rel={tile.href.startsWith('http') ? 'noopener' : undefined}>
-              <span>{tile.tag}</span>
-              <h3>{tile.title}</h3>
-              <p>{tile.text}</p>
-            </a>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section class="hub-section hub-app-cta">
-      <div class="hub-shell hub-app-cta__grid">
-        <div>
-          <p class="hub-eyebrow">Back inside the app</p>
-          <h2>Already a member? Jump straight back in.</h2>
-          <p>The Hub gives free value. The full Joner Football system lives inside the app with programs, full sessions and weekly content.</p>
-        </div>
-        <div class="hub-app-cta__buttons">
-          <a href={APP_LINK} target="_blank" rel="noopener" class="hub-btn hub-btn--red">I Am A Member</a>
-          <a href={JOIN_LINK} class="hub-btn hub-btn--outline">I Need To Sign Up</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="hub-coming">
-      <div class="hub-shell hub-coming__grid">
-        <article id="books" class="hub-coming__card">
-          <p class="hub-eyebrow">Books</p>
-          <h2>Joner Football Books</h2>
-          <p>Direct links for the Joner 50 Drills book, plus Lee's Penguin book when it is released.</p>
-        </article>
-        <article id="planner" class="hub-coming__card">
-          <p class="hub-eyebrow">Coming soon</p>
-          <h2>Joner Session Planner</h2>
-          <p>A simple session planning tool for coaches will live here when it is ready.</p>
-        </article>
-        <article id="game" class="hub-coming__card hub-coming__card--red">
-          <p class="hub-eyebrow">Coming soon</p>
-          <h2>Kids Game App</h2>
-          <p>A football game for kids is coming next. First looks, updates and launch links will live in the Hub.</p>
-        </article>
-      </div>
-    </section>
+    <div id="hub-content" hidden>
+      <HubContent />
+    </div>
   </main>
 </BaseLayout>
 
+<script is:inline>
+  (function () {
+    var STORAGE_KEY = 'jonerHubAccess';
+    var gate = document.getElementById('hub-gate');
+    var content = document.getElementById('hub-content');
+    var form = document.getElementById('hub-access-form');
+    var message = document.getElementById('hub-access-message');
+
+    function hasAccess() {
+      try { return window.localStorage.getItem(STORAGE_KEY) === 'granted'; }
+      catch (e) { return false; }
+    }
+
+    function showHub() {
+      if (gate) gate.hidden = true;
+      if (content) content.hidden = false;
+      try { window.localStorage.setItem(STORAGE_KEY, 'granted'); } catch (e) {}
+    }
+
+    if (hasAccess()) showHub();
+    if (!form) return;
+
+    var emailInput = form.querySelector('input[name="email"]');
+    if (window.JonerEmailGuard && emailInput) window.JonerEmailGuard.protectEmailInput(emailInput);
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var button = form.querySelector('button[type="submit"]');
+      var nameInput = form.querySelector('input[name="firstName"]');
+      var name = String(nameInput && nameInput.value || '').trim();
+      var email = String(emailInput && emailInput.value || '').trim();
+      var validation = window.JonerEmailGuard ? window.JonerEmailGuard.validateEmail(email) : { valid: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email), email: email.toLowerCase(), message: 'Enter a valid email address.' };
+
+      if (!name) {
+        if (message) message.textContent = 'Enter your name first.';
+        if (nameInput) nameInput.focus();
+        return;
+      }
+      if (window.JonerEmailGuard && emailInput) window.JonerEmailGuard.setFeedback(emailInput, validation);
+      if (!validation.valid) {
+        if (message) message.textContent = validation.message || 'Enter a valid email address.';
+        if (emailInput && emailInput.reportValidity) emailInput.reportValidity();
+        return;
+      }
+
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Checking...';
+      }
+      if (message) message.textContent = '';
+
+      fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: validation.email, firstName: name, listId: 2, source: 'hub-gate' })
+      })
+      .then(function (response) { return response.json().then(function (data) { return { ok: response.ok, data: data }; }); })
+      .then(function (result) {
+        if (!result.ok || !result.data || !result.data.success) throw new Error((result.data && result.data.error) || 'That did not go through. Try again.');
+        showHub();
+      })
+      .catch(function (error) {
+        if (message) message.textContent = error.message || 'That did not go through. Try again.';
+        if (button) {
+          button.disabled = false;
+          button.textContent = 'Enter Free Hub';
+        }
+      });
+    });
+  })();
+</script>
+
 <style is:global>
   @import url('https://fonts.googleapis.com/css2?family=Kanit:ital,wght@1,600;1,900&display=swap');
-  .hub-page { background: #000; color: #fff; overflow: hidden; }
-  .hub-shell { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
-  .hub-eyebrow { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; letter-spacing: .2em; color: #E30613; font-size: .8rem; font-weight: 600; }
-  /* Aspect-ratio container preserves the image's natural proportions. max-height
-     uses min() so the cap softens on shorter viewports but still allows the image
-     to render at full ratio on most desktops without head-cropping. */
-  .hub-hero { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: min(900px, 88vh); min-height: 360px; display: flex; align-items: center; overflow: hidden; background: #000; isolation: isolate; }
-  .hub-hero__media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 22%; display: block; z-index: 1; }
-  .hub-hero__media--mobile { display: none; }
-  .hub-hero__scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,.6) 35%, rgba(0,0,0,.15) 60%, rgba(0,0,0,0) 80%); z-index: 2; }
-  .hub-hero__inner { position: relative; z-index: 3; height: 100%; width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: clamp(24px, 5vw, 64px) 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
-  .hub-hero__title { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.5rem, 7vw, 6rem); line-height: .92; letter-spacing: -0.01em; max-width: 12ch; margin: 0; text-shadow: 0 2px 30px rgba(0,0,0,.5); }
-  .hub-hero__rule { width: 56px; height: 4px; background: #E30613; margin-top: clamp(20px, 2.5vw, 28px); }
-  .hub-hero__sub { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: clamp(.95rem, 1.6vw, 1.25rem); letter-spacing: .04em; color: rgba(255,255,255,.92); margin: clamp(16px, 2vw, 24px) 0 0; }
-  .hub-actions { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 34px; }
-  .hub-btn { display: inline-flex; align-items: center; justify-content: center; padding: 18px 26px; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-weight: 700; letter-spacing: .04em; border: 2px solid transparent; text-decoration: none; }
-  .hub-btn--red { background: #E30613; border-color: #E30613; color: #fff; }
-  .hub-btn--outline { color: #fff; border-color: #fff; }
-  .hub-phone-card { border: 2px solid #E30613; background: rgba(0,0,0,.72); padding: 34px; box-shadow: 0 24px 80px rgba(0,0,0,.45); max-width: 420px; margin-left: auto; }
-  .hub-phone-card span { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; color: #E30613; text-transform: uppercase; letter-spacing: .18em; font-size: .78rem; }
-  .hub-phone-card strong { display: block; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-size: 3rem; line-height: .9; text-transform: uppercase; margin-top: 14px; }
-  .hub-phone-card p { color: rgba(255,255,255,.78); line-height: 1.55; }
-  .hub-phone-card a { color: #fff; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; }
-  .hub-welcome { background: #fff; color: #000; padding: 58px 0; }
-  .hub-welcome__inner { max-width: 900px; }
-  .hub-welcome__copy { border-left: 5px solid #E30613; padding-left: 26px; }
-  .hub-welcome__copy p { font-size: clamp(1.1rem, 2.2vw, 1.45rem); line-height: 1.55; margin: 0; color: rgba(0,0,0,.78); }
-  .hub-signoff { display: flex; align-items: center; gap: 14px; margin-top: 26px; }
-  .hub-signoff img { width: 62px; height: 62px; border-radius: 999px; object-fit: cover; border: 3px solid #E30613; }
-  .hub-signoff strong { display: block; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: 1.1rem; color: #000; }
-  .hub-signoff span { display: block; color: rgba(0,0,0,.62); font-size: .92rem; }
-  .hub-strip { border-top: 1px solid rgba(255,255,255,.14); border-bottom: 1px solid rgba(255,255,255,.14); }
-  .hub-strip__grid { display: grid; grid-template-columns: repeat(4,1fr); padding-top: 0; padding-bottom: 0; }
-  .hub-strip__grid div { padding: 22px 16px; border-right: 1px solid rgba(255,255,255,.14); text-align: center; }
-  .hub-strip__grid div:last-child { border-right: 0; }
-  .hub-strip strong { display: block; color: #E30613; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-size: 1.8rem; text-transform: uppercase; }
-  .hub-strip span { display: block; color: rgba(255,255,255,.66); font-size: .85rem; }
-  .hub-section { padding: 96px 0; }
-  .hub-section--black { background: #050505; }
-  .hub-section--white { background: #fff; color: #000; }
-  .hub-section-head { margin-bottom: 34px; }
-  .hub-section-head h2, .hub-app-cta h2 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: clamp(2.4rem, 5vw, 4.8rem); line-height: .92; margin: 12px 0; }
-  .hub-section-head--dark p:not(.hub-eyebrow) { color: rgba(0,0,0,.68); font-size: 1.05rem; }
-  .hub-feature-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 22px; }
-  .hub-feature { min-height: 430px; position: relative; overflow: hidden; display: flex; align-items: flex-end; text-decoration: none; color: #fff; border: 1px solid rgba(255,255,255,.18); }
-  .hub-feature img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
-  .hub-feature:hover img { transform: scale(1.04); }
-  .hub-feature__shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.92)); }
-  .hub-feature__copy { position: relative; padding: 34px; max-width: 560px; }
-  .hub-feature__copy span, .hub-tile span { color: #E30613; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; letter-spacing: .18em; font-size: .75rem; }
-  .hub-feature__copy h3, .hub-tile h3 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: 2rem; line-height: .95; margin: 10px 0; }
-  .hub-feature__copy p { color: rgba(255,255,255,.8); line-height: 1.55; }
-  .hub-feature__copy strong { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; }
-  .hub-tile-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: rgba(0,0,0,.14); border: 1px solid rgba(0,0,0,.14); }
-  .hub-tile { background: #fff; color: #000; padding: 30px; min-height: 230px; text-decoration: none; border: 2px solid rgba(0,0,0,.12); position: relative; transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
-  .hub-tile::after { content: 'OPEN →'; position: absolute; left: 30px; bottom: 24px; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; color: #E30613; letter-spacing: .12em; font-size: .78rem; }
-  .hub-tile:hover { background: #fff; border-color: #E30613; transform: translateY(-4px); box-shadow: 0 18px 45px rgba(0,0,0,.12); }
-  .hub-tile p { color: rgba(0,0,0,.68); line-height: 1.55; padding-bottom: 32px; }
-  .hub-app-cta { background: #0A0A0A; padding: 88px 0; }
-  .hub-app-cta__grid { display: grid; grid-template-columns: 1fr auto; gap: 38px; align-items: center; }
-  .hub-app-cta p:not(.hub-eyebrow), .hub-game p { color: rgba(255,255,255,.76); max-width: 640px; line-height: 1.6; }
-  .hub-app-cta__buttons { display: flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
-  .hub-coming { background: #000; padding: 86px 0; }
-  .hub-coming__grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.16); }
-  .hub-coming__card { background: #0A0A0A; padding: 34px; min-height: 260px; }
-  .hub-coming__card--red { background: #E30613; }
-  .hub-coming__card--red .hub-eyebrow { color: rgba(255,255,255,.8); }
-  .hub-coming h2 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: clamp(2rem, 4vw, 3.4rem); line-height: .92; margin: 12px 0; }
-  .hub-coming p:not(.hub-eyebrow) { color: rgba(255,255,255,.76); line-height: 1.6; }
-  @media (max-width: 900px) {
-    .hub-actions, .hub-app-cta__buttons { flex-direction: column; }
-    .hub-btn { width: 100%; }
-    .hub-strip__grid { grid-template-columns: 1fr 1fr; }
-    .hub-strip__grid div:nth-child(2) { border-right: 0; }
-    .hub-strip__grid div:nth-child(1), .hub-strip__grid div:nth-child(2) { border-bottom: 1px solid rgba(255,255,255,.14); }
-    .hub-feature-grid, .hub-tile-grid, .hub-app-cta__grid, .hub-coming__grid { grid-template-columns: 1fr; }
-    .hub-welcome { padding: 42px 0; }
-    .hub-welcome__copy { padding-left: 18px; }
-    .hub-section { padding: 72px 0; }
-  }
-  /* Hero stack switch happens earlier than the rest of the responsive layout, so the
-     portrait phone image never grows into a 1000px-tall hero on small tablets. */
-  @media (max-width: 720px) {
-    .hub-hero { aspect-ratio: auto; max-height: none; min-height: 0; flex-direction: column; align-items: stretch; }
-    .hub-hero__media--desktop { display: none; }
-    .hub-hero__media--mobile { display: block; position: relative; inset: auto; width: 100%; height: auto; aspect-ratio: 1067 / 1600; object-fit: cover; object-position: 50% 25%; }
-    .hub-hero__scrim { display: none; }
-    .hub-hero__inner { position: relative; width: 100%; max-width: none; padding: 32px 22px 40px; background: #000; height: auto; align-items: flex-start; }
-    .hub-hero__title { font-size: clamp(2.6rem, 12vw, 4.4rem); max-width: 100%; }
-    .hub-hero__rule { width: 56px; }
+  .hub-gate-page { background: #000; color: #fff; }
+  .hub-gate[hidden], #hub-content[hidden] { display: none; }
+  .hub-gate { min-height: calc(100vh - 80px); position: relative; display: flex; align-items: center; overflow: hidden; background: #000; }
+  .hub-gate__media, .hub-gate__scrim { position: absolute; inset: 0; }
+  .hub-gate__media img { width: 100%; height: 100%; object-fit: cover; object-position: 60% 22%; opacity: .84; }
+  .hub-gate__scrim { background: linear-gradient(90deg, rgba(0,0,0,.92) 0%, rgba(0,0,0,.76) 50%, rgba(0,0,0,.35) 100%); }
+  .hub-gate__inner { position: relative; z-index: 1; width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding: 80px 0; display: grid; grid-template-columns: 1.1fr .9fr; gap: 44px; align-items: center; }
+  .hub-gate__eyebrow { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; color: #E30613; text-transform: uppercase; letter-spacing: .2em; font-size: .82rem; }
+  .hub-gate__copy h1 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: clamp(3.3rem, 7.8vw, 7rem); line-height: .86; margin: 14px 0 20px; max-width: 720px; }
+  .hub-gate__copy p:not(.hub-gate__eyebrow) { color: rgba(255,255,255,.82); font-size: 1.15rem; line-height: 1.6; max-width: 560px; }
+  .hub-gate__form { border: 1px solid rgba(255,255,255,.18); background: rgba(0,0,0,.78); backdrop-filter: blur(10px); padding: clamp(26px, 4vw, 42px); box-shadow: 0 24px 80px rgba(0,0,0,.45); }
+  .hub-gate__form h2 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: 2.4rem; margin: 0 0 22px; }
+  .hub-gate__form label { display: block; margin-bottom: 16px; }
+  .hub-gate__form span { display: block; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; color: rgba(255,255,255,.78); font-size: .82rem; letter-spacing: .08em; margin-bottom: 8px; }
+  .hub-gate__form input { width: 100%; min-height: 52px; background: #080808; border: 1px solid rgba(255,255,255,.18); color: #fff; padding: 14px 16px; font-size: 1rem; outline: none; }
+  .hub-gate__form input:focus { border-color: #E30613; }
+  .hub-gate__note { color: rgba(255,255,255,.62); font-size: .9rem; line-height: 1.45; margin: 6px 0 20px; }
+  .hub-gate__form button { width: 100%; min-height: 56px; border: 0; background: #E30613; color: #fff; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-weight: 900; letter-spacing: .06em; cursor: pointer; }
+  .hub-gate__form button:disabled { opacity: .65; cursor: not-allowed; }
+  .hub-gate__message { min-height: 20px; color: #fbbf24; font-size: .9rem; margin: 14px 0 0; }
+  @media (max-width: 860px) {
+    .hub-gate { min-height: 100vh; }
+    .hub-gate__inner { grid-template-columns: 1fr; padding: 48px 0; }
+    .hub-gate__copy h1 { font-size: clamp(3rem, 14vw, 5.2rem); }
   }
 </style>
