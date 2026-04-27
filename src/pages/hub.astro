@@ -23,15 +23,14 @@ const hubTiles = [
   description="The free Joner Football Hub. Technique test, weekly football challenges, blogs, latest camps, coach notes and app links in one place."
 >
   <main class="hub-page">
-    <section class="hub-hero">
-      <div class="hub-hero__bg"></div>
-      <div class="hub-shell hub-hero__grid">
-        <div class="hub-hero__copy">
-          <h1>Joner Football Hub</h1>
-          <p class="hub-lede">All things Joner Football for free.</p>
-
-        </div>
-
+    <section class="hub-hero" aria-label="Joner Football Hub">
+      <img class="hub-hero__media hub-hero__media--desktop" src="/images/hub-hero-desktop.jpg" alt="Joner Football Hub" loading="eager" />
+      <img class="hub-hero__media hub-hero__media--mobile" src="/images/hub-hero-lee.jpg" alt="Joner Football Hub" loading="eager" />
+      <div class="hub-hero__scrim" aria-hidden="true"></div>
+      <div class="hub-hero__inner">
+        <h1 class="hub-hero__title">Joner<br/>Football<br/>Hub</h1>
+        <div class="hub-hero__rule" aria-hidden="true"></div>
+        <p class="hub-hero__sub">All things Joner Football for FREE.</p>
       </div>
     </section>
     <section class="hub-welcome">
@@ -117,11 +116,14 @@ const hubTiles = [
   .hub-page { background: #000; color: #fff; overflow: hidden; }
   .hub-shell { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
   .hub-eyebrow { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; letter-spacing: .2em; color: #E30613; font-size: .8rem; font-weight: 600; }
-  .hub-hero { position: relative; height: min(56.25vw, 720px); min-height: 560px; display: flex; align-items: center; background: #000; }
-  .hub-hero__bg { position: absolute; inset: 0; background-image: linear-gradient(90deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.48) 42%, rgba(0,0,0,.10) 100%), url('/images/hub-hero-desktop.jpg'); background-position: center; background-size: cover; background-repeat: no-repeat; opacity: .95; }
-  .hub-hero__grid { position: relative; display: grid; grid-template-columns: 1fr; gap: 48px; align-items: center; width: 100%; }
-  .hub-hero h1 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(4rem, 10vw, 8rem); line-height: .86; max-width: 760px; margin: 18px 0; }
-  .hub-lede { font-size: 1.15rem; line-height: 1.6; color: rgba(255,255,255,.82); max-width: 620px; }
+  .hub-hero { position: relative; min-height: clamp(560px, 56.25vw, 720px); display: flex; align-items: center; overflow: hidden; background: #000; }
+  .hub-hero__media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+  .hub-hero__media--mobile { display: none; }
+  .hub-hero__scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.86) 0%, rgba(0,0,0,.54) 42%, rgba(0,0,0,.08) 100%); }
+  .hub-hero__inner { position: relative; z-index: 1; width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: 80px 0; }
+  .hub-hero__title { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(4rem, 10vw, 8rem); line-height: .86; max-width: 760px; margin: 0; }
+  .hub-hero__rule { width: min(420px, 70vw); height: 5px; background: #E30613; margin: 26px 0 18px; }
+  .hub-hero__sub { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: clamp(1rem, 2vw, 1.45rem); letter-spacing: .04em; color: rgba(255,255,255,.9); margin: 0; }
   .hub-actions { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 34px; }
   .hub-btn { display: inline-flex; align-items: center; justify-content: center; padding: 18px 26px; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-weight: 700; letter-spacing: .04em; border: 2px solid transparent; text-decoration: none; }
   .hub-btn--red { background: #E30613; border-color: #E30613; color: #fff; }
@@ -178,11 +180,12 @@ const hubTiles = [
   .hub-coming h2 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: clamp(2rem, 4vw, 3.4rem); line-height: .92; margin: 12px 0; }
   .hub-coming p:not(.hub-eyebrow) { color: rgba(255,255,255,.76); line-height: 1.6; }
   @media (max-width: 900px) {
-    .hub-hero { min-height: 720px; height: auto; }
-    .hub-hero__bg { background: linear-gradient(180deg, rgba(0,0,0,.30), rgba(0,0,0,.9)), url('/images/hub-hero-lee.jpg') center 30%/cover; }
-    .hub-hero__grid { grid-template-columns: 1fr; padding-top: 120px; padding-bottom: 40px; }
-    .hub-hero__card { display: none; }
-    .hub-hero h1 { font-size: clamp(3.4rem, 17vw, 5.6rem); }
+    .hub-hero { min-height: 720px; }
+    .hub-hero__media--desktop { display: none; }
+    .hub-hero__media--mobile { display: block; object-position: center 30%; }
+    .hub-hero__scrim { background: linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.9)); }
+    .hub-hero__inner { padding: 120px 0 40px; }
+    .hub-hero__title { font-size: clamp(3.4rem, 17vw, 5.6rem); }
     .hub-actions, .hub-app-cta__buttons { flex-direction: column; }
     .hub-btn { width: 100%; }
     .hub-strip__grid { grid-template-columns: 1fr 1fr; }
