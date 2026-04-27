@@ -117,8 +117,8 @@ const hubTiles = [
   .hub-page { background: #000; color: #fff; overflow: hidden; }
   .hub-shell { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
   .hub-eyebrow { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; letter-spacing: .2em; color: #E30613; font-size: .8rem; font-weight: 600; }
-  .hub-hero { position: relative; min-height: 760px; display: flex; align-items: center; background: #000; }
-  .hub-hero__bg { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.82), rgba(0,0,0,.35)), url('/images/hub-hero-desktop.jpg') center/cover; opacity: .95; }
+  .hub-hero { position: relative; min-height: 560px; height: min(720px, 56.25vw); display: flex; align-items: center; background: #000; }
+  .hub-hero__bg { position: absolute; inset: 0; background-image: linear-gradient(90deg, rgba(0,0,0,.86) 0%, rgba(0,0,0,.56) 42%, rgba(0,0,0,.18) 100%), url('/images/hub-hero-desktop.jpg'); background-position: center; background-size: cover; background-repeat: no-repeat; opacity: .95; }
   .hub-hero__grid { position: relative; display: grid; grid-template-columns: 1fr; gap: 48px; align-items: center; width: 100%; }
   .hub-hero h1 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(4rem, 10vw, 8rem); line-height: .86; max-width: 760px; margin: 18px 0; }
   .hub-lede { font-size: 1.15rem; line-height: 1.6; color: rgba(255,255,255,.82); max-width: 620px; }
@@ -178,7 +178,7 @@ const hubTiles = [
   .hub-coming h2 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: clamp(2rem, 4vw, 3.4rem); line-height: .92; margin: 12px 0; }
   .hub-coming p:not(.hub-eyebrow) { color: rgba(255,255,255,.76); line-height: 1.6; }
   @media (max-width: 900px) {
-    .hub-hero { min-height: 720px; }
+    .hub-hero { min-height: 720px; height: auto; }
     .hub-hero__bg { background: linear-gradient(180deg, rgba(0,0,0,.30), rgba(0,0,0,.9)), url('/images/hub-hero-lee.jpg') center 30%/cover; }
     .hub-hero__grid { grid-template-columns: 1fr; padding-top: 120px; padding-bottom: 40px; }
     .hub-hero__card { display: none; }
