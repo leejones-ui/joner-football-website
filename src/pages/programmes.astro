@@ -93,25 +93,27 @@ const faqs = [
     </div>
   </section>
 
-  {/* REALITY ========================================================= */}
-  <section class="p100-reality-section">
-    <div class="p100-reality-bleed">
-      <div class="p100-reality__copy">
-        <span class="p100-eyebrow">The Reality</span>
-        <h2 class="p100-h2 p100-h2--ink">
-          Team training is <span class="p100-hook">not enough</span>.
-        </h2>
-        <div class="p100-reality__body">
-          <p>You train once or twice a week with your team. But so does every other player.</p>
-          <p>The players who stand out, the ones who get picked, who make the squad, who catch the coach's eye, they do extra work. Individual work. Structured work.</p>
-          <p>You need a plan. A proper program designed by a professional coach. Sessions run from 20 minutes up to an hour. That is exactly what this is.</p>
+  {/* REALITY (full-bleed photo + overlaid copy on desktop, black band below on mobile) */}
+  <section class="reality-hero" aria-label="The Reality, Team Training Is Not Enough">
+    <div class="reality-hero__media">
+      <img
+        src="/images/programmes/100-day/lee-phones.png"
+        alt="Lee Jones with the Joner Football App showing the 100 Day, Passing and Weak Foot programs"
+      />
+      <div class="reality-hero__scrim" aria-hidden="true"></div>
+      <div class="reality-hero__inner">
+        <div class="reality-hero__copy">
+          <p class="reality-hero__eyebrow">The Reality</p>
+          <h2 class="reality-hero__title">
+            Team training is <span class="accent">not enough.</span>
+          </h2>
+          <div class="reality-hero__body">
+            <p>You train once or twice a week with your team. So does every other player.</p>
+            <p>The players who stand out, the ones who get picked, do extra work. Individual work. Structured work.</p>
+            <p>You need a plan. A proper program designed by a professional coach. Sessions run from 20 minutes to an hour. That is exactly what this is.</p>
+          </div>
+          <a href={APP_LINK} target="_blank" rel="noopener" class="reality-hero__cta">Start Your Free Trial</a>
         </div>
-        <div class="p100-cta-row">
-          <a class="p100-btn p100-btn--outline-ink" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
-        </div>
-      </div>
-      <div class="p100-reality__image">
-        <img src="/images/programmes/100-day/lee-phones.png" alt="Coach Lee Jones training inside the Joner Football App" />
       </div>
     </div>
   </section>
@@ -591,38 +593,116 @@ const faqs = [
   }
   .p100-diff__body { font-size: 14.5px; line-height: 1.6; color: rgba(255,255,255,0.78); margin: 0; flex: 1; }
 
-  /* REALITY (full-bleed image right) -------------------------------- */
-  .p100-reality-section { background: #fff; color: #000; }
-  .p100-reality-bleed {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-    align-items: stretch;
-    min-height: 560px;
-  }
-  .p100-reality__copy {
-    color: #000;
-    display: flex; flex-direction: column; justify-content: center;
-    padding-block: 96px;
-    padding-inline-start: max(20px, calc((100vw - 1280px) / 2 + 20px));
-    padding-inline-end: 56px;
-  }
-  .p100-reality__body {
-    font-size: 1.0625rem; line-height: 1.65;
-    color: rgba(0,0,0,0.74); margin-top: 22px; max-width: 560px;
-  }
-  .p100-reality__body p { margin: 0 0 14px; }
-  .p100-reality__body p:last-child { margin: 0; }
-  .p100-reality__image {
+  /* REALITY HERO (single full-bleed image, copy overlaid on left dark zone) */
+  .reality-hero {
     position: relative;
-    min-height: 100%;
+    width: 100%;
+    background: #000;
+    overflow: hidden;
+  }
+  .reality-hero__media {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1672 / 941;
+    max-height: 760px;
     background: #000;
   }
-  .p100-reality__image img {
+  .reality-hero__media img {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
-    object-fit: cover; object-position: center;
+    object-fit: cover; object-position: 50% 50%;
     display: block;
+  }
+  .reality-hero__scrim {
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 60%;
+    background: linear-gradient(90deg,
+      rgba(0,0,0,0.78) 0%,
+      rgba(0,0,0,0.55) 30%,
+      rgba(0,0,0,0.20) 55%,
+      rgba(0,0,0,0)    100%);
+    pointer-events: none;
+  }
+  .reality-hero__inner {
+    position: absolute; inset: 0;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: clamp(28px, 4.5vw, 72px);
+    display: flex;
+    align-items: center;
+  }
+  .reality-hero__copy {
+    max-width: clamp(320px, 38vw, 540px);
+    color: #fff;
+  }
+  .reality-hero__eyebrow {
+    color: var(--p100-red);
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.22em;
+    font-size: clamp(11px, 1vw, 13px);
+    margin: 0 0 clamp(14px, 1.6vw, 20px);
+  }
+  .reality-hero__title {
+    margin: 0;
+    color: #fff;
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase;
+    line-height: 0.94; letter-spacing: -0.01em;
+    font-size: clamp(1.85rem, 4vw, 3.75rem);
+    text-wrap: balance;
+    text-shadow: 0 2px 24px rgba(0,0,0,0.55);
+  }
+  .reality-hero__title .accent { color: var(--p100-red); }
+  .reality-hero__body {
+    margin: clamp(16px, 1.8vw, 22px) 0 0;
+    color: rgba(255,255,255,0.86);
+    font-family: 'DM Sans', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: clamp(0.85rem, 1vw, 0.9375rem);
+    line-height: 1.55;
+    max-width: 460px;
+  }
+  .reality-hero__body p { margin: 0 0 10px; }
+  .reality-hero__body p:last-child { margin-bottom: 0; }
+  .reality-hero__cta {
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    margin-top: clamp(20px, 2vw, 28px);
+    padding: 16px 26px;
+    border: 2px solid #fff;
+    background: transparent;
+    color: #fff;
+    text-decoration: none;
+    font-family: var(--p100-display);
+    font-style: italic; font-weight: 900;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.9375rem;
+    transition: background 120ms, color 120ms, transform 80ms;
+  }
+  .reality-hero__cta:hover { background: #fff; color: #000; }
+  .reality-hero__cta:active { transform: translateY(1px); }
+
+  /* Mobile: stack image on top, copy moves to a black band below.
+     Phones + Lee never crop. */
+  @media (max-width: 860px) {
+    .reality-hero__media { max-height: none; }
+    .reality-hero__scrim {
+      width: 100%; top: auto; height: 50%; bottom: 0;
+      background: linear-gradient(180deg,
+        rgba(0,0,0,0) 0%,
+        rgba(0,0,0,0.6) 60%,
+        rgba(0,0,0,0.95) 100%);
+    }
+    .reality-hero__inner {
+      position: relative; inset: auto;
+      padding: 28px 22px 40px;
+      background: #000;
+    }
+    .reality-hero__copy { max-width: 100%; }
+    .reality-hero__title { font-size: clamp(2rem, 8.4vw, 2.75rem); }
+    .reality-hero__body { max-width: 100%; }
   }
 
   /* GUARANTEE ------------------------------------------------------ */
@@ -861,9 +941,6 @@ const faqs = [
       width: 100%;
       padding: 18px 22px;
     }
-    .p100-reality-bleed { grid-template-columns: 1fr; min-height: auto; }
-    .p100-reality__copy { padding: 64px 20px 56px; padding-inline-start: 20px; padding-inline-end: 20px; }
-    .p100-reality__image { min-height: 360px; }
     .p100-guarantee__grid { grid-template-columns: 1fr; gap: 40px; padding: 80px 20px; }
     .p100-guarantee__sig-wrap { align-items: center; gap: 12px; }
     .p100-guarantee__avatar { width: 58px; height: 58px; }
