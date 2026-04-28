@@ -1,7 +1,8 @@
 const DEFAULT_SHEET_ID = '1SbGmivi3yqFaBKoMAhoNd5ufUga99DaQBj2noXNJr4k'
 const PENDING_SHEET = 'Leads Pending Payment'
 const PAID_SHEET = 'Paid Camp Registrations'
-const BREVO_LIST_ID = Number(process.env.BREVO_CAMP_LIST_ID || process.env.BREVO_HUB_LIST_ID || 2)
+const USA_CAMP_BREVO_LIST_ID = 4
+const SYDNEY_CAMP_BREVO_LIST_ID = 6
 
 const HEADERS = [
   'Submitted At',
@@ -160,9 +161,20 @@ async function appendPendingRegistration(registration) {
   })
 }
 
+function brevoListForRegistration(registration) {
+  if (registration.brevoListId) return registration.brevoListId
+
+  const destination = `${registration.destination} ${registration.location} ${registration.camp}`.toLowerCase()
+  if (destination.includes('sydney') || destination.includes('australia') || destination.includes('aus')) return SYDNEY_CAMP_BREVO_LIST_ID
+  if (destination.includes('usa') || destination.includes('america') || destination.includes('texas') || destination.includes('california')) return USA_CAMP_BREVO_LIST_ID
+  return USA_CAMP_BREVO_LIST_ID
+}
+
 async function addToBrevo(registration) {
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey) return { skipped: true }
+
+  const listId = brevoListForRegistration(registration)
 
   const response = await fetch('https://api.brevo.com/v3/contacts', {
     method: 'POST',
@@ -177,8 +189,9 @@ async function addToBrevo(registration) {
         FIRSTNAME: registration.playerFirstName,
         WEBSITE_SOURCE: 'camp-registration',
         CAMP_NAME: registration.camp,
+        CAMP_DESTINATION: registration.destination || registration.location || '',
       },
-      listIds: Number.isInteger(BREVO_LIST_ID) && BREVO_LIST_ID > 0 ? [BREVO_LIST_ID] : undefined,
+      listIds: [listId],
       updateEnabled: true,
     }),
   })
@@ -205,6 +218,9 @@ export default async function handler(req, res) {
       submittedAt: new Date().toISOString(),
       registrationId: `CAMP-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
       camp: clean(body.camp || 'Camp Registration', 120),
+      destination: clean(body.destination || body.campDestination || body.location, 80),
+      location: clean(body.location, 120),
+      brevoListId: Number(body.brevoListId || body.brevo_list_id || 0) || null,
       playerFirstName: clean(body.playerFirstName, 80),
       playerSurname: clean(body.playerSurname, 80),
       parentName: clean(body.parentName, 120),

@@ -9,6 +9,21 @@ export default {
     { name: 'heroImage', title: 'Hero Image', type: 'image', options: { hotspot: true } },
 
     { name: 'location', title: 'Location', type: 'string' },
+    {
+      name: 'destination',
+      title: 'Brevo Destination',
+      type: 'string',
+      description: 'Controls which Brevo list camp leads go into.',
+      options: {
+        list: [
+          { title: 'USA Camp Leads, Brevo list 4', value: 'usa' },
+          { title: 'Sydney Camp Leads, Brevo list 6', value: 'sydney' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'usa',
+    },
+    { name: 'brevoListId', title: 'Brevo List ID Override', type: 'number', description: 'Optional. Leave blank unless this specific camp needs a different Brevo list.' },
     { name: 'venue', title: 'Venue / Address', type: 'string' },
     { name: 'dates', title: 'Dates', type: 'string' },
     { name: 'times', title: 'Times', type: 'string' },
