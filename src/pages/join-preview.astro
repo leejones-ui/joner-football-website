@@ -3,62 +3,65 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 
 const accountPlans = [
   {
-    id: 'free',
-    name: 'Free Account',
+    id: 'starter',
+    name: 'Starter',
     eyebrow: 'Start here',
-    audience: 'For players, parents and coaches who want to try Joner.',
-    monthlyPrice: '$0',
-    annualPrice: '$0',
-    periodMonthly: 'free',
-    periodAnnual: 'free',
-    cta: 'Create Free Account',
-    ctaUrl: 'https://app.jonerfootball.com/categories/category-vpi8uazway4',
-    tone: 'quiet',
-    features: [
-      'Free to watch training videos',
-      'Sample drills and sessions',
-      'App account and email updates',
-      'A clear path into paid training',
-    ],
-  },
-  {
-    id: 'standard',
-    name: 'Standard Account',
-    eyebrow: 'Most Popular',
-    audience: 'Best for players and parents who want a clear training plan at home.',
-    monthlyPrice: '$23.99',
-    annualPrice: '$17.08',
+    audience: 'Best for players and parents who want structured training without overthinking it.',
+    monthlyPrice: '$14.99',
+    annualPrice: '$129.99',
     periodMonthly: 'per month',
-    periodAnnual: 'per month',
-    saving: 'Billed annually at $204.99. Save $83 a year',
-    cta: 'Start Standard',
+    periodAnnual: 'per year',
+    saving: 'Annual plan: $129.99 USD',
+    cta: 'Start Starter',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
     monthlyCtaUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
-    tone: 'featured',
+    tone: 'quiet',
     features: [
-      '1,500+ training videos',
+      'Full training video library',
       'Follow along training programs',
       'Ball mastery, first touch, 1v1s and finishing',
-      'Daily challenges, playlists and offline downloads',
+      'Daily challenges and playlists',
       'New content every week',
     ],
   },
   {
-    id: 'pro',
-    name: 'Pro Account',
-    eyebrow: 'Full Access',
-    audience: 'Best for coaches and serious players who want the complete Joner system.',
-    monthlyPrice: '$26.67',
-    annualPrice: '$26.67',
+    id: 'plus',
+    name: 'Plus',
+    eyebrow: 'Most Popular',
+    audience: 'Best for players and parents who want more structure, detail and support from the app.',
+    monthlyPrice: '$19.99',
+    annualPrice: '$179.99',
     periodMonthly: 'per month',
-    periodAnnual: 'per month',
-    saving: 'Billed annually at $319.99',
-    cta: 'Go Pro',
+    periodAnnual: 'per year',
+    saving: 'Annual plan: $179.99 USD',
+    cta: 'Start Plus',
+    ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
+    monthlyCtaUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
+    tone: 'featured',
+    features: [
+      'Everything in Starter',
+      'Deeper training pathways',
+      'Offline downloads and playlists',
+      'More advanced player development content',
+      'Best value for serious players',
+    ],
+  },
+  {
+    id: 'max',
+    name: 'Max',
+    eyebrow: 'Full Access',
+    audience: 'Best for coaches, serious players and families who want the complete Joner Football system.',
+    monthlyPrice: '$219',
+    annualPrice: '$219',
+    periodMonthly: 'annual only',
+    periodAnnual: 'per year',
+    saving: 'Annual only: $219 USD',
+    cta: 'Go Max',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
     tone: 'strong',
     features: [
-      'Everything in Standard',
-      'Coaches only section',
+      'Everything in Plus',
+      'Coaches section',
       'Session plans and PDF season plans',
       'Advanced team training',
       'Coach templates and pro player sessions',
@@ -66,14 +69,14 @@ const accountPlans = [
   },
   {
     id: 'club',
-    name: 'Club Account',
-    eyebrow: 'Teams and academies',
+    name: 'Club Plan',
+    eyebrow: 'Request only',
     audience: 'For clubs, schools and academies that want Joner across the whole group.',
-    monthlyPrice: 'Custom',
-    annualPrice: 'Custom',
-    periodMonthly: 'quote',
-    periodAnnual: 'quote',
-    cta: 'Talk to Joner',
+    monthlyPrice: 'Request',
+    annualPrice: 'Request',
+    periodMonthly: 'only',
+    periodAnnual: 'only',
+    cta: 'Request Club Plan',
     ctaUrl: '/teams',
     tone: 'quiet',
     features: [
@@ -87,10 +90,10 @@ const accountPlans = [
 ]
 
 const comparisonRows = [
-  ['Free to watch videos', true, true, true, true],
-  ['Full training video library', false, true, true, true],
-  ['Follow along programs', false, true, true, true],
-  ['Offline downloads and playlists', false, true, true, true],
+  ['Full training video library', true, true, true, true],
+  ['Follow along programs', true, true, true, true],
+  ['Daily challenges and playlists', true, true, true, true],
+  ['Offline downloads and advanced pathways', false, true, true, true],
   ['Coaches section', false, false, true, true],
   ['Session plans and coach templates', false, false, true, true],
   ['Club or team access', false, false, false, true],
@@ -120,11 +123,10 @@ const comparisonRows = [
             CHOOSE THE JONER ACCOUNT THAT FITS YOUR FOOTBALL JOURNEY
           </h1>
           <p class="text-gray-300 font-body text-lg md:text-xl leading-relaxed max-w-2xl mb-8">
-            Start for free, train properly with Standard, or go Pro for the full coaching system. Pick the level that matches how serious you are.
+            Choose Starter, Plus, Max or request a Club Plan. Every plan starts with a free trial, then you pick the level that matches how serious you are.
           </p>
           <div class="flex flex-col sm:flex-row gap-4">
-            <a href="#accounts" class="btn-red text-center px-8 py-4 font-heading uppercase tracking-wider">View Accounts</a>
-            <a href="https://app.jonerfootball.com/categories/category-vpi8uazway4" target="_blank" rel="noopener noreferrer" class="btn-outline text-center px-8 py-4 font-heading uppercase tracking-wider">Start Free</a>
+            <a href="#accounts" class="btn-red text-center px-8 py-4 font-heading uppercase tracking-wider">View Plans</a>
           </div>
         </div>
 
@@ -152,7 +154,7 @@ const comparisonRows = [
       <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
           <p class="text-[#E30613] font-heading text-sm uppercase tracking-widest mb-3">Choose your account</p>
-          <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-none">Start free. Upgrade when ready.</h2>
+          <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-none">Choose the plan that fits.</h2>
         </div>
 
         <div class="bg-[#111111] border border-gray-800 rounded-full p-1 flex w-full sm:w-auto" aria-label="Billing toggle">
@@ -215,10 +217,10 @@ const comparisonRows = [
           <thead class="bg-black text-white">
             <tr>
               <th class="p-5 font-heading uppercase tracking-wider">Feature</th>
-              <th class="p-5 font-heading uppercase tracking-wider text-center">Free</th>
-              <th class="p-5 font-heading uppercase tracking-wider text-center">Standard</th>
-              <th class="p-5 font-heading uppercase tracking-wider text-center">Pro</th>
-              <th class="p-5 font-heading uppercase tracking-wider text-center">Club</th>
+              <th class="p-5 font-heading uppercase tracking-wider text-center">Starter</th>
+              <th class="p-5 font-heading uppercase tracking-wider text-center">Plus</th>
+              <th class="p-5 font-heading uppercase tracking-wider text-center">Max</th>
+              <th class="p-5 font-heading uppercase tracking-wider text-center">Club Plan</th>
             </tr>
           </thead>
           <tbody>
@@ -264,12 +266,12 @@ const comparisonRows = [
       </div>
       <div class="space-y-4">
         <details class="group rounded-2xl border border-gray-200 p-6">
-          <summary class="cursor-pointer font-heading text-xl uppercase list-none">What is the difference between Free and Standard?</summary>
-          <p class="mt-4 text-gray-700 font-body leading-relaxed">Free gives you sample access and a way to start. Standard gives you the full training library and structured programs.</p>
+          <summary class="cursor-pointer font-heading text-xl uppercase list-none">What is the difference between Starter and Plus?</summary>
+          <p class="mt-4 text-gray-700 font-body leading-relaxed">Starter gives you the core Joner Football training library. Plus is for players and parents who want deeper structure, more detail and more advanced pathways.</p>
         </details>
         <details class="group rounded-2xl border border-gray-200 p-6">
-          <summary class="cursor-pointer font-heading text-xl uppercase list-none">Who is Pro for?</summary>
-          <p class="mt-4 text-gray-700 font-body leading-relaxed">Pro is for coaches and serious players who want the complete system, including the coaches section and advanced session planning content.</p>
+          <summary class="cursor-pointer font-heading text-xl uppercase list-none">Who is Max for?</summary>
+          <p class="mt-4 text-gray-700 font-body leading-relaxed">Max is for coaches, serious players and families who want the complete system, including the coaches section and advanced session planning content.</p>
         </details>
         <details class="group rounded-2xl border border-gray-200 p-6">
           <summary class="cursor-pointer font-heading text-xl uppercase list-none">Can I pay monthly?</summary>
@@ -282,8 +284,8 @@ const comparisonRows = [
   <section class="bg-[#E30613] py-14 md:py-20 text-white">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
       <h2 class="font-heading text-4xl md:text-6xl font-bold uppercase leading-none mb-5">Start training with Joner today.</h2>
-      <p class="font-body text-lg md:text-xl text-white/90 mb-8">Create a free account or choose the plan that matches your level.</p>
-      <a href="#accounts" class="inline-flex bg-white text-black rounded-full px-8 py-4 font-heading uppercase tracking-wider hover:bg-gray-100">Choose Your Account</a>
+      <p class="font-body text-lg md:text-xl text-white/90 mb-8">Choose Starter, Plus, Max or request a Club Plan.</p>
+      <a href="#accounts" class="inline-flex bg-white text-black rounded-full px-8 py-4 font-heading uppercase tracking-wider hover:bg-gray-100">Choose Your Plan</a>
     </div>
   </section>
 
