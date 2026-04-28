@@ -180,12 +180,12 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
   });
 </script>
 
-<style>
+<style is:global>
   @import url('https://fonts.googleapis.com/css2?family=Kanit:ital,wght@1,600;1,900&display=swap');
   .quiz-page { min-height: 100vh; background: #000; color: #fff; }
   .quiz-wrap { width: min(900px, calc(100% - 32px)); margin: 0 auto; padding: 56px 0 90px; }
   .quiz-eyebrow { color: #E30613; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 600; text-transform: uppercase; letter-spacing: .18em; font-size: .8rem; text-align: center; }
-  h1 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.7rem, 10vw, 6rem); line-height: .88; text-align: center; margin: 16px 0; }
+  .quiz-page h1 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.7rem, 10vw, 6rem); line-height: .88; text-align: center; margin: 16px 0; }
   .quiz-intro { color: rgba(255,255,255,.76); text-align: center; max-width: 620px; margin: 0 auto 32px; font-size: 1.05rem; line-height: 1.55; }
   .quiz-card { border: 1px solid rgba(255,255,255,.14); background: #0A0A0A; box-shadow: 0 28px 90px rgba(0,0,0,.5); padding: clamp(22px, 5vw, 42px); }
   .quiz-start, .quiz-result { text-align: center; }
@@ -195,13 +195,13 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
   .quiz-topline { display: flex; justify-content: space-between; gap: 16px; color: rgba(255,255,255,.72); font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: .9rem; margin-bottom: 14px; }
   .quiz-progress { height: 8px; background: rgba(255,255,255,.12); margin-bottom: 30px; overflow: hidden; }
   .quiz-progress span { display: block; height: 100%; background: #E30613; transition: width .2s ease; }
-  .answers { display: grid; gap: 14px; margin-top: 24px; }
-  button, .result-buttons a { min-height: 52px; border: 0; background: #E30613; color: #fff; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; padding: 14px 20px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; transition: transform .16s ease, border-color .16s ease, background .16s ease, color .16s ease, box-shadow .16s ease; }
-  .answers button { width: 100%; min-height: 72px; background: #151515; border: 2px solid rgba(255,255,255,.18); justify-content: flex-start; text-align: left; gap: 14px; padding: 16px; color: #fff; }
-  .answers button span { width: 38px; height: 38px; border-radius: 999px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: #E30613; }
-  .answers button strong { font-size: clamp(1rem, 4vw, 1.2rem); line-height: 1.15; }
-  .answers button:hover:not(:disabled), .answers button:focus-visible:not(:disabled) { border-color: #E30613; background: #24090b; transform: translateY(-2px); box-shadow: 0 12px 30px rgba(227,6,19,.18); outline: none; }
-  .answers button:hover:not(:disabled) span, .answers button:focus-visible:not(:disabled) span { background: #E30613; color: #fff; border-color: #E30613; }
+  .answers { display: grid; gap: 16px; margin-top: 24px; }
+  .quiz-page button, .quiz-page .result-buttons a { min-height: 52px; border: 0; background: #E30613; color: #fff; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; padding: 14px 20px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; transition: transform .16s ease, border-color .16s ease, background .16s ease, color .16s ease, box-shadow .16s ease; }
+  .answers button { width: 100%; min-height: 78px; background: #151515; border: 2px solid rgba(255,255,255,.2); justify-content: flex-start; text-align: left; gap: 22px; padding: 18px 22px; color: #fff; border-radius: 0; -webkit-tap-highlight-color: rgba(227,6,19,.28); touch-action: manipulation; }
+  .answers button span { width: 42px; height: 42px; border-radius: 999px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 42px; color: #E30613; font-size: 1rem; }
+  .answers button strong { display: block; font-size: clamp(1.05rem, 4vw, 1.25rem); line-height: 1.18; flex: 1; }
+  .answers button:hover:not(:disabled), .answers button:focus-visible:not(:disabled), .answers button:active:not(:disabled) { border-color: #E30613; background: #24090b; transform: translateY(-2px); box-shadow: 0 12px 30px rgba(227,6,19,.18); outline: none; }
+  .answers button:hover:not(:disabled) span, .answers button:focus-visible:not(:disabled) span, .answers button:active:not(:disabled) span { background: #E30613; color: #fff; border-color: #E30613; }
   .answers button.correct { background: #12351c; border-color: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.3), 0 14px 34px rgba(34,197,94,.16); }
   .answers button.correct span { background: #22c55e; color: #fff; border-color: #22c55e; }
   .answers button.wrong { background: #451313; border-color: #E30613; box-shadow: 0 0 0 2px rgba(227,6,19,.35), 0 14px 34px rgba(227,6,19,.18); }
