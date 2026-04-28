@@ -64,6 +64,7 @@ const accountPlans = [
     annualPrice: '$219',
     annualCompare: '',
     annualNote: 'Annual only',
+    monthlyNote: 'Annual only',
     periodMonthly: 'per year',
     periodAnnual: 'per year',
     cta: 'Join Max',
@@ -175,7 +176,7 @@ const comparisonRows = [
                 <span class="font-heading text-5xl font-bold billing-price" data-monthly={plan.monthlyPrice} data-annual={plan.annualPrice}>{plan.annualPrice}</span>
               </div>
               <div class:list={['billing-period font-body text-sm mt-1', plan.tone === 'featured' ? 'text-gray-700' : 'text-gray-300']} data-monthly={plan.periodMonthly} data-annual={plan.periodAnnual}>{plan.periodAnnual}</div>
-              {plan.annualNote && <div class:list={['billing-note mt-2 text-xs font-body', plan.tone === 'featured' ? 'text-gray-600' : 'text-gray-500']} data-monthly="" data-annual={plan.annualNote}>{plan.annualNote}</div>}
+              {(plan.annualNote || plan.monthlyNote) && <div class:list={['billing-note mt-2 text-xs font-body', plan.tone === 'featured' ? 'text-gray-600' : 'text-gray-500']} data-monthly={plan.monthlyNote || ''} data-annual={plan.annualNote || ''}>{plan.annualNote || plan.monthlyNote}</div>}
             </div>
 
             <ul class="space-y-3 mb-8 flex-1">
