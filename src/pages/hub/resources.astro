@@ -1,0 +1,58 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout
+  title="Free Coaching Resources | Joner Football Hub"
+  description="Free Joner Football coaching resources, training tools, equipment links and session support for coaches."
+>
+  <main class="resources-page">
+    <section class="resources-hero">
+      <div class="resources-shell">
+        <p class="resources-eyebrow">Joner Football Hub</p>
+        <h1>Free Coaching Resources</h1>
+        <p>Simple links for coaches who want better sessions, better tools and better detail.</p>
+      </div>
+    </section>
+
+    <section class="resources-list">
+      <div class="resources-shell resources-grid">
+        <a class="resource-button" href="https://sklz.com.au/" target="_blank" rel="noopener">
+          <span>Equipment</span>
+          <strong>Where I Get My Equipment From</strong>
+          <em>Open SKLZ Australia</em>
+        </a>
+
+        <a class="resource-button" href="https://www.dropbox.com/scl/fi/yyjngi49oiv3v42zz3pzv/Yellow-Red.MP4?rlkey=enbeofq9bqcj8vd7uq772iozc&st=dble88wl&dl=0" target="_blank" rel="noopener">
+          <span>Free Tool</span>
+          <strong>Free Red & Yellow Scanning Tool</strong>
+          <em>Download or watch the free tool</em>
+        </a>
+
+        <a class="resource-button resource-button--red" href="https://jonerfootball.com/product/buy-all-of-the-training-tools/" target="_blank" rel="noopener">
+          <span>More Tools</span>
+          <strong>Get More Training Tools</strong>
+          <em>Open the full training tools page</em>
+        </a>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<style>
+  .resources-page { background: #000; color: #fff; min-height: 100vh; }
+  .resources-shell { width: min(980px, calc(100% - 40px)); margin: 0 auto; }
+  .resources-hero { padding: 96px 0 56px; background: #0A0A0A; border-top: 4px solid #E30613; text-align: center; }
+  .resources-eyebrow { color: #E30613; font-family: Oswald, sans-serif; text-transform: uppercase; letter-spacing: .18em; font-size: .8rem; margin-bottom: 16px; }
+  h1 { font-family: Oswald, sans-serif; text-transform: uppercase; font-size: clamp(3rem, 8vw, 6rem); line-height: .9; margin: 0 0 18px; }
+  .resources-hero p:not(.resources-eyebrow) { color: rgba(255,255,255,.76); font-size: 1.1rem; max-width: 620px; margin: 0 auto; line-height: 1.55; }
+  .resources-list { padding: 56px 0 96px; }
+  .resources-grid { display: grid; gap: 18px; }
+  .resource-button { display: block; padding: 28px; border: 1px solid rgba(255,255,255,.16); background: #101010; color: #fff; text-decoration: none; transition: transform .16s ease, border-color .16s ease; }
+  .resource-button:hover { transform: translateY(-3px); border-color: #E30613; }
+  .resource-button span { display: block; color: #E30613; font-family: Oswald, sans-serif; text-transform: uppercase; letter-spacing: .15em; font-size: .76rem; margin-bottom: 10px; }
+  .resource-button strong { display: block; font-family: Oswald, sans-serif; text-transform: uppercase; font-size: clamp(1.6rem, 4vw, 2.6rem); line-height: 1; margin-bottom: 12px; }
+  .resource-button em { color: rgba(255,255,255,.66); font-style: normal; }
+  .resource-button--red { background: #E30613; border-color: #E30613; }
+  .resource-button--red span, .resource-button--red em { color: rgba(255,255,255,.82); }
+</style>
