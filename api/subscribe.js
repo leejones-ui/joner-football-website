@@ -84,6 +84,12 @@ export default async function handler(req, res) {
 
     const listId = parseListId(body.listId)
     const source = String(body.source || body.formName || 'website-form').trim().slice(0, 80)
+    const isHubGate = source.startsWith('hub-gate')
+    const marketingConsent = body.marketingConsent === true || body.marketingConsent === 'true' || body.marketingConsent === 'on'
+
+    if (isHubGate && !marketingConsent) {
+      return res.status(400).json({ success: false, error: 'Email opt-in is required to access the free Hub.' })
+    }
 
     const brevoResponse = await fetch('https://api.brevo.com/v3/contacts', {
       method: 'POST',

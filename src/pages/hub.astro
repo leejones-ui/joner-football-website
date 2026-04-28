@@ -29,7 +29,11 @@ import HubContent from '../components/HubContent.astro'
             <span>Email</span>
             <input type="email" name="email" autocomplete="email" placeholder="you@email.com" required />
           </label>
-          <p class="hub-gate__note">Use your real email. If there is a typo, we will ask you to fix it before you enter.</p>
+          <label class="hub-gate__consent">
+            <input type="checkbox" name="marketingConsent" required />
+            <span>I agree to receive Joner Football emails, including free resources, training ideas, app updates and promotional emails. I understand I can unsubscribe anytime.</span>
+          </label>
+          <p class="hub-gate__note">You must opt in to receive emails to access the free Hub. If there is a typo, we will ask you to fix it before you enter.</p>
           <button type="submit">Enter Free Hub</button>
           <p class="hub-gate__message" id="hub-access-message" role="status" aria-live="polite"></p>
         </form>
@@ -71,6 +75,7 @@ import HubContent from '../components/HubContent.astro'
       event.preventDefault();
       var button = form.querySelector('button[type="submit"]');
       var nameInput = form.querySelector('input[name="firstName"]');
+      var consentInput = form.querySelector('input[name="marketingConsent"]');
       var name = String(nameInput && nameInput.value || '').trim();
       var email = String(emailInput && emailInput.value || '').trim();
       var validation = window.JonerEmailGuard ? window.JonerEmailGuard.validateEmail(email) : { valid: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email), email: email.toLowerCase(), message: 'Enter a valid email address.' };
@@ -86,6 +91,11 @@ import HubContent from '../components/HubContent.astro'
         if (emailInput && emailInput.reportValidity) emailInput.reportValidity();
         return;
       }
+      if (!consentInput || !consentInput.checked) {
+        if (message) message.textContent = 'Tick the email opt-in box to access the free Hub.';
+        if (consentInput) consentInput.focus();
+        return;
+      }
 
       if (button) {
         button.disabled = true;
@@ -96,7 +106,7 @@ import HubContent from '../components/HubContent.astro'
       fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: validation.email, firstName: name, listId: 2, source: 'hub-gate' })
+        body: JSON.stringify({ email: validation.email, firstName: name, listId: 2, source: 'hub-gate-email-consent', marketingConsent: true })
       })
       .then(function (response) { return response.json().then(function (data) { return { ok: response.ok, data: data }; }); })
       .then(function (result) {
@@ -132,6 +142,9 @@ import HubContent from '../components/HubContent.astro'
   .hub-gate__form span { display: block; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; color: rgba(255,255,255,.78); font-size: .82rem; letter-spacing: .08em; margin-bottom: 8px; }
   .hub-gate__form input { width: 100%; min-height: 52px; background: #080808; border: 1px solid rgba(255,255,255,.18); color: #fff; padding: 14px 16px; font-size: 1rem; outline: none; }
   .hub-gate__form input:focus { border-color: #E30613; }
+  .hub-gate__consent { display: grid !important; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; margin: 12px 0 14px !important; }
+  .hub-gate__consent input { width: 22px; min-height: 22px; height: 22px; margin-top: 2px; accent-color: #E30613; }
+  .hub-gate__consent span { display: block; font-family: system-ui, sans-serif; font-style: normal; text-transform: none; letter-spacing: 0; font-size: .88rem; line-height: 1.45; color: rgba(255,255,255,.78); margin: 0; }
   .hub-gate__note { color: rgba(255,255,255,.62); font-size: .9rem; line-height: 1.45; margin: 6px 0 20px; }
   .hub-gate__form button { width: 100%; min-height: 56px; border: 0; background: #E30613; color: #fff; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-weight: 900; letter-spacing: .06em; cursor: pointer; }
   .hub-gate__form button:disabled { opacity: .65; cursor: not-allowed; }
