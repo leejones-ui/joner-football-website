@@ -182,7 +182,7 @@ const comparisonRows = [
             <ul class="space-y-3 mb-8 flex-1">
               {plan.features.map(([feature, included]) => (
                 <li class:list={['flex gap-3 font-body text-sm leading-snug', !included ? 'opacity-45' : '']}>
-                  <span class:list={['mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold', included ? 'bg-[#16A34A] text-white' : 'bg-gray-200 text-gray-500']}>{included ? '✓' : '×'}</span>
+                  <span class:list={['mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold', included ? 'bg-[#E30613] text-white' : 'bg-gray-200 text-gray-500']}>{included ? '✓' : '×'}</span>
                   <span class:list={[plan.tone === 'featured' ? 'text-gray-800' : 'text-gray-200', !included ? 'line-through' : '']}>{feature}</span>
                 </li>
               ))}
@@ -221,7 +221,7 @@ const comparisonRows = [
               <tr class="border-t border-gray-200">
                 <td class="p-5 font-body font-semibold">{row[0]}</td>
                 {row.slice(1).map((included) => (
-                  <td class="p-5 text-center font-heading text-xl">{included ? <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#16A34A] text-white">✓</span> : <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gray-200 text-gray-400">×</span>}</td>
+                  <td class="p-5 text-center font-heading text-xl">{included ? <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E30613] text-white">✓</span> : <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gray-200 text-gray-400">×</span>}</td>
                 ))}
               </tr>
             ))}
