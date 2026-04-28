@@ -24,6 +24,7 @@ export default {
       initialValue: 'usa',
     },
     { name: 'brevoListId', title: 'Brevo List ID Override', type: 'number', description: 'Optional. Leave blank unless this specific camp needs a different Brevo list.' },
+    { name: 'googleSheetTab', title: 'Google Sheet Tab', type: 'string', description: 'Exact tab name in the camps Google Sheet. Example: Texas Houston (June)' },
     { name: 'venue', title: 'Venue / Address', type: 'string' },
     { name: 'dates', title: 'Dates', type: 'string' },
     { name: 'times', title: 'Times', type: 'string' },

@@ -1,0 +1,161 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { sanityClient } from '../../lib/sanityClient'
+
+export async function getStaticPaths() {
+  const camps = await sanityClient.fetch(`*[_type == "camp" && defined(slug.current)]{ "slug": slug.current }`)
+  return camps.map((camp: { slug: string }) => ({ params: { slug: camp.slug } }))
+}
+
+const { slug } = Astro.params
+const camp = await sanityClient.fetch(`*[_type == "camp" && slug.current == $slug][0]{
+  title,
+  status,
+  location,
+  destination,
+  googleSheetTab,
+  venue,
+  dates,
+  times,
+  ageRange,
+  priceLabel,
+  spotsRemaining,
+  jerseySizes,
+  dayOptions,
+  description,
+  whatToBring,
+  extraInfo,
+  stripePaymentLink,
+  paypalPaymentLink,
+  trainingAgreementLink,
+  brevoListId
+}`, { slug })
+
+if (!camp) return Astro.redirect('/camps')
+
+const jerseySizes = camp.jerseySizes?.length ? camp.jerseySizes : ['Youth XS', 'Youth S', 'Youth M', 'Youth L', 'Youth XL', 'Adult S', 'Adult M', 'Adult L', 'Adult XL']
+const dayOptions = camp.dayOptions?.length ? camp.dayOptions : ['1 Day', '2 Days', '3 Days', 'Full Camp']
+const paymentLink = camp.stripePaymentLink || camp.paypalPaymentLink || 'https://app.jonerfootball.com'
+const destination = camp.destination || (String(camp.location || '').toLowerCase().includes('sydney') ? 'sydney' : 'usa')
+---
+
+<BaseLayout title={`${camp.title} | Joner Football Camps`} description={camp.description || 'Register for a Joner Football camp.'}>
+  <section class="bg-joner-black py-14 md:py-20 min-h-screen">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <a href="/camps" class="text-gray-400 hover:text-white font-body text-sm">← Back to camps</a>
+
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 mt-8 items-start">
+        <div>
+          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Elite Camp Registration</p>
+          <h1 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-5">{camp.title}</h1>
+          {camp.description && <p class="text-gray-300 font-body text-lg max-w-3xl mb-8">{camp.description}</p>}
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            {camp.location && <div class="info-card"><span>Location</span><strong>{camp.location}</strong></div>}
+            {camp.dates && <div class="info-card"><span>Dates</span><strong>{camp.dates}</strong></div>}
+            {camp.times && <div class="info-card"><span>Times</span><strong>{camp.times}</strong></div>}
+            {camp.ageRange && <div class="info-card"><span>Ages</span><strong>{camp.ageRange}</strong></div>}
+            {camp.priceLabel && <div class="info-card"><span>Price</span><strong>{camp.priceLabel}</strong></div>}
+            {camp.spotsRemaining !== undefined && camp.spotsRemaining !== null && <div class="info-card"><span>Spots Remaining</span><strong>{camp.spotsRemaining}</strong></div>}
+          </div>
+
+          {camp.whatToBring?.length > 0 && (
+            <div class="bg-joner-gray border border-gray-800 p-6 mb-8">
+              <h2 class="font-heading text-2xl font-bold text-white uppercase mb-4">What To Bring</h2>
+              <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-gray-300 font-body">
+                {camp.whatToBring.map((item: string) => <li class="flex gap-2"><span class="text-joner-red">✓</span>{item}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {camp.extraInfo && <p class="text-gray-400 font-body mb-8">{camp.extraInfo}</p>}
+        </div>
+
+        <form id="camp-registration-form" class="bg-joner-gray border border-gray-800 p-5 md:p-6 space-y-4">
+          <h2 class="font-heading text-3xl font-bold text-white uppercase">Register Now</h2>
+          <p class="text-gray-400 font-body text-sm">Submit the form first. Then complete payment to secure your place.</p>
+
+          <input type="hidden" name="camp" value={camp.title} />
+          <input type="hidden" name="destination" value={destination} />
+          <input type="hidden" name="location" value={camp.location || ''} />
+          <input type="hidden" name="sheetTab" value={camp.googleSheetTab || camp.title} />
+          <input type="hidden" name="brevoListId" value={camp.brevoListId || ''} />
+          <input type="hidden" name="paymentLink" value={paymentLink} />
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label><span class="form-label">Player First Name *</span><input required name="playerFirstName" class="form-input" /></label>
+            <label><span class="form-label">Player Surname *</span><input required name="playerSurname" class="form-input" /></label>
+          </div>
+          <label><span class="form-label">Parent Name If Under 18</span><input name="parentName" class="form-input" /></label>
+          <label><span class="form-label">Email *</span><input required type="email" name="email" class="form-input" /></label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label><span class="form-label">Current Age *</span><input required name="age" class="form-input" /></label>
+            <label><span class="form-label">Mobile Number *</span><input required name="mobile" class="form-input" /></label>
+          </div>
+          <label><span class="form-label">Done A Joner Camp Before?</span><select name="previousCamp" class="form-input"><option value="">Select</option><option>Yes</option><option>No</option></select></label>
+          <label><span class="form-label">Current Club / Level</span><input name="clubLevel" class="form-input" /></label>
+          <label><span class="form-label">Where Did You Hear About The Elite Camp?</span><input name="source" class="form-input" /></label>
+          <label><span class="form-label">Medical History</span><textarea name="medicalHistory" rows="3" class="form-input"></textarea></label>
+          <label><span class="form-label">Jersey Size *</span><select required name="jerseySize" class="form-input"><option value="">Select size</option>{jerseySizes.map((size: string) => <option>{size}</option>)}</select></label>
+          <label><span class="form-label">Extra Player Info</span><textarea name="extraInfo" rows="3" class="form-input"></textarea></label>
+          <label><span class="form-label">How Many Days? *</span><select required name="numberOfDays" class="form-input"><option value="">Select</option>{dayOptions.map((option: string) => <option>{option}</option>)}</select></label>
+          <label><span class="form-label">Payment Method</span><select name="paymentMethod" class="form-input"><option>Stripe</option>{camp.paypalPaymentLink && <option>PayPal</option>}</select></label>
+
+          <label class="flex gap-3 items-start text-gray-300 font-body text-sm">
+            <input required type="checkbox" name="agreementAccepted" class="mt-1 accent-[#E30613]" />
+            <span>I have read and agree to the {camp.trainingAgreementLink ? <a class="text-white underline" href={camp.trainingAgreementLink} target="_blank">training agreement</a> : 'training agreement'}.</span>
+          </label>
+
+          <div id="camp-form-message" class="hidden border border-gray-700 p-4 text-sm font-body"></div>
+          <button type="submit" class="btn-red w-full">Submit Registration And Pay</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    .info-card { background:#1A1A1A; border:1px solid #333; padding:1rem; }
+    .info-card span { display:block; color:#888; font-family:var(--font-heading); text-transform:uppercase; font-size:.75rem; letter-spacing:.08em; margin-bottom:.35rem; }
+    .info-card strong { color:#fff; font-family:var(--font-body); font-size:1rem; }
+    .form-label { display:block; color:#fff; font-family:var(--font-heading); font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.4rem; }
+    .form-input { width:100%; background:#0A0A0A; border:1px solid #333; color:#fff; min-height:46px; padding:.7rem .85rem; font-family:var(--font-body); border-radius:0; }
+    .form-input:focus { outline:2px solid #E30613; outline-offset:0; border-color:#E30613; }
+  </style>
+
+  <script>
+    const form = document.querySelector('#camp-registration-form')
+    const message = document.querySelector('#camp-form-message')
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault()
+      const submitButton = form.querySelector('button[type="submit"]')
+      submitButton.disabled = true
+      submitButton.textContent = 'Saving Registration...'
+      message.className = 'border border-gray-700 p-4 text-sm font-body text-gray-300'
+      message.textContent = 'Saving registration before payment.'
+
+      const formData = new FormData(form)
+      const payload = Object.fromEntries(formData.entries())
+      payload.agreementAccepted = formData.get('agreementAccepted') === 'on'
+
+      try {
+        const response = await fetch('/api/camp-registration', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const data = await response.json()
+        if (!response.ok || !data.success) throw new Error(data.error || 'Registration failed.')
+
+        message.className = 'border border-joner-red p-4 text-sm font-body text-white bg-joner-red/10'
+        message.textContent = 'Registration saved. Sending you to payment now.'
+        window.location.href = data.paymentLink || payload.paymentLink
+      } catch (error) {
+        message.className = 'border border-joner-red p-4 text-sm font-body text-white bg-joner-red/10'
+        message.textContent = error.message || 'Could not save registration. Please try again.'
+        submitButton.disabled = false
+        submitButton.textContent = 'Submit Registration And Pay'
+      }
+    })
+  </script>
+</BaseLayout>

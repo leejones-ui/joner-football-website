@@ -25,6 +25,7 @@ const HEADERS = [
   'Agreement Accepted',
   'Payment Method',
   'Payment Link',
+  'Target Sheet Tab',
 ]
 
 function clean(value, max = 500) {
@@ -115,7 +116,7 @@ async function ensureSheetTab(sheetId, title) {
     })
   }
 
-  const headerRange = `${encodeURIComponent(title)}!A1:T1`
+  const headerRange = `${encodeURIComponent(title)}!A1:U1`
   const current = await sheetsFetch(`${sheetId}/values/${headerRange}`)
   const currentHeaders = current.values?.[0] || []
   const missingHeaders = HEADERS.some((header, index) => currentHeaders[index] !== header)
@@ -153,9 +154,10 @@ async function appendPendingRegistration(registration) {
     registration.agreementAccepted ? 'yes' : 'no',
     registration.paymentMethod,
     registration.paymentLink,
+    registration.sheetTab,
   ]
 
-  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(PENDING_SHEET)}!A:T:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(PENDING_SHEET)}!A:U:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
     method: 'POST',
     body: JSON.stringify({ values: [row] }),
   })
@@ -237,6 +239,7 @@ export default async function handler(req, res) {
       agreementAccepted: body.agreementAccepted === true || body.agreementAccepted === 'true' || body.agreementAccepted === 'on',
       paymentMethod: clean(body.paymentMethod, 30) || 'Stripe',
       paymentLink: clean(body.paymentLink || process.env.CAMP_DEFAULT_PAYMENT_LINK || 'https://app.jonerfootball.com', 500),
+      sheetTab: clean(body.sheetTab || body.googleSheetTab || body.targetSheetTab, 120),
     }
 
     if (!registration.playerFirstName) return res.status(400).json({ success: false, error: 'Player first name is required.' })
