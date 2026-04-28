@@ -6,13 +6,13 @@ const accountPlans = [
     id: 'starter',
     name: 'Starter',
     eyebrow: 'Start here',
-    audience: 'Build your game with the core Joner training library.',
+    audience: 'Best for beginners getting inside the app.',
     monthlyPrice: '$14.99',
     annualPrice: '$10.83',
     annualCompare: '$14.99/mo',
     annualNote: 'Billed yearly at $129.99',
-    periodMonthly: '/mo',
-    periodAnnual: '/mo',
+    periodMonthly: 'per month',
+    periodAnnual: 'per month',
     cta: 'Start Free Trial',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
     monthlyCtaUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
@@ -33,13 +33,13 @@ const accountPlans = [
     id: 'plus',
     name: 'Plus',
     eyebrow: 'Most Popular',
-    audience: 'More structure, more detail and more ways to improve.',
+    audience: 'Structured training programs to transform your game.',
     monthlyPrice: '$19.99',
     annualPrice: '$14.99',
     annualCompare: '$19.99/mo',
     annualNote: 'Billed yearly at $179.99',
-    periodMonthly: '/mo',
-    periodAnnual: '/mo',
+    periodMonthly: 'per month',
+    periodAnnual: 'per month',
     cta: 'Start Free Trial',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
     monthlyCtaUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
@@ -59,13 +59,13 @@ const accountPlans = [
     id: 'max',
     name: 'Max',
     eyebrow: 'Full Access',
-    audience: 'Full access with the Coaches Section included.',
+    audience: 'Full access to the coaches only section and every app feature.',
     monthlyPrice: '$219',
     annualPrice: '$219',
     annualCompare: '',
     annualNote: 'Annual only',
-    periodMonthly: '/yr',
-    periodAnnual: '/yr',
+    periodMonthly: 'per year',
+    periodAnnual: 'per year',
     cta: 'Join Max',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
     tone: 'strong',
@@ -165,14 +165,16 @@ const comparisonRows = [
             ]}>{plan.eyebrow}</div>
 
             <h3 class="font-heading text-3xl font-bold uppercase mb-3">{plan.name}</h3>
-            <p class:list={['font-body text-sm leading-relaxed min-h-[64px] mb-6', plan.tone === 'featured' ? 'text-gray-700' : 'text-gray-400']}>{plan.audience}</p>
+            <p class:list={['font-body text-sm leading-relaxed min-h-[64px] mb-6', plan.tone === 'featured' ? 'text-gray-700' : 'text-gray-400']}>
+              {plan.id === 'max' ? <Fragment>Full access to the <span class="text-[#E30613] font-bold">coaches only section</span> and every app feature.</Fragment> : plan.audience}
+            </p>
 
             <div class="mb-6">
+              <span class="hidden billing-compare mb-1 text-lg font-heading line-through opacity-50" data-monthly="" data-annual={plan.annualCompare}>{plan.annualCompare}</span>
               <div class="flex items-end gap-2 flex-wrap">
-                <span class="hidden billing-compare text-lg font-heading line-through opacity-50" data-monthly="" data-annual={plan.annualCompare}>{plan.annualCompare}</span>
                 <span class="font-heading text-5xl font-bold billing-price" data-monthly={plan.monthlyPrice} data-annual={plan.annualPrice}>{plan.annualPrice}</span>
-                <span class:list={['billing-period font-body text-sm pb-2', plan.tone === 'featured' ? 'text-gray-600' : 'text-gray-400']} data-monthly={plan.periodMonthly} data-annual={plan.periodAnnual}>{plan.periodAnnual}</span>
               </div>
+              <div class:list={['billing-period font-body text-sm mt-1', plan.tone === 'featured' ? 'text-gray-700' : 'text-gray-300']} data-monthly={plan.periodMonthly} data-annual={plan.periodAnnual}>{plan.periodAnnual}</div>
               {plan.annualNote && <div class:list={['billing-note mt-2 text-xs font-body', plan.tone === 'featured' ? 'text-gray-600' : 'text-gray-500']} data-monthly="" data-annual={plan.annualNote}>{plan.annualNote}</div>}
             </div>
 
