@@ -54,6 +54,14 @@ const { appMode = false } = Astro.props
         <div><strong>Useful</strong><span>Players, parents and coaches</span></div>
         <div><strong>Free resources</strong><span>Blogs, tools and ideas</span></div>
       </div>
+      <div class="hub-socials" aria-label="Joner Football social links">
+        <a href="https://www.instagram.com/jonerfootball/" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://www.youtube.com/@jonerfootball" target="_blank" rel="noopener">YouTube</a>
+        <a href="https://www.tiktok.com/@jonerfootball" target="_blank" rel="noopener">TikTok</a>
+        <a href="https://www.facebook.com/Jonerfootball/" target="_blank" rel="noopener">Facebook</a>
+        <a href="https://twitter.com/jonerfootball" target="_blank" rel="noopener">X</a>
+        <a href="https://www.threads.net/@jonerfootball" target="_blank" rel="noopener">Threads</a>
+      </div>
     </section>
 
     <section class="hub-section hub-section--white">
@@ -131,6 +139,9 @@ const { appMode = false } = Astro.props
   .hub-strip__grid div:last-child { border-right: 0; }
   .hub-strip strong { display: block; color: #E30613; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-size: 1.8rem; text-transform: uppercase; }
   .hub-strip span { display: block; color: rgba(255,255,255,.66); font-size: .85rem; }
+  .hub-socials { width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: 18px 0 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; border-top: 1px solid rgba(255,255,255,.14); }
+  .hub-socials a { color: #fff; border: 1px solid rgba(255,255,255,.18); padding: 10px 14px; text-decoration: none; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: .82rem; letter-spacing: .06em; }
+  .hub-socials a:hover { border-color: #E30613; color: #E30613; }
   .hub-section { padding: 96px 0; }
   .hub-section--black { background: #050505; }
   .hub-section--white { background: #fff; color: #000; }
