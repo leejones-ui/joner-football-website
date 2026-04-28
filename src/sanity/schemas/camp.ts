@@ -3,20 +3,37 @@ export default {
   title: 'Camp',
   type: 'document',
   fields: [
-    { name: 'title', title: 'Title', type: 'string', validation: (Rule: any) => Rule.required() },
-    { name: 'slug', title: 'Slug', type: 'slug', options: { source: 'title' } },
+    { name: 'title', title: 'Camp Title', type: 'string', validation: (Rule: any) => Rule.required() },
+    { name: 'slug', title: 'URL Slug', type: 'slug', options: { source: 'title' }, validation: (Rule: any) => Rule.required() },
+    { name: 'status', title: 'Status', type: 'string', options: { list: ['draft', 'open', 'coming-soon', 'sold-out', 'closed'] }, initialValue: 'draft' },
+    { name: 'heroImage', title: 'Hero Image', type: 'image', options: { hotspot: true } },
+
     { name: 'location', title: 'Location', type: 'string' },
+    { name: 'venue', title: 'Venue / Address', type: 'string' },
     { name: 'dates', title: 'Dates', type: 'string' },
+    { name: 'times', title: 'Times', type: 'string' },
     { name: 'ageRange', title: 'Age Range', type: 'string' },
-    {
-      name: 'status',
-      title: 'Status',
-      type: 'string',
-      options: { list: ['open', 'coming-soon', 'closed', 'full'] },
-    },
+    { name: 'priceLabel', title: 'Price Label', type: 'string', description: 'Example: From $99 or 3 day camp' },
+
     { name: 'spotsTotal', title: 'Total Spots', type: 'number' },
     { name: 'spotsRemaining', title: 'Spots Remaining', type: 'number' },
-    { name: 'description', title: 'Description', type: 'text' },
-    { name: 'applyLink', title: 'Apply Link', type: 'url' },
+    { name: 'jerseySizes', title: 'Jersey Sizes Available', type: 'array', of: [{ type: 'string' }], options: { layout: 'tags' } },
+    { name: 'dayOptions', title: 'Day Options', type: 'array', of: [{ type: 'string' }], options: { layout: 'tags' }, description: 'Example: 1 day, 2 days, 3 days' },
+
+    { name: 'description', title: 'Short Description', type: 'text', rows: 4 },
+    { name: 'whatToBring', title: 'What To Bring', type: 'array', of: [{ type: 'string' }] },
+    { name: 'extraInfo', title: 'Extra Information', type: 'text', rows: 4 },
+
+    { name: 'stripePaymentLink', title: 'Stripe Payment Link', type: 'url' },
+    { name: 'paypalPaymentLink', title: 'PayPal Payment Link', type: 'url' },
+    { name: 'trainingAgreementLink', title: 'Training Agreement Link', type: 'url' },
+    { name: 'notificationEmail', title: 'Notification Email', type: 'string', initialValue: 'leejones@jonerfootball.com' },
   ],
+  preview: {
+    select: {
+      title: 'title',
+      subtitle: 'dates',
+      media: 'heroImage',
+    },
+  },
 }
