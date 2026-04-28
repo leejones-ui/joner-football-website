@@ -1,0 +1,213 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout
+  title="How Well Do You Know Joner Football? | Joner Football Hub"
+  description="Take the Joner Football Hub quiz and test how well you know Lee, the brand, the coaching and the story."
+>
+  <main class="quiz-page">
+    <section class="quiz-wrap">
+      <p class="quiz-eyebrow">Joner Football Hub Quiz</p>
+      <h1>How Well Do You Know Joner Football?</h1>
+      <p class="quiz-intro">Real die hards get a discount code for the app. 20 questions. No hiding.</p>
+
+      <div id="quiz-card" class="quiz-card">
+        <div id="quiz-start" class="quiz-start">
+          <h2>Think you know Joner Football?</h2>
+          <p>From Lee’s story to the app, the camps, the motto and the proper Joner details. Let’s see what you’ve got.</p>
+          <button id="start-btn" type="button">Take The Quiz</button>
+        </div>
+
+        <div id="quiz-game" class="quiz-game" hidden>
+          <div class="quiz-topline">
+            <span id="progress-label">Question 1 of 20</span>
+            <span id="score-label">Score 0</span>
+          </div>
+          <div class="quiz-progress"><span id="progress-bar"></span></div>
+          <h2 id="question-text"></h2>
+          <div id="answers" class="answers"></div>
+          <p id="feedback" class="feedback" aria-live="polite"></p>
+          <button id="next-btn" type="button" disabled>Next Question</button>
+        </div>
+
+        <div id="quiz-result" class="quiz-result" hidden>
+          <p class="quiz-eyebrow">Final Score</p>
+          <h2 id="result-score"></h2>
+          <h3 id="result-band"></h3>
+          <p id="result-copy"></p>
+          <div id="reward" class="reward" hidden>You’ve earned 20% off. Use code <strong>JF20</strong>.</div>
+          <div class="result-buttons">
+            <button id="retake-btn" type="button">Retake Quiz</button>
+            <a href="https://app.jonerfootball.com" target="_blank" rel="noopener">Visit The Joner Football App</a>
+            <button id="share-btn" type="button">Share Your Score</button>
+          </div>
+          <p id="share-note" class="share-note" aria-live="polite"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<script is:inline>
+  const questions = [
+    { q: 'When was Joner Football established?', a: ['2012', '2013', '2014'], c: 1 },
+    { q: 'Where is Joner Football based?', a: ['Sydney, Australia', 'Manchester, England', 'Los Angeles, USA'], c: 0 },
+    { q: 'What is Joner Football best known for?', a: ['Individual and small group player development', 'Team training', 'Elite camps'], c: 0 },
+    { q: 'Which social platform is Joner Football biggest on?', a: ['Facebook', 'Instagram', 'YouTube'], c: 0 },
+    { q: 'Where has Joner Football travelled to the most for camps and coaching?', a: ['USA', 'UK', 'New Zealand'], c: 0 },
+    { q: 'Which team does Joner support?', a: ['Liverpool', 'Man Utd', 'Real Madrid'], c: 0 },
+    { q: 'What is Joner’s favourite sport?', a: ['Football', 'Golf', 'Snooker'], c: 1 },
+    { q: 'How many followers does Joner Football have all together on social media?', a: ['2.2 million', '5.3 million', '1.4 million'], c: 0 },
+    { q: 'Who was Joner’s favourite player growing up?', a: ['Jamie Carragher', 'Ronaldinho', 'Steven Gerrard'], c: 2 },
+    { q: 'How many team members does Joner Football have?', a: ['7', '8', '11'], c: 2 },
+    { q: 'What is the name of Joner’s dog?', a: ['Ziggy', 'Benji', 'Wrexham'], c: 0 },
+    { q: 'Who did Joner play for growing up?', a: ['Everton', 'Liverpool', 'Oldham Athletic'], c: 0 },
+    { q: 'What is the Joner Football motto?', a: ['Never give up', 'Technique matters', 'Technique above everything'], c: 2 },
+    { q: 'What is the name of the head of content at Joner Football?', a: ['Fred', 'Res', 'Jeffrey'], c: 1 },
+    { q: 'What are Joner’s favourite boots?', a: ['Mizuno', 'Nike', 'Adidas'], c: 0 },
+    { q: 'Where did the name Joner Football come from?', a: ['It came from Lee’s parents', 'Lee’s nickname playing football', 'Lee randomly picked the name'], c: 1 },
+    { q: 'What did Joner Football used to be called?', a: ['Joner 1on1', 'Joner 1on1 Football', 'Joner 1on1 Football Training'], c: 2 },
+    { q: 'What is Joner’s favourite coaching quote?', a: ['Love DAT', 'Get it on toast', 'Cooking on gas'], c: 1 },
+    { q: 'Where is Joner’s favourite place he has travelled to?', a: ['Liverpool, UK', 'Miami', 'Canada'], c: 1 },
+    { q: 'What do you think is coming next for Joner Football?', a: ['A JF kids book', 'A JF kids game app', 'A JF session planner app'], c: 0 },
+  ];
+
+  let current = 0;
+  let score = 0;
+  let answered = false;
+
+  const start = document.getElementById('quiz-start');
+  const game = document.getElementById('quiz-game');
+  const result = document.getElementById('quiz-result');
+  const progressLabel = document.getElementById('progress-label');
+  const scoreLabel = document.getElementById('score-label');
+  const progressBar = document.getElementById('progress-bar');
+  const questionText = document.getElementById('question-text');
+  const answers = document.getElementById('answers');
+  const feedback = document.getElementById('feedback');
+  const nextBtn = document.getElementById('next-btn');
+
+  function showQuestion() {
+    answered = false;
+    const item = questions[current];
+    progressLabel.textContent = `Question ${current + 1} of ${questions.length}`;
+    scoreLabel.textContent = `Score ${score}`;
+    progressBar.style.width = `${((current) / questions.length) * 100}%`;
+    questionText.textContent = item.q;
+    feedback.textContent = '';
+    nextBtn.disabled = true;
+    nextBtn.textContent = current === questions.length - 1 ? 'Show My Score' : 'Next Question';
+    answers.innerHTML = '';
+    item.a.forEach((answer, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = answer;
+      button.addEventListener('click', () => selectAnswer(button, index));
+      answers.appendChild(button);
+    });
+  }
+
+  function selectAnswer(button, index) {
+    if (answered) return;
+    answered = true;
+    const item = questions[current];
+    const buttons = [...answers.querySelectorAll('button')];
+    buttons.forEach((btn, i) => {
+      btn.disabled = true;
+      if (i === item.c) btn.classList.add('correct');
+    });
+    if (index === item.c) {
+      score++;
+      button.classList.add('correct');
+      feedback.textContent = 'Correct. Worldie knowledge.';
+    } else {
+      button.classList.add('wrong');
+      feedback.textContent = `Not quite. Correct answer: ${item.a[item.c]}.`;
+    }
+    scoreLabel.textContent = `Score ${score}`;
+    nextBtn.disabled = false;
+  }
+
+  function showResult() {
+    game.hidden = true;
+    result.hidden = false;
+    progressBar.style.width = '100%';
+    document.getElementById('result-score').textContent = `${score} / ${questions.length}`;
+    const band = document.getElementById('result-band');
+    const copy = document.getElementById('result-copy');
+    const reward = document.getElementById('reward');
+    if (score <= 7) {
+      band.textContent = 'New Signing';
+      copy.textContent = 'You’re new to Joner Football, but you’re in the right place. Time to sharpen up.';
+      reward.hidden = true;
+    } else if (score <= 14) {
+      band.textContent = 'First Team Regular';
+      copy.textContent = 'Solid effort. You know the brand, the coaching and a few proper Joner details.';
+      reward.hidden = true;
+    } else {
+      band.textContent = 'Joner Football Die Hard';
+      copy.textContent = 'You’ve got it on toast. Proper Joner Football knowledge.';
+      reward.hidden = false;
+    }
+  }
+
+  function resetQuiz() {
+    current = 0;
+    score = 0;
+    result.hidden = true;
+    game.hidden = false;
+    showQuestion();
+  }
+
+  document.getElementById('start-btn').addEventListener('click', () => {
+    start.hidden = true;
+    game.hidden = false;
+    showQuestion();
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (current >= questions.length - 1) showResult();
+    else { current++; showQuestion(); }
+  });
+
+  document.getElementById('retake-btn').addEventListener('click', resetQuiz);
+  document.getElementById('share-btn').addEventListener('click', async () => {
+    const text = `I scored ${score}/20 on the Joner Football quiz.`;
+    if (navigator.share) await navigator.share({ text, url: window.location.href });
+    else {
+      await navigator.clipboard.writeText(`${text} ${window.location.href}`);
+      document.getElementById('share-note').textContent = 'Score copied. Paste it anywhere.';
+    }
+  });
+</script>
+
+<style>
+  .quiz-page { min-height: 100vh; background: #000; color: #fff; }
+  .quiz-wrap { width: min(900px, calc(100% - 32px)); margin: 0 auto; padding: 56px 0 90px; }
+  .quiz-eyebrow { color: #E30613; font-family: Oswald, sans-serif; text-transform: uppercase; letter-spacing: .18em; font-size: .8rem; text-align: center; }
+  h1 { font-family: Oswald, sans-serif; text-transform: uppercase; font-size: clamp(2.7rem, 10vw, 6rem); line-height: .88; text-align: center; margin: 16px 0; }
+  .quiz-intro { color: rgba(255,255,255,.76); text-align: center; max-width: 620px; margin: 0 auto 32px; font-size: 1.05rem; line-height: 1.55; }
+  .quiz-card { border: 1px solid rgba(255,255,255,.14); background: #0A0A0A; box-shadow: 0 28px 90px rgba(0,0,0,.5); padding: clamp(22px, 5vw, 42px); }
+  .quiz-start, .quiz-result { text-align: center; }
+  .quiz-card h2 { font-family: Oswald, sans-serif; text-transform: uppercase; font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1; margin: 0 0 16px; }
+  .quiz-card h3 { font-family: Oswald, sans-serif; text-transform: uppercase; color: #E30613; font-size: 2rem; margin: 12px 0; }
+  .quiz-card p { color: rgba(255,255,255,.76); line-height: 1.55; }
+  .quiz-topline { display: flex; justify-content: space-between; gap: 16px; color: rgba(255,255,255,.72); font-family: Oswald, sans-serif; text-transform: uppercase; font-size: .9rem; margin-bottom: 14px; }
+  .quiz-progress { height: 8px; background: rgba(255,255,255,.12); margin-bottom: 30px; overflow: hidden; }
+  .quiz-progress span { display: block; height: 100%; background: #E30613; transition: width .2s ease; }
+  .answers { display: grid; gap: 12px; margin-top: 24px; }
+  button, .result-buttons a { min-height: 52px; border: 0; background: #E30613; color: #fff; font-family: Oswald, sans-serif; text-transform: uppercase; letter-spacing: .06em; padding: 14px 20px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+  .answers button { background: #151515; border: 1px solid rgba(255,255,255,.16); justify-content: flex-start; text-align: left; }
+  .answers button:hover:not(:disabled) { border-color: #E30613; }
+  .answers button.correct { background: #12351c; border-color: #22c55e; }
+  .answers button.wrong { background: #451313; border-color: #E30613; }
+  button:disabled { opacity: .65; cursor: not-allowed; }
+  #next-btn { width: 100%; margin-top: 18px; }
+  .feedback { min-height: 26px; color: #fff; font-weight: 700; }
+  .reward { border: 2px solid #E30613; padding: 18px; margin: 22px auto; max-width: 520px; font-size: 1.15rem; }
+  .reward strong { color: #E30613; font-size: 1.4rem; }
+  .result-buttons { display: grid; gap: 12px; margin-top: 24px; }
+  .result-buttons button, .result-buttons a { width: 100%; }
+  .share-note { min-height: 22px; font-size: .9rem; }
+</style>
