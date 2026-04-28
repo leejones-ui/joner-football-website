@@ -40,18 +40,19 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
 </BaseLayout>
 
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Kanit:ital,wght@1,600;1,900&display=swap');
   .resources-page { background: #000; color: #fff; min-height: 100vh; }
   .resources-shell { width: min(980px, calc(100% - 40px)); margin: 0 auto; }
   .resources-hero { padding: 96px 0 56px; background: #0A0A0A; border-top: 4px solid #E30613; text-align: center; }
-  .resources-eyebrow { color: #E30613; font-family: Oswald, sans-serif; text-transform: uppercase; letter-spacing: .18em; font-size: .8rem; margin-bottom: 16px; }
-  h1 { font-family: Oswald, sans-serif; text-transform: uppercase; font-size: clamp(3rem, 8vw, 6rem); line-height: .9; margin: 0 0 18px; }
+  .resources-eyebrow { color: #E30613; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 600; text-transform: uppercase; letter-spacing: .18em; font-size: .8rem; margin-bottom: 16px; }
+  h1 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(3rem, 8vw, 6rem); line-height: .9; margin: 0 0 18px; }
   .resources-hero p:not(.resources-eyebrow) { color: rgba(255,255,255,.76); font-size: 1.1rem; max-width: 620px; margin: 0 auto; line-height: 1.55; }
   .resources-list { padding: 56px 0 96px; }
   .resources-grid { display: grid; gap: 18px; }
   .resource-button { display: block; padding: 28px; border: 1px solid rgba(255,255,255,.16); background: #101010; color: #fff; text-decoration: none; transition: transform .16s ease, border-color .16s ease; }
   .resource-button:hover { transform: translateY(-3px); border-color: #E30613; }
-  .resource-button span { display: block; color: #E30613; font-family: Oswald, sans-serif; text-transform: uppercase; letter-spacing: .15em; font-size: .76rem; margin-bottom: 10px; }
-  .resource-button strong { display: block; font-family: Oswald, sans-serif; text-transform: uppercase; font-size: clamp(1.6rem, 4vw, 2.6rem); line-height: 1; margin-bottom: 12px; }
+  .resource-button span { display: block; color: #E30613; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 600; text-transform: uppercase; letter-spacing: .15em; font-size: .76rem; margin-bottom: 10px; }
+  .resource-button strong { display: block; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(1.6rem, 4vw, 2.6rem); line-height: 1; margin-bottom: 12px; }
   .resource-button em { color: rgba(255,255,255,.66); font-style: normal; }
   .resource-button--red { background: #E30613; border-color: #E30613; }
   .resource-button--red span, .resource-button--red em { color: rgba(255,255,255,.82); }
