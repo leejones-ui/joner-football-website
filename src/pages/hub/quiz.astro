@@ -113,16 +113,14 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
     answered = true;
     const item = questions[current];
     const buttons = [...answers.querySelectorAll('button')];
-    buttons.forEach((btn, i) => {
-      btn.disabled = true;
-      if (i === item.c) btn.classList.add('correct');
-    });
+    buttons.forEach((btn) => { btn.disabled = true; });
     if (index === item.c) {
       score++;
-      button.classList.add('correct');
+      button.classList.add('correct', 'flash-green');
       feedback.textContent = 'Correct. Worldie knowledge.';
     } else {
-      button.classList.add('wrong');
+      button.classList.add('wrong', 'flash-red');
+      buttons[item.c].classList.add('correct', 'flash-green');
       feedback.textContent = `Not quite. Correct answer: ${item.a[item.c]}.`;
     }
     scoreLabel.textContent = `Score ${score}`;
@@ -204,10 +202,14 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
   .answers button strong { font-size: clamp(1rem, 4vw, 1.2rem); line-height: 1.15; }
   .answers button:hover:not(:disabled), .answers button:focus-visible:not(:disabled) { border-color: #E30613; background: #24090b; transform: translateY(-2px); box-shadow: 0 12px 30px rgba(227,6,19,.18); outline: none; }
   .answers button:hover:not(:disabled) span, .answers button:focus-visible:not(:disabled) span { background: #E30613; color: #fff; border-color: #E30613; }
-  .answers button.correct { background: #12351c; border-color: #22c55e; }
+  .answers button.correct { background: #12351c; border-color: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.3), 0 14px 34px rgba(34,197,94,.16); }
   .answers button.correct span { background: #22c55e; color: #fff; border-color: #22c55e; }
-  .answers button.wrong { background: #451313; border-color: #E30613; }
+  .answers button.wrong { background: #451313; border-color: #E30613; box-shadow: 0 0 0 2px rgba(227,6,19,.35), 0 14px 34px rgba(227,6,19,.18); }
   .answers button.wrong span { background: #E30613; color: #fff; border-color: #E30613; }
+  .answers button.flash-green { animation: flashGreen .46s ease-in-out 2; }
+  .answers button.flash-red { animation: flashRed .46s ease-in-out 2; }
+  @keyframes flashGreen { 0%,100% { background: #12351c; } 50% { background: #22c55e; color: #000; } }
+  @keyframes flashRed { 0%,100% { background: #451313; } 50% { background: #E30613; color: #fff; } }
   button:disabled { opacity: .9; cursor: default; }
   #next-btn { width: 100%; margin-top: 18px; }
   .feedback { min-height: 26px; color: #fff; font-weight: 700; }
