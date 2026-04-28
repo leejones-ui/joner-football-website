@@ -6,97 +6,126 @@ const accountPlans = [
     id: 'starter',
     name: 'Starter',
     eyebrow: 'Start here',
-    audience: 'Best for players and parents who want structured training without overthinking it.',
+    audience: 'Build your game with the core Joner training library.',
     monthlyPrice: '$14.99',
-    annualPrice: '$129.99',
-    periodMonthly: 'per month',
-    periodAnnual: 'per year',
-    saving: 'Annual plan: $129.99 USD',
-    cta: 'Start Starter',
+    annualPrice: '$10.83',
+    annualCompare: '$14.99/mo',
+    annualNote: 'Billed yearly at $129.99',
+    periodMonthly: '/mo',
+    periodAnnual: '/mo',
+    cta: 'Start Free Trial',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
     monthlyCtaUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
     tone: 'quiet',
     features: [
-      'Full training video library',
-      'Follow along training programs',
-      'Ball mastery, first touch, 1v1s and finishing',
-      'Daily challenges and playlists',
-      'New content every week',
+      ['1,500+ Training Videos', true],
+      ['New Content Weekly', true],
+      ['Daily Challenges', true],
+      ['Community Access', true],
+      ['Live Sessions', true],
+      ['100 Day Transformation Program', false],
+      ['DM Lee Directly', false],
+      ['Team Training', false],
+      ['Coaches Section', false],
     ],
   },
   {
     id: 'plus',
     name: 'Plus',
     eyebrow: 'Most Popular',
-    audience: 'Best for players and parents who want more structure, detail and support from the app.',
+    audience: 'More structure, more detail and more ways to improve.',
     monthlyPrice: '$19.99',
-    annualPrice: '$179.99',
-    periodMonthly: 'per month',
-    periodAnnual: 'per year',
-    saving: 'Annual plan: $179.99 USD',
-    cta: 'Start Plus',
+    annualPrice: '$14.99',
+    annualCompare: '$19.99/mo',
+    annualNote: 'Billed yearly at $179.99',
+    periodMonthly: '/mo',
+    periodAnnual: '/mo',
+    cta: 'Start Free Trial',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
     monthlyCtaUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
     tone: 'featured',
     features: [
-      'Everything in Starter',
-      'Deeper training pathways',
-      'Offline downloads and playlists',
-      'More advanced player development content',
-      'Best value for serious players',
+      ['Everything in Starter', true],
+      ['100 Day Transformation Program', true],
+      ['DM Lee Directly', true],
+      ['Team Training Videos', true],
+      ['Offline Downloads', true],
+      ['Watch History', true],
+      ['Streaks and Badges', true],
+      ['Coaches Section', false],
     ],
   },
   {
     id: 'max',
     name: 'Max',
     eyebrow: 'Full Access',
-    audience: 'Best for coaches, serious players and families who want the complete Joner Football system.',
+    audience: 'Full access with the Coaches Section included.',
     monthlyPrice: '$219',
     annualPrice: '$219',
-    periodMonthly: 'annual only',
-    periodAnnual: 'per year',
-    saving: 'Annual only: $219 USD',
-    cta: 'Go Max',
+    annualCompare: '',
+    annualNote: 'Annual only',
+    periodMonthly: '/yr',
+    periodAnnual: '/yr',
+    cta: 'Join Max',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
     tone: 'strong',
     features: [
-      'Everything in Plus',
-      'Coaches section',
-      'Session plans and PDF season plans',
-      'Advanced team training',
-      'Coach templates and pro player sessions',
+      ['Everything in Plus', true],
+      ['Coaches Section', true],
+      ['PDF Season Plans', true],
+      ['Advanced Team Training', true],
+      ['Pro Player Sessions', true],
+      ['Workshop Discounts', true],
+      ['Coaching Templates', true],
     ],
   },
   {
     id: 'club',
     name: 'Club Plan',
     eyebrow: 'Request only',
-    audience: 'For clubs, schools and academies that want Joner across the whole group.',
+    audience: 'For clubs, schools and academies.',
     monthlyPrice: 'Request',
     annualPrice: 'Request',
-    periodMonthly: 'only',
-    periodAnnual: 'only',
+    annualCompare: '',
+    annualNote: '',
+    periodMonthly: '',
+    periodAnnual: '',
     cta: 'Request Club Plan',
     ctaUrl: '/teams',
     tone: 'quiet',
     features: [
-      'Multi seat access',
-      'Club wide training system',
-      'Coach education support',
-      'Flexible team billing',
-      'Custom onboarding options',
+      ['Custom onboarding with Lee', true],
+      ['Multi-seat licences', true],
+      ['Transferable seats', true],
+      ['Bulk player access', true],
+      ['Single invoice for the whole team', true],
+      ['Usage analytics', true],
+      ['Priority support', true],
     ],
   },
 ]
 
 const comparisonRows = [
-  ['Full training video library', true, true, true, true],
-  ['Follow along programs', true, true, true, true],
-  ['Daily challenges and playlists', true, true, true, true],
-  ['Offline downloads and advanced pathways', false, true, true, true],
-  ['Coaches section', false, false, true, true],
-  ['Session plans and coach templates', false, false, true, true],
-  ['Club or team access', false, false, false, true],
+  ['1,500+ Training Videos', true, true, true, true],
+  ['New Videos Every Week', true, true, true, true],
+  ['Daily Challenges', true, true, true, true],
+  ['Community Access', true, true, true, true],
+  ['Live Training Sessions', true, true, true, true],
+  ['100 Day Transformation Program', false, true, true, true],
+  ['Age Specific Training Content', true, true, true, true],
+  ['Create Playlist', true, true, true, true],
+  ['Offline Downloads', true, true, true, true],
+  ['Watch History', true, true, true, true],
+  ['Streaks and Badges', true, true, true, true],
+  ['Create Notes', true, true, true, true],
+  ['Free Trial', true, true, false, false],
+  ['DM Lee Directly', false, true, true, true],
+  ['Team Training Videos', false, true, true, true],
+  ['Advanced Team Training', false, false, true, true],
+  ['PDF Season Plans', false, false, true, true],
+  ['Coaches Section', false, false, true, true],
+  ['Pro Player Training', false, false, true, true],
+  ['Workshop Discounts', false, false, true, true],
 ]
 ---
 
@@ -139,14 +168,19 @@ const comparisonRows = [
             <p class:list={['font-body text-sm leading-relaxed min-h-[64px] mb-6', plan.tone === 'featured' ? 'text-gray-700' : 'text-gray-400']}>{plan.audience}</p>
 
             <div class="mb-6">
-              <span class="font-heading text-5xl font-bold billing-price" data-monthly={plan.monthlyPrice} data-annual={plan.annualPrice}>{plan.annualPrice}</span>
+              <div class="flex items-end gap-2 flex-wrap">
+                <span class="hidden billing-compare text-lg font-heading line-through opacity-50" data-monthly="" data-annual={plan.annualCompare}>{plan.annualCompare}</span>
+                <span class="font-heading text-5xl font-bold billing-price" data-monthly={plan.monthlyPrice} data-annual={plan.annualPrice}>{plan.annualPrice}</span>
+                <span class:list={['billing-period font-body text-sm pb-2', plan.tone === 'featured' ? 'text-gray-600' : 'text-gray-400']} data-monthly={plan.periodMonthly} data-annual={plan.periodAnnual}>{plan.periodAnnual}</span>
+              </div>
+              {plan.annualNote && <div class:list={['billing-note mt-2 text-xs font-body', plan.tone === 'featured' ? 'text-gray-600' : 'text-gray-500']} data-monthly="" data-annual={plan.annualNote}>{plan.annualNote}</div>}
             </div>
 
             <ul class="space-y-3 mb-8 flex-1">
-              {plan.features.map((feature) => (
-                <li class="flex gap-3 font-body text-sm leading-snug">
-                  <span class:list={['mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs', plan.tone === 'featured' ? 'bg-[#E30613] text-white' : 'bg-[#E30613] text-white']}>✓</span>
-                  <span class={plan.tone === 'featured' ? 'text-gray-800' : 'text-gray-200'}>{feature}</span>
+              {plan.features.map(([feature, included]) => (
+                <li class:list={['flex gap-3 font-body text-sm leading-snug', !included ? 'opacity-45' : '']}>
+                  <span class:list={['mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold', included ? 'bg-[#16A34A] text-white' : 'bg-gray-200 text-gray-500']}>{included ? '✓' : '×'}</span>
+                  <span class:list={[plan.tone === 'featured' ? 'text-gray-800' : 'text-gray-200', !included ? 'line-through' : '']}>{feature}</span>
                 </li>
               ))}
             </ul>
@@ -184,7 +218,7 @@ const comparisonRows = [
               <tr class="border-t border-gray-200">
                 <td class="p-5 font-body font-semibold">{row[0]}</td>
                 {row.slice(1).map((included) => (
-                  <td class="p-5 text-center font-heading text-xl">{included ? <span class="text-[#E30613]">✓</span> : <span class="text-gray-300">•</span>}</td>
+                  <td class="p-5 text-center font-heading text-xl">{included ? <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#16A34A] text-white">✓</span> : <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gray-200 text-gray-400">×</span>}</td>
                 ))}
               </tr>
             ))}
@@ -248,6 +282,9 @@ const comparisonRows = [
   <script>
     const toggles = document.querySelectorAll('.billing-toggle')
     const prices = document.querySelectorAll('.billing-price')
+    const compares = document.querySelectorAll('.billing-compare')
+    const periods = document.querySelectorAll('.billing-period')
+    const notes = document.querySelectorAll('.billing-note')
     const ctas = document.querySelectorAll('.plan-cta')
 
     function setBilling(mode) {
@@ -261,6 +298,22 @@ const comparisonRows = [
 
       prices.forEach((price) => {
         price.textContent = price.getAttribute(`data-${mode}`) || ''
+      })
+
+      compares.forEach((compare) => {
+        const value = compare.getAttribute(`data-${mode}`) || ''
+        compare.textContent = value
+        compare.classList.toggle('hidden', !value)
+      })
+
+      periods.forEach((period) => {
+        period.textContent = period.getAttribute(`data-${mode}`) || ''
+      })
+
+      notes.forEach((note) => {
+        const value = note.getAttribute(`data-${mode}`) || ''
+        note.textContent = value
+        note.classList.toggle('hidden', !value)
       })
 
       ctas.forEach((cta) => {
