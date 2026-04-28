@@ -20,6 +20,7 @@
     "@tailwindcss/vite": "^4.2.2",
     "astro": "^6.1.1",
     "sanity": "^5.19.0",
+    "styled-components": "^6.4.1",
     "tailwindcss": "^4.2.2"
   }
 }
