@@ -83,6 +83,8 @@ const allSchemas = schema
       <script type="application/ld+json" set:html={JSON.stringify(s)} />
     ))}
 
+    <slot name="head" />
+
     <!-- LEE: Paste your GA4 Measurement ID into Vercel env var PUBLIC_GA4_ID (starts with G-) -->
     <Analytics />
 
