@@ -179,11 +179,7 @@ const comparisonRows = [
             <p class:list={['font-body text-sm leading-relaxed min-h-[64px] mb-6', plan.tone === 'featured' ? 'text-gray-700' : 'text-gray-400']}>{plan.audience}</p>
 
             <div class="mb-6">
-              <div class="flex items-end gap-2">
-                <span class="font-heading text-5xl font-bold billing-price" data-monthly={plan.monthlyPrice} data-annual={plan.annualPrice}>{plan.annualPrice}</span>
-                <span class:list={['font-body text-sm pb-2 billing-period', plan.tone === 'featured' ? 'text-gray-600' : 'text-gray-400']} data-monthly={plan.periodMonthly} data-annual={plan.periodAnnual}>{plan.periodAnnual}</span>
-              </div>
-              {plan.saving && <div class="billing-saving mt-2 text-sm font-body text-[#E30613] font-semibold">{plan.saving}</div>}
+              <span class="font-heading text-5xl font-bold billing-price" data-monthly={plan.monthlyPrice} data-annual={plan.annualPrice}>{plan.annualPrice}</span>
             </div>
 
             <ul class="space-y-3 mb-8 flex-1">
@@ -292,8 +288,6 @@ const comparisonRows = [
   <script>
     const toggles = document.querySelectorAll('.billing-toggle')
     const prices = document.querySelectorAll('.billing-price')
-    const periods = document.querySelectorAll('.billing-period')
-    const savings = document.querySelectorAll('.billing-saving')
     const ctas = document.querySelectorAll('.plan-cta')
 
     function setBilling(mode) {
@@ -307,14 +301,6 @@ const comparisonRows = [
 
       prices.forEach((price) => {
         price.textContent = price.getAttribute(`data-${mode}`) || ''
-      })
-
-      periods.forEach((period) => {
-        period.textContent = period.getAttribute(`data-${mode}`) || ''
-      })
-
-      savings.forEach((saving) => {
-        saving.classList.toggle('hidden', mode !== 'annual')
       })
 
       ctas.forEach((cta) => {
