@@ -1,0 +1,409 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const stats = [
+  { label: 'Dates', value: '22, 23, 24 June' },
+  { label: 'Location', value: 'North Hollywood, LA' },
+  { label: 'Players', value: 'Ages 13 to 18' },
+  { label: 'Places', value: 'Max 30 players' },
+]
+
+const essentials = [
+  ['When', 'Monday 22nd, Tuesday 23rd and Wednesday 24th of June'],
+  ['Where', 'Gol Soccer Complex, 11501 Strathern St, North Hollywood, CA 91605, US'],
+  ['Times', '8am to 12pm. Training first, seminars after.'],
+  ['Who For', 'Selection only. ECNL or MLS NEXT level players aged 13 to 18.'],
+]
+
+const experience = [
+  '3 days of high level training with Joner Football and First Strike',
+  'Position specific detail tailored to how you actually play',
+  'Footballers Mindset Seminar',
+  'Nutrition for footballers seminar',
+  'Sports science support in partnership with MAP',
+  'Detailed individual player reports',
+  'Coach feedback meeting',
+  'Joner Football x First Strike training jersey',
+  'Player welcome pack',
+  'Full free access to the Joner Football APP',
+]
+
+const standards = [
+  'High level small group training',
+  'Position specific coaching',
+  'Selection only',
+  'Max 30 players',
+]
+
+const faqs = [
+  ['What does the player need to bring?', 'Soccer boots for synthetic, shin guards, drink bottle, waterproof jacket, a smile, and a good attitude.'],
+  ['What should the player wear?', 'Black shorts and white socks. Joner Football will provide the training jersey.'],
+  ['What should players expect?', 'Energy, intensity, knowledge, new drills, and a learning environment built for serious footballers.'],
+  ['Will bad weather cancel the clinic?', 'No. Only severe storms can delay the camp.'],
+  ['Can we take photos or videos?', 'Professional photos and videos will be taken. The coaches will also leave time on the final day for photos and chats.'],
+  ['Can I get a refund if I cancel?', 'Full refunds will be issued if you cancel within 14 days of the camp start date.'],
+]
+---
+
+<BaseLayout
+  title="LA Complete Player Experience | Joner Football Camps"
+  description="Joner Football x First Strike Soccer. A selection only elite player experience in Los Angeles, June 2026."
+  canonical="https://jonerfootball.com/camps/la-tcpe-june/"
+>
+  <div class="bg-joner-black text-white">
+    {/* HERO: Joner x First Strike, single section, replaces the prior video hero, image strip and story panels */}
+    <section class="jxfs" aria-label="Joner x First Strike, Built For Serious Footballers Only">
+      <div class="jxfs__inner">
+        <div class="jxfs__copy">
+          <p class="jxfs__eyebrow">Joner Football &times; First Strike Soccer</p>
+          <h1 class="jxfs__title">Built for serious footballers only.</h1>
+          <div class="jxfs__body">
+            <p>This June in Los Angeles, Lee Jones from Joner Football and Bradley Mulvey from First Strike Soccer are teaming up to deliver a footballer&rsquo;s experience like no other.</p>
+            <p>This is not a normal camp. It combines high level training with nutrition, mindset, sports science, individual reports, and direct coach feedback.</p>
+          </div>
+          <p class="jxfs__cta-line">Super limited spots. Selection only. Max 30 players.</p>
+          <a href="#apply" class="jxfs__btn">Apply for a Spot</a>
+        </div>
+        <div class="jxfs__media">
+          <img
+            src="/images/camps/tcpe/jonerxfirststrike-collage.webp"
+            alt="Lee Jones (Joner Football) and Bradley Mulvey (First Strike Soccer) coaching in Los Angeles"
+            loading="eager"
+          />
+        </div>
+      </div>
+    </section>
+
+    {/* Stat strip: keeps the camp essentials visible above the fold */}
+    <section class="bg-joner-black border-y border-gray-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-2 md:grid-cols-4">
+          {stats.map((item, i) => (
+            <div class={`py-5 md:py-6 px-3 text-center ${i < 3 ? 'md:border-r border-gray-800' : ''} ${i === 0 ? 'border-r' : ''} ${i === 2 ? 'border-r' : ''} ${i < 2 ? 'border-b md:border-b-0' : ''}`}>
+              <p class="font-heading uppercase text-joner-red text-[11px] tracking-[0.22em] mb-1">{item.label}</p>
+              <p class="font-heading uppercase text-base md:text-lg leading-tight">{item.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <nav class="sticky top-0 z-30 bg-joner-black/95 backdrop-blur border-b border-gray-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-auto">
+        <div class="flex gap-6 md:gap-10 py-4 font-heading uppercase tracking-widest text-sm whitespace-nowrap">
+          <a href="#experience" class="hover:text-joner-red">Experience</a>
+          <a href="#training" class="hover:text-joner-red">Pro Training</a>
+          <a href="#seminars" class="hover:text-joner-red">Seminars</a>
+          <a href="#apply" class="text-joner-red">Apply</a>
+        </div>
+      </div>
+    </nav>
+
+    <section id="experience" class="py-14 md:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-10 md:gap-16 items-start">
+          <div class="lg:sticky lg:top-24">
+            <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">The Complete Player Experience</p>
+            <h2 class="font-heading uppercase text-5xl md:text-7xl leading-none mb-6">Everything a serious player needs.</h2>
+            <p class="font-body text-gray-300 text-lg">The page should sell the complete experience, not just the sessions. Training, education, standards, reporting, and environment all matter.</p>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {experience.map((item) => (
+              <div class="bg-joner-gray border border-gray-800 p-6 min-h-32 flex items-end">
+                <p class="font-heading uppercase text-2xl md:text-3xl leading-none">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="training" class="bg-white text-joner-black py-14 md:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 items-center">
+        <div class="space-y-5">
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm">Pro Training</p>
+          <h2 class="font-heading uppercase text-5xl md:text-7xl leading-none">High level training with real detail.</h2>
+          <p class="font-body text-lg text-gray-700 leading-relaxed">The on field work is built around technique, intensity, position specific habits, and the small details that separate players at higher levels.</p>
+          <div class="grid grid-cols-2 gap-3 pt-4">
+            {standards.map((item) => (
+              <div class="border border-gray-200 p-5 bg-gray-50">
+                <p class="font-heading uppercase text-xl leading-tight">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div class="space-y-5">
+          <div class="aspect-video bg-joner-black overflow-hidden">
+            <iframe
+              src="https://www.youtube.com/embed/6Lk7pztLhEw?start=209&rel=0"
+              title="Joner Football pro training example"
+              class="w-full h-full"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen
+            ></iframe>
+          </div>
+          <img src="/images/camps/tcpe/DSC06106-scaled.jpeg.webp" alt="Joner Football coach working directly with a player in training" class="w-full aspect-[16/10] object-cover" loading="lazy" />
+        </div>
+      </div>
+    </section>
+
+    <section id="seminars" class="py-14 md:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 items-center">
+        <div class="order-2 lg:order-1">
+          <img src="/images/camps/tcpe/DSC00901-scaled.jpg.webp" alt="Footballers Mindset Seminar presentation" class="w-full aspect-[4/5] object-cover" loading="lazy" />
+        </div>
+        <div class="order-1 lg:order-2">
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">Mindset, Nutrition, Sports Science</p>
+          <h2 class="font-heading uppercase text-5xl md:text-7xl leading-none mb-6">More than just drills.</h2>
+          <p class="font-body text-lg text-gray-300 leading-relaxed mb-8">Players leave with clearer standards around training, preparation, mindset, nutrition, and what it takes to improve beyond the pitch.</p>
+          <div class="bg-joner-red p-7 md:p-9">
+            <p class="font-heading uppercase text-3xl md:text-4xl leading-none">Seminars on mindset, nutrition and sports science.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white text-joner-black py-14 md:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 md:gap-16 items-start">
+        <div>
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">Camp Details</p>
+          <h2 class="font-heading uppercase text-5xl md:text-7xl leading-none mb-8">The essentials.</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {essentials.map(([label, value]) => (
+              <div class="border border-gray-200 bg-gray-50 p-6">
+                <p class="font-heading uppercase tracking-widest text-joner-red text-xs mb-2">{label}</p>
+                <p class="font-heading uppercase text-2xl leading-tight">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <img src="/images/camps/tcpe/IMG_9569-scaled.jpg.webp" alt="Coach preparing footballs for high level training" class="w-full aspect-[4/5] object-cover" loading="lazy" />
+        </div>
+      </div>
+    </section>
+
+    <section id="apply" class="py-14 md:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-10 md:gap-16 items-start">
+        <div class="lg:sticky lg:top-24">
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">Apply Below</p>
+          <h2 class="font-heading uppercase text-5xl md:text-7xl leading-none mb-6">Selection only event.</h2>
+          <p class="font-body text-gray-300 text-lg leading-relaxed">Fill in the form and the Joner Football team will respond within 48 hours with an update and all information on the event.</p>
+          <div class="mt-8 border border-gray-800 bg-joner-gray p-6">
+            <p class="font-heading uppercase text-2xl leading-tight">Applications are sent to joner1on1info@gmail.com for approval or decline.</p>
+          </div>
+        </div>
+
+        <form id="selection-application-form" class="bg-white text-joner-black p-5 md:p-8 space-y-5">
+          <input type="hidden" name="camp" value="LA Complete Player Experience" />
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <label class="block">
+              <span class="form-label">Player’s Full Name *</span>
+              <input name="playerFullName" required class="form-input" placeholder="Player’s Full Name" />
+            </label>
+            <label class="block">
+              <span class="form-label">Parent’s Full Name</span>
+              <input name="parentFullName" class="form-input" placeholder="Parent’s Full Name, if under 18" />
+            </label>
+            <label class="block">
+              <span class="form-label">Age *</span>
+              <input name="playerAge" type="number" min="13" max="18" required class="form-input" placeholder="Age 13 to 18 only" />
+            </label>
+            <label class="block">
+              <span class="form-label">Who do you play for? *</span>
+              <input name="playFor" required class="form-input" placeholder="ECNL or MLS NEXT only" />
+            </label>
+            <label class="block">
+              <span class="form-label">Mobile Number *</span>
+              <input name="mobileNumber" required class="form-input" placeholder="Mobile Number" />
+            </label>
+            <label class="block">
+              <span class="form-label">Email Address *</span>
+              <input name="email" type="email" required class="form-input" placeholder="Email Address" />
+            </label>
+          </div>
+          <label class="block">
+            <span class="form-label">Have you worked with us before? *</span>
+            <select name="workedBefore" required class="form-input">
+              <option value="">Select one</option>
+              <option>No</option>
+              <option>Yes, Joner Football</option>
+              <option>Yes, First Strike Soccer</option>
+              <option>Yes, Both</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="form-label">How did you hear about us? *</span>
+            <input name="hearAbout" required class="form-input" placeholder="Instagram, coach, teammate, email, other" />
+          </label>
+          <label class="block">
+            <span class="form-label">Why do you want to be accepted onto this experience? *</span>
+            <textarea name="applicationMessage" required rows="6" class="form-input" placeholder="Tell us why this player should be selected"></textarea>
+          </label>
+          <button type="submit" class="btn-red w-full justify-center">Apply Now</button>
+          <p id="selection-application-message" class="text-sm text-gray-600" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <section class="bg-white text-joner-black py-14 md:py-24">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">Frequently Asked Questions</p>
+        <h2 class="font-heading uppercase text-5xl md:text-7xl leading-none mb-8">Know before you apply.</h2>
+        <div class="space-y-4">
+          {faqs.map(([question, answer]) => (
+            <details class="border border-gray-200 bg-gray-50 p-6 group">
+              <summary class="font-heading uppercase text-2xl cursor-pointer list-none flex justify-between gap-4">
+                <span>{question}</span>
+                <span class="text-joner-red group-open:rotate-45 transition-transform">+</span>
+              </summary>
+              <p class="font-body text-gray-700 mt-4 text-lg leading-relaxed">{answer}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <style>
+    .form-label {
+      display: block;
+      font-family: 'Anton', Impact, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.78rem;
+      color: #0A0A0A;
+      margin-bottom: 0.5rem;
+    }
+    .form-input {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      color: #0A0A0A;
+      padding: 0.95rem 1rem;
+      font-size: 1rem;
+      border-radius: 0;
+      outline: none;
+    }
+    .form-input:focus {
+      border-color: #E30613;
+      box-shadow: 0 0 0 2px rgba(227, 6, 19, 0.12);
+    }
+
+    /* Joner x First Strike hero */
+    .jxfs {
+      width: 100%;
+      background: #fff;
+      color: #0A0A0A;
+      padding: clamp(48px, 6vw, 96px) clamp(20px, 4vw, 56px);
+    }
+    .jxfs__inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.25fr);
+      gap: clamp(32px, 5vw, 80px);
+      align-items: center;
+    }
+    .jxfs__copy { display: flex; flex-direction: column; justify-content: center; }
+    .jxfs__media { position: relative; width: 100%; }
+    .jxfs__media img { width: 100%; height: auto; display: block; }
+
+    .jxfs__eyebrow {
+      color: #CC0000;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      font-size: clamp(12px, 1vw, 14px);
+      margin: 0 0 clamp(18px, 2vw, 26px);
+    }
+    .jxfs__title {
+      margin: 0;
+      color: #0A0A0A;
+      font-family: 'Oswald', Impact, sans-serif;
+      font-weight: 900;
+      text-transform: uppercase;
+      line-height: 0.95;
+      letter-spacing: -0.015em;
+      font-size: clamp(2.25rem, 5.4vw, 4.5rem);
+      text-wrap: balance;
+      padding-left: clamp(16px, 1.4vw, 22px);
+      border-left: 4px solid #CC0000;
+    }
+    .jxfs__body {
+      margin: clamp(20px, 2.4vw, 28px) 0 0;
+      color: rgba(0,0,0,0.78);
+      font-family: 'DM Sans', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-size: clamp(0.95rem, 1.1vw, 1.0625rem);
+      line-height: 1.65;
+    }
+    .jxfs__body p { margin: 0 0 14px; }
+    .jxfs__body p:last-child { margin-bottom: 0; }
+    .jxfs__cta-line {
+      margin: clamp(22px, 2.4vw, 28px) 0 0;
+      font-family: 'Oswald', Impact, sans-serif;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #0A0A0A;
+      font-size: clamp(0.9rem, 1.05vw, 1rem);
+    }
+    .jxfs__btn {
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      margin-top: clamp(22px, 2.4vw, 30px);
+      padding: 18px 28px;
+      border: 2px solid #0A0A0A;
+      background: #0A0A0A;
+      color: #fff;
+      text-decoration: none;
+      font-family: 'Oswald', Impact, sans-serif;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.9375rem;
+      transition: background 120ms, color 120ms, transform 80ms;
+    }
+    .jxfs__btn:hover  { background: #fff; color: #0A0A0A; }
+    .jxfs__btn:active { transform: translateY(1px); }
+
+    @media (max-width: 900px) {
+      .jxfs { padding: 32px 22px; }
+      .jxfs__inner { grid-template-columns: 1fr; gap: 28px; }
+    }
+  </style>
+
+  <script is:inline>
+    const form = document.getElementById('selection-application-form')
+    const message = document.getElementById('selection-application-message')
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault()
+      const submitButton = form.querySelector('button[type="submit"]')
+      submitButton.disabled = true
+      submitButton.textContent = 'Sending Application...'
+      message.textContent = ''
+
+      const formData = new FormData(form)
+      const payload = Object.fromEntries(formData.entries())
+
+      try {
+        const response = await fetch('/api/selection-application', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok || !data.success) throw new Error(data.error || 'Application could not be sent.')
+        message.textContent = 'Application sent. We will respond within 48 hours.'
+        form.reset()
+      } catch (error) {
+        message.textContent = 'Application could not be sent. Please try again or email joner1on1info@gmail.com.'
+      } finally {
+        submitButton.disabled = false
+        submitButton.textContent = 'Apply Now'
+      }
+    })
+  </script>
+</BaseLayout>
