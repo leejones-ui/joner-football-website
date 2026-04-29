@@ -51,12 +51,53 @@ const faqs = [
   canonical="https://jonerfootball.com/camps/la-tcpe-june/"
 >
   <div class="bg-joner-black text-white">
-    {/* HERO: Joner x First Strike, single section, replaces the prior video hero, image strip and story panels */}
-    <section class="jxfs" aria-label="Joner x First Strike, Built For Serious Footballers Only">
+    {/* VIDEO HERO */}
+    <section class="relative min-h-[92vh] overflow-hidden flex items-end">
+      <video autoplay muted loop playsinline poster="/images/camps/tcpe/JONER-X-FIRST-STRIKE--scaled.jpg.webp" class="absolute inset-0 w-full h-full object-cover opacity-85">
+        <source src="/images/camps/tcpe/tcpe-hero-720.mp4" type="video/mp4" />
+      </video>
+      <div class="absolute inset-0 bg-gradient-to-t from-joner-black via-joner-black/55 to-joner-black/10"></div>
+      <div class="relative z-10 w-full px-4 sm:px-6 lg:px-8 pb-10 md:pb-16">
+        <div class="max-w-7xl mx-auto">
+          <div class="max-w-5xl">
+            <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm md:text-base mb-4">JF & FS</p>
+            <h1 class="font-heading uppercase text-6xl md:text-8xl lg:text-9xl leading-none tracking-[0.05em]">The Complete Player Experience</h1>
+            <p class="mt-6 text-xl md:text-2xl text-gray-100 max-w-3xl leading-snug">Joner Football x First Strike Soccer. Three days of elite training, player education, and selection only standards in Los Angeles.</p>
+            <div class="mt-8 flex flex-col sm:flex-row gap-3">
+              <a href="#apply" class="btn-red text-center">Apply Now</a>
+              <a href="#experience" class="btn-outline text-center">See What Is Included</a>
+            </div>
+          </div>
+          <div class="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-5xl">
+            {stats.map((item) => (
+              <div class="bg-white/10 backdrop-blur-sm border border-white/15 p-4">
+                <p class="font-heading uppercase text-joner-red text-xs tracking-widest mb-1">{item.label}</p>
+                <p class="font-heading uppercase text-lg md:text-xl leading-tight">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <nav class="sticky top-0 z-30 bg-joner-black/95 backdrop-blur border-y border-gray-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-auto">
+        <div class="flex gap-6 md:gap-10 py-4 font-heading uppercase tracking-widest text-sm whitespace-nowrap">
+          <a href="#story" class="hover:text-joner-red">Overview</a>
+          <a href="#experience" class="hover:text-joner-red">Experience</a>
+          <a href="#training" class="hover:text-joner-red">Pro Training</a>
+          <a href="#seminars" class="hover:text-joner-red">Seminars</a>
+          <a href="#apply" class="text-joner-red">Apply</a>
+        </div>
+      </div>
+    </nav>
+
+    {/* JONER x FIRST STRIKE story hero (replaces the prior duplicated story panel) */}
+    <section id="story" class="jxfs" aria-label="Joner x First Strike, Built For Serious Footballers Only">
       <div class="jxfs__inner">
         <div class="jxfs__copy">
           <p class="jxfs__eyebrow">Joner Football &times; First Strike Soccer</p>
-          <h1 class="jxfs__title">Built for serious footballers only.</h1>
+          <h2 class="jxfs__title">Built for serious footballers only.</h2>
           <div class="jxfs__body">
             <p>This June in Los Angeles, Lee Jones from Joner Football and Bradley Mulvey from First Strike Soccer are teaming up to deliver a footballer&rsquo;s experience like no other.</p>
             <p>This is not a normal camp. It combines high level training with nutrition, mindset, sports science, individual reports, and direct coach feedback.</p>
@@ -73,31 +114,6 @@ const faqs = [
         </div>
       </div>
     </section>
-
-    {/* Stat strip: keeps the camp essentials visible above the fold */}
-    <section class="bg-joner-black border-y border-gray-800">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-2 md:grid-cols-4">
-          {stats.map((item, i) => (
-            <div class={`py-5 md:py-6 px-3 text-center ${i < 3 ? 'md:border-r border-gray-800' : ''} ${i === 0 ? 'border-r' : ''} ${i === 2 ? 'border-r' : ''} ${i < 2 ? 'border-b md:border-b-0' : ''}`}>
-              <p class="font-heading uppercase text-joner-red text-[11px] tracking-[0.22em] mb-1">{item.label}</p>
-              <p class="font-heading uppercase text-base md:text-lg leading-tight">{item.value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <nav class="sticky top-0 z-30 bg-joner-black/95 backdrop-blur border-b border-gray-800">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-auto">
-        <div class="flex gap-6 md:gap-10 py-4 font-heading uppercase tracking-widest text-sm whitespace-nowrap">
-          <a href="#experience" class="hover:text-joner-red">Experience</a>
-          <a href="#training" class="hover:text-joner-red">Pro Training</a>
-          <a href="#seminars" class="hover:text-joner-red">Seminars</a>
-          <a href="#apply" class="text-joner-red">Apply</a>
-        </div>
-      </div>
-    </nav>
 
     <section id="experience" class="py-14 md:py-24">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
