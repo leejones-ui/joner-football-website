@@ -35,6 +35,21 @@ export default {
     { name: 'spotsRemaining', title: 'Spots Remaining', type: 'number' },
     { name: 'jerseySizes', title: 'Jersey Sizes Available', type: 'array', of: [{ type: 'string' }], options: { layout: 'tags' } },
     { name: 'dayOptions', title: 'Day Options', type: 'array', of: [{ type: 'string' }], options: { layout: 'tags' }, description: 'Example: 1 day, 2 days, 3 days' },
+    {
+      name: 'dayPaymentLinks',
+      title: 'Day Payment Links',
+      type: 'array',
+      description: 'Optional. Use when 1 day, 2 days, and 3 days have different Stripe links.',
+      of: [{
+        type: 'object',
+        fields: [
+          { name: 'label', title: 'Day Option Label', type: 'string', description: 'Must match the form option exactly, example: 1 Day' },
+          { name: 'stripePaymentLink', title: 'Stripe Payment Link', type: 'url' },
+          { name: 'paypalPaymentLink', title: 'PayPal Payment Link', type: 'url' },
+        ],
+        preview: { select: { title: 'label', subtitle: 'stripePaymentLink' } },
+      }],
+    },
 
     { name: 'description', title: 'Short Description', type: 'text', rows: 4 },
     { name: 'whatToBring', title: 'What To Bring', type: 'array', of: [{ type: 'string' }] },

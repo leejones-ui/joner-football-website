@@ -22,6 +22,7 @@ const camp = await sanityClient.fetch(`*[_type == "camp" && slug.current == $slu
   spotsRemaining,
   jerseySizes,
   dayOptions,
+  dayPaymentLinks,
   description,
   whatToBring,
   extraInfo,
@@ -36,6 +37,7 @@ if (!camp) return Astro.redirect('/camps')
 
 const jerseySizes = camp.jerseySizes?.length ? camp.jerseySizes : ['Youth XS', 'Youth S', 'Youth M', 'Youth L', 'Youth XL', 'Adult S', 'Adult M', 'Adult L', 'Adult XL']
 const dayOptions = camp.dayOptions?.length ? camp.dayOptions : ['1 Day', '2 Days', '3 Days', 'Full Camp']
+const dayPaymentLinks = camp.dayPaymentLinks || []
 const paymentLinks = {
   Stripe: camp.stripePaymentLink || '',
   Afterpay: camp.afterpayPaymentLink || camp.stripePaymentLink || '',
@@ -92,6 +94,7 @@ const destination = camp.destination || (String(camp.location || '').toLowerCase
           <input type="hidden" name="sheetTab" value={camp.googleSheetTab || camp.title} />
           <input type="hidden" name="brevoListId" value={camp.brevoListId || ''} />
           <input id="payment-link-input" type="hidden" name="paymentLink" value={paymentLink} />
+          <script type="application/json" id="day-payment-links" set:html={JSON.stringify(dayPaymentLinks)} />
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label><span class="form-label">Player First Name *</span><input required name="playerFirstName" class="form-input" /></label>
@@ -109,7 +112,7 @@ const destination = camp.destination || (String(camp.location || '').toLowerCase
           <label><span class="form-label">Medical History</span><textarea name="medicalHistory" rows="3" class="form-input"></textarea></label>
           <label><span class="form-label">Jersey Size *</span><select required name="jerseySize" class="form-input"><option value="">Select size</option>{jerseySizes.map((size: string) => <option>{size}</option>)}</select></label>
           <label><span class="form-label">Extra Player Info</span><textarea name="extraInfo" rows="3" class="form-input"></textarea></label>
-          <label><span class="form-label">How Many Days? *</span><select required name="numberOfDays" class="form-input"><option value="">Select</option>{dayOptions.map((option: string) => <option>{option}</option>)}</select></label>
+          <label><span class="form-label">How Many Days? *</span><select id="day-option-select" required name="numberOfDays" class="form-input"><option value="">Select</option>{dayOptions.map((option: string) => <option>{option}</option>)}</select></label>
           <label><span class="form-label">Payment Method</span><select id="payment-method-select" name="paymentMethod" class="form-input">{paymentOptions.map((option: any) => <option value={option.value} data-link={option.link}>{option.label}</option>)}</select></label>
 
           <label class="flex gap-3 items-start text-gray-300 font-body text-sm">
@@ -138,11 +141,30 @@ const destination = camp.destination || (String(camp.location || '').toLowerCase
     const message = document.querySelector('#camp-form-message')
     const paymentSelect = document.querySelector('#payment-method-select')
     const paymentLinkInput = document.querySelector('#payment-link-input')
+    const daySelect = document.querySelector('#day-option-select')
+    const dayLinksScript = document.querySelector('#day-payment-links')
+    const dayPaymentLinks = dayLinksScript?.textContent ? JSON.parse(dayLinksScript.textContent) : []
 
-    paymentSelect?.addEventListener('change', () => {
-      const selected = paymentSelect.options[paymentSelect.selectedIndex]
-      if (selected?.dataset?.link && paymentLinkInput) paymentLinkInput.value = selected.dataset.link
-    })
+    function updatePaymentLink() {
+      const selectedPayment = paymentSelect?.options[paymentSelect.selectedIndex]
+      const selectedDay = daySelect?.value
+      const dayMatch = dayPaymentLinks.find((item) => item.label === selectedDay)
+
+      if (selectedPayment?.value === 'PayPal' && dayMatch?.paypalPaymentLink) {
+        paymentLinkInput.value = dayMatch.paypalPaymentLink
+        return
+      }
+
+      if ((selectedPayment?.value === 'Stripe' || selectedPayment?.value === 'Afterpay') && dayMatch?.stripePaymentLink) {
+        paymentLinkInput.value = dayMatch.stripePaymentLink
+        return
+      }
+
+      if (selectedPayment?.dataset?.link && paymentLinkInput) paymentLinkInput.value = selectedPayment.dataset.link
+    }
+
+    paymentSelect?.addEventListener('change', updatePaymentLink)
+    daySelect?.addEventListener('change', updatePaymentLink)
 
     form?.addEventListener('submit', async (event) => {
       event.preventDefault()
