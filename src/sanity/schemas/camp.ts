@@ -40,7 +40,8 @@ export default {
     { name: 'whatToBring', title: 'What To Bring', type: 'array', of: [{ type: 'string' }] },
     { name: 'extraInfo', title: 'Extra Information', type: 'text', rows: 4 },
 
-    { name: 'stripePaymentLink', title: 'Stripe Payment Link', type: 'url' },
+    { name: 'stripePaymentLink', title: 'Stripe Payment Link', type: 'url', description: 'Main card checkout link. If Afterpay is enabled inside Stripe, this can cover card + Afterpay.' },
+    { name: 'afterpayPaymentLink', title: 'Afterpay Payment Link', type: 'url', description: 'Optional. Only use if this camp needs a separate Afterpay/Clearpay link.' },
     { name: 'paypalPaymentLink', title: 'PayPal Payment Link', type: 'url' },
     { name: 'trainingAgreementLink', title: 'Training Agreement Link', type: 'url' },
     { name: 'notificationEmail', title: 'Notification Email', type: 'string', initialValue: 'leejones@jonerfootball.com' },
