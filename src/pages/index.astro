@@ -10,6 +10,9 @@ const storyBeats = [
     body: '',
     image: '/images/home-storyboard/01-kick-activation-new.webp',
     alt: 'Lee Jones striking a football on grass in warm light',
+    objectPosition: '50% 52%',
+    objectPositionTablet: '56% 52%',
+    objectPositionMobile: '62% 50%',
     copyPos: 'center',
     markerX: 24,
     markerY: 43,
@@ -24,7 +27,9 @@ const storyBeats = [
     body: 'In 2013 I had an idea. Joner Football was born. Specialised in Individual & Small Group Training.',
     image: '/images/home-storyboard/02-origin-bag-of-balls.webp',
     alt: 'Lee Jones training on the grass with a bag of footballs beside him',
-    objectPosition: '50% 50%',
+    objectPosition: '56% 50%',
+    objectPositionTablet: '62% 50%',
+    objectPositionMobile: '70% 50%',
     copyPos: 'left',
     markerX: 16,
     markerY: 88,
@@ -39,6 +44,9 @@ const storyBeats = [
     body: 'The work spread through videos, players, parents, coaches, and millions of touches online.',
     image: '/images/home-storyboard/03-method-filming.webp',
     alt: 'Lee Jones coaching a technical ball mastery drill indoors',
+    objectPosition: '48% 48%',
+    objectPositionTablet: '54% 48%',
+    objectPositionMobile: '58% 48%',
     copyPos: 'left',
     markerX: 77,
     markerY: 82,
@@ -53,6 +61,9 @@ const storyBeats = [
     body: 'Every technical detail gets coached through energy, passion & positivity.',
     image: '/images/home-storyboard/04-proof-growth.webp',
     alt: 'Lee Jones coaching players during an evening Joner Football session',
+    objectPosition: '50% 44%',
+    objectPositionTablet: '54% 44%',
+    objectPositionMobile: '58% 44%',
     copyPos: 'right',
     markerX: 72,
     markerY: 79,
@@ -67,6 +78,9 @@ const storyBeats = [
     body: 'From Sydney to camps, clinics, and football communities around the world.',
     image: '/images/home-storyboard/05-global-camps.webp',
     alt: 'Joner Football players training at a large outdoor camp',
+    objectPosition: '50% 46%',
+    objectPositionTablet: '48% 48%',
+    objectPositionMobile: '46% 50%',
     copyPos: 'right',
     markerX: 50,
     markerY: 55,
@@ -82,6 +96,9 @@ const storyBeats = [
     image: '/images/home-storyboard/06-app-session-planning.webp',
     video: '/images/home-storyboard/06-app-header-video.mp4',
     alt: 'Joner Football App showing session planning content',
+    objectPosition: '50% 50%',
+    objectPositionTablet: '50% 50%',
+    objectPositionMobile: '50% 50%',
     copyPos: 'left',
     markerX: 55,
     markerY: 52,
@@ -96,6 +113,9 @@ const storyBeats = [
     body: 'Sydney, Australia. Belrose. Our home.',
     image: '/images/home-storyboard/07-facility-hq.webp',
     alt: 'Lee Jones standing outside the Joner Football HQ facility in Belrose',
+    objectPosition: '56% 50%',
+    objectPositionTablet: '64% 50%',
+    objectPositionMobile: '76% 50%',
     copyPos: 'left',
     markerX: 37,
     markerY: 62,
@@ -110,7 +130,9 @@ const storyBeats = [
     body: 'Player, parent, or coach. The next Joner chapter starts with the path that fits you.',
     image: '/images/home-storyboard/07-action-coach.webp',
     alt: 'Lee Jones giving coaching detail during a Joner Football session',
-    objectPosition: '50% 18%',
+    objectPosition: '50% 22%',
+    objectPositionTablet: '50% 18%',
+    objectPositionMobile: '50% 14%',
     copyPos: 'action',
     markerX: 51,
     markerY: 56,
@@ -133,6 +155,13 @@ const paths = [
   { title: 'Parent', text: 'Find training, camps or programs inside the APP.', href: '/training#joners-juniors' },
   { title: 'Coach', text: 'Learn the methodology and access coach tools.', href: '/workshops/coaches-course' },
 ]
+
+const mediaStyle = (beat) => {
+  const desktop = beat.objectPosition || '50% 50%'
+  const tablet = beat.objectPositionTablet || desktop
+  const mobile = beat.objectPositionMobile || tablet
+  return `--story-object-desktop: ${desktop}; --story-object-tablet: ${tablet}; --story-object-mobile: ${mobile};`
+}
 ---
 
 <BaseLayout
@@ -162,14 +191,10 @@ const paths = [
           color 700ms cubic-bezier(.22,.61,.36,1);
       }
 
-      .story-shell[data-active="5"] .story-viewport {
-        background: #F5F5F5;
-        color: #0A0A0A;
-      }
-
       .story-bg {
         opacity: 0;
         transform: scale(1.06);
+        object-position: var(--story-object-desktop, 50% 50%);
         filter: grayscale(0.2) contrast(1.08) brightness(0.5);
         transition:
           opacity 800ms cubic-bezier(.22,.61,.36,1),
@@ -183,31 +208,14 @@ const paths = [
         filter: grayscale(0.04) contrast(1.12) brightness(0.7);
       }
 
-      .story-shell[data-active="5"] .story-bg[data-state="active"] {
-        opacity: 0.18;
-        filter: grayscale(1) contrast(1.02) brightness(1.12);
+      .story-bg[data-media="video"][data-state="active"] {
+        opacity: 0.92;
+        filter: grayscale(0) contrast(1.08) brightness(0.78) saturate(1.05);
       }
 
       .story-shade {
         opacity: 1;
         transition: opacity 700ms ease;
-      }
-
-      .story-shell[data-active="5"] .story-shade {
-        opacity: 0;
-      }
-
-      .story-light-canvas {
-        opacity: 0;
-        transition: opacity 700ms ease;
-        background-image:
-          linear-gradient(rgba(10,10,10,0.08) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(10,10,10,0.08) 1px, transparent 1px);
-        background-size: 72px 72px;
-      }
-
-      .story-shell[data-active="5"] .story-light-canvas {
-        opacity: 1;
       }
 
       .story-kicker {
@@ -219,17 +227,9 @@ const paths = [
         transition: color 700ms ease;
       }
 
-      .story-shell[data-active="5"] .story-rail {
-        color: rgba(10,10,10,0.62);
-      }
-
       .story-rail-line {
         background: rgba(255,255,255,0.16);
         transition: background 700ms ease;
-      }
-
-      .story-shell[data-active="5"] .story-rail-line {
-        background: rgba(10,10,10,0.16);
       }
 
       .story-rail-fill {
@@ -327,18 +327,6 @@ const paths = [
         to { opacity: 1; transform: translate(-50%, 0); }
       }
 
-      .story-shell[data-active="5"] .story-copy {
-        color: #0A0A0A;
-      }
-
-      .story-shell[data-active="5"] .story-copy-title {
-        color: #0A0A0A;
-      }
-
-      .story-shell[data-active="5"] .story-body {
-        color: rgba(10,10,10,0.72);
-      }
-
       .story-ball-system {
         left: var(--marker-x);
         top: var(--marker-y);
@@ -361,11 +349,6 @@ const paths = [
           0 0 3.4rem rgba(227,6,19,0.26);
         transform: translate(-50%, -50%);
         transition: border-color 700ms ease, box-shadow 700ms ease;
-      }
-
-      .story-shell[data-active="5"] .story-ball-pulse {
-        border-color: rgba(10,10,10,0.22);
-        box-shadow: 0 0 3rem rgba(227,6,19,0.18);
       }
 
       .story-ball-pulse::before,
@@ -420,12 +403,6 @@ const paths = [
         backdrop-filter: blur(18px);
       }
 
-      .story-shell[data-active="5"] .metric-card,
-      .story-shell[data-active="5"] .phone-shell {
-        border-color: rgba(10,10,10,0.14);
-        background: rgba(255,255,255,0.64);
-      }
-
       .phone-shell {
         border-radius: 2rem;
         padding: 0.55rem;
@@ -446,29 +423,17 @@ const paths = [
         box-shadow: 0 2rem 5rem rgba(0,0,0,0.22);
       }
 
-      .app-video-panel {
-        border: 1px solid rgba(10,10,10,0.14);
-        background: rgba(255,255,255,0.68);
-        padding: 0.6rem;
-        box-shadow: 0 2rem 5rem rgba(0,0,0,0.18);
-        backdrop-filter: blur(18px);
-      }
-
-      .app-story-video {
-        display: block;
-        width: 100%;
-        aspect-ratio: 16 / 9;
-        object-fit: cover;
-        border: 1px solid rgba(10,10,10,0.12);
-        background: #0A0A0A;
-      }
-
       .keyframe-card {
         min-height: 26rem;
       }
 
       .mobile-story-card {
         min-height: min(82svh, 46rem);
+      }
+
+      .mobile-story-media,
+      .story-frame-bg {
+        object-position: var(--story-object-desktop, 50% 50%);
       }
 
       .mobile-progress-dot {
@@ -501,6 +466,21 @@ const paths = [
           transition: none !important;
         }
       }
+
+      @media (max-width: 1100px) {
+        .story-bg,
+        .mobile-story-media,
+        .story-frame-bg {
+          object-position: var(--story-object-tablet, var(--story-object-desktop, 50% 50%));
+        }
+      }
+
+      @media (max-width: 767px) {
+        .mobile-story-media,
+        .story-frame-bg {
+          object-position: var(--story-object-mobile, var(--story-object-tablet, var(--story-object-desktop, 50% 50%)));
+        }
+      }
     </style>
   </Fragment>
 
@@ -524,7 +504,8 @@ const paths = [
               playsinline
               preload="metadata"
               poster={beat.image}
-              style={beat.objectPosition ? `object-position: ${beat.objectPosition};` : undefined}
+              style={mediaStyle(beat)}
+              data-media="video"
               data-story-bg
               data-index={index}
               data-state={index === 0 ? 'active' : 'inactive'}
@@ -536,7 +517,8 @@ const paths = [
               class="story-bg absolute inset-0 h-full w-full object-cover"
               src={beat.image}
               alt={beat.alt}
-              style={beat.objectPosition ? `object-position: ${beat.objectPosition};` : undefined}
+              style={mediaStyle(beat)}
+              data-media="image"
               data-story-bg
               data-index={index}
               data-state={index === 0 ? 'active' : 'inactive'}
@@ -546,7 +528,6 @@ const paths = [
 
         <div class="story-shade absolute inset-0 bg-black/68"></div>
         <div class="story-shade absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#0A0A0A] to-transparent"></div>
-        <div class="story-light-canvas absolute inset-0"></div>
         <div class="absolute inset-0 shadow-[inset_0_0_220px_rgba(0,0,0,0.72)]"></div>
 
         <aside class="story-rail absolute left-8 top-[10vh] z-30 h-[66vh] w-44">
@@ -661,7 +642,7 @@ const paths = [
           <article class="mobile-story-card mb-6 flex flex-col justify-end overflow-hidden border border-white/10 bg-[#101010] p-5 relative" data-mobile-card data-index={index}>
             {beat.video ? (
               <video
-                class="absolute inset-0 h-full w-full object-cover opacity-70"
+                class="mobile-story-media absolute inset-0 h-full w-full object-cover opacity-70"
                 aria-label={beat.alt}
                 autoplay
                 muted
@@ -669,12 +650,12 @@ const paths = [
                 playsinline
                 preload="metadata"
                 poster={beat.mobileImage || beat.image}
-                style={beat.objectPosition ? `object-position: ${beat.objectPosition};` : undefined}
+                style={mediaStyle(beat)}
               >
                 <source src={beat.video} type="video/mp4" />
               </video>
             ) : (
-              <img class="absolute inset-0 h-full w-full object-cover opacity-70" src={beat.mobileImage || beat.image} alt={beat.alt} loading={index === 0 ? 'eager' : 'lazy'} style={beat.objectPosition ? `object-position: ${beat.objectPosition};` : undefined} />
+              <img class="mobile-story-media absolute inset-0 h-full w-full object-cover opacity-70" src={beat.mobileImage || beat.image} alt={beat.alt} loading={index === 0 ? 'eager' : 'lazy'} style={mediaStyle(beat)} />
             )}
             <div class="absolute inset-0 bg-gradient-to-t from-black via-black/62 to-black/10"></div>
             <div class="story-mini-ball left-[var(--mobile-x)] top-[var(--mobile-y)] h-14 w-14 -translate-x-1/2 -translate-y-1/2" style={`--mobile-x: ${beat.markerX}%; --mobile-y: ${beat.markerY}%;`}></div>
@@ -724,7 +705,7 @@ const paths = [
         <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {storyBeats.map((beat) => (
             <article class="keyframe-card relative overflow-hidden border border-gray-200 bg-black text-white">
-              <img class="absolute inset-0 h-full w-full object-cover opacity-72" src={beat.image} alt={beat.alt} loading="lazy" style={beat.objectPosition ? `object-position: ${beat.objectPosition};` : undefined} />
+              <img class="story-frame-bg absolute inset-0 h-full w-full object-cover opacity-72" src={beat.image} alt={beat.alt} loading="lazy" style={mediaStyle(beat)} />
               <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
               <div class="story-mini-ball left-[var(--kf-x)] top-[var(--kf-y)] h-14 w-14 -translate-x-1/2 -translate-y-1/2" style={`--kf-x: ${beat.markerX}%; --kf-y: ${beat.markerY}%;`}></div>
               <div class="relative z-10 flex h-full min-h-[26rem] flex-col justify-end p-6 md:p-8">
