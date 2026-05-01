@@ -52,6 +52,14 @@ const storyBeats = [
     markerY: 82,
     tone: 'dark',
     overlay: 'growth',
+    ctas: [
+      { label: 'YouTube', href: 'https://www.youtube.com/@jonerfootball', external: true },
+      { label: 'Instagram', href: 'https://www.instagram.com/jonerfootball/', external: true },
+      { label: 'Facebook', href: 'https://www.facebook.com/Jonerfootball/', external: true },
+      { label: 'TikTok', href: 'https://www.tiktok.com/@jonerfootball', external: true },
+      { label: 'JF App', href: 'https://app.jonerfootball.com', external: true },
+      { label: 'X / Twitter', href: 'https://twitter.com/jonerfootball', external: true },
+    ],
   },
   {
     number: '04',
@@ -69,6 +77,9 @@ const storyBeats = [
     markerY: 79,
     tone: 'dark',
     overlay: 'none',
+    ctas: [
+      { label: 'Train With Us In Sydney', href: '/training#jfp' },
+    ],
   },
   {
     number: '05',
@@ -86,6 +97,9 @@ const storyBeats = [
     markerY: 55,
     tone: 'dark',
     overlay: 'none',
+    ctas: [
+      { label: 'Elite Camps', href: '/camps' },
+    ],
   },
   {
     number: '06',
@@ -104,6 +118,11 @@ const storyBeats = [
     markerY: 52,
     tone: 'light',
     overlay: 'none',
+    ctas: [
+      { label: 'Free To Watch', href: 'https://app.jonerfootball.com/categories/category-vpi8uazway4', external: true },
+      { label: 'Apple Download', href: 'https://apps.apple.com/au/app/joner-football-app/id6737069275', external: true },
+      { label: 'Google Download', href: 'https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball', external: true },
+    ],
   },
   {
     number: '07',
@@ -121,6 +140,9 @@ const storyBeats = [
     markerY: 62,
     tone: 'dark',
     overlay: 'none',
+    ctas: [
+      { label: 'Visit HQ Map', href: 'https://maps.google.com/?q=20+Narabang+Way+Belrose', external: true },
+    ],
   },
   {
     number: '08',
@@ -413,6 +435,40 @@ const mediaStyle = (beat) => {
         border-radius: 1.45rem;
       }
 
+      .story-cta-row {
+        margin-top: 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        max-width: 34rem;
+      }
+
+      .story-cta-link {
+        border: 1px solid rgba(255,255,255,0.22);
+        background: rgba(10,10,10,0.46);
+        color: #FFFFFF;
+        padding: 0.78rem 0.95rem;
+        font-family: 'Anton', Impact, sans-serif;
+        font-size: 0.7rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        line-height: 1;
+        backdrop-filter: blur(16px);
+        transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, transform 180ms ease;
+      }
+
+      .story-cta-link:hover {
+        border-color: #E30613;
+        background: #E30613;
+        color: #FFFFFF;
+        transform: translateY(-1px);
+      }
+
+      .story-cta-link.primary {
+        border-color: #E30613;
+        background: #E30613;
+      }
+
       .growth-bar {
         transform: scaleY(calc(0.18 + (var(--growth-progress) * 0.82)));
         transform-origin: bottom;
@@ -564,6 +620,20 @@ const mediaStyle = (beat) => {
             {beat.body && (
               <p class="story-body font-body text-lg xl:text-xl text-white/76 leading-relaxed mt-6 max-w-[32rem]">{beat.body}</p>
             )}
+            {beat.ctas && (
+              <div class="story-cta-row">
+                {beat.ctas.map((cta, ctaIndex) => (
+                  <a
+                    class:list={["story-cta-link", ctaIndex === 0 ? 'primary' : '']}
+                    href={cta.href}
+                    target={cta.external ? '_blank' : undefined}
+                    rel={cta.external ? 'noopener' : undefined}
+                  >
+                    {cta.label}
+                  </a>
+                ))}
+              </div>
+            )}
           </article>
         ))}
 
@@ -669,6 +739,20 @@ const mediaStyle = (beat) => {
               {beat.body && (
                 <p class="mt-4 font-body text-base leading-relaxed text-white/76">{beat.body}</p>
               )}
+              {beat.ctas && (
+                <div class="mt-5 flex flex-wrap gap-2">
+                  {beat.ctas.map((cta, ctaIndex) => (
+                    <a
+                      class:list={["border px-3 py-2 font-heading text-[0.62rem] uppercase tracking-[0.16em] text-white", ctaIndex === 0 ? 'border-joner-red bg-joner-red' : 'border-white/14 bg-white/8']}
+                      href={cta.href}
+                      target={cta.external ? '_blank' : undefined}
+                      rel={cta.external ? 'noopener' : undefined}
+                    >
+                      {cta.label}
+                    </a>
+                  ))}
+                </div>
+              )}
               {beat.overlay === 'growth' && (
                 <div class="mt-5 grid grid-cols-2 gap-2">
                   {stats.slice(0, 2).map((stat) => (
@@ -713,6 +797,20 @@ const mediaStyle = (beat) => {
                 <h3 class="font-heading text-4xl uppercase leading-none md:text-5xl">{beat.title}</h3>
                 {beat.body && (
                   <p class="mt-4 max-w-lg font-body text-sm leading-relaxed text-white/72 md:text-base">{beat.body}</p>
+                )}
+                {beat.ctas && (
+                  <div class="story-cta-row">
+                    {beat.ctas.slice(0, 3).map((cta, ctaIndex) => (
+                      <a
+                        class:list={["story-cta-link", ctaIndex === 0 ? 'primary' : '']}
+                        href={cta.href}
+                        target={cta.external ? '_blank' : undefined}
+                        rel={cta.external ? 'noopener' : undefined}
+                      >
+                        {cta.label}
+                      </a>
+                    ))}
+                  </div>
                 )}
               </div>
             </article>
