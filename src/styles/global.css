@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
 @import "tailwindcss";
 
@@ -8,20 +8,20 @@
   --color-joner-white: #FFFFFF;
   --color-joner-gray: #1A1A1A;
   --color-joner-gray-light: #F5F5F5;
-  --font-heading: 'Oswald', sans-serif;
+  --font-heading: 'Anton', Impact, sans-serif;
   --font-body: 'DM Sans', system-ui, sans-serif;
 }
 
 /* Base */
 html { scroll-behavior: smooth; }
 body { background-color: #0A0A0A; color: white; font-family: 'DM Sans', system-ui, sans-serif; }
-h1, h2, h3, h4, h5, h6 { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; }
+h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: 0.05em; }
 
 /* Utility classes we use everywhere */
 .btn-red {
   background-color: #E30613;
   color: white;
-  font-family: 'Oswald', sans-serif;
+  font-family: 'Anton', Impact, sans-serif;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -35,7 +35,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Oswald', sans-serif; text-transform: uppe
 .btn-outline {
   border: 2px solid white;
   color: white;
-  font-family: 'Oswald', sans-serif;
+  font-family: 'Anton', Impact, sans-serif;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -47,7 +47,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Oswald', sans-serif; text-transform: uppe
 .btn-outline:hover { background-color: white; color: #0A0A0A; }
 
 .section-heading {
-  font-family: 'Oswald', sans-serif;
+  font-family: 'Anton', Impact, sans-serif;
   font-size: clamp(1.75rem, 4vw, 3rem);
   font-weight: 700;
   text-transform: uppercase;

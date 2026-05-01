@@ -70,8 +70,9 @@ const camps = [
     price: 'By acceptance only',
     spots: 'The Complete Player Experience',
     venue: 'Gol Soccer Complex, North Hollywood',
-    href: '#la-apply',
+    href: '/camps/la-tcpe-june',
     region: 'usa',
+    image: '/images/camps/la-camp.webp',
     featured: true,
   },
   {
@@ -79,11 +80,12 @@ const camps = [
     state: 'Texas',
     country: 'USA',
     flag: '🇺🇸',
-    dates: 'June 2026',
+    dates: 'June 26-28, 2026',
     ages: 'Ages 8-18',
-    price: 'Pricing TBC',
-    spots: 'Coming soon',
-    href: '#camps-notify',
+    price: 'Registration now open',
+    spots: 'Now live',
+    venue: 'Tomball, TX',
+    href: '/camps/texas-houston-june',
     region: 'usa',
     image: '/images/camps/houston-camp.webp',
   },
@@ -92,11 +94,12 @@ const camps = [
     state: 'Texas',
     country: 'USA',
     flag: '🇺🇸',
-    dates: 'June/July 2026',
+    dates: 'June 30 - July 2, 2026',
     ages: 'Ages 8-18',
-    price: 'Pricing TBC',
-    spots: 'Coming soon',
-    href: '#camps-notify',
+    price: 'Registration now open',
+    spots: 'Now live',
+    venue: 'Melissa, TX',
+    href: '/camps/texas-dallas-june',
     region: 'usa',
     image: '/images/camps/dallas-camp.webp',
   },
@@ -105,11 +108,12 @@ const camps = [
     state: 'NSW',
     country: 'Australia',
     flag: '🇦🇺',
-    dates: 'July 2026 ft M Grande',
+    dates: 'July 14-16, 2026 ft M Grande',
     ages: 'Ages 8-18',
-    price: 'AUD pricing TBC',
-    spots: 'Coming soon',
-    href: '#camps-notify',
+    price: 'Registration now open',
+    spots: 'Now live',
+    venue: 'Rydalmere Park',
+    href: '/camps/sydney-big-1-july',
     region: 'australia',
     image: '/images/camps/sydney-camp.webp',
   },
@@ -141,14 +145,14 @@ const camps = [
     </div>
   </section>
 
-  <!-- Filter bar (placeholder - would need JS for functionality) -->
+  <!-- Region tags -->
   <section class="bg-joner-black border-b border-gray-800 sticky top-16 z-30">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <div class="flex flex-wrap gap-2 sm:gap-3 justify-center">
-        <button class="px-3 py-2 sm:px-4 bg-joner-red text-white font-heading text-xs uppercase tracking-wider min-h-[44px]">All Camps</button>
-        <button class="px-3 py-2 sm:px-4 border border-gray-700 text-gray-400 font-heading text-xs uppercase tracking-wider hover:border-white hover:text-white transition-colors min-h-[44px]">USA</button>
-        <button class="px-3 py-2 sm:px-4 border border-gray-700 text-gray-400 font-heading text-xs uppercase tracking-wider hover:border-white hover:text-white transition-colors min-h-[44px]">Australia</button>
-        <button class="px-3 py-2 sm:px-4 border border-gray-700 text-gray-400 font-heading text-xs uppercase tracking-wider hover:border-white hover:text-white transition-colors min-h-[44px]">2026</button>
+        <span class="px-3 py-2 sm:px-4 bg-joner-red text-white font-heading text-xs uppercase tracking-wider">2026 Camps</span>
+        <span class="px-3 py-2 sm:px-4 border border-gray-700 text-gray-400 font-heading text-xs uppercase tracking-wider">USA</span>
+        <span class="px-3 py-2 sm:px-4 border border-gray-700 text-gray-400 font-heading text-xs uppercase tracking-wider">Australia</span>
+        <span class="px-3 py-2 sm:px-4 border border-gray-700 text-gray-400 font-heading text-xs uppercase tracking-wider">Registration Pages Live</span>
       </div>
     </div>
   </section>
@@ -163,7 +167,7 @@ const camps = [
         <div class="border-2 border-joner-red bg-joner-gray p-6 md:p-10">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             <div class="bg-joner-black h-48 sm:h-56 md:h-64 overflow-hidden">
-              <img src="/images/training/lee-coaching-action.webp" alt="Joner Football LA Complete Player Experience camp in North Hollywood" class="w-full h-full object-cover object-center" loading="lazy" />
+              <img src={camps[0].image} alt="Joner Football LA Complete Player Experience camp in North Hollywood" class="w-full h-full object-cover object-center" loading="lazy" />
             </div>
             <div>
               <div class="flex items-center gap-3 mb-3">
@@ -189,7 +193,7 @@ const camps = [
                   <div class="text-gray-500 text-xs font-body">Application required</div>
                 </div>
               </div>
-              <a href="#la-apply" class="btn-red text-sm">Apply Now</a>
+              <a href="/camps/la-tcpe-june" class="btn-red text-sm">View Camp Details</a>
             </div>
           </div>
         </div>
@@ -208,6 +212,11 @@ const camps = [
                   Coming Soon
                 </div>
               )}
+              {camp.spots === 'Now live' && (
+                <div class="absolute top-3 right-3 bg-joner-red/90 px-2 py-1 font-heading text-xs uppercase tracking-wider text-white">
+                  Register Now
+                </div>
+              )}
             </div>
             <!-- Content -->
             <div class="p-6">
@@ -216,10 +225,10 @@ const camps = [
                 {camp.city}, {camp.state}
               </h3>
               <p class="text-gray-500 text-sm font-body mb-1">{camp.ages}</p>
+              <p class="text-gray-500 text-sm font-body mb-1">{camp.venue}</p>
               <p class="text-gray-400 text-sm font-body font-semibold mb-4">{camp.price}</p>
-              <!-- STRIPE PAYMENT LINK NEEDED, Lee to provide -->
-              <a href={camp.spots === 'Coming soon' ? '#camps-notify' : `mailto:lee@jonerfootball.com?subject=Camp Booking: ${camp.city}`} class="btn-red text-sm w-full text-center block" data-payment={camp.spots === 'Coming soon' ? undefined : 'pending'}>
-                {camp.spots === 'Coming soon' ? 'Register Interest' : 'Book Now'}
+              <a href={camp.href} class="btn-red text-sm w-full text-center block">
+                View Camp Details
               </a>
             </div>
           </div>
@@ -469,7 +478,7 @@ const camps = [
       <p class="text-white/80 font-body mb-6">
         Keep improving with 1,500+ drills on the Joner Football App. Your complete training platform.
       </p>
-      <a href="https://jonerfootball.com/join/" class="bg-white text-joner-red font-heading text-base uppercase tracking-wider px-8 py-4 hover:bg-gray-100 transition-colors inline-block">
+      <a href="/app" class="bg-white text-joner-red font-heading text-base uppercase tracking-wider px-8 py-4 hover:bg-gray-100 transition-colors inline-block">
         Try the World's #1 Football App Free
       </a>
     </div>

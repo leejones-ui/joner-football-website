@@ -9,7 +9,7 @@ export default {
     { name: 'contactEmail', title: 'Contact Email', type: 'string', initialValue: 'leejones@jonerfootball.com' },
     { name: 'contactPhone', title: 'Contact Phone', type: 'string' },
     { name: 'appUrl', title: 'Main App Link', type: 'url', initialValue: 'https://app.jonerfootball.com' },
-    { name: 'joinUrl', title: 'Join Page Link', type: 'url', initialValue: 'https://jonerfootball.com/join/' },
+    { name: 'joinUrl', title: 'Join Page Link', type: 'url', initialValue: 'https://jonerfootball.com/app' },
     { name: 'instagramUrl', title: 'Instagram URL', type: 'url' },
     { name: 'youtubeUrl', title: 'YouTube URL', type: 'url' },
     { name: 'facebookUrl', title: 'Facebook URL', type: 'url' },

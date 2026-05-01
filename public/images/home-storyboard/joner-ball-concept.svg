@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Joner Football concept football">
+  <defs>
+    <radialGradient id="ballBase" cx="31%" cy="22%" r="76%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.34" stop-color="#f7f8f8"/>
+      <stop offset="0.67" stop-color="#cfd5db"/>
+      <stop offset="1" stop-color="#16191e"/>
+    </radialGradient>
+    <linearGradient id="blackPanel" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#242933"/>
+      <stop offset="0.54" stop-color="#08090d"/>
+      <stop offset="1" stop-color="#000000"/>
+    </linearGradient>
+    <radialGradient id="panelGlow" cx="40%" cy="22%" r="76%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="drop" x="-25%" y="-25%" width="150%" height="165%">
+      <feDropShadow dx="0" dy="24" stdDeviation="22" flood-color="#000000" flood-opacity="0.42"/>
+    </filter>
+    <clipPath id="ballClip">
+      <circle cx="256" cy="256" r="219"/>
+    </clipPath>
+  </defs>
+
+  <circle cx="256" cy="256" r="219" fill="url(#ballBase)" filter="url(#drop)"/>
+
+  <g clip-path="url(#ballClip)">
+    <path d="M98 108c40-39 91-63 151-70l-30 96-93 34-28-60z" fill="url(#blackPanel)"/>
+    <path d="M306 42c58 13 105 43 140 88l-82 40-75-55 17-73z" fill="url(#blackPanel)"/>
+    <path d="M451 185c25 56 26 113 3 171l-83-43-5-93 85-35z" fill="url(#blackPanel)"/>
+    <path d="M335 404c-48 42-103 61-167 56l35-86 99-25 33 55z" fill="url(#blackPanel)"/>
+    <path d="M48 264c0-48 13-93 40-135l54 71-35 96-59-32z" fill="url(#blackPanel)"/>
+
+    <polygon points="256,151 351,220 315,332 197,332 161,220" fill="url(#blackPanel)" stroke="#ffffff" stroke-width="9" stroke-linejoin="round"/>
+    <polygon points="256,176 323,225 297,304 215,304 189,225" fill="#f7f8f8" opacity="0.96"/>
+    <circle cx="256" cy="249" r="46" fill="#08090c"/>
+    <text x="256" y="264" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="34" letter-spacing="-2" fill="#ffffff">JF</text>
+
+    <path d="M219 134 126 168M289 115l75 55M351 220l15 0M315 332l56-19M197 332l6 42M161 220l-54 76" fill="none" stroke="#15191f" stroke-width="8" stroke-linecap="round" opacity="0.34"/>
+    <path d="M125 168c39 20 51 37 36 52M364 170c-22 19-27 36-13 50M371 313c-30-2-49 4-56 19M203 374c-18-15-20-29-6-42M107 296c30 3 48-4 54-76" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.82"/>
+
+    <circle cx="256" cy="256" r="219" fill="url(#panelGlow)"/>
+    <path d="M392 82c51 39 81 93 91 163" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round" opacity="0.16"/>
+    <path d="M70 352c34 65 90 105 168 120" fill="none" stroke="#000000" stroke-width="28" stroke-linecap="round" opacity="0.14"/>
+  </g>
+
+  <circle cx="256" cy="256" r="219" fill="none" stroke="#ffffff" stroke-width="4" opacity="0.8"/>
+  <circle cx="256" cy="256" r="225" fill="none" stroke="#e30613" stroke-width="3" opacity="0.42"/>
+</svg>

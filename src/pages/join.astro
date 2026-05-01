@@ -173,7 +173,11 @@ const faqs = [
   title="Join Joner Football | Plans and Pricing"
   description="Choose your Joner Football plan. Monthly, Annual, Coaches, or Club pricing. Start your 7-day free trial today."
   schema={pricingSchema}
+  canonical="https://jonerfootball.com/app"
 >
+  <Fragment slot="head">
+    <meta name="robots" content="noindex,nofollow" />
+  </Fragment>
 
   <!-- Hero -->
   <section class="bg-[#0A0A0A] pt-24 pb-14">

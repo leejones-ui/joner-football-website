@@ -2,91 +2,871 @@
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import { sanityClient } from '../../lib/sanityClient'
 
+type CampMap = Record<string, any>
+
+const commonBring = [
+  'Football boots suitable for synthetic or grass',
+  'Shin guards',
+  'Drink bottle',
+  'Waterproof jacket',
+  'Black shorts and white socks',
+  'A strong attitude and willingness to learn',
+]
+
+const commonFaqs = [
+  {
+    question: 'What does the player need to bring?',
+    answer: 'Players should bring football boots, shin guards, a drink bottle, a waterproof jacket, black shorts, white socks, and a strong attitude.',
+  },
+  {
+    question: 'What should the player wear?',
+    answer: 'Players should wear black shorts and white socks. If a Joner Football training jersey is included with your option, please choose sizing carefully on the form.',
+  },
+  {
+    question: 'What should players expect?',
+    answer: 'Expect energy, intensity, technical detail, new drills, and a proper learning environment. Players are grouped to be challenged at the right level.',
+  },
+  {
+    question: 'Will bad weather cancel the camp?',
+    answer: 'Only severe weather will delay or affect the camp. The team will communicate clearly if conditions change.',
+  },
+  {
+    question: 'Can players take photos with the coaches?',
+    answer: 'Yes. The coaches normally allocate time on the final day for photos, autographs, and chats with families.',
+  },
+  {
+    question: 'Can I get a refund if I cancel my spot?',
+    answer: 'Full refunds are available if you cancel within 14 days of the camp start date.',
+  },
+  {
+    question: 'How are groups selected?',
+    answer: 'Players are grouped by age first, then ability. If a player needs a stronger challenge, the coaching team can move them into a more suitable group.',
+  },
+]
+
+const commonThemes = [
+  { title: 'Ball Mastery', description: 'Repetition with intent so players become sharper, cleaner, and more confident on the ball.' },
+  { title: 'First Touch', description: 'Receiving skills, body shape, touch direction, and the detail that creates the next action.' },
+  { title: '1v1 Ability', description: 'Moves, changes of speed, deception, and the mindset to attack defenders.' },
+  { title: 'Decision Making', description: 'Game realistic pictures that help players see passes, spaces, and pressure earlier.' },
+  { title: 'Confidence', description: 'A demanding but positive environment where players are pushed to take ownership.' },
+  { title: 'Technique Under Pressure', description: 'Clean execution at speed, under fatigue, and with defenders closing space.' },
+]
+
+const commonAudience = [
+  {
+    title: 'For Players',
+    description: 'Players who love training, want to improve technically, and are ready to be coached hard in a high energy environment.',
+  },
+  {
+    title: 'For Parents',
+    description: 'Parents who want a serious, organised camp with clear standards, proper coaching detail, and a memorable player experience.',
+  },
+]
+
+const commonCoaches = [
+  {
+    name: 'Lee Jones',
+    role: 'Founder, Joner Football',
+    bio: 'Lee leads the Joner Football methodology with a relentless focus on technique, intensity, and player confidence.',
+    image: '/images/about/lee-coaching.webp',
+  },
+  {
+    name: 'Joner Football Coaching Team',
+    role: 'Elite Camp Coaches',
+    bio: 'Qualified coaches deliver the sessions to a professional standard, keeping groups organised, demanding, and enjoyable.',
+    image: '/images/about/coaching-team.webp',
+  },
+]
+
+const CAMP_FALLBACKS: CampMap = {
+  'la-tcpe-june': {
+    title: 'LA Complete Player Experience',
+    heroKicker: 'Joner Football x First Strike',
+    heroSubtitle: 'A 3 day elite football experience for selected players who want high level training, position specific detail, and the complete player education block.',
+    urgencyLabel: 'Max 30 players. Application required.',
+    location: 'North Hollywood, California',
+    destination: 'usa',
+    googleSheetTab: 'LA TCPE (June)',
+    venue: 'Gol Soccer Complex, 11501 Strathern St, North Hollywood, CA 91605, US',
+    venueName: 'Gol Soccer Complex',
+    venueAddress: '11501 Strathern St, North Hollywood, CA 91605, US',
+    venueNotes: 'Training runs in the morning, followed by seminars and player development work after the on field block.',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=Gol+Soccer+Complex+11501+Strathern+St+North+Hollywood+CA+91605',
+    dates: 'June 22-24, 2026',
+    startDate: '2026-06-22',
+    endDate: '2026-06-24',
+    times: '8am to 12pm',
+    ageRange: 'Ages 13-18, ECNL and MLS Next level',
+    priceLabel: 'By acceptance only',
+    spotsTotal: 30,
+    spotsRemaining: 30,
+    status: 'open',
+    description: 'Joner Football and First Strike combine for a selection only experience built around elite training, position specific coaching, mindset, nutrition, sports science, and player reporting.',
+    heroImage: '/images/camps/la-camp.webp',
+    galleryImages: [
+      { url: '/images/camps/la-camp.webp', alt: 'Joner Football elite camp in Los Angeles, California' },
+      { url: '/images/camps/expect-1.webp', alt: 'Joner Football players training in small groups at camp' },
+      { url: '/images/camps/gallery-1.webp', alt: 'Joner Football camp players working on technical training' },
+    ],
+    trustItems: ['Selection only', 'Max 30 players', 'Position specific training', 'Mindset, nutrition and sports science'],
+    audienceItems: [
+      { title: 'Selected 13-18 Players', description: 'For ECNL, MLS Next, and serious players ready for a demanding player development experience.' },
+      { title: 'Parents Wanting More Than A Clinic', description: 'A complete environment with training, education, reporting, and professional standards.' },
+    ],
+    campHighlights: [
+      { title: 'High Level Small Group Training', description: 'Technical work with tight groups, constant detail, and high coach involvement.' },
+      { title: 'Position Specific Detail', description: 'Sessions and feedback tailored to how players solve problems in their position.' },
+      { title: 'Player Education Seminars', description: 'Mindset, nutrition, and sports science blocks designed for serious footballers.' },
+      { title: 'Individual Player Reports', description: 'Detailed feedback so players leave with clarity on what to improve next.' },
+    ],
+    includedItems: [
+      '3 days of high level training with Joner Football and First Strike',
+      'Joner Football x First Strike training kit',
+      'Full free access to the Joner Football App',
+      'Player welcome pack',
+      'Mindset seminar booklet',
+      'Detailed individual player report',
+    ],
+    dayOptions: ['Full Experience - acceptance only'],
+    trainingThemes: commonThemes,
+    scheduleItems: [
+      { time: 'Day 1', title: 'Set The Standard', description: 'Technical assessment, ball mastery, first touch detail, and the start of position specific habits.' },
+      { time: 'Day 2', title: 'Build The Player', description: 'High intensity training, 1v1 situations, game pictures, and player education seminars.' },
+      { time: 'Day 3', title: 'Perform And Review', description: 'Pressure sessions, final feedback, report detail, and a clear development plan to take away.' },
+    ],
+    coachProfiles: [
+      ...commonCoaches,
+      {
+        name: 'Bradley Mulvey',
+        role: 'First Strike Soccer',
+        bio: 'Bradley joins the camp through First Strike Soccer, bringing high level player development detail to the complete experience.',
+        image: '/images/camps/expect-2.webp',
+      },
+    ],
+    whatToBring: commonBring,
+    faqItems: commonFaqs,
+    stripePaymentLink: 'https://app.jonerfootball.com',
+  },
+  'texas-houston-june': {
+    title: 'Houston World Cup Camp',
+    heroKicker: 'Joner Football x Kingdom Soccer Training x Grande Sports Training',
+    heroSubtitle: 'The Houston camp returns for 2026 in line with the World Cup, built for dedicated players who want technical detail, intensity, and a serious training environment.',
+    urgencyLabel: 'Sold out last year. Max 80 players.',
+    location: 'Houston, Texas',
+    destination: 'usa',
+    googleSheetTab: 'Texas Houston (June)',
+    venue: '17822 Hufsmith - Kohrville Rd, Tomball, TX 77375, Field #1',
+    venueName: 'Tomball Training Venue',
+    venueAddress: '17822 Hufsmith - Kohrville Rd, Tomball, TX 77375, US',
+    venueNotes: 'Early start due to heat. Players are grouped by age and ability with a max 16 players per coach target.',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=17822+Hufsmith+Kohrville+Rd+Tomball+TX+77375',
+    dates: 'June 26-28, 2026',
+    startDate: '2026-06-26',
+    endDate: '2026-06-28',
+    times: '7am to 10am',
+    ageRange: 'Ages 8-18',
+    priceLabel: '1 day $130 USD, 2 days $250 USD, 3 days $350 USD',
+    spotsTotal: 80,
+    spotsRemaining: 80,
+    status: 'open',
+    description: 'Last year was that good we are running it back for 2026 in alignment with the World Cup. In collaboration with Kingdom Soccer Training and Grande Sports Training, this 3 day elite camp is for players who truly want to improve.',
+    extraInfo: 'Joner merch will be sold on site. Families can pre-order from the apparel store before we arrive to save on shipment cost. Jersey cut off is 1 April. Joner jersey is only included for players doing all 3 days, with more jerseys sold on the day subject to size availability.',
+    heroImage: '/images/camps/houston/DSC05857-scaled.jpg.webp',
+    heroVideo: '/images/camps/houston/houston-hero-720.mp4',
+    featureVideoUrl: 'https://www.youtube.com/embed/1gi1ziUg9zk?rel=0',
+    galleryImages: [
+      { url: '/images/camps/houston/DSC05857-scaled.jpg.webp', alt: 'Joner Football Houston elite camp players training' },
+      { url: '/images/camps/houston/DSC09261-scaled.jpg.webp', alt: 'Houston camp players working in a high energy session' },
+      { url: '/images/camps/houston/DSC06149-scaled.jpg', alt: 'Joner Football coaches delivering camp detail in Houston' },
+      { url: '/images/camps/houston/PHOTO-2026-01-30-10-09-22-1536x885.jpg.webp', alt: 'Houston camp group photo from the Joner Football experience' },
+      { url: '/images/camps/houston/DSC06106-scaled.jpeg.webp', alt: 'Joner Football coach working one to one with a player' },
+    ],
+    trustItems: ['Sold out last year', 'Max 16 players per coach', 'World Cup camp energy', 'Jersey for 3 day players'],
+    audienceItems: commonAudience,
+    campHighlights: [
+      { title: 'No Babysitting', description: 'Only players who truly want to improve belong in this environment.' },
+      { title: 'Max 16 Per Coach', description: 'Players are grouped by age and skill so the coaching detail stays personal.' },
+      { title: 'Sold Out Every Year', description: 'Houston moved fast last year, and this World Cup camp is capped at 80 players.' },
+      { title: 'Kit, App And Merch', description: '3 day players get the jersey, players get app access, and Joner merch will be sold on site.' },
+    ],
+    includedItems: [
+      '3 morning training blocks from 7am to 10am',
+      'Technical detail from the Joner Football coaching team',
+      'Age and skill based groups',
+      'Max 16 players per coach',
+      'Joner jersey for players attending all 3 days',
+      'Access to Joner Football App and training kit / merch opportunities',
+      'Professional photos, camp energy, and player moments',
+    ],
+    dayOptions: ['1 day - $130 USD', '2 days - $250 USD', '3 days - $350 USD'],
+    trainingThemes: commonThemes,
+    scheduleItems: [
+      { time: 'Friday 26 June', title: 'Ball Mastery And Standards', description: 'Players settle into groups, learn the camp standards, and attack high repetition technical work.' },
+      { time: 'Saturday 27 June', title: '1v1 And First Touch', description: 'The intensity rises with receiving work, footwork, pressure situations, and attacking detail.' },
+      { time: 'Sunday 28 June', title: 'Decision Making And Confidence', description: 'Players finish with game realistic challenges, feedback, and a clear push to keep developing.' },
+    ],
+    coachProfiles: [
+      ...commonCoaches,
+      {
+        name: 'Kingdom Soccer Training & Grande Sports Training',
+        role: 'Houston Collaboration Partners',
+        bio: 'The Houston experience runs in collaboration with Kingdom Soccer Training and Grande Sports Training for a true professional camp feel.',
+        image: '/images/camps/houston/DSC09261-scaled.jpg.webp',
+      },
+    ],
+    whatToBring: commonBring,
+    faqItems: commonFaqs,
+    stripePaymentLink: 'https://app.jonerfootball.com',
+  },
+  'texas-dallas-june': {
+    title: 'Dallas World Cup Camp',
+    heroKicker: 'Joner Football x Texas Partners',
+    heroSubtitle: 'Dallas sold out last year, so the World Cup camp is back for 2026 with Joner Football, Kingdom Soccer Training, Grande Sports Training, and World Sport FC.',
+    urgencyLabel: 'Sold out every year. Max 80 players.',
+    location: 'Dallas, Texas',
+    destination: 'usa',
+    googleSheetTab: 'Texas Dallas (June)',
+    venue: '4220 E Melissa Rd, Melissa, TX 75454, United States',
+    venueName: 'Melissa Training Venue',
+    venueAddress: '4220 E Melissa Rd, Melissa, TX 75454, US',
+    venueNotes: 'A 3 morning camp with limited numbers, structured groups, and a strong technical focus.',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=4220+E+Melissa+Rd+Melissa+TX+75454',
+    dates: 'June 30 - July 2, 2026',
+    startDate: '2026-06-30',
+    endDate: '2026-07-02',
+    times: '7am to 10am',
+    ageRange: 'Ages 8-18',
+    priceLabel: '1 day, 2 day and 3 day options',
+    spotsTotal: 80,
+    spotsRemaining: 80,
+    status: 'open',
+    description: 'A 3 day Dallas elite camp running alongside the World Cup, built for dedicated players who want technical training, high standards, and an unforgettable Joner Football experience.',
+    heroImage: '/images/camps/dallas-camp.webp',
+    galleryImages: [
+      { url: '/images/camps/dallas-camp.webp', alt: 'Joner Football elite training camp in Dallas, Texas' },
+      { url: '/images/camps/gallery-3.webp', alt: 'Joner Football camp group training in the United States' },
+      { url: '/images/camps/expect-4.webp', alt: 'Joner Football camp kit and training equipment' },
+    ],
+    trustItems: ['Sold out last year', 'Max 16 players per coach', 'Last day livestreamed', 'Joner jersey for 3 day players'],
+    audienceItems: commonAudience,
+    campHighlights: [
+      { title: 'World Cup Camp Energy', description: 'A serious training environment during the biggest football summer.' },
+      { title: 'Max 16 Players Per Coach', description: 'Groups stay focused so players get detail, feedback, and proper standards.' },
+      { title: 'Dedicated Players Only', description: 'The camp is built for players who are ready to work, listen, and improve.' },
+      { title: 'Live Stream Finale', description: 'The last day is designed to feel special for players and families.' },
+    ],
+    includedItems: [
+      '3 morning training blocks',
+      'Technical coaching from Joner Football and partner coaches',
+      'Age and ability based groups',
+      'Joner jersey for players attending all 3 days',
+      'Final day live stream experience',
+    ],
+    dayOptions: ['1 Day - $130 USD', '2 Days - $250 USD', '3 Days - $350 USD'],
+    trainingThemes: commonThemes,
+    scheduleItems: [
+      { time: 'Tuesday 30 June', title: 'Technical Base', description: 'Ball mastery, first touch, and standards for the week.' },
+      { time: 'Wednesday 1 July', title: '1v1 And Pressure', description: 'Creative attacking, defending pressure, footwork, and high tempo technical detail.' },
+      { time: 'Thursday 2 July', title: 'Game Actions And Finale', description: 'Decision making, confidence, and a final day camp experience for the group.' },
+    ],
+    coachProfiles: [
+      ...commonCoaches,
+      {
+        name: 'World Sport FC Coaches',
+        role: 'Dallas Camp Partners',
+        bio: 'Aaron Lopez and Armando Pelaez from World Sport FC support the Dallas camp collaboration.',
+        image: '/images/camps/dallas-camp.webp',
+      },
+    ],
+    whatToBring: commonBring,
+    faqItems: commonFaqs,
+    stripePaymentLink: 'https://app.jonerfootball.com',
+  },
+  'sydney-big-1-july': {
+    title: 'Sydney July Camp ft Miguel Grande',
+    heroKicker: 'Biggest Camp Of The Year',
+    heroSubtitle: 'The Sydney July camp returns with guest coach Miguel Grande from Grande Sports. Limited spots for players who want energy, technical detail, and a serious development environment.',
+    urgencyLabel: 'First spots for JFP players. Max 80 players.',
+    location: 'Sydney, Australia',
+    destination: 'sydney',
+    googleSheetTab: 'Sydney big 1 (July)',
+    venue: 'Rydalmere Park',
+    venueName: 'Rydalmere Park',
+    venueAddress: 'Rydalmere Park, Sydney, NSW',
+    venueNotes: 'A 3 morning Sydney camp featuring Miguel Grande from Grande Sports, with players grouped by age and ability.',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=Rydalmere+Park+Sydney+NSW',
+    dates: 'July 14-16, 2026',
+    startDate: '2026-07-14',
+    endDate: '2026-07-16',
+    times: '9am to 12pm',
+    ageRange: 'Ages 8-18',
+    priceLabel: '1 day, 2 day and 3 day options',
+    spotsTotal: 80,
+    spotsRemaining: 80,
+    status: 'open',
+    description: 'Sydney\'s biggest Joner Football camp of the year, featuring Miguel Grande from Grande Sports and a technical training environment built for dedicated players.',
+    heroImage: '/images/camps/sydney-camp.webp',
+    galleryImages: [
+      { url: '/images/camps/sydney-camp.webp', alt: 'Joner Football elite training camp in Sydney, Australia' },
+      { url: '/images/camps/gallery-4.webp', alt: 'Joner Football camp players training in Sydney' },
+      { url: '/images/camps/gallery-5.webp', alt: 'Joner Football camp group photo in Australia' },
+    ],
+    trustItems: ['Sold out every year', 'Guest coach Miguel Grande', 'Max 16 to 18 players per coach', 'Joner jersey for 3 day players'],
+    audienceItems: commonAudience,
+    campHighlights: [
+      { title: 'Guest Coach Miguel Grande', description: 'Miguel from Grande Sports joins the camp to add extra detail and energy.' },
+      { title: 'First Spots For JFP Players', description: 'A priority camp for players already inside the Joner Football pathway.' },
+      { title: 'High Energy Sydney Environment', description: 'The camp is built around intensity, enjoyment, standards, and technical growth.' },
+      { title: 'Joner Merch On Site', description: 'Players can access Joner Football apparel and training gear during the camp.' },
+    ],
+    includedItems: [
+      '3 morning training blocks',
+      'Guest coaching from Miguel Grande',
+      'Technical coaching from the Joner Football team',
+      'Age and ability based groups',
+      'Joner jersey for players attending all 3 days',
+    ],
+    dayOptions: ['1 Day - $150 AUD', '2 Days - $260 AUD', '3 Days - $350 AUD'],
+    trainingThemes: commonThemes,
+    scheduleItems: [
+      { time: 'Tuesday 14 July', title: 'Ball Mastery And First Touch', description: 'Players settle into groups and get straight into technical detail and standards.' },
+      { time: 'Wednesday 15 July', title: '1v1 And Creativity', description: 'High energy attacking work, pressure situations, and confidence building.' },
+      { time: 'Thursday 16 July', title: 'Game Actions And Finish', description: 'Decision making, final challenges, feedback, and camp moments with the coaches.' },
+    ],
+    coachProfiles: [
+      ...commonCoaches,
+      {
+        name: 'Miguel Grande',
+        role: 'Grande Sports Guest Coach',
+        bio: 'Miguel joins from Grande Sports to bring extra technical detail and energy to the Sydney July camp.',
+        image: '/images/camps/sydney-camp.webp',
+      },
+    ],
+    whatToBring: commonBring,
+    faqItems: commonFaqs,
+    stripePaymentLink: 'https://app.jonerfootball.com',
+  },
+}
+
+function cleanText(value: any) {
+  return String(value || '').trim()
+}
+
+function textOrFallback(value: any, fallback: any, genericValues: string[] = []) {
+  const text = cleanText(value)
+  if (!text) return fallback
+  const lower = text.toLowerCase()
+  if (genericValues.map((item) => item.toLowerCase()).includes(lower)) return fallback
+  return text
+}
+
+function arrayOrFallback(value: any, fallback: any[] = [], genericSignatures: string[] = []) {
+  if (!Array.isArray(value) || value.length === 0) return fallback
+  const signature = value.map((item) => cleanText(typeof item === 'string' ? item : item?.title || item?.label || item?.question)).join('|').toLowerCase()
+  if (genericSignatures.includes(signature)) return fallback
+  return value
+}
+
+function imageUrlFromSanity(image: any) {
+  return image?.asset?.url || image?.url || ''
+}
+
+function mergeCamp(sanityCamp: CampMap, fallback: CampMap) {
+  const genericDaySignature = '1 day|2 days|3 days|full camp'
+  const genericDescriptions = [
+    `register interest for the ${cleanText(sanityCamp?.title).toLowerCase()} joner football camp.`,
+    'register for a joner football camp.',
+  ]
+
+  return {
+    ...fallback,
+    ...sanityCamp,
+    title: textOrFallback(sanityCamp?.title, fallback.title, [
+      'LA TCPE June Camp',
+      'Texas Houston June Camp',
+      'Texas Dallas June Camp',
+      'Sydney Big 1 July Camp',
+    ]),
+    heroKicker: textOrFallback(sanityCamp?.heroKicker, fallback.heroKicker, ['Joner Football x Kingdom Soccer Training']),
+    heroSubtitle: textOrFallback(sanityCamp?.heroSubtitle, fallback.heroSubtitle),
+    urgencyLabel: textOrFallback(sanityCamp?.urgencyLabel, fallback.urgencyLabel),
+    location: textOrFallback(sanityCamp?.location, fallback.location, ['Los Angeles, USA', 'Sydney, Australia']),
+    venue: textOrFallback(sanityCamp?.venue, fallback.venue),
+    venueName: textOrFallback(sanityCamp?.venueName, fallback.venueName),
+    venueAddress: textOrFallback(sanityCamp?.venueAddress, fallback.venueAddress),
+    venueNotes: textOrFallback(sanityCamp?.venueNotes, fallback.venueNotes),
+    dates: textOrFallback(sanityCamp?.dates, fallback.dates, ['June 2026', 'July 2026']),
+    times: textOrFallback(sanityCamp?.times, fallback.times),
+    ageRange: textOrFallback(sanityCamp?.ageRange, fallback.ageRange, ['Youth players']),
+    priceLabel: textOrFallback(sanityCamp?.priceLabel, fallback.priceLabel, ['Payment link coming soon', '1 day, 2 day and 3 day options']),
+    description: textOrFallback(sanityCamp?.description, fallback.description, genericDescriptions.concat(['register interest for the texas houston june joner football camp.', 'register interest for the texas dallas june joner football camp.', 'register interest for the sydney big 1 july joner football camp.'])),
+    extraInfo: textOrFallback(sanityCamp?.extraInfo, fallback.extraInfo),
+    heroImage: imageUrlFromSanity(sanityCamp?.heroImage) || sanityCamp?.heroImageUrl || fallback.heroImage,
+    galleryImages: arrayOrFallback(sanityCamp?.galleryImages, fallback.galleryImages),
+    trustItems: arrayOrFallback(sanityCamp?.trustItems, fallback.trustItems),
+    audienceItems: arrayOrFallback(sanityCamp?.audienceItems, fallback.audienceItems || commonAudience),
+    campHighlights: arrayOrFallback(sanityCamp?.campHighlights, fallback.campHighlights),
+    includedItems: arrayOrFallback(sanityCamp?.includedItems, fallback.includedItems),
+    trainingThemes: arrayOrFallback(sanityCamp?.trainingThemes, fallback.trainingThemes || commonThemes),
+    scheduleItems: arrayOrFallback(sanityCamp?.scheduleItems, fallback.scheduleItems),
+    coachProfiles: arrayOrFallback(sanityCamp?.coachProfiles, fallback.coachProfiles || commonCoaches),
+    whatToBring: arrayOrFallback(sanityCamp?.whatToBring, fallback.whatToBring || commonBring),
+    faqItems: arrayOrFallback(sanityCamp?.faqItems, fallback.faqItems || commonFaqs),
+    dayOptions: arrayOrFallback(sanityCamp?.dayOptions, fallback.dayOptions, [genericDaySignature, '1 day|2 days|3 days']),
+    jerseySizes: arrayOrFallback(sanityCamp?.jerseySizes, fallback.jerseySizes || []),
+    dayPaymentLinks: Array.isArray(sanityCamp?.dayPaymentLinks) ? sanityCamp.dayPaymentLinks : fallback.dayPaymentLinks || [],
+    stripePaymentLink: sanityCamp?.stripePaymentLink || fallback.stripePaymentLink || 'https://app.jonerfootball.com',
+    paypalPaymentLink: sanityCamp?.paypalPaymentLink || fallback.paypalPaymentLink || '',
+    afterpayPaymentLink: sanityCamp?.afterpayPaymentLink || fallback.afterpayPaymentLink || '',
+    trainingAgreementLink: sanityCamp?.trainingAgreementLink || fallback.trainingAgreementLink || '/terms',
+    googleSheetTab: textOrFallback(sanityCamp?.googleSheetTab, fallback.googleSheetTab),
+    destination: textOrFallback(sanityCamp?.destination, fallback.destination),
+    brevoListId: sanityCamp?.brevoListId || fallback.brevoListId || '',
+    startDate: sanityCamp?.startDate || fallback.startDate,
+    endDate: sanityCamp?.endDate || fallback.endDate,
+    mapUrl: sanityCamp?.mapUrl || fallback.mapUrl,
+  }
+}
+
 export async function getStaticPaths() {
-  const camps = await sanityClient.fetch(`*[_type == "camp" && defined(slug.current)]{ "slug": slug.current }`)
-  return camps.map((camp: { slug: string }) => ({ params: { slug: camp.slug } }))
+  let sanitySlugs: string[] = []
+  const fallbackSlugs = [
+    'texas-houston-june',
+    'texas-dallas-june',
+    'sydney-big-1-july',
+  ]
+
+  try {
+    const camps = await sanityClient.fetch(`*[_type == "camp" && defined(slug.current)]{ "slug": slug.current }`)
+    sanitySlugs = camps.map((camp: { slug: string }) => camp.slug).filter(Boolean)
+  } catch (error) {
+    sanitySlugs = []
+  }
+
+  const slugs = Array.from(new Set([...fallbackSlugs, ...sanitySlugs]))
+  return slugs.map((campSlug) => ({ params: { slug: campSlug } }))
 }
 
-const { slug } = Astro.params
-const camp = await sanityClient.fetch(`*[_type == "camp" && slug.current == $slug][0]{
-  title,
-  status,
-  location,
-  destination,
-  googleSheetTab,
-  venue,
-  dates,
-  times,
-  ageRange,
-  priceLabel,
-  spotsRemaining,
-  jerseySizes,
-  dayOptions,
-  dayPaymentLinks,
-  description,
-  whatToBring,
-  extraInfo,
-  stripePaymentLink,
-  afterpayPaymentLink,
-  paypalPaymentLink,
-  trainingAgreementLink,
-  brevoListId
-}`, { slug })
+const slug = Astro.params.slug || ''
+let sanityCamp: CampMap | null = null
 
-if (!camp) return Astro.redirect('/camps')
+try {
+  sanityCamp = await sanityClient.fetch(`*[_type == "camp" && slug.current == $slug][0]{
+    title,
+    status,
+    heroKicker,
+    heroSubtitle,
+    urgencyLabel,
+    location,
+    destination,
+    googleSheetTab,
+    venue,
+    venueName,
+    venueAddress,
+    venueNotes,
+    mapUrl,
+    dates,
+    startDate,
+    endDate,
+    times,
+    ageRange,
+    priceLabel,
+    spotsTotal,
+    spotsRemaining,
+    jerseySizes,
+    dayOptions,
+    dayPaymentLinks,
+    description,
+    trustItems,
+    audienceItems,
+    campHighlights,
+    includedItems,
+    trainingThemes,
+    scheduleItems,
+    coachProfiles[]{
+      name,
+      role,
+      bio,
+      "image": image.asset->url
+    },
+    galleryImages[]{
+      alt,
+      caption,
+      "url": image.asset->url
+    },
+    whatToBring,
+    faqItems,
+    extraInfo,
+    "heroImage": heroImage.asset->url,
+    stripePaymentLink,
+    afterpayPaymentLink,
+    paypalPaymentLink,
+    trainingAgreementLink,
+    brevoListId
+  }`, { slug })
+} catch (error) {
+  sanityCamp = null
+}
 
-const jerseySizes = camp.jerseySizes?.length ? camp.jerseySizes : ['Youth XS', 'Youth S', 'Youth M', 'Youth L', 'Youth XL', 'Adult S', 'Adult M', 'Adult L', 'Adult XL']
-const dayOptions = camp.dayOptions?.length ? camp.dayOptions : ['1 Day', '2 Days', '3 Days', 'Full Camp']
+const fallbackCamp = CAMP_FALLBACKS[slug]
+if (!fallbackCamp && !sanityCamp) return Astro.redirect('/camps')
+
+const camp = mergeCamp(sanityCamp || {}, fallbackCamp || {})
+const jerseySizes = camp.jerseySizes?.length
+  ? camp.jerseySizes
+  : ['Youth XS', 'Youth S', 'Youth M', 'Youth L', 'Youth XL', 'Adult S', 'Adult M', 'Adult L', 'Adult XL']
+const dayOptions = camp.dayOptions?.length ? camp.dayOptions : ['Full Camp']
 const dayPaymentLinks = camp.dayPaymentLinks || []
-const paymentLinks = {
-  Stripe: camp.stripePaymentLink || '',
-  Afterpay: camp.afterpayPaymentLink || camp.stripePaymentLink || '',
-  PayPal: camp.paypalPaymentLink || '',
-}
-const paymentLink = paymentLinks.Stripe || paymentLinks.Afterpay || paymentLinks.PayPal || 'https://app.jonerfootball.com'
+const stripePaymentLink = camp.stripePaymentLink || camp.afterpayPaymentLink || 'https://app.jonerfootball.com'
+const paypalPaymentLink = camp.paypalPaymentLink || ''
+const dayLevelPaypalLink = dayPaymentLinks.find((item: any) => item?.paypalPaymentLink)?.paypalPaymentLink || ''
 const paymentOptions = [
-  paymentLinks.Stripe && { label: 'Stripe', value: 'Stripe', link: paymentLinks.Stripe },
-  paymentLinks.Afterpay && { label: 'Afterpay', value: 'Afterpay', link: paymentLinks.Afterpay },
-  paymentLinks.PayPal && { label: 'PayPal', value: 'PayPal', link: paymentLinks.PayPal },
+  { label: 'Pay with Stripe', value: 'Stripe', link: stripePaymentLink },
+  (paypalPaymentLink || dayLevelPaypalLink) && { label: 'Pay with PayPal', value: 'PayPal', link: paypalPaymentLink || dayLevelPaypalLink },
 ].filter(Boolean)
+const paymentLink = stripePaymentLink || paypalPaymentLink || 'https://app.jonerfootball.com'
 const destination = camp.destination || (String(camp.location || '').toLowerCase().includes('sydney') ? 'sydney' : 'usa')
+const heroImage = camp.heroImage || '/images/camps/hero-bg.webp'
+const heroVideo = camp.heroVideo || ''
+const ogImage = heroImage.startsWith('http') ? heroImage : `https://jonerfootball.com${heroImage}`
+const pageDescription = camp.description || `Register for ${camp.title} with Joner Football.`
+const canonical = `https://jonerfootball.com/camps/${slug}/`
+const statusLabel = camp.status === 'sold-out' ? 'Sold out' : camp.status === 'coming-soon' ? 'Coming soon' : 'Registration open'
+const spotsLabel = camp.spotsRemaining || camp.spotsTotal
+  ? `${camp.spotsRemaining || camp.spotsTotal} spots`
+  : camp.urgencyLabel
+
+const eventSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Event',
+  name: `${camp.title} | Joner Football Camp`,
+  description: pageDescription,
+  startDate: camp.startDate,
+  endDate: camp.endDate || camp.startDate,
+  eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+  eventStatus: camp.status === 'sold-out' || camp.status === 'closed'
+    ? 'https://schema.org/EventScheduled'
+    : 'https://schema.org/EventScheduled',
+  location: {
+    '@type': 'Place',
+    name: camp.venueName || camp.venue || camp.location,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: camp.venueAddress || camp.venue,
+      addressLocality: camp.location,
+    },
+  },
+  organizer: {
+    '@type': 'Organization',
+    name: 'Joner Football',
+    url: 'https://jonerfootball.com',
+  },
+  image: ogImage,
+}
+
+const faqSchema = camp.faqItems?.length ? {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: camp.faqItems.map((item: any) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.answer,
+    },
+  })),
+} : null
 ---
 
-<BaseLayout title={`${camp.title} | Joner Football Camps`} description={camp.description || 'Register for a Joner Football camp.'}>
-  <section class="bg-joner-black py-14 md:py-20 min-h-screen">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <a href="/camps" class="text-gray-400 hover:text-white font-body text-sm">← Back to camps</a>
+<BaseLayout
+  title={`${camp.title} | Joner Football Camps`}
+  description={pageDescription}
+  canonical={canonical}
+  ogImage={ogImage}
+  schema={faqSchema ? [eventSchema, faqSchema] : [eventSchema]}
+>
+  <section id="overview" class="relative min-h-[86vh] overflow-hidden bg-joner-black">
+    {heroVideo ? (
+      <video autoplay muted loop playsinline poster={heroImage} class="absolute inset-0 h-full w-full object-cover">
+        <source src={heroVideo} type="video/mp4" />
+      </video>
+    ) : (
+      <img src={heroImage} alt={`${camp.title} with Joner Football players training`} class="absolute inset-0 h-full w-full object-cover" loading="eager" />
+    )}
+    <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/80 to-joner-black/30"></div>
+    <div class="absolute inset-x-0 top-0 h-1 bg-joner-red"></div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8 mt-8 items-start">
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 md:pt-32">
+      <a href="/camps" class="inline-flex min-h-[44px] items-center text-sm font-body text-gray-300 hover:text-white">Back to all camps</a>
+      <div class="grid grid-cols-1 gap-10 items-end mt-8">
         <div>
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Elite Camp Registration</p>
-          <h1 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-5">{camp.title}</h1>
-          {camp.description && <p class="text-gray-300 font-body text-lg max-w-3xl mb-8">{camp.description}</p>}
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            {camp.location && <div class="info-card"><span>Location</span><strong>{camp.location}</strong></div>}
-            {camp.dates && <div class="info-card"><span>Dates</span><strong>{camp.dates}</strong></div>}
-            {camp.times && <div class="info-card"><span>Times</span><strong>{camp.times}</strong></div>}
-            {camp.ageRange && <div class="info-card"><span>Ages</span><strong>{camp.ageRange}</strong></div>}
-            {camp.priceLabel && <div class="info-card"><span>Price</span><strong>{camp.priceLabel}</strong></div>}
-            {camp.spotsRemaining !== undefined && camp.spotsRemaining !== null && <div class="info-card"><span>Spots Remaining</span><strong>{camp.spotsRemaining}</strong></div>}
+          <div class="flex flex-wrap items-center gap-3 mb-5">
+            <span class="bg-joner-red px-3 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">{camp.heroKicker || 'Elite Camp'}</span>
+            <span class="border border-white/20 bg-black/40 px-3 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">{statusLabel}</span>
           </div>
+          <h1 class="font-heading text-4xl sm:text-6xl lg:text-7xl font-bold text-white uppercase leading-none max-w-5xl">{camp.title}</h1>
+          <p class="mt-6 max-w-3xl text-lg md:text-xl text-gray-200 font-body leading-relaxed">{camp.heroSubtitle || camp.description}</p>
+          <div class="mt-8 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl">
+            <div class="camp-stat"><span>Location</span><strong>{camp.location}</strong></div>
+            <div class="camp-stat"><span>Dates / Times</span><strong>{camp.dates}<br />{camp.times}</strong></div>
+            <div class="camp-stat"><span>Ages</span><strong>{camp.ageRange}</strong></div>
+            <div class="camp-stat"><span>Spots</span><strong>{spotsLabel}</strong></div>
+          </div>
+          <div class="mt-8 flex flex-col sm:flex-row gap-3">
+            <a href="#register" class="btn-red text-center">Register Now</a>
+            <a href="#what-you-get" class="btn-outline text-center">See What You Get</a>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-          {camp.whatToBring?.length > 0 && (
-            <div class="bg-joner-gray border border-gray-800 p-6 mb-8">
-              <h2 class="font-heading text-2xl font-bold text-white uppercase mb-4">What To Bring</h2>
-              <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-gray-300 font-body">
-                {camp.whatToBring.map((item: string) => <li class="flex gap-2"><span class="text-joner-red">✓</span>{item}</li>)}
-              </ul>
+  <nav class="sticky top-16 z-30 border-y border-gray-800 bg-joner-black/95 backdrop-blur" aria-label="Camp sections">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex gap-2 overflow-x-auto py-3 scrollbar-hide">
+        {[
+          ['Overview', '#overview'],
+          ['What You Get', '#what-you-get'],
+          ['Schedule', '#schedule'],
+          ['Coaches', '#coaches'],
+          ['Location', '#location'],
+          ['FAQs', '#faqs'],
+          ['Register', '#register'],
+        ].map(([label, href]) => (
+          <a href={href} class="shrink-0 border border-gray-800 px-4 py-2 font-heading text-xs uppercase tracking-[0.16em] text-gray-300 hover:border-joner-red hover:text-white">{label}</a>
+        ))}
+      </div>
+    </div>
+  </nav>
+
+  <section class="bg-joner-red py-5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+        {(camp.trustItems || []).slice(0, 4).map((item: string) => (
+          <div class="font-heading text-sm uppercase tracking-[0.14em] text-white">{item}</div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-10 items-start">
+        <div>
+          <p class="camp-eyebrow">Overview</p>
+          <h2 class="section-heading text-white">Built For Serious Development</h2>
+          <p class="mt-5 text-gray-300 font-body text-lg leading-relaxed">{camp.description}</p>
+          {camp.extraInfo && <p class="mt-4 text-gray-400 font-body leading-relaxed">{camp.extraInfo}</p>}
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {(camp.audienceItems || commonAudience).map((item: any) => (
+            <article class="border border-gray-200 bg-white p-6">
+              <h3 class="font-heading text-2xl font-bold text-joner-black uppercase">{item.title}</h3>
+              <p class="mt-3 text-gray-700 font-body leading-relaxed">{item.description}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {camp.featureVideoUrl && (
+    <section class="bg-joner-black py-16 md:py-24 border-t border-gray-900">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-8 items-center">
+        <div>
+          <p class="camp-eyebrow">A Sneak Peek</p>
+          <h2 class="section-heading text-white">Our Camps Come With Energy</h2>
+          <p class="mt-5 text-gray-300 font-body text-lg leading-relaxed">A quick look at the pace, energy, and standards players can expect at a Joner Football elite camp.</p>
+        </div>
+        <div class="aspect-video overflow-hidden border border-gray-800 bg-white">
+          <iframe src={camp.featureVideoUrl} title={`${camp.title} camp video`} class="h-full w-full" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <section id="what-you-get" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="max-w-3xl">
+        <p class="camp-eyebrow">What You Get</p>
+        <h2 class="section-heading text-joner-black">A Proper Joner Camp Experience</h2>
+      </div>
+      <div class="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {(camp.campHighlights || []).map((item: any) => (
+          <article class="border border-gray-800 bg-joner-black p-6">
+            <div class="mb-5 h-1 w-12 bg-joner-red"></div>
+            <h3 class="font-heading text-xl font-bold text-white uppercase">{item.title}</h3>
+            <p class="mt-3 text-sm text-gray-300 font-body leading-relaxed">{item.description}</p>
+          </article>
+        ))}
+      </div>
+      <div class="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_0.8fr] gap-8">
+        <div class="border border-gray-800 bg-joner-black p-6 md:p-8">
+          <h3 class="font-heading text-2xl font-bold text-white uppercase">Included</h3>
+          <ul class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {(camp.includedItems || []).map((item: string) => (
+              <li class="flex gap-3 text-gray-300 font-body"><span class="mt-1 h-2 w-2 shrink-0 bg-joner-red"></span><span>{item}</span></li>
+            ))}
+          </ul>
+        </div>
+        <div id="options" class="scroll-mt-36 border border-joner-red bg-joner-black p-6 md:p-8">
+          <p class="camp-eyebrow">Day Options</p>
+          <h3 class="font-heading text-2xl font-bold text-white uppercase">Choose Your Camp Option</h3>
+          <p class="mt-3 text-gray-400 font-body">Select your option in the registration form. The checkout link updates from the selected day and payment method.</p>
+          <div class="mt-6 space-y-3">
+            {dayOptions.map((option: string) => (
+              <a href="#register" class="flex items-center justify-between gap-4 border border-white/20 bg-white px-4 py-4 hover:border-joner-red">
+                <span class="font-heading text-joner-black uppercase tracking-[0.08em]">{option}</span>
+                <span class="font-heading text-xs uppercase tracking-[0.14em] text-joner-red">Register</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-3xl mx-auto">
+        <p class="camp-eyebrow">Training Themes</p>
+        <h2 class="section-heading text-white">Technique Above Everything</h2>
+      </div>
+      <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {(camp.trainingThemes || commonThemes).map((theme: any) => (
+          <article class="border border-gray-800 p-6 hover:border-joner-red transition-colors">
+            <h3 class="font-heading text-xl font-bold text-white uppercase">{theme.title}</h3>
+            <p class="mt-3 text-gray-300 font-body leading-relaxed">{theme.description}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section id="schedule" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <p class="camp-eyebrow text-center">Schedule</p>
+      <h2 class="section-heading text-joner-black text-center">Camp Timeline</h2>
+      <div class="mt-12 space-y-4">
+        {(camp.scheduleItems || []).map((item: any, index: number) => (
+          <article class="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4 border border-gray-200 bg-white p-5 md:p-6">
+            <div class="flex md:block items-center gap-3">
+              <span class="inline-flex h-10 w-10 items-center justify-center bg-joner-red font-heading font-bold text-white">{index + 1}</span>
+              <p class="font-heading text-sm uppercase tracking-[0.14em] text-joner-red md:mt-4">{item.time}</p>
             </div>
-          )}
+            <div>
+              <h3 class="font-heading text-2xl font-bold text-joner-black uppercase">{item.title}</h3>
+              <p class="mt-2 text-gray-400 font-body leading-relaxed">{item.description}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
 
-          {camp.extraInfo && <p class="text-gray-400 font-body mb-8">{camp.extraInfo}</p>}
+  <section id="coaches" class="scroll-mt-36 bg-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">
+        <div>
+          <p class="camp-eyebrow">Coaches</p>
+          <h2 class="section-heading text-white">Led By Football People</h2>
+        </div>
+        <p class="max-w-xl text-gray-400 font-body">Every camp is built around standards, detail, and a coaching team that cares about player development.</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {(camp.coachProfiles || commonCoaches).slice(0, 3).map((coach: any) => (
+          <article class="border border-gray-200 bg-white overflow-hidden">
+            <div class="h-56 bg-joner-black">
+              <img src={coach.image || '/images/about/coaching-team.webp'} alt={`${coach.name} coaching at Joner Football`} class="h-full w-full object-cover" loading="lazy" />
+            </div>
+            <div class="p-6">
+              <h3 class="font-heading text-2xl font-bold text-joner-black uppercase">{coach.name}</h3>
+              <p class="mt-1 font-heading text-xs uppercase tracking-[0.16em] text-joner-red">{coach.role}</p>
+              <p class="mt-4 text-gray-700 font-body leading-relaxed">{coach.bio}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section id="location" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-8">
+        <div class="border border-gray-800 bg-joner-black p-6 md:p-8">
+          <p class="camp-eyebrow">Venue</p>
+          <h2 class="section-heading text-white">{camp.venueName || 'Camp Venue'}</h2>
+          <p class="mt-4 text-gray-300 font-body text-lg">{camp.venueAddress || camp.venue}</p>
+          <p class="mt-4 text-gray-300 font-body leading-relaxed">{camp.venueNotes}</p>
+          {camp.mapUrl && <a href={camp.mapUrl} target="_blank" rel="noopener noreferrer" class="btn-red mt-6">Open In Maps</a>}
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {(camp.galleryImages || []).slice(0, 3).map((image: any) => (
+            <figure class="min-h-[260px] overflow-hidden border border-gray-800 bg-joner-black">
+              <img src={image.url} alt={image.alt || `${camp.title} camp photo`} class="h-full w-full object-cover hover:scale-105 transition-transform duration-300" loading="lazy" />
+            </figure>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-8">
+        <div>
+          <p class="camp-eyebrow">What To Bring</p>
+          <h2 class="section-heading text-white">Arrive Ready</h2>
+          <p class="mt-4 text-gray-400 font-body">Everything is set up for players to train properly. Bring the essentials and come ready to work.</p>
+        </div>
+        <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {(camp.whatToBring || commonBring).map((item: string) => (
+            <li class="flex gap-3 border border-white/20 bg-white p-4 text-joner-black font-body"><span class="mt-1 h-2 w-2 shrink-0 bg-joner-red"></span><span>{item}</span></li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="faqs" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <p class="camp-eyebrow text-center">FAQs</p>
+      <h2 class="section-heading text-joner-black text-center">Parent Questions</h2>
+      <div class="mt-10 space-y-3" id="camp-faq">
+        {(camp.faqItems || commonFaqs).map((item: any) => (
+          <article class="faq-item border border-gray-200 bg-white">
+            <button class="faq-toggle flex min-h-[56px] w-full items-center justify-between gap-4 p-5 text-left" aria-expanded="false" type="button">
+              <span class="font-heading text-base font-bold uppercase tracking-[0.08em] text-joner-black">{item.question}</span>
+              <span class="faq-icon text-joner-red transition-transform">+</span>
+            </button>
+            <div class="faq-content hidden px-5 pb-5">
+              <p class="text-gray-700 font-body leading-relaxed">{item.answer}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section id="register" class="scroll-mt-36 bg-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-8 items-start">
+        <div class="lg:sticky lg:top-36 border border-gray-200 bg-white text-joner-black p-6 md:p-8">
+          <p class="camp-eyebrow">Register</p>
+          <h2 class="section-heading text-joner-black">Secure Your Place</h2>
+          <p class="mt-4 text-gray-700 font-body leading-relaxed">Submit the registration first. Once it is saved, you will be sent to the selected payment link to complete the booking.</p>
+          <div class="mt-6 space-y-4">
+            <div class="camp-mini"><span>Camp</span><strong>{camp.title}</strong></div>
+            <div class="camp-mini"><span>Dates</span><strong>{camp.dates}</strong></div>
+            <div class="camp-mini"><span>Venue</span><strong>{camp.venueName || camp.venue}</strong></div>
+          </div>
         </div>
 
-        <form id="camp-registration-form" class="bg-joner-gray border border-gray-800 p-5 md:p-6 space-y-4">
-          <h2 class="font-heading text-3xl font-bold text-white uppercase">Register Now</h2>
-          <p class="text-gray-400 font-body text-sm">Submit the form first. Then complete payment to secure your place.</p>
+        <form id="camp-registration-form" class="border border-gray-200 bg-white text-joner-black p-5 md:p-8 space-y-5">
+          <h3 class="font-heading text-3xl font-bold text-joner-black uppercase">Player Registration</h3>
+          <p class="text-gray-600 font-body text-sm">All fields marked with * are required.</p>
 
           <input type="hidden" name="camp" value={camp.title} />
           <input type="hidden" name="destination" value={destination} />
@@ -96,28 +876,34 @@ const destination = camp.destination || (String(camp.location || '').toLowerCase
           <input id="payment-link-input" type="hidden" name="paymentLink" value={paymentLink} />
           <script type="application/json" id="day-payment-links" set:html={JSON.stringify(dayPaymentLinks)} />
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label><span class="form-label">Player First Name *</span><input required name="playerFirstName" class="form-input" /></label>
-            <label><span class="form-label">Player Surname *</span><input required name="playerSurname" class="form-input" /></label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label><span class="form-label">Player First Name *</span><input required name="playerFirstName" class="form-input" autocomplete="given-name" /></label>
+            <label><span class="form-label">Player Surname *</span><input required name="playerSurname" class="form-input" autocomplete="family-name" /></label>
           </div>
-          <label><span class="form-label">Parent Name If Under 18</span><input name="parentName" class="form-input" /></label>
-          <label><span class="form-label">Email *</span><input required type="email" name="email" class="form-input" /></label>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label><span class="form-label">Current Age *</span><input required name="age" class="form-input" /></label>
-            <label><span class="form-label">Mobile Number *</span><input required name="mobile" class="form-input" /></label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label><span class="form-label">Parent Name If Under 18</span><input name="parentName" class="form-input" autocomplete="name" /></label>
+            <label><span class="form-label">Email *</span><input required type="email" name="email" class="form-input" autocomplete="email" /></label>
           </div>
-          <label><span class="form-label">Done A Joner Camp Before?</span><select name="previousCamp" class="form-input"><option value="">Select</option><option>Yes</option><option>No</option></select></label>
-          <label><span class="form-label">Current Club / Level</span><input name="clubLevel" class="form-input" /></label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label><span class="form-label">Current Age *</span><input required name="age" class="form-input" inputmode="numeric" /></label>
+            <label><span class="form-label">Mobile Number *</span><input required name="mobile" class="form-input" autocomplete="tel" /></label>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label><span class="form-label">Done A Joner Camp Before?</span><select name="previousCamp" class="form-input"><option value="">Select</option><option>Yes</option><option>No</option></select></label>
+            <label><span class="form-label">Current Club / Level</span><input name="clubLevel" class="form-input" /></label>
+          </div>
           <label><span class="form-label">Where Did You Hear About The Elite Camp?</span><input name="source" class="form-input" /></label>
           <label><span class="form-label">Medical History</span><textarea name="medicalHistory" rows="3" class="form-input"></textarea></label>
-          <label><span class="form-label">Jersey Size *</span><select required name="jerseySize" class="form-input"><option value="">Select size</option>{jerseySizes.map((size: string) => <option>{size}</option>)}</select></label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label><span class="form-label">Jersey Size *</span><select required name="jerseySize" class="form-input"><option value="">Select size</option>{jerseySizes.map((size: string) => <option>{size}</option>)}</select></label>
+            <label><span class="form-label">How Many Days? *</span><select id="day-option-select" required name="numberOfDays" class="form-input"><option value="">Select</option>{dayOptions.map((option: string) => <option>{option}</option>)}</select></label>
+          </div>
           <label><span class="form-label">Extra Player Info</span><textarea name="extraInfo" rows="3" class="form-input"></textarea></label>
-          <label><span class="form-label">How Many Days? *</span><select id="day-option-select" required name="numberOfDays" class="form-input"><option value="">Select</option>{dayOptions.map((option: string) => <option>{option}</option>)}</select></label>
           <label><span class="form-label">Payment Method</span><select id="payment-method-select" name="paymentMethod" class="form-input">{paymentOptions.map((option: any) => <option value={option.value} data-link={option.link}>{option.label}</option>)}</select></label>
 
           <label class="flex gap-3 items-start text-gray-300 font-body text-sm">
             <input required type="checkbox" name="agreementAccepted" class="mt-1 accent-[#E30613]" />
-            <span>I have read and agree to the {camp.trainingAgreementLink ? <a class="text-white underline" href={camp.trainingAgreementLink} target="_blank">training agreement</a> : 'training agreement'}.</span>
+            <span>I have read and agree to the {camp.trainingAgreementLink ? <a class="text-white underline" href={camp.trainingAgreementLink} target="_blank" rel="noopener noreferrer">training agreement</a> : 'training agreement'}.</span>
           </label>
 
           <div id="camp-form-message" class="hidden border border-gray-700 p-4 text-sm font-body"></div>
@@ -127,13 +913,80 @@ const destination = camp.destination || (String(camp.location || '').toLowerCase
     </div>
   </section>
 
+  <section class="bg-joner-red py-14 md:py-18">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <h2 class="font-heading text-3xl md:text-5xl font-bold uppercase text-white">Do Not Wait Until It Is Full</h2>
+      <p class="mt-4 text-white/85 font-body text-lg">Joner Football camps move fast. Register now and lock in your place for {camp.title}.</p>
+      <a href="#register" class="mt-7 inline-block bg-white px-8 py-4 font-heading text-sm font-bold uppercase tracking-[0.14em] text-joner-red hover:bg-gray-100">Register Now</a>
+    </div>
+  </section>
+
+  <a href="#register" class="fixed bottom-[72px] left-3 right-3 z-40 md:hidden btn-red text-center text-sm shadow-2xl">Register For This Camp</a>
+
   <style>
-    .info-card { background:#1A1A1A; border:1px solid #333; padding:1rem; }
-    .info-card span { display:block; color:#888; font-family:var(--font-heading); text-transform:uppercase; font-size:.75rem; letter-spacing:.08em; margin-bottom:.35rem; }
-    .info-card strong { color:#fff; font-family:var(--font-body); font-size:1rem; }
-    .form-label { display:block; color:#fff; font-family:var(--font-heading); font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.4rem; }
-    .form-input { width:100%; background:#0A0A0A; border:1px solid #333; color:#fff; min-height:46px; padding:.7rem .85rem; font-family:var(--font-body); border-radius:0; }
-    .form-input:focus { outline:2px solid #E30613; outline-offset:0; border-color:#E30613; }
+    .camp-eyebrow {
+      color: #E30613;
+      font-family: var(--font-heading);
+      font-size: .82rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      margin-bottom: .75rem;
+    }
+    .camp-stat {
+      min-height: 92px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(10,10,10,.72);
+      padding: 1rem;
+      backdrop-filter: blur(8px);
+    }
+    .camp-stat span,
+    .camp-mini span,
+    dl dt {
+      display: block;
+      color: #E30613;
+      font-family: var(--font-heading);
+      font-size: .72rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      margin-bottom: .3rem;
+    }
+    .camp-stat strong,
+    .camp-mini strong,
+    dl dd {
+      color: #fff;
+      font-family: var(--font-body);
+      font-weight: 700;
+      line-height: 1.25;
+      margin: 0;
+    }
+    .camp-mini {
+      border-left: 3px solid #E30613;
+      padding-left: 1rem;
+    }
+    .form-label {
+      display: block;
+      color: #fff;
+      font-family: var(--font-heading);
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: .45rem;
+    }
+    .form-input {
+      width: 100%;
+      background: #0A0A0A;
+      border: 1px solid #333;
+      color: #fff;
+      min-height: 48px;
+      padding: .8rem .9rem;
+      font-family: var(--font-body);
+      border-radius: 0;
+    }
+    .form-input:focus {
+      outline: 2px solid #E30613;
+      outline-offset: 0;
+      border-color: #E30613;
+    }
   </style>
 
   <script>
@@ -144,35 +997,87 @@ const destination = camp.destination || (String(camp.location || '').toLowerCase
     const daySelect = document.querySelector('#day-option-select')
     const dayLinksScript = document.querySelector('#day-payment-links')
     const dayPaymentLinks = dayLinksScript?.textContent ? JSON.parse(dayLinksScript.textContent) : []
+    const emailInput = form?.querySelector('input[type="email"]')
+
+    if (emailInput && window.JonerEmailGuard?.protectEmailInput) {
+      window.JonerEmailGuard.protectEmailInput(emailInput)
+    }
+
+    function normalizeDayLabel(value) {
+      return String(value || '')
+        .toLowerCase()
+        .replace(/\s+-\s+.*$/, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    }
+
+    function findDayPaymentLink(selectedDay) {
+      const selected = normalizeDayLabel(selectedDay)
+      return dayPaymentLinks.find((item) => {
+        const label = normalizeDayLabel(item.label)
+        return item.label === selectedDay || label === selected || selected.startsWith(label) || label.startsWith(selected)
+      })
+    }
 
     function updatePaymentLink() {
-      const selectedPayment = paymentSelect?.options[paymentSelect.selectedIndex]
+      if (!paymentSelect || !paymentLinkInput) return
+      const selectedPayment = paymentSelect.options[paymentSelect.selectedIndex]
       const selectedDay = daySelect?.value
-      const dayMatch = dayPaymentLinks.find((item) => item.label === selectedDay)
+      const dayMatch = findDayPaymentLink(selectedDay)
 
       if (selectedPayment?.value === 'PayPal' && dayMatch?.paypalPaymentLink) {
         paymentLinkInput.value = dayMatch.paypalPaymentLink
         return
       }
 
-      if ((selectedPayment?.value === 'Stripe' || selectedPayment?.value === 'Afterpay') && dayMatch?.stripePaymentLink) {
+      if (selectedPayment?.value === 'Stripe' && dayMatch?.stripePaymentLink) {
         paymentLinkInput.value = dayMatch.stripePaymentLink
         return
       }
 
-      if (selectedPayment?.dataset?.link && paymentLinkInput) paymentLinkInput.value = selectedPayment.dataset.link
+      if (selectedPayment?.dataset?.link) paymentLinkInput.value = selectedPayment.dataset.link
     }
 
     paymentSelect?.addEventListener('change', updatePaymentLink)
     daySelect?.addEventListener('change', updatePaymentLink)
+    updatePaymentLink()
+
+    document.querySelectorAll('.faq-toggle').forEach((button) => {
+      button.addEventListener('click', () => {
+        const item = button.closest('.faq-item')
+        const content = item?.querySelector('.faq-content')
+        const icon = item?.querySelector('.faq-icon')
+        const isOpen = content && !content.classList.contains('hidden')
+
+        document.querySelectorAll('.faq-item').forEach((faq) => {
+          faq.querySelector('.faq-content')?.classList.add('hidden')
+          const toggle = faq.querySelector('.faq-toggle')
+          const faqIcon = faq.querySelector('.faq-icon')
+          if (toggle) toggle.setAttribute('aria-expanded', 'false')
+          if (faqIcon) faqIcon.textContent = '+'
+        })
+
+        if (!isOpen && content) {
+          content.classList.remove('hidden')
+          button.setAttribute('aria-expanded', 'true')
+          if (icon) icon.textContent = '-'
+        }
+      })
+    })
 
     form?.addEventListener('submit', async (event) => {
       event.preventDefault()
+      updatePaymentLink()
+
       const submitButton = form.querySelector('button[type="submit"]')
-      submitButton.disabled = true
-      submitButton.textContent = 'Saving Registration...'
-      message.className = 'border border-gray-700 p-4 text-sm font-body text-gray-300'
-      message.textContent = 'Saving registration before payment.'
+      if (submitButton) {
+        submitButton.disabled = true
+        submitButton.textContent = 'Saving Registration...'
+      }
+      if (message) {
+        message.className = 'border border-gray-700 p-4 text-sm font-body text-gray-300'
+        message.textContent = 'Saving registration before payment.'
+      }
 
       const formData = new FormData(form)
       const payload = Object.fromEntries(formData.entries())
@@ -187,14 +1092,20 @@ const destination = camp.destination || (String(camp.location || '').toLowerCase
         const data = await response.json()
         if (!response.ok || !data.success) throw new Error(data.error || 'Registration failed.')
 
-        message.className = 'border border-joner-red p-4 text-sm font-body text-white bg-joner-red/10'
-        message.textContent = 'Registration saved. Sending you to payment now.'
+        if (message) {
+          message.className = 'border border-joner-red p-4 text-sm font-body text-white bg-joner-red/10'
+          message.textContent = 'Registration saved. Sending you to payment now.'
+        }
         window.location.href = data.paymentLink || payload.paymentLink
       } catch (error) {
-        message.className = 'border border-joner-red p-4 text-sm font-body text-white bg-joner-red/10'
-        message.textContent = error.message || 'Could not save registration. Please try again.'
-        submitButton.disabled = false
-        submitButton.textContent = 'Submit Registration And Pay'
+        if (message) {
+          message.className = 'border border-joner-red p-4 text-sm font-body text-white bg-joner-red/10'
+          message.textContent = error.message || 'Could not save registration. Please try again.'
+        }
+        if (submitButton) {
+          submitButton.disabled = false
+          submitButton.textContent = 'Submit Registration And Pay'
+        }
       }
     })
   </script>

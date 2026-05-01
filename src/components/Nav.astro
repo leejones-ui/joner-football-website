@@ -12,7 +12,6 @@
 
       <!-- Desktop nav -->
       <div class="hidden lg:flex items-center gap-8">
-
         <a href="/" class="text-white hover:text-joner-red font-body text-sm font-medium transition-colors">Home</a>
 
         <!-- Training dropdown -->
@@ -21,17 +20,30 @@
             Training
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </a>
-          <div class="absolute top-full left-0 bg-joner-gray border border-gray-800 min-w-48 hidden group-hover:block">
+          <div class="absolute top-full left-0 bg-joner-gray border border-gray-800 min-w-56 hidden group-hover:block shadow-2xl">
+            <a href="/training" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Training Hub</a>
             <a href="/training#jfp" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">JFP Program</a>
             <a href="/training#pro-training" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Professional Training</a>
             <a href="/training#joners-juniors" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Joners Juniors</a>
             <a href="/training#game-analysis" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Game Analysis</a>
             <a href="/hq" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">The HQ</a>
-            <a href="/programmes" class="block px-4 py-2 text-sm text-joner-red font-bold hover:bg-gray-800">100-Day Programme</a>
           </div>
         </div>
 
-        <a href="/camps" class="text-white hover:text-joner-red font-body text-sm font-medium transition-colors">Camps</a>
+        <!-- Camps dropdown -->
+        <div class="relative group">
+          <a href="/camps" class="text-white hover:text-joner-red font-body text-sm font-medium transition-colors py-4 flex items-center gap-1">
+            Camps
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </a>
+          <div class="absolute top-full left-0 bg-joner-gray border border-gray-800 min-w-72 hidden group-hover:block shadow-2xl">
+            <a href="/camps" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">All Camps</a>
+            <a href="/camps/la-tcpe-june" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">LA Complete Player Experience</a>
+            <a href="/camps/texas-houston-june" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Houston Camp</a>
+            <a href="/camps/texas-dallas-june" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Dallas Camp</a>
+            <a href="/camps/sydney-big-1-july" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Sydney July Camp</a>
+          </div>
+        </div>
 
         <!-- Workshops dropdown -->
         <div class="relative group">
@@ -39,13 +51,41 @@
             Workshops
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </a>
-          <div class="absolute top-full left-0 bg-joner-gray border border-gray-800 min-w-48 hidden group-hover:block">
+          <div class="absolute top-full left-0 bg-joner-gray border border-gray-800 min-w-56 hidden group-hover:block shadow-2xl">
+            <a href="/workshops" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Workshops Hub</a>
             <a href="/workshops/coaches-course" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Online Coaches Course</a>
             <a href="/workshops/mindset-seminars" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Mindset Seminars</a>
           </div>
         </div>
 
-        <a href="/shop" class="text-white hover:text-joner-red font-body text-sm font-medium transition-colors">Shop</a>
+        <!-- JF APP dropdown -->
+        <div class="relative group">
+          <a href="/app" class="text-white hover:text-joner-red font-body text-sm font-medium transition-colors py-4 flex items-center gap-1">
+            JF APP
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </a>
+          <div class="absolute top-full left-0 bg-joner-gray border border-gray-800 min-w-64 hidden group-hover:block shadow-2xl">
+            <a href="/app" class="block px-4 py-2 text-sm text-joner-red font-bold hover:bg-gray-800">JF APP</a>
+            <a href="/programmes" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">100 Day Program</a>
+            <a href="/teams" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Team Subscriptions</a>
+            <a href="/app/for-coaches" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">For The Coaches</a>
+          </div>
+        </div>
+
+        <!-- Shop dropdown -->
+        <div class="relative group">
+          <a href="/shop" class="text-white hover:text-joner-red font-body text-sm font-medium transition-colors py-4 flex items-center gap-1">
+            Shop
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </a>
+          <div class="absolute top-full left-0 bg-joner-gray border border-gray-800 min-w-64 hidden group-hover:block shadow-2xl">
+            <a href="/shop" class="block px-4 py-2 text-sm text-joner-red font-bold hover:bg-gray-800">Shop Home</a>
+            <a href="/shop/on-field-training-gear" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">On Field Training Gear</a>
+            <a href="/shop/off-field-apparel" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Off Field Apparel</a>
+            <a href="/shop/training-programs" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Training Programs</a>
+            <a href="/shop/resources-accessories" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Resources And Accessories</a>
+          </div>
+        </div>
 
         <!-- More dropdown -->
         <div class="relative group">
@@ -53,10 +93,11 @@
             More
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </a>
-          <div class="absolute top-full left-0 bg-joner-gray border border-gray-800 min-w-48 hidden group-hover:block">
+          <div class="absolute top-full right-0 bg-joner-gray border border-gray-800 min-w-56 hidden group-hover:block shadow-2xl">
             <a href="/about" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">About Lee</a>
+            <a href="/blog" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Blog</a>
             <a href="/hub" class="block px-4 py-2 text-sm text-joner-red font-bold hover:bg-gray-800">Joner Football Hub</a>
-            <a href="/teams" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Team Subscriptions</a>
+            <a href="/technique-test" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Technique Test</a>
             <a href="/about#contact" class="block px-4 py-2 text-sm text-white hover:text-joner-red hover:bg-gray-800">Contact</a>
           </div>
         </div>
@@ -92,23 +133,50 @@
         <a href="/" class="block px-2 py-3 text-white hover:text-joner-red font-heading font-bold uppercase tracking-wide min-h-[44px] flex items-center">Home</a>
         <div class="border-b border-gray-700 pb-2 mb-2">
           <p class="text-gray-400 text-xs uppercase tracking-wider mb-2 px-2">Training</p>
+          <a href="/training" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Training Hub</a>
           <a href="/training#jfp" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">JFP Program</a>
           <a href="/training#pro-training" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Professional Training</a>
           <a href="/training#joners-juniors" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Joners Juniors</a>
+          <a href="/training#game-analysis" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Game Analysis</a>
           <a href="/hq" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">The HQ</a>
-          <a href="/programmes" class="block px-2 py-2 text-joner-red font-bold text-sm min-h-[44px] flex items-center">100-Day Programme</a>
         </div>
-        <a href="/camps" class="block px-2 py-3 text-white hover:text-joner-red font-heading font-bold uppercase tracking-wide min-h-[44px] flex items-center">Camps</a>
+        <div class="border-b border-gray-700 pb-2 mb-2">
+          <p class="text-gray-400 text-xs uppercase tracking-wider mb-2 px-2">Camps</p>
+          <a href="/camps" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">All Camps</a>
+          <a href="/camps/la-tcpe-june" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">LA Complete Player Experience</a>
+          <a href="/camps/texas-houston-june" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Houston Camp</a>
+          <a href="/camps/texas-dallas-june" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Dallas Camp</a>
+          <a href="/camps/sydney-big-1-july" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Sydney July Camp</a>
+        </div>
         <div class="border-b border-gray-700 pb-2 mb-2">
           <p class="text-gray-400 text-xs uppercase tracking-wider mb-2 px-2">Workshops</p>
+          <a href="/workshops" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Workshops Hub</a>
           <a href="/workshops/coaches-course" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Online Coaches Course</a>
           <a href="/workshops/mindset-seminars" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Mindset Seminars</a>
         </div>
-        <a href="/shop" class="block px-2 py-3 text-white hover:text-joner-red font-heading font-bold uppercase tracking-wide min-h-[44px] flex items-center">Shop</a>
-        <a href="/about" class="block px-2 py-3 text-white hover:text-joner-red font-heading font-bold uppercase tracking-wide min-h-[44px] flex items-center">About</a>
-        <a href="/hub" class="block px-2 py-2 text-joner-red font-bold text-sm min-h-[44px] flex items-center">Joner Football Hub</a>
-        <a href="/teams" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Team Subscriptions</a>
-        <a href="/about#contact" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Contact</a>
+        <div class="border-b border-gray-700 pb-2 mb-2">
+          <p class="text-gray-400 text-xs uppercase tracking-wider mb-2 px-2">JF APP</p>
+          <a href="/app" class="block px-2 py-2 text-joner-red font-bold text-sm min-h-[44px] flex items-center">JF APP</a>
+          <a href="/programmes" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">100 Day Program</a>
+          <a href="/teams" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Team Subscriptions</a>
+          <a href="/app/for-coaches" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">For The Coaches</a>
+        </div>
+        <div class="border-b border-gray-700 pb-2 mb-2">
+          <p class="text-gray-400 text-xs uppercase tracking-wider mb-2 px-2">Shop</p>
+          <a href="/shop" class="block px-2 py-2 text-joner-red font-bold text-sm min-h-[44px] flex items-center">Shop Home</a>
+          <a href="/shop/on-field-training-gear" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">On Field Training Gear</a>
+          <a href="/shop/off-field-apparel" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Off Field Apparel</a>
+          <a href="/shop/training-programs" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Training Programs</a>
+          <a href="/shop/resources-accessories" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Resources And Accessories</a>
+        </div>
+        <div class="border-b border-gray-700 pb-2 mb-2">
+          <p class="text-gray-400 text-xs uppercase tracking-wider mb-2 px-2">More</p>
+          <a href="/about" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">About Lee</a>
+          <a href="/blog" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Blog</a>
+          <a href="/hub" class="block px-2 py-2 text-joner-red font-bold text-sm min-h-[44px] flex items-center">Joner Football Hub</a>
+          <a href="/technique-test" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Technique Test</a>
+          <a href="/about#contact" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Contact</a>
+        </div>
       </div>
       <div class="p-4 border-t border-gray-700">
         <a href="/app" class="btn-red w-full text-center block">Download the App</a>

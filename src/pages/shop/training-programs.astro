@@ -1,0 +1,79 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const products = [
+  {
+    title: '100 Day Program',
+    price: 'Included in JF App',
+    tag: 'Player pathway',
+    image: '/images/programmes/programme-hero.webp',
+    href: '/programmes',
+    text: 'The full 100 day pathway, fast feet, passing, dribbling, weak foot, finishing, and S&C inside one plan.',
+  },
+  {
+    title: '6 Week Passing & First Touch Program',
+    price: '$49.99',
+    tag: 'Digital program',
+    image: 'https://jonerfootball.com/app/uploads/2025/03/shop2-scaled.jpg',
+    href: 'https://jonerfootball.com/product/6-week-passing-1st-touch-program/',
+    text: '12 sessions across 6 weeks focused on weight of pass, first touch, awareness, and cleaner execution.',
+  },
+  {
+    title: 'S&C Program',
+    price: '$49.99',
+    tag: '12 week program',
+    image: 'https://jonerfootball.com/app/uploads/2024/09/here-is-cristiano-ronaldo-workout-routine-17164445835-copy.jpg',
+    href: 'https://jonerfootball.com/product/12-weeks-advanced-football-specific-strength-conditioning/',
+    text: '36 follow-along football-specific strength and conditioning videos built for serious players aged 13+.',
+  },
+  {
+    title: 'Dribbling Program',
+    price: 'Included in JF App',
+    tag: '10 day program',
+    image: '/images/shop/shop-training.webp',
+    href: '/programmes',
+    text: 'Close control, changes of direction, creativity, and the confidence to beat defenders.',
+  },
+  {
+    title: 'Score More Goals Program',
+    price: 'Included in JF App',
+    tag: '14 day program',
+    image: 'https://jonerfootball.com/app/uploads/2020/09/200618-STRSxMatildas-6295-scaled.jpg',
+    href: '/programmes',
+    text: 'Finishing technique, composure, movement, and the details that turn chances into goals.',
+  },
+]
+---
+
+<BaseLayout title="Training Programs | Joner Football Shop" description="Shop Joner Football training programs, digital football plans, and app-based player development resources.">
+  <main class="bg-white text-joner-black">
+    <section class="px-4 md:px-8 py-10 md:py-14 border-b border-gray-200">
+      <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+        <div>
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">Online Shop</p>
+          <h1 class="font-heading uppercase text-6xl md:text-8xl leading-none">Training Programs</h1>
+        </div>
+        <p class="text-gray-600 max-w-xl md:text-right">Digital programs and app-based pathways that players can start straight away. Current money products stay connected while the new shop is built properly.</p>
+      </div>
+    </section>
+
+    <section class="px-4 md:px-8 py-8 md:py-12">
+      <div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
+        {products.map((product) => (
+          <a href={product.href} target={product.href.startsWith('http') ? '_blank' : undefined} rel={product.href.startsWith('http') ? 'noopener' : undefined} class="group block bg-white">
+            <div class="relative aspect-[4/5] overflow-hidden bg-gray-100 mb-5 border border-gray-100">
+              <span class="absolute left-4 top-4 z-10 bg-white text-joner-black font-heading uppercase tracking-widest text-xs px-3 py-2">{product.tag}</span>
+              <img src={product.image} alt={product.title} class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+            </div>
+            <div class="flex items-start justify-between gap-4">
+              <h2 class="font-heading uppercase text-2xl md:text-3xl leading-none group-hover:text-joner-red transition-colors">{product.title}</h2>
+              <p class="font-heading text-lg whitespace-nowrap">{product.price}</p>
+            </div>
+            <p class="text-gray-600 text-sm leading-relaxed mt-3">{product.text}</p>
+            <span class="inline-block mt-5 font-heading uppercase text-sm text-joner-red tracking-widest">View Product</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  </main>
+</BaseLayout>

@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Joner Football — Hero prototype</title>
+<style>
+  :root{
+    --jet: #050506;
+    --bone: #f4f1ec;
+    --blood: #e1141a;
+    --muted: rgba(244,241,236,0.55);
+    --line: rgba(244,241,236,0.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--jet);color:var(--bone);font-family:"Helvetica Neue","Inter","Suisse Int'l",system-ui,sans-serif;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+  body{
+    /* total page height = 5 viewports: 4 hero beats + 1 spillover */
+    height: 500vh;
+  }
+
+  /* ---------- pinned cinematic stage ---------- */
+  .stage{
+    position: fixed; inset: 0; z-index: 1; overflow: hidden;
+    background:
+      radial-gradient(120% 70% at 50% 110%, rgba(225,20,26,0.10), transparent 60%),
+      radial-gradient(80% 60% at 50% -20%, rgba(244,241,236,0.05), transparent 70%),
+      var(--jet);
+  }
+  /* warm vignette so the edges feel cinematic */
+  .vignette{position:absolute;inset:0;pointer-events:none;mix-blend-mode:multiply;
+    box-shadow: inset 0 0 220px 60px rgba(0,0,0,0.85);}
+  /* film grain canvas, blended subtly on top */
+  .grain{position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:.35}
+
+  canvas.three{display:block;width:100%;height:100%}
+
+  /* ---------- chrome ---------- */
+  header{
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display:flex; align-items:center; justify-content:space-between;
+    padding: clamp(16px, 2.2vw, 28px) clamp(20px, 4vw, 48px);
+    pointer-events: none;
+  }
+  .wordmark{font-weight:800;letter-spacing:0.18em;font-size:14px;display:flex;align-items:center;gap:8px;pointer-events:auto}
+  .wordmark .dot{width:7px;height:7px;background:var(--blood);border-radius:50%;box-shadow:0 0 10px rgba(225,20,26,0.65)}
+  .pill{
+    pointer-events:auto;
+    background: rgba(244,241,236,0.06);
+    border:1px solid var(--line);
+    color:var(--bone);
+    font-size:12px;letter-spacing:0.18em;text-transform:uppercase;font-weight:700;
+    padding: 10px 16px; border-radius:999px;
+    backdrop-filter: blur(8px);
+    text-decoration:none; display:inline-flex; align-items:center; gap:10px;
+    transition: background .25s ease, transform .25s ease;
+  }
+  .pill:hover{background:rgba(244,241,236,0.12);transform:translateY(-1px)}
+  .pill .pdot{width:6px;height:6px;background:var(--blood);border-radius:50%}
+
+  nav.minilinks{display:none;gap:28px;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);pointer-events:auto}
+  @media (min-width: 900px){ nav.minilinks{display:flex} }
+  nav.minilinks a{color:var(--muted);text-decoration:none}
+  nav.minilinks a:hover{color:var(--bone)}
+
+  /* ---------- progress rail ---------- */
+  .rail{
+    position:fixed; right: clamp(20px, 3vw, 36px); top: 50%; transform: translateY(-50%);
+    width: 2px; height: 220px; background: var(--line); z-index: 9; border-radius:2px;
+    display:none;
+  }
+  @media (min-width: 900px){ .rail{display:block} }
+  .rail .fill{position:absolute;left:0;right:0;top:0;background:var(--bone);height:0;border-radius:2px;transition:height .15s linear}
+  .rail .ticks{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between}
+  .rail .ticks span{display:block;width:10px;height:1px;background:var(--line);transform:translateX(-4px)}
+
+  /* ---------- copy stack ---------- */
+  .copy{
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    padding: clamp(28px, 6vh, 80px) clamp(20px, 4vw, 48px);
+    text-align: center; pointer-events: none;
+    min-height: 40vh;
+  }
+  .beat{
+    position: absolute;
+    left: clamp(20px, 4vw, 48px);
+    right: clamp(20px, 4vw, 48px);
+    bottom: clamp(28px, 6vh, 80px);
+    opacity: 0; transform: translateY(24px);
+    transition: opacity .55s cubic-bezier(.22,.61,.36,1), transform .55s cubic-bezier(.22,.61,.36,1);
+    will-change: opacity, transform;
+    pointer-events: none;
+  }
+  .beat.is-active{opacity:1;transform:translateY(0); pointer-events: auto}
+  .eyebrow{display:inline-block;font-size:11px;letter-spacing:0.32em;color:var(--muted);text-transform:uppercase;font-weight:600;margin-bottom:14px}
+  .headline{
+    font-size: clamp(44px, 9vw, 132px);
+    line-height: .92;
+    letter-spacing: -0.02em;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .headline .red{color:var(--blood)}
+  .sub{margin-top:14px;color:var(--muted);font-size:14px;letter-spacing:.05em}
+  .cta-wrap{margin-top: clamp(20px, 4vh, 36px); pointer-events:auto; display:flex; gap:14px; justify-content:center; flex-wrap:wrap}
+  .cta{
+    display:inline-flex; align-items:center; gap:12px;
+    background: var(--blood); color: var(--bone);
+    padding: 16px 28px; border-radius: 999px;
+    font-size: 13px; letter-spacing: 0.22em; text-transform:uppercase; font-weight:800;
+    text-decoration:none; border:none;
+    box-shadow: 0 10px 40px -10px rgba(225,20,26,0.6);
+    transition: transform .25s ease, box-shadow .25s ease;
+  }
+  .cta:hover{transform:translateY(-2px); box-shadow: 0 18px 50px -10px rgba(225,20,26,0.75)}
+  .cta .arrow{display:inline-block;transition:transform .25s ease}
+  .cta:hover .arrow{transform:translateX(3px)}
+  .cta-ghost{
+    display:inline-flex; align-items:center; gap:10px; color:var(--bone);
+    border:1px solid var(--line); padding: 16px 22px; border-radius:999px;
+    font-size:12px;letter-spacing:.22em;text-transform:uppercase;font-weight:700;
+    text-decoration:none; backdrop-filter: blur(8px);
+  }
+
+  /* ---------- scroll hint ---------- */
+  .hint{
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    z-index: 8; font-size:10px; letter-spacing:.32em; color:var(--muted); text-transform:uppercase;
+    display:flex;align-items:center;gap:10px;
+    transition: opacity .4s ease;
+  }
+  .hint .line{display:inline-block;width:30px;height:1px;background:var(--muted);position:relative;overflow:hidden}
+  .hint .line::after{content:"";position:absolute;left:-100%;top:0;height:100%;width:100%;background:var(--bone);animation:slide 2s infinite}
+  @keyframes slide{0%{left:-100%}60%{left:100%}100%{left:100%}}
+  .hint.fade{opacity:0}
+
+  /* ---------- preloader ---------- */
+  .preload{
+    position:fixed; inset:0; background:var(--jet); z-index:50;
+    display:flex; align-items:center; justify-content:center; flex-direction:column; gap:18px;
+    transition: opacity .6s ease, visibility .6s ease;
+  }
+  .preload .pmark{font-weight:800;letter-spacing:0.4em;font-size:14px}
+  .preload .pbar{width: 220px; height: 1px; background: var(--line); position:relative; overflow:hidden}
+  .preload .pbar i{position:absolute;left:0;top:0;height:100%;background:var(--bone);width:0%;transition: width .25s ease}
+  .preload .pdotred{width:6px;height:6px;background:var(--blood);border-radius:50%;animation:pulse 1.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.3;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
+  .preload.gone{opacity:0;visibility:hidden}
+
+  /* ---------- final spill section ---------- */
+  .spill{
+    position: relative; z-index: 2;
+    margin-top: 400vh; /* sits at the bottom of the 500vh body */
+    padding: clamp(60px, 12vh, 140px) clamp(20px, 4vw, 48px);
+    text-align: center;
+    background: linear-gradient(180deg, transparent, rgba(225,20,26,0.08));
+  }
+  .spill h2{font-size: clamp(32px, 6vw, 80px); font-weight:800; letter-spacing:-0.02em; text-transform:uppercase}
+  .spill p{color:var(--muted); margin-top: 14px; font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="preload" id="preload" aria-hidden="true">
+  <div class="pmark">JONER</div>
+  <div class="pbar"><i id="pbar"></i></div>
+  <div class="pdotred"></div>
+</div>
+
+<header>
+  <div class="wordmark"><span class="dot"></span> JONER FOOTBALL</div>
+  <nav class="minilinks">
+    <a href="#">App</a><a href="#">Camps</a><a href="#">Coaches</a><a href="#">Shop</a>
+  </nav>
+  <a class="pill" href="https://app.jonerfootball.com" target="_blank" rel="noopener">
+    <span class="pdot"></span> Download app
+  </a>
+</header>
+
+<div class="stage" aria-hidden="true">
+  <canvas class="three" id="scene"></canvas>
+  <canvas class="grain" id="grain"></canvas>
+  <div class="vignette"></div>
+</div>
+
+<aside class="rail" aria-hidden="true">
+  <div class="fill" id="railFill"></div>
+  <div class="ticks"><span></span><span></span><span></span><span></span></div>
+</aside>
+
+<section class="copy" id="copyStack">
+  <div class="beat" data-beat="0">
+    <div class="eyebrow">01 / Welcome</div>
+    <h1 class="headline">Train like<br>the <span class="red">best.</span></h1>
+    <div class="sub">Elite football coaching, in your pocket.</div>
+  </div>
+  <div class="beat" data-beat="1">
+    <div class="eyebrow">02 / The work</div>
+    <h1 class="headline">Master<br>the ball.</h1>
+    <div class="sub">Technique. Mastery. Mentality. No theory, just reps.</div>
+  </div>
+  <div class="beat" data-beat="2">
+    <div class="eyebrow">03 / Built for</div>
+    <h1 class="headline">Coaches.<br>Parents. <span class="red">Players.</span></h1>
+    <div class="sub">From Sydney to Houston, we bring the work.</div>
+  </div>
+  <div class="beat" data-beat="3">
+    <div class="eyebrow">04 / Now</div>
+    <h1 class="headline">Get on <span class="red">this.</span></h1>
+    <div class="cta-wrap">
+      <a class="cta" href="https://app.jonerfootball.com" target="_blank" rel="noopener">
+        Download the app <span class="arrow">→</span>
+      </a>
+      <a class="cta-ghost" href="#">See the camps</a>
+    </div>
+  </div>
+</section>
+
+<div class="hint" id="hint"><span>Scroll</span><span class="line"></span></div>
+
+<section class="spill">
+  <h2>This is just the hero.</h2>
+  <p>Below this scrolls the rest of the site: stats, the system, coaches, camps, UGC, manifesto, footer.</p>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  const canvas = document.getElementById('scene');
+  const grainCanvas = document.getElementById('grain');
+  const preload = document.getElementById('preload');
+  const pbar = document.getElementById('pbar');
+  const beats = Array.from(document.querySelectorAll('.beat'));
+  const railFill = document.getElementById('railFill');
+  const hint = document.getElementById('hint');
+
+  // ---------- THREE setup ----------
+  const renderer = new THREE.WebGLRenderer({canvas, antialias: true, alpha: true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, 0.25, 3.4);
+  camera.lookAt(0, 0, 0);
+
+  // Lights: white key, cool fill, red rim
+  const key = new THREE.DirectionalLight(0xffffff, 1.6);
+  key.position.set(2.5, 3, 2);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xb9c6d6, 0.55);
+  fill.position.set(-3, -1, 1.5);
+  scene.add(fill);
+  const rim = new THREE.DirectionalLight(0xe1141a, 1.1);
+  rim.position.set(-1.2, 1.4, -3);
+  scene.add(rim);
+  const ambient = new THREE.AmbientLight(0x101013, 0.8);
+  scene.add(ambient);
+
+  // ---------- procedural football texture ----------
+  // 12 pentagon centers from icosahedron vertices (truncated icosahedron has pentagons here)
+  const phiG = (1 + Math.sqrt(5)) / 2;
+  const ICO = [
+    [0,1,phiG],[0,-1,phiG],[0,1,-phiG],[0,-1,-phiG],
+    [1,phiG,0],[-1,phiG,0],[1,-phiG,0],[-1,-phiG,0],
+    [phiG,0,1],[-phiG,0,1],[phiG,0,-1],[-phiG,0,-1],
+  ].map(v => { const l = Math.hypot(v[0],v[1],v[2]); return [v[0]/l, v[1]/l, v[2]/l]; });
+
+  const RED_PANEL = 0; // which pentagon gets the Joner red
+
+  function buildFootballTexture(size){
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    // off-white base with subtle warm tint, more premium than pure #fff
+    ctx.fillStyle = '#efece5';
+    ctx.fillRect(0,0,size,size);
+    // soft vignette inside texture for "leather" feel
+    const grad = ctx.createRadialGradient(size/2, size/2, size*0.1, size/2, size/2, size*0.7);
+    grad.addColorStop(0, 'rgba(255,255,255,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.08)');
+    ctx.fillStyle = grad; ctx.fillRect(0,0,size,size);
+
+    const img = ctx.getImageData(0,0,size,size);
+    const data = img.data;
+
+    const COS_THRESHOLD = 0.945; // half-angle ~19°, gives nice panel proportions
+    const SOFT_BAND = 0.012;     // softens panel edges so they read like leather seams
+
+    for(let y=0; y<size; y++){
+      const v = (y + 0.5) / size;
+      const phiSph = v * Math.PI;
+      const sinPhi = Math.sin(phiSph), cosPhi = Math.cos(phiSph);
+      for(let x=0; x<size; x++){
+        const u = (x + 0.5) / size;
+        const theta = u * Math.PI * 2;
+        const sx = sinPhi * Math.cos(theta);
+        const sy = cosPhi;
+        const sz = sinPhi * Math.sin(theta);
+
+        let bestDot = -1, bestIdx = -1;
+        for(let i=0; i<12; i++){
+          const p = ICO[i];
+          const d = sx*p[0] + sy*p[1] + sz*p[2];
+          if(d > bestDot){ bestDot = d; bestIdx = i; }
+        }
+
+        if(bestDot > COS_THRESHOLD){
+          // panel
+          const idx = (y*size + x) * 4;
+          const edgeFactor = Math.min(1, (bestDot - COS_THRESHOLD) / SOFT_BAND);
+          if(bestIdx === RED_PANEL){
+            // red Joner panel
+            data[idx]   = Math.round(225 * edgeFactor + (1-edgeFactor) * 239);
+            data[idx+1] = Math.round( 20 * edgeFactor + (1-edgeFactor) * 236);
+            data[idx+2] = Math.round( 26 * edgeFactor + (1-edgeFactor) * 229);
+          } else {
+            const v = Math.round(12 * edgeFactor + (1-edgeFactor) * 239);
+            data[idx]   = v;
+            data[idx+1] = v;
+            data[idx+2] = v;
+          }
+        }
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+
+    // Optional: sparingly stamp the JONER wordmark on the red panel center
+    // Project the red panel center into UV space.
+    const p = ICO[RED_PANEL];
+    const theta = Math.atan2(p[2], p[0]);
+    const phiAng = Math.acos(p[1]);
+    const uMark = ((theta + Math.PI*2) / (Math.PI*2)) % 1;
+    const vMark = phiAng / Math.PI;
+    ctx.save();
+    ctx.translate(uMark * size, vMark * size);
+    ctx.rotate(-0.18);
+    ctx.fillStyle = '#efece5';
+    ctx.font = '900 ' + Math.round(size*0.022) + 'px Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('JONER', 0, 0);
+    ctx.restore();
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding;
+    tex.anisotropy = 8;
+    return tex;
+  }
+
+  // ---------- Build the ball ----------
+  const TEX_SIZE = window.innerWidth < 700 ? 768 : 1280;
+  const ballTex = buildFootballTexture(TEX_SIZE);
+
+  const ballGeom = new THREE.SphereGeometry(1, 96, 96);
+  const ballMat = new THREE.MeshStandardMaterial({
+    map: ballTex,
+    roughness: 0.42,
+    metalness: 0.04,
+  });
+  const ball = new THREE.Mesh(ballGeom, ballMat);
+  // Tilt the ball like a football mid-flight
+  ball.rotation.z = THREE.MathUtils.degToRad(-22);
+  ball.rotation.x = THREE.MathUtils.degToRad(8);
+  scene.add(ball);
+
+  // Soft contact shadow underneath (a faded radial sprite)
+  const shadowGeom = new THREE.PlaneGeometry(3.2, 3.2);
+  const shadowCanvas = document.createElement('canvas');
+  shadowCanvas.width = shadowCanvas.height = 256;
+  const sctx = shadowCanvas.getContext('2d');
+  const sg = sctx.createRadialGradient(128,128,8,128,128,120);
+  sg.addColorStop(0,'rgba(0,0,0,0.55)');
+  sg.addColorStop(1,'rgba(0,0,0,0)');
+  sctx.fillStyle = sg; sctx.fillRect(0,0,256,256);
+  const shadowTex = new THREE.CanvasTexture(shadowCanvas);
+  const shadowMat = new THREE.MeshBasicMaterial({map: shadowTex, transparent:true, depthWrite:false});
+  const ballShadow = new THREE.Mesh(shadowGeom, shadowMat);
+  ballShadow.position.y = -1.35;
+  ballShadow.rotation.x = -Math.PI/2;
+  scene.add(ballShadow);
+
+  // ---------- film grain ----------
+  const gctx = grainCanvas.getContext('2d');
+  function sizeGrain(){
+    grainCanvas.width = Math.floor(window.innerWidth / 2);
+    grainCanvas.height = Math.floor(window.innerHeight / 2);
+  }
+  sizeGrain();
+  function drawGrain(){
+    const w = grainCanvas.width, h = grainCanvas.height;
+    const img = gctx.createImageData(w, h);
+    const d = img.data;
+    for(let i=0; i<d.length; i+=4){
+      const v = (Math.random() * 255) | 0;
+      d[i] = v; d[i+1] = v; d[i+2] = v; d[i+3] = 36;
+    }
+    gctx.putImageData(img, 0, 0);
+  }
+
+  // ---------- scroll-driven motion ----------
+  let scrollProgress = 0; // 0..1 over the hero scroll range
+  const HERO_SCROLL_VH = 4; // hero spans 4 viewports
+  function updateScroll(){
+    const max = window.innerHeight * HERO_SCROLL_VH;
+    const sy = Math.min(window.scrollY, max);
+    scrollProgress = sy / max;
+
+    // beats: 0 -> [0, .25), 1 -> [.25, .5), 2 -> [.5, .75), 3 -> [.75, 1]
+    const activeIdx = Math.min(3, Math.floor(scrollProgress * 4));
+    beats.forEach((b, i) => b.classList.toggle('is-active', i === activeIdx));
+
+    // progress rail
+    railFill.style.height = (scrollProgress * 100) + '%';
+
+    // hide hint after first scroll
+    if(scrollProgress > 0.02) hint.classList.add('fade');
+  }
+  window.addEventListener('scroll', updateScroll, {passive:true});
+  updateScroll();
+
+  // ---------- resize ----------
+  function resize(){
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    sizeGrain();
+  }
+  window.addEventListener('resize', resize);
+
+  // ---------- animation loop ----------
+  let lastT = performance.now();
+  let lastScrollY = window.scrollY;
+  let scrollVel = 0;
+  let smoothedVel = 0;
+  let totalSpin = 0;
+
+  function tick(now){
+    const dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
+
+    // scroll velocity
+    const sy = window.scrollY;
+    scrollVel = (sy - lastScrollY);
+    lastScrollY = sy;
+    smoothedVel = smoothedVel * 0.85 + scrollVel * 0.15;
+
+    // idle spin (slow, "breathing") + scroll boost
+    const idle = 0.45 * dt;
+    const scrollBoost = smoothedVel * 0.012;
+    totalSpin += idle + scrollBoost;
+    ball.rotation.y = totalSpin;
+
+    // gentle wobble on tilt for life
+    ball.rotation.x = THREE.MathUtils.degToRad(8) + Math.sin(now * 0.0006) * 0.03;
+
+    // camera dolly: 3.4 -> 2.6 across scroll
+    const camZ = 3.4 - scrollProgress * 0.8;
+    const camY = 0.25 - scrollProgress * 0.25;
+    camera.position.set(0, camY, camZ);
+    camera.lookAt(0, 0, 0);
+
+    // shadow scales slightly with camera distance
+    ballShadow.material.opacity = 0.85 - scrollProgress * 0.25;
+
+    // grain animation (every 2nd frame for perf)
+    if((now * 0.06 | 0) % 2 === 0) drawGrain();
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- preloader sequence ----------
+  // Fake a tiny preload (texture is built sync; just pace the bar so it feels intentional)
+  let p = 0;
+  const tick0 = performance.now();
+  function fillBar(){
+    p = Math.min(1, p + 0.04 + Math.random()*0.06);
+    pbar.style.width = (p*100) + '%';
+    if(p < 1) setTimeout(fillBar, 60);
+    else {
+      setTimeout(() => {
+        preload.classList.add('gone');
+        requestAnimationFrame(tick);
+      }, 250);
+    }
+  }
+  fillBar();
+})();
+</script>
+</body>
+</html>

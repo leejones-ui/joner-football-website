@@ -1,0 +1,360 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+---
+
+<BaseLayout
+  title="Home Ball Prototype | Joner Football"
+  description="An isolated scroll-controlled football object prototype for the Joner Football homepage."
+  canonical="https://jonerfootball.com/home-ball-prototype/"
+>
+  <Fragment slot="head">
+    <style>
+      .ball-page {
+        background: #0A0A0A;
+        color: #FFFFFF;
+      }
+
+      .ball-shell {
+        --ball-progress: 0;
+        --ball-x: 50%;
+        --ball-y: 53%;
+        --ball-scale: 1;
+        --ball-rotate: 0deg;
+        height: 390vh;
+      }
+
+      .ball-stage {
+        height: calc(100svh - 4rem);
+        min-height: 42rem;
+        background:
+          radial-gradient(circle at 50% 46%, rgba(227,6,19,0.2), transparent 20rem),
+          linear-gradient(180deg, rgba(255,255,255,0.05), transparent 38%),
+          #0A0A0A;
+      }
+
+      .ball-grid {
+        background-image:
+          linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px);
+        background-size: 72px 72px;
+        mask-image: radial-gradient(circle at center, black, transparent 72%);
+      }
+
+      .ball-copy {
+        left: clamp(1.5rem, 7vw, 6rem);
+        top: 18vh;
+        width: min(34rem, calc(100vw - 3rem));
+      }
+
+      .ball-canvas-wrap {
+        position: absolute;
+        inset: 0;
+      }
+
+      .ball-canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        transition: opacity 400ms ease;
+      }
+
+      .ball-shell[data-three="ready"] .ball-canvas {
+        opacity: 1;
+      }
+
+      .fallback-ball {
+        position: absolute;
+        left: var(--ball-x);
+        top: var(--ball-y);
+        width: clamp(8rem, 22vw, 18rem);
+        aspect-ratio: 1;
+        transform: translate(-50%, -50%) scale(var(--ball-scale)) rotate(var(--ball-rotate));
+        border-radius: 999px;
+        background:
+          radial-gradient(circle at 32% 24%, rgba(255,255,255,0.95), rgba(255,255,255,0.12) 18%, transparent 19%),
+          url('/images/home-storyboard/joner-ball-concept.svg') center / contain no-repeat;
+        box-shadow:
+          0 2rem 4.5rem rgba(0,0,0,0.55),
+          0 0 4rem rgba(227,6,19,0.24);
+        transition: transform 80ms linear, left 80ms linear, top 80ms linear;
+        will-change: transform, left, top;
+      }
+
+      .ball-shell[data-three="ready"] .fallback-ball {
+        opacity: 0;
+      }
+
+      .ball-progress {
+        transform: scaleX(var(--ball-progress));
+        transform-origin: left center;
+        background: #E30613;
+      }
+
+      .ball-beat {
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.06);
+        backdrop-filter: blur(18px);
+      }
+
+      @media (max-width: 767px) {
+        .ball-shell {
+          height: auto;
+          min-height: 100svh;
+        }
+
+        .ball-stage {
+          position: relative;
+          height: auto;
+          min-height: 100svh;
+          padding: 8rem 1.25rem 3rem;
+        }
+
+        .ball-copy {
+          position: relative;
+          left: auto;
+          top: auto;
+          width: auto;
+          z-index: 2;
+        }
+
+        .ball-canvas-wrap {
+          position: relative;
+          height: 18rem;
+          margin-top: 2.5rem;
+        }
+
+        .fallback-ball {
+          width: min(64vw, 16rem);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .fallback-ball,
+        .ball-canvas {
+          transition: none;
+        }
+      }
+    </style>
+  </Fragment>
+
+  <main class="ball-page">
+    <section class="ball-shell relative" data-ball-shell data-three="fallback">
+      <div class="ball-stage sticky top-16 overflow-hidden">
+        <div class="ball-grid absolute inset-0 opacity-60"></div>
+        <div class="absolute inset-0 shadow-[inset_0_0_220px_rgba(0,0,0,0.72)]"></div>
+
+        <div class="ball-copy absolute z-20">
+          <p class="font-heading text-xs uppercase tracking-[0.28em] text-joner-red">JON-46 object test</p>
+          <h1 class="mt-5 font-heading text-5xl uppercase leading-[0.9] md:text-7xl">
+            Scroll The Football.
+          </h1>
+          <p class="mt-6 max-w-xl font-body text-lg leading-relaxed text-white/72 md:text-xl">
+            A separate proof route for the Joner homepage object: position, scale, and rotation are all linked to scroll.
+          </p>
+          <div class="mt-8 h-1 w-64 overflow-hidden bg-white/12">
+            <div class="ball-progress h-full w-full" data-ball-progress></div>
+          </div>
+        </div>
+
+        <div class="ball-canvas-wrap z-10" aria-hidden="true">
+          <canvas class="ball-canvas" data-ball-canvas></canvas>
+          <div class="fallback-ball" data-fallback-ball></div>
+        </div>
+
+        <div class="absolute bottom-8 right-8 z-20 hidden max-w-sm grid-cols-3 gap-2 md:grid">
+          {['Spin', 'Travel', 'Scale'].map((item) => (
+            <div class="ball-beat px-4 py-3 text-center">
+              <p class="font-heading text-[0.68rem] uppercase tracking-[0.22em] text-white/72">{item}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script is:inline type="module">
+    const shell = document.querySelector('[data-ball-shell]');
+    const canvas = document.querySelector('[data-ball-canvas]');
+    const progressBar = document.querySelector('[data-ball-progress]');
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function lerp(start, end, amount) {
+      return start + (end - start) * amount;
+    }
+
+    function getProgress() {
+      if (!shell) return 0;
+      const rect = shell.getBoundingClientRect();
+      const scrollable = shell.offsetHeight - window.innerHeight;
+      return scrollable > 0 ? clamp(-rect.top / scrollable, 0, 1) : 0;
+    }
+
+    function applyCssFallback() {
+      const progress = getProgress();
+      const travelX = lerp(34, 71, progress);
+      const travelY = 52 + Math.sin(progress * Math.PI * 2) * 12;
+      const scale = lerp(0.78, 1.18, Math.sin(progress * Math.PI));
+      shell?.style.setProperty('--ball-progress', String(progress));
+      shell?.style.setProperty('--ball-x', travelX + '%');
+      shell?.style.setProperty('--ball-y', travelY + '%');
+      shell?.style.setProperty('--ball-scale', String(scale));
+      shell?.style.setProperty('--ball-rotate', progress * 1440 + 'deg');
+      if (progressBar) progressBar.style.transform = `scaleX(${progress})`;
+    }
+
+    function fallbackLoop() {
+      applyCssFallback();
+      requestAnimationFrame(fallbackLoop);
+    }
+
+    function createFootballTexture(THREE) {
+      const textureCanvas = document.createElement('canvas');
+      textureCanvas.width = 1024;
+      textureCanvas.height = 1024;
+      const context = textureCanvas.getContext('2d');
+
+      context.fillStyle = '#f3f4f6';
+      context.fillRect(0, 0, textureCanvas.width, textureCanvas.height);
+
+      context.strokeStyle = 'rgba(10,10,10,0.28)';
+      context.lineWidth = 8;
+      for (let index = 0; index < 9; index += 1) {
+        context.beginPath();
+        context.ellipse(
+          512,
+          512,
+          180 + index * 44,
+          82 + index * 18,
+          (index * Math.PI) / 7,
+          0,
+          Math.PI * 2
+        );
+        context.stroke();
+      }
+
+      const panels = [
+        [512, 512, 130, 0],
+        [250, 275, 95, 0.2],
+        [780, 300, 100, -0.1],
+        [310, 740, 110, -0.2],
+        [760, 745, 94, 0.25],
+        [510, 185, 74, 0],
+        [520, 850, 74, 0],
+      ];
+
+      panels.forEach(([x, y, radius, rotate]) => {
+        context.save();
+        context.translate(x, y);
+        context.rotate(rotate);
+        context.beginPath();
+        for (let side = 0; side < 5; side += 1) {
+          const angle = -Math.PI / 2 + side * (Math.PI * 2 / 5);
+          const px = Math.cos(angle) * radius;
+          const py = Math.sin(angle) * radius;
+          if (side === 0) context.moveTo(px, py);
+          else context.lineTo(px, py);
+        }
+        context.closePath();
+        context.fillStyle = '#10131a';
+        context.fill();
+        context.strokeStyle = 'rgba(227,6,19,0.45)';
+        context.lineWidth = 5;
+        context.stroke();
+        context.restore();
+      });
+
+      context.fillStyle = '#ffffff';
+      context.font = '700 70px Arial';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText('JF', 512, 512);
+
+      const texture = new THREE.CanvasTexture(textureCanvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = 4;
+      return texture;
+    }
+
+    async function initThree() {
+      if (!shell || !canvas || isMobile || prefersReducedMotion) {
+        fallbackLoop();
+        return;
+      }
+
+      try {
+        const THREE = await import('https://unpkg.com/three@0.161.0/build/three.module.js');
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 0, 7);
+
+        const ballGroup = new THREE.Group();
+        const geometry = new THREE.SphereGeometry(1.35, 96, 96);
+        const material = new THREE.MeshStandardMaterial({
+          map: createFootballTexture(THREE),
+          roughness: 0.48,
+          metalness: 0.04,
+        });
+        const ball = new THREE.Mesh(geometry, material);
+        ballGroup.add(ball);
+        scene.add(ballGroup);
+
+        const keyLight = new THREE.DirectionalLight(0xffffff, 3.3);
+        keyLight.position.set(3.5, 4.5, 5);
+        scene.add(keyLight);
+        scene.add(new THREE.AmbientLight(0xffffff, 1.1));
+
+        const redLight = new THREE.PointLight(0xe30613, 15, 10);
+        redLight.position.set(-3, -2, 2.5);
+        scene.add(redLight);
+
+        shell.dataset.three = 'ready';
+
+        function resize() {
+          const width = window.innerWidth;
+          const height = window.innerHeight;
+          renderer.setSize(width, height);
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+        }
+
+        function render(time) {
+          const progress = getProgress();
+          shell.style.setProperty('--ball-progress', String(progress));
+          if (progressBar) progressBar.style.transform = `scaleX(${progress})`;
+
+          ballGroup.position.x = lerp(-1.8, 1.85, progress);
+          ballGroup.position.y = Math.sin(progress * Math.PI * 2) * 0.54 - 0.08;
+          const scale = 0.82 + Math.sin(progress * Math.PI) * 0.36;
+          ballGroup.scale.setScalar(scale);
+
+          ball.rotation.y = progress * Math.PI * 8 + time * 0.0014;
+          ball.rotation.x = progress * Math.PI * 3 + time * 0.0007;
+          ball.rotation.z = progress * Math.PI * 1.5;
+
+          renderer.render(scene, camera);
+          requestAnimationFrame(render);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        requestAnimationFrame(render);
+      } catch (error) {
+        console.warn('Three.js ball prototype fell back to CSS:', error);
+        fallbackLoop();
+      }
+    }
+
+    initThree();
+  </script>
+</BaseLayout>

@@ -1,0 +1,36 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const resources = [
+  { title: 'All 1 On 1 Videos', href: 'https://jonerfootball.com/product/all-1-on-1-videos/' },
+  { title: 'Training Tools', href: 'https://jonerfootball.com/product/buy-all-of-the-training-tools/' },
+  { title: 'Speed And Agility Drills', href: 'https://jonerfootball.com/product/buy-all-of-the-speed-agility-drills/' },
+  { title: 'Shooting Drills', href: 'https://jonerfootball.com/product/buy-all-of-the-shooting-drills/' },
+  { title: 'Fast Feet In 7 Days', href: 'https://jonerfootball.com/product/improve-fast-feet-in-7-days-full-program/' },
+]
+---
+
+<BaseLayout title="Resources And Accessories | Joner Football Shop" description="Joner Football resources, drill packs, accessories, and digital training tools.">
+  <main class="bg-white text-joner-black">
+    <section class="py-14 md:py-20 border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-5">Tools And Downloads</p>
+        <h1 class="font-heading uppercase text-6xl md:text-8xl leading-none mb-6 max-w-4xl">Resources And Accessories</h1>
+        <p class="text-xl text-gray-700 max-w-3xl">Keep the current digital resources live while we build the cleaner Sanity and Shopify version behind it.</p>
+      </div>
+    </section>
+
+    <section class="py-8 md:py-12">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="divide-y divide-gray-200 border-y border-gray-200">
+          {resources.map((resource) => (
+            <a href={resource.href} target="_blank" rel="noopener" class="grid grid-cols-[1fr_auto] items-center gap-6 py-7 group">
+              <h2 class="font-heading uppercase text-3xl md:text-5xl leading-none group-hover:text-joner-red transition-colors">{resource.title}</h2>
+              <span class="font-heading uppercase text-sm text-joner-red">Open</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

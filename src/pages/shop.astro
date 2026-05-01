@@ -1,176 +1,64 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import EmailCapture from '../components/EmailCapture.astro'
+
+const categories = [
+  {
+    title: 'On Field Training Gear',
+    label: 'Coming Soon',
+    href: '/shop/on-field-training-gear',
+    image: '/images/shop/shop-gear.webp',
+  },
+  {
+    title: 'Off Field Apparel',
+    label: 'Shop Now',
+    href: '/shop/off-field-apparel',
+    image: '/images/shop/shop-apparel.webp',
+  },
+  {
+    title: 'Training Programs',
+    label: 'Digital Training',
+    href: '/shop/training-programs',
+    image: '/images/shop/shop-training.webp',
+  },
+  {
+    title: 'Resources And Accessories',
+    label: 'Tools And Downloads',
+    href: '/shop/resources-accessories',
+    image: '/images/shop/shop-training.webp',
+  },
+]
 
 const schema = {
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "Shop | Joner Football",
-  "description": "Joner Football official apparel, training resources, and digital products. Shop the collection and download the training app.",
-  "url": "https://jonerfootball.com/shop"
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'Shop | Joner Football',
+  description: 'Official Joner Football apparel, training programs, resources, and on field training gear.',
+  url: 'https://jonerfootball.com/shop',
 }
 ---
 
 <BaseLayout
   title="Shop | Joner Football"
-  description="Joner Football official apparel, training resources, and digital products. Shop the collection and download the training app."
+  description="Official Joner Football apparel, training programs, resources, and on field training gear."
   schema={schema}
 >
-
-  <!-- Hero -->
-  <section class="relative min-h-[50vh] flex items-center justify-center bg-joner-gray overflow-hidden">
-    <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-90"></div>
-    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
-
-    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Official Store</p>
-      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
-        Shop
-      </h1>
-      <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto">
-        Official Joner Football apparel, digital products, and training resources
-      </p>
-    </div>
-  </section>
-
-  <!-- Category Cards Grid -->
-  <section class="bg-joner-black py-20 md:py-28">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-        <!-- Card 1: On-Field Training Gear -->
-        <div class="group bg-joner-gray border border-gray-800 overflow-hidden hover:border-joner-red/50 transition-colors duration-300">
-          <div class="h-48 relative overflow-hidden">
-            <img src="/images/shop/shop-gear.webp" alt="On-field training gear" class="w-full h-full object-cover object-center" loading="lazy" />
-            <div class="absolute inset-0 bg-black/50"></div>
-          </div>
-          <div class="p-8">
-            <h3 class="font-heading text-xl font-bold text-white uppercase mb-3">On-Field Training Gear</h3>
-            <p class="text-gray-400 font-body text-sm leading-relaxed mb-6">
-              Jerseys, training kits, and everything you need on the pitch.
-            </p>
-            <a href="https://apparel.jonerfootball.com" target="_blank" rel="noopener" class="btn-red text-sm px-6 py-3 inline-block text-center">
-              Shop Training Gear
-            </a>
-          </div>
-        </div>
-
-        <!-- Card 2: Off-Field Apparel -->
-        <div class="group bg-joner-gray border border-gray-800 overflow-hidden hover:border-joner-red/50 transition-colors duration-300">
-          <div class="h-48 relative overflow-hidden">
-            <img src="/images/shop/shop-apparel.webp" alt="Off-field apparel" class="w-full h-full object-cover object-center" loading="lazy" />
-            <div class="absolute inset-0 bg-black/50"></div>
-          </div>
-          <div class="p-8">
-            <h3 class="font-heading text-xl font-bold text-white uppercase mb-3">Off-Field Apparel</h3>
-            <p class="text-gray-400 font-body text-sm leading-relaxed mb-6">
-              Hoodies, tees, hats, and more.
-            </p>
-            <a href="https://apparel.jonerfootball.com" target="_blank" rel="noopener" class="btn-red text-sm px-6 py-3 inline-block text-center">
-              Shop Apparel
-            </a>
-          </div>
-        </div>
-
-        <!-- Card 3: Downloadable Products & Programs -->
-        <div class="group bg-joner-gray border border-gray-800 overflow-hidden hover:border-joner-red/50 transition-colors duration-300">
-          <div class="h-48 bg-gradient-to-br from-joner-black via-gray-900 to-gray-800 flex items-center justify-center relative overflow-hidden">
-            <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(227,6,19,0.2),transparent_50%)]"></div>
-            <svg class="w-16 h-16 text-white/30" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-            </svg>
-          </div>
-          <div class="p-8">
-            <h3 class="font-heading text-xl font-bold text-white uppercase mb-3">Downloadable Products & Programs</h3>
-            <p class="text-gray-400 font-body text-sm leading-relaxed mb-6">
-              Training programs, session plans, and digital resources.
-            </p>
-            <a href="/app" class="btn-red text-sm px-6 py-3 inline-block text-center">
-              Browse Programs
-            </a>
-          </div>
-        </div>
-
-        <!-- Card 4: The Joner Football App -->
-        <div class="group bg-joner-gray border border-gray-800 overflow-hidden hover:border-joner-red/50 transition-colors duration-300">
-          <div class="h-48 bg-gradient-to-br from-red-900 via-joner-black to-gray-900 flex items-center justify-center relative overflow-hidden">
-            <div class="absolute inset-0 bg-[radial-gradient(circle_at_40%_60%,rgba(227,6,19,0.2),transparent_50%)]"></div>
-            <svg class="w-16 h-16 text-white/30" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
-            </svg>
-          </div>
-          <div class="p-8">
-            <h3 class="font-heading text-xl font-bold text-white uppercase mb-3">The Joner Football App</h3>
-            <p class="text-gray-400 font-body text-sm leading-relaxed mb-6">
-              1,500+ drills. Your complete training platform.
-            </p>
-            <a href="/app" class="btn-red text-sm px-6 py-3 inline-block text-center">
-              Download the App
-            </a>
-          </div>
-        </div>
-
+  <section class="bg-white py-4 md:py-6">
+    <div class="px-3 md:px-5">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+        {categories.map((category) => (
+          <a href={category.href} class="group block bg-white text-joner-black">
+            <div class="aspect-[3/4] overflow-hidden bg-gray-100">
+              <img src={category.image} alt={category.title} class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" loading="eager" />
+            </div>
+            <div class="pt-3 md:pt-4">
+              <h1 class="font-heading uppercase text-xl md:text-2xl leading-none text-joner-black group-hover:text-joner-red transition-colors">
+                {category.title}
+              </h1>
+              <p class="font-body text-xs md:text-sm text-gray-500 mt-1">{category.label}</p>
+            </div>
+          </a>
+        ))}
       </div>
     </div>
   </section>
-
-  <!-- Books Teaser Banner -->
-  <section class="bg-joner-gray py-20 md:py-28 border-t border-b border-gray-800">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="max-w-3xl mx-auto text-center">
-        <div class="inline-block bg-joner-red/20 border border-joner-red text-joner-red font-heading text-xs uppercase tracking-widest px-4 py-2 mb-6">
-          Coming Soon
-        </div>
-        <h2 class="section-heading text-white mb-6">The Joner Football Book</h2>
-        <p class="text-gray-400 font-body text-base leading-relaxed mb-4">
-          Everything we know about football training, coaching methodology, and player development. The philosophy, the methods, and the drills that have shaped 2.1 million footballers worldwide.
-        </p>
-        <p class="text-gray-300 font-body text-base leading-relaxed mb-10">
-          Be the first to know when it drops.
-        </p>
-
-        <form
-          method="POST"
-          action="/api/subscribe"
-          data-brevo-form
-          data-form-name="book-notification" data-list-id="2"
-          class="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto"
-        >
-          <input
-            type="text"
-            name="first_name"
-            placeholder="First name"
-            required
-            class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm flex-1 focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]"
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Email address"
-            required
-            class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm flex-1 focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]"
-          />
-          <button type="submit" class="btn-red text-sm px-6 py-3 whitespace-nowrap min-h-[44px]">
-            Get Notified
-          </button>
-        </form>
-        <p class="text-gray-600 text-xs font-body mt-4">
-          We respect your privacy. Unsubscribe anytime.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Physical Pickup Note -->
-  <section class="bg-joner-black py-12 md:py-16">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-      <p class="text-gray-400 font-body text-sm mb-2 uppercase tracking-wide">Physical Pickup Available</p>
-      <p class="text-white font-body text-base">
-        Collect in person at <a href="/hq" class="text-joner-red hover:underline font-heading">The HQ</a>. 20 Narabang Way, Belrose.
-      </p>
-    </div>
-  </section>
-
-  <EmailCapture />
-
 </BaseLayout>

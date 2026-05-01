@@ -1,0 +1,86 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const title = 'For The Coaches | Joner Football App'
+const description = 'Use the Joner Football App to plan sessions, sharpen your coaching detail, and give players a clear technical development pathway.'
+---
+
+<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/app/for-coaches/">
+  <main class="bg-joner-black text-white">
+    <section class="relative overflow-hidden border-b border-gray-900">
+      <div class="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,#E30613,transparent_35%)]"></div>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
+        <div class="max-w-4xl">
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-5">JF APP FOR COACHES</p>
+          <h1 class="font-heading uppercase text-5xl md:text-7xl lg:text-8xl leading-none mb-6">
+            Coach With More Detail.
+          </h1>
+          <p class="text-xl md:text-2xl text-gray-300 max-w-3xl mb-8">
+            Build better sessions, teach cleaner technique, and give every player a clear way to improve between training nights.
+          </p>
+          <div class="flex flex-col sm:flex-row gap-4">
+            <a href="/app" class="btn-red text-center">View The JF APP</a>
+            <a href="/teams" class="btn-outline text-center">Team Subscriptions</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <article class="border border-gray-800 bg-joner-gray p-8">
+            <span class="text-joner-red font-heading text-4xl">01</span>
+            <h2 class="font-heading uppercase text-2xl mt-5 mb-3">Session Ideas Fast</h2>
+            <p class="text-gray-300">Use Joner Football drills to plan sharper ball mastery, first touch, 1v1, finishing, and decision-making sessions.</p>
+          </article>
+          <article class="border border-gray-800 bg-joner-gray p-8">
+            <span class="text-joner-red font-heading text-4xl">02</span>
+            <h2 class="font-heading uppercase text-2xl mt-5 mb-3">Clear Coaching Points</h2>
+            <p class="text-gray-300">Every drill gives coaches simple detail they can actually use on the pitch, not vague theory.</p>
+          </article>
+          <article class="border border-gray-800 bg-joner-gray p-8">
+            <span class="text-joner-red font-heading text-4xl">03</span>
+            <h2 class="font-heading uppercase text-2xl mt-5 mb-3">Player Homework</h2>
+            <p class="text-gray-300">Send players to the app so they keep improving outside team training. More touches. Better habits. Faster growth.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24 bg-white text-joner-black">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">BUILT FOR REAL COACHES</p>
+          <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none mb-6">Less Guessing. Better Sessions.</h2>
+          <p class="text-lg text-gray-700 mb-6">
+            The app gives coaches a technical library they can lean on every week. It helps new coaches feel prepared and experienced coaches add more detail.
+          </p>
+          <p class="text-lg text-gray-700">
+            This page is the starting point. We will build this into a stronger coaches landing page as the new website design tightens up.
+          </p>
+        </div>
+        <div class="bg-joner-black text-white p-8 md:p-10 border-t-4 border-joner-red">
+          <h3 class="font-heading uppercase text-3xl mb-6">Best For</h3>
+          <ul class="space-y-4 text-gray-200">
+            <li>Club coaches who need fresh session ideas</li>
+            <li>Private trainers who want more technical detail</li>
+            <li>Academy coaches building player homework</li>
+            <li>Parents coaching grassroots teams</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none mb-6">Want It For Your Team?</h2>
+        <p class="text-xl text-gray-300 mb-8">Use Team Subscriptions if you want app access for a full squad, club, or coaching group.</p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a href="/teams" class="btn-red text-center">Team Subscriptions</a>
+          <a href="/app" class="btn-outline text-center">Back To JF APP</a>
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
