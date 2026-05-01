@@ -52,6 +52,7 @@ const storyBeats = [
     markerY: 82,
     tone: 'dark',
     overlay: 'growth',
+    ctaPlacement: 'overlay',
     ctas: [
       { label: 'YouTube', href: 'https://www.youtube.com/@jonerfootball', external: true },
       { label: 'Instagram', href: 'https://www.instagram.com/jonerfootball/', external: true },
@@ -669,11 +670,11 @@ const mediaStyle = (beat) => {
             {beat.body && (
               <p class="story-body font-body text-lg xl:text-xl text-white/76 leading-relaxed mt-6 max-w-[32rem]">{beat.body}</p>
             )}
-            {beat.ctas && (
+            {beat.ctas && beat.ctaPlacement !== 'overlay' && (
               <div class="story-cta-row">
                 {beat.ctas.map((cta, ctaIndex) => (
                   <a
-                    class:list={["story-cta-link", cta.badge ? 'store-badge' : '', beat.label === 'Joner Way' || cta.label === 'Free To Watch' ? 'red' : '']}
+                    class:list={["story-cta-link", cta.badge ? 'store-badge' : '', '']}
                     href={cta.href}
                     target={cta.external ? '_blank' : undefined}
                     rel={cta.external ? 'noopener' : undefined}
@@ -721,6 +722,21 @@ const mediaStyle = (beat) => {
                     ))}
                   </div>
                 </div>
+                {beat.ctas && beat.ctaPlacement === 'overlay' && (
+                  <div class="mt-5 flex flex-nowrap gap-2 overflow-x-auto pb-1">
+                    {beat.ctas.map((cta) => (
+                      <a
+                        class="story-cta-link shrink-0"
+                        href={cta.href}
+                        target={cta.external ? '_blank' : undefined}
+                        rel={cta.external ? 'noopener' : undefined}
+                      >
+                        {cta.label}
+                      </a>
+                    ))}
+                  </div>
+                )}
+
               </div>
             )}
 
@@ -791,7 +807,7 @@ const mediaStyle = (beat) => {
                 <div class="mt-5 flex flex-wrap gap-2">
                   {beat.ctas.map((cta, ctaIndex) => (
                     <a
-                      class:list={["story-cta-link", cta.badge ? 'store-badge' : '', beat.label === 'Joner Way' || cta.label === 'Free To Watch' ? 'red' : '']}
+                      class:list={["story-cta-link", cta.badge ? 'store-badge' : '', '']}
                       href={cta.href}
                       target={cta.external ? '_blank' : undefined}
                       rel={cta.external ? 'noopener' : undefined}
@@ -850,11 +866,11 @@ const mediaStyle = (beat) => {
                 {beat.body && (
                   <p class="mt-4 max-w-lg font-body text-sm leading-relaxed text-white/72 md:text-base">{beat.body}</p>
                 )}
-                {beat.ctas && (
+                {beat.ctas && beat.ctaPlacement !== 'overlay' && (
                   <div class="story-cta-row">
                     {beat.ctas.slice(0, 3).map((cta, ctaIndex) => (
                       <a
-                        class:list={["story-cta-link", cta.badge ? 'store-badge' : '', beat.label === 'Joner Way' || cta.label === 'Free To Watch' ? 'red' : '']}
+                        class:list={["story-cta-link", cta.badge ? 'store-badge' : '', '']}
                         href={cta.href}
                         target={cta.external ? '_blank' : undefined}
                         rel={cta.external ? 'noopener' : undefined}
