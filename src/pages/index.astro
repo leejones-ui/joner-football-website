@@ -14,8 +14,11 @@ const storyBeats = [
     objectPositionTablet: '56% 52%',
     objectPositionMobile: '62% 50%',
     copyPos: 'center',
-    markerX: 24,
-    markerY: 43,
+    markerX: 25.2,
+    markerY: 27,
+    maskX: 25.2,
+    maskY: 27,
+    maskSize: 0,
     tone: 'dark',
     overlay: 'none',
   },
@@ -31,8 +34,11 @@ const storyBeats = [
     objectPositionTablet: '62% 50%',
     objectPositionMobile: '70% 50%',
     copyPos: 'left',
-    markerX: 16,
-    markerY: 88,
+    markerX: 65,
+    markerY: 76,
+    maskX: 65,
+    maskY: 76,
+    maskSize: 0,
     tone: 'dark',
     overlay: 'origin',
   },
@@ -48,8 +54,11 @@ const storyBeats = [
     objectPositionTablet: '54% 48%',
     objectPositionMobile: '58% 48%',
     copyPos: 'left',
-    markerX: 77,
-    markerY: 82,
+    markerX: 71.5,
+    markerY: 76,
+    maskX: 71.5,
+    maskY: 76,
+    maskSize: 0,
     tone: 'dark',
     overlay: 'growth',
     ctaPlacement: 'overlay',
@@ -74,8 +83,9 @@ const storyBeats = [
     objectPositionTablet: '54% 44%',
     objectPositionMobile: '58% 44%',
     copyPos: 'right',
-    markerX: 72,
-    markerY: 79,
+    markerX: 82,
+    markerY: 76,
+    maskSize: 0,
     tone: 'dark',
     overlay: 'none',
     ctas: [
@@ -94,8 +104,9 @@ const storyBeats = [
     objectPositionTablet: '48% 48%',
     objectPositionMobile: '46% 50%',
     copyPos: 'right',
-    markerX: 50,
-    markerY: 55,
+    markerX: 82,
+    markerY: 72,
+    maskSize: 0,
     tone: 'dark',
     overlay: 'none',
     ctas: [
@@ -115,8 +126,9 @@ const storyBeats = [
     objectPositionTablet: '50% 50%',
     objectPositionMobile: '50% 50%',
     copyPos: 'left',
-    markerX: 55,
-    markerY: 52,
+    markerX: 86,
+    markerY: 66,
+    maskSize: 0,
     tone: 'light',
     overlay: 'none',
     ctas: [
@@ -137,8 +149,9 @@ const storyBeats = [
     objectPositionTablet: '64% 50%',
     objectPositionMobile: '76% 50%',
     copyPos: 'left',
-    markerX: 37,
-    markerY: 62,
+    markerX: 36,
+    markerY: 66,
+    maskSize: 0,
     tone: 'dark',
     overlay: 'none',
     ctas: [
@@ -149,16 +162,17 @@ const storyBeats = [
     number: '08',
     label: 'Action',
     kicker: 'Action',
-    title: 'Choose Your Path',
-    body: 'Player, parent, or coach. The next Joner chapter starts with the path that fits you.',
+    title: 'Choose Your Next Step',
+    body: 'Train online, train with us, join a camp, or get inside the Joner Football Hub.',
     image: '/images/home-storyboard/07-action-coach.webp',
     alt: 'Lee Jones giving coaching detail during a Joner Football session',
     objectPosition: '50% 22%',
     objectPositionTablet: '50% 18%',
     objectPositionMobile: '50% 14%',
     copyPos: 'action',
-    markerX: 51,
-    markerY: 56,
+    markerX: 108,
+    markerY: 42,
+    maskSize: 0,
     tone: 'dark',
     overlay: 'paths',
   },
@@ -172,10 +186,19 @@ const stats = [
 ]
 
 
+const primaryPaths = [
+  { title: 'The App', text: 'Train online with Joner Football drills, programs, and coaching detail.', href: '/app', tag: 'Online Training' },
+  { title: 'Train In Person', text: 'Sydney training programs for players who want proper technical coaching.', href: '/training', tag: 'Sydney' },
+  { title: 'Coaches Section', text: 'Session ideas, drill detail, and coaching tools inside the Joner Football App.', href: '/app/for-coaches', tag: 'For Coaches' },
+  { title: 'Elite Camps', text: 'High energy Joner Football camps in Australia, the USA, and beyond.', href: '/camps', tag: 'Camps' },
+  { title: 'Workshops', text: 'Coach education, mindset seminars, and Joner Football learning experiences.', href: '/workshops', tag: 'Education' },
+  { title: 'The Joner Football Hub', text: 'Free blogs, challenges, coach resources, and app links in one place.', href: '/hub', tag: 'Free Hub' },
+]
+
 const paths = [
-  { title: 'Player', text: 'Train in person or through the APP.', href: '/app' },
-  { title: 'Parent', text: 'Find training, camps or programs inside the APP.', href: '/training#joners-juniors' },
-  { title: 'Coach', text: 'Learn the methodology and access coach tools.', href: '/workshops/coaches-course' },
+  { title: 'Player', text: 'Start with the App, camps, or training in person.', href: '/app' },
+  { title: 'Parent', text: 'Find training, camps, and programs for your player.', href: '/training#joners-juniors' },
+  { title: 'Coach', text: 'Get the methodology, drills, and coach education.', href: '/app/for-coaches' },
 ]
 
 const mediaStyle = (beat) => {
@@ -201,6 +224,10 @@ const mediaStyle = (beat) => {
       .story-shell {
         --story-progress: 0;
         --growth-progress: 0;
+        --hero-word-progress: 0;
+        --ball-rotation: 0deg;
+        --mask-x: var(--marker-x);
+        --mask-y: var(--marker-y);
       }
 
       .story-viewport {
@@ -246,7 +273,12 @@ const mediaStyle = (beat) => {
 
       .story-rail {
         color: rgba(255,255,255,0.54);
-        transition: color 700ms ease;
+        transition: color 700ms ease, opacity 420ms ease;
+      }
+
+      .story-shell[data-active="0"] .story-rail {
+        opacity: 0;
+        pointer-events: none;
       }
 
       .story-rail-line {
@@ -352,24 +384,50 @@ const mediaStyle = (beat) => {
       .story-ball-system {
         left: var(--marker-x);
         top: var(--marker-y);
+        transform: rotate(var(--ball-rotation));
         transition:
-          left 900ms cubic-bezier(.22,.61,.36,1),
-          top 900ms cubic-bezier(.22,.61,.36,1),
-          transform 900ms cubic-bezier(.22,.61,.36,1),
+          left 90ms linear,
+          top 90ms linear,
+          transform 90ms linear,
           opacity 400ms ease;
+        will-change: left, top, transform;
+      }
+
+      .story-photo-ball-mask {
+        display: none;
+        left: var(--mask-x);
+        top: var(--mask-y);
+        width: clamp(0rem, var(--mask-size), 14rem);
+        height: clamp(0rem, var(--mask-size), 14rem);
+        transform: translate(-50%, -50%);
+        border-radius: 999px;
+        background:
+          radial-gradient(circle, rgba(0,0,0,1) 0 76%, rgba(0,0,0,0.84) 86%, rgba(0,0,0,0) 100%);
+        filter: blur(0.28rem);
+        opacity: var(--mask-opacity, 0.92);
+        pointer-events: none;
+        transition:
+          left 180ms linear,
+          top 180ms linear,
+          opacity 380ms ease,
+          width 180ms linear,
+          height 180ms linear;
+        will-change: left, top;
       }
 
       .story-ball-pulse {
-        width: clamp(4.8rem, 8.8vw, 9.2rem);
-        height: clamp(4.8rem, 8.8vw, 9.2rem);
+        width: clamp(5.1rem, 8.4vw, 8.6rem);
+        height: clamp(5.1rem, 8.4vw, 8.6rem);
         border-radius: 999px;
         position: relative;
         overflow: hidden;
         border: 0;
         background: transparent;
         box-shadow:
-          0 0 3.4rem rgba(227,6,19,0.26);
+          0 1.4rem 2.8rem rgba(0,0,0,0.46),
+          0 0 2.8rem rgba(227,6,19,0.18);
         transform: translate(-50%, -50%);
+        perspective: 800px;
         transition: border-color 700ms ease, box-shadow 700ms ease;
       }
 
@@ -383,7 +441,18 @@ const mediaStyle = (beat) => {
         width: 100%;
         height: 100%;
         object-fit: contain;
-        filter: drop-shadow(0 1.25rem 1.8rem rgba(0,0,0,0.42));
+        filter:
+          saturate(1.18)
+          contrast(1.04)
+          drop-shadow(0 1.1rem 1.35rem rgba(0,0,0,0.48));
+        animation: storyBallSpin3d 2.8s linear infinite;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      @keyframes storyBallSpin3d {
+        from { transform: rotateY(0deg) rotateZ(-10deg); }
+        to { transform: rotateY(360deg) rotateZ(350deg); }
       }
 
       .story-ball-logo {
@@ -393,9 +462,28 @@ const mediaStyle = (beat) => {
       .story-mini-ball {
         position: absolute;
         border-radius: 999px;
-        background: url('/images/home-storyboard/joner-ball-concept.svg') center / contain no-repeat;
+        background: url('/images/home-storyboard/yellow-football-object.png') center / contain no-repeat;
         box-shadow:
-          0 0 1.8rem rgba(227,6,19,0.3);
+          0 0 1.8rem rgba(227,6,19,0.22);
+      }
+
+      .hero-scroll-title {
+        display: grid;
+        gap: 0.02em;
+      }
+
+      .hero-word {
+        display: block;
+        opacity: 0;
+        transform: translateY(1.2rem);
+        transition:
+          opacity 360ms cubic-bezier(.22,.61,.36,1),
+          transform 520ms cubic-bezier(.22,.61,.36,1);
+      }
+
+      .hero-word[data-visible="true"] {
+        opacity: 1;
+        transform: translateY(0);
       }
 
       .story-overlay {
@@ -412,6 +500,7 @@ const mediaStyle = (beat) => {
       .story-overlay[data-state="active"] {
         display: block;
         opacity: 1;
+        pointer-events: auto;
         animation: storyOverlayIn 720ms cubic-bezier(.22,.61,.36,1) both;
       }
 
@@ -422,11 +511,16 @@ const mediaStyle = (beat) => {
 
       .metric-card,
       .path-card,
+      .primary-path-card,
       .global-proof-card,
       .phone-shell {
         border: 1px solid rgba(255,255,255,0.16);
         background: rgba(10,10,10,0.46);
         backdrop-filter: blur(18px);
+      }
+
+      .primary-path-card {
+        min-height: 10.5rem;
       }
 
       .phone-shell {
@@ -570,6 +664,7 @@ const mediaStyle = (beat) => {
         .story-copy,
         .story-overlay,
         .story-ball-system,
+        .story-ball-image,
         .story-rail-dot,
         .story-rail-label {
           animation: none !important;
@@ -600,7 +695,7 @@ const mediaStyle = (beat) => {
       class="story-shell relative hidden md:block"
       data-story-shell
       data-active="0"
-      style={`height: ${storyBeats.length * 72}vh; --marker-x: ${storyBeats[0].markerX}%; --marker-y: ${storyBeats[0].markerY}%;`}
+        style={`height: ${storyBeats.length * 82}vh; --marker-x: ${storyBeats[0].markerX}%; --marker-y: ${storyBeats[0].markerY}%; --mask-x: ${storyBeats[0].maskX ?? storyBeats[0].markerX}%; --mask-y: ${storyBeats[0].maskY ?? storyBeats[0].markerY}%; --mask-size: ${storyBeats[0].maskSize ?? 0}vw; --mask-opacity: ${(storyBeats[0].maskSize ?? 0) > 0 ? 0.98 : 0};`}
     >
       <div class="story-viewport sticky top-16 overflow-hidden">
         {storyBeats.map((beat, index) => (
@@ -653,18 +748,24 @@ const mediaStyle = (beat) => {
           </div>
         </aside>
 
+        <div class="story-photo-ball-mask absolute z-10" data-story-mask aria-hidden="true"></div>
+
         <div class="story-ball-system absolute z-20" data-story-ball aria-hidden="true">
           <div class="story-ball-pulse">
-            <img class="story-ball-image" src="/images/home-storyboard/joner-ball-concept.svg" alt="" />
+            <img class="story-ball-image" src="/images/home-storyboard/yellow-football-object.png" alt="" />
           </div>
         </div>
 
         {storyBeats.map((beat, index) => (
           <article class="story-copy z-40" data-story-copy data-index={index} data-pos={beat.copyPos} data-state={index === 0 ? 'active' : 'inactive'}>
-            <p class="story-kicker font-heading uppercase text-joner-red text-xs mb-5">{beat.kicker || `${beat.number} / ${beat.label}`}</p>
+            {index !== 0 && (
+              <p class="story-kicker font-heading uppercase text-joner-red text-xs mb-5">{beat.kicker || `${beat.number} / ${beat.label}`}</p>
+            )}
             {index === 0 ? (
-              <h1 class="story-copy-title font-heading uppercase leading-[0.9] text-white text-6xl xl:text-8xl">
-                {beat.title}
+              <h1 class="story-copy-title hero-scroll-title font-heading uppercase leading-[0.9] text-white text-6xl xl:text-8xl" aria-label={beat.title}>
+                <span class="hero-word" data-hero-word data-step="0">Technique</span>
+                <span class="hero-word" data-hero-word data-step="1">Above</span>
+                <span class="hero-word" data-hero-word data-step="2">Everything</span>
               </h1>
             ) : (
               <h2 class:list={["story-copy-title font-heading uppercase leading-[0.9] text-white", beat.copyPos === 'center' ? 'text-5xl xl:text-7xl' : 'text-4xl xl:text-6xl']}>
@@ -745,14 +846,25 @@ const mediaStyle = (beat) => {
             )}
 
             {beat.overlay === 'paths' && (
-              <div class="absolute inset-x-0 bottom-[5vh] mx-auto grid w-[74vw] max-w-5xl grid-cols-3 gap-4">
-                {paths.map((path) => (
-                  <a class="path-card group block p-6 transition hover:border-[#E30613] hover:bg-[#E30613]/10" href={path.href}>
-                    <p class="story-kicker font-heading text-[0.68rem] uppercase text-[#E30613]">Choose</p>
-                    <h3 class="mt-3 font-heading text-4xl uppercase leading-none text-white">{path.title}</h3>
-                    <p class="mt-4 font-body text-sm leading-relaxed text-white/68">{path.text}</p>
-                  </a>
-                ))}
+              <div class="absolute inset-x-0 bottom-[4vh] mx-auto w-[82vw] max-w-6xl">
+                <div class="mb-4 grid grid-cols-3 gap-3">
+                  {primaryPaths.map((path) => (
+                    <a class="primary-path-card group block p-5 transition hover:border-[#E30613] hover:bg-[#E30613]/10" href={path.href}>
+                      <p class="story-kicker font-heading text-[0.62rem] uppercase text-[#E30613]">{path.tag}</p>
+                      <h3 class="mt-3 font-heading text-3xl uppercase leading-none text-white">{path.title}</h3>
+                      <p class="mt-3 font-body text-sm leading-relaxed text-white/68">{path.text}</p>
+                    </a>
+                  ))}
+                </div>
+                <div class="grid grid-cols-3 gap-3 border-t border-white/10 pt-4">
+                  {paths.map((path) => (
+                    <a class="path-card group block p-4 transition hover:border-[#E30613] hover:bg-[#E30613]/10" href={path.href}>
+                      <p class="story-kicker font-heading text-[0.56rem] uppercase text-white/48">Not Sure?</p>
+                      <h3 class="mt-2 font-heading text-2xl uppercase leading-none text-white">{path.title}</h3>
+                      <p class="mt-2 font-body text-xs leading-relaxed text-white/62">{path.text}</p>
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -836,10 +948,20 @@ const mediaStyle = (beat) => {
                 </div>
               )}
               {beat.overlay === 'paths' && (
-                <div class="mt-5 grid grid-cols-3 gap-2">
-                  {paths.map((path) => (
-                    <a class="border border-white/14 bg-white/8 px-2 py-3 text-center font-heading text-[0.68rem] uppercase tracking-[0.18em] text-white" href={path.href}>{path.title}</a>
-                  ))}
+                <div class="mt-5 space-y-4">
+                  <div class="grid grid-cols-2 gap-2">
+                    {primaryPaths.map((path) => (
+                      <a class="border border-white/14 bg-white/8 px-3 py-4 font-heading text-[0.72rem] uppercase tracking-[0.14em] text-white" href={path.href}>{path.title}</a>
+                    ))}
+                  </div>
+                  <div>
+                    <p class="story-kicker mb-2 font-heading text-[0.58rem] uppercase text-white/48">Not sure where to start?</p>
+                    <div class="grid grid-cols-3 gap-2">
+                      {paths.map((path) => (
+                        <a class="border border-white/14 bg-white/8 px-2 py-3 text-center font-heading text-[0.62rem] uppercase tracking-[0.16em] text-white" href={path.href}>{path.title}</a>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -895,18 +1017,26 @@ const mediaStyle = (beat) => {
   <script is:inline>
     (function () {
       var beatMarkers = [
-        { x: 24, y: 43 },
-        { x: 16, y: 88 },
-        { x: 77, y: 82 },
-        { x: 72, y: 79 },
-        { x: 50, y: 55 },
-        { x: 55, y: 52 },
-        { x: 37, y: 62 },
-        { x: 51, y: 56 }
+        { x: 25.2, y: 27, maskX: 25.2, maskY: 27, maskSize: 0 },
+        { x: 65, y: 76, maskX: 65, maskY: 76, maskSize: 0 },
+        { x: 71.5, y: 76, maskX: 71.5, maskY: 76, maskSize: 0 },
+        { x: 82, y: 76, maskSize: 0 },
+        { x: 82, y: 72, maskSize: 0 },
+        { x: 86, y: 66, maskSize: 0 },
+        { x: 36, y: 66, maskSize: 0 },
+        { x: 108, y: 42, maskSize: 0 }
       ];
 
       function clamp(value, min, max) {
         return Math.min(Math.max(value, min), max);
+      }
+
+      function lerp(start, end, amount) {
+        return start + (end - start) * amount;
+      }
+
+      function smoothstep(value) {
+        return value * value * (3 - (2 * value));
       }
 
       function initDesktopStory() {
@@ -919,6 +1049,7 @@ const mediaStyle = (beat) => {
         var dots = Array.prototype.slice.call(shell.querySelectorAll('[data-story-dot]'));
         var labels = Array.prototype.slice.call(shell.querySelectorAll('[data-story-label]'));
         var growthCounters = Array.prototype.slice.call(shell.querySelectorAll('[data-growth-count]'));
+        var heroWords = Array.prototype.slice.call(shell.querySelectorAll('[data-hero-word]'));
         var total = copies.length;
 
         function formatGrowth(value, format) {
@@ -938,16 +1069,51 @@ const mediaStyle = (beat) => {
         }
 
         function apply(nextIndex, progress) {
-          var marker = beatMarkers[nextIndex] || beatMarkers[0];
           var localProgress = clamp((progress * total) - nextIndex, 0, 1);
+          var markerAmount = smoothstep(clamp((localProgress - 0.08) / 0.92, 0, 1));
+          var heroCenter = { x: 51, y: 66 };
+          var markerFrom = beatMarkers[nextIndex] || beatMarkers[0];
+          var markerTo = beatMarkers[Math.min(total - 1, nextIndex + 1)] || markerFrom;
+          var marker = {
+            x: lerp(markerFrom.x, markerTo.x, markerAmount),
+            y: lerp(markerFrom.y, markerTo.y, markerAmount)
+          };
+
+          if (nextIndex === 0) {
+            var heroMarkerAmount = smoothstep(clamp((localProgress - 0.22) / 0.78, 0, 1));
+            marker = {
+              x: lerp(beatMarkers[0].x, heroCenter.x, heroMarkerAmount),
+              y: lerp(beatMarkers[0].y, heroCenter.y, heroMarkerAmount)
+            };
+          }
+
+          if (nextIndex === 2) {
+            marker = beatMarkers[2];
+          }
+
+          var heroProgress = nextIndex === 0 ? localProgress : nextIndex > 0 ? 1 : 0;
           var growthProgress = nextIndex < 2 ? 0 : nextIndex > 2 ? 1 : localProgress;
           var easedGrowth = 1 - Math.pow(1 - growthProgress, 3);
 
           shell.dataset.active = String(nextIndex);
           shell.style.setProperty('--story-progress', String(progress));
+          shell.style.setProperty('--hero-word-progress', String(heroProgress));
           shell.style.setProperty('--growth-progress', String(growthProgress));
           shell.style.setProperty('--marker-x', marker.x + '%');
           shell.style.setProperty('--marker-y', marker.y + '%');
+          var activeMask = beatMarkers[nextIndex] || marker;
+          var activeMaskSize = activeMask.maskSize || 0;
+          shell.style.setProperty('--mask-x', (activeMask.maskX || activeMask.x) + '%');
+          shell.style.setProperty('--mask-y', (activeMask.maskY || activeMask.y) + '%');
+          shell.style.setProperty('--mask-size', activeMaskSize + 'vw');
+          shell.style.setProperty('--mask-opacity', activeMaskSize > 0 ? '0.98' : '0');
+          shell.style.setProperty('--ball-rotation', (progress * 520) + 'deg');
+
+          heroWords.forEach(function (word, wordIndex) {
+            var thresholds = [0.18, 0.46, 0.74];
+            var threshold = thresholds[wordIndex] || 0.74;
+            word.setAttribute('data-visible', heroProgress >= threshold ? 'true' : 'false');
+          });
 
           growthCounters.forEach(function (counter) {
             var target = Number(counter.getAttribute('data-growth-target')) || 0;

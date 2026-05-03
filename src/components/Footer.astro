@@ -10,6 +10,28 @@
       <p class="text-gray-400 mt-2 text-sm uppercase tracking-widest font-heading">Technique Above Everything</p>
     </div>
 
+    <!-- Email capture -->
+    <div class="mx-auto mb-10 max-w-4xl border border-gray-800 bg-joner-black p-6 md:p-8">
+      <div class="mb-5 text-center">
+        <p class="font-heading text-xs uppercase tracking-[0.24em] text-joner-red">Free Joner Football Updates</p>
+        <h2 class="mt-2 font-heading text-2xl font-bold uppercase text-white md:text-3xl">Get The Right Stuff Sent To You</h2>
+        <p class="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-gray-400 font-body">Pick what you care about and we will send the best drills, camp news, app updates, and coaching resources to the right inbox.</p>
+      </div>
+      <form method="POST" action="/api/subscribe" data-brevo-form data-form-name="footer-interest-capture" data-list-id="2" class="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+        <input type="text" name="first_name" placeholder="First name" required class="min-h-[44px] border border-gray-700 bg-joner-gray px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+        <input type="email" name="email" placeholder="Email address" required class="min-h-[44px] border border-gray-700 bg-joner-gray px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+        <select name="listId" required class="min-h-[44px] border border-gray-700 bg-joner-gray px-4 py-3 text-sm text-white focus:border-joner-red focus:outline-none">
+          <option value="2">The App and Hub</option>
+          <option value="6">Train in Person</option>
+          <option value="11">Coaches Section</option>
+          <option value="5">Elite Camps</option>
+          <option value="11">Workshops</option>
+          <option value="14">Shop, Books and Merch</option>
+        </select>
+        <button type="submit" class="btn-red min-h-[44px] whitespace-nowrap px-6 py-3 text-sm">Join</button>
+      </form>
+    </div>
+
     <!-- Quick links -->
     <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-8">
       <a href="/training" class="text-gray-400 hover:text-white text-sm transition-colors">Training</a>

@@ -243,8 +243,9 @@ const allSchemas = schema
               var emailInput = form.querySelector('input[name="email"], input[type="email"]');
               var rawEmail = formData.get('email') || '';
               var validation = validateEmail(rawEmail);
-              var firstName = formData.get('first_name') || formData.get('firstName') || formData.get('parent_name') || '';
-              var listId = Number(form.getAttribute('data-list-id') || '2');
+              var firstName = formData.get('first_name') || formData.get('firstName') || formData.get('parent_name') || formData.get('name') || '';
+              var listId = Number(formData.get('listId') || formData.get('list_id') || form.getAttribute('data-list-id') || '2');
+              var source = form.getAttribute('data-form-name') || formData.get('source') || 'website-form';
 
               if (emailInput) setFeedback(emailInput, validation);
               if (!validation.valid) {
@@ -261,7 +262,7 @@ const allSchemas = schema
               fetch('/api/subscribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: validation.email, firstName: firstName, listId: listId })
+                body: JSON.stringify({ email: validation.email, firstName: firstName, listId: listId, source: source })
               })
               .then(function (r) { return r.json(); })
               .then(function (data) {

@@ -19,7 +19,7 @@ export default {
       description: 'Controls which Brevo list camp leads go into.',
       options: {
         list: [
-          { title: 'USA Camp Leads, Brevo list 4', value: 'usa' },
+          { title: 'USA Camp Leads, Brevo list 5', value: 'usa' },
           { title: 'Sydney Camp Leads, Brevo list 6', value: 'sydney' },
         ],
         layout: 'radio',

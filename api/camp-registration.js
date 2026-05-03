@@ -1,7 +1,7 @@
 const DEFAULT_SHEET_ID = '1SbGmivi3yqFaBKoMAhoNd5ufUga99DaQBj2noXNJr4k'
 const PENDING_SHEET = 'Leads Pending Payment'
 const PAID_SHEET = 'Paid Camp Registrations'
-const USA_CAMP_BREVO_LIST_ID = 4
+const USA_CAMP_BREVO_LIST_ID = 5
 const SYDNEY_CAMP_BREVO_LIST_ID = 6
 
 const HEADERS = [
