@@ -1,49 +1,135 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const title = 'For The Coaches | Joner Football App'
-const description = 'Use the Joner Football App to plan sessions, sharpen your coaching detail, and give players a clear technical development pathway.'
+const title = 'Coaches Only | Joner Football App'
+const description = 'A dedicated Joner Football App tier for coaches. Session plans, voice-over drills, coaching points, full sessions, team training, and behind-the-scenes coaching insight from Lee Jones.'
+const checkoutUrl = 'https://app.jonerfootball.com/checkout/new?o=202578'
+const appCategoryUrl = 'https://app.jonerfootball.com/categories/category-8-7szqoiq00'
+
+const contentBlocks = [
+  {
+    title: 'App And Session Planner Walkthrough',
+    eyebrow: 'Start Here',
+    image: '/images/coaches-only/app-session-planner.png',
+    text: 'See how Lee uses the Joner Football App and Sports Session Planner to find drills, build sessions, manage difficulty, and plan with more purpose.'
+  },
+  {
+    title: 'Session Planning',
+    eyebrow: 'Ready To Use',
+    image: '/images/coaches-only/session-planning.png',
+    text: 'Structured coaching plans you can take into your own environment, with clear session flow instead of random drills thrown together.'
+  },
+  {
+    title: 'Voice Over Series',
+    eyebrow: 'The Why Behind It',
+    image: '/images/coaches-only/voice-over-series.png',
+    text: 'Detailed voice-over drills where Lee explains what he is looking for, why the practice works, and how to coach the detail properly.'
+  },
+  {
+    title: 'Coaching The Coaches',
+    eyebrow: 'Coach Education',
+    image: '/images/coaches-only/coaching-the-coaches.png',
+    text: 'Practical coach development from Joner Football, built for coaches who want better language, better standards, and better player outcomes.'
+  },
+  {
+    title: 'Full Training Sessions',
+    eyebrow: 'Watch The Flow',
+    image: '/images/coaches-only/full-training-sessions.png',
+    text: 'Full extended sessions showing how Joner Football combines technical work, intensity, detail, and progression across a complete training block.'
+  },
+  {
+    title: 'Team Training',
+    eyebrow: 'For Groups',
+    image: '/images/coaches-only/team-training.png',
+    text: 'Team training ideas and examples for coaches who need to manage groups while still keeping individual technique at the centre.'
+  },
+  {
+    title: 'Coaching Professionals',
+    eyebrow: 'Elite Detail',
+    image: '/images/coaches-only/coaching-professionals.png',
+    text: 'Insight into how Lee coaches elite-level players, including the detail, standards, and communication used in professional environments.'
+  },
+  {
+    title: 'Extras',
+    eyebrow: 'More Tools',
+    image: '/images/coaches-only/extras.png',
+    text: 'Extra coaching resources, ideas, and behind-the-scenes material to help you keep improving your sessions and your coaching eye.'
+  }
+]
+
+const benefits = [
+  'Detailed voice-over drills so you understand the why behind every practice',
+  'Coaching points you can use straight away on the pitch',
+  'Session plans for cleaner structure and better training flow',
+  'Examples of Lee coaching professionals and higher-level players',
+  'Full training sessions so you can see how the work connects',
+  'Team training ideas for grassroots, academy, and private coaching groups',
+  'Coaching the coaches content to sharpen how you teach',
+  'Behind-the-scenes insight into how Joner Football runs coaching standards'
+]
+
+const faqs = [
+  {
+    q: 'Who is Coaches Only for?',
+    a: 'Club coaches, private trainers, academy coaches, parents coaching teams, and anyone who wants more detail in their sessions.'
+  },
+  {
+    q: 'Is this just drill videos?',
+    a: 'No. The point is the coaching detail. You get session planning, coaching points, full sessions, voice-over explanations, and examples of Lee working with players.'
+  },
+  {
+    q: 'Can I use this for team training?',
+    a: 'Yes. Coaches Only includes team training content and session ideas you can adapt for groups, squads, and private coaching environments.'
+  },
+  {
+    q: 'Does it include the rest of the Joner Football App?',
+    a: 'Yes. Coaches Only gives access to the coaches tier plus the wider Joner Football App content.'
+  }
+]
 ---
 
-<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/app/for-coaches/">
+<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/app/for-coaches/" ogImage="https://jonerfootball.com/images/coaches-only/coaches-only-hero.jpg">
   <main class="bg-joner-black text-white">
     <section class="relative overflow-hidden border-b border-gray-900">
-      <div class="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,#E30613,transparent_35%)]"></div>
-      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
+      <div class="absolute inset-0">
+        <img src="/images/coaches-only/coaches-only-hero.jpg" alt="Coaches Only inside the Joner Football App" class="h-full w-full object-cover opacity-35" loading="eager" />
+        <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/90 to-joner-black/40"></div>
+      </div>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 lg:py-32">
         <div class="max-w-4xl">
-          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-5">JF APP FOR COACHES</p>
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-5">COACHES ONLY</p>
           <h1 class="font-heading uppercase text-5xl md:text-7xl lg:text-8xl leading-none mb-6">
-            Coach With More Detail.
+            Build Better Sessions. Coach With More Detail.
           </h1>
-          <p class="text-xl md:text-2xl text-gray-300 max-w-3xl mb-8">
-            Build better sessions, teach cleaner technique, and give every player a clear way to improve between training nights.
+          <p class="text-xl md:text-2xl text-gray-200 max-w-3xl mb-8">
+            A dedicated Joner Football App tier for coaches who want session plans, voice-over drills, coaching points, full training sessions, and real insight into how Lee Jones coaches.
           </p>
           <div class="flex flex-col sm:flex-row gap-4">
-            <a href="/app" class="btn-red text-center">View The JF APP</a>
-            <a href="/teams" class="btn-outline text-center">Team Subscriptions</a>
+            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-center" data-meta-checkout-event="CoachesPageClickToCheckout">Start Coaches Only</a>
+            <a href="#inside" class="btn-outline text-center">See What's Inside</a>
           </div>
+          <p class="text-sm text-gray-400 mt-4">UTM tracking is preserved through to checkout.</p>
         </div>
       </div>
     </section>
 
-    <section class="py-16 md:py-24">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <article class="border border-gray-800 bg-joner-gray p-8">
-            <span class="text-joner-red font-heading text-4xl">01</span>
-            <h2 class="font-heading uppercase text-2xl mt-5 mb-3">Session Ideas Fast</h2>
-            <p class="text-gray-300">Use Joner Football drills to plan sharper ball mastery, first touch, 1v1, finishing, and decision-making sessions.</p>
-          </article>
-          <article class="border border-gray-800 bg-joner-gray p-8">
-            <span class="text-joner-red font-heading text-4xl">02</span>
-            <h2 class="font-heading uppercase text-2xl mt-5 mb-3">Clear Coaching Points</h2>
-            <p class="text-gray-300">Every drill gives coaches simple detail they can actually use on the pitch, not vague theory.</p>
-          </article>
-          <article class="border border-gray-800 bg-joner-gray p-8">
-            <span class="text-joner-red font-heading text-4xl">03</span>
-            <h2 class="font-heading uppercase text-2xl mt-5 mb-3">Player Homework</h2>
-            <p class="text-gray-300">Send players to the app so they keep improving outside team training. More touches. Better habits. Faster growth.</p>
-          </article>
+    <section class="py-12 md:py-16 border-b border-gray-900">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-joner-gray border border-gray-800 p-5">
+          <p class="font-heading text-4xl text-joner-red">8</p>
+          <p class="text-sm uppercase tracking-wide text-gray-300">Core coaching areas</p>
+        </div>
+        <div class="bg-joner-gray border border-gray-800 p-5">
+          <p class="font-heading text-4xl text-joner-red">100%</p>
+          <p class="text-sm uppercase tracking-wide text-gray-300">Built for coaches</p>
+        </div>
+        <div class="bg-joner-gray border border-gray-800 p-5">
+          <p class="font-heading text-4xl text-joner-red">Full</p>
+          <p class="text-sm uppercase tracking-wide text-gray-300">Training session access</p>
+        </div>
+        <div class="bg-joner-gray border border-gray-800 p-5">
+          <p class="font-heading text-4xl text-joner-red">Lee</p>
+          <p class="text-sm uppercase tracking-wide text-gray-300">Jones coaching detail</p>
         </div>
       </div>
     </section>
@@ -51,34 +137,109 @@ const description = 'Use the Joner Football App to plan sessions, sharpen your c
     <section class="py-16 md:py-24 bg-white text-joner-black">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div>
-          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">BUILT FOR REAL COACHES</p>
-          <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none mb-6">Less Guessing. Better Sessions.</h2>
-          <p class="text-lg text-gray-700 mb-6">
-            The app gives coaches a technical library they can lean on every week. It helps new coaches feel prepared and experienced coaches add more detail.
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">WHY IT EXISTS</p>
+          <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none mb-6">Most Coaches Need More Than Another Drill.</h2>
+          <p class="text-lg text-gray-700 mb-5">
+            The difference is the detail. What to say. What to fix. How to progress it. When to stop the practice and coach the moment.
           </p>
           <p class="text-lg text-gray-700">
-            This page is the starting point. We will build this into a stronger coaches landing page as the new website design tightens up.
+            Coaches Only gives you a look inside Joner Football's coaching methods, session planning, player standards, and day-to-day training environment.
           </p>
         </div>
         <div class="bg-joner-black text-white p-8 md:p-10 border-t-4 border-joner-red">
-          <h3 class="font-heading uppercase text-3xl mb-6">Best For</h3>
+          <h3 class="font-heading uppercase text-3xl mb-6">You Get</h3>
           <ul class="space-y-4 text-gray-200">
-            <li>Club coaches who need fresh session ideas</li>
-            <li>Private trainers who want more technical detail</li>
-            <li>Academy coaches building player homework</li>
-            <li>Parents coaching grassroots teams</li>
+            {benefits.map((benefit) => (
+              <li class="flex gap-3">
+                <span class="text-joner-red font-heading">•</span>
+                <span>{benefit}</span>
+              </li>
+            ))}
           </ul>
         </div>
       </div>
     </section>
 
+    <section id="inside" class="py-16 md:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-3xl mb-12">
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">INSIDE COACHES ONLY</p>
+          <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none mb-5">Everything Included.</h2>
+          <p class="text-xl text-gray-300">Pulled from the live Coaches Only category inside the Joner Football App.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          {contentBlocks.map((item) => (
+            <article class="bg-joner-gray border border-gray-800 overflow-hidden flex flex-col">
+              <div class="aspect-video bg-black overflow-hidden">
+                <img src={item.image} alt={item.title} class="h-full w-full object-cover hover:scale-105 transition-transform duration-300" loading="lazy" />
+              </div>
+              <div class="p-5 flex-1 flex flex-col">
+                <p class="font-heading uppercase tracking-[0.18em] text-joner-red text-xs mb-3">{item.eyebrow}</p>
+                <h3 class="font-heading uppercase text-2xl leading-tight mb-3">{item.title}</h3>
+                <p class="text-gray-300 text-sm flex-1">{item.text}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24 bg-joner-gray border-y border-gray-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-1">
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">BEST FOR</p>
+          <h2 class="font-heading uppercase text-4xl md:text-5xl leading-none mb-5">Coaches Who Want Standards.</h2>
+          <p class="text-gray-300 text-lg">If you care about the details, this is the part of the app built for you.</p>
+        </div>
+        <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="bg-joner-black border border-gray-800 p-6">
+            <h3 class="font-heading uppercase text-2xl mb-3">Grassroots Coaches</h3>
+            <p class="text-gray-300">Plan sharper sessions and coach with clearer language, even when you are working with mixed ability groups.</p>
+          </div>
+          <div class="bg-joner-black border border-gray-800 p-6">
+            <h3 class="font-heading uppercase text-2xl mb-3">Private Trainers</h3>
+            <p class="text-gray-300">Add more technical detail, progression, and structure to your one-to-one and small group sessions.</p>
+          </div>
+          <div class="bg-joner-black border border-gray-800 p-6">
+            <h3 class="font-heading uppercase text-2xl mb-3">Academy Coaches</h3>
+            <p class="text-gray-300">Use full sessions, coaching points, and elite examples to sharpen the standard in your environment.</p>
+          </div>
+          <div class="bg-joner-black border border-gray-800 p-6">
+            <h3 class="font-heading uppercase text-2xl mb-3">Parent Coaches</h3>
+            <p class="text-gray-300">Get a clearer plan for helping young players improve without guessing what to work on next.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24 bg-white text-joner-black">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">FAQ</p>
+          <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none">Questions Coaches Ask.</h2>
+        </div>
+        <div class="space-y-4">
+          {faqs.map((faq) => (
+            <details class="group border border-gray-200 bg-gray-50 p-6">
+              <summary class="cursor-pointer list-none font-heading uppercase text-2xl flex items-center justify-between gap-4">
+                {faq.q}
+                <span class="text-joner-red group-open:rotate-45 transition-transform">+</span>
+              </summary>
+              <p class="text-gray-700 mt-4 text-lg">{faq.a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+
     <section class="py-16 md:py-24">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none mb-6">Want It For Your Team?</h2>
-        <p class="text-xl text-gray-300 mb-8">Use Team Subscriptions if you want app access for a full squad, club, or coaching group.</p>
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">COACH BETTER THIS WEEK</p>
+        <h2 class="font-heading uppercase text-4xl md:text-7xl leading-none mb-6">Stop Guessing. Start Coaching The Detail.</h2>
+        <p class="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">Join Coaches Only inside the Joner Football App and get the coaching resource Lee built for coaches who want more than surface-level drills.</p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
-          <a href="/teams" class="btn-red text-center">Team Subscriptions</a>
-          <a href="/app" class="btn-outline text-center">Back To JF APP</a>
+          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-center" data-meta-checkout-event="CoachesPageClickToCheckout">Start Coaches Only</a>
+          <a href={appCategoryUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-center">Preview In The App</a>
         </div>
       </div>
     </section>

@@ -1,0 +1,40 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const title = 'Welcome To Joner Football | Registration Complete'
+const description = 'Your Joner Football registration is complete. Welcome to the team.'
+---
+
+<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/checkout-success/">
+  <main class="bg-joner-black text-white">
+    <section class="min-h-[70vh] flex items-center py-20 md:py-28">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-5">REGISTRATION COMPLETE</p>
+        <h1 class="font-heading uppercase text-5xl md:text-7xl leading-none mb-6">Welcome To The Team.</h1>
+        <p class="text-xl text-gray-300 mb-8">You are in. Open the Joner Football App and start training with purpose.</p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a href="https://app.jonerfootball.com" target="_blank" rel="noopener noreferrer" class="btn-red text-center">Open The App</a>
+          <a href="/app" class="btn-outline text-center">Back To App Page</a>
+        </div>
+      </div>
+    </section>
+
+    <script is:inline>
+      (function () {
+        function fireCompleteRegistration() {
+          if (!window.JonerTracking || typeof window.JonerTracking.trackEvent !== 'function') return;
+          var params = new URLSearchParams(window.location.search || '');
+          var product = params.get('product') || params.get('o') || 'joner_app';
+          window.JonerTracking.trackEvent('CompleteRegistration', {
+            custom_data: {
+              content_name: product,
+              status: 'completed_registration'
+            }
+          });
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fireCompleteRegistration);
+        else fireCompleteRegistration();
+      })();
+    </script>
+  </main>
+</BaseLayout>

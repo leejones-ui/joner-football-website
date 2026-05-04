@@ -21,6 +21,7 @@ const {
 } = Astro.props
 
 const canonicalURL = canonical || `https://jonerfootball.com${Astro.url.pathname}`
+const hideMobileStickyAppCta = Astro.url.pathname === '/' || Astro.url.pathname.startsWith('/hub')
 
 const orgSchema = {
   "@context": "https://schema.org",
@@ -116,12 +117,186 @@ const allSchemas = schema
     </main>
     <Footer />
 
-    <!-- Mobile sticky bottom bar -->
-    <div class="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-joner-black border-t border-gray-800 p-3">
-      <a href="/app" class="btn-red w-full text-center block text-sm">
-        Download the App
-      </a>
-    </div>
+    <script is:inline>
+      (function () {
+        var TRACKING_PARAM_PREFIXES = ['utm_'];
+        var TRACKING_PARAM_KEYS = ['fbclid', 'gclid', 'ttclid', 'msclkid'];
+        var STORAGE_KEY = 'joner_tracking_params';
+
+        function isTrackingParam(key) {
+          if (TRACKING_PARAM_KEYS.indexOf(key) !== -1) return true;
+          for (var i = 0; i < TRACKING_PARAM_PREFIXES.length; i++) {
+            if (key.indexOf(TRACKING_PARAM_PREFIXES[i]) === 0) return true;
+          }
+          return false;
+        }
+
+        function collectTrackingParams() {
+          var params = new URLSearchParams(window.location.search || '');
+          var trackingParams = new URLSearchParams();
+          params.forEach(function (value, key) {
+            if (value && isTrackingParam(key)) trackingParams.set(key, value);
+          });
+          if (trackingParams.toString()) {
+            try { window.sessionStorage.setItem(STORAGE_KEY, trackingParams.toString()); } catch (e) {}
+            return trackingParams;
+          }
+          try {
+            var stored = window.sessionStorage.getItem(STORAGE_KEY);
+            if (stored) return new URLSearchParams(stored);
+          } catch (e) {}
+          return new URLSearchParams();
+        }
+
+        function paramsToObject(params) {
+          var obj = {};
+          if (!params) return obj;
+          params.forEach(function (value, key) { obj[key] = value; });
+          return obj;
+        }
+
+        function appendTrackingParams(href, trackingParams) {
+          if (!href || !trackingParams || !trackingParams.toString()) return href;
+          try {
+            var url = new URL(href, window.location.href);
+            trackingParams.forEach(function (value, key) {
+              if (value && !url.searchParams.has(key)) url.searchParams.set(key, value);
+            });
+            return url.toString();
+          } catch (e) {
+            return href;
+          }
+        }
+
+        function isAppOutboundLink(anchor) {
+          if (!anchor || !anchor.href) return false;
+          try { return new URL(anchor.href, window.location.href).hostname === 'app.jonerfootball.com'; }
+          catch (e) { return false; }
+        }
+
+        function getCookie(name) {
+          var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+          return match ? decodeURIComponent(match[2]) : '';
+        }
+
+        function getEventId(eventName) {
+          if (window.crypto && typeof window.crypto.randomUUID === 'function') return eventName + '.' + window.crypto.randomUUID();
+          return eventName + '.' + Date.now() + '.' + Math.random().toString(16).slice(2);
+        }
+
+        function trackEvent(eventName, options) {
+          options = options || {};
+          var eventId = options.event_id || getEventId(eventName);
+          var trackingParams = collectTrackingParams();
+          var customData = Object.assign({}, paramsToObject(trackingParams), options.custom_data || {});
+          var userData = Object.assign({
+            fbp: getCookie('_fbp'),
+            fbc: getCookie('_fbc')
+          }, options.user_data || {});
+
+          if (typeof window.fbq === 'function') {
+            if (eventName === 'Lead' || eventName === 'CompleteRegistration' || eventName === 'InitiateCheckout' || eventName === 'ViewContent') {
+              window.fbq('track', eventName, customData, { eventID: eventId });
+            } else {
+              window.fbq('trackCustom', eventName, customData, { eventID: eventId });
+            }
+          }
+
+          try {
+            var body = JSON.stringify({
+              event_name: eventName,
+              event_id: eventId,
+              event_source_url: window.location.href,
+              user_data: userData,
+              custom_data: customData
+            });
+            if (navigator.sendBeacon) {
+              var blob = new Blob([body], { type: 'application/json' });
+              navigator.sendBeacon('/api/track-event', blob);
+            } else {
+              fetch('/api/track-event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: body,
+                keepalive: true
+              }).catch(function () {});
+            }
+          } catch (e) {}
+
+          return eventId;
+        }
+
+        function getCheckoutEventName(anchor) {
+          if (anchor && anchor.dataset && anchor.dataset.metaCheckoutEvent) return anchor.dataset.metaCheckoutEvent;
+          var path = window.location.pathname || '';
+          var href = anchor && anchor.href ? anchor.href : '';
+          if (path.indexOf('/workshops/coaches-course') === 0 || path.indexOf('/app/for-coaches') === 0 || href.indexOf('o=202578') !== -1) return 'CoachesPageClickToCheckout';
+          return 'WebsiteClickToCheckout';
+        }
+
+        function getDeepScrollEventName() {
+          var path = window.location.pathname || '';
+          if (path.indexOf('/workshops/coaches-course') === 0 || path.indexOf('/app/for-coaches') === 0) return 'CoachesPageDeepScroll';
+          return 'WebsiteDeepScroll';
+        }
+
+        function initTracking() {
+          window.JonerTracking = {
+            collectTrackingParams: collectTrackingParams,
+            appendTrackingParams: appendTrackingParams,
+            trackEvent: trackEvent
+          };
+
+          var trackingParams = collectTrackingParams();
+
+          document.querySelectorAll('a[href]').forEach(function (anchor) {
+            if (!isAppOutboundLink(anchor)) return;
+            anchor.href = appendTrackingParams(anchor.href, trackingParams);
+          });
+
+          document.addEventListener('click', function (event) {
+            var anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+            if (!isAppOutboundLink(anchor)) return;
+            anchor.href = appendTrackingParams(anchor.href, collectTrackingParams());
+            if (anchor.href.indexOf('/checkout/new') !== -1) {
+              trackEvent(getCheckoutEventName(anchor), {
+                custom_data: {
+                  destination_url: anchor.href,
+                  content_name: anchor.textContent ? anchor.textContent.trim().slice(0, 120) : 'checkout-link'
+                }
+              });
+            }
+          }, true);
+
+          var deepScrollTracked = false;
+          function trackDeepScroll() {
+            if (deepScrollTracked) return;
+            var doc = document.documentElement;
+            var scrollable = Math.max(doc.scrollHeight, document.body.scrollHeight) - window.innerHeight;
+            if (scrollable <= 0) return;
+            var percent = (window.scrollY || window.pageYOffset || 0) / scrollable;
+            if (percent >= 0.75) {
+              deepScrollTracked = true;
+              trackEvent(getDeepScrollEventName(), { custom_data: { scroll_percent: 75 } });
+              window.removeEventListener('scroll', trackDeepScroll);
+            }
+          }
+          window.addEventListener('scroll', trackDeepScroll, { passive: true });
+          trackDeepScroll();
+        }
+
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initTracking);
+        else initTracking();
+      })();
+    </script>
+
+    {!hideMobileStickyAppCta && (
+      <div class="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-joner-black border-t border-gray-800 p-3">
+        <a href="/app" class="btn-red w-full text-center block text-sm">
+          Download the App
+        </a>
+      </div>
+    )}
 
     <script is:inline>
       (function () {
@@ -267,6 +442,17 @@ const allSchemas = schema
               .then(function (r) { return r.json(); })
               .then(function (data) {
                 if (data && data.success) {
+                  if (window.JonerTracking && typeof window.JonerTracking.trackEvent === 'function') {
+                    var capiEventName = form.getAttribute('data-capi-event') || (String(source).indexOf('coach') !== -1 ? 'Lead' : 'Lead');
+                    window.JonerTracking.trackEvent(capiEventName, {
+                      user_data: { email: validation.email },
+                      custom_data: {
+                        form_name: source,
+                        list_id: listId,
+                        lead_type: String(source).indexOf('coach') !== -1 ? 'coaches_lead' : 'website_lead'
+                      }
+                    });
+                  }
                   form.innerHTML = '<p style="color:#4ade80;font-size:14px;padding:8px 0;">Done. Welcome to the team.</p>';
                 } else {
                   throw new Error((data && data.error) || 'Something went wrong');
