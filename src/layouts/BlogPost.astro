@@ -13,6 +13,7 @@ export interface Props {
 }
 
 const { title, description, date, category, readTime, image, imageAlt } = Astro.props
+const hubCaptureUrl = `/hub?next=${encodeURIComponent(Astro.url.pathname)}`
 
 const articleSchema = {
   "@context": "https://schema.org",
@@ -57,6 +58,20 @@ const articleSchema = {
       </div>
     )}
 
+    <!-- Hub Capture CTA -->
+    <section class="bg-joner-black py-10 border-y border-white/10">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6">
+        <div class="bg-white text-joner-black p-6 md:p-8 border-l-4 border-joner-red">
+          <p class="font-heading text-xs uppercase tracking-[0.2em] text-joner-red mb-3">Free Joner Football Hub</p>
+          <h2 class="font-heading text-2xl md:text-3xl font-bold uppercase mb-3">Want more free training ideas?</h2>
+          <p class="font-body text-gray-700 mb-5">Enter the Hub for free blogs, challenges, coach resources, giveaways and weekly Joner Football ideas.</p>
+          <a href={hubCaptureUrl} class="inline-flex bg-joner-red text-white px-6 py-3 font-heading uppercase tracking-wide hover:bg-red-700 transition-colors">
+            Enter The Free Hub
+          </a>
+        </div>
+      </div>
+    </section>
+
     <!-- Content -->
     <div class="max-w-3xl mx-auto px-4 sm:px-6 py-12 md:py-16">
       <div class="prose prose-invert prose-lg max-w-none
@@ -72,6 +87,17 @@ const articleSchema = {
         <slot />
       </div>
     </div>
+
+    <!-- Hub Mid-Article CTA -->
+    <section class="bg-joner-gray py-10">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+        <h2 class="font-heading text-2xl md:text-3xl font-bold text-white uppercase mb-3">Get The Free Hub</h2>
+        <p class="text-gray-300 font-body mb-6">Drop your email once and get free Joner Football blogs, challenges and coaching resources.</p>
+        <a href={hubCaptureUrl} class="inline-flex bg-joner-red text-white px-6 py-3 font-heading uppercase tracking-wide hover:bg-red-700 transition-colors">
+          Enter The Free Hub
+        </a>
+      </div>
+    </section>
 
     <!-- App CTA -->
     <section class="bg-joner-red py-12">

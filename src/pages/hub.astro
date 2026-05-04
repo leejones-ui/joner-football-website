@@ -16,8 +16,8 @@ import HubContent from '../components/HubContent.astro'
       <div class="hub-gate__inner">
         <div class="hub-gate__copy">
           <p class="hub-gate__eyebrow">Joner Football Hub</p>
-          <h1>Get free access to the Hub.</h1>
-          <p>Blogs, challenges, coach resources, giveaways and weekly Joner Football ideas. Pop your details in once and you are in.</p>
+          <h1>Joner Football Hub</h1>
+          <p>Free blogs, challenges, coach resources, giveaways and weekly Joner Football ideas. Enter once and you are in.</p>
         </div>
         <form class="hub-gate__form" id="hub-access-form" data-brevo-custom data-list-id="2" novalidate>
           <h2>Enter The Hub</h2>
@@ -53,6 +53,20 @@ import HubContent from '../components/HubContent.astro'
     var form = document.getElementById('hub-access-form');
     var message = document.getElementById('hub-access-message');
 
+    function getSafeNextPath() {
+      var params = new URLSearchParams(window.location.search);
+      var next = params.get('next') || '';
+      if (!next || next.charAt(0) !== '/' || next.indexOf('//') === 0) return '';
+      if (next.indexOf('/hub') === 0) return '';
+      return next;
+    }
+
+    function goNextIfNeeded() {
+      var next = getSafeNextPath();
+      if (next) window.location.assign(next);
+      return Boolean(next);
+    }
+
     function hasAccess() {
       try { return window.localStorage.getItem(STORAGE_KEY) === 'granted'; }
       catch (e) { return false; }
@@ -64,7 +78,10 @@ import HubContent from '../components/HubContent.astro'
       try { window.localStorage.setItem(STORAGE_KEY, 'granted'); } catch (e) {}
     }
 
-    if (hasAccess()) showHub();
+    if (hasAccess()) {
+      showHub();
+      goNextIfNeeded();
+    }
     if (!form) return;
 
     var emailInput = form.querySelector('input[name="email"]');
@@ -111,6 +128,7 @@ import HubContent from '../components/HubContent.astro'
       .then(function (result) {
         if (!result.ok || !result.data || !result.data.success) throw new Error((result.data && result.data.error) || 'That did not go through. Try again.');
         showHub();
+        goNextIfNeeded();
       })
       .catch(function (error) {
         if (message) message.textContent = error.message || 'That did not go through. Try again.';
@@ -149,8 +167,49 @@ import HubContent from '../components/HubContent.astro'
   .hub-gate__form button:disabled { opacity: .65; cursor: not-allowed; }
   .hub-gate__message { min-height: 20px; color: #fbbf24; font-size: .9rem; margin: 14px 0 0; }
   @media (max-width: 860px) {
-    .hub-gate { min-height: 100vh; }
-    .hub-gate__inner { grid-template-columns: 1fr; padding: 48px 0; }
-    .hub-gate__copy h1 { font-size: clamp(3rem, 14vw, 5.2rem); }
+    .hub-gate {
+      min-height: calc(100svh - 4rem);
+      align-items: stretch;
+    }
+
+    .hub-gate__media img {
+      object-position: 58% 22%;
+      opacity: .78;
+    }
+
+    .hub-gate__scrim {
+      background:
+        linear-gradient(180deg, rgba(0,0,0,.9) 0%, rgba(0,0,0,.56) 45%, rgba(0,0,0,.96) 100%),
+        linear-gradient(90deg, rgba(0,0,0,.7) 0%, rgba(0,0,0,.2) 62%, rgba(0,0,0,.42) 100%);
+    }
+
+    .hub-gate__inner {
+      width: calc(100% - 32px);
+      grid-template-columns: 1fr;
+      gap: 22px;
+      padding: 72px 0 32px;
+      align-content: end;
+      align-items: end;
+    }
+
+    .hub-gate__copy h1 {
+      font-size: clamp(3.25rem, 16vw, 5.4rem);
+      max-width: 9ch;
+    }
+
+    .hub-gate__copy p:not(.hub-gate__eyebrow) {
+      max-width: 21rem;
+      font-size: 1rem;
+      line-height: 1.55;
+    }
+
+    .hub-gate__form {
+      padding: 20px;
+      background: rgba(0,0,0,.84);
+    }
+
+    .hub-gate__form h2 {
+      font-size: 2rem;
+    }
   }
 </style>
