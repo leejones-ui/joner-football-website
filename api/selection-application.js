@@ -1,7 +1,9 @@
+import { protectForm } from './_security.js'
+
 const RECIPIENT_EMAIL = 'joner1on1info@gmail.com'
 
 function clean(value, max = 1000) {
-  return String(value || '').trim().slice(0, max)
+  return String(value || '').replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, max)
 }
 
 function validEmail(value) {
@@ -76,6 +78,9 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
+    const protection = await protectForm(req, res, 'selection-application', body)
+    if (!protection.ok) return protection.response
+
     const application = {
       submittedAt: new Date().toISOString(),
       camp: clean(body.camp || 'LA Complete Player Experience', 160),

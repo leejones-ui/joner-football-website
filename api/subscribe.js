@@ -1,3 +1,5 @@
+import { cleanString, protectForm } from './_security.js'
+
 const COMMON_DOMAINS = [
   'gmail.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'yahoo.com',
   'live.com', 'bigpond.com', 'me.com', 'mac.com', 'aol.com', 'proton.me'
@@ -76,14 +78,17 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
+    const protection = await protectForm(req, res, 'subscribe', body)
+    if (!protection.ok) return protection.response
+
     const validation = validateEmail(body.email)
     if (!validation.ok) return res.status(400).json({ success: false, error: validation.error })
 
-    const firstName = String(body.firstName || body.first_name || body.name || '').trim().slice(0, 80)
+    const firstName = cleanString(body.firstName || body.first_name || body.name || '', 80)
     if (!firstName) return res.status(400).json({ success: false, error: 'Name is required.' })
 
     const listId = parseListId(body.listId)
-    const source = String(body.source || body.formName || 'website-form').trim().slice(0, 80)
+    const source = cleanString(body.source || body.formName || 'website-form', 80)
     const isHubGate = source.startsWith('hub-gate')
     const marketingConsent = body.marketingConsent === true || body.marketingConsent === 'true' || body.marketingConsent === 'on'
 

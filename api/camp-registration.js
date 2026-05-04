@@ -1,3 +1,5 @@
+import { protectForm } from './_security.js'
+
 const DEFAULT_SHEET_ID = '1SbGmivi3yqFaBKoMAhoNd5ufUga99DaQBj2noXNJr4k'
 const PENDING_SHEET = 'Leads Pending Payment'
 const PAID_SHEET = 'Paid Camp Registrations'
@@ -29,7 +31,7 @@ const HEADERS = [
 ]
 
 function clean(value, max = 500) {
-  return String(value || '').trim().slice(0, max)
+  return String(value || '').replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, max)
 }
 
 function validEmail(value) {
@@ -215,6 +217,8 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
+    const protection = await protectForm(req, res, 'camp-registration', body)
+    if (!protection.ok) return protection.response
 
     const registration = {
       submittedAt: new Date().toISOString(),

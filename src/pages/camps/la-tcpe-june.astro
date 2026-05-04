@@ -403,6 +403,7 @@ const faqs = [
 
       const formData = new FormData(form)
       const payload = Object.fromEntries(formData.entries())
+      payload.recaptchaToken = window.JonerRecaptcha ? await window.JonerRecaptcha.getToken('selection_application') : ''
 
       try {
         const response = await fetch('/api/selection-application', {

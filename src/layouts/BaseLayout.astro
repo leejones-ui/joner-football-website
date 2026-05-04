@@ -22,6 +22,7 @@ const {
 
 const canonicalURL = canonical || `https://jonerfootball.com${Astro.url.pathname}`
 const hideMobileStickyAppCta = Astro.url.pathname === '/' || Astro.url.pathname.startsWith('/hub')
+const recaptchaSiteKey = import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY || ''
 
 const orgSchema = {
   "@context": "https://schema.org",
@@ -106,6 +107,10 @@ const allSchemas = schema
       <img height="1" width="1" style="display:none"
         src="https://www.facebook.com/tr?id=232666285545279&ev=PageView&noscript=1"/>
     </noscript>
+    {recaptchaSiteKey && (
+      <script src={`https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`} async defer></script>
+    )}
+    {recaptchaSiteKey && <meta name="recaptcha-site-key" content={recaptchaSiteKey} />}
   </head>
   <body class="bg-joner-black text-white">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:bg-red-600 focus:text-white focus:px-4 focus:py-2 focus:z-50 focus:rounded">
@@ -405,6 +410,19 @@ const allSchemas = schema
 
         window.JonerEmailGuard = { validateEmail: validateEmail, setFeedback: setFeedback, protectEmailInput: protectEmailInput };
 
+        function getRecaptchaToken(action) {
+          var meta = document.querySelector('meta[name="recaptcha-site-key"]');
+          var siteKey = meta && meta.getAttribute('content');
+          if (!siteKey || !window.grecaptcha || !window.grecaptcha.execute) return Promise.resolve('');
+          return new Promise(function (resolve) {
+            window.grecaptcha.ready(function () {
+              window.grecaptcha.execute(siteKey, { action: action || 'submit' }).then(resolve).catch(function () { resolve(''); });
+            });
+          });
+        }
+
+        window.JonerRecaptcha = { getToken: getRecaptchaToken };
+
         function initBrevoForms() {
           document.querySelectorAll('[data-brevo-form] input[type="email"], [data-brevo-form] input[name="email"]').forEach(protectEmailInput);
           document.querySelectorAll('[data-brevo-form]').forEach(function (form) {
@@ -434,10 +452,12 @@ const allSchemas = schema
                 btn.classList.add('opacity-70', 'cursor-not-allowed');
               }
 
-              fetch('/api/subscribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: validation.email, firstName: firstName, listId: listId, source: source })
+              getRecaptchaToken('subscribe').then(function (recaptchaToken) {
+                return fetch('/api/subscribe', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email: validation.email, firstName: firstName, listId: listId, source: source, recaptchaToken: recaptchaToken })
+                });
               })
               .then(function (r) { return r.json(); })
               .then(function (data) {

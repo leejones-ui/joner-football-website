@@ -149,6 +149,7 @@ const defaultPaymentLink = 'https://app.jonerfootball.com'
       const formData = new FormData(form)
       const payload = Object.fromEntries(formData.entries())
       payload.agreementAccepted = formData.get('agreementAccepted') === 'on'
+      payload.recaptchaToken = window.JonerRecaptcha ? await window.JonerRecaptcha.getToken('camp_registration') : ''
 
       try {
         const response = await fetch('/api/camp-registration', {

@@ -119,10 +119,13 @@ import HubContent from '../components/HubContent.astro'
       }
       if (message) message.textContent = '';
 
-      fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: validation.email, firstName: name, listId: 2, source: 'hub-gate-email-consent', marketingConsent: true })
+      (window.JonerRecaptcha ? window.JonerRecaptcha.getToken('hub_gate') : Promise.resolve(''))
+      .then(function (recaptchaToken) {
+        return fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: validation.email, firstName: name, listId: 2, source: 'hub-gate-email-consent', marketingConsent: true, recaptchaToken: recaptchaToken })
+        });
       })
       .then(function (response) { return response.json().then(function (data) { return { ok: response.ok, data: data }; }); })
       .then(function (result) {
