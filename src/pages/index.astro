@@ -172,7 +172,7 @@ const storyBeats = [
     kicker: 'Action',
     title: 'Choose Your Next Step',
     body: 'Train online, train with us, join a camp, or get inside the Joner Football Hub.',
-    image: '/images/home-storyboard/08-choose-next-step.webp',
+    image: '/images/home-storyboard/08-choose-next-step-alt.webp',
     alt: 'Lee Jones giving coaching detail during a Joner Football session',
     objectPosition: '50% 50%',
     objectPositionTablet: '50% 50%',
@@ -208,15 +208,15 @@ const primaryPaths = [
 ]
 
 const actionLinks = [
-  { label: 'The App', href: '/app', className: 'app' },
-  { label: 'Train in Person', href: '/training', className: 'train' },
-  { label: 'Coaches Section', href: '/app/for-coaches', className: 'coaches' },
-  { label: 'Elite Camps', href: '/camps', className: 'camps' },
-  { label: 'Workshops', href: '/workshops', className: 'workshops' },
-  { label: 'The JF Hub', href: '/hub', className: 'hub' },
-  { label: 'Player', href: '/app', className: 'player' },
-  { label: 'Parent', href: '/training#joners-juniors', className: 'parent' },
-  { label: 'Coach', href: '/app/for-coaches', className: 'coach' },
+  { label: 'The App', href: '/app', className: 'app', eyebrow: 'Train online', icon: 'APP' },
+  { label: 'Train in Person', href: '/training', className: 'train', eyebrow: 'Sydney sessions', icon: 'JFP' },
+  { label: 'Coaches Section', href: '/app/for-coaches', className: 'coaches', eyebrow: 'Plan better', icon: 'CO' },
+  { label: 'Elite Camps', href: '/camps', className: 'camps', eyebrow: 'Worldwide', icon: 'CA' },
+  { label: 'Workshops', href: '/workshops', className: 'workshops', eyebrow: 'Learn live', icon: 'WS' },
+  { label: 'The JF Hub', href: '/hub', className: 'hub', eyebrow: 'Free resources', icon: 'HUB' },
+  { label: 'Player', href: '/app', className: 'player', eyebrow: 'Improve your game', icon: 'PL' },
+  { label: 'Parent', href: '/training#joners-juniors', className: 'parent', eyebrow: 'Find a pathway', icon: 'PA' },
+  { label: 'Coach', href: '/app/for-coaches', className: 'coach', eyebrow: 'Coach with clarity', icon: 'CH' },
 ]
 
 const journeyLinks = [
@@ -801,7 +801,154 @@ const mediaStyle = (beat) => {
         box-shadow: inset 0 0 80px rgba(0,0,0,0.22);
       }
 
-      .action-hotspot,
+      .action-board {
+        position: absolute;
+        z-index: 45;
+        left: 8.4%;
+        top: 51.6%;
+        width: 63.4%;
+        height: 39.6%;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: repeat(3, minmax(0, 1fr));
+        gap: 4.8% 2.8%;
+      }
+
+      .action-card {
+        position: relative;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: clamp(0.55rem, 1vw, 0.9rem);
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.36);
+        border-radius: 0.62rem;
+        background:
+          linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04)),
+          rgba(6,6,6,0.58);
+        color: #FFFFFF;
+        padding: clamp(0.7rem, 1.05vw, 1rem);
+        text-decoration: none;
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,0.22),
+          0 1rem 2.4rem rgba(0,0,0,0.24);
+        backdrop-filter: blur(18px) saturate(1.22);
+        transform: translateZ(0);
+        transition:
+          transform 220ms cubic-bezier(.22,1,.36,1),
+          border-color 220ms ease,
+          background-color 220ms ease,
+          box-shadow 220ms ease;
+      }
+
+      .action-card::before,
+      .action-card::after {
+        content: "";
+        position: absolute;
+        pointer-events: none;
+      }
+
+      .action-card::before {
+        inset: 0;
+        background: radial-gradient(circle at 18% 0%, rgba(227,6,19,0.2), transparent 42%);
+        opacity: 0;
+        transition: opacity 220ms ease;
+      }
+
+      .action-card::after {
+        left: 0;
+        top: 0;
+        width: 42%;
+        height: 2px;
+        background: linear-gradient(90deg, #E30613, rgba(227,6,19,0));
+        opacity: 0.9;
+      }
+
+      .action-card:hover,
+      .action-card:focus-visible {
+        border-color: rgba(255,255,255,0.82);
+        background-color: rgba(12,12,12,0.78);
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,0.28),
+          0 1.4rem 3rem rgba(0,0,0,0.34),
+          0 0 2.2rem rgba(227,6,19,0.22);
+        outline: none;
+        transform: translateY(-0.18rem) scale(1.018);
+      }
+
+      .action-card:hover::before,
+      .action-card:focus-visible::before {
+        opacity: 1;
+      }
+
+      .action-card:active {
+        transform: translateY(0) scale(0.985);
+      }
+
+      .action-card-icon {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: clamp(2rem, 2.35vw, 2.65rem);
+        height: clamp(2rem, 2.35vw, 2.65rem);
+        border: 1px solid rgba(227,6,19,0.78);
+        border-radius: 999px;
+        background: rgba(227,6,19,0.16);
+        color: #FFFFFF;
+        font-family: 'Anton', Impact, sans-serif;
+        font-size: clamp(0.62rem, 0.76vw, 0.78rem);
+        letter-spacing: 0.04em;
+        line-height: 1;
+        box-shadow: 0 0 1.3rem rgba(227,6,19,0.14);
+      }
+
+      .action-card-copy {
+        position: relative;
+        min-width: 0;
+      }
+
+      .action-card-eyebrow {
+        display: block;
+        color: rgba(255,255,255,0.58);
+        font-family: Arial, sans-serif;
+        font-size: clamp(0.55rem, 0.72vw, 0.68rem);
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .action-card-title {
+        display: block;
+        margin-top: 0.28rem;
+        color: #FFFFFF;
+        font-family: 'Anton', Impact, sans-serif;
+        font-size: clamp(0.98rem, 1.34vw, 1.42rem);
+        letter-spacing: 0.045em;
+        line-height: 0.95;
+        text-transform: uppercase;
+        text-shadow: 0 0.3rem 1.2rem rgba(0,0,0,0.42);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .action-card-arrow {
+        position: relative;
+        color: #E30613;
+        font-family: Arial, sans-serif;
+        font-size: 1.25rem;
+        line-height: 1;
+        transition: transform 220ms cubic-bezier(.22,1,.36,1), color 220ms ease;
+      }
+
+      .action-card:hover .action-card-arrow,
+      .action-card:focus-visible .action-card-arrow {
+        color: #FFFFFF;
+        transform: translateX(0.18rem);
+      }
+
       .journey-hotspot {
         position: absolute;
         z-index: 45;
@@ -815,8 +962,6 @@ const mediaStyle = (beat) => {
           box-shadow 180ms ease;
       }
 
-      .action-hotspot:hover,
-      .action-hotspot:focus-visible,
       .journey-hotspot:hover,
       .journey-hotspot:focus-visible {
         background: rgba(227,6,19,0.1);
@@ -824,16 +969,6 @@ const mediaStyle = (beat) => {
         box-shadow: 0 0 2rem rgba(227,6,19,0.22);
         outline: none;
       }
-
-      .action-hotspot.app { left: 8.4%; top: 51.6%; width: 20.6%; height: 12.5%; }
-      .action-hotspot.train { left: 29.8%; top: 51.6%; width: 20.8%; height: 12.5%; }
-      .action-hotspot.coaches { left: 51.2%; top: 51.6%; width: 20.6%; height: 12.5%; }
-      .action-hotspot.camps { left: 8.4%; top: 65.1%; width: 20.6%; height: 12.5%; }
-      .action-hotspot.workshops { left: 29.8%; top: 65.1%; width: 20.8%; height: 12.5%; }
-      .action-hotspot.hub { left: 51.2%; top: 65.1%; width: 20.6%; height: 12.5%; }
-      .action-hotspot.player { left: 8.4%; top: 78.7%; width: 20.6%; height: 12.5%; }
-      .action-hotspot.parent { left: 29.8%; top: 78.7%; width: 20.8%; height: 12.5%; }
-      .action-hotspot.coach { left: 51.2%; top: 78.7%; width: 20.6%; height: 12.5%; }
 
       .journey-section {
         position: relative;
@@ -1014,6 +1149,53 @@ const mediaStyle = (beat) => {
         .story-overlay[data-state="active"] {
           display: none;
         }
+
+        .story-overlay--action[data-state="active"] {
+          display: block;
+        }
+
+        .action-board {
+          left: 1rem;
+          right: 1rem;
+          top: auto;
+          bottom: max(1rem, env(safe-area-inset-bottom));
+          width: auto;
+          height: auto;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-rows: none;
+          gap: 0.52rem;
+        }
+
+        .action-card {
+          grid-template-columns: 1fr auto;
+          gap: 0.35rem;
+          min-height: 4.25rem;
+          border-radius: 0.52rem;
+          padding: 0.7rem 0.62rem;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.18),
+            0 0.8rem 1.8rem rgba(0,0,0,0.28);
+        }
+
+        .action-card-icon {
+          display: none;
+        }
+
+        .action-card-eyebrow {
+          font-size: 0.48rem;
+          letter-spacing: 0.1em;
+        }
+
+        .action-card-title {
+          margin-top: 0.22rem;
+          font-size: clamp(0.78rem, 3.4vw, 1rem);
+          white-space: normal;
+          line-height: 1;
+        }
+
+        .action-card-arrow {
+          font-size: 1rem;
+        }
       }
     </style>
   </Fragment>
@@ -1146,7 +1328,7 @@ const mediaStyle = (beat) => {
         ))}
 
         {storyBeats.map((beat, index) => (
-          <div class="story-overlay absolute inset-0 z-30" data-story-overlay data-index={index} data-state={index === 0 ? 'active' : 'inactive'} hidden={index !== 0}>
+          <div class:list={['story-overlay absolute inset-0 z-30', beat.overlay === 'actionGraphic' && 'story-overlay--action']} data-story-overlay data-index={index} data-state={index === 0 ? 'active' : 'inactive'} hidden={index !== 0}>
             {beat.overlay === 'growth' && (
               <div class="absolute right-[6vw] top-[15vh] w-[38vw] max-w-[40rem]">
                 <div class="metric-card p-6">
@@ -1187,10 +1369,19 @@ const mediaStyle = (beat) => {
             )}
 
             {beat.overlay === 'actionGraphic' && (
-              <div class="absolute inset-0">
-                {actionLinks.map((link) => (
-                  <a class:list={['action-hotspot', link.className]} href={link.href} aria-label={link.label}></a>
-                ))}
+              <div class="absolute inset-0 story-overlay--action">
+                <nav class="action-board" aria-label="Choose your next step">
+                  {actionLinks.map((link) => (
+                    <a class:list={['action-card', link.className]} href={link.href} aria-label={link.label}>
+                      <span class="action-card-icon" aria-hidden="true">{link.icon}</span>
+                      <span class="action-card-copy">
+                        <span class="action-card-eyebrow">{link.eyebrow}</span>
+                        <span class="action-card-title">{link.label}</span>
+                      </span>
+                      <span class="action-card-arrow" aria-hidden="true">›</span>
+                    </a>
+                  ))}
+                </nav>
               </div>
             )}
           </div>
