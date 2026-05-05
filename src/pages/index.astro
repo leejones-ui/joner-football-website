@@ -1043,6 +1043,213 @@ const mediaStyle = (beat) => {
         object-position: var(--story-object-desktop, 50% 50%);
       }
 
+
+
+      .story-mobile {
+        display: none;
+        background: #050505;
+        color: #FFFFFF;
+      }
+
+      .story-mobile-panel {
+        position: relative;
+        min-height: calc(100svh - 4rem);
+        overflow: hidden;
+        display: grid;
+        place-items: center;
+        padding: 5.5rem 1.5rem 4.5rem;
+        isolation: isolate;
+      }
+
+      .story-mobile-bg,
+      .story-mobile-bg img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -3;
+      }
+
+      .story-mobile-bg img {
+        object-fit: cover;
+      }
+
+      .story-mobile-panel::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -2;
+        background:
+          linear-gradient(180deg, rgba(0,0,0,0.62), rgba(0,0,0,0.24) 42%, rgba(0,0,0,0.72)),
+          radial-gradient(circle at 50% 36%, rgba(0,0,0,0.1), rgba(0,0,0,0.62) 74%);
+      }
+
+      .story-mobile-content {
+        width: min(21rem, 86vw);
+        margin: 0 auto;
+        text-align: center;
+      }
+
+      .story-mobile-kicker {
+        margin-bottom: 1.05rem;
+        color: rgba(255,255,255,0.76);
+        font-family: Arial, sans-serif;
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .story-mobile-title {
+        color: #FFFFFF;
+        font-family: 'Anton', Impact, sans-serif;
+        font-size: clamp(3rem, 13vw, 4.9rem);
+        line-height: 0.92;
+        letter-spacing: 0.035em;
+        text-transform: uppercase;
+        text-shadow: 0 1.2rem 2.8rem rgba(0,0,0,0.62);
+      }
+
+      .story-mobile-body {
+        margin: 1.15rem auto 0;
+        max-width: 20rem;
+        color: rgba(255,255,255,0.78);
+        font-size: 1rem;
+        line-height: 1.48;
+      }
+
+      .story-mobile-rail {
+        position: absolute;
+        left: 0.95rem;
+        top: 7.8rem;
+        bottom: 4.8rem;
+        z-index: 4;
+        display: grid;
+        grid-template-columns: 0.8rem auto;
+        gap: 0.62rem;
+        align-items: stretch;
+        pointer-events: none;
+      }
+
+      .story-mobile-line {
+        position: relative;
+        width: 1px;
+        margin-left: 0.38rem;
+        background: rgba(255,255,255,0.28);
+      }
+
+      .story-mobile-line::before,
+      .story-mobile-line::after {
+        content: "+";
+        position: absolute;
+        left: -0.25rem;
+        color: rgba(255,255,255,0.76);
+        font-family: Arial, sans-serif;
+        font-size: 1rem;
+        line-height: 1;
+      }
+
+      .story-mobile-line::before { top: -0.9rem; }
+      .story-mobile-line::after { bottom: -0.9rem; }
+
+      .story-mobile-dot-list {
+        position: absolute;
+        left: 0.16rem;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .story-mobile-dot {
+        width: 0.48rem;
+        height: 0.48rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.35);
+        background: rgba(0,0,0,0.18);
+      }
+
+      .story-mobile-dot.active {
+        border-color: #E30613;
+        background: #E30613;
+        box-shadow: 0 0 1rem rgba(227,6,19,0.45);
+      }
+
+      .story-mobile-labels {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 0.05rem 0;
+      }
+
+      .story-mobile-label {
+        visibility: hidden;
+        color: rgba(255,255,255,0.34);
+        font-family: 'Anton', Impact, sans-serif;
+        font-size: 0.62rem;
+        letter-spacing: 0.1em;
+        line-height: 1;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .story-mobile-label.active {
+        visibility: visible;
+        color: #FFFFFF;
+        text-shadow: 0 0.8rem 1.8rem rgba(0,0,0,0.72);
+      }
+
+      .story-mobile-cta-row {
+        margin-top: 1.45rem;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.62rem;
+      }
+
+      .story-mobile-cta {
+        border: 1px solid rgba(255,255,255,0.34);
+        border-radius: 999px;
+        background: rgba(5,5,5,0.56);
+        color: #FFFFFF;
+        padding: 0.78rem 1rem;
+        font-family: 'Anton', Impact, sans-serif;
+        font-size: 0.78rem;
+        letter-spacing: 0.13em;
+        line-height: 1;
+        text-transform: uppercase;
+        text-decoration: none;
+        backdrop-filter: blur(14px);
+      }
+
+      .story-mobile-cta.primary {
+        border-color: rgba(227,6,19,0.75);
+        background: rgba(227,6,19,0.78);
+      }
+
+      .story-mobile-action-grid {
+        margin-top: 1.35rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.62rem;
+      }
+
+      .story-mobile-action {
+        border: 1px solid rgba(255,255,255,0.28);
+        border-radius: 0.82rem;
+        background: rgba(5,5,5,0.58);
+        color: #FFFFFF;
+        padding: 0.82rem 0.7rem;
+        font-family: 'Anton', Impact, sans-serif;
+        font-size: 0.82rem;
+        letter-spacing: 0.08em;
+        line-height: 1;
+        text-transform: uppercase;
+        text-decoration: none;
+        backdrop-filter: blur(14px);
+      }
+
       @media (prefers-reduced-motion: reduce) {
         .story-bg,
         .story-copy,
@@ -1064,6 +1271,14 @@ const mediaStyle = (beat) => {
       }
 
       @media (max-width: 767px) {
+        #storyboard-desktop {
+          display: none;
+        }
+
+        .story-mobile {
+          display: block;
+        }
+
         .story-viewport {
           height: calc(100svh - 4rem);
           min-height: 34rem;
@@ -1429,6 +1644,59 @@ const mediaStyle = (beat) => {
       </div>
     </section>
 
+    <section class="story-mobile" aria-label="Joner Football story mobile">
+      {storyBeats.map((beat, index) => (
+        <section class="story-mobile-panel" aria-label={`${beat.number} ${beat.label}`}>
+          <picture class="story-mobile-bg">
+            {beat.mobileImage && <source media="(max-width: 767px)" srcset={beat.mobileImage} />}
+            <img src={beat.image} alt={beat.alt} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
+          </picture>
+
+          <aside class="story-mobile-rail" aria-hidden="true">
+            <div class="story-mobile-line">
+              <div class="story-mobile-dot-list">
+                {storyBeats.map((railBeat, railIndex) => (
+                  <span class:list={['story-mobile-dot', railIndex === index && 'active']}></span>
+                ))}
+              </div>
+            </div>
+            <div class="story-mobile-labels">
+              {storyBeats.map((railBeat, railIndex) => (
+                <span class:list={['story-mobile-label', railIndex === index && 'active']}>{railBeat.label}</span>
+              ))}
+            </div>
+          </aside>
+
+          <div class="story-mobile-content">
+            <p class="story-mobile-kicker">{beat.kicker || beat.label}</p>
+            <h2 class="story-mobile-title">{beat.title}</h2>
+            {beat.body && <p class="story-mobile-body">{beat.body}</p>}
+
+            {beat.overlay === 'actionGraphic' ? (
+              <div class="story-mobile-action-grid">
+                {actionLinks.map((link) => (
+                  <a class="story-mobile-action" href={link.href}>{link.label}</a>
+                ))}
+              </div>
+            ) : beat.ctas && (
+              <div class="story-mobile-cta-row">
+                {beat.ctas.map((cta, ctaIndex) => (
+                  <a
+                    class:list={['story-mobile-cta', ctaIndex === 0 && 'primary']}
+                    href={cta.href}
+                    target={cta.external ? '_blank' : undefined}
+                    rel={cta.external ? 'noopener' : undefined}
+                  >
+                    {cta.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      ))}
+    </section>
+
     <section class="journey-section" aria-label="JFP Player Pathway">
       <img
         src="/images/home-storyboard/jfp-player-pathway.webp"
@@ -1484,7 +1752,7 @@ const mediaStyle = (beat) => {
 
       function initDesktopStory() {
         var shell = document.querySelector('[data-story-shell]');
-        if (!shell) return;
+        if (!shell || window.matchMedia('(max-width: 767px)').matches) return;
 
         var copies = Array.prototype.slice.call(shell.querySelectorAll('[data-story-copy]'));
         var backgrounds = Array.prototype.slice.call(shell.querySelectorAll('[data-story-bg]'));
