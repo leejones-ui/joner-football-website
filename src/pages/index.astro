@@ -132,7 +132,7 @@ const storyBeats = [
     body: 'Built for players, parents, and coaches to train with clarity, confidence, and purpose.',
     image: '/images/home-storyboard/06-app-session-planning.webp',
     mobileImage: '/images/home-storyboard/mobile/06-app-session-planning-mobile.webp',
-    video: '/images/home-storyboard/06-app-header-video.mp4',
+    video: '/images/home-storyboard/06-app-header-video-desktop.mp4',
     alt: 'Joner Football App showing session planning content',
     objectPosition: '50% 50%',
     objectPositionTablet: '50% 50%',
@@ -1477,24 +1477,44 @@ const mediaStyle = (beat) => {
     >
       <div class="story-viewport sticky top-16 overflow-hidden">
         {storyBeats.map((beat, index) => (
-          <picture
-            class="story-bg absolute inset-0 h-full w-full"
-            data-media={beat.video ? 'video' : 'image'}
-            data-story-bg
-            data-index={index}
-            data-state={index === 0 ? 'active' : 'inactive'}
-          >
-            {beat.mobileImage && <source media="(max-width: 767px)" srcset={beat.mobileImage} />}
-            <img
-              class="h-full w-full object-cover"
-              src={beat.image}
-              alt={beat.alt}
-              loading={index === 0 ? 'eager' : 'lazy'}
-              decoding="async"
-              fetchpriority={index === 0 ? 'high' : 'auto'}
+          beat.video ? (
+            <video
+              class="story-bg absolute inset-0 h-full w-full object-cover"
+              aria-label={beat.alt}
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              poster={beat.image}
               style={mediaStyle(beat)}
-            />
-          </picture>
+              data-media="video"
+              data-story-bg
+              data-index={index}
+              data-state={index === 0 ? 'active' : 'inactive'}
+            >
+              <source src={beat.video} type="video/mp4" />
+            </video>
+          ) : (
+            <picture
+              class="story-bg absolute inset-0 h-full w-full"
+              data-media="image"
+              data-story-bg
+              data-index={index}
+              data-state={index === 0 ? 'active' : 'inactive'}
+            >
+              {beat.mobileImage && <source media="(max-width: 767px)" srcset={beat.mobileImage} />}
+              <img
+                class="h-full w-full object-cover"
+                src={beat.image}
+                alt={beat.alt}
+                loading={index === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+                fetchpriority={index === 0 ? 'high' : 'auto'}
+                style={mediaStyle(beat)}
+              />
+            </picture>
+          )
         ))}
 
         <div class="story-shade story-shade-main absolute inset-0"></div>
@@ -1833,7 +1853,19 @@ const mediaStyle = (beat) => {
           });
 
           backgrounds.forEach(function (background, index) {
-            background.setAttribute('data-state', index === nextIndex ? 'active' : 'inactive');
+            var active = index === nextIndex;
+            background.setAttribute('data-state', active ? 'active' : 'inactive');
+
+            if (background.tagName === 'VIDEO') {
+              if (active) {
+                var playPromise = background.play();
+                if (playPromise && typeof playPromise.catch === 'function') {
+                  playPromise.catch(function () {});
+                }
+              } else {
+                background.pause();
+              }
+            }
           });
 
           overlays.forEach(function (overlay, index) {
