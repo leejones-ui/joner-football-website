@@ -48,11 +48,15 @@ const localBizSchema = {
   <!-- Programs overview nav -->
   <section class="bg-joner-black border-b border-gray-800 sticky top-16 z-30">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex overflow-x-auto gap-0 scrollbar-hide">
-        <a href="#jfp" class="flex-shrink-0 px-6 py-4 text-sm font-heading uppercase tracking-wider text-gray-400 hover:text-white hover:bg-joner-gray border-b-2 border-transparent hover:border-joner-red transition-all whitespace-nowrap">JFP Program</a>
-        <a href="#pro-training" class="flex-shrink-0 px-6 py-4 text-sm font-heading uppercase tracking-wider text-gray-400 hover:text-white hover:bg-joner-gray border-b-2 border-transparent hover:border-joner-red transition-all whitespace-nowrap">Professional Training</a>
-        <a href="#joners-juniors" class="flex-shrink-0 px-6 py-4 text-sm font-heading uppercase tracking-wider text-gray-400 hover:text-white hover:bg-joner-gray border-b-2 border-transparent hover:border-joner-red transition-all whitespace-nowrap">Joners Juniors</a>
-        <a href="#game-analysis" class="flex-shrink-0 px-6 py-4 text-sm font-heading uppercase tracking-wider text-gray-400 hover:text-white hover:bg-joner-gray border-b-2 border-transparent hover:border-joner-red transition-all whitespace-nowrap">Game Analysis</a>
+      <div class="relative">
+        <p class="md:hidden text-[10px] font-heading uppercase tracking-[0.22em] text-gray-500 pt-2">Swipe programs</p>
+        <div class="flex overflow-x-auto gap-0 scrollbar-hide snap-x snap-mandatory pr-10 -mr-4 md:mr-0 md:pr-0">
+          <a href="#jfp" class="flex-shrink-0 snap-start px-6 py-4 text-sm font-heading uppercase tracking-wider text-gray-400 hover:text-white hover:bg-joner-gray border-b-2 border-transparent hover:border-joner-red transition-all whitespace-nowrap min-h-[48px]">JFP Program</a>
+          <a href="#pro-training" class="flex-shrink-0 snap-start px-6 py-4 text-sm font-heading uppercase tracking-wider text-gray-400 hover:text-white hover:bg-joner-gray border-b-2 border-transparent hover:border-joner-red transition-all whitespace-nowrap min-h-[48px]">Professional Training</a>
+          <a href="#joners-juniors" class="flex-shrink-0 snap-start px-6 py-4 text-sm font-heading uppercase tracking-wider text-gray-400 hover:text-white hover:bg-joner-gray border-b-2 border-transparent hover:border-joner-red transition-all whitespace-nowrap min-h-[48px]">Joners Juniors</a>
+          <a href="#game-analysis" class="flex-shrink-0 snap-start px-6 py-4 text-sm font-heading uppercase tracking-wider text-gray-400 hover:text-white hover:bg-joner-gray border-b-2 border-transparent hover:border-joner-red transition-all whitespace-nowrap min-h-[48px]">Game Analysis</a>
+        </div>
+        <div class="md:hidden pointer-events-none absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-joner-black to-transparent"></div>
       </div>
     </div>
   </section>
@@ -65,9 +69,10 @@ const localBizSchema = {
         <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase">Training Highlights</h2>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <p class="md:hidden text-gray-500 text-xs uppercase tracking-[0.2em] font-heading text-center mb-4">Swipe highlights</p>
+      <div class="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-visible md:pb-0 scrollbar-hide">
         <!-- How I Coach -->
-        <div>
+        <div class="flex-shrink-0 w-[82vw] snap-center md:w-auto">
           <div class="relative w-full" style="aspect-ratio: 16/9;">
             <iframe
               srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/D13QAvWlZWg?autoplay=1><img src=https://img.youtube.com/vi/D13QAvWlZWg/hqdefault.jpg alt='How I Coach'><span>&#x25BA;</span></a>"
@@ -83,7 +88,7 @@ const localBizSchema = {
         </div>
 
         <!-- Pro Soccer Drills -->
-        <div>
+        <div class="flex-shrink-0 w-[82vw] snap-center md:w-auto">
           <div class="relative w-full" style="aspect-ratio: 16/9;">
             <iframe
               srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/1a1EOdqwF54?autoplay=1><img src=https://img.youtube.com/vi/1a1EOdqwF54/hqdefault.jpg alt='Pro Soccer Drills'><span>&#x25BA;</span></a>"
@@ -99,7 +104,7 @@ const localBizSchema = {
         </div>
 
         <!-- Passing Drill Combo -->
-        <div>
+        <div class="flex-shrink-0 w-[82vw] snap-center md:w-auto">
           <div class="relative w-full" style="aspect-ratio: 16/9;">
             <iframe
               srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/J8uguy9_OQ4?autoplay=1><img src=https://img.youtube.com/vi/J8uguy9_OQ4/hqdefault.jpg alt='Passing Drill Combo'><span>&#x25BA;</span></a>"

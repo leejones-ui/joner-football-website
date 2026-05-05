@@ -318,12 +318,45 @@ const faqs = [
         <h2 class="font-heading text-3xl md:text-4xl font-bold text-white uppercase">COMPARE PLANS</h2>
       </div>
 
-      {/* Mobile rotate hint */}
-      <p class="text-gray-500 font-body text-sm text-center mb-6 md:hidden">
-        Rotate your phone to landscape to see the full comparison table
-      </p>
+      {/* Mobile plan comparison cards */}
+      <div class="md:hidden space-y-4 mb-10">
+        {plans.map((plan) => (
+          <article class:list={[
+            'rounded-lg border p-5 bg-[#0A0A0A]',
+            plan.highlight ? 'border-[#CC0000] shadow-[0_0_24px_rgba(204,0,0,0.22)]' : 'border-gray-800',
+          ]}>
+            <div class="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <p class="font-heading text-white text-xl uppercase tracking-wider">{plan.name}</p>
+                <p class="text-gray-500 font-body text-xs mt-1">{plan.badge}</p>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="font-heading text-[#CC0000] text-2xl">{plan.price}</span>
+                <span class="text-gray-500 text-xs">{plan.period}</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-2">
+              {comparisonFeatures.map((feature) => {
+                const key = plan.name.toLowerCase() === 'coaches' ? 'coaches' : plan.name.toLowerCase()
+                const included = feature[key]
+                return (
+                  <div class="flex items-center justify-between gap-3 border-b border-gray-900 pb-2 last:border-0 last:pb-0">
+                    <span class="text-gray-300 font-body text-sm">{feature.name}</span>
+                    <span class:list={[included ? 'text-[#22C55E]' : 'text-[#6B7280]', 'font-heading text-sm']} aria-label={included ? 'Included' : 'Not included'}>
+                      {included ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            <a href={plan.ctaUrl} target="_blank" rel="noopener noreferrer" class:list={[plan.highlight ? 'bg-[#CC0000]' : 'bg-gray-800', 'block text-center mt-5 py-3 px-4 font-heading text-white uppercase tracking-wider rounded']}>
+              {plan.cta}
+            </a>
+          </article>
+        ))}
+      </div>
 
-      <div class="overflow-x-auto">
+      <div class="hidden md:block overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[640px]">
           <thead>
             <tr class="border-b border-gray-700">

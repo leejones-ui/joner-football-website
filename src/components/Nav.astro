@@ -6,7 +6,7 @@
     <div class="flex items-center justify-between h-16">
 
       <!-- Logo -->
-      <a href="/" class="flex-shrink-0">
+      <a href="/" class="flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center" aria-label="Joner Football home">
         <img src="/images/joner-logo-white.png" alt="Joner Football" class="h-10 w-auto lg:h-12" loading="eager" />
       </a>
 
@@ -121,10 +121,10 @@
   <!-- Mobile slide-out -->
   <div id="mobile-menu" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-black/80" id="mobile-menu-overlay"></div>
-    <div class="absolute right-0 top-0 bottom-0 w-80 bg-joner-gray flex flex-col">
+    <div class="absolute right-0 top-0 bottom-0 w-[min(20rem,100vw)] bg-joner-gray flex flex-col shadow-2xl">
       <div class="flex items-center justify-between p-4 border-b border-gray-700">
         <span class="font-heading text-white font-bold tracking-widest">MENU</span>
-        <button id="mobile-menu-close" class="text-white p-1 min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Close menu">
+        <button id="mobile-menu-close" class="text-white p-2 min-h-[48px] min-w-[48px] flex items-center justify-center" aria-label="Close menu">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>
@@ -193,10 +193,17 @@
   const closeBtn = document.getElementById('mobile-menu-close')
   const overlay = document.getElementById('mobile-menu-overlay')
 
-  function openMenu() { menu?.classList.remove('hidden') }
-  function closeMenu() { menu?.classList.add('hidden') }
+  function openMenu() {
+    menu?.classList.remove('hidden')
+    document.body.style.overflow = 'hidden'
+  }
+  function closeMenu() {
+    menu?.classList.add('hidden')
+    document.body.style.overflow = ''
+  }
 
   btn?.addEventListener('click', openMenu)
   closeBtn?.addEventListener('click', closeMenu)
   overlay?.addEventListener('click', closeMenu)
+  menu?.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu))
 </script>

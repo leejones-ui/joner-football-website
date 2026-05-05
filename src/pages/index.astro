@@ -245,6 +245,7 @@ const mediaStyle = (beat) => {
       .story-page {
         background: #0A0A0A;
         color: #FFFFFF;
+        overflow-x: clip;
       }
 
       .story-shell {
@@ -263,6 +264,7 @@ const mediaStyle = (beat) => {
         min-height: 44rem;
         color: #FFFFFF;
         background: #0A0A0A;
+        contain: layout paint;
         transition:
           background-color 700ms cubic-bezier(.22,.61,.36,1),
           color 700ms cubic-bezier(.22,.61,.36,1);
@@ -1056,7 +1058,7 @@ const mediaStyle = (beat) => {
       @media (max-width: 767px) {
         .story-viewport {
           height: calc(100svh - 4rem);
-          min-height: 39rem;
+          min-height: 34rem;
         }
 
         .story-rail {
@@ -1161,7 +1163,7 @@ const mediaStyle = (beat) => {
           bottom: max(1rem, env(safe-area-inset-bottom));
           width: auto;
           height: auto;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           grid-template-rows: none;
           gap: 0.52rem;
         }
@@ -1169,9 +1171,9 @@ const mediaStyle = (beat) => {
         .action-card {
           grid-template-columns: 1fr auto;
           gap: 0.35rem;
-          min-height: 4.25rem;
+          min-height: 3.9rem;
           border-radius: 0.52rem;
-          padding: 0.7rem 0.62rem;
+          padding: 0.62rem;
           box-shadow:
             inset 0 1px 0 rgba(255,255,255,0.18),
             0 0.8rem 1.8rem rgba(0,0,0,0.28);
@@ -1222,6 +1224,7 @@ const mediaStyle = (beat) => {
               poster={beat.image}
               style={mediaStyle(beat)}
               data-media="video"
+              preload="none"
               data-story-bg
               data-index={index}
               data-state={index === 0 ? 'active' : 'inactive'}
@@ -1233,6 +1236,9 @@ const mediaStyle = (beat) => {
               class="story-bg absolute inset-0 h-full w-full object-cover"
               src={beat.image}
               alt={beat.alt}
+              loading={index === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+              fetchpriority={index === 0 ? 'high' : 'auto'}
               style={mediaStyle(beat)}
               data-media="image"
               data-story-bg

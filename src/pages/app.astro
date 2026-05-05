@@ -35,7 +35,9 @@ const appSchema = {
       muted
       loop
       playsinline
-      class="absolute inset-0 w-full h-full object-cover z-0"
+      preload="metadata"
+      poster="/images/app/screenshot-1.webp"
+      class="hidden md:block absolute inset-0 w-full h-full object-cover z-0"
       style="opacity: 0.4;"
     >
       <source src="https://res.cloudinary.com/dmzisjwdf/video/upload/v1775278435/joner-website/hero-video.mp4" type="video/mp4" />
@@ -49,7 +51,7 @@ const appSchema = {
         <!-- Text content -->
         <div class="text-center lg:text-left">
           <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE WORLD'S #1 FOOTBALL TRAINING APP</p>
-          <h1 class="font-heading text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
+          <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
             YOUR COMPLETE<br/>TRAINING PLATFORM
           </h1>
           <p class="text-gray-300 font-body text-lg md:text-xl mb-8 max-w-lg mx-auto lg:mx-0">
@@ -89,9 +91,9 @@ const appSchema = {
 
         <!-- Phone frames with video -->
         <div class="flex justify-center lg:justify-end">
-          <div class="relative">
+          <div class="relative max-w-full">
             <!-- Primary phone -->
-            <div class="relative" style="width:270px;height:490px">
+            <div class="relative mx-auto" style="width:min(270px,72vw);height:min(490px,130vw)">
               <PhoneFrame
                 images={["/images/app/screenshot-1.webp", "/images/app/screenshot-2.webp", "/images/app/screenshot-3.webp", "/images/app/screenshot-4.webp"]}
                 alt="Joner Football App session plan demo"
@@ -304,14 +306,15 @@ const appSchema = {
         <h2 class="section-heading text-white">EVERYTHING ORGANISED. EVERYTHING READY.</h2>
       </div>
 
-      <div class="flex gap-6 overflow-x-auto pb-4 md:grid md:grid-cols-4 md:gap-8 md:overflow-visible md:pb-0 scrollbar-hide">
+      <p class="md:hidden text-gray-500 text-xs uppercase tracking-[0.2em] font-heading text-center mb-4">Swipe to see more</p>
+      <div class="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-4 md:gap-8 md:overflow-visible md:pb-0 scrollbar-hide">
         {[
           { src: '/images/app/screenshot-2.webp', label: 'Drill Library' },
           { src: '/images/app/screenshot-3.webp', label: 'Session Plans' },
           { src: '/images/app/screenshot-4.webp', label: 'Programme View' },
           { src: '/images/app/screenshot-8.webp', label: 'Daily Training' },
         ].map((item) => (
-          <div class="flex-shrink-0 w-56 md:w-auto text-center">
+          <div class="flex-shrink-0 w-56 md:w-auto text-center snap-center">
             <div class="bg-gray-900 border-[5px] border-gray-700 rounded-[2rem] overflow-hidden shadow-2xl">
               <img src={item.src} alt={item.label} class="w-full h-auto" loading="lazy" />
             </div>
