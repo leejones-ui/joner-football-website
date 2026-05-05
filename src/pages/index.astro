@@ -1143,9 +1143,21 @@ const mediaStyle = (beat) => {
           max-width: 20rem;
         }
 
-        .story-ball-pulse {
-          width: clamp(6.2rem, 29vw, 8.4rem);
-          height: clamp(6.2rem, 29vw, 8.4rem);
+        .story-ball-system {
+          display: none;
+        }
+
+        .story-photo-ball-mask {
+          display: none;
+        }
+
+        .story-bg {
+          transform: none;
+          transition: opacity 360ms ease, filter 360ms ease;
+        }
+
+        .story-bg[data-state="active"] {
+          transform: none;
         }
 
         .story-overlay[data-state="active"] {
@@ -1557,8 +1569,18 @@ const mediaStyle = (beat) => {
           apply(index, progress);
         }
 
-        window.addEventListener('scroll', update, { passive: true });
-        window.addEventListener('resize', update);
+        var ticking = false;
+        function requestUpdate() {
+          if (ticking) return;
+          ticking = true;
+          window.requestAnimationFrame(function () {
+            update();
+            ticking = false;
+          });
+        }
+
+        window.addEventListener('scroll', requestUpdate, { passive: true });
+        window.addEventListener('resize', requestUpdate);
         update();
       }
 
