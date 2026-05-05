@@ -9,6 +9,7 @@ const storyBeats = [
     title: 'Technique Above Everything',
     body: '',
     image: '/images/home-storyboard/01-kick-clean.webp',
+    mobileImage: '/images/home-storyboard/mobile/01-kick-clean-mobile.webp',
     alt: 'Lee Jones striking a football on grass in warm light',
     objectPosition: '50% 50%',
     objectPositionTablet: '54% 50%',
@@ -30,6 +31,7 @@ const storyBeats = [
     title: 'It Started With A Bag Of Balls',
     body: 'In 2013 it started with an idea. Joner Football was born. Now we are recognised all over the world.',
     image: '/images/home-storyboard/02-origin-clean.webp',
+    mobileImage: '/images/home-storyboard/mobile/02-origin-clean-mobile.webp',
     alt: 'Lee Jones training on the grass with a bag of footballs beside him',
     objectPosition: '56% 50%',
     objectPositionTablet: '62% 50%',
@@ -52,6 +54,7 @@ const storyBeats = [
     title: 'Local Sessions. Global Reach.',
     body: 'The work spread through videos, players, parents, coaches, and millions of touches online.',
     image: '/images/home-storyboard/03-method-filming.webp',
+    mobileImage: '/images/home-storyboard/mobile/03-method-filming-mobile.webp',
     alt: 'Lee Jones coaching a technical ball mastery drill indoors',
     objectPosition: '48% 48%',
     objectPositionTablet: '54% 48%',
@@ -82,6 +85,7 @@ const storyBeats = [
     title: 'A Method Like No Other',
     body: 'Every technical detail gets coached through energy, passion & positivity.',
     image: '/images/home-storyboard/04-proof-growth.webp',
+    mobileImage: '/images/home-storyboard/mobile/04-proof-growth-mobile.webp',
     alt: 'Lee Jones coaching players during an evening Joner Football session',
     objectPosition: '50% 44%',
     objectPositionTablet: '54% 44%',
@@ -104,6 +108,7 @@ const storyBeats = [
     title: 'Coaching Worldwide',
     body: 'From Sydney to camps, clinics, and football communities around the world.',
     image: '/images/home-storyboard/05-global-camps.webp',
+    mobileImage: '/images/home-storyboard/mobile/05-global-camps-mobile.webp',
     alt: 'Joner Football players training at a large outdoor camp',
     objectPosition: '50% 46%',
     objectPositionTablet: '48% 48%',
@@ -126,6 +131,7 @@ const storyBeats = [
     title: 'Worlds #1 Football Coaching APP',
     body: 'Built for players, parents, and coaches to train with clarity, confidence, and purpose.',
     image: '/images/home-storyboard/06-app-session-planning.webp',
+    mobileImage: '/images/home-storyboard/mobile/06-app-session-planning-mobile.webp',
     video: '/images/home-storyboard/06-app-header-video.mp4',
     alt: 'Joner Football App showing session planning content',
     objectPosition: '50% 50%',
@@ -151,6 +157,7 @@ const storyBeats = [
     title: 'A Home Of Our Own',
     body: 'Sydney, Australia. Belrose. Our home.',
     image: '/images/home-storyboard/07-facility-hq.webp',
+    mobileImage: '/images/home-storyboard/mobile/07-facility-hq-mobile.webp',
     alt: 'Lee Jones standing outside the Joner Football HQ facility in Belrose',
     objectPosition: '56% 50%',
     objectPositionTablet: '64% 50%',
@@ -173,6 +180,7 @@ const storyBeats = [
     title: 'Choose Your Next Step',
     body: 'Train online, train with us, join a camp, or get inside the Joner Football Hub.',
     image: '/images/home-storyboard/08-choose-next-step-alt.webp',
+    mobileImage: '/images/home-storyboard/mobile/08-choose-next-step-alt-mobile.webp',
     alt: 'Lee Jones giving coaching detail during a Joner Football session',
     objectPosition: '50% 50%',
     objectPositionTablet: '50% 50%',
@@ -1062,6 +1070,31 @@ const mediaStyle = (beat) => {
         }
 
         .story-rail {
+          display: block;
+          left: 1rem;
+          top: 12vh;
+          width: 1.1rem;
+          height: 66vh;
+          opacity: 0.82;
+        }
+
+        .story-rail-line,
+        .story-rail-fill {
+          left: 0.5rem;
+        }
+
+        .story-rail .grid {
+          grid-template-columns: 1rem;
+          gap: 0;
+        }
+
+        .story-rail-dot {
+          width: 0.42rem;
+          height: 0.42rem;
+          margin-left: 0.29rem;
+        }
+
+        .story-rail-label {
           display: none;
         }
 
@@ -1079,11 +1112,11 @@ const mediaStyle = (beat) => {
         .story-copy[data-pos="center"],
         .story-copy[data-pos="action"],
         .story-copy[data-pos="action-left"] {
-          left: 1.25rem;
-          right: 1.25rem;
-          top: 15%;
+          left: 2rem;
+          right: 2rem;
+          top: 18%;
           max-width: none;
-          text-align: left;
+          text-align: center;
           transform: none;
         }
 
@@ -1094,6 +1127,8 @@ const mediaStyle = (beat) => {
         }
 
         .story-copy[data-pos="center"] {
+          left: 1.65rem;
+          right: 1.65rem;
           top: 28%;
           text-align: center;
         }
@@ -1112,17 +1147,20 @@ const mediaStyle = (beat) => {
         }
 
         .story-copy-title.hero-scroll-title {
-          font-size: clamp(3.1rem, 16vw, 5.6rem);
+          font-size: clamp(2.65rem, 13.5vw, 4.2rem);
         }
 
         .story-copy-title:not(.hero-scroll-title) {
-          font-size: clamp(2.7rem, 13vw, 4.7rem);
+          font-size: clamp(2.15rem, 10.5vw, 3.4rem);
+          line-height: 0.94;
         }
 
         .story-body {
           max-width: 20rem;
-          font-size: 1rem;
-          line-height: 1.55;
+          margin-left: auto;
+          margin-right: auto;
+          font-size: 0.95rem;
+          line-height: 1.48;
         }
 
         .story-copy[data-pos="right"] .story-body,
@@ -1135,7 +1173,7 @@ const mediaStyle = (beat) => {
 
         .story-cta-row {
           max-width: 100%;
-          justify-content: flex-start;
+          justify-content: center;
         }
 
         .story-cta-row--mobile {
@@ -1224,40 +1262,24 @@ const mediaStyle = (beat) => {
     >
       <div class="story-viewport sticky top-16 overflow-hidden">
         {storyBeats.map((beat, index) => (
-          beat.video ? (
-            <video
-              class="story-bg absolute inset-0 h-full w-full object-cover"
-              aria-label={beat.alt}
-              autoplay
-              muted
-              loop
-              playsinline
-              preload="metadata"
-              poster={beat.image}
-              style={mediaStyle(beat)}
-              data-media="video"
-              preload="none"
-              data-story-bg
-              data-index={index}
-              data-state={index === 0 ? 'active' : 'inactive'}
-            >
-              <source src={beat.video} type="video/mp4" />
-            </video>
-          ) : (
+          <picture
+            class="story-bg absolute inset-0 h-full w-full"
+            data-media={beat.video ? 'video' : 'image'}
+            data-story-bg
+            data-index={index}
+            data-state={index === 0 ? 'active' : 'inactive'}
+          >
+            {beat.mobileImage && <source media="(max-width: 767px)" srcset={beat.mobileImage} />}
             <img
-              class="story-bg absolute inset-0 h-full w-full object-cover"
+              class="h-full w-full object-cover"
               src={beat.image}
               alt={beat.alt}
               loading={index === 0 ? 'eager' : 'lazy'}
               decoding="async"
               fetchpriority={index === 0 ? 'high' : 'auto'}
               style={mediaStyle(beat)}
-              data-media="image"
-              data-story-bg
-              data-index={index}
-              data-state={index === 0 ? 'active' : 'inactive'}
             />
-          )
+          </picture>
         ))}
 
         <div class="story-shade story-shade-main absolute inset-0"></div>
