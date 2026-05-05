@@ -179,7 +179,7 @@ const storyBeats = [
     kicker: 'Action',
     title: 'Choose Your Next Step',
     body: 'Train online, train with us, join a camp, or get inside the Joner Football Hub.',
-    image: '/images/home-storyboard/08-choose-next-step-alt.webp',
+    image: '/images/home-storyboard/07-action-coach.webp',
     mobileImage: '/images/home-storyboard/mobile/08-choose-next-step-alt-mobile.webp',
     alt: 'Lee Jones giving coaching detail during a Joner Football session',
     objectPosition: '50% 50%',
@@ -800,28 +800,56 @@ const mediaStyle = (beat) => {
       }
 
       .story-shell[data-active="7"] .story-shade-main {
-        background: rgba(0,0,0,0.04);
+        background:
+          linear-gradient(90deg, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.56) 42%, rgba(0,0,0,0.2) 72%),
+          rgba(0,0,0,0.22);
       }
 
       .story-shell[data-active="7"] .story-shade-bottom {
-        opacity: 0.12;
+        opacity: 0.34;
       }
 
       .story-shell[data-active="7"] .story-vignette {
         box-shadow: inset 0 0 80px rgba(0,0,0,0.22);
       }
 
+      .action-intro {
+        position: absolute;
+        z-index: 45;
+        left: clamp(13rem, 18vw, 18rem);
+        top: 21vh;
+        max-width: 44rem;
+      }
+
+      .action-intro h2 {
+        color: #FFFFFF;
+        font-family: 'Anton', Impact, sans-serif;
+        font-size: clamp(3.8rem, 7.2vw, 7rem);
+        line-height: 0.9;
+        letter-spacing: 0.045em;
+        text-transform: uppercase;
+        text-shadow: 0 1.4rem 3rem rgba(0,0,0,0.62);
+      }
+
+      .action-intro p {
+        margin-top: 1rem;
+        max-width: 31rem;
+        color: rgba(255,255,255,0.76);
+        font-size: 1.08rem;
+        line-height: 1.55;
+      }
+
       .action-board {
         position: absolute;
         z-index: 45;
-        left: 8.4%;
-        top: 51.6%;
-        width: 63.4%;
-        height: 39.6%;
+        left: clamp(13rem, 18vw, 18rem);
+        right: clamp(3rem, 6vw, 6rem);
+        bottom: 8vh;
+        height: min(34vh, 22rem);
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         grid-template-rows: repeat(3, minmax(0, 1fr));
-        gap: 4.8% 2.8%;
+        gap: 0.75rem;
       }
 
       .action-card {
@@ -992,7 +1020,7 @@ const mediaStyle = (beat) => {
         width: 100%;
         min-height: calc(100svh - 4rem);
         object-fit: cover;
-        object-position: center;
+        object-position: left center;
       }
 
       .journey-hotspot.juniors { left: 18%; top: 46%; width: 17%; height: 13%; }
@@ -1005,7 +1033,7 @@ const mediaStyle = (beat) => {
           radial-gradient(circle at 18% 0%, rgba(227,6,19,0.18), transparent 32rem),
           #050505;
         color: #FFFFFF;
-        padding: clamp(5rem, 9vw, 8rem) 1.5rem;
+        padding: clamp(4rem, 7vw, 6rem) 1.5rem clamp(3.5rem, 6vw, 5rem);
       }
 
       .home-video-inner {
@@ -1645,6 +1673,11 @@ const mediaStyle = (beat) => {
 
             {beat.overlay === 'actionGraphic' && (
               <div class="absolute inset-0 story-overlay--action">
+                <div class="action-intro">
+                  <p class="story-kicker font-heading text-xs uppercase text-joner-red">Action</p>
+                  <h2>Choose Your Next Step</h2>
+                  <p>Train online, train with us, join a camp, or get inside the Joner Football Hub.</p>
+                </div>
                 <nav class="action-board" aria-label="Choose your next step">
                   {actionLinks.map((link) => (
                     <a class:list={['action-card', link.className]} href={link.href} aria-label={link.label}>
