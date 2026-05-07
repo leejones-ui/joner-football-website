@@ -1,12 +1,26 @@
 import { cleanString, protectForm } from './_security.js'
 
-const RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'leejones@jonerfootball.com'
+const FALLBACK_RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'leejones@jonerfootball.com'
 
 const TYPES = {
   'training-sydney': 'Training Enquiries (Sydney)',
   general: 'General Enquiries',
   'joners-juniors': 'Joners Juniors Enquiries',
   'coaching-role': 'Apply For A Coaching Role',
+}
+
+const RECIPIENTS = {
+  'training-sydney': process.env.CONTACT_TRAINING_EMAIL || FALLBACK_RECIPIENT_EMAIL,
+  general: process.env.CONTACT_GENERAL_EMAIL || FALLBACK_RECIPIENT_EMAIL,
+  'joners-juniors': process.env.CONTACT_JUNIORS_EMAIL || FALLBACK_RECIPIENT_EMAIL,
+  'coaching-role': process.env.CONTACT_COACHING_EMAIL || FALLBACK_RECIPIENT_EMAIL,
+}
+
+const BREVO_LIST_IDS = {
+  'training-sydney': Number(process.env.BREVO_TRAINING_LIST_ID || 6),
+  general: Number(process.env.BREVO_GENERAL_LIST_ID || 14),
+  'joners-juniors': Number(process.env.BREVO_JUNIORS_LIST_ID || 6),
+  'coaching-role': Number(process.env.BREVO_COACHING_LIST_ID || 11),
 }
 
 function clean(value, max = 1000) {
@@ -80,7 +94,7 @@ async function sendEmail(enquiry) {
         name: 'Joner Football Website',
         email: process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com',
       },
-      to: [{ email: RECIPIENT_EMAIL, name: 'Joner Football' }],
+      to: [{ email: enquiry.recipientEmail, name: 'Joner Football' }],
       replyTo: [{ email: enquiry.email, name: enquiry.name }],
       subject: `Website enquiry: ${enquiry.typeLabel}`,
       htmlContent: html,
@@ -91,6 +105,37 @@ async function sendEmail(enquiry) {
   if (!response.ok) {
     const text = await response.text()
     throw new Error(text || 'Email send failed.')
+  }
+}
+
+async function addMarketingOptIn(enquiry) {
+  if (!enquiry.marketingOptIn) return
+  const apiKey = process.env.BREVO_API_KEY
+  if (!apiKey) throw new Error('Email service is not configured.')
+
+  const listId = BREVO_LIST_IDS[enquiry.type] || BREVO_LIST_IDS.general
+  const response = await fetch('https://api.brevo.com/v3/contacts', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': apiKey,
+    },
+    body: JSON.stringify({
+      email: enquiry.email,
+      attributes: {
+        FIRSTNAME: enquiry.name,
+        WEBSITE_SOURCE: `contact-${enquiry.type}`,
+        CONTACT_ENQUIRY_TYPE: enquiry.typeLabel,
+      },
+      listIds: [listId],
+      updateEnabled: true,
+    }),
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(text || 'Brevo opt-in failed.')
   }
 }
 
@@ -126,6 +171,8 @@ export default async function handler(req, res) {
       availability: clean(body.availability, 240),
       message: clean(body.message, 2500),
       cvAttachment: type === 'coaching-role' ? cleanAttachment(body.cvFile) : null,
+      marketingOptIn: body.marketingOptIn === true || body.marketingOptIn === 'true' || body.marketingOptIn === 'on',
+      recipientEmail: RECIPIENTS[type] || FALLBACK_RECIPIENT_EMAIL,
     }
 
     if (!enquiry.name || !enquiry.email || !enquiry.phone || !enquiry.message) {
@@ -145,6 +192,11 @@ export default async function handler(req, res) {
     }
 
     await sendEmail(enquiry)
+    try {
+      await addMarketingOptIn(enquiry)
+    } catch (optInError) {
+      console.error('Contact opt-in failed:', optInError)
+    }
     return res.status(200).json({ success: true })
   } catch (error) {
     console.error('Contact enquiry failed:', error)

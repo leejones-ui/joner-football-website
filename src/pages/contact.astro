@@ -41,9 +41,9 @@ const schema = {
   <section class="relative min-h-[54vh] flex items-center justify-center overflow-hidden bg-joner-black pt-24">
     <div class="absolute inset-0">
       <img
-        src="/images/contact/lee-coaching-landscape.webp"
+        src="/images/contact/lee-coaching-contact-banner.webp"
         alt="Lee Jones coaching on the pitch at Joner Football"
-        class="h-full w-full object-cover object-top"
+        class="h-full w-full object-cover object-center"
       />
       <div class="absolute inset-0 bg-black/68"></div>
       <div class="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-joner-black to-transparent"></div>
@@ -127,6 +127,11 @@ const schema = {
         </div>
 
         <textarea name="message" placeholder="Message" required rows="5" class="w-full resize-none border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none"></textarea>
+
+        <label class="flex gap-3 border border-gray-800 bg-joner-black/60 p-4 font-body text-sm leading-relaxed text-gray-300">
+          <input type="checkbox" name="marketingOptIn" value="true" class="mt-1 h-4 w-4 shrink-0 accent-joner-red" />
+          <span>Yes, send me Joner Football updates, offers, app news, camps, and training tips by email.</span>
+        </label>
 
         <p id="contact-form-status" class="hidden font-body text-sm"></p>
         <button type="submit" class="btn-red w-full text-sm">Send Enquiry</button>
@@ -220,6 +225,7 @@ const schema = {
         formData.forEach(function (value, key) {
           if (!(value instanceof File)) payload[key] = value;
         });
+        payload.marketingOptIn = formData.get('marketingOptIn') === 'true';
 
         var fileInput = form.querySelector('input[name="cvFile"]');
         var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
