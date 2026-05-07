@@ -180,7 +180,7 @@ const storyBeats = [
     kicker: 'Action',
     title: 'Choose Your Next Step',
     body: 'Train online, train with us, join a camp, or get inside the Joner Football Hub.',
-    image: '/images/home-storyboard/07-action-coach.webp',
+    image: '/images/home-storyboard/08-choose-next-step.webp',
     mobileImage: '/images/home-storyboard/mobile/08-choose-next-step-alt-mobile.webp',
     alt: 'Lee Jones giving coaching detail during a Joner Football session',
     objectPosition: '50% 50%',
@@ -192,7 +192,7 @@ const storyBeats = [
     maskSize: 0,
     ballVisible: false,
     tone: 'dark',
-    overlay: 'none',
+    overlay: 'actionGraphic',
   },
 ]
 
@@ -1672,6 +1672,10 @@ const mediaStyle = (beat) => {
               </div>
             )}
 
+            {beat.overlay === 'actionGraphic' && (
+              <ChooseNextStep />
+            )}
+
           </div>
         ))}
       </div>
@@ -1723,8 +1727,6 @@ const mediaStyle = (beat) => {
         </section>
       ))}
     </section>
-
-    <ChooseNextStep />
 
     <section class="journey-section" aria-label="JFP Player Pathway">
       <img
