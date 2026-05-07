@@ -548,6 +548,14 @@ const quickFacts = [
   { label: 'Main outcome', value: mainOutcome },
 ]
 
+const campPhotoSet = [
+  '/images/camps/joner-camps/hero-lee-pointing.jpg',
+  '/images/camps/joner-camps/lee-coaching-group.jpg',
+  '/images/camps/joner-camps/lee-with-players.jpg',
+  '/images/camps/joner-camps/red-shirt-action.jpg',
+  '/images/camps/joner-camps/camp-team-photo.jpg',
+]
+const pageHeroImage = campPhotoSet[0] || heroImage
 const eventSchema = {
   '@context': 'https://schema.org',
   '@type': 'Event',
@@ -597,316 +605,126 @@ const faqSchema = camp.faqItems?.length ? {
   ogImage={ogImage}
   schema={faqSchema ? [eventSchema, faqSchema] : [eventSchema]}
 >
-  <section id="overview" class="relative min-h-[88vh] overflow-hidden bg-joner-black">
-    {heroVideo ? (
-      <video autoplay muted loop playsinline poster={heroImage} class="absolute inset-0 h-full w-full object-cover">
-        <source src={heroVideo} type="video/mp4" />
-      </video>
-    ) : (
-      <img src={heroImage} alt={`${camp.title} with Joner Football players training`} class="absolute inset-0 h-full w-full object-cover" loading="eager" />
-    )}
-    <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/88 to-joner-black/38"></div>
-    <div class="absolute inset-0 bg-gradient-to-t from-joner-black via-transparent to-joner-black/45"></div>
+  <section id="overview" class="camp-hero relative min-h-[86vh] overflow-hidden bg-joner-black">
+    <img src={pageHeroImage} alt={`${camp.title} with Lee Jones coaching players`} class="absolute inset-0 h-full w-full object-cover" loading="eager" />
+    <div class="absolute inset-0 bg-gradient-to-r from-black via-black/78 to-black/20"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/30"></div>
     <div class="absolute inset-x-0 top-0 h-1 bg-joner-red"></div>
 
-    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 md:pt-32">
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 md:pt-32">
       <a href="/camps" class="inline-flex min-h-[44px] items-center text-sm font-body text-gray-300 hover:text-white">Back to all camps</a>
-      <div class="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
-        <div class="max-w-5xl">
-          <div class="flex flex-wrap items-center gap-3 mb-5">
-            <span class="bg-joner-red px-3 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">{camp.heroKicker || 'Elite Camp'}</span>
-            <span class="border border-white/20 bg-black/40 px-3 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">{statusLabel}</span>
-          </div>
-          <h1 class="font-heading text-5xl sm:text-6xl lg:text-7xl font-bold text-white uppercase leading-none">{camp.title}</h1>
-          <p class="mt-6 max-w-3xl text-lg md:text-xl text-gray-100 font-body leading-relaxed">{camp.heroSubtitle || camp.description}</p>
-          <div class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3 max-w-5xl">
-            <div class="camp-stat"><span>Where</span><strong>{camp.location}</strong></div>
-            <div class="camp-stat"><span>When</span><strong>{camp.dates}<br />{camp.times}</strong></div>
-            <div class="camp-stat"><span>Age / Group</span><strong>{camp.ageRange}</strong></div>
-            <div class="camp-stat"><span>For</span><strong>Dedicated players ready to improve</strong></div>
-          </div>
-          <div class="mt-8 flex flex-col sm:flex-row gap-3">
-            <a href="#register" class="btn-red text-center">{ctaLabel}</a>
-            <a href="#quick-facts" class="btn-outline text-center">See Camp Details</a>
-          </div>
+
+      <div class="mt-10 max-w-4xl">
+        <div class="flex flex-wrap items-center gap-3 mb-5">
+          <span class="bg-joner-red px-3 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">Houston 2026</span>
+          <span class="border border-white/25 bg-black/45 px-3 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">{statusLabel}</span>
+          <span class="border border-white/25 bg-black/45 px-3 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">Sold out last year</span>
         </div>
 
-        <aside class="border border-white/20 bg-joner-black/88 p-6 shadow-2xl backdrop-blur-md">
-          <p class="camp-eyebrow">Camp Snapshot</p>
-          <h2 class="font-heading text-3xl font-bold uppercase text-white">Everything parents need fast</h2>
-          <div class="mt-6 space-y-4">
-            <div class="camp-mini"><span>Venue</span><strong>{camp.venueName || camp.venue}</strong></div>
-            <div class="camp-mini"><span>Outcome</span><strong>{mainOutcome}</strong></div>
-            <div class="camp-mini"><span>Spots</span><strong>{spotsLabel}</strong></div>
-            <div class="camp-mini"><span>Options</span><strong>{camp.priceLabel || dayOptions.join(', ')}</strong></div>
-          </div>
-          <a href="#register" class="btn-red mt-7 w-full text-center">{ctaLabel}</a>
-          <p class="mt-4 text-sm text-gray-400 font-body">Registration saves player details first, then sends families to the selected payment link.</p>
-        </aside>
-        </div>
-      </div>
-  </section>
+        <h1 class="font-heading text-5xl sm:text-6xl lg:text-8xl font-bold text-white uppercase leading-none">{camp.title}</h1>
+        <p class="mt-6 max-w-2xl text-xl md:text-2xl text-white font-body font-semibold leading-snug">A high energy Joner Football camp for players who want sharper technique, better confidence, and proper coaching standards.</p>
 
-  <nav class="sticky top-16 z-30 border-y border-gray-800 bg-joner-black/95 backdrop-blur" aria-label="Camp sections">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex gap-2 overflow-x-auto py-3 scrollbar-hide">
-        {[
-          ['Facts', '#quick-facts'],
-          ['Who', '#who-for'],
-          ['Training', '#work-on'],
-          ['Schedule', '#schedule'],
-          ['Proof', '#proof'],
-          ['Location', '#location'],
-          ['Bring', '#bring'],
-          ['FAQs', '#faqs'],
-          ['Book', '#register'],
-        ].map(([label, href]) => (
-          <a href={href} class="shrink-0 border border-gray-800 px-4 py-2 font-heading text-xs uppercase tracking-[0.16em] text-gray-300 hover:border-joner-red hover:text-white">{label}</a>
-        ))}
-      </div>
-    </div>
-  </nav>
-
-  <section id="quick-facts" class="scroll-mt-36 bg-white py-14 md:py-18 text-joner-black">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p class="camp-eyebrow">Quick Camp Facts</p>
-          <h2 class="section-heading text-joner-black">Know Before You Book</h2>
+        <div class="mt-8 grid max-w-3xl grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="hero-fact"><span>Dates</span><strong>{camp.dates}</strong></div>
+          <div class="hero-fact"><span>Time</span><strong>{camp.times}</strong></div>
+          <div class="hero-fact"><span>Ages</span><strong>{camp.ageRange}</strong></div>
         </div>
-        <a href="#register" class="btn-red text-center">{ctaLabel}</a>
-      </div>
-      <div class="mt-9 grid grid-cols-1 md:grid-cols-3 gap-4">
-        {quickFacts.map((fact) => (
-          <article class="camp-fact-card">
-            <span>{fact.label}</span>
-            <strong>{fact.value}</strong>
-          </article>
-        ))}
+
+        <div class="mt-9 flex flex-col sm:flex-row gap-3">
+          <a href="#register" class="btn-red text-center">{ctaLabel}</a>
+          <a href="#details" class="btn-outline text-center">See Details</a>
+        </div>
       </div>
     </div>
   </section>
 
-  <section id="who-for" class="scroll-mt-36 bg-joner-black py-16 md:py-24">
+  <section id="details" class="bg-white py-14 md:py-20 text-joner-black">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-10 items-start">
+      <div class="grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-10 items-center">
         <div>
-          <p class="camp-eyebrow">Who This Camp Is For</p>
-          <h2 class="section-heading text-white">Built For Players Who Want The Work</h2>
-          <p class="mt-5 text-gray-300 font-body text-lg leading-relaxed">{camp.description}</p>
-          {camp.extraInfo && <p class="mt-4 text-gray-400 font-body leading-relaxed">{camp.extraInfo}</p>}
-          <div class="mt-7 flex flex-wrap gap-3">
-            {(camp.trustItems || []).slice(0, 4).map((item: string) => (
-              <span class="border border-white/20 px-4 py-3 font-heading text-xs uppercase tracking-[0.14em] text-white">{item}</span>
-            ))}
+          <p class="camp-eyebrow">Camp Details</p>
+          <h2 class="section-heading text-joner-black">Everything parents need. Nothing extra.</h2>
+          <div class="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="simple-card"><span>Where</span><strong>{camp.venueAddress || camp.venue}</strong></div>
+            <div class="simple-card"><span>Capacity</span><strong>{camp.urgencyLabel || 'Limited spots available'}</strong></div>
+            <div class="simple-card"><span>Options</span><strong>{camp.priceLabel || dayOptions.join(', ')}</strong></div>
+            <div class="simple-card"><span>Groups</span><strong>Grouped by age and ability</strong></div>
           </div>
+          <a href="#register" class="btn-red mt-8">{ctaLabel}</a>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(camp.audienceItems || commonAudience).map((item: any) => (
-            <article class="border border-gray-200 bg-white p-6">
-              <h3 class="font-heading text-2xl font-bold text-joner-black uppercase">{item.title}</h3>
-              <p class="mt-3 text-gray-700 font-body leading-relaxed">{item.description}</p>
+        <figure class="photo-frame h-[420px] lg:h-[520px]">
+          <img src={campPhotoSet[1]} alt="Lee Jones coaching a Joner Football camp group" class="h-full w-full object-cover" loading="lazy" />
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="work-on" class="bg-joner-black py-14 md:py-20 text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-10 items-start">
+        <div>
+          <p class="camp-eyebrow">What Players Get</p>
+          <h2 class="section-heading text-white">Train hard. Learn detail. Leave better.</h2>
+          <p class="mt-4 max-w-xl text-gray-300 font-body text-lg leading-relaxed">This is not babysitting. It is a proper Joner environment for players who want to improve.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {['Ball mastery and first touch', '1v1 moves and confidence', 'Technique under pressure', 'Game realistic decisions'].map((item) => (
+            <article class="dark-card">
+              <span></span>
+              <strong>{item}</strong>
             </article>
           ))}
         </div>
       </div>
-    </div>
-  </section>
 
-  <section id="work-on" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div class="max-w-3xl">
-          <p class="camp-eyebrow">What Players Will Work On</p>
-          <h2 class="section-heading text-joner-black">Technique Above Everything</h2>
-        </div>
-        <p class="max-w-md text-gray-600 font-body">Players work through high-repetition technical detail, pressure moments, and clear standards they can keep training after camp.</p>
-      </div>
-      <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {(camp.trainingThemes || commonThemes).map((theme: any) => (
-          <article class="border border-gray-200 bg-white p-6 transition-colors hover:border-joner-red hover:shadow-lg">
-            <h3 class="font-heading text-xl font-bold text-joner-black uppercase">{theme.title}</h3>
-            <p class="mt-3 text-gray-700 font-body leading-relaxed">{theme.description}</p>
-          </article>
-        ))}
-      </div>
-
-      <div class="mt-12 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8">
-        <div class="border border-gray-800 bg-joner-black p-6 md:p-8">
-          <h3 class="font-heading text-2xl font-bold text-white uppercase">What Players Get</h3>
-          <ul class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {(camp.includedItems || []).map((item: string) => (
-              <li class="flex gap-3 text-gray-300 font-body"><span class="mt-1 h-2 w-2 shrink-0 bg-joner-red"></span><span>{item}</span></li>
-            ))}
-          </ul>
-        </div>
-        <div id="options" class="scroll-mt-36 border border-joner-red bg-joner-black p-6 md:p-8">
-          <p class="camp-eyebrow">Day Options</p>
-          <h3 class="font-heading text-2xl font-bold text-white uppercase">Choose The Right Option</h3>
-          <p class="mt-3 text-gray-400 font-body">Select the day option in the registration form. The live checkout link updates from that selection.</p>
-          <div class="mt-6 space-y-3">
-            {dayOptions.map((option: string) => (
-              <a href="#register" class="flex items-center justify-between gap-4 border border-white/20 bg-white px-4 py-4 hover:border-joner-red">
-                <span class="font-heading text-joner-black uppercase tracking-[0.08em]">{option}</span>
-                <span class="font-heading text-xs uppercase tracking-[0.14em] text-joner-red">Book</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div class="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {(camp.campHighlights || []).map((item: any) => (
-          <article class="border border-gray-800 bg-joner-black p-6">
-            <div class="mb-5 h-1 w-12 bg-joner-red"></div>
-            <h3 class="font-heading text-xl font-bold text-white uppercase">{item.title}</h3>
-            <p class="mt-3 text-sm text-gray-300 font-body leading-relaxed">{item.description}</p>
-          </article>
+      <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {campPhotoSet.slice(2, 5).map((image, index) => (
+          <figure class="photo-frame h-72">
+            <img src={image} alt={`Joner Football camp photo ${index + 1}`} class="h-full w-full object-cover" loading="lazy" />
+          </figure>
         ))}
       </div>
     </div>
   </section>
 
-  <section id="schedule" class="scroll-mt-36 bg-joner-black py-16 md:py-24">
+  <section id="schedule" class="bg-white py-14 md:py-20 text-joner-black">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <p class="camp-eyebrow text-center">Schedule</p>
-      <h2 class="section-heading text-white text-center">What Happens Each Day</h2>
-      <div class="mt-12 space-y-4">
-        {(camp.scheduleItems || []).map((item: any, index: number) => (
-          <article class="grid grid-cols-1 md:grid-cols-[190px_1fr] gap-4 border border-gray-800 bg-white p-5 md:p-6">
-            <div class="flex md:block items-center gap-3">
-              <span class="inline-flex h-10 w-10 items-center justify-center bg-joner-red font-heading font-bold text-white">{index + 1}</span>
-              <p class="font-heading text-sm uppercase tracking-[0.14em] text-joner-red md:mt-4">{item.time}</p>
-            </div>
-            <div>
-              <h3 class="font-heading text-2xl font-bold text-joner-black uppercase">{item.title}</h3>
-              <p class="mt-2 text-gray-400 font-body leading-relaxed">{item.description}</p>
-            </div>
+      <p class="camp-eyebrow text-center">3 Day Flow</p>
+      <h2 class="section-heading text-joner-black text-center">Simple camp structure</h2>
+      <div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {(camp.scheduleItems || []).slice(0, 3).map((item: any, index: number) => (
+          <article class="schedule-card">
+            <span>Day {index + 1}</span>
+            <h3>{item.time}</h3>
+            <p>{item.title}</p>
           </article>
         ))}
       </div>
     </div>
   </section>
 
-  <section id="proof" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">
-        <div>
-          <p class="camp-eyebrow">Coach And Joner Proof</p>
-          <h2 class="section-heading text-joner-black">Led By Football People</h2>
-        </div>
-        <p class="max-w-xl text-gray-600 font-body">Every camp is built around standards, detail, and a coaching team that cares about player development.</p>
-      </div>
-      <div class="mb-8 grid grid-cols-2 md:grid-cols-4 gap-3">
-        {(camp.trustItems || []).slice(0, 4).map((item: string) => (
-          <div class="border border-gray-200 bg-gray-50 p-5 text-center font-heading text-sm uppercase tracking-[0.14em] text-joner-black">{item}</div>
-        ))}
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {(camp.coachProfiles || commonCoaches).slice(0, 3).map((coach: any) => (
-          <article class="border border-gray-200 bg-white overflow-hidden shadow-sm">
-            <div class="h-56 bg-joner-black">
-              <img src={coach.image || '/images/about/coaching-team.webp'} alt={`${coach.name} coaching at Joner Football`} class="h-full w-full object-cover" loading="lazy" />
-            </div>
-            <div class="p-6">
-              <h3 class="font-heading text-2xl font-bold text-joner-black uppercase">{coach.name}</h3>
-              <p class="mt-1 font-heading text-xs uppercase tracking-[0.16em] text-joner-red">{coach.role}</p>
-              <p class="mt-4 text-gray-700 font-body leading-relaxed">{coach.bio}</p>
-            </div>
-          </article>
-        ))}
-      </div>
-      {camp.featureVideoUrl && (
-        <div class="mt-10 grid grid-cols-1 lg:grid-cols-[0.72fr_1.28fr] gap-8 items-center border border-gray-200 bg-gray-50 p-6 md:p-8">
-          <div>
-            <p class="camp-eyebrow">Camp Energy</p>
-            <h3 class="font-heading text-3xl font-bold uppercase text-joner-black">See The Standard Before You Book</h3>
-            <p class="mt-4 text-gray-700 font-body leading-relaxed">A quick look at the pace, intensity, and feel players can expect at a Joner Football elite camp.</p>
-          </div>
-          <div class="aspect-video overflow-hidden border border-gray-800 bg-joner-black">
-            <iframe src={camp.featureVideoUrl} title={`${camp.title} camp video`} class="h-full w-full" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-          </div>
-        </div>
-      )}
-    </div>
-  </section>
-
-  <section id="location" class="scroll-mt-36 bg-joner-black py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-8">
-        <div class="border border-gray-800 bg-white p-6 md:p-8 text-joner-black">
-          <p class="camp-eyebrow">Venue</p>
-          <h2 class="section-heading text-joner-black">{camp.venueName || 'Camp Venue'}</h2>
-          <p class="mt-4 text-gray-700 font-body text-lg">{camp.venueAddress || camp.venue}</p>
-          <p class="mt-4 text-gray-700 font-body leading-relaxed">{camp.venueNotes}</p>
-          {camp.mapUrl && <a href={camp.mapUrl} target="_blank" rel="noopener noreferrer" class="btn-red mt-6">Open In Maps</a>}
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {(camp.galleryImages || []).slice(0, 3).map((image: any) => (
-            <figure class="min-h-[260px] overflow-hidden border border-gray-800 bg-joner-black">
-              <img src={image.url} alt={image.alt || `${camp.title} camp photo`} class="h-full w-full object-cover hover:scale-105 transition-transform duration-300" loading="lazy" />
-            </figure>
-          ))}
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="bring" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-8">
-        <div>
-          <p class="camp-eyebrow">What To Bring</p>
-          <h2 class="section-heading text-joner-black">Arrive Ready</h2>
-          <p class="mt-4 text-gray-600 font-body">Everything is set up for players to train properly. Bring the essentials and come ready to work.</p>
-        </div>
-        <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {(camp.whatToBring || commonBring).map((item: string) => (
-            <li class="flex gap-3 border border-gray-200 bg-gray-50 p-4 text-joner-black font-body"><span class="mt-1 h-2 w-2 shrink-0 bg-joner-red"></span><span>{item}</span></li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <section id="faqs" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <p class="camp-eyebrow text-center">FAQs</p>
-      <h2 class="section-heading text-joner-black text-center">Parent Questions</h2>
-      <div class="mt-10 space-y-3" id="camp-faq">
-        {(camp.faqItems || commonFaqs).map((item: any) => (
-          <article class="faq-item border border-gray-200 bg-white">
-            <button class="faq-toggle flex min-h-[56px] w-full items-center justify-between gap-4 p-5 text-left" aria-expanded="false" type="button">
-              <span class="font-heading text-base font-bold uppercase tracking-[0.08em] text-joner-black">{item.question}</span>
-              <span class="faq-icon text-joner-red transition-transform">+</span>
-            </button>
-            <div class="faq-content hidden px-5 pb-5">
-              <p class="text-gray-700 font-body leading-relaxed">{item.answer}</p>
-            </div>
-          </article>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <section id="register" class="scroll-mt-36 bg-joner-black py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-8 items-start">
-        <div class="camp-summary lg:sticky lg:top-36 border border-gray-200 bg-white text-joner-black p-6 md:p-8">
-          <p class="camp-eyebrow">Final CTA</p>
-          <h2 class="section-heading text-joner-black">Secure Your Place</h2>
-          <p class="mt-4 text-gray-700 font-body leading-relaxed">Submit the registration first. Once it is saved, you will be sent to the selected payment link to complete the booking.</p>
-          <div class="mt-6 space-y-4">
-            <div class="camp-mini"><span>Camp</span><strong>{camp.title}</strong></div>
-            <div class="camp-mini"><span>Dates</span><strong>{camp.dates}</strong></div>
-            <div class="camp-mini"><span>Venue</span><strong>{camp.venueName || camp.venue}</strong></div>
-            <div class="camp-mini"><span>Outcome</span><strong>{mainOutcome}</strong></div>
+  <section id="register" class="relative overflow-hidden bg-joner-black py-14 md:py-24">
+    <img src={campPhotoSet[3]} alt="Joner Football camp players training" class="absolute inset-0 h-full w-full object-cover opacity-25" loading="lazy" />
+    <div class="absolute inset-0 bg-black/78"></div>
+    <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-[0.78fr_1.22fr] gap-8 items-start">
+        <div class="booking-panel text-white">
+          <p class="camp-eyebrow">Register Now</p>
+          <h2 class="section-heading text-white">Book the camp spot.</h2>
+          <p class="mt-4 text-gray-300 font-body leading-relaxed">Fill in the player details first. After submit, you go straight to the selected payment link.</p>
+          <div class="mt-7 space-y-3">
+            <div class="booking-line"><span>Camp</span><strong>{camp.title}</strong></div>
+            <div class="booking-line"><span>Dates</span><strong>{camp.dates}</strong></div>
+            <div class="booking-line"><span>Options</span><strong>{camp.priceLabel || dayOptions.join(', ')}</strong></div>
           </div>
         </div>
 
-        <form id="camp-registration-form" class="border border-gray-200 bg-white text-joner-black p-5 md:p-8 space-y-5">
-          <h3 class="font-heading text-3xl font-bold text-joner-black uppercase">{ctaLabel}</h3>
-          <p class="text-gray-600 font-body text-sm">All fields marked with * are required.</p>
+        <form id="camp-registration-form" class="camp-form bg-white text-joner-black">
+          <div class="form-head">
+            <p class="camp-eyebrow">Player Registration</p>
+            <h3>{ctaLabel}</h3>
+            <p>Required fields only where possible. Payment opens after registration saves.</p>
+          </div>
 
           <input type="hidden" name="camp" value={camp.title} />
           <input type="hidden" name="destination" value={destination} />
@@ -916,29 +734,28 @@ const faqSchema = camp.faqItems?.length ? {
           <input id="payment-link-input" type="hidden" name="paymentLink" value={paymentLink} />
           <script type="application/json" id="day-payment-links" set:html={JSON.stringify(dayPaymentLinks)} />
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="form-grid">
             <label><span class="form-label">Player First Name *</span><input required name="playerFirstName" class="form-input" autocomplete="given-name" /></label>
             <label><span class="form-label">Player Surname *</span><input required name="playerSurname" class="form-input" autocomplete="family-name" /></label>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label><span class="form-label">Parent Name If Under 18</span><input name="parentName" class="form-input" autocomplete="name" /></label>
             <label><span class="form-label">Email *</span><input required type="email" name="email" class="form-input" autocomplete="email" /></label>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label><span class="form-label">Current Age *</span><input required name="age" class="form-input" inputmode="numeric" /></label>
+            <label><span class="form-label">Player Age *</span><input required name="age" class="form-input" inputmode="numeric" /></label>
             <label><span class="form-label">Mobile Number *</span><input required name="mobile" class="form-input" autocomplete="tel" /></label>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label><span class="form-label">Done A Joner Camp Before?</span><select name="previousCamp" class="form-input"><option value="">Select</option><option>Yes</option><option>No</option></select></label>
-            <label><span class="form-label">Current Club / Level</span><input name="clubLevel" class="form-input" /></label>
-          </div>
-          <label><span class="form-label">Where Did You Hear About The Elite Camp?</span><input name="source" class="form-input" /></label>
-          <label><span class="form-label">Medical History</span><textarea name="medicalHistory" rows="3" class="form-input"></textarea></label>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label><span class="form-label">Jersey Size *</span><select required name="jerseySize" class="form-input"><option value="">Select size</option>{jerseySizes.map((size: string) => <option>{size}</option>)}</select></label>
-            <label><span class="form-label">How Many Days? *</span><select id="day-option-select" required name="numberOfDays" class="form-input"><option value="">Select</option>{dayOptions.map((option: string) => <option>{option}</option>)}</select></label>
+            <label><span class="form-label">How Many Days? *</span><select id="day-option-select" required name="numberOfDays" class="form-input"><option value="">Select camp option</option>{dayOptions.map((option: string) => <option>{option}</option>)}</select></label>
           </div>
-          <label><span class="form-label">Extra Player Info</span><textarea name="extraInfo" rows="3" class="form-input"></textarea></label>
+
+          <details class="optional-fields">
+            <summary>Optional player notes</summary>
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label><span class="form-label">Current Club / Level</span><input name="clubLevel" class="form-input" /></label>
+              <label><span class="form-label">Done A Joner Camp Before?</span><select name="previousCamp" class="form-input"><option value="">Select</option><option>Yes</option><option>No</option></select></label>
+            </div>
+            <label class="mt-4 block"><span class="form-label">Medical Notes</span><textarea name="medicalHistory" rows="3" class="form-input"></textarea></label>
+            <label class="mt-4 block"><span class="form-label">Anything Else We Should Know?</span><textarea name="extraInfo" rows="3" class="form-input"></textarea></label>
+            <label class="mt-4 block"><span class="form-label">Where Did You Hear About The Camp?</span><input name="source" class="form-input" /></label>
+          </details>
+
           <label><span class="form-label">Payment Method</span><select id="payment-method-select" name="paymentMethod" class="form-input">{paymentOptions.map((option: any) => <option value={option.value} data-link={option.link}>{option.label}</option>)}</select></label>
 
           <label class="flex gap-3 items-start text-gray-700 font-body text-sm">
@@ -953,74 +770,108 @@ const faqSchema = camp.faqItems?.length ? {
     </div>
   </section>
 
-  <a href="#register" class="fixed bottom-[72px] left-3 right-3 z-40 md:hidden btn-red text-center text-sm shadow-2xl">{ctaLabel}</a>
+  <section id="faqs" class="bg-white text-joner-black py-14 md:py-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <p class="camp-eyebrow text-center">FAQs</p>
+      <h2 class="section-heading text-joner-black text-center">Quick parent questions</h2>
+      <div class="mt-8 space-y-3" id="camp-faq">
+        {(camp.faqItems || commonFaqs).slice(0, 5).map((item: any) => (
+          <article class="faq-item border border-gray-200 bg-white">
+            <button class="faq-toggle flex min-h-[56px] w-full items-center justify-between gap-4 p-5 text-left" aria-expanded="false" type="button">
+              <span class="font-heading text-base font-bold uppercase tracking-[0.08em] text-joner-black">{item.question}</span>
+              <span class="faq-icon text-joner-red transition-transform">+</span>
+            </button>
+            <div class="faq-content hidden px-5 pb-5">
+              <p class="text-gray-700 font-body leading-relaxed">{item.answer}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <a href="#register" class="camp-mobile-cta fixed bottom-[72px] left-3 right-3 z-40 text-center text-sm shadow-2xl">{ctaLabel}</a>
 
   <style>
     .camp-eyebrow {
       color: #E30613;
       font-family: var(--font-heading);
-      font-size: .82rem;
+      font-size: .78rem;
       letter-spacing: .18em;
       text-transform: uppercase;
       margin-bottom: .75rem;
     }
-    .camp-stat {
-      min-height: 92px;
-      border: 1px solid rgba(255,255,255,.16);
+    .hero-fact, .simple-card, .dark-card, .schedule-card, .booking-panel {
+      border: 1px solid rgba(255,255,255,.14);
       background: rgba(10,10,10,.72);
-      padding: 1rem;
       backdrop-filter: blur(8px);
     }
-    .camp-stat span,
-    .camp-mini span,
-    dl dt {
+    .hero-fact { padding: 1rem; min-height: 92px; }
+    .hero-fact span, .simple-card span, .booking-line span, .schedule-card span {
       display: block;
       color: #E30613;
       font-family: var(--font-heading);
       font-size: .72rem;
       letter-spacing: .14em;
       text-transform: uppercase;
-      margin-bottom: .3rem;
+      margin-bottom: .35rem;
     }
-    .camp-stat strong,
-    .camp-mini strong,
-    dl dd {
-      color: #fff;
-      font-family: var(--font-body);
-      font-weight: 700;
-      line-height: 1.25;
-      margin: 0;
+    .hero-fact strong { color: white; font-family: var(--font-body); line-height: 1.25; }
+    .simple-card {
+      background: #f7f7f7;
+      border-color: #e5e7eb;
+      min-height: 132px;
+      padding: 1.35rem;
     }
-    .camp-mini {
-      border-left: 3px solid #E30613;
-      padding-left: 1rem;
-    }
-    .camp-summary .camp-mini strong {
-      color: #0A0A0A;
-    }
-    .camp-fact-card {
-      min-height: 150px;
-      border: 1px solid #e5e7eb;
-      background: #f8f8f8;
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 1.25rem;
-    }
-    .camp-fact-card span {
-      color: #E30613;
-      font-family: var(--font-heading);
-      font-size: .75rem;
-      letter-spacing: .16em;
-      text-transform: uppercase;
-    }
-    .camp-fact-card strong {
+    .simple-card strong {
       color: #0A0A0A;
       font-family: var(--font-body);
-      font-size: 1.08rem;
+      font-size: 1.05rem;
       line-height: 1.35;
     }
+    .dark-card {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      min-height: 96px;
+      padding: 1.35rem;
+    }
+    .dark-card span { width: 5px; align-self: stretch; background: #E30613; }
+    .dark-card strong { font-family: var(--font-heading); text-transform: uppercase; letter-spacing: .08em; }
+    .photo-frame {
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.14);
+      background: #0A0A0A;
+      box-shadow: 0 24px 60px rgba(0,0,0,.18);
+    }
+    .schedule-card {
+      background: #fff;
+      border-color: #e5e7eb;
+      min-height: 190px;
+      padding: 1.5rem;
+    }
+    .schedule-card h3 {
+      color: #0A0A0A;
+      font-family: var(--font-heading);
+      font-size: 1.5rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+    .schedule-card p { margin-top: 1rem; color: #4b5563; font-family: var(--font-body); font-weight: 700; }
+    .booking-panel { padding: 2rem; }
+    .booking-line { border-left: 4px solid #E30613; padding-left: 1rem; }
+    .booking-line strong { color: white; font-family: var(--font-body); line-height: 1.3; }
+    .camp-form {
+      padding: 1.25rem;
+      box-shadow: 0 30px 80px rgba(0,0,0,.35);
+    }
+    @media (min-width: 768px) { .camp-form { padding: 2rem; } }
+    .form-head { border-bottom: 1px solid #e5e7eb; padding-bottom: 1.25rem; margin-bottom: 1.25rem; }
+    .form-head h3 { font-family: var(--font-heading); font-size: clamp(2rem, 4vw, 3rem); line-height: .95; font-weight: 800; text-transform: uppercase; color: #0A0A0A; }
+    .form-head p { margin-top: .5rem; color: #4b5563; font-family: var(--font-body); }
+    .form-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+    @media (min-width: 640px) { .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .form-label {
       display: block;
       color: #0A0A0A;
@@ -1032,11 +883,11 @@ const faqSchema = camp.faqItems?.length ? {
     }
     .form-input {
       width: 100%;
-      background: #0A0A0A;
-      border: 1px solid #333;
-      color: #fff;
-      min-height: 48px;
-      padding: .8rem .9rem;
+      background: #f7f7f7;
+      border: 1px solid #d1d5db;
+      color: #0A0A0A;
+      min-height: 52px;
+      padding: .85rem .95rem;
       font-family: var(--font-body);
       border-radius: 0;
     }
@@ -1044,6 +895,36 @@ const faqSchema = camp.faqItems?.length ? {
       outline: 2px solid #E30613;
       outline-offset: 0;
       border-color: #E30613;
+      background: #fff;
+    }
+    .optional-fields {
+      margin: 1rem 0;
+      border: 1px solid #e5e7eb;
+      background: #fafafa;
+      padding: 1rem;
+      font-family: var(--font-body);
+    }
+    .optional-fields summary {
+      cursor: pointer;
+      font-family: var(--font-heading);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #0A0A0A;
+    }
+    .camp-mobile-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 52px;
+      background: #E30613;
+      color: white;
+      font-family: var(--font-heading);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      padding: .9rem 1rem;
+    }
+    @media (min-width: 768px) {
+      .camp-mobile-cta { display: none; }
     }
   </style>
 
