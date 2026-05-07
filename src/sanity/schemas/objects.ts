@@ -6,6 +6,8 @@ export const seoFields = {
     { name: 'title', title: 'SEO Title', type: 'string' },
     { name: 'description', title: 'SEO Description', type: 'text', rows: 3 },
     { name: 'image', title: 'Social Share Image', type: 'image', options: { hotspot: true } },
+    { name: 'canonicalUrl', title: 'Canonical URL', type: 'url', description: 'Optional. Leave blank unless this page should point search engines to a different primary URL.' },
+    { name: 'noIndex', title: 'Hide From Search Engines', type: 'boolean', initialValue: false },
   ],
 }
 

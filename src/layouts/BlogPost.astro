@@ -13,6 +13,9 @@ export interface Props {
 }
 
 const { title, description, date, category, readTime, image, imageAlt } = Astro.props
+const siteUrl = 'https://jonerfootball.com'
+const canonicalURL = `${siteUrl}${Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`}`
+const absoluteImage = image?.startsWith('http') ? image : image ? `${siteUrl}${image}` : undefined
 const hubCaptureUrl = `/hub?next=${encodeURIComponent(Astro.url.pathname)}`
 
 const articleSchema = {
@@ -21,6 +24,8 @@ const articleSchema = {
   "headline": title,
   "description": description,
   "datePublished": date,
+  "mainEntityOfPage": canonicalURL,
+  ...(absoluteImage ? { "image": absoluteImage } : {}),
   "author": {
     "@type": "Organization",
     "name": "Joner Football"
@@ -36,6 +41,9 @@ const articleSchema = {
 <BaseLayout
   title={`${title} | Joner Football Blog`}
   description={description}
+  canonical={canonicalURL}
+  ogImage={absoluteImage}
+  ogType="article"
   schema={articleSchema}
 >
   <article class="bg-joner-black">

@@ -9,6 +9,8 @@ export interface Props {
   description?: string
   canonical?: string
   ogImage?: string
+  ogType?: 'website' | 'article'
+  noindex?: boolean
   schema?: object | object[]
 }
 
@@ -17,18 +19,35 @@ const {
   description = 'Elite football training, global camps, and the #1 football coaching app. Train with 2.1 million footballers worldwide.',
   canonical,
   ogImage = 'https://jonerfootball.com/images/og-default.jpg',
+  ogType = 'website',
+  noindex = false,
   schema,
 } = Astro.props
 
-const canonicalURL = canonical || `https://jonerfootball.com${Astro.url.pathname}`
+const siteUrl = 'https://jonerfootball.com'
+const path = Astro.url.pathname
+const canonicalPath = path === '/' ? '/' : path.endsWith('/') ? path : `${path}/`
+const canonicalURL = canonical || `${siteUrl}${canonicalPath}`
 const hideMobileStickyAppCta = Astro.url.pathname === '/' || Astro.url.pathname.startsWith('/hub')
 const recaptchaSiteKey = import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY || ''
+
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Joner Football",
+  "url": siteUrl,
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": `${siteUrl}/blog/?q={search_term_string}`,
+    "query-input": "required name=search_term_string"
+  }
+}
 
 const orgSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "Joner Football",
-  "url": "https://jonerfootball.com",
+  "url": siteUrl,
   "logo": "https://jonerfootball.com/images/logo.png",
   "sameAs": [
     "https://www.instagram.com/jonerfootball/",
@@ -44,9 +63,10 @@ const orgSchema = {
   }
 }
 
+const baseSchemas = [orgSchema, websiteSchema]
 const allSchemas = schema
-  ? Array.isArray(schema) ? [orgSchema, ...schema] : [orgSchema, schema]
-  : [orgSchema]
+  ? Array.isArray(schema) ? [...baseSchemas, ...schema] : [...baseSchemas, schema]
+  : baseSchemas
 ---
 
 <!DOCTYPE html>
@@ -55,6 +75,7 @@ const allSchemas = schema
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
     <title>{title}</title>
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
@@ -67,7 +88,7 @@ const allSchemas = schema
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
     <meta property="og:url" content={canonicalURL} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
     <meta property="og:site_name" content="Joner Football" />
 
     <!-- Twitter -->
@@ -75,6 +96,7 @@ const allSchemas = schema
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:site" content="@jonerfootball" />
 
     <!-- Google Fonts preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
