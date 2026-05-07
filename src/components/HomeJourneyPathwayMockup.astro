@@ -82,9 +82,9 @@ const icons: Record<string, string> = {
 
     <div class="jfp-map" aria-label="JFP pathway stages">
       <svg class="jfp-map-lines" viewBox="0 0 760 370" preserveAspectRatio="none" aria-hidden="true">
-        <path class="line-white" d="M126 164 C126 225 258 205 288 290" />
-        <path class="line-white" d="M380 164 L380 290" />
-        <path class="line-white" d="M634 164 C634 225 502 205 472 290" />
+        <path class="line-white" d="M126 185 C126 230 258 214 288 238" />
+        <path class="line-white" d="M380 185 L380 238" />
+        <path class="line-white" d="M634 185 C634 230 502 214 472 238" />
         <path class="line-red line-dash" d="M128 208 C270 255 488 255 632 208" />
       </svg>
 
@@ -102,6 +102,9 @@ const icons: Record<string, string> = {
         <span>Player Pathway</span>
       </a>
     </div>
+
+    <span class="jfp-program-connector" aria-hidden="true"></span>
+    <span class="jfp-goal-connector" aria-hidden="true"></span>
 
     <aside class="jfp-program-card" aria-label="Program details">
       <span class="program-star" aria-hidden="true">☆</span>
@@ -168,8 +171,8 @@ const icons: Record<string, string> = {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: 52% 48%;
-    filter: saturate(0.88) contrast(1.08) brightness(0.62);
+    object-position: 50% 50%;
+    filter: saturate(0.78) contrast(1.1) brightness(0.56);
   }
 
   .jfp-journey-shade {
@@ -178,9 +181,9 @@ const icons: Record<string, string> = {
     background:
       radial-gradient(circle at 47% 40%, rgba(255,255,255,0.1), transparent 17rem),
       radial-gradient(circle at 82% 75%, rgba(227,6,19,0.22), transparent 18rem),
-      linear-gradient(90deg, rgba(0,0,0,0.88), rgba(0,0,0,0.36) 42%, rgba(0,0,0,0.88)),
-      linear-gradient(180deg, rgba(0,0,0,0.72), rgba(0,0,0,0.14) 44%, rgba(0,0,0,0.9));
-    box-shadow: inset 0 0 7rem rgba(0,0,0,0.88);
+      linear-gradient(90deg, rgba(0,0,0,0.9), rgba(0,0,0,0.34) 46%, rgba(0,0,0,0.9)),
+      linear-gradient(180deg, rgba(0,0,0,0.7), rgba(0,0,0,0.12) 45%, rgba(0,0,0,0.92));
+    box-shadow: inset 0 0 9rem rgba(0,0,0,0.9);
   }
 
   .jfp-journey-inner {
@@ -194,8 +197,8 @@ const icons: Record<string, string> = {
 
   .jfp-journey-head {
     position: absolute;
-    left: clamp(1.25rem, 5vw, 5.2rem);
-    top: clamp(4.2rem, 8vw, 6.8rem);
+    left: clamp(6.8rem, 6.9vw, 7.15rem);
+    top: clamp(4.8rem, 5.1vw, 5.3rem);
     width: clamp(17rem, 25vw, 28rem);
     text-transform: uppercase;
     text-shadow: 0 1.2rem 2.7rem rgba(0,0,0,0.72);
@@ -213,8 +216,8 @@ const icons: Record<string, string> = {
   }
 
   .jfp-title-small {
-    margin: 0 0 -0.35rem;
-    font-size: clamp(2.35rem, 4.2vw, 4.5rem);
+    margin: 0 0 -0.28rem clamp(6.7rem, 6.8vw, 7.15rem);
+    font-size: clamp(2.75rem, 4vw, 4.15rem);
     font-style: italic;
     line-height: 0.9;
     letter-spacing: 0.05em;
@@ -222,7 +225,7 @@ const icons: Record<string, string> = {
 
   .jfp-journey-head h2 {
     margin: 0;
-    font-size: clamp(4.4rem, 8vw, 8.6rem);
+    font-size: clamp(5.15rem, 7.3vw, 7.45rem);
     font-style: italic;
     line-height: 0.82;
     letter-spacing: 0.018em;
@@ -230,7 +233,7 @@ const icons: Record<string, string> = {
 
   .jfp-red-rule {
     display: block;
-    width: 4.6rem;
+    width: 7.7rem;
     height: 0.22rem;
     margin: 1rem 0 0.85rem;
     background: var(--jfp-red);
@@ -239,18 +242,18 @@ const icons: Record<string, string> = {
 
   .jfp-subtitle {
     margin: 0;
-    font-size: clamp(0.82rem, 1.25vw, 1.14rem);
+    font-size: clamp(0.9rem, 1.2vw, 1.08rem);
     font-style: italic;
     letter-spacing: 0.32em;
   }
 
   .jfp-chips {
     position: absolute;
-    left: clamp(1.25rem, 4.25vw, 4.4rem);
-    top: clamp(22rem, 36vw, 25rem);
+    left: clamp(1.9rem, 2vw, 2.1rem);
+    top: clamp(24rem, 24.8vw, 24.8rem);
     display: grid;
     gap: 1rem;
-    width: clamp(16rem, 19vw, 20rem);
+    width: clamp(17rem, 17.6vw, 17.9rem);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -261,7 +264,7 @@ const icons: Record<string, string> = {
     grid-template-columns: 2.2rem 1fr;
     align-items: center;
     gap: 1rem;
-    min-height: 3.75rem;
+    min-height: 3.7rem;
     padding: 0 1.45rem;
     border: 1px solid rgba(255,255,255,0.32);
     border-radius: 999px;
@@ -279,17 +282,17 @@ const icons: Record<string, string> = {
 
   .jfp-map {
     position: absolute;
-    left: clamp(20rem, 30vw, 31rem);
-    top: clamp(6.8rem, 12vw, 8.2rem);
-    width: clamp(38rem, 43vw, 47rem);
-    height: clamp(26rem, 31vw, 31rem);
+    left: clamp(28.4rem, 28.8vw, 29rem);
+    top: clamp(21.8rem, 22.3vw, 22.35rem);
+    width: clamp(45.8rem, 45vw, 47rem);
+    height: clamp(22.75rem, 22.95vw, 23rem);
   }
 
   .jfp-map-lines {
     position: absolute;
-    inset: 6.4rem 0 2.5rem;
+    inset: 0;
     width: 100%;
-    height: calc(100% - 8.9rem);
+    height: 100%;
     overflow: visible;
   }
 
@@ -317,8 +320,8 @@ const icons: Record<string, string> = {
     top: 0;
     display: grid;
     place-items: center;
-    width: 10.5rem;
-    min-height: 10.9rem;
+    width: 10.35rem;
+    min-height: 11.45rem;
     padding: 2.4rem 1rem 1.25rem;
     border: 1px solid rgba(255,255,255,0.34);
     border-radius: 0.58rem;
@@ -404,8 +407,8 @@ const icons: Record<string, string> = {
     align-items: baseline;
     justify-content: center;
     gap: 0.7rem;
-    width: min(20rem, 50%);
-    min-height: 5.6rem;
+    width: min(19.1rem, 50%);
+    min-height: 8.55rem;
     padding: 1.1rem 1.5rem;
     border: 1px solid rgba(227,6,19,0.92);
     border-radius: 0.68rem;
@@ -422,13 +425,13 @@ const icons: Record<string, string> = {
 
   .jfp-hub strong {
     color: var(--jfp-red);
-    font-size: clamp(2.15rem, 3vw, 3.2rem);
+    font-size: clamp(3rem, 4vw, 4.05rem);
     font-style: italic;
     line-height: 0.9;
   }
 
   .jfp-hub span {
-    font-size: clamp(1rem, 1.3vw, 1.35rem);
+    font-size: clamp(1.2rem, 1.52vw, 1.55rem);
     font-style: italic;
     letter-spacing: 0.08em;
   }
@@ -444,7 +447,7 @@ const icons: Record<string, string> = {
   .jfp-program-card,
   .jfp-goal-card {
     position: absolute;
-    right: clamp(1.25rem, 4vw, 4.4rem);
+    right: clamp(1.4rem, 2.8vw, 3rem);
     border: 1px solid rgba(227,6,19,0.88);
     border-radius: 0.7rem;
     background:
@@ -455,8 +458,8 @@ const icons: Record<string, string> = {
   }
 
   .jfp-program-card {
-    top: clamp(9rem, 17vw, 14rem);
-    width: clamp(14rem, 17vw, 18rem);
+    top: clamp(18.9rem, 19.4vw, 19.45rem);
+    width: clamp(15.5rem, 15.9vw, 16.2rem);
     padding: 1.25rem 1.25rem 1.35rem;
     display: grid;
     gap: 0.85rem;
@@ -492,10 +495,10 @@ const icons: Record<string, string> = {
   }
 
   .jfp-goal-card {
-    top: clamp(25rem, 35vw, 30rem);
-    width: clamp(20rem, 25vw, 25rem);
-    min-height: 12.5rem;
-    padding: 1.6rem 1.7rem;
+    top: clamp(34.4rem, 35.2vw, 35.35rem);
+    width: clamp(21rem, 21vw, 21.35rem);
+    min-height: 15rem;
+    padding: 1.55rem 1.75rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -518,7 +521,7 @@ const icons: Record<string, string> = {
   .jfp-goal-card strong {
     margin-top: 0.75rem;
     max-width: 16rem;
-    font-size: clamp(2.25rem, 3.4vw, 3.75rem);
+    font-size: clamp(2.6rem, 3.95vw, 4rem);
     font-style: italic;
     line-height: 0.98;
     letter-spacing: 0.04em;
@@ -526,12 +529,12 @@ const icons: Record<string, string> = {
 
   .jfp-unlocks {
     position: absolute;
-    left: clamp(1.25rem, 4vw, 4.4rem);
-    bottom: clamp(3.5rem, 5vw, 4.7rem);
-    width: min(64rem, 67vw);
-    min-height: 6.6rem;
+    left: clamp(0.35rem, 0.5vw, 0.55rem);
+    bottom: clamp(2.65rem, 2.9vw, 2.95rem);
+    width: min(71rem, 68vw);
+    min-height: 10rem;
     display: grid;
-    grid-template-columns: 10.8rem 1fr;
+    grid-template-columns: 12.4rem 1fr;
     align-items: stretch;
     border: 1px solid rgba(255,255,255,0.28);
     border-radius: 0.64rem;
@@ -610,14 +613,14 @@ const icons: Record<string, string> = {
 
   .jfp-cta {
     position: absolute;
-    right: clamp(1.25rem, 4vw, 4.4rem);
-    bottom: clamp(3.5rem, 5vw, 4.7rem);
+    right: clamp(1.4rem, 2.8vw, 3rem);
+    bottom: clamp(2.65rem, 2.9vw, 2.95rem);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 1.1rem;
-    width: clamp(18rem, 24vw, 25rem);
-    min-height: 4.6rem;
+    width: clamp(22rem, 23vw, 23.8rem);
+    min-height: 4.55rem;
     padding: 1rem 1.6rem;
     border: 1px solid rgba(255,255,255,0.22);
     border-radius: 0.45rem;
@@ -720,13 +723,59 @@ const icons: Record<string, string> = {
     stroke: none;
   }
 
+  .jfp-program-connector {
+    position: absolute;
+    z-index: 2;
+    right: clamp(17.8rem, 18.6vw, 19rem);
+    top: clamp(24rem, 24.5vw, 24.6rem);
+    width: clamp(4.2rem, 5vw, 5.2rem);
+    height: 2.6rem;
+    border-bottom: 2px solid rgba(227,6,19,0.86);
+    border-left: 2px solid rgba(227,6,19,0.86);
+    border-bottom-left-radius: 1.4rem;
+  }
+
+  .jfp-program-connector::after {
+    content: "";
+    position: absolute;
+    right: -0.38rem;
+    bottom: -0.31rem;
+    width: 0.62rem;
+    height: 0.62rem;
+    border-radius: 999px;
+    background: var(--jfp-red);
+    box-shadow: 0 0 1rem rgba(227,6,19,0.7);
+  }
+
+  .jfp-goal-connector {
+    position: absolute;
+    z-index: 2;
+    left: clamp(58rem, 60.9vw, 61.1rem);
+    top: clamp(40rem, 40.7vw, 40.9rem);
+    width: clamp(13rem, 15.6vw, 16rem);
+    height: 0;
+    border-top: 2px dashed rgba(255,255,255,0.7);
+  }
+
+  .jfp-goal-connector::after {
+    content: "";
+    position: absolute;
+    right: -0.12rem;
+    top: -0.47rem;
+    width: 0;
+    height: 0;
+    border-top: 0.42rem solid transparent;
+    border-bottom: 0.42rem solid transparent;
+    border-left: 0.7rem solid rgba(255,255,255,0.86);
+  }
+
   @media (max-width: 1220px) {
     .jfp-journey {
       min-height: 58rem;
     }
 
     .jfp-map {
-      left: 32%;
+      left: 29%;
       width: 42rem;
     }
 
@@ -761,6 +810,11 @@ const icons: Record<string, string> = {
       position: relative;
       inset: auto;
       width: 100%;
+    }
+
+    .jfp-program-connector,
+    .jfp-goal-connector {
+      display: none;
     }
 
     .jfp-journey-head {
