@@ -6,7 +6,7 @@ export interface Props {
   ctaLabel?: string
 }
 
-const contactHref = 'https://joner-football-website-88z3bgl1r-leejones-6826s-projects.vercel.app/contact'
+const contactHref = '/contact?type=training-sydney'
 
 const {
   image = '/images/homepage/jfp-journey-photo.webp',
@@ -55,65 +55,60 @@ const icons: Record<string, string> = {
 ---
 
 <section class="jfp-journey" aria-labelledby="jfp-journey-title">
-  <picture class="jfp-journey-bg">
+  <picture class="jfp-bg">
     <source media="(max-width: 720px)" srcset={mobileImage} />
-    <img
-      src={image}
-      alt="Lee Jones at the Joner Football indoor training facility holding a football"
-      loading="lazy"
-      decoding="async"
-    />
+    <img src={image} alt="Lee Jones at the Joner Football indoor training facility" loading="lazy" decoding="async" />
   </picture>
+  <div class="jfp-shade" aria-hidden="true"></div>
 
-  <div class="jfp-journey-shade" aria-hidden="true"></div>
-
-  <div class="jfp-journey-inner">
-    <header class="jfp-journey-head">
-      <p class="jfp-title-small">The</p>
+  <div class="jfp-inner">
+    <header class="jfp-head">
+      <p>The</p>
       <h2 id="jfp-journey-title">Journey</h2>
-      <span class="jfp-red-rule" aria-hidden="true"></span>
-      <p class="jfp-subtitle">JFP Player Pathway</p>
+      <span aria-hidden="true"></span>
+      <small>JFP Player Pathway</small>
     </header>
 
     <ul class="jfp-chips" aria-label="JFP program features">
       {chips.map((chip) => (
         <li>
-          <a href={contactHref} aria-label={`${chip.label}: contact Joner Football`}>
-            <span class="chip-icon" aria-hidden="true" set:html={icons[chip.icon]}></span>
-            <span>{chip.label}</span>
+          <a href={contactHref}>
+            <span aria-hidden="true" set:html={icons[chip.icon]}></span>
+            <strong>{chip.label}</strong>
           </a>
         </li>
       ))}
     </ul>
 
     <div class="jfp-map" aria-label="JFP pathway stages">
-      <svg class="jfp-map-lines" viewBox="0 0 760 370" preserveAspectRatio="none" aria-hidden="true">
-        <path class="line-white" d="M126 185 C126 230 258 214 288 238" />
-        <path class="line-white" d="M380 185 L380 238" />
-        <path class="line-white" d="M634 185 C634 230 502 214 472 238" />
-        <path class="line-red line-dash" d="M128 208 C270 255 488 255 632 208" />
+      <svg class="jfp-lines jfp-lines-desktop" viewBox="0 0 1000 420" preserveAspectRatio="none" aria-hidden="true">
+        <path class="white" d="M150 156 C220 282 372 286 500 330" />
+        <path class="white" d="M500 156 L500 330" />
+        <path class="white" d="M850 156 C780 282 628 286 500 330" />
+        <path class="red dashed" d="M150 230 C325 292 675 292 850 230" />
+        <path class="red" d="M850 156 L982 156" />
+        <path class="red" d="M850 236 L982 236" />
       </svg>
 
-      {stages.map((stage, index) => (
-        <a class:list={['jfp-stage', `jfp-stage--${index + 1}`]} href={contactHref} aria-label={`${stage.title}: contact Joner Football`}>
-          <span class="jfp-stage-tag">{stage.tag}</span>
-          <span class="jfp-stage-icon" aria-hidden="true" set:html={icons[stage.icon]}></span>
-          <strong>{stage.title}</strong>
-          <small>{stage.age}</small>
-        </a>
-      ))}
+      <div class="jfp-stage-row">
+        {stages.map((stage, index) => (
+          <a class:list={['jfp-stage', index === 2 && 'featured']} href={contactHref}>
+            <span class="stage-tag">{stage.tag}</span>
+            <span class="stage-icon" aria-hidden="true" set:html={icons[stage.icon]}></span>
+            <strong>{stage.title}</strong>
+            <small>{stage.age}</small>
+          </a>
+        ))}
+      </div>
 
-      <a class="jfp-hub" href={contactHref} aria-label="JFP Player Pathway: contact Joner Football">
+      <a class="jfp-hub" href={contactHref}>
         <strong>JFP</strong>
         <span>Player Pathway</span>
       </a>
     </div>
 
-    <span class="jfp-program-connector" aria-hidden="true"></span>
-    <span class="jfp-goal-connector" aria-hidden="true"></span>
-
-    <div class="jfp-right-stack">
-      <a class="jfp-program-card" href={contactHref} aria-label="The complete development program: contact Joner Football">
+    <aside class="jfp-side" aria-label="JFP destination">
+      <a class="jfp-program-card" href={contactHref}>
         <span class="program-star" aria-hidden="true" set:html={icons.star}></span>
         <strong>The complete<br />development program.</strong>
         <span>Ages 8+</span>
@@ -121,31 +116,29 @@ const icons: Record<string, string> = {
         <em>Since 2013</em>
       </a>
 
-      <a class="jfp-goal-card" href={contactHref} aria-label="The goal, a career in football: contact Joner Football">
-        <span class="goal-flag" aria-hidden="true" set:html={icons.flag}></span>
-        <span>The Goal</span>
+      <a class="jfp-goal-card" href={contactHref}>
+        <span aria-hidden="true" set:html={icons.flag}></span>
+        <small>The Goal</small>
         <strong>A Career In Football</strong>
       </a>
 
-      <a class="jfp-cta" href={ctaHref} aria-label={`${ctaLabel}: contact Joner Football`}>
+      <a class="jfp-cta" href={ctaHref}>
         <span>{ctaLabel}</span>
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 12h13M13 6l6 6-6 6" />
-        </svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
       </a>
-    </div>
+    </aside>
 
     <footer class="jfp-unlocks" aria-label="What JFP unlocks">
-      <a class="jfp-unlocks-head" href={contactHref} aria-label="What JFP unlocks: contact Joner Football">
+      <a class="jfp-unlocks-head" href={contactHref}>
         <span>What JFP</span>
         <strong>Unlocks</strong>
       </a>
       <ul>
         {unlocks.map((item) => (
           <li>
-            <a href={contactHref} aria-label={`${item.label}: contact Joner Football`}>
-              <span class="unlock-icon" aria-hidden="true" set:html={icons[item.icon]}></span>
-              <span>{item.label}</span>
+            <a href={contactHref}>
+              <span aria-hidden="true" set:html={icons[item.icon]}></span>
+              <strong>{item.label}</strong>
             </a>
           </li>
         ))}
@@ -158,206 +151,219 @@ const icons: Record<string, string> = {
   .jfp-journey {
     --jfp-red: #e30613;
     position: relative;
-    min-height: clamp(48rem, 56.25vw, 61rem);
     overflow: hidden;
     isolation: isolate;
     background: #030303;
     color: #fff;
   }
 
-  .jfp-journey-bg,
-  .jfp-journey-bg img,
-  .jfp-journey-shade {
+  .jfp-bg,
+  .jfp-bg img,
+  .jfp-shade {
     position: absolute;
     inset: 0;
   }
 
-  .jfp-journey-bg {
-    z-index: 0;
-    display: block;
-  }
-
-  .jfp-journey-bg img {
+  .jfp-bg img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     object-position: 50% 50%;
-    filter: saturate(0.96) contrast(1.12) brightness(0.72);
+    filter: saturate(0.96) contrast(1.12) brightness(0.74);
   }
 
-  .jfp-journey-shade {
+  .jfp-shade {
     z-index: 1;
     pointer-events: none;
     background:
-      radial-gradient(circle at 47% 40%, rgba(255,255,255,0.08), transparent 17rem),
-      radial-gradient(circle at 82% 75%, rgba(227,6,19,0.16), transparent 18rem),
-      linear-gradient(90deg, rgba(0,0,0,0.66), rgba(0,0,0,0.18) 46%, rgba(0,0,0,0.7)),
-      linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.06) 45%, rgba(0,0,0,0.74));
-    box-shadow: inset 0 0 6.5rem rgba(0,0,0,0.72);
+      radial-gradient(circle at 48% 43%, rgba(255,255,255,0.08), transparent 17rem),
+      radial-gradient(circle at 78% 68%, rgba(227,6,19,0.17), transparent 19rem),
+      linear-gradient(90deg, rgba(0,0,0,0.78), rgba(0,0,0,0.22) 48%, rgba(0,0,0,0.82)),
+      linear-gradient(180deg, rgba(0,0,0,0.58), rgba(0,0,0,0.08) 44%, rgba(0,0,0,0.86));
+    box-shadow: inset 0 0 6rem rgba(0,0,0,0.74);
   }
 
-  .jfp-journey-inner {
+  .jfp-inner {
     position: relative;
     z-index: 2;
-    width: min(100%, 100rem);
-    min-height: inherit;
+    width: min(100%, 104rem);
+    min-height: clamp(48rem, 56.25vw, 62rem);
     margin: 0 auto;
-    padding: clamp(4.4rem, 6vw, 6.6rem) clamp(1.25rem, 4.2vw, 4.5rem) clamp(3.6rem, 5vw, 4.7rem);
+    padding: clamp(3.5rem, 5vw, 5.7rem) clamp(1.15rem, 4vw, 4.5rem) clamp(2.1rem, 3vw, 3.2rem);
+    display: grid;
+    grid-template-columns: minmax(14rem, 0.9fr) minmax(37rem, 2.1fr) minmax(16rem, 0.95fr);
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "head map side"
+      "chips map side"
+      "unlocks unlocks unlocks";
+    gap: clamp(1.5rem, 2vw, 2.3rem);
+    align-items: center;
   }
 
-  .jfp-journey-head {
-    position: absolute;
-    left: clamp(6.8rem, 6.9vw, 7.15rem);
-    top: clamp(4.8rem, 5.1vw, 5.3rem);
-    width: clamp(17rem, 25vw, 28rem);
+  .jfp-head {
+    grid-area: head;
+    align-self: start;
     text-transform: uppercase;
     text-shadow: 0 1.2rem 2.7rem rgba(0,0,0,0.72);
   }
 
-  .jfp-title-small,
-  .jfp-journey-head h2,
-  .jfp-subtitle,
+  .jfp-head p,
+  .jfp-head h2,
+  .jfp-head small,
   .jfp-stage strong,
   .jfp-hub,
   .jfp-goal-card,
   .jfp-cta,
-  .jfp-unlocks-head {
+  .jfp-unlocks-head,
+  .jfp-chips strong {
     font-family: 'Anton', Impact, 'Arial Narrow Bold', sans-serif;
   }
 
-  .jfp-title-small {
-    margin: 0 0 0.35rem clamp(6.7rem, 6.8vw, 7.15rem);
-    font-size: clamp(2.75rem, 4vw, 4.15rem);
+  .jfp-head p {
+    margin: 0 0 0.25rem 4.7rem;
+    font-size: clamp(2.2rem, 3.2vw, 4.1rem);
     font-style: italic;
     line-height: 1;
     letter-spacing: 0.05em;
   }
 
-  .jfp-journey-head h2 {
+  .jfp-head h2 {
     margin: 0;
-    font-size: clamp(5.15rem, 7.3vw, 7.45rem);
+    font-size: clamp(4.5rem, 6.5vw, 7.5rem);
     font-style: italic;
     line-height: 0.88;
-    letter-spacing: 0.018em;
+    letter-spacing: 0.015em;
   }
 
-  .jfp-red-rule {
+  .jfp-head > span {
     display: block;
-    width: 7.7rem;
+    width: clamp(5.2rem, 8vw, 8.4rem);
     height: 0.22rem;
-    margin: 1rem 0 0.85rem;
+    margin: 1.05rem 0 0.9rem;
     background: var(--jfp-red);
-    box-shadow: 0 0 1.3rem rgba(227,6,19,0.42);
+    box-shadow: 0 0 1.2rem rgba(227,6,19,0.54);
   }
 
-  .jfp-subtitle {
-    margin: 0;
-    font-size: clamp(0.9rem, 1.2vw, 1.08rem);
+  .jfp-head small {
+    display: block;
+    font-size: clamp(0.72rem, 1vw, 0.94rem);
     font-style: italic;
-    letter-spacing: 0.32em;
+    letter-spacing: 0.42em;
+    color: rgba(255,255,255,0.9);
   }
 
   .jfp-chips {
-    position: absolute;
-    left: clamp(1.9rem, 2vw, 2.1rem);
-    top: clamp(24rem, 24.8vw, 24.8rem);
+    grid-area: chips;
+    align-self: center;
     display: grid;
-    gap: 1rem;
-    width: clamp(17rem, 17.6vw, 17.9rem);
+    gap: 0.85rem;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
+  .jfp-chips a,
+  .jfp-stage,
+  .jfp-program-card,
+  .jfp-goal-card,
+  .jfp-cta,
+  .jfp-unlocks-head,
+  .jfp-unlocks li a,
+  .jfp-hub {
+    color: #fff;
+    text-decoration: none;
+  }
+
   .jfp-chips a {
-    display: grid;
-    grid-template-columns: 2.2rem 1fr;
+    display: flex;
     align-items: center;
     gap: 1rem;
-    min-height: 3.7rem;
-    padding: 0 1.45rem;
-    border: 1px solid rgba(255,255,255,0.32);
+    min-height: 4.7rem;
+    padding: 0.95rem 1.2rem;
+    border: 1px solid rgba(255,255,255,0.22);
     border-radius: 999px;
-    background: rgba(5,5,5,0.55);
-    color: #fff;
-    backdrop-filter: blur(15px);
-    font-size: clamp(0.85rem, 1vw, 1rem);
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    text-decoration: none;
-    transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+    background: rgba(5,5,5,0.62);
+    box-shadow: 0 1rem 2.6rem rgba(0,0,0,0.28);
+    backdrop-filter: blur(16px);
   }
 
-  .jfp-chips a:hover,
-  .jfp-chips a:focus-visible {
-    transform: translateY(-0.18rem);
-    border-color: rgba(227,6,19,0.88);
-    box-shadow: 0 0 1.4rem rgba(227,6,19,0.18);
-    outline: none;
+  .jfp-chips svg,
+  .jfp-stage svg,
+  .jfp-side svg,
+  .jfp-unlocks svg,
+  .jfp-cta svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
-  .chip-icon {
+  .jfp-chips a > span {
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
     color: var(--jfp-red);
-    width: 2.1rem;
-    height: 2.1rem;
     filter: drop-shadow(0 0 0.65rem rgba(227,6,19,0.5));
   }
 
-  .jfp-map {
-    position: absolute;
-    left: clamp(28.4rem, 28.8vw, 29rem);
-    top: clamp(21.8rem, 22.3vw, 22.35rem);
-    width: clamp(45.8rem, 45vw, 47rem);
-    height: clamp(22.75rem, 22.95vw, 23rem);
+  .jfp-chips strong {
+    font-size: clamp(0.86rem, 1vw, 1rem);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
   }
 
-  .jfp-map-lines {
+  .jfp-map {
+    grid-area: map;
+    position: relative;
+    min-height: clamp(25rem, 30vw, 32rem);
+    align-self: center;
+    padding: clamp(1.7rem, 2vw, 2.2rem) 0 0;
+  }
+
+  .jfp-lines {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
+    pointer-events: none;
+    z-index: 0;
     overflow: visible;
   }
 
-  .jfp-map-lines path {
+  .jfp-lines path {
     fill: none;
-    stroke-width: 3;
+    stroke-width: 2.5;
     vector-effect: non-scaling-stroke;
   }
 
-  .line-white {
-    stroke: rgba(255,255,255,0.82);
-  }
+  .jfp-lines .white { stroke: rgba(255,255,255,0.78); }
+  .jfp-lines .red { stroke: var(--jfp-red); }
+  .jfp-lines .dashed { stroke-dasharray: 5 10; opacity: 0.9; }
 
-  .line-red {
-    stroke: var(--jfp-red);
-  }
-
-  .line-dash {
-    stroke-dasharray: 5 10;
-    opacity: 0.92;
+  .jfp-stage-row {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(1.1rem, 2.1vw, 2rem);
+    align-items: start;
   }
 
   .jfp-stage {
-    position: absolute;
-    top: 0;
+    position: relative;
     display: grid;
     place-items: center;
-    width: 10.35rem;
-    min-height: 11.45rem;
-    padding: 2.4rem 1rem 1.25rem;
+    min-height: clamp(10.5rem, 12vw, 12rem);
+    padding: 2.5rem 0.85rem 1.2rem;
     border: 1px solid rgba(255,255,255,0.34);
-    border-radius: 0.58rem;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01)),
-      rgba(6,6,6,0.72);
-    color: #fff;
+    border-radius: 0.62rem;
+    background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01)), rgba(6,6,6,0.78);
     text-align: center;
-    text-decoration: none;
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.18),
-      0 1.5rem 3.4rem rgba(0,0,0,0.38);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 1.4rem 3.3rem rgba(0,0,0,0.4);
     backdrop-filter: blur(18px);
     transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
   }
@@ -365,307 +371,234 @@ const icons: Record<string, string> = {
   .jfp-stage:hover,
   .jfp-stage:focus-visible {
     transform: translateY(-0.25rem);
-    border-color: rgba(227,6,19,0.88);
-    box-shadow:
-      inset 0 0 0 1px rgba(227,6,19,0.5),
-      0 1.75rem 3.8rem rgba(0,0,0,0.44),
-      0 0 2rem rgba(227,6,19,0.24);
+    border-color: rgba(227,6,19,0.9);
+    box-shadow: inset 0 0 0 1px rgba(227,6,19,0.45), 0 1.75rem 3.8rem rgba(0,0,0,0.46), 0 0 2rem rgba(227,6,19,0.24);
     outline: none;
   }
 
-  .jfp-stage--1 { left: 0; }
-  .jfp-stage--2 { left: 50%; transform: translateX(-50%); }
-  .jfp-stage--2:hover,
-  .jfp-stage--2:focus-visible { transform: translateX(-50%) translateY(-0.25rem); }
-  .jfp-stage--3 {
-    right: 0;
-    transform: translateY(-0.45rem) scale(1.06);
+  .jfp-stage.featured {
+    margin-top: -0.6rem;
+    transform: scale(1.04);
     border-color: rgba(227,6,19,0.92);
-    box-shadow:
-      inset 0 0 0 1px rgba(227,6,19,0.36),
-      0 1.8rem 3.8rem rgba(0,0,0,0.44),
-      0 0 2.4rem rgba(227,6,19,0.24);
+    box-shadow: inset 0 0 0 1px rgba(227,6,19,0.36), 0 1.8rem 3.8rem rgba(0,0,0,0.44), 0 0 2.4rem rgba(227,6,19,0.24);
   }
 
-  .jfp-stage--3:hover,
-  .jfp-stage--3:focus-visible {
-    transform: translateY(-0.7rem) scale(1.08);
+  .jfp-stage.featured:hover,
+  .jfp-stage.featured:focus-visible {
+    transform: translateY(-0.25rem) scale(1.04);
   }
 
-  .jfp-stage-tag {
+  .stage-tag {
     position: absolute;
-    top: -0.8rem;
+    top: -0.75rem;
     left: 50%;
     transform: translateX(-50%);
-    min-width: 7.3rem;
-    padding: 0.45rem 0.8rem 0.42rem;
+    min-width: 7.2rem;
+    padding: 0.48rem 0.72rem 0.42rem;
     border-radius: 0.34rem;
     background: var(--jfp-red);
     font-family: 'Anton', Impact, sans-serif;
-    font-size: 0.74rem;
+    font-size: clamp(0.64rem, 0.75vw, 0.78rem);
     font-style: italic;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.11em;
     line-height: 1;
     text-transform: uppercase;
+    white-space: nowrap;
   }
 
-  .jfp-stage--3 .jfp-stage-tag {
-    min-width: 8.2rem;
-    padding-block: 0.52rem 0.48rem;
-    background: linear-gradient(180deg, #ff2029, var(--jfp-red));
-    font-size: 0.82rem;
-    box-shadow: 0 0 1.45rem rgba(227,6,19,0.48);
-  }
-
-  .jfp-stage-icon {
+  .stage-icon {
     display: grid;
     place-items: center;
-    width: 3.35rem;
-    height: 3.35rem;
-    margin-bottom: 0.7rem;
-    filter: drop-shadow(0 0 0.7rem rgba(255,255,255,0.16));
+    width: clamp(2.6rem, 3.5vw, 3.35rem);
+    height: clamp(2.6rem, 3.5vw, 3.35rem);
+    margin-bottom: 0.65rem;
   }
 
   .jfp-stage strong {
     display: block;
-    max-width: 8.5rem;
-    font-size: 1.24rem;
-    line-height: 0.95;
+    max-width: 9rem;
+    font-size: clamp(1rem, 1.35vw, 1.35rem);
+    line-height: 0.96;
     letter-spacing: 0.05em;
     text-transform: uppercase;
   }
 
   .jfp-stage small {
     margin-top: 0.7rem;
-    font-size: 0.68rem;
+    font-size: clamp(0.55rem, 0.7vw, 0.7rem);
     font-weight: 800;
-    letter-spacing: 0.3em;
+    letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.66);
+    color: rgba(255,255,255,0.68);
   }
 
   .jfp-hub {
-    position: absolute;
-    left: 50%;
-    bottom: 0;
-    transform: translateX(-50%);
+    position: relative;
+    z-index: 2;
     display: flex;
     align-items: baseline;
     justify-content: center;
     gap: 0.7rem;
-    width: min(19.1rem, 50%);
-    min-height: 8.55rem;
-    padding: 1.1rem 1.5rem;
-    border: 1px solid rgba(227,6,19,0.92);
-    border-radius: 0.68rem;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.08), transparent),
-      rgba(4,4,4,0.78);
-    color: #fff;
-    text-decoration: none;
+    width: min(21rem, 72%);
+    min-height: clamp(7.5rem, 9vw, 9rem);
+    margin: clamp(4.2rem, 6vw, 6.2rem) auto 0;
+    padding: 1.2rem 1.4rem;
+    border: 1px solid rgba(227,6,19,0.94);
+    border-radius: 0.72rem;
+    background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent), rgba(4,4,4,0.8);
     text-transform: uppercase;
     box-shadow: 0 1.4rem 3rem rgba(0,0,0,0.42), 0 0 2.3rem rgba(227,6,19,0.2);
     backdrop-filter: blur(18px);
-    transition: transform 220ms ease, background-color 220ms ease, box-shadow 220ms ease;
   }
 
   .jfp-hub strong {
     color: var(--jfp-red);
-    font-size: clamp(3rem, 4vw, 4.05rem);
+    font-size: clamp(3rem, 4.2vw, 4.4rem);
     font-style: italic;
     line-height: 0.9;
   }
 
   .jfp-hub span {
-    font-size: clamp(1.2rem, 1.52vw, 1.55rem);
+    max-width: 7rem;
+    font-size: clamp(1rem, 1.35vw, 1.35rem);
     font-style: italic;
-    letter-spacing: 0.08em;
+    line-height: 1.08;
   }
 
-  .jfp-hub:hover,
-  .jfp-hub:focus-visible {
-    transform: translateX(-50%) translateY(-0.2rem);
-    background-color: rgba(15,4,4,0.84);
-    box-shadow: 0 1.55rem 3.4rem rgba(0,0,0,0.48), 0 0 2.6rem rgba(227,6,19,0.32);
-    outline: none;
-  }
-
-  .jfp-right-stack {
-    position: absolute;
-    right: clamp(1.4rem, 2.8vw, 3rem);
-    top: clamp(13.5rem, 14.4vw, 14.6rem);
+  .jfp-side {
+    grid-area: side;
     display: grid;
-    justify-items: end;
-    gap: clamp(0.9rem, 1.1vw, 1.15rem);
-    width: clamp(21rem, 21vw, 21.35rem);
+    gap: 1rem;
+    align-self: center;
   }
 
   .jfp-program-card,
   .jfp-goal-card {
-    border: 1px solid rgba(227,6,19,0.88);
-    border-radius: 0.7rem;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.06), transparent),
-      rgba(4,4,4,0.62);
-    color: #fff;
-    text-decoration: none;
-    backdrop-filter: blur(16px);
-    box-shadow: 0 1.3rem 3rem rgba(0,0,0,0.36);
-    transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
-  }
-
-  .jfp-program-card:hover,
-  .jfp-program-card:focus-visible,
-  .jfp-goal-card:hover,
-  .jfp-goal-card:focus-visible {
-    transform: translateY(-0.22rem);
-    border-color: rgba(255,46,57,0.96);
-    box-shadow: 0 1.55rem 3.3rem rgba(0,0,0,0.42), 0 0 2rem rgba(227,6,19,0.24);
-    outline: none;
+    display: grid;
+    gap: 0.9rem;
+    border: 1px solid rgba(227,6,19,0.42);
+    border-radius: 0.74rem;
+    background: rgba(6,6,6,0.64);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 1.4rem 3rem rgba(0,0,0,0.35);
+    backdrop-filter: blur(18px);
   }
 
   .jfp-program-card {
-    width: clamp(15.5rem, 15.9vw, 16.2rem);
-    padding: 1.05rem 1.15rem 1.1rem;
-    display: grid;
-    gap: 0.68rem;
+    padding: 1.25rem 1.2rem;
     text-transform: uppercase;
   }
 
-  .program-star {
+  .program-star,
+  .jfp-goal-card > span:first-child {
+    display: grid;
+    place-items: center;
+    width: 1.55rem;
+    height: 1.55rem;
     color: #fff;
-    width: 1.6rem;
-    height: 1.6rem;
-    filter: drop-shadow(0 0 0.55rem rgba(255,255,255,0.28));
   }
 
   .jfp-program-card strong {
-    font-size: 0.92rem;
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(0.96rem, 1.05vw, 1.15rem);
+    line-height: 1.2;
     letter-spacing: 0.08em;
-    line-height: 1.45;
   }
 
   .jfp-program-card span:not(.program-star) {
-    border-bottom: 1px solid rgba(227,6,19,0.48);
-    padding-bottom: 0.58rem;
-    font-size: 0.78rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(255,255,255,0.13);
+    font-size: 0.72rem;
     font-weight: 800;
-    letter-spacing: 0.1em;
-    color: rgba(255,255,255,0.84);
+    letter-spacing: 0.18em;
   }
 
   .jfp-program-card em {
     color: var(--jfp-red);
-    font-style: normal;
-    font-weight: 900;
-    letter-spacing: 0.12em;
+    font-family: 'Anton', Impact, sans-serif;
+    font-style: italic;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
   }
 
   .jfp-goal-card {
-    width: 100%;
-    min-height: clamp(9.7rem, 10.7vw, 11.1rem);
-    padding: 1rem 1.45rem 1.1rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    min-height: 11rem;
+    place-items: center;
+    padding: 1.5rem 1.2rem;
     text-align: center;
     text-transform: uppercase;
   }
 
-  .goal-flag {
-    color: var(--jfp-red);
-    width: 2.25rem;
-    height: 2.25rem;
-    filter: drop-shadow(0 0 0.75rem rgba(227,6,19,0.55));
-  }
-
-  .jfp-goal-card span:not(.goal-flag) {
-    margin-top: 0.62rem;
-    font-size: 0.98rem;
+  .jfp-goal-card small {
+    font-size: 0.72rem;
     font-style: italic;
-    letter-spacing: 0.16em;
-  }
-
-  .jfp-goal-card span:not(.goal-flag)::after {
-    content: "";
-    display: block;
-    width: 2rem;
-    height: 0.16rem;
-    margin: 0.46rem auto 0;
-    background: var(--jfp-red);
+    letter-spacing: 0.26em;
   }
 
   .jfp-goal-card strong {
-    margin-top: 0.52rem;
-    max-width: 15rem;
-    font-size: clamp(2.05rem, 3vw, 3rem);
+    font-size: clamp(2rem, 2.55vw, 2.75rem);
     font-style: italic;
-    line-height: 0.92;
-    letter-spacing: 0.04em;
+    line-height: 0.95;
   }
 
-  .jfp-unlocks {
-    position: absolute;
-    left: clamp(0.35rem, 0.5vw, 0.55rem);
-    bottom: clamp(2.65rem, 2.9vw, 2.95rem);
-    width: min(71rem, 68vw);
-    min-height: 10rem;
-    display: grid;
-    grid-template-columns: 12.4rem 1fr;
-    align-items: stretch;
-    border: 1px solid rgba(255,255,255,0.28);
-    border-radius: 0.64rem;
-    background: rgba(4,4,4,0.66);
-    backdrop-filter: blur(18px);
-    box-shadow: 0 1.2rem 3.4rem rgba(0,0,0,0.38);
-    overflow: hidden;
-  }
-
-  .jfp-unlocks-head {
-    position: relative;
-    display: grid;
-    align-content: center;
-    padding: 1.1rem 1.4rem;
-    border-right: 1px solid rgba(255,255,255,0.32);
-    color: #fff;
-    text-decoration: none;
+  .jfp-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    min-height: 4.6rem;
+    padding: 1rem 1.2rem;
+    border-radius: 0.42rem;
+    background: linear-gradient(180deg, #ff353d, var(--jfp-red));
+    font-size: clamp(1rem, 1.35vw, 1.25rem);
+    font-style: italic;
+    letter-spacing: 0.13em;
     text-transform: uppercase;
-    line-height: 1;
-    transition: background-color 220ms ease;
+    box-shadow: 0 1.25rem 2.6rem rgba(0,0,0,0.36), 0 0 1.6rem rgba(227,6,19,0.34);
+    transition: transform 220ms ease, filter 220ms ease;
   }
 
-  .jfp-unlocks-head:hover,
-  .jfp-unlocks-head:focus-visible {
-    background: rgba(227,6,19,0.08);
+  .jfp-cta:hover,
+  .jfp-cta:focus-visible {
+    transform: translateY(-0.18rem);
+    filter: brightness(1.08);
     outline: none;
   }
 
-  .jfp-unlocks-head::before {
-    content: "";
-    width: 0.14rem;
-    height: 3.7rem;
-    position: absolute;
-    left: 1.4rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: var(--jfp-red);
+  .jfp-cta svg {
+    width: 1.55rem;
+    height: 1.55rem;
+    stroke-width: 2.4;
   }
 
-  .jfp-unlocks-head span {
-    margin-left: 1rem;
-    font-size: 0.78rem;
-    font-style: italic;
-    letter-spacing: 0.13em;
+  .jfp-unlocks {
+    grid-area: unlocks;
+    display: grid;
+    grid-template-columns: minmax(9rem, 0.9fr) minmax(0, 5fr);
+    align-items: stretch;
+    margin-top: 0.6rem;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(4,4,4,0.62);
+    box-shadow: 0 -1rem 3rem rgba(0,0,0,0.18);
+    backdrop-filter: blur(16px);
   }
 
+  .jfp-unlocks-head {
+    display: grid;
+    align-content: center;
+    padding: 1.4rem 1.6rem;
+    border-right: 1px solid rgba(255,255,255,0.14);
+    text-transform: uppercase;
+  }
+
+  .jfp-unlocks-head span,
   .jfp-unlocks-head strong {
-    margin-left: 1rem;
-    margin-top: 0.2rem;
-    font-size: 1.55rem;
+    display: block;
     font-style: italic;
-    letter-spacing: 0.08em;
+    line-height: 0.96;
   }
+
+  .jfp-unlocks-head span { font-size: clamp(0.82rem, 1.1vw, 1.08rem); }
+  .jfp-unlocks-head strong { font-size: clamp(1.35rem, 1.9vw, 2rem); }
 
   .jfp-unlocks ul {
     display: grid;
@@ -675,433 +608,215 @@ const icons: Record<string, string> = {
     list-style: none;
   }
 
-  .jfp-unlocks li {
-    border-right: 1px solid rgba(255,255,255,0.18);
-  }
-
   .jfp-unlocks li a {
     display: grid;
     place-items: center;
-    gap: 0.45rem;
-    width: 100%;
-    height: 100%;
-    padding: 1rem 0.5rem;
-    color: #fff;
+    min-height: 6.3rem;
+    padding: 0.95rem 0.8rem;
+    border-right: 1px solid rgba(255,255,255,0.12);
     text-align: center;
-    font-size: 0.76rem;
-    font-weight: 900;
-    letter-spacing: 0.08em;
-    line-height: 1.15;
-    text-transform: uppercase;
-    text-decoration: none;
-    transition: background-color 220ms ease, color 220ms ease;
   }
 
-  .jfp-unlocks li a:hover,
-  .jfp-unlocks li a:focus-visible {
-    background: rgba(227,6,19,0.1);
-    outline: none;
-  }
+  .jfp-unlocks li:last-child a { border-right: 0; }
 
-  .jfp-unlocks li:last-child {
-    border-right: 0;
-  }
-
-  .unlock-icon {
-    width: 2.9rem;
-    height: 2.9rem;
+  .jfp-unlocks li a > span {
+    width: 2.15rem;
+    height: 2.15rem;
     color: var(--jfp-red);
-    filter: drop-shadow(0 0 0.75rem rgba(227,6,19,0.52));
+    filter: drop-shadow(0 0 0.85rem rgba(227,6,19,0.42));
   }
 
-  .jfp-cta {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1.1rem;
-    width: min(100%, 22.75rem);
-    min-height: 4.35rem;
-    margin-top: 0.15rem;
-    padding: 1rem 1.6rem;
-    border: 1px solid rgba(255,255,255,0.22);
-    border-radius: 0.45rem;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.18), transparent),
-      linear-gradient(135deg, #ff171f 0%, var(--jfp-red) 52%, #b50008 100%);
-    color: #fff;
-    font-size: clamp(1.15rem, 1.45vw, 1.5rem);
-    font-style: italic;
-    line-height: 1;
-    letter-spacing: 0.13em;
+  .jfp-unlocks li strong {
+    margin-top: 0.55rem;
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(0.62rem, 0.75vw, 0.74rem);
+    letter-spacing: 0.12em;
+    line-height: 1.08;
     text-transform: uppercase;
-    text-decoration: none;
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.25),
-      0 1.5rem 3.4rem rgba(0,0,0,0.44),
-      0 0 2.2rem rgba(227,6,19,0.34);
-    overflow: hidden;
-    transition:
-      transform 240ms cubic-bezier(.22,1,.36,1),
-      border-color 240ms ease,
-      box-shadow 240ms ease;
-  }
-
-  .jfp-cta::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.24), transparent);
-    opacity: 0;
-    transform: translateX(-42%);
-    transition: opacity 240ms ease, transform 420ms cubic-bezier(.22,1,.36,1);
-  }
-
-  .jfp-cta span,
-  .jfp-cta svg {
-    position: relative;
-    z-index: 1;
-  }
-
-  .jfp-cta svg {
-    width: 1.7rem;
-    height: 1.7rem;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    transition: transform 240ms cubic-bezier(.22,1,.36,1);
-  }
-
-  .jfp-cta:hover,
-  .jfp-cta:focus-visible {
-    transform: translateY(-0.25rem);
-    border-color: rgba(255,255,255,0.52);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.32),
-      0 1.75rem 3.9rem rgba(0,0,0,0.5),
-      0 0 2.7rem rgba(227,6,19,0.5);
-    outline: none;
-  }
-
-  .jfp-cta:hover::before,
-  .jfp-cta:focus-visible::before {
-    opacity: 1;
-    transform: translateX(42%);
-  }
-
-  .jfp-cta:hover svg,
-  .jfp-cta:focus-visible svg {
-    transform: translateX(0.38rem);
-  }
-
-  .jfp-cta:active {
-    transform: translateY(0);
-    transition-duration: 80ms;
-  }
-
-  .chip-icon,
-  .jfp-stage-icon,
-  .program-star,
-  .goal-flag,
-  .unlock-icon {
-    display: grid;
-    place-items: center;
-  }
-
-  .chip-icon :global(svg),
-  .jfp-stage-icon :global(svg),
-  .program-star :global(svg),
-  .goal-flag :global(svg),
-  .unlock-icon :global(svg) {
-    width: 100%;
-    height: 100%;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.28;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .jfp-stage-icon :global(text),
-  .unlock-icon :global(text) {
-    stroke: none;
-  }
-
-  .goal-flag :global(path:nth-child(2)) {
-    fill: currentColor;
-    stroke: none;
-  }
-
-  .jfp-program-connector {
-    position: absolute;
-    z-index: 2;
-    right: clamp(17.8rem, 18.6vw, 19rem);
-    top: clamp(18.2rem, 18.7vw, 18.9rem);
-    width: clamp(4.2rem, 5vw, 5.2rem);
-    height: 2.6rem;
-    border-bottom: 2px solid rgba(227,6,19,0.86);
-    border-left: 2px solid rgba(227,6,19,0.86);
-    border-bottom-left-radius: 1.4rem;
-  }
-
-  .jfp-program-connector::after {
-    content: "";
-    position: absolute;
-    right: -0.38rem;
-    bottom: -0.31rem;
-    width: 0.62rem;
-    height: 0.62rem;
-    border-radius: 999px;
-    background: var(--jfp-red);
-    box-shadow: 0 0 1rem rgba(227,6,19,0.7);
-  }
-
-  .jfp-goal-connector {
-    position: absolute;
-    z-index: 2;
-    left: clamp(58rem, 60.9vw, 61.1rem);
-    top: clamp(29rem, 30.2vw, 30.45rem);
-    width: clamp(13rem, 15.6vw, 16rem);
-    height: 0;
-    border-top: 2px dashed rgba(255,255,255,0.7);
-  }
-
-  .jfp-goal-connector::after {
-    content: "";
-    position: absolute;
-    right: -0.12rem;
-    top: -0.47rem;
-    width: 0;
-    height: 0;
-    border-top: 0.42rem solid transparent;
-    border-bottom: 0.42rem solid transparent;
-    border-left: 0.7rem solid rgba(255,255,255,0.86);
   }
 
   @media (max-width: 1220px) {
-    .jfp-journey {
-      min-height: 58rem;
+    .jfp-inner {
+      grid-template-columns: minmax(13rem, 0.85fr) minmax(31rem, 1.75fr) minmax(14rem, 0.85fr);
+      gap: 1.25rem;
     }
 
-    .jfp-map {
-      left: 29%;
-      width: 42rem;
-    }
-
-    .jfp-stage {
-      width: 9.5rem;
-    }
-
-    .jfp-unlocks {
-      width: 62vw;
-    }
+    .jfp-stage-row { gap: 1rem; }
+    .jfp-stage { padding-inline: 0.7rem; }
   }
 
-  @media (max-width: 980px) {
-    .jfp-journey {
+  @media (max-width: 1040px) {
+    .jfp-inner {
       min-height: auto;
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "head"
+        "chips"
+        "map"
+        "side"
+        "unlocks";
+      padding: 4.4rem clamp(1rem, 4vw, 2.5rem) 2.5rem;
     }
 
-    .jfp-journey-inner {
-      display: grid;
-      gap: 1.25rem;
-      min-height: 0;
-      padding: 4rem 1.25rem;
+    .jfp-head {
+      text-align: center;
+      justify-self: center;
     }
 
-    .jfp-journey-head,
-    .jfp-chips,
-    .jfp-map,
-    .jfp-right-stack,
-    .jfp-program-card,
-    .jfp-goal-card,
-    .jfp-unlocks,
-    .jfp-cta {
-      position: relative;
-      inset: auto;
-      width: 100%;
-    }
-
-    .jfp-right-stack {
-      display: grid;
-      justify-items: stretch;
-      gap: 1rem;
-    }
-
-    .jfp-program-connector,
-    .jfp-goal-connector {
-      display: none;
-    }
-
-    .jfp-journey-head {
-      max-width: 30rem;
-    }
+    .jfp-head p { margin-left: 0; }
+    .jfp-head > span { margin-inline: auto; }
 
     .jfp-chips {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .jfp-chips a {
-      min-height: 3.35rem;
-      border-radius: 0.5rem;
-      padding: 0.75rem;
-      grid-template-columns: 1.6rem 1fr;
-      font-size: 0.74rem;
+      width: min(100%, 48rem);
+      justify-self: center;
     }
 
     .jfp-map {
-      height: 26rem;
-      margin-top: 0.5rem;
+      width: min(100%, 52rem);
+      min-height: auto;
+      justify-self: center;
+      padding-top: 1.4rem;
     }
 
-    .jfp-program-card,
-    .jfp-goal-card {
-      width: 100%;
-      padding: 1.25rem;
+    .jfp-lines-desktop {
+      display: none;
     }
 
-    .jfp-goal-card {
-      min-height: 9rem;
+    .jfp-stage-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .jfp-stage.featured {
+      margin-top: 0;
+      transform: none;
+    }
+
+    .jfp-stage.featured:hover,
+    .jfp-stage.featured:focus-visible {
+      transform: translateY(-0.25rem);
+    }
+
+    .jfp-hub {
+      margin-top: 1.25rem;
+    }
+
+    .jfp-side {
+      width: min(100%, 52rem);
+      justify-self: center;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .jfp-cta {
+      grid-column: 1 / -1;
     }
 
     .jfp-unlocks {
       grid-template-columns: 1fr;
-      min-height: auto;
     }
 
     .jfp-unlocks-head {
       border-right: 0;
-      border-bottom: 1px solid rgba(255,255,255,0.22);
+      border-bottom: 1px solid rgba(255,255,255,0.14);
+      text-align: center;
     }
 
     .jfp-unlocks ul {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
-    .jfp-unlocks li:nth-child(3n) {
-      border-right: 0;
-    }
-
-    .jfp-cta {
-      justify-self: start;
-      width: 100%;
-      max-width: 26rem;
-    }
+    .jfp-unlocks li:nth-child(3n) a { border-right: 0; }
+    .jfp-unlocks li:nth-child(n+4) a { border-top: 1px solid rgba(255,255,255,0.12); }
   }
 
-  @media (max-width: 640px) {
-    .jfp-journey-bg img {
-      object-position: 54% 48%;
-      filter: saturate(0.84) contrast(1.08) brightness(0.52);
+  @media (max-width: 720px) {
+    .jfp-bg img { object-position: 50% 50%; }
+
+    .jfp-inner {
+      padding-top: 3.4rem;
+      gap: 1.35rem;
     }
 
-    .jfp-journey-shade {
-      background:
-        linear-gradient(180deg, rgba(0,0,0,0.9), rgba(0,0,0,0.5) 34%, rgba(0,0,0,0.94)),
-        linear-gradient(90deg, rgba(0,0,0,0.8), rgba(0,0,0,0.5));
+    .jfp-head h2 {
+      font-size: clamp(4.1rem, 18vw, 6rem);
     }
 
-    .jfp-journey-inner {
-      padding: 3.4rem 1rem;
+    .jfp-head small {
+      letter-spacing: 0.24em;
     }
 
-    .jfp-title-small {
-      font-size: 2.4rem;
-    }
-
-    .jfp-journey-head h2 {
-      font-size: clamp(4rem, 21vw, 5.5rem);
-    }
-
-    .jfp-subtitle {
-      font-size: 0.76rem;
-      letter-spacing: 0.22em;
-    }
-
-    .jfp-chips {
+    .jfp-chips,
+    .jfp-stage-row,
+    .jfp-side,
+    .jfp-unlocks ul {
       grid-template-columns: 1fr;
     }
 
+    .jfp-chips a {
+      min-height: 4.2rem;
+    }
+
     .jfp-map {
-      height: auto;
-      display: grid;
-      gap: 0.8rem;
+      width: min(100%, 26rem);
     }
 
-    .jfp-map-lines {
-      display: none;
-    }
-
-    .jfp-stage,
-    .jfp-stage--1,
-    .jfp-stage--2,
-    .jfp-stage--3,
-    .jfp-hub {
+    .jfp-stage-row {
+      gap: 1.35rem;
       position: relative;
-      inset: auto;
-      width: 100%;
-      transform: none;
     }
 
-    .jfp-stage--2:hover,
-    .jfp-stage--2:focus-visible,
-    .jfp-hub:hover,
-    .jfp-hub:focus-visible {
-      transform: translateY(-0.2rem);
+    .jfp-stage-row::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 1.6rem;
+      bottom: 1.6rem;
+      width: 2px;
+      transform: translateX(-50%);
+      background: linear-gradient(180deg, transparent, rgba(227,6,19,0.78), transparent);
+      z-index: 0;
     }
 
     .jfp-stage {
-      min-height: 8.5rem;
-      padding-top: 2.15rem;
+      z-index: 1;
+      width: min(100%, 20rem);
+      justify-self: center;
+      min-height: 10rem;
     }
 
     .jfp-hub {
-      min-height: 4.7rem;
-      width: 100%;
+      width: min(100%, 20rem);
+      min-height: 7.2rem;
+      margin-top: 1.35rem;
     }
 
-    .jfp-program-card {
-      gap: 0.65rem;
-    }
-
-    .jfp-goal-card strong {
-      font-size: 2.35rem;
-    }
-
-    .jfp-unlocks ul {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .jfp-unlocks li:nth-child(3n) {
-      border-right: 1px solid rgba(255,255,255,0.18);
-    }
-
-    .jfp-unlocks li:nth-child(2n) {
-      border-right: 0;
-    }
-
+    .jfp-program-card,
+    .jfp-goal-card,
     .jfp-cta {
-      max-width: none;
-      width: 100%;
-      min-height: 3.7rem;
-      font-size: 1.05rem;
+      width: min(100%, 24rem);
+      justify-self: center;
+    }
+
+    .jfp-unlocks {
+      width: min(100%, 26rem);
+      justify-self: center;
+    }
+
+    .jfp-unlocks li a {
+      min-height: 5.8rem;
+      border-right: 0;
+      border-top: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .jfp-unlocks li:first-child a {
+      border-top: 0;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .jfp-stage,
-    .jfp-hub,
-    .jfp-chips a,
-    .jfp-program-card,
-    .jfp-goal-card,
-    .jfp-unlocks-head,
-    .jfp-unlocks li a,
-    .jfp-cta,
-    .jfp-cta::before,
-    .jfp-cta svg {
-      transition: none;
+    .jfp-cta {
+      transition: none !important;
     }
   }
 </style>
