@@ -31,6 +31,16 @@ function row(label, value) {
   return `<tr><td style="font-weight:bold;vertical-align:top;">${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`
 }
 
+function cleanAttachment(file) {
+  if (!file || typeof file !== 'object') return null
+  const name = clean(file.name || 'cv', 180)
+  const content = String(file.content || '').replace(/[^A-Za-z0-9+/=]/g, '')
+  if (!name || !content) return null
+  const bytes = Math.ceil((content.length * 3) / 4)
+  if (bytes > 5 * 1024 * 1024) throw new Error('CV file is too large. Max 5MB.')
+  return { name, content }
+}
+
 async function sendEmail(enquiry) {
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey) throw new Error('Email service is not configured.')
@@ -74,6 +84,7 @@ async function sendEmail(enquiry) {
       replyTo: [{ email: enquiry.email, name: enquiry.name }],
       subject: `Website enquiry: ${enquiry.typeLabel}`,
       htmlContent: html,
+      ...(enquiry.cvAttachment ? { attachment: [enquiry.cvAttachment] } : {}),
     }),
   })
 
@@ -114,6 +125,7 @@ export default async function handler(req, res) {
       qualifications: clean(body.qualifications, 500),
       availability: clean(body.availability, 240),
       message: clean(body.message, 2500),
+      cvAttachment: type === 'coaching-role' ? cleanAttachment(body.cvFile) : null,
     }
 
     if (!enquiry.name || !enquiry.email || !enquiry.phone || !enquiry.message) {
