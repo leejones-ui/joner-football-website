@@ -75,7 +75,7 @@ const schema = {
         </div>
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <input type="text" name="name" placeholder="Full name" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <input data-name-field type="text" name="name" placeholder="Full name" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
           <input type="email" name="email" placeholder="Email address" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
         </div>
 
@@ -93,7 +93,7 @@ const schema = {
 
         <div data-fields="training-sydney joners-juniors" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <input type="text" name="playerName" placeholder="Player name" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
-          <input type="text" name="playerAge" placeholder="Player age" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <input data-player-age-field type="text" name="playerAge" placeholder="Player age" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
         </div>
 
         <div data-fields="training-sydney" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -184,6 +184,19 @@ const schema = {
         status.className = message ? 'font-body text-sm ' + (ok ? 'text-green-400' : 'text-amber-400') : 'hidden font-body text-sm';
       }
 
+      function syncNamePlaceholder() {
+        var selected = typeSelect.value || 'training-sydney';
+        var nameField = form.querySelector('[data-name-field]');
+        var playerAgeField = form.querySelector('[data-player-age-field]');
+        if (!nameField) return;
+        if (selected !== 'training-sydney') {
+          nameField.placeholder = 'Full name';
+          return;
+        }
+        var age = playerAgeField ? parseInt(String(playerAgeField.value || '').replace(/[^0-9]/g, ''), 10) : NaN;
+        nameField.placeholder = age >= 18 ? 'Full name' : 'Parent name';
+      }
+
       function syncFields() {
         var selected = typeSelect.value || 'training-sydney';
         var config = options[selected] || options['training-sydney'];
@@ -209,6 +222,7 @@ const schema = {
           trainingLocation.disabled = !isTraining;
           trainingLocation.required = isTraining;
         }
+        syncNamePlaceholder();
       }
 
       var params = new URLSearchParams(window.location.search || '');
@@ -219,6 +233,8 @@ const schema = {
         setStatus('', true);
         syncFields();
       });
+      var playerAgeField = form.querySelector('[data-player-age-field]');
+      if (playerAgeField) playerAgeField.addEventListener('input', syncNamePlaceholder);
       syncFields();
 
       form.addEventListener('submit', function (event) {
