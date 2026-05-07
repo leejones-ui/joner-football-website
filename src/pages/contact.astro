@@ -193,6 +193,10 @@ const schema = {
         });
       }
 
+      var params = new URLSearchParams(window.location.search || '');
+      var requestedType = params.get('type');
+      if (requestedType && options[requestedType]) typeSelect.value = requestedType;
+
       typeSelect.addEventListener('change', function () {
         setStatus('', true);
         syncFields();
