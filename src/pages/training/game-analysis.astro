@@ -1,0 +1,18 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="Game Analysis | Joner Football" description="Joner Football game analysis for players who want clearer feedback and better development." canonical="/training/game-analysis/" noindex={true}>
+  <main class="bg-joner-black text-white pt-24">
+    <section class="relative overflow-hidden min-h-[72vh] flex items-center">
+      <img src="/images/training/hero-bg.webp" alt="Joner Football training and game analysis" class="absolute inset-0 h-full w-full object-cover object-center opacity-45" />
+      <div class="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/30"></div>
+      <div class="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-24">
+        <p class="font-heading text-sm uppercase tracking-[0.25em] text-joner-red mb-4">Training</p>
+        <h1 class="font-heading text-6xl md:text-8xl uppercase leading-none mb-6">Game Analysis</h1>
+        <p class="max-w-2xl font-body text-xl text-gray-300 leading-relaxed mb-8">A dedicated page for player analysis, feedback and improvement work.</p>
+        <a href="/contact?type=training-sydney" class="btn-red px-8 py-4">Enquire About Analysis</a>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
