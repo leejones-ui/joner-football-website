@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import ChooseNextStep from '../components/ChooseNextStep.astro'
 import HomeJourneyPathwayMockup from '../components/HomeJourneyPathwayMockup.astro'
+import HomeStoryMobile from '../components/HomeStoryMobile.astro'
 
 const storyBeats = [
   {
@@ -1903,96 +1904,7 @@ const mediaStyle = (beat) => {
       </div>
     </section>
 
-    <section class="story-mobile" aria-label="Joner Football story mobile" data-mobile-story>
-      <aside class="story-mobile-global-rail" aria-hidden="true">
-        <div class="story-mobile-global-line"></div>
-        <div class="story-mobile-global-fill"></div>
-        <div class="story-mobile-global-dots">
-          {storyBeats.map(() => <span></span>)}
-        </div>
-      </aside>
-
-      {storyBeats.map((beat, index) => (
-        <section class="story-mobile-panel" aria-label={`${beat.number} ${beat.label}`}>
-          {beat.video ? (
-            <video
-              class="story-mobile-bg"
-              aria-label={beat.alt}
-              autoplay
-              muted
-              loop
-              playsinline
-              preload="metadata"
-              poster={beat.mobileImage || beat.image}
-              style={mediaStyle(beat)}
-            >
-              <source src={beat.video} type="video/mp4" />
-            </video>
-          ) : (
-            <picture class="story-mobile-bg">
-              {beat.mobileImage && <source media="(max-width: 767px)" srcset={beat.mobileImage} />}
-              <img src={beat.image} alt={beat.alt} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" style={mediaStyle(beat)} />
-            </picture>
-          )}
-
-          <aside class="story-mobile-rail" aria-hidden="true">
-            <div class="story-mobile-line">
-              <div class="story-mobile-dot-list">
-                {storyBeats.map((railBeat, railIndex) => (
-                  <span class:list={['story-mobile-dot', railIndex === index && 'active']}></span>
-                ))}
-              </div>
-            </div>
-            <div class="story-mobile-labels">
-              {storyBeats.map((railBeat, railIndex) => (
-                <span class:list={['story-mobile-label', railIndex === index && 'active']}>{railBeat.label}</span>
-              ))}
-            </div>
-          </aside>
-
-          {index < 2 && (
-            <div class="story-mobile-ball" aria-hidden="true">
-              <img src="/images/home-storyboard/yellow-football-object.png" alt="" />
-            </div>
-          )}
-
-          <div class="story-mobile-content">
-            <p class="story-mobile-kicker">{beat.kicker || beat.label}</p>
-            <h2 class="story-mobile-title">{beat.title}</h2>
-            {beat.body && <p class="story-mobile-body">{beat.body}</p>}
-
-            {beat.overlay === 'growth' && (
-              <div class="story-mobile-stats" aria-label="Joner Football social proof">
-                <div class="story-mobile-stat"><strong>2M+</strong><span>Audience</span></div>
-                <div class="story-mobile-stat"><strong>380K+</strong><span>YouTube</span></div>
-                <div class="story-mobile-stat"><strong>600K+</strong><span>Facebook</span></div>
-              </div>
-            )}
-
-            {beat.overlay === 'chooseNextStep' && (
-              <div class="story-mobile-choose">
-                <ChooseNextStep />
-              </div>
-            )}
-
-            {beat.ctas && (
-              <div class="story-mobile-cta-row">
-                {beat.ctas.map((cta, ctaIndex) => (
-                  <a
-                    class:list={['story-mobile-cta', ctaIndex === 0 && 'primary']}
-                    href={cta.href}
-                    target={cta.external ? '_blank' : undefined}
-                    rel={cta.external ? 'noopener' : undefined}
-                  >
-                    {cta.label}
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-      ))}
-    </section>
+    <HomeStoryMobile />
 
     <section class="home-video-section">
       <div class="home-video-inner">
