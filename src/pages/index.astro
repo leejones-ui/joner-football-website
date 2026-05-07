@@ -1200,9 +1200,9 @@ const mediaStyle = (beat) => {
       }
 
       .story-mobile-panel:first-child .story-mobile-bg img {
-        object-position: 68% 50%;
-        transform: scale(0.96);
-        transform-origin: 70% 50%;
+        object-position: 34% 50%;
+        transform: scale(0.94);
+        transform-origin: 38% 50%;
       }
 
       .story-mobile-panel::before {
@@ -1230,6 +1230,14 @@ const mediaStyle = (beat) => {
         height: clamp(3.3rem, 17vw, 4.9rem);
         opacity: 0.92;
         pointer-events: none;
+      }
+
+      .story-mobile-panel:first-child .story-mobile-ball {
+        left: clamp(0.65rem, 3vw, 1rem);
+        right: auto;
+        bottom: clamp(4.4rem, 12vh, 6.2rem);
+        width: clamp(3.1rem, 15vw, 4.3rem);
+        height: clamp(3.1rem, 15vw, 4.3rem);
       }
 
       .story-mobile-ball::before {
@@ -1279,7 +1287,7 @@ const mediaStyle = (beat) => {
       }
 
       .story-mobile-rail {
-        display: none;
+        display: none !important;
         position: absolute;
         left: 0.95rem;
         top: 7.8rem;
