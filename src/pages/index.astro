@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import ChooseNextStep from '../components/ChooseNextStep.astro'
+import JourneySection from '../components/JourneySection.astro'
 
 const storyBeats = [
   {
@@ -180,11 +181,11 @@ const storyBeats = [
     kicker: 'Action',
     title: 'Choose Your Next Step',
     body: 'Train online, train with us, join a camp, or get inside the Joner Football Hub.',
-    image: '/images/home-storyboard/07-action-coach.webp',
-    alt: 'Lee Jones giving coaching detail during a Joner Football session',
-    objectPosition: '78% 50%',
-    objectPositionTablet: '78% 50%',
-    objectPositionMobile: '70% 30%',
+    image: '/images/home-storyboard/08-action-coach-night.webp',
+    alt: 'Lee Jones giving coaching detail during a Joner Football session at night',
+    objectPosition: '50% 38%',
+    objectPositionTablet: '50% 38%',
+    objectPositionMobile: '52% 32%',
     copyPos: 'hidden',
     markerX: 18,
     markerY: 77,
@@ -622,8 +623,7 @@ const mediaStyle = (beat) => {
         position: absolute;
         inset: 0;
         background:
-          linear-gradient(90deg, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.7) 45%, rgba(0,0,0,0.35) 75%, rgba(0,0,0,0.1) 100%),
-          linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 35%, rgba(0,0,0,0.6) 100%);
+          linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.32) 55%, rgba(0,0,0,0.18) 100%);
         pointer-events: none;
         z-index: 0;
       }
@@ -1767,16 +1767,7 @@ const mediaStyle = (beat) => {
       ))}
     </section>
 
-    <section class="journey-section" aria-label="JFP Player Pathway">
-      <img
-        src="/images/home-storyboard/jfp-player-pathway.webp"
-        alt="The Journey JFP Player Pathway showing Joners Juniors, Joner 6-8 Year Old Program, and Joner Football Performance"
-        loading="lazy"
-      />
-      {journeyLinks.map((link) => (
-        <a class:list={['journey-hotspot', link.className]} href={link.href} aria-label={link.label}></a>
-      ))}
-    </section>
+    <JourneySection />
 
     <section class="home-video-section">
       <div class="home-video-inner">
