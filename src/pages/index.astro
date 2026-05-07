@@ -1194,6 +1194,7 @@ const mediaStyle = (beat) => {
         z-index: -3;
       }
 
+      .story-mobile-bg,
       .story-mobile-bg img {
         object-fit: cover;
         object-position: var(--story-object-mobile, 62% 50%);
@@ -1835,10 +1836,26 @@ const mediaStyle = (beat) => {
 
       {storyBeats.map((beat, index) => (
         <section class="story-mobile-panel" aria-label={`${beat.number} ${beat.label}`}>
-          <picture class="story-mobile-bg">
-            {beat.mobileImage && <source media="(max-width: 767px)" srcset={beat.mobileImage} />}
-            <img src={beat.image} alt={beat.alt} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" style={mediaStyle(beat)} />
-          </picture>
+          {beat.video ? (
+            <video
+              class="story-mobile-bg"
+              aria-label={beat.alt}
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              poster={beat.mobileImage || beat.image}
+              style={mediaStyle(beat)}
+            >
+              <source src={beat.video} type="video/mp4" />
+            </video>
+          ) : (
+            <picture class="story-mobile-bg">
+              {beat.mobileImage && <source media="(max-width: 767px)" srcset={beat.mobileImage} />}
+              <img src={beat.image} alt={beat.alt} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" style={mediaStyle(beat)} />
+            </picture>
+          )}
 
           <aside class="story-mobile-rail" aria-hidden="true">
             <div class="story-mobile-line">
