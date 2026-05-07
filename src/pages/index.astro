@@ -152,8 +152,8 @@ const storyBeats = [
     ballVisible: false,
     ctas: [
       { label: '7 Day Free Trial', href: 'https://app.jonerfootball.com/categories/category-vpi8uazway4', external: true },
-      { label: 'Apple Download', href: 'https://apps.apple.com/au/app/joner-football-app/id6737069275', external: true, badge: 'apple' },
-      { label: 'Google Download', href: 'https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball', external: true, badge: 'google' },
+      { label: 'App Store', href: 'https://apps.apple.com/au/app/joner-football-app/id6737069275', external: true },
+      { label: 'Google Play', href: 'https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball', external: true },
     ],
   },
   {
@@ -464,7 +464,7 @@ const mediaStyle = (beat) => {
 
       .story-copy[data-pos="hq-left"] {
         left: clamp(13rem, 18vw, 18rem);
-        top: 17vh;
+        top: 31vh;
       }
 
       .story-stamp {
@@ -1079,14 +1079,33 @@ const mediaStyle = (beat) => {
         margin: 0 auto;
       }
 
+      .home-video-grid {
+        margin-top: 2rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: clamp(1rem, 2vw, 1.5rem);
+      }
+
+      .home-video-card h3 {
+        margin: 0 0 0.85rem;
+        font-family: 'Anton', Impact, sans-serif;
+        font-size: clamp(1.7rem, 2.8vw, 2.7rem);
+        line-height: 0.95;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
       .home-video-frame {
         position: relative;
-        margin-top: 2rem;
         overflow: hidden;
         border: 1px solid rgba(255,255,255,0.18);
         background: #000;
         aspect-ratio: 16 / 9;
         box-shadow: 0 2rem 5rem rgba(0,0,0,0.38);
+      }
+
+      @media (max-width: 767px) {
+        .home-video-grid { grid-template-columns: 1fr; }
       }
 
       .home-video-frame iframe {
@@ -1826,16 +1845,12 @@ const mediaStyle = (beat) => {
               <div class="story-cta-row">
                 {beat.ctas.map((cta, ctaIndex) => (
                   <a
-                    class:list={["story-cta-link", cta.badge ? 'store-badge' : '', '']}
+                    class="story-cta-link"
                     href={cta.href}
                     target={cta.external ? '_blank' : undefined}
                     rel={cta.external ? 'noopener' : undefined}
                   >
-                    {cta.badge === 'apple' ? (
-                      <><svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" /></svg><span><small>Download on the</small><strong>App Store</strong></span></>
-                    ) : cta.badge === 'google' ? (
-                      <><svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20.5v-17c0-.83.94-1.3 1.6-.8l14 8.5c.6.4.6 1.2 0 1.6l-14 8.5c-.66.5-1.6.03-1.6-.8z" /></svg><span><small>Get it on</small><strong>Google Play</strong></span></>
-                    ) : cta.label}
+                    {cta.label}
                   </a>
                 ))}
               </div>
@@ -1914,15 +1929,31 @@ const mediaStyle = (beat) => {
     <section class="home-video-section">
       <div class="home-video-inner">
         <p class="story-kicker font-heading text-xs uppercase text-joner-red">Watch the work</p>
-        <h2 class="mt-4 font-heading text-5xl uppercase leading-none md:text-7xl">Inside Joner Football</h2>
-        <div class="home-video-frame">
-          <iframe
-            src="https://www.youtube-nocookie.com/embed/axQYlKahQ58"
-            title="Joner Football video"
-            loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen
-          ></iframe>
+        <div class="home-video-grid">
+          <article class="home-video-card">
+            <h3>Inside Joner Football</h3>
+            <div class="home-video-frame">
+              <iframe
+                src="https://www.youtube-nocookie.com/embed/axQYlKahQ58"
+                title="Inside Joner Football"
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+              ></iframe>
+            </div>
+          </article>
+          <article class="home-video-card">
+            <h3>Our Training</h3>
+            <div class="home-video-frame">
+              <iframe
+                src="https://www.youtube-nocookie.com/embed/pvFy2YJsrZ0"
+                title="Our Training"
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen
+              ></iframe>
+            </div>
+          </article>
         </div>
       </div>
     </section>

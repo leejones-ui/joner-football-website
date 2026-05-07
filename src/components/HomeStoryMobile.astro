@@ -23,7 +23,7 @@ const beats = [
     kicker: 'Growth',
     title: 'Local Sessions. Global Reach.',
     body: 'The work spread through videos, players, parents, coaches, and millions of touches online.',
-    image: '/images/home-mobile-story/mobile-story-04-global.webp',
+    image: '/images/home-mobile-story/mobile-story-03-growth.webp',
     growth: true,
     ctas: [
       ['YouTube', 'https://www.youtube.com/@jonerfootball'],
@@ -40,7 +40,7 @@ const beats = [
     kicker: 'The Joner Way',
     title: 'A Method Like No Other',
     body: 'Every technical detail gets coached through energy, passion & positivity.',
-    image: '/images/home-mobile-story/mobile-story-03-method.webp',
+    image: '/images/home-mobile-story/mobile-story-04-joner-way.webp',
     ctas: [['Train With Us In Sydney', '/training#jfp']],
   },
   {
@@ -49,7 +49,7 @@ const beats = [
     kicker: 'Going Global',
     title: 'Coaching Worldwide',
     body: 'From Sydney to camps, clinics, and football communities around the world.',
-    image: '/images/home-mobile-story/mobile-story-04-global.webp',
+    image: '/images/home-mobile-story/mobile-story-05-camps.webp',
     ctas: [['Elite Camps', '/camps']],
   },
   {
@@ -62,8 +62,6 @@ const beats = [
     video: '/images/home-storyboard/06-app-header-video-desktop.mp4',
     ctas: [
       ['7 Day Free Trial', 'https://app.jonerfootball.com/categories/category-vpi8uazway4'],
-      ['Apple Download', 'https://apps.apple.com/au/app/joner-football-app/id6737069275'],
-      ['Google Download', 'https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball'],
     ],
   },
   {
@@ -81,7 +79,7 @@ const beats = [
     kicker: 'Action',
     title: 'Choose Your Next Step',
     body: 'Train online, train with us, join a camp, or get inside the Joner Football Hub.',
-    image: '/images/home-mobile-story/mobile-story-07-choice.webp',
+    image: '/images/home-mobile-story/mobile-story-08-action.webp',
     choose: true,
   },
 ]
@@ -119,10 +117,10 @@ const choices = [
           <div class="mobile-story-shade" aria-hidden="true"></div>
 
           <div class="mobile-story-copy">
-            <p class="mobile-story-kicker">{beat.number} / {beat.kicker}</p>
+            {beat.stamp && <strong class="mobile-story-stamp">{beat.stamp}</strong>}
+            <p class="mobile-story-kicker">{beat.kicker}</p>
             <h2>{beat.title}</h2>
             {beat.body && <p>{beat.body}</p>}
-            {beat.stamp && <strong class="mobile-story-stamp">{beat.stamp}</strong>}
 
             {beat.growth && (
               <div class="mobile-growth-card">
@@ -156,7 +154,7 @@ const choices = [
         <div class="mobile-story-line"></div>
         <div class="mobile-story-fill" data-mobile-story-fill></div>
         <div class="mobile-story-dots">
-          {beats.map((beat, index) => <span class:list={[index === 0 && 'is-active']} data-mobile-dot></span>)}
+          {beats.map((beat, index) => <span class:list={[index === 0 && 'is-active']} data-mobile-dot>{beat.number}</span>)}
         </div>
       </aside>
     </div>
@@ -167,31 +165,38 @@ const choices = [
   .mobile-story { display: none; position: relative; background: #030303; color: #fff; }
   .mobile-story-track { position: relative; }
   .mobile-story-sticky { position: sticky; top: 0; height: 100svh; overflow: hidden; isolation: isolate; background: #050505; }
-  .mobile-story-beat { position: absolute; inset: 0; pointer-events: none; will-change: opacity, transform; transform: scale(1.015); }
+  .mobile-story-beat { position: absolute; inset: 0; pointer-events: none; will-change: opacity; transform: translateZ(0); }
   .mobile-story-beat.is-active { pointer-events: auto; }
   .mobile-story-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; filter: saturate(1.02) contrast(1.08) brightness(0.82); }
   .mobile-story-beat:nth-child(1) .mobile-story-media { object-position: 53% 48%; }
   .mobile-story-beat:nth-child(2) .mobile-story-media { object-position: 50% 47%; }
-  .mobile-story-beat:nth-child(4) .mobile-story-media { object-position: 50% 48%; }
+  .mobile-story-beat:nth-child(3) .mobile-story-media { object-position: 50% 48%; }
+  .mobile-story-beat:nth-child(4) .mobile-story-media { object-position: 50% 44%; }
+  .mobile-story-beat:nth-child(5) .mobile-story-media { object-position: 50% 48%; }
   .mobile-story-beat:nth-child(7) .mobile-story-media { object-position: 54% 50%; }
+  .mobile-story-beat:nth-child(8) .mobile-story-media { object-position: 50% 40%; }
   .mobile-story-shade { position: absolute; inset: 0; z-index: 1; background: radial-gradient(circle at 68% 38%, rgba(227,6,19,0.16), transparent 18rem), linear-gradient(180deg, rgba(0,0,0,0.48), rgba(0,0,0,0.08) 38%, rgba(0,0,0,0.8)), linear-gradient(90deg, rgba(0,0,0,0.78), rgba(0,0,0,0.24) 54%, rgba(0,0,0,0.2)); }
-  .mobile-story-copy { position: absolute; left: 2.85rem; right: 1.2rem; bottom: max(2.05rem, env(safe-area-inset-bottom)); z-index: 3; max-width: 23rem; opacity: var(--copy-opacity, 1); transform: translateY(var(--copy-y, 0)); will-change: opacity, transform; }
+  .mobile-story-copy { position: absolute; left: 2.85rem; right: 1.2rem; top: 14vh; z-index: 3; max-width: 23rem; opacity: var(--copy-opacity, 1); transform: translate3d(0, var(--copy-y, 0), 0); will-change: opacity, transform; }
+  .mobile-story-beat:nth-child(1) .mobile-story-copy { top: 12vh; text-align: left; }
+  .mobile-story-beat:nth-child(2) .mobile-story-copy { top: 11vh; }
+  .mobile-story-beat:nth-child(8) .mobile-story-copy { top: 12vh; }
   .mobile-story-kicker { margin: 0 0 0.9rem; color: #e30613; font-family: 'Anton', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 0.24em; text-transform: uppercase; }
   .mobile-story-copy h2 { margin: 0; color: #fff; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.65rem, 12.2vw, 4.45rem); line-height: 0.92; letter-spacing: 0.03em; text-transform: uppercase; text-shadow: 0 1rem 2rem rgba(0,0,0,0.62); }
   .mobile-story-copy p:not(.mobile-story-kicker) { margin: 1rem 0 0; max-width: 19.5rem; color: rgba(255,255,255,0.78); font-family: Arial, sans-serif; font-size: 0.98rem; line-height: 1.42; }
-  .mobile-story-stamp { display: inline-flex; margin-top: 1rem; border-left: 2px solid #e30613; padding-left: 0.8rem; font-family: 'Anton', Impact, sans-serif; font-size: 2.4rem; line-height: 1; }
+  .mobile-story-stamp { display: inline-flex; margin: 0 0 1rem; border-left: 2px solid #e30613; padding-left: 0.8rem; font-family: 'Anton', Impact, sans-serif; font-size: 2.4rem; line-height: 1; order: -1; }
   .mobile-story-ctas, .mobile-story-choices { margin-top: 1.15rem; display: flex; flex-wrap: wrap; gap: 0.58rem; }
+  .mobile-story-beat:nth-child(3) .mobile-story-ctas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 20.5rem; }
   .mobile-story-ctas a, .mobile-story-choices a { display: inline-flex; align-items: center; justify-content: center; min-height: 2.9rem; border: 1px solid rgba(255,255,255,0.34); border-radius: 999px; background: rgba(5,5,5,0.58); color: #fff; padding: 0.78rem 1rem; font-family: 'Anton', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 0.13em; line-height: 1; text-decoration: none; text-transform: uppercase; backdrop-filter: blur(14px); }
   .mobile-story-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 20.5rem; }
   .mobile-story-choices a { border-radius: 0.7rem; min-height: 3.2rem; padding-inline: 0.55rem; text-align: center; }
   .mobile-growth-card { margin-top: 1.05rem; max-width: 20.5rem; border: 1px solid rgba(255,255,255,0.16); background: rgba(5,5,5,0.54); padding: 0.95rem; backdrop-filter: blur(16px); }
   .mobile-growth-label { margin: 0 0 0.55rem !important; color: #e30613 !important; font-family: 'Anton', Impact, sans-serif !important; font-size: 0.62rem !important; letter-spacing: 0.18em; text-transform: uppercase; }
-  .mobile-growth-card > strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: clamp(3.4rem, 15vw, 5rem); line-height: 0.92; transform: rotateX(var(--growth-spin, 0deg)); transform-origin: 50% 55%; }
+  .mobile-growth-card > strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: clamp(3.4rem, 15vw, 5rem); line-height: 0.92; transform: translate3d(0, var(--growth-rise, 0), 0) scale(var(--growth-scale, 1)); transform-origin: 0 60%; }
   .mobile-growth-bars { margin-top: 0.5rem; height: 4.6rem; display: flex; align-items: end; gap: 0.32rem; }
   .mobile-growth-bars span { flex: 1; background: #e30613; opacity: 0.5; transform-origin: bottom; transform: scaleY(var(--bar-scale, 1)); }
   .mobile-growth-grid { margin-top: 0.72rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.38rem; }
   .mobile-growth-grid div { border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); padding: 0.48rem 0.3rem; text-align: center; }
-  .mobile-growth-grid strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: 1.15rem; line-height: 1; transform: rotateX(var(--growth-spin, 0deg)); }
+  .mobile-growth-grid strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: 1.15rem; line-height: 1; transform: translate3d(0, var(--growth-rise-small, 0), 0) scale(var(--growth-scale-small, 1)); }
   .mobile-growth-grid span { display: block; margin-top: 0.25rem; color: rgba(255,255,255,0.58); font-family: Arial, sans-serif; font-size: 0.47rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
   .mobile-story-rail { position: absolute; left: 1rem; top: 5rem; bottom: 4.7rem; z-index: 5; width: 1.3rem; pointer-events: none; }
   .mobile-story-line, .mobile-story-fill { position: absolute; left: 0.62rem; top: 0; width: 1px; }
@@ -200,8 +205,8 @@ const choices = [
   .mobile-story-line::before, .mobile-story-line::after { content: '+'; position: absolute; left: -0.25rem; color: rgba(255,255,255,0.74); font-family: Arial, sans-serif; font-size: 1rem; line-height: 1; }
   .mobile-story-line::before { top: -0.9rem; } .mobile-story-line::after { bottom: -0.9rem; }
   .mobile-story-dots { position: absolute; left: 0.38rem; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: space-between; }
-  .mobile-story-dots span { width: 0.5rem; height: 0.5rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.38); background: rgba(0,0,0,0.3); }
-  .mobile-story-dots span.is-active { border-color: #e30613; background: #e30613; box-shadow: 0 0 1rem rgba(227,6,19,0.5); }
+  .mobile-story-dots span { width: 1.45rem; height: 1.45rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.26); background: rgba(0,0,0,0.34); display: grid; place-items: center; color: rgba(255,255,255,0.62); font-family: 'Anton', Impact, sans-serif; font-size: 0.58rem; letter-spacing: 0.08em; }
+  .mobile-story-dots span.is-active { border-color: #e30613; background: #e30613; color: #fff; box-shadow: 0 0 1rem rgba(227,6,19,0.5); }
   @media (max-width: 767px) { .mobile-story { display: block; } }
   @media (prefers-reduced-motion: reduce) { .mobile-story-beat, .mobile-story-copy, .mobile-growth-card > strong, .mobile-growth-grid strong { transition: none !important; transform: none !important; } }
 </style>
@@ -250,16 +255,18 @@ const choices = [
       setActive(index);
       beats.forEach(function (beat, i) {
         var distance = Math.abs(exact - i);
-        var opacity = clamp(1 - (distance * 1.35), 0, 1);
+        var opacity = clamp(1 - (distance * 1.45), 0, 1);
         beat.style.opacity = opacity.toFixed(4);
-        beat.style.transform = 'scale(' + (1 + (Math.min(distance, 1) * 0.018)).toFixed(4) + ')';
-        beat.style.setProperty('--copy-opacity', String(clamp(opacity * 1.25, 0, 1)));
-        beat.style.setProperty('--copy-y', (Math.min(distance, 1) * 12).toFixed(2) + 'px');
+        beat.style.setProperty('--copy-opacity', String(clamp(opacity * 1.3, 0, 1)));
+        beat.style.setProperty('--copy-y', (Math.min(distance, 1) * 10).toFixed(2) + 'px');
       });
       if (fill) fill.style.height = (progress * 100).toFixed(2) + '%';
       var growthLocal = clamp(exact - 2, 0, 1);
       var eased = easeOutCubic(growthLocal);
-      root.style.setProperty('--growth-spin', (growthLocal * 720).toFixed(1) + 'deg');
+      root.style.setProperty('--growth-rise', ((1 - eased) * 18).toFixed(2) + 'px');
+      root.style.setProperty('--growth-rise-small', ((1 - eased) * 8).toFixed(2) + 'px');
+      root.style.setProperty('--growth-scale', (0.76 + (eased * 0.24)).toFixed(3));
+      root.style.setProperty('--growth-scale-small', (0.82 + (eased * 0.18)).toFixed(3));
       root.style.setProperty('--bar-scale', eased.toFixed(3));
       counters.forEach(function (counter) {
         var target = Number(counter.getAttribute('data-target')) || 0;
