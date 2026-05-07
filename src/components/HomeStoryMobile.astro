@@ -107,7 +107,7 @@ const choices = [
       {beats.map((beat, index) => (
         <article class="mobile-story-beat" data-mobile-beat data-index={index} style={`opacity:${index === 0 ? 1 : 0};`}>
           {beat.video ? (
-            <video class="mobile-story-media" autoplay muted loop playsinline preload="metadata" poster={beat.image} aria-label={beat.title}>
+            <video class="mobile-story-media mobile-story-video" autoplay muted loop playsinline preload="auto" poster={beat.image} aria-label={beat.title}>
               <source src={beat.video} type="video/mp4" />
             </video>
           ) : (
@@ -167,26 +167,30 @@ const choices = [
   .mobile-story-sticky { position: relative; background: #050505; }
   .mobile-story-beat { position: relative; min-height: 100svh; overflow: hidden; pointer-events: auto; opacity: 1 !important; transform: none !important; isolation: isolate; }
   .mobile-story-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; filter: saturate(1.02) contrast(1.08) brightness(0.86); transform: translateZ(0); }
+  .mobile-story-video { z-index: 0; background: #000; }
   .mobile-story-beat:nth-child(1) .mobile-story-media { object-position: 53% 44%; }
   .mobile-story-beat:nth-child(2) .mobile-story-media { object-position: 50% 45%; }
   .mobile-story-beat:nth-child(3) .mobile-story-media { object-position: 50% 48%; }
   .mobile-story-beat:nth-child(4) .mobile-story-media { object-position: 50% 42%; }
   .mobile-story-beat:nth-child(5) .mobile-story-media { object-position: 50% 48%; }
-  .mobile-story-beat:nth-child(7) .mobile-story-media { object-position: 52% 50%; }
+  .mobile-story-beat:nth-child(7) .mobile-story-media { object-position: 50% 44%; }
   .mobile-story-beat:nth-child(8) .mobile-story-media { object-position: 50% 38%; }
   .mobile-story-shade { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(0,0,0,0.42), rgba(0,0,0,0.08) 42%, rgba(0,0,0,0.78)), linear-gradient(90deg, rgba(0,0,0,0.74), rgba(0,0,0,0.2) 58%, rgba(0,0,0,0.18)); }
-  .mobile-story-copy { position: absolute; left: 3.85rem; right: 1.25rem; top: 18vh; z-index: 3; max-width: 22.5rem; opacity: 1; transform: none; }
+  .mobile-story-copy { position: absolute; left: 3.85rem; right: 1.25rem; top: 18vh; z-index: 3; max-width: 22.5rem; opacity: 0.35; transform: translateY(1rem); transition: opacity 380ms cubic-bezier(.22,.61,.36,1), transform 460ms cubic-bezier(.22,.61,.36,1); }
+  .mobile-story-beat.is-active .mobile-story-copy { opacity: 1; transform: translateY(0); }
   .mobile-story-beat:nth-child(1) .mobile-story-copy { top: 24vh; text-align: left; }
   .mobile-story-beat:nth-child(2) .mobile-story-copy { top: auto; bottom: max(2.2rem, env(safe-area-inset-bottom)); left: 3.8rem; right: 1.4rem; text-align: center; }
   .mobile-story-beat:nth-child(4) .mobile-story-copy { top: 36vh; left: 3.8rem; right: 1.4rem; text-align: center; }
   .mobile-story-beat:nth-child(4) .mobile-story-ctas { justify-content: center; }
   .mobile-story-beat:nth-child(5) .mobile-story-copy { left: 4.15rem; }
   .mobile-story-beat:nth-child(6) .mobile-story-copy { inset: 0 1.4rem 0 3.8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
+  .mobile-story-beat:nth-child(7) .mobile-story-copy { top: auto; bottom: max(2.2rem, env(safe-area-inset-bottom)); }
   .mobile-story-beat:nth-child(8) .mobile-story-copy { inset: 0 1.4rem 0 3.8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
   .mobile-story-kicker { margin: 0 0 0.9rem; color: #e30613; font-family: 'Anton', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 0.24em; text-transform: uppercase; }
   .mobile-story-copy h2 { margin: 0; color: #fff; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.55rem, 11.7vw, 4.25rem); line-height: 0.92; letter-spacing: 0.03em; text-transform: uppercase; text-shadow: 0 1rem 2rem rgba(0,0,0,0.62); }
   .mobile-story-copy p:not(.mobile-story-kicker) { margin: 1rem 0 0; max-width: 19.5rem; color: rgba(255,255,255,0.8); font-family: Arial, sans-serif; font-size: 0.98rem; line-height: 1.42; }
-  .mobile-story-stamp { position: fixed; left: 3.85rem; top: 8vh; z-index: 4; display: inline-flex; border-left: 2px solid #e30613; padding-left: 0.8rem; font-family: 'Anton', Impact, sans-serif; font-size: 2.4rem; line-height: 1; }
+  .mobile-story-stamp { position: absolute; left: 3.85rem; top: 8vh; z-index: 4; display: inline-flex; border-left: 2px solid #e30613; padding-left: 0.8rem; font-family: 'Anton', Impact, sans-serif; font-size: 2.4rem; line-height: 1; opacity: 0; transform: translateY(0.5rem); transition: opacity 260ms ease, transform 300ms ease; }
+  .mobile-story-beat.is-active .mobile-story-stamp { opacity: 1; transform: translateY(0); }
   .mobile-story-ctas, .mobile-story-choices { margin-top: 1.15rem; display: flex; flex-wrap: wrap; gap: 0.58rem; }
   .mobile-story-beat:nth-child(3) .mobile-story-ctas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 20.5rem; }
   .mobile-story-ctas a, .mobile-story-choices a { display: inline-flex; align-items: center; justify-content: center; min-height: 2.9rem; border: 1px solid rgba(255,255,255,0.34); border-radius: 999px; background: rgba(5,5,5,0.58); color: #fff; padding: 0.78rem 1rem; font-family: 'Anton', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 0.13em; line-height: 1; text-decoration: none; text-transform: uppercase; backdrop-filter: blur(14px); }

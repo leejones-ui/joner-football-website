@@ -805,6 +805,52 @@ const mediaStyle = (beat) => {
         justify-content: center;
       }
 
+      .story-copy[data-index="5"] {
+        left: 50%;
+        right: auto;
+        width: min(62rem, 78vw);
+        max-width: none;
+        transform: translateX(-50%);
+        text-align: center;
+      }
+
+      .story-copy[data-index="5"] .story-body {
+        max-width: 46rem;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: center;
+      }
+
+      .story-copy[data-index="5"] .story-cta-row {
+        max-width: none;
+        justify-content: center;
+        align-items: stretch;
+      }
+
+      .story-copy[data-index="5"] .story-cta-link {
+        width: 9.8rem;
+        height: 4.1rem;
+        min-width: 9.8rem;
+        min-height: 4.1rem;
+        padding: 0;
+        text-align: center;
+      }
+
+      .story-copy[data-index="5"] .store-badge {
+        flex-direction: row;
+        gap: 0.48rem;
+      }
+
+      .story-copy[data-index="5"] .store-badge svg {
+        width: 1rem;
+        height: 1rem;
+      }
+
+      .story-copy[data-index="5"] .store-badge span {
+        line-height: 1;
+        text-align: center;
+      }
+
       .growth-bar {
         transform: scaleY(calc(0.18 + (var(--growth-progress) * 0.82)));
         transform-origin: bottom;
