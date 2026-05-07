@@ -536,6 +536,17 @@ const statusLabel = camp.status === 'sold-out' ? 'Sold out' : camp.status === 'c
 const spotsLabel = camp.spotsRemaining || camp.spotsTotal
   ? `${camp.spotsRemaining || camp.spotsTotal} spots`
   : camp.urgencyLabel
+const campCity = cleanText(camp.location).split(',')[0] || 'This'
+const ctaLabel = `Book ${campCity} Camp Spot`
+const mainOutcome = camp.mainOutcome || 'Sharper technique, cleaner decisions, and the confidence to train with higher standards after camp.'
+const quickFacts = [
+  { label: 'Where', value: camp.venueName ? `${camp.location} - ${camp.venueName}` : camp.location },
+  { label: 'Date and time', value: `${camp.dates} - ${camp.times}` },
+  { label: 'Age group', value: camp.ageRange },
+  { label: 'Group standard', value: camp.urgencyLabel || spotsLabel },
+  { label: 'Camp options', value: camp.priceLabel || dayOptions.join(', ') },
+  { label: 'Main outcome', value: mainOutcome },
+]
 
 const eventSchema = {
   '@context': 'https://schema.org',
@@ -586,7 +597,7 @@ const faqSchema = camp.faqItems?.length ? {
   ogImage={ogImage}
   schema={faqSchema ? [eventSchema, faqSchema] : [eventSchema]}
 >
-  <section id="overview" class="relative min-h-[86vh] overflow-hidden bg-joner-black">
+  <section id="overview" class="relative min-h-[88vh] overflow-hidden bg-joner-black">
     {heroVideo ? (
       <video autoplay muted loop playsinline poster={heroImage} class="absolute inset-0 h-full w-full object-cover">
         <source src={heroVideo} type="video/mp4" />
@@ -594,46 +605,61 @@ const faqSchema = camp.faqItems?.length ? {
     ) : (
       <img src={heroImage} alt={`${camp.title} with Joner Football players training`} class="absolute inset-0 h-full w-full object-cover" loading="eager" />
     )}
-    <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/80 to-joner-black/30"></div>
+    <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/88 to-joner-black/38"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-joner-black via-transparent to-joner-black/45"></div>
     <div class="absolute inset-x-0 top-0 h-1 bg-joner-red"></div>
 
     <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 md:pt-32">
       <a href="/camps" class="inline-flex min-h-[44px] items-center text-sm font-body text-gray-300 hover:text-white">Back to all camps</a>
-      <div class="grid grid-cols-1 gap-10 items-end mt-8">
-        <div>
+      <div class="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
+        <div class="max-w-5xl">
           <div class="flex flex-wrap items-center gap-3 mb-5">
             <span class="bg-joner-red px-3 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">{camp.heroKicker || 'Elite Camp'}</span>
             <span class="border border-white/20 bg-black/40 px-3 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">{statusLabel}</span>
           </div>
-          <h1 class="font-heading text-4xl sm:text-6xl lg:text-7xl font-bold text-white uppercase leading-none max-w-5xl">{camp.title}</h1>
-          <p class="mt-6 max-w-3xl text-lg md:text-xl text-gray-200 font-body leading-relaxed">{camp.heroSubtitle || camp.description}</p>
-          <div class="mt-8 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl">
-            <div class="camp-stat"><span>Location</span><strong>{camp.location}</strong></div>
-            <div class="camp-stat"><span>Dates / Times</span><strong>{camp.dates}<br />{camp.times}</strong></div>
-            <div class="camp-stat"><span>Ages</span><strong>{camp.ageRange}</strong></div>
-            <div class="camp-stat"><span>Spots</span><strong>{spotsLabel}</strong></div>
+          <h1 class="font-heading text-5xl sm:text-6xl lg:text-7xl font-bold text-white uppercase leading-none">{camp.title}</h1>
+          <p class="mt-6 max-w-3xl text-lg md:text-xl text-gray-100 font-body leading-relaxed">{camp.heroSubtitle || camp.description}</p>
+          <div class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3 max-w-5xl">
+            <div class="camp-stat"><span>Where</span><strong>{camp.location}</strong></div>
+            <div class="camp-stat"><span>When</span><strong>{camp.dates}<br />{camp.times}</strong></div>
+            <div class="camp-stat"><span>Age / Group</span><strong>{camp.ageRange}</strong></div>
+            <div class="camp-stat"><span>For</span><strong>Dedicated players ready to improve</strong></div>
           </div>
           <div class="mt-8 flex flex-col sm:flex-row gap-3">
-            <a href="#register" class="btn-red text-center">Register Now</a>
-            <a href="#what-you-get" class="btn-outline text-center">See What You Get</a>
+            <a href="#register" class="btn-red text-center">{ctaLabel}</a>
+            <a href="#quick-facts" class="btn-outline text-center">See Camp Details</a>
           </div>
         </div>
+
+        <aside class="border border-white/20 bg-joner-black/88 p-6 shadow-2xl backdrop-blur-md">
+          <p class="camp-eyebrow">Camp Snapshot</p>
+          <h2 class="font-heading text-3xl font-bold uppercase text-white">Everything parents need fast</h2>
+          <div class="mt-6 space-y-4">
+            <div class="camp-mini"><span>Venue</span><strong>{camp.venueName || camp.venue}</strong></div>
+            <div class="camp-mini"><span>Outcome</span><strong>{mainOutcome}</strong></div>
+            <div class="camp-mini"><span>Spots</span><strong>{spotsLabel}</strong></div>
+            <div class="camp-mini"><span>Options</span><strong>{camp.priceLabel || dayOptions.join(', ')}</strong></div>
+          </div>
+          <a href="#register" class="btn-red mt-7 w-full text-center">{ctaLabel}</a>
+          <p class="mt-4 text-sm text-gray-400 font-body">Registration saves player details first, then sends families to the selected payment link.</p>
+        </aside>
         </div>
       </div>
-    </div>
   </section>
 
   <nav class="sticky top-16 z-30 border-y border-gray-800 bg-joner-black/95 backdrop-blur" aria-label="Camp sections">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex gap-2 overflow-x-auto py-3 scrollbar-hide">
         {[
-          ['Overview', '#overview'],
-          ['What You Get', '#what-you-get'],
+          ['Facts', '#quick-facts'],
+          ['Who', '#who-for'],
+          ['Training', '#work-on'],
           ['Schedule', '#schedule'],
-          ['Coaches', '#coaches'],
+          ['Proof', '#proof'],
           ['Location', '#location'],
+          ['Bring', '#bring'],
           ['FAQs', '#faqs'],
-          ['Register', '#register'],
+          ['Book', '#register'],
         ].map(([label, href]) => (
           <a href={href} class="shrink-0 border border-gray-800 px-4 py-2 font-heading text-xs uppercase tracking-[0.16em] text-gray-300 hover:border-joner-red hover:text-white">{label}</a>
         ))}
@@ -641,24 +667,39 @@ const faqSchema = camp.faqItems?.length ? {
     </div>
   </nav>
 
-  <section class="bg-joner-red py-5">
+  <section id="quick-facts" class="scroll-mt-36 bg-white py-14 md:py-18 text-joner-black">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-        {(camp.trustItems || []).slice(0, 4).map((item: string) => (
-          <div class="font-heading text-sm uppercase tracking-[0.14em] text-white">{item}</div>
+      <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p class="camp-eyebrow">Quick Camp Facts</p>
+          <h2 class="section-heading text-joner-black">Know Before You Book</h2>
+        </div>
+        <a href="#register" class="btn-red text-center">{ctaLabel}</a>
+      </div>
+      <div class="mt-9 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {quickFacts.map((fact) => (
+          <article class="camp-fact-card">
+            <span>{fact.label}</span>
+            <strong>{fact.value}</strong>
+          </article>
         ))}
       </div>
     </div>
   </section>
 
-  <section class="bg-joner-black py-16 md:py-24">
+  <section id="who-for" class="scroll-mt-36 bg-joner-black py-16 md:py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-10 items-start">
         <div>
-          <p class="camp-eyebrow">Overview</p>
-          <h2 class="section-heading text-white">Built For Serious Development</h2>
+          <p class="camp-eyebrow">Who This Camp Is For</p>
+          <h2 class="section-heading text-white">Built For Players Who Want The Work</h2>
           <p class="mt-5 text-gray-300 font-body text-lg leading-relaxed">{camp.description}</p>
           {camp.extraInfo && <p class="mt-4 text-gray-400 font-body leading-relaxed">{camp.extraInfo}</p>}
+          <div class="mt-7 flex flex-wrap gap-3">
+            {(camp.trustItems || []).slice(0, 4).map((item: string) => (
+              <span class="border border-white/20 px-4 py-3 font-heading text-xs uppercase tracking-[0.14em] text-white">{item}</span>
+            ))}
+          </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(camp.audienceItems || commonAudience).map((item: any) => (
@@ -672,27 +713,48 @@ const faqSchema = camp.faqItems?.length ? {
     </div>
   </section>
 
-  {camp.featureVideoUrl && (
-    <section class="bg-joner-black py-16 md:py-24 border-t border-gray-900">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-[0.75fr_1.25fr] gap-8 items-center">
-        <div>
-          <p class="camp-eyebrow">A Sneak Peek</p>
-          <h2 class="section-heading text-white">Our Camps Come With Energy</h2>
-          <p class="mt-5 text-gray-300 font-body text-lg leading-relaxed">A quick look at the pace, energy, and standards players can expect at a Joner Football elite camp.</p>
-        </div>
-        <div class="aspect-video overflow-hidden border border-gray-800 bg-white">
-          <iframe src={camp.featureVideoUrl} title={`${camp.title} camp video`} class="h-full w-full" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-        </div>
-      </div>
-    </section>
-  )}
-
-  <section id="what-you-get" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
+  <section id="work-on" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="max-w-3xl">
-        <p class="camp-eyebrow">What You Get</p>
-        <h2 class="section-heading text-joner-black">A Proper Joner Camp Experience</h2>
+      <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div class="max-w-3xl">
+          <p class="camp-eyebrow">What Players Will Work On</p>
+          <h2 class="section-heading text-joner-black">Technique Above Everything</h2>
+        </div>
+        <p class="max-w-md text-gray-600 font-body">Players work through high-repetition technical detail, pressure moments, and clear standards they can keep training after camp.</p>
       </div>
+      <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {(camp.trainingThemes || commonThemes).map((theme: any) => (
+          <article class="border border-gray-200 bg-white p-6 transition-colors hover:border-joner-red hover:shadow-lg">
+            <h3 class="font-heading text-xl font-bold text-joner-black uppercase">{theme.title}</h3>
+            <p class="mt-3 text-gray-700 font-body leading-relaxed">{theme.description}</p>
+          </article>
+        ))}
+      </div>
+
+      <div class="mt-12 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8">
+        <div class="border border-gray-800 bg-joner-black p-6 md:p-8">
+          <h3 class="font-heading text-2xl font-bold text-white uppercase">What Players Get</h3>
+          <ul class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {(camp.includedItems || []).map((item: string) => (
+              <li class="flex gap-3 text-gray-300 font-body"><span class="mt-1 h-2 w-2 shrink-0 bg-joner-red"></span><span>{item}</span></li>
+            ))}
+          </ul>
+        </div>
+        <div id="options" class="scroll-mt-36 border border-joner-red bg-joner-black p-6 md:p-8">
+          <p class="camp-eyebrow">Day Options</p>
+          <h3 class="font-heading text-2xl font-bold text-white uppercase">Choose The Right Option</h3>
+          <p class="mt-3 text-gray-400 font-body">Select the day option in the registration form. The live checkout link updates from that selection.</p>
+          <div class="mt-6 space-y-3">
+            {dayOptions.map((option: string) => (
+              <a href="#register" class="flex items-center justify-between gap-4 border border-white/20 bg-white px-4 py-4 hover:border-joner-red">
+                <span class="font-heading text-joner-black uppercase tracking-[0.08em]">{option}</span>
+                <span class="font-heading text-xs uppercase tracking-[0.14em] text-joner-red">Book</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div class="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {(camp.campHighlights || []).map((item: any) => (
           <article class="border border-gray-800 bg-joner-black p-6">
@@ -702,56 +764,16 @@ const faqSchema = camp.faqItems?.length ? {
           </article>
         ))}
       </div>
-      <div class="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_0.8fr] gap-8">
-        <div class="border border-gray-800 bg-joner-black p-6 md:p-8">
-          <h3 class="font-heading text-2xl font-bold text-white uppercase">Included</h3>
-          <ul class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {(camp.includedItems || []).map((item: string) => (
-              <li class="flex gap-3 text-gray-300 font-body"><span class="mt-1 h-2 w-2 shrink-0 bg-joner-red"></span><span>{item}</span></li>
-            ))}
-          </ul>
-        </div>
-        <div id="options" class="scroll-mt-36 border border-joner-red bg-joner-black p-6 md:p-8">
-          <p class="camp-eyebrow">Day Options</p>
-          <h3 class="font-heading text-2xl font-bold text-white uppercase">Choose Your Camp Option</h3>
-          <p class="mt-3 text-gray-400 font-body">Select your option in the registration form. The checkout link updates from the selected day and payment method.</p>
-          <div class="mt-6 space-y-3">
-            {dayOptions.map((option: string) => (
-              <a href="#register" class="flex items-center justify-between gap-4 border border-white/20 bg-white px-4 py-4 hover:border-joner-red">
-                <span class="font-heading text-joner-black uppercase tracking-[0.08em]">{option}</span>
-                <span class="font-heading text-xs uppercase tracking-[0.14em] text-joner-red">Register</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
     </div>
   </section>
 
-  <section class="bg-joner-black py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center max-w-3xl mx-auto">
-        <p class="camp-eyebrow">Training Themes</p>
-        <h2 class="section-heading text-white">Technique Above Everything</h2>
-      </div>
-      <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {(camp.trainingThemes || commonThemes).map((theme: any) => (
-          <article class="border border-gray-800 p-6 hover:border-joner-red transition-colors">
-            <h3 class="font-heading text-xl font-bold text-white uppercase">{theme.title}</h3>
-            <p class="mt-3 text-gray-300 font-body leading-relaxed">{theme.description}</p>
-          </article>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <section id="schedule" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
+  <section id="schedule" class="scroll-mt-36 bg-joner-black py-16 md:py-24">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <p class="camp-eyebrow text-center">Schedule</p>
-      <h2 class="section-heading text-joner-black text-center">Camp Timeline</h2>
+      <h2 class="section-heading text-white text-center">What Happens Each Day</h2>
       <div class="mt-12 space-y-4">
         {(camp.scheduleItems || []).map((item: any, index: number) => (
-          <article class="grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4 border border-gray-200 bg-white p-5 md:p-6">
+          <article class="grid grid-cols-1 md:grid-cols-[190px_1fr] gap-4 border border-gray-800 bg-white p-5 md:p-6">
             <div class="flex md:block items-center gap-3">
               <span class="inline-flex h-10 w-10 items-center justify-center bg-joner-red font-heading font-bold text-white">{index + 1}</span>
               <p class="font-heading text-sm uppercase tracking-[0.14em] text-joner-red md:mt-4">{item.time}</p>
@@ -766,18 +788,23 @@ const faqSchema = camp.faqItems?.length ? {
     </div>
   </section>
 
-  <section id="coaches" class="scroll-mt-36 bg-joner-black py-16 md:py-24">
+  <section id="proof" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">
         <div>
-          <p class="camp-eyebrow">Coaches</p>
-          <h2 class="section-heading text-white">Led By Football People</h2>
+          <p class="camp-eyebrow">Coach And Joner Proof</p>
+          <h2 class="section-heading text-joner-black">Led By Football People</h2>
         </div>
-        <p class="max-w-xl text-gray-400 font-body">Every camp is built around standards, detail, and a coaching team that cares about player development.</p>
+        <p class="max-w-xl text-gray-600 font-body">Every camp is built around standards, detail, and a coaching team that cares about player development.</p>
+      </div>
+      <div class="mb-8 grid grid-cols-2 md:grid-cols-4 gap-3">
+        {(camp.trustItems || []).slice(0, 4).map((item: string) => (
+          <div class="border border-gray-200 bg-gray-50 p-5 text-center font-heading text-sm uppercase tracking-[0.14em] text-joner-black">{item}</div>
+        ))}
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
         {(camp.coachProfiles || commonCoaches).slice(0, 3).map((coach: any) => (
-          <article class="border border-gray-200 bg-white overflow-hidden">
+          <article class="border border-gray-200 bg-white overflow-hidden shadow-sm">
             <div class="h-56 bg-joner-black">
               <img src={coach.image || '/images/about/coaching-team.webp'} alt={`${coach.name} coaching at Joner Football`} class="h-full w-full object-cover" loading="lazy" />
             </div>
@@ -789,17 +816,29 @@ const faqSchema = camp.faqItems?.length ? {
           </article>
         ))}
       </div>
+      {camp.featureVideoUrl && (
+        <div class="mt-10 grid grid-cols-1 lg:grid-cols-[0.72fr_1.28fr] gap-8 items-center border border-gray-200 bg-gray-50 p-6 md:p-8">
+          <div>
+            <p class="camp-eyebrow">Camp Energy</p>
+            <h3 class="font-heading text-3xl font-bold uppercase text-joner-black">See The Standard Before You Book</h3>
+            <p class="mt-4 text-gray-700 font-body leading-relaxed">A quick look at the pace, intensity, and feel players can expect at a Joner Football elite camp.</p>
+          </div>
+          <div class="aspect-video overflow-hidden border border-gray-800 bg-joner-black">
+            <iframe src={camp.featureVideoUrl} title={`${camp.title} camp video`} class="h-full w-full" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+          </div>
+        </div>
+      )}
     </div>
   </section>
 
-  <section id="location" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
+  <section id="location" class="scroll-mt-36 bg-joner-black py-16 md:py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-8">
-        <div class="border border-gray-800 bg-joner-black p-6 md:p-8">
+        <div class="border border-gray-800 bg-white p-6 md:p-8 text-joner-black">
           <p class="camp-eyebrow">Venue</p>
-          <h2 class="section-heading text-white">{camp.venueName || 'Camp Venue'}</h2>
-          <p class="mt-4 text-gray-300 font-body text-lg">{camp.venueAddress || camp.venue}</p>
-          <p class="mt-4 text-gray-300 font-body leading-relaxed">{camp.venueNotes}</p>
+          <h2 class="section-heading text-joner-black">{camp.venueName || 'Camp Venue'}</h2>
+          <p class="mt-4 text-gray-700 font-body text-lg">{camp.venueAddress || camp.venue}</p>
+          <p class="mt-4 text-gray-700 font-body leading-relaxed">{camp.venueNotes}</p>
           {camp.mapUrl && <a href={camp.mapUrl} target="_blank" rel="noopener noreferrer" class="btn-red mt-6">Open In Maps</a>}
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -813,17 +852,17 @@ const faqSchema = camp.faqItems?.length ? {
     </div>
   </section>
 
-  <section class="bg-joner-black py-16 md:py-24">
+  <section id="bring" class="scroll-mt-36 bg-white text-joner-black py-16 md:py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-8">
         <div>
           <p class="camp-eyebrow">What To Bring</p>
-          <h2 class="section-heading text-white">Arrive Ready</h2>
-          <p class="mt-4 text-gray-400 font-body">Everything is set up for players to train properly. Bring the essentials and come ready to work.</p>
+          <h2 class="section-heading text-joner-black">Arrive Ready</h2>
+          <p class="mt-4 text-gray-600 font-body">Everything is set up for players to train properly. Bring the essentials and come ready to work.</p>
         </div>
         <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {(camp.whatToBring || commonBring).map((item: string) => (
-            <li class="flex gap-3 border border-white/20 bg-white p-4 text-joner-black font-body"><span class="mt-1 h-2 w-2 shrink-0 bg-joner-red"></span><span>{item}</span></li>
+            <li class="flex gap-3 border border-gray-200 bg-gray-50 p-4 text-joner-black font-body"><span class="mt-1 h-2 w-2 shrink-0 bg-joner-red"></span><span>{item}</span></li>
           ))}
         </ul>
       </div>
@@ -853,19 +892,20 @@ const faqSchema = camp.faqItems?.length ? {
   <section id="register" class="scroll-mt-36 bg-joner-black py-16 md:py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-8 items-start">
-        <div class="lg:sticky lg:top-36 border border-gray-200 bg-white text-joner-black p-6 md:p-8">
-          <p class="camp-eyebrow">Register</p>
+        <div class="camp-summary lg:sticky lg:top-36 border border-gray-200 bg-white text-joner-black p-6 md:p-8">
+          <p class="camp-eyebrow">Final CTA</p>
           <h2 class="section-heading text-joner-black">Secure Your Place</h2>
           <p class="mt-4 text-gray-700 font-body leading-relaxed">Submit the registration first. Once it is saved, you will be sent to the selected payment link to complete the booking.</p>
           <div class="mt-6 space-y-4">
             <div class="camp-mini"><span>Camp</span><strong>{camp.title}</strong></div>
             <div class="camp-mini"><span>Dates</span><strong>{camp.dates}</strong></div>
             <div class="camp-mini"><span>Venue</span><strong>{camp.venueName || camp.venue}</strong></div>
+            <div class="camp-mini"><span>Outcome</span><strong>{mainOutcome}</strong></div>
           </div>
         </div>
 
         <form id="camp-registration-form" class="border border-gray-200 bg-white text-joner-black p-5 md:p-8 space-y-5">
-          <h3 class="font-heading text-3xl font-bold text-joner-black uppercase">Player Registration</h3>
+          <h3 class="font-heading text-3xl font-bold text-joner-black uppercase">{ctaLabel}</h3>
           <p class="text-gray-600 font-body text-sm">All fields marked with * are required.</p>
 
           <input type="hidden" name="camp" value={camp.title} />
@@ -901,27 +941,19 @@ const faqSchema = camp.faqItems?.length ? {
           <label><span class="form-label">Extra Player Info</span><textarea name="extraInfo" rows="3" class="form-input"></textarea></label>
           <label><span class="form-label">Payment Method</span><select id="payment-method-select" name="paymentMethod" class="form-input">{paymentOptions.map((option: any) => <option value={option.value} data-link={option.link}>{option.label}</option>)}</select></label>
 
-          <label class="flex gap-3 items-start text-gray-300 font-body text-sm">
+          <label class="flex gap-3 items-start text-gray-700 font-body text-sm">
             <input required type="checkbox" name="agreementAccepted" class="mt-1 accent-[#E30613]" />
-            <span>I have read and agree to the {camp.trainingAgreementLink ? <a class="text-white underline" href={camp.trainingAgreementLink} target="_blank" rel="noopener noreferrer">training agreement</a> : 'training agreement'}.</span>
+            <span>I have read and agree to the {camp.trainingAgreementLink ? <a class="text-joner-red underline" href={camp.trainingAgreementLink} target="_blank" rel="noopener noreferrer">training agreement</a> : 'training agreement'}.</span>
           </label>
 
           <div id="camp-form-message" class="hidden border border-gray-700 p-4 text-sm font-body"></div>
-          <button type="submit" class="btn-red w-full">Submit Registration And Pay</button>
+          <button type="submit" class="btn-red w-full">{ctaLabel}</button>
         </form>
       </div>
     </div>
   </section>
 
-  <section class="bg-joner-red py-14 md:py-18">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-      <h2 class="font-heading text-3xl md:text-5xl font-bold uppercase text-white">Do Not Wait Until It Is Full</h2>
-      <p class="mt-4 text-white/85 font-body text-lg">Joner Football camps move fast. Register now and lock in your place for {camp.title}.</p>
-      <a href="#register" class="mt-7 inline-block bg-white px-8 py-4 font-heading text-sm font-bold uppercase tracking-[0.14em] text-joner-red hover:bg-gray-100">Register Now</a>
-    </div>
-  </section>
-
-  <a href="#register" class="fixed bottom-[72px] left-3 right-3 z-40 md:hidden btn-red text-center text-sm shadow-2xl">Register For This Camp</a>
+  <a href="#register" class="fixed bottom-[72px] left-3 right-3 z-40 md:hidden btn-red text-center text-sm shadow-2xl">{ctaLabel}</a>
 
   <style>
     .camp-eyebrow {
@@ -963,9 +995,35 @@ const faqSchema = camp.faqItems?.length ? {
       border-left: 3px solid #E30613;
       padding-left: 1rem;
     }
+    .camp-summary .camp-mini strong {
+      color: #0A0A0A;
+    }
+    .camp-fact-card {
+      min-height: 150px;
+      border: 1px solid #e5e7eb;
+      background: #f8f8f8;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 1.25rem;
+    }
+    .camp-fact-card span {
+      color: #E30613;
+      font-family: var(--font-heading);
+      font-size: .75rem;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .camp-fact-card strong {
+      color: #0A0A0A;
+      font-family: var(--font-body);
+      font-size: 1.08rem;
+      line-height: 1.35;
+    }
     .form-label {
       display: block;
-      color: #fff;
+      color: #0A0A0A;
       font-family: var(--font-heading);
       font-size: .72rem;
       text-transform: uppercase;
