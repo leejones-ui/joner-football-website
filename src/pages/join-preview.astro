@@ -10,8 +10,10 @@ const plans = [
     monthlyPeriod: '/month',
     annualPrice: '$23.99',
     annualPeriod: '/month',
+    compareMonthly: '',
+    compareAnnual: '',
     noteMonthly: '7-day free trial',
-    noteAnnual: '7-day free trial',
+    noteAnnual: 'Monthly plan. Switch to Annual to save.',
     cta: 'Start Free Trial',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
     ctaMonthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
@@ -28,12 +30,14 @@ const plans = [
     id: 'annual',
     name: 'Annual',
     badge: 'Most Popular',
-    monthlyPrice: '$17.08',
+    monthlyPrice: '$23.99',
     monthlyPeriod: '/month',
-    annualPrice: '$204.99',
-    annualPeriod: '/year',
-    noteMonthly: 'Billed yearly. Save $83',
-    noteAnnual: '7-day free trial. Save $83',
+    annualPrice: '$17.08',
+    annualPeriod: '/month',
+    compareMonthly: '',
+    compareAnnual: '$23.99',
+    noteMonthly: '7-day free trial',
+    noteAnnual: '$204.99 billed yearly. Save $83.',
     cta: 'Start Free Trial',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
     ctaMonthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
@@ -50,12 +54,14 @@ const plans = [
     id: 'max',
     name: 'Max',
     badge: '',
-    monthlyPrice: '$26.67',
-    monthlyPeriod: '/month',
-    annualPrice: '$319.99',
-    annualPeriod: '/year',
-    noteMonthly: 'Billed yearly. Full access day one',
-    noteAnnual: 'Full access day one',
+    monthlyPrice: '$319.99',
+    monthlyPeriod: '/year',
+    annualPrice: '$26.67',
+    annualPeriod: '/month',
+    compareMonthly: '',
+    compareAnnual: '$319.99/year',
+    noteMonthly: 'Full access day one',
+    noteAnnual: '$319.99 billed yearly. Full access day one.',
     cta: 'Join Max',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
     ctaMonthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
@@ -76,6 +82,8 @@ const plans = [
     monthlyPeriod: '',
     annualPrice: 'Custom',
     annualPeriod: '',
+    compareMonthly: '',
+    compareAnnual: '',
     noteMonthly: 'For clubs, schools and academies',
     noteAnnual: 'For clubs, schools and academies',
     cta: 'Get Club Pricing',
@@ -119,8 +127,8 @@ const comparisonRows = [
 
         <div class="w-full lg:w-[360px]">
           <div class="bg-gray-100 border border-gray-200 rounded-full p-1 flex w-full" aria-label="Billing toggle">
-            <button type="button" data-billing="monthly" class="billing-toggle flex-1 rounded-full px-5 py-3 text-sm font-heading uppercase tracking-wider text-gray-600">Monthly</button>
-            <button type="button" data-billing="annual" class="billing-toggle active flex-1 rounded-full px-5 py-3 text-sm font-heading uppercase tracking-wider bg-black text-white">Annual</button>
+            <button type="button" data-billing="monthly" class="billing-toggle active flex-1 rounded-full px-5 py-3 text-sm font-heading uppercase tracking-wider bg-black text-white">Monthly</button>
+            <button type="button" data-billing="annual" class="billing-toggle flex-1 rounded-full px-5 py-3 text-sm font-heading uppercase tracking-wider text-gray-600">Annual</button>
           </div>
         </div>
       </div>
@@ -140,11 +148,14 @@ const comparisonRows = [
             </div>
 
             <div class="mb-7">
-              <div class="flex items-end gap-2 flex-wrap">
-                <span class="billing-price font-heading text-5xl md:text-6xl font-bold leading-none" data-monthly={plan.monthlyPrice} data-annual={plan.annualPrice}>{plan.annualPrice}</span>
-                <span class:list={['billing-period font-body text-base pb-1', plan.featured ? 'text-white/70' : 'text-gray-500']} data-monthly={plan.monthlyPeriod} data-annual={plan.annualPeriod}>{plan.annualPeriod}</span>
+              <div class="mb-2 min-h-6">
+                <span class:list={['billing-compare hidden text-base font-heading line-through', plan.featured ? 'text-white/45' : 'text-gray-400']} data-monthly={plan.compareMonthly} data-annual={plan.compareAnnual}>{plan.compareAnnual}</span>
               </div>
-              <p class:list={['billing-note mt-3 text-sm font-body', plan.featured ? 'text-white/75' : 'text-gray-600']} data-monthly={plan.noteMonthly} data-annual={plan.noteAnnual}>{plan.noteAnnual}</p>
+              <div class="flex items-end gap-2 flex-wrap">
+                <span class="billing-price font-heading text-5xl md:text-6xl font-bold leading-none" data-monthly={plan.monthlyPrice} data-annual={plan.annualPrice}>{plan.monthlyPrice}</span>
+                <span class:list={['billing-period font-body text-base pb-1', plan.featured ? 'text-white/70' : 'text-gray-500']} data-monthly={plan.monthlyPeriod} data-annual={plan.annualPeriod}>{plan.monthlyPeriod}</span>
+              </div>
+              <p class:list={['billing-note mt-3 text-sm font-body', plan.featured ? 'text-white/75' : 'text-gray-600']} data-monthly={plan.noteMonthly} data-annual={plan.noteAnnual}>{plan.noteMonthly}</p>
             </div>
 
             <ul class="space-y-3 mb-8 flex-1">
@@ -220,6 +231,7 @@ const comparisonRows = [
     const toggles = document.querySelectorAll('.billing-toggle')
     const prices = document.querySelectorAll('.billing-price')
     const periods = document.querySelectorAll('.billing-period')
+    const compares = document.querySelectorAll('.billing-compare')
     const notes = document.querySelectorAll('.billing-note')
     const ctas = document.querySelectorAll('.plan-cta')
 
@@ -240,6 +252,12 @@ const comparisonRows = [
         period.textContent = period.getAttribute(`data-${mode}`) || ''
       })
 
+      compares.forEach((compare) => {
+        const value = compare.getAttribute(`data-${mode}`) || ''
+        compare.textContent = value
+        compare.classList.toggle('hidden', !value)
+      })
+
       notes.forEach((note) => {
         note.textContent = note.getAttribute(`data-${mode}`) || ''
       })
@@ -254,6 +272,6 @@ const comparisonRows = [
       toggle.addEventListener('click', () => setBilling(toggle.getAttribute('data-billing') || 'annual'))
     })
 
-    setBilling('annual')
+    setBilling('monthly')
   </script>
 </BaseLayout>
