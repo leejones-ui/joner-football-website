@@ -216,16 +216,28 @@ const primaryPaths = [
 ]
 
 const actionLinks = [
-  { label: 'The App', href: '/app', className: 'app', eyebrow: 'Train online', icon: 'APP' },
-  { label: 'Train in Person', href: '/training', className: 'train', eyebrow: 'Sydney sessions', icon: 'JFP' },
-  { label: 'Coaches Section', href: '/app/for-coaches', className: 'coaches', eyebrow: 'Plan better', icon: 'CO' },
-  { label: 'Elite Camps', href: '/camps', className: 'camps', eyebrow: 'Worldwide', icon: 'CA' },
-  { label: 'Workshops', href: '/workshops', className: 'workshops', eyebrow: 'Learn live', icon: 'WS' },
-  { label: 'The JF Hub', href: '/hub', className: 'hub', eyebrow: 'Free resources', icon: 'HUB' },
-  { label: 'Player', href: '/app', className: 'player', eyebrow: 'Improve your game', icon: 'PL' },
-  { label: 'Parent', href: '/training#joners-juniors', className: 'parent', eyebrow: 'Find a pathway', icon: 'PA' },
-  { label: 'Coach', href: '/app/for-coaches', className: 'coach', eyebrow: 'Coach with clarity', icon: 'CH' },
+  { label: 'The App', href: '/app', className: 'app', icon: 'phone' },
+  { label: 'Train in Person', href: '/training', className: 'train', icon: 'group' },
+  { label: 'Coaches Section', href: '/app/for-coaches', className: 'coaches', icon: 'whistle' },
+  { label: 'Elite Camps', href: '/camps', className: 'camps', icon: 'trophy' },
+  { label: 'Workshops', href: '/workshops', className: 'workshops', icon: 'cap' },
+  { label: 'The JF Hub', href: '/hub', className: 'hub', icon: 'shield' },
+  { label: 'Player', href: '/app', className: 'player', icon: 'player' },
+  { label: 'Parent', href: '/training#joners-juniors', className: 'parent', icon: 'family' },
+  { label: 'Coach', href: '/app/for-coaches', className: 'coach', icon: 'clipboard' },
 ]
+
+const actionIconSvgs = {
+  phone: '<svg viewBox="0 0 24 24"><rect x="7" y="2.8" width="10" height="18.4" rx="1.8"></rect><path d="M10.5 18.2h3"></path></svg>',
+  group: '<svg viewBox="0 0 24 24"><path d="M8.5 10.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path><path d="M15.5 11a2.7 2.7 0 1 0 0-5.4"></path><path d="M3.5 19.5v-1.2c0-3 2.2-5.2 5-5.2s5 2.2 5 5.2v1.2"></path><path d="M14.5 14c2.8.2 4.5 2.1 4.5 4.8v.7"></path></svg>',
+  whistle: '<svg viewBox="0 0 24 24"><path d="M4 13.5a5.5 5.5 0 1 0 11 0 5.5 5.5 0 0 0-11 0Z"></path><path d="M12.8 9.4 19 6.5l1.4 2.6-5.2 3"></path><path d="M7.7 13.5h3.5"></path><path d="M19 6.5l1.7-2"></path></svg>',
+  trophy: '<svg viewBox="0 0 24 24"><path d="M8 4h8v4.5c0 3.2-1.7 5.4-4 6.2-2.3-.8-4-3-4-6.2V4Z"></path><path d="M8 6H4.5v1.8c0 2.2 1.5 3.8 3.7 4"></path><path d="M16 6h3.5v1.8c0 2.2-1.5 3.8-3.7 4"></path><path d="M12 14.8v3.4"></path><path d="M8.5 21h7"></path></svg>',
+  cap: '<svg viewBox="0 0 24 24"><path d="M3 9.5 12 5l9 4.5-9 4.5-9-4.5Z"></path><path d="M7 11.6v4.2c2.8 1.8 7.2 1.8 10 0v-4.2"></path><path d="M20 10v5"></path></svg>',
+  shield: '<svg viewBox="0 0 24 24"><path d="M12 3.2 19 6v5.2c0 4.2-2.8 7.7-7 9.6-4.2-1.9-7-5.4-7-9.6V6l7-2.8Z"></path><path d="M9 14.5V9h2.7c1.7 0 2.8 1 2.8 2.5S13.4 14 11.7 14H11"></path></svg>',
+  player: '<svg viewBox="0 0 24 24"><path d="M13.5 5.2a2.1 2.1 0 1 0 0-4.2 2.1 2.1 0 0 0 0 4.2Z"></path><path d="m9 9 3.2-2.5 3.4 1.7 2.5 3"></path><path d="m12 11-1.5 4.2-3 4.8"></path><path d="m13.2 14.4 3.7 5.6"></path><path d="M5.1 19.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4Z"></path></svg>',
+  family: '<svg viewBox="0 0 24 24"><path d="M8 9.5a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4Z"></path><path d="M16 9.5a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4Z"></path><path d="M4 20v-2.2c0-2.5 1.7-4.3 4-4.3s4 1.8 4 4.3V20"></path><path d="M12 20v-2.2c0-2.5 1.7-4.3 4-4.3s4 1.8 4 4.3V20"></path></svg>',
+  clipboard: '<svg viewBox="0 0 24 24"><path d="M8 4.5H6.2A2.2 2.2 0 0 0 4 6.7v12.1A2.2 2.2 0 0 0 6.2 21h11.6a2.2 2.2 0 0 0 2.2-2.2V6.7a2.2 2.2 0 0 0-2.2-2.2H16"></path><path d="M8 5.5h8l-.8-2.2H8.8L8 5.5Z"></path><path d="M8 12h8"></path><path d="M8 16h5"></path></svg>',
+}
 
 const journeyLinks = [
   { label: 'Joners Juniors', href: '/training#joners-juniors', className: 'juniors' },
@@ -813,71 +825,178 @@ const mediaStyle = (beat) => {
         box-shadow: inset 0 0 80px rgba(0,0,0,0.22);
       }
 
+      .story-shell[data-active="7"] .story-bg[data-state="active"] img {
+        object-position: 62% 50%;
+        filter: grayscale(1) contrast(1.18) brightness(0.72);
+      }
+
+      .story-shell[data-active="7"] .story-shade-main {
+        background:
+          radial-gradient(circle at 88% 82%, rgba(227,6,19,0.28), transparent 17rem),
+          linear-gradient(90deg, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.88) 34%, rgba(0,0,0,0.42) 69%, rgba(0,0,0,0.2) 100%);
+      }
+
+      .story-shell[data-active="7"] .story-shade-bottom {
+        opacity: 0.62;
+      }
+
+      .story-shell[data-active="7"] .story-vignette {
+        box-shadow:
+          inset 0 0 120px rgba(0,0,0,0.74),
+          inset 0 0 0 1px rgba(227,6,19,0.05);
+      }
+
+      .story-overlay--action::before,
+      .story-overlay--action::after {
+        content: "";
+        position: absolute;
+        pointer-events: none;
+        z-index: 41;
+      }
+
+      .story-overlay--action::before {
+        left: 6.2rem;
+        top: 20vh;
+        width: 5.6rem;
+        height: 31rem;
+        border-left: 3px solid rgba(227,6,19,0.76);
+        clip-path: polygon(0 0, 62% 12%, 30% 27%, 76% 44%, 30% 61%, 70% 78%, 0 100%);
+        opacity: 0.56;
+        filter: drop-shadow(0 0 1.2rem rgba(227,6,19,0.3));
+      }
+
+      .story-overlay--action::after {
+        right: -7rem;
+        bottom: -8rem;
+        width: 27rem;
+        height: 27rem;
+        border: 1px solid rgba(227,6,19,0.26);
+        border-radius: 999px;
+        box-shadow:
+          inset 0 0 0 1.2rem rgba(0,0,0,0),
+          inset 0 0 0 1.35rem rgba(227,6,19,0.16),
+          inset 0 0 0 2.8rem rgba(0,0,0,0),
+          inset 0 0 0 2.95rem rgba(227,6,19,0.12),
+          inset 0 0 0 4.4rem rgba(0,0,0,0),
+          inset 0 0 0 4.55rem rgba(227,6,19,0.1);
+        opacity: 0.72;
+      }
+
       .action-intro {
         position: absolute;
         z-index: 45;
-        left: clamp(13rem, 18vw, 18rem);
-        top: 21vh;
-        max-width: 44rem;
+        left: clamp(13rem, 16vw, 15rem);
+        top: clamp(5.7rem, 11.2vh, 7.4rem);
+        max-width: 43rem;
+      }
+
+      .action-intro .story-kicker {
+        display: none;
       }
 
       .action-intro h2 {
+        max-width: 42rem;
         color: #FFFFFF;
         font-family: 'Anton', Impact, sans-serif;
-        font-size: clamp(3.8rem, 7.2vw, 7rem);
-        line-height: 0.9;
-        letter-spacing: 0.045em;
+        font-size: clamp(4.9rem, 6.35vw, 6.9rem);
+        line-height: 0.88;
+        letter-spacing: 0.035em;
         text-transform: uppercase;
-        text-shadow: 0 1.4rem 3rem rgba(0,0,0,0.62);
+        text-shadow: 0 1.4rem 3rem rgba(0,0,0,0.78);
+      }
+
+      .action-intro h2 span {
+        color: #E30613;
       }
 
       .action-intro p {
-        margin-top: 1rem;
-        max-width: 31rem;
-        color: rgba(255,255,255,0.76);
-        font-size: 1.08rem;
-        line-height: 1.55;
+        position: relative;
+        margin-top: 1.25rem;
+        padding-left: 0;
+        max-width: 34rem;
+        color: rgba(255,255,255,0.88);
+        font-family: Arial, sans-serif;
+        font-size: clamp(0.68rem, 0.78vw, 0.82rem);
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+
+      .action-intro p::before {
+        content: "";
+        display: block;
+        width: 3.4rem;
+        height: 2px;
+        margin-bottom: 0.8rem;
+        background: #E30613;
+      }
+
+      .action-board-wrap {
+        position: absolute;
+        z-index: 45;
+        left: clamp(13rem, 16vw, 15rem);
+        bottom: clamp(4.1rem, 8.2vh, 5.6rem);
+        width: min(56.5rem, calc(100vw - clamp(13rem, 16vw, 15rem) - 4.5rem));
+      }
+
+      .action-role-prompt {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin: 0.95rem 0 0.62rem;
+        color: rgba(255,255,255,0.7);
+        font-family: Arial, sans-serif;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+      }
+
+      .action-role-prompt::before,
+      .action-role-prompt::after {
+        content: "";
+        height: 1px;
+        flex: 1;
+        background: linear-gradient(90deg, rgba(227,6,19,0.7), rgba(255,255,255,0.1));
+      }
+
+      .action-role-prompt::after {
+        background: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(227,6,19,0.7));
       }
 
       .action-board {
-        position: absolute;
-        z-index: 45;
-        left: clamp(13rem, 18vw, 18rem);
-        right: clamp(3rem, 6vw, 6rem);
-        bottom: 8vh;
-        height: min(34vh, 22rem);
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        grid-template-rows: repeat(3, minmax(0, 1fr));
-        gap: 0.75rem;
+        gap: 0.72rem;
       }
 
       .action-card {
         position: relative;
         display: grid;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: 4.2rem 1fr 2.15rem;
         align-items: center;
-        gap: clamp(0.55rem, 1vw, 0.9rem);
         min-width: 0;
+        min-height: clamp(4.8rem, 7.45vh, 5.75rem);
         overflow: hidden;
-        border: 1px solid rgba(255,255,255,0.36);
-        border-radius: 0.62rem;
+        border: 1px solid rgba(255,255,255,0.22);
+        border-radius: 0.38rem;
         background:
-          linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04)),
-          rgba(6,6,6,0.58);
+          linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.012)),
+          rgba(5,5,5,0.66);
         color: #FFFFFF;
-        padding: clamp(0.7rem, 1.05vw, 1rem);
+        padding: 0 0.95rem 0 0;
         text-decoration: none;
         box-shadow:
-          inset 0 1px 0 rgba(255,255,255,0.22),
-          0 1rem 2.4rem rgba(0,0,0,0.24);
-        backdrop-filter: blur(18px) saturate(1.22);
+          inset 0 1px 0 rgba(255,255,255,0.08),
+          0 0.9rem 2.2rem rgba(0,0,0,0.34);
+        backdrop-filter: blur(8px);
         transform: translateZ(0);
         transition:
-          transform 220ms cubic-bezier(.22,1,.36,1),
-          border-color 220ms ease,
-          background-color 220ms ease,
-          box-shadow 220ms ease;
+          transform 180ms cubic-bezier(.22,1,.36,1),
+          border-color 180ms ease,
+          background-color 180ms ease,
+          box-shadow 180ms ease;
       }
 
       .action-card::before,
@@ -889,84 +1008,72 @@ const mediaStyle = (beat) => {
 
       .action-card::before {
         inset: 0;
-        background: radial-gradient(circle at 18% 0%, rgba(227,6,19,0.2), transparent 42%);
-        opacity: 0;
-        transition: opacity 220ms ease;
+        background:
+          radial-gradient(circle at 82% 50%, rgba(227,6,19,0.18), transparent 32%),
+          linear-gradient(90deg, transparent 0, transparent 4.25rem, rgba(227,6,19,0.76) 4.25rem, rgba(227,6,19,0.76) 4.34rem, transparent 4.34rem);
+        opacity: 0.88;
       }
 
       .action-card::after {
-        left: 0;
-        top: 0;
-        width: 42%;
-        height: 2px;
-        background: linear-gradient(90deg, #E30613, rgba(227,6,19,0));
-        opacity: 0.9;
+        inset: 0;
+        border-radius: inherit;
+        border: 1px solid rgba(227,6,19,0);
+        transition: border-color 180ms ease, box-shadow 180ms ease;
       }
 
       .action-card:hover,
       .action-card:focus-visible {
-        border-color: rgba(255,255,255,0.82);
-        background-color: rgba(12,12,12,0.78);
+        border-color: rgba(227,6,19,0.9);
+        background-color: rgba(13,13,13,0.82);
         box-shadow:
-          inset 0 1px 0 rgba(255,255,255,0.28),
-          0 1.4rem 3rem rgba(0,0,0,0.34),
-          0 0 2.2rem rgba(227,6,19,0.22);
+          inset 0 1px 0 rgba(255,255,255,0.12),
+          0 1.3rem 2.8rem rgba(0,0,0,0.44),
+          0 0 1.6rem rgba(227,6,19,0.22);
         outline: none;
-        transform: translateY(-0.18rem) scale(1.018);
+        transform: translateY(-0.12rem);
       }
 
-      .action-card:hover::before,
-      .action-card:focus-visible::before {
-        opacity: 1;
+      .action-card:hover::after,
+      .action-card:focus-visible::after {
+        border-color: rgba(227,6,19,0.82);
+        box-shadow: inset 0 0 1.4rem rgba(227,6,19,0.08);
       }
 
       .action-card:active {
-        transform: translateY(0) scale(0.985);
+        transform: translateY(0) scale(0.99);
       }
 
       .action-card-icon {
         position: relative;
+        z-index: 2;
         display: grid;
         place-items: center;
-        width: clamp(2rem, 2.35vw, 2.65rem);
-        height: clamp(2rem, 2.35vw, 2.65rem);
-        border: 1px solid rgba(227,6,19,0.78);
-        border-radius: 999px;
-        background: rgba(227,6,19,0.16);
-        color: #FFFFFF;
-        font-family: 'Anton', Impact, sans-serif;
-        font-size: clamp(0.62rem, 0.76vw, 0.78rem);
-        letter-spacing: 0.04em;
-        line-height: 1;
-        box-shadow: 0 0 1.3rem rgba(227,6,19,0.14);
+        width: 4.2rem;
+        height: 100%;
+        color: rgba(255,255,255,0.92);
       }
 
-      .action-card-copy {
-        position: relative;
-        min-width: 0;
-      }
-
-      .action-card-eyebrow {
-        display: block;
-        color: rgba(255,255,255,0.58);
-        font-family: Arial, sans-serif;
-        font-size: clamp(0.55rem, 0.72vw, 0.68rem);
-        font-weight: 700;
-        letter-spacing: 0.14em;
-        line-height: 1;
-        text-transform: uppercase;
+      .action-card-icon svg {
+        width: 1.75rem;
+        height: 1.75rem;
+        stroke: currentColor;
+        stroke-width: 1.75;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
       }
 
       .action-card-title {
+        position: relative;
+        z-index: 2;
         display: block;
-        margin-top: 0.28rem;
         color: #FFFFFF;
         font-family: 'Anton', Impact, sans-serif;
-        font-size: clamp(0.98rem, 1.34vw, 1.42rem);
-        letter-spacing: 0.045em;
+        font-size: clamp(1.28rem, 1.52vw, 1.72rem);
+        letter-spacing: 0.035em;
         line-height: 0.95;
-        text-transform: uppercase;
-        text-shadow: 0 0.3rem 1.2rem rgba(0,0,0,0.42);
+        text-transform: none;
+        text-shadow: 0 0.35rem 1rem rgba(0,0,0,0.52);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -974,17 +1081,27 @@ const mediaStyle = (beat) => {
 
       .action-card-arrow {
         position: relative;
-        color: #E30613;
+        z-index: 2;
+        display: grid;
+        place-items: center;
+        justify-self: end;
+        width: 1.55rem;
+        height: 1.55rem;
+        border-radius: 999px;
+        background: #E30613;
+        color: #050505;
         font-family: Arial, sans-serif;
-        font-size: 1.25rem;
-        line-height: 1;
-        transition: transform 220ms cubic-bezier(.22,1,.36,1), color 220ms ease;
+        font-size: 1.45rem;
+        font-weight: 900;
+        line-height: 0.8;
+        transition: transform 180ms cubic-bezier(.22,1,.36,1), background-color 180ms ease, color 180ms ease;
       }
 
       .action-card:hover .action-card-arrow,
       .action-card:focus-visible .action-card-arrow {
+        background: #FF1717;
         color: #FFFFFF;
-        transform: translateX(0.18rem);
+        transform: translateX(0.14rem) scale(1.08);
       }
 
       .journey-hotspot {
@@ -1675,21 +1792,30 @@ const mediaStyle = (beat) => {
               <div class="absolute inset-0 story-overlay--action">
                 <div class="action-intro">
                   <p class="story-kicker font-heading text-xs uppercase text-joner-red">Action</p>
-                  <h2>Choose Your Next Step</h2>
-                  <p>Train online, train with us, join a camp, or get inside the Joner Football Hub.</p>
+                  <h2>Choose Your <span>Next Step</span></h2>
+                  <p>Elite training. Real development. Lasting impact.</p>
                 </div>
-                <nav class="action-board" aria-label="Choose your next step">
-                  {actionLinks.map((link) => (
-                    <a class:list={['action-card', link.className]} href={link.href} aria-label={link.label}>
-                      <span class="action-card-icon" aria-hidden="true">{link.icon}</span>
-                      <span class="action-card-copy">
-                        <span class="action-card-eyebrow">{link.eyebrow}</span>
+                <div class="action-board-wrap">
+                  <nav class="action-board" aria-label="Choose your next step">
+                    {actionLinks.slice(0, 6).map((link) => (
+                      <a class:list={['action-card', link.className]} href={link.href} aria-label={link.label}>
+                        <span class="action-card-icon" aria-hidden="true" set:html={actionIconSvgs[link.icon]} />
                         <span class="action-card-title">{link.label}</span>
-                      </span>
-                      <span class="action-card-arrow" aria-hidden="true">›</span>
-                    </a>
-                  ))}
-                </nav>
+                        <span class="action-card-arrow" aria-hidden="true">›</span>
+                      </a>
+                    ))}
+                  </nav>
+                  <div class="action-role-prompt">Are you a</div>
+                  <nav class="action-board action-board--roles" aria-label="Choose your role">
+                    {actionLinks.slice(6).map((link) => (
+                      <a class:list={['action-card', link.className]} href={link.href} aria-label={`I am a ${link.label}`}>
+                        <span class="action-card-icon" aria-hidden="true" set:html={actionIconSvgs[link.icon]} />
+                        <span class="action-card-title">{link.label}</span>
+                        <span class="action-card-arrow" aria-hidden="true">›</span>
+                      </a>
+                    ))}
+                  </nav>
+                </div>
               </div>
             )}
           </div>
