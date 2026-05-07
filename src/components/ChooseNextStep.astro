@@ -54,9 +54,11 @@ const allTiles = [...productTiles, ...programTiles, ...roleTiles]
             )}
             {tile.icon === 'whistle' && (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 13.2c0-2.7 2.2-4.9 4.9-4.9h8l4.6-2.4v9.7c0 2.7-2.2 4.9-4.9 4.9H7.9C5.2 20.5 3 18.3 3 15.6z" />
-                <circle cx="7.6" cy="13.2" r="1.7" />
-                <path d="M16.8 6.2l-2.2-2.4" />
+                <rect x="2.5" y="9" width="14" height="8" rx="4" />
+                <path d="M16.5 10.6L21 8.4v8.2l-4.5-2.2" />
+                <circle cx="6.6" cy="13" r="1.5" />
+                <path d="M9.5 9V6.5" />
+                <circle cx="9.5" cy="5.5" r="1.1" />
               </svg>
             )}
             {tile.icon === 'trophy' && (
@@ -81,7 +83,9 @@ const allTiles = [...productTiles, ...programTiles, ...roleTiles]
               <svg viewBox="0 0 24 24" fill="none">
                 <path d="M12 2.6 L20.4 5.4 V12.6 C20.4 17 17 20.6 12 22 C7 20.6 3.6 17 3.6 12.6 V5.4 Z"
                       stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
-                <text x="12" y="15.6" text-anchor="middle"
+                <text x="12" y="12"
+                      text-anchor="middle"
+                      dominant-baseline="central"
                       font-family="'Anton', Impact, 'Arial Narrow Bold', sans-serif"
                       font-style="italic" font-weight="900" font-size="8.6"
                       letter-spacing="0.4"
