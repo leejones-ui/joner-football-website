@@ -117,7 +117,7 @@ const storyBeats = [
     objectPosition: '50% 46%',
     objectPositionTablet: '48% 48%',
     objectPositionMobile: '46% 50%',
-    copyPos: 'left',
+    copyPos: 'global-bottom',
     markerX: 24,
     markerY: 75,
     maskSize: 0,
@@ -447,6 +447,11 @@ const mediaStyle = (beat) => {
         top: 26%;
       }
 
+      .story-copy[data-pos="global-bottom"] {
+        left: clamp(13rem, 18vw, 18rem);
+        bottom: 11vh;
+      }
+
       .story-copy[data-pos="top-left"] {
         left: clamp(13rem, 18vw, 18rem);
         top: 18vh;
@@ -739,6 +744,11 @@ const mediaStyle = (beat) => {
       }
 
       .story-cta-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 9.8rem;
+        min-height: 3.75rem;
         border: 1px solid rgba(255,255,255,0.34);
         background: rgba(5,5,5,0.72);
         color: #FFFFFF;
@@ -748,6 +758,7 @@ const mediaStyle = (beat) => {
         letter-spacing: 0.16em;
         text-transform: uppercase;
         line-height: 1;
+        text-align: center;
         backdrop-filter: blur(16px);
         text-shadow: 0 1px 10px rgba(0,0,0,0.6);
         transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, transform 180ms ease;
@@ -779,46 +790,19 @@ const mediaStyle = (beat) => {
       }
 
       .store-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.65rem;
-        min-width: 9.6rem;
-        border: 1px solid rgba(255,255,255,0.36);
-        border-radius: 0.5rem;
-        background: #050505;
-        color: #FFFFFF;
-        padding: 0.58rem 0.78rem;
-        text-transform: none;
-        letter-spacing: 0;
-      }
-
-      .store-badge:hover {
-        border-color: #FFFFFF;
-        background: #050505;
-        transform: scale(1.045);
+        gap: 0.55rem;
       }
 
       .store-badge svg {
-        width: 1.45rem;
-        height: 1.45rem;
+        width: 1.05rem;
+        height: 1.05rem;
         flex: 0 0 auto;
       }
 
-      .store-badge small {
-        display: block;
-        font-family: Arial, sans-serif;
-        font-size: 0.62rem;
-        line-height: 1;
-        letter-spacing: 0;
-      }
-
-      .store-badge strong {
-        display: block;
-        font-family: Arial, sans-serif;
-        font-size: 0.92rem;
-        line-height: 1.05;
-        letter-spacing: -0.02em;
-        font-weight: 700;
+      .store-badge span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .growth-bar {
@@ -1845,7 +1829,7 @@ const mediaStyle = (beat) => {
               <div class="story-cta-row">
                 {beat.ctas.map((cta, ctaIndex) => (
                   <a
-                    class="story-cta-link"
+                    class:list={["story-cta-link", cta.badge ? 'store-badge' : '']}
                     href={cta.href}
                     target={cta.external ? '_blank' : undefined}
                     rel={cta.external ? 'noopener' : undefined}
