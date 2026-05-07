@@ -230,7 +230,7 @@ async function sendCampSignupEmail(registration) {
         email: process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com',
       },
       to: [{ email: CAMP_SIGNUP_EMAIL, name: 'Joner Football Camps' }],
-      replyTo: [{ email: registration.email, name: registration.parentName || registration.playerFirstName }],
+      replyTo: { email: registration.email, name: registration.parentName || registration.playerFirstName },
       subject: `Camp signup: ${registration.playerFirstName} ${registration.playerSurname} for ${registration.camp}`,
       htmlContent: html,
     }),

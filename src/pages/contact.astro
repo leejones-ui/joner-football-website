@@ -81,7 +81,14 @@ const schema = {
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <input type="tel" name="phone" placeholder="Phone number" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
-          <input type="text" name="location" placeholder="Location" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <input data-location-field="default" type="text" name="location" placeholder="Location" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <select data-location-field="training" name="trainingLocation" class="hidden min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none" disabled>
+            <option value="">Preferred Sydney location</option>
+            <option>HQ (Belrose)</option>
+            <option>North Turramurra</option>
+            <option>Rydalmere Park</option>
+            <option>Other</option>
+          </select>
         </div>
 
         <div data-fields="training-sydney joners-juniors" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -191,6 +198,17 @@ const schema = {
             if (field.classList.contains('conditional-required')) field.required = show;
           });
         });
+
+        var defaultLocation = form.querySelector('[data-location-field="default"]');
+        var trainingLocation = form.querySelector('[data-location-field="training"]');
+        var isTraining = selected === 'training-sydney';
+        if (defaultLocation && trainingLocation) {
+          defaultLocation.classList.toggle('hidden', isTraining);
+          defaultLocation.disabled = isTraining;
+          trainingLocation.classList.toggle('hidden', !isTraining);
+          trainingLocation.disabled = !isTraining;
+          trainingLocation.required = isTraining;
+        }
       }
 
       var params = new URLSearchParams(window.location.search || '');
@@ -229,6 +247,7 @@ const schema = {
         formData.forEach(function (value, key) {
           if (!(value instanceof File)) payload[key] = value;
         });
+        if (payload.enquiryType === 'training-sydney' && payload.trainingLocation) payload.location = payload.trainingLocation;
         payload.marketingOptIn = formData.get('marketingOptIn') === 'true';
 
         var fileInput = form.querySelector('input[name="cvFile"]');

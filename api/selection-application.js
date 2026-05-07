@@ -58,7 +58,7 @@ async function sendBrevoEmail(application) {
         email: process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com',
       },
       to: [{ email: RECIPIENT_EMAIL, name: 'Joner Football' }],
-      replyTo: [{ email: application.email, name: application.parentFullName || application.playerFullName }],
+      replyTo: { email: application.email, name: application.parentFullName || application.playerFullName },
       subject: `Selection application: ${application.playerFullName} for ${application.camp}`,
       htmlContent: html,
     }),

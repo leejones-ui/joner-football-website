@@ -103,7 +103,7 @@ async function sendEmail(enquiry) {
         email: process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com',
       },
       to: parseRecipients(enquiry.recipientEmail),
-      replyTo: [{ email: enquiry.email, name: enquiry.name }],
+      replyTo: { email: enquiry.email, name: enquiry.name },
       subject: `Website enquiry: ${enquiry.typeLabel}`,
       htmlContent: html,
       ...(enquiry.cvAttachment ? { attachment: [enquiry.cvAttachment] } : {}),
