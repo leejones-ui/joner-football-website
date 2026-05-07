@@ -45,6 +45,14 @@ function row(label, value) {
   return `<tr><td style="font-weight:bold;vertical-align:top;">${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`
 }
 
+function parseRecipients(value) {
+  return String(value || FALLBACK_RECIPIENT_EMAIL)
+    .split(',')
+    .map((email) => clean(email, 200).toLowerCase())
+    .filter(Boolean)
+    .map((email) => ({ email, name: 'Joner Football' }))
+}
+
 function cleanAttachment(file) {
   if (!file || typeof file !== 'object') return null
   const name = clean(file.name || 'cv', 180)
@@ -94,7 +102,7 @@ async function sendEmail(enquiry) {
         name: 'Joner Football Website',
         email: process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com',
       },
-      to: [{ email: enquiry.recipientEmail, name: 'Joner Football' }],
+      to: parseRecipients(enquiry.recipientEmail),
       replyTo: [{ email: enquiry.email, name: enquiry.name }],
       subject: `Website enquiry: ${enquiry.typeLabel}`,
       htmlContent: html,
