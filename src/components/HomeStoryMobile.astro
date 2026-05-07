@@ -2,76 +2,95 @@
 const beats = [
   {
     number: '01',
-    label: 'Technique',
+    label: 'Philosophy',
+    kicker: 'Welcome',
     title: 'Technique Above Everything',
-    body: 'Individual detail. Clean touches. Better players.',
+    body: '',
     image: '/images/home-mobile-story/mobile-story-01-action.webp',
-    ball: true,
-    ctas: [{ label: 'Start Training', href: '/training' }],
   },
   {
     number: '02',
     label: 'Origin',
-    title: 'Built From The Grassroots',
-    body: 'From local sessions to a global coaching system.',
+    kicker: 'Origin',
+    title: 'It Started With A Bag Of Balls',
+    body: 'In 2013 it started with an idea. Joner Football was born. Now we are recognised all over the world.',
     image: '/images/home-mobile-story/mobile-story-02-origin.webp',
-    ball: true,
-    ctas: [{ label: 'Our Story', href: '/about' }],
+    stamp: 'EST 2013',
   },
   {
     number: '03',
-    label: 'Method',
-    title: 'A Method Like No Other',
-    body: 'Every drill has purpose. Every detail matters.',
-    image: '/images/home-mobile-story/mobile-story-03-method.webp',
-    ctas: [{ label: 'See The App', href: '/app' }],
+    label: 'Growth',
+    kicker: 'Growth',
+    title: 'Local Sessions. Global Reach.',
+    body: 'The work spread through videos, players, parents, coaches, and millions of touches online.',
+    image: '/images/home-mobile-story/mobile-story-04-global.webp',
+    growth: true,
+    ctas: [
+      ['YouTube', 'https://www.youtube.com/@jonerfootball'],
+      ['Instagram', 'https://www.instagram.com/jonerfootball/'],
+      ['Facebook', 'https://www.facebook.com/Jonerfootball/'],
+      ['TikTok', 'https://www.tiktok.com/@jonerfootball'],
+      ['JF App', 'https://app.jonerfootball.com'],
+      ['X / Twitter', 'https://twitter.com/jonerfootball'],
+    ],
   },
   {
     number: '04',
-    label: 'Global',
-    title: 'Local Sessions. Global Reach.',
-    body: 'Joner Football reaches players, parents and coaches around the world.',
-    image: '/images/home-mobile-story/mobile-story-04-global.webp',
-    stats: [
-      ['2M+', 'Audience'],
-      ['380K+', 'YouTube'],
-      ['600K+', 'Facebook'],
-    ],
-    ctas: [{ label: 'Elite Camps', href: '/camps' }],
+    label: 'Joner Way',
+    kicker: 'The Joner Way',
+    title: 'A Method Like No Other',
+    body: 'Every technical detail gets coached through energy, passion & positivity.',
+    image: '/images/home-mobile-story/mobile-story-03-method.webp',
+    ctas: [['Train With Us In Sydney', '/training#jfp']],
   },
   {
     number: '05',
-    label: 'App',
-    title: 'Worlds #1 Football Coaching APP',
-    body: 'Train anywhere. Learn the Joner way.',
-    image: '/images/home-mobile-story/mobile-story-05-app.webp',
-    video: '/images/home-storyboard/06-app-header-video-desktop.mp4',
-    ctas: [{ label: 'Download The App', href: '/app' }],
+    label: 'Global',
+    kicker: 'Going Global',
+    title: 'Coaching Worldwide',
+    body: 'From Sydney to camps, clinics, and football communities around the world.',
+    image: '/images/home-mobile-story/mobile-story-04-global.webp',
+    ctas: [['Elite Camps', '/camps']],
   },
   {
     number: '06',
-    label: 'Camps',
-    title: 'Coaching Worldwide',
-    body: 'Elite camps, workshops and player development experiences.',
-    image: '/images/home-mobile-story/mobile-story-04-global.webp',
-    ctas: [{ label: 'View Camps', href: '/camps' }],
+    label: 'JF App',
+    kicker: 'The Joner Football App',
+    title: 'Worlds #1 Football Coaching APP',
+    body: 'Built for players, parents, and coaches to train with clarity, confidence, and purpose.',
+    image: '/images/home-mobile-story/mobile-story-05-app.webp',
+    video: '/images/home-storyboard/06-app-header-video-desktop.mp4',
+    ctas: [
+      ['7 Day Free Trial', 'https://app.jonerfootball.com/categories/category-vpi8uazway4'],
+      ['Apple Download', 'https://apps.apple.com/au/app/joner-football-app/id6737069275'],
+      ['Google Download', 'https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball'],
+    ],
   },
   {
     number: '07',
-    label: 'HQ',
+    label: 'Our HQ',
+    kicker: 'Our HQ',
     title: 'A Home Of Our Own',
-    body: 'The HQ in Belrose. All-weather training, serious standards.',
+    body: 'Sydney, Australia. Belrose. Our home.',
     image: '/images/home-mobile-story/mobile-story-06-hq.webp',
-    ctas: [{ label: 'See The HQ', href: '/hq' }],
+    ctas: [['Visit HQ Map', 'https://maps.google.com/?q=20+Narabang+Way+Belrose']],
   },
   {
     number: '08',
-    label: 'Choose',
+    label: 'Action',
+    kicker: 'Action',
     title: 'Choose Your Next Step',
-    body: 'Find the right Joner Football pathway for you.',
+    body: 'Train online, train with us, join a camp, or get inside the Joner Football Hub.',
     image: '/images/home-mobile-story/mobile-story-07-choice.webp',
     choose: true,
   },
+]
+
+const stats = [
+  { value: '2M+', label: 'followers online', target: 2000000, format: 'millions' },
+  { value: '50K+', label: 'app downloads', target: 50000, format: 'thousands' },
+  { value: '1,500+', label: 'training drills', target: 1500, format: 'comma' },
+  { value: '15+', label: 'countries reached', target: 15, format: 'plain' },
 ]
 
 const choices = [
@@ -80,17 +99,17 @@ const choices = [
   ['Coaches', '/app/for-coaches'],
   ['Elite Camps', '/camps'],
   ['Workshops', '/workshops'],
-  ['JF HUB', '/hub'],
+  ['The JF HUB', '/hub'],
 ]
 ---
 
 <section class="mobile-story" data-mobile-story-rebuild aria-label="Joner Football mobile story">
-  <div class="mobile-story-track" style={`height: ${beats.length * 92}svh`}>
+  <div class="mobile-story-track" style={`height: ${beats.length * 100}svh`}>
     <div class="mobile-story-sticky">
       {beats.map((beat, index) => (
-        <article class:list={['mobile-story-beat', index === 0 && 'is-active']} data-mobile-beat data-index={index}>
+        <article class="mobile-story-beat" data-mobile-beat data-index={index} style={`opacity:${index === 0 ? 1 : 0};`}>
           {beat.video ? (
-            <video class="mobile-story-media" autoplay muted loop playsinline preload="metadata" poster={beat.image} aria-label={beat.title}>
+            <video class="mobile-story-media" muted loop playsinline preload="metadata" poster={beat.image} aria-label={beat.title}>
               <source src={beat.video} type="video/mp4" />
             </video>
           ) : (
@@ -99,22 +118,24 @@ const choices = [
 
           <div class="mobile-story-shade" aria-hidden="true"></div>
 
-          {beat.ball && (
-            <div class="mobile-story-ball" aria-hidden="true">
-              <img src="/images/home-storyboard/yellow-football-object.png" alt="" />
-            </div>
-          )}
-
           <div class="mobile-story-copy">
-            <p class="mobile-story-kicker">{beat.number} / {beat.label}</p>
+            <p class="mobile-story-kicker">{beat.number} / {beat.kicker}</p>
             <h2>{beat.title}</h2>
-            <p>{beat.body}</p>
+            {beat.body && <p>{beat.body}</p>}
+            {beat.stamp && <strong class="mobile-story-stamp">{beat.stamp}</strong>}
 
-            {beat.stats && (
-              <div class="mobile-story-stats">
-                {beat.stats.map(([value, label]) => (
-                  <div><strong>{value}</strong><span>{label}</span></div>
-                ))}
+            {beat.growth && (
+              <div class="mobile-growth-card">
+                <p class="mobile-growth-label">Social growth</p>
+                <strong data-mobile-growth-count data-target={stats[0].target} data-format={stats[0].format}>{stats[0].value}</strong>
+                <div class="mobile-growth-bars" aria-hidden="true">
+                  {[18, 32, 48, 66, 88, 100].map((height) => <span style={`height:${height}%`}></span>)}
+                </div>
+                <div class="mobile-growth-grid">
+                  {stats.slice(1).map((stat) => (
+                    <div><strong data-mobile-growth-count data-target={stat.target} data-format={stat.format}>{stat.value}</strong><span>{stat.label}</span></div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -124,7 +145,7 @@ const choices = [
               </div>
             ) : beat.ctas && (
               <div class="mobile-story-ctas">
-                {beat.ctas.map((cta) => <a href={cta.href}>{cta.label}</a>)}
+                {beat.ctas.map(([label, href]) => <a href={href}>{label}</a>)}
               </div>
             )}
           </div>
@@ -143,314 +164,46 @@ const choices = [
 </section>
 
 <style>
-  .mobile-story {
-    display: none;
-    position: relative;
-    background: #030303;
-    color: #fff;
-  }
-
-  .mobile-story-track {
-    position: relative;
-  }
-
-  .mobile-story-sticky {
-    position: sticky;
-    top: 4rem;
-    height: calc(100svh - 4rem);
-    overflow: hidden;
-    isolation: isolate;
-    background: #050505;
-  }
-
-  .mobile-story-beat {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(1.025);
-    transition: opacity 520ms cubic-bezier(.22,.61,.36,1), transform 850ms cubic-bezier(.22,.61,.36,1);
-  }
-
-  .mobile-story-beat.is-active {
-    opacity: 1;
-    pointer-events: auto;
-    transform: scale(1);
-  }
-
-  .mobile-story-media {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: 50% 50%;
-    filter: saturate(1.02) contrast(1.08) brightness(0.82);
-  }
-
-  .mobile-story-beat:nth-child(1) .mobile-story-media,
-  .mobile-story-beat:nth-child(2) .mobile-story-media,
-  .mobile-story-beat:nth-child(3) .mobile-story-media {
-    object-position: 50% 48%;
-  }
-
-  .mobile-story-beat:nth-child(7) .mobile-story-media {
-    object-position: 54% 50%;
-  }
-
-  .mobile-story-shade {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(circle at 68% 38%, rgba(227,6,19,0.18), transparent 18rem),
-      linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.08) 38%, rgba(0,0,0,0.78)),
-      linear-gradient(90deg, rgba(0,0,0,0.78), rgba(0,0,0,0.26) 54%, rgba(0,0,0,0.2));
-    z-index: 1;
-  }
-
-  .mobile-story-copy {
-    position: absolute;
-    left: 2.85rem;
-    right: 1.2rem;
-    bottom: max(2.05rem, env(safe-area-inset-bottom));
-    z-index: 3;
-    max-width: 23rem;
-    transform: translateY(0.8rem);
-    opacity: 0;
-    transition: opacity 520ms ease 80ms, transform 650ms cubic-bezier(.22,.61,.36,1) 80ms;
-  }
-
-  .mobile-story-beat.is-active .mobile-story-copy {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  .mobile-story-kicker {
-    margin: 0 0 0.9rem;
-    color: #e30613;
-    font-family: 'Anton', Impact, sans-serif;
-    font-size: 0.72rem;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-  }
-
-  .mobile-story-copy h2 {
-    margin: 0;
-    color: #fff;
-    font-family: 'Anton', Impact, sans-serif;
-    font-size: clamp(2.7rem, 12.5vw, 4.65rem);
-    line-height: 0.92;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    text-shadow: 0 1rem 2rem rgba(0,0,0,0.62);
-  }
-
-  .mobile-story-copy p:not(.mobile-story-kicker) {
-    margin: 1rem 0 0;
-    max-width: 19.5rem;
-    color: rgba(255,255,255,0.78);
-    font-family: Arial, sans-serif;
-    font-size: 0.98rem;
-    line-height: 1.42;
-  }
-
-  .mobile-story-ctas,
-  .mobile-story-choices {
-    margin-top: 1.15rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.58rem;
-  }
-
-  .mobile-story-ctas a,
-  .mobile-story-choices a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.9rem;
-    border: 1px solid rgba(255,255,255,0.34);
-    border-radius: 999px;
-    background: rgba(5,5,5,0.54);
-    color: #fff;
-    padding: 0.78rem 1rem;
-    font-family: 'Anton', Impact, sans-serif;
-    font-size: 0.74rem;
-    letter-spacing: 0.13em;
-    line-height: 1;
-    text-decoration: none;
-    text-transform: uppercase;
-    backdrop-filter: blur(14px);
-  }
-
-  .mobile-story-ctas a:first-child,
-  .mobile-story-choices a:first-child {
-    border-color: rgba(227,6,19,0.78);
-    background: rgba(227,6,19,0.78);
-  }
-
-  .mobile-story-choices {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-width: 20.5rem;
-  }
-
-  .mobile-story-choices a {
-    border-radius: 0.7rem;
-    min-height: 3.3rem;
-    padding-inline: 0.55rem;
-    text-align: center;
-  }
-
-  .mobile-story-stats {
-    margin-top: 1rem;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.48rem;
-    max-width: 20rem;
-  }
-
-  .mobile-story-stats div {
-    border: 1px solid rgba(255,255,255,0.2);
-    background: rgba(5,5,5,0.5);
-    padding: 0.58rem 0.35rem;
-    text-align: center;
-    backdrop-filter: blur(12px);
-  }
-
-  .mobile-story-stats strong {
-    display: block;
-    font-family: 'Anton', Impact, sans-serif;
-    font-size: 1.18rem;
-    line-height: 1;
-  }
-
-  .mobile-story-stats span {
-    display: block;
-    margin-top: 0.25rem;
-    color: rgba(255,255,255,0.62);
-    font-family: Arial, sans-serif;
-    font-size: 0.5rem;
-    font-weight: 900;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  .mobile-story-rail {
-    position: absolute;
-    left: 1rem;
-    top: 5rem;
-    bottom: 4.7rem;
-    z-index: 5;
-    width: 1.3rem;
-    pointer-events: none;
-  }
-
-  .mobile-story-line,
-  .mobile-story-fill {
-    position: absolute;
-    left: 0.62rem;
-    top: 0;
-    width: 1px;
-  }
-
-  .mobile-story-line {
-    bottom: 0;
-    background: rgba(255,255,255,0.24);
-  }
-
-  .mobile-story-fill {
-    height: 0%;
-    background: #e30613;
-    box-shadow: 0 0 1rem rgba(227,6,19,0.58);
-    transition: height 180ms linear;
-  }
-
-  .mobile-story-line::before,
-  .mobile-story-line::after {
-    content: '+';
-    position: absolute;
-    left: -0.25rem;
-    color: rgba(255,255,255,0.74);
-    font-family: Arial, sans-serif;
-    font-size: 1rem;
-    line-height: 1;
-  }
-
-  .mobile-story-line::before { top: -0.9rem; }
-  .mobile-story-line::after { bottom: -0.9rem; }
-
-  .mobile-story-dots {
-    position: absolute;
-    left: 0.38rem;
-    top: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-  }
-
-  .mobile-story-dots span {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.38);
-    background: rgba(0,0,0,0.3);
-    transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
-  }
-
-  .mobile-story-dots span.is-active {
-    border-color: #e30613;
-    background: #e30613;
-    box-shadow: 0 0 1rem rgba(227,6,19,0.5);
-  }
-
-  .mobile-story-ball {
-    position: absolute;
-    left: clamp(1rem, 4vw, 1.6rem);
-    bottom: clamp(5.2rem, 12vh, 6.7rem);
-    z-index: 2;
-    width: clamp(3.3rem, 16vw, 4.8rem);
-    height: clamp(3.3rem, 16vw, 4.8rem);
-    pointer-events: none;
-  }
-
-  .mobile-story-ball::before {
-    content: '';
-    position: absolute;
-    inset: -0.7rem;
-    border-radius: 999px;
-    background: radial-gradient(circle, rgba(227,6,19,0.25), transparent 66%);
-  }
-
-  .mobile-story-ball img {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    animation: mobileStoryBallSpin 1.8s linear infinite;
-    filter: drop-shadow(0 1rem 1.3rem rgba(0,0,0,0.45));
-  }
-
-  @keyframes mobileStoryBallSpin {
-    to { transform: rotate(360deg); }
-  }
-
-  @media (max-width: 767px) {
-    .mobile-story {
-      display: block;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .mobile-story-beat,
-    .mobile-story-copy,
-    .mobile-story-fill,
-    .mobile-story-dots span,
-    .mobile-story-ball img {
-      animation: none !important;
-      transition: none !important;
-    }
-  }
+  .mobile-story { display: none; position: relative; background: #030303; color: #fff; }
+  .mobile-story-track { position: relative; }
+  .mobile-story-sticky { position: sticky; top: 0; height: 100svh; overflow: hidden; isolation: isolate; background: #050505; }
+  .mobile-story-beat { position: absolute; inset: 0; pointer-events: none; will-change: opacity, transform; transform: scale(1.015); }
+  .mobile-story-beat.is-active { pointer-events: auto; }
+  .mobile-story-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; filter: saturate(1.02) contrast(1.08) brightness(0.82); }
+  .mobile-story-beat:nth-child(1) .mobile-story-media { object-position: 53% 48%; }
+  .mobile-story-beat:nth-child(2) .mobile-story-media { object-position: 50% 47%; }
+  .mobile-story-beat:nth-child(4) .mobile-story-media { object-position: 50% 48%; }
+  .mobile-story-beat:nth-child(7) .mobile-story-media { object-position: 54% 50%; }
+  .mobile-story-shade { position: absolute; inset: 0; z-index: 1; background: radial-gradient(circle at 68% 38%, rgba(227,6,19,0.16), transparent 18rem), linear-gradient(180deg, rgba(0,0,0,0.48), rgba(0,0,0,0.08) 38%, rgba(0,0,0,0.8)), linear-gradient(90deg, rgba(0,0,0,0.78), rgba(0,0,0,0.24) 54%, rgba(0,0,0,0.2)); }
+  .mobile-story-copy { position: absolute; left: 2.85rem; right: 1.2rem; bottom: max(2.05rem, env(safe-area-inset-bottom)); z-index: 3; max-width: 23rem; opacity: var(--copy-opacity, 1); transform: translateY(var(--copy-y, 0)); will-change: opacity, transform; }
+  .mobile-story-kicker { margin: 0 0 0.9rem; color: #e30613; font-family: 'Anton', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 0.24em; text-transform: uppercase; }
+  .mobile-story-copy h2 { margin: 0; color: #fff; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.65rem, 12.2vw, 4.45rem); line-height: 0.92; letter-spacing: 0.03em; text-transform: uppercase; text-shadow: 0 1rem 2rem rgba(0,0,0,0.62); }
+  .mobile-story-copy p:not(.mobile-story-kicker) { margin: 1rem 0 0; max-width: 19.5rem; color: rgba(255,255,255,0.78); font-family: Arial, sans-serif; font-size: 0.98rem; line-height: 1.42; }
+  .mobile-story-stamp { display: inline-flex; margin-top: 1rem; border-left: 2px solid #e30613; padding-left: 0.8rem; font-family: 'Anton', Impact, sans-serif; font-size: 2.4rem; line-height: 1; }
+  .mobile-story-ctas, .mobile-story-choices { margin-top: 1.15rem; display: flex; flex-wrap: wrap; gap: 0.58rem; }
+  .mobile-story-ctas a, .mobile-story-choices a { display: inline-flex; align-items: center; justify-content: center; min-height: 2.9rem; border: 1px solid rgba(255,255,255,0.34); border-radius: 999px; background: rgba(5,5,5,0.58); color: #fff; padding: 0.78rem 1rem; font-family: 'Anton', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 0.13em; line-height: 1; text-decoration: none; text-transform: uppercase; backdrop-filter: blur(14px); }
+  .mobile-story-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 20.5rem; }
+  .mobile-story-choices a { border-radius: 0.7rem; min-height: 3.2rem; padding-inline: 0.55rem; text-align: center; }
+  .mobile-growth-card { margin-top: 1.05rem; max-width: 20.5rem; border: 1px solid rgba(255,255,255,0.16); background: rgba(5,5,5,0.54); padding: 0.95rem; backdrop-filter: blur(16px); }
+  .mobile-growth-label { margin: 0 0 0.55rem !important; color: #e30613 !important; font-family: 'Anton', Impact, sans-serif !important; font-size: 0.62rem !important; letter-spacing: 0.18em; text-transform: uppercase; }
+  .mobile-growth-card > strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: clamp(3.4rem, 15vw, 5rem); line-height: 0.92; transform: rotateX(var(--growth-spin, 0deg)); transform-origin: 50% 55%; }
+  .mobile-growth-bars { margin-top: 0.5rem; height: 4.6rem; display: flex; align-items: end; gap: 0.32rem; }
+  .mobile-growth-bars span { flex: 1; background: #e30613; opacity: 0.5; transform-origin: bottom; transform: scaleY(var(--bar-scale, 1)); }
+  .mobile-growth-grid { margin-top: 0.72rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.38rem; }
+  .mobile-growth-grid div { border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); padding: 0.48rem 0.3rem; text-align: center; }
+  .mobile-growth-grid strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: 1.15rem; line-height: 1; transform: rotateX(var(--growth-spin, 0deg)); }
+  .mobile-growth-grid span { display: block; margin-top: 0.25rem; color: rgba(255,255,255,0.58); font-family: Arial, sans-serif; font-size: 0.47rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+  .mobile-story-rail { position: absolute; left: 1rem; top: 5rem; bottom: 4.7rem; z-index: 5; width: 1.3rem; pointer-events: none; }
+  .mobile-story-line, .mobile-story-fill { position: absolute; left: 0.62rem; top: 0; width: 1px; }
+  .mobile-story-line { bottom: 0; background: rgba(255,255,255,0.24); }
+  .mobile-story-fill { height: 0%; background: #e30613; box-shadow: 0 0 1rem rgba(227,6,19,0.58); }
+  .mobile-story-line::before, .mobile-story-line::after { content: '+'; position: absolute; left: -0.25rem; color: rgba(255,255,255,0.74); font-family: Arial, sans-serif; font-size: 1rem; line-height: 1; }
+  .mobile-story-line::before { top: -0.9rem; } .mobile-story-line::after { bottom: -0.9rem; }
+  .mobile-story-dots { position: absolute; left: 0.38rem; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: space-between; }
+  .mobile-story-dots span { width: 0.5rem; height: 0.5rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.38); background: rgba(0,0,0,0.3); }
+  .mobile-story-dots span.is-active { border-color: #e30613; background: #e30613; box-shadow: 0 0 1rem rgba(227,6,19,0.5); }
+  @media (max-width: 767px) { .mobile-story { display: block; } }
+  @media (prefers-reduced-motion: reduce) { .mobile-story-beat, .mobile-story-copy, .mobile-growth-card > strong, .mobile-growth-grid strong { transition: none !important; transform: none !important; } }
 </style>
 
 <script is:inline>
@@ -461,12 +214,18 @@ const choices = [
     var beats = Array.prototype.slice.call(root.querySelectorAll('[data-mobile-beat]'));
     var dots = Array.prototype.slice.call(root.querySelectorAll('[data-mobile-dot]'));
     var fill = root.querySelector('[data-mobile-story-fill]');
+    var counters = Array.prototype.slice.call(root.querySelectorAll('[data-mobile-growth-count]'));
     var active = -1;
+    var ticking = false;
 
-    function clamp(value, min, max) {
-      return Math.min(Math.max(value, min), max);
+    function clamp(value, min, max) { return Math.min(Math.max(value, min), max); }
+    function easeOutCubic(value) { return 1 - Math.pow(1 - value, 3); }
+    function formatGrowth(value, format) {
+      if (format === 'millions') return (value / 1000000).toFixed(value > 1900000 ? 0 : 1).replace('.0', '') + 'M+';
+      if (format === 'thousands') return Math.round(value / 1000) + 'K+';
+      if (format === 'comma') return Math.round(value).toLocaleString('en-US') + '+';
+      return Math.round(value) + '+';
     }
-
     function setActive(next) {
       if (next === active) return;
       active = next;
@@ -478,23 +237,43 @@ const choices = [
           else video.pause();
         }
       });
-      dots.forEach(function (dot, index) {
-        dot.classList.toggle('is-active', index === next);
-      });
+      dots.forEach(function (dot, index) { dot.classList.toggle('is-active', index === next); });
     }
-
-    function update() {
+    function updateNow() {
+      ticking = false;
       if (window.innerWidth > 767) return;
       var rect = track.getBoundingClientRect();
       var maxScroll = Math.max(1, rect.height - window.innerHeight);
-      var progress = clamp((0 - rect.top) / maxScroll, 0, 1);
-      var index = clamp(Math.round(progress * (beats.length - 1)), 0, beats.length - 1);
+      var progress = clamp(-rect.top / maxScroll, 0, 1);
+      var exact = progress * (beats.length - 1);
+      var index = clamp(Math.round(exact), 0, beats.length - 1);
       setActive(index);
+      beats.forEach(function (beat, i) {
+        var distance = Math.abs(exact - i);
+        var opacity = clamp(1 - (distance * 1.35), 0, 1);
+        beat.style.opacity = opacity.toFixed(4);
+        beat.style.transform = 'scale(' + (1 + (Math.min(distance, 1) * 0.018)).toFixed(4) + ')';
+        beat.style.setProperty('--copy-opacity', String(clamp(opacity * 1.25, 0, 1)));
+        beat.style.setProperty('--copy-y', (Math.min(distance, 1) * 12).toFixed(2) + 'px');
+      });
       if (fill) fill.style.height = (progress * 100).toFixed(2) + '%';
+      var growthLocal = clamp(exact - 2, 0, 1);
+      var eased = easeOutCubic(growthLocal);
+      root.style.setProperty('--growth-spin', (growthLocal * 720).toFixed(1) + 'deg');
+      root.style.setProperty('--bar-scale', eased.toFixed(3));
+      counters.forEach(function (counter) {
+        var target = Number(counter.getAttribute('data-target')) || 0;
+        var format = counter.getAttribute('data-format') || 'plain';
+        counter.textContent = formatGrowth(target * eased, format);
+      });
     }
-
-    update();
-    window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
+    function requestUpdate() {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(updateNow);
+    }
+    requestUpdate();
+    window.addEventListener('scroll', requestUpdate, { passive: true });
+    window.addEventListener('resize', requestUpdate);
   })();
 </script>

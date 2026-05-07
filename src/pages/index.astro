@@ -1,7 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import ChooseNextStep from '../components/ChooseNextStep.astro'
-import HomeJourneyPathwayMockup from '../components/HomeJourneyPathwayMockup.astro'
 import HomeStoryMobile from '../components/HomeStoryMobile.astro'
 
 const storyBeats = [
@@ -71,6 +70,7 @@ const storyBeats = [
     ballSize: 'clamp(5.8rem, 6.8vw, 6.6rem)',
     tone: 'dark',
     overlay: 'growth',
+    ballVisible: false,
     ctaPlacement: 'overlay',
     ctas: [
       { label: 'YouTube', href: 'https://www.youtube.com/@jonerfootball', external: true },
@@ -87,7 +87,7 @@ const storyBeats = [
     kicker: 'The Joner Way',
     title: 'A Method Like No Other',
     body: 'Every technical detail gets coached through energy, passion & positivity.',
-    image: '/images/home-storyboard/04-proof-growth.webp',
+    image: '/images/home-storyboard/04-joner-way-dsc08725.webp',
     mobileImage: '/images/home-storyboard/mobile/04-proof-growth-mobile.webp',
     alt: 'Lee Jones coaching players during an evening Joner Football session',
     objectPosition: '50% 44%',
@@ -100,6 +100,7 @@ const storyBeats = [
     ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)',
     tone: 'dark',
     overlay: 'none',
+    ballVisible: false,
     ctas: [
       { label: 'Train With Us In Sydney', href: '/training#jfp' },
     ],
@@ -123,6 +124,7 @@ const storyBeats = [
     ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)',
     tone: 'dark',
     overlay: 'none',
+    ballVisible: false,
     ctas: [
       { label: 'Elite Camps', href: '/camps' },
     ],
@@ -147,8 +149,9 @@ const storyBeats = [
     ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)',
     tone: 'light',
     overlay: 'none',
+    ballVisible: false,
     ctas: [
-      { label: 'Free To Watch', href: 'https://app.jonerfootball.com/categories/category-vpi8uazway4', external: true },
+      { label: '7 Day Free Trial', href: 'https://app.jonerfootball.com/categories/category-vpi8uazway4', external: true },
       { label: 'Apple Download', href: 'https://apps.apple.com/au/app/joner-football-app/id6737069275', external: true, badge: 'apple' },
       { label: 'Google Download', href: 'https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball', external: true, badge: 'google' },
     ],
@@ -172,6 +175,7 @@ const storyBeats = [
     ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)',
     tone: 'dark',
     overlay: 'none',
+    ballVisible: false,
     ctas: [
       { label: 'Visit HQ Map', href: 'https://maps.google.com/?q=20+Narabang+Way+Belrose', external: true },
     ],
@@ -537,8 +541,8 @@ const mediaStyle = (beat) => {
         box-shadow:
           0 1.1rem 2rem rgba(0,0,0,0.4),
           0 0 2.8rem rgba(227,6,19,0.18);
-        transform: translate(-50%, -50%);
-        transition: border-color 700ms ease, box-shadow 700ms ease;
+        transform: translate(-50%, -50%) scale(var(--ball-fly-scale, 1)) rotateY(var(--ball-fly-rotate, 0deg));
+        transition: border-color 700ms ease, box-shadow 700ms ease, transform 320ms cubic-bezier(.22,.61,.36,1);
       }
 
       .story-ball-pulse::before,
@@ -750,8 +754,8 @@ const mediaStyle = (beat) => {
       }
 
       .story-cta-link:hover {
-        border-color: rgba(255,255,255,0.45);
-        background: rgba(255,255,255,0.16);
+        border-color: #E30613;
+        background: #E30613;
         color: #FFFFFF;
         transform: scale(1.045);
       }
@@ -763,12 +767,13 @@ const mediaStyle = (beat) => {
       .story-cta-link.primary,
       .story-cta-link.red,
       .story-copy:not([data-pos="center"]) .story-cta-link:not(.store-badge) {
-        border-color: #E30613;
-        background: #E30613;
+        border-color: rgba(255,255,255,0.34);
+        background: rgba(5,5,5,0.72);
       }
 
       .story-cta-link.primary:hover,
-      .story-cta-link.red:hover {
+      .story-cta-link.red:hover,
+      .story-copy:not([data-pos="center"]) .story-cta-link:not(.store-badge):hover {
         border-color: #E30613;
         background: #E30613;
       }
@@ -1922,7 +1927,6 @@ const mediaStyle = (beat) => {
       </div>
     </section>
 
-    <HomeJourneyPathwayMockup />
   </main>
 
   <script is:inline>
@@ -1930,11 +1934,11 @@ const mediaStyle = (beat) => {
       var beatMarkers = [
         { x: 24.2, y: 48, maskX: 24.2, maskY: 48, maskSize: 0, ballSize: 'clamp(6.1rem, 7.8vw, 7.2rem)', ballVisible: true },
         { x: 63.2, y: 81, maskX: 63.2, maskY: 81, maskSize: 0, ballSize: 'clamp(6.8rem, 8.4vw, 7.9rem)', ballVisible: true },
-        { x: 37.2, y: 72, maskX: 37.2, maskY: 72, maskSize: 0, ballSize: 'clamp(5.8rem, 6.8vw, 6.6rem)', ballVisible: true },
-        { x: 34, y: 72, maskX: 34, maskY: 72, maskSize: 0, ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)', ballVisible: true },
-        { x: 24, y: 75, maskX: 24, maskY: 75, maskSize: 0, ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)', ballVisible: true },
-        { x: 77, y: 72, maskX: 77, maskY: 72, maskSize: 0, ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)', ballVisible: true },
-        { x: 35, y: 70, maskX: 35, maskY: 70, maskSize: 0, ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)', ballVisible: true },
+        { x: 37.2, y: 72, maskX: 37.2, maskY: 72, maskSize: 0, ballSize: 'clamp(5.8rem, 6.8vw, 6.6rem)', ballVisible: false },
+        { x: 34, y: 72, maskX: 34, maskY: 72, maskSize: 0, ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)', ballVisible: false },
+        { x: 24, y: 75, maskX: 24, maskY: 75, maskSize: 0, ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)', ballVisible: false },
+        { x: 77, y: 72, maskX: 77, maskY: 72, maskSize: 0, ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)', ballVisible: false },
+        { x: 35, y: 70, maskX: 35, maskY: 70, maskSize: 0, ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)', ballVisible: false },
         { x: 18, y: 77, maskX: 18, maskY: 77, maskSize: 0, ballSize: 'clamp(4.8rem, 5.8vw, 5.7rem)', ballVisible: false }
       ];
 
@@ -2023,7 +2027,11 @@ const mediaStyle = (beat) => {
           shell.style.setProperty('--marker-x', marker.x + '%');
           shell.style.setProperty('--marker-y', marker.y + '%');
           shell.style.setProperty('--ball-size', markerFrom.ballSize || 'clamp(4.8rem, 5.8vw, 5.8rem)');
-          shell.style.setProperty('--ball-opacity', markerFrom.ballVisible === false ? '0' : '1');
+          var slideTwoFly = nextIndex === 1 ? smoothstep(clamp((localProgress - 0.22) / 0.58, 0, 1)) : 0;
+          var ballOpacity = nextIndex === 0 ? 1 : nextIndex === 1 ? (1 - slideTwoFly) : 0;
+          shell.style.setProperty('--ball-opacity', String(ballOpacity));
+          shell.style.setProperty('--ball-fly-scale', String(1 - (slideTwoFly * 0.78)));
+          shell.style.setProperty('--ball-fly-rotate', (slideTwoFly * 720) + 'deg');
           var activeMask = beatMarkers[nextIndex] || marker;
           var activeMaskSize = activeMask.maskSize || 0;
           shell.style.setProperty('--mask-x', (activeMask.maskX || activeMask.x) + '%');
