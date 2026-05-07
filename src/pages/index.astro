@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import ChooseNextStep from '../components/ChooseNextStep.astro'
 
 const storyBeats = [
   {
@@ -191,7 +192,7 @@ const storyBeats = [
     maskSize: 0,
     ballVisible: false,
     tone: 'dark',
-    overlay: 'actionGraphic',
+    overlay: 'none',
   },
 ]
 
@@ -1671,27 +1672,6 @@ const mediaStyle = (beat) => {
               </div>
             )}
 
-            {beat.overlay === 'actionGraphic' && (
-              <div class="absolute inset-0 story-overlay--action">
-                <div class="action-intro">
-                  <p class="story-kicker font-heading text-xs uppercase text-joner-red">Action</p>
-                  <h2>Choose Your Next Step</h2>
-                  <p>Train online, train with us, join a camp, or get inside the Joner Football Hub.</p>
-                </div>
-                <nav class="action-board" aria-label="Choose your next step">
-                  {actionLinks.map((link) => (
-                    <a class:list={['action-card', link.className]} href={link.href} aria-label={link.label}>
-                      <span class="action-card-icon" aria-hidden="true">{link.icon}</span>
-                      <span class="action-card-copy">
-                        <span class="action-card-eyebrow">{link.eyebrow}</span>
-                        <span class="action-card-title">{link.label}</span>
-                      </span>
-                      <span class="action-card-arrow" aria-hidden="true">›</span>
-                    </a>
-                  ))}
-                </nav>
-              </div>
-            )}
           </div>
         ))}
       </div>
@@ -1725,13 +1705,7 @@ const mediaStyle = (beat) => {
             <h2 class="story-mobile-title">{beat.title}</h2>
             {beat.body && <p class="story-mobile-body">{beat.body}</p>}
 
-            {beat.overlay === 'actionGraphic' ? (
-              <div class="story-mobile-action-grid">
-                {actionLinks.map((link) => (
-                  <a class="story-mobile-action" href={link.href}>{link.label}</a>
-                ))}
-              </div>
-            ) : beat.ctas && (
+            {beat.ctas && (
               <div class="story-mobile-cta-row">
                 {beat.ctas.map((cta, ctaIndex) => (
                   <a
@@ -1749,6 +1723,8 @@ const mediaStyle = (beat) => {
         </section>
       ))}
     </section>
+
+    <ChooseNextStep />
 
     <section class="journey-section" aria-label="JFP Player Pathway">
       <img
