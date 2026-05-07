@@ -674,22 +674,6 @@ const faqSchema = camp.faqItems?.length ? {
     </div>
   </section>
 
-  <section id="schedule" class="bg-white py-14 md:py-20 text-joner-black">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <p class="camp-eyebrow text-center">3 Day Flow</p>
-      <h2 class="section-heading text-joner-black text-center">Simple camp structure</h2>
-      <div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4">
-        {(camp.scheduleItems || []).slice(0, 3).map((item: any, index: number) => (
-          <article class="schedule-card">
-            <span>Day {index + 1}</span>
-            <h3>{item.time}</h3>
-            <p>{item.title}</p>
-          </article>
-        ))}
-      </div>
-    </div>
-  </section>
-
   <section id="register" class="relative overflow-hidden bg-joner-black py-14 md:py-24">
     <img src={campPhotoSet[3]} alt="Joner Football camp players training" class="absolute inset-0 h-full w-full object-cover opacity-25" loading="lazy" />
     <div class="absolute inset-0 bg-black/78"></div>
