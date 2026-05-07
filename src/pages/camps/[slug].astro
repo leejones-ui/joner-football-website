@@ -605,56 +605,43 @@ const faqSchema = camp.faqItems?.length ? {
   ogImage={ogImage}
   schema={faqSchema ? [eventSchema, faqSchema] : [eventSchema]}
 >
-  <section id="overview" class="camp-hero relative min-h-[86vh] overflow-hidden bg-joner-black">
-    <img src={pageHeroImage} alt={`${camp.title} with Lee Jones coaching players`} class="absolute inset-0 h-full w-full object-cover" loading="eager" />
-    <div class="absolute inset-0 bg-gradient-to-r from-black via-black/78 to-black/20"></div>
-    <div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/30"></div>
+  <section id="overview" class="camp-hero relative min-h-[82vh] overflow-hidden bg-joner-black">
+    {heroVideo ? (
+      <video autoplay muted loop playsinline poster={pageHeroImage} class="absolute inset-0 h-full w-full object-cover">
+        <source src={heroVideo} type="video/mp4" />
+      </video>
+    ) : (
+      <img src={pageHeroImage} alt={`${camp.title} with Lee Jones coaching players`} class="absolute inset-0 h-full w-full object-cover" loading="eager" />
+    )}
+    <div class="absolute inset-0 bg-black/58"></div>
+    <div class="absolute inset-0 bg-gradient-to-r from-black/82 via-black/44 to-black/18"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/30"></div>
     <div class="absolute inset-x-0 top-0 h-1 bg-joner-red"></div>
 
-    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 md:pt-32">
-      <a href="/camps" class="inline-flex min-h-[44px] items-center text-sm font-body text-gray-300 hover:text-white">Back to all camps</a>
-
-      <div class="mt-10 max-w-4xl">
-        <div class="flex flex-wrap items-center gap-3 mb-5">
-          <span class="bg-joner-red px-3 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">Houston 2026</span>
-          <span class="border border-white/25 bg-black/45 px-3 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">{statusLabel}</span>
-          <span class="border border-white/25 bg-black/45 px-3 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">Sold out last year</span>
-        </div>
-
-        <h1 class="font-heading text-5xl sm:text-6xl lg:text-8xl font-bold text-white uppercase leading-none">{camp.title}</h1>
-        <p class="mt-6 max-w-2xl text-xl md:text-2xl text-white font-body font-semibold leading-snug">A high energy Joner Football camp for players who want sharper technique, better confidence, and proper coaching standards.</p>
-
-        <div class="mt-8 grid max-w-3xl grid-cols-1 sm:grid-cols-3 gap-3">
-          <div class="hero-fact"><span>Dates</span><strong>{camp.dates}</strong></div>
-          <div class="hero-fact"><span>Time</span><strong>{camp.times}</strong></div>
-          <div class="hero-fact"><span>Ages</span><strong>{camp.ageRange}</strong></div>
-        </div>
-
-        <div class="mt-9 flex flex-col sm:flex-row gap-3">
-          <a href="#register" class="btn-red text-center">{ctaLabel}</a>
-          <a href="#details" class="btn-outline text-center">See Details</a>
-        </div>
+    <div class="relative z-10 flex min-h-[82vh] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 items-center">
+      <div class="max-w-4xl">
+        <h1 class="font-heading text-5xl sm:text-7xl lg:text-8xl font-bold text-white uppercase leading-none">Houston World Cup Camp.</h1>
+        <p class="mt-6 max-w-2xl text-xl md:text-2xl text-white font-body font-semibold leading-snug">Come do a Joner Football Elite Camp &amp; enjoy world cup vibes at the same time</p>
       </div>
     </div>
   </section>
 
   <section id="details" class="bg-white py-14 md:py-20 text-joner-black">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-10 items-center">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           <p class="camp-eyebrow">Camp Details</p>
-          <h2 class="section-heading text-joner-black">Everything parents need. Nothing extra.</h2>
-          <div class="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div class="simple-card"><span>Where</span><strong>{camp.venueAddress || camp.venue}</strong></div>
-            <div class="simple-card"><span>Capacity</span><strong>{camp.urgencyLabel || 'Limited spots available'}</strong></div>
-            <div class="simple-card"><span>Options</span><strong>{camp.priceLabel || dayOptions.join(', ')}</strong></div>
-            <div class="simple-card"><span>Groups</span><strong>Grouped by age and ability</strong></div>
-          </div>
-          <a href="#register" class="btn-red mt-8">{ctaLabel}</a>
+          <h2 class="section-heading text-joner-black">Houston 2026</h2>
         </div>
-        <figure class="photo-frame h-[420px] lg:h-[520px]">
-          <img src={campPhotoSet[1]} alt="Lee Jones coaching a Joner Football camp group" class="h-full w-full object-cover" loading="lazy" />
-        </figure>
+        <a href="#register" class="btn-red text-center">{ctaLabel}</a>
+      </div>
+
+      <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div class="simple-card"><span>Location</span><strong>{camp.venueAddress || camp.venue}</strong></div>
+        <div class="simple-card"><span>Times</span><strong>{camp.times}</strong></div>
+        <div class="simple-card"><span>Price</span><strong>{camp.priceLabel || dayOptions.join(', ')}</strong></div>
+        <div class="simple-card"><span>Ages</span><strong>{camp.ageRange} grouped by age and skill</strong></div>
+        <div class="simple-card"><span>Capacity</span><strong>Max 80 players. Sold out last year.</strong></div>
       </div>
     </div>
   </section>
@@ -790,7 +777,7 @@ const faqSchema = camp.faqItems?.length ? {
     </div>
   </section>
 
-  <a href="#register" class="camp-mobile-cta fixed bottom-[72px] left-3 right-3 z-40 text-center text-sm shadow-2xl">{ctaLabel}</a>
+  <a href="#register" class="camp-mobile-cta btn-red fixed bottom-[72px] left-3 right-3 z-40 text-center text-sm shadow-2xl">{ctaLabel}</a>
 
   <style>
     .camp-eyebrow {
@@ -910,18 +897,6 @@ const faqSchema = camp.faqItems?.length ? {
       text-transform: uppercase;
       letter-spacing: .08em;
       color: #0A0A0A;
-    }
-    .camp-mobile-cta {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 52px;
-      background: #E30613;
-      color: white;
-      font-family: var(--font-heading);
-      text-transform: uppercase;
-      letter-spacing: .1em;
-      padding: .9rem 1rem;
     }
     @media (min-width: 768px) {
       .camp-mobile-cta { display: none; }
