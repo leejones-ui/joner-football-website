@@ -42,10 +42,21 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 }
 .btn-red:hover,
 .btn-outline:hover {
-  border-color: rgba(255,255,255,0.45);
-  background: rgba(255,255,255,0.16);
+  border-color: #E30613;
+  background: #E30613;
   color: #FFFFFF;
   transform: scale(1.045);
+}
+
+.nav-download-cta {
+  border-color: #E30613;
+  background: #E30613;
+  color: #FFFFFF;
+}
+.nav-download-cta:hover {
+  border-color: #ff3b45;
+  background: #ff1f2b;
+  color: #FFFFFF;
 }
 
 .section-heading {
