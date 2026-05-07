@@ -1109,17 +1109,18 @@ const mediaStyle = (beat) => {
         --mobile-story-progress: 0;
         display: none;
         position: relative;
+        overflow: clip;
         background: #050505;
         color: #FFFFFF;
       }
 
       .story-mobile-global-rail {
-        position: sticky;
+        position: absolute;
+        left: 1rem;
         top: 5.8rem;
+        bottom: 5.2rem;
         z-index: 20;
         width: 1.5rem;
-        height: calc(100svh - 10rem);
-        margin: 0 0 calc(-100svh + 10rem) 1rem;
         pointer-events: none;
       }
 
@@ -1200,10 +1201,22 @@ const mediaStyle = (beat) => {
         object-position: var(--story-object-mobile, 62% 50%);
       }
 
-      .story-mobile-panel:first-child .story-mobile-bg img {
-        object-position: 34% 50%;
-        transform: scale(0.94);
-        transform-origin: 38% 50%;
+      .story-mobile-panel:nth-of-type(1) .story-mobile-bg img {
+        object-position: 0% 50%;
+        transform: scale(0.88) translateX(13%);
+        transform-origin: 50% 50%;
+      }
+
+      .story-mobile-panel:nth-of-type(2) .story-mobile-bg img {
+        object-position: 0% 50%;
+        transform: scale(0.9) translateX(10%);
+        transform-origin: 50% 50%;
+      }
+
+      .story-mobile-panel:nth-of-type(7) .story-mobile-bg img {
+        object-position: 78% 50%;
+        transform: scale(0.88);
+        transform-origin: 78% 50%;
       }
 
       .story-mobile-panel::before {
@@ -1233,10 +1246,18 @@ const mediaStyle = (beat) => {
         pointer-events: none;
       }
 
-      .story-mobile-panel:first-child .story-mobile-ball {
-        left: clamp(0.65rem, 3vw, 1rem);
+      .story-mobile-panel:nth-of-type(1) .story-mobile-ball {
+        left: clamp(1rem, 5vw, 1.7rem);
         right: auto;
-        bottom: clamp(4.4rem, 12vh, 6.2rem);
+        bottom: clamp(4.1rem, 10vh, 5.6rem);
+        width: clamp(3.1rem, 15vw, 4.3rem);
+        height: clamp(3.1rem, 15vw, 4.3rem);
+      }
+
+      .story-mobile-panel:nth-of-type(2) .story-mobile-ball {
+        left: clamp(1rem, 5vw, 1.7rem);
+        right: auto;
+        bottom: clamp(4.6rem, 11vh, 6rem);
         width: clamp(3.1rem, 15vw, 4.3rem);
         height: clamp(3.1rem, 15vw, 4.3rem);
       }
@@ -1418,6 +1439,63 @@ const mediaStyle = (beat) => {
         text-transform: uppercase;
         text-decoration: none;
         backdrop-filter: blur(14px);
+      }
+
+      .story-mobile-stats {
+        margin: 1.1rem auto 0;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.48rem;
+        width: min(20rem, 100%);
+      }
+
+      .story-mobile-stat {
+        border: 1px solid rgba(255,255,255,0.2);
+        background: rgba(5,5,5,0.48);
+        padding: 0.55rem 0.35rem;
+        text-align: center;
+        backdrop-filter: blur(12px);
+      }
+
+      .story-mobile-stat strong {
+        display: block;
+        color: #fff;
+        font-family: 'Anton', Impact, sans-serif;
+        font-size: 1.2rem;
+        line-height: 1;
+      }
+
+      .story-mobile-stat span {
+        display: block;
+        margin-top: 0.25rem;
+        color: rgba(255,255,255,0.62);
+        font-family: Arial, sans-serif;
+        font-size: 0.5rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .story-mobile-choose :global(.next-step-section),
+      .story-mobile-choose :global(section) {
+        padding: 0 !important;
+        background: transparent !important;
+      }
+
+      .story-mobile-choose :global(h2) {
+        font-size: clamp(2rem, 10vw, 3rem) !important;
+      }
+
+      .story-mobile-choose :global(a) {
+        min-height: 3.15rem !important;
+        padding: 0.7rem 0.65rem !important;
+        font-size: 0.72rem !important;
+      }
+
+      @media (max-width: 767px) {
+        .jfp-journey {
+          display: none !important;
+        }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -1872,14 +1950,24 @@ const mediaStyle = (beat) => {
             </div>
           </aside>
 
-          <div class="story-mobile-ball" aria-hidden="true">
-            <img src="/images/home-storyboard/yellow-football-object.png" alt="" />
-          </div>
+          {index < 2 && (
+            <div class="story-mobile-ball" aria-hidden="true">
+              <img src="/images/home-storyboard/yellow-football-object.png" alt="" />
+            </div>
+          )}
 
           <div class="story-mobile-content">
             <p class="story-mobile-kicker">{beat.kicker || beat.label}</p>
             <h2 class="story-mobile-title">{beat.title}</h2>
             {beat.body && <p class="story-mobile-body">{beat.body}</p>}
+
+            {beat.overlay === 'growth' && (
+              <div class="story-mobile-stats" aria-label="Joner Football social proof">
+                <div class="story-mobile-stat"><strong>2M+</strong><span>Audience</span></div>
+                <div class="story-mobile-stat"><strong>380K+</strong><span>YouTube</span></div>
+                <div class="story-mobile-stat"><strong>600K+</strong><span>Facebook</span></div>
+              </div>
+            )}
 
             {beat.overlay === 'chooseNextStep' && (
               <div class="story-mobile-choose">
