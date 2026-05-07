@@ -180,19 +180,19 @@ const storyBeats = [
     kicker: 'Action',
     title: 'Choose Your Next Step',
     body: 'Train online, train with us, join a camp, or get inside the Joner Football Hub.',
-    image: '/images/home-storyboard/07-action-coach.webp',
+    image: '/images/home-storyboard/08-choose-next-step.webp',
     mobileImage: '/images/home-storyboard/mobile/08-choose-next-step-alt-mobile.webp',
     alt: 'Lee Jones giving coaching detail during a Joner Football session',
-    objectPosition: '50% 50%',
-    objectPositionTablet: '50% 50%',
-    objectPositionMobile: '50% 14%',
+    objectPosition: '70% 50%',
+    objectPositionTablet: '72% 50%',
+    objectPositionMobile: '70% 30%',
     copyPos: 'hidden',
     markerX: 18,
     markerY: 77,
     maskSize: 0,
     ballVisible: false,
     tone: 'dark',
-    overlay: 'none',
+    overlay: 'chooseNextStep',
   },
 ]
 
@@ -616,6 +616,40 @@ const mediaStyle = (beat) => {
       @keyframes storyOverlayIn {
         from { opacity: 0; transform: translateY(1rem); }
         to { opacity: 1; transform: translateY(0); }
+      }
+
+      .story-overlay--choose::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(90deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.6) 45%, rgba(0,0,0,0.25) 75%, rgba(0,0,0,0.05) 100%),
+          linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.55) 100%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .story-overlay-choose {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        padding-top: 6vh;
+        padding-bottom: 8vh;
+        padding-left: clamp(13rem, 18vw, 18rem);
+        padding-right: clamp(3rem, 6vw, 6rem);
+        pointer-events: none;
+      }
+
+      .story-overlay-choose > * {
+        pointer-events: auto;
+        max-width: 78rem;
+        width: 100%;
+      }
+
+      .story-mobile-choose {
+        margin-top: 1.5rem;
       }
 
       .metric-card,
@@ -1632,7 +1666,7 @@ const mediaStyle = (beat) => {
         ))}
 
         {storyBeats.map((beat, index) => (
-          <div class:list={['story-overlay absolute inset-0 z-30', beat.overlay === 'actionGraphic' && 'story-overlay--action']} data-story-overlay data-index={index} data-state={index === 0 ? 'active' : 'inactive'} hidden={index !== 0}>
+          <div class:list={['story-overlay absolute inset-0 z-30', beat.overlay === 'chooseNextStep' && 'story-overlay--choose']} data-story-overlay data-index={index} data-state={index === 0 ? 'active' : 'inactive'} hidden={index !== 0}>
             {beat.overlay === 'growth' && (
               <div class="absolute right-[6vw] top-[15vh] w-[38vw] max-w-[40rem]">
                 <div class="metric-card p-6">
@@ -1672,6 +1706,12 @@ const mediaStyle = (beat) => {
               </div>
             )}
 
+            {beat.overlay === 'chooseNextStep' && (
+              <div class="story-overlay-choose">
+                <ChooseNextStep />
+              </div>
+            )}
+
           </div>
         ))}
       </div>
@@ -1705,6 +1745,12 @@ const mediaStyle = (beat) => {
             <h2 class="story-mobile-title">{beat.title}</h2>
             {beat.body && <p class="story-mobile-body">{beat.body}</p>}
 
+            {beat.overlay === 'chooseNextStep' && (
+              <div class="story-mobile-choose">
+                <ChooseNextStep />
+              </div>
+            )}
+
             {beat.ctas && (
               <div class="story-mobile-cta-row">
                 {beat.ctas.map((cta, ctaIndex) => (
@@ -1723,8 +1769,6 @@ const mediaStyle = (beat) => {
         </section>
       ))}
     </section>
-
-    <ChooseNextStep />
 
     <section class="journey-section" aria-label="JFP Player Pathway">
       <img
