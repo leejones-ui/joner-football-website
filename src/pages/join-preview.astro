@@ -1,206 +1,164 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 
-const accountPlans = [
+const plans = [
   {
-    id: 'starter',
-    name: 'Starter',
-    eyebrow: 'Start here',
-    audience: 'Best for players who want the core Joner Football system and a simple place to start.',
-    monthlyPrice: 'Free trial',
-    annualPrice: 'Free trial',
-    annualCompare: '',
-    annualNote: 'Then choose the plan that fits you in the app.',
-    periodMonthly: 'Core app access',
-    periodAnnual: 'Core app access',
+    id: 'monthly',
+    name: 'Monthly',
+    badge: '',
+    monthlyPrice: '$23.99',
+    monthlyPeriod: '/month',
+    annualPrice: '$23.99',
+    annualPeriod: '/month',
+    noteMonthly: '7-day free trial',
+    noteAnnual: '7-day free trial',
     cta: 'Start Free Trial',
-    ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
-    monthlyCtaUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
-    tone: 'quiet',
-    idealFor: 'Players building strong technical habits.',
-    highlights: [
+    ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
+    ctaMonthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
+    featured: false,
+    features: [
       '1,500+ training videos',
       'New content every week',
-      'Daily challenges and live sessions',
-      'Community access inside the app',
+      'Daily challenges',
+      'Community access',
+      'Live sessions',
     ],
   },
   {
-    id: 'plus',
-    name: 'Plus',
-    eyebrow: 'Most Popular',
-    audience: 'Built for players and families who want more structure, more support and a clearer development path.',
-    monthlyPrice: 'Plans available',
-    annualPrice: 'Plans available',
-    annualCompare: '',
-    annualNote: 'Monthly and annual options available in the app.',
-    periodMonthly: 'Structured player access',
-    periodAnnual: 'Structured player access',
+    id: 'annual',
+    name: 'Annual',
+    badge: 'Most Popular',
+    monthlyPrice: '$17.08',
+    monthlyPeriod: '/month',
+    annualPrice: '$204.99',
+    annualPeriod: '/year',
+    noteMonthly: 'Billed yearly. Save $83',
+    noteAnnual: '7-day free trial. Save $83',
     cta: 'Start Free Trial',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
-    monthlyCtaUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
-    tone: 'featured',
-    idealFor: 'Players serious about consistent progress.',
-    highlights: [
-      'Everything in Starter',
+    ctaMonthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
+    featured: true,
+    features: [
+      'Everything in Monthly',
       '100 Day Transformation Program',
       'DM Lee directly',
-      'Team training videos and downloads',
+      'Team training videos',
+      'Best value for serious players',
     ],
   },
   {
     id: 'max',
     name: 'Max',
-    eyebrow: 'Coaches Section',
-    audience: 'The complete Joner system for coaches, ambitious players and families who want the full methodology.',
-    monthlyPrice: 'Annual plan',
-    annualPrice: 'Annual plan',
-    annualCompare: '',
-    annualNote: 'Includes full Coaches Section access.',
-    monthlyNote: 'Includes full Coaches Section access.',
-    periodMonthly: 'Coaches and team content',
-    periodAnnual: 'Coaches and team content',
-    cta: 'Unlock Coaches Section',
+    badge: '',
+    monthlyPrice: '$26.67',
+    monthlyPeriod: '/month',
+    annualPrice: '$319.99',
+    annualPeriod: '/year',
+    noteMonthly: 'Billed yearly. Full access day one',
+    noteAnnual: 'Full access day one',
+    cta: 'Join Max',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
-    tone: 'strong',
-    idealFor: 'Coaches who want session plans, templates and team tools.',
-    highlights: [
-      'Everything in Plus',
-      'Full Coaches Section access',
-      'PDF season plans and coaching templates',
-      'Advanced team training and pro sessions',
+    ctaMonthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
+    featured: false,
+    features: [
+      'Everything in Annual',
+      'Full coaches content',
+      'PDF season plans',
+      'Advanced team training',
+      'Pro player sessions',
     ],
   },
   {
     id: 'club',
-    name: 'Club Plan',
-    eyebrow: 'Request only',
-    audience: 'Built for clubs, schools and academies that want one system across the whole squad.',
-    monthlyPrice: 'Request',
-    annualPrice: 'Request',
-    annualCompare: '',
-    annualNote: '',
-    periodMonthly: '',
-    periodAnnual: '',
+    name: 'Club',
+    badge: '',
+    monthlyPrice: 'Custom',
+    monthlyPeriod: '',
+    annualPrice: 'Custom',
+    annualPeriod: '',
+    noteMonthly: 'For clubs, schools and academies',
+    noteAnnual: 'For clubs, schools and academies',
     cta: 'Get Club Pricing',
     ctaUrl: '/teams',
-    tone: 'quiet',
-    idealFor: 'Teams that need onboarding, scale and one invoice.',
-    highlights: [
-      'Custom onboarding with Lee',
-      'Multi-seat licences',
-      'Bulk player access',
-      'Single invoice for the whole team',
+    ctaMonthlyUrl: '/teams',
+    featured: false,
+    features: [
+      'Multi-seat access',
+      'Custom onboarding',
+      'Bulk player licences',
+      'Single invoice',
+      'Priority support',
     ],
   },
 ]
 
 const comparisonRows = [
-  ['1,500+ Training Videos', true, true, true, true],
-  ['New Videos Every Week', true, true, true, true],
-  ['Daily Challenges', true, true, true, true],
-  ['Community Access', true, true, true, true],
-  ['Live Training Sessions', true, true, true, true],
+  ['1,500+ training videos', true, true, true, true],
+  ['New videos every week', true, true, true, true],
+  ['Daily challenges', true, true, true, true],
+  ['Community access', true, true, true, true],
+  ['Live training sessions', true, true, true, true],
   ['100 Day Transformation Program', false, true, true, true],
-  ['Age Specific Training Content', true, true, true, true],
-  ['Create Playlist', true, true, true, true],
-  ['Offline Downloads', true, true, true, true],
-  ['Watch History', true, true, true, true],
-  ['Streaks and Badges', true, true, true, true],
-  ['Create Notes', true, true, true, true],
-  ['Free Trial', true, true, false, false],
-  ['DM Lee Directly', false, true, true, true],
-  ['Team Training Videos', false, true, true, true],
-  ['Advanced Team Training', false, false, true, true],
-  ['PDF Season Plans', false, false, true, true],
-  ['Coaches Section', false, false, true, true],
-  ['Pro Player Training', false, false, true, true],
-  ['Workshop Discounts', false, false, true, true],
+  ['DM Lee directly', false, true, true, true],
+  ['Team training videos', false, true, true, true],
+  ['Full coaches content', false, false, true, true],
+  ['PDF season plans', false, false, true, true],
+  ['Advanced team training', false, false, true, true],
 ]
 ---
 
 <BaseLayout
   title="Private Join Page Preview | Joner Football"
-  description="Private preview of the new Joner Football account based join page."
+  description="Private preview of the new Joner Football join page."
   canonical="https://jonerfootball.com/join-preview/"
   noindex>
-  <section id="accounts" class="bg-[#0A0A0A] pt-24 pb-16 md:pt-28 md:pb-24">
+  <section id="accounts" class="bg-white pt-24 pb-14 md:pt-28 md:pb-20 text-black">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-8 mb-10">
-        <div class="max-w-3xl">
-          <img src="/images/brand/joner-app-logo.jpg" alt="Joner Football App" class="h-12 w-auto mb-6 rounded-xl mx-auto xl:mx-0" loading="eager" />
-          <h1 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-none">Choose Your Level. Get To Work.</h1>
-          <p class="mt-5 max-w-2xl text-base md:text-lg text-gray-300 font-body leading-relaxed">
-            Pick the account that matches how you train. Final pricing is handled inside the app so the right regional plan shows at checkout.
-          </p>
-          <div class="mt-6 flex flex-wrap gap-3">
-            <span class="rounded-full border border-[#E30613]/30 bg-[#E30613]/10 px-4 py-2 text-xs font-heading uppercase tracking-[0.18em] text-[#E30613]">1,500+ drills</span>
-            <span class="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-heading uppercase tracking-[0.18em] text-white">Starter & Plus free trial</span>
-            <span class="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-heading uppercase tracking-[0.18em] text-white">Max includes coaches section</span>
-          </div>
-        </div>
+      <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-8 md:mb-12">
+        <h1 class="font-heading text-5xl md:text-7xl font-bold uppercase leading-[0.9] tracking-tight max-w-3xl">Choose Your Level. Get To Work.</h1>
 
-        <div class="xl:min-w-[360px]">
-          <p class="mb-3 text-xs font-heading uppercase tracking-[0.2em] text-gray-500">View mode</p>
-          <div class="bg-[#111111] border border-gray-800 rounded-full p-1 flex w-full" aria-label="Billing toggle">
-            <button type="button" data-billing="monthly" class="billing-toggle flex-1 rounded-full px-6 py-3 text-sm font-heading uppercase tracking-wider text-gray-300">Monthly</button>
-            <button type="button" data-billing="annual" class="billing-toggle active flex-1 rounded-full px-6 py-3 text-sm font-heading uppercase tracking-wider bg-[#E30613] text-white">Annual</button>
+        <div class="w-full lg:w-[360px]">
+          <div class="bg-gray-100 border border-gray-200 rounded-full p-1 flex w-full" aria-label="Billing toggle">
+            <button type="button" data-billing="monthly" class="billing-toggle flex-1 rounded-full px-5 py-3 text-sm font-heading uppercase tracking-wider text-gray-600">Monthly</button>
+            <button type="button" data-billing="annual" class="billing-toggle active flex-1 rounded-full px-5 py-3 text-sm font-heading uppercase tracking-wider bg-black text-white">Annual</button>
           </div>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-stretch">
-        {accountPlans.map((plan) => (
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-stretch">
+        {plans.map((plan) => (
           <article class:list={[
-            'relative rounded-3xl border p-6 md:p-7 flex flex-col min-h-full',
-            plan.tone === 'featured' ? 'bg-white text-black border-white shadow-[0_0_50px_rgba(227,6,19,0.24)] xl:-mt-4 xl:mb-4' : 'bg-[#111111] text-white border-gray-800',
-            plan.tone === 'strong' ? 'border-[#E30613]/70' : '',
+            'relative rounded-[2rem] border p-6 md:p-7 flex flex-col min-h-full shadow-sm',
+            plan.featured ? 'bg-black text-white border-black shadow-[0_20px_60px_rgba(0,0,0,0.18)] xl:-mt-3 xl:mb-3' : 'bg-white text-black border-gray-200',
           ]}>
-            <div class:list={[
-              'inline-flex self-start rounded-full px-3 py-1 text-xs font-heading uppercase tracking-wider mb-5',
-              plan.tone === 'featured' ? 'bg-[#E30613] text-white' : 'bg-[#E30613]/10 text-[#E30613] border border-[#E30613]/30',
-            ]}>{plan.eyebrow}</div>
+            {plan.badge && (
+              <div class="absolute -top-3 left-6 rounded-full bg-[#E30613] px-4 py-1.5 text-xs font-heading uppercase tracking-wider text-white shadow-lg">{plan.badge}</div>
+            )}
 
-            <div class="mb-6">
-              <h2 class="font-heading text-3xl font-bold uppercase mb-3">{plan.name}</h2>
-              <p class:list={['font-body text-sm leading-relaxed min-h-[72px]', plan.tone === 'featured' ? 'text-gray-700' : 'text-gray-400']}>
-                {plan.id === 'max' ? <Fragment>The complete Joner system with the <span class="text-[#E30613] font-bold">Coaches Section</span>, season plans and advanced team content.</Fragment> : plan.audience}
-              </p>
-            </div>
-
-            <div class:list={[
-              'rounded-2xl border p-4 mb-6',
-              plan.tone === 'featured' ? 'border-black/10 bg-black/[0.04]' : 'border-white/10 bg-white/[0.03]',
-            ]}>
-              <p class:list={['text-[11px] font-heading uppercase tracking-[0.18em] mb-2', plan.tone === 'featured' ? 'text-gray-600' : 'text-gray-500']}>Ideal for</p>
-              <p class:list={['text-sm font-body leading-relaxed', plan.tone === 'featured' ? 'text-gray-800' : 'text-white']}>{plan.idealFor}</p>
+            <div class="mb-6 pt-2">
+              <h2 class="font-heading text-3xl md:text-4xl font-bold uppercase leading-none">{plan.name}</h2>
             </div>
 
             <div class="mb-7">
-              <span class="hidden billing-compare mb-2 text-base font-heading line-through opacity-45" data-monthly="" data-annual={plan.annualCompare}>{plan.annualCompare}</span>
               <div class="flex items-end gap-2 flex-wrap">
-                <span class="font-heading text-5xl font-bold billing-price" data-monthly={plan.monthlyPrice} data-annual={plan.annualPrice}>{plan.annualPrice}</span>
+                <span class="billing-price font-heading text-5xl md:text-6xl font-bold leading-none" data-monthly={plan.monthlyPrice} data-annual={plan.annualPrice}>{plan.annualPrice}</span>
+                <span class:list={['billing-period font-body text-base pb-1', plan.featured ? 'text-white/70' : 'text-gray-500']} data-monthly={plan.monthlyPeriod} data-annual={plan.annualPeriod}>{plan.annualPeriod}</span>
               </div>
-              <div class:list={['billing-period font-body text-sm mt-1', plan.tone === 'featured' ? 'text-gray-700' : 'text-gray-300']} data-monthly={plan.periodMonthly} data-annual={plan.periodAnnual}>{plan.periodAnnual}</div>
-              {(plan.annualNote || plan.monthlyNote) && <div class:list={['billing-note mt-2 text-xs font-body', plan.tone === 'featured' ? 'text-gray-600' : 'text-gray-500']} data-monthly={plan.monthlyNote || ''} data-annual={plan.annualNote || ''}>{plan.annualNote || plan.monthlyNote}</div>}
+              <p class:list={['billing-note mt-3 text-sm font-body', plan.featured ? 'text-white/75' : 'text-gray-600']} data-monthly={plan.noteMonthly} data-annual={plan.noteAnnual}>{plan.noteAnnual}</p>
             </div>
 
             <ul class="space-y-3 mb-8 flex-1">
-              {plan.highlights.map((feature) => (
+              {plan.features.map((feature) => (
                 <li class="flex gap-3 font-body text-sm leading-snug">
                   <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#E30613] text-xs font-bold text-white">✓</span>
-                  <span class:list={[plan.tone === 'featured' ? 'text-gray-800' : 'text-gray-200']}>{feature}</span>
+                  <span class:list={[plan.featured ? 'text-white/90' : 'text-gray-800']}>{feature}</span>
                 </li>
               ))}
             </ul>
 
-            <p class:list={['mb-5 text-xs font-heading uppercase tracking-[0.18em]', plan.tone === 'featured' ? 'text-gray-600' : 'text-gray-500']}>
-              {plan.id === 'max' ? 'Best choice for coaches and team leaders' : plan.id === 'club' ? 'Custom quote and onboarding' : 'Instant access after signup'}
-            </p>
-
-            <a href={plan.ctaUrl} data-annual-url={plan.ctaUrl} data-monthly-url={plan.monthlyCtaUrl || plan.ctaUrl} target={plan.ctaUrl.startsWith('http') ? '_blank' : undefined} rel={plan.ctaUrl.startsWith('http') ? 'noopener noreferrer' : undefined} class:list={[
+            <a href={plan.ctaUrl} data-annual-url={plan.ctaUrl} data-monthly-url={plan.ctaMonthlyUrl} target={plan.ctaUrl.startsWith('http') ? '_blank' : undefined} rel={plan.ctaUrl.startsWith('http') ? 'noopener noreferrer' : undefined} class:list={[
               'plan-cta block w-full rounded-full px-5 py-4 text-center font-heading uppercase tracking-wider transition-colors',
-              plan.tone === 'featured' ? 'bg-[#E30613] text-white hover:bg-[#b80510]' : 'bg-white text-black hover:bg-gray-200',
+              plan.featured ? 'bg-[#E30613] text-white hover:bg-[#b80510]' : 'bg-black text-white hover:bg-[#E30613]',
             ]}>{plan.cta}</a>
           </article>
         ))}
@@ -208,30 +166,25 @@ const comparisonRows = [
     </div>
   </section>
 
-  <section class="bg-[#F5F5F5] py-16 md:py-24 text-black">
+  <section class="bg-white py-8 md:py-14 text-black">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-10">
-        <p class="text-[#E30613] font-heading text-sm uppercase tracking-widest mb-3">Compare accounts</p>
-        <h2 class="font-heading text-4xl md:text-5xl font-bold uppercase leading-none">What each account gets</h2>
-      </div>
-
-      <div class="overflow-x-auto rounded-3xl border border-gray-200 bg-white shadow-xl">
+      <div class="overflow-x-auto rounded-[2rem] border border-gray-200 bg-white shadow-sm">
         <table class="w-full min-w-[760px] text-left">
           <thead class="bg-black text-white">
             <tr>
-              <th class="p-5 font-heading uppercase tracking-wider">Feature</th>
-              <th class="p-5 font-heading uppercase tracking-wider text-center">Starter</th>
-              <th class="p-5 font-heading uppercase tracking-wider text-center">Plus</th>
+              <th class="p-5 font-heading uppercase tracking-wider">Included</th>
+              <th class="p-5 font-heading uppercase tracking-wider text-center">Monthly</th>
+              <th class="p-5 font-heading uppercase tracking-wider text-center">Annual</th>
               <th class="p-5 font-heading uppercase tracking-wider text-center">Max</th>
-              <th class="p-5 font-heading uppercase tracking-wider text-center">Club Plan</th>
+              <th class="p-5 font-heading uppercase tracking-wider text-center">Club</th>
             </tr>
           </thead>
           <tbody>
             {comparisonRows.map((row) => (
-              <tr class="border-t border-gray-200">
+              <tr class="border-t border-gray-100">
                 <td class="p-5 font-body font-semibold">{row[0]}</td>
                 {row.slice(1).map((included) => (
-                  <td class="p-5 text-center font-heading text-xl">{included ? <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E30613] text-white">✓</span> : <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gray-200 text-gray-400">×</span>}</td>
+                  <td class="p-5 text-center font-heading text-xl">{included ? <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E30613] text-white">✓</span> : <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-gray-300">×</span>}</td>
                 ))}
               </tr>
             ))}
@@ -241,44 +194,16 @@ const comparisonRows = [
     </div>
   </section>
 
-  <section class="bg-[#0A0A0A] py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="bg-[#111111] border border-gray-800 rounded-3xl p-8">
-        <p class="text-[#E30613] font-heading text-sm uppercase tracking-widest mb-3">Players</p>
-        <h3 class="font-heading text-3xl font-bold uppercase mb-4">Build better habits.</h3>
-        <p class="text-gray-400 font-body leading-relaxed">Train with a clear plan instead of guessing what to practise next.</p>
-      </div>
-      <div class="bg-[#111111] border border-gray-800 rounded-3xl p-8">
-        <p class="text-[#E30613] font-heading text-sm uppercase tracking-widest mb-3">Parents</p>
-        <h3 class="font-heading text-3xl font-bold uppercase mb-4">Give them structure.</h3>
-        <p class="text-gray-400 font-body leading-relaxed">The app gives your child sessions they can follow at home, on the pitch or before training.</p>
-      </div>
-      <div class="bg-[#111111] border border-gray-800 rounded-3xl p-8">
-        <p class="text-[#E30613] font-heading text-sm uppercase tracking-widest mb-3">Coaches</p>
-        <h3 class="font-heading text-3xl font-bold uppercase mb-4">Plan sessions faster.</h3>
-        <p class="text-gray-400 font-body leading-relaxed">Use Joner drills, progressions and templates to run sharper sessions every week.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="bg-white text-black py-16 md:py-24">
+  <section class="bg-white text-black py-10 md:py-16">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-10">
-        <p class="text-[#E30613] font-heading text-sm uppercase tracking-widest mb-3">Questions</p>
-        <h2 class="font-heading text-4xl md:text-5xl font-bold uppercase leading-none">Before you join</h2>
-      </div>
       <div class="space-y-4">
         <details class="group rounded-2xl border border-gray-200 p-6">
-          <summary class="cursor-pointer font-heading text-xl uppercase list-none">What is the difference between Starter and Plus?</summary>
-          <p class="mt-4 text-gray-700 font-body leading-relaxed">Starter gives you the core Joner Football training library. Plus is for players and parents who want deeper structure, more detail and more advanced pathways.</p>
+          <summary class="cursor-pointer font-heading text-xl uppercase list-none">What should I choose?</summary>
+          <p class="mt-4 text-gray-700 font-body leading-relaxed">Choose Monthly to try the app. Choose Annual for the best value. Choose Max if you want the full coaching system.</p>
         </details>
         <details class="group rounded-2xl border border-gray-200 p-6">
-          <summary class="cursor-pointer font-heading text-xl uppercase list-none">Who is Max for?</summary>
-          <p class="mt-4 text-gray-700 font-body leading-relaxed">Max is for coaches, serious players and families who want the complete system, including the coaches section and advanced session planning content.</p>
-        </details>
-        <details class="group rounded-2xl border border-gray-200 p-6">
-          <summary class="cursor-pointer font-heading text-xl uppercase list-none">Can I pay monthly?</summary>
-          <p class="mt-4 text-gray-700 font-body leading-relaxed">Yes. Use the monthly and annual switcher at the top of the account cards.</p>
+          <summary class="cursor-pointer font-heading text-xl uppercase list-none">Can I start free?</summary>
+          <p class="mt-4 text-gray-700 font-body leading-relaxed">Monthly and Annual include a 7-day free trial. Max gives full access from day one.</p>
         </details>
       </div>
     </div>
@@ -286,8 +211,7 @@ const comparisonRows = [
 
   <section class="bg-[#E30613] py-14 md:py-20 text-white">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <h2 class="font-heading text-4xl md:text-6xl font-bold uppercase leading-none mb-5">Start training with Joner today.</h2>
-      <p class="font-body text-lg md:text-xl text-white/90 mb-8">Choose Starter, Plus, Max or request a Club Plan.</p>
+      <h2 class="font-heading text-4xl md:text-6xl font-bold uppercase leading-none mb-6">Start training today.</h2>
       <a href="#accounts" class="inline-flex bg-white text-black rounded-full px-8 py-4 font-heading uppercase tracking-wider hover:bg-gray-100">Choose Your Plan</a>
     </div>
   </section>
@@ -295,7 +219,6 @@ const comparisonRows = [
   <script>
     const toggles = document.querySelectorAll('.billing-toggle')
     const prices = document.querySelectorAll('.billing-price')
-    const compares = document.querySelectorAll('.billing-compare')
     const periods = document.querySelectorAll('.billing-period')
     const notes = document.querySelectorAll('.billing-note')
     const ctas = document.querySelectorAll('.plan-cta')
@@ -304,19 +227,13 @@ const comparisonRows = [
       toggles.forEach((toggle) => {
         const active = toggle.getAttribute('data-billing') === mode
         toggle.classList.toggle('active', active)
-        toggle.classList.toggle('bg-[#E30613]', active)
+        toggle.classList.toggle('bg-black', active)
         toggle.classList.toggle('text-white', active)
-        toggle.classList.toggle('text-gray-300', !active)
+        toggle.classList.toggle('text-gray-600', !active)
       })
 
       prices.forEach((price) => {
         price.textContent = price.getAttribute(`data-${mode}`) || ''
-      })
-
-      compares.forEach((compare) => {
-        const value = compare.getAttribute(`data-${mode}`) || ''
-        compare.textContent = value
-        compare.classList.toggle('hidden', !value)
       })
 
       periods.forEach((period) => {
@@ -324,9 +241,7 @@ const comparisonRows = [
       })
 
       notes.forEach((note) => {
-        const value = note.getAttribute(`data-${mode}`) || ''
-        note.textContent = value
-        note.classList.toggle('hidden', !value)
+        note.textContent = note.getAttribute(`data-${mode}`) || ''
       })
 
       ctas.forEach((cta) => {
