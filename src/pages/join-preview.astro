@@ -3,19 +3,19 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 
 const plans = [
   {
-    id: 'monthly',
-    name: 'Monthly',
+    id: 'starter',
+    name: 'Starter',
     badge: '',
-    monthlyPrice: '$23.99',
+    monthlyPrice: '$14.99',
     monthlyPeriod: '/month',
-    annualPrice: '$23.99',
-    annualPeriod: '/month',
+    annualPrice: '$129.99',
+    annualPeriod: '/year',
     compareMonthly: '',
-    compareAnnual: '',
-    noteMonthly: '7-day free trial',
-    noteAnnual: 'Monthly plan. Switch to Annual to save.',
+    compareAnnual: '$179.88/year',
+    noteMonthly: 'Start with the core app.',
+    noteAnnual: 'Save $49.89 when you pay yearly.',
     cta: 'Start Free Trial',
-    ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
+    ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
     ctaMonthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
     featured: false,
     features: [
@@ -27,23 +27,23 @@ const plans = [
     ],
   },
   {
-    id: 'annual',
-    name: 'Annual',
+    id: 'plus',
+    name: 'Plus',
     badge: 'Most Popular',
-    monthlyPrice: '$23.99',
+    monthlyPrice: '$19.99',
     monthlyPeriod: '/month',
-    annualPrice: '$17.08',
-    annualPeriod: '/month',
+    annualPrice: '$179.99',
+    annualPeriod: '/year',
     compareMonthly: '',
-    compareAnnual: '$23.99',
-    noteMonthly: '7-day free trial',
-    noteAnnual: '$204.99 billed yearly. Save $83.',
+    compareAnnual: '$239.88/year',
+    noteMonthly: 'For players who want more structure.',
+    noteAnnual: 'Save $59.89 when you pay yearly.',
     cta: 'Start Free Trial',
     ctaUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
-    ctaMonthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
+    ctaMonthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
     featured: true,
     features: [
-      'Everything in Monthly',
+      'Everything in Starter',
       '100 Day Transformation Program',
       'DM Lee directly',
       'Team training videos',
@@ -54,9 +54,9 @@ const plans = [
     id: 'max',
     name: 'Max',
     badge: '',
-    monthlyPrice: '$319.99',
+    monthlyPrice: '$219',
     monthlyPeriod: '/year',
-    annualPrice: '$319.99',
+    annualPrice: '$219',
     annualPeriod: '/year',
     compareMonthly: '',
     compareAnnual: '',
@@ -67,7 +67,7 @@ const plans = [
     ctaMonthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
     featured: false,
     features: [
-      'Everything in Annual',
+      'Everything in Plus',
       'Full coaches content',
       'PDF season plans',
       'Advanced team training',
@@ -78,14 +78,14 @@ const plans = [
     id: 'club',
     name: 'Club',
     badge: '',
-    monthlyPrice: 'Custom',
+    monthlyPrice: 'Request',
     monthlyPeriod: '',
-    annualPrice: 'Custom',
+    annualPrice: 'Request',
     annualPeriod: '',
     compareMonthly: '',
     compareAnnual: '',
-    noteMonthly: 'For clubs, schools and academies',
-    noteAnnual: 'For clubs, schools and academies',
+    noteMonthly: 'For clubs, schools and academies.',
+    noteAnnual: 'For clubs, schools and academies.',
     cta: 'Get Club Pricing',
     ctaUrl: '/teams',
     ctaMonthlyUrl: '/teams',
@@ -99,7 +99,6 @@ const plans = [
     ],
   },
 ]
-
 const comparisonRows = [
   ['1,500+ training videos', true, true, true, true],
   ['New videos every week', true, true, true, true],
@@ -184,8 +183,8 @@ const comparisonRows = [
           <thead class="bg-black text-white">
             <tr>
               <th class="p-5 font-heading uppercase tracking-wider">Included</th>
-              <th class="p-5 font-heading uppercase tracking-wider text-center">Monthly</th>
-              <th class="p-5 font-heading uppercase tracking-wider text-center">Annual</th>
+              <th class="p-5 font-heading uppercase tracking-wider text-center">Starter</th>
+              <th class="p-5 font-heading uppercase tracking-wider text-center">Plus</th>
               <th class="p-5 font-heading uppercase tracking-wider text-center">Max</th>
               <th class="p-5 font-heading uppercase tracking-wider text-center">Club</th>
             </tr>
@@ -210,7 +209,7 @@ const comparisonRows = [
       <div class="space-y-4">
         <details class="group rounded-2xl border border-gray-200 p-6">
           <summary class="cursor-pointer font-heading text-xl uppercase list-none">What should I choose?</summary>
-          <p class="mt-4 text-gray-700 font-body leading-relaxed">Choose Monthly to try the app. Choose Annual for the best value. Choose Max if you want the full coaching system.</p>
+          <p class="mt-4 text-gray-700 font-body leading-relaxed">Choose Starter for the core app. Choose Plus for the best player pathway. Choose Max if you want the full coaching system.</p>
         </details>
         <details class="group rounded-2xl border border-gray-200 p-6">
           <summary class="cursor-pointer font-heading text-xl uppercase list-none">Can I start free?</summary>
