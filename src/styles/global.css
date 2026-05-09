@@ -24,7 +24,8 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 .nav-download-cta,
 .hub-btn,
 .story-cta-link,
-.jxfs__btn {
+.jxfs__btn,
+.plan-cta {
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -43,7 +44,12 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
   align-items: center;
   justify-content: center;
   min-height: 48px;
-  line-height: 1;
+  line-height: 1.12;
+  text-align: center;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  max-width: 100%;
   text-decoration: none;
   backdrop-filter: blur(14px) saturate(1.15);
   -webkit-backdrop-filter: blur(14px) saturate(1.15);
@@ -61,7 +67,8 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 .nav-download-cta::before,
 .hub-btn::before,
 .story-cta-link::before,
-.jxfs__btn::before {
+.jxfs__btn::before,
+.plan-cta::before {
   content: '';
   position: absolute;
   inset: 1px;
@@ -77,7 +84,8 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 .nav-download-cta::after,
 .hub-btn::after,
 .story-cta-link::after,
-.jxfs__btn::after {
+.jxfs__btn::after,
+.plan-cta::after {
   content: '';
   position: absolute;
   inset: auto 18% 8px;
@@ -92,7 +100,8 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 .nav-download-cta:hover,
 .hub-btn:hover,
 .story-cta-link:hover,
-.jxfs__btn:hover {
+.jxfs__btn:hover,
+.plan-cta:hover {
   transform: translateY(-2px);
   border-color: rgba(255,255,255,0.58);
   background:
@@ -111,12 +120,14 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 .nav-download-cta:active,
 .hub-btn:active,
 .story-cta-link:active,
-.jxfs__btn:active {
+.jxfs__btn:active,
+.plan-cta:active {
   transform: translateY(0);
 }
 .btn-red,
 .nav-download-cta,
-.hub-btn--red {
+.hub-btn--red,
+.plan-cta {
   border-color: rgba(232,0,13,0.72);
 }
 .btn-outline,
@@ -148,6 +159,23 @@ a, button { touch-action: manipulation; }
     width: 100%;
     min-height: 46px;
     text-align: center;
+  }
+}
+
+
+@media (max-width: 520px) {
+  .btn-red,
+  .btn-outline,
+  .nav-download-cta,
+  .hub-btn,
+  .story-cta-link,
+  .jxfs__btn,
+  .plan-cta {
+    letter-spacing: 0.08em;
+    font-size: 0.875rem;
+    line-height: 1.16;
+    padding-left: 0.95rem;
+    padding-right: 0.95rem;
   }
 }
 
