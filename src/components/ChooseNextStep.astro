@@ -21,7 +21,7 @@ const allTiles = [...productTiles, ...programTiles, ...roleTiles]
 ---
 
 <div class="cns-block" data-cns-block>
-  <header class="cns-head">
+  <header class="cns-head" data-motion="fade-up">
     <h2 class="cns-title">
       <span class="cns-title-row">Choose Your</span>
       <span class="cns-title-row cns-title-row--red">Next Step</span>
@@ -31,9 +31,9 @@ const allTiles = [...productTiles, ...programTiles, ...roleTiles]
   </header>
 
   <div class="cns-grid-wrap">
-    <div class="cns-grid cns-grid--top" aria-label="Joner Football products and programs">
+    <div class="cns-grid cns-grid--top" aria-label="Joner Football products and programs" data-motion-stagger data-motion-stagger-step="0.07" data-motion-amount="0.1">
       {[...productTiles, ...programTiles].map((tile) => (
-        <a class="cns-tile" href={tile.href} aria-label={tile.label}>
+        <a class="cns-tile" href={tile.href} aria-label={tile.label} data-motion-stagger-child>
           <span class="cns-tile-icon" aria-hidden="true">
             {tile.icon === 'phone' && (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -109,15 +109,15 @@ const allTiles = [...productTiles, ...programTiles, ...roleTiles]
       ))}
     </div>
 
-    <div class="cns-divider" role="presentation">
+    <div class="cns-divider" role="presentation" data-motion="fade">
       <span class="cns-divider-line" aria-hidden="true"></span>
       <span class="cns-divider-label">Which one are you?</span>
       <span class="cns-divider-line" aria-hidden="true"></span>
     </div>
 
-    <div class="cns-grid cns-grid--roles" aria-label="Pick your role">
+    <div class="cns-grid cns-grid--roles" aria-label="Pick your role" data-motion-stagger data-motion-stagger-step="0.08" data-motion-amount="0.15">
       {roleTiles.map((tile) => (
-        <a class="cns-tile cns-tile--role" href={tile.href} aria-label={tile.label}>
+        <a class="cns-tile cns-tile--role" href={tile.href} aria-label={tile.label} data-motion-stagger-child>
           <span class="cns-tile-icon" aria-hidden="true">
             {tile.icon === 'player' && (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">

@@ -1962,9 +1962,9 @@ const mediaStyle = (beat) => {
 
     <section class="home-video-section">
       <div class="home-video-inner">
-        <p class="story-kicker font-heading text-xs uppercase text-joner-red">Watch the work</p>
-        <div class="home-video-grid">
-          <article class="home-video-card">
+        <p class="story-kicker font-heading text-xs uppercase text-joner-red" data-motion="fade-up">Watch the work</p>
+        <div class="home-video-grid" data-motion-stagger data-motion-stagger-step="0.12" data-motion-amount="0.2">
+          <article class="home-video-card" data-motion-stagger-child data-motion-hover="lift">
             <h3>Inside Joner Football</h3>
             <div class="home-video-frame">
               <iframe
@@ -1976,7 +1976,7 @@ const mediaStyle = (beat) => {
               ></iframe>
             </div>
           </article>
-          <article class="home-video-card">
+          <article class="home-video-card" data-motion-stagger-child data-motion-hover="lift">
             <h3>Our Training</h3>
             <div class="home-video-frame">
               <iframe
@@ -2178,5 +2178,9 @@ const mediaStyle = (beat) => {
       initMobileStoryProgress();
       initDesktopStory();
     })();
+  </script>
+
+  <script>
+    import '../scripts/home-motion'
   </script>
 </BaseLayout>
