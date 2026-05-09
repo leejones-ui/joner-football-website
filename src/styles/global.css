@@ -20,9 +20,19 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 
 /* Utility classes we use everywhere */
 .btn-red,
-.btn-outline {
+.btn-outline,
+.nav-download-cta,
+.hub-btn,
+.story-cta-link,
+.jxfs__btn {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.34);
-  background: rgba(5,5,5,0.72);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.045)),
+    rgba(5,5,5,0.72);
   color: #FFFFFF;
   font-family: 'Anton', Impact, sans-serif;
   font-weight: 700;
@@ -35,28 +45,86 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
   min-height: 48px;
   line-height: 1;
   text-decoration: none;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
   text-shadow: 0 1px 10px rgba(0,0,0,0.6);
-  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease, transform 180ms ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.26),
+    inset 0 -18px 30px rgba(0,0,0,0.28),
+    0 18px 38px rgba(0,0,0,0.42),
+    0 0 0 1px rgba(232,0,13,0.18);
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background 140ms ease, color 140ms ease;
   cursor: pointer;
 }
+.btn-red::before,
+.btn-outline::before,
+.nav-download-cta::before,
+.hub-btn::before,
+.story-cta-link::before,
+.jxfs__btn::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 28% 12%, rgba(255,255,255,0.34), transparent 26%),
+    linear-gradient(90deg, rgba(232,0,13,0.26), transparent 46%, rgba(255,255,255,0.08));
+  opacity: 0.9;
+}
+.btn-red::after,
+.btn-outline::after,
+.nav-download-cta::after,
+.hub-btn::after,
+.story-cta-link::after,
+.jxfs__btn::after {
+  content: '';
+  position: absolute;
+  inset: auto 18% 8px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(232,0,13,0.75);
+  box-shadow: 0 0 16px rgba(232,0,13,0.72);
+  opacity: 0.85;
+}
 .btn-red:hover,
-.btn-outline:hover {
-  border-color: #E30613;
-  background: #E30613;
+.btn-outline:hover,
+.nav-download-cta:hover,
+.hub-btn:hover,
+.story-cta-link:hover,
+.jxfs__btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,0.58);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.24), rgba(255,255,255,0.07)),
+    rgba(5,5,5,0.78);
   color: #FFFFFF;
-  transform: scale(1.045);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.34),
+    inset 0 -18px 30px rgba(0,0,0,0.32),
+    0 22px 46px rgba(0,0,0,0.48),
+    0 0 0 1px rgba(232,0,13,0.36),
+    0 0 26px rgba(232,0,13,0.22);
 }
-
-.nav-download-cta {
-  border-color: #E30613;
-  background: #E30613;
-  color: #FFFFFF;
+.btn-red:active,
+.btn-outline:active,
+.nav-download-cta:active,
+.hub-btn:active,
+.story-cta-link:active,
+.jxfs__btn:active {
+  transform: translateY(0);
 }
-.nav-download-cta:hover {
-  border-color: #ff3b45;
-  background: #ff1f2b;
-  color: #FFFFFF;
+.btn-red,
+.nav-download-cta,
+.hub-btn--red {
+  border-color: rgba(232,0,13,0.72);
+}
+.btn-outline,
+.hub-btn--outline {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.035)),
+    rgba(5,5,5,0.42);
+  border-color: rgba(255,255,255,0.42);
 }
 
 .section-heading {
