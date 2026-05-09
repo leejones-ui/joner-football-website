@@ -1,14 +1,14 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 
-const APP_LINK = '/app?utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme'
-const ANNUAL_LINK = 'https://app.jonerfootball.com/checkout/new?o=183092&utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme_annual'
+const APP_LINK = '/app?utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_program'
+const ANNUAL_LINK = 'https://app.jonerfootball.com/checkout/new?o=183092&utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_program_annual'
 
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'Course',
   name: 'Joner Football 100 Day Development Program',
-  description: 'A structured 100 day football training pathway for parents, players and coaches inside the Joner Football App. Six progressive programs built by Lee Jones.',
+  description: 'A clear 100 day football training pathway inside the Joner Football App. Six progressive programs built by Lee Jones.',
   provider: {
     '@type': 'Organization',
     name: 'Joner Football',
@@ -32,11 +32,6 @@ const programs = [
   { num: '06', title: 'Score More Goals',         duration: '14 days', sessions: '9 sessions',  body: 'Turn chances into goals. Finishing technique and composure.' },
 ]
 
-const differences = [
-  { num: '01', title: 'Random Drills vs. Structured Pathway', body: 'YouTube gives random drills with no context. This is a 100-day system with progressive difficulty.' },
-  { num: '02', title: 'Watching vs. Doing',                   body: 'Every session is designed to be done, not just watched. 20 minutes to an hour, a ball, a small space.' },
-  { num: '03', title: 'Guesswork vs. Daily Progress',              body: 'Each session gives the player a clear job to complete, so progress is easier to see and easier to repeat.' },
-]
 
 const testimonials = [
   { quote: 'The 6 Week Passing & 1st Touch Program completely changed my game.', who: 'Ben Garrard',  role: 'Player, USA' },
@@ -57,7 +52,7 @@ const faqs = [
 
 <BaseLayout
   title="100 Day Development Program | Joner Football"
-  description="A structured 100 day football pathway for parents, players and coaches. Six progressive programs built by Lee Jones inside the Joner Football App."
+  description="A clear 100 day football pathway inside the Joner Football App. Six progressive programs built by Lee Jones."
   schema={schema}
 >
   {/* HERO ============================================================ */}
@@ -73,11 +68,11 @@ const faqs = [
           While other kids watch <span class="p100-hook">YouTube highlights</span>, yours will be <span class="p100-hook">creating them</span>.
         </h1>
         <p class="p100-lede">
-          100 days of structured football training for parents, players and coaches who want a proper plan inside the Joner Football App.
+          A clear 100 day plan inside the Joner Football App. Built for players who want to improve without guessing what to train.
         </p>
         <div class="p100-cta-row">
-          <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
-          <a class="p100-btn p100-btn--outline" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual Now</a>
+          <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Free Trial</a>
+          <a class="p100-btn p100-btn--outline" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual</a>
         </div>
       </div>
     </div>
@@ -108,37 +103,16 @@ const faqs = [
             Team training is <span class="accent">not enough.</span>
           </h2>
           <div class="reality-hero__body">
-            <p>You train once or twice a week with your team. So does every other player.</p>
-            <p>The players who stand out, the ones who get picked, do extra work. Individual work. Structured work.</p>
-            <p>You need a plan. A proper program designed by a professional coach. Sessions run from 20 minutes to an hour. That is exactly what this is.</p>
+            <p>Team training matters. But if that is all you do, you are leaving your development to chance.</p>
+            <p>The players who improve fastest do extra work with a ball, a purpose and a plan.</p>
+            <p>This gives you that plan. No random YouTube drills. No guessing. Just press play, train properly and build the habits that show up in games.</p>
           </div>
-          <a href={APP_LINK} target="_blank" rel="noopener" class="reality-hero__cta">Start Your Free Trial</a>
+          <a href={APP_LINK} target="_blank" rel="noopener" class="reality-hero__cta">Start Free Trial</a>
         </div>
       </div>
     </div>
   </section>
 
-
-  {/* PATHWAY ========================================================= */}
-  <section class="p100-section p100-section--black p100-pathway">
-    <div class="p100-container p100-center">
-      <span class="p100-eyebrow">The 100 Day Pathway</span>
-      <h2 class="p100-h2">
-        Six programs. One clear path. <span class="p100-hook">Complete footballer.</span>
-      </h2>
-      <p class="p100-lede p100-lede--center">
-        Done in order. Every day planned. Every skill built on the last. Rest days built in between. This is what transforms a player.
-      </p>
-      <img
-        class="p100-pathway__img"
-        src="/images/programmes/100-day/pathway.png"
-        alt="The 100 Day Pathway, Juggling, Fast Feet, Passing and First Touch, Dribbling, Weak Foot, Score More Goals"
-      />
-      <div class="p100-cta-row p100-cta-row--center">
-        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
-      </div>
-    </div>
-  </section>
 
   {/* GUARANTEE (full-bleed photo + overlaid badge and copy on desktop, stack on mobile) */}
   <section class="guar-hero" aria-label="The 100 Day Guarantee">
@@ -165,7 +139,7 @@ const faqs = [
               Lee, Founder Joner Football
             </div>
             <div class="guar-copy__ctas">
-              <a class="guar-btn guar-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual Now</a>
+              <a class="guar-btn guar-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual</a>
               <a class="guar-btn guar-btn--ghost" href={APP_LINK} target="_blank" rel="noopener">Start Free Trial</a>
             </div>
           </div>
@@ -178,12 +152,12 @@ const faqs = [
   {/* PROGRAMS ======================================================== */}
   <section class="p100-section p100-section--white">
     <div class="p100-container">
-      <div class="p100-eyebrow-bar"><span class="p100-eyebrow">The Programs</span></div>
+      <div class="p100-eyebrow-bar"><span class="p100-eyebrow">The 100 Day Pathway</span></div>
       <h2 class="p100-h2 p100-h2--ink">
-        Six structured programs. <span class="p100-hook">One complete pathway.</span>
+        Six programs. <span class="p100-hook">One clear path.</span>
       </h2>
       <p class="p100-lede p100-lede--ink">
-        Done in order. Every session is short, focused and clearly demonstrated. Press play and train. 20 minutes to an hour, a ball and a small space.
+        Follow the programs in order. Every session is clear, focused and built to improve the next part of your game.
       </p>
       <div class="p100-programs">
         {programs.map((p) => (
@@ -206,54 +180,11 @@ const faqs = [
           <div class="p100-bonus__title">12-Week Advanced Strength &amp; Conditioning</div>
           <div class="p100-bonus__sub">12 weeks · 36 sessions. Football-specific speed, strength and stamina. Annual members only.</div>
         </div>
-        <a class="p100-btn p100-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Open with Annual</a>
+        <a class="p100-btn p100-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual</a>
       </div>
 
       <div class="p100-cta-row p100-cta-row--center">
-        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start the Pathway Free</a>
-      </div>
-    </div>
-  </section>
-
-  {/* INSIDE THE APP ================================================== */}
-  <section class="p100-section p100-section--black">
-    <div class="p100-container p100-center">
-      <span class="p100-eyebrow">Inside the App</span>
-      <h2 class="p100-h2">
-        Structured programs. <span class="p100-hook">Step-by-step sessions.</span> Track your progress.
-      </h2>
-      <p class="p100-lede p100-lede--center">
-        Each program lives inside the Joner Football App with full video sessions, weekly content, daily challenges and progress tracking.
-      </p>
-      <img
-        class="p100-pathway__img"
-        src="/images/programmes/100-day/inside-the-app.png"
-        alt="Inside the Joner Football App, program library and session screens"
-      />
-      <div class="p100-cta-row p100-cta-row--center">
-        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Open in the App</a>
-      </div>
-    </div>
-  </section>
-
-  {/* DIFFERENCE ====================================================== */}
-  <section class="p100-section p100-section--black">
-    <div class="p100-container">
-      <span class="p100-eyebrow">The Difference</span>
-      <h2 class="p100-h2">
-        This is not just <span class="p100-hook">another training app</span>.
-      </h2>
-      <div class="p100-diff">
-        {differences.map((d) => (
-          <article class="p100-diff__card">
-            <div class="p100-diff__num">{d.num}</div>
-            <h3 class="p100-diff__title">{d.title}</h3>
-            <p class="p100-diff__body">{d.body}</p>
-          </article>
-        ))}
-      </div>
-      <div class="p100-cta-row p100-cta-row--center">
-        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start the Pathway</a>
+        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Free Trial</a>
       </div>
     </div>
   </section>
@@ -281,7 +212,7 @@ const faqs = [
         ))}
       </div>
       <div class="p100-cta-row p100-cta-row--center">
-        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start the Program Now</a>
+        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Free Trial</a>
       </div>
     </div>
   </section>
@@ -305,7 +236,7 @@ const faqs = [
         ))}
       </div>
       <div class="p100-cta-row p100-cta-row--center">
-        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
+        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Free Trial</a>
       </div>
     </div>
   </section>
@@ -317,14 +248,14 @@ const faqs = [
     <div class="p100-final__inner">
       <span class="p100-eyebrow">Your Next Level</span>
       <h2 class="p100-final__h">
-        Your next level <span class="p100-hook">starts today</span>.
+        Start the <span class="p100-hook">100 day plan</span>.
       </h2>
-      <p class="p100-final__lede">Pick a program. Follow the plan. Watch yourself improve.</p>
+      <p class="p100-final__lede">Follow the plan. Build the habits. See the improvement in your game.</p>
       <div class="p100-cta-row p100-cta-row--center">
-        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start the Program Now</a>
+        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Free Trial</a>
         <a class="p100-btn p100-btn--outline" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual</a>
       </div>
-      <p class="p100-final__support">Built for parents, players and coaches.</p>
+      <p class="p100-final__support">Built for players who want a clear plan and parents who want proper training guidance.</p>
     </div>
   </section>
 </BaseLayout>
