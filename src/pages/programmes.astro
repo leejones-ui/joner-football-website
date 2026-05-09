@@ -405,36 +405,103 @@ const faqs = [
   .p100-cta-row--center { justify-content: center; }
 
   /* Buttons -------------------------------------------------------- */
-  .p100-btn {
+  /* Glass button experiment adapted for Astro anchors.
+     The project is Astro, not a React/shadcn app, so this keeps the effect
+     local to the 100 Day page without adding React-only dependencies. */
+  .p100-btn,
+  .reality-hero__cta,
+  .guar-btn {
+    position: relative;
+    isolation: isolate;
     display: inline-flex;
-    align-items: center; justify-content: center;
+    align-items: center;
+    justify-content: center;
     gap: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.32);
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.045)),
+      rgba(0,0,0,0.42);
+    color: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.26),
+      inset 0 -18px 30px rgba(0,0,0,0.28),
+      0 18px 38px rgba(0,0,0,0.42),
+      0 0 0 1px rgba(232,0,13,0.18);
+    backdrop-filter: blur(14px) saturate(1.15);
+    -webkit-backdrop-filter: blur(14px) saturate(1.15);
     font-family: var(--p100-display);
-    font-style: italic; font-weight: 900;
+    font-style: italic;
+    font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    font-size: 1.0625rem;
-    padding: 20px 32px;
-    border: 2px solid transparent;
     cursor: pointer;
     text-decoration: none;
-    transition: background-color 120ms, color 120ms, transform 80ms, border-color 120ms;
     user-select: none;
     white-space: nowrap;
+    transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background 140ms ease, color 140ms ease;
   }
-  .p100-btn:active { transform: translateY(1px); }
-  .p100-btn--red {
-    background: var(--p100-red); color: #fff; border-color: var(--p100-red);
+  .p100-btn {
+    font-size: 1.0625rem;
+    padding: 20px 32px;
   }
-  .p100-btn--red:hover { background: var(--p100-red-hover); border-color: var(--p100-red-hover); }
-  .p100-btn--outline {
-    background: transparent; color: #fff; border-color: #fff;
+  .p100-btn::before,
+  .reality-hero__cta::before,
+  .guar-btn::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    z-index: -1;
+    border-radius: inherit;
+    background:
+      radial-gradient(circle at 28% 12%, rgba(255,255,255,0.34), transparent 26%),
+      linear-gradient(90deg, rgba(232,0,13,0.26), transparent 46%, rgba(255,255,255,0.08));
+    opacity: 0.9;
   }
-  .p100-btn--outline:hover { background: #fff; color: #000; }
-  .p100-btn--outline-ink {
-    background: transparent; color: #000; border-color: #000;
+  .p100-btn::after,
+  .reality-hero__cta::after,
+  .guar-btn::after {
+    content: '';
+    position: absolute;
+    inset: auto 18% 8px;
+    height: 2px;
+    border-radius: 999px;
+    background: rgba(232,0,13,0.75);
+    box-shadow: 0 0 16px rgba(232,0,13,0.72);
+    opacity: 0.85;
   }
-  .p100-btn--outline-ink:hover { background: #000; color: #fff; }
+  .p100-btn:hover,
+  .reality-hero__cta:hover,
+  .guar-btn:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255,255,255,0.58);
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.24), rgba(255,255,255,0.07)),
+      rgba(0,0,0,0.54);
+    color: #fff;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.34),
+      inset 0 -18px 30px rgba(0,0,0,0.32),
+      0 22px 46px rgba(0,0,0,0.48),
+      0 0 0 1px rgba(232,0,13,0.36),
+      0 0 26px rgba(232,0,13,0.22);
+  }
+  .p100-btn:active,
+  .reality-hero__cta:active,
+  .guar-btn:active { transform: translateY(0); }
+  .p100-btn--red,
+  .guar-btn--red {
+    border-color: rgba(232,0,13,0.72);
+  }
+  .p100-btn--outline,
+  .p100-btn--outline-ink,
+  .guar-btn--ghost {
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.035)),
+      rgba(0,0,0,0.25);
+    border-color: rgba(255,255,255,0.42);
+  }
 
   /* HERO ----------------------------------------------------------- */
   .p100-hero { background: #000; position: relative; }
@@ -672,22 +739,10 @@ const faqs = [
   .reality-hero__body p { margin: 0 0 10px; }
   .reality-hero__body p:last-child { margin-bottom: 0; }
   .reality-hero__cta {
-    display: inline-flex;
-    align-items: center; justify-content: center;
     margin-top: clamp(20px, 2vw, 28px);
     padding: 16px 26px;
-    border: 2px solid #fff;
-    background: transparent;
-    color: #fff;
-    text-decoration: none;
-    font-family: var(--p100-display);
-    font-style: italic; font-weight: 900;
-    text-transform: uppercase; letter-spacing: 0.04em;
     font-size: 0.9375rem;
-    transition: background 120ms, color 120ms, transform 80ms;
   }
-  .reality-hero__cta:hover { background: #fff; color: #000; }
-  .reality-hero__cta:active { transform: translateY(1px); }
 
   /* Mobile: stack image on top, copy moves to a black band below.
      Phones + Lee never crop. */
@@ -852,23 +907,9 @@ const faqs = [
     margin-top: clamp(22px, 2.4vw, 30px);
   }
   .guar-btn {
-    display: inline-flex;
-    align-items: center; justify-content: center;
     padding: 16px 26px;
-    border: 2px solid;
-    text-decoration: none;
-    font-family: var(--p100-display);
-    font-style: italic; font-weight: 900;
-    text-transform: uppercase; letter-spacing: 0.04em;
     font-size: 0.9375rem;
-    transition: background 120ms, color 120ms, transform 80ms;
-    cursor: pointer;
   }
-  .guar-btn--red { background: var(--p100-red); color: #fff; border-color: var(--p100-red); }
-  .guar-btn--red:hover { background: var(--p100-red-hover); border-color: var(--p100-red-hover); }
-  .guar-btn--ghost { background: transparent; color: #fff; border-color: #fff; }
-  .guar-btn--ghost:hover { background: #fff; color: #000; }
-  .guar-btn:active { transform: translateY(1px); }
 
   /* Mobile guarantee: stack image on top, copy block below */
   @media (max-width: 900px) {
