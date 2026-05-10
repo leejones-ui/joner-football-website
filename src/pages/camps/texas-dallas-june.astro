@@ -1,21 +1,21 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const title = 'Houston | World Cup Camp | June 2026 | Joner Football'
-const description = 'Joner Football Houston Camp, June 26 to 28 2026. 3 day elite camp with Coach Joner in Tomball, TX. Ages 8 to 18. Sold out every year. Limited spots.'
-const canonical = 'https://jonerfootball.com/camps/texas-houston-june/'
+const title = 'Dallas | World Cup Camp | June 2026 | Joner Football'
+const description = 'Joner Football Dallas Camp, June 30 to July 2 2026. 3 day elite camp with Coach Joner in Melissa, TX. Ages 8 to 18. Sold out every year. Limited spots.'
+const canonical = 'https://jonerfootball.com/camps/texas-dallas-june/'
 
 const infoCells = [
   {
     label: 'When',
-    value: 'Fri 26 to Sun 28<br/>June 2026',
-    sub: '3 day elite camp',
+    value: 'Tue 30 Jun to<br/>Thu 2 Jul 2026',
+    sub: '3 day elite camp. Last day live streamed on YouTube.',
     icon: 'calendar',
   },
   {
     label: 'Where',
-    value: 'Tomball, TX',
-    sub: '17822 Hufsmith, Kohrville Rd, Tomball, TX 77375 · Field #1',
+    value: 'Melissa, TX',
+    sub: '4220 E Melissa Rd, Melissa, TX 75454',
     icon: 'pin',
   },
   {
@@ -32,7 +32,7 @@ const infoCells = [
   },
   {
     label: 'Capacity',
-    value: 'Max 80',
+    value: 'Limited spots',
     sub: '16 players per coach. Sells out every year.',
     icon: 'shield',
   },
@@ -51,12 +51,12 @@ const tiers = [
 ]
 
 const carouselImages = [
-  '/images/camps/houston-2026/photos/hero-lee.webp',
-  '/images/camps/houston-2026/photos/large-camp.webp',
-  '/images/camps/houston-2026/photos/red-drills.webp',
-  '/images/camps/houston-2026/photos/real-coaching.webp',
-  '/images/camps/houston-2026/photos/small-group.webp',
-  '/images/camps/houston-2026/photos/1v1-detail.webp',
+  '/images/camps/dallas-2026/photos/hero-lee.webp',
+  '/images/camps/dallas-2026/photos/large-camp.webp',
+  '/images/camps/dallas-2026/photos/red-drills.webp',
+  '/images/camps/dallas-2026/photos/real-coaching.webp',
+  '/images/camps/dallas-2026/photos/small-group.webp',
+  '/images/camps/dallas-2026/photos/1v1-detail.webp',
 ]
 
 const bullets = [
@@ -70,11 +70,11 @@ const bullets = [
 ]
 
 const testimonials = [
-  { src: '/images/camps/houston-2026/testimonials/t1.webp', alt: 'Parent testimonial, Boston 2018' },
-  { src: '/images/camps/houston-2026/testimonials/t2.webp', alt: 'Parent testimonial, California 2022' },
-  { src: '/images/camps/houston-2026/testimonials/t3.webp', alt: 'Parent testimonial, California 2019' },
-  { src: '/images/camps/houston-2026/testimonials/t4.webp', alt: 'Parent testimonial, Sydney 2020' },
-  { src: '/images/camps/houston-2026/testimonials/t5.webp', alt: 'Parent testimonial, Melbourne 2021' },
+  { src: '/images/camps/dallas-2026/testimonials/t1.webp', alt: 'Parent testimonial, Boston 2018' },
+  { src: '/images/camps/dallas-2026/testimonials/t2.webp', alt: 'Parent testimonial, California 2022' },
+  { src: '/images/camps/dallas-2026/testimonials/t3.webp', alt: 'Parent testimonial, California 2019' },
+  { src: '/images/camps/dallas-2026/testimonials/t4.webp', alt: 'Parent testimonial, Sydney 2020' },
+  { src: '/images/camps/dallas-2026/testimonials/t5.webp', alt: 'Parent testimonial, Melbourne 2021' },
 ]
 
 const faqs = [
@@ -115,25 +115,25 @@ const faqs = [
 const eventSchema = {
   '@context': 'https://schema.org',
   '@type': 'SportsEvent',
-  name: 'Joner Football Houston Camp June 2026',
-  startDate: '2026-06-26T07:00-05:00',
-  endDate: '2026-06-28T10:00-05:00',
+  name: 'Joner Football Dallas Camp June 2026',
+  startDate: '2026-06-30T07:00-05:00',
+  endDate: '2026-07-02T10:00-05:00',
   eventStatus: 'https://schema.org/EventScheduled',
   eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
   location: {
     '@type': 'Place',
-    name: 'Tomball Sports Complex',
+    name: 'Melissa Sports Field',
     address: {
       '@type': 'PostalAddress',
-      streetAddress: '17822 Hufsmith Kohrville Rd',
-      addressLocality: 'Tomball',
+      streetAddress: '4220 E Melissa Rd',
+      addressLocality: 'Melissa',
       addressRegion: 'TX',
-      postalCode: '77375',
+      postalCode: '75454',
       addressCountry: 'US',
     },
   },
   organizer: { '@type': 'Organization', name: 'Joner Football', url: 'https://jonerfootball.com' },
-  image: 'https://jonerfootball.com/images/camps/houston-2026/photos/hero-lee.webp',
+  image: 'https://jonerfootball.com/images/camps/dallas-2026/photos/hero-lee.webp',
   description,
   offers: tiers.map((tier) => ({
     '@type': 'Offer',
@@ -141,7 +141,7 @@ const eventSchema = {
     price: tier.price.replace('$', ''),
     priceCurrency: 'USD',
     availability: 'https://schema.org/LimitedAvailability',
-    url: 'https://jonerfootball.com/camps/texas-houston-june/#register',
+    url: 'https://jonerfootball.com/camps/texas-dallas-june/#register',
   })),
 }
 ---
@@ -150,12 +150,12 @@ const eventSchema = {
   title={title}
   description={description}
   canonical={canonical}
-  ogImage="https://jonerfootball.com/images/camps/houston-2026/photos/hero-lee.webp"
+  ogImage="https://jonerfootball.com/images/camps/dallas-2026/photos/hero-lee.webp"
   schema={eventSchema}
   hideChrome
 >
   <Fragment slot="head">
-    <link rel="preload" as="image" href="/images/camps/houston-2026/photos/hero-lee.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/images/camps/dallas-2026/photos/hero-lee.webp" fetchpriority="high" />
     <link rel="preload" as="font" href="/fonts/Kanit-BlackItalic.ttf" type="font/ttf" crossorigin />
   </Fragment>
 
@@ -165,7 +165,7 @@ const eventSchema = {
   <header class="hou-nav" data-motion="fade">
     <div class="hou-wrap hou-nav-row">
       <a class="hou-nav-logo" href="#top" aria-label="Joner Football home">
-        <img src="/images/camps/houston-2026/logo-full-white.png" alt="" width="38" height="38" loading="eager" />
+        <img src="/images/camps/dallas-2026/logo-full-white.png" alt="" width="38" height="38" loading="eager" />
         <span>Joner<span class="hou-dot">Football</span></span>
       </a>
       <a class="hou-glass hou-glass--sm hou-nav-cta" href="#register" data-motion-hover="lift">
@@ -181,10 +181,10 @@ const eventSchema = {
     <div class="hou-wrap hou-hero-content">
       <span class="hou-eyebrow" data-motion="fade-up"><span class="hou-pulse"></span> Sold out 2025 · Running it back</span>
       <h1 class="hou-h1" data-motion="fade-up" data-motion-delay="0.08">
-        Houston
+        Dallas
         <span class="hou-hook">World Cup</span>
         Camp
-        <span class="hou-h1-small">3 Day Elite Camp · June 2026</span>
+        <span class="hou-h1-small">3 Day Elite Camp · June to July 2026</span>
       </h1>
       <div class="hou-hero-cta" data-motion="fade-up" data-motion-delay="0.2">
         <a class="hou-glass hou-glass--lg" href="#register" data-motion-hover="lift">
@@ -293,7 +293,7 @@ const eventSchema = {
   <section class="hou-video">
     <div class="hou-wrap">
       <div class="hou-section-head" data-motion="fade-up">
-        <span class="hou-section-eyebrow">Houston 2025 · A sneak peek</span>
+        <span class="hou-section-eyebrow">Dallas 2025 · A sneak peek</span>
         <h2 class="hou-h2">Our camps come with <span class="hou-hook">energy</span>.</h2>
         <span class="hou-rule"></span>
       </div>
@@ -302,7 +302,7 @@ const eventSchema = {
           <button class="hou-play-btn" aria-label="Play">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           </button>
-          <div class="hou-video-label">Houston 2025, Sneak Peek</div>
+          <div class="hou-video-label">Dallas 2025, Sneak Peek</div>
         </div>
       </div>
       <div class="hou-video-cta-row" data-motion="fade-up">
@@ -337,7 +337,7 @@ const eventSchema = {
               allowfullscreen
               frameborder="0"
               scrolling="no"
-              title="Joner Football Houston Camp 2025, parent reel"
+              title="Joner Football USA Camp 2025, parent reel"
             ></iframe>
           </div>
         </div>
@@ -365,10 +365,10 @@ const eventSchema = {
         <p class="hou-form-lede">
           You can't get accepted without filling in the form and submitting payment. Spots are first come, first served.
         </p>
-        <div class="hou-spots" data-spots-counter data-spots-baseline="56" data-spots-camp="Houston World Cup Camp June 2026">
+        <div class="hou-spots" data-spots-counter data-spots-baseline="80" data-spots-camp="Dallas World Cup Camp June 2026">
           <span class="hou-spots-pulse" aria-hidden="true"></span>
           <span class="hou-spots-text">
-            <span class="hou-spots-num" data-spots-num>56</span>
+            <span class="hou-spots-num" data-spots-num>80</span>
             <span class="hou-spots-label">spots left</span>
           </span>
         </div>
@@ -376,10 +376,10 @@ const eventSchema = {
       </div>
 
       <form class="hou-form-shell" data-motion="fade-up" id="houForm" novalidate>
-        <input type="hidden" name="camp" value="Houston World Cup Camp June 2026" />
-        <input type="hidden" name="destination" value="Texas Houston June 2026" />
+        <input type="hidden" name="camp" value="Dallas World Cup Camp June 2026" />
+        <input type="hidden" name="destination" value="Texas Dallas June 2026" />
         <input type="hidden" name="brevoListId" value="5" />
-        <input type="hidden" name="source" value="houston-camp-2026-landing" />
+        <input type="hidden" name="source" value="dallas-camp-2026-landing" />
 
         <div class="hou-form-grid">
           <div class="hou-field">
@@ -427,16 +427,16 @@ const eventSchema = {
             <label>Select day(s) attending<span class="hou-req">*</span></label>
             <div class="hou-day-picker">
               <div class="hou-day-chip">
-                <input type="checkbox" id="hou-d1" name="day_fri" />
-                <label for="hou-d1"><span class="hou-d-day">Fri 26</span><span class="hou-d-name">June</span></label>
+                <input type="checkbox" id="dal-d1" name="day_tue" />
+                <label for="dal-d1"><span class="hou-d-day">Tue 30</span><span class="hou-d-name">June</span></label>
               </div>
               <div class="hou-day-chip">
-                <input type="checkbox" id="hou-d2" name="day_sat" />
-                <label for="hou-d2"><span class="hou-d-day">Sat 27</span><span class="hou-d-name">June</span></label>
+                <input type="checkbox" id="dal-d2" name="day_wed" />
+                <label for="dal-d2"><span class="hou-d-day">Wed 1</span><span class="hou-d-name">July</span></label>
               </div>
               <div class="hou-day-chip">
-                <input type="checkbox" id="hou-d3" name="day_sun" />
-                <label for="hou-d3"><span class="hou-d-day">Sun 28</span><span class="hou-d-name">June</span></label>
+                <input type="checkbox" id="dal-d3" name="day_thu" />
+                <label for="dal-d3"><span class="hou-d-day">Thu 2</span><span class="hou-d-name">July</span></label>
               </div>
             </div>
           </div>
@@ -511,7 +511,7 @@ const eventSchema = {
   <section class="hou-final-cta">
     <div class="hou-final-cta-bg" aria-hidden="true"></div>
     <div class="hou-wrap">
-      <h2 class="hou-h2 hou-final-h2" data-motion="fade-up">Houston. <span class="hou-hook">June 2026.</span><br/>Don't miss it.</h2>
+      <h2 class="hou-h2 hou-final-h2" data-motion="fade-up">Dallas. <span class="hou-hook">June 2026.</span><br/>Don't miss it.</h2>
       <p data-motion="fade-up" data-motion-delay="0.1">Sells out every year. Lock your spot now and we'll see you on the pitch.</p>
       <a class="hou-glass hou-glass--lg" href="#register" data-motion="fade-up" data-motion-delay="0.2" data-motion-hover="lift">
         Register now<span class="hou-glass-underline"></span>
@@ -523,11 +523,11 @@ const eventSchema = {
   <footer class="hou-footer">
     <div class="hou-wrap hou-footer-row">
       <a class="hou-nav-logo hou-footer-logo" href="#top">
-        <img src="/images/camps/houston-2026/logo-full-white.png" alt="" width="38" height="38" loading="lazy" />
+        <img src="/images/camps/dallas-2026/logo-full-white.png" alt="" width="38" height="38" loading="lazy" />
         <span>Joner<span class="hou-dot">Football</span></span>
       </a>
       <div>© 2026 Joner Football · EST 2013</div>
-      <div>Tomball, TX · Houston Camp June 2026</div>
+      <div>Melissa, TX · Dallas Camp June 2026</div>
     </div>
   </footer>
 
@@ -671,7 +671,7 @@ const eventSchema = {
     }
     .hou-hero-img {
       position: absolute; inset: 0;
-      background-image: url('/images/camps/houston-2026/photos/hero-lee.webp');
+      background-image: url('/images/camps/dallas-2026/photos/hero-lee.webp');
       background-size: cover; background-position: center;
     }
     .hou-hero-img::after {
@@ -897,7 +897,7 @@ const eventSchema = {
     }
     .hou-bullets-bg {
       position: absolute; inset: 0;
-      background-image: url('/images/camps/houston-2026/photos/large-camp.webp');
+      background-image: url('/images/camps/dallas-2026/photos/large-camp.webp');
       background-size: cover; background-position: center;
     }
     .hou-bullets-bg::after {
@@ -947,7 +947,7 @@ const eventSchema = {
     }
     .hou-video-poster {
       position: absolute; inset: 0;
-      background-image: url('/images/camps/houston-2026/photos/red-drills.webp');
+      background-image: url('/images/camps/dallas-2026/photos/red-drills.webp');
       background-size: cover; background-position: center;
       cursor: pointer;
     }
@@ -1054,7 +1054,7 @@ const eventSchema = {
     }
     .hou-form-section::before {
       content: ""; position: absolute; inset: 0;
-      background-image: url('/images/camps/houston-2026/photos/night-session.webp');
+      background-image: url('/images/camps/dallas-2026/photos/night-session.webp');
       background-size: cover; background-position: center;
       opacity: 0.18;
       pointer-events: none;
@@ -1257,7 +1257,7 @@ const eventSchema = {
     }
     .hou-final-cta-bg {
       position: absolute; inset: 0;
-      background-image: url('/images/camps/houston-2026/photos/1v1-detail.webp');
+      background-image: url('/images/camps/dallas-2026/photos/1v1-detail.webp');
       background-size: cover; background-position: center;
     }
     .hou-final-cta-bg::after {
@@ -1393,7 +1393,7 @@ const eventSchema = {
       const load = () => {
         const shell = poster.parentElement
         if (!shell) return
-        shell.innerHTML = '<iframe width="100%" height="100%" src="https://www.youtube.com/embed/wSFyNDLu3zc?autoplay=1" title="Houston 2025 Camp" loading="lazy" frameborder="0" allow="autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute; inset:0; border:0;"></iframe>'
+        shell.innerHTML = '<iframe width="100%" height="100%" src="https://www.youtube.com/embed/wSFyNDLu3zc?autoplay=1" title="Dallas 2025 Camp" loading="lazy" frameborder="0" allow="autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute; inset:0; border:0;"></iframe>'
       }
       poster.addEventListener('click', load)
       poster.addEventListener('keydown', (e) => {
@@ -1455,16 +1455,16 @@ const eventSchema = {
 
         const data = new FormData(form)
         const days = [
-          data.get('day_fri') ? 'Fri 26 June' : '',
-          data.get('day_sat') ? 'Sat 27 June' : '',
-          data.get('day_sun') ? 'Sun 28 June' : '',
+          data.get('day_tue') ? 'Tue 30 June' : '',
+          data.get('day_wed') ? 'Wed 1 July' : '',
+          data.get('day_thu') ? 'Thu 2 July' : '',
         ].filter(Boolean).join(', ')
 
         const payload = {
-          camp: data.get('camp') || 'Houston World Cup Camp June 2026',
-          destination: data.get('destination') || 'Texas Houston June 2026',
+          camp: data.get('camp') || 'Dallas World Cup Camp June 2026',
+          destination: data.get('destination') || 'Texas Dallas June 2026',
           brevoListId: Number(data.get('brevoListId') || 5),
-          source: data.get('source') || 'houston-camp-2026-landing',
+          source: data.get('source') || 'dallas-camp-2026-landing',
           playerFirstName: data.get('playerFirstName') || '',
           playerSurname: data.get('playerSurname') || '',
           email: data.get('email') || '',
@@ -1499,7 +1499,7 @@ const eventSchema = {
           if (typeof (window as any).JonerTracking?.trackEvent === 'function') {
             (window as any).JonerTracking.trackEvent('Lead', {
               user_data: { email: payload.email },
-              custom_data: { form_name: 'houston-camp-2026', list_id: 5, lead_type: 'camp_lead' },
+              custom_data: { form_name: 'dallas-camp-2026', list_id: 5, lead_type: 'camp_lead' },
             })
           }
 
