@@ -432,10 +432,10 @@ function mergeCamp(sanityCamp: CampMap, fallback: CampMap) {
 export async function getStaticPaths() {
   let sanitySlugs: string[] = []
   const fallbackSlugs = [
-    'texas-houston-june',
     'texas-dallas-june',
     'sydney-big-1-july',
   ]
+  const staticCampSlugs = ['la-tcpe-june', 'texas-houston-june']
 
   try {
     const camps = await sanityClient.fetch(`*[_type == "camp" && defined(slug.current)]{ "slug": slug.current }`)
@@ -445,6 +445,7 @@ export async function getStaticPaths() {
   }
 
   const slugs = Array.from(new Set([...fallbackSlugs, ...sanitySlugs]))
+    .filter((campSlug) => !staticCampSlugs.includes(campSlug))
   return slugs.map((campSlug) => ({ params: { slug: campSlug } }))
 }
 
