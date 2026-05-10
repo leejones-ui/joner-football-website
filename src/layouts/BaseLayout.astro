@@ -13,6 +13,7 @@ export interface Props {
   noindex?: boolean
   schema?: object | object[]
   hideChrome?: boolean
+  hideMobileAppCta?: boolean
 }
 
 const {
@@ -24,6 +25,7 @@ const {
   noindex = false,
   schema,
   hideChrome = false,
+  hideMobileAppCta = false,
 } = Astro.props
 
 const siteUrl = 'https://jonerfootball.com'
@@ -319,7 +321,7 @@ const allSchemas = schema
       })();
     </script>
 
-    {!hideMobileStickyAppCta && !hideChrome && (
+    {!hideMobileStickyAppCta && !hideChrome && !hideMobileAppCta && (
       <div class="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-joner-black border-t border-gray-800 p-3">
         <a href="/app" class="btn-red w-full text-center block text-sm">
           Download the App

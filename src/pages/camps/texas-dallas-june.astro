@@ -152,7 +152,7 @@ const eventSchema = {
   canonical={canonical}
   ogImage="https://jonerfootball.com/images/camps/dallas-2026/photos/hero-lee.webp"
   schema={eventSchema}
-  hideChrome
+  hideMobileAppCta
 >
   <Fragment slot="head">
     <link rel="preload" as="image" href="/images/camps/dallas-2026/photos/hero-lee.webp" fetchpriority="high" />
@@ -161,23 +161,9 @@ const eventSchema = {
 
   <div class="hou-page">
 
-  <!-- ============ STICKY NAV ============ -->
-  <header class="hou-nav" data-motion="fade">
-    <div class="hou-wrap hou-nav-row">
-      <a class="hou-nav-logo" href="#top" aria-label="Joner Football home">
-        <img src="/images/camps/dallas-2026/logo-full-white.png" alt="" width="38" height="38" loading="eager" />
-        <span>Joner<span class="hou-dot">Football</span></span>
-      </a>
-      <a class="hou-glass hou-glass--sm hou-nav-cta" href="#register" data-motion-hover="lift">
-        Book Now<span class="hou-glass-underline"></span>
-      </a>
-    </div>
-  </header>
-
   <!-- ============ 01 HERO ============ -->
   <section class="hou-hero" id="top">
     <div class="hou-hero-img" aria-hidden="true"></div>
-    <span class="hou-corner" aria-hidden="true"></span>
     <div class="hou-wrap hou-hero-content">
       <span class="hou-eyebrow" data-motion="fade-up"><span class="hou-pulse"></span> Sold out 2025 · Running it back</span>
       <h1 class="hou-h1" data-motion="fade-up" data-motion-delay="0.08">
@@ -519,18 +505,6 @@ const eventSchema = {
     </div>
   </section>
 
-  <!-- ============ FOOTER ============ -->
-  <footer class="hou-footer">
-    <div class="hou-wrap hou-footer-row">
-      <a class="hou-nav-logo hou-footer-logo" href="#top">
-        <img src="/images/camps/dallas-2026/logo-full-white.png" alt="" width="38" height="38" loading="lazy" />
-        <span>Joner<span class="hou-dot">Football</span></span>
-      </a>
-      <div>© 2026 Joner Football · EST 2013</div>
-      <div>Melissa, TX · Dallas Camp June 2026</div>
-    </div>
-  </footer>
-
   <!-- ============ STICKY MOBILE CTA ============ -->
   <div class="hou-mobile-cta">
     <a class="hou-glass hou-glass--block hou-glass--lg" href="#register">
@@ -672,7 +646,11 @@ const eventSchema = {
     .hou-hero-img {
       position: absolute; inset: 0;
       background-image: url('/images/camps/dallas-2026/photos/hero-lee.webp');
-      background-size: cover; background-position: center;
+      background-size: cover;
+      background-position: 60% 22%;
+    }
+    @media (max-width: 767px) {
+      .hou-hero-img { background-position: 64% 18%; }
     }
     .hou-hero-img::after {
       content: ""; position: absolute; inset: 0;
@@ -1013,11 +991,18 @@ const eventSchema = {
       aspect-ratio: 9 / 16;
       max-width: 100%;
       max-height: 100%;
+      overflow: hidden;
       background: #000;
     }
+    /* Instagram embed renders an internal header (~52px) and footer (~150px).
+       Pull the iframe up by 52px and pad the height by 220px so both bars
+       fall outside the wrapper's clipped area, leaving just the video. */
     .hou-testi-reel {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
+      position: absolute;
+      top: -52px;
+      left: 0;
+      width: 100%;
+      height: calc(100% + 220px);
       border: 0;
       background: #000;
     }
