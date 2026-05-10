@@ -2,7 +2,6 @@ const DEFAULT_SHEET_ID = '1SbGmivi3yqFaBKoMAhoNd5ufUga99DaQBj2noXNJr4k'
 const PENDING_SHEET = 'Leads Pending Payment'
 const PAID_SHEET = 'Paid Camp Registrations'
 const CAMP_COLUMN_INDEX = 3 // column D ("Camp") in the registration schema
-const CACHE_SECONDS = 30
 
 function base64url(input) {
   return Buffer.from(input).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
@@ -86,7 +85,7 @@ export default async function handler(req, res) {
   if (!camp) return res.status(400).json({ success: false, error: 'camp query param is required' })
   if (!baseline) return res.status(400).json({ success: false, error: 'baseline query param is required and must be > 0' })
 
-  res.setHeader('Cache-Control', `public, max-age=${CACHE_SECONDS}, s-maxage=${CACHE_SECONDS}, stale-while-revalidate=120`)
+  res.setHeader('Cache-Control', 'no-store, max-age=0')
 
   const sheetId = process.env.CAMP_REGISTRATION_SHEET_ID || DEFAULT_SHEET_ID
 
