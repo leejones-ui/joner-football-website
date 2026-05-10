@@ -51,9 +51,9 @@ const tiers = [
 ]
 
 const carouselImages = [
-  '/images/camps/sydney-camp.webp',
-  '/images/camps/joner-camps/camp-team-photo.jpg',
-  '/images/camps/joner-camps/lee-coaching-group.jpg',
+  '/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg',
+  '/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg',
+  '/images/camps/sydney-2026/photos/joner-cup.jpg',
   '/images/camps/joner-camps/red-shirt-action.jpg',
   '/images/camps/joner-camps/players-field.jpg',
   '/images/camps/joner-camps/lee-with-players.jpg',
@@ -133,7 +133,7 @@ const eventSchema = {
     },
   },
   organizer: { '@type': 'Organization', name: 'Joner Football', url: 'https://jonerfootball.com' },
-  image: 'https://jonerfootball.com/images/camps/sydney-camp.webp',
+  image: 'https://jonerfootball.com/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg',
   description,
   offers: tiers.map((tier) => ({
     '@type': 'Offer',
@@ -150,12 +150,12 @@ const eventSchema = {
   title={title}
   description={description}
   canonical={canonical}
-  ogImage="https://jonerfootball.com/images/camps/sydney-camp.webp"
+  ogImage="https://jonerfootball.com/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg"
   schema={eventSchema}
   hideMobileAppCta
 >
   <Fragment slot="head">
-    <link rel="preload" as="image" href="/images/camps/sydney-camp.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg" fetchpriority="high" />
     <link rel="preload" as="font" href="/fonts/Kanit-BlackItalic.ttf" type="font/ttf" crossorigin />
   </Fragment>
 
@@ -639,7 +639,7 @@ const eventSchema = {
     }
     .hou-hero-img {
       position: absolute; inset: 0;
-      background-image: url('/images/camps/sydney-camp.webp');
+      background-image: url('/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg');
       background-size: cover;
       background-position: 60% 22%;
     }
@@ -869,7 +869,7 @@ const eventSchema = {
     }
     .hou-bullets-bg {
       position: absolute; inset: 0;
-      background-image: url('/images/camps/joner-camps/camp-team-photo.jpg');
+      background-image: url('/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg');
       background-size: cover; background-position: center;
     }
     .hou-bullets-bg::after {
@@ -919,7 +919,7 @@ const eventSchema = {
     }
     .hou-video-poster {
       position: absolute; inset: 0;
-      background-image: url('/images/camps/joner-camps/red-shirt-action.jpg');
+      background-image: url('/images/camps/sydney-2026/photos/joner-cup.jpg');
       background-size: cover; background-position: center;
       cursor: pointer;
     }
