@@ -365,6 +365,7 @@ const eventSchema = {
         <input type="hidden" name="camp" value="Houston World Cup Camp June 2026" />
         <input type="hidden" name="destination" value="Texas Houston June 2026" />
         <input type="hidden" name="brevoListId" value="5" />
+        <input type="hidden" name="brevoListIds" value="5,2" />
         <input type="hidden" name="source" value="houston-camp-2026-landing" />
 
         <div class="hou-form-grid">
@@ -1427,6 +1428,32 @@ const eventSchema = {
       })
     }
 
+    const paymentLinks = {
+      Stripe: {
+        one: 'https://buy.stripe.com/aFadR86mcfS3fSLcdegEg05',
+        two: 'https://buy.stripe.com/dRmeVc5i89tF0XR912gEg04',
+        three: 'https://buy.stripe.com/7sYdR811SfS3gWPelmgEg00',
+      },
+      PayPal: {
+        one: 'https://www.paypal.com/ncp/payment/FJ24EM9RQ93G2',
+        two: 'https://www.paypal.com/ncp/payment/MT88YELPA2LUW',
+        three: 'https://www.paypal.com/ncp/payment/XWYDEECJQ5FS4',
+      },
+    }
+
+    function selectedDayCount(value: FormDataEntryValue | null) {
+      const text = String(value || '').toLowerCase()
+      if (text.includes('3 days')) return 'three'
+      if (text.includes('2 days')) return 'two'
+      return 'one'
+    }
+
+    function paymentLinkFor(method: FormDataEntryValue | null, numberOfDays: FormDataEntryValue | null) {
+      const m = String(method || 'Stripe') as 'Stripe' | 'PayPal'
+      const dayKey = selectedDayCount(numberOfDays)
+      return paymentLinks[m]?.[dayKey] || paymentLinks.Stripe[dayKey] || paymentLinks.Stripe.three
+    }
+
     /* ========== Form submit ========== */
     const form = document.getElementById('houForm') as HTMLFormElement | null
     const errEl = document.getElementById('houFormError')
@@ -1449,6 +1476,7 @@ const eventSchema = {
           camp: data.get('camp') || 'Houston World Cup Camp June 2026',
           destination: data.get('destination') || 'Texas Houston June 2026',
           brevoListId: Number(data.get('brevoListId') || 5),
+          brevoListIds: String(data.get('brevoListIds') || '5,2'),
           source: data.get('source') || 'houston-camp-2026-landing',
           playerFirstName: data.get('playerFirstName') || '',
           playerSurname: data.get('playerSurname') || '',
@@ -1459,6 +1487,8 @@ const eventSchema = {
           numberOfDays: data.get('numberOfDays') || '',
           extraInfo: days ? `Days attending: ${days}` : '',
           paymentMethod: data.get('paymentMethod') || '',
+          paymentLink: paymentLinkFor(data.get('paymentMethod'), data.get('numberOfDays')),
+          paymentStatus: 'not_paid_pending_payment',
           agreementAccepted: !!data.get('agreementAccepted'),
         }
 
@@ -1488,9 +1518,13 @@ const eventSchema = {
             })
           }
 
+          if (spotsNum) {
+            const currentSpots = parseInt(spotsNum.textContent || '0', 10)
+            if (Number.isFinite(currentSpots) && currentSpots > 0) spotsNum.textContent = String(currentSpots - 1)
+          }
           refreshSpots()
 
-          const paymentLink = json.paymentLink || 'https://app.jonerfootball.com'
+          const paymentLink = json.paymentLink || payload.paymentLink || 'https://app.jonerfootball.com'
           form.innerHTML = `
             <div style="padding:18px 0;text-align:center;">
               <p style="color:#4ade80;font-size:18px;font-family:var(--font-display);font-style:italic;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 12px;">You're in. Spot held.</p>

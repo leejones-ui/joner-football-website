@@ -3,6 +3,7 @@ import { protectForm } from './_security.js'
 const DEFAULT_SHEET_ID = '1SbGmivi3yqFaBKoMAhoNd5ufUga99DaQBj2noXNJr4k'
 const PENDING_SHEET = 'Leads Pending Payment'
 const PAID_SHEET = 'Paid Camp Registrations'
+const HOT_APP_LEADS_BREVO_LIST_ID = 2
 const USA_CAMP_BREVO_LIST_ID = 5
 const SYDNEY_CAMP_BREVO_LIST_ID = 6
 const CAMP_SIGNUP_EMAIL = process.env.CAMP_SIGNUP_EMAIL || 'joner1on1info@gmail.com'
@@ -153,7 +154,7 @@ async function appendPendingRegistration(registration) {
   const row = [
     registration.submittedAt,
     registration.registrationId,
-    'pending',
+    registration.paymentStatus,
     registration.camp,
     registration.playerFirstName,
     registration.playerSurname,
@@ -180,13 +181,24 @@ async function appendPendingRegistration(registration) {
   })
 }
 
-function brevoListForRegistration(registration) {
-  if (registration.brevoListId) return registration.brevoListId
+function brevoListsForRegistration(registration) {
+  const ids = new Set([HOT_APP_LEADS_BREVO_LIST_ID])
+
+  if (Array.isArray(registration.brevoListIds)) {
+    registration.brevoListIds.forEach((id) => {
+      const n = Number(id)
+      if (n > 0) ids.add(n)
+    })
+  }
+
+  if (registration.brevoListId) ids.add(registration.brevoListId)
 
   const destination = `${registration.destination} ${registration.location} ${registration.camp}`.toLowerCase()
-  if (destination.includes('sydney') || destination.includes('australia') || destination.includes('aus')) return SYDNEY_CAMP_BREVO_LIST_ID
-  if (destination.includes('usa') || destination.includes('america') || destination.includes('texas') || destination.includes('california')) return USA_CAMP_BREVO_LIST_ID
-  return USA_CAMP_BREVO_LIST_ID
+  if (destination.includes('sydney') || destination.includes('australia') || destination.includes('aus')) ids.add(SYDNEY_CAMP_BREVO_LIST_ID)
+  if (destination.includes('usa') || destination.includes('america') || destination.includes('texas') || destination.includes('california')) ids.add(USA_CAMP_BREVO_LIST_ID)
+  if (ids.size === 1) ids.add(USA_CAMP_BREVO_LIST_ID)
+
+  return Array.from(ids).filter((id) => Number.isFinite(id) && id > 0)
 }
 
 async function sendCampSignupEmail(registration) {
@@ -198,7 +210,7 @@ async function sendCampSignupEmail(registration) {
     <p><strong>${escapeHtml(registration.camp)}</strong></p>
     <table cellpadding="8" cellspacing="0" border="1" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px;">
       ${campRow('Registration ID', registration.registrationId)}
-      ${campRow('Payment status', 'pending')}
+      ${campRow('Payment status', registration.paymentStatusLabel)}
       ${campRow('Camp', registration.camp)}
       ${campRow('Player first name', registration.playerFirstName)}
       ${campRow('Player surname', registration.playerSurname)}
@@ -212,6 +224,7 @@ async function sendCampSignupEmail(registration) {
       ${campRow('Jersey size', registration.jerseySize)}
       ${campRow('Medical history', registration.medicalHistory)}
       ${campRow('Extra info', registration.extraInfo)}
+      ${campRow('Payment method', registration.paymentMethod)}
       ${campRow('Payment link', registration.paymentLink)}
       ${campRow('Submitted at', registration.submittedAt)}
     </table>
@@ -231,7 +244,7 @@ async function sendCampSignupEmail(registration) {
       },
       to: [{ email: CAMP_SIGNUP_EMAIL, name: 'Joner Football Camps' }],
       replyTo: { email: registration.email, name: registration.parentName || registration.playerFirstName },
-      subject: `Camp signup: ${registration.playerFirstName} ${registration.playerSurname} for ${registration.camp}`,
+      subject: `${registration.paymentStatus === 'paid' ? 'PAID' : 'NOT PAID YET'} camp signup: ${registration.playerFirstName} ${registration.playerSurname} for ${registration.camp}`,
       htmlContent: html,
     }),
   })
@@ -249,7 +262,7 @@ async function addToBrevo(registration) {
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey) return { skipped: true }
 
-  const listId = brevoListForRegistration(registration)
+  const listIds = brevoListsForRegistration(registration)
 
   const response = await fetch('https://api.brevo.com/v3/contacts', {
     method: 'POST',
@@ -266,7 +279,7 @@ async function addToBrevo(registration) {
         CAMP_NAME: registration.camp,
         CAMP_DESTINATION: registration.destination || registration.location || '',
       },
-      listIds: [listId],
+      listIds,
       updateEnabled: true,
     }),
   })
@@ -298,6 +311,7 @@ export default async function handler(req, res) {
       destination: clean(body.destination || body.campDestination || body.location, 80),
       location: clean(body.location, 120),
       brevoListId: Number(body.brevoListId || body.brevo_list_id || 0) || null,
+      brevoListIds: Array.isArray(body.brevoListIds) ? body.brevoListIds.map(Number).filter(Boolean) : clean(body.brevoListIds || '', 80).split(',').map((id) => Number(id.trim())).filter(Boolean),
       playerFirstName: clean(body.playerFirstName, 80),
       playerSurname: clean(body.playerSurname, 80),
       parentName: clean(body.parentName, 120),
@@ -314,6 +328,7 @@ export default async function handler(req, res) {
       agreementAccepted: body.agreementAccepted === true || body.agreementAccepted === 'true' || body.agreementAccepted === 'on',
       paymentMethod: clean(body.paymentMethod, 30) || 'Stripe',
       paymentLink: clean(body.paymentLink || process.env.CAMP_DEFAULT_PAYMENT_LINK || 'https://app.jonerfootball.com', 500),
+      paymentStatus: clean(body.paymentStatus || 'not_paid_pending_payment', 40),
       sheetTab: clean(body.sheetTab || body.googleSheetTab || body.targetSheetTab, 120),
     }
 
@@ -325,6 +340,9 @@ export default async function handler(req, res) {
     if (!registration.jerseySize) return res.status(400).json({ success: false, error: 'Jersey size is required.' })
     if (!registration.numberOfDays) return res.status(400).json({ success: false, error: 'Number of days is required.' })
     if (!registration.agreementAccepted) return res.status(400).json({ success: false, error: 'Training agreement must be accepted.' })
+
+    registration.paymentStatus = registration.paymentStatus === 'paid' ? 'paid' : 'not_paid_pending_payment'
+    registration.paymentStatusLabel = registration.paymentStatus === 'paid' ? 'PAID' : 'NOT PAID YET, payment link selected and sent to parent'
 
     await appendPendingRegistration(registration)
     const brevo = await addToBrevo(registration)
