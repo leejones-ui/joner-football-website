@@ -72,6 +72,7 @@ const camps = [
     image: '/images/camps/tcpe/JONER-X-FIRST-STRIKE--scaled.jpg.webp',
     alt: 'Joner Football LA Complete Player Experience camp players training',
     badge: 'Selection only',
+    circleImage: '/images/camps/destination-circles/la.jpg',
   },
   {
     label: 'HOU',
@@ -83,6 +84,7 @@ const camps = [
     image: '/images/camps/houston/DSC05857-scaled.jpg.webp',
     alt: 'Joner Football Houston camp players training in Texas',
     badge: 'Register now',
+    circleImage: '/images/camps/destination-circles/hou.jpg',
   },
   {
     label: 'DAL',
@@ -94,6 +96,7 @@ const camps = [
     image: '/images/camps/dallas-2026/photos/hero-lee.webp',
     alt: 'Coach Lee Jones at Joner Football Dallas camp',
     badge: 'Register now',
+    circleImage: '/images/camps/destination-circles/dal.jpg',
   },
   {
     label: 'SYD',
@@ -105,6 +108,7 @@ const camps = [
     image: '/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg',
     alt: 'Joner Football Sydney camp with Lee Jones and Miguel Grande coaching',
     badge: 'Register now',
+    circleImage: '/images/camps/destination-circles/syd.jpg',
   },
 ]
 ---
@@ -147,6 +151,7 @@ const camps = [
                 title={`${camp.title}: ${camp.subtitle}`}
               >
                 <span class="camp-orbit__node-content">
+                  <img src={camp.circleImage} alt="" aria-hidden="true" class="camp-orbit__node-photo" loading="lazy" />
                   <span class="camp-orbit__node-label">{camp.label}</span>
                   <span class="camp-orbit__tooltip">{camp.title}<small>{camp.subtitle}</small></span>
                 </span>
@@ -244,6 +249,7 @@ const camps = [
       border: 2px solid rgba(255,255,255,0.72);
       background: #E30613;
       color: #fff;
+      overflow: visible;
       font-family: Anton, Impact, sans-serif;
       font-size: 1rem;
       letter-spacing: 0.12em;
@@ -255,8 +261,12 @@ const camps = [
     .camp-orbit__node-content {
       position: relative;
       display: flex;
+      width: 100%;
+      height: 100%;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
+      border-radius: inherit;
       animation: camp-orbit-counter 24s linear infinite;
     }
 
@@ -264,8 +274,29 @@ const camps = [
       animation-play-state: paused;
     }
 
+    .camp-orbit__node-photo {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.72;
+      filter: grayscale(1) contrast(1.18) brightness(0.72);
+      transition: opacity 160ms ease, filter 160ms ease, transform 160ms ease;
+    }
+
     .camp-orbit__node-label {
+      position: relative;
+      z-index: 2;
       line-height: 1;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+    }
+
+    .camp-orbit__node:hover .camp-orbit__node-photo,
+    .camp-orbit__node:focus-visible .camp-orbit__node-photo {
+      opacity: 0.92;
+      filter: grayscale(0.15) contrast(1.22) brightness(0.82);
+      transform: scale(1.08);
     }
 
     .camp-orbit__tooltip {
