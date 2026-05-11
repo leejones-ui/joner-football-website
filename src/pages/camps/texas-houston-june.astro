@@ -749,12 +749,13 @@ const eventSchema = {
     .hou-rule { width: 64px; height: 3px; background: var(--jf-red); margin-top: 4px; }
 
     /* ===== INFO ===== */
-    .hou-info { background: #fff; color: #000; padding: 80px 0; }
+    .hou-info { background: #fff; color: #000; padding: 72px 0; }
     .hou-info .hou-h2 { color: #000; }
+    .hou-info .hou-section-head { margin-bottom: 34px; }
     .hou-info-layout {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 40px;
+      gap: 32px;
       align-items: start;
     }
     .hou-info-left { min-width: 0; }
@@ -873,8 +874,8 @@ const eventSchema = {
     @media (min-width: 900px) {
       .hou-info-layout {
         grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-        gap: 56px;
-        align-items: center;
+        gap: 40px;
+        align-items: start;
       }
       .hou-info-carousel { aspect-ratio: 4 / 5; }
     }
