@@ -263,26 +263,6 @@ const localBizSchema = {
             </ul>
           </div>
 
-          <!-- Partnerships -->
-          <div class="grid grid-cols-2 gap-4 mb-8">
-            <div class="bg-joner-gray border border-gray-700 px-4 py-3 text-center">
-              <div class="font-heading text-white font-bold text-sm">Mizuno</div>
-              <div class="text-gray-500 text-xs font-body mt-1">Official Equipment</div>
-            </div>
-            <div class="bg-joner-gray border border-gray-700 px-4 py-3 text-center">
-              <div class="font-heading text-white font-bold text-sm">SKLZ</div>
-              <div class="text-gray-500 text-xs font-body mt-1">Training Equipment</div>
-            </div>
-            <div class="bg-joner-gray border border-gray-700 px-4 py-3 text-center">
-              <div class="font-heading text-white font-bold text-sm">FPA</div>
-              <div class="text-gray-500 text-xs font-body mt-1">Strength & Conditioning</div>
-            </div>
-            <div class="bg-joner-gray border border-gray-700 px-4 py-3 text-center">
-              <div class="font-heading text-white font-bold text-sm">FullNinety</div>
-              <div class="text-gray-500 text-xs font-body mt-1">Tactical Analysis</div>
-            </div>
-          </div>
-
           <!-- Head coach -->
           <div class="border border-joner-red/30 bg-joner-red/5 p-6 mb-8">
             <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-3">Head Coach</h3>
@@ -293,56 +273,14 @@ const localBizSchema = {
               <div>
                 <div class="font-heading text-white font-bold">Dean McDonnell</div>
                 <div class="text-gray-400 text-sm font-body">Head Coach, JFP</div>
-                <a href="tel:0426885924" class="text-joner-red text-sm font-body hover:underline">0426 885 924</a>
               </div>
             </div>
           </div>
 
-          <!-- FAQ -->
-          <div class="mb-8">
-            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-4">FAQ</h3>
-            <div class="space-y-4">
-              {[
-                { q: 'Will bad weather cancel the session?', a: 'No. Only extreme storms. Afternoon sessions at The HQ are fully indoor.' },
-                { q: "Who will be in my child's group?", a: 'Players are grouped by age first, then ability. Max 6 per group. If a player dominates their group, we push them up to the older age group.' },
-                { q: 'How many times a week can my child train?', a: 'Up to 3 times per week depending on schedule and goals.' },
-              ].map((item) => (
-                <div class="border-b border-gray-800 pb-4">
-                  <dt class="font-heading text-white text-sm font-semibold mb-1">{item.q}</dt>
-                  <dd class="text-gray-400 font-body text-sm">{item.a}</dd>
-                </div>
-              ))}
-            </div>
-          </div>
-
           <p class="text-gray-500 font-body text-sm italic mb-6">Dedicated players only. Limited spots available.</p>
-          <a href="#jfp-form" class="btn-red text-sm">Apply Now</a>
+          <a href="#training-form" class="btn-red text-sm">Apply Now</a>
         </div>
       </div>
-
-      <!-- JFP Enquiry Form -->
-      <div id="jfp-form" class="mt-16 max-w-2xl mx-auto bg-joner-gray border border-gray-700 p-8 scroll-mt-32">
-        <h3 class="font-heading text-white text-2xl font-bold uppercase mb-2">Apply for JFP</h3>
-        <p class="text-gray-400 font-body text-sm mb-6">Fill in your details and a coach will be in touch.</p>
-        <form data-brevo-form data-form-name="jfp-application" data-list-id="6" class="space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" name="parent_name" placeholder="Parent name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-            <input type="text" name="player_name" placeholder="Player name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-            <input type="tel" name="phone" placeholder="Phone number" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" name="player_age" placeholder="Player age" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-            <input type="text" name="experience" placeholder="Current club / experience level" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-          </div>
-          <textarea name="message" placeholder="Anything else we should know?" rows="3" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
-          <button type="submit" class="btn-red text-sm w-full">Submit Application</button>
-        </form>
-      </div>
-    </div>
-  </section>
 
   <!-- ===== JFP PLAYER PATHWAY ===== -->
   <section class="bg-joner-gray py-20 md:py-28 overflow-hidden">
@@ -485,19 +423,19 @@ const localBizSchema = {
             <div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-joner-red/50 md:hidden"></div>
           </div>
 
-          <!-- Benefit 2: S&C (FPA) -->
+          <!-- Benefit 2: Strength -->
           <div class="benefit-card group relative bg-joner-black border border-gray-700 hover:border-joner-red rounded-lg p-5 text-center transition-all duration-300 hover:shadow-[0_0_20px_rgba(227,6,19,0.2)]">
             <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">&#128170;</div>
-            <h4 class="font-heading text-white text-sm font-bold uppercase mb-1">S&C (FPA)</h4>
-            <p class="text-gray-500 font-body text-xs leading-relaxed">Professional strength & conditioning partnership.</p>
+            <h4 class="font-heading text-white text-sm font-bold uppercase mb-1">Strength Work</h4>
+            <p class="text-gray-500 font-body text-xs leading-relaxed">Movement, strength and habits that support better football.</p>
             <div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-joner-red/50 md:hidden"></div>
           </div>
 
-          <!-- Benefit 3: FullNinety -->
+          <!-- Benefit 3: Match Review -->
           <div class="benefit-card group relative bg-joner-black border border-gray-700 hover:border-joner-red rounded-lg p-5 text-center transition-all duration-300 hover:shadow-[0_0_20px_rgba(227,6,19,0.2)]">
             <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">&#128202;</div>
-            <h4 class="font-heading text-white text-sm font-bold uppercase mb-1">FullNinety</h4>
-            <p class="text-gray-500 font-body text-xs leading-relaxed">Professional-grade tactical analysis platform.</p>
+            <h4 class="font-heading text-white text-sm font-bold uppercase mb-1">Match Review</h4>
+            <p class="text-gray-500 font-body text-xs leading-relaxed">Clear match feedback to help players understand their game.</p>
             <div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-joner-red/50 md:hidden"></div>
           </div>
 
@@ -552,7 +490,7 @@ const localBizSchema = {
               <p class="text-gray-400 font-body text-sm md:text-base max-w-md mx-auto mb-6">
                 From grassroots to the professional stage. This is the pathway that has launched careers since 2013.
               </p>
-              <a href="#jfp-form" class="inline-block bg-joner-red hover:bg-red-700 text-white font-heading text-sm uppercase tracking-wider px-8 py-3 transition-colors">
+              <a href="#training-form" class="inline-block bg-joner-red hover:bg-red-700 text-white font-heading text-sm uppercase tracking-wider px-8 py-3 transition-colors">
                 Start Your Journey
               </a>
             </div>
@@ -601,7 +539,7 @@ const localBizSchema = {
             <p class="text-gray-400 font-body text-sm">Direct coaching from Lee Jones</p>
           </div>
 
-          <a href="#pro-form" class="btn-red text-sm">Enquire Now</a>
+          <a href="#training-form" class="btn-red text-sm">Enquire Now</a>
         </div>
 
         <!-- Pro training photo -->
@@ -609,24 +547,6 @@ const localBizSchema = {
           <img src="/images/training/pro-training.webp" alt="Lee Jones coaching a professional football player at Joner Football" class="w-full h-full object-cover object-center" loading="lazy" />
         </div>
       </div>
-
-      <!-- Pro enquiry form -->
-      <div id="pro-form" class="mt-16 max-w-2xl mx-auto bg-joner-black border border-gray-700 p-8 scroll-mt-32">
-        <h3 class="font-heading text-white text-2xl font-bold uppercase mb-2">Professional Training Enquiry</h3>
-        <p class="text-gray-400 font-body text-sm mb-6">Tell us about yourself and Lee will be in touch.</p>
-        <form data-brevo-form data-form-name="pro-training-enquiry" data-list-id="6" class="space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" name="name" placeholder="Your name" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-            <input type="email" name="email" placeholder="Email address" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-          </div>
-          <input type="text" name="current_club" placeholder="Current club / team" class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-          <input type="text" name="level" placeholder="Current level (A-League / NPL / Other)" class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-          <textarea name="goals" placeholder="What are you looking to work on?" rows="4" class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 resize-none"></textarea>
-          <button type="submit" class="btn-red text-sm w-full">Send Enquiry</button>
-        </form>
-      </div>
-    </div>
-  </section>
 
   <!-- ===== JONERS JUNIORS ===== -->
   <section id="joners-juniors" class="bg-joner-black py-20 md:py-28 scroll-mt-32">
@@ -718,25 +638,8 @@ const localBizSchema = {
             </div>
           </div>
 
-          <!-- FAQ -->
-          <div class="mb-8">
-            <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-4">FAQ</h3>
-            <div class="space-y-4">
-              {[
-                { q: 'Will bad weather cancel training?', a: 'No. The facility is fully indoor.' },
-                { q: 'Is there a parent waiting area?', a: 'Yes. Parents are advised to stay and watch from the parent viewing area.' },
-                { q: 'What age is this for?', a: 'Joners Juniors is designed as the entry point for young players looking to develop their basics before progressing into JFP.' },
-              ].map((item) => (
-                <div class="border-b border-gray-800 pb-4">
-                  <dt class="font-heading text-white text-sm font-semibold mb-1">{item.q}</dt>
-                  <dd class="text-gray-400 font-body text-sm">{item.a}</dd>
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div class="flex flex-col sm:flex-row gap-4 items-start">
-            <a href="#juniors-form" class="btn-red text-sm">Book Your Spot</a>
+            <a href="#training-form" class="btn-red text-sm">Book Your Spot</a>
             <a href="mailto:jonersjuniors@jonerfootball.com" class="btn-outline text-sm border-gray-600 text-gray-300 hover:border-white hover:text-white">
               jonersjuniors@jonerfootball.com
             </a>
@@ -744,41 +647,15 @@ const localBizSchema = {
         </div>
       </div>
 
-      <!-- Juniors booking form -->
-      <div id="juniors-form" class="mt-16 max-w-2xl mx-auto bg-joner-gray border border-gray-700 p-8 scroll-mt-32">
-        <h3 class="font-heading text-white text-2xl font-bold uppercase mb-2">Book a Spot, Joners Juniors</h3>
-        <p class="text-gray-400 font-body text-sm mb-6">Payment processed securely. A place will be confirmed once we receive your details.</p>
-        <form data-brevo-form data-form-name="joners-juniors-booking" data-list-id="6" class="space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" name="parent_name" placeholder="Parent / guardian name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-            <input type="text" name="child_name" placeholder="Child's name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-            <input type="tel" name="phone" placeholder="Phone number" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-          </div>
-          <input type="text" name="child_age" placeholder="Child's age" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-          <select name="class_preference" class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red min-h-[44px]">
-            <option value="">Preferred class time</option>
-            <option value="9:15am">9:15am to 10:00am (Open class)</option>
-            <option value="10:00am">10:00am to 10:45am (By selection)</option>
-          </select>
-          <!-- STRIPE PAYMENT LINK NEEDED, Lee to provide -->
-          <button type="submit" class="btn-red text-sm w-full" data-payment="pending">Book My Spot</button>
-        </form>
-      </div>
-    </div>
-  </section>
-
   <!-- ===== GAME ANALYSIS ===== -->
   <section id="game-analysis" class="bg-joner-gray py-16 scroll-mt-32">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
       <div class="inline-block bg-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-white mb-4">Exclusive to JF Players</div>
       <h2 class="section-heading text-white mb-4">Game Analysis</h2>
       <p class="text-gray-400 font-body leading-relaxed mb-8 max-w-2xl mx-auto">
-        Detailed game analysis and video breakdowns available to JFP players. Understand your game at a deeper level. Our partnership with FullNinety brings professional-grade tactical analysis to your development journey.
+        Detailed game analysis and video breakdowns available to JFP players. Understand your game at a deeper level. Get clear video feedback that helps you understand decisions, positioning, technique and match habits.
       </p>
-      <a href="#jfp-form" class="btn-red text-sm">Available for JFP Players</a>
+      <a href="#training-form" class="btn-red text-sm">Available for JFP Players</a>
     </div>
   </section>
 
@@ -811,38 +688,239 @@ const localBizSchema = {
     </div>
   </section>
 
-  <!-- ===== PARTNERSHIPS BAR ===== -->
-  <section class="bg-joner-gray border-y border-gray-800 py-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <p class="text-center text-gray-500 font-heading text-xs uppercase tracking-widest mb-6">Official Partners</p>
-      <div class="flex flex-wrap justify-center items-center gap-4 max-w-4xl mx-auto">
-        <div class="flex flex-col items-center gap-2">
-          <div class="bg-joner-black border border-white flex items-center justify-center" style="width:160px;height:80px">
-            <img src="/images/partners/mizuno.svg" alt="Mizuno" style="height:40px;object-fit:contain;filter:brightness(0) invert(1);" />
+  <!-- Training FAQs -->
+  <section class="bg-joner-black py-16 md:py-20">
+    <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+      <div class="mb-10 text-center">
+        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">FAQs</p>
+        <h2 class="font-heading text-3xl uppercase tracking-wide text-white sm:text-4xl">Training Questions</h2>
+      </div>
+      <div class="space-y-5">
+        {[
+          { q: 'Will bad weather cancel training?', a: 'No. The HQ sessions are indoor. Outdoor sessions only change if conditions become unsafe.' },
+          { q: "Who will be in my child's group?", a: 'Players are grouped by age first, then ability. If a player is ready for a higher challenge, the coaching team can move them up.' },
+          { q: 'How many times a week can my child train?', a: 'JFP players can train up to 3 times per week depending on the schedule, availability and their goals.' },
+          { q: 'Is there a parent waiting area?', a: 'Yes. Parents can watch from the viewing area at The HQ.' },
+          { q: 'What age is Joners Juniors for?', a: 'Joners Juniors is the entry point for young players building their basics before progressing into JFP.' },
+          { q: 'Is game analysis for everyone?', a: 'Game analysis is available for JF players and is best for players who want clearer feedback on decision making, positioning and match habits.' },
+        ].map((item) => (
+          <div class="border border-gray-800 bg-joner-gray p-5">
+            <h3 class="mb-2 font-heading text-base uppercase tracking-wide text-white">{item.q}</h3>
+            <p class="font-body text-sm leading-relaxed text-gray-400">{item.a}</p>
           </div>
-          <p class="text-gray-500 text-xs font-body">Official Equipment Partner</p>
-        </div>
-        <div class="flex flex-col items-center gap-2">
-          <div class="bg-joner-black border border-white flex items-center justify-center" style="width:160px;height:80px">
-            <img src="/images/partners/sklz.svg" alt="SKLZ" style="height:40px;object-fit:contain;filter:brightness(0) invert(1);" />
-          </div>
-          <p class="text-gray-500 text-xs font-body">Training Equipment Partner</p>
-        </div>
-        <div class="flex flex-col items-center gap-2">
-          <div class="bg-joner-black border border-white flex items-center justify-center" style="width:160px;height:80px">
-            <span class="font-heading text-white uppercase text-xl tracking-wider font-bold">FPA</span>
-          </div>
-          <p class="text-gray-500 text-xs font-body">Strength & Conditioning Partner</p>
-        </div>
-        <div class="flex flex-col items-center gap-2">
-          <div class="bg-joner-black border border-white flex items-center justify-center" style="width:160px;height:80px">
-            <span class="font-heading text-white uppercase text-lg tracking-wider font-bold">Full Ninety</span>
-          </div>
-          <p class="text-gray-500 text-xs font-body">Tactical Analysis Partner</p>
-        </div>
+        ))}
       </div>
     </div>
   </section>
+
+  <!-- Training Enquiry Form -->
+  <section id="training-form" class="bg-joner-black py-16 md:py-24 scroll-mt-32">
+    <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+      <div class="mb-8 text-center">
+        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Enquire</p>
+        <h2 class="font-heading text-3xl uppercase tracking-wide text-white sm:text-4xl">Start Your Training Enquiry</h2>
+        <p class="mx-auto mt-4 max-w-2xl font-body text-base leading-relaxed text-gray-400">
+          Tell us what you are looking for and the team will point you to the right Joner Football program.
+        </p>
+      </div>
+
+      <form id="contact-smart-form" class="space-y-5 border border-gray-800 bg-joner-gray p-5 md:p-8">
+        <div>
+          <label for="enquiryType" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-gray-400">What can we help with?</label>
+          <select id="enquiryType" name="enquiryType" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
+            <option value="training-sydney">Training Enquiries (Sydney)</option>
+            <option value="joners-juniors">Joners Juniors Enquiries</option>
+            <option value="general">General Enquiries</option>
+          </select>
+          <p id="form-intro" class="mt-3 font-body text-sm text-gray-400">Tell us about the player and what type of training you are looking for.</p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input data-name-field type="text" name="name" placeholder="Full name" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <input type="email" name="email" placeholder="Email address" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input type="tel" name="phone" placeholder="Phone number" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <select name="trainingLocation" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
+            <option value="">Preferred Sydney location</option>
+            <option>HQ (Belrose)</option>
+            <option>North Turramurra</option>
+            <option>Rydalmere Park</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <div data-fields="training-sydney joners-juniors" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input type="text" name="playerName" placeholder="Player name" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <input data-player-age-field type="text" name="playerAge" placeholder="Player age" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+        </div>
+
+        <div data-fields="training-sydney" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input type="text" name="playerLevel" placeholder="Player level or team" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <select name="trainingInterest" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
+            <option value="">Training interest</option>
+            <option>Joner Football Performance</option>
+            <option>Professional Training</option>
+            <option>Private training</option>
+            <option>Group training</option>
+            <option>Game analysis</option>
+            <option>Not sure yet</option>
+          </select>
+        </div>
+
+        <div data-fields="joners-juniors" class="grid hidden grid-cols-1 gap-4 sm:grid-cols-2">
+          <select name="juniorProgram" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
+            <option value="">Program interest</option>
+            <option>Joners Juniors</option>
+            <option>Joner Football Performance pathway</option>
+            <option>Not sure yet</option>
+          </select>
+          <input type="text" name="parentGoal" placeholder="Main goal for the player" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+        </div>
+
+        <textarea name="message" placeholder="Message" required rows="5" class="w-full resize-none border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none"></textarea>
+
+        <label class="flex gap-3 border border-gray-800 bg-joner-black/60 p-4 font-body text-sm leading-relaxed text-gray-300">
+          <input type="checkbox" name="marketingOptIn" value="true" class="mt-1 h-4 w-4 shrink-0 accent-joner-red" />
+          <span>Yes, send me Joner Football updates, offers, app news, camps, and training tips by email.</span>
+        </label>
+
+        <p id="contact-form-status" class="hidden font-body text-sm"></p>
+        <button type="submit" class="btn-red w-full text-sm">Send Training Enquiry</button>
+      </form>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function () {
+      var options = {
+        'training-sydney': {
+          intro: 'Tell us about the player and what type of training you are looking for.',
+          button: 'Send Training Enquiry'
+        },
+        'general': {
+          intro: 'Ask us anything and the team will point you in the right direction.',
+          button: 'Send General Enquiry'
+        },
+        'joners-juniors': {
+          intro: 'For parents enquiring about the Joners Juniors program.',
+          button: 'Send Joners Juniors Enquiry'
+        }
+      };
+
+      var form = document.getElementById('contact-smart-form');
+      if (!form) return;
+      var typeSelect = form.querySelector('[name="enquiryType"]');
+      var intro = document.getElementById('form-intro');
+      var submit = form.querySelector('button[type="submit"]');
+      var status = document.getElementById('contact-form-status');
+
+      function setStatus(message, ok) {
+        if (!status) return;
+        status.textContent = message || '';
+        status.className = message ? 'font-body text-sm ' + (ok ? 'text-green-400' : 'text-amber-400') : 'hidden font-body text-sm';
+      }
+
+      function syncNamePlaceholder() {
+        var selected = typeSelect.value || 'training-sydney';
+        var nameField = form.querySelector('[data-name-field]');
+        var playerAgeField = form.querySelector('[data-player-age-field]');
+        if (!nameField) return;
+        if (selected !== 'training-sydney') {
+          nameField.placeholder = 'Full name';
+          return;
+        }
+        var age = playerAgeField ? parseInt(String(playerAgeField.value || '').replace(/[^0-9]/g, ''), 10) : NaN;
+        nameField.placeholder = age >= 18 ? 'Full name' : 'Parent name';
+      }
+
+      function syncFields() {
+        var selected = typeSelect.value || 'training-sydney';
+        var config = options[selected] || options['training-sydney'];
+        if (intro) intro.textContent = config.intro;
+        if (submit) submit.textContent = config.button;
+
+        form.querySelectorAll('[data-fields]').forEach(function (group) {
+          var show = String(group.getAttribute('data-fields') || '').split(' ').indexOf(selected) !== -1;
+          group.classList.toggle('hidden', !show);
+          group.querySelectorAll('input, select, textarea').forEach(function (field) {
+            field.disabled = !show;
+            if (field.classList.contains('conditional-required')) field.required = show;
+          });
+        });
+        syncNamePlaceholder();
+      }
+
+      typeSelect.addEventListener('change', function () {
+        setStatus('', true);
+        syncFields();
+      });
+      var playerAgeField = form.querySelector('[data-player-age-field]');
+      if (playerAgeField) playerAgeField.addEventListener('input', syncNamePlaceholder);
+      syncFields();
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        setStatus('', true);
+        var originalText = submit ? submit.textContent : 'Send Enquiry';
+        var formData = new FormData(form);
+        var emailInput = form.querySelector('input[name="email"]');
+
+        if (window.JonerEmailGuard && emailInput) {
+          var validation = window.JonerEmailGuard.validateEmail(formData.get('email'));
+          window.JonerEmailGuard.setFeedback(emailInput, validation);
+          if (!validation.valid) {
+            emailInput.reportValidity();
+            return;
+          }
+        }
+
+        if (submit) {
+          submit.disabled = true;
+          submit.textContent = 'Sending...';
+          submit.classList.add('opacity-70', 'cursor-not-allowed');
+        }
+
+        var payload = {};
+        formData.forEach(function (value, key) {
+          if (!(value instanceof File)) payload[key] = value;
+        });
+        if (payload.trainingLocation) payload.location = payload.trainingLocation;
+        payload.marketingOptIn = formData.get('marketingOptIn') === 'true';
+
+        var tokenPromise = window.JonerRecaptcha && window.JonerRecaptcha.getToken
+          ? window.JonerRecaptcha.getToken('contact')
+          : Promise.resolve('');
+
+        tokenPromise.then(function (token) {
+          payload.recaptchaToken = token;
+          return fetch('/api/contact-enquiry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data || !data.success) throw new Error((data && data.error) || 'Could not send enquiry.');
+          form.reset();
+          syncFields();
+          setStatus('Done. Your enquiry has been sent.', true);
+        })
+        .catch(function (error) {
+          setStatus(error && error.message ? error.message : 'Could not send enquiry. Please try again.', false);
+        })
+        .finally(function () {
+          if (submit) {
+            submit.disabled = false;
+            submit.textContent = originalText;
+            submit.classList.remove('opacity-70', 'cursor-not-allowed');
+          }
+        });
+      });
+    })();
+  </script>
 
   <!-- App CTA -->
   <section class="bg-joner-red py-12 md:py-16">
