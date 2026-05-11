@@ -19,18 +19,33 @@ const trainingPrograms = [
     circleImage: '/images/contact/lee-coaching-landscape.webp',
   },
   {
-    label: 'JR',
+    label: 'JUNIORS',
     title: 'Joners Juniors',
+    navLabel: 'Juniors',
     subtitle: 'Younger players building strong habits',
     href: '#joners-juniors',
-    circleImage: '/images/about/lee-coaching-pitch.webp',
+    circleImage: '/images/training/joners-juniors-wheel.jpg',
   },
   {
-    label: 'GA',
+    label: 'APP',
+    title: 'JF App',
+    subtitle: 'Train anywhere with the Joner Football App',
+    href: '/app',
+    circleImage: '/images/training/jf-app-wheel.jpg',
+  },
+  {
+    label: 'HQ',
+    title: 'The HQ',
+    subtitle: 'Indoor training facility in Belrose',
+    href: '/hq',
+    circleImage: '/images/training/hq-wheel.jpg',
+  },
+  {
+    label: 'GAME ANALYSIS',
     title: 'Game Analysis',
     subtitle: 'Video review and tactical feedback',
     href: '#game-analysis',
-    circleImage: '/images/programmes/lee-coaching-group.jpg',
+    circleImage: '/images/app/app-desktop-mockup.png',
   },
 ]
 
@@ -66,7 +81,7 @@ const localBizSchema = {
       <nav class="training-tabs -mx-4 flex snap-x snap-mandatory justify-start gap-0 overflow-x-auto px-4 pr-12 md:mx-0 md:justify-center md:overflow-visible md:px-0" aria-label="Training programs">
         {trainingPrograms.map((program) => (
           <a href={program.href} class="flex-shrink-0 snap-center px-5 py-4 text-center font-heading text-xs uppercase tracking-[0.16em] text-gray-400 transition hover:bg-joner-gray hover:text-white sm:px-6 md:text-sm">
-            {program.title}
+            {program.navLabel || program.title}
           </a>
         ))}
       </nav>
@@ -81,10 +96,10 @@ const localBizSchema = {
     <div class="absolute inset-0 bg-gradient-to-b from-joner-black/58 via-joner-black/24 to-joner-black/70 lg:bg-gradient-to-r lg:from-joner-black/82 lg:via-joner-black/48 lg:to-joner-black/18"></div>
     <div class="absolute left-0 top-0 h-full w-1 bg-joner-red"></div>
 
-    <div class="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 px-4 sm:px-6 lg:min-h-[calc(100vh-180px)] lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
+    <div class="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 px-4 sm:px-6 lg:min-h-[calc(100vh-180px)] lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
       <div class="max-w-2xl pt-8 lg:pt-0">
         <p class="mb-4 font-heading text-sm uppercase tracking-[0.28em] text-joner-red">Sydney Training Hub</p>
-        <h1 class="mb-5 font-heading text-5xl font-bold uppercase leading-[0.9] tracking-wide text-white sm:text-6xl lg:text-7xl">
+        <h1 class="mb-5 max-w-[9ch] font-heading text-4xl font-bold uppercase leading-[1.02] tracking-wide text-white sm:max-w-[10ch] sm:text-6xl sm:leading-[0.98] lg:text-7xl">
           Find The Right Training
         </h1>
         <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -124,10 +139,10 @@ const localBizSchema = {
         <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">What We Offer</p>
         <h2 class="font-heading text-3xl uppercase tracking-wide text-white sm:text-4xl">Start In The Right Place</h2>
         <p class="mt-4 font-body text-sm leading-relaxed text-gray-400 sm:text-base">
-          Different players need different support. Use these four routes to get to the right training page, enquiry form, or next step without guessing.
+          Different players need different support. Use these routes to get to the right training page, app, facility page, enquiry form, or next step without guessing.
         </p>
       </div>
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {trainingPrograms.map((program) => (
           <a href={program.href} class="group border border-gray-800 bg-joner-black p-5 transition hover:border-joner-red">
             <span class="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-joner-red font-heading text-sm uppercase tracking-[0.12em] text-white">{program.label}</span>
@@ -979,11 +994,11 @@ const localBizSchema = {
 
     .training-orbit__node {
       position: absolute;
-      left: calc(50% - 38px);
-      top: calc(50% - 38px);
+      left: calc(50% - 45px);
+      top: calc(50% - 45px);
       display: flex;
-      width: 76px;
-      height: 76px;
+      width: 90px;
+      height: 90px;
       align-items: center;
       justify-content: center;
       overflow: visible;
@@ -992,8 +1007,8 @@ const localBizSchema = {
       background: #E30613;
       color: #fff;
       font-family: Anton, Impact, sans-serif;
-      font-size: 0.95rem;
-      letter-spacing: 0.1em;
+      font-size: 0.74rem;
+      letter-spacing: 0.08em;
       text-decoration: none;
       box-shadow: 0 14px 34px rgba(0,0,0,0.45);
       transition: background 160ms ease;
@@ -1036,7 +1051,9 @@ const localBizSchema = {
     .training-orbit__node-label {
       position: relative;
       z-index: 2;
-      line-height: 1;
+      max-width: 78px;
+      text-align: center;
+      line-height: 0.9;
       text-shadow: 0 2px 10px rgba(0,0,0,0.9);
     }
 
@@ -1048,9 +1065,11 @@ const localBizSchema = {
     }
 
     .training-orbit__node--1 { transform: rotate(0deg) translateX(min(31vw, 202px)) rotate(0deg); }
-    .training-orbit__node--2 { transform: rotate(90deg) translateX(min(31vw, 202px)) rotate(-90deg); }
-    .training-orbit__node--3 { transform: rotate(180deg) translateX(min(31vw, 202px)) rotate(-180deg); }
-    .training-orbit__node--4 { transform: rotate(270deg) translateX(min(31vw, 202px)) rotate(-270deg); }
+    .training-orbit__node--2 { transform: rotate(60deg) translateX(min(31vw, 202px)) rotate(-60deg); }
+    .training-orbit__node--3 { transform: rotate(120deg) translateX(min(31vw, 202px)) rotate(-120deg); }
+    .training-orbit__node--4 { transform: rotate(180deg) translateX(min(31vw, 202px)) rotate(-180deg); }
+    .training-orbit__node--5 { transform: rotate(240deg) translateX(min(31vw, 202px)) rotate(-240deg); }
+    .training-orbit__node--6 { transform: rotate(300deg) translateX(min(31vw, 202px)) rotate(-300deg); }
 
     .training-orbit__tooltip {
       pointer-events: none;
@@ -1126,17 +1145,23 @@ const localBizSchema = {
       }
 
       .training-orbit__node {
-        left: calc(50% - 31px);
-        top: calc(50% - 31px);
-        width: 62px;
-        height: 62px;
-        font-size: 0.72rem;
+        left: calc(50% - 34px);
+        top: calc(50% - 34px);
+        width: 68px;
+        height: 68px;
+        font-size: 0.56rem;
       }
 
       .training-orbit__node--1 { transform: rotate(0deg) translateX(min(34vw, 145px)) rotate(0deg); }
-      .training-orbit__node--2 { transform: rotate(90deg) translateX(min(34vw, 145px)) rotate(-90deg); }
-      .training-orbit__node--3 { transform: rotate(180deg) translateX(min(34vw, 145px)) rotate(-180deg); }
-      .training-orbit__node--4 { transform: rotate(270deg) translateX(min(34vw, 145px)) rotate(-270deg); }
+      .training-orbit__node--2 { transform: rotate(60deg) translateX(min(34vw, 145px)) rotate(-60deg); }
+      .training-orbit__node--3 { transform: rotate(120deg) translateX(min(34vw, 145px)) rotate(-120deg); }
+      .training-orbit__node--4 { transform: rotate(180deg) translateX(min(34vw, 145px)) rotate(-180deg); }
+      .training-orbit__node--5 { transform: rotate(240deg) translateX(min(34vw, 145px)) rotate(-240deg); }
+      .training-orbit__node--6 { transform: rotate(300deg) translateX(min(34vw, 145px)) rotate(-300deg); }
+
+      .training-orbit__node-label {
+        max-width: 58px;
+      }
 
       .training-orbit__tooltip {
         display: none;
