@@ -1,18 +1,348 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const title = 'JFP Program | Joner Football'
+const description = 'Joner Football Performance is a term by term Sydney football training program for ages 8 and over, built around technical, physical and mental development.'
+const canonical = '/training/jfp-program/'
+
+const quickFacts = [
+  { label: 'Ages', value: '8+', note: 'All ability levels welcome' },
+  { label: 'Program', value: '10 week', note: 'Term to term training block' },
+  { label: 'Sessions', value: 'Mon to Sat', note: 'Train up to three times a week' },
+  { label: 'Locations', value: '3 sites', note: 'Belrose, North Turramurra, Rydalmere' },
+]
+
+const locations = [
+  ['HQ Facility Belrose', 'All afternoon sessions run indoors at the Joner Football HQ, giving players a consistent high-quality training environment and protection from bad weather.'],
+  ['North Turramurra', 'Early morning field sessions for players who want technical work before school or before the day starts.'],
+  ['Rydalmere Park', 'Morning sessions for players in the wider Sydney football community.'],
+]
+
+const sellingPoints = [
+  'Early morning sessions, weekday afternoons and Saturday morning options',
+  'For ages 8 and over, across all ability levels',
+  '10 week term to term program',
+  'Dedicated players only',
+  'Improve technically, physically and mentally',
+  'Group training and individual training pathways',
+  'Limited spots available each term',
+]
+
+const trainingBlocks = [
+  { title: 'True professional experience', text: 'Sessions are delivered to a high professional standard by qualified, experienced coaches.' },
+  { title: 'Early morning field sessions', text: 'North Turramurra and Rydalmere Park sessions give players extra technical work around school and family life.' },
+  { title: 'Afternoons at Belrose HQ', text: 'Indoor HQ sessions keep development consistent and allow training to continue during bad weather.' },
+  { title: 'Experienced team of coaches', text: 'Players are challenged, corrected and supported by coaches who care about detail.' },
+]
+
+const faqs = [
+  ['What does the player need to bring?', 'Soccer boots for synthetic, shin guards, drink bottle, waterproof jacket, a smile, a good attitude, and training kit supplied by Deploy.'],
+  ['What should players expect?', 'Energy, enthusiasm, intensity, knowledge, new drills, and a team of coaches who go above and beyond to help players learn.'],
+  ['Will bad weather cancel the session?', 'No. Only really bad storms can alter the session. Afternoon HQ sessions are indoors, so bad weather is far less of a problem.'],
+  ['Who will be in my son or daughter’s group?', 'Coaches group players by age first, then ability. Groups are limited and players can be moved up if they need a stronger challenge.'],
+]
+
+const videos = [
+  {
+    title: 'HQ Training',
+    src: 'https://www.youtube.com/embed/eCmL9QiFtVk?rel=0&controls=1&hd=1',
+  },
+  {
+    title: 'On Field Training',
+    src: 'https://www.youtube.com/embed/-V88Iy1X-is?start=466&rel=0&controls=1&hd=1',
+  },
+]
 ---
 
-<BaseLayout title="JFP Program | Joner Football" description="Joner Football Performance program for serious young footballers in Sydney." canonical="/training/jfp-program/" noindex={true}>
-  <main class="bg-joner-black text-white pt-24">
-    <section class="relative overflow-hidden min-h-[72vh] flex items-center">
-      <img src="/images/training/lee-coaching-action.webp" alt="Lee Jones coaching a Joner Football Performance session" class="absolute inset-0 h-full w-full object-cover object-center opacity-45" />
-      <div class="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/30"></div>
-      <div class="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-24">
-        <p class="font-heading text-sm uppercase tracking-[0.25em] text-joner-red mb-4">Training</p>
-        <h1 class="font-heading text-6xl md:text-8xl uppercase leading-none mb-6">JFP Program</h1>
-        <p class="max-w-2xl font-body text-xl text-gray-300 leading-relaxed mb-8">The main Joner Football player development pathway for serious young footballers.</p>
-        <a href="/contact?type=training-sydney" class="btn-red px-8 py-4">Enquire About JFP</a>
+<BaseLayout title={title} description={description} canonical={canonical} noindex={true} hideMobileAppCta>
+  <Fragment slot="head">
+    <link rel="preload" as="video" href="/images/training/jfp/jfp-hero.mp4" />
+    <link rel="preload" as="font" href="/fonts/Kanit-BlackItalic.ttf" type="font/ttf" crossorigin />
+  </Fragment>
+
+  <main class="jfp-page">
+    <section class="jfp-hero" id="top">
+      <video autoplay muted loop playsinline poster="/images/training/jfp/jfp-training-1.webp" class="jfp-hero-video">
+        <source src="/images/training/jfp/jfp-hero.mp4" type="video/mp4" />
+      </video>
+      <div class="jfp-hero-shade"></div>
+      <div class="jfp-wrap jfp-hero-content">
+        <span class="jfp-eyebrow"><i></i> Sydney player development</span>
+        <h1>Joner Football <span>Performance</span></h1>
+        <p>JFP is the main Joner Football player development pathway in Sydney. Built for players aged 8 and over who want to improve technically, physically and mentally.</p>
+        <div class="jfp-hero-actions">
+          <a href="/contact?type=training-sydney" class="jfp-button">Enquire now<span></span></a>
+          <a href="#program" class="jfp-button jfp-button--ghost">See the program<span></span></a>
+        </div>
+      </div>
+    </section>
+
+    <nav class="jfp-nav" aria-label="JFP page sections">
+      <div class="jfp-wrap">
+        <a href="#program">Program</a>
+        <a href="#locations">Locations</a>
+        <a href="#energy">Energy</a>
+        <a href="#videos">Videos</a>
+        <a href="#faq">FAQ</a>
+        <a href="/contact?type=training-sydney">Enquire</a>
+      </div>
+    </nav>
+
+    <section class="jfp-facts" aria-label="JFP quick facts">
+      <div class="jfp-wrap jfp-facts-grid">
+        {quickFacts.map((fact) => (
+          <div class="jfp-fact">
+            <span>{fact.label}</span>
+            <strong>{fact.value}</strong>
+            <p>{fact.note}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="jfp-intro" id="program">
+      <div class="jfp-wrap jfp-two-col">
+        <div class="jfp-section-head">
+          <span>Joner Football Performance Program</span>
+          <h2>Built to help players reach their full potential.</h2>
+          <i></i>
+        </div>
+        <div class="jfp-copy-stack">
+          <p>Since its launch in 2013, the Joner Football Performance Program has been dedicated to helping players reach their full potential, both on and off the pitch.</p>
+          <p>Over the years, Joner Football has developed thousands of players. Many have gone on to play at higher levels of the game, from elite youth squads to professional and international competition.</p>
+          <p>The program operates Monday through Saturday on a term by term basis, with the flexibility for players to train up to three times per week depending on their schedule and goals.</p>
+          <p>Every session is delivered to a high professional standard by qualified and experienced coaches, with training that is tailored, technical and game-relevant.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="jfp-scroll-showcase" aria-label="JFP training environment showcase">
+      <div class="jfp-scroll-stage">
+        <div class="jfp-scroll-title">
+          <span>Modern player pathway</span>
+          <h2>One program.<br/>Three environments.<br/>Real standards.</h2>
+        </div>
+        <div class="jfp-device-card">
+          <div class="jfp-device-screen">
+            <img src="/images/training/jfp/jfp-training-3.webp" alt="Joner Football player training at JFP" loading="lazy" />
+            <div>
+              <span>JFP</span>
+              <strong>Train with energy, detail and purpose.</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="jfp-locations" id="locations">
+      <div class="jfp-wrap">
+        <div class="jfp-section-head jfp-section-head--light">
+          <span>North Turramurra | HQ Facility Belrose | Rydalmere Park</span>
+          <h2>Train where the session fits your week.</h2>
+          <i></i>
+        </div>
+        <div class="jfp-location-grid">
+          {locations.map(([name, text]) => (
+            <article class="jfp-location-card">
+              <h3>{name}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="jfp-energy" id="energy">
+      <div class="jfp-wrap jfp-two-col jfp-two-col--center">
+        <div class="jfp-photo-stack">
+          <img src="/images/training/jfp/jfp-training-1.webp" alt="Joner Football coach working directly with a player" loading="lazy" />
+          <img src="/images/training/jfp/jfp-training-2.jpg" alt="Joner Football Performance players training" loading="lazy" />
+        </div>
+        <div>
+          <div class="jfp-section-head">
+            <span>Our training comes with energy</span>
+            <h2>Technical work. Real intensity. Better habits.</h2>
+            <i></i>
+          </div>
+          <div class="jfp-point-list">
+            {sellingPoints.map((point) => (
+              <div><span>✓</span>{point}</div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="jfp-blocks">
+      <div class="jfp-wrap jfp-block-grid">
+        {trainingBlocks.map((block) => (
+          <article class="jfp-block">
+            <h3>{block.title}</h3>
+            <p>{block.text}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="jfp-videos" id="videos">
+      <div class="jfp-wrap">
+        <div class="jfp-section-head jfp-section-head--light">
+          <span>Have a look</span>
+          <h2>Same video links from the original page.</h2>
+          <i></i>
+        </div>
+        <div class="jfp-video-grid">
+          {videos.map((video) => (
+            <article class="jfp-video-card">
+              <div class="jfp-video-frame">
+                <iframe
+                  src={video.src}
+                  title={video.title}
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowfullscreen
+                ></iframe>
+              </div>
+              <h3>{video.title}</h3>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="jfp-cta-band">
+      <div class="jfp-wrap jfp-cta-card">
+        <div>
+          <span>Limited spots available</span>
+          <h2>Start training now.</h2>
+          <p>Send a training enquiry and the team will help place the player in the right JFP option.</p>
+        </div>
+        <a href="/contact?type=training-sydney" class="jfp-button">Drop us a line<span></span></a>
+      </div>
+    </section>
+
+    <section class="jfp-faq" id="faq">
+      <div class="jfp-wrap jfp-two-col">
+        <div class="jfp-section-head">
+          <span>Frequently asked questions</span>
+          <h2>Know before you enquire.</h2>
+          <i></i>
+        </div>
+        <div class="jfp-faq-list">
+          {faqs.map(([question, answer]) => (
+            <details>
+              <summary>{question}<span>+</span></summary>
+              <p>{answer}</p>
+            </details>
+          ))}
+        </div>
       </div>
     </section>
   </main>
+
+  <style>
+    @font-face { font-family: 'KanitLocal'; src: url('/fonts/Kanit-BlackItalic.ttf') format('truetype'); font-weight: 900; font-style: italic; font-display: swap; }
+    :global(html) { scroll-behavior: smooth; }
+    .jfp-page { --red:#E30613; --black:#050505; --ink:#0a0a0a; --paper:#f5f5f2; --line:#dfdfd8; --ease:cubic-bezier(.16,1,.3,1); background:var(--black); color:#fff; overflow:hidden; }
+    .jfp-wrap { width:min(100% - 32px, 1180px); margin:0 auto; }
+    .jfp-hero { min-height:94svh; position:relative; display:flex; align-items:flex-end; padding:104px 0 46px; isolation:isolate; }
+    .jfp-hero-video { position:absolute; inset:0; z-index:-3; width:100%; height:100%; object-fit:cover; }
+    .jfp-hero-shade { position:absolute; inset:0; z-index:-2; background:linear-gradient(180deg, rgba(0,0,0,.12), rgba(0,0,0,.56) 44%, rgba(0,0,0,.94)), radial-gradient(circle at 78% 34%, rgba(227,6,19,.22), transparent 34%); }
+    .jfp-hero-content { position:relative; z-index:1; }
+    .jfp-eyebrow, .jfp-section-head span, .jfp-cta-card span { display:inline-flex; align-items:center; gap:10px; color:var(--red); font-family:KanitLocal, Anton, Impact, sans-serif; text-transform:uppercase; letter-spacing:.2em; font-size:12px; }
+    .jfp-eyebrow i { width:9px; height:9px; border-radius:999px; background:var(--red); box-shadow:0 0 0 8px rgba(227,6,19,.16); }
+    .jfp-hero h1 { margin:18px 0 0; max-width:920px; font-family:KanitLocal, Anton, Impact, sans-serif; font-size:clamp(58px, 16vw, 162px); line-height:.78; text-transform:uppercase; letter-spacing:-.055em; text-shadow:0 16px 60px rgba(0,0,0,.62); }
+    .jfp-hero h1 span { display:block; color:var(--red); text-shadow:0 0 34px rgba(227,6,19,.42); }
+    .jfp-hero p { max-width:680px; margin:28px 0 0; color:rgba(255,255,255,.86); font-size:clamp(16px, 2.8vw, 22px); line-height:1.45; }
+    .jfp-hero-actions { display:flex; flex-wrap:wrap; gap:13px; margin-top:30px; }
+    .jfp-button { min-height:48px; display:inline-flex; align-items:center; justify-content:center; position:relative; overflow:hidden; border-radius:999px; padding:15px 24px; border:1px solid rgba(227,6,19,.72); color:#fff; text-decoration:none; background:linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.035)), rgba(5,5,5,.72); box-shadow:0 18px 40px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.22); font-family:KanitLocal, Anton, Impact, sans-serif; text-transform:uppercase; letter-spacing:.14em; font-size:13px; transition:transform .18s var(--ease), border-color .18s var(--ease); }
+    .jfp-button:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.55); }
+    .jfp-button--ghost { border-color:rgba(255,255,255,.28); }
+    .jfp-button span { position:absolute; left:20%; right:20%; bottom:8px; height:2px; background:var(--red); box-shadow:0 0 16px rgba(227,6,19,.7); }
+    .jfp-nav { position:sticky; top:0; z-index:30; background:rgba(5,5,5,.92); backdrop-filter:blur(16px); border-block:1px solid rgba(255,255,255,.1); }
+    .jfp-nav .jfp-wrap { display:flex; gap:24px; overflow-x:auto; padding:14px 0; scrollbar-width:none; }
+    .jfp-nav .jfp-wrap::-webkit-scrollbar { display:none; }
+    .jfp-nav a { flex:0 0 auto; color:#fff; text-decoration:none; font-family:KanitLocal, Anton, Impact, sans-serif; text-transform:uppercase; letter-spacing:.16em; font-size:12px; }
+    .jfp-nav a:last-child { color:var(--red); }
+    .jfp-facts, .jfp-intro, .jfp-energy, .jfp-faq { background:#fff; color:var(--ink); }
+    .jfp-facts { padding:18px 0; }
+    .jfp-facts-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+    .jfp-fact { background:var(--paper); border:1px solid var(--line); padding:18px; }
+    .jfp-fact span { color:var(--red); font-family:KanitLocal, Anton, Impact, sans-serif; text-transform:uppercase; letter-spacing:.18em; font-size:11px; }
+    .jfp-fact strong { display:block; margin-top:8px; font-family:KanitLocal, Anton, Impact, sans-serif; font-size:34px; line-height:.9; text-transform:uppercase; }
+    .jfp-fact p { margin:8px 0 0; color:#565656; font-size:14px; }
+    .jfp-intro, .jfp-energy, .jfp-faq { padding:64px 0; }
+    .jfp-two-col { display:grid; grid-template-columns:1fr; gap:32px; }
+    .jfp-two-col--center { align-items:center; }
+    .jfp-section-head h2, .jfp-scroll-title h2, .jfp-cta-card h2 { margin:12px 0 0; max-width:760px; font-family:KanitLocal, Anton, Impact, sans-serif; font-size:clamp(40px, 10vw, 86px); line-height:.86; text-transform:uppercase; font-style:italic; letter-spacing:-.045em; }
+    .jfp-section-head i { display:block; width:96px; height:5px; margin-top:20px; background:var(--red); transform:skewX(-18deg); }
+    .jfp-section-head--light h2 { color:#fff; }
+    .jfp-copy-stack { display:grid; gap:18px; color:#333; font-size:17px; line-height:1.65; }
+    .jfp-copy-stack p { margin:0; }
+    .jfp-scroll-showcase { min-height:920px; background:linear-gradient(180deg, #fff 0%, #111 16%, #050505 100%); color:#fff; padding:40px 0 120px; }
+    .jfp-scroll-stage { width:min(100% - 24px, 1180px); margin:0 auto; min-height:820px; display:flex; flex-direction:column; align-items:center; justify-content:center; perspective:1000px; }
+    .jfp-scroll-title { text-align:center; max-width:860px; transform:translateY(38px); }
+    .jfp-scroll-title span { color:var(--red); font-family:KanitLocal, Anton, Impact, sans-serif; text-transform:uppercase; letter-spacing:.22em; font-size:12px; }
+    .jfp-device-card { width:min(100%, 980px); height:420px; margin-top:8px; padding:8px; border:4px solid #6c6c6c; border-radius:30px; background:#222; transform:rotateX(14deg) scale(.92); box-shadow:0 0 #0000004d, 0 9px 20px #0000004a, 0 37px 37px #00000042, 0 84px 50px #00000026, 0 149px 60px #0000000a, 0 233px 65px #00000003; }
+    @supports (animation-timeline: view()) {
+      .jfp-device-card { animation:jfp-card both linear; animation-timeline:view(); animation-range:entry 10% cover 62%; }
+      .jfp-scroll-title { animation:jfp-title both linear; animation-timeline:view(); animation-range:entry 10% cover 50%; }
+    }
+    @keyframes jfp-card { from { transform:rotateX(22deg) scale(.76); } to { transform:rotateX(0deg) scale(1); } }
+    @keyframes jfp-title { from { transform:translateY(70px); opacity:.85; } to { transform:translateY(-20px); opacity:1; } }
+    .jfp-device-screen { position:relative; height:100%; width:100%; overflow:hidden; border-radius:22px; background:#111; }
+    .jfp-device-screen img { width:100%; height:100%; object-fit:cover; display:block; }
+    .jfp-device-screen::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, transparent 28%, rgba(0,0,0,.74)); }
+    .jfp-device-screen div { position:absolute; left:20px; right:20px; bottom:20px; z-index:2; }
+    .jfp-device-screen span { color:var(--red); font-family:KanitLocal, Anton, Impact, sans-serif; text-transform:uppercase; letter-spacing:.22em; font-size:12px; }
+    .jfp-device-screen strong { display:block; margin-top:8px; max-width:660px; font-family:KanitLocal, Anton, Impact, sans-serif; text-transform:uppercase; font-size:clamp(28px, 6vw, 64px); line-height:.9; }
+    .jfp-locations, .jfp-videos, .jfp-cta-band, .jfp-blocks { background:var(--black); color:#fff; padding:64px 0; }
+    .jfp-location-grid, .jfp-block-grid { display:grid; grid-template-columns:1fr; gap:14px; margin-top:30px; }
+    .jfp-location-card, .jfp-block { border:1px solid rgba(255,255,255,.12); background:#101010; padding:22px; }
+    .jfp-location-card h3, .jfp-block h3, .jfp-video-card h3 { margin:0; font-family:KanitLocal, Anton, Impact, sans-serif; text-transform:uppercase; font-size:30px; line-height:.95; }
+    .jfp-location-card p, .jfp-block p { margin:14px 0 0; color:rgba(255,255,255,.72); line-height:1.55; }
+    .jfp-photo-stack { display:grid; grid-template-columns:1fr; gap:14px; }
+    .jfp-photo-stack img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; box-shadow:0 22px 60px rgba(0,0,0,.18); }
+    .jfp-point-list { display:grid; gap:12px; margin-top:26px; }
+    .jfp-point-list div { background:var(--paper); border:1px solid var(--line); padding:18px; font-family:KanitLocal, Anton, Impact, sans-serif; text-transform:uppercase; font-size:22px; line-height:1.03; }
+    .jfp-point-list span { color:var(--red); margin-right:8px; }
+    .jfp-blocks { padding-top:0; }
+    .jfp-video-grid { display:grid; grid-template-columns:1fr; gap:18px; margin-top:30px; }
+    .jfp-video-card { background:#101010; border:1px solid rgba(255,255,255,.12); padding:10px; }
+    .jfp-video-frame { aspect-ratio:16/9; background:#000; }
+    .jfp-video-frame iframe { width:100%; height:100%; border:0; display:block; }
+    .jfp-video-card h3 { padding:18px 10px 8px; }
+    .jfp-cta-band { padding-top:0; }
+    .jfp-cta-card { display:grid; grid-template-columns:1fr; gap:24px; border:1px solid rgba(255,255,255,.14); background:linear-gradient(135deg, rgba(227,6,19,.18), rgba(255,255,255,.035)); padding:24px; }
+    .jfp-cta-card p { margin:14px 0 0; color:rgba(255,255,255,.76); font-size:17px; line-height:1.5; }
+    .jfp-faq-list { display:grid; gap:12px; }
+    .jfp-faq-list details { border:1px solid var(--line); background:var(--paper); padding:18px; }
+    .jfp-faq-list summary { cursor:pointer; list-style:none; display:flex; justify-content:space-between; gap:20px; font-family:KanitLocal, Anton, Impact, sans-serif; text-transform:uppercase; font-size:22px; line-height:1.05; }
+    .jfp-faq-list summary::-webkit-details-marker { display:none; }
+    .jfp-faq-list summary span { color:var(--red); transition:transform .16s var(--ease); }
+    .jfp-faq-list details[open] summary span { transform:rotate(45deg); }
+    .jfp-faq-list p { margin:14px 0 0; color:#555; line-height:1.55; }
+    @media (min-width: 700px) {
+      .jfp-facts-grid { grid-template-columns:repeat(4, 1fr); }
+      .jfp-location-grid, .jfp-block-grid { grid-template-columns:repeat(2, 1fr); }
+      .jfp-video-grid { grid-template-columns:repeat(2, 1fr); }
+      .jfp-photo-stack { grid-template-columns:.8fr 1fr; align-items:end; }
+      .jfp-photo-stack img:first-child { transform:translateY(-24px); }
+      .jfp-cta-card { grid-template-columns:1fr auto; align-items:center; padding:40px; }
+    }
+    @media (min-width: 980px) {
+      .jfp-hero { min-height:96vh; padding:128px 0 64px; }
+      .jfp-two-col { grid-template-columns:.84fr 1.16fr; gap:58px; }
+      .jfp-section-head { position:sticky; top:96px; }
+      .jfp-location-grid { grid-template-columns:repeat(3, 1fr); }
+      .jfp-block-grid { grid-template-columns:repeat(4, 1fr); }
+      .jfp-device-card { height:560px; padding:18px; }
+    }
+    @media (max-width: 640px) {
+      .jfp-button { width:100%; }
+      .jfp-device-card { height:360px; border-radius:24px; }
+      .jfp-scroll-showcase { min-height:760px; padding-bottom:80px; }
+      .jfp-scroll-stage { min-height:700px; }
+    }
+  </style>
 </BaseLayout>
