@@ -49,14 +49,6 @@ const selectionRules = [
   'Coachable, fit, ready to be pushed for 3 full days',
 ]
 
-const gallery = [
-  '/images/camps/tcpe/DSC06106-scaled.jpeg.webp',
-  '/images/camps/tcpe/DSC00901-scaled.jpg.webp',
-  '/images/camps/tcpe/IMG_9569-scaled.jpg.webp',
-  '/images/camps/tcpe/JONER-X-FIRST-STRIKE--scaled.jpg.webp',
-  '/images/camps/tcpe/tcpe-jf-fs-image2-component.jpg',
-]
-
 const faqs = [
   { question: 'What does the player need to bring?', answer: 'Soccer boots for synthetic, shin guards, drink bottle, waterproof jacket, a smile, and a good attitude.' },
   { question: 'What should the player wear?', answer: 'Black shorts and white socks. Joner Football will provide the training jersey.' },
@@ -67,8 +59,8 @@ const faqs = [
 ]
 
 const eyebrowClass = 'font-heading text-xs uppercase tracking-[0.18em] text-joner-red'
-const darkHeadingClass = 'font-heading text-[clamp(2.5rem,7vw,4rem)] font-bold uppercase leading-none text-white'
-const lightHeadingClass = 'font-heading text-[clamp(2.5rem,7vw,4rem)] font-bold uppercase leading-none text-joner-black'
+const darkHeadingClass = 'font-heading text-[clamp(2.5rem,7vw,4rem)] font-bold uppercase leading-[1.04] text-white'
+const lightHeadingClass = 'font-heading text-[clamp(2.5rem,7vw,4rem)] font-bold uppercase leading-[1.04] text-joner-black'
 const redButtonClass = 'btn-red'
 
 const eventSchema = {
@@ -146,14 +138,13 @@ const faqSchema = {
           <span class="inline-block h-2 w-2 rounded-full bg-joner-red"></span>
           Selection Only, Application Required
         </p>
-        <h1 class="mt-5 font-heading text-[clamp(3rem,12vw,6rem)] font-bold uppercase leading-[0.85] text-white">
-          <span class="block">LA Complete</span>
-          <span class="block text-joner-red">Player</span>
+        <h1 class="mt-5 font-heading text-[clamp(3rem,12vw,6rem)] font-bold uppercase leading-[1.02] text-white">
+          <span class="block pb-1">LA Complete</span>
+          <span class="block pb-1 text-joner-red">Player</span>
           <span class="block">Experience.</span>
         </h1>
-        <p class="mt-5 max-w-xl font-body text-lg font-semibold leading-snug text-white/95 sm:text-xl md:text-2xl">Joner Football x First Strike Soccer. 3 days of elite training, mindset, nutrition and individual reports. June 2026, Los Angeles.</p>
 
-        <div class="mt-6 grid gap-3 sm:grid-cols-3">
+        <div class="mt-7 grid gap-3 sm:grid-cols-3">
           <div class="border border-joner-red/70 bg-white/95 px-4 py-3 text-joner-black shadow-[0_18px_60px_rgba(0,0,0,.3)]">
             <p class="font-heading text-base uppercase leading-tight tracking-[0.08em]">June 22, 23, 24</p>
           </div>
@@ -196,7 +187,7 @@ const faqSchema = {
     <div class="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)] lg:gap-16 lg:px-8">
       <div class="camp-reveal opacity-0 translate-y-4 transition duration-500 ease-out">
         <p class={eyebrowClass}>Joner Football x First Strike Soccer</p>
-        <h2 class="mt-3 border-l-4 border-joner-red pl-4 font-heading text-[clamp(2.5rem,9vw,5rem)] font-bold uppercase italic leading-[0.88] tracking-tight text-joner-black">Built for serious footballers only.</h2>
+        <h2 class="mt-3 border-l-4 border-joner-red pl-4 font-heading text-[clamp(2.5rem,9vw,5rem)] font-bold uppercase italic leading-[1.02] tracking-tight text-joner-black">Built for serious footballers only.</h2>
         <div class="mt-6 space-y-4 font-body text-base leading-relaxed text-gray-700 md:text-lg">
           <p>This June in Los Angeles, Lee Jones and Bradley Mulvey are teaming up to deliver a footballer's experience like no other.</p>
           <p>This is not a normal camp. High level training, position specific detail, nutrition, mindset, sports science, individual reports and direct coach feedback. All in 3 days.</p>
@@ -266,58 +257,24 @@ const faqSchema = {
     </div>
   </section>
 
-  <section class="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-black">
-    <div class="flex snap-x gap-2 overflow-x-auto md:grid md:grid-cols-12 md:grid-rows-2 md:gap-0">
-      {gallery.slice(0, 5).map((image, index) => (
-        <figure class:list={[
-          'snap-start overflow-hidden bg-gray-900',
-          index === 0 ? 'min-w-[88vw] aspect-[4/3] md:col-span-4 md:row-span-1 md:min-h-[320px] md:min-w-0' : '',
-          index === 1 ? 'min-w-[88vw] aspect-[4/3] md:col-span-4 md:row-span-1 md:min-h-[320px] md:min-w-0' : '',
-          index === 2 ? 'min-w-[88vw] aspect-[3/4] md:col-span-4 md:row-span-2 md:min-h-[640px] md:min-w-0' : '',
-          index === 3 ? 'min-w-[88vw] aspect-[4/3] md:col-span-5 md:row-span-1 md:min-h-[320px] md:min-w-0' : '',
-          index === 4 ? 'min-w-[88vw] aspect-[4/3] md:col-span-3 md:row-span-1 md:min-h-[320px] md:min-w-0' : '',
-        ]}>
-          <img src={image} alt={`LA Complete Player Experience gallery image ${index + 1}`} class="h-full w-full object-cover" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
-        </figure>
-      ))}
-    </div>
-  </section>
-
-  <section id="promise" class="bg-joner-black py-12 text-white md:py-20">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="camp-reveal max-w-2xl opacity-0 translate-y-4 transition duration-500 ease-out">
-        <p class={eyebrowClass}>The Promise</p>
-        <h2 class={darkHeadingClass}>Train hard. Learn deep. Leave better.</h2>
-      </div>
-      <div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-        {promiseBullets.map((item) => (
-          <article class="border border-white/12 bg-white/[0.04] p-5">
-            <h3 class="font-heading text-xl uppercase leading-none tracking-[0.03em] text-white">{item.title}</h3>
-            <p class="mt-3 font-body text-white/72">{item.text}</p>
-          </article>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <section id="faqs" class="bg-white py-12 text-joner-black md:py-20">
-    <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-      <div class="camp-reveal text-center opacity-0 translate-y-4 transition duration-500 ease-out">
-        <p class={eyebrowClass}>FAQ</p>
-        <h2 class={lightHeadingClass}>Before you apply.</h2>
-      </div>
-      <div class="mt-8 space-y-3" id="camp-faq">
-        {faqs.map((item) => (
-          <article class="faq-item border border-gray-200 bg-white">
-            <button class="faq-toggle flex min-h-[56px] w-full items-center justify-between gap-4 p-5 text-left" aria-expanded="false" type="button">
-              <span class="font-heading text-base font-bold uppercase tracking-[0.08em] text-joner-black">{item.question}</span>
-              <span class="faq-icon text-joner-red transition-transform">+</span>
-            </button>
-            <div class="faq-content hidden px-5 pb-5">
-              <p class="font-body leading-relaxed text-gray-700">{item.answer}</p>
+  <section id="promise" class="bg-joner-black text-white">
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+      <figure class="min-h-[320px] overflow-hidden bg-gray-900 lg:min-h-[640px]">
+        <img src="/images/camps/tcpe/DSC00901-scaled.jpg.webp" alt="Lee Jones delivering the Footballers Mindset Seminar" class="h-full w-full object-cover" loading="lazy" decoding="async" />
+      </figure>
+      <div class="flex flex-col justify-center px-4 py-12 sm:px-8 md:py-20 lg:px-14">
+        <div class="camp-reveal opacity-0 translate-y-4 transition duration-500 ease-out">
+          <p class={eyebrowClass}>The Promise</p>
+          <h2 class={darkHeadingClass}>Train hard.<br />Learn deep.<br />Leave better.</h2>
+        </div>
+        <div class="mt-8 space-y-5">
+          {promiseBullets.map((item) => (
+            <div class="border-l-4 border-joner-red pl-5">
+              <h3 class="font-heading text-xl uppercase leading-snug tracking-[0.03em] text-white">{item.title}</h3>
+              <p class="mt-2 font-body leading-relaxed text-white/72">{item.text}</p>
             </div>
-          </article>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   </section>
@@ -412,19 +369,28 @@ const faqSchema = {
     </div>
   </section>
 
-  <section class="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-joner-black py-16 text-white md:py-24">
-    <img src="/images/camps/tcpe/JONER-X-FIRST-STRIKE--scaled.jpg.webp" alt="LA Complete Player Experience final image" class="absolute inset-0 h-full w-full object-cover opacity-30" loading="lazy" decoding="async" />
-    <div class="absolute inset-0 bg-black/70"></div>
-    <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="camp-reveal max-w-3xl opacity-0 translate-y-4 transition duration-500 ease-out">
-        <h2 class="font-heading text-[clamp(2.75rem,9vw,5rem)] uppercase leading-none text-white">
-          <span class="block">30 spots.</span>
-          <span class="block">One camp.</span>
-          <span class="block text-joner-red">Selection only.</span>
-        </h2>
-        <p class="mt-5 font-body text-xl font-semibold text-white/82">If you train like a serious footballer, apply now.</p>
-        <a href="#apply" class={`${redButtonClass} mt-8 w-full text-center sm:w-auto`}>Apply for a spot</a>
-        <p class="mt-4 font-body text-sm text-white/78">Questions? Email leejones@jonerfootball.com</p>
+  <section id="faqs" class="bg-white py-12 text-joner-black md:py-20">
+    <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+      <div class="camp-reveal text-center opacity-0 translate-y-4 transition duration-500 ease-out">
+        <p class={eyebrowClass}>FAQ</p>
+        <h2 class={lightHeadingClass}>Before you apply.</h2>
+      </div>
+      <div class="mt-8 space-y-3" id="camp-faq">
+        {faqs.map((item) => (
+          <article class="faq-item border border-gray-200 bg-white">
+            <button class="faq-toggle flex min-h-[56px] w-full items-center justify-between gap-4 p-5 text-left" aria-expanded="false" type="button">
+              <span class="font-heading text-base font-bold uppercase tracking-[0.08em] text-joner-black">{item.question}</span>
+              <span class="faq-icon text-joner-red transition-transform">+</span>
+            </button>
+            <div class="faq-content hidden px-5 pb-5">
+              <p class="font-body leading-relaxed text-gray-700">{item.answer}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+      <div class="mt-10 text-center">
+        <a href="#apply" class={`${redButtonClass} w-full sm:w-auto`}>Apply for a spot</a>
+        <p class="mt-3 font-body text-sm text-gray-600">Questions? Email leejones@jonerfootball.com</p>
       </div>
     </div>
   </section>
