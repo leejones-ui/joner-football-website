@@ -9,24 +9,28 @@ const trainingPrograms = [
     title: 'JFP Program',
     subtitle: 'Small-group player development, ages 8+',
     href: '#jfp',
+    circleImage: '/images/training/lee-coaching-action.webp',
   },
   {
     label: 'PRO',
     title: 'Professional Training',
     subtitle: 'Elite detail for serious players',
     href: '#pro-training',
+    circleImage: '/images/contact/lee-coaching-landscape.webp',
   },
   {
     label: 'JR',
     title: 'Joners Juniors',
     subtitle: 'Younger players building strong habits',
     href: '#joners-juniors',
+    circleImage: '/images/about/lee-coaching-pitch.webp',
   },
   {
     label: 'GA',
     title: 'Game Analysis',
     subtitle: 'Video review and tactical feedback',
     href: '#game-analysis',
+    circleImage: '/images/programmes/lee-coaching-group.jpg',
   },
 ]
 
@@ -71,10 +75,10 @@ const localBizSchema = {
 
   <!-- Hero -->
   <section class="relative min-h-[calc(100vh-80px)] w-full overflow-hidden bg-joner-black py-12 sm:py-16 lg:py-20">
-    <div class="absolute inset-0 opacity-22">
-      <img src="/images/training/hero-bg.webp" alt="Joner Football training session at indoor facility" class="h-full w-full object-cover object-center" />
+    <div class="absolute inset-0">
+      <img src="/images/contact/lee-coaching-landscape.webp" alt="Lee Jones coaching at Joner Football" class="h-full w-full object-cover object-center" />
     </div>
-    <div class="absolute inset-0 bg-joner-black/82"></div>
+    <div class="absolute inset-0 bg-gradient-to-b from-joner-black/58 via-joner-black/24 to-joner-black/70 lg:bg-gradient-to-r lg:from-joner-black/82 lg:via-joner-black/48 lg:to-joner-black/18"></div>
     <div class="absolute left-0 top-0 h-full w-1 bg-joner-red"></div>
 
     <div class="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 px-4 sm:px-6 lg:min-h-[calc(100vh-180px)] lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
@@ -83,12 +87,8 @@ const localBizSchema = {
         <h1 class="mb-5 font-heading text-5xl font-bold uppercase leading-[0.9] tracking-wide text-white sm:text-6xl lg:text-7xl">
           Find The Right Training
         </h1>
-        <p class="max-w-xl font-body text-base leading-relaxed text-gray-300 sm:text-lg">
-          One place to choose the right Joner Football pathway. JFP for weekly development, professional training for elite detail, Juniors for younger players, and game analysis for players who need clearer feedback.
-        </p>
         <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <a href="#choose-path" class="btn-red text-center text-sm">Compare Programs</a>
-          <a href="#jfp" class="border border-white/20 px-6 py-3 text-center font-heading text-sm uppercase tracking-[0.14em] text-white transition hover:border-joner-red hover:text-joner-red">View JFP</a>
         </div>
       </div>
 
@@ -103,6 +103,7 @@ const localBizSchema = {
               title={`${program.title}: ${program.subtitle}`}
             >
               <span class="training-orbit__node-content">
+                <img src={program.circleImage} alt="" aria-hidden="true" class="training-orbit__node-photo" loading="lazy" />
                 <span class="training-orbit__node-label">{program.label}</span>
                 <span class="training-orbit__tooltip">{program.title}<small>{program.subtitle}</small></span>
               </span>
@@ -951,7 +952,7 @@ const localBizSchema = {
 
     .training-orbit {
       position: relative;
-      width: min(82vw, 520px);
+      width: min(78vw, 520px);
       aspect-ratio: 1;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,0.16);
@@ -985,6 +986,7 @@ const localBizSchema = {
       height: 76px;
       align-items: center;
       justify-content: center;
+      overflow: visible;
       border-radius: 999px;
       border: 2px solid rgba(255,255,255,0.72);
       background: #E30613;
@@ -994,21 +996,24 @@ const localBizSchema = {
       letter-spacing: 0.1em;
       text-decoration: none;
       box-shadow: 0 14px 34px rgba(0,0,0,0.45);
-      transition: transform 160ms ease, background 160ms ease;
+      transition: background 160ms ease;
     }
 
     .training-orbit__node:hover {
       background: #fff;
       color: #E30613;
-      transform: scale(1.08) translateZ(0);
       z-index: 3;
     }
 
     .training-orbit__node-content {
       position: relative;
       display: flex;
+      width: 100%;
+      height: 100%;
       align-items: center;
       justify-content: center;
+      overflow: visible;
+      border-radius: inherit;
       animation: training-orbit-counter 24s linear infinite;
     }
 
@@ -1016,70 +1021,94 @@ const localBizSchema = {
       animation-play-state: paused;
     }
 
-    .training-orbit__node--1 { transform: translateY(-205px); }
-    .training-orbit__node--2 { transform: translateX(205px); }
-    .training-orbit__node--3 { transform: translateY(205px); }
-    .training-orbit__node--4 { transform: translateX(-205px); }
+    .training-orbit__node-photo {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.74;
+      filter: grayscale(1) contrast(1.18) brightness(0.72);
+      border-radius: inherit;
+      transition: opacity 160ms ease, filter 160ms ease, transform 160ms ease;
+    }
 
-    .training-orbit__node--1:hover { transform: translateY(-205px) scale(1.08); }
-    .training-orbit__node--2:hover { transform: translateX(205px) scale(1.08); }
-    .training-orbit__node--3:hover { transform: translateY(205px) scale(1.08); }
-    .training-orbit__node--4:hover { transform: translateX(-205px) scale(1.08); }
+    .training-orbit__node-label {
+      position: relative;
+      z-index: 2;
+      line-height: 1;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+    }
+
+    .training-orbit__node:hover .training-orbit__node-photo,
+    .training-orbit__node:focus-visible .training-orbit__node-photo {
+      opacity: 0.92;
+      filter: grayscale(0.15) contrast(1.22) brightness(0.82);
+      transform: scale(1.08);
+    }
+
+    .training-orbit__node--1 { transform: rotate(0deg) translateX(min(31vw, 202px)) rotate(0deg); }
+    .training-orbit__node--2 { transform: rotate(90deg) translateX(min(31vw, 202px)) rotate(-90deg); }
+    .training-orbit__node--3 { transform: rotate(180deg) translateX(min(31vw, 202px)) rotate(-180deg); }
+    .training-orbit__node--4 { transform: rotate(270deg) translateX(min(31vw, 202px)) rotate(-270deg); }
 
     .training-orbit__tooltip {
       pointer-events: none;
       position: absolute;
       left: 50%;
-      top: calc(100% + 12px);
-      width: 220px;
+      top: calc(100% + 14px);
+      z-index: 20;
+      width: max-content;
+      max-width: 190px;
       transform: translateX(-50%) translateY(6px);
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(10,10,10,0.94);
-      padding: 0.75rem;
-      color: #fff;
-      font-family: Inter, system-ui, sans-serif;
-      font-size: 0.8rem;
-      letter-spacing: 0.02em;
-      line-height: 1.2;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(10,10,10,0.95);
+      color: #FFFFFF;
       opacity: 0;
+      padding: 0.7rem 0.8rem;
+      text-align: center;
+      font-family: Anton, Impact, sans-serif;
+      font-size: 0.9rem;
+      letter-spacing: 0.08em;
+      line-height: 1.05;
+      text-transform: uppercase;
       transition: opacity 160ms ease, transform 160ms ease;
-      text-align: left;
-      z-index: 4;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.42);
     }
 
     .training-orbit__tooltip small {
       display: block;
-      margin-top: 0.35rem;
-      color: rgba(255,255,255,0.62);
-      font-size: 0.72rem;
-      letter-spacing: 0;
+      margin-top: 0.3rem;
+      color: #E30613;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
     }
 
-    .training-orbit__node:hover .training-orbit__tooltip {
+    .training-orbit__node:hover .training-orbit__tooltip,
+    .training-orbit__node:focus-visible .training-orbit__tooltip {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
     }
 
     .training-orbit__center {
       position: absolute;
-      left: 50%;
-      top: 50%;
+      inset: 30%;
       display: flex;
-      width: 34%;
-      aspect-ratio: 1;
-      transform: translate(-50%, -50%);
       align-items: center;
       justify-content: center;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.16);
+      border: 4px solid rgba(227,6,19,0.82);
       background: #0A0A0A;
-      padding: 11%;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+      text-align: center;
+      box-shadow: inset 0 0 30px rgba(255,255,255,0.05), 0 18px 50px rgba(0,0,0,0.42);
     }
 
     .training-orbit__center img {
-      width: 100%;
-      height: auto;
+      width: 84%;
+      height: 84%;
+      object-fit: contain;
+      margin: 0;
+      display: block;
     }
 
     .training-tabs::-webkit-scrollbar {
@@ -1092,27 +1121,22 @@ const localBizSchema = {
 
     @media (max-width: 640px) {
       .training-orbit {
-        width: min(86vw, 360px);
+        width: min(90vw, 380px);
         margin-top: 1rem;
       }
 
       .training-orbit__node {
-        left: calc(50% - 30px);
-        top: calc(50% - 30px);
-        width: 60px;
-        height: 60px;
+        left: calc(50% - 31px);
+        top: calc(50% - 31px);
+        width: 62px;
+        height: 62px;
         font-size: 0.72rem;
       }
 
-      .training-orbit__node--1 { transform: translateY(-140px); }
-      .training-orbit__node--2 { transform: translateX(140px); }
-      .training-orbit__node--3 { transform: translateY(140px); }
-      .training-orbit__node--4 { transform: translateX(-140px); }
-
-      .training-orbit__node--1:hover { transform: translateY(-140px) scale(1.06); }
-      .training-orbit__node--2:hover { transform: translateX(140px) scale(1.06); }
-      .training-orbit__node--3:hover { transform: translateY(140px) scale(1.06); }
-      .training-orbit__node--4:hover { transform: translateX(-140px) scale(1.06); }
+      .training-orbit__node--1 { transform: rotate(0deg) translateX(min(34vw, 145px)) rotate(0deg); }
+      .training-orbit__node--2 { transform: rotate(90deg) translateX(min(34vw, 145px)) rotate(-90deg); }
+      .training-orbit__node--3 { transform: rotate(180deg) translateX(min(34vw, 145px)) rotate(-180deg); }
+      .training-orbit__node--4 { transform: rotate(270deg) translateX(min(34vw, 145px)) rotate(-270deg); }
 
       .training-orbit__tooltip {
         display: none;
