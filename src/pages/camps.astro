@@ -111,6 +111,25 @@ const camps = [
     circleImage: '/images/camps/destination-circles/syd-opera.jpg',
   },
 ]
+
+const testimonials = [
+  {
+    image: '/images/camps/hub/testimonial-parent-california.webp',
+    alt: 'Parent testimonial saying the coaches went above and beyond at a Joner Football camp',
+  },
+  {
+    image: '/images/camps/dallas-2026/testimonials/t1.webp',
+    alt: 'Joner Football camp parent testimonial',
+  },
+  {
+    image: '/images/camps/dallas-2026/testimonials/t2.webp',
+    alt: 'Joner Football camp parent testimonial from California',
+  },
+  {
+    image: '/images/camps/houston-2026/testimonials/t3.webp',
+    alt: 'Joner Football camp family testimonial',
+  },
+]
 ---
 
 <BaseLayout
@@ -120,10 +139,10 @@ const camps = [
 >
   <main class="bg-joner-black text-white overflow-hidden">
     <section class="relative min-h-[calc(100vh-80px)] flex items-center py-14 sm:py-18 lg:py-20">
-      <div class="absolute inset-0 opacity-22">
-        <img src="/images/camps/hero-bg.webp" alt="Joner Football camp group training" class="h-full w-full object-cover" />
+      <div class="absolute inset-0">
+        <img src="/images/camps/hub/camps-hero-lee-coaching.webp" alt="Lee Jones coaching players at a Joner Football camp" class="h-full w-full object-cover object-center" />
       </div>
-      <div class="absolute inset-0 bg-joner-black/82"></div>
+      <div class="absolute inset-0 bg-gradient-to-b from-joner-black/70 via-joner-black/42 to-joner-black/82 lg:bg-gradient-to-r lg:from-joner-black/82 lg:via-joner-black/48 lg:to-joner-black/22"></div>
       <div class="absolute left-0 top-0 h-full w-1 bg-joner-red"></div>
 
       <div class="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-10 px-4 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
@@ -196,6 +215,26 @@ const camps = [
         </div>
       </div>
     </section>
+
+    <section class="bg-joner-black py-12 sm:py-16" aria-labelledby="camp-testimonials-heading">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-7">
+          <p class="mb-2 font-heading text-xs uppercase tracking-[0.25em] text-joner-red">Testimonials</p>
+          <h2 id="camp-testimonials-heading" class="font-heading text-3xl uppercase tracking-wide text-white sm:text-4xl">
+            What Parents Say
+          </h2>
+        </div>
+
+        <div class="testimonial-rail" aria-label="Joner Football camp parent testimonials">
+          {testimonials.map((testimonial) => (
+            <figure class="testimonial-slide">
+              <img src={testimonial.image} alt={testimonial.alt} loading="lazy" />
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <style>
@@ -381,6 +420,48 @@ const camps = [
     .camp-card:hover {
       border-color: #E30613;
       transform: translateY(-3px);
+    }
+
+
+    .testimonial-rail {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(84%, 1fr);
+      gap: 1rem;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x mandatory;
+      padding: 0 0 0.65rem;
+      scrollbar-width: thin;
+      scrollbar-color: #E30613 rgba(255,255,255,0.12);
+    }
+
+    .testimonial-slide {
+      scroll-snap-align: start;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: #0A0A0A;
+      box-shadow: 0 20px 52px rgba(0,0,0,0.34);
+    }
+
+    .testimonial-slide img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+
+    @media (min-width: 768px) {
+      .testimonial-rail {
+        grid-auto-columns: minmax(520px, 66%);
+        gap: 1.25rem;
+      }
+    }
+
+    @media (min-width: 1180px) {
+      .testimonial-rail {
+        grid-auto-columns: minmax(620px, 58%);
+      }
     }
 
     @media (max-width: 640px) {
