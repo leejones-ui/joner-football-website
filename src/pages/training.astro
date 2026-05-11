@@ -560,10 +560,11 @@ const localBizSchema = {
       transition: background 160ms ease;
     }
 
-    .training-orbit__node:hover {
+    .training-orbit__node:hover,
+    .training-orbit__node:focus-visible {
       background: #fff;
       color: #E30613;
-      z-index: 3;
+      z-index: 50;
     }
 
     .training-orbit__node-content {
@@ -657,6 +658,7 @@ const localBizSchema = {
 
     .training-orbit__center {
       position: absolute;
+      z-index: 1;
       inset: 30%;
       display: flex;
       align-items: center;

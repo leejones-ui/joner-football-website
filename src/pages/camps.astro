@@ -379,9 +379,11 @@ const testimonials = [
       transform: translateX(-50%) translateY(0);
     }
 
-    .camp-orbit__node:hover {
+    .camp-orbit__node:hover,
+    .camp-orbit__node:focus-visible {
       background: #fff;
       color: #E30613;
+      z-index: 50;
     }
 
     .camp-orbit__node--1 { transform: rotate(0deg) translateX(min(31vw, 202px)) rotate(0deg); }
@@ -391,6 +393,7 @@ const testimonials = [
 
     .camp-orbit__center {
       position: absolute;
+      z-index: 1;
       inset: 30%;
       display: flex;
       align-items: center;
