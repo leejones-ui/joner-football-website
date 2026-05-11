@@ -172,7 +172,10 @@ const eventSchema = {
         Camp
         <span class="hou-h1-small">3 Day Elite Camp · June 2026</span>
       </h1>
-      <div class="hou-hero-cta" data-motion="fade-up" data-motion-delay="0.2">
+      <p class="hou-hero-collab" data-motion="fade-up" data-motion-delay="0.16">
+        In collaboration with <strong>Kingdom Soccer Training</strong> and <strong>Grande Sports Training</strong>.
+      </p>
+      <div class="hou-hero-cta" data-motion="fade-up" data-motion-delay="0.24">
         <a class="hou-glass hou-glass--lg" href="#register" data-motion-hover="lift">
           Book your spot<span class="hou-glass-underline"></span>
         </a>
@@ -313,18 +316,20 @@ const eventSchema = {
             <img src={t.src} alt={t.alt} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" width="1100" height="619" />
           </div>
         ))}
-        <div class="hou-testi-slide hou-testi-slide--reel" data-testi-slide data-pause-rotate>
+        <div class="hou-testi-slide hou-testi-slide--reel" data-testi-slide>
           <div class="hou-testi-reel-wrap">
-            <iframe
+            <video
               class="hou-testi-reel"
-              src="https://www.instagram.com/reel/DSBSPOhEt4W/embed/"
-              loading="lazy"
-              allow="autoplay; encrypted-media; picture-in-picture"
-              allowfullscreen
-              frameborder="0"
-              scrolling="no"
-              title="Joner Football Houston Camp 2025, parent reel"
-            ></iframe>
+              src="/videos/houston-parent-reel.mp4"
+              poster="/videos/houston-parent-reel-poster.webp"
+              preload="metadata"
+              muted
+              loop
+              playsinline
+              controls
+              data-testi-reel-video
+              aria-label="Joner Football USA Camp parent reel"
+            ></video>
           </div>
         </div>
       </div>
@@ -622,8 +627,7 @@ const eventSchema = {
       pointer-events: none;
     }
     .hou-glass-underline {
-      width: 60%; height: 2px; background: var(--jf-red);
-      box-shadow: 0 0 12px rgba(204,0,0,0.7);
+      display: none;
     }
     .hou-glass:hover {
       box-shadow:
@@ -691,6 +695,20 @@ const eventSchema = {
       font-size: 17px; line-height: 1.55;
       max-width: 560px;
       color: rgba(255,255,255,0.85);
+    }
+    .hou-hero-collab {
+      margin: 22px 0 0;
+      max-width: 620px;
+      font-family: var(--font-body);
+      font-size: clamp(13px, 1.4vw, 15px);
+      line-height: 1.55;
+      letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.82);
+    }
+    .hou-hero-collab strong {
+      font-family: var(--font-display); font-style: italic; font-weight: 900;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: #fff;
     }
     .hou-hero-meta {
       margin-top: 28px;
@@ -995,17 +1013,13 @@ const eventSchema = {
       overflow: hidden;
       background: #000;
     }
-    /* Instagram embed renders an internal header (~52px) and footer (~150px).
-       Pull the iframe up by 52px and pad the height by 220px so both bars
-       fall outside the wrapper's clipped area, leaving just the video. */
     .hou-testi-reel {
-      position: absolute;
-      top: -52px;
-      left: 0;
       width: 100%;
-      height: calc(100% + 220px);
-      border: 0;
+      height: 100%;
+      display: block;
+      object-fit: cover;
       background: #000;
+      border: 0;
     }
     .hou-testi-controls {
       display: flex; justify-content: space-between; align-items: center;
@@ -1339,6 +1353,7 @@ const eventSchema = {
     const nextBtn = document.getElementById('houTestiNext')
     if (stage && dots && prevBtn && nextBtn) {
       const slides = Array.from(stage.querySelectorAll<HTMLElement>('[data-testi-slide]'))
+      const reelVideo = stage.querySelector<HTMLVideoElement>('[data-testi-reel-video]')
       let idx = 0
       let timer: number | null = null
 
@@ -1350,21 +1365,36 @@ const eventSchema = {
         dots.appendChild(b)
       })
 
+      function isReelSlide(i: number) { return slides[i]?.classList.contains('hou-testi-slide--reel') }
       function go(n: number, manual = false) {
         idx = (n + slides.length) % slides.length
         slides.forEach((s, i) => s.classList.toggle('is-active', i === idx))
         Array.from(dots!.children).forEach((d, i) => (d as HTMLElement).classList.toggle('is-active', i === idx))
+        if (reelVideo) {
+          if (isReelSlide(idx)) {
+            reelVideo.currentTime = 0
+            reelVideo.play().catch(() => {})
+          } else {
+            reelVideo.pause()
+          }
+        }
         if (manual) restart()
         else maybeRestart()
       }
       function clearTimer() { if (timer !== null) { window.clearInterval(timer); timer = null } }
-      function isPaused() { return slides[idx]?.hasAttribute('data-pause-rotate') }
+      function isPaused() { return isReelSlide(idx) && !!reelVideo && !reelVideo.paused && !reelVideo.ended }
       function restart() {
         clearTimer()
         if (isPaused()) return
         timer = window.setInterval(() => go(idx + 1), 6000)
       }
       function maybeRestart() { if (isPaused()) clearTimer(); else if (timer === null) restart() }
+
+      if (reelVideo) {
+        reelVideo.addEventListener('play', clearTimer)
+        reelVideo.addEventListener('pause', () => { if (!isReelSlide(idx)) return; if (timer === null) restart() })
+        reelVideo.addEventListener('ended', () => { go(idx + 1, false) })
+      }
 
       prevBtn.addEventListener('click', () => go(idx - 1, true))
       nextBtn.addEventListener('click', () => go(idx + 1, true))
