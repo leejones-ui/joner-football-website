@@ -86,14 +86,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 .story-cta-link::after,
 .jxfs__btn::after,
 .plan-cta::after {
-  content: '';
-  position: absolute;
-  inset: auto 18% 8px;
-  height: 2px;
-  border-radius: 999px;
-  background: rgba(232,0,13,0.75);
-  box-shadow: 0 0 16px rgba(232,0,13,0.72);
-  opacity: 0.85;
+  content: none;
 }
 .btn-red:hover,
 .btn-outline:hover,
