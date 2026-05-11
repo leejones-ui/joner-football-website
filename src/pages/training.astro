@@ -1,7 +1,30 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import EmailCapture from '../components/EmailCapture.astro'
 
+
+
+const trainingVideos = [
+  {
+    title: 'Training In Our Facility',
+    id: 'eCmL9QiFtVk',
+    start: 11,
+  },
+  {
+    title: 'On Field Training',
+    id: '-V88Iy1X-is',
+    start: 466,
+  },
+  {
+    title: 'Position Specific Training',
+    id: 'l5__i4F-l_I',
+    start: 0,
+  },
+  {
+    title: 'Group Training HQ',
+    id: 'ns7I4SzidyQ',
+    start: 0,
+  },
+]
 
 const trainingPrograms = [
   {
@@ -33,7 +56,7 @@ const trainingPrograms = [
     label: 'APP',
     title: 'JF App',
     subtitle: 'Train anywhere with the Joner Football App',
-    href: '/app',
+    href: '/app/',
     circleImage: '/images/training/jf-app-wheel.jpg',
     cardImage: '/images/training/jf-app-card-landscape.jpg',
   },
@@ -41,7 +64,7 @@ const trainingPrograms = [
     label: 'HQ',
     title: 'The HQ',
     subtitle: 'Indoor training facility in Belrose',
-    href: '/hq',
+    href: '/hq/',
     circleImage: '/images/training/hq-wheel.jpg',
     cardImage: '/images/training/hq-wheel.jpg',
   },
@@ -206,54 +229,23 @@ const localBizSchema = {
       </div>
 
       <p class="md:hidden text-gray-500 text-xs uppercase tracking-[0.2em] font-heading text-center mb-4">Swipe highlights</p>
-      <div class="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-visible md:pb-0 scrollbar-hide">
-        <!-- How I Coach -->
-        <div class="flex-shrink-0 w-[82vw] snap-center md:w-auto">
-          <div class="relative w-full" style="aspect-ratio: 16/9;">
-            <iframe
-              srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/D13QAvWlZWg?autoplay=1><img src=https://img.youtube.com/vi/D13QAvWlZWg/hqdefault.jpg alt='How I Coach'><span>&#x25BA;</span></a>"
-              src="https://www.youtube.com/embed/D13QAvWlZWg"
-              title="How I Coach, Joner Football"
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-              class="absolute inset-0 w-full h-full border border-gray-800"
-            ></iframe>
+      <div class="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-4 md:overflow-visible md:pb-0 scrollbar-hide">
+        {trainingVideos.map((video) => (
+          <div class="training-video-card flex-shrink-0 w-[82vw] snap-center md:w-auto">
+            <div class="training-video-card__banner">{video.title}</div>
+            <div class="training-video-card__frame">
+              <iframe
+                srcdoc={`<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}img{height:100%;object-fit:cover}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/${video.id}?autoplay=1&start=${video.start}><img src=https://img.youtube.com/vi/${video.id}/hqdefault.jpg alt='${video.title}'><span>&#x25BA;</span></a>`}
+                src={`https://www.youtube.com/embed/${video.id}?start=${video.start}`}
+                title={`${video.title}, Joner Football`}
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+                class="absolute inset-0 h-full w-full"
+              ></iframe>
+            </div>
           </div>
-          <p class="font-heading text-white text-sm uppercase tracking-wider mt-3">How I Coach</p>
-        </div>
-
-        <!-- Pro Soccer Drills -->
-        <div class="flex-shrink-0 w-[82vw] snap-center md:w-auto">
-          <div class="relative w-full" style="aspect-ratio: 16/9;">
-            <iframe
-              srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/1a1EOdqwF54?autoplay=1><img src=https://img.youtube.com/vi/1a1EOdqwF54/hqdefault.jpg alt='Pro Soccer Drills'><span>&#x25BA;</span></a>"
-              src="https://www.youtube.com/embed/1a1EOdqwF54"
-              title="Pro Soccer Drills, Joner Football"
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-              class="absolute inset-0 w-full h-full border border-gray-800"
-            ></iframe>
-          </div>
-          <p class="font-heading text-white text-sm uppercase tracking-wider mt-3">Pro Soccer Drills</p>
-        </div>
-
-        <!-- Passing Drill Combo -->
-        <div class="flex-shrink-0 w-[82vw] snap-center md:w-auto">
-          <div class="relative w-full" style="aspect-ratio: 16/9;">
-            <iframe
-              srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/J8uguy9_OQ4?autoplay=1><img src=https://img.youtube.com/vi/J8uguy9_OQ4/hqdefault.jpg alt='Passing Drill Combo'><span>&#x25BA;</span></a>"
-              src="https://www.youtube.com/embed/J8uguy9_OQ4"
-              title="Passing Drill Combo, Joner Football"
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-              class="absolute inset-0 w-full h-full border border-gray-800"
-            ></iframe>
-          </div>
-          <p class="font-heading text-white text-sm uppercase tracking-wider mt-3">Passing Drill Combo</p>
-        </div>
+        ))}
       </div>
     </div>
   </section>
@@ -262,11 +254,11 @@ const localBizSchema = {
   <section class="bg-joner-black py-12">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-        <a href="/app" class="training-link-card">
+        <a href="https://app.jonerfootball.com" target="_blank" rel="noopener" class="training-link-card">
           <span>Continue your training at home with the Joner Football App</span>
           <strong>Download the App</strong>
         </a>
-        <a href="/camps" class="training-link-card">
+        <a href="/camps/" class="training-link-card">
           <span>Take your development further at our global camps</span>
           <strong>View Camps</strong>
         </a>
@@ -782,13 +774,25 @@ const localBizSchema = {
       display: flex;
       min-height: clamp(13rem, 17vw, 16rem);
       overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.24);
-      border-radius: 0.45rem;
+      border: 1px solid rgba(255,255,255,0.34);
+      border-radius: 0.55rem;
       background: #050505;
       color: #fff;
       text-decoration: none;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 1rem 2.2rem rgba(0,0,0,0.25);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 1rem 2.2rem rgba(0,0,0,0.32), 0 0 0 1px rgba(227,6,19,0.08);
       transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+    }
+
+    .training-next-step__card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: radial-gradient(circle at 82% 18%, rgba(227,6,19,0.22), transparent 30%), linear-gradient(135deg, rgba(255,255,255,0.14), transparent 34%);
+      opacity: 0.72;
+      mix-blend-mode: screen;
+      transition: opacity 220ms ease;
     }
 
     .training-next-step__card:hover,
@@ -805,16 +809,16 @@ const localBizSchema = {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      opacity: 0.52;
-      filter: grayscale(0.04) contrast(1.22) brightness(1.02) saturate(1.1);
+      opacity: 0.72;
+      filter: grayscale(0) contrast(1.32) brightness(1.12) saturate(1.24);
       transition: opacity 220ms ease, transform 420ms ease, filter 220ms ease;
     }
 
     .training-next-step__card:hover .training-next-step__card-bg,
     .training-next-step__card:focus-visible .training-next-step__card-bg {
-      opacity: 0.68;
-      transform: scale(1.05);
-      filter: grayscale(0) contrast(1.26) brightness(1.08) saturate(1.16);
+      opacity: 0.88;
+      transform: scale(1.055);
+      filter: grayscale(0) contrast(1.38) brightness(1.16) saturate(1.32);
     }
 
     .training-next-step__card-bg.training-orbit__node-photo--contain {
@@ -832,14 +836,14 @@ const localBizSchema = {
     .training-next-step__shade {
       position: absolute;
       inset: 0;
-      background: linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.72)), linear-gradient(90deg, rgba(0,0,0,0.72), rgba(0,0,0,0.12));
+      background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.58)), linear-gradient(90deg, rgba(0,0,0,0.62), rgba(0,0,0,0.06));
     }
 
     .training-next-step__badge,
     .training-next-step__body,
     .training-next-step__arrow {
       position: relative;
-      z-index: 1;
+      z-index: 2;
     }
 
     .training-next-step__badge {
@@ -889,6 +893,32 @@ const localBizSchema = {
       font-size: 1.5rem;
     }
 
+    .training-video-card {
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: #070707;
+      box-shadow: 0 1rem 2.5rem rgba(0,0,0,0.28);
+    }
+
+    .training-video-card__banner {
+      background: linear-gradient(90deg, #E30613, #7e0209);
+      padding: 0.72rem 0.9rem;
+      color: #fff;
+      font-family: Anton, Impact, sans-serif;
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      line-height: 1;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .training-video-card__frame {
+      position: relative;
+      width: 100%;
+      border-top: 1px solid rgba(255,255,255,0.14);
+      aspect-ratio: 16 / 9;
+      background: #0a0a0a;
+    }
 
 
     .training-link-card {
@@ -1232,6 +1262,5 @@ const localBizSchema = {
     }
   </style>
 
-  <EmailCapture />
 </BaseLayout>
 
