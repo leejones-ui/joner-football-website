@@ -1,489 +1,336 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import EmailCapture from '../components/EmailCapture.astro'
 
 const campSchemas = [
   {
-    "@context": "https://schema.org",
-    "@type": "Event",
-    "name": "Joner Football Camp,LA Complete Player Experience",
-    "startDate": "2026-06-22",
-    "endDate": "2026-06-24",
-    "location": {
-      "@type": "Place",
-      "name": "Gol Soccer Complex",
-      "address": {
-        "@type": "PostalAddress",
-        "addressLocality": "North Hollywood",
-        "addressRegion": "CA",
-        "addressCountry": "US"
-      }
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: 'Joner Football LA Complete Player Experience',
+    startDate: '2026-06-22',
+    endDate: '2026-06-24',
+    location: {
+      '@type': 'Place',
+      name: 'Gol Soccer Complex',
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: 'North Hollywood',
+        addressRegion: 'CA',
+        addressCountry: 'US',
+      },
     },
-    "organizer": { "@type": "Organization", "name": "Joner Football" }
+    organizer: { '@type': 'Organization', name: 'Joner Football' },
   },
   {
-    "@context": "https://schema.org",
-    "@type": "Event",
-    "name": "Joner Football Camp,Houston",
-    "startDate": "2026-06",
-    "location": {
-      "@type": "Place",
-      "name": "Houston, Texas",
-      "address": { "@type": "PostalAddress", "addressLocality": "Houston", "addressRegion": "TX", "addressCountry": "US" }
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: 'Joner Football Houston World Cup Camp',
+    startDate: '2026-06-26',
+    endDate: '2026-06-28',
+    location: {
+      '@type': 'Place',
+      name: 'Tomball Training Venue',
+      address: { '@type': 'PostalAddress', addressLocality: 'Houston', addressRegion: 'TX', addressCountry: 'US' },
     },
-    "organizer": { "@type": "Organization", "name": "Joner Football" }
+    organizer: { '@type': 'Organization', name: 'Joner Football' },
   },
   {
-    "@context": "https://schema.org",
-    "@type": "Event",
-    "name": "Joner Football Camp,Dallas",
-    "startDate": "2026-06",
-    "location": {
-      "@type": "Place",
-      "name": "Dallas, Texas",
-      "address": { "@type": "PostalAddress", "addressLocality": "Dallas", "addressRegion": "TX", "addressCountry": "US" }
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: 'Joner Football Dallas World Cup Camp',
+    startDate: '2026-06-30',
+    endDate: '2026-07-02',
+    location: {
+      '@type': 'Place',
+      name: 'Melissa, Texas',
+      address: { '@type': 'PostalAddress', addressLocality: 'Melissa', addressRegion: 'TX', addressCountry: 'US' },
     },
-    "organizer": { "@type": "Organization", "name": "Joner Football" }
+    organizer: { '@type': 'Organization', name: 'Joner Football' },
   },
   {
-    "@context": "https://schema.org",
-    "@type": "Event",
-    "name": "Joner Football Camp,Sydney ft M Grande",
-    "startDate": "2026-07",
-    "location": {
-      "@type": "Place",
-      "name": "Sydney, Australia",
-      "address": { "@type": "PostalAddress", "addressLocality": "Sydney", "addressRegion": "NSW", "addressCountry": "AU" }
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: 'Joner Football Sydney July Camp',
+    startDate: '2026-07-14',
+    endDate: '2026-07-16',
+    location: {
+      '@type': 'Place',
+      name: 'Rydalmere Park',
+      address: { '@type': 'PostalAddress', addressLocality: 'Sydney', addressRegion: 'NSW', addressCountry: 'AU' },
     },
-    "organizer": { "@type": "Organization", "name": "Joner Football" }
-  }
+    organizer: { '@type': 'Organization', name: 'Joner Football' },
+  },
 ]
 
 const camps = [
   {
-    city: 'Los Angeles',
-    state: 'California',
-    country: 'USA',
-    flag: '🇺🇸',
-    dates: 'June 22-24, 2026',
-    ages: 'Ages 13-18 (ECNL/MLS Next)',
-    price: 'By acceptance only',
-    spots: 'The Complete Player Experience',
-    venue: 'Gol Soccer Complex, North Hollywood',
+    label: 'LA',
+    title: 'Los Angeles',
+    subtitle: 'Complete Player Experience',
+    location: 'North Hollywood, California',
+    dates: 'June 22 to 24, 2026',
     href: '/camps/la-tcpe-june',
-    region: 'usa',
-    image: '/images/camps/la-camp.webp',
-    featured: true,
+    image: '/images/camps/tcpe/JONER-X-FIRST-STRIKE--scaled.jpg.webp',
+    alt: 'Joner Football LA Complete Player Experience camp players training',
+    badge: 'Selection only',
   },
   {
-    city: 'Houston',
-    state: 'Texas',
-    country: 'USA',
-    flag: '🇺🇸',
-    dates: 'June 26-28, 2026',
-    ages: 'Ages 8-18',
-    price: 'Registration now open',
-    spots: 'Now live',
-    venue: 'Tomball, TX',
+    label: 'HOU',
+    title: 'Houston',
+    subtitle: 'World Cup Camp',
+    location: 'Tomball, Texas',
+    dates: 'June 26 to 28, 2026',
     href: '/camps/texas-houston-june',
-    region: 'usa',
-    image: '/images/camps/houston-camp.webp',
+    image: '/images/camps/houston/DSC05857-scaled.jpg.webp',
+    alt: 'Joner Football Houston camp players training in Texas',
+    badge: 'Register now',
   },
   {
-    city: 'Dallas',
-    state: 'Texas',
-    country: 'USA',
-    flag: '🇺🇸',
-    dates: 'June 30 - July 2, 2026',
-    ages: 'Ages 8-18',
-    price: 'Registration now open',
-    spots: 'Now live',
-    venue: 'Melissa, TX',
+    label: 'DAL',
+    title: 'Dallas',
+    subtitle: 'World Cup Camp',
+    location: 'Melissa, Texas',
+    dates: 'June 30 to July 2, 2026',
     href: '/camps/texas-dallas-june',
-    region: 'usa',
-    image: '/images/camps/dallas-camp.webp',
+    image: '/images/camps/dallas-2026/photos/hero-lee.webp',
+    alt: 'Coach Lee Jones at Joner Football Dallas camp',
+    badge: 'Register now',
   },
   {
-    city: 'Sydney',
-    state: 'NSW',
-    country: 'Australia',
-    flag: '🇦🇺',
-    dates: 'July 14-16, 2026 ft M Grande',
-    ages: 'Ages 8-18',
-    price: 'Registration now open',
-    spots: 'Now live',
-    venue: 'Rydalmere Park',
+    label: 'SYD',
+    title: 'Sydney',
+    subtitle: 'Big 1 Camp',
+    location: 'Rydalmere Park, NSW',
+    dates: 'July 14 to 16, 2026',
     href: '/camps/sydney-july-2026',
-    region: 'australia',
-    image: '/images/camps/sydney-camp.webp',
+    image: '/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg',
+    alt: 'Joner Football Sydney camp with Lee Jones and Miguel Grande coaching',
+    badge: 'Register now',
   },
 ]
 ---
 
 <BaseLayout
-  title="Football Camps Worldwide | Joner Football"
-  description="Joner Football elite training camps in USA, Australia, and worldwide. Limited spots. Ages 8-18. Book now for 2026 camps in California, Texas, and Sydney."
+  title="Football Camps | Joner Football"
+  description="Choose your Joner Football camp destination. Simple navigation for 2026 camps in Los Angeles, Houston, Dallas, and Sydney."
   schema={campSchemas}
 >
-
-  <!-- Hero -->
-  <section class="relative min-h-[50vh] flex items-center justify-center bg-joner-gray overflow-hidden">
-    <div class="absolute inset-0">
-      <img src="/images/camps/hero-bg.webp" alt="Joner Football elite training camp group photo" class="w-full h-full object-cover object-center" />
-      <div class="absolute inset-0 bg-gradient-to-b from-joner-black/70 via-joner-black/50 to-joner-black/80"></div>
-    </div>
-    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
-
-    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Global Training Camps</p>
-      <h1 class="font-heading text-3xl sm:text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
-        World Recognised<br/>Camps
-      </h1>
-      <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto">
-        Training camps across the globe. Train with Coach Joner and the Joner Football methodology. Limited spots available.
-      </p>
-    </div>
-  </section>
-
-  <!-- Region tags -->
-  <section class="bg-joner-black border-b border-gray-800 sticky top-16 z-30">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <div class="flex flex-wrap gap-2 sm:gap-3 justify-center">
-        <span class="px-3 py-2 sm:px-4 bg-joner-red text-white font-heading text-xs uppercase tracking-wider">2026 Camps</span>
-        <span class="px-3 py-2 sm:px-4 border border-gray-700 text-gray-400 font-heading text-xs uppercase tracking-wider">USA</span>
-        <span class="px-3 py-2 sm:px-4 border border-gray-700 text-gray-400 font-heading text-xs uppercase tracking-wider">Australia</span>
-        <span class="px-3 py-2 sm:px-4 border border-gray-700 text-gray-400 font-heading text-xs uppercase tracking-wider">Registration Pages Live</span>
+  <main class="bg-joner-black text-white overflow-hidden">
+    <section class="relative min-h-[calc(100vh-80px)] flex items-center py-14 sm:py-18 lg:py-20">
+      <div class="absolute inset-0 opacity-22">
+        <img src="/images/camps/hero-bg.webp" alt="Joner Football camp group training" class="h-full w-full object-cover" />
       </div>
-    </div>
-  </section>
+      <div class="absolute inset-0 bg-joner-black/82"></div>
+      <div class="absolute left-0 top-0 h-full w-1 bg-joner-red"></div>
 
-  <!-- Camp cards grid -->
-  <section class="bg-joner-black py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-      <!-- Featured camp (LA Complete Player) -->
-      <div id="la-apply" class="mb-12 scroll-mt-32">
-        <p class="text-joner-red font-heading text-xs uppercase tracking-widest mb-4 text-center">Featured</p>
-        <div class="border-2 border-joner-red bg-joner-gray p-6 md:p-10">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            <div class="bg-joner-black h-48 sm:h-56 md:h-64 overflow-hidden">
-              <img src={camps[0].image} alt="Joner Football LA Complete Player Experience camp in North Hollywood" class="w-full h-full object-cover object-center" loading="lazy" />
-            </div>
-            <div>
-              <div class="flex items-center gap-3 mb-3">
-                <span class="bg-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-white">Elite Level</span>
-                <span class="text-gray-500 font-body text-sm">June 22-24, 2026</span>
-              </div>
-              <h2 class="font-heading text-3xl md:text-4xl font-bold text-white uppercase mb-2">The Complete Player Experience</h2>
-              <p class="text-joner-red font-heading text-sm uppercase tracking-wider mb-4">Gol Soccer Complex, North Hollywood, CA</p>
-              <p class="text-gray-400 font-body mb-6">
-                An elite 3-day immersive training experience for serious players aged 13-18. ECNL and MLS Next level. By acceptance only.
-              </p>
-              <div class="flex flex-wrap gap-4 mb-6">
-                <div class="text-center">
-                  <div class="font-heading text-white font-bold">Ages 13-18</div>
-                  <div class="text-gray-500 text-xs font-body">ECNL / MLS Next</div>
-                </div>
-                <div class="text-center">
-                  <div class="font-heading text-white font-bold">3 Days</div>
-                  <div class="text-gray-500 text-xs font-body">Intensive</div>
-                </div>
-                <div class="text-center">
-                  <div class="font-heading text-white font-bold">Acceptance Only</div>
-                  <div class="text-gray-500 text-xs font-body">Application required</div>
-                </div>
-              </div>
-              <a href="/camps/la-tcpe-june" class="btn-red text-sm">View Camp Details</a>
-            </div>
+      <div class="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-10 px-4 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
+        <div class="max-w-2xl">
+          <p class="mb-4 font-heading text-sm uppercase tracking-[0.28em] text-joner-red">Joner Football Camps</p>
+          <h1 class="mb-5 font-heading text-5xl font-bold uppercase leading-[0.92] tracking-wide text-white sm:text-6xl lg:text-7xl">
+            Choose Your Camp
+          </h1>
+          <p class="max-w-xl font-body text-base leading-relaxed text-gray-300 sm:text-lg">
+            Pick the destination you need. Each camp page has dates, location, booking details, and everything parents need before registering.
+          </p>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a href="#camp-destinations" class="btn-red text-sm">View Destinations</a>
+            <a href="/training" class="btn-outline text-sm">Sydney Training</a>
           </div>
         </div>
-      </div>
 
-      <!-- All camps grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {camps.filter(c => !c.featured).map((camp) => (
-          <div class="border border-gray-800 hover:border-joner-red transition-colors group">
-            <!-- Camp image -->
-            <div class="bg-joner-gray h-48 overflow-hidden relative">
-              <img src={camp.image} alt={`Joner Football training camp in ${camp.city}, ${camp.state}`} class="w-full h-full object-cover object-center" loading="lazy" />
-              <div class="absolute top-3 left-3 text-2xl">{camp.flag}</div>
-              {camp.spots === 'Coming soon' && (
-                <div class="absolute top-3 right-3 bg-gray-800/80 px-2 py-1 font-heading text-xs uppercase tracking-wider text-white">
-                  Coming Soon
-                </div>
-              )}
-              {camp.spots === 'Now live' && (
-                <div class="absolute top-3 right-3 bg-joner-red/90 px-2 py-1 font-heading text-xs uppercase tracking-wider text-white">
-                  Register Now
-                </div>
-              )}
-            </div>
-            <!-- Content -->
-            <div class="p-6">
-              <div class="text-xs text-joner-red font-heading uppercase tracking-wider mb-2">{camp.dates}</div>
-              <h3 class="font-heading text-xl font-bold text-white mb-1 group-hover:text-joner-red transition-colors">
-                {camp.city}, {camp.state}
-              </h3>
-              <p class="text-gray-500 text-sm font-body mb-1">{camp.ages}</p>
-              <p class="text-gray-500 text-sm font-body mb-1">{camp.venue}</p>
-              <p class="text-gray-400 text-sm font-body font-semibold mb-4">{camp.price}</p>
-              <a href={camp.href} class="btn-red text-sm w-full text-center block">
-                View Camp Details
+        <div class="camp-orbit mx-auto" aria-label="Joner Football camp destination wheel">
+          <div class="camp-orbit__ring" aria-hidden="true"></div>
+          <div class="camp-orbit__spin">
+            {camps.map((camp, index) => (
+              <a
+                href={camp.href}
+                class={`camp-orbit__node camp-orbit__node--${index + 1}`}
+                aria-label={`Open ${camp.title} camp page`}
+              >
+                <span>{camp.label}</span>
               </a>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <!-- What to expect -->
-  <section class="bg-joner-gray py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">At Every Camp</p>
-        <h2 class="section-heading text-white">What to Expect</h2>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="border border-gray-800 overflow-hidden group">
-          <div class="h-48 overflow-hidden">
-            <img src="/images/camps/expect-1.webp" alt="Joner Football elite training session at camp" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-          </div>
-          <div class="p-6">
-            <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Elite Training</h3>
-            <p class="text-gray-400 text-sm font-body">World-class coaching methodology. Technical focus. Individual attention.</p>
-          </div>
-        </div>
-        <div class="border border-gray-800 overflow-hidden group">
-          <div class="h-48 overflow-hidden">
-            <img src="/images/camps/expect-2.webp" alt="Coach Joner training players at football camp" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-          </div>
-          <div class="p-6">
-            <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Coach Joner</h3>
-            <p class="text-gray-400 text-sm font-body">Train directly with Lee Jones. Hands-on coaching. Personal feedback.</p>
-          </div>
-        </div>
-        <div class="border border-gray-800 overflow-hidden group">
-          <div class="h-48 overflow-hidden">
-            <img src="/images/camps/expect-3.webp" alt="Small group training at Joner Football camp" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-          </div>
-          <div class="p-6">
-            <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Small Groups</h3>
-            <p class="text-gray-400 text-sm font-body">Limited numbers. Grouped by age and ability. Maximum development.</p>
-          </div>
-        </div>
-        <div class="border border-gray-800 overflow-hidden group">
-          <div class="h-48 overflow-hidden">
-            <img src="/images/camps/expect-4.webp" alt="Joner Football camp kit and training equipment" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-          </div>
-          <div class="p-6">
-            <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Camp Kit</h3>
-            <p class="text-gray-400 text-sm font-body">Joner Football training kit included. Professional experience.</p>
+          <div class="camp-orbit__center">
+            <img src="/images/joner-logo-white.png" alt="Joner Football" class="mx-auto mb-3 h-10 w-auto object-contain" />
+            <span>2026 Camps</span>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Camp highlight videos -->
-  <section class="bg-joner-black py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-10">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Camp Highlights</p>
-        <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase">See Our Camps</h2>
-      </div>
+    <section id="camp-destinations" class="border-y border-white/10 bg-joner-gray py-12 sm:py-16 scroll-mt-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p class="mb-2 font-heading text-xs uppercase tracking-[0.25em] text-joner-red">Available Pages</p>
+            <h2 class="font-heading text-3xl uppercase tracking-wide text-white sm:text-4xl">Camp Destinations</h2>
+          </div>
+          <p class="max-w-xl text-sm leading-relaxed text-gray-400 sm:text-right">
+            Simple page. No clutter. Choose the camp and go straight to the right booking information.
+          </p>
+        </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <div class="relative w-full" style="aspect-ratio: 16/9;">
-            <iframe
-              srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/P-qQj2J_-mE?autoplay=1><img src=https://img.youtube.com/vi/P-qQj2J_-mE/hqdefault.jpg alt='Joner Football Camp Highlight 1'><span>&#x25BA;</span></a>"
-              src="https://www.youtube.com/embed/P-qQj2J_-mE"
-              title="Joner Football Camp Highlight"
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-              class="absolute inset-0 w-full h-full border border-gray-800"
-            ></iframe>
-          </div>
-        </div>
-        <div>
-          <div class="relative w-full" style="aspect-ratio: 16/9;">
-            <iframe
-              srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/ZEAlkFIzVQc?autoplay=1><img src=https://img.youtube.com/vi/ZEAlkFIzVQc/hqdefault.jpg alt='Joner Football Camp Highlight 2'><span>&#x25BA;</span></a>"
-              src="https://www.youtube.com/embed/ZEAlkFIzVQc"
-              title="Joner Football Camp Highlight"
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-              class="absolute inset-0 w-full h-full border border-gray-800"
-            ></iframe>
-          </div>
-        </div>
-        <div>
-          <div class="relative w-full" style="aspect-ratio: 16/9;">
-            <iframe
-              srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/oooWE3pAgm8?autoplay=1><span>&#x25BA;</span></a>"
-              src="https://www.youtube.com/embed/oooWE3pAgm8"
-              title="Joner Football Camp Highlight"
-              loading="lazy"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-              class="absolute inset-0 w-full h-full border border-gray-800"
-            ></iframe>
-          </div>
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {camps.map((camp) => (
+            <a href={camp.href} class="camp-card group" aria-label={`View ${camp.title} camp details`}>
+              <div class="relative h-56 overflow-hidden bg-joner-black">
+                <img src={camp.image} alt={camp.alt} loading="lazy" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                <div class="absolute inset-0 bg-joner-black/34"></div>
+                <div class="absolute left-4 top-4 rounded-full border border-white/25 bg-joner-black/75 px-3 py-1 font-heading text-xs uppercase tracking-[0.16em] text-white">
+                  {camp.badge}
+                </div>
+              </div>
+              <div class="p-5">
+                <p class="mb-2 font-heading text-xs uppercase tracking-[0.22em] text-joner-red">{camp.dates}</p>
+                <h3 class="font-heading text-3xl uppercase tracking-wide text-white group-hover:text-joner-red">{camp.title}</h3>
+                <p class="mt-1 font-heading text-sm uppercase tracking-[0.16em] text-gray-300">{camp.subtitle}</p>
+                <p class="mt-4 text-sm text-gray-400">{camp.location}</p>
+                <span class="mt-5 inline-flex items-center font-heading text-sm uppercase tracking-[0.14em] text-white">
+                  Open Camp Page
+                  <span class="ml-2 text-joner-red transition group-hover:translate-x-1">→</span>
+                </span>
+              </div>
+            </a>
+          ))}
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </main>
 
-  <!-- Past camps gallery placeholder -->
-  <section class="bg-joner-black py-16">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Gallery</p>
-        <h2 class="section-heading text-white">Past Camps</h2>
-      </div>
+  <style>
+    @keyframes camp-orbit-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[1,2,3,4,5,6,7,8].map((n) => (
-          <div class="bg-joner-gray aspect-square overflow-hidden">
-            <img src={`/images/camps/gallery-${n}.webp`} alt={`Joner Football training camp action photo ${n}`} class="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-300" loading="lazy" />
-          </div>
-        ))}
-      </div>
+    @keyframes camp-orbit-counter {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(-360deg); }
+    }
 
-      <div class="text-center mt-8">
-        <p class="text-gray-400 font-body">Based in Sydney? <a href="/training" class="text-joner-red hover:underline font-semibold">Train with us year-round</a></p>
-      </div>
-    </div>
-  </section>
+    .camp-orbit {
+      position: relative;
+      width: min(78vw, 520px);
+      aspect-ratio: 1;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(26,26,26,0.84);
+      box-shadow: 0 28px 80px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(227,6,19,0.24);
+    }
 
-  <!-- CTA -->
-  <section id="camps-notify" class="bg-joner-red py-12 md:py-16 scroll-mt-20">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-      <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
-        Don't Miss Out
-      </h2>
-      <p class="text-white/80 font-body mb-6">
-        Camps sell out fast. Register your interest to be first in line.
-      </p>
-    </div>
-  </section>
+    .camp-orbit__ring {
+      position: absolute;
+      inset: 13%;
+      border-radius: 999px;
+      border: 1px dashed rgba(255,255,255,0.22);
+    }
 
-  <!-- FAQ Accordion -->
-  <section class="bg-joner-black py-16 md:py-24">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Questions</p>
-        <h2 class="section-heading text-white">Camp FAQ</h2>
-      </div>
+    .camp-orbit__spin {
+      position: absolute;
+      inset: 0;
+      animation: camp-orbit-spin 24s linear infinite;
+    }
 
-      <div class="space-y-3" id="camp-faq">
-        <div class="faq-item border border-gray-800">
-          <button class="faq-toggle w-full flex items-center justify-between p-6 text-left min-h-[44px]" aria-expanded="false">
-            <span class="font-heading text-white font-bold uppercase tracking-wide text-sm pr-4">What does the player need to bring?</span>
-            <svg class="faq-icon w-5 h-5 text-joner-red flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="faq-content hidden px-6 pb-6">
-            <p class="text-gray-400 font-body text-sm leading-relaxed">Football boots for synthetic. Shin guards. Drinks bottle. Waterproof jacket. A smile. Good attitude.</p>
-          </div>
-        </div>
+    .camp-orbit:hover .camp-orbit__spin {
+      animation-play-state: paused;
+    }
 
-        <div class="faq-item border border-gray-800">
-          <button class="faq-toggle w-full flex items-center justify-between p-6 text-left min-h-[44px]" aria-expanded="false">
-            <span class="font-heading text-white font-bold uppercase tracking-wide text-sm pr-4">What should the player wear?</span>
-            <svg class="faq-icon w-5 h-5 text-joner-red flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="faq-content hidden px-6 pb-6">
-            <p class="text-gray-400 font-body text-sm leading-relaxed">Black shorts. White socks. Joner Football will provide a training jersey.</p>
-          </div>
-        </div>
+    .camp-orbit__node {
+      position: absolute;
+      left: calc(50% - 38px);
+      top: calc(50% - 38px);
+      display: flex;
+      width: 76px;
+      height: 76px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 2px solid rgba(255,255,255,0.72);
+      background: #E30613;
+      color: #fff;
+      font-family: Anton, Impact, sans-serif;
+      font-size: 1rem;
+      letter-spacing: 0.12em;
+      text-decoration: none;
+      box-shadow: 0 14px 34px rgba(0,0,0,0.45);
+      transition: transform 160ms ease, background 160ms ease;
+    }
 
-        <div class="faq-item border border-gray-800">
-          <button class="faq-toggle w-full flex items-center justify-between p-6 text-left min-h-[44px]" aria-expanded="false">
-            <span class="font-heading text-white font-bold uppercase tracking-wide text-sm pr-4">What to expect?</span>
-            <svg class="faq-icon w-5 h-5 text-joner-red flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="faq-content hidden px-6 pb-6">
-            <p class="text-gray-400 font-body text-sm leading-relaxed">Expect energy, enthusiasm, intensity, knowledge, drills that you have never done before and above all else bags of fun. Our team of coaches will go above and beyond to make sure you are learning.</p>
-          </div>
-        </div>
+    .camp-orbit__node span {
+      animation: camp-orbit-counter 24s linear infinite;
+    }
 
-        <div class="faq-item border border-gray-800">
-          <button class="faq-toggle w-full flex items-center justify-between p-6 text-left min-h-[44px]" aria-expanded="false">
-            <span class="font-heading text-white font-bold uppercase tracking-wide text-sm pr-4">Will bad weather cancel the camp?</span>
-            <svg class="faq-icon w-5 h-5 text-joner-red flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="faq-content hidden px-6 pb-6">
-            <p class="text-gray-400 font-body text-sm leading-relaxed">No. Only really bad storms can delay the camp.</p>
-          </div>
-        </div>
+    .camp-orbit:hover .camp-orbit__node span {
+      animation-play-state: paused;
+    }
 
-        <div class="faq-item border border-gray-800">
-          <button class="faq-toggle w-full flex items-center justify-between p-6 text-left min-h-[44px]" aria-expanded="false">
-            <span class="font-heading text-white font-bold uppercase tracking-wide text-sm pr-4">Will there be photos and videos?</span>
-            <svg class="faq-icon w-5 h-5 text-joner-red flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="faq-content hidden px-6 pb-6">
-            <p class="text-gray-400 font-body text-sm leading-relaxed">We will have our team of professional photographers and videographers on the day doing their thing. You can ask on the day for copies.</p>
-          </div>
-        </div>
+    .camp-orbit__node:hover {
+      background: #fff;
+      color: #E30613;
+    }
 
-        <div class="faq-item border border-gray-800">
-          <button class="faq-toggle w-full flex items-center justify-between p-6 text-left min-h-[44px]" aria-expanded="false">
-            <span class="font-heading text-white font-bold uppercase tracking-wide text-sm pr-4">What about sizing for the training jersey?</span>
-            <svg class="faq-icon w-5 h-5 text-joner-red flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="faq-content hidden px-6 pb-6">
-            <p class="text-gray-400 font-body text-sm leading-relaxed">Please be mindful of the size you choose on the form. That is the size you will get. Be mindful of how much your son or daughter would have grown by the time the camp comes around.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+    .camp-orbit__node--1 { transform: rotate(0deg) translateX(min(31vw, 202px)) rotate(0deg); }
+    .camp-orbit__node--2 { transform: rotate(90deg) translateX(min(31vw, 202px)) rotate(-90deg); }
+    .camp-orbit__node--3 { transform: rotate(180deg) translateX(min(31vw, 202px)) rotate(-180deg); }
+    .camp-orbit__node--4 { transform: rotate(270deg) translateX(min(31vw, 202px)) rotate(-270deg); }
 
-  <script>
-    document.querySelectorAll('.faq-toggle').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const item = btn.closest('.faq-item')!
-        const content = item.querySelector('.faq-content')!
-        const icon = btn.querySelector('.faq-icon')!
-        const isOpen = !content.classList.contains('hidden')
+    .camp-orbit__center {
+      position: absolute;
+      inset: 29%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 4px solid rgba(227,6,19,0.82);
+      background: #0A0A0A;
+      text-align: center;
+      box-shadow: inset 0 0 30px rgba(255,255,255,0.05), 0 18px 50px rgba(0,0,0,0.42);
+    }
 
-        // Close all
-        document.querySelectorAll('.faq-item').forEach(faq => {
-          faq.querySelector('.faq-content')!.classList.add('hidden')
-          faq.querySelector('.faq-icon')!.classList.remove('rotate-180')
-          faq.querySelector('.faq-toggle')!.setAttribute('aria-expanded', 'false')
-        })
+    .camp-orbit__center span {
+      font-family: Anton, Impact, sans-serif;
+      font-size: clamp(1.1rem, 3.2vw, 2rem);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
 
-        // Open clicked if it was closed
-        if (!isOpen) {
-          content.classList.remove('hidden')
-          icon.classList.add('rotate-180')
-          btn.setAttribute('aria-expanded', 'true')
-        }
-      })
-    })
-  </script>
+    .camp-card {
+      display: block;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: #0A0A0A;
+      text-decoration: none;
+      transition: border-color 160ms ease, transform 160ms ease;
+    }
 
-  <!-- App CTA -->
-  <section class="bg-joner-red py-12 md:py-16">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-      <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
-        Train Between Camps
-      </h2>
-      <p class="text-white/80 font-body mb-6">
-        Keep improving with 1,500+ drills on the Joner Football App. Your complete training platform.
-      </p>
-      <a href="/app" class="bg-white text-joner-red font-heading text-base uppercase tracking-wider px-8 py-4 hover:bg-gray-100 transition-colors inline-block">
-        Try the World's #1 Football App Free
-      </a>
-    </div>
-  </section>
+    .camp-card:hover {
+      border-color: #E30613;
+      transform: translateY(-3px);
+    }
 
-  <EmailCapture />
+    @media (max-width: 640px) {
+      .camp-orbit {
+        width: min(90vw, 380px);
+      }
+      .camp-orbit__node {
+        left: calc(50% - 31px);
+        top: calc(50% - 31px);
+        width: 62px;
+        height: 62px;
+        font-size: 0.82rem;
+      }
+      .camp-orbit__node--1 { transform: rotate(0deg) translateX(min(34vw, 145px)) rotate(0deg); }
+      .camp-orbit__node--2 { transform: rotate(90deg) translateX(min(34vw, 145px)) rotate(-90deg); }
+      .camp-orbit__node--3 { transform: rotate(180deg) translateX(min(34vw, 145px)) rotate(-180deg); }
+      .camp-orbit__node--4 { transform: rotate(270deg) translateX(min(34vw, 145px)) rotate(-270deg); }
+    }
 
+    @media (prefers-reduced-motion: reduce) {
+      .camp-orbit__spin,
+      .camp-orbit__node span {
+        animation: none;
+      }
+    }
+  </style>
 </BaseLayout>
