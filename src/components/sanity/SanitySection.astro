@@ -1,0 +1,116 @@
+---
+import { portableTextToHtml } from '../../lib/sanityPortableText'
+
+const { section } = Astro.props
+
+const bodyHtml = portableTextToHtml(section?.body || [])
+const sectionImage = section?.image?.imageUrl
+const sectionAlt = section?.image?.alt || section?.headline || section?.label || 'Joner Football section image'
+const gallery = Array.isArray(section?.gallery) ? section.gallery.filter((item: any) => item?.imageUrl && !item?.hideImage) : []
+const items = Array.isArray(section?.items) ? section.items.filter((item: any) => item?.showItem !== false) : []
+const faqs = Array.isArray(section?.faqs) ? section.faqs.filter((item: any) => item?.question && item?.answer) : []
+const buttons = Array.isArray(section?.buttons) ? section.buttons.filter((item: any) => item?.label && item?.url) : []
+const pricing = Array.isArray(section?.pricingOptions) ? section.pricingOptions.filter((item: any) => item?.label) : []
+const testimonials = Array.isArray(section?.testimonials) ? section.testimonials.filter((item: any) => item?.quote) : []
+const isImageHeavy = ['fullWidthImage', 'gallery'].includes(section?.sectionType)
+---
+
+<section class={`border-t border-white/10 py-16 md:py-20 ${isImageHeavy ? 'bg-black/20' : ''}`}>
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <div class={`grid gap-10 ${sectionImage && section?.sectionType === 'textImage' ? 'lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)] lg:items-center' : ''}`}>
+      <div>
+        {section?.eyebrow && <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">{section.eyebrow}</p>}
+        {section?.headline && <h2 class="font-heading text-3xl font-black uppercase leading-tight text-white md:text-5xl">{section.headline}</h2>}
+        {section?.subheadline && <p class="mt-4 max-w-3xl font-body text-lg leading-relaxed text-gray-300">{section.subheadline}</p>}
+        {bodyHtml && <div class="mt-6 space-y-4" set:html={bodyHtml} />}
+
+        {buttons.length > 0 && (
+          <div class="mt-8 flex flex-wrap gap-4">
+            {buttons.map((button: any) => (
+              <a
+                href={button.url}
+                target={button.openInNewTab ? '_blank' : undefined}
+                rel={button.openInNewTab ? 'noreferrer noopener' : undefined}
+                class={button.style === 'secondary' ? 'btn-outline' : button.style === 'text' ? 'font-heading text-sm uppercase tracking-[0.2em] text-joner-red' : 'btn-red'}
+              >
+                {button.label}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {sectionImage && section?.sectionType === 'textImage' && (
+        <div>
+          <img src={sectionImage} alt={sectionAlt} class="h-full w-full rounded-sm object-cover" />
+          {section?.image?.caption && <p class="mt-3 font-body text-sm text-gray-500">{section.image.caption}</p>}
+        </div>
+      )}
+    </div>
+
+    {sectionImage && section?.sectionType === 'fullWidthImage' && (
+      <div class="mt-8 overflow-hidden rounded-sm border border-white/10">
+        <img src={sectionImage} alt={sectionAlt} class="h-full w-full object-cover" />
+        {section?.image?.caption && <p class="border-t border-white/10 bg-black/30 px-4 py-3 font-body text-sm text-gray-400">{section.image.caption}</p>}
+      </div>
+    )}
+
+    {items.length > 0 && (
+      <div class="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {items.map((item: any) => (
+          <article class="border border-white/10 bg-white/5 p-5">
+            {item?.image?.imageUrl && <img src={item.image.imageUrl} alt={item.image.alt || item.title || 'Joner Football item'} class="mb-4 h-48 w-full object-cover" />}
+            {item.title && <h3 class="font-heading text-xl font-bold uppercase text-white">{item.title}</h3>}
+            {item.description && <p class="mt-3 font-body leading-relaxed text-gray-300">{item.description}</p>}
+            {item?.button?.label && item?.button?.url && <a href={item.button.url} class="mt-4 inline-flex font-heading text-xs uppercase tracking-[0.2em] text-joner-red">{item.button.label}</a>}
+          </article>
+        ))}
+      </div>
+    )}
+
+    {gallery.length > 0 && (
+      <div class="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {gallery.map((image: any) => (
+          <figure class="overflow-hidden border border-white/10 bg-white/5">
+            <img src={image.imageUrl} alt={image.alt || 'Joner Football gallery image'} class="h-64 w-full object-cover" />
+            {image.caption && <figcaption class="px-4 py-3 font-body text-sm text-gray-400">{image.caption}</figcaption>}
+          </figure>
+        ))}
+      </div>
+    )}
+
+    {pricing.length > 0 && (
+      <div class="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {pricing.map((option: any) => (
+          <article class={`border p-5 ${option.featured ? 'border-joner-red bg-joner-red/10' : 'border-white/10 bg-white/5'}`}>
+            <p class="font-heading text-xs uppercase tracking-[0.24em] text-joner-red">{option.label}</p>
+            {option.price && <p class="mt-3 font-heading text-3xl font-black text-white">{option.price}</p>}
+            {option.description && <p class="mt-3 font-body text-gray-300">{option.description}</p>}
+          </article>
+        ))}
+      </div>
+    )}
+
+    {testimonials.length > 0 && (
+      <div class="mt-10 grid gap-4 lg:grid-cols-2">
+        {testimonials.map((item: any) => (
+          <blockquote class="border border-white/10 bg-white/5 p-6">
+            <p class="font-body text-lg leading-relaxed text-gray-200">“{item.quote}”</p>
+            {(item.name || item.role) && <footer class="mt-4 font-body text-sm text-gray-400">{[item.name, item.role].filter(Boolean).join(', ')}</footer>}
+          </blockquote>
+        ))}
+      </div>
+    )}
+
+    {faqs.length > 0 && (
+      <div class="mt-10 space-y-4">
+        {faqs.map((faq: any) => (
+          <details class="border border-white/10 bg-white/5 p-5">
+            <summary class="cursor-pointer list-none font-heading text-lg uppercase text-white">{faq.question}</summary>
+            <p class="mt-3 font-body leading-relaxed text-gray-300">{faq.answer}</p>
+          </details>
+        ))}
+      </div>
+    )}
+  </div>
+</section>

@@ -1,7 +1,18 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+
+const sanityPage = await fetchSanityPage('terms')
 ---
-<BaseLayout title="Terms of Service | Joner Football" description="Joner Football terms of service. Terms and conditions for using jonerfootball.com and the Joner Football App.">
+{sanityPage ? (
+  <SanityPageRenderer
+    page={sanityPage}
+    fallbackTitle="Terms of Service | Joner Football"
+    fallbackDescription="Joner Football terms of service. Terms and conditions for using jonerfootball.com and the Joner Football App."
+  />
+) : (
+  <BaseLayout title="Terms of Service | Joner Football" description="Joner Football terms of service. Terms and conditions for using jonerfootball.com and the Joner Football App.">
   <section class="min-h-screen bg-joner-black py-24">
     <div class="max-w-3xl mx-auto px-4">
       <h1 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase mb-4">Terms of Service</h1>
@@ -102,4 +113,5 @@ import BaseLayout from '../layouts/BaseLayout.astro'
       </div>
     </div>
   </section>
-</BaseLayout>
+  </BaseLayout>
+)}

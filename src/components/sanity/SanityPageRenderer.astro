@@ -1,0 +1,44 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import SanitySection from './SanitySection.astro'
+
+const { page, fallbackTitle, fallbackDescription } = Astro.props
+
+const sections = Array.isArray(page?.sections) ? page.sections.filter((section: any) => section?.active !== false) : []
+const heroImage = page?.heroImage?.imageUrl
+const heroAlt = page?.heroImage?.alt || page?.heroHeadline || page?.title || 'Joner Football hero image'
+const seoTitle = page?.seo?.title || fallbackTitle || page?.title || 'Joner Football'
+const seoDescription = page?.seo?.description || fallbackDescription || page?.heroSubheadline || ''
+---
+
+<BaseLayout
+  title={seoTitle}
+  description={seoDescription}
+  canonical={page?.seo?.canonicalUrl}
+  ogImage={page?.seo?.imageUrl || heroImage || undefined}
+  noindex={Boolean(page?.seo?.noIndex)}
+>
+  <section class="relative overflow-hidden bg-joner-black pt-24">
+    {heroImage && (
+      <div class="absolute inset-0">
+        <img src={heroImage} alt={heroAlt} class="h-full w-full object-cover object-center opacity-30" />
+        <div class="absolute inset-0 bg-black/70"></div>
+      </div>
+    )}
+
+    <div class="relative mx-auto max-w-5xl px-4 py-20 sm:px-6 lg:px-8 md:py-28">
+      {page?.heroEyebrow && <p class="mb-4 font-heading text-sm uppercase tracking-[0.32em] text-joner-red">{page.heroEyebrow}</p>}
+      <h1 class="max-w-4xl font-heading text-5xl font-black uppercase leading-none text-white md:text-7xl">{page?.heroHeadline || page?.title}</h1>
+      {page?.heroSubheadline && <p class="mt-6 max-w-3xl font-body text-lg leading-relaxed text-gray-300 md:text-xl">{page.heroSubheadline}</p>}
+
+      {(page?.primaryCta?.label || page?.secondaryCta?.label) && (
+        <div class="mt-8 flex flex-wrap gap-4">
+          {page?.primaryCta?.label && page?.primaryCta?.url && <a href={page.primaryCta.url} class="btn-red">{page.primaryCta.label}</a>}
+          {page?.secondaryCta?.label && page?.secondaryCta?.url && <a href={page.secondaryCta.url} class="btn-outline">{page.secondaryCta.label}</a>}
+        </div>
+      )}
+    </div>
+  </section>
+
+  {sections.map((section: any) => <SanitySection section={section} />)}
+</BaseLayout>

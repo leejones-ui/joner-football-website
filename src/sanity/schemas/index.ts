@@ -10,12 +10,19 @@ import teamMember from './teamMember'
 import shopBlock from './shopBlock'
 import campRegistrationSettings from './campRegistrationSettings'
 import staffGuide from './staffGuide'
-import { cta, editableSection, seoFields } from './objects'
+import { cta, editableSection, faqItem, formField, formSettings, imageWithMeta, priceOption, seoFields, simpleItem, testimonialItem } from './objects'
 
 export const schemaTypes = [
   cta,
   editableSection,
+  faqItem,
+  formField,
+  formSettings,
+  imageWithMeta,
+  priceOption,
   seoFields,
+  simpleItem,
+  testimonialItem,
   siteSettings,
   page,
   camp,

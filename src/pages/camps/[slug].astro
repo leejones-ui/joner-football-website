@@ -175,6 +175,35 @@ const CAMP_FALLBACKS: CampMap = {
     heroImage: '/images/camps/houston/DSC05857-scaled.jpg.webp',
     heroVideo: '/images/camps/houston/houston-hero-720.mp4',
     featureVideoUrl: 'https://www.youtube.com/embed/1gi1ziUg9zk?rel=0',
+    images: {
+      heroVideoYoutubeId: 'wSFyNDLu3zc',
+      heroVideoLocal: '/images/camps/houston/houston-hero-720.mp4',
+      heroPoster: '/images/camps/joner-camps-pack/06_large_camp_v1_polished_blank_4x3.jpg',
+      promiseImage: '/images/camps/joner-camps-pack/11_1v1_detail_v1_polished_blank_4x3.jpg',
+      valueTiles: [
+        { src: '/images/camps/joner-camps-pack/03_real_coaching_v3_full_text_overlay_4x3.jpg', alt: 'For players who want to be coached hard' },
+        { src: '/images/camps/joner-camps-pack/04_night_session_v3_full_text_overlay_4x3.jpg', alt: 'No babysitting, only dedicated players' },
+        { src: '/images/camps/joner-camps-pack/05_small_group_v3_full_text_overlay_4x3.jpg', alt: 'Max 16 players per coach' },
+        { src: '/images/camps/joner-camps-pack/01_fcballer22_v3_full_text_overlay_4x3.jpg', alt: 'Built for development' },
+      ],
+      gallery: [
+        '/images/camps/joner-camps-pack/07_group_detail_v1_polished_blank_4x3.jpg',
+        '/images/camps/joner-camps-pack/04_night_session_v1_polished_blank_4x3.jpg',
+        '/images/camps/joner-camps-pack/05_small_group_v1_polished_blank_4x3.jpg',
+        '/images/camps/joner-camps-pack/09_red_drills_v1_polished_blank_4x3.jpg',
+        '/images/camps/joner-camps-pack/02_indoor_detail_v1_polished_blank_4x3.jpg',
+      ],
+      scheduleImages: [
+        '/images/camps/joner-camps-pack/05_small_group_v1_polished_blank_4x3.jpg',
+        '/images/camps/joner-camps-pack/11_1v1_detail_v1_polished_blank_4x3.jpg',
+        '/images/camps/joner-camps-pack/07_group_detail_v1_polished_blank_4x3.jpg',
+      ],
+      includedTile: '/images/camps/joner-camps-pack/07_group_detail_v3_full_text_overlay_4x3.jpg',
+      coachPortrait: '/images/camps/joner-camps-pack/08_coach_explains_v1_polished_blank_4x3.jpg',
+      testimonialBackdrop: '/images/camps/joner-camps-pack/02_indoor_detail_v1_polished_blank_4x3.jpg',
+      bookingBackdrop: '/images/camps/joner-camps-pack/10_standards_v1_polished_blank_4x3.jpg',
+      finaleBackdrop: '/images/camps/joner-camps-pack/06_large_camp_v1_polished_blank_4x3.jpg',
+    },
     galleryImages: [
       { url: '/images/camps/houston/DSC05857-scaled.jpg.webp', alt: 'Joner Football Houston elite camp players training' },
       { url: '/images/camps/houston/DSC09261-scaled.jpg.webp', alt: 'Houston camp players working in a high energy session' },
@@ -403,6 +432,7 @@ function mergeCamp(sanityCamp: CampMap, fallback: CampMap) {
     description: textOrFallback(sanityCamp?.description, fallback.description, genericDescriptions.concat(['register interest for the texas houston june joner football camp.', 'register interest for the texas dallas june joner football camp.', 'register interest for the sydney big 1 july joner football camp.'])),
     extraInfo: textOrFallback(sanityCamp?.extraInfo, fallback.extraInfo),
     heroImage: imageUrlFromSanity(sanityCamp?.heroImage) || sanityCamp?.heroImageUrl || fallback.heroImage,
+    images: sanityCamp?.images || fallback.images || {},
     galleryImages: arrayOrFallback(sanityCamp?.galleryImages, fallback.galleryImages),
     trustItems: arrayOrFallback(sanityCamp?.trustItems, fallback.trustItems),
     audienceItems: arrayOrFallback(sanityCamp?.audienceItems, fallback.audienceItems || commonAudience),
@@ -415,9 +445,15 @@ function mergeCamp(sanityCamp: CampMap, fallback: CampMap) {
     faqItems: arrayOrFallback(sanityCamp?.faqItems, fallback.faqItems || commonFaqs),
     dayOptions: arrayOrFallback(sanityCamp?.dayOptions, fallback.dayOptions, [genericDaySignature, '1 day|2 days|3 days']),
     jerseySizes: arrayOrFallback(sanityCamp?.jerseySizes, fallback.jerseySizes || []),
-    dayPaymentLinks: Array.isArray(sanityCamp?.dayPaymentLinks) ? sanityCamp.dayPaymentLinks : fallback.dayPaymentLinks || [],
-    stripePaymentLink: sanityCamp?.stripePaymentLink || fallback.stripePaymentLink || 'https://app.jonerfootball.com',
-    paypalPaymentLink: sanityCamp?.paypalPaymentLink || fallback.paypalPaymentLink || '',
+    dayPaymentLinks: Array.isArray(sanityCamp?.dayPaymentLinks) && sanityCamp.dayPaymentLinks.length ? sanityCamp.dayPaymentLinks : (Array.isArray(sanityCamp?.paymentOptions) && sanityCamp.paymentOptions.length ? sanityCamp.paymentOptions : fallback.dayPaymentLinks || []),
+    paymentOptions: Array.isArray(sanityCamp?.paymentOptions) ? sanityCamp.paymentOptions : fallback.paymentOptions || [],
+    defaultPaymentMethod: sanityCamp?.defaultPaymentMethod || fallback.defaultPaymentMethod || 'Stripe',
+    enableStripe: sanityCamp?.enableStripe !== false,
+    enablePayPal: sanityCamp?.enablePayPal === true,
+    mentionAfterpay: sanityCamp?.mentionAfterpay === true,
+    paymentPendingMessage: sanityCamp?.paymentPendingMessage || fallback.paymentPendingMessage || 'NOT PAID YET, payment link selected and sent to parent',
+    stripePaymentLink: sanityCamp?.enableStripe === false ? '' : (sanityCamp?.stripePaymentLink || fallback.stripePaymentLink || 'https://app.jonerfootball.com'),
+    paypalPaymentLink: sanityCamp?.enablePayPal === true ? (sanityCamp?.paypalPaymentLink || fallback.paypalPaymentLink || '') : '',
     afterpayPaymentLink: sanityCamp?.afterpayPaymentLink || fallback.afterpayPaymentLink || '',
     trainingAgreementLink: sanityCamp?.trainingAgreementLink || fallback.trainingAgreementLink || '/terms',
     googleSheetTab: textOrFallback(sanityCamp?.googleSheetTab, fallback.googleSheetTab),
@@ -435,7 +471,7 @@ export async function getStaticPaths() {
     'texas-dallas-june',
     'sydney-big-1-july',
   ]
-  const staticCampSlugs = ['la-tcpe-june', 'texas-houston-june']
+  const staticCampSlugs = ['la-tcpe-june', 'texas-houston-june', 'texas-dallas-june']
 
   try {
     const camps = await sanityClient.fetch(`*[_type == "camp" && defined(slug.current)]{ "slug": slug.current }`)
@@ -478,6 +514,12 @@ try {
     jerseySizes,
     dayOptions,
     dayPaymentLinks,
+    paymentOptions,
+    defaultPaymentMethod,
+    enableStripe,
+    enablePayPal,
+    mentionAfterpay,
+    paymentPendingMessage,
     description,
     trustItems,
     audienceItems,
@@ -494,7 +536,9 @@ try {
     galleryImages[]{
       alt,
       caption,
-      "url": image.asset->url
+      hideImage,
+      "url": image.asset->url,
+      "mobileUrl": mobileImage.asset->url
     },
     whatToBring,
     faqItems,
@@ -520,16 +564,44 @@ const jerseySizes = camp.jerseySizes?.length
 const dayOptions = camp.dayOptions?.length ? camp.dayOptions : ['Full Camp']
 const dayPaymentLinks = camp.dayPaymentLinks || []
 const stripePaymentLink = camp.stripePaymentLink || camp.afterpayPaymentLink || 'https://app.jonerfootball.com'
-const paypalPaymentLink = camp.paypalPaymentLink || ''
-const dayLevelPaypalLink = dayPaymentLinks.find((item: any) => item?.paypalPaymentLink)?.paypalPaymentLink || ''
+const paypalPaymentLink = camp.enablePayPal ? (camp.paypalPaymentLink || '') : ''
+const dayLevelPaypalLink = camp.enablePayPal ? (dayPaymentLinks.find((item: any) => item?.paypalPaymentLink)?.paypalPaymentLink || '') : ''
 const paymentOptions = [
-  { label: 'Pay with Stripe', value: 'Stripe', link: stripePaymentLink },
-  (paypalPaymentLink || dayLevelPaypalLink) && { label: 'Pay with PayPal', value: 'PayPal', link: paypalPaymentLink || dayLevelPaypalLink },
+  camp.enableStripe && { label: 'Pay with Stripe', value: 'Stripe', link: stripePaymentLink },
+  camp.enablePayPal && (paypalPaymentLink || dayLevelPaypalLink) && { label: 'Pay with PayPal', value: 'PayPal', link: paypalPaymentLink || dayLevelPaypalLink },
 ].filter(Boolean)
 const paymentLink = stripePaymentLink || paypalPaymentLink || 'https://app.jonerfootball.com'
 const destination = camp.destination || (String(camp.location || '').toLowerCase().includes('sydney') ? 'sydney' : 'usa')
-const heroImage = camp.heroImage || '/images/camps/hero-bg.webp'
-const heroVideo = camp.heroVideo || ''
+const rawImages = camp.images || {}
+const heroImage = rawImages.heroPoster || camp.heroImage || '/images/camps/hero-bg.webp'
+const heroPosterAlt = `${camp.title} players training`
+function configuredSrc(item: any, fallback = heroImage) {
+  if (typeof item === 'string') return item
+  return item?.src || item?.url || fallback
+}
+function configuredAlt(item: any, fallback: string) {
+  return typeof item === 'object' && item?.alt ? item.alt : fallback
+}
+const galleryFallbacks = (camp.galleryImages || []).map((item: any) => configuredSrc(item, heroImage)).filter(Boolean)
+const campImages = {
+  heroVideoYoutubeId: rawImages.heroVideoYoutubeId || '',
+  heroVideoLocal: rawImages.heroVideoLocal || camp.heroVideo || '',
+  heroPoster: rawImages.heroPoster || heroImage,
+  promiseImage: rawImages.promiseImage || galleryFallbacks[0] || heroImage,
+  valueTiles: rawImages.valueTiles?.length
+    ? rawImages.valueTiles
+    : galleryFallbacks.slice(0, 4).map((src: string) => ({ src, alt: `${camp.title} camp training image` })),
+  gallery: rawImages.gallery?.length ? rawImages.gallery : galleryFallbacks,
+  scheduleImages: rawImages.scheduleImages?.length ? rawImages.scheduleImages : galleryFallbacks.slice(0, 3),
+  includedTile: rawImages.includedTile || galleryFallbacks[0] || heroImage,
+  coachPortrait: rawImages.coachPortrait || galleryFallbacks[1] || heroImage,
+  testimonialBackdrop: rawImages.testimonialBackdrop || galleryFallbacks[2] || heroImage,
+  bookingBackdrop: rawImages.bookingBackdrop || galleryFallbacks[3] || heroImage,
+  finaleBackdrop: rawImages.finaleBackdrop || heroImage,
+}
+const heroYoutubeSrc = campImages.heroVideoYoutubeId
+  ? `https://www.youtube-nocookie.com/embed/${campImages.heroVideoYoutubeId}?rel=0&controls=0&modestbranding=1&playsinline=1&loop=1&playlist=${campImages.heroVideoYoutubeId}&mute=1&autoplay=1`
+  : ''
 const ogImage = heroImage.startsWith('http') ? heroImage : `https://jonerfootball.com${heroImage}`
 const pageDescription = camp.description || `Register for ${camp.title} with Joner Football.`
 const canonical = `https://jonerfootball.com/camps/${slug}/`
@@ -538,25 +610,72 @@ const spotsLabel = camp.spotsRemaining || camp.spotsTotal
   ? `${camp.spotsRemaining || camp.spotsTotal} spots`
   : camp.urgencyLabel
 const campCity = cleanText(camp.location).split(',')[0] || 'This'
-const ctaLabel = `Book ${campCity} Camp Spot`
-const mainOutcome = camp.mainOutcome || 'Sharper technique, cleaner decisions, and the confidence to train with higher standards after camp.'
+const heroTitle = camp.heroHeadline || camp.title
+const heroTitleWords = heroTitle.split(' ')
+const heroTitleLines = heroTitleWords.length > 3
+  ? [heroTitleWords.slice(0, -2).join(' '), heroTitleWords.slice(-2).join(' ')]
+  : [heroTitle]
+const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+const heroTitleHtml = heroTitleLines.map((line) => `<span class="block">${escapeHtml(line)}.</span>`).join('')
+const ctaLabel = camp.mainCta?.label || `Book ${campCity} Camp Spot`
+const formSubmitLabel = camp.formSettings?.buttonText || ctaLabel
+const stickyCtaLabel = camp.priceLabel ? `${ctaLabel}, ${camp.priceLabel}` : ctaLabel
+const refundLine = camp.mentionAfterpay
+  ? '14 day refund policy. Pay in full or split with Afterpay if available in Stripe.'
+  : camp.enablePayPal
+    ? '14 day refund policy. Pay in full or use PayPal if available.'
+    : '14 day refund policy. Secure payment link after signup.'
+const lowSpots = Number(camp.spotsRemaining || 0) > 0 && Number(camp.spotsRemaining || 0) < 20
+const editorialTiles = [
+  campImages.valueTiles[3],
+  campImages.valueTiles[0],
+  campImages.valueTiles[1],
+  campImages.valueTiles[2],
+].filter(Boolean)
 const quickFacts = [
-  { label: 'Where', value: camp.venueName ? `${camp.location} - ${camp.venueName}` : camp.location },
-  { label: 'Date and time', value: `${camp.dates} - ${camp.times}` },
-  { label: 'Age group', value: camp.ageRange },
-  { label: 'Group standard', value: camp.urgencyLabel || spotsLabel },
-  { label: 'Camp options', value: camp.priceLabel || dayOptions.join(', ') },
-  { label: 'Main outcome', value: mainOutcome },
+  { label: 'WHERE', value: camp.venueName || camp.location || camp.venue },
+  { label: 'WHEN', value: camp.dates },
+  { label: 'TIMES', value: camp.times },
+  { label: 'WHO', value: camp.ageRange },
+  { label: 'GROUP STANDARD', value: camp.spotsTotal ? `Max ${camp.spotsTotal} players` : camp.urgencyLabel },
+].filter((item) => item.value)
+const heroFacts = [
+  camp.dates,
+  camp.times,
+  camp.spotsTotal ? `MAX ${camp.spotsTotal} PLAYERS` : camp.urgencyLabel,
+].filter(Boolean).map((item) => String(item).toUpperCase())
+const promiseBullets = (camp.campHighlights?.length ? camp.campHighlights : commonAudience).slice(0, 3).map((item: any) => ({
+  title: item.title || 'Camp detail',
+  text: item.description || '',
+}))
+const proofItems = (camp.trustItems?.length ? camp.trustItems : heroFacts).slice(0, 4).map((item: any) => ({
+  label: String(item).toUpperCase(),
+  text: camp.urgencyLabel || camp.description || '',
+}))
+const schedulePlan = (camp.scheduleItems?.length ? camp.scheduleItems : []).map((item: any) => ({
+  day: item.time || item.day || '',
+  title: item.title || '',
+  description: item.description || '',
+}))
+const includedItems = camp.includedItems?.length ? camp.includedItems : [
+  camp.times ? `Training blocks, ${camp.times}` : 'Technical training blocks',
+  'Technical detail from the Joner Football coaching team',
+  camp.ageRange ? `For ${camp.ageRange}` : 'Players grouped by age then ability',
+  camp.spotsTotal ? `Capacity capped at ${camp.spotsTotal} players` : 'Capacity capped on purpose',
 ]
-
-const campPhotoSet = [
-  '/images/camps/joner-camps/hero-lee-pointing.jpg',
-  '/images/camps/joner-camps/lee-coaching-group.jpg',
-  '/images/camps/joner-camps/lee-with-players.jpg',
-  '/images/camps/joner-camps/red-shirt-action.jpg',
-  '/images/camps/joner-camps/camp-team-photo.jpg',
-]
-const pageHeroImage = campPhotoSet[0] || heroImage
+const pricingRows = (dayPaymentLinks.length ? dayPaymentLinks : camp.paymentOptions || []).map((item: any) => ({
+  option: item.label || 'Camp option',
+  price: item.price || item.description || '',
+}))
+const instagramReelUrl = camp.featureVideoUrl || ''
+const testimonials = (camp.testimonials?.length ? camp.testimonials : [
+  { name: 'Parent Testimonials', role: `${camp.title} page` },
+]).map((item: any) => ({ label: item.name || item.label || 'Testimonial', source: item.role || item.source || 'Joner Football camp parent', quote: item.quote }))
+const displayFaqs = camp.faqItems?.length ? camp.faqItems : [commonFaqs[0], commonFaqs[1], commonFaqs[2], commonFaqs[3], commonFaqs[5]]
+const eyebrowClass = 'font-heading text-xs uppercase tracking-[0.18em] text-joner-red'
+const darkHeadingClass = 'font-heading text-[clamp(2.5rem,7vw,4rem)] font-bold uppercase leading-none text-white'
+const lightHeadingClass = 'font-heading text-[clamp(2.5rem,7vw,4rem)] font-bold uppercase leading-none text-joner-black'
+const redButtonClass = 'btn-red'
 const eventSchema = {
   '@context': 'https://schema.org',
   '@type': 'Event',
@@ -606,155 +725,332 @@ const faqSchema = camp.faqItems?.length ? {
   ogImage={ogImage}
   schema={faqSchema ? [eventSchema, faqSchema] : [eventSchema]}
 >
-  <section id="overview" class="camp-hero relative min-h-[82vh] overflow-hidden bg-joner-black">
-    {heroVideo ? (
-      <video autoplay muted loop playsinline poster={pageHeroImage} class="absolute inset-0 h-full w-full object-cover">
-        <source src={heroVideo} type="video/mp4" />
+  <section id="overview" class="relative overflow-hidden bg-joner-black text-white">
+    <div class="absolute inset-x-0 top-0 z-20 h-px bg-joner-red"></div>
+    {campImages.heroVideoLocal ? (
+      <video data-hero-video autoplay muted loop playsinline poster={campImages.heroPoster} class="absolute inset-0 hidden h-full w-full object-cover md:block">
+        <source src={campImages.heroVideoLocal} type="video/mp4" />
       </video>
+    ) : heroYoutubeSrc ? (
+      <iframe
+        src={heroYoutubeSrc}
+        title={`${camp.title} camp video`}
+        class="absolute left-1/2 top-1/2 hidden h-[56.25vw] min-h-full w-[177.77vh] min-w-full -translate-x-1/2 -translate-y-1/2 md:block"
+        allow="autoplay; encrypted-media; picture-in-picture"
+        loading="lazy"
+      ></iframe>
     ) : (
-      <img src={pageHeroImage} alt={`${camp.title} with Lee Jones coaching players`} class="absolute inset-0 h-full w-full object-cover" loading="eager" />
+      <img src={campImages.heroPoster} alt={heroPosterAlt} class="absolute inset-0 hidden h-full w-full object-cover md:block" loading="eager" fetchpriority="high" />
     )}
-    <div class="absolute inset-0 bg-black/58"></div>
-    <div class="absolute inset-0 bg-gradient-to-r from-black/82 via-black/44 to-black/18"></div>
-    <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/30"></div>
-    <div class="absolute inset-x-0 top-0 h-1 bg-joner-red"></div>
+    <div class="absolute inset-0 hidden bg-gradient-to-r from-black/80 to-black/20 md:block"></div>
+    <div class="absolute inset-0 hidden bg-gradient-to-t from-black via-transparent to-black/30 md:block"></div>
 
-    <div class="relative z-10 flex min-h-[82vh] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 items-center">
-      <div class="max-w-4xl">
-        <h1 class="font-heading text-5xl sm:text-7xl lg:text-8xl font-bold text-white uppercase leading-none">Houston World Cup Camp.</h1>
-        <p class="mt-6 max-w-2xl text-xl md:text-2xl text-white font-body font-semibold leading-snug">Come do a Joner Football Elite Camp &amp; enjoy world cup vibes at the same time</p>
+    <div class="relative z-10 mx-auto flex min-h-[86vh] max-w-7xl flex-col justify-center px-4 py-24 sm:px-6 md:min-h-[92vh] md:py-32 lg:px-8">
+      <div class="relative mb-8 aspect-video overflow-hidden border border-white/15 bg-joner-black md:hidden">
+        {campImages.heroVideoLocal ? (
+          <video data-hero-video autoplay muted loop playsinline poster={campImages.heroPoster} class="h-full w-full object-cover">
+            <source src={campImages.heroVideoLocal} type="video/mp4" />
+          </video>
+        ) : heroYoutubeSrc ? (
+          <iframe
+            src={heroYoutubeSrc}
+            title={`${camp.title} camp video mobile`}
+            class="h-full w-full"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            loading="lazy"
+          ></iframe>
+        ) : (
+          <img src={campImages.heroPoster} alt={heroPosterAlt} class="h-full w-full object-cover" loading="eager" fetchpriority="high" />
+        )}
+        <div class="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent"></div>
+      </div>
+
+      <div class="max-w-4xl camp-reveal opacity-0 translate-y-4 transition duration-500 ease-out">
+        <p class="inline-flex border border-white/20 bg-black/45 px-4 py-2 font-heading text-xs uppercase tracking-[0.18em] text-white">{camp.location || camp.heroKicker || 'Joner Football Camp'}</p>
+        <h1 class="mt-6 font-heading text-[clamp(3.25rem,12vw,6.5rem)] font-bold uppercase leading-none text-white">{heroTitle}</h1>
+        <p class="mt-6 max-w-xl font-body text-xl font-semibold leading-snug text-white md:text-2xl">{camp.heroSubtitle || camp.description}</p>
+        <div class="mt-7 grid gap-3 md:grid-cols-3">
+          <div class="border border-joner-red/70 bg-white/95 p-4 text-joner-black shadow-[0_18px_60px_rgba(0,0,0,.24)]">
+            <p class="font-heading text-lg uppercase leading-tight tracking-[0.08em] text-joner-black">{camp.dates}</p>
+          </div>
+          <div class="border border-joner-red/70 bg-white/95 p-4 text-joner-black shadow-[0_18px_60px_rgba(0,0,0,.24)]">
+            <p class="font-heading text-lg uppercase leading-tight tracking-[0.08em] text-joner-black">{camp.times}</p>
+          </div>
+          <div class="border border-joner-red/70 bg-white/95 p-4 text-joner-black shadow-[0_18px_60px_rgba(0,0,0,.24)]">
+            <p class="font-heading text-lg uppercase leading-tight tracking-[0.08em] text-joner-black">{spotsLabel}</p>
+          </div>
+        </div>
+        <div class="mt-8">
+          <a href="#register" class={`${redButtonClass} w-full sm:w-auto`}>{ctaLabel}</a>
+        </div>
       </div>
     </div>
   </section>
 
-  <section id="details" class="bg-white py-14 md:py-20 text-joner-black">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p class="camp-eyebrow">Camp Details</p>
-          <h2 class="section-heading text-joner-black">Houston 2026</h2>
-        </div>
-        <a href="#register" class="btn-red text-center">{ctaLabel}</a>
+  <section class="bg-white py-8 text-joner-black md:py-12">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="camp-reveal opacity-0 translate-y-4 transition duration-500 ease-out">
+        <p class={eyebrowClass}>The Facts</p>
+        <h2 class={lightHeadingClass}>{campCity} essentials.</h2>
       </div>
-
-      <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        <div class="simple-card"><span>Location</span><strong>{camp.venueAddress || camp.venue}</strong></div>
-        <div class="simple-card"><span>Times</span><strong>{camp.times}</strong></div>
-        <div class="simple-card"><span>Price</span><strong>{camp.priceLabel || dayOptions.join(', ')}</strong></div>
-        <div class="simple-card"><span>Ages</span><strong>{camp.ageRange} grouped by age and skill</strong></div>
-        <div class="simple-card"><span>Capacity</span><strong>Max 80 players. Sold out last year.</strong></div>
+      <div class="mt-8 flex snap-x gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-5 md:overflow-visible md:pb-0">
+        {quickFacts.map((fact) => (
+          <article class="min-w-[78vw] snap-start border border-joner-red/30 bg-joner-black p-0 text-white shadow-[0_30px_80px_rgba(0,0,0,.12)] md:min-w-0">
+            <div class="bg-joner-red px-5 py-3">
+              <p class="font-heading text-xl uppercase leading-none tracking-[0.12em] text-white">{fact.label}</p>
+            </div>
+            <h3 class="p-5 font-body text-lg font-bold leading-snug text-white">{fact.value}</h3>
+          </article>
+        ))}
       </div>
     </div>
   </section>
 
-  <section id="work-on" class="bg-joner-black py-14 md:py-20 text-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-10 items-start">
-        <div>
-          <p class="camp-eyebrow">What Players Get</p>
-          <h2 class="section-heading text-white">Train hard. Learn detail. Leave better.</h2>
-          <p class="mt-4 max-w-xl text-gray-300 font-body text-lg leading-relaxed">This is not babysitting. It is a proper Joner environment for players who want to improve.</p>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {['Ball mastery and first touch', '1v1 moves and confidence', 'Technique under pressure', 'Game realistic decisions'].map((item) => (
-            <article class="dark-card">
-              <span></span>
-              <strong>{item}</strong>
-            </article>
+  <section class="relative overflow-hidden bg-joner-black py-12 text-white md:py-24">
+    <img src={campImages.promiseImage} alt="Joner Football player training in a 1v1 camp session" class="absolute inset-y-0 right-0 hidden h-full w-[58%] object-cover lg:block" loading="lazy" decoding="async" />
+    <div class="absolute inset-0 hidden bg-gradient-to-r from-black via-black/88 to-black/20 lg:block"></div>
+    <figure class="relative mx-4 mb-8 aspect-[4/3] overflow-hidden border border-white/10 sm:mx-6 lg:hidden">
+      <img src={campImages.promiseImage} alt="Joner Football player training in a 1v1 camp session" class="h-full w-full object-cover" loading="lazy" decoding="async" />
+    </figure>
+    <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="max-w-xl camp-reveal opacity-0 translate-y-4 transition duration-500 ease-out">
+        <p class={eyebrowClass}>The Promise</p>
+        <h2 class={darkHeadingClass}>{camp.heroHeadline || 'Train hard. Learn detail. Leave better.'}</h2>
+        <p class="mt-6 max-w-md font-body text-lg leading-relaxed text-white/78">{camp.description || 'A proper Joner Football environment with high standards, technical detail, and energy.'}</p>
+        <div class="mt-8 space-y-4">
+          {promiseBullets.map((item) => (
+            <div class="border-l-4 border-joner-red pl-5">
+              <h3 class="font-heading text-xl uppercase leading-none tracking-[0.03em] text-white">{item.title}</h3>
+              <p class="mt-2 font-body text-white/70">{item.text}</p>
+            </div>
           ))}
         </div>
       </div>
+    </div>
+  </section>
 
-      <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
-        {campPhotoSet.slice(2, 5).map((image, index) => (
-          <figure class="photo-frame h-72">
-            <img src={image} alt={`Joner Football camp photo ${index + 1}`} class="h-full w-full object-cover" loading="lazy" />
+  <section class="bg-black py-8 text-white">
+    <div class="mx-auto grid max-w-7xl grid-cols-2 gap-5 px-4 sm:px-6 md:grid-cols-4 lg:px-8">
+      {proofItems.map((item) => (
+        <article class="border-l border-white/12 pl-4">
+          <p class={eyebrowClass}>Proof</p>
+          <h2 class="mt-2 font-heading text-2xl uppercase leading-none text-white">{item.label}</h2>
+          <p class="mt-2 font-body text-sm leading-snug text-white/70">{item.text}</p>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="bg-joner-black py-12 text-white md:py-16">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="camp-reveal opacity-0 translate-y-4 transition duration-500 ease-out">
+        <p class={eyebrowClass}>What This Camp Is</p>
+        <h2 class={darkHeadingClass}>Built for the player who's serious.</h2>
+      </div>
+    </div>
+    <div class="relative left-1/2 mt-8 w-screen -translate-x-1/2">
+      <div class="grid grid-cols-1 md:grid-cols-4">
+        {editorialTiles.slice(0, 4).map((tile: any, index: number) => (
+          <figure class:list={[
+            'group relative min-h-[320px] overflow-hidden bg-black md:min-h-[520px]',
+            index === 0 ? 'md:col-span-2' : '',
+          ]}>
+            <img src={configuredSrc(tile, heroImage)} alt={configuredAlt(tile, 'Joner Football camp value tile')} class="h-full w-full object-cover" loading="lazy" decoding="async" />
+            <div class="absolute inset-0 border border-white/10 transition group-hover:border-joner-red"></div>
           </figure>
         ))}
       </div>
     </div>
   </section>
 
-  <section id="register" class="relative overflow-hidden bg-joner-black py-14 md:py-24">
-    <img src={campPhotoSet[3]} alt="Joner Football camp players training" class="absolute inset-0 h-full w-full object-cover opacity-25" loading="lazy" />
-    <div class="absolute inset-0 bg-black/78"></div>
-    <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-[0.78fr_1.22fr] gap-8 items-start">
-        <div class="booking-panel text-white">
-          <p class="camp-eyebrow">Register Now</p>
-          <h2 class="section-heading text-white">Book the camp spot.</h2>
-          <p class="mt-4 text-gray-300 font-body leading-relaxed">Fill in the player details first. After submit, you go straight to the selected payment link.</p>
-          <div class="mt-7 space-y-3">
-            <div class="booking-line"><span>Camp</span><strong>{camp.title}</strong></div>
-            <div class="booking-line"><span>Dates</span><strong>{camp.dates}</strong></div>
-            <div class="booking-line"><span>Options</span><strong>{camp.priceLabel || dayOptions.join(', ')}</strong></div>
-          </div>
+  <section class="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-white py-0">
+    <div class="pointer-events-none absolute inset-0 opacity-[0.015] mix-blend-overlay" style="background-image: radial-gradient(circle at 1px 1px, #000 1px, transparent 0); background-size: 12px 12px;"></div>
+    <div class="relative flex snap-x gap-3 overflow-x-auto bg-black md:grid md:grid-cols-12 md:grid-rows-2 md:gap-0 md:overflow-visible">
+      {campImages.gallery.slice(0, 5).map((image: any, index: number) => (
+        <figure class:list={[
+          'snap-start overflow-hidden bg-gray-100',
+          index === 0 ? 'min-w-[92vw] aspect-[4/3] md:col-span-3 md:row-span-1 md:min-h-[310px] md:min-w-0' : '',
+          index === 1 ? 'min-w-[92vw] aspect-[4/3] md:col-span-3 md:row-span-1 md:min-h-[310px] md:min-w-0' : '',
+          index === 2 ? 'min-w-[92vw] aspect-[3/4] md:col-span-4 md:row-span-2 md:min-h-[620px] md:min-w-0' : '',
+          index === 3 ? 'min-w-[92vw] aspect-[4/3] md:col-span-2 md:row-span-1 md:min-h-[310px] md:min-w-0' : '',
+          index === 4 ? 'min-w-[92vw] aspect-[4/3] md:col-span-5 md:row-span-1 md:min-h-[310px] md:min-w-0' : '',
+        ]}>
+          <img src={configuredSrc(image, heroImage)} alt={configuredAlt(image, `${camp.title} gallery image ${index + 1}`)} class="h-full w-full object-cover" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
+        </figure>
+      ))}
+    </div>
+  </section>
+
+  <section class="relative overflow-hidden bg-joner-black text-white">
+    <figure class="relative left-1/2 min-h-[460px] w-screen -translate-x-1/2 overflow-hidden md:min-h-[720px]">
+      <img src={campImages.includedTile} alt={`${camp.title} included tile`} class="absolute inset-0 h-full w-full object-cover" loading="lazy" decoding="async" />
+      <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/10 to-black/20"></div>
+      <div class="absolute bottom-8 left-4 max-w-2xl sm:left-8 md:bottom-12 md:left-12">
+        <p class={eyebrowClass}>What's Included</p>
+        <h2 class="font-heading text-[clamp(3rem,8vw,6rem)] uppercase leading-none text-white">What players get.</h2>
+      </div>
+    </figure>
+  </section>
+
+  <section class="bg-white text-joner-black">
+    <div class="grid grid-cols-1 lg:grid-cols-2">
+      <figure class="min-h-[420px] overflow-hidden bg-gray-100 lg:min-h-[760px]">
+        <img src={campImages.coachPortrait} alt="Lee Jones coaching at Joner Football camp" class="h-full w-full object-cover" loading="lazy" decoding="async" />
+      </figure>
+      <div class="camp-reveal flex min-h-[520px] flex-col justify-center px-4 py-12 opacity-0 translate-y-4 transition duration-500 ease-out sm:px-8 md:py-20 lg:px-14">
+        <p class={eyebrowClass}>Your Head Coach</p>
+        <h2 class={lightHeadingClass}>{camp.coachProfiles?.[0]?.name || 'Lee Jones'}, Joner Football.</h2>
+        <p class="mt-6 border-l-4 border-joner-red pl-5 font-heading text-2xl italic leading-tight text-joner-black">"{camp.coachProfiles?.[0]?.bio || 'We run these camps for players who actually want to be coached.'}"</p>
+        <div class="mt-7 space-y-3 font-body text-lg font-bold text-gray-800">
+          {(camp.coachProfiles || []).slice(0, 3).map((coach: any) => <p>{coach.name} {coach.role ? `, ${coach.role}` : ''}</p>)}
         </div>
-
-        <form id="camp-registration-form" class="camp-form bg-white text-joner-black">
-          <div class="form-head">
-            <p class="camp-eyebrow">Player Registration</p>
-            <h3>{ctaLabel}</h3>
-            <p>Required fields only where possible. Payment opens after registration saves.</p>
-          </div>
-
-          <input type="hidden" name="camp" value={camp.title} />
-          <input type="hidden" name="destination" value={destination} />
-          <input type="hidden" name="location" value={camp.location || ''} />
-          <input type="hidden" name="sheetTab" value={camp.googleSheetTab || camp.title} />
-          <input type="hidden" name="brevoListId" value={camp.brevoListId || ''} />
-          <input id="payment-link-input" type="hidden" name="paymentLink" value={paymentLink} />
-          <script type="application/json" id="day-payment-links" set:html={JSON.stringify(dayPaymentLinks)} />
-
-          <div class="form-grid">
-            <label><span class="form-label">Player First Name *</span><input required name="playerFirstName" class="form-input" autocomplete="given-name" /></label>
-            <label><span class="form-label">Player Surname *</span><input required name="playerSurname" class="form-input" autocomplete="family-name" /></label>
-            <label><span class="form-label">Parent Name If Under 18</span><input name="parentName" class="form-input" autocomplete="name" /></label>
-            <label><span class="form-label">Email *</span><input required type="email" name="email" class="form-input" autocomplete="email" /></label>
-            <label><span class="form-label">Player Age *</span><input required name="age" class="form-input" inputmode="numeric" /></label>
-            <label><span class="form-label">Mobile Number *</span><input required name="mobile" class="form-input" autocomplete="tel" /></label>
-            <label><span class="form-label">Jersey Size *</span><select required name="jerseySize" class="form-input"><option value="">Select size</option>{jerseySizes.map((size: string) => <option>{size}</option>)}</select></label>
-            <label><span class="form-label">How Many Days? *</span><select id="day-option-select" required name="numberOfDays" class="form-input"><option value="">Select camp option</option>{dayOptions.map((option: string) => <option>{option}</option>)}</select></label>
-          </div>
-
-          <details class="optional-fields">
-            <summary>Optional player notes</summary>
-            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label><span class="form-label">Current Club / Level</span><input name="clubLevel" class="form-input" /></label>
-              <label><span class="form-label">Done A Joner Camp Before?</span><select name="previousCamp" class="form-input"><option value="">Select</option><option>Yes</option><option>No</option></select></label>
-            </div>
-            <label class="mt-4 block"><span class="form-label">Medical Notes</span><textarea name="medicalHistory" rows="3" class="form-input"></textarea></label>
-            <label class="mt-4 block"><span class="form-label">Anything Else We Should Know?</span><textarea name="extraInfo" rows="3" class="form-input"></textarea></label>
-            <label class="mt-4 block"><span class="form-label">Where Did You Hear About The Camp?</span><input name="source" class="form-input" /></label>
-          </details>
-
-          <label><span class="form-label">Payment Method</span><select id="payment-method-select" name="paymentMethod" class="form-input">{paymentOptions.map((option: any) => <option value={option.value} data-link={option.link}>{option.label}</option>)}</select></label>
-
-          <label class="flex gap-3 items-start text-gray-700 font-body text-sm">
-            <input required type="checkbox" name="agreementAccepted" class="mt-1 accent-[#E30613]" />
-            <span>I have read and agree to the {camp.trainingAgreementLink ? <a class="text-joner-red underline" href={camp.trainingAgreementLink} target="_blank" rel="noopener noreferrer">training agreement</a> : 'training agreement'}.</span>
-          </label>
-
-          <div id="camp-form-message" class="hidden border border-gray-700 p-4 text-sm font-body"></div>
-          <button type="submit" class="btn-red w-full">{ctaLabel}</button>
-        </form>
+        <div class="mt-8 border border-gray-200 bg-gray-50 p-5">
+          <h3 class="font-heading text-2xl uppercase leading-none text-joner-black">Every camp player gets the App.</h3>
+          <p class="mt-3 font-body leading-relaxed text-gray-700">Free access while the camp runs and the months after. Same training, same standards, every day.</p>
+          <a href="#register" class="mt-5 inline-flex font-heading text-sm uppercase tracking-[0.16em] text-joner-red hover:text-red-700">Book to get access</a>
+        </div>
       </div>
     </div>
   </section>
 
-  <section id="faqs" class="bg-white text-joner-black py-14 md:py-20">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <p class="camp-eyebrow text-center">FAQs</p>
-      <h2 class="section-heading text-joner-black text-center">Quick parent questions</h2>
+  <section class="relative overflow-hidden bg-joner-black py-12 text-white md:py-20">
+    <img src={campImages.testimonialBackdrop} alt="Joner Football indoor camp training backdrop" class="absolute inset-0 h-full w-full object-cover opacity-[0.12]" loading="lazy" decoding="async" />
+    <div class="absolute inset-0 bg-black/80"></div>
+    <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="camp-reveal opacity-0 translate-y-4 transition duration-500 ease-out">
+        <p class={eyebrowClass}>Proof From Camps</p>
+        <h2 class={darkHeadingClass}>Testimonials.</h2>
+      </div>
+      <div class="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+        <article class="border border-joner-red/50 bg-black/70 p-3">
+          <div class="aspect-[9/16] max-h-[720px] overflow-hidden bg-black md:aspect-video lg:aspect-[9/16]">
+            <iframe
+              src={instagramReelUrl}
+              title={`${camp.title} testimonial reel`}
+              class="h-full w-full"
+              loading="lazy"
+              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+            ></iframe>
+          </div>
+        </article>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {testimonials.map((item) => (
+            <article class="border border-white/15 bg-white/[0.08] p-6 backdrop-blur">
+              <p class="font-heading text-2xl uppercase leading-none text-white">{item.label}</p>
+              <p class="mt-4 font-body text-sm uppercase tracking-[0.12em] text-white/60">{item.source}</p>
+              <p class="mt-4 font-heading text-sm tracking-[0.18em] text-joner-red">*****</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="register" class="relative overflow-hidden bg-joner-black py-12 text-white scroll-mt-20 md:py-24">
+    <img src={campImages.bookingBackdrop} alt={`${camp.title} camp booking backdrop`} class="absolute inset-0 h-full w-full object-cover opacity-25" loading="lazy" decoding="async" />
+    <div class="absolute inset-0 bg-black/80"></div>
+    <div class="relative z-10 mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 sm:px-6 lg:grid-cols-[0.45fr_0.55fr] lg:px-8">
+      <aside class="border border-white/15 bg-black/70 p-6 backdrop-blur md:p-8">
+        <p class={eyebrowClass}>Pricing & Book</p>
+        <h2 class={darkHeadingClass}>{ctaLabel}</h2>
+        <div class="mt-7 space-y-4 border-y border-white/10 py-6">
+          <div>
+            <p class={eyebrowClass}>Camp</p>
+            <p class="font-body text-lg font-bold text-white">{camp.title}</p>
+          </div>
+          <div>
+            <p class={eyebrowClass}>Dates</p>
+            <p class="font-body text-lg font-bold text-white">{camp.dates}, {camp.times}</p>
+          </div>
+          <div>
+            <p class={eyebrowClass}>Included</p>
+            <p class="font-body leading-relaxed text-white/78">{includedItems.slice(0, 4).join(', ')}</p>
+          </div>
+        </div>
+        <div class="mt-6 overflow-hidden border border-white/15">
+          <div class="grid grid-cols-[1fr_auto] bg-white/10 px-4 py-3 font-heading text-xs uppercase tracking-[0.16em] text-white/70">
+            <span>Option</span>
+            <span>Price</span>
+          </div>
+          {pricingRows.map((row) => (
+            <div class="grid grid-cols-[1fr_auto] gap-4 border-t border-white/10 px-4 py-4 font-body text-sm text-white md:text-base">
+              <span>{row.option}</span>
+              <strong class="text-right">{row.price}</strong>
+            </div>
+          ))}
+        </div>
+        <p class="mt-3 font-body text-sm text-white/70">{refundLine}</p>
+      </aside>
+
+      <form id="camp-registration-form" data-submit-label={formSubmitLabel} class="bg-white p-5 text-joner-black shadow-[0_30px_80px_rgba(0,0,0,.08)] md:p-8">
+        <div class="border-b border-gray-200 pb-5">
+          <p class={eyebrowClass}>Player Registration</p>
+          <h3 class="font-heading text-[clamp(2rem,5vw,3.25rem)] uppercase leading-none text-joner-black">{formSubmitLabel}</h3>
+          <p class="mt-3 font-body text-gray-600">{camp.formSettings?.introText || 'Player details save first. Payment opens right after registration.'}</p>
+        </div>
+
+        <input type="hidden" name="camp" value={camp.title} />
+        <input type="hidden" name="destination" value={destination} />
+        <input type="hidden" name="location" value={camp.location || ''} />
+        <input type="hidden" name="sheetTab" value={camp.googleSheetTab || camp.title} />
+        <input type="hidden" name="brevoListId" value={camp.brevoListId || ''} />
+        <input id="payment-link-input" type="hidden" name="paymentLink" value={paymentLink} />
+        <script type="application/json" id="day-payment-links" set:html={JSON.stringify(dayPaymentLinks)} />
+
+        <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Player First Name *</span><input required name="playerFirstName" class="min-h-[52px] w-full border border-gray-300 bg-gray-50 px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:bg-white focus:outline-none" autocomplete="given-name" /></label>
+          <label><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Player Surname *</span><input required name="playerSurname" class="min-h-[52px] w-full border border-gray-300 bg-gray-50 px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:bg-white focus:outline-none" autocomplete="family-name" /></label>
+          <label><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Parent Name If Under 18</span><input name="parentName" class="min-h-[52px] w-full border border-gray-300 bg-gray-50 px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:bg-white focus:outline-none" autocomplete="name" /></label>
+          <label><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Email *</span><input required type="email" name="email" class="min-h-[52px] w-full border border-gray-300 bg-gray-50 px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:bg-white focus:outline-none" autocomplete="email" /></label>
+          <label><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Player Age *</span><input required name="age" class="min-h-[52px] w-full border border-gray-300 bg-gray-50 px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:bg-white focus:outline-none" inputmode="numeric" /></label>
+          <label><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Mobile Number *</span><input required name="mobile" class="min-h-[52px] w-full border border-gray-300 bg-gray-50 px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:bg-white focus:outline-none" autocomplete="tel" /></label>
+          <label><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Jersey Size *</span><select required name="jerseySize" class="min-h-[52px] w-full border border-gray-300 bg-gray-50 px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:bg-white focus:outline-none"><option value="">Select size</option>{jerseySizes.map((size: string) => <option>{size}</option>)}</select></label>
+          <label>
+            <span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">How Many Days? *</span>
+            <select id="day-option-select" required name="numberOfDays" class="min-h-[52px] w-full border border-gray-300 bg-gray-50 px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:bg-white focus:outline-none"><option value="">Select camp option</option>{dayOptions.map((option: string) => <option>{option}</option>)}</select>
+            <span class="mt-2 block font-body text-xs text-gray-600">{refundLine}</span>
+          </label>
+        </div>
+
+        <details class="my-5 border border-gray-200 bg-gray-50 p-4 font-body">
+          <summary class="cursor-pointer font-heading text-sm uppercase tracking-[0.12em] text-joner-black">Optional player notes</summary>
+          <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Current Club / Level</span><input name="clubLevel" class="min-h-[52px] w-full border border-gray-300 bg-white px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:outline-none" /></label>
+            <label><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Done A Joner Camp Before?</span><select name="previousCamp" class="min-h-[52px] w-full border border-gray-300 bg-white px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:outline-none"><option value="">Select</option><option>Yes</option><option>No</option></select></label>
+          </div>
+          <label class="mt-4 block"><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Medical Notes</span><textarea name="medicalHistory" rows="3" class="w-full border border-gray-300 bg-white px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:outline-none"></textarea></label>
+          <label class="mt-4 block"><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Anything Else We Should Know?</span><textarea name="extraInfo" rows="3" class="w-full border border-gray-300 bg-white px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:outline-none"></textarea></label>
+          <label class="mt-4 block"><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Where Did You Hear About The Camp?</span><input name="source" class="min-h-[52px] w-full border border-gray-300 bg-white px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:outline-none" /></label>
+        </details>
+
+        <label class="block"><span class="mb-2 block font-heading text-xs uppercase tracking-[0.12em] text-joner-black">Payment Method</span><select id="payment-method-select" name="paymentMethod" class="min-h-[52px] w-full border border-gray-300 bg-gray-50 px-4 py-3 font-body text-base text-joner-black focus:border-joner-red focus:bg-white focus:outline-none">{paymentOptions.map((option: any) => <option value={option.value} data-link={option.link}>{option.label}</option>)}</select></label>
+
+        <label class="mt-5 flex gap-3 font-body text-sm text-gray-700">
+          <input required type="checkbox" name="agreementAccepted" class="mt-1 accent-[#E30613]" />
+          <span>I have read and agree to the {camp.trainingAgreementLink ? <a class="text-joner-red underline" href={camp.trainingAgreementLink} target="_blank" rel="noopener noreferrer">training agreement</a> : 'training agreement'}.</span>
+        </label>
+
+        <div id="camp-form-message" class="mt-5 hidden border border-gray-700 p-4 font-body text-sm"></div>
+        <button type="submit" class={`${redButtonClass} mt-5 w-full`}>{formSubmitLabel}</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="faqs" class="bg-white py-12 text-joner-black md:py-20">
+    <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+      <div class="camp-reveal text-center opacity-0 translate-y-4 transition duration-500 ease-out">
+        <p class={eyebrowClass}>FAQ</p>
+        <h2 class={lightHeadingClass}>Quick parent questions.</h2>
+      </div>
       <div class="mt-8 space-y-3" id="camp-faq">
-        {(camp.faqItems || commonFaqs).slice(0, 5).map((item: any) => (
+        {displayFaqs.map((item: any) => (
           <article class="faq-item border border-gray-200 bg-white">
             <button class="faq-toggle flex min-h-[56px] w-full items-center justify-between gap-4 p-5 text-left" aria-expanded="false" type="button">
               <span class="font-heading text-base font-bold uppercase tracking-[0.08em] text-joner-black">{item.question}</span>
               <span class="faq-icon text-joner-red transition-transform">+</span>
             </button>
             <div class="faq-content hidden px-5 pb-5">
-              <p class="text-gray-700 font-body leading-relaxed">{item.answer}</p>
+              <p class="font-body leading-relaxed text-gray-700">{item.answer}</p>
             </div>
           </article>
         ))}
@@ -762,131 +1058,26 @@ const faqSchema = camp.faqItems?.length ? {
     </div>
   </section>
 
-  <a href="#register" class="camp-mobile-cta btn-red fixed bottom-[72px] left-3 right-3 z-40 text-center text-sm shadow-2xl">{ctaLabel}</a>
+  <section class="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden bg-joner-black py-16 text-white md:py-24">
+    <img src={campImages.finaleBackdrop} alt="Joner Football Houston World Cup Camp final team moment" class="absolute inset-0 h-full w-full object-cover" loading="lazy" decoding="async" />
+    <div class="absolute inset-0 bg-black/65"></div>
+    <div class="pointer-events-none absolute inset-0 opacity-[0.015] mix-blend-overlay" style="background-image: radial-gradient(circle at 1px 1px, #fff 1px, transparent 0); background-size: 12px 12px;"></div>
+    <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="camp-reveal max-w-3xl opacity-0 translate-y-4 transition duration-500 ease-out">
+        <h2 class="font-heading text-[clamp(3rem,9vw,5rem)] uppercase leading-none text-white">
+          <span class="block">Houston is back.</span>
+          <span class="block">80 spots. One camp.</span>
+        </h2>
+        <p class="mt-5 font-body text-xl font-semibold text-white/82">{lowSpots ? `Only ${camp.spotsRemaining} spots left.` : "Sold out 2025. Don't wait this time."}</p>
+        <a href="#register" class={`${redButtonClass} mt-8 w-full sm:w-auto`}>{ctaLabel}</a>
+        <p class="mt-4 font-body text-sm text-white/78">Questions? Email leejones@jonerfootball.com</p>
+      </div>
+    </div>
+  </section>
 
-  <style>
-    .camp-eyebrow {
-      color: #E30613;
-      font-family: var(--font-heading);
-      font-size: .78rem;
-      letter-spacing: .18em;
-      text-transform: uppercase;
-      margin-bottom: .75rem;
-    }
-    .hero-fact, .simple-card, .dark-card, .schedule-card, .booking-panel {
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(10,10,10,.72);
-      backdrop-filter: blur(8px);
-    }
-    .hero-fact { padding: 1rem; min-height: 92px; }
-    .hero-fact span, .simple-card span, .booking-line span, .schedule-card span {
-      display: block;
-      color: #E30613;
-      font-family: var(--font-heading);
-      font-size: .72rem;
-      letter-spacing: .14em;
-      text-transform: uppercase;
-      margin-bottom: .35rem;
-    }
-    .hero-fact strong { color: white; font-family: var(--font-body); line-height: 1.25; }
-    .simple-card {
-      background: #f7f7f7;
-      border-color: #e5e7eb;
-      min-height: 132px;
-      padding: 1.35rem;
-    }
-    .simple-card strong {
-      color: #0A0A0A;
-      font-family: var(--font-body);
-      font-size: 1.05rem;
-      line-height: 1.35;
-    }
-    .dark-card {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-      min-height: 96px;
-      padding: 1.35rem;
-    }
-    .dark-card span { width: 5px; align-self: stretch; background: #E30613; }
-    .dark-card strong { font-family: var(--font-heading); text-transform: uppercase; letter-spacing: .08em; }
-    .photo-frame {
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,.14);
-      background: #0A0A0A;
-      box-shadow: 0 24px 60px rgba(0,0,0,.18);
-    }
-    .schedule-card {
-      background: #fff;
-      border-color: #e5e7eb;
-      min-height: 190px;
-      padding: 1.5rem;
-    }
-    .schedule-card h3 {
-      color: #0A0A0A;
-      font-family: var(--font-heading);
-      font-size: 1.5rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      line-height: 1;
-    }
-    .schedule-card p { margin-top: 1rem; color: #4b5563; font-family: var(--font-body); font-weight: 700; }
-    .booking-panel { padding: 2rem; }
-    .booking-line { border-left: 4px solid #E30613; padding-left: 1rem; }
-    .booking-line strong { color: white; font-family: var(--font-body); line-height: 1.3; }
-    .camp-form {
-      padding: 1.25rem;
-      box-shadow: 0 30px 80px rgba(0,0,0,.35);
-    }
-    @media (min-width: 768px) { .camp-form { padding: 2rem; } }
-    .form-head { border-bottom: 1px solid #e5e7eb; padding-bottom: 1.25rem; margin-bottom: 1.25rem; }
-    .form-head h3 { font-family: var(--font-heading); font-size: clamp(2rem, 4vw, 3rem); line-height: .95; font-weight: 800; text-transform: uppercase; color: #0A0A0A; }
-    .form-head p { margin-top: .5rem; color: #4b5563; font-family: var(--font-body); }
-    .form-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
-    @media (min-width: 640px) { .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    .form-label {
-      display: block;
-      color: #0A0A0A;
-      font-family: var(--font-heading);
-      font-size: .72rem;
-      text-transform: uppercase;
-      letter-spacing: .1em;
-      margin-bottom: .45rem;
-    }
-    .form-input {
-      width: 100%;
-      background: #f7f7f7;
-      border: 1px solid #d1d5db;
-      color: #0A0A0A;
-      min-height: 52px;
-      padding: .85rem .95rem;
-      font-family: var(--font-body);
-      border-radius: 0;
-    }
-    .form-input:focus {
-      outline: 2px solid #E30613;
-      outline-offset: 0;
-      border-color: #E30613;
-      background: #fff;
-    }
-    .optional-fields {
-      margin: 1rem 0;
-      border: 1px solid #e5e7eb;
-      background: #fafafa;
-      padding: 1rem;
-      font-family: var(--font-body);
-    }
-    .optional-fields summary {
-      cursor: pointer;
-      font-family: var(--font-heading);
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      color: #0A0A0A;
-    }
-    @media (min-width: 768px) {
-      .camp-mobile-cta { display: none; }
-    }
-  </style>
+  <a href="#register" class="camp-mobile-cta btn-red fixed bottom-[72px] left-3 right-3 z-40 text-center shadow-2xl transition md:hidden">
+    <span class="block font-heading text-sm uppercase tracking-[0.12em]">{stickyCtaLabel}</span>
+  </a>
 
   <script>
     const form = document.querySelector('#camp-registration-form')
@@ -897,9 +1088,57 @@ const faqSchema = camp.faqItems?.length ? {
     const dayLinksScript = document.querySelector('#day-payment-links')
     const dayPaymentLinks = dayLinksScript?.textContent ? JSON.parse(dayLinksScript.textContent) : []
     const emailInput = form?.querySelector('input[type="email"]')
+    const submitLabel = form?.getAttribute('data-submit-label') || 'Submit Registration And Pay'
 
     if (emailInput && window.JonerEmailGuard?.protectEmailInput) {
       window.JonerEmailGuard.protectEmailInput(emailInput)
+    }
+
+    const revealItems = document.querySelectorAll('.camp-reveal')
+    if ('IntersectionObserver' in window) {
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return
+          entry.target.classList.remove('opacity-0', 'translate-y-4')
+          entry.target.classList.add('opacity-100', 'translate-y-0')
+          revealObserver.unobserve(entry.target)
+        })
+      }, { threshold: 0.18 })
+      revealItems.forEach((item) => revealObserver.observe(item))
+    } else {
+      revealItems.forEach((item) => {
+        item.classList.remove('opacity-0', 'translate-y-4')
+        item.classList.add('opacity-100', 'translate-y-0')
+      })
+    }
+
+    const heroVideos = document.querySelectorAll('[data-hero-video]')
+    heroVideos.forEach((video) => {
+      video.addEventListener('click', () => {
+        video.muted = !video.muted
+        if (video.paused) video.play().catch(() => {})
+      })
+    })
+
+    document.addEventListener('visibilitychange', () => {
+      heroVideos.forEach((video) => {
+        if (document.hidden) {
+          video.pause()
+          return
+        }
+        video.play().catch(() => {})
+      })
+    })
+
+    const mobileCta = document.querySelector('.camp-mobile-cta')
+    const registerSection = document.querySelector('#register')
+    if (mobileCta && registerSection && 'IntersectionObserver' in window) {
+      const ctaObserver = new IntersectionObserver((entries) => {
+        const isRegisterVisible = entries.some((entry) => entry.isIntersecting)
+        mobileCta.classList.toggle('opacity-0', isRegisterVisible)
+        mobileCta.classList.toggle('pointer-events-none', isRegisterVisible)
+      }, { threshold: 0.12 })
+      ctaObserver.observe(registerSection)
     }
 
     function normalizeDayLabel(value) {
@@ -974,7 +1213,7 @@ const faqSchema = camp.faqItems?.length ? {
         submitButton.textContent = 'Saving Registration...'
       }
       if (message) {
-        message.className = 'border border-gray-700 p-4 text-sm font-body text-gray-300'
+        message.className = 'mt-5 border border-gray-300 bg-gray-50 p-4 text-sm font-body text-gray-700'
         message.textContent = 'Saving registration before payment.'
       }
 
@@ -993,18 +1232,18 @@ const faqSchema = camp.faqItems?.length ? {
         if (!response.ok || !data.success) throw new Error(data.error || 'Registration failed.')
 
         if (message) {
-          message.className = 'border border-joner-red p-4 text-sm font-body text-white bg-joner-red/10'
+          message.className = 'mt-5 border border-joner-red p-4 text-sm font-body text-joner-black bg-joner-red/10'
           message.textContent = 'Registration saved. Sending you to payment now.'
         }
         window.location.href = data.paymentLink || payload.paymentLink
       } catch (error) {
         if (message) {
-          message.className = 'border border-joner-red p-4 text-sm font-body text-white bg-joner-red/10'
+          message.className = 'mt-5 border border-joner-red p-4 text-sm font-body text-joner-black bg-joner-red/10'
           message.textContent = error.message || 'Could not save registration. Please try again.'
         }
         if (submitButton) {
           submitButton.disabled = false
-          submitButton.textContent = 'Submit Registration And Pay'
+          submitButton.textContent = submitLabel
         }
       }
     })
