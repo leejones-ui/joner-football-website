@@ -344,7 +344,7 @@ const testimonials = [
       pointer-events: none;
       position: absolute;
       left: 50%;
-      bottom: calc(100% + 14px);
+      top: calc(100% + 14px);
       z-index: 20;
       width: max-content;
       max-width: 190px;
@@ -376,6 +376,11 @@ const testimonials = [
     .camp-orbit__node:focus-visible .camp-orbit__tooltip {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
+    }
+
+    .camp-orbit__node--4 .camp-orbit__tooltip {
+      top: auto;
+      bottom: calc(100% + 14px);
     }
 
     .camp-orbit__node:hover,

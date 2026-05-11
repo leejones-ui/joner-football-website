@@ -613,7 +613,7 @@ const localBizSchema = {
       pointer-events: none;
       position: absolute;
       left: 50%;
-      bottom: calc(100% + 14px);
+      top: calc(100% + 14px);
       z-index: 20;
       width: max-content;
       max-width: 190px;
@@ -645,6 +645,12 @@ const localBizSchema = {
     .training-orbit__node:focus-visible .training-orbit__tooltip {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
+    }
+
+    .training-orbit__node--5 .training-orbit__tooltip,
+    .training-orbit__node--6 .training-orbit__tooltip {
+      top: auto;
+      bottom: calc(100% + 14px);
     }
 
     .training-orbit__center {
