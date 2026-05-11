@@ -145,14 +145,17 @@ const camps = [
                 href={camp.href}
                 class={`camp-orbit__node camp-orbit__node--${index + 1}`}
                 aria-label={`Open ${camp.title} camp page`}
+                title={`${camp.title}: ${camp.subtitle}`}
               >
-                <span>{camp.label}</span>
+                <span class="camp-orbit__node-content">
+                  <span class="camp-orbit__node-label">{camp.label}</span>
+                  <span class="camp-orbit__tooltip">{camp.title}<small>{camp.subtitle}</small></span>
+                </span>
               </a>
             ))}
           </div>
           <div class="camp-orbit__center">
-            <img src="/images/joner-logo-white.png" alt="Joner Football" class="mx-auto mb-3 h-10 w-auto object-contain" />
-            <span>2026 Camps</span>
+            <img src="/images/joner-logo-white.png" alt="Joner Football" />
           </div>
         </div>
       </div>
@@ -256,12 +259,58 @@ const camps = [
       transition: transform 160ms ease, background 160ms ease;
     }
 
-    .camp-orbit__node span {
+    .camp-orbit__node-content {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       animation: camp-orbit-counter 24s linear infinite;
     }
 
-    .camp-orbit:hover .camp-orbit__node span {
+    .camp-orbit:hover .camp-orbit__node-content {
       animation-play-state: paused;
+    }
+
+    .camp-orbit__node-label {
+      line-height: 1;
+    }
+
+    .camp-orbit__tooltip {
+      pointer-events: none;
+      position: absolute;
+      left: 50%;
+      top: calc(100% + 14px);
+      z-index: 20;
+      width: max-content;
+      max-width: 190px;
+      transform: translateX(-50%) translateY(6px);
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(10,10,10,0.95);
+      color: #FFFFFF;
+      opacity: 0;
+      padding: 0.7rem 0.8rem;
+      text-align: center;
+      font-family: Anton, Impact, sans-serif;
+      font-size: 0.9rem;
+      letter-spacing: 0.08em;
+      line-height: 1.05;
+      text-transform: uppercase;
+      transition: opacity 160ms ease, transform 160ms ease;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.42);
+    }
+
+    .camp-orbit__tooltip small {
+      display: block;
+      margin-top: 0.3rem;
+      color: #E30613;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+    }
+
+    .camp-orbit__node:hover .camp-orbit__tooltip,
+    .camp-orbit__node:focus-visible .camp-orbit__tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
     }
 
     .camp-orbit__node:hover {
@@ -276,9 +325,8 @@ const camps = [
 
     .camp-orbit__center {
       position: absolute;
-      inset: 29%;
+      inset: 30%;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       border-radius: 999px;
@@ -288,11 +336,11 @@ const camps = [
       box-shadow: inset 0 0 30px rgba(255,255,255,0.05), 0 18px 50px rgba(0,0,0,0.42);
     }
 
-    .camp-orbit__center span {
-      font-family: Anton, Impact, sans-serif;
-      font-size: clamp(1.1rem, 3.2vw, 2rem);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
+    .camp-orbit__center img {
+      width: 58%;
+      height: auto;
+      object-fit: contain;
+      margin: 0;
     }
 
     .camp-card {
@@ -328,7 +376,7 @@ const camps = [
 
     @media (prefers-reduced-motion: reduce) {
       .camp-orbit__spin,
-      .camp-orbit__node span {
+      .camp-orbit__node-content {
         animation: none;
       }
     }
