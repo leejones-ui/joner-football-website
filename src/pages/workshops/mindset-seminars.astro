@@ -1,200 +1,97 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
-import EmailCapture from '../../components/EmailCapture.astro'
 
 const seminarSchema = {
-  "@context": "https://schema.org",
-  "@type": "Event",
-  "name": "Mindset Seminars, Joner Football",
-  "description": "Mental performance workshops for football players and coaches. Covering resilience, confidence, pressure performance, and the elite mindset.",
-  "organizer": {
-    "@type": "Organization",
-    "name": "Joner Football",
-    "url": "https://jonerfootball.com"
+  '@context': 'https://schema.org',
+  '@type': 'Event',
+  name: 'Mindset Seminars, Joner Football',
+  description: 'Coming soon mindset seminars for football players, coaches and parents.',
+  organizer: {
+    '@type': 'Organization',
+    name: 'Joner Football',
+    url: 'https://jonerfootball.com',
   },
-  "url": "https://jonerfootball.com/workshops/mindset-seminars",
-  "eventAttendanceMode": "https://schema.org/MixedEventAttendanceMode"
+  url: 'https://jonerfootball.com/workshops/mindset-seminars',
+  eventAttendanceMode: 'https://schema.org/MixedEventAttendanceMode',
 }
 ---
 
 <BaseLayout
   title="Mindset Seminars | Joner Football"
-  description="Mental performance workshops for football players and coaches. Build resilience, confidence under pressure, and the elite mindset with Joner Football."
+  description="Joner Football Mindset Seminars are coming soon. Register interest for players, coaches and parents."
+  canonical="https://jonerfootball.com/workshops/mindset-seminars/"
   schema={seminarSchema}
 >
+  <main class="bg-joner-black text-white">
+    <section class="bg-joner-black pt-10 pb-12 md:pt-16 md:pb-20">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-black">
+          <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.2),transparent_56%)] pointer-events-none"></div>
+          <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(255,255,255,0.07),transparent_60%)] pointer-events-none"></div>
 
-  <!-- Hero -->
-  <section class="relative min-h-[60vh] flex items-center justify-center bg-joner-gray overflow-hidden">
-    <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-90"></div>
-    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
-
-    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Workshop</p>
-      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
-        Mindset<br/>Seminars
-      </h1>
-      <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto">
-        The mental side of football. For players and coaches.
-      </p>
-    </div>
-  </section>
-
-  <!-- What It Covers -->
-  <section class="bg-joner-black py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Seminar Content</p>
-        <h2 class="section-heading text-white">What It Covers</h2>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[
-          {
-            title: 'Resilience',
-            text: 'How to bounce back from setbacks, bad games, and rejection. Building mental toughness that lasts beyond the pitch.',
-          },
-          {
-            title: 'Confidence',
-            text: 'Where real confidence comes from, and how to build it through preparation, repetition, and self-belief.',
-          },
-          {
-            title: 'Pressure Performance',
-            text: 'Performing when it matters most. Learn techniques for managing nerves, staying composed, and thriving under pressure.',
-          },
-          {
-            title: 'Pre-Match Preparation',
-            text: 'Mental routines and rituals that prepare you to compete. Visualisation, focus techniques, and match-day mindset.',
-          },
-          {
-            title: 'Goal Setting',
-            text: 'Setting meaningful goals and building the daily habits to achieve them. Short-term targets, long-term vision.',
-          },
-          {
-            title: 'The Elite Mindset',
-            text: 'What separates good players from great ones. The mental habits, discipline, and attitude of elite performers.',
-          },
-        ].map((item) => (
-          <div class="border border-gray-800 p-6 hover:border-joner-red transition-colors">
-            <div class="w-10 h-1 bg-joner-red mb-4"></div>
-            <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">{item.title}</h3>
-            <p class="text-gray-400 text-sm font-body leading-relaxed">{item.text}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <!-- Who It's For -->
-  <section class="bg-joner-gray py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Who It's For</p>
-        <h2 class="section-heading text-white">Players. Coaches. Parents.</h2>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-        <div class="border border-gray-700 p-8 text-center hover:border-joner-red transition-colors">
-          <div class="text-4xl mb-4">⚽</div>
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">Players</h3>
-          <p class="text-gray-400 text-sm font-body leading-relaxed">
-            Learn the mental skills that separate good players from great ones. Build confidence, handle pressure, and develop the mindset to compete at the highest level.
-          </p>
-        </div>
-
-        <div class="border border-gray-700 p-8 text-center hover:border-joner-red transition-colors">
-          <div class="text-4xl mb-4">📋</div>
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">Coaches</h3>
-          <p class="text-gray-400 text-sm font-body leading-relaxed">
-            Understand how to develop the mental side of your players. Learn how your coaching language, environment, and approach shape player mindset.
-          </p>
-        </div>
-
-        <div class="border border-gray-700 p-8 text-center hover:border-joner-red transition-colors">
-          <div class="text-4xl mb-4">👪</div>
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-3">Parents</h3>
-          <p class="text-gray-400 text-sm font-body leading-relaxed">
-            Support your child's development the right way. Understand how to encourage without adding pressure, and how to help them navigate the ups and downs.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Format -->
-  <section class="bg-joner-black py-16 md:py-24">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-        <div>
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Format</p>
-          <h2 class="section-heading text-white mb-6">Online & In-Person</h2>
-          <p class="text-gray-300 font-body leading-relaxed mb-8">
-            Mindset seminars are delivered both online and in-person, making them accessible wherever you are. Online sessions are live and interactive. In-person seminars are held at select locations and events throughout the year.
-          </p>
-
-          <div class="space-y-6">
-            <div class="border-l-4 border-joner-red pl-6">
-              <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-2">Online Seminars</h3>
-              <p class="text-gray-400 font-body text-sm">Live, interactive sessions delivered via video. Join from anywhere in the world. Recorded for replay access.</p>
-            </div>
-            <div class="border-l-4 border-gray-700 pl-6">
-              <h3 class="font-heading text-white font-semibold uppercase tracking-wide mb-2">In-Person Seminars</h3>
-              <p class="text-gray-400 font-body text-sm">Held at Joner Football camps, events, and partner locations. Small-group format for deeper engagement and discussion.</p>
+          <div class="relative z-10 min-h-[560px] px-6 py-14 text-center sm:px-10 md:py-20 lg:px-14">
+            <div class="mx-auto flex min-h-[460px] max-w-4xl flex-col items-center justify-center">
+              <p class="mb-4 font-heading text-xs uppercase tracking-[0.25em] text-joner-red sm:text-sm">Coming Soon</p>
+              <h1 class="mb-6 bg-gradient-to-b from-white via-neutral-100 to-neutral-500 bg-clip-text font-heading text-5xl font-bold uppercase leading-[0.9] text-transparent sm:text-6xl md:text-7xl lg:text-8xl">
+                Mindset<br />Seminars
+              </h1>
+              <p class="mb-8 max-w-2xl font-body text-base leading-relaxed text-neutral-300 sm:text-lg">
+                The mental side of football. For players, coaches and parents. Register interest and we will let you know when the next seminar is ready.
+              </p>
+              <a href="#contact" class="btn-red text-sm">Register Interest</a>
             </div>
           </div>
         </div>
+      </div>
+    </section>
 
-        <div class="bg-joner-gray h-80 flex items-center justify-center border border-gray-800">
-          <div class="text-center p-8">
-            <div class="text-6xl mb-4">🧠</div>
-            <p class="text-gray-500 text-sm font-body">Seminar photo<br/>coming soon</p>
+    <section class="bg-joner-black py-12 md:py-20">
+      <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div class="rounded-lg border border-white/10 bg-white/5 p-6">
+            <p class="mb-2 font-heading text-sm uppercase tracking-widest text-joner-red">Players</p>
+            <h2 class="font-heading text-2xl uppercase leading-tight text-white">Confidence</h2>
+            <p class="mt-3 font-body text-sm leading-relaxed text-neutral-400">Support around pressure, confidence, preparation and football standards.</p>
+          </div>
+          <div class="rounded-lg border border-white/10 bg-white/5 p-6">
+            <p class="mb-2 font-heading text-sm uppercase tracking-widest text-joner-red">Coaches</p>
+            <h2 class="font-heading text-2xl uppercase leading-tight text-white">Environment</h2>
+            <p class="mt-3 font-body text-sm leading-relaxed text-neutral-400">How coaching language and training standards shape player mindset.</p>
+          </div>
+          <div class="rounded-lg border border-white/10 bg-white/5 p-6">
+            <p class="mb-2 font-heading text-sm uppercase tracking-widest text-joner-red">Parents</p>
+            <h2 class="font-heading text-2xl uppercase leading-tight text-white">Support</h2>
+            <p class="mt-3 font-body text-sm leading-relaxed text-neutral-400">Help players handle the ups and downs without adding unnecessary pressure.</p>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Register Interest Form -->
-  <section class="bg-joner-gray py-16 md:py-24">
-    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="bg-joner-black border border-gray-700 p-8 md:p-10">
-        <h2 class="font-heading text-white text-2xl md:text-3xl font-bold uppercase mb-2">Register Interest</h2>
-        <p class="text-gray-400 font-body text-sm mb-8">Be the first to know when the next mindset seminar is announced.</p>
+    <section id="contact" class="scroll-mt-24 bg-joner-gray py-16 md:py-24">
+      <div class="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-8 text-center">
+          <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Contact Us</p>
+          <h2 class="font-heading text-3xl uppercase tracking-wide text-white sm:text-4xl">Register Interest</h2>
+          <p class="mx-auto mt-4 max-w-xl font-body text-base leading-relaxed text-gray-400">Leave your details and tell us what type of mindset seminar you are interested in.</p>
+        </div>
 
-        <form data-brevo-form data-form-name="mindset-seminars-interest" data-list-id="11" class="space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" name="name" placeholder="Full name" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
-            <input type="email" name="email" placeholder="Email address" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+        <form data-brevo-form data-form-name="mindset-seminars-interest" data-list-id="11" class="space-y-4 border border-gray-800 bg-joner-black p-5 md:p-8">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <input type="text" name="full_name" placeholder="Full name" required class="min-h-[52px] w-full border border-gray-700 bg-joner-gray px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+            <input type="email" name="email" placeholder="Email address" required class="min-h-[52px] w-full border border-gray-700 bg-joner-gray px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
           </div>
-          <select name="role" required class="bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red min-h-[44px]">
+          <input type="tel" name="phone" placeholder="Phone number" class="min-h-[52px] w-full border border-gray-700 bg-joner-gray px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <select name="role" required class="min-h-[52px] w-full border border-gray-700 bg-joner-gray px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
             <option value="" disabled selected>I am a...</option>
-            <option value="player">Player</option>
-            <option value="coach">Coach</option>
-            <option value="parent">Parent</option>
+            <option>Player</option>
+            <option>Coach</option>
+            <option>Parent</option>
+            <option>Club or organisation</option>
           </select>
-          <button type="submit" class="btn-red text-sm w-full">Register Interest</button>
+          <textarea name="message" placeholder="What are you interested in?" required rows="6" class="w-full resize-none border border-gray-700 bg-joner-gray px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none"></textarea>
+          <button type="submit" class="btn-red w-full text-sm">Register Interest</button>
         </form>
       </div>
-    </div>
-  </section>
-
-  <!-- Internal Links -->
-  <section class="bg-joner-black py-12">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <a href="/camps" class="border border-gray-800 hover:border-joner-red p-6 transition-colors group block">
-          <p class="text-joner-red font-heading text-xs uppercase tracking-widest mb-2">Camps</p>
-          <h3 class="font-heading text-white font-bold uppercase group-hover:text-joner-red transition-colors mb-2">Training Camps</h3>
-          <p class="text-gray-400 font-body text-sm">World-class camps across the USA and Australia.</p>
-        </a>
-        <a href="/training" class="border border-gray-800 hover:border-joner-red p-6 transition-colors group block">
-          <p class="text-joner-red font-heading text-xs uppercase tracking-widest mb-2">Training</p>
-          <h3 class="font-heading text-white font-bold uppercase group-hover:text-joner-red transition-colors mb-2">Sydney Training Programs</h3>
-          <p class="text-gray-400 font-body text-sm">JFP, Professional Training, and Joners Juniors in Sydney.</p>
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <EmailCapture />
-
+    </section>
+  </main>
 </BaseLayout>
