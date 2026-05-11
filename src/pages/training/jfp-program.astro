@@ -34,6 +34,23 @@ const pillars = [
   { number: '03', title: 'Real Development', text: 'The goal is long-term player growth across technical, physical and mental parts of the game.' },
 ]
 
+const pathwayStages = [
+  { label: 'Stage 1', title: 'Joners Juniors', text: 'The first step for younger players learning the habits, energy and ball mastery standards of Joner Football.' },
+  { label: 'Stage 2', title: 'Joner 6 to 8 Year Old Program', text: 'The bridge between juniors and the main pathway, built to prepare players for stronger training standards.' },
+  { label: 'Flagship', title: 'Joner Football Performance', text: 'The complete development program. Ages 8 and over, max 6 per group, and the main JFP pathway since 2013.' },
+]
+
+const unlocks = [
+  { title: '10 Week Terms', text: 'A clear term structure so players can build habits, measure progress and keep improving.' },
+  { title: 'Player Reports', text: 'Development feedback so parents and players know what is improving and what needs work.' },
+  { title: 'Elite Coaching', text: 'High-detail technical coaching from the Joner Football team.' },
+  { title: 'Joner App', text: 'Players can continue training away from the session with app-based drills and support.' },
+  { title: 'Strength And Conditioning', text: 'Physical development support around the player, not just ball work.' },
+  { title: 'Game Analysis', text: 'Video and game detail to help players understand their decisions and improve faster.' },
+  { title: 'Mentorship', text: 'Guidance on standards, mindset, training habits and what serious football development looks like.' },
+  { title: 'High Level Training', text: 'A demanding environment for players who want to chase a career in football.' },
+]
+
 const points = [
   'Early morning sessions, weekday afternoons and Saturday morning options',
   'For ages 8 and over, across all ability levels',
@@ -118,6 +135,7 @@ const faqs = [
     <nav class="sticky top-0 z-30 border-y border-white/10 bg-joner-black/92 backdrop-blur">
       <div class="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-4 py-4 font-heading text-xs uppercase tracking-[0.22em] text-white sm:px-6 lg:px-8 no-scrollbar">
         <a href="#program" class="shrink-0 hover:text-joner-red">Program</a>
+        <a href="#pathway" class="shrink-0 hover:text-joner-red">Pathway</a>
         <a href="#locations" class="shrink-0 hover:text-joner-red">Locations</a>
         <a href="#energy" class="shrink-0 hover:text-joner-red">Energy</a>
         <a href="#videos" class="shrink-0 hover:text-joner-red">Videos</a>
@@ -175,7 +193,68 @@ const faqs = [
       </div>
     </section>
 
-    <section id="locations" class="scroll-mt-24 bg-gradient-to-b from-joner-black via-joner-gray to-joner-black py-16 md:py-24 relative overflow-hidden">
+    <section id="pathway" class="scroll-mt-24 bg-gradient-to-b from-joner-black via-joner-gray to-joner-black py-16 md:py-24 relative overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.14),transparent_60%)] pointer-events-none"></div>
+      <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-10 text-center">
+          <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">JFP Player Pathway</p>
+          <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
+            The journey through Joner Football.
+          </h2>
+          <p class="mx-auto mt-4 max-w-2xl font-body text-base leading-relaxed text-neutral-400 md:text-lg">
+            JFP is the flagship program. It sits inside a full development pathway that helps players move from foundation habits to high-level training and a career in football.
+          </p>
+        </div>
+
+        <div class="mb-8 overflow-hidden rounded-2xl border border-white/10 bg-black/60 shadow-2xl">
+          <picture>
+            <source media="(max-width: 767px)" srcset="/images/training/jfp/jfp-player-pathway-mobile.webp" />
+            <img
+              src="/images/training/jfp/jfp-player-pathway-full.webp"
+              alt="Joner Football JFP Player Pathway showing Joners Juniors, the 6 to 8 year old program, Joner Football Performance, player reports, elite coaching, mentorship and high level training"
+              class="w-full object-cover"
+              loading="lazy"
+            />
+          </picture>
+        </div>
+
+        <div class="mb-10 rounded-xl border border-joner-red/40 bg-joner-red/10 p-5 text-center md:p-7">
+          <p class="mb-2 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Flagship Program</p>
+          <h3 class="font-heading text-3xl uppercase leading-none text-white md:text-5xl">Joner Football Performance</h3>
+          <p class="mx-auto mt-4 max-w-3xl font-body text-base leading-relaxed text-neutral-300">
+            The complete development program for ages 8 and over. Max 6 players per group. Built since 2013 for dedicated players who want technical, physical and mental development.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {pathwayStages.map((stage) => (
+            <article class="rounded-xl border border-white/10 bg-black/45 p-6 backdrop-blur-sm">
+              <p class="mb-3 font-heading text-xs uppercase tracking-[0.26em] text-joner-red">{stage.label}</p>
+              <h3 class="mb-4 font-heading text-2xl uppercase leading-none text-white">{stage.title}</h3>
+              <p class="font-body text-sm leading-relaxed text-neutral-400 md:text-base">{stage.text}</p>
+            </article>
+          ))}
+        </div>
+
+        <div class="mt-10">
+          <div class="mb-6 flex items-center gap-3">
+            <span class="h-2 w-2 rounded-full bg-joner-red"></span>
+            <h3 class="font-heading text-xl uppercase tracking-wide text-white md:text-2xl">What JFP unlocks</h3>
+            <span class="h-px flex-1 bg-gradient-to-r from-white/15 to-transparent"></span>
+          </div>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {unlocks.map((item) => (
+              <article class="rounded-lg border border-white/10 bg-white/5 p-5">
+                <h4 class="mb-2 font-heading text-lg uppercase leading-tight text-white">{item.title}</h4>
+                <p class="font-body text-sm leading-relaxed text-neutral-400">{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="locations" class="scroll-mt-24 bg-joner-black py-16 md:py-24 relative overflow-hidden">
       <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.12),transparent_60%)] pointer-events-none"></div>
       <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="mb-10 text-center">
