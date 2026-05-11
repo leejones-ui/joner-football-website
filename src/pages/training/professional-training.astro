@@ -81,7 +81,7 @@ const videoFeatures = [
       <div class="pro-wrap">
         <div class="pro-section-head">
           <p class="pro-eyebrow">Pro player carousel</p>
-          <h2>The players. The sessions. The standard.</h2>
+          <h2>The players, sessions, and standard.</h2>
         </div>
       </div>
       <div class="pro-marquee" aria-label="Professional player image carousel">
@@ -103,7 +103,7 @@ const videoFeatures = [
           <h2>Players who trusted the detail.</h2>
         </div>
         {zoomImages.map((image, index) => (
-          <div class:list={['zoom-parallax__layer', `zoom-parallax__layer--${index + 1}`]} data-zoom-layer data-scale={index === 0 ? '4' : index === 1 ? '5' : index === 2 ? '6' : index === 3 ? '5' : index === 4 ? '6' : index === 5 ? '8' : '9'}>
+          <div class:list={['zoom-parallax__layer', `zoom-parallax__layer--${index + 1}`]} data-zoom-layer data-scale={index === 0 ? '2' : index === 1 ? '5' : index === 2 ? '6' : index === 3 ? '5' : index === 4 ? '6' : index === 5 ? '8' : '9'}>
             <div class="zoom-parallax__frame">
               <img src={image.src} alt={image.alt} loading={index < 2 ? 'eager' : 'lazy'} />
             </div>
@@ -114,10 +114,8 @@ const videoFeatures = [
 
     <section class="pro-video-grid" aria-label="Professional training video showcase">
       <div class="pro-wrap">
-        <div class="pro-section-head pro-section-head--light">
-          <p class="pro-eyebrow">Watch the work</p>
-          <h2>Video proof inside the process.</h2>
-          <p>These are easy to tap now. No broken scroll stack, just clear videos that open the full session.</p>
+        <div class="pro-video-banner">
+          <span>Watch the work</span>
         </div>
         <div class="pro-video-grid__cards">
           {videoFeatures.map((video) => (
@@ -136,39 +134,96 @@ const videoFeatures = [
     </section>
 
     <section class="pro-contact" id="pro-contact">
-      <div class="pro-wrap pro-contact__grid">
-        <div class="pro-contact__copy">
+      <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-8 text-center">
           <p class="pro-eyebrow">Contact us</p>
           <h2>Enquire about pro training.</h2>
-          <p>
-            Tell us the player level, age, position, and what needs fixing. If it is the right fit, we will point you to the best next step.
+          <p class="mx-auto mt-4 max-w-2xl font-body text-base leading-relaxed text-gray-400 md:text-lg">
+            Same form as the contact page. Choose training enquiries and tell us about the player.
           </p>
         </div>
-        <form id="pro-contact-form" class="pro-contact__form">
-          <input type="hidden" name="enquiryType" value="training-sydney" />
-          <div class="pro-form-grid">
-            <input type="text" name="name" placeholder="Full name" required />
-            <input type="email" name="email" placeholder="Email address" required />
+
+        <form id="contact-smart-form" class="space-y-5 border border-gray-800 bg-joner-gray p-5 md:p-8">
+          <div>
+            <label for="enquiryType" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-gray-400">What can we help with?</label>
+            <select id="enquiryType" name="enquiryType" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
+              <option value="training-sydney" selected>Training Enquiries (Sydney)</option>
+              <option value="general">General Enquiries</option>
+              <option value="joners-juniors">Joners Juniors Enquiries</option>
+              <option value="coaching-role">Apply For A Coaching Role</option>
+            </select>
+            <p id="form-intro" class="mt-3 font-body text-sm text-gray-400">Tell us about the player and what type of training you are looking for.</p>
           </div>
-          <div class="pro-form-grid">
-            <input type="tel" name="phone" placeholder="Phone number" required />
-            <input type="text" name="location" placeholder="Location" />
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <input data-name-field type="text" name="name" placeholder="Full name" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+            <input type="email" name="email" placeholder="Email address" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
           </div>
-          <div class="pro-form-grid">
-            <input type="text" name="playerName" placeholder="Player name" />
-            <input type="text" name="playerAge" placeholder="Player age" />
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <input type="tel" name="phone" placeholder="Phone number" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+            <input data-location-field="default" type="text" name="location" placeholder="Location" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+            <select data-location-field="training" name="trainingLocation" class="hidden min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none" disabled>
+              <option value="">Preferred Sydney location</option>
+              <option>HQ (Belrose)</option>
+              <option>North Turramurra</option>
+              <option>Rydalmere Park</option>
+              <option>Other</option>
+            </select>
           </div>
-          <div class="pro-form-grid">
-            <input type="text" name="playerLevel" placeholder="Player level or team" />
-            <input type="text" name="position" placeholder="Position" />
+
+          <div data-fields="training-sydney joners-juniors" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <input type="text" name="playerName" placeholder="Player name" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+            <input data-player-age-field type="text" name="playerAge" placeholder="Player age" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
           </div>
-          <textarea name="message" placeholder="What does the player need help with?" required rows="5"></textarea>
-          <label class="pro-check">
-            <input type="checkbox" name="marketingOptIn" value="true" />
-            <span>Yes, send me Joner Football updates, app news, camps, and training tips by email.</span>
+
+          <div data-fields="training-sydney" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <input type="text" name="playerLevel" placeholder="Player level or team" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+            <select name="trainingInterest" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
+              <option value="">Training interest</option>
+              <option>Joner Football Performance</option>
+              <option>Private professional training</option>
+              <option>Private training</option>
+              <option>Group training</option>
+              <option>Game analysis</option>
+              <option>Not sure yet</option>
+            </select>
+          </div>
+
+          <div data-fields="joners-juniors" class="grid grid-cols-1 gap-4 sm:grid-cols-2 hidden">
+            <select name="juniorProgram" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
+              <option value="">Program interest</option>
+              <option>Joner 6-8 Year Old Program</option>
+              <option>Joner Football Performance pathway</option>
+              <option>Not sure yet</option>
+            </select>
+            <input type="text" name="parentGoal" placeholder="Main goal for the player" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          </div>
+
+          <div data-fields="coaching-role" class="grid grid-cols-1 gap-4 sm:grid-cols-2 hidden">
+            <input type="text" name="coachingExperience" placeholder="Coaching experience" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+            <input type="text" name="qualifications" placeholder="Qualifications" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          </div>
+
+          <div data-fields="coaching-role" class="hidden">
+            <input type="text" name="availability" placeholder="Availability" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          </div>
+
+          <div data-fields="coaching-role" class="hidden">
+            <label for="cvFile" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-gray-400">Attach CV</label>
+            <input id="cvFile" type="file" name="cvFile" accept=".pdf,.doc,.docx,.pages" class="block w-full cursor-pointer border border-dashed border-gray-700 bg-joner-black px-4 py-4 font-body text-sm text-gray-300 file:mr-4 file:border-0 file:bg-joner-red file:px-4 file:py-2 file:font-heading file:text-xs file:uppercase file:tracking-[0.16em] file:text-white hover:border-joner-red focus:border-joner-red focus:outline-none" />
+            <p class="mt-2 font-body text-xs text-gray-500">PDF, Word, or Pages file. Max 5MB.</p>
+          </div>
+
+          <textarea name="message" placeholder="Message" required rows="5" class="w-full resize-none border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none"></textarea>
+
+          <label class="flex gap-3 border border-gray-800 bg-joner-black/60 p-4 font-body text-sm leading-relaxed text-gray-300">
+            <input type="checkbox" name="marketingOptIn" value="true" class="mt-1 h-4 w-4 shrink-0 accent-joner-red" />
+            <span>Yes, send me Joner Football updates, offers, app news, camps, and training tips by email.</span>
           </label>
-          <p id="pro-contact-status" class="pro-contact__status" hidden></p>
-          <button type="submit" class="pro-glass pro-glass--red">Send enquiry<span></span></button>
+
+          <p id="contact-form-status" class="hidden font-body text-sm"></p>
+          <button type="submit" class="btn-red w-full text-sm">Send Training Enquiry</button>
         </form>
       </div>
     </section>
@@ -225,8 +280,8 @@ const videoFeatures = [
       letter-spacing: 0.04em;
       line-height: 0.9;
     }
-    .pro-hero h1 { max-width: 980px; margin: 18px 0 0; font-size: clamp(4rem, 12vw, 10.5rem); }
-    .pro-hero__lead { max-width: 680px; margin: 24px 0 0; color: rgba(255,255,255,0.86); font-size: clamp(1.05rem, 2vw, 1.34rem); line-height: 1.6; }
+    .pro-hero h1 { max-width: 760px; margin: 16px 0 0; font-size: clamp(3.1rem, 7.2vw, 6.7rem); }
+    .pro-hero__lead { max-width: 620px; margin: 20px 0 0; color: rgba(255,255,255,0.86); font-size: clamp(1rem, 1.45vw, 1.16rem); line-height: 1.6; }
     .pro-hero__actions { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 14px; }
     .pro-glass {
       min-height: 52px;
@@ -253,9 +308,9 @@ const videoFeatures = [
     .pro-glass--red { border-color: rgba(227,6,19,.74); }
     .pro-glass span { display: none; }
 
-    .pro-player-wall { padding: 92px 0 100px; background: #fff; color: #050505; overflow: hidden; }
-    .pro-section-head { max-width: 820px; margin-bottom: 34px; }
-    .pro-section-head h2 { margin: 14px 0 0; font-size: clamp(2.7rem, 7vw, 6rem); }
+    .pro-player-wall { padding: 58px 0 80px; background: #fff; color: #050505; overflow: hidden; }
+    .pro-section-head { max-width: none; margin-bottom: 28px; }
+    .pro-section-head h2 { margin: 12px 0 0; font-size: clamp(2.1rem, 5.1vw, 4.6rem); white-space: nowrap; }
     .pro-section-head p:not(.pro-eyebrow) { max-width: 620px; margin: 16px 0 0; color: rgba(255,255,255,0.72); line-height: 1.7; }
     .pro-section-head--light { color: #fff; }
     .pro-marquee { width: 100%; overflow: hidden; }
@@ -270,11 +325,12 @@ const videoFeatures = [
     .zoom-parallax__spotlight { position: absolute; top: -42vmin; left: 50%; width: 120vmin; height: 120vmin; transform: translateX(-50%); border-radius: 999px; background: radial-gradient(ellipse at center, rgba(255,255,255,0.12), rgba(227,6,19,0.1) 24%, transparent 55%); filter: blur(30px); pointer-events: none; }
     .zoom-parallax__copy { position: absolute; z-index: 10; left: 50%; top: 50%; width: min(760px, 88vw); transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
     .zoom-parallax__copy::before { content: ''; position: absolute; inset: -42px -54px; z-index: -1; background: radial-gradient(circle, rgba(0,0,0,0.72), rgba(0,0,0,0.42) 42%, transparent 70%); filter: blur(8px); }
-    .zoom-parallax__copy h2 { margin: 12px 0 0; font-size: clamp(2.8rem, 8vw, 7.2rem); text-shadow: 0 8px 28px rgba(0,0,0,0.95), 0 2px 4px rgba(0,0,0,0.9); }
+    .zoom-parallax__copy h2 { margin: 12px 0 0; font-size: clamp(2.3rem, 6vw, 5.8rem); text-shadow: 0 8px 28px rgba(0,0,0,0.95), 0 2px 4px rgba(0,0,0,0.9); }
     .zoom-parallax__layer { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; will-change: transform; }
     .zoom-parallax__frame { position: relative; width: 30vw; height: 34vh; overflow: hidden; box-shadow: 0 30px 90px rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.14); background: #111; }
     .zoom-parallax__frame img { width: 100%; height: 100%; object-fit: cover; }
-    .zoom-parallax__layer--1 .zoom-parallax__frame { width: 42vw; height: 34vh; }
+    .zoom-parallax__layer--1 .zoom-parallax__frame img { object-position: center 44%; }
+    .zoom-parallax__layer--1 .zoom-parallax__frame { width: min(92vw, 1320px); height: min(72vh, 760px); }
     .zoom-parallax__layer--2 .zoom-parallax__frame { top: -30vh; left: 5vw; width: 27vw; height: 34vh; }
     .zoom-parallax__layer--3 .zoom-parallax__frame { top: -10vh; left: -25vw; width: 21vw; height: 42vh; }
     .zoom-parallax__layer--4 .zoom-parallax__frame { left: 27.5vw; width: 23vw; height: 30vh; }
@@ -282,7 +338,8 @@ const videoFeatures = [
     .zoom-parallax__layer--6 .zoom-parallax__frame { top: 27.5vh; left: -22.5vw; width: 25vw; height: 32vh; }
     .zoom-parallax__layer--7 .zoom-parallax__frame { top: 22.5vh; left: 25vw; width: 16vw; height: 22vh; }
 
-    .pro-video-grid { padding: 96px 0; background: radial-gradient(circle at 74% 22%, rgba(227,6,19,0.18), transparent 24%), #060606; }
+    .pro-video-grid { padding: 78px 0 92px; background: radial-gradient(circle at 74% 22%, rgba(227,6,19,0.18), transparent 24%), #060606; }
+    .pro-video-banner { display: inline-flex; margin-bottom: 22px; border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; padding: 10px 16px; background: rgba(255,255,255,0.06); color: #fff; font-family: var(--pro-display); text-transform: uppercase; letter-spacing: 0.18em; font-size: 0.82rem; }
     .pro-video-grid__cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
     .pro-video-card { position: relative; min-height: 330px; display: block; overflow: hidden; border: 1px solid rgba(255,255,255,0.16); background: #111; text-decoration: none; color: #fff; box-shadow: 0 30px 90px rgba(0,0,0,0.32); }
     .pro-video-card img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
@@ -293,7 +350,7 @@ const videoFeatures = [
     .pro-video-card__content h3 { margin: 0; font-family: var(--pro-display); text-transform: uppercase; letter-spacing: 0.05em; font-size: clamp(2rem, 4vw, 3.6rem); line-height: 0.92; }
     .pro-video-card__content p { margin: 8px 0 0; color: rgba(255,255,255,0.74); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.78rem; }
 
-    .pro-contact { padding: 96px 0; background: #fff; color: #050505; }
+    .pro-contact { padding: 82px 0 96px; background: #050505; color: #fff; }
     .pro-contact__grid { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 48px; align-items: start; }
     .pro-contact h2 { margin: 14px 0 0; font-size: clamp(2.8rem, 6vw, 5.6rem); }
     .pro-contact__copy p:not(.pro-eyebrow) { margin: 20px 0 0; color: rgba(0,0,0,0.66); line-height: 1.7; }
@@ -313,12 +370,15 @@ const videoFeatures = [
       .zoom-parallax__frame { width: 42vw; }
     }
     @media (max-width: 640px) {
-      .pro-hero { min-height: 92vh; padding: 110px 0 48px; }
-      .pro-hero h1 { font-size: clamp(3.4rem, 18vw, 5.2rem); }
+      .pro-hero { min-height: 86vh; padding: 104px 0 42px; }
+      .pro-hero h1 { font-size: clamp(2.65rem, 14vw, 4.15rem); max-width: 92vw; }
+      .pro-hero__lead { font-size: 0.98rem; max-width: 92vw; }
       .pro-hero__actions, .pro-glass { width: 100%; }
-      .pro-player-wall, .pro-video-grid, .pro-contact { padding: 64px 0; }
+      .pro-player-wall, .pro-video-grid, .pro-contact { padding: 54px 0; }
+      .pro-section-head h2 { white-space: normal; font-size: clamp(2.05rem, 11vw, 3.4rem); }
       .zoom-parallax { height: 240vh; }
-      .zoom-parallax__frame, .zoom-parallax__layer--1 .zoom-parallax__frame { width: 58vw; height: 30vh; }
+      .zoom-parallax__frame { width: 58vw; height: 30vh; }
+      .zoom-parallax__layer--1 .zoom-parallax__frame { width: 92vw; height: 58vh; }
       .zoom-parallax__layer--2 .zoom-parallax__frame { width: 54vw; }
       .zoom-parallax__layer--3 .zoom-parallax__frame { left: -18vw; width: 34vw; }
       .zoom-parallax__layer--4 .zoom-parallax__frame { left: 20vw; width: 38vw; }
@@ -374,57 +434,180 @@ const videoFeatures = [
     window.addEventListener('scroll', requestUpdate, { passive: true })
     window.addEventListener('resize', requestUpdate)
 
-    const form = document.getElementById('pro-contact-form')
-    const status = document.getElementById('pro-contact-status')
-    if (form) {
+    ;(function () {
+      var options = {
+        'training-sydney': {
+          label: 'Training Enquiries (Sydney)',
+          intro: 'Tell us about the player and what type of training you are looking for.',
+          button: 'Send Training Enquiry'
+        },
+        'general': {
+          label: 'General Enquiries',
+          intro: 'Ask us anything and the team will point you in the right direction.',
+          button: 'Send General Enquiry'
+        },
+        'joners-juniors': {
+          label: 'Joners Juniors Enquiries',
+          intro: 'For parents enquiring about the Joners Juniors program.',
+          button: 'Send Joners Juniors Enquiry'
+        },
+        'coaching-role': {
+          label: 'Apply For A Coaching Role',
+          intro: 'Tell us about your coaching background and why you want to work with Joner Football.',
+          button: 'Send Coaching Application'
+        }
+      };
+
+      var form = document.getElementById('contact-smart-form');
+      if (!form) return;
+      var typeSelect = form.querySelector('[name="enquiryType"]');
+      var intro = document.getElementById('form-intro');
+      var submit = form.querySelector('button[type="submit"]');
+      var status = document.getElementById('contact-form-status');
+
+      function setStatus(message, ok) {
+        if (!status) return;
+        status.textContent = message || '';
+        status.className = message ? 'font-body text-sm ' + (ok ? 'text-green-400' : 'text-amber-400') : 'hidden font-body text-sm';
+      }
+
+      function syncNamePlaceholder() {
+        var selected = typeSelect.value || 'training-sydney';
+        var nameField = form.querySelector('[data-name-field]');
+        var playerAgeField = form.querySelector('[data-player-age-field]');
+        if (!nameField) return;
+        if (selected !== 'training-sydney') {
+          nameField.placeholder = 'Full name';
+          return;
+        }
+        var age = playerAgeField ? parseInt(String(playerAgeField.value || '').replace(/[^0-9]/g, ''), 10) : NaN;
+        nameField.placeholder = age >= 18 ? 'Full name' : 'Parent name';
+      }
+
+      function syncFields() {
+        var selected = typeSelect.value || 'training-sydney';
+        var config = options[selected] || options['training-sydney'];
+        if (intro) intro.textContent = config.intro;
+        if (submit) submit.textContent = config.button;
+
+        form.querySelectorAll('[data-fields]').forEach(function (group) {
+          var show = String(group.getAttribute('data-fields') || '').split(' ').indexOf(selected) !== -1;
+          group.classList.toggle('hidden', !show);
+          group.querySelectorAll('input, select, textarea').forEach(function (field) {
+            field.disabled = !show;
+            if (field.classList.contains('conditional-required')) field.required = show;
+          });
+        });
+
+        var defaultLocation = form.querySelector('[data-location-field="default"]');
+        var trainingLocation = form.querySelector('[data-location-field="training"]');
+        var isTraining = selected === 'training-sydney';
+        if (defaultLocation && trainingLocation) {
+          defaultLocation.classList.toggle('hidden', isTraining);
+          defaultLocation.disabled = isTraining;
+          trainingLocation.classList.toggle('hidden', !isTraining);
+          trainingLocation.disabled = !isTraining;
+          trainingLocation.required = isTraining;
+        }
+        syncNamePlaceholder();
+      }
+
+      typeSelect.addEventListener('change', function () {
+        setStatus('', true);
+        syncFields();
+      });
+      var playerAgeField = form.querySelector('[data-player-age-field]');
+      if (playerAgeField) playerAgeField.addEventListener('input', syncNamePlaceholder);
+      syncFields();
+
       form.addEventListener('submit', function (event) {
-        event.preventDefault()
-        const submit = form.querySelector('button[type="submit"]')
-        const originalText = submit ? submit.textContent : 'Send enquiry'
-        const formData = new FormData(form)
-        const payload = {}
-        formData.forEach(function (value, key) { payload[key] = value })
-        payload.trainingInterest = 'Private professional training'
-        payload.marketingOptIn = formData.get('marketingOptIn') === 'true'
+        event.preventDefault();
+        setStatus('', true);
+        var originalText = submit ? submit.textContent : 'Send Enquiry';
+        var formData = new FormData(form);
+        var emailInput = form.querySelector('input[name="email"]');
 
-        if (status) {
-          status.hidden = true
-          status.textContent = ''
+        if (window.JonerEmailGuard && emailInput) {
+          var validation = window.JonerEmailGuard.validateEmail(formData.get('email'));
+          window.JonerEmailGuard.setFeedback(emailInput, validation);
+          if (!validation.valid) {
+            emailInput.reportValidity();
+            return;
+          }
         }
+
         if (submit) {
-          submit.disabled = true
-          submit.textContent = 'Sending...'
+          submit.disabled = true;
+          submit.textContent = 'Sending...';
+          submit.classList.add('opacity-70', 'cursor-not-allowed');
         }
 
-        fetch('/api/contact-enquiry', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        })
-          .then(function (response) { return response.json() })
-          .then(function (data) {
-            if (!data || !data.success) throw new Error((data && data.error) || 'Could not send enquiry.')
-            form.reset()
-            if (status) {
-              status.hidden = false
-              status.style.color = '#4ade80'
-              status.textContent = 'Done. Your enquiry has been sent.'
-            }
-          })
-          .catch(function (error) {
-            if (status) {
-              status.hidden = false
-              status.style.color = '#fbbf24'
-              status.textContent = error && error.message ? error.message : 'Could not send enquiry. Please try again.'
-            }
-          })
-          .finally(function () {
+        var payload = {};
+        formData.forEach(function (value, key) {
+          if (!(value instanceof File)) payload[key] = value;
+        });
+        if (payload.enquiryType === 'training-sydney' && payload.trainingLocation) payload.location = payload.trainingLocation;
+        payload.marketingOptIn = formData.get('marketingOptIn') === 'true';
+
+        var fileInput = form.querySelector('input[name="cvFile"]');
+        var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+        var filePromise = Promise.resolve();
+        if (payload.enquiryType === 'coaching-role' && file) {
+          if (file.size > 5 * 1024 * 1024) {
+            setStatus('CV file is too large. Max 5MB.', false);
             if (submit) {
-              submit.disabled = false
-              submit.textContent = originalText
+              submit.disabled = false;
+              submit.textContent = originalText;
+              submit.classList.remove('opacity-70', 'cursor-not-allowed');
             }
-          })
-      })
-    }
+            return;
+          }
+          filePromise = new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function () {
+              var result = String(reader.result || '');
+              payload.cvFile = {
+                name: file.name,
+                type: file.type || 'application/octet-stream',
+                content: result.split(',')[1] || ''
+              };
+              resolve();
+            };
+            reader.onerror = function () { reject(new Error('Could not read CV file.')); };
+            reader.readAsDataURL(file);
+          });
+        }
+
+        var tokenPromise = window.JonerRecaptcha && window.JonerRecaptcha.getToken
+          ? window.JonerRecaptcha.getToken('contact')
+          : Promise.resolve('');
+
+        filePromise.then(function () { return tokenPromise; }).then(function (token) {
+          payload.recaptchaToken = token;
+          return fetch('/api/contact-enquiry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data || !data.success) throw new Error((data && data.error) || 'Could not send enquiry.');
+          form.reset();
+          syncFields();
+          setStatus('Done. Your enquiry has been sent.', true);
+        })
+        .catch(function (error) {
+          setStatus(error && error.message ? error.message : 'Could not send enquiry. Please try again.', false);
+        })
+        .finally(function () {
+          if (submit) {
+            submit.disabled = false;
+            submit.textContent = originalText;
+            submit.classList.remove('opacity-70', 'cursor-not-allowed');
+          }
+        });
+      });
+    })();
   </script>
 </BaseLayout>
