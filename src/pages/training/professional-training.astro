@@ -1,18 +1,316 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const parallaxImages = [
+  { src: '/images/training/pro-training.webp', alt: 'Professional footballer training with Joner Football' },
+  { src: '/images/training/lee-coaching-action.webp', alt: 'Lee Jones coaching a player in detail' },
+  { src: '/images/contact/lee-coaching-landscape.webp', alt: 'Joner Football coaching on pitch' },
+  { src: '/images/training/jfp/jfp-training-4.webp', alt: 'Elite player technical work' },
+  { src: '/images/training/jfp/jfp-training-1.webp', alt: 'Joner Football private training session' },
+  { src: '/images/about/lee-action.webp', alt: 'Lee Jones demonstrating football technique' },
+  { src: '/images/hq/training-action.webp', alt: 'High intensity football training action' },
+]
+
+const standards = [
+  'Individual detail, not generic sessions',
+  'Technical correction at match speed',
+  'Position-specific habits and decision making',
+  'Standards for serious footballers only',
+]
+
+const pathways = [
+  {
+    title: 'Pro players',
+    copy: 'Sharp, private work for players who need clean touches, rhythm, confidence, and detail between club sessions.',
+  },
+  {
+    title: 'Academy players',
+    copy: 'High-standard technical coaching for players already in serious environments who need an edge.',
+  },
+  {
+    title: 'Returning players',
+    copy: 'A focused reset for players coming back from time away, injury, or a dip in confidence.',
+  },
+]
 ---
 
-<BaseLayout title="Professional Training | Joner Football" description="Professional and elite football training enquiries with Joner Football in Sydney." canonical="/training/professional-training/" noindex={true}>
-  <main class="bg-joner-black text-white pt-24">
-    <section class="relative overflow-hidden min-h-[72vh] flex items-center">
-      <img src="/images/training/pro-training.webp" alt="Professional football training at Joner Football" class="absolute inset-0 h-full w-full object-cover object-center opacity-45" />
-      <div class="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/30"></div>
-      <div class="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-24">
-        <p class="font-heading text-sm uppercase tracking-[0.25em] text-joner-red mb-4">Training</p>
-        <h1 class="font-heading text-6xl md:text-8xl uppercase leading-none mb-6">Professional Training</h1>
-        <p class="max-w-2xl font-body text-xl text-gray-300 leading-relaxed mb-8">Private and elite-level training for professional players and serious footballers.</p>
-        <a href="/contact?type=training-sydney" class="btn-red px-8 py-4">Enquire About Pro Training</a>
+<BaseLayout
+  title="Professional Training | Joner Football"
+  description="Elite professional football training with Joner Football in Sydney. Private technical coaching for serious players, academy players, and professionals."
+  canonical="/training/professional-training/"
+>
+  <main class="pro-page bg-joner-black text-white">
+    <section class="pro-hero" aria-labelledby="pro-title">
+      <div class="pro-hero__media" aria-hidden="true">
+        <img src="/images/training/pro-training.webp" alt="" loading="eager" />
+      </div>
+      <div class="pro-hero__shade"></div>
+      <div class="pro-wrap pro-hero__content">
+        <p class="pro-eyebrow">Professional Training</p>
+        <h1 id="pro-title">For players who need detail.</h1>
+        <p class="pro-hero__lead">
+          Private, high-standard technical training for professionals, academy players, and serious footballers who want sharper habits under pressure.
+        </p>
+        <div class="pro-hero__actions">
+          <a href="/contact?type=training-sydney" class="pro-glass pro-glass--red">Enquire now<span></span></a>
+          <a href="#standards" class="pro-glass">See the standard<span></span></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="pro-intro" id="standards">
+      <div class="pro-wrap pro-intro__grid">
+        <div>
+          <p class="pro-eyebrow">Not extra training</p>
+          <h2>Training that fixes the details.</h2>
+        </div>
+        <div class="pro-intro__copy">
+          <p>
+            This is for players who already care. The work is technical, direct, and built around what shows up in matches: receiving under pressure, scanning, first touch, body shape, weak foot, finishing, and clean decision making.
+          </p>
+          <p>
+            Lee does not run babysitting sessions. The player has to want the detail.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="zoom-parallax" data-zoom-parallax aria-label="Professional training image sequence">
+      <div class="zoom-parallax__sticky">
+        <div class="zoom-parallax__copy" aria-hidden="true">
+          <p class="pro-eyebrow">Inside the work</p>
+          <h2>Touch. Timing. Detail.</h2>
+        </div>
+        {parallaxImages.map((image, index) => (
+          <div class:list={['zoom-parallax__layer', `zoom-parallax__layer--${index + 1}`]} data-zoom-layer data-scale={index === 0 ? '4' : index === 1 ? '5' : index === 2 ? '6' : index === 3 ? '5' : index === 4 ? '6' : index === 5 ? '8' : '9'}>
+            <div class="zoom-parallax__frame">
+              <img src={image.src} alt={image.alt} loading={index < 2 ? 'eager' : 'lazy'} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="pro-standards">
+      <div class="pro-wrap">
+        <div class="pro-section-head">
+          <p class="pro-eyebrow">The standard</p>
+          <h2>Small details. Big difference.</h2>
+        </div>
+        <div class="pro-standard-grid">
+          {standards.map((item, index) => (
+            <article class="pro-standard-card">
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <h3>{item}</h3>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="pro-split">
+      <div class="pro-wrap pro-split__grid">
+        <div class="pro-split__image">
+          <img src="/images/contact/lee-coaching-landscape.webp" alt="Lee Jones coaching a player during a professional football training session" loading="lazy" />
+        </div>
+        <div class="pro-split__content">
+          <p class="pro-eyebrow">Who it is for</p>
+          <h2>Players who want to be coached properly.</h2>
+          <div class="pro-pathways">
+            {pathways.map((path) => (
+              <article>
+                <h3>{path.title}</h3>
+                <p>{path.copy}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pro-final">
+      <div class="pro-final__bg" aria-hidden="true"></div>
+      <div class="pro-wrap pro-final__content">
+        <p class="pro-eyebrow">Ready?</p>
+        <h2>Book a serious training enquiry.</h2>
+        <p>
+          Tell us the player level, age, position, and what needs fixing. If it is the right fit, we will point you to the best next step.
+        </p>
+        <a href="/contact?type=training-sydney" class="pro-glass pro-glass--red">Enquire about pro training<span></span></a>
       </div>
     </section>
   </main>
+
+  <style>
+    :global(html) { scroll-behavior: smooth; }
+    .pro-page {
+      --pro-red: #E30613;
+      --pro-black: #0A0A0A;
+      --pro-display: Anton, Impact, sans-serif;
+      --pro-body: 'DM Sans', system-ui, sans-serif;
+      overflow-x: clip;
+    }
+    .pro-wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    .pro-eyebrow {
+      margin: 0;
+      font-family: var(--pro-display);
+      color: var(--pro-red);
+      font-size: 0.8rem;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+    }
+    .pro-hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+      padding: 128px 0 72px;
+    }
+    .pro-hero__media, .pro-hero__shade { position: absolute; inset: 0; }
+    .pro-hero__media img { width: 100%; height: 100%; object-fit: cover; object-position: center 28%; filter: saturate(1.05) contrast(1.08); }
+    .pro-hero__shade { background: linear-gradient(90deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.68) 42%, rgba(0,0,0,0.2) 100%), linear-gradient(180deg, rgba(0,0,0,0.12), rgba(0,0,0,0.82)); }
+    .pro-hero__content { position: relative; z-index: 1; }
+    .pro-hero h1, .pro-intro h2, .pro-section-head h2, .pro-split h2, .pro-final h2, .zoom-parallax__copy h2 {
+      font-family: var(--pro-display);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      line-height: 0.9;
+    }
+    .pro-hero h1 { max-width: 900px; margin: 18px 0 0; font-size: clamp(4rem, 12vw, 10rem); }
+    .pro-hero__lead { max-width: 640px; margin: 24px 0 0; color: rgba(255,255,255,0.82); font-size: clamp(1.05rem, 2vw, 1.32rem); line-height: 1.6; }
+    .pro-hero__actions { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 14px; }
+    .pro-glass {
+      min-height: 52px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      border-radius: 999px;
+      padding: 17px 28px 15px;
+      border: 1px solid rgba(255,255,255,.32);
+      color: #fff;
+      text-decoration: none;
+      background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.035)), rgba(5,5,5,.66);
+      box-shadow: 0 18px 40px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.22);
+      font-family: var(--pro-display);
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-size: 14px;
+      transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+    .pro-glass:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.58); box-shadow: 0 22px 46px rgba(0,0,0,.46), inset 0 1px 0 rgba(255,255,255,.28); }
+    .pro-glass--red { border-color: rgba(227,6,19,.74); }
+    .pro-glass span { display: none; }
+
+    .pro-intro { padding: 88px 0; background: #fff; color: #050505; }
+    .pro-intro__grid { display: grid; gap: 28px; grid-template-columns: 0.9fr 1.1fr; align-items: start; }
+    .pro-intro h2 { margin: 16px 0 0; font-size: clamp(2.8rem, 6vw, 5.7rem); }
+    .pro-intro__copy { display: grid; gap: 18px; color: rgba(0,0,0,0.68); font-size: 1.04rem; line-height: 1.75; }
+    .pro-intro__copy p { margin: 0; }
+
+    .zoom-parallax { position: relative; height: 300vh; background: #050505; }
+    .zoom-parallax__sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+    .zoom-parallax__copy { position: absolute; z-index: 10; left: 50%; top: 50%; width: min(520px, 84vw); transform: translate(-50%, -50%); text-align: center; pointer-events: none; mix-blend-mode: screen; }
+    .zoom-parallax__copy h2 { margin: 12px 0 0; font-size: clamp(2.8rem, 8vw, 7rem); text-shadow: 0 16px 60px rgba(0,0,0,0.8); }
+    .zoom-parallax__layer { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; will-change: transform; }
+    .zoom-parallax__frame { position: relative; width: 25vw; height: 25vh; overflow: hidden; box-shadow: 0 30px 90px rgba(0,0,0,0.5); }
+    .zoom-parallax__frame img { width: 100%; height: 100%; object-fit: cover; }
+    .zoom-parallax__layer--2 .zoom-parallax__frame { top: -30vh; left: 5vw; width: 35vw; height: 30vh; }
+    .zoom-parallax__layer--3 .zoom-parallax__frame { top: -10vh; left: -25vw; width: 20vw; height: 45vh; }
+    .zoom-parallax__layer--4 .zoom-parallax__frame { left: 27.5vw; width: 25vw; height: 25vh; }
+    .zoom-parallax__layer--5 .zoom-parallax__frame { top: 27.5vh; left: 5vw; width: 20vw; height: 25vh; }
+    .zoom-parallax__layer--6 .zoom-parallax__frame { top: 27.5vh; left: -22.5vw; width: 30vw; height: 25vh; }
+    .zoom-parallax__layer--7 .zoom-parallax__frame { top: 22.5vh; left: 25vw; width: 15vw; height: 15vh; }
+
+    .pro-standards { padding: 92px 0; background: var(--pro-black); }
+    .pro-section-head { max-width: 760px; margin-bottom: 34px; }
+    .pro-section-head h2 { margin: 14px 0 0; font-size: clamp(2.7rem, 7vw, 6rem); }
+    .pro-standard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .pro-standard-card { min-height: 260px; padding: 24px; border: 1px solid rgba(255,255,255,0.12); background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025)); display: flex; flex-direction: column; justify-content: space-between; }
+    .pro-standard-card span { color: var(--pro-red); font-family: var(--pro-display); letter-spacing: 0.18em; }
+    .pro-standard-card h3 { margin: 0; font-family: var(--pro-display); text-transform: uppercase; line-height: 1; letter-spacing: 0.04em; font-size: clamp(1.5rem, 2.6vw, 2.25rem); }
+
+    .pro-split { padding: 96px 0; background: #fff; color: #050505; }
+    .pro-split__grid { display: grid; grid-template-columns: 0.92fr 1.08fr; gap: 54px; align-items: center; }
+    .pro-split__image { min-height: 620px; overflow: hidden; background: #050505; }
+    .pro-split__image img { width: 100%; height: 100%; min-height: 620px; object-fit: cover; }
+    .pro-split h2 { margin: 14px 0 0; font-size: clamp(2.8rem, 6vw, 5.5rem); }
+    .pro-pathways { margin-top: 34px; display: grid; gap: 16px; }
+    .pro-pathways article { border-top: 1px solid rgba(0,0,0,0.14); padding-top: 18px; }
+    .pro-pathways h3 { margin: 0; font-family: var(--pro-display); text-transform: uppercase; letter-spacing: 0.08em; font-size: 1.35rem; color: var(--pro-red); }
+    .pro-pathways p { margin: 8px 0 0; color: rgba(0,0,0,0.66); line-height: 1.65; }
+
+    .pro-final { position: relative; overflow: hidden; padding: 140px 0; }
+    .pro-final__bg { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,0.88), rgba(0,0,0,0.54)), url('/images/hq/training-action.webp') center/cover; }
+    .pro-final__content { position: relative; max-width: 760px; }
+    .pro-final h2 { margin: 14px 0 0; font-size: clamp(3rem, 8vw, 7rem); }
+    .pro-final p:not(.pro-eyebrow) { max-width: 620px; margin: 20px 0 30px; color: rgba(255,255,255,0.78); line-height: 1.7; font-size: 1.08rem; }
+
+    @media (max-width: 900px) {
+      .pro-intro__grid, .pro-split__grid { grid-template-columns: 1fr; }
+      .pro-standard-grid { grid-template-columns: repeat(2, 1fr); }
+      .pro-split__image, .pro-split__image img { min-height: 420px; }
+      .zoom-parallax__frame { width: 42vw; }
+    }
+    @media (max-width: 640px) {
+      .pro-hero { min-height: 88vh; padding: 110px 0 48px; }
+      .pro-hero h1 { font-size: clamp(3.4rem, 18vw, 5.2rem); }
+      .pro-hero__actions, .pro-glass { width: 100%; }
+      .pro-intro, .pro-standards, .pro-split { padding: 64px 0; }
+      .pro-standard-grid { grid-template-columns: 1fr; }
+      .pro-standard-card { min-height: 180px; }
+      .zoom-parallax { height: 220vh; }
+      .zoom-parallax__layer--2 .zoom-parallax__frame { width: 54vw; }
+      .zoom-parallax__layer--3 .zoom-parallax__frame { left: -18vw; width: 34vw; }
+      .zoom-parallax__layer--4 .zoom-parallax__frame { left: 20vw; width: 38vw; }
+      .zoom-parallax__layer--5 .zoom-parallax__frame { width: 34vw; }
+      .zoom-parallax__layer--6 .zoom-parallax__frame { left: -16vw; width: 44vw; }
+      .zoom-parallax__layer--7 .zoom-parallax__frame { left: 20vw; width: 26vw; height: 18vh; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .zoom-parallax { height: auto; }
+      .zoom-parallax__sticky { position: relative; height: auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 64px 16px; }
+      .zoom-parallax__copy { position: relative; left: auto; top: auto; transform: none; grid-column: 1 / -1; margin: 0 auto 18px; }
+      .zoom-parallax__layer { position: relative; inset: auto; transform: none !important; }
+      .zoom-parallax__frame, .zoom-parallax__layer--2 .zoom-parallax__frame, .zoom-parallax__layer--3 .zoom-parallax__frame, .zoom-parallax__layer--4 .zoom-parallax__frame, .zoom-parallax__layer--5 .zoom-parallax__frame, .zoom-parallax__layer--6 .zoom-parallax__frame, .zoom-parallax__layer--7 .zoom-parallax__frame { top: auto; left: auto; width: 100%; height: 220px; }
+    }
+  </style>
+
+  <script>
+    const parallax = document.querySelector('[data-zoom-parallax]')
+    const layers = Array.from(document.querySelectorAll('[data-zoom-layer]'))
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max)
+    }
+
+    function updateZoomParallax() {
+      if (!parallax || !layers.length) return
+      const rect = parallax.getBoundingClientRect()
+      const scrollable = rect.height - window.innerHeight
+      const progress = scrollable > 0 ? clamp(-rect.top / scrollable, 0, 1) : 0
+
+      layers.forEach((layer) => {
+        const targetScale = Number(layer.getAttribute('data-scale') || '4')
+        const scale = 1 + ((targetScale - 1) * progress)
+        layer.style.transform = `scale(${scale})`
+      })
+    }
+
+    let ticking = false
+    function requestUpdate() {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        updateZoomParallax()
+        ticking = false
+      })
+    }
+
+    updateZoomParallax()
+    window.addEventListener('scroll', requestUpdate, { passive: true })
+    window.addEventListener('resize', requestUpdate)
+  </script>
 </BaseLayout>
