@@ -18,6 +18,19 @@ const schema = {
     }
   }
 }
+
+const coachingVideos = [
+  {
+    id: 'X2Lb84oetsQ',
+    title: 'Lee Jones coaching session',
+    blurb: 'Inside a Joner technical session. Watch Lee break down ball mastery the same way he teaches it in Sydney.'
+  },
+  {
+    id: 'axQYlKahQ58',
+    title: 'Lee Jones on the pitch',
+    blurb: 'Real coaching, real players, no filter. How Lee builds technique under pressure.'
+  }
+]
 ---
 
 <BaseLayout
@@ -26,139 +39,306 @@ const schema = {
   schema={schema}
 >
 
-  <!-- Hero -->
-  <section class="relative min-h-[60vh] flex items-center justify-center bg-joner-gray overflow-hidden">
-    <div class="absolute inset-0">
-      <img
-        src="/images/about/lee-coaching.webp"
-        alt="Lee Jones coaching at Joner Football"
-        class="w-full h-full object-cover object-center"
-      />
-      <div class="absolute inset-0 bg-gradient-to-b from-joner-black/80 via-joner-black/60 to-joner-black/80"></div>
-    </div>
-    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
-    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">From Sydney to the World</p>
-      <h1 class="font-heading text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
-        The Joner<br/>Football Story
-      </h1>
-      <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto">
-        From Sydney to the world. Technique above everything.
-      </p>
+  <!-- HERO: Spotlight card with Lee photo -->
+  <section class="bg-joner-black pt-10 pb-12 md:pt-16 md:pb-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-black">
+
+        <!-- Spotlight beams -->
+        <div class="spotlight spotlight-a" aria-hidden="true"></div>
+        <div class="spotlight spotlight-b" aria-hidden="true"></div>
+
+        <!-- Grain / vignette -->
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.18),transparent_55%)] pointer-events-none"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(255,255,255,0.06),transparent_60%)] pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col lg:flex-row min-h-[560px] lg:min-h-[640px]">
+
+          <!-- LEFT: Copy -->
+          <div class="flex-1 px-6 py-10 sm:px-10 sm:py-14 lg:p-14 flex flex-col justify-center">
+            <p class="text-joner-red font-heading text-xs sm:text-sm uppercase tracking-[0.25em] mb-4">
+              From Sydney to the World
+            </p>
+            <h1 class="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold uppercase leading-[0.92] mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-500">
+              The Joner<br/>Football<br/>Story
+            </h1>
+            <p class="text-neutral-300 font-body text-base sm:text-lg max-w-lg leading-relaxed mb-8">
+              I'm Lee Jones. I built Joner Football to give every player on earth access to the technical coaching that used to live behind academy gates. Master the ball, and the game opens up.
+            </p>
+            <div class="flex flex-wrap gap-3">
+              <a href="#story" class="btn-red text-sm">My Story</a>
+              <a href="https://www.instagram.com/leejonerjones" target="_blank" rel="noopener" class="btn-outline text-sm">
+                Follow Me on Instagram
+              </a>
+            </div>
+          </div>
+
+          <!-- RIGHT: Lee spotlight photo (replaces the 3D robot) -->
+          <div class="relative flex-1 min-h-[360px] lg:min-h-0">
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(255,255,255,0.18),transparent_55%)] pointer-events-none z-10"></div>
+            <img
+              src="/images/about/lee-spotlight-hero.webp"
+              alt="Lee Jones, founder of Joner Football, on the pitch"
+              class="absolute inset-0 w-full h-full object-cover object-center"
+              loading="eager"
+            />
+            <!-- Side-fade so the photo blends with the dark card -->
+            <div class="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black via-black/60 to-transparent lg:block hidden pointer-events-none"></div>
+            <div class="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none"></div>
+          </div>
+
+        </div>
+
+        <!-- Bottom stats bar -->
+        <div class="relative z-10 grid grid-cols-2 md:grid-cols-4 border-t border-white/10 bg-black/40 backdrop-blur-sm">
+          <div class="p-5 text-center border-r border-white/10">
+            <div class="font-heading text-joner-red text-2xl md:text-3xl font-bold">Top 10</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">World Technical Trainer</div>
+          </div>
+          <div class="p-5 text-center md:border-r border-white/10">
+            <div class="font-heading text-white text-2xl md:text-3xl font-bold">2.1M+</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">Followers</div>
+          </div>
+          <div class="p-5 text-center border-r border-t md:border-t-0 border-white/10">
+            <div class="font-heading text-white text-2xl md:text-3xl font-bold">50K+</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">App Downloads</div>
+          </div>
+          <div class="p-5 text-center border-t md:border-t-0 border-white/10">
+            <div class="font-heading text-white text-2xl md:text-3xl font-bold">15+</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">Countries</div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </section>
 
-  <!-- Lee's Story -->
-  <section class="bg-joner-black py-20 md:py-28">
+  <!-- LEE'S STORY -->
+  <section id="story" class="bg-joner-black py-16 md:py-28 scroll-mt-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
 
-        <!-- Content -->
-        <div>
+        <!-- Sticky photo column -->
+        <div class="lg:col-span-5 order-1 lg:order-2">
+          <div class="lg:sticky lg:top-24 space-y-4">
+            <div class="relative overflow-hidden rounded-xl border border-white/10">
+              <img
+                src="/images/about/lee-coaching-pitch.webp"
+                alt="Lee Jones coaching on the pitch at JFP HQ"
+                class="w-full h-auto object-cover"
+                loading="lazy"
+              />
+              <div class="absolute bottom-3 left-3 bg-joner-red text-white font-heading text-[10px] uppercase tracking-widest px-2 py-1">
+                JFP HQ, Belrose
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <img
+                src="/images/about/lee-action.webp"
+                alt="Lee Jones demonstrating ball control"
+                class="w-full aspect-square object-cover rounded-lg border border-white/10"
+                loading="lazy"
+              />
+              <img
+                src="/images/about/lee-portrait-smile.webp"
+                alt="Lee Jones, founder of Joner Football"
+                class="w-full aspect-square object-cover rounded-lg border border-white/10"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Story copy -->
+        <div class="lg:col-span-7 order-2 lg:order-1">
           <div class="inline-block bg-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-white mb-4">The Founder</div>
-          <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase mb-6">
+          <h2 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase mb-8 leading-tight">
             Lee 'Joner' Jones
           </h2>
 
-          <p class="text-gray-300 font-body leading-relaxed mb-6">
-            Lee Jones earned his UEFA C licence at 16 as a youth player at Wrexham AFC. By 19 he held his UEFA B licence and was appointed Academy Director at Rhyl FC Academy. He led his U14s to an international tournament win in France, taking home the best coach award in the process.
+          <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-6">
+            I earned my UEFA C licence at 16 as a youth player at Wrexham AFC. By 19 I held my UEFA B and was appointed Academy Director at Rhyl FC Academy. I took my U14s to an international tournament in France, lifted the trophy, and walked away with the best coach award.
           </p>
 
-          <p class="text-gray-300 font-body leading-relaxed mb-6">
-            A qualified teacher, Lee ran a community football project for unemployed adults and ex-offenders before coaching at Llandudno FC as a player/coach. He trialled for A-League clubs including Central Coast Mariners, then founded Joner Football in Sydney, Australia. What started as individual coaching sessions has grown into a global football development brand.
+          <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-6">
+            A qualified teacher, I ran a community football project for unemployed adults and ex-offenders in Wales, then coached at Llandudno FC as a player/coach. After trialling for A-League clubs including Central Coast Mariners, I packed my boots and moved to Sydney. Joner Football started with one player, one ball, and a borrowed patch of grass.
           </p>
 
-          <div class="border-l-4 border-joner-red pl-6 mb-6">
-            <p class="text-white font-heading text-lg uppercase tracking-wide">
-              In 2017, Lee was voted one of the Top 10 Technical Trainers in the World.
+          <div class="border-l-4 border-joner-red pl-6 mb-8 bg-white/5 py-4 pr-4 rounded-r-lg">
+            <p class="text-white font-heading text-lg md:text-xl uppercase tracking-wide leading-snug">
+              In 2017, I was voted one of the Top 10 Technical Trainers in the World.
             </p>
           </div>
 
-          <p class="text-gray-300 font-body leading-relaxed mb-6">
-            Lee has coached A-League, W-League, and elite international players. He has built a social media following of over 2.1 million footballers and launched the <a href="/app" class="text-joner-red hover:underline">Joner Football App</a> with 50,000+ downloads and 1,500+ training drills. His elite <a href="/camps" class="text-joner-red hover:underline">training camps</a> run across 15+ countries, and players who have trained under his methodology have gone on to professional and international careers.
+          <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-6">
+            Since then I've coached A-League, W-League, and elite international players. Built a social following north of 2.1 million footballers. Launched the <a href="/app" class="text-joner-red hover:underline">Joner Football App</a> with 50,000+ downloads and 1,500+ training drills. Run <a href="/camps" class="text-joner-red hover:underline">camps</a> across 15+ countries. Watched players I've coached go on to professional and international careers.
           </p>
 
-          <p class="text-gray-300 font-body leading-relaxed mb-8">
-            Today, Joner Football operates out of the brand new JFP HQ in Belrose, Sydney. A state-of-the-art indoor facility purpose-built for technical development. Lee's coaching philosophy has never changed: master the ball, and the game opens up. Every drill, every session, every camp is built around technical excellence, high intensity, and genuine player development.
+          <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-10">
+            Today, Joner Football operates out of JFP HQ in Belrose, Sydney. A state-of-the-art indoor facility purpose-built for technical development. The coaching philosophy has never changed: master the ball, and the game opens up. Every drill, every session, every camp is built around technical excellence, high intensity, and real player development.
           </p>
 
-          <!-- Stats -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-joner-gray border border-gray-700 p-4 text-center">
-              <div class="font-heading text-joner-red text-2xl font-bold">Top 10</div>
-              <div class="text-gray-500 text-xs font-body mt-1">World Technical Trainers</div>
+          <!-- Pillars -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="border border-white/10 bg-white/5 p-5 rounded-lg">
+              <div class="font-heading text-joner-red text-sm uppercase tracking-widest mb-2">01</div>
+              <h3 class="font-heading text-white text-lg uppercase tracking-wide mb-2">Technique First</h3>
+              <p class="text-neutral-400 text-sm font-body leading-relaxed">Master the ball before anything else.</p>
             </div>
-            <div class="bg-joner-gray border border-gray-700 p-4 text-center">
-              <div class="font-heading text-white text-2xl font-bold">2.1M+</div>
-              <div class="text-gray-500 text-xs font-body mt-1">Followers</div>
+            <div class="border border-white/10 bg-white/5 p-5 rounded-lg">
+              <div class="font-heading text-joner-red text-sm uppercase tracking-widest mb-2">02</div>
+              <h3 class="font-heading text-white text-lg uppercase tracking-wide mb-2">High Intensity</h3>
+              <p class="text-neutral-400 text-sm font-body leading-relaxed">Train like the game. No standing around.</p>
             </div>
-            <div class="bg-joner-gray border border-gray-700 p-4 text-center">
-              <div class="font-heading text-white text-2xl font-bold">50K+</div>
-              <div class="text-gray-500 text-xs font-body mt-1">App Downloads</div>
-            </div>
-            <div class="bg-joner-gray border border-gray-700 p-4 text-center">
-              <div class="font-heading text-white text-2xl font-bold">15+</div>
-              <div class="text-gray-500 text-xs font-body mt-1">Countries</div>
+            <div class="border border-white/10 bg-white/5 p-5 rounded-lg">
+              <div class="font-heading text-joner-red text-sm uppercase tracking-widest mb-2">03</div>
+              <h3 class="font-heading text-white text-lg uppercase tracking-wide mb-2">Real Development</h3>
+              <p class="text-neutral-400 text-sm font-body leading-relaxed">Long-term player growth, not quick fixes.</p>
             </div>
           </div>
-        </div>
-
-        <!-- Lee Jones photo -->
-        <div class="overflow-hidden">
-          <img
-            src="/images/training/lee-coaching-action.webp"
-            alt="Lee Jones, founder of Joner Football"
-            style="width:100%;height:500px;object-fit:cover;object-position:top center"
-            loading="lazy"
-          />
         </div>
 
       </div>
     </div>
   </section>
 
-  <!-- The Coaching Team -->
-  <section class="bg-joner-black py-20 md:py-28">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-16">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">The Team</p>
-        <h2 class="section-heading text-white mb-4">Our Coaching Team</h2>
-        <p class="text-gray-400 font-body max-w-3xl mx-auto text-lg leading-relaxed">
-          Our team of qualified, experienced coaches deliver every session to a professional standard. Grouped by age and ability, with a maximum of 6 players per group, every player gets the attention they deserve.
+  <!-- WATCH LEE COACH -->
+  <section class="bg-gradient-to-b from-joner-black via-joner-gray to-joner-black py-16 md:py-24 relative overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.12),transparent_60%)] pointer-events-none"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Watch Lee Coach</p>
+        <h2 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase leading-tight">
+          See the<br class="sm:hidden"/> Methodology
+        </h2>
+        <p class="text-neutral-400 font-body max-w-2xl mx-auto mt-4 text-base md:text-lg leading-relaxed">
+          Two full sessions. Real coaching, real players, no filter. This is how technique gets built.
         </p>
       </div>
 
-      <!-- Team photo -->
-      <div class="mb-12">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        {coachingVideos.map((video) => (
+          <div class="group">
+            <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black aspect-video">
+              <iframe
+                srcdoc={`<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img{position:absolute;width:100%;height:100%;object-fit:cover;top:0;left:0}.p{position:absolute;left:50%;top:50%;width:80px;height:80px;margin:-40px 0 0 -40px;background:#E30613;border-radius:999px;display:flex;align-items:center;justify-content:center}.p:before{content:'';display:block;width:0;height:0;margin-left:6px;border-left:22px solid #fff;border-top:14px solid transparent;border-bottom:14px solid transparent}</style><a href=https://www.youtube.com/embed/${video.id}?autoplay=1><img src=https://img.youtube.com/vi/${video.id}/maxresdefault.jpg alt='${video.title}'><div class='p'></div></a>`}
+                src={`https://www.youtube.com/embed/${video.id}`}
+                title={video.title}
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+                class="absolute inset-0 w-full h-full"
+              ></iframe>
+            </div>
+            <p class="text-neutral-300 font-body text-sm md:text-base mt-4 leading-relaxed">{video.blurb}</p>
+          </div>
+        ))}
+      </div>
+
+      <div class="text-center mt-12">
+        <a href="https://www.youtube.com/@jonerfootball" target="_blank" rel="noopener" class="btn-outline text-sm">
+          More on YouTube
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOLLOW LEE / Instagram CTA -->
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a0a0a] via-black to-[#0a0a1a]">
+
+        <!-- Decorative gradient blob -->
+        <div class="absolute -top-32 -right-32 w-96 h-96 bg-joner-red opacity-20 blur-[120px] rounded-full pointer-events-none"></div>
+        <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-purple-600 opacity-10 blur-[120px] rounded-full pointer-events-none"></div>
+
+        <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-0 items-stretch">
+          <!-- Photo -->
+          <div class="relative min-h-[300px] md:min-h-[440px] order-2 md:order-1">
+            <img
+              src="/images/about/lee-with-players.webp"
+              alt="Lee Jones coaching young players"
+              class="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black via-black/40 to-transparent pointer-events-none"></div>
+          </div>
+
+          <!-- Copy -->
+          <div class="p-8 sm:p-10 md:p-12 flex flex-col justify-center order-1 md:order-2">
+            <div class="flex items-center gap-2 text-joner-red font-heading text-xs uppercase tracking-[0.25em] mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
+              </svg>
+              Lee's Personal Instagram
+            </div>
+            <h2 class="font-heading text-3xl sm:text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">
+              Follow me<br/>Off the Pitch
+            </h2>
+            <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-8">
+              Behind the scenes from JFP HQ, the family, the camps, the wins and the work. The personal side of building Joner Football.
+            </p>
+            <a
+              href="https://www.instagram.com/leejonerjones"
+              target="_blank"
+              rel="noopener"
+              class="inline-flex items-center justify-center gap-2 bg-white text-black font-heading text-sm uppercase tracking-[0.18em] px-6 py-4 rounded-full hover:bg-joner-red hover:text-white transition-colors w-full sm:w-auto"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
+              </svg>
+              @leejonerjones
+            </a>
+            <p class="text-neutral-500 font-body text-xs mt-4">
+              Also on <a href="https://www.instagram.com/jonerfootball" target="_blank" rel="noopener" class="text-neutral-400 hover:text-white underline underline-offset-2">@jonerfootball</a> for training content (325K followers).
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COACHING TEAM -->
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">The Team</p>
+        <h2 class="section-heading text-white mb-4">Our Coaching Team</h2>
+        <p class="text-neutral-400 font-body max-w-3xl mx-auto text-base md:text-lg leading-relaxed">
+          Every session is delivered by qualified, experienced coaches to a professional standard. Players are grouped by age and ability, with a maximum of 6 per group, so every player gets the attention they deserve.
+        </p>
+      </div>
+
+      <div class="mb-12 overflow-hidden rounded-xl border border-white/10">
         <img
           src="/images/about/coaching-team.webp"
           alt="The Joner Football coaching team"
-          class="w-full h-auto object-cover object-center border border-gray-800"
+          class="w-full h-auto object-cover object-center"
+          loading="lazy"
         />
       </div>
 
-      <!-- Key differentiators -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div class="bg-joner-gray border border-gray-800 p-8 text-center">
-          <div class="font-heading text-joner-red text-3xl font-bold mb-2">6</div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-joner-gray border border-white/10 p-6 sm:p-8 text-center rounded-lg">
+          <div class="font-heading text-joner-red text-3xl md:text-4xl font-bold mb-2">6</div>
           <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Max Per Group</h3>
-          <p class="text-gray-400 text-sm font-body">Small groups, maximum attention. Every player matters.</p>
+          <p class="text-neutral-400 text-sm font-body">Small groups, maximum attention. Every player matters.</p>
         </div>
-        <div class="bg-joner-gray border border-gray-800 p-8 text-center">
-          <div class="font-heading text-joner-red text-3xl font-bold mb-2">100%</div>
+        <div class="bg-joner-gray border border-white/10 p-6 sm:p-8 text-center rounded-lg">
+          <div class="font-heading text-joner-red text-3xl md:text-4xl font-bold mb-2">100%</div>
           <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Qualified Coaches</h3>
-          <p class="text-gray-400 text-sm font-body">Every coach is qualified, experienced, and committed to development.</p>
+          <p class="text-neutral-400 text-sm font-body">Every coach is qualified, experienced, and committed to development.</p>
         </div>
-        <div class="bg-joner-gray border border-gray-800 p-8 text-center">
-          <div class="font-heading text-joner-red text-3xl font-bold mb-2">Pro</div>
+        <div class="bg-joner-gray border border-white/10 p-6 sm:p-8 text-center rounded-lg">
+          <div class="font-heading text-joner-red text-3xl md:text-4xl font-bold mb-2">Pro</div>
           <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Standard</h3>
-          <p class="text-gray-400 text-sm font-body">Professional standard delivery. Every session. Every time.</p>
+          <p class="text-neutral-400 text-sm font-body">Professional standard delivery. Every session. Every time.</p>
         </div>
-      </div>
-
-      <!-- Placeholder for additional coach profiles -->
-      <div class="border border-gray-800 border-dashed p-8 text-center">
-        <p class="text-gray-500 font-body text-sm">Individual coach profiles coming soon.</p>
       </div>
 
       <div class="text-center mt-12">
@@ -167,13 +347,13 @@ const schema = {
     </div>
   </section>
 
-  <!-- Continue training at home CTA -->
+  <!-- APP CTA -->
   <section class="bg-joner-red py-12 md:py-16">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
       <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
         Continue Your Training at Home
       </h2>
-      <p class="text-white/80 font-body mb-6">
+      <p class="text-white/85 font-body mb-6 text-base md:text-lg">
         Continue your training at home with the Joner Football App. 1,500+ drills, session plans, and follow-along programs.
       </p>
       <a href="/app" class="btn-outline text-base px-8 py-4 border-white text-white hover:bg-white hover:text-joner-red">
@@ -182,8 +362,8 @@ const schema = {
     </div>
   </section>
 
-  <!-- Partnerships -->
-  <section class="bg-joner-gray border-y border-gray-800 py-16 md:py-20">
+  <!-- PARTNERS -->
+  <section class="bg-joner-gray border-y border-white/10 py-16 md:py-20">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-12">
         <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Partnerships</p>
@@ -195,31 +375,31 @@ const schema = {
           <div class="bg-joner-black border border-white flex items-center justify-center" style="width:160px;height:80px">
             <img src="/images/partners/mizuno.svg" alt="Mizuno" style="height:40px;object-fit:contain;filter:brightness(0) invert(1);" />
           </div>
-          <p class="text-gray-500 text-xs font-body">Official Equipment Partner</p>
+          <p class="text-neutral-500 text-xs font-body">Official Equipment Partner</p>
         </div>
         <div class="flex flex-col items-center gap-3">
           <div class="bg-joner-black border border-white flex items-center justify-center" style="width:160px;height:80px">
             <img src="/images/partners/sklz.svg" alt="SKLZ" style="height:40px;object-fit:contain;filter:brightness(0) invert(1);" />
           </div>
-          <p class="text-gray-500 text-xs font-body">Training Equipment Partner</p>
+          <p class="text-neutral-500 text-xs font-body">Training Equipment Partner</p>
         </div>
         <div class="flex flex-col items-center gap-3">
           <div class="bg-joner-black border border-white flex items-center justify-center" style="width:160px;height:80px">
             <span class="font-heading text-white uppercase text-xl tracking-wider font-bold">FPA</span>
           </div>
-          <p class="text-gray-500 text-xs font-body">Strength & Conditioning Partner</p>
+          <p class="text-neutral-500 text-xs font-body">Strength & Conditioning Partner</p>
         </div>
         <div class="flex flex-col items-center gap-3">
           <div class="bg-joner-black border border-white flex items-center justify-center" style="width:160px;height:80px">
             <span class="font-heading text-white uppercase text-lg tracking-wider font-bold">Full Ninety</span>
           </div>
-          <p class="text-gray-500 text-xs font-body">Tactical Analysis Partner</p>
+          <p class="text-neutral-500 text-xs font-body">Tactical Analysis Partner</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Contact Forms -->
+  <!-- CONTACT -->
   <section id="contact" class="bg-joner-black py-20 md:py-28 scroll-mt-32">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-12">
@@ -227,16 +407,14 @@ const schema = {
         <h2 class="section-heading text-white">Contact Us</h2>
       </div>
 
-      <!-- Form tabs -->
       <div class="flex flex-wrap gap-2 mb-8 justify-center">
         <button class="contact-tab px-4 py-2 font-heading text-xs uppercase tracking-wider bg-joner-red text-white" data-tab="general">General Enquiry</button>
         <button class="contact-tab px-4 py-2 font-heading text-xs uppercase tracking-wider border border-gray-700 text-gray-400 hover:border-white hover:text-white transition-colors" data-tab="training">Training Enquiry</button>
         <button class="contact-tab px-4 py-2 font-heading text-xs uppercase tracking-wider border border-gray-700 text-gray-400 hover:border-white hover:text-white transition-colors" data-tab="coaching">Coaching Application</button>
       </div>
 
-      <!-- General Enquiry Form -->
       <div class="contact-form-panel" id="form-general">
-        <form data-brevo-form data-form-name="general-enquiry" data-list-id="14" class="space-y-4 bg-joner-gray border border-gray-800 p-6 md:p-8">
+        <form data-brevo-form data-form-name="general-enquiry" data-list-id="14" class="space-y-4 bg-joner-gray border border-gray-800 p-6 md:p-8 rounded-lg">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input type="text" name="name" placeholder="Full name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
             <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
@@ -247,9 +425,8 @@ const schema = {
         </form>
       </div>
 
-      <!-- Training Enquiry Form -->
       <div class="contact-form-panel hidden" id="form-training">
-        <form data-brevo-form data-form-name="training-enquiry" data-list-id="6" class="space-y-4 bg-joner-gray border border-gray-800 p-6 md:p-8">
+        <form data-brevo-form data-form-name="training-enquiry" data-list-id="6" class="space-y-4 bg-joner-gray border border-gray-800 p-6 md:p-8 rounded-lg">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input type="text" name="name" placeholder="Full name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
             <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
@@ -264,9 +441,8 @@ const schema = {
         </form>
       </div>
 
-      <!-- Coaching Application Form -->
       <div class="contact-form-panel hidden" id="form-coaching">
-        <form data-brevo-form data-form-name="coaching-application" data-list-id="11" class="space-y-4 bg-joner-gray border border-gray-800 p-6 md:p-8">
+        <form data-brevo-form data-form-name="coaching-application" data-list-id="11" class="space-y-4 bg-joner-gray border border-gray-800 p-6 md:p-8 rounded-lg">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input type="text" name="name" placeholder="Full name" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
             <input type="email" name="email" placeholder="Email address" required class="bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm w-full focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
@@ -286,7 +462,6 @@ const schema = {
       tab.addEventListener('click', () => {
         const target = (tab as HTMLElement).dataset.tab
 
-        // Update tab styles
         document.querySelectorAll('.contact-tab').forEach(t => {
           t.classList.remove('bg-joner-red', 'text-white')
           t.classList.add('border', 'border-gray-700', 'text-gray-400')
@@ -294,7 +469,6 @@ const schema = {
         tab.classList.add('bg-joner-red', 'text-white')
         tab.classList.remove('border', 'border-gray-700', 'text-gray-400')
 
-        // Show target form
         document.querySelectorAll('.contact-form-panel').forEach(p => p.classList.add('hidden'))
         document.getElementById(`form-${target}`)?.classList.remove('hidden')
       })
@@ -302,5 +476,41 @@ const schema = {
   </script>
 
   <EmailCapture />
+
+  <style>
+    /* Animated spotlight beams for the hero card */
+    .spotlight {
+      position: absolute;
+      pointer-events: none;
+      z-index: 1;
+      filter: blur(80px);
+      opacity: 0;
+      animation: spotlight-fade 2s ease-out 0.2s forwards;
+    }
+    .spotlight-a {
+      top: -20%;
+      left: -10%;
+      width: 70%;
+      height: 80%;
+      background: radial-gradient(ellipse at center, rgba(255,255,255,0.35), transparent 60%);
+      transform: rotate(-20deg);
+    }
+    .spotlight-b {
+      bottom: -25%;
+      right: -15%;
+      width: 65%;
+      height: 80%;
+      background: radial-gradient(ellipse at center, rgba(227,6,19,0.30), transparent 60%);
+      transform: rotate(15deg);
+      animation-delay: 0.6s;
+    }
+    @keyframes spotlight-fade {
+      from { opacity: 0; transform: translateY(20px) rotate(var(--rot, 0deg)); }
+      to { opacity: 1; transform: translateY(0) rotate(var(--rot, 0deg)); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .spotlight { animation: none; opacity: 1; }
+    }
+  </style>
 
 </BaseLayout>
