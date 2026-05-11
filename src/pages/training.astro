@@ -107,7 +107,6 @@ const localBizSchema = {
               href={program.href}
               class={`training-orbit__node training-orbit__node--${index + 1}`}
               aria-label={`Open ${program.title}`}
-              title={`${program.title}: ${program.subtitle}`}
             >
               <span class="training-orbit__node-content">
                 <img src={program.circleImage} alt="" aria-hidden="true" class={`training-orbit__node-photo ${program.imageClass || ''}`} loading="lazy" />
@@ -622,7 +621,7 @@ const localBizSchema = {
       pointer-events: none;
       position: absolute;
       left: 50%;
-      top: calc(100% + 14px);
+      bottom: calc(100% + 14px);
       z-index: 20;
       width: max-content;
       max-width: 190px;

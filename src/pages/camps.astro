@@ -167,7 +167,6 @@ const testimonials = [
                 href={camp.href}
                 class={`camp-orbit__node camp-orbit__node--${index + 1}`}
                 aria-label={`Open ${camp.title} camp page`}
-                title={`${camp.title}: ${camp.subtitle}`}
               >
                 <span class="camp-orbit__node-content">
                   <img src={camp.circleImage} alt="" aria-hidden="true" class="camp-orbit__node-photo" loading="lazy" />
@@ -345,7 +344,7 @@ const testimonials = [
       pointer-events: none;
       position: absolute;
       left: 50%;
-      top: calc(100% + 14px);
+      bottom: calc(100% + 14px);
       z-index: 20;
       width: max-content;
       max-width: 190px;
