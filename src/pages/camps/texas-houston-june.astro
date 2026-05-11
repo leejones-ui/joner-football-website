@@ -216,20 +216,6 @@ const eventSchema = {
               </li>
             ))}
           </ul>
-
-          <div class="hou-cost" data-motion="fade-up">
-            <div class="hou-cost-head">Cost</div>
-            <div class="hou-cost-tiers">
-              {tiers.map((tier) => (
-                <div class:list={['hou-cost-tier', tier.best && 'hou-cost-tier--best']}>
-                  {tier.best && <span class="hou-cost-badge">Best Value</span>}
-                  <span class="hou-cost-days">{tier.days}</span>
-                  <span class="hou-cost-price">{tier.price}<small>USD</small></span>
-                </div>
-              ))}
-            </div>
-            <p class="hou-cost-note">Joner jersey included with the 3 day pass. Cut-off for jersey: 1st April.</p>
-          </div>
         </div>
 
         <div class="hou-info-right" data-motion="fade-up">
@@ -246,6 +232,21 @@ const eventSchema = {
               />
             ))}
           </div>
+
+          <div class="hou-cost" data-motion="fade-up">
+            <div class="hou-cost-head">Cost</div>
+            <div class="hou-cost-tiers">
+              {tiers.map((tier) => (
+                <div class:list={['hou-cost-tier', tier.best && 'hou-cost-tier--best']}>
+                  {tier.best && <span class="hou-cost-badge">Best Value</span>}
+                  <span class="hou-cost-days">{tier.days}</span>
+                  <span class="hou-cost-price">{tier.price}<small>USD</small></span>
+                </div>
+              ))}
+            </div>
+            <p class="hou-cost-note">Joner jersey included with the 3 day pass. Cut-off for jersey: 1st April.</p>
+          </div>
+          <a class="hou-info-book" href="#register" data-motion-hover="lift">Book now</a>
         </div>
       </div>
     </div>
@@ -793,10 +794,10 @@ const eventSchema = {
       color: rgba(0,0,0,0.6);
     }
 
-    /* ===== COST (compact, left-aligned) ===== */
+    /* ===== COST (under photo) ===== */
     .hou-cost {
-      margin-top: 36px;
-      max-width: 480px;
+      margin-top: 22px;
+      max-width: none;
     }
     .hou-cost-head {
       font-family: var(--font-display); font-style: italic; font-weight: 900;
@@ -849,6 +850,34 @@ const eventSchema = {
       font-family: var(--font-body);
       font-size: 12px; line-height: 1.5;
       color: rgba(0,0,0,0.55);
+    }
+    .hou-info-book {
+      margin-top: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 54px;
+      padding: 16px 24px;
+      background: var(--jf-red);
+      color: #fff;
+      border: 1px solid var(--jf-red);
+      box-shadow: 0 14px 34px rgba(204,0,0,0.22);
+      font-family: var(--font-display);
+      font-style: italic;
+      font-weight: 900;
+      font-size: 16px;
+      letter-spacing: 0.16em;
+      line-height: 1;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out), background 180ms var(--ease-out);
+    }
+    .hou-info-book:hover {
+      transform: translateY(-2px);
+      background: #000;
+      border-color: #000;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.22);
     }
 
     /* ===== INFO CAROUSEL (right side) ===== */
