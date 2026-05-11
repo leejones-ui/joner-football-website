@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import { JfpHeroScrollDemo } from '../../components/JfpHeroScrollDemo'
 
 const title = 'JFP Program | Joner Football'
 const description = 'Joner Football Performance is a term by term Sydney football training program for ages 8 and over, built around technical, physical and mental development.'
@@ -116,23 +117,7 @@ const videos = [
       </div>
     </section>
 
-    <section class="jfp-scroll-showcase" aria-label="JFP training environment showcase">
-      <div class="jfp-scroll-stage">
-        <div class="jfp-scroll-title">
-          <span>Modern player pathway</span>
-          <h2>One program.<br/>Three environments.<br/>Real standards.</h2>
-        </div>
-        <div class="jfp-device-card">
-          <div class="jfp-device-screen">
-            <img src="/images/training/jfp/jfp-training-3.webp" alt="Joner Football player training at JFP" loading="lazy" />
-            <div>
-              <span>JFP</span>
-              <strong>Train with energy, detail and purpose.</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+    <JfpHeroScrollDemo client:load />
 
     <section class="jfp-locations" id="locations">
       <div class="jfp-wrap">
