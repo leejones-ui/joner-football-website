@@ -14,7 +14,6 @@ export default defineConfig({
         '/home-concept/',
         '/home-object-prototype/',
         '/home-storyboard-prototype/',
-        '/join-preview/',
         '/join/',
       ];
       return !excludedPaths.some((path) => page.endsWith(path));
