@@ -28,7 +28,7 @@ const appSchema = {
 >
 
   <!-- SECTION 1: Hero -->
-  <section class="app-scroll-hero relative min-h-[105vh] flex items-center bg-joner-gray overflow-hidden" data-scroll-expand-hero>
+  <section class="app-scroll-hero relative min-h-[105vh] flex items-center justify-center bg-joner-gray overflow-hidden" data-scroll-expand-hero>
     <video
       autoplay
       muted
@@ -36,82 +36,72 @@ const appSchema = {
       playsinline
       preload="metadata"
       poster="/images/app/screenshot-1.webp"
-      class="hidden md:block absolute inset-0 w-full h-full object-cover z-0"
-      style="opacity: 0.4;"
+      class="app-hero-bg-video hidden md:block absolute inset-0 w-full h-full object-cover z-0"
     >
       <source src="https://res.cloudinary.com/dmzisjwdf/video/upload/v1775278435/joner-website/hero-video.mp4" type="video/mp4" />
     </video>
-    <div class="absolute inset-0 bg-black/60 z-[1]"></div>
-    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red z-[2]"></div>
+    <div class="app-hero-bg-overlay absolute inset-0 bg-black z-[1]"></div>
+    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red z-[30]"></div>
 
-    <div class="relative z-[2] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-
-        <!-- Text content -->
-        <div class="app-hero-copy text-center lg:text-left">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE WORLD'S #1 FOOTBALL TRAINING APP</p>
-          <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
-            ONE APP.<br/><span id="development-term">COMPLETE FOOTBALL DEVELOPMENT.</span>
-          </h1>
-          <p class="text-gray-300 font-body text-lg md:text-xl mb-8 max-w-lg mx-auto lg:mx-0">
-            Everything you need to transform your game. On your phone, on your terms.
-          </p>
-
-          <!-- CTAs -->
-          <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-10">
-            <a href="/join" class="btn-red app-hero-cta text-base px-8 py-4 text-center">
-              Start free trial
-            </a>
-            <a href="https://app.jonerfootball.com/categories/category-vpi8uazway4" target="_blank" rel="noopener noreferrer" class="btn-outline app-hero-cta text-base px-8 py-4 text-center">
-              Browse free content
-            </a>
-          </div>
-
-          <!-- App Store badges -->
-          <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-            <a href="https://apps.apple.com/au/app/joner-football-app/id6737069275" target="_blank" rel="noopener noreferrer"
-              class="min-w-[160px] bg-black border border-white/30 rounded-lg px-4 py-2.5 flex items-center gap-3 hover:border-white hover:scale-[1.03] transition-all duration-200">
-              <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-              <div>
-                <div class="text-white text-[10px] leading-none tracking-normal">Download on the</div>
-                <div class="text-white font-semibold text-[15px] leading-tight tracking-[-0.02em]">App Store</div>
-              </div>
-            </a>
-            <a href="https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball" target="_blank" rel="noopener noreferrer"
-              class="min-w-[160px] bg-black border border-white/30 rounded-lg px-4 py-2.5 flex items-center gap-3 hover:border-white hover:scale-[1.03] transition-all duration-200">
-              <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M3 20.5v-17c0-.83.94-1.3 1.6-.8l14 8.5c.6.4.6 1.2 0 1.6l-14 8.5c-.66.5-1.6.03-1.6-.8z"/></svg>
-              <div>
-                <div class="text-white text-[10px] leading-none tracking-normal">Get it on</div>
-                <div class="text-white font-semibold text-[15px] leading-tight tracking-[-0.02em]">Google Play</div>
-              </div>
-            </a>
-          </div>
+    <!-- Devices start together in the centre, then separate on scroll -->
+    <div class="app-device-layer absolute inset-0 z-10 flex items-center justify-center pointer-events-none" aria-label="Scroll to reveal the Joner Football App">
+      <div class="app-device-stage relative w-[min(88vw,720px)] h-[min(72vh,650px)]">
+        <div class="app-device-glow app-device-glow-red absolute left-1/2 top-1/2 h-[58%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-[3rem] bg-joner-red/25 blur-3xl"></div>
+        <div class="app-device-glow app-device-glow-white absolute left-1/2 top-1/2 h-[48%] w-[58%] -translate-x-1/2 -translate-y-1/2 rounded-[3rem] bg-white/10 blur-2xl"></div>
+        <img
+          src="/images/app/joner-app-main-ipad-current-transparent.png"
+          alt="Joner Football App on iPad"
+          class="app-device-ipad absolute left-1/2 top-1/2 z-10 hidden md:block w-[min(78vw,650px)] drop-shadow-[0_36px_78px_rgba(0,0,0,0.72)]"
+          loading="eager"
+        />
+        <img
+          src="/images/app/joner-app-main-iphone-current-transparent.png"
+          alt="Joner Football App on iPhone"
+          class="app-device-iphone absolute left-1/2 top-1/2 z-20 w-[min(62vw,360px)] md:w-[min(42vw,340px)] drop-shadow-[0_34px_70px_rgba(0,0,0,0.78)]"
+          loading="eager"
+        />
+        <div class="app-scroll-cue hidden lg:flex absolute bottom-6 left-1/2 z-30 -translate-x-1/2 items-center gap-3 rounded-full border border-white/20 bg-black/45 px-4 py-2 text-xs font-body font-bold uppercase tracking-[0.18em] text-white/80 backdrop-blur-md">
+          <span class="h-2 w-2 rounded-full bg-joner-red"></span>
+          Scroll to reveal
         </div>
+      </div>
+    </div>
 
-        <!-- Current app device mockups -->
-        <div class="flex justify-center lg:justify-end">
-          <div class="app-device-stage app-media-frame relative rounded-2xl" aria-label="Scroll to expand app preview">
-            <div class="app-device-glow app-device-glow-red absolute inset-4 bg-joner-red/20 rounded-[3rem] blur-3xl"></div>
-            <div class="app-device-glow app-device-glow-white absolute inset-10 bg-white/10 rounded-[3rem] blur-2xl"></div>
-            <div class="app-media-overlay absolute inset-0 z-[5] rounded-2xl bg-black/30 pointer-events-none"></div>
-            <img
-              src="/images/app/joner-app-main-ipad-current-transparent.png"
-              alt="Joner Football App on iPad"
-              class="app-device-ipad absolute right-[-2%] top-12 z-10 hidden md:block w-[94%] max-w-[620px] drop-shadow-[0_36px_78px_rgba(0,0,0,0.72)]"
-              loading="eager"
-            />
-            <img
-              src="/images/app/joner-app-main-iphone-current-transparent.png"
-              alt="Joner Football App on iPhone"
-              class="app-device-iphone relative z-20 mx-auto w-[84vw] max-w-[360px] md:absolute md:left-[-2%] md:top-0 md:w-[50%] md:max-w-[340px] drop-shadow-[0_34px_70px_rgba(0,0,0,0.78)]"
-              loading="eager"
-            />
-            <div class="app-scroll-cue hidden lg:flex absolute bottom-10 right-12 z-30 items-center gap-3 rounded-full border border-white/20 bg-black/45 px-4 py-2 text-xs font-body font-bold uppercase tracking-[0.18em] text-white/80 backdrop-blur-md">
-              <span class="h-2 w-2 rounded-full bg-joner-red"></span>
-              Scroll to expand
-            </div>
+    <div class="app-hero-copy relative z-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-24 w-full text-center">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE WORLD'S #1 FOOTBALL TRAINING APP</p>
+      <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
+        ONE APP.<br/><span id="development-term">COMPLETE FOOTBALL DEVELOPMENT.</span>
+      </h1>
+      <p class="text-gray-200 font-body text-lg md:text-xl mb-8 max-w-2xl mx-auto">
+        Everything you need to transform your game. On your phone, on your terms.
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center mb-10">
+        <a href="/join" class="btn-red app-hero-cta text-base px-8 py-4 text-center">
+          Start free trial
+        </a>
+        <a href="https://app.jonerfootball.com/categories/category-vpi8uazway4" target="_blank" rel="noopener noreferrer" class="btn-outline app-hero-cta text-base px-8 py-4 text-center">
+          Browse free content
+        </a>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="https://apps.apple.com/au/app/joner-football-app/id6737069275" target="_blank" rel="noopener noreferrer"
+          class="min-w-[160px] bg-black border border-white/30 rounded-lg px-4 py-2.5 flex items-center gap-3 hover:border-white hover:scale-[1.03] transition-all duration-200">
+          <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          <div>
+            <div class="text-white text-[10px] leading-none tracking-normal">Download on the</div>
+            <div class="text-white font-semibold text-[15px] leading-tight tracking-[-0.02em]">App Store</div>
           </div>
-        </div>
+        </a>
+        <a href="https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball" target="_blank" rel="noopener noreferrer"
+          class="min-w-[160px] bg-black border border-white/30 rounded-lg px-4 py-2.5 flex items-center gap-3 hover:border-white hover:scale-[1.03] transition-all duration-200">
+          <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M3 20.5v-17c0-.83.94-1.3 1.6-.8l14 8.5c.6.4.6 1.2 0 1.6l-14 8.5c-.66.5-1.6.03-1.6-.8z"/></svg>
+          <div>
+            <div class="text-white text-[10px] leading-none tracking-normal">Get it on</div>
+            <div class="text-white font-semibold text-[15px] leading-tight tracking-[-0.02em]">Google Play</div>
+          </div>
+        </a>
       </div>
     </div>
   </section>
@@ -598,61 +588,57 @@ const appSchema = {
       --hero-mobile: 0;
     }
 
+    .app-hero-bg-video {
+      opacity: calc(var(--hero-progress) * 0.48);
+      transition: opacity 90ms linear;
+      will-change: opacity;
+    }
+
+    .app-hero-bg-overlay {
+      opacity: calc(0.9 - (var(--hero-progress) * 0.22));
+      transition: opacity 90ms linear;
+      will-change: opacity;
+    }
+
     .app-hero-copy {
-      opacity: calc(1 - (var(--hero-progress) * 1.25));
-      transform: translateX(calc(var(--hero-progress) * -220px)) translateY(calc(var(--hero-progress) * -20px));
+      opacity: calc((var(--hero-progress) - 0.18) * 1.6);
+      transform: translateY(calc((1 - var(--hero-progress)) * 34px)) scale(calc(0.96 + (var(--hero-progress) * 0.04)));
       transition: opacity 90ms linear, transform 90ms linear;
       will-change: opacity, transform;
     }
 
     .app-device-stage {
-      width: calc(300px + (var(--hero-progress) * 1250px));
-      height: calc(400px + (var(--hero-progress) * 400px));
-      max-width: 95vw;
-      max-height: 85vh;
-      min-height: 0;
-      box-shadow: 0 0 50px rgba(0, 0, 0, 0.3);
-      flex: 0 0 auto;
-      transform: translateY(calc((1 - var(--hero-progress)) * 24px)) scale(calc(0.9 + (var(--hero-progress) * 0.12)));
+      transform: scale(calc(1.03 - (var(--hero-progress) * 0.08)));
       transform-origin: center center;
-      transition: width 90ms linear, height 90ms linear, transform 90ms linear, box-shadow 90ms linear;
-      will-change: width, height, transform;
-    }
-
-    .app-media-frame {
-      background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.16), rgba(0,0,0,0.08) 38%, rgba(0,0,0,0.18) 100%);
-    }
-
-    .app-media-overlay {
-      opacity: calc(0.5 - (var(--hero-progress) * 0.3));
-      transition: opacity 90ms linear;
+      transition: transform 90ms linear;
+      will-change: transform;
     }
 
     .app-device-ipad {
-      opacity: calc(0.78 + (var(--hero-progress) * 0.22));
-      transform: translateX(calc((1 - var(--hero-progress)) * 52px)) rotate(calc(-1.5deg + (var(--hero-progress) * 1.5deg)));
+      opacity: calc(1 - (var(--hero-progress) * 0.18));
+      transform: translate(calc(-50% + (var(--hero-progress) * 340px)), calc(-50% + (var(--hero-progress) * 24px))) scale(calc(0.8 + (var(--hero-progress) * 0.03))) rotate(calc(-3deg + (var(--hero-progress) * 6deg)));
       transition: opacity 90ms linear, transform 90ms linear;
       will-change: opacity, transform;
     }
 
     .app-device-iphone {
-      opacity: calc(0.88 + (var(--hero-progress) * 0.12));
-      transform: translateX(calc((1 - var(--hero-progress)) * -24px)) translateY(calc((1 - var(--hero-progress)) * 18px)) rotate(calc(-3deg + (var(--hero-progress) * 3deg)));
+      opacity: calc(1 - (var(--hero-progress) * 0.12));
+      transform: translate(calc(-50% - (var(--hero-progress) * 360px)), calc(-50% - (var(--hero-progress) * 2px))) scale(calc(0.94 + (var(--hero-progress) * 0.01))) rotate(calc(0deg - (var(--hero-progress) * 6deg)));
       transition: opacity 90ms linear, transform 90ms linear;
       will-change: opacity, transform;
     }
 
     .app-device-glow-red {
-      opacity: calc(0.75 + (var(--hero-progress) * 0.45));
+      opacity: calc(0.72 + (var(--hero-progress) * 0.28));
     }
 
     .app-device-glow-white {
-      opacity: calc(0.45 + (var(--hero-progress) * 0.45));
+      opacity: calc(0.5 + (var(--hero-progress) * 0.28));
     }
 
     .app-scroll-cue {
-      opacity: calc(1 - (var(--hero-progress) * 1.8));
-      transform: translateY(calc(var(--hero-progress) * 18px));
+      opacity: calc(1 - (var(--hero-progress) * 2));
+      transform: translateX(-50%) translateY(calc(var(--hero-progress) * 18px));
       transition: opacity 90ms linear, transform 90ms linear;
       pointer-events: none;
     }
@@ -670,14 +656,19 @@ const appSchema = {
       }
 
       .app-hero-copy {
-        transform: translateY(calc(var(--hero-progress) * -18px));
+        opacity: calc((var(--hero-progress) - 0.26) * 1.7);
+        transform: translateY(calc((1 - var(--hero-progress)) * 26px)) scale(calc(0.96 + (var(--hero-progress) * 0.04)));
       }
 
-      .app-device-stage {
-        width: calc(300px + (var(--hero-progress) * 650px));
-        height: calc(400px + (var(--hero-progress) * 200px));
-        max-width: 95vw;
-        max-height: 85vh;
+      .app-device-ipad {
+        display: block;
+        width: min(86vw, 430px);
+        transform: translate(calc(-50% + (var(--hero-progress) * 82px)), calc(-50% + (var(--hero-progress) * 78px))) scale(calc(0.78 + (var(--hero-progress) * 0.02))) rotate(calc(-2deg + (var(--hero-progress) * 5deg)));
+      }
+
+      .app-device-iphone {
+        width: min(58vw, 260px);
+        transform: translate(calc(-50% - (var(--hero-progress) * 86px)), calc(-50% - (var(--hero-progress) * 58px))) scale(calc(0.95 + (var(--hero-progress) * 0.02))) rotate(calc(0deg - (var(--hero-progress) * 5deg)));
       }
     }
 
