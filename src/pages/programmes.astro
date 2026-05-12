@@ -3,6 +3,8 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 
 const APP_LINK = '/app?utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme'
 const ANNUAL_LINK = 'https://app.jonerfootball.com/checkout/new?o=183092&utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme_annual'
+const HERO_SUBSCRIBE_LINK = 'https://www.jonerfootball.com/join'
+const HERO_BUNDLE_LINK = 'https://app.jonerfootball.com/checkout/new?o=227739'
 
 const schema = {
   '@context': 'https://schema.org',
@@ -74,9 +76,12 @@ const faqs = [
         <p class="p100-lede">
           100 days of structured football training for parents, players and coaches who want a proper plan inside the Joner Football App.
         </p>
-        <div class="p100-cta-row">
-          <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start Your Free Trial</a>
-          <a class="p100-btn p100-btn--outline" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual Now</a>
+        <div class="p100-cta-row p100-hero-cta-row">
+          <div class="p100-hero-cta-card">
+            <span class="p100-hero-cta-card__banner">First 7 days are free</span>
+            <a class="p100-btn p100-btn--red" href={HERO_SUBSCRIBE_LINK}>Subscribe Now</a>
+          </div>
+          <a class="p100-btn p100-btn--outline" href={HERO_BUNDLE_LINK} target="_blank" rel="noopener">Buy Full Bundle <span class="p100-btn__sub">One time purchase</span></a>
         </div>
       </div>
     </div>
@@ -341,6 +346,31 @@ const faqs = [
 
   .p100-cta-row { display: flex; gap: 14px; margin-top: 32px; flex-wrap: wrap; }
   .p100-cta-row--center { justify-content: center; }
+  .p100-hero-cta-row { align-items: flex-end; }
+  .p100-hero-cta-card {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+  }
+  .p100-hero-cta-card__banner {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(232,0,13,0.65);
+    border-radius: 999px;
+    background: rgba(232,0,13,0.18);
+    color: #fff;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.28), 0 0 18px rgba(232,0,13,0.18);
+    font-family: var(--p100-body);
+    font-size: 0.78rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    padding: 8px 14px;
+    text-transform: uppercase;
+  }
 
   /* Buttons -------------------------------------------------------- */
   /* Glass button experiment adapted for Astro anchors.
@@ -388,6 +418,15 @@ const faqs = [
   .p100-btn {
     font-size: 1.0625rem;
     padding: 20px 32px;
+  }
+  .p100-btn__sub {
+    display: block;
+    font-family: var(--p100-body);
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    opacity: 0.82;
   }
   .p100-btn::before,
   .reality-hero__cta::before,
@@ -1027,7 +1066,11 @@ const faqs = [
     }
     .p100-hero .p100-cta-row {
       flex-direction: column;
+      align-items: stretch;
       gap: 12px;
+    }
+    .p100-hero-cta-card {
+      width: 100%;
     }
     .p100-hero .p100-btn {
       width: 100%;
