@@ -8,6 +8,7 @@ const TYPES = {
   general: 'General Enquiries',
   'joners-juniors': 'Joners Juniors Enquiries',
   'coaching-role': 'Apply For A Coaching Role',
+  'team-subscriptions': 'Team Subscriptions Enquiry',
 }
 
 const RECIPIENTS = {
@@ -16,6 +17,7 @@ const RECIPIENTS = {
   general: process.env.CONTACT_GENERAL_EMAIL || FALLBACK_RECIPIENT_EMAIL,
   'joners-juniors': process.env.CONTACT_JUNIORS_EMAIL || FALLBACK_RECIPIENT_EMAIL,
   'coaching-role': process.env.CONTACT_COACHING_EMAIL || FALLBACK_RECIPIENT_EMAIL,
+  'team-subscriptions': process.env.CONTACT_TEAM_SUBSCRIPTIONS_EMAIL || 'Reswin@jonerfootball.com',
 }
 
 const BREVO_LIST_IDS = {
@@ -24,6 +26,7 @@ const BREVO_LIST_IDS = {
   general: Number(process.env.BREVO_GENERAL_LIST_ID || 14),
   'joners-juniors': Number(process.env.BREVO_JUNIORS_LIST_ID || 6),
   'coaching-role': Number(process.env.BREVO_COACHING_LIST_ID || 11),
+  'team-subscriptions': Number(process.env.BREVO_TEAM_SUBSCRIPTIONS_LIST_ID || 44),
 }
 
 function clean(value, max = 1000) {
@@ -82,6 +85,9 @@ async function sendEmail(enquiry) {
       ${row('Player name', enquiry.playerName)}
       ${row('Player age', enquiry.playerAge)}
       ${row('Player level or team', enquiry.playerLevel)}
+      ${row('Club / team', enquiry.clubTeam)}
+      ${row('Number of players', enquiry.numberOfPlayers)}
+      ${row('Number of coaches', enquiry.numberOfCoaches)}
       ${row('Training interest', enquiry.trainingInterest)}
       ${row('Junior program', enquiry.juniorProgram)}
       ${row('Main goal', enquiry.parentGoal)}
@@ -120,11 +126,13 @@ async function sendEmail(enquiry) {
 }
 
 async function addMarketingOptIn(enquiry) {
-  if (!enquiry.marketingOptIn && enquiry.type !== 'game-analysis') return
+  if (!enquiry.marketingOptIn && enquiry.type !== 'game-analysis' && enquiry.type !== 'team-subscriptions') return
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey) throw new Error('Email service is not configured.')
 
-  const listId = BREVO_LIST_IDS[enquiry.type] || BREVO_LIST_IDS.general
+  const listId = BREVO_LIST_IDS[enquiry.type] || (enquiry.type === 'general' ? BREVO_LIST_IDS.general : 0)
+  if (!listId) return
+
   const response = await fetch('https://api.brevo.com/v3/contacts', {
     method: 'POST',
     headers: {
@@ -174,6 +182,9 @@ export default async function handler(req, res) {
       playerName: clean(body.playerName, 160),
       playerAge: clean(body.playerAge, 40),
       playerLevel: clean(body.playerLevel, 200),
+      clubTeam: clean(body.clubTeam || body.club || '', 200),
+      numberOfPlayers: clean(body.numberOfPlayers || body.players || '', 40),
+      numberOfCoaches: clean(body.numberOfCoaches || body.coaches || '', 40),
       trainingInterest: clean(body.trainingInterest, 160),
       juniorProgram: clean(body.juniorProgram, 160),
       parentGoal: clean(body.parentGoal, 240),
@@ -186,8 +197,13 @@ export default async function handler(req, res) {
       recipientEmail: RECIPIENTS[type] || FALLBACK_RECIPIENT_EMAIL,
     }
 
-    if (!enquiry.name || !enquiry.email || !enquiry.phone || !enquiry.message) {
+    const requiresMessage = enquiry.type !== 'team-subscriptions'
+    if (!enquiry.name || !enquiry.email || !enquiry.phone || (requiresMessage && !enquiry.message)) {
       return res.status(400).json({ success: false, error: 'Please complete all required fields.' })
+    }
+
+    if (type === 'team-subscriptions' && (!enquiry.clubTeam || !enquiry.numberOfPlayers || !enquiry.numberOfCoaches || !enquiry.location)) {
+      return res.status(400).json({ success: false, error: 'Please complete all team subscription fields.' })
     }
 
     if (!validEmail(enquiry.email)) {

@@ -30,7 +30,7 @@ const schema = {
       <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto mb-8">
         Team and club subscriptions for the Joner Football App
       </p>
-      <a href="#get-a-quote" class="btn-red text-base px-8 py-4 inline-block text-center">
+      <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-block text-center">
         Get a Quote
       </a>
     </div>
@@ -175,91 +175,134 @@ const schema = {
   </section>
 
   <!-- Contact Form -->
-  <section id="get-a-quote" class="bg-joner-gray py-20 md:py-28 scroll-mt-20">
+  <section id="team-subscription-form" class="bg-joner-gray py-20 md:py-28 scroll-mt-20">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-12">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Get Started</p>
-        <h2 class="section-heading text-white mb-4">Get a Quote</h2>
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Team Subscriptions</p>
+        <h2 class="section-heading text-white mb-4">Contact Us For Club Pricing</h2>
         <p class="text-gray-400 font-body max-w-xl mx-auto">
-          Tell us about your team and we'll send you a custom pricing quote.
+          Tell us about your club or team. Reswin will receive your enquiry and follow up with the next steps.
         </p>
       </div>
 
-      <form
-        data-brevo-form
-        data-form-name="teams-quote" data-list-id="11"
-        class="space-y-6"
-      >
+      <form id="team-subscription-enquiry-form" class="space-y-6 border border-gray-800 bg-joner-black p-5 md:p-8">
+        <input type="hidden" name="enquiryType" value="team-subscriptions" />
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
-            <label for="name" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Name</label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              placeholder="Your name"
-              required
-              class="w-full bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]"
-            />
+            <label for="team-name" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Your Name</label>
+            <input id="team-name" type="text" name="name" placeholder="Your name" required class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
           </div>
           <div>
-            <label for="email" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              placeholder="Your email"
-              required
-              class="w-full bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]"
-            />
+            <label for="team-club" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Club / Team</label>
+            <input id="team-club" type="text" name="clubTeam" placeholder="Club or team name" required class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
           </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
-            <label for="club" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Club / Team Name</label>
-            <input
-              type="text"
-              id="club"
-              name="club"
-              placeholder="Your club or team"
-              required
-              class="w-full bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]"
-            />
+            <label for="team-players" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Number of Players</label>
+            <input id="team-players" type="number" name="numberOfPlayers" placeholder="e.g. 25" min="1" required class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
           </div>
           <div>
-            <label for="players" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Number of Players</label>
-            <input
-              type="number"
-              id="players"
-              name="players"
-              placeholder="e.g. 25"
-              min="1"
-              required
-              class="w-full bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]"
-            />
+            <label for="team-coaches" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Number of Coaches</label>
+            <input id="team-coaches" type="number" name="numberOfCoaches" placeholder="e.g. 3" min="0" required class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label for="team-phone" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Mobile Number</label>
+            <input id="team-phone" type="tel" name="phone" placeholder="Mobile number" required class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
+          </div>
+          <div>
+            <label for="team-email" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Email</label>
+            <input id="team-email" type="email" name="email" placeholder="Email address" required class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
           </div>
         </div>
 
         <div>
-          <label for="message" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Message</label>
-          <textarea
-            id="message"
-            name="message"
-            rows="5"
-            placeholder="Tell us about your team and what you're looking for..."
-            class="w-full bg-joner-black border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 resize-vertical"
-          ></textarea>
+          <label for="team-location" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Location</label>
+          <input id="team-location" type="text" name="location" placeholder="City, state, country" required class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base sm:text-sm focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[44px]" />
         </div>
 
-        <div class="text-center">
-          <button type="submit" class="btn-red text-base px-10 py-4">
-            Get a Quote
-          </button>
-        </div>
+        <p id="team-subscription-form-status" class="hidden font-body text-sm"></p>
+        <button type="submit" class="btn-red w-full text-sm">Send Team Subscription Enquiry</button>
       </form>
     </div>
   </section>
+
+  <script is:inline>
+    (function () {
+      var form = document.getElementById('team-subscription-enquiry-form');
+      if (!form) return;
+      var submit = form.querySelector('button[type="submit"]');
+      var status = document.getElementById('team-subscription-form-status');
+
+      function setStatus(message, ok) {
+        if (!status) return;
+        status.textContent = message || '';
+        status.className = message ? 'font-body text-sm ' + (ok ? 'text-green-400' : 'text-amber-400') : 'hidden font-body text-sm';
+      }
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        setStatus('', true);
+        var originalText = submit ? submit.textContent : 'Send Team Subscription Enquiry';
+        var formData = new FormData(form);
+        var emailInput = form.querySelector('input[name="email"]');
+
+        if (window.JonerEmailGuard && emailInput) {
+          var validation = window.JonerEmailGuard.validateEmail(formData.get('email'));
+          window.JonerEmailGuard.setFeedback(emailInput, validation);
+          if (!validation.valid) {
+            emailInput.reportValidity();
+            return;
+          }
+        }
+
+        if (submit) {
+          submit.disabled = true;
+          submit.textContent = 'Sending...';
+          submit.classList.add('opacity-70', 'cursor-not-allowed');
+        }
+
+        var payload = {};
+        formData.forEach(function (value, key) { payload[key] = value; });
+        payload.marketingOptIn = true;
+        payload.message = 'Team subscription enquiry';
+
+        var tokenPromise = window.JonerRecaptcha && window.JonerRecaptcha.getToken
+          ? window.JonerRecaptcha.getToken('contact')
+          : Promise.resolve('');
+
+        tokenPromise.then(function (token) {
+          payload.recaptchaToken = token;
+          return fetch('/api/contact-enquiry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data || !data.success) throw new Error((data && data.error) || 'Could not send enquiry.');
+          form.reset();
+          setStatus('Done. Your team subscription enquiry has been sent.', true);
+        })
+        .catch(function (error) {
+          setStatus(error && error.message ? error.message : 'Could not send enquiry. Please try again.', false);
+        })
+        .finally(function () {
+          if (submit) {
+            submit.disabled = false;
+            submit.textContent = originalText;
+            submit.classList.remove('opacity-70', 'cursor-not-allowed');
+          }
+        });
+      });
+    })();
+  </script>
 
   <!-- CTA -->
   <section class="bg-joner-red py-12 md:py-16">
