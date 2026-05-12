@@ -1,5 +1,5 @@
 import { DOWNLOAD_PRODUCTS, productFromStripeSession } from './_download-products.js'
-import { saveDownloadToken } from './_download-store.js'
+import { claimProcessedSession, saveDownloadToken } from './_download-store.js'
 import { verifyStripeWebhook } from './_stripe-webhook.js'
 
 function siteUrl(req) {
@@ -93,6 +93,12 @@ async function createDownloadForProduct(req, session, product) {
 }
 
 async function handleCheckoutCompleted(req, session) {
+  const claimed = await claimProcessedSession(session.id)
+  if (!claimed) {
+    console.info('Stripe download webhook ignored already processed session', session.id)
+    return
+  }
+
   const email = buyerEmail(session)
   if (!email) throw new Error('Stripe session has no buyer email.')
 

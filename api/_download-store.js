@@ -49,3 +49,10 @@ export async function updateDownloadToken(token, record) {
   const ttlSeconds = Number(ttl?.result || DEFAULT_TTL_SECONDS)
   await saveDownloadToken(token, record, ttlSeconds > 0 ? ttlSeconds : DEFAULT_TTL_SECONDS)
 }
+
+
+export async function claimProcessedSession(sessionId, ttlSeconds = DEFAULT_TTL_SECONDS) {
+  const key = `download-session:${sessionId}`
+  const data = await kvCommand(['SET', key, new Date().toISOString(), 'NX', 'EX', String(ttlSeconds)])
+  return data?.result === 'OK'
+}
