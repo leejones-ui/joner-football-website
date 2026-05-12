@@ -28,7 +28,7 @@ const appSchema = {
 >
 
   <!-- SECTION 1: Hero -->
-  <section class="relative min-h-[90vh] flex items-center bg-joner-gray overflow-hidden">
+  <section class="app-scroll-hero relative min-h-[105vh] flex items-center bg-joner-gray overflow-hidden" data-scroll-expand-hero>
     <video
       autoplay
       muted
@@ -48,7 +48,7 @@ const appSchema = {
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
         <!-- Text content -->
-        <div class="text-center lg:text-left">
+        <div class="app-hero-copy text-center lg:text-left">
           <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE WORLD'S #1 FOOTBALL TRAINING APP</p>
           <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
             ONE APP.<br/><span id="development-term">COMPLETE FOOTBALL DEVELOPMENT.</span>
@@ -90,21 +90,25 @@ const appSchema = {
 
         <!-- Current app device mockups -->
         <div class="flex justify-center lg:justify-end">
-          <div class="relative w-full max-w-[680px] min-h-[460px] sm:min-h-[540px] lg:min-h-[600px]">
-            <div class="absolute inset-4 bg-joner-red/20 rounded-[3rem] blur-3xl"></div>
-            <div class="absolute inset-10 bg-white/10 rounded-[3rem] blur-2xl"></div>
+          <div class="app-device-stage relative w-full max-w-[680px] min-h-[460px] sm:min-h-[540px] lg:min-h-[600px]" aria-label="Scroll to expand app preview">
+            <div class="app-device-glow app-device-glow-red absolute inset-4 bg-joner-red/20 rounded-[3rem] blur-3xl"></div>
+            <div class="app-device-glow app-device-glow-white absolute inset-10 bg-white/10 rounded-[3rem] blur-2xl"></div>
             <img
               src="/images/app/joner-app-main-ipad-current-transparent.png"
               alt="Joner Football App on iPad"
-              class="absolute right-[-2%] top-12 z-10 hidden md:block w-[94%] max-w-[620px] drop-shadow-[0_36px_78px_rgba(0,0,0,0.72)]"
+              class="app-device-ipad absolute right-[-2%] top-12 z-10 hidden md:block w-[94%] max-w-[620px] drop-shadow-[0_36px_78px_rgba(0,0,0,0.72)]"
               loading="eager"
             />
             <img
               src="/images/app/joner-app-main-iphone-current-transparent.png"
               alt="Joner Football App on iPhone"
-              class="relative z-20 mx-auto w-[84vw] max-w-[360px] md:absolute md:left-[-2%] md:top-0 md:w-[50%] md:max-w-[340px] drop-shadow-[0_34px_70px_rgba(0,0,0,0.78)]"
+              class="app-device-iphone relative z-20 mx-auto w-[84vw] max-w-[360px] md:absolute md:left-[-2%] md:top-0 md:w-[50%] md:max-w-[340px] drop-shadow-[0_34px_70px_rgba(0,0,0,0.78)]"
               loading="eager"
             />
+            <div class="app-scroll-cue hidden lg:flex absolute bottom-10 right-12 z-30 items-center gap-3 rounded-full border border-white/20 bg-black/45 px-4 py-2 text-xs font-body font-bold uppercase tracking-[0.18em] text-white/80 backdrop-blur-md">
+              <span class="h-2 w-2 rounded-full bg-joner-red"></span>
+              Scroll to expand
+            </div>
           </div>
         </div>
       </div>
@@ -470,24 +474,105 @@ const appSchema = {
   <script is:inline>
     (() => {
       const headlineTerm = document.getElementById('development-term');
-      if (!headlineTerm) return;
+      if (headlineTerm) {
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        const isUSTimeZone = timeZone.startsWith('America/')
+          && !['America/Toronto', 'America/Vancouver', 'America/Edmonton', 'America/Winnipeg', 'America/Halifax', 'America/St_Johns'].includes(timeZone);
 
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-      const isUSTimeZone = timeZone.startsWith('America/')
-        && !['America/Toronto', 'America/Vancouver', 'America/Edmonton', 'America/Winnipeg', 'America/Halifax', 'America/St_Johns'].includes(timeZone);
-
-      if (isUSTimeZone) {
-        headlineTerm.textContent = 'COMPLETE SOCCER DEVELOPMENT.';
+        if (isUSTimeZone) {
+          headlineTerm.textContent = 'COMPLETE SOCCER DEVELOPMENT.';
+        }
       }
+
+      const hero = document.querySelector('[data-scroll-expand-hero]');
+      if (!hero) return;
+
+      let ticking = false;
+      const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+      const setProgress = () => {
+        const rect = hero.getBoundingClientRect();
+        const travel = Math.max(window.innerHeight * 0.72, 1);
+        const progress = clamp(Math.abs(Math.min(rect.top, 0)) / travel, 0, 1);
+        hero.style.setProperty('--hero-progress', progress.toFixed(3));
+        ticking = false;
+      };
+      const requestProgress = () => {
+        if (!ticking) {
+          window.requestAnimationFrame(setProgress);
+          ticking = true;
+        }
+      };
+
+      setProgress();
+      window.addEventListener('scroll', requestProgress, { passive: true });
+      window.addEventListener('wheel', requestProgress, { passive: true });
+      window.addEventListener('touchmove', requestProgress, { passive: true });
+      window.addEventListener('resize', requestProgress, { passive: true });
     })();
   </script>
 
   <style>
+    .app-scroll-hero {
+      --hero-progress: 0;
+    }
+
+    .app-hero-copy {
+      transform: translateY(calc(var(--hero-progress) * -18px));
+      transition: transform 120ms linear;
+    }
+
+    .app-device-stage {
+      transform: translateY(calc((1 - var(--hero-progress)) * 22px)) scale(calc(0.9 + (var(--hero-progress) * 0.12)));
+      transform-origin: center center;
+      transition: transform 120ms linear;
+      will-change: transform;
+    }
+
+    .app-device-ipad {
+      opacity: calc(0.78 + (var(--hero-progress) * 0.22));
+      transform: translateX(calc((1 - var(--hero-progress)) * 52px)) rotate(-1.5deg);
+      transition: opacity 120ms linear, transform 120ms linear;
+      will-change: opacity, transform;
+    }
+
+    .app-device-iphone {
+      opacity: calc(0.88 + (var(--hero-progress) * 0.12));
+      transform: translateX(calc((1 - var(--hero-progress)) * -24px)) translateY(calc((1 - var(--hero-progress)) * 18px)) rotate(calc(-3deg + (var(--hero-progress) * 3deg)));
+      transition: opacity 120ms linear, transform 120ms linear;
+      will-change: opacity, transform;
+    }
+
+    .app-device-glow-red {
+      opacity: calc(0.75 + (var(--hero-progress) * 0.45));
+    }
+
+    .app-device-glow-white {
+      opacity: calc(0.45 + (var(--hero-progress) * 0.45));
+    }
+
+    .app-scroll-cue {
+      opacity: calc(1 - (var(--hero-progress) * 1.8));
+      transform: translateY(calc(var(--hero-progress) * 18px));
+      transition: opacity 120ms linear, transform 120ms linear;
+      pointer-events: none;
+    }
+
     .app-hero-cta {
       font-family: 'DM Sans', system-ui, sans-serif;
       font-weight: 800;
       letter-spacing: 0.04em;
       text-transform: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .app-hero-copy,
+      .app-device-stage,
+      .app-device-ipad,
+      .app-device-iphone,
+      .app-scroll-cue {
+        transform: none !important;
+        transition: none !important;
+      }
     }
   </style>
 
