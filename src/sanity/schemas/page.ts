@@ -13,7 +13,6 @@ const pageKeys = [
   { title: 'Mindset Seminars', value: 'mindset-seminars' },
   { title: 'Shop hub', value: 'shop' },
   { title: 'Shop, Off Field Apparel', value: 'shop-off-field-apparel' },
-  { title: 'Shop, On Field Training Gear', value: 'shop-on-field-training-gear' },
   { title: 'Shop, Resources and Accessories', value: 'shop-resources-accessories' },
   { title: 'Shop, Training Programs', value: 'shop-training-programs' },
   { title: 'Blog hub', value: 'blog' },

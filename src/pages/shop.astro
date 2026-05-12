@@ -3,12 +3,6 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 
 const categories = [
   {
-    title: 'On Field Training Gear',
-    label: 'Coming Soon',
-    href: '/shop/on-field-training-gear',
-    image: '/images/shop/shop-gear.webp',
-  },
-  {
     title: 'Off Field Apparel',
     label: 'Shop Now',
     href: '/shop/off-field-apparel',
@@ -32,19 +26,19 @@ const schema = {
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
   name: 'Shop | Joner Football',
-  description: 'Official Joner Football apparel, training programs, resources, and on field training gear.',
+  description: 'Official Joner Football apparel, training programs, resources, and accessories.',
   url: 'https://jonerfootball.com/shop',
 }
 ---
 
 <BaseLayout
   title="Shop | Joner Football"
-  description="Official Joner Football apparel, training programs, resources, and on field training gear."
+  description="Official Joner Football apparel, training programs, resources, and accessories."
   schema={schema}
 >
   <section class="bg-white py-4 md:py-6">
     <div class="px-3 md:px-5">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-5">
         {categories.map((category) => (
           <a href={category.href} class="group block bg-white text-joner-black">
             <div class="aspect-[3/4] overflow-hidden bg-gray-100">
