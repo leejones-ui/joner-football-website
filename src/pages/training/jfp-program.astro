@@ -16,56 +16,43 @@ const stats = [
 const locations = [
   {
     title: 'HQ Facility Belrose',
-    text: 'All afternoon sessions are held inside the Joner Football HQ, giving players a consistent, high-quality environment and allowing sessions to continue during bad weather.',
+    text: 'Afternoon sessions inside the Joner Football HQ. Indoor, weatherproof, high quality.',
   },
   {
     title: 'North Turramurra',
-    text: 'Early morning field sessions for players who want extra technical work before school and before the day starts.',
+    text: 'Early morning field sessions for players who want extra work before school.',
   },
   {
     title: 'Rydalmere Park',
-    text: 'Morning field sessions for players in the wider Sydney football community who want proper Joner Football detail.',
+    text: 'Morning field sessions for the wider Sydney football community.',
   },
 ]
 
 const pillars = [
-  { number: '01', title: 'Technique First', text: 'Ball mastery, touch, 1v1 detail, weak foot work and game-relevant technical habits.' },
-  { number: '02', title: 'High Energy', text: 'Sessions are sharp, intense and demanding. Players train with standards, not just drills.' },
-  { number: '03', title: 'Real Development', text: 'The goal is long-term player growth across technical, physical and mental parts of the game.' },
-]
-
-const pathwayStages = [
-  { label: 'Stage 1', title: 'Joners Juniors', text: 'The first step for younger players learning the habits, energy and ball mastery standards of Joner Football.' },
-  { label: 'Stage 2', title: 'Joner 6 to 8 Year Old Program', text: 'The bridge between juniors and the main pathway, built to prepare players for stronger training standards.' },
-  { label: 'Flagship', title: 'Joner Football Performance', text: 'The complete development program. Ages 8 and over, max 6 per group, and the main JFP pathway since 2013.' },
+  { number: '01', title: 'Technique First', text: 'Ball mastery, 1v1 detail, weak foot work, game-relevant habits.' },
+  { number: '02', title: 'High Energy', text: 'Sharp, intense, demanding sessions. Real standards.' },
+  { number: '03', title: 'Real Development', text: 'Long-term growth across technical, physical, and mental.' },
 ]
 
 const unlocks = [
-  { title: '10 Week Terms', text: 'A clear term structure so players can build habits, measure progress and keep improving.' },
-  { title: 'Player Reports', text: 'Development feedback so parents and players know what is improving and what needs work.' },
+  { title: '10 Week Terms', text: 'Clear term structure to build habits and measure progress.' },
+  { title: 'Player Reports', text: 'Development feedback so parents and players know what is improving.' },
   { title: 'Elite Coaching', text: 'High-detail technical coaching from the Joner Football team.' },
-  { title: 'Joner App', text: 'Players can continue training away from the session with app-based drills and support.' },
-  { title: 'Strength And Conditioning', text: 'Physical development support around the player, not just ball work.' },
-  { title: 'Game Analysis', text: 'Video and game detail to help players understand their decisions and improve faster.' },
-  { title: 'Mentorship', text: 'Guidance on standards, mindset, training habits and what serious football development looks like.' },
-  { title: 'High Level Training', text: 'A demanding environment for players who want to chase a career in football.' },
+  { title: 'Joner App', text: 'Continue training away from sessions with app-based drills.' },
+  { title: 'Strength And Conditioning', text: 'Physical development support around the player.' },
+  { title: 'Game Analysis', text: 'Video and game detail to improve decisions faster.' },
+  { title: 'Mentorship', text: 'Guidance on standards, mindset, and training habits.' },
+  { title: 'High Level Training', text: 'A demanding environment for players chasing a football career.' },
 ]
 
 const points = [
-  'Early morning sessions, weekday afternoons and Saturday morning options',
-  'For ages 8 and over, across all ability levels',
+  'Early morning, weekday afternoon, and Saturday morning options',
+  'Ages 8 and over, all ability levels',
   '10 week term to term program',
-  'Dedicated players only',
-  'Improve technically, physically and mentally',
-  'Group training and individual training options',
+  'For dedicated players only',
+  'Improve technically, physically, and mentally',
+  'Group and individual training options',
   'Limited spots available each term',
-]
-
-const trainingBlocks = [
-  'True professional experience',
-  'Early morning sessions at North Turramurra and Rydalmere Park',
-  'Afternoon sessions at the Belrose HQ facility',
-  'Experienced team of qualified coaches',
 ]
 
 const videos = [
@@ -102,10 +89,10 @@ const faqs = [
                 Joner Football<br />Performance
               </h1>
               <p class="mb-8 max-w-lg font-body text-base leading-relaxed text-neutral-300 sm:text-lg">
-                JFP is the main Joner Football player development pathway in Sydney. Built for players aged 8 and over who want to improve technically, physically and mentally.
+                Sydney's flagship player development program. Ages 8 and over. Train technically, physically, and mentally with the JFP team.
               </p>
               <div class="flex flex-wrap gap-3">
-                <a href="/contact?type=training-sydney" class="btn-red text-sm">Enquire About JFP</a>
+                <a href="#training-form" class="btn-red text-sm">Book Now</a>
                 <a href="#program" class="btn-outline text-sm">See The Program</a>
               </div>
             </div>
@@ -135,12 +122,12 @@ const faqs = [
     <nav class="sticky top-0 z-30 border-y border-white/10 bg-joner-black/92 backdrop-blur">
       <div class="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-4 py-4 font-heading text-xs uppercase tracking-[0.22em] text-white sm:px-6 lg:px-8 no-scrollbar">
         <a href="#program" class="shrink-0 hover:text-joner-red">Program</a>
-        <a href="#pathway" class="shrink-0 hover:text-joner-red">Pathway</a>
+        <a href="#what-you-get" class="shrink-0 hover:text-joner-red">What You Get</a>
         <a href="#locations" class="shrink-0 hover:text-joner-red">Locations</a>
-        <a href="#energy" class="shrink-0 hover:text-joner-red">Energy</a>
+        <a href="#unlocks" class="shrink-0 hover:text-joner-red">Inside JFP</a>
         <a href="#videos" class="shrink-0 hover:text-joner-red">Videos</a>
+        <a href="#training-form" class="shrink-0 hover:text-joner-red">Book</a>
         <a href="#faq" class="shrink-0 hover:text-joner-red">FAQ</a>
-        <a href="/contact?type=training-sydney" class="shrink-0 text-joner-red">Enquire</a>
       </div>
     </nav>
 
@@ -165,21 +152,15 @@ const faqs = [
               Built to help players reach their full potential.
             </h2>
             <p class="mb-6 font-body text-base leading-relaxed text-neutral-300 md:text-lg">
-              Since its launch in 2013, the Joner Football Performance Program has been dedicated to helping players reach their full potential, both on and off the pitch.
-            </p>
-            <p class="mb-6 font-body text-base leading-relaxed text-neutral-300 md:text-lg">
-              Over the years, Joner Football has developed thousands of players. Many have gone on to play at higher levels of the game, from elite youth squads to professional and international competition.
+              Since 2013, JFP has developed thousands of Sydney players. Many have gone on to elite youth squads, professional, and international football.
             </p>
             <div class="mb-8 rounded-r-lg border-l-4 border-joner-red bg-white/5 py-4 pl-6 pr-4">
               <p class="font-heading text-lg uppercase leading-snug tracking-wide text-white md:text-xl">
-                Ages 8 and over. All ability levels. Term by term training with options to train up to three times per week.
+                Ages 8 and over. All ability levels. Term by term, up to three sessions a week.
               </p>
             </div>
-            <p class="mb-10 font-body text-base leading-relaxed text-neutral-300 md:text-lg">
-              Every session is delivered to a high professional standard by qualified and experienced coaches, with training that is tailored, technical and game-relevant.
-            </p>
 
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div class="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
               {pillars.map((pillar) => (
                 <div class="rounded-lg border border-white/10 bg-white/5 p-5">
                   <div class="mb-2 font-heading text-sm uppercase tracking-widest text-joner-red">{pillar.number}</div>
@@ -188,93 +169,14 @@ const faqs = [
                 </div>
               ))}
             </div>
+
+            <a href="#training-form" class="btn-red text-sm">Book Now</a>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="pathway" class="scroll-mt-24 bg-gradient-to-b from-joner-black via-joner-gray to-joner-black py-16 md:py-24 relative overflow-hidden">
-      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.14),transparent_60%)] pointer-events-none"></div>
-      <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="mb-10 text-center">
-          <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">JFP Player Pathway</p>
-          <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
-            The journey through Joner Football.
-          </h2>
-          <p class="mx-auto mt-4 max-w-2xl font-body text-base leading-relaxed text-neutral-400 md:text-lg">
-            JFP is the flagship program. It sits inside a full development pathway that helps players move from foundation habits to high-level training and a career in football.
-          </p>
-        </div>
-
-        <div class="mb-8 overflow-hidden rounded-2xl border border-white/10 bg-black/60 shadow-2xl">
-          <picture>
-            <source media="(max-width: 767px)" srcset="/images/training/jfp/jfp-player-pathway-mobile.webp?v=2" />
-            <img
-              src="/images/training/jfp/jfp-player-pathway-full.webp?v=2"
-              alt="Joner Football JFP Player Pathway showing Joners Juniors, the 6 to 8 year old program, Joner Football Performance, player reports, elite coaching, mentorship and high level training"
-              class="w-full object-cover"
-              loading="lazy"
-            />
-          </picture>
-        </div>
-
-        <div class="mb-10 rounded-xl border border-joner-red/40 bg-joner-red/10 p-5 text-center md:p-7">
-          <p class="mb-2 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Flagship Program</p>
-          <h3 class="font-heading text-3xl uppercase leading-none text-white md:text-5xl">Joner Football Performance</h3>
-          <p class="mx-auto mt-4 max-w-3xl font-body text-base leading-relaxed text-neutral-300">
-            The complete development program for ages 8 and over. Max 6 players per group. Built since 2013 for dedicated players who want technical, physical and mental development.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {pathwayStages.map((stage) => (
-            <article class="rounded-xl border border-white/10 bg-black/45 p-6 backdrop-blur-sm">
-              <p class="mb-3 font-heading text-xs uppercase tracking-[0.26em] text-joner-red">{stage.label}</p>
-              <h3 class="mb-4 font-heading text-2xl uppercase leading-none text-white">{stage.title}</h3>
-              <p class="font-body text-sm leading-relaxed text-neutral-400 md:text-base">{stage.text}</p>
-            </article>
-          ))}
-        </div>
-
-        <div class="mt-10">
-          <div class="mb-6 flex items-center gap-3">
-            <span class="h-2 w-2 rounded-full bg-joner-red"></span>
-            <h3 class="font-heading text-xl uppercase tracking-wide text-white md:text-2xl">What JFP unlocks</h3>
-            <span class="h-px flex-1 bg-gradient-to-r from-white/15 to-transparent"></span>
-          </div>
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {unlocks.map((item) => (
-              <article class="rounded-lg border border-white/10 bg-white/5 p-5">
-                <h4 class="mb-2 font-heading text-lg uppercase leading-tight text-white">{item.title}</h4>
-                <p class="font-body text-sm leading-relaxed text-neutral-400">{item.text}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="locations" class="scroll-mt-24 bg-joner-black py-16 md:py-24 relative overflow-hidden">
-      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.12),transparent_60%)] pointer-events-none"></div>
-      <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="mb-10 text-center">
-          <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">North Turramurra | Belrose HQ | Rydalmere Park</p>
-          <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
-            Train where the session fits your week.
-          </h2>
-        </div>
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
-          {locations.map((location) => (
-            <article class="rounded-xl border border-white/10 bg-black/45 p-6 backdrop-blur-sm">
-              <h3 class="mb-4 font-heading text-2xl uppercase leading-none text-white">{location.title}</h3>
-              <p class="font-body text-sm leading-relaxed text-neutral-400 md:text-base">{location.text}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section id="energy" class="scroll-mt-24 bg-joner-black py-16 md:py-24">
+    <section id="what-you-get" class="scroll-mt-24 bg-joner-black py-16 md:py-24">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16 lg:items-center">
           <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a0a0a] via-black to-[#0a0a1a]">
@@ -289,7 +191,7 @@ const faqs = [
           <div>
             <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">What players get</p>
             <h2 class="mb-8 font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl">Better habits every term.</h2>
-            <div class="grid grid-cols-1 gap-3">
+            <div class="mb-8 grid grid-cols-1 gap-3">
               {points.map((point) => (
                 <div class="flex gap-3 rounded-lg border border-white/10 bg-white/5 p-4 font-heading text-base uppercase leading-snug tracking-wide text-white md:text-lg">
                   <span class="text-joner-red">✓</span>
@@ -297,23 +199,61 @@ const faqs = [
                 </div>
               ))}
             </div>
+            <a href="#training-form" class="btn-red text-sm">Book Now</a>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="bg-joner-black pb-16 md:pb-24">
-      <div class="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
-        {trainingBlocks.map((block, index) => (
-          <div class="rounded-lg border border-white/10 bg-white/5 p-6">
-            <div class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">0{index + 1}</div>
-            <p class="font-heading text-xl uppercase leading-tight text-white md:text-2xl">{block}</p>
-          </div>
-        ))}
+    <section id="locations" class="scroll-mt-24 bg-joner-black py-16 md:py-24 relative overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.12),transparent_60%)] pointer-events-none"></div>
+      <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-10 text-center">
+          <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">North Turramurra | Belrose HQ | Rydalmere Park</p>
+          <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
+            Train where the session fits your week.
+          </h2>
+        </div>
+        <div class="mb-10 grid grid-cols-1 gap-5 md:grid-cols-3">
+          {locations.map((location) => (
+            <article class="rounded-xl border border-white/10 bg-black/45 p-6 backdrop-blur-sm">
+              <h3 class="mb-4 font-heading text-2xl uppercase leading-none text-white">{location.title}</h3>
+              <p class="font-body text-sm leading-relaxed text-neutral-400 md:text-base">{location.text}</p>
+            </article>
+          ))}
+        </div>
+        <div class="text-center">
+          <a href="#training-form" class="btn-red text-sm">Book Now</a>
+        </div>
       </div>
     </section>
 
-    <section id="videos" class="scroll-mt-24 bg-gradient-to-b from-joner-black via-joner-gray to-joner-black py-16 md:py-24 relative overflow-hidden">
+    <section id="unlocks" class="scroll-mt-24 bg-gradient-to-b from-joner-black via-joner-gray to-joner-black py-16 md:py-24 relative overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.14),transparent_60%)] pointer-events-none"></div>
+      <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-10 text-center">
+          <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">Inside JFP</p>
+          <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
+            What JFP unlocks.
+          </h2>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {unlocks.map((item) => (
+            <article class="rounded-lg border border-white/10 bg-white/5 p-5">
+              <h4 class="mb-2 font-heading text-lg uppercase leading-tight text-white">{item.title}</h4>
+              <p class="font-body text-sm leading-relaxed text-neutral-400">{item.text}</p>
+            </article>
+          ))}
+        </div>
+
+        <div class="mt-10 text-center">
+          <a href="#training-form" class="btn-red text-sm">Book Now</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="videos" class="scroll-mt-24 bg-joner-black py-16 md:py-24 relative overflow-hidden">
       <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.12),transparent_60%)] pointer-events-none"></div>
       <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="mb-12 text-center">
@@ -322,7 +262,7 @@ const faqs = [
             Watch the training environment.
           </h2>
         </div>
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:gap-8">
+        <div class="mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:gap-8">
           {videos.map((video) => (
             <div class="group">
               <div class="mb-3 flex items-center gap-3 pl-1">
@@ -343,25 +283,8 @@ const faqs = [
             </div>
           ))}
         </div>
-      </div>
-    </section>
-
-    <section id="faq" class="scroll-mt-24 bg-joner-black py-16 md:py-24">
-      <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-        <div class="mb-10 text-center">
-          <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">Frequently Asked Questions</p>
-          <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl">Know before you enquire.</h2>
-        </div>
-        <div class="space-y-3">
-          {faqs.map(([question, answer]) => (
-            <details class="group rounded-lg border border-white/10 bg-white/5 p-5">
-              <summary class="flex cursor-pointer list-none justify-between gap-4 font-heading text-xl uppercase leading-tight text-white">
-                <span>{question}</span>
-                <span class="text-joner-red transition-transform group-open:rotate-45">+</span>
-              </summary>
-              <p class="mt-4 font-body text-base leading-relaxed text-neutral-400">{answer}</p>
-            </details>
-          ))}
+        <div class="text-center">
+          <a href="#training-form" class="btn-red text-sm">Book Now</a>
         </div>
       </div>
     </section>
@@ -369,10 +292,10 @@ const faqs = [
     <section id="training-form" class="scroll-mt-32 bg-joner-black py-16 md:py-24">
       <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div class="mb-8 text-center">
-          <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Contact Us</p>
+          <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Book Your Spot</p>
           <h2 class="font-heading text-3xl uppercase tracking-wide text-white sm:text-4xl">Start Your JFP Enquiry</h2>
           <p class="mx-auto mt-4 max-w-2xl font-body text-base leading-relaxed text-gray-400">
-            Tell us about the player and the team will help place them in the right Joner Football Performance option.
+            Tell us about the player. The team will place them in the right JFP option.
           </p>
         </div>
 
@@ -440,6 +363,29 @@ const faqs = [
           <p id="contact-form-status" class="hidden font-body text-sm"></p>
           <button type="submit" class="btn-red w-full text-sm">Send JFP Enquiry</button>
         </form>
+      </div>
+    </section>
+
+    <section id="faq" class="scroll-mt-24 bg-joner-black py-16 md:py-24">
+      <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-10 text-center">
+          <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">Frequently Asked Questions</p>
+          <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl">Know before you book.</h2>
+        </div>
+        <div class="mb-10 space-y-3">
+          {faqs.map(([question, answer]) => (
+            <details class="group rounded-lg border border-white/10 bg-white/5 p-5">
+              <summary class="flex cursor-pointer list-none justify-between gap-4 font-heading text-xl uppercase leading-tight text-white">
+                <span>{question}</span>
+                <span class="text-joner-red transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p class="mt-4 font-body text-base leading-relaxed text-neutral-400">{answer}</p>
+            </details>
+          ))}
+        </div>
+        <div class="text-center">
+          <a href="#training-form" class="btn-red text-sm">Book Now</a>
+        </div>
       </div>
     </section>
   </main>
