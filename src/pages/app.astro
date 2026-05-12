@@ -44,26 +44,22 @@ const appSchema = {
     <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red z-[30]"></div>
 
     <!-- Devices start together in the centre, then separate on scroll -->
-    <div class="app-device-layer absolute inset-0 z-10 flex items-center justify-center pointer-events-none" aria-label="Scroll to reveal the Joner Football App">
-      <div class="app-device-stage relative w-[min(88vw,720px)] h-[min(72vh,650px)]">
+    <div class="app-device-layer absolute inset-0 z-10 flex items-center justify-center pointer-events-none" aria-label="Joner Football App on iPhone and iPad">
+      <div class="app-device-stage relative w-[min(94vw,900px)] h-[min(76vh,720px)]">
         <div class="app-device-glow app-device-glow-red absolute left-1/2 top-1/2 h-[58%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-[3rem] bg-joner-red/25 blur-3xl"></div>
         <div class="app-device-glow app-device-glow-white absolute left-1/2 top-1/2 h-[48%] w-[58%] -translate-x-1/2 -translate-y-1/2 rounded-[3rem] bg-white/10 blur-2xl"></div>
         <img
           src="/images/app/joner-app-main-ipad-current-transparent.png"
           alt="Joner Football App on iPad"
-          class="app-device-ipad absolute left-1/2 top-1/2 z-10 hidden md:block w-[min(78vw,650px)] drop-shadow-[0_36px_78px_rgba(0,0,0,0.72)]"
+          class="app-device-ipad absolute left-1/2 top-1/2 z-10 hidden md:block w-[min(88vw,780px)] drop-shadow-[0_36px_78px_rgba(0,0,0,0.72)]"
           loading="eager"
         />
         <img
           src="/images/app/joner-app-main-iphone-current-transparent.png"
           alt="Joner Football App on iPhone"
-          class="app-device-iphone absolute left-1/2 top-1/2 z-20 w-[min(62vw,360px)] md:w-[min(42vw,340px)] drop-shadow-[0_34px_70px_rgba(0,0,0,0.78)]"
+          class="app-device-iphone absolute left-1/2 top-1/2 z-20 w-[min(48vw,250px)] md:w-[min(28vw,270px)] drop-shadow-[0_34px_70px_rgba(0,0,0,0.78)]"
           loading="eager"
         />
-        <div class="app-scroll-cue hidden lg:flex absolute bottom-6 left-1/2 z-30 -translate-x-1/2 items-center gap-3 rounded-full border border-white/20 bg-black/45 px-4 py-2 text-xs font-body font-bold uppercase tracking-[0.18em] text-white/80 backdrop-blur-md">
-          <span class="h-2 w-2 rounded-full bg-joner-red"></span>
-          Scroll to reveal
-        </div>
       </div>
     </div>
 
@@ -608,22 +604,22 @@ const appSchema = {
     }
 
     .app-device-stage {
-      transform: scale(calc(1.03 - (var(--hero-progress) * 0.08)));
+      transform: scale(calc(1.14 - (var(--hero-progress) * 0.08)));
       transform-origin: center center;
       transition: transform 90ms linear;
       will-change: transform;
     }
 
     .app-device-ipad {
-      opacity: calc(1 - (var(--hero-progress) * 0.18));
-      transform: translate(calc(-50% + (var(--hero-progress) * 340px)), calc(-50% + (var(--hero-progress) * 24px))) scale(calc(0.8 + (var(--hero-progress) * 0.03))) rotate(calc(-3deg + (var(--hero-progress) * 6deg)));
+      opacity: calc(1 - (var(--hero-progress) * 0.34));
+      transform: translate(calc(-50% + (var(--hero-progress) * 500px)), calc(-50% + (var(--hero-progress) * 28px))) scale(calc(0.86 + (var(--hero-progress) * 0.02))) rotate(calc(-3deg + (var(--hero-progress) * 6deg)));
       transition: opacity 90ms linear, transform 90ms linear;
       will-change: opacity, transform;
     }
 
     .app-device-iphone {
-      opacity: calc(1 - (var(--hero-progress) * 0.12));
-      transform: translate(calc(-50% - (var(--hero-progress) * 360px)), calc(-50% - (var(--hero-progress) * 2px))) scale(calc(0.94 + (var(--hero-progress) * 0.01))) rotate(calc(0deg - (var(--hero-progress) * 6deg)));
+      opacity: calc(1 - (var(--hero-progress) * 0.24));
+      transform: translate(calc(-50% - (var(--hero-progress) * 430px)), calc(-50% - (var(--hero-progress) * 2px))) scale(calc(0.92 + (var(--hero-progress) * 0.01))) rotate(calc(0deg - (var(--hero-progress) * 6deg)));
       transition: opacity 90ms linear, transform 90ms linear;
       will-change: opacity, transform;
     }
@@ -634,13 +630,6 @@ const appSchema = {
 
     .app-device-glow-white {
       opacity: calc(0.5 + (var(--hero-progress) * 0.28));
-    }
-
-    .app-scroll-cue {
-      opacity: calc(1 - (var(--hero-progress) * 2));
-      transform: translateX(-50%) translateY(calc(var(--hero-progress) * 18px));
-      transition: opacity 90ms linear, transform 90ms linear;
-      pointer-events: none;
     }
 
     .app-hero-cta {
@@ -667,8 +656,8 @@ const appSchema = {
       }
 
       .app-device-iphone {
-        width: min(58vw, 260px);
-        transform: translate(calc(-50% - (var(--hero-progress) * 86px)), calc(-50% - (var(--hero-progress) * 58px))) scale(calc(0.95 + (var(--hero-progress) * 0.02))) rotate(calc(0deg - (var(--hero-progress) * 5deg)));
+        width: min(42vw, 190px);
+        transform: translate(calc(-50% - (var(--hero-progress) * 86px)), calc(-50% - (var(--hero-progress) * 58px))) scale(calc(0.92 + (var(--hero-progress) * 0.02))) rotate(calc(0deg - (var(--hero-progress) * 5deg)));
       }
     }
 
@@ -676,8 +665,7 @@ const appSchema = {
       .app-hero-copy,
       .app-device-stage,
       .app-device-ipad,
-      .app-device-iphone,
-      .app-scroll-cue {
+      .app-device-iphone {
         transform: none !important;
         transition: none !important;
       }
