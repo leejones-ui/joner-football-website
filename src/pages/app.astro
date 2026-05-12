@@ -570,8 +570,19 @@ const appSchema = {
         applyProgress();
       };
 
+      const resetSection = () => {
+        scrollProgress = 0;
+        mediaFullyExpanded = false;
+        touchStartY = 0;
+        if (window.scrollY !== 0) {
+          window.scrollTo(0, 0);
+        }
+        applyProgress();
+      };
+
       handleResize();
-      applyProgress();
+      resetSection();
+      window.addEventListener('resetSection', resetSection);
       window.addEventListener('wheel', handleWheel, { passive: false });
       window.addEventListener('scroll', handleScroll);
       window.addEventListener('touchstart', handleTouchStart, { passive: false });
