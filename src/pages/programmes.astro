@@ -348,35 +348,36 @@ const faqs = [
   .p100-cta-row--center { justify-content: center; }
   .p100-hero-cta-row { align-items: flex-end; }
   .p100-hero-cta-card {
-    position: relative;
     display: inline-flex;
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
+    gap: 8px;
     max-width: 100%;
-    padding-top: 18px;
   }
   .p100-hero-cta-card__banner {
-    position: absolute;
-    top: 0;
-    left: 18px;
-    right: 18px;
-    z-index: 3;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid rgba(232,0,13,0.9);
-    border-radius: 18px 18px 0 0;
-    background: linear-gradient(180deg, rgba(232,0,13,1), rgba(132,0,8,0.98));
+    width: calc(100% - 42px);
+    min-height: 28px;
+    border: 1px solid rgba(232,0,13,0.92);
+    border-radius: 999px;
+    background: linear-gradient(180deg, #e8000d 0%, #a40009 100%);
     color: #fff;
-    box-shadow: 0 8px 18px rgba(0,0,0,0.32), 0 0 16px rgba(232,0,13,0.26);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.34), 0 0 18px rgba(232,0,13,0.32);
     font-family: var(--p100-body);
     font-size: 0.68rem;
     font-weight: 950;
     line-height: 1;
     letter-spacing: 0.1em;
-    padding: 7px 12px 6px;
+    padding: 7px 14px 6px;
     pointer-events: none;
+    text-align: center;
     text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .p100-hero-cta-card .p100-btn {
+    width: 100%;
   }
 
   /* Buttons -------------------------------------------------------- */
