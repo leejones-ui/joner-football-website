@@ -487,58 +487,134 @@ const appSchema = {
       const hero = document.querySelector('[data-scroll-expand-hero]');
       if (!hero) return;
 
-      let ticking = false;
       const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-      const setProgress = () => {
-        const rect = hero.getBoundingClientRect();
-        const travel = Math.max(window.innerHeight * 0.72, 1);
-        const progress = clamp(Math.abs(Math.min(rect.top, 0)) / travel, 0, 1);
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let scrollProgress = 0;
+      let mediaFullyExpanded = false;
+      let touchStartY = 0;
+      let isMobile = window.innerWidth < 768;
+
+      const applyProgress = () => {
+        const progress = reducedMotion ? 1 : scrollProgress;
         hero.style.setProperty('--hero-progress', progress.toFixed(3));
-        ticking = false;
+        hero.toggleAttribute('data-expanded', mediaFullyExpanded || progress >= 1);
       };
-      const requestProgress = () => {
-        if (!ticking) {
-          window.requestAnimationFrame(setProgress);
-          ticking = true;
+
+      const updateProgress = (delta) => {
+        scrollProgress = clamp(scrollProgress + delta, 0, 1);
+        if (scrollProgress >= 1) {
+          scrollProgress = 1;
+          mediaFullyExpanded = true;
+        } else if (scrollProgress < 0.72) {
+          mediaFullyExpanded = false;
+        }
+        applyProgress();
+      };
+
+      const handleWheel = (event) => {
+        if (reducedMotion) return;
+
+        const atTop = window.scrollY <= 5;
+        if (mediaFullyExpanded && event.deltaY < 0 && atTop) {
+          mediaFullyExpanded = false;
+          event.preventDefault();
+          updateProgress(event.deltaY * 0.0009);
+          return;
+        }
+
+        if (!mediaFullyExpanded && atTop) {
+          event.preventDefault();
+          updateProgress(event.deltaY * 0.0009);
         }
       };
 
-      setProgress();
-      window.addEventListener('scroll', requestProgress, { passive: true });
-      window.addEventListener('wheel', requestProgress, { passive: true });
-      window.addEventListener('touchmove', requestProgress, { passive: true });
-      window.addEventListener('resize', requestProgress, { passive: true });
+      const handleTouchStart = (event) => {
+        touchStartY = event.touches?.[0]?.clientY || 0;
+      };
+
+      const handleTouchMove = (event) => {
+        if (reducedMotion || !touchStartY) return;
+
+        const touchY = event.touches?.[0]?.clientY || touchStartY;
+        const deltaY = touchStartY - touchY;
+        const atTop = window.scrollY <= 5;
+
+        if (mediaFullyExpanded && deltaY < -20 && atTop) {
+          mediaFullyExpanded = false;
+          event.preventDefault();
+          updateProgress(deltaY * 0.008);
+        } else if (!mediaFullyExpanded && atTop) {
+          event.preventDefault();
+          const scrollFactor = deltaY < 0 ? 0.008 : 0.005;
+          updateProgress(deltaY * scrollFactor);
+        }
+
+        touchStartY = touchY;
+      };
+
+      const handleTouchEnd = () => {
+        touchStartY = 0;
+      };
+
+      const handleScroll = () => {
+        if (reducedMotion) return;
+        if (!mediaFullyExpanded && window.scrollY > 0 && window.scrollY < window.innerHeight * 0.6) {
+          window.scrollTo(0, 0);
+        }
+      };
+
+      const handleResize = () => {
+        isMobile = window.innerWidth < 768;
+        hero.style.setProperty('--hero-mobile', isMobile ? '1' : '0');
+        applyProgress();
+      };
+
+      handleResize();
+      applyProgress();
+      window.addEventListener('wheel', handleWheel, { passive: false });
+      window.addEventListener('scroll', handleScroll);
+      window.addEventListener('touchstart', handleTouchStart, { passive: false });
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleTouchEnd);
+      window.addEventListener('resize', handleResize);
     })();
   </script>
 
   <style>
     .app-scroll-hero {
       --hero-progress: 0;
+      --hero-mobile: 0;
     }
 
     .app-hero-copy {
-      transform: translateY(calc(var(--hero-progress) * -18px));
-      transition: transform 120ms linear;
+      opacity: calc(1 - (var(--hero-progress) * 0.22));
+      transform: translateX(calc(var(--hero-progress) * -150px)) translateY(calc(var(--hero-progress) * -20px));
+      transition: opacity 90ms linear, transform 90ms linear;
+      will-change: opacity, transform;
     }
 
     .app-device-stage {
-      transform: translateY(calc((1 - var(--hero-progress)) * 22px)) scale(calc(0.9 + (var(--hero-progress) * 0.12)));
+      width: calc(300px + (var(--hero-progress) * 1250px));
+      height: calc(400px + (var(--hero-progress) * 400px));
+      max-width: min(94vw, 760px);
+      min-height: 0;
+      transform: translateY(calc((1 - var(--hero-progress)) * 24px)) scale(calc(0.9 + (var(--hero-progress) * 0.12)));
       transform-origin: center center;
-      transition: transform 120ms linear;
-      will-change: transform;
+      transition: width 90ms linear, height 90ms linear, transform 90ms linear;
+      will-change: width, height, transform;
     }
 
     .app-device-ipad {
       opacity: calc(0.78 + (var(--hero-progress) * 0.22));
-      transform: translateX(calc((1 - var(--hero-progress)) * 52px)) rotate(-1.5deg);
-      transition: opacity 120ms linear, transform 120ms linear;
+      transform: translateX(calc((1 - var(--hero-progress)) * 52px)) rotate(calc(-1.5deg + (var(--hero-progress) * 1.5deg)));
+      transition: opacity 90ms linear, transform 90ms linear;
       will-change: opacity, transform;
     }
 
     .app-device-iphone {
       opacity: calc(0.88 + (var(--hero-progress) * 0.12));
       transform: translateX(calc((1 - var(--hero-progress)) * -24px)) translateY(calc((1 - var(--hero-progress)) * 18px)) rotate(calc(-3deg + (var(--hero-progress) * 3deg)));
-      transition: opacity 120ms linear, transform 120ms linear;
+      transition: opacity 90ms linear, transform 90ms linear;
       will-change: opacity, transform;
     }
 
@@ -553,7 +629,7 @@ const appSchema = {
     .app-scroll-cue {
       opacity: calc(1 - (var(--hero-progress) * 1.8));
       transform: translateY(calc(var(--hero-progress) * 18px));
-      transition: opacity 120ms linear, transform 120ms linear;
+      transition: opacity 90ms linear, transform 90ms linear;
       pointer-events: none;
     }
 
@@ -562,6 +638,22 @@ const appSchema = {
       font-weight: 800;
       letter-spacing: 0.04em;
       text-transform: none;
+    }
+
+    @media (max-width: 767px) {
+      .app-scroll-hero {
+        min-height: 100dvh;
+      }
+
+      .app-hero-copy {
+        transform: translateY(calc(var(--hero-progress) * -18px));
+      }
+
+      .app-device-stage {
+        width: calc(300px + (var(--hero-progress) * 650px));
+        height: calc(400px + (var(--hero-progress) * 200px));
+        max-width: 92vw;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
