@@ -4,6 +4,7 @@ const FALLBACK_RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'le
 
 const TYPES = {
   'training-sydney': 'Training Enquiries (Sydney)',
+  'game-analysis': 'Game Analysis Enquiries',
   general: 'General Enquiries',
   'joners-juniors': 'Joners Juniors Enquiries',
   'coaching-role': 'Apply For A Coaching Role',
@@ -11,6 +12,7 @@ const TYPES = {
 
 const RECIPIENTS = {
   'training-sydney': process.env.CONTACT_TRAINING_EMAIL || FALLBACK_RECIPIENT_EMAIL,
+  'game-analysis': process.env.CONTACT_GAME_ANALYSIS_EMAIL || 'jonerfootballdean@gmail.com,trainingenquiries@jonerfootball.com',
   general: process.env.CONTACT_GENERAL_EMAIL || FALLBACK_RECIPIENT_EMAIL,
   'joners-juniors': process.env.CONTACT_JUNIORS_EMAIL || FALLBACK_RECIPIENT_EMAIL,
   'coaching-role': process.env.CONTACT_COACHING_EMAIL || FALLBACK_RECIPIENT_EMAIL,
@@ -18,6 +20,7 @@ const RECIPIENTS = {
 
 const BREVO_LIST_IDS = {
   'training-sydney': Number(process.env.BREVO_TRAINING_LIST_ID || 6),
+  'game-analysis': Number(process.env.BREVO_GAME_ANALYSIS_LIST_ID || 43),
   general: Number(process.env.BREVO_GENERAL_LIST_ID || 14),
   'joners-juniors': Number(process.env.BREVO_JUNIORS_LIST_ID || 6),
   'coaching-role': Number(process.env.BREVO_COACHING_LIST_ID || 11),
@@ -117,7 +120,7 @@ async function sendEmail(enquiry) {
 }
 
 async function addMarketingOptIn(enquiry) {
-  if (!enquiry.marketingOptIn) return
+  if (!enquiry.marketingOptIn && enquiry.type !== 'game-analysis') return
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey) throw new Error('Email service is not configured.')
 
@@ -191,7 +194,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Please enter a valid email address.' })
     }
 
-    if ((type === 'training-sydney' || type === 'joners-juniors') && (!enquiry.playerName || !enquiry.playerAge)) {
+    if ((type === 'training-sydney' || type === 'game-analysis' || type === 'joners-juniors') && (!enquiry.playerName || !enquiry.playerAge)) {
       return res.status(400).json({ success: false, error: 'Please add the player name and age.' })
     }
 

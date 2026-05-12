@@ -14,18 +14,6 @@ const features = [
   'Future targets for the next game',
 ]
 
-const jfpPrices = [
-  { name: 'One off game', price: '$250' },
-  { name: '5 game pack', price: '$975', best: true },
-  { name: '10 game pack', price: '$1,500' },
-]
-
-const standardPrices = [
-  { name: 'One off game', price: '$300' },
-  { name: '5 game pack', price: '$1,170', best: true },
-  { name: '10 game pack', price: '$1,800' },
-]
-
 const steps = [
   {
     title: 'Send the game',
@@ -46,10 +34,10 @@ const steps = [
   title={title}
   description={description}
   canonical={canonical}
-  ogImage="https://jonerfootball.com/images/training/jf-game-analysis-generated.jpg"
+  ogImage="https://jonerfootball.com/images/training/game-analysis/tactical-review.webp"
 >
   <Fragment slot="head">
-    <link rel="preload" as="image" href="/images/training/jf-game-analysis-generated.jpg" fetchpriority="high" />
+    <link rel="preload" as="image" href="/images/training/game-analysis/tactical-review.webp" fetchpriority="high" />
     <link rel="preload" as="font" href="/fonts/Kanit-BlackItalic.ttf" type="font/ttf" crossorigin />
   </Fragment>
 
@@ -67,8 +55,8 @@ const steps = [
           Send us your game footage and get detailed player feedback, clipped actions, individual stats, and clear targets for the next match.
         </p>
         <div class="ga-hero-cta">
-          <a class="ga-glass ga-glass--lg" href="#signup">Sign up interest<span class="ga-glass-underline"></span></a>
-          <a class="ga-glass" href="#pricing">See prices<span class="ga-glass-underline"></span></a>
+          <a class="btn-red" href="#signup">Enquire Now</a>
+          <a class="btn-outline" href="#info">See What's Included</a>
         </div>
       </div>
     </section>
@@ -96,7 +84,7 @@ const steps = [
           </ul>
         </div>
         <div class="ga-info-card">
-          <img src="/images/training/jf-game-analysis-generated.jpg" alt="Joner Football Game Analysis graphic" loading="lazy" />
+          <img src="/images/training/game-analysis/coach-review.webp" alt="Coach and player reviewing match footage and performance analysis" loading="lazy" />
         </div>
       </div>
     </section>
@@ -121,60 +109,17 @@ const steps = [
       </div>
     </section>
 
-    <section class="ga-pricing" id="pricing">
-      <div class="ga-wrap">
-        <div class="ga-section-head">
-          <span class="ga-section-eyebrow">Pricing</span>
-          <h2 class="ga-h2">Choose the analysis package.</h2>
-          <span class="ga-rule"></span>
-        </div>
-        <div class="ga-price-grid">
-          <article class="ga-price-panel">
-            <div class="ga-price-panel-head">
-              <span>JFP Players</span>
-              <p>Discounted rate for players already in the Joner Football Performance program.</p>
-            </div>
-            <div class="ga-price-list">
-              {jfpPrices.map((tier) => (
-                <div class:list={['ga-price-row', tier.best && 'ga-price-row--best']}>
-                  {tier.best && <span class="ga-price-badge">Best Value</span>}
-                  <span class="ga-price-name">{tier.name}</span>
-                  <strong>{tier.price}</strong>
-                </div>
-              ))}
-            </div>
-          </article>
-          <article class="ga-price-panel ga-price-panel--dark">
-            <div class="ga-price-panel-head">
-              <span>Non JFP Players</span>
-              <p>For players who are not currently inside the JFP program.</p>
-            </div>
-            <div class="ga-price-list">
-              {standardPrices.map((tier) => (
-                <div class:list={['ga-price-row', tier.best && 'ga-price-row--best']}>
-                  {tier.best && <span class="ga-price-badge">Best Value</span>}
-                  <span class="ga-price-name">{tier.name}</span>
-                  <strong>{tier.price}</strong>
-                </div>
-              ))}
-            </div>
-          </article>
-        </div>
-        <p class="ga-price-note">Payment links will be added here once the checkout links are created.</p>
-      </div>
-    </section>
-
     <section class="ga-signup" id="signup">
       <div class="ga-wrap ga-signup-layout">
         <div class="ga-signup-copy">
           <span class="ga-section-eyebrow">Sign up</span>
           <h2 class="ga-h2">Register interest in game analysis.</h2>
           <p>
-            Leave the player details and we will follow up with the best package and payment link once the checkout is ready.
+            Leave the player details and we will follow up with the right option, price, and next steps.
           </p>
         </div>
         <form id="game-analysis-form" class="ga-form">
-          <input type="hidden" name="enquiryType" value="training-sydney" />
+          <input type="hidden" name="enquiryType" value="game-analysis" />
           <input type="hidden" name="trainingInterest" value="Game Analysis" />
           <div class="ga-form-grid">
             <input type="text" name="name" placeholder="Parent or player name" required />
@@ -190,13 +135,7 @@ const steps = [
           </div>
           <div class="ga-form-grid">
             <input type="text" name="playerLevel" placeholder="Team or level" />
-            <select name="packageInterest">
-              <option value="">Package interest</option>
-              <option>One off game</option>
-              <option>5 game pack</option>
-              <option>10 game pack</option>
-              <option>Not sure yet</option>
-            </select>
+            <input type="text" name="position" placeholder="Position" />
           </div>
           <select name="jfpStatus" required>
             <option value="">Is the player currently in JFP?</option>
@@ -210,7 +149,7 @@ const steps = [
             <span>Yes, send me Joner Football updates, app news, camps, and training tips by email.</span>
           </label>
           <p id="game-analysis-status" class="ga-form-status" hidden></p>
-          <button type="submit" class="ga-glass ga-glass--lg ga-glass--block">Send game analysis enquiry<span class="ga-glass-underline"></span></button>
+          <button type="submit" class="btn-red w-full text-sm">Send game analysis enquiry</button>
         </form>
       </div>
     </section>
@@ -229,35 +168,12 @@ const steps = [
     }
     .ga-wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
     .ga-hook { color: var(--jf-red); display: block; }
-    .ga-glass {
-      position: relative;
-      display: inline-flex; align-items: center; justify-content: center;
-      flex-direction: column; gap: 6px;
-      padding: 18px 36px 16px;
-      font-family: var(--font-display);
-      font-style: italic; font-weight: 900;
-      text-transform: uppercase; letter-spacing: 0.06em;
-      font-size: 17px; line-height: 1;
-      color: #fff; text-decoration: none;
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 999px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 50%, rgba(0,0,0,0.4) 100%),
-        radial-gradient(120% 140% at 50% 0%, rgba(204,0,0,0.35) 0%, rgba(204,0,0,0) 60%),
-        #0a0a0a;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.6), 0 8px 24px rgba(204,0,0,0.18);
-      cursor: pointer; transition: box-shadow 200ms var(--ease-out); overflow: hidden;
-    }
-    .ga-glass::before { content: ''; position: absolute; left: 8%; right: 8%; top: 4px; height: 40%; background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0)); border-radius: 999px; pointer-events: none; }
-    .ga-glass:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.6), 0 12px 32px rgba(204,0,0,0.32); }
-    .ga-glass--lg { padding: 22px 44px 20px; font-size: 20px; }
-    .ga-glass--block { width: 100%; }
-    .ga-glass-underline { display: none; }
+
 
     .ga-hero { position: relative; min-height: 92vh; display: flex; align-items: flex-end; overflow: hidden; padding: 120px 0 56px; }
-    .ga-hero-img { position: absolute; inset: 0; background-image: url('/images/training/jf-game-analysis-generated.jpg'); background-size: cover; background-position: center; transform: scale(1.02); }
+    .ga-hero-img { position: absolute; inset: 0; background-image: url('/images/training/game-analysis/tactical-review.webp'); background-size: cover; background-position: center; transform: scale(1.02); }
     .ga-hero-img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.38) 38%, rgba(0,0,0,0.88) 100%), linear-gradient(90deg, rgba(0,0,0,0.76), rgba(0,0,0,0.22)); }
-    .ga-hero-content { position: relative; width: 100%; }
+    .ga-hero-content { position: relative; width: 100%; padding-left: clamp(0px, 6vw, 86px); }
     .ga-eyebrow { display: inline-flex; align-items: center; gap: 10px; padding: 8px 14px; background: rgba(204,0,0,0.15); border: 1px solid rgba(204,0,0,0.6); color: #fff; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.18em; }
     .ga-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--jf-red); box-shadow: 0 0 10px rgba(204,0,0,0.9); animation: gaPulse 1.6s var(--ease-out) infinite; }
     @keyframes gaPulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
@@ -265,6 +181,7 @@ const steps = [
     .ga-h1-small { display: block; color: #fff; font-size: clamp(1.25rem, 3.1vw, 2.1rem); line-height: 1.05; margin-top: 16px; max-width: 760px; }
     .ga-hero-sub { margin-top: 22px; max-width: 620px; color: rgba(255,255,255,0.86); font-size: 17px; line-height: 1.55; }
     .ga-hero-cta { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 14px; }
+    .ga-hero-cta .btn-red, .ga-hero-cta .btn-outline { min-width: 210px; }
 
     .ga-section-head { display: flex; flex-direction: column; gap: 14px; margin-bottom: 34px; }
     .ga-section-head--light .ga-h2 { color: #fff; }
@@ -283,7 +200,7 @@ const steps = [
     .ga-info-card img { width: 100%; height: 100%; object-fit: cover; }
 
     .ga-process { position: relative; overflow: hidden; padding: 100px 0; background: #000; }
-    .ga-process-bg { position: absolute; inset: 0; background-image: url('/images/training/jf-game-analysis-generated.jpg'); background-size: cover; background-position: center; opacity: 0.28; }
+    .ga-process-bg { position: absolute; inset: 0; background-image: url('/images/training/game-analysis/tactical-review.webp'); background-size: cover; background-position: center; opacity: 0.28; }
     .ga-process-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,0.92), rgba(0,0,0,0.65)); }
     .ga-process-content { position: relative; }
     .ga-step-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
@@ -292,21 +209,7 @@ const steps = [
     .ga-step-card h3 { margin: 28px 0 0; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(1.6rem, 3vw, 2.3rem); line-height: 1; }
     .ga-step-card p { margin: 16px 0 0; color: rgba(255,255,255,0.72); line-height: 1.6; }
 
-    .ga-pricing { background: #fff; color: #000; padding: 82px 0; }
-    .ga-price-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-    .ga-price-panel { border: 1px solid rgba(0,0,0,0.14); padding: 22px; background: #fff; box-shadow: 0 22px 60px rgba(0,0,0,0.08); }
-    .ga-price-panel--dark { background: #0a0a0a; color: #fff; border-color: rgba(255,255,255,0.12); }
-    .ga-price-panel-head span { display: inline-block; color: var(--jf-red); font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: 0.18em; font-size: 13px; border-bottom: 2px solid var(--jf-red); padding-bottom: 6px; }
-    .ga-price-panel-head p { margin: 14px 0 0; color: rgba(0,0,0,0.62); line-height: 1.55; }
-    .ga-price-panel--dark .ga-price-panel-head p { color: rgba(255,255,255,0.68); }
-    .ga-price-list { margin-top: 22px; display: grid; gap: 10px; }
-    .ga-price-row { position: relative; display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 15px 16px; border: 1px solid rgba(0,0,0,0.14); background: #fff; }
-    .ga-price-panel--dark .ga-price-row { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.14); }
-    .ga-price-row--best { border-color: var(--jf-red); background: rgba(204,0,0,0.06); }
-    .ga-price-name { font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; }
-    .ga-price-row strong { font-family: var(--font-display); font-style: italic; font-weight: 900; font-size: 1.6rem; }
-    .ga-price-badge { position: absolute; top: -10px; right: 12px; background: var(--jf-red); color: #fff; font-family: var(--font-display); font-style: italic; font-weight: 900; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; padding: 4px 8px; }
-    .ga-price-note { margin: 18px 0 0; color: rgba(0,0,0,0.58); font-size: 13px; }
+
 
     .ga-signup { background: #000; color: #fff; padding: 96px 0; }
     .ga-signup-layout { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 48px; align-items: start; }
@@ -323,7 +226,7 @@ const steps = [
     .ga-form-status { margin: 0; font-size: 14px; }
 
     @media (max-width: 900px) {
-      .ga-info-layout, .ga-price-grid, .ga-signup-layout { grid-template-columns: 1fr; }
+      .ga-info-layout, .ga-signup-layout { grid-template-columns: 1fr; }
       .ga-step-grid { grid-template-columns: 1fr; }
       .ga-info-card { aspect-ratio: 16 / 10; }
     }
@@ -333,12 +236,11 @@ const steps = [
       .ga-h1 { font-size: clamp(3rem, 16vw, 5.4rem); }
       .ga-h1-small { font-size: clamp(1.2rem, 7vw, 1.8rem); }
       .ga-hero-sub { font-size: 15px; }
-      .ga-hero-cta, .ga-glass { width: 100%; }
-      .ga-glass--lg { font-size: 17px; padding: 19px 28px 17px; }
-      .ga-info, .ga-pricing, .ga-signup { padding: 58px 0; }
+      .ga-hero-cta, .ga-hero-cta .btn-red, .ga-hero-cta .btn-outline { width: 100%; }
+      .ga-hero-content { padding-left: 0; }
+      .ga-info, .ga-signup { padding: 58px 0; }
       .ga-process { padding: 70px 0; }
       .ga-form-grid { grid-template-columns: 1fr; }
-      .ga-price-row { flex-direction: column; align-items: flex-start; }
     }
   </style>
 
@@ -353,7 +255,7 @@ const steps = [
         const formData = new FormData(form)
         const payload = {}
         formData.forEach(function (value, key) { payload[key] = value })
-        payload.message = 'GAME ANALYSIS ENQUIRY\n\n' + (payload.message || '') + '\n\nPackage interest: ' + (payload.packageInterest || 'Not selected') + '\nJFP status: ' + (payload.jfpStatus || 'Not selected')
+        payload.message = 'GAME ANALYSIS ENQUIRY\n\n' + (payload.message || '') + '\n\nJFP status: ' + (payload.jfpStatus || 'Not selected')
         payload.marketingOptIn = formData.get('marketingOptIn') === 'true'
 
         if (status) {
