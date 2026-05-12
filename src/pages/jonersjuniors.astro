@@ -211,7 +211,8 @@ const faqSchema = {
           <input type="hidden" name="age" />
           <input type="hidden" name="jerseySize" value="Not supplied" />
           <input type="hidden" name="paymentStatus" value="not_paid_pending_payment" />
-          <input type="hidden" name="paymentLink" value="https://jonerfootball.com/jonersjuniors/#book" />
+          <input type="hidden" name="paymentMethod" value="Stripe" />
+          <input type="hidden" name="paymentLink" value="https://buy.stripe.com/aFa00j1li1pQ8V0fCv5Vu0c" />
 
           <div class="jj-form__grid">
             <label><span>Players Full Name: *</span><input required name="playerFullName" /></label>
@@ -239,18 +240,15 @@ const faqSchema = {
                 <option>Saturday 10:00am</option>
               </select>
             </label>
-            <label>
-              <span>Choose Payment</span>
-              <select name="paymentMethod">
-                <option>Pay with Stripe</option>
-                <option>Pay with PayPal</option>
-              </select>
-            </label>
+            <div class="jj-stripe-only">
+              <span>Payment</span>
+              <strong>Pay with Stripe</strong>
+            </div>
           </div>
           <label class="jj-check"><input required type="checkbox" name="agreementAccepted" /><span>I have read and agree to the <a href="/terms" target="_blank" rel="noopener">training agreement</a>.</span></label>
-          <p class="jj-payment-note">Ligia is creating the payment links. Once they are ready, we can wire each class and payment option directly into this form.</p>
+          <p class="jj-payment-note">After you register, you will be sent to Stripe to complete payment.</p>
           <p id="juniors-form-message" class="jj-form-message" role="alert"></p>
-          <button type="submit" class="jj-btn jj-btn--red jj-form-submit">Register</button>
+          <button type="submit" class="jj-btn jj-btn--red jj-form-submit">Register And Pay</button>
         </form>
       </div>
     </section>
@@ -349,6 +347,9 @@ const faqSchema = {
     .jj-check { display: flex !important; gap: 12px; align-items: flex-start; font-size: .9rem; line-height: 1.45; color: #333; }
     .jj-check input { width: 18px; min-height: 18px; margin-top: 3px; accent-color: var(--jj-red); }
     .jj-check a { color: var(--jj-red); text-decoration: underline; }
+    .jj-stripe-only { min-height: 52px; border: 1px solid #d1d1d1; background: #f7f7f7; padding: 13px 14px; }
+    .jj-stripe-only span { display: block; margin-bottom: 8px; color: #111; font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; }
+    .jj-stripe-only strong { display: block; color: #050505; font-weight: 800; }
     .jj-payment-note { margin: 6px 0 16px; color: #555; font-size: .9rem; line-height: 1.45; font-weight: 700; }
     .jj-form-message { display: none; margin: 12px 0 0; border: 1px solid #222; padding: 12px; font-weight: 700; }
     .jj-form-message.is-visible { display: block; }
@@ -405,7 +406,7 @@ const faqSchema = {
         event.preventDefault();
         setMessage('', '');
         var submitButton = form.querySelector('button[type="submit"]');
-        var originalText = submitButton ? submitButton.textContent : 'Register';
+        var originalText = submitButton ? submitButton.textContent : 'Register And Pay';
         var emailInput = form.querySelector('input[type="email"]');
 
         if (!form.checkValidity()) {
@@ -449,7 +450,8 @@ const faqSchema = {
           if (!response.ok || !result.success) throw new Error(result.error || 'Could not save booking.');
 
           form.reset();
-          setMessage('Done. Your Joners Juniors booking form has been sent.', 'success');
+          setMessage('Done. Your Joners Juniors registration has been saved. Redirecting to Stripe...', 'success');
+          window.location.href = result.paymentLink || 'https://buy.stripe.com/aFa00j1li1pQ8V0fCv5Vu0c';
         } catch (error) {
           setMessage(error && error.message ? error.message : 'Could not save booking. Please try again.', 'error');
         } finally {
