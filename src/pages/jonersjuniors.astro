@@ -1,0 +1,449 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const title = 'Joners Juniors | Belrose Kids Football Training | Joner Football'
+const description = 'Joners Juniors at Joner Football HQ in Belrose. Saturday football training for young boys and girls, ages 3 to early primary. Book a spot online.'
+const canonical = 'https://jonerfootball.com/jonersjuniors/'
+
+const heroVideoId = 'Z6CzRtufcW4'
+const featureVideoId = 'FZWkrasj2VE'
+
+const photos = [
+  { src: '/images/training/joners-juniors/tlp02345.webp', alt: 'Young Joners Juniors players training inside Joner Football HQ' },
+  { src: '/images/training/joners-juniors/tlp02429.webp', alt: 'Joners Juniors football session at Belrose' },
+  { src: '/images/training/joners-juniors/img8317.webp', alt: 'Young players learning football skills with Joner Football coaches' },
+  { src: '/images/training/joners-juniors/tlp02478.webp', alt: 'Kids football training at Joner Football HQ' },
+]
+
+const details = [
+  { label: 'Age', value: 'Ages 3 to early primary' },
+  { label: 'Day', value: 'Saturday mornings' },
+  { label: 'Time', value: '9:15am to 10:00am' },
+  { label: 'Location', value: 'Joner Football HQ, Unit 2, 20 Narabang Way, Belrose' },
+  { label: 'Term Dates', value: '2 May 2026 to 4 July 2026' },
+  { label: 'Term Fee', value: '$220 for 10 weeks' },
+]
+
+const benefits = [
+  'Introduction to the basics of football',
+  'A pathway into Joner Football Performance',
+  '45 minute weekly classes during school term',
+  'Qualified Joner Football coaching team',
+  'Fun, safe, structured indoor environment',
+  'Build confidence, coordination, ball mastery and friendships',
+]
+
+const faqItems = [
+  {
+    question: 'What does my child need to bring?',
+    answer: 'Soccer boots for synthetic turf or indoor trainers, a drink bottle, and a smile.',
+  },
+  {
+    question: 'What should my child wear?',
+    answer: 'Black shorts and white socks. Joner Football provides the training jersey.',
+  },
+  {
+    question: 'What should parents expect?',
+    answer: 'A high energy session built around fun, confidence, simple football habits, and learning the basics properly.',
+  },
+  {
+    question: 'Will bad weather cancel training?',
+    answer: 'No. Joners Juniors runs inside Joner Football HQ in Belrose.',
+  },
+  {
+    question: 'Is there a parent waiting area?',
+    answer: 'Yes. Parents can stay and watch from the parent viewing area. No food is allowed on the soccer pitch.',
+  },
+  {
+    question: 'Are spots limited?',
+    answer: 'Yes. Classes are capped so the group stays safe, organised and coachable.',
+  },
+]
+
+const eventSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SportsEvent',
+  name: 'Joners Juniors HQ Belrose',
+  description,
+  url: canonical,
+  location: {
+    '@type': 'Place',
+    name: 'Joner Football HQ',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: 'Unit 2, 20 Narabang Way',
+      addressLocality: 'Belrose',
+      addressRegion: 'NSW',
+      postalCode: '2085',
+      addressCountry: 'AU',
+    },
+  },
+}
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqItems.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: { '@type': 'Answer', text: item.answer },
+  })),
+}
+---
+
+<BaseLayout title={title} description={description} canonical={canonical} schema={[eventSchema, faqSchema]} ogImage="https://jonerfootball.com/images/training/joners-juniors/tlp02345.webp">
+  <main class="jj-page bg-joner-black text-white">
+    <section class="jj-hero">
+      <iframe
+        class="jj-hero__video"
+        src={`https://www.youtube-nocookie.com/embed/${heroVideoId}?rel=0&controls=0&modestbranding=1&playsinline=1&loop=1&playlist=${heroVideoId}&mute=1&autoplay=1`}
+        title="Joners Juniors promo video"
+        allow="autoplay; encrypted-media; picture-in-picture"
+        loading="eager"
+        aria-hidden="true"
+      ></iframe>
+      <img class="jj-hero__mobile" src="/images/training/joners-juniors/tlp02345.webp" alt="Joners Juniors training at Joner Football HQ" loading="eager" fetchpriority="high" />
+      <div class="jj-hero__shade"></div>
+
+      <div class="jj-wrap jj-hero__content">
+        <p class="jj-eyebrow"><span></span> Joner Football HQ, Belrose</p>
+        <h1>Joners Juniors</h1>
+        <p class="jj-hero__lead">A fun, safe football pathway for young boys and girls learning the game for the first time.</p>
+        <div class="jj-hero__actions">
+          <a href="#book" class="jj-btn jj-btn--red">Book Now</a>
+          <a href="#details" class="jj-btn jj-btn--glass">View Details</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="details" class="jj-section jj-section--light">
+      <div class="jj-wrap">
+        <div class="jj-section-head">
+          <p class="jj-section-eyebrow">Quick Parent Info</p>
+          <h2>Everything you need to know.</h2>
+        </div>
+        <div class="jj-detail-grid">
+          {details.map((item) => (
+            <div class="jj-detail-card">
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+            </div>
+          ))}
+        </div>
+        <p class="jj-note">There is also a Saturday selection only group. Please only choose that option on the form if a Joner Football coach has asked you to.</p>
+      </div>
+    </section>
+
+    <section class="jj-split">
+      <div class="jj-split__image">
+        <img src="/images/training/joners-juniors/tlp02429.webp" alt="Joners Juniors players learning football basics" loading="lazy" decoding="async" />
+      </div>
+      <div class="jj-split__copy">
+        <p class="jj-section-eyebrow">Why Joners Juniors</p>
+        <h2>Fun first. Fundamentals always.</h2>
+        <p>Joners Juniors is built for young players who are just starting their football journey. The sessions are simple, energetic and structured so kids learn the basics without pressure.</p>
+        <div class="jj-benefits">
+          {benefits.map((item) => <div><span>✓</span>{item}</div>)}
+        </div>
+        <a href="#book" class="jj-btn jj-btn--red">Book A Spot</a>
+      </div>
+    </section>
+
+    <section class="jj-gallery-section">
+      <div class="jj-wrap">
+        <div class="jj-section-head jj-section-head--dark">
+          <p class="jj-section-eyebrow">Inside The Program</p>
+          <h2>Small kids. Big energy.</h2>
+        </div>
+        <div class="jj-gallery">
+          {photos.map((photo, index) => (
+            <figure class={`jj-gallery__item jj-gallery__item--${index + 1}`}>
+              <img src={photo.src} alt={photo.alt} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="jj-video-section">
+      <div class="jj-wrap jj-video-grid">
+        <div>
+          <p class="jj-section-eyebrow">Watch This</p>
+          <h2>What the program feels like.</h2>
+          <p>Quick look at the energy, environment and fun inside Joners Juniors. Parents can see the style before booking.</p>
+          <a href="#book" class="jj-btn jj-btn--red">Book Now</a>
+        </div>
+        <div class="jj-video-card">
+          <iframe
+            src={`https://www.youtube.com/embed/${featureVideoId}?rel=0&modestbranding=1`}
+            title="Joners Juniors, Fun to Fundamentals"
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section id="book" class="jj-form-section">
+      <img src="/images/training/joners-juniors/img8317.webp" alt="Joners Juniors booking backdrop" loading="lazy" decoding="async" />
+      <div class="jj-wrap jj-form-grid">
+        <div class="jj-form-copy">
+          <p class="jj-section-eyebrow">Book Now</p>
+          <h2>Register your child.</h2>
+          <p>Fill in the form and the Joner Football team will have the signup saved correctly. Spots are limited by class size.</p>
+          <div class="jj-form-facts">
+            <span>Saturday mornings</span>
+            <span>HQ Belrose</span>
+            <span>Ages 3 to early primary</span>
+          </div>
+        </div>
+
+        <form id="juniors-registration-form" class="jj-form" novalidate>
+          <input type="hidden" name="camp" value="Joners Juniors HQ Belrose" />
+          <input type="hidden" name="destination" value="sydney" />
+          <input type="hidden" name="location" value="Joner Football HQ, Belrose" />
+          <input type="hidden" name="sheetTab" value="Joners Juniors" />
+          <input type="hidden" name="brevoListId" value="6" />
+          <input type="hidden" name="paymentMethod" value="Not paid yet" />
+          <input type="hidden" name="paymentStatus" value="not_paid_pending_payment" />
+          <input type="hidden" name="paymentLink" value="https://jonerfootball.com/jonersjuniors/#book" />
+
+          <div class="jj-form__grid">
+            <label><span>Player First Name *</span><input required name="playerFirstName" /></label>
+            <label><span>Player Surname *</span><input required name="playerSurname" /></label>
+            <label><span>Parent Name *</span><input required name="parentName" /></label>
+            <label><span>Email *</span><input required type="email" name="email" /></label>
+            <label><span>Mobile *</span><input required name="mobile" /></label>
+            <label><span>Player Age *</span><input required name="age" /></label>
+            <label>
+              <span>Select Class *</span>
+              <select required name="numberOfDays">
+                <option value="">Select class</option>
+                <option>Saturday 9:15am to 10:00am</option>
+                <option>Saturday selection only group, coach invite only</option>
+              </select>
+            </label>
+            <label>
+              <span>Jersey Size *</span>
+              <select required name="jerseySize">
+                <option value="">Select size</option>
+                <option>Kids 2</option>
+                <option>Kids 4</option>
+                <option>Kids 6</option>
+                <option>Kids 8</option>
+                <option>Kids 10</option>
+                <option>Not sure</option>
+              </select>
+            </label>
+            <label><span>Where Did You Hear About Us?</span><input name="source" placeholder="Google, friend, social media, flyer" /></label>
+            <label><span>Previous Joner Program?</span><select name="previousCamp"><option value="">Select</option><option>Yes</option><option>No</option></select></label>
+          </div>
+          <label><span>Medical History Or Anything We Should Know?</span><textarea name="medicalHistory" rows="3"></textarea></label>
+          <label><span>Extra Info</span><textarea name="extraInfo" rows="3" placeholder="Confidence level, football experience, anything that helps us coach them better"></textarea></label>
+          <label class="jj-check"><input required type="checkbox" name="agreementAccepted" /><span>I have read and agree to the <a href="/terms" target="_blank" rel="noopener">training agreement</a>.</span></label>
+          <p id="juniors-form-message" class="jj-form-message" role="alert"></p>
+          <button type="submit" class="jj-btn jj-btn--red jj-form-submit">Book Joners Juniors</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="jj-faq-section">
+      <div class="jj-wrap">
+        <div class="jj-section-head jj-section-head--dark">
+          <p class="jj-section-eyebrow">FAQ</p>
+          <h2>Parent questions.</h2>
+        </div>
+        <div class="jj-faqs">
+          {faqItems.map((item) => (
+            <details>
+              <summary>{item.question}<span>+</span></summary>
+              <p>{item.answer}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <a href="#book" class="jj-mobile-cta">Book Now</a>
+  </main>
+
+  <style>
+    @font-face { font-family: 'JJKanit'; src: url('/fonts/Kanit-BlackItalic.ttf') format('truetype'); font-weight: 900; font-style: italic; font-display: swap; }
+    @font-face { font-family: 'JJKanit'; src: url('/fonts/Kanit-SemiBoldItalic.ttf') format('truetype'); font-weight: 600; font-style: italic; font-display: swap; }
+    .jj-page { --jj-red:#E30613; --jj-black:#050505; --jj-white:#fff; --jj-muted:rgba(255,255,255,.72); font-family: Inter, system-ui, sans-serif; overflow: hidden; }
+    .jj-wrap { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+    .jj-eyebrow, .jj-section-eyebrow { display: inline-flex; align-items: center; gap: 10px; color: var(--jj-red); font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-weight: 600; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; }
+    .jj-eyebrow span { width: 10px; height: 10px; border-radius: 999px; background: var(--jj-red); box-shadow: 0 0 24px rgba(227,6,19,.7); }
+    .jj-page h1, .jj-page h2 { font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: -.02em; }
+    .jj-page h1 { margin: 18px 0 0; max-width: 820px; font-size: clamp(4.2rem, 12vw, 10.5rem); line-height: .78; }
+    .jj-page h2 { margin: 12px 0 0; font-size: clamp(2.6rem, 7vw, 6.2rem); line-height: .82; }
+    .jj-btn { display: inline-flex; min-height: 54px; align-items: center; justify-content: center; padding: 15px 24px; border: 1px solid transparent; color: #fff; font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-weight: 900; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; transition: transform .18s ease, border-color .18s ease, background .18s ease; }
+    .jj-btn:hover { transform: translateY(-2px); }
+    .jj-btn--red { background: var(--jj-red); box-shadow: 0 20px 48px rgba(227,6,19,.28); }
+    .jj-btn--glass { border-color: rgba(255,255,255,.3); background: rgba(255,255,255,.08); backdrop-filter: blur(10px); }
+
+    .jj-hero { position: relative; min-height: calc(100vh - 80px); display: flex; align-items: flex-end; padding: 130px 0 70px; background: #050505; }
+    .jj-hero__video, .jj-hero__mobile { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border: 0; transform: scale(1.18); }
+    .jj-hero__mobile { display: none; transform: none; }
+    .jj-hero__shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.9), rgba(0,0,0,.48) 46%, rgba(0,0,0,.18)), linear-gradient(0deg, rgba(0,0,0,.78), rgba(0,0,0,.12)); }
+    .jj-hero__content { position: relative; z-index: 2; }
+    .jj-hero__lead { max-width: 650px; margin: 24px 0 0; color: rgba(255,255,255,.86); font-size: clamp(1.1rem, 2.3vw, 1.55rem); font-weight: 700; line-height: 1.28; }
+    .jj-hero__actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
+
+    .jj-section--light { background: #f4f4f0; color: #050505; padding: clamp(54px, 8vw, 96px) 0; }
+    .jj-section-head { max-width: 760px; margin-bottom: 30px; }
+    .jj-section-head .jj-section-eyebrow { color: var(--jj-red); }
+    .jj-detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .jj-detail-card { min-height: 138px; padding: 22px; background: #fff; border: 1px solid rgba(0,0,0,.08); box-shadow: 0 24px 55px rgba(0,0,0,.07); }
+    .jj-detail-card span { display: block; margin-bottom: 12px; color: var(--jj-red); font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; }
+    .jj-detail-card strong { display: block; color: #080808; font-size: 1.15rem; line-height: 1.25; }
+    .jj-note { margin: 22px 0 0; color: #4b4b4b; font-weight: 700; }
+
+    .jj-split { display: grid; grid-template-columns: 1fr 1fr; background: #050505; }
+    .jj-split__image { min-height: 680px; }
+    .jj-split__image img { width: 100%; height: 100%; object-fit: cover; }
+    .jj-split__copy { display: flex; flex-direction: column; justify-content: center; padding: clamp(40px, 8vw, 88px); }
+    .jj-split__copy p:not(.jj-section-eyebrow) { max-width: 620px; color: rgba(255,255,255,.74); font-size: 1.1rem; line-height: 1.65; }
+    .jj-benefits { display: grid; gap: 10px; margin: 28px 0; }
+    .jj-benefits div { display: flex; align-items: flex-start; gap: 12px; color: rgba(255,255,255,.86); font-weight: 700; }
+    .jj-benefits span { color: var(--jj-red); }
+
+    .jj-gallery-section { padding: clamp(54px, 8vw, 110px) 0; background: #0b0b0b; }
+    .jj-section-head--dark h2 { color: #fff; }
+    .jj-gallery { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 220px; gap: 12px; margin-top: 34px; }
+    .jj-gallery__item { position: relative; overflow: hidden; margin: 0; background: #111; }
+    .jj-gallery__item img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s ease; }
+    .jj-gallery__item:hover img { transform: scale(1.05); }
+    .jj-gallery__item--1 { grid-column: span 2; grid-row: span 2; }
+    .jj-gallery__item--4 { grid-column: span 2; }
+
+    .jj-video-section { background: #f4f4f0; color: #050505; padding: clamp(56px, 8vw, 100px) 0; }
+    .jj-video-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: 36px; align-items: center; }
+    .jj-video-grid p:not(.jj-section-eyebrow) { max-width: 510px; color: #555; font-size: 1.05rem; line-height: 1.65; margin: 22px 0 28px; }
+    .jj-video-card { position: relative; overflow: hidden; background: #050505; aspect-ratio: 16 / 9; box-shadow: 0 35px 90px rgba(0,0,0,.2); }
+    .jj-video-card iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+    .jj-form-section { position: relative; overflow: hidden; padding: clamp(60px, 8vw, 112px) 0; background: #050505; }
+    .jj-form-section > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .22; }
+    .jj-form-section::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.88), rgba(0,0,0,.55)); }
+    .jj-form-grid { position: relative; z-index: 2; display: grid; grid-template-columns: .75fr 1.25fr; gap: 32px; align-items: start; }
+    .jj-form-copy { position: sticky; top: 110px; }
+    .jj-form-copy p:not(.jj-section-eyebrow) { color: rgba(255,255,255,.76); font-size: 1.08rem; line-height: 1.6; }
+    .jj-form-facts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+    .jj-form-facts span { border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.08); padding: 10px 12px; color: rgba(255,255,255,.82); font-weight: 800; font-size: .88rem; }
+    .jj-form { background: #fff; color: #050505; padding: clamp(22px, 4vw, 34px); box-shadow: 0 36px 95px rgba(0,0,0,.25); }
+    .jj-form__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .jj-form label { display: block; margin-bottom: 16px; }
+    .jj-form label span:not(.jj-check span) { display: block; margin-bottom: 8px; color: #111; font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; }
+    .jj-form input, .jj-form select, .jj-form textarea { width: 100%; min-height: 52px; border: 1px solid #d1d1d1; background: #f7f7f7; color: #050505; padding: 13px 14px; outline: none; font: inherit; }
+    .jj-form textarea { resize: vertical; }
+    .jj-form input:focus, .jj-form select:focus, .jj-form textarea:focus { border-color: var(--jj-red); background: #fff; }
+    .jj-check { display: flex !important; gap: 12px; align-items: flex-start; font-size: .9rem; line-height: 1.45; color: #333; }
+    .jj-check input { width: 18px; min-height: 18px; margin-top: 3px; accent-color: var(--jj-red); }
+    .jj-check a { color: var(--jj-red); text-decoration: underline; }
+    .jj-form-message { display: none; margin: 12px 0 0; border: 1px solid #222; padding: 12px; font-weight: 700; }
+    .jj-form-message.is-visible { display: block; }
+    .jj-form-message.is-error { border-color: #b91c1c; color: #b91c1c; }
+    .jj-form-message.is-success { border-color: #15803d; color: #15803d; }
+    .jj-form-submit { width: 100%; border: 0; cursor: pointer; }
+
+    .jj-faq-section { background: #050505; padding: clamp(54px, 8vw, 100px) 0 120px; }
+    .jj-faqs { display: grid; gap: 10px; margin-top: 30px; }
+    .jj-faqs details { border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); }
+    .jj-faqs summary { display: flex; justify-content: space-between; gap: 20px; cursor: pointer; padding: 20px; list-style: none; font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-weight: 900; font-size: clamp(1.1rem, 2vw, 1.6rem); text-transform: uppercase; }
+    .jj-faqs summary::-webkit-details-marker { display: none; }
+    .jj-faqs details[open] summary span { transform: rotate(45deg); }
+    .jj-faqs p { margin: 0; padding: 0 20px 20px; color: rgba(255,255,255,.72); line-height: 1.65; }
+    .jj-mobile-cta { display: none; position: fixed; left: 12px; right: 12px; bottom: 72px; z-index: 40; min-height: 54px; align-items: center; justify-content: center; background: var(--jj-red); color: #fff; font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-weight: 900; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; box-shadow: 0 18px 45px rgba(0,0,0,.4); }
+
+    @media (max-width: 900px) {
+      .jj-hero { min-height: 760px; padding-top: 120px; }
+      .jj-hero__video { display: none; }
+      .jj-hero__mobile { display: block; }
+      .jj-detail-grid, .jj-video-grid, .jj-form-grid, .jj-split { grid-template-columns: 1fr; }
+      .jj-split__image { min-height: 420px; }
+      .jj-gallery { grid-template-columns: 1fr 1fr; grid-auto-rows: 190px; }
+      .jj-gallery__item--1, .jj-gallery__item--4 { grid-column: span 2; }
+      .jj-form-copy { position: relative; top: auto; }
+      .jj-mobile-cta { display: flex; }
+    }
+    @media (max-width: 640px) {
+      .jj-wrap { width: min(100% - 24px, 1180px); }
+      .jj-page h1 { font-size: clamp(4rem, 23vw, 6.8rem); }
+      .jj-hero { min-height: 710px; }
+      .jj-hero__actions { flex-direction: column; align-items: stretch; }
+      .jj-btn { width: 100%; }
+      .jj-detail-grid, .jj-form__grid { grid-template-columns: 1fr; }
+      .jj-gallery { grid-template-columns: 1fr; grid-auto-rows: 260px; }
+      .jj-gallery__item--1, .jj-gallery__item--4 { grid-column: span 1; }
+      .jj-video-card { aspect-ratio: 9 / 16; }
+    }
+  </style>
+
+  <script is:inline>
+    (function () {
+      var form = document.getElementById('juniors-registration-form');
+      var message = document.getElementById('juniors-form-message');
+      if (!form) return;
+
+      function setMessage(text, type) {
+        if (!message) return;
+        message.textContent = text || '';
+        message.className = 'jj-form-message' + (text ? ' is-visible' : '') + (type === 'error' ? ' is-error' : '') + (type === 'success' ? ' is-success' : '');
+      }
+
+      form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        setMessage('', '');
+        var submitButton = form.querySelector('button[type="submit"]');
+        var originalText = submitButton ? submitButton.textContent : 'Book Joners Juniors';
+        var emailInput = form.querySelector('input[type="email"]');
+
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          return;
+        }
+
+        if (window.JonerEmailGuard && emailInput) {
+          var validation = window.JonerEmailGuard.validateEmail(emailInput.value);
+          window.JonerEmailGuard.setFeedback(emailInput, validation);
+          if (!validation.valid) {
+            emailInput.reportValidity();
+            return;
+          }
+        }
+
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent = 'Saving...';
+        }
+
+        try {
+          var data = new FormData(form);
+          var payload = Object.fromEntries(data.entries());
+          payload.agreementAccepted = data.get('agreementAccepted') === 'on';
+          payload.recaptchaToken = window.JonerRecaptcha ? await window.JonerRecaptcha.getToken('camp_registration') : '';
+
+          var response = await fetch('/api/camp-registration', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          var result = await response.json();
+          if (!response.ok || !result.success) throw new Error(result.error || 'Could not save booking.');
+
+          form.reset();
+          setMessage('Done. Your Joners Juniors booking form has been sent.', 'success');
+        } catch (error) {
+          setMessage(error && error.message ? error.message : 'Could not save booking. Please try again.', 'error');
+        } finally {
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = originalText;
+          }
+        }
+      });
+    })();
+  </script>
+</BaseLayout>
