@@ -74,6 +74,30 @@ const plans = [
   },
 ]
 
+
+const comparisonRows = [
+  ['1,500+ Training Videos', true, true, true],
+  ['New Videos Every Week', true, true, true],
+  ['Daily Challenges', true, true, true],
+  ['Community Access', true, true, true],
+  ['Live Training Sessions', true, true, true],
+  ['100 Day Transformation Program', false, true, true],
+  ['Age Specific Training Content', true, true, true],
+  ['Create Playlist', true, true, true],
+  ['Offline Downloads', true, true, true],
+  ['Watch History', true, true, true],
+  ['Streaks & Badges', true, true, true],
+  ['Create Notes', true, true, true],
+  ['Free Trial', true, true, false],
+  ['DM Lee Directly', false, true, true],
+  ['Team Training Videos', false, true, true],
+  ['Advanced Team Training', false, false, true],
+  ['PDF Season Plans', false, false, true],
+  ['Coaches-Only Section', false, false, true],
+  ['Pro Player Training', false, false, true],
+  ['Workshop Discounts', false, false, true],
+]
+
 const teamFeatures = [
   'Custom onboarding with Lee',
   'Multi-seat Licences (Player/Coach)',
@@ -129,78 +153,111 @@ const teamFeatures = [
               </div>
             </article>
           ))}
-        </div>
-      </div>
-    </section>
 
-    <section class="join-teams">
-      <div class="join-wrap">
-        <article class="join-team-card">
-          <div class="join-team-card__image-wrap">
-            <img src="/images/join-live/teams.webp" alt="Team Subscriptions" loading="lazy" decoding="async" />
-            <span>TEAMS &amp; CLUBS</span>
-          </div>
-          <div class="join-team-card__body">
-            <h2>Club Subscriptions</h2>
-            <p class="join-card__subtitle">For teams, academies &amp; clubs</p>
-            <div class="join-price"><span>Custom Pricing</span></div>
-            <p class="join-trial">Bulk discounts</p>
-            <a class="join-cta" href="https://jonerfootball.com/clubpricing/">Contact Sales</a>
-            <ul>
-              {teamFeatures.map((feature) => (
-                <li class="is-included"><span>✓</span>{feature}</li>
-              ))}
-            </ul>
-          </div>
-        </article>
+          <article class="join-card join-card--club">
+            <div class="join-badge join-badge--club">TEAMS &amp; CLUBS</div>
+            <img class="join-card__image" src="/images/join-live/teams.webp" alt="Team Subscriptions" loading="lazy" decoding="async" />
+            <div class="join-card__body">
+              <h2>Club Subscriptions</h2>
+              <p class="join-card__subtitle">For teams, academies &amp; clubs</p>
+              <div class="join-price"><span>Custom Pricing</span></div>
+              <p class="join-trial">Bulk discounts</p>
+              <a class="join-cta" href="https://jonerfootball.com/clubpricing/">Contact Sales</a>
+              <ul>
+                {teamFeatures.map((feature) => (
+                  <li class="is-included"><span>✓</span>{feature}</li>
+                ))}
+              </ul>
+            </div>
+          </article>
+        </div>
       </div>
     </section>
 
     <section class="join-compare">
       <div class="join-wrap">
-        <p>📱 Rotate your phone to landscape to see the full comparison table</p>
+        <p class="join-rotate-note">📱 Rotate your phone to landscape to see the full comparison table</p>
+        <div class="join-table-wrap">
+          <table class="join-table">
+            <thead>
+              <tr>
+                <th>What You Get</th>
+                <th>Monthly<br /><span>$23.99/mo</span></th>
+                <th>Annual<br /><span>$204.99/yr</span></th>
+                <th>Coaches<br /><span>$319.99/yr</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {comparisonRows.map((row) => (
+                <tr>
+                  <td>{row[0]}</td>
+                  {row.slice(1).map((included) => (
+                    <td class="join-table__check">{included ? <span class="yes">✓</span> : <span class="no">✗</span>}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>
 
   <style>
-    .join-live-page { background: #050505; color: #fff; font-family: 'DM Sans', system-ui, sans-serif; }
+    .join-live-page { background: #fff; color: #111; font-family: 'DM Sans', system-ui, sans-serif; }
     .join-wrap { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
-    .join-hero { position: relative; overflow: hidden; padding: clamp(7rem, 10vw, 10rem) 0 clamp(3rem, 5vw, 4rem); text-align: center; background: radial-gradient(circle at 50% 0%, rgba(227,6,19,.28), transparent 36%), #050505; }
-    .join-hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.04), transparent 45%); pointer-events: none; }
-    .join-hero__inner { position: relative; z-index: 1; display: grid; justify-items: center; }
-    .join-logo { width: min(360px, 72vw); height: auto; margin-bottom: 2rem; object-fit: contain; }
-    .join-hero h1 { max-width: 920px; margin: 0; font-family: 'Anton', Impact, sans-serif; font-size: clamp(3rem, 8vw, 6.8rem); line-height: .92; letter-spacing: .03em; text-transform: uppercase; }
-    .join-hero p { max-width: 660px; margin: 1.25rem 0 1rem; color: rgba(255,255,255,.78); font-size: clamp(1.05rem, 2vw, 1.35rem); font-weight: 700; }
-    .join-location { color: rgba(255,255,255,.5); font-size: .95rem; }
-    .join-pricing { padding: clamp(2.5rem, 5vw, 4.5rem) 0; background: #0a0a0a; }
-    .join-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.35rem; align-items: stretch; }
-    .join-card, .join-team-card { position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 1.6rem; background: #fff; color: #050505; box-shadow: 0 26px 80px rgba(0,0,0,.32); }
-    .join-card--featured { border-color: rgba(227,6,19,.9); box-shadow: 0 30px 90px rgba(227,6,19,.22); transform: translateY(-.65rem); }
-    .join-badge { position: absolute; z-index: 2; left: 1.15rem; top: 1.15rem; border-radius: 999px; background: #E30613; color: #fff; padding: .55rem .85rem; font-family: 'Anton', Impact, sans-serif; font-size: .82rem; letter-spacing: .08em; }
-    .join-card__image { display: block; width: 100%; height: 245px; object-fit: cover; }
-    .join-card__body, .join-team-card__body { padding: 1.45rem; }
-    .join-card h2, .join-team-card h2 { margin: 0; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.15rem, 4vw, 3.1rem); line-height: .95; letter-spacing: .03em; text-transform: uppercase; }
-    .join-card__subtitle { margin: .55rem 0 1.15rem; color: #555; font-weight: 800; }
-    .join-price { display: flex; align-items: baseline; gap: .35rem; min-height: 4.2rem; margin-bottom: .25rem; font-family: 'Anton', Impact, sans-serif; }
-    .join-price span { font-size: clamp(2.5rem, 5vw, 4rem); line-height: .95; letter-spacing: .02em; }
-    .join-price small { color: #666; font-size: 1.1rem; font-family: 'DM Sans', system-ui, sans-serif; font-weight: 800; }
-    .join-trial { margin: 0 0 1rem; color: #E30613; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
-    .join-cta { display: flex; align-items: center; justify-content: center; min-height: 3.15rem; margin-bottom: 1.15rem; border-radius: 999px; background: #E30613; color: #fff; font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .1em; text-decoration: none; box-shadow: 0 18px 38px rgba(227,6,19,.28); transition: transform .16s ease, background .16s ease; }
-    .join-cta:hover { transform: translateY(-2px); background: #b80510; }
-    .join-card ul, .join-team-card ul { display: grid; gap: .72rem; margin: 0; padding: 0; list-style: none; }
-    .join-card li, .join-team-card li { display: grid; grid-template-columns: 1.4rem 1fr; gap: .55rem; align-items: start; color: #151515; font-weight: 750; line-height: 1.2; }
-    .join-card li span, .join-team-card li span { display: inline-flex; align-items: center; justify-content: center; width: 1.35rem; height: 1.35rem; border-radius: 50%; font-size: .85rem; font-weight: 900; }
-    .join-card li.is-included span, .join-team-card li.is-included span { background: #E30613; color: #fff; }
+    .join-hero { position: relative; overflow: hidden; padding: clamp(3.8rem, 6vw, 5rem) 0 2.25rem; text-align: center; background: #fff; }
+    .join-hero__inner { display: grid; justify-items: center; }
+    .join-logo { width: min(230px, 56vw); height: auto; margin-bottom: .75rem; object-fit: contain; }
+    .join-hero h1 { max-width: 820px; margin: 0; font-family: 'Anton', Impact, sans-serif; color: #E30613; font-size: clamp(2rem, 4.2vw, 3.45rem); line-height: 1; letter-spacing: .02em; text-transform: none; }
+    .join-hero p { max-width: 680px; margin: .8rem 0 .65rem; color: #222; font-size: clamp(1rem, 1.5vw, 1.15rem); font-weight: 650; }
+    .join-location { display: inline-flex; border-radius: 999px; background: #f1f1f1; color: #777; padding: .45rem .85rem; font-size: .82rem; font-weight: 700; }
+    .join-pricing { padding: 2.25rem 0 3rem; background: #fff; }
+    .join-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; align-items: stretch; }
+    .join-card { position: relative; overflow: hidden; border: 1px solid #dedede; border-radius: .9rem; background: #fff; color: #111; box-shadow: 0 14px 34px rgba(0,0,0,.08); }
+    .join-card--featured { border-color: #E30613; box-shadow: 0 18px 44px rgba(227,6,19,.14); }
+    .join-card--club { background: #111; color: #fff; border-color: #111; }
+    .join-badge { position: absolute; z-index: 2; left: 0; right: 0; top: 0; border-radius: .8rem .8rem 0 0; background: #E30613; color: #fff; padding: .55rem .85rem; text-align: center; font-family: 'Anton', Impact, sans-serif; font-size: .9rem; letter-spacing: .11em; }
+    .join-badge--club { background: #E30613; }
+    .join-card__image { display: block; width: 100%; height: 158px; object-fit: cover; }
+    .join-card--featured .join-card__image, .join-card--club .join-card__image { padding-top: 2rem; box-sizing: content-box; }
+    .join-card__body { padding: 1.15rem 1.05rem 1.25rem; }
+    .join-card h2 { margin: 0; font-family: 'Anton', Impact, sans-serif; color: #c8212b; font-size: clamp(1.65rem, 2.2vw, 2.1rem); line-height: 1; letter-spacing: .02em; text-transform: none; }
+    .join-card--club h2 { color: #fff; }
+    .join-card__subtitle { margin: .55rem 0 1rem; color: #555; font-size: .92rem; font-weight: 700; line-height: 1.25; }
+    .join-card--club .join-card__subtitle { color: rgba(255,255,255,.8); }
+    .join-price { display: flex; align-items: baseline; gap: .32rem; min-height: 3.25rem; margin-bottom: .2rem; font-family: 'Anton', Impact, sans-serif; }
+    .join-price span { color: #050505; font-size: clamp(2rem, 2.9vw, 2.65rem); line-height: .95; letter-spacing: .01em; }
+    .join-card--club .join-price span { color: #fff; font-size: clamp(1.8rem, 2.3vw, 2.25rem); }
+    .join-price small { color: #555; font-size: .95rem; font-family: 'DM Sans', system-ui, sans-serif; font-weight: 800; }
+    .join-card--club .join-price small { color: rgba(255,255,255,.75); }
+    .join-trial { margin: 0 0 .85rem; color: #b72832; font-weight: 900; font-size: .95rem; letter-spacing: .02em; }
+    .join-card--club .join-trial { color: #fff; }
+    .join-cta { display: flex; align-items: center; justify-content: center; min-height: 2.8rem; margin-bottom: 1rem; border: 2px solid #b72832; border-radius: .45rem; background: #fff; color: #b72832; font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .08em; text-decoration: none; transition: transform .16s ease, background .16s ease, color .16s ease; }
+    .join-cta:hover { transform: translateY(-2px); background: #E30613; color: #fff; }
+    .join-card--club .join-cta { background: #111; color: #fff; border-color: #fff; }
+    .join-card--club .join-cta:hover { background: #E30613; border-color: #E30613; }
+    .join-card ul { display: grid; gap: .58rem; margin: 0; padding: 0; list-style: none; }
+    .join-card li { display: grid; grid-template-columns: 1.1rem 1fr; gap: .45rem; align-items: start; color: #151515; font-size: .88rem; font-weight: 750; line-height: 1.2; }
+    .join-card--club li { color: rgba(255,255,255,.9); }
+    .join-card li span { display: inline-flex; align-items: center; justify-content: center; width: 1.05rem; height: 1.05rem; border-radius: 50%; font-size: .72rem; font-weight: 900; }
+    .join-card li.is-included span { background: #E30613; color: #fff; }
     .join-card li.is-excluded { color: #aaa; }
     .join-card li.is-excluded span { background: #f1f1f1; color: #aaa; }
-    .join-teams { padding: 0 0 clamp(3rem, 6vw, 5rem); background: #0a0a0a; }
-    .join-team-card { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); background: #fff; }
-    .join-team-card__image-wrap { position: relative; min-height: 520px; }
-    .join-team-card__image-wrap img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-    .join-team-card__image-wrap span { position: absolute; left: 1.4rem; top: 1.4rem; border-radius: 999px; background: #E30613; color: #fff; padding: .65rem 1rem; font-family: 'Anton', Impact, sans-serif; letter-spacing: .12em; }
-    .join-compare { padding: 1.5rem 0 5rem; background: #0a0a0a; color: rgba(255,255,255,.74); text-align: center; font-weight: 800; }
-    @media (max-width: 980px) { .join-cards { grid-template-columns: 1fr; } .join-card--featured { transform: none; } .join-team-card { grid-template-columns: 1fr; } .join-team-card__image-wrap { min-height: 340px; } }
-    @media (max-width: 640px) { .join-wrap { width: min(100% - 24px, 1180px); } .join-card__image { height: 220px; } .join-card__body, .join-team-card__body { padding: 1.15rem; } .join-price span { font-size: 2.7rem; } }
+    .join-compare { padding: .5rem 0 5rem; background: #fff; color: #111; }
+    .join-rotate-note { display: none; margin: 0 0 1rem; color: #777; text-align: center; font-weight: 800; }
+    .join-table-wrap { overflow-x: auto; border: 1px solid #ddd; border-radius: .9rem; background: #fff; box-shadow: 0 16px 40px rgba(0,0,0,.06); }
+    .join-table { width: 100%; min-width: 760px; border-collapse: collapse; }
+    .join-table th { background: #111; color: #fff; padding: 1rem; font-family: 'Anton', Impact, sans-serif; font-size: 1.05rem; letter-spacing: .04em; text-align: center; }
+    .join-table th:first-child { text-align: left; }
+    .join-table th span { color: rgba(255,255,255,.7); font-family: 'DM Sans', system-ui, sans-serif; font-size: .82rem; font-weight: 800; letter-spacing: 0; }
+    .join-table td { border-top: 1px solid #eee; padding: .9rem 1rem; font-weight: 800; }
+    .join-table tr:nth-child(even) td { background: #fafafa; }
+    .join-table__check { text-align: center; font-family: 'Anton', Impact, sans-serif; font-size: 1.25rem; }
+    .join-table .yes { color: #E30613; }
+    .join-table .no { color: #bbb; }
+    @media (max-width: 1120px) { .join-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 720px) { .join-cards { grid-template-columns: 1fr; } .join-card__image { height: 210px; } .join-rotate-note { display: block; } }
+    @media (max-width: 640px) { .join-wrap { width: min(100% - 24px, 1180px); } .join-hero { padding-top: 3.25rem; } .join-logo { width: min(190px, 58vw); } }
   </style>
 </BaseLayout>
