@@ -6,6 +6,7 @@ const plans = [
     name: 'Monthly',
     subtitle: 'Perfect for trying us out',
     price: '$23.99',
+    priceId: 'price-monthly',
     period: '/month',
     trial: '7-day FREE trial',
     cta: 'Start Free Trial',
@@ -30,6 +31,7 @@ const plans = [
     name: 'Annual',
     subtitle: 'Save $83/year',
     price: '$204.99',
+    priceId: 'price-annual',
     period: '/year',
     trial: '7-day FREE trial',
     cta: 'Start Free Trial',
@@ -54,6 +56,7 @@ const plans = [
     name: 'For The Coaches',
     subtitle: 'Everything + Coaches Content',
     price: '$319.99',
+    priceId: 'price-coaches',
     period: '/year',
     trial: 'Full Access',
     cta: 'Join Now',
@@ -125,7 +128,7 @@ const teamFeatures = [
         <img class="join-logo" src="/images/join-live/jf-app-logo.png" alt="Joner Football App" loading="eager" />
         <h1>Join 50,000 Players, Coaches &amp; Parents</h1>
         <p>Already using the Joner Football App. Invest in your game today.</p>
-        <span class="join-location">Detecting location...</span>
+        <span class="join-location" id="location-badge">Prices shown in AUD (Australia)</span>
       </div>
     </section>
 
@@ -138,8 +141,8 @@ const teamFeatures = [
               <img class="join-card__image" src={plan.image} alt={plan.alt} loading="lazy" decoding="async" />
               <div class="join-card__body">
                 <h2>{plan.name}</h2>
-                <p class="join-card__subtitle">{plan.subtitle}</p>
-                <div class="join-price"><span>{plan.price}</span> <small>{plan.period}</small></div>
+                <p class="join-card__subtitle" id={plan.name === 'Annual' ? 'savings-annual' : undefined}>{plan.subtitle}</p>
+                <div class="join-price"><span id={plan.priceId}>{plan.price}</span> <small>{plan.period}</small></div>
                 <p class="join-trial">{plan.trial}</p>
                 <a class="join-cta" href={plan.href} target="_blank" rel="noopener noreferrer">{plan.cta}</a>
                 <ul>
@@ -182,9 +185,9 @@ const teamFeatures = [
             <thead>
               <tr>
                 <th>What You Get</th>
-                <th>Monthly<br /><span>$23.99/mo</span></th>
-                <th>Annual<br /><span>$204.99/yr</span></th>
-                <th>Coaches<br /><span>$319.99/yr</span></th>
+                <th>Monthly<br /><span id="table-monthly">$23.99/mo</span></th>
+                <th>Annual<br /><span id="table-annual">$204.99/yr</span></th>
+                <th>Coaches<br /><span id="table-coaches">$319.99/yr</span></th>
               </tr>
             </thead>
             <tbody>
@@ -201,7 +204,66 @@ const teamFeatures = [
         </div>
       </div>
     </section>
+
+    <section class="join-free-videos">
+      <div class="join-wrap join-free-videos__inner">
+        <p class="join-free-videos__eyebrow">Still undecided?</p>
+        <h2>Get 10 Free Training Videos</h2>
+        <p>Try the Joner Football coaching style first. We’ll send you a free bundle of training videos to help your player get started.</p>
+        <form
+          data-brevo-form
+          data-form-name="join-page-free-videos"
+          data-list-id="2"
+          class="join-free-videos__form"
+        >
+          <input type="text" name="first_name" placeholder="First name" required />
+          <input type="email" name="email" placeholder="Email address" required />
+          <button type="submit">Send Me The Videos</button>
+        </form>
+        <small>We respect your privacy. Unsubscribe anytime.</small>
+      </div>
+    </section>
   </main>
+
+
+  <script>
+    (function() {
+      var pricing = {
+        AU: { currency: '$', code: 'AUD', country: 'Australia', monthly: 23.99, annual: 204.99, coaches: 319.99 },
+        US: { currency: '$', code: 'USD', country: 'United States', monthly: 14.99, annual: 129.99, coaches: 199.99 },
+        CA: { currency: '$', code: 'CAD', country: 'Canada', monthly: 21.00, annual: 183.99, coaches: 289.99 },
+        EUR: { currency: '€', code: 'EUR', country: 'Europe', monthly: 13.00, annual: 114.99, coaches: 179.99 },
+        GB: { currency: '£', code: 'GBP', country: 'United Kingdom', monthly: 11.99, annual: 100.49, coaches: 150.99 }
+      };
+      var eurozone = ['AT','BE','CY','EE','FI','FR','DE','GR','IE','IT','LV','LT','LU','MT','NL','PT','SK','SI','ES'];
+
+      function fmt(amt, cur) {
+        return cur === '€' ? '€' + amt.toFixed(2).replace('.', ',') : cur + amt.toFixed(2);
+      }
+
+      function update(region) {
+        var p = pricing[region] || pricing.US;
+        var el;
+        if (el = document.getElementById('price-monthly')) el.textContent = fmt(p.monthly, p.currency);
+        if (el = document.getElementById('price-annual')) el.textContent = fmt(p.annual, p.currency);
+        if (el = document.getElementById('price-coaches')) el.textContent = fmt(p.coaches, p.currency);
+        if (el = document.getElementById('savings-annual')) el.textContent = 'Save ' + p.currency + Math.round(p.monthly * 12 - p.annual) + '/year';
+        if (el = document.getElementById('table-monthly')) el.textContent = fmt(p.monthly, p.currency) + '/mo';
+        if (el = document.getElementById('table-annual')) el.textContent = fmt(p.annual, p.currency) + '/yr';
+        if (el = document.getElementById('table-coaches')) el.textContent = fmt(p.coaches, p.currency) + '/yr';
+        if (el = document.getElementById('location-badge')) el.textContent = 'Prices shown in ' + p.code + ' (' + p.country + ')';
+      }
+
+      fetch('https://ipapi.co/json/')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          var c = d.country_code;
+          var region = c === 'AU' ? 'AU' : c === 'US' ? 'US' : c === 'CA' ? 'CA' : c === 'GB' ? 'GB' : eurozone.indexOf(c) > -1 ? 'EUR' : 'US';
+          update(region);
+        })
+        .catch(function() { update('US'); });
+    })();
+  </script>
 
   <style>
     .join-live-page { background: #fff; color: #111; font-family: 'DM Sans', system-ui, sans-serif; }
@@ -214,24 +276,24 @@ const teamFeatures = [
     .join-location { display: inline-flex; border-radius: 999px; background: #f1f1f1; color: #777; padding: .45rem .85rem; font-size: .82rem; font-weight: 700; }
     .join-pricing { padding: 2.25rem 0 3rem; background: #fff; }
     .join-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; align-items: stretch; }
-    .join-card { position: relative; overflow: hidden; border: 1px solid #dedede; border-radius: .9rem; background: #fff; color: #111; box-shadow: 0 14px 34px rgba(0,0,0,.08); }
+    .join-card { position: relative; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #dedede; border-radius: .9rem; background: #fff; color: #111; box-shadow: 0 14px 34px rgba(0,0,0,.08); }
     .join-card--featured { border-color: #E30613; box-shadow: 0 18px 44px rgba(227,6,19,.14); }
     .join-card--club { background: #111; color: #fff; border-color: #111; }
     .join-badge { position: absolute; z-index: 2; left: 0; right: 0; top: 0; border-radius: .8rem .8rem 0 0; background: #E30613; color: #fff; padding: .55rem .85rem; text-align: center; font-family: 'Anton', Impact, sans-serif; font-size: .9rem; letter-spacing: .11em; }
     .join-badge--club { background: #E30613; }
     .join-card__image { display: block; width: 100%; height: 158px; object-fit: cover; }
     .join-card--featured .join-card__image, .join-card--club .join-card__image { padding-top: 2rem; box-sizing: content-box; }
-    .join-card__body { padding: 1.15rem 1.05rem 1.25rem; }
-    .join-card h2 { margin: 0; font-family: 'Anton', Impact, sans-serif; color: #c8212b; font-size: clamp(1.65rem, 2.2vw, 2.1rem); line-height: 1; letter-spacing: .02em; text-transform: none; }
+    .join-card__body { display: flex; flex-direction: column; flex: 1; padding: 1.15rem 1.05rem 1.25rem; }
+    .join-card h2 { min-height: 4.15rem; margin: 0; font-family: 'Anton', Impact, sans-serif; color: #c8212b; font-size: clamp(1.65rem, 2.2vw, 2.1rem); line-height: 1; letter-spacing: .02em; text-transform: none; }
     .join-card--club h2 { color: #fff; }
-    .join-card__subtitle { margin: .55rem 0 1rem; color: #555; font-size: .92rem; font-weight: 700; line-height: 1.25; }
+    .join-card__subtitle { min-height: 2.4rem; margin: .55rem 0 1rem; color: #555; font-size: .92rem; font-weight: 700; line-height: 1.25; }
     .join-card--club .join-card__subtitle { color: rgba(255,255,255,.8); }
-    .join-price { display: flex; align-items: baseline; gap: .32rem; min-height: 3.25rem; margin-bottom: .2rem; font-family: 'Anton', Impact, sans-serif; }
+    .join-price { display: flex; align-items: baseline; gap: .32rem; min-height: 3.45rem; margin-bottom: .2rem; font-family: 'Anton', Impact, sans-serif; }
     .join-price span { color: #050505; font-size: clamp(2rem, 2.9vw, 2.65rem); line-height: .95; letter-spacing: .01em; }
     .join-card--club .join-price span { color: #fff; font-size: clamp(1.8rem, 2.3vw, 2.25rem); }
     .join-price small { color: #555; font-size: .95rem; font-family: 'DM Sans', system-ui, sans-serif; font-weight: 800; }
     .join-card--club .join-price small { color: rgba(255,255,255,.75); }
-    .join-trial { margin: 0 0 .85rem; color: #b72832; font-weight: 900; font-size: .95rem; letter-spacing: .02em; }
+    .join-trial { min-height: 1.25rem; margin: 0 0 .85rem; color: #b72832; font-weight: 900; font-size: .95rem; letter-spacing: .02em; }
     .join-card--club .join-trial { color: #fff; }
     .join-cta { display: flex; align-items: center; justify-content: center; min-height: 2.8rem; margin-bottom: 1rem; border: 2px solid #b72832; border-radius: .45rem; background: #fff; color: #b72832; font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .08em; text-decoration: none; transition: transform .16s ease, background .16s ease, color .16s ease; }
     .join-cta:hover { transform: translateY(-2px); background: #E30613; color: #fff; }
@@ -241,7 +303,7 @@ const teamFeatures = [
     .join-card li { display: grid; grid-template-columns: 1.1rem 1fr; gap: .45rem; align-items: start; color: #151515; font-size: .88rem; font-weight: 750; line-height: 1.2; }
     .join-card--club li { color: rgba(255,255,255,.9); }
     .join-card li span { display: inline-flex; align-items: center; justify-content: center; width: 1.05rem; height: 1.05rem; border-radius: 50%; font-size: .72rem; font-weight: 900; }
-    .join-card li.is-included span { background: #E30613; color: #fff; }
+    .join-card li.is-included span { background: #18a84a; color: #fff; }
     .join-card li.is-excluded { color: #aaa; }
     .join-card li.is-excluded span { background: #f1f1f1; color: #aaa; }
     .join-compare { padding: .5rem 0 5rem; background: #fff; color: #111; }
@@ -254,10 +316,20 @@ const teamFeatures = [
     .join-table td { border-top: 1px solid #eee; padding: .9rem 1rem; font-weight: 800; }
     .join-table tr:nth-child(even) td { background: #fafafa; }
     .join-table__check { text-align: center; font-family: 'Anton', Impact, sans-serif; font-size: 1.25rem; }
-    .join-table .yes { color: #E30613; }
+    .join-table .yes { color: #18a84a; }
     .join-table .no { color: #bbb; }
+    .join-free-videos { padding: 4.5rem 0 5rem; background: #050505; color: #fff; }
+    .join-free-videos__inner { max-width: 760px; text-align: center; }
+    .join-free-videos__eyebrow { margin: 0 0 .7rem; color: #E30613; font-family: 'Anton', Impact, sans-serif; font-size: 1rem; letter-spacing: .12em; text-transform: uppercase; }
+    .join-free-videos h2 { margin: 0; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.4rem, 5vw, 4rem); line-height: .95; text-transform: uppercase; }
+    .join-free-videos p:not(.join-free-videos__eyebrow) { max-width: 620px; margin: 1rem auto 1.7rem; color: rgba(255,255,255,.72); font-weight: 650; line-height: 1.55; }
+    .join-free-videos__form { display: grid; grid-template-columns: 1fr 1fr auto; gap: .75rem; max-width: 680px; margin: 0 auto; }
+    .join-free-videos__form input { min-height: 3.1rem; border: 1px solid rgba(255,255,255,.18); background: #171717; color: #fff; padding: 0 1rem; font-weight: 700; outline: none; }
+    .join-free-videos__form input:focus { border-color: #E30613; }
+    .join-free-videos__form button { min-height: 3.1rem; border: 0; background: #E30613; color: #fff; padding: 0 1.2rem; font-family: 'Anton', Impact, sans-serif; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+    .join-free-videos small { display: block; margin-top: .9rem; color: rgba(255,255,255,.38); }
     @media (max-width: 1120px) { .join-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 720px) { .join-cards { grid-template-columns: 1fr; } .join-card__image { height: 210px; } .join-rotate-note { display: block; } }
+    @media (max-width: 720px) { .join-cards { grid-template-columns: 1fr; } .join-card__image { height: 210px; } .join-rotate-note { display: block; } .join-free-videos__form { grid-template-columns: 1fr; } }
     @media (max-width: 640px) { .join-wrap { width: min(100% - 24px, 1180px); } .join-hero { padding-top: 3.25rem; } .join-logo { width: min(190px, 58vw); } }
   </style>
 </BaseLayout>
