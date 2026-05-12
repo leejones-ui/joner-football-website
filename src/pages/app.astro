@@ -90,9 +90,10 @@ const appSchema = {
 
         <!-- Current app device mockups -->
         <div class="flex justify-center lg:justify-end">
-          <div class="app-device-stage relative w-full max-w-[680px] min-h-[460px] sm:min-h-[540px] lg:min-h-[600px]" aria-label="Scroll to expand app preview">
+          <div class="app-device-stage app-media-frame relative rounded-2xl" aria-label="Scroll to expand app preview">
             <div class="app-device-glow app-device-glow-red absolute inset-4 bg-joner-red/20 rounded-[3rem] blur-3xl"></div>
             <div class="app-device-glow app-device-glow-white absolute inset-10 bg-white/10 rounded-[3rem] blur-2xl"></div>
+            <div class="app-media-overlay absolute inset-0 z-[5] rounded-2xl bg-black/30 pointer-events-none"></div>
             <img
               src="/images/app/joner-app-main-ipad-current-transparent.png"
               alt="Joner Football App on iPad"
@@ -587,8 +588,8 @@ const appSchema = {
     }
 
     .app-hero-copy {
-      opacity: calc(1 - (var(--hero-progress) * 0.22));
-      transform: translateX(calc(var(--hero-progress) * -150px)) translateY(calc(var(--hero-progress) * -20px));
+      opacity: calc(1 - (var(--hero-progress) * 1.25));
+      transform: translateX(calc(var(--hero-progress) * -220px)) translateY(calc(var(--hero-progress) * -20px));
       transition: opacity 90ms linear, transform 90ms linear;
       will-change: opacity, transform;
     }
@@ -596,12 +597,24 @@ const appSchema = {
     .app-device-stage {
       width: calc(300px + (var(--hero-progress) * 1250px));
       height: calc(400px + (var(--hero-progress) * 400px));
-      max-width: min(94vw, 760px);
+      max-width: 95vw;
+      max-height: 85vh;
       min-height: 0;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.3);
+      flex: 0 0 auto;
       transform: translateY(calc((1 - var(--hero-progress)) * 24px)) scale(calc(0.9 + (var(--hero-progress) * 0.12)));
       transform-origin: center center;
-      transition: width 90ms linear, height 90ms linear, transform 90ms linear;
+      transition: width 90ms linear, height 90ms linear, transform 90ms linear, box-shadow 90ms linear;
       will-change: width, height, transform;
+    }
+
+    .app-media-frame {
+      background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.16), rgba(0,0,0,0.08) 38%, rgba(0,0,0,0.18) 100%);
+    }
+
+    .app-media-overlay {
+      opacity: calc(0.5 - (var(--hero-progress) * 0.3));
+      transition: opacity 90ms linear;
     }
 
     .app-device-ipad {
@@ -652,7 +665,8 @@ const appSchema = {
       .app-device-stage {
         width: calc(300px + (var(--hero-progress) * 650px));
         height: calc(400px + (var(--hero-progress) * 200px));
-        max-width: 92vw;
+        max-width: 95vw;
+        max-height: 85vh;
       }
     }
 
