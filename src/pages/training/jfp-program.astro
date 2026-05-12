@@ -37,6 +37,28 @@ const pillars = [
   { number: '03', title: 'Real Development', text: 'Long-term growth across technical, physical, and mental.' },
 ]
 
+const pathwayStages = [
+  {
+    label: 'Stage 1',
+    age: 'Ages 4 to 6',
+    title: 'Joners Juniors',
+    text: 'The first step. Younger players learn the habits, energy, and ball mastery standards of Joner Football.',
+  },
+  {
+    label: 'Stage 2',
+    age: 'Ages 6 to 8',
+    title: '6 to 8 Year Old Program',
+    text: 'The bridge into the main pathway. Built to prepare players for stronger training standards.',
+  },
+  {
+    label: 'Flagship',
+    age: 'Ages 8 and over',
+    title: 'Joner Football Performance',
+    text: 'The complete development program. Max 6 per group. The main JFP pathway since 2013.',
+    flagship: true,
+  },
+]
+
 const unlocks = [
   { title: '10 Week Terms', text: 'Clear term structure to build habits and measure progress.' },
   { title: 'Player Reports', text: 'Development feedback so parents and players know what is improving.' },
@@ -124,6 +146,7 @@ const faqs = [
 
     <nav class="sticky top-0 z-30 border-y border-white/10 bg-joner-black/92 backdrop-blur">
       <div class="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-4 py-4 font-heading text-xs uppercase tracking-[0.22em] text-white sm:px-6 lg:px-8 no-scrollbar">
+        <a href="#pathway" class="shrink-0 hover:text-joner-red">Pathway</a>
         <a href="#program" class="shrink-0 hover:text-joner-red">Program</a>
         <a href="#what-you-get" class="shrink-0 hover:text-joner-red">What You Get</a>
         <a href="#locations" class="shrink-0 hover:text-joner-red">Locations</a>
@@ -133,6 +156,47 @@ const faqs = [
         <a href="#faq" class="shrink-0 hover:text-joner-red">FAQ</a>
       </div>
     </nav>
+
+    <section id="pathway" class="scroll-mt-24 bg-gradient-to-b from-joner-black via-joner-gray to-joner-black py-16 md:py-24 relative overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.14),transparent_60%)] pointer-events-none"></div>
+      <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-10 text-center md:mb-14">
+          <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red sm:text-sm">JFP Player Pathway</p>
+          <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
+            The journey through Joner Football.
+          </h2>
+          <p class="mx-auto mt-4 max-w-2xl font-body text-base leading-relaxed text-neutral-400 md:text-lg">
+            One pathway. Three stages. From first touches as a junior, all the way to the JFP flagship program.
+          </p>
+        </div>
+
+        <ol class="relative space-y-5 md:grid md:grid-cols-3 md:gap-6 md:space-y-0">
+          <span class="absolute left-[19px] top-3 bottom-3 w-px bg-gradient-to-b from-joner-red via-white/30 to-joner-red md:hidden" aria-hidden="true"></span>
+          <span class="absolute left-[18.5%] right-[18.5%] top-[34px] hidden h-px bg-gradient-to-r from-joner-red via-white/40 to-joner-red md:block" aria-hidden="true"></span>
+
+          {pathwayStages.map((stage, index) => (
+            <li class={`relative md:flex md:flex-col ${stage.flagship ? 'md:-mt-2' : ''}`}>
+              <div class="relative flex items-center gap-4 md:flex-col md:items-center md:text-center">
+                <span class={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 font-heading text-sm font-bold ${stage.flagship ? 'border-joner-red bg-joner-red text-white shadow-[0_0_22px_rgba(227,6,19,0.55)]' : 'border-white/30 bg-joner-black text-white'}`}>
+                  {index + 1}
+                </span>
+                <p class={`font-heading text-[10px] uppercase tracking-[0.3em] sm:text-xs md:mt-4 ${stage.flagship ? 'text-joner-red' : 'text-white/60'}`}>{stage.label}</p>
+              </div>
+
+              <article class={`mt-4 rounded-2xl border p-5 backdrop-blur-sm md:mt-5 md:flex-1 md:p-6 ${stage.flagship ? 'border-joner-red/60 bg-joner-red/10 shadow-[0_0_38px_rgba(227,6,19,0.18)]' : 'border-white/10 bg-black/45'}`}>
+                <p class={`mb-2 font-heading text-[10px] uppercase tracking-[0.28em] sm:text-xs ${stage.flagship ? 'text-joner-red' : 'text-white/50'}`}>{stage.age}</p>
+                <h3 class="mb-3 font-heading text-xl uppercase leading-none text-white sm:text-2xl md:text-3xl">{stage.title}</h3>
+                <p class="font-body text-sm leading-relaxed text-neutral-300 md:text-base">{stage.text}</p>
+              </article>
+            </li>
+          ))}
+        </ol>
+
+        <div class="mt-10 text-center md:mt-14">
+          <a href="#training-form" class="btn-red text-sm">Book Now</a>
+        </div>
+      </div>
+    </section>
 
     <section id="program" class="scroll-mt-24 bg-joner-black py-16 md:py-28">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
