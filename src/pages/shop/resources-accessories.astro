@@ -2,34 +2,49 @@
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
 const resources = [
-  { title: 'All 1 On 1 Videos', href: 'https://jonerfootball.com/product/all-1-on-1-videos/' },
-  { title: 'Training Tools', href: 'https://jonerfootball.com/product/buy-all-of-the-training-tools/' },
-  { title: 'Speed And Agility Drills', href: 'https://jonerfootball.com/product/buy-all-of-the-speed-agility-drills/' },
-  { title: 'Shooting Drills', href: 'https://jonerfootball.com/product/buy-all-of-the-shooting-drills/' },
-  { title: 'Fast Feet In 7 Days', href: 'https://jonerfootball.com/product/improve-fast-feet-in-7-days-full-program/' },
+  {
+    title: 'Scanning Training Tool',
+    status: 'Coming Soon',
+    image: '/images/shop/resources-accessories/scanning-training-tool.webp',
+    text: 'Reaction, turning, scanning, and decision-making training tools for players and coaches who want smarter sessions.',
+  },
+  {
+    title: 'Numbers Training Tool',
+    status: 'Graphic Coming Soon',
+    image: '/images/shop/resources-accessories/numbers-training-tool-placeholder.webp',
+    text: 'A number-recognition training tool for sharper awareness, quicker decisions, and more game-realistic scanning habits.',
+  },
 ]
 ---
 
-<BaseLayout title="Resources And Accessories | Joner Football Shop" description="Joner Football resources, drill packs, accessories, and digital training tools.">
-  <main class="bg-white text-joner-black">
-    <section class="py-14 md:py-20 border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-5">Tools And Downloads</p>
-        <h1 class="font-heading uppercase text-6xl md:text-8xl leading-none mb-6 max-w-4xl">Resources And Accessories</h1>
-        <p class="text-xl text-gray-700 max-w-3xl">Keep the current digital resources live while we build the cleaner Sanity and Shopify version behind it.</p>
+<BaseLayout title="Resources And Accessories | Joner Football Shop" description="Shop Joner Football training resources and accessories, including scanning and number-recognition training tools.">
+  <main class="bg-joner-black text-white">
+    <section class="relative overflow-hidden border-b border-white/10">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(220,0,0,0.35),transparent_34%),linear-gradient(135deg,#050505_0%,#111_52%,#050505_100%)]"></div>
+      <div class="relative max-w-7xl mx-auto px-4 md:px-8 py-14 md:py-20">
+        <div class="max-w-4xl">
+          <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-4">Joner Football Shop</p>
+          <h1 class="font-heading uppercase text-6xl md:text-8xl lg:text-9xl leading-none mb-6">Resources & Accessories</h1>
+          <p class="text-lg md:text-xl text-white/75 max-w-2xl leading-relaxed">Training tools and session resources built to help players scan earlier, react faster, and make better decisions.</p>
+        </div>
       </div>
     </section>
 
-    <section class="py-8 md:py-12">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="divide-y divide-gray-200 border-y border-gray-200">
-          {resources.map((resource) => (
-            <a href={resource.href} target="_blank" rel="noopener" class="grid grid-cols-[1fr_auto] items-center gap-6 py-7 group">
-              <h2 class="font-heading uppercase text-3xl md:text-5xl leading-none group-hover:text-joner-red transition-colors">{resource.title}</h2>
-              <span class="font-heading uppercase text-sm text-joner-red">Open</span>
-            </a>
-          ))}
-        </div>
+    <section class="px-4 md:px-8 py-10 md:py-16">
+      <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+        {resources.map((resource) => (
+          <article class="group flex flex-col overflow-hidden border border-white/10 bg-white text-joner-black shadow-2xl shadow-black/30">
+            <div class="block overflow-hidden bg-joner-black">
+              <img src={resource.image} alt={resource.title} class="w-full aspect-[4/5] object-cover object-center transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+            </div>
+            <div class="flex flex-1 flex-col p-5 md:p-6">
+              <div class="mb-4 inline-flex w-fit items-center bg-joner-red px-4 py-2 font-heading uppercase tracking-[0.08em] text-white text-lg shadow-lg shadow-joner-red/25">{resource.status}</div>
+              <h2 class="font-heading uppercase text-3xl md:text-4xl leading-none mb-3">{resource.title}</h2>
+              <p class="text-sm md:text-base leading-relaxed text-gray-600 mb-6">{resource.text}</p>
+              <span class="btn-red mt-auto w-full text-center opacity-70 pointer-events-none">Coming Soon</span>
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   </main>
