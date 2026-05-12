@@ -82,7 +82,7 @@ const programs = [
               <img src={program.image} alt={program.title} class="w-full aspect-[4/5] object-cover object-center transition-transform duration-500 group-hover:scale-105" loading="lazy" />
             </a>
             <div class="flex flex-1 flex-col p-5 md:p-6">
-              <p class="font-heading uppercase tracking-[0.2em] text-joner-red text-xs mb-3">{program.price}</p>
+              <div class="mb-4 inline-flex w-fit items-center bg-joner-red px-4 py-2 font-heading uppercase tracking-[0.08em] text-white text-lg shadow-lg shadow-joner-red/25">{program.price}</div>
               <h2 class="font-heading uppercase text-2xl md:text-3xl leading-none mb-3">{program.title}</h2>
               <p class="text-sm leading-relaxed text-gray-600 mb-6">{program.text}</p>
               <a href={program.href} target="_blank" rel="noopener" class="btn-red mt-auto w-full text-center">Buy Now</a>
