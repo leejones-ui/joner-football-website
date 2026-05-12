@@ -476,11 +476,11 @@ const appSchema = {
       const headlineTerm = document.getElementById('development-term');
       if (!headlineTerm) return;
 
-      const languages = navigator.languages || [navigator.language || ''];
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-      const isUSBrowser = languages.some((language) => /-US\b/i.test(language)) || timeZone.startsWith('America/');
+      const isUSTimeZone = timeZone.startsWith('America/')
+        && !['America/Toronto', 'America/Vancouver', 'America/Edmonton', 'America/Winnipeg', 'America/Halifax', 'America/St_Johns'].includes(timeZone);
 
-      if (isUSBrowser) {
+      if (isUSTimeZone) {
         headlineTerm.textContent = 'COMPLETE SOCCER DEVELOPMENT.';
       }
     })();
