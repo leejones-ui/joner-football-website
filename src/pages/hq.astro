@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import EmailCapture from '../components/EmailCapture.astro'
 
 const localBizSchema = {
   "@context": "https://schema.org",
@@ -19,6 +18,31 @@ const localBizSchema = {
   "openingHours": "Mo-Sa",
   "priceRange": "$$"
 }
+
+const hqVideos = [
+  { id: 'oVrMcXv6qZQ', title: 'Training Drills for Midfielders', label: 'Midfielder Session' },
+  { id: 'eCmL9QiFtVk', title: 'Full 1 on 1 Soccer Training Session at Joner Football HQ', label: '1 on 1 Session' },
+  { id: 'wbFlx3YV9fM', title: 'Blazepod Soccer Drills with a Pro Player', label: 'Pro Player Drills' },
+  { id: 'A0rJxzjbWss', title: 'How I Train a Group of Beginners', label: 'Group Training' },
+  { id: 'OgBcMesGvqw', title: 'How to Master Your First Touch', label: 'First Touch' },
+  { id: 'ns7I4SzidyQ', title: 'Dribbling, Speed and Agility Drills in Tight Spaces', label: 'Tight Space Work' }
+]
+
+const features = [
+  { icon: '⚽', title: 'Indoor Pitch', copy: 'Professional standard synthetic surface. Train in any weather.' },
+  { icon: '☔', title: 'All Weather', copy: 'Fully indoor facility. Sessions never cancelled for weather.' },
+  { icon: '👀', title: 'Parent Viewing', copy: 'Dedicated parent viewing area. Watch your player train.' },
+  { icon: '🎽', title: 'Apparel Pickup', copy: 'Joner Apparel collection point. Order online, collect here.' },
+  { icon: '🅿️', title: 'Parking', copy: 'On-site parking available for drop-off and collection.' },
+  { icon: '🏆', title: 'Pro Standard', copy: 'The same facility used for professional player sessions.' }
+]
+
+const programs = [
+  { title: 'JFP Afternoon Sessions', copy: 'Monday to Saturday. The flagship Joner Football Performance program.', href: '/training/jfp-program', cta: 'Learn More' },
+  { title: 'Joners Juniors', copy: 'Saturdays. Entry-level program for young players starting their journey.', href: '/training/joners-juniors', cta: 'Learn More' },
+  { title: 'Professional Sessions', copy: 'By appointment. 1-on-1 training for professional and elite players.', href: '/training/professional-training', cta: 'Enquire' },
+  { title: 'Camp Events', copy: 'Holiday camps and intensive training events throughout the year.', href: '/camps', cta: 'View Camps' }
+]
 ---
 
 <BaseLayout
@@ -26,145 +50,178 @@ const localBizSchema = {
   description="The Joner Football HQ. Brand new indoor training facility at 20 Narabang Way, Belrose, Sydney. Professional standard surface. All-weather training."
   schema={localBizSchema}
 >
-
-  <!-- Hero -->
-  <section class="relative min-h-[60vh] flex items-center justify-center bg-joner-gray overflow-hidden">
-    <div class="absolute inset-0 bg-gradient-to-br from-joner-black via-gray-900 to-joner-gray opacity-90"></div>
-    <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
-
-    <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Belrose, Sydney</p>
-      <h1 class="font-heading text-3xl sm:text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
-        The Joner<br/>Football HQ
-      </h1>
-      <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto mb-8">
-        Brand new indoor training facility. Professional standard surface. All-weather training.
-      </p>
-      <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <a href="/training" class="btn-red text-base px-6 py-3 sm:px-8 sm:py-4">View Training Programs</a>
-        <a href="#location" class="btn-outline text-base px-6 py-3 sm:px-8 sm:py-4">Get Directions</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- Facility photos (placeholders) -->
-  <section class="bg-joner-black py-16">
+  <section class="bg-joner-black pt-10 pb-12 md:pt-16 md:pb-20">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="bg-joner-gray aspect-video lg:col-span-2 lg:row-span-2 overflow-hidden">
-          <img src="/images/hq/main-pitch.webp" alt="Joner Football HQ indoor training pitch at Belrose, Sydney" class="w-full h-full object-cover object-center" loading="eager" />
+      <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-black">
+        <div class="spotlight spotlight-a" aria-hidden="true"></div>
+        <div class="spotlight spotlight-b" aria-hidden="true"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.18),transparent_55%)] pointer-events-none"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(255,255,255,0.06),transparent_60%)] pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col lg:flex-row min-h-[560px] lg:min-h-[650px]">
+          <div class="flex-1 px-6 py-10 sm:px-10 sm:py-14 lg:p-14 flex flex-col justify-center">
+            <p class="text-joner-red font-heading text-xs sm:text-sm uppercase tracking-[0.25em] mb-4">Belrose, Sydney</p>
+            <h1 class="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold uppercase leading-[0.92] mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-500">
+              The Joner<br/>Football<br/>HQ
+            </h1>
+            <p class="text-neutral-300 font-body text-base sm:text-lg max-w-lg leading-relaxed mb-8">
+              Brand new indoor training facility. Professional standard surface. All-weather training. The home of Joner Football Performance in Sydney.
+            </p>
+            <div class="flex flex-wrap gap-3">
+              <a href="/training" class="btn-red text-sm">View Training Programs</a>
+              <a href="#contact" class="btn-outline text-sm">Contact The HQ</a>
+            </div>
+          </div>
+
+          <div class="relative flex-1 min-h-[420px] sm:min-h-[500px] lg:min-h-0">
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(255,255,255,0.16),transparent_55%)] pointer-events-none z-10"></div>
+            <img
+              src="/images/hq/main-pitch.webp"
+              alt="Joner Football HQ indoor training pitch at Belrose, Sydney"
+              class="absolute inset-0 w-full h-full object-cover object-center"
+              loading="eager"
+            />
+            <div class="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black via-black/60 to-transparent lg:block hidden pointer-events-none"></div>
+            <div class="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black via-black/45 to-transparent pointer-events-none"></div>
+          </div>
         </div>
-        <div class="bg-joner-gray aspect-video overflow-hidden">
-          <img src="/images/hq/training-action.webp" alt="Players training at Joner Football HQ indoor facility" class="w-full h-full object-cover object-center" loading="lazy" />
-        </div>
-        <div class="bg-joner-gray aspect-video overflow-hidden">
-          <img src="/images/hq/facility.webp" alt="Joner Football HQ facility in Belrose" class="w-full h-full object-cover object-center" loading="lazy" />
+
+        <div class="relative z-10 grid grid-cols-2 md:grid-cols-4 border-t border-white/10 bg-black/45 backdrop-blur-sm">
+          <div class="p-5 text-center border-r border-white/10">
+            <div class="font-heading text-joner-red text-2xl md:text-3xl font-bold">Indoor</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">All Weather</div>
+          </div>
+          <div class="p-5 text-center md:border-r border-white/10">
+            <div class="font-heading text-white text-2xl md:text-3xl font-bold">Belrose</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">Sydney HQ</div>
+          </div>
+          <div class="p-5 text-center border-r border-t md:border-t-0 border-white/10">
+            <div class="font-heading text-white text-2xl md:text-3xl font-bold">JFP</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">Player Pathway</div>
+          </div>
+          <div class="p-5 text-center border-t md:border-t-0 border-white/10">
+            <div class="font-heading text-joner-red text-2xl md:text-3xl font-bold">Pro</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">Training Standard</div>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Facility video -->
-  <section class="bg-joner-gray py-16 md:py-20">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-8">
+  <section class="bg-joner-black py-12 md:py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5">
+        <div class="lg:col-span-7 relative overflow-hidden rounded-xl border border-white/10 aspect-[16/10]">
+          <img src="/images/home-storyboard/07-facility-hq.webp" alt="Joner Football HQ facility entrance and indoor football space" class="w-full h-full object-cover" loading="lazy" />
+        </div>
+        <div class="lg:col-span-5 grid grid-cols-2 gap-4 lg:gap-5">
+          <img src="/images/hq/training-action.webp" alt="Players training at Joner Football HQ" class="w-full h-full min-h-[170px] object-cover rounded-xl border border-white/10" loading="lazy" />
+          <img src="/images/hq/facility.webp" alt="Inside the Joner Football HQ facility" class="w-full h-full min-h-[170px] object-cover rounded-xl border border-white/10" loading="lazy" />
+          <img src="/images/training/hq-wheel.jpg" alt="Joner Football training session at HQ" class="w-full h-full min-h-[170px] object-cover rounded-xl border border-white/10 col-span-2" loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-gradient-to-b from-joner-black via-joner-gray to-joner-black py-16 md:py-24 relative overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.12),transparent_60%)] pointer-events-none"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div class="text-center mb-12">
         <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Inside The HQ</p>
-        <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase">See The Facility</h2>
+        <h2 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase leading-tight">Watch The<br class="sm:hidden"/> Training</h2>
+        <p class="text-neutral-400 font-body text-base md:text-lg max-w-2xl mx-auto mt-4">Pick a session from the HQ playlist and see how players train inside the facility.</p>
       </div>
-      <div class="relative w-full" style="aspect-ratio: 16/9;">
-        <iframe
-          srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/D13QAvWlZWg?autoplay=1><img src=https://img.youtube.com/vi/D13QAvWlZWg/hqdefault.jpg alt='Joner Football HQ Facility Tour'><span>&#x25BA;</span></a>"
-          src="https://www.youtube.com/embed/D13QAvWlZWg"
-          title="Joner Football HQ Facility Tour"
-          loading="lazy"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen
-          class="absolute inset-0 w-full h-full border border-gray-800"
-        ></iframe>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+        <div class="lg:col-span-8">
+          <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black aspect-video shadow-2xl shadow-black/50">
+            <iframe
+              id="hq-video-frame"
+              src={`https://www.youtube.com/embed/${hqVideos[0].id}`}
+              title={hqVideos[0].title}
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+              class="absolute inset-0 w-full h-full"
+            ></iframe>
+          </div>
+        </div>
+        <div class="lg:col-span-4 space-y-3">
+          {hqVideos.map((video, index) => (
+            <button
+              type="button"
+              class={`hq-video-button ${index === 0 ? 'is-active' : ''}`}
+              data-video-id={video.id}
+              data-video-title={video.title}
+            >
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <strong>{video.label}</strong>
+            </button>
+          ))}
+          <a href="https://www.youtube.com/playlist?list=PLM3cVo2QYr-OSRsMVRkYFb89yPGzzL23x" target="_blank" rel="noopener" class="btn-outline text-sm w-full mt-5">Open Full Playlist</a>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Facility features -->
-  <section class="bg-joner-gray py-16 md:py-24">
+  <section class="bg-joner-black py-16 md:py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-12">
         <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">The Facility</p>
         <h2 class="section-heading text-white mb-4">What's at The HQ</h2>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="bg-joner-black border border-gray-800 p-8 text-center">
-          <div class="text-4xl mb-4">⚽</div>
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Indoor Pitch</h3>
-          <p class="text-gray-400 text-sm font-body">Professional standard synthetic surface. Train in any weather.</p>
-        </div>
-        <div class="bg-joner-black border border-gray-800 p-8 text-center">
-          <div class="text-4xl mb-4">☔</div>
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">All Weather</h3>
-          <p class="text-gray-400 text-sm font-body">Fully indoor facility. Sessions never cancelled for weather.</p>
-        </div>
-        <div class="bg-joner-black border border-gray-800 p-8 text-center">
-          <div class="text-4xl mb-4">👀</div>
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Parent Viewing</h3>
-          <p class="text-gray-400 text-sm font-body">Dedicated parent viewing area. Watch your player train.</p>
-        </div>
-        <div class="bg-joner-black border border-gray-800 p-8 text-center">
-          <div class="text-4xl mb-4">🎽</div>
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Apparel Pickup</h3>
-          <p class="text-gray-400 text-sm font-body">Joner Apparel collection point. Order online, collect here.</p>
-        </div>
-        <div class="bg-joner-black border border-gray-800 p-8 text-center">
-          <div class="text-4xl mb-4">🅿️</div>
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Parking</h3>
-          <p class="text-gray-400 text-sm font-body">On-site parking available for drop-off and collection.</p>
-        </div>
-        <div class="bg-joner-black border border-gray-800 p-8 text-center">
-          <div class="text-4xl mb-4">🏆</div>
-          <h3 class="font-heading text-white font-bold uppercase tracking-wide mb-2">Pro Standard</h3>
-          <p class="text-gray-400 text-sm font-body">The same facility used for professional player sessions.</p>
-        </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {features.map((feature) => (
+          <div class="rounded-xl border border-white/10 bg-white/[0.04] p-7 text-center hover:border-joner-red/60 transition-colors">
+            <div class="text-4xl mb-4">{feature.icon}</div>
+            <h3 class="font-heading text-white text-lg uppercase tracking-wide mb-2">{feature.title}</h3>
+            <p class="text-neutral-400 text-sm font-body leading-relaxed">{feature.copy}</p>
+          </div>
+        ))}
       </div>
     </div>
   </section>
 
-  <!-- What happens here -->
   <section class="bg-joner-black py-16 md:py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Programs</p>
-        <h2 class="section-heading text-white mb-4">What Happens at The HQ</h2>
-      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
+        <div class="lg:col-span-5">
+          <div class="lg:sticky lg:top-24 space-y-4">
+            <div class="relative overflow-hidden rounded-xl border border-white/10">
+              <img src="/images/camps/joner-camps-pack/02_indoor_detail_v1_polished_blank_4x3.jpg" alt="Joner Football indoor training detail" class="w-full h-auto object-cover" loading="lazy" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <img src="/images/home-mobile-story/mobile-story-06-hq.webp" alt="Players inside Joner Football HQ" class="w-full aspect-square object-cover rounded-lg border border-white/10" loading="lazy" />
+              <img src="/images/home-mobile-story/mobile-story-07-hq-photo.webp" alt="Joner Football HQ training photo" class="w-full aspect-square object-cover rounded-lg border border-white/10" loading="lazy" />
+            </div>
+          </div>
+        </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="border border-gray-800 p-8 hover:border-joner-red transition-colors">
-          <h3 class="font-heading text-xl font-bold text-white uppercase mb-2">JFP Afternoon Sessions</h3>
-          <p class="text-gray-400 font-body text-sm mb-4">Monday to Saturday. The flagship Joner Football Performance program.</p>
-          <a href="/training/jfp-program" class="text-joner-red font-heading text-sm uppercase tracking-wider hover:underline">Learn More</a>
-        </div>
-        <div class="border border-gray-800 p-8 hover:border-joner-red transition-colors">
-          <h3 class="font-heading text-xl font-bold text-white uppercase mb-2">Joners Juniors</h3>
-          <p class="text-gray-400 font-body text-sm mb-4">Saturdays. Entry-level program for young players starting their journey.</p>
-          <a href="/jonersjuniors/" class="text-joner-red font-heading text-sm uppercase tracking-wider hover:underline">Learn More</a>
-        </div>
-        <div class="border border-gray-800 p-8 hover:border-joner-red transition-colors">
-          <h3 class="font-heading text-xl font-bold text-white uppercase mb-2">Professional Sessions</h3>
-          <p class="text-gray-400 font-body text-sm mb-4">By appointment. 1-on-1 training for professional and elite players.</p>
-          <a href="/training/professional-training" class="text-joner-red font-heading text-sm uppercase tracking-wider hover:underline">Enquire</a>
-        </div>
-        <div class="border border-gray-800 p-8 hover:border-joner-red transition-colors">
-          <h3 class="font-heading text-xl font-bold text-white uppercase mb-2">Camp Events</h3>
-          <p class="text-gray-400 font-body text-sm mb-4">Holiday camps and intensive training events throughout the year.</p>
-          <a href="/camps" class="text-joner-red font-heading text-sm uppercase tracking-wider hover:underline">View Camps</a>
+        <div class="lg:col-span-7">
+          <div class="inline-block bg-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-white mb-4">Programs</div>
+          <h2 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase mb-8 leading-tight">What Happens at The HQ</h2>
+          <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-8">
+            The HQ is where Joner Football runs its Sydney pathway, junior sessions, professional training, camp events, and apparel collection. Simple setup, high standards, and no weather excuses.
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {programs.map((program) => (
+              <a href={program.href} class="hq-program-card">
+                <h3>{program.title}</h3>
+                <p>{program.copy}</p>
+                <span>{program.cta}</span>
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Location -->
-  <section id="location" class="bg-joner-gray py-16 md:py-24 scroll-mt-20">
+  <section id="location" class="bg-gradient-to-b from-joner-black to-joner-gray py-16 md:py-24 scroll-mt-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-center">
         <div>
           <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Location</p>
           <h2 class="section-heading text-white mb-6">Find Us</h2>
@@ -173,7 +230,7 @@ const localBizSchema = {
             <div class="flex items-start gap-4">
               <span class="text-joner-red text-xl flex-shrink-0">📍</span>
               <div>
-                <div class="font-heading text-white font-bold">Address</div>
+                <div class="font-heading text-white font-bold uppercase tracking-wide">Address</div>
                 <div class="text-gray-400 font-body">Unit 2, 20 Narabang Way<br/>Belrose, NSW 2085</div>
               </div>
             </div>
@@ -181,7 +238,7 @@ const localBizSchema = {
             <div class="flex items-start gap-4">
               <span class="text-joner-red text-xl flex-shrink-0">🚗</span>
               <div>
-                <div class="font-heading text-white font-bold">Parking</div>
+                <div class="font-heading text-white font-bold uppercase tracking-wide">Parking</div>
                 <div class="text-gray-400 font-body">On-site parking available in front of the unit.</div>
               </div>
             </div>
@@ -189,7 +246,7 @@ const localBizSchema = {
             <div class="flex items-start gap-4">
               <span class="text-joner-red text-xl flex-shrink-0">📞</span>
               <div>
-                <div class="font-heading text-white font-bold">Contact</div>
+                <div class="font-heading text-white font-bold uppercase tracking-wide">Contact</div>
                 <div class="text-gray-400 font-body">
                   JFP: <a href="tel:0426885924" class="text-joner-red hover:underline">0426 885 924</a> (Dean)<br/>
                   Juniors: <a href="mailto:jonersjuniors@jonerfootball.com" class="text-joner-red hover:underline">jonersjuniors@jonerfootball.com</a>
@@ -198,19 +255,17 @@ const localBizSchema = {
             </div>
           </div>
 
-          <div class="mt-8">
-            <a href="https://maps.google.com/?q=20+Narabang+Way+Belrose" target="_blank" rel="noopener" class="btn-red text-sm">
-              Open in Google Maps
-            </a>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a href="https://maps.google.com/?q=20+Narabang+Way+Belrose" target="_blank" rel="noopener" class="btn-red text-sm">Open in Google Maps</a>
+            <a href="#contact" class="btn-outline text-sm">Contact Us</a>
           </div>
         </div>
 
-        <!-- Google Maps -->
-        <div class="border border-gray-800 overflow-hidden">
+        <div class="rounded-xl border border-white/10 overflow-hidden bg-black">
           <iframe
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3319.5!2d151.2164!3d-33.7394!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2s20+Narabang+Way+Belrose+NSW+2085!5e0!3m2!1sen!2sau"
             width="100%"
-            height="400"
+            height="430"
             style="border:0;"
             allowfullscreen=""
             loading="lazy"
@@ -222,21 +277,246 @@ const localBizSchema = {
     </div>
   </section>
 
-  <!-- CTA -->
-  <section class="bg-joner-red py-12 md:py-16">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-      <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
-        Start Training at The HQ
-      </h2>
-      <p class="text-white/80 font-body mb-6">
-        Join the Joner Football family. Limited spots available.
-      </p>
-      <a href="/training" class="btn-outline text-base px-8 py-4 border-white text-white hover:bg-white hover:text-joner-red">
-        View Training Programs
-      </a>
+  <section id="contact" class="bg-joner-black py-16 md:py-24 scroll-mt-32">
+    <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-10">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Start Training at The HQ</p>
+        <h2 class="section-heading text-white mb-4">Contact Us</h2>
+        <p class="mx-auto max-w-2xl font-body text-base leading-relaxed text-gray-400 md:text-lg">
+          Tell us about the player and the team will come back with the right HQ training option.
+        </p>
+      </div>
+
+      <form id="hq-contact-form" class="space-y-5 border border-white/10 bg-white/[0.04] p-5 md:p-8 rounded-xl">
+        <input type="hidden" name="enquiryType" value="training-sydney" />
+        <input type="hidden" name="trainingInterest" value="Joner Football HQ" />
+        <input type="hidden" name="trainingLocation" value="HQ (Belrose)" />
+        <input type="hidden" name="location" value="HQ (Belrose)" />
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input type="text" name="name" placeholder="Parent or player name" required class="hq-input" />
+          <input type="email" name="email" placeholder="Email address" required class="hq-input" />
+        </div>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input type="tel" name="phone" placeholder="Phone number" required class="hq-input" />
+          <input type="text" name="playerName" placeholder="Player name" required class="hq-input" />
+        </div>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input type="text" name="playerAge" placeholder="Player age" required class="hq-input" />
+          <input type="text" name="playerLevel" placeholder="Player level or team" class="hq-input" />
+        </div>
+        <textarea name="message" placeholder="What are you looking for at the HQ?" required rows="5" class="hq-input resize-none"></textarea>
+        <label class="flex gap-3 border border-gray-800 bg-joner-black/60 p-4 font-body text-sm leading-relaxed text-gray-300 rounded-lg">
+          <input type="checkbox" name="marketingOptIn" value="true" class="mt-1 h-4 w-4 shrink-0 accent-joner-red" />
+          <span>Yes, send me Joner Football updates, offers, app news, camps, and training tips by email.</span>
+        </label>
+        <p id="hq-contact-status" class="hidden font-body text-sm"></p>
+        <button type="submit" class="btn-red w-full text-sm">Send HQ Enquiry</button>
+      </form>
     </div>
   </section>
 
-  <EmailCapture />
+  <script is:inline>
+    (function () {
+      var frame = document.getElementById('hq-video-frame');
+      var buttons = Array.prototype.slice.call(document.querySelectorAll('.hq-video-button'));
+      buttons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          var id = button.getAttribute('data-video-id');
+          var title = button.getAttribute('data-video-title') || 'Joner Football HQ video';
+          if (!id || !frame) return;
+          frame.src = 'https://www.youtube.com/embed/' + encodeURIComponent(id) + '?autoplay=1';
+          frame.title = title;
+          buttons.forEach(function (item) { item.classList.remove('is-active'); });
+          button.classList.add('is-active');
+        });
+      });
 
+      var form = document.getElementById('hq-contact-form');
+      var status = document.getElementById('hq-contact-status');
+      if (!form) return;
+      var submit = form.querySelector('button[type="submit"]');
+
+      function setStatus(message, ok) {
+        if (!status) return;
+        status.textContent = message || '';
+        status.className = message ? 'font-body text-sm ' + (ok ? 'text-green-400' : 'text-amber-400') : 'hidden font-body text-sm';
+      }
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        setStatus('', true);
+        var originalText = submit ? submit.textContent : 'Send HQ Enquiry';
+        var formData = new FormData(form);
+        var emailInput = form.querySelector('input[name="email"]');
+
+        if (window.JonerEmailGuard && emailInput) {
+          var validation = window.JonerEmailGuard.validateEmail(formData.get('email'));
+          window.JonerEmailGuard.setFeedback(emailInput, validation);
+          if (!validation.valid) {
+            emailInput.reportValidity();
+            return;
+          }
+        }
+
+        var payload = {};
+        formData.forEach(function (value, key) { payload[key] = value; });
+        payload.marketingOptIn = formData.get('marketingOptIn') === 'true';
+
+        if (submit) {
+          submit.disabled = true;
+          submit.textContent = 'Sending...';
+          submit.classList.add('opacity-70', 'cursor-not-allowed');
+        }
+
+        var tokenPromise = window.JonerRecaptcha && window.JonerRecaptcha.getToken
+          ? window.JonerRecaptcha.getToken('contact')
+          : Promise.resolve('');
+
+        tokenPromise.then(function (token) {
+          payload.recaptchaToken = token;
+          return fetch('/api/contact-enquiry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data || !data.success) throw new Error((data && data.error) || 'Could not send enquiry.');
+          form.reset();
+          setStatus('Done. Your HQ enquiry has been sent.', true);
+        })
+        .catch(function (error) {
+          setStatus(error && error.message ? error.message : 'Could not send enquiry. Please try again.', false);
+        })
+        .finally(function () {
+          if (submit) {
+            submit.disabled = false;
+            submit.textContent = originalText;
+            submit.classList.remove('opacity-70', 'cursor-not-allowed');
+          }
+        });
+      });
+    })();
+  </script>
+
+  <style>
+    .spotlight {
+      position: absolute;
+      pointer-events: none;
+      z-index: 1;
+      filter: blur(80px);
+      opacity: 0;
+      animation: spotlight-fade 2s ease-out 0.2s forwards;
+    }
+    .spotlight-a {
+      top: -20%;
+      left: -10%;
+      width: 70%;
+      height: 80%;
+      background: radial-gradient(ellipse at center, rgba(255,255,255,0.32), transparent 60%);
+      transform: rotate(-20deg);
+    }
+    .spotlight-b {
+      bottom: -25%;
+      right: -15%;
+      width: 65%;
+      height: 80%;
+      background: radial-gradient(ellipse at center, rgba(227,6,19,0.30), transparent 60%);
+      transform: rotate(15deg);
+      animation-delay: 0.6s;
+    }
+    @keyframes spotlight-fade {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .hq-video-button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 0.85rem;
+      background: rgba(255,255,255,0.045);
+      padding: 1rem;
+      text-align: left;
+      color: white;
+      transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+    }
+    .hq-video-button:hover,
+    .hq-video-button.is-active {
+      border-color: rgba(227,6,19,0.72);
+      background: rgba(227,6,19,0.14);
+      transform: translateY(-1px);
+    }
+    .hq-video-button span {
+      color: #E30613;
+      font-family: Anton, Impact, sans-serif;
+      letter-spacing: 0.18em;
+      font-size: 0.8rem;
+    }
+    .hq-video-button strong {
+      font-family: Anton, Impact, sans-serif;
+      font-size: 0.95rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 400;
+    }
+    .hq-program-card {
+      display: block;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 0.85rem;
+      background: rgba(255,255,255,0.045);
+      padding: 1.5rem;
+      text-decoration: none;
+      transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+    }
+    .hq-program-card:hover {
+      border-color: rgba(227,6,19,0.72);
+      background: rgba(227,6,19,0.12);
+      transform: translateY(-2px);
+    }
+    .hq-program-card h3 {
+      color: white;
+      font-family: Anton, Impact, sans-serif;
+      font-size: 1.15rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.65rem;
+    }
+    .hq-program-card p {
+      color: rgba(255,255,255,0.66);
+      font-family: DM Sans, system-ui, sans-serif;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      margin-bottom: 1.1rem;
+    }
+    .hq-program-card span {
+      color: #E30613;
+      font-family: Anton, Impact, sans-serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+    .hq-input {
+      min-height: 52px;
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 0.65rem;
+      background: rgba(0,0,0,0.55);
+      padding: 0.9rem 1rem;
+      color: white;
+      font-family: DM Sans, system-ui, sans-serif;
+      font-size: 1rem;
+      outline: none;
+    }
+    .hq-input::placeholder { color: rgba(255,255,255,0.38); }
+    .hq-input:focus { border-color: rgba(227,6,19,0.9); }
+    @media (prefers-reduced-motion: reduce) {
+      .spotlight { animation: none; opacity: 1; }
+      .hq-video-button,
+      .hq-program-card { transition: none; }
+    }
+  </style>
 </BaseLayout>
