@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import PhoneFrame from '../components/PhoneFrame.astro'
 import EmailCapture from '../components/EmailCapture.astro'
 
 const appSchema = {
@@ -89,26 +88,22 @@ const appSchema = {
           </div>
         </div>
 
-        <!-- Phone frames with video -->
+        <!-- Current app device mockups -->
         <div class="flex justify-center lg:justify-end">
-          <div class="relative max-w-full">
-            <!-- Primary phone -->
-            <div class="relative mx-auto" style="width:min(270px,72vw);height:min(490px,130vw)">
-              <PhoneFrame
-                images={["/images/app/screenshot-1.webp", "/images/app/screenshot-2.webp", "/images/app/screenshot-3.webp", "/images/app/screenshot-4.webp"]}
-                alt="Joner Football App session plan demo"
-                class="w-full h-full"
-              />
-            </div>
-            <!-- Secondary phone (desktop only) -->
-            <div class="hidden md:block absolute -right-16 top-20" style="width:210px;height:380px">
-              <PhoneFrame
-                images={["/images/app/screenshot-5.webp", "/images/app/screenshot-6.webp", "/images/app/screenshot-7.webp", "/images/app/screenshot-8.webp"]}
-                alt="Joner Football App training drills"
-                class="w-full h-full opacity-80"
-              />
-            </div>
-            <div class="absolute -inset-4 bg-joner-red/10 rounded-3xl blur-xl -z-10"></div>
+          <div class="relative w-full max-w-[620px] min-h-[430px] sm:min-h-[500px] lg:min-h-[560px]">
+            <div class="absolute inset-8 bg-joner-red/10 rounded-[3rem] blur-3xl"></div>
+            <img
+              src="/images/app/joner-app-main-ipad-current-transparent.png"
+              alt="Joner Football App on iPad"
+              class="absolute right-0 top-12 hidden md:block w-[82%] max-w-[520px] drop-shadow-[0_32px_70px_rgba(0,0,0,0.55)]"
+              loading="eager"
+            />
+            <img
+              src="/images/app/joner-app-main-iphone-current-transparent.png"
+              alt="Joner Football App on iPhone"
+              class="relative z-10 mx-auto w-[72vw] max-w-[310px] md:absolute md:left-0 md:top-0 md:w-[42%] md:max-w-[280px] drop-shadow-[0_30px_60px_rgba(0,0,0,0.6)]"
+              loading="eager"
+            />
           </div>
         </div>
       </div>
