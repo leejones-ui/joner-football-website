@@ -70,7 +70,7 @@ const faqs = [
       <div class="p100-hero__copy">
         <span class="p100-eyebrow">The 100 Day Development Program</span>
         <h1 class="p100-h1">
-          While other kids watch <span class="p100-hook">YouTube highlights</span>, yours will be <span class="p100-hook">creating them</span>.
+          The 100 Day Development Program
         </h1>
         <p class="p100-lede">
           100 days of structured football training for parents, players and coaches who want a proper plan inside the Joner Football App.
@@ -174,67 +174,6 @@ const faqs = [
     </div>
   </section>
 
-
-  {/* PROGRAMS ======================================================== */}
-  <section class="p100-section p100-section--white">
-    <div class="p100-container">
-      <div class="p100-eyebrow-bar"><span class="p100-eyebrow">The Programs</span></div>
-      <h2 class="p100-h2 p100-h2--ink">
-        Six structured programs. <span class="p100-hook">One complete pathway.</span>
-      </h2>
-      <p class="p100-lede p100-lede--ink">
-        Done in order. Every session is short, focused and clearly demonstrated. Press play and train. 20 minutes to an hour, a ball and a small space.
-      </p>
-      <div class="p100-programs">
-        {programs.map((p) => (
-          <article class="p100-program">
-            <div class="p100-program__head">
-              <div class="p100-program__num">{p.num}</div>
-              <div class="p100-program__meta">
-                {p.duration}{p.sessions ? ` · ${p.sessions}` : ''}
-              </div>
-            </div>
-            <h3 class="p100-program__title">{p.title}</h3>
-            <p class="p100-program__body">{p.body}</p>
-          </article>
-        ))}
-      </div>
-
-      <div class="p100-bonus">
-        <div class="p100-bonus__tag">Bonus</div>
-        <div class="p100-bonus__copy">
-          <div class="p100-bonus__title">12-Week Advanced Strength &amp; Conditioning</div>
-          <div class="p100-bonus__sub">12 weeks · 36 sessions. Football-specific speed, strength and stamina. Annual members only.</div>
-        </div>
-        <a class="p100-btn p100-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Open with Annual</a>
-      </div>
-
-      <div class="p100-cta-row p100-cta-row--center">
-        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Start the Pathway Free</a>
-      </div>
-    </div>
-  </section>
-
-  {/* INSIDE THE APP ================================================== */}
-  <section class="p100-section p100-section--black">
-    <div class="p100-container p100-center">
-      <span class="p100-eyebrow">Inside the App</span>
-      <h2 class="p100-h2">
-        Structured programs. <span class="p100-hook">Step-by-step sessions.</span> Track your progress.
-      </h2>
-      <p class="p100-lede p100-lede--center">
-        Each program lives inside the Joner Football App with full video sessions, weekly content, daily challenges and progress tracking.
-      </p>
-      <img
-        class="p100-pathway__img"
-        src="/images/programmes/100-day/inside-the-app.png"
-        alt="Inside the Joner Football App, program library and session screens"
-      />
-      <div class="p100-cta-row p100-cta-row--center">
-        <a class="p100-btn p100-btn--red" href={APP_LINK} target="_blank" rel="noopener">Open in the App</a>
-      </div>
-    </div>
-  </section>
 
   {/* DIFFERENCE ====================================================== */}
   <section class="p100-section p100-section--black">
