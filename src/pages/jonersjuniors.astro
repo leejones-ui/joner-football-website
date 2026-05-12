@@ -94,25 +94,26 @@ const faqSchema = {
 <BaseLayout title={title} description={description} canonical={canonical} schema={[eventSchema, faqSchema]} ogImage="https://jonerfootball.com/images/training/joners-juniors/tlp02345.webp">
   <main class="jj-page bg-joner-black text-white">
     <section class="jj-hero">
-      <iframe
-        class="jj-hero__video"
-        src={`https://www.youtube-nocookie.com/embed/${heroVideoId}?rel=0&controls=0&modestbranding=1&playsinline=1&loop=1&playlist=${heroVideoId}&mute=1&autoplay=1`}
-        title="Joners Juniors promo video"
-        allow="autoplay; encrypted-media; picture-in-picture"
-        loading="eager"
-        aria-hidden="true"
-      ></iframe>
-      <img class="jj-hero__mobile" src="/images/training/joners-juniors/tlp02345.webp" alt="Joners Juniors training at Joner Football HQ" loading="eager" fetchpriority="high" />
+      <img class="jj-hero__bg" src="/images/training/joners-juniors/tlp02345.webp" alt="Joners Juniors training at Joner Football HQ" loading="eager" fetchpriority="high" />
       <div class="jj-hero__shade"></div>
 
       <div class="jj-wrap jj-hero__content">
-        <p class="jj-eyebrow"><span></span> Joner Football HQ, Belrose</p>
-        <h1>Joners Juniors</h1>
-        <p class="jj-hero__lead">A fun, safe football pathway for young boys and girls learning the game for the first time.</p>
-        <div class="jj-hero__actions">
-          <a href="#book" class="jj-btn jj-btn--red">Train Now</a>
-          <a href="#book" class="jj-btn jj-btn--glass">Book Your Spot Now</a>
-          <a href="/training-enquiries/" class="jj-btn jj-btn--glass">Drop Us A Line</a>
+        <div class="jj-hero__copy">
+          <p class="jj-eyebrow"><span></span> Joner Football HQ, Belrose</p>
+          <h1>Joners Juniors</h1>
+          <p class="jj-hero__lead">A fun, safe football pathway for young boys and girls learning the game for the first time.</p>
+          <div class="jj-hero__actions">
+            <a href="#book" class="jj-btn">Book Now</a>
+          </div>
+        </div>
+        <div class="jj-hero__video-card" aria-label="Joners Juniors promo video">
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${heroVideoId}?rel=0&modestbranding=1&playsinline=1`}
+            title="Joners Juniors promo video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            loading="eager"
+            allowfullscreen
+          ></iframe>
         </div>
       </div>
     </section>
@@ -132,6 +133,7 @@ const faqSchema = {
           ))}
         </div>
         <p class="jj-note">There is also a Saturday selection only group. Please only choose that option on the form if a Joner Football coach has asked you to.</p>
+        <a href="#book" class="jj-btn jj-btn--dark">Book Now</a>
       </div>
     </section>
 
@@ -146,7 +148,7 @@ const faqSchema = {
         <div class="jj-benefits">
           {benefits.map((item) => <div><span>✓</span>{item}</div>)}
         </div>
-        <a href="#book" class="jj-btn jj-btn--red">Book Your Spot Now</a>
+        <a href="#book" class="jj-btn jj-btn--red">Book Now</a>
       </div>
     </section>
 
@@ -163,6 +165,7 @@ const faqSchema = {
             </figure>
           ))}
         </div>
+        <div class="jj-section-cta"><a href="#book" class="jj-btn">Book Now</a></div>
       </div>
     </section>
 
@@ -172,7 +175,7 @@ const faqSchema = {
           <p class="jj-section-eyebrow">Watch This</p>
           <h2>What the program feels like.</h2>
           <p>Quick look at the energy, environment and fun inside Joners Juniors. Parents can see the style before booking.</p>
-          <a href="#book" class="jj-btn jj-btn--red">Train Now</a>
+          <a href="#book" class="jj-btn jj-btn--red">Book Now</a>
         </div>
         <div class="jj-video-card">
           <iframe
@@ -190,7 +193,7 @@ const faqSchema = {
       <img src="/images/training/joners-juniors/img8317.webp" alt="Joners Juniors booking backdrop" loading="lazy" decoding="async" />
       <div class="jj-wrap jj-form-grid">
         <div class="jj-form-copy">
-          <p class="jj-section-eyebrow">Book Your Spot Now</p>
+          <p class="jj-section-eyebrow">Book Now</p>
           <h2>Register your child.</h2>
           <p>Fill in the form and the Joner Football team will have the signup saved correctly. Spots are limited by class size.</p>
           <div class="jj-form-facts">
@@ -248,7 +251,7 @@ const faqSchema = {
           <label class="jj-check"><input required type="checkbox" name="agreementAccepted" /><span>I have read and agree to the <a href="/terms" target="_blank" rel="noopener">training agreement</a>.</span></label>
           <p class="jj-payment-note">After you register, you will be sent to Stripe to complete payment.</p>
           <p id="juniors-form-message" class="jj-form-message" role="alert"></p>
-          <button type="submit" class="jj-btn jj-btn--red jj-form-submit">Register And Pay</button>
+          <button type="submit" class="jj-btn jj-form-submit">Book Now</button>
         </form>
       </div>
     </section>
@@ -267,10 +270,11 @@ const faqSchema = {
             </details>
           ))}
         </div>
+        <div class="jj-section-cta"><a href="#book" class="jj-btn">Book Now</a></div>
       </div>
     </section>
 
-    <a href="#book" class="jj-mobile-cta">Book Your Spot Now</a>
+    <a href="#book" class="jj-mobile-cta">Book Now</a>
   </main>
 
   <style>
@@ -283,18 +287,20 @@ const faqSchema = {
     .jj-page h1, .jj-page h2 { font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: -.02em; }
     .jj-page h1 { margin: 18px 0 0; max-width: 820px; font-size: clamp(4.2rem, 12vw, 10.5rem); line-height: .78; }
     .jj-page h2 { margin: 12px 0 0; font-size: clamp(2.6rem, 7vw, 6.2rem); line-height: .82; }
-    .jj-btn { display: inline-flex; min-height: 54px; align-items: center; justify-content: center; padding: 15px 24px; border: 1px solid transparent; color: #fff; font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-weight: 900; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; transition: transform .18s ease, border-color .18s ease, background .18s ease; }
-    .jj-btn:hover { transform: translateY(-2px); }
-    .jj-btn--red { background: var(--jj-red); box-shadow: 0 20px 48px rgba(227,6,19,.28); }
-    .jj-btn--glass { border-color: rgba(255,255,255,.3); background: rgba(255,255,255,.08); backdrop-filter: blur(10px); }
+    .jj-btn { display: inline-flex; min-height: 54px; align-items: center; justify-content: center; padding: 14px 28px; border: 1.5px solid rgba(227,6,19,.9); border-radius: 999px; background: rgba(5,5,5,.72); color: #fff; font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-weight: 900; letter-spacing: .12em; text-decoration: none; text-transform: uppercase; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 0 24px rgba(227,6,19,.34); transition: transform .18s ease, border-color .18s ease, background .18s ease; }
+    .jj-btn:hover { transform: translateY(-2px); background: rgba(227,6,19,.92); }
+    .jj-btn--red, .jj-btn--glass, .jj-btn--dark { border-color: rgba(227,6,19,.9); background: rgba(5,5,5,.72); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 0 24px rgba(227,6,19,.34); }
+    .jj-section-cta { display: flex; justify-content: center; margin-top: 34px; }
 
-    .jj-hero { position: relative; min-height: calc(100vh - 80px); display: flex; align-items: flex-end; padding: 130px 0 70px; background: #050505; }
-    .jj-hero__video { position: absolute; top: 50%; left: 50%; width: max(100vw, 177.78vh); height: max(56.25vw, 100vh); min-width: 100%; min-height: 100%; border: 0; transform: translate(-50%, -50%); pointer-events: none; }
-    .jj-hero__mobile { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; transform: none; }
-    .jj-hero__shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.9), rgba(0,0,0,.48) 46%, rgba(0,0,0,.18)), linear-gradient(0deg, rgba(0,0,0,.78), rgba(0,0,0,.12)); }
-    .jj-hero__content { position: relative; z-index: 2; }
-    .jj-hero__lead { max-width: 650px; margin: 24px 0 0; color: rgba(255,255,255,.86); font-size: clamp(1.1rem, 2.3vw, 1.55rem); font-weight: 700; line-height: 1.28; }
+    .jj-hero { position: relative; min-height: calc(100vh - 80px); display: flex; align-items: center; padding: 120px 0 76px; background: #050505; }
+    .jj-hero__bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+    .jj-hero__shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.92), rgba(0,0,0,.62) 46%, rgba(0,0,0,.25)), linear-gradient(0deg, rgba(0,0,0,.76), rgba(0,0,0,.18)); }
+    .jj-hero__content { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, .95fr) minmax(320px, .8fr); gap: clamp(28px, 5vw, 64px); align-items: center; }
+    .jj-hero__copy { min-width: 0; }
+    .jj-hero__lead { max-width: 650px; margin: 24px 0 0; color: rgba(255,255,255,.9); font-size: clamp(1.1rem, 2.3vw, 1.55rem); font-weight: 700; line-height: 1.28; }
     .jj-hero__actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
+    .jj-hero__video-card { position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,.14); border-radius: 22px; background: #050505; aspect-ratio: 16 / 9; box-shadow: 0 32px 90px rgba(0,0,0,.42); }
+    .jj-hero__video-card iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
     .jj-section--light { background: #f4f4f0; color: #050505; padding: clamp(54px, 8vw, 96px) 0; }
     .jj-section-head { max-width: 760px; margin-bottom: 30px; }
@@ -367,9 +373,8 @@ const faqSchema = {
     .jj-mobile-cta { display: none; position: fixed; left: 12px; right: 12px; bottom: 72px; z-index: 40; min-height: 54px; align-items: center; justify-content: center; background: var(--jj-red); color: #fff; font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-weight: 900; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; box-shadow: 0 18px 45px rgba(0,0,0,.4); }
 
     @media (max-width: 900px) {
-      .jj-hero { min-height: 760px; padding-top: 120px; }
-      .jj-hero__video { display: none; }
-      .jj-hero__mobile { display: block; }
+      .jj-hero { min-height: auto; padding-top: 112px; }
+      .jj-hero__content { grid-template-columns: 1fr; }
       .jj-detail-grid, .jj-video-grid, .jj-form-grid, .jj-split { grid-template-columns: 1fr; }
       .jj-split__image { min-height: 420px; }
       .jj-gallery { grid-template-columns: 1fr 1fr; grid-auto-rows: 190px; }
@@ -406,7 +411,7 @@ const faqSchema = {
         event.preventDefault();
         setMessage('', '');
         var submitButton = form.querySelector('button[type="submit"]');
-        var originalText = submitButton ? submitButton.textContent : 'Register And Pay';
+        var originalText = submitButton ? submitButton.textContent : 'Book Now';
         var emailInput = form.querySelector('input[type="email"]');
 
         if (!form.checkValidity()) {
