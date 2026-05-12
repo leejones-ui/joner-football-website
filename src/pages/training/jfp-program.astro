@@ -17,14 +17,17 @@ const locations = [
   {
     title: 'HQ Facility Belrose',
     text: 'Afternoon sessions inside the Joner Football HQ. Indoor, weatherproof, high quality.',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=20+Narabang+Way+Belrose+NSW+2085',
   },
   {
     title: 'North Turramurra',
     text: 'Early morning field sessions for players who want extra work before school.',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=North+Turramurra+Recreation+Area+NSW',
   },
   {
     title: 'Rydalmere Park',
     text: 'Morning field sessions for the wider Sydney football community.',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=Rydalmere+Park+Sydney+NSW',
   },
 ]
 
@@ -215,14 +218,26 @@ const faqs = [
         <div class="mb-10 text-center">
           <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">North Turramurra | Belrose HQ | Rydalmere Park</p>
           <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
-            Train where the session fits your week.
+            Locations
           </h2>
         </div>
         <div class="mb-10 grid grid-cols-1 gap-5 md:grid-cols-3">
           {locations.map((location) => (
-            <article class="rounded-xl border border-white/10 bg-black/45 p-6 backdrop-blur-sm">
+            <article class="flex flex-col rounded-xl border border-white/10 bg-black/45 p-6 backdrop-blur-sm">
               <h3 class="mb-4 font-heading text-2xl uppercase leading-none text-white">{location.title}</h3>
-              <p class="font-body text-sm leading-relaxed text-neutral-400 md:text-base">{location.text}</p>
+              <p class="mb-5 flex-1 font-body text-sm leading-relaxed text-neutral-400 md:text-base">{location.text}</p>
+              <a
+                href={location.mapUrl}
+                target="_blank"
+                rel="noopener"
+                class="inline-flex items-center gap-2 self-start font-heading text-xs uppercase tracking-[0.22em] text-joner-red hover:text-white"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <span>Open in Google Maps</span>
+              </a>
             </article>
           ))}
         </div>
