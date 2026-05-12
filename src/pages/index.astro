@@ -545,7 +545,7 @@ const mediaStyle = (beat) => {
         box-shadow:
           0 1.1rem 2rem rgba(0,0,0,0.4),
           0 0 2.8rem rgba(227,6,19,0.18);
-        transform: translate(-50%, -50%) scale(var(--ball-fly-scale, 1)) rotateY(var(--ball-fly-rotate, 0deg));
+        transform: translate(-50%, -50%) scale(var(--ball-fly-scale, 1));
         transition: border-color 700ms ease, box-shadow 700ms ease, transform 320ms cubic-bezier(.22,.61,.36,1);
       }
 
@@ -2091,12 +2091,11 @@ const mediaStyle = (beat) => {
           shell.style.setProperty('--marker-x', marker.x + '%');
           shell.style.setProperty('--marker-y', marker.y + '%');
           shell.style.setProperty('--ball-size', markerFrom.ballSize || 'clamp(4.8rem, 5.8vw, 5.8rem)');
-          var slideTwoFly = nextIndex === 1 ? smoothstep(clamp((localProgress - 0.22) / 0.58, 0, 1)) : 0;
+          var slideTwoFly = nextIndex === 1 ? smoothstep(clamp((localProgress - 0.72) / 0.22, 0, 1)) : 0;
           var ballOpacity = nextIndex === 0 ? 1 : nextIndex === 1 ? (1 - slideTwoFly) : 0;
           shell.style.setProperty('--ball-opacity', String(ballOpacity));
           shell.style.setProperty('--ball-fly-scale', String(1 - (slideTwoFly * 0.78)));
-          shell.style.setProperty('--ball-fly-rotate', (slideTwoFly * 720) + 'deg');
-          var activeMask = beatMarkers[nextIndex] || marker;
+                    var activeMask = beatMarkers[nextIndex] || marker;
           var activeMaskSize = activeMask.maskSize || 0;
           shell.style.setProperty('--mask-x', (activeMask.maskX || activeMask.x) + '%');
           shell.style.setProperty('--mask-y', (activeMask.maskY || activeMask.y) + '%');
