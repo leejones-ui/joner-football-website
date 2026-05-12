@@ -92,8 +92,8 @@ const faqs = [
   <main class="bg-joner-black text-white">
     <section class="relative overflow-hidden border-b border-gray-900">
       <div class="absolute inset-0">
-        <img src="/images/coaches-only/coaches-only-hero-updated.png" alt="Coaches Only inside the Joner Football App" class="h-full w-full object-cover opacity-45" loading="eager" />
-        <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/90 to-joner-black/40"></div>
+        <img src="/images/coaches-only/coaches-only-hero-updated.png" alt="Coaches Only inside the Joner Football App" class="h-full w-full object-cover opacity-60" loading="eager" />
+        <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/80 to-joner-black/25"></div>
       </div>
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 lg:py-32">
         <div class="max-w-4xl">
@@ -117,24 +117,14 @@ const faqs = [
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div>
           <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">WHY IT EXISTS</p>
-          <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none mb-6">Most Coaches Need More Than Another Drill.</h2>
-          <p class="text-lg text-gray-700 mb-5">
-            The difference is the detail. What to say. What to fix. How to progress it. When to stop the practice and coach the moment.
+          <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none mb-6">Stop Winging Your Sessions.</h2>
+          <p class="text-lg text-gray-700 mb-8 max-w-xl">
+            Learn how we structure our sessions from structured plans, voice-over sessions, and full session videos. Coach with more purpose.
           </p>
-          <p class="text-lg text-gray-700">
-            Coaches Only gives you a look inside Joner Football's coaching methods, session planning, player standards, and day-to-day training environment.
-          </p>
+          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red inline-flex text-center" data-meta-checkout-event="CoachesPageClickToCheckout">Start Coaches Only</a>
         </div>
-        <div class="bg-joner-black text-white p-8 md:p-10 border-t-4 border-joner-red">
-          <h3 class="font-heading uppercase text-3xl mb-6">You Get</h3>
-          <ul class="space-y-4 text-gray-200">
-            {benefits.map((benefit) => (
-              <li class="flex gap-3">
-                <span class="text-joner-red font-heading">•</span>
-                <span>{benefit}</span>
-              </li>
-            ))}
-          </ul>
+        <div class="overflow-hidden rounded-2xl bg-joner-black shadow-2xl shadow-black/20">
+          <img src="/images/coaches-only/session-structure-roadmap.png" alt="Plan, understand, watch and become coaching pathway" class="w-full h-full object-cover" loading="lazy" />
         </div>
       </div>
     </section>
