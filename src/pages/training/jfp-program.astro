@@ -39,23 +39,35 @@ const pillars = [
 
 const pathwayStages = [
   {
-    label: 'Stage 1',
-    age: 'Ages 4 to 6',
-    title: 'Joners Juniors',
-    text: 'The first step. Younger players learn the habits, energy, and ball mastery standards of Joner Football.',
+    number: '01',
+    age: 'Starts here · Ages 4 to 5',
+    title: 'Joner Juniors',
+    text: 'First touches, first smiles. Building love for the ball from day one.',
   },
   {
-    label: 'Stage 2',
+    number: '02',
     age: 'Ages 6 to 8',
     title: '6 to 8 Year Old Program',
-    text: 'The bridge into the main pathway. Built to prepare players for stronger training standards.',
+    text: 'Technical foundations. Coordination, weak foot, fun-first reps.',
   },
   {
-    label: 'Flagship',
-    age: 'Ages 8 and over',
-    title: 'Joner Football Performance',
-    text: 'The complete development program. Max 6 per group. The main JFP pathway since 2013.',
+    number: '03',
+    age: 'Ages 9 to 17',
+    title: 'JFP, Joner Football Performance',
+    text: 'Our flagship program. Elite technical and tactical development. Where players make the jump.',
     flagship: true,
+  },
+  {
+    number: '04',
+    age: 'Selected JFP players',
+    title: 'Game Analysis',
+    text: '1-to-1 video breakdown. See your game like the pros, strengths, decisions, what to fix.',
+  },
+  {
+    number: '05',
+    age: 'The next step',
+    title: 'Careers in Football',
+    text: 'Trials, college pathways, clubs and contacts. Helping our players take it as far as they want to go.',
   },
 ]
 
@@ -157,43 +169,63 @@ const faqs = [
       </div>
     </nav>
 
-    <section id="pathway" class="scroll-mt-24 bg-gradient-to-b from-joner-black via-joner-gray to-joner-black py-16 md:py-24 relative overflow-hidden">
-      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.14),transparent_60%)] pointer-events-none"></div>
-      <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="mb-10 text-center md:mb-14">
-          <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red sm:text-sm">JFP Player Pathway</p>
-          <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
-            The journey through Joner Football.
+    <section id="pathway" class="pathway scroll-mt-24 relative overflow-hidden bg-black text-white">
+      <div class="pathway-photo absolute inset-0 pointer-events-none" aria-hidden="true"></div>
+      <div class="pathway-scrim absolute inset-0 pointer-events-none" aria-hidden="true"></div>
+
+      <div class="relative z-10 mx-auto max-w-[1280px] px-5 py-20 md:py-24 lg:px-8">
+        <div class="mb-12 flex max-w-[760px] flex-col gap-3 md:mb-14">
+          <span class="font-heading text-[11px] italic uppercase tracking-[0.22em] text-joner-red sm:text-xs">JFP · Player Pathway</span>
+          <h2 class="font-heading text-[clamp(2rem,5vw,3.6rem)] font-black italic uppercase leading-[0.95] tracking-[0.04em] text-white">
+            From first <span class="text-joner-red">touch</span><br />to a career in football.
           </h2>
-          <p class="mx-auto mt-4 max-w-2xl font-body text-base leading-relaxed text-neutral-400 md:text-lg">
-            One pathway. Three stages. From first touches as a junior, all the way to the JFP flagship program.
+          <span class="mt-2 block h-[3px] w-16 bg-joner-red"></span>
+          <p class="mt-1 max-w-[580px] font-body text-base leading-[1.55] text-white/70">
+            One pathway. Every age. We grow players from their first session as a Joner Junior all the way to game analysis and helping them build a career in the game.
           </p>
         </div>
 
-        <ol class="relative space-y-5 md:grid md:grid-cols-3 md:gap-6 md:space-y-0">
-          <span class="absolute left-[19px] top-3 bottom-3 w-px bg-gradient-to-b from-joner-red via-white/30 to-joner-red md:hidden" aria-hidden="true"></span>
-          <span class="absolute left-[18.5%] right-[18.5%] top-[34px] hidden h-px bg-gradient-to-r from-joner-red via-white/40 to-joner-red md:block" aria-hidden="true"></span>
-
+        <ol class="pathway-tree relative flex flex-col gap-0 pl-7 md:flex-row md:items-stretch md:gap-2 md:pl-0">
           {pathwayStages.map((stage, index) => (
-            <li class={`relative md:flex md:flex-col ${stage.flagship ? 'md:-mt-2' : ''}`}>
-              <div class="relative flex items-center gap-4 md:flex-col md:items-center md:text-center">
-                <span class={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 font-heading text-sm font-bold ${stage.flagship ? 'border-joner-red bg-joner-red text-white shadow-[0_0_22px_rgba(227,6,19,0.55)]' : 'border-white/30 bg-joner-black text-white'}`}>
-                  {index + 1}
-                </span>
-                <p class={`font-heading text-[10px] uppercase tracking-[0.3em] sm:text-xs md:mt-4 ${stage.flagship ? 'text-joner-red' : 'text-white/60'}`}>{stage.label}</p>
+            <li class={`pathway-node relative flex gap-[18px] py-6 md:flex-1 md:flex-col md:py-0 md:pt-14 ${stage.flagship ? 'is-flagship' : ''}`}>
+              <span class="pathway-stage absolute left-[-28px] top-[26px] z-[2] flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full border-2 border-joner-red bg-black font-heading text-xl italic font-black text-joner-red md:left-1/2 md:top-0 md:-translate-x-1/2 md:translate-y-0">
+                {stage.number}
+              </span>
+
+              <div class="pathway-card relative ml-9 flex flex-1 flex-col gap-[10px] border border-white/10 bg-[#0a0a0a] p-[22px] md:ml-0 md:min-h-full md:p-[28px_22px_24px]">
+                {stage.flagship && (
+                  <span class="absolute -top-[10px] right-[18px] bg-joner-red px-[10px] py-[5px] font-heading text-[10px] italic font-black uppercase tracking-[0.22em] text-white">Flagship</span>
+                )}
+                <span class="font-heading text-[11px] italic font-semibold uppercase tracking-[0.22em] text-joner-red">{stage.age}</span>
+                <h3 class="font-heading text-[clamp(1.3rem,3vw,1.7rem)] font-black italic uppercase leading-[1.05] tracking-[0.04em] text-white">{stage.title}</h3>
+                <p class="font-body text-[14.5px] leading-[1.5] text-white/75">{stage.text}</p>
               </div>
 
-              <article class={`mt-4 rounded-2xl border p-5 backdrop-blur-sm md:mt-5 md:flex-1 md:p-6 ${stage.flagship ? 'border-joner-red/60 bg-joner-red/10 shadow-[0_0_38px_rgba(227,6,19,0.18)]' : 'border-white/10 bg-black/45'}`}>
-                <p class={`mb-2 font-heading text-[10px] uppercase tracking-[0.28em] sm:text-xs ${stage.flagship ? 'text-joner-red' : 'text-white/50'}`}>{stage.age}</p>
-                <h3 class="mb-3 font-heading text-xl uppercase leading-none text-white sm:text-2xl md:text-3xl">{stage.title}</h3>
-                <p class="font-body text-sm leading-relaxed text-neutral-300 md:text-base">{stage.text}</p>
-              </article>
+              {index < pathwayStages.length - 1 && (
+                <span class="pathway-arrow absolute -bottom-[14px] left-[-1px] z-[3] -translate-x-1/2 text-joner-red md:hidden" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6" /></svg>
+                </span>
+              )}
             </li>
           ))}
         </ol>
 
-        <div class="mt-10 text-center md:mt-14">
-          <a href="#training-form" class="btn-red text-sm">Book Now</a>
+        <div class="mt-9 flex flex-col gap-2 border border-joner-red/50 border-l-[3px] border-l-joner-red bg-gradient-to-b from-joner-red/[0.18] to-joner-red/[0.04] p-[22px_24px] md:mt-14">
+          <span class="font-heading text-[11px] italic font-semibold uppercase tracking-[0.22em] text-joner-red">The Joner Way</span>
+          <span class="font-heading text-[clamp(1.2rem,3vw,1.6rem)] font-black italic uppercase leading-[1.05] tracking-[0.04em] text-white">
+            One pathway. <span class="text-joner-red">One family.</span>
+          </span>
+        </div>
+
+        <div class="mt-14 flex flex-wrap justify-center gap-[14px]">
+          <a href="#training-form" class="btn-glass">
+            <span>Book a trial</span>
+            <span class="btn-glass-underline" aria-hidden="true"></span>
+          </a>
+          <a href="#program" class="btn-glass">
+            <span>Learn about JFP</span>
+            <span class="btn-glass-underline" aria-hidden="true"></span>
+          </a>
         </div>
       </div>
     </section>
@@ -604,6 +636,143 @@ const faqs = [
   </script>
 
   <style>
+    /* === JFP Player Pathway === */
+    .pathway-photo {
+      background-image: url('/images/training/jfp/jfp-training-3.webp');
+      background-size: cover;
+      background-position: center;
+      opacity: 0.6;
+      z-index: 0;
+    }
+    .pathway-scrim {
+      background:
+        radial-gradient(80% 60% at 50% 0%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.7) 70%),
+        linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.8) 100%);
+      z-index: 1;
+    }
+
+    /* Mobile vertical spine */
+    .pathway-tree::before {
+      content: "";
+      position: absolute;
+      left: 27px;
+      top: 28px;
+      bottom: 28px;
+      width: 2px;
+      background: repeating-linear-gradient(
+        to bottom,
+        #CC0000 0,
+        #CC0000 6px,
+        transparent 6px,
+        transparent 12px
+      );
+    }
+
+    .pathway-stage {
+      box-shadow: 0 0 0 6px #000, 0 0 24px rgba(204, 0, 0, 0.4);
+    }
+    .pathway-node.is-flagship .pathway-stage {
+      background: #CC0000;
+      color: #fff;
+      box-shadow: 0 0 0 6px #000, 0 0 32px rgba(204, 0, 0, 0.6);
+    }
+    .pathway-node.is-flagship .pathway-card {
+      border-color: #CC0000;
+      background:
+        radial-gradient(120% 100% at 0% 0%, rgba(204, 0, 0, 0.18) 0%, rgba(204, 0, 0, 0) 60%),
+        #0a0a0a;
+    }
+
+    /* Connector tick from spine to card (mobile) */
+    .pathway-card::before {
+      content: "";
+      position: absolute;
+      left: -36px;
+      top: 32px;
+      width: 36px;
+      height: 2px;
+      background: #CC0000;
+    }
+
+    @media (min-width: 900px) {
+      .pathway-tree::before { display: none; }
+      .pathway-card { margin-left: 0; }
+      .pathway-card::before {
+        left: 50%;
+        top: -28px;
+        width: 2px;
+        height: 28px;
+        transform: translateX(-50%);
+      }
+      /* Dashed connector between stage bubbles */
+      .pathway-node:not(:last-child) > .pathway-stage::after {
+        content: "";
+        position: absolute;
+        left: 100%;
+        top: 50%;
+        height: 2px;
+        width: calc((100vw - 40px) / 5 - 56px);
+        max-width: 200px;
+        background: repeating-linear-gradient(
+          to right,
+          #CC0000 0, #CC0000 6px,
+          transparent 6px, transparent 12px
+        );
+        transform: translateY(-50%);
+      }
+    }
+
+    /* Glass button (matches design spec) */
+    .btn-glass {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 6px;
+      padding: 18px 36px 16px;
+      font-family: var(--font-heading, sans-serif);
+      font-style: italic;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 17px;
+      line-height: 1;
+      color: #fff;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 999px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 50%, rgba(0,0,0,0.4) 100%),
+        radial-gradient(120% 140% at 50% 0%, rgba(204,0,0,0.35) 0%, rgba(204,0,0,0) 60%),
+        #0a0a0a;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.20),
+        inset 0 -1px 0 rgba(0,0,0,0.6),
+        0 8px 24px rgba(204,0,0,0.18);
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform 120ms cubic-bezier(.2,.7,.2,1), box-shadow 200ms;
+    }
+    .btn-glass::before {
+      content: "";
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 4px;
+      height: 40%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0));
+      border-radius: 999px;
+      pointer-events: none;
+    }
+    .btn-glass:hover { transform: translateY(-1px); }
+    .btn-glass-underline {
+      width: 60%;
+      height: 2px;
+      background: #CC0000;
+      box-shadow: 0 0 12px rgba(204, 0, 0, 0.7);
+    }
+
     .spotlight {
       position: absolute;
       pointer-events: none;
