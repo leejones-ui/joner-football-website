@@ -115,18 +115,14 @@ const videoFeatures = [
     <section class="pro-video-grid" aria-label="Professional training video showcase">
       <div class="pro-wrap">
         <div class="pro-video-banner">
-          <span>Watch the work</span>
+          <span>Watch the work: pro training videos</span>
         </div>
         <div class="pro-video-grid__cards">
           {videoFeatures.map((video) => (
             <a class="pro-video-card" href={video.url} target="_blank" rel="noopener noreferrer">
               <img src={`https://img.youtube.com/vi/${video.youtubeId}/maxresdefault.jpg`} alt={`${video.title} YouTube thumbnail`} loading="lazy" />
               <div class="pro-video-card__shade"></div>
-              <div class="pro-video-card__content">
-                <span>Play video</span>
-                <h3>{video.title}</h3>
-                <p>{video.label}</p>
-              </div>
+              <div class="pro-video-card__play">Play video</div>
             </a>
           ))}
         </div>
@@ -251,9 +247,9 @@ const videoFeatures = [
       position: relative;
       min-height: 100vh;
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       overflow: hidden;
-      padding: 128px 0 72px;
+      padding: 128px 0 56px;
       isolation: isolate;
       background: #050505;
     }
@@ -344,11 +340,8 @@ const videoFeatures = [
     .pro-video-card { position: relative; min-height: 330px; display: block; overflow: hidden; border: 1px solid rgba(255,255,255,0.16); background: #111; text-decoration: none; color: #fff; box-shadow: 0 30px 90px rgba(0,0,0,0.32); }
     .pro-video-card img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
     .pro-video-card:hover img { transform: scale(1.04); }
-    .pro-video-card__shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.8)); }
-    .pro-video-card__content { position: absolute; left: 24px; right: 24px; bottom: 24px; }
-    .pro-video-card__content span { display: inline-flex; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.28); border-radius: 999px; padding: 8px 12px; font-family: var(--pro-display); letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.72rem; background: rgba(227,6,19,0.86); }
-    .pro-video-card__content h3 { margin: 0; font-family: var(--pro-display); text-transform: uppercase; letter-spacing: 0.05em; font-size: clamp(2rem, 4vw, 3.6rem); line-height: 0.92; }
-    .pro-video-card__content p { margin: 8px 0 0; color: rgba(255,255,255,0.74); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.78rem; }
+    .pro-video-card__shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.0), rgba(0,0,0,0.18)); pointer-events: none; }
+    .pro-video-card__play { position: absolute; left: 18px; top: 18px; display: inline-flex; border: 1px solid rgba(255,255,255,0.28); border-radius: 999px; padding: 8px 12px; font-family: var(--pro-display); letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.72rem; background: rgba(227,6,19,0.9); color: #fff; box-shadow: 0 12px 28px rgba(0,0,0,0.22); }
 
     .pro-contact { padding: 82px 0 96px; background: #050505; color: #fff; }
     .pro-contact__grid { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 48px; align-items: start; }
@@ -370,7 +363,7 @@ const videoFeatures = [
       .zoom-parallax__frame { width: 42vw; }
     }
     @media (max-width: 640px) {
-      .pro-hero { min-height: 86vh; padding: 104px 0 42px; }
+      .pro-hero { min-height: 86vh; padding: 92px 0 42px; align-items: center; }
       .pro-hero h1 { font-size: clamp(2.65rem, 14vw, 4.15rem); max-width: 92vw; }
       .pro-hero__lead { font-size: 0.98rem; max-width: 92vw; }
       .pro-hero__actions, .pro-glass { width: 100%; }
