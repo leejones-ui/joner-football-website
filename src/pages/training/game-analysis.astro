@@ -1,18 +1,399 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const title = 'Game Analysis | Joner Football'
+const description = 'Joner Football Game Analysis gives players clipped actions, individual stats, video call feedback, and clear targets for their next game.'
+const canonical = 'https://jonerfootball.com/training/game-analysis/'
+
+const features = [
+  'Detailed analysis with key actions clipped and reviewed',
+  'Video calls to review performance and key moments',
+  'Individual player stats',
+  'Feedback on what the player did well',
+  'Clear areas the player can improve',
+  'Future targets for the next game',
+]
+
+const jfpPrices = [
+  { name: 'One off game', price: '$250' },
+  { name: '5 game pack', price: '$975', best: true },
+  { name: '10 game pack', price: '$1,500' },
+]
+
+const standardPrices = [
+  { name: 'One off game', price: '$300' },
+  { name: '5 game pack', price: '$1,170', best: true },
+  { name: '10 game pack', price: '$1,800' },
+]
+
+const steps = [
+  {
+    title: 'Send the game',
+    copy: 'Upload or send the full match footage. We review the player, not just the highlights.',
+  },
+  {
+    title: 'We clip the actions',
+    copy: 'Key moments are clipped, tagged, and reviewed so the feedback is easy to understand.',
+  },
+  {
+    title: 'Review and targets',
+    copy: 'The player gets clear feedback, stats, and targets to take into the next game.',
+  },
+]
 ---
 
-<BaseLayout title="Game Analysis | Joner Football" description="Joner Football game analysis for players who want clearer feedback and better development." canonical="/training/game-analysis/" noindex={true}>
-  <main class="bg-joner-black text-white pt-24">
-    <section class="relative overflow-hidden min-h-[72vh] flex items-center">
-      <img src="/images/training/hero-bg.webp" alt="Joner Football training and game analysis" class="absolute inset-0 h-full w-full object-cover object-center opacity-45" />
-      <div class="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/30"></div>
-      <div class="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-24">
-        <p class="font-heading text-sm uppercase tracking-[0.25em] text-joner-red mb-4">Training</p>
-        <h1 class="font-heading text-6xl md:text-8xl uppercase leading-none mb-6">Game Analysis</h1>
-        <p class="max-w-2xl font-body text-xl text-gray-300 leading-relaxed mb-8">A dedicated page for player analysis, feedback and improvement work.</p>
-        <a href="/contact?type=training-sydney" class="btn-red px-8 py-4">Enquire About Analysis</a>
+<BaseLayout
+  title={title}
+  description={description}
+  canonical={canonical}
+  ogImage="https://jonerfootball.com/images/training/jf-game-analysis-generated.jpg"
+>
+  <Fragment slot="head">
+    <link rel="preload" as="image" href="/images/training/jf-game-analysis-generated.jpg" fetchpriority="high" />
+    <link rel="preload" as="font" href="/fonts/Kanit-BlackItalic.ttf" type="font/ttf" crossorigin />
+  </Fragment>
+
+  <div class="ga-page">
+    <section class="ga-hero" id="top">
+      <div class="ga-hero-img" aria-hidden="true"></div>
+      <div class="ga-wrap ga-hero-content">
+        <span class="ga-eyebrow"><span class="ga-pulse"></span> New player development feature</span>
+        <h1 class="ga-h1">
+          Game
+          <span class="ga-hook">Analysis</span>
+          <span class="ga-h1-small">Take your performance to a whole new level</span>
+        </h1>
+        <p class="ga-hero-sub">
+          Send us your game footage and get detailed player feedback, clipped actions, individual stats, and clear targets for the next match.
+        </p>
+        <div class="ga-hero-cta">
+          <a class="ga-glass ga-glass--lg" href="#signup">Sign up interest<span class="ga-glass-underline"></span></a>
+          <a class="ga-glass" href="#pricing">See prices<span class="ga-glass-underline"></span></a>
+        </div>
       </div>
     </section>
-  </main>
+
+    <section class="ga-info" id="info">
+      <div class="ga-wrap ga-info-layout">
+        <div class="ga-info-left">
+          <div class="ga-section-head">
+            <span class="ga-section-eyebrow">What you get</span>
+            <h2 class="ga-h2">A proper breakdown of the game, not generic feedback.</h2>
+            <span class="ga-rule"></span>
+          </div>
+          <p class="ga-body-copy">
+            This gives players a clearer picture of what is actually happening in games. We break down the details, clip the important actions, and turn the performance into simple next steps.
+          </p>
+          <ul class="ga-feature-list">
+            {features.map((feature) => (
+              <li>
+                <span class="ga-tick" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5" /></svg>
+                </span>
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div class="ga-info-card">
+          <img src="/images/training/jf-game-analysis-generated.jpg" alt="Joner Football Game Analysis graphic" loading="lazy" />
+        </div>
+      </div>
+    </section>
+
+    <section class="ga-process">
+      <div class="ga-process-bg" aria-hidden="true"></div>
+      <div class="ga-wrap ga-process-content">
+        <div class="ga-section-head ga-section-head--light">
+          <span class="ga-section-eyebrow">How it works</span>
+          <h2 class="ga-h2">Three simple steps.</h2>
+          <span class="ga-rule"></span>
+        </div>
+        <div class="ga-step-grid">
+          {steps.map((step, index) => (
+            <article class="ga-step-card">
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              <h3>{step.title}</h3>
+              <p>{step.copy}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="ga-pricing" id="pricing">
+      <div class="ga-wrap">
+        <div class="ga-section-head">
+          <span class="ga-section-eyebrow">Pricing</span>
+          <h2 class="ga-h2">Choose the analysis package.</h2>
+          <span class="ga-rule"></span>
+        </div>
+        <div class="ga-price-grid">
+          <article class="ga-price-panel">
+            <div class="ga-price-panel-head">
+              <span>JFP Players</span>
+              <p>Discounted rate for players already in the Joner Football Performance program.</p>
+            </div>
+            <div class="ga-price-list">
+              {jfpPrices.map((tier) => (
+                <div class:list={['ga-price-row', tier.best && 'ga-price-row--best']}>
+                  {tier.best && <span class="ga-price-badge">Best Value</span>}
+                  <span class="ga-price-name">{tier.name}</span>
+                  <strong>{tier.price}</strong>
+                </div>
+              ))}
+            </div>
+          </article>
+          <article class="ga-price-panel ga-price-panel--dark">
+            <div class="ga-price-panel-head">
+              <span>Non JFP Players</span>
+              <p>For players who are not currently inside the JFP program.</p>
+            </div>
+            <div class="ga-price-list">
+              {standardPrices.map((tier) => (
+                <div class:list={['ga-price-row', tier.best && 'ga-price-row--best']}>
+                  {tier.best && <span class="ga-price-badge">Best Value</span>}
+                  <span class="ga-price-name">{tier.name}</span>
+                  <strong>{tier.price}</strong>
+                </div>
+              ))}
+            </div>
+          </article>
+        </div>
+        <p class="ga-price-note">Payment links will be added here once the checkout links are created.</p>
+      </div>
+    </section>
+
+    <section class="ga-signup" id="signup">
+      <div class="ga-wrap ga-signup-layout">
+        <div class="ga-signup-copy">
+          <span class="ga-section-eyebrow">Sign up</span>
+          <h2 class="ga-h2">Register interest in game analysis.</h2>
+          <p>
+            Leave the player details and we will follow up with the best package and payment link once the checkout is ready.
+          </p>
+        </div>
+        <form id="game-analysis-form" class="ga-form">
+          <input type="hidden" name="enquiryType" value="training-sydney" />
+          <input type="hidden" name="trainingInterest" value="Game Analysis" />
+          <div class="ga-form-grid">
+            <input type="text" name="name" placeholder="Parent or player name" required />
+            <input type="email" name="email" placeholder="Email address" required />
+          </div>
+          <div class="ga-form-grid">
+            <input type="tel" name="phone" placeholder="Phone number" required />
+            <input type="text" name="location" placeholder="Location" />
+          </div>
+          <div class="ga-form-grid">
+            <input type="text" name="playerName" placeholder="Player name" required />
+            <input type="text" name="playerAge" placeholder="Player age" required />
+          </div>
+          <div class="ga-form-grid">
+            <input type="text" name="playerLevel" placeholder="Team or level" />
+            <select name="packageInterest">
+              <option value="">Package interest</option>
+              <option>One off game</option>
+              <option>5 game pack</option>
+              <option>10 game pack</option>
+              <option>Not sure yet</option>
+            </select>
+          </div>
+          <select name="jfpStatus" required>
+            <option value="">Is the player currently in JFP?</option>
+            <option>Yes, JFP player</option>
+            <option>No, not in JFP</option>
+            <option>Not sure</option>
+          </select>
+          <textarea name="message" placeholder="Tell us what the player wants help with, and if you already have game footage ready." rows="5" required></textarea>
+          <label class="ga-check">
+            <input type="checkbox" name="marketingOptIn" value="true" />
+            <span>Yes, send me Joner Football updates, app news, camps, and training tips by email.</span>
+          </label>
+          <p id="game-analysis-status" class="ga-form-status" hidden></p>
+          <button type="submit" class="ga-glass ga-glass--lg ga-glass--block">Send game analysis enquiry<span class="ga-glass-underline"></span></button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <style>
+    .ga-page {
+      --jf-red: #cc0000;
+      --jf-dark: #050505;
+      --font-display: var(--font-heading, Anton, Impact, sans-serif);
+      --font-body: var(--font-sans, system-ui, sans-serif);
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      background: #000;
+      color: #fff;
+      overflow: hidden;
+    }
+    .ga-wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    .ga-hook { color: var(--jf-red); display: block; }
+    .ga-glass {
+      position: relative;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 6px;
+      padding: 18px 36px 16px;
+      font-family: var(--font-display);
+      font-style: italic; font-weight: 900;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      font-size: 17px; line-height: 1;
+      color: #fff; text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 999px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.02) 50%, rgba(0,0,0,0.4) 100%),
+        radial-gradient(120% 140% at 50% 0%, rgba(204,0,0,0.35) 0%, rgba(204,0,0,0) 60%),
+        #0a0a0a;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.6), 0 8px 24px rgba(204,0,0,0.18);
+      cursor: pointer; transition: box-shadow 200ms var(--ease-out); overflow: hidden;
+    }
+    .ga-glass::before { content: ''; position: absolute; left: 8%; right: 8%; top: 4px; height: 40%; background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0)); border-radius: 999px; pointer-events: none; }
+    .ga-glass:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.6), 0 12px 32px rgba(204,0,0,0.32); }
+    .ga-glass--lg { padding: 22px 44px 20px; font-size: 20px; }
+    .ga-glass--block { width: 100%; }
+    .ga-glass-underline { display: none; }
+
+    .ga-hero { position: relative; min-height: 92vh; display: flex; align-items: flex-end; overflow: hidden; padding: 120px 0 56px; }
+    .ga-hero-img { position: absolute; inset: 0; background-image: url('/images/training/jf-game-analysis-generated.jpg'); background-size: cover; background-position: center; transform: scale(1.02); }
+    .ga-hero-img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.38) 38%, rgba(0,0,0,0.88) 100%), linear-gradient(90deg, rgba(0,0,0,0.76), rgba(0,0,0,0.22)); }
+    .ga-hero-content { position: relative; width: 100%; }
+    .ga-eyebrow { display: inline-flex; align-items: center; gap: 10px; padding: 8px 14px; background: rgba(204,0,0,0.15); border: 1px solid rgba(204,0,0,0.6); color: #fff; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.18em; }
+    .ga-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--jf-red); box-shadow: 0 0 10px rgba(204,0,0,0.9); animation: gaPulse 1.6s var(--ease-out) infinite; }
+    @keyframes gaPulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
+    .ga-h1 { font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(3.2rem, 11vw, 8rem); line-height: 0.88; margin: 18px 0 0; max-width: 900px; }
+    .ga-h1-small { display: block; color: #fff; font-size: clamp(1.25rem, 3.1vw, 2.1rem); line-height: 1.05; margin-top: 16px; max-width: 760px; }
+    .ga-hero-sub { margin-top: 22px; max-width: 620px; color: rgba(255,255,255,0.86); font-size: 17px; line-height: 1.55; }
+    .ga-hero-cta { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 14px; }
+
+    .ga-section-head { display: flex; flex-direction: column; gap: 14px; margin-bottom: 34px; }
+    .ga-section-head--light .ga-h2 { color: #fff; }
+    .ga-section-eyebrow { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 13px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--jf-red); }
+    .ga-h2 { font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1; margin: 0; color: #000; max-width: 900px; }
+    .ga-rule { width: 64px; height: 3px; background: var(--jf-red); margin-top: 4px; }
+
+    .ga-info { background: #fff; color: #000; padding: 72px 0; }
+    .ga-info-layout { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr); gap: 42px; align-items: start; }
+    .ga-body-copy { margin: -10px 0 28px; color: rgba(0,0,0,0.66); line-height: 1.7; max-width: 640px; }
+    .ga-feature-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+    .ga-feature-list li { display: flex; gap: 14px; align-items: flex-start; padding: 15px 0; border-top: 1px solid rgba(0,0,0,0.12); font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.15; }
+    .ga-tick { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--jf-red); display: inline-flex; align-items: center; justify-content: center; color: var(--jf-red); }
+    .ga-tick svg { width: 15px; height: 15px; }
+    .ga-info-card { aspect-ratio: 4 / 5; overflow: hidden; background: #0a0a0a; box-shadow: 0 24px 60px rgba(0,0,0,0.18); }
+    .ga-info-card img { width: 100%; height: 100%; object-fit: cover; }
+
+    .ga-process { position: relative; overflow: hidden; padding: 100px 0; background: #000; }
+    .ga-process-bg { position: absolute; inset: 0; background-image: url('/images/training/jf-game-analysis-generated.jpg'); background-size: cover; background-position: center; opacity: 0.28; }
+    .ga-process-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,0.92), rgba(0,0,0,0.65)); }
+    .ga-process-content { position: relative; }
+    .ga-step-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .ga-step-card { min-height: 260px; padding: 24px; border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.54); backdrop-filter: blur(8px); display: flex; flex-direction: column; justify-content: space-between; }
+    .ga-step-card span { color: var(--jf-red); font-family: var(--font-display); font-style: italic; font-weight: 900; letter-spacing: 0.18em; }
+    .ga-step-card h3 { margin: 28px 0 0; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(1.6rem, 3vw, 2.3rem); line-height: 1; }
+    .ga-step-card p { margin: 16px 0 0; color: rgba(255,255,255,0.72); line-height: 1.6; }
+
+    .ga-pricing { background: #fff; color: #000; padding: 82px 0; }
+    .ga-price-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .ga-price-panel { border: 1px solid rgba(0,0,0,0.14); padding: 22px; background: #fff; box-shadow: 0 22px 60px rgba(0,0,0,0.08); }
+    .ga-price-panel--dark { background: #0a0a0a; color: #fff; border-color: rgba(255,255,255,0.12); }
+    .ga-price-panel-head span { display: inline-block; color: var(--jf-red); font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: 0.18em; font-size: 13px; border-bottom: 2px solid var(--jf-red); padding-bottom: 6px; }
+    .ga-price-panel-head p { margin: 14px 0 0; color: rgba(0,0,0,0.62); line-height: 1.55; }
+    .ga-price-panel--dark .ga-price-panel-head p { color: rgba(255,255,255,0.68); }
+    .ga-price-list { margin-top: 22px; display: grid; gap: 10px; }
+    .ga-price-row { position: relative; display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 15px 16px; border: 1px solid rgba(0,0,0,0.14); background: #fff; }
+    .ga-price-panel--dark .ga-price-row { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.14); }
+    .ga-price-row--best { border-color: var(--jf-red); background: rgba(204,0,0,0.06); }
+    .ga-price-name { font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; }
+    .ga-price-row strong { font-family: var(--font-display); font-style: italic; font-weight: 900; font-size: 1.6rem; }
+    .ga-price-badge { position: absolute; top: -10px; right: 12px; background: var(--jf-red); color: #fff; font-family: var(--font-display); font-style: italic; font-weight: 900; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; padding: 4px 8px; }
+    .ga-price-note { margin: 18px 0 0; color: rgba(0,0,0,0.58); font-size: 13px; }
+
+    .ga-signup { background: #000; color: #fff; padding: 96px 0; }
+    .ga-signup-layout { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 48px; align-items: start; }
+    .ga-signup .ga-h2 { color: #fff; }
+    .ga-signup-copy p { margin: 20px 0 0; color: rgba(255,255,255,0.72); line-height: 1.7; max-width: 460px; }
+    .ga-form { display: grid; gap: 14px; padding: 22px; background: #090909; color: #fff; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 28px 80px rgba(0,0,0,0.26); }
+    .ga-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .ga-form input, .ga-form select, .ga-form textarea { width: 100%; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.06); color: #fff; padding: 15px 16px; min-height: 52px; font-family: var(--font-body); outline: none; }
+    .ga-form textarea { resize: vertical; }
+    .ga-form input:focus, .ga-form select:focus, .ga-form textarea:focus { border-color: rgba(204,0,0,0.8); }
+    .ga-form input::placeholder, .ga-form textarea::placeholder { color: rgba(255,255,255,0.48); }
+    .ga-check { display: flex; gap: 12px; color: rgba(255,255,255,0.72); font-size: 0.9rem; line-height: 1.5; }
+    .ga-check input { width: 16px; min-height: 16px; margin-top: 2px; accent-color: var(--jf-red); }
+    .ga-form-status { margin: 0; font-size: 14px; }
+
+    @media (max-width: 900px) {
+      .ga-info-layout, .ga-price-grid, .ga-signup-layout { grid-template-columns: 1fr; }
+      .ga-step-grid { grid-template-columns: 1fr; }
+      .ga-info-card { aspect-ratio: 16 / 10; }
+    }
+    @media (max-width: 640px) {
+      .ga-wrap { width: min(100% - 24px, 1120px); }
+      .ga-hero { min-height: 88vh; padding: 100px 0 44px; }
+      .ga-h1 { font-size: clamp(3rem, 16vw, 5.4rem); }
+      .ga-h1-small { font-size: clamp(1.2rem, 7vw, 1.8rem); }
+      .ga-hero-sub { font-size: 15px; }
+      .ga-hero-cta, .ga-glass { width: 100%; }
+      .ga-glass--lg { font-size: 17px; padding: 19px 28px 17px; }
+      .ga-info, .ga-pricing, .ga-signup { padding: 58px 0; }
+      .ga-process { padding: 70px 0; }
+      .ga-form-grid { grid-template-columns: 1fr; }
+      .ga-price-row { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+
+  <script>
+    const form = document.getElementById('game-analysis-form')
+    const status = document.getElementById('game-analysis-status')
+    if (form) {
+      form.addEventListener('submit', function (event) {
+        event.preventDefault()
+        const submit = form.querySelector('button[type="submit"]')
+        const originalText = submit ? submit.textContent : 'Send game analysis enquiry'
+        const formData = new FormData(form)
+        const payload = {}
+        formData.forEach(function (value, key) { payload[key] = value })
+        payload.message = 'GAME ANALYSIS ENQUIRY\n\n' + (payload.message || '') + '\n\nPackage interest: ' + (payload.packageInterest || 'Not selected') + '\nJFP status: ' + (payload.jfpStatus || 'Not selected')
+        payload.marketingOptIn = formData.get('marketingOptIn') === 'true'
+
+        if (status) {
+          status.hidden = true
+          status.textContent = ''
+        }
+        if (submit) {
+          submit.disabled = true
+          submit.textContent = 'Sending...'
+        }
+
+        fetch('/api/contact-enquiry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+          .then(function (response) { return response.json() })
+          .then(function (data) {
+            if (!data || !data.success) throw new Error((data && data.error) || 'Could not send enquiry.')
+            form.reset()
+            if (status) {
+              status.hidden = false
+              status.style.color = '#4ade80'
+              status.textContent = 'Done. Your game analysis enquiry has been sent.'
+            }
+          })
+          .catch(function (error) {
+            if (status) {
+              status.hidden = false
+              status.style.color = '#fbbf24'
+              status.textContent = error && error.message ? error.message : 'Could not send enquiry. Please try again.'
+            }
+          })
+          .finally(function () {
+            if (submit) {
+              submit.disabled = false
+              submit.textContent = originalText
+            }
+          })
+      })
+    }
+  </script>
 </BaseLayout>
