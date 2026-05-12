@@ -169,8 +169,11 @@ const faqs = [
               Lee, Founder Joner Football
             </div>
             <div class="guar-copy__ctas">
-              <a class="guar-btn guar-btn--red" href={ANNUAL_LINK} target="_blank" rel="noopener">Go Annual Now</a>
-              <a class="guar-btn guar-btn--ghost" href={APP_LINK} target="_blank" rel="noopener">Start Free Trial</a>
+              <div class="p100-hero-cta-card guar-cta-card">
+                <span class="p100-hero-cta-card__banner">First 7 days are free</span>
+                <a class="guar-btn guar-btn--red" href={HERO_SUBSCRIBE_LINK}>Subscribe Now</a>
+              </div>
+              <a class="guar-btn guar-btn--ghost" href={HERO_BUNDLE_LINK} target="_blank" rel="noopener">Buy Full Bundle</a>
             </div>
           </div>
         </div>
@@ -359,7 +362,7 @@ const faqs = [
     align-items: center;
     justify-content: center;
     width: calc(100% - 42px);
-    min-height: 28px;
+    min-height: 32px;
     border: 1px solid rgba(232,0,13,0.92);
     border-radius: 999px;
     background: linear-gradient(180deg, #e8000d 0%, #a40009 100%);
@@ -368,9 +371,9 @@ const faqs = [
     font-family: var(--p100-body);
     font-size: 0.68rem;
     font-weight: 950;
-    line-height: 1;
+    line-height: 1.08;
     letter-spacing: 0.1em;
-    padding: 7px 14px 6px;
+    padding: 8px 14px 7px;
     pointer-events: none;
     text-align: center;
     text-transform: uppercase;
@@ -877,13 +880,18 @@ const faqs = [
     flex-shrink: 0;
   }
   .guar-copy__ctas {
-    display: flex; gap: 12px; flex-wrap: wrap;
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
     margin-top: clamp(22px, 2.4vw, 30px);
   }
+  .guar-cta-card { gap: 8px; padding-top: 0; }
   .guar-btn {
     padding: 16px 26px;
     font-size: 0.9375rem;
   }
+  .guar-cta-card .guar-btn { width: 100%; }
 
   /* Mobile guarantee: stack image on top, copy block below */
   @media (max-width: 900px) {
