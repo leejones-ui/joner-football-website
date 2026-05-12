@@ -1,0 +1,880 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const storyBeats = [
+  {
+    number: '01',
+    label: 'Philosophy',
+    kicker: 'Welcome',
+    title: 'Technique Above Everything',
+    body: '',
+    image: '/images/home-storyboard/01-kick-activation-new.webp',
+    alt: 'Lee Jones striking a football on grass in warm light',
+    copyPos: 'center',
+    markerX: 24,
+    markerY: 43,
+    tone: 'dark',
+    overlay: 'none',
+  },
+  {
+    number: '02',
+    label: 'Origin',
+    kicker: 'Origin',
+    title: 'It Started With A Bag Of Balls',
+    body: 'In 2013 I had an idea. Joner Football was born. Specialised in Individual & Small Group Training.',
+    image: '/images/home-storyboard/02-origin-bag-of-balls.webp',
+    alt: 'Lee Jones training on the grass with a bag of footballs beside him',
+    objectPosition: '50% 50%',
+    copyPos: 'left',
+    markerX: 16,
+    markerY: 88,
+    tone: 'dark',
+    overlay: 'origin',
+  },
+  {
+    number: '03',
+    label: 'Growth',
+    kicker: 'Growth',
+    title: 'Local Sessions. Global Reach.',
+    body: 'The work spread through videos, players, parents, coaches, and millions of touches online.',
+    image: '/images/home-storyboard/03-method-filming.webp',
+    alt: 'Lee Jones coaching a technical ball mastery drill indoors',
+    copyPos: 'left',
+    markerX: 77,
+    markerY: 82,
+    tone: 'dark',
+    overlay: 'growth',
+  },
+  {
+    number: '04',
+    label: 'Joner Way',
+    kicker: 'The Joner Way',
+    title: 'A Method Like No Other',
+    body: 'Every technical detail gets coached through energy, passion & positivity.',
+    image: '/images/home-storyboard/04-proof-growth.webp',
+    alt: 'Lee Jones coaching players during an evening Joner Football session',
+    copyPos: 'right',
+    markerX: 72,
+    markerY: 79,
+    tone: 'dark',
+    overlay: 'none',
+  },
+  {
+    number: '05',
+    label: 'Global',
+    kicker: 'Going Global',
+    title: 'Coaching Worldwide',
+    body: 'From Sydney to camps, clinics, and football communities around the world.',
+    image: '/images/home-storyboard/05-global-camps.webp',
+    alt: 'Joner Football players training at a large outdoor camp',
+    copyPos: 'right',
+    markerX: 50,
+    markerY: 55,
+    tone: 'dark',
+    overlay: 'none',
+  },
+  {
+    number: '06',
+    label: 'JF App',
+    kicker: 'The Joner Football App',
+    title: 'Worlds #1 Football Coaching APP',
+    body: 'Built for players, parents, and coaches to train with clarity, confidence, and purpose.',
+    image: '/images/home-storyboard/06-app-session-planning.webp',
+    video: '/images/home-storyboard/06-app-header-video.mp4',
+    alt: 'Joner Football App showing session planning content',
+    copyPos: 'left',
+    markerX: 55,
+    markerY: 52,
+    tone: 'light',
+    overlay: 'none',
+  },
+  {
+    number: '07',
+    label: 'Our HQ',
+    kicker: 'Our HQ',
+    title: 'A Home Of Our Own',
+    body: 'Sydney, Australia. Belrose. Our home.',
+    image: '/images/home-storyboard/07-facility-hq.webp',
+    alt: 'Lee Jones standing outside the Joner Football HQ facility in Belrose',
+    copyPos: 'left',
+    markerX: 37,
+    markerY: 62,
+    tone: 'dark',
+    overlay: 'none',
+  },
+  {
+    number: '08',
+    label: 'Action',
+    kicker: 'Action',
+    title: 'Choose Your Path',
+    body: 'Player, parent, or coach. The next Joner chapter starts with the path that fits you.',
+    image: '/images/home-storyboard/07-action-coach.webp',
+    alt: 'Lee Jones giving coaching detail during a Joner Football session',
+    objectPosition: '50% 18%',
+    copyPos: 'action',
+    markerX: 51,
+    markerY: 56,
+    tone: 'dark',
+    overlay: 'paths',
+  },
+]
+
+const stats = [
+  { value: '2M+', label: 'followers online', target: 2000000, format: 'millions' },
+  { value: '50K+', label: 'app downloads', target: 50000, format: 'thousands' },
+  { value: '1,500+', label: 'training drills', target: 1500, format: 'comma' },
+  { value: '15+', label: 'countries reached', target: 15, format: 'plain' },
+]
+
+const platforms = ['YouTube', 'Instagram', 'Facebook', 'TikTok']
+
+const paths = [
+  { title: 'Player', text: 'Train in person or through the APP.', href: '/app' },
+  { title: 'Parent', text: 'Find training, camps or programs inside the APP.', href: '/training#joners-juniors' },
+  { title: 'Coach', text: 'Learn the methodology and access coach tools.', href: '/workshops/coaches-course' },
+]
+---
+
+<BaseLayout
+  title="Home Storyboard Prototype | Joner Football"
+  description="A prototype route for the cinematic Joner Football homepage story sequence."
+  canonical="https://jonerfootball.com/home-storyboard-prototype/"
+>
+  <Fragment slot="head">
+    <style>
+      .story-page {
+        background: #0A0A0A;
+        color: #FFFFFF;
+      }
+
+      .story-shell {
+        --story-progress: 0;
+        --growth-progress: 0;
+      }
+
+      .story-viewport {
+        height: calc(100svh - 4rem);
+        min-height: 44rem;
+        color: #FFFFFF;
+        background: #0A0A0A;
+        transition:
+          background-color 700ms cubic-bezier(.22,.61,.36,1),
+          color 700ms cubic-bezier(.22,.61,.36,1);
+      }
+
+      .story-shell[data-active="5"] .story-viewport {
+        background: #F5F5F5;
+        color: #0A0A0A;
+      }
+
+      .story-bg {
+        opacity: 0;
+        transform: scale(1.06);
+        filter: grayscale(0.2) contrast(1.08) brightness(0.5);
+        transition:
+          opacity 800ms cubic-bezier(.22,.61,.36,1),
+          transform 1100ms cubic-bezier(.22,.61,.36,1),
+          filter 900ms ease;
+      }
+
+      .story-bg[data-state="active"] {
+        opacity: 1;
+        transform: scale(1);
+        filter: grayscale(0.04) contrast(1.12) brightness(0.7);
+      }
+
+      .story-shell[data-active="5"] .story-bg[data-state="active"] {
+        opacity: 0.18;
+        filter: grayscale(1) contrast(1.02) brightness(1.12);
+      }
+
+      .story-shade {
+        opacity: 1;
+        transition: opacity 700ms ease;
+      }
+
+      .story-shell[data-active="5"] .story-shade {
+        opacity: 0;
+      }
+
+      .story-light-canvas {
+        opacity: 0;
+        transition: opacity 700ms ease;
+        background-image:
+          linear-gradient(rgba(10,10,10,0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(10,10,10,0.08) 1px, transparent 1px);
+        background-size: 72px 72px;
+      }
+
+      .story-shell[data-active="5"] .story-light-canvas {
+        opacity: 1;
+      }
+
+      .story-kicker {
+        letter-spacing: 0.26em;
+      }
+
+      .story-rail {
+        color: rgba(255,255,255,0.54);
+        transition: color 700ms ease;
+      }
+
+      .story-shell[data-active="5"] .story-rail {
+        color: rgba(10,10,10,0.62);
+      }
+
+      .story-rail-line {
+        background: rgba(255,255,255,0.16);
+        transition: background 700ms ease;
+      }
+
+      .story-shell[data-active="5"] .story-rail-line {
+        background: rgba(10,10,10,0.16);
+      }
+
+      .story-rail-fill {
+        height: calc(var(--story-progress) * 100%);
+        background: #E30613;
+      }
+
+      .story-rail-dot,
+      .story-rail-label {
+        transition:
+          opacity 260ms ease,
+          transform 260ms ease,
+          color 260ms ease,
+          border-color 260ms ease,
+          background-color 260ms ease;
+      }
+
+      .story-rail-dot[data-state="active"] {
+        background: #E30613;
+        border-color: #E30613;
+        opacity: 1;
+        transform: scale(1.18);
+      }
+
+      .story-rail-dot[data-state="inactive"] {
+        opacity: 0.34;
+      }
+
+      .story-rail-label[data-state="active"] {
+        opacity: 1;
+        transform: translateX(0);
+      }
+
+      .story-rail-label[data-state="inactive"] {
+        opacity: 0.42;
+        transform: translateX(-0.18rem);
+      }
+
+      .story-copy {
+        display: none;
+        position: absolute;
+        max-width: 34rem;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .story-copy[data-state="active"] {
+        display: block;
+        opacity: 1;
+        pointer-events: auto;
+        animation: storyCopyIn 620ms cubic-bezier(.22,.61,.36,1) both;
+      }
+
+      .story-copy[data-pos="center"] {
+        left: 50%;
+        top: 20%;
+        transform: translateX(-50%);
+        text-align: center;
+        max-width: 56rem;
+      }
+
+      .story-copy[data-pos="action"] {
+        left: 50%;
+        top: 42%;
+        transform: translateX(-50%);
+        text-align: center;
+        max-width: 56rem;
+      }
+
+      .story-copy[data-pos="left"] {
+        left: clamp(13rem, 18vw, 18rem);
+        top: 26%;
+      }
+
+      .story-copy[data-pos="right"] {
+        right: clamp(3rem, 8vw, 9rem);
+        top: 26%;
+      }
+
+      @keyframes storyCopyIn {
+        from { opacity: 0; transform: translateY(1.25rem); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .story-copy[data-pos="center"][data-state="active"] {
+        animation-name: storyCopyInCenter;
+      }
+
+      .story-copy[data-pos="action"][data-state="active"] {
+        animation-name: storyCopyInCenter;
+      }
+
+      @keyframes storyCopyInCenter {
+        from { opacity: 0; transform: translate(-50%, 1.25rem); }
+        to { opacity: 1; transform: translate(-50%, 0); }
+      }
+
+      .story-shell[data-active="5"] .story-copy {
+        color: #0A0A0A;
+      }
+
+      .story-shell[data-active="5"] .story-copy-title {
+        color: #0A0A0A;
+      }
+
+      .story-shell[data-active="5"] .story-body {
+        color: rgba(10,10,10,0.72);
+      }
+
+      .story-ball-system {
+        left: var(--marker-x);
+        top: var(--marker-y);
+        transition:
+          left 900ms cubic-bezier(.22,.61,.36,1),
+          top 900ms cubic-bezier(.22,.61,.36,1),
+          transform 900ms cubic-bezier(.22,.61,.36,1),
+          opacity 400ms ease;
+      }
+
+      .story-ball-pulse {
+        width: clamp(4.8rem, 8.8vw, 9.2rem);
+        height: clamp(4.8rem, 8.8vw, 9.2rem);
+        border-radius: 999px;
+        position: relative;
+        overflow: hidden;
+        border: 0;
+        background: transparent;
+        box-shadow:
+          0 0 3.4rem rgba(227,6,19,0.26);
+        transform: translate(-50%, -50%);
+        transition: border-color 700ms ease, box-shadow 700ms ease;
+      }
+
+      .story-shell[data-active="5"] .story-ball-pulse {
+        border-color: rgba(10,10,10,0.22);
+        box-shadow: 0 0 3rem rgba(227,6,19,0.18);
+      }
+
+      .story-ball-pulse::before,
+      .story-ball-pulse::after {
+        display: none;
+      }
+
+      .story-ball-image {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 1.25rem 1.8rem rgba(0,0,0,0.42));
+      }
+
+      .story-ball-logo {
+        display: none;
+      }
+
+      .story-mini-ball {
+        position: absolute;
+        border-radius: 999px;
+        background: url('/images/home-storyboard/joner-ball-concept.svg') center / contain no-repeat;
+        box-shadow:
+          0 0 1.8rem rgba(227,6,19,0.3);
+      }
+
+      .story-overlay {
+        display: none;
+        opacity: 0;
+        transition: opacity 500ms ease;
+        pointer-events: none;
+      }
+
+      .story-overlay[data-state="active"] {
+        display: block;
+        opacity: 1;
+        animation: storyOverlayIn 720ms cubic-bezier(.22,.61,.36,1) both;
+      }
+
+      @keyframes storyOverlayIn {
+        from { opacity: 0; transform: translateY(1rem); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .metric-card,
+      .path-card,
+      .global-proof-card,
+      .phone-shell {
+        border: 1px solid rgba(255,255,255,0.16);
+        background: rgba(10,10,10,0.46);
+        backdrop-filter: blur(18px);
+      }
+
+      .story-shell[data-active="5"] .metric-card,
+      .story-shell[data-active="5"] .phone-shell {
+        border-color: rgba(10,10,10,0.14);
+        background: rgba(255,255,255,0.64);
+      }
+
+      .phone-shell {
+        border-radius: 2rem;
+        padding: 0.55rem;
+        box-shadow: 0 2rem 5rem rgba(0,0,0,0.18);
+      }
+
+      .phone-screen {
+        border-radius: 1.45rem;
+      }
+
+      .growth-bar {
+        transform: scaleY(calc(0.18 + (var(--growth-progress) * 0.82)));
+        transform-origin: bottom;
+        transition: transform 120ms linear;
+      }
+
+      .global-proof-card {
+        box-shadow: 0 2rem 5rem rgba(0,0,0,0.22);
+      }
+
+      .app-video-panel {
+        border: 1px solid rgba(10,10,10,0.14);
+        background: rgba(255,255,255,0.68);
+        padding: 0.6rem;
+        box-shadow: 0 2rem 5rem rgba(0,0,0,0.18);
+        backdrop-filter: blur(18px);
+      }
+
+      .app-story-video {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        border: 1px solid rgba(10,10,10,0.12);
+        background: #0A0A0A;
+      }
+
+      .keyframe-card {
+        min-height: 26rem;
+      }
+
+      .mobile-story-card {
+        min-height: min(82svh, 46rem);
+      }
+
+      .mobile-progress-dot {
+        transition:
+          transform 220ms ease,
+          opacity 220ms ease,
+          background-color 220ms ease,
+          border-color 220ms ease;
+      }
+
+      .mobile-progress-dot[data-state="active"] {
+        background: #E30613;
+        border-color: #E30613;
+        opacity: 1;
+        transform: scaleY(1.1);
+      }
+
+      .mobile-progress-dot[data-state="inactive"] {
+        opacity: 0.35;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .story-bg,
+        .story-copy,
+        .story-overlay,
+        .story-ball-system,
+        .story-rail-dot,
+        .story-rail-label {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </Fragment>
+
+  <main class="story-page">
+    <section
+      id="storyboard-desktop"
+      class="story-shell relative hidden md:block"
+      data-story-shell
+      data-active="0"
+      style={`height: ${storyBeats.length * 72}vh; --marker-x: ${storyBeats[0].markerX}%; --marker-y: ${storyBeats[0].markerY}%;`}
+    >
+      <div class="story-viewport sticky top-16 overflow-hidden">
+        {storyBeats.map((beat, index) => (
+          beat.video ? (
+            <video
+              class="story-bg absolute inset-0 h-full w-full object-cover"
+              aria-label={beat.alt}
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              poster={beat.image}
+              style={beat.objectPosition ? `object-position: ${beat.objectPosition};` : undefined}
+              data-story-bg
+              data-index={index}
+              data-state={index === 0 ? 'active' : 'inactive'}
+            >
+              <source src={beat.video} type="video/mp4" />
+            </video>
+          ) : (
+            <img
+              class="story-bg absolute inset-0 h-full w-full object-cover"
+              src={beat.image}
+              alt={beat.alt}
+              style={beat.objectPosition ? `object-position: ${beat.objectPosition};` : undefined}
+              data-story-bg
+              data-index={index}
+              data-state={index === 0 ? 'active' : 'inactive'}
+            />
+          )
+        ))}
+
+        <div class="story-shade absolute inset-0 bg-black/68"></div>
+        <div class="story-shade absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#0A0A0A] to-transparent"></div>
+        <div class="story-light-canvas absolute inset-0"></div>
+        <div class="absolute inset-0 shadow-[inset_0_0_220px_rgba(0,0,0,0.72)]"></div>
+
+        <aside class="story-rail absolute left-8 top-[10vh] z-30 h-[66vh] w-44">
+          <div class="story-rail-line absolute left-5 top-0 bottom-0 w-px"></div>
+          <div class="story-rail-fill absolute left-5 top-0 w-px transition-[height] duration-150 ease-linear"></div>
+          <div class="absolute inset-y-0 left-0 flex flex-col justify-between py-1">
+            {storyBeats.map((beat, index) => (
+              <div class="grid grid-cols-[2.5rem_1fr] items-center gap-3">
+                <span class="story-rail-dot ml-[0.875rem] h-3 w-3 rounded-full border border-current bg-transparent" data-story-dot data-index={index} data-state={index === 0 ? 'active' : 'inactive'}></span>
+                <span class="story-rail-label font-heading uppercase tracking-[0.22em] text-[0.68rem]" data-story-label data-index={index} data-state={index === 0 ? 'active' : 'inactive'}>{beat.number} {beat.label}</span>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <div class="story-ball-system absolute z-20" data-story-ball aria-hidden="true">
+          <div class="story-ball-pulse">
+            <img class="story-ball-image" src="/images/home-storyboard/joner-ball-concept.svg" alt="" />
+          </div>
+        </div>
+
+        {storyBeats.map((beat, index) => (
+          <article class="story-copy z-40" data-story-copy data-index={index} data-pos={beat.copyPos} data-state={index === 0 ? 'active' : 'inactive'}>
+            <p class="story-kicker font-heading uppercase text-joner-red text-xs mb-5">{beat.kicker || `${beat.number} / ${beat.label}`}</p>
+            {index === 0 ? (
+              <h1 class="story-copy-title font-heading uppercase leading-[0.9] text-white text-6xl xl:text-8xl">
+                {beat.title}
+              </h1>
+            ) : (
+              <h2 class:list={["story-copy-title font-heading uppercase leading-[0.9] text-white", beat.copyPos === 'center' ? 'text-5xl xl:text-7xl' : 'text-4xl xl:text-6xl']}>
+                {beat.title}
+              </h2>
+            )}
+            {beat.body && (
+              <p class="story-body font-body text-lg xl:text-xl text-white/76 leading-relaxed mt-6 max-w-[32rem]">{beat.body}</p>
+            )}
+          </article>
+        ))}
+
+        {storyBeats.map((beat, index) => (
+          <div class="story-overlay absolute inset-0 z-30" data-story-overlay data-index={index} data-state={index === 0 ? 'active' : 'inactive'} hidden={index !== 0}>
+            {beat.overlay === 'origin' && (
+              <div class="absolute right-[9vw] top-[22vh] w-[24rem] max-w-[30vw]">
+                <div class="border-l border-[#E30613] pl-6">
+                  <p class="font-heading text-7xl leading-none text-white">EST 2013</p>
+                </div>
+              </div>
+            )}
+
+            {beat.overlay === 'growth' && (
+              <div class="absolute right-[6vw] top-[15vh] w-[38vw] max-w-[40rem]">
+                <div class="metric-card p-6">
+                  <p class="story-kicker font-heading text-[0.68rem] uppercase text-[#E30613]">Social growth</p>
+                  <div class="mt-4 flex items-end justify-between gap-4">
+                    <p class="font-heading text-8xl leading-none text-white" data-growth-count data-growth-target={stats[0].target} data-growth-format={stats[0].format}>{stats[0].value}</p>
+                    <div class="flex h-40 flex-1 items-end gap-2">
+                      {[18, 32, 48, 66, 88, 100].map((height) => (
+                        <span class="growth-bar block flex-1 bg-[#E30613]" style={`height: ${height}%; opacity: ${0.32 + height / 150};`}></span>
+                      ))}
+                    </div>
+                  </div>
+                  <div class="mt-5 grid grid-cols-3 gap-2">
+                    {stats.slice(1).map((stat) => (
+                      <div class="border border-white/12 bg-white/8 p-3">
+                        <p class="font-heading text-2xl leading-none text-white" data-growth-count data-growth-target={stat.target} data-growth-format={stat.format}>{stat.value}</p>
+                        <p class="story-kicker mt-2 font-heading text-[0.54rem] uppercase text-white/54">{stat.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  {platforms.map((platform) => (
+                    <span class="border border-white/14 bg-white/8 px-3 py-2 font-heading text-[0.68rem] uppercase tracking-[0.2em] text-white/72">{platform}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {beat.overlay === 'paths' && (
+              <div class="absolute inset-x-0 bottom-[5vh] mx-auto grid w-[74vw] max-w-5xl grid-cols-3 gap-4">
+                {paths.map((path) => (
+                  <a class="path-card group block p-6 transition hover:border-[#E30613] hover:bg-[#E30613]/10" href={path.href}>
+                    <p class="story-kicker font-heading text-[0.68rem] uppercase text-[#E30613]">Choose</p>
+                    <h3 class="mt-3 font-heading text-4xl uppercase leading-none text-white">{path.title}</h3>
+                    <p class="mt-4 font-body text-sm leading-relaxed text-white/68">{path.text}</p>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="bg-[#0A0A0A] text-white md:hidden border-y border-white/10" data-mobile-story-shell>
+      <div class="sticky top-16 z-20 border-b border-white/10 bg-[#0A0A0A]/95 backdrop-blur">
+        <div class="mx-auto max-w-7xl px-4 py-4">
+          <div class="mb-3 flex items-center justify-between gap-4">
+            <p class="story-kicker font-heading text-[11px] uppercase text-joner-red">Joner Story</p>
+            <p class="font-heading text-[11px] uppercase tracking-[0.24em] text-white/55" data-mobile-label>01 / 08</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            {storyBeats.map((beat, index) => (
+              <div class="mobile-progress-dot h-2 flex-1 border border-white/20 bg-white/10" data-mobile-dot data-index={index} data-state={index === 0 ? 'active' : 'inactive'}></div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div class="mx-auto max-w-7xl bg-[#0A0A0A] px-4 py-8 pb-24">
+        {storyBeats.map((beat, index) => (
+          <article class="mobile-story-card mb-6 flex flex-col justify-end overflow-hidden border border-white/10 bg-[#101010] p-5 relative" data-mobile-card data-index={index}>
+            {beat.video ? (
+              <video
+                class="absolute inset-0 h-full w-full object-cover opacity-70"
+                aria-label={beat.alt}
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                poster={beat.mobileImage || beat.image}
+                style={beat.objectPosition ? `object-position: ${beat.objectPosition};` : undefined}
+              >
+                <source src={beat.video} type="video/mp4" />
+              </video>
+            ) : (
+              <img class="absolute inset-0 h-full w-full object-cover opacity-70" src={beat.mobileImage || beat.image} alt={beat.alt} loading={index === 0 ? 'eager' : 'lazy'} style={beat.objectPosition ? `object-position: ${beat.objectPosition};` : undefined} />
+            )}
+            <div class="absolute inset-0 bg-gradient-to-t from-black via-black/62 to-black/10"></div>
+            <div class="story-mini-ball left-[var(--mobile-x)] top-[var(--mobile-y)] h-14 w-14 -translate-x-1/2 -translate-y-1/2" style={`--mobile-x: ${beat.markerX}%; --mobile-y: ${beat.markerY}%;`}></div>
+            <div class="relative z-10">
+              <p class="story-kicker mb-4 font-heading text-[11px] uppercase text-joner-red">{beat.kicker || `${beat.number} / ${beat.label}`}</p>
+              {index === 0 ? (
+                <h1 class="font-heading text-5xl uppercase leading-[0.9] text-white">{beat.title}</h1>
+              ) : (
+                <h2 class="font-heading text-4xl uppercase leading-none text-white">{beat.title}</h2>
+              )}
+              {beat.body && (
+                <p class="mt-4 font-body text-base leading-relaxed text-white/76">{beat.body}</p>
+              )}
+              {beat.overlay === 'growth' && (
+                <div class="mt-5 grid grid-cols-2 gap-2">
+                  {stats.slice(0, 2).map((stat) => (
+                    <div class="border border-white/14 bg-white/8 p-3">
+                      <p class="font-heading text-2xl leading-none text-white">{stat.value}</p>
+                      <p class="story-kicker mt-2 font-heading text-[0.55rem] uppercase text-white/58">{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {beat.overlay === 'paths' && (
+                <div class="mt-5 grid grid-cols-3 gap-2">
+                  {paths.map((path) => (
+                    <a class="border border-white/14 bg-white/8 px-2 py-3 text-center font-heading text-[0.68rem] uppercase tracking-[0.18em] text-white" href={path.href}>{path.title}</a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="bg-white py-16 text-joner-black md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-12 max-w-3xl">
+          <p class="story-kicker mb-4 font-heading text-xs uppercase text-joner-red md:text-sm">Static Keyframes</p>
+          <h2 class="mb-5 font-heading text-4xl uppercase leading-none md:text-6xl">Eight stills before the final animation.</h2>
+          <p class="font-body text-lg leading-relaxed text-gray-700 md:text-xl">
+            These are the standalone story frames Lee can compare beside Lightweight before we commit to the final scroll animation.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {storyBeats.map((beat) => (
+            <article class="keyframe-card relative overflow-hidden border border-gray-200 bg-black text-white">
+              <img class="absolute inset-0 h-full w-full object-cover opacity-72" src={beat.image} alt={beat.alt} loading="lazy" style={beat.objectPosition ? `object-position: ${beat.objectPosition};` : undefined} />
+              <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+              <div class="story-mini-ball left-[var(--kf-x)] top-[var(--kf-y)] h-14 w-14 -translate-x-1/2 -translate-y-1/2" style={`--kf-x: ${beat.markerX}%; --kf-y: ${beat.markerY}%;`}></div>
+              <div class="relative z-10 flex h-full min-h-[26rem] flex-col justify-end p-6 md:p-8">
+                <p class="story-kicker mb-4 font-heading text-[0.68rem] uppercase text-joner-red">{beat.kicker || `${beat.number} / ${beat.label}`}</p>
+                <h3 class="font-heading text-4xl uppercase leading-none md:text-5xl">{beat.title}</h3>
+                {beat.body && (
+                  <p class="mt-4 max-w-lg font-body text-sm leading-relaxed text-white/72 md:text-base">{beat.body}</p>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script is:inline>
+    (function () {
+      var beatMarkers = [
+        { x: 24, y: 43 },
+        { x: 16, y: 88 },
+        { x: 77, y: 82 },
+        { x: 72, y: 79 },
+        { x: 50, y: 55 },
+        { x: 55, y: 52 },
+        { x: 37, y: 62 },
+        { x: 51, y: 56 }
+      ];
+
+      function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+      }
+
+      function initDesktopStory() {
+        var shell = document.querySelector('[data-story-shell]');
+        if (!shell) return;
+
+        var copies = Array.prototype.slice.call(shell.querySelectorAll('[data-story-copy]'));
+        var backgrounds = Array.prototype.slice.call(shell.querySelectorAll('[data-story-bg]'));
+        var overlays = Array.prototype.slice.call(shell.querySelectorAll('[data-story-overlay]'));
+        var dots = Array.prototype.slice.call(shell.querySelectorAll('[data-story-dot]'));
+        var labels = Array.prototype.slice.call(shell.querySelectorAll('[data-story-label]'));
+        var growthCounters = Array.prototype.slice.call(shell.querySelectorAll('[data-growth-count]'));
+        var total = copies.length;
+
+        function formatGrowth(value, format) {
+          if (format === 'millions') {
+            return (value / 1000000).toFixed(value > 1900000 ? 0 : 1).replace('.0', '') + 'M+';
+          }
+
+          if (format === 'thousands') {
+            return Math.round(value / 1000) + 'K+';
+          }
+
+          if (format === 'comma') {
+            return Math.round(value).toLocaleString('en-US') + '+';
+          }
+
+          return Math.round(value) + '+';
+        }
+
+        function apply(nextIndex, progress) {
+          var marker = beatMarkers[nextIndex] || beatMarkers[0];
+          var localProgress = clamp((progress * total) - nextIndex, 0, 1);
+          var growthProgress = nextIndex < 2 ? 0 : nextIndex > 2 ? 1 : localProgress;
+          var easedGrowth = 1 - Math.pow(1 - growthProgress, 3);
+
+          shell.dataset.active = String(nextIndex);
+          shell.style.setProperty('--story-progress', String(progress));
+          shell.style.setProperty('--growth-progress', String(growthProgress));
+          shell.style.setProperty('--marker-x', marker.x + '%');
+          shell.style.setProperty('--marker-y', marker.y + '%');
+
+          growthCounters.forEach(function (counter) {
+            var target = Number(counter.getAttribute('data-growth-target')) || 0;
+            var format = counter.getAttribute('data-growth-format') || 'plain';
+            counter.textContent = formatGrowth(target * easedGrowth, format);
+          });
+
+          copies.forEach(function (copy, index) {
+            copy.setAttribute('data-state', index === nextIndex ? 'active' : 'inactive');
+          });
+
+          backgrounds.forEach(function (background, index) {
+            background.setAttribute('data-state', index === nextIndex ? 'active' : 'inactive');
+          });
+
+          overlays.forEach(function (overlay, index) {
+            var active = index === nextIndex;
+            overlay.hidden = !active;
+            overlay.setAttribute('data-state', active ? 'active' : 'inactive');
+          });
+
+          dots.forEach(function (dot, index) {
+            dot.setAttribute('data-state', index === nextIndex ? 'active' : 'inactive');
+          });
+
+          labels.forEach(function (label, index) {
+            label.setAttribute('data-state', index === nextIndex ? 'active' : 'inactive');
+          });
+        }
+
+        function update() {
+          var rect = shell.getBoundingClientRect();
+          var scrollable = shell.offsetHeight - window.innerHeight;
+          var progress = scrollable > 0 ? clamp(-rect.top / scrollable, 0, 1) : 0;
+          var index = Math.min(total - 1, Math.floor(progress * total));
+          apply(index, progress);
+        }
+
+        window.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        update();
+      }
+
+      function initMobileStory() {
+        var shell = document.querySelector('[data-mobile-story-shell]');
+        if (!shell) return;
+
+        var cards = Array.prototype.slice.call(shell.querySelectorAll('[data-mobile-card]'));
+        var dots = Array.prototype.slice.call(shell.querySelectorAll('[data-mobile-dot]'));
+        var label = shell.querySelector('[data-mobile-label]');
+
+        function activate(index) {
+          dots.forEach(function (dot, dotIndex) {
+            dot.setAttribute('data-state', dotIndex === index ? 'active' : 'inactive');
+          });
+
+          if (label) {
+            label.textContent = String(index + 1).padStart(2, '0') + ' / ' + String(cards.length).padStart(2, '0');
+          }
+        }
+
+        if ('IntersectionObserver' in window) {
+          var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                activate(Number(entry.target.getAttribute('data-index')) || 0);
+              }
+            });
+          }, { threshold: 0.54 });
+
+          cards.forEach(function (card) { observer.observe(card); });
+        } else {
+          activate(0);
+        }
+      }
+
+      initDesktopStory();
+      initMobileStory();
+    })();
+  </script>
+</BaseLayout>

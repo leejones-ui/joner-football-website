@@ -1,0 +1,73 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import WhatWeDoCarousel from '../components/WhatWeDoCarousel.astro'
+import SocialProofBar from '../components/SocialProofBar.astro'
+import AudienceRouter from '../components/AudienceRouter.astro'
+import TechniqueTestCTA from '../components/TechniqueTestCTA.astro'
+import AppShowcase from '../components/AppShowcase.astro'
+import YouTubeShorts from '../components/YouTubeShorts.astro'
+import CampHighlights from '../components/CampHighlights.astro'
+import TestimonialCarousel from '../components/TestimonialCarousel.astro'
+import EmailCapture from '../components/EmailCapture.astro'
+---
+
+<BaseLayout
+  title="Joner Football | Technique Above Everything"
+  description="Joner Football. Elite football coaching, 1,500+ training drills, global camps, and the world's best coaching app. Train with Coach Joner. Technique above everything."
+>
+  <WhatWeDoCarousel />
+  <SocialProofBar />
+
+  <section class="bg-joner-red py-10 md:py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+      <div>
+        <p class="font-heading text-white/75 text-xs uppercase tracking-widest mb-2">New free area</p>
+        <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase leading-none">Joner Football Hub</h2>
+        <p class="text-white/85 font-body mt-3 max-w-2xl">Technique Test, weekly challenges, blogs, coach notes, camps and quick links back into the app.</p>
+      </div>
+      <a href="/hub" class="bg-white text-joner-red font-heading font-bold uppercase tracking-wide px-8 py-4 text-center hover:bg-gray-100 transition-colors">Open The Hub</a>
+    </div>
+  </section>
+
+  <AudienceRouter />
+  <TechniqueTestCTA />
+  <AppShowcase />
+  <YouTubeShorts />
+  <CampHighlights />
+  <TestimonialCarousel />
+
+  <!-- Partners Bar -->
+  <section class="bg-joner-black border-t border-gray-800 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <p class="text-center text-gray-500 font-heading text-xs uppercase tracking-widest mb-6">Official Partners</p>
+      <div class="flex flex-wrap justify-center items-center gap-4">
+        <div class="flex flex-col items-center gap-2">
+          <div class="bg-joner-black border border-white flex items-center justify-center" style="width:160px;height:80px">
+            <img src="/images/partners/mizuno.png" alt="Mizuno" style="height:40px;object-fit:contain;filter:brightness(0) invert(1);" />
+          </div>
+          <div class="text-gray-500 text-xs font-body">Official Equipment Partner</div>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div class="bg-joner-black border border-white flex items-center justify-center" style="width:160px;height:80px">
+            <img src="/images/partners/sklz.png" alt="SKLZ" style="height:40px;object-fit:contain;filter:brightness(0) invert(1);" />
+          </div>
+          <div class="text-gray-500 text-xs font-body">Training Equipment Partner</div>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div class="bg-joner-black border border-white flex items-center justify-center" style="width:160px;height:80px">
+            <span class="font-heading text-white uppercase text-xl tracking-wider font-bold">FPA</span>
+          </div>
+          <div class="text-gray-500 text-xs font-body">Strength & Conditioning Partner</div>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div class="bg-joner-black border border-white flex items-center justify-center" style="width:160px;height:80px">
+            <span class="font-heading text-white uppercase text-lg tracking-wider font-bold">Full Ninety</span>
+          </div>
+          <div class="text-gray-500 text-xs font-body">Tactical Analysis Partner</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <EmailCapture />
+</BaseLayout>

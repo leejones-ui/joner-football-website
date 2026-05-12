@@ -178,28 +178,32 @@ const faqs = [
 
     <section id="what-you-get" class="scroll-mt-24 bg-joner-black py-16 md:py-24">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16 lg:items-center">
-          <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a0a0a] via-black to-[#0a0a1a]">
-            <img src="/images/training/jfp/jfp-training-3.webp" alt="JFP player training with energy and detail" class="h-full min-h-[360px] w-full object-cover opacity-90" loading="lazy" />
-            <div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent"></div>
-            <div class="absolute bottom-0 left-0 right-0 p-6">
-              <p class="mb-2 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Our training comes with energy</p>
-              <h2 class="font-heading text-3xl font-bold uppercase leading-tight text-white md:text-5xl">Technical work. Real intensity.</h2>
-            </div>
-          </div>
+        <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-black">
+          <img
+            src="/images/training/jfp/jfp-what-you-get.png"
+            alt="Lee Jones outside the Joner Football HQ in Belrose"
+            class="absolute inset-0 h-full w-full object-cover object-[70%_center] md:object-[75%_center]"
+            loading="lazy"
+          />
+          <div class="absolute inset-0 bg-gradient-to-r from-black via-black/85 to-black/30 md:from-black md:via-black/80 md:to-transparent"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent md:hidden"></div>
 
-          <div>
-            <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">What players get</p>
-            <h2 class="mb-8 font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl">Better habits every term.</h2>
-            <div class="mb-8 grid grid-cols-1 gap-3">
-              {points.map((point) => (
-                <div class="flex gap-3 rounded-lg border border-white/10 bg-white/5 p-4 font-heading text-base uppercase leading-snug tracking-wide text-white md:text-lg">
-                  <span class="text-joner-red">✓</span>
-                  <span>{point}</span>
-                </div>
-              ))}
+          <div class="relative z-10 px-6 py-12 sm:px-10 sm:py-16 md:px-14 md:py-20 lg:py-28">
+            <div class="max-w-xl">
+              <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red sm:text-sm">What players get</p>
+              <h2 class="mb-8 font-heading text-4xl font-bold uppercase leading-tight text-white sm:text-5xl md:text-6xl">
+                Better habits every term.
+              </h2>
+              <ul class="mb-10 space-y-3">
+                {points.map((point) => (
+                  <li class="flex items-start gap-3 font-heading text-sm uppercase leading-snug tracking-wide text-white sm:text-base md:text-lg">
+                    <span class="mt-[2px] inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-joner-red text-[10px] font-bold text-white sm:h-6 sm:w-6 sm:text-xs">✓</span>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+              <a href="#training-form" class="btn-red text-sm">Book Now</a>
             </div>
-            <a href="#training-form" class="btn-red text-sm">Book Now</a>
           </div>
         </div>
       </div>

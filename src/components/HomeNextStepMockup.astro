@@ -1,0 +1,386 @@
+---
+export interface Props {
+  backgroundImage?: string
+}
+
+const {
+  backgroundImage = '/images/home-storyboard/08-choose-next-step-alt.webp',
+} = Astro.props
+
+const links = [
+  { label: 'The APP', href: '/app', icon: 'phone', aria: 'Explore the Joner Football App' },
+  { label: 'Train in Person', href: '/training', icon: 'people', aria: 'Find Joner Football in-person training' },
+  { label: 'Coaches Section', href: '/app/for-coaches', icon: 'whistle', aria: 'Open the coaches section' },
+  { label: 'Elite Camps', href: '/camps', icon: 'trophy', aria: 'View Joner Football elite camps' },
+  { label: 'Workshops', href: '/workshops', icon: 'cap', aria: 'View Joner Football workshops' },
+  { label: 'The JF HUB', href: '/hub', icon: 'shield', aria: 'Open the Joner Football Hub' },
+  { label: 'Player', href: '/app', icon: 'player', aria: 'Start as a player' },
+  { label: 'Parent', href: '/training#joners-juniors', icon: 'parent', aria: 'Find a pathway as a parent' },
+  { label: 'Coach', href: '/app/for-coaches', icon: 'clipboard', aria: 'Start as a coach' },
+]
+
+const icons: Record<string, string> = {
+  phone: '<svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.4"/><path d="M11 18.5h2"/></svg>',
+  people: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.1"/><path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.3"/><path d="M15.6 13.7c2.6.5 4.4 2.7 4.4 5.3"/></svg>',
+  whistle: '<svg viewBox="0 0 24 24"><path d="M3 13a5 5 0 0 1 5-5h9l4-2v9a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5z"/><circle cx="8.4" cy="13" r="1.45"/></svg>',
+  trophy: '<svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 3"/><path d="M16 6h3a3 3 0 0 1-3 3"/><path d="M10 13v3h4v-3"/><path d="M8 20h8M12 16v4"/></svg>',
+  cap: '<svg viewBox="0 0 24 24"><path d="M2 9l10-4 10 4-10 4z"/><path d="M6 11v4c0 1.5 2.7 3 6 3s6-1.5 6-3v-4"/><path d="M22 9v5"/></svg>',
+  shield: '<svg viewBox="0 0 24 24"><path d="M4 4h16v4l-1.5 1v8.5L12 21l-6.5-3.5V9L4 8z"/><path d="M9 8.5v5a2 2 0 0 1-2 2"/><path d="M13 8.5h4M13 11.5h3"/></svg>',
+  player: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="2.35"/><path d="M8.8 21l1.1-6 2.7-1.5 2.8 1.5 1 6"/><path d="M9.5 12.8l-3.1.7M14.6 12.8l3 .7"/><circle cx="6.5" cy="19.2" r="1.35"/></svg>',
+  parent: '<svg viewBox="0 0 24 24"><circle cx="8" cy="7" r="2.6"/><circle cx="16" cy="8" r="2.2"/><path d="M3 20c0-2.8 2.2-5 5-5s5 2.2 5 5"/><path d="M13 20c0-2.4 1.8-4.4 4-4.4s4 2 4 4.4"/></svg>',
+  clipboard: '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="2"/><rect x="9" y="2.5" width="6" height="3" rx="1"/><path d="M9 10h6M9 13.5h6M9 17h4"/></svg>',
+}
+---
+
+<section
+  class="home-next-step"
+  style={`--next-step-bg: url("${backgroundImage}");`}
+  aria-labelledby="home-next-step-title"
+>
+  <div class="next-step-content">
+    <header class="next-step-header">
+      <h2 id="home-next-step-title" class="next-step-title">
+        <span>Choose Your</span>
+        <span>Next Step</span>
+      </h2>
+      <span class="next-step-rule" aria-hidden="true"></span>
+      <p>Elite training. Real development. Lasting impact.</p>
+    </header>
+
+    <nav class="next-step-grid" aria-label="Choose your Joner Football next step">
+      {links.map((link) => (
+        <a class="next-step-card" href={link.href} aria-label={link.aria}>
+          <span class="next-step-icon" aria-hidden="true" set:html={icons[link.icon]}></span>
+          <span class="next-step-divider" aria-hidden="true"></span>
+          <span class="next-step-label">{link.label}</span>
+          <span class="next-step-arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 12h11M12 7l5 5-5 5" />
+            </svg>
+          </span>
+        </a>
+      ))}
+    </nav>
+  </div>
+</section>
+
+<style>
+  .home-next-step {
+    --next-step-red: #e30613;
+    position: relative;
+    min-height: clamp(44rem, 56vw, 60rem);
+    overflow: hidden;
+    isolation: isolate;
+    background-image:
+      radial-gradient(circle at 86% 72%, rgba(227,6,19,0.16), transparent 20rem),
+      linear-gradient(90deg, #020202 0%, rgba(2,2,2,0.98) 28%, rgba(2,2,2,0.78) 56%, rgba(2,2,2,0.28) 100%),
+      var(--next-step-bg);
+    background-size: cover;
+    background-position: center;
+    color: #fff;
+  }
+
+  .home-next-step::before,
+  .home-next-step::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .home-next-step::before {
+    left: -3rem;
+    top: -4rem;
+    width: 10rem;
+    height: 27rem;
+    border-right: 0.42rem solid rgba(227,6,19,0.82);
+    border-top: 0.42rem solid rgba(227,6,19,0.82);
+    transform: skewX(-34deg);
+  }
+
+  .home-next-step::after {
+    right: -5rem;
+    bottom: -7rem;
+    width: clamp(15rem, 19vw, 21rem);
+    aspect-ratio: 1;
+    border: 1px solid rgba(227,6,19,0.6);
+    border-radius: 999px;
+    box-shadow:
+      inset 0 0 0 0.75rem transparent,
+      inset 0 0 0 1.55rem rgba(227,6,19,0.38),
+      inset 0 0 0 2.35rem transparent,
+      inset 0 0 0 3.15rem rgba(227,6,19,0.32),
+      inset 0 0 0 3.95rem transparent,
+      inset 0 0 0 4.75rem rgba(227,6,19,0.25);
+  }
+
+  .next-step-content {
+    width: min(100%, 72rem);
+    padding: clamp(5rem, 9vw, 9rem) clamp(1.25rem, 8.5vw, 9rem) clamp(4rem, 7vw, 7rem);
+  }
+
+  .next-step-header {
+    max-width: 38rem;
+  }
+
+  .next-step-title {
+    margin: 0;
+    font-family: 'Anton', Impact, 'Arial Narrow Bold', sans-serif;
+    font-size: clamp(4.4rem, 7.4vw, 7.35rem);
+    font-weight: 900;
+    line-height: 0.88;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+    text-shadow: 0 1.25rem 2.6rem rgba(0,0,0,0.7);
+  }
+
+  .next-step-title span {
+    display: block;
+  }
+
+  .next-step-title span:last-child {
+    color: var(--next-step-red);
+  }
+
+  .next-step-rule {
+    display: block;
+    width: 4.25rem;
+    height: 3px;
+    margin: 1.12rem 0 0.78rem;
+    background: var(--next-step-red);
+    box-shadow: 0 0 1rem rgba(227,6,19,0.48);
+  }
+
+  .next-step-header p {
+    margin: 0;
+    font-size: clamp(0.72rem, 0.86vw, 0.86rem);
+    font-weight: 800;
+    letter-spacing: 0.24em;
+    line-height: 1.45;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.88);
+  }
+
+  .next-step-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(0.7rem, 0.95vw, 0.9rem);
+    width: min(100%, 63.5rem);
+    margin-top: clamp(1.55rem, 2vw, 2rem);
+  }
+
+  .next-step-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: clamp(0.82rem, 1.1vw, 1.16rem);
+    min-height: clamp(6.2rem, 6.6vw, 7.05rem);
+    min-width: 0;
+    padding: clamp(0.95rem, 1.2vw, 1.2rem);
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.32);
+    border-radius: 0.38rem;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.01)),
+      rgba(5,5,5,0.74);
+    color: #fff;
+    text-decoration: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.14),
+      0 1rem 2.2rem rgba(0,0,0,0.25);
+    backdrop-filter: blur(14px) saturate(1.16);
+    transition:
+      transform 240ms cubic-bezier(.22,1,.36,1),
+      border-color 240ms ease,
+      background-color 240ms ease,
+      box-shadow 240ms ease;
+  }
+
+  .next-step-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(227,6,19,0.24), transparent 42%),
+      linear-gradient(90deg, rgba(227,6,19,0.14), transparent 42%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 240ms ease;
+  }
+
+  .next-step-card:hover,
+  .next-step-card:focus-visible {
+    transform: translateY(-4px);
+    border-color: rgba(255,255,255,0.76);
+    background-color: rgba(14,4,4,0.9);
+    box-shadow:
+      inset 0 0 0 1px rgba(227,6,19,0.52),
+      0 1.35rem 2.75rem rgba(0,0,0,0.36),
+      0 0 2.2rem rgba(227,6,19,0.26);
+    outline: none;
+  }
+
+  .next-step-card:hover::before,
+  .next-step-card:focus-visible::before {
+    opacity: 1;
+  }
+
+  .next-step-card:active {
+    transform: translateY(-1px);
+    transition-duration: 80ms;
+  }
+
+  .next-step-icon,
+  .next-step-divider,
+  .next-step-label,
+  .next-step-arrow {
+    position: relative;
+    z-index: 1;
+  }
+
+  .next-step-icon {
+    display: grid;
+    place-items: center;
+    width: clamp(2.22rem, 2.55vw, 2.65rem);
+    height: clamp(2.22rem, 2.55vw, 2.65rem);
+  }
+
+  .next-step-icon :global(svg) {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .next-step-icon :global(circle[fill]),
+  .next-step-icon :global(path[fill]) {
+    fill: currentColor;
+  }
+
+  .next-step-divider {
+    height: clamp(3.2rem, 3.8vw, 4rem);
+    width: 1px;
+    background: var(--next-step-red);
+    box-shadow: 0 0 1rem rgba(227,6,19,0.48);
+  }
+
+  .next-step-label {
+    min-width: 0;
+    font-family: 'Anton', Impact, 'Arial Narrow Bold', sans-serif;
+    font-size: clamp(1.38rem, 1.72vw, 1.84rem);
+    line-height: 0.96;
+    color: #fff;
+    text-shadow: 0 0.6rem 1.35rem rgba(0,0,0,0.62);
+  }
+
+  .next-step-arrow {
+    display: grid;
+    place-items: center;
+    width: clamp(1.95rem, 2.2vw, 2.25rem);
+    height: clamp(1.95rem, 2.2vw, 2.25rem);
+    border-radius: 999px;
+    background: var(--next-step-red);
+    color: #050505;
+    box-shadow: 0 0 1rem rgba(227,6,19,0.38);
+    transition:
+      transform 240ms cubic-bezier(.22,1,.36,1),
+      background-color 240ms ease,
+      color 240ms ease;
+  }
+
+  .next-step-arrow svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .next-step-card:hover .next-step-arrow,
+  .next-step-card:focus-visible .next-step-arrow {
+    transform: translateX(0.26rem) scale(1.05);
+    background: #ff1d24;
+    color: #fff;
+  }
+
+  @media (max-width: 980px) {
+    .home-next-step {
+      min-height: auto;
+      background-position: 62% center;
+    }
+
+    .next-step-content {
+      padding: 5rem 1.25rem;
+    }
+
+    .next-step-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 620px) {
+    .home-next-step {
+      background-image:
+        linear-gradient(180deg, rgba(2,2,2,0.96), rgba(2,2,2,0.82)),
+        var(--next-step-bg);
+      background-position: 66% center;
+    }
+
+    .next-step-content {
+      padding: 4rem 1rem;
+    }
+
+    .next-step-title {
+      font-size: clamp(3.1rem, 15vw, 4.6rem);
+    }
+
+    .next-step-header p {
+      max-width: 24rem;
+      font-size: 0.66rem;
+      letter-spacing: 0.17em;
+    }
+
+    .next-step-grid {
+      grid-template-columns: 1fr;
+      gap: 0.55rem;
+    }
+
+    .next-step-card {
+      min-height: 4.35rem;
+      padding: 0.74rem 0.78rem;
+      gap: 0.76rem;
+    }
+
+    .next-step-icon {
+      width: 1.95rem;
+      height: 1.95rem;
+    }
+
+    .next-step-divider {
+      height: 2.7rem;
+    }
+
+    .next-step-label {
+      font-size: 1.14rem;
+    }
+
+    .next-step-arrow {
+      width: 1.85rem;
+      height: 1.85rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .next-step-card,
+    .next-step-card::before,
+    .next-step-arrow {
+      transition: none;
+    }
+  }
+</style>
