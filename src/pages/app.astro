@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
+import HighlightsCarousel from '../components/HighlightsCarousel.astro'
+import CloserLook from '../components/CloserLook.astro'
 
 const appSchema = {
   "@context": "https://schema.org",
@@ -142,6 +144,8 @@ const appSchema = {
     </div>
   </section>
 
+  <HighlightsCarousel />
+
   <!-- SECTION 3: 100-Day Programme Spotlight -->
   <section class="bg-joner-black py-20 md:py-28">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -258,6 +262,8 @@ const appSchema = {
       </div>
     </div>
   </section>
+
+  <CloserLook />
 
   <!-- INSIDE THE APP: Screenshots -->
   <section class="bg-joner-black py-20 md:py-28">
