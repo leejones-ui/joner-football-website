@@ -137,7 +137,7 @@ const teamFeatures = [
         <div class="join-cards">
           {plans.map((plan) => (
             <article class:list={['join-card', plan.featured && 'join-card--featured']}>
-              {plan.badge && <div class="join-badge">{plan.badge}</div>}
+              {plan.badge && <div class="join-badge join-badge--floating">{plan.badge}</div>}
               <img class="join-card__image" src={plan.image} alt={plan.alt} loading="lazy" decoding="async" />
               <div class="join-card__body">
                 <h2>{plan.name}</h2>
@@ -158,7 +158,7 @@ const teamFeatures = [
           ))}
 
           <article class="join-card join-card--club">
-            <div class="join-badge join-badge--club">TEAMS &amp; CLUBS</div>
+            <div class="join-badge join-badge--floating join-badge--club">TEAMS &amp; CLUBS</div>
             <img class="join-card__image" src="/images/join-live/teams.webp" alt="Team Subscriptions" loading="lazy" decoding="async" />
             <div class="join-card__body">
               <h2>Club Subscriptions</h2>
@@ -281,14 +281,15 @@ const teamFeatures = [
     .join-hero p { max-width: 680px; margin: .8rem 0 .65rem; color: #222; font-size: clamp(1rem, 1.5vw, 1.15rem); font-weight: 650; }
     .join-location { display: inline-flex; border-radius: 999px; background: #f1f1f1; color: #777; padding: .45rem .85rem; font-size: .82rem; font-weight: 700; }
     .join-pricing { padding: 2.25rem 0 3rem; background: #fff; }
-    .join-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; align-items: stretch; }
-    .join-card { position: relative; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #dedede; border-radius: .9rem; background: #fff; color: #111; box-shadow: 0 14px 34px rgba(0,0,0,.08); }
+    .join-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; align-items: stretch; padding-top: 2.15rem; }
+    .join-card { position: relative; overflow: visible; display: flex; flex-direction: column; border: 1px solid #dedede; border-radius: .9rem; background: #fff; color: #111; box-shadow: 0 14px 34px rgba(0,0,0,.08); }
     .join-card--featured { border-color: #E30613; box-shadow: 0 18px 44px rgba(227,6,19,.14); }
     .join-card--club { background: #111; color: #fff; border-color: #111; }
-    .join-badge { position: absolute; z-index: 2; left: 0; right: 0; top: 0; border-radius: .8rem .8rem 0 0; background: #E30613; color: #fff; padding: .55rem .85rem; text-align: center; font-family: 'Anton', Impact, sans-serif; font-size: .9rem; letter-spacing: .11em; }
+    .join-badge { background: #E30613; color: #fff; text-align: center; font-family: 'Anton', Impact, sans-serif; font-size: .9rem; letter-spacing: .11em; }
+    .join-badge--floating { position: absolute; left: -1px; right: -1px; top: -2.15rem; z-index: 2; display: flex; align-items: center; justify-content: center; min-height: 2.15rem; padding: .45rem .85rem; border-radius: .8rem .8rem 0 0; }
+    .join-badge-spacer { display: block; }
     .join-badge--club { background: #E30613; }
-    .join-card__image { display: block; width: 100%; height: 158px; object-fit: cover; }
-    .join-card--featured .join-card__image, .join-card--club .join-card__image { padding-top: 2rem; box-sizing: content-box; }
+    .join-card__image { display: block; width: 100%; height: 190px; object-fit: cover; border-radius: .82rem .82rem 0 0; }
     .join-card__body { display: flex; flex-direction: column; flex: 1; padding: 1.15rem 1.05rem 1.25rem; }
     .join-card h2 { min-height: 4.15rem; margin: 0; font-family: 'Anton', Impact, sans-serif; color: #c8212b; font-size: clamp(1.65rem, 2.2vw, 2.1rem); line-height: 1; letter-spacing: .02em; text-transform: none; }
     .join-card--club h2 { color: #fff; }
@@ -334,8 +335,8 @@ const teamFeatures = [
     .join-free-videos__form input:focus { border-color: #E30613; }
     .join-free-videos__form button { min-height: 3.1rem; border: 0; background: #E30613; color: #fff; padding: 0 1.2rem; font-family: 'Anton', Impact, sans-serif; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
     .join-free-videos small { display: block; margin-top: .9rem; color: rgba(255,255,255,.38); }
-    @media (max-width: 1120px) { .join-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 720px) { .join-cards { grid-template-columns: 1fr; } .join-card__image { height: 210px; } .join-rotate-note { display: block; } .join-free-videos__form { grid-template-columns: 1fr; } }
+    @media (max-width: 1120px) { .join-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 3.5rem; } }
+    @media (max-width: 720px) { .join-cards { grid-template-columns: 1fr; row-gap: 3.5rem; } .join-card__image { height: 210px; } .join-rotate-note { display: block; } .join-free-videos__form { grid-template-columns: 1fr; } }
     @media (max-width: 640px) { .join-wrap { width: min(100% - 24px, 1180px); } .join-hero { padding-top: 3.25rem; } .join-logo { width: min(190px, 58vw); } }
   </style>
 </BaseLayout>
