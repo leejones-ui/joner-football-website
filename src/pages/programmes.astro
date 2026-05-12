@@ -173,7 +173,7 @@ const faqs = [
                 <span class="p100-hero-cta-card__banner">First 7 days are free</span>
                 <a class="guar-btn guar-btn--red" href={HERO_SUBSCRIBE_LINK}>Subscribe Now</a>
               </div>
-              <a class="guar-btn guar-btn--ghost" href={HERO_BUNDLE_LINK} target="_blank" rel="noopener">Buy Full Bundle</a>
+              <a class="guar-btn guar-btn--ghost guar-btn--bundle" href={HERO_BUNDLE_LINK} target="_blank" rel="noopener">Buy Full Bundle</a>
             </div>
           </div>
         </div>
@@ -880,16 +880,37 @@ const faqs = [
     flex-shrink: 0;
   }
   .guar-copy__ctas {
-    display: flex;
-    align-items: flex-end;
-    gap: 12px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(176px, 1fr));
+    align-items: end;
+    gap: 14px;
+    width: min(100%, 390px);
     margin-top: clamp(22px, 2.4vw, 30px);
+    padding-top: 8px;
   }
-  .guar-cta-card { gap: 8px; padding-top: 0; }
+  .guar-cta-card {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 6px;
+    align-self: stretch;
+    padding-top: 0;
+  }
+  .guar-cta-card .p100-hero-cta-card__banner {
+    width: 100%;
+    min-height: 24px;
+    border-radius: 999px;
+    font-size: 0.58rem;
+    letter-spacing: 0.085em;
+    padding: 6px 10px 5px;
+  }
   .guar-btn {
-    padding: 16px 26px;
-    font-size: 0.9375rem;
+    width: 100%;
+    min-height: 54px;
+    padding: 15px 20px;
+    font-size: 0.9rem;
+  }
+  .guar-btn--bundle {
+    align-self: end;
   }
   .guar-cta-card .guar-btn { width: 100%; }
 
@@ -905,6 +926,11 @@ const faqs = [
     .guar-hero__stack { width: 100%; max-width: 100%; }
     .guar-badge { max-width: 320px; margin: 0 auto; }
     .guar-copy__title { font-size: clamp(1.875rem, 7vw, 2.5rem); }
+    .guar-copy__ctas {
+      grid-template-columns: 1fr;
+      width: 100%;
+      max-width: 360px;
+    }
   }
 
   /* TESTIMONIALS --------------------------------------------------- */
