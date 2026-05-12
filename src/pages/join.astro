@@ -254,14 +254,20 @@ const teamFeatures = [
         if (el = document.getElementById('location-badge')) el.textContent = 'Prices shown in ' + p.code + ' (' + p.country + ')';
       }
 
+      function regionFromCountryCode(countryCode) {
+        var c = countryCode || '';
+        return c === 'AU' ? 'AU' : c === 'US' ? 'US' : c === 'CA' ? 'CA' : c === 'GB' ? 'GB' : eurozone.indexOf(c) > -1 ? 'EUR' : 'US';
+      }
+
       fetch('https://ipapi.co/json/')
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          var c = d.country_code;
-          var region = c === 'AU' ? 'AU' : c === 'US' ? 'US' : c === 'CA' ? 'CA' : c === 'GB' ? 'GB' : eurozone.indexOf(c) > -1 ? 'EUR' : 'US';
-          update(region);
-        })
-        .catch(function() { update('US'); });
+        .then(function(r) { if (!r.ok) throw new Error('ipapi blocked'); return r.json(); })
+        .then(function(d) { update(regionFromCountryCode(d.country_code)); })
+        .catch(function() {
+          fetch('https://ipwho.is/')
+            .then(function(r) { if (!r.ok) throw new Error('ipwho blocked'); return r.json(); })
+            .then(function(d) { update(regionFromCountryCode(d.country_code)); })
+            .catch(function() { update('AU'); });
+        });
     })();
   </script>
 
