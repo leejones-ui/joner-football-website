@@ -4,13 +4,13 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
 const resources = [
   {
     title: 'Scanning Training Tool',
-    status: 'Coming Soon',
+    price: 'AUD 79.99',
     image: '/images/shop/resources-accessories/scanning-training-tool.webp',
     text: 'Reaction, turning, scanning, and decision-making training tools for players and coaches who want smarter sessions.',
   },
   {
     title: 'Numbers Tool',
-    status: 'Coming Soon',
+    price: 'AUD 24.99',
     image: '/images/shop/resources-accessories/numbers-training-tool.webp',
     text: 'A number-recognition tool for sharper awareness, quicker decisions, and more game-realistic scanning habits.',
   },
@@ -38,7 +38,7 @@ const resources = [
               <img src={resource.image} alt={resource.title} class="w-full aspect-[4/5] object-cover object-center transition-transform duration-500 group-hover:scale-105" loading="lazy" />
             </div>
             <div class="flex flex-1 flex-col p-5 md:p-6">
-              <div class="mb-4 inline-flex w-fit items-center bg-joner-red px-4 py-2 font-heading uppercase tracking-[0.08em] text-white text-lg shadow-lg shadow-joner-red/25">{resource.status}</div>
+              <div class="mb-4 inline-flex w-fit items-center bg-joner-red px-4 py-2 font-heading uppercase tracking-[0.08em] text-white text-lg shadow-lg shadow-joner-red/25">{resource.price}</div>
               <h2 class="font-heading uppercase text-3xl md:text-4xl leading-none mb-3">{resource.title}</h2>
               <p class="text-sm md:text-base leading-relaxed text-gray-600 mb-6">{resource.text}</p>
               <span class="btn-red mt-auto w-full text-center opacity-70 pointer-events-none">Coming Soon</span>
