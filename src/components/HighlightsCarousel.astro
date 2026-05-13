@@ -69,16 +69,18 @@ const slides: Slide[] = [
             loading={i === 0 ? 'eager' : 'lazy'}
           />
           <div class="absolute inset-0 bg-gradient-to-b from-black/35 via-black/5 to-black/45 pointer-events-none"></div>
-          <div class="relative z-10 p-7 sm:p-10 md:p-14 lg:p-16 max-w-[34rem]">
-            {slide.eyebrow && (
-              <p class="font-body text-white/90 text-sm md:text-base mb-3 tracking-wide">{slide.eyebrow}</p>
-            )}
-            <h3 class="font-body text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold leading-[1.08] highlights-headline">
-              {slide.title}
-            </h3>
-            {slide.note && (
-              <p class="mt-5 font-body text-white/85 text-xs sm:text-sm md:text-base highlights-note">{slide.note}</p>
-            )}
+          <div class="relative z-10 h-full p-7 sm:p-10 md:p-14 lg:p-16 flex items-center">
+            <div class="max-w-[34rem]">
+              {slide.eyebrow && (
+                <p class="font-body text-white/90 text-sm md:text-base mb-3 tracking-wide">{slide.eyebrow}</p>
+              )}
+              <h3 class="font-body text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold leading-[1.08] highlights-headline">
+                {slide.title}
+              </h3>
+              {slide.note && (
+                <p class="mt-5 font-body text-white/85 text-xs sm:text-sm md:text-base highlights-note">{slide.note}</p>
+              )}
+            </div>
           </div>
         </article>
       ))}
