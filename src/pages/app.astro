@@ -47,7 +47,7 @@ const sanityPage = await fetchSanityPage('app')
       playsinline
       preload="auto"
       poster="/images/app/screenshot-1.webp"
-      class="app-hero-bg-video hidden md:block absolute inset-0 w-full h-full object-cover z-0"
+      class="app-hero-bg-video absolute inset-0 w-full h-full object-cover z-0"
     >
       <source src="https://res.cloudinary.com/dmzisjwdf/video/upload/v1775278435/joner-website/hero-video.mp4" type="video/mp4" />
     </video>
@@ -480,7 +480,7 @@ const sanityPage = await fetchSanityPage('app')
       let isMobile = window.innerWidth < 768;
 
       const applyProgress = () => {
-        const progress = reducedMotion ? 1 : scrollProgress;
+        const progress = reducedMotion || isMobile ? 1 : scrollProgress;
         hero.style.setProperty('--hero-progress', progress.toFixed(3));
         hero.toggleAttribute('data-expanded', mediaFullyExpanded || progress >= 1);
       };
@@ -497,7 +497,7 @@ const sanityPage = await fetchSanityPage('app')
       };
 
       const handleWheel = (event) => {
-        if (reducedMotion) return;
+        if (reducedMotion || isMobile) return;
 
         const atTop = window.scrollY <= 5;
         if (mediaFullyExpanded && event.deltaY < 0 && atTop) {
@@ -518,7 +518,7 @@ const sanityPage = await fetchSanityPage('app')
       };
 
       const handleTouchMove = (event) => {
-        if (reducedMotion || !touchStartY) return;
+        if (reducedMotion || isMobile || !touchStartY) return;
 
         const touchY = event.touches?.[0]?.clientY || touchStartY;
         const deltaY = touchStartY - touchY;
@@ -542,7 +542,7 @@ const sanityPage = await fetchSanityPage('app')
       };
 
       const handleScroll = () => {
-        if (reducedMotion) return;
+        if (reducedMotion || isMobile) return;
         if (!mediaFullyExpanded && window.scrollY > 0 && window.scrollY < window.innerHeight * 0.6) {
           window.scrollTo(0, 0);
         }
@@ -741,20 +741,22 @@ const sanityPage = await fetchSanityPage('app')
         min-height: 100dvh;
       }
 
+      .app-hero-bg-video {
+        opacity: 0.72;
+      }
+
+      .app-hero-bg-overlay {
+        opacity: 0.58;
+      }
+
+      .app-device-layer {
+        display: none;
+      }
+
       .app-hero-copy {
-        opacity: calc((var(--hero-progress) - 0.26) * 1.7);
-        transform: translateY(calc((1 - var(--hero-progress)) * 26px)) scale(calc(0.96 + (var(--hero-progress) * 0.04)));
-      }
-
-      .app-device-ipad {
-        display: block;
-        width: min(76vw, 330px);
-        transform: translate(calc(-50% + (var(--hero-progress) * 82px)), calc(-50% + (var(--hero-progress) * 78px))) scale(calc(0.78 + (var(--hero-progress) * 0.02))) rotate(calc(-2deg + (var(--hero-progress) * 5deg)));
-      }
-
-      .app-device-iphone {
-        width: min(42vw, 190px);
-        transform: translate(calc(-50% - (var(--hero-progress) * 86px)), calc(-50% - (var(--hero-progress) * 58px))) scale(calc(0.92 + (var(--hero-progress) * 0.02))) rotate(calc(0deg - (var(--hero-progress) * 5deg)));
+        opacity: 1;
+        transform: none;
+        transition: none;
       }
 
       .app-audience-image-stage {
