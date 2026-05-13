@@ -105,39 +105,66 @@ const appSchema = {
   </section>
 
 
-  <!-- SECTION 2: Three Audience Cards -->
-  <section class="bg-joner-gray py-20 md:py-28">
+  <!-- SECTION 2: Three Audience Feature Cards -->
+  <section class="app-audience-section bg-joner-gray py-20 md:py-28" data-audience-feature data-active="0">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
 
-        <!-- Players -->
-        <div class="bg-joner-black border border-gray-800 p-8 md:p-10 flex flex-col">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">PLAYERS</p>
-          <h3 class="font-heading text-2xl md:text-3xl font-bold text-white uppercase mb-4">TRANSFORM YOUR GAME IN 100 DAYS</h3>
-          <p class="text-gray-400 font-body text-base leading-relaxed mb-8 flex-1">
-            Follow the 100-Day Player Programme. A structured, day-by-day training plan that takes you from where you are now to a technically complete footballer. No guesswork. No wasted sessions. Just daily progress you can see and feel.
-          </p>
-          <a href="/app" class="btn-red text-center text-sm px-6 py-3">START THE 100-DAY PROGRAMME</a>
+        <!-- Left: rotating feature images -->
+        <div class="app-audience-image-stage" aria-label="Joner Football App features for players, coaches and parents">
+          <img
+            src="/images/app/audience-player-thumbnail.png"
+            alt="Young football player training with a ball"
+            class="app-audience-image app-audience-image-player"
+            loading="lazy"
+          />
+          <img
+            src="/images/app/audience-coaches-thumbnail.png"
+            alt="Lee Jones coaching players on the pitch"
+            class="app-audience-image app-audience-image-coaches"
+            loading="lazy"
+          />
+          <img
+            src="/images/app/audience-parents-thumbnail.png"
+            alt="Parent using the Joner Football App during home training"
+            class="app-audience-image app-audience-image-parents"
+            loading="lazy"
+          />
         </div>
 
-        <!-- Coaches -->
-        <div class="bg-joner-black border border-gray-800 p-8 md:p-10 flex flex-col">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">COACHES</p>
-          <h3 class="font-heading text-2xl md:text-3xl font-bold text-white uppercase mb-4">EVERY SESSION. PLANNED. DELIVERED. DONE.</h3>
-          <p class="text-gray-400 font-body text-base leading-relaxed mb-8 flex-1">
-            Stop spending hours building session plans from scratch. The Joner Football App gives you a complete library of ready-made sessions, drills, and progressions. Run better training for your team or small group every single week without the prep time.
-          </p>
-          <a href="https://app.jonerfootball.com/checkout/new?o=202578" target="_blank" rel="noopener noreferrer" class="btn-red text-center text-sm px-6 py-3">START COACHING SMARTER</a>
-        </div>
+        <!-- Right: existing audience copy -->
+        <div class="app-audience-content">
+          <div class="app-audience-panel" data-panel="0">
+            <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">PLAYERS</p>
+            <h3 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase leading-tight mb-5">TRANSFORM YOUR GAME IN 100 DAYS</h3>
+            <p class="text-gray-300 font-body text-base md:text-lg leading-relaxed mb-8">
+              Follow the 100-Day Player Programme. A structured, day-by-day training plan that takes you from where you are now to a technically complete footballer. No guesswork. No wasted sessions. Just daily progress you can see and feel.
+            </p>
+            <a href="/app" class="btn-red text-center text-sm px-6 py-3 inline-flex">START THE 100-DAY PROGRAMME</a>
+          </div>
 
-        <!-- Parents -->
-        <div class="bg-joner-black border border-gray-800 p-8 md:p-10 flex flex-col">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">PARENTS</p>
-          <h3 class="font-heading text-2xl md:text-3xl font-bold text-white uppercase mb-4">GIVE YOUR CHILD THE EDGE</h3>
-          <p class="text-gray-400 font-body text-base leading-relaxed mb-8 flex-1">
-            Your child wants to get better. The app gives them a clear path. Structured programs, daily challenges, and technique drills they can follow on their own. No more wondering what to practise. They press play and train.
-          </p>
-          <a href="/app" class="btn-red text-center text-sm px-6 py-3">START YOUR CHILD'S JOURNEY</a>
+          <div class="app-audience-panel" data-panel="1">
+            <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">COACHES</p>
+            <h3 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase leading-tight mb-5">EVERY SESSION. PLANNED. DELIVERED. DONE.</h3>
+            <p class="text-gray-300 font-body text-base md:text-lg leading-relaxed mb-8">
+              Stop spending hours building session plans from scratch. The Joner Football App gives you a complete library of ready-made sessions, drills, and progressions. Run better training for your team or small group every single week without the prep time.
+            </p>
+            <a href="https://app.jonerfootball.com/checkout/new?o=202578" target="_blank" rel="noopener noreferrer" class="btn-red text-center text-sm px-6 py-3 inline-flex">START COACHING SMARTER</a>
+          </div>
+
+          <div class="app-audience-panel" data-panel="2">
+            <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">PARENTS</p>
+            <h3 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase leading-tight mb-5">GIVE YOUR CHILD THE EDGE</h3>
+            <p class="text-gray-300 font-body text-base md:text-lg leading-relaxed mb-8">
+              Your child wants to get better. The app gives them a clear path. Structured programs, daily challenges, and technique drills they can follow on their own. No more wondering what to practise. They press play and train.
+            </p>
+            <a href="/app" class="btn-red text-center text-sm px-6 py-3 inline-flex">START YOUR CHILD'S JOURNEY</a>
+          </div>
+
+          <div class="app-audience-controls" aria-label="Audience feature controls">
+            <button type="button" class="app-audience-arrow" data-audience-prev aria-label="Previous feature">‹</button>
+            <button type="button" class="app-audience-arrow" data-audience-next aria-label="Next feature">›</button>
+          </div>
         </div>
 
       </div>
@@ -451,6 +478,35 @@ const appSchema = {
         }
       }
 
+      const audienceFeature = document.querySelector('[data-audience-feature]');
+      if (audienceFeature) {
+        const totalAudienceCards = 3;
+        let audienceIndex = Number(audienceFeature.getAttribute('data-active') || '0');
+        let audienceTimer;
+
+        const setAudienceIndex = (nextIndex) => {
+          audienceIndex = (nextIndex + totalAudienceCards) % totalAudienceCards;
+          audienceFeature.setAttribute('data-active', String(audienceIndex));
+        };
+
+        const restartAudienceTimer = () => {
+          window.clearInterval(audienceTimer);
+          audienceTimer = window.setInterval(() => setAudienceIndex(audienceIndex + 1), 5000);
+        };
+
+        audienceFeature.querySelector('[data-audience-prev]')?.addEventListener('click', () => {
+          setAudienceIndex(audienceIndex - 1);
+          restartAudienceTimer();
+        });
+
+        audienceFeature.querySelector('[data-audience-next]')?.addEventListener('click', () => {
+          setAudienceIndex(audienceIndex + 1);
+          restartAudienceTimer();
+        });
+
+        restartAudienceTimer();
+      }
+
       const hero = document.querySelector('[data-scroll-expand-hero]');
       if (!hero) return;
 
@@ -619,6 +675,105 @@ const appSchema = {
       text-transform: none;
     }
 
+    .app-audience-image-stage {
+      position: relative;
+      min-height: 540px;
+      perspective: 1000px;
+    }
+
+    .app-audience-image {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: min(70vw, 420px);
+      aspect-ratio: 4 / 5;
+      object-fit: cover;
+      border-radius: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.52);
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.82);
+      transition: opacity 650ms cubic-bezier(.4, 2, .3, 1), transform 650ms cubic-bezier(.4, 2, .3, 1), filter 650ms ease;
+      will-change: opacity, transform, filter;
+    }
+
+    .app-audience-panel {
+      display: none;
+      animation: audienceCopyIn 320ms ease both;
+    }
+
+    .app-audience-section[data-active="0"] .app-audience-panel[data-panel="0"],
+    .app-audience-section[data-active="1"] .app-audience-panel[data-panel="1"],
+    .app-audience-section[data-active="2"] .app-audience-panel[data-panel="2"] {
+      display: block;
+    }
+
+    .app-audience-section[data-active="0"] .app-audience-image-player,
+    .app-audience-section[data-active="1"] .app-audience-image-coaches,
+    .app-audience-section[data-active="2"] .app-audience-image-parents {
+      z-index: 3;
+      opacity: 1;
+      filter: none;
+      transform: translate(-50%, -50%) scale(1) rotateY(0deg);
+    }
+
+    .app-audience-section[data-active="0"] .app-audience-image-parents,
+    .app-audience-section[data-active="1"] .app-audience-image-player,
+    .app-audience-section[data-active="2"] .app-audience-image-coaches {
+      z-index: 2;
+      opacity: 0.9;
+      filter: brightness(0.7);
+      transform: translate(calc(-50% - 86px), calc(-50% - 58px)) scale(0.84) rotateY(15deg);
+    }
+
+    .app-audience-section[data-active="0"] .app-audience-image-coaches,
+    .app-audience-section[data-active="1"] .app-audience-image-parents,
+    .app-audience-section[data-active="2"] .app-audience-image-player {
+      z-index: 2;
+      opacity: 0.9;
+      filter: brightness(0.7);
+      transform: translate(calc(-50% + 86px), calc(-50% - 58px)) scale(0.84) rotateY(-15deg);
+    }
+
+    .app-audience-controls {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2.5rem;
+    }
+
+    .app-audience-arrow {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: #141414;
+      color: #f1f1f7;
+      font-size: 2rem;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 220ms ease, transform 220ms ease, border-color 220ms ease;
+    }
+
+    .app-audience-arrow:hover {
+      background: #CC0000;
+      border-color: #CC0000;
+      transform: translateY(-2px);
+    }
+
+    @keyframes audienceCopyIn {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     @media (max-width: 767px) {
       .app-scroll-hero {
         min-height: 100dvh;
@@ -638,6 +793,27 @@ const appSchema = {
       .app-device-iphone {
         width: min(42vw, 190px);
         transform: translate(calc(-50% - (var(--hero-progress) * 86px)), calc(-50% - (var(--hero-progress) * 58px))) scale(calc(0.92 + (var(--hero-progress) * 0.02))) rotate(calc(0deg - (var(--hero-progress) * 5deg)));
+      }
+
+      .app-audience-image-stage {
+        min-height: 430px;
+      }
+
+      .app-audience-image {
+        width: min(72vw, 310px);
+        border-radius: 1.1rem;
+      }
+
+      .app-audience-section[data-active="0"] .app-audience-image-parents,
+      .app-audience-section[data-active="1"] .app-audience-image-player,
+      .app-audience-section[data-active="2"] .app-audience-image-coaches {
+        transform: translate(calc(-50% - 48px), calc(-50% - 46px)) scale(0.82) rotateY(12deg);
+      }
+
+      .app-audience-section[data-active="0"] .app-audience-image-coaches,
+      .app-audience-section[data-active="1"] .app-audience-image-parents,
+      .app-audience-section[data-active="2"] .app-audience-image-player {
+        transform: translate(calc(-50% + 48px), calc(-50% - 46px)) scale(0.82) rotateY(-12deg);
       }
     }
 
