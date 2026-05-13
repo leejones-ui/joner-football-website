@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import EmailCapture from '../components/EmailCapture.astro'
 import HighlightsCarousel from '../components/HighlightsCarousel.astro'
 import CloserLook from '../components/CloserLook.astro'
 
@@ -213,105 +212,6 @@ const sanityPage = await fetchSanityPage('app')
     </div>
   </section>
 
-  <!-- SECTION 4: Feature Showcase -->
-  <section class="bg-joner-gray py-20 md:py-28">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-16">
-        <h2 class="section-heading text-white mb-4">EVERYTHING YOU NEED. NOTHING YOU DON'T.</h2>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="bg-joner-black border border-gray-800 p-8 hover:border-joner-red transition-colors">
-          <h3 class="font-heading text-xl font-bold text-white mb-3">1,500+ DRILLS AND SESSIONS</h3>
-          <p class="text-gray-400 font-body text-sm leading-relaxed">Every drill filmed, explained, and organised by skill level. From beginner to elite.</p>
-        </div>
-
-        <div class="bg-joner-black border border-gray-800 p-8 hover:border-joner-red transition-colors">
-          <h3 class="font-heading text-xl font-bold text-white mb-3">SESSION PLANS</h3>
-          <p class="text-gray-400 font-body text-sm leading-relaxed">Complete session plans ready to run. Perfect for coaches who want quality without the prep.</p>
-        </div>
-
-        <div class="bg-joner-black border border-gray-800 p-8 hover:border-joner-red transition-colors">
-          <h3 class="font-heading text-xl font-bold text-white mb-3">FOLLOW-ALONG PROGRAMS</h3>
-          <p class="text-gray-400 font-body text-sm leading-relaxed">Press play and train. Programs that guide you through every rep, every set, every session.</p>
-        </div>
-
-        <div class="bg-joner-black border border-gray-800 p-8 hover:border-joner-red transition-colors">
-          <h3 class="font-heading text-xl font-bold text-white mb-3">DAILY CHALLENGES</h3>
-          <p class="text-gray-400 font-body text-sm leading-relaxed">A new challenge every day. Track your progress. Build consistency.</p>
-        </div>
-
-        <div class="bg-joner-black border border-gray-800 p-8 hover:border-joner-red transition-colors">
-          <h3 class="font-heading text-xl font-bold text-white mb-3">COACHES SECTION</h3>
-          <p class="text-gray-400 font-body text-sm leading-relaxed">Dedicated coaching library. Session plans, progressions, and small group formats.</p>
-        </div>
-
-        <div class="bg-joner-black border border-gray-800 p-8 hover:border-joner-red transition-colors">
-          <h3 class="font-heading text-xl font-bold text-white mb-3">OFFLINE DOWNLOADS</h3>
-          <p class="text-gray-400 font-body text-sm leading-relaxed">Download sessions to your phone. Train anywhere, even without wifi.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- INSIDE THE APP: Screenshots -->
-  <section class="bg-joner-black py-20 md:py-28">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-16">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">INSIDE THE APP</p>
-        <h2 class="section-heading text-white">EVERYTHING ORGANISED. EVERYTHING READY.</h2>
-      </div>
-
-      <p class="md:hidden text-gray-500 text-xs uppercase tracking-[0.2em] font-heading text-center mb-4">Swipe to see more</p>
-      <div class="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-4 md:gap-8 md:overflow-visible md:pb-0 scrollbar-hide">
-        {[
-          { src: '/images/app/screenshot-2.webp', label: 'Drill Library' },
-          { src: '/images/app/screenshot-3.webp', label: 'Session Plans' },
-          { src: '/images/app/screenshot-4.webp', label: 'Programme View' },
-          { src: '/images/app/screenshot-8.webp', label: 'Daily Training' },
-        ].map((item) => (
-          <div class="flex-shrink-0 w-56 md:w-auto text-center snap-center">
-            <div class="bg-gray-900 border-[5px] border-gray-700 rounded-[2rem] overflow-hidden shadow-2xl">
-              <img src={item.src} alt={item.label} class="w-full h-auto" loading="lazy" />
-            </div>
-            <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-4">{item.label}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <!-- SECTION 5: Coaches Deep Dive -->
-  <section class="bg-joner-black py-20 md:py-28">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="max-w-3xl mb-16">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">FOR COACHES</p>
-        <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">BUILT FOR COACHES. NOT JUST PLAYERS.</h2>
-        <p class="text-gray-300 font-body text-lg mb-4">Transform your team sessions. Save hours every week.</p>
-        <p class="text-gray-400 font-body text-base leading-relaxed">
-          Whether you coach a junior team, run a small group, or manage an academy, the app gives you a professional-level session library you can use immediately. Browse by topic, age group, or session type. Select a session. Run it. Done.
-        </p>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-        <div class="border-l-4 border-joner-red pl-6">
-          <h4 class="font-heading text-lg font-bold text-white uppercase mb-2">READY-MADE SESSIONS</h4>
-          <p class="text-gray-400 font-body text-sm">Stop building from scratch. Pick a session and deliver it tonight.</p>
-        </div>
-        <div class="border-l-4 border-joner-red pl-6">
-          <h4 class="font-heading text-lg font-bold text-white uppercase mb-2">ORGANISED BY TOPIC</h4>
-          <p class="text-gray-400 font-body text-sm">Passing, dribbling, finishing, possession, defensive shape. Find what you need in seconds.</p>
-        </div>
-        <div class="border-l-4 border-joner-red pl-6">
-          <h4 class="font-heading text-lg font-bold text-white uppercase mb-2">SMALL GROUP FORMATS</h4>
-          <p class="text-gray-400 font-body text-sm">Sessions designed for 4 to 12 players. Perfect for private coaching.</p>
-        </div>
-      </div>
-
-      <a href="https://app.jonerfootball.com/checkout/new?o=202578" target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4">EXPLORE THE COACHES PLAN</a>
-    </div>
-  </section>
-
   <!-- SECTION 6: Testimonials -->
   <section class="bg-joner-gray py-20 md:py-28">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -360,30 +260,6 @@ const sanityPage = await fetchSanityPage('app')
     </div>
   </section>
 
-  <!-- LEE COACHING IMAGES -->
-  <section class="bg-joner-black py-20 md:py-28">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <h2 class="section-heading text-white">TRUSTED BY PLAYERS AND COACHES WORLDWIDE</h2>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          '/images/programmes/lee-coaching-black.jpg',
-          '/images/programmes/lee-coaching-red.jpg',
-          '/images/programmes/lee-coaching-group.jpg',
-        ].map((src) => (
-          <div class="relative aspect-[4/3] overflow-hidden rounded-xl">
-            <img src={src} alt="Lee Jones coaching" class="w-full h-full object-cover object-center" loading="lazy" />
-            <div class="absolute inset-0 bg-black/20"></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <EmailCapture />
-
   <!-- SECTION 7: Final CTA Block -->
   <section class="bg-joner-black py-20 md:py-28">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
@@ -424,8 +300,6 @@ const sanityPage = await fetchSanityPage('app')
       </div>
     </div>
   </section>
-
-  <EmailCapture />
 
   <script is:inline>
     (() => {
