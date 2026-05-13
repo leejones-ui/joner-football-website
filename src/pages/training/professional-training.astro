@@ -254,7 +254,7 @@ const sanityPage = await fetchSanityPage('professional-training')
     }
     .pro-hero {
       position: relative;
-      min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       align-items: center;
       overflow: hidden;
@@ -327,7 +327,7 @@ const sanityPage = await fetchSanityPage('professional-training')
     @keyframes pro-marquee { from { transform: translateX(0); } to { transform: translateX(calc(-50% - 9px)); } }
 
     .zoom-parallax { position: relative; height: 320vh; background: #050505; }
-    .zoom-parallax__sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+    .zoom-parallax__sticky { position: sticky; top: 0; height: 100dvh; overflow: hidden; }
     .zoom-parallax__spotlight { position: absolute; top: -42vmin; left: 50%; width: 120vmin; height: 120vmin; transform: translateX(-50%); border-radius: 999px; background: radial-gradient(ellipse at center, rgba(255,255,255,0.12), rgba(227,6,19,0.1) 24%, transparent 55%); filter: blur(30px); pointer-events: none; }
     .zoom-parallax__copy { position: absolute; z-index: 10; left: 50%; top: 50%; width: min(760px, 88vw); transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
     .zoom-parallax__copy::before { content: ''; position: absolute; inset: -42px -54px; z-index: -1; background: radial-gradient(circle, rgba(0,0,0,0.72), rgba(0,0,0,0.42) 42%, transparent 70%); filter: blur(8px); }
@@ -373,7 +373,7 @@ const sanityPage = await fetchSanityPage('professional-training')
       .zoom-parallax__frame { width: 42vw; }
     }
     @media (max-width: 640px) {
-      .pro-hero { min-height: 86vh; padding: 92px 0 42px; align-items: center; }
+      .pro-hero { min-height: 86dvh; padding: 92px 0 42px; align-items: center; }
       .pro-hero h1 { font-size: clamp(2.65rem, 14vw, 4.15rem); max-width: 92vw; }
       .pro-hero__lead { font-size: 0.98rem; max-width: 92vw; }
       .pro-hero__actions, .pro-glass { width: 100%; }
