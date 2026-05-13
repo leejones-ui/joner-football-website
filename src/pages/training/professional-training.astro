@@ -123,15 +123,18 @@ const sanityPage = await fetchSanityPage('professional-training')
 
     <section class="pro-video-grid" aria-label="Professional training video showcase">
       <div class="pro-wrap">
-        <div class="pro-video-banner">
-          <span>Watch the work: pro training videos</span>
+        <div class="pro-video-head">
+          <p class="pro-eyebrow">See It In Action</p>
+          <h2 class="pro-video-head__title">Pro Training Videos</h2>
         </div>
+        <p class="pro-video-swipe-hint">Swipe sessions</p>
         <div class="pro-video-grid__cards">
           {videoFeatures.map((video) => (
             <a class="pro-video-card" href={video.url} target="_blank" rel="noopener noreferrer">
               <img src={`https://img.youtube.com/vi/${video.youtubeId}/maxresdefault.jpg`} alt={`${video.title} YouTube thumbnail`} loading="lazy" />
               <div class="pro-video-card__shade"></div>
               <div class="pro-video-card__play">Play video</div>
+              <div class="pro-video-card__title">{video.title}</div>
             </a>
           ))}
         </div>
@@ -345,13 +348,17 @@ const sanityPage = await fetchSanityPage('professional-training')
     .zoom-parallax__layer--7 .zoom-parallax__frame { top: 22.5vh; left: 25vw; width: 16vw; height: 22vh; }
 
     .pro-video-grid { padding: 78px 0 92px; background: radial-gradient(circle at 74% 22%, rgba(227,6,19,0.18), transparent 24%), #060606; }
-    .pro-video-banner { display: inline-flex; margin-bottom: 22px; border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; padding: 10px 16px; background: rgba(255,255,255,0.06); color: #fff; font-family: var(--pro-display); text-transform: uppercase; letter-spacing: 0.18em; font-size: 0.82rem; }
+    .pro-video-head { text-align: center; margin: 0 auto 28px; max-width: 720px; }
+    .pro-video-head .pro-eyebrow { margin: 0 0 12px; letter-spacing: 0.24em; }
+    .pro-video-head__title { margin: 0; font-family: var(--pro-display); font-size: clamp(2rem, 4.4vw, 3.2rem); line-height: 1; letter-spacing: 0.04em; text-transform: uppercase; color: #fff; }
+    .pro-video-swipe-hint { display: none; }
     .pro-video-grid__cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
     .pro-video-card { position: relative; min-height: 330px; display: block; overflow: hidden; border: 1px solid rgba(255,255,255,0.16); background: #111; text-decoration: none; color: #fff; box-shadow: 0 30px 90px rgba(0,0,0,0.32); }
     .pro-video-card img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
     .pro-video-card:hover img { transform: scale(1.04); }
-    .pro-video-card__shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.0), rgba(0,0,0,0.18)); pointer-events: none; }
+    .pro-video-card__shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.72) 100%); pointer-events: none; }
     .pro-video-card__play { position: absolute; left: 18px; top: 18px; display: inline-flex; border: 1px solid rgba(255,255,255,0.28); border-radius: 999px; padding: 8px 12px; font-family: var(--pro-display); letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.72rem; background: rgba(227,6,19,0.9); color: #fff; box-shadow: 0 12px 28px rgba(0,0,0,0.22); }
+    .pro-video-card__title { position: absolute; left: 18px; right: 18px; bottom: 16px; font-family: var(--pro-display); font-size: 1.08rem; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1.08; text-shadow: 0 4px 14px rgba(0,0,0,0.7); }
 
     .pro-contact { padding: 82px 0 96px; background: #050505; color: #fff; }
     .pro-contact__grid { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 48px; align-items: start; }
@@ -398,8 +405,13 @@ const sanityPage = await fetchSanityPage('professional-training')
       .zoom-parallax__layer--1 { grid-column: 1 / -1; }
       .zoom-parallax__layer--1 .zoom-parallax__frame { height: 280px; }
       .pro-player-card { width: 220px; }
-      .pro-video-card { min-height: 260px; }
       .pro-form-grid { grid-template-columns: 1fr; }
+      /* Match /training's swipe carousel pattern on mobile: peeking cards, snap, swipe hint */
+      .pro-video-head { margin-bottom: 18px; }
+      .pro-video-swipe-hint { display: block; margin: 0 0 14px; color: rgba(255,255,255,0.42); font-family: var(--pro-display); font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; text-align: center; }
+      .pro-video-grid__cards { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding: 0 6vw 16px; margin: 0 -1rem; scrollbar-width: none; }
+      .pro-video-grid__cards::-webkit-scrollbar { display: none; }
+      .pro-video-card { flex: 0 0 82vw; min-height: 0; aspect-ratio: 16 / 11; scroll-snap-align: center; scroll-snap-stop: always; }
     }
     @media (prefers-reduced-motion: reduce) {
       .pro-marquee__track { animation: none; flex-wrap: wrap; width: auto; justify-content: center; }
