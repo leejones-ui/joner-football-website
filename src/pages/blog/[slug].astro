@@ -1,28 +1,66 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+import fallbackPosts from '../../data/blogPostFallbacks.json'
+import { portableTextToHtml } from '../../lib/sanityPortableText'
 import { sanityClient } from '../../lib/sanityClient'
+
+const escapeHtml = (value: string) =>
+  String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+
+const plainTextToHtml = (body: string) => {
+  const paragraphs = String(body || '')
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+
+  return paragraphs
+    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br />')}</p>`)
+    .join('')
+}
 
 export async function getStaticPaths() {
   try {
     const posts = await sanityClient.fetch(
-      `*[_type == "blogPost" && defined(slug.current)] {
+      `*[_type == "blogPost" && publishStatus == "published" && defined(slug.current)] | order(publishedAt desc) {
         "slug": slug.current,
         title,
         excerpt,
         body,
+        richBody,
         publishedAt,
         category,
-        "image": coverImage.asset->url
+        coverImageUrl,
+        coverImageAltText,
+        "image": coverImage.asset->url,
+        "imageAlt": coverImage.alt
       }`
     )
-    return posts.map((post: any) => ({
-      params: { slug: post.slug },
-      props: { post },
-    }))
+    if (posts.length > 0) {
+      return posts.map((post: any) => ({
+        params: { slug: post.slug },
+        props: { post },
+      }))
+    }
   } catch (e) {
     console.error('Sanity fetch failed for blog paths:', e)
-    return []
   }
+
+  return fallbackPosts.map((post: any) => ({
+    params: { slug: post.slug?.current || post.slug },
+    props: {
+      post: {
+        ...post,
+        slug: post.slug?.current || post.slug,
+        image: post.coverImageUrl,
+        imageAlt: post.coverImageAltText,
+      },
+    },
+  }))
 }
 
 const { post } = Astro.props
@@ -30,19 +68,23 @@ const { post } = Astro.props
 const formattedDate = post.publishedAt
   ? new Date(post.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   : ''
+
+const bodyHtml = portableTextToHtml(post.richBody || []) || plainTextToHtml(post.body || '')
+const postImage = post.image || post.coverImageUrl || '/images/training/jfp-session.webp'
+const postImageAlt = post.imageAlt || post.coverImageAltText || post.title
 ---
 
 <BlogPost
   title={post.title}
   description={post.excerpt || ''}
-  date={post.publishedAt || ''}
+  date={formattedDate}
   category={post.category || ''}
   readTime=""
-  image={post.image || '/images/training/jfp-session.webp'}
-  imageAlt={post.title}
+  image={postImage}
+  imageAlt={postImageAlt}
 >
-  {post.body ? (
-    <Fragment set:html={post.body.replace(/\n\n/g, '</p><p>').replace(/^/, '<p>').replace(/$/, '</p>')} />
+  {bodyHtml ? (
+    <Fragment set:html={bodyHtml} />
   ) : (
     <p>Content coming soon.</p>
   )}

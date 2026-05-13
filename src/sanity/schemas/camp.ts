@@ -37,6 +37,7 @@ export default {
     { name: 'heroHeadline', title: 'Hero headline', type: 'string', group: 'hero', description: 'This is the big headline at the top of the page.' },
     { name: 'heroSubtitle', title: 'Hero subheadline', type: 'text', rows: 3, group: 'hero' },
     { name: 'heroImage', title: 'Hero image', type: 'image', options: { hotspot: true }, group: 'hero', fields: [{ name: 'alt', title: 'Alt text', type: 'string' }] },
+    { name: 'heroImageUrl', title: 'Hero image URL or local path', type: 'string', group: 'hero', description: 'Temporary fallback for local image paths before uploads are moved into the Sanity asset library.' },
     { name: 'heroVideo', title: 'Hero video file or path', type: 'string', group: 'hero', description: 'Use a hosted video path if this camp has a hero video.' },
     { name: 'heroVideoEmbed', title: 'Hero video embed', type: 'url', group: 'hero', description: 'Paste a YouTube, Vimeo, or video embed link.' },
     { name: 'featureVideoUrl', title: 'Feature video embed', type: 'url', group: 'hero' },

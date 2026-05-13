@@ -11,6 +11,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "seed:pages": "node scripts/seed-sanity-pages.mjs",
+    "seed:native-content": "node scripts/generate-sanity-native-content.mjs",
     "studio": "sanity dev",
     "studio:deploy": "sanity deploy"
   },

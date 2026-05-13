@@ -376,6 +376,70 @@ const CAMP_FALLBACKS: CampMap = {
     faqItems: commonFaqs,
     stripePaymentLink: 'https://app.jonerfootball.com',
   },
+  'sydney-july-2026': {
+    title: 'Sydney July Camp ft Miguel Grande',
+    heroKicker: 'Biggest Camp Of The Year',
+    heroSubtitle: 'The Sydney July camp returns with guest coach Miguel Grande from Grande Sports. Limited spots for players who want energy, technical detail, and a serious development environment.',
+    urgencyLabel: 'First spots for JFP players. Max 80 players.',
+    location: 'Sydney, Australia',
+    destination: 'sydney',
+    googleSheetTab: 'Sydney big 1 (July)',
+    venue: 'Rydalmere Park',
+    venueName: 'Rydalmere Park',
+    venueAddress: 'Rydalmere Park, Sydney, NSW',
+    venueNotes: 'A 3 morning Sydney camp featuring Miguel Grande from Grande Sports, with players grouped by age and ability.',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=Rydalmere+Park+Sydney+NSW',
+    dates: 'July 14-16, 2026',
+    startDate: '2026-07-14',
+    endDate: '2026-07-16',
+    times: '9am to 12pm',
+    ageRange: 'Ages 8-18',
+    priceLabel: '1 day, 2 day and 3 day options',
+    spotsTotal: 80,
+    spotsRemaining: 80,
+    status: 'open',
+    description: 'Sydney\'s biggest Joner Football camp of the year, featuring Miguel Grande from Grande Sports and a technical training environment built for dedicated players.',
+    heroImage: '/images/camps/sydney-camp.webp',
+    galleryImages: [
+      { url: '/images/camps/sydney-camp.webp', alt: 'Joner Football elite training camp in Sydney, Australia' },
+      { url: '/images/camps/gallery-4.webp', alt: 'Joner Football camp players training in Sydney' },
+      { url: '/images/camps/gallery-5.webp', alt: 'Joner Football camp group photo in Australia' },
+    ],
+    trustItems: ['Sold out every year', 'Guest coach Miguel Grande', 'Max 16 to 18 players per coach', 'Joner jersey for 3 day players'],
+    audienceItems: commonAudience,
+    campHighlights: [
+      { title: 'Guest Coach Miguel Grande', description: 'Miguel from Grande Sports joins the camp to add extra detail and energy.' },
+      { title: 'First Spots For JFP Players', description: 'A priority camp for players already inside the Joner Football pathway.' },
+      { title: 'High Energy Sydney Environment', description: 'The camp is built around intensity, enjoyment, standards, and technical growth.' },
+      { title: 'Joner Merch On Site', description: 'Players can access Joner Football apparel and training gear during the camp.' },
+    ],
+    includedItems: [
+      '3 morning training blocks',
+      'Guest coaching from Miguel Grande',
+      'Technical coaching from the Joner Football team',
+      'Age and ability based groups',
+      'Joner jersey for players attending all 3 days',
+    ],
+    dayOptions: ['1 Day - $150 AUD', '2 Days - $260 AUD', '3 Days - $350 AUD'],
+    trainingThemes: commonThemes,
+    scheduleItems: [
+      { time: 'Tuesday 14 July', title: 'Ball Mastery And First Touch', description: 'Players settle into groups and get straight into technical detail and standards.' },
+      { time: 'Wednesday 15 July', title: '1v1 And Creativity', description: 'High energy attacking work, pressure situations, and confidence building.' },
+      { time: 'Thursday 16 July', title: 'Game Actions And Finish', description: 'Decision making, final challenges, feedback, and camp moments with the coaches.' },
+    ],
+    coachProfiles: [
+      ...commonCoaches,
+      {
+        name: 'Miguel Grande',
+        role: 'Grande Sports Guest Coach',
+        bio: 'Miguel joins from Grande Sports to bring extra technical detail and energy to the Sydney July camp.',
+        image: '/images/camps/sydney-camp.webp',
+      },
+    ],
+    whatToBring: commonBring,
+    faqItems: commonFaqs,
+    stripePaymentLink: 'https://app.jonerfootball.com',
+  },
 }
 
 function cleanText(value: any) {
@@ -470,8 +534,9 @@ export async function getStaticPaths() {
   const fallbackSlugs = [
     'texas-dallas-june',
     'sydney-big-1-july',
+    'sydney-july-2026',
   ]
-  const staticCampSlugs = ['la-tcpe-june', 'texas-houston-june', 'texas-dallas-june']
+  const staticCampSlugs = ['la-tcpe-june', 'texas-houston-june', 'texas-dallas-june', 'sydney-july-2026', 'test-signup']
 
   try {
     const camps = await sanityClient.fetch(`*[_type == "camp" && defined(slug.current)]{ "slug": slug.current }`)
@@ -543,6 +608,7 @@ try {
     whatToBring,
     faqItems,
     extraInfo,
+    heroImageUrl,
     "heroImage": heroImage.asset->url,
     stripePaymentLink,
     afterpayPaymentLink,
