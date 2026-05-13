@@ -34,7 +34,7 @@ const appSchema = {
       muted
       loop
       playsinline
-      preload="metadata"
+      preload="auto"
       poster="/images/app/screenshot-1.webp"
       class="app-hero-bg-video hidden md:block absolute inset-0 w-full h-full object-cover z-0"
     >
@@ -559,7 +559,7 @@ const appSchema = {
     }
 
     .app-hero-bg-video {
-      opacity: calc(var(--hero-progress) * 0.48);
+      opacity: calc(0.3 + (var(--hero-progress) * 0.324));
       transition: opacity 90ms linear;
       will-change: opacity;
     }
