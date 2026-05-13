@@ -43,8 +43,17 @@ const programs = [
   { title: 'Professional Sessions', copy: 'By appointment. 1-on-1 training for professional and elite players.', href: '/training/professional-training', cta: 'Enquire' },
   { title: 'Camp Events', copy: 'Holiday camps and intensive training events throughout the year.', href: '/camps', cta: 'View Camps' }
 ]
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('hq')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="The Joner Football HQ | Belrose, Sydney"
   description="The Joner Football HQ. Brand new indoor training facility at 20 Narabang Way, Belrose, Sydney. Professional standard surface. All-weather training."
@@ -505,3 +514,4 @@ const programs = [
     }
   </style>
 </BaseLayout>
+)}

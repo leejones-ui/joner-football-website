@@ -1,7 +1,16 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog-50-ball-mastery-skills-young-players')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BlogPost
   title="50 Ball Mastery Skills Every Young Player Should Start With"
   description="Lee Jones explains why ball mastery is the foundation of football for young players, and shares the classic free 50 Ball Mastery Skills video."
@@ -82,3 +91,4 @@ import BlogPost from '../../layouts/BlogPost.astro'
 <p>For more ball mastery and training-on-your-own videos, go inside the Joner Football App here: <a href="https://app.jonerfootball.com/categories/category-lrbv5cntjwy" target="_blank" rel="noopener">Training On Your Own</a>.</p>
 
 </BlogPost>
+)}

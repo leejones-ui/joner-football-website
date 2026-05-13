@@ -1,7 +1,16 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('home-ball-prototype')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Home Ball Prototype | Joner Football"
   description="An isolated scroll-controlled football object prototype for the Joner Football homepage."
@@ -358,3 +367,4 @@ import BaseLayout from '../layouts/BaseLayout.astro'
     initThree();
   </script>
 </BaseLayout>
+)}

@@ -17,8 +17,17 @@ const resources = [
     text: 'A number-recognition tool for sharper awareness, quicker decisions, and more game-realistic scanning habits.',
   },
 ]
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('shop-resources-accessories')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout title="Resources And Accessories | Joner Football Shop" description="Shop Joner Football training resources and accessories, including scanning and number-recognition training tools.">
   <main class="bg-joner-black text-white">
     <section class="relative overflow-hidden border-b border-white/10">
@@ -51,3 +60,4 @@ const resources = [
     </section>
   </main>
 </BaseLayout>
+)}

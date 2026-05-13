@@ -1,7 +1,16 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog-coachability-most-important-trait-football')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BlogPost
   title="Why Coachability Is the Most Important Trait in Football"
   description="The one trait that separates players who make it from players who don't. It's not speed, strength, or even technique. It's coachability. Here's why."
@@ -80,3 +89,4 @@ import BlogPost from '../../layouts/BlogPost.astro'
 <p>Start your free 7-day trial and see for yourself.</p>
 
 </BlogPost>
+)}

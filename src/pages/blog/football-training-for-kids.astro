@@ -1,7 +1,16 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog-football-training-for-kids')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BlogPost
   title="The Best Football Training Program for Kids (Ages 8-12)"
   description="What to look for in a football training program for kids aged 8-12. Why technical focus, small groups, and qualified coaches matter most for development."
@@ -54,3 +63,4 @@ import BlogPost from '../../layouts/BlogPost.astro'
 <p>And if you're looking for an intensive experience, our <a href="/camps">global training camps</a> run across the USA and Australia throughout the year.</p>
 
 </BlogPost>
+)}

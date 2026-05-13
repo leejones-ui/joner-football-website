@@ -1,7 +1,16 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog-football-drills-at-home')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BlogPost
   title="10 Football Drills You Can Do Alone at Home"
   description="Master your technique with these 10 football drills you can do at home with just a ball. Ball mastery, first touch, weak foot, and more from Joner Football."
@@ -56,3 +65,4 @@ import BlogPost from '../../layouts/BlogPost.astro'
 <p>If you're based in Sydney and want to take your development further, check out our <a href="/training">training programs</a> at The HQ in Belrose. Or join us at one of our <a href="/camps">global training camps</a>.</p>
 
 </BlogPost>
+)}

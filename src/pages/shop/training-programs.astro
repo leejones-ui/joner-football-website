@@ -59,8 +59,17 @@ const programs = [
     text: 'The complete 100-day training pack for players who want structure across touch, dribbling, weak foot, finishing, speed, and conditioning.',
   },
 ]
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('shop-training-programs')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout title="Training Programs | Joner Football Shop" description="Shop Joner Football online training programs for players, including fast feet, dribbling, passing, weak foot, finishing, juggling, strength and conditioning, and the 100 day transformation pack.">
   <main class="bg-joner-black text-white">
     <section class="relative overflow-hidden border-b border-white/10">
@@ -93,3 +102,4 @@ const programs = [
     </section>
   </main>
 </BaseLayout>
+)}

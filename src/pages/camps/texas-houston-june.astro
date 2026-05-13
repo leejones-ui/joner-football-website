@@ -144,8 +144,17 @@ const eventSchema = {
     url: 'https://jonerfootball.com/camps/texas-houston-june/#register',
   })),
 }
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('camp-texas-houston-june')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title={title}
   description={description}
@@ -1579,3 +1588,4 @@ const eventSchema = {
     }
   </script>
 </BaseLayout>
+)}

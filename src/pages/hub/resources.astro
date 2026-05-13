@@ -1,7 +1,16 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('hub-resources')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Free Coaching Resources | Joner Football Hub"
   description="Free Joner Football coaching resources, training tools, equipment links and session support for coaches."
@@ -57,3 +66,4 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
   .resource-button--red { background: #E30613; border-color: #E30613; }
   .resource-button--red span, .resource-button--red em { color: rgba(255,255,255,.82); }
 </style>
+)}

@@ -103,8 +103,17 @@ const faqs = [
   ['Will bad weather cancel the session?', 'No. Only really bad storms can alter the session. Afternoon HQ sessions are indoors, so bad weather is far less of a problem.'],
   ['Who will be in my son or daughter\'s group?', 'Coaches group players by age first, then ability. Groups are limited and players can be moved up if they need a stronger challenge.'],
 ]
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('jfp-program')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout title={title} description={description} canonical={canonical} noindex={true} hideMobileAppCta>
   <Fragment slot="head">
     <link rel="preload" as="video" href="/images/training/jfp/jfp-hero.mp4" />
@@ -804,3 +813,4 @@ const faqs = [
     }
   </style>
 </BaseLayout>
+)}

@@ -1,7 +1,16 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog-what-makes-great-football-coach')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BlogPost
   title="What Makes a Great Football Coach? 5 Things to Look For"
   description="What separates a great football coach from an average one? Five qualities to look for in a coach, from technical knowledge to communication and adaptability."
@@ -51,3 +60,4 @@ import BlogPost from '../../layouts/BlogPost.astro'
 <p>And if you think you've got what it takes to coach at Joner Football, <a href="/about#contact">get in touch</a>. We're always looking for passionate, qualified coaches.</p>
 
 </BlogPost>
+)}

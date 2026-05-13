@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import SanityPageExtras from '../../components/sanity/SanityPageExtras.astro'
 
 const seminarSchema = {
   '@context': 'https://schema.org',
@@ -14,12 +15,28 @@ const seminarSchema = {
   url: 'https://jonerfootball.com/workshops/mindset-seminars',
   eventAttendanceMode: 'https://schema.org/MixedEventAttendanceMode',
 }
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { getSanityText, shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('mindset-seminars')
+const pageTitle = sanityPage?.seo?.title || 'Mindset Seminars | Joner Football'
+const pageDescription = sanityPage?.seo?.description || 'Joner Football Mindset Seminars are coming soon. Register interest for players, coaches and parents.'
+const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Coming Soon')
+const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Mindset Seminars')
+const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'The mental side of football. For players, coaches and parents. Register interest and we will let you know when the next seminar is ready.')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
-  title="Mindset Seminars | Joner Football"
-  description="Joner Football Mindset Seminars are coming soon. Register interest for players, coaches and parents."
-  canonical="https://jonerfootball.com/workshops/mindset-seminars/"
+  title={pageTitle}
+  description={pageDescription}
+  canonical={sanityPage?.seo?.canonicalUrl || 'https://jonerfootball.com/workshops/mindset-seminars/'}
+  ogImage={sanityPage?.seo?.imageUrl || undefined}
+  noindex={Boolean(sanityPage?.seo?.noIndex)}
   schema={seminarSchema}
 >
   <main class="bg-joner-black text-white">
@@ -31,12 +48,12 @@ const seminarSchema = {
 
           <div class="relative z-10 min-h-[560px] px-6 py-14 text-center sm:px-10 md:py-20 lg:px-14">
             <div class="mx-auto flex min-h-[460px] max-w-4xl flex-col items-center justify-center">
-              <p class="mb-4 font-heading text-xs uppercase tracking-[0.25em] text-joner-red sm:text-sm">Coming Soon</p>
+              <p class="mb-4 font-heading text-xs uppercase tracking-[0.25em] text-joner-red sm:text-sm">{heroEyebrow}</p>
               <h1 class="mb-6 bg-gradient-to-b from-white via-neutral-100 to-neutral-500 bg-clip-text font-heading text-5xl font-bold uppercase leading-[0.9] text-transparent sm:text-6xl md:text-7xl lg:text-8xl">
-                Mindset<br />Seminars
+                {heroHeadline}
               </h1>
               <p class="mb-8 max-w-2xl font-body text-base leading-relaxed text-neutral-300 sm:text-lg">
-                The mental side of football. For players, coaches and parents. Register interest and we will let you know when the next seminar is ready.
+                {heroSubheadline}
               </p>
               <a href="#contact" class="btn-red text-sm">Register Interest</a>
             </div>
@@ -93,5 +110,7 @@ const seminarSchema = {
         </form>
       </div>
     </section>
+    <SanityPageExtras page={sanityPage} />
   </main>
 </BaseLayout>
+)}

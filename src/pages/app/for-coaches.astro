@@ -86,8 +86,17 @@ const faqs = [
     a: 'Yes. Coaches Only gives access to the coaches tier plus the wider Joner Football App content.'
   }
 ]
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('app-for-coaches')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout title={title} description={description} canonical="https://jonerfootball.com/app/for-coaches/" ogImage="https://jonerfootball.com/images/coaches-only/coaches-only-hero-updated.png">
   <main class="bg-joner-black text-white">
     <section class="relative overflow-hidden border-b border-gray-900">
@@ -187,3 +196,4 @@ const faqs = [
     </section>
   </main>
 </BaseLayout>
+)}

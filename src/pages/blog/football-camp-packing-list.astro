@@ -1,7 +1,16 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog-football-camp-packing-list')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BlogPost
   title="Football Camp Packing List: Everything Your Child Needs"
   description="The complete football camp packing list for parents. Everything your child needs to bring to a Joner Football camp including boots, gear, essentials, and what to expect."
@@ -68,3 +77,4 @@ import BlogPost from '../../layouts/BlogPost.astro'
 <p>And between camps, keep the development going with the <a href="/app">Joner Football App</a>, with 1,500+ drills your child can do at home to stay sharp.</p>
 
 </BlogPost>
+)}

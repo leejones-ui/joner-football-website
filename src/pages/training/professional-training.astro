@@ -43,8 +43,17 @@ const videoFeatures = [
     label: 'Watch session 04',
   },
 ]
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('professional-training')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Professional Training | Joner Football"
   description="Joner Football professional training showcase. Lee Jones has worked with professional players across Australia and worldwide for over 10 years."
@@ -605,3 +614,4 @@ const videoFeatures = [
     })();
   </script>
 </BaseLayout>
+)}

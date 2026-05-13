@@ -1,7 +1,16 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog-youth-football-winning-mentality')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BlogPost
   title="Why Youth Football Is Losing Its Winning Mentality"
   description="Lee Jones explains why modern youth football is producing highly technical players who lack winning mentality, and how coaches and parents can build fight, standards, and resilience."
@@ -139,3 +148,4 @@ import BlogPost from '../../layouts/BlogPost.astro'
 <p>Train properly. Compete properly. Build players who are ready for the game.</p>
 
 </BlogPost>
+)}

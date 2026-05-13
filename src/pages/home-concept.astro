@@ -1,7 +1,16 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('home-concept')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Joner Football Homepage Concept | Prototype"
   description="Cinematic Joner Football homepage concept inspired by premium product storytelling."
@@ -40,3 +49,4 @@ import BaseLayout from '../layouts/BaseLayout.astro'
     </div>
   </section>
 </BaseLayout>
+)}

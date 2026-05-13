@@ -114,8 +114,17 @@ const teamFeatures = [
   'Dedicated account rep',
   'Bespoke training plans',
 ]
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('join')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Joner Football App Pricing - Joner Football"
   description="Join 50,000 players, coaches and parents already using the Joner Football App."
@@ -340,3 +349,4 @@ const teamFeatures = [
     @media (max-width: 640px) { .join-wrap { width: min(100% - 24px, 1180px); } .join-hero { padding-top: 3.25rem; } .join-logo { width: min(190px, 58vw); } }
   </style>
 </BaseLayout>
+)}

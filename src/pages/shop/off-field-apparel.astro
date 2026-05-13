@@ -28,8 +28,17 @@ try {
 } catch (error) {
   products = []
 }
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('shop-off-field-apparel')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout title="Off Field Apparel | Joner Football Shop" description="Shop Joner Football off field apparel, hoodies, tees, tanks, shorts, hats, and lifestyle gear.">
   <main class="bg-white text-joner-black">
     <section class="grid grid-cols-1 lg:grid-cols-2">
@@ -64,3 +73,4 @@ try {
     </section>
   </main>
 </BaseLayout>
+)}

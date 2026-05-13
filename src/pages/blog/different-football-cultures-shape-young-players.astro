@@ -1,7 +1,16 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog-different-football-cultures-shape-young-players')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BlogPost
   title="How Different Football Cultures Shape Young Players"
   description="Lee Jones explains how football culture around the world shapes young players, from passion and competitiveness to personality, standards, and the desire to improve."
@@ -182,3 +191,4 @@ import BlogPost from '../../layouts/BlogPost.astro'
 <p>If you want more coaching ideas, training sessions and player development detail, the <a href="/app">Joner Football App</a> has drills and resources for coaches, players and parents.</p>
 
 </BlogPost>
+)}

@@ -1,7 +1,16 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('home-object-prototype')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Hybrid Story Object Prototype | Joner Football"
   description="Three visual object directions and a hybrid scroll-object prototype for the Joner Football homepage."
@@ -605,3 +614,4 @@ import BaseLayout from '../layouts/BaseLayout.astro'
     })();
   </script>
 </BaseLayout>
+)}

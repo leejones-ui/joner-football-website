@@ -1,0 +1,9 @@
+---
+import { getSanityRenderableSections } from '../../lib/sanityPageUtils'
+import SanitySection from './SanitySection.astro'
+
+const { page } = Astro.props
+const sections = getSanityRenderableSections(page)
+---
+
+{sections.length > 0 && sections.map((section: any) => <SanitySection section={section} />)}

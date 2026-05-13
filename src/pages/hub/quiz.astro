@@ -1,7 +1,16 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('hub-quiz')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="How Well Do You Know Joner Football? | Joner Football Hub"
   description="Take the Joner Football Hub quiz and test how well you know Lee, the brand, the coaching and the story."
@@ -219,3 +228,4 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
   .result-buttons button, .result-buttons a { width: 100%; }
   .share-note { min-height: 22px; font-size: .9rem; }
 </style>
+)}

@@ -181,8 +181,17 @@ const blogGroups = [
   { title: 'Players', intro: 'Training ideas for players who want sharper technique.', posts: posts.filter((post: any) => post.audience === 'Players') },
   { title: 'World Football', intro: 'Bigger football ideas, trends and talking points.', posts: posts.filter((post: any) => post.audience === 'World Football') },
 ]
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Football Training Tips & Coaching Blog | Joner Football"
   description="Football drills, coaching tips, and player development from Joner Football. Expert advice from Coach Joner and the team."
@@ -262,3 +271,4 @@ const blogGroups = [
 
   <EmailCapture />
 </BaseLayout>
+)}

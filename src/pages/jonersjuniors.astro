@@ -89,8 +89,17 @@ const faqSchema = {
     acceptedAnswer: { '@type': 'Answer', text: item.answer },
   })),
 }
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('joners-juniors')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout title={title} description={description} canonical={canonical} schema={[eventSchema, faqSchema]} ogImage="https://jonerfootball.com/images/training/joners-juniors/tlp02345.webp">
   <main class="jj-page bg-joner-black text-white">
     <section class="jj-hero">
@@ -461,3 +470,4 @@ const faqSchema = {
     })();
   </script>
 </BaseLayout>
+)}

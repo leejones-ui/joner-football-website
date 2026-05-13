@@ -1,20 +1,36 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import SanityPageExtras from '../components/sanity/SanityPageExtras.astro'
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { getSanityCta, getSanityImageUrl, getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('technique-test')
+const pageTitle = sanityPage?.seo?.title || 'Joner Technique Test | How Good Are You?'
+const pageDescription = sanityPage?.seo?.description || 'Take the free Joner Football technique test. Find out where your technique ranks among footballers worldwide.'
+const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'THE JONER FOOTBALL TECHNIQUE TEST')
+const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'Enter your name and email, take the test, then when you finish we will tell you your results have been sent by email.')
+const heroImage = getSanityImageUrl(sanityPage?.heroImage, '/images/training/lee-coaching-action.webp')
+const primaryCta = getSanityCta(sanityPage?.primaryCta, { label: "Try the World's #1 Football App Free", url: '/app' })
+const secondaryCta = getSanityCta(sanityPage?.secondaryCta, { label: 'Train in Sydney', url: '/training' })
 ---
-<BaseLayout title="Joner Technique Test | How Good Are You?" description="Take the free Joner Football technique test. Find out where your technique ranks among footballers worldwide.">
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
+<BaseLayout title={pageTitle} description={pageDescription} canonical={sanityPage?.seo?.canonicalUrl} ogImage={sanityPage?.seo?.imageUrl || heroImage || undefined} noindex={Boolean(sanityPage?.seo?.noIndex)}>
 
   <!-- EMAIL GATE SECTION -->
   <section id="gate" class="relative min-h-[500px] flex items-center justify-center py-24 overflow-hidden">
     <div class="absolute inset-0">
-      <img src="/images/training/lee-coaching-action.webp" alt="Joner Football training" class="w-full h-full object-cover object-center" />
+      <img src={heroImage} alt="Joner Football training" class="w-full h-full object-cover object-center" />
       <div class="absolute inset-0" style="background:rgba(0,0,0,0.7)"></div>
     </div>
     <div class="relative z-10 max-w-xl mx-auto text-center px-4">
       <h1 class="font-heading text-4xl md:text-6xl lg:text-7xl font-bold text-white uppercase mb-4 leading-tight">
-        THE JONER FOOTBALL TECHNIQUE TEST
+        {heroHeadline}
       </h1>
       <p class="text-gray-400 font-body text-lg md:text-xl mb-10">
-        Enter your name and email, take the test, then when you finish we will tell you your results have been sent by email.
+        {heroSubheadline}
       </p>
       <form id="gate-form" class="max-w-md mx-auto space-y-4">
         <input
@@ -74,15 +90,13 @@ import BaseLayout from '../layouts/BaseLayout.astro'
         Take your game to the next level with Joner Football.
       </p>
       <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-        <a href="/app" class="btn-red text-sm px-8 py-3 font-heading uppercase tracking-wider">
-          Try the World's #1 Football App Free
-        </a>
-        <a href="/training" class="btn-outline text-sm px-8 py-3 font-heading uppercase tracking-wider">
-          Train in Sydney
-        </a>
+        {primaryCta?.label && primaryCta?.url && <a href={primaryCta.url} class="btn-red text-sm px-8 py-3 font-heading uppercase tracking-wider">{primaryCta.label}</a>}
+        {secondaryCta?.label && secondaryCta?.url && <a href={secondaryCta.url} class="btn-outline text-sm px-8 py-3 font-heading uppercase tracking-wider">{secondaryCta.label}</a>}
       </div>
     </div>
   </section>
+
+  <SanityPageExtras page={sanityPage} />
 
   <script is:inline>
     document.addEventListener('DOMContentLoaded', function () {
@@ -151,3 +165,4 @@ import BaseLayout from '../layouts/BaseLayout.astro'
   </script>
 
 </BaseLayout>
+)}

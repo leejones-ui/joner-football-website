@@ -21,8 +21,17 @@ const appSchema = {
     "ratingCount": "50000"
   }
 }
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('app')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Joner Football App | Your Complete Training Platform"
   description="The world's #1 football training app. 1,500+ drills, session plans, follow-along programs, and the 100-Day Player Programme. Try free today."
@@ -782,3 +791,4 @@ const appSchema = {
   </style>
 
 </BaseLayout>
+)}

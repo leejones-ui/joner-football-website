@@ -10,6 +10,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
+    "seed:pages": "node scripts/seed-sanity-pages.mjs",
     "studio": "sanity dev",
     "studio:deploy": "sanity deploy"
   },

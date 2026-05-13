@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import SanityPageExtras from '../components/sanity/SanityPageExtras.astro'
 
 const enquiryOptions = [
   {
@@ -31,17 +32,35 @@ const schema = {
   description: 'Contact Joner Football for Sydney training, Joners Juniors, general enquiries, or coaching roles.',
   url: 'https://jonerfootball.com/contact',
 }
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { getSanityImageUrl, getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('contact')
+const pageTitle = sanityPage?.seo?.title || 'Contact Us | Joner Football'
+const pageDescription = sanityPage?.seo?.description || 'Contact Joner Football for Sydney training, Joners Juniors, general enquiries, or coaching role applications.'
+const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Joner Football')
+const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Contact Us')
+const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'Choose what you need and the form will change. One place for training, Joners Juniors, general questions, and coaching applications.')
+const heroImage = getSanityImageUrl(sanityPage?.heroImage, '/images/contact/lee-coaching-contact-banner.webp')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
-  title="Contact Us | Joner Football"
-  description="Contact Joner Football for Sydney training, Joners Juniors, general enquiries, or coaching role applications."
+  title={pageTitle}
+  description={pageDescription}
+  canonical={sanityPage?.seo?.canonicalUrl}
+  ogImage={sanityPage?.seo?.imageUrl || heroImage || undefined}
+  noindex={Boolean(sanityPage?.seo?.noIndex)}
   schema={schema}
 >
   <section class="relative min-h-[54vh] flex items-center justify-center overflow-hidden bg-joner-black pt-24">
     <div class="absolute inset-0">
       <img
-        src="/images/contact/lee-coaching-contact-banner.webp"
+        src={heroImage}
         alt="Lee Jones coaching on the pitch at Joner Football"
         class="h-full w-full object-cover object-center"
       />
@@ -50,8 +69,8 @@ const schema = {
     </div>
 
     <div class="relative z-10 mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
-      <p class="mb-4 font-heading text-sm uppercase tracking-[0.32em] text-joner-red">Joner Football</p>
-      <h1 class="font-heading text-6xl font-black uppercase leading-none text-white md:text-8xl lg:text-9xl">Contact Us</h1>
+      <p class="mb-4 font-heading text-sm uppercase tracking-[0.32em] text-joner-red">{heroEyebrow}</p>
+      <h1 class="font-heading text-6xl font-black uppercase leading-none text-white md:text-8xl lg:text-9xl">{heroHeadline}</h1>
     </div>
   </section>
 
@@ -59,7 +78,7 @@ const schema = {
     <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
       <div class="mb-8 text-center">
         <p class="mx-auto max-w-2xl font-body text-base leading-relaxed text-gray-400 md:text-lg">
-          Choose what you need and the form will change. One place for training, Joners Juniors, general questions, and coaching applications.
+          {heroSubheadline}
         </p>
       </div>
 
@@ -145,6 +164,8 @@ const schema = {
       </form>
     </div>
   </section>
+
+  <SanityPageExtras page={sanityPage} />
 
   <script is:inline>
     (function () {
@@ -328,3 +349,4 @@ const schema = {
     })();
   </script>
 </BaseLayout>
+)}

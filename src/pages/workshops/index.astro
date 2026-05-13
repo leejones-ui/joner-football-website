@@ -16,8 +16,17 @@ const courseSchema = {
   "courseMode": "online",
   "isAccessibleForFree": false
 }
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('workshops')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Workshops | Joner Football"
   description="Joner Football workshops. Online coaches course and mindset seminars. Level up your coaching and mental game with the Joner Football methodology."
@@ -110,3 +119,4 @@ const courseSchema = {
   <EmailCapture />
 
 </BaseLayout>
+)}

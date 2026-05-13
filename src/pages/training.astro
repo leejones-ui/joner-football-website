@@ -95,8 +95,17 @@ const localBizSchema = {
   "openingHours": "Mo-Sa",
   "priceRange": "$$"
 }
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('training')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Sydney Training Programs | Joner Football"
   description="Sydney football training programs at Joner Football. JFP Performance program, professional training, and Joners Juniors. Indoor facility at Belrose. Ages 8+."
@@ -1269,4 +1278,4 @@ const localBizSchema = {
   </style>
 
 </BaseLayout>
-
+)}

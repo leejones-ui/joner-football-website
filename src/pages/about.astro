@@ -48,8 +48,17 @@ const contactEnquiryOptions = [
   { value: 'joners-juniors', label: 'Joners Juniors Enquiries', intro: 'For parents enquiring about the Joners Juniors program.' },
   { value: 'coaching-role', label: 'Apply For A Coaching Role', intro: 'Tell us about your coaching background and why you want to work with Joner Football.' },
 ]
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('about')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="About Lee Jones & Joner Football | Joner Football"
   description="About Lee Jones and Joner Football. Voted Top 10 Technical Trainers in the World. From Sydney to global. The Joner Football story."
@@ -665,3 +674,4 @@ const contactEnquiryOptions = [
   </style>
 
 </BaseLayout>
+)}

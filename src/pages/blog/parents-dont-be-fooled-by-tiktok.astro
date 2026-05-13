@@ -1,7 +1,16 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog-parents-dont-be-fooled-by-tiktok')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BlogPost
   title="Parents, Make Sure Your Son Or Daughter Is Training Properly. Do Not Be Fooled By TikTok"
   description="Lee Jones explains why parents should not let TikTok-style football clips shape their child's training, and what proper realistic football development should look like."
@@ -127,3 +136,4 @@ import BlogPost from '../../layouts/BlogPost.astro'
 <p>Train for the game.</p>
 
 </BlogPost>
+)}

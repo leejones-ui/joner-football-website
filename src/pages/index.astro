@@ -246,8 +246,16 @@ const mediaStyle = (beat) => {
   return `--story-object-desktop: ${desktop}; --story-object-tablet: ${tablet}; --story-object-mobile: ${mobile};`
 }
 
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('home')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Joner Football | Technique Above Everything"
   description="Joner Football. Elite football coaching, global camps, and the world's best coaching app. Technique above everything."
@@ -2182,3 +2190,4 @@ const mediaStyle = (beat) => {
     import '../scripts/home-motion'
   </script>
 </BaseLayout>
+)}

@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import SanityPageExtras from '../../components/sanity/SanityPageExtras.astro'
 
 const courseSchema = {
   '@context': 'https://schema.org',
@@ -14,12 +15,29 @@ const courseSchema = {
   url: 'https://jonerfootball.com/workshops/coaches-course',
   courseMode: 'online',
 }
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { getSanityImageUrl, getSanityText, shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('coaches-course')
+const pageTitle = sanityPage?.seo?.title || 'Online Coaches Course | Joner Football'
+const pageDescription = sanityPage?.seo?.description || 'Apply for the Joner Football Online Coaches Course and Mentorship. Coming soon, maximum 25 spots available.'
+const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Coming Soon')
+const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Online Coaches Course')
+const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'Joner Football Online Coaches Course and Mentorship. Apply below and tell us about your coaching journey. Maximum 25 spots available.')
+const heroImage = getSanityImageUrl(sanityPage?.heroImage, '/images/coaches-only/dsc05109-hero.webp')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
-  title="Online Coaches Course | Joner Football"
-  description="Apply for the Joner Football Online Coaches Course and Mentorship. Coming soon, maximum 25 spots available."
-  canonical="https://jonerfootball.com/workshops/coaches-course/"
+  title={pageTitle}
+  description={pageDescription}
+  canonical={sanityPage?.seo?.canonicalUrl || 'https://jonerfootball.com/workshops/coaches-course/'}
+  ogImage={sanityPage?.seo?.imageUrl || heroImage || undefined}
+  noindex={Boolean(sanityPage?.seo?.noIndex)}
   schema={courseSchema}
 >
   <main class="bg-joner-black text-white">
@@ -31,18 +49,18 @@ const courseSchema = {
 
           <div class="relative z-10 grid min-h-[560px] grid-cols-1 lg:grid-cols-2">
             <div class="flex flex-col justify-center px-6 py-10 sm:px-10 sm:py-14 lg:p-14">
-              <p class="mb-4 font-heading text-xs uppercase tracking-[0.25em] text-joner-red sm:text-sm">Coming Soon</p>
+              <p class="mb-4 font-heading text-xs uppercase tracking-[0.25em] text-joner-red sm:text-sm">{heroEyebrow}</p>
               <h1 class="mb-6 bg-gradient-to-b from-white via-neutral-100 to-neutral-500 bg-clip-text font-heading text-5xl font-bold uppercase leading-[0.9] text-transparent sm:text-6xl md:text-7xl lg:text-8xl">
-                Online Coaches<br />Course
+                {heroHeadline}
               </h1>
               <p class="mb-8 max-w-xl font-body text-base leading-relaxed text-neutral-300 sm:text-lg">
-                Joner Football Online Coaches Course and Mentorship. Apply below and tell us about your coaching journey. Maximum 25 spots available.
+                {heroSubheadline}
               </p>
               <a href="#apply" class="btn-red w-fit text-sm">Apply For A Spot</a>
             </div>
 
             <div class="relative min-h-[360px] bg-joner-gray lg:min-h-0">
-              <img src="/images/coaches-only/dsc05109-hero.webp" alt="Joner Football coaching the coaches session" class="absolute inset-0 h-full w-full object-cover opacity-90" loading="eager" />
+              <img src={heroImage} alt="Joner Football coaching the coaches session" class="absolute inset-0 h-full w-full object-cover opacity-90" loading="eager" />
               <div class="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent lg:bg-gradient-to-r lg:from-black/5 lg:via-transparent lg:to-black/18"></div>
             </div>
           </div>
@@ -99,5 +117,7 @@ const courseSchema = {
         </form>
       </div>
     </section>
+    <SanityPageExtras page={sanityPage} />
   </main>
 </BaseLayout>
+)}

@@ -1,28 +1,4 @@
-const pageKeys = [
-  { title: 'Home', value: 'home' },
-  { title: 'Join / App landing page', value: 'join' },
-  { title: 'App page', value: 'app' },
-  { title: 'Camps hub', value: 'camps' },
-  { title: 'Training hub', value: 'training' },
-  { title: 'JFP Program', value: 'jfp-program' },
-  { title: 'Joners Juniors', value: 'joners-juniors' },
-  { title: 'Game Analysis', value: 'game-analysis' },
-  { title: 'Professional Training', value: 'professional-training' },
-  { title: 'Coaches / Workshops hub', value: 'workshops' },
-  { title: 'Coaches Course', value: 'coaches-course' },
-  { title: 'Mindset Seminars', value: 'mindset-seminars' },
-  { title: 'Shop hub', value: 'shop' },
-  { title: 'Shop, Off Field Apparel', value: 'shop-off-field-apparel' },
-  { title: 'Shop, Resources and Accessories', value: 'shop-resources-accessories' },
-  { title: 'Shop, Training Programs', value: 'shop-training-programs' },
-  { title: 'Blog hub', value: 'blog' },
-  { title: 'Contact page', value: 'contact' },
-  { title: 'Privacy page', value: 'privacy' },
-  { title: 'Terms page', value: 'terms' },
-  { title: 'About page', value: 'about' },
-  { title: 'HQ page', value: 'hq' },
-  { title: 'Teams page', value: 'teams' },
-]
+import { staticPageKeyOptions } from '../pageCatalog.js'
 
 export default {
   name: 'page',
@@ -37,7 +13,11 @@ export default {
   ],
   fields: [
     { name: 'title', title: 'Page title', type: 'string', group: 'basics', description: 'The page name shown inside Sanity.', validation: (Rule: any) => Rule.required() },
-    { name: 'pageKey', title: 'Which website page is this?', type: 'string', group: 'basics', description: 'Choose the website page this record controls.', options: { list: pageKeys }, validation: (Rule: any) => Rule.required() },
+    { name: 'pageKey', title: 'Which website page is this?', type: 'string', group: 'basics', description: 'Choose the website page this record controls.', options: { list: staticPageKeyOptions }, validation: (Rule: any) => Rule.required() },
+    { name: 'pageMode', title: 'How should this page render?', type: 'string', group: 'basics', initialValue: 'fallback', description: 'Fallback keeps the coded layout. Replace swaps the route to the fully editable Sanity page builder.', options: { list: [
+      { title: 'Keep coded layout, use safe overrides only', value: 'fallback' },
+      { title: 'Replace route with fully editable Sanity page', value: 'replace' },
+    ], layout: 'radio' } },
     { name: 'slug', title: 'Slug / URL', type: 'slug', group: 'basics', options: { source: 'title' }, description: 'The public page URL. Example: join or training/jfp-program.' },
     { name: 'publishStatus', title: 'Publish status', type: 'string', group: 'basics', initialValue: 'draft', options: { list: [
       { title: 'Draft', value: 'draft' },

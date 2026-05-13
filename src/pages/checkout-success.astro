@@ -3,8 +3,17 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 
 const title = 'Welcome To Joner Football | Registration Complete'
 const description = 'Your Joner Football registration is complete. Welcome to the team.'
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('checkout-success')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title={title}
   description={description}
@@ -43,3 +52,4 @@ const description = 'Your Joner Football registration is complete. Welcome to th
     </script>
   </main>
 </BaseLayout>
+)}

@@ -2,8 +2,17 @@
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
 const defaultPaymentLink = 'https://app.jonerfootball.com'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('camp-test-signup')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Test Camp Sign Up | Joner Football"
   description="Test the Joner Football camp registration flow before launch."
@@ -172,3 +181,4 @@ const defaultPaymentLink = 'https://app.jonerfootball.com'
     })
   </script>
 </BaseLayout>
+)}

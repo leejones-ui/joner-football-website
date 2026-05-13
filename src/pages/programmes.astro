@@ -55,8 +55,17 @@ const faqs = [
   { q: 'Are the programs available on monthly?',            a: 'The structured 100-day pathway and the guarantee are exclusive to Annual members. Monthly members access the full video library. Move to Annual to access the programs.' },
   { q: 'What about the S&C program?',                       a: 'The 12-Week Advanced Strength & Conditioning Program is included with Annual membership. Designed for older players ready to take their physical development seriously.' },
 ]
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('programmes')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="100 Day Development Program | Joner Football"
   description="A structured 100 day football pathway for parents, players and coaches. Six progressive programs built by Lee Jones inside the Joner Football App."
@@ -1113,3 +1122,4 @@ const faqs = [
     .p100-section { padding: 72px 20px; }
   }
 </style>
+)}

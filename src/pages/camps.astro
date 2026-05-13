@@ -130,8 +130,17 @@ const testimonials = [
     alt: 'Joner Football camp family testimonial',
   },
 ]
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('camps')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Football Camps | Joner Football"
   description="Choose your Joner Football camp destination. Simple navigation for 2026 camps in Los Angeles, Houston, Dallas, and Sydney."
@@ -505,3 +514,4 @@ const testimonials = [
     }
   </style>
 </BaseLayout>
+)}

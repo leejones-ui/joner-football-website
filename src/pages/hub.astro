@@ -1,23 +1,42 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import HubContent from '../components/HubContent.astro'
+import SanityPageExtras from '../components/sanity/SanityPageExtras.astro'
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { getSanityImageUrl, getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('hub')
+const pageTitle = sanityPage?.seo?.title || 'Joner Football Hub | Free Training, Technique Test, Camps & App'
+const pageDescription = sanityPage?.seo?.description || 'The free Joner Football Hub. Enter your name and email to access free Joner Football blogs, challenges, coach resources and app links.'
+const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Joner Football Hub')
+const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Joner Football Hub')
+const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'Free blogs, challenges, coach resources, giveaways and weekly Joner Football ideas. Enter once and you are in.')
+const heroImage = getSanityImageUrl(sanityPage?.heroImage, '/images/hub-hero-desktop.jpg')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
-  title="Joner Football Hub | Free Training, Technique Test, Camps & App"
-  description="The free Joner Football Hub. Enter your name and email to access free Joner Football blogs, challenges, coach resources and app links."
+  title={pageTitle}
+  description={pageDescription}
+  canonical={sanityPage?.seo?.canonicalUrl}
+  ogImage={sanityPage?.seo?.imageUrl || heroImage || undefined}
+  noindex={Boolean(sanityPage?.seo?.noIndex)}
 >
   <main class="hub-gate-page">
     <section class="hub-gate" id="hub-gate">
       <div class="hub-gate__media" aria-hidden="true">
-        <img src="/images/hub-hero-desktop.jpg" alt="" loading="eager" />
+        <img src={heroImage} alt="" loading="eager" />
       </div>
       <div class="hub-gate__scrim" aria-hidden="true"></div>
       <div class="hub-gate__inner">
         <div class="hub-gate__copy">
-          <p class="hub-gate__eyebrow">Joner Football Hub</p>
-          <h1>Joner Football Hub</h1>
-          <p>Free blogs, challenges, coach resources, giveaways and weekly Joner Football ideas. Enter once and you are in.</p>
+          <p class="hub-gate__eyebrow">{heroEyebrow}</p>
+          <h1>{heroHeadline}</h1>
+          <p>{heroSubheadline}</p>
         </div>
         <form class="hub-gate__form" id="hub-access-form" data-brevo-custom data-list-id="2" novalidate>
           <h2>Enter The Hub</h2>
@@ -43,6 +62,8 @@ import HubContent from '../components/HubContent.astro'
       <HubContent />
     </div>
   </main>
+
+  <SanityPageExtras page={sanityPage} />
 </BaseLayout>
 
 <script is:inline>
@@ -216,3 +237,4 @@ import HubContent from '../components/HubContent.astro'
     }
   }
 </style>
+)}

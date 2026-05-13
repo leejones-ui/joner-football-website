@@ -1,7 +1,16 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog-how-to-coach-different-ages-one-drill')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BlogPost
   title="How To Coach Different Ages With One Drill Setup"
   description="Lee Jones explains how coaches can use one simple drill setup for different ages and ability levels by changing progressions, not overcomplicating the session."
@@ -162,3 +171,4 @@ import BlogPost from '../../layouts/BlogPost.astro'
 <p>Keep the setup simple. Make the coaching better.</p>
 
 </BlogPost>
+)}

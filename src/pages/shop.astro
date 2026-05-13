@@ -29,8 +29,17 @@ const schema = {
   description: 'Official Joner Football apparel, training programs, resources, and accessories.',
   url: 'https://jonerfootball.com/shop',
 }
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('shop')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Shop | Joner Football"
   description="Official Joner Football apparel, training programs, resources, and accessories."
@@ -56,3 +65,4 @@ const schema = {
     </div>
   </section>
 </BaseLayout>
+)}

@@ -133,8 +133,17 @@ const paths = [
   { title: 'Parent', text: 'Find training, camps or programs inside the APP.', href: '/training#joners-juniors' },
   { title: 'Coach', text: 'Learn the methodology and access coach tools.', href: '/workshops/coaches-course' },
 ]
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('home-storyboard-prototype')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title="Home Storyboard Prototype | Joner Football"
   description="A prototype route for the cinematic Joner Football homepage story sequence."
@@ -878,3 +887,4 @@ const paths = [
     })();
   </script>
 </BaseLayout>
+)}

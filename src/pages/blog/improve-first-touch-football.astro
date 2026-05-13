@@ -1,7 +1,16 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog-improve-first-touch-football')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BlogPost
   title="How to Improve Your First Touch in Football"
   description="Learn how to improve your first touch in football with proven techniques from Joner Football. Cushion control, body positioning, and weak foot receiving."
@@ -60,3 +69,4 @@ import BlogPost from '../../layouts/BlogPost.astro'
 <p>If you're serious about developing your game, check out our <a href="/camps">global training camps</a> where you can work on these skills in person with the Joner Football coaching team.</p>
 
 </BlogPost>
+)}

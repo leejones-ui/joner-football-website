@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
+import SanityPageExtras from '../components/sanity/SanityPageExtras.astro'
 
 const schema = {
   "@context": "https://schema.org",
@@ -9,11 +10,29 @@ const schema = {
   "description": "Team and club subscriptions for the Joner Football App. Give every player access to 1,500+ drills, session plans, and coaching methodology.",
   "url": "https://jonerfootball.com/teams"
 }
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { getSanityCta, getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('teams')
+const pageTitle = sanityPage?.seo?.title || 'Team Subscriptions | Joner Football'
+const pageDescription = sanityPage?.seo?.description || 'Team and club subscriptions for the Joner Football App. Give every player access to 1,500+ drills, session plans, and coaching methodology.'
+const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Team Subscriptions')
+const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole Squad')
+const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'Team and club subscriptions for the Joner Football App')
+const primaryCta = getSanityCta(sanityPage?.primaryCta, { label: 'Get a Quote', url: '#team-subscription-form' })
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
-  title="Team Subscriptions | Joner Football"
-  description="Team and club subscriptions for the Joner Football App. Give every player access to 1,500+ drills, session plans, and coaching methodology."
+  title={pageTitle}
+  description={pageDescription}
+  canonical={sanityPage?.seo?.canonicalUrl}
+  ogImage={sanityPage?.seo?.imageUrl || undefined}
+  noindex={Boolean(sanityPage?.seo?.noIndex)}
   schema={schema}
 >
 
@@ -23,16 +42,14 @@ const schema = {
     <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red"></div>
 
     <div class="relative z-10 text-center px-4 max-w-4xl mx-auto py-24">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">Team Subscriptions</p>
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">{heroEyebrow}</p>
       <h1 class="font-heading text-3xl sm:text-5xl md:text-7xl font-bold text-white uppercase leading-none mb-6">
-        Train Your<br/>Whole Squad
+        {heroHeadline}
       </h1>
       <p class="text-gray-300 font-body text-lg md:text-xl max-w-2xl mx-auto mb-8">
-        Team and club subscriptions for the Joner Football App
+        {heroSubheadline}
       </p>
-      <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-block text-center">
-        Get a Quote
-      </a>
+      {primaryCta?.label && primaryCta?.url && <a href={primaryCta.url} class="btn-red text-base px-8 py-4 inline-block text-center">{primaryCta.label}</a>}
     </div>
   </section>
 
@@ -319,6 +336,9 @@ const schema = {
     </div>
   </section>
 
+  <SanityPageExtras page={sanityPage} />
+
   <EmailCapture />
 
 </BaseLayout>
+)}

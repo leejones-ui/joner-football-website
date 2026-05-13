@@ -144,8 +144,17 @@ const eventSchema = {
     url: 'https://jonerfootball.com/camps/sydney-july-2026/#register',
   })),
 }
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title={title}
   description={description}
@@ -1534,3 +1543,4 @@ const eventSchema = {
     }
   </script>
 </BaseLayout>
+)}

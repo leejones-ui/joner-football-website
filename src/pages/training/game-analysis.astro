@@ -28,8 +28,17 @@ const steps = [
     copy: 'The player gets clear feedback, stats, and targets to take into the next game.',
   },
 ]
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('game-analysis')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BaseLayout
   title={title}
   description={description}
@@ -299,3 +308,4 @@ const steps = [
     }
   </script>
 </BaseLayout>
+)}

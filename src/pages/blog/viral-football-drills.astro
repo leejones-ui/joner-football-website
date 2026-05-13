@@ -1,7 +1,16 @@
 ---
 import BlogPost from '../../layouts/BlogPost.astro'
+
+import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('blog-viral-football-drills')
 ---
 
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
 <BlogPost
   title="I Tested 5 Viral Football Drills. Only One Of Them Was Actually Football."
   description="Lee Jones tested five viral football drills and found only one that truly relates to the game. Here is what coaches, parents and players should learn from it."
@@ -66,3 +75,4 @@ import BlogPost from '../../layouts/BlogPost.astro'
 <p>Coach Lee<br/>Joner Football</p>
 
 </BlogPost>
+)}
