@@ -9,6 +9,25 @@ interface Category {
   images: string[]
 }
 
+// Pull real apparel product photos from Shopify at build time, like
+// /shop/off-field-apparel does. Falls back to the local placeholder if
+// the Shopify endpoint is unreachable during the build.
+const shopifyStore = 'https://jonerfootball.myshopify.com'
+let apparelImages: string[] = ['/images/shop/shop-apparel.webp']
+try {
+  const response = await fetch(`${shopifyStore}/products.json?limit=20`)
+  if (response.ok) {
+    const data = await response.json()
+    const products = Array.isArray(data?.products) ? data.products : []
+    const imageUrls = products
+      .map((p: any) => p?.images?.[0]?.src)
+      .filter((src: any): src is string => typeof src === 'string' && src.length > 0)
+    if (imageUrls.length) apparelImages = imageUrls.slice(0, 8)
+  }
+} catch {
+  // keep fallback
+}
+
 const categories: Category[] = [
   {
     id: 'apparel',
@@ -17,9 +36,7 @@ const categories: Category[] = [
     description: 'Kit and apparel.',
     cta: 'Shop',
     href: '/shop/off-field-apparel',
-    images: [
-      '/images/shop/shop-apparel.webp',
-    ],
+    images: apparelImages,
   },
   {
     id: 'training',
