@@ -182,11 +182,11 @@ const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
         <span class="hou-h1-small">3 Day Elite Camp · July 2026 · Ft Miguel Grande</span>
       </h1>
       <div class="hou-hero-cta" data-motion="fade-up" data-motion-delay="0.2">
-        <a class="hou-glass hou-glass--lg" href="#register" data-motion-hover="lift">
-          Book your spot<span class="hou-glass-underline"></span>
+        <a class="btn-red" href="#register" data-motion-hover="lift">
+          Book your spot
         </a>
-        <a class="hou-glass" href="#info" data-motion-hover="lift">
-          See the details<span class="hou-glass-underline"></span>
+        <a class="btn-red" href="#info" data-motion-hover="lift">
+          See the details
         </a>
       </div>
     </div>
@@ -277,8 +277,8 @@ const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
         ))}
       </ul>
       <div class="hou-bullets-cta" data-motion="fade-up">
-        <a class="hou-glass hou-glass--lg" href="#register" data-motion-hover="lift">
-          Invest now<span class="hou-glass-underline"></span>
+        <a class="btn-red" href="#register" data-motion-hover="lift">
+          Invest now
         </a>
       </div>
     </div>
@@ -301,8 +301,8 @@ const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
         </div>
       </div>
       <div class="hou-video-cta-row" data-motion="fade-up">
-        <a class="hou-glass hou-glass--lg" href="#register" data-motion-hover="lift">
-          Book your spot now<span class="hou-glass-underline"></span>
+        <a class="btn-red" href="#register" data-motion-hover="lift">
+          Book your spot now
         </a>
       </div>
     </div>
@@ -458,9 +458,9 @@ const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
           <p class="hou-form-error" id="houFormError" role="alert"></p>
 
           <div class="hou-form-submit">
-            <button type="submit" class="hou-glass hou-glass--lg" data-motion-hover="lift">
+            <button type="submit" class="btn-red" data-motion-hover="lift">
               <span class="hou-submit-label">Submit and pay</span>
-              <span class="hou-glass-underline"></span>
+              
             </button>
           </div>
         </div>
@@ -502,16 +502,16 @@ const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
     <div class="hou-wrap">
       <h2 class="hou-h2 hou-final-h2" data-motion="fade-up">Sydney. <span class="hou-hook">July 2026.</span><br/>Don't miss it.</h2>
       <p data-motion="fade-up" data-motion-delay="0.1">Sells out every year. Lock your spot now and we'll see you on the pitch.</p>
-      <a class="hou-glass hou-glass--lg" href="#register" data-motion="fade-up" data-motion-delay="0.2" data-motion-hover="lift">
-        Register now<span class="hou-glass-underline"></span>
+      <a class="btn-red" href="#register" data-motion="fade-up" data-motion-delay="0.2" data-motion-hover="lift">
+        Register now
       </a>
     </div>
   </section>
 
   <!-- ============ STICKY MOBILE CTA ============ -->
   <div class="hou-mobile-cta">
-    <a class="hou-glass hou-glass--block hou-glass--lg" href="#register">
-      Book your spot<span class="hou-glass-underline"></span>
+    <a class="btn-red w-full" href="#register">
+      Book your spot
     </a>
   </div>
 
@@ -1535,7 +1535,7 @@ const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
             <div style="padding:18px 0;text-align:center;">
               <p style="color:#4ade80;font-size:18px;font-family:var(--font-display);font-style:italic;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 12px;">You're in. Spot held.</p>
               <p style="color:rgba(255,255,255,0.78);font-size:15px;line-height:1.55;margin:0 0 20px;">Complete payment through Stripe to confirm. Afterpay may appear inside Stripe Checkout if available. We've emailed Joner HQ. You'll get a confirmation when payment lands.</p>
-              <a href="${paymentLink}" target="_blank" rel="noopener" class="hou-glass hou-glass--lg">Complete payment<span class="hou-glass-underline"></span></a>
+              <a href="${paymentLink}" target="_blank" rel="noopener" class="btn-red">Complete payment</a>
             </div>`
         } catch (err) {
           if (errEl) errEl.textContent = (err as Error).message || 'Something went wrong. Please try again.'

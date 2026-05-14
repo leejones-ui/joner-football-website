@@ -716,7 +716,41 @@ const sanityPage = await fetchSanityPage('app')
         transition: none !important;
       }
     }
+
+    /* Sticky bottom CTA — hidden over the hero, revealed once the user
+       scrolls past it. Mirrors the camp pages pattern. */
+    .app-mobile-cta {
+      position: fixed; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; z-index: 40;
+      display: none;
+      opacity: 0;
+      transform: translateY(110%);
+      pointer-events: none;
+      transition: opacity 280ms ease, transform 360ms cubic-bezier(0.32, 0.72, 0, 1);
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.42);
+      text-align: center;
+    }
+    .app-mobile-cta.is-revealed { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
+      .app-mobile-cta { display: inline-flex; }
+      body { padding-bottom: 90px; }
+    }
   </style>
+
+  <a href="/join" class="app-mobile-cta btn-red">Download The App</a>
+
+  <script is:inline>
+    ;(function () {
+      var heroEl = document.querySelector('.app-scroll-hero');
+      var cta = document.querySelector('.app-mobile-cta');
+      if (!heroEl || !cta || !('IntersectionObserver' in window)) return;
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          cta.classList.toggle('is-revealed', !entry.isIntersecting);
+        });
+      }, { threshold: 0, rootMargin: '-40px 0px 0px 0px' });
+      io.observe(heroEl);
+    })();
+  </script>
 
 </BaseLayout>
 )}
