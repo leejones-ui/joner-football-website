@@ -224,7 +224,8 @@ const choices = [
   .mobile-story-dots { position: absolute; left: 0.18rem; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: space-between; }
   .mobile-story-dots span { width: 1.45rem; height: 1.45rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.26); background: rgba(0,0,0,0.34); display: grid; place-items: center; color: rgba(255,255,255,0.62); font-family: 'Anton', Impact, sans-serif; font-size: 0.58rem; letter-spacing: 0.08em; }
   .mobile-story-dots span.is-active { border-color: #e30613; background: #e30613; color: #fff; box-shadow: 0 0 1rem rgba(227,6,19,0.5); }
-  @media (max-width: 1024px) { .mobile-story { display: block; } }
+  /* Show mobile story on narrow viewports OR any touch device (iPads of all sizes). */
+  @media (max-width: 1024px), (hover: none) and (pointer: coarse) { .mobile-story { display: block; } }
   @media (prefers-reduced-motion: reduce) { .mobile-story-beat, .mobile-story-copy, .mobile-growth-card > strong, .mobile-growth-grid strong { transition: none !important; transform: none !important; } }
 </style>
 

@@ -1554,7 +1554,7 @@ const sanityPage = await fetchSanityPage('home')
         font-size: 0.72rem !important;
       }
 
-      @media (max-width: 1024px) {
+      @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
         .jfp-journey {
           display: none !important;
         }
@@ -1580,7 +1580,9 @@ const sanityPage = await fetchSanityPage('home')
         }
       }
 
-      @media (max-width: 1024px) {
+      /* Hide the heavy desktop scroll-story on narrow screens AND on every
+         touch device (catches all iPads including 12.9" landscape at 1366px). */
+      @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
         #storyboard-desktop {
           display: none;
         }
@@ -1814,7 +1816,7 @@ const sanityPage = await fetchSanityPage('home')
               data-index={index}
               data-state={index === 0 ? 'active' : 'inactive'}
             >
-              {beat.mobileImage && <source media="(max-width: 1024px)" srcset={beat.mobileImage} />}
+              {beat.mobileImage && <source media="(max-width: 1024px), (hover: none) and (pointer: coarse)" srcset={beat.mobileImage} />}
               <img
                 class="h-full w-full object-cover"
                 src={beat.image}
@@ -2044,7 +2046,8 @@ const sanityPage = await fetchSanityPage('home')
 
       function initDesktopStory() {
         var shell = document.querySelector('[data-story-shell]');
-        if (!shell || window.matchMedia('(max-width: 1024px)').matches) return;
+        // Bail on narrow screens OR any touch device — covers all iPads.
+        if (!shell || window.matchMedia('(max-width: 1024px)').matches || window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
 
         var copies = Array.prototype.slice.call(shell.querySelectorAll('[data-story-copy]'));
         var backgrounds = Array.prototype.slice.call(shell.querySelectorAll('[data-story-bg]'));

@@ -651,7 +651,7 @@ const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
       background-size: cover;
       background-position: 60% 22%;
     }
-    @media (max-width: 1024px) {
+    @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
       .hou-hero-img { background-position: 64% 18%; }
     }
     .hou-hero-img::after {
@@ -1284,7 +1284,7 @@ const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
       background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.95) 30%);
       display: none;
     }
-    @media (max-width: 1024px) {
+    @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
       .hou-mobile-cta { display: block; }
       .hou-page { padding-bottom: 90px; }
     }
