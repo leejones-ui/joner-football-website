@@ -1197,14 +1197,16 @@ const faqSchema = camp.faqItems?.length ? {
     })
 
     const mobileCta = document.querySelector('.camp-mobile-cta')
-    const registerSection = document.querySelector('#register')
-    if (mobileCta && registerSection && 'IntersectionObserver' in window) {
+    const heroSection = document.querySelector('#overview')
+    if (mobileCta && heroSection && 'IntersectionObserver' in window) {
+      // Start hidden, reveal once the hero scrolls out of view.
+      mobileCta.classList.add('opacity-0', 'pointer-events-none')
       const ctaObserver = new IntersectionObserver((entries) => {
-        const isRegisterVisible = entries.some((entry) => entry.isIntersecting)
-        mobileCta.classList.toggle('opacity-0', isRegisterVisible)
-        mobileCta.classList.toggle('pointer-events-none', isRegisterVisible)
-      }, { threshold: 0.12 })
-      ctaObserver.observe(registerSection)
+        const isHeroVisible = entries.some((entry) => entry.isIntersecting)
+        mobileCta.classList.toggle('opacity-0', isHeroVisible)
+        mobileCta.classList.toggle('pointer-events-none', isHeroVisible)
+      }, { threshold: 0, rootMargin: '-40px 0px 0px 0px' })
+      ctaObserver.observe(heroSection)
     }
 
     function normalizeDayLabel(value) {
