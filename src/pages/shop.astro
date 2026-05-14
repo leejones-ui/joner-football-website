@@ -1,26 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-
-const categories = [
-  {
-    title: 'Off Field Apparel',
-    label: 'Shop Now',
-    href: '/shop/off-field-apparel',
-    image: '/images/shop/shop-apparel.webp',
-  },
-  {
-    title: 'Training Programs',
-    label: 'Digital Training',
-    href: '/shop/training-programs',
-    image: '/images/shop/shop-training.webp',
-  },
-  {
-    title: 'Resources And Accessories',
-    label: 'Tools And Downloads',
-    href: '/shop/resources-accessories',
-    image: '/images/shop/shop-training.webp',
-  },
-]
+import ShopShowcase from '../components/ShopShowcase.astro'
 
 const schema = {
   '@context': 'https://schema.org',
@@ -45,24 +25,6 @@ const sanityPage = await fetchSanityPage('shop')
   description="Official Joner Football apparel, training programs, resources, and accessories."
   schema={schema}
 >
-  <section class="bg-white py-4 md:py-6">
-    <div class="px-3 md:px-5">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-5">
-        {categories.map((category) => (
-          <a href={category.href} class="group block bg-white text-joner-black">
-            <div class="aspect-[3/4] overflow-hidden bg-gray-100">
-              <img src={category.image} alt={category.title} class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" loading="eager" />
-            </div>
-            <div class="pt-3 md:pt-4">
-              <h1 class="font-heading uppercase text-xl md:text-2xl leading-none text-joner-black group-hover:text-joner-red transition-colors">
-                {category.title}
-              </h1>
-              <p class="font-body text-xs md:text-sm text-gray-500 mt-1">{category.label}</p>
-            </div>
-          </a>
-        ))}
-      </div>
-    </div>
-  </section>
+  <ShopShowcase />
 </BaseLayout>
 )}
