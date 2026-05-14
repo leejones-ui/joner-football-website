@@ -1,4 +1,10 @@
 ---
+interface ProductImage {
+  src: string
+  href: string
+  title: string
+}
+
 interface Category {
   id: string
   title: string
@@ -6,23 +12,31 @@ interface Category {
   description: string
   cta: string
   href: string
-  images: string[]
+  images: ProductImage[]
 }
 
-// Pull real apparel product photos from Shopify at build time, like
-// /shop/off-field-apparel does. Falls back to the local placeholder if
-// the Shopify endpoint is unreachable during the build.
+// Pull real apparel products from Shopify at build time, like
+// /shop/off-field-apparel does. Each image links to its product page.
 const shopifyStore = 'https://jonerfootball.myshopify.com'
-let apparelImages: string[] = ['/images/shop/shop-apparel.webp']
+let apparelImages: ProductImage[] = [
+  { src: '/images/shop/shop-apparel.webp', href: '/shop/off-field-apparel', title: 'Off Field Apparel' },
+]
 try {
   const response = await fetch(`${shopifyStore}/products.json?limit=20`)
   if (response.ok) {
     const data = await response.json()
     const products = Array.isArray(data?.products) ? data.products : []
-    const imageUrls = products
-      .map((p: any) => p?.images?.[0]?.src)
-      .filter((src: any): src is string => typeof src === 'string' && src.length > 0)
-    if (imageUrls.length) apparelImages = imageUrls.slice(0, 8)
+    const built: ProductImage[] = products
+      .map((p: any) => {
+        const src = p?.images?.[0]?.src
+        const handle = p?.handle
+        const title = p?.title
+        if (typeof src !== 'string' || !src || typeof handle !== 'string' || !handle) return null
+        return { src, href: `${shopifyStore}/products/${handle}`, title: typeof title === 'string' && title ? title : 'Joner Football apparel' } as ProductImage
+      })
+      .filter((p: ProductImage | null): p is ProductImage => p !== null)
+      .slice(0, 8)
+    if (built.length) apparelImages = built
   }
 } catch {
   // keep fallback
@@ -46,14 +60,14 @@ const categories: Category[] = [
     cta: 'Browse',
     href: '/shop/training-programs',
     images: [
-      '/images/shop/training-programs/fast-feet-program.webp',
-      '/images/shop/training-programs/dribbling-7-day-program.webp',
-      '/images/shop/training-programs/juggling-program.webp',
-      '/images/shop/training-programs/six-weeks-passing-first-touch.webp',
-      '/images/shop/training-programs/weak-foot-program.webp',
-      '/images/shop/training-programs/score-more-goals.webp',
-      '/images/shop/training-programs/strength-conditioning.webp',
-      '/images/shop/training-programs/hundred-day-transformation-bundle.webp',
+      { src: '/images/shop/training-programs/fast-feet-program.webp', href: 'https://app.jonerfootball.com/checkout/new?o=228903', title: 'Fast Feet Program' },
+      { src: '/images/shop/training-programs/dribbling-7-day-program.webp', href: 'https://app.jonerfootball.com/checkout/new?o=228825', title: '7 Day Dribbling Program' },
+      { src: '/images/shop/training-programs/juggling-program.webp', href: 'https://app.jonerfootball.com/checkout/new?o=228824', title: 'Juggling Program' },
+      { src: '/images/shop/training-programs/six-weeks-passing-first-touch.webp', href: 'https://app.jonerfootball.com/checkout/new?o=228901', title: '6 Weeks Passing & 1st Touch' },
+      { src: '/images/shop/training-programs/weak-foot-program.webp', href: 'https://app.jonerfootball.com/checkout/new?o=228822', title: 'Weak Foot Program' },
+      { src: '/images/shop/training-programs/score-more-goals.webp', href: 'https://app.jonerfootball.com/checkout/new?o=228823', title: 'Score More Goals' },
+      { src: '/images/shop/training-programs/strength-conditioning.webp', href: 'https://app.jonerfootball.com/checkout/new?o=228904', title: 'Strength & Conditioning' },
+      { src: '/images/shop/training-programs/hundred-day-transformation-bundle.webp', href: 'https://app.jonerfootball.com/checkout/new?o=227739', title: '100 Day Transformation Pack' },
     ],
   },
   {
@@ -64,8 +78,8 @@ const categories: Category[] = [
     cta: 'Shop',
     href: '/shop/resources-accessories',
     images: [
-      '/images/shop/resources-accessories/scanning-training-tool.webp',
-      '/images/shop/resources-accessories/numbers-training-tool.webp',
+      { src: '/images/shop/resources-accessories/scanning-training-tool.webp', href: 'https://buy.stripe.com/bJe00icKA49l35ZfpqgEg09', title: 'Scanning Training Tool' },
+      { src: '/images/shop/resources-accessories/numbers-training-tool.webp', href: 'https://buy.stripe.com/cNieVccKA0X921VgtugEg0a', title: 'Numbers Tool' },
     ],
   },
 ]
@@ -84,22 +98,32 @@ const categories: Category[] = [
     <!-- Showcase grid -->
     <div class="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-8 lg:gap-14 items-center">
 
-      <!-- Image stage (top on mobile, right on desktop) -->
+      <!-- Image stage (top on mobile, right on desktop). Each image is a link
+           to its product. Only the active image is clickable; others fade out
+           with pointer-events disabled. -->
       <div class="relative order-1 lg:order-2 aspect-square bg-joner-gray rounded-2xl overflow-hidden">
         {categories.map((cat) => (
           cat.images.map((img, i) => (
-            <img
-              src={img}
-              alt={`${cat.title} preview ${i + 1}`}
-              class="shop-stage-image absolute inset-0 w-full h-full object-contain"
-              data-stage-image
+            <a
+              href={img.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open ${img.title}`}
+              class="shop-stage-link"
+              data-stage-link
               data-category-id={cat.id}
               data-image-index={i}
-              loading={i === 0 ? 'eager' : 'lazy'}
-            />
+            >
+              <img
+                src={img.src}
+                alt={img.title}
+                class="shop-stage-image"
+                loading={i === 0 ? 'eager' : 'lazy'}
+              />
+            </a>
           ))
         ))}
-        <div class="absolute left-4 top-4 md:left-5 md:top-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur border border-white/10">
+        <div class="absolute left-4 top-4 md:left-5 md:top-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur border border-white/10 z-10 pointer-events-none">
           <span class="w-1.5 h-1.5 rounded-full bg-joner-red"></span>
           <span class="shop-stage-label font-heading text-[10px] md:text-xs uppercase tracking-[0.2em] text-white">Training Programs</span>
         </div>
@@ -145,20 +169,34 @@ const categories: Category[] = [
 </section>
 
 <style>
-  /* Image transitions — same iOS-style easing as /app's closer-look */
-  .shop-stage-image {
+  /* Each image is wrapped in a clickable link layer. Only the active link
+     fades in and accepts pointer events. iOS-style easing on the fade. */
+  .shop-stage-link {
+    position: absolute;
+    inset: 0;
+    display: block;
     opacity: 0;
     transform: scale(1.03);
+    pointer-events: none;
+    will-change: opacity, transform;
     transition:
       opacity 380ms cubic-bezier(0.32, 0.72, 0, 1),
       transform 600ms cubic-bezier(0.32, 0.72, 0, 1);
-    pointer-events: none;
-    will-change: opacity, transform;
   }
-  .shop-stage-image[data-active='true'] {
+  .shop-stage-link[data-active='true'] {
     opacity: 1;
     transform: scale(1);
+    pointer-events: auto;
+    cursor: pointer;
   }
+  .shop-stage-link img.shop-stage-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    transition: transform 400ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .shop-stage-link[data-active='true']:hover img.shop-stage-image { transform: scale(1.02); }
 
   /* Card visuals + active state */
   .shop-card {
@@ -193,13 +231,14 @@ const categories: Category[] = [
   .shop-card-progress-fill { transition: width 80ms linear; }
 
   @media (prefers-reduced-motion: reduce) {
+    .shop-stage-link,
     .shop-stage-image,
     .shop-card,
     .shop-card-bullet,
     .shop-card-bullet-dot,
     .shop-card-cta,
     .shop-card-progress-fill { transition: none !important; }
-    .shop-stage-image { transform: none; }
+    .shop-stage-link { transform: none; }
   }
 </style>
 
@@ -208,11 +247,11 @@ const categories: Category[] = [
     var root = document.querySelector('[data-shop-showcase]');
     if (!root) return;
     var cards = Array.prototype.slice.call(root.querySelectorAll('[data-category-card]'));
-    var images = Array.prototype.slice.call(root.querySelectorAll('[data-stage-image]'));
+    var links = Array.prototype.slice.call(root.querySelectorAll('[data-stage-link]'));
     var label = root.querySelector('.shop-stage-label');
     if (!cards.length) return;
 
-    var ROTATE_MS = 6000;   // total time per category
+    var ROTATE_MS = 6000;   // total time per category before auto-advancing
     var FLASH_MS = 700;     // time per image within a category
     var activeIndex = 0;
     var progress = 0;
@@ -221,9 +260,7 @@ const categories: Category[] = [
     var lastFlashAt = 0;
     var rafId = 0;
     var running = false;
-    var paused = false;
-    var manualLock = false;
-    var manualUntil = 0;
+    var hoverLocked = false;   // hovering a card pauses auto-advance ONLY; image flash keeps going
 
     var categoryIds = cards.map(function (c) { return c.dataset.categoryId; });
     var labels = {};
@@ -233,21 +270,21 @@ const categories: Category[] = [
       labels[id] = title ? title.textContent : id;
     });
 
-    function imagesFor(id) {
-      return images.filter(function (img) { return img.dataset.categoryId === id; });
+    function linksFor(id) {
+      return links.filter(function (a) { return a.dataset.categoryId === id; });
     }
 
     function setImage() {
       var activeId = categoryIds[activeIndex];
-      var pool = imagesFor(activeId);
-      images.forEach(function (img) { img.dataset.active = 'false'; });
+      var pool = linksFor(activeId);
+      links.forEach(function (a) { a.dataset.active = 'false'; });
       if (pool.length) {
         pool[flashIndex % pool.length].dataset.active = 'true';
       }
       if (label) label.textContent = labels[activeId] || 'Live Preview';
     }
 
-    function setActive(idx, opts) {
+    function setActive(idx) {
       activeIndex = idx;
       progress = 0;
       flashIndex = 0;
@@ -257,34 +294,34 @@ const categories: Category[] = [
         if (fill) fill.style.width = '0%';
       });
       setImage();
-      if (opts && opts.manual) {
-        manualLock = true;
-        manualUntil = performance.now() + 1800;
-      }
     }
 
     function tick(now) {
       rafId = 0;
       if (!running) return;
 
-      if (manualLock && now >= manualUntil) manualLock = false;
-      var advance = !paused && !manualLock;
-
       var dt = lastTick === 0 ? 0 : now - lastTick;
       lastTick = now;
 
-      if (advance) {
+      // Image flash always cycles while the section is in view, even when a
+      // tab is being hovered. This is what makes the right column keep
+      // scrolling through products when the user hovers a tab on the left.
+      if (now - lastFlashAt > FLASH_MS) {
+        flashIndex++;
+        setImage();
+        lastFlashAt = now;
+      }
+
+      // Progress bar + auto-advance to next category only when NOT hovered.
+      // Hovering a tab locks the active category so the user can keep
+      // browsing its products on the right.
+      if (!hoverLocked) {
         progress += (dt / ROTATE_MS) * 100;
         if (progress >= 100) {
           setActive((activeIndex + 1) % cards.length);
         } else {
           var fill = cards[activeIndex].querySelector('[data-progress-fill]');
           if (fill) fill.style.width = progress.toFixed(2) + '%';
-        }
-        if (now - lastFlashAt > FLASH_MS) {
-          flashIndex++;
-          setImage();
-          lastFlashAt = now;
         }
       }
 
@@ -303,31 +340,32 @@ const categories: Category[] = [
       if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
     }
 
-    // Pause on hover/focus (desktop), advance on enter (mouse only)
     var isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     cards.forEach(function (card, i) {
       if (!isTouch) {
+        // Desktop: hover locks the category, image flash keeps cycling, auto
+        // advance pauses. Mouseleave unlocks and resumes the rotation.
         card.addEventListener('mouseenter', function () {
-          if (i !== activeIndex) setActive(i, { manual: true });
-          paused = true;
+          if (i !== activeIndex) setActive(i);
+          hoverLocked = true;
+          progress = 0; // reset progress so when user leaves, full duration restarts
         });
-        card.addEventListener('mouseleave', function () { paused = false; });
+        card.addEventListener('mouseleave', function () { hoverLocked = false; });
         card.addEventListener('focus', function () {
-          if (i !== activeIndex) setActive(i, { manual: true });
+          if (i !== activeIndex) setActive(i);
         });
       } else {
-        // On touch, first tap activates without navigating, second tap navigates.
+        // Touch: first tap activates without navigating, second tap navigates.
         card.addEventListener('click', function (event) {
           if (i !== activeIndex) {
             event.preventDefault();
-            setActive(i, { manual: true });
+            setActive(i);
           }
-          // If already active, default <a> behaviour navigates.
         });
       }
     });
 
-    // Run loop only while in view
+    // Run loop only while the section is on screen.
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (entry.isIntersecting) start();
