@@ -14,8 +14,8 @@ const categories: Category[] = [
     id: 'apparel',
     title: 'Off Field Apparel',
     eyebrow: 'Apparel',
-    description: 'Training tops, hoodies, and limited Joner Football kit. Built for off the pitch.',
-    cta: 'Shop Apparel',
+    description: 'Kit and apparel.',
+    cta: 'Shop',
     href: '/shop/off-field-apparel',
     images: [
       '/images/shop/shop-apparel.webp',
@@ -24,9 +24,9 @@ const categories: Category[] = [
   {
     id: 'training',
     title: 'Training Programs',
-    eyebrow: 'Digital Training',
-    description: 'Eight self-paced programs. Ball mastery, weak foot, finishing, conditioning and more.',
-    cta: 'Browse Programs',
+    eyebrow: 'Digital',
+    description: 'Eight self-paced programs.',
+    cta: 'Browse',
     href: '/shop/training-programs',
     images: [
       '/images/shop/training-programs/fast-feet-program.webp',
@@ -42,9 +42,9 @@ const categories: Category[] = [
   {
     id: 'resources',
     title: 'Resources & Accessories',
-    eyebrow: 'Tools & Downloads',
-    description: 'Coaching tools, scanning trainers, and training-day essentials.',
-    cta: 'Shop Resources',
+    eyebrow: 'Tools',
+    description: 'Training-day essentials.',
+    cta: 'Shop',
     href: '/shop/resources-accessories',
     images: [
       '/images/shop/resources-accessories/scanning-training-tool.webp',
@@ -59,26 +59,22 @@ const categories: Category[] = [
 
     <!-- Header -->
     <div class="text-center mb-10 md:mb-14">
-      <p class="text-joner-red font-heading text-xs md:text-sm uppercase tracking-[0.24em] mb-3">The Shop</p>
-      <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-white uppercase leading-none">
-        Joner Football<br />Store
+      <h1 class="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-white uppercase leading-none">
+        Browse Joner Football
       </h1>
-      <p class="font-body text-sm md:text-base text-gray-400 mt-4 max-w-xl mx-auto">
-        Apparel, training programs, and the tools we use. Tap a category to lock the preview.
-      </p>
     </div>
 
     <!-- Showcase grid -->
     <div class="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-8 lg:gap-14 items-center">
 
       <!-- Image stage (top on mobile, right on desktop) -->
-      <div class="relative order-1 lg:order-2 aspect-[5/4] sm:aspect-[4/3] lg:aspect-[5/4] bg-joner-gray rounded-2xl overflow-hidden">
+      <div class="relative order-1 lg:order-2 aspect-square bg-joner-gray rounded-2xl overflow-hidden">
         {categories.map((cat) => (
           cat.images.map((img, i) => (
             <img
               src={img}
               alt={`${cat.title} preview ${i + 1}`}
-              class="shop-stage-image absolute inset-0 w-full h-full object-cover"
+              class="shop-stage-image absolute inset-0 w-full h-full object-contain"
               data-stage-image
               data-category-id={cat.id}
               data-image-index={i}
@@ -86,11 +82,9 @@ const categories: Category[] = [
             />
           ))
         ))}
-        <!-- Subtle gradient + corner label -->
-        <div class="absolute inset-0 pointer-events-none bg-gradient-to-tr from-black/30 via-transparent to-transparent"></div>
         <div class="absolute left-4 top-4 md:left-5 md:top-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur border border-white/10">
           <span class="w-1.5 h-1.5 rounded-full bg-joner-red"></span>
-          <span class="shop-stage-label font-heading text-[10px] md:text-xs uppercase tracking-[0.2em] text-white">Live Preview</span>
+          <span class="shop-stage-label font-heading text-[10px] md:text-xs uppercase tracking-[0.2em] text-white">Training Programs</span>
         </div>
       </div>
 
