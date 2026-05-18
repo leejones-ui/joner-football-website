@@ -465,6 +465,7 @@ const allSchemas = schema
               var validation = validateEmail(rawEmail);
               var firstName = formData.get('first_name') || formData.get('firstName') || formData.get('parent_name') || formData.get('name') || '';
               var listId = Number(formData.get('listId') || formData.get('list_id') || form.getAttribute('data-list-id') || '2');
+              var listIds = formData.get('listIds') || formData.get('list_ids') || form.getAttribute('data-list-ids') || String(listId);
               var source = form.getAttribute('data-form-name') || formData.get('source') || 'website-form';
 
               if (emailInput) setFeedback(emailInput, validation);
@@ -480,10 +481,14 @@ const allSchemas = schema
               }
 
               getRecaptchaToken('subscribe').then(function (recaptchaToken) {
+                var payload = { email: validation.email, firstName: firstName, listId: listId, listIds: listIds, source: source, recaptchaToken: recaptchaToken };
+                formData.forEach(function (value, key) {
+                  if (!(value instanceof File) && payload[key] === undefined) payload[key] = value;
+                });
                 return fetch('/api/subscribe', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ email: validation.email, firstName: firstName, listId: listId, source: source, recaptchaToken: recaptchaToken })
+                  body: JSON.stringify(payload)
                 });
               })
               .then(function (r) { return r.json(); })

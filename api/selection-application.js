@@ -70,6 +70,39 @@ async function sendBrevoEmail(application) {
   }
 }
 
+async function addSelectionApplicationToBrevo(application) {
+  const apiKey = process.env.BREVO_API_KEY
+  if (!apiKey) return { skipped: true }
+  const listIds = [Number(process.env.BREVO_HOT_APP_LEADS_LIST_ID || 2), Number(process.env.BREVO_USA_CAMP_LIST_ID || 5)]
+    .filter((id) => Number.isFinite(id) && id > 0)
+
+  const response = await fetch('https://api.brevo.com/v3/contacts', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': apiKey,
+    },
+    body: JSON.stringify({
+      email: application.email,
+      attributes: {
+        FIRSTNAME: application.playerFullName,
+        WEBSITE_SOURCE: 'la-tcpe-selection-application',
+        CAMP_NAME: application.camp,
+      },
+      listIds,
+      updateEnabled: true,
+    }),
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    console.warn('Selection application Brevo capture failed:', text)
+    return { skipped: false, failed: true }
+  }
+  return { skipped: false, failed: false }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -104,7 +137,8 @@ export default async function handler(req, res) {
     }
 
     await sendBrevoEmail(application)
-    return res.status(200).json({ success: true })
+    const brevo = await addSelectionApplicationToBrevo(application)
+    return res.status(200).json({ success: true, brevo })
   } catch (error) {
     console.error('Selection application failed:', error)
     return res.status(500).json({ success: false, error: 'Application could not be sent. Please try again.' })

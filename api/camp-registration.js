@@ -201,6 +201,19 @@ function brevoListsForRegistration(registration) {
   return Array.from(ids).filter((id) => Number.isFinite(id) && id > 0)
 }
 
+function campSignupRecipients(registration) {
+  const base = String(CAMP_SIGNUP_EMAIL || '')
+  const isJuniors = `${registration.camp} ${registration.destination} ${registration.sheetTab} ${registration.source}`.toLowerCase().includes('joner') && `${registration.camp} ${registration.destination} ${registration.sheetTab} ${registration.source}`.toLowerCase().includes('junior')
+  const value = isJuniors
+    ? process.env.JONERS_JUNIORS_SIGNUP_EMAILS || 'ligia@jonerfootball.com,trainingenquiries@jonerfootball.com'
+    : base
+  return String(value || 'leejones@jonerfootball.com')
+    .split(',')
+    .map((email) => clean(email, 200).toLowerCase())
+    .filter(Boolean)
+    .map((email) => ({ email, name: 'Joner Football Camps' }))
+}
+
 async function sendCampSignupEmail(registration) {
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey || !CAMP_SIGNUP_EMAIL) return { skipped: true }
@@ -242,7 +255,7 @@ async function sendCampSignupEmail(registration) {
         name: 'Joner Football Website',
         email: process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com',
       },
-      to: [{ email: CAMP_SIGNUP_EMAIL, name: 'Joner Football Camps' }],
+      to: campSignupRecipients(registration),
       replyTo: { email: registration.email, name: registration.parentName || registration.playerFirstName },
       subject: `${registration.paymentStatus === 'paid' ? 'PAID' : 'NOT PAID YET'} camp signup: ${registration.playerFirstName} ${registration.playerSurname} for ${registration.camp}`,
       htmlContent: html,
