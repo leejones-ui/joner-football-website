@@ -16,6 +16,7 @@ export default defineConfig({
         '/home-storyboard-prototype/',
         '/join/',
         '/new-coaching-role/',
+        '/training/joners-juniors/',
       ];
       return !excludedPaths.some((path) => page.endsWith(path));
     },
