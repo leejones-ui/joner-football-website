@@ -45,7 +45,10 @@
     { "source": "/lee-jones-head-coach-owner/", "destination": "/about", "permanent": true },
     { "source": "/what-we-offer/", "destination": "/about", "permanent": true },
     { "source": "/our-coaches/", "destination": "/about", "permanent": true },
+    { "source": "/training-agreement", "destination": "/terms", "permanent": true },
     { "source": "/training-agreement/", "destination": "/terms", "permanent": true },
+    { "source": "/training-agreement-overseas", "destination": "/terms", "permanent": true },
+    { "source": "/training-agreement-overseas/", "destination": "/terms", "permanent": true },
     { "source": "/cart/", "destination": "/shop", "permanent": true }
   ]
 }

@@ -465,7 +465,7 @@ const sanityPage = await fetchSanityPage('camp-texas-dallas-june')
 
           <label class="hou-agree">
             <input type="checkbox" name="agreementAccepted" required />
-            <span>I have read and agree to the website <a href="https://jonerfootball.com/training-agreement-overseas/" target="_blank" rel="noopener">training agreement</a>.</span>
+            <span>I have read and agree to the website <a href="/terms" target="_blank" rel="noopener">training agreement</a>.</span>
           </label>
 
           <p class="hou-form-error" id="houFormError" role="alert"></p>
@@ -1579,9 +1579,12 @@ const sanityPage = await fetchSanityPage('camp-texas-dallas-june')
           form.innerHTML = `
             <div style="padding:18px 0;text-align:center;">
               <p style="color:#4ade80;font-size:18px;font-family:var(--font-display);font-style:italic;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 12px;">You're in. Spot held.</p>
-              <p style="color:rgba(255,255,255,0.78);font-size:15px;line-height:1.55;margin:0 0 20px;">Complete payment to confirm. We've emailed Joner HQ. You'll get a confirmation when payment lands.</p>
+              <p style="color:rgba(255,255,255,0.78);font-size:15px;line-height:1.55;margin:0 0 20px;">Sending you to payment now. Complete payment to confirm your spot. We've emailed Joner HQ.</p>
               <a href="${paymentLink}" target="_blank" rel="noopener" class="btn-red">Complete payment</a>
             </div>`
+          window.setTimeout(() => {
+            window.location.href = paymentLink
+          }, 900)
         } catch (err) {
           if (errEl) errEl.textContent = (err as Error).message || 'Something went wrong. Please try again.'
           if (submitBtn && labelEl) {
