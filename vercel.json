@@ -50,5 +50,8 @@
     { "source": "/training-agreement-overseas", "destination": "/terms", "permanent": true },
     { "source": "/training-agreement-overseas/", "destination": "/terms", "permanent": true },
     { "source": "/cart/", "destination": "/shop", "permanent": true }
+  ],
+  "crons": [
+    { "path": "/api/camp-unpaid-reminders", "schedule": "0 * * * *" }
   ]
 }
