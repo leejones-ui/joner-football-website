@@ -17,8 +17,17 @@ export default async function handler(req, res) {
   const secret = process.env.CAMP_EMAIL_TEST_SECRET
   if (!secret) return sendJson(res, 404, { success: false, error: 'Test email endpoint is not enabled.' })
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
-  if (body.secret !== secret) return sendJson(res, 401, { success: false, error: 'Unauthorized' })
+  let body = {}
+  if (typeof req.body === 'string') {
+    body = JSON.parse(req.body || '{}')
+  } else if (Buffer.isBuffer(req.body)) {
+    body = JSON.parse(req.body.toString('utf8') || '{}')
+  } else {
+    body = req.body || {}
+  }
+
+  const providedSecret = body.secret || req.headers['x-camp-email-test-secret']
+  if (providedSecret !== secret) return sendJson(res, 401, { success: false, error: 'Unauthorized' })
 
   const template = body.template === 'unpaid' ? 'unpaid' : 'confirmed'
   const toEmail = clean(body.toEmail || body.email, 200).toLowerCase()
