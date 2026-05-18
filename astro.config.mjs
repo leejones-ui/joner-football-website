@@ -15,6 +15,7 @@ export default defineConfig({
         '/home-object-prototype/',
         '/home-storyboard-prototype/',
         '/join/',
+        '/new-coaching-role/',
       ];
       return !excludedPaths.some((path) => page.endsWith(path));
     },
