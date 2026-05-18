@@ -323,11 +323,38 @@ const allSchemas = schema
     </script>
 
     {mobileStickyAllowedPath && !hideChrome && !hideMobileAppCta && (
-      <div class="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-joner-black border-t border-gray-800 p-3">
+      <div
+        id="mobile-sticky-app-cta"
+        class="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-joner-black border-t border-gray-800 p-3 opacity-0 translate-y-full pointer-events-none transition-all duration-300 ease-out"
+        aria-hidden="true"
+      >
         <a href="/app" class="btn-red w-full text-center block text-sm">
           Download the App
         </a>
       </div>
+    )}
+
+    {mobileStickyAllowedPath && !hideChrome && !hideMobileAppCta && (
+      <script is:inline>
+        {`
+          (function () {
+            var stickyCta = document.getElementById('mobile-sticky-app-cta');
+            if (!stickyCta) return;
+
+            function updateStickyCta() {
+              var hasScrolled = (window.scrollY || window.pageYOffset || 0) > 24;
+              stickyCta.classList.toggle('opacity-0', !hasScrolled);
+              stickyCta.classList.toggle('translate-y-full', !hasScrolled);
+              stickyCta.classList.toggle('pointer-events-none', !hasScrolled);
+              stickyCta.setAttribute('aria-hidden', hasScrolled ? 'false' : 'true');
+            }
+
+            window.addEventListener('scroll', updateStickyCta, { passive: true });
+            window.addEventListener('resize', updateStickyCta);
+            updateStickyCta();
+          })();
+        `}
+      </script>
     )}
 
     <script is:inline>
