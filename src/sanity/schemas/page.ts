@@ -14,13 +14,15 @@ export default {
   fields: [
     { name: 'title', title: 'Page title', type: 'string', group: 'basics', description: 'The page name shown inside Sanity.', validation: (Rule: any) => Rule.required() },
     { name: 'pageKey', title: 'Which website page is this?', type: 'string', group: 'basics', description: 'Choose the website page this record controls.', options: { list: staticPageKeyOptions }, validation: (Rule: any) => Rule.required() },
-    { name: 'pageMode', title: 'How should this page render?', type: 'string', group: 'basics', initialValue: 'fallback', description: 'Fallback keeps the coded layout. Replace swaps the route to the fully editable Sanity page builder.', options: { list: [
+    { name: 'pageMode', title: 'Advanced render mode', type: 'string', group: 'basics', initialValue: 'fallback', readOnly: true, hidden: true, description: 'Developer-only. Important Joner pages stay on coded layouts unless Barry/dev deliberately changes this.', options: { list: [
       { title: 'Keep coded layout, use safe overrides only', value: 'fallback' },
       { title: 'Replace route with fully editable Sanity page', value: 'replace' },
     ], layout: 'radio' } },
     { name: 'slug', title: 'Slug / URL', type: 'slug', group: 'basics', options: { source: 'title' }, description: 'The public page URL. Example: join or training/jfp-program.' },
     { name: 'publishStatus', title: 'Publish status', type: 'string', group: 'basics', initialValue: 'draft', options: { list: [
       { title: 'Draft', value: 'draft' },
+      { title: 'Needs Lee review', value: 'needsLeeReview' },
+      { title: 'Approved by Lee', value: 'approved' },
       { title: 'Published', value: 'published' },
       { title: 'Hidden', value: 'hidden' },
     ], layout: 'radio' } },
@@ -52,8 +54,15 @@ export default {
     if (!doc) return true
     const warnings = []
     if (doc.publishStatus === 'published' && !doc.heroHeadline) warnings.push('Hero headline is missing.')
-    if (doc.publishStatus === 'published' && doc.primaryCta?.label && !doc.primaryCta?.url) warnings.push('Main button has text but no link.')
+    if (doc.publishStatus === 'published' && doc.primaryCta?.label && !doc.primaryCta?.url && !doc.primaryCta?.approvedDestination) warnings.push('Main button needs a safe destination or custom link.')
     if (doc.publishStatus === 'published' && doc.heroImage?.image && !doc.heroImage?.alt) warnings.push('Hero image has no alt text.')
+    if (doc.publishStatus === 'published' && doc.pageMode === 'replace') warnings.push('This page is replacing the coded layout. Get Lee/Barry approval before publishing.')
+    if (doc.publishStatus === 'published' && doc.seo?.description) {
+      const length = String(doc.seo.description).trim().length
+      if (length < 90 || length > 160) warnings.push('SEO description should be 90 to 160 characters.')
+    }
+    const copyText = [doc.heroHeadline, doc.heroSubheadline, doc.seo?.title, doc.seo?.description].filter(Boolean).join(' ')
+    if (copyText.includes('—')) warnings.push('Remove em dashes. Joner copy should use clean, direct punctuation.')
     return warnings.length ? warnings.join(' ') : true
   }).warning(),
   preview: {

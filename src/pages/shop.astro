@@ -6,7 +6,7 @@ const schema = {
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
   name: 'Shop | Joner Football',
-  description: 'Official Joner Football apparel, training programs, resources, and accessories.',
+  description: 'Shop official Joner Football apparel, training programs, books and resources built for players, parents and coaches who care about technique.',
   url: 'https://jonerfootball.com/shop',
 }
 
@@ -22,7 +22,7 @@ const sanityPage = await fetchSanityPage('shop')
 ) : (
 <BaseLayout
   title="Shop | Joner Football"
-  description="Official Joner Football apparel, training programs, resources, and accessories."
+  description="Shop official Joner Football apparel, training programs, books and resources built for players, parents and coaches who care about technique."
   schema={schema}
 >
   <ShopShowcase />

@@ -1,3 +1,15 @@
+const approvedCtaDestinations = [
+  { title: 'Download the app', value: 'download-app' },
+  { title: 'Start free trial', value: 'start-free-trial' },
+  { title: 'View camps', value: 'view-camps' },
+  { title: 'Book training enquiry', value: 'training-enquiry' },
+  { title: 'Game analysis enquiry', value: 'game-analysis-enquiry' },
+  { title: 'Team subscription enquiry', value: 'team-subscription-enquiry' },
+  { title: 'Coaches course enquiry', value: 'coaches-course-enquiry' },
+  { title: 'Mindset seminar enquiry', value: 'mindset-seminar-enquiry' },
+  { title: 'Contact Joner Football', value: 'contact' },
+]
+
 const sectionTypeOptions = [
   { title: 'Hero section', value: 'hero' },
   { title: 'Text and image section', value: 'textImage' },
@@ -51,7 +63,8 @@ export const cta = {
   type: 'object',
   fields: [
     { name: 'label', title: 'Button text', type: 'string', description: 'The words shown on the button.' },
-    { name: 'url', title: 'Button link', type: 'url', description: 'This button link is where users go after clicking.', validation: (Rule: any) => Rule.uri({ allowRelative: true, scheme: ['http', 'https', 'mailto', 'tel'] }).warning('Add a button link before publishing this button.') },
+    { name: 'approvedDestination', title: 'Safe Joner destination', type: 'string', options: { list: approvedCtaDestinations }, description: 'Use this first. It keeps staff on approved app, training, camp and enquiry links.' },
+    { name: 'url', title: 'Custom button link', type: 'url', description: 'Lee/admin only. Use only when the approved destination list does not cover this button.', validation: (Rule: any) => Rule.uri({ allowRelative: true, scheme: ['http', 'https', 'mailto', 'tel'] }).warning('Use an approved destination or add a safe custom link before publishing this button.') },
     { name: 'openInNewTab', title: 'Open in new tab?', type: 'boolean', initialValue: false },
     { name: 'style', title: 'Button style', type: 'string', initialValue: 'primary', options: { list: [
       { title: 'Primary', value: 'primary' },
@@ -149,9 +162,9 @@ export const formSettings = {
     { name: 'introText', title: 'Form intro text', type: 'text', rows: 3 },
     { name: 'fields', title: 'Fields shown', type: 'array', of: [{ type: 'formField' }], description: 'Add, remove, and reorder the fields shown on this form.' },
     { name: 'hiddenTrackingFields', title: 'Hidden tracking fields', type: 'array', of: [{ type: 'formField' }], description: 'Tracking fields the visitor does not see.' },
-    { name: 'brevoListIds', title: 'Brevo list IDs', type: 'array', of: [{ type: 'number' }], description: 'Leads from this form go into these Brevo lists.' },
-    { name: 'googleSheetTab', title: 'Google Sheet tab', type: 'string', description: 'The tab where leads should be saved.' },
-    { name: 'adminEmail', title: 'Admin email', type: 'string', description: 'The team email that receives form notifications.' },
+    { name: 'brevoListIds', title: 'Brevo list IDs', type: 'array', of: [{ type: 'number' }], description: 'Editable for trusted staff. Only use approved Joner Football Brevo list IDs.' },
+    { name: 'googleSheetTab', title: 'Google Sheet tab', type: 'string', description: 'Editable for trusted staff. Match the exact Google Sheet tab name for this form.' },
+    { name: 'adminEmail', title: 'Admin email', type: 'string', description: 'Editable for trusted staff. Use the correct Joner notification recipient email.' },
     { name: 'successMessage', title: 'Success message', type: 'text', rows: 3, description: 'Message shown after the form is submitted.' },
     { name: 'redirectBehavior', title: 'Redirect or payment behavior', type: 'string', options: { list: [
       { title: 'Show success message only', value: 'message' },

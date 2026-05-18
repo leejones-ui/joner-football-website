@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
-import { getSanityRenderableSections } from '../../lib/sanityPageUtils'
+import { getApprovedCtaUrl, getSanityRenderableSections } from '../../lib/sanityPageUtils'
 import SanitySection from './SanitySection.astro'
 
 const { page, fallbackTitle, fallbackDescription } = Astro.props
@@ -10,6 +10,8 @@ const heroImage = page?.heroImage?.imageUrl
 const heroAlt = page?.heroImage?.alt || page?.heroHeadline || page?.title || 'Joner Football hero image'
 const seoTitle = page?.seo?.title || fallbackTitle || page?.title || 'Joner Football'
 const seoDescription = page?.seo?.description || fallbackDescription || page?.heroSubheadline || ''
+const primaryCtaUrl = getApprovedCtaUrl(page?.primaryCta)
+const secondaryCtaUrl = getApprovedCtaUrl(page?.secondaryCta)
 ---
 
 <BaseLayout
@@ -32,10 +34,10 @@ const seoDescription = page?.seo?.description || fallbackDescription || page?.he
       <h1 class="max-w-4xl font-heading text-5xl font-black uppercase leading-none text-white md:text-7xl">{page?.heroHeadline || page?.title}</h1>
       {page?.heroSubheadline && <p class="mt-6 max-w-3xl font-body text-lg leading-relaxed text-gray-300 md:text-xl">{page.heroSubheadline}</p>}
 
-      {(page?.primaryCta?.label || page?.secondaryCta?.label) && (
+      {(primaryCtaUrl || secondaryCtaUrl) && (
         <div class="mt-8 flex flex-wrap gap-4">
-          {page?.primaryCta?.label && page?.primaryCta?.url && <a href={page.primaryCta.url} class="btn-red">{page.primaryCta.label}</a>}
-          {page?.secondaryCta?.label && page?.secondaryCta?.url && <a href={page.secondaryCta.url} class="btn-outline">{page.secondaryCta.label}</a>}
+          {page?.primaryCta?.label && primaryCtaUrl && <a href={primaryCtaUrl} class="btn-red">{page.primaryCta.label}</a>}
+          {page?.secondaryCta?.label && secondaryCtaUrl && <a href={secondaryCtaUrl} class="btn-outline">{page.secondaryCta.label}</a>}
         </div>
       )}
     </div>

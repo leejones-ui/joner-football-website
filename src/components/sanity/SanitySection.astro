@@ -1,6 +1,8 @@
 ---
 import { portableTextToHtml } from '../../lib/sanityPortableText'
 
+import { getApprovedCtaUrl } from '../../lib/sanityPageUtils'
+
 const { section } = Astro.props
 
 const bodyHtml = portableTextToHtml(section?.body || [])
@@ -9,7 +11,11 @@ const sectionAlt = section?.image?.alt || section?.headline || section?.label ||
 const gallery = Array.isArray(section?.gallery) ? section.gallery.filter((item: any) => item?.imageUrl && !item?.hideImage) : []
 const items = Array.isArray(section?.items) ? section.items.filter((item: any) => item?.showItem !== false) : []
 const faqs = Array.isArray(section?.faqs) ? section.faqs.filter((item: any) => item?.question && item?.answer) : []
-const buttons = Array.isArray(section?.buttons) ? section.buttons.filter((item: any) => item?.label && item?.url) : []
+const buttons = Array.isArray(section?.buttons)
+  ? section.buttons
+      .map((item: any) => ({ ...item, url: getApprovedCtaUrl(item) }))
+      .filter((item: any) => item?.label && item?.url)
+  : []
 const pricing = Array.isArray(section?.pricingOptions) ? section.pricingOptions.filter((item: any) => item?.label) : []
 const testimonials = Array.isArray(section?.testimonials) ? section.testimonials.filter((item: any) => item?.quote) : []
 const isImageHeavy = ['fullWidthImage', 'gallery'].includes(section?.sectionType)
@@ -62,7 +68,7 @@ const isImageHeavy = ['fullWidthImage', 'gallery'].includes(section?.sectionType
             {item?.image?.imageUrl && <img src={item.image.imageUrl} alt={item.image.alt || item.title || 'Joner Football item'} class="mb-4 h-48 w-full object-cover" />}
             {item.title && <h3 class="font-heading text-xl font-bold uppercase text-white">{item.title}</h3>}
             {item.description && <p class="mt-3 font-body leading-relaxed text-gray-300">{item.description}</p>}
-            {item?.button?.label && item?.button?.url && <a href={item.button.url} class="mt-4 inline-flex font-heading text-xs uppercase tracking-[0.2em] text-joner-red">{item.button.label}</a>}
+            {item?.button?.label && getApprovedCtaUrl(item.button) && <a href={getApprovedCtaUrl(item.button)} class="mt-4 inline-flex font-heading text-xs uppercase tracking-[0.2em] text-joner-red">{item.button.label}</a>}
           </article>
         ))}
       </div>

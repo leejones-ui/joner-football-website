@@ -10,8 +10,24 @@ export function getSanityImageUrl(image: any, fallback = '') {
   return image?.imageUrl || image?.mobileImageUrl || fallback
 }
 
+export const approvedCtaUrlMap: Record<string, string> = {
+  'download-app': '/app',
+  'start-free-trial': 'https://app.jonerfootball.com/categories/category-vpi8uazway4',
+  'view-camps': '/camps',
+  'training-enquiry': '/contact?type=training',
+  'game-analysis-enquiry': '/training/game-analysis#book',
+  'team-subscription-enquiry': '/teams#enquiry',
+  'coaches-course-enquiry': '/workshops/coaches-course#book',
+  'mindset-seminar-enquiry': '/workshops/mindset-seminars#book',
+  'contact': '/contact',
+}
+
+export function getApprovedCtaUrl(cta: any) {
+  return cta?.url || approvedCtaUrlMap[cta?.approvedDestination] || ''
+}
+
 export function getSanityCta(cta: any, fallback?: any) {
-  if (cta?.label && cta?.url) return cta
+  if (cta?.label && getApprovedCtaUrl(cta)) return { ...cta, url: getApprovedCtaUrl(cta) }
   return fallback || null
 }
 

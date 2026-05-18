@@ -14,6 +14,7 @@ const PAGE_QUERY = `*[_type == "page" && pageKey == $pageKey && (publishStatus =
   secondaryCta,
   buttonLinks[]{
     label,
+    approvedDestination,
     url,
     openInNewTab,
     style,
@@ -85,6 +86,7 @@ const PAGE_QUERY = `*[_type == "page" && pageKey == $pageKey && (publishStatus =
     },
     buttons[]{
       label,
+      approvedDestination,
       url,
       openInNewTab,
       style,

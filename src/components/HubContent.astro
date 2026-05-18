@@ -17,8 +17,9 @@ const hubTiles = [
   { title: 'Open The App', text: 'Already a member? Jump straight back inside the full Joner Football training system.', href: APP_LINK, tag: 'App' },
 ]
 
-export interface Props { appMode?: boolean }
-const { appMode = false } = Astro.props
+export interface Props { appMode?: boolean; titleTag?: 'h1' | 'h2' }
+const { appMode = false, titleTag = 'h2' } = Astro.props
+const TitleTag = titleTag
 ---
 
 <main class="hub-page">
@@ -26,7 +27,7 @@ const { appMode = false } = Astro.props
       <img class="hub-hero__media hub-hero__media--desktop" src="/images/hub-hero-desktop.jpg" alt="Joner Football Hub" loading="eager" />
       <div class="hub-hero__scrim" aria-hidden="true"></div>
       <div class="hub-hero__inner">
-        <h1 class="hub-hero__title">Joner<br/>Football<br/>Hub</h1>
+        <TitleTag class="hub-hero__title">Joner<br/>Football<br/>Hub</TitleTag>
         <div class="hub-hero__rule" aria-hidden="true"></div>
         <p class="hub-hero__sub">All things Joner Football for FREE.</p>
       </div>

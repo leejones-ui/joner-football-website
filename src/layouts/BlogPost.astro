@@ -4,6 +4,7 @@ import EmailCapture from '../components/EmailCapture.astro'
 
 export interface Props {
   title: string
+  seoTitle?: string
   description: string
   date: string
   category: string
@@ -12,7 +13,8 @@ export interface Props {
   imageAlt?: string
 }
 
-const { title, description, date, category, readTime, image, imageAlt } = Astro.props
+const { title, seoTitle, description, date, category, readTime, image, imageAlt } = Astro.props
+const metaTitle = seoTitle || `${title} | Joner Football Blog`
 const siteUrl = 'https://jonerfootball.com'
 const canonicalURL = `${siteUrl}${Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`}`
 const absoluteImage = image?.startsWith('http') ? image : image ? `${siteUrl}${image}` : undefined
@@ -39,7 +41,7 @@ const articleSchema = {
 ---
 
 <BaseLayout
-  title={`${title} | Joner Football Blog`}
+  title={metaTitle}
   description={description}
   canonical={canonicalURL}
   ogImage={absoluteImage}

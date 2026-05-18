@@ -334,7 +334,7 @@ const CAMP_FALLBACKS: CampMap = {
     spotsTotal: 80,
     spotsRemaining: 80,
     status: 'open',
-    description: 'Sydney\'s biggest Joner Football camp of the year, featuring Miguel Grande from Grande Sports and a technical training environment built for dedicated players.',
+    description: 'Sydney July Joner Football camp with Miguel Grande. Three high-energy mornings for players who want sharper technique, confidence and detail.',
     heroImage: '/images/camps/sydney-camp.webp',
     galleryImages: [
       { url: '/images/camps/sydney-camp.webp', alt: 'Joner Football elite training camp in Sydney, Australia' },
@@ -398,7 +398,7 @@ const CAMP_FALLBACKS: CampMap = {
     spotsTotal: 80,
     spotsRemaining: 80,
     status: 'open',
-    description: 'Sydney\'s biggest Joner Football camp of the year, featuring Miguel Grande from Grande Sports and a technical training environment built for dedicated players.',
+    description: 'Sydney July Joner Football camp with Miguel Grande. Three high-energy mornings for players who want sharper technique, confidence and detail.',
     heroImage: '/images/camps/sydney-camp.webp',
     galleryImages: [
       { url: '/images/camps/sydney-camp.webp', alt: 'Joner Football elite training camp in Sydney, Australia' },
@@ -669,7 +669,11 @@ const heroYoutubeSrc = campImages.heroVideoYoutubeId
   ? `https://www.youtube-nocookie.com/embed/${campImages.heroVideoYoutubeId}?rel=0&controls=0&modestbranding=1&playsinline=1&loop=1&playlist=${campImages.heroVideoYoutubeId}&mute=1&autoplay=1`
   : ''
 const ogImage = heroImage.startsWith('http') ? heroImage : `https://jonerfootball.com${heroImage}`
-const pageDescription = camp.description || `Register for ${camp.title} with Joner Football.`
+const campSeoDescriptions: Record<string, string> = {
+  'sydney-big-1-july': 'Book the Sydney July Joner Football camp with Miguel Grande. Three high-energy mornings for players who want sharper technique and more confidence.',
+  'sydney-july-2026': 'Book the Sydney July Joner Football camp with Miguel Grande. Three high-energy mornings for players who want sharper technique and more confidence.',
+}
+const pageDescription = campSeoDescriptions[slug] || camp.description || `Register for ${camp.title} with Joner Football.`
 const canonical = `https://jonerfootball.com/camps/${slug}/`
 const statusLabel = camp.status === 'sold-out' ? 'Sold out' : camp.status === 'coming-soon' ? 'Coming soon' : 'Registration open'
 const spotsLabel = camp.spotsRemaining || camp.spotsTotal

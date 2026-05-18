@@ -72,11 +72,62 @@ const formattedDate = post.publishedAt
 const bodyHtml = portableTextToHtml(post.richBody || []) || plainTextToHtml(post.body || '')
 const postImage = post.image || post.coverImageUrl || '/images/training/jfp-session.webp'
 const postImageAlt = post.imageAlt || post.coverImageAltText || post.title
+
+const blogSeoOverrides: Record<string, { title?: string; description?: string }> = {
+  '10-mistakes-football-players-make-every-week': {
+    title: '10 Football Mistakes Players Must Fix | Joner Football',
+    description: 'Fix 10 common football mistakes in training, from first touch panic to poor passing habits. Practical coaching detail from Joner Football.',
+  },
+  '50-ball-mastery-skills-young-players': {
+    title: '50 Ball Mastery Skills For Young Players | Joner Football',
+  },
+  'coachability-most-important-trait-football': {
+    title: 'Why Coachability Matters In Football | Joner Football',
+  },
+  'different-football-cultures-shape-young-players': {
+    title: 'How Football Cultures Shape Players | Joner Football',
+    description: 'See how different football cultures shape young players and what families can learn from varied coaching styles, standards and habits.',
+  },
+  'football-camp-packing-list': {
+    title: 'Football Camp Packing List | Joner Football',
+    description: 'Use this football camp packing list so players arrive ready to train, compete and enjoy the full Joner Football camp experience.',
+  },
+  'football-training-for-kids': {
+    title: 'Football Training For Kids | Joner Football',
+  },
+  'how-to-coach-different-ages-one-drill': {
+    title: 'Coach Different Ages With One Drill | Joner Football',
+  },
+  'parents-dont-be-fooled-by-tiktok': {
+    title: 'Parents, Do Not Be Fooled By TikTok Drills | Joner Football',
+    description: 'Not every viral football drill helps your child improve. Learn what to look for so training builds real technique and confidence.',
+  },
+  'viral-football-drills': {
+    title: 'Viral Football Drills: What Actually Works | Joner Football',
+  },
+  'what-makes-great-football-coach': {
+    title: 'What Makes A Great Football Coach | Joner Football',
+  },
+  'what-scouts-look-for-young-football-players': {
+    title: 'What Scouts Look For In Young Players | Joner Football',
+    description: 'Understand what scouts look for in young football players, from technique and decision making to attitude, bravery and consistency.',
+  },
+  'youth-football-winning-mentality': {
+    title: 'Youth Football Winning Mentality | Joner Football',
+    description: 'Winning mentality in youth football is built through effort, standards, resilience and coachability, not empty hype or shortcuts.',
+  },
+}
+
+const slugKey = post.slug?.current || post.slug || Astro.params.slug || ''
+const seoOverride = blogSeoOverrides[slugKey] || {}
+const seoTitle = seoOverride.title || `${post.title} | Joner Football Blog`
+const seoDescription = seoOverride.description || post.excerpt || ''
 ---
 
 <BlogPost
   title={post.title}
-  description={post.excerpt || ''}
+  seoTitle={seoTitle}
+  description={seoDescription}
   date={formattedDate}
   category={post.category || ''}
   readTime=""
