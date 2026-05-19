@@ -1547,6 +1547,9 @@ const sanityPage = await fetchSanityPage('camp-texas-dallas-june')
         }
 
         try {
+          const grecaptcha = (window as any).JonerRecaptcha
+          ;(payload as any).recaptchaToken = grecaptcha ? await grecaptcha.getToken('camp_registration') : ''
+
           const res = await fetch('/api/camp-registration', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
