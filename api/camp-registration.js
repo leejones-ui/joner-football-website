@@ -346,6 +346,7 @@ async function createStripeCheckoutSession(req, registration) {
     },
     body: new URLSearchParams({
       mode: 'payment',
+      allow_promotion_codes: 'true',
       success_url: `${baseUrl}${config.successPath}&registration_id=${encodeURIComponent(registration.registrationId)}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}${config.cancelPath}&registration_id=${encodeURIComponent(registration.registrationId)}`,
       customer_email: registration.email,
