@@ -233,8 +233,57 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
 
   if (!found) {
     const paidRows = await readRows(sheetId, PAID_SHEET)
-    const alreadyPaid = paidRows.slice(1).find((row) => row[1] === registrationId)
-    if (alreadyPaid) return { registrationId, status: 'already-paid' }
+    let paidRowNumber = 0
+    const alreadyPaid = paidRows.slice(1).find((row, index) => {
+      if (row[1] === registrationId) {
+        paidRowNumber = index + 2
+        return true
+      }
+      return false
+    })
+    if (alreadyPaid) {
+      found = registrationFromRow(alreadyPaid)
+      found.paymentStatus = 'paid'
+      if (paymentDetails.paidAmount) found.paidAmount = paymentDetails.paidAmount
+      if (paymentDetails.stripeCheckoutSessionId) found.stripeCheckoutSessionId = paymentDetails.stripeCheckoutSessionId
+      if (paymentDetails.stripePaymentIntentId) found.stripePaymentIntentId = paymentDetails.stripePaymentIntentId
+      if (paymentDetails.stripePaymentIntentSheetValue) found.stripePaymentIntentSheetValue = paymentDetails.stripePaymentIntentSheetValue
+
+      if (found.paidAmount) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'V', found.paidAmount)
+      if (found.stripeCheckoutSessionId) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'W', found.stripeCheckoutSessionId)
+      if (found.stripePaymentIntentSheetValue || found.stripePaymentIntentId) {
+        await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'X', found.stripePaymentIntentSheetValue || found.stripePaymentIntentId, 'USER_ENTERED')
+      }
+
+      const campTab = campTabForRegistration(found)
+      let campSheet = 'not-configured'
+      if (campTab) {
+        const campRows = await readSheetRange(sheetId, campTab, 'A:Z')
+        const layout = findOperationalCampLayout(campRows)
+        let operationalRowNumber = 0
+        if (layout) {
+          for (let index = layout.rowIndex + 1; index < campRows.length; index += 1) {
+            const row = campRows[index] || []
+            const email = String(row[layout.emailCol] || '').toLowerCase()
+            const phone = layout.numberCol >= 0 ? String(row[layout.numberCol] || '') : ''
+            const emailMatches = email && email === String(found.email || '').toLowerCase()
+            const phoneMatches = !phone || !found.mobile || phone === String(found.mobile || '')
+            if (emailMatches && phoneMatches) {
+              operationalRowNumber = index + 1
+              break
+            }
+          }
+          if (operationalRowNumber && found.paidAmount) {
+            const normalisedHeaders = layout.headers.map((header) => clean(header || '', 80).toLowerCase().replace(/[^a-z0-9]/g, ''))
+            const amountCol = normalisedHeaders.findIndex((value) => value === 'amount' || value === 'paid')
+            if (amountCol >= 0) await updateCell(sheetId, campTab, operationalRowNumber, columnLetter(amountCol), found.paidAmount)
+          }
+        }
+        campSheet = operationalRowNumber ? 'amount-updated' : 'already-paid-no-operational-row-match'
+      }
+
+      return { registrationId, status: 'already-paid-updated', paidSheet: 'amount-updated', campSheet }
+    }
     throw new Error(`Registration not found: ${registrationId}`)
   }
 
