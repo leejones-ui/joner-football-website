@@ -1,0 +1,82 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const title = 'Camp Spot Confirmed | Joner Football'
+const description = 'Your Joner Football camp payment is complete. Your player spot is confirmed and camp details are on the way.'
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  canonical="https://jonerfootball.com/camp-success/"
+  noindex
+>
+  <main class="bg-joner-black text-white">
+    <section class="relative overflow-hidden border-b border-white/10">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(232,0,13,0.28),transparent_34%),linear-gradient(135deg,#000_0%,#111_58%,#050505_100%)]"></div>
+      <div class="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-joner-red to-transparent"></div>
+      <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 text-center">
+        <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-5">Payment Complete</p>
+        <h1 class="font-heading uppercase text-5xl md:text-7xl lg:text-8xl leading-none mb-6">Your Camp Spot Is Confirmed.</h1>
+        <p class="text-lg md:text-2xl text-white/80 max-w-3xl mx-auto leading-relaxed">
+          Payment received. Your player is in. Check your inbox now for the Joner Football camp confirmation email.
+        </p>
+      </div>
+    </section>
+
+    <section class="px-4 sm:px-6 lg:px-8 py-12 md:py-18">
+      <div class="max-w-6xl mx-auto grid gap-6 lg:grid-cols-[1.1fr_0.9fr] items-stretch">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-6 md:p-8 shadow-2xl shadow-black/30">
+          <p class="font-heading uppercase tracking-[0.18em] text-joner-red text-xs mb-4">What Happens Next</p>
+          <h2 class="font-heading uppercase text-3xl md:text-5xl leading-none mb-6">Check Your Email.</h2>
+          <ul class="space-y-4 text-white/82 text-base md:text-lg leading-relaxed">
+            <li class="flex gap-3"><span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-joner-red"></span><span>Your camp confirmation email is being sent to the email used at checkout.</span></li>
+            <li class="flex gap-3"><span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-joner-red"></span><span>It includes camp dates, location, arrival info, what to bring, jersey notes, and key parent reminders.</span></li>
+            <li class="flex gap-3"><span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-joner-red"></span><span>If it is not there within a few minutes, check junk or spam first.</span></li>
+          </ul>
+
+          <div class="mt-8 rounded-xl border border-joner-red/30 bg-joner-red/10 p-5">
+            <p class="font-heading uppercase tracking-[0.12em] text-joner-red text-sm mb-2">Need help?</p>
+            <p class="text-white/80 leading-relaxed">
+              If your confirmation email does not arrive, email <a class="text-white underline decoration-joner-red underline-offset-4" href="mailto:joner1on1info@gmail.com">joner1on1info@gmail.com</a> and we will help you.
+            </p>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-white/10 bg-white text-joner-black p-6 md:p-8 shadow-2xl shadow-black/30 flex flex-col justify-between">
+          <div>
+            <p class="font-heading uppercase tracking-[0.18em] text-joner-red text-xs mb-4">Before Camp Starts</p>
+            <h2 class="font-heading uppercase text-3xl md:text-5xl leading-none mb-4">Start Training Now.</h2>
+            <p class="text-gray-700 leading-relaxed mb-6">
+              Do not wait for camp day. Get your player inside the Joner Football App now and start building better touch, sharper 1v1 ability, cleaner striking, and more confidence before they arrive.
+            </p>
+          </div>
+          <div class="flex flex-col gap-3">
+            <a href="https://app.jonerfootball.com" target="_blank" rel="noopener noreferrer" class="btn-red text-center">Download The App</a>
+            <a href="/camps" class="btn-outline border-joner-black text-joner-black hover:bg-joner-black hover:text-white text-center">Back To Camps</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <script is:inline>
+      (function () {
+        function fireCampPurchase() {
+          if (!window.JonerTracking || typeof window.JonerTracking.trackEvent !== 'function') return;
+          var params = new URLSearchParams(window.location.search || '');
+          window.JonerTracking.trackEvent('Purchase', {
+            custom_data: {
+              content_name: params.get('camp') || 'joner_football_camp',
+              content_category: 'camp',
+              status: 'paid_confirmed',
+              registration_id: params.get('registration_id') || '',
+              stripe_session_id: params.get('session_id') || ''
+            }
+          });
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fireCampPurchase);
+        else fireCampPurchase();
+      })();
+    </script>
+  </main>
+</BaseLayout>
