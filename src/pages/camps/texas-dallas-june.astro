@@ -447,17 +447,10 @@ const sanityPage = await fetchSanityPage('camp-texas-dallas-june')
             <label>Payment method<span class="hou-req">*</span></label>
             <div class="hou-pay-row">
               <div class="hou-pay-opt">
-                <input type="radio" name="paymentMethod" id="hou-pay-stripe" value="Stripe" required />
+                <input type="radio" name="paymentMethod" id="hou-pay-stripe" value="Stripe" required checked />
                 <label for="hou-pay-stripe">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="2" y="6" width="20" height="12"/><path d="M2 10h20"/></svg>
                   Pay with Stripe
-                </label>
-              </div>
-              <div class="hou-pay-opt">
-                <input type="radio" name="paymentMethod" id="hou-pay-paypal" value="PayPal" />
-                <label for="hou-pay-paypal">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M6 4h8a4 4 0 0 1 0 8h-4l-1 8H5L6 4z"/><path d="M9 12h4a4 4 0 0 0 4-4"/></svg>
-                  Pay with PayPal
                 </label>
               </div>
             </div>
@@ -1579,7 +1572,7 @@ const sanityPage = await fetchSanityPage('camp-texas-dallas-june')
           form.innerHTML = `
             <div style="padding:18px 0;text-align:center;">
               <p style="color:#4ade80;font-size:18px;font-family:var(--font-display);font-style:italic;font-weight:900;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 12px;">You're in. Spot held.</p>
-              <p style="color:rgba(255,255,255,0.78);font-size:15px;line-height:1.55;margin:0 0 20px;">Sending you to payment now. Complete payment to confirm your spot. We've emailed Joner HQ.</p>
+              <p style="color:rgba(255,255,255,0.78);font-size:15px;line-height:1.55;margin:0 0 20px;">Sending you to secure payment now. Once Stripe confirms payment, your confirmation email fires automatically.</p>
               <a href="${paymentLink}" target="_blank" rel="noopener" class="btn-red">Complete payment</a>
             </div>`
           window.setTimeout(() => {

@@ -1,4 +1,6 @@
 import { protectForm } from './_security.js'
+import { sendRegistrationEmail } from './_camp-automation.js'
+import { campPaymentConfig, selectedDayKey, siteUrl } from './_camp-payment-options.js'
 
 const DEFAULT_SHEET_ID = '1SbGmivi3yqFaBKoMAhoNd5ufUga99DaQBj2noXNJr4k'
 const PENDING_SHEET = 'Leads Pending Payment'
@@ -306,6 +308,51 @@ async function addToBrevo(registration) {
   return { skipped: false, failed: false }
 }
 
+async function createStripeCheckoutSession(req, registration) {
+  const config = campPaymentConfig(registration.camp, registration.destination)
+  if (!config || registration.paymentMethod !== 'Stripe') return null
+
+  const secret = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY
+  if (!secret) throw new Error('Stripe secret key is not configured.')
+
+  const dayKey = selectedDayKey(registration.numberOfDays)
+  const amount = config.amounts[dayKey]
+  if (!amount) throw new Error('Camp price is not configured.')
+
+  const dayLabel = dayKey === 'three' ? '3 Days' : dayKey === 'two' ? '2 Days' : '1 Day'
+  const baseUrl = siteUrl(req)
+  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${secret}`,
+      'content-type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      mode: 'payment',
+      success_url: `${baseUrl}${config.successPath}&registration_id=${encodeURIComponent(registration.registrationId)}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}${config.cancelPath}&registration_id=${encodeURIComponent(registration.registrationId)}`,
+      customer_email: registration.email,
+      'line_items[0][quantity]': '1',
+      'line_items[0][price_data][currency]': config.currency,
+      'line_items[0][price_data][unit_amount]': String(amount),
+      'line_items[0][price_data][product_data][name]': `${config.displayName} - ${dayLabel}`,
+      'line_items[0][price_data][product_data][metadata][camp]': registration.camp,
+      'metadata[registrationId]': registration.registrationId,
+      'metadata[camp]': registration.camp,
+      'metadata[destination]': registration.destination,
+      'metadata[numberOfDays]': registration.numberOfDays,
+      'metadata[playerName]': `${registration.playerFirstName} ${registration.playerSurname}`.trim(),
+      'payment_intent_data[metadata][registrationId]': registration.registrationId,
+      'payment_intent_data[metadata][camp]': registration.camp,
+      'payment_intent_data[metadata][numberOfDays]': registration.numberOfDays,
+    }),
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || !data.url) throw new Error(data.error?.message || 'Could not create Stripe Checkout session.')
+  return data
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -357,9 +404,24 @@ export default async function handler(req, res) {
     registration.paymentStatus = registration.paymentStatus === 'paid' ? 'paid' : 'not_paid_pending_payment'
     registration.paymentStatusLabel = registration.paymentStatus === 'paid' ? 'PAID' : 'NOT PAID YET, payment link selected and sent to parent'
 
+    const checkoutSession = await createStripeCheckoutSession(req, registration)
+    if (checkoutSession?.url) registration.paymentLink = checkoutSession.url
+
     await appendPendingRegistration(registration)
     const brevo = await addToBrevo(registration)
     const notification = await sendCampSignupEmail(registration)
+    let customerEmail = { skipped: true }
+    try {
+      const sheetId = process.env.CAMP_REGISTRATION_SHEET_ID || DEFAULT_SHEET_ID
+      customerEmail = await sendRegistrationEmail({
+        sheetId,
+        registration,
+        type: 'signup-payment-link',
+      })
+    } catch (emailError) {
+      console.warn('Camp signup customer email failed:', emailError?.message || emailError)
+      customerEmail = { skipped: false, failed: true }
+    }
 
     return res.status(200).json({
       success: true,
@@ -367,6 +429,8 @@ export default async function handler(req, res) {
       paymentLink: registration.paymentLink,
       brevo,
       notification,
+      customerEmail,
+      checkoutSessionId: checkoutSession?.id || null,
     })
   } catch (error) {
     console.error('Camp registration failed:', error)

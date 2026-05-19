@@ -138,8 +138,14 @@ export function emailDataFromRegistration(registration) {
     campName: camp,
     destination: isSydney ? 'Sydney' : isHouston ? 'Houston' : isDallas ? 'Dallas' : registration.sheetTab || 'your camp',
     campDates: isSydney ? 'July 14-16, 2026' : isHouston ? 'June 26-28, 2026' : isDallas ? 'June 30-July 2, 2026' : 'Confirmed camp dates',
-    campTimes: isSydney ? '9am to 12pm' : 'Confirmed camp times',
-    campLocation: isSydney ? 'Rydalmere Park, Sydney' : registration.sheetTab || registration.camp,
+    campTimes: isSydney ? '9am to 12pm' : isHouston || isDallas ? '7am to 10am' : 'Confirmed camp times',
+    campLocation: isSydney
+      ? 'Rydalmere Park, Sydney'
+      : isHouston
+        ? '17822 Hufsmith Kohrville Rd, Tomball, TX 77375'
+        : isDallas
+          ? '4220 E Melissa Rd, Melissa, TX 75454'
+          : registration.sheetTab || registration.camp,
     numberOfDays: registration.numberOfDays,
     jerseySize: registration.jerseySize,
     paymentLink: registration.paymentLink,
@@ -157,7 +163,7 @@ export async function logEmail(sheetId, registration, type, status = 'sent') {
 
 export async function sendRegistrationEmail({ sheetId, registration, type }) {
   if (await emailAlreadySent(sheetId, registration.registrationId, type)) return { skipped: true, reason: 'already-sent' }
-  const template = type === 'unpaid-reminder' ? 'unpaid' : 'confirmed'
+  const template = type === 'unpaid-reminder' || type === 'signup-payment-link' ? 'unpaid' : 'confirmed'
   await sendCampTransactionalEmail({
     toEmail: registration.email,
     toName: registration.parentName || registration.playerFirstName || registration.email,
