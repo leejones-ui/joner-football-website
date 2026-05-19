@@ -412,8 +412,14 @@ export default async function handler(req, res) {
     registration.paymentStatus = registration.paymentStatus === 'paid' ? 'paid' : 'not_paid_pending_payment'
     registration.paymentStatusLabel = registration.paymentStatus === 'paid' ? 'PAID' : 'NOT PAID YET, payment link selected and sent to parent'
 
-    const checkoutSession = await createStripeCheckoutSession(req, registration)
-    if (checkoutSession?.url) registration.paymentLink = checkoutSession.url
+    let checkoutSession = null
+    try {
+      checkoutSession = await createStripeCheckoutSession(req, registration)
+      if (checkoutSession?.url) registration.paymentLink = checkoutSession.url
+    } catch (checkoutError) {
+      console.warn('Camp Stripe Checkout creation failed; falling back to submitted payment link:', checkoutError?.message || checkoutError)
+      checkoutSession = null
+    }
 
     await appendPendingRegistration(registration)
 
