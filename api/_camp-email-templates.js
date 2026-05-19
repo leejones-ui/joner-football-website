@@ -22,11 +22,7 @@ function destinationFrom(data) {
 
 function heroImageFor(data) {
   if (data.heroImageUrl) return data.heroImageUrl
-  const text = `${data.destination || ''} ${data.location || ''} ${data.campName || data.camp || ''}`.toLowerCase()
-  if (text.includes('sydney')) return 'https://jonerfootball.com/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg'
-  if (text.includes('houston')) return 'https://jonerfootball.com/images/camps/houston-2026/photos/real-coaching.webp'
-  if (text.includes('dallas')) return 'https://jonerfootball.com/images/camps/dallas-2026/photos/real-coaching.webp'
-  return 'https://jonerfootball.com/images/camps/hub/camps-hero-lee-coaching.webp'
+  return 'https://jonerfootball.com/images/camps/email/camp-confirmation-hero.jpg'
 }
 
 function detailRows(data, mode = 'confirmed') {

@@ -104,6 +104,7 @@ export async function readSheetRange(sheetId, tab, range = 'A:Z') {
 }
 
 function amountFromRegistration(registration) {
+  if (registration.paidAmount) return clean(registration.paidAmount, 80)
   const value = clean(registration.numberOfDays || registration.extraInfo || '', 120)
   const match = value.match(/\$\s?\d+(?:\.\d{2})?(?:\s?(?:USD|AUD))?/i)
   return match ? match[0].replace(/\s+/, ' ') : value

@@ -99,7 +99,15 @@ function campTabForRegistration(registration) {
   return clean(registration.camp || '', 120)
 }
 
-async function confirmPaidRegistration(registrationId) {
+function paidAmountFromSession(session) {
+  const amount = Number(session?.amount_total)
+  const currency = String(session?.currency || '').toUpperCase()
+  if (!Number.isFinite(amount) || amount <= 0) return ''
+  const major = amount / 100
+  return currency ? `$${major.toFixed(2)} ${currency}` : `$${major.toFixed(2)}`
+}
+
+async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
   const sheetId = process.env.CAMP_REGISTRATION_SHEET_ID || DEFAULT_SHEET_ID
   const pendingRows = await readRows(sheetId, PENDING_SHEET)
   let found = null
@@ -121,6 +129,7 @@ async function confirmPaidRegistration(registrationId) {
   }
 
   found.paymentStatus = 'paid'
+  if (paymentDetails.paidAmount) found.paidAmount = paymentDetails.paidAmount
   await updateCell(sheetId, PENDING_SHEET, rowNumber, 'C', 'paid')
 
   const paidRow = rowFromRegistration(found, 'paid')
@@ -185,7 +194,11 @@ export default async function handler(req, res) {
       } else {
         const registrationId = registrationIdFromSession(session)
         if (!registrationId) throw new Error('Stripe session missing registrationId metadata.')
-        result = await confirmPaidRegistration(registrationId)
+        result = await confirmPaidRegistration(registrationId, {
+          paidAmount: paidAmountFromSession(session),
+          stripeCheckoutSessionId: session.id,
+          stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id,
+        })
         if (!signatureVerified) result.signatureVerification = 'stripe-session-lookup'
       }
     }
