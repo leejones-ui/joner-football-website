@@ -216,6 +216,15 @@ function campSignupRecipients(registration) {
     .map((email) => ({ email, name: 'Joner Football Camps' }))
 }
 
+function defaultCampSheetTab(registration) {
+  const text = `${registration.camp} ${registration.destination} ${registration.source}`.toLowerCase()
+  if (text.includes('houston')) return 'Houston'
+  if (text.includes('dallas')) return 'Dallas'
+  if (text.includes('sydney')) return 'Sydney big 1 (July)'
+  if (text.includes('joner') && text.includes('junior')) return 'Joners Juniors'
+  return registration.camp || 'Camp Registrations'
+}
+
 async function sendCampSignupEmail(registration) {
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey || !CAMP_SIGNUP_EMAIL) return { skipped: true }
@@ -399,6 +408,7 @@ export default async function handler(req, res) {
       paymentStatus: clean(body.paymentStatus || 'not_paid_pending_payment', 40),
       sheetTab: clean(body.sheetTab || body.googleSheetTab || body.targetSheetTab, 120),
     }
+    if (!registration.sheetTab) registration.sheetTab = defaultCampSheetTab(registration)
 
     if (!registration.playerFirstName) return res.status(400).json({ success: false, error: 'Player first name is required.' })
     if (!registration.playerSurname) return res.status(400).json({ success: false, error: 'Player surname is required.' })
@@ -438,18 +448,7 @@ export default async function handler(req, res) {
       console.warn('Camp signup notification crashed:', notificationError?.message || notificationError)
       notification = { skipped: false, failed: true }
     }
-    let customerEmail = { skipped: true }
-    try {
-      const sheetId = process.env.CAMP_REGISTRATION_SHEET_ID || DEFAULT_SHEET_ID
-      customerEmail = await sendRegistrationEmail({
-        sheetId,
-        registration,
-        type: 'signup-payment-link',
-      })
-    } catch (emailError) {
-      console.warn('Camp signup customer email failed:', emailError?.message || emailError)
-      customerEmail = { skipped: false, failed: true }
-    }
+    const customerEmail = { skipped: true, reason: 'paid-confirmation-only' }
 
     return res.status(200).json({
       success: true,

@@ -12,6 +12,12 @@ import {
   clean,
 } from './_camp-automation.js'
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+}
+
 async function verifyCampPaymentWebhook(rawBody, signatureHeader) {
   const secrets = [
     process.env.STRIPE_CAMP_WEBHOOK_SECRET,
@@ -53,6 +59,17 @@ function registrationIdFromSession(session) {
   )
 }
 
+function campTabForRegistration(registration) {
+  const explicit = clean(registration.sheetTab || '', 120)
+  if (explicit) return explicit
+  const text = `${registration.camp} ${registration.source}`.toLowerCase()
+  if (text.includes('houston')) return 'Houston'
+  if (text.includes('dallas')) return 'Dallas'
+  if (text.includes('sydney')) return 'Sydney big 1 (July)'
+  if (text.includes('joner') && text.includes('junior')) return 'Joners Juniors'
+  return clean(registration.camp || '', 120)
+}
+
 async function confirmPaidRegistration(registrationId) {
   const sheetId = process.env.CAMP_REGISTRATION_SHEET_ID || DEFAULT_SHEET_ID
   const pendingRows = await readRows(sheetId, PENDING_SHEET)
@@ -77,15 +94,27 @@ async function confirmPaidRegistration(registrationId) {
   found.paymentStatus = 'paid'
   await updateCell(sheetId, PENDING_SHEET, rowNumber, 'C', 'paid')
 
+  const paidRow = rowFromRegistration(found, 'paid')
+
   const paidRows = await readRows(sheetId, PAID_SHEET)
   const alreadyInPaidSheet = paidRows.slice(1).some((row) => row[1] === registrationId)
-  if (!alreadyInPaidSheet) await appendRow(sheetId, PAID_SHEET, rowFromRegistration(found, 'paid'))
+  if (!alreadyInPaidSheet) await appendRow(sheetId, PAID_SHEET, paidRow)
+
+  const campTab = campTabForRegistration(found)
+  let campSheet = 'not-configured'
+  if (campTab) {
+    const campRows = await readRows(sheetId, campTab)
+    const alreadyInCampTab = campRows.slice(1).some((row) => row[1] === registrationId)
+    if (!alreadyInCampTab) await appendRow(sheetId, campTab, paidRow)
+    campSheet = alreadyInCampTab ? 'already-present' : campTab
+  }
 
   const email = await sendRegistrationEmail({ sheetId, registration: found, type: 'paid-confirmation' })
   return {
     registrationId,
     status: 'paid-confirmed',
     paidSheet: alreadyInPaidSheet ? 'already-present' : 'appended',
+    campSheet,
     email,
   }
 }
