@@ -1,0 +1,59 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const title = 'Your Download Is On The Way | Joner Football'
+const description = 'Your Joner Football payment is complete. Check your email for your private download link.'
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  canonical="https://jonerfootball.com/download-success/"
+  noindex
+>
+  <main class="bg-joner-black text-white">
+    <section class="relative overflow-hidden border-b border-white/10">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(220,0,0,0.35),transparent_34%),linear-gradient(135deg,#050505_0%,#111_55%,#050505_100%)]"></div>
+      <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 text-center">
+        <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-5">Payment Complete</p>
+        <h1 class="font-heading uppercase text-5xl md:text-7xl lg:text-8xl leading-none mb-6">Check Your Email.</h1>
+        <p class="text-lg md:text-2xl text-white/80 max-w-3xl mx-auto leading-relaxed">
+          Your private download link is being sent now. It should arrive within a few minutes.
+        </p>
+      </div>
+    </section>
+
+    <section class="px-4 sm:px-6 lg:px-8 py-12 md:py-18">
+      <div class="max-w-5xl mx-auto grid gap-6 md:grid-cols-[1.1fr_0.9fr] items-stretch">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-6 md:p-8 shadow-2xl shadow-black/30">
+          <h2 class="font-heading uppercase text-3xl md:text-5xl leading-none mb-5">What Happens Next</h2>
+          <ol class="space-y-4 text-white/80 text-base md:text-lg leading-relaxed list-decimal list-inside">
+            <li>Open the inbox for the email used at checkout.</li>
+            <li>Look for the subject line with your Joner Football download.</li>
+            <li>Click the private download button and save the file to your device.</li>
+          </ol>
+          <div class="mt-7 rounded-xl border border-joner-red/30 bg-joner-red/10 p-5">
+            <p class="font-heading uppercase tracking-[0.12em] text-joner-red text-sm mb-2">Need help?</p>
+            <p class="text-white/80 leading-relaxed">
+              If the email has not arrived after 5 minutes, check spam or junk first. If it is still missing, email us and we will help you get the file.
+            </p>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-white/10 bg-white text-joner-black p-6 md:p-8 shadow-2xl shadow-black/30 flex flex-col justify-between">
+          <div>
+            <p class="font-heading uppercase tracking-[0.18em] text-joner-red text-xs mb-4">Next Step</p>
+            <h2 class="font-heading uppercase text-3xl md:text-5xl leading-none mb-4">Build The Full Plan.</h2>
+            <p class="text-gray-700 leading-relaxed mb-6">
+              The download gives you the tool. The Joner Football App gives you the sessions, structure, and coaching detail to turn it into better training.
+            </p>
+          </div>
+          <div class="flex flex-col gap-3">
+            <a href="/join" class="btn-red text-center">Start With The App</a>
+            <a href="https://app.jonerfootball.com/categories/category-qee31-z2mxo" target="_blank" rel="noopener noreferrer" class="btn-outline border-joner-black text-joner-black hover:bg-joner-black hover:text-white text-center">Open 100 Day Program</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
