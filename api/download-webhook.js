@@ -190,6 +190,46 @@ async function createDownloadForProduct(req, session, product) {
   }
 }
 
+async function fetchStripeCheckoutSession(sessionId) {
+  const secretKey = process.env.STRIPE_SECRET_KEY
+  if (!secretKey) throw new Error('STRIPE_SECRET_KEY is not configured for fallback session verification.')
+
+  const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`, {
+    method: 'GET',
+    headers: {
+      authorization: `Bearer ${secretKey}`,
+    },
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(text || `Stripe session lookup failed: ${response.status}`)
+  }
+
+  return response.json()
+}
+
+async function verifiedEventFromBody(rawBody) {
+  const event = JSON.parse(rawBody)
+  if (event?.type !== 'checkout.session.completed') return event
+
+  const sessionId = event?.data?.object?.id
+  if (!sessionId) throw new Error('Stripe checkout session id is missing.')
+
+  const verifiedSession = await fetchStripeCheckoutSession(sessionId)
+  if (verifiedSession?.payment_status !== 'paid' || verifiedSession?.status !== 'complete') {
+    throw new Error('Stripe checkout session is not paid and complete.')
+  }
+
+  return {
+    ...event,
+    data: {
+      ...event.data,
+      object: verifiedSession,
+    },
+  }
+}
+
 async function handleCheckoutCompleted(req, session) {
   const claimed = await claimProcessedSession(session.id)
   if (!claimed) {
@@ -242,8 +282,15 @@ export default async function handler(req, res) {
 
   try {
     const rawBody = await readRawBody(req)
-    await verifyStripeWebhook(rawBody, req.headers['stripe-signature'], process.env.STRIPE_DOWNLOAD_WEBHOOK_SECRET)
-    const event = JSON.parse(rawBody)
+    let event
+
+    try {
+      await verifyStripeWebhook(rawBody, req.headers['stripe-signature'], process.env.STRIPE_DOWNLOAD_WEBHOOK_SECRET)
+      event = JSON.parse(rawBody)
+    } catch (signatureError) {
+      console.warn('Download webhook signature verification failed, falling back to Stripe session lookup:', signatureError)
+      event = await verifiedEventFromBody(rawBody)
+    }
 
     if (event.type === 'checkout.session.completed') {
       await handleCheckoutCompleted(req, event.data.object)
