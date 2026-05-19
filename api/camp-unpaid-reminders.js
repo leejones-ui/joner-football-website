@@ -5,7 +5,9 @@ import {
   readRows,
   registrationFromRow,
   sendRegistrationEmail,
-  emailAlreadySent,
+  emailAlreadySentInRows,
+  EMAIL_LOG_SHEET,
+  LOG_HEADERS,
 } from './_camp-automation.js'
 
 const REMINDER_STAGES = [
@@ -47,9 +49,10 @@ export default async function handler(req, res) {
   const sheetId = process.env.CAMP_REGISTRATION_SHEET_ID || DEFAULT_SHEET_ID
 
   try {
-    const [pendingRows, paidRows] = await Promise.all([
+    const [pendingRows, paidRows, emailLogRows] = await Promise.all([
       readRows(sheetId, PENDING_SHEET),
       readRows(sheetId, PAID_SHEET),
+      readRows(sheetId, EMAIL_LOG_SHEET, LOG_HEADERS),
     ])
     const paidIds = new Set(paidRows.slice(1).map((row) => row[1]).filter(Boolean))
     const candidates = []
@@ -64,7 +67,7 @@ export default async function handler(req, res) {
       const ageMinutes = minutesSince(registration.submittedAt)
       for (const stage of REMINDER_STAGES) {
         if (ageMinutes < stage.minutes) continue
-        const alreadySent = await emailAlreadySent(sheetId, registration.registrationId, stage.type)
+        const alreadySent = emailAlreadySentInRows(emailLogRows, registration.registrationId, stage.type)
         if (alreadySent) continue
         candidates.push({ registration, stage, ageMinutes: Math.round(ageMinutes) })
         stageCounts[stage.type] += 1
@@ -76,7 +79,7 @@ export default async function handler(req, res) {
     if (!dryRun) {
       for (const candidate of candidates) {
         try {
-          const email = await sendRegistrationEmail({ sheetId, registration: candidate.registration, type: candidate.stage.type })
+          const email = await sendRegistrationEmail({ sheetId, registration: candidate.registration, type: candidate.stage.type, emailLogRows })
           results.push({ registrationId: candidate.registration.registrationId, reminder: candidate.stage.type, email })
         } catch (error) {
           console.warn('Unpaid reminder failed:', candidate.registration.registrationId, candidate.stage.type, error?.message || error)

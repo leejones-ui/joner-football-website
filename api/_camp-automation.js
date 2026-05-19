@@ -317,6 +317,10 @@ export function emailDataFromRegistration(registration) {
 
 export async function emailAlreadySent(sheetId, registrationId, type) {
   const rows = await readRows(sheetId, EMAIL_LOG_SHEET, LOG_HEADERS)
+  return emailAlreadySentInRows(rows, registrationId, type)
+}
+
+export function emailAlreadySentInRows(rows = [], registrationId, type) {
   return rows.slice(1).some((row) => row[1] === registrationId && row[2] === type && row[5] === 'sent')
 }
 
@@ -324,12 +328,15 @@ export async function logEmail(sheetId, registration, type, status = 'sent', rec
   await appendRow(sheetId, EMAIL_LOG_SHEET, [new Date().toISOString(), registration.registrationId, type, recipientEmail, registration.camp, status], LOG_HEADERS)
 }
 
-export async function sendRegistrationEmail({ sheetId, registration, type }) {
+export async function sendRegistrationEmail({ sheetId, registration, type, emailLogRows = null }) {
   const template = String(type || '').startsWith('unpaid-reminder') || type === 'signup-payment-link' ? 'unpaid' : 'confirmed'
   const data = emailDataFromRegistration(registration)
 
   let customer = { skipped: true }
-  if (await emailAlreadySent(sheetId, registration.registrationId, type)) {
+  const customerAlreadySent = emailLogRows
+    ? emailAlreadySentInRows(emailLogRows, registration.registrationId, type)
+    : await emailAlreadySent(sheetId, registration.registrationId, type)
+  if (customerAlreadySent) {
     customer = { skipped: true, reason: 'already-sent' }
   } else {
     customer = await sendCampTransactionalEmail({
@@ -345,7 +352,10 @@ export async function sendRegistrationEmail({ sheetId, registration, type }) {
   if (template === 'confirmed') {
     for (const adminEmail of parseEmailList(CAMP_PAID_NOTIFICATION_EMAIL)) {
       const adminType = `${type || 'paid-confirmation'}-admin-${adminEmail}`
-      if (await emailAlreadySent(sheetId, registration.registrationId, adminType)) {
+      const adminAlreadySent = emailLogRows
+        ? emailAlreadySentInRows(emailLogRows, registration.registrationId, adminType)
+        : await emailAlreadySent(sheetId, registration.registrationId, adminType)
+      if (adminAlreadySent) {
         adminResults.push({ email: adminEmail, skipped: true, reason: 'already-sent' })
         continue
       }
