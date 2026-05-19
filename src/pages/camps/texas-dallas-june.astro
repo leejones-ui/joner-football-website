@@ -366,10 +366,10 @@ const sanityPage = await fetchSanityPage('camp-texas-dallas-june')
         <p class="hou-form-lede">
           You can't get accepted without filling in the form and submitting payment. Spots are first come, first served.
         </p>
-        <div class="hou-spots" data-spots-counter data-spots-baseline="80" data-spots-camp="Dallas World Cup Camp June 2026">
+        <div class="hou-spots" data-spots-counter data-spots-baseline="80" data-spots-existing="25" data-spots-paid-baseline="0" data-spots-camp="Dallas World Cup Camp June 2026">
           <span class="hou-spots-pulse" aria-hidden="true"></span>
           <span class="hou-spots-text">
-            <span class="hou-spots-num" data-spots-num>80</span>
+            <span class="hou-spots-num" data-spots-num>55</span>
             <span class="hou-spots-label">spots left</span>
           </span>
         </div>
@@ -1441,8 +1441,10 @@ const sanityPage = await fetchSanityPage('camp-texas-dallas-june')
       if (!spotsBox || !spotsNum) return
       const camp = spotsBox.getAttribute('data-spots-camp') || ''
       const baseline = spotsBox.getAttribute('data-spots-baseline') || '0'
+      const existingSignups = spotsBox.getAttribute('data-spots-existing') || '0'
+      const paidBaseline = spotsBox.getAttribute('data-spots-paid-baseline') || '0'
       try {
-        const res = await fetch(`/api/camp-spots?camp=${encodeURIComponent(camp)}&baseline=${encodeURIComponent(baseline)}`, { cache: 'no-store' })
+        const res = await fetch(`/api/camp-spots?camp=${encodeURIComponent(camp)}&baseline=${encodeURIComponent(baseline)}&existingSignups=${encodeURIComponent(existingSignups)}&paidBaseline=${encodeURIComponent(paidBaseline)}`, { cache: 'no-store' })
         const json = await res.json()
         if (typeof json?.spots === 'number') {
           const oldVal = parseInt(spotsNum.textContent || baseline, 10)

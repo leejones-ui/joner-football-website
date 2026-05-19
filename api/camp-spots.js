@@ -80,6 +80,8 @@ export default async function handler(req, res) {
   const camp = (url.searchParams.get('camp') || '').trim()
   const baselineRaw = url.searchParams.get('baseline')
   const baseline = Math.max(0, parseInt(baselineRaw || '0', 10) || 0)
+  const existingSignups = Math.max(0, parseInt(url.searchParams.get('existingSignups') || '0', 10) || 0)
+  const paidBaseline = Math.max(0, parseInt(url.searchParams.get('paidBaseline') || '0', 10) || 0)
 
   if (!camp) return res.status(400).json({ success: false, error: 'camp query param is required' })
   if (!baseline) return res.status(400).json({ success: false, error: 'baseline query param is required and must be > 0' })
@@ -93,10 +95,13 @@ export default async function handler(req, res) {
     const paid = await readSheetRange(sheetId, `${PAID_SHEET}!A:X`, token)
     const campLower = camp.toLowerCase()
     // Spots are reduced only after Stripe/payment confirmation writes to
-    // Paid Camp Registrations. A form fill alone must not reduce scarcity.
-    const taken = countMatches(paid, campLower)
+    // Paid Camp Registrations. Existing manual signups are held as an activation
+    // offset, then only new paid rows after that baseline reduce the counter.
+    const paidTaken = countMatches(paid, campLower)
+    const newPaidSinceBaseline = Math.max(0, paidTaken - paidBaseline)
+    const taken = existingSignups + newPaidSinceBaseline
     const spots = Math.max(0, baseline - taken)
-    return res.status(200).json({ success: true, camp, baseline, taken, spots })
+    return res.status(200).json({ success: true, camp, baseline, existingSignups, paidBaseline, paidTaken, taken, spots })
   } catch (error) {
     console.error('camp-spots error:', error?.message || error)
     // Fail soft, surface baseline so the UI never breaks the page
