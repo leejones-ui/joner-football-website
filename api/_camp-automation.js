@@ -138,10 +138,27 @@ export function operationalCampRowFromRegistration(registration) {
 
 export async function appendOperationalCampRow(sheetId, tab, registration) {
   const row = operationalCampRowFromRegistration(registration)
+
+  // Lee's event tabs are working sheets with pre-formatted blank rows. Some of
+  // those blanks already contain FALSE in the Day columns, so Google Sheets does
+  // not treat them as empty for append. Fill the first row with a blank player
+  // name instead, keeping the new player directly under the last real player.
+  const rows = await readSheetRange(sheetId, tab, 'A:J')
+  const firstBlankPlayerIndex = rows.slice(1).findIndex((existingRow) => !clean(existingRow?.[0] || '', 180))
+  if (firstBlankPlayerIndex >= 0) {
+    const rowNumber = firstBlankPlayerIndex + 2
+    await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!A${rowNumber}:J${rowNumber}?valueInputOption=USER_ENTERED`, {
+      method: 'PUT',
+      body: JSON.stringify({ values: [row] }),
+    })
+    return { mode: 'filled-blank-row', rowNumber }
+  }
+
   await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!A:J:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
     method: 'POST',
     body: JSON.stringify({ values: [row] }),
   })
+  return { mode: 'appended' }
 }
 
 export async function updateCell(sheetId, tab, rowNumber, colLetter, value, valueInputOption = 'RAW') {
