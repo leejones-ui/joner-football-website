@@ -40,6 +40,10 @@ export default async function handler(req, res) {
 
   const url = new URL(req.url, `https://${req.headers.host || 'jonerfootball.com'}`)
   const dryRun = url.searchParams.get('dryRun') === '1'
+  const remindersEnabled = String(process.env.CAMP_REMINDERS_ENABLED || '').toLowerCase() === 'true'
+  if (!dryRun && !remindersEnabled) {
+    return res.status(200).json({ success: true, disabled: true, message: 'Camp unpaid reminders are disabled. Set CAMP_REMINDERS_ENABLED=true to send.' })
+  }
   const sheetId = process.env.CAMP_REGISTRATION_SHEET_ID || DEFAULT_SHEET_ID
 
   try {
