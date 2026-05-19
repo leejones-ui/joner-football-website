@@ -39,6 +39,29 @@ async function verifyCampPaymentWebhook(rawBody, signatureHeader) {
   throw lastError || new Error('Invalid Stripe signature.')
 }
 
+async function retrieveStripeCheckoutSession(sessionId) {
+  const keys = [
+    process.env.STRIPE_SECRET_KEY,
+    process.env.STRIPE_SECRET_KEY_SYDNEY,
+  ].filter(Boolean)
+
+  let lastError = null
+  for (const key of keys) {
+    try {
+      const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`, {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      const data = await response.json().catch(() => ({}))
+      if (response.ok && data?.id === sessionId) return data
+      lastError = new Error(data?.error?.message || `Stripe lookup failed with ${response.status}`)
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError || new Error('Could not verify Checkout Session with Stripe.')
+}
+
 async function readRawBody(req) {
   if (typeof req.body === 'string') return req.body
   if (Buffer.isBuffer(req.body)) return req.body.toString('utf8')
@@ -127,14 +150,24 @@ export default async function handler(req, res) {
 
   try {
     const rawBody = await readRawBody(req)
-    await verifyCampPaymentWebhook(rawBody, req.headers['stripe-signature'])
     const event = JSON.parse(rawBody)
+
+    let signatureVerified = false
+    try {
+      await verifyCampPaymentWebhook(rawBody, req.headers['stripe-signature'])
+      signatureVerified = true
+    } catch (signatureError) {
+      console.warn('Camp payment webhook signature failed; falling back to Stripe session lookup:', signatureError?.message)
+    }
 
     const handledTypes = new Set(['checkout.session.completed', 'checkout.session.async_payment_succeeded'])
     let result = { ignored: true, type: event.type }
 
     if (handledTypes.has(event.type)) {
-      const session = event.data.object
+      const eventSession = event.data.object
+      const session = signatureVerified
+        ? eventSession
+        : await retrieveStripeCheckoutSession(eventSession?.id)
       const paymentStatus = String(session.payment_status || '').toLowerCase()
       if (paymentStatus && paymentStatus !== 'paid') {
         result = { ignored: true, reason: 'not-paid', paymentStatus }
@@ -142,6 +175,7 @@ export default async function handler(req, res) {
         const registrationId = registrationIdFromSession(session)
         if (!registrationId) throw new Error('Stripe session missing registrationId metadata.')
         result = await confirmPaidRegistration(registrationId)
+        if (!signatureVerified) result.signatureVerification = 'stripe-session-lookup'
       }
     }
 
