@@ -14,6 +14,15 @@ export const HEADERS = [
 
 export const LOG_HEADERS = ['Sent At', 'Registration ID', 'Email Type', 'Recipient Email', 'Camp', 'Status']
 
+const CAMP_PAID_NOTIFICATION_EMAIL = process.env.CAMP_PAID_NOTIFICATION_EMAIL || process.env.CAMP_SIGNUP_EMAIL || 'joner1on1info@gmail.com'
+
+function parseEmailList(value) {
+  return String(value || '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+}
+
 export function clean(value, max = 500) {
   return String(value || '').replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, max)
 }
@@ -311,19 +320,48 @@ export async function emailAlreadySent(sheetId, registrationId, type) {
   return rows.slice(1).some((row) => row[1] === registrationId && row[2] === type && row[5] === 'sent')
 }
 
-export async function logEmail(sheetId, registration, type, status = 'sent') {
-  await appendRow(sheetId, EMAIL_LOG_SHEET, [new Date().toISOString(), registration.registrationId, type, registration.email, registration.camp, status], LOG_HEADERS)
+export async function logEmail(sheetId, registration, type, status = 'sent', recipientEmail = registration.email) {
+  await appendRow(sheetId, EMAIL_LOG_SHEET, [new Date().toISOString(), registration.registrationId, type, recipientEmail, registration.camp, status], LOG_HEADERS)
 }
 
 export async function sendRegistrationEmail({ sheetId, registration, type }) {
-  if (await emailAlreadySent(sheetId, registration.registrationId, type)) return { skipped: true, reason: 'already-sent' }
   const template = String(type || '').startsWith('unpaid-reminder') || type === 'signup-payment-link' ? 'unpaid' : 'confirmed'
-  await sendCampTransactionalEmail({
-    toEmail: registration.email,
-    toName: registration.parentName || registration.playerFirstName || registration.email,
-    template,
-    data: emailDataFromRegistration(registration),
-  })
-  await logEmail(sheetId, registration, type, 'sent')
-  return { skipped: false, sent: true }
+  const data = emailDataFromRegistration(registration)
+
+  let customer = { skipped: true }
+  if (await emailAlreadySent(sheetId, registration.registrationId, type)) {
+    customer = { skipped: true, reason: 'already-sent' }
+  } else {
+    customer = await sendCampTransactionalEmail({
+      toEmail: registration.email,
+      toName: registration.parentName || registration.playerFirstName || registration.email,
+      template,
+      data,
+    })
+    await logEmail(sheetId, registration, type, 'sent', registration.email)
+  }
+
+  const adminResults = []
+  if (template === 'confirmed') {
+    for (const adminEmail of parseEmailList(CAMP_PAID_NOTIFICATION_EMAIL)) {
+      const adminType = `${type || 'paid-confirmation'}-admin-${adminEmail}`
+      if (await emailAlreadySent(sheetId, registration.registrationId, adminType)) {
+        adminResults.push({ email: adminEmail, skipped: true, reason: 'already-sent' })
+        continue
+      }
+      const admin = await sendCampTransactionalEmail({
+        toEmail: adminEmail,
+        toName: 'Joner Football Camps',
+        template: 'confirmed',
+        data: {
+          ...data,
+          subject: `PAID camp signup: ${clean(registration.playerFirstName)} ${clean(registration.playerSurname)} for ${clean(registration.camp)}`,
+        },
+      })
+      await logEmail(sheetId, registration, adminType, 'sent', adminEmail)
+      adminResults.push({ email: adminEmail, ...admin })
+    }
+  }
+
+  return { skipped: false, sent: true, customer, admin: adminResults }
 }
