@@ -98,6 +98,50 @@ export async function appendRow(sheetId, tab, row, headers = HEADERS) {
   })
 }
 
+export async function readSheetRange(sheetId, tab, range = 'A:Z') {
+  const data = await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!${range}`)
+  return data.values || []
+}
+
+function amountFromRegistration(registration) {
+  const value = clean(registration.numberOfDays || registration.extraInfo || '', 120)
+  const match = value.match(/\$\s?\d+(?:\.\d{2})?(?:\s?(?:USD|AUD))?/i)
+  return match ? match[0].replace(/\s+/, ' ') : value
+}
+
+function campDaysFromRegistration(registration) {
+  const value = `${registration.numberOfDays || ''} ${registration.extraInfo || ''}`.toLowerCase()
+  const explicit = value.match(/\b([123])\s*day/)
+  const days = explicit ? Number(explicit[1]) : 3
+  return [true, days >= 2, days >= 3]
+}
+
+export function operationalCampRowFromRegistration(registration) {
+  const playerName = clean(`${registration.playerFirstName || ''} ${registration.playerSurname || ''}`.trim(), 180)
+  const nameWithAge = registration.age ? `${playerName} (${registration.age})` : playerName
+  const [day1, day2, day3] = campDaysFromRegistration(registration)
+  return [
+    nameWithAge,
+    registration.jerseySize || '',
+    day1,
+    day2,
+    day3,
+    registration.email || '',
+    registration.mobile || '',
+    amountFromRegistration(registration),
+    'stripe',
+    registration.previousCamp || '',
+  ]
+}
+
+export async function appendOperationalCampRow(sheetId, tab, registration) {
+  const row = operationalCampRowFromRegistration(registration)
+  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!A:J:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+    method: 'POST',
+    body: JSON.stringify({ values: [row] }),
+  })
+}
+
 export async function updateCell(sheetId, tab, rowNumber, colLetter, value) {
   await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!${colLetter}${rowNumber}:${colLetter}${rowNumber}?valueInputOption=RAW`, {
     method: 'PUT',

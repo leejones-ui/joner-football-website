@@ -5,6 +5,8 @@ import {
   readRows,
   updateCell,
   appendRow,
+  readSheetRange,
+  appendOperationalCampRow,
   registrationFromRow,
   rowFromRegistration,
   sendRegistrationEmail,
@@ -19,10 +21,14 @@ function authorized(req, body) {
 
 function campTabForRegistration(registration) {
   const explicit = clean(registration.sheetTab || '', 120)
+  const explicitText = explicit.toLowerCase()
+  if (explicitText.includes('houston')) return 'Texas Houston (June)'
+  if (explicitText.includes('dallas')) return 'Texas Dallas (June)'
+  if (explicitText.includes('sydney')) return 'Sydney big 1 (July)'
   if (explicit) return explicit
   const text = `${registration.camp} ${registration.source}`.toLowerCase()
-  if (text.includes('houston')) return 'Houston'
-  if (text.includes('dallas')) return 'Dallas'
+  if (text.includes('houston')) return 'Texas Houston (June)'
+  if (text.includes('dallas')) return 'Texas Dallas (June)'
   if (text.includes('sydney')) return 'Sydney big 1 (July)'
   if (text.includes('joner') && text.includes('junior')) return 'Joners Juniors'
   return clean(registration.camp || '', 120)
@@ -67,12 +73,17 @@ export default async function handler(req, res) {
 
     const campTab = campTabForRegistration(found)
     let campSheet = 'not-configured'
-    if (campTab) {
-      const campRows = await readRows(sheetId, campTab)
-      const alreadyInCampTab = campRows.slice(1).some((row) => row[1] === registrationId)
-      if (!alreadyInCampTab) await appendRow(sheetId, campTab, paidRow)
-      campSheet = alreadyInCampTab ? 'already-present' : campTab
-    }
+  if (campTab) {
+    const campRows = await readSheetRange(sheetId, campTab, 'A:J')
+    const alreadyInCampTab = campRows.slice(1).some((row) => row[1] === registrationId)
+    const alreadyInOperationalTab = campRows.slice(1).some((row) => {
+      const email = String(row[5] || '').toLowerCase()
+      const phone = String(row[6] || '')
+      return email && email === String(found.email || '').toLowerCase() && phone === String(found.mobile || '')
+    })
+    if (!alreadyInCampTab && !alreadyInOperationalTab) await appendOperationalCampRow(sheetId, campTab, found)
+    campSheet = alreadyInCampTab ? 'already-present' : campTab
+  }
 
     const email = await sendRegistrationEmail({ sheetId, registration: found, type: 'paid-confirmation' })
 

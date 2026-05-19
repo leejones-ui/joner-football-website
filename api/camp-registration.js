@@ -218,8 +218,8 @@ function campSignupRecipients(registration) {
 
 function defaultCampSheetTab(registration) {
   const text = `${registration.camp} ${registration.destination} ${registration.source}`.toLowerCase()
-  if (text.includes('houston')) return 'Houston'
-  if (text.includes('dallas')) return 'Dallas'
+  if (text.includes('houston')) return 'Texas Houston (June)'
+  if (text.includes('dallas')) return 'Texas Dallas (June)'
   if (text.includes('sydney')) return 'Sydney big 1 (July)'
   if (text.includes('joner') && text.includes('junior')) return 'Joners Juniors'
   return registration.camp || 'Camp Registrations'
