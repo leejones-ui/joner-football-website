@@ -9,6 +9,7 @@ export const HEADERS = [
   'Submitted At', 'Registration ID', 'Payment Status', 'Camp', 'Player First Name', 'Player Surname',
   'Parent Name', 'Email', 'Age', 'Mobile', 'Previous Camp', 'Club Level', 'Source', 'Medical History',
   'Jersey Size', 'Extra Info', 'Number Of Days', 'Agreement Accepted', 'Payment Method', 'Payment Link', 'Target Sheet Tab',
+  'Paid Amount AUD Incl Fees', 'Stripe Checkout Session ID', 'Stripe Payment Intent ID',
 ]
 
 export const LOG_HEADERS = ['Sent At', 'Registration ID', 'Email Type', 'Recipient Email', 'Camp', 'Status']
@@ -157,6 +158,7 @@ export function registrationFromRow(row = []) {
     age: row[8] || '', mobile: row[9] || '', previousCamp: row[10] || '', clubLevel: row[11] || '', source: row[12] || '',
     medicalHistory: row[13] || '', jerseySize: row[14] || '', extraInfo: row[15] || '', numberOfDays: row[16] || '',
     agreementAccepted: row[17] || '', paymentMethod: row[18] || '', paymentLink: row[19] || '', sheetTab: row[20] || '',
+    paidAmount: row[21] || '', stripeCheckoutSessionId: row[22] || '', stripePaymentIntentId: row[23] || '',
   }
 }
 
@@ -166,7 +168,8 @@ export function rowFromRegistration(registration, paymentStatus = registration.p
     registration.playerSurname, registration.parentName, registration.email, registration.age, registration.mobile,
     registration.previousCamp, registration.clubLevel, registration.source, registration.medicalHistory, registration.jerseySize,
     registration.extraInfo, registration.numberOfDays, registration.agreementAccepted, registration.paymentMethod,
-    registration.paymentLink, registration.sheetTab,
+    registration.paymentLink, registration.sheetTab, registration.paidAmount || '',
+    registration.stripeCheckoutSessionId || '', registration.stripePaymentIntentId || '',
   ]
 }
 

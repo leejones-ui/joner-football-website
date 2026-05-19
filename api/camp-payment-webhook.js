@@ -157,6 +157,8 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
 
   found.paymentStatus = 'paid'
   if (paymentDetails.paidAmount) found.paidAmount = paymentDetails.paidAmount
+  if (paymentDetails.stripeCheckoutSessionId) found.stripeCheckoutSessionId = paymentDetails.stripeCheckoutSessionId
+  if (paymentDetails.stripePaymentIntentId) found.stripePaymentIntentId = paymentDetails.stripePaymentIntentId
   await updateCell(sheetId, PENDING_SHEET, rowNumber, 'C', 'paid')
 
   const paidRow = rowFromRegistration(found, 'paid')
