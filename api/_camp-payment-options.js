@@ -15,14 +15,6 @@ export const CAMP_PAYMENT_OPTIONS = {
     cancelPath: '/camps/texas-dallas-june/?payment=cancelled#register',
     amounts: { one: 13000, two: 25000, three: 35000 },
   },
-  'sydney-july-camp-2026': {
-    campIncludes: ['sydney'],
-    displayName: 'Sydney July Camp 2026',
-    currency: 'aud',
-    successPath: '/camps/sydney-july-2026/?payment=success',
-    cancelPath: '/camps/sydney-july-2026/?payment=cancelled#register',
-    amounts: { one: 15000, two: 26000, three: 35000 },
-  },
 }
 
 export function cleanText(value) {
