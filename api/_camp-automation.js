@@ -69,6 +69,33 @@ export async function sheetsFetch(path, options = {}) {
   return data
 }
 
+export async function sheetNumericId(sheetId, title) {
+  const meta = await sheetsFetch(`${sheetId}?fields=sheets.properties(sheetId,title)`)
+  const sheet = meta.sheets?.find((entry) => entry.properties?.title === title)
+  return sheet?.properties?.sheetId
+}
+
+export async function deleteSheetRow(sheetId, tab, rowNumber) {
+  const numericId = await sheetNumericId(sheetId, tab)
+  if (!Number.isFinite(numericId) || rowNumber <= 1) return { skipped: true, reason: 'invalid-row-or-tab' }
+  await sheetsFetch(`${sheetId}:batchUpdate`, {
+    method: 'POST',
+    body: JSON.stringify({
+      requests: [{
+        deleteDimension: {
+          range: {
+            sheetId: numericId,
+            dimension: 'ROWS',
+            startIndex: rowNumber - 1,
+            endIndex: rowNumber,
+          },
+        },
+      }],
+    }),
+  })
+  return { skipped: false, deleted: true, rowNumber }
+}
+
 export async function ensureSheetTab(sheetId, title, headers) {
   const meta = await sheetsFetch(`${sheetId}?fields=sheets.properties.title`)
   const exists = meta.sheets?.some((sheet) => sheet.properties?.title === title)
