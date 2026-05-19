@@ -56,7 +56,10 @@ async function retrieveStripeCheckoutSession(sessionId) {
         headers: { Authorization: `Bearer ${key}` },
       })
       const data = await response.json().catch(() => ({}))
-      if (response.ok && data?.id === sessionId) return data
+      if (response.ok && data?.id === sessionId) {
+        data._stripeDashboardAccountId = await retrieveStripeAccountId(key)
+        return data
+      }
       lastError = new Error(data?.error?.message || `Stripe lookup failed with ${response.status}`)
     } catch (error) {
       lastError = error
@@ -64,6 +67,19 @@ async function retrieveStripeCheckoutSession(sessionId) {
   }
 
   throw lastError || new Error('Could not verify Checkout Session with Stripe.')
+}
+
+async function retrieveStripeAccountId(secretKey) {
+  try {
+    const response = await fetch('https://api.stripe.com/v1/account', {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    })
+    const data = await response.json().catch(() => ({}))
+    return response.ok && data?.id ? data.id : ''
+  } catch (error) {
+    console.warn('Could not retrieve Stripe account ID for dashboard link:', error?.message)
+    return ''
+  }
 }
 
 async function readRawBody(req) {
@@ -134,6 +150,23 @@ function internalAudAmountFromSession(session) {
   return paidAmountFromSession(session)
 }
 
+function stripePaymentIntentDashboardUrl(paymentIntentId, accountId = '') {
+  const cleanPaymentIntentId = clean(paymentIntentId || '', 120)
+  const cleanAccountId = clean(accountId || '', 80)
+  if (!cleanPaymentIntentId) return ''
+  if (cleanAccountId) {
+    return `https://dashboard.stripe.com/${encodeURIComponent(cleanAccountId)}/payments/${encodeURIComponent(cleanPaymentIntentId)}`
+  }
+  return `https://dashboard.stripe.com/payments/${encodeURIComponent(cleanPaymentIntentId)}`
+}
+
+function stripePaymentIntentSheetValue(paymentIntentId, accountId = '') {
+  const cleanPaymentIntentId = clean(paymentIntentId || '', 120)
+  const url = stripePaymentIntentDashboardUrl(cleanPaymentIntentId, accountId)
+  if (!cleanPaymentIntentId || !url) return ''
+  return `=HYPERLINK("${url.replace(/"/g, '""')}", "${cleanPaymentIntentId.replace(/"/g, '""')}")`
+}
+
 async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
   const sheetId = process.env.CAMP_REGISTRATION_SHEET_ID || DEFAULT_SHEET_ID
   const pendingRows = await readRows(sheetId, PENDING_SHEET)
@@ -159,6 +192,7 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
   if (paymentDetails.paidAmount) found.paidAmount = paymentDetails.paidAmount
   if (paymentDetails.stripeCheckoutSessionId) found.stripeCheckoutSessionId = paymentDetails.stripeCheckoutSessionId
   if (paymentDetails.stripePaymentIntentId) found.stripePaymentIntentId = paymentDetails.stripePaymentIntentId
+  if (paymentDetails.stripePaymentIntentSheetValue) found.stripePaymentIntentSheetValue = paymentDetails.stripePaymentIntentSheetValue
   await updateCell(sheetId, PENDING_SHEET, rowNumber, 'C', 'paid')
 
   const paidRow = rowFromRegistration(found, 'paid')
@@ -173,11 +207,13 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
     return false
   })
   if (!alreadyInPaidSheet) {
-    await appendRow(sheetId, PAID_SHEET, paidRow)
+    await appendRow(sheetId, PAID_SHEET, paidRow, undefined, 'USER_ENTERED')
   } else {
     if (found.paidAmount) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'V', found.paidAmount)
     if (found.stripeCheckoutSessionId) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'W', found.stripeCheckoutSessionId)
-    if (found.stripePaymentIntentId) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'X', found.stripePaymentIntentId)
+    if (found.stripePaymentIntentSheetValue || found.stripePaymentIntentId) {
+      await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'X', found.stripePaymentIntentSheetValue || found.stripePaymentIntentId, 'USER_ENTERED')
+    }
   }
 
   const campTab = campTabForRegistration(found)
@@ -242,10 +278,12 @@ export default async function handler(req, res) {
       } else {
         const registrationId = registrationIdFromSession(session)
         if (!registrationId) throw new Error('Stripe session missing registrationId metadata.')
+        const stripePaymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id
         result = await confirmPaidRegistration(registrationId, {
           paidAmount: internalAudAmountFromSession(session),
           stripeCheckoutSessionId: session.id,
-          stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id,
+          stripePaymentIntentId,
+          stripePaymentIntentSheetValue: stripePaymentIntentSheetValue(stripePaymentIntentId, session._stripeDashboardAccountId),
         })
         if (!signatureVerified) result.signatureVerification = 'stripe-session-lookup'
       }

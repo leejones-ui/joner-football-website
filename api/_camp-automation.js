@@ -9,7 +9,7 @@ export const HEADERS = [
   'Submitted At', 'Registration ID', 'Payment Status', 'Camp', 'Player First Name', 'Player Surname',
   'Parent Name', 'Email', 'Age', 'Mobile', 'Previous Camp', 'Club Level', 'Source', 'Medical History',
   'Jersey Size', 'Extra Info', 'Number Of Days', 'Agreement Accepted', 'Payment Method', 'Payment Link', 'Target Sheet Tab',
-  'Net Amount AUD After Fees', 'Stripe Checkout Session ID', 'Stripe Payment Intent ID',
+  'Net Amount AUD After Fees', 'Stripe Checkout Session ID', 'Stripe Payment ID / Refund Link',
 ]
 
 export const LOG_HEADERS = ['Sent At', 'Registration ID', 'Email Type', 'Recipient Email', 'Camp', 'Status']
@@ -91,9 +91,9 @@ export async function readRows(sheetId, tab, headers = HEADERS) {
   return data.values || []
 }
 
-export async function appendRow(sheetId, tab, row, headers = HEADERS) {
+export async function appendRow(sheetId, tab, row, headers = HEADERS, valueInputOption = 'RAW') {
   await ensureSheetTab(sheetId, tab, headers)
-  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!A:Z:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!A:Z:append?valueInputOption=${encodeURIComponent(valueInputOption)}&insertDataOption=INSERT_ROWS`, {
     method: 'POST',
     body: JSON.stringify({ values: [row] }),
   })
@@ -144,8 +144,8 @@ export async function appendOperationalCampRow(sheetId, tab, registration) {
   })
 }
 
-export async function updateCell(sheetId, tab, rowNumber, colLetter, value) {
-  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!${colLetter}${rowNumber}:${colLetter}${rowNumber}?valueInputOption=RAW`, {
+export async function updateCell(sheetId, tab, rowNumber, colLetter, value, valueInputOption = 'RAW') {
+  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!${colLetter}${rowNumber}:${colLetter}${rowNumber}?valueInputOption=${encodeURIComponent(valueInputOption)}`, {
     method: 'PUT',
     body: JSON.stringify({ values: [[value]] }),
   })
@@ -159,6 +159,7 @@ export function registrationFromRow(row = []) {
     medicalHistory: row[13] || '', jerseySize: row[14] || '', extraInfo: row[15] || '', numberOfDays: row[16] || '',
     agreementAccepted: row[17] || '', paymentMethod: row[18] || '', paymentLink: row[19] || '', sheetTab: row[20] || '',
     paidAmount: row[21] || '', stripeCheckoutSessionId: row[22] || '', stripePaymentIntentId: row[23] || '',
+    stripePaymentIntentSheetValue: row[23] || '',
   }
 }
 
@@ -169,7 +170,7 @@ export function rowFromRegistration(registration, paymentStatus = registration.p
     registration.previousCamp, registration.clubLevel, registration.source, registration.medicalHistory, registration.jerseySize,
     registration.extraInfo, registration.numberOfDays, registration.agreementAccepted, registration.paymentMethod,
     registration.paymentLink, registration.sheetTab, registration.paidAmount || '',
-    registration.stripeCheckoutSessionId || '', registration.stripePaymentIntentId || '',
+    registration.stripeCheckoutSessionId || '', registration.stripePaymentIntentSheetValue || registration.stripePaymentIntentId || '',
   ]
 }
 
