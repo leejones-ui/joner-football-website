@@ -12,6 +12,27 @@ import {
   clean,
 } from './_camp-automation.js'
 
+async function verifyCampPaymentWebhook(rawBody, signatureHeader) {
+  const secrets = [
+    process.env.STRIPE_CAMP_WEBHOOK_SECRET,
+    process.env.STRIPE_CAMP_WEBHOOK_SECRET_SYDNEY,
+  ].filter(Boolean)
+
+  if (!secrets.length) throw new Error('Stripe camp webhook secret is not configured.')
+
+  let lastError = null
+  for (const secret of secrets) {
+    try {
+      await verifyStripeWebhook(rawBody, signatureHeader, secret)
+      return true
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError || new Error('Invalid Stripe signature.')
+}
+
 async function readRawBody(req) {
   if (typeof req.body === 'string') return req.body
   if (Buffer.isBuffer(req.body)) return req.body.toString('utf8')
@@ -77,7 +98,7 @@ export default async function handler(req, res) {
 
   try {
     const rawBody = await readRawBody(req)
-    await verifyStripeWebhook(rawBody, req.headers['stripe-signature'], process.env.STRIPE_CAMP_WEBHOOK_SECRET)
+    await verifyCampPaymentWebhook(rawBody, req.headers['stripe-signature'])
     const event = JSON.parse(rawBody)
 
     const handledTypes = new Set(['checkout.session.completed', 'checkout.session.async_payment_succeeded'])

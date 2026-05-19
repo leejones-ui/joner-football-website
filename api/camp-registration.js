@@ -312,8 +312,16 @@ async function createStripeCheckoutSession(req, registration) {
   const config = campPaymentConfig(registration.camp, registration.destination)
   if (!config || registration.paymentMethod !== 'Stripe') return null
 
-  const secret = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY
-  if (!secret) throw new Error('Stripe secret key is not configured.')
+  const secret = config.secretEnv
+    ? process.env[config.secretEnv]
+    : (process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY)
+  if (!secret) {
+    if (config.secretEnv) {
+      console.warn(`${config.secretEnv} is not configured. Falling back to submitted/static camp payment link.`)
+      return null
+    }
+    throw new Error('STRIPE_SECRET_KEY is not configured.')
+  }
 
   const dayKey = selectedDayKey(registration.numberOfDays)
   const amount = config.amounts[dayKey]
