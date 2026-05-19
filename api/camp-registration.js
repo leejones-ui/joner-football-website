@@ -416,8 +416,22 @@ export default async function handler(req, res) {
     if (checkoutSession?.url) registration.paymentLink = checkoutSession.url
 
     await appendPendingRegistration(registration)
-    const brevo = await addToBrevo(registration)
-    const notification = await sendCampSignupEmail(registration)
+
+    let brevo = { skipped: true }
+    try {
+      brevo = await addToBrevo(registration)
+    } catch (brevoError) {
+      console.warn('Brevo camp lead capture crashed:', brevoError?.message || brevoError)
+      brevo = { skipped: false, failed: true }
+    }
+
+    let notification = { skipped: true }
+    try {
+      notification = await sendCampSignupEmail(registration)
+    } catch (notificationError) {
+      console.warn('Camp signup notification crashed:', notificationError?.message || notificationError)
+      notification = { skipped: false, failed: true }
+    }
     let customerEmail = { skipped: true }
     try {
       const sheetId = process.env.CAMP_REGISTRATION_SHEET_ID || DEFAULT_SHEET_ID
@@ -442,6 +456,7 @@ export default async function handler(req, res) {
     })
   } catch (error) {
     console.error('Camp registration failed:', error)
-    return res.status(500).json({ success: false, error: 'Could not save registration. Please try again.' })
+    const message = error?.message || 'Could not save registration. Please try again.'
+    return res.status(500).json({ success: false, error: message })
   }
 }
