@@ -111,20 +111,20 @@ function paidAmountFromSession(session) {
 
 function internalAudAmountFromSession(session) {
   const transaction = session?.payment_intent?.latest_charge?.balance_transaction
-  const transactionAmount = Number(transaction?.amount)
-  const transactionFee = Number(transaction?.fee)
+  const transactionNet = Number(transaction?.net)
   const transactionCurrency = String(transaction?.currency || '').toUpperCase()
 
-  // Lee's camp operational tabs track the AUD equivalent including Stripe fees.
+  // Lee's camp operational tabs track the true net AUD received after Stripe fees.
   // Stripe's balance transaction is the safest source because it carries Stripe's
-  // actual conversion and fee data. When the balance transaction is in AUD, use
-  // gross converted amount + fee.
-  if (transactionCurrency === 'AUD' && Number.isFinite(transactionAmount) && Number.isFinite(transactionFee)) {
-    return `$${((transactionAmount + transactionFee) / 100).toFixed(2)} AUD`
+  // actual conversion and fee data. For USA payments, Stripe converts the USD
+  // payment into the account settlement currency, so `net` is the number Lee
+  // wants for profit tracking.
+  if (transactionCurrency === 'AUD' && Number.isFinite(transactionNet)) {
+    return `$${(transactionNet / 100).toFixed(2)} AUD`
   }
 
-  // If Sydney is charged directly in AUD but no balance transaction is expanded,
-  // keep the exact paid AUD total from Checkout.
+  // Fallback only: if Stripe has not exposed the balance transaction yet, keep
+  // the exact paid AUD total from Checkout. A later webhook resend can fill net.
   const checkoutCurrency = String(session?.currency || '').toUpperCase()
   const checkoutAmount = Number(session?.amount_total)
   if (checkoutCurrency === 'AUD' && Number.isFinite(checkoutAmount)) {
@@ -164,19 +164,40 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
   const paidRow = rowFromRegistration(found, 'paid')
 
   const paidRows = await readRows(sheetId, PAID_SHEET)
-  const alreadyInPaidSheet = paidRows.slice(1).some((row) => row[1] === registrationId)
-  if (!alreadyInPaidSheet) await appendRow(sheetId, PAID_SHEET, paidRow)
+  let paidRowNumber = 0
+  const alreadyInPaidSheet = paidRows.slice(1).some((row, index) => {
+    if (row[1] === registrationId) {
+      paidRowNumber = index + 2
+      return true
+    }
+    return false
+  })
+  if (!alreadyInPaidSheet) {
+    await appendRow(sheetId, PAID_SHEET, paidRow)
+  } else {
+    if (found.paidAmount) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'V', found.paidAmount)
+    if (found.stripeCheckoutSessionId) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'W', found.stripeCheckoutSessionId)
+    if (found.stripePaymentIntentId) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'X', found.stripePaymentIntentId)
+  }
 
   const campTab = campTabForRegistration(found)
   let campSheet = 'not-configured'
   if (campTab) {
     const campRows = await readSheetRange(sheetId, campTab, 'A:J')
     const alreadyInCampTab = campRows.slice(1).some((row) => row[1] === registrationId)
-    const alreadyInOperationalTab = campRows.slice(1).some((row) => {
+    let alreadyInOperationalTab = false
+    let operationalRowNumber = 0
+    for (let index = 0; index < campRows.slice(1).length; index += 1) {
+      const row = campRows[index + 1]
       const email = String(row[5] || '').toLowerCase()
       const phone = String(row[6] || '')
-      return email && email === String(found.email || '').toLowerCase() && phone === String(found.mobile || '')
-    })
+      if (email && email === String(found.email || '').toLowerCase() && phone === String(found.mobile || '')) {
+        alreadyInOperationalTab = true
+        operationalRowNumber = index + 2
+        break
+      }
+    }
+    if (alreadyInOperationalTab && found.paidAmount) await updateCell(sheetId, campTab, operationalRowNumber, 'H', found.paidAmount)
     if (!alreadyInCampTab && !alreadyInOperationalTab) await appendOperationalCampRow(sheetId, campTab, found)
     campSheet = alreadyInCampTab ? 'already-present' : campTab
   }

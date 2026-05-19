@@ -9,7 +9,7 @@ export const HEADERS = [
   'Submitted At', 'Registration ID', 'Payment Status', 'Camp', 'Player First Name', 'Player Surname',
   'Parent Name', 'Email', 'Age', 'Mobile', 'Previous Camp', 'Club Level', 'Source', 'Medical History',
   'Jersey Size', 'Extra Info', 'Number Of Days', 'Agreement Accepted', 'Payment Method', 'Payment Link', 'Target Sheet Tab',
-  'Paid Amount AUD Incl Fees', 'Stripe Checkout Session ID', 'Stripe Payment Intent ID',
+  'Net Amount AUD After Fees', 'Stripe Checkout Session ID', 'Stripe Payment Intent ID',
 ]
 
 export const LOG_HEADERS = ['Sent At', 'Registration ID', 'Email Type', 'Recipient Email', 'Camp', 'Status']
@@ -211,7 +211,7 @@ export async function logEmail(sheetId, registration, type, status = 'sent') {
 
 export async function sendRegistrationEmail({ sheetId, registration, type }) {
   if (await emailAlreadySent(sheetId, registration.registrationId, type)) return { skipped: true, reason: 'already-sent' }
-  const template = type === 'unpaid-reminder' || type === 'signup-payment-link' ? 'unpaid' : 'confirmed'
+  const template = String(type || '').startsWith('unpaid-reminder') || type === 'signup-payment-link' ? 'unpaid' : 'confirmed'
   await sendCampTransactionalEmail({
     toEmail: registration.email,
     toName: registration.parentName || registration.playerFirstName || registration.email,
