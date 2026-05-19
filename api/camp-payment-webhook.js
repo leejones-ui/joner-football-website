@@ -50,7 +50,9 @@ async function retrieveStripeCheckoutSession(sessionId) {
   let lastError = null
   for (const key of keys) {
     try {
-      const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`, {
+      const params = new URLSearchParams()
+      params.append('expand[]', 'payment_intent.latest_charge.balance_transaction')
+      const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}?${params.toString()}`, {
         headers: { Authorization: `Bearer ${key}` },
       })
       const data = await response.json().catch(() => ({}))
@@ -105,6 +107,31 @@ function paidAmountFromSession(session) {
   if (!Number.isFinite(amount) || amount <= 0) return ''
   const major = amount / 100
   return currency ? `$${major.toFixed(2)} ${currency}` : `$${major.toFixed(2)}`
+}
+
+function internalAudAmountFromSession(session) {
+  const transaction = session?.payment_intent?.latest_charge?.balance_transaction
+  const transactionAmount = Number(transaction?.amount)
+  const transactionFee = Number(transaction?.fee)
+  const transactionCurrency = String(transaction?.currency || '').toUpperCase()
+
+  // Lee's camp operational tabs track the AUD equivalent including Stripe fees.
+  // Stripe's balance transaction is the safest source because it carries Stripe's
+  // actual conversion and fee data. When the balance transaction is in AUD, use
+  // gross converted amount + fee.
+  if (transactionCurrency === 'AUD' && Number.isFinite(transactionAmount) && Number.isFinite(transactionFee)) {
+    return `$${((transactionAmount + transactionFee) / 100).toFixed(2)} AUD`
+  }
+
+  // If Sydney is charged directly in AUD but no balance transaction is expanded,
+  // keep the exact paid AUD total from Checkout.
+  const checkoutCurrency = String(session?.currency || '').toUpperCase()
+  const checkoutAmount = Number(session?.amount_total)
+  if (checkoutCurrency === 'AUD' && Number.isFinite(checkoutAmount)) {
+    return `$${(checkoutAmount / 100).toFixed(2)} AUD`
+  }
+
+  return paidAmountFromSession(session)
 }
 
 async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
@@ -185,9 +212,7 @@ export default async function handler(req, res) {
 
     if (handledTypes.has(event.type)) {
       const eventSession = event.data.object
-      const session = signatureVerified
-        ? eventSession
-        : await retrieveStripeCheckoutSession(eventSession?.id)
+      const session = await retrieveStripeCheckoutSession(eventSession?.id)
       const paymentStatus = String(session.payment_status || '').toLowerCase()
       if (paymentStatus && paymentStatus !== 'paid') {
         result = { ignored: true, reason: 'not-paid', paymentStatus }
@@ -195,7 +220,7 @@ export default async function handler(req, res) {
         const registrationId = registrationIdFromSession(session)
         if (!registrationId) throw new Error('Stripe session missing registrationId metadata.')
         result = await confirmPaidRegistration(registrationId, {
-          paidAmount: paidAmountFromSession(session),
+          paidAmount: internalAudAmountFromSession(session),
           stripeCheckoutSessionId: session.id,
           stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id,
         })
