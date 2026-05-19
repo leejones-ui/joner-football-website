@@ -136,29 +136,90 @@ export function operationalCampRowFromRegistration(registration) {
   ]
 }
 
-export async function appendOperationalCampRow(sheetId, tab, registration) {
-  const row = operationalCampRowFromRegistration(registration)
+export function columnLetter(index) {
+  let n = index + 1
+  let letters = ''
+  while (n > 0) {
+    const rem = (n - 1) % 26
+    letters = String.fromCharCode(65 + rem) + letters
+    n = Math.floor((n - 1) / 26)
+  }
+  return letters
+}
 
-  // Lee's event tabs are working sheets with pre-formatted blank rows. Some of
-  // those blanks already contain FALSE in the Day columns, so Google Sheets does
-  // not treat them as empty for append. Fill the first row with a blank player
-  // name instead, keeping the new player directly under the last real player.
-  const rows = await readSheetRange(sheetId, tab, 'A:J')
-  const firstBlankPlayerIndex = rows.slice(1).findIndex((existingRow) => !clean(existingRow?.[0] || '', 180))
-  if (firstBlankPlayerIndex >= 0) {
-    const rowNumber = firstBlankPlayerIndex + 2
-    await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!A${rowNumber}:J${rowNumber}?valueInputOption=USER_ENTERED`, {
+function normaliseHeader(value) {
+  return clean(value || '', 80).toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+export function operationalCampValueByHeader(header, registration) {
+  const key = normaliseHeader(header)
+  const row = operationalCampRowFromRegistration(registration)
+  const values = {
+    name: row[0],
+    player: row[0],
+    jersey: row[1],
+    jerseysize: row[1],
+    day1: row[2],
+    dayone: row[2],
+    day2: row[3],
+    daytwo: row[3],
+    day3: row[4],
+    daythree: row[4],
+    email: row[5],
+    emailaddress: row[5],
+    number: row[6],
+    phone: row[6],
+    mobile: row[6],
+    amount: row[7],
+    paid: row[7],
+    method: row[8],
+    paymentmethod: row[8],
+    donebefore: row[9],
+    previouscamp: row[9],
+    beenbefore: row[9],
+  }
+  return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : ''
+}
+
+export function findOperationalCampLayout(rows = []) {
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex] || []
+    const normalised = row.map(normaliseHeader)
+    const nameCol = normalised.findIndex((value) => value === 'name' || value === 'player')
+    const jerseyCol = normalised.findIndex((value) => value === 'jersey' || value === 'jerseysize')
+    const day1Col = normalised.findIndex((value) => value === 'day1' || value === 'dayone')
+    const emailCol = normalised.findIndex((value) => value === 'email' || value === 'emailaddress')
+    if (nameCol >= 0 && jerseyCol >= 0 && day1Col >= 0 && emailCol >= 0) {
+      return { rowIndex, rowNumber: rowIndex + 1, headers: row, nameCol, emailCol, numberCol: normalised.findIndex((value) => value === 'number' || value === 'phone' || value === 'mobile') }
+    }
+  }
+  return null
+}
+
+export async function appendOperationalCampRow(sheetId, tab, registration) {
+  const rows = await readSheetRange(sheetId, tab, 'A:Z')
+  const layout = findOperationalCampLayout(rows)
+
+  if (layout) {
+    const firstBlankPlayerIndex = rows.slice(layout.rowIndex + 1).findIndex((existingRow) => !clean(existingRow?.[layout.nameCol] || '', 180))
+    const targetRowNumber = firstBlankPlayerIndex >= 0 ? layout.rowNumber + firstBlankPlayerIndex + 1 : rows.length + 1
+    const startCol = columnLetter(layout.nameCol)
+    const endCol = columnLetter(Math.max(layout.headers.length - 1, layout.nameCol))
+    const values = layout.headers.slice(layout.nameCol).map((header) => operationalCampValueByHeader(header, registration))
+
+    await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!${startCol}${targetRowNumber}:${endCol}${targetRowNumber}?valueInputOption=USER_ENTERED`, {
       method: 'PUT',
-      body: JSON.stringify({ values: [row] }),
+      body: JSON.stringify({ values: [values] }),
     })
-    return { mode: 'filled-blank-row', rowNumber }
+    return { mode: firstBlankPlayerIndex >= 0 ? 'filled-blank-row' : 'appended-after-layout', rowNumber: targetRowNumber, startCol }
   }
 
+  const row = operationalCampRowFromRegistration(registration)
   await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!A:J:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
     method: 'POST',
     body: JSON.stringify({ values: [row] }),
   })
-  return { mode: 'appended' }
+  return { mode: 'appended-fallback' }
 }
 
 export async function updateCell(sheetId, tab, rowNumber, colLetter, value, valueInputOption = 'RAW') {

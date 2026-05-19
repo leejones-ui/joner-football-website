@@ -8,6 +8,8 @@ import {
   appendRow,
   readSheetRange,
   appendOperationalCampRow,
+  findOperationalCampLayout,
+  columnLetter,
   registrationFromRow,
   rowFromRegistration,
   sendRegistrationEmail,
@@ -219,23 +221,33 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
   const campTab = campTabForRegistration(found)
   let campSheet = 'not-configured'
   if (campTab) {
-    const campRows = await readSheetRange(sheetId, campTab, 'A:J')
-    const alreadyInCampTab = campRows.slice(1).some((row) => row[1] === registrationId)
+    const campRows = await readSheetRange(sheetId, campTab, 'A:Z')
+    const layout = findOperationalCampLayout(campRows)
     let alreadyInOperationalTab = false
     let operationalRowNumber = 0
-    for (let index = 0; index < campRows.slice(1).length; index += 1) {
-      const row = campRows[index + 1]
-      const email = String(row[5] || '').toLowerCase()
-      const phone = String(row[6] || '')
-      if (email && email === String(found.email || '').toLowerCase() && phone === String(found.mobile || '')) {
-        alreadyInOperationalTab = true
-        operationalRowNumber = index + 2
-        break
+
+    if (layout) {
+      for (let index = layout.rowIndex + 1; index < campRows.length; index += 1) {
+        const row = campRows[index] || []
+        const email = String(row[layout.emailCol] || '').toLowerCase()
+        const phone = layout.numberCol >= 0 ? String(row[layout.numberCol] || '') : ''
+        const emailMatches = email && email === String(found.email || '').toLowerCase()
+        const phoneMatches = !phone || !found.mobile || phone === String(found.mobile || '')
+        if (emailMatches && phoneMatches) {
+          alreadyInOperationalTab = true
+          operationalRowNumber = index + 1
+          break
+        }
       }
     }
-    if (alreadyInOperationalTab && found.paidAmount) await updateCell(sheetId, campTab, operationalRowNumber, 'H', found.paidAmount)
-    if (!alreadyInCampTab && !alreadyInOperationalTab) await appendOperationalCampRow(sheetId, campTab, found)
-    campSheet = alreadyInCampTab ? 'already-present' : campTab
+
+    if (alreadyInOperationalTab && found.paidAmount && layout) {
+      const normalisedHeaders = layout.headers.map((header) => clean(header || '', 80).toLowerCase().replace(/[^a-z0-9]/g, ''))
+      const amountCol = normalisedHeaders.findIndex((value) => value === 'amount' || value === 'paid')
+      if (amountCol >= 0) await updateCell(sheetId, campTab, operationalRowNumber, columnLetter(amountCol), found.paidAmount)
+    }
+    if (!alreadyInOperationalTab) await appendOperationalCampRow(sheetId, campTab, found)
+    campSheet = alreadyInOperationalTab ? 'already-present' : campTab
   }
 
   const email = await sendRegistrationEmail({ sheetId, registration: found, type: 'paid-confirmation' })

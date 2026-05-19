@@ -7,6 +7,7 @@ import {
   appendRow,
   readSheetRange,
   appendOperationalCampRow,
+  findOperationalCampLayout,
   registrationFromRow,
   rowFromRegistration,
   sendRegistrationEmail,
@@ -73,17 +74,22 @@ export default async function handler(req, res) {
 
     const campTab = campTabForRegistration(found)
     let campSheet = 'not-configured'
-  if (campTab) {
-    const campRows = await readSheetRange(sheetId, campTab, 'A:J')
-    const alreadyInCampTab = campRows.slice(1).some((row) => row[1] === registrationId)
-    const alreadyInOperationalTab = campRows.slice(1).some((row) => {
-      const email = String(row[5] || '').toLowerCase()
-      const phone = String(row[6] || '')
-      return email && email === String(found.email || '').toLowerCase() && phone === String(found.mobile || '')
-    })
-    if (!alreadyInCampTab && !alreadyInOperationalTab) await appendOperationalCampRow(sheetId, campTab, found)
-    campSheet = alreadyInCampTab ? 'already-present' : campTab
-  }
+    if (campTab) {
+      const campRows = await readSheetRange(sheetId, campTab, 'A:Z')
+      const layout = findOperationalCampLayout(campRows)
+      let alreadyInOperationalTab = false
+      if (layout) {
+        alreadyInOperationalTab = campRows.slice(layout.rowIndex + 1).some((row) => {
+          const email = String(row[layout.emailCol] || '').toLowerCase()
+          const phone = layout.numberCol >= 0 ? String(row[layout.numberCol] || '') : ''
+          const emailMatches = email && email === String(found.email || '').toLowerCase()
+          const phoneMatches = !phone || !found.mobile || phone === String(found.mobile || '')
+          return emailMatches && phoneMatches
+        })
+      }
+      if (!alreadyInOperationalTab) await appendOperationalCampRow(sheetId, campTab, found)
+      campSheet = alreadyInOperationalTab ? 'already-present' : campTab
+    }
 
     const email = await sendRegistrationEmail({ sheetId, registration: found, type: 'paid-confirmation' })
 
