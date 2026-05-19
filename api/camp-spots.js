@@ -1,5 +1,4 @@
 const DEFAULT_SHEET_ID = '1SbGmivi3yqFaBKoMAhoNd5ufUga99DaQBj2noXNJr4k'
-const PENDING_SHEET = 'Leads Pending Payment'
 const PAID_SHEET = 'Paid Camp Registrations'
 const CAMP_COLUMN_INDEX = 3 // column D ("Camp") in the registration schema
 
@@ -91,12 +90,11 @@ export default async function handler(req, res) {
 
   try {
     const token = await getGoogleAccessToken()
-    const [pending, paid] = await Promise.all([
-      readSheetRange(sheetId, `${PENDING_SHEET}!A:U`, token),
-      readSheetRange(sheetId, `${PAID_SHEET}!A:U`, token),
-    ])
+    const paid = await readSheetRange(sheetId, `${PAID_SHEET}!A:X`, token)
     const campLower = camp.toLowerCase()
-    const taken = countMatches(pending, campLower) + countMatches(paid, campLower)
+    // Spots are reduced only after Stripe/payment confirmation writes to
+    // Paid Camp Registrations. A form fill alone must not reduce scarcity.
+    const taken = countMatches(paid, campLower)
     const spots = Math.max(0, baseline - taken)
     return res.status(200).json({ success: true, camp, baseline, taken, spots })
   } catch (error) {

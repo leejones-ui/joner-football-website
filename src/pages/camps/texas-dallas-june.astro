@@ -1565,10 +1565,9 @@ const sanityPage = await fetchSanityPage('camp-texas-dallas-june')
             })
           }
 
-          if (spotsNum) {
-            const currentSpots = parseInt(spotsNum.textContent || '0', 10)
-            if (Number.isFinite(currentSpots) && currentSpots > 0) spotsNum.textContent = String(currentSpots - 1)
-          }
+          // Spots-left is paid-only. Do not decrement on form submit;
+          // Stripe webhook/payment confirmation updates the paid sheet, then
+          // refreshSpots() reads the true paid count.
           refreshSpots()
 
           const paymentLink = json.paymentLink || payload.paymentLink || 'https://app.jonerfootball.com'
