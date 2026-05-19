@@ -60,6 +60,7 @@ async function retrieveStripeCheckoutSession(sessionId) {
       })
       const data = await response.json().catch(() => ({}))
       if (response.ok && data?.id === sessionId) {
+        await hydrateSessionFinancials(data, key)
         data._stripeDashboardAccountId = await retrieveStripeAccountId(key)
         return data
       }
@@ -70,6 +71,52 @@ async function retrieveStripeCheckoutSession(sessionId) {
   }
 
   throw lastError || new Error('Could not verify Checkout Session with Stripe.')
+}
+
+async function stripeGet(key, path, params = null) {
+  const query = params ? `?${params.toString()}` : ''
+  const response = await fetch(`https://api.stripe.com/v1/${path}${query}`, {
+    headers: { Authorization: `Bearer ${key}` },
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data?.error?.message || `Stripe lookup failed with ${response.status}`)
+  return data
+}
+
+async function hydrateSessionFinancials(session, key) {
+  const paymentIntentId = typeof session?.payment_intent === 'string' ? session.payment_intent : session?.payment_intent?.id
+  if (!paymentIntentId) return session
+
+  const paymentIntentParams = new URLSearchParams()
+  paymentIntentParams.append('expand[]', 'latest_charge.balance_transaction')
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const paymentIntent = await stripeGet(key, `payment_intents/${encodeURIComponent(paymentIntentId)}`, paymentIntentParams)
+    session.payment_intent = paymentIntent
+
+    const charge = paymentIntent?.latest_charge
+    const balanceTransaction = charge?.balance_transaction
+    if (balanceTransaction && typeof balanceTransaction === 'object') return session
+
+    if (charge && typeof charge === 'object' && typeof balanceTransaction === 'string') {
+      charge.balance_transaction = await stripeGet(key, `balance_transactions/${encodeURIComponent(balanceTransaction)}`)
+      return session
+    }
+
+    if (typeof charge === 'string') {
+      const chargeParams = new URLSearchParams()
+      chargeParams.append('expand[]', 'balance_transaction')
+      paymentIntent.latest_charge = await stripeGet(key, `charges/${encodeURIComponent(charge)}`, chargeParams)
+      if (paymentIntent.latest_charge?.balance_transaction) return session
+    }
+
+    // Stripe can create/finalise the balance transaction a few seconds after
+    // Checkout completes. Wait briefly so Lee's operational Sheet gets the
+    // true net AUD after fees rather than the gross customer-facing amount.
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+  }
+
+  return session
 }
 
 async function retrieveStripeAccountId(secretKey) {
