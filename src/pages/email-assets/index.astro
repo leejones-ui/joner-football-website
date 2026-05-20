@@ -1,0 +1,83 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const assets = [
+  {
+    label: 'Fast Feet Free Session',
+    url: 'https://jonerfootball.com/images/email/fast-feet-free-session.png',
+    backup: 'https://jonerfootball.com/app/uploads/2026/05/fast-feet-free-session.png'
+  },
+  {
+    label: 'Joner App New Sessions GIF',
+    url: 'https://jonerfootball.com/images/email/joner-app-new-sessions.gif',
+    backup: 'https://jonerfootball.com/app/uploads/2026/05/joner-app-new-sessions.gif'
+  },
+  {
+    label: 'Missing New Sessions',
+    url: 'https://jonerfootball.com/images/email/missing-new-sessions.jpg',
+    backup: 'https://jonerfootball.com/app/uploads/2026/05/missing-new-sessions.jpg'
+  },
+  {
+    label: 'Bundle Unlock App Free Trial',
+    url: 'https://jonerfootball.com/images/email/bundle-unlock-app-free-trial.png',
+    backup: 'https://jonerfootball.com/app/uploads/2026/05/bundle-unlock-app-free-trial.png'
+  },
+  {
+    label: 'Solo Pack Free Bundle',
+    url: 'https://jonerfootball.com/images/email/solo-pack-free-bundle.jpg',
+    backup: 'https://jonerfootball.com/app/uploads/2026/05/solo-pack-free-bundle.jpg'
+  },
+  {
+    label: 'Cognitive Training Content',
+    url: 'https://jonerfootball.com/images/email/cognitive-training-content.jpg',
+    backup: 'https://jonerfootball.com/app/uploads/2026/05/cognitive-training-content.jpg'
+  },
+  {
+    label: 'Updated Free Content',
+    url: 'https://jonerfootball.com/images/email/updated-free-content.jpg',
+    backup: 'https://jonerfootball.com/app/uploads/2026/05/updated-free-content.jpg'
+  },
+  {
+    label: 'Soccer Coach Goal Instruction',
+    url: 'https://jonerfootball.com/images/email/soccer-coach-goal-instruction.webp',
+    backup: 'https://jonerfootball.com/app/uploads/2026/05/soccer-coach-goal-instruction.webp'
+  }
+]
+---
+
+<BaseLayout
+  title="Email Assets | Joner Football"
+  description="Internal Joner Football email image asset URLs."
+  noindex={true}
+>
+  <main class="min-h-screen bg-black text-white">
+    <section class="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+      <p class="text-sm font-bold uppercase tracking-[0.35em] text-[#E8000D]">Joner Football</p>
+      <h1 class="mt-4 text-4xl font-black uppercase tracking-tight sm:text-6xl">Email Assets</h1>
+      <p class="mt-4 max-w-2xl text-base text-white/70">
+        Copy the main URL into Brevo or email HTML. Backup URLs are WordPress-style mirrors if an old template needs that format.
+      </p>
+
+      <div class="mt-10 grid gap-6 md:grid-cols-2">
+        {assets.map((asset) => (
+          <article class="rounded-2xl border border-white/10 bg-[#111111] p-4 shadow-2xl">
+            <div class="overflow-hidden rounded-xl border border-white/10 bg-black">
+              <img src={asset.url} alt={asset.label} class="h-56 w-full object-contain" loading="lazy" />
+            </div>
+            <h2 class="mt-4 text-xl font-black uppercase tracking-tight">{asset.label}</h2>
+            <div class="mt-3 space-y-3 text-sm text-white/75">
+              <div>
+                <p class="font-bold uppercase text-white">Main URL</p>
+                <a href={asset.url} class="break-all text-[#E8000D] hover:text-white">{asset.url}</a>
+              </div>
+              <div>
+                <p class="font-bold uppercase text-white">Backup URL</p>
+                <a href={asset.backup} class="break-all text-white/70 hover:text-white">{asset.backup}</a>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  </main>
+</BaseLayout>
