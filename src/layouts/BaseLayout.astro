@@ -139,6 +139,18 @@ const allSchemas = schema
     <script src="https://widget.manychat.com/1628774_7b942.js" defer="defer"></script>
     <script src="https://mccdn.me/assets/js/widget.js" defer="defer"></script>
 
+    <!-- Brevo JS Tracker -->
+    <script src="https://cdn.brevo.com/js/sdk-loader.js" async></script>
+    <script is:inline>
+      window.Brevo = window.Brevo || [];
+      window.Brevo.push([
+        'init',
+        {
+          client_key: 'y128oimodw93f1ayr0z0w6tr',
+        },
+      ]);
+    </script>
+
     {recaptchaSiteKey && (
       <script src={`https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`} async defer></script>
     )}
