@@ -1,103 +1,174 @@
 ---
+import fs from 'node:fs'
+import path from 'node:path'
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const assets = [
-  {
-    label: 'Fast Feet Free Session',
-    url: 'https://jonerfootball.com/images/email/fast-feet-free-session.png',
-    backup: 'https://jonerfootball.com/app/uploads/2026/05/fast-feet-free-session.png'
-  },
-  {
-    label: 'Joner App New Sessions GIF',
-    url: 'https://jonerfootball.com/images/email/joner-app-new-sessions.gif',
-    backup: 'https://jonerfootball.com/app/uploads/2026/05/joner-app-new-sessions.gif'
-  },
-  {
-    label: 'Missing New Sessions',
-    url: 'https://jonerfootball.com/images/email/missing-new-sessions.jpg',
-    backup: 'https://jonerfootball.com/app/uploads/2026/05/missing-new-sessions.jpg'
-  },
-  {
-    label: 'Bundle Unlock App Free Trial',
-    url: 'https://jonerfootball.com/images/email/bundle-unlock-app-free-trial.png',
-    backup: 'https://jonerfootball.com/app/uploads/2026/05/bundle-unlock-app-free-trial.png'
-  },
-  {
-    label: 'Solo Pack Free Bundle',
-    url: 'https://jonerfootball.com/images/email/solo-pack-free-bundle.jpg',
-    backup: 'https://jonerfootball.com/app/uploads/2026/05/solo-pack-free-bundle.jpg'
-  },
-  {
-    label: 'Cognitive Training Content',
-    url: 'https://jonerfootball.com/images/email/cognitive-training-content.jpg',
-    backup: 'https://jonerfootball.com/app/uploads/2026/05/cognitive-training-content.jpg'
-  },
-  {
-    label: 'Updated Free Content',
-    url: 'https://jonerfootball.com/images/email/updated-free-content.jpg',
-    backup: 'https://jonerfootball.com/app/uploads/2026/05/updated-free-content.jpg'
-  },
-  {
-    label: 'Soccer Coach Goal Instruction',
-    url: 'https://jonerfootball.com/images/email/soccer-coach-goal-instruction.webp',
-    backup: 'https://jonerfootball.com/app/uploads/2026/05/soccer-coach-goal-instruction.webp'
-  },
-  {
-    label: 'Joner Full Red White Logo',
-    url: 'https://jonerfootball.com/images/brand/jonerfootball-full-fa-red-white.png',
-    backup: 'https://jonerfootball.com/app/uploads/2026/04/JONERFOOTBALL_FULL_FA-red-white.png'
-  },
-  {
-    label: 'First Strike Soccer Academy Logo',
-    url: 'https://jonerfootball.com/images/brand/partners/first-strike-soccer-academy-logo.png',
-    backup: 'https://jonerfootball.com/app/uploads/2026/05/first-strike-soccer-academy-logo.png'
-  },
-  {
-    label: 'LA Player Experience Training Session',
-    url: 'https://jonerfootball.com/images/camps/la-player-experience/la-player-experience-training-session.webp',
-    backup: 'https://jonerfootball.com/app/uploads/2026/05/la-player-experience-training-session.webp'
-  },
-  {
-    label: 'Camp Confirmation Hero',
-    url: 'https://jonerfootball.com/images/camps/email/camp-confirmation-hero.jpg',
-    backup: 'https://jonerfootball.com/images/camps/email/camp-confirmation-hero.jpg'
-  }
-]
+const siteBase = 'https://jonerfootball.com'
+const publicDir = path.join(process.cwd(), 'public')
+const imageExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.avif'])
+const roots = ['images', 'app/uploads']
+
+function titleFromPath(assetPath: string) {
+  const fileName = path.basename(assetPath, path.extname(assetPath))
+  return fileName
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function walk(dir: string): string[] {
+  if (!fs.existsSync(dir)) return []
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const fullPath = path.join(dir, entry.name)
+    if (entry.name.startsWith('.')) return []
+    if (entry.isDirectory()) return walk(fullPath)
+    if (!entry.isFile()) return []
+    if (!imageExtensions.has(path.extname(entry.name).toLowerCase())) return []
+    return [fullPath]
+  })
+}
+
+const allAssets = roots
+  .flatMap((root) => walk(path.join(publicDir, root)))
+  .map((fullPath) => {
+    const relativePath = '/' + path.relative(publicDir, fullPath).split(path.sep).join('/')
+    const url = `${siteBase}${relativePath}`
+    const stat = fs.statSync(fullPath)
+    const section = relativePath.startsWith('/images/email/')
+      ? 'Email assets'
+      : relativePath.startsWith('/app/uploads/')
+        ? 'Legacy WordPress-style mirrors'
+        : relativePath.startsWith('/images/camps/')
+          ? 'Camp assets'
+          : relativePath.startsWith('/images/app/')
+            ? 'App assets'
+            : relativePath.startsWith('/images/brand/')
+              ? 'Brand assets'
+              : 'Website image library'
+
+    return {
+      label: titleFromPath(relativePath),
+      path: relativePath,
+      url,
+      section,
+      sizeKb: Math.round(stat.size / 1024),
+      modified: stat.mtimeMs,
+      isSvg: relativePath.endsWith('.svg')
+    }
+  })
+  .sort((a, b) => {
+    const sectionOrder = ['Email assets', 'Brand assets', 'Camp assets', 'App assets', 'Website image library', 'Legacy WordPress-style mirrors']
+    const sectionDiff = sectionOrder.indexOf(a.section) - sectionOrder.indexOf(b.section)
+    if (sectionDiff !== 0) return sectionDiff
+    return a.path.localeCompare(b.path)
+  })
+
+const totalAssets = allAssets.length
 ---
 
 <BaseLayout
   title="Email Assets | Joner Football"
-  description="Internal Joner Football email image asset URLs."
+  description="Internal Joner Football image asset URLs for Brevo and website image hosting."
   noindex={true}
 >
   <main class="min-h-screen bg-black text-white">
-    <section class="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+    <section class="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-16">
       <p class="text-sm font-bold uppercase tracking-[0.35em] text-[#E8000D]">Joner Football</p>
-      <h1 class="mt-4 text-4xl font-black uppercase tracking-tight sm:text-6xl">Email Assets</h1>
-      <p class="mt-4 max-w-2xl text-base text-white/70">
-        Copy the main URL into Brevo or email HTML. Backup URLs are WordPress-style mirrors if an old template needs that format.
-      </p>
+      <div class="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 class="text-4xl font-black uppercase tracking-tight sm:text-6xl">Image Library</h1>
+          <p class="mt-4 max-w-3xl text-base text-white/70">
+            Full hosted image library for email automations and website assets. Use <strong class="text-white">Copy URL</strong> for Brevo/email HTML, or <strong class="text-white">Open</strong> to check the file directly.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-[#111111] px-5 py-4 text-left lg:text-right">
+          <p class="text-xs font-bold uppercase tracking-[0.2em] text-white/50">Total assets</p>
+          <p class="text-3xl font-black text-white">{totalAssets}</p>
+        </div>
+      </div>
 
-      <div class="mt-10 grid gap-6 md:grid-cols-2">
-        {assets.map((asset) => (
-          <article class="rounded-2xl border border-white/10 bg-[#111111] p-4 shadow-2xl">
-            <div class="overflow-hidden rounded-xl border border-white/10 bg-black">
-              <img src={asset.url} alt={asset.label} class="h-56 w-full object-contain" loading="lazy" />
-            </div>
-            <h2 class="mt-4 text-xl font-black uppercase tracking-tight">{asset.label}</h2>
-            <div class="mt-3 space-y-3 text-sm text-white/75">
-              <div>
-                <p class="font-bold uppercase text-white">Main URL</p>
-                <a href={asset.url} class="break-all text-[#E8000D] hover:text-white">{asset.url}</a>
-              </div>
-              <div>
-                <p class="font-bold uppercase text-white">Backup URL</p>
-                <a href={asset.backup} class="break-all text-white/70 hover:text-white">{asset.backup}</a>
+      <div class="sticky top-0 z-20 mt-8 border-y border-white/10 bg-black/95 py-4 backdrop-blur">
+        <label class="block text-xs font-bold uppercase tracking-[0.2em] text-white/50" for="asset-search">Search assets</label>
+        <input
+          id="asset-search"
+          type="search"
+          placeholder="Search filename, folder, email, camp, app, brand..."
+          class="mt-2 w-full rounded-xl border border-white/15 bg-[#111111] px-4 py-3 text-white outline-none transition focus:border-[#E8000D]"
+        />
+      </div>
+
+      <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" id="asset-grid">
+        {allAssets.map((asset) => (
+          <article class="asset-card rounded-2xl border border-white/10 bg-[#111111] p-3 shadow-2xl" data-search={`${asset.label} ${asset.path} ${asset.section}`.toLowerCase()}>
+            <a href={asset.url} target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-white/10 bg-black">
+              {asset.isSvg ? (
+                <img src={asset.url} alt={asset.label} class="h-48 w-full object-contain p-4" loading="lazy" />
+              ) : (
+                <img src={asset.url} alt={asset.label} class="h-48 w-full object-cover" loading="lazy" />
+              )}
+            </a>
+            <div class="mt-3">
+              <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[#E8000D]">{asset.section}</p>
+              <h2 class="mt-1 line-clamp-2 min-h-[2.5rem] text-sm font-black uppercase leading-tight tracking-tight">{asset.label}</h2>
+              <p class="mt-2 break-all text-xs text-white/45">{asset.path}</p>
+              <p class="mt-1 text-xs text-white/35">{asset.sizeKb.toLocaleString()} KB</p>
+              <div class="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  class="copy-url rounded-lg bg-[#E8000D] px-3 py-2 text-xs font-black uppercase tracking-wide text-white transition hover:bg-white hover:text-black"
+                  data-url={asset.url}
+                >
+                  Copy URL
+                </button>
+                <a
+                  href={asset.url}
+                  target="_blank"
+                  rel="noopener"
+                  class="rounded-lg border border-white/20 px-3 py-2 text-center text-xs font-black uppercase tracking-wide text-white transition hover:border-white hover:bg-white hover:text-black"
+                >
+                  Open
+                </a>
               </div>
             </div>
           </article>
         ))}
       </div>
+
+      <p id="empty-state" class="mt-10 hidden rounded-2xl border border-white/10 bg-[#111111] p-6 text-white/70">
+        No assets match that search.
+      </p>
     </section>
   </main>
+
+  <script is:inline>
+    const searchInput = document.getElementById('asset-search')
+    const cards = Array.from(document.querySelectorAll('.asset-card'))
+    const emptyState = document.getElementById('empty-state')
+
+    searchInput?.addEventListener('input', () => {
+      const query = searchInput.value.trim().toLowerCase()
+      let visible = 0
+      cards.forEach((card) => {
+        const match = !query || card.dataset.search.includes(query)
+        card.style.display = match ? '' : 'none'
+        if (match) visible += 1
+      })
+      emptyState?.classList.toggle('hidden', visible !== 0)
+    })
+
+    document.querySelectorAll('.copy-url').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const url = button.dataset.url
+        try {
+          await navigator.clipboard.writeText(url)
+          const oldText = button.textContent
+          button.textContent = 'Copied'
+          setTimeout(() => { button.textContent = oldText }, 1200)
+        } catch (error) {
+          window.prompt('Copy this URL', url)
+        }
+      })
+    })
+  </script>
 </BaseLayout>
