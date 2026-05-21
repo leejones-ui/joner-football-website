@@ -1807,8 +1807,8 @@
     "category": "Coaches",
     "publishStatus": "published",
     "featured": true,
-    "coverImageUrl": "/images/blog/half-turn-drills-for-coaches-lee-real.jpg",
-    "coverImageAltText": "Lee Jones coaching on pitch with Coaches Coach This thumbnail text for Joner Football coaches blog",
+    "coverImageUrl": "/images/blog/half-turn-drills-for-coaches-image2.png",
+    "coverImageAltText": "Lee Jones coaching thumbnail with text Coaches Coach This for Joner Football coaches blog",
     "internalNotes": "Created by Barry from YouTube video bmih3V54v6Y transcript. Source pack: /Users/jonerai/.hermes/barry/projects/youtube-link-content-pack/2026-05-21-half-turn-play-forward-modern-game"
   },
   {
@@ -4510,7 +4510,7 @@
     "category": "Player Development",
     "publishStatus": "published",
     "coverImageUrl": "/images/blog/coachability-player-action.jpg",
-    "coverImageAltText": "Joner Football players training with Be Coachable thumbnail text",
+    "coverImageAltText": "Joner Football player training thumbnail with Be Coachable text",
     "internalNotes": "Seeded from src/pages/blog/coachability-most-important-trait-football.astro"
   },
   {
@@ -5795,8 +5795,8 @@
     ],
     "category": "Coaches",
     "publishStatus": "published",
-    "coverImageUrl": "/images/blog/different-football-cultures.jpg",
-    "coverImageAltText": "Different cultures football coaching thumbnail by Joner Football",
+    "coverImageUrl": "/images/blog/different-football-cultures-image2.png",
+    "coverImageAltText": "Joner Football thumbnail with Different Cultures text and coach with players training",
     "internalNotes": "Seeded from src/pages/blog/different-football-cultures-shape-young-players.astro"
   },
   {
@@ -7038,7 +7038,7 @@
     "category": "Drills",
     "publishStatus": "published",
     "coverImageUrl": "/images/blog/football-drills-at-home-player-action.jpg",
-    "coverImageAltText": "Joner Football player training with Train At Home thumbnail text",
+    "coverImageAltText": "Joner Football player training thumbnail with Train At Home text",
     "internalNotes": "Seeded from src/pages/blog/football-drills-at-home.astro"
   },
   {
