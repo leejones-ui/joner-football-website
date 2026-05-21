@@ -1807,7 +1807,7 @@
     "category": "Coaches",
     "publishStatus": "published",
     "featured": true,
-    "coverImageUrl": "/images/blog/half-turn-drills-for-coaches-image2.png",
+    "coverImageUrl": "/images/blog/coaches-coach-this-lee-coaching-photo-final.jpg",
     "coverImageAltText": "Lee Jones coaching thumbnail with Coaches Coach This text",
     "internalNotes": "Created by Barry from YouTube video bmih3V54v6Y transcript. Source pack: /Users/jonerai/.hermes/barry/projects/youtube-link-content-pack/2026-05-21-half-turn-play-forward-modern-game"
   },
@@ -4509,7 +4509,7 @@
     ],
     "category": "Player Development",
     "publishStatus": "published",
-    "coverImageUrl": "/images/blog/coachability-player-action-image2.png",
+    "coverImageUrl": "/images/blog/be-coachable-lee-coaching-photo-final.jpg",
     "coverImageAltText": "Lee Jones coaching thumbnail with Be Coachable text",
     "internalNotes": "Seeded from src/pages/blog/coachability-most-important-trait-football.astro"
   },
@@ -5795,7 +5795,7 @@
     ],
     "category": "Coaches",
     "publishStatus": "published",
-    "coverImageUrl": "/images/blog/different-football-cultures-image2.png",
+    "coverImageUrl": "/images/blog/different-cultures-lee-coaching-photo-final.jpg",
     "coverImageAltText": "Lee Jones with players thumbnail with Different Cultures text",
     "internalNotes": "Seeded from src/pages/blog/different-football-cultures-shape-young-players.astro"
   },
@@ -7037,7 +7037,7 @@
     ],
     "category": "Drills",
     "publishStatus": "published",
-    "coverImageUrl": "/images/blog/football-drills-at-home-player-action-image2.png",
+    "coverImageUrl": "/images/blog/train-at-home-lee-coaching-photo-final.jpg",
     "coverImageAltText": "Lee Jones coaching thumbnail with Train At Home text",
     "internalNotes": "Seeded from src/pages/blog/football-drills-at-home.astro"
   },
