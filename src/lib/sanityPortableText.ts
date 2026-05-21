@@ -80,10 +80,10 @@ const renderAppCta = (block: any) => {
   const secondaryHref = block?.secondaryHref ? escapeHtml(String(block.secondaryHref)) : ''
   const secondaryLabel = escapeHtml(String(block?.secondaryLabel || 'Try The App Free'))
   const secondary = secondaryHref
-    ? `<a href="${secondaryHref}" class="inline-flex items-center justify-center border border-joner-black px-5 py-3 font-heading text-sm uppercase tracking-wide text-joner-black hover:bg-joner-black hover:text-white">${secondaryLabel}</a>`
+    ? `<a href="${secondaryHref}" style="display:inline-flex;align-items:center;justify-content:center;border:1px solid #FFFFFF;color:#FFFFFF!important;background:#111111;padding:14px 20px;font-family:Arial Black,Arial,sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.04em;text-decoration:none;min-height:48px;">${secondaryLabel}</a>`
     : ''
 
-  return `<aside class="my-8 rounded-lg border border-joner-red bg-white p-6 text-joner-black shadow-2xl shadow-black/30"><p class="mb-2 font-heading text-xs uppercase tracking-[0.24em] text-joner-red">Joner Football App</p><h3 class="mb-3 font-heading text-2xl font-black uppercase leading-tight text-joner-black">${title}</h3><p class="mb-5 font-body text-base leading-relaxed text-gray-700">${text}</p><div class="flex flex-col gap-3 sm:flex-row"><a href="${href}" class="inline-flex items-center justify-center bg-joner-red px-5 py-3 font-heading text-sm uppercase tracking-wide text-white hover:bg-red-700">${label}</a>${secondary}</div></aside>`
+  return `<aside style="margin:32px 0;border:1px solid rgba(232,0,13,.7);background:#111111;padding:24px;box-shadow:0 24px 50px rgba(0,0,0,.35);"><p style="margin:0 0 10px;color:#E8000D!important;font-family:Arial, sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:.22em;">Joner Football App</p><h3 style="margin:0 0 12px;color:#FFFFFF!important;font-family:Arial Black,Arial,sans-serif;font-size:26px;line-height:1.05;text-transform:uppercase;">${title}</h3><p style="margin:0 0 20px;color:#CCCCCC!important;font-family:Arial,sans-serif;font-size:16px;line-height:1.6;">${text}</p><div style="display:flex;flex-wrap:wrap;gap:12px;"><a href="${href}" style="display:inline-flex;align-items:center;justify-content:center;background:#E8000D;color:#FFFFFF!important;padding:14px 20px;font-family:Arial Black,Arial,sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.04em;text-decoration:none;min-height:48px;">${label}</a>${secondary}</div></aside>`
 }
 
 export function portableTextToHtml(blocks: any[] = []) {
