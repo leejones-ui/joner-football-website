@@ -38,7 +38,7 @@ const sanityPage = await fetchSanityPage('app')
 >
 
   <!-- SECTION 1: Hero -->
-  <section class="app-scroll-hero relative min-h-[105vh] flex items-center justify-center bg-joner-gray overflow-hidden" data-scroll-expand-hero>
+  <section class="app-hero-v2 relative min-h-[100svh] flex items-center bg-joner-black overflow-hidden" data-app-hero>
     <video
       autoplay
       muted
@@ -48,70 +48,60 @@ const sanityPage = await fetchSanityPage('app')
       poster="/images/app/screenshot-1.webp"
       class="app-hero-bg-video absolute inset-0 w-full h-full object-cover z-0"
     >
-      <source src="https://res.cloudinary.com/dmzisjwdf/video/upload/v1775278435/joner-website/hero-video.mp4" type="video/mp4" />
+      <source src="/images/home-storyboard/06-app-header-video-desktop.mp4" type="video/mp4" />
     </video>
     <div class="app-hero-bg-overlay absolute inset-0 bg-black z-[1]"></div>
     <div class="absolute top-0 left-0 right-0 h-1 bg-joner-red z-[30]"></div>
 
-    <!-- Devices start together in the centre, then separate on scroll -->
-    <div class="app-device-layer absolute inset-0 z-10 flex items-center justify-center pointer-events-none" aria-label="Joner Football App on iPhone and iPad">
-      <div class="app-device-stage relative w-[min(94vw,900px)] h-[min(76vh,720px)]">
-        <div class="app-device-glow app-device-glow-red absolute left-1/2 top-1/2 h-[58%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-[3rem] bg-joner-red/25 blur-3xl"></div>
-        <div class="app-device-glow app-device-glow-white absolute left-1/2 top-1/2 h-[48%] w-[58%] -translate-x-1/2 -translate-y-1/2 rounded-[3rem] bg-white/10 blur-2xl"></div>
-        <img
-          src="/images/app/joner-app-main-ipad-2026-05-13.png"
-          alt="Joner Football App on iPad"
-          class="app-device-ipad absolute left-1/2 top-1/2 z-10 hidden md:block w-[min(58vw,500px)] drop-shadow-[0_36px_78px_rgba(0,0,0,0.72)]"
-          loading="eager"
-        />
-        <img
-          src="/images/app/joner-app-main-iphone-2026-05-13.png"
-          alt="Joner Football App on iPhone"
-          class="app-device-iphone absolute left-1/2 top-1/2 z-20 w-[min(48vw,250px)] md:w-[min(28vw,270px)] drop-shadow-[0_34px_70px_rgba(0,0,0,0.78)]"
-          loading="eager"
-        />
-      </div>
-    </div>
+    <div class="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-28">
+      <div class="grid grid-cols-1 lg:grid-cols-[0.92fr_1.08fr] gap-10 lg:gap-14 items-center">
+        <div class="app-hero-copy max-w-2xl text-center lg:text-left">
+          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE WORLD'S #1 FOOTBALL TRAINING APP</p>
+          <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
+            KNOW EXACTLY WHAT TO TRAIN EVERY DAY.
+          </h1>
+          <p class="text-gray-200 font-body text-lg md:text-xl mb-8 max-w-xl mx-auto lg:mx-0">
+            Clear drills, programmes and session plans so players and coaches can train with purpose.
+          </p>
 
-    <div class="app-hero-copy relative z-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-24 w-full text-center">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE WORLD'S #1 FOOTBALL TRAINING APP</p>
-      <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
-        ONE APP.<br/><span id="development-term">COMPLETE FOOTBALL DEVELOPMENT.</span>
-      </h1>
-      <p class="text-gray-200 font-body text-lg md:text-xl mb-8 max-w-2xl mx-auto">
-        Everything you need to transform your game. On your phone, on your terms.
-      </p>
-
-      <div class="flex flex-col sm:flex-row gap-4 justify-center mb-10">
-        <a href="/join" class="btn-red app-hero-cta text-base px-8 py-4 text-center">
-          Start free trial
-        </a>
-        <a href="https://app.jonerfootball.com/categories/category-vpi8uazway4" target="_blank" rel="noopener noreferrer" class="btn-outline app-hero-cta text-base px-8 py-4 text-center">
-          Browse free content
-        </a>
-      </div>
-
-      <div class="app-store-buttons flex flex-row gap-3 sm:gap-4 justify-center">
-        <a href="https://apps.apple.com/au/app/joner-football-app/id6737069275" target="_blank" rel="noopener noreferrer"
-          class="app-store-button bg-black border border-white/30 rounded-lg px-4 py-2.5 flex items-center gap-3 hover:border-white hover:scale-[1.03] transition-all duration-200">
-          <svg class="app-store-icon w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-          <div>
-            <div class="app-store-kicker text-white text-[10px] leading-none tracking-normal">Download on the</div>
-            <div class="app-store-name text-white font-semibold text-[15px] leading-tight tracking-[-0.02em]">App Store</div>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-10">
+            <a href="/join" class="btn-red app-hero-cta text-base px-8 py-4 text-center">
+              Start free trial
+            </a>
+            <a href="https://app.jonerfootball.com/categories/category-vpi8uazway4" target="_blank" rel="noopener noreferrer" class="btn-outline app-hero-cta text-base px-8 py-4 text-center">
+              Browse free content
+            </a>
           </div>
-        </a>
-        <a href="https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball" target="_blank" rel="noopener noreferrer"
-          class="app-store-button bg-black border border-white/30 rounded-lg px-4 py-2.5 flex items-center gap-3 hover:border-white hover:scale-[1.03] transition-all duration-200">
-          <svg class="app-store-icon w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M3 20.5v-17c0-.83.94-1.3 1.6-.8l14 8.5c.6.4.6 1.2 0 1.6l-14 8.5c-.66.5-1.6.03-1.6-.8z"/></svg>
-          <div>
-            <div class="app-store-kicker text-white text-[10px] leading-none tracking-normal">Get it on</div>
-            <div class="app-store-name text-white font-semibold text-[15px] leading-tight tracking-[-0.02em]">Google Play</div>
+
+          <div class="app-store-buttons flex flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
+            <a href="https://apps.apple.com/au/app/joner-football-app/id6737069275" target="_blank" rel="noopener noreferrer"
+              class="app-store-button bg-black border border-white/30 rounded-lg px-4 py-2.5 flex items-center gap-3 hover:border-white hover:scale-[1.03] transition-all duration-200">
+              <svg class="app-store-icon w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              <div>
+                <div class="app-store-kicker text-white text-[10px] leading-none tracking-normal">Download on the</div>
+                <div class="app-store-name text-white font-semibold text-[15px] leading-tight tracking-[-0.02em]">App Store</div>
+              </div>
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball" target="_blank" rel="noopener noreferrer"
+              class="app-store-button bg-black border border-white/30 rounded-lg px-4 py-2.5 flex items-center gap-3 hover:border-white hover:scale-[1.03] transition-all duration-200">
+              <svg class="app-store-icon w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M3 20.5v-17c0-.83.94-1.3 1.6-.8l14 8.5c.6.4.6 1.2 0 1.6l-14 8.5c-.66.5-1.6.03-1.6-.8z"/></svg>
+              <div>
+                <div class="app-store-kicker text-white text-[10px] leading-none tracking-normal">Get it on</div>
+                <div class="app-store-name text-white font-semibold text-[15px] leading-tight tracking-[-0.02em]">Google Play</div>
+              </div>
+            </a>
           </div>
-        </a>
+        </div>
+
+        <div class="app-hero-device-carousel relative min-h-[440px] sm:min-h-[520px] lg:min-h-[640px]" aria-label="Joner Football App screens" data-hero-device-carousel data-active="0">
+          <div class="app-hero-device-glow absolute left-1/2 top-1/2 h-[68%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-[3rem] bg-joner-red/25 blur-3xl"></div>
+          <img src="/images/app/joner-app-main-ipad-current-transparent.png" alt="Joner Football App home screen on iPad" class="app-hero-device app-hero-device-ipad-wide" data-device="0" loading="eager" />
+          <img src="/images/app/joner-app-main-iphone-current-transparent.png" alt="Joner Football App on iPhone" class="app-hero-device app-hero-device-phone" data-device="1" loading="eager" />
+          <img src="/images/app/joner-app-main-ipad-2026-05-13.png" alt="Joner Football App training screen on iPad" class="app-hero-device app-hero-device-ipad-tall" data-device="2" loading="eager" />
+        </div>
       </div>
     </div>
   </section>
-
 
   <HighlightsCarousel />
 
@@ -303,17 +293,6 @@ const sanityPage = await fetchSanityPage('app')
 
   <script is:inline>
     (() => {
-      const headlineTerm = document.getElementById('development-term');
-      if (headlineTerm) {
-        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-        const isUSTimeZone = timeZone.startsWith('America/')
-          && !['America/Toronto', 'America/Vancouver', 'America/Edmonton', 'America/Winnipeg', 'America/Halifax', 'America/St_Johns'].includes(timeZone);
-
-        if (isUSTimeZone) {
-          headlineTerm.textContent = 'COMPLETE SOCCER DEVELOPMENT.';
-        }
-      }
-
       const audienceFeature = document.querySelector('[data-audience-feature]');
       if (audienceFeature) {
         const totalAudienceCards = 3;
@@ -343,165 +322,103 @@ const sanityPage = await fetchSanityPage('app')
         restartAudienceTimer();
       }
 
-      const hero = document.querySelector('[data-scroll-expand-hero]');
-      if (!hero) return;
+      const heroVideo = document.querySelector('.app-hero-bg-video');
+      if (heroVideo && typeof heroVideo.play === 'function') {
+        heroVideo.play().catch(() => {});
+      }
 
-      const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      let scrollProgress = 0;
-      let mediaFullyExpanded = false;
-      let touchStartY = 0;
-      let isMobile = window.innerWidth < 768;
-
-      const applyProgress = () => {
-        const progress = reducedMotion || isMobile ? 1 : scrollProgress;
-        hero.style.setProperty('--hero-progress', progress.toFixed(3));
-        hero.toggleAttribute('data-expanded', mediaFullyExpanded || progress >= 1);
-      };
-
-      const updateProgress = (delta) => {
-        scrollProgress = clamp(scrollProgress + delta, 0, 1);
-        if (scrollProgress >= 1) {
-          scrollProgress = 1;
-          mediaFullyExpanded = true;
-        } else if (scrollProgress < 0.72) {
-          mediaFullyExpanded = false;
+      const heroCarousel = document.querySelector('[data-hero-device-carousel]');
+      if (heroCarousel) {
+        let heroIndex = 0;
+        const devices = heroCarousel.querySelectorAll('[data-device]');
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const setHeroDevice = (index) => {
+          heroIndex = (index + devices.length) % devices.length;
+          heroCarousel.setAttribute('data-active', String(heroIndex));
+        };
+        setHeroDevice(0);
+        if (!reduced && devices.length > 1) {
+          window.setInterval(() => setHeroDevice(heroIndex + 1), 4200);
         }
-        applyProgress();
-      };
-
-      const handleWheel = (event) => {
-        if (reducedMotion || isMobile) return;
-
-        const atTop = window.scrollY <= 5;
-        if (mediaFullyExpanded && event.deltaY < 0 && atTop) {
-          mediaFullyExpanded = false;
-          event.preventDefault();
-          updateProgress(event.deltaY * 0.0009);
-          return;
-        }
-
-        if (!mediaFullyExpanded && atTop) {
-          event.preventDefault();
-          updateProgress(event.deltaY * 0.0009);
-        }
-      };
-
-      const handleTouchStart = (event) => {
-        touchStartY = event.touches?.[0]?.clientY || 0;
-      };
-
-      const handleTouchMove = (event) => {
-        if (reducedMotion || isMobile || !touchStartY) return;
-
-        const touchY = event.touches?.[0]?.clientY || touchStartY;
-        const deltaY = touchStartY - touchY;
-        const atTop = window.scrollY <= 5;
-
-        if (mediaFullyExpanded && deltaY < -20 && atTop) {
-          mediaFullyExpanded = false;
-          event.preventDefault();
-          updateProgress(deltaY * 0.008);
-        } else if (!mediaFullyExpanded && atTop) {
-          event.preventDefault();
-          const scrollFactor = deltaY < 0 ? 0.008 : 0.005;
-          updateProgress(deltaY * scrollFactor);
-        }
-
-        touchStartY = touchY;
-      };
-
-      const handleTouchEnd = () => {
-        touchStartY = 0;
-      };
-
-      const handleScroll = () => {
-        if (reducedMotion || isMobile) return;
-        if (!mediaFullyExpanded && window.scrollY > 0 && window.scrollY < window.innerHeight * 0.6) {
-          window.scrollTo(0, 0);
-        }
-      };
-
-      const handleResize = () => {
-        isMobile = window.innerWidth < 768;
-        hero.style.setProperty('--hero-mobile', isMobile ? '1' : '0');
-        applyProgress();
-      };
-
-      const resetSection = () => {
-        scrollProgress = 0;
-        mediaFullyExpanded = false;
-        touchStartY = 0;
-        if (window.scrollY !== 0) {
-          window.scrollTo(0, 0);
-        }
-        applyProgress();
-      };
-
-      handleResize();
-      resetSection();
-      window.addEventListener('resetSection', resetSection);
-      window.addEventListener('wheel', handleWheel, { passive: false });
-      window.addEventListener('scroll', handleScroll);
-      window.addEventListener('touchstart', handleTouchStart, { passive: false });
-      window.addEventListener('touchmove', handleTouchMove, { passive: false });
-      window.addEventListener('touchend', handleTouchEnd);
-      window.addEventListener('resize', handleResize);
+      }
     })();
   </script>
 
   <style>
-    .app-scroll-hero {
-      --hero-progress: 0;
-      --hero-mobile: 0;
+    .app-hero-v2 {
+      isolation: isolate;
     }
 
     .app-hero-bg-video {
-      opacity: calc(0.3 + (var(--hero-progress) * 0.324));
-      transition: opacity 90ms linear;
-      will-change: opacity;
+      opacity: 0.3;
+      filter: saturate(0.82) contrast(1.08);
     }
 
     .app-hero-bg-overlay {
-      opacity: calc(0.9 - (var(--hero-progress) * 0.22));
-      transition: opacity 90ms linear;
-      will-change: opacity;
+      opacity: 0.74;
+      background:
+        radial-gradient(circle at 78% 50%, rgba(232, 0, 13, 0.16), transparent 34%),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0.68) 48%, rgba(0, 0, 0, 0.78));
     }
 
     .app-hero-copy {
-      opacity: calc((var(--hero-progress) - 0.18) * 1.6);
-      transform: translateY(calc((1 - var(--hero-progress)) * 34px)) scale(calc(0.96 + (var(--hero-progress) * 0.04)));
-      transition: opacity 90ms linear, transform 90ms linear;
-      will-change: opacity, transform;
+      opacity: 1;
+      transform: none;
     }
 
-    .app-device-stage {
-      transform: scale(calc(1.14 - (var(--hero-progress) * 0.08)));
-      transform-origin: center center;
-      transition: transform 90ms linear;
-      will-change: transform;
+    .app-hero-device-carousel {
+      perspective: 1400px;
     }
 
-    .app-device-ipad {
-      opacity: calc(1 - (var(--hero-progress) * 0.34));
-      transform: translate(calc(-50% + (var(--hero-progress) * 500px)), calc(-50% + (var(--hero-progress) * 28px))) scale(calc(0.86 + (var(--hero-progress) * 0.02))) rotate(calc(-3deg + (var(--hero-progress) * 6deg)));
-      transition: opacity 90ms linear, transform 90ms linear;
-      will-change: opacity, transform;
+    .app-hero-device {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      max-width: min(72vw, 640px);
+      max-height: 92%;
+      object-fit: contain;
+      opacity: 0;
+      filter: blur(5px) brightness(0.78);
+      transform: translate(-50%, -50%) scale(0.72) rotateY(0deg) rotateZ(0deg);
+      transition:
+        opacity 720ms cubic-bezier(0.32, 0.72, 0, 1),
+        transform 820ms cubic-bezier(0.32, 0.72, 0, 1),
+        filter 720ms cubic-bezier(0.32, 0.72, 0, 1);
+      will-change: opacity, transform, filter;
+      z-index: 1;
     }
 
-    .app-device-iphone {
-      opacity: calc(1 - (var(--hero-progress) * 0.24));
-      transform: translate(calc(-50% - (var(--hero-progress) * 430px)), calc(-50% - (var(--hero-progress) * 2px))) scale(calc(0.92 + (var(--hero-progress) * 0.01))) rotate(calc(0deg - (var(--hero-progress) * 6deg)));
-      transition: opacity 90ms linear, transform 90ms linear;
-      will-change: opacity, transform;
+    .app-hero-device-phone {
+      max-width: min(44vw, 300px);
     }
 
-    .app-device-glow-red {
-      opacity: calc(0.72 + (var(--hero-progress) * 0.28));
+    .app-hero-device-carousel[data-active="0"] .app-hero-device-ipad-wide,
+    .app-hero-device-carousel[data-active="1"] .app-hero-device-phone,
+    .app-hero-device-carousel[data-active="2"] .app-hero-device-ipad-tall {
+      opacity: 1;
+      filter: blur(0) brightness(1);
+      transform: translate(-50%, -50%) scale(1) rotateY(0deg) rotateZ(0deg);
+      z-index: 5;
     }
 
-    .app-device-glow-white {
-      opacity: calc(0.5 + (var(--hero-progress) * 0.28));
+    .app-hero-device-carousel[data-active="0"] .app-hero-device-phone,
+    .app-hero-device-carousel[data-active="1"] .app-hero-device-ipad-tall,
+    .app-hero-device-carousel[data-active="2"] .app-hero-device-ipad-wide {
+      opacity: 0.82;
+      transform: translate(calc(-50% + 160px), calc(-50% + 18px)) scale(0.72) rotateY(-18deg) rotateZ(3deg);
+      z-index: 3;
+    }
+
+    .app-hero-device-carousel[data-active="0"] .app-hero-device-ipad-tall,
+    .app-hero-device-carousel[data-active="1"] .app-hero-device-ipad-wide,
+    .app-hero-device-carousel[data-active="2"] .app-hero-device-phone {
+      opacity: 0.76;
+      transform: translate(calc(-50% - 170px), calc(-50% - 22px)) scale(0.7) rotateY(18deg) rotateZ(-3deg);
+      z-index: 2;
+    }
+
+    .app-hero-device-glow {
+      opacity: 0.78;
     }
 
     .app-hero-cta {
@@ -615,20 +532,29 @@ const sanityPage = await fetchSanityPage('app')
     }
 
     @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
-      .app-scroll-hero {
-        min-height: 100dvh;
+      .app-hero-v2 {
+        min-height: 100svh;
       }
 
       .app-hero-bg-video {
-        opacity: 0.72;
+        opacity: 0.24;
       }
 
       .app-hero-bg-overlay {
-        opacity: 0.58;
+        opacity: 0.82;
       }
 
-      .app-device-layer {
-        display: none;
+      .app-hero-device-carousel {
+        min-height: 360px;
+        margin-top: 1.5rem;
+      }
+
+      .app-hero-device {
+        max-width: min(86vw, 440px);
+      }
+
+      .app-hero-device-phone {
+        max-width: min(48vw, 220px);
       }
 
       .app-hero-copy {
@@ -708,10 +634,8 @@ const sanityPage = await fetchSanityPage('app')
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .app-hero-copy,
-      .app-device-stage,
-      .app-device-ipad,
-      .app-device-iphone {
+      .app-hero-device,
+      .app-hero-copy {
         transform: none !important;
         transition: none !important;
       }
@@ -740,7 +664,7 @@ const sanityPage = await fetchSanityPage('app')
 
   <script is:inline>
     ;(function () {
-      var heroEl = document.querySelector('.app-scroll-hero');
+      var heroEl = document.querySelector('.app-hero-v2');
       var cta = document.querySelector('.app-mobile-cta');
       if (!heroEl || !cta || !('IntersectionObserver' in window)) return;
       var io = new IntersectionObserver(function (entries) {
