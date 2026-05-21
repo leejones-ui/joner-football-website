@@ -61,6 +61,17 @@ const renderList = (items: any[], ordered: boolean) => {
   return `<${tag} class="${className}">${content}</${tag}>`
 }
 
+const renderImageWithMeta = (block: any) => {
+  if (block?.hideImage) return ''
+  const imageUrl = block?.url || block?.imageUrl || block?.coverImageUrl || block?.src
+  if (!imageUrl) return ''
+
+  const alt = escapeHtml(String(block?.alt || block?.caption || 'Joner Football App'))
+  const caption = block?.caption ? `<figcaption class="mt-3 font-body text-sm text-gray-400">${escapeHtml(String(block.caption))}</figcaption>` : ''
+
+  return `<figure class="my-8 overflow-hidden rounded-lg border border-white/10 bg-joner-gray"><img src="${escapeHtml(String(imageUrl))}" alt="${alt}" class="w-full object-cover" loading="lazy" />${caption}</figure>`
+}
+
 export function portableTextToHtml(blocks: any[] = []) {
   if (!Array.isArray(blocks) || !blocks.length) return ''
 
@@ -75,7 +86,13 @@ export function portableTextToHtml(blocks: any[] = []) {
   }
 
   for (const block of blocks) {
-    if (!block || block._type !== 'block') continue
+    if (!block) continue
+    if (block._type === 'imageWithMeta') {
+      flushList()
+      html.push(renderImageWithMeta(block))
+      continue
+    }
+    if (block._type !== 'block') continue
 
     if (block.listItem) {
       const ordered = block.listItem === 'number'
