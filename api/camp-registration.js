@@ -442,12 +442,14 @@ export default async function handler(req, res) {
       brevo = { skipped: false, failed: true }
     }
 
-    let notification = { skipped: true }
-    try {
-      notification = await sendCampSignupEmail(registration)
-    } catch (notificationError) {
-      console.warn('Camp signup notification crashed:', notificationError?.message || notificationError)
-      notification = { skipped: false, failed: true }
+    let notification = { skipped: true, reason: 'delayed-unpaid-admin-alert' }
+    if (registration.paymentStatus === 'paid') {
+      try {
+        notification = await sendCampSignupEmail(registration)
+      } catch (notificationError) {
+        console.warn('Camp signup notification crashed:', notificationError?.message || notificationError)
+        notification = { skipped: false, failed: true }
+      }
     }
     const customerEmail = { skipped: true, reason: 'paid-confirmation-only' }
 
