@@ -72,6 +72,20 @@ const renderImageWithMeta = (block: any) => {
   return `<figure class="my-8 overflow-hidden rounded-lg border border-white/10 bg-joner-gray"><img src="${escapeHtml(String(imageUrl))}" alt="${alt}" class="w-full object-cover" loading="lazy" />${caption}</figure>`
 }
 
+const renderAppCta = (block: any) => {
+  const title = escapeHtml(String(block?.title || 'Train This Inside The Joner Football App'))
+  const text = escapeHtml(String(block?.text || 'Get the full session detail, drills and progressions inside the app.'))
+  const href = escapeHtml(String(block?.href || 'https://jonerfootball.com/join/'))
+  const label = escapeHtml(String(block?.label || 'Open The App'))
+  const secondaryHref = block?.secondaryHref ? escapeHtml(String(block.secondaryHref)) : ''
+  const secondaryLabel = escapeHtml(String(block?.secondaryLabel || 'Try The App Free'))
+  const secondary = secondaryHref
+    ? `<a href="${secondaryHref}" class="inline-flex items-center justify-center border border-joner-black px-5 py-3 font-heading text-sm uppercase tracking-wide text-joner-black hover:bg-joner-black hover:text-white">${secondaryLabel}</a>`
+    : ''
+
+  return `<aside class="my-8 rounded-lg border border-joner-red bg-white p-6 text-joner-black shadow-2xl shadow-black/30"><p class="mb-2 font-heading text-xs uppercase tracking-[0.24em] text-joner-red">Joner Football App</p><h3 class="mb-3 font-heading text-2xl font-black uppercase leading-tight text-joner-black">${title}</h3><p class="mb-5 font-body text-base leading-relaxed text-gray-700">${text}</p><div class="flex flex-col gap-3 sm:flex-row"><a href="${href}" class="inline-flex items-center justify-center bg-joner-red px-5 py-3 font-heading text-sm uppercase tracking-wide text-white hover:bg-red-700">${label}</a>${secondary}</div></aside>`
+}
+
 export function portableTextToHtml(blocks: any[] = []) {
   if (!Array.isArray(blocks) || !blocks.length) return ''
 
@@ -87,6 +101,11 @@ export function portableTextToHtml(blocks: any[] = []) {
 
   for (const block of blocks) {
     if (!block) continue
+    if (block._type === 'appCta') {
+      flushList()
+      html.push(renderAppCta(block))
+      continue
+    }
     if (block._type === 'imageWithMeta') {
       flushList()
       html.push(renderImageWithMeta(block))
