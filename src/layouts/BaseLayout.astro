@@ -420,15 +420,29 @@ const allSchemas = schema
           return null;
         }
 
+        var DISPOSABLE_DOMAINS = {
+          '10minutemail.com': true, '10minutemail.net': true, '20minutemail.com': true, 'anonaddy.com': true,
+          'burnermail.io': true, 'dispostable.com': true, 'emailondeck.com': true, 'fakeinbox.com': true,
+          'getnada.com': true, 'guerrillamail.com': true, 'guerrillamail.net': true, 'guerrillamail.org': true,
+          'maildrop.cc': true, 'mailinator.com': true, 'mailinator.net': true, 'mailnesia.com': true,
+          'moakt.com': true, 'sharklasers.com': true, 'temp-mail.org': true, 'tempmail.com': true,
+          'tempmail.net': true, 'throwawaymail.com': true, 'trashmail.com': true, 'yopmail.com': true
+        };
+
         function validateEmail(email) {
           var trimmed = String(email || '').trim().toLowerCase();
           var basicPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
           if (!trimmed) return { valid: false, message: 'Email is required.' };
           if (!basicPattern.test(trimmed)) return { valid: false, message: 'Enter a valid email address.' };
           if (trimmed.indexOf('..') !== -1) return { valid: false, message: 'Enter a valid email address.' };
-          var domain = trimmed.split('@')[1] || '';
+          var parts = trimmed.split('@');
+          var local = parts[0] || '';
+          var domain = parts[1] || '';
           var tld = domain.split('.').pop();
+          if (!local || !domain || local.length > 64 || domain.length > 253) return { valid: false, message: 'Enter a valid email address.' };
+          if (local.charAt(0) === '.' || local.charAt(local.length - 1) === '.') return { valid: false, message: 'Enter a valid email address.' };
           if (!tld || tld.length < 2) return { valid: false, message: 'Enter a valid email address.' };
+          if (DISPOSABLE_DOMAINS[domain]) return { valid: false, message: 'Please use your real email address, not a temporary email.' };
           var suggestion = getEmailSuggestion(trimmed);
           if (suggestion && suggestion !== trimmed) return { valid: false, message: 'Did you mean ' + suggestion + '?', suggestion: suggestion };
           return { valid: true, email: trimmed };

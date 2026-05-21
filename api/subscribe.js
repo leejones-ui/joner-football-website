@@ -1,4 +1,5 @@
 import { cleanString, protectForm } from './_security.js'
+import dns from 'node:dns/promises'
 
 const COMMON_DOMAINS = [
   'gmail.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'yahoo.com',
@@ -25,6 +26,20 @@ const EXACT_FIXES = {
   'bigpond.con': 'bigpond.com',
   'live.con': 'live.com'
 }
+
+const DISPOSABLE_DOMAINS = new Set([
+  '10minutemail.com', '10minutemail.net', '20minutemail.com', 'anonaddy.com',
+  'burnermail.io', 'dispostable.com', 'emailondeck.com', 'fakeinbox.com',
+  'getnada.com', 'guerrillamail.com', 'guerrillamail.net', 'guerrillamail.org',
+  'maildrop.cc', 'mailinator.com', 'mailinator.net', 'mailnesia.com',
+  'moakt.com', 'sharklasers.com', 'temp-mail.org', 'tempmail.com',
+  'tempmail.net', 'throwawaymail.com', 'trashmail.com', 'yopmail.com'
+])
+
+const ROLE_PREFIXES = new Set([
+  'admin', 'contact', 'hello', 'info', 'marketing', 'noreply', 'no-reply',
+  'office', 'sales', 'support', 'team', 'test'
+])
 
 function levenshtein(a, b) {
   const matrix = []
@@ -56,9 +71,54 @@ function validateEmail(email) {
   if (!value) return { ok: false, error: 'Email is required.' }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) return { ok: false, error: 'Enter a valid email address.' }
   if (value.includes('..')) return { ok: false, error: 'Enter a valid email address.' }
+  const [local, domain] = value.split('@')
+  if (!local || !domain) return { ok: false, error: 'Enter a valid email address.' }
+  if (local.length > 64 || domain.length > 253) return { ok: false, error: 'Enter a valid email address.' }
+  if (local.startsWith('.') || local.endsWith('.')) return { ok: false, error: 'Enter a valid email address.' }
+  if (DISPOSABLE_DOMAINS.has(domain)) return { ok: false, error: 'Please use your real email address, not a temporary email.' }
   const suggestion = emailSuggestion(value)
   if (suggestion && suggestion !== value) return { ok: false, error: `Did you mean ${suggestion}?` }
   return { ok: true, email: value }
+}
+
+function timeoutPromise(ms) {
+  return new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+}
+
+async function hasMailRoute(domain) {
+  try {
+    const mx = await Promise.race([dns.resolveMx(domain), timeoutPromise(2000)])
+    if (Array.isArray(mx) && mx.length) return true
+  } catch (error) {}
+
+  try {
+    const addresses = await Promise.race([dns.resolve4(domain), timeoutPromise(1500)])
+    if (Array.isArray(addresses) && addresses.length) return true
+  } catch (error) {}
+
+  try {
+    const addresses = await Promise.race([dns.resolve6(domain), timeoutPromise(1500)])
+    if (Array.isArray(addresses) && addresses.length) return true
+  } catch (error) {}
+
+  return false
+}
+
+async function validateEmailQuality(email, { strictRoleEmail = false } = {}) {
+  const validation = validateEmail(email)
+  if (!validation.ok) return validation
+
+  const [local, domain] = validation.email.split('@')
+  if (strictRoleEmail && ROLE_PREFIXES.has(local)) {
+    return { ok: false, error: 'Please use your personal email address so we can send your Hub access.' }
+  }
+
+  const domainHasMail = await hasMailRoute(domain)
+  if (!domainHasMail) {
+    return { ok: false, error: 'That email domain does not look real. Please check it and try again.' }
+  }
+
+  return validation
 }
 
 function parseListIds(body) {
@@ -136,9 +196,6 @@ export default async function handler(req, res) {
     const protection = await protectForm(req, res, 'subscribe', body)
     if (!protection.ok) return protection.response
 
-    const validation = validateEmail(body.email)
-    if (!validation.ok) return res.status(400).json({ success: false, error: validation.error })
-
     const firstName = cleanString(body.firstName || body.first_name || body.name || '', 80)
     if (!firstName) return res.status(400).json({ success: false, error: 'Name is required.' })
 
@@ -146,6 +203,9 @@ export default async function handler(req, res) {
     const source = cleanString(body.source || body.formName || 'website-form', 80)
     const isHubGate = source.startsWith('hub-gate')
     const marketingConsent = body.marketingConsent === true || body.marketingConsent === 'true' || body.marketingConsent === 'on'
+
+    const validation = await validateEmailQuality(body.email, { strictRoleEmail: isHubGate })
+    if (!validation.ok) return res.status(400).json({ success: false, error: validation.error })
 
     if (isHubGate && !marketingConsent) {
       return res.status(400).json({ success: false, error: 'Email opt-in is required to access the free Hub.' })
