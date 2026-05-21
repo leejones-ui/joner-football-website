@@ -4509,7 +4509,7 @@
     ],
     "category": "Player Development",
     "publishStatus": "published",
-    "coverImageUrl": "/images/blog/coachability-player-action.jpg",
+    "coverImageUrl": "/images/blog/coachability-player-action-image2.png",
     "coverImageAltText": "Joner Football player training thumbnail with Be Coachable text",
     "internalNotes": "Seeded from src/pages/blog/coachability-most-important-trait-football.astro"
   },
@@ -7037,7 +7037,7 @@
     ],
     "category": "Drills",
     "publishStatus": "published",
-    "coverImageUrl": "/images/blog/football-drills-at-home-player-action.jpg",
+    "coverImageUrl": "/images/blog/football-drills-at-home-player-action-image2.png",
     "coverImageAltText": "Joner Football player training thumbnail with Train At Home text",
     "internalNotes": "Seeded from src/pages/blog/football-drills-at-home.astro"
   },
