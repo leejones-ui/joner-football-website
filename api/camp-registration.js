@@ -32,6 +32,10 @@ const HEADERS = [
   'Payment Method',
   'Payment Link',
   'Target Sheet Tab',
+  'Net Amount AUD After Fees',
+  'Stripe Checkout Session ID',
+  'Stripe Payment ID / Refund Link',
+  'Heard About Camp',
 ]
 
 function clean(value, max = 500) {
@@ -136,7 +140,7 @@ async function ensureSheetTab(sheetId, title) {
     })
   }
 
-  const headerRange = `${encodeURIComponent(title)}!A1:U1`
+  const headerRange = `${encodeURIComponent(title)}!A1:Y1`
   const current = await sheetsFetch(`${sheetId}/values/${headerRange}`)
   const currentHeaders = current.values?.[0] || []
   const missingHeaders = HEADERS.some((header, index) => currentHeaders[index] !== header)
@@ -175,9 +179,13 @@ async function appendPendingRegistration(registration) {
     registration.paymentMethod,
     registration.paymentLink,
     registration.sheetTab,
+    '',
+    '',
+    '',
+    registration.heardAboutCamp,
   ]
 
-  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(PENDING_SHEET)}!A:U:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(PENDING_SHEET)}!A:Y:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
     method: 'POST',
     body: JSON.stringify({ values: [row] }),
   })
@@ -242,7 +250,8 @@ async function sendCampSignupEmail(registration) {
       ${campRow('Email', registration.email)}
       ${campRow('Age', registration.age)}
       ${campRow('Mobile', registration.mobile)}
-      ${campRow('Previous camp', registration.previousCamp)}
+      ${campRow('Done camp before', registration.previousCamp)}
+      ${campRow('Heard about camp', registration.heardAboutCamp)}
       ${campRow('Club level', registration.clubLevel)}
       ${campRow('Number of days', registration.numberOfDays)}
       ${campRow('Jersey size', registration.jerseySize)}
@@ -302,6 +311,8 @@ async function addToBrevo(registration) {
         WEBSITE_SOURCE: 'camp-registration',
         CAMP_NAME: registration.camp,
         CAMP_DESTINATION: registration.destination || registration.location || '',
+        HEARD_ABOUT_CAMP: registration.heardAboutCamp || '',
+        DONE_CAMP_BEFORE: registration.previousCamp || '',
       },
       listIds,
       updateEnabled: true,
@@ -396,9 +407,10 @@ export default async function handler(req, res) {
       email: clean(body.email, 160).toLowerCase(),
       age: clean(body.age, 30),
       mobile: clean(body.mobile, 60),
-      previousCamp: clean(body.previousCamp, 20),
+      previousCamp: clean(body.previousCamp || body.doneCampBefore || body.doneBefore, 20),
       clubLevel: clean(body.clubLevel, 160),
       source: clean(body.source, 160),
+      heardAboutCamp: clean(body.heardAboutCamp || body.heardAbout || body.hearAbout || '', 160),
       medicalHistory: clean(body.medicalHistory, 600),
       jerseySize: clean(body.jerseySize, 40),
       extraInfo: clean(body.extraInfo, 600),

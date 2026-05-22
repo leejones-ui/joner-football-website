@@ -10,6 +10,7 @@ import {
   deleteSheetRow,
   appendOperationalCampRow,
   findOperationalCampLayout,
+  ensureOperationalMarketingColumns,
   columnLetter,
   registrationFromRow,
   rowFromRegistration,
@@ -250,6 +251,7 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
       if (paymentDetails.stripePaymentIntentSheetValue) found.stripePaymentIntentSheetValue = paymentDetails.stripePaymentIntentSheetValue
 
       if (found.paidAmount) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'V', found.paidAmount)
+      if (found.heardAboutCamp) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'Y', found.heardAboutCamp)
       if (found.stripeCheckoutSessionId) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'W', found.stripeCheckoutSessionId)
       if (found.stripePaymentIntentSheetValue || found.stripePaymentIntentId) {
         await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'X', found.stripePaymentIntentSheetValue || found.stripePaymentIntentId, 'USER_ENTERED')
@@ -259,7 +261,8 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
       let campSheet = 'not-configured'
       if (campTab) {
         const campRows = await readSheetRange(sheetId, campTab, 'A:Z')
-        const layout = findOperationalCampLayout(campRows)
+        let layout = findOperationalCampLayout(campRows)
+        if (layout) layout = await ensureOperationalMarketingColumns(sheetId, campTab, layout)
         let operationalRowNumber = 0
         if (layout) {
           for (let index = layout.rowIndex + 1; index < campRows.length; index += 1) {
@@ -273,10 +276,14 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
               break
             }
           }
-          if (operationalRowNumber && found.paidAmount) {
+          if (operationalRowNumber) {
             const normalisedHeaders = layout.headers.map((header) => clean(header || '', 80).toLowerCase().replace(/[^a-z0-9]/g, ''))
-            const amountCol = normalisedHeaders.findIndex((value) => value === 'amount' || value === 'paid')
+            const amountCol = normalisedHeaders.findIndex((value) => ['amount', 'paid', 'aud', 'amountaud', 'netaud', 'netamountaud', 'netamountaudafterfees', 'audafterfees'].includes(value))
+            const doneCol = normalisedHeaders.findIndex((value) => ['donebefore', 'previouscamp', 'beenbefore', 'donecampbefore'].includes(value))
+            const heardCol = normalisedHeaders.findIndex((value) => ['heardaboutcamp', 'heardabout', 'whereheard', 'wheredidyouhearaboutcamp', 'wheredidyouhearaboutthecamp', 'source'].includes(value))
             if (amountCol >= 0) await updateCell(sheetId, campTab, operationalRowNumber, columnLetter(amountCol), found.paidAmount)
+            if (doneCol >= 0 && found.previousCamp) await updateCell(sheetId, campTab, operationalRowNumber, columnLetter(doneCol), found.previousCamp)
+            if (heardCol >= 0 && found.heardAboutCamp) await updateCell(sheetId, campTab, operationalRowNumber, columnLetter(heardCol), found.heardAboutCamp)
           }
         }
         campSheet = operationalRowNumber ? 'amount-updated' : 'already-paid-no-operational-row-match'
@@ -309,6 +316,7 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
     await appendRow(sheetId, PAID_SHEET, paidRow, undefined, 'USER_ENTERED')
   } else {
     if (found.paidAmount) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'V', found.paidAmount)
+    if (found.heardAboutCamp) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'Y', found.heardAboutCamp)
     if (found.stripeCheckoutSessionId) await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'W', found.stripeCheckoutSessionId)
     if (found.stripePaymentIntentSheetValue || found.stripePaymentIntentId) {
       await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'X', found.stripePaymentIntentSheetValue || found.stripePaymentIntentId, 'USER_ENTERED')
@@ -319,7 +327,8 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
   let campSheet = 'not-configured'
   if (campTab) {
     const campRows = await readSheetRange(sheetId, campTab, 'A:Z')
-    const layout = findOperationalCampLayout(campRows)
+    let layout = findOperationalCampLayout(campRows)
+    if (layout) layout = await ensureOperationalMarketingColumns(sheetId, campTab, layout)
     let alreadyInOperationalTab = false
     let operationalRowNumber = 0
 
@@ -338,10 +347,14 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
       }
     }
 
-    if (alreadyInOperationalTab && found.paidAmount && layout) {
+    if (alreadyInOperationalTab && layout) {
       const normalisedHeaders = layout.headers.map((header) => clean(header || '', 80).toLowerCase().replace(/[^a-z0-9]/g, ''))
-      const amountCol = normalisedHeaders.findIndex((value) => value === 'amount' || value === 'paid')
-      if (amountCol >= 0) await updateCell(sheetId, campTab, operationalRowNumber, columnLetter(amountCol), found.paidAmount)
+      const amountCol = normalisedHeaders.findIndex((value) => ['amount', 'paid', 'aud', 'amountaud', 'netaud', 'netamountaud', 'netamountaudafterfees', 'audafterfees'].includes(value))
+      const doneCol = normalisedHeaders.findIndex((value) => ['donebefore', 'previouscamp', 'beenbefore', 'donecampbefore'].includes(value))
+      const heardCol = normalisedHeaders.findIndex((value) => ['heardaboutcamp', 'heardabout', 'whereheard', 'wheredidyouhearaboutcamp', 'wheredidyouhearaboutthecamp', 'source'].includes(value))
+      if (amountCol >= 0 && found.paidAmount) await updateCell(sheetId, campTab, operationalRowNumber, columnLetter(amountCol), found.paidAmount)
+      if (doneCol >= 0 && found.previousCamp) await updateCell(sheetId, campTab, operationalRowNumber, columnLetter(doneCol), found.previousCamp)
+      if (heardCol >= 0 && found.heardAboutCamp) await updateCell(sheetId, campTab, operationalRowNumber, columnLetter(heardCol), found.heardAboutCamp)
     }
     if (!alreadyInOperationalTab) await appendOperationalCampRow(sheetId, campTab, found)
     campSheet = alreadyInOperationalTab ? 'already-present' : campTab

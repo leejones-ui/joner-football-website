@@ -9,7 +9,7 @@ export const HEADERS = [
   'Submitted At', 'Registration ID', 'Payment Status', 'Camp', 'Player First Name', 'Player Surname',
   'Parent Name', 'Email', 'Age', 'Mobile', 'Previous Camp', 'Club Level', 'Source', 'Medical History',
   'Jersey Size', 'Extra Info', 'Number Of Days', 'Agreement Accepted', 'Payment Method', 'Payment Link', 'Target Sheet Tab',
-  'Net Amount AUD After Fees', 'Stripe Checkout Session ID', 'Stripe Payment ID / Refund Link',
+  'Net Amount AUD After Fees', 'Stripe Checkout Session ID', 'Stripe Payment ID / Refund Link', 'Heard About Camp',
 ]
 
 export const LOG_HEADERS = ['Sent At', 'Registration ID', 'Email Type', 'Recipient Email', 'Camp', 'Status']
@@ -169,6 +169,7 @@ export function operationalCampRowFromRegistration(registration) {
     amountFromRegistration(registration),
     'stripe',
     registration.previousCamp || '',
+    registration.heardAboutCamp || '',
   ]
 }
 
@@ -207,12 +208,24 @@ export function operationalCampValueByHeader(header, registration) {
     phone: row[6],
     mobile: row[6],
     amount: row[7],
+    aud: row[7],
+    amountaud: row[7],
+    netaud: row[7],
+    netamountaud: row[7],
+    netamountaudafterfees: row[7],
+    audafterfees: row[7],
     paid: row[7],
     method: row[8],
     paymentmethod: row[8],
     donebefore: row[9],
     previouscamp: row[9],
     beenbefore: row[9],
+    heardaboutcamp: registration.heardAboutCamp || '',
+    heardabout: registration.heardAboutCamp || '',
+    whereheard: registration.heardAboutCamp || '',
+    wheredidyouhearaboutcamp: registration.heardAboutCamp || '',
+    wheredidyouhearaboutthecamp: registration.heardAboutCamp || '',
+    source: registration.heardAboutCamp || '',
   }
   return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : ''
 }
@@ -232,11 +245,35 @@ export function findOperationalCampLayout(rows = []) {
   return null
 }
 
+
+export async function ensureOperationalMarketingColumns(sheetId, tab, layout) {
+  if (!layout) return layout
+  const normalised = layout.headers.map(normaliseHeader)
+  const needsDone = !normalised.some((value) => ['donebefore', 'previouscamp', 'beenbefore', 'donecampbefore'].includes(value))
+  const needsHeard = !normalised.some((value) => ['heardaboutcamp', 'heardabout', 'whereheard', 'wheredidyouhearaboutcamp', 'wheredidyouhearaboutthecamp', 'source'].includes(value))
+  if (!needsDone && !needsHeard) return layout
+
+  const headers = [...layout.headers]
+  if (needsDone) headers.push('Done before?')
+  if (needsHeard) headers.push('Heard About Camp')
+
+  const startCol = columnLetter(layout.headers.length)
+  const endCol = columnLetter(headers.length - 1)
+  const values = headers.slice(layout.headers.length)
+  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!${startCol}${layout.rowNumber}:${endCol}${layout.rowNumber}?valueInputOption=USER_ENTERED`, {
+    method: 'PUT',
+    body: JSON.stringify({ values: [values] }),
+  })
+
+  return { ...layout, headers }
+}
+
 export async function appendOperationalCampRow(sheetId, tab, registration) {
   const rows = await readSheetRange(sheetId, tab, 'A:Z')
-  const layout = findOperationalCampLayout(rows)
+  let layout = findOperationalCampLayout(rows)
 
   if (layout) {
+    layout = await ensureOperationalMarketingColumns(sheetId, tab, layout)
     const firstBlankPlayerIndex = rows.slice(layout.rowIndex + 1).findIndex((existingRow) => !clean(existingRow?.[layout.nameCol] || '', 180))
     const targetRowNumber = firstBlankPlayerIndex >= 0 ? layout.rowNumber + firstBlankPlayerIndex + 1 : rows.length + 1
     const startCol = columnLetter(layout.nameCol)
@@ -251,7 +288,7 @@ export async function appendOperationalCampRow(sheetId, tab, registration) {
   }
 
   const row = operationalCampRowFromRegistration(registration)
-  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!A:J:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(tab)}!A:K:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
     method: 'POST',
     body: JSON.stringify({ values: [row] }),
   })
@@ -273,7 +310,7 @@ export function registrationFromRow(row = []) {
     medicalHistory: row[13] || '', jerseySize: row[14] || '', extraInfo: row[15] || '', numberOfDays: row[16] || '',
     agreementAccepted: row[17] || '', paymentMethod: row[18] || '', paymentLink: row[19] || '', sheetTab: row[20] || '',
     paidAmount: row[21] || '', stripeCheckoutSessionId: row[22] || '', stripePaymentIntentId: row[23] || '',
-    stripePaymentIntentSheetValue: row[23] || '',
+    stripePaymentIntentSheetValue: row[23] || '', heardAboutCamp: row[24] || '',
   }
 }
 
@@ -285,6 +322,7 @@ export function rowFromRegistration(registration, paymentStatus = registration.p
     registration.extraInfo, registration.numberOfDays, registration.agreementAccepted, registration.paymentMethod,
     registration.paymentLink, registration.sheetTab, registration.paidAmount || '',
     registration.stripeCheckoutSessionId || '', registration.stripePaymentIntentSheetValue || registration.stripePaymentIntentId || '',
+    registration.heardAboutCamp || '',
   ]
 }
 

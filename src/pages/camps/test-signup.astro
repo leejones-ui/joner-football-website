@@ -57,14 +57,6 @@ const sanityPage = await fetchSanityPage('camp-test-signup')
               <input required name="mobile" class="form-input" />
             </label>
             <label class="block">
-              <span class="form-label">Done A Joner Camp Before?</span>
-              <select name="previousCamp" class="form-input">
-                <option value="">Select</option>
-                <option>Yes</option>
-                <option>No</option>
-              </select>
-            </label>
-            <label class="block">
               <span class="form-label">Jersey Size *</span>
               <select required name="jerseySize" class="form-input">
                 <option value="">Select size</option>
@@ -83,9 +75,28 @@ const sanityPage = await fetchSanityPage('camp-test-signup')
               <span class="form-label">Current Club / Level</span>
               <input name="clubLevel" class="form-input" />
             </label>
-            <label class="block md:col-span-2">
-              <span class="form-label">Where Did You Hear About The Elite Camp?</span>
-              <input name="source" class="form-input" />
+            <label class="block">
+              <span class="form-label">Have You Done A Joner Football Camp Before? *</span>
+              <select required name="previousCamp" class="form-input">
+                <option value="">Select</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="form-label">Where Did You Hear About The Elite Camp? *</span>
+              <select required name="heardAboutCamp" class="form-input">
+                <option value="">Select</option>
+                <option>Instagram</option>
+                <option>Facebook</option>
+                <option>Google</option>
+                <option>YouTube</option>
+                <option>Email</option>
+                <option>Friend / word of mouth</option>
+                <option>Previous Joner player</option>
+                <option>Coach / club</option>
+                <option>Other</option>
+              </select>
             </label>
             <label class="block md:col-span-2">
               <span class="form-label">Medical History</span>

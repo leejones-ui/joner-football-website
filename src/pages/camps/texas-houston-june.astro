@@ -443,6 +443,30 @@ const sanityPage = await fetchSanityPage('camp-texas-houston-june')
             </div>
           </div>
 
+          <div class="hou-field">
+            <label>Have you done a Joner Football camp before?<span class="hou-req">*</span></label>
+            <select name="previousCamp" required>
+              <option value="">Select</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div class="hou-field">
+            <label>Where did you hear about our camp?<span class="hou-req">*</span></label>
+            <select name="heardAboutCamp" required>
+              <option value="">Select</option>
+              <option>Instagram</option>
+              <option>Facebook</option>
+              <option>Google</option>
+              <option>YouTube</option>
+              <option>Email</option>
+              <option>Friend / word of mouth</option>
+              <option>Previous Joner player</option>
+              <option>Coach / club</option>
+              <option>Other</option>
+            </select>
+          </div>
+
           <div class="hou-field hou-field-full">
             <label>Payment method<span class="hou-req">*</span></label>
             <div class="hou-pay-row">
@@ -1524,6 +1548,8 @@ const sanityPage = await fetchSanityPage('camp-texas-houston-june')
           brevoListId: Number(data.get('brevoListId') || 5),
           brevoListIds: String(data.get('brevoListIds') || '5,2'),
           source: data.get('source') || 'houston-camp-2026-landing',
+          previousCamp: data.get('previousCamp') || '',
+          heardAboutCamp: data.get('heardAboutCamp') || '',
           playerFirstName: data.get('playerFirstName') || '',
           playerSurname: data.get('playerSurname') || '',
           email: data.get('email') || '',
@@ -1538,7 +1564,7 @@ const sanityPage = await fetchSanityPage('camp-texas-houston-june')
           agreementAccepted: !!data.get('agreementAccepted'),
         }
 
-        if (!payload.playerFirstName || !payload.playerSurname || !payload.email || !payload.age || !payload.mobile || !payload.jerseySize || !payload.numberOfDays || !payload.paymentMethod || !payload.agreementAccepted) {
+        if (!payload.playerFirstName || !payload.playerSurname || !payload.email || !payload.age || !payload.mobile || !payload.jerseySize || !payload.numberOfDays || !payload.previousCamp || !payload.heardAboutCamp || !payload.paymentMethod || !payload.agreementAccepted) {
           if (errEl) errEl.textContent = 'Please fill in every required field.'
           return
         }
