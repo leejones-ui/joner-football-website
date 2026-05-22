@@ -45,11 +45,15 @@ async function verifyCampPaymentWebhook(rawBody, signatureHeader) {
   throw lastError || new Error('Invalid Stripe signature.')
 }
 
-async function retrieveStripeCheckoutSession(sessionId) {
-  const keys = [
+function stripeSecretKeys() {
+  return [
     process.env.STRIPE_SECRET_KEY,
     process.env.STRIPE_SECRET_KEY_SYDNEY,
   ].filter(Boolean)
+}
+
+async function retrieveStripeCheckoutSession(sessionId) {
+  const keys = stripeSecretKeys()
 
   let lastError = null
   for (const key of keys) {
@@ -72,6 +76,34 @@ async function retrieveStripeCheckoutSession(sessionId) {
   }
 
   throw lastError || new Error('Could not verify Checkout Session with Stripe.')
+}
+
+async function retrieveStripePaymentIntent(paymentIntentId) {
+  const keys = stripeSecretKeys()
+
+  let lastError = null
+  const params = new URLSearchParams()
+  params.append('expand[]', 'latest_charge.balance_transaction')
+
+  for (const key of keys) {
+    try {
+      const response = await fetch(`https://api.stripe.com/v1/payment_intents/${encodeURIComponent(paymentIntentId)}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      const data = await response.json().catch(() => ({}))
+      if (response.ok && data?.id === paymentIntentId) {
+        const wrapper = { payment_intent: data }
+        await hydrateSessionFinancials(wrapper, key)
+        data._stripeDashboardAccountId = await retrieveStripeAccountId(key)
+        return data
+      }
+      lastError = new Error(data?.error?.message || `Stripe PaymentIntent lookup failed with ${response.status}`)
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError || new Error('Could not verify PaymentIntent with Stripe.')
 }
 
 async function stripeGet(key, path, params = null) {
@@ -153,6 +185,10 @@ function registrationIdFromSession(session) {
   )
 }
 
+function registrationIdFromPaymentIntent(paymentIntent) {
+  return clean(paymentIntent?.metadata?.registrationId || '', 120)
+}
+
 function campTabForRegistration(registration) {
   const explicit = clean(registration.sheetTab || '', 120)
   const explicitText = explicit.toLowerCase()
@@ -169,7 +205,7 @@ function campTabForRegistration(registration) {
 }
 
 function paidAmountFromSession(session) {
-  const amount = Number(session?.amount_total)
+  const amount = Number(session?.amount_total ?? session?.amount_received ?? session?.amount)
   const currency = String(session?.currency || '').toUpperCase()
   if (!Number.isFinite(amount) || amount <= 0) return ''
   const major = amount / 100
@@ -177,7 +213,8 @@ function paidAmountFromSession(session) {
 }
 
 function internalAudAmountFromSession(session) {
-  const transaction = session?.payment_intent?.latest_charge?.balance_transaction
+  const paymentIntent = session?.payment_intent || session
+  const transaction = paymentIntent?.latest_charge?.balance_transaction
   const transactionNet = Number(transaction?.net)
   const transactionCurrency = String(transaction?.currency || '').toUpperCase()
 
@@ -192,8 +229,8 @@ function internalAudAmountFromSession(session) {
 
   // Fallback only: if Stripe has not exposed the balance transaction yet, keep
   // the exact paid AUD total from Checkout. A later webhook resend can fill net.
-  const checkoutCurrency = String(session?.currency || '').toUpperCase()
-  const checkoutAmount = Number(session?.amount_total)
+  const checkoutCurrency = String(session?.currency || paymentIntent?.currency || '').toUpperCase()
+  const checkoutAmount = Number(session?.amount_total ?? paymentIntent?.amount_received ?? paymentIntent?.amount)
   if (checkoutCurrency === 'AUD' && Number.isFinite(checkoutAmount)) {
     return `$${(checkoutAmount / 100).toFixed(2)} AUD`
   }
@@ -393,13 +430,27 @@ export default async function handler(req, res) {
       await verifyCampPaymentWebhook(rawBody, req.headers['stripe-signature'])
       signatureVerified = true
     } catch (signatureError) {
-      console.warn('Camp payment webhook signature failed; falling back to Stripe session lookup:', signatureError?.message)
+      console.warn('Camp payment webhook signature failed; falling back to Stripe server-side lookup:', signatureError?.message)
     }
 
-    const handledTypes = new Set(['checkout.session.completed', 'checkout.session.async_payment_succeeded'])
+    const handledTypes = new Set(['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'payment_intent.succeeded'])
     let result = { ignored: true, type: event.type }
 
-    if (handledTypes.has(event.type)) {
+    if (event.type === 'payment_intent.succeeded') {
+      const eventPaymentIntent = event.data.object
+      const paymentIntent = await retrieveStripePaymentIntent(eventPaymentIntent?.id)
+      const registrationId = registrationIdFromPaymentIntent(paymentIntent)
+      if (!registrationId) {
+        result = { ignored: true, reason: 'missing-registrationId-metadata', type: event.type }
+      } else {
+        result = await confirmPaidRegistration(registrationId, {
+          paidAmount: internalAudAmountFromSession(paymentIntent),
+          stripePaymentIntentId: paymentIntent.id,
+          stripePaymentIntentSheetValue: stripePaymentIntentSheetValue(paymentIntent.id, paymentIntent._stripeDashboardAccountId),
+        })
+        if (!signatureVerified) result.signatureVerification = 'stripe-payment-intent-lookup'
+      }
+    } else if (handledTypes.has(event.type)) {
       const eventSession = event.data.object
       const session = await retrieveStripeCheckoutSession(eventSession?.id)
       const paymentStatus = String(session.payment_status || '').toLowerCase()
