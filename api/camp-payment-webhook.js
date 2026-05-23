@@ -11,6 +11,7 @@ import {
   appendOperationalCampRow,
   findOperationalCampLayout,
   ensureOperationalMarketingColumns,
+  resolveSheetTitle,
   columnLetter,
   registrationFromRow,
   rowFromRegistration,
@@ -294,7 +295,7 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
         await updateCell(sheetId, PAID_SHEET, paidRowNumber, 'X', found.stripePaymentIntentSheetValue || found.stripePaymentIntentId, 'USER_ENTERED')
       }
 
-      const campTab = campTabForRegistration(found)
+      const campTab = await resolveSheetTitle(sheetId, campTabForRegistration(found))
       let campSheet = 'not-configured'
       if (campTab) {
         const campRows = await readSheetRange(sheetId, campTab, 'A:Z')
@@ -360,7 +361,7 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
     }
   }
 
-  const campTab = campTabForRegistration(found)
+  const campTab = await resolveSheetTitle(sheetId, campTabForRegistration(found))
   let campSheet = 'not-configured'
   if (campTab) {
     const campRows = await readSheetRange(sheetId, campTab, 'A:Z')

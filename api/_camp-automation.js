@@ -84,6 +84,17 @@ export async function sheetNumericId(sheetId, title) {
   return sheet?.properties?.sheetId
 }
 
+export async function resolveSheetTitle(sheetId, title) {
+  const wanted = clean(title || '', 160)
+  if (!wanted) return wanted
+  const meta = await sheetsFetch(`${sheetId}?fields=sheets.properties.title`)
+  const titles = meta.sheets?.map((entry) => entry.properties?.title).filter(Boolean) || []
+  return titles.find((entry) => entry === wanted)
+    || titles.find((entry) => clean(entry, 160).trim() === wanted.trim())
+    || titles.find((entry) => clean(entry, 160).trim().toLowerCase() === wanted.trim().toLowerCase())
+    || wanted
+}
+
 export async function deleteSheetRow(sheetId, tab, rowNumber) {
   const numericId = await sheetNumericId(sheetId, tab)
   if (!Number.isFinite(numericId) || rowNumber <= 1) return { skipped: true, reason: 'invalid-row-or-tab' }

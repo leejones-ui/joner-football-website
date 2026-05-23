@@ -9,6 +9,7 @@ import {
   deleteSheetRow,
   appendOperationalCampRow,
   findOperationalCampLayout,
+  resolveSheetTitle,
   registrationFromRow,
   rowFromRegistration,
   sendRegistrationEmail,
@@ -73,7 +74,7 @@ export default async function handler(req, res) {
     const alreadyInPaidSheet = paidRows.slice(1).some((row) => row[1] === registrationId)
     if (!alreadyInPaidSheet) await appendRow(sheetId, PAID_SHEET, paidRow)
 
-    const campTab = campTabForRegistration(found)
+    const campTab = await resolveSheetTitle(sheetId, campTabForRegistration(found))
     let campSheet = 'not-configured'
     if (campTab) {
       const campRows = await readSheetRange(sheetId, campTab, 'A:Z')
