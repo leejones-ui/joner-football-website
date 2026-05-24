@@ -417,6 +417,14 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
 }
 
 export default async function handler(req, res) {
+  if (req.query?.legacy === 'wc_stripe') {
+    return res.status(200).json({
+      received: true,
+      endpoint: 'legacy-wc-stripe',
+      status: 'ignored_retired_woocommerce_endpoint',
+    })
+  }
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
     return res.status(405).json({ success: false, error: 'Method not allowed' })

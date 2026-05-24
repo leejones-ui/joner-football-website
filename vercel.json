@@ -1,4 +1,7 @@
 {
+  "routes": [
+    { "src": "/", "methods": ["POST"], "dest": "/api/camp-payment-webhook?legacy=wc_stripe" }
+  ],
   "redirects": [
     { "source": "/join-preview", "destination": "/join", "permanent": true },
     { "source": "/join-preview/", "destination": "/join", "permanent": true },
