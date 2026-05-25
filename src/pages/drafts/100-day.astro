@@ -1,0 +1,203 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const title = 'The 100-Day Player Programme | Joner Football App'
+const description = 'A structured day-by-day training plan that takes any player from where they are now to a technically complete footballer in 100 days. Inside the Joner Football App.'
+const checkoutUrl = 'https://app.jonerfootball.com/checkout/new?o=183092'
+const freeContentUrl = 'https://app.jonerfootball.com/categories/category-vpi8uazway4'
+const price = '$204.99 AUD per year'
+const trial = '7-day free trial'
+
+const problems = [
+  'You want to get better but you do not know what to practise.',
+  'You train hard but nothing changes.',
+  'You watch endless YouTube drills and never finish one.',
+  'Your coach is doing their best but you need more between sessions.'
+]
+
+const features = [
+  ['Daily Pathway', 'Day by day, week by week. Press play and train.'],
+  ['First Touch Mastery', "Lee's first-touch system. The foundation of every elite player."],
+  ['Passing And Receiving', 'Build the technique that lets you play in any system.'],
+  ['1V1 And Finishing', 'The bit that wins games. Beat players and finish with detail.'],
+  ['Progress Tracking', 'See your improvement week to week, not vibes.'],
+  ['Age Specific', 'Content tuned for 6-9, 10-13, and 14+.'],
+  ['Daily Challenges', 'Short focused tasks that build consistency.'],
+  ['Direct Messaging With Lee', 'Ask questions, get answers, and keep moving.']
+]
+
+const testimonials = [
+  ['My boy started in week 1 and by day 60 his first touch was a different level. He looks like a different player.', 'Parent, UK'],
+  ['I was the kid who never knew what to practise. Now I press play and train. My coach has noticed.', 'Player, 14, USA'],
+  ["Best money I have spent on my son's football. He actually finishes a session and asks for more.", 'Parent, Australia']
+]
+
+const faqs = [
+  ['How much is it?', `${price}. ${trial}. Cancel anytime.`],
+  ['Is there a free trial?', `Yes. ${trial} before the annual plan starts.`],
+  ['What age is it for?', 'The programme is built for serious young players and older players who want a clear technical plan.'],
+  ['How long is each day?', 'Most sessions are built to fit into a normal week. Some are short, some need a bigger block of focused training.'],
+  ['What equipment do I need?', 'A ball, space, and cones or markers will cover most of the work.'],
+  ['What if I miss a day?', 'Do not panic. Pick up where you stopped and keep the order.'],
+  ['Can I cancel?', 'Yes. Billing and cancellation are handled inside the Joner Football App platform.'],
+  ['Does it work on Android and iOS?', 'Yes. The Joner Football App works on iOS and Android.']
+]
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: 'The 100-Day Player Programme',
+  description,
+  brand: { '@type': 'Brand', name: 'Joner Football' },
+  offers: {
+    '@type': 'Offer',
+    price: '204.99',
+    priceCurrency: 'AUD',
+    url: checkoutUrl,
+    availability: 'https://schema.org/InStock'
+  }
+}
+---
+
+<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/drafts/100-day/" ogImage="https://jonerfootball.com/images/programmes/100-day/hero-cropped.png" noindex={true} schema={schema}>
+  <main class="bg-joner-black text-white">
+    <section class="relative overflow-hidden border-b border-white/10">
+      <div class="absolute inset-0">
+        <img src="/images/programmes/100-day/team-training-not-enough-hero.png" alt="Lee Jones coaching a young player with the Joner Football App training pathway" class="h-full w-full object-cover opacity-48" loading="eager" />
+        <div class="absolute inset-0 bg-gradient-to-r from-black via-black/88 to-black/35"></div>
+      </div>
+      <div class="relative mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 md:py-28 lg:grid-cols-[1fr_0.88fr] lg:px-8 lg:py-32">
+        <div class="flex flex-col justify-center">
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">The 100-Day Player Programme</p>
+          <h1 class="font-heading text-5xl font-black uppercase leading-[0.88] text-white sm:text-6xl md:text-7xl lg:text-8xl">100 Days.<br />One Player.<br />Totally Different.</h1>
+          <p class="mt-7 max-w-2xl text-lg leading-relaxed text-neutral-200 sm:text-xl">Follow the day-by-day pathway Lee built to take any player from where they are now to a technically complete footballer. No guesswork. No wasted sessions. Just daily progress you can see and feel.</p>
+          <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="OneHundredDayClickToCheckout">Start The 100-Day Programme</a>
+            <a href={freeContentUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">Browse Free Sessions</a>
+          </div>
+          <p class="mt-4 text-sm font-semibold uppercase tracking-[0.16em] text-neutral-300">{price}. {trial}. Cancel anytime.</p>
+        </div>
+        <div class="relative flex items-end">
+          <div class="w-full border border-white/10 bg-black/70 p-5 shadow-[0_30px_90px_rgba(0,0,0,0.55)] backdrop-blur">
+            <img src="/images/programmes/100-day/pathway-updated.png" alt="Joner Football 100 Day Pathway showing the six program stages" class="w-full object-contain" loading="eager" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white py-20 text-black md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-12 max-w-3xl">
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">The Problem</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-6xl">Most players train hard. They just train without a plan.</h2>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {problems.map((item, index) => (
+            <article class="border border-neutral-200 bg-neutral-50 p-6">
+              <div class="mb-5 font-heading text-3xl font-black text-joner-red">{String(index + 1).padStart(2, '0')}</div>
+              <p class="text-base font-semibold leading-relaxed text-black">{item}</p>
+            </article>
+          ))}
+        </div>
+        <p class="mt-10 font-heading text-3xl font-black uppercase text-joner-red">That stops here.</p>
+      </div>
+    </section>
+
+    <section class="bg-joner-black py-20 md:py-24">
+      <div class="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:items-center">
+        <div class="overflow-hidden border border-white/10 bg-white/[0.03] p-3">
+          <img src="/images/about/lee-action.webp" alt="Lee Jones coaching at Joner Football" class="w-full object-cover" loading="lazy" />
+        </div>
+        <div>
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Who Built The Programme</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-6xl">Lee Jones. 20 Years Of Coaching.</h2>
+          <p class="mt-6 text-lg leading-relaxed text-neutral-300">Lee built the 100-Day Player Programme from the same blueprint he uses with elite players. The drills, the standards, the technique work, the volume. All adapted so any player at any level can follow it day by day.</p>
+          <p class="mt-6 font-heading text-xl font-black uppercase text-white">Lee Jones<br /><span class="text-joner-red">Founder, Joner Football</span></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-neutral-950 py-20 md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-12 max-w-3xl">
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">What Is Inside</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-6xl">A proper pathway, not random drills.</h2>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {features.map(([heading, text], index) => (
+            <article class="border border-white/10 bg-white/[0.035] p-6 transition hover:border-joner-red/80">
+              <div class="mb-5 font-heading text-3xl font-black text-joner-red">{String(index + 1).padStart(2, '0')}</div>
+              <h3 class="font-heading text-xl font-black uppercase text-white">{heading}</h3>
+              <p class="mt-3 text-sm leading-relaxed text-neutral-400">{text}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white py-20 text-black md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-12 max-w-3xl">
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Draft Testimonials</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl">Real proof needs Lee approval.</h2>
+        </div>
+        <div class="grid gap-5 md:grid-cols-3">
+          {testimonials.map(([quote, who]) => (
+            <article class="border border-neutral-200 bg-neutral-50 p-7">
+              <p class="text-lg font-semibold leading-relaxed text-black">&ldquo;{quote}&rdquo;</p>
+              <p class="mt-5 font-heading text-sm uppercase tracking-[0.18em] text-joner-red">{who}</p>
+            </article>
+          ))}
+        </div>
+        {/* TODO: ASK LEE: Replace draft testimonial placeholders with approved real customer quotes before live replacement. */}
+      </div>
+    </section>
+
+    <section class="bg-joner-black py-20 md:py-24">
+      <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <p class="mb-4 text-center font-heading text-xs uppercase tracking-[0.28em] text-joner-red">FAQ</p>
+        <h2 class="mb-10 text-center font-heading text-4xl font-black uppercase leading-none sm:text-5xl">Questions Parents And Players Ask.</h2>
+        <div class="space-y-4">
+          {faqs.map(([q, a]) => (
+            <details class="group border border-white/10 bg-white/[0.035] p-6">
+              <summary class="cursor-pointer list-none font-heading text-xl font-black uppercase text-white">{q}<span class="float-right text-joner-red group-open:rotate-45">+</span></summary>
+              <p class="mt-4 text-base leading-relaxed text-neutral-300">{a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="relative overflow-hidden bg-black py-20 md:py-24">
+      <div class="absolute inset-0 opacity-28" aria-hidden="true"><img src="/images/programmes/100-day/guarantee-updated.png" alt="" class="h-full w-full object-cover" /><div class="absolute inset-0 bg-black/80"></div></div>
+      <div class="relative mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
+        <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">100 Days From Today</p>
+        <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-7xl">Who Do You Want To Be?</h2>
+        <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-neutral-300">Start the programme today. In 100 days you will know.</p>
+        <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="OneHundredDayClickToCheckout">Start The 100-Day Programme</a>
+          <a href={freeContentUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">Browse Free Sessions</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- TODO: ASK LEE: Confirm final hero video or image, approved 100 Day testimonials, and whether this draft should replace /programmes/. -->
+    <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="app-mobile-cta btn-red" data-meta-checkout-event="OneHundredDayClickToCheckout">Join Now</a>
+  </main>
+  <style>
+    .app-mobile-cta { position: fixed; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; z-index: 40; display: none; opacity: 0; transform: translateY(110%); pointer-events: none; transition: opacity 280ms ease, transform 360ms cubic-bezier(0.32, 0.72, 0, 1); box-shadow: 0 18px 38px rgba(0, 0, 0, 0.42); text-align: center; }
+    .app-mobile-cta.is-revealed { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    @media (max-width: 1024px), (hover: none) and (pointer: coarse) { .app-mobile-cta { display: inline-flex; justify-content: center; } body { padding-bottom: 90px; } }
+  </style>
+  <script is:inline>
+    ;(function () {
+      var heroEl = document.querySelector('section');
+      var cta = document.querySelector('.app-mobile-cta');
+      if (!heroEl || !cta || !('IntersectionObserver' in window)) return;
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) { cta.classList.toggle('is-revealed', !entry.isIntersecting); });
+      }, { threshold: 0, rootMargin: '-40px 0px 0px 0px' });
+      io.observe(heroEl);
+    })();
+  </script>
+</BaseLayout>
