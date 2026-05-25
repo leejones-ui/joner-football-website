@@ -1,0 +1,233 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const title = 'Team Subscriptions | Joner Football App'
+const description = 'Give your whole club, academy, or school access to the Joner Football App. Bulk licenses, custom pricing, dedicated support.'
+const bookCallUrl = '/contact?topic=teams'
+const contactEmail = 'leejones@jonerfootball.com'
+const emailUrl = `mailto:${contactEmail}?subject=Team%20Subscription%20Enquiry`
+
+const groups = [
+  ['Clubs', 'Run your whole age-group structure on the same technical curriculum.'],
+  ['Academies', 'Give your players a daily plan that complements your in-person sessions.'],
+  ['Schools', 'Roll out structured football development across the whole student body.']
+]
+
+const pains = [
+  'Every coach in your club runs different sessions. No consistency across age groups.',
+  "Your players have nothing to do between training nights.",
+  "Your coaches spend Sunday building Tuesday's plan from scratch.",
+  'You want to lift the standard of your whole club but you cannot scale Lee.'
+]
+
+const features = [
+  ['Whole-Club Access', 'Every player and coach in your organisation, one app.'],
+  ['Coaches Tier Included', 'Every coach in your club gets the full Coaches Only section.'],
+  ['Custom Rollout', 'Lee builds the structure for your age groups and standards.'],
+  ['Dedicated Support', 'A direct line for your coaches and managers.'],
+  ['Workshops Bolt-On', 'Optional in-person or remote sessions with Lee for your coaching staff.'],
+  ['Reporting', 'See what your players are training and how often.']
+]
+
+const tiers = [
+  ['20 to 50 players', 'Most academies and small clubs.'],
+  ['50 to 250 players', 'Mid-size clubs and full age-group structures.'],
+  ['250+ players', 'Multi-site clubs, federations, school networks.']
+]
+
+const testimonials = [
+  ['We rolled the app out across our U10 to U16 squads. Coaches stopped winging sessions. Our players are training between nights.', 'Director of Football, UK Academy'],
+  ['Lee built us a 12-week structure for the start of season. Our whole club is on the same page now.', 'Head Coach, USA Club'],
+  ['Best decision we made this season. Worth it for the coaches section alone.', 'Football Director, AUS Academy']
+]
+
+const faqs = [
+  ['How does pricing work?', 'Every Team Subscription is priced around player numbers, coach access, and the level of onboarding needed.'],
+  ['Is there a fixed agreement length?', 'Lee will confirm the best agreement structure after the team call.'],
+  ['Can we cancel?', 'Cancellation terms depend on the final team agreement.'],
+  ['Who gets access?', 'Players and coaches included in the agreed team subscription setup.'],
+  ['Is Coaches Only included?', 'Yes. Coaches Only is included for coaches in the team setup.'],
+  ['Can Lee run workshops too?', 'Yes. Workshops can be added for coaching staff where the schedule works.'],
+  ['How do we start?', 'Book a teams call or email Lee directly with your club, country, and player count.']
+]
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  name: 'Joner Football Team Subscriptions',
+  description,
+  provider: { '@type': 'Organization', name: 'Joner Football' },
+  areaServed: 'Worldwide'
+}
+---
+
+<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/drafts/teams/" ogImage="https://jonerfootball.com/images/teams/team-subscriptions-hero.webp" noindex={true} schema={schema}>
+  <main class="bg-joner-black text-white">
+    <section class="relative overflow-hidden border-b border-white/10">
+      <div class="absolute inset-0">
+        <img src="/images/teams/team-subscriptions-hero.webp" alt="Joner Football team subscription presentation for players and coaches" class="h-full w-full object-cover opacity-55" loading="eager" />
+        <div class="absolute inset-0 bg-gradient-to-r from-black via-black/88 to-black/35"></div>
+      </div>
+      <div class="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 md:py-28 lg:px-8 lg:py-32">
+        <div class="max-w-4xl">
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Teams, Academies, And Clubs</p>
+          <h1 class="font-heading text-5xl font-black uppercase leading-[0.88] text-white sm:text-6xl md:text-7xl lg:text-8xl">One App.<br />Your Whole Club.<br />Zero Prep Time.</h1>
+          <p class="mt-7 max-w-2xl text-lg leading-relaxed text-neutral-200 sm:text-xl">Give every player and coach in your organisation the full Joner Football App. Session plans, drills, follow-along programmes, and the way Lee coaches at the elite level. Bulk licenses, dedicated support, custom pricing.</p>
+          <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+            <a href={bookCallUrl} class="btn-red text-base px-8 py-4 text-center">Book A Teams Call</a>
+            <a href={emailUrl} class="btn-outline text-base px-8 py-4 text-center">Email Lee Directly</a>
+          </div>
+          <p class="mt-4 text-sm font-semibold uppercase tracking-[0.16em] text-neutral-300">Custom pricing. From 20 to 2,000 players. Dedicated onboarding.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white py-20 text-black md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-12 max-w-3xl">
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Who This Is For</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-6xl">Built for organisations that want one technical standard.</h2>
+        </div>
+        <div class="grid gap-5 md:grid-cols-3">
+          {groups.map(([heading, text]) => (
+            <article class="border border-neutral-200 bg-neutral-50 p-7">
+              <h3 class="font-heading text-2xl font-black uppercase text-black">{heading}</h3>
+              <p class="mt-4 text-base leading-relaxed text-neutral-700">{text}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-joner-black py-20 md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-12 max-w-3xl">
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">The Club Problem</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-6xl">Every coach is doing their own thing.</h2>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {pains.map((item, index) => (
+            <article class="border border-white/10 bg-white/[0.035] p-6">
+              <div class="mb-5 font-heading text-3xl font-black text-joner-red">{String(index + 1).padStart(2, '0')}</div>
+              <p class="text-sm leading-relaxed text-neutral-300">{item}</p>
+            </article>
+          ))}
+        </div>
+        <p class="mt-10 font-heading text-3xl font-black uppercase text-joner-red">That changes with Team Subscriptions.</p>
+      </div>
+    </section>
+
+    <section class="bg-neutral-950 py-20 md:py-24">
+      <div class="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:items-center">
+        <div class="overflow-hidden border border-white/10 bg-white/[0.03] p-3">
+          <img src="/images/about/lee-with-players.webp" alt="Lee Jones with Joner Football players" class="w-full object-cover" loading="lazy" />
+        </div>
+        <div>
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Who You Work With</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-6xl">Lee Jones. Direct.</h2>
+          <p class="mt-6 text-lg leading-relaxed text-neutral-300">Team Subscriptions are not a self-serve plan. Lee runs the onboarding personally. You get a dedicated setup, a structure mapped to your age groups, and ongoing support from the Joner Football team.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-joner-black py-20 md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-12 max-w-3xl">
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">What Teams Get</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-6xl">A full club setup, not a normal app sign up.</h2>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {features.map(([heading, text], index) => (
+            <article class="border border-white/10 bg-white/[0.035] p-6 transition hover:border-joner-red/80">
+              <div class="mb-5 font-heading text-3xl font-black text-joner-red">{String(index + 1).padStart(2, '0')}</div>
+              <h3 class="font-heading text-xl font-black uppercase text-white">{heading}</h3>
+              <p class="mt-3 text-sm leading-relaxed text-neutral-400">{text}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white py-20 text-black md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-12 max-w-3xl">
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">How Pricing Works</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-6xl">Built around your club.</h2>
+          <p class="mt-5 text-lg leading-relaxed text-neutral-700">Every Team Subscription is priced around the number of players, coaches, and the level of onboarding you need. Book a 15-minute call and Lee will quote you on the spot.</p>
+        </div>
+        <div class="grid gap-5 md:grid-cols-3">
+          {tiers.map(([heading, text]) => (
+            <article class="border border-neutral-200 bg-neutral-50 p-7">
+              <h3 class="font-heading text-2xl font-black uppercase text-black">{heading}</h3>
+              <p class="mt-4 text-base leading-relaxed text-neutral-700">{text}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-neutral-950 py-20 md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-12 max-w-3xl">
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Draft Testimonials</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl">Club proof needs Lee approval.</h2>
+        </div>
+        <div class="grid gap-5 md:grid-cols-3">
+          {testimonials.map(([quote, who]) => (
+            <article class="border border-white/10 bg-white/[0.035] p-7">
+              <p class="text-lg font-semibold leading-relaxed text-white">&ldquo;{quote}&rdquo;</p>
+              <p class="mt-5 font-heading text-sm uppercase tracking-[0.18em] text-joner-red">{who}</p>
+            </article>
+          ))}
+        </div>
+        {/* TODO: ASK LEE: Replace draft team testimonial placeholders with approved real club quotes before live replacement. */}
+      </div>
+    </section>
+
+    <section class="bg-joner-black py-20 md:py-24">
+      <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <p class="mb-4 text-center font-heading text-xs uppercase tracking-[0.28em] text-joner-red">FAQ</p>
+        <h2 class="mb-10 text-center font-heading text-4xl font-black uppercase leading-none sm:text-5xl">Questions Teams Ask.</h2>
+        <div class="space-y-4">
+          {faqs.map(([q, a]) => (
+            <details class="group border border-white/10 bg-white/[0.035] p-6">
+              <summary class="cursor-pointer list-none font-heading text-xl font-black uppercase text-white">{q}<span class="float-right text-joner-red group-open:rotate-45">+</span></summary>
+              <p class="mt-4 text-base leading-relaxed text-neutral-300">{a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="relative overflow-hidden bg-black py-20 md:py-24">
+      <div class="absolute inset-0 opacity-25" aria-hidden="true"><img src="/images/training/jfp/jfp-training-4.webp" alt="" class="h-full w-full object-cover" /><div class="absolute inset-0 bg-black/80"></div></div>
+      <div class="relative mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
+        <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Team Access</p>
+        <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-7xl">Build one standard across your club.</h2>
+        <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <a href={bookCallUrl} class="btn-red text-base px-8 py-4 text-center">Book A Teams Call</a>
+          <a href={emailUrl} class="btn-outline text-base px-8 py-4 text-center">Email Lee Directly</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- TODO: ASK LEE: Confirm final team enquiry form, Brevo list ID, recipient routing, club testimonials, and whether to create /api/teams-enquiry.js before live replacement. -->
+    <a href={bookCallUrl} class="app-mobile-cta btn-red">Book A Teams Call</a>
+  </main>
+  <style>
+    .app-mobile-cta { position: fixed; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; z-index: 40; display: none; opacity: 0; transform: translateY(110%); pointer-events: none; transition: opacity 280ms ease, transform 360ms cubic-bezier(0.32, 0.72, 0, 1); box-shadow: 0 18px 38px rgba(0, 0, 0, 0.42); text-align: center; }
+    .app-mobile-cta.is-revealed { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    @media (max-width: 1024px), (hover: none) and (pointer: coarse) { .app-mobile-cta { display: inline-flex; justify-content: center; } body { padding-bottom: 90px; } }
+  </style>
+  <script is:inline>
+    ;(function () {
+      var heroEl = document.querySelector('section');
+      var cta = document.querySelector('.app-mobile-cta');
+      if (!heroEl || !cta || !('IntersectionObserver' in window)) return;
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) { cta.classList.toggle('is-revealed', !entry.isIntersecting); });
+      }, { threshold: 0, rootMargin: '-40px 0px 0px 0px' });
+      io.observe(heroEl);
+    })();
+  </script>
+</BaseLayout>
