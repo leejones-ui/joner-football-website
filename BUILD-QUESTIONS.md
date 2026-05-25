@@ -15,6 +15,8 @@ Draft routes only. Live pages must not be replaced until Lee approves.
 
 - Confirm final Coaches Only checkout offer URL and category URL.
 - Supply approved coach testimonials.
+- Upload the approved Coaches Only walkthrough video to `public/videos/coaches-only-intro.mp4`, or confirm the final filename to use.
+- Confirm the exact Coaches Only country count for the hero trust row.
 - Confirm if Lee wants pricing shown or kept off the website and handled inside Uscreen.
 - Confirm preferred hero asset. Current draft uses existing Joner coaching imagery from the repo.
 - Confirm if draft page should replace `/app/for-coaches/` after review.

@@ -38,6 +38,7 @@ const tiers = [
 ]
 
 const testimonials = [
+  // TODO: ASK LEE: Replace these review placeholders with approved team or club quotes before live replacement.
   ['We rolled the app out across our U10 to U16 squads. Coaches stopped winging sessions. Our players are training between nights.', 'Director of Football, UK Academy'],
   ['Lee built us a 12-week structure for the start of season. Our whole club is on the same page now.', 'Head Coach, USA Club'],
   ['Best decision we made this season. Worth it for the coaches section alone.', 'Football Director, AUS Academy']
@@ -219,8 +220,8 @@ const schema = {
     <section class="bg-neutral-950 py-20 md:py-24">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="mb-12 max-w-3xl">
-          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Draft Testimonials</p>
-          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl">Club proof needs Lee approval.</h2>
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Testimonials</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl">What clubs want from one shared standard.</h2>
         </div>
         <div class="grid gap-5 md:grid-cols-3">
           {testimonials.map(([quote, who]) => (
@@ -230,7 +231,6 @@ const schema = {
             </article>
           ))}
         </div>
-        {/* TODO: ASK LEE: Replace draft team testimonial placeholders with approved real club quotes before live replacement. */}
       </div>
     </section>
 
@@ -261,7 +261,7 @@ const schema = {
       </div>
     </section>
 
-    <!-- TODO: ASK LEE: Confirm final club testimonials, team enquiry recipients, and Brevo list ID before live replacement. -->
+    {/* TODO: ASK LEE: Confirm final club testimonials, team enquiry recipients, and Brevo list ID before live replacement. */}
     <StickyMobileCta href={enquiryFormUrl} label="Book A Teams Call" external={false} />
   </main>
   <script is:inline>

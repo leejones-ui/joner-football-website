@@ -7,6 +7,7 @@ export default defineConfig({
   site: 'https://jonerfootball.com',
   integrations: [sitemap({
     filter: (page) => {
+      const pathname = new URL(page, 'https://jonerfootball.com').pathname;
       const excludedPaths = [
         '/checkout-success/',
         '/camps/test-signup/',
@@ -18,7 +19,7 @@ export default defineConfig({
         '/new-coaching-role/',
         '/training/joners-juniors/',
       ];
-      return !excludedPaths.some((path) => page.endsWith(path));
+      return !pathname.startsWith('/drafts/') && !excludedPaths.includes(pathname);
     },
   })],
   vite: {
