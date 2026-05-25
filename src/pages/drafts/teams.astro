@@ -1,9 +1,11 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import StickyMobileCta from '../../components/StickyMobileCta.astro'
 
 const title = 'Team Subscriptions | Joner Football App'
 const description = 'Give your whole club, academy, or school access to the Joner Football App. Bulk licenses, custom pricing, dedicated support.'
 const bookCallUrl = '/contact?topic=teams'
+const enquiryFormUrl = '#teams-enquiry'
 const contactEmail = 'leejones@jonerfootball.com'
 const emailUrl = `mailto:${contactEmail}?subject=Team%20Subscription%20Enquiry`
 
@@ -65,8 +67,8 @@ const schema = {
   <main class="bg-joner-black text-white">
     <section class="relative overflow-hidden border-b border-white/10">
       <div class="absolute inset-0">
-        <img src="/images/teams/team-subscriptions-hero.webp" alt="Joner Football team subscription presentation for players and coaches" class="h-full w-full object-cover opacity-55" loading="eager" />
-        <div class="absolute inset-0 bg-gradient-to-r from-black via-black/88 to-black/35"></div>
+        <img src="/images/teams/team-subscriptions-hero.webp" alt="Joner Football team subscription presentation for players and coaches" class="h-full w-full object-cover opacity-[0.55]" loading="eager" />
+        <div class="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/40"></div>
       </div>
       <div class="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 md:py-28 lg:px-8 lg:py-32">
         <div class="max-w-4xl">
@@ -74,7 +76,7 @@ const schema = {
           <h1 class="font-heading text-5xl font-black uppercase leading-[0.88] text-white sm:text-6xl md:text-7xl lg:text-8xl">One App.<br />Your Whole Club.<br />Zero Prep Time.</h1>
           <p class="mt-7 max-w-2xl text-lg leading-relaxed text-neutral-200 sm:text-xl">Give every player and coach in your organisation the full Joner Football App. Session plans, drills, follow-along programmes, and the way Lee coaches at the elite level. Bulk licenses, dedicated support, custom pricing.</p>
           <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a href={bookCallUrl} class="btn-red text-base px-8 py-4 text-center">Book A Teams Call</a>
+            <a href={enquiryFormUrl} class="btn-red text-base px-8 py-4 text-center">Book A Teams Call</a>
             <a href={emailUrl} class="btn-outline text-base px-8 py-4 text-center">Email Lee Directly</a>
           </div>
           <p class="mt-4 text-sm font-semibold uppercase tracking-[0.16em] text-neutral-300">Custom pricing. From 20 to 2,000 players. Dedicated onboarding.</p>
@@ -166,6 +168,54 @@ const schema = {
       </div>
     </section>
 
+    <section id="teams-enquiry" class="bg-joner-black py-20 md:py-24 scroll-mt-24">
+      <div class="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.82fr_1.18fr] lg:px-8 lg:items-start">
+        <div>
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Book The Call</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-6xl">Tell Lee what your club needs.</h2>
+          <p class="mt-6 text-lg leading-relaxed text-neutral-300">Send the basics. Lee or the Joner team will come back with the right team setup and next step.</p>
+          <p class="mt-5 text-sm leading-relaxed text-neutral-500">Prefer the main contact page? <a href={bookCallUrl} class="text-white underline decoration-joner-red underline-offset-4">Use the contact form</a>.</p>
+        </div>
+
+        <form id="teams-enquiry-form" class="border border-white/10 bg-white/[0.035] p-5 md:p-8">
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="teams-full-name" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-white">Full Name</label>
+              <input id="teams-full-name" name="fullName" type="text" autocomplete="name" required class="min-h-[48px] w-full border border-white/10 bg-black px-4 py-3 text-base text-white placeholder:text-neutral-600 focus:border-joner-red focus:outline-none" />
+            </div>
+            <div>
+              <label for="teams-organisation" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-white">Club / Organisation</label>
+              <input id="teams-organisation" name="organisation" type="text" autocomplete="organization" required class="min-h-[48px] w-full border border-white/10 bg-black px-4 py-3 text-base text-white placeholder:text-neutral-600 focus:border-joner-red focus:outline-none" />
+            </div>
+            <div>
+              <label for="teams-role" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-white">Role</label>
+              <input id="teams-role" name="role" type="text" required class="min-h-[48px] w-full border border-white/10 bg-black px-4 py-3 text-base text-white placeholder:text-neutral-600 focus:border-joner-red focus:outline-none" />
+            </div>
+            <div>
+              <label for="teams-email" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-white">Email</label>
+              <input id="teams-email" name="email" type="email" autocomplete="email" required class="min-h-[48px] w-full border border-white/10 bg-black px-4 py-3 text-base text-white placeholder:text-neutral-600 focus:border-joner-red focus:outline-none" />
+            </div>
+            <div>
+              <label for="teams-player-count" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-white">Number Of Players</label>
+              <input id="teams-player-count" name="numberOfPlayers" type="number" min="1" inputmode="numeric" required class="min-h-[48px] w-full border border-white/10 bg-black px-4 py-3 text-base text-white placeholder:text-neutral-600 focus:border-joner-red focus:outline-none" />
+            </div>
+            <div>
+              <label for="teams-country" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-white">Country</label>
+              <input id="teams-country" name="country" type="text" autocomplete="country-name" required class="min-h-[48px] w-full border border-white/10 bg-black px-4 py-3 text-base text-white placeholder:text-neutral-600 focus:border-joner-red focus:outline-none" />
+            </div>
+          </div>
+
+          <div class="mt-5">
+            <label for="teams-message" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-white">Message</label>
+            <textarea id="teams-message" name="message" rows="5" required class="w-full border border-white/10 bg-black px-4 py-3 text-base text-white placeholder:text-neutral-600 focus:border-joner-red focus:outline-none"></textarea>
+          </div>
+
+          <p id="teams-enquiry-status" class="mt-5 hidden font-body text-sm" role="status"></p>
+          <button type="submit" class="btn-red mt-6 w-full text-base px-8 py-4 text-center">Submit Team Enquiry</button>
+        </form>
+      </div>
+    </section>
+
     <section class="bg-neutral-950 py-20 md:py-24">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="mb-12 max-w-3xl">
@@ -200,34 +250,87 @@ const schema = {
     </section>
 
     <section class="relative overflow-hidden bg-black py-20 md:py-24">
-      <div class="absolute inset-0 opacity-25" aria-hidden="true"><img src="/images/training/jfp/jfp-training-4.webp" alt="" class="h-full w-full object-cover" /><div class="absolute inset-0 bg-black/80"></div></div>
+      <div class="absolute inset-0 opacity-[0.25]" aria-hidden="true"><img src="/images/training/jfp/jfp-training-4.webp" alt="" class="h-full w-full object-cover" /><div class="absolute inset-0 bg-black/80"></div></div>
       <div class="relative mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
         <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Team Access</p>
         <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-7xl">Build one standard across your club.</h2>
         <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href={bookCallUrl} class="btn-red text-base px-8 py-4 text-center">Book A Teams Call</a>
+          <a href={enquiryFormUrl} class="btn-red text-base px-8 py-4 text-center">Book A Teams Call</a>
           <a href={emailUrl} class="btn-outline text-base px-8 py-4 text-center">Email Lee Directly</a>
         </div>
       </div>
     </section>
 
-    <!-- TODO: ASK LEE: Confirm final team enquiry form, Brevo list ID, recipient routing, club testimonials, and whether to create /api/teams-enquiry.js before live replacement. -->
-    <a href={bookCallUrl} class="app-mobile-cta btn-red">Book A Teams Call</a>
+    <!-- TODO: ASK LEE: Confirm final club testimonials, team enquiry recipients, and Brevo list ID before live replacement. -->
+    <StickyMobileCta href={enquiryFormUrl} label="Book A Teams Call" external={false} />
   </main>
-  <style>
-    .app-mobile-cta { position: fixed; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; z-index: 40; display: none; opacity: 0; transform: translateY(110%); pointer-events: none; transition: opacity 280ms ease, transform 360ms cubic-bezier(0.32, 0.72, 0, 1); box-shadow: 0 18px 38px rgba(0, 0, 0, 0.42); text-align: center; }
-    .app-mobile-cta.is-revealed { opacity: 1; transform: translateY(0); pointer-events: auto; }
-    @media (max-width: 1024px), (hover: none) and (pointer: coarse) { .app-mobile-cta { display: inline-flex; justify-content: center; } body { padding-bottom: 90px; } }
-  </style>
   <script is:inline>
     ;(function () {
-      var heroEl = document.querySelector('section');
-      var cta = document.querySelector('.app-mobile-cta');
-      if (!heroEl || !cta || !('IntersectionObserver' in window)) return;
-      var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (entry) { cta.classList.toggle('is-revealed', !entry.isIntersecting); });
-      }, { threshold: 0, rootMargin: '-40px 0px 0px 0px' });
-      io.observe(heroEl);
+      var form = document.getElementById('teams-enquiry-form');
+      if (!form) return;
+      var submit = form.querySelector('button[type="submit"]');
+      var status = document.getElementById('teams-enquiry-status');
+
+      function setStatus(message, ok) {
+        if (!status) return;
+        status.textContent = message || '';
+        status.className = message ? 'mt-5 font-body text-sm ' + (ok ? 'text-white' : 'text-joner-red') : 'mt-5 hidden font-body text-sm';
+      }
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        setStatus('', true);
+        var originalText = submit ? submit.textContent : 'Submit Team Enquiry';
+        var formData = new FormData(form);
+        var emailInput = form.querySelector('input[name="email"]');
+
+        if (window.JonerEmailGuard && emailInput) {
+          var validation = window.JonerEmailGuard.validateEmail(formData.get('email'));
+          window.JonerEmailGuard.setFeedback(emailInput, validation);
+          if (!validation.valid) {
+            emailInput.reportValidity();
+            return;
+          }
+        }
+
+        if (submit) {
+          submit.disabled = true;
+          submit.textContent = 'Sending...';
+          submit.classList.add('opacity-70', 'cursor-not-allowed');
+        }
+
+        var payload = {};
+        formData.forEach(function (value, key) { payload[key] = value; });
+
+        var tokenPromise = window.JonerRecaptcha && window.JonerRecaptcha.getToken
+          ? window.JonerRecaptcha.getToken('teams_enquiry')
+          : Promise.resolve('');
+
+        tokenPromise.then(function (token) {
+          payload.recaptchaToken = token;
+          return fetch('/api/teams-enquiry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data || !data.success) throw new Error((data && data.error) || 'Could not send enquiry.');
+          form.reset();
+          setStatus('Done. The Joner team has your enquiry.', true);
+        })
+        .catch(function (error) {
+          setStatus(error && error.message ? error.message : 'Could not send enquiry. Please try again.', false);
+        })
+        .finally(function () {
+          if (submit) {
+            submit.disabled = false;
+            submit.textContent = originalText;
+            submit.classList.remove('opacity-70', 'cursor-not-allowed');
+          }
+        });
+      });
     })();
   </script>
 </BaseLayout>
