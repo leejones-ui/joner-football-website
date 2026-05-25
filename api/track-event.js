@@ -8,6 +8,7 @@ const ALLOWED_EVENTS = new Set([
   'ViewContent',
   'Lead',
   'CompleteRegistration',
+  'AddToCart',
   'InitiateCheckout',
   'WebsiteClickToCheckout',
   'WebsiteDeepScroll',

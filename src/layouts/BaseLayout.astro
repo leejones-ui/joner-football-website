@@ -171,6 +171,7 @@ const allSchemas = schema
         var TRACKING_PARAM_PREFIXES = ['utm_'];
         var TRACKING_PARAM_KEYS = ['fbclid', 'gclid', 'ttclid', 'msclkid'];
         var STORAGE_KEY = 'joner_tracking_params';
+        var META_TEST_EVENT_STORAGE_KEY = 'joner_meta_test_event_code';
 
         function isTrackingParam(key) {
           if (TRACKING_PARAM_KEYS.indexOf(key) !== -1) return true;
@@ -202,6 +203,88 @@ const allSchemas = schema
           if (!params) return obj;
           params.forEach(function (value, key) { obj[key] = value; });
           return obj;
+        }
+
+        function collectMetaTestEventCode() {
+          var params = new URLSearchParams(window.location.search || '');
+          var code = params.get('meta_test_event_code') || params.get('test_event_code') || '';
+          if (code) {
+            try { window.sessionStorage.setItem(META_TEST_EVENT_STORAGE_KEY, code); } catch (e) {}
+            return code;
+          }
+          try { return window.sessionStorage.getItem(META_TEST_EVENT_STORAGE_KEY) || ''; } catch (e) {}
+          return '';
+        }
+
+        function getPathname() {
+          var path = window.location.pathname || '/';
+          return path.replace(/\/+$/, '') || '/';
+        }
+
+        function getViewContentForPath() {
+          var path = getPathname();
+          var pageMap = {
+            '/app': 'Joner Football App',
+            '/app/for-coaches': 'Joner Football App For Coaches',
+            '/programmes': 'Joner Football Programmes',
+            '/teams': 'Joner Football Teams',
+            '/join': 'Joner Football Join'
+          };
+          if (!pageMap[path]) return null;
+          return {
+            content_name: pageMap[path],
+            content_type: 'landing_page',
+            page_path: path
+          };
+        }
+
+        function getCheckoutOfferId(anchor) {
+          try { return new URL(anchor.href, window.location.href).searchParams.get('o') || ''; }
+          catch (e) { return ''; }
+        }
+
+        function getPlanType(anchor) {
+          if (!anchor) return '';
+          if (anchor.dataset && anchor.dataset.metaPlanType) return anchor.dataset.metaPlanType;
+          var offerId = getCheckoutOfferId(anchor);
+          if (offerId === '183092') return 'annual';
+          if (offerId === '183083') return 'monthly';
+          var text = (anchor.textContent || '').toLowerCase();
+          if (text.indexOf('annual') !== -1 || text.indexOf('year') !== -1) return 'annual';
+          if (text.indexOf('monthly') !== -1 || text.indexOf('month') !== -1) return 'monthly';
+          return '';
+        }
+
+        function buildCheckoutCustomData(anchor) {
+          var offerId = getCheckoutOfferId(anchor);
+          var planType = getPlanType(anchor);
+          var data = {
+            destination_url: anchor.href,
+            content_name: anchor.textContent ? anchor.textContent.trim().slice(0, 120) : 'checkout-link',
+            content_type: 'checkout_link'
+          };
+          if (offerId) data.offer_id = offerId;
+          if (planType) data.plan_type = planType;
+          return data;
+        }
+
+        function trackStandardCheckoutEvents(anchor) {
+          var checkoutData = buildCheckoutCustomData(anchor);
+          var planType = checkoutData.plan_type || '';
+          if (planType === 'annual' || planType === 'monthly') {
+            trackEvent('AddToCart', {
+              custom_data: Object.assign({}, checkoutData, {
+                content_name: planType === 'annual' ? 'Annual plan button' : 'Monthly plan button'
+              })
+            });
+          }
+          trackEvent('InitiateCheckout', { custom_data: checkoutData });
+        }
+
+        function trackLandingPageViewContent() {
+          var viewContentData = getViewContentForPath();
+          if (!viewContentData) return;
+          trackEvent('ViewContent', { custom_data: viewContentData });
         }
 
         function appendTrackingParams(href, trackingParams) {
@@ -244,7 +327,7 @@ const allSchemas = schema
           }, options.user_data || {});
 
           if (typeof window.fbq === 'function') {
-            if (eventName === 'Lead' || eventName === 'CompleteRegistration' || eventName === 'InitiateCheckout' || eventName === 'ViewContent') {
+            if (eventName === 'Lead' || eventName === 'CompleteRegistration' || eventName === 'AddToCart' || eventName === 'InitiateCheckout' || eventName === 'ViewContent') {
               window.fbq('track', eventName, customData, { eventID: eventId });
             } else {
               window.fbq('trackCustom', eventName, customData, { eventID: eventId });
@@ -256,6 +339,7 @@ const allSchemas = schema
               event_name: eventName,
               event_id: eventId,
               event_source_url: window.location.href,
+              test_event_code: collectMetaTestEventCode(),
               user_data: userData,
               custom_data: customData
             });
@@ -296,6 +380,8 @@ const allSchemas = schema
             trackEvent: trackEvent
           };
 
+          trackLandingPageViewContent();
+
           var trackingParams = collectTrackingParams();
 
           document.querySelectorAll('a[href]').forEach(function (anchor) {
@@ -308,11 +394,9 @@ const allSchemas = schema
             if (!isAppOutboundLink(anchor)) return;
             anchor.href = appendTrackingParams(anchor.href, collectTrackingParams());
             if (anchor.href.indexOf('/checkout/new') !== -1) {
+              trackStandardCheckoutEvents(anchor);
               trackEvent(getCheckoutEventName(anchor), {
-                custom_data: {
-                  destination_url: anchor.href,
-                  content_name: anchor.textContent ? anchor.textContent.trim().slice(0, 120) : 'checkout-link'
-                }
+                custom_data: buildCheckoutCustomData(anchor)
               });
             }
           }, true);
