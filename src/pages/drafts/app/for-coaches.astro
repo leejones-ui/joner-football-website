@@ -1,11 +1,13 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro'
+import StickyMobileCta from '../../../components/StickyMobileCta.astro'
 
 const title = 'Coaches Only | Joner Football App'
 const description = 'A dedicated Joner Football App tier for coaches who want session plans, coaching points, full training sessions, and the detail behind how Lee coaches.'
 const checkoutUrl = 'https://app.jonerfootball.com/checkout/new?o=202578'
 const categoryUrl = 'https://app.jonerfootball.com/categories/category-8-7szqoiq00'
 const price = '$319.99 AUD per year'
+const checkoutEvent = 'CoachesPageClickToCheckout'
 
 const features = [
   ['App And Session Planner Walkthrough', 'See how Lee finds drills, builds sessions, manages difficulty, and plans with purpose.'],
@@ -47,8 +49,8 @@ const schema = {
   <main class="bg-joner-black text-white">
     <section class="relative overflow-hidden border-b border-white/10">
       <div class="absolute inset-0">
-        <img src="/images/coaches-only/dsc05109-hero.webp" alt="Lee Jones coaching players during a Joner Football session" class="h-full w-full object-cover opacity-55" loading="eager" />
-        <div class="absolute inset-0 bg-gradient-to-r from-black via-black/88 to-black/35"></div>
+        <img src="/images/coaches-only/dsc05109-hero.webp" alt="Lee Jones coaching players during a Joner Football session" class="h-full w-full object-cover opacity-[0.55]" loading="eager" />
+        <div class="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/40"></div>
       </div>
       <div class="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 md:py-28 lg:px-8 lg:py-32">
         <div class="max-w-4xl">
@@ -56,10 +58,15 @@ const schema = {
           <h1 class="font-heading text-5xl font-black uppercase leading-[0.88] text-white sm:text-6xl md:text-7xl lg:text-8xl">Every Session.<br />Every Detail.<br />Every Week.</h1>
           <p class="mt-7 max-w-2xl text-lg leading-relaxed text-neutral-200 sm:text-xl">For coaches who want better sessions, sharper detail, and a clear look at how Lee plans and coaches Joner Football standards.</p>
           <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">Start Coaches Only</a>
+            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event={checkoutEvent}>Start Coaches Only</a>
             <a href="#inside" class="btn-outline text-base px-8 py-4 text-center">See What Is Inside</a>
           </div>
-          <p class="mt-4 text-sm font-semibold uppercase tracking-[0.16em] text-neutral-300">{price}. Trusted by coaches in {/* TODO: ASK LEE: confirm country count. */} multiple countries.</p>
+          <p class="mt-4 text-sm font-semibold uppercase tracking-[0.16em] text-neutral-300">{price}. Cancel anytime.</p>
+          <div class="mt-6 grid max-w-3xl grid-cols-1 gap-3 text-xs font-heading uppercase tracking-[0.18em] text-neutral-300 sm:grid-cols-3">
+            <div class="border border-white/10 bg-black/55 px-4 py-3">Trusted by coaches in {/* TODO: ASK LEE: confirm country count. */} multiple countries</div>
+            <div class="border border-white/10 bg-black/55 px-4 py-3">Full app access included</div>
+            <div class="border border-white/10 bg-black/55 px-4 py-3">Built by Lee Jones</div>
+          </div>
         </div>
       </div>
     </section>
@@ -129,7 +136,20 @@ const schema = {
         <div class="space-y-5 text-lg leading-relaxed text-neutral-700">
           <p>Coaches Only is not built for one quick watch. It is built to sit beside your season, your weekly sessions, and your player development work.</p>
           <p>Watch a session. Take the idea to training. Come back. Review the detail. That is how coaching improves.</p>
-          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red inline-flex text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">Start Coaches Only</a>
+          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red inline-flex text-base px-8 py-4 text-center" data-meta-checkout-event={checkoutEvent}>Start Coaches Only</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-neutral-950 py-20 md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-12 max-w-3xl">
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Testimonials</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl">Coach proof needs Lee approval.</h2>
+          <p class="mt-5 text-lg leading-relaxed text-neutral-300">This draft keeps the section ready without inventing coach quotes.</p>
+        </div>
+        <div class="border border-white/10 bg-white/[0.035] p-8">
+          <p class="font-heading text-xl font-black uppercase text-white">TODO: ASK LEE: Add approved Coaches Only testimonials before this draft replaces the live page.</p>
         </div>
       </div>
     </section>
@@ -146,39 +166,22 @@ const schema = {
             </details>
           ))}
         </div>
-        {/* TODO: ASK LEE: Replace placeholder testimonial area with real coach testimonials if available. */}
       </div>
     </section>
 
     <section class="relative overflow-hidden bg-black py-20 md:py-24">
-      <div class="absolute inset-0 opacity-25" aria-hidden="true"><img src="/images/coaches-only/coaches-only-hero-updated.png" alt="" class="h-full w-full object-cover" /><div class="absolute inset-0 bg-black/80"></div></div>
+      <div class="absolute inset-0 opacity-[0.25]" aria-hidden="true"><img src="/images/coaches-only/coaches-only-hero-updated.png" alt="" class="h-full w-full object-cover" /><div class="absolute inset-0 bg-black/80"></div></div>
       <div class="relative mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
         <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Coach With Purpose</p>
         <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl md:text-7xl">Stop collecting drills. Start coaching better detail.</h2>
         <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">Start Coaches Only</a>
+          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event={checkoutEvent}>Start Coaches Only</a>
           <a href={categoryUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">Preview In The App</a>
         </div>
       </div>
     </section>
 
     <!-- TODO: ASK LEE: Confirm final Coaches Only checkout offer, intro video, country count, and approved coach testimonials before live replacement. -->
-    <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="app-mobile-cta btn-red" data-meta-checkout-event="CoachesPageClickToCheckout">Join Now</a>
+    <StickyMobileCta href={checkoutUrl} label="Join Now" eventName={checkoutEvent} />
   </main>
-  <style>
-    .app-mobile-cta { position: fixed; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; z-index: 40; display: none; opacity: 0; transform: translateY(110%); pointer-events: none; transition: opacity 280ms ease, transform 360ms cubic-bezier(0.32, 0.72, 0, 1); box-shadow: 0 18px 38px rgba(0, 0, 0, 0.42); text-align: center; }
-    .app-mobile-cta.is-revealed { opacity: 1; transform: translateY(0); pointer-events: auto; }
-    @media (max-width: 1024px), (hover: none) and (pointer: coarse) { .app-mobile-cta { display: inline-flex; justify-content: center; } body { padding-bottom: 90px; } }
-  </style>
-  <script is:inline>
-    ;(function () {
-      var heroEl = document.querySelector('section');
-      var cta = document.querySelector('.app-mobile-cta');
-      if (!heroEl || !cta || !('IntersectionObserver' in window)) return;
-      var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (entry) { cta.classList.toggle('is-revealed', !entry.isIntersecting); });
-      }, { threshold: 0, rootMargin: '-40px 0px 0px 0px' });
-      io.observe(heroEl);
-    })();
-  </script>
 </BaseLayout>
