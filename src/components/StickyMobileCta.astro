@@ -1,0 +1,63 @@
+---
+export interface Props {
+  href: string
+  label: string
+  eventName?: string
+  external?: boolean
+}
+
+const { href, label, eventName, external } = Astro.props
+const isExternal = external ?? /^https?:\/\//.test(href)
+const linkAttrs = isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {}
+const eventAttrs = eventName ? { 'data-meta-checkout-event': eventName } : {}
+---
+
+<a href={href} {...linkAttrs} {...eventAttrs} class="app-mobile-cta btn-red">{label}</a>
+
+<style>
+  .app-mobile-cta {
+    position: fixed;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    z-index: 40;
+    display: none;
+    opacity: 0;
+    transform: translateY(110%);
+    pointer-events: none;
+    transition: opacity 280ms ease, transform 360ms cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.42);
+    text-align: center;
+  }
+
+  .app-mobile-cta.is-revealed {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
+    .app-mobile-cta {
+      display: inline-flex;
+      justify-content: center;
+    }
+
+    body {
+      padding-bottom: 90px;
+    }
+  }
+</style>
+
+<script is:inline>
+  ;(function () {
+    var heroEl = document.querySelector('section');
+    var cta = document.querySelector('.app-mobile-cta');
+    if (!heroEl || !cta || !('IntersectionObserver' in window)) return;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        cta.classList.toggle('is-revealed', !entry.isIntersecting);
+      });
+    }, { threshold: 0, rootMargin: '-40px 0px 0px 0px' });
+    io.observe(heroEl);
+  })();
+</script>
