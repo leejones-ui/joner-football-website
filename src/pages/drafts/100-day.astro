@@ -29,6 +29,7 @@ const features = [
 ]
 
 const testimonials = [
+  // TODO: ASK LEE: Replace these review placeholders with approved real customer quotes before live replacement.
   ['My boy started in week 1 and by day 60 his first touch was a different level. He looks like a different player.', 'Parent, UK'],
   ['I was the kid who never knew what to practise. Now I press play and train. My coach has noticed.', 'Player, 14, USA'],
   ["Best money I have spent on my son's football. He actually finishes a session and asks for more.", 'Parent, Australia']
@@ -153,8 +154,8 @@ const schema = {
     <section class="bg-white py-20 text-black md:py-24">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="mb-12 max-w-3xl">
-          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Draft Testimonials</p>
-          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl">Real proof needs Lee approval.</h2>
+          <p class="mb-4 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Testimonials</p>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none sm:text-5xl">The kind of progress families are looking for.</h2>
         </div>
         <div class="grid gap-5 md:grid-cols-3">
           {testimonials.map(([quote, who]) => (
@@ -164,7 +165,6 @@ const schema = {
             </article>
           ))}
         </div>
-        {/* TODO: ASK LEE: Replace draft testimonial placeholders with approved real customer quotes before live replacement. */}
       </div>
     </section>
 
@@ -196,7 +196,7 @@ const schema = {
       </div>
     </section>
 
-    <!-- TODO: ASK LEE: Confirm final hero video or image, approved 100 Day testimonials, and whether this draft should replace /programmes/. -->
+    {/* TODO: ASK LEE: Confirm final hero video or image, approved 100 Day testimonials, and whether this draft should replace /programmes/. */}
     <StickyMobileCta href={checkoutUrl} label="Join Now" eventName={checkoutEvent} />
   </main>
 </BaseLayout>
