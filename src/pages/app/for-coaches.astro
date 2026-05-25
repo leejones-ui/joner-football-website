@@ -2,106 +2,109 @@
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
 const title = 'Coaches Only | Joner Football App'
-const description = 'Coaches Only is the premium coach tier inside the Joner Football App. Session plans, voice-over drills, full training sessions, and the way Lee Jones coaches professional players.'
+const description = 'A dedicated Joner Football App tier for coaches. Session plans, voice-over drills, coaching points, full sessions, team training, and behind-the-scenes coaching insight from Lee Jones.'
 const checkoutUrl = 'https://app.jonerfootball.com/checkout/new?o=202578'
 const appCategoryUrl = 'https://app.jonerfootball.com/categories/category-8-7szqoiq00'
-const previewUrl = 'https://app.jonerfootball.com/programs/how-to-use-joner-football-app-guide?utm_source=product&utm_medium=share&utm_campaign=content_share&utm_term=4067217&utm_content=copy'
-const sampleSessionUrl = 'https://app.jonerfootball.com/programs/coaches-session-plan-1-0c96c6'
+const price = '$319.99 AUD / year'
 
-// 8 feature blocks, /app-page-style horizontal cards
-const features = [
+const contentBlocks = [
   {
-    eyebrow: 'START HERE',
     title: 'App And Session Planner Walkthrough',
-    body: 'See how Lee uses the Joner Football App and Sports Session Planner to find drills, build sessions, manage difficulty, and plan with purpose. The full walkthrough no other coach is showing you.',
-    image: '/images/coaches-only/app-session-planner.png'
+    eyebrow: 'Start Here',
+    image: '/images/coaches-only/app-session-planner.png',
+    text: 'See how Lee uses the Joner Football App and Sports Session Planner to find drills, build sessions, manage difficulty, and plan with more purpose.',
+    outcome: 'Walk into Tuesday night knowing exactly what you\'re doing.'
   },
   {
-    eyebrow: 'READY TO USE',
-    title: 'Session Plans Built To Run',
-    body: 'Structured coaching sessions you take straight onto the pitch. No more building from scratch on Tuesday at 5pm. Clear flow, real progression, every age group.',
-    image: '/images/coaches-only/session-planning.png'
+    title: 'Session Planning',
+    eyebrow: 'Ready To Use',
+    image: '/images/coaches-only/session-planning.png',
+    text: 'Structured coaching plans you can take into your own environment, with clear session flow instead of random drills thrown together.',
+    outcome: 'Stop googling drills at 5pm. Open the plan, run the session.'
   },
   {
-    eyebrow: 'THE DETAIL',
-    title: 'Voice Over Drill Series',
-    body: 'Lee narrates the drill while it runs. What he is looking for, why the practice works, how to coach the detail. The bit no YouTube channel gives you.',
-    image: '/images/coaches-only/voice-over-series.png'
+    title: 'Voice Over Series',
+    eyebrow: 'The Why Behind It',
+    image: '/images/coaches-only/voice-over-series.png',
+    text: 'Detailed voice-over drills where Lee explains what he is looking for, why the practice works, and how to coach the detail properly.',
+    outcome: 'Hear exactly what Lee\'s looking for — in his own words.'
   },
   {
-    eyebrow: 'COACH EDUCATION',
     title: 'Coaching The Coaches',
-    body: 'Practical coach development. Better language. Better standards. Better player outcomes. Sharpen how you actually teach, not just what you teach.',
-    image: '/images/coaches-only/coaching-the-coaches.png'
+    eyebrow: 'Coach Education',
+    image: '/images/coaches-only/coaching-the-coaches.png',
+    text: 'Practical coach development from Joner Football, built for coaches who want better language, better standards, and better player outcomes.',
+    outcome: 'Fix the language that\'s holding your players back.'
   },
   {
-    eyebrow: 'WATCH THE FLOW',
     title: 'Full Training Sessions',
-    body: 'Extended sessions showing how Lee combines technical work, intensity, detail, and progression across a full training block. Copy them. Run them. Watch your team level up.',
-    image: '/images/coaches-only/full-training-sessions.png'
+    eyebrow: 'Watch The Flow',
+    image: '/images/coaches-only/full-training-sessions.png',
+    text: 'Full extended sessions showing how Joner Football combines technical work, intensity, detail, and progression across a complete training block.',
+    outcome: '90-minute pro-style sessions you can copy this week.'
   },
   {
-    eyebrow: 'FOR GROUPS',
     title: 'Team Training',
-    body: 'Group sessions that still keep individual technique at the centre. For grassroots, academy, and private coaching environments.',
-    image: '/images/coaches-only/team-training.png'
+    eyebrow: 'For Groups',
+    image: '/images/coaches-only/team-training.png',
+    text: 'Team training ideas and examples for coaches who need to manage groups while still keeping individual technique at the centre.',
+    outcome: 'Run group sessions without losing technical detail.'
   },
   {
-    eyebrow: 'ELITE DETAIL',
     title: 'Coaching Professionals',
-    body: 'How Lee coaches elite players. The detail, standards, and language used in professional environments. The same masterclass coaches pay thousands to be in the room for.',
-    image: '/images/coaches-only/coaching-professionals.png'
+    eyebrow: 'Elite Detail',
+    image: '/images/coaches-only/coaching-professionals.png',
+    text: 'Insight into how Lee coaches elite-level players, including the detail, standards, and communication used in professional environments.',
+    outcome: 'See what elite players actually do differently in training.'
   },
   {
-    eyebrow: 'MORE TOOLS',
-    title: 'Extras And Behind The Scenes',
-    body: 'Extra coaching resources and behind-the-scenes material to keep sharpening your eye and your sessions.',
-    image: '/images/coaches-only/extras.png'
+    title: 'Extras',
+    eyebrow: 'More Tools',
+    image: '/images/coaches-only/extras.png',
+    text: 'Extra coaching resources, ideas, and behind-the-scenes material to help you keep improving your sessions and your coaching eye.',
+    outcome: 'Behind-the-scenes material no one else gets to see.'
   }
 ]
 
-// PLACEHOLDER TESTIMONIALS. Replace with the real coaches Lee has.
+// PLACEHOLDER TESTIMONIALS — REPLACE WITH REAL ONES
 const testimonials = [
   {
-    quote: 'Used the Tuesday session with my U12s and it was the best training we have had all year. The voice-overs make the detail click for me.',
+    quote: 'Used the Tuesday plan with my U12s — best session we\'ve had all year. The voice-overs make the detail click.',
     name: 'Coach Name',
-    role: 'Grassroots Coach',
-    location: 'United Kingdom'
+    role: 'Grassroots Coach, UK'
   },
   {
-    quote: 'I run an academy and there is stuff in Coaches Only I am taking straight to training. Worth every cent.',
+    quote: 'I\'m an academy coach and there\'s stuff in here I\'m taking straight to training. Worth every cent.',
     name: 'Coach Name',
-    role: 'Academy Coach',
-    location: 'Australia'
+    role: 'Academy Coach, AUS'
   },
   {
-    quote: 'Worth it for the voice-overs alone. Lee actually tells you what he is looking for instead of just running a drill.',
+    quote: 'Worth it for the voice-overs alone. Lee actually explains what he\'s looking for instead of just running drills.',
     name: 'Coach Name',
-    role: 'Private Trainer',
-    location: 'United States'
+    role: 'Private Trainer, USA'
   }
 ]
 
 const faqs = [
   {
-    q: 'How much is Coaches Only?',
-    a: 'Coaches Only is $319.99 AUD per year. That works out at less than $1 a day for every session plan, voice-over, full training session, and direct insight Lee puts inside.'
+    q: 'How much is it?',
+    a: 'Coaches Only is $319.99 AUD per year. That works out at less than $1 a day for every session plan, voice-over, full training session, and direct coaching insight Lee puts inside.'
   },
   {
     q: 'Why is it yearly only?',
-    a: 'Coaches Only is the premium coaching resource Lee built for a full season of work. Session plans, voice-overs, full training videos, and direct coaching insight. Coaches who commit for a year actually move their players forward. Month-by-month dabblers do not. That is why this tier is annual.'
+    a: 'Coaches Only isn\'t a try-it-for-a-month product. It\'s a full season of session planning, voice-overs, full training videos and direct insight. Coaches who commit for a year get real results with their players. That\'s why this tier is annual.'
   },
   {
     q: 'Who is Coaches Only for?',
-    a: 'Club coaches, private trainers, academy coaches, and parents coaching teams. Grassroots through to elite. Anyone who wants more detail in their sessions.'
+    a: 'Club coaches, private trainers, academy coaches, parents coaching teams, and anyone who wants more detail in their sessions. Grassroots through to elite.'
   },
   {
     q: 'Is this just drill videos?',
-    a: 'No. The point is the coaching detail. You get session planning, coaching points, full sessions, voice-over explanations, and footage of Lee actually working with players.'
+    a: 'No. The point is the coaching detail. You get session planning, coaching points, full sessions, voice-over explanations, and examples of Lee working with players.'
   },
   {
-    q: 'Will the sessions work for U8s, U18s, and adults?',
-    a: 'Yes. Sessions are designed to be adapted. Lee shows you how to modify difficulty, intensity, and focus for the age and level you coach.'
+    q: 'Will the sessions work for U8s? U18s? Adults?',
+    a: 'Yes. Sessions are designed to be adapted. Lee shows you how to modify difficulty, intensity and focus for the age and level you coach.'
   },
   {
     q: 'Can I use this for team training?',
@@ -109,15 +112,15 @@ const faqs = [
   },
   {
     q: 'How often is new content added?',
-    a: 'New content drops regularly across voice-overs, sessions, and coach development. You are not paying for a static library.'
+    a: 'New content drops regularly across voice-overs, sessions, and coach development. You\'re never paying for a static library.'
   },
   {
     q: 'Does it include the rest of the Joner Football App?',
-    a: 'Yes. Coaches Only gives you the coaches tier plus the wider Joner Football App. 1,500+ training videos, the session planner, daily challenges, and the community.'
+    a: 'Yes. Coaches Only gives access to the coaches tier plus the wider Joner Football App content — 1,500+ training videos, session planner, daily challenges, and community.'
   },
   {
     q: 'Can I cancel?',
-    a: 'Yes. You keep access for the year you paid for, and we do not auto-charge without warning.'
+    a: 'Yes. You keep access for the year you\'ve paid for, and we don\'t auto-charge without warning.'
   }
 ]
 
@@ -135,40 +138,40 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 <BaseLayout title={title} description={description} canonical="https://jonerfootball.com/app/for-coaches/" ogImage="https://jonerfootball.com/images/coaches-only/coaches-only-hero-updated.png">
   <main class="bg-joner-black text-white">
 
-    {/* ========== 1. HERO ========== */}
+    {/* ========== HERO ========== */}
     <section class="relative overflow-hidden border-b border-gray-900">
       <div class="absolute inset-0">
-        <img src="/images/coaches-only/coaches-only-hero-updated.png" alt="Lee Jones coaching session plan inside the Joner Football App" class="h-full w-full object-cover opacity-60" loading="eager" />
+        <img src="/images/coaches-only/coaches-only-hero-updated.png" alt="Coaches Only inside the Joner Football App" class="h-full w-full object-cover opacity-60" loading="eager" />
         <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/80 to-joner-black/25"></div>
       </div>
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 lg:py-32">
         <div class="max-w-4xl">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-5">COACHES ONLY. INSIDE THE JONER FOOTBALL APP.</p>
-          <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
-            EVERY SESSION.<br/>EVERY DETAIL.<br/>EVERY WEEK.
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-5">COACHES ONLY · PREMIUM TIER</p>
+          <h1 class="font-heading uppercase text-5xl md:text-7xl lg:text-8xl leading-none mb-6">
+            Coach Like A Pro. Not Like You're Winging It.
           </h1>
-          <p class="text-gray-200 font-body text-lg md:text-xl max-w-3xl mb-8">
-            Coaches Only gives you the session plans, voice-over drills, and full training videos Lee uses with professional players. Built for coaches who want the detail, not just another drill library.
+          <p class="text-xl md:text-2xl text-gray-200 max-w-3xl mb-8">
+            The session-planning system Lee Jones uses with professional players — built for coaches who want more than YouTube drills.
           </p>
-          <div class="flex flex-col sm:flex-row gap-4 mb-4">
-            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
-            <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">WATCH A FREE SESSION</a>
+          <div class="flex flex-col sm:flex-row gap-4">
+            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-center" data-meta-checkout-event="CoachesPageClickToCheckout">Join Coaches Only — {price}</a>
+            <a href="#inside" class="btn-outline text-center">See What's Inside</a>
           </div>
-          <p class="text-gray-400 font-body text-sm">$319.99 AUD per year. Annual only. Cancel renewal anytime.</p>
+          <p class="text-sm text-gray-400 mt-4">Annual plan · Cancel renewal anytime · Premium tier, no free trial</p>
         </div>
       </div>
     </section>
 
 
-    {/* ========== 2. INTRO VIDEO FROM LEE (trimmed from full app walkthrough, 1m 14s) ========== */}
-    <section class="py-12 md:py-20 bg-joner-black border-b border-gray-900">
+    {/* ========== VIDEO INTRO (NEW) — REPLACE iframe src OR <video> src ========== */}
+    <section class="py-12 md:py-16 border-b border-gray-900">
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-8">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">90 SECONDS WITH LEE</p>
-          <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">WATCH THIS FIRST</h2>
-          <p class="text-gray-300 font-body text-base md:text-lg max-w-2xl mx-auto">Press play. Lee shows you exactly what is inside Coaches Only and why it is built for coaches who want the detail.</p>
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-3">90 SECONDS WITH LEE</p>
+          <h2 class="font-heading uppercase text-3xl md:text-5xl leading-none">Watch This First.</h2>
         </div>
-        <div class="aspect-video bg-black rounded-2xl overflow-hidden ring-1 ring-white/10 shadow-[0_28px_70px_rgba(0,0,0,0.5)]">
+        {/* ⚠️ PLACEHOLDER VIDEO — swap src for your real video (MP4 or YouTube embed) */}
+        <div class="aspect-video bg-black rounded-2xl overflow-hidden ring-1 ring-gray-800 shadow-[0_28px_70px_rgba(0,0,0,0.4)]">
           <video
             controls
             playsinline
@@ -179,156 +182,142 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
             <source src="/videos/coaches-only-intro.mp4" type="video/mp4" />
             Your browser does not support video playback.
           </video>
+          {/* Alternative: YouTube embed
+          <iframe src="https://www.youtube.com/embed/YOUR_VIDEO_ID" title="Coaches Only intro" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full"></iframe>
+          */}
         </div>
-        <p class="text-center text-gray-400 font-body text-sm mt-5">
-          <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="underline hover:text-white transition-colors">Or watch a full Coaches Only session free inside the app</a>
-        </p>
       </div>
     </section>
 
 
-    {/* ========== 3. PROBLEM (original two-column layout with roadmap graphic) ========== */}
-    <section class="bg-white text-joner-black py-16 md:py-24">
+    {/* ========== AUTHORITY / WHO IS LEE (NEW) ========== */}
+    <section class="py-16 md:py-24 bg-joner-black border-b border-gray-900">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        <div>
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">WHY IT EXISTS</p>
-          <h2 class="font-heading text-4xl md:text-6xl font-bold text-joner-black uppercase leading-none mb-6">STOP WINGING YOUR SESSIONS</h2>
-          <p class="text-lg text-gray-700 font-body mb-6 max-w-xl">
-            Tuesday night, 5pm, still googling drills. Session falls apart 20 minutes in. Parents watching. You know what to coach. You do not know how to coach the detail.
+        <div class="overflow-hidden rounded-[28px] order-2 lg:order-1">
+          {/* ⚠️ PLACEHOLDER — swap for action shot of Lee coaching */}
+          <img src="/images/coaches-only/coaching-professionals.png" alt="Lee Jones coaching" class="block w-full h-full object-cover" loading="lazy" />
+        </div>
+        <div class="order-1 lg:order-2">
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">WHO'S TEACHING YOU</p>
+          <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none mb-6">Lee Jones. The Real Thing.</h2>
+          <p class="text-lg md:text-xl text-gray-300 mb-5">
+            Lee has coached professional players, academy prospects, and thousands of grassroots kids across the world.
           </p>
-          <p class="font-heading uppercase text-2xl text-joner-black mb-8">That stops here.</p>
-          <div class="flex flex-col sm:flex-row gap-4">
-            <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center border-joner-black text-joner-black hover:bg-joner-black hover:text-white">SEE A SESSION FREE</a>
-            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">START COACHING THE DETAIL</a>
-          </div>
-        </div>
-        <div class="overflow-hidden rounded-[28px] bg-black/5 p-1 shadow-[0_28px_70px_rgba(0,0,0,0.24)] ring-1 ring-black/10">
-          <img src="/images/coaches-only/session-structure-roadmap-plush.png" alt="Plan, understand, watch, become: the Joner Football coaching pathway" class="block w-full rounded-[24px] object-cover" loading="lazy" />
+          <p class="text-lg md:text-xl text-gray-300 mb-5">
+            Coaches Only is the <span class="text-white font-semibold">inside view</span> — the exact sessions, language, and detail he uses every day.
+          </p>
+          <p class="text-lg md:text-xl text-gray-300">
+            Nothing watered down. Nothing held back.
+          </p>
         </div>
       </div>
     </section>
 
 
-    {/* ========== 4. WHO IS TEACHING YOU ========== */}
-    <section class="bg-joner-gray py-20 md:py-28 border-t-4 border-[#CC0000]">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          <div>
-            <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">WHO IS TEACHING YOU</p>
-            <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES. THE REAL THING.</h2>
-            <p class="text-gray-300 font-body text-lg mb-6">Over 20 years coaching players, coaches, and parents around the world. From grassroots kids to professional players.</p>
-            <p class="text-gray-400 font-body text-base leading-relaxed mb-8">
-              Coaches Only is the inside view. The sessions Lee runs, the language he uses, the way he coaches the detail with elite players. Nothing watered down. Nothing held back. The full masterclass coaches pay thousands to sit in the room for, dropped into one yearly tier inside the app.
-            </p>
-            <div class="mb-8">
-              <p class="font-heading text-2xl text-white italic">Lee Jones</p>
-              <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-1">Founder, Joner Football</p>
-            </div>
-            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 inline-flex" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN LEE INSIDE THE APP</a>
+    {/* ========== PROBLEM SECTION ========== */}
+    <section class="py-16 md:py-24 bg-white text-joner-black">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">SOUND FAMILIAR?</p>
+        <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none mb-10">Stop Winging Your Sessions.</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 text-left">
+          <div class="p-6 bg-gray-50 border-l-4 border-joner-red">
+            <p class="text-lg text-gray-800">Tuesday night, 6pm — and you're still googling drills.</p>
           </div>
-          <div class="flex justify-center lg:justify-end">
-            <img
-              src="/images/programmes/lee-coaching-red.jpg"
-              alt="Lee Jones coaching on the pitch"
-              class="w-full max-w-md rounded-lg shadow-2xl"
-              loading="lazy"
-            />
+          <div class="p-6 bg-gray-50 border-l-4 border-joner-red">
+            <p class="text-lg text-gray-800">You run a session — and 20 minutes in, it's chaos.</p>
+          </div>
+          <div class="p-6 bg-gray-50 border-l-4 border-joner-red">
+            <p class="text-lg text-gray-800">Parents are watching. You feel like a fraud.</p>
+          </div>
+          <div class="p-6 bg-gray-50 border-l-4 border-joner-red">
+            <p class="text-lg text-gray-800">You know <em>what</em> to do. You don't know how to coach the <em>detail</em>.</p>
           </div>
         </div>
+        <p class="font-heading uppercase text-2xl md:text-3xl mb-8">That stops here.</p>
+        <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red inline-flex text-center" data-meta-checkout-event="CoachesPageClickToCheckout">Join Coaches Only — {price}</a>
       </div>
     </section>
 
 
-    {/* ========== 5. WHAT IS INSIDE (4-up grid, original layout) ========== */}
-    <section id="inside" class="bg-joner-black py-16 md:py-24">
+    {/* ========== INSIDE / FEATURES ========== */}
+    <section id="inside" class="py-16 md:py-24">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="max-w-3xl mb-12">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">INSIDE COACHES ONLY</p>
-          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-5">EVERYTHING INCLUDED</h2>
-          <p class="text-xl text-gray-300 font-body">Pulled from the live Coaches Only category inside the Joner Football App.</p>
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">INSIDE COACHES ONLY</p>
+          <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none mb-5">Everything Included.</h2>
+          <p class="text-xl text-gray-300">Pulled from the live Coaches Only category inside the Joner Football App.</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {features.map((f) => (
+          {contentBlocks.map((item) => (
             <article class="bg-joner-gray border border-gray-800 overflow-hidden flex flex-col">
               <div class="aspect-video bg-black overflow-hidden">
-                <img src={f.image} alt={f.title} class="h-full w-full object-cover hover:scale-105 transition-transform duration-300" loading="lazy" />
+                <img src={item.image} alt={item.title} class="h-full w-full object-cover hover:scale-105 transition-transform duration-300" loading="lazy" />
               </div>
               <div class="p-5 flex-1 flex flex-col">
-                <p class="text-joner-red font-heading text-xs uppercase tracking-widest mb-3">{f.eyebrow}</p>
-                <h3 class="font-heading text-2xl text-white uppercase leading-tight mb-3">{f.title}</h3>
-                <p class="text-gray-300 font-body text-sm flex-1 mb-4">{f.body}</p>
-                <a href={appCategoryUrl} target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-joner-red font-heading text-xs uppercase tracking-widest hover:text-white transition-colors mt-auto">
-                  VIEW IN APP
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
-                </a>
+                <p class="font-heading uppercase tracking-[0.18em] text-joner-red text-xs mb-3">{item.eyebrow}</p>
+                <h3 class="font-heading uppercase text-2xl leading-tight mb-3">{item.title}</h3>
+                <p class="text-gray-300 text-sm mb-4 flex-1">{item.text}</p>
+                <p class="text-white text-sm font-semibold border-t border-gray-800 pt-3 italic">→ {item.outcome}</p>
               </div>
             </article>
           ))}
         </div>
-
-        <div class="mt-14 flex flex-col sm:flex-row gap-4 justify-center">
-          <a href={appCategoryUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">BROWSE THE FULL LIBRARY</a>
-          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
-        </div>
       </div>
     </section>
 
 
-    {/* ========== 6. WHY YEARLY ONLY ========== */}
-    <section class="bg-white text-joner-black py-16 md:py-24">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">HONEST ANSWER</p>
-        <h2 class="font-heading text-4xl md:text-6xl font-bold text-joner-black uppercase leading-none mb-8">WHY YEARLY ONLY</h2>
-        <div class="space-y-5 text-lg md:text-xl text-gray-700 font-body">
-          <p>Coaches Only is not a try-it-for-a-month product.</p>
-          <p>It is a full season of session plans, voice-overs, full training videos, and direct insight from Lee.</p>
-          <p>Coaches who commit for a year see real results with their players. Month-by-month dabblers do not.</p>
-          <p class="font-heading uppercase text-joner-black text-2xl md:text-3xl pt-4">If you are not ready to commit to your coaching, this is not for you.</p>
-        </div>
-      </div>
-    </section>
-
-
-    {/* ========== 7. TESTIMONIALS (/app card style) ========== */}
-    {/* REPLACE WITH REAL TESTIMONIALS */}
-    <section class="bg-joner-gray py-20 md:py-28">
+    {/* ========== TESTIMONIALS (NEW) — REPLACE WITH REAL ONES ========== */}
+    <section class="py-16 md:py-24 bg-white text-joner-black">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">TESTIMONIALS</p>
-          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none">REAL COACHES. REAL SESSIONS.</h2>
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">COACHES USING IT</p>
+          <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none">Real Coaches. Real Sessions.</h2>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((t) => (
-            <div class="border border-gray-700 p-8 bg-joner-black/40">
-              <div class="text-joner-red text-4xl font-heading leading-none mb-4">"</div>
-              <p class="text-gray-300 font-body text-base leading-relaxed mb-6 italic">{t.quote}</p>
-              <div class="border-t border-gray-700 pt-4">
-                <div class="font-heading text-white font-semibold">{t.name}</div>
-                <div class="text-joner-red text-xs font-heading uppercase tracking-wide">{t.role}</div>
-                <div class="text-gray-500 text-xs font-body mt-0.5">{t.location}</div>
+            <article class="bg-gray-50 border border-gray-200 p-6 flex flex-col">
+              <p class="text-lg text-gray-800 mb-5 flex-1">"{t.quote}"</p>
+              <div class="border-t border-gray-200 pt-4">
+                <p class="font-heading uppercase text-base">{t.name}</p>
+                <p class="text-sm text-gray-600">{t.role}</p>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       </div>
     </section>
 
 
-    {/* ========== 8. FAQ ========== */}
-    <section class="bg-white text-joner-black py-20 md:py-24">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    {/* ========== WHY YEARLY ONLY (NEW) — pre-empts the objection ========== */}
+    <section class="py-16 md:py-24 bg-joner-black border-y border-gray-900">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">HONEST ANSWER</p>
+        <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none mb-8">Why Yearly Only?</h2>
+        <div class="space-y-5 text-lg md:text-xl text-gray-300">
+          <p>Coaches Only isn't a try-it-for-a-month product.</p>
+          <p>It's a full season of session planning, voice-overs, full training videos and direct insight from Lee.</p>
+          <p>Coaches who commit for a year get <span class="text-white font-semibold">real results</span> with their players. Month-by-month dabblers don't.</p>
+          <p class="font-heading uppercase text-white text-2xl md:text-3xl pt-4">If you're not ready to commit to your coaching, this isn't for you.</p>
+        </div>
+      </div>
+    </section>
+
+
+    {/* ========== FAQ ========== */}
+    <section class="py-16 md:py-24 bg-white text-joner-black">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">QUESTIONS COACHES ASK</p>
-          <h2 class="font-heading text-4xl md:text-6xl font-bold text-joner-black uppercase leading-none">FAQ</h2>
+          <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">FAQ</p>
+          <h2 class="font-heading uppercase text-4xl md:text-6xl leading-none">Questions Coaches Ask.</h2>
         </div>
         <div class="space-y-4">
           {faqs.map((faq) => (
-            <details class="group border border-gray-200 bg-gray-50 p-6 rounded-lg">
-              <summary class="cursor-pointer list-none font-heading uppercase text-lg md:text-xl flex items-center justify-between gap-4">
-                <span>{faq.q}</span>
-                <span class="text-joner-red text-2xl group-open:rotate-45 transition-transform flex-shrink-0">+</span>
+            <details class="group border border-gray-200 bg-gray-50 p-6">
+              <summary class="cursor-pointer list-none font-heading uppercase text-xl md:text-2xl flex items-center justify-between gap-4">
+                {faq.q}
+                <span class="text-joner-red group-open:rotate-45 transition-transform">+</span>
               </summary>
-              <p class="text-gray-700 font-body mt-4 text-base md:text-lg leading-relaxed">{faq.a}</p>
+              <p class="text-gray-700 mt-4 text-lg">{faq.a}</p>
             </details>
           ))}
         </div>
@@ -336,21 +325,17 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     </section>
 
 
-    {/* ========== 9. FINAL CTA ========== */}
-    <section class="bg-joner-black py-20 md:py-28">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">COACH BETTER THIS WEEK</p>
-        <h2 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase leading-none mb-6">
-          COACH LIKE LEE.<br/>NOTHING HELD BACK.
-        </h2>
-        <p class="text-gray-300 font-body text-lg md:text-xl mb-10">
-          Join Coaches Only inside the Joner Football App for the session plans, voice-overs, and detail that move your players forward.
-        </p>
-        <div class="flex flex-col sm:flex-row gap-4 justify-center mb-5">
-          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
-          <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">WATCH A SESSION FREE</a>
+    {/* ========== FINAL CTA ========== */}
+    <section class="py-16 md:py-24">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <p class="font-heading uppercase tracking-[0.25em] text-joner-red text-sm mb-4">COACH BETTER THIS WEEK</p>
+        <h2 class="font-heading uppercase text-4xl md:text-7xl leading-none mb-6">Coach Like You Know What You're Doing.</h2>
+        <p class="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">Because soon, you will. Join Coaches Only inside the Joner Football App and get the coaching resource Lee built for coaches who want more than surface-level drills.</p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-center" data-meta-checkout-event="CoachesPageClickToCheckout">Join Coaches Only — {price}</a>
+          <a href={appCategoryUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-center">Preview In The App</a>
         </div>
-        <p class="text-gray-400 font-body text-sm">$319.99 AUD per year. Annual only. Cancel renewal anytime.</p>
+        <p class="text-sm text-gray-400 mt-5">Annual plan · Cancel renewal anytime</p>
       </div>
     </section>
 
