@@ -14,8 +14,8 @@
 
     { "source": "/elitecampbookings", "destination": "/camps", "permanent": true },
     { "source": "/elitecampbookings/", "destination": "/camps", "permanent": true },
-    { "source": "/thecompleteplayerexperience", "destination": "/camps/la-tcpe-june", "permanent": true },
-    { "source": "/thecompleteplayerexperience/", "destination": "/camps/la-tcpe-june", "permanent": true },
+    { "source": "/thecompleteplayerexperience", "destination": "/camps", "permanent": false },
+    { "source": "/thecompleteplayerexperience/", "destination": "/camps", "permanent": false },
     { "source": "/houston2026", "destination": "/camps/texas-houston-june", "permanent": true },
     { "source": "/houston2026/", "destination": "/camps/texas-houston-june", "permanent": true },
     { "source": "/dallas2026", "destination": "/camps/texas-dallas-june", "permanent": true },

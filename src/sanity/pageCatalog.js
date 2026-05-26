@@ -26,7 +26,6 @@ export const staticPageDefinitions = [
   { title: 'Shop, Resources and Accessories', pageKey: 'shop-resources-accessories', route: '/shop/resources-accessories', slug: '/shop/resources-accessories' },
   { title: 'Shop, Training Programs', pageKey: 'shop-training-programs', route: '/shop/training-programs', slug: '/shop/training-programs' },
   { title: 'Camps hub', pageKey: 'camps', route: '/camps', slug: '/camps' },
-  { title: 'Camp, Los Angeles June', pageKey: 'camp-la-tcpe-june', route: '/camps/la-tcpe-june', slug: '/camps/la-tcpe-june', notes: 'Static detail page currently shadows the dynamic camp route.' },
   { title: 'Camp, Sydney July 2026', pageKey: 'camp-sydney-july-2026', route: '/camps/sydney-july-2026', slug: '/camps/sydney-july-2026', notes: 'Static detail page currently shadows the dynamic camp route.' },
   { title: 'Camp, Test Signup', pageKey: 'camp-test-signup', route: '/camps/test-signup', slug: '/camps/test-signup', notes: 'Static detail page currently shadows the dynamic camp route.' },
   { title: 'Camp, Texas Dallas June', pageKey: 'camp-texas-dallas-june', route: '/camps/texas-dallas-june', slug: '/camps/texas-dallas-june', notes: 'Static detail page currently shadows the dynamic camp route.' },

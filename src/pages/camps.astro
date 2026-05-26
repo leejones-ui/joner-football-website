@@ -5,24 +5,6 @@ const campSchemas = [
   {
     '@context': 'https://schema.org',
     '@type': 'Event',
-    name: 'Joner Football LA Complete Player Experience',
-    startDate: '2026-06-22',
-    endDate: '2026-06-24',
-    location: {
-      '@type': 'Place',
-      name: 'Gol Soccer Complex',
-      address: {
-        '@type': 'PostalAddress',
-        addressLocality: 'North Hollywood',
-        addressRegion: 'CA',
-        addressCountry: 'US',
-      },
-    },
-    organizer: { '@type': 'Organization', name: 'Joner Football' },
-  },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'Event',
     name: 'Joner Football Houston World Cup Camp',
     startDate: '2026-06-26',
     endDate: '2026-06-28',
@@ -62,18 +44,6 @@ const campSchemas = [
 ]
 
 const camps = [
-  {
-    label: 'LA',
-    title: 'Los Angeles',
-    subtitle: 'Complete Player Experience',
-    location: 'North Hollywood, California',
-    dates: 'June 22 to 24, 2026',
-    href: '/camps/la-tcpe-june',
-    image: '/images/camps/tcpe/JONER-X-FIRST-STRIKE--scaled.jpg.webp',
-    alt: 'Joner Football LA Complete Player Experience camp players training',
-    badge: 'Selection only',
-    circleImage: '/images/camps/destination-circles/la-hollywood.jpg',
-  },
   {
     label: 'HOU',
     title: 'Houston',
@@ -143,7 +113,7 @@ const sanityPage = await fetchSanityPage('camps')
 ) : (
 <BaseLayout
   title="Football Camps | Joner Football"
-  description="Choose your Joner Football camp destination. Simple navigation for 2026 camps in Los Angeles, Houston, Dallas, and Sydney."
+  description="Choose your Joner Football camp destination. Simple navigation for 2026 camps in Houston, Dallas, and Sydney."
   schema={campSchemas}
 >
   <main class="bg-joner-black text-white overflow-hidden">
