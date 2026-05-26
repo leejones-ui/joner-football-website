@@ -1,6 +1,8 @@
 import { cleanString, protectForm } from './_security.js'
 
 const FALLBACK_RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'leejones@jonerfootball.com'
+const duplicateBuckets = new Map()
+const DUPLICATE_WINDOW_MS = 15 * 60 * 1000
 
 const TYPES = {
   'training-sydney': 'Training Enquiries (Sydney)',
@@ -67,6 +69,37 @@ function cleanAttachment(file) {
   const bytes = Math.ceil((content.length * 3) / 4)
   if (bytes > 5 * 1024 * 1024) throw new Error('CV file is too large. Max 5MB.')
   return { name, content }
+}
+
+
+function duplicateKey(enquiry) {
+  return [
+    enquiry.type,
+    enquiry.email,
+    enquiry.phone,
+    enquiry.clubTeam,
+    enquiry.numberOfPlayers,
+    enquiry.numberOfCoaches,
+    enquiry.location,
+  ].map((part) => clean(part, 240).toLowerCase().replace(/\s+/g, ' ')).join('|')
+}
+
+function pruneDuplicateBuckets(now = Date.now()) {
+  for (const [key, entry] of duplicateBuckets.entries()) {
+    if (now - entry.createdAt > DUPLICATE_WINDOW_MS) duplicateBuckets.delete(key)
+  }
+}
+
+function isDuplicateSubmission(enquiry) {
+  const now = Date.now()
+  pruneDuplicateBuckets(now)
+  const existing = duplicateBuckets.get(duplicateKey(enquiry))
+  return Boolean(existing && now - existing.createdAt <= DUPLICATE_WINDOW_MS)
+}
+
+function rememberSubmission(enquiry) {
+  pruneDuplicateBuckets()
+  duplicateBuckets.set(duplicateKey(enquiry), { createdAt: Date.now() })
 }
 
 async function sendEmail(enquiry) {
@@ -220,7 +253,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Please add your coaching experience and qualifications.' })
     }
 
+    const duplicate = isDuplicateSubmission(enquiry)
+    if (duplicate) return res.status(200).json({ success: true, duplicate: true })
     await sendEmail(enquiry)
+    rememberSubmission(enquiry)
     try {
       await addMarketingOptIn(enquiry)
     } catch (optInError) {

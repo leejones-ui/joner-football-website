@@ -257,6 +257,7 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
       if (!form) return;
       var submit = form.querySelector('button[type="submit"]');
       var status = document.getElementById('team-subscription-form-status');
+      var submitted = false;
 
       function setStatus(message, ok) {
         if (!status) return;
@@ -266,6 +267,10 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
 
       form.addEventListener('submit', function (event) {
         event.preventDefault();
+        if (submitted) {
+          setStatus('Your enquiry has already been sent. We will follow up with you shortly.', true);
+          return;
+        }
         setStatus('', true);
         var originalText = submit ? submit.textContent : 'Send Team Subscription Enquiry';
         var formData = new FormData(form);
@@ -306,6 +311,7 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
         .then(function (response) { return response.json(); })
         .then(function (data) {
           if (!data || !data.success) throw new Error((data && data.error) || 'Could not send enquiry.');
+          submitted = true;
           form.reset();
           setStatus('Done. Your team subscription enquiry has been sent.', true);
         })
@@ -313,10 +319,13 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
           setStatus(error && error.message ? error.message : 'Could not send enquiry. Please try again.', false);
         })
         .finally(function () {
-          if (submit) {
+          if (submit && !submitted) {
             submit.disabled = false;
             submit.textContent = originalText;
             submit.classList.remove('opacity-70', 'cursor-not-allowed');
+          } else if (submit && submitted) {
+            submit.disabled = true;
+            submit.textContent = 'Enquiry Sent';
           }
         });
       });
