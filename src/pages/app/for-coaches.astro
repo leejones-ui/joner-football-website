@@ -6,6 +6,7 @@ const description = 'Coaches Only is the premium coach tier inside the Joner Foo
 const checkoutUrl = 'https://app.jonerfootball.com/checkout/new?o=202578'
 const appCategoryUrl = 'https://app.jonerfootball.com/categories/category-8-7szqoiq00'
 const previewUrl = 'https://app.jonerfootball.com/programs/how-to-use-joner-football-app-guide?utm_source=product&utm_medium=share&utm_campaign=content_share&utm_term=4067217&utm_content=copy'
+const sampleSessionUrl = 'https://app.jonerfootball.com/programs/coaches-session-plan-1-0c96c6'
 
 // 8 feature blocks, /app-page-style horizontal cards
 const features = [
@@ -151,7 +152,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
           </p>
           <div class="flex flex-col sm:flex-row gap-4 mb-4">
             <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
-            <a href="#inside" class="btn-outline text-base px-8 py-4 text-center">SEE WHAT IS INSIDE</a>
+            <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">WATCH A FREE SESSION</a>
           </div>
           <p class="text-gray-400 font-body text-sm">$319.99 AUD per year. Annual only. Cancel renewal anytime.</p>
         </div>
@@ -159,31 +160,31 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     </section>
 
 
-    {/* ========== 2. VIDEO INTRO ========== */}
-    {/* Drop your trimmed intro at /public/videos/coaches-only-intro.mp4 or swap to YouTube embed below. */}
+    {/* ========== 2. SAMPLE SESSION PREVIEW ========== */}
+    {/* Lee, when you drop a trimmed intro at /public/videos/coaches-only-intro.mp4 we can swap this back to a hosted video player. */}
     <section class="py-12 md:py-20 bg-joner-black border-b border-gray-900">
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-8">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">90 SECONDS WITH LEE</p>
-          <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase leading-tight">WATCH THIS FIRST</h2>
+          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">SEE INSIDE FIRST</p>
+          <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">WATCH A FULL SESSION FREE</h2>
+          <p class="text-gray-300 font-body text-base md:text-lg max-w-2xl mx-auto">Press play on a real Coaches Only session. No signup. No email. See the detail before you decide.</p>
         </div>
-        <div class="aspect-video bg-black rounded-2xl overflow-hidden ring-1 ring-white/10 shadow-[0_28px_70px_rgba(0,0,0,0.5)]">
-          <video
-            controls
-            playsinline
-            preload="metadata"
-            class="w-full h-full object-cover"
-            poster="/images/coaches-only/coaches-only-hero-updated.png"
-          >
-            <source src="/videos/coaches-only-intro.mp4" type="video/mp4" />
-            Your browser does not support video playback.
-          </video>
-          {/* YouTube alternative:
-          <iframe src="https://www.youtube.com/embed/YOUR_VIDEO_ID" title="Coaches Only intro" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full"></iframe>
-          */}
-        </div>
+        <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="block group">
+          <div class="relative aspect-video bg-black rounded-2xl overflow-hidden ring-1 ring-white/10 shadow-[0_28px_70px_rgba(0,0,0,0.5)] hover:ring-joner-red transition-all duration-300">
+            <img src="/images/coaches-only/coaches-only-hero-updated.png" alt="Sample Coaches Only session inside the Joner Football App" class="w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity duration-300" loading="lazy" />
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div class="w-20 h-20 md:w-24 md:h-24 rounded-full bg-joner-red flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform duration-300">
+                <svg class="w-8 h-8 md:w-10 md:h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-6">
+              <p class="text-white font-heading uppercase text-lg md:text-xl">Coaches Session Plan 1</p>
+              <p class="text-gray-300 font-body text-sm mt-1">Full session inside the app. Tap to play.</p>
+            </div>
+          </div>
+        </a>
         <p class="text-center text-gray-400 font-body text-sm mt-5">
-          <a href={previewUrl} target="_blank" rel="noopener noreferrer" class="underline hover:text-white transition-colors">Or preview the full walkthrough free inside the app</a>
+          <a href={previewUrl} target="_blank" rel="noopener noreferrer" class="underline hover:text-white transition-colors">Or watch the full app walkthrough free inside the app</a>
         </p>
       </div>
     </section>
@@ -211,8 +212,9 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
           </div>
         </div>
         <p class="text-center font-heading uppercase text-2xl md:text-3xl mb-8">That stops here.</p>
-        <div class="text-center">
-          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 inline-flex" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
+        <div class="text-center flex flex-col sm:flex-row gap-4 justify-center">
+          <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center border-joner-black text-joner-black hover:bg-joner-black hover:text-white">SEE A SESSION FREE</a>
+          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">START COACHING THE DETAIL</a>
         </div>
       </div>
     </section>
@@ -233,7 +235,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
               <p class="font-heading text-2xl text-white italic">Lee Jones</p>
               <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-1">Founder, Joner Football</p>
             </div>
-            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 inline-flex" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
+            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 inline-flex" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN LEE INSIDE THE APP</a>
           </div>
           <div class="flex justify-center lg:justify-end">
             <img
@@ -266,14 +268,19 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
               <div class="p-6 md:p-10">
                 <p class="text-joner-red font-heading text-xs uppercase tracking-widest mb-3">{f.eyebrow}</p>
                 <h3 class="font-heading text-2xl md:text-3xl lg:text-4xl font-bold text-white uppercase leading-tight mb-4">{f.title}</h3>
-                <p class="text-gray-300 font-body text-base md:text-lg leading-relaxed">{f.body}</p>
+                <p class="text-gray-300 font-body text-base md:text-lg leading-relaxed mb-5">{f.body}</p>
+                <a href={appCategoryUrl} target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-joner-red font-heading text-sm uppercase tracking-widest hover:text-white transition-colors">
+                  VIEW IN APP
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                </a>
               </div>
             </article>
           ))}
         </div>
 
-        <div class="text-center mt-14">
-          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 inline-flex" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
+        <div class="text-center mt-14 flex flex-col sm:flex-row gap-4 justify-center">
+          <a href={appCategoryUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">BROWSE THE FULL LIBRARY</a>
+          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
         </div>
       </div>
     </section>
@@ -353,7 +360,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center mb-5">
           <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
-          <a href={appCategoryUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">PREVIEW IN THE APP</a>
+          <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">WATCH A SESSION FREE</a>
         </div>
         <p class="text-gray-400 font-body text-sm">$319.99 AUD per year. Annual only. Cancel renewal anytime.</p>
       </div>
