@@ -29,7 +29,7 @@ Draft old URL to new target list for launch redirects. This is intentionally sim
 
 ```text
 /elitecampbookings/ -> /camps
-/thecompleteplayerexperience/ -> /camps/la-tcpe-june
+/thecompleteplayerexperience/ -> /camps (LA camp retired)
 /houston2026/ -> /camps/texas-houston-june
 /dallas2026/ -> /camps/texas-dallas-june
 /sydneyjuly2026/ -> /camps/sydney-big-1-july
