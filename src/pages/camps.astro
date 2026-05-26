@@ -141,10 +141,14 @@ const sanityPage = await fetchSanityPage('camps')
         <div class="camp-orbit mx-auto" aria-label="Joner Football camp destination wheel">
           <div class="camp-orbit__ring" aria-hidden="true"></div>
           <div class="camp-orbit__spin">
-            {camps.map((camp, index) => (
+            {camps.map((camp, index) => {
+              const angle = `${(360 / camps.length) * index}deg`
+              const counterAngle = `${(-360 / camps.length) * index}deg`
+              return (
               <a
                 href={camp.href}
                 class={`camp-orbit__node camp-orbit__node--${index + 1}`}
+                style={`--orbit-angle: ${angle}; --orbit-counter-angle: ${counterAngle};`}
                 aria-label={`Open ${camp.title} camp page`}
               >
                 <span class="camp-orbit__node-content">
@@ -153,7 +157,8 @@ const sanityPage = await fetchSanityPage('camps')
                   <span class="camp-orbit__tooltip">{camp.title}<small>{camp.subtitle}</small></span>
                 </span>
               </a>
-            ))}
+              )
+            })}
           </div>
           <div class="camp-orbit__center">
             <img src="/images/joner-logo-white.png" alt="Joner Football" />
@@ -369,10 +374,9 @@ const sanityPage = await fetchSanityPage('camps')
       z-index: 50;
     }
 
-    .camp-orbit__node--1 { transform: rotate(0deg) translateX(min(31vw, 202px)) rotate(0deg); }
-    .camp-orbit__node--2 { transform: rotate(90deg) translateX(min(31vw, 202px)) rotate(-90deg); }
-    .camp-orbit__node--3 { transform: rotate(180deg) translateX(min(31vw, 202px)) rotate(-180deg); }
-    .camp-orbit__node--4 { transform: rotate(270deg) translateX(min(31vw, 202px)) rotate(-270deg); }
+    .camp-orbit__node {
+      transform: rotate(var(--orbit-angle)) translateX(min(31vw, 202px)) rotate(var(--orbit-counter-angle));
+    }
 
     .camp-orbit__center {
       position: absolute;
@@ -464,10 +468,9 @@ const sanityPage = await fetchSanityPage('camps')
         height: 72px;
         font-size: 0.72rem;
       }
-      .camp-orbit__node--1 { transform: rotate(0deg) translateX(min(31vw, 126px)) rotate(0deg); }
-      .camp-orbit__node--2 { transform: rotate(90deg) translateX(min(31vw, 126px)) rotate(-90deg); }
-      .camp-orbit__node--3 { transform: rotate(180deg) translateX(min(31vw, 126px)) rotate(-180deg); }
-      .camp-orbit__node--4 { transform: rotate(270deg) translateX(min(31vw, 126px)) rotate(-270deg); }
+      .camp-orbit__node {
+        transform: rotate(var(--orbit-angle)) translateX(min(31vw, 126px)) rotate(var(--orbit-counter-angle));
+      }
       .camp-orbit__node-label {
         max-width: 64px;
       }
