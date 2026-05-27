@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
 const title = 'San Diego | Camp | June 2026 | Joner Football'
-const description = 'Book the Joner Football San Diego Camp, June 22 to 24, 2026 at 4S Ranch Sports Park. Request a camp spot or small group training.'
+const description = 'Request your spot for the Joner Football San Diego Camp, June 22 to 24, 2026 at 4S Ranch Sports Park. Limited availability.'
 const canonical = 'https://jonerfootball.com/camps/san-diego-june/'
 
 const infoCells = [
@@ -40,6 +40,7 @@ const infoCells = [
 
 const carouselImages = [
   '/images/camps/joner-camps/hero-lee-pointing.jpg',
+  '/images/camps/joner-camps/san-diego-leon-fc-group.jpg',
   '/images/camps/joner-camps/red-shirt-action.jpg',
   '/images/camps/joner-camps/players-field.jpg',
   '/images/camps/joner-camps/lee-coaching-group.jpg',
@@ -101,15 +102,15 @@ const eventSchema = {
     <div class="sd-hero-img" aria-hidden="true"></div>
     <div class="sd-hero-overlay" aria-hidden="true"></div>
     <div class="sd-wrap sd-hero-content">
-      <span class="sd-eyebrow" data-motion="fade-up"><span class="sd-pulse"></span> June 22 to 24</span>
+      <span class="sd-eyebrow" data-motion="fade-up"><span class="sd-pulse"></span> Limited spots available</span>
       <h1 class="sd-h1" data-motion="fade-up" data-motion-delay="0.08">
         San Diego
         <span class="sd-hook">Camp</span>
-        <span class="sd-h1-small">Book now. Request your spot.</span>
+        <span class="sd-h1-small">Request your spot. Limited availability.</span>
       </h1>
       <div class="sd-hero-cta" data-motion="fade-up" data-motion-delay="0.24">
         <a class="btn-red" href="#register" data-motion-hover="lift">
-          Book now
+          Request now
         </a>
         <a class="btn-red" href="#info" data-motion-hover="lift">
           Camp info
@@ -173,7 +174,7 @@ const eventSchema = {
   <section class="sd-form-section" id="register">
     <div class="sd-wrap">
       <div class="sd-section-head" data-motion="fade-up">
-        <span class="sd-section-eyebrow">Book now</span>
+        <span class="sd-section-eyebrow">Request now</span>
         <h2 class="sd-h2">Request your <span class="sd-hook">spot</span>.</h2>
         <p class="sd-form-lede">
           Choose camp, small group training, or both. Obed and Joner Football will follow up.
@@ -288,7 +289,7 @@ const eventSchema = {
 
           <div class="sd-form-submit">
             <button type="submit" class="btn-red" data-motion-hover="lift">
-              <span class="sd-submit-label">Send request</span>
+              <span class="sd-submit-label">Request now</span>
             </button>
           </div>
         </div>
@@ -299,7 +300,7 @@ const eventSchema = {
   <!-- ============ STICKY MOBILE CTA ============ -->
   <div class="sd-mobile-cta">
     <a class="btn-red w-full" href="#register">
-      Book now
+      Request now
     </a>
   </div>
 
@@ -723,7 +724,7 @@ const eventSchema = {
         if (errEl) errEl.textContent = ''
         const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null
         const labelEl = submitBtn?.querySelector('.sd-submit-label') as HTMLElement | null
-        const originalLabel = labelEl?.textContent || 'Send request'
+        const originalLabel = labelEl?.textContent || 'Request now'
 
         const data = new FormData(form)
         const requestNights = [
