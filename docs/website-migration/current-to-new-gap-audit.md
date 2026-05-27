@@ -157,7 +157,7 @@ Current active/new-site camp comparison:
 | LA Complete Player Experience | Hub says June 22-24, 2026 at Gol Soccer Complex. Detail page still says April 7-9, 2026. | `/camps/la-tcpe-june` | Date conflict. New uses June 22-24. Needs Lee verification, then old detail URL redirect. |
 | Houston World Cup Camp | `https://jonerfootball.com/houston2026/` | `/camps/texas-houston-june` | New page is close. Verify all day options, jersey cutoff, payment links, partner names. |
 | Dallas World Cup Camp | `https://jonerfootball.com/dallas2026/` | `/camps/texas-dallas-june` | New page is close. Preserve World Sport FC, Aaron Lopez, Armando Pelaez if approved. Verify payment links. |
-| Sydney July Camp ft Miguel Grande | `https://jonerfootball.com/sydneyjuly2026/` plus old indexed `/elitecampbookings/sydneycamp/` | `/camps/sydney-big-1-july` | New page is close. Verify max capacity typo on WordPress, JFP priority spots, day options, jersey wording. |
+| Sydney July Camp | `https://jonerfootball.com/sydneyjuly2026/` plus old indexed `/elitecampbookings/sydneycamp/` | `/camps/sydney-big-1-july` | New page is close. Verify max capacity typo on WordPress, JFP priority spots, day options, jersey wording. |
 | Melbourne October 2026 | Listed on hub as coming soon | Missing | Decision needed. Add coming soon card or intentionally omit. |
 | Sacramento April 2026 | `https://jonerfootball.com/sacramento-california-april-2026/` | Redirect to `/camps` | Finished before launch. Do not expose. Preserve redirect. |
 | Portland April 2026 | likely old nav/detail URL, exact slug not surfaced by search | Redirect to `/camps` | Finished before launch. Do not expose. Preserve if old slug is known from WP. |
@@ -410,7 +410,7 @@ Checklist:
 - Decide on Melbourne October 2026.
 - Verify payment links and day-specific payment options.
 - Verify jersey cutoff dates and inclusion rules.
-- Verify partner names: First Strike, Kingdom Soccer Training, Grande Sports Training, World Sport FC, Miguel Grande.
+- Verify partner names: First Strike, Kingdom Soccer Training, Grande Sports Training, World Sport FC.
 - Verify Google Sheet tabs and Brevo list IDs.
 - Verify map links and venues.
 - Add redirect map for every old camp URL.

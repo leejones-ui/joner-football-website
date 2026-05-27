@@ -6,6 +6,7 @@ const description = 'Book the Sydney July Joner Football camp. Three high-energy
 const canonical = 'https://jonerfootball.com/camps/sydney-july-2026/'
 const heroImage = '/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg'
 const absoluteHeroImage = `https://jonerfootball.com${heroImage}`
+const socialImage = `${absoluteHeroImage}?v=20260527-clean-card`
 
 const infoCells = [
   {
@@ -160,11 +161,15 @@ const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
   title={title}
   description={description}
   canonical={canonical}
-  ogImage={absoluteHeroImage}
+  ogImage={socialImage}
   schema={eventSchema}
   hideMobileAppCta
 >
   <Fragment slot="head">
+    <meta property="og:image:secure_url" content={socialImage} />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="854" />
+    <meta property="og:updated_time" content="2026-05-27T03:20:00Z" />
     <link rel="preload" as="image" href={heroImage} fetchpriority="high" />
     <link rel="preconnect" href="https://www.youtube-nocookie.com" />
     <link rel="preconnect" href="https://i.ytimg.com" />

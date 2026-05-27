@@ -54,7 +54,7 @@ https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball
 - **LA Complete Player Experience:** June 22-24 at Gol Soccer Complex, North Hollywood
 - **Houston:** June 2026
 - **Dallas:** June/July 2026
-- **Sydney:** July 2026 ft M Grande
+- **Sydney:** July 2026
 
 Remove Sacramento and Portland from the camp cards grid.
 

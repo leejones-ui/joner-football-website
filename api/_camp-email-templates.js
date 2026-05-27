@@ -220,7 +220,7 @@ export function testCampEmailData(overrides = {}) {
     parentName: 'Lee',
     playerFirstName: 'Test',
     playerSurname: 'Player',
-    campName: 'Sydney July Camp ft Miguel Grande',
+    campName: 'Sydney July Camp',
     destination: 'Sydney',
     campDates: 'July 14-16, 2026',
     campTimes: '9am to 12pm',

@@ -20,6 +20,7 @@
     { "source": "/houston2026/", "destination": "/camps/texas-houston-june", "permanent": true },
     { "source": "/dallas2026", "destination": "/camps/texas-dallas-june", "permanent": true },
     { "source": "/dallas2026/", "destination": "/camps/texas-dallas-june", "permanent": true },
+    { "source": "/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg", "destination": "/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg", "permanent": false },
     { "source": "/sydneyjuly2026", "destination": "/camps/sydney-july-2026", "permanent": true },
     { "source": "/sydneyjuly2026/", "destination": "/camps/sydney-july-2026", "permanent": true },
     { "source": "/elitecampbookings/sydneycamp", "destination": "/camps/sydney-july-2026", "permanent": true },
