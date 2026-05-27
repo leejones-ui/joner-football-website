@@ -1,0 +1,234 @@
+---
+// Coaches Only testimonials carousel.
+// Mirrors the HighlightsCarousel pattern from the /app page but optimised
+// for full-bleed photo testimonials. Auto-advances at a steady pace.
+
+interface Testimonial {
+  image: string
+  alt: string
+}
+
+const testimonials: Testimonial[] = [
+  {
+    image: '/images/coaches-only/testimonials/testimonial-1.png',
+    alt: 'Coach testimonial: real coach feedback on the Joner Football App Coaches Only tier',
+  },
+  {
+    image: '/images/coaches-only/testimonials/testimonial-2.png',
+    alt: 'Coach testimonial: real coach feedback on Joner Football session plans and voice-over drills',
+  },
+  {
+    image: '/images/coaches-only/testimonials/testimonial-3.png',
+    alt: 'Coach testimonial: real coach feedback on Lee Jones coaching education',
+  },
+  {
+    image: '/images/coaches-only/testimonials/testimonial-4.png',
+    alt: 'Coach testimonial: real coach feedback on the Joner Football Coaches Only Max Plan',
+  },
+]
+---
+
+<section class="bg-joner-black py-16 md:py-24 overflow-hidden">
+  <div class="max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-10">
+
+    <div class="text-center mb-10 md:mb-14">
+      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">TESTIMONIALS</p>
+      <h2 class="font-heading text-3xl sm:text-5xl md:text-6xl lg:text-7xl text-white uppercase leading-none tracking-tight">
+        Coaches Using Coaches Only.
+      </h2>
+    </div>
+
+    <div
+      id="coaches-testimonials-track"
+      class="coaches-testimonials-track flex gap-3 md:gap-5 overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+    >
+      {testimonials.map((t, i) => (
+        <article
+          class="coaches-testimonials-slide snap-center shrink-0 relative rounded-2xl md:rounded-3xl overflow-hidden bg-joner-gray"
+          data-index={i}
+        >
+          <img
+            src={t.image}
+            alt={t.alt}
+            class="absolute inset-0 w-full h-full object-cover"
+            loading={i === 0 ? 'eager' : 'lazy'}
+          />
+        </article>
+      ))}
+    </div>
+
+    <div class="flex items-center justify-center gap-4 mt-7 md:mt-9">
+      <div class="flex items-center gap-1.5" id="coaches-testimonials-dots">
+        {testimonials.map((_, i) => (
+          <button
+            type="button"
+            class="coaches-testimonials-dot rounded-full transition-all duration-300"
+            data-dot-index={i}
+            aria-label={`Go to testimonial ${i + 1}`}
+          ></button>
+        ))}
+      </div>
+      <button
+        type="button"
+        id="coaches-testimonials-toggle"
+        class="ml-1 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+        aria-label="Pause testimonials"
+      >
+        <svg id="coaches-testimonials-pause" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6" y="5" width="4" height="14" rx="1"/>
+          <rect x="14" y="5" width="4" height="14" rx="1"/>
+        </svg>
+        <svg id="coaches-testimonials-play" class="w-3.5 h-3.5 hidden" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+      </button>
+    </div>
+
+  </div>
+</section>
+
+<style>
+  .coaches-testimonials-track {
+    scroll-padding-inline: 6vw;
+    padding-inline: 6vw;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .coaches-testimonials-slide {
+    width: 88vw;
+    aspect-ratio: 4 / 5;
+    scroll-snap-stop: always;
+  }
+
+  @media (min-width: 768px) {
+    .coaches-testimonials-track { scroll-padding-inline: 10vw; padding-inline: 10vw; }
+    .coaches-testimonials-slide { width: 70vw; aspect-ratio: 1 / 1; }
+  }
+
+  @media (min-width: 1024px) {
+    .coaches-testimonials-track { scroll-padding-inline: 18vw; padding-inline: 18vw; }
+    .coaches-testimonials-slide { width: 58vw; aspect-ratio: 4 / 3; }
+  }
+
+  @media (min-width: 1440px) {
+    .coaches-testimonials-slide { width: 820px; aspect-ratio: 4 / 3; }
+  }
+
+  .coaches-testimonials-dot {
+    width: 8px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.32);
+  }
+
+  .coaches-testimonials-dot[data-active='true'] {
+    width: 26px;
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .coaches-testimonials-track { scroll-behavior: auto; }
+  }
+</style>
+
+<script>
+  const track = document.getElementById('coaches-testimonials-track') as HTMLElement | null
+  const toggle = document.getElementById('coaches-testimonials-toggle') as HTMLButtonElement | null
+  const pauseIcon = document.getElementById('coaches-testimonials-pause')
+  const playIcon = document.getElementById('coaches-testimonials-play')
+  const dots = Array.from(document.querySelectorAll<HTMLButtonElement>('.coaches-testimonials-dot'))
+
+  if (track && dots.length) {
+    const slides = Array.from(track.querySelectorAll<HTMLElement>('.coaches-testimonials-slide'))
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    let current = 0
+    let playing = !reduced
+    let timer: ReturnType<typeof setInterval> | null = null
+    let pausedTemporarily = false
+    let scrollPauseTO: ReturnType<typeof setTimeout> | null = null
+
+    const setActive = (i: number) => {
+      current = i
+      dots.forEach((dot, idx) => {
+        dot.dataset.active = idx === i ? 'true' : 'false'
+      })
+    }
+
+    const goTo = (i: number) => {
+      const target = slides[i]
+      if (!target || !track) return
+      const offset = target.offsetLeft - (track.clientWidth - target.clientWidth) / 2
+      track.scrollTo({ left: offset, behavior: reduced ? 'auto' : 'smooth' })
+    }
+
+    const next = () => goTo((current + 1) % slides.length)
+
+    const startAuto = () => {
+      stopAuto()
+      if (!playing) return
+      // 6 seconds per testimonial: long enough to read the graphic, short enough to keep moving
+      timer = setInterval(() => {
+        if (!pausedTemporarily) next()
+      }, 6000)
+    }
+
+    const stopAuto = () => {
+      if (timer) { clearInterval(timer); timer = null }
+    }
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        let best = { ratio: 0, idx: current }
+        entries.forEach((e) => {
+          if (e.intersectionRatio > best.ratio) {
+            const idx = parseInt((e.target as HTMLElement).dataset.index || '0')
+            best = { ratio: e.intersectionRatio, idx }
+          }
+        })
+        if (best.ratio > 0.6) setActive(best.idx)
+      },
+      { root: track, threshold: [0.4, 0.6, 0.8] }
+    )
+    slides.forEach((s) => io.observe(s))
+
+    dots.forEach((dot) => {
+      dot.addEventListener('click', () => {
+        const i = parseInt(dot.dataset.dotIndex || '0')
+        goTo(i)
+        startAuto()
+      })
+    })
+
+    toggle?.addEventListener('click', () => {
+      playing = !playing
+      if (playing) {
+        startAuto()
+        pauseIcon?.classList.remove('hidden')
+        playIcon?.classList.add('hidden')
+        toggle.setAttribute('aria-label', 'Pause testimonials')
+      } else {
+        stopAuto()
+        pauseIcon?.classList.add('hidden')
+        playIcon?.classList.remove('hidden')
+        toggle.setAttribute('aria-label', 'Play testimonials')
+      }
+    })
+
+    track.addEventListener('mouseenter', () => { pausedTemporarily = true })
+    track.addEventListener('mouseleave', () => { pausedTemporarily = false })
+    track.addEventListener('touchstart', () => { pausedTemporarily = true }, { passive: true })
+    track.addEventListener('touchend', () => {
+      if (scrollPauseTO) clearTimeout(scrollPauseTO)
+      scrollPauseTO = setTimeout(() => { pausedTemporarily = false }, 1200)
+    })
+    track.addEventListener('scroll', () => {
+      pausedTemporarily = true
+      if (scrollPauseTO) clearTimeout(scrollPauseTO)
+      scrollPauseTO = setTimeout(() => { pausedTemporarily = false }, 900)
+    }, { passive: true })
+
+    setActive(0)
+    startAuto()
+  }
+</script>

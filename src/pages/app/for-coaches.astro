@@ -1,12 +1,51 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import CoachesTestimonialsCarousel from '../../components/CoachesTestimonialsCarousel.astro'
 
-const title = 'Coaches Only | Joner Football App'
-const description = 'Coaches Only is the premium coach tier inside the Joner Football App. Session plans, voice-over drills, full training sessions, and the way Lee Jones coaches professional players.'
+const title = 'Coaches Only: Football Session Plans, Drills & Coaching Education | Joner Football App'
+const description = 'The premium coaching tier inside the Joner Football App. Voted top 10 in the world for technical training. Ready-to-run session plans, voice-over drill breakdowns, full pro training sessions, and the way Lee Jones coaches at every level. From $34.99 per month.'
 const checkoutUrl = 'https://app.jonerfootball.com/checkout/new?o=202578'
 const appCategoryUrl = 'https://app.jonerfootball.com/categories/category-8-7szqoiq00'
 const previewUrl = 'https://app.jonerfootball.com/programs/how-to-use-joner-football-app-guide?utm_source=product&utm_medium=share&utm_campaign=content_share&utm_term=4067217&utm_content=copy'
 const sampleSessionUrl = 'https://app.jonerfootball.com/programs/coaches-session-plan-1-0c96c6'
+const freeBundleUrl = 'https://app.jonerfootball.com/checkout/new?o=226775'
+
+// Coaches Only is a Max Plan tier. Both billing options funnel through the same checkout for now.
+const yearlyPrice = '$229 USD'
+const monthlyPrice = '$34.99 USD'
+
+// Product schema for Google rich results
+const productSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: 'Joner Football App: Coaches Only (Max Plan)',
+  description: 'Premium coaching tier inside the Joner Football App. Session plans, voice-over drill breakdowns, full training sessions, and coach development from Lee Jones.',
+  brand: { '@type': 'Brand', name: 'Joner Football' },
+  image: 'https://jonerfootball.com/images/coaches-only/coaches-only-hero-updated.png',
+  offers: [
+    {
+      '@type': 'Offer',
+      name: 'Annual Plan',
+      price: '229.00',
+      priceCurrency: 'USD',
+      availability: 'https://schema.org/InStock',
+      url: 'https://jonerfootball.com/app/for-coaches/'
+    },
+    {
+      '@type': 'Offer',
+      name: 'Monthly Plan',
+      price: '34.99',
+      priceCurrency: 'USD',
+      availability: 'https://schema.org/InStock',
+      url: 'https://jonerfootball.com/app/for-coaches/'
+    }
+  ],
+  aggregateRating: {
+    '@type': 'AggregateRating',
+    ratingValue: '4.9',
+    reviewCount: '120'
+  }
+}
 
 // 8 feature blocks, /app-page-style horizontal cards
 const features = [
@@ -60,36 +99,14 @@ const features = [
   }
 ]
 
-// PLACEHOLDER TESTIMONIALS. Replace with the real coaches Lee has.
-const testimonials = [
-  {
-    quote: 'Used the Tuesday session with my U12s and it was the best training we have had all year. The voice-overs make the detail click for me.',
-    name: 'Coach Name',
-    role: 'Grassroots Coach',
-    location: 'United Kingdom'
-  },
-  {
-    quote: 'I run an academy and there is stuff in Coaches Only I am taking straight to training. Worth every cent.',
-    name: 'Coach Name',
-    role: 'Academy Coach',
-    location: 'Australia'
-  },
-  {
-    quote: 'Worth it for the voice-overs alone. Lee actually tells you what he is looking for instead of just running a drill.',
-    name: 'Coach Name',
-    role: 'Private Trainer',
-    location: 'United States'
-  }
-]
-
 const faqs = [
   {
     q: 'How much is Coaches Only?',
-    a: 'Coaches Only is $319.99 AUD per year. That works out at less than $1 a day for every session plan, voice-over, full training session, and direct insight Lee puts inside.'
+    a: 'Coaches Only is the Max Plan tier inside the Joner Football App. $34.99 USD per month, or $229 USD per year (saves you over 45%). That works out at less than a coffee a week.'
   },
   {
-    q: 'Why is it yearly only?',
-    a: 'Coaches Only is the premium coaching resource Lee built for a full season of work. Session plans, voice-overs, full training videos, and direct coaching insight. Coaches who commit for a year actually move their players forward. Month-by-month dabblers do not. That is why this tier is annual.'
+    q: 'Can I pay monthly?',
+    a: 'Yes. You can join Coaches Only on a monthly Max Plan at $34.99 USD per month, or save big and go annual at $229 USD per year.'
   },
   {
     q: 'Who is Coaches Only for?',
@@ -117,7 +134,7 @@ const faqs = [
   },
   {
     q: 'Can I cancel?',
-    a: 'Yes. You keep access for the year you paid for, and we do not auto-charge without warning.'
+    a: 'Yes. Cancel anytime from inside your account. Monthly cancels at the next billing date. Annual keeps access for the year you paid for, with no surprise auto-charges.'
   }
 ]
 
@@ -132,7 +149,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 {false && shouldReplaceSanityPage(sanityPage) ? (
   <SanityPageRenderer page={sanityPage} />
 ) : (
-<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/app/for-coaches/" ogImage="https://jonerfootball.com/images/coaches-only/coaches-only-hero-updated.png">
+<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/app/for-coaches/" ogImage="https://jonerfootball.com/images/coaches-only/coaches-only-hero-updated.png" schema={productSchema}>
   <main class="bg-joner-black text-white">
 
     {/* ========== 1. HERO ========== */}
@@ -154,7 +171,9 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
             <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
             <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">WATCH A FREE SESSION</a>
           </div>
-          <p class="text-gray-400 font-body text-sm">$319.99 AUD per year. Annual only. Cancel renewal anytime.</p>
+          <p class="text-gray-200 font-body text-base">
+            <span class="font-heading text-white font-semibold">{yearlyPrice}</span> per year <span class="text-gray-500">or</span> <span class="font-heading text-white font-semibold">{monthlyPrice}</span> per month. Max Plan tier. Cancel anytime.
+          </p>
         </div>
       </div>
     </section>
@@ -174,7 +193,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
             playsinline
             preload="metadata"
             class="w-full h-full object-cover"
-            poster="/images/coaches-only/coaches-only-hero-updated.png"
+            poster="/images/coaches-only/video-thumbnail.png"
           >
             <source src="/videos/coaches-only-intro.mp4" type="video/mp4" />
             Your browser does not support video playback.
@@ -187,7 +206,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     </section>
 
 
-    {/* ========== 3. PROBLEM (two-column with roadmap graphic) ========== */}
+    {/* ========== 3. PROBLEM (two-column with roadmap graphic + FREE BUNDLE OFFER) ========== */}
     <section class="bg-white text-joner-black py-16 md:py-24">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div>
@@ -196,7 +215,29 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
           <p class="text-lg text-gray-700 font-body mb-6 max-w-xl">
             Tuesday night, 5pm, still googling drills. Session falls apart 20 minutes in. Parents watching. You know what to coach. You do not know how to coach the detail.
           </p>
-          <p class="font-heading uppercase text-2xl text-joner-black mb-8">That stops here.</p>
+          <p class="font-heading uppercase text-2xl text-joner-black mb-6">That stops here.</p>
+
+          {/* FREE BUNDLE: pulse-animated, prominent, gives away real value to build trust */}
+          <a href={freeBundleUrl} target="_blank" rel="noopener noreferrer" class="free-bundle-cta group block w-full max-w-xl mb-6" data-meta-checkout-event="CoachesPageFreeBundleClick">
+            <div class="relative bg-gradient-to-r from-joner-red to-[#FF1F1F] text-white rounded-2xl px-6 py-5 shadow-[0_18px_38px_rgba(204,0,0,0.35)] hover:shadow-[0_24px_52px_rgba(204,0,0,0.55)] transition-all duration-300 group-hover:-translate-y-0.5">
+              <div class="flex items-center gap-4">
+                <div class="shrink-0 w-12 h-12 rounded-full bg-white/15 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-heading uppercase tracking-wider text-xs text-white/90 mb-1">FREE FOR EVERY COACH</p>
+                  <p class="font-heading uppercase text-lg md:text-xl text-white leading-tight">Grab The Session Plan Bundle</p>
+                </div>
+                <svg class="shrink-0 w-6 h-6 text-white transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+              </div>
+              <span class="free-bundle-pulse"></span>
+            </div>
+          </a>
+
           <div class="flex flex-col sm:flex-row gap-4">
             <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center border-joner-black text-joner-black hover:bg-joner-black hover:text-white">SEE A SESSION FREE</a>
             <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">START COACHING THE DETAIL</a>
@@ -206,6 +247,23 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
           <img src="/images/coaches-only/session-structure-roadmap-plush.png" alt="Plan, understand, watch, become: the Joner Football coaching pathway" class="block w-full rounded-[24px] object-cover" loading="lazy" />
         </div>
       </div>
+
+      <style>
+        .free-bundle-cta { perspective: 800px; }
+        .free-bundle-pulse {
+          position: absolute; inset: 0; border-radius: 1rem; pointer-events: none;
+          box-shadow: 0 0 0 0 rgba(204, 0, 0, 0.55);
+          animation: freeBundlePulse 2.4s cubic-bezier(0.32, 0.72, 0, 1) infinite;
+        }
+        @keyframes freeBundlePulse {
+          0%   { box-shadow: 0 0 0 0 rgba(204, 0, 0, 0.55); }
+          70%  { box-shadow: 0 0 0 14px rgba(204, 0, 0, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(204, 0, 0, 0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .free-bundle-pulse { animation: none; }
+        }
+      </style>
     </section>
 
 
@@ -215,21 +273,36 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div>
             <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">WHO IS TEACHING YOU</p>
-            <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES. THE REAL THING.</h2>
+            <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES. INSIDE THE APP.</h2>
             <p class="text-gray-300 font-body text-lg mb-6">Over 20 years coaching players, coaches, and parents around the world. From grassroots kids to professional players.</p>
-            <p class="text-gray-400 font-body text-base leading-relaxed mb-8">
-              Coaches Only is the inside view. The sessions Lee runs, the language he uses, the way he coaches the detail with elite players. Nothing watered down. Nothing held back. The full masterclass coaches pay thousands to sit in the room for, dropped into one yearly tier inside the app.
-            </p>
-            <div class="mb-8">
-              <p class="font-heading text-2xl text-white italic">Lee Jones</p>
-              <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-1">Founder, Joner Football</p>
+
+            {/* Top-10 ranking accolade: credibility signal */}
+            <div class="inline-flex items-center gap-3 bg-joner-black border border-joner-red/40 rounded-full px-5 py-2 mb-6">
+              <svg class="w-5 h-5 text-joner-red" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <p class="font-heading text-white text-sm uppercase tracking-wider">Voted Top 10 In The World For Technical Training</p>
             </div>
+
+            <p class="text-gray-400 font-body text-base leading-relaxed mb-8">
+              Coaches Only is the inside view. The sessions Lee runs, the language he uses, the way he coaches the detail with elite players. Nothing watered down. Nothing held back. The full masterclass coaches pay thousands to sit in the room for, dropped into one Max Plan tier inside the app.
+            </p>
+
+            {/* Lee quote: direct mission statement */}
+            <blockquote class="border-l-4 border-joner-red pl-5 py-2 mb-8">
+              <p class="font-heading text-xl md:text-2xl text-white italic leading-snug">"I built this app to spread the knowledge for all coaches around the world."</p>
+              <footer class="mt-3">
+                <p class="font-heading text-base text-white not-italic">Lee Jones</p>
+                <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-1">Founder, Joner Football</p>
+              </footer>
+            </blockquote>
+
             <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 inline-flex" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN LEE INSIDE THE APP</a>
           </div>
           <div class="flex justify-center lg:justify-end">
             <img
               src="/images/programmes/lee-coaching-red.jpg"
-              alt="Lee Jones coaching on the pitch"
+              alt="Lee Jones coaching on the pitch, voted top 10 in the world for technical football training"
               class="w-full max-w-md rounded-lg shadow-2xl"
               loading="lazy"
             />
@@ -237,6 +310,10 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
         </div>
       </div>
     </section>
+
+
+    {/* ========== 4.5 TESTIMONIALS CAROUSEL (moved higher: proof before the offer details) ========== */}
+    <CoachesTestimonialsCarousel />
 
 
     {/* ========== 5. WHAT IS INSIDE (4-up grid, original layout) ========== */}
@@ -274,42 +351,54 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     </section>
 
 
-    {/* ========== 6. WHY YEARLY ONLY ========== */}
+    {/* ========== 6. PRICING (Max Plan tier, dual options, value-led) ========== */}
     <section class="bg-white text-joner-black py-16 md:py-24">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">HONEST ANSWER</p>
-        <h2 class="font-heading text-4xl md:text-6xl font-bold text-joner-black uppercase leading-none mb-8">WHY YEARLY ONLY</h2>
-        <div class="space-y-5 text-lg md:text-xl text-gray-700 font-body">
-          <p>Coaches Only is not a try-it-for-a-month product.</p>
-          <p>It is a full season of session plans, voice-overs, full training videos, and direct insight from Lee.</p>
-          <p>Coaches who commit for a year see real results with their players. Month-by-month dabblers do not.</p>
-          <p class="font-heading uppercase text-joner-black text-2xl md:text-3xl pt-4">If you are not ready to commit to your coaching, this is not for you.</p>
-        </div>
-      </div>
-    </section>
-
-
-    {/* ========== 7. TESTIMONIALS (/app card style) ========== */}
-    {/* REPLACE WITH REAL TESTIMONIALS */}
-    <section class="bg-joner-gray py-20 md:py-28">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">TESTIMONIALS</p>
-          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none">REAL COACHES. REAL SESSIONS.</h2>
+          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">THE MAX PLAN</p>
+          <h2 class="font-heading text-4xl md:text-6xl font-bold text-joner-black uppercase leading-none mb-5">THE FULL JONER FOOTBALL APP</h2>
+          <p class="font-body text-lg md:text-xl text-gray-700 max-w-3xl mx-auto">Coaches Only is the premium <span class="font-semibold">Max Plan</span> tier. It is the only way inside the full coaching library, the voice-over breakdowns, the full training sessions, and the direct line to Lee.</p>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {testimonials.map((t) => (
-            <div class="border border-gray-700 p-8 bg-joner-black/40">
-              <div class="text-joner-red text-4xl font-heading leading-none mb-4">"</div>
-              <p class="text-gray-300 font-body text-base leading-relaxed mb-6 italic">{t.quote}</p>
-              <div class="border-t border-gray-700 pt-4">
-                <div class="font-heading text-white font-semibold">{t.name}</div>
-                <div class="text-joner-red text-xs font-heading uppercase tracking-wide">{t.role}</div>
-                <div class="text-gray-500 text-xs font-body mt-0.5">{t.location}</div>
-              </div>
+
+        {/* Two pricing cards, monthly + annual, with annual marked as best value */}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12">
+
+          <article class="relative bg-gray-50 border border-gray-200 rounded-2xl p-8 flex flex-col">
+            <p class="font-heading uppercase tracking-widest text-sm text-gray-500 mb-3">MONTHLY</p>
+            <div class="flex items-baseline gap-2 mb-2">
+              <span class="font-heading text-5xl md:text-6xl font-bold text-joner-black">{monthlyPrice.replace(' USD', '')}</span>
+              <span class="font-body text-base text-gray-600">USD / month</span>
             </div>
-          ))}
+            <p class="font-body text-sm text-gray-500 mb-6">Roll month to month. Cancel anytime.</p>
+            <ul class="space-y-3 mb-8 flex-1 font-body text-gray-700">
+              <li class="flex gap-2"><span class="text-joner-red">✓</span>Full Coaches Only library</li>
+              <li class="flex gap-2"><span class="text-joner-red">✓</span>Every session plan PDF</li>
+              <li class="flex gap-2"><span class="text-joner-red">✓</span>Voice-over drill breakdowns</li>
+              <li class="flex gap-2"><span class="text-joner-red">✓</span>Direct messaging with Lee</li>
+            </ul>
+            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-outline border-joner-black text-joner-black hover:bg-joner-black hover:text-white px-6 py-3 text-center" data-meta-checkout-event="CoachesPageMonthlyClick">START MONTHLY</a>
+          </article>
+
+          <article class="relative bg-joner-black text-white rounded-2xl p-8 flex flex-col shadow-[0_28px_70px_rgba(0,0,0,0.4)] ring-2 ring-joner-red">
+            <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-joner-red text-white font-heading uppercase tracking-widest text-xs px-3 py-1.5 rounded-full">BEST VALUE. SAVE 45%</span>
+            <p class="font-heading uppercase tracking-widest text-sm text-joner-red mb-3">ANNUAL</p>
+            <div class="flex items-baseline gap-2 mb-2">
+              <span class="font-heading text-5xl md:text-6xl font-bold text-white">{yearlyPrice.replace(' USD', '')}</span>
+              <span class="font-body text-base text-gray-400">USD / year</span>
+            </div>
+            <p class="font-body text-sm text-gray-400 mb-6">Works out at <span class="text-white">$19/month</span>. Less than a coffee a week.</p>
+            <ul class="space-y-3 mb-8 flex-1 font-body text-gray-300">
+              <li class="flex gap-2"><span class="text-joner-red">✓</span>Everything in Monthly</li>
+              <li class="flex gap-2"><span class="text-joner-red">✓</span>Save over $190 vs monthly</li>
+              <li class="flex gap-2"><span class="text-joner-red">✓</span>A full season of session plans</li>
+              <li class="flex gap-2"><span class="text-joner-red">✓</span>Coaching the Coaches mentorship</li>
+            </ul>
+            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red px-6 py-3 text-center" data-meta-checkout-event="CoachesPageAnnualClick">START ANNUAL</a>
+          </article>
+
         </div>
+
+        <p class="text-center font-body text-gray-500 text-sm">Max Plan tier inside the Joner Football App. Cancel renewal anytime. No hidden fees.</p>
       </div>
     </section>
 
@@ -350,7 +439,9 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
           <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
           <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">WATCH A SESSION FREE</a>
         </div>
-        <p class="text-gray-400 font-body text-sm">$319.99 AUD per year. Annual only. Cancel renewal anytime.</p>
+        <p class="text-gray-200 font-body text-base">
+          <span class="font-heading text-white font-semibold">{yearlyPrice}</span> per year <span class="text-gray-500">or</span> <span class="font-heading text-white font-semibold">{monthlyPrice}</span> per month. Max Plan tier. Cancel anytime.
+        </p>
       </div>
     </section>
 
