@@ -3,6 +3,7 @@ import { cleanString, protectForm } from './_security.js'
 const FALLBACK_RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'leejones@jonerfootball.com'
 const duplicateBuckets = new Map()
 const DUPLICATE_WINDOW_MS = 15 * 60 * 1000
+const DEFAULT_WAIVER_TABLE = 'Player Onboarding & Waiver'
 
 const TYPES = {
   'training-sydney': 'Training Enquiries (Sydney)',
@@ -11,6 +12,7 @@ const TYPES = {
   'joners-juniors': 'Joners Juniors Enquiries',
   'coaching-role': 'Apply For A Coaching Role',
   'team-subscriptions': 'Team Subscriptions Enquiry',
+  'player-waiver': 'Player Onboarding & Waiver',
 }
 
 const RECIPIENTS = {
@@ -69,6 +71,120 @@ function cleanAttachment(file) {
   const bytes = Math.ceil((content.length * 3) / 4)
   if (bytes > 5 * 1024 * 1024) throw new Error('CV file is too large. Max 5MB.')
   return { name, content }
+}
+
+function airtableConfig() {
+  const token = process.env.AIRTABLE_API_TOKEN || process.env.AIRTABLE_TOKEN
+  const baseId = process.env.AIRTABLE_BASE_ID
+  const table = process.env.AIRTABLE_WAIVER_TABLE || process.env.AIRTABLE_WAIVER_TABLE_ID || DEFAULT_WAIVER_TABLE
+  if (!token || !baseId) throw new Error('Airtable is not configured.')
+  return { token, baseId, table }
+}
+
+function escapeFormulaValue(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+}
+
+async function airtableRequest(path, init = {}) {
+  const { token, baseId, table } = airtableConfig()
+  const response = await fetch(`https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}${path}`, {
+    ...init,
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json',
+      ...(init.headers || {}),
+    },
+  })
+  const text = await response.text()
+  let data = {}
+  try { data = text ? JSON.parse(text) : {} } catch { data = {} }
+  if (!response.ok) throw new Error(data?.error?.message || `Airtable request failed: ${response.status}`)
+  return data
+}
+
+async function findExistingWaiverRecord({ playerFullName, email, term }) {
+  const formula = `AND(LOWER({Email})='${escapeFormulaValue(email.toLowerCase())}',LOWER({Player Full Name})='${escapeFormulaValue(playerFullName.toLowerCase())}',{Term}='${escapeFormulaValue(term)}')`
+  const params = new URLSearchParams({
+    maxRecords: '1',
+    filterByFormula: formula,
+  })
+  const data = await airtableRequest(`?${params.toString()}`, { method: 'GET' })
+  return data.records?.[0]?.id || null
+}
+
+function buildWaiverSummary(body) {
+  const parts = [
+    'Parent/guardian confirms the player details and medical information supplied are accurate.',
+    'Parent/guardian understands football training involves physical activity and accepts the normal risks involved in participation.',
+    'Parent/guardian confirms the player is fit to participate, unless medical notes have been listed on this form.',
+    'Parent/guardian authorises Joner Football staff to seek urgent medical assistance if needed during a session.',
+    'Parent/guardian accepts the Term 2 payment commitment and understands that missed sessions, late arrival or non-attendance do not automatically remove the payment commitment.',
+  ]
+  const medical = clean(body.medicalNotes, 1200)
+  if (medical) parts.push(`Medical notes supplied: ${medical}`)
+  return parts.join('\n')
+}
+
+async function handlePlayerWaiver(body, res) {
+  const submitted = {
+    playerFullName: clean(body.playerFullName, 180),
+    dob: clean(body.dob, 80),
+    parentName: clean(body.parentName, 180),
+    currentClub: clean(body.currentClub, 180),
+    email: clean(body.email, 220).toLowerCase(),
+    mobileNumber: clean(body.mobileNumber, 80),
+    playerMobileNumber: clean(body.playerMobileNumber, 80),
+    medicalNotes: clean(body.medicalNotes, 1200),
+    term: clean(body.term, 80) || 'Term 2',
+    paymentCommitmentAccepted: body.paymentCommitmentAccepted === true || body.paymentCommitmentAccepted === 'true' || body.paymentCommitmentAccepted === 'on',
+    waiverAccepted: body.waiverAccepted === true || body.waiverAccepted === 'true' || body.waiverAccepted === 'on',
+    parentSignature: clean(body.parentSignature, 180),
+  }
+
+  if (!submitted.playerFullName || !submitted.dob || !submitted.parentName || !submitted.email || !submitted.mobileNumber) {
+    return res.status(400).json({ success: false, error: 'Please complete all required player and parent fields.' })
+  }
+  if (!validEmail(submitted.email)) {
+    return res.status(400).json({ success: false, error: 'Please enter a valid parent email address.' })
+  }
+  if (!submitted.paymentCommitmentAccepted || !submitted.waiverAccepted || !submitted.parentSignature) {
+    return res.status(400).json({ success: false, error: 'Please accept the waiver, payment commitment and add the parent/guardian signature.' })
+  }
+
+  const signedAt = new Date().toISOString()
+  const fields = {
+    'Player Full Name': submitted.playerFullName,
+    DOB: submitted.dob,
+    'Parent Name': submitted.parentName,
+    'Current Club': submitted.currentClub,
+    Email: submitted.email,
+    'Mobile Number': submitted.mobileNumber,
+    'Player Mobile Number': submitted.playerMobileNumber,
+    'Medical Notes': submitted.medicalNotes || 'None supplied',
+    Term: submitted.term,
+    'Spot Confirmed': 'Submitted',
+    'Payment Commitment Accepted': 'Yes',
+    'Waiver Accepted': 'Yes',
+    'Waiver Summary': buildWaiverSummary(submitted),
+    'Parent/Guardian Signature': submitted.parentSignature,
+    'Date Signed': signedAt,
+    'Internal Notes': `Submitted from jonerfootball.com/player-waiver on ${signedAt}`,
+  }
+
+  const existingId = await findExistingWaiverRecord(submitted)
+  if (existingId) {
+    await airtableRequest(`/${existingId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ fields }),
+    })
+    return res.status(200).json({ success: true, updated: true })
+  }
+
+  await airtableRequest('', {
+    method: 'POST',
+    body: JSON.stringify({ fields }),
+  })
+  return res.status(200).json({ success: true, created: true })
 }
 
 
@@ -201,10 +317,12 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
-    const protection = await protectForm(req, res, 'contact-enquiry', body)
+    const type = clean(body.enquiryType, 80)
+    const protection = await protectForm(req, res, type === 'player-waiver' ? 'player-waiver' : 'contact-enquiry', body)
     if (!protection.ok) return protection.response
 
-    const type = clean(body.enquiryType, 80)
+    if (type === 'player-waiver') return await handlePlayerWaiver(body, res)
+
     const typeLabel = TYPES[type] || TYPES.general
     const enquiry = {
       submittedAt: new Date().toISOString(),

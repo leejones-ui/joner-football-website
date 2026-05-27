@@ -9,6 +9,7 @@ const HOT_APP_LEADS_BREVO_LIST_ID = 2
 const USA_CAMP_BREVO_LIST_ID = 5
 const SYDNEY_CAMP_BREVO_LIST_ID = 6
 const CAMP_SIGNUP_EMAIL = process.env.CAMP_SIGNUP_EMAIL || 'joner1on1info@gmail.com'
+const APP_CTA_URL = 'https://jonerfootball.com/app'
 
 const HEADERS = [
   'Submitted At',
@@ -58,6 +59,14 @@ function escapeHtml(value) {
 function campRow(label, value) {
   if (!value) return ''
   return `<tr><td style="font-weight:bold;vertical-align:top;">${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`
+}
+
+function parseEmailList(value) {
+  const raw = Array.isArray(value) ? value.join(',') : String(value || '')
+  return raw
+    .split(',')
+    .map((email) => clean(email, 200).toLowerCase())
+    .filter((email) => email && validEmail(email))
 }
 
 function base64url(input) {
@@ -205,13 +214,17 @@ function brevoListsForRegistration(registration) {
 
   const destination = `${registration.destination} ${registration.location} ${registration.camp}`.toLowerCase()
   if (destination.includes('sydney') || destination.includes('australia') || destination.includes('aus')) ids.add(SYDNEY_CAMP_BREVO_LIST_ID)
-  if (destination.includes('usa') || destination.includes('america') || destination.includes('texas') || destination.includes('california')) ids.add(USA_CAMP_BREVO_LIST_ID)
+  if (destination.includes('usa') || destination.includes('america') || destination.includes('texas') || destination.includes('california') || destination.includes('san diego')) ids.add(USA_CAMP_BREVO_LIST_ID)
   if (ids.size === 1) ids.add(USA_CAMP_BREVO_LIST_ID)
 
   return Array.from(ids).filter((id) => Number.isFinite(id) && id > 0)
 }
 
 function campSignupRecipients(registration) {
+  if (registration.notificationEmails?.length) {
+    return registration.notificationEmails.map((email) => ({ email, name: 'Joner Football Camps' }))
+  }
+
   const base = String(CAMP_SIGNUP_EMAIL || '')
   const isJuniors = `${registration.camp} ${registration.destination} ${registration.sheetTab} ${registration.source}`.toLowerCase().includes('joner') && `${registration.camp} ${registration.destination} ${registration.sheetTab} ${registration.source}`.toLowerCase().includes('junior')
   const value = isJuniors
@@ -228,6 +241,7 @@ function defaultCampSheetTab(registration) {
   const text = `${registration.camp} ${registration.destination} ${registration.source}`.toLowerCase()
   if (text.includes('houston')) return 'Texas Houston (June)'
   if (text.includes('dallas')) return 'Texas Dallas (June)'
+  if (text.includes('san diego')) return 'San Diego (June)'
   if (text.includes('sydney')) return 'Sydney big 1 (July)'
   if (text.includes('joner') && text.includes('junior')) return 'Joners Juniors'
   return registration.camp || 'Camp Registrations'
@@ -235,7 +249,9 @@ function defaultCampSheetTab(registration) {
 
 async function sendCampSignupEmail(registration) {
   const apiKey = process.env.BREVO_API_KEY
-  if (!apiKey || !CAMP_SIGNUP_EMAIL) return { skipped: true }
+  if (!apiKey) return { skipped: true }
+  const recipients = campSignupRecipients(registration)
+  if (!recipients.length) return { skipped: true }
 
   const html = `
     <h2>New camp signup</h2>
@@ -252,6 +268,8 @@ async function sendCampSignupEmail(registration) {
       ${campRow('Mobile', registration.mobile)}
       ${campRow('Done camp before', registration.previousCamp)}
       ${campRow('Heard about camp', registration.heardAboutCamp)}
+      ${campRow('Request type', registration.requestType)}
+      ${campRow('Small group nights', registration.requestNights)}
       ${campRow('Club level', registration.clubLevel)}
       ${campRow('Number of days', registration.numberOfDays)}
       ${campRow('Jersey size', registration.jerseySize)}
@@ -275,9 +293,9 @@ async function sendCampSignupEmail(registration) {
         name: 'Joner Football Website',
         email: process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com',
       },
-      to: campSignupRecipients(registration),
+      to: recipients,
       replyTo: { email: registration.email, name: registration.parentName || registration.playerFirstName },
-      subject: `${registration.paymentStatus === 'paid' ? 'PAID' : 'NOT PAID YET'} camp signup: ${registration.playerFirstName} ${registration.playerSurname} for ${registration.camp}`,
+      subject: `${registration.requestOnly ? 'REQUEST' : registration.paymentStatus === 'paid' ? 'PAID' : 'NOT PAID YET'} camp signup: ${registration.playerFirstName} ${registration.playerSurname} for ${registration.camp}`,
       htmlContent: html,
     }),
   })
@@ -285,6 +303,80 @@ async function sendCampSignupEmail(registration) {
   if (!response.ok) {
     const text = await response.text()
     console.warn('Camp signup notification failed:', text)
+    return { skipped: false, failed: true }
+  }
+
+  return { skipped: false, failed: false }
+}
+
+async function sendCampInterestReply(registration) {
+  const apiKey = process.env.BREVO_API_KEY
+  if (!apiKey) return { skipped: true }
+
+  const parent = escapeHtml(registration.parentName || 'there')
+  const player = escapeHtml(registration.playerFirstName || 'your player')
+  const requestType = escapeHtml(registration.requestType || 'camp / small group training')
+
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#050505;font-family:Arial,Helvetica,sans-serif;color:#ffffff;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#050505;margin:0;padding:0;">
+      <tr>
+        <td align="center" style="padding:24px 12px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;max-width:660px;background:#111111;border:1px solid #252525;border-radius:16px;overflow:hidden;">
+            <tr>
+              <td style="padding:32px 26px 10px;">
+                <p style="margin:0 0 10px;color:#e8000d;font-size:12px;line-height:1.4;font-weight:900;letter-spacing:1.8px;text-transform:uppercase;">Joner Football San Diego</p>
+                <h1 style="margin:0 0 18px;color:#ffffff;font-size:30px;line-height:1.08;font-weight:900;text-transform:uppercase;">Request received</h1>
+              </td>
+            </tr>
+            <tr><td style="padding:0 26px 8px;">
+              <p style="margin:0 0 16px;color:#e8e8e8;font-size:16px;line-height:1.65;">Hi ${parent},</p>
+              <p style="margin:0 0 16px;color:#e8e8e8;font-size:16px;line-height:1.65;">Thank you for your interest in the Joner Football San Diego camp and small group training. We have received the request for ${player}.</p>
+              <p style="margin:0 0 16px;color:#ffffff;font-size:17px;line-height:1.55;font-weight:800;">Request type: ${requestType}</p>
+              <p style="margin:0 0 20px;color:#d8d8d8;font-size:15px;line-height:1.65;">All payment is handled through Obed Gamino at Leon FC. Obed and the Joner Football team will follow up with next steps.</p>
+            </td></tr>
+            <tr><td style="padding:0 26px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#000000;border:1px solid #2b2b2b;border-radius:12px;"><tr><td style="padding:24px;text-align:center;">
+                <p style="margin:0 0 8px;color:#e8000d;font-size:12px;line-height:1.4;font-weight:900;letter-spacing:1.6px;text-transform:uppercase;">Train before camp</p>
+                <h2 style="margin:0 0 12px;color:#ffffff;font-size:23px;line-height:1.2;font-weight:900;">Want ${player} to arrive sharper?</h2>
+                <p style="margin:0 0 20px;color:#d8d8d8;font-size:15px;line-height:1.65;">Download the Joner Football App and start with the free section before camp. It helps players understand the detail, rhythm and standards we coach.</p>
+                <a href="${APP_CTA_URL}" style="background:#e8000d;color:#ffffff;text-decoration:none;font-weight:900;font-size:15px;line-height:20px;padding:16px 24px;border-radius:8px;display:inline-block;text-transform:uppercase;letter-spacing:.04em;text-align:center;">Download the app</a>
+              </td></tr></table>
+            </td></tr>
+            <tr><td style="padding:26px;background:#0b0b0b;border-top:1px solid #252525;">
+              <p style="margin:0 0 4px;color:#ffffff;font-size:15px;line-height:1.6;font-weight:800;">Lee Jones</p>
+              <p style="margin:0;color:#bdbdbd;font-size:14px;line-height:1.6;">Joner Football</p>
+            </td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': apiKey,
+    },
+    body: JSON.stringify({
+      sender: {
+        name: process.env.CAMP_EMAIL_SENDER_NAME || 'Joner Football Camps',
+        email: process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com',
+      },
+      to: [{ email: registration.email, name: registration.parentName || registration.playerFirstName || registration.email }],
+      replyTo: { email: process.env.CAMP_REPLY_TO_EMAIL || process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com', name: 'Joner Football' },
+      subject: 'San Diego camp request received',
+      htmlContent: html,
+    }),
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    console.warn('Camp interest auto-reply failed:', text)
     return { skipped: false, failed: true }
   }
 
@@ -420,6 +512,12 @@ export default async function handler(req, res) {
       paymentLink: clean(body.paymentLink || process.env.CAMP_DEFAULT_PAYMENT_LINK || 'https://app.jonerfootball.com', 500),
       paymentStatus: clean(body.paymentStatus || 'not_paid_pending_payment', 40),
       sheetTab: clean(body.sheetTab || body.googleSheetTab || body.targetSheetTab, 120),
+      requestOnly: body.requestOnly === true || body.requestOnly === 'true' || body.paymentStatus === 'request_only',
+      requestType: clean(body.requestType || body.interestType || '', 160),
+      requestNights: clean(body.requestNights || body.smallGroupNights || '', 160),
+      notificationEmails: parseEmailList(body.notificationEmails || body.notifyEmails || ''),
+      sendImmediateNotification: body.sendImmediateNotification === true || body.sendImmediateNotification === 'true',
+      sendInterestReply: body.sendInterestReply === true || body.sendInterestReply === 'true',
     }
     if (!registration.sheetTab) registration.sheetTab = defaultCampSheetTab(registration)
 
@@ -433,7 +531,11 @@ export default async function handler(req, res) {
     if (!registration.agreementAccepted) return res.status(400).json({ success: false, error: 'Training agreement must be accepted.' })
 
     registration.paymentStatus = registration.paymentStatus === 'paid' ? 'paid' : 'not_paid_pending_payment'
-    registration.paymentStatusLabel = registration.paymentStatus === 'paid' ? 'PAID' : 'NOT PAID YET, payment link selected and sent to parent'
+    registration.paymentStatusLabel = registration.requestOnly
+      ? 'REQUEST ONLY - payment through Obed Gamino at Leon FC'
+      : registration.paymentStatus === 'paid'
+        ? 'PAID'
+        : 'NOT PAID YET, payment link selected and sent to parent'
 
     let checkoutSession = null
     try {
@@ -455,7 +557,7 @@ export default async function handler(req, res) {
     }
 
     let notification = { skipped: true, reason: 'delayed-unpaid-admin-alert' }
-    if (registration.paymentStatus === 'paid') {
+    if (registration.paymentStatus === 'paid' || registration.requestOnly || registration.sendImmediateNotification) {
       try {
         notification = await sendCampSignupEmail(registration)
       } catch (notificationError) {
@@ -463,7 +565,15 @@ export default async function handler(req, res) {
         notification = { skipped: false, failed: true }
       }
     }
-    const customerEmail = { skipped: true, reason: 'paid-confirmation-only' }
+    let customerEmail = { skipped: true, reason: 'paid-confirmation-only' }
+    if (registration.requestOnly || registration.sendInterestReply) {
+      try {
+        customerEmail = await sendCampInterestReply(registration)
+      } catch (customerEmailError) {
+        console.warn('Camp interest auto-reply crashed:', customerEmailError?.message || customerEmailError)
+        customerEmail = { skipped: false, failed: true }
+      }
+    }
 
     return res.status(200).json({
       success: true,

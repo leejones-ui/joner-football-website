@@ -31,6 +31,26 @@ const campSchemas = [
   {
     '@context': 'https://schema.org',
     '@type': 'Event',
+    name: 'Joner Football San Diego Camp',
+    startDate: '2026-06-22',
+    endDate: '2026-06-24',
+    location: {
+      '@type': 'Place',
+      name: '4S Ranch Sports Park',
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: '16118 4S Ranch Pkwy',
+        addressLocality: 'San Diego',
+        addressRegion: 'CA',
+        postalCode: '92127',
+        addressCountry: 'US',
+      },
+    },
+    organizer: { '@type': 'Organization', name: 'Joner Football' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
     name: 'Joner Football Sydney July Camp',
     startDate: '2026-07-14',
     endDate: '2026-07-16',
@@ -67,6 +87,18 @@ const camps = [
     alt: 'Coach Lee Jones at the Joner Football Dallas camp venue',
     badge: 'Register now',
     circleImage: '/images/camps/destination-circles/dallas-skyline.jpg',
+  },
+  {
+    label: 'SD',
+    title: 'San Diego',
+    subtitle: 'June Camp',
+    location: '4S Ranch Sports Park',
+    dates: 'June 22 to 24, 2026',
+    href: '/camps/san-diego-june',
+    image: '/images/camps/joner-camps/hero-lee-pointing.jpg',
+    alt: 'Lee Jones coaching at a Joner Football camp',
+    badge: 'Request spot',
+    circleImage: '/images/camps/joner-camps/hero-lee-pointing.jpg',
   },
   {
     label: 'SYD',
@@ -113,7 +145,7 @@ const sanityPage = await fetchSanityPage('camps')
 ) : (
 <BaseLayout
   title="Football Camps | Joner Football"
-  description="Choose your Joner Football camp destination. Simple navigation for 2026 camps in Houston, Dallas, and Sydney."
+  description="Choose your Joner Football camp destination. Simple navigation for 2026 camps in Houston, Dallas, San Diego, and Sydney."
   schema={campSchemas}
 >
   <main class="bg-joner-black text-white overflow-hidden">
@@ -189,7 +221,7 @@ const sanityPage = await fetchSanityPage('camps')
                 <p class="mt-1 font-heading text-sm uppercase tracking-[0.16em] text-gray-300">{camp.subtitle}</p>
                 <p class="mt-4 text-sm text-gray-400">{camp.location}</p>
                 <span class="mt-5 inline-flex items-center font-heading text-sm uppercase tracking-[0.14em] text-white">
-                  Register Now
+                  {camp.badge}
                   <span class="ml-2 text-joner-red transition group-hover:translate-x-1">→</span>
                 </span>
               </div>

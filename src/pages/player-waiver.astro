@@ -1,0 +1,198 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const title = 'JFP Term 2 Player Form And Waiver | Joner Football'
+const description = 'Joner Football Term 2 player details, medical information, payment commitment and waiver form.'
+---
+
+<BaseLayout title={title} description={description} noindex={true} hideMobileAppCta={true}>
+  <main class="bg-joner-black text-white">
+    <section class="relative overflow-hidden border-b border-white/10 bg-black">
+      <div class="absolute inset-0 opacity-30">
+        <img src="/images/home-storyboard/04-joner-way-dsc08725.webp" alt="" class="h-full w-full object-cover" loading="eager" />
+      </div>
+      <div class="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/35"></div>
+      <div class="relative mx-auto grid min-h-[44vh] max-w-6xl items-end px-5 pb-10 pt-24 sm:px-8 lg:px-10">
+        <div class="max-w-3xl">
+          <p class="font-heading text-sm uppercase tracking-[0.18em] text-joner-red">Joner Football Program</p>
+          <h1 class="mt-4 font-heading text-5xl leading-[0.95] tracking-[0.04em] text-white sm:text-6xl lg:text-7xl">Term 2 player form and waiver</h1>
+          <p class="mt-5 max-w-2xl font-body text-lg leading-relaxed text-white/78">Please complete this for the player before continuing Term 2 sessions. It updates player details, medical notes, payment commitment and parent/guardian waiver acceptance.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mx-auto grid max-w-6xl gap-8 px-5 py-10 sm:px-8 lg:grid-cols-[0.82fr_1.18fr] lg:px-10 lg:py-14">
+      <aside class="space-y-4">
+        <div class="border border-white/10 bg-white/[0.04] p-5">
+          <p class="font-heading text-xl uppercase tracking-[0.08em] text-white">Before You Start</p>
+          <ul class="mt-4 space-y-3 font-body text-sm leading-relaxed text-white/70">
+            <li>Use the parent or guardian email address you want Joner Football to contact.</li>
+            <li>Medical notes must include allergies, injuries, asthma, medication or anything coaches should know.</li>
+            <li>The typed parent/guardian name counts as the signature for this form.</li>
+          </ul>
+        </div>
+        <div class="border-l-4 border-joner-red bg-white p-5 text-joner-black">
+          <p class="font-heading text-2xl uppercase tracking-[0.06em]">Term 2</p>
+          <p class="mt-2 font-body text-sm leading-relaxed text-gray-700">This form is for current JFP Term 2 players. If you are not sure whether this applies to your child, contact the Joner Football team before submitting.</p>
+        </div>
+      </aside>
+
+      <form id="player-waiver-form" class="bg-white p-5 text-joner-black shadow-[0_30px_90px_rgba(0,0,0,.35)] sm:p-7 lg:p-8" novalidate>
+        <input type="hidden" name="enquiryType" value="player-waiver" />
+        <input type="hidden" name="term" value="Term 2" />
+
+        <div class="mb-7">
+          <p class="font-heading text-sm uppercase tracking-[0.18em] text-joner-red">Player Details</p>
+          <h2 class="mt-2 font-heading text-3xl uppercase tracking-[0.04em] text-joner-black">Update the player record</h2>
+        </div>
+
+        <div class="grid gap-5 sm:grid-cols-2">
+          <label class="block">
+            <span class="waiver-label">Player full name *</span>
+            <input required name="playerFullName" autocomplete="name" class="waiver-input" />
+          </label>
+          <label class="block">
+            <span class="waiver-label">Player date of birth *</span>
+            <input required name="dob" type="date" class="waiver-input" />
+          </label>
+          <label class="block">
+            <span class="waiver-label">Parent/guardian name *</span>
+            <input required name="parentName" autocomplete="name" class="waiver-input" />
+          </label>
+          <label class="block">
+            <span class="waiver-label">Parent/guardian email *</span>
+            <input required name="email" type="email" autocomplete="email" class="waiver-input" />
+          </label>
+          <label class="block">
+            <span class="waiver-label">Parent/guardian mobile *</span>
+            <input required name="mobileNumber" autocomplete="tel" class="waiver-input" />
+          </label>
+          <label class="block">
+            <span class="waiver-label">Player mobile</span>
+            <input name="playerMobileNumber" autocomplete="tel" class="waiver-input" />
+          </label>
+          <label class="block sm:col-span-2">
+            <span class="waiver-label">Current club or team</span>
+            <input name="currentClub" class="waiver-input" />
+          </label>
+          <label class="block sm:col-span-2">
+            <span class="waiver-label">Medical notes</span>
+            <textarea name="medicalNotes" rows="5" class="waiver-input resize-y" placeholder="Allergies, injuries, asthma, medication, conditions or anything coaches should know. Write none if there is nothing to note."></textarea>
+          </label>
+        </div>
+
+        <div class="mt-8 border border-gray-200 bg-gray-50 p-5">
+          <p class="font-heading text-2xl uppercase tracking-[0.05em] text-joner-black">Waiver and commitment</p>
+          <div class="mt-4 space-y-4 font-body text-sm leading-relaxed text-gray-700">
+            <p>I confirm the details above are accurate and I will tell Joner Football if the player has any new injury, medical condition or relevant change during the term.</p>
+            <p>I understand football training includes running, contact with the ball, changes of direction, group activity and normal physical risk. I confirm the player is fit to participate unless I have listed medical notes above.</p>
+            <p>I authorise Joner Football staff to seek urgent medical assistance for the player if needed during a session.</p>
+            <p>I understand this is a Term 2 program commitment and missed sessions, late arrival or non-attendance do not automatically remove the payment commitment.</p>
+          </div>
+
+          <label class="mt-5 flex gap-3 font-body text-sm leading-relaxed text-gray-800">
+            <input required type="checkbox" name="paymentCommitmentAccepted" value="yes" class="mt-1 h-5 w-5 accent-joner-red" />
+            <span>I accept the Term 2 payment commitment.</span>
+          </label>
+          <label class="mt-3 flex gap-3 font-body text-sm leading-relaxed text-gray-800">
+            <input required type="checkbox" name="waiverAccepted" value="yes" class="mt-1 h-5 w-5 accent-joner-red" />
+            <span>I accept the waiver terms above as the parent/guardian.</span>
+          </label>
+        </div>
+
+        <label class="mt-6 block">
+          <span class="waiver-label">Parent/guardian signature *</span>
+          <input required name="parentSignature" class="waiver-input" placeholder="Type your full name" />
+        </label>
+
+        <div id="waiver-message" class="mt-5 hidden border p-4 font-body text-sm leading-relaxed"></div>
+
+        <button type="submit" class="btn-red mt-6 w-full">Submit player form</button>
+        <p class="mt-3 font-body text-xs leading-relaxed text-gray-500">Your submission goes directly to Joner Football's Airtable record for Term 2.</p>
+      </form>
+    </section>
+  </main>
+</BaseLayout>
+
+<style>
+  .waiver-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-family: Anton, Impact, sans-serif;
+    font-size: 0.78rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: #111111;
+  }
+  .waiver-input {
+    min-height: 52px;
+    width: 100%;
+    border: 1px solid #d4d4d4;
+    background: #f8f8f8;
+    padding: 0.85rem 1rem;
+    font-family: "DM Sans", system-ui, sans-serif;
+    font-size: 1rem;
+    color: #111111;
+    outline: none;
+  }
+  .waiver-input:focus {
+    border-color: #e30613;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.12);
+  }
+  .waiver-input::placeholder {
+    color: #777777;
+  }
+</style>
+
+<script>
+  const form = document.getElementById('player-waiver-form') as HTMLFormElement | null
+  const message = document.getElementById('waiver-message') as HTMLElement | null
+
+  function showMessage(type: 'success' | 'error', text: string) {
+    if (!message) return
+    message.classList.remove('hidden', 'border-green-600', 'bg-green-50', 'text-green-900', 'border-red-600', 'bg-red-50', 'text-red-900')
+    if (type === 'success') message.classList.add('border-green-600', 'bg-green-50', 'text-green-900')
+    else message.classList.add('border-red-600', 'bg-red-50', 'text-red-900')
+    message.textContent = text
+  }
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    if (!form.checkValidity()) {
+      form.reportValidity()
+      return
+    }
+
+    const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement | null
+    if (submitButton) {
+      submitButton.disabled = true
+      submitButton.textContent = 'Submitting...'
+    }
+
+    try {
+      const data = new FormData(form)
+      const payload = Object.fromEntries(data.entries()) as Record<string, string>
+      payload.paymentCommitmentAccepted = data.has('paymentCommitmentAccepted') ? 'yes' : ''
+      payload.waiverAccepted = data.has('waiverAccepted') ? 'yes' : ''
+
+      const response = await fetch('/api/contact-enquiry', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.success) throw new Error(result.error || 'Submission failed')
+
+      form.reset()
+      showMessage('success', 'Submitted. Thanks, the player form and waiver have been sent to Joner Football.')
+    } catch (error) {
+      showMessage('error', error instanceof Error ? error.message : 'Something went wrong. Please try again.')
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false
+        submitButton.textContent = 'Submit player form'
+      }
+    }
+  })
+</script>
