@@ -7,22 +7,22 @@ const canonical = 'https://jonerfootball.com/camps/san-diego-june/'
 
 const infoCells = [
   {
-    label: 'Camp info',
-    value: 'Monday 22nd<br/>Camp day 1',
-    sub: 'Tuesday 23rd - Camp day 2. Wednesday 24th - Camp day 3.',
+    label: 'When',
+    value: 'Mon 22 to Wed 24<br/>June 2026',
+    sub: '3 day elite camp.',
     icon: 'calendar',
+  },
+  {
+    label: 'Where',
+    value: '4S Ranch Sports Park',
+    sub: '16118 4S Ranch Pkwy, San Diego, CA 92127, United States',
+    icon: 'pin',
   },
   {
     label: 'Time',
     value: '7am to 9am',
     sub: 'Three mornings of focused Joner Football coaching.',
     icon: 'clock',
-  },
-  {
-    label: 'Venue',
-    value: '4S Ranch Sports Park',
-    sub: '16118 4S Ranch Pkwy, San Diego, CA 92127, United States',
-    icon: 'pin',
   },
   {
     label: 'Camp price',
@@ -36,6 +36,15 @@ const infoCells = [
     sub: 'Monday night 22nd and Tuesday night 23rd through Obed.',
     icon: 'list',
   },
+]
+
+const carouselImages = [
+  '/images/camps/joner-camps/hero-lee-pointing.jpg',
+  '/images/camps/joner-camps/red-shirt-action.jpg',
+  '/images/camps/joner-camps/players-field.jpg',
+  '/images/camps/joner-camps/lee-coaching-group.jpg',
+  '/images/camps/joner-camps/lee-with-players.jpg',
+  '/images/camps/joner-camps/camp-team-photo.jpg',
 ]
 
 const eventSchema = {
@@ -115,8 +124,8 @@ const eventSchema = {
       <div class="sd-info-layout">
         <div class="sd-info-left">
           <div class="sd-section-head" data-motion="fade-up">
-            <span class="sd-section-eyebrow">Camp info</span>
-            <h2 class="sd-h2">The <span class="sd-hook">essentials</span>.</h2>
+            <span class="sd-section-eyebrow">Camp Details</span>
+            <h2 class="sd-h2">The <span class="sd-hook">essentials</span>.<br/>Everything you need to know.</h2>
             <span class="sd-rule"></span>
           </div>
 
@@ -139,6 +148,22 @@ const eventSchema = {
               </li>
             ))}
           </ul>
+        </div>
+
+        <div class="sd-info-right" data-motion="fade-up">
+          <div class="sd-info-carousel" data-info-carousel aria-label="Photos from Joner Football camps">
+            {carouselImages.map((src, i) => (
+              <img
+                class:list={['sd-info-carousel-img', i === 0 && 'is-active']}
+                src={src}
+                alt={`Joner Football San Diego camp training photo ${i + 1}`}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+                width="900"
+                height="1100"
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -409,6 +434,38 @@ const eventSchema = {
       align-items: start;
     }
     .sd-info-left { min-width: 0; }
+    .sd-info-right { min-width: 0; }
+    .sd-info-carousel {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 5;
+      overflow: hidden;
+      background: #0a0a0a;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+    }
+    .sd-info-carousel-img {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center;
+      opacity: 0;
+      transition: none;
+    }
+    .sd-info-carousel-img.is-active { opacity: 1; }
+    @media (min-width: 900px) {
+      .sd-info-layout {
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        gap: 40px;
+        align-items: start;
+      }
+      .sd-info-carousel { aspect-ratio: 4 / 5; }
+    }
+    @media (max-width: 640px) {
+      .sd-info-carousel { aspect-ratio: 4 / 3; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .sd-info-carousel-img { transition: opacity 1ms; }
+    }
     .sd-info-list {
       list-style: none; padding: 0; margin: 0;
       display: grid; gap: 22px;
@@ -622,6 +679,40 @@ const eventSchema = {
 
   <script>
     import '../../scripts/home-motion'
+    import { animate } from 'framer-motion/dom'
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const EASE = [0.2, 0.7, 0.2, 1]
+
+    /* ========== Right-side info carousel ========== */
+    const infoCarousel = document.querySelector<HTMLElement>('[data-info-carousel]')
+    if (infoCarousel) {
+      const imgs = Array.from(infoCarousel.querySelectorAll<HTMLElement>('.sd-info-carousel-img'))
+      if (imgs.length > 1) {
+        imgs.forEach((img, i) => {
+          img.style.opacity = i === 0 ? '1' : '0'
+          img.classList.toggle('is-active', i === 0)
+        })
+        let cIdx = 0
+        const tick = () => {
+          const prev = imgs[cIdx]
+          cIdx = (cIdx + 1) % imgs.length
+          const next = imgs[cIdx]
+          if (reduced) {
+            prev.style.opacity = '0'
+            prev.classList.remove('is-active')
+            next.style.opacity = '1'
+            next.classList.add('is-active')
+            return
+          }
+          animate(prev, { opacity: 0 }, { duration: 0.55, ease: EASE })
+          animate(next, { opacity: 1 }, { duration: 0.55, ease: EASE })
+          prev.classList.remove('is-active')
+          next.classList.add('is-active')
+        }
+        window.setInterval(tick, 1500)
+      }
+    }
 
     /* ========== Form submit ========== */
     const form = document.getElementById('sdForm') as HTMLFormElement | null
