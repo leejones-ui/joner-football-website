@@ -1,15 +1,17 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const title = 'Sydney | July Camp | 2026 | Joner Football Ft Miguel Grande'
-const description = 'Book the Sydney July Joner Football camp with Miguel Grande. Three high-energy mornings for players who want sharper technique and more confidence.'
+const title = 'Sydney | July Camp | 2026 | Joner Football'
+const description = 'Book the Sydney July Joner Football camp. Three high-energy mornings for players who want sharper technique and more confidence.'
 const canonical = 'https://jonerfootball.com/camps/sydney-july-2026/'
+const heroImage = '/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg'
+const absoluteHeroImage = `https://jonerfootball.com${heroImage}`
 
 const infoCells = [
   {
     label: 'When',
     value: 'Tue 14 to Thu 16<br/>July 2026',
-    sub: '3 day elite camp with Miguel Grande from Grande Sports Miami',
+    sub: '3 day elite Joner Football camp in Sydney',
     icon: 'calendar',
   },
   {
@@ -51,7 +53,6 @@ const tiers = [
 ]
 
 const carouselImages = [
-  '/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg',
   '/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg',
   '/images/camps/sydney-2026/photos/joner-cup.jpg',
   '/images/camps/joner-camps/red-shirt-action.jpg',
@@ -133,7 +134,7 @@ const eventSchema = {
     },
   },
   organizer: { '@type': 'Organization', name: 'Joner Football', url: 'https://jonerfootball.com' },
-  image: 'https://jonerfootball.com/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg',
+  image: absoluteHeroImage,
   description,
   offers: tiers.map((tier) => ({
     '@type': 'Offer',
@@ -159,12 +160,12 @@ const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
   title={title}
   description={description}
   canonical={canonical}
-  ogImage="https://jonerfootball.com/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg"
+  ogImage={absoluteHeroImage}
   schema={eventSchema}
   hideMobileAppCta
 >
   <Fragment slot="head">
-    <link rel="preload" as="image" href="/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg" fetchpriority="high" />
+    <link rel="preload" as="image" href={heroImage} fetchpriority="high" />
     <link rel="preconnect" href="https://www.youtube-nocookie.com" />
     <link rel="preconnect" href="https://i.ytimg.com" />
     <link rel="preload" as="font" href="/fonts/Kanit-BlackItalic.ttf" type="font/ttf" crossorigin />
@@ -190,7 +191,7 @@ const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
         Sydney
         <span class="hou-hook">July</span>
         Camp
-        <span class="hou-h1-small">3 Day Elite Camp · July 2026 · Ft Miguel Grande</span>
+        <span class="hou-h1-small">3 Day Elite Camp · July 2026</span>
       </h1>
       <div class="hou-hero-cta" data-motion="fade-up" data-motion-delay="0.2">
         <a class="btn-red" href="#register" data-motion-hover="lift">
@@ -685,7 +686,7 @@ const sanityPage = await fetchSanityPage('camp-sydney-july-2026')
       position: absolute; inset: 0;
     }
     .hou-hero-img {
-      background-image: url('/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg');
+      background-image: url('/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg');
       background-size: cover;
       background-position: 60% 22%;
       z-index: 0;
