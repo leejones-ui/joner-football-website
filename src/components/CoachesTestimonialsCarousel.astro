@@ -10,19 +10,19 @@ interface Testimonial {
 
 const testimonials: Testimonial[] = [
   {
-    image: '/images/coaches-only/testimonials/testimonial-1.png',
+    image: '/images/coaches-only/testimonials/testimonial-1',
     alt: 'Coach testimonial: real coach feedback on the Joner Football App Coaches Only tier',
   },
   {
-    image: '/images/coaches-only/testimonials/testimonial-2.png',
+    image: '/images/coaches-only/testimonials/testimonial-2',
     alt: 'Coach testimonial: real coach feedback on Joner Football session plans and voice-over drills',
   },
   {
-    image: '/images/coaches-only/testimonials/testimonial-3.png',
+    image: '/images/coaches-only/testimonials/testimonial-3',
     alt: 'Coach testimonial: real coach feedback on Lee Jones coaching education',
   },
   {
-    image: '/images/coaches-only/testimonials/testimonial-4.png',
+    image: '/images/coaches-only/testimonials/testimonial-4',
     alt: 'Coach testimonial: real coach feedback on the Joner Football Coaches Only Max Plan',
   },
 ]
@@ -32,9 +32,8 @@ const testimonials: Testimonial[] = [
   <div class="max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-10">
 
     <div class="text-center mb-10 md:mb-14">
-      <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">TESTIMONIALS</p>
-      <h2 class="font-heading text-3xl sm:text-5xl md:text-6xl lg:text-7xl text-white uppercase leading-none tracking-tight">
-        Coaches Using Coaches Only.
+      <h2 class="font-heading text-5xl sm:text-7xl md:text-8xl lg:text-9xl text-white uppercase leading-none tracking-tight">
+        Testimonials
       </h2>
     </div>
 
@@ -47,12 +46,16 @@ const testimonials: Testimonial[] = [
           class="coaches-testimonials-slide snap-center shrink-0 relative rounded-2xl md:rounded-3xl overflow-hidden bg-joner-gray"
           data-index={i}
         >
-          <img
-            src={t.image}
-            alt={t.alt}
-            class="absolute inset-0 w-full h-full object-cover"
-            loading={i === 0 ? 'eager' : 'lazy'}
-          />
+          <picture>
+            <source srcset={`${t.image}.avif`} type="image/avif" />
+            <source srcset={`${t.image}.opt.jpg`} type="image/jpeg" />
+            <img
+              src={`${t.image}.png`}
+              alt={t.alt}
+              class="absolute inset-0 w-full h-full object-cover"
+              loading={i === 0 ? 'eager' : 'lazy'}
+            />
+          </picture>
         </article>
       ))}
     </div>
@@ -96,24 +99,27 @@ const testimonials: Testimonial[] = [
     overscroll-behavior-x: contain;
   }
 
+  /* All testimonial source images are 16:9 (1672 x 941). Cards sized smaller
+     than the previous version per Lee feedback so the graphics are scaled
+     down and easier to read at a glance. */
   .coaches-testimonials-slide {
-    width: 88vw;
-    aspect-ratio: 4 / 5;
+    width: 86vw;
+    aspect-ratio: 16 / 9;
     scroll-snap-stop: always;
   }
 
   @media (min-width: 768px) {
-    .coaches-testimonials-track { scroll-padding-inline: 10vw; padding-inline: 10vw; }
-    .coaches-testimonials-slide { width: 70vw; aspect-ratio: 1 / 1; }
+    .coaches-testimonials-track { scroll-padding-inline: 22vw; padding-inline: 22vw; }
+    .coaches-testimonials-slide { width: 56vw; }
   }
 
   @media (min-width: 1024px) {
-    .coaches-testimonials-track { scroll-padding-inline: 18vw; padding-inline: 18vw; }
-    .coaches-testimonials-slide { width: 58vw; aspect-ratio: 4 / 3; }
+    .coaches-testimonials-track { scroll-padding-inline: 30vw; padding-inline: 30vw; }
+    .coaches-testimonials-slide { width: 40vw; }
   }
 
   @media (min-width: 1440px) {
-    .coaches-testimonials-slide { width: 820px; aspect-ratio: 4 / 3; }
+    .coaches-testimonials-slide { width: 620px; }
   }
 
   .coaches-testimonials-dot {

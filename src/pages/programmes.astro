@@ -46,7 +46,7 @@ const testimonials = [
   { quote: 'You are the best Joner. Always trying to add and improve an already amazing brand. Hats off to you and the team.', who: 'Henry Santos', role: 'Coach, USA' },
 ]
 
-const faqs = [
+const faqs: Array<{ q: string; a: string }> = [
   { q: 'What ages and levels is this for?',                 a: 'The programs work for players of all ages and levels. Whether you are 10 or 30, just starting out or playing at a high level, the structured pathway meets you where you are and builds from there.' },
   { q: 'How long are the sessions?',                        a: 'Sessions run from 20 minutes up to an hour, depending on the program and the day. Designed to fit around work, school and team training.' },
   { q: 'Do I need any equipment?',                          a: 'Each program will clearly tell you what you need to complete it. Everything is based around minimal equipment.' },
@@ -55,6 +55,17 @@ const faqs = [
   { q: 'Are the programs available on monthly?',            a: 'The structured 100-day pathway and the guarantee are exclusive to Annual members. Monthly members access the full video library. Move to Annual to access the programs.' },
   { q: 'What about the S&C program?',                       a: 'The 12-Week Advanced Strength & Conditioning Program is included with Annual membership. Designed for older players ready to take their physical development seriously.' },
 ]
+
+// FAQ schema for Google rich results
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a }
+  }))
+}
 
 import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
 import { fetchSanityPage } from '../lib/sanityPages'
@@ -69,7 +80,7 @@ const sanityPage = await fetchSanityPage('programmes')
 <BaseLayout
   title="100 Day Development Program | Joner Football"
   description="A structured 100 day football pathway for parents, players and coaches. Six progressive programs built by Lee Jones inside the Joner Football App."
-  schema={schema}
+  schema={[schema, faqSchema]}
 >
   {/* HERO ============================================================ */}
   <section class="p100-hero">

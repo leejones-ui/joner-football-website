@@ -14,6 +14,13 @@ const freeBundleUrl = 'https://app.jonerfootball.com/checkout/new?o=226775'
 const yearlyPrice = '$229 USD'
 const monthlyPrice = '$34.99 USD'
 
+// FAQ schema so Google can pull these as rich results in search
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [] as Array<{ '@type': string; name: string; acceptedAnswer: { '@type': string; text: string } }>
+}
+
 // Product schema for Google rich results
 const productSchema = {
   '@context': 'https://schema.org',
@@ -99,7 +106,7 @@ const features = [
   }
 ]
 
-const faqs = [
+const faqs: Array<{ q: string; a: string }> = [
   {
     q: 'How much is Coaches Only?',
     a: 'Coaches Only is the Max Plan tier inside the Joner Football App. $34.99 USD per month, or $229 USD per year (saves you over 45%). That works out at less than a coffee a week.'
@@ -138,6 +145,13 @@ const faqs = [
   }
 ]
 
+// Populate FAQ schema from the FAQ list above. Has to run after `faqs` is defined.
+faqSchema.mainEntity = faqs.map((f) => ({
+  '@type': 'Question',
+  name: f.q,
+  acceptedAnswer: { '@type': 'Answer', text: f.a }
+}))
+
 import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
 import { fetchSanityPage } from '../../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
@@ -149,7 +163,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 {false && shouldReplaceSanityPage(sanityPage) ? (
   <SanityPageRenderer page={sanityPage} />
 ) : (
-<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/app/for-coaches/" ogImage="https://jonerfootball.com/images/coaches-only/coaches-only-hero-updated.png" schema={productSchema}>
+<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/app/for-coaches/" ogImage="https://jonerfootball.com/images/coaches-only/coaches-only-hero-updated.png" schema={[productSchema, faqSchema]}>
   <main class="bg-joner-black text-white">
 
     {/* ========== 1. HERO ========== */}
@@ -193,7 +207,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
             playsinline
             preload="metadata"
             class="w-full h-full object-cover"
-            poster="/images/coaches-only/video-thumbnail.png"
+            poster="/images/coaches-only/video-thumbnail.avif"
           >
             <source src="/videos/coaches-only-intro.mp4" type="video/mp4" />
             Your browser does not support video playback.
@@ -273,7 +287,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div>
             <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">WHO IS TEACHING YOU</p>
-            <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES. INSIDE THE APP.</h2>
+            <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES.</h2>
             <p class="text-gray-300 font-body text-lg mb-6">Over 20 years coaching players, coaches, and parents around the world. From grassroots kids to professional players.</p>
 
             {/* Top-10 ranking accolade: credibility signal */}
@@ -446,5 +460,40 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     </section>
 
   </main>
+
+  {/* Sticky mobile CTA: revealed once the user scrolls past the hero. Mirrors the /app pattern. */}
+  <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="coaches-mobile-cta btn-red" data-meta-checkout-event="CoachesPageMobileStickyClick">JOIN COACHES ONLY</a>
+
+  <style>
+    .coaches-mobile-cta {
+      position: fixed; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; z-index: 40;
+      display: none;
+      opacity: 0;
+      transform: translateY(110%);
+      pointer-events: none;
+      transition: opacity 280ms ease, transform 360ms cubic-bezier(0.32, 0.72, 0, 1);
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.42);
+      text-align: center;
+    }
+    .coaches-mobile-cta.is-revealed { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
+      .coaches-mobile-cta { display: inline-flex; }
+      body { padding-bottom: 90px; }
+    }
+  </style>
+
+  <script is:inline>
+    ;(function () {
+      var hero = document.querySelector('main > section');
+      var cta = document.querySelector('.coaches-mobile-cta');
+      if (!hero || !cta || !('IntersectionObserver' in window)) return;
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          cta.classList.toggle('is-revealed', !entry.isIntersecting);
+        });
+      }, { threshold: 0, rootMargin: '-40px 0px 0px 0px' });
+      io.observe(hero);
+    })();
+  </script>
 </BaseLayout>
 )}
