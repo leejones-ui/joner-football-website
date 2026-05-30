@@ -3,11 +3,28 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
 
 const resources = [
   {
+    title: 'Joner Football Presents: Greatest Goal Scorers!',
+    price: 'Pre-order AUD 12.99',
+    image: '/images/shop/books/joner-football-greatest-goal-scorers-preorder.jpg',
+    href: 'https://www.penguin.com.au/books/joner-football-presents-greatest-goal-scorers-9781761359781',
+    text: 'The new Joner Football kids book celebrating the greatest goal scorers, packed with skills, drills and stats. Coming July.',
+    cta: 'Pre-order Now',
+  },
+  {
+    title: 'Joner Football Presents: Midfield Masters!',
+    price: 'Pre-order AUD 12.99',
+    image: '/images/shop/books/joner-football-midfield-masters-preorder.jpg',
+    href: 'https://www.penguin.com.au/books/joner-football-presents-midfield-masters-9781761359804',
+    text: 'The new Joner Football kids book for midfielders who want to learn from the best, with skills, drills and stats. Coming July.',
+    cta: 'Pre-order Now',
+  },
+  {
     title: 'Scanning Training Tool',
     price: 'AUD 79.99',
     image: '/images/shop/resources-accessories/scanning-training-tool.webp',
     href: 'https://buy.stripe.com/bJe00icKA49l35ZfpqgEg09',
     text: 'Reaction, turning, scanning, and decision-making training tools for players and coaches who want smarter sessions.',
+    cta: 'Buy Now',
   },
   {
     title: 'Numbers Tool',
@@ -15,6 +32,7 @@ const resources = [
     image: '/images/shop/resources-accessories/numbers-training-tool.webp',
     href: 'https://buy.stripe.com/cNieVccKA0X921VgtugEg0a',
     text: 'A number-recognition tool for sharper awareness, quicker decisions, and more game-realistic scanning habits.',
+    cta: 'Buy Now',
   },
 ]
 
@@ -28,7 +46,7 @@ const sanityPage = await fetchSanityPage('shop-resources-accessories')
 {shouldReplaceSanityPage(sanityPage) ? (
   <SanityPageRenderer page={sanityPage} />
 ) : (
-<BaseLayout title="Resources And Accessories | Joner Football Shop" description="Shop Joner Football training resources and accessories, including scanning and number-recognition training tools.">
+<BaseLayout title="Books, Resources And Accessories | Joner Football Shop" description="Shop Joner Football books, training resources and accessories, including pre-order kids football books, scanning tools and number-recognition tools.">
   <main class="bg-joner-black text-white">
     <section class="relative overflow-hidden border-b border-white/10">
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(220,0,0,0.35),transparent_34%),linear-gradient(135deg,#050505_0%,#111_52%,#050505_100%)]"></div>
@@ -36,7 +54,7 @@ const sanityPage = await fetchSanityPage('shop-resources-accessories')
         <div class="max-w-4xl">
           <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-4">Joner Football Shop</p>
           <h1 class="font-heading uppercase text-6xl md:text-8xl lg:text-9xl leading-none mb-6">Resources & Accessories</h1>
-          <p class="text-lg md:text-xl text-white/75 max-w-2xl leading-relaxed">Training tools and session resources built to help players scan earlier, react faster, and make better decisions.</p>
+          <p class="text-lg md:text-xl text-white/75 max-w-2xl leading-relaxed">Pre-order the new Joner Football books, then shop training tools and session resources built to help players scan earlier, react faster, and make better decisions.</p>
         </div>
       </div>
     </section>
@@ -52,7 +70,7 @@ const sanityPage = await fetchSanityPage('shop-resources-accessories')
               <div class="mb-4 inline-flex w-fit items-center bg-joner-red px-4 py-2 font-heading uppercase tracking-[0.08em] text-white text-lg shadow-lg shadow-joner-red/25">{resource.price}</div>
               <h2 class="font-heading uppercase text-3xl md:text-4xl leading-none mb-3">{resource.title}</h2>
               <p class="text-sm md:text-base leading-relaxed text-gray-600 mb-6">{resource.text}</p>
-              <a href={resource.href} target="_blank" rel="noopener" class="btn-red mt-auto w-full text-center">Buy Now</a>
+              <a href={resource.href} target="_blank" rel="noopener" class="btn-red mt-auto w-full text-center">{resource.cta}</a>
             </div>
           </article>
         ))}
