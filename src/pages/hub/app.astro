@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import SEOFAQ from '../../components/SEOFAQ.astro'
+import { faqSchema, webPageSchema } from '../../lib/seoSchema'
 import HubContent from '../../components/HubContent.astro'
 
 import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
@@ -7,15 +9,36 @@ import { fetchSanityPage } from '../../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
 
 const sanityPage = await fetchSanityPage('hub-app')
+
+const appHubSEOFAQs = [
+  { q: 'What is inside the Joner Football App Hub?', a: 'The App Hub gives players, parents and coaches a simple route into Joner Football app resources, free training links and useful content.' },
+  { q: 'Are there free football training resources?', a: 'Yes. The hub points users towards free content and useful training resources before they decide if full app access is right for them.' },
+  { q: 'Can coaches and parents use the App Hub?', a: 'Yes. Coaches can find training ideas and parents can understand the next step for a player who needs clearer football development.' },
+]
+
+const appHubSchemas = [
+  webPageSchema({
+    name: 'Joner Football App Hub | Free Drills & Training Resources',
+    description: 'Explore Joner Football App resources, free drills, training links and useful content for players, parents and coaches who want clearer football training.',
+    url: 'https://jonerfootball.com/hub/app/',
+  }),
+  faqSchema(appHubSEOFAQs),
+]
+
 ---
 
 {shouldReplaceSanityPage(sanityPage) ? (
   <SanityPageRenderer page={sanityPage} />
 ) : (
 <BaseLayout
-  title="Joner Football App Hub"
-  description="Direct Joner Football Hub access for app members, with free resources, training links, challenges and useful player and coach content."
+  title="Joner Football App Hub | Free Drills & Training Resources"
+  description="Explore Joner Football App resources, free drills, training links and useful content for players, parents and coaches who want clearer football training."
+  schema={appHubSchemas}
 >
   <HubContent appMode={true} titleTag="h1" />
+  <SEOFAQ
+    title="Questions about the App Hub."
+    items={appHubSEOFAQs}
+  />
 </BaseLayout>
 )}

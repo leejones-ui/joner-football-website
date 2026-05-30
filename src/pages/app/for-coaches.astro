@@ -2,8 +2,8 @@
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import CoachesTestimonialsCarousel from '../../components/CoachesTestimonialsCarousel.astro'
 
-const title = 'Coaches Only: Football Session Plans, Drills & Coaching Education | Joner Football App'
-const description = 'The premium coaching tier inside the Joner Football App. Voted top 10 in the world for technical training. Ready-to-run session plans, voice-over drill breakdowns, full pro training sessions, and the way Lee Jones coaches at every level. From $34.99 per month.'
+const title = 'Football Coaching App | Drills & Session Plans | Joner Football'
+const description = 'Give coaches clear football drills, session ideas and technical detail through the Joner Football App. Build sharper sessions for every player.'
 const checkoutUrl = 'https://app.jonerfootball.com/checkout/new?o=202578'
 const appCategoryUrl = 'https://app.jonerfootball.com/categories/category-8-7szqoiq00'
 const previewUrl = 'https://app.jonerfootball.com/programs/how-to-use-joner-football-app-guide?utm_source=product&utm_medium=share&utm_campaign=content_share&utm_term=4067217&utm_content=copy'
@@ -155,6 +155,7 @@ faqSchema.mainEntity = faqs.map((f) => ({
 import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
 import { fetchSanityPage } from '../../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+
 
 const sanityPage = await fetchSanityPage('app-for-coaches')
 // TEMPORARY: forcing Astro version to render. Remove the `false &&` to restore Sanity CMS control.

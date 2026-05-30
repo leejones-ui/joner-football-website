@@ -1,22 +1,11 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import { faqSchema, webPageSchema } from '../lib/seoSchema'
 
 const APP_LINK = 'https://www.jonerfootball.com/join'
 const ANNUAL_LINK = 'https://app.jonerfootball.com/checkout/new?o=183092&utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme_annual'
 const HERO_SUBSCRIBE_LINK = 'https://www.jonerfootball.com/join'
 const HERO_BUNDLE_LINK = 'https://app.jonerfootball.com/checkout/new?o=227739'
-
-const schema = {
-  '@context': 'https://schema.org',
-  '@type': 'Course',
-  name: 'Joner Football 100 Day Development Program',
-  description: 'A structured 100 day football training pathway for parents, players and coaches inside the Joner Football App. Six progressive programs built by Lee Jones.',
-  provider: {
-    '@type': 'Organization',
-    name: 'Joner Football',
-    url: 'https://jonerfootball.com',
-  },
-}
 
 const proof = [
   ['50,000+', 'DOWNLOADS'],
@@ -56,16 +45,25 @@ const faqs: Array<{ q: string; a: string }> = [
   { q: 'What about the S&C program?',                       a: 'The 12-Week Advanced Strength & Conditioning Program is included with Annual membership. Designed for older players ready to take their physical development seriously.' },
 ]
 
-// FAQ schema for Google rich results
-const faqSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: faqs.map((f) => ({
-    '@type': 'Question',
-    name: f.q,
-    acceptedAnswer: { '@type': 'Answer', text: f.a }
-  }))
-}
+const programSchemas = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Course',
+    name: 'Joner Football 100 Day Development Program',
+    description: 'A structured football training programme built by Lee Jones for players, parents and coaches who want clearer sessions and faster improvement.',
+    provider: {
+      '@type': 'Organization',
+      name: 'Joner Football',
+      url: 'https://jonerfootball.com',
+    },
+  },
+  webPageSchema({
+    name: 'Football Training Programmes | 100 Day Player Programme',
+    description: 'Follow structured Joner Football training programmes built to improve technique, confidence and consistency with clear sessions and daily focus.',
+    url: 'https://jonerfootball.com/programmes/',
+  }),
+  faqSchema(faqs),
+]
 
 import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
 import { fetchSanityPage } from '../lib/sanityPages'
@@ -78,9 +76,9 @@ const sanityPage = await fetchSanityPage('programmes')
   <SanityPageRenderer page={sanityPage} />
 ) : (
 <BaseLayout
-  title="100 Day Development Program | Joner Football"
-  description="A structured 100 day football pathway for parents, players and coaches. Six progressive programs built by Lee Jones inside the Joner Football App."
-  schema={[schema, faqSchema]}
+  title="Football Training Programmes | 100 Day Player Programme"
+  description="Follow structured Joner Football training programmes built to improve technique, confidence and consistency with clear sessions and daily focus."
+  schema={programSchemas}
 >
   {/* HERO ============================================================ */}
   <section class="p100-hero">

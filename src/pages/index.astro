@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import SEOFAQ from '../components/SEOFAQ.astro'
+import { faqSchema, webPageSchema } from '../lib/seoSchema'
 import ChooseNextStep from '../components/ChooseNextStep.astro'
 import HomeStoryMobile from '../components/HomeStoryMobile.astro'
 
@@ -251,15 +253,33 @@ import { fetchSanityPage } from '../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 
 const sanityPage = await fetchSanityPage('home')
+
+const homepageSEOFAQs = [
+  { q: 'What is Joner Football?', a: 'Joner Football is a football coaching company led by Lee Jones, built to help players improve technique, confidence and game impact through training, camps and the Joner Football App.' },
+  { q: 'Who is Joner Football for?', a: 'It is for players, parents and coaches who want clearer football training. Players get drills and programmes, parents get a trusted path, and coaches get practical session detail.' },
+  { q: 'Can I train with Joner Football online?', a: 'Yes. The Joner Football App gives players and coaches access to training drills, programmes and coaching detail wherever they are.' },
+  { q: 'Where does Joner Football run training and camps?', a: 'Joner Football runs Sydney training through The HQ and JFP, plus elite football camps in Australia, the USA and selected global locations.' },
+]
+
+const homepageSchemas = [
+  webPageSchema({
+    name: 'Joner Football | Football Training App, Drills & Elite Coaching',
+    description: 'Train with Joner Football. Improve technique, confidence and game impact with elite coaching, football drills, camps and the Joner Football App.',
+    url: 'https://jonerfootball.com/',
+  }),
+  faqSchema(homepageSEOFAQs),
+]
+
 ---
 
 {shouldReplaceSanityPage(sanityPage) ? (
   <SanityPageRenderer page={sanityPage} />
 ) : (
 <BaseLayout
-  title="Joner Football"
-  description="Joner Football. Elite football coaching, global camps, and the world's best coaching app. Technique above everything."
+  title="Joner Football | Football Training App, Drills & Elite Coaching"
+  description="Train with Joner Football. Improve technique, confidence and game impact with elite coaching, football drills, camps and the Joner Football App."
   canonical="https://jonerfootball.com/"
+  schema={homepageSchemas}
 >
   <Fragment slot="head">
     <style>
@@ -2188,6 +2208,12 @@ const sanityPage = await fetchSanityPage('home')
       initDesktopStory();
     })();
   </script>
+
+  <SEOFAQ
+    title="Questions players, parents and coaches ask."
+    intro="Clear answers for anyone deciding whether Joner Football is the right training path."
+    items={homepageSEOFAQs}
+  />
 
   <script>
     import '../scripts/home-motion'

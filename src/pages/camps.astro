@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import SEOFAQ from '../components/SEOFAQ.astro'
+import { faqSchema, webPageSchema } from '../lib/seoSchema'
 
 const campSchemas = [
   {
@@ -61,6 +63,23 @@ const campSchemas = [
     },
     organizer: { '@type': 'Organization', name: 'Joner Football' },
   },
+]
+
+
+const campSEOFAQs = [
+  { q: 'Where are Joner Football camps held?', a: 'Joner Football camps run in selected USA, Australia and global locations, with current camp pages showing dates, venues and registration details.' },
+  { q: 'What age are the camps for?', a: 'Most Joner Football camps are built for motivated young players who want to improve technique, confidence and game impact in a high-energy coaching environment.' },
+  { q: 'What do players work on at camp?', a: 'Players work on technical detail, ball mastery, attacking skills, confidence, decision-making and the standards Lee Jones expects in high-level football training.' },
+]
+
+const campsPageSchemas = [
+  ...campSchemas,
+  webPageSchema({
+    name: 'Elite Football Camps | USA & Australia | Joner Football',
+    description: 'Train at Joner Football camps in the USA, Australia and worldwide. Improve technique, confidence and game impact with elite coach-led sessions.',
+    url: 'https://jonerfootball.com/camps/',
+  }),
+  faqSchema(campSEOFAQs),
 ]
 
 const camps = [
@@ -144,9 +163,9 @@ const sanityPage = await fetchSanityPage('camps')
   <SanityPageRenderer page={sanityPage} />
 ) : (
 <BaseLayout
-  title="Football Camps | Joner Football"
-  description="Choose your Joner Football camp destination. Simple navigation for 2026 camps in Houston, Dallas, San Diego, and Sydney."
-  schema={campSchemas}
+  title="Elite Football Camps | USA & Australia | Joner Football"
+  description="Train at Joner Football camps in the USA, Australia and worldwide. Improve technique, confidence and game impact with elite coach-led sessions."
+  schema={campsPageSchemas}
 >
   <main class="bg-joner-black text-white overflow-hidden">
     <section class="relative min-h-[calc(100vh-80px)] flex items-center py-14 sm:py-18 lg:py-20">
@@ -251,6 +270,12 @@ const sanityPage = await fetchSanityPage('camps')
     </section>
 
   </main>
+
+  <SEOFAQ
+    title="Questions about Joner Football camps."
+    intro="For parents and players deciding if a camp is the right next step."
+    items={campSEOFAQs}
+  />
 
   <style>
     @keyframes camp-orbit-spin {

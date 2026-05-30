@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import SEOFAQ from '../components/SEOFAQ.astro'
+import { faqSchema, webPageSchema } from '../lib/seoSchema'
 
 
 
@@ -96,6 +98,24 @@ const localBizSchema = {
   "priceRange": "$$"
 }
 
+
+const trainingSEOFAQs = [
+  { q: 'Where is Joner Football training based?', a: 'Joner Football training is based around The HQ in Belrose, Sydney, with programmes for players who want sharper technique and clearer coaching.' },
+  { q: 'What football training programmes are available?', a: 'Training options include JFP, professional training, Joners Juniors, game analysis, app training and other development pathways.' },
+  { q: 'Can younger players train at Joner Football?', a: 'Yes. Joners Juniors and JFP give younger players a strong foundation with clear standards, better habits and coach-led technical work.' },
+]
+
+const trainingSchemas = [
+  localBizSchema,
+  webPageSchema({
+    name: 'Sydney Football Training | Elite Coaching & Player Development',
+    description: 'Train with Joner Football in Sydney. Improve technique, confidence and game impact through JFP, pro training, juniors and specialist coaching.',
+    url: 'https://jonerfootball.com/training/',
+  }),
+  faqSchema(trainingSEOFAQs),
+]
+
+
 import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
 import { fetchSanityPage } from '../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
@@ -107,9 +127,9 @@ const sanityPage = await fetchSanityPage('training')
   <SanityPageRenderer page={sanityPage} />
 ) : (
 <BaseLayout
-  title="Sydney Training Programs | Joner Football"
-  description="Sydney football training programs at Joner Football. JFP Performance program, professional training, and Joners Juniors. Indoor facility at Belrose. Ages 8+."
-  schema={localBizSchema}
+  title="Sydney Football Training | Elite Coaching & Player Development"
+  description="Train with Joner Football in Sydney. Improve technique, confidence and game impact through JFP, pro training, juniors and specialist coaching."
+  schema={trainingSchemas}
   hideMobileAppCta={true}
 >
 
@@ -499,6 +519,11 @@ const sanityPage = await fetchSanityPage('training')
     </div>
   </section>
 
+
+  <SEOFAQ
+    title="Questions about Sydney football training."
+    items={trainingSEOFAQs}
+  />
 
   <style>
     @keyframes training-orbit-spin {

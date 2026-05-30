@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import SEOFAQ from '../components/SEOFAQ.astro'
+import { faqSchema, webPageSchema } from '../lib/seoSchema'
 import HighlightsCarousel from '../components/HighlightsCarousel.astro'
 import CloserLook from '../components/CloserLook.astro'
 
@@ -26,15 +28,33 @@ import { fetchSanityPage } from '../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 
 const sanityPage = await fetchSanityPage('app')
+
+const appSEOFAQs = [
+  { q: 'What is the Joner Football App?', a: 'The Joner Football App gives players and coaches a clearer way to train with drills, programmes, session plans and coaching detail from Lee Jones.' },
+  { q: 'Is the app good for football players?', a: 'Yes. Players use it to know what to train, build cleaner technique, improve confidence and follow structured sessions outside team training.' },
+  { q: 'Does the app include drills and programmes?', a: 'Yes. The app includes football drills, follow-along programmes, session ideas and coaching content so training has a clear purpose.' },
+  { q: 'Can coaches use the Joner Football App?', a: 'Yes. Coaches can use the app for drill ideas, session planning and technical detail they can take straight onto the pitch.' },
+]
+
+const appSchemas = [
+  appSchema,
+  webPageSchema({
+    name: 'Football Training App | Drills & Programmes | Joner Football',
+    description: 'Use the Joner Football App to know exactly what to train. Follow drills, programmes and session plans built to improve technique and confidence.',
+    url: 'https://jonerfootball.com/app/',
+  }),
+  faqSchema(appSEOFAQs),
+]
+
 ---
 
 {shouldReplaceSanityPage(sanityPage) ? (
   <SanityPageRenderer page={sanityPage} />
 ) : (
 <BaseLayout
-  title="Joner Football App | Your Complete Training Platform"
-  description="The world's #1 football training app. 1,500+ drills, session plans, follow-along programs, and the 100-Day Player Programme. Try free today."
-  schema={appSchema}
+  title="Football Training App | Drills & Programmes | Joner Football"
+  description="Use the Joner Football App to know exactly what to train. Follow drills, programmes and session plans built to improve technique and confidence."
+  schema={appSchemas}
 >
 
   <!-- SECTION 1: Hero -->
@@ -675,6 +695,12 @@ const sanityPage = await fetchSanityPage('app')
       io.observe(heroEl);
     })();
   </script>
+
+  <SEOFAQ
+    title="Questions about the football training app."
+    intro="Use these answers to decide if the Joner Football App fits the way you want to train."
+    items={appSEOFAQs}
+  />
 
 </BaseLayout>
 )}

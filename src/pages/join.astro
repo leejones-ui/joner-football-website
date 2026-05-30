@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import SEOFAQ from '../components/SEOFAQ.astro'
+import { faqSchema, webPageSchema } from '../lib/seoSchema'
 
 const plans = [
   {
@@ -120,16 +122,33 @@ import { fetchSanityPage } from '../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 
 const sanityPage = await fetchSanityPage('join')
+
+const joinSEOFAQs = [
+  { q: 'Can I try the Joner Football App before paying?', a: 'Yes. The app has free content and a trial path so players, parents and coaches can see if the training fits before committing.' },
+  { q: 'What do I get when I join?', a: 'You get a clearer training path with football drills, programmes, coaching detail and app content built to improve technique and confidence.' },
+  { q: 'Is app pricing handled inside the app?', a: 'Yes. Pricing and plan options are handled inside the Joner Football App so users see the correct options for their region.' },
+]
+
+const joinSchemas = [
+  webPageSchema({
+    name: 'Join The Joner Football App | Start Training With Purpose',
+    description: 'Join the Joner Football App and start training with purpose. Access drills, programmes and coaching built to improve your technique and confidence.',
+    url: 'https://jonerfootball.com/join/',
+  }),
+  faqSchema(joinSEOFAQs),
+]
+
 ---
 
 {shouldReplaceSanityPage(sanityPage) ? (
   <SanityPageRenderer page={sanityPage} />
 ) : (
 <BaseLayout
-  title="Joner Football App Pricing - Joner Football"
-  description="Join 50,000 players, coaches and parents already using the Joner Football App."
+  title="Join The Joner Football App | Start Training With Purpose"
+  description="Join the Joner Football App and start training with purpose. Access drills, programmes and coaching built to improve your technique and confidence."
   canonical="https://jonerfootball.com/join/"
   ogImage="https://jonerfootball.com/images/join-live/annual.webp"
+  schema={joinSchemas}
 >
   <main class="join-live-page">
     <section class="join-hero">
@@ -279,6 +298,11 @@ const sanityPage = await fetchSanityPage('join')
         });
     })();
   </script>
+
+  <SEOFAQ
+    title="Questions before you join."
+    items={joinSEOFAQs}
+  />
 
   <style>
     .join-live-page { background: #fff; color: #111; font-family: 'DM Sans', system-ui, sans-serif; }

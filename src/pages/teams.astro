@@ -1,23 +1,40 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import SEOFAQ from '../components/SEOFAQ.astro'
+import { faqSchema, webPageSchema } from '../lib/seoSchema'
 import EmailCapture from '../components/EmailCapture.astro'
 import SanityPageExtras from '../components/sanity/SanityPageExtras.astro'
 
-const schema = {
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "Team Subscriptions | Joner Football",
-  "description": "Team and club subscriptions for the Joner Football App. Give every player access to 1,500+ drills, session plans, and coaching methodology.",
-  "url": "https://jonerfootball.com/teams"
-}
+const teamSEOFAQs = [
+  { q: 'Can a full team use the Joner Football App?', a: 'Yes. Joner Football can support team and club subscriptions so every player gets access to the same training detail, programmes and app pathway.' },
+  { q: 'Who are team subscriptions for?', a: 'They are built for clubs, academies, schools and coaches who want players doing better work between team sessions.' },
+  { q: 'How does a team get started?', a: 'Send an enquiry with your club, squad size and coach access needs. Joner Football will follow up with the cleanest setup for your players.' },
+]
+
+const schema = [
+  webPageSchema({
+    name: 'Football Team Training App | Club Subscriptions | Joner Football',
+    description: 'Give your football team access to Joner Football training. Team subscriptions help players train with clearer drills, programmes and coach-led detail.',
+    url: 'https://jonerfootball.com/teams/',
+  }),
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: 'Joner Football Team Subscriptions',
+    provider: { '@type': 'Organization', name: 'Joner Football' },
+    serviceType: 'Football team training app subscription',
+    areaServed: 'Worldwide',
+  },
+  faqSchema(teamSEOFAQs),
+]
 
 import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
 import { fetchSanityPage } from '../lib/sanityPages'
 import { getSanityCta, getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 
 const sanityPage = await fetchSanityPage('teams')
-const pageTitle = sanityPage?.seo?.title || 'Team Subscriptions | Joner Football'
-const pageDescription = sanityPage?.seo?.description || 'Team and club subscriptions for the Joner Football App. Give every player access to 1,500+ drills, session plans, and coaching methodology.'
+const pageTitle = sanityPage?.seo?.title || 'Football Team Training App | Club Subscriptions | Joner Football'
+const pageDescription = sanityPage?.seo?.description || 'Give your football team access to Joner Football training. Team subscriptions help players train with clearer drills, programmes and coach-led detail.'
 const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Team Subscriptions')
 const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole Squad')
 const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'Team and club subscriptions for the Joner Football App')
@@ -346,6 +363,12 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
       </a>
     </div>
   </section>
+
+  <SEOFAQ
+    title="Questions about team app access."
+    intro="For clubs, academies and coaches who want every player training with a clearer plan."
+    items={teamSEOFAQs}
+  />
 
   <SanityPageExtras page={sanityPage} />
 
