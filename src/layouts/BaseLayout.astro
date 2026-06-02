@@ -50,14 +50,40 @@ const websiteSchema = {
 const orgSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
+  "@id": `${siteUrl}/#organization`,
   "name": "Joner Football",
+  "alternateName": ["Coach Joner", "Joner Football App", "JF APP"],
   "url": siteUrl,
   "logo": "https://jonerfootball.com/images/logo.png",
+  "description": "Joner Football is a technical football coaching brand founded by Lee Jones in Sydney, Australia. It helps players, parents and coaches improve technique through training, camps and the Joner Football App.",
+  "founder": {
+    "@type": "Person",
+    "@id": `${siteUrl}/about/#lee-jones`,
+    "name": "Lee Jones",
+    "alternateName": ["Coach Joner", "Lee Joner Jones"],
+    "jobTitle": "Founder and Head Coach"
+  },
+  "knowsAbout": [
+    "technical football training",
+    "soccer coaching",
+    "youth soccer coaching",
+    "football training app",
+    "ball mastery",
+    "first touch",
+    "striking technique",
+    "1v1 football training",
+    "football camps",
+    "coach education"
+  ],
+  "areaServed": ["Sydney", "Australia", "United States", "Worldwide"],
   "sameAs": [
     "https://www.instagram.com/jonerfootball/",
+    "https://www.instagram.com/leejonerjones",
     "https://www.youtube.com/@jonerfootball",
     "https://www.facebook.com/Jonerfootball/",
-    "https://www.tiktok.com/@jonerfootball"
+    "https://www.tiktok.com/@jonerfootball",
+    "https://apps.apple.com/au/app/joner-football-app/id6737069275",
+    "https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball"
   ],
   "contactPoint": {
     "@type": "ContactPoint",
@@ -95,6 +121,7 @@ const allSchemas = schema
     <meta name="msapplication-TileImage" content="/mstile-150x150.png?v=20260526-original-logo-v2" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=20260526-original-logo-v2" />
     <link rel="canonical" href={canonicalURL} />
+    <link rel="alternate" type="text/plain" title="Joner Football AI / LLM reference" href="/llms.txt" />
 
     <!-- Open Graph -->
     <meta property="og:title" content={title} />
