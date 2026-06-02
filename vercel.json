@@ -1,5 +1,6 @@
 {
   "routes": [
+    { "src": "/api/uscreen-webhook", "dest": "/api/subscribe?uscreen_webhook=1" },
     { "src": "/", "methods": ["POST"], "dest": "/api/camp-payment-webhook?legacy=wc_stripe" }
   ],
   "redirects": [

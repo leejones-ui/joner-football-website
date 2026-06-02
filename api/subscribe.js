@@ -1,4 +1,5 @@
 import { cleanString, protectForm } from './_security.js'
+import { processUscreenPayload } from './_uscreen-webhook.js'
 import dns from 'node:dns/promises'
 
 const COMMON_DOMAINS = [
@@ -183,6 +184,56 @@ async function sendSubscribeNotification({ source, email, firstName, body }) {
 }
 
 export default async function handler(req, res) {
+  if (req.query?.uscreen_webhook === '1') {
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Allow', 'GET, POST, OPTIONS')
+      return res.status(204).end()
+    }
+
+    if (req.method === 'GET') {
+      return res.status(200).json({ status: 'healthy', service: 'uscreen-webhook', timestamp: new Date().toISOString() })
+    }
+
+    if (req.method !== 'POST') {
+      res.setHeader('Allow', 'GET, POST, OPTIONS')
+      return res.status(405).json({ success: false, error: 'Method not allowed' })
+    }
+
+    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
+    const eventType = String(body.event || body.type || body.event_type || 'unknown')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '.')
+      .replace(/^\.+|\.+$/g, '') || 'unknown'
+
+    try {
+      const result = await processUscreenPayload(body)
+      console.info('Uscreen webhook accepted', {
+        event: result.event,
+        id: cleanString(body.id || '', 80),
+        offerId: Number(body.offer_id || body.subscription_id) || null,
+        processed: Boolean(result.processed),
+        skipped: Boolean(result.skipped),
+        reason: result.reason || null,
+      })
+      return res.status(200).json({
+        status: 'accepted',
+        event: result.event,
+        processed: Boolean(result.processed),
+        skipped: Boolean(result.skipped),
+        reason: result.reason || undefined,
+      })
+    } catch (error) {
+      console.error('Uscreen webhook processing failed after receipt', {
+        event: eventType,
+        id: cleanString(body.id || '', 80),
+        offerId: Number(body.offer_id || body.subscription_id) || null,
+        error: error?.message || String(error),
+      })
+      return res.status(200).json({ status: 'accepted', event: eventType, processed: false, queuedForReview: true })
+    }
+  }
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
     return res.status(405).json({ success: false, error: 'Method not allowed' })
