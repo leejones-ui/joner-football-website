@@ -211,7 +211,6 @@ const faqs = [
                       <span class:list={['billing-period pb-1 font-body text-sm', plan.style === 'featured' || plan.style === 'club' ? 'text-white/65' : 'text-gray-600']} data-monthly="/month" data-annual="/mo">/mo</span>
                     </div>
                     <p class:list={['billing-sub font-body text-xs', plan.style === 'featured' || plan.style === 'club' ? 'text-white/55' : 'text-gray-500']} data-monthly="" data-annual="billed annually">billed annually</p>
-                    <p class:list={['billing-save mt-0.5 min-h-4 font-body text-xs font-semibold', plan.style === 'featured' ? 'text-[#ff8088]' : 'text-[#E30613]']} data-annual={plan.annualSave}>{plan.annualSave}</p>
                   </>
                 )}
               </div>
@@ -222,9 +221,12 @@ const faqs = [
               ]}>{plan.trial}</p>
 
               {plan.url ? (
-                <a href={plan.url} class:list={['lg-btn mt-5 block w-full rounded-full px-5 py-3.5 text-center font-heading uppercase tracking-wider', plan.style === 'club' ? 'bg-white text-black' : 'bg-[#E30613] text-white']}>{plan.cta}</a>
+                <a href={plan.url} class:list={['mt-5 block w-full rounded-full px-5 py-3.5 text-center font-heading uppercase tracking-wider transition-colors', plan.style === 'club' ? 'bg-white text-black hover:bg-[#E30613] hover:text-white' : 'bg-[#E30613] text-white hover:bg-[#b80510]']}>{plan.cta}</a>
               ) : (
-                <a href={plan.annualUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class="plan-cta lg-btn mt-5 block w-full rounded-full bg-[#E30613] px-5 py-3.5 text-center font-heading uppercase tracking-wider text-white">{plan.cta}</a>
+                <a href={plan.annualUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class="plan-cta mt-5 block w-full rounded-full bg-[#E30613] px-5 py-3.5 text-center font-heading uppercase tracking-wider text-white transition-colors hover:bg-[#b80510]">{plan.cta}</a>
+              )}
+              {!plan.priceLabel && (
+                <p class:list={['billing-save mt-2 min-h-4 text-center font-body text-xs font-semibold', plan.style === 'featured' ? 'text-[#ff8088]' : 'text-[#E30613]']} data-annual={plan.annualSave}>{plan.annualSave}</p>
               )}
 
               <ul class="mt-6 flex-1 space-y-2.5">
@@ -336,7 +338,7 @@ const faqs = [
                   </li>
                 ))}
               </ul>
-              <a href="#max" class="lg-btn mt-8 inline-flex rounded-full bg-[#E30613] px-8 py-4 font-heading uppercase tracking-wider text-white">Join Max</a>
+              <a href="#max" class="mt-8 inline-flex rounded-full bg-[#E30613] px-8 py-4 font-heading uppercase tracking-wider text-white transition-colors hover:bg-[#b80510]">Join Max</a>
             </div>
             <div class="relative min-h-[260px] lg:min-h-full">
               <img src="/app/uploads/2026/05/soccer-coach-goal-instruction.webp" alt="Lee coaching detail with players" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full object-cover" />
@@ -370,8 +372,8 @@ const faqs = [
       <div class="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
         <h2 class="font-heading text-4xl uppercase leading-[0.95] text-white md:text-6xl">Choose your level and get to work.</h2>
         <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href="#plus" class="lg-btn inline-flex items-center justify-center rounded-full bg-white px-8 py-4 font-heading uppercase tracking-wider text-black">Start Plus</a>
-          <a href="#max" class="lg-btn inline-flex items-center justify-center rounded-full bg-black px-8 py-4 font-heading uppercase tracking-wider text-white">Join Max</a>
+          <a href="#plus" class="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 font-heading uppercase tracking-wider text-black transition-colors hover:bg-black hover:text-white">Start Plus</a>
+          <a href="#max" class="inline-flex items-center justify-center rounded-full bg-black px-8 py-4 font-heading uppercase tracking-wider text-white transition-colors hover:bg-[#0A0A0A]">Join Max</a>
         </div>
         <a href="#starter" class="mt-5 inline-block font-body text-sm text-white/90 underline underline-offset-4 hover:text-white">Just want the basics? Start with Starter</a>
       </div>
@@ -387,63 +389,9 @@ const faqs = [
         <p class="font-heading text-sm uppercase text-[#0A0A0A]">Joner Football App</p>
         <p class="font-body text-xs text-gray-600">From $10.83/mo billed annually</p>
       </div>
-      <a href="#plans" class="lg-btn rounded-full bg-[#E30613] px-6 py-3 font-heading text-sm uppercase tracking-wider text-white">Choose Plan</a>
+      <a href="#plans" class="rounded-full bg-[#E30613] px-6 py-3 font-heading text-sm uppercase tracking-wider text-white transition-colors hover:bg-[#b80510]">Choose Plan</a>
     </div>
   </div>
-
-  <!-- Liquid glass SVG filter -->
-  <svg class="pointer-events-none absolute h-0 w-0" aria-hidden="true">
-    <defs>
-      <filter id="container-glass" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
-        <feTurbulence type="fractalNoise" baseFrequency="0.05 0.05" numOctaves="1" seed="1" result="turbulence" />
-        <feGaussianBlur in="turbulence" stdDeviation="2" result="blurredNoise" />
-        <feDisplacementMap in="SourceGraphic" in2="blurredNoise" scale="70" xChannelSelector="R" yChannelSelector="B" result="displaced" />
-        <feGaussianBlur in="displaced" stdDeviation="4" result="finalBlur" />
-        <feComposite in="finalBlur" in2="finalBlur" operator="over" />
-      </filter>
-    </defs>
-  </svg>
-
-  <style>
-    /* Liquid glass buttons */
-    .lg-btn {
-      position: relative;
-      isolation: isolate;
-      overflow: hidden;
-      will-change: transform;
-      transition: transform .25s ease, filter .25s ease, box-shadow .25s ease;
-      box-shadow:
-        0 2px 10px rgba(0,0,0,.16),
-        inset 2px 2px 1px -2px rgba(255,255,255,.75),
-        inset -2px -2px 1px -2px rgba(255,255,255,.55),
-        inset 1px 1px 1px -.5px rgba(255,255,255,.5),
-        inset 0 0 8px 4px rgba(255,255,255,.08),
-        0 0 14px rgba(255,255,255,.08);
-    }
-    .lg-btn::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: -1;
-      border-radius: inherit;
-      backdrop-filter: url("#container-glass");
-      -webkit-backdrop-filter: blur(2px);
-    }
-    .lg-btn::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      pointer-events: none;
-      background: linear-gradient(to top, rgba(255,255,255,0) 45%, rgba(255,255,255,.22));
-    }
-    .lg-btn:hover { transform: scale(1.04); filter: brightness(1.07); }
-    .lg-btn:active { transform: scale(.98); filter: brightness(.95); }
-    @media (prefers-reduced-motion: reduce) {
-      .lg-btn { transition: none; }
-      .lg-btn:hover { transform: none; }
-    }
-  </style>
 
   <script>
     const toggles = document.querySelectorAll('.billing-toggle')
