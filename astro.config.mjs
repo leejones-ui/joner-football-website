@@ -15,9 +15,9 @@ export default defineConfig({
         '/home-concept/',
         '/home-object-prototype/',
         '/home-storyboard-prototype/',
+        '/draftjoin/',
         '/join/',
         '/new-coaching-role/',
-        '/player-waiver/',
         '/training/joners-juniors/',
       ];
       return !pathname.startsWith('/drafts/') && !excludedPaths.includes(pathname);
