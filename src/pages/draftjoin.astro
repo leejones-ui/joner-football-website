@@ -3,15 +3,15 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 
 // DRAFT_PAGE_NOTICE: Hidden direct-access page for Claude/Lee review. Not linked in nav. noindex enabled.
 // Decision page. Visitors arrive warm from the selling pages. Job: pick a plan fast.
-// Prices shown in USD numbers; checkout applies local currency. Country/currency auto-detected for the label.
-// Tier content follows Barry's brief.
+// Prices shown in USD numbers; checkout applies local currency. Currency label auto-detected.
+// Tier content follows Barry's brief. Cards show cumulative ticks so progression reads like the table.
 
 const plans = [
   {
     id: 'starter',
     name: 'Starter',
     badge: '',
-    tag: 'Solo follow-along training',
+    tag: 'The Essentials | Solo Training',
     monthlyPrice: '$14.99', monthlyNum: '14.99',
     annualPrice: '$129.99', annualNum: '129.99',
     annualCompare: '$179.88',
@@ -21,9 +21,8 @@ const plans = [
     monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
     annualUrl: 'https://app.jonerfootball.com/checkout/new?o=230697',
     style: 'plain',
-    featuresHeader: 'The essentials:',
     features: [
-      'Train on your own content',
+      'Solo follow-along training',
       'Beginner ball mastery',
       'Basic drills and how-to videos',
       'Prehab, activation and warm-ups',
@@ -44,13 +43,15 @@ const plans = [
     monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=230699',
     annualUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
     style: 'featured',
-    featuresHeader: 'Everything in Starter, plus:',
     features: [
+      { text: 'Everything in Starter', lead: true },
       '100 Day Transformation Program',
-      'Advanced and age-specific training',
+      'Advanced drills',
       'Cognitive and awareness drills',
+      'Age-specific training',
       'DM Lee directly',
-      'Livestream, mindset and 1v1 training',
+      'Livestream training sessions',
+      'Mindset, HQ and 1v1 training',
     ],
   },
   {
@@ -67,31 +68,36 @@ const plans = [
     monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=230698',
     annualUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
     style: 'max',
-    featuresHeader: 'Everything in Plus, plus:',
     features: [
+      { text: 'Everything in Plus', lead: true },
       'Full access to the entire app',
-      { text: 'Coaches Only', underline: true },
+      { text: 'Includes Coaches Only', coaches: true },
       'Direct coaching access with Lee',
-      'Study the game and pro drills',
-      'Session plans, PDF plans, behind the scenes',
+      'Team and position-specific training',
+      'Study the game',
+      'Pro drills and voice-over training',
+      'Session plan videos and PDF plans',
+      'Live seminars and session planning',
+      'Behind-the-scenes coaching access',
     ],
   },
   {
     id: 'club',
     name: 'Team / Club',
-    badge: 'Request Only',
+    badge: '',
     tag: 'For teams, clubs and academies',
     priceLabel: 'Custom',
     trial: 'Built for your group',
     cta: 'Request Club Pricing',
     url: '/teams/#team-subscription-form',
     style: 'club',
-    featuresHeader: 'Full app for your whole group:',
     features: [
+      { text: 'Full app access for your group', lead: true },
       'Player and coach logins',
       'Team or club section in the app',
       'Club onboarding',
       'Custom pricing for your size',
+      'Built for clubs, academies and schools',
     ],
   },
 ]
@@ -170,7 +176,7 @@ const faqs = [
         <h1 class="mx-auto font-heading text-4xl uppercase leading-[0.95] tracking-tight sm:text-5xl md:text-6xl">
           Choose your level, <span class="text-[#E30613]">get to work.</span>
         </h1>
-        <p class="mx-auto mt-4 font-body text-base text-gray-600 md:text-lg">
+        <p class="mx-auto mt-4 font-body text-base text-gray-700 md:text-lg">
           For players, coaches and parents.
         </p>
       </div>
@@ -181,34 +187,31 @@ const faqs = [
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
         <!-- Toggle + currency -->
-        <div class="mb-8 flex flex-col items-center gap-2.5">
+        <div class="mb-10 flex flex-col items-center gap-2.5">
           <div id="billing-switch" class="relative flex w-[300px] max-w-full rounded-full border border-gray-200 bg-gray-100 p-1">
             <span id="toggle-indicator" class="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-black transition-transform duration-300 ease-out"></span>
             <button type="button" data-billing="monthly" aria-pressed="true" class="billing-toggle relative z-10 flex-1 rounded-full py-2.5 text-center font-heading text-sm uppercase tracking-wider text-white transition-colors">Monthly</button>
-            <button type="button" data-billing="annual" aria-pressed="false" class="billing-toggle relative z-10 flex-1 rounded-full py-2.5 text-center font-heading text-sm uppercase tracking-wider text-gray-500 transition-colors">Annual <span class="text-[#E30613]">save</span></button>
+            <button type="button" data-billing="annual" aria-pressed="false" class="billing-toggle relative z-10 flex-1 rounded-full py-2.5 text-center font-heading text-sm uppercase tracking-wider text-gray-600 transition-colors">Annual <span class="text-[#E30613]">save</span></button>
           </div>
-          <p id="currency-note" class="font-body text-xs text-gray-400">Prices shown in AUD</p>
+          <p id="currency-note" class="font-body text-xs text-gray-500">Prices shown in AUD</p>
         </div>
 
         <!-- 4 columns -->
         <div class="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => (
             <article id={plan.id} class:list={[
-              'relative flex min-h-full scroll-mt-24 flex-col rounded-3xl border p-6',
+              'group relative flex min-h-full scroll-mt-24 flex-col rounded-3xl border p-6 transition-transform duration-200 ease-out md:hover:-translate-y-1.5',
               plan.style === 'featured' && 'border-black bg-black text-white shadow-[0_20px_50px_rgba(0,0,0,0.18)] xl:-mt-2 xl:mb-2',
               plan.style === 'max' && 'border-[#E30613] bg-white text-[#0A0A0A] ring-1 ring-[#E30613]',
               plan.style === 'plain' && 'border-gray-200 bg-white text-[#0A0A0A]',
               plan.style === 'club' && 'border-gray-200 bg-[#0A0A0A] text-white',
             ]}>
               {plan.badge && (
-                <div class:list={[
-                  'absolute -top-3 left-6 rounded-full px-3.5 py-1 text-xs font-heading uppercase tracking-wider shadow',
-                  plan.style === 'plain' ? 'bg-gray-900 text-white' : 'bg-[#E30613] text-white',
-                ]}>{plan.badge}</div>
+                <div class="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#E30613] px-3.5 py-1 text-xs font-heading uppercase tracking-wider text-white shadow">{plan.badge}</div>
               )}
 
               <h3 class="font-heading text-3xl uppercase leading-none">{plan.name}</h3>
-              <p class:list={['mt-1.5 min-h-[2.5rem] font-body text-sm font-semibold leading-tight', plan.style === 'featured' || plan.style === 'club' ? 'text-white/70' : 'text-gray-500']}>{plan.tag}</p>
+              <p class:list={['mt-1.5 min-h-[2.5rem] font-body text-sm font-semibold leading-tight', plan.style === 'featured' || plan.style === 'club' ? 'text-white/75' : 'text-gray-600']}>{plan.tag}</p>
 
               <div class="mt-4 min-h-[5rem]">
                 {plan.priceLabel ? (
@@ -216,11 +219,11 @@ const faqs = [
                 ) : (
                   <>
                     <div class="min-h-4">
-                      <span class:list={['billing-compare hidden font-heading text-sm line-through', plan.style === 'featured' ? 'text-white/45' : 'text-gray-400']} data-monthly="" data-annual={plan.annualCompare}></span>
+                      <span class:list={['billing-compare hidden font-heading text-sm line-through', plan.style === 'featured' ? 'text-white/50' : 'text-gray-500']} data-monthly="" data-annual={plan.annualCompare}></span>
                     </div>
                     <div class="flex items-end gap-1.5">
                       <span class="billing-price font-heading text-5xl leading-none tabular-nums" data-monthly-num={plan.monthlyNum} data-annual-num={plan.annualNum}>{plan.monthlyPrice}</span>
-                      <span class:list={['billing-period pb-1 font-body text-sm', plan.style === 'featured' || plan.style === 'club' ? 'text-white/60' : 'text-gray-500']} data-monthly="/month" data-annual="/year">/month</span>
+                      <span class:list={['billing-period pb-1 font-body text-sm', plan.style === 'featured' || plan.style === 'club' ? 'text-white/65' : 'text-gray-600']} data-monthly="/month" data-annual="/year">/month</span>
                     </div>
                     <p class:list={['billing-save mt-1 min-h-4 font-body text-xs font-semibold', plan.style === 'featured' ? 'text-[#ff8088]' : 'text-[#E30613]']} data-annual={plan.annualSave}></p>
                   </>
@@ -238,15 +241,19 @@ const faqs = [
                 <a href={plan.monthlyUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class="plan-cta mt-5 block w-full rounded-full bg-[#E30613] px-5 py-3.5 text-center font-heading uppercase tracking-wider text-white transition-colors hover:bg-[#b80510]">{plan.cta}</a>
               )}
 
-              <p class:list={['mt-6 font-heading text-xs uppercase tracking-wider', plan.style === 'featured' || plan.style === 'club' ? 'text-white/50' : 'text-gray-400']}>{plan.featuresHeader}</p>
-              <ul class="mt-3 flex-1 space-y-2.5">
+              <ul class="mt-6 flex-1 space-y-2.5">
                 {plan.features.map((feature) => {
                   const label = typeof feature === 'string' ? feature : feature.text
-                  const underline = typeof feature === 'object' && feature.underline
+                  const lead = typeof feature === 'object' && feature.lead
+                  const coaches = typeof feature === 'object' && feature.coaches
                   return (
                     <li class="flex gap-2.5 font-body text-sm leading-snug">
                       <span class="mt-0.5 shrink-0 font-bold text-[#16a34a]">&check;</span>
-                      <span class:list={[underline && 'font-bold underline underline-offset-2', plan.style === 'featured' || plan.style === 'club' ? 'text-white/85' : 'text-gray-700']}>{label}</span>
+                      <span class:list={[
+                        lead && 'font-bold',
+                        coaches && 'font-semibold underline decoration-[#E30613] decoration-2 underline-offset-2',
+                        plan.style === 'featured' || plan.style === 'club' ? 'text-white/90' : 'text-gray-800',
+                      ]}>{label}</span>
                     </li>
                   )
                 })}
@@ -255,8 +262,8 @@ const faqs = [
           ))}
         </div>
 
-        <!-- Feature strip (moved under the columns) -->
-        <div class="mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 font-body text-sm font-semibold text-gray-700">
+        <!-- Feature strip (under the columns) -->
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 font-body text-sm font-semibold text-gray-800">
           <span class="rounded-full bg-gray-100 px-3.5 py-1.5">2,000+ training videos</span>
           <span class="rounded-full bg-gray-100 px-3.5 py-1.5">Filter by age, difficulty, drill type and plan</span>
           <span class="rounded-full bg-gray-100 px-3.5 py-1.5">New content every week</span>
@@ -269,7 +276,7 @@ const faqs = [
     <section id="compare" class="scroll-mt-24 bg-white pb-14 md:pb-20">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <h2 class="mb-2 font-heading text-3xl uppercase tracking-tight md:text-4xl">Compare every tier.</h2>
-        <p class="mb-7 font-body text-gray-500">Green is included. Grey is not. See exactly what you unlock as you move up.</p>
+        <p class="mb-7 font-body text-gray-600">Green is included. Grey is not. See exactly what you unlock as you move up.</p>
 
         <!-- Desktop table -->
         <div class="hidden overflow-hidden rounded-2xl border border-gray-200 md:block">
@@ -286,7 +293,7 @@ const faqs = [
               {compareGroups.map((group) => (
                 <>
                   <tr class="bg-gray-50">
-                    <td colspan="5" class="px-4 py-2 font-heading text-xs uppercase tracking-[0.2em] text-gray-400">{group.title}</td>
+                    <td colspan="5" class="px-4 py-2 font-heading text-xs uppercase tracking-[0.2em] text-gray-500">{group.title}</td>
                   </tr>
                   {group.rows.map((row) => (
                     <tr class="border-t border-gray-100">
@@ -312,11 +319,11 @@ const faqs = [
             <details class="overflow-hidden rounded-2xl border border-gray-200 bg-white">
               <summary class="flex cursor-pointer items-center justify-between gap-3 p-5">
                 <span class="font-heading text-xl uppercase">{plan.name}</span>
-                <span class="font-body text-sm text-gray-500">{plan.priceLabel ? plan.priceLabel : plan.monthlyPrice + '+'}</span>
+                <span class="font-body text-sm text-gray-600">{plan.priceLabel ? plan.priceLabel : plan.monthlyPrice + '+'}</span>
               </summary>
               <ul class="space-y-2.5 px-5 pb-5">
                 {plan.features.map((feature) => (
-                  <li class="flex gap-2.5 font-body text-sm text-gray-700">
+                  <li class="flex gap-2.5 font-body text-sm text-gray-800">
                     <span class="mt-0.5 shrink-0 font-bold text-[#16a34a]">&check;</span>
                     {typeof feature === 'string' ? feature : feature.text}
                   </li>
@@ -332,28 +339,28 @@ const faqs = [
     <section aria-label="What you are paying for" class="border-y border-gray-100 bg-gray-50 py-14 md:py-18">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <h2 class="mb-2 font-heading text-3xl uppercase tracking-tight md:text-4xl">Know exactly what you are paying for.</h2>
-        <p class="mb-9 max-w-2xl font-body text-gray-600">The plans are a ladder. Each step adds more structure and more access.</p>
+        <p class="mb-9 max-w-2xl font-body text-gray-700">The plans are a ladder. Each step adds more structure and more access.</p>
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div class="rounded-2xl border border-gray-200 bg-white p-7">
-            <p class="font-heading text-sm uppercase tracking-wider text-gray-400">Starter</p>
+            <p class="font-heading text-sm uppercase tracking-wider text-gray-500">Starter</p>
             <h3 class="mt-1 font-heading text-2xl uppercase">The basics</h3>
-            <p class="mt-3 font-body text-sm text-gray-600">Solo follow-along training. Simple drills, ball mastery and warm-ups. A safe place to start.</p>
+            <p class="mt-3 font-body text-sm text-gray-700">Solo follow-along training. Simple drills, ball mastery and warm-ups. A safe place to start.</p>
           </div>
           <div class="rounded-2xl border-2 border-[#E30613] bg-white p-7">
             <p class="font-heading text-sm uppercase tracking-wider text-[#E30613]">Plus</p>
             <h3 class="mt-1 font-heading text-2xl uppercase">The structure</h3>
-            <p class="mt-3 font-body text-sm text-gray-700">The serious player pathway. The 100 Day Program, advanced and age-specific training, and DM Lee directly.</p>
+            <p class="mt-3 font-body text-sm text-gray-800">The serious player pathway. The 100 Day Program, advanced and age-specific training, and DM Lee directly.</p>
           </div>
           <div class="rounded-2xl border border-gray-200 bg-white p-7">
-            <p class="font-heading text-sm uppercase tracking-wider text-gray-400">Max</p>
+            <p class="font-heading text-sm uppercase tracking-wider text-gray-500">Max</p>
             <h3 class="mt-1 font-heading text-2xl uppercase">The full system</h3>
-            <p class="mt-3 font-body text-sm text-gray-600">Everything in the app plus Coaches Only. Session plans, team training, study the game and how Lee coaches the coaches.</p>
+            <p class="mt-3 font-body text-sm text-gray-700">Everything in the app plus Coaches Only. Session plans, team training, study the game and how Lee coaches the coaches.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- MAX INCLUDES COACHES ONLY (photo back) -->
+    <!-- MAX INCLUDES COACHES ONLY (photo) -->
     <section aria-label="Max includes Coaches Only" class="bg-white py-14 md:py-18">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="overflow-hidden rounded-3xl bg-[#0A0A0A] text-white">
@@ -361,10 +368,10 @@ const faqs = [
             <div class="p-8 md:p-12">
               <p class="mb-3 inline-flex rounded-full bg-[#E30613] px-3 py-1 text-xs font-heading uppercase tracking-wider text-white">Only on Max</p>
               <h2 class="font-heading text-4xl uppercase leading-[0.95] md:text-5xl">Max includes<br />Coaches Only.</h2>
-              <p class="mt-4 max-w-md font-body text-white/70">The section built for coaches who want detail. Plan sessions, coach better and run your team from the same system the pros learn from.</p>
+              <p class="mt-4 max-w-md font-body text-white/75">The section built for coaches who want detail. Plan sessions, coach better and run your team from the same system the pros learn from.</p>
               <ul class="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {['Session plan videos', 'PDF session plans', 'Team training', 'Study the game', 'Voice-over drills', 'How Lee coaches the coaches'].map((item) => (
-                  <li class="flex gap-3 font-body text-sm text-white/85">
+                  <li class="flex gap-3 font-body text-sm text-white/90">
                     <span class="mt-0.5 shrink-0 font-bold text-[#16a34a]">&check;</span>
                     {item}
                   </li>
@@ -396,7 +403,7 @@ const faqs = [
                 {q}
                 <span class="text-[#E30613] transition-transform group-open:rotate-45">+</span>
               </summary>
-              <p class="mt-4 font-body leading-relaxed text-gray-600">{a}</p>
+              <p class="mt-4 font-body leading-relaxed text-gray-700">{a}</p>
             </details>
           ))}
         </div>
@@ -411,7 +418,7 @@ const faqs = [
           <a href="#plus" class="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 font-heading uppercase tracking-wider text-black transition-colors hover:bg-black hover:text-white">Start Plus</a>
           <a href="#max" class="inline-flex items-center justify-center rounded-full bg-black px-8 py-4 font-heading uppercase tracking-wider text-white transition-colors hover:bg-[#0A0A0A]">Join Max</a>
         </div>
-        <a href="#starter" class="mt-5 inline-block font-body text-sm text-white/85 underline underline-offset-4 hover:text-white">Just want the basics? Start with Starter</a>
+        <a href="#starter" class="mt-5 inline-block font-body text-sm text-white/90 underline underline-offset-4 hover:text-white">Just want the basics? Start with Starter</a>
       </div>
     </section>
 
@@ -423,7 +430,7 @@ const faqs = [
     <div class="flex items-center justify-between gap-3">
       <div class="leading-tight">
         <p class="font-heading text-sm uppercase text-[#0A0A0A]">Joner Football App</p>
-        <p class="font-body text-xs text-gray-500">From $14.99/mo</p>
+        <p class="font-body text-xs text-gray-600">From $14.99/mo</p>
       </div>
       <a href="#plans" class="rounded-full bg-[#E30613] px-6 py-3 font-heading text-sm uppercase tracking-wider text-white">Choose Plan</a>
     </div>
@@ -460,7 +467,7 @@ const faqs = [
         const active = t.getAttribute('data-billing') === mode
         t.setAttribute('aria-pressed', active ? 'true' : 'false')
         t.classList.toggle('text-white', active)
-        t.classList.toggle('text-gray-500', !active)
+        t.classList.toggle('text-gray-600', !active)
       })
       if (indicator) indicator.classList.toggle('translate-x-full', mode === 'annual')
 
