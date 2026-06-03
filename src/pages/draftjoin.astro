@@ -2,22 +2,16 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 
 // DRAFT_PAGE_NOTICE: Hidden direct-access page for Claude/Lee review. Not linked in nav. noindex enabled.
-// Decision page. Visitors arrive warm from the selling pages. Job: pick a plan fast.
+// Decision page. Defaults to Annual billing showing the per-month-billed-annually price (Higgsfield style).
 // Prices shown in USD numbers; checkout applies local currency. Currency label auto-detected.
-// Tier content follows Barry's brief. Cards show cumulative ticks so progression reads like the table.
 
 const plans = [
   {
-    id: 'starter',
-    name: 'Starter',
-    badge: '',
-    tag: 'The Essentials | Solo Training',
+    id: 'starter', name: 'Starter', badge: '', tag: 'The Essentials | Solo Training',
     monthlyPrice: '$14.99', monthlyNum: '14.99',
-    annualPrice: '$129.99', annualNum: '129.99',
-    annualCompare: '$179.88',
+    annualMonthlyPrice: '$10.83', annualMonthlyNum: '10.83',
     annualSave: 'Save $49.89 a year',
-    trial: '7-day free trial',
-    cta: 'Start With Starter',
+    trial: '7-day free trial', cta: 'Start With Starter',
     monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
     annualUrl: 'https://app.jonerfootball.com/checkout/new?o=230697',
     style: 'plain',
@@ -30,16 +24,11 @@ const plans = [
     ],
   },
   {
-    id: 'plus',
-    name: 'Plus',
-    badge: 'Most Popular',
-    tag: 'For players, coaches and parents',
+    id: 'plus', name: 'Plus', badge: 'Most Popular', tag: 'For players, coaches and parents',
     monthlyPrice: '$19.99', monthlyNum: '19.99',
-    annualPrice: '$179.99', annualNum: '179.99',
-    annualCompare: '$239.88',
+    annualMonthlyPrice: '$15.00', annualMonthlyNum: '15.00',
     annualSave: 'Save $59.89 a year',
-    trial: '7-day free trial',
-    cta: 'Start Plus',
+    trial: '7-day free trial', cta: 'Start Plus',
     monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=230699',
     annualUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
     style: 'featured',
@@ -55,16 +44,11 @@ const plans = [
     ],
   },
   {
-    id: 'max',
-    name: 'Max',
-    badge: 'Full Access',
-    tag: 'The full app, Coaches Only and serious ballers',
+    id: 'max', name: 'Max', badge: 'Full Access', tag: 'The full app, Coaches Only and serious ballers',
     monthlyPrice: '$39.99', monthlyNum: '39.99',
-    annualPrice: '$249.99', annualNum: '249.99',
-    annualCompare: '$479.88',
+    annualMonthlyPrice: '$20.83', annualMonthlyNum: '20.83',
     annualSave: 'Save $229.89 a year',
-    trial: 'Full access from day one',
-    cta: 'Join Max',
+    trial: 'Full access from day one', cta: 'Join Max',
     monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=230698',
     annualUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
     style: 'max',
@@ -82,15 +66,9 @@ const plans = [
     ],
   },
   {
-    id: 'club',
-    name: 'Team / Club',
-    badge: '',
-    tag: 'For teams, clubs and academies',
-    priceLabel: 'Custom',
-    trial: 'Built for your group',
-    cta: 'Request Club Pricing',
-    url: '/teams/#team-subscription-form',
-    style: 'club',
+    id: 'club', name: 'Team / Club', badge: '', tag: 'For teams, clubs and academies',
+    priceLabel: 'Custom', trial: 'Built for your group', cta: 'Request Club Pricing',
+    url: '/teams/#team-subscription-form', style: 'club',
     features: [
       { text: 'Full app access for your group', lead: true },
       'Player and coach logins',
@@ -150,6 +128,13 @@ const compareGroups = [
   },
 ]
 
+const ladder = [
+  { name: 'Starter', accent: false, body: 'All the essentials. For players who want simple solo training they can follow straight away and start building better habits with the ball.' },
+  { name: 'Plus', accent: true, body: 'For players, parents and coaches who want a clear training pathway, more structure and direct guidance from Lee.' },
+  { name: 'Max', accent: false, body: 'For serious players and coaches who want the full Joner system, including Coaches Only, session plans, game study and how Lee builds training.' },
+  { name: 'Team / Club', accent: false, body: 'For teams, clubs and academies who want unlimited players and coaches inside their own Joner Football app section and community.' },
+]
+
 const faqs = [
   ['Which plan should I choose?', 'Train on your own, start with Starter. Serious about improving, Plus is the best pathway. Want the full app and Coaches Only, go with Max. Running a team or club, request club pricing.'],
   ['Is there a free trial?', 'Starter and Plus come with a 7-day free trial. Max gives you full access from day one.'],
@@ -157,13 +142,6 @@ const faqs = [
   ['Is Max only for coaches?', 'No. Max is the full Joner Football App for serious players, parents and coaches. The Coaches Only section is included, it is not the only thing in there.'],
   ['Can parents use the app?', 'Yes. Plenty of parents use it to give their player a clear plan at home instead of guessing.'],
   ['Can teams or clubs join?', 'Yes. Team and Club is request only. We set your group up with player and coach access in one system, then scope the pricing to your size.'],
-]
-
-const ladder = [
-  { name: 'Starter', accent: false, body: 'All the essentials. For players who want simple solo training they can follow straight away and start building better habits with the ball.' },
-  { name: 'Plus', accent: true, body: 'For players, parents and coaches who want a clear training pathway, more structure and direct guidance from Lee.' },
-  { name: 'Max', accent: false, body: 'For serious players and coaches who want the full Joner system, including Coaches Only, session plans, game study and how Lee builds training.' },
-  { name: 'Team / Club', accent: false, body: 'For teams, clubs and academies who want unlimited players and coaches inside their own Joner Football app section and community.' },
 ]
 ---
 
@@ -193,12 +171,12 @@ const ladder = [
     <section id="plans" class="scroll-mt-24 bg-white pb-10 md:pb-12">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
-        <!-- Toggle + currency -->
+        <!-- Toggle + currency (defaults to Annual) -->
         <div class="mb-10 flex flex-col items-center gap-2.5">
-          <div id="billing-switch" class="relative flex w-[300px] max-w-full rounded-full border border-gray-200 bg-gray-100 p-1">
-            <span id="toggle-indicator" class="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-black transition-transform duration-300 ease-out"></span>
-            <button type="button" data-billing="monthly" aria-pressed="true" class="billing-toggle relative z-10 flex-1 rounded-full py-2.5 text-center font-heading text-sm uppercase tracking-wider text-white transition-colors">Monthly</button>
-            <button type="button" data-billing="annual" aria-pressed="false" class="billing-toggle relative z-10 flex-1 rounded-full py-2.5 text-center font-heading text-sm uppercase tracking-wider text-gray-600 transition-colors">Annual <span class="text-[#E30613]">save</span></button>
+          <div id="billing-switch" class="relative flex w-[320px] max-w-full rounded-full border border-gray-200 bg-gray-100 p-1">
+            <span id="toggle-indicator" class="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] translate-x-full rounded-full bg-black transition-transform duration-300 ease-out"></span>
+            <button type="button" data-billing="monthly" aria-pressed="false" class="billing-toggle relative z-10 flex-1 rounded-full py-2.5 text-center font-heading text-sm uppercase tracking-wider text-gray-600 transition-colors">Monthly</button>
+            <button type="button" data-billing="annual" aria-pressed="true" class="billing-toggle relative z-10 flex-1 rounded-full py-2.5 text-center font-heading text-sm uppercase tracking-wider text-white transition-colors">Annual <span class="text-[#E30613]">save</span></button>
           </div>
           <p id="currency-note" class="font-body text-xs text-gray-500">Prices shown in AUD</p>
         </div>
@@ -220,32 +198,33 @@ const ladder = [
               <h3 class="font-heading text-3xl uppercase leading-none">{plan.name}</h3>
               <p class:list={['mt-1.5 min-h-[2.5rem] font-body text-sm font-semibold leading-tight', plan.style === 'featured' || plan.style === 'club' ? 'text-white/75' : 'text-gray-600']}>{plan.tag}</p>
 
-              <div class="mt-4 min-h-[5rem]">
+              <div class="mt-4 min-h-[6rem]">
                 {plan.priceLabel ? (
                   <span class="font-heading text-5xl leading-none">{plan.priceLabel}</span>
                 ) : (
                   <>
                     <div class="min-h-4">
-                      <span class:list={['billing-compare hidden font-heading text-sm line-through', plan.style === 'featured' ? 'text-white/50' : 'text-gray-500']} data-monthly="" data-annual={plan.annualCompare}></span>
+                      <span class:list={['billing-compare font-heading text-sm line-through', plan.style === 'featured' ? 'text-white/50' : 'text-gray-500']} data-monthly="" data-annual={plan.monthlyPrice}>{plan.monthlyPrice}</span>
                     </div>
                     <div class="flex items-end gap-1.5">
-                      <span class="billing-price font-heading text-5xl leading-none tabular-nums" data-monthly-num={plan.monthlyNum} data-annual-num={plan.annualNum}>{plan.monthlyPrice}</span>
-                      <span class:list={['billing-period pb-1 font-body text-sm', plan.style === 'featured' || plan.style === 'club' ? 'text-white/65' : 'text-gray-600']} data-monthly="/month" data-annual="/year">/month</span>
+                      <span class="billing-price font-heading text-5xl leading-none tabular-nums" data-monthly-num={plan.monthlyNum} data-annual-num={plan.annualMonthlyNum}>{plan.annualMonthlyPrice}</span>
+                      <span class:list={['billing-period pb-1 font-body text-sm', plan.style === 'featured' || plan.style === 'club' ? 'text-white/65' : 'text-gray-600']} data-monthly="/month" data-annual="/mo">/mo</span>
                     </div>
-                    <p class:list={['billing-save mt-1 min-h-4 font-body text-xs font-semibold', plan.style === 'featured' ? 'text-[#ff8088]' : 'text-[#E30613]']} data-annual={plan.annualSave}></p>
+                    <p class:list={['billing-sub font-body text-xs', plan.style === 'featured' || plan.style === 'club' ? 'text-white/55' : 'text-gray-500']} data-monthly="" data-annual="billed annually">billed annually</p>
+                    <p class:list={['billing-save mt-0.5 min-h-4 font-body text-xs font-semibold', plan.style === 'featured' ? 'text-[#ff8088]' : 'text-[#E30613]']} data-annual={plan.annualSave}>{plan.annualSave}</p>
                   </>
                 )}
               </div>
 
               <p class:list={[
-                'mt-1 inline-flex w-fit rounded-md px-2.5 py-1 font-heading text-xs uppercase tracking-wide',
+                'mt-2 inline-flex w-fit rounded-md px-2.5 py-1 font-heading text-xs uppercase tracking-wide',
                 plan.style === 'plain' || plan.style === 'max' ? 'bg-[#E30613]/10 text-[#E30613]' : 'bg-white/15 text-white',
               ]}>{plan.trial}</p>
 
               {plan.url ? (
-                <a href={plan.url} class:list={['mt-5 block w-full rounded-full px-5 py-3.5 text-center font-heading uppercase tracking-wider transition-colors', plan.style === 'club' ? 'bg-white text-black hover:bg-[#E30613] hover:text-white' : 'bg-[#E30613] text-white hover:bg-[#b80510]']}>{plan.cta}</a>
+                <a href={plan.url} class:list={['lg-btn mt-5 block w-full rounded-full px-5 py-3.5 text-center font-heading uppercase tracking-wider', plan.style === 'club' ? 'bg-white text-black' : 'bg-[#E30613] text-white']}>{plan.cta}</a>
               ) : (
-                <a href={plan.monthlyUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class="plan-cta mt-5 block w-full rounded-full bg-[#E30613] px-5 py-3.5 text-center font-heading uppercase tracking-wider text-white transition-colors hover:bg-[#b80510]">{plan.cta}</a>
+                <a href={plan.annualUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class="plan-cta lg-btn mt-5 block w-full rounded-full bg-[#E30613] px-5 py-3.5 text-center font-heading uppercase tracking-wider text-white">{plan.cta}</a>
               )}
 
               <ul class="mt-6 flex-1 space-y-2.5">
@@ -269,7 +248,7 @@ const ladder = [
           ))}
         </div>
 
-        <!-- Feature strip (under the columns) -->
+        <!-- Feature strip -->
         <div class="mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 font-body text-sm font-semibold text-gray-800">
           <span class="rounded-full bg-gray-100 px-3.5 py-1.5">2,000+ training videos</span>
           <span class="rounded-full bg-gray-100 px-3.5 py-1.5">Filter by age, difficulty, drill type and plan</span>
@@ -279,7 +258,52 @@ const ladder = [
       </div>
     </section>
 
-    <!-- KNOW WHAT YOU ARE PAYING FOR (between the columns and the comparison) -->
+    <!-- COMPARISON (single responsive tick/cross table, clear on mobile) -->
+    <section id="compare" class="scroll-mt-24 bg-white pb-12 md:pb-16">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <h2 class="mb-2 font-heading text-3xl uppercase tracking-tight md:text-4xl">Compare every tier.</h2>
+        <p class="mb-7 font-body text-gray-600">Green is included. Grey is not.</p>
+
+        <div class="overflow-hidden rounded-2xl border border-gray-200">
+          <table class="w-full table-fixed text-left">
+            <colgroup>
+              <col class="w-[40%] sm:w-[44%]" /><col /><col /><col /><col />
+            </colgroup>
+            <thead>
+              <tr class="bg-black text-white">
+                <th class="p-2.5 font-heading text-[0.7rem] uppercase tracking-wide sm:p-4 sm:text-base sm:tracking-wider">What you get</th>
+                {compareCols.map((c) => (
+                  <th class:list={['p-2.5 text-center font-heading text-[0.7rem] uppercase tracking-wide sm:p-4 sm:text-base', (c === 'Plus' || c === 'Max') && 'text-[#ff6b73]']}>{c}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {compareGroups.map((group) => (
+                <>
+                  <tr class="bg-gray-50">
+                    <td colspan="5" class="px-2.5 py-2 font-heading text-[0.62rem] uppercase tracking-[0.18em] text-gray-500 sm:px-4 sm:text-xs">{group.title}</td>
+                  </tr>
+                  {group.rows.map((row) => (
+                    <tr class="border-t border-gray-100">
+                      <td class="p-2.5 font-body text-[0.72rem] font-semibold leading-tight text-gray-800 sm:p-4 sm:text-sm">{row[0]}</td>
+                      {row[1].map((on, i) => (
+                        <td class:list={['p-2.5 text-center sm:p-4', (compareCols[i] === 'Plus' || compareCols[i] === 'Max') && 'bg-gray-50/70']}>
+                          {on
+                            ? <span class="font-heading text-base text-[#16a34a] sm:text-lg">&check;</span>
+                            : <span class="font-heading text-base text-gray-300 sm:text-lg">&times;</span>}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- KNOW WHAT YOU ARE PAYING FOR (now under the comparison table) -->
     <section aria-label="What you are paying for" class="border-t border-gray-100 bg-gray-50 py-14 md:py-16">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <h2 class="mb-2 font-heading text-3xl uppercase tracking-tight md:text-4xl">Know exactly what you are paying for.</h2>
@@ -290,69 +314,6 @@ const ladder = [
               <h3 class:list={['font-heading text-2xl uppercase leading-none', card.accent ? 'text-[#E30613]' : 'text-[#0A0A0A]']}>{card.name}</h3>
               <p class="mt-3 font-body text-sm leading-relaxed text-gray-700">{card.body}</p>
             </div>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <!-- COMPARISON -->
-    <section id="compare" class="scroll-mt-24 bg-white pt-12 pb-14 md:pt-16 md:pb-20">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h2 class="mb-2 font-heading text-3xl uppercase tracking-tight md:text-4xl">Compare every tier.</h2>
-        <p class="mb-7 font-body text-gray-600">Green is included. Grey is not. See exactly what you unlock as you move up.</p>
-
-        <!-- Desktop table -->
-        <div class="hidden overflow-hidden rounded-2xl border border-gray-200 md:block">
-          <table class="w-full text-left">
-            <thead>
-              <tr class="bg-black text-white">
-                <th class="p-4 font-heading uppercase tracking-wider">Included</th>
-                {compareCols.map((c) => (
-                  <th class:list={['p-4 text-center font-heading uppercase tracking-wider', (c === 'Plus' || c === 'Max') && 'text-[#ff6b73]']}>{c}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {compareGroups.map((group) => (
-                <>
-                  <tr class="bg-gray-50">
-                    <td colspan="5" class="px-4 py-2 font-heading text-xs uppercase tracking-[0.2em] text-gray-500">{group.title}</td>
-                  </tr>
-                  {group.rows.map((row) => (
-                    <tr class="border-t border-gray-100">
-                      <td class="p-4 font-body text-sm font-semibold text-gray-800">{row[0]}</td>
-                      {row[1].map((on, i) => (
-                        <td class:list={['p-4 text-center', (compareCols[i] === 'Plus' || compareCols[i] === 'Max') && 'bg-gray-50/70']}>
-                          {on
-                            ? <span class="font-heading text-lg text-[#16a34a]">&check;</span>
-                            : <span class="font-heading text-lg text-gray-300">&times;</span>}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Mobile accordions -->
-        <div class="space-y-3 md:hidden">
-          {plans.map((plan) => (
-            <details class="overflow-hidden rounded-2xl border border-gray-200 bg-white">
-              <summary class="flex cursor-pointer items-center justify-between gap-3 p-5">
-                <span class="font-heading text-xl uppercase">{plan.name}</span>
-                <span class="font-body text-sm text-gray-600">{plan.priceLabel ? plan.priceLabel : plan.monthlyPrice + '+'}</span>
-              </summary>
-              <ul class="space-y-2.5 px-5 pb-5">
-                {plan.features.map((feature) => (
-                  <li class="flex gap-2.5 font-body text-sm text-gray-800">
-                    <span class="mt-0.5 shrink-0 font-bold text-[#16a34a]">&check;</span>
-                    {typeof feature === 'string' ? feature : feature.text}
-                  </li>
-                ))}
-              </ul>
-            </details>
           ))}
         </div>
       </div>
@@ -375,14 +336,10 @@ const ladder = [
                   </li>
                 ))}
               </ul>
-              <a href="#max" class="mt-8 inline-flex rounded-full bg-[#E30613] px-8 py-4 font-heading uppercase tracking-wider text-white transition-colors hover:bg-[#b80510]">Join Max</a>
+              <a href="#max" class="lg-btn mt-8 inline-flex rounded-full bg-[#E30613] px-8 py-4 font-heading uppercase tracking-wider text-white">Join Max</a>
             </div>
             <div class="relative min-h-[260px] lg:min-h-full">
-              <img
-                src="/app/uploads/2026/05/soccer-coach-goal-instruction.webp"
-                alt="Lee coaching detail with players"
-                loading="lazy" decoding="async"
-                class="absolute inset-0 h-full w-full object-cover" />
+              <img src="/app/uploads/2026/05/soccer-coach-goal-instruction.webp" alt="Lee coaching detail with players" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full object-cover" />
               <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent lg:bg-gradient-to-r"></div>
             </div>
           </div>
@@ -413,8 +370,8 @@ const ladder = [
       <div class="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
         <h2 class="font-heading text-4xl uppercase leading-[0.95] text-white md:text-6xl">Choose your level and get to work.</h2>
         <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href="#plus" class="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 font-heading uppercase tracking-wider text-black transition-colors hover:bg-black hover:text-white">Start Plus</a>
-          <a href="#max" class="inline-flex items-center justify-center rounded-full bg-black px-8 py-4 font-heading uppercase tracking-wider text-white transition-colors hover:bg-[#0A0A0A]">Join Max</a>
+          <a href="#plus" class="lg-btn inline-flex items-center justify-center rounded-full bg-white px-8 py-4 font-heading uppercase tracking-wider text-black">Start Plus</a>
+          <a href="#max" class="lg-btn inline-flex items-center justify-center rounded-full bg-black px-8 py-4 font-heading uppercase tracking-wider text-white">Join Max</a>
         </div>
         <a href="#starter" class="mt-5 inline-block font-body text-sm text-white/90 underline underline-offset-4 hover:text-white">Just want the basics? Start with Starter</a>
       </div>
@@ -428,11 +385,65 @@ const ladder = [
     <div class="flex items-center justify-between gap-3">
       <div class="leading-tight">
         <p class="font-heading text-sm uppercase text-[#0A0A0A]">Joner Football App</p>
-        <p class="font-body text-xs text-gray-600">From $14.99/mo</p>
+        <p class="font-body text-xs text-gray-600">From $10.83/mo billed annually</p>
       </div>
-      <a href="#plans" class="rounded-full bg-[#E30613] px-6 py-3 font-heading text-sm uppercase tracking-wider text-white">Choose Plan</a>
+      <a href="#plans" class="lg-btn rounded-full bg-[#E30613] px-6 py-3 font-heading text-sm uppercase tracking-wider text-white">Choose Plan</a>
     </div>
   </div>
+
+  <!-- Liquid glass SVG filter -->
+  <svg class="pointer-events-none absolute h-0 w-0" aria-hidden="true">
+    <defs>
+      <filter id="container-glass" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.05 0.05" numOctaves="1" seed="1" result="turbulence" />
+        <feGaussianBlur in="turbulence" stdDeviation="2" result="blurredNoise" />
+        <feDisplacementMap in="SourceGraphic" in2="blurredNoise" scale="70" xChannelSelector="R" yChannelSelector="B" result="displaced" />
+        <feGaussianBlur in="displaced" stdDeviation="4" result="finalBlur" />
+        <feComposite in="finalBlur" in2="finalBlur" operator="over" />
+      </filter>
+    </defs>
+  </svg>
+
+  <style>
+    /* Liquid glass buttons */
+    .lg-btn {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      will-change: transform;
+      transition: transform .25s ease, filter .25s ease, box-shadow .25s ease;
+      box-shadow:
+        0 2px 10px rgba(0,0,0,.16),
+        inset 2px 2px 1px -2px rgba(255,255,255,.75),
+        inset -2px -2px 1px -2px rgba(255,255,255,.55),
+        inset 1px 1px 1px -.5px rgba(255,255,255,.5),
+        inset 0 0 8px 4px rgba(255,255,255,.08),
+        0 0 14px rgba(255,255,255,.08);
+    }
+    .lg-btn::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      border-radius: inherit;
+      backdrop-filter: url("#container-glass");
+      -webkit-backdrop-filter: blur(2px);
+    }
+    .lg-btn::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: linear-gradient(to top, rgba(255,255,255,0) 45%, rgba(255,255,255,.22));
+    }
+    .lg-btn:hover { transform: scale(1.04); filter: brightness(1.07); }
+    .lg-btn:active { transform: scale(.98); filter: brightness(.95); }
+    @media (prefers-reduced-motion: reduce) {
+      .lg-btn { transition: none; }
+      .lg-btn:hover { transform: none; }
+    }
+  </style>
 
   <script>
     const toggles = document.querySelectorAll('.billing-toggle')
@@ -440,9 +451,10 @@ const ladder = [
     const prices = document.querySelectorAll('.billing-price')
     const periods = document.querySelectorAll('.billing-period')
     const compares = document.querySelectorAll('.billing-compare')
+    const subs = document.querySelectorAll('.billing-sub')
     const saves = document.querySelectorAll('.billing-save')
     const ctas = document.querySelectorAll('.plan-cta')
-    let currentMode = 'monthly'
+    let currentMode = 'annual'
 
     const fmt = (n) => '$' + n.toFixed(2)
     const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
@@ -481,6 +493,7 @@ const ladder = [
         el.textContent = v
         el.classList.toggle('hidden', !v)
       })
+      subs.forEach((el) => { el.textContent = el.getAttribute('data-' + mode) || '' })
       saves.forEach((el) => { el.textContent = mode === 'annual' ? (el.getAttribute('data-annual') || '') : '' })
       ctas.forEach((el) => {
         const href = el.getAttribute('data-' + mode + '-url')
@@ -489,8 +502,8 @@ const ladder = [
       currentMode = mode
     }
 
-    toggles.forEach((t) => t.addEventListener('click', () => setBilling(t.getAttribute('data-billing') || 'monthly', true)))
-    setBilling('monthly', false)
+    toggles.forEach((t) => t.addEventListener('click', () => setBilling(t.getAttribute('data-billing') || 'annual', true)))
+    setBilling('annual', false)
 
     // Currency label: auto-detect, fall back to AUD
     const note = document.getElementById('currency-note')
