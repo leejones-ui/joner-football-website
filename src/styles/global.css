@@ -180,12 +180,12 @@ a, button { touch-action: manipulation; }
 .jf-btn-dark:hover { background: #E30613; color: #fff; }
 
 /* Clean hover-to-red buttons on every page EXCEPT the home page (home keeps its existing style). */
-body:not([data-home]) .btn-red,
-body:not([data-home]) .btn-outline,
-body:not([data-home]) .nav-download-cta,
-body:not([data-home]) .hub-btn,
-body:not([data-home]) .story-cta-link,
-body:not([data-home]) .jxfs__btn {
+body .btn-red,
+body .btn-outline,
+body .nav-download-cta,
+body .hub-btn,
+body .story-cta-link:not(.store-badge),
+body .jxfs__btn {
   background: #FFFFFF !important;
   color: #0A0A0A !important;
   border: 2px solid #FFFFFF !important;
@@ -195,18 +195,18 @@ body:not([data-home]) .jxfs__btn {
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
 }
-body:not([data-home]) .btn-red::before,
-body:not([data-home]) .btn-outline::before,
-body:not([data-home]) .nav-download-cta::before,
-body:not([data-home]) .hub-btn::before,
-body:not([data-home]) .story-cta-link::before,
-body:not([data-home]) .jxfs__btn::before { content: none !important; }
-body:not([data-home]) .btn-red:hover,
-body:not([data-home]) .btn-outline:hover,
-body:not([data-home]) .nav-download-cta:hover,
-body:not([data-home]) .hub-btn:hover,
-body:not([data-home]) .story-cta-link:hover,
-body:not([data-home]) .jxfs__btn:hover {
+body .btn-red::before,
+body .btn-outline::before,
+body .nav-download-cta::before,
+body .hub-btn::before,
+body .story-cta-link:not(.store-badge)::before,
+body .jxfs__btn::before { content: none !important; }
+body .btn-red:hover,
+body .btn-outline:hover,
+body .nav-download-cta:hover,
+body .hub-btn:hover,
+body .story-cta-link:not(.store-badge):hover,
+body .jxfs__btn:hover {
   background: #E30613 !important;
   border-color: #E30613 !important;
   color: #FFFFFF !important;
@@ -214,14 +214,14 @@ body:not([data-home]) .jxfs__btn:hover {
   box-shadow: none !important;
 }
 /* Outline variants stay see-through until hover */
-body:not([data-home]) .btn-outline,
-body:not([data-home]) .hub-btn--outline {
+body .btn-outline,
+body .hub-btn--outline {
   background: transparent !important;
   border-color: rgba(255,255,255,.7) !important;
   color: #FFFFFF !important;
 }
-body:not([data-home]) .btn-outline:hover,
-body:not([data-home]) .hub-btn--outline:hover {
+body .btn-outline:hover,
+body .hub-btn--outline:hover {
   background: #E30613 !important;
   border-color: #E30613 !important;
   color: #FFFFFF !important;
