@@ -221,9 +221,9 @@ const faqs = [
               ]}>{plan.trial}</p>
 
               {plan.url ? (
-                <a href={plan.url} class:list={['mt-5 block w-full rounded-full px-5 py-3.5 text-center font-heading uppercase tracking-wider transition-colors', plan.style === 'club' ? 'bg-white text-black hover:bg-[#E30613] hover:text-white' : 'bg-[#E30613] text-white hover:bg-[#b80510]']}>{plan.cta}</a>
+                <a href={plan.url} class:list={['mt-5 w-full px-5 py-3.5 text-sm', plan.style === 'featured' || plan.style === 'club' ? 'jf-btn-dark' : 'jf-btn']}>{plan.cta}</a>
               ) : (
-                <a href={plan.annualUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class="plan-cta mt-5 block w-full rounded-full bg-[#E30613] px-5 py-3.5 text-center font-heading uppercase tracking-wider text-white transition-colors hover:bg-[#b80510]">{plan.cta}</a>
+                <a href={plan.annualUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class:list={['plan-cta mt-5 w-full px-5 py-3.5 text-sm', plan.style === 'featured' || plan.style === 'club' ? 'jf-btn-dark' : 'jf-btn']}>{plan.cta}</a>
               )}
               {!plan.priceLabel && (
                 <p class:list={['billing-save mt-2 min-h-4 text-center font-body text-xs font-semibold', plan.style === 'featured' ? 'text-[#ff8088]' : 'text-[#E30613]']} data-annual={plan.annualSave}>{plan.annualSave}</p>
@@ -338,7 +338,7 @@ const faqs = [
                   </li>
                 ))}
               </ul>
-              <a href="#max" class="mt-8 inline-flex rounded-full bg-[#E30613] px-8 py-4 font-heading uppercase tracking-wider text-white transition-colors hover:bg-[#b80510]">Join Max</a>
+              <a href="#max" class="jf-btn-dark mt-8 px-8 py-4">Join Max</a>
             </div>
             <div class="relative min-h-[260px] lg:min-h-full">
               <img src="/app/uploads/2026/05/soccer-coach-goal-instruction.webp" alt="Lee coaching detail with players" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full object-cover" />
@@ -368,12 +368,12 @@ const faqs = [
     </section>
 
     <!-- FINAL CTA -->
-    <section id="final-cta" class="bg-[#E30613] py-14 md:py-20">
+    <section id="final-cta" class="bg-[#0A0A0A] py-14 md:py-20">
       <div class="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
         <h2 class="font-heading text-4xl uppercase leading-[0.95] text-white md:text-6xl">Choose your level and get to work.</h2>
         <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href="#plus" class="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 font-heading uppercase tracking-wider text-black transition-colors hover:bg-black hover:text-white">Start Plus</a>
-          <a href="#max" class="inline-flex items-center justify-center rounded-full bg-black px-8 py-4 font-heading uppercase tracking-wider text-white transition-colors hover:bg-[#0A0A0A]">Join Max</a>
+          <a href="#plus" class="jf-btn-dark px-8 py-4">Start Plus</a>
+          <a href="#max" class="jf-btn-dark px-8 py-4">Join Max</a>
         </div>
         <a href="#starter" class="mt-5 inline-block font-body text-sm text-white/90 underline underline-offset-4 hover:text-white">Just want the basics? Start with Starter</a>
       </div>
@@ -389,7 +389,7 @@ const faqs = [
         <p class="font-heading text-sm uppercase text-[#0A0A0A]">Joner Football App</p>
         <p class="font-body text-xs text-gray-600">From $10.83/mo billed annually</p>
       </div>
-      <a href="#plans" class="rounded-full bg-[#E30613] px-6 py-3 font-heading text-sm uppercase tracking-wider text-white transition-colors hover:bg-[#b80510]">Choose Plan</a>
+      <a href="#plans" class="jf-btn px-6 py-3 text-sm">Choose Plan</a>
     </div>
   </div>
 

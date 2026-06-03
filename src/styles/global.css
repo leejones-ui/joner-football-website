@@ -24,8 +24,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 .nav-download-cta,
 .hub-btn,
 .story-cta-link,
-.jxfs__btn,
-.plan-cta {
+.jxfs__btn {
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -67,8 +66,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 .nav-download-cta::before,
 .hub-btn::before,
 .story-cta-link::before,
-.jxfs__btn::before,
-.plan-cta::before {
+.jxfs__btn::before {
   content: '';
   position: absolute;
   inset: 1px;
@@ -84,8 +82,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 .nav-download-cta::after,
 .hub-btn::after,
 .story-cta-link::after,
-.jxfs__btn::after,
-.plan-cta::after {
+.jxfs__btn::after {
   content: none;
 }
 .btn-red:hover,
@@ -93,8 +90,7 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 .nav-download-cta:hover,
 .hub-btn:hover,
 .story-cta-link:hover,
-.jxfs__btn:hover,
-.plan-cta:hover {
+.jxfs__btn:hover {
   transform: translateY(-2px);
   border-color: rgba(255,255,255,0.58);
   background:
@@ -113,14 +109,12 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 .nav-download-cta:active,
 .hub-btn:active,
 .story-cta-link:active,
-.jxfs__btn:active,
-.plan-cta:active {
+.jxfs__btn:active {
   transform: translateY(0);
 }
 .btn-red,
 .nav-download-cta,
-.hub-btn--red,
-.plan-cta {
+.hub-btn--red {
   border-color: rgba(232,0,13,0.72);
 }
 .btn-outline,
@@ -162,14 +156,75 @@ a, button { touch-action: manipulation; }
   .nav-download-cta,
   .hub-btn,
   .story-cta-link,
-  .jxfs__btn,
-  .plan-cta {
+  .jxfs__btn {
     letter-spacing: 0.08em;
     font-size: 0.875rem;
     line-height: 1.16;
     padding-left: 0.95rem;
     padding-right: 0.95rem;
   }
+}
+
+/* === Joner clean button system === */
+/* Adaptive buttons for draftjoin and any new buttons. .jf-btn = light bg (black -> red). .jf-btn-dark = dark bg (white -> red). */
+.jf-btn, .jf-btn-dark {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  border-radius: 9999px;
+  font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .08em; line-height: 1;
+  text-decoration: none; cursor: pointer; border: 2px solid transparent;
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .15s ease;
+}
+.jf-btn { background: #0A0A0A; color: #fff; }
+.jf-btn:hover { background: #E30613; color: #fff; }
+.jf-btn-dark { background: #fff; color: #0A0A0A; }
+.jf-btn-dark:hover { background: #E30613; color: #fff; }
+
+/* Clean hover-to-red buttons on every page EXCEPT the home page (home keeps its existing style). */
+body:not([data-home]) .btn-red,
+body:not([data-home]) .btn-outline,
+body:not([data-home]) .nav-download-cta,
+body:not([data-home]) .hub-btn,
+body:not([data-home]) .story-cta-link,
+body:not([data-home]) .jxfs__btn {
+  background: #FFFFFF !important;
+  color: #0A0A0A !important;
+  border: 2px solid #FFFFFF !important;
+  letter-spacing: .12em;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+body:not([data-home]) .btn-red::before,
+body:not([data-home]) .btn-outline::before,
+body:not([data-home]) .nav-download-cta::before,
+body:not([data-home]) .hub-btn::before,
+body:not([data-home]) .story-cta-link::before,
+body:not([data-home]) .jxfs__btn::before { content: none !important; }
+body:not([data-home]) .btn-red:hover,
+body:not([data-home]) .btn-outline:hover,
+body:not([data-home]) .nav-download-cta:hover,
+body:not([data-home]) .hub-btn:hover,
+body:not([data-home]) .story-cta-link:hover,
+body:not([data-home]) .jxfs__btn:hover {
+  background: #E30613 !important;
+  border-color: #E30613 !important;
+  color: #FFFFFF !important;
+  transform: translateY(-1px);
+  box-shadow: none !important;
+}
+/* Outline variants stay see-through until hover */
+body:not([data-home]) .btn-outline,
+body:not([data-home]) .hub-btn--outline {
+  background: transparent !important;
+  border-color: rgba(255,255,255,.7) !important;
+  color: #FFFFFF !important;
+}
+body:not([data-home]) .btn-outline:hover,
+body:not([data-home]) .hub-btn--outline:hover {
+  background: #E30613 !important;
+  border-color: #E30613 !important;
+  color: #FFFFFF !important;
 }
 
 /* Scrollbar hide utility */
