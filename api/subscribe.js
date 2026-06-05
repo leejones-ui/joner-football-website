@@ -247,11 +247,12 @@ export default async function handler(req, res) {
     const protection = await protectForm(req, res, 'subscribe', body)
     if (!protection.ok) return protection.response
 
+    const source = cleanString(body.source || body.formName || 'website-form', 80)
+    const isFreeBundleLead = source.startsWith('free-bundle')
     const firstName = cleanString(body.firstName || body.first_name || body.name || '', 80)
-    if (!firstName) return res.status(400).json({ success: false, error: 'Name is required.' })
+    if (!firstName && !isFreeBundleLead) return res.status(400).json({ success: false, error: 'Name is required.' })
 
     const listIds = parseListIds(body)
-    const source = cleanString(body.source || body.formName || 'website-form', 80)
     const isHubGate = source.startsWith('hub-gate')
     const marketingConsent = body.marketingConsent === true || body.marketingConsent === 'true' || body.marketingConsent === 'on'
 

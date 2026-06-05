@@ -1,0 +1,510 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const title = 'Free Football Training Videos | Joner Football'
+const description = 'Get 10 free Joner Football training videos for players, parents and coaches. Enter your email and choose what best describes you.'
+const canonical = 'https://jonerfootball.com/free-bundle/'
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  canonical={canonical}
+  hideMobileAppCta
+>
+  <main class="free-bundle-page">
+    <section class="free-hero" aria-labelledby="free-bundle-title">
+      <div class="free-hero__bg" aria-hidden="true"></div>
+      <div class="free-hero__inner">
+        <div class="free-copy">
+          <p class="free-eyebrow">Free Joner Football bundle</p>
+          <h1 id="free-bundle-title">Get 10 Free Training Videos</h1>
+          <p class="free-subtitle">
+            For players, parents and coaches who want better technique, better sessions and a clearer way to improve.
+          </p>
+          <ul class="free-proof" aria-label="What you will get">
+            <li>Player training ideas you can use today</li>
+            <li>Parent guidance for better home training</li>
+            <li>Coach detail from Lee Jones</li>
+          </ul>
+        </div>
+
+        <div class="free-card" aria-label="Free video email capture form">
+          <p class="free-card__kicker">Start here</p>
+          <h2>Where should I send the videos?</h2>
+          <p class="free-card__intro">Enter your email and choose every option that fits you.</p>
+
+          <form id="free-bundle-form" data-brevo-form data-brevo-custom novalidate>
+            <label class="free-label" for="free-bundle-email">Email address</label>
+            <input
+              id="free-bundle-email"
+              type="email"
+              name="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required
+            />
+
+            <fieldset class="role-fieldset">
+              <legend>Are you a coach, player, parent or football fan?</legend>
+              <p>Select more than one if needed.</p>
+              <div class="role-grid">
+                <label class="role-option">
+                  <input type="checkbox" name="roles" value="coach" />
+                  <span>Coach</span>
+                </label>
+                <label class="role-option">
+                  <input type="checkbox" name="roles" value="player" />
+                  <span>Player</span>
+                </label>
+                <label class="role-option">
+                  <input type="checkbox" name="roles" value="parent" />
+                  <span>Parent</span>
+                </label>
+                <label class="role-option">
+                  <input type="checkbox" name="roles" value="fan" />
+                  <span>Football fan</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <button type="submit" class="free-submit">Send Me The Free Videos</button>
+            <p id="free-bundle-status" class="free-status" aria-live="polite"></p>
+            <p class="free-privacy">No payment. No checkout. Unsubscribe anytime.</p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="free-breakdown" aria-labelledby="bundle-breakdown-title">
+      <div class="free-breakdown__inner">
+        <p class="free-eyebrow">What is inside</p>
+        <h2 id="bundle-breakdown-title">A better first step into Joner Football</h2>
+        <div class="bundle-columns">
+          <article>
+            <span>Players</span>
+            <h3>Train cleaner technique</h3>
+            <p>Ball mastery, first touch, finishing and 1v1 ideas you can practise without guessing.</p>
+          </article>
+          <article>
+            <span>Parents</span>
+            <h3>Know what to support</h3>
+            <p>Simple guidance so your player has structure at home instead of random scrolling.</p>
+          </article>
+          <article>
+            <span>Coaches</span>
+            <h3>Build better sessions</h3>
+            <p>Coaching detail, session thinking and Lee's standards for developing better players.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script is:inline>
+    (function () {
+      var HOT_APP_LEADS = 2;
+      var COACHES_DATABASE = 39;
+      var PLAYERS_APP_LEADS = 50;
+      var PARENT_APP_LEADS = 51;
+      var roleToListId = {
+        coach: COACHES_DATABASE,
+        player: PLAYERS_APP_LEADS,
+        parent: PARENT_APP_LEADS
+      };
+
+      function validEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(email || '').trim());
+      }
+
+      function setStatus(message, type) {
+        var status = document.getElementById('free-bundle-status');
+        if (!status) return;
+        status.textContent = message || '';
+        status.dataset.type = type || '';
+      }
+
+      function getUtmParams() {
+        var params = new URLSearchParams(window.location.search);
+        var out = {};
+        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (key) {
+          var value = params.get(key);
+          if (value) out[key] = value;
+        });
+        return out;
+      }
+
+      var form = document.getElementById('free-bundle-form');
+      if (!form) return;
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var emailInput = document.getElementById('free-bundle-email');
+        var button = form.querySelector('button[type="submit"]');
+        var email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+        var selectedRoles = Array.prototype.slice.call(form.querySelectorAll('input[name="roles"]:checked')).map(function (input) {
+          return input.value;
+        });
+
+        if (!validEmail(email)) {
+          setStatus('Enter a valid email address first.', 'error');
+          if (emailInput) emailInput.focus();
+          return;
+        }
+
+        if (!selectedRoles.length) {
+          setStatus('Choose at least one option so I can send the right football videos.', 'error');
+          return;
+        }
+
+        var listIds = [HOT_APP_LEADS];
+        selectedRoles.forEach(function (role) {
+          if (roleToListId[role] && listIds.indexOf(roleToListId[role]) === -1) listIds.push(roleToListId[role]);
+        });
+
+        if (button) {
+          button.disabled = true;
+          button.textContent = 'Sending...';
+        }
+        setStatus('', '');
+
+        var getToken = window.JonerRecaptcha && window.JonerRecaptcha.getToken
+          ? window.JonerRecaptcha.getToken('subscribe')
+          : Promise.resolve('');
+
+        Promise.resolve(getToken)
+          .then(function (recaptchaToken) {
+            return fetch('/api/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(Object.assign({
+                email: email,
+                listIds: listIds,
+                roles: selectedRoles.join(','),
+                source: 'free-bundle-follower',
+                marketingConsent: true,
+                recaptchaToken: recaptchaToken || ''
+              }, getUtmParams()))
+            });
+          })
+          .then(function (response) { return response.json().then(function (data) { return { ok: response.ok, data: data }; }); })
+          .then(function (result) {
+            if (!result.ok || !result.data || !result.data.success) throw new Error((result.data && result.data.error) || 'Could not send the videos yet.');
+            var next = new URL('/free-bundle/watch/', window.location.origin);
+            window.location.search.replace(/^\?/, '').split('&').filter(Boolean).forEach(function (pair) {
+              var parts = pair.split('=');
+              if (parts[0] && parts[0].indexOf('utm_') === 0) next.searchParams.set(decodeURIComponent(parts[0]), decodeURIComponent(parts[1] || ''));
+            });
+            next.searchParams.set('roles', selectedRoles.join(','));
+            window.location.assign(next.toString());
+          })
+          .catch(function (error) {
+            setStatus(error.message || 'Something went wrong. Try again.', 'error');
+            if (button) {
+              button.disabled = false;
+              button.textContent = 'Send Me The Free Videos';
+            }
+          });
+      });
+    })();
+  </script>
+
+  <style is:global>
+    .free-bundle-page {
+      background: #000;
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    .free-hero {
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .free-hero__bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 16% 12%, rgba(232, 0, 13, 0.32), transparent 30%),
+        radial-gradient(circle at 84% 0%, rgba(255, 255, 255, 0.13), transparent 22%),
+        linear-gradient(135deg, #050505 0%, #111 52%, #000 100%);
+    }
+
+    .free-hero__bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent 80%);
+    }
+
+    .free-hero__inner {
+      position: relative;
+      z-index: 1;
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 58px 0 44px;
+      display: grid;
+      gap: 28px;
+    }
+
+    .free-eyebrow,
+    .free-card__kicker {
+      color: #E8000D;
+      font-family: Arial Black, Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 12px;
+      margin: 0 0 14px;
+    }
+
+    .free-copy h1 {
+      font-family: Arial Black, Arial, sans-serif;
+      text-transform: uppercase;
+      font-size: clamp(42px, 11vw, 106px);
+      line-height: 0.88;
+      letter-spacing: -0.06em;
+      margin: 0 0 18px;
+      max-width: 860px;
+    }
+
+    .free-subtitle {
+      color: rgba(255,255,255,0.82);
+      font-size: clamp(18px, 4.5vw, 25px);
+      line-height: 1.25;
+      max-width: 720px;
+      margin: 0;
+    }
+
+    .free-proof {
+      display: grid;
+      gap: 10px;
+      padding: 0;
+      margin: 24px 0 0;
+      list-style: none;
+      color: rgba(255,255,255,0.74);
+      font-weight: 700;
+    }
+
+    .free-proof li {
+      position: relative;
+      padding-left: 22px;
+    }
+
+    .free-proof li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.62em;
+      width: 9px;
+      height: 9px;
+      background: #E8000D;
+      border-radius: 999px;
+      transform: translateY(-50%);
+    }
+
+    .free-card {
+      background: rgba(10, 10, 10, 0.92);
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: 0 28px 90px rgba(0,0,0,0.45);
+      padding: 22px;
+    }
+
+    .free-card h2 {
+      font-family: Arial Black, Arial, sans-serif;
+      text-transform: uppercase;
+      font-size: clamp(28px, 7vw, 48px);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      margin: 0 0 10px;
+    }
+
+    .free-card__intro,
+    .role-fieldset p,
+    .free-privacy {
+      color: rgba(255,255,255,0.68);
+    }
+
+    .free-label,
+    .role-fieldset legend {
+      display: block;
+      color: #fff;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    #free-bundle-form input[type='email'] {
+      width: 100%;
+      min-height: 58px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: #111;
+      color: #fff;
+      padding: 0 16px;
+      font-size: 17px;
+      outline: none;
+    }
+
+    #free-bundle-form input[type='email']:focus {
+      border-color: #E8000D;
+      box-shadow: 0 0 0 3px rgba(232,0,13,0.18);
+    }
+
+    .role-fieldset {
+      border: 0;
+      padding: 0;
+      margin: 20px 0 0;
+    }
+
+    .role-fieldset p {
+      margin: -4px 0 12px;
+      font-size: 14px;
+    }
+
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .role-option {
+      cursor: pointer;
+    }
+
+    .role-option input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .role-option span {
+      display: grid;
+      place-items: center;
+      min-height: 54px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: #151515;
+      color: rgba(255,255,255,0.8);
+      font-family: Arial Black, Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+    }
+
+    .role-option input:checked + span {
+      border-color: #E8000D;
+      background: rgba(232,0,13,0.16);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .free-submit {
+      width: 100%;
+      min-height: 60px;
+      margin-top: 18px;
+      border: 0;
+      background: #E8000D;
+      color: #fff;
+      font-family: Arial Black, Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .free-submit:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+
+    .free-status {
+      min-height: 20px;
+      margin: 12px 0 0;
+      font-size: 14px;
+      color: #fff;
+    }
+
+    .free-status[data-type='error'] {
+      color: #ff6b6b;
+    }
+
+    .free-privacy {
+      margin: 6px 0 0;
+      font-size: 12px;
+    }
+
+    .free-breakdown {
+      padding: 48px 16px 64px;
+      background: #050505;
+    }
+
+    .free-breakdown__inner {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+    }
+
+    .free-breakdown h2 {
+      font-family: Arial Black, Arial, sans-serif;
+      text-transform: uppercase;
+      font-size: clamp(32px, 8vw, 72px);
+      line-height: 0.92;
+      letter-spacing: -0.05em;
+      max-width: 850px;
+      margin: 0 0 26px;
+    }
+
+    .bundle-columns {
+      display: grid;
+      gap: 14px;
+    }
+
+    .bundle-columns article {
+      background: #111;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 20px;
+    }
+
+    .bundle-columns span {
+      display: inline-block;
+      color: #E8000D;
+      font-family: Arial Black, Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 11px;
+      margin-bottom: 16px;
+    }
+
+    .bundle-columns h3 {
+      font-family: Arial Black, Arial, sans-serif;
+      text-transform: uppercase;
+      font-size: 24px;
+      line-height: 1;
+      margin: 0 0 10px;
+    }
+
+    .bundle-columns p {
+      color: rgba(255,255,255,0.72);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    @media (min-width: 860px) {
+      .free-hero__inner {
+        grid-template-columns: minmax(0, 1.2fr) minmax(380px, 0.8fr);
+        align-items: center;
+        padding: 92px 0 82px;
+      }
+
+      .free-card {
+        padding: 30px;
+      }
+
+      .bundle-columns {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+  </style>
+</BaseLayout>
