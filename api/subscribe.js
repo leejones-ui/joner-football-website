@@ -186,7 +186,7 @@ function freeBundleEmailCopy(roles) {
     return {
       subject: 'Your free Joner coaching videos',
       preview: 'Free videos first, then a better way to plan your sessions.',
-      heroImage: 'https://jonerfootball.com/images/camps/joner-camps/lee-coaching-group.avif',
+      heroImage: 'https://jonerfootball.com/images/free-bundle/emails/coach-hero.jpg',
       heroAlt: 'Lee Jones coaching a group of football players',
       eyebrow: 'Coaches free bundle',
       headline: 'Run a sharper session this week',
@@ -212,7 +212,7 @@ function freeBundleEmailCopy(roles) {
     return {
       subject: 'Your free Joner training videos',
       preview: 'Free videos first, then a better plan for your technique.',
-      heroImage: 'https://jonerfootball.com/images/training/jfp/jfp-training-2.avif',
+      heroImage: 'https://jonerfootball.com/images/free-bundle/emails/player-hero.jpg',
       heroAlt: 'Joner Football player training with the ball',
       eyebrow: 'Players free bundle',
       headline: 'Train with more detail',
@@ -237,7 +237,7 @@ function freeBundleEmailCopy(roles) {
     return {
       subject: 'Your free Joner videos are ready',
       preview: 'Free videos first, then a clearer way to help your player.',
-      heroImage: 'https://jonerfootball.com/images/blog/football-drills-at-home-player-action-image2.avif',
+      heroImage: 'https://jonerfootball.com/images/free-bundle/emails/parent-hero.jpg',
       heroAlt: 'Young footballer training at home with the ball',
       eyebrow: 'Parents free bundle',
       headline: 'Help them train properly',
