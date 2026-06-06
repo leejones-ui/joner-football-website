@@ -168,26 +168,36 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
   <main class="bg-joner-black text-white">
 
     {/* ========== 1. HERO ========== */}
-    <section class="relative overflow-hidden border-b border-gray-900">
+    <section class="coaches-hero relative overflow-hidden border-b border-gray-900">
       <div class="absolute inset-0">
-        <img src="/images/coaches-only/coaches-only-hero-updated.png" alt="Lee Jones coaching session plan inside the Joner Football App" class="h-full w-full object-cover opacity-60" loading="eager" />
-        <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/80 to-joner-black/25"></div>
+        <img src="/images/coaches-only/coaches-only-hero-updated.png" alt="Lee Jones coaching session plan inside the Joner Football App" class="coaches-hero__image h-full w-full object-cover opacity-60" loading="eager" />
+        <div class="coaches-hero__overlay absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/80 to-joner-black/25"></div>
       </div>
-      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 lg:py-32">
+      <div class="coaches-hero__inner relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 lg:py-32">
         <div class="max-w-4xl">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-5">COACHES ONLY. INSIDE THE JONER FOOTBALL APP.</p>
-          <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
-            EVERY SESSION.<br/>EVERY DETAIL.<br/>EVERY WEEK.
+          <p class="coaches-hero__eyebrow text-joner-red font-heading text-sm uppercase tracking-widest mb-5">COACHES ONLY</p>
+          <h1 class="coaches-hero__title font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
+            <span class="md:hidden">STOP WINGING SESSIONS</span>
+            <span class="hidden md:inline">EVERY SESSION.<br/>EVERY DETAIL.<br/>EVERY WEEK.</span>
           </h1>
-          <p class="text-gray-200 font-body text-lg md:text-xl max-w-3xl mb-8">
-            Coaches Only gives you the session plans, voice-over drills, and full training videos Lee uses with professional players. Built for coaches who want the detail, not just another drill library.
+          <p class="coaches-hero__copy text-gray-200 font-body text-lg md:text-xl max-w-3xl mb-5 md:mb-8">
+            <span class="md:hidden">Get Lee’s session plans, voice-over drill detail and full training videos inside the Joner Football App.</span>
+            <span class="hidden md:inline">Coaches Only gives you the session plans, voice-over drills, and full training videos Lee uses with professional players. Built for coaches who want the detail, not just another drill library.</span>
           </p>
-          <div class="flex flex-col sm:flex-row gap-4 mb-4">
+          <ul class="coaches-hero__bullets mb-6 grid gap-2 text-sm font-body text-white/88 md:hidden" aria-label="What coaches get">
+            <li><span>✓</span> Ready-made session plans</li>
+            <li><span>✓</span> Lee’s coaching points</li>
+            <li><span>✓</span> Full sessions to copy and run</li>
+          </ul>
+          <div class="coaches-hero__actions flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
             <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
-            <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">WATCH A FREE SESSION</a>
+            <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="coaches-hero__secondary btn-outline text-base px-8 py-4 text-center">WATCH A FREE SESSION</a>
           </div>
-          <p class="text-gray-200 font-body text-base">
-            <span class="font-heading text-white font-semibold">{yearlyPrice}</span> per year <span class="text-gray-500">or</span> <span class="font-heading text-white font-semibold">{monthlyPrice}</span> per month. Max Plan tier. Cancel anytime.
+          <p class="coaches-hero__price text-gray-200 font-body text-base" aria-label="Pricing">
+            <span class="coaches-hero__price-main">{yearlyPrice.replace(' USD', '')}/year</span>
+            <span class="coaches-hero__price-sep">or</span>
+            <span class="coaches-hero__price-main">{monthlyPrice.replace(' USD', '')}/month</span>
+            <span class="coaches-hero__price-note">Cancel anytime.</span>
           </p>
         </div>
       </div>
@@ -503,6 +513,99 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
   <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="coaches-mobile-cta btn-red" data-meta-checkout-event="CoachesPageMobileStickyClick">JOIN COACHES ONLY</a>
 
   <style>
+    .coaches-hero__bullets li {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+    .coaches-hero__bullets span {
+      display: inline-flex;
+      width: 1.2rem;
+      height: 1.2rem;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: #E30613;
+      color: #fff;
+      font-family: Anton, Impact, sans-serif;
+      font-size: 0.72rem;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+    @media (max-width: 767px) {
+      .coaches-hero {
+        min-height: auto;
+      }
+      .coaches-hero__image {
+        object-position: 64% center;
+        opacity: 0.46;
+      }
+      .coaches-hero__overlay {
+        background:
+          linear-gradient(180deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.74) 48%, rgba(0,0,0,0.94) 100%),
+          linear-gradient(90deg, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.78) 58%, rgba(0,0,0,0.42) 100%);
+      }
+      .coaches-hero__inner {
+        padding-top: 3.35rem;
+        padding-bottom: 2.8rem;
+      }
+      .coaches-hero__eyebrow {
+        margin-bottom: 0.85rem;
+        font-size: 0.72rem;
+        letter-spacing: 0.22em;
+      }
+      .coaches-hero__title {
+        max-width: 8.4ch;
+        margin-bottom: 1rem;
+        font-size: clamp(3.25rem, 15vw, 4.2rem);
+        line-height: 0.88;
+        letter-spacing: 0.025em;
+      }
+      .coaches-hero__copy {
+        max-width: 21rem;
+        margin-bottom: 1rem;
+        font-size: 1rem;
+        line-height: 1.42;
+        color: rgba(255,255,255,0.86);
+      }
+      .coaches-hero__actions {
+        margin-bottom: 0.8rem;
+      }
+      body .coaches-hero .coaches-hero__secondary.btn-outline {
+        width: auto;
+        min-height: auto;
+        align-self: center;
+        border: 0 !important;
+        background: transparent !important;
+        color: rgba(255,255,255,0.78) !important;
+        box-shadow: none !important;
+        padding: 0.35rem 0.2rem;
+        text-decoration: underline;
+        text-underline-offset: 0.28rem;
+      }
+      .coaches-hero__price {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.18rem 0.42rem;
+        max-width: 22rem;
+        font-size: 0.92rem;
+        color: rgba(255,255,255,0.78);
+      }
+      .coaches-hero__price-main {
+        color: #fff;
+        font-family: Anton, Impact, sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+      .coaches-hero__price-sep {
+        color: rgba(255,255,255,0.45);
+      }
+      .coaches-hero__price-note {
+        flex-basis: 100%;
+      }
+    }
+
     .coach-closer-stage-image {
       opacity: 0;
       transform: scale(0.94) translateY(14px);
