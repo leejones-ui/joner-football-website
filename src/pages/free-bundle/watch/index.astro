@@ -160,7 +160,7 @@ const nextSteps = [
 
     .bundle-ready {
       position: relative;
-      min-height: calc(100svh - 88px);
+      min-height: clamp(390px, 56svh, 520px);
       overflow: hidden;
       display: grid;
       align-items: center;
@@ -198,11 +198,11 @@ const nextSteps = [
     }
 
     .bundle-ready__inner {
-      padding: 60px 0;
+      padding: 34px 0;
     }
 
     .bundle-ready__copy {
-      max-width: 720px;
+      max-width: 880px;
       margin: 0 auto;
       text-align: center;
       text-shadow: 0 12px 34px rgba(0,0,0,0.78);
@@ -223,34 +223,34 @@ const nextSteps = [
       letter-spacing: 0.035em;
       line-height: 0.9;
       margin: 0;
-      font-size: clamp(56px, 8vw, 112px);
+      font-size: clamp(52px, 7vw, 86px);
       max-width: none;
     }
 
     .ready-subtitle {
       color: rgba(255,255,255,0.86);
-      font-size: clamp(18px, 2.1vw, 25px);
-      max-width: 660px;
-      margin: 22px auto 0;
+      font-size: clamp(17px, 1.8vw, 22px);
+      max-width: 640px;
+      margin: 16px auto 0;
       line-height: 1.28;
       font-weight: 700;
     }
 
     .ready-actions {
       max-width: 360px;
-      margin: 30px auto 0;
+      margin: 22px auto 0;
     }
 
     .ready-button {
       width: 100%;
-      min-height: 68px;
+      min-height: 58px;
       padding: 0 24px;
       font-size: 16px;
       letter-spacing: 0.08em;
     }
 
     .want-more {
-      padding: 54px 0 78px;
+      padding: 34px 0 78px;
       background: #050505;
     }
 
@@ -425,35 +425,35 @@ const nextSteps = [
 
     @media (max-width: 859px) {
       .bundle-ready {
-        min-height: calc(100svh - 78px);
-        align-items: end;
+        min-height: clamp(360px, 54svh, 430px);
+        align-items: start;
       }
 
       .bundle-ready__picture img {
-        object-position: center center;
+        object-position: center top;
       }
 
       .bundle-ready__shade {
         background:
-          linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.12) 34%, rgba(0,0,0,0.72) 76%, rgba(0,0,0,0.94) 100%),
-          linear-gradient(90deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.18) 100%);
+          linear-gradient(180deg, rgba(0,0,0,0.24) 0%, rgba(0,0,0,0.08) 30%, rgba(0,0,0,0.56) 74%, rgba(0,0,0,0.88) 100%),
+          linear-gradient(90deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.08) 62%, rgba(0,0,0,0.14) 100%);
       }
 
       .bundle-ready__inner {
         width: min(100% - 26px, 390px);
-        padding: 0 0 30px;
+        padding: 22px 0 16px;
       }
 
       .bundle-ready__copy {
-        max-width: 330px;
+        max-width: 310px;
         margin: 0;
         text-align: left;
-        padding: 18px;
-        background: rgba(4,4,4,0.60);
-        border: 1px solid rgba(255,255,255,0.18);
-        box-shadow: 0 22px 60px rgba(0,0,0,0.58);
-        backdrop-filter: blur(8px) saturate(1.1);
-        -webkit-backdrop-filter: blur(8px) saturate(1.1);
+        padding: 0;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
       }
 
       .ready-eyebrow {
@@ -479,7 +479,7 @@ const nextSteps = [
       }
 
       .want-more {
-        padding: 42px 0 58px;
+        padding: 24px 0 58px;
       }
 
       .want-more h2 {
