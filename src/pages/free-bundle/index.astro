@@ -77,10 +77,11 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
     (function () {
       var HOT_APP_LEADS = 2;
       var COACHES_DATABASE = 39;
+      var COACHES_FREE_BUNDLE_USERS = 34;
       var PLAYERS_APP_LEADS = 50;
       var PARENT_APP_LEADS = 51;
       var roleToListId = {
-        coach: COACHES_DATABASE,
+        coach: [COACHES_DATABASE, COACHES_FREE_BUNDLE_USERS],
         player: PLAYERS_APP_LEADS,
         parent: PARENT_APP_LEADS
       };
@@ -131,7 +132,10 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
 
         var listIds = [HOT_APP_LEADS];
         selectedRoles.forEach(function (role) {
-          if (roleToListId[role] && listIds.indexOf(roleToListId[role]) === -1) listIds.push(roleToListId[role]);
+          var roleListIds = Array.isArray(roleToListId[role]) ? roleToListId[role] : [roleToListId[role]];
+          roleListIds.forEach(function (listId) {
+            if (listId && listIds.indexOf(listId) === -1) listIds.push(listId);
+          });
         });
 
         if (button) {

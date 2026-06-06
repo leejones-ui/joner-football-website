@@ -147,6 +147,22 @@ function parseRoles(value) {
     .filter((role) => ['coach', 'player', 'parent', 'fan'].includes(role))
 }
 
+function enforceFreeBundleRoleLists(listIds, body) {
+  const source = cleanString(body.source || body.formName || '', 80)
+  if (!source.startsWith('free-bundle')) return listIds
+
+  const roles = parseRoles(body.roles)
+  const ids = new Set(listIds)
+  if (roles.includes('coach')) {
+    ids.add(Number(process.env.BREVO_COACHES_FREE_BUNDLE_USERS_LIST_ID || 34))
+    ids.add(Number(process.env.BREVO_COACHES_DATABASE_LIST_ID || 39))
+  }
+  if (roles.includes('player')) ids.add(Number(process.env.BREVO_PLAYERS_APP_LEADS_LIST_ID || 50))
+  if (roles.includes('parent')) ids.add(Number(process.env.BREVO_PARENT_APP_LEADS_LIST_ID || 51))
+
+  return Array.from(ids).filter((id) => Number.isInteger(id) && id > 0)
+}
+
 function utm(url, campaign, content) {
   const parsed = new URL(url)
   parsed.searchParams.set('utm_source', 'brevo')
@@ -406,7 +422,7 @@ export default async function handler(req, res) {
     const firstName = cleanString(body.firstName || body.first_name || body.name || '', 80)
     if (!firstName && !isFreeBundleLead) return res.status(400).json({ success: false, error: 'Name is required.' })
 
-    const listIds = parseListIds(body)
+    const listIds = enforceFreeBundleRoleLists(parseListIds(body), body)
     const isHubGate = source.startsWith('hub-gate')
     const marketingConsent = body.marketingConsent === true || body.marketingConsent === 'true' || body.marketingConsent === 'on'
 
