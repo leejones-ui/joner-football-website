@@ -227,6 +227,22 @@ body .hub-btn--outline:hover {
   color: #FFFFFF !important;
 }
 
+/* Light-section CTA safety: white buttons disappear on white cards/sections. */
+body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-red, .nav-download-cta, .hub-btn, .story-cta-link:not(.store-badge), .jxfs__btn),
+body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-outline, .hub-btn--outline),
+body :is(.text-joner-black, .text-black) :is(.btn-red, .btn-outline) {
+  background: #0A0A0A !important;
+  border-color: #0A0A0A !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 12px 26px rgba(0,0,0,0.18) !important;
+}
+body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-red, .btn-outline, .nav-download-cta, .hub-btn, .story-cta-link:not(.store-badge), .jxfs__btn):hover,
+body :is(.text-joner-black, .text-black) :is(.btn-red, .btn-outline):hover {
+  background: #E30613 !important;
+  border-color: #E30613 !important;
+  color: #FFFFFF !important;
+}
+
 /* Scrollbar hide utility */
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
