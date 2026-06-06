@@ -5,9 +5,39 @@ const title = 'Your Free Videos Are Ready | Joner Football'
 const description = 'Your Joner Football free training videos are ready. Check your email or click below to watch.'
 const canonical = 'https://jonerfootball.com/free-bundle/watch/'
 const freeAppSectionUrl = 'https://app.jonerfootball.com/categories/category-vpi8uazway4?utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=open_free_section'
+const cognitiveBundleUrl = 'https://app.jonerfootball.com/checkout/new?o=228257&utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=cognitive_bundle'
+const coachSessionPlanUrl = 'https://app.jonerfootball.com/checkout/new?o=226775&utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=free_session_plan_pack'
+const soloTrainingPackUrl = 'https://app.jonerfootball.com/checkout/new?o=226774&utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=free_solo_training_pack'
 const coachesUrl = '/app/for-coaches/?utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=coaching_videos'
 const playerUrl = 'https://app.jonerfootball.com/categories/category-qee31-z2mxo?utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=player_100_day_program'
 const teamsUrl = '/teams/?utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=team_subscription'
+
+const freeBundleSteps = [
+  {
+    label: '3 Videos',
+    title: 'Cognitive Bundle',
+    subtitle: 'Free training videos to sharpen decision making.',
+    href: cognitiveBundleUrl,
+    image: '/images/contact/lee-coaching-landscape.webp',
+    external: true,
+  },
+  {
+    label: 'Coaches',
+    title: 'Session Plan Pack',
+    subtitle: 'Free session plans to use with your players.',
+    href: coachSessionPlanUrl,
+    image: '/images/camps/joner-camps/lee-coaching-group.avif',
+    external: true,
+  },
+  {
+    label: 'Players',
+    title: 'Solo Training Pack',
+    subtitle: 'Free home training pack for sharper technique.',
+    href: soloTrainingPackUrl,
+    image: '/images/training/jfp/jfp-training-2.avif',
+    external: true,
+  },
+]
 
 const nextSteps = [
   {
@@ -15,7 +45,7 @@ const nextSteps = [
     title: 'Player Videos',
     subtitle: 'Train with structure and start the 100 Day Program.',
     href: playerUrl,
-    image: '/images/app/audience-player-thumbnail.avif',
+    image: '/images/blog/football-drills-at-home-player-action-image2.avif',
     external: true,
   },
   {
@@ -57,7 +87,7 @@ const nextSteps = [
           <p class="ready-eyebrow">Free videos ready</p>
           <h1 id="bundle-ready-title">Check Your Email</h1>
           <p class="ready-subtitle">
-            I’ve sent the free bundle to your inbox. You can also click below and start watching now.
+            I’ve sent the free bundle to your inbox, or click below to start watching now.
           </p>
           <div class="ready-actions">
             <a href={freeAppSectionUrl} target="_blank" rel="noopener noreferrer" class="btn-red ready-button">Open Free Videos</a>
@@ -74,6 +104,29 @@ const nextSteps = [
           <span class="want-more__rule" aria-hidden="true"></span>
         </header>
 
+        <p class="want-more__section-label">Free bundle links</p>
+        <div class="next-step-grid" aria-label="Claim more free Joner Football bundles">
+          {freeBundleSteps.map((step) => (
+            <a
+              href={step.href}
+              class="next-step-card"
+              target={step.external ? '_blank' : undefined}
+              rel={step.external ? 'noopener noreferrer' : undefined}
+              aria-label={`Claim ${step.title}`}
+            >
+              <img src={step.image} alt="" aria-hidden="true" loading="lazy" class="next-step-card__bg" />
+              <span class="next-step-card__shade" aria-hidden="true"></span>
+              <span class="next-step-card__badge">{step.label}</span>
+              <span class="next-step-card__body">
+                <span class="next-step-card__title">{step.title}</span>
+                <span class="next-step-card__subtitle">{step.subtitle}</span>
+              </span>
+              <span class="next-step-card__arrow" aria-hidden="true">→</span>
+            </a>
+          ))}
+        </div>
+
+        <p class="want-more__section-label want-more__section-label--second">Then pick your path</p>
         <div class="next-step-grid" aria-label="Choose your next Joner Football path">
           {nextSteps.map((step) => (
             <a
@@ -110,7 +163,7 @@ const nextSteps = [
       min-height: calc(100svh - 88px);
       overflow: hidden;
       display: grid;
-      align-items: end;
+      align-items: center;
       border-bottom: 1px solid rgba(255,255,255,0.1);
       background: #000;
     }
@@ -144,11 +197,13 @@ const nextSteps = [
     }
 
     .bundle-ready__inner {
-      padding: 52px 0 62px;
+      padding: 60px 0;
     }
 
     .bundle-ready__copy {
-      max-width: 620px;
+      max-width: 720px;
+      margin: 0 auto;
+      text-align: center;
       text-shadow: 0 12px 34px rgba(0,0,0,0.78);
     }
 
@@ -168,21 +223,21 @@ const nextSteps = [
       line-height: 0.9;
       margin: 0;
       font-size: clamp(56px, 8vw, 112px);
-      max-width: 7.2ch;
+      max-width: none;
     }
 
     .ready-subtitle {
       color: rgba(255,255,255,0.86);
       font-size: clamp(18px, 2.1vw, 25px);
-      max-width: 570px;
-      margin: 22px 0 0;
+      max-width: 660px;
+      margin: 22px auto 0;
       line-height: 1.28;
       font-weight: 700;
     }
 
     .ready-actions {
       max-width: 360px;
-      margin: 30px 0 0;
+      margin: 30px auto 0;
     }
 
     .ready-button {
@@ -200,7 +255,8 @@ const nextSteps = [
 
     .want-more__header {
       max-width: 650px;
-      margin-bottom: clamp(1.6rem, 3vw, 2.5rem);
+      margin: 0 auto clamp(1.6rem, 3vw, 2.5rem);
+      text-align: center;
     }
 
     .want-more h2 {
@@ -228,9 +284,23 @@ const nextSteps = [
       display: block;
       width: 4.25rem;
       height: 3px;
-      margin-top: 1.1rem;
+      margin: 1.1rem auto 0;
       background: #E30613;
       box-shadow: 0 0 1rem rgba(227,6,19,0.48);
+    }
+
+    .want-more__section-label {
+      margin: 0 auto 1rem;
+      color: rgba(255,255,255,0.78);
+      font-family: Anton, Impact, sans-serif;
+      font-size: clamp(1rem, 1.7vw, 1.35rem);
+      letter-spacing: 0.14em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .want-more__section-label--second {
+      margin-top: clamp(2rem, 4vw, 3rem);
     }
 
     .next-step-grid {
@@ -279,8 +349,9 @@ const nextSteps = [
       width: 100%;
       height: 100%;
       object-fit: cover;
-      opacity: 0.72;
-      filter: grayscale(0) contrast(1.32) brightness(1.12) saturate(1.24);
+      object-position: center top;
+      opacity: 0.86;
+      filter: grayscale(0) contrast(1.34) brightness(1.18) saturate(1.28);
       transition: opacity 220ms ease, transform 420ms ease, filter 220ms ease;
     }
 
@@ -294,7 +365,7 @@ const nextSteps = [
     .next-step-card__shade {
       position: absolute;
       inset: 0;
-      background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.58)), linear-gradient(90deg, rgba(0,0,0,0.62), rgba(0,0,0,0.06));
+      background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.50)), linear-gradient(90deg, rgba(0,0,0,0.48), rgba(0,0,0,0.02));
     }
 
     .next-step-card__badge,
@@ -374,6 +445,8 @@ const nextSteps = [
 
       .bundle-ready__copy {
         max-width: 330px;
+        margin: 0;
+        text-align: left;
         padding: 18px;
         background: rgba(4,4,4,0.60);
         border: 1px solid rgba(255,255,255,0.18);
@@ -396,6 +469,8 @@ const nextSteps = [
       .ready-subtitle {
         font-size: 15px;
         margin-top: 14px;
+        margin-left: 0;
+        margin-right: 0;
       }
 
       .ready-actions {
