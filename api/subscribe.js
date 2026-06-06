@@ -448,6 +448,9 @@ export default async function handler(req, res) {
       await sendSubscribeNotification({ source, email: validation.email, firstName, body })
     } catch (notifyError) {
       console.error('Subscribe notification failed:', notifyError)
+      if (isFreeBundleLead) {
+        return res.status(502).json({ success: false, error: 'Email captured, but the free bundle email could not send yet. Please click the videos button below.' })
+      }
     }
 
     return res.status(200).json({ success: true })
