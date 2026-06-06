@@ -403,50 +403,84 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
       }
 
       .free-hero__inner {
-        width: min(100% - 72px, 300px);
+        width: calc(100% - 26px);
+        max-width: 320px;
         padding-bottom: 28px;
       }
 
 
       .free-panel {
-        gap: 12px;
+        min-width: 0;
+        gap: 13px;
+      }
+
+      .free-copy {
+        min-width: 0;
+        overflow: hidden;
       }
 
       .free-copy h1 {
-        font-size: clamp(21px, 5.85vw, 24px);
+        max-width: 100%;
+        font-size: clamp(23px, 6.2vw, 25px);
         line-height: 0.95;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.035em;
         white-space: nowrap;
       }
 
       .free-subtitle {
-        font-size: clamp(7px, 1.9vw, 8.4px);
-        letter-spacing: 0.01em;
-        line-height: 1.1;
+        max-width: 100%;
+        font-size: clamp(8.2px, 2.16vw, 9.2px);
+        letter-spacing: 0.004em;
+        line-height: 1.12;
         white-space: nowrap;
       }
 
       .free-card {
-        padding: 14px;
-        background: rgba(4, 4, 4, 0.78);
+        padding: 20px;
+        background: rgba(4, 4, 4, 0.84);
+        border-color: rgba(255, 255, 255, 0.22);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.62);
         overflow: hidden;
       }
 
+      #free-bundle-form input[type='email'] {
+        min-height: 64px;
+        font-size: 18px;
+        padding: 0 18px;
+      }
+
+      .free-label,
+      .role-fieldset legend {
+        font-size: 12px;
+        margin-bottom: 10px;
+      }
+
+      .role-fieldset {
+        margin-top: 20px;
+      }
+
+      .role-fieldset p {
+        font-size: 16px;
+        margin-bottom: 14px;
+      }
+
       .role-grid {
-        gap: 8px;
+        gap: 10px;
       }
 
       .role-option span {
-        min-height: 46px;
-        border-color: rgba(255, 255, 255, 0.52);
+        min-height: 60px;
+        border-color: rgba(255, 255, 255, 0.58);
         padding: 0 8px;
-        font-size: clamp(9.5px, 2.65vw, 11px);
-        letter-spacing: 0.045em;
+        font-size: clamp(11px, 3vw, 13px);
+        letter-spacing: 0.05em;
         white-space: nowrap;
       }
 
       .free-submit {
-        font-size: clamp(11.5px, 3vw, 13px);
+        min-height: 74px;
+        margin-top: 20px;
+        font-size: clamp(14px, 3.65vw, 16px);
       }
     }
 
