@@ -180,21 +180,29 @@ function freeBundleEmailCopy(roles) {
   const playerUrl = utm('https://app.jonerfootball.com/categories/category-qee31-z2mxo', campaign, 'player_100_day_button')
   const parentUrl = utm('https://jonerfootball.com/join/', campaign, 'parent_app_button')
   const teamUrl = utm('https://jonerfootball.com/teams/', campaign, 'team_subscription_button')
+  const freeExtrasUrl = utm('https://jonerfootball.com/free-bundle/watch/', campaign, 'more_free_bundles_button')
 
   if (roleSet.has('coach')) {
     return {
       subject: 'Your free Joner coaching videos',
-      preview: 'Start with the free bundle, then see the coaches section.',
-      headline: 'Your free videos are ready',
+      preview: 'Free videos first, then a better way to plan your sessions.',
+      heroImage: 'https://jonerfootball.com/images/camps/joner-camps/lee-coaching-group.avif',
+      heroAlt: 'Lee Jones coaching a group of football players',
+      eyebrow: 'Coaches free bundle',
+      headline: 'Run a sharper session this week',
       body: [
-        'Here is the free Joner Football bundle.',
-        'Start with the free videos first. You will see player training, parent guidance and coaching detail from the way I build sessions.',
-        'If you coach a team or players, the next step is the coaches section. That is where I go deeper into session plans, progressions and the detail behind the drills.'
+        'Your free Joner Football videos are ready.',
+        'Start with them first. You will see the detail behind the way I want players to train, not just random drills pulled from the internet.',
+        'If you coach players, the biggest win is having better sessions ready to use. The coaches section gives you session ideas, progressions and the detail behind the drill so your players actually improve.'
       ],
       primaryCta: 'Open Free Videos',
       primaryUrl: freeUrl,
+      upsellHeading: 'Coach better sessions',
+      upsellText: 'After you watch the free videos, the next best step is the coaches section. Use it to plan cleaner sessions, explain detail better and give players more purpose in training.',
+      upsellCta: 'See Coaching Videos',
+      upsellUrl: coachesUrl,
       secondary: [
-        { label: 'See Coaching Videos', url: coachesUrl },
+        { label: 'More Free Bundles', url: freeExtrasUrl },
         { label: 'Team Subscriptions', url: teamUrl }
       ]
     }
@@ -203,17 +211,24 @@ function freeBundleEmailCopy(roles) {
   if (roleSet.has('player')) {
     return {
       subject: 'Your free Joner training videos',
-      preview: 'Start with the free videos, then build the full plan.',
-      headline: 'Your free videos are ready',
+      preview: 'Free videos first, then a better plan for your technique.',
+      heroImage: 'https://jonerfootball.com/images/training/jfp/jfp-training-2.avif',
+      heroAlt: 'Joner Football player training with the ball',
+      eyebrow: 'Players free bundle',
+      headline: 'Train with more detail',
       body: [
-        'Here is the free Joner Football bundle.',
-        'Use these videos to start training with more detail. Cleaner touches, better habits and a clearer idea of what to practise.',
-        'If you want the full structure, start with the 100 Day Transformation Program inside the app. That gives you the plan behind the training.'
+        'Your free Joner Football videos are ready.',
+        'Use them to train with more detail today. Cleaner touches, better habits and a clearer idea of what to practise.',
+        'Most players do extra work, but they do not always follow a plan. The player videos in the app give you that structure so your training actually builds week by week.'
       ],
       primaryCta: 'Open Free Videos',
       primaryUrl: freeUrl,
+      upsellHeading: 'Build your training plan',
+      upsellText: 'After the free videos, start the player section if you want a clearer path. Use the 100 Day Program and follow the work instead of guessing what to train next.',
+      upsellCta: 'See Player Videos',
+      upsellUrl: playerUrl,
       secondary: [
-        { label: 'Player Videos', url: playerUrl }
+        { label: 'More Free Bundles', url: freeExtrasUrl }
       ]
     }
   }
@@ -221,17 +236,24 @@ function freeBundleEmailCopy(roles) {
   if (roleSet.has('parent')) {
     return {
       subject: 'Your free Joner videos are ready',
-      preview: 'A simple first step to help your player train better.',
-      headline: 'Your free videos are ready',
+      preview: 'Free videos first, then a clearer way to help your player.',
+      heroImage: 'https://jonerfootball.com/images/blog/football-drills-at-home-player-action-image2.avif',
+      heroAlt: 'Young footballer training at home with the ball',
+      eyebrow: 'Parents free bundle',
+      headline: 'Help them train properly',
       body: [
-        'Here is the free Joner Football bundle.',
+        'Your free Joner Football videos are ready.',
         'If you are helping a player at home, the goal is not more random drills. The goal is better structure, better habits and training they can repeat properly.',
-        'Start with the free videos, then use the app if you want a clearer weekly training plan for your player.'
+        'The app helps you give them a clearer weekly plan, so they know what to practise and you are not just guessing from clips online.'
       ],
       primaryCta: 'Open Free Videos',
       primaryUrl: freeUrl,
+      upsellHeading: 'Give them a clearer path',
+      upsellText: 'After the free videos, use the app to keep their training organised. It is the easiest way to help your player improve away from team training.',
+      upsellCta: 'See The App',
+      upsellUrl: parentUrl,
       secondary: [
-        { label: 'See The App', url: parentUrl },
+        { label: 'More Free Bundles', url: freeExtrasUrl },
         { label: 'Player Videos', url: playerUrl }
       ]
     }
@@ -239,17 +261,24 @@ function freeBundleEmailCopy(roles) {
 
   return {
     subject: 'Your free Joner videos are ready',
-    preview: 'Start with the free videos from Lee Jones.',
-    headline: 'Your free videos are ready',
+    preview: 'Start with the free videos, then choose your training path.',
+    heroImage: 'https://jonerfootball.com/images/free-bundle/check-your-email-desktop.webp',
+    heroAlt: 'Joner Football free training videos',
+    eyebrow: 'Joner free bundle',
+    headline: 'Start with the free videos',
     body: [
-      'Here is the free Joner Football bundle.',
+      'Your free Joner Football videos are ready.',
       'Start with the free videos and get a feel for the way I coach technique, training detail and player development.',
-      'If you want more after that, the Joner Football App gives you the full training structure.'
+      'If you want more after that, choose the path that fits you best and keep training with structure.'
     ],
     primaryCta: 'Open Free Videos',
     primaryUrl: freeUrl,
+    upsellHeading: 'Choose your next step',
+    upsellText: 'Players, parents and coaches all need a slightly different path. Pick the one that fits you and use Joner Football with more structure.',
+    upsellCta: 'See The Full App',
+    upsellUrl: parentUrl,
     secondary: [
-      { label: 'See The Full App', url: parentUrl }
+      { label: 'More Free Bundles', url: freeExtrasUrl }
     ]
   }
 }
@@ -257,7 +286,7 @@ function freeBundleEmailCopy(roles) {
 function button(label, url, secondary = false) {
   const bg = secondary ? '#1E1E1E' : '#E8000D'
   const border = secondary ? '1px solid #333333' : '1px solid #E8000D'
-  return `<a href="${url}" style="display:block;background:${bg};border:${border};color:#ffffff;text-decoration:none;text-transform:uppercase;font-family:Arial Black,Arial,sans-serif;font-size:14px;letter-spacing:0.04em;text-align:center;padding:16px 18px;margin:10px 0;">${label}</a>`
+  return `<a href="${url}" style="display:block;background:${bg};border:${border};color:#ffffff;text-decoration:none;text-transform:uppercase;font-family:Arial Black,Arial,sans-serif;font-size:${secondary ? '13px' : '16px'};letter-spacing:0.04em;text-align:center;padding:${secondary ? '14px 16px' : '18px 20px'};margin:10px 0;">${label}</a>`
 }
 
 async function sendFreeBundleEmail({ apiKey, email, firstName, body }) {
@@ -266,15 +295,24 @@ async function sendFreeBundleEmail({ apiKey, email, firstName, body }) {
   const roleLabel = roles.length ? roles.join(', ') : 'fan'
   const html = `
     <div style="margin:0;padding:0;background:#111111;color:#ffffff;font-family:Arial,sans-serif;">
-      <div style="max-width:600px;margin:0 auto;background:#111111;padding:28px 20px;">
+      <div style="max-width:600px;margin:0 auto;background:#111111;padding:0 0 28px;">
+        <img src="${copy.heroImage}" alt="${copy.heroAlt}" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0;margin:0;">
         <div style="height:5px;background:#E8000D;margin-bottom:24px;"></div>
-        <p style="margin:0 0 12px;color:#E8000D;text-transform:uppercase;font-family:Arial Black,Arial,sans-serif;letter-spacing:0.14em;font-size:12px;">Free Joner Football bundle</p>
-        <h1 style="margin:0 0 18px;color:#ffffff;text-transform:uppercase;font-family:Arial Black,Arial,sans-serif;font-size:36px;line-height:0.95;">${copy.headline}</h1>
+        <div style="padding:0 20px;">
+        <p style="margin:0 0 12px;color:#E8000D;text-transform:uppercase;font-family:Arial Black,Arial,sans-serif;letter-spacing:0.14em;font-size:12px;">${copy.eyebrow}</p>
+        <h1 style="margin:0 0 18px;color:#ffffff;text-transform:uppercase;font-family:Arial Black,Arial,sans-serif;font-size:38px;line-height:0.95;">${copy.headline}</h1>
         ${copy.body.map((paragraph) => `<p style="color:#CCCCCC;font-size:16px;line-height:1.55;margin:0 0 16px;">${paragraph}</p>`).join('')}
         ${button(copy.primaryCta, copy.primaryUrl)}
-        ${copy.secondary.length ? `<p style="color:#ffffff;font-family:Arial Black,Arial,sans-serif;text-transform:uppercase;font-size:15px;margin:28px 0 10px;">Want more?</p>${copy.secondary.map((item) => button(item.label, item.url, true)).join('')}` : ''}
+        <div style="background:#1E1E1E;border:1px solid #333333;margin:26px 0 14px;padding:18px 16px;">
+          <p style="margin:0 0 8px;color:#E8000D;font-family:Arial Black,Arial,sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:0.08em;">After the free videos</p>
+          <h2 style="margin:0 0 10px;color:#ffffff;font-family:Arial Black,Arial,sans-serif;text-transform:uppercase;font-size:24px;line-height:1;">${copy.upsellHeading}</h2>
+          <p style="color:#CCCCCC;font-size:15px;line-height:1.5;margin:0 0 14px;">${copy.upsellText}</p>
+          ${button(copy.upsellCta, copy.upsellUrl, true)}
+        </div>
+        ${copy.secondary.length ? `<p style="color:#ffffff;font-family:Arial Black,Arial,sans-serif;text-transform:uppercase;font-size:15px;margin:22px 0 10px;">More options</p>${copy.secondary.map((item) => button(item.label, item.url, true)).join('')}` : ''}
         <p style="color:#CCCCCC;font-size:15px;line-height:1.55;margin:24px 0 0;">Keep training properly,<br>Lee</p>
         <p style="color:#777777;font-size:12px;line-height:1.5;margin:24px 0 0;">You got this because you asked for the free Joner Football videos. Role selected: ${roleLabel}.</p>
+        </div>
       </div>
     </div>
   `
