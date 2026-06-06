@@ -1255,11 +1255,43 @@ const sanityPage = await fetchSanityPage('training')
       }
 
       .training-next-step__grid {
-        grid-template-columns: 1fr;
+        display: flex;
+        gap: 0.85rem;
+        overflow-x: auto;
+        margin-inline: calc(50% - 50vw);
+        padding: 0 1rem 0.35rem;
+        scroll-padding-inline: 1rem;
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+      }
+
+      .training-next-step__grid::-webkit-scrollbar {
+        display: none;
       }
 
       .training-next-step__card {
-        min-height: 12rem;
+        flex: 0 0 88vw;
+        min-height: 13.75rem;
+        scroll-snap-align: center;
+        scroll-snap-stop: always;
+      }
+
+      .training-next-step__card-bg {
+        opacity: 0.9;
+        filter: contrast(1.2) brightness(1.22) saturate(1.22);
+      }
+
+      .training-next-step__shade {
+        background: linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.56)), linear-gradient(90deg, rgba(0,0,0,0.50), rgba(0,0,0,0.02));
+      }
+
+      .training-video-card {
+        width: 88vw;
+        scroll-snap-align: center;
+        scroll-snap-stop: always;
       }
     }
 

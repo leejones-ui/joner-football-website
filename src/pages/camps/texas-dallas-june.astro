@@ -1432,6 +1432,21 @@ const sanityPage = await fetchSanityPage('camp-texas-dallas-june')
         reelVideo.addEventListener('play', clearTimer)
         reelVideo.addEventListener('pause', () => { if (!isReelSlide(idx)) return; if (timer === null) restart() })
         reelVideo.addEventListener('ended', () => { go(idx + 1, false) })
+
+        let reelPrimedByScroll = false
+        const testimonialSection = stage.closest('.hou-testi')
+        if ('IntersectionObserver' in window && testimonialSection) {
+          const reelObserver = new IntersectionObserver((entries) => {
+            if (reelPrimedByScroll) return
+            const entry = entries[0]
+            if (!entry?.isIntersecting || entry.intersectionRatio < 0.38) return
+            reelPrimedByScroll = true
+            const reelIndex = slides.findIndex((slide) => slide.classList.contains('hou-testi-slide--reel'))
+            if (reelIndex >= 0) go(reelIndex, true)
+            reelObserver.disconnect()
+          }, { threshold: [0.38, 0.55] })
+          reelObserver.observe(testimonialSection)
+        }
       }
 
       prevBtn.addEventListener('click', () => go(idx - 1, true))

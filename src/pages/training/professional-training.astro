@@ -354,7 +354,7 @@ const sanityPage = await fetchSanityPage('professional-training')
     .pro-video-swipe-hint { display: none; }
     .pro-video-grid__cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
     .pro-video-card { position: relative; min-height: 330px; display: block; overflow: hidden; border: 1px solid rgba(255,255,255,0.16); background: #111; text-decoration: none; color: #fff; box-shadow: 0 30px 90px rgba(0,0,0,0.32); }
-    .pro-video-card img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+    .pro-video-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
     .pro-video-card:hover img { transform: scale(1.04); }
     .pro-video-card__shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.72) 100%); pointer-events: none; }
     .pro-video-card__play { position: absolute; left: 18px; top: 18px; display: inline-flex; border: 1px solid rgba(255,255,255,0.28); border-radius: 999px; padding: 8px 12px; font-family: var(--pro-display); letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.72rem; background: rgba(227,6,19,0.9); color: #fff; box-shadow: 0 12px 28px rgba(0,0,0,0.22); }
@@ -386,14 +386,26 @@ const sanityPage = await fetchSanityPage('professional-training')
       .pro-hero__actions, .pro-glass { width: 100%; }
       .pro-player-wall, .pro-video-grid, .pro-contact { padding: 54px 0; }
       .pro-section-head h2 { white-space: normal; font-size: clamp(2.05rem, 11vw, 3.4rem); }
-      /* Flatten the 7-frame scroll parallax into a clean 2-col grid on phones.
-         Same imagery, no scroll-tax. JS-applied transforms get neutralised
-         by `transform: none !important` on .zoom-parallax__layer below. */
-      .zoom-parallax { height: auto; }
-      .zoom-parallax__sticky { position: relative; height: auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 56px 16px; }
-      .zoom-parallax__copy { position: relative; left: auto; top: auto; transform: none; grid-column: 1 / -1; margin: 0 auto 14px; width: 100%; }
+      /* Mobile: turn the image wall into a horizontal slider instead of a tall scroll-tax grid. */
+      .zoom-parallax { height: auto; overflow: hidden; }
+      .zoom-parallax__sticky {
+        position: relative;
+        height: auto;
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        padding: 56px 1rem 18px;
+        scroll-padding-inline: 1rem;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+      }
+      .zoom-parallax__sticky::-webkit-scrollbar { display: none; }
+      .zoom-parallax__copy { position: relative; left: auto; top: auto; transform: none; flex: 0 0 88vw; width: 88vw; margin: 0; align-self: center; text-align: left; scroll-snap-align: center; }
+      .zoom-parallax__copy::before { inset: -20px; background: radial-gradient(circle, rgba(0,0,0,0.72), rgba(0,0,0,0.38) 55%, transparent 82%); }
       .zoom-parallax__spotlight { display: none; }
-      .zoom-parallax__layer { position: relative; inset: auto; transform: none !important; will-change: auto; }
+      .zoom-parallax__layer { position: relative; inset: auto; flex: 0 0 78vw; transform: none !important; will-change: auto; scroll-snap-align: center; scroll-snap-stop: always; }
       .zoom-parallax__frame,
       .zoom-parallax__layer--1 .zoom-parallax__frame,
       .zoom-parallax__layer--2 .zoom-parallax__frame,
@@ -401,9 +413,9 @@ const sanityPage = await fetchSanityPage('professional-training')
       .zoom-parallax__layer--4 .zoom-parallax__frame,
       .zoom-parallax__layer--5 .zoom-parallax__frame,
       .zoom-parallax__layer--6 .zoom-parallax__frame,
-      .zoom-parallax__layer--7 .zoom-parallax__frame { top: auto; left: auto; width: 100%; height: 220px; }
-      .zoom-parallax__layer--1 { grid-column: 1 / -1; }
-      .zoom-parallax__layer--1 .zoom-parallax__frame { height: 280px; }
+      .zoom-parallax__layer--7 .zoom-parallax__frame { top: auto; left: auto; width: 100%; height: 320px; }
+      .zoom-parallax__layer--1 { flex-basis: 88vw; }
+      .zoom-parallax__layer--1 .zoom-parallax__frame { height: 320px; }
       .pro-player-card { width: 220px; }
       .pro-form-grid { grid-template-columns: 1fr; }
       /* Match /training's swipe carousel pattern on mobile: peeking cards, snap, swipe hint */

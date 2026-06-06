@@ -224,7 +224,7 @@ const sanityPage = await fetchSanityPage('camps')
           <h2 class="font-heading text-3xl uppercase tracking-wide text-white sm:text-4xl">Camp Destinations</h2>
         </div>
 
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div class="camp-destination-grid grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
           {camps.map((camp) => (
             <a href={camp.href} class="camp-card group" aria-label={`View ${camp.title} camp details`}>
               <div class="relative h-56 overflow-hidden bg-joner-black">
@@ -531,6 +531,30 @@ const sanityPage = await fetchSanityPage('camps')
       .camp-orbit__node-label {
         max-width: 64px;
       }
+      .camp-destination-grid {
+        display: flex;
+        gap: 0.9rem;
+        overflow-x: auto;
+        margin-inline: calc(50% - 50vw);
+        padding: 0 1rem 0.5rem;
+        scroll-padding-inline: 1rem;
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+      }
+
+      .camp-destination-grid::-webkit-scrollbar {
+        display: none;
+      }
+
+      .camp-destination-grid .camp-card {
+        flex: 0 0 88vw;
+        scroll-snap-align: center;
+        scroll-snap-stop: always;
+      }
+
       .camp-orbit__tooltip {
         display: none;
       }
