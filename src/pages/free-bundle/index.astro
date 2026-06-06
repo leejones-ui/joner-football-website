@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
 const title = 'Free Football Training Videos | Joner Football'
-const description = 'Get 10 free Joner Football training videos for players, parents and coaches. Enter your email and choose what best describes you.'
+const description = 'Get 14 free Joner Football videos for players, parents and coaches. Enter your email and choose what best describes you.'
 const canonical = 'https://jonerfootball.com/free-bundle/'
 ---
 
@@ -17,22 +17,14 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
       <div class="free-hero__bg" aria-hidden="true"></div>
       <div class="free-hero__inner">
         <div class="free-copy">
-          <p class="free-eyebrow">Free Joner Football bundle</p>
-          <h1 id="free-bundle-title">Get 10 Free Training Videos</h1>
-          <p class="free-subtitle">
-            For players, parents and coaches who want better technique, better sessions and a clearer way to improve.
-          </p>
-          <ul class="free-proof" aria-label="What you will get">
-            <li>Player training ideas you can use today</li>
-            <li>Parent guidance for better home training</li>
-            <li>Coach detail from Lee Jones</li>
-          </ul>
+          <p class="free-eyebrow">Free Joner Football videos</p>
+          <h1 id="free-bundle-title">Get 14 Free Videos</h1>
+          <p class="free-subtitle">Player drills. Parent help. Coaching ideas.</p>
+          <p class="free-line">Enter your email and I’ll send the free videos over.</p>
         </div>
 
         <div class="free-card" aria-label="Free video email capture form">
-          <p class="free-card__kicker">Start here</p>
-          <h2>Where should I send the videos?</h2>
-          <p class="free-card__intro">Enter your email and choose every option that fits you.</p>
+          <h2>Send Me The Videos</h2>
 
           <form id="free-bundle-form" data-brevo-form data-brevo-custom novalidate>
             <label class="free-label" for="free-bundle-email">Email address</label>
@@ -46,8 +38,8 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
             />
 
             <fieldset class="role-fieldset">
-              <legend>Are you a coach, player, parent or football fan?</legend>
-              <p>Select more than one if needed.</p>
+              <legend>What best describes you?</legend>
+              <p>Choose more than one if needed.</p>
               <div class="role-grid">
                 <label class="role-option">
                   <input type="checkbox" name="roles" value="coach" />
@@ -72,30 +64,6 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
             <p id="free-bundle-status" class="free-status" aria-live="polite"></p>
             <p class="free-privacy">No payment. No checkout. Unsubscribe anytime.</p>
           </form>
-        </div>
-      </div>
-    </section>
-
-    <section class="free-breakdown" aria-labelledby="bundle-breakdown-title">
-      <div class="free-breakdown__inner">
-        <p class="free-eyebrow">What is inside</p>
-        <h2 id="bundle-breakdown-title">A better first step into Joner Football</h2>
-        <div class="bundle-columns">
-          <article>
-            <span>Players</span>
-            <h3>Train cleaner technique</h3>
-            <p>Ball mastery, first touch, finishing and 1v1 ideas you can practise without guessing.</p>
-          </article>
-          <article>
-            <span>Parents</span>
-            <h3>Know what to support</h3>
-            <p>Simple guidance so your player has structure at home instead of random scrolling.</p>
-          </article>
-          <article>
-            <span>Coaches</span>
-            <h3>Build better sessions</h3>
-            <p>Coaching detail, session thinking and Lee's standards for developing better players.</p>
-          </article>
         </div>
       </div>
     </section>
@@ -153,7 +121,7 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
         }
 
         if (!selectedRoles.length) {
-          setStatus('Choose at least one option so I can send the right football videos.', 'error');
+          setStatus('Choose at least one option so I can send the right videos.', 'error');
           return;
         }
 
@@ -218,7 +186,10 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
 
     .free-hero {
       position: relative;
+      min-height: calc(100vh - 90px);
       overflow: hidden;
+      display: grid;
+      align-items: center;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
@@ -243,88 +214,62 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
     .free-hero__inner {
       position: relative;
       z-index: 1;
-      width: min(1180px, calc(100% - 32px));
+      width: min(1120px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 58px 0 44px;
+      padding: 34px 0 44px;
       display: grid;
-      gap: 28px;
+      gap: 22px;
     }
 
-    .free-eyebrow,
-    .free-card__kicker {
+    .free-eyebrow {
       color: #E8000D;
       font-family: Arial Black, Arial, sans-serif;
       text-transform: uppercase;
       letter-spacing: 0.18em;
       font-size: 12px;
-      margin: 0 0 14px;
+      margin: 0 0 12px;
     }
 
     .free-copy h1 {
       font-family: Arial Black, Arial, sans-serif;
       text-transform: uppercase;
-      font-size: clamp(42px, 11vw, 106px);
-      line-height: 0.88;
+      font-size: clamp(46px, 13vw, 112px);
+      line-height: 0.86;
       letter-spacing: -0.06em;
-      margin: 0 0 18px;
-      max-width: 860px;
+      margin: 0 0 14px;
+      max-width: 740px;
     }
 
     .free-subtitle {
-      color: rgba(255,255,255,0.82);
-      font-size: clamp(18px, 4.5vw, 25px);
-      line-height: 1.25;
-      max-width: 720px;
+      color: #fff;
+      font-family: Arial Black, Arial, sans-serif;
+      text-transform: uppercase;
+      font-size: clamp(18px, 4.8vw, 28px);
+      line-height: 1.05;
+      max-width: 650px;
       margin: 0;
     }
 
-    .free-proof {
-      display: grid;
-      gap: 10px;
-      padding: 0;
-      margin: 24px 0 0;
-      list-style: none;
-      color: rgba(255,255,255,0.74);
-      font-weight: 700;
-    }
-
-    .free-proof li {
-      position: relative;
-      padding-left: 22px;
-    }
-
-    .free-proof li::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 0.62em;
-      width: 9px;
-      height: 9px;
-      background: #E8000D;
-      border-radius: 999px;
-      transform: translateY(-50%);
+    .free-line {
+      color: rgba(255,255,255,0.72);
+      font-size: 17px;
+      margin: 14px 0 0;
     }
 
     .free-card {
-      background: rgba(10, 10, 10, 0.92);
+      background: rgba(10, 10, 10, 0.94);
       border: 1px solid rgba(255,255,255,0.14);
       box-shadow: 0 28px 90px rgba(0,0,0,0.45);
-      padding: 22px;
+      padding: 20px;
     }
 
     .free-card h2 {
       font-family: Arial Black, Arial, sans-serif;
       text-transform: uppercase;
-      font-size: clamp(28px, 7vw, 48px);
+      font-size: clamp(28px, 7vw, 46px);
       line-height: 0.95;
       letter-spacing: -0.04em;
-      margin: 0 0 10px;
-    }
-
-    .free-card__intro,
-    .role-fieldset p,
-    .free-privacy {
-      color: rgba(255,255,255,0.68);
+      margin: 0 0 18px;
     }
 
     .free-label,
@@ -357,11 +302,12 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
     .role-fieldset {
       border: 0;
       padding: 0;
-      margin: 20px 0 0;
+      margin: 18px 0 0;
     }
 
     .role-fieldset p {
       margin: -4px 0 12px;
+      color: rgba(255,255,255,0.68);
       font-size: 14px;
     }
 
@@ -433,77 +379,19 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
 
     .free-privacy {
       margin: 6px 0 0;
+      color: rgba(255,255,255,0.58);
       font-size: 12px;
-    }
-
-    .free-breakdown {
-      padding: 48px 16px 64px;
-      background: #050505;
-    }
-
-    .free-breakdown__inner {
-      width: min(1180px, 100%);
-      margin: 0 auto;
-    }
-
-    .free-breakdown h2 {
-      font-family: Arial Black, Arial, sans-serif;
-      text-transform: uppercase;
-      font-size: clamp(32px, 8vw, 72px);
-      line-height: 0.92;
-      letter-spacing: -0.05em;
-      max-width: 850px;
-      margin: 0 0 26px;
-    }
-
-    .bundle-columns {
-      display: grid;
-      gap: 14px;
-    }
-
-    .bundle-columns article {
-      background: #111;
-      border: 1px solid rgba(255,255,255,0.1);
-      padding: 20px;
-    }
-
-    .bundle-columns span {
-      display: inline-block;
-      color: #E8000D;
-      font-family: Arial Black, Arial, sans-serif;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-size: 11px;
-      margin-bottom: 16px;
-    }
-
-    .bundle-columns h3 {
-      font-family: Arial Black, Arial, sans-serif;
-      text-transform: uppercase;
-      font-size: 24px;
-      line-height: 1;
-      margin: 0 0 10px;
-    }
-
-    .bundle-columns p {
-      color: rgba(255,255,255,0.72);
-      line-height: 1.5;
-      margin: 0;
     }
 
     @media (min-width: 860px) {
       .free-hero__inner {
-        grid-template-columns: minmax(0, 1.2fr) minmax(380px, 0.8fr);
+        grid-template-columns: minmax(0, 1.05fr) minmax(380px, 0.75fr);
         align-items: center;
-        padding: 92px 0 82px;
+        padding: 72px 0;
       }
 
       .free-card {
         padding: 30px;
-      }
-
-      .bundle-columns {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
   </style>

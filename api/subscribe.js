@@ -140,10 +140,164 @@ function row(label, value) {
   return `<tr><td style="font-weight:bold;vertical-align:top;">${String(label).replace(/[<>]/g, '')}</td><td>${String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td></tr>`
 }
 
+function parseRoles(value) {
+  return String(value || '')
+    .split(',')
+    .map((role) => cleanString(role, 30).toLowerCase())
+    .filter((role) => ['coach', 'player', 'parent', 'fan'].includes(role))
+}
+
+function utm(url, campaign, content) {
+  const parsed = new URL(url)
+  parsed.searchParams.set('utm_source', 'brevo')
+  parsed.searchParams.set('utm_medium', 'email')
+  parsed.searchParams.set('utm_campaign', campaign)
+  parsed.searchParams.set('utm_content', content)
+  return parsed.toString()
+}
+
+function freeBundleEmailCopy(roles) {
+  const roleSet = new Set(roles)
+  const campaign = 'free_bundle_followers'
+  const freeUrl = utm('https://app.jonerfootball.com/categories/category-vpi8uazway4', campaign, 'free_section_button')
+  const coachesUrl = utm('https://jonerfootball.com/app/for-coaches/', campaign, 'coaches_button')
+  const playerUrl = utm('https://app.jonerfootball.com/categories/category-qee31-z2mxo', campaign, 'player_100_day_button')
+  const parentUrl = utm('https://jonerfootball.com/join/', campaign, 'parent_app_button')
+  const teamUrl = utm('https://jonerfootball.com/teams/', campaign, 'team_subscription_button')
+
+  if (roleSet.has('coach')) {
+    return {
+      subject: 'Your free Joner coaching videos',
+      preview: 'Start with the free bundle, then see the coaches section.',
+      headline: 'Your free videos are ready',
+      body: [
+        'Here is the free Joner Football bundle.',
+        'Start with the free videos first. You will see player training, parent guidance and coaching detail from the way I build sessions.',
+        'If you coach a team or players, the next step is the coaches section. That is where I go deeper into session plans, progressions and the detail behind the drills.'
+      ],
+      primaryCta: 'Open Free Videos',
+      primaryUrl: freeUrl,
+      secondary: [
+        { label: 'See Coaching Videos', url: coachesUrl },
+        { label: 'Team Subscriptions', url: teamUrl }
+      ]
+    }
+  }
+
+  if (roleSet.has('player')) {
+    return {
+      subject: 'Your free Joner training videos',
+      preview: 'Start with the free videos, then build the full plan.',
+      headline: 'Your free videos are ready',
+      body: [
+        'Here is the free Joner Football bundle.',
+        'Use these videos to start training with more detail. Cleaner touches, better habits and a clearer idea of what to practise.',
+        'If you want the full structure, start with the 100 Day Transformation Program inside the app. That gives you the plan behind the training.'
+      ],
+      primaryCta: 'Open Free Videos',
+      primaryUrl: freeUrl,
+      secondary: [
+        { label: 'Player Videos', url: playerUrl }
+      ]
+    }
+  }
+
+  if (roleSet.has('parent')) {
+    return {
+      subject: 'Your free Joner videos are ready',
+      preview: 'A simple first step to help your player train better.',
+      headline: 'Your free videos are ready',
+      body: [
+        'Here is the free Joner Football bundle.',
+        'If you are helping a player at home, the goal is not more random drills. The goal is better structure, better habits and training they can repeat properly.',
+        'Start with the free videos, then use the app if you want a clearer weekly training plan for your player.'
+      ],
+      primaryCta: 'Open Free Videos',
+      primaryUrl: freeUrl,
+      secondary: [
+        { label: 'See The App', url: parentUrl },
+        { label: 'Player Videos', url: playerUrl }
+      ]
+    }
+  }
+
+  return {
+    subject: 'Your free Joner videos are ready',
+    preview: 'Start with the free videos from Lee Jones.',
+    headline: 'Your free videos are ready',
+    body: [
+      'Here is the free Joner Football bundle.',
+      'Start with the free videos and get a feel for the way I coach technique, training detail and player development.',
+      'If you want more after that, the Joner Football App gives you the full training structure.'
+    ],
+    primaryCta: 'Open Free Videos',
+    primaryUrl: freeUrl,
+    secondary: [
+      { label: 'See The Full App', url: parentUrl }
+    ]
+  }
+}
+
+function button(label, url, secondary = false) {
+  const bg = secondary ? '#1E1E1E' : '#E8000D'
+  const border = secondary ? '1px solid #333333' : '1px solid #E8000D'
+  return `<a href="${url}" style="display:block;background:${bg};border:${border};color:#ffffff;text-decoration:none;text-transform:uppercase;font-family:Arial Black,Arial,sans-serif;font-size:14px;letter-spacing:0.04em;text-align:center;padding:16px 18px;margin:10px 0;">${label}</a>`
+}
+
+async function sendFreeBundleEmail({ apiKey, email, firstName, body }) {
+  const roles = parseRoles(body.roles)
+  const copy = freeBundleEmailCopy(roles)
+  const roleLabel = roles.length ? roles.join(', ') : 'fan'
+  const html = `
+    <div style="margin:0;padding:0;background:#111111;color:#ffffff;font-family:Arial,sans-serif;">
+      <div style="max-width:600px;margin:0 auto;background:#111111;padding:28px 20px;">
+        <div style="height:5px;background:#E8000D;margin-bottom:24px;"></div>
+        <p style="margin:0 0 12px;color:#E8000D;text-transform:uppercase;font-family:Arial Black,Arial,sans-serif;letter-spacing:0.14em;font-size:12px;">Free Joner Football bundle</p>
+        <h1 style="margin:0 0 18px;color:#ffffff;text-transform:uppercase;font-family:Arial Black,Arial,sans-serif;font-size:36px;line-height:0.95;">${copy.headline}</h1>
+        ${copy.body.map((paragraph) => `<p style="color:#CCCCCC;font-size:16px;line-height:1.55;margin:0 0 16px;">${paragraph}</p>`).join('')}
+        ${button(copy.primaryCta, copy.primaryUrl)}
+        ${copy.secondary.length ? `<p style="color:#ffffff;font-family:Arial Black,Arial,sans-serif;text-transform:uppercase;font-size:15px;margin:28px 0 10px;">Want more?</p>${copy.secondary.map((item) => button(item.label, item.url, true)).join('')}` : ''}
+        <p style="color:#CCCCCC;font-size:15px;line-height:1.55;margin:24px 0 0;">Keep training properly,<br>Lee</p>
+        <p style="color:#777777;font-size:12px;line-height:1.5;margin:24px 0 0;">You got this because you asked for the free Joner Football videos. Role selected: ${roleLabel}.</p>
+      </div>
+    </div>
+  `
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': apiKey,
+    },
+    body: JSON.stringify({
+      sender: {
+        name: 'Lee Jones | Joner Football',
+        email: process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com',
+      },
+      to: [{ email, name: firstName || 'Joner Football' }],
+      subject: copy.subject,
+      htmlContent: html,
+      params: { preview: copy.preview }
+    }),
+  })
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    throw new Error(`Free bundle email failed: ${response.status} ${text}`)
+  }
+}
+
 async function sendSubscribeNotification({ source, email, firstName, body }) {
-  if (source !== 'coaches-course-application') return
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey) return
+
+  if (source.startsWith('free-bundle')) {
+    await sendFreeBundleEmail({ apiKey, email, firstName, body })
+    return
+  }
+
+  if (source !== 'coaches-course-application') return
   const to = String(process.env.COACHES_COURSE_NOTIFICATION_EMAIL || 'leejones@jonerfootball.com')
     .split(',')
     .map((address) => address.trim().toLowerCase())

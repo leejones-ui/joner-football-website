@@ -2,10 +2,12 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro'
 
 const title = 'Your Free Videos Are Ready | Joner Football'
-const description = 'Your Joner Football free training videos are ready. Check your email and start with the free app section.'
+const description = 'Your Joner Football free training videos are ready. Check your email or click below to watch.'
 const canonical = 'https://jonerfootball.com/free-bundle/watch/'
 const freeAppSectionUrl = 'https://app.jonerfootball.com/categories/category-vpi8uazway4?utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=open_free_section'
-const joinUrl = '/join/?utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=join_app_cta'
+const coachesUrl = '/app/for-coaches/?utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=coaching_videos'
+const playerUrl = 'https://app.jonerfootball.com/categories/category-qee31-z2mxo?utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=player_100_day_program'
+const teamsUrl = '/teams/?utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=team_subscription'
 ---
 
 <BaseLayout
@@ -18,40 +20,42 @@ const joinUrl = '/join/?utm_source=free_bundle&utm_medium=thank_you_page&utm_cam
   <main class="bundle-watch-page">
     <section class="bundle-ready">
       <div class="bundle-ready__inner">
-        <p class="ready-eyebrow">You are in</p>
-        <h1>Your Free Videos Are Ready</h1>
-        <p class="ready-subtitle">
-          Check your email for the bundle. You can also start with the Joner Football free section now.
-        </p>
-        <div class="ready-actions">
-          <a href={freeAppSectionUrl} target="_blank" rel="noopener noreferrer" class="ready-button ready-button--red">Open Free Videos</a>
-          <a href={joinUrl} class="ready-button ready-button--dark">See The Full App</a>
+        <div class="bundle-hero-image">
+          <img src="/images/free-bundle/free-bundle-hero.jpg" alt="Joner Football free training video bundle" onerror="this.closest('.bundle-hero-image').style.display='none'" />
+        </div>
+        <div class="bundle-ready__copy">
+          <p class="ready-eyebrow">Free videos ready</p>
+          <h1>Check Your Email</h1>
+          <p class="ready-subtitle">
+            I’ve sent the free bundle to your inbox. You can also click below and start watching now.
+          </p>
+          <div class="ready-actions">
+            <a href={freeAppSectionUrl} target="_blank" rel="noopener noreferrer" class="ready-button ready-button--red">Open Free Videos</a>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="next-steps" aria-labelledby="next-steps-title">
-      <div class="next-steps__inner">
-        <div>
-          <p class="ready-eyebrow">What happens next</p>
-          <h2 id="next-steps-title">Start free. Train properly.</h2>
-        </div>
-        <div class="step-grid">
-          <article>
-            <span>1</span>
-            <h3>Open your email</h3>
-            <p>The free bundle email gives you the training videos and the next steps.</p>
-          </article>
-          <article>
-            <span>2</span>
-            <h3>Use the free section</h3>
-            <p>Watch the videos, test the coaching style and start training with more structure.</p>
-          </article>
-          <article>
-            <span>3</span>
-            <h3>Go deeper in the app</h3>
-            <p>The full app gives players, parents and coaches the plan behind the videos.</p>
-          </article>
+    <section class="want-more" aria-labelledby="want-more-title">
+      <div class="want-more__inner">
+        <p class="ready-eyebrow">Want more?</p>
+        <h2 id="want-more-title">Choose what fits you</h2>
+        <div class="funnel-grid">
+          <a href={coachesUrl} class="funnel-card">
+            <span>Coaches</span>
+            <strong>Coaching Videos</strong>
+            <small>Session plans, coaching detail and ideas for your team.</small>
+          </a>
+          <a href={playerUrl} target="_blank" rel="noopener noreferrer" class="funnel-card">
+            <span>Players</span>
+            <strong>Player Videos</strong>
+            <small>Start the 100 Day Program and train with structure.</small>
+          </a>
+          <a href={teamsUrl} class="funnel-card">
+            <span>Clubs and teams</span>
+            <strong>Team Subscription</strong>
+            <small>Bring Joner Football training into your full team setup.</small>
+          </a>
         </div>
       </div>
     </section>
@@ -74,14 +78,32 @@ const joinUrl = '/join/?utm_source=free_bundle&utm_medium=thank_you_page&utm_cam
     }
 
     .bundle-ready__inner,
-    .next-steps__inner {
+    .want-more__inner {
       width: min(1120px, calc(100% - 32px));
       margin: 0 auto;
     }
 
     .bundle-ready__inner {
-      padding: 76px 0;
+      padding: 38px 0 54px;
+      display: grid;
+      gap: 24px;
+      align-items: center;
       text-align: center;
+    }
+
+    .bundle-hero-image {
+      width: min(520px, 100%);
+      margin: 0 auto;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: #111;
+      box-shadow: 0 26px 80px rgba(0,0,0,0.45);
+      overflow: hidden;
+    }
+
+    .bundle-hero-image img {
+      display: block;
+      width: 100%;
+      height: auto;
     }
 
     .ready-eyebrow {
@@ -94,7 +116,7 @@ const joinUrl = '/join/?utm_source=free_bundle&utm_medium=thank_you_page&utm_cam
     }
 
     .bundle-ready h1,
-    .next-steps h2 {
+    .want-more h2 {
       font-family: Arial Black, Arial, sans-serif;
       text-transform: uppercase;
       letter-spacing: -0.06em;
@@ -103,29 +125,26 @@ const joinUrl = '/join/?utm_source=free_bundle&utm_medium=thank_you_page&utm_cam
     }
 
     .bundle-ready h1 {
-      font-size: clamp(42px, 11vw, 102px);
+      font-size: clamp(46px, 12vw, 102px);
     }
 
     .ready-subtitle {
       color: rgba(255,255,255,0.78);
       font-size: clamp(18px, 4vw, 24px);
-      max-width: 720px;
-      margin: 22px auto 0;
+      max-width: 670px;
+      margin: 20px auto 0;
       line-height: 1.32;
     }
 
     .ready-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      max-width: 460px;
-      margin: 32px auto 0;
+      max-width: 420px;
+      margin: 30px auto 0;
     }
 
     .ready-button {
       display: grid;
       place-items: center;
-      min-height: 58px;
+      min-height: 60px;
       padding: 0 22px;
       font-family: Arial Black, Arial, sans-serif;
       text-transform: uppercase;
@@ -138,72 +157,77 @@ const joinUrl = '/join/?utm_source=free_bundle&utm_medium=thank_you_page&utm_cam
       color: #fff;
     }
 
-    .ready-button--dark {
-      border: 1px solid rgba(255,255,255,0.22);
-      color: #fff;
-      background: rgba(255,255,255,0.04);
-    }
-
-    .next-steps {
-      padding: 54px 0 72px;
+    .want-more {
+      padding: 48px 0 72px;
       background: #050505;
     }
 
-    .next-steps h2 {
-      font-size: clamp(34px, 8vw, 70px);
-      max-width: 760px;
-      margin-bottom: 28px;
+    .want-more h2 {
+      font-size: clamp(34px, 8vw, 72px);
+      max-width: 780px;
+      margin-bottom: 26px;
     }
 
-    .step-grid {
+    .funnel-grid {
       display: grid;
       gap: 14px;
     }
 
-    .step-grid article {
+    .funnel-card {
+      display: block;
       background: #111;
       border: 1px solid rgba(255,255,255,0.1);
       padding: 22px;
-    }
-
-    .step-grid span {
-      display: grid;
-      place-items: center;
-      width: 34px;
-      height: 34px;
-      background: #E8000D;
       color: #fff;
-      border-radius: 999px;
-      font-family: Arial Black, Arial, sans-serif;
-      margin-bottom: 18px;
+      text-decoration: none;
+      transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
     }
 
-    .step-grid h3 {
+    .funnel-card:hover {
+      border-color: #E8000D;
+      background: #151515;
+      transform: translateY(-2px);
+    }
+
+    .funnel-card span {
+      display: block;
+      color: #E8000D;
       font-family: Arial Black, Arial, sans-serif;
       text-transform: uppercase;
-      margin: 0 0 10px;
-      font-size: 24px;
+      letter-spacing: 0.14em;
+      font-size: 11px;
+      margin-bottom: 16px;
+    }
+
+    .funnel-card strong {
+      display: block;
+      font-family: Arial Black, Arial, sans-serif;
+      text-transform: uppercase;
+      font-size: 25px;
       line-height: 1;
+      margin-bottom: 10px;
     }
 
-    .step-grid p {
-      margin: 0;
+    .funnel-card small {
+      display: block;
       color: rgba(255,255,255,0.72);
-      line-height: 1.5;
+      font-size: 15px;
+      line-height: 1.45;
     }
 
-    @media (min-width: 760px) {
+    @media (min-width: 860px) {
+      .bundle-ready__inner {
+        grid-template-columns: minmax(320px, 0.82fr) minmax(0, 1fr);
+        text-align: left;
+        padding: 70px 0;
+      }
+
+      .ready-subtitle,
       .ready-actions {
-        flex-direction: row;
-        justify-content: center;
-        max-width: none;
+        margin-left: 0;
       }
 
-      .ready-button {
-        min-width: 220px;
-      }
-
-      .step-grid {
+      .funnel-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
