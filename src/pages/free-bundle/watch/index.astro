@@ -594,23 +594,29 @@ const nextSteps = [
         track.scrollTo({ left: offset, behavior: reduced ? 'auto' : 'smooth' })
       }
 
-      const observer = new IntersectionObserver(
-        (entries) => {
-          let best = { ratio: 0, index: current }
-          entries.forEach((entry) => {
-            if (entry.intersectionRatio > best.ratio) {
-              best = {
-                ratio: entry.intersectionRatio,
-                index: Number(entry.target.dataset.index || 0),
-              }
-            }
-          })
-          if (best.ratio > 0.55) setActive(best.index)
-        },
-        { root: track, threshold: [0.4, 0.55, 0.75] }
-      )
+      const updateFromScroll = () => {
+        const trackCenter = track.scrollLeft + track.clientWidth / 2
+        let bestIndex = 0
+        let bestDistance = Number.POSITIVE_INFINITY
 
-      slides.forEach((slide) => observer.observe(slide))
+        slides.forEach((slide, index) => {
+          const slideCenter = slide.offsetLeft + slide.clientWidth / 2
+          const distance = Math.abs(trackCenter - slideCenter)
+          if (distance < bestDistance) {
+            bestDistance = distance
+            bestIndex = index
+          }
+        })
+
+        setActive(bestIndex)
+      }
+
+      let scrollTimer
+      track.addEventListener('scroll', () => {
+        if (scrollTimer) window.clearTimeout(scrollTimer)
+        scrollTimer = window.setTimeout(updateFromScroll, 80)
+      }, { passive: true })
+
       dots.forEach((dot) => {
         dot.addEventListener('click', () => {
           const index = Number(dot.dataset.dotIndex || 0)
