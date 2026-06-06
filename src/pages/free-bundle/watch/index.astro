@@ -18,7 +18,7 @@ const freeBundleSteps = [
     title: 'Cognitive Bundle',
     subtitle: 'Free training videos to sharpen decision making.',
     href: cognitiveBundleUrl,
-    image: '/images/free-bundle/cards/cognitive-bundle.jpg',
+    image: '/images/app/highlight-slide-1.png',
     external: true,
   },
   {
@@ -26,7 +26,7 @@ const freeBundleSteps = [
     title: 'Session Plan Pack',
     subtitle: 'Free session plans to use with your players.',
     href: coachSessionPlanUrl,
-    image: '/images/free-bundle/cards/session-plan-pack.jpg',
+    image: '/images/app/highlight-slide-3.png',
     external: true,
   },
   {
@@ -34,7 +34,7 @@ const freeBundleSteps = [
     title: 'Solo Training Pack',
     subtitle: 'Free home training pack for sharper technique.',
     href: soloTrainingPackUrl,
-    image: '/images/free-bundle/cards/solo-training-pack.jpg',
+    image: '/images/app/highlight-slide-2.png',
     external: true,
   },
 ]
@@ -104,48 +104,66 @@ const nextSteps = [
           <span class="want-more__rule" aria-hidden="true"></span>
         </header>
 
-        <p class="want-more__section-label">Free bundle links</p>
-        <div class="next-step-grid" aria-label="Claim more free Joner Football bundles">
-          {freeBundleSteps.map((step) => (
-            <a
-              href={step.href}
-              class="next-step-card"
-              target={step.external ? '_blank' : undefined}
-              rel={step.external ? 'noopener noreferrer' : undefined}
-              aria-label={`Claim ${step.title}`}
-            >
-              <img src={step.image} alt="" aria-hidden="true" loading="lazy" class="next-step-card__bg" />
-              <span class="next-step-card__shade" aria-hidden="true"></span>
-              <span class="next-step-card__badge">{step.label}</span>
-              <span class="next-step-card__body">
-                <span class="next-step-card__title">{step.title}</span>
-                <span class="next-step-card__subtitle">{step.subtitle}</span>
-              </span>
-              <span class="next-step-card__arrow" aria-hidden="true">→</span>
-            </a>
-          ))}
+        <div class="watch-slider" data-watch-carousel>
+          <p class="want-more__section-label">Free bundle links</p>
+          <div class="watch-slider__track" aria-label="Claim more free Joner Football bundles" data-watch-track>
+            {freeBundleSteps.map((step, index) => (
+              <a
+                href={step.href}
+                class="next-step-card watch-slider__slide"
+                target={step.external ? '_blank' : undefined}
+                rel={step.external ? 'noopener noreferrer' : undefined}
+                aria-label={`Claim ${step.title}`}
+                data-watch-slide
+                data-index={index}
+              >
+                <img src={step.image} alt="" aria-hidden="true" loading={index === 0 ? 'eager' : 'lazy'} class="next-step-card__bg" />
+                <span class="next-step-card__shade" aria-hidden="true"></span>
+                <span class="next-step-card__badge">{step.label}</span>
+                <span class="next-step-card__body">
+                  <span class="next-step-card__title">{step.title}</span>
+                  <span class="next-step-card__subtitle">{step.subtitle}</span>
+                </span>
+                <span class="next-step-card__arrow" aria-hidden="true">→</span>
+              </a>
+            ))}
+          </div>
+          <div class="watch-slider__dots" aria-hidden="true">
+            {freeBundleSteps.map((_, index) => (
+              <button type="button" class="watch-slider__dot" data-watch-dot data-dot-index={index} aria-label={`Go to free bundle ${index + 1}`}></button>
+            ))}
+          </div>
         </div>
 
-        <p class="want-more__section-label want-more__section-label--second">Then pick your path</p>
-        <div class="next-step-grid" aria-label="Choose your next Joner Football path">
-          {nextSteps.map((step) => (
-            <a
-              href={step.href}
-              class="next-step-card"
-              target={step.external ? '_blank' : undefined}
-              rel={step.external ? 'noopener noreferrer' : undefined}
-              aria-label={`View ${step.title}`}
-            >
-              <img src={step.image} alt="" aria-hidden="true" loading="lazy" class="next-step-card__bg" />
-              <span class="next-step-card__shade" aria-hidden="true"></span>
-              <span class="next-step-card__badge">{step.label}</span>
-              <span class="next-step-card__body">
-                <span class="next-step-card__title">{step.title}</span>
-                <span class="next-step-card__subtitle">{step.subtitle}</span>
-              </span>
-              <span class="next-step-card__arrow" aria-hidden="true">→</span>
-            </a>
-          ))}
+        <div class="watch-slider watch-slider--second" data-watch-carousel>
+          <p class="want-more__section-label want-more__section-label--second">Then pick your path</p>
+          <div class="watch-slider__track" aria-label="Choose your next Joner Football path" data-watch-track>
+            {nextSteps.map((step, index) => (
+              <a
+                href={step.href}
+                class="next-step-card watch-slider__slide"
+                target={step.external ? '_blank' : undefined}
+                rel={step.external ? 'noopener noreferrer' : undefined}
+                aria-label={`View ${step.title}`}
+                data-watch-slide
+                data-index={index}
+              >
+                <img src={step.image} alt="" aria-hidden="true" loading="lazy" class="next-step-card__bg" />
+                <span class="next-step-card__shade" aria-hidden="true"></span>
+                <span class="next-step-card__badge">{step.label}</span>
+                <span class="next-step-card__body">
+                  <span class="next-step-card__title">{step.title}</span>
+                  <span class="next-step-card__subtitle">{step.subtitle}</span>
+                </span>
+                <span class="next-step-card__arrow" aria-hidden="true">→</span>
+              </a>
+            ))}
+          </div>
+          <div class="watch-slider__dots" aria-hidden="true">
+            {nextSteps.map((_, index) => (
+              <button type="button" class="watch-slider__dot" data-watch-dot data-dot-index={index} aria-label={`Go to path ${index + 1}`}></button>
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -304,10 +322,61 @@ const nextSteps = [
       margin-top: clamp(2rem, 4vw, 3rem);
     }
 
-    .next-step-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: clamp(0.8rem, 1.2vw, 1rem);
+    .watch-slider {
+      overflow: visible;
+    }
+
+    .watch-slider--second {
+      margin-top: clamp(1.6rem, 3vw, 2.4rem);
+    }
+
+    .watch-slider__track {
+      display: flex;
+      gap: clamp(0.75rem, 1.4vw, 1rem);
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-padding-inline: max(1rem, calc((100vw - 1120px) / 2));
+      padding: 0 max(1rem, calc((100vw - 1120px) / 2)) 0.35rem;
+      margin-inline: calc(50% - 50vw);
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+    }
+
+    .watch-slider__track::-webkit-scrollbar {
+      display: none;
+    }
+
+    .watch-slider__slide {
+      flex: 0 0 min(86vw, 680px);
+      aspect-ratio: 16 / 10;
+      min-height: auto;
+      scroll-snap-align: center;
+      scroll-snap-stop: always;
+    }
+
+    .watch-slider__dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      margin-top: 1rem;
+    }
+
+    .watch-slider__dot {
+      width: 8px;
+      height: 8px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.32);
+      padding: 0;
+      transition: width 220ms ease, background 220ms ease;
+    }
+
+    .watch-slider__dot[data-active='true'] {
+      width: 26px;
+      background: rgba(255,255,255,0.92);
     }
 
     .next-step-card {
@@ -486,9 +555,13 @@ const nextSteps = [
         font-size: clamp(3.6rem, 16vw, 5.2rem);
       }
 
-      .next-step-grid {
-        grid-template-columns: 1fr;
-        gap: 12px;
+      .watch-slider__track {
+        scroll-padding-inline: 1rem;
+        padding-inline: 1rem;
+      }
+
+      .watch-slider__slide {
+        flex-basis: 88vw;
       }
 
       .next-step-card {
@@ -496,4 +569,57 @@ const nextSteps = [
       }
     }
   </style>
+
+  <script>
+    document.querySelectorAll('[data-watch-carousel]').forEach((carousel) => {
+      const track = carousel.querySelector('[data-watch-track]')
+      const slides = Array.from(carousel.querySelectorAll('[data-watch-slide]'))
+      const dots = Array.from(carousel.querySelectorAll('[data-watch-dot]'))
+      if (!track || !slides.length || !dots.length) return
+
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      let current = 0
+
+      const setActive = (index) => {
+        current = index
+        dots.forEach((dot, dotIndex) => {
+          dot.dataset.active = dotIndex === index ? 'true' : 'false'
+        })
+      }
+
+      const goTo = (index) => {
+        const target = slides[index]
+        if (!target) return
+        const offset = target.offsetLeft - (track.clientWidth - target.clientWidth) / 2
+        track.scrollTo({ left: offset, behavior: reduced ? 'auto' : 'smooth' })
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          let best = { ratio: 0, index: current }
+          entries.forEach((entry) => {
+            if (entry.intersectionRatio > best.ratio) {
+              best = {
+                ratio: entry.intersectionRatio,
+                index: Number(entry.target.dataset.index || 0),
+              }
+            }
+          })
+          if (best.ratio > 0.55) setActive(best.index)
+        },
+        { root: track, threshold: [0.4, 0.55, 0.75] }
+      )
+
+      slides.forEach((slide) => observer.observe(slide))
+      dots.forEach((dot) => {
+        dot.addEventListener('click', () => {
+          const index = Number(dot.dataset.dotIndex || 0)
+          setActive(index)
+          goTo(index)
+        })
+      })
+
+      setActive(0)
+    })
+  </script>
 </BaseLayout>
