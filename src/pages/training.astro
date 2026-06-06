@@ -1251,7 +1251,19 @@ const sanityPage = await fetchSanityPage('training')
 
     @media (max-width: 640px) {
       .training-next-step {
-        padding: 4rem 0 14rem;
+        padding: 4.25rem 0 8rem;
+        background-image:
+          linear-gradient(90deg, #020202 0%, rgba(2,2,2,0.98) 30%, rgba(2,2,2,0.78) 58%, rgba(2,2,2,0.38) 100%),
+          url('/images/home-storyboard/08-action-coach-night.webp');
+        background-position: 58% top;
+      }
+
+      .training-next-step::after {
+        display: none;
+      }
+
+      .training-next-step__header {
+        margin-bottom: 8rem;
       }
 
       .training-next-step__grid {
