@@ -15,11 +15,12 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
   <main class="free-bundle-page">
     <section class="free-hero" aria-labelledby="free-bundle-title">
       <picture class="free-hero__picture" aria-hidden="true">
+        <source media="(max-width: 859px)" srcset="/images/free-bundle/mobile-version-landing.webp" type="image/webp" />
+        <source media="(max-width: 859px)" srcset="/images/free-bundle/mobile-version-landing.png" type="image/png" />
         <source srcset="/images/free-bundle/landing-page-hero.webp" type="image/webp" />
         <img src="/images/free-bundle/landing-page-hero.png" alt="" />
       </picture>
       <div class="free-hero__shade" aria-hidden="true"></div>
-      <img class="mobile-phone-peek" src="/images/free-bundle/phone-peek.webp" alt="" aria-hidden="true" loading="eager" />
 
       <div class="free-hero__inner">
         <div class="free-panel">
@@ -63,7 +64,7 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
                 </div>
               </fieldset>
 
-              <button type="submit" class="free-submit">Send Me The Videos</button>
+              <button type="submit" class="free-submit btn-red">Send Me The Videos</button>
               <p id="free-bundle-status" class="free-status" aria-live="polite"></p>
             </form>
           </div>
@@ -218,9 +219,6 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
         linear-gradient(90deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.22) 46%, rgba(0,0,0,0.18) 100%);
     }
 
-    .mobile-phone-peek {
-      display: none;
-    }
 
     .free-hero__inner {
       position: relative;
@@ -318,6 +316,8 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
     }
 
     .role-option {
+      min-width: 0;
+      overflow: hidden;
       cursor: pointer;
     }
 
@@ -331,20 +331,30 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
       display: grid;
       place-items: center;
       min-height: 50px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(20,20,20,0.9);
+      border: 1px solid rgba(255,255,255,0.42);
+      border-radius: 999px;
+      background: rgba(5,5,5,0.42);
       color: rgba(255,255,255,0.84);
-      font-family: Arial Black, Arial, sans-serif;
+      font-family: 'Anton', Impact, sans-serif;
       text-transform: uppercase;
-      letter-spacing: 0.035em;
+      letter-spacing: 0.08em;
       font-size: 12px;
       text-align: center;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
       transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+    }
+
+    .role-option:hover span {
+      border-color: #E8000D;
+      background: #E8000D;
+      color: #fff;
     }
 
     .role-option input:checked + span {
       border-color: #E8000D;
-      background: rgba(232,0,13,0.22);
+      background: #E8000D;
       color: #fff;
       transform: translateY(-1px);
     }
@@ -354,11 +364,8 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
       min-height: 58px;
       margin-top: 16px;
       border: 0;
-      background: #E8000D;
-      color: #fff;
-      font-family: Arial Black, Arial, sans-serif;
-      text-transform: uppercase;
-      letter-spacing: 0.02em;
+      font-family: 'Anton', Impact, sans-serif;
+      letter-spacing: 0.12em;
       font-size: clamp(13px, 3.4vw, 15px);
       white-space: nowrap;
       cursor: pointer;
@@ -386,67 +393,60 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
       }
 
       .free-hero__picture img {
-        object-position: left center;
+        object-position: center center;
       }
 
       .free-hero__shade {
         background:
-          linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.18) 30%, rgba(0,0,0,0.76) 66%, rgba(0,0,0,0.94) 100%),
-          linear-gradient(90deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.18) 100%);
+          linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.10) 31%, rgba(0,0,0,0.50) 61%, rgba(0,0,0,0.82) 100%),
+          linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.20) 100%);
       }
 
       .free-hero__inner {
-        width: min(100% - 24px, 430px);
+        width: min(100% - 72px, 300px);
         padding-bottom: 28px;
       }
 
-      .mobile-phone-peek {
-        display: block;
-        position: absolute;
-        z-index: 1;
-        left: 13px;
-        top: 224px;
-        width: 82px;
-        height: auto;
-        filter: drop-shadow(0 14px 26px rgba(0,0,0,0.72));
-        transform: rotate(-2deg);
-      }
 
       .free-panel {
         gap: 12px;
       }
 
       .free-copy h1 {
-        font-size: clamp(31px, 8.85vw, 38px);
-        line-height: 0.92;
-        letter-spacing: -0.07em;
+        font-size: clamp(21px, 5.85vw, 24px);
+        line-height: 0.95;
+        letter-spacing: -0.02em;
         white-space: nowrap;
       }
 
       .free-subtitle {
-        font-size: clamp(9.5px, 2.62vw, 11px);
-        letter-spacing: 0.045em;
+        font-size: clamp(7px, 1.9vw, 8.4px);
+        letter-spacing: 0.01em;
         line-height: 1.1;
         white-space: nowrap;
       }
 
       .free-card {
-        padding: 16px;
+        padding: 14px;
         background: rgba(4, 4, 4, 0.78);
+        overflow: hidden;
+      }
+
+      .role-grid {
+        gap: 8px;
       }
 
       .role-option span {
-        min-height: 48px;
-        background: rgba(17, 17, 17, 0.88);
-        border-color: rgba(255, 255, 255, 0.22);
-        font-family: Arial, sans-serif;
-        font-weight: 800;
+        min-height: 46px;
+        border-color: rgba(255, 255, 255, 0.52);
+        padding: 0 8px;
+        font-size: clamp(9.5px, 2.65vw, 11px);
+        letter-spacing: 0.045em;
+        white-space: nowrap;
       }
 
       .free-submit {
-        font-family: Arial, sans-serif;
-        font-weight: 900;
-        letter-spacing: 0.035em;
+        font-size: clamp(11.5px, 3vw, 13px);
       }
     }
 
