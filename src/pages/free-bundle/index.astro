@@ -192,6 +192,10 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
       min-height: 100vh;
     }
 
+    body:has(.free-bundle-page) > footer {
+      display: none;
+    }
+
     .free-hero {
       position: relative;
       min-height: calc(100vh - 88px);
@@ -241,7 +245,16 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
     }
 
     .free-copy {
-      text-shadow: 0 6px 24px rgba(0,0,0,0.75);
+      width: fit-content;
+      max-width: min(100%, 760px);
+      padding: clamp(12px, 2.2vw, 22px) clamp(14px, 2.7vw, 28px);
+      border-left: 5px solid #E8000D;
+      background:
+        linear-gradient(90deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.54) 58%, rgba(0,0,0,0.08) 100%);
+      box-shadow: 0 22px 62px rgba(0,0,0,0.48);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      text-shadow: 0 3px 10px rgba(0,0,0,0.92), 0 12px 34px rgba(0,0,0,0.72);
     }
 
     .free-copy h1 {
@@ -265,6 +278,7 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
       max-width: 560px;
       margin: 0;
       white-space: nowrap;
+      text-shadow: 0 3px 10px rgba(0,0,0,0.96), 0 0 22px rgba(0,0,0,0.7);
     }
 
     .free-card {
@@ -422,6 +436,11 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
       .free-copy {
         min-width: 0;
         overflow: hidden;
+        width: 100%;
+        padding: 10px 12px;
+        border-left-width: 4px;
+        background:
+          linear-gradient(90deg, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.54) 70%, rgba(0,0,0,0.10) 100%);
       }
 
       .free-copy h1 {
