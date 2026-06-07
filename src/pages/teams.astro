@@ -40,12 +40,6 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
 const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'Team and club subscriptions for the Joner Football App')
 const primaryCta = getSanityCta(sanityPage?.primaryCta, { label: 'Get a Quote', url: '#team-subscription-form' })
 
-const proof = [
-  ['100+', 'SESSION PLANS'],
-  ['ALL', 'PLAYERS INCLUDED'],
-  ['FAST', 'TEAM SETUP'],
-]
-
 const benefits = [
   { num: '01', title: 'One plan for the whole squad', body: 'Every player gets access to the same training library, programs, and technical detail. No messy individual setup for families.' },
   { num: '02', title: 'More work between sessions', body: 'Team training is only part of development. Players can follow structured app sessions at home and arrive sharper.' },
@@ -102,17 +96,9 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
             </div>
           </div>
 
-          <div class="relative z-10 grid grid-cols-2 border-t border-white/10 bg-black/50 backdrop-blur-sm md:grid-cols-4">
-            <div class="border-white/10 p-5 text-center md:border-r md:text-left">
-              <div class="font-heading text-sm font-bold uppercase tracking-[0.22em] text-joner-red">Built for clubs</div>
-              <div class="mt-2 font-body text-xs leading-relaxed text-neutral-300 sm:text-sm">A cleaner way to give a full team access without sending every parent to sign up alone.</div>
-            </div>
-            {proof.map(([number, label], index) => (
-              <div class={`p-5 text-center ${index < proof.length - 1 ? 'md:border-r' : ''} border-white/10 ${index > 0 ? 'border-t md:border-t-0' : ''}`}>
-                <div class={`font-heading text-2xl font-bold md:text-3xl ${index === 2 ? 'text-joner-red' : 'text-white'}`}>{number}</div>
-                <div class="mt-1 font-body text-[10px] uppercase tracking-wider text-neutral-500 sm:text-xs">{label}</div>
-              </div>
-            ))}
+          <div class="relative z-10 border-t border-white/10 bg-black/75 px-5 py-5 backdrop-blur-sm sm:px-8">
+            <p class="font-heading text-sm font-bold uppercase tracking-[0.22em] text-joner-red">Built for clubs</p>
+            <p class="mt-2 max-w-2xl font-body text-sm leading-relaxed text-neutral-300 sm:text-base">Give your whole squad one clean app setup.</p>
           </div>
         </div>
       </div>
