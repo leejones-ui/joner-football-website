@@ -155,6 +155,8 @@ function enforceFreeBundleRoleLists(listIds, body) {
   // Free bundle has its own transactional email. Do not add to Hot APP Leads
   // here because that Brevo list triggers the generic "Welcome to Joner Football" email.
   const ids = new Set(listIds.filter((id) => Number(id) !== 2))
+  // Every free bundle signup also enters the shared free-bundle automation flow.
+  ids.add(Number(process.env.BREVO_FREE_BUNDLE_USERS_LIST_ID || 42))
   if (roles.includes('coach')) {
     ids.add(Number(process.env.BREVO_COACHES_FREE_BUNDLE_USERS_LIST_ID || 34))
     ids.add(Number(process.env.BREVO_COACHES_DATABASE_LIST_ID || 39))
