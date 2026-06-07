@@ -179,6 +179,7 @@ function freeBundleEmailCopy(roles) {
   const coachesUrl = utm('https://jonerfootball.com/app/for-coaches/', campaign, 'coaches_button')
   const coachSessionPlanUrl = utm('https://app.jonerfootball.com/checkout/new?o=226775', campaign, 'free_session_plan_pack_image')
   const soloTrainingPackUrl = 'https://app.jonerfootball.com/checkout/new?o=226774&utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=free_solo_training_pack'
+  const cognitiveBundleUrl = 'https://app.jonerfootball.com/checkout/new?o=228257&utm_source=free_bundle&utm_medium=thank_you_page&utm_campaign=free_bundle_followers&utm_content=cognitive_bundle'
   const playerUrl = utm('https://app.jonerfootball.com/categories/category-qee31-z2mxo', campaign, 'player_100_day_button')
   const parentUrl = utm('https://jonerfootball.com/join/', campaign, 'parent_app_button')
   const teamUrl = utm('https://jonerfootball.com/teams/', campaign, 'team_subscription_button')
@@ -256,6 +257,9 @@ function freeBundleEmailCopy(roles) {
       ],
       primaryCta: 'Open Free Videos',
       primaryUrl: freeUrl,
+      promoImage: 'https://jonerfootball.com/images/free-bundle/emails/cognitive-free-bundle.jpg',
+      promoAlt: 'Cognitive Training Content Free Bundle for Joner Football parents',
+      promoUrl: cognitiveBundleUrl,
       upsellHeading: 'Give them a clearer path',
       upsellText: 'After the free videos, use the app to keep their training organised. It is the easiest way to help your player improve away from team training.',
       upsellCta: 'See The App',
