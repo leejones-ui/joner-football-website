@@ -177,6 +177,7 @@ function freeBundleEmailCopy(roles) {
   const campaign = 'free_bundle_followers'
   const freeUrl = utm('https://app.jonerfootball.com/categories/category-vpi8uazway4', campaign, 'free_section_button')
   const coachesUrl = utm('https://jonerfootball.com/app/for-coaches/', campaign, 'coaches_button')
+  const coachSessionPlanUrl = utm('https://app.jonerfootball.com/checkout/new?o=226775', campaign, 'free_session_plan_pack_image')
   const playerUrl = utm('https://app.jonerfootball.com/categories/category-qee31-z2mxo', campaign, 'player_100_day_button')
   const parentUrl = utm('https://jonerfootball.com/join/', campaign, 'parent_app_button')
   const teamUrl = utm('https://jonerfootball.com/teams/', campaign, 'team_subscription_button')
@@ -197,8 +198,11 @@ function freeBundleEmailCopy(roles) {
       ],
       primaryCta: 'Open Free Videos',
       primaryUrl: freeUrl,
+      promoImage: 'https://jonerfootball.com/images/free-bundle/emails/session-plans-free-bundle.jpg',
+      promoAlt: 'Session Plans Free Bundle for Joner Football coaches',
+      promoUrl: coachSessionPlanUrl,
       upsellHeading: 'Coach better sessions',
-      upsellText: 'After you watch the free videos, the next best step is the coaches section. Use it to plan cleaner sessions, explain detail better and give players more purpose in training.',
+      upsellText: 'Use the coaches section to plan cleaner sessions and give players better detail.',
       upsellCta: 'See Coaching Videos',
       upsellUrl: coachesUrl,
       secondary: [
@@ -303,7 +307,8 @@ async function sendFreeBundleEmail({ apiKey, email, firstName, body }) {
         <h1 style="margin:0 0 18px;color:#ffffff;text-transform:uppercase;font-family:Arial Black,Arial,sans-serif;font-size:38px;line-height:0.95;">${copy.headline}</h1>
         ${copy.body.map((paragraph) => `<p style="color:#CCCCCC;font-size:16px;line-height:1.55;margin:0 0 16px;">${paragraph}</p>`).join('')}
         ${button(copy.primaryCta, copy.primaryUrl)}
-        <div style="background:#1E1E1E;border:1px solid #333333;margin:26px 0 14px;padding:18px 16px;">
+        ${copy.promoImage ? `<a href="${copy.promoUrl}" style="display:block;margin:16px 0 22px;text-decoration:none;"><img src="${copy.promoImage}" alt="${copy.promoAlt || ''}" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0;margin:0 auto;"></a>` : ''}
+        <div style="background:#1E1E1E;border:1px solid #333333;margin:22px 0 14px;padding:18px 16px;">
           <p style="margin:0 0 8px;color:#E8000D;font-family:Arial Black,Arial,sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:0.08em;">After the free videos</p>
           <h2 style="margin:0 0 10px;color:#ffffff;font-family:Arial Black,Arial,sans-serif;text-transform:uppercase;font-size:24px;line-height:1;">${copy.upsellHeading}</h2>
           <p style="color:#CCCCCC;font-size:15px;line-height:1.5;margin:0 0 14px;">${copy.upsellText}</p>
