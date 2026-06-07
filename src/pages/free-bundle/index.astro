@@ -75,7 +75,6 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
 
   <script is:inline>
     (function () {
-      var HOT_APP_LEADS = 2;
       var COACHES_DATABASE = 39;
       var COACHES_FREE_BUNDLE_USERS = 34;
       var PLAYERS_APP_LEADS = 50;
@@ -130,7 +129,7 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
           return;
         }
 
-        var listIds = [HOT_APP_LEADS];
+        var listIds = [];
         selectedRoles.forEach(function (role) {
           var roleListIds = Array.isArray(roleToListId[role]) ? roleToListId[role] : [roleToListId[role]];
           roleListIds.forEach(function (listId) {
