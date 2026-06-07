@@ -41,7 +41,6 @@ const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'Team and clu
 const primaryCta = getSanityCta(sanityPage?.primaryCta, { label: 'Get a Quote', url: '#team-subscription-form' })
 
 const proof = [
-  ['1,500+', 'VIDEOS'],
   ['100+', 'SESSION PLANS'],
   ['ALL', 'PLAYERS INCLUDED'],
   ['FAST', 'TEAM SETUP'],
@@ -100,17 +99,17 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
             <div class="relative min-h-[420px] overflow-hidden lg:min-h-0">
               <img src="/images/teams/team-subscriptions-hero.webp" alt="Joner Football coaches presenting the team subscriptions app to players" class="absolute inset-0 h-full w-full object-cover object-center" />
               <div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent lg:bg-gradient-to-r lg:from-black/40 lg:via-transparent lg:to-transparent"></div>
-              <div class="absolute bottom-6 left-6 right-6 rounded-xl border border-white/10 bg-black/70 p-5 backdrop-blur md:left-auto md:max-w-sm">
-                <p class="font-heading text-xs uppercase tracking-[0.24em] text-joner-red">Built for clubs</p>
-                <p class="mt-2 font-body text-sm leading-relaxed text-neutral-200">A cleaner way to give a full team access without sending every parent to sign up alone.</p>
-              </div>
             </div>
           </div>
 
           <div class="relative z-10 grid grid-cols-2 border-t border-white/10 bg-black/50 backdrop-blur-sm md:grid-cols-4">
+            <div class="border-white/10 p-5 text-center md:border-r md:text-left">
+              <div class="font-heading text-sm font-bold uppercase tracking-[0.22em] text-joner-red">Built for clubs</div>
+              <div class="mt-2 font-body text-xs leading-relaxed text-neutral-300 sm:text-sm">A cleaner way to give a full team access without sending every parent to sign up alone.</div>
+            </div>
             {proof.map(([number, label], index) => (
-              <div class={`p-5 text-center ${index < proof.length - 1 ? 'md:border-r' : ''} border-white/10 ${index > 1 ? 'border-t md:border-t-0' : ''}`}>
-                <div class={`font-heading text-2xl font-bold md:text-3xl ${index === 0 || index === 3 ? 'text-joner-red' : 'text-white'}`}>{number}</div>
+              <div class={`p-5 text-center ${index < proof.length - 1 ? 'md:border-r' : ''} border-white/10 ${index > 0 ? 'border-t md:border-t-0' : ''}`}>
+                <div class={`font-heading text-2xl font-bold md:text-3xl ${index === 2 ? 'text-joner-red' : 'text-white'}`}>{number}</div>
                 <div class="mt-1 font-body text-[10px] uppercase tracking-wider text-neutral-500 sm:text-xs">{label}</div>
               </div>
             ))}
