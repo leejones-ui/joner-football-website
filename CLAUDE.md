@@ -6,8 +6,9 @@
 - **CMS**: Sanity (client in src/sanity/)
 - **Deployment**: Vercel
 - **Node**: >=22.12.0
-- **Staging**: https://joner-football-website.vercel.app
-- **Production**: jonerfootball.com (not yet live, do not break staging)
+- **Production**: jonerfootball.com (LIVE, served by this Vercel project)
+- **Project alias**: https://joner-football-website.vercel.app (same deployment as production)
+- Pushing to main deploys straight to the live customer-facing site. Treat every push as a production release.
 
 ## Project Structure
 ```
@@ -56,7 +57,7 @@ Existing working example: technique-test-five.vercel.app (live, confirmed workin
 (Do not hardcode these. Use environment variables or a config file)
 
 ## Deployment
-- Push to main = auto-deploys to Vercel staging
+- Push to main = auto-deploys to PRODUCTION (jonerfootball.com)
 - `npm run build` to test locally before pushing
 - Check Vercel build logs if deployment fails
 - No secrets in git. Use Vercel environment variables dashboard
