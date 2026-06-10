@@ -3,7 +3,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-joner-red: #E30613;
+  --color-joner-red: #E8000D;
   --color-joner-black: #0A0A0A;
   --color-joner-white: #FFFFFF;
   --color-joner-gray: #1A1A1A;
@@ -178,9 +178,9 @@ a, button { touch-action: manipulation; }
   transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .15s ease;
 }
 .jf-btn { background: #0A0A0A; color: #fff; }
-.jf-btn:hover { background: #E30613; color: #fff; }
+.jf-btn:hover { background: #E8000D; color: #fff; }
 .jf-btn-dark { background: #fff; color: #0A0A0A; }
-.jf-btn-dark:hover { background: #E30613; color: #fff; }
+.jf-btn-dark:hover { background: #E8000D; color: #fff; }
 
 /* Clean hover-to-red buttons on every page EXCEPT the home page (home keeps its existing style). */
 body .btn-red,
@@ -210,8 +210,8 @@ body .nav-download-cta:hover,
 body .hub-btn:hover,
 body .story-cta-link:not(.store-badge):hover,
 body .jxfs__btn:hover {
-  background: #E30613 !important;
-  border-color: #E30613 !important;
+  background: #E8000D !important;
+  border-color: #E8000D !important;
   color: #FFFFFF !important;
   transform: translateY(-1px);
   box-shadow: none !important;
@@ -225,8 +225,8 @@ body .hub-btn--outline {
 }
 body .btn-outline:hover,
 body .hub-btn--outline:hover {
-  background: #E30613 !important;
-  border-color: #E30613 !important;
+  background: #E8000D !important;
+  border-color: #E8000D !important;
   color: #FFFFFF !important;
 }
 
@@ -241,8 +241,8 @@ body :is(.text-joner-black, .text-black) :is(.btn-red, .btn-outline) {
 }
 body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-red, .btn-outline, .nav-download-cta, .hub-btn, .story-cta-link:not(.store-badge), .jxfs__btn):hover,
 body :is(.text-joner-black, .text-black) :is(.btn-red, .btn-outline):hover {
-  background: #E30613 !important;
-  border-color: #E30613 !important;
+  background: #E8000D !important;
+  border-color: #E8000D !important;
   color: #FFFFFF !important;
 }
 
