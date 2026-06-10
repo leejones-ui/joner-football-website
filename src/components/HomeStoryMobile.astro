@@ -242,9 +242,6 @@ const choices = [
   .mobile-story-beat:nth-child(3) .mobile-story-ctas a { min-height: 2.5rem; padding: 0.55rem 0.4rem; font-size: 0.66rem; }
   .mobile-story-ctas a, .mobile-story-choices a { display: inline-flex; align-items: center; justify-content: center; min-height: 2.9rem; border: 1px solid rgba(255,255,255,0.34); border-radius: 999px; background: rgba(5,5,5,0.58); color: #fff; padding: 0.78rem 1rem; font-family: 'Anton', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 0.13em; line-height: 1; text-decoration: none; text-transform: uppercase; backdrop-filter: blur(14px); transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease; }
   .mobile-story-ctas a:active, .mobile-story-choices a:active { transform: scale(0.97); border-color: #e30613; background: rgba(227,6,19,0.82); }
-  /* Hero CTA is the primary action on the page, so it gets solid brand red. */
-  .mobile-story-beat:nth-child(1) .mobile-story-ctas { justify-content: center; margin-top: 1.5rem; }
-  .mobile-story-beat:nth-child(1) .mobile-story-ctas a { border-color: #e30613; background: #e30613; min-height: 3.1rem; padding: 0.85rem 1.6rem; font-size: 0.8rem; box-shadow: 0 0.6rem 1.6rem rgba(227,6,19,0.38); }
   .mobile-story-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 20.5rem; }
   .mobile-story-choices a { border-radius: 0.7rem; min-height: 3.2rem; padding-inline: 0.55rem; text-align: center; }
   /* contain keeps the 1.1s counter text rewrites from dirtying layout
@@ -260,13 +257,13 @@ const choices = [
   .mobile-growth-card > strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.8rem, 13vw, 4rem); line-height: 0.92; transform-origin: 0 60%; transition: transform 700ms cubic-bezier(.22,.61,.36,1) 80ms; }
   .mobile-story.is-motion:not(.is-growth-played) .mobile-growth-card > strong { transform: translate3d(0, 18px, 0) scale(0.76); }
   .mobile-growth-bars { margin-top: 0.45rem; height: 3.4rem; display: flex; align-items: end; gap: 0.28rem; }
-  .mobile-growth-bars span { flex: 1; background: #e30613; opacity: 0.5; transform-origin: bottom; transition: transform 760ms cubic-bezier(.22,.61,.36,1); }
+  .mobile-growth-bars span { flex: 1; background: #e30613; opacity: 0.5; transform-origin: bottom; transition: transform 1300ms cubic-bezier(.22,.61,.36,1); }
   .mobile-story.is-motion:not(.is-growth-played) .mobile-growth-bars span { transform: scaleY(0.12); }
-  .mobile-growth-bars span:nth-child(2) { transition-delay: 60ms; }
-  .mobile-growth-bars span:nth-child(3) { transition-delay: 120ms; }
-  .mobile-growth-bars span:nth-child(4) { transition-delay: 180ms; }
-  .mobile-growth-bars span:nth-child(5) { transition-delay: 240ms; }
-  .mobile-growth-bars span:nth-child(6) { transition-delay: 300ms; }
+  .mobile-growth-bars span:nth-child(2) { transition-delay: 120ms; }
+  .mobile-growth-bars span:nth-child(3) { transition-delay: 240ms; }
+  .mobile-growth-bars span:nth-child(4) { transition-delay: 360ms; }
+  .mobile-growth-bars span:nth-child(5) { transition-delay: 480ms; }
+  .mobile-growth-bars span:nth-child(6) { transition-delay: 600ms; }
   .mobile-growth-grid { margin-top: 0.6rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.34rem; }
   .mobile-growth-grid div { border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); padding: 0.42rem 0.28rem; text-align: center; }
   .mobile-growth-grid strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: 1.08rem; line-height: 1; transition: transform 700ms cubic-bezier(.22,.61,.36,1) 140ms; }
@@ -343,15 +340,17 @@ const choices = [
       return Math.round(value) + '+';
     }
 
-    // One-shot count-up the first time the Growth beat lands. Bars and number
-    // scale run as CSS transitions off .is-growth-played, so nothing growth
-    // related ever runs per scroll frame.
+    // Count-up when the Growth beat lands. Bars and number scale run as CSS
+    // transitions off .is-growth-played, so nothing growth related ever runs
+    // per scroll frame. It rearms whenever the card fully leaves the screen,
+    // so scrolling back to the beat plays the growth again.
+    var growthRafId = 0;
     function playGrowth() {
       if (growthPlayed) return;
       growthPlayed = true;
       root.classList.add('is-growth-played');
       if (prefersReduced) return;
-      var DURATION = 1100;
+      var DURATION = 2400;
       var startTime = null;
       function frame(now) {
         if (startTime === null) startTime = now;
@@ -362,9 +361,23 @@ const choices = [
           var format = counter.getAttribute('data-format') || 'plain';
           counter.textContent = formatGrowth(target * eased, format);
         });
-        if (t < 1) window.requestAnimationFrame(frame);
+        growthRafId = t < 1 ? window.requestAnimationFrame(frame) : 0;
       }
-      window.requestAnimationFrame(frame);
+      growthRafId = window.requestAnimationFrame(frame);
+    }
+
+    // Rearm only once the card is fully off screen, so a small scroll wiggle
+    // never resets numbers mid-view. The card is invisible by then (its beat
+    // is inactive), so snapping back to zero is never seen.
+    function resetGrowth() {
+      if (!growthPlayed) return;
+      growthPlayed = false;
+      root.classList.remove('is-growth-played');
+      if (growthRafId) { window.cancelAnimationFrame(growthRafId); growthRafId = 0; }
+      if (prefersReduced) return;
+      counters.forEach(function (counter) {
+        counter.textContent = formatGrowth(0, counter.getAttribute('data-format') || 'plain');
+      });
     }
 
     function setActive(next) {
@@ -389,20 +402,21 @@ const choices = [
     // while the card was still below the fold, so nobody ever saw it grow.
     var growthCardSeen = false;
     function maybeStartGrowth() {
-      // >= so a fast fling past the Growth beat still lands the finals
-      if (active >= 2 && growthCardSeen) playGrowth();
+      if (active === 2 && growthCardSeen) playGrowth();
     }
     var growthCard = root.querySelector('.mobile-growth-card');
     if (growthCard) {
       var growthObserver = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
+          if (entry.intersectionRatio >= 0.5) {
             growthCardSeen = true;
-            growthObserver.disconnect();
             maybeStartGrowth();
+          } else if (!entry.isIntersecting) {
+            growthCardSeen = false;
+            resetGrowth();
           }
         });
-      }, { threshold: 0.5 });
+      }, { threshold: [0, 0.5] });
       growthObserver.observe(growthCard);
     }
 
