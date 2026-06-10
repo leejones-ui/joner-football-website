@@ -1,0 +1,70 @@
+---
+// Answer-style section built for AI search and skim readers: short direct
+// answers under stable headings, plus crawlable links to related money pages.
+interface AnswerBlock {
+  heading: string
+  body: string
+}
+
+interface RelatedLink {
+  label: string
+  href: string
+  note?: string
+}
+
+interface Props {
+  eyebrow?: string
+  title: string
+  intro?: string
+  blocks: AnswerBlock[]
+  links?: RelatedLink[]
+  linksHeading?: string
+}
+
+const {
+  eyebrow = 'Straight answers',
+  title,
+  intro = '',
+  blocks,
+  links = [],
+  linksHeading = 'Related Joner Football pages',
+} = Astro.props
+---
+
+<section class="bg-joner-black py-16 md:py-24 border-t border-white/10">
+  <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+    <div class="mb-10 text-center">
+      <p class="mb-3 font-heading text-sm uppercase tracking-[0.26em] text-joner-red">{eyebrow}</p>
+      <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl">{title}</h2>
+      {intro && <p class="mx-auto mt-4 max-w-2xl font-body text-base leading-relaxed text-neutral-300 md:text-lg">{intro}</p>}
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {blocks.map((block) => (
+        <div class="rounded-xl border border-white/10 bg-white/[0.04] p-6">
+          <h3 class="mb-3 font-heading text-lg uppercase leading-tight text-white md:text-xl">{block.heading}</h3>
+          <p class="font-body text-sm leading-relaxed text-neutral-300 md:text-base">{block.body}</p>
+        </div>
+      ))}
+    </div>
+
+    {links.length > 0 && (
+      <div class="mt-10">
+        <h3 class="mb-4 text-center font-heading text-sm uppercase tracking-[0.26em] text-neutral-400">{linksHeading}</h3>
+        <ul class="flex flex-wrap justify-center gap-3">
+          {links.map((link) => (
+            <li>
+              <a
+                href={link.href}
+                class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-5 py-2.5 font-heading text-sm uppercase tracking-wide text-white transition-colors hover:border-joner-red hover:text-joner-red"
+              >
+                {link.label}
+                <span class="text-joner-red" aria-hidden="true">&rarr;</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </div>
+</section>

@@ -1,10 +1,11 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import { faqSchema, webPageSchema } from '../lib/seoSchema'
+import GeoAnswers from '../components/GeoAnswers.astro'
+import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 
-const APP_LINK = 'https://www.jonerfootball.com/join'
+const APP_LINK = '/join'
 const ANNUAL_LINK = 'https://app.jonerfootball.com/checkout/new?o=183092&utm_source=website&utm_medium=programmes_page&utm_campaign=100_day_programme_annual'
-const HERO_SUBSCRIBE_LINK = 'https://www.jonerfootball.com/join'
+const HERO_SUBSCRIBE_LINK = '/join'
 const HERO_BUNDLE_LINK = 'https://app.jonerfootball.com/checkout/new?o=227739'
 
 const proof = [
@@ -62,6 +63,11 @@ const programSchemas = [
     description: 'Follow structured Joner Football training programmes built to improve technique, confidence and consistency with clear sessions and daily focus.',
     url: 'https://jonerfootball.com/programmes/',
   }),
+  breadcrumbSchema([
+    { name: 'Home', url: 'https://jonerfootball.com/' },
+    { name: 'Football Training App', url: 'https://jonerfootball.com/app/' },
+    { name: '100 Day Programme', url: 'https://jonerfootball.com/programmes/' },
+  ]),
   faqSchema(faqs),
 ]
 
@@ -267,6 +273,35 @@ const sanityPage = await fetchSanityPage('programmes')
       </div>
     </div>
   </section>
+
+  <GeoAnswers
+    title="The 100 Day Programme, explained fast."
+    intro="The short version for parents and players deciding if a structured football training programme beats random drills."
+    blocks={[
+      {
+        heading: 'Who this is for',
+        body: 'Players who train with a team but want a proper individual development plan, and parents who want their child following a structured pathway instead of random YouTube drills.',
+      },
+      {
+        heading: 'What you get',
+        body: 'Six progressive programmes over 100 days inside the Joner Football App: juggling, fast feet, passing and first touch, dribbling, weak foot and finishing. Each day gives the player a clear job.',
+      },
+      {
+        heading: 'Why it works',
+        body: 'Progress comes from structure, not random effort. Sessions run 20 to 60 minutes with minimal equipment, difficulty builds week by week, and players can see their improvement, which keeps them training.',
+      },
+      {
+        heading: 'Best next step',
+        body: 'Start a free trial in the app and begin day one. Annual members unlock the full 100 day pathway and the improvement guarantee backed by Lee Jones.',
+      },
+    ]}
+    links={[
+      { label: 'The football training app', href: '/app' },
+      { label: 'Team subscriptions', href: '/teams' },
+      { label: 'Sydney training', href: '/training' },
+      { label: 'Football camps', href: '/camps' },
+    ]}
+  />
 
   {/* FINAL CTA ======================================================= */}
   <section class="p100-final">

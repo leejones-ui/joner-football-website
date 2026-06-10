@@ -1,7 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import SEOFAQ from '../components/SEOFAQ.astro'
-import { faqSchema, webPageSchema } from '../lib/seoSchema'
+import GeoAnswers from '../components/GeoAnswers.astro'
+import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 
 const campSchemas = [
   {
@@ -68,8 +69,10 @@ const campSchemas = [
 
 const campSEOFAQs = [
   { q: 'Where are Joner Football camps held?', a: 'Joner Football camps run in selected USA, Australia and global locations, with current camp pages showing dates, venues and registration details.' },
+  { q: 'Which Joner Football camps are running in 2026?', a: 'Current 2026 camps are Houston and Dallas in Texas, San Diego in California and Sydney in Australia. Each camp page shows the exact dates, venue and registration status.' },
   { q: 'What age are the camps for?', a: 'Most Joner Football camps are built for motivated young players who want to improve technique, confidence and game impact in a high-energy coaching environment.' },
   { q: 'What do players work on at camp?', a: 'Players work on technical detail, ball mastery, attacking skills, confidence, decision-making and the standards Lee Jones expects in high-level football training.' },
+  { q: 'How do I register for a Joner Football camp?', a: 'Open the camp page for your city and follow the registration steps. Spots are limited and camps regularly sell out, so register early.' },
 ]
 
 const campsPageSchemas = [
@@ -79,6 +82,10 @@ const campsPageSchemas = [
     description: 'Train at Joner Football camps in the USA, Australia and worldwide. Improve technique, confidence and game impact with elite coach-led sessions.',
     url: 'https://jonerfootball.com/camps/',
   }),
+  breadcrumbSchema([
+    { name: 'Home', url: 'https://jonerfootball.com/' },
+    { name: 'Football Camps', url: 'https://jonerfootball.com/camps/' },
+  ]),
   faqSchema(campSEOFAQs),
 ]
 
@@ -270,6 +277,36 @@ const sanityPage = await fetchSanityPage('camps')
     </section>
 
   </main>
+
+  <GeoAnswers
+    title="Joner Football camps, explained fast."
+    intro="The short version for parents weighing up a football camp in the USA or Australia."
+    blocks={[
+      {
+        heading: 'Who this is for',
+        body: 'Young players who want to train at a higher standard for a few days, and parents looking for a football camp in the USA or Australia run by coaches who actually teach technique.',
+      },
+      {
+        heading: 'What you get',
+        body: 'Multiple days of coach-led sessions with Lee Jones and the Joner Football team: ball mastery, striking, 1v1 work, attacking detail and the energy the brand is known for worldwide.',
+      },
+      {
+        heading: 'Why it works',
+        body: 'Players hear the same coaching points millions watch online, but live, with corrections on the spot. The standard resets what players think a good session looks like.',
+      },
+      {
+        heading: 'Best next step',
+        body: 'Pick the camp closest to you, open the camp page and register. Spots are limited and camps sell out. Between camps, players keep improving with the Joner Football App.',
+      },
+    ]}
+    links={[
+      { label: 'Houston camp', href: '/camps/texas-houston-june' },
+      { label: 'Dallas camp', href: '/camps/texas-dallas-june' },
+      { label: 'San Diego camp', href: '/camps/san-diego-june' },
+      { label: 'Sydney camp', href: '/camps/sydney-july-2026' },
+      { label: 'The football training app', href: '/app' },
+    ]}
+  />
 
   <SEOFAQ
     title="Questions about Joner Football camps."

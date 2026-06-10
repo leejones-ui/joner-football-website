@@ -1,7 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import SEOFAQ from '../components/SEOFAQ.astro'
-import { faqSchema, webPageSchema } from '../lib/seoSchema'
+import GeoAnswers from '../components/GeoAnswers.astro'
+import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 
 
 
@@ -82,8 +83,9 @@ const trainingPrograms = [
 
 const localBizSchema = {
   "@context": "https://schema.org",
-  "@type": "LocalBusiness",
+  "@type": "SportsActivityLocation",
   "name": "Joner Football HQ",
+  "description": "Joner Football's Sydney training base in Belrose. Indoor football training facility for JFP small-group coaching, professional training, Joners Juniors and game analysis.",
   "address": {
     "@type": "PostalAddress",
     "streetAddress": "Unit 2, 20 Narabang Way",
@@ -93,7 +95,12 @@ const localBizSchema = {
     "addressCountry": "AU"
   },
   "telephone": "+61-426-885-924",
-  "url": "https://jonerfootball.com/hq",
+  "url": "https://jonerfootball.com/hq/",
+  "parentOrganization": {
+    "@type": "Organization",
+    "@id": "https://jonerfootball.com/#organization",
+    "name": "Joner Football"
+  },
   "openingHours": "Mo-Sa",
   "priceRange": "$$"
 }
@@ -102,7 +109,9 @@ const localBizSchema = {
 const trainingSEOFAQs = [
   { q: 'Where is Joner Football training based?', a: 'Joner Football training is based around The HQ in Belrose, Sydney, with programmes for players who want sharper technique and clearer coaching.' },
   { q: 'What football training programmes are available?', a: 'Training options include JFP, professional training, Joners Juniors, game analysis, app training and other development pathways.' },
+  { q: 'What ages can train with Joner Football in Sydney?', a: 'JFP small-group training starts from age 8, Joners Juniors covers younger players building first habits, and professional training supports serious teenage and senior players.' },
   { q: 'Can younger players train at Joner Football?', a: 'Yes. Joners Juniors and JFP give younger players a strong foundation with clear standards, better habits and coach-led technical work.' },
+  { q: 'How do I book Sydney football training?', a: 'Send the training enquiry form on this page with your player age and goals. The Joner Football team replies with the right pathway and available session times.' },
 ]
 
 const trainingSchemas = [
@@ -112,6 +121,10 @@ const trainingSchemas = [
     description: 'Train with Joner Football in Sydney. Improve technique, confidence and game impact through JFP, pro training, juniors and specialist coaching.',
     url: 'https://jonerfootball.com/training/',
   }),
+  breadcrumbSchema([
+    { name: 'Home', url: 'https://jonerfootball.com/' },
+    { name: 'Sydney Football Training', url: 'https://jonerfootball.com/training/' },
+  ]),
   faqSchema(trainingSEOFAQs),
 ]
 
@@ -505,20 +518,49 @@ const sanityPage = await fetchSanityPage('training')
   </script>
 
   <!-- App CTA -->
-  <section class="bg-joner-red py-12 md:py-16">
+  <section class="bg-joner-black border-t border-white/10 py-12 md:py-16">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
       <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
         Train Anywhere, Anytime
       </h2>
-      <p class="text-white/80 font-body mb-6">
+      <p class="text-neutral-300 font-body mb-6">
         Supplement your sessions with 1,500+ drills on the Joner Football App.
       </p>
-      <a href="/app" class="bg-white text-joner-red font-heading text-base uppercase tracking-wider px-8 py-4 hover:bg-gray-100 transition-colors inline-block">
+      <a href="/app" class="btn-red text-base px-8 py-4 inline-block">
         Try the World's #1 Football App Free
       </a>
     </div>
   </section>
 
+  <GeoAnswers
+    title="Sydney football training, explained fast."
+    intro="The short version for parents and players looking for football training in Sydney."
+    blocks={[
+      {
+        heading: 'Who this is for',
+        body: 'Sydney players from age 8 up and their parents. From juniors building first habits to serious players chasing representative and professional standards.',
+      },
+      {
+        heading: 'What you get',
+        body: 'Coach-led technical training at The HQ in Belrose and on field: JFP small-group development, professional training, Joners Juniors and game analysis. Every pathway is built around touch, striking and game impact.',
+      },
+      {
+        heading: 'Why it works',
+        body: 'The same coaching detail that built Joner Football a global audience is delivered in person. Small groups, clear standards and technical work players can repeat at home through the app.',
+      },
+      {
+        heading: 'Best next step',
+        body: 'Send the training enquiry with your player age and goals. The team replies with the right pathway. Players outside Sydney can train the same way through the Joner Football App.',
+      },
+    ]}
+    links={[
+      { label: 'The HQ in Belrose', href: '/hq' },
+      { label: 'JFP Program', href: '/training/jfp-program' },
+      { label: 'Joners Juniors', href: '/jonersjuniors/' },
+      { label: 'Football camps', href: '/camps' },
+      { label: 'The football training app', href: '/app' },
+    ]}
+  />
 
   <SEOFAQ
     title="Questions about Sydney football training."

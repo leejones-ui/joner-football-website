@@ -1,10 +1,15 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import SEOFAQ from '../components/SEOFAQ.astro'
+import GeoAnswers from '../components/GeoAnswers.astro'
+import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 
 const localBizSchema = {
   "@context": "https://schema.org",
-  "@type": "LocalBusiness",
+  "@type": "SportsActivityLocation",
   "name": "Joner Football HQ",
+  "description": "Indoor football training facility in Belrose, Sydney. Home of Joner Football Performance: JFP sessions, Joners Juniors, professional 1 on 1 training and camp events.",
+  "image": "https://jonerfootball.com/images/hq/hq-hero-lee-exterior.webp",
   "address": {
     "@type": "PostalAddress",
     "streetAddress": "Unit 2, 20 Narabang Way",
@@ -14,10 +19,38 @@ const localBizSchema = {
     "addressCountry": "AU"
   },
   "telephone": "+61-426-885-924",
-  "url": "https://jonerfootball.com/hq",
+  "url": "https://jonerfootball.com/hq/",
+  "parentOrganization": {
+    "@type": "Organization",
+    "@id": "https://jonerfootball.com/#organization",
+    "name": "Joner Football"
+  },
   "openingHours": "Mo-Sa",
   "priceRange": "$$"
 }
+
+const hqSEOFAQs = [
+  { q: 'Where is the Joner Football HQ?', a: 'The HQ is at Unit 2, 20 Narabang Way, Belrose, in Sydney’s Northern Beaches area, with on-site parking for drop-off and collection.' },
+  { q: 'Is the HQ indoor?', a: 'Yes. The HQ is a fully indoor facility with a professional standard synthetic surface, so sessions are never cancelled for weather.' },
+  { q: 'What training runs at the HQ?', a: 'JFP afternoon sessions run Monday to Saturday, Joners Juniors runs Saturdays, professional 1 on 1 sessions run by appointment, and holiday camps and events run through the year.' },
+  { q: 'Can parents watch sessions?', a: 'Yes. The HQ has a dedicated parent viewing area so you can watch your player train.' },
+  { q: 'How do I book training at the HQ?', a: 'Send the contact form on this page with the player’s age and what you are looking for. The team replies with the right HQ training option.' },
+]
+
+const hqSchemas = [
+  localBizSchema,
+  webPageSchema({
+    name: 'The Joner Football HQ | Belrose, Sydney',
+    description: 'The Joner Football HQ. Brand new indoor training facility at 20 Narabang Way, Belrose, Sydney. Professional standard surface. All-weather training.',
+    url: 'https://jonerfootball.com/hq/',
+  }),
+  breadcrumbSchema([
+    { name: 'Home', url: 'https://jonerfootball.com/' },
+    { name: 'Sydney Football Training', url: 'https://jonerfootball.com/training/' },
+    { name: 'The HQ', url: 'https://jonerfootball.com/hq/' },
+  ]),
+  faqSchema(hqSEOFAQs),
+]
 
 const hqVideos = [
   { id: 'oVrMcXv6qZQ', title: 'Training Drills for Midfielders', label: 'Midfielder Session' },
@@ -57,7 +90,7 @@ const sanityPage = await fetchSanityPage('hq')
 <BaseLayout
   title="The Joner Football HQ | Belrose, Sydney"
   description="The Joner Football HQ. Brand new indoor training facility at 20 Narabang Way, Belrose, Sydney. Professional standard surface. All-weather training."
-  schema={localBizSchema}
+  schema={hqSchemas}
 >
   <section class="bg-joner-black pt-10 pb-12 md:pt-16 md:pb-20">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -309,6 +342,40 @@ const sanityPage = await fetchSanityPage('hq')
       </form>
     </div>
   </section>
+
+  <GeoAnswers
+    title="The HQ, explained fast."
+    intro="The short version for parents looking at indoor football training in Sydney."
+    blocks={[
+      {
+        heading: 'Who this is for',
+        body: 'Sydney players and parents who want consistent, coach-led technical training in a proper indoor facility, from juniors starting out to professionals booking 1 on 1 work.',
+      },
+      {
+        heading: 'What you get',
+        body: 'A professional standard indoor surface in Belrose, all-weather sessions that never get cancelled, a parent viewing area, on-site parking and the full Joner Football Performance program calendar.',
+      },
+      {
+        heading: 'Why it works',
+        body: 'Indoor means no lost weeks to rain and no wasted sessions. The same standards Lee Jones shows millions online are coached in person, week after week, on the same floor.',
+      },
+      {
+        heading: 'Best next step',
+        body: 'Send the HQ enquiry form with your player’s age and goals, or look at the training pathways first to see which program fits.',
+      },
+    ]}
+    links={[
+      { label: 'Sydney training pathways', href: '/training' },
+      { label: 'JFP Program', href: '/training/jfp-program' },
+      { label: 'Sydney camp', href: '/camps/sydney-july-2026' },
+      { label: 'The football training app', href: '/app' },
+    ]}
+  />
+
+  <SEOFAQ
+    title="Questions about The HQ."
+    items={hqSEOFAQs}
+  />
 
   <script is:inline>
     (function () {

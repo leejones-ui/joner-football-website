@@ -1,13 +1,16 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import SEOFAQ from '../components/SEOFAQ.astro'
-import { faqSchema, webPageSchema } from '../lib/seoSchema'
+import GeoAnswers from '../components/GeoAnswers.astro'
+import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 import EmailCapture from '../components/EmailCapture.astro'
 import SanityPageExtras from '../components/sanity/SanityPageExtras.astro'
 
 const teamSEOFAQs = [
   { q: 'Can a full team use the Joner Football App?', a: 'Yes. Joner Football can support team and club subscriptions so every player gets access to the same training detail, programmes and app pathway.' },
   { q: 'Who are team subscriptions for?', a: 'They are built for clubs, academies, schools and coaches who want players doing better work between team sessions.' },
+  { q: 'Do coaches get access with a team subscription?', a: 'Yes. Coach access is part of the setup, so coaches can use session plans, drills and coaching detail that match what their players train in the app.' },
+  { q: 'How much does a team subscription cost?', a: 'Pricing depends on squad size and coach access. Send the enquiry form with your numbers and Joner Football will come back with the right option for your club.' },
   { q: 'How does a team get started?', a: 'Send an enquiry with your club, squad size and coach access needs. Joner Football will follow up with the cleanest setup for your players.' },
 ]
 
@@ -25,6 +28,11 @@ const schema = [
     serviceType: 'Football team training app subscription',
     areaServed: 'Worldwide',
   },
+  breadcrumbSchema([
+    { name: 'Home', url: 'https://jonerfootball.com/' },
+    { name: 'Football Training App', url: 'https://jonerfootball.com/app/' },
+    { name: 'Team Subscriptions', url: 'https://jonerfootball.com/teams/' },
+  ]),
   faqSchema(teamSEOFAQs),
 ]
 
@@ -335,19 +343,48 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
   </script>
 
   <!-- CTA -->
-  <section class="bg-joner-red py-12 md:py-16">
+  <section class="bg-joner-black border-t border-white/10 py-12 md:py-16">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
       <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
         See What's Inside the App
       </h2>
-      <p class="text-white/80 font-body mb-6">
-        Check out the full feature list and try the free section before committing your team.
+      <p class="text-neutral-300 font-body mb-6">
+        See the full training library and try the free section before committing your team.
       </p>
-      <a href="/app" class="btn-outline text-base px-8 py-4 border-white text-white hover:bg-white hover:text-joner-red inline-block">
+      <a href="/app" class="btn-red text-base px-8 py-4 inline-block">
         Explore the App
       </a>
     </div>
   </section>
+
+  <GeoAnswers
+    title="Team subscriptions, explained fast."
+    intro="The short version for club coaches, academies and schools weighing up a team football training app."
+    blocks={[
+      {
+        heading: 'Who this is for',
+        body: 'Club coaches, academies, schools and associations that want every player in the squad training properly between team sessions, with one clean setup instead of dozens of individual accounts.',
+      },
+      {
+        heading: 'What you get',
+        body: 'Full Joner Football App access for every player, coach access with session plans and drills, and a shared training standard so the whole squad works on first touch, striking and 1v1 ability the same way.',
+      },
+      {
+        heading: 'Why it works',
+        body: 'Players only see their coach once or twice a week. A team subscription turns the days in between into structured development time, so players arrive at training sharper and games show it.',
+      },
+      {
+        heading: 'Best next step',
+        body: 'Send the team enquiry form with your squad size and coach numbers. Joner Football replies with the right club setup, and you can explore the app yourself first to see what your players would train.',
+      },
+    ]}
+    links={[
+      { label: 'The football training app', href: '/app' },
+      { label: 'App for coaches', href: '/app/for-coaches' },
+      { label: '100 Day Programme', href: '/programmes' },
+      { label: 'Coaches course', href: '/workshops/coaches-course' },
+    ]}
+  />
 
   <SEOFAQ
     title="Questions about team app access."

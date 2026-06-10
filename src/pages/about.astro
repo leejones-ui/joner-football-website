@@ -1,23 +1,31 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import EmailCapture from '../components/EmailCapture.astro'
+import SEOFAQ from '../components/SEOFAQ.astro'
+import GeoAnswers from '../components/GeoAnswers.astro'
+import { faqSchema, breadcrumbSchema } from '../lib/seoSchema'
+import { aiSearchQuestions, leePersonSchema } from '../lib/aiSearchContent'
 
-const schema = {
+const aboutPageSchema = {
   "@context": "https://schema.org",
   "@type": "AboutPage",
   "name": "About Lee Jones & Joner Football",
   "description": "About Lee Jones and Joner Football. Voted Top 10 Technical Trainers in the World. From Sydney to global.",
-  "url": "https://jonerfootball.com/about",
-  "mainEntity": {
-    "@type": "Person",
-    "name": "Lee Jones",
-    "jobTitle": "Founder & Head Coach",
-    "worksFor": {
-      "@type": "Organization",
-      "name": "Joner Football"
-    }
-  }
+  "url": "https://jonerfootball.com/about/",
+  "mainEntity": { "@id": "https://jonerfootball.com/about/#lee-jones" }
 }
+
+const aboutFAQs = aiSearchQuestions
+
+const schema = [
+  aboutPageSchema,
+  leePersonSchema,
+  breadcrumbSchema([
+    { name: 'Home', url: 'https://jonerfootball.com/' },
+    { name: 'About Lee Jones', url: 'https://jonerfootball.com/about/' },
+  ]),
+  faqSchema(aboutFAQs),
+]
 
 const coachingVideos = [
   {
@@ -634,6 +642,41 @@ const sanityPage = await fetchSanityPage('about')
       });
     })();
   </script>
+
+  <GeoAnswers
+    title="Joner Football, explained fast."
+    intro="The short version for anyone meeting Joner Football for the first time."
+    blocks={[
+      {
+        heading: 'Who this is for',
+        body: 'Players, parents and coaches anywhere in the world who want technical football coaching they can trust, whether that is in person in Sydney, at a camp, or through the app.',
+      },
+      {
+        heading: 'What Joner Football is',
+        body: 'A football coaching and player development company founded by Lee Jones in Sydney in 2013. It grew from private sessions into The HQ, global camps, coach education and the Joner Football App.',
+      },
+      {
+        heading: 'Why players trust it',
+        body: 'The coaching went viral because the detail is real: first touch, striking, ball mastery and 1v1 work taught with the energy and standards Lee built over 20 years on the pitch.',
+      },
+      {
+        heading: 'Best next step',
+        body: 'Train with the app from anywhere, book Sydney training, or take your player to a camp. Every pathway runs on the same coaching method.',
+      },
+    ]}
+    links={[
+      { label: 'The football training app', href: '/app' },
+      { label: 'Sydney training', href: '/training' },
+      { label: 'Football camps', href: '/camps' },
+      { label: 'The HQ', href: '/hq' },
+      { label: 'App for coaches', href: '/app/for-coaches' },
+    ]}
+  />
+
+  <SEOFAQ
+    title="Common questions about Joner Football."
+    items={aboutFAQs}
+  />
 
   <EmailCapture />
 

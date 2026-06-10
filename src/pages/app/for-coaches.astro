@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import CoachesTestimonialsCarousel from '../../components/CoachesTestimonialsCarousel.astro'
+import GeoAnswers from '../../components/GeoAnswers.astro'
+import { breadcrumbSchema } from '../../lib/seoSchema'
 
 const title = 'Football Coaching App | Drills & Session Plans | Joner Football'
 const description = 'Give coaches clear football drills, session ideas and technical detail through the Joner Football App. Build sharper sessions for every player.'
@@ -48,13 +50,14 @@ const productSchema = {
       availability: 'https://schema.org/InStock',
       url: 'https://jonerfootball.com/app/for-coaches/'
     }
-  ],
-  aggregateRating: {
-    '@type': 'AggregateRating',
-    ratingValue: '4.9',
-    reviewCount: '120'
-  }
+  ]
 }
+
+const coachesBreadcrumbSchema = breadcrumbSchema([
+  { name: 'Home', url: 'https://jonerfootball.com/' },
+  { name: 'Football Training App', url: 'https://jonerfootball.com/app/' },
+  { name: 'App For Coaches', url: 'https://jonerfootball.com/app/for-coaches/' },
+])
 
 // 8 feature blocks, /app-page-style horizontal cards
 const features = [
@@ -166,7 +169,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 {false && shouldReplaceSanityPage(sanityPage) ? (
   <SanityPageRenderer page={sanityPage} />
 ) : (
-<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/app/for-coaches/" ogImage="https://jonerfootball.com/images/coaches-only/coaches-only-hero-updated.png" schema={[productSchema, faqSchema]}>
+<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/app/for-coaches/" ogImage="https://jonerfootball.com/images/coaches-only/coaches-only-hero-updated.png" schema={[productSchema, coachesBreadcrumbSchema, faqSchema]}>
   <main class="coaches-page bg-joner-black text-white">
 
     {/* ========== 1. HERO ========== */}
@@ -477,6 +480,35 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
       </div>
     </section>
 
+
+    <GeoAnswers
+      title="The football app for coaches, explained fast."
+      intro="The short version for club coaches, private trainers and academy coaches looking for football session plans and coaching resources."
+      blocks={[
+        {
+          heading: 'Who this is for',
+          body: 'Club coaches, academy coaches, private trainers and parents coaching teams. Grassroots through to elite. Anyone who plans football sessions and wants more technical detail in them.',
+        },
+        {
+          heading: 'What you get',
+          body: 'Ready-to-run football session plans, voice-over drill breakdowns, full filmed training sessions, coach education content and the complete Joner Football App training library.',
+        },
+        {
+          heading: 'Why it works',
+          body: 'You watch Lee Jones coach real players and hear the coaching points as the drill runs. You stop guessing what good detail looks like and start delivering it in your own sessions the same week.',
+        },
+        {
+          heading: 'Best next step',
+          body: 'Watch a free session first to see the standard, then join Coaches Only. If you run a club or squad, look at team subscriptions so your players train the same way you coach.',
+        },
+      ]}
+      links={[
+        { label: 'Team subscriptions', href: '/teams' },
+        { label: 'The football training app', href: '/app' },
+        { label: 'Online coaches course', href: '/workshops/coaches-course' },
+        { label: '100 Day Programme', href: '/programmes' },
+      ]}
+    />
 
     {/* ========== 9. FINAL CTA ========== */}
     <section class="bg-joner-black py-20 md:py-28">

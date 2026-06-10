@@ -1,7 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import SEOFAQ from '../components/SEOFAQ.astro'
-import { faqSchema, webPageSchema } from '../lib/seoSchema'
+import GeoAnswers from '../components/GeoAnswers.astro'
+import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 import HighlightsCarousel from '../components/HighlightsCarousel.astro'
 import CloserLook from '../components/CloserLook.astro'
 
@@ -9,17 +10,20 @@ const appSchema = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "Joner Football App",
-  "operatingSystem": "iOS, Android",
+  "operatingSystem": "iOS, Android, Web",
   "applicationCategory": "SportsApplication",
+  "url": "https://jonerfootball.com/app/",
+  "downloadUrl": "https://apps.apple.com/au/app/joner-football-app/id6737069275",
+  "creator": {
+    "@type": "Organization",
+    "@id": "https://jonerfootball.com/#organization",
+    "name": "Joner Football"
+  },
   "offers": {
     "@type": "Offer",
     "price": "0",
-    "priceCurrency": "AUD"
-  },
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.8",
-    "ratingCount": "50000"
+    "priceCurrency": "AUD",
+    "description": "Free to download with a free trial. Subscription unlocks the full training library."
   }
 }
 
@@ -33,7 +37,10 @@ const appSEOFAQs = [
   { q: 'What is the Joner Football App?', a: 'The Joner Football App gives players and coaches a clearer way to train with drills, programmes, session plans and coaching detail from Lee Jones.' },
   { q: 'Is the app good for football players?', a: 'Yes. Players use it to know what to train, build cleaner technique, improve confidence and follow structured sessions outside team training.' },
   { q: 'Does the app include drills and programmes?', a: 'Yes. The app includes football drills, follow-along programmes, session ideas and coaching content so training has a clear purpose.' },
-  { q: 'Can coaches use the Joner Football App?', a: 'Yes. Coaches can use the app for drill ideas, session planning and technical detail they can take straight onto the pitch.' },
+  { q: 'What kind of football drills are in the app?', a: 'First touch, ball mastery, passing, shooting and striking technique, 1v1 moves and full follow-along sessions. Every drill shows the detail, not just the pattern.' },
+  { q: 'Can coaches use the Joner Football App?', a: 'Yes. Coaches use the app for drill ideas, session plans and technical coaching detail they can take straight onto the pitch. There is also a coaches-only section at jonerfootball.com/app/for-coaches/.' },
+  { q: 'Is there a free trial?', a: 'Yes. You can start with a free trial and there is a free content section so you can see how Joner Football trains before you commit.' },
+  { q: 'Can a whole team or club use the app?', a: 'Yes. Clubs and teams can set up a team subscription so every player trains the same way between sessions. Details are at jonerfootball.com/teams/.' },
 ]
 
 const appSchemas = [
@@ -43,6 +50,10 @@ const appSchemas = [
     description: 'Use the Joner Football App to know exactly what to train. Follow drills, programmes and session plans built to improve technique and confidence.',
     url: 'https://jonerfootball.com/app/',
   }),
+  breadcrumbSchema([
+    { name: 'Home', url: 'https://jonerfootball.com/' },
+    { name: 'Football Training App', url: 'https://jonerfootball.com/app/' },
+  ]),
   faqSchema(appSEOFAQs),
 ]
 
@@ -661,7 +672,7 @@ const appSchemas = [
       }
     }
 
-    /* Sticky bottom CTA — hidden over the hero, revealed once the user
+    /* Sticky bottom CTA: hidden over the hero, revealed once the user
        scrolls past it. Mirrors the camp pages pattern. */
     .app-mobile-cta {
       position: fixed; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; z-index: 40;
@@ -695,6 +706,36 @@ const appSchemas = [
       io.observe(heroEl);
     })();
   </script>
+
+  <GeoAnswers
+    title="The football training app, explained fast."
+    intro="The short version for players, parents and coaches deciding if the Joner Football App is the right way to train."
+    blocks={[
+      {
+        heading: 'Who this is for',
+        body: 'Players who want to improve between team sessions, parents who want a clear training plan for their child, and coaches who want ready-made sessions and drills with real technical detail.',
+      },
+      {
+        heading: 'What you get',
+        body: 'Football drills, follow-along programmes and session plans covering first touch, ball mastery, passing, shooting and 1v1 ability. You open the app, press play and train with purpose.',
+      },
+      {
+        heading: 'Why it works',
+        body: 'Every session is built by Lee Jones from over 20 years of coaching players at every level. The detail that made Joner Football a global coaching brand is in every drill, so technique improves faster.',
+      },
+      {
+        heading: 'Best next step',
+        body: 'Start the free trial and follow the 100 Day Programme. Players see cleaner touch and sharper striking within weeks, and you can browse the free content section first if you want proof before you start.',
+      },
+    ]}
+    links={[
+      { label: '100 Day Programme', href: '/programmes' },
+      { label: 'App for coaches', href: '/app/for-coaches' },
+      { label: 'Team subscriptions', href: '/teams' },
+      { label: 'Sydney training', href: '/training' },
+      { label: 'Football camps', href: '/camps' },
+    ]}
+  />
 
   <SEOFAQ
     title="Questions about the football training app."

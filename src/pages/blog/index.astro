@@ -206,8 +206,33 @@ const blogGroups = [
 import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
 import { fetchSanityPage } from '../../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
+import { breadcrumbSchema } from '../../lib/seoSchema'
 
 const sanityPage = await fetchSanityPage('blog')
+
+const blogSchemas = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    name: 'Joner Football Blog',
+    description: 'Football drills, coaching tips and player development from Lee Jones and the Joner Football team, written for coaches, parents and players.',
+    url: 'https://jonerfootball.com/blog/',
+    publisher: {
+      '@type': 'Organization',
+      '@id': 'https://jonerfootball.com/#organization',
+      name: 'Joner Football',
+    },
+    blogPost: posts.slice(0, 20).map((post: any) => ({
+      '@type': 'BlogPosting',
+      headline: post.title,
+      url: `https://jonerfootball.com/blog/${post.slug}/`,
+    })),
+  },
+  breadcrumbSchema([
+    { name: 'Home', url: 'https://jonerfootball.com/' },
+    { name: 'Blog', url: 'https://jonerfootball.com/blog/' },
+  ]),
+]
 ---
 
 {shouldReplaceSanityPage(sanityPage) ? (
@@ -216,6 +241,7 @@ const sanityPage = await fetchSanityPage('blog')
 <BaseLayout
   title="Football Training Tips & Coaching Blog | Joner Football"
   description="Football drills, coaching tips, and player development from Joner Football. Expert advice from Coach Joner and the team."
+  schema={blogSchemas}
 >
   <!-- Hero -->
   <section class="bg-joner-gray py-20 md:py-24 relative">
@@ -276,15 +302,15 @@ const sanityPage = await fetchSanityPage('blog')
   </section>
 
   <!-- App CTA -->
-  <section class="bg-joner-red py-12 md:py-16">
+  <section class="bg-joner-black border-t border-white/10 py-12 md:py-16">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
       <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
         Ready to Start Training?
       </h2>
-      <p class="text-white/80 font-body mb-6">
+      <p class="text-neutral-300 font-body mb-6">
         1,500+ drills, session plans, and follow-along programs. Try the Joner Football App free.
       </p>
-      <a href="/app" class="bg-white text-joner-red font-heading text-base uppercase tracking-wider px-8 py-4 hover:bg-gray-100 transition-colors inline-block">
+      <a href="/app" class="btn-red text-base px-8 py-4 inline-block">
         Try the World's #1 Football App Free
       </a>
     </div>
