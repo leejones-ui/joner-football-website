@@ -282,6 +282,12 @@ const homepageSchemas = [
   schema={homepageSchemas}
 >
   <Fragment slot="head">
+    <noscript>
+      <style>
+        .hero-word { opacity: 1 !important; transform: none !important; }
+        .story-scroll-cue { display: none !important; }
+      </style>
+    </noscript>
     <style>
       .story-page {
         background: #0A0A0A;
@@ -291,9 +297,6 @@ const homepageSchemas = [
 
       .story-shell {
         --story-progress: 0;
-        --growth-progress: 0;
-        --hero-word-progress: 0;
-        --ball-rotation: 0deg;
         --ball-size: clamp(4.8rem, 5.8vw, 5.8rem);
         --ball-opacity: 1;
         --mask-x: var(--marker-x);
@@ -354,6 +357,62 @@ const homepageSchemas = [
         letter-spacing: 0.26em;
       }
 
+      .story-scroll-cue {
+        position: absolute;
+        bottom: 1.9rem;
+        left: 50%;
+        z-index: 30;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.6rem;
+        transform: translateX(-50%);
+        opacity: 0.92;
+        transition: opacity 460ms ease, visibility 0s linear 460ms;
+        pointer-events: none;
+      }
+
+      .story-shell[data-scrolled] .story-scroll-cue {
+        opacity: 0;
+        visibility: hidden;
+      }
+
+      .story-shell[data-scrolled] .story-scroll-cue-drop {
+        animation-play-state: paused;
+      }
+
+      .story-scroll-cue-label {
+        color: rgba(255,255,255,0.66);
+        font-family: 'Anton', Impact, sans-serif;
+        font-size: 0.6rem;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+      }
+
+      .story-scroll-cue-track {
+        position: relative;
+        width: 1px;
+        height: 2.6rem;
+        overflow: hidden;
+        background: rgba(255,255,255,0.22);
+      }
+
+      .story-scroll-cue-drop {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1px;
+        height: 0.9rem;
+        background: #E30613;
+        /* accelerating fall: a drop that brakes before vanishing reads mushy */
+        animation: storyCueDrop 2.2s cubic-bezier(.5,0,.75,.45) infinite;
+      }
+
+      @keyframes storyCueDrop {
+        0% { transform: translateY(-1rem); }
+        62%, 100% { transform: translateY(2.8rem); }
+      }
+
       .story-rail {
         color: rgba(255,255,255,0.54);
         transition: color 700ms ease, opacity 420ms ease;
@@ -365,8 +424,10 @@ const homepageSchemas = [
       }
 
       .story-rail-fill {
-        height: calc(var(--story-progress) * 100%);
+        height: 100%;
         background: #E30613;
+        transform: scaleY(var(--story-progress));
+        transform-origin: top;
       }
 
       .story-rail-dot,
@@ -427,19 +488,28 @@ const homepageSchemas = [
         transform: translateX(-0.18rem);
       }
 
+      /* Inactive copy stays mounted so beat changes crossfade: the outgoing
+         block fades out fast while the incoming one rises in after a short
+         hold. visibility (not display) keeps exit transitions alive. */
       .story-copy {
-        display: none;
         position: absolute;
         max-width: 34rem;
         opacity: 0;
+        visibility: hidden;
         pointer-events: none;
+        transition:
+          opacity 240ms cubic-bezier(.55,0,.68,.19),
+          visibility 0s linear 240ms;
       }
 
       .story-copy[data-state="active"] {
-        display: block;
         opacity: 1;
+        visibility: visible;
         pointer-events: auto;
-        animation: storyCopyIn 620ms cubic-bezier(.22,.61,.36,1) both;
+        /* backwards, never both: a finished fill would pin opacity at 1 and
+           defeat the exit transition when data-state flips to inactive */
+        transition: opacity 0s, visibility 0s;
+        animation: storyCopyIn 620ms cubic-bezier(.22,.61,.36,1) 110ms backwards;
       }
 
       .story-copy[data-pos="center"] {
@@ -529,15 +599,26 @@ const homepageSchemas = [
         to { opacity: 1; transform: translate(-50%, 0); }
       }
 
+      /* The hero copy block stays out of the block entrance: the words own
+         the load moment, so nothing double-animates over their stagger. */
+      .story-copy[data-index="0"][data-state="active"] {
+        animation: none;
+        transition: opacity 280ms cubic-bezier(.22,.61,.36,1) 110ms, visibility 0s;
+      }
+
+      /* Positioned via transform, not left/top: marker updates run per
+         scrolled frame in the hero window and must never trigger layout.
+         The vw/svh fallback only covers the single frame before JS writes
+         pixel values. */
       .story-ball-system {
-        left: var(--marker-x);
-        top: var(--marker-y);
+        left: 0;
+        top: 0;
         opacity: var(--ball-opacity);
+        transform: translate3d(var(--marker-px-x, 24.2vw), var(--marker-px-y, 46svh), 0);
         transition:
-          left 320ms cubic-bezier(.22,.61,.36,1),
-          top 320ms cubic-bezier(.22,.61,.36,1),
+          transform 320ms cubic-bezier(.22,.61,.36,1),
           opacity 400ms ease;
-        will-change: left, top, opacity;
+        will-change: transform, opacity;
       }
 
       .story-photo-ball-mask {
@@ -623,9 +704,13 @@ const homepageSchemas = [
         opacity: 0;
         transform: translateY(1.2rem);
         transition:
-          opacity 360ms cubic-bezier(.22,.61,.36,1),
-          transform 520ms cubic-bezier(.22,.61,.36,1);
+          opacity 460ms cubic-bezier(.22,.61,.36,1),
+          transform 620ms cubic-bezier(.22,.61,.36,1);
       }
+
+      /* Word-by-word entrance on load. Headline must never wait for scroll. */
+      .hero-word[data-step="1"] { transition-delay: 110ms; }
+      .hero-word[data-step="2"] { transition-delay: 220ms; }
 
       .hero-word[data-visible="true"] {
         opacity: 1;
@@ -633,21 +718,31 @@ const homepageSchemas = [
       }
 
       .story-overlay {
-        display: none;
         opacity: 0;
-        transition: opacity 500ms ease;
+        visibility: hidden;
         pointer-events: none;
+        transition:
+          opacity 280ms cubic-bezier(.55,0,.68,.19),
+          visibility 0s linear 280ms;
       }
 
-      .story-overlay a {
+      .story-overlay[data-state="active"] a {
         pointer-events: auto;
       }
 
       .story-overlay[data-state="active"] {
-        display: block;
         opacity: 1;
+        visibility: visible;
         pointer-events: auto;
-        animation: storyOverlayIn 720ms cubic-bezier(.22,.61,.36,1) both;
+        transition: opacity 0s, visibility 0s;
+        animation: storyOverlayIn 720ms cubic-bezier(.22,.61,.36,1) 110ms backwards;
+      }
+
+      /* Display-gate the choose grid while its overlay is inactive so the
+         reveal stagger inside it cannot fire invisibly at page load
+         (IntersectionObserver ignores visibility, not display). */
+      .story-overlay--choose:not([data-state="active"]) .story-overlay-choose {
+        display: none;
       }
 
       @keyframes storyOverlayIn {
@@ -694,6 +789,12 @@ const homepageSchemas = [
         border: 1px solid rgba(255,255,255,0.16);
         background: rgba(10,10,10,0.46);
         backdrop-filter: blur(18px);
+      }
+
+      /* Counter text rewrites during the count-up stay inside the card, so
+         scroll-frame rect reads elsewhere never force a full relayout. */
+      .story-overlay .metric-card {
+        contain: layout style;
       }
 
       .primary-path-card {
@@ -878,10 +979,21 @@ const homepageSchemas = [
         text-align: center;
       }
 
+      /* Bars rise once when the Growth beat lands, oldest to newest. */
       .growth-bar {
-        transform: scaleY(calc(0.18 + (var(--growth-progress) * 0.82)));
+        transform: scaleY(0.18);
         transform-origin: bottom;
-        transition: transform 120ms linear;
+        transition: transform 880ms cubic-bezier(.22,.61,.36,1);
+      }
+
+      .growth-bar:nth-child(2) { transition-delay: 70ms; }
+      .growth-bar:nth-child(3) { transition-delay: 140ms; }
+      .growth-bar:nth-child(4) { transition-delay: 210ms; }
+      .growth-bar:nth-child(5) { transition-delay: 280ms; }
+      .growth-bar:nth-child(6) { transition-delay: 350ms; }
+
+      .story-shell[data-growth-played] .growth-bar {
+        transform: scaleY(1);
       }
 
       .growth-link-row {
@@ -1587,9 +1699,18 @@ const homepageSchemas = [
         .story-ball-system,
         .story-ball-image,
         .story-rail-dot,
-        .story-rail-label {
+        .story-rail-label,
+        .story-rail-fill,
+        .hero-word,
+        .growth-bar,
+        .story-scroll-cue,
+        .story-scroll-cue-drop {
           animation: none !important;
           transition: none !important;
+        }
+
+        .growth-bar {
+          transform: scaleY(1) !important;
         }
       }
 
@@ -1814,7 +1935,6 @@ const homepageSchemas = [
             <video
               class="story-bg absolute inset-0 h-full w-full object-cover"
               aria-label={beat.alt}
-              autoplay
               muted
               loop
               playsinline
@@ -1856,7 +1976,7 @@ const homepageSchemas = [
 
         <aside class="story-rail absolute left-8 top-[10vh] z-30 h-[66vh] w-44">
           <div class="story-rail-line absolute left-5 top-0 bottom-0 w-px"></div>
-          <div class="story-rail-fill absolute left-5 top-0 w-px transition-[height] duration-150 ease-linear"></div>
+          <div class="story-rail-fill absolute left-5 top-0 w-px"></div>
           <div class="absolute inset-y-0 left-0 flex flex-col justify-between py-1">
             {storyBeats.map((beat, index) => (
               <div class="grid grid-cols-[2.5rem_1fr] items-center gap-3">
@@ -1869,6 +1989,11 @@ const homepageSchemas = [
             ))}
           </div>
         </aside>
+
+        <div class="story-scroll-cue" aria-hidden="true">
+          <span class="story-scroll-cue-label">Scroll</span>
+          <span class="story-scroll-cue-track"><span class="story-scroll-cue-drop"></span></span>
+        </div>
 
         <div class="story-photo-ball-mask absolute z-10" data-story-mask aria-hidden="true"></div>
 
@@ -1936,7 +2061,7 @@ const homepageSchemas = [
         ))}
 
         {storyBeats.map((beat, index) => (
-          <div class:list={['story-overlay absolute inset-0 z-30', beat.overlay === 'chooseNextStep' && 'story-overlay--choose']} data-story-overlay data-index={index} data-state={index === 0 ? 'active' : 'inactive'} hidden={index !== 0}>
+          <div class:list={['story-overlay absolute inset-0 z-30', beat.overlay === 'chooseNextStep' && 'story-overlay--choose']} data-story-overlay data-index={index} data-state={index === 0 ? 'active' : 'inactive'}>
             {beat.overlay === 'growth' && (
               <div class="absolute right-[6vw] top-[15vh] w-[38vw] max-w-[40rem]">
                 <div class="metric-card p-6">
@@ -2048,25 +2173,9 @@ const homepageSchemas = [
         return value * value * (3 - (2 * value));
       }
 
-      function initMobileStoryProgress() {
-        var mobileStory = document.querySelector('[data-mobile-story]');
-        if (!mobileStory) return;
-
-        function update() {
-          var rect = mobileStory.getBoundingClientRect();
-          var max = Math.max(1, rect.height - window.innerHeight);
-          var progress = clamp((0 - rect.top) / max, 0, 1);
-          mobileStory.style.setProperty('--mobile-story-progress', progress.toFixed(4));
-        }
-
-        update();
-        window.addEventListener('scroll', update, { passive: true });
-        window.addEventListener('resize', update);
-      }
-
       function initDesktopStory() {
         var shell = document.querySelector('[data-story-shell]');
-        // Bail on narrow screens OR any touch device — covers all iPads.
+        // Bail on narrow screens OR any touch device. Covers all iPads.
         if (!shell || window.matchMedia('(max-width: 1024px)').matches || window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
 
         var copies = Array.prototype.slice.call(shell.querySelectorAll('[data-story-copy]'));
@@ -2077,6 +2186,21 @@ const homepageSchemas = [
         var growthCounters = Array.prototype.slice.call(shell.querySelectorAll('[data-growth-count]'));
         var heroWords = Array.prototype.slice.call(shell.querySelectorAll('[data-hero-word]'));
         var total = copies.length;
+        var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var lastIndex = -1;
+        var hasScrolled = false;
+        var growthPlayed = false;
+        var viewportEl = shell.querySelector('.story-viewport');
+        var vpW = window.innerWidth;
+        var vpH = window.innerHeight;
+
+        // Measured on init and resize only, so per-frame marker math never
+        // reads layout.
+        function measureViewport() {
+          if (!viewportEl) return;
+          vpW = viewportEl.clientWidth || window.innerWidth;
+          vpH = viewportEl.clientHeight || window.innerHeight;
+        }
 
         function formatGrowth(value, format) {
           if (format === 'millions') {
@@ -2094,57 +2218,43 @@ const homepageSchemas = [
           return Math.round(value) + '+';
         }
 
-        function apply(nextIndex, progress) {
-          var localProgress = clamp((progress * total) - nextIndex, 0, 1);
-          var markerFrom = beatMarkers[nextIndex] || beatMarkers[0];
-          var marker = {
-            x: markerFrom.x,
-            y: markerFrom.y
-          };
+        // One-shot count-up the first time the Growth beat lands. Counter text
+        // never updates per scroll frame, so scrolling stays layout-free.
+        function playGrowth() {
+          if (growthPlayed) return;
+          growthPlayed = true;
+          shell.setAttribute('data-growth-played', '');
+          if (prefersReduced) return;
 
-          if (nextIndex === 0) {
-            var markerTo = beatMarkers[1] || markerFrom;
-            var heroMarkerAmount = smoothstep(clamp((localProgress - 0.78) / 0.22, 0, 1));
-            marker = {
-              x: lerp(markerFrom.x, markerTo.x, heroMarkerAmount),
-              y: lerp(markerFrom.y, markerTo.y, heroMarkerAmount)
-            };
+          var DURATION = 1100;
+          var startTime = null;
+          function frame(now) {
+            if (startTime === null) startTime = now;
+            var t = clamp((now - startTime) / DURATION, 0, 1);
+            var eased = 1 - Math.pow(1 - t, 3);
+            growthCounters.forEach(function (counter) {
+              var target = Number(counter.getAttribute('data-growth-target')) || 0;
+              var format = counter.getAttribute('data-growth-format') || 'plain';
+              counter.textContent = formatGrowth(target * eased, format);
+            });
+            if (t < 1) window.requestAnimationFrame(frame);
           }
+          window.requestAnimationFrame(frame);
+        }
 
-          var heroProgress = nextIndex === 0 ? localProgress : nextIndex > 0 ? 1 : 0;
-          var growthProgress = nextIndex < 2 ? 0 : nextIndex > 2 ? 1 : localProgress;
-          var easedGrowth = 1 - Math.pow(1 - growthProgress, 3);
-
+        // Attribute flips only happen when the active beat changes, never per
+        // scroll frame, so steady scrolling does no style invalidation work.
+        function applyIndex(nextIndex) {
+          lastIndex = nextIndex;
           shell.dataset.active = String(nextIndex);
-          shell.style.setProperty('--story-progress', String(progress));
-          shell.style.setProperty('--hero-word-progress', String(heroProgress));
-          shell.style.setProperty('--growth-progress', String(growthProgress));
-          shell.style.setProperty('--marker-x', marker.x + '%');
-          shell.style.setProperty('--marker-y', marker.y + '%');
-          shell.style.setProperty('--ball-size', markerFrom.ballSize || 'clamp(4.8rem, 5.8vw, 5.8rem)');
-          var slideTwoFly = nextIndex === 1 ? smoothstep(clamp((localProgress - 0.72) / 0.22, 0, 1)) : 0;
-          var ballOpacity = nextIndex === 0 ? 1 : nextIndex === 1 ? (1 - slideTwoFly) : 0;
-          shell.style.setProperty('--ball-opacity', String(ballOpacity));
-          shell.style.setProperty('--ball-fly-scale', String(1 - (slideTwoFly * 0.78)));
-                    var activeMask = beatMarkers[nextIndex] || marker;
-          var activeMaskSize = activeMask.maskSize || 0;
-          shell.style.setProperty('--mask-x', (activeMask.maskX || activeMask.x) + '%');
-          shell.style.setProperty('--mask-y', (activeMask.maskY || activeMask.y) + '%');
-          shell.style.setProperty('--mask-size', activeMaskSize + 'vw');
-          shell.style.setProperty('--mask-opacity', activeMaskSize > 0 ? '0.98' : '0');
-          shell.style.setProperty('--ball-rotation', (progress * 520) + 'deg');
 
-          heroWords.forEach(function (word, wordIndex) {
-            var thresholds = [0.18, 0.46, 0.74];
-            var threshold = thresholds[wordIndex] || 0.74;
-            word.setAttribute('data-visible', heroProgress >= threshold ? 'true' : 'false');
-          });
-
-          growthCounters.forEach(function (counter) {
-            var target = Number(counter.getAttribute('data-growth-target')) || 0;
-            var format = counter.getAttribute('data-growth-format') || 'plain';
-            counter.textContent = formatGrowth(target * easedGrowth, format);
-          });
+          var marker = beatMarkers[nextIndex] || beatMarkers[0];
+          var maskSize = marker.maskSize || 0;
+          shell.style.setProperty('--ball-size', marker.ballSize || 'clamp(4.8rem, 5.8vw, 5.8rem)');
+          shell.style.setProperty('--mask-x', (marker.maskX || marker.x) + '%');
+          shell.style.setProperty('--mask-y', (marker.maskY || marker.y) + '%');
+          shell.style.setProperty('--mask-size', maskSize + 'vw');
+          shell.style.setProperty('--mask-opacity', maskSize > 0 ? '0.98' : '0');
 
           copies.forEach(function (copy, index) {
             copy.setAttribute('data-state', index === nextIndex ? 'active' : 'inactive');
@@ -2167,9 +2277,7 @@ const homepageSchemas = [
           });
 
           overlays.forEach(function (overlay, index) {
-            var active = index === nextIndex;
-            overlay.hidden = !active;
-            overlay.setAttribute('data-state', active ? 'active' : 'inactive');
+            overlay.setAttribute('data-state', index === nextIndex ? 'active' : 'inactive');
           });
 
           dots.forEach(function (dot, index) {
@@ -2179,6 +2287,40 @@ const homepageSchemas = [
           labels.forEach(function (label, index) {
             label.setAttribute('data-state', index === nextIndex ? 'active' : 'inactive');
           });
+
+          if (nextIndex === 2) playGrowth();
+        }
+
+        function apply(nextIndex, progress) {
+          var localProgress = clamp((progress * total) - nextIndex, 0, 1);
+
+          shell.style.setProperty('--story-progress', String(progress));
+
+          var markerFrom = beatMarkers[nextIndex] || beatMarkers[0];
+          var markerX = markerFrom.x;
+          var markerY = markerFrom.y;
+
+          if (nextIndex === 0) {
+            var markerTo = beatMarkers[1] || markerFrom;
+            var heroMarkerAmount = smoothstep(clamp((localProgress - 0.78) / 0.22, 0, 1));
+            markerX = lerp(markerFrom.x, markerTo.x, heroMarkerAmount);
+            markerY = lerp(markerFrom.y, markerTo.y, heroMarkerAmount);
+          }
+
+          shell.style.setProperty('--marker-px-x', ((markerX / 100) * vpW).toFixed(1) + 'px');
+          shell.style.setProperty('--marker-px-y', ((markerY / 100) * vpH).toFixed(1) + 'px');
+
+          var slideTwoFly = nextIndex === 1 ? smoothstep(clamp((localProgress - 0.72) / 0.22, 0, 1)) : 0;
+          var ballOpacity = nextIndex === 0 ? 1 : nextIndex === 1 ? (1 - slideTwoFly) : 0;
+          shell.style.setProperty('--ball-opacity', String(ballOpacity));
+          shell.style.setProperty('--ball-fly-scale', String(1 - (slideTwoFly * 0.78)));
+
+          if (!hasScrolled && progress > 0.012) {
+            hasScrolled = true;
+            shell.setAttribute('data-scrolled', '');
+          }
+
+          if (nextIndex !== lastIndex) applyIndex(nextIndex);
         }
 
         function update() {
@@ -2200,11 +2342,21 @@ const homepageSchemas = [
         }
 
         window.addEventListener('scroll', requestUpdate, { passive: true });
-        window.addEventListener('resize', requestUpdate);
+        window.addEventListener('resize', function () {
+          measureViewport();
+          requestUpdate();
+        });
+        measureViewport();
         update();
+
+        // Hero headline enters on load, word by word. Scroll never gates it.
+        window.requestAnimationFrame(function () {
+          heroWords.forEach(function (word) {
+            word.setAttribute('data-visible', 'true');
+          });
+        });
       }
 
-      initMobileStoryProgress();
       initDesktopStory();
     })();
   </script>

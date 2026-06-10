@@ -14,7 +14,10 @@
 
 /* Base */
 *, *::before, *::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; overflow-x: clip; }
+html { overflow-x: clip; }
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
 body { background-color: #0A0A0A; color: white; font-family: 'DM Sans', system-ui, sans-serif; overflow-x: clip; }
 h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: 0.05em; }
 
