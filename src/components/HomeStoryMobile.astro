@@ -106,15 +106,16 @@ const choices = [
     <div class="mobile-story-sticky">
       {beats.map((beat, index) => (
         <article class="mobile-story-beat" data-mobile-beat data-index={index} style={`opacity:${index === 0 ? 1 : 0};`}>
-          {beat.video ? (
-            <video class="mobile-story-media mobile-story-video" muted loop playsinline preload="metadata" poster={beat.image} aria-label={beat.title}>
-              <source src={beat.video} type="video/mp4" />
-            </video>
-          ) : (
-            <img class="mobile-story-media" src={beat.image} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
-          )}
-
-          <div class="mobile-story-shade" aria-hidden="true"></div>
+          <div class="mobile-story-canvas" aria-hidden="true">
+            {beat.video ? (
+              <video class="mobile-story-media mobile-story-video" muted loop playsinline preload="metadata" poster={beat.image} aria-label={beat.title}>
+                <source src={beat.video} type="video/mp4" />
+              </video>
+            ) : (
+              <img class="mobile-story-media" src={beat.image} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
+            )}
+            <div class="mobile-story-shade"></div>
+          </div>
 
           <div class="mobile-story-copy">
             {beat.stamp && <strong class="mobile-story-stamp">{beat.stamp}</strong>}
@@ -172,7 +173,26 @@ const choices = [
   .mobile-story { display: none; position: relative; background: #030303; color: #fff; }
   .mobile-story-track { position: relative; }
   .mobile-story-sticky { position: relative; background: #050505; }
-  .mobile-story-beat { position: relative; min-height: 100svh; overflow: hidden; pointer-events: auto; opacity: 1 !important; transform: none !important; isolation: isolate; }
+  .mobile-story-beat { position: relative; min-height: 100svh; overflow: hidden; pointer-events: none; opacity: 1 !important; transform: none !important; isolation: isolate; }
+  /* Beats overlap so each photo's feathered edge dissolves over the one
+     before it. Native scroll does the blending, so it is smooth at any
+     thumb speed. Links re-enable their own pointer events below. */
+  .mobile-story-beat + .mobile-story-beat { margin-top: -7svh; }
+  .mobile-story-copy a { pointer-events: auto; }
+  /* Photo and shade live in one masked canvas that feathers to transparent
+     at the top and bottom, so a hard seam between photos cannot exist. */
+  .mobile-story-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 15%, #000 85%, transparent 100%);
+    mask-image: linear-gradient(180deg, transparent 0%, #000 15%, #000 85%, transparent 100%);
+  }
+  /* The first photo stays solid at the top so the hero meets the nav clean. */
+  .mobile-story-beat:first-child .mobile-story-canvas {
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 85%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 0%, #000 85%, transparent 100%);
+  }
   .mobile-story-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; filter: saturate(1.02) contrast(1.08) brightness(0.86); transform: translateZ(0); }
   .mobile-story-video { z-index: 0; background: #000; }
   .mobile-story-beat:nth-child(1) .mobile-story-media { object-position: 53% 44%; }
@@ -182,7 +202,7 @@ const choices = [
   .mobile-story-beat:nth-child(5) .mobile-story-media { object-position: 50% 48%; }
   .mobile-story-beat:nth-child(7) .mobile-story-media { object-position: 50% 44%; }
   .mobile-story-beat:nth-child(8) .mobile-story-media { object-position: 50% 38%; }
-  .mobile-story-shade { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(0,0,0,0.42), rgba(0,0,0,0.08) 42%, rgba(0,0,0,0.78)), linear-gradient(90deg, rgba(0,0,0,0.74), rgba(0,0,0,0.2) 58%, rgba(0,0,0,0.18)); }
+  .mobile-story-shade { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(0,0,0,0.3), rgba(0,0,0,0.08) 42%, rgba(0,0,0,0.72)), linear-gradient(90deg, rgba(0,0,0,0.74), rgba(0,0,0,0.2) 58%, rgba(0,0,0,0.18)); }
   /* Hidden initial states only exist under .is-motion, which JS adds when
      motion is allowed. No JS or reduced motion = every beat fully visible. */
   .mobile-story-copy { position: absolute; left: 3.85rem; right: 1.25rem; top: 18svh; z-index: 3; max-width: 22.5rem; transition: opacity 420ms cubic-bezier(.22,.61,.36,1), transform 460ms cubic-bezier(.22,.61,.36,1); }
