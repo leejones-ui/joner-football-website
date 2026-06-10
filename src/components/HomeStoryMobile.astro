@@ -1,36 +1,30 @@
 ---
-// Mobile homepage story: one sticky cinematic stage. Backgrounds crossfade
-// and settle behind the copy as the user scrolls, so there are no image
-// seams anywhere. JS sets the scroll track height; without JS the section
-// collapses to a single hero screen and the rest of the page still works.
 const beats = [
   {
     number: '01',
+    label: 'Philosophy',
     kicker: 'Welcome',
     title: 'Technique Above Everything',
     body: '',
     image: '/images/home-mobile-story/mobile-story-01-action.webp',
-    pos: 'center',
-    objectPosition: '53% 44%',
   },
   {
     number: '02',
+    label: 'Origin',
     kicker: 'Origin',
     title: 'It Started With A Bag Of Balls',
     body: 'In 2013 it started with an idea. Joner Football was born. Now we are recognised all over the world.',
     image: '/images/home-mobile-story/mobile-story-02-origin.webp',
     stamp: 'EST 2013',
-    objectPosition: '50% 45%',
   },
   {
     number: '03',
+    label: 'Growth',
     kicker: 'Growth',
     title: 'Local Sessions. Global Reach.',
     body: 'The work spread through videos, players, parents, coaches, and millions of touches online.',
     image: '/images/home-mobile-story/mobile-story-03-growth.webp',
     growth: true,
-    compact: true,
-    objectPosition: '50% 48%',
     ctas: [
       ['YouTube', 'https://www.youtube.com/@jonerfootball'],
       ['Instagram', 'https://www.instagram.com/jonerfootball/'],
@@ -42,51 +36,50 @@ const beats = [
   },
   {
     number: '04',
+    label: 'Joner Way',
     kicker: 'The Joner Way',
     title: 'A Method Like No Other',
     body: 'Every technical detail gets coached through energy, passion & positivity.',
     image: '/images/home-mobile-story/mobile-story-04-joner-way.webp',
-    objectPosition: '50% 42%',
     ctas: [['Train With Us In Sydney', '/contact']],
   },
   {
     number: '05',
+    label: 'Global',
     kicker: 'Going Global',
     title: 'Coaching Worldwide',
     body: 'From Sydney to camps, clinics, and football communities around the world.',
     image: '/images/home-mobile-story/mobile-story-05-camps.webp',
-    objectPosition: '50% 48%',
     ctas: [['Elite Camps', '/camps']],
   },
   {
     number: '06',
+    label: 'JF App',
     kicker: 'The Joner Football App',
     title: 'Worlds #1 Football Coaching APP',
     body: 'Built for players, parents, and coaches to train with clarity, confidence, and purpose.',
     image: '/images/home-mobile-story/mobile-story-05-app.webp',
     video: '/images/home-storyboard/06-app-header-video-desktop.mp4',
-    objectPosition: '50% 50%',
     ctas: [
       ['7 Day Free Trial', 'https://app.jonerfootball.com/categories/category-vpi8uazway4'],
     ],
   },
   {
     number: '07',
+    label: 'Our HQ',
     kicker: 'Our HQ',
     title: 'A Home Of Our Own',
     body: 'Sydney, Australia. Belrose. Our home.',
     image: '/images/home-mobile-story/mobile-story-07-hq-photo.webp',
-    objectPosition: '50% 44%',
     ctas: [['Visit HQ Map', 'https://maps.google.com/?q=20+Narabang+Way+Belrose']],
   },
   {
     number: '08',
+    label: 'Action',
     kicker: 'Action',
     title: 'Choose Your Next Step',
     body: 'Train online, train with us, join a camp, or get inside the Joner Football Hub.',
     image: '/images/home-mobile-story/mobile-story-08-action.webp',
-    pos: 'center',
-    objectPosition: '50% 38%',
     choose: true,
   },
 ]
@@ -108,67 +101,69 @@ const choices = [
 ]
 ---
 
-<section class="mobile-story" data-mobile-story aria-label="Joner Football mobile story">
-  <div class="mobile-story-track" data-mobile-track>
-    <div class="mobile-story-stage" data-mobile-stage>
+<section class="mobile-story" data-mobile-story-rebuild aria-label="Joner Football mobile story">
+  <div class="mobile-story-track">
+    <div class="mobile-story-sticky">
       {beats.map((beat, index) => (
-        beat.video ? (
-          <div class="mobile-story-bg" data-mobile-bg data-state={index === 0 ? 'active' : 'inactive'}>
-            <video muted loop playsinline preload="metadata" poster={beat.image} aria-label={beat.title} style={`object-position: ${beat.objectPosition};`}>
+        <article class="mobile-story-beat" data-mobile-beat data-index={index} style={`opacity:${index === 0 ? 1 : 0};`}>
+          {beat.video ? (
+            <video class="mobile-story-media mobile-story-video" muted loop playsinline preload="metadata" poster={beat.image} aria-label={beat.title}>
               <source src={beat.video} type="video/mp4" />
             </video>
+          ) : (
+            <img class="mobile-story-media" src={beat.image} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
+          )}
+
+          <div class="mobile-story-shade" aria-hidden="true"></div>
+
+          <div class="mobile-story-copy">
+            {beat.stamp && <strong class="mobile-story-stamp">{beat.stamp}</strong>}
+            <p class="mobile-story-kicker">{beat.kicker}</p>
+            <h2>{beat.title}</h2>
+            {beat.body && <p>{beat.body}</p>}
+
+            {beat.growth && (
+              <div class="mobile-growth-card">
+                <p class="mobile-growth-label">Social growth</p>
+                <strong data-mobile-growth-count data-target={stats[0].target} data-format={stats[0].format}>{stats[0].value}</strong>
+                <div class="mobile-growth-bars" aria-hidden="true">
+                  {[18, 32, 48, 66, 88, 100].map((height) => <span style={`height:${height}%`}></span>)}
+                </div>
+                <div class="mobile-growth-grid">
+                  {stats.slice(1).map((stat) => (
+                    <div><strong data-mobile-growth-count data-target={stat.target} data-format={stat.format}>{stat.value}</strong><span>{stat.label}</span></div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {beat.choose ? (
+              <div class="mobile-story-choices">
+                {choices.map(([label, href]) => <a href={href}>{label}</a>)}
+              </div>
+            ) : beat.ctas && (
+              <div class="mobile-story-ctas">
+                {beat.ctas.map(([label, href]) => <a href={href}>{label}</a>)}
+              </div>
+            )}
           </div>
-        ) : (
-          <div class="mobile-story-bg" data-mobile-bg data-state={index === 0 ? 'active' : 'inactive'}>
-            <img src={beat.image} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" fetchpriority={index === 0 ? 'high' : 'auto'} style={`object-position: ${beat.objectPosition};`} />
-          </div>
-        )
+
+          {index === 0 && (
+            <div class="mobile-story-cue" aria-hidden="true">
+              <span class="mobile-story-cue-label">Scroll</span>
+              <span class="mobile-story-cue-track"><span class="mobile-story-cue-drop"></span></span>
+            </div>
+          )}
+        </article>
       ))}
 
-      <div class="mobile-story-veil" aria-hidden="true"></div>
-
-      {beats.map((beat, index) => (
-        <div class="mobile-story-copy" data-mobile-copy data-pos={beat.pos || 'bottom'} data-state={index === 0 ? 'active' : 'inactive'}>
-          {beat.stamp && <strong class="mobile-story-stamp">{beat.stamp}</strong>}
-          <p class="mobile-story-kicker">{beat.kicker}</p>
-          <h2 class="mobile-story-title">{beat.title}</h2>
-          {beat.body && <p class="mobile-story-body">{beat.body}</p>}
-
-          {beat.growth && (
-            <div class="mobile-growth-card">
-              <p class="mobile-growth-label">Social growth</p>
-              <strong data-mobile-growth-count data-target={stats[0].target} data-format={stats[0].format}>{stats[0].value}</strong>
-              <div class="mobile-growth-bars" aria-hidden="true">
-                {[18, 32, 48, 66, 88, 100].map((height) => <span style={`height:${height}%`}></span>)}
-              </div>
-              <div class="mobile-growth-grid">
-                {stats.slice(1).map((stat) => (
-                  <div><strong data-mobile-growth-count data-target={stat.target} data-format={stat.format}>{stat.value}</strong><span>{stat.label}</span></div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {beat.choose ? (
-            <div class="mobile-story-choices">
-              {choices.map(([label, href]) => <a href={href}>{label}</a>)}
-            </div>
-          ) : beat.ctas && (
-            <div class:list={['mobile-story-ctas', beat.compact && 'mobile-story-ctas--compact']}>
-              {beat.ctas.map(([label, href]) => <a href={href}>{label}</a>)}
-            </div>
-          )}
+      <aside class="mobile-story-rail" aria-hidden="true">
+        <div class="mobile-story-line"></div>
+        <div class="mobile-story-fill" data-mobile-story-fill></div>
+        <div class="mobile-story-dots">
+          {beats.map((beat, index) => <span class:list={[index === 0 && 'is-active']} data-mobile-dot>{beat.number}</span>)}
         </div>
-      ))}
-
-      <div class="mobile-story-dots" aria-hidden="true">
-        {beats.map((beat, index) => <span class:list={[index === 0 && 'is-active']} data-mobile-dot></span>)}
-      </div>
-
-      <div class="mobile-story-cue" aria-hidden="true">
-        <span class="mobile-story-cue-label">Scroll</span>
-        <span class="mobile-story-cue-track"><span class="mobile-story-cue-drop"></span></span>
-      </div>
+      </aside>
     </div>
   </div>
 </section>
@@ -176,453 +171,129 @@ const choices = [
 <style>
   .mobile-story { display: none; position: relative; background: #030303; color: #fff; }
   .mobile-story-track { position: relative; }
-
-  /* One sticky stage. Photos live stacked inside it and crossfade, so a
-     hard seam between images is impossible by construction. */
-  .mobile-story-stage {
-    position: sticky;
-    top: 4rem;
-    height: calc(100svh - 4rem);
-    overflow: hidden;
-    background: #030303;
-    isolation: isolate;
-  }
-
-  .mobile-story-bg {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    opacity: 0;
-    transform: scale(1.07);
-    transition:
-      opacity 700ms cubic-bezier(.22,.61,.36,1),
-      transform 1500ms cubic-bezier(.22,.61,.36,1);
-  }
-
-  /* The land: each photo fades up while it settles from 1.07 to rest.
-     Visible on a normal thumb scroll, calm enough to never feel gimmicky. */
-  .mobile-story-bg[data-state="active"] {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  .mobile-story-bg img,
-  .mobile-story-bg video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    filter: saturate(1.03) contrast(1.07) brightness(0.88);
-  }
-
-  /* Cinematic veil: dark feathered top and bottom so every photo emerges
-     from black and the copy always sits on a quiet area. */
-  .mobile-story-veil {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    pointer-events: none;
-    background:
-      linear-gradient(180deg,
-        rgba(3,3,3,0.74) 0%,
-        rgba(3,3,3,0.28) 15%,
-        rgba(3,3,3,0) 32%,
-        rgba(3,3,3,0) 50%,
-        rgba(3,3,3,0.42) 70%,
-        rgba(3,3,3,0.9) 100%),
-      radial-gradient(120% 70% at 50% 42%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.34) 100%);
-  }
-
-  /* Copy blocks: bottom anchored on a darkened band, never floating over
-     the busy middle of a photo. Hero and final beat are centered. */
-  .mobile-story-copy {
-    position: absolute;
-    left: 1.4rem;
-    right: 2.7rem;
-    bottom: calc(2.6rem + env(safe-area-inset-bottom));
-    z-index: 5;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition:
-      opacity 340ms cubic-bezier(.55,0,.68,.19),
-      visibility 0s linear 340ms;
-  }
-
-  .mobile-story-copy[data-state="active"] {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transition: opacity 0s, visibility 0s;
-  }
-
-  .mobile-story-copy[data-pos="center"] {
-    top: 0;
-    bottom: 0;
-    right: 1.4rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding-bottom: 2.4rem;
-  }
-
-  .mobile-story-kicker {
-    margin: 0 0 0.8rem;
-    color: #e30613;
-    font-family: 'Anton', Impact, sans-serif;
-    font-size: 0.7rem;
-    letter-spacing: 0.26em;
-    text-transform: uppercase;
-  }
-
-  .mobile-story-title {
-    margin: 0;
-    color: #fff;
-    font-family: 'Anton', Impact, sans-serif;
-    font-size: clamp(2.35rem, 10.2vw, 3.5rem);
-    line-height: 0.94;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    text-shadow: 0 1rem 2.4rem rgba(0,0,0,0.6);
-  }
-
-  .mobile-story-copy[data-pos="center"] .mobile-story-title {
-    font-size: clamp(2.9rem, 13vw, 4.6rem);
-    line-height: 0.92;
-  }
-
-  .mobile-story-body {
-    margin: 0.95rem 0 0;
-    max-width: 19.5rem;
-    color: rgba(255,255,255,0.82);
-    font-family: Arial, sans-serif;
-    font-size: 0.96rem;
-    line-height: 1.45;
-  }
-
-  .mobile-story-copy[data-pos="center"] .mobile-story-body {
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .mobile-story-stamp {
-    display: inline-flex;
-    margin-bottom: 0.9rem;
-    border-left: 2px solid #e30613;
-    padding-left: 0.6rem;
-    font-family: 'Anton', Impact, sans-serif;
-    font-size: 1.3rem;
-    line-height: 1;
-  }
-
-  /* Child reveal stagger: kicker, title, body, CTAs. Hidden initial states
-     only exist under .is-motion (added by JS when motion is allowed), so
-     no JS or reduced motion means everything renders fully visible. */
-  .mobile-story-stamp,
-  .mobile-story-kicker,
-  .mobile-story-title,
-  .mobile-story-body {
-    transition:
-      opacity 500ms cubic-bezier(.22,.61,.36,1),
-      transform 580ms cubic-bezier(.22,.61,.36,1);
-  }
-
-  .mobile-story.is-motion .mobile-story-copy:not([data-state="active"]) .mobile-story-stamp,
-  .mobile-story.is-motion .mobile-story-copy:not([data-state="active"]) .mobile-story-kicker,
-  .mobile-story.is-motion .mobile-story-copy:not([data-state="active"]) .mobile-story-title,
-  .mobile-story.is-motion .mobile-story-copy:not([data-state="active"]) .mobile-story-body {
-    opacity: 0;
-    transform: translateY(1.05rem);
-  }
-
-  .mobile-story-copy[data-state="active"] .mobile-story-kicker { transition-delay: 60ms; }
-  .mobile-story-copy[data-state="active"] .mobile-story-title { transition-delay: 140ms; }
-  .mobile-story-copy[data-state="active"] .mobile-story-body { transition-delay: 240ms; }
-  .mobile-story-copy[data-state="active"] .mobile-story-ctas,
-  .mobile-story-copy[data-state="active"] .mobile-story-choices { transition-delay: 320ms; }
-  .mobile-story-copy[data-state="active"] .mobile-growth-card { transition-delay: 220ms; }
-
-  .mobile-story-ctas,
-  .mobile-story-choices {
-    margin-top: 1.15rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.55rem;
-    transition:
-      opacity 460ms cubic-bezier(.22,.61,.36,1),
-      transform 540ms cubic-bezier(.22,.61,.36,1);
-  }
-
-  .mobile-story.is-motion .mobile-story-copy:not([data-state="active"]) .mobile-story-ctas,
-  .mobile-story.is-motion .mobile-story-copy:not([data-state="active"]) .mobile-story-choices {
-    opacity: 0;
-    transform: translateY(0.8rem);
-  }
-
-  .mobile-story-copy[data-pos="center"] .mobile-story-ctas { justify-content: center; }
-
-  .mobile-story-ctas a,
-  .mobile-story-choices a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.95rem;
-    border: 1px solid rgba(255,255,255,0.32);
-    border-radius: 999px;
-    background: rgba(5,5,5,0.6);
-    color: #fff;
-    padding: 0.78rem 1.05rem;
-    font-family: 'Anton', Impact, sans-serif;
-    font-size: 0.72rem;
-    letter-spacing: 0.13em;
-    line-height: 1;
-    text-decoration: none;
-    text-transform: uppercase;
-    backdrop-filter: blur(12px);
-    transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease;
-  }
-
-  .mobile-story-ctas a:active,
-  .mobile-story-choices a:active {
-    transform: scale(0.97);
-    border-color: #e30613;
-    background: rgba(227,6,19,0.82);
-  }
-
-  /* Six social links on the Growth beat stay tight: small three-up grid. */
-  .mobile-story-ctas--compact {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.4rem;
-    max-width: 20.5rem;
-    margin-top: 0.85rem;
-  }
-
-  .mobile-story-ctas--compact a {
-    min-height: 2.5rem;
-    padding: 0.55rem 0.4rem;
-    font-size: 0.64rem;
-  }
-
-  .mobile-story-choices {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: min(20.5rem, 100%);
-    margin-left: auto;
-    margin-right: auto;
-  }
-
+  .mobile-story-sticky { position: relative; background: #050505; }
+  .mobile-story-beat { position: relative; min-height: 100svh; overflow: hidden; pointer-events: auto; opacity: 1 !important; transform: none !important; isolation: isolate; }
+  .mobile-story-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; filter: saturate(1.02) contrast(1.08) brightness(0.86); transform: translateZ(0); }
+  .mobile-story-video { z-index: 0; background: #000; }
+  .mobile-story-beat:nth-child(1) .mobile-story-media { object-position: 53% 44%; }
+  .mobile-story-beat:nth-child(2) .mobile-story-media { object-position: 50% 45%; }
+  .mobile-story-beat:nth-child(3) .mobile-story-media { object-position: 50% 48%; }
+  .mobile-story-beat:nth-child(4) .mobile-story-media { object-position: 50% 42%; }
+  .mobile-story-beat:nth-child(5) .mobile-story-media { object-position: 50% 48%; }
+  .mobile-story-beat:nth-child(7) .mobile-story-media { object-position: 50% 44%; }
+  .mobile-story-beat:nth-child(8) .mobile-story-media { object-position: 50% 38%; }
+  .mobile-story-shade { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(0,0,0,0.42), rgba(0,0,0,0.08) 42%, rgba(0,0,0,0.78)), linear-gradient(90deg, rgba(0,0,0,0.74), rgba(0,0,0,0.2) 58%, rgba(0,0,0,0.18)); }
+  /* Hidden initial states only exist under .is-motion, which JS adds when
+     motion is allowed. No JS or reduced motion = every beat fully visible. */
+  .mobile-story-copy { position: absolute; left: 3.85rem; right: 1.25rem; top: 18svh; z-index: 3; max-width: 22.5rem; transition: opacity 420ms cubic-bezier(.22,.61,.36,1), transform 460ms cubic-bezier(.22,.61,.36,1); }
+  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-copy { opacity: 0.35; transform: translateY(0.5rem); }
+  /* Staggered scroll-in: kicker → h2 → body → CTAs. Calm and quick. */
+  .mobile-story-kicker, .mobile-story-copy h2, .mobile-story-copy p:not(.mobile-story-kicker) { transition: opacity 520ms cubic-bezier(.22,.61,.36,1), transform 600ms cubic-bezier(.22,.61,.36,1); }
+  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-kicker,
+  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-copy h2,
+  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-copy p:not(.mobile-story-kicker) { opacity: 0; transform: translateY(1.1rem); }
+  .mobile-story-beat.is-active .mobile-story-kicker { transition-delay: 60ms; }
+  .mobile-story-beat.is-active .mobile-story-copy h2 { transition-delay: 150ms; }
+  .mobile-story-beat.is-active .mobile-story-copy p:not(.mobile-story-kicker) { transition-delay: 260ms; }
+  .mobile-story-beat.is-active .mobile-story-ctas, .mobile-story-beat.is-active .mobile-story-choices { transition-delay: 340ms; }
+  /* CTAs also flip visibility so invisible links in neighbouring beats can
+     never catch taps or keyboard focus. The 560ms visibility delay lets the
+     exit fade finish first. */
+  .mobile-story-ctas, .mobile-story-choices { transition: opacity 480ms cubic-bezier(.22,.61,.36,1), transform 560ms cubic-bezier(.22,.61,.36,1), visibility 0s linear 560ms; }
+  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-ctas,
+  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-choices { opacity: 0; transform: translateY(0.85rem); visibility: hidden; }
+  .mobile-story-beat:nth-child(1) .mobile-story-copy { inset: 0 1.4rem 0 3.8rem; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
+  .mobile-story-beat:nth-child(2) .mobile-story-copy { inset: 0 1.4rem 0 3.8rem; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
+  .mobile-story-beat:nth-child(3) .mobile-story-copy { top: 12svh; }
+  .mobile-story-beat:nth-child(4) .mobile-story-copy { top: 36svh; left: 3.8rem; right: 1.4rem; text-align: center; }
+  .mobile-story-beat:nth-child(4) .mobile-story-ctas { justify-content: center; }
+  .mobile-story-beat:nth-child(5) .mobile-story-copy { left: 4.15rem; }
+  .mobile-story-beat:nth-child(6) .mobile-story-copy { inset: 0 1.4rem 0 3.8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
+  .mobile-story-beat:nth-child(7) .mobile-story-copy { top: auto; bottom: max(2.2rem, env(safe-area-inset-bottom)); }
+  .mobile-story-beat:nth-child(8) .mobile-story-copy { inset: 0 1.4rem 0 3.8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
+  .mobile-story-kicker { margin: 0 0 0.9rem; color: #e30613; font-family: 'Anton', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 0.24em; text-transform: uppercase; }
+  .mobile-story-copy h2 { margin: 0; color: #fff; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.55rem, 11.7vw, 4.25rem); line-height: 0.92; letter-spacing: 0.03em; text-transform: uppercase; text-shadow: 0 1rem 2rem rgba(0,0,0,0.62); }
+  .mobile-story-copy p:not(.mobile-story-kicker) { margin: 1rem 0 0; max-width: 19.5rem; color: rgba(255,255,255,0.8); font-family: Arial, sans-serif; font-size: 0.98rem; line-height: 1.42; }
+  .mobile-story-stamp { position: absolute; left: 1.25rem; top: max(1.25rem, env(safe-area-inset-top)); z-index: 4; display: inline-flex; border-left: 2px solid #e30613; padding-left: 0.6rem; font-family: 'Anton', Impact, sans-serif; font-size: 1.35rem; line-height: 1; transition: opacity 260ms ease, transform 300ms ease; }
+  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-stamp { opacity: 0; transform: translateY(0.5rem); }
+  .mobile-story-ctas, .mobile-story-choices { margin-top: 1.15rem; display: flex; flex-wrap: wrap; gap: 0.58rem; }
+  .mobile-story-beat:nth-child(3) .mobile-story-ctas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; max-width: 20.5rem; margin-top: 0.8rem; }
+  .mobile-story-beat:nth-child(3) .mobile-story-ctas a { min-height: 2.5rem; padding: 0.55rem 0.4rem; font-size: 0.66rem; }
+  .mobile-story-ctas a, .mobile-story-choices a { display: inline-flex; align-items: center; justify-content: center; min-height: 2.9rem; border: 1px solid rgba(255,255,255,0.34); border-radius: 999px; background: rgba(5,5,5,0.58); color: #fff; padding: 0.78rem 1rem; font-family: 'Anton', Impact, sans-serif; font-size: 0.72rem; letter-spacing: 0.13em; line-height: 1; text-decoration: none; text-transform: uppercase; backdrop-filter: blur(14px); transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease; }
+  .mobile-story-ctas a:active, .mobile-story-choices a:active { transform: scale(0.97); border-color: #e30613; background: rgba(227,6,19,0.82); }
+  .mobile-story-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 20.5rem; }
   .mobile-story-choices a { border-radius: 0.7rem; min-height: 3.2rem; padding-inline: 0.55rem; text-align: center; }
-
-  /* Growth card: one-shot rise when its beat lands, nothing per frame.
-     contain keeps counter text rewrites from dirtying layout outside it. */
-  .mobile-growth-card {
-    margin-top: 1rem;
-    max-width: 20.5rem;
-    border: 1px solid rgba(255,255,255,0.16);
-    background: rgba(5,5,5,0.56);
-    padding: 0.8rem;
-    backdrop-filter: blur(14px);
-    contain: layout style;
-    transition: opacity 460ms cubic-bezier(.22,.61,.36,1);
-  }
-
-  .mobile-story.is-motion .mobile-story-copy:not([data-state="active"]) .mobile-growth-card { opacity: 0; }
-
-  .mobile-growth-label {
-    margin: 0 0 0.45rem;
-    color: #e30613;
-    font-family: 'Anton', Impact, sans-serif;
-    font-size: 0.6rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-  }
-
-  .mobile-growth-card > strong {
-    display: block;
-    font-family: 'Anton', Impact, sans-serif;
-    font-size: clamp(2.5rem, 11vw, 3.6rem);
-    line-height: 0.92;
-    transform-origin: 0 60%;
-    transition: transform 700ms cubic-bezier(.22,.61,.36,1) 80ms;
-  }
-
-  .mobile-story.is-motion:not(.is-growth-played) .mobile-growth-card > strong {
-    transform: translate3d(0, 18px, 0) scale(0.78);
-  }
-
-  .mobile-growth-bars { margin-top: 0.45rem; height: 3rem; display: flex; align-items: end; gap: 0.28rem; }
-
-  .mobile-growth-bars span {
-    flex: 1;
-    background: #e30613;
-    opacity: 0.5;
-    transform-origin: bottom;
-    transition: transform 760ms cubic-bezier(.22,.61,.36,1);
-  }
-
+  /* contain keeps the 1.1s counter text rewrites from dirtying layout
+     outside the card while the user is still flinging the page */
+  .mobile-growth-card { margin-top: 0.85rem; max-width: 20.5rem; border: 1px solid rgba(255,255,255,0.16); background: rgba(5,5,5,0.52); padding: 0.8rem; backdrop-filter: blur(16px); contain: layout style; }
+  .mobile-growth-label { margin: 0 0 0.45rem !important; color: #e30613 !important; font-family: 'Anton', Impact, sans-serif !important; font-size: 0.62rem !important; letter-spacing: 0.18em; text-transform: uppercase; }
+  /* Growth numbers and bars rise once when the Growth beat first lands.
+     Nothing here updates per scroll frame. The whole card stays hidden in
+     inactive beats so finished numbers are never readable early. */
+  .mobile-growth-card { transition: opacity 480ms cubic-bezier(.22,.61,.36,1); }
+  .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-growth-card { opacity: 0; }
+  .mobile-story-beat.is-active .mobile-growth-card { transition-delay: 200ms; }
+  .mobile-growth-card > strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.8rem, 13vw, 4rem); line-height: 0.92; transform-origin: 0 60%; transition: transform 700ms cubic-bezier(.22,.61,.36,1) 80ms; }
+  .mobile-story.is-motion:not(.is-growth-played) .mobile-growth-card > strong { transform: translate3d(0, 18px, 0) scale(0.76); }
+  .mobile-growth-bars { margin-top: 0.45rem; height: 3.4rem; display: flex; align-items: end; gap: 0.28rem; }
+  .mobile-growth-bars span { flex: 1; background: #e30613; opacity: 0.5; transform-origin: bottom; transition: transform 760ms cubic-bezier(.22,.61,.36,1); }
   .mobile-story.is-motion:not(.is-growth-played) .mobile-growth-bars span { transform: scaleY(0.12); }
   .mobile-growth-bars span:nth-child(2) { transition-delay: 60ms; }
   .mobile-growth-bars span:nth-child(3) { transition-delay: 120ms; }
   .mobile-growth-bars span:nth-child(4) { transition-delay: 180ms; }
   .mobile-growth-bars span:nth-child(5) { transition-delay: 240ms; }
   .mobile-growth-bars span:nth-child(6) { transition-delay: 300ms; }
-
   .mobile-growth-grid { margin-top: 0.6rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.34rem; }
   .mobile-growth-grid div { border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); padding: 0.42rem 0.28rem; text-align: center; }
-
-  .mobile-growth-grid strong {
-    display: block;
-    font-family: 'Anton', Impact, sans-serif;
-    font-size: 1.05rem;
-    line-height: 1;
-    transition: transform 700ms cubic-bezier(.22,.61,.36,1) 140ms;
-  }
-
-  .mobile-story.is-motion:not(.is-growth-played) .mobile-growth-grid strong { transform: translate3d(0, 8px, 0) scale(0.84); }
-
-  .mobile-growth-grid span {
-    display: block;
-    margin-top: 0.2rem;
-    color: rgba(255,255,255,0.58);
-    font-family: Arial, sans-serif;
-    font-size: 0.47rem;
-    font-weight: 900;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-
-  /* Progress: eight quiet micro dots on the right edge. The active one
-     stretches into a small red mark. No numbers, no lines, no glow. */
-  .mobile-story-dots {
-    position: absolute;
-    right: 0.9rem;
-    top: 50%;
-    z-index: 6;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.52rem;
-    transform: translateY(-50%);
-    pointer-events: none;
-  }
-
-  .mobile-story-dots span {
-    width: 0.24rem;
-    height: 0.24rem;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.34);
-    transition: background-color 320ms ease, height 320ms cubic-bezier(.22,.61,.36,1);
-  }
-
-  .mobile-story-dots span.is-active {
-    height: 1.05rem;
-    background: #e30613;
-  }
-
-  /* Scroll cue: JS-gated, gone for good on first scroll. */
-  .mobile-story-cue {
-    display: none;
-    position: absolute;
-    left: 50%;
-    bottom: calc(1.1rem + env(safe-area-inset-bottom));
-    z-index: 6;
-    transform: translateX(-50%);
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    opacity: 0.9;
-    transition: opacity 420ms ease, visibility 0s linear 420ms;
-    pointer-events: none;
-  }
-
+  .mobile-growth-grid strong { display: block; font-family: 'Anton', Impact, sans-serif; font-size: 1.08rem; line-height: 1; transition: transform 700ms cubic-bezier(.22,.61,.36,1) 140ms; }
+  .mobile-story.is-motion:not(.is-growth-played) .mobile-growth-grid strong { transform: translate3d(0, 8px, 0) scale(0.82); }
+  .mobile-growth-grid span { display: block; margin-top: 0.2rem; color: rgba(255,255,255,0.58); font-family: Arial, sans-serif; font-size: 0.47rem; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; }
+  .mobile-story-rail { position: fixed; left: 0.9rem; top: 5rem; bottom: 4.7rem; z-index: 20; width: 1.7rem; pointer-events: none; opacity: 0; transition: opacity 180ms ease; }
+  .mobile-story.is-in-view .mobile-story-rail { opacity: 1; }
+  .mobile-story-line, .mobile-story-fill { position: absolute; left: 0.82rem; top: 0; bottom: 0; width: 1px; }
+  .mobile-story-line { background: rgba(255,255,255,0.24); }
+  /* scaleY, not height: progress updates never touch layout. No glow on the
+     fill itself, a shadow would stretch and crush with the scale. */
+  .mobile-story-fill { background: #e30613; transform: scaleY(0); transform-origin: top; }
+  .mobile-story-line::before, .mobile-story-line::after { content: '+'; position: absolute; left: -0.25rem; color: rgba(255,255,255,0.74); font-family: Arial, sans-serif; font-size: 1rem; line-height: 1; }
+  .mobile-story-line::before { top: -0.9rem; } .mobile-story-line::after { bottom: -0.9rem; }
+  .mobile-story-dots { position: absolute; left: 0.18rem; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: space-between; }
+  .mobile-story-dots span { width: 1.45rem; height: 1.45rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.26); background: rgba(0,0,0,0.34); display: grid; place-items: center; color: rgba(255,255,255,0.62); font-family: 'Anton', Impact, sans-serif; font-size: 0.58rem; letter-spacing: 0.08em; }
+  .mobile-story-dots span.is-active { border-color: #e30613; background: #e30613; color: #fff; box-shadow: 0 0 1rem rgba(227,6,19,0.5); }
+  /* Scroll cue on the first beat. Decorative, JS-gated, gone on first scroll. */
+  .mobile-story-cue { display: none; position: absolute; left: 50%; bottom: calc(1.5rem + env(safe-area-inset-bottom)); z-index: 4; transform: translateX(-50%); flex-direction: column; align-items: center; gap: 0.5rem; opacity: 0.9; transition: opacity 420ms ease, visibility 0s linear 420ms; pointer-events: none; }
   .mobile-story.is-motion .mobile-story-cue { display: flex; }
   .mobile-story.is-scrolled .mobile-story-cue { opacity: 0; visibility: hidden; }
   .mobile-story.is-scrolled .mobile-story-cue-drop { animation-play-state: paused; }
-
-  .mobile-story-cue-label {
-    color: rgba(255,255,255,0.62);
-    font-family: 'Anton', Impact, sans-serif;
-    font-size: 0.56rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-  }
-
+  .mobile-story-cue-label { color: rgba(255,255,255,0.62); font-family: 'Anton', Impact, sans-serif; font-size: 0.56rem; letter-spacing: 0.3em; text-transform: uppercase; }
   .mobile-story-cue-track { position: relative; width: 1px; height: 2.1rem; overflow: hidden; background: rgba(255,255,255,0.24); }
-
-  .mobile-story-cue-drop {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 1px;
-    height: 0.75rem;
-    background: #e30613;
-    animation: mobileCueDrop 2.2s cubic-bezier(.5,0,.75,.45) infinite;
-  }
-
-  @keyframes mobileCueDrop {
-    0% { transform: translateY(-0.85rem); }
-    62%, 100% { transform: translateY(2.25rem); }
-  }
-
-  /* Show on narrow viewports OR any touch device (iPads of all sizes). */
-  @media (max-width: 1024px), (hover: none) and (pointer: coarse) {
-    .mobile-story { display: block; }
-  }
-
+  /* accelerating fall: a drop that brakes before vanishing reads mushy */
+  .mobile-story-cue-drop { position: absolute; left: 0; top: 0; width: 1px; height: 0.75rem; background: #e30613; animation: mobileCueDrop 2.2s cubic-bezier(.5,0,.75,.45) infinite; }
+  @keyframes mobileCueDrop { 0% { transform: translateY(-0.85rem); } 62%, 100% { transform: translateY(2.25rem); } }
+  /* Show mobile story on narrow viewports OR any touch device (iPads of all sizes). */
+  @media (max-width: 1024px), (hover: none) and (pointer: coarse) { .mobile-story { display: block; } }
   @media (prefers-reduced-motion: reduce) {
-    .mobile-story-bg,
-    .mobile-story-copy,
-    .mobile-story-stamp,
-    .mobile-story-kicker,
-    .mobile-story-title,
-    .mobile-story-body,
-    .mobile-story-ctas,
-    .mobile-story-choices,
-    .mobile-growth-card,
-    .mobile-growth-card > strong,
-    .mobile-growth-grid strong,
-    .mobile-growth-bars span,
-    .mobile-story-dots span,
-    .mobile-story-cue,
-    .mobile-story-cue-drop {
-      transition: none !important;
-      animation: none !important;
-    }
-
-    .mobile-story-bg { transform: none !important; }
+    .mobile-story-beat, .mobile-story-copy, .mobile-story-kicker, .mobile-story-copy h2, .mobile-story-copy p,
+    .mobile-story-ctas, .mobile-story-choices, .mobile-story-stamp,
+    .mobile-growth-card > strong, .mobile-growth-grid strong, .mobile-growth-bars span,
+    .mobile-story-cue, .mobile-story-cue-drop { transition: none !important; animation: none !important; transform: none !important; }
   }
 </style>
 
 <script is:inline>
   (function () {
-    var root = document.querySelector('[data-mobile-story]');
+    var root = document.querySelector('[data-mobile-story-rebuild]');
     if (!root) return;
-
-    var track = root.querySelector('[data-mobile-track]');
-    var stage = root.querySelector('[data-mobile-stage]');
-    if (!track || !stage) return;
 
     var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     // Hidden initial states are gated on this class, so content can never be
     // stuck invisible without JS, and reduced motion keeps everything static.
     if (!prefersReduced) root.classList.add('is-motion');
 
-    var bgs = Array.prototype.slice.call(root.querySelectorAll('[data-mobile-bg]'));
-    var copies = Array.prototype.slice.call(root.querySelectorAll('[data-mobile-copy]'));
+    var beats = Array.prototype.slice.call(root.querySelectorAll('[data-mobile-beat]'));
     var dots = Array.prototype.slice.call(root.querySelectorAll('[data-mobile-dot]'));
+    var fill = root.querySelector('[data-mobile-story-fill]');
     var counters = Array.prototype.slice.call(root.querySelectorAll('[data-mobile-growth-count]'));
-    var total = copies.length;
-
-    function clamp(value, min, max) { return Math.min(Math.max(value, min), max); }
-    function easeOutCubic(value) { return 1 - Math.pow(1 - value, 3); }
-    function formatGrowth(value, format) {
-      if (format === 'millions') return (value / 1000000).toFixed(value > 1900000 ? 0 : 1).replace('.0', '') + 'M+';
-      if (format === 'thousands') return Math.round(value / 1000) + 'K+';
-      if (format === 'comma') return Math.round(value).toLocaleString('en-US') + '+';
-      return Math.round(value) + '+';
-    }
 
     // Seed counters to zero so the count-up only ever moves upward. SSR
     // finals stay in place for no-JS and reduced motion.
@@ -632,23 +303,20 @@ const choices = [
       });
     }
 
-    // The scroll track only exists with JS: the section is one hero screen
-    // until the script sets the full story height.
-    var BEAT_SPAN = 88;
-    track.style.height = (total * BEAT_SPAN) + 'vh';
-    track.style.height = (total * BEAT_SPAN) + 'svh';
-
     var active = -1;
     var rafId = 0;
     var listening = false;
     var scrolled = false;
     var growthPlayed = false;
-    var stageH = stage.offsetHeight;
-    var trackH = track.offsetHeight;
+    var beatRatios = new WeakMap();
 
-    function measure() {
-      stageH = stage.offsetHeight;
-      trackH = track.offsetHeight;
+    function clamp(value, min, max) { return Math.min(Math.max(value, min), max); }
+    function easeOutCubic(value) { return 1 - Math.pow(1 - value, 3); }
+    function formatGrowth(value, format) {
+      if (format === 'millions') return (value / 1000000).toFixed(value > 1900000 ? 0 : 1).replace('.0', '') + 'M+';
+      if (format === 'thousands') return Math.round(value / 1000) + 'K+';
+      if (format === 'comma') return Math.round(value).toLocaleString('en-US') + '+';
+      return Math.round(value) + '+';
     }
 
     // One-shot count-up the first time the Growth beat lands. Bars and number
@@ -678,32 +346,28 @@ const choices = [
     function setActive(next) {
       if (next === active || next < 0) return;
       active = next;
-      bgs.forEach(function (bg, index) {
+      beats.forEach(function (beat, index) {
         var isActive = index === next;
-        bg.setAttribute('data-state', isActive ? 'active' : 'inactive');
-        var video = bg.querySelector('video');
+        beat.classList.toggle('is-active', isActive);
+        var video = beat.querySelector('video');
         if (video) {
           if (isActive) { var p = video.play(); if (p && p.catch) p.catch(function () {}); }
           else video.pause();
         }
       });
-      copies.forEach(function (copy, index) {
-        copy.setAttribute('data-state', index === next ? 'active' : 'inactive');
-      });
       dots.forEach(function (dot, index) { dot.classList.toggle('is-active', index === next); });
       if (next === 2) playGrowth();
     }
 
-    // Scroll-driven and rAF-coalesced: one rect read per scrolled frame,
-    // attribute flips only on beat changes, zero work while the page rests.
+    // Scroll-driven and rAF-coalesced: one rect read and one transform write
+    // per scrolled frame, zero work while the page sits still.
     function update() {
       rafId = 0;
-      var rect = track.getBoundingClientRect();
-      var navOffset = 64;
-      var scrollable = Math.max(1, trackH - stageH);
-      var progress = clamp((navOffset - rect.top) / scrollable, 0, 1);
-      setActive(Math.min(total - 1, Math.floor(progress * total)));
-      if (!scrolled && progress > 0.01) {
+      var vh = window.innerHeight;
+      var rect = root.getBoundingClientRect();
+      var progress = clamp((vh - rect.top) / (rect.height + vh), 0, 1);
+      if (fill) fill.style.transform = 'scaleY(' + progress.toFixed(4) + ')';
+      if (!scrolled && (window.scrollY || window.pageYOffset || 0) > 30) {
         scrolled = true;
         root.classList.add('is-scrolled');
       }
@@ -711,33 +375,42 @@ const choices = [
     function onScroll() {
       if (!rafId) rafId = window.requestAnimationFrame(update);
     }
-    function onResize() {
-      measure();
-      onScroll();
-    }
     function startListening() {
       if (listening) return;
       listening = true;
       window.addEventListener('scroll', onScroll, { passive: true });
-      window.addEventListener('resize', onResize);
-      measure();
+      window.addEventListener('resize', onScroll);
       onScroll();
     }
     function stopListening() {
       if (!listening) return;
       listening = false;
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
+      window.removeEventListener('resize', onScroll);
       if (rafId) { window.cancelAnimationFrame(rafId); rafId = 0; }
     }
 
-    // Only listen to scroll while the story is on screen.
+    // 1. Visibility observer: only listen to scroll while the story is on screen
     var visibilityObserver = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
-        if (entry.isIntersecting) startListening();
-        else stopListening();
+        if (entry.isIntersecting) { root.classList.add('is-in-view'); startListening(); }
+        else { root.classList.remove('is-in-view'); stopListening(); }
       });
     }, { threshold: 0 });
     visibilityObserver.observe(root);
+
+    // 2. Active-beat observer: switch the active beat based on which one is most visible.
+    //    Doesn't fire per scroll-event so iOS momentum can't stutter it.
+    var activeObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) { beatRatios.set(entry.target, entry.intersectionRatio); });
+      var bestIndex = active;
+      var bestRatio = 0;
+      beats.forEach(function (beat, index) {
+        var ratio = beatRatios.get(beat) || 0;
+        if (ratio > bestRatio) { bestRatio = ratio; bestIndex = index; }
+      });
+      if (bestRatio > 0) setActive(bestIndex);
+    }, { threshold: [0, 0.15, 0.3, 0.5, 0.7, 0.85, 1] });
+    beats.forEach(function (beat) { activeObserver.observe(beat); });
   })();
 </script>
