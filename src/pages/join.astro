@@ -7,9 +7,9 @@ const plans = [
   {
     name: 'Monthly',
     subtitle: 'Perfect for trying us out',
-    price: '$23.99',
+    price: 'Monthly plan',
     priceId: 'price-monthly',
-    period: '/month',
+    period: '',
     trial: '7-day FREE trial',
     cta: 'Start Free Trial',
     href: 'https://app.jonerfootball.com/checkout/new?o=183083',
@@ -31,10 +31,10 @@ const plans = [
   },
   {
     name: 'Annual',
-    subtitle: 'Save $83/year',
-    price: '$204.99',
+    subtitle: 'Best value for committed players',
+    price: 'Annual plan',
     priceId: 'price-annual',
-    period: '/year',
+    period: '',
     trial: '7-day FREE trial',
     cta: 'Start Free Trial',
     href: 'https://app.jonerfootball.com/checkout/new?o=183092',
@@ -57,9 +57,9 @@ const plans = [
   {
     name: 'For The Coaches',
     subtitle: 'Everything + Coaches Content',
-    price: '$319.99',
+    price: 'Coaches plan',
     priceId: 'price-coaches',
-    period: '/year',
+    period: '',
     trial: 'Full Access',
     cta: 'Join Now',
     href: 'https://app.jonerfootball.com/checkout/new?o=202578',
@@ -156,7 +156,7 @@ const joinSchemas = [
         <img class="join-logo" src="/images/join-live/jf-app-logo.png" alt="Joner Football App" loading="eager" />
         <h1>Join 50,000 Players, Coaches &amp; Parents</h1>
         <p>Already using the Joner Football App. Invest in your game today.</p>
-        <span class="join-location" id="location-badge">Prices shown in AUD (Australia)</span>
+        <span class="join-location">Pricing and plan options are handled securely inside the app.</span>
       </div>
     </section>
 
@@ -170,7 +170,7 @@ const joinSchemas = [
               <div class="join-card__body">
                 <h2>{plan.name}</h2>
                 <p class="join-card__subtitle" id={plan.name === 'Annual' ? 'savings-annual' : undefined}>{plan.subtitle}</p>
-                <div class="join-price"><span id={plan.priceId}>{plan.price}</span> <small>{plan.period}</small></div>
+                <div class="join-price"><span>{plan.price}</span>{plan.period && <small>{plan.period}</small>}</div>
                 <p class="join-trial">{plan.trial}</p>
                 <a class="join-cta" href={plan.href} target="_blank" rel="noopener noreferrer">{plan.cta}</a>
                 <ul>
@@ -213,9 +213,9 @@ const joinSchemas = [
             <thead>
               <tr>
                 <th>What You Get</th>
-                <th>Monthly<br /><span id="table-monthly">$23.99/mo</span></th>
-                <th>Annual<br /><span id="table-annual">$204.99/yr</span></th>
-                <th>Coaches<br /><span id="table-coaches">$319.99/yr</span></th>
+                <th>Monthly<br /><span>Trial path</span></th>
+                <th>Annual<br /><span>Best value</span></th>
+                <th>Coaches<br /><span>Full coaches access</span></th>
               </tr>
             </thead>
             <tbody>
@@ -253,51 +253,6 @@ const joinSchemas = [
     </section>
   </main>
 
-
-  <script>
-    (function() {
-      var pricing = {
-        AU: { currency: '$', code: 'AUD', country: 'Australia', monthly: 23.99, annual: 204.99, coaches: 319.99 },
-        US: { currency: '$', code: 'USD', country: 'United States', monthly: 14.99, annual: 129.99, coaches: 199.99 },
-        CA: { currency: '$', code: 'CAD', country: 'Canada', monthly: 21.00, annual: 183.99, coaches: 289.99 },
-        EUR: { currency: '€', code: 'EUR', country: 'Europe', monthly: 13.00, annual: 114.99, coaches: 179.99 },
-        GB: { currency: '£', code: 'GBP', country: 'United Kingdom', monthly: 11.99, annual: 100.49, coaches: 150.99 }
-      };
-      var eurozone = ['AT','BE','CY','EE','FI','FR','DE','GR','IE','IT','LV','LT','LU','MT','NL','PT','SK','SI','ES'];
-
-      function fmt(amt, cur) {
-        return cur === '€' ? '€' + amt.toFixed(2).replace('.', ',') : cur + amt.toFixed(2);
-      }
-
-      function update(region) {
-        var p = pricing[region] || pricing.US;
-        var el;
-        if (el = document.getElementById('price-monthly')) el.textContent = fmt(p.monthly, p.currency);
-        if (el = document.getElementById('price-annual')) el.textContent = fmt(p.annual, p.currency);
-        if (el = document.getElementById('price-coaches')) el.textContent = fmt(p.coaches, p.currency);
-        if (el = document.getElementById('savings-annual')) el.textContent = 'Save ' + p.currency + Math.round(p.monthly * 12 - p.annual) + '/year';
-        if (el = document.getElementById('table-monthly')) el.textContent = fmt(p.monthly, p.currency) + '/mo';
-        if (el = document.getElementById('table-annual')) el.textContent = fmt(p.annual, p.currency) + '/yr';
-        if (el = document.getElementById('table-coaches')) el.textContent = fmt(p.coaches, p.currency) + '/yr';
-        if (el = document.getElementById('location-badge')) el.textContent = 'Prices shown in ' + p.code + ' (' + p.country + ')';
-      }
-
-      function regionFromCountryCode(countryCode) {
-        var c = countryCode || '';
-        return c === 'AU' ? 'AU' : c === 'US' ? 'US' : c === 'CA' ? 'CA' : c === 'GB' ? 'GB' : eurozone.indexOf(c) > -1 ? 'EUR' : 'US';
-      }
-
-      fetch('https://ipapi.co/json/')
-        .then(function(r) { if (!r.ok) throw new Error('ipapi blocked'); return r.json(); })
-        .then(function(d) { update(regionFromCountryCode(d.country_code)); })
-        .catch(function() {
-          fetch('https://ipwho.is/')
-            .then(function(r) { if (!r.ok) throw new Error('ipwho blocked'); return r.json(); })
-            .then(function(d) { update(regionFromCountryCode(d.country_code)); })
-            .catch(function() { update('AU'); });
-        });
-    })();
-  </script>
 
   <SEOFAQ
     title="Questions before you join."
@@ -343,7 +298,7 @@ const joinSchemas = [
     .join-card li { display: grid; grid-template-columns: 1.1rem 1fr; gap: .45rem; align-items: start; color: #151515; font-size: .88rem; font-weight: 750; line-height: 1.2; }
     .join-card--club li { color: rgba(255,255,255,.9); }
     .join-card li span { display: inline-flex; align-items: center; justify-content: center; width: 1.05rem; height: 1.05rem; border-radius: 50%; font-size: .72rem; font-weight: 900; }
-    .join-card li.is-included span { background: #18a84a; color: #fff; }
+    .join-card li.is-included span { background: #E30613; color: #fff; }
     .join-card li.is-excluded { color: #aaa; }
     .join-card li.is-excluded span { background: #f1f1f1; color: #aaa; }
     .join-compare { padding: .5rem 0 5rem; background: #fff; color: #111; }
@@ -356,7 +311,7 @@ const joinSchemas = [
     .join-table td { border-top: 1px solid #eee; padding: .9rem 1rem; font-weight: 800; }
     .join-table tr:nth-child(even) td { background: #fafafa; }
     .join-table__check { text-align: center; font-family: 'Anton', Impact, sans-serif; font-size: 1.25rem; }
-    .join-table .yes { color: #18a84a; }
+    .join-table .yes { color: #E30613; }
     .join-table .no { color: #bbb; }
     .join-free-videos { padding: 4.5rem 0 5rem; background: #050505; color: #fff; }
     .join-free-videos__inner { max-width: 760px; text-align: center; }
