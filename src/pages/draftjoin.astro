@@ -3,7 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 
 // DRAFT_PAGE_NOTICE: Hidden direct-access page for Claude/Lee review. Not linked in nav. noindex enabled.
 // Decision page. Defaults to Annual billing showing the per-month-billed-annually price (Higgsfield style).
-// Prices shown in USD numbers; checkout applies local currency. Currency label auto-detected.
+// Prices localise client-side from the app checkout values. Unknown countries default to USD.
 
 const plans = [
   {
@@ -210,13 +210,13 @@ const faqs = [
                 ) : (
                   <>
                     <div class="min-h-4">
-                      <span class:list={['billing-compare font-heading text-sm line-through', plan.style === 'featured' ? 'text-white/50' : 'text-gray-500']} data-monthly="" data-annual={plan.monthlyPrice}>{plan.monthlyPrice}</span>
+                      <span class:list={['billing-compare font-heading text-sm line-through', plan.style === 'featured' ? 'text-white/50' : 'text-gray-500']} data-plan={plan.id}>{plan.monthlyPrice}</span>
                     </div>
                     <div class="flex items-end gap-1.5">
-                      <span class="billing-price font-heading text-5xl leading-none tabular-nums" data-monthly-num={plan.monthlyNum} data-annual-num={plan.annualMonthlyNum}>{plan.annualMonthlyPrice}</span>
+                      <span class="billing-price font-heading text-5xl leading-none tabular-nums" data-plan={plan.id}>{plan.annualMonthlyPrice}</span>
                       <span class:list={['billing-period pb-1 font-body text-sm', plan.style === 'featured' || plan.style === 'club' ? 'text-white/65' : 'text-gray-600']} data-monthly="/month" data-annual="/mo">/mo</span>
                     </div>
-                    <p class:list={['billing-sub font-body text-xs', plan.style === 'featured' || plan.style === 'club' ? 'text-white/55' : 'text-gray-500']} data-monthly="" data-annual="billed annually">billed annually</p>
+                    <p class:list={['billing-sub font-body text-xs', plan.style === 'featured' || plan.style === 'club' ? 'text-white/55' : 'text-gray-500']} data-plan={plan.id}>billed annually</p>
                   </>
                 )}
               </div>
@@ -232,7 +232,7 @@ const faqs = [
                 <a href={plan.annualUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class:list={['plan-cta mt-5 w-full px-5 py-3.5 text-sm', plan.style === 'featured' || plan.style === 'club' ? 'jf-btn-dark' : 'jf-btn']}>{plan.cta}</a>
               )}
               {!plan.priceLabel && (
-                <p class:list={['billing-save mt-2 min-h-4 text-center font-body text-xs font-semibold', plan.style === 'featured' ? 'text-[#ff8088]' : 'text-[#E30613]']} data-annual={plan.annualSave}>{plan.annualSave}</p>
+                <p class:list={['billing-save mt-2 min-h-4 text-center font-body text-xs font-semibold', plan.style === 'featured' ? 'text-[#ff8088]' : 'text-[#E30613]']} data-plan={plan.id}>{plan.annualSave}</p>
               )}
 
               <ul class="mt-6 flex-1 space-y-2.5">
@@ -394,7 +394,7 @@ const faqs = [
     <div class="flex items-center justify-between gap-3">
       <div class="leading-tight">
         <p class="font-heading text-sm uppercase text-[#0A0A0A]">Joner Football App</p>
-        <p class="font-body text-xs text-gray-600">From $10.83/mo billed annually</p>
+        <p id="sticky-price" class="font-body text-xs text-gray-600">From $10.83/mo billed annually</p>
       </div>
       <a href="#plans" class="jf-btn px-6 py-3 text-sm">Choose Plan</a>
     </div>
@@ -410,24 +410,106 @@ const faqs = [
     const saves = document.querySelectorAll('.billing-save')
     const ctas = document.querySelectorAll('.plan-cta')
     let currentMode = 'annual'
+    let currentRegion = 'US'
 
-    const fmt = (n) => '$' + n.toFixed(2)
+    const regionalPricing = {
+      US: {
+        code: 'USD',
+        symbol: '$',
+        country: 'United States',
+        plans: {
+          starter: { monthly: 14.99, annual: 129.99 },
+          plus: { monthly: 19.99, annual: 179.99 },
+          max: { monthly: 39.99, annual: 249.99 },
+        },
+      },
+      AU: {
+        code: 'AUD',
+        symbol: '$',
+        country: 'Australia',
+        plans: {
+          starter: { monthly: 23.99, annual: 184.99 },
+          plus: { monthly: 28.49, annual: 254.99 },
+          max: { monthly: 56.99, annual: 354.99 },
+        },
+      },
+      CA: {
+        code: 'CAD',
+        symbol: '$',
+        country: 'Canada',
+        plans: {
+          starter: { monthly: 21.00, annual: 184.99 },
+          plus: { monthly: 28.99, annual: 254.99 },
+          max: { monthly: 55.99, annual: 349.99 },
+        },
+      },
+      EUR: {
+        code: 'EUR',
+        symbol: '€',
+        country: 'Europe',
+        plans: {
+          starter: { monthly: 13.00, annual: 113.45 },
+          plus: { monthly: 18.55, annual: 155.55 },
+          max: { monthly: 35.55, annual: 215.55 },
+        },
+      },
+      GB: {
+        code: 'GBP',
+        symbol: '£',
+        country: 'United Kingdom',
+        plans: {
+          starter: { monthly: 11.99, annual: 98.50 },
+          plus: { monthly: 15.45, annual: 134.45 },
+          max: { monthly: 29.95, annual: 186.45 },
+        },
+      },
+    }
+    const eurozone = ['AT','BE','CY','EE','FI','FR','DE','GR','IE','IT','LV','LT','LU','MT','NL','PT','SK','SI','ES']
+
+    const fmt = (n, region = currentRegion) => {
+      const p = regionalPricing[region] || regionalPricing.US
+      return p.symbol + Number(n).toFixed(2)
+    }
     const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
 
-    function rollNumber(el, from, to) {
+    function priceForPlan(planId, mode, region = currentRegion) {
+      const regionPrices = regionalPricing[region] || regionalPricing.US
+      const plan = regionPrices.plans[planId]
+      if (!plan) return null
+      return mode === 'annual' ? plan.annual / 12 : plan.monthly
+    }
+
+    function rollNumber(el, from, to, region = currentRegion) {
       const dur = 520
       let start = null
       function step(ts) {
         if (start === null) start = ts
         const p = Math.min((ts - start) / dur, 1)
-        el.textContent = fmt(from + (to - from) * easeOutCubic(p))
+        el.textContent = fmt(from + (to - from) * easeOutCubic(p), region)
         if (p < 1) requestAnimationFrame(step)
-        else el.textContent = fmt(to)
+        else el.textContent = fmt(to, region)
       }
       requestAnimationFrame(step)
     }
 
+    function regionFromCountryCode(countryCode) {
+      const c = countryCode || ''
+      if (c === 'AU') return 'AU'
+      if (c === 'US') return 'US'
+      if (c === 'CA') return 'CA'
+      if (c === 'GB') return 'GB'
+      if (eurozone.indexOf(c) > -1) return 'EUR'
+      return 'US'
+    }
+
+    function annualSaving(planId, region = currentRegion) {
+      const p = regionalPricing[region] || regionalPricing.US
+      const plan = p.plans[planId]
+      return plan ? plan.monthly * 12 - plan.annual : 0
+    }
+
     function setBilling(mode, animate) {
+      const regionPrices = regionalPricing[currentRegion] || regionalPricing.US
       toggles.forEach((t) => {
         const active = t.getAttribute('data-billing') === mode
         t.setAttribute('aria-pressed', active ? 'true' : 'false')
@@ -437,37 +519,56 @@ const faqs = [
       if (indicator) indicator.classList.toggle('translate-x-full', mode === 'annual')
 
       prices.forEach((el) => {
-        const to = parseFloat(el.getAttribute('data-' + mode + '-num'))
-        const from = parseFloat(el.getAttribute('data-' + currentMode + '-num'))
-        if (animate && !isNaN(from) && !isNaN(to) && from !== to) rollNumber(el, from, to)
-        else el.textContent = fmt(to)
+        const planId = el.getAttribute('data-plan')
+        const to = priceForPlan(planId, mode)
+        if (to !== null) el.textContent = fmt(to)
       })
       periods.forEach((el) => { el.textContent = el.getAttribute('data-' + mode) || '' })
       compares.forEach((el) => {
-        const v = el.getAttribute('data-' + mode) || ''
+        const planId = el.getAttribute('data-plan')
+        const plan = regionPrices.plans[planId]
+        const v = mode === 'annual' && plan ? fmt(plan.monthly) : ''
         el.textContent = v
         el.classList.toggle('hidden', !v)
       })
-      subs.forEach((el) => { el.textContent = el.getAttribute('data-' + mode) || '' })
-      saves.forEach((el) => { el.textContent = mode === 'annual' ? (el.getAttribute('data-annual') || '') : '' })
+      subs.forEach((el) => {
+        const planId = el.getAttribute('data-plan')
+        const plan = regionPrices.plans[planId]
+        el.textContent = mode === 'annual' && plan ? 'billed annually at ' + fmt(plan.annual) + '/yr' : ''
+      })
+      saves.forEach((el) => {
+        const planId = el.getAttribute('data-plan')
+        el.textContent = mode === 'annual' ? 'Save ' + fmt(annualSaving(planId)) + ' a year' : ''
+      })
       ctas.forEach((el) => {
         const href = el.getAttribute('data-' + mode + '-url')
         if (href) el.setAttribute('href', href)
       })
+      if (note) note.textContent = 'Prices shown in ' + regionPrices.code + ' (' + regionPrices.country + ')'
+      const stickyPrice = document.getElementById('sticky-price')
+      if (stickyPrice) stickyPrice.textContent = 'From ' + fmt(priceForPlan('starter', 'annual')) + '/mo billed annually'
       currentMode = mode
     }
 
     toggles.forEach((t) => t.addEventListener('click', () => setBilling(t.getAttribute('data-billing') || 'annual', true)))
+    const note = document.getElementById('currency-note')
+
+    function setRegion(region) {
+      currentRegion = regionalPricing[region] ? region : 'US'
+      setBilling(currentMode, false)
+    }
+
     setBilling('annual', false)
 
-    // Currency label: auto-detect, fall back to AUD
-    const note = document.getElementById('currency-note')
-    if (note) {
-      fetch('https://ipapi.co/json/')
-        .then((r) => { if (!r.ok) throw new Error('geo blocked'); return r.json() })
-        .then((d) => { if (d && d.currency) note.textContent = 'Prices shown in ' + d.currency })
-        .catch(() => {})
-    }
+    fetch('https://ipapi.co/json/')
+      .then((r) => { if (!r.ok) throw new Error('ipapi blocked'); return r.json() })
+      .then((d) => { setRegion(regionFromCountryCode(d.country_code)) })
+      .catch(() => {
+        fetch('https://ipwho.is/')
+          .then((r) => { if (!r.ok) throw new Error('ipwho blocked'); return r.json() })
+          .then((d) => { setRegion(regionFromCountryCode(d.country_code)) })
+          .catch(() => { setRegion('US') })
+      })
 
     // Sticky mobile CTA
     const bar = document.getElementById('sticky-cta')
