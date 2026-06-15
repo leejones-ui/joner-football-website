@@ -1,231 +1,309 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import SEOFAQ from '../components/SEOFAQ.astro'
-import { faqSchema, webPageSchema } from '../lib/seoSchema'
+
+// LIVE_JOIN_PAGE: Joner Football App join/pricing page.
+// Decision page. Defaults to Annual billing showing the per-month-billed-annually price (Higgsfield style).
+// Prices localise client-side from the app checkout values. Unknown countries default to USD.
 
 const plans = [
   {
-    name: 'Monthly',
-    subtitle: 'Perfect for trying us out',
-    price: '$23.99',
-    priceId: 'price-monthly',
-    period: '/month',
-    trial: '7-day FREE trial',
-    cta: 'Start Free Trial',
-    href: 'https://app.jonerfootball.com/checkout/new?o=183083',
-    image: '/images/join-live/monthly.webp',
-    alt: 'Monthly Plan',
-    featured: false,
+    id: 'starter', name: 'Starter', badge: '', tag: 'The Essentials | Solo Training',
+    monthlyPrice: '$14.99', monthlyNum: '14.99',
+    annualMonthlyPrice: '$10.83', annualMonthlyNum: '10.83',
+    annualSave: 'Save $49.89 a year',
+    trial: '7-day free trial', cta: 'Start With Starter',
+    monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
+    annualUrl: 'https://app.jonerfootball.com/checkout/new?o=230697',
+    style: 'plain',
     features: [
-      ['1,500+ Training Videos', true],
-      ['New Content Weekly', true],
-      ['Daily Challenges', true],
-      ['Community Access', true],
-      ['Live Sessions', true],
-      ['100 Day Transformation Program', false],
-      ['Age Specific Training Content', true],
-      ['DM Lee Directly', false],
-      ['Team Training', false],
-      ['Coaches Section', false],
+      'Solo follow-along training',
+      'Beginner ball mastery',
+      'Basic drills and how-to videos',
+      'Prehab, activation and warm-ups',
+      'Challenges, tips and tutorials',
     ],
   },
   {
-    name: 'Annual',
-    subtitle: 'Save $83/year',
-    price: '$204.99',
-    priceId: 'price-annual',
-    period: '/year',
-    trial: '7-day FREE trial',
-    cta: 'Start Free Trial',
-    href: 'https://app.jonerfootball.com/checkout/new?o=183092',
-    image: '/images/join-live/annual.webp',
-    alt: 'Annual Plan',
-    badge: '⭐ MOST POPULAR',
-    featured: true,
+    id: 'plus', name: 'Plus', badge: 'Most Popular', tag: 'For players, coaches and parents',
+    monthlyPrice: '$19.99', monthlyNum: '19.99',
+    annualMonthlyPrice: '$15.00', annualMonthlyNum: '15.00',
+    annualSave: 'Save $59.89 a year',
+    trial: '7-day free trial', cta: 'Start Plus',
+    monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=230699',
+    annualUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
+    style: 'featured',
     features: [
-      ['1,500+ Training Videos', true],
-      ['New Content Weekly', true],
-      ['Daily Challenges', true],
-      ['Community Access', true],
-      ['Live Sessions', true],
-      ['DM Lee Directly', true],
-      ['Team Training Videos', true],
-      ['100 Day Transformation Program', true],
-      ['Coaches Section', false],
+      { text: 'Everything in Starter', lead: true },
+      '100 Day Transformation Program',
+      'Advanced drills',
+      'Cognitive and awareness drills',
+      'Age-specific training',
+      'DM Lee directly',
+      'Livestream training sessions',
+      'Mindset, HQ and 1v1 training',
     ],
   },
   {
-    name: 'For The Coaches',
-    subtitle: 'Everything + Coaches Content',
-    price: '$319.99',
-    priceId: 'price-coaches',
-    period: '/year',
-    trial: 'Full Access',
-    cta: 'Join Now',
-    href: 'https://app.jonerfootball.com/checkout/new?o=202578',
-    image: '/images/join-live/coaches.webp',
-    alt: 'For The Coaches',
-    featured: false,
+    id: 'max', name: 'Max', badge: 'Full Access', tag: 'The full app, Coaches Only and serious ballers',
+    monthlyPrice: '$39.99', monthlyNum: '39.99',
+    annualMonthlyPrice: '$20.83', annualMonthlyNum: '20.83',
+    annualSave: 'Save $229.89 a year',
+    trial: 'Full access from day one', cta: 'Join Max',
+    monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=230698',
+    annualUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
+    style: 'max',
     features: [
-      ['Everything in Annual', true],
-      ['DM Lee Directly', true],
-      ['Coaches-Only Section', true],
-      ['PDF Season Plans', true],
-      ['Advanced Team Training', true],
-      ['Pro Player Sessions', true],
-      ['Workshop Discounts', true],
-      ['Coaching Templates', true],
+      { text: 'Everything in Plus', lead: true },
+      'Full access to the entire app',
+      { text: 'Includes Coaches Only', coaches: true },
+      'Direct coaching access with Lee',
+      'Team and position-specific training',
+      'Study the game',
+      'Pro drills and voice-over training',
+      'Session plan videos and PDF plans',
+      'Live seminars and session planning',
+      'Behind-the-scenes coaching access',
+    ],
+  },
+  {
+    id: 'club', name: 'Team / Club', badge: '', tag: 'For teams, clubs and academies',
+    priceLabel: 'Custom', trial: 'Built for your group', cta: 'Request Club Pricing',
+    url: '/teams/#team-subscription-form', style: 'club',
+    features: [
+      { text: 'Full app access for your group', lead: true },
+      'Player and coach logins',
+      'Team or club section in the app',
+      'Club onboarding',
+      'Custom pricing for your size',
+      'Built for clubs, academies and schools',
     ],
   },
 ]
 
-
-const comparisonRows = [
-  ['1,500+ Training Videos', true, true, true],
-  ['New Videos Every Week', true, true, true],
-  ['Daily Challenges', true, true, true],
-  ['Community Access', true, true, true],
-  ['Live Training Sessions', true, true, true],
-  ['100 Day Transformation Program', false, true, true],
-  ['Age Specific Training Content', true, true, true],
-  ['Create Playlist', true, true, true],
-  ['Offline Downloads', true, true, true],
-  ['Watch History', true, true, true],
-  ['Streaks & Badges', true, true, true],
-  ['Create Notes', true, true, true],
-  ['Free Trial', true, true, false],
-  ['DM Lee Directly', false, true, true],
-  ['Team Training Videos', false, true, true],
-  ['Advanced Team Training', false, false, true],
-  ['PDF Season Plans', false, false, true],
-  ['Coaches-Only Section', false, false, true],
-  ['Pro Player Training', false, false, true],
-  ['Workshop Discounts', false, false, true],
+const compareCols = ['Starter', 'Plus', 'Max', 'Club']
+const compareGroups = [
+  {
+    title: 'Train on your own',
+    rows: [
+      ['Solo follow-along training', [true, true, true, true]],
+      ['Beginner ball mastery', [true, true, true, true]],
+      ['Basic drills and how-to videos', [true, true, true, true]],
+      ['Prehab, activation and warm-ups', [true, true, true, true]],
+      ['Challenges, tips and tutorials', [true, true, true, true]],
+    ],
+  },
+  {
+    title: 'Serious player development',
+    rows: [
+      ['100 Day Transformation Program', [false, true, true, true]],
+      ['Advanced drills', [false, true, true, true]],
+      ['Cognitive and awareness drills', [false, true, true, true]],
+      ['Age-specific training', [false, true, true, true]],
+      ['1v1, mindset and HQ sessions', [false, true, true, true]],
+      ['Livestream training sessions', [false, true, true, true]],
+      ['DM Lee directly', [false, true, true, true]],
+    ],
+  },
+  {
+    title: 'Full app and Coaches Only',
+    rows: [
+      ['Full access to the entire app', [false, false, true, true]],
+      ['Coaches Only section', [false, false, true, true]],
+      ['Direct coaching access with Lee', [false, false, true, true]],
+      ['Team and position-specific training', [false, false, true, true]],
+      ['Study the game and pro drills', [false, false, true, true]],
+      ['Voice-over training drills', [false, false, true, true]],
+      ['Session plan videos and PDF plans', [false, false, true, true]],
+      ['Live seminars and session planning', [false, false, true, true]],
+    ],
+  },
+  {
+    title: 'Teams and clubs',
+    rows: [
+      ['Player and coach logins for your group', [false, false, false, true]],
+      ['Team or club section in the app', [false, false, false, true]],
+      ['Club onboarding with Joner Football', [false, false, false, true]],
+      ['Custom pricing for your size', [false, false, false, true]],
+    ],
+  },
 ]
 
-const teamFeatures = [
-  'Custom onboarding with Lee',
-  'Multi-seat Licences (Player/Coach)',
-  'Transferable seats',
-  'Bulk player access',
-  'Dedicated community page',
-  'Single-invoice for whole team',
-  'Flexible billing: Monthly/Yearly',
-  'Priority support',
-  'Usage analytics',
-  'Dedicated account rep',
-  'Bespoke training plans',
+const ladder = [
+  { name: 'Starter', accent: false, body: 'All the essentials. For players who want simple solo training they can follow straight away and start building better habits with the ball.' },
+  { name: 'Plus', accent: true, body: 'For players, parents and coaches who want a clear training pathway, more structure and direct guidance from Lee.' },
+  { name: 'Max', accent: false, body: 'For serious players and coaches who want the full Joner system, including Coaches Only, session plans, game study and how Lee builds training.' },
+  { name: 'Team / Club', accent: false, body: 'For teams, clubs and academies who want unlimited players and coaches inside their own Joner Football app section and community.' },
 ]
 
-import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
-import { fetchSanityPage } from '../lib/sanityPages'
-import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
-
-const sanityPage = await fetchSanityPage('join')
-
-const joinSEOFAQs = [
-  { q: 'Can I try the Joner Football App before paying?', a: 'Yes. The app has free content and a trial path so players, parents and coaches can see if the training fits before committing.' },
-  { q: 'What do I get when I join?', a: 'You get a clearer training path with football drills, programmes, coaching detail and app content built to improve technique and confidence.' },
-  { q: 'Are prices shown before I join?', a: 'Yes. The join page shows the current plan prices clearly before checkout, with region-based currency where available.' },
+const faqs = [
+  ['Which plan should I choose?', 'Train on your own, start with Starter. Serious about improving, Plus is the best pathway. Want the full app and Coaches Only, go with Max. Running a team or club, request club pricing.'],
+  ['Is there a free trial?', 'Starter and Plus come with a 7-day free trial. Max gives you full access from day one.'],
+  ['Can I cancel?', 'Yes. You manage your subscription in the app and can cancel anytime. You keep access until the end of the period you paid for.'],
+  ['Is Max only for coaches?', 'No. Max is the full Joner Football App for serious players, parents and coaches. The Coaches Only section is included, it is not the only thing in there.'],
+  ['Can parents use the app?', 'Yes. Plenty of parents use it to give their player a clear plan at home instead of guessing.'],
+  ['Can teams or clubs join?', 'Yes. Team and Club is request only. We set your group up with player and coach access in one system, then scope the pricing to your size.'],
 ]
-
-const joinSchemas = [
-  webPageSchema({
-    name: 'Join The Joner Football App | Start Training With Purpose',
-    description: 'Join the Joner Football App and start training with purpose. Access drills, programmes and coaching built to improve your technique and confidence.',
-    url: 'https://jonerfootball.com/join/',
-  }),
-  faqSchema(joinSEOFAQs),
-]
-
 ---
 
-{shouldReplaceSanityPage(sanityPage) ? (
-  <SanityPageRenderer page={sanityPage} />
-) : (
 <BaseLayout
-  title="Join The Joner Football App | Start Training With Purpose"
-  description="Join the Joner Football App and start training with purpose. Access drills, programmes and coaching built to improve your technique and confidence."
-  canonical="https://jonerfootball.com/join/"
-  ogImage="https://jonerfootball.com/images/join-live/annual.webp"
-  schema={joinSchemas}
->
-  <main class="join-live-page">
-    <section class="join-hero">
-      <div class="join-wrap join-hero__inner">
-        <img class="join-logo" src="/images/join-live/jf-app-logo.png" alt="Joner Football App" loading="eager" />
-        <h1>Join 50,000 Players, Coaches &amp; Parents</h1>
-        <p>Already using the Joner Football App. Invest in your game today.</p>
-        <span class="join-location" id="location-badge">Prices shown in AUD (Australia)</span>
+  title="Join The Joner Football App | Plans and Pricing"
+  description="Join the Joner Football App. Choose Starter, Plus, Max or Team Club and start training with a clear plan."
+  canonical="https://jonerfootball.com/join/">
+  <main id="main-content" class="scroll-smooth bg-white text-[#0A0A0A]">
+
+    <!-- HEADER -->
+    <section class="bg-white pt-10 pb-5 md:pt-12 md:pb-7">
+      <div class="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
+        <img
+          src="/images/join-live/joner-app-logo-header.webp"
+          alt="Joner Football App"
+          width="1280"
+          height="720"
+          loading="eager"
+          decoding="async"
+          class="mx-auto mb-4 h-auto w-36 sm:w-40 md:w-44"
+        />
+        <h1 class="mx-auto font-heading text-4xl uppercase leading-[0.95] tracking-tight sm:text-5xl md:text-6xl">
+          Choose your level, <span class="text-[#E30613]">get to work.</span>
+        </h1>
+        <p class="mx-auto mt-4 font-body text-base text-gray-700 md:text-lg">
+          For players, coaches and parents.
+        </p>
       </div>
     </section>
 
-    <section class="join-pricing" aria-label="Joner Football App pricing">
-      <div class="join-wrap">
-        <div class="join-cards">
+    <!-- PRICING -->
+    <section id="plans" class="scroll-mt-24 bg-white pb-10 md:pb-12">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
+        <!-- Toggle + currency (defaults to Annual) -->
+        <div class="mb-10 flex flex-col items-center gap-2.5">
+          <div id="billing-switch" class="relative flex w-[320px] max-w-full rounded-full border border-gray-200 bg-gray-100 p-1">
+            <span id="toggle-indicator" class="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] translate-x-full rounded-full bg-black transition-transform duration-300 ease-out"></span>
+            <button type="button" data-billing="monthly" aria-pressed="false" class="billing-toggle relative z-10 flex-1 rounded-full py-2.5 text-center font-heading text-sm uppercase tracking-wider text-gray-600 transition-colors">Monthly</button>
+            <button type="button" data-billing="annual" aria-pressed="true" class="billing-toggle relative z-10 flex-1 rounded-full py-2.5 text-center font-heading text-sm uppercase tracking-wider text-white transition-colors">Annual <span class="text-[#E30613]">save</span></button>
+          </div>
+          <p id="currency-note" class="font-body text-xs text-gray-500">Prices shown in AUD</p>
+        </div>
+
+        <!-- 4 columns -->
+        <div class="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => (
-            <article class:list={['join-card', plan.featured && 'join-card--featured']}>
-              {plan.badge && <div class="join-badge join-badge--floating">{plan.badge}</div>}
-              <img class="join-card__image" src={plan.image} alt={plan.alt} loading="lazy" decoding="async" />
-              <div class="join-card__body">
-                <h2>{plan.name}</h2>
-                <p class="join-card__subtitle" id={plan.name === 'Annual' ? 'savings-annual' : undefined}>{plan.subtitle}</p>
-                <div class="join-price"><span id={plan.priceId}>{plan.price}</span> <small>{plan.period}</small></div>
-                <p class="join-trial">{plan.trial}</p>
-                <a class="join-cta" href={plan.href} target="_blank" rel="noopener noreferrer">{plan.cta}</a>
-                <ul>
-                  {plan.features.map(([feature, included]) => (
-                    <li class:list={[included ? 'is-included' : 'is-excluded']}>
-                      <span>{included ? '✓' : '✗'}</span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+            <article id={plan.id} class:list={[
+              'group relative flex min-h-full scroll-mt-24 flex-col rounded-3xl border p-6 transition-transform duration-200 ease-out md:hover:-translate-y-1.5',
+              plan.style === 'featured' && 'border-black bg-black text-white shadow-[0_20px_50px_rgba(0,0,0,0.18)] xl:-mt-2 xl:mb-2',
+              plan.style === 'max' && 'border-[#E30613] bg-white text-[#0A0A0A] ring-1 ring-[#E30613]',
+              plan.style === 'plain' && 'border-gray-200 bg-white text-[#0A0A0A]',
+              plan.style === 'club' && 'border-gray-200 bg-[#0A0A0A] text-white',
+            ]}>
+              {plan.badge && (
+                <div class="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#E30613] px-3.5 py-1 text-xs font-heading uppercase tracking-wider text-white shadow">{plan.badge}</div>
+              )}
+
+              <h3 class="font-heading text-3xl uppercase leading-none">{plan.name}</h3>
+              <p class:list={['mt-1.5 min-h-[2.5rem] font-body text-sm font-semibold leading-tight', plan.style === 'featured' || plan.style === 'club' ? 'text-white/75' : 'text-gray-600']}>{plan.tag}</p>
+
+              <div class="mt-4 min-h-[6rem]">
+                {plan.priceLabel ? (
+                  <span class="font-heading text-5xl leading-none">{plan.priceLabel}</span>
+                ) : (
+                  <>
+                    <div class="min-h-4">
+                      <span class:list={['billing-compare font-heading text-sm line-through', plan.style === 'featured' ? 'text-white/50' : 'text-gray-500']} data-plan={plan.id}>{plan.monthlyPrice}</span>
+                    </div>
+                    <div class="flex items-end gap-1.5">
+                      <span class="billing-price font-heading text-5xl leading-none tabular-nums" data-plan={plan.id}>{plan.annualMonthlyPrice}</span>
+                      <span class:list={['billing-period pb-1 font-body text-sm', plan.style === 'featured' || plan.style === 'club' ? 'text-white/65' : 'text-gray-600']} data-monthly="/month" data-annual="/mo">/mo</span>
+                    </div>
+                    <p class:list={['billing-sub font-body text-xs', plan.style === 'featured' || plan.style === 'club' ? 'text-white/55' : 'text-gray-500']} data-plan={plan.id}>billed annually</p>
+                  </>
+                )}
               </div>
+
+              <p class:list={[
+                'mt-2 inline-flex w-fit rounded-md px-2.5 py-1 font-heading text-xs uppercase tracking-wide',
+                plan.style === 'plain' || plan.style === 'max' ? 'bg-[#E30613]/10 text-[#E30613]' : 'bg-white/15 text-white',
+              ]}>{plan.trial}</p>
+
+              {plan.url ? (
+                <a href={plan.url} class:list={['mt-5 w-full px-5 py-3.5 text-sm', plan.style === 'featured' || plan.style === 'club' ? 'jf-btn-dark' : 'jf-btn']}>{plan.cta}</a>
+              ) : (
+                <a href={plan.annualUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class:list={['plan-cta mt-5 w-full px-5 py-3.5 text-sm', plan.style === 'featured' || plan.style === 'club' ? 'jf-btn-dark' : 'jf-btn']}>{plan.cta}</a>
+              )}
+              {!plan.priceLabel && (
+                <p class:list={['billing-save mt-2 min-h-4 text-center font-body text-xs font-semibold', plan.style === 'featured' ? 'text-[#ff8088]' : 'text-[#E30613]']} data-plan={plan.id}>{plan.annualSave}</p>
+              )}
+
+              <ul class="mt-6 flex-1 space-y-2.5">
+                {plan.features.map((feature) => {
+                  const label = typeof feature === 'string' ? feature : feature.text
+                  const lead = typeof feature === 'object' && feature.lead
+                  const coaches = typeof feature === 'object' && feature.coaches
+                  return (
+                    <li class="flex gap-2.5 font-body text-sm leading-snug">
+                      <span class="mt-0.5 shrink-0 font-bold text-[#16a34a]">&check;</span>
+                      <span class:list={[
+                        lead && 'font-bold',
+                        coaches && 'font-semibold underline decoration-[#E30613] decoration-2 underline-offset-2',
+                        plan.style === 'featured' || plan.style === 'club' ? 'text-white/90' : 'text-gray-800',
+                      ]}>{label}</span>
+                    </li>
+                  )
+                })}
+              </ul>
             </article>
           ))}
+        </div>
 
-          <article class="join-card join-card--club">
-            <div class="join-badge join-badge--floating join-badge--club">TEAMS &amp; CLUBS</div>
-            <img class="join-card__image" src="/images/join-live/teams.webp" alt="Team Subscriptions" loading="lazy" decoding="async" />
-            <div class="join-card__body">
-              <h2>Club Subscriptions</h2>
-              <p class="join-card__subtitle">For teams, academies &amp; clubs</p>
-              <div class="join-price"><span>Custom Pricing</span></div>
-              <p class="join-trial">Bulk discounts</p>
-              <a class="join-cta" href="/teams/#team-subscription-form">Contact Sales</a>
-              <ul>
-                {teamFeatures.map((feature) => (
-                  <li class="is-included"><span>✓</span>{feature}</li>
-                ))}
-              </ul>
-            </div>
-          </article>
+        <!-- Feature strip -->
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 font-body text-sm font-semibold text-gray-800">
+          <span class="rounded-full bg-gray-100 px-3.5 py-1.5">2,000+ training videos</span>
+          <span class="rounded-full bg-gray-100 px-3.5 py-1.5">Filter by age, difficulty, drill type and plan</span>
+          <span class="rounded-full bg-gray-100 px-3.5 py-1.5">New content every week</span>
+          <span class="rounded-full bg-gray-100 px-3.5 py-1.5">Players in 15+ countries</span>
+          <span class="rounded-full bg-black px-3.5 py-1.5 font-heading uppercase tracking-wide text-white">50K+ downloads worldwide</span>
         </div>
       </div>
     </section>
 
-    <section class="join-compare">
-      <div class="join-wrap">
-        <p class="join-rotate-note">📱 Rotate your phone to landscape to see the full comparison table</p>
-        <div class="join-table-wrap">
-          <table class="join-table">
+    <!-- COMPARISON (single responsive tick/cross table, clear on mobile) -->
+    <section id="compare" class="scroll-mt-24 bg-white pb-12 md:pb-16">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <h2 class="mb-2 font-heading text-3xl uppercase tracking-tight md:text-4xl">Compare every tier.</h2>
+        <p class="mb-7 font-body text-gray-600">Green is included. Grey is not.</p>
+
+        <div class="overflow-hidden rounded-2xl border border-gray-200">
+          <table class="w-full table-fixed text-left">
+            <colgroup>
+              <col class="w-[40%] sm:w-[44%]" /><col /><col /><col /><col />
+            </colgroup>
             <thead>
-              <tr>
-                <th>What You Get</th>
-                <th>Monthly<br /><span id="table-monthly">$23.99/mo</span></th>
-                <th>Annual<br /><span id="table-annual">$204.99/yr</span></th>
-                <th>Coaches<br /><span id="table-coaches">$319.99/yr</span></th>
+              <tr class="bg-black text-white">
+                <th class="p-2.5 font-heading text-[0.7rem] uppercase tracking-wide sm:p-4 sm:text-base sm:tracking-wider">What you get</th>
+                {compareCols.map((c) => (
+                  <th class:list={['p-2.5 text-center font-heading text-[0.7rem] uppercase tracking-wide sm:p-4 sm:text-base', (c === 'Plus' || c === 'Max') && 'text-[#ff6b73]']}>{c}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {comparisonRows.map((row) => (
-                <tr>
-                  <td>{row[0]}</td>
-                  {row.slice(1).map((included) => (
-                    <td class="join-table__check">{included ? <span class="yes">✓</span> : <span class="no">✗</span>}</td>
+              {compareGroups.map((group) => (
+                <>
+                  <tr class="bg-gray-50">
+                    <td colspan="5" class="px-2.5 py-2 font-heading text-[0.62rem] uppercase tracking-[0.18em] text-gray-500 sm:px-4 sm:text-xs">{group.title}</td>
+                  </tr>
+                  {group.rows.map((row) => (
+                    <tr class="border-t border-gray-100">
+                      <td class="p-2.5 font-body text-[0.72rem] font-semibold leading-tight text-gray-800 sm:p-4 sm:text-sm">{row[0]}</td>
+                      {row[1].map((on, i) => (
+                        <td class:list={['p-2.5 text-center sm:p-4', (compareCols[i] === 'Plus' || compareCols[i] === 'Max') && 'bg-gray-50/70']}>
+                          {on
+                            ? <span class="font-heading text-base text-[#16a34a] sm:text-lg">&check;</span>
+                            : <span class="font-heading text-base text-gray-300 sm:text-lg">&times;</span>}
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
+                </>
               ))}
             </tbody>
           </table>
@@ -233,144 +311,287 @@ const joinSchemas = [
       </div>
     </section>
 
-    <section class="join-free-videos">
-      <div class="join-wrap join-free-videos__inner">
-        <p class="join-free-videos__eyebrow">Still undecided?</p>
-        <h2>Get 10 Free Training Videos</h2>
-        <p>Try the Joner Football coaching style first. We’ll send you a free bundle of training videos to help your player get started.</p>
-        <form
-          data-brevo-form
-          data-form-name="join-page-free-videos"
-          data-list-id="2"
-          class="join-free-videos__form"
-        >
-          <input type="text" name="first_name" placeholder="First name" required />
-          <input type="email" name="email" placeholder="Email address" required />
-          <button type="submit">Send Me The Videos</button>
-        </form>
-        <small>We respect your privacy. Unsubscribe anytime.</small>
+    <!-- KNOW WHAT YOU ARE PAYING FOR (now under the comparison table) -->
+    <section aria-label="What you are paying for" class="border-t border-gray-100 bg-gray-50 py-14 md:py-16">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <h2 class="mb-2 font-heading text-3xl uppercase tracking-tight md:text-4xl">Know exactly what you are paying for.</h2>
+        <p class="mb-9 max-w-2xl font-body text-gray-700">The plans are a ladder. Each step adds more structure and more access.</p>
+        <div class="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {ladder.map((card) => (
+            <div class:list={['rounded-2xl bg-white p-7', card.accent ? 'border-2 border-[#E30613]' : 'border border-gray-200']}>
+              <h3 class:list={['font-heading text-2xl uppercase leading-none', card.accent ? 'text-[#E30613]' : 'text-[#0A0A0A]']}>{card.name}</h3>
+              <p class="mt-3 font-body text-sm leading-relaxed text-gray-700">{card.body}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
+
+    <!-- MAX INCLUDES COACHES ONLY (photo) -->
+    <section aria-label="Max includes Coaches Only" class="bg-white py-14 md:py-18">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="overflow-hidden rounded-3xl bg-[#0A0A0A] text-white">
+          <div class="grid grid-cols-1 lg:grid-cols-2">
+            <div class="p-8 md:p-12">
+              <p class="mb-3 inline-flex rounded-full bg-[#E30613] px-3 py-1 text-xs font-heading uppercase tracking-wider text-white">Only on Max</p>
+              <h2 class="font-heading text-4xl uppercase leading-[0.95] md:text-5xl">Max includes<br />Coaches Only.</h2>
+              <p class="mt-4 max-w-md font-body text-white/75">The section built for coaches who want detail. Plan sessions, coach better and run your team from the same system the pros learn from.</p>
+              <ul class="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {['Session plan videos', 'PDF session plans', 'Team training', 'Study the game', 'Voice-over drills', 'How Lee coaches the coaches'].map((item) => (
+                  <li class="flex gap-3 font-body text-sm text-white/90">
+                    <span class="mt-0.5 shrink-0 font-bold text-[#16a34a]">&check;</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <a href="#max" class="jf-btn-dark mt-8 px-8 py-4">Join Max</a>
+            </div>
+            <div class="relative min-h-[260px] lg:min-h-full">
+              <img src="/app/uploads/2026/05/soccer-coach-goal-instruction.webp" alt="Lee coaching detail with players" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full object-cover" />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent lg:bg-gradient-to-r"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section aria-label="Questions" class="border-t border-gray-100 bg-gray-50 py-14 md:py-18">
+      <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <h2 class="mb-8 font-heading text-3xl uppercase tracking-tight md:text-4xl">Before you join.</h2>
+        <div class="space-y-3">
+          {faqs.map(([q, a]) => (
+            <details class="group rounded-2xl border border-gray-200 bg-white p-6">
+              <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-heading text-lg uppercase">
+                {q}
+                <span class="text-[#E30613] transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p class="mt-4 font-body leading-relaxed text-gray-700">{a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section id="final-cta" class="bg-[#0A0A0A] py-14 md:py-20">
+      <div class="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+        <h2 class="font-heading text-4xl uppercase leading-[0.95] text-white md:text-6xl">Choose your level and get to work.</h2>
+        <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+          <a href="#plus" class="jf-btn-dark px-8 py-4">Start Plus</a>
+          <a href="#max" class="jf-btn-dark px-8 py-4">Join Max</a>
+        </div>
+        <a href="#starter" class="mt-5 inline-block font-body text-sm text-white/90 underline underline-offset-4 hover:text-white">Just want the basics? Start with Starter</a>
+      </div>
+    </section>
+
+    <div class="h-20 md:hidden"></div>
   </main>
 
+  <!-- Mobile sticky CTA -->
+  <div id="sticky-cta" class="fixed inset-x-0 bottom-0 z-40 translate-y-full border-t border-gray-200 bg-white/95 p-3 opacity-0 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur transition-all duration-300 md:hidden">
+    <div class="flex items-center justify-between gap-3">
+      <div class="leading-tight">
+        <p class="font-heading text-sm uppercase text-[#0A0A0A]">Joner Football App</p>
+        <p id="sticky-price" class="font-body text-xs text-gray-600">From $10.83/mo billed annually</p>
+      </div>
+      <a href="#plans" class="jf-btn px-6 py-3 text-sm">Choose Plan</a>
+    </div>
+  </div>
 
   <script>
-    (function() {
-      var pricing = {
-        AU: { currency: '$', code: 'AUD', country: 'Australia', monthly: 23.99, annual: 204.99, coaches: 319.99 },
-        US: { currency: '$', code: 'USD', country: 'United States', monthly: 14.99, annual: 129.99, coaches: 199.99 },
-        CA: { currency: '$', code: 'CAD', country: 'Canada', monthly: 21.00, annual: 183.99, coaches: 289.99 },
-        EUR: { currency: '€', code: 'EUR', country: 'Europe', monthly: 13.00, annual: 114.99, coaches: 179.99 },
-        GB: { currency: '£', code: 'GBP', country: 'United Kingdom', monthly: 11.99, annual: 100.49, coaches: 150.99 }
-      };
-      var eurozone = ['AT','BE','CY','EE','FI','FR','DE','GR','IE','IT','LV','LT','LU','MT','NL','PT','SK','SI','ES'];
+    const toggles = document.querySelectorAll('.billing-toggle')
+    const indicator = document.getElementById('toggle-indicator')
+    const prices = document.querySelectorAll('.billing-price')
+    const periods = document.querySelectorAll('.billing-period')
+    const compares = document.querySelectorAll('.billing-compare')
+    const subs = document.querySelectorAll('.billing-sub')
+    const saves = document.querySelectorAll('.billing-save')
+    const ctas = document.querySelectorAll('.plan-cta')
+    let currentMode = 'annual'
+    let currentRegion = 'US'
 
-      function fmt(amt, cur) {
-        return cur === '€' ? '€' + amt.toFixed(2).replace('.', ',') : cur + amt.toFixed(2);
+    const regionalPricing = {
+      US: {
+        code: 'USD',
+        symbol: '$',
+        country: 'United States',
+        plans: {
+          starter: { monthly: 14.99, annual: 129.99 },
+          plus: { monthly: 19.99, annual: 179.99 },
+          max: { monthly: 39.99, annual: 249.99 },
+        },
+      },
+      AU: {
+        code: 'AUD',
+        symbol: '$',
+        country: 'Australia',
+        plans: {
+          starter: { monthly: 23.99, annual: 184.99 },
+          plus: { monthly: 28.49, annual: 254.99 },
+          max: { monthly: 56.99, annual: 354.99 },
+        },
+      },
+      CA: {
+        code: 'CAD',
+        symbol: '$',
+        country: 'Canada',
+        plans: {
+          starter: { monthly: 21.00, annual: 184.99 },
+          plus: { monthly: 28.99, annual: 254.99 },
+          max: { monthly: 55.99, annual: 349.99 },
+        },
+      },
+      EUR: {
+        code: 'EUR',
+        symbol: '€',
+        country: 'Europe',
+        plans: {
+          starter: { monthly: 13.00, annual: 113.45 },
+          plus: { monthly: 18.55, annual: 155.55 },
+          max: { monthly: 35.55, annual: 215.55 },
+        },
+      },
+      GB: {
+        code: 'GBP',
+        symbol: '£',
+        country: 'United Kingdom',
+        plans: {
+          starter: { monthly: 11.99, annual: 98.50 },
+          plus: { monthly: 15.45, annual: 134.45 },
+          max: { monthly: 29.95, annual: 186.45 },
+        },
+      },
+    }
+    const eurozone = ['AT','BE','CY','EE','FI','FR','DE','GR','IE','IT','LV','LT','LU','MT','NL','PT','SK','SI','ES']
+
+    const fmt = (n, region = currentRegion) => {
+      const p = regionalPricing[region] || regionalPricing.US
+      return p.symbol + Number(n).toFixed(2)
+    }
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
+
+    function priceForPlan(planId, mode, region = currentRegion) {
+      const regionPrices = regionalPricing[region] || regionalPricing.US
+      const plan = regionPrices.plans[planId]
+      if (!plan) return null
+      return mode === 'annual' ? plan.annual / 12 : plan.monthly
+    }
+
+    function rollNumber(el, from, to, region = currentRegion) {
+      const dur = 520
+      let start = null
+      function step(ts) {
+        if (start === null) start = ts
+        const p = Math.min((ts - start) / dur, 1)
+        el.textContent = fmt(from + (to - from) * easeOutCubic(p), region)
+        if (p < 1) requestAnimationFrame(step)
+        else el.textContent = fmt(to, region)
       }
+      requestAnimationFrame(step)
+    }
 
-      function update(region) {
-        var p = pricing[region] || pricing.US;
-        var el;
-        if (el = document.getElementById('price-monthly')) el.textContent = fmt(p.monthly, p.currency);
-        if (el = document.getElementById('price-annual')) el.textContent = fmt(p.annual, p.currency);
-        if (el = document.getElementById('price-coaches')) el.textContent = fmt(p.coaches, p.currency);
-        if (el = document.getElementById('savings-annual')) el.textContent = 'Save ' + p.currency + Math.round(p.monthly * 12 - p.annual) + '/year';
-        if (el = document.getElementById('table-monthly')) el.textContent = fmt(p.monthly, p.currency) + '/mo';
-        if (el = document.getElementById('table-annual')) el.textContent = fmt(p.annual, p.currency) + '/yr';
-        if (el = document.getElementById('table-coaches')) el.textContent = fmt(p.coaches, p.currency) + '/yr';
-        if (el = document.getElementById('location-badge')) el.textContent = 'Prices shown in ' + p.code + ' (' + p.country + ')';
+    function regionFromCountryCode(countryCode) {
+      const c = countryCode || ''
+      if (c === 'AU') return 'AU'
+      if (c === 'US') return 'US'
+      if (c === 'CA') return 'CA'
+      if (c === 'GB') return 'GB'
+      if (eurozone.indexOf(c) > -1) return 'EUR'
+      return 'US'
+    }
+
+    function annualSaving(planId, region = currentRegion) {
+      const p = regionalPricing[region] || regionalPricing.US
+      const plan = p.plans[planId]
+      return plan ? plan.monthly * 12 - plan.annual : 0
+    }
+
+    function setBilling(mode, animate) {
+      const regionPrices = regionalPricing[currentRegion] || regionalPricing.US
+      toggles.forEach((t) => {
+        const active = t.getAttribute('data-billing') === mode
+        t.setAttribute('aria-pressed', active ? 'true' : 'false')
+        t.classList.toggle('text-white', active)
+        t.classList.toggle('text-gray-600', !active)
+      })
+      if (indicator) indicator.classList.toggle('translate-x-full', mode === 'annual')
+
+      prices.forEach((el) => {
+        const planId = el.getAttribute('data-plan')
+        const to = priceForPlan(planId, mode)
+        if (to === null) return
+        const current = Number((el.textContent || '').replace(/[^0-9.]/g, ''))
+        if (animate && Number.isFinite(current)) rollNumber(el, current, to)
+        else el.textContent = fmt(to)
+      })
+      periods.forEach((el) => { el.textContent = el.getAttribute('data-' + mode) || '' })
+      compares.forEach((el) => {
+        const planId = el.getAttribute('data-plan')
+        const plan = regionPrices.plans[planId]
+        const v = mode === 'annual' && plan ? fmt(plan.monthly) : ''
+        el.textContent = v
+        el.classList.toggle('hidden', !v)
+      })
+      subs.forEach((el) => {
+        const planId = el.getAttribute('data-plan')
+        const plan = regionPrices.plans[planId]
+        el.textContent = mode === 'annual' && plan ? 'billed annually' : ''
+      })
+      saves.forEach((el) => {
+        const planId = el.getAttribute('data-plan')
+        el.textContent = mode === 'annual' ? 'Save ' + fmt(annualSaving(planId)) + ' a year' : ''
+      })
+      ctas.forEach((el) => {
+        const href = el.getAttribute('data-' + mode + '-url')
+        if (href) el.setAttribute('href', href)
+      })
+      if (note) note.textContent = 'Prices shown in ' + regionPrices.code + ' (' + regionPrices.country + ')'
+      const stickyPrice = document.getElementById('sticky-price')
+      if (stickyPrice) stickyPrice.textContent = 'From ' + fmt(priceForPlan('starter', 'annual')) + '/mo billed annually'
+      currentMode = mode
+    }
+
+    toggles.forEach((t) => t.addEventListener('click', () => setBilling(t.getAttribute('data-billing') || 'annual', true)))
+    const note = document.getElementById('currency-note')
+
+    function setRegion(region) {
+      currentRegion = regionalPricing[region] ? region : 'US'
+      setBilling(currentMode, false)
+    }
+
+    setBilling('annual', false)
+
+    fetch('https://ipapi.co/json/')
+      .then((r) => { if (!r.ok) throw new Error('ipapi blocked'); return r.json() })
+      .then((d) => { setRegion(regionFromCountryCode(d.country_code)) })
+      .catch(() => {
+        fetch('https://ipwho.is/')
+          .then((r) => { if (!r.ok) throw new Error('ipwho blocked'); return r.json() })
+          .then((d) => { setRegion(regionFromCountryCode(d.country_code)) })
+          .catch(() => { setRegion('US') })
+      })
+
+    // Sticky mobile CTA
+    const bar = document.getElementById('sticky-cta')
+    if (bar) {
+      let overFinal = false
+      function update() {
+        const show = window.scrollY > 520 && !overFinal
+        bar.classList.toggle('opacity-0', !show)
+        bar.classList.toggle('translate-y-full', !show)
+        bar.classList.toggle('pointer-events-none', !show)
       }
-
-      function regionFromCountryCode(countryCode) {
-        var c = countryCode || '';
-        return c === 'AU' ? 'AU' : c === 'US' ? 'US' : c === 'CA' ? 'CA' : c === 'GB' ? 'GB' : eurozone.indexOf(c) > -1 ? 'EUR' : 'US';
+      window.addEventListener('scroll', update, { passive: true })
+      window.addEventListener('resize', update)
+      const final = document.getElementById('final-cta')
+      if (final && 'IntersectionObserver' in window) {
+        new IntersectionObserver((entries) => {
+          entries.forEach((e) => { overFinal = e.isIntersecting })
+          update()
+        }, { threshold: 0.05 }).observe(final)
       }
-
-      fetch('https://ipapi.co/json/')
-        .then(function(r) { if (!r.ok) throw new Error('ipapi blocked'); return r.json(); })
-        .then(function(d) { update(regionFromCountryCode(d.country_code)); })
-        .catch(function() {
-          fetch('https://ipwho.is/')
-            .then(function(r) { if (!r.ok) throw new Error('ipwho blocked'); return r.json(); })
-            .then(function(d) { update(regionFromCountryCode(d.country_code)); })
-            .catch(function() { update('AU'); });
-        });
-    })();
+      update()
+    }
   </script>
-
-  <SEOFAQ
-    title="Questions before you join."
-    items={joinSEOFAQs}
-  />
-
-  <style>
-    .join-live-page { background: #fff; color: #111; font-family: 'DM Sans', system-ui, sans-serif; }
-    .join-wrap { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
-    .join-hero { position: relative; overflow: hidden; padding: clamp(3.8rem, 6vw, 5rem) 0 2.25rem; text-align: center; background: #fff; }
-    .join-hero__inner { display: grid; justify-items: center; }
-    .join-logo { width: min(230px, 56vw); height: auto; margin-bottom: .75rem; object-fit: contain; }
-    .join-hero h1 { max-width: 820px; margin: 0; font-family: 'Anton', Impact, sans-serif; color: #E30613; font-size: clamp(2rem, 4.2vw, 3.45rem); line-height: 1; letter-spacing: .02em; text-transform: none; }
-    .join-hero p { max-width: 680px; margin: .8rem 0 .65rem; color: #222; font-size: clamp(1rem, 1.5vw, 1.15rem); font-weight: 650; }
-    .join-location { display: inline-flex; border-radius: 999px; background: #f1f1f1; color: #777; padding: .45rem .85rem; font-size: .82rem; font-weight: 700; }
-    .join-pricing { padding: 2.25rem 0 3rem; background: #fff; }
-    .join-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; align-items: stretch; padding-top: 2.15rem; }
-    .join-card { position: relative; overflow: visible; display: flex; flex-direction: column; border: 1px solid #dedede; border-radius: .9rem; background: #fff; color: #111; box-shadow: 0 14px 34px rgba(0,0,0,.08); }
-    .join-card--featured { border-color: #E30613; box-shadow: 0 18px 44px rgba(227,6,19,.14); }
-    .join-card--club { background: #111; color: #fff; border-color: #111; }
-    .join-badge { background: #E30613; color: #fff; text-align: center; font-family: 'Anton', Impact, sans-serif; font-size: .9rem; letter-spacing: .11em; }
-    .join-badge--floating { position: absolute; left: -1px; right: -1px; top: -2.15rem; z-index: 2; display: flex; align-items: center; justify-content: center; min-height: 2.15rem; padding: .45rem .85rem; border-radius: .8rem .8rem 0 0; }
-    .join-badge-spacer { display: block; }
-    .join-badge--club { background: #E30613; }
-    .join-card__image { display: block; width: 100%; height: 190px; object-fit: cover; border-radius: .82rem .82rem 0 0; }
-    .join-card__body { display: flex; flex-direction: column; flex: 1; padding: 1.15rem 1.05rem 1.25rem; }
-    .join-card h2 { min-height: 4.15rem; margin: 0; font-family: 'Anton', Impact, sans-serif; color: #c8212b; font-size: clamp(1.65rem, 2.2vw, 2.1rem); line-height: 1; letter-spacing: .02em; text-transform: none; }
-    .join-card--club h2 { color: #fff; }
-    .join-card__subtitle { min-height: 2.4rem; margin: .55rem 0 1rem; color: #555; font-size: .92rem; font-weight: 700; line-height: 1.25; }
-    .join-card--club .join-card__subtitle { color: rgba(255,255,255,.8); }
-    .join-price { display: flex; align-items: baseline; gap: .32rem; min-height: 3.45rem; margin-bottom: .2rem; font-family: 'Anton', Impact, sans-serif; }
-    .join-price span { color: #050505; font-size: clamp(2rem, 2.9vw, 2.65rem); line-height: .95; letter-spacing: .01em; }
-    .join-card--club .join-price span { color: #fff; font-size: clamp(1.8rem, 2.3vw, 2.25rem); }
-    .join-price small { color: #555; font-size: .95rem; font-family: 'DM Sans', system-ui, sans-serif; font-weight: 800; }
-    .join-card--club .join-price small { color: rgba(255,255,255,.75); }
-    .join-trial { min-height: 1.25rem; margin: 0 0 .85rem; color: #b72832; font-weight: 900; font-size: .95rem; letter-spacing: .02em; }
-    .join-card--club .join-trial { color: #fff; }
-    .join-cta { display: flex; align-items: center; justify-content: center; min-height: 2.8rem; margin-bottom: 1rem; border: 2px solid #0A0A0A; border-radius: .45rem; background: #0A0A0A; color: #fff; font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .08em; text-decoration: none; transition: transform .16s ease, background .16s ease, color .16s ease; }
-    .join-cta:hover { transform: translateY(-2px); background: #E30613; border-color: #E30613; color: #fff; }
-    .join-card--club .join-cta { background: #fff; color: #111; border-color: #fff; }
-    .join-card--club .join-cta:hover { background: #E30613; border-color: #E30613; }
-    .join-card ul { display: grid; gap: .58rem; margin: 0; padding: 0; list-style: none; }
-    .join-card li { display: grid; grid-template-columns: 1.1rem 1fr; gap: .45rem; align-items: start; color: #151515; font-size: .88rem; font-weight: 750; line-height: 1.2; }
-    .join-card--club li { color: rgba(255,255,255,.9); }
-    .join-card li span { display: inline-flex; align-items: center; justify-content: center; width: 1.05rem; height: 1.05rem; border-radius: 50%; font-size: .72rem; font-weight: 900; }
-    .join-card li.is-included span { background: #18a84a; color: #fff; }
-    .join-card li.is-excluded { color: #aaa; }
-    .join-card li.is-excluded span { background: #f1f1f1; color: #aaa; }
-    .join-compare { padding: .5rem 0 5rem; background: #fff; color: #111; }
-    .join-rotate-note { display: none; margin: 0 0 1rem; color: #777; text-align: center; font-weight: 800; }
-    .join-table-wrap { overflow-x: auto; border: 1px solid #ddd; border-radius: .9rem; background: #fff; box-shadow: 0 16px 40px rgba(0,0,0,.06); }
-    .join-table { width: 100%; min-width: 760px; border-collapse: collapse; }
-    .join-table th { background: #111; color: #fff; padding: 1rem; font-family: 'Anton', Impact, sans-serif; font-size: 1.05rem; letter-spacing: .04em; text-align: center; }
-    .join-table th:first-child { text-align: left; }
-    .join-table th span { color: rgba(255,255,255,.7); font-family: 'DM Sans', system-ui, sans-serif; font-size: .82rem; font-weight: 800; letter-spacing: 0; }
-    .join-table td { border-top: 1px solid #eee; padding: .9rem 1rem; font-weight: 800; }
-    .join-table tr:nth-child(even) td { background: #fafafa; }
-    .join-table__check { text-align: center; font-family: 'Anton', Impact, sans-serif; font-size: 1.25rem; }
-    .join-table .yes { color: #18a84a; }
-    .join-table .no { color: #bbb; }
-    .join-free-videos { padding: 4.5rem 0 5rem; background: #050505; color: #fff; }
-    .join-free-videos__inner { max-width: 760px; text-align: center; }
-    .join-free-videos__eyebrow { margin: 0 0 .7rem; color: #E30613; font-family: 'Anton', Impact, sans-serif; font-size: 1rem; letter-spacing: .12em; text-transform: uppercase; }
-    .join-free-videos h2 { margin: 0; font-family: 'Anton', Impact, sans-serif; font-size: clamp(2.4rem, 5vw, 4rem); line-height: .95; text-transform: uppercase; }
-    .join-free-videos p:not(.join-free-videos__eyebrow) { max-width: 620px; margin: 1rem auto 1.7rem; color: rgba(255,255,255,.72); font-weight: 650; line-height: 1.55; }
-    .join-free-videos__form { display: grid; grid-template-columns: 1fr 1fr auto; gap: .75rem; max-width: 680px; margin: 0 auto; }
-    .join-free-videos__form input { min-height: 3.1rem; border: 1px solid rgba(255,255,255,.18); background: #171717; color: #fff; padding: 0 1rem; font-weight: 700; outline: none; }
-    .join-free-videos__form input:focus { border-color: #E30613; }
-    .join-free-videos__form button { min-height: 3.1rem; border: 0; background: #E30613; color: #fff; padding: 0 1.2rem; font-family: 'Anton', Impact, sans-serif; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
-    .join-free-videos small { display: block; margin-top: .9rem; color: rgba(255,255,255,.38); }
-    @media (max-width: 1120px) { .join-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 3.5rem; } }
-    @media (max-width: 720px) { .join-cards { grid-template-columns: 1fr; row-gap: 3.5rem; } .join-card__image { height: 210px; } .join-free-videos__form { grid-template-columns: 1fr; } .join-rotate-note { display: none; } .join-table { min-width: 0; table-layout: fixed; } .join-table th, .join-table td { padding: 0.55rem 0.35rem; font-size: 0.78rem; } .join-table th { font-size: 0.82rem; } .join-table th:first-child, .join-table td:first-child { width: 44%; text-align: left; word-break: break-word; } .join-table th:not(:first-child), .join-table td:not(:first-child) { width: 18.66%; } .join-table th span { font-size: 0.62rem; } .join-table__check { font-size: 1rem; padding-inline: 0; } .join-table-wrap { overflow-x: visible; } }
-    @media (max-width: 640px) { .join-wrap { width: min(100% - 24px, 1180px); } .join-hero { padding-top: 3.25rem; } .join-logo { width: min(190px, 58vw); } }
-  </style>
 </BaseLayout>
-)}

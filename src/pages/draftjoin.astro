@@ -521,7 +521,10 @@ const faqs = [
       prices.forEach((el) => {
         const planId = el.getAttribute('data-plan')
         const to = priceForPlan(planId, mode)
-        if (to !== null) el.textContent = fmt(to)
+        if (to === null) return
+        const current = Number((el.textContent || '').replace(/[^0-9.]/g, ''))
+        if (animate && Number.isFinite(current)) rollNumber(el, current, to)
+        else el.textContent = fmt(to)
       })
       periods.forEach((el) => { el.textContent = el.getAttribute('data-' + mode) || '' })
       compares.forEach((el) => {
