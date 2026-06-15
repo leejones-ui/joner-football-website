@@ -11,7 +11,7 @@ const plans = [
     monthlyPrice: '$14.99', monthlyNum: '14.99',
     annualMonthlyPrice: '$10.83', annualMonthlyNum: '10.83',
     annualSave: 'Save $49.89 a year',
-    trial: '7-day free trial', cta: 'Start With Starter',
+    trial: '7-day free trial', cta: 'Start 7-Day Free Trial',
     monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
     annualUrl: 'https://app.jonerfootball.com/checkout/new?o=230697',
     style: 'plain',
@@ -28,7 +28,7 @@ const plans = [
     monthlyPrice: '$19.99', monthlyNum: '19.99',
     annualMonthlyPrice: '$15.00', annualMonthlyNum: '15.00',
     annualSave: 'Save $59.89 a year',
-    trial: '7-day free trial', cta: 'Start Plus',
+    trial: '7-day free trial', cta: 'Start 7-Day Free Trial',
     monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=230699',
     annualUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
     style: 'featured',
@@ -191,7 +191,7 @@ const faqs = [
           {plans.map((plan) => (
             <article id={plan.id} class:list={[
               'group relative flex min-h-full scroll-mt-24 flex-col rounded-3xl border p-6 transition-transform duration-200 ease-out md:hover:-translate-y-1.5',
-              plan.style === 'featured' && 'border-black bg-black text-white shadow-[0_20px_50px_rgba(0,0,0,0.18)] xl:-mt-2 xl:mb-2',
+              plan.style === 'featured' && 'border-black bg-black text-white shadow-[0_20px_50px_rgba(0,0,0,0.18)]',
               plan.style === 'max' && 'border-[#E30613] bg-white text-[#0A0A0A] ring-1 ring-[#E30613]',
               plan.style === 'plain' && 'border-gray-200 bg-white text-[#0A0A0A]',
               plan.style === 'club' && 'border-gray-200 bg-[#0A0A0A] text-white',
@@ -220,19 +220,25 @@ const faqs = [
                 )}
               </div>
 
-              <p class:list={[
-                'mt-2 inline-flex w-fit rounded-md px-2.5 py-1 font-heading text-xs uppercase tracking-wide',
-                plan.style === 'plain' || plan.style === 'max' ? 'bg-[#E30613]/10 text-[#E30613]' : 'bg-white/15 text-white',
-              ]}>{plan.trial}</p>
+              <div class="mt-2 flex min-h-[8.75rem] flex-col justify-start">
+                <p class:list={[
+                  'inline-flex min-h-[1.75rem] w-fit items-center rounded-md px-2.5 py-1 font-heading text-xs uppercase tracking-wide',
+                  plan.trial.toLowerCase().includes('7-day')
+                    ? 'bg-[#16a34a] text-white shadow-sm ring-1 ring-[#16a34a]'
+                    : plan.style === 'featured' || plan.style === 'club'
+                      ? 'bg-white/15 text-white'
+                      : 'bg-[#E30613]/10 text-[#E30613]',
+                ]}>{plan.trial}</p>
 
-              {plan.url ? (
-                <a href={plan.url} class:list={['mt-5 w-full px-5 py-3.5 text-sm', plan.style === 'featured' || plan.style === 'club' ? 'jf-btn-dark' : 'jf-btn']}>{plan.cta}</a>
-              ) : (
-                <a href={plan.annualUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class:list={['plan-cta mt-5 w-full px-5 py-3.5 text-sm', plan.style === 'featured' || plan.style === 'club' ? 'jf-btn-dark' : 'jf-btn']}>{plan.cta}</a>
-              )}
-              {!plan.priceLabel && (
-                <p class:list={['billing-save mt-2 min-h-4 text-center font-body text-xs font-semibold', plan.style === 'featured' ? 'text-[#ff8088]' : 'text-[#E30613]']} data-plan={plan.id}>{plan.annualSave}</p>
-              )}
+                {plan.url ? (
+                  <a href={plan.url} class:list={['mt-5 flex min-h-[3.25rem] w-full items-center justify-center px-5 py-3.5 text-center text-sm', plan.style === 'featured' || plan.style === 'club' ? 'jf-btn-dark' : 'jf-btn']}>{plan.cta}</a>
+                ) : (
+                  <a href={plan.annualUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class:list={['plan-cta mt-5 flex min-h-[3.25rem] w-full items-center justify-center px-5 py-3.5 text-center text-sm', plan.style === 'featured' || plan.style === 'club' ? 'jf-btn-dark' : 'jf-btn']}>{plan.cta}</a>
+                )}
+                {!plan.priceLabel && (
+                  <p class:list={['billing-save mt-2 min-h-4 text-center font-body text-xs font-semibold', plan.style === 'featured' ? 'text-[#ff8088]' : 'text-[#E30613]']} data-plan={plan.id}>{plan.annualSave}</p>
+                )}
+              </div>
 
               <ul class="mt-6 flex-1 space-y-2.5">
                 {plan.features.map((feature) => {
