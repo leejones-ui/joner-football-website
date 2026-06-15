@@ -11,7 +11,7 @@ const plans = [
     monthlyPrice: '$14.99', monthlyNum: '14.99',
     annualMonthlyPrice: '$10.83', annualMonthlyNum: '10.83',
     annualSave: 'Save $49.89 a year',
-    trial: '7-day free trial', cta: 'Start 7-Day Free Trial',
+    trial: '7-day free trial', cta: 'Join Starter',
     monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=183083',
     annualUrl: 'https://app.jonerfootball.com/checkout/new?o=230697',
     style: 'plain',
@@ -28,7 +28,7 @@ const plans = [
     monthlyPrice: '$19.99', monthlyNum: '19.99',
     annualMonthlyPrice: '$15.00', annualMonthlyNum: '15.00',
     annualSave: 'Save $59.89 a year',
-    trial: '7-day free trial', cta: 'Start 7-Day Free Trial',
+    trial: '7-day free trial', cta: 'Join Plus',
     monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=230699',
     annualUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
     style: 'featured',
@@ -197,7 +197,10 @@ const faqs = [
               plan.style === 'club' && 'border-gray-200 bg-[#0A0A0A] text-white',
             ]}>
               {plan.badge && (
-                <div class="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#E30613] px-3.5 py-1 text-xs font-heading uppercase tracking-wider text-white shadow">{plan.badge}</div>
+                <div class:list={[
+                  'absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3.5 py-1 text-xs font-heading uppercase tracking-wider text-white shadow',
+                  plan.style === 'max' ? 'bg-[#16a34a]' : 'bg-[#E30613]',
+                ]}>{plan.badge}</div>
               )}
 
               <h3 class="font-heading text-3xl uppercase leading-none">{plan.name}</h3>
@@ -223,7 +226,7 @@ const faqs = [
               <div class="mt-2 flex min-h-[8.75rem] flex-col justify-start">
                 <p class:list={[
                   'inline-flex min-h-[1.75rem] w-fit items-center rounded-md px-2.5 py-1 font-heading text-xs uppercase tracking-wide',
-                  plan.trial.toLowerCase().includes('7-day')
+                  (plan.trial.toLowerCase().includes('7-day') || plan.trial.toLowerCase().includes('full access'))
                     ? 'bg-[#16a34a] text-white shadow-sm ring-1 ring-[#16a34a]'
                     : plan.style === 'featured' || plan.style === 'club'
                       ? 'bg-white/15 text-white'
@@ -384,7 +387,7 @@ const faqs = [
       <div class="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
         <h2 class="font-heading text-4xl uppercase leading-[0.95] text-white md:text-6xl">Choose your level and get to work.</h2>
         <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href="#plus" class="jf-btn-dark px-8 py-4">Start 7-Day Free Trial</a>
+          <a href="#plus" class="jf-btn-dark px-8 py-4">Join Plus</a>
           <a href="#max" class="jf-btn-dark px-8 py-4">Join Max</a>
         </div>
         <a href="#starter" class="mt-5 inline-block font-body text-sm text-white/90 underline underline-offset-4 hover:text-white">Just want the basics? Choose Starter</a>
