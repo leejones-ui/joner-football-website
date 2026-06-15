@@ -534,7 +534,7 @@ const faqs = [
       subs.forEach((el) => {
         const planId = el.getAttribute('data-plan')
         const plan = regionPrices.plans[planId]
-        el.textContent = mode === 'annual' && plan ? 'billed annually at ' + fmt(plan.annual) + '/yr' : ''
+        el.textContent = mode === 'annual' && plan ? 'billed annually' : ''
       })
       saves.forEach((el) => {
         const planId = el.getAttribute('data-plan')
