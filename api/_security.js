@@ -55,26 +55,47 @@ export function rateLimit(req, { key = 'form', limit = 5, windowMs = 60_000 } = 
 
 export async function verifyRecaptcha(req, token) {
   const secret = process.env.RECAPTCHA_SECRET_KEY
-  if (!secret) return { ok: true, skipped: true }
-  if (!token) return { ok: false, error: 'Bot check failed. Please reload and try again.' }
+  const strict = process.env.RECAPTCHA_STRICT === 'true'
+  if (!secret) return { ok: true, skipped: true, reason: 'missing-secret' }
+  if (!token) {
+    if (!strict) {
+      console.warn('reCAPTCHA token missing; fail-open to protect customer form submissions. Set RECAPTCHA_STRICT=true to hard block.')
+      return { ok: true, skipped: true, reason: 'missing-token-fail-open' }
+    }
+    return { ok: false, error: 'Bot check failed. Please reload and try again.' }
+  }
 
-  const params = new URLSearchParams({
-    secret,
-    response: cleanString(token, 2000),
-    remoteip: ipFromRequest(req),
-  })
+  try {
+    const params = new URLSearchParams({
+      secret,
+      response: cleanString(token, 2000),
+      remoteip: ipFromRequest(req),
+    })
 
-  const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: params,
-  })
+    const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: params,
+    })
+    const data = await response.json().catch(() => ({}))
+    const minScore = Number(process.env.RECAPTCHA_MIN_SCORE || 0.5)
+    if (data.success && (typeof data.score !== 'number' || data.score >= minScore)) return { ok: true, score: data.score }
 
-  const data = await response.json().catch(() => ({}))
-  const minScore = Number(process.env.RECAPTCHA_MIN_SCORE || 0.5)
-  if (!data.success) return { ok: false, error: 'Bot check failed. Please reload and try again.' }
-  if (typeof data.score === 'number' && data.score < minScore) return { ok: false, error: 'Bot check failed. Please reload and try again.' }
-  return { ok: true, score: data.score }
+    if (!strict) {
+      console.warn('reCAPTCHA verification failed; fail-open to protect customer form submissions.', {
+        score: data.score,
+        errors: data['error-codes'],
+      })
+      return { ok: true, skipped: true, reason: 'verification-fail-open', recaptchaErrors: data['error-codes'] }
+    }
+  } catch (error) {
+    if (!strict) {
+      console.warn('reCAPTCHA verification errored; fail-open to protect customer form submissions.', error?.message || error)
+      return { ok: true, skipped: true, reason: 'verification-error-fail-open' }
+    }
+  }
+
+  return { ok: false, error: 'Bot check failed. Please reload and try again.' }
 }
 
 export async function protectForm(req, res, key, body) {
