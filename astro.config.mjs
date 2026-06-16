@@ -20,7 +20,7 @@ export default defineConfig({
         '/home-object-prototype/',
         '/home-storyboard-prototype/',
         '/draftjoin/',
-        '/join/',
+
         '/new-coaching-role/',
         '/training/joners-juniors/',
         '/training/jfp-program/',

@@ -41,11 +41,11 @@ import { fetchSanityPage } from '../lib/sanityPages'
 import { getSanityCta, getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 
 const sanityPage = await fetchSanityPage('teams')
-const pageTitle = sanityPage?.seo?.title || 'Football Team Training App | Club Subscriptions | Joner Football'
-const pageDescription = sanityPage?.seo?.description || 'Give your football team access to Joner Football training. Team subscriptions help players train with clearer drills, programmes and coach-led detail.'
-const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Team Subscriptions')
-const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole Squad')
-const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'Team and club subscriptions for the Joner Football App')
+const pageTitle = sanityPage?.seo?.title || 'Football Team Training App and Club Subscriptions | Joner Football'
+const pageDescription = sanityPage?.seo?.description || 'Team and club subscriptions for the Joner Football App. Give players clear drills, coach resources and training to follow between sessions.'
+const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Team and Club Subscriptions')
+const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole Squad With One App')
+const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'Football team training app access for clubs, academies and schools')
 const primaryCta = getSanityCta(sanityPage?.primaryCta, { label: 'Get a Quote', url: '#team-subscription-form' })
 
 const benefits = [
@@ -90,11 +90,13 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
                 {heroHeadline}
               </h1>
               <p class="mb-8 max-w-xl font-body text-base leading-relaxed text-neutral-300 sm:text-lg">
-                Give every player in your squad access to the Joner Football App, structured programs, coach resources, and individual development work between team sessions.
+                Give every player in your club access to the Joner Football App, structured programmes, coach resources and individual development work between team sessions. Built for football teams that want cleaner habits away from training.
               </p>
               <div class="flex flex-wrap gap-3">
                 {primaryCta?.label && primaryCta?.url && <a href={primaryCta.url} class="btn-red text-sm">{primaryCta.label}</a>}
-                <a href="/app" class="btn-outline text-sm">See The App</a>
+                <a href="#team-subscription-form" class="btn-outline text-sm" data-ga-event="club_pricing_click">Club Pricing</a>
+                <a href="/join/" class="btn-outline text-sm">Compare App Plans</a>
+                <a href="/football-training-app/" class="btn-outline text-sm">Football Training App</a>
               </div>
             </div>
 

@@ -1,8 +1,8 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const title = 'Free Football Training Videos | Joner Football'
-const description = 'Get 14 free Joner Football videos for players, parents and coaches. Enter your email and choose what best describes you.'
+const title = 'Free Football Training Videos For Players, Parents and Coaches | Joner Football'
+const description = 'Get 14 free football training videos from Joner Football. Player drills, parent help and coaching ideas that lead into the Joner Football App.'
 const canonical = 'https://jonerfootball.com/free-bundle/'
 ---
 
@@ -25,8 +25,8 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
       <div class="free-hero__inner">
         <div class="free-panel">
           <div class="free-copy">
-            <h1 id="free-bundle-title">Get 14 Free Videos</h1>
-            <p class="free-subtitle">Player drills, coaching ideas &amp; parent help.</p>
+            <h1 id="free-bundle-title">Get 14 Free Football Training Videos</h1>
+            <p class="free-subtitle">Player drills, coaching ideas &amp; parent help. Start here, then keep training inside the <a href="/app/">Joner Football App</a>.</p>
           </div>
 
           <div class="free-card" aria-label="Free video email capture form">
@@ -131,6 +131,13 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
           return;
         }
 
+        if (window.JonerTracking && typeof window.JonerTracking.trackEvent === 'function') {
+          window.JonerTracking.trackEvent('lead_magnet_click', {
+            custom_data: { form_id: 'free-bundle-form', lead_type: 'free_training_videos', roles: selectedRoles.join(',') },
+            user_data: { email: email }
+          });
+        }
+
         var listIds = [];
         listIds.push(HOT_APP_LEADS);
         listIds.push(FREE_BUNDLE_USERS_NORMAL);
@@ -144,6 +151,12 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
         if (button) {
           button.disabled = true;
           button.textContent = 'Sending...';
+        }
+        if (window.JonerTracking && typeof window.JonerTracking.trackEvent === 'function') {
+          window.JonerTracking.trackEvent('lead_magnet_click', {
+            user_data: { email: email },
+            custom_data: { form_id: 'free-bundle-form', roles: selectedRoles.join(','), page_path: '/free-bundle' }
+          });
         }
         setStatus('', '');
 

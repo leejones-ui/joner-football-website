@@ -369,6 +369,16 @@ const allSchemas = schema
             }
           }
 
+          if (typeof window.gtag === 'function') {
+            try {
+              window.gtag('event', eventName, Object.assign({
+                event_id: eventId,
+                page_path: window.location.pathname || '/',
+                transport_type: 'beacon'
+              }, customData));
+            } catch (e) {}
+          }
+
           try {
             var body = JSON.stringify({
               event_name: eventName,
@@ -408,6 +418,69 @@ const allSchemas = schema
           return 'WebsiteDeepScroll';
         }
 
+        function getMoneyClickEventName(anchor) {
+          if (!anchor || !anchor.href) return '';
+          if (anchor.dataset && anchor.dataset.gaEvent) return anchor.dataset.gaEvent;
+          var path = getPathname();
+          var text = (anchor.textContent || '').trim().toLowerCase();
+          var href = anchor.href || '';
+          var host = '';
+          try { host = new URL(href, window.location.href).hostname; } catch (e) {}
+
+          if (host === 'apps.apple.com') return 'app_store_click';
+          if (host === 'play.google.com') return 'google_play_click';
+          if (href.indexOf('app.jonerfootball.com/categories/category-vpi8uazway4') !== -1) return 'free_section_click';
+          if (href.indexOf('/free-bundle') !== -1 || text.indexOf('free videos') !== -1 || text.indexOf('lead magnet') !== -1) return 'lead_magnet_click';
+          if (href.indexOf('#register') !== -1 || text.indexOf('book your spot') !== -1 || text.indexOf('book now') !== -1 || text.indexOf('camp') !== -1 && text.indexOf('sign') !== -1) return 'camp_signup_click';
+          if (path === '/join') {
+            if (href.indexOf('/teams/#team-subscription-form') !== -1 || text.indexOf('club') !== -1 || text.indexOf('team') !== -1) return 'club_pricing_click';
+            if (text.indexOf('starter') !== -1 || href.indexOf('o=183083') !== -1 || href.indexOf('o=230697') !== -1) return 'join_starter_click';
+            if (text.indexOf('plus') !== -1 || href.indexOf('o=230699') !== -1 || href.indexOf('o=183092') !== -1) return 'join_plus_click';
+            if (text.indexOf('max') !== -1 || href.indexOf('o=230698') !== -1 || href.indexOf('o=202578') !== -1) return 'join_max_click';
+          }
+          if (path === '/teams' && (href.indexOf('#team-subscription-form') !== -1 || text.indexOf('quote') !== -1 || text.indexOf('enquir') !== -1 || text.indexOf('club pricing') !== -1)) {
+            return text.indexOf('club pricing') !== -1 ? 'club_pricing_click' : 'team_subscription_interest';
+          }
+          if (href.indexOf('app.jonerfootball.com/checkout/new') !== -1) return 'app_checkout_click';
+          return '';
+        }
+
+        function trackMoneyClick(anchor) {
+          var eventName = getMoneyClickEventName(anchor);
+          if (!eventName) return;
+          trackEvent(eventName, {
+            custom_data: {
+              link_url: anchor.href,
+              link_text: (anchor.textContent || '').trim().slice(0, 120),
+              page_path: getPathname()
+            }
+          });
+        }
+
+        function initFormIntentTracking() {
+          document.querySelectorAll('form').forEach(function (form) {
+            var path = getPathname();
+            var id = form.id || '';
+            var isCampForm = path.indexOf('/camps/') === 0 || id === 'houForm' || id === 'camp-registration-form';
+            if (isCampForm) {
+              var started = false;
+              form.addEventListener('focusin', function () {
+                if (started) return;
+                started = true;
+                trackEvent('camp_form_start', { custom_data: { form_id: id || 'camp-form', page_path: path } });
+              }, true);
+              form.addEventListener('submit', function () {
+                trackEvent('camp_form_submit', { custom_data: { form_id: id || 'camp-form', page_path: path } });
+              }, true);
+            }
+            if (path === '/teams' || id === 'team-subscription-enquiry-form') {
+              form.addEventListener('submit', function () {
+                trackEvent('team_subscription_interest', { custom_data: { form_id: id || 'team-form', page_path: path } });
+              }, true);
+            }
+          });
+        }
+
         function initTracking() {
           window.JonerTracking = {
             collectTrackingParams: collectTrackingParams,
@@ -426,6 +499,8 @@ const allSchemas = schema
 
           document.addEventListener('click', function (event) {
             var anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+            if (!anchor) return;
+            trackMoneyClick(anchor);
             if (!isAppOutboundLink(anchor)) return;
             anchor.href = appendTrackingParams(anchor.href, collectTrackingParams());
             if (anchor.href.indexOf('/checkout/new') !== -1) {
@@ -435,6 +510,8 @@ const allSchemas = schema
               });
             }
           }, true);
+
+          initFormIntentTracking();
 
           var deepScrollTracked = false;
           function trackDeepScroll() {
