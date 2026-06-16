@@ -1,4 +1,5 @@
 import { protectForm } from './_security.js'
+import { validateEmailFormat, validateEmailQuality } from './_email-quality.js'
 import { sendRegistrationEmail } from './_camp-automation.js'
 import { campPaymentConfig, selectedDayKey, siteUrl } from './_camp-payment-options.js'
 
@@ -44,7 +45,7 @@ function clean(value, max = 500) {
 }
 
 function validEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value || '').trim())
+  return validateEmailFormat(value).ok
 }
 
 function escapeHtml(value) {
@@ -523,7 +524,9 @@ export default async function handler(req, res) {
 
     if (!registration.playerFirstName) return res.status(400).json({ success: false, error: 'Player first name is required.' })
     if (!registration.playerSurname) return res.status(400).json({ success: false, error: 'Player surname is required.' })
-    if (!validEmail(registration.email)) return res.status(400).json({ success: false, error: 'Enter a valid email address.' })
+    const emailCheck = await validateEmailQuality(registration.email, { label: 'parent email' })
+    if (!emailCheck.ok) return res.status(400).json({ success: false, error: emailCheck.error || 'Enter a valid email address.' })
+    registration.email = emailCheck.email
     if (!registration.age) return res.status(400).json({ success: false, error: 'Player age is required.' })
     if (!registration.mobile) return res.status(400).json({ success: false, error: 'Mobile number is required.' })
     if (!registration.jerseySize) return res.status(400).json({ success: false, error: 'Jersey size is required.' })

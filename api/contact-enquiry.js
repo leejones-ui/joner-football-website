@@ -1,4 +1,5 @@
 import { cleanString, protectForm } from './_security.js'
+import { validateEmailFormat, validateEmailQuality } from './_email-quality.js'
 
 const FALLBACK_RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'leejones@jonerfootball.com'
 const duplicateBuckets = new Map()
@@ -38,7 +39,7 @@ function clean(value, max = 1000) {
 }
 
 function validEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value || '').trim())
+  return validateEmailFormat(value).ok
 }
 
 function looksLikePlayerAge(value) {
@@ -171,9 +172,11 @@ async function handlePlayerWaiver(body, res) {
   if (!submitted.playerFullName || !submitted.dob || !submitted.parentName || !submitted.email || !submitted.mobileNumber) {
     return res.status(400).json({ success: false, error: 'Please complete all required player and parent fields.' })
   }
-  if (!validEmail(submitted.email)) {
-    return res.status(400).json({ success: false, error: 'Please enter a valid parent email address.' })
+  const emailCheck = await validateEmailQuality(submitted.email, { label: 'parent email' })
+  if (!emailCheck.ok) {
+    return res.status(400).json({ success: false, error: emailCheck.error || 'Please enter a valid parent email address.' })
   }
+  submitted.email = emailCheck.email
   if (!submitted.paymentCommitmentAccepted || !submitted.waiverAccepted || !submitted.parentSignature) {
     return res.status(400).json({ success: false, error: 'Please accept the waiver, payment commitment and add the parent/guardian signature.' })
   }
@@ -386,9 +389,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Please complete all team subscription fields.' })
     }
 
-    if (!validEmail(enquiry.email)) {
-      return res.status(400).json({ success: false, error: 'Please enter a valid email address.' })
+    const emailCheck = await validateEmailQuality(enquiry.email)
+    if (!emailCheck.ok) {
+      return res.status(400).json({ success: false, error: emailCheck.error || 'Please enter a valid email address.' })
     }
+    enquiry.email = emailCheck.email
 
     if ((type === 'training-sydney' || type === 'game-analysis' || type === 'joners-juniors') && (!enquiry.playerName || !enquiry.playerAge)) {
       return res.status(400).json({ success: false, error: 'Please add the player name and age.' })
