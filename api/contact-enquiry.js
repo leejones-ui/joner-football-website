@@ -41,6 +41,33 @@ function validEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value || '').trim())
 }
 
+function looksLikePlayerAge(value) {
+  const text = clean(value, 40).toLowerCase()
+  if (!text) return false
+  if (/^(u|under\s*)?([3-9]|1[0-9]|2[0-5])\s*(years?|yrs?|yo)?$/.test(text)) return true
+  if (/^([3-9]|1[0-9]|2[0-5])\s*[-/]\s*([3-9]|1[0-9]|2[0-5])$/.test(text)) return true
+  return false
+}
+
+function looksLikeRandomToken(value) {
+  const text = clean(value, 500)
+  if (text.length < 12) return false
+  if (/\s/.test(text)) return false
+  if (!/^[A-Za-z0-9_-]+$/.test(text)) return false
+  const letters = text.replace(/[^A-Za-z]/g, '')
+  if (letters.length < 10) return false
+  const hasLower = /[a-z]/.test(text)
+  const hasUpper = /[A-Z]/.test(text)
+  const hasDigit = /\d/.test(text)
+  const vowelRatio = (letters.match(/[aeiou]/gi) || []).length / Math.max(1, letters.length)
+  return hasLower && hasUpper && (hasDigit || vowelRatio < 0.28)
+}
+
+function isLikelyBotSubmission(enquiry) {
+  const fields = [enquiry.name, enquiry.playerName, enquiry.playerAge, enquiry.playerLevel, enquiry.message]
+  return fields.filter(looksLikeRandomToken).length >= 3
+}
+
 function escapeHtml(value) {
   return clean(value, 4000)
     .replace(/&/g, '&amp;')
@@ -365,6 +392,14 @@ export default async function handler(req, res) {
 
     if ((type === 'training-sydney' || type === 'game-analysis' || type === 'joners-juniors') && (!enquiry.playerName || !enquiry.playerAge)) {
       return res.status(400).json({ success: false, error: 'Please add the player name and age.' })
+    }
+
+    if ((type === 'training-sydney' || type === 'game-analysis' || type === 'joners-juniors') && !looksLikePlayerAge(enquiry.playerAge)) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid player age.' })
+    }
+
+    if (isLikelyBotSubmission(enquiry)) {
+      return res.status(400).json({ success: false, error: 'Please check the enquiry details and try again.' })
     }
 
     if (type === 'coaching-role' && (!enquiry.coachingExperience || !enquiry.qualifications)) {
