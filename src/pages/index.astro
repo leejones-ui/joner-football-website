@@ -112,7 +112,7 @@ const storyBeats = [
     label: 'Global',
     kicker: 'Going Global',
     title: 'Coaching Worldwide',
-    body: 'From Sydney to coaching in Football Communties around the world.',
+    body: 'From Sydney to football communities around the world.',
     image: '/images/home-storyboard/05-global-camps.webp',
     mobileImage: '/images/home-storyboard/mobile/05-global-camps-mobile.webp',
     alt: 'Joner Football players training at a large outdoor camp',
@@ -135,8 +135,8 @@ const storyBeats = [
     number: '06',
     label: 'JF App',
     kicker: 'The Joner Football App',
-    title: 'Worlds #1 Football Coaching APP',
-    body: 'Built for players, parents, and coaches to train with clarity, confidence, and purpose.',
+    title: 'The Football Training App Built For Detail',
+    body: 'Drills, programmes, session plans, coach education and free training videos in one clear Joner pathway.',
     image: '/images/home-storyboard/06-app-session-planning.webp',
     mobileImage: '/images/home-storyboard/mobile/06-app-session-planning-mobile.webp',
     video: '/images/home-storyboard/06-app-header-video-desktop.mp4',
@@ -153,9 +153,9 @@ const storyBeats = [
     overlay: 'none',
     ballVisible: false,
     ctas: [
-      { label: '7 Day Free Trial', href: 'https://app.jonerfootball.com/categories/category-vpi8uazway4', external: true },
-      { label: 'App Store', href: 'https://apps.apple.com/au/app/joner-football-app/id6737069275', external: true, badge: 'apple' },
-      { label: 'Google Play', href: 'https://play.google.com/store/apps/details?id=tv.uscreen.jonerfootball', external: true, badge: 'google' },
+      { label: 'Football Training App', href: '/football-training-app/' },
+      { label: 'See App Plans', href: '/join/' },
+      { label: 'Free Videos', href: '/free-bundle/' },
     ],
   },
   {
@@ -222,6 +222,45 @@ const primaryPaths = [
   { title: 'Teams', text: 'Bring Joner Football App access and training plans to your squad.', href: '/teams', tag: 'Clubs' },
 ]
 
+const moneyLinks = [
+  {
+    title: 'Football training app',
+    text: 'Best overview of the Joner Football App for players, parents and coaches who want clearer training.',
+    href: '/football-training-app/',
+    label: 'Start here',
+  },
+  {
+    title: 'App plans and free trial',
+    text: 'See the player, coach and team app options. Pricing stays visible on /join where it belongs.',
+    href: '/join/',
+    label: 'Compare plans',
+  },
+  {
+    title: 'Teams and clubs',
+    text: 'Club, academy and school subscriptions for squads that need the same training detail between sessions.',
+    href: '/teams/',
+    label: 'Team access',
+  },
+  {
+    title: 'Free training videos',
+    text: 'Free football drills and videos for players, parents and coaches to start training the Joner way.',
+    href: '/free-bundle/',
+    label: 'Get free videos',
+  },
+  {
+    title: 'Elite camps',
+    text: 'Train in person at Joner Football camps in the USA, Australia and selected global locations.',
+    href: '/camps/',
+    label: 'View camps',
+  },
+  {
+    title: 'Sydney training and coaching',
+    text: 'JFP, Joners Juniors, pro training and technical sessions at The HQ and Sydney training locations.',
+    href: '/training/',
+    label: 'Train in Sydney',
+  },
+]
+
 const actionLinks = [
   { label: 'The App', href: '/app', className: 'app', eyebrow: 'Train online', icon: 'APP' },
   { label: 'Train in Person', href: '/training', className: 'train', eyebrow: 'Sydney sessions', icon: 'JFP' },
@@ -255,18 +294,86 @@ import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 const sanityPage = await fetchSanityPage('home')
 
 const homepageSEOFAQs = [
-  { q: 'What is Joner Football?', a: 'Joner Football is a football coaching company led by Lee Jones, built to help players improve technique, confidence and game impact through training, camps and the Joner Football App.' },
-  { q: 'Who is Joner Football for?', a: 'It is for players, parents and coaches who want clearer football training. Players get drills and programmes, parents get a trusted path, and coaches get practical session detail.' },
-  { q: 'Can I train with Joner Football online?', a: 'Yes. The Joner Football App gives players and coaches access to training drills, programmes and coaching detail wherever they are.' },
-  { q: 'Where does Joner Football run training and camps?', a: 'Joner Football runs Sydney training through The HQ and JFP, plus elite football camps in Australia, the USA and selected global locations.' },
+  { q: 'What is Joner Football?', a: 'Joner Football is Lee Jones\' technical football coaching brand, built around one standard: technique above everything. Players, parents, coaches and clubs use Joner Football for online training, app programmes, Sydney sessions, camps and team plans.' },
+  { q: 'Who is Joner Football for?', a: 'Joner Football is for young players who want sharper technique, parents who want a trusted training pathway, coaches who need clear session detail, and teams or clubs that want a proven football training app for the whole squad.' },
+  { q: 'Can I train with Joner Football online?', a: 'Yes. The Joner Football App gives players and coaches access to 1,500+ football drills, programmes, session plans, coaching detail and a free training section they can start with before joining full access.' },
+  { q: 'Does Joner Football support teams and clubs?', a: 'Yes. Teams, academies and clubs can use Joner Football team subscriptions so coaches and players work from the same training library, methodology and session planning system.' },
+  { q: 'Where does Joner Football run training and camps?', a: 'Joner Football runs Sydney training through The HQ and JFP, plus elite football camps in Australia, the USA and selected global locations including Texas and Sydney.' },
+]
+
+const homepageMoneyLinks = [
+  {
+    eyebrow: 'Training app',
+    title: 'Football training app',
+    body: 'The clearest guide to the Joner Football App: drills, programmes, session plans, free section and how players, parents and coaches use it.',
+    href: '/football-training-app/',
+    cta: 'Explore the app guide',
+  },
+  {
+    eyebrow: 'Join',
+    title: 'Player, coach and family plans',
+    body: 'See the current app plans, trial details and what full access includes before you move into checkout.',
+    href: '/join/',
+    cta: 'View app plans',
+  },
+  {
+    eyebrow: 'Teams and clubs',
+    title: 'Bring Joner Football to the whole squad',
+    body: 'For teams, academies and clubs that want one technical training system for players and coaches.',
+    href: '/teams/',
+    cta: 'See team subscriptions',
+  },
+  {
+    eyebrow: 'Free start',
+    title: 'Free football training videos',
+    body: 'Start with free ball mastery and technical training videos, then step into the app when you are ready.',
+    href: '/free-bundle/',
+    cta: 'Get free videos',
+  },
+  {
+    eyebrow: 'Camps',
+    title: 'Elite football camps',
+    body: 'Train with the Joner Football standard in person at high-energy camps across the USA, Australia and worldwide.',
+    href: '/camps/',
+    cta: 'View camps',
+  },
+  {
+    eyebrow: 'Coaches',
+    title: 'Joner Football for coaches',
+    body: 'Session plans, drill detail and coaching structure for coaches who want clearer delivery and better technical outcomes.',
+    href: '/app/for-coaches/',
+    cta: 'Open coaches section',
+  },
+]
+
+const homepageResourceLinks = [
+  { label: 'App overview', href: '/app/' },
+  { label: 'Houston June camp', href: '/camps/texas-houston-june/' },
+  { label: 'Dallas June camp', href: '/camps/texas-dallas-june/' },
+  { label: 'Football drills at home', href: '/blog/football-drills-at-home/' },
+  { label: '50 ball mastery skills', href: '/blog/50-ball-mastery-skills-young-players/' },
+  { label: 'Football training for kids', href: '/blog/football-training-for-kids/' },
+  { label: 'Sydney training', href: '/training/' },
+  { label: 'JFP performance', href: '/training/jfp-program/' },
 ]
 
 const homepageSchemas = [
   webPageSchema({
-    name: 'Joner Football | Football Training App, Drills & Elite Coaching',
-    description: 'Train with Joner Football. Improve technique, confidence and game impact with elite coaching, football drills, camps and the Joner Football App.',
+    name: 'Joner Football | Football Training App, Drills, Camps & Elite Coaching',
+    description: 'Train with Joner Football. Improve technique and confidence with the football training app, free drills, camps, Sydney coaching and team access.',
     url: 'https://jonerfootball.com/',
   }),
+  {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Joner Football training pathways',
+    itemListElement: moneyLinks.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.title,
+      url: `https://jonerfootball.com${item.href}`,
+    })),
+  },
   faqSchema(homepageSEOFAQs),
 ]
 
@@ -276,8 +383,8 @@ const homepageSchemas = [
   <SanityPageRenderer page={sanityPage} />
 ) : (
 <BaseLayout
-  title="Joner Football | Football Training App, Drills & Elite Coaching"
-  description="Train with Joner Football. Improve technique, confidence and game impact with elite coaching, football drills, camps and the Joner Football App."
+  title="Joner Football | Football Training App, Elite Coaching, Camps & Teams"
+  description="Joner Football helps players, parents, coaches and teams improve technique with the football training app, free videos, Sydney coaching and elite camps."
   canonical="https://jonerfootball.com/"
   schema={homepageSchemas}
 >
@@ -2142,6 +2249,50 @@ const homepageSchemas = [
               ></iframe>
             </div>
           </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-[#050505] px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-24" aria-labelledby="home-training-pathways">
+      <div class="mx-auto max-w-7xl">
+        <div class="max-w-4xl">
+          <p class="font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Start here</p>
+          <h2 id="home-training-pathways" class="mt-4 font-heading text-4xl uppercase leading-none tracking-tight text-white sm:text-5xl lg:text-7xl">
+            Football training paths for players, parents, coaches and teams.
+          </h2>
+          <p class="mt-6 max-w-3xl text-base leading-8 text-white/74 sm:text-lg">
+            Joner Football is Lee Jones' technical football training system. Use the <a href="/football-training-app/" class="text-white underline decoration-joner-red decoration-2 underline-offset-4">football training app</a>, join full app access, bring the method into your team, train at a camp, or start with free training videos. Clear next steps. No fluff.
+          </p>
+        </div>
+
+        <div class="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {homepageMoneyLinks.map((item) => (
+            <a href={item.href} class="group border border-white/12 bg-white/[0.045] p-5 transition hover:-translate-y-1 hover:border-joner-red/70 hover:bg-white/[0.075] focus:outline-none focus:ring-2 focus:ring-joner-red sm:p-6">
+              <span class="font-heading text-[0.66rem] uppercase tracking-[0.22em] text-joner-red">{item.eyebrow}</span>
+              <h3 class="mt-3 font-heading text-2xl uppercase leading-none text-white sm:text-3xl">{item.title}</h3>
+              <p class="mt-4 text-sm leading-7 text-white/68">{item.body}</p>
+              <span class="mt-6 inline-flex items-center gap-2 font-heading text-sm uppercase tracking-[0.12em] text-white">
+                {item.cta}
+                <span class="text-joner-red transition group-hover:translate-x-1" aria-hidden="true">→</span>
+              </span>
+            </a>
+          ))}
+        </div>
+
+        <div class="mt-10 border-l-4 border-joner-red bg-white/[0.035] p-5 sm:p-6 lg:flex lg:items-center lg:justify-between lg:gap-10">
+          <div>
+            <h3 class="font-heading text-2xl uppercase leading-none text-white sm:text-3xl">Fast links Google and AI search should understand.</h3>
+            <p class="mt-3 max-w-3xl text-sm leading-7 text-white/64">
+              App, teams, free training, camps, coaching guides and Sydney development all connect back to the same Joner standard: better technique, better detail, better habits.
+            </p>
+          </div>
+          <div class="mt-5 flex flex-wrap gap-2 lg:mt-0 lg:max-w-2xl lg:justify-end">
+            {homepageResourceLinks.map((link) => (
+              <a href={link.href} class="border border-white/14 bg-black px-3 py-2 font-heading text-[0.72rem] uppercase tracking-[0.12em] text-white/82 transition hover:border-joner-red hover:text-white">
+                {link.label}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </section>
