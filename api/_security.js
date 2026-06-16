@@ -62,7 +62,7 @@ export async function verifyRecaptcha(req, token) {
       console.warn('reCAPTCHA token missing; fail-open to protect customer form submissions. Set RECAPTCHA_STRICT=true to hard block.')
       return { ok: true, skipped: true, reason: 'missing-token-fail-open' }
     }
-    return { ok: false, error: 'Bot check failed. Please reload and try again.' }
+    return { ok: false, error: 'Apologies, there was an error. Please email leejones@jonerfootball.com to book a spot.' }
   }
 
   try {
@@ -95,7 +95,7 @@ export async function verifyRecaptcha(req, token) {
     }
   }
 
-  return { ok: false, error: 'Bot check failed. Please reload and try again.' }
+  return { ok: false, error: 'Apologies, there was an error. Please email leejones@jonerfootball.com to book a spot.' }
 }
 
 export async function protectForm(req, res, key, body) {

@@ -366,10 +366,10 @@ const sanityPage = await fetchSanityPage('camp-texas-dallas-june')
         <p class="hou-form-lede">
           You can't get accepted without filling in the form and submitting payment. Spots are first come, first served.
         </p>
-        <div class="hou-spots" data-spots-counter data-spots-baseline="80" data-spots-existing="25" data-spots-paid-baseline="0" data-spots-camp="Dallas World Cup Camp June 2026">
+        <div class="hou-spots" data-spots-counter data-spots-manual="true" data-spots-camp="Dallas World Cup Camp June 2026">
           <span class="hou-spots-pulse" aria-hidden="true"></span>
           <span class="hou-spots-text">
-            <span class="hou-spots-num" data-spots-num>55</span>
+            <span class="hou-spots-num" data-spots-num>17</span>
             <span class="hou-spots-label">spots left</span>
           </span>
         </div>
@@ -1478,6 +1478,7 @@ const sanityPage = await fetchSanityPage('camp-texas-dallas-june')
     const spotsNum = document.querySelector<HTMLElement>('[data-spots-num]')
     async function refreshSpots() {
       if (!spotsBox || !spotsNum) return
+      if (spotsBox.getAttribute('data-spots-manual') === 'true') return
       const camp = spotsBox.getAttribute('data-spots-camp') || ''
       const baseline = spotsBox.getAttribute('data-spots-baseline') || '0'
       const existingSignups = spotsBox.getAttribute('data-spots-existing') || '0'
@@ -1624,7 +1625,11 @@ const sanityPage = await fetchSanityPage('camp-texas-dallas-june')
             window.location.href = paymentLink
           }, 900)
         } catch (err) {
-          if (errEl) errEl.textContent = (err as Error).message || 'Something went wrong. Please try again.'
+          const rawError = (err as Error).message || ''
+          const safeError = /bot|captcha|recaptcha|failed|error|wrong/i.test(rawError)
+            ? 'Apologies, there was an error. Please email leejones@jonerfootball.com to book a spot.'
+            : rawError
+          if (errEl) errEl.textContent = safeError || 'Apologies, there was an error. Please email leejones@jonerfootball.com to book a spot.'
           if (submitBtn && labelEl) {
             submitBtn.disabled = false
             labelEl.textContent = originalLabel
