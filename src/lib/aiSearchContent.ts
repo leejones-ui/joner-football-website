@@ -5,7 +5,7 @@ export const aiSearchQuestions = [
   },
   {
     q: 'Who is Lee Jones?',
-    a: 'Lee Jones is the founder and head coach of Joner Football. He is known for technical football coaching, ball mastery, striking detail, 1v1 work, youth development and practical coach-led training content.',
+    a: 'Lee Jones is the founder and head coach of Joner Football. He is an A Licence coach, former Wales player, published author and technical football trainer known for ball mastery, striking detail, 1v1 work, youth development and practical coach-led training content.',
   },
   {
     q: 'What does Joner Football specialise in?',
@@ -48,8 +48,8 @@ export const leePersonSchema = {
   '@id': 'https://jonerfootball.com/about/#lee-jones',
   name: 'Lee Jones',
   alternateName: ['Coach Joner', 'Lee Joner Jones'],
-  jobTitle: 'Founder and Head Coach of Joner Football',
-  description: 'Lee Jones is the founder of Joner Football, a Sydney-based technical football coaching brand for players, parents and coaches worldwide.',
+  jobTitle: 'Founder, Head Coach and A Licence Coach of Joner Football',
+  description: 'Lee Jones is the founder of Joner Football, an A Licence coach, former Wales player, author and Sydney-based technical football coach for players, parents and coaches worldwide.',
   url: 'https://jonerfootball.com/about/',
   worksFor: {
     '@type': 'Organization',
