@@ -10,7 +10,7 @@ const aboutPageSchema = {
   "@context": "https://schema.org",
   "@type": "AboutPage",
   "name": "About Lee Jones & Joner Football",
-  "description": "About Lee Jones and Joner Football: A Licence coach, former Wales player, author, and one of the world's Top 10 technical trainers.",
+  "description": "About Lee Jones and Joner Football: A Licence coach, published author, and one of the world's Top 10 technical trainers.",
   "url": "https://jonerfootball.com/about/",
   "mainEntity": { "@id": "https://jonerfootball.com/about/#lee-jones" }
 }
@@ -69,7 +69,7 @@ const sanityPage = await fetchSanityPage('about')
 ) : (
 <BaseLayout
   title="About Lee Jones | A Licence Coach & Joner Football Founder"
-  description="About Lee Jones: A Licence coach, former Wales player, author, Top 10 technical trainer and founder of Joner Football."
+  description="About Lee Jones: A Licence coach, published author, Top 10 technical trainer and founder of Joner Football."
   schema={schema}
 >
 
@@ -101,7 +101,6 @@ const sanityPage = await fetchSanityPage('about')
             </p>
             <div class="flex flex-wrap gap-2 mb-8">
               <span class="inline-flex items-center border border-white/15 bg-white/5 px-3 py-2 font-heading text-[11px] uppercase tracking-[0.18em] text-white">A Licence Coach</span>
-              <span class="inline-flex items-center border border-white/15 bg-white/5 px-3 py-2 font-heading text-[11px] uppercase tracking-[0.18em] text-white">Played for Wales</span>
               <span class="inline-flex items-center border border-joner-red/50 bg-joner-red/10 px-3 py-2 font-heading text-[11px] uppercase tracking-[0.18em] text-joner-red">Top 10 Technical Trainer</span>
             </div>
             <div class="flex flex-wrap gap-3">
@@ -129,7 +128,7 @@ const sanityPage = await fetchSanityPage('about')
         </div>
 
         <!-- Bottom stats bar -->
-        <div class="relative z-10 grid grid-cols-2 md:grid-cols-7 border-t border-white/10 bg-black/40 backdrop-blur-sm">
+        <div class="relative z-10 grid grid-cols-2 md:grid-cols-6 border-t border-white/10 bg-black/40 backdrop-blur-sm">
           <div class="p-4 sm:p-5 text-center border-r border-white/10">
             <div class="font-heading text-joner-red text-2xl md:text-3xl font-bold">Top 10</div>
             <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">World Technical Trainer</div>
@@ -139,22 +138,18 @@ const sanityPage = await fetchSanityPage('about')
             <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">Coach</div>
           </div>
           <div class="p-4 sm:p-5 text-center border-r border-t md:border-t-0 border-white/10">
-            <div class="font-heading text-white text-2xl md:text-3xl font-bold">Wales</div>
-            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">International Player</div>
-          </div>
-          <div class="p-4 sm:p-5 text-center border-t md:border-t-0 md:border-r border-white/10">
             <div class="font-heading text-white text-2xl md:text-3xl font-bold">2.5M+</div>
             <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">Followers</div>
           </div>
-          <div class="p-4 sm:p-5 text-center border-r border-t md:border-t-0 border-white/10">
+          <div class="p-4 sm:p-5 text-center border-t md:border-t-0 md:border-r border-white/10">
             <div class="font-heading text-white text-2xl md:text-3xl font-bold">50K+</div>
             <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">App Downloads</div>
           </div>
-          <div class="p-4 sm:p-5 text-center border-t md:border-t-0 md:border-r border-white/10">
+          <div class="p-4 sm:p-5 text-center border-r border-t md:border-t-0 border-white/10">
             <div class="font-heading text-white text-2xl md:text-3xl font-bold">15+</div>
             <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">Countries</div>
           </div>
-          <div class="p-4 sm:p-5 text-center border-t md:border-t-0 border-white/10 col-span-2 md:col-span-1">
+          <div class="p-4 sm:p-5 text-center border-t md:border-t-0 border-white/10">
             <div class="font-heading text-joner-red text-2xl md:text-3xl font-bold">Author</div>
             <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">3 Published Books</div>
           </div>
@@ -205,7 +200,7 @@ const sanityPage = await fetchSanityPage('about')
           </h2>
 
           <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-6">
-            I represented Wales as a player and earned my UEFA C licence at 16 as a youth player at Wrexham AFC. By 19 I held my UEFA B and was appointed Academy Director at Rhyl FC Academy. I later earned my A Licence, took my U14s to an international tournament in France, lifted the trophy, and walked away with the best coach award.
+            Football gave me a lot early: Wrexham AFC, the chance to play for my country Wales, and coaching qualifications before most people my age were even thinking about coaching. I earned my UEFA C licence at 16, held my UEFA B by 19, and later earned my A Licence. At 19 I was appointed Academy Director at Rhyl FC Academy. I took my U14s to an international tournament in France, lifted the trophy, and walked away with the best coach award.
           </p>
 
           <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-6">
