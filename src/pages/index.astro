@@ -346,17 +346,6 @@ const homepageMoneyLinks = [
   },
 ]
 
-const homepageResourceLinks = [
-  { label: 'App overview', href: '/app/' },
-  { label: 'Houston June camp', href: '/camps/texas-houston-june/' },
-  { label: 'Dallas June camp', href: '/camps/texas-dallas-june/' },
-  { label: 'Football drills at home', href: '/blog/football-drills-at-home/' },
-  { label: '50 ball mastery skills', href: '/blog/50-ball-mastery-skills-young-players/' },
-  { label: 'Football training for kids', href: '/blog/football-training-for-kids/' },
-  { label: 'Sydney training', href: '/training/' },
-  { label: 'JFP performance', href: '/training/jfp-program/' },
-]
-
 const homepageSchemas = [
   webPageSchema({
     name: 'Joner Football | Football Training App, Drills, Camps & Elite Coaching',
@@ -2279,21 +2268,6 @@ const homepageSchemas = [
           ))}
         </div>
 
-        <div class="mt-10 border-l-4 border-joner-red bg-white/[0.035] p-5 sm:p-6 lg:flex lg:items-center lg:justify-between lg:gap-10">
-          <div>
-            <h3 class="font-heading text-2xl uppercase leading-none text-white sm:text-3xl">Fast links Google and AI search should understand.</h3>
-            <p class="mt-3 max-w-3xl text-sm leading-7 text-white/64">
-              App, teams, free training, camps, coaching guides and Sydney development all connect back to the same Joner standard: better technique, better detail, better habits.
-            </p>
-          </div>
-          <div class="mt-5 flex flex-wrap gap-2 lg:mt-0 lg:max-w-2xl lg:justify-end">
-            {homepageResourceLinks.map((link) => (
-              <a href={link.href} class="border border-white/14 bg-black px-3 py-2 font-heading text-[0.72rem] uppercase tracking-[0.12em] text-white/82 transition hover:border-joner-red hover:text-white">
-                {link.label}
-              </a>
-            ))}
-          </div>
-        </div>
       </div>
     </section>
 
