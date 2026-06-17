@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import CoachesTestimonialsCarousel from '../../components/CoachesTestimonialsCarousel.astro'
+import CoachesHighlightsCarousel from '../../components/CoachesHighlightsCarousel.astro'
 import GeoAnswers from '../../components/GeoAnswers.astro'
 import { breadcrumbSchema } from '../../lib/seoSchema'
 
@@ -119,6 +120,15 @@ const pillars = [
   { title: 'Coaches Community', label: 'Learn together' }
 ]
 
+// Slides for the "what's inside" scroller. These graphics already carry their
+// own labels, so we show them clean (no text overlay). To use a cleaner photo
+// or video later, add `video: '/videos/clip.mp4'` and/or `eyebrow`/`title` to a
+// slide and the overlay caption (like /app) renders automatically.
+const highlightSlides = features.map((f) => ({
+  image: f.image,
+  alt: f.title
+}))
+
 const faqs: Array<{ q: string; a: string }> = [
   {
     q: 'How much is Coaches Only?',
@@ -183,8 +193,20 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     {/* ========== 1. HERO (compact, sized to match /programmes hero) ========== */}
     <section class="coaches-hero relative overflow-hidden border-b border-gray-900">
       <div class="absolute inset-0 bg-joner-black">
-        <img src="/images/coaches-only/coaches-only-hero-updated.png" alt="Lee Jones coaching session plan inside the Joner Football App" class="h-full w-full object-cover object-center opacity-70" loading="eager" />
-        <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/85 to-joner-black/35"></div>
+        <video
+          class="h-full w-full object-cover object-center"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="auto"
+          poster="/videos/coaches-hero-bg-poster.jpg"
+          aria-hidden="true"
+        >
+          <source src="/videos/coaches-hero-bg.mp4" type="video/mp4" />
+        </video>
+        <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/80 to-joner-black/30"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-joner-black/70 via-transparent to-transparent"></div>
       </div>
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center min-h-[440px] md:min-h-[520px] py-14 md:py-16">
         <div class="max-w-2xl">
@@ -246,7 +268,11 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     </section>
 
 
-    {/* ========== 3. PROBLEM (two-column with roadmap graphic + FREE BUNDLE OFFER) ========== */}
+    {/* ========== 2b. WHAT'S INSIDE SCROLLER (horizontal highlights, /app concept) ========== */}
+    <CoachesHighlightsCarousel heading="What's inside Coaches Only." slides={highlightSlides} />
+
+
+    {/* ========== 3. PROBLEM (two-column, 2 simple black buttons) ========== */}
     <section class="bg-white text-joner-black py-16 md:py-24">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div>
@@ -257,53 +283,15 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
           </p>
           <p class="font-heading uppercase text-2xl text-joner-black mb-6">That stops here.</p>
 
-          {/* FREE BUNDLE: pulse-animated, prominent, gives away real value to build trust */}
-          <a href={freeBundleUrl} target="_blank" rel="noopener noreferrer" class="free-bundle-cta group block w-full max-w-xl mb-6" data-meta-checkout-event="CoachesPageFreeBundleClick">
-            <div class="relative bg-gradient-to-r from-joner-red to-[#FF1F1F] text-white rounded-2xl px-6 py-5 shadow-[0_18px_38px_rgba(204,0,0,0.35)] hover:shadow-[0_24px_52px_rgba(204,0,0,0.55)] transition-all duration-300 group-hover:-translate-y-0.5">
-              <div class="flex items-center gap-4">
-                <div class="shrink-0 w-12 h-12 rounded-full bg-white/15 flex items-center justify-center">
-                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                  </svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="font-heading uppercase tracking-wider text-xs text-white/90 mb-1">FREE FOR EVERY COACH</p>
-                  <p class="font-heading uppercase text-lg md:text-xl text-white leading-tight">Grab The Session Plan Bundle</p>
-                </div>
-                <svg class="shrink-0 w-6 h-6 text-white transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                </svg>
-              </div>
-              <span class="free-bundle-pulse"></span>
-            </div>
-          </a>
-
           <div class="flex flex-col sm:flex-row gap-4">
-            <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center border-joner-black text-joner-black hover:bg-joner-black hover:text-white">SEE A SESSION FREE</a>
-            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">START COACHING THE DETAIL</a>
+            <a href={freeBundleUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageFreeBundleClick">GRAB THE SESSION PLAN BUNDLE FOR FREE</a>
+            <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center">WATCH A SESSION FOR FREE</a>
           </div>
         </div>
         <div class="overflow-hidden rounded-[28px] bg-black/5 p-1 shadow-[0_28px_70px_rgba(0,0,0,0.24)] ring-1 ring-black/10">
           <img src="/images/coaches-only/session-structure-roadmap-plush.png" alt="Plan, understand, watch, become: the Joner Football coaching pathway" class="block w-full rounded-[24px] object-cover" loading="lazy" />
         </div>
       </div>
-
-      <style>
-        .free-bundle-cta { perspective: 800px; }
-        .free-bundle-pulse {
-          position: absolute; inset: 0; border-radius: 1rem; pointer-events: none;
-          box-shadow: 0 0 0 0 rgba(204, 0, 0, 0.55);
-          animation: freeBundlePulse 2.4s cubic-bezier(0.32, 0.72, 0, 1) infinite;
-        }
-        @keyframes freeBundlePulse {
-          0%   { box-shadow: 0 0 0 0 rgba(204, 0, 0, 0.55); }
-          70%  { box-shadow: 0 0 0 14px rgba(204, 0, 0, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(204, 0, 0, 0); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .free-bundle-pulse { animation: none; }
-        }
-      </style>
     </section>
 
 
@@ -555,6 +543,22 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 
   {/* Sticky mobile CTA: revealed once the user scrolls past the hero. Mirrors the /app pattern. */}
   <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="coaches-mobile-cta btn-red" data-meta-checkout-event="CoachesPageMobileStickyClick">JOIN COACHES ONLY</a>
+
+  {/* Match the /programmes display typography (Kanit italic), scoped to this page only */}
+  <style is:global>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:ital,wght@1,600;1,900&display=swap');
+
+    .coaches-page .font-heading,
+    .coaches-page :is(h1, h2, h3) {
+      font-family: 'Kanit', 'Anton', Impact, sans-serif;
+      font-style: italic;
+    }
+    .coaches-page :is(h1, h2, h3) {
+      font-weight: 900;
+      letter-spacing: -0.015em;
+    }
+    .coaches-page .coaches-pillars__cell .font-heading.font-bold { font-weight: 900; }
+  </style>
 
   <style>
     .coach-closer-stage-image {
