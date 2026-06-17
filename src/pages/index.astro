@@ -301,51 +301,6 @@ const homepageSEOFAQs = [
   { q: 'Where does Joner Football run training and camps?', a: 'Joner Football runs Sydney training through The HQ and JFP, plus elite football camps in Australia, the USA and selected global locations including Texas and Sydney.' },
 ]
 
-const homepageMoneyLinks = [
-  {
-    eyebrow: 'Training app',
-    title: 'Football training app',
-    body: 'The clearest guide to the Joner Football App: drills, programmes, session plans, free section and how players, parents and coaches use it.',
-    href: '/football-training-app/',
-    cta: 'Explore the app guide',
-  },
-  {
-    eyebrow: 'Join',
-    title: 'Player, coach and family plans',
-    body: 'See the current app plans, trial details and what full access includes before you move into checkout.',
-    href: '/join/',
-    cta: 'View app plans',
-  },
-  {
-    eyebrow: 'Teams and clubs',
-    title: 'Bring Joner Football to the whole squad',
-    body: 'For teams, academies and clubs that want one technical training system for players and coaches.',
-    href: '/teams/',
-    cta: 'See team subscriptions',
-  },
-  {
-    eyebrow: 'Free start',
-    title: 'Free football training videos',
-    body: 'Start with free ball mastery and technical training videos, then step into the app when you are ready.',
-    href: '/free-bundle/',
-    cta: 'Get free videos',
-  },
-  {
-    eyebrow: 'Camps',
-    title: 'Elite football camps',
-    body: 'Train with the Joner Football standard in person at high-energy camps across the USA, Australia and worldwide.',
-    href: '/camps/',
-    cta: 'View camps',
-  },
-  {
-    eyebrow: 'Coaches',
-    title: 'Joner Football for coaches',
-    body: 'Session plans, drill detail and coaching structure for coaches who want clearer delivery and better technical outcomes.',
-    href: '/app/for-coaches/',
-    cta: 'Open coaches section',
-  },
-]
-
 const homepageSchemas = [
   webPageSchema({
     name: 'Joner Football | Football Training App, Drills, Camps & Elite Coaching',
@@ -2239,35 +2194,6 @@ const homepageSchemas = [
             </div>
           </article>
         </div>
-      </div>
-    </section>
-
-    <section class="bg-[#050505] px-4 py-16 text-white sm:px-6 lg:px-8 lg:py-24" aria-labelledby="home-training-pathways">
-      <div class="mx-auto max-w-7xl">
-        <div class="max-w-4xl">
-          <p class="font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Start here</p>
-          <h2 id="home-training-pathways" class="mt-4 font-heading text-4xl uppercase leading-none tracking-tight text-white sm:text-5xl lg:text-7xl">
-            Football training paths for players, parents, coaches and teams.
-          </h2>
-          <p class="mt-6 max-w-3xl text-base leading-8 text-white/74 sm:text-lg">
-            Joner Football is Lee Jones' technical football training system. Use the <a href="/football-training-app/" class="text-white underline decoration-joner-red decoration-2 underline-offset-4">football training app</a>, join full app access, bring the method into your team, train at a camp, or start with free training videos. Clear next steps. No fluff.
-          </p>
-        </div>
-
-        <div class="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {homepageMoneyLinks.map((item) => (
-            <a href={item.href} class="group border border-white/12 bg-white/[0.045] p-5 transition hover:-translate-y-1 hover:border-joner-red/70 hover:bg-white/[0.075] focus:outline-none focus:ring-2 focus:ring-joner-red sm:p-6">
-              <span class="font-heading text-[0.66rem] uppercase tracking-[0.22em] text-joner-red">{item.eyebrow}</span>
-              <h3 class="mt-3 font-heading text-2xl uppercase leading-none text-white sm:text-3xl">{item.title}</h3>
-              <p class="mt-4 text-sm leading-7 text-white/68">{item.body}</p>
-              <span class="mt-6 inline-flex items-center gap-2 font-heading text-sm uppercase tracking-[0.12em] text-white">
-                {item.cta}
-                <span class="text-joner-red transition group-hover:translate-x-1" aria-hidden="true">→</span>
-              </span>
-            </a>
-          ))}
-        </div>
-
       </div>
     </section>
 
