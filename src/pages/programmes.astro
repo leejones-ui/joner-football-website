@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import GeoAnswers from '../components/GeoAnswers.astro'
+import FactsMarquee from '../components/FactsMarquee.astro'
 import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 
 const APP_LINK = '/join'
@@ -8,11 +9,13 @@ const ANNUAL_LINK = 'https://app.jonerfootball.com/checkout/new?o=183092&utm_sou
 const HERO_SUBSCRIBE_LINK = '/join'
 const HERO_BUNDLE_LINK = 'https://app.jonerfootball.com/checkout/new?o=227739'
 
-const proof = [
-  ['50,000+', 'DOWNLOADS'],
-  ['15+', 'COUNTRIES'],
-  ['1,500+', 'VIDEOS'],
-  ['100', 'DAY PLAN'],
+const tickerFacts = [
+  'Voted Top 10 In The World For Technical Training',
+  '50,000+ Downloads',
+  '15+ Countries',
+  '1,500+ Training Videos',
+  '100 Day Development Program',
+  'Grassroots To Professional Videos',
 ]
 
 const programs = [
@@ -106,17 +109,9 @@ const sanityPage = await fetchSanityPage('programmes')
         </div>
       </div>
     </div>
-    <div class="p100-stat-strip">
-      <div class="p100-stat-row">
-        {proof.map(([n, l]) => (
-          <div class="p100-stat">
-            <div class="p100-stat__num">{n}</div>
-            <div class="p100-stat__label">{l}</div>
-          </div>
-        ))}
-      </div>
-    </div>
   </section>
+
+  <FactsMarquee facts={tickerFacts} />
 
   {/* REALITY (full-bleed photo + overlaid copy on desktop, black band below on mobile) */}
   <section class="reality-hero" aria-label="The Reality, Team Training Is Not Enough">

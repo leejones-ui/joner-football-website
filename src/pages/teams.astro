@@ -1,10 +1,21 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import FactsMarquee from '../components/FactsMarquee.astro'
 import SEOFAQ from '../components/SEOFAQ.astro'
 import GeoAnswers from '../components/GeoAnswers.astro'
 import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 import EmailCapture from '../components/EmailCapture.astro'
 import SanityPageExtras from '../components/sanity/SanityPageExtras.astro'
+
+// Sliding trust ticker facts (shared style with /app/for-coaches and /programmes)
+const tickerFacts = [
+  'Voted Top 10 In The World For Technical Training',
+  '50,000+ Downloads',
+  '15+ Countries',
+  '1,500+ Training Videos',
+  '20+ Years Coaching',
+  'Grassroots To Professional Videos',
+]
 
 const teamSEOFAQs = [
   { q: 'Can a full team use the Joner Football App?', a: 'Yes. Joner Football can support team and club subscriptions so every player gets access to the same training detail, programmes and app pathway.' },
@@ -113,6 +124,8 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
         </div>
       </div>
     </section>
+
+    <FactsMarquee facts={tickerFacts} />
 
     <nav class="sticky top-0 z-30 border-y border-white/10 bg-joner-black/92 backdrop-blur">
       <div class="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-4 py-4 font-heading text-xs uppercase tracking-[0.22em] text-white sm:px-6 lg:px-8 no-scrollbar">

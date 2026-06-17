@@ -113,22 +113,18 @@ const features = [
   }
 ]
 
-// Sliding trust ticker facts (proof surfaced near the top)
+// Sliding trust ticker: proof + the 4 feature points consolidated into one bar
 const facts = [
-  '50,000+ Downloads',
-  '15+ Countries',
-  '1,500+ Training Videos',
   'Voted Top 10 In The World For Technical Training',
+  'Session Planning',
+  '50,000+ Downloads',
+  'Full Sessions',
+  '1,500+ Training Videos',
+  'Team Training',
+  '15+ Countries',
+  'Coaches Community',
   '20+ Years Coaching',
-  'Grassroots To Professional'
-]
-
-// 4-up pillar strip under the hero (mirrors the /programmes stat strip)
-const pillars = [
-  { title: 'Session Planning', label: 'Ready to run' },
-  { title: 'Full Sessions', label: 'Watch the flow' },
-  { title: 'Team Training', label: 'For groups' },
-  { title: 'Coaches Community', label: 'Learn together' }
+  'Grassroots To Professional Videos'
 ]
 
 // Slides for the "what's inside" scroller. These graphics already carry their
@@ -252,23 +248,8 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     </section>
 
 
-    {/* ========== 1a. FACTS MARQUEE (sliding trust ticker, proof near the top) ========== */}
+    {/* ========== 1a. FACTS MARQUEE (consolidated trust + feature ticker) ========== */}
     <FactsMarquee facts={facts} />
-
-
-    {/* ========== 1b. PILLAR STRIP (4-up, mirrors the /programmes stat strip) ========== */}
-    <section class="coaches-pillars bg-joner-black border-b border-gray-900">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="coaches-pillars__grid">
-          {pillars.map((p) => (
-            <div class="coaches-pillars__cell">
-              <p class="font-heading text-joner-red uppercase font-bold leading-tight text-sm sm:text-base lg:text-lg tracking-wide">{p.title}</p>
-              <p class="font-heading text-white/55 uppercase tracking-[0.18em] text-[10px] mt-1.5">{p.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
 
 
     {/* ========== 2. INTRO VIDEO FROM LEE (trimmed from full app walkthrough, 1m 14s) ========== */}
