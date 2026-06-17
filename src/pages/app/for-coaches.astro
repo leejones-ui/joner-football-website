@@ -111,6 +111,14 @@ const features = [
   }
 ]
 
+// 4-up pillar strip under the hero (mirrors the /programmes stat strip)
+const pillars = [
+  { title: 'Session Planning', label: 'Ready to run' },
+  { title: 'Full Sessions', label: 'Watch the flow' },
+  { title: 'Team Training', label: 'For groups' },
+  { title: 'Coaches Community', label: 'Learn together' }
+]
+
 const faqs: Array<{ q: string; a: string }> = [
   {
     q: 'How much is Coaches Only?',
@@ -172,23 +180,22 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 <BaseLayout title={title} description={description} canonical="https://jonerfootball.com/app/for-coaches/" ogImage="https://jonerfootball.com/images/coaches-only/coaches-only-hero-updated.png" schema={[productSchema, coachesBreadcrumbSchema, faqSchema]}>
   <main class="coaches-page bg-joner-black text-white">
 
-    {/* ========== 1. HERO ========== */}
+    {/* ========== 1. HERO (compact, sized to match /programmes hero) ========== */}
     <section class="coaches-hero relative overflow-hidden border-b border-gray-900">
       <div class="absolute inset-0 bg-joner-black">
-        <img src="/images/coaches-only/coaches-only-hero-updated.png" alt="Lee Jones coaching session plan inside the Joner Football App" class="h-full w-full object-contain object-right opacity-60" loading="eager" />
-        <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/80 to-joner-black/25"></div>
+        <img src="/images/coaches-only/coaches-only-hero-updated.png" alt="Lee Jones coaching session plan inside the Joner Football App" class="h-full w-full object-cover object-center opacity-70" loading="eager" />
+        <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/85 to-joner-black/35"></div>
       </div>
-      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 lg:py-32">
-        <div class="max-w-4xl">
-          <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white uppercase leading-none mb-6">
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center min-h-[440px] md:min-h-[520px] py-14 md:py-16">
+        <div class="max-w-2xl">
+          <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl font-bold text-white uppercase leading-none mb-5">
             THE COACHES SECTION
           </h1>
-          <p class="text-gray-200 font-body text-lg md:text-xl max-w-3xl mb-8">
+          <p class="text-gray-200 font-body text-lg md:text-xl max-w-xl mb-7">
             Lee’s session plans, voice-over drills, coaching PDFs, and full training videos inside the Joner Football App.
           </p>
-          <div class="flex flex-col sm:flex-row gap-4 mb-4">
-            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
-            <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">WATCH A FREE SESSION</a>
+          <div class="mb-4">
+            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 inline-flex text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
           </div>
           <p class="text-gray-200 font-body text-base">
             <span class="font-heading text-white font-semibold">{yearlyPrice}</span><span class="text-gray-400"> per year or </span><span class="font-heading text-white font-semibold">{monthlyPrice}</span><span class="text-gray-200"> per month. Max Plan tier. Cancel anytime.</span>
@@ -198,19 +205,33 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     </section>
 
 
+    {/* ========== 1b. PILLAR STRIP (4-up, mirrors the /programmes stat strip) ========== */}
+    <section class="coaches-pillars bg-joner-black border-b border-gray-900">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="coaches-pillars__grid">
+          {pillars.map((p) => (
+            <div class="coaches-pillars__cell">
+              <p class="font-heading text-joner-red uppercase font-bold leading-tight text-sm sm:text-base lg:text-lg tracking-wide">{p.title}</p>
+              <p class="font-heading text-white/55 uppercase tracking-[0.18em] text-[10px] mt-1.5">{p.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+
     {/* ========== 2. INTRO VIDEO FROM LEE (trimmed from full app walkthrough, 1m 14s) ========== */}
     <section class="coaches-video py-12 md:py-20 bg-joner-black border-b border-gray-900">
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-8">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">90 SECONDS WITH LEE</p>
           <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">WATCH THIS FIRST</h2>
-          <p class="text-gray-300 font-body text-base md:text-lg max-w-2xl mx-auto">Press play. Lee shows you exactly what is inside Coaches Only and why it is built for coaches who want the detail.</p>
+          <p class="text-gray-300 font-body text-base md:text-lg max-w-5xl mx-auto">Lee shows you exactly what is inside Coaches Only and why it is built for coaches who want the detail.</p>
         </div>
         <div class="aspect-video bg-black rounded-2xl overflow-hidden ring-1 ring-white/10 shadow-[0_28px_70px_rgba(0,0,0,0.5)]">
           <video
             controls
             playsinline
-            preload="metadata"
+            preload="auto"
             class="w-full h-full object-cover"
             poster="/images/coaches-only/video-thumbnail.avif"
           >
@@ -569,6 +590,24 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     .coach-closer-pill[data-open='true'] .coach-closer-panel-content { opacity: 1; transform: translateY(0); }
     .pl-13 { padding-left: 3.25rem; }
 
+    /* Hero pillar strip: 2-up on mobile, 4-up on desktop, hairline dividers */
+    .coaches-pillars__grid { display: grid; grid-template-columns: repeat(2, 1fr); }
+    .coaches-pillars__cell {
+      text-align: center; padding: 18px 12px;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .coaches-pillars__cell:nth-child(2n) { border-right: none; }
+    .coaches-pillars__cell:nth-last-child(-n+2) { border-bottom: none; }
+    @media (min-width: 1024px) {
+      .coaches-pillars__grid { grid-template-columns: repeat(4, 1fr); }
+      .coaches-pillars__cell {
+        padding: 22px 16px; border-bottom: none;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .coaches-pillars__cell:last-child { border-right: none; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .coach-closer-stage-image,
       .coach-closer-pill-btn,
@@ -580,10 +619,6 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     }
 
     @media (max-width: 767px) {
-      .coaches-page { display: flex; flex-direction: column; }
-      .coaches-page > section { order: 3; }
-      .coaches-video { order: 1; padding-top: 2rem; }
-      .coaches-hero { order: 2; }
       .coaches-video h2 { font-size: clamp(2rem, 10vw, 3.25rem); }
     }
 
@@ -635,8 +670,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     ;(function () {
       var cta = document.querySelector('.coaches-mobile-cta');
       if (!cta || !('IntersectionObserver' in window)) return;
-      var isMobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
-      var trigger = document.querySelector(isMobile ? '.coaches-video' : '.coaches-hero');
+      var trigger = document.querySelector('.coaches-hero');
       if (!trigger) return;
       var io = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
