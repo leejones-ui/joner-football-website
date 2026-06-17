@@ -15,9 +15,11 @@ interface Slide {
 interface Props {
   heading?: string
   slides: Slide[]
+  ctaHref?: string
+  ctaLabel?: string
 }
 
-const { heading = "What's inside Coaches Only.", slides } = Astro.props
+const { heading = "What's inside Coaches Only.", slides, ctaHref, ctaLabel = 'Join now' } = Astro.props
 ---
 
 <section class="bg-joner-black pt-16 pb-8 md:py-24 overflow-hidden">
@@ -60,21 +62,28 @@ const { heading = "What's inside Coaches Only.", slides } = Astro.props
               loading={i === 0 ? 'eager' : 'lazy'}
             />
           )}
-          {slide.title && (
+          {(slide.title || ctaHref) && (
             <>
-              <div class="absolute inset-0 bg-gradient-to-b from-black/30 via-black/5 to-black/60 pointer-events-none"></div>
-              <div class="relative z-10 h-full p-7 sm:p-10 md:p-14 lg:p-16 flex items-end">
-                <div class="max-w-[34rem]">
-                  {slide.eyebrow && (
-                    <p class="font-body text-white/90 text-sm md:text-base mb-3 tracking-wide">{slide.eyebrow}</p>
-                  )}
-                  <h3 class="font-body text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold leading-[1.08] chl-headline">
-                    {slide.title}
-                  </h3>
-                  {slide.note && (
-                    <p class="mt-5 font-body text-white/85 text-xs sm:text-sm md:text-base">{slide.note}</p>
-                  )}
-                </div>
+              <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none"></div>
+              <div class="absolute inset-0 z-10 p-6 sm:p-9 md:p-12 lg:p-14 flex flex-col justify-end gap-5">
+                {slide.title && (
+                  <div class="max-w-[34rem]">
+                    {slide.eyebrow && (
+                      <p class="font-body text-white/90 text-sm md:text-base mb-3 tracking-wide">{slide.eyebrow}</p>
+                    )}
+                    <h3 class="font-body text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold leading-[1.08] chl-headline">
+                      {slide.title}
+                    </h3>
+                    {slide.note && (
+                      <p class="mt-4 font-body text-white/85 text-xs sm:text-sm md:text-base">{slide.note}</p>
+                    )}
+                  </div>
+                )}
+                {ctaHref && (
+                  <div>
+                    <a href={ctaHref} class="btn-red text-sm px-6 py-3 inline-flex">{ctaLabel}</a>
+                  </div>
+                )}
               </div>
             </>
           )}

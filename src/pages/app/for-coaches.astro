@@ -129,6 +129,19 @@ const highlightSlides = features.map((f) => ({
   alt: f.title
 }))
 
+// "Everything included" grid: what you get inside the Max Plan. Icons are
+// heroicons outline paths. Add more items here as the plan grows.
+const included = [
+  { title: 'Access To DM Lee', body: 'Direct message me any question. For all Max users inside the JF App.', icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' },
+  { title: 'PDF Session Plans', body: 'Free PDF session plans included, ready to print and take onto the pitch.', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+  { title: 'Voice Over Series', body: 'A detailed voice over series where I break down my drills in full.', icon: 'M19 11a7 7 0 01-14 0m7 7v4m-4 0h8m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z' },
+  { title: 'Access To A Coaches Community', body: 'Get access to thousands of other coaches inside the App.', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
+  { title: 'Access To Seminars', body: 'Watch me deliver seminars on specific coaching topics.', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+  { title: 'Access To Training Resources', body: 'The resources I use in my own training, broken down so you can use them too. Free for every user.', icon: 'M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z' },
+  { title: 'Study The Game', body: 'Game analysis footage that shows you how to read the game and take it into your sessions.', icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
+  { title: 'Access To Live Training Sessions', body: 'Watch me coach live. See the standards, the language, and the detail as it happens.', icon: 'M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664zM21 12a9 9 0 11-18 0 9 9 0 0118 0z' }
+]
+
 const faqs: Array<{ q: string; a: string }> = [
   {
     q: 'How much is Coaches Only?',
@@ -269,7 +282,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 
 
     {/* ========== 2b. WHAT'S INSIDE SCROLLER (horizontal highlights, /app concept) ========== */}
-    <CoachesHighlightsCarousel heading="What's inside Coaches Only." slides={highlightSlides} />
+    <CoachesHighlightsCarousel heading="What's inside MAX plan!" slides={highlightSlides} ctaHref="/join" ctaLabel="JOIN NOW" />
 
 
     {/* ========== 3. PROBLEM (two-column, 2 simple black buttons) ========== */}
@@ -279,13 +292,13 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
           <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">WHY IT EXISTS</p>
           <h2 class="font-heading text-4xl md:text-6xl font-bold text-joner-black uppercase leading-none mb-6">STOP WINGING YOUR SESSIONS</h2>
           <p class="text-lg text-gray-700 font-body mb-6 max-w-xl">
-            Tuesday night, 5pm, still googling drills. Session falls apart 20 minutes in. Parents watching. You know what to coach. You do not know how to coach the detail.
+            Detailed session plans, ready to run, built around team training, small group training and 1on1's. Voice over videos and PDF session plans.
           </p>
-          <p class="font-heading uppercase text-2xl text-joner-black mb-6">That stops here.</p>
+          <p class="font-heading uppercase text-2xl text-joner-red mb-6">Free bundle session below!</p>
 
           <div class="flex flex-col sm:flex-row gap-4">
-            <a href={freeBundleUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageFreeBundleClick">GRAB THE SESSION PLAN BUNDLE FOR FREE</a>
-            <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center">WATCH A SESSION FOR FREE</a>
+            <a href={freeBundleUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageFreeBundleClick">DOWNLOAD FREE BUNDLE!</a>
+            <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center">WATCH A FREE SESSION</a>
           </div>
         </div>
         <div class="overflow-hidden rounded-[28px] bg-black/5 p-1 shadow-[0_28px_70px_rgba(0,0,0,0.24)] ring-1 ring-black/10">
@@ -344,73 +357,30 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     <CoachesTestimonialsCarousel />
 
 
-    {/* ========== 5. WHAT IS INSIDE (closer-look interaction matched to /app) ========== */}
-    <section id="inside" class="coach-closer bg-joner-black py-16 md:py-24">
-      <div class="max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-10">
-        <div class="mb-8 md:mb-12 px-2 sm:px-4">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">INSIDE COACHES ONLY</p>
-          <h2 class="font-heading text-3xl sm:text-5xl md:text-6xl lg:text-7xl text-white uppercase leading-none tracking-tight mb-4">
-            Everything Included
-          </h2>
-          <p class="text-xl text-gray-300 font-body max-w-3xl">Pulled from the live Coaches Only category inside the Joner Football App.</p>
+    {/* ========== 5. EVERYTHING INCLUDED (Max Plan feature grid) ========== */}
+    <section id="inside" class="bg-joner-black py-16 md:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-3xl mb-10 md:mb-14">
+          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">INSIDE THE MAX PLAN</p>
+          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-5">Everything Included</h2>
+          <p class="text-lg text-gray-300 font-body">Everything you get with the Max Plan tier inside the Joner Football App.</p>
         </div>
 
-        <div class="coach-closer-shell rounded-2xl md:rounded-[2rem] bg-[#0f0f0f] border border-white/5 overflow-hidden">
-          <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,380px)_1fr]">
-            <div class="coach-closer-pills p-5 sm:p-8 lg:p-10 lg:py-14 flex flex-col gap-3 order-2 lg:order-1">
-              {features.map((f, index) => (
-                <div class="coach-closer-pill" data-coach-pill={index} data-open={index === 0 ? 'true' : 'false'}>
-                  <button
-                    type="button"
-                    class="coach-closer-pill-btn w-full flex items-center gap-3 px-4 py-3 rounded-full text-white text-left"
-                    data-coach-pill-btn={index}
-                    aria-expanded={index === 0 ? 'true' : 'false'}
-                    aria-controls={`coach-closer-panel-${index}`}
-                  >
-                    <span class="coach-closer-icon w-6 h-6 rounded-full flex items-center justify-center shrink-0">
-                      <svg class="coach-closer-plus w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-                    </span>
-                    <span class="font-body text-base sm:text-[15px] font-medium">{f.eyebrow}</span>
-                  </button>
-                  <div
-                    id={`coach-closer-panel-${index}`}
-                    class="coach-closer-panel grid grid-rows-[0fr]"
-                    aria-hidden={index === 0 ? 'false' : 'true'}
-                  >
-                    <div class="overflow-hidden">
-                      <div class="coach-closer-panel-content pl-13 pr-4 pt-3 pb-2 sm:pl-14">
-                        <h3 class="font-heading text-xl text-white uppercase mb-2 tracking-wide">{f.title}</h3>
-                        <p class="text-gray-400 font-body text-sm leading-relaxed">{f.body}</p>
-                        <a href={appCategoryUrl} target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center gap-2 text-joner-red font-heading text-xs uppercase tracking-widest hover:text-white transition-colors">
-                          View in app
-                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div class="coach-closer-stage relative bg-black order-1 lg:order-2 aspect-[4/3] sm:aspect-[16/10] lg:aspect-auto lg:min-h-[620px] overflow-hidden">
-              {features.map((f, index) => (
-                <img
-                  src={f.image}
-                  alt={f.title}
-                  class="coach-closer-stage-image absolute inset-0 w-full h-full object-contain p-6 sm:p-10 lg:p-16"
-                  data-coach-stage-image={index}
-                  data-active={index === 0 ? 'true' : 'false'}
-                  loading="lazy"
-                />
-              ))}
-              <div class="coach-closer-stage-glow absolute inset-0 pointer-events-none"></div>
-            </div>
-          </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {included.map((item) => (
+            <article class="bg-joner-gray border border-gray-800 rounded-2xl p-6 flex flex-col">
+              <span class="w-11 h-11 rounded-full bg-joner-red/15 text-joner-red flex items-center justify-center mb-5 shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d={item.icon} /></svg>
+              </span>
+              <h3 class="font-heading text-xl text-white uppercase leading-tight mb-3 tracking-wide">{item.title}</h3>
+              <p class="text-gray-300 font-body text-sm leading-relaxed">{item.body}</p>
+            </article>
+          ))}
         </div>
 
-        <div class="mt-14 flex flex-col sm:flex-row gap-4 justify-center">
-          <a href={appCategoryUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">BROWSE THE FULL LIBRARY</a>
-          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
+        <div class="mt-12 md:mt-14 flex flex-col sm:flex-row gap-4 justify-center">
+          <a href={monthlyCheckoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageMonthlyClick">MAX MONTHLY</a>
+          <a href={annualCheckoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageAnnualClick">MAX ANNUAL (SAVE)</a>
         </div>
       </div>
     </section>
@@ -518,26 +488,6 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
         { label: '100 Day Programme', href: '/programmes' },
       ]}
     />
-
-    {/* ========== 9. FINAL CTA ========== */}
-    <section class="bg-joner-black py-20 md:py-28">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">COACH BETTER THIS WEEK</p>
-        <h2 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase leading-none mb-6">
-          COACH LIKE LEE.<br/>NOTHING HELD BACK.
-        </h2>
-        <p class="text-gray-300 font-body text-lg md:text-xl mb-10">
-          Join Coaches Only inside the Joner Football App for the session plans, voice-overs, and detail that move your players forward.
-        </p>
-        <div class="flex flex-col sm:flex-row gap-4 justify-center mb-5">
-          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
-          <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-outline text-base px-8 py-4 text-center">WATCH A SESSION FREE</a>
-        </div>
-        <p class="text-gray-200 font-body text-base">
-          <span class="font-heading text-white font-semibold">{yearlyPrice}</span><span class="text-gray-400"> per year or </span><span class="font-heading text-white font-semibold">{monthlyPrice}</span><span class="text-gray-200"> per month. Max Plan tier. Cancel anytime.</span>
-        </p>
-      </div>
-    </section>
 
   </main>
 
