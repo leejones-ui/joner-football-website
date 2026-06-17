@@ -488,7 +488,20 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 
         </div>
 
-        <p class="text-center font-body text-gray-500 text-sm">Max Plan tier inside the Joner Football App. Cancel renewal anytime. No hidden fees.</p>
+        {/* Risk reversal: reassurance sits right next to the price */}
+        <div class="max-w-3xl mx-auto rounded-2xl border border-gray-200 bg-gray-50 p-6 sm:p-8 text-center">
+          <span class="inline-flex w-12 h-12 rounded-full bg-joner-red/10 text-joner-red items-center justify-center mb-4">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          </span>
+          <h3 class="font-heading text-2xl md:text-3xl text-joner-black uppercase mb-3">Join With Confidence</h3>
+          <p class="font-body text-gray-700 max-w-xl mx-auto mb-5">Full access from day one, no contract, and you can cancel anytime in two taps. The free session plan bundle is yours to keep whatever you decide.</p>
+          <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 font-heading uppercase tracking-wide text-sm text-joner-black">
+            <span class="inline-flex items-center gap-2"><svg class="w-4 h-4 text-joner-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>Cancel anytime</span>
+            <span class="inline-flex items-center gap-2"><svg class="w-4 h-4 text-joner-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>No contract</span>
+            <span class="inline-flex items-center gap-2"><svg class="w-4 h-4 text-joner-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>Full access from day one</span>
+          </div>
+          <p class="font-body text-gray-400 text-xs mt-5">Max Plan tier inside the Joner Football App. No hidden fees.</p>
+        </div>
       </div>
     </section>
 
@@ -543,6 +556,27 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
         { label: '100 Day Programme', href: '/programmes' },
       ]}
     />
+
+
+    {/* ========== CLOSING CTA (final ask) ========== */}
+    <section class="bg-joner-black py-20 md:py-28 border-t border-white/10">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">YOUR NEXT SESSION STARTS HERE</p>
+        <h2 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase leading-none mb-6">
+          Get The Full Max Plan
+        </h2>
+        <p class="text-gray-300 font-body text-lg md:text-xl mb-10 max-w-2xl mx-auto">
+          Session plans, voice over breakdowns, full training sessions, and the detail that moves your players forward. All in one plan.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center mb-5">
+          <a href={monthlyCheckoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageMonthlyClick">MAX MONTHLY</a>
+          <a href={annualCheckoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageAnnualClick">MAX ANNUAL (SAVE)</a>
+        </div>
+        <p class="text-gray-200 font-body text-base">
+          <span class="text-gray-200">From </span><span class="font-heading text-white font-semibold">$20.83 USD</span><span class="text-gray-200"> per month. Cancel anytime.</span>
+        </p>
+      </div>
+    </section>
 
   </main>
 
