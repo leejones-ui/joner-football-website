@@ -2,6 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import CoachesTestimonialsCarousel from '../../components/CoachesTestimonialsCarousel.astro'
 import CoachesHighlightsCarousel from '../../components/CoachesHighlightsCarousel.astro'
+import FactsMarquee from '../../components/FactsMarquee.astro'
 import GeoAnswers from '../../components/GeoAnswers.astro'
 import { breadcrumbSchema } from '../../lib/seoSchema'
 
@@ -110,6 +111,16 @@ const features = [
     body: 'Extra coaching resources and behind-the-scenes material to keep sharpening your eye and your sessions.',
     image: '/images/coaches-only/extras.png'
   }
+]
+
+// Sliding trust ticker facts (proof surfaced near the top)
+const facts = [
+  '50,000+ Downloads',
+  '15+ Countries',
+  '1,500+ Training Videos',
+  'Voted Top 10 In The World For Technical Training',
+  '20+ Years Coaching',
+  'Grassroots To Professional'
 ]
 
 // 4-up pillar strip under the hero (mirrors the /programmes stat strip)
@@ -241,6 +252,10 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     </section>
 
 
+    {/* ========== 1a. FACTS MARQUEE (sliding trust ticker, proof near the top) ========== */}
+    <FactsMarquee facts={facts} />
+
+
     {/* ========== 1b. PILLAR STRIP (4-up, mirrors the /programmes stat strip) ========== */}
     <section class="coaches-pillars bg-joner-black border-b border-gray-900">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -282,11 +297,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     </section>
 
 
-    {/* ========== 2b. WHAT'S INSIDE SCROLLER (horizontal highlights, /app concept) ========== */}
-    <CoachesHighlightsCarousel heading="What's inside MAX plan!" slides={highlightSlides} ctaHref="/join" ctaLabel="JOIN NOW" />
-
-
-    {/* ========== 3. PROBLEM (two-column, 2 simple black buttons) ========== */}
+    {/* ========== 3. PROBLEM (moved up: hook, then problem, then solution) ========== */}
     <section class="bg-white text-joner-black py-16 md:py-24">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div>
@@ -307,6 +318,10 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
         </div>
       </div>
     </section>
+
+
+    {/* ========== 4. WHAT'S INSIDE SCROLLER (solution: what's inside the Max plan) ========== */}
+    <CoachesHighlightsCarousel heading="What's inside MAX plan!" slides={highlightSlides} ctaHref="/join" ctaLabel="JOIN NOW" />
 
 
     {/* ========== 4. WHO IS TEACHING YOU ========== */}
