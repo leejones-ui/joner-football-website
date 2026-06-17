@@ -26,7 +26,7 @@ const { facts, speed = 30 } = Astro.props
 <style>
   .fm-bar {
     overflow: hidden;
-    background: var(--color-joner-red, #E8000D);
+    background: #0E0E0E;
     border-top: 1px solid rgba(255, 255, 255, 0.14);
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
   }
@@ -38,7 +38,7 @@ const { facts, speed = 30 } = Astro.props
   .fm-bar:hover .fm-track { animation-play-state: paused; }
   .fm-group { display: flex; flex-shrink: 0; }
   .fm-item { display: inline-flex; align-items: center; gap: 0.85rem; padding: 0.6rem 1.4rem; }
-  .fm-star { width: 0.7rem; height: 0.7rem; color: rgba(255, 255, 255, 0.85); flex-shrink: 0; }
+  .fm-star { width: 0.7rem; height: 0.7rem; color: var(--color-joner-red, #E8000D); flex-shrink: 0; }
   .fm-text {
     color: #fff;
     text-transform: uppercase;
