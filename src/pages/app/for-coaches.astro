@@ -289,7 +289,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     {/* ========== 3. PROBLEM (moved up: hook, then problem, then solution) ========== */}
     <section class="bg-white text-joner-black py-16 md:py-24">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        <div>
+        <div class="order-2 lg:order-1">
           <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">WHY IT EXISTS</p>
           <h2 class="font-heading text-4xl md:text-6xl font-bold text-joner-black uppercase leading-none mb-6">STOP WINGING YOUR SESSIONS</h2>
           <p class="text-lg text-gray-700 font-body mb-6 max-w-xl">
@@ -302,7 +302,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
             <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center">WATCH A FREE SESSION</a>
           </div>
         </div>
-        <div class="overflow-hidden rounded-[28px] bg-black/5 p-1 shadow-[0_28px_70px_rgba(0,0,0,0.24)] ring-1 ring-black/10">
+        <div class="order-1 lg:order-2 overflow-hidden rounded-[28px] bg-black/5 p-1 shadow-[0_28px_70px_rgba(0,0,0,0.24)] ring-1 ring-black/10">
           <img src="/images/coaches-only/coaches-roadmap.png" alt="The Joner Football coaching pathway: plan, understand, watch, become" class="block w-full rounded-[24px] object-cover" loading="lazy" />
         </div>
       </div>
@@ -393,14 +393,14 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 
 
     {/* ========== 4. WHAT'S INSIDE SCROLLER (solution: what's inside the Max plan) ========== */}
-    <CoachesHighlightsCarousel heading="What's inside MAX plan!" slides={highlightSlides} ctaHref="/join" ctaLabel="JOIN NOW" />
+    <CoachesHighlightsCarousel heading="What's inside MAX plan!" slides={highlightSlides} />
 
 
     {/* ========== 4. WHO IS TEACHING YOU ========== */}
     <section class="bg-joner-gray py-20 md:py-28 border-t-4 border-[#CC0000]">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          <div>
+          <div class="order-2 lg:order-1">
             <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">WHO IS TEACHING YOU</p>
             <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES.</h2>
             <p class="text-gray-300 font-body text-lg mb-6">Over 20 years coaching players, coaches, and parents around the world. From grassroots kids to professional players.</p>
@@ -428,11 +428,11 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 
             <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 inline-flex" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN LEE INSIDE THE APP</a>
           </div>
-          <div class="flex justify-center lg:justify-end">
+          <div class="order-1 lg:order-2 flex justify-center lg:justify-end">
             <img
               src="/images/programmes/lee-coaching-red.jpg"
               alt="Lee Jones coaching on the pitch, voted top 10 in the world for technical football training"
-              class="w-full max-w-md rounded-lg shadow-2xl"
+              class="w-full lg:max-w-md h-72 sm:h-96 lg:h-auto object-cover object-top rounded-lg shadow-2xl"
               loading="lazy"
             />
           </div>
@@ -483,13 +483,14 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
                         <h3 class="font-heading text-xl text-white uppercase mb-2 tracking-wide">{f.title}</h3>
                         <p class="text-gray-400 font-body text-sm leading-relaxed">{f.body}</p>
                       </div>
+                      <img src={f.image} alt={f.title} class="mt-1 mb-1 w-full aspect-video rounded-xl object-cover lg:hidden" loading="lazy" />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div class="coach-closer-stage relative bg-black order-1 lg:order-2 aspect-[4/3] sm:aspect-[16/10] lg:aspect-auto lg:min-h-[620px] overflow-hidden">
+            <div class="coach-closer-stage relative bg-black hidden lg:block order-1 lg:order-2 lg:aspect-auto lg:min-h-[620px] overflow-hidden">
               {included.map((f, index) => (
                 <img
                   src={f.image}
