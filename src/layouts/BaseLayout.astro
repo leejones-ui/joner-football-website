@@ -148,6 +148,13 @@ const allSchemas = schema
     ))}
 
     <slot name="head" />
+    {recaptchaSiteKey && (
+      <style is:inline>
+        .grecaptcha-badge {
+          visibility: hidden !important;
+        }
+      </style>
+    )}
 
     <!-- LEE: Paste your GA4 Measurement ID into Vercel env var PUBLIC_GA4_ID (starts with G-) -->
     <Analytics />
