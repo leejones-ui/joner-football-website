@@ -369,7 +369,7 @@ const allSchemas = schema
           }, options.user_data || {});
 
           if (typeof window.fbq === 'function') {
-            if (eventName === 'Lead' || eventName === 'CompleteRegistration' || eventName === 'AddToCart' || eventName === 'InitiateCheckout' || eventName === 'ViewContent') {
+            if (eventName === 'Lead' || eventName === 'Purchase' || eventName === 'CompleteRegistration' || eventName === 'AddToCart' || eventName === 'InitiateCheckout' || eventName === 'ViewContent') {
               window.fbq('track', eventName, customData, { eventID: eventId });
             } else {
               window.fbq('trackCustom', eventName, customData, { eventID: eventId });

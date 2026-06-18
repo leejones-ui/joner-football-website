@@ -131,13 +131,6 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
           return;
         }
 
-        if (window.JonerTracking && typeof window.JonerTracking.trackEvent === 'function') {
-          window.JonerTracking.trackEvent('lead_magnet_click', {
-            custom_data: { form_id: 'free-bundle-form', lead_type: 'free_training_videos', roles: selectedRoles.join(',') },
-            user_data: { email: email }
-          });
-        }
-
         var listIds = [];
         listIds.push(HOT_APP_LEADS);
         listIds.push(FREE_BUNDLE_USERS_NORMAL);
