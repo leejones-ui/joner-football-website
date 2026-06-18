@@ -311,12 +311,12 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 
     {/* ========== 3b. BUILT FOR COACHES (scroll-reveal callouts over the photo) ========== */}
     <section class="bfc" data-bfc aria-label="Who it's for">
-      <div class="bfc__intro max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">WHO IT'S FOR</p>
-        <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none">Built For Coaches Like You</h2>
-      </div>
       <div class="bfc__track">
         <div class="bfc__sticky">
+          <div class="bfc__intro">
+            <p class="bfc__eyebrow">WHO IT'S FOR</p>
+            <h2 class="bfc__heading font-heading">Built For Coaches Like You</h2>
+          </div>
           <div class="bfc__stage">
             <img class="bfc__photo bfc__photo--mobile" src="/images/coaches-only/built-for-coaches-mobile.jpg" alt="Lee Jones coaching on the pitch" loading="lazy" />
             <img class="bfc__photo bfc__photo--desktop" src="/images/coaches-only/built-for-coaches-desktop.jpg" alt="Lee Jones coaching on the pitch" loading="lazy" />
@@ -335,26 +335,29 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 
     <style>
       .bfc { background: #0A0A0A; }
-      .bfc__intro { padding: 64px 0 8px; }
-      .bfc__track { position: relative; height: 220vh; }
-      .bfc__sticky { position: sticky; top: 0; height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
-      .bfc__stage { position: relative; width: min(92vw, 760px); height: min(76vh, 680px); border-radius: 24px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+      .bfc__track { position: relative; height: 180vh; }
+      .bfc__sticky { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 16px; }
+      .bfc__intro { text-align: center; max-width: 92vw; }
+      .bfc__eyebrow { color: var(--color-joner-red, #E8000D); font-family: 'Kanit', 'Anton', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: 0.34em; font-size: 0.95rem; margin: 0 0 10px; }
+      .bfc__heading { color: #fff; font-family: 'Kanit', 'Anton', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; line-height: 1.0; letter-spacing: -0.01em; font-size: clamp(1.35rem, 6vw, 4rem); text-wrap: balance; margin: 0; }
+      .bfc__stage { position: relative; width: min(92vw, 640px); height: min(58vh, 540px); border-radius: 24px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
       .bfc__photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
       .bfc__photo--desktop { display: none; }
       .bfc__scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,0.55), rgba(0,0,0,0.12) 35%, rgba(0,0,0,0.12) 65%, rgba(0,0,0,0.55)); }
-      .bfc__callout { position: absolute; display: flex; align-items: center; gap: 10px; max-width: 64%; opacity: 0; transition: opacity .45s ease, transform .45s ease; }
-      .bfc__callout--left { left: 6%; transform: translateX(-14px); }
-      .bfc__callout--right { right: 6%; flex-direction: row-reverse; text-align: right; transform: translateX(14px); }
-      .bfc__callout.is-on { opacity: 1; transform: translateX(0); }
+      .bfc__callout { position: absolute; display: flex; align-items: center; gap: 10px; max-width: 64%; opacity: 0; transform: translateY(16px); transition: opacity .6s cubic-bezier(.22,.61,.36,1), transform .6s cubic-bezier(.22,.61,.36,1); }
+      .bfc__callout--left { left: 6%; }
+      .bfc__callout--right { right: 6%; flex-direction: row-reverse; text-align: right; }
+      .bfc__callout.is-on { opacity: 1; transform: translateY(0); }
       .bfc__label { font-family: 'Kanit', 'Anton', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; color: #fff; line-height: 1.02; font-size: clamp(1.15rem, 5vw, 2.4rem); text-shadow: 0 2px 16px rgba(0,0,0,0.7); }
-      .bfc__line { height: 2px; width: 0; background: var(--color-joner-red, #E8000D); transition: width .55s ease .05s; flex-shrink: 0; }
+      .bfc__line { height: 2px; width: 0; background: var(--color-joner-red, #E8000D); transition: width .65s cubic-bezier(.22,.61,.36,1) .08s; flex-shrink: 0; }
       .bfc__callout.is-on .bfc__line { width: clamp(24px, 9vw, 120px); }
       .bfc__dot { width: 11px; height: 11px; border-radius: 999px; background: var(--color-joner-red, #E8000D); box-shadow: 0 0 0 5px rgba(232,0,13,0.22); flex-shrink: 0; }
       @media (min-width: 768px) {
         .bfc__photo--mobile { display: none; }
         .bfc__photo--desktop { display: block; }
-        .bfc__stage { width: min(92vw, 1100px); height: min(80vh, 620px); }
+        .bfc__stage { width: min(92vw, 1100px); height: min(64vh, 580px); }
         .bfc__track { height: 200vh; }
+        .bfc__eyebrow { font-size: 1.05rem; }
       }
       @media (prefers-reduced-motion: reduce) {
         .bfc__callout { opacity: 1; transform: none; transition: none; }
@@ -396,46 +399,23 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
     <CoachesHighlightsCarousel heading="What's inside MAX plan!" slides={highlightSlides} />
 
 
-    {/* ========== 4. WHO IS TEACHING YOU ========== */}
-    <section class="bg-joner-gray py-20 md:py-28 border-t-4 border-[#CC0000]">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          <div class="order-2 lg:order-1">
-            <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">WHO IS TEACHING YOU</p>
-            <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES.</h2>
-            <p class="text-gray-300 font-body text-lg mb-6">Over 20 years coaching players, coaches, and parents around the world. From grassroots kids to professional players.</p>
-
-            {/* Top-10 ranking accolade: credibility signal */}
-            <div class="inline-flex items-center gap-3 bg-joner-black border border-joner-red/40 rounded-full px-5 py-2 mb-6">
-              <svg class="w-5 h-5 text-joner-red" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-              <p class="font-heading text-white text-sm uppercase tracking-wider">Voted Top 10 In The World For Technical Training</p>
-            </div>
-
-            <p class="text-gray-400 font-body text-base leading-relaxed mb-8">
-              Coaches Only is the inside view. The sessions Lee runs, the language he uses, the way he coaches the detail with elite players. Nothing watered down. Nothing held back. The full masterclass coaches pay thousands to sit in the room for, dropped into one Max Plan tier inside the app.
-            </p>
-
-            {/* Lee quote: direct mission statement */}
-            <blockquote class="border-l-4 border-joner-red pl-5 py-2 mb-8">
-              <p class="font-heading text-xl md:text-2xl text-white italic leading-snug">"I built this app to spread the knowledge for all coaches around the world."</p>
-              <footer class="mt-3">
-                <p class="font-heading text-base text-white not-italic">Lee Jones</p>
-                <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-1">Founder, Joner Football</p>
-              </footer>
-            </blockquote>
-
-            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 inline-flex" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN LEE INSIDE THE APP</a>
-          </div>
-          <div class="order-1 lg:order-2 flex justify-center lg:justify-end">
-            <img
-              src="/images/programmes/lee-coaching-red.jpg"
-              alt="Lee Jones coaching on the pitch, voted top 10 in the world for technical football training"
-              class="w-full lg:max-w-md h-72 sm:h-96 lg:h-auto object-cover object-top rounded-lg shadow-2xl"
-              loading="lazy"
-            />
-          </div>
+    {/* ========== 4. WHO IS TEACHING YOU (full graphic: heading, bio and quote baked into the image) ========== */}
+    <section class="bg-joner-gray py-12 md:py-20 border-t-4 border-[#CC0000]">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <img
+          src="/images/coaches-only/lee-teaching-mobile.jpg"
+          alt="Who is teaching you: Lee Jones, over 20 years coaching players, coaches and parents, founder of Joner Football"
+          class="lg:hidden w-full rounded-2xl shadow-2xl"
+          loading="lazy"
+        />
+        <img
+          src="/images/coaches-only/lee-teaching-desktop.jpg"
+          alt="Who is teaching you: Lee Jones, over 20 years coaching players, coaches and parents, founder of Joner Football"
+          class="hidden lg:block w-full rounded-2xl shadow-2xl"
+          loading="lazy"
+        />
+        <div class="text-center mt-8">
+          <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 inline-flex" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN LEE INSIDE THE APP</a>
         </div>
       </div>
     </section>
