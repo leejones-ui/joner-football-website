@@ -4,7 +4,7 @@ const appPagePath = 'src/pages/app.astro'
 const source = readFileSync(appPagePath, 'utf8')
 
 const required = [
-  'THE FOOTBALL TRAINING APP FOR PLAYERS WHO WANT A CLEAR PLAN.',
+  'KNOW EXACTLY WHAT TO TRAIN EVERY DAY.',
   'data-hero-device-carousel',
   '/images/home-storyboard/06-app-header-video-desktop.mp4',
   '/images/app/joner-app-main-ipad-current-transparent.png',
