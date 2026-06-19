@@ -21,7 +21,7 @@ const teamSEOFAQs = [
   { q: 'Can a full team use the Joner Football App?', a: 'Yes. Joner Football can support team and club subscriptions so every player gets access to the same training detail, programmes and app pathway.' },
   { q: 'Who are team subscriptions for?', a: 'They are built for clubs, academies, schools and coaches who want players doing better work between team sessions.' },
   { q: 'Do coaches get access with a team subscription?', a: 'Yes. Coach access is part of the setup, so coaches can use session plans, drills and coaching detail that match what their players train in the app.' },
-  { q: 'How much does a team subscription cost?', a: 'Pricing depends on squad size and coach access. Send the enquiry form with your numbers and Joner Football will come back with the right option for your club.' },
+  { q: 'How much does a team subscription cost?', a: 'Team subscriptions start from $750 USD for short team access, with 3-month, 6-month and 12-month options. Pricing is based on total seats, so players and coaches are counted together.' },
   { q: 'How does a team get started?', a: 'Send an enquiry with your club, squad size and coach access needs. Joner Football will follow up with the cleanest setup for your players.' },
 ]
 
@@ -72,6 +72,29 @@ const steps = [
 ]
 
 const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
+
+const teamPricing = [
+  { name: 'Small Team', seats: 'Up to 25 seats', three: '$750', six: '$1,200', twelve: '$1,800', note: 'Best for one squad starting team access.' },
+  { name: 'Squad Plus', seats: 'Up to 50 seats', three: '$1,250', six: '$2,000', twelve: '$3,000', note: 'Best for two squads or a larger programme.' },
+  { name: 'Club', seats: 'Up to 100 seats', three: '$2,000', six: '$3,500', twelve: '$5,000', note: 'Best for clubs, academies and schools.' },
+  { name: 'Academy', seats: 'Up to 150 seats', three: '$3,000', six: '$5,000', twelve: '$7,500', note: 'Best for bigger organisations.' },
+]
+
+const includedItems = [
+  'Full team access for players and coaches',
+  'Private team community inside the app',
+  '100 Day Transformation Programme',
+  'Ball mastery, dribbling, passing, fast feet, weak foot and finishing programmes',
+  'Strength and conditioning content for footballers',
+  'Coaches Only section with session plans, PDFs and full training sessions',
+  'Live stream training and direct support inside the app',
+]
+
+const playerPassPricing = [
+  { term: '3 months', price: '$69/player', note: 'Short season or team trial' },
+  { term: '6 months', price: '$119/player', note: 'Season plus extra development time' },
+  { term: '12 months', price: '$199/player', note: 'Best value for serious players' },
+]
 ---
 
 {shouldReplaceSanityPage(sanityPage) ? (
@@ -146,6 +169,7 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
       <div class="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-4 py-4 font-heading text-xs uppercase tracking-[0.22em] text-white sm:px-6 lg:px-8 no-scrollbar">
         <a href="#why" class="shrink-0 hover:text-joner-red">Why</a>
         <a href="#inside" class="shrink-0 hover:text-joner-red">Inside</a>
+        <a href="#pricing" class="shrink-0 hover:text-joner-red">Pricing</a>
         <a href="#process" class="shrink-0 hover:text-joner-red">Process</a>
         <a href="#who" class="shrink-0 hover:text-joner-red">Who It Is For</a>
         <a href="#team-subscription-form" class="shrink-0 hover:text-joner-red">Enquire</a>
@@ -188,6 +212,135 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
               <p class="font-body text-sm leading-relaxed text-neutral-400">{item.body}</p>
             </article>
           ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="bg-black py-20 md:py-28 scroll-mt-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-12 grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
+          <div>
+            <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Team Subscription Pricing</p>
+            <h2 class="font-heading text-4xl font-black uppercase leading-none text-white sm:text-5xl md:text-6xl">Clear pricing for teams, clubs and schools.</h2>
+          </div>
+          <div class="border-l-4 border-joner-red bg-white/[0.04] p-6">
+            <p class="font-body text-base leading-relaxed text-neutral-300">
+              Choose the route that fits your setup. Clubs can pay one invoice for everyone, or players and parents can join individually through a team access pass.
+            </p>
+          </div>
+        </div>
+
+        <div class="mb-8 rounded-2xl border border-joner-red/40 bg-gradient-to-br from-joner-red/18 via-white/[0.04] to-transparent p-6 md:p-8">
+          <div class="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+            <div>
+              <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Best Route</p>
+              <h3 class="font-heading text-3xl font-black uppercase leading-none text-white md:text-4xl">Club pays one invoice.</h3>
+              <p class="mt-4 font-body text-sm leading-relaxed text-neutral-300 md:text-base">
+                The cleanest setup. Your club, school or academy pays once, then every player and coach gets access through one team plan.
+              </p>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-3">
+              <div class="border border-white/10 bg-black p-5">
+                <p class="font-heading text-xs uppercase tracking-[0.22em] text-neutral-400">3 months</p>
+                <p class="mt-2 font-heading text-3xl font-black text-white">From $750</p>
+                <p class="mt-2 font-body text-sm text-neutral-400">Short season trial.</p>
+              </div>
+              <div class="border border-joner-red bg-black p-5 shadow-[0_0_40px_rgba(227,6,19,0.18)]">
+                <p class="font-heading text-xs uppercase tracking-[0.22em] text-joner-red">Recommended</p>
+                <p class="mt-2 font-heading text-3xl font-black text-white">6 months</p>
+                <p class="mt-1 font-heading text-xl font-black text-joner-red">From $1,200</p>
+                <p class="mt-2 font-body text-sm text-neutral-400">A proper team season.</p>
+              </div>
+              <div class="border border-white/10 bg-black p-5">
+                <p class="font-heading text-xs uppercase tracking-[0.22em] text-neutral-400">Best value</p>
+                <p class="mt-2 font-heading text-3xl font-black text-white">12 months</p>
+                <p class="mt-1 font-heading text-xl font-black text-joner-red">From $1,800</p>
+                <p class="mt-2 font-body text-sm text-neutral-400">Season and off-season.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="overflow-hidden rounded-2xl border border-white/10 bg-neutral-950">
+          <div class="grid grid-cols-5 border-b border-white/10 bg-white/[0.04] font-heading text-xs uppercase tracking-[0.16em] text-neutral-300">
+            <div class="col-span-2 p-4">Team Size</div>
+            <div class="p-4 text-right">3 Months</div>
+            <div class="p-4 text-right">6 Months</div>
+            <div class="p-4 text-right">12 Months</div>
+          </div>
+          {teamPricing.map((tier) => (
+            <div class="grid grid-cols-5 border-b border-white/10 last:border-b-0">
+              <div class="col-span-2 p-4 md:p-5">
+                <h3 class="font-heading text-lg font-black uppercase text-white">{tier.name}</h3>
+                <p class="mt-1 font-body text-sm text-joner-red">{tier.seats}</p>
+                <p class="mt-2 hidden font-body text-xs leading-relaxed text-neutral-500 sm:block">{tier.note}</p>
+              </div>
+              <div class="p-4 text-right font-heading text-base font-black text-white md:p-5 md:text-xl">{tier.three}</div>
+              <div class="p-4 text-right font-heading text-base font-black text-white md:p-5 md:text-xl">{tier.six}</div>
+              <div class="p-4 text-right font-heading text-base font-black text-joner-red md:p-5 md:text-xl">{tier.twelve}</div>
+            </div>
+          ))}
+        </div>
+
+        <div class="mt-8 grid gap-5 lg:grid-cols-2">
+          <div class="border border-white/10 bg-white/[0.03] p-6 md:p-8">
+            <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">What Is Included</p>
+            <h3 class="font-heading text-2xl font-black uppercase text-white">Players and coaches inside one setup.</h3>
+            <ul class="mt-6 space-y-3">
+              {includedItems.map((item) => (
+                <li class="flex gap-3 font-body text-sm leading-relaxed text-neutral-300">
+                  <span class="mt-1 h-2 w-2 shrink-0 bg-joner-red"></span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div class="border border-white/10 bg-white/[0.03] p-6 md:p-8">
+            <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Savings Example</p>
+            <h3 class="font-heading text-2xl font-black uppercase text-white">A team setup is far cheaper than everyone joining alone.</h3>
+            <div class="mt-6 space-y-3 font-body text-sm leading-relaxed text-neutral-300">
+              <p>Example: 20 players and 2 coaches.</p>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="border border-white/10 bg-black p-4">
+                  <p class="font-heading text-xs uppercase tracking-[0.2em] text-neutral-500">Individual Max</p>
+                  <p class="mt-2 font-heading text-2xl font-black text-white">$5,499/year</p>
+                </div>
+                <div class="border border-joner-red bg-black p-4">
+                  <p class="font-heading text-xs uppercase tracking-[0.2em] text-joner-red">Team Plan</p>
+                  <p class="mt-2 font-heading text-2xl font-black text-white">$1,800/year</p>
+                </div>
+              </div>
+              <p class="font-heading text-lg font-black uppercase text-joner-red">Approx saving: $3,699/year.</p>
+              <p class="text-neutral-400">Your organisation gets one clean team setup for around one third of the individual Max cost.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8 border border-white/10 bg-neutral-950 p-6 md:p-8">
+          <div class="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+            <div>
+              <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">If Parents Pay Individually</p>
+              <h3 class="font-heading text-3xl font-black uppercase leading-none text-white">Team Access Pass.</h3>
+              <p class="mt-4 font-body text-sm leading-relaxed text-neutral-300 md:text-base">
+                If the club does not want one invoice, your coach can still arrange a team access pass for players and parents to join individually.
+              </p>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-3">
+              {playerPassPricing.map((pass) => (
+                <article class="border border-white/10 bg-black p-5 text-center">
+                  <p class="font-heading text-sm uppercase tracking-[0.22em] text-neutral-400">{pass.term}</p>
+                  <p class="mt-3 font-heading text-3xl font-black text-joner-red">{pass.price}</p>
+                  <p class="mt-3 font-body text-sm leading-relaxed text-neutral-400">{pass.note}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <a href="#team-subscription-form" class="btn-red text-sm">Request Team Setup</a>
+          <a href="#process" class="btn-outline text-sm">See How It Works</a>
         </div>
       </div>
     </section>
