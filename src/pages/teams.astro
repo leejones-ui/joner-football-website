@@ -19,6 +19,13 @@ const tickerFacts = [
   'Grassroots To Professional Videos',
 ]
 
+// Problem section cards (the days in between)
+const problems = [
+  { title: 'Training Nights Are Not Enough', body: 'Most players need more touches than team sessions can give them.' },
+  { title: 'Off-Season Drop-Off Is Real', body: 'Players improve during the season, then lose rhythm when training stops.' },
+  { title: 'Coaches Need A Way To Guide Homework', body: 'Without a clear plan, players either do nothing or train the wrong things.' }
+]
+
 // "Who is it for" scroll-reveal callouts (mirrors the coaches page)
 const whoItsFor = [
   { label: 'Clubs', side: 'left', top: '26%' },
@@ -100,9 +107,9 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
     {/* HERO (full-bleed, mirrors the coaches hero, single CTA) */}
     <section class="relative overflow-hidden">
       <div class="absolute inset-0 bg-joner-black">
-        <img src="/images/teams/teams-hero.jpg" alt="Lee Jones coaching a full squad of players" class="h-full w-full object-cover object-center opacity-70" loading="eager" />
-        <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/85 to-joner-black/35"></div>
-        <div class="absolute inset-0 bg-gradient-to-t from-joner-black/70 via-transparent to-transparent"></div>
+        <img src="/images/teams/teams-hero.jpg" alt="Lee Jones coaching a full squad of players" class="h-full w-full object-cover object-center" loading="eager" />
+        <div class="absolute inset-0 bg-gradient-to-r from-joner-black/95 via-joner-black/55 to-joner-black/15"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-joner-black/55 via-transparent to-transparent"></div>
       </div>
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center min-h-[440px] md:min-h-[520px] py-14 md:py-16">
         <div class="max-w-2xl">
@@ -127,34 +134,70 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
       </div>
     </section>
 
+    {/* PROBLEM (the days in between) */}
+    <section class="bg-joner-black py-16 md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="max-w-3xl mb-10 md:mb-14">
+          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE REALITY</p>
+          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-6">The Problem Is Not Team Training. It Is The Days In Between.</h2>
+          <div class="space-y-4 font-body text-lg text-gray-300 max-w-2xl">
+            <p>Your players might train hard when they are with you. But what happens on the other 4 or 5 days?</p>
+            <p>That is where development is either built or lost. The best players keep touching the ball, following a plan, and improving away from team sessions. Most players do not.</p>
+            <p class="font-heading uppercase text-xl text-white">Joner Football gives your whole squad that plan.</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {problems.map((p) => (
+            <article class="bg-joner-gray border border-gray-800 rounded-2xl p-6">
+              <h3 class="font-heading text-xl text-white uppercase leading-tight mb-3 tracking-wide">{p.title}</h3>
+              <p class="text-gray-300 font-body text-sm leading-relaxed">{p.body}</p>
+            </article>
+          ))}
+        </div>
+        <div class="mt-12">
+          <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">GET A QUOTE</a>
+        </div>
+      </div>
+    </section>
+
     {/* WHO IS IT FOR (scroll-reveal, mirrors the coaches page) */}
     <ScrollRevealSection
       eyebrow="WHO IS IT FOR?"
       heading="Built For Every Setup"
-      mobileImage="/images/teams/team-subscriptions-hero.webp"
-      desktopImage="/images/teams/team-subscriptions-hero.webp"
+      mobileImage="/images/teams/who-its-for-mobile.jpg"
+      desktopImage="/images/teams/who-its-for-desktop.jpg"
       items={whoItsFor}
-      alt="Joner Football team subscriptions"
+      alt="Lee Jones coaching a team"
     />
 
-    {/* WHO IS TEACHING YOU */}
+    {/* WHO IS TEACHING YOU (mobile = graphic, desktop = live text + photo, matches coaches) */}
     <section class="bg-joner-gray py-12 md:py-20">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
-        <div class="order-2 lg:order-1 flex flex-col justify-center">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">WHO IS TEACHING YOU</p>
-          <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES.</h2>
-          <p class="text-gray-300 font-body text-lg mb-6">Over 20 years coaching players, coaches, and parents around the world. From grassroots kids to professional players.</p>
-          <blockquote class="border-l-4 border-joner-red pl-5 py-2 mb-8">
-            <p class="font-heading text-xl md:text-2xl text-white italic leading-snug">"I built this app to spread the knowledge for all coaches around the world."</p>
-            <footer class="mt-3">
-              <p class="font-heading text-base text-white not-italic">Lee Jones</p>
-              <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-1">Founder, Joner Football</p>
-            </footer>
-          </blockquote>
-          <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex self-start">GET A QUOTE</a>
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* MOBILE: complete graphic */}
+        <div class="lg:hidden">
+          <img src="/images/coaches-only/lee-teaching-mobile.jpg" alt="Who is teaching you: Lee Jones, over 20 years coaching, founder of Joner Football" class="w-full rounded-2xl shadow-2xl" loading="lazy" />
+          <div class="text-center mt-7">
+            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">GET A QUOTE</a>
+          </div>
         </div>
-        <div class="order-1 lg:order-2 overflow-hidden rounded-lg shadow-2xl">
-          <img src="/images/programmes/lee-hero-jf.jpg" alt="Lee Jones coaching at a Joner Football session" class="w-full h-72 sm:h-96 lg:h-full object-cover object-[70%_50%]" loading="lazy" />
+        {/* DESKTOP: live text + clean photo */}
+        <div class="hidden lg:grid grid-cols-2 gap-16">
+          <div class="flex flex-col justify-center">
+            <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">WHO IS TEACHING YOU</p>
+            <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES.</h2>
+            <p class="text-gray-300 font-body text-lg mb-6">Over 20 years coaching players, coaches, and parents around the world. From grassroots kids to professional players.</p>
+            <blockquote class="border-l-4 border-joner-red pl-5 py-2 mb-8">
+              <p class="font-heading text-xl md:text-2xl text-white italic leading-snug">"I built this app to spread the knowledge for all coaches around the world."</p>
+              <footer class="mt-3">
+                <p class="font-heading text-base text-white not-italic">Lee Jones</p>
+                <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-1">Founder, Joner Football</p>
+              </footer>
+            </blockquote>
+            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex self-start">GET A QUOTE</a>
+          </div>
+          <div class="overflow-hidden rounded-lg shadow-2xl">
+            <img src="/images/programmes/lee-hero-jf.jpg" alt="Lee Jones coaching at a Joner Football session" class="w-full h-full object-cover object-[70%_50%]" loading="lazy" />
+          </div>
         </div>
       </div>
     </section>
