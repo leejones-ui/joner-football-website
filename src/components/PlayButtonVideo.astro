@@ -1,0 +1,54 @@
+---
+// Video frame with a poster and a centered, clickable red play button.
+// Starts clean (no controls); click reveals native controls and plays.
+interface Props {
+  src: string
+  poster: string
+  label?: string
+}
+const { src, poster, label = 'Play video' } = Astro.props
+---
+
+<div class="pbv aspect-video overflow-hidden rounded-2xl bg-black ring-1 ring-white/10 shadow-[0_28px_70px_rgba(0,0,0,0.5)]" data-pbv>
+  <video class="pbv__video h-full w-full object-cover" playsinline preload="metadata" poster={poster}>
+    <source src={src} type="video/mp4" />
+    Your browser does not support video playback.
+  </video>
+  <button type="button" class="pbv__play" aria-label={label} data-pbv-play>
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+  </button>
+</div>
+
+<style>
+  .pbv { position: relative; }
+  .pbv__play {
+    position: absolute; inset: 0; margin: auto;
+    width: 84px; height: 84px; border-radius: 9999px; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(232, 0, 13, 0.92); color: #fff;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    transition: transform .2s ease, background-color .2s ease, opacity .25s ease;
+  }
+  .pbv__play svg { width: 34px; height: 34px; margin-left: 4px; }
+  .pbv__play:hover { transform: scale(1.06); background: #E8000D; }
+  .pbv[data-playing="true"] .pbv__play { opacity: 0; pointer-events: none; }
+  @media (max-width: 640px) {
+    .pbv__play { width: 64px; height: 64px; }
+    .pbv__play svg { width: 26px; height: 26px; }
+  }
+</style>
+
+<script>
+  document.querySelectorAll('[data-pbv]').forEach(function (wrap) {
+    var video = wrap.querySelector('video')
+    var btn = wrap.querySelector('[data-pbv-play]')
+    if (!video || !btn) return
+    btn.addEventListener('click', function () {
+      video.setAttribute('controls', '')
+      wrap.setAttribute('data-playing', 'true')
+      var p = video.play()
+      if (p && p.catch) p.catch(function () {})
+    })
+    video.addEventListener('ended', function () { wrap.removeAttribute('data-playing') })
+  })
+</script>

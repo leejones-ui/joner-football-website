@@ -1,0 +1,95 @@
+---
+// Full-bleed scroll-reveal "who it's for" section. As you scroll, the labels
+// draw in over the photo with red line callouts (igloo-style). Reusable across
+// pages. Responsive: vertical photo on mobile, landscape on desktop.
+interface Item { label: string; side: 'left' | 'right'; top: string }
+interface Props {
+  eyebrow: string
+  heading: string
+  mobileImage: string
+  desktopImage: string
+  items: Item[]
+  alt?: string
+}
+const { eyebrow, heading, mobileImage, desktopImage, items, alt = '' } = Astro.props
+---
+
+<section class="srv" data-srv aria-label={eyebrow}>
+  <div class="srv__track">
+    <div class="srv__sticky">
+      <div class="srv__stage">
+        <img class="srv__photo srv__photo--mobile" src={mobileImage} alt={alt} loading="lazy" />
+        <img class="srv__photo srv__photo--desktop" src={desktopImage} alt={alt} loading="lazy" />
+        <div class="srv__scrim"></div>
+        <div class="srv__intro">
+          <p class="srv__eyebrow">{eyebrow}</p>
+          <h2 class="srv__heading">{heading}</h2>
+        </div>
+        {items.map((c, i) => (
+          <div class={`srv__callout srv__callout--${c.side}`} style={`top:${c.top}`} data-srv-callout data-i={i}>
+            <span class="srv__label">{c.label}</span>
+            <span class="srv__line"></span>
+            <span class="srv__dot"></span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Kanit:ital,wght@1,600;1,900&display=swap');
+  .srv { background: #0A0A0A; }
+  .srv__track { position: relative; height: 200vh; }
+  .srv__sticky { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+  .srv__stage { position: absolute; inset: 0; }
+  .srv__photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+  .srv__photo--desktop { display: none; }
+  .srv__scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.72), rgba(0,0,0,0.5) 26%, rgba(0,0,0,0.5) 62%, rgba(0,0,0,0.82)); }
+  .srv__intro { position: absolute; top: max(108px, 10%); left: 0; right: 0; text-align: center; padding: 0 16px; z-index: 3; }
+  .srv__eyebrow { color: var(--color-joner-red, #E8000D); font-family: 'Kanit', 'Anton', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: 0.34em; font-size: 0.95rem; margin: 0 0 8px; }
+  .srv__heading { color: #fff; font-family: 'Kanit', 'Anton', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; line-height: 1.0; letter-spacing: -0.01em; font-size: clamp(1.35rem, 6vw, 4.25rem); text-wrap: balance; margin: 0; text-shadow: 0 2px 18px rgba(0,0,0,0.6); }
+  .srv__callout { position: absolute; display: flex; align-items: center; gap: 10px; max-width: 64%; opacity: 0; transform: translateY(16px); transition: opacity .6s cubic-bezier(.22,.61,.36,1), transform .6s cubic-bezier(.22,.61,.36,1); z-index: 2; }
+  .srv__callout--left { left: 6%; }
+  .srv__callout--right { right: 6%; flex-direction: row-reverse; text-align: right; }
+  .srv__callout.is-on { opacity: 1; transform: translateY(0); }
+  .srv__label { font-family: 'Kanit', 'Anton', sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; color: #fff; line-height: 1.02; font-size: clamp(1.15rem, 5vw, 2.4rem); text-shadow: 0 2px 16px rgba(0,0,0,0.85); }
+  .srv__line { height: 2px; width: 0; background: var(--color-joner-red, #E8000D); transition: width .65s cubic-bezier(.22,.61,.36,1) .08s; flex-shrink: 0; }
+  .srv__callout.is-on .srv__line { width: clamp(24px, 9vw, 120px); }
+  .srv__dot { width: 11px; height: 11px; border-radius: 999px; background: var(--color-joner-red, #E8000D); box-shadow: 0 0 0 5px rgba(232,0,13,0.22); flex-shrink: 0; }
+  @media (min-width: 768px) {
+    .srv__photo--mobile { display: none; }
+    .srv__photo--desktop { display: block; }
+    .srv__scrim { background: linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.28) 26%, rgba(0,0,0,0.3) 62%, rgba(0,0,0,0.72)); }
+    .srv__eyebrow { font-size: 1.1rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .srv__callout { opacity: 1; transform: none; transition: none; }
+    .srv__line { width: clamp(24px, 9vw, 120px); }
+  }
+</style>
+
+<script>
+  document.querySelectorAll('[data-srv]').forEach(function (section) {
+    var track = section.querySelector('.srv__track')
+    var callouts = Array.prototype.slice.call(section.querySelectorAll('[data-srv-callout]'))
+    if (!track || !callouts.length) return
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      callouts.forEach(function (c) { c.classList.add('is-on') })
+      return
+    }
+    var ticking = false
+    function update() {
+      ticking = false
+      var rect = track.getBoundingClientRect()
+      var total = rect.height - window.innerHeight
+      var scrolled = Math.min(Math.max(-rect.top, 0), total)
+      var progress = total > 0 ? scrolled / total : 0
+      callouts.forEach(function (c, i) { c.classList.toggle('is-on', progress >= 0.08 + i * 0.24) })
+    }
+    function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update) } }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll, { passive: true })
+    update()
+  })
+</script>

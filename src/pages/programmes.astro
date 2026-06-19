@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import GeoAnswers from '../components/GeoAnswers.astro'
 import FactsMarquee from '../components/FactsMarquee.astro'
+import PlayButtonVideo from '../components/PlayButtonVideo.astro'
 import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 
 const APP_LINK = '/join'
@@ -127,11 +128,8 @@ const sanityPage = await fetchSanityPage('programmes')
       <span class="p100-eyebrow">Watch This First</span>
       <h2 class="p100-h2">See the <span class="p100-hook">100 day plan</span> in action.</h2>
       <p class="p100-lede p100-lede--center">Lee shows you exactly how the 100 Day Development Program works and why it gets players improving.</p>
-      <div class="pg-video">
-        <video controls playsinline preload="metadata" poster="/videos/100-day-landing-poster.jpg">
-          <source src="/videos/100-day-landing.mp4" type="video/mp4" />
-          Your browser does not support video playback.
-        </video>
+      <div style="max-width: 900px; margin: 32px auto 0;">
+        <PlayButtonVideo src="/videos/100-day-landing.mp4" poster="/videos/100-day-landing-poster.jpg" label="Play the 100 day intro video" />
       </div>
     </div>
   </section>
