@@ -64,9 +64,34 @@ function looksLikeRandomToken(value) {
   return hasLower && hasUpper && (hasDigit || vowelRatio < 0.28)
 }
 
+function numberInRange(value, min, max) {
+  const text = clean(value, 40)
+  if (!/^\d{1,4}$/.test(text)) return false
+  const number = Number(text)
+  return Number.isInteger(number) && number >= min && number <= max
+}
+
 function isLikelyBotSubmission(enquiry) {
-  const fields = [enquiry.name, enquiry.playerName, enquiry.playerAge, enquiry.playerLevel, enquiry.message]
-  return fields.filter(looksLikeRandomToken).length >= 3
+  const fields = [
+    enquiry.name,
+    enquiry.location,
+    enquiry.clubTeam,
+    enquiry.playerName,
+    enquiry.playerAge,
+    enquiry.playerLevel,
+    enquiry.message,
+  ]
+  return fields.filter(looksLikeRandomToken).length >= 2
+}
+
+function isLikelyBotTeamSubmission(enquiry) {
+  if (enquiry.type !== 'team-subscriptions') return false
+  if (!numberInRange(enquiry.numberOfPlayers, 1, 1000)) return true
+  if (!numberInRange(enquiry.numberOfCoaches, 1, 200)) return true
+  const identityFields = [enquiry.name, enquiry.location, enquiry.clubTeam]
+  if (identityFields.filter(looksLikeRandomToken).length >= 1) return true
+  if (/^[a-z]{1,3}\d{6,}$/i.test(enquiry.name)) return true
+  return false
 }
 
 function escapeHtml(value) {
@@ -403,7 +428,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Please enter a valid player age.' })
     }
 
-    if (isLikelyBotSubmission(enquiry)) {
+    if (isLikelyBotSubmission(enquiry) || isLikelyBotTeamSubmission(enquiry)) {
       return res.status(400).json({ success: false, error: 'Please check the enquiry details and try again.' })
     }
 
