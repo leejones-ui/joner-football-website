@@ -8,26 +8,6 @@ const campSchemas = [
   {
     '@context': 'https://schema.org',
     '@type': 'Event',
-    name: 'Joner Football San Diego Camp',
-    startDate: '2026-06-22',
-    endDate: '2026-06-24',
-    location: {
-      '@type': 'Place',
-      name: '4S Ranch Sports Park',
-      address: {
-        '@type': 'PostalAddress',
-        streetAddress: '16118 4S Ranch Pkwy',
-        addressLocality: 'San Diego',
-        addressRegion: 'CA',
-        postalCode: '92127',
-        addressCountry: 'US',
-      },
-    },
-    organizer: { '@type': 'Organization', name: 'Joner Football' },
-  },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'Event',
     name: 'Joner Football Sydney July Camp',
     startDate: '2026-07-14',
     endDate: '2026-07-16',
@@ -43,7 +23,7 @@ const campSchemas = [
 
 const campSEOFAQs = [
   { q: 'Where are Joner Football camps held?', a: 'Joner Football camps run in selected USA, Australia and global locations, with current camp pages showing dates, venues and registration details.' },
-  { q: 'Which Joner Football camps are running in 2026?', a: 'Current 2026 camps are San Diego in California and Sydney in Australia. Each camp page shows the exact dates, venue and registration status.' },
+  { q: 'Which Joner Football camps are running in 2026?', a: 'The current listed 2026 camp is Sydney in Australia. The camp page shows the exact dates, venue and registration status.' },
   { q: 'What age are the camps for?', a: 'Most Joner Football camps are built for motivated young players who want to improve technique, confidence and game impact in a high-energy coaching environment.' },
   { q: 'What do players work on at camp?', a: 'Players work on technical detail, ball mastery, attacking skills, confidence, decision-making and the standards Lee Jones expects in high-level football training.' },
   { q: 'How do I register for a Joner Football camp?', a: 'Open the camp page for your city and follow the registration steps. Spots are limited and camps regularly sell out, so register early.' },
@@ -64,18 +44,6 @@ const campsPageSchemas = [
 ]
 
 const camps = [
-  {
-    label: 'SD',
-    title: 'San Diego',
-    subtitle: 'June Camp',
-    location: '4S Ranch Sports Park',
-    dates: 'June 22 to 24, 2026',
-    href: '/camps/san-diego-june',
-    image: '/images/camps/joner-camps/hero-lee-pointing.jpg',
-    alt: 'Lee Jones coaching at a Joner Football camp',
-    badge: 'Request spot',
-    circleImage: '/images/camps/joner-camps/hero-lee-pointing.jpg',
-  },
   {
     label: 'SYD',
     title: 'Sydney',
@@ -250,7 +218,6 @@ const sanityPage = await fetchSanityPage('camps')
       },
     ]}
     links={[
-      { label: 'San Diego camp', href: '/camps/san-diego-june' },
       { label: 'Sydney camp', href: '/camps/sydney-july-2026' },
       { label: 'The football training app', href: '/app' },
     ]}

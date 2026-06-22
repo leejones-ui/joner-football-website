@@ -1,66 +1,308 @@
 {
   "routes": [
-    { "src": "/api/uscreen-webhook", "dest": "/api/subscribe?uscreen_webhook=1" },
-    { "src": "/", "methods": ["POST"], "dest": "/api/camp-payment-webhook?legacy=wc_stripe" }
+    {
+      "src": "/api/uscreen-webhook",
+      "dest": "/api/subscribe?uscreen_webhook=1"
+    },
+    {
+      "src": "/",
+      "methods": [
+        "POST"
+      ],
+      "dest": "/api/camp-payment-webhook?legacy=wc_stripe"
+    }
   ],
   "redirects": [
-    { "source": "/join-preview", "destination": "/join", "permanent": true },
-    { "source": "/join-preview/", "destination": "/join", "permanent": true },
-    { "source": "/jfp", "destination": "/training#jfp", "permanent": true },
-    { "source": "/jfp/", "destination": "/training#jfp", "permanent": true },
-    { "source": "/protraining", "destination": "/training#pro-training", "permanent": true },
-    { "source": "/protraining/", "destination": "/training#pro-training", "permanent": true },
-    { "source": "/thehq", "destination": "/hq", "permanent": true },
-    { "source": "/thehq/", "destination": "/hq", "permanent": true },
-
-    { "source": "/elitecampbookings", "destination": "/camps", "permanent": true },
-    { "source": "/elitecampbookings/", "destination": "/camps", "permanent": true },
-    { "source": "/thecompleteplayerexperience", "destination": "/camps", "permanent": false },
-    { "source": "/thecompleteplayerexperience/", "destination": "/camps", "permanent": false },
-    { "source": "/houston2026", "destination": "/camps", "permanent": false },
-    { "source": "/houston2026/", "destination": "/camps", "permanent": false },
-    { "source": "/dallas2026", "destination": "/camps", "permanent": false },
-    { "source": "/dallas2026/", "destination": "/camps", "permanent": false },
-    { "source": "/camps/texas-houston-june", "destination": "/camps", "permanent": false },
-    { "source": "/camps/texas-houston-june/", "destination": "/camps", "permanent": false },
-    { "source": "/camps/texas-dallas-june", "destination": "/camps", "permanent": false },
-    { "source": "/camps/texas-dallas-june/", "destination": "/camps", "permanent": false },
-    { "source": "/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg", "destination": "/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg", "permanent": false },
-    { "source": "/sydneyjuly2026", "destination": "/camps/sydney-july-2026", "permanent": true },
-    { "source": "/sydneyjuly2026/", "destination": "/camps/sydney-july-2026", "permanent": true },
-    { "source": "/elitecampbookings/sydneycamp", "destination": "/camps/sydney-july-2026", "permanent": true },
-    { "source": "/elitecampbookings/sydneycamp/", "destination": "/camps/sydney-july-2026", "permanent": true },
-    { "source": "/sacramento-california-april-2026", "destination": "/camps", "permanent": true },
-    { "source": "/sacramento-california-april-2026/", "destination": "/camps", "permanent": true },
-    { "source": "/portland-oregon-april-2026", "destination": "/camps", "permanent": true },
-    { "source": "/portland-oregon-april-2026/", "destination": "/camps", "permanent": true },
-    { "source": "/elitecampbookings/speed-camp", "destination": "/camps", "permanent": true },
-    { "source": "/elitecampbookings/speed-camp/", "destination": "/camps", "permanent": true },
-    { "source": "/elitecampbookings/selectiontrainingday", "destination": "/camps", "permanent": true },
-    { "source": "/elitecampbookings/selectiontrainingday/", "destination": "/camps", "permanent": true },
-    { "source": "/gold-coast-january-2025", "destination": "/camps", "permanent": true },
-    { "source": "/gold-coast-january-2025/", "destination": "/camps", "permanent": true },
-    { "source": "/californiaprivates", "destination": "/camps", "permanent": true },
-    { "source": "/californiaprivates/", "destination": "/camps", "permanent": true },
-    { "source": "/houston-texas-november-2025-joner-football", "destination": "/camps", "permanent": true },
-    { "source": "/houston-texas-november-2025-joner-football/", "destination": "/camps", "permanent": true },
-
-    { "source": "/jfonlinecoachescourse", "destination": "/workshops/coaches-course", "permanent": true },
-    { "source": "/jfonlinecoachescourse/", "destination": "/workshops/coaches-course", "permanent": true },
-    { "source": "/training-enquiries/", "destination": "/training", "permanent": true },
-    { "source": "/generel-enquiries/", "destination": "/about", "permanent": true },
-    { "source": "/juniors-enquiries/", "destination": "/jonersjuniors/#book", "permanent": true },
-    { "source": "/new-coaching-role/", "destination": "/about", "permanent": true },
-    { "source": "/lee-jones-head-coach-owner/", "destination": "/about", "permanent": true },
-    { "source": "/what-we-offer/", "destination": "/about", "permanent": true },
-    { "source": "/our-coaches/", "destination": "/about", "permanent": true },
-    { "source": "/training-agreement", "destination": "/terms", "permanent": true },
-    { "source": "/training-agreement/", "destination": "/terms", "permanent": true },
-    { "source": "/training-agreement-overseas", "destination": "/terms", "permanent": true },
-    { "source": "/training-agreement-overseas/", "destination": "/terms", "permanent": true },
-    { "source": "/cart/", "destination": "/shop", "permanent": true }
+    {
+      "source": "/join-preview",
+      "destination": "/join",
+      "permanent": true
+    },
+    {
+      "source": "/join-preview/",
+      "destination": "/join",
+      "permanent": true
+    },
+    {
+      "source": "/jfp",
+      "destination": "/training#jfp",
+      "permanent": true
+    },
+    {
+      "source": "/jfp/",
+      "destination": "/training#jfp",
+      "permanent": true
+    },
+    {
+      "source": "/protraining",
+      "destination": "/training#pro-training",
+      "permanent": true
+    },
+    {
+      "source": "/protraining/",
+      "destination": "/training#pro-training",
+      "permanent": true
+    },
+    {
+      "source": "/thehq",
+      "destination": "/hq",
+      "permanent": true
+    },
+    {
+      "source": "/thehq/",
+      "destination": "/hq",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/thecompleteplayerexperience",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/thecompleteplayerexperience/",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/houston2026",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/houston2026/",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/dallas2026",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/dallas2026/",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/camps/san-diego-june",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/camps/san-diego-june/",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/sandiego2026",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/sandiego2026/",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/camps/texas-houston-june",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/camps/texas-houston-june/",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/camps/texas-dallas-june",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/camps/texas-dallas-june/",
+      "destination": "/camps",
+      "permanent": false
+    },
+    {
+      "source": "/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg",
+      "destination": "/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg",
+      "permanent": false
+    },
+    {
+      "source": "/sydneyjuly2026",
+      "destination": "/camps/sydney-july-2026",
+      "permanent": true
+    },
+    {
+      "source": "/sydneyjuly2026/",
+      "destination": "/camps/sydney-july-2026",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/sydneycamp",
+      "destination": "/camps/sydney-july-2026",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/sydneycamp/",
+      "destination": "/camps/sydney-july-2026",
+      "permanent": true
+    },
+    {
+      "source": "/sacramento-california-april-2026",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/sacramento-california-april-2026/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/portland-oregon-april-2026",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/portland-oregon-april-2026/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/speed-camp",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/speed-camp/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/selectiontrainingday",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/selectiontrainingday/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/gold-coast-january-2025",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/gold-coast-january-2025/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/californiaprivates",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/californiaprivates/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/houston-texas-november-2025-joner-football",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/houston-texas-november-2025-joner-football/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/jfonlinecoachescourse",
+      "destination": "/workshops/coaches-course",
+      "permanent": true
+    },
+    {
+      "source": "/jfonlinecoachescourse/",
+      "destination": "/workshops/coaches-course",
+      "permanent": true
+    },
+    {
+      "source": "/training-enquiries/",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/generel-enquiries/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/juniors-enquiries/",
+      "destination": "/jonersjuniors/#book",
+      "permanent": true
+    },
+    {
+      "source": "/new-coaching-role/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/lee-jones-head-coach-owner/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/what-we-offer/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/our-coaches/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/training-agreement",
+      "destination": "/terms",
+      "permanent": true
+    },
+    {
+      "source": "/training-agreement/",
+      "destination": "/terms",
+      "permanent": true
+    },
+    {
+      "source": "/training-agreement-overseas",
+      "destination": "/terms",
+      "permanent": true
+    },
+    {
+      "source": "/training-agreement-overseas/",
+      "destination": "/terms",
+      "permanent": true
+    },
+    {
+      "source": "/cart/",
+      "destination": "/shop",
+      "permanent": true
+    }
   ],
   "crons": [
-    { "path": "/api/camp-unpaid-reminders", "schedule": "0 9 * * *" }
+    {
+      "path": "/api/camp-unpaid-reminders",
+      "schedule": "0 9 * * *"
+    }
   ]
 }

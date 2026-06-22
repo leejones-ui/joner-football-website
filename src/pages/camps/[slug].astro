@@ -295,7 +295,7 @@ export async function getStaticPaths() {
     'sydney-big-1-july',
     'sydney-july-2026',
   ]
-  const staticCampSlugs = ['la-tcpe-june', 'texas-houston-june', 'texas-dallas-june', 'sydney-july-2026', 'test-signup']
+  const staticCampSlugs = ['la-tcpe-june', 'san-diego-june', 'texas-houston-june', 'texas-dallas-june', 'sydney-july-2026', 'test-signup']
 
   try {
     const camps = await sanityClient.fetch(`*[_type == "camp" && defined(slug.current)]{ "slug": slug.current }`)
