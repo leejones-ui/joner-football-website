@@ -28,8 +28,6 @@ export const staticPageDefinitions = [
   { title: 'Camps hub', pageKey: 'camps', route: '/camps', slug: '/camps' },
   { title: 'Camp, Sydney July 2026', pageKey: 'camp-sydney-july-2026', route: '/camps/sydney-july-2026', slug: '/camps/sydney-july-2026', notes: 'Static detail page currently shadows the dynamic camp route.' },
   { title: 'Camp, Test Signup', pageKey: 'camp-test-signup', route: '/camps/test-signup', slug: '/camps/test-signup', notes: 'Static detail page currently shadows the dynamic camp route.' },
-  { title: 'Camp, Texas Dallas June', pageKey: 'camp-texas-dallas-june', route: '/camps/texas-dallas-june', slug: '/camps/texas-dallas-june', notes: 'Static detail page currently shadows the dynamic camp route.' },
-  { title: 'Camp, Texas Houston June', pageKey: 'camp-texas-houston-june', route: '/camps/texas-houston-june', slug: '/camps/texas-houston-june', notes: 'Static detail page currently shadows the dynamic camp route.' },
   { title: 'Blog hub', pageKey: 'blog', route: '/blog', slug: '/blog' },
   { title: 'Blog, 10 Mistakes Football Players Make Every Week', pageKey: 'blog-10-mistakes-football-players-make-every-week', route: '/blog/10-mistakes-football-players-make-every-week', slug: '/blog/10-mistakes-football-players-make-every-week', notes: 'Static article currently shadows the dynamic blog route.' },
   { title: 'Blog, 50 Ball Mastery Skills Young Players', pageKey: 'blog-50-ball-mastery-skills-young-players', route: '/blog/50-ball-mastery-skills-young-players', slug: '/blog/50-ball-mastery-skills-young-players', notes: 'Static article currently shadows the dynamic blog route.' },
