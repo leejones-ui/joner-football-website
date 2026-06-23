@@ -7,7 +7,7 @@ import {
   updateCell,
   appendRow,
   readSheetRange,
-  deleteSheetRow,
+  deletePendingRegistrationRow,
   appendOperationalCampRow,
   findOperationalCampLayout,
   ensureOperationalMarketingColumns,
@@ -401,7 +401,7 @@ async function confirmPaidRegistration(registrationId, paymentDetails = {}) {
   const email = await sendRegistrationEmail({ sheetId, registration: found, type: 'paid-confirmation' })
   let pendingCleanup = { skipped: true }
   try {
-    pendingCleanup = await deleteSheetRow(sheetId, PENDING_SHEET, rowNumber)
+    pendingCleanup = await deletePendingRegistrationRow(sheetId, registrationId, rowNumber)
   } catch (cleanupError) {
     console.warn('Could not remove paid registration from pending sheet:', cleanupError?.message || cleanupError)
     pendingCleanup = { skipped: false, failed: true }

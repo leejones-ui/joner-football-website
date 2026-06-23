@@ -116,6 +116,27 @@ export async function deleteSheetRow(sheetId, tab, rowNumber) {
   return { skipped: false, deleted: true, rowNumber }
 }
 
+export async function deletePendingRegistrationRow(sheetId, registrationId, fallbackRowNumber = 0) {
+  const cleanRegistrationId = clean(registrationId, 120)
+  if (!cleanRegistrationId) return { skipped: true, reason: 'missing-registration-id' }
+
+  // Payment webhooks can finish close together. A row number captured at the
+  // start of the handler can become stale after another webhook deletes a row.
+  // Re-read the pending sheet immediately before cleanup and delete the row
+  // that still has this exact registration ID, not the old index.
+  const pendingRows = await readRows(sheetId, PENDING_SHEET)
+  for (let i = 1; i < pendingRows.length; i += 1) {
+    if (pendingRows[i]?.[1] === cleanRegistrationId) {
+      return deleteSheetRow(sheetId, PENDING_SHEET, i + 1)
+    }
+  }
+
+  if (fallbackRowNumber > 1) {
+    return { skipped: true, reason: 'registration-not-found-in-pending', fallbackRowNumber }
+  }
+  return { skipped: true, reason: 'registration-not-found-in-pending' }
+}
+
 export async function ensureSheetTab(sheetId, title, headers) {
   const meta = await sheetsFetch(`${sheetId}?fields=sheets.properties.title`)
   const exists = meta.sheets?.some((sheet) => sheet.properties?.title === title)
