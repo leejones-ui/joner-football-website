@@ -12,7 +12,7 @@
 ✅ HQ page , fully built (facility details, programs, location, Google Maps link)
 ✅ Nav + Footer , working across all pages
 ✅ Meta Pixel , installed
-✅ GA4 , installed (G-H73LP37D8D)
+✅ GA4 , installed for website property `541906886` via `PUBLIC_GA4_ID=G-R9XM01ERGF`
 
 🟡 Workshops hub , stub (just two links)
 🟡 About , stub (placeholder text only)
@@ -588,23 +588,25 @@ If that embed URL doesn't render correctly, search Google Maps for "20 Narabang 
 
 ### PHASE 6: VERIFY GA4 TRACKING
 
-GA4 should already be installed from Night 1.
+GA4 is installed through `src/components/Analytics.astro` using Vercel env var `PUBLIC_GA4_ID`.
 
-**GA4 Measurement ID:** `G-H73LP37D8D`
+**Current website GA4 Measurement ID:** `G-R9XM01ERGF`
+
+Do not use the old app-era ID `G-H73LP37D8D` as website truth. That ID belongs to the app/older flow, not the current public website property.
 
 Verify it's in BaseLayout.astro `<head>`:
 
 ```html
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-H73LP37D8D"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-R9XM01ERGF"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-H73LP37D8D');
+  gtag("js", new Date());
+  gtag("config", "G-R9XM01ERGF");
 </script>
 ```
 
-If not there, add it.
+If not there, check Vercel Production env `PUBLIC_GA4_ID` before editing code.
 
 ---
 
@@ -655,5 +657,5 @@ Lee checks the staging URL in the morning. Make it count. 🔥
 | Free Section | https://app.jonerfootball.com/categories/category-vpi8uazway4 |
 | App Home | https://app.jonerfootball.com |
 | Apparel Shop | https://apparel.jonerfootball.com |
-| GA4 ID | G-H73LP37D8D |
+| Website GA4 ID | G-R9XM01ERGF |
 | Meta Pixel | 232666285545279 |

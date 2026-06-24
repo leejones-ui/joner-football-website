@@ -358,6 +358,34 @@ const allSchemas = schema
           return eventName + '.' + Date.now() + '.' + Math.random().toString(16).slice(2);
         }
 
+        function getGa4ConversionAliases(eventName) {
+          var aliasMap = {
+            Lead: ['generate_lead'],
+            CompleteRegistration: ['sign_up'],
+            InitiateCheckout: ['begin_checkout'],
+            AddToCart: ['add_to_cart'],
+            Purchase: ['purchase'],
+            app_checkout_click: ['begin_checkout'],
+            camp_form_submit: ['generate_lead'],
+            club_pricing_click: ['generate_lead'],
+            free_section_click: ['select_content'],
+            lead_magnet_click: ['generate_lead'],
+            team_subscription_interest: ['generate_lead']
+          };
+          return aliasMap[eventName] || [];
+        }
+
+        function trackGa4Event(eventName, customData, eventId) {
+          if (typeof window.gtag !== 'function') return;
+          try {
+            window.gtag('event', eventName, Object.assign({
+              event_id: eventId || getEventId(eventName),
+              page_path: window.location.pathname || '/',
+              transport_type: 'beacon'
+            }, customData || {}));
+          } catch (e) {}
+        }
+
         function trackEvent(eventName, options) {
           options = options || {};
           var eventId = options.event_id || getEventId(eventName);
@@ -377,13 +405,13 @@ const allSchemas = schema
           }
 
           if (typeof window.gtag === 'function') {
-            try {
-              window.gtag('event', eventName, Object.assign({
-                event_id: eventId,
-                page_path: window.location.pathname || '/',
-                transport_type: 'beacon'
-              }, customData));
-            } catch (e) {}
+            trackGa4Event(eventName, customData, eventId);
+            getGa4ConversionAliases(eventName).forEach(function (aliasName) {
+              if (aliasName === eventName) return;
+              trackGa4Event(aliasName, Object.assign({}, customData, {
+                source_event_name: eventName
+              }), eventId + '.' + aliasName);
+            });
           }
 
           try {
@@ -492,6 +520,7 @@ const allSchemas = schema
           window.JonerTracking = {
             collectTrackingParams: collectTrackingParams,
             appendTrackingParams: appendTrackingParams,
+            trackGa4Event: trackGa4Event,
             trackEvent: trackEvent
           };
 

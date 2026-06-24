@@ -239,6 +239,481 @@
       "permanent": true
     },
     {
+      "source": "/mindsetseminar",
+      "destination": "/workshops/mindset-seminars",
+      "permanent": true
+    },
+    {
+      "source": "/mindsetseminar/",
+      "destination": "/workshops/mindset-seminars",
+      "permanent": true
+    },
+    {
+      "source": "/mindset-seminar-agreement",
+      "destination": "/terms",
+      "permanent": true
+    },
+    {
+      "source": "/mindset-seminar-agreement/",
+      "destination": "/terms",
+      "permanent": true
+    },
+    {
+      "source": "/terms-conditions",
+      "destination": "/terms",
+      "permanent": true
+    },
+    {
+      "source": "/terms-conditions/",
+      "destination": "/terms",
+      "permanent": true
+    },
+    {
+      "source": "/coachesexperience",
+      "destination": "/workshops/coaches-course",
+      "permanent": true
+    },
+    {
+      "source": "/coachesexperience/",
+      "destination": "/workshops/coaches-course",
+      "permanent": true
+    },
+    {
+      "source": "/positionspecifictraining",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/positionspecifictraining/",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/joner-1on1-skills-clinics",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/joner-1on1-skills-clinics/",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/1on1-elite-training",
+      "destination": "/training/professional-training",
+      "permanent": true
+    },
+    {
+      "source": "/1on1-elite-training/",
+      "destination": "/training/professional-training",
+      "permanent": true
+    },
+    {
+      "source": "/1on1-elite-training//1000",
+      "destination": "/training/professional-training",
+      "permanent": true
+    },
+    {
+      "source": "/skills-clinic-form",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/skills-clinic-form/",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/position-specific-training-october-2023-rydalmere-park",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/position-specific-training-october-2023-rydalmere-park/",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/group-session-team-training",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/group-session-team-training/",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/2on1-3on1",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/2on1-3on1/",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/training-en",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/training-enqui",
+      "destination": "/training",
+      "permanent": true
+    },
+    {
+      "source": "/elite-camp-enquiries",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elite-camp-enquiries/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/texas-july-2023-joner-football",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/texas-july-2023-joner-football/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/miamijuly2024",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/miamijuly2024/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/melbourne2024",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/melbourne2024/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/canada-august-2024",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/canada-august-2024/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/brisbane2024",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/brisbane2024/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/rydalmere-park-sydneys-west",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/rydalmere-park-sydneys-west/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/seattle-april-2023-joner-football",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/seattle-april-2023-joner-football/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/california2025",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/california2025/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/forestville-northern-beaches",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/elitecampbookings/forestville-northern-beaches/",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/miamijuly2025",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/miamijuly2025/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/adelaide2025",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/adelaide2025/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/canada",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/canada/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/dallas-texas-november-2025-joner-football",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/dallas-texas-november-2025-joner-football/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/camps/la-tcpe-june",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/camps/la-tcpe-june/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/thank-you-for-your-payment-jonersjuniors",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/thank-you-for-your-payment-jonersjuniors/",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/thank-you-for-your-payment-jonersjuniors/forestville-northern-beaches",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/thank-you-for-your-payment-jonersjuniors/forestville-northern-beaches/",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/thank-you-for-your-payment",
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/thank-you-for-your-payment/",
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/joners-juniors",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/joners-juniors/",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/joners-juniors/narabang-3-6",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/joners-juniors/narabang-3-6/",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/joners-juniors__trashed/2-3-year-old-class-expressions-of-interest",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/joners-juniors__trashed/2-3-year-old-class-expressions-of-interest/",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/2-3-year-old-class-expressions-of-interest",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/2-3-year-old-class-expressions-of-interest/",
+      "destination": "/jonersjuniors",
+      "permanent": true
+    },
+    {
+      "source": "/product/buy-all-of-the-training-tools",
+      "destination": "/hub/resources",
+      "permanent": true
+    },
+    {
+      "source": "/product/buy-all-of-the-training-tools/",
+      "destination": "/hub/resources",
+      "permanent": true
+    },
+    {
+      "source": "/product/6-week-passing-1st-touch-program",
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/product/6-week-passing-1st-touch-program/",
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/product/buy-all-of-the-speed-agility-drills",
+      "destination": "/hub/resources",
+      "permanent": true
+    },
+    {
+      "source": "/product/buy-all-of-the-speed-agility-drills/",
+      "destination": "/hub/resources",
+      "permanent": true
+    },
+    {
+      "source": "/product/all-1-on-1-videos",
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/product/all-1-on-1-videos/",
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/product-category/passing-drills",
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/product-category/passing-drills/",
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/orders",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
+      "source": "/orders/",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
+      "source": "/shop/Joner",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
+      "source": "/All",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
+      "source": "/joner-football-app",
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/joner-football-app/",
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/joner-1on1-podcast",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/joner-1on1-podcast/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/joners-football-management",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/joners-football-management/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/coachshane",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/coachshane/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/testimonials",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/testimonials/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/hello-world",
+      "destination": "/blog",
+      "permanent": true
+    },
+    {
+      "source": "/hello-world/",
+      "destination": "/blog",
+      "permanent": true
+    },
+    {
       "source": "/training-enquiries/",
       "destination": "/training",
       "permanent": true

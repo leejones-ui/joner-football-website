@@ -55,5 +55,24 @@ const description = 'Your Joner Football payment is complete. Check your email f
         </div>
       </div>
     </section>
+
+    <script is:inline>
+      (function () {
+        function fireDownloadPurchase() {
+          if (!window.JonerTracking || typeof window.JonerTracking.trackEvent !== 'function') return;
+          var params = new URLSearchParams(window.location.search || '');
+          window.JonerTracking.trackEvent('Purchase', {
+            custom_data: {
+              content_name: params.get('product') || params.get('download') || 'joner_football_download',
+              content_category: 'digital_download',
+              status: 'paid_confirmed',
+              stripe_session_id: params.get('session_id') || ''
+            }
+          });
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fireDownloadPurchase);
+        else fireDownloadPurchase();
+      })();
+    </script>
   </main>
 </BaseLayout>
