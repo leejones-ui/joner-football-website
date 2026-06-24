@@ -127,6 +127,38 @@ function internalAdminAlertAlreadySent(rows = [], registrationId, type) {
   return rows.slice(1).some((row) => row[1] === registrationId && String(row[2] || '').startsWith(type) && row[5] === 'sent')
 }
 
+function normalise(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function paidMatchKey(registration) {
+  return [
+    normalise(registration.email),
+    normalise(registration.camp),
+    normalise(registration.playerFirstName),
+    normalise(registration.playerSurname),
+  ].join('|')
+}
+
+function paidEmailCampKey(registration) {
+  return [normalise(registration.email), normalise(registration.camp)].join('|')
+}
+
+function hasLaterPaidRegistration(registration, paidIds, paidExactKeys, paidEmailCampKeys) {
+  if (paidIds.has(registration.registrationId)) return true
+
+  // Critical abandoned-form guard:
+  // A parent can submit an unpaid form, leave checkout, then submit/pay again,
+  // producing a new registration ID. Once a paid registration exists for the
+  // same email + camp, the old pending row must never receive customer-facing
+  // unpaid reminders. Prefer exact player match, but email+camp is enough to
+  // stop trust-damaging "not confirmed" emails after payment.
+  if (paidExactKeys.has(paidMatchKey(registration))) return true
+  if (paidEmailCampKeys.has(paidEmailCampKey(registration))) return true
+
+  return false
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST')
@@ -149,7 +181,10 @@ export default async function handler(req, res) {
       readRows(sheetId, PAID_SHEET),
       readRows(sheetId, EMAIL_LOG_SHEET, LOG_HEADERS),
     ])
-    const paidIds = new Set(paidRows.slice(1).map((row) => row[1]).filter(Boolean))
+    const paidRegistrations = paidRows.slice(1).map((row) => registrationFromRow(row))
+    const paidIds = new Set(paidRegistrations.map((registration) => registration.registrationId).filter(Boolean))
+    const paidExactKeys = new Set(paidRegistrations.map(paidMatchKey).filter(Boolean))
+    const paidEmailCampKeys = new Set(paidRegistrations.map(paidEmailCampKey).filter(Boolean))
     const candidates = []
     const stageCounts = Object.fromEntries(REMINDER_STAGES.map((stage) => [stage.type, 0]))
 
@@ -157,7 +192,7 @@ export default async function handler(req, res) {
       const registration = registrationFromRow(pendingRows[i])
       if (!registration.registrationId || !registration.email) continue
       if (String(registration.paymentStatus || '').toLowerCase() === 'paid') continue
-      if (paidIds.has(registration.registrationId)) continue
+      if (hasLaterPaidRegistration(registration, paidIds, paidExactKeys, paidEmailCampKeys)) continue
 
       const ageMinutes = minutesSince(registration.submittedAt)
       for (const stage of REMINDER_STAGES) {
