@@ -4,7 +4,6 @@ import FactsMarquee from '../components/FactsMarquee.astro'
 import SEOFAQ from '../components/SEOFAQ.astro'
 import GeoAnswers from '../components/GeoAnswers.astro'
 import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
-import EmailCapture from '../components/EmailCapture.astro'
 import SanityPageExtras from '../components/sanity/SanityPageExtras.astro'
 import PlayButtonVideo from '../components/PlayButtonVideo.astro'
 import ScrollRevealSection from '../components/ScrollRevealSection.astro'
@@ -66,29 +65,13 @@ const schema = [
 
 import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
 import { fetchSanityPage } from '../lib/sanityPages'
-import { getSanityCta, getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+import { getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 
 const sanityPage = await fetchSanityPage('teams')
 const pageTitle = sanityPage?.seo?.title || 'Football Team Training App and Club Subscriptions | Joner Football'
 const pageDescription = sanityPage?.seo?.description || 'Team and club subscriptions for the Joner Football App. Give players clear drills, coach resources and training to follow between sessions.'
 const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Team and Club Subscriptions')
 const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole Squad With One App')
-const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'Football team training app access for clubs, academies and schools')
-const primaryCta = getSanityCta(sanityPage?.primaryCta, { label: 'Get Team Pricing', url: '#team-subscription-form' })
-
-const benefits = [
-  { num: '01', title: 'One plan for the whole squad', body: 'Every player gets access to the same training library, programs, and technical detail. No messy individual setup for families.' },
-  { num: '02', title: 'More work between sessions', body: 'Team training is only part of development. Players can follow structured app sessions at home and arrive sharper.' },
-  { num: '03', title: 'Coach resources included', body: 'Coaches can use session plans, drill ideas, and coaching clips to support the way the team trains every week.' },
-]
-
-const steps = [
-  { num: '01', title: 'Send the enquiry', body: 'Tell us your club, location, squad size, and how many coaches need access.' },
-  { num: '02', title: 'We build the team setup', body: 'Reswin follows up with the best team option and the cleanest way to onboard your players.' },
-  { num: '03', title: 'Players start training', body: 'Your squad gets access to the Joner Football App so they can train away from team sessions.' },
-]
-
-const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Schools', 'Associations']
 ---
 
 {shouldReplaceSanityPage(sanityPage) ? (
@@ -128,7 +111,7 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
           <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl font-bold text-white uppercase leading-none mb-5">{heroHeadline}</h1>
           <p class="text-gray-200 font-body text-lg md:text-xl max-w-xl mb-7">Give your whole club one clean setup. Every player training between sessions.</p>
           <div>
-            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex text-center">GET TEAM PRICING</a>
+            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex text-center">BOOK A DEMO</a>
           </div>
         </div>
       </div>
@@ -141,7 +124,7 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
       <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
         <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red sm:text-sm">Watch This First</p>
         <h2 class="mb-6 font-heading text-2xl md:text-4xl font-bold uppercase leading-tight text-white">See how team subscriptions work.</h2>
-        <PlayButtonVideo src="/videos/team-subscriptions.mp4" poster="/videos/team-subscriptions-poster.jpg" label="Play the team subscriptions video" />
+        <PlayButtonVideo src="/videos/team-subscriptions.mp4" poster="/images/teams/team-subs-thumbnail.jpg" label="Play the team subscriptions video" />
       </div>
     </section>
 
@@ -150,12 +133,8 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="max-w-3xl mb-10 md:mb-14">
           <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE REALITY</p>
-          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-6">The Problem Is Not Team Training. It Is The Days In Between.</h2>
-          <div class="space-y-4 font-body text-lg text-gray-300 max-w-2xl">
-            <p>Your players might train hard when they are with you. But what happens on the other 4 or 5 days?</p>
-            <p>That is where development is either built or lost. The best players keep touching the ball, following a plan, and improving away from team sessions. Most players do not.</p>
-            <p class="font-heading uppercase text-xl text-white">Joner Football gives your whole squad that plan.</p>
-          </div>
+          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-6">Team Training Is Not Enough</h2>
+          <p class="font-body text-lg text-gray-300 max-w-2xl">Your players are with you 2 or 3 days a week. The days in between are where they pull ahead, or fall behind.</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
           {problems.map((p) => (
@@ -164,9 +143,6 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
               <p class="text-gray-300 font-body text-sm leading-relaxed">{p.body}</p>
             </article>
           ))}
-        </div>
-        <div class="mt-12">
-          <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">GET TEAM PRICING</a>
         </div>
       </div>
     </section>
@@ -181,19 +157,63 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
       alt="Lee Jones coaching a team"
     />
 
-    {/* WHO IS TEACHING YOU (mobile = graphic, desktop = live text + photo, matches coaches) */}
-    <section class="bg-joner-gray py-12 md:py-20">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* MOBILE: complete graphic */}
-        <div class="lg:hidden">
-          <img src="/images/coaches-only/lee-teaching-mobile.jpg" alt="Who is teaching you: Lee Jones, over 20 years coaching, founder of Joner Football" class="w-full rounded-2xl shadow-2xl" loading="lazy" />
-          <div class="text-center mt-7">
-            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">GET TEAM PRICING</a>
+    {/* SOLUTION (how it works: whole squad in the app, private community, coach sends the work) */}
+    <section class="bg-joner-black py-16 md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="max-w-3xl mb-10 md:mb-14">
+          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE SOLUTION</p>
+          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-6">One App For Your Whole Squad</h2>
+          <p class="font-body text-lg text-gray-300 max-w-2xl">Every player training between sessions, a private space for your team, and you guiding the work. One clean setup.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <article class="bg-joner-gray border border-gray-800 rounded-2xl p-6">
+            <span class="inline-flex w-12 h-12 rounded-full bg-joner-red/10 text-joner-red items-center justify-center mb-4">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
+            </span>
+            <h3 class="font-heading text-xl text-white uppercase leading-tight mb-3 tracking-wide">Every Player Gets The App</h3>
+            <p class="text-gray-300 font-body text-sm leading-relaxed">The full Joner Football App for your whole squad. The 100 Day Programme, ball mastery, finishing and more, ready to train at home.</p>
+          </article>
+
+          <article class="bg-joner-gray border border-gray-800 rounded-2xl p-6">
+            <span class="inline-flex w-12 h-12 rounded-full bg-joner-red/10 text-joner-red items-center justify-center mb-4">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </span>
+            <h3 class="font-heading text-xl text-white uppercase leading-tight mb-3 tracking-wide">Your Own Team Community</h3>
+            <p class="text-gray-300 font-body text-sm leading-relaxed">A private team space inside the app. One place for your squad to train together, in season and off.</p>
+          </article>
+
+          <article class="bg-joner-gray border border-gray-800 rounded-2xl p-6">
+            <span class="inline-flex w-12 h-12 rounded-full bg-joner-red/10 text-joner-red items-center justify-center mb-4">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
+            </span>
+            <h3 class="font-heading text-xl text-white uppercase leading-tight mb-3 tracking-wide">You Send The Work</h3>
+            <p class="text-gray-300 font-body text-sm leading-relaxed">Send drills, programmes and homework straight to your players. Guide exactly what they work on between sessions.</p>
+          </article>
+        </div>
+
+        <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div class="rounded-2xl border border-gray-800 bg-joner-gray/40 p-6">
+            <p class="font-heading text-joner-red text-sm uppercase tracking-widest mb-2">In Season</p>
+            <p class="text-gray-300 font-body text-sm leading-relaxed">Send homework based on what each player needs that week.</p>
+          </div>
+          <div class="rounded-2xl border border-gray-800 bg-joner-gray/40 p-6">
+            <p class="font-heading text-joner-red text-sm uppercase tracking-widest mb-2">Off Season</p>
+            <p class="text-gray-300 font-body text-sm leading-relaxed">Assign programmes so players keep improving when the team is not training.</p>
           </div>
         </div>
-        {/* DESKTOP: live text + clean photo */}
-        <div class="hidden lg:grid grid-cols-2 gap-16">
-          <div class="flex flex-col justify-center">
+
+        <div class="mt-12">
+          <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">BOOK A DEMO</a>
+        </div>
+      </div>
+    </section>
+
+    {/* WHO IS TEACHING YOU (clean photo + live text, responsive, no baked graphic) */}
+    <section class="bg-joner-gray py-12 md:py-20">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+          <div class="order-2 lg:order-1 flex flex-col justify-center">
             <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">WHO IS TEACHING YOU</p>
             <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES.</h2>
             <p class="text-gray-300 font-body text-lg mb-6">Over 20 years coaching players, coaches, and parents around the world. From grassroots kids to professional players.</p>
@@ -204,9 +224,9 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
                 <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-1">Founder, Joner Football</p>
               </footer>
             </blockquote>
-            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex self-start">GET TEAM PRICING</a>
+            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex self-start">BOOK A DEMO</a>
           </div>
-          <div class="overflow-hidden rounded-lg shadow-2xl">
+          <div class="order-1 lg:order-2 overflow-hidden rounded-2xl shadow-2xl">
             <img src="/images/programmes/lee-hero-jf.jpg" alt="Lee Jones coaching at a Joner Football session" class="w-full h-full object-cover object-[70%_50%]" loading="lazy" />
           </div>
         </div>
@@ -218,9 +238,9 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
       <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div class="mb-12 text-center">
           <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Team Subscriptions</p>
-          <h2 class="font-heading text-4xl font-black uppercase leading-none text-white sm:text-5xl">Get Team Pricing</h2>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none text-white sm:text-5xl">Book Your Team Demo</h2>
           <p class="mx-auto mt-5 max-w-xl font-body text-base leading-relaxed text-neutral-400">
-            Tell us about your club, academy, school or coaching group. Lee and Reswin will receive your enquiry and follow up with the cleanest setup.
+            Tell us about your squad and we will show you exactly how it works.
           </p>
         </div>
 
@@ -266,7 +286,7 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
         </div>
 
         <p id="team-subscription-form-status" class="hidden font-body text-sm"></p>
-        <button type="submit" class="btn-red w-full text-sm">Send Team Subscription Enquiry</button>
+        <button type="submit" class="btn-red w-full text-sm">Book My Demo</button>
       </form>
     </div>
   </section>
@@ -315,7 +335,7 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
         var payload = {};
         formData.forEach(function (value, key) { payload[key] = value; });
         payload.marketingOptIn = true;
-        payload.message = 'Team subscription enquiry';
+        payload.message = 'Team subscription demo request';
 
         var tokenPromise = window.JonerRecaptcha && window.JonerRecaptcha.getToken
           ? window.JonerRecaptcha.getToken('contact')
@@ -334,7 +354,7 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
           if (!data || !data.success) throw new Error((data && data.error) || 'Could not send enquiry.');
           submitted = true;
           form.reset();
-          setStatus('Done. Your team subscription enquiry has been sent.', true);
+          setStatus('Done. Your demo request has been sent. We will be in touch to book a time.', true);
         })
         .catch(function (error) {
           setStatus(error && error.message ? error.message : 'Could not send enquiry. Please try again.', false);
@@ -346,24 +366,24 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
             submit.classList.remove('opacity-70', 'cursor-not-allowed');
           } else if (submit && submitted) {
             submit.disabled = true;
-            submit.textContent = 'Enquiry Sent';
+            submit.textContent = 'Demo Requested';
           }
         });
       });
     })();
   </script>
 
-  <!-- CTA -->
-  <section class="bg-joner-black border-t border-white/10 py-12 md:py-16">
+  {/* CLOSING CTA (drives back to the demo form) */}
+  <section class="bg-joner-black py-16 md:py-24">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-      <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
-        See What's Inside the App
+      <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase leading-none mb-4">
+        See It For Your Squad
       </h2>
-      <p class="text-neutral-300 font-body mb-6">
-        See the full training library and try the free section before committing your team.
+      <p class="text-neutral-300 font-body text-lg mb-8 max-w-xl mx-auto">
+        Book a quick demo and we will show you exactly how it works for your team.
       </p>
-      <a href="/app" class="btn-red text-base px-8 py-4 inline-block">
-        Explore the App
+      <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-block">
+        Book A Demo
       </a>
     </div>
   </section>
@@ -386,11 +406,11 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
       },
       {
         heading: 'Best next step',
-        body: 'Send the team enquiry form with your squad size and coach numbers. Joner Football replies with the right club setup, and you can explore the app yourself first to see what your players would train.',
+        body: 'Book a team demo with your squad size and coach numbers. Joner Football shows you how it works and sets up the right club option, and you can explore the app yourself first to see what your players would train.',
       },
     ]}
     links={[
-      { label: 'Get team pricing', href: '#team-subscription-form' },
+      { label: 'Book a demo', href: '#team-subscription-form' },
       { label: 'The football training app', href: '/app' },
       { label: 'App for coaches', href: '/app/for-coaches' },
       { label: '100 Day Programme', href: '/programmes' },
@@ -405,8 +425,6 @@ const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Scho
   />
 
   <SanityPageExtras page={sanityPage} />
-
-  <EmailCapture />
 
   {/* Match the coaches/programmes display typography (Kanit italic), scoped to this page */}
   <style is:global>
