@@ -74,7 +74,7 @@ const pageDescription = sanityPage?.seo?.description || 'Team and club subscript
 const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Team and Club Subscriptions')
 const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole Squad With One App')
 const heroSubheadline = getSanityText(sanityPage?.heroSubheadline, 'Football team training app access for clubs, academies and schools')
-const primaryCta = getSanityCta(sanityPage?.primaryCta, { label: 'Get a Quote', url: '#team-subscription-form' })
+const primaryCta = getSanityCta(sanityPage?.primaryCta, { label: 'Get Team Pricing', url: '#team-subscription-form' })
 
 const benefits = [
   { num: '01', title: 'One plan for the whole squad', body: 'Every player gets access to the same training library, programs, and technical detail. No messy individual setup for families.' },
@@ -88,7 +88,7 @@ const steps = [
   { num: '03', title: 'Players start training', body: 'Your squad gets access to the Joner Football App so they can train away from team sessions.' },
 ]
 
-const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
+const audiences = ['Club coaches', 'Academies', 'Private coaching groups', 'Schools', 'Associations']
 ---
 
 {shouldReplaceSanityPage(sanityPage) ? (
@@ -128,7 +128,7 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
           <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl font-bold text-white uppercase leading-none mb-5">{heroHeadline}</h1>
           <p class="text-gray-200 font-body text-lg md:text-xl max-w-xl mb-7">Give your whole club one clean setup. Every player training between sessions.</p>
           <div>
-            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex text-center">GET A QUOTE</a>
+            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex text-center">GET TEAM PRICING</a>
           </div>
         </div>
       </div>
@@ -166,7 +166,7 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
           ))}
         </div>
         <div class="mt-12">
-          <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">GET A QUOTE</a>
+          <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">GET TEAM PRICING</a>
         </div>
       </div>
     </section>
@@ -188,7 +188,7 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
         <div class="lg:hidden">
           <img src="/images/coaches-only/lee-teaching-mobile.jpg" alt="Who is teaching you: Lee Jones, over 20 years coaching, founder of Joner Football" class="w-full rounded-2xl shadow-2xl" loading="lazy" />
           <div class="text-center mt-7">
-            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">GET A QUOTE</a>
+            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">GET TEAM PRICING</a>
           </div>
         </div>
         {/* DESKTOP: live text + clean photo */}
@@ -204,7 +204,7 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
                 <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-1">Founder, Joner Football</p>
               </footer>
             </blockquote>
-            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex self-start">GET A QUOTE</a>
+            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex self-start">GET TEAM PRICING</a>
           </div>
           <div class="overflow-hidden rounded-lg shadow-2xl">
             <img src="/images/programmes/lee-hero-jf.jpg" alt="Lee Jones coaching at a Joner Football session" class="w-full h-full object-cover object-[70%_50%]" loading="lazy" />
@@ -218,9 +218,9 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
       <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div class="mb-12 text-center">
           <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Team Subscriptions</p>
-          <h2 class="font-heading text-4xl font-black uppercase leading-none text-white sm:text-5xl">Contact Us For Club Pricing</h2>
+          <h2 class="font-heading text-4xl font-black uppercase leading-none text-white sm:text-5xl">Get Team Pricing</h2>
           <p class="mx-auto mt-5 max-w-xl font-body text-base leading-relaxed text-neutral-400">
-            Tell us about your club or team. Reswin will receive your enquiry and follow up with the next steps.
+            Tell us about your club, academy, school or coaching group. Lee and Reswin will receive your enquiry and follow up with the cleanest setup.
           </p>
         </div>
 
@@ -390,6 +390,7 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
       },
     ]}
     links={[
+      { label: 'Get team pricing', href: '#team-subscription-form' },
       { label: 'The football training app', href: '/app' },
       { label: 'App for coaches', href: '/app/for-coaches' },
       { label: '100 Day Programme', href: '/programmes' },

@@ -48,9 +48,10 @@ const testimonials: Testimonial[] = [
         >
           <picture>
             <source srcset={`${t.image}.avif`} type="image/avif" />
+            <source srcset={`${t.image}.webp`} type="image/webp" />
             <source srcset={`${t.image}.opt.jpg`} type="image/jpeg" />
             <img
-              src={`${t.image}.png`}
+              src={`${t.image}.webp`}
               alt={t.alt}
               class="absolute inset-0 w-full h-full object-cover"
               loading={i === 0 ? 'eager' : 'lazy'}

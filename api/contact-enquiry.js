@@ -5,6 +5,24 @@ const FALLBACK_RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'le
 const duplicateBuckets = new Map()
 const DUPLICATE_WINDOW_MS = 15 * 60 * 1000
 const DEFAULT_WAIVER_TABLE = 'Player Onboarding & Waiver'
+const DEFAULT_TEAM_SUBSCRIPTIONS_SHEET_ID = process.env.CAMP_REGISTRATION_SHEET_ID || '1SbGmivi3yqFaBKoMAhoNd5ufUga99DaQBj2noXNJr4k'
+const TEAM_SUBSCRIPTIONS_SHEET = process.env.TEAM_SUBSCRIPTIONS_SHEET_TAB || 'Team Subscriptions Leads'
+const TEAM_SUBSCRIPTIONS_HEADERS = [
+  'Submitted At',
+  'Status',
+  'Name',
+  'Email',
+  'Phone',
+  'Club / Team',
+  'Number Of Players',
+  'Number Of Coaches',
+  'Location',
+  'Message',
+  'Source',
+  'Next Action',
+  'Owner',
+  'Notes',
+]
 
 const TYPES = {
   'training-sydney': 'Training Enquiries (Sydney)',
@@ -36,6 +54,126 @@ const BREVO_LIST_IDS = {
 
 function clean(value, max = 1000) {
   return cleanString(value, max)
+}
+
+function base64url(input) {
+  return Buffer.from(input).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+}
+
+function parseServiceAccount() {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch (error) {
+    try {
+      return JSON.parse(Buffer.from(raw, 'base64').toString('utf8'))
+    } catch (innerError) {
+      return null
+    }
+  }
+}
+
+async function getGoogleAccessToken() {
+  const account = parseServiceAccount()
+  if (!account?.client_email || !account?.private_key) {
+    throw new Error('Google Sheets service account is not configured.')
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  const header = { alg: 'RS256', typ: 'JWT' }
+  const claim = {
+    iss: account.client_email,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  }
+
+  const unsigned = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(claim))}`
+  const crypto = await import('node:crypto')
+  const signature = crypto.createSign('RSA-SHA256').update(unsigned).sign(account.private_key, 'base64')
+    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: `${unsigned}.${signature}`,
+    }),
+  })
+
+  const data = await response.json()
+  if (!response.ok || !data.access_token) throw new Error(data.error_description || 'Could not authenticate Google Sheets.')
+  return data.access_token
+}
+
+async function sheetsFetch(path, options = {}) {
+  const token = await getGoogleAccessToken()
+  const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${path}`, {
+    ...options,
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json',
+      ...(options.headers || {}),
+    },
+  })
+  const text = await response.text()
+  let data = {}
+  try { data = text ? JSON.parse(text) : {} } catch (error) { data = {} }
+  if (!response.ok) throw new Error(data.error?.message || 'Google Sheets request failed.')
+  return data
+}
+
+async function ensureTeamSubscriptionsSheet(sheetId) {
+  const title = TEAM_SUBSCRIPTIONS_SHEET
+  const meta = await sheetsFetch(`${sheetId}?fields=sheets.properties.title`)
+  const exists = meta.sheets?.some((sheet) => sheet.properties?.title === title)
+  if (!exists) {
+    await sheetsFetch(`${sheetId}:batchUpdate`, {
+      method: 'POST',
+      body: JSON.stringify({ requests: [{ addSheet: { properties: { title } } }] }),
+    })
+  }
+
+  const headerRange = `${encodeURIComponent(title)}!A1:N1`
+  const current = await sheetsFetch(`${sheetId}/values/${headerRange}`)
+  const currentHeaders = current.values?.[0] || []
+  const missingHeaders = TEAM_SUBSCRIPTIONS_HEADERS.some((header, index) => currentHeaders[index] !== header)
+  if (missingHeaders) {
+    await sheetsFetch(`${sheetId}/values/${headerRange}?valueInputOption=RAW`, {
+      method: 'PUT',
+      body: JSON.stringify({ values: [TEAM_SUBSCRIPTIONS_HEADERS] }),
+    })
+  }
+}
+
+async function appendTeamSubscriptionLead(enquiry) {
+  if (enquiry.type !== 'team-subscriptions') return
+  const sheetId = process.env.TEAM_SUBSCRIPTIONS_SHEET_ID || DEFAULT_TEAM_SUBSCRIPTIONS_SHEET_ID
+  if (!sheetId) throw new Error('Team subscriptions sheet is not configured.')
+  await ensureTeamSubscriptionsSheet(sheetId)
+  const row = [
+    enquiry.submittedAt,
+    'New enquiry',
+    enquiry.name,
+    enquiry.email,
+    enquiry.phone,
+    enquiry.clubTeam,
+    enquiry.numberOfPlayers,
+    enquiry.numberOfCoaches,
+    enquiry.location,
+    enquiry.message || 'Team subscription enquiry',
+    'jonerfootball.com/teams',
+    'Reply with team pricing and setup questions',
+    'Lee / Reswin',
+    '',
+  ]
+  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(TEAM_SUBSCRIPTIONS_SHEET)}!A:N:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+    method: 'POST',
+    body: JSON.stringify({ values: [row] }),
+  })
 }
 
 function validEmail(value) {
@@ -444,6 +582,11 @@ export default async function handler(req, res) {
       await addMarketingOptIn(enquiry)
     } catch (optInError) {
       console.error('Contact opt-in failed:', optInError)
+    }
+    try {
+      await appendTeamSubscriptionLead(enquiry)
+    } catch (sheetError) {
+      console.error('Team subscription sheet append failed:', sheetError)
     }
     return res.status(200).json({ success: true })
   } catch (error) {

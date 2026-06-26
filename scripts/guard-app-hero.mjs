@@ -7,8 +7,8 @@ const required = [
   'KNOW EXACTLY WHAT TO TRAIN EVERY DAY.',
   'data-hero-device-carousel',
   '/images/home-storyboard/06-app-header-video-desktop.mp4',
-  '/images/app/joner-app-main-ipad-current-transparent.png',
-  '/images/app/joner-app-main-iphone-current-transparent.png',
+  '/images/app/joner-app-main-ipad-current-transparent.webp',
+  '/images/app/joner-app-main-iphone-current-transparent.webp',
 ]
 
 const blocked = [
@@ -24,9 +24,9 @@ const stale = blocked.filter((needle) => source.includes(needle))
 
 const requiredFiles = [
   'public/images/home-storyboard/06-app-header-video-desktop.mp4',
-  'public/images/app/joner-app-main-ipad-current-transparent.png',
-  'public/images/app/joner-app-main-iphone-current-transparent.png',
-  'public/images/app/joner-app-main-ipad-2026-05-13.png',
+  'public/images/app/joner-app-main-ipad-current-transparent.webp',
+  'public/images/app/joner-app-main-iphone-current-transparent.webp',
+  'public/images/app/joner-app-main-ipad-2026-05-13.webp',
 ]
 
 const missingFiles = requiredFiles.filter((path) => !existsSync(path))

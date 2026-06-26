@@ -8,6 +8,19 @@ const campSchemas = [
   {
     '@context': 'https://schema.org',
     '@type': 'Event',
+    name: 'Joner Football Houston World Cup Camp',
+    startDate: '2026-06-26',
+    endDate: '2026-06-28',
+    location: {
+      '@type': 'Place',
+      name: 'Tomball Training Venue',
+      address: { '@type': 'PostalAddress', addressLocality: 'Houston', addressRegion: 'TX', addressCountry: 'US' },
+    },
+    organizer: { '@type': 'Organization', name: 'Joner Football' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
     name: 'Joner Football Sydney July Camp',
     startDate: '2026-07-14',
     endDate: '2026-07-16',
@@ -23,7 +36,7 @@ const campSchemas = [
 
 const campSEOFAQs = [
   { q: 'Where are Joner Football camps held?', a: 'Joner Football camps run in selected USA, Australia and global locations, with current camp pages showing dates, venues and registration details.' },
-  { q: 'Which Joner Football camps are running in 2026?', a: 'The current listed 2026 camp is Sydney in Australia. The camp page shows the exact dates, venue and registration status.' },
+  { q: 'Which Joner Football camps are running in 2026?', a: 'Current listed 2026 camps include Houston in Texas and Sydney in Australia. Each camp page shows the exact dates, venue and registration status.' },
   { q: 'What age are the camps for?', a: 'Most Joner Football camps are built for motivated young players who want to improve technique, confidence and game impact in a high-energy coaching environment.' },
   { q: 'What do players work on at camp?', a: 'Players work on technical detail, ball mastery, attacking skills, confidence, decision-making and the standards Lee Jones expects in high-level football training.' },
   { q: 'How do I register for a Joner Football camp?', a: 'Open the camp page for your city and follow the registration steps. Spots are limited and camps regularly sell out, so register early.' },
@@ -44,6 +57,18 @@ const campsPageSchemas = [
 ]
 
 const camps = [
+  {
+    label: 'HOU',
+    title: 'Houston',
+    subtitle: 'World Cup Camp',
+    location: 'Tomball, Texas',
+    dates: 'June 26 to 28, 2026',
+    href: '/camps/texas-houston-june',
+    image: '/images/camps/houston/DSC05857-scaled.jpg.webp',
+    alt: 'Joner Football Houston camp players training in Texas',
+    badge: 'Register now',
+    circleImage: '/images/camps/destination-circles/houston-skyline.jpg',
+  },
   {
     label: 'SYD',
     title: 'Sydney',

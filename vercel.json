@@ -75,12 +75,12 @@
     },
     {
       "source": "/houston2026",
-      "destination": "/camps",
+      "destination": "/camps/texas-houston-june",
       "permanent": false
     },
     {
       "source": "/houston2026/",
-      "destination": "/camps",
+      "destination": "/camps/texas-houston-june",
       "permanent": false
     },
     {
@@ -110,16 +110,6 @@
     },
     {
       "source": "/sandiego2026/",
-      "destination": "/camps",
-      "permanent": false
-    },
-    {
-      "source": "/camps/texas-houston-june",
-      "destination": "/camps",
-      "permanent": false
-    },
-    {
-      "source": "/camps/texas-houston-june/",
       "destination": "/camps",
       "permanent": false
     },
