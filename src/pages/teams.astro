@@ -107,7 +107,18 @@ const audiences = ['Club coaches', 'Academies', 'Schools', 'Associations']
     {/* HERO (full-bleed, mirrors the coaches hero, single CTA) */}
     <section class="relative overflow-hidden">
       <div class="absolute inset-0 bg-joner-black">
-        <img src="/images/teams/teams-hero.jpg" alt="Lee Jones coaching a full squad of players" class="h-full w-full object-cover object-center" loading="eager" />
+        <video
+          class="h-full w-full object-cover object-center"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="auto"
+          poster="/videos/team-training-web-hero-poster.jpg"
+          aria-hidden="true"
+        >
+          <source src="/videos/team-training-web-hero.mp4" type="video/mp4" />
+        </video>
         <div class="absolute inset-0 bg-gradient-to-r from-joner-black/95 via-joner-black/55 to-joner-black/15"></div>
         <div class="absolute inset-0 bg-gradient-to-t from-joner-black/55 via-transparent to-transparent"></div>
       </div>
