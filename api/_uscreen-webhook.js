@@ -15,6 +15,7 @@ const LISTS = {
   churnedMonthly: Number(process.env.BREVO_CHURNED_MONTHLY_LIST_ID || 30),
   churnedAnnual: Number(process.env.BREVO_CHURNED_ANNUAL_LIST_ID || 31),
   churnedCoaches: Number(process.env.BREVO_CHURNED_COACHES_LIST_ID || 32),
+  failedPayments: Number(process.env.BREVO_FAILED_PAYMENTS_LIST_ID || 53),
 }
 
 const TRIAL_ELIGIBLE_OFFER_IDS = new Set([183083, 189392, 183092, 189393])
@@ -204,7 +205,7 @@ export async function processUscreenPayload(data) {
       reason = listIds.length ? '' : 'no-churn-list-for-offer'
     }
     // They churned: pull them out of the active and trial lists so Brevo matches Uscreen.
-    unlinkListIds = [LISTS.trialUsers, LISTS.monthlySubscribers, LISTS.annualSubscribers, LISTS.coachesPlanSubscribers]
+    unlinkListIds = [LISTS.trialUsers, LISTS.monthlySubscribers, LISTS.annualSubscribers, LISTS.coachesPlanSubscribers, LISTS.failedPayments]
   } else if (eventType === 'ownership.created') {
     listIds = offerId ? (OWNERSHIP_LISTS_BY_OFFER_ID[offerId] || []) : []
     reason = listIds.length ? '' : 'no-ownership-list-for-offer'
@@ -223,7 +224,8 @@ export async function processUscreenPayload(data) {
       reason = 'order-paid-no-list-rule'
     }
   } else if (eventType === 'invoice.overdue') {
-    reason = 'invoice-overdue-logged-only'
+    // A failed/late payment: flag them for the dunning lane and the dashboard tile.
+    listIds = [LISTS.failedPayments]
   } else {
     reason = 'unhandled-event-type'
   }
@@ -231,7 +233,7 @@ export async function processUscreenPayload(data) {
   // A paid order means they are active again: pull them out of churned and trial lists.
   const PAID_ACTIVE_LISTS = [LISTS.monthlySubscribers, LISTS.annualSubscribers, LISTS.coachesPlanSubscribers]
   if (eventType === 'order.paid' && listIds.some((id) => PAID_ACTIVE_LISTS.includes(id))) {
-    unlinkListIds = [LISTS.churnedMonthly, LISTS.churnedAnnual, LISTS.churnedCoaches, LISTS.trialUsersChurned, LISTS.trialUsers]
+    unlinkListIds = [LISTS.churnedMonthly, LISTS.churnedAnnual, LISTS.churnedCoaches, LISTS.trialUsersChurned, LISTS.trialUsers, LISTS.failedPayments]
   }
 
   if (!listIds.length) return { accepted: true, event: eventType, skipped: true, reason, offerId }
