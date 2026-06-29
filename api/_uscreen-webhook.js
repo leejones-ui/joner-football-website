@@ -16,17 +16,44 @@ const LISTS = {
   churnedAnnual: Number(process.env.BREVO_CHURNED_ANNUAL_LIST_ID || 31),
   churnedCoaches: Number(process.env.BREVO_CHURNED_COACHES_LIST_ID || 32),
   failedPayments: Number(process.env.BREVO_FAILED_PAYMENTS_LIST_ID || 53),
+  // Proper tier lists (current Starter/Plus/Max pricing). Defaults are the real
+  // Brevo list IDs so this works without extra Vercel env vars.
+  starterActive: Number(process.env.BREVO_STARTER_ACTIVE_LIST_ID || 54),
+  plusActive: Number(process.env.BREVO_PLUS_ACTIVE_LIST_ID || 55),
+  maxActive: Number(process.env.BREVO_MAX_ACTIVE_LIST_ID || 56),
+  starterChurned: Number(process.env.BREVO_STARTER_CHURNED_LIST_ID || 57),
+  plusChurned: Number(process.env.BREVO_PLUS_CHURNED_LIST_ID || 58),
+  maxChurned: Number(process.env.BREVO_MAX_CHURNED_LIST_ID || 59),
 }
 
-const TRIAL_ELIGIBLE_OFFER_IDS = new Set([183083, 189392, 183092, 189393])
-
-const CHURNED_LIST_BY_OFFER_ID = {
-  183083: LISTS.churnedMonthly,
-  189392: LISTS.churnedMonthly,
-  183092: LISTS.churnedAnnual,
-  189393: LISTS.churnedAnnual,
-  202578: LISTS.churnedCoaches,
+// Every current subscription offer, keyed to its tier and billing. Source of
+// truth: Uscreen Manage People subscription plans (verified 2026-06-29).
+const TIER_BY_OFFER_ID = {
+  183083: 'starter', 189392: 'starter', 230697: 'starter',
+  230699: 'plus', 183092: 'plus', 189393: 'plus',
+  230698: 'max', 202578: 'max', 230696: 'max',
 }
+const BILLING_BY_OFFER_ID = {
+  183083: 'monthly', 189392: 'monthly', 230699: 'monthly', 230698: 'monthly',
+  230697: 'annual', 183092: 'annual', 189393: 'annual', 202578: 'annual', 230696: 'annual',
+}
+const ACTIVE_LIST_BY_TIER = { starter: LISTS.starterActive, plus: LISTS.plusActive, max: LISTS.maxActive }
+const CHURNED_LIST_BY_TIER = { starter: LISTS.starterChurned, plus: LISTS.plusChurned, max: LISTS.maxChurned }
+// Legacy by-billing lists kept populated during the transition so the winback
+// engine and dashboard never miss anyone mid-migration.
+const LEGACY_ACTIVE_BY_BILLING = { monthly: LISTS.monthlySubscribers, annual: LISTS.annualSubscribers }
+const LEGACY_CHURNED_BY_BILLING = { monthly: LISTS.churnedMonthly, annual: LISTS.churnedAnnual }
+
+const TRIAL_ELIGIBLE_OFFER_IDS = new Set(Object.keys(TIER_BY_OFFER_ID).map(Number))
+
+const ALL_ACTIVE_LISTS = [
+  LISTS.monthlySubscribers, LISTS.annualSubscribers, LISTS.coachesPlanSubscribers,
+  LISTS.starterActive, LISTS.plusActive, LISTS.maxActive,
+]
+const ALL_CHURNED_LISTS = [
+  LISTS.churnedMonthly, LISTS.churnedAnnual, LISTS.churnedCoaches,
+  LISTS.starterChurned, LISTS.plusChurned, LISTS.maxChurned,
+]
 
 const OWNERSHIP_LISTS_BY_OFFER_ID = {
   226775: [LISTS.coachesFreeBundleUsers, LISTS.freeSessionLeads],
@@ -201,11 +228,15 @@ export async function processUscreenPayload(data) {
     if (!transactionId) {
       listIds = [LISTS.trialUsersChurned]
     } else {
-      listIds = offerId ? [CHURNED_LIST_BY_OFFER_ID[offerId]].filter(Boolean) : []
+      // Add to the proper tier churned list AND the legacy by-billing churned
+      // list (dual-write transition), so both new and existing systems see them.
+      const tier = TIER_BY_OFFER_ID[offerId]
+      const billing = BILLING_BY_OFFER_ID[offerId]
+      listIds = [CHURNED_LIST_BY_TIER[tier], LEGACY_CHURNED_BY_BILLING[billing]].filter(Boolean)
       reason = listIds.length ? '' : 'no-churn-list-for-offer'
     }
-    // They churned: pull them out of the active and trial lists so Brevo matches Uscreen.
-    unlinkListIds = [LISTS.trialUsers, LISTS.monthlySubscribers, LISTS.annualSubscribers, LISTS.coachesPlanSubscribers, LISTS.failedPayments]
+    // They churned: pull them out of every active list, trial and failed-payment.
+    unlinkListIds = [LISTS.trialUsers, ...ALL_ACTIVE_LISTS, LISTS.failedPayments]
   } else if (eventType === 'ownership.created') {
     listIds = offerId ? (OWNERSHIP_LISTS_BY_OFFER_ID[offerId] || []) : []
     reason = listIds.length ? '' : 'no-ownership-list-for-offer'
@@ -214,12 +245,12 @@ export async function processUscreenPayload(data) {
       listIds = OWNERSHIP_LISTS_BY_OFFER_ID[offerId]
     } else if (offerId && TRIAL_ELIGIBLE_OFFER_IDS.has(offerId) && total === 0) {
       listIds = [LISTS.trialUsers]
-    } else if ((offerId === 183083 || offerId === 189392) && total !== undefined && total > 0) {
-      listIds = [LISTS.monthlySubscribers]
-    } else if ((offerId === 183092 || offerId === 189393) && total !== undefined && total > 0) {
-      listIds = [LISTS.annualSubscribers]
-    } else if (offerId === 202578 && total !== undefined && total > 0) {
-      listIds = [LISTS.coachesPlanSubscribers]
+    } else if (offerId && TIER_BY_OFFER_ID[offerId] && total !== undefined && total > 0) {
+      // Paid order: add to the proper tier active list AND the legacy by-billing
+      // active list (dual-write transition).
+      const tier = TIER_BY_OFFER_ID[offerId]
+      const billing = BILLING_BY_OFFER_ID[offerId]
+      listIds = [ACTIVE_LIST_BY_TIER[tier], LEGACY_ACTIVE_BY_BILLING[billing]].filter(Boolean)
     } else {
       reason = 'order-paid-no-list-rule'
     }
@@ -230,10 +261,9 @@ export async function processUscreenPayload(data) {
     reason = 'unhandled-event-type'
   }
 
-  // A paid order means they are active again: pull them out of churned and trial lists.
-  const PAID_ACTIVE_LISTS = [LISTS.monthlySubscribers, LISTS.annualSubscribers, LISTS.coachesPlanSubscribers]
-  if (eventType === 'order.paid' && listIds.some((id) => PAID_ACTIVE_LISTS.includes(id))) {
-    unlinkListIds = [LISTS.churnedMonthly, LISTS.churnedAnnual, LISTS.churnedCoaches, LISTS.trialUsersChurned, LISTS.trialUsers, LISTS.failedPayments]
+  // A paid order means they are active again: pull them out of every churned and trial list.
+  if (eventType === 'order.paid' && listIds.some((id) => ALL_ACTIVE_LISTS.includes(id))) {
+    unlinkListIds = [...ALL_CHURNED_LISTS, LISTS.trialUsersChurned, LISTS.trialUsers, LISTS.failedPayments]
   }
 
   if (!listIds.length) return { accepted: true, event: eventType, skipped: true, reason, offerId }
