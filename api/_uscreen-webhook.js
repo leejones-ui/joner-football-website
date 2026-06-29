@@ -125,12 +125,16 @@ function compactBrevoAttributes(attributes) {
   )
 }
 
-async function brevoUpsertContact({ email, listIds, name, attributes }) {
+async function brevoUpsertContact({ email, listIds, name, attributes, unlinkListIds = [] }) {
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey) return { skipped: true, reason: 'brevo-api-key-missing' }
 
   const cleanListIds = [...new Set(listIds.map(Number).filter((id) => Number.isFinite(id) && id > 0))]
   if (!cleanListIds.length) return { skipped: true, reason: 'no-list-ids' }
+
+  // Lists to remove the contact from in the same call, so Brevo mirrors Uscreen
+  // (a cancel pulls them out of active, a paid order pulls them out of churned).
+  const cleanUnlink = [...new Set((unlinkListIds || []).map(Number).filter((id) => Number.isFinite(id) && id > 0))].filter((id) => !cleanListIds.includes(id))
 
   const body = {
     email,
@@ -138,6 +142,7 @@ async function brevoUpsertContact({ email, listIds, name, attributes }) {
     updateEnabled: true,
     attributes: { ...attributes },
   }
+  if (cleanUnlink.length) body.unlinkListIds = cleanUnlink
   if (name && !body.attributes.FIRSTNAME) body.attributes.FIRSTNAME = name
 
   let response = await fetch('https://api.brevo.com/v3/contacts', {
@@ -183,6 +188,7 @@ export async function processUscreenPayload(data) {
   if (!EMAIL_RE.test(email)) return { accepted: true, event: eventType, skipped: true, reason: 'invalid-email' }
 
   let listIds = []
+  let unlinkListIds = []
   let reason = ''
 
   if (eventType === 'user.created') {
@@ -197,6 +203,8 @@ export async function processUscreenPayload(data) {
       listIds = offerId ? [CHURNED_LIST_BY_OFFER_ID[offerId]].filter(Boolean) : []
       reason = listIds.length ? '' : 'no-churn-list-for-offer'
     }
+    // They churned: pull them out of the active and trial lists so Brevo matches Uscreen.
+    unlinkListIds = [LISTS.trialUsers, LISTS.monthlySubscribers, LISTS.annualSubscribers, LISTS.coachesPlanSubscribers]
   } else if (eventType === 'ownership.created') {
     listIds = offerId ? (OWNERSHIP_LISTS_BY_OFFER_ID[offerId] || []) : []
     reason = listIds.length ? '' : 'no-ownership-list-for-offer'
@@ -220,9 +228,15 @@ export async function processUscreenPayload(data) {
     reason = 'unhandled-event-type'
   }
 
+  // A paid order means they are active again: pull them out of churned and trial lists.
+  const PAID_ACTIVE_LISTS = [LISTS.monthlySubscribers, LISTS.annualSubscribers, LISTS.coachesPlanSubscribers]
+  if (eventType === 'order.paid' && listIds.some((id) => PAID_ACTIVE_LISTS.includes(id))) {
+    unlinkListIds = [LISTS.churnedMonthly, LISTS.churnedAnnual, LISTS.churnedCoaches, LISTS.trialUsersChurned, LISTS.trialUsers]
+  }
+
   if (!listIds.length) return { accepted: true, event: eventType, skipped: true, reason, offerId }
 
-  const brevo = await brevoUpsertContact({ email, listIds, name, attributes })
+  const brevo = await brevoUpsertContact({ email, listIds, name, attributes, unlinkListIds })
   return { accepted: true, event: eventType, processed: true, offerId, brevo }
 }
 
