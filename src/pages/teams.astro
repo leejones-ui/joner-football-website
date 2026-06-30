@@ -7,6 +7,7 @@ import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 import SanityPageExtras from '../components/sanity/SanityPageExtras.astro'
 import PlayButtonVideo from '../components/PlayButtonVideo.astro'
 import ScrollRevealSection from '../components/ScrollRevealSection.astro'
+import CoachesHighlightsCarousel from '../components/CoachesHighlightsCarousel.astro'
 
 // Sliding trust ticker facts (shared style with /app/for-coaches and /programmes)
 const tickerFacts = [
@@ -18,11 +19,11 @@ const tickerFacts = [
   'Grassroots To Professional Videos',
 ]
 
-// Problem section cards (the days in between)
-const problems = [
-  { title: 'Training Nights Are Not Enough', body: 'Most players need more touches than team sessions can give them.' },
-  { title: 'Off-Season Drop-Off Is Real', body: 'Players improve during the season, then lose rhythm when training stops.' },
-  { title: 'Coaches Need A Way To Guide Homework', body: 'Without a clear plan, players either do nothing or train the wrong things.' }
+// Solution carousel slides (premium graphics, "what's inside" style like /app)
+const teamSlides = [
+  { image: '/images/teams/solution-maxplan.jpg', alt: 'Every player and coach gets the app on the Max Plan' },
+  { image: '/images/teams/solution-community.jpg', alt: 'Your own private team community inside the app' },
+  { image: '/images/teams/solution-homework.jpg', alt: 'Your coach can set the homework and send drills to players' }
 ]
 
 // "Who is it for" scroll-reveal callouts (mirrors the coaches page)
@@ -128,21 +129,30 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
       </div>
     </section>
 
-    {/* PROBLEM (the days in between) */}
-    <section class="bg-joner-black py-16 md:py-24">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="max-w-3xl mb-10 md:mb-14">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE REALITY</p>
-          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-6">Team Training Is Not Enough</h2>
-          <p class="font-body text-lg text-gray-300 max-w-2xl">Your players are with you 2 or 3 days a week. The days in between are where they pull ahead, or fall behind.</p>
+    {/* PROBLEM (image-led: mobile baked graphic, desktop photo + overlaid text) */}
+    <section class="relative overflow-hidden bg-joner-black">
+      {/* MOBILE: complete baked graphic */}
+      <div class="lg:hidden px-4 sm:px-6 py-12">
+        <img src="/images/teams/team-training-not-enough-mobile.jpg" alt="Team training is not enough. Your players are with you 2 or 3 days a week. The days in between are where they pull ahead or fall behind. Off-season drop-off is real. Coaches need a way to guide homework. Fully structured sessions with Max Plan." class="w-full rounded-2xl shadow-2xl" loading="lazy" />
+      </div>
+      {/* DESKTOP: landscape photo with overlaid text */}
+      <div class="hidden lg:block relative">
+        <div class="absolute inset-0">
+          <img src="/images/teams/team-training-not-enough-desktop.jpg" alt="Lee Jones coaching a group of players" class="h-full w-full object-cover object-center" loading="lazy" />
+          <div class="absolute inset-0 bg-gradient-to-r from-joner-black via-joner-black/85 to-joner-black/20"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-joner-black/70 via-transparent to-transparent"></div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {problems.map((p) => (
-            <article class="bg-joner-gray border border-gray-800 rounded-2xl p-6">
-              <h3 class="font-heading text-xl text-white uppercase leading-tight mb-3 tracking-wide">{p.title}</h3>
-              <p class="text-gray-300 font-body text-sm leading-relaxed">{p.body}</p>
-            </article>
-          ))}
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center min-h-[600px] py-20">
+          <div class="max-w-xl">
+            <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE REALITY</p>
+            <h2 class="font-heading text-5xl xl:text-6xl font-bold text-white uppercase leading-none mb-6">Team Training Is <span class="text-joner-red">Not Enough</span></h2>
+            <p class="font-body text-lg text-gray-200 mb-8 max-w-lg">Your players are with you 2 or 3 days a week. The days in between are where they pull ahead, or fall behind.</p>
+            <ul class="space-y-4">
+              <li class="flex items-center gap-3 font-heading uppercase text-white text-lg xl:text-xl tracking-wide"><span class="w-2.5 h-2.5 rounded-full bg-joner-red shrink-0"></span>Off-Season Drop-Off Is Real</li>
+              <li class="flex items-center gap-3 font-heading uppercase text-white text-lg xl:text-xl tracking-wide"><span class="w-2.5 h-2.5 rounded-full bg-joner-red shrink-0"></span>Coaches Need A Way To Guide Homework</li>
+              <li class="flex items-center gap-3 font-heading uppercase text-white text-lg xl:text-xl tracking-wide"><span class="w-2.5 h-2.5 rounded-full bg-joner-red shrink-0"></span>Fully Structured Sessions With Max Plan</li>
+            </ul>
+          </div>
         </div>
       </div>
     </section>
@@ -157,63 +167,22 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
       alt="Lee Jones coaching a team"
     />
 
-    {/* SOLUTION (how it works: whole squad in the app, private community, coach sends the work) */}
-    <section class="bg-joner-black py-16 md:py-24">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="max-w-3xl mb-10 md:mb-14">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE SOLUTION</p>
-          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-6">One App For Your Whole Squad</h2>
-          <p class="font-body text-lg text-gray-300 max-w-2xl">Every player training between sessions, a private space for your team, and you guiding the work. One clean setup.</p>
-        </div>
+    {/* SOLUTION (image carousel, "what's inside" style like /app) */}
+    <CoachesHighlightsCarousel heading="What Your Squad Gets" slides={teamSlides} />
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <article class="bg-joner-gray border border-gray-800 rounded-2xl p-6">
-            <span class="inline-flex w-12 h-12 rounded-full bg-joner-red/10 text-joner-red items-center justify-center mb-4">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
-            </span>
-            <h3 class="font-heading text-xl text-white uppercase leading-tight mb-3 tracking-wide">Every Player Gets The App</h3>
-            <p class="text-gray-300 font-body text-sm leading-relaxed">The full Joner Football App for your whole squad. The 100 Day Programme, ball mastery, finishing and more, ready to train at home.</p>
-          </article>
-
-          <article class="bg-joner-gray border border-gray-800 rounded-2xl p-6">
-            <span class="inline-flex w-12 h-12 rounded-full bg-joner-red/10 text-joner-red items-center justify-center mb-4">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </span>
-            <h3 class="font-heading text-xl text-white uppercase leading-tight mb-3 tracking-wide">Your Own Team Community</h3>
-            <p class="text-gray-300 font-body text-sm leading-relaxed">A private team space inside the app. One place for your squad to train together, in season and off.</p>
-          </article>
-
-          <article class="bg-joner-gray border border-gray-800 rounded-2xl p-6">
-            <span class="inline-flex w-12 h-12 rounded-full bg-joner-red/10 text-joner-red items-center justify-center mb-4">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
-            </span>
-            <h3 class="font-heading text-xl text-white uppercase leading-tight mb-3 tracking-wide">You Send The Work</h3>
-            <p class="text-gray-300 font-body text-sm leading-relaxed">Send drills, programmes and homework straight to your players. Guide exactly what they work on between sessions.</p>
-          </article>
-        </div>
-
-        <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div class="rounded-2xl border border-gray-800 bg-joner-gray/40 p-6">
-            <p class="font-heading text-joner-red text-sm uppercase tracking-widest mb-2">In Season</p>
-            <p class="text-gray-300 font-body text-sm leading-relaxed">Send homework based on what each player needs that week.</p>
-          </div>
-          <div class="rounded-2xl border border-gray-800 bg-joner-gray/40 p-6">
-            <p class="font-heading text-joner-red text-sm uppercase tracking-widest mb-2">Off Season</p>
-            <p class="text-gray-300 font-body text-sm leading-relaxed">Assign programmes so players keep improving when the team is not training.</p>
-          </div>
-        </div>
-
-        <div class="mt-12">
-          <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">BOOK A DEMO</a>
-        </div>
-      </div>
-    </section>
-
-    {/* WHO IS TEACHING YOU (clean photo + live text, responsive, no baked graphic) */}
+    {/* WHO IS TEACHING YOU (matches the coaches page exactly: mobile baked graphic, desktop live text + photo) */}
     <section class="bg-joner-gray py-12 md:py-20">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          <div class="order-2 lg:order-1 flex flex-col justify-center">
+        {/* MOBILE: complete graphic (heading, bio and quote baked in) */}
+        <div class="lg:hidden">
+          <img src="/images/coaches-only/lee-teaching-mobile.jpg" alt="Who is teaching you: Lee Jones, over 20 years coaching, founder of Joner Football" class="w-full rounded-2xl shadow-2xl" loading="lazy" />
+          <div class="text-center mt-7">
+            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">BOOK A DEMO</a>
+          </div>
+        </div>
+        {/* DESKTOP: live text + clean coaching photo */}
+        <div class="hidden lg:grid grid-cols-2 gap-16">
+          <div class="flex flex-col justify-center">
             <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">WHO IS TEACHING YOU</p>
             <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES.</h2>
             <p class="text-gray-300 font-body text-lg mb-6">Over 20 years coaching players, coaches, and parents around the world. From grassroots kids to professional players.</p>
@@ -226,7 +195,7 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
             </blockquote>
             <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex self-start">BOOK A DEMO</a>
           </div>
-          <div class="order-1 lg:order-2 overflow-hidden rounded-2xl shadow-2xl">
+          <div class="overflow-hidden rounded-lg shadow-2xl">
             <img src="/images/programmes/lee-hero-jf.jpg" alt="Lee Jones coaching at a Joner Football session" class="w-full h-full object-cover object-[70%_50%]" loading="lazy" />
           </div>
         </div>
