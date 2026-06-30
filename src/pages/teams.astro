@@ -23,7 +23,8 @@ const tickerFacts = [
 const teamSlides = [
   { image: '/images/teams/solution-maxplan.jpg', alt: 'Every player and coach gets the app on the Max Plan' },
   { image: '/images/teams/solution-community.jpg', alt: 'Your own private team community inside the app' },
-  { image: '/images/teams/solution-homework.jpg', alt: 'Your coach can set the homework and send drills to players' }
+  { image: '/images/teams/solution-homework.jpg', alt: 'Your coach can set the homework and send drills to players' },
+  { image: '/images/teams/solution-direct-access.jpg', alt: 'Coaches get direct access to Joner and his methods' }
 ]
 
 // "Who is it for" scroll-reveal callouts (mirrors the coaches page)
@@ -175,19 +176,21 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* MOBILE: complete graphic (heading, bio and quote baked in) */}
         <div class="lg:hidden">
-          <img src="/images/coaches-only/lee-teaching-mobile.jpg" alt="Who is teaching you: Lee Jones, over 20 years coaching, founder of Joner Football" class="w-full rounded-2xl shadow-2xl" loading="lazy" />
+          <img src="/images/teams/lee-teaching-mobile-teams.jpg" alt="Who is teaching you: Lee Jones, over 20 years coaching, founder of Joner Football, trusted by players and coaches worldwide" class="w-full rounded-2xl shadow-2xl" loading="lazy" />
           <div class="text-center mt-7">
             <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">BOOK A DEMO</a>
           </div>
         </div>
-        {/* DESKTOP: live text + clean coaching photo */}
+        {/* DESKTOP: live text (matches the mobile graphic) + clean coaching photo */}
         <div class="hidden lg:grid grid-cols-2 gap-16">
           <div class="flex flex-col justify-center">
             <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">WHO IS TEACHING YOU</p>
             <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES.</h2>
-            <p class="text-gray-300 font-body text-lg mb-6">Over 20 years coaching players, coaches, and parents around the world. From grassroots kids to professional players.</p>
+            <p class="text-gray-300 font-body text-lg mb-4">Over 20 years coaching players, coaches, and parents around the world. From grassroots kids to professional players.</p>
+            <p class="font-heading text-joner-red text-xl uppercase italic leading-snug mb-4">Built by Lee Jones, trusted by players and coaches worldwide.</p>
+            <p class="text-gray-300 font-body text-base leading-relaxed mb-6">I have spent years creating sessions that help players improve faster, with over 285,000 players and coaches following Joner Football across YouTube and social media. Team Subscriptions bring that same proven training system into your club, so your players keep developing away from team sessions and your coaches have a clear, trusted library to support them every week.</p>
             <blockquote class="border-l-4 border-joner-red pl-5 py-2 mb-8">
-              <p class="font-heading text-xl md:text-2xl text-white italic leading-snug">"I built this app to spread the knowledge for all coaches around the world."</p>
+              <p class="font-heading text-xl md:text-2xl text-white italic leading-snug">"I built this app to help players, coaches, clubs and organisations around the world improve all in one place."</p>
               <footer class="mt-3">
                 <p class="font-heading text-base text-white not-italic">Lee Jones</p>
                 <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-1">Founder, Joner Football</p>
@@ -196,7 +199,7 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
             <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex self-start">BOOK A DEMO</a>
           </div>
           <div class="overflow-hidden rounded-lg shadow-2xl">
-            <img src="/images/programmes/lee-hero-jf.jpg" alt="Lee Jones coaching at a Joner Football session" class="w-full h-full object-cover object-[70%_50%]" loading="lazy" />
+            <img src="/images/teams/lee-about-desktop.jpg" alt="Lee Jones holding a ball at a Joner Football session" class="w-full h-full object-cover object-center" loading="lazy" />
           </div>
         </div>
       </div>
