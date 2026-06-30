@@ -16,11 +16,11 @@ const LISTS = {
   churnedAnnual: Number(process.env.BREVO_CHURNED_ANNUAL_LIST_ID || 31),
   churnedCoaches: Number(process.env.BREVO_CHURNED_COACHES_LIST_ID || 32),
   failedPayments: Number(process.env.BREVO_FAILED_PAYMENTS_LIST_ID || 53),
-  // Proper tier lists (current Starter/Plus/Max pricing). Defaults are the real
-  // Brevo list IDs so this works without extra Vercel env vars.
-  starterActive: Number(process.env.BREVO_STARTER_ACTIVE_LIST_ID || 54),
-  plusActive: Number(process.env.BREVO_PLUS_ACTIVE_LIST_ID || 55),
-  maxActive: Number(process.env.BREVO_MAX_ACTIVE_LIST_ID || 56),
+  // Tier lists. Active reuses the EXISTING real lists 22/23/24 (already named
+  // Starter/Plus/Max Active). Churned uses the new tier lists 57/58/59.
+  starterActive: Number(process.env.BREVO_STARTER_ACTIVE_LIST_ID || 22),
+  plusActive: Number(process.env.BREVO_PLUS_ACTIVE_LIST_ID || 23),
+  maxActive: Number(process.env.BREVO_MAX_ACTIVE_LIST_ID || 24),
   starterChurned: Number(process.env.BREVO_STARTER_CHURNED_LIST_ID || 57),
   plusChurned: Number(process.env.BREVO_PLUS_CHURNED_LIST_ID || 58),
   maxChurned: Number(process.env.BREVO_MAX_CHURNED_LIST_ID || 59),
@@ -231,8 +231,7 @@ export async function processUscreenPayload(data) {
       // Add to the proper tier churned list AND the legacy by-billing churned
       // list (dual-write transition), so both new and existing systems see them.
       const tier = TIER_BY_OFFER_ID[offerId]
-      const billing = BILLING_BY_OFFER_ID[offerId]
-      listIds = [CHURNED_LIST_BY_TIER[tier], LEGACY_CHURNED_BY_BILLING[billing]].filter(Boolean)
+      listIds = [CHURNED_LIST_BY_TIER[tier]].filter(Boolean)
       reason = listIds.length ? '' : 'no-churn-list-for-offer'
     }
     // They churned: pull them out of every active list, trial and failed-payment.
@@ -246,11 +245,9 @@ export async function processUscreenPayload(data) {
     } else if (offerId && TRIAL_ELIGIBLE_OFFER_IDS.has(offerId) && total === 0) {
       listIds = [LISTS.trialUsers]
     } else if (offerId && TIER_BY_OFFER_ID[offerId] && total !== undefined && total > 0) {
-      // Paid order: add to the proper tier active list AND the legacy by-billing
-      // active list (dual-write transition).
+      // Paid order: add to the proper tier active list (22/23/24).
       const tier = TIER_BY_OFFER_ID[offerId]
-      const billing = BILLING_BY_OFFER_ID[offerId]
-      listIds = [ACTIVE_LIST_BY_TIER[tier], LEGACY_ACTIVE_BY_BILLING[billing]].filter(Boolean)
+      listIds = [ACTIVE_LIST_BY_TIER[tier]].filter(Boolean)
     } else {
       reason = 'order-paid-no-list-rule'
     }
