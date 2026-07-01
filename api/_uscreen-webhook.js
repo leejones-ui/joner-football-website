@@ -1,4 +1,54 @@
+import crypto from 'node:crypto'
+
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+
+// --- Meta CAPI: bridge PAID conversions so Meta optimises toward payers, not
+// just free leads. Additive and fully guarded: never affects the Brevo sync. ---
+const META_PIXEL_ID = '232666285545279'
+
+function sha256Hex(value) {
+  const v = String(value || '').trim().toLowerCase()
+  if (!v) return undefined
+  return crypto.createHash('sha256').update(v).digest('hex')
+}
+
+async function sendPaidConversionToMeta(data, email, total) {
+  const token = process.env.META_CAPI_TOKEN
+  if (!token) return { skipped: 'no-capi-token' }
+  const em = sha256Hex(email)
+  if (!em) return { skipped: 'no-email' }
+  const orderId = String(data.order_id || data.transaction_id || data.id || Date.now())
+  // Uscreen charges in USD by default (join page converts per country), so use
+  // the order's real currency and default to USD.
+  const currency = String(data.currency || data.localized_amounts?.currency || 'USD').trim().toUpperCase().slice(0, 10)
+  const value = Number.isFinite(Number(total)) ? Number(total) : undefined
+  const payload = {
+    data: [{
+      event_name: 'CompleteRegistration',
+      event_time: Math.floor(Date.now() / 1000),
+      event_id: `Purchase.${orderId}`,
+      action_source: 'website',
+      event_source_url: 'https://app.jonerfootball.com/checkout/success',
+      user_data: { em: [em] },
+      custom_data: {
+        currency,
+        value,
+        subscription_plan: String(data.offer_title || data.subscription_title || data.title || '').slice(0, 120) || undefined,
+      },
+    }],
+  }
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${META_PIXEL_ID}/events?access_token=${encodeURIComponent(token)}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const text = await r.text().catch(() => '')
+    return { ok: r.ok, status: r.status, eventId: `Purchase.${orderId}`, body: text.slice(0, 200) }
+  } catch (e) {
+    return { error: String(e?.message || e).slice(0, 160) }
+  }
+}
 
 const LISTS = {
   appUsersMega: Number(process.env.BREVO_APP_USERS_MEGA_LIST_ID || 36),
@@ -248,6 +298,13 @@ export async function processUscreenPayload(data) {
       // Paid order: add to the proper tier active list (22/23/24).
       const tier = TIER_BY_OFFER_ID[offerId]
       listIds = [ACTIVE_LIST_BY_TIER[tier]].filter(Boolean)
+      // Bridge this PAID conversion to Meta CAPI (guarded, never blocks Brevo).
+      try {
+        const meta = await sendPaidConversionToMeta(data, email, total)
+        console.info('Uscreen->Meta paid conversion', meta)
+      } catch (e) {
+        console.error('Meta paid conversion failed (non-fatal)', e?.message || String(e))
+      }
     } else {
       reason = 'order-paid-no-list-rule'
     }

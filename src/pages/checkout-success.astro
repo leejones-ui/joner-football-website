@@ -37,14 +37,11 @@ const sanityPage = await fetchSanityPage('checkout-success')
       (function () {
         function fireCompleteRegistration() {
           if (!window.JonerTracking || typeof window.JonerTracking.trackEvent !== 'function') return;
-          var params = new URLSearchParams(window.location.search || '');
-          var product = params.get('product') || params.get('o') || 'joner_app';
-          window.JonerTracking.trackEvent('CompleteRegistration', {
-            custom_data: {
-              content_name: product,
-              status: 'completed_registration'
-            }
-          });
+          // CompleteRegistration is now sent SERVER-SIDE from the Uscreen paid-order
+          // webhook (api/_uscreen-webhook.js -> Meta CAPI) with the real order id and
+          // value, which is reliable and avoids double-counting. The browser fire is
+          // intentionally disabled here so a sale is only ever counted once.
+          return;
         }
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fireCompleteRegistration);
         else fireCompleteRegistration();
