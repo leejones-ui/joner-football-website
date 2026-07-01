@@ -18,9 +18,11 @@ async function sendPaidConversionToMeta(data, email, total) {
   const em = sha256Hex(email)
   if (!em) return { skipped: 'no-email' }
   const orderId = String(data.order_id || data.transaction_id || data.id || Date.now())
-  // Uscreen charges in USD by default (join page converts per country), so use
-  // the order's real currency and default to USD.
-  const currency = String(data.currency || data.localized_amounts?.currency || 'USD').trim().toUpperCase().slice(0, 10)
+  // Uscreen charges customers in their local currency (USD/GBP/AUD/EUR/CAD...).
+  // Send the order's REAL currency + value; Meta auto-converts every currency to
+  // the ad account currency (AUD) for reporting. Fallback to AUD (account
+  // currency) only when Uscreen omits the currency.
+  const currency = String(data.currency || data.localized_amounts?.currency || 'AUD').trim().toUpperCase().slice(0, 10)
   const value = Number.isFinite(Number(total)) ? Number(total) : undefined
   const payload = {
     data: [{
