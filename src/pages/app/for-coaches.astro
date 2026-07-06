@@ -145,18 +145,16 @@ const callouts = [
   { label: '1on1 & Private Trainers', side: 'right', top: '82%' }
 ]
 
-// "Everything included" accordion (closer-look style): what you get inside the
-// Max Plan. `label` is the pill, `title` + `body` show in the panel, `image` is
-// the stage graphic (placeholders for now, swap per item later).
+// "Everything included" tabs: pills on the left, the feature graphic on the
+// right. The selling line lives ON the image (baked into Lee's graphics, or
+// revealed on hover for the photo slides) so there is no separate text column.
+// Graphics live in /images/coaches-only/features/.
 const included = [
-  { label: 'DM Coach Lee', title: 'Access To DM Lee', body: 'Direct message me any question. For all Max users inside the JF App.', image: '/images/coaches-only/coaching-the-coaches.webp' },
-  { label: 'PDF Session Plans', title: 'PDF Session Plans', body: 'Free PDF session plans included, ready to print and take onto the pitch.', image: '/images/coaches-only/session-planning.webp' },
-  { label: 'Voice Over Series', title: 'Voice Over Series', body: 'A detailed voice over series where I break down my drills in full.', image: '/images/coaches-only/voice-over-series.webp' },
-  { label: 'Coaches Community', title: 'Access To A Coaches Community', body: 'Get access to thousands of other coaches inside the App.', image: '/images/coaches-only/team-training.webp' },
-  { label: 'Seminars', title: 'Access To Seminars', body: 'Watch me deliver seminars on specific coaching topics.', image: '/images/coaches-only/coaching-professionals.webp' },
-  { label: 'Training Resources', title: 'Access To Training Resources', body: 'The resources I use in my own training, broken down so you can use them too. Free for every user.', image: '/images/coaches-only/app-session-planner.webp' },
-  { label: 'Study The Game', title: 'Study The Game', body: 'Game analysis footage that shows you how to read the game and take it into your sessions.', image: '/images/coaches-only/full-training-sessions.webp' },
-  { label: 'Live Training Sessions', title: 'Access To Live Training Sessions', body: 'Watch me coach live. See the standards, the language, and the detail as it happens.', image: '/images/coaches-only/extras.webp' }
+  { label: 'DM Coach Lee', image: '/images/coaches-only/features/dm-lee-feature.jpg', blurb: 'Direct message Lee any question. For all Max users inside the app.' },
+  { label: 'PDF Session Plans', image: '/images/coaches-only/features/pdf-session-planner.jpg', blurb: '' },
+  { label: 'Voice Over Drills', image: '/images/coaches-only/features/voice-over-drills.jpg', blurb: '' },
+  { label: 'Live Training Sessions', image: '/images/coaches-only/features/live-training-sessions.jpg', blurb: 'Watch Lee coach live. The standards, the language and the detail as it happens.' },
+  { label: 'Seminars', image: '/images/coaches-only/features/mindset-seminar.jpg', blurb: 'Watch Lee deliver seminars on the topics that shape better players.' }
 ]
 
 const faqs: Array<{ q: string; a: string }> = [
@@ -441,8 +439,8 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
         </div>
 
         <div class="coach-closer-shell rounded-2xl md:rounded-[2rem] bg-[#0f0f0f] border border-white/5 overflow-hidden">
-          <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,380px)_1fr]">
-            <div class="coach-closer-pills p-5 sm:p-8 lg:p-10 lg:py-14 flex flex-col gap-3 order-2 lg:order-1">
+          <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,340px)_1fr]">
+            <div class="coach-closer-pills p-5 sm:p-8 lg:p-10 lg:py-14 flex flex-col gap-3 order-2 lg:order-1 lg:justify-center">
               {included.map((f, index) => (
                 <div class="coach-closer-pill" data-coach-pill={index} data-open={index === 0 ? 'true' : 'false'}>
                   <button
@@ -457,33 +455,43 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
                     </span>
                     <span class="font-body text-base sm:text-[15px] font-medium">{f.label}</span>
                   </button>
+                  {/* MOBILE: feature graphic (no left-hand text; selling line sits on the image) */}
                   <div
                     id={`coach-closer-panel-${index}`}
-                    class="coach-closer-panel grid grid-rows-[0fr]"
+                    class="coach-closer-panel grid grid-rows-[0fr] lg:hidden"
                     aria-hidden={index === 0 ? 'false' : 'true'}
                   >
                     <div class="overflow-hidden">
-                      <div class="coach-closer-panel-content pl-13 pr-4 pt-3 pb-2 sm:pl-14">
-                        <h3 class="font-heading text-xl text-white uppercase mb-2 tracking-wide">{f.title}</h3>
-                        <p class="text-gray-400 font-body text-sm leading-relaxed">{f.body}</p>
+                      <div class="coach-closer-panel-content pt-3 pb-2">
+                        <div class="relative w-full aspect-video rounded-xl overflow-hidden">
+                          <img src={f.image} alt={f.label} class="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                          {f.blurb && (
+                            <div class="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/85 via-black/35 to-transparent">
+                              <p class="font-body text-white text-sm leading-snug">{f.blurb}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <img src={f.image} alt={f.title} class="mt-1 mb-1 w-full aspect-video rounded-xl object-cover lg:hidden" loading="lazy" />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div class="coach-closer-stage relative bg-black hidden lg:block order-1 lg:order-2 lg:aspect-auto lg:min-h-[620px] overflow-hidden">
+            <div class="coach-closer-stage relative bg-black hidden lg:block order-1 lg:order-2 lg:min-h-[600px] overflow-hidden">
               {included.map((f, index) => (
-                <img
-                  src={f.image}
-                  alt={f.title}
-                  class="coach-closer-stage-image absolute inset-0 w-full h-full object-contain p-6 sm:p-10 lg:p-16"
+                <div
+                  class="coach-closer-stage-image absolute inset-0"
                   data-coach-stage-image={index}
                   data-active={index === 0 ? 'true' : 'false'}
-                  loading="lazy"
-                />
+                >
+                  <img src={f.image} alt={f.label} class="absolute inset-0 w-full h-full object-cover object-center" loading="lazy" />
+                  {f.blurb && (
+                    <div class="coach-closer-blurb absolute inset-x-0 bottom-0 p-8 lg:p-10 bg-gradient-to-t from-black/90 via-black/45 to-transparent">
+                      <p class="font-body text-white text-lg lg:text-xl max-w-xl leading-snug">{f.blurb}</p>
+                    </div>
+                  )}
+                </div>
               ))}
               <div class="coach-closer-stage-glow absolute inset-0 pointer-events-none"></div>
             </div>
@@ -674,6 +682,9 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
       background: radial-gradient(60% 60% at 80% 20%, rgba(227, 6, 19, 0.10), transparent 60%), radial-gradient(50% 50% at 20% 80%, rgba(255, 255, 255, 0.04), transparent 60%);
       opacity: 0.85;
     }
+    /* Selling line on the stage image: revealed on hover (desktop) */
+    .coach-closer-blurb { opacity: 0; transition: opacity 320ms cubic-bezier(0.32, 0.72, 0, 1); }
+    .coach-closer-stage:hover .coach-closer-stage-image[data-active='true'] .coach-closer-blurb { opacity: 1; }
     .coach-closer-pill-btn {
       background: #1c1c1c;
       transition: background-color 320ms cubic-bezier(0.32, 0.72, 0, 1), transform 320ms cubic-bezier(0.32, 0.72, 0, 1);
@@ -716,6 +727,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
       .coach-closer-panel,
       .coach-closer-panel-content { transition: none !important; }
       .coach-closer-stage-image { filter: none; transform: none; }
+      .coach-closer-blurb { opacity: 1; }
     }
 
     @media (max-width: 767px) {
