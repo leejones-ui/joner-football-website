@@ -63,7 +63,7 @@ const filmRoom = [
         <video
           class="al-hero-video al-hero-reveal"
           src="/videos/about-lee-hero.mp4"
-          muted loop playsinline preload="auto" aria-hidden="true"
+          muted loop playsinline preload="none" aria-hidden="true"
         ></video>
         <div class="al-spot" aria-hidden="true"></div>
         <span class="al-face-hint" aria-hidden="true">Move to reveal</span>
@@ -160,101 +160,119 @@ const filmRoom = [
       </div>
     </section>
 
-    <!-- LIBRARY: horizontal sideways gallery -->
+    <!-- LIBRARY: collage wall over a fixed hero backdrop -->
     <section class="al-gallery" id="al-gallery">
+
+      <div class="al-gallery-bg" id="al-gallery-bg" aria-hidden="true">
+        <img src="/images/about-lee/new-hero.jpg" alt="" loading="lazy" decoding="async" />
+      </div>
+
+      <div class="al-gallery-lead">
+        <p class="al-eyebrow">THE LIBRARY</p>
+        <p class="al-gallery-lead-line">Every drill. Every camp.<br /><em>Every session.</em></p>
+      </div>
+
       <div class="al-gallery-viewport" id="al-gallery-viewport">
         <div class="al-gallery-track" id="al-gallery-track">
 
-          <div class="al-panel al-panel-intro">
-            <p class="al-eyebrow">THE LIBRARY</p>
-            <h2 class="al-gallery-h">A life in<br /><em>pictures.</em></h2>
-            <p class="al-gallery-hint">SCROLL <span class="al-arrow">&rarr;</span></p>
+          <div class="al-col al-col-lead" aria-hidden="true"></div>
+
+          <div class="al-col al-col-high">
+            <figure class="al-tile al-tile-wide">
+              <span class="al-tile-label">HARBOUR BRIDGE</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/harbour.jpg" alt="Lee walking with a football at Sydney Harbour Bridge" loading="lazy" decoding="async" /></div>
+            </figure>
           </div>
 
-          <figure class="al-panel al-panel-wide al-bw">
-            <div class="al-panel-frame"><img src="/images/about-lee/empty-shed.jpg" alt="Lee and Carolina with arms raised inside the empty warehouse that became the Joner Football HQ" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title"><em>Day one.</em> An empty HQ!</span><span class="al-single-meta">BELROSE · BEFORE</span></figcaption>
-          </figure>
+          <div class="al-col al-col-low">
+            <figure class="al-tile al-tile-sm al-bw">
+              <span class="al-tile-label">CAMP DAY</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/camp-ball.jpg" alt="Lee on the ball at a Joner Football camp" loading="lazy" decoding="async" /></div>
+            </figure>
+            <figure class="al-tile al-tile-sm">
+              <span class="al-tile-label">SYDNEY</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/young-pros.jpg" alt="Lee with two young professional players on a Sydney pitch" loading="lazy" decoding="async" /></div>
+            </figure>
+          </div>
 
-          <figure class="al-panel al-panel-tall al-bw">
-            <div class="al-panel-frame"><img src="/images/about-lee/camp-ball.jpg" alt="Lee on the ball at a Joner Football camp" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">On the ball.</span><span class="al-single-meta">CAMP DAY</span></figcaption>
-          </figure>
+          <div class="al-col al-col-mid">
+            <figure class="al-tile al-tile-lg al-tile-video">
+              <span class="al-tile-label">BELROSE</span>
+              <div class="al-tile-frame"><video src="/videos/about-lee-kick-reel.mp4" muted loop playsinline preload="none" aria-label="Lee striking balls inside the Joner Football HQ"></video></div>
+            </figure>
+          </div>
 
-          <figure class="al-panel al-panel-tall">
-            <div class="al-panel-frame"><img src="/images/about-lee/lefondre.jpg" alt="Lee Jones with striker Adam Le Fondre" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">Adam Le Fondre.</span><span class="al-single-meta">TRAINING PROS</span></figcaption>
-          </figure>
+          <div class="al-col al-col-high">
+            <figure class="al-tile al-tile-sm">
+              <span class="al-tile-label">TRAINING PROS</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/lefondre.jpg" alt="Lee Jones with striker Adam Le Fondre" loading="lazy" decoding="async" /></div>
+            </figure>
+            <figure class="al-tile al-tile-sm">
+              <span class="al-tile-label">TELEVISION</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/studio.jpg" alt="Lee smiling in the television studio" loading="lazy" decoding="async" /></div>
+            </figure>
+          </div>
 
-          <figure class="al-panel al-panel-wide">
-            <div class="al-panel-frame"><img src="/images/about-lee/harbour.jpg" alt="Lee walking with a football at Sydney Harbour Bridge" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">From Sydney <em>to the world.</em></span><span class="al-single-meta">HARBOUR BRIDGE</span></figcaption>
-          </figure>
+          <div class="al-col al-col-low">
+            <figure class="al-tile al-tile-wide">
+              <span class="al-tile-label">CHANNEL SEVEN · 2023</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/world-cup-desk.jpg" alt="Lee on the FIFA Womens World Cup highlights desk" loading="lazy" decoding="async" /></div>
+            </figure>
+          </div>
 
-          <figure class="al-panel al-panel-tall">
-            <div class="al-panel-frame"><img src="/images/about-lee/young-pros.jpg" alt="Lee with two young professional players on a Sydney pitch" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">Pros in the making.</span><span class="al-single-meta">SYDNEY</span></figcaption>
-          </figure>
+          <div class="al-col al-col-mid">
+            <figure class="al-tile al-tile-lg al-bw">
+              <span class="al-tile-label">NIKE F.C. · NIGHT</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/nike-night.jpg" alt="Black and white photo of Lee driving the ball forward at a Nike FC night session" loading="lazy" decoding="async" /></div>
+            </figure>
+          </div>
 
-          <figure class="al-panel al-panel-full">
-            <div class="al-panel-frame"><img src="/images/about-lee/new-hero.jpg" alt="Lee coaching at sunset in a Joner Football hoodie, whistle in hand" loading="lazy" /></div>
-            <figcaption class="al-panel-cap al-panel-cap-overlay"><span class="al-panel-title"><em>Last light.</em> Still on the grass.</span><span class="al-single-meta">SUNSET SESSIONS</span></figcaption>
-          </figure>
+          <div class="al-col al-col-high">
+            <figure class="al-tile al-tile-md">
+              <span class="al-tile-label">MINDSET SEMINAR</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/seminar.jpg" alt="Lee presenting a Joner Football mindset seminar" loading="lazy" decoding="async" /></div>
+            </figure>
+            <figure class="al-tile al-tile-sm al-bw">
+              <span class="al-tile-label">OPTUS SPORT · 2021</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/cage.jpg" alt="Lee on the ball during an Optus Sport shoot" loading="lazy" decoding="async" /></div>
+            </figure>
+          </div>
 
-          <figure class="al-panel al-panel-wide">
-            <div class="al-panel-frame"><img src="/images/about-lee/world-cup-desk.jpg" alt="Lee on the FIFA Womens World Cup highlights desk" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">The World Cup desk.</span><span class="al-single-meta">CHANNEL SEVEN · 2023</span></figcaption>
-          </figure>
+          <div class="al-col al-col-low">
+            <figure class="al-tile al-tile-wide al-tile-video">
+              <span class="al-tile-label">ON SET · THE WORK NEVER STOPS</span>
+              <div class="al-tile-frame"><video src="/videos/about-lee-on-set.mp4" muted loop playsinline preload="none" aria-label="Lee filmed by a camera crew on set"></video></div>
+            </figure>
+          </div>
 
-          <figure class="al-panel al-panel-tall">
-            <div class="al-panel-frame"><img src="/images/about-lee/studio.jpg" alt="Lee smiling in the television studio" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">Match day media.</span><span class="al-single-meta">TELEVISION</span></figcaption>
-          </figure>
+          <div class="al-col al-col-mid">
+            <figure class="al-tile al-tile-sm">
+              <span class="al-tile-label">CAMPS</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/camp-family.jpg" alt="Lee with around one hundred camp players, footballs spelling JONER" loading="lazy" decoding="async" /></div>
+            </figure>
+            <figure class="al-tile al-tile-sm al-bw">
+              <span class="al-tile-label">INDOOR NIGHTS · 2020</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/arena.jpg" alt="Lee smiling in a dark indoor football arena" loading="lazy" decoding="async" /></div>
+            </figure>
+          </div>
 
-          <figure class="al-panel al-panel-wide">
-            <div class="al-panel-frame"><img src="/images/about-lee/seminar.jpg" alt="Lee presenting a Joner Football mindset seminar" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">Mindset seminar.</span><span class="al-single-meta">JFP HQ</span></figcaption>
-          </figure>
+          <div class="al-col al-col-high">
+            <figure class="al-tile al-tile-sm al-bw">
+              <span class="al-tile-label">BELROSE · BEFORE</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/empty-shed.jpg" alt="Lee and Carolina inside the empty warehouse that became the Joner Football HQ" loading="lazy" decoding="async" /></div>
+            </figure>
+            <figure class="al-tile al-tile-sm">
+              <span class="al-tile-label">AUTHOR · PENGUIN</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/books.jpg" alt="Lee holding two Joner Football books published with Penguin" loading="lazy" decoding="async" /></div>
+            </figure>
+          </div>
 
-          <figure class="al-panel al-panel-tall al-panel-video">
-            <div class="al-panel-frame"><video src="/videos/about-lee-kick-reel.mp4" muted loop playsinline preload="metadata" aria-label="Lee striking balls inside the Joner Football HQ"></video></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">Reps inside the HQ.</span><span class="al-single-meta">BELROSE</span></figcaption>
-          </figure>
-
-          <figure class="al-panel al-panel-tall al-bw">
-            <div class="al-panel-frame"><img src="/images/about-lee/cage.jpg" alt="Lee on the ball during an Optus Sport shoot" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">On set with Optus Sport.</span><span class="al-single-meta">2021</span></figcaption>
-          </figure>
-
-          <figure class="al-panel al-panel-full al-bw">
-            <div class="al-panel-frame"><img src="/images/about-lee/nike-night.jpg" alt="Black and white photo of Lee driving the ball forward at a Nike FC night session" loading="lazy" /></div>
-            <figcaption class="al-panel-cap al-panel-cap-overlay"><span class="al-panel-title">The standard <em>does not sleep.</em></span><span class="al-single-meta">NIKE F.C. · NIGHT</span></figcaption>
-          </figure>
-
-          <figure class="al-panel al-panel-wide al-panel-video">
-            <div class="al-panel-frame"><video src="/videos/about-lee-on-set.mp4" muted loop playsinline preload="metadata" aria-label="Lee filmed by a camera crew on set"></video></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">Behind the camera.</span><span class="al-single-meta">THE WORK NEVER STOPS</span></figcaption>
-          </figure>
-
-          <figure class="al-panel al-panel-tall">
-            <div class="al-panel-frame"><img src="/images/about-lee/camp-family.jpg" alt="Lee with around one hundred camp players, footballs spelling JONER" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">The Joner family.</span><span class="al-single-meta">CAMPS</span></figcaption>
-          </figure>
-
-          <figure class="al-panel al-panel-tall al-bw">
-            <div class="al-panel-frame"><img src="/images/about-lee/arena.jpg" alt="Lee smiling in a dark indoor football arena" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">Indoor nights.</span><span class="al-single-meta">2020</span></figcaption>
-          </figure>
-
-          <figure class="al-panel al-panel-tall">
-            <div class="al-panel-frame"><img src="/images/about-lee/books.jpg" alt="Lee holding two Joner Football books published with Penguin" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">Two books. <em>Penguin.</em></span><span class="al-single-meta">AUTHOR</span></figcaption>
-          </figure>
-
-          <figure class="al-panel al-panel-wide">
-            <div class="al-panel-frame"><img src="/images/about-lee/hq.jpg" alt="Lee standing outside the Joner Football HQ building in Belrose" loading="lazy" /></div>
-            <figcaption class="al-panel-cap"><span class="al-panel-title">The JF HQ, <em>today.</em></span><span class="al-single-meta">BELROSE · SYDNEY</span></figcaption>
-          </figure>
+          <div class="al-col al-col-low">
+            <figure class="al-tile al-tile-wide">
+              <span class="al-tile-label">THE JF HQ · TODAY</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/hq.jpg" alt="Lee standing outside the Joner Football HQ building in Belrose" loading="lazy" decoding="async" /></div>
+            </figure>
+          </div>
 
         </div>
       </div>
@@ -495,33 +513,50 @@ html.lenis, html.lenis body { height: auto; }
 .al-creed-2 { font-size: clamp(2rem, 6vw, 5.4rem); color: var(--al-gold); }
 .al-creed-3 { color: transparent; -webkit-text-stroke: 1.5px var(--al-gold); }
 
-/* Library: horizontal sideways gallery */
+/* Library: collage wall over a fixed hero backdrop */
 .al-single-meta { font-size: 0.58rem; letter-spacing: 0.34em; color: var(--al-mute); }
-.al-gallery { position: relative; background: var(--al-ink); }
-.al-gallery-viewport { height: 100svh; overflow: hidden; }
-.al-gallery-track { display: flex; align-items: center; height: 100%; gap: clamp(22px, 3vw, 56px); padding: 0 clamp(24px, 8vw, 140px); width: max-content; will-change: transform; }
-.al-panel { flex: 0 0 auto; height: 74vh; display: flex; flex-direction: column; justify-content: flex-end; }
-.al-panel-tall { width: clamp(280px, 30vw, 440px); }
-.al-panel-wide { width: clamp(460px, 56vw, 900px); }
-/* Full-bleed hero panels: fill the whole viewport as they sweep across */
-.al-panel-full { position: relative; width: 100vw; height: 100svh; justify-content: flex-end; }
-.al-panel-full .al-panel-frame { position: absolute; inset: 0; }
-.al-panel-cap-overlay {
-  position: relative; z-index: 1; margin: 0;
-  padding: clamp(24px, 5vw, 60px);
-  background: linear-gradient(to top, rgba(11, 11, 12, 0.82), transparent);
+.al-gallery { position: relative; background: var(--al-ink); height: 100svh; overflow: hidden; }
+
+/* The big hero image sits underneath everything */
+.al-gallery-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.al-gallery-bg img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 42%; transform: scale(1.08); will-change: transform; }
+.al-gallery-bg::after {
+  content: ''; position: absolute; inset: 0;
+  background:
+    linear-gradient(to right, rgba(11,11,12,0.72), rgba(11,11,12,0.28) 40%, rgba(11,11,12,0.5)),
+    linear-gradient(to top, var(--al-ink) 2%, transparent 22%, transparent 80%, rgba(11,11,12,0.85));
 }
-.al-panel-cap-overlay .al-panel-title { font-size: clamp(1.6rem, 3.2vw, 3rem); }
-.al-panel-frame { flex: 1 1 auto; overflow: hidden; background: var(--al-ink2); }
-.al-panel-frame img, .al-panel-frame video { width: 100%; height: 100%; object-fit: cover; }
-.al-panel.al-bw .al-panel-frame img { filter: grayscale(1) contrast(1.07); transition: filter 0.9s cubic-bezier(.22,.61,.36,1); }
-.al-panel.al-bw:hover .al-panel-frame img { filter: grayscale(0) contrast(1); }
-.al-panel-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
-.al-panel-title { font-family: var(--al-serif); font-weight: 380; font-size: clamp(1.2rem, 2vw, 2rem); color: var(--al-bone); }
-.al-panel-intro { width: clamp(260px, 26vw, 360px); justify-content: center; }
-.al-gallery-h { font-family: var(--al-serif); font-weight: 380; font-size: clamp(2.4rem, 5vw, 4.4rem); line-height: 1.02; margin: 0 0 26px; text-transform: none; letter-spacing: 0; color: var(--al-bone); }
-.al-gallery-hint { font-size: 0.62rem; letter-spacing: 0.4em; text-indent: 0.4em; color: var(--al-mute); margin: 0; }
-.al-gallery-hint .al-arrow { color: var(--al-gold); }
+
+/* Fixed text over the hero */
+.al-gallery-lead { position: absolute; z-index: 3; left: 0; bottom: 0; padding: clamp(60px, 12vh, 150px) clamp(20px, 5vw, 64px) clamp(28px, 6vh, 64px); max-width: 620px; pointer-events: none; }
+.al-gallery-lead::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(120% 100% at 0% 100%, rgba(11,11,12,0.9) 0%, rgba(11,11,12,0.6) 42%, transparent 78%);
+}
+.al-gallery-lead-line { font-family: var(--al-serif); font-weight: 380; font-size: clamp(1.6rem, 3.4vw, 3.1rem); line-height: 1.12; margin: 8px 0 0; color: var(--al-bone); }
+.al-gallery-lead-line em { font-style: italic; color: var(--al-gold); }
+
+/* The scrolling collage */
+.al-gallery-viewport { position: relative; z-index: 2; height: 100%; overflow: hidden; }
+.al-gallery-track { display: flex; align-items: stretch; height: 100%; gap: clamp(18px, 2.4vw, 44px); padding: 0 clamp(22px, 5vw, 60px); width: max-content; will-change: transform; }
+.al-col { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: clamp(16px, 2vw, 32px); height: 100%; }
+.al-col-lead { width: clamp(30vw, 52vw, 640px); }
+.al-col-high { justify-content: flex-start; padding-top: clamp(60px, 9vh, 120px); }
+.al-col-low { justify-content: flex-end; padding-bottom: clamp(52px, 8vh, 110px); }
+.al-col-mid { justify-content: center; }
+
+.al-tile { display: flex; flex-direction: column; }
+.al-tile-label { font-size: 0.58rem; letter-spacing: 0.26em; text-transform: uppercase; color: rgba(236,232,223,0.72); margin-bottom: 10px; }
+.al-tile-frame { overflow: hidden; background: var(--al-ink2); }
+.al-tile-frame img, .al-tile-frame video { width: 100%; height: 100%; object-fit: cover; }
+.al-tile-sm .al-tile-frame { width: clamp(180px, 20vw, 300px); height: clamp(210px, 32vh, 340px); }
+.al-tile-md .al-tile-frame { width: clamp(240px, 26vw, 400px); height: clamp(300px, 46vh, 500px); }
+.al-tile-lg .al-tile-frame { width: clamp(320px, 32vw, 520px); height: clamp(360px, 62vh, 680px); }
+.al-tile-wide .al-tile-frame { width: clamp(340px, 42vw, 700px); height: clamp(240px, 40vh, 440px); }
+.al-tile.al-bw .al-tile-frame img { filter: grayscale(1) contrast(1.06); transition: filter 0.9s cubic-bezier(.22,.61,.36,1); }
+.al-tile.al-bw:hover .al-tile-frame img { filter: grayscale(0) contrast(1); }
+.al-tile-frame img { transition: transform 0.9s cubic-bezier(.22,.61,.36,1); }
+.al-tile:hover .al-tile-frame img { transform: scale(1.04); }
 
 /* Film room */
 .al-film { padding: clamp(110px, 18vh, 200px) 0; border-top: 1px solid var(--al-hair); }
@@ -597,14 +632,22 @@ html.lenis, html.lenis body { height: auto; }
   .al-road-photo-frame { aspect-ratio: 16 / 10; }
   .al-road-item { grid-template-columns: 92px 1fr; }
   /* Gallery: native side-scroll on touch, no pin */
-  .al-gallery-viewport { height: auto; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+  .al-gallery { height: 86svh; }
+  .al-gallery-bg img { object-position: 50% 38%; }
+  .al-gallery-lead { max-width: 76vw; bottom: clamp(20px, 4vh, 44px); }
+  .al-gallery-viewport { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
   .al-gallery-viewport::-webkit-scrollbar { display: none; }
-  .al-gallery-track { transform: none !important; width: max-content; padding: 0 22px; gap: 18px; height: auto; }
-  .al-panel { height: 66vh; scroll-snap-align: center; }
-  .al-panel-tall { width: 66vw; }
-  .al-panel-wide { width: 86vw; }
-  .al-panel-full { width: 92vw; height: 66vh; }
-  .al-panel-intro { width: 62vw; }
+  .al-gallery-track { transform: none !important; width: max-content; padding: 0 20px; gap: 16px; }
+  .al-col { scroll-snap-align: center; gap: 16px; }
+  .al-col-high { padding-top: 8vh; }
+  .al-col-low { padding-bottom: 12vh; }
+  .al-tile-sm .al-tile-frame { width: 44vw; height: 30vh; }
+  .al-tile-md .al-tile-frame { width: 58vw; height: 40vh; }
+  .al-tile-lg .al-tile-frame { width: 66vw; height: 52vh; }
+  .al-tile-wide .al-tile-frame { width: 78vw; height: 40vh; }
+  .al-hero-reveal, .al-spot { display: none; }
+  .al-hero-base { filter: grayscale(0.12) brightness(0.9) contrast(1.05) saturate(0.95); }
+  .al-face-hint { display: none; }
   .al-hero-reveal, .al-spot { display: none; }
   .al-hero-base { filter: grayscale(0.12) brightness(0.9) contrast(1.05) saturate(0.95); }
   .al-face-hint { display: none; }
@@ -770,13 +813,21 @@ html.lenis, html.lenis body { height: auto; }
         }
         requestAnimationFrame(syncLoop);
       };
-      revealV.play().catch(function () {});
-      requestAnimationFrame(syncLoop);
+
+      /* Perf: the second video is preload="none" and only loads/plays on first
+         hover, so it never costs anything on initial page load. */
+      var revealStarted = false;
+      var startReveal = function () {
+        if (revealStarted) return;
+        revealStarted = true;
+        revealV.play().catch(function () {});
+        requestAnimationFrame(syncLoop);
+      };
 
       hero.addEventListener('mousemove', function (e) {
         var r = hero.getBoundingClientRect();
         tx = e.clientX - r.left; ty = e.clientY - r.top; tr = maxR();
-        if (!entered) { entered = true; hero.classList.add('is-revealing'); }
+        if (!entered) { entered = true; hero.classList.add('is-revealing'); startReveal(); }
         if (hint) hint.style.opacity = '0';
       });
       hero.addEventListener('mouseleave', function () {
@@ -929,19 +980,24 @@ html.lenis, html.lenis body { height: auto; }
           pin: true, scrub: 0.6, anticipatePin: 1, invalidateOnRefresh: true
         }
       });
-      /* each panel eases up + in as it crosses the screen */
-      gsap.utils.toArray('.al-panel-frame').forEach(function (frame) {
-        gsap.from(frame, {
-          y: 60, autoAlpha: 0, ease: 'power2.out',
-          scrollTrigger: { trigger: frame, containerAnimation: gTween, start: 'left 92%', end: 'left 60%', scrub: true }
+      /* each tile eases up + in as it crosses the screen */
+      gsap.utils.toArray('.al-tile').forEach(function (tile) {
+        gsap.from(tile, {
+          y: 50, autoAlpha: 0, ease: 'power2.out',
+          scrollTrigger: { trigger: tile, containerAnimation: gTween, start: 'left 96%', end: 'left 68%', scrub: true }
         });
       });
-      gsap.utils.toArray('.al-panel-cap').forEach(function (cap) {
-        gsap.from(cap, {
-          autoAlpha: 0, y: 16, ease: 'power2.out',
-          scrollTrigger: { trigger: cap, containerAnimation: gTween, start: 'left 88%', end: 'left 66%', scrub: true }
+      /* the hero backdrop drifts slowly the other way for depth */
+      var gbg = document.getElementById('al-gallery-bg');
+      if (gbg) {
+        gsap.fromTo(gbg.querySelector('img'), { x: 0, scale: 1.08 }, {
+          x: '-6vw', scale: 1.16, ease: 'none',
+          scrollTrigger: {
+            trigger: gSection, start: 'top top',
+            end: function () { return '+=' + amount(); }, scrub: true
+          }
         });
-      });
+      }
     }
 
     /* ---------- Film + close reveals ---------- */
