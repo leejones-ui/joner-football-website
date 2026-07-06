@@ -1,8 +1,8 @@
 ---
-// Horizontal "what's inside" scroller for the Coaches Only page.
-// Mirrors the /app HighlightsCarousel concept but is prop-driven and supports
-// either an image OR a muted autoplay video per slide. Uses chl- prefixed
-// ids/classes so it never collides with the /app carousel.
+// Horizontal "what's inside" scroller. Prop-driven, supports an image OR a
+// muted autoplay video per slide, an optional per-slide link (href), and an
+// optional `marquee` mode that slowly auto-scrolls and pauses on hover.
+// Uses chl- prefixed ids/classes so it never collides with the /app carousel.
 interface Slide {
   eyebrow?: string
   title?: string
@@ -10,6 +10,8 @@ interface Slide {
   video?: string
   alt: string
   note?: string
+  href?: string
+  target?: string
 }
 
 interface Props {
@@ -17,9 +19,13 @@ interface Props {
   slides: Slide[]
   ctaHref?: string
   ctaLabel?: string
+  marquee?: boolean
 }
 
-const { heading = "What's inside Coaches Only.", slides, ctaHref, ctaLabel = 'Join now' } = Astro.props
+const { heading = "What's inside Coaches Only.", slides, ctaHref, ctaLabel = 'Join now', marquee = false } = Astro.props
+
+// In marquee mode render the slides twice so the auto-scroll loops seamlessly.
+const renderSlides = marquee ? [...slides, ...slides] : slides
 ---
 
 <section class="bg-joner-black pt-8 pb-8 md:pt-12 md:pb-16 overflow-hidden">
@@ -35,89 +41,103 @@ const { heading = "What's inside Coaches Only.", slides, ctaHref, ctaLabel = 'Jo
     <!-- Carousel track -->
     <div
       id="chl-track"
-      class="chl-track flex gap-3 md:gap-5 overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+      data-marquee={marquee ? 'true' : 'false'}
+      class:list={[
+        'chl-track flex gap-3 md:gap-5 overflow-x-auto scrollbar-hide',
+        marquee ? 'chl-track--marquee' : 'snap-x snap-mandatory',
+      ]}
     >
-      {slides.map((slide, i) => (
-        <article
-          class="chl-slide snap-center shrink-0 relative rounded-2xl md:rounded-3xl overflow-hidden bg-joner-gray"
-          data-index={i}
-        >
-          {slide.video ? (
-            <video
-              class="absolute inset-0 w-full h-full object-cover"
-              autoplay
-              muted
-              loop
-              playsinline
-              preload="metadata"
-              poster={slide.image}
-            >
-              <source src={slide.video} type="video/mp4" />
-            </video>
-          ) : (
-            <img
-              src={slide.image}
-              alt={slide.alt}
-              class="absolute inset-0 w-full h-full object-cover"
-              loading={i === 0 ? 'eager' : 'lazy'}
-            />
-          )}
-          {(slide.title || ctaHref) && (
-            <>
-              <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none"></div>
-              <div class="absolute inset-0 z-10 p-6 sm:p-9 md:p-12 lg:p-14 flex flex-col justify-end gap-5">
-                {slide.title && (
-                  <div class="max-w-[34rem]">
-                    {slide.eyebrow && (
-                      <p class="font-body text-white/90 text-sm md:text-base mb-3 tracking-wide">{slide.eyebrow}</p>
-                    )}
-                    <h3 class="font-body text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold leading-[1.08] chl-headline">
-                      {slide.title}
-                    </h3>
-                    {slide.note && (
-                      <p class="mt-4 font-body text-white/85 text-xs sm:text-sm md:text-base">{slide.note}</p>
-                    )}
-                  </div>
-                )}
-                {ctaHref && (
-                  <div>
-                    <a href={ctaHref} class="btn-red text-sm px-6 py-3 inline-flex">{ctaLabel}</a>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </article>
-      ))}
+      {renderSlides.map((slide, i) => {
+        const Tag = slide.href ? 'a' : 'article'
+        const linkProps = slide.href
+          ? { href: slide.href, target: slide.target || '_blank', rel: (slide.target || '_blank') === '_blank' ? 'noopener noreferrer' : undefined }
+          : {}
+        return (
+          <Tag
+            class="chl-slide snap-center shrink-0 relative rounded-2xl md:rounded-3xl overflow-hidden bg-joner-gray block"
+            data-index={i % slides.length}
+            aria-label={slide.href ? slide.alt : undefined}
+            {...linkProps}
+          >
+            {slide.video ? (
+              <video
+                class="absolute inset-0 w-full h-full object-cover"
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                poster={slide.image}
+              >
+                <source src={slide.video} type="video/mp4" />
+              </video>
+            ) : (
+              <img
+                src={slide.image}
+                alt={slide.alt}
+                class="absolute inset-0 w-full h-full object-cover"
+                loading={i === 0 ? 'eager' : 'lazy'}
+              />
+            )}
+            {(slide.title || ctaHref) && (
+              <>
+                <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none"></div>
+                <div class="absolute inset-0 z-10 p-6 sm:p-9 md:p-12 lg:p-14 flex flex-col justify-end gap-5">
+                  {slide.title && (
+                    <div class="max-w-[34rem]">
+                      {slide.eyebrow && (
+                        <p class="font-body text-white/90 text-sm md:text-base mb-3 tracking-wide">{slide.eyebrow}</p>
+                      )}
+                      <h3 class="font-body text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold leading-[1.08] chl-headline">
+                        {slide.title}
+                      </h3>
+                      {slide.note && (
+                        <p class="mt-4 font-body text-white/85 text-xs sm:text-sm md:text-base">{slide.note}</p>
+                      )}
+                    </div>
+                  )}
+                  {ctaHref && (
+                    <div>
+                      <a href={ctaHref} class="btn-red text-sm px-6 py-3 inline-flex">{ctaLabel}</a>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </Tag>
+        )
+      })}
     </div>
 
-    <!-- Dots + pause/play -->
-    <div class="flex items-center justify-center gap-4 mt-7 md:mt-9">
-      <div class="flex items-center gap-1.5" id="chl-dots">
-        {slides.map((_, i) => (
-          <button
-            type="button"
-            class="chl-dot rounded-full transition-all duration-300"
-            data-dot-index={i}
-            aria-label={`Go to highlight ${i + 1}`}
-          ></button>
-        ))}
+    <!-- Dots + pause/play (stepped mode only) -->
+    {!marquee && (
+      <div class="flex items-center justify-center gap-4 mt-7 md:mt-9">
+        <div class="flex items-center gap-1.5" id="chl-dots">
+          {slides.map((_, i) => (
+            <button
+              type="button"
+              class="chl-dot rounded-full transition-all duration-300"
+              data-dot-index={i}
+              aria-label={`Go to highlight ${i + 1}`}
+            ></button>
+          ))}
+        </div>
+        <button
+          type="button"
+          id="chl-toggle"
+          class="ml-1 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+          aria-label="Pause highlights"
+        >
+          <svg id="chl-pause-icon" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="5" width="4" height="14" rx="1"/>
+            <rect x="14" y="5" width="4" height="14" rx="1"/>
+          </svg>
+          <svg id="chl-play-icon" class="w-3.5 h-3.5 hidden" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </button>
       </div>
-      <button
-        type="button"
-        id="chl-toggle"
-        class="ml-1 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-        aria-label="Pause highlights"
-      >
-        <svg id="chl-pause-icon" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="6" y="5" width="4" height="14" rx="1"/>
-          <rect x="14" y="5" width="4" height="14" rx="1"/>
-        </svg>
-        <svg id="chl-play-icon" class="w-3.5 h-3.5 hidden" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M8 5v14l11-7z"/>
-        </svg>
-      </button>
-    </div>
+    )}
 
   </div>
 </section>
@@ -129,6 +149,11 @@ const { heading = "What's inside Coaches Only.", slides, ctaHref, ctaLabel = 'Jo
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
+  }
+  /* Marquee mode: no snap, no smooth (so JS can nudge scrollLeft each frame) */
+  .chl-track--marquee {
+    scroll-behavior: auto;
+    scroll-snap-type: none;
   }
 
   .chl-slide {
@@ -173,13 +198,47 @@ const { heading = "What's inside Coaches Only.", slides, ctaHref, ctaLabel = 'Jo
 </style>
 
 <script>
+  // Marquee mode: slow continuous auto-scroll that pauses on hover / touch.
+  document.querySelectorAll<HTMLElement>('[data-marquee="true"]').forEach((track) => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    const slides = Array.from(track.querySelectorAll<HTMLElement>('.chl-slide'))
+    if (slides.length < 2) return
+    const perSet = slides.length / 2
+    let paused = false
+    let resumeTO: ReturnType<typeof setTimeout> | null = null
+
+    const pause = () => { paused = true }
+    const resume = () => { paused = false }
+    track.addEventListener('mouseenter', pause)
+    track.addEventListener('mouseleave', resume)
+    track.addEventListener('touchstart', () => { paused = true }, { passive: true })
+    track.addEventListener('touchend', () => {
+      if (resumeTO) clearTimeout(resumeTO)
+      resumeTO = setTimeout(() => { paused = false }, 1600)
+    }, { passive: true })
+
+    const loopWidth = () => (slides[perSet] ? slides[perSet].offsetLeft - slides[0].offsetLeft : track.scrollWidth / 2)
+
+    const step = () => {
+      if (!paused) {
+        track.scrollLeft += 0.4
+        const lw = loopWidth()
+        if (lw > 0 && track.scrollLeft >= lw) track.scrollLeft -= lw
+      }
+      requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  })
+
+  // Stepped mode: dots + timed auto-advance (skipped when there are no dots).
   const track = document.getElementById('chl-track') as HTMLElement | null
   const toggle = document.getElementById('chl-toggle') as HTMLButtonElement | null
   const pauseIcon = document.getElementById('chl-pause-icon')
   const playIcon = document.getElementById('chl-play-icon')
   const dots = Array.from(document.querySelectorAll<HTMLButtonElement>('.chl-dot'))
 
-  if (track && dots.length) {
+  if (track && dots.length && track.getAttribute('data-marquee') !== 'true') {
     const slides = Array.from(track.querySelectorAll<HTMLElement>('.chl-slide'))
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let current = 0

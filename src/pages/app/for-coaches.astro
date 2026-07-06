@@ -129,12 +129,15 @@ const facts = [
 ]
 
 // Slides for the "what's inside" scroller. These graphics already carry their
-// own labels, so we show them clean (no text overlay). To use a cleaner photo
-// or video later, add `video: '/videos/clip.mp4'` and/or `eyebrow`/`title` to a
-// slide and the overlay caption (like /app) renders automatically.
+// own labels, so we show them clean (no text overlay). Every slide links into
+// the matching Max Plan section inside the app (catalog link for now; swap in
+// exact per-section URLs when Lee sends them).
+const maxPlanCatalogUrl = 'https://app.jonerfootball.com/categories/category-8-7szqoiq00'
 const highlightSlides = features.map((f) => ({
   image: f.image,
-  alt: f.title
+  alt: f.title,
+  href: maxPlanCatalogUrl,
+  target: '_blank',
 }))
 
 // "Who it's for" scroll-reveal callouts that draw in over Lee's photo (igloo-style)
@@ -154,7 +157,7 @@ const included = [
   { label: 'PDF Session Plans', image: '/images/coaches-only/features/pdf-session-planner.jpg', blurb: '' },
   { label: 'Voice Over Drills', image: '/images/coaches-only/features/voice-over-drills.jpg', blurb: '' },
   { label: 'Live Training Sessions', image: '/images/coaches-only/features/live-training-sessions.jpg', blurb: 'Watch Lee coach live. The standards, the language and the detail as it happens.' },
-  { label: 'Seminars', image: '/images/coaches-only/features/mindset-seminar.jpg', blurb: 'Watch Lee deliver seminars on the topics that shape better players.' }
+  { label: 'Seminars', image: '/images/coaches-only/features/mindset-seminar.jpg', blurb: 'Watch Lee deliver seminars on the topics that shape better players & coaches!' }
 ]
 
 const faqs: Array<{ q: string; a: string }> = [
@@ -383,7 +386,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 
 
     {/* ========== 4. WHAT'S INSIDE SCROLLER (solution: what's inside the Max plan) ========== */}
-    <CoachesHighlightsCarousel heading="What's inside MAX plan!" slides={highlightSlides} />
+    <CoachesHighlightsCarousel heading="What's inside MAX plan!" slides={highlightSlides} marquee />
 
 
     {/* ========== 4. WHO IS TEACHING YOU (mobile = baked graphic, desktop = live text + clean photo) ========== */}
