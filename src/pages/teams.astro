@@ -8,6 +8,7 @@ import SanityPageExtras from '../components/sanity/SanityPageExtras.astro'
 import PlayButtonVideo from '../components/PlayButtonVideo.astro'
 import ScrollRevealSection from '../components/ScrollRevealSection.astro'
 import CoachesHighlightsCarousel from '../components/CoachesHighlightsCarousel.astro'
+import CoachesTestimonialsCarousel from '../components/CoachesTestimonialsCarousel.astro'
 
 // Sliding trust ticker facts (shared style with /app/for-coaches and /programmes)
 const tickerFacts = [
@@ -204,6 +205,9 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
         </div>
       </div>
     </section>
+
+    {/* TESTIMONIALS (mirrors the coaches page; reuses the existing coach feedback until club video testimonials come in) */}
+    <CoachesTestimonialsCarousel />
 
     <!-- Contact Form -->
     <section id="team-subscription-form" class="bg-neutral-950 py-20 md:py-28 scroll-mt-24">
