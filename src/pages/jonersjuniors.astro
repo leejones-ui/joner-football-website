@@ -222,7 +222,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
           <input type="hidden" name="jerseySize" value="Not supplied" />
           <input type="hidden" name="paymentStatus" value="not_paid_pending_payment" />
           <input type="hidden" name="paymentMethod" value="Stripe" />
-          <input type="hidden" name="paymentLink" value="https://buy.stripe.com/aFa00j1li1pQ8V0fCv5Vu0c" />
+          <input type="hidden" name="paymentLink" value="https://buy.stripe.com/fZu3cv7JG7Oe0ou61V5Vu0b" />
 
           <div class="jj-form__grid">
             <label><span>Players Full Name: *</span><input required name="playerFullName" /></label>
@@ -456,7 +456,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
 
           form.reset();
           setMessage('Done. Your Joners Juniors registration has been saved. Redirecting to Stripe...', 'success');
-          window.location.href = result.paymentLink || 'https://buy.stripe.com/aFa00j1li1pQ8V0fCv5Vu0c';
+          window.location.href = result.paymentLink || 'https://buy.stripe.com/fZu3cv7JG7Oe0ou61V5Vu0b';
         } catch (error) {
           setMessage(error && error.message ? error.message : 'Could not save booking. Please try again.', 'error');
         } finally {
