@@ -1,0 +1,81 @@
+---
+// Text-quote testimonial slider. Slow auto-scroll marquee that pauses on hover.
+// Text-only (no images) so it stays fast. Quotes come from the app testimonials
+// bank; pass an audience-matched set per page. `tst-` prefixed so it never
+// collides with the image/highlights carousels.
+interface Item {
+  quote: string
+  name: string
+  role: string
+}
+interface Props {
+  heading?: string
+  items: Item[]
+}
+const { heading = 'Testimonials', items } = Astro.props
+// Duplicate the set so the auto-scroll loops seamlessly.
+const rendered = [...items, ...items]
+---
+
+<section class="bg-joner-black py-16 md:py-24 overflow-hidden">
+  <div class="max-w-[1680px] mx-auto">
+    <div class="text-center mb-10 md:mb-14 px-4">
+      <h2 class="font-heading text-5xl sm:text-7xl md:text-8xl text-white uppercase leading-none tracking-tight">{heading}</h2>
+    </div>
+
+    <div class="tst-track flex items-stretch gap-4 md:gap-5 overflow-x-auto scrollbar-hide" data-tst-marquee>
+      {rendered.map((t, i) => (
+        <article class="tst-card shrink-0 bg-joner-gray border border-gray-800 rounded-2xl p-7 md:p-8 flex flex-col" aria-hidden={i >= items.length ? 'true' : undefined}>
+          <div class="text-joner-red font-heading text-5xl leading-none mb-3" aria-hidden="true">&ldquo;</div>
+          <p class="text-gray-200 font-body text-base md:text-lg leading-relaxed italic mb-6 flex-1">{t.quote}</p>
+          <div class="border-t border-gray-700 pt-4">
+            <p class="font-heading text-white text-base uppercase tracking-wide">{t.name}</p>
+            <p class="text-joner-red text-xs font-heading uppercase tracking-widest mt-1">{t.role}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .tst-track {
+    scroll-behavior: auto;
+    padding-inline: 4vw;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .tst-card { width: 82vw; }
+  @media (min-width: 640px) { .tst-card { width: 58vw; } }
+  @media (min-width: 1024px) { .tst-card { width: 34vw; } }
+  @media (min-width: 1440px) { .tst-card { width: 420px; } }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-tst-marquee]').forEach((track) => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) return
+    const cards = Array.from(track.querySelectorAll<HTMLElement>('.tst-card'))
+    if (cards.length < 2) return
+    const perSet = cards.length / 2
+    let paused = false
+    let resumeTO: ReturnType<typeof setTimeout> | null = null
+    track.addEventListener('mouseenter', () => { paused = true })
+    track.addEventListener('mouseleave', () => { paused = false })
+    track.addEventListener('touchstart', () => { paused = true }, { passive: true })
+    track.addEventListener('touchend', () => {
+      if (resumeTO) clearTimeout(resumeTO)
+      resumeTO = setTimeout(() => { paused = false }, 1600)
+    }, { passive: true })
+    const loopWidth = () => (cards[perSet] ? cards[perSet].offsetLeft - cards[0].offsetLeft : track.scrollWidth / 2)
+    const step = () => {
+      if (!paused) {
+        track.scrollLeft += 0.7
+        const lw = loopWidth()
+        if (lw > 0 && track.scrollLeft >= lw) track.scrollLeft -= lw
+      }
+      requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  })
+</script>

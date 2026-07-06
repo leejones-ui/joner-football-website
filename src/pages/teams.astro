@@ -8,14 +8,24 @@ import SanityPageExtras from '../components/sanity/SanityPageExtras.astro'
 import PlayButtonVideo from '../components/PlayButtonVideo.astro'
 import ScrollRevealSection from '../components/ScrollRevealSection.astro'
 import CoachesHighlightsCarousel from '../components/CoachesHighlightsCarousel.astro'
-import CoachesTestimonialsCarousel from '../components/CoachesTestimonialsCarousel.astro'
+import TestimonialsSlider from '../components/TestimonialsSlider.astro'
+
+// Testimonials for teams = a mix (coaches, players and parents; from the bank)
+const teamTestimonials = [
+  { quote: 'Both my grassroots teams have massively benefited. I have been with you for years, thank you.', name: 'Matthew B.', role: 'Grassroots Coach' },
+  { quote: 'Absolutely full of key coaching points, with the explanation of why things need to be coached a certain way. I have learned so much from you guys here.', name: 'Krzysztof S.', role: 'Coach, U11s' },
+  { quote: 'Love the content on here so far. Looking forward to learning more to help both my teams.', name: 'Chris', role: 'Coach' },
+  { quote: 'You are great, thanks for the help. This is the first video I saw in this app and it already helped.', name: 'Josh P.', role: 'Player' },
+  { quote: 'Because of you and the content you provide, I now help local players aged 6 to 16 with their technical development. You have truly helped my players and me.', name: 'Matthew H.', role: 'Parent & Volunteer Coach' },
+  { quote: 'Great drills. I used this for an 8 year old and adapted the spacing. We are on to day one of the dribbling challenge.', name: 'Carlos T.', role: 'Coach' },
+]
 
 // Sliding trust ticker facts (shared style with /app/for-coaches and /programmes)
 const tickerFacts = [
   'Voted Top 10 In The World For Technical Training',
   '50,000+ Downloads',
   '15+ Countries',
-  '1,500+ Training Videos',
+  '2,000+ Training Videos',
   '20+ Years Coaching',
   'Grassroots To Professional Videos',
 ]
@@ -136,6 +146,9 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
       {/* MOBILE: complete baked graphic */}
       <div class="lg:hidden px-4 sm:px-6 py-12">
         <img src="/images/teams/team-training-not-enough-mobile.jpg" alt="Team training is not enough. Your players are with you 2 or 3 days a week. The days in between are where they pull ahead or fall behind. Off-season drop-off is real. Coaches need a way to guide homework. Fully structured sessions with Max Plan." class="w-full rounded-2xl shadow-2xl" loading="lazy" />
+        <div class="text-center mt-7">
+          <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">BOOK A CALL WITH JONER</a>
+        </div>
       </div>
       {/* DESKTOP: landscape photo with overlaid text */}
       <div class="hidden lg:block relative">
@@ -149,11 +162,12 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
             <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE REALITY</p>
             <h2 class="font-heading text-5xl xl:text-6xl font-bold text-white uppercase leading-none mb-6">Team Training Is <span class="text-joner-red">Not Enough</span></h2>
             <p class="font-body text-lg text-gray-200 mb-8 max-w-lg">Your players are with you 2 or 3 days a week. The days in between are where they pull ahead, or fall behind.</p>
-            <ul class="space-y-4">
+            <ul class="space-y-4 mb-9">
               <li class="flex items-center gap-3 font-heading uppercase text-white text-lg xl:text-xl tracking-wide"><span class="w-2.5 h-2.5 rounded-full bg-joner-red shrink-0"></span>Off-Season Drop-Off Is Real</li>
               <li class="flex items-center gap-3 font-heading uppercase text-white text-lg xl:text-xl tracking-wide"><span class="w-2.5 h-2.5 rounded-full bg-joner-red shrink-0"></span>Coaches Need A Way To Guide Homework</li>
               <li class="flex items-center gap-3 font-heading uppercase text-white text-lg xl:text-xl tracking-wide"><span class="w-2.5 h-2.5 rounded-full bg-joner-red shrink-0"></span>Fully Structured Sessions With Max Plan</li>
             </ul>
+            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">BOOK A CALL WITH JONER</a>
           </div>
         </div>
       </div>
@@ -170,7 +184,7 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
     />
 
     {/* SOLUTION (image carousel, "what's inside" style like /app) */}
-    <CoachesHighlightsCarousel heading="What Your Squad Gets" slides={teamSlides} />
+    <CoachesHighlightsCarousel heading="What Your Squad Gets" slides={teamSlides} marquee />
 
     {/* WHO IS TEACHING YOU (matches the coaches page exactly: mobile baked graphic, desktop live text + photo) */}
     <section class="bg-joner-gray py-12 md:py-20">
@@ -207,7 +221,7 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
     </section>
 
     {/* TESTIMONIALS (mirrors the coaches page; reuses the existing coach feedback until club video testimonials come in) */}
-    <CoachesTestimonialsCarousel />
+    <TestimonialsSlider heading="Testimonials" items={teamTestimonials} />
 
     <!-- Contact Form -->
     <section id="team-subscription-form" class="bg-neutral-950 py-20 md:py-28 scroll-mt-24">

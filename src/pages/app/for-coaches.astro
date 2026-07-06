@@ -1,7 +1,17 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
-import CoachesTestimonialsCarousel from '../../components/CoachesTestimonialsCarousel.astro'
+import TestimonialsSlider from '../../components/TestimonialsSlider.astro'
 import CoachesHighlightsCarousel from '../../components/CoachesHighlightsCarousel.astro'
+
+// Coach testimonials (from the app testimonials bank; first name + initial)
+const coachTestimonials = [
+  { quote: 'The app is great, love the YouTube feel to it. I have been following you for years and I am in this for the coaches area. Very helpful and I am using it more and more.', name: 'Matthew B.', role: 'Coach' },
+  { quote: 'Absolutely full of key coaching points, with the explanation of why things need to be coached a certain way. I have learned so much from you guys here.', name: 'Krzysztof S.', role: 'Coach, U11s' },
+  { quote: 'Going to use this in my 1-1 coaching today. Excellent.', name: 'Dean P.', role: '1:1 Coach' },
+  { quote: 'Love the content on here so far. Looking forward to learning more to help both my teams.', name: 'Chris', role: 'Coach' },
+  { quote: 'Great drills. I used this for an 8 year old and adapted the spacing. We are on to day one of the dribbling challenge.', name: 'Carlos T.', role: 'Coach' },
+  { quote: 'You are already worldwide famous. I am trying to understand the way you do it, because you do it great, Lee.', name: 'Eleven Football T.', role: 'Academy Coach' },
+]
 import PlayButtonVideo from '../../components/PlayButtonVideo.astro'
 import FactsMarquee from '../../components/FactsMarquee.astro'
 import GeoAnswers from '../../components/GeoAnswers.astro'
@@ -120,7 +130,7 @@ const facts = [
   'Session Planning',
   '50,000+ Downloads',
   'Full Sessions',
-  '1,500+ Training Videos',
+  '2,000+ Training Videos',
   'Team Training',
   '15+ Countries',
   'Coaches Community',
@@ -427,7 +437,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 
 
     {/* ========== 4.5 TESTIMONIALS CAROUSEL (moved higher: proof before the offer details) ========== */}
-    <CoachesTestimonialsCarousel />
+    <TestimonialsSlider heading="Testimonials" items={coachTestimonials} />
 
 
     {/* ========== 5. EVERYTHING INCLUDED (closer-look accordion, matched to /app) ========== */}

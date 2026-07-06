@@ -5,6 +5,20 @@ import GeoAnswers from '../components/GeoAnswers.astro'
 import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 import HighlightsCarousel from '../components/HighlightsCarousel.astro'
 import CloserLook from '../components/CloserLook.astro'
+import FactsMarquee from '../components/FactsMarquee.astro'
+
+// Sliding trust ticker under the hero
+const appFacts = [
+  '2,000+ Training Videos',
+  'Globally Recognised',
+  'Train With Joner Anywhere',
+  'Join The Joner Family & Community',
+  'Voted Top 10 In The World For Technical Training',
+  '50,000+ Downloads',
+  '15+ Countries',
+  '20+ Years Coaching',
+  'Grassroots To Professional Videos',
+]
 
 const appSchema = {
   "@context": "https://schema.org",
@@ -133,6 +147,8 @@ const appSchemas = [
       </div>
     </div>
   </section>
+
+  <FactsMarquee facts={appFacts} />
 
   <HighlightsCarousel />
 
