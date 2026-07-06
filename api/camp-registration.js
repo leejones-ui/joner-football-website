@@ -422,6 +422,9 @@ async function addToBrevo(registration) {
 }
 
 async function createStripeCheckoutSession(req, registration) {
+  const campName = String(registration.camp || '').toLowerCase()
+  if (campName.includes('joners juniors')) return null
+
   const config = campPaymentConfig(registration.camp, registration.destination)
   if (!config || registration.paymentMethod !== 'Stripe') return null
 
