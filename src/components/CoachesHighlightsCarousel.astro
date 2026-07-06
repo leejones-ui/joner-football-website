@@ -12,6 +12,7 @@ interface Slide {
   note?: string
   href?: string
   target?: string
+  badge?: string
 }
 
 interface Props {
@@ -20,9 +21,10 @@ interface Props {
   ctaHref?: string
   ctaLabel?: string
   marquee?: boolean
+  compact?: boolean
 }
 
-const { heading = "What's inside Coaches Only.", slides, ctaHref, ctaLabel = 'Join now', marquee = false } = Astro.props
+const { heading = "What's inside Coaches Only.", slides, ctaHref, ctaLabel = 'Join now', marquee = false, compact = false } = Astro.props
 
 // In marquee mode render the slides twice so the auto-scroll loops seamlessly.
 const renderSlides = marquee ? [...slides, ...slides] : slides
@@ -54,11 +56,17 @@ const renderSlides = marquee ? [...slides, ...slides] : slides
           : {}
         return (
           <Tag
-            class="chl-slide snap-center shrink-0 relative rounded-2xl md:rounded-3xl overflow-hidden bg-joner-gray block"
+            class:list={[
+              'chl-slide snap-center shrink-0 relative rounded-2xl md:rounded-3xl overflow-hidden bg-joner-gray block',
+              { 'chl-slide--compact': compact },
+            ]}
             data-index={i % slides.length}
             aria-label={slide.href ? slide.alt : undefined}
             {...linkProps}
           >
+            {slide.badge && (
+              <div class="absolute top-3 left-3 z-20 flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-full bg-joner-red text-white font-heading text-base md:text-lg leading-none pointer-events-none shadow-[0_6px_18px_rgba(0,0,0,0.45)]">{slide.badge}</div>
+            )}
             {slide.video ? (
               <video
                 class="absolute inset-0 w-full h-full object-cover"
@@ -161,6 +169,9 @@ const renderSlides = marquee ? [...slides, ...slides] : slides
     aspect-ratio: 16 / 9;
     scroll-snap-stop: always;
   }
+  /* Compact: smaller slides on desktop (phone size unchanged) */
+  @media (min-width: 1024px) { .chl-slide--compact { width: 46vw !important; } }
+  @media (min-width: 1440px) { .chl-slide--compact { width: 520px !important; } }
 
   .chl-headline {
     letter-spacing: -0.02em;
@@ -222,7 +233,7 @@ const renderSlides = marquee ? [...slides, ...slides] : slides
 
     const step = () => {
       if (!paused) {
-        track.scrollLeft += 0.4
+        track.scrollLeft += 0.7
         const lw = loopWidth()
         if (lw > 0 && track.scrollLeft >= lw) track.scrollLeft -= lw
       }
