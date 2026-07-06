@@ -6,6 +6,17 @@ import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 import HighlightsCarousel from '../components/HighlightsCarousel.astro'
 import CloserLook from '../components/CloserLook.astro'
 import FactsMarquee from '../components/FactsMarquee.astro'
+import TestimonialsSlider from '../components/TestimonialsSlider.astro'
+
+// Best testimonials for the main app page (mix of coaches, parents, players; from the bank)
+const bestTestimonials = [
+  { quote: 'Absolutely full of key coaching points, with the explanation of why things need to be coached a certain way. I have learned so much from you guys here.', name: 'Krzysztof S.', role: 'Coach, U11s' },
+  { quote: 'Because of you and the content you provide, I now help local players aged 6 to 16 with their technical development. You have truly helped my players and me.', name: 'Matthew H.', role: 'Parent & Volunteer Coach' },
+  { quote: 'Both my grassroots teams have massively benefited. I have been with you for years, thank you.', name: 'Matthew B.', role: 'Grassroots Coach' },
+  { quote: 'You are great, thanks for the help. This is the first video I saw in this app and it already helped.', name: 'Josh P.', role: 'Player' },
+  { quote: 'Great drills. I used this for an 8 year old and adapted the spacing. We are on to day one of the dribbling challenge.', name: 'Carlos T.', role: 'Coach' },
+  { quote: 'You are already worldwide famous. I am trying to understand the way you do it, because you do it great, Lee.', name: 'Eleven Football T.', role: 'Academy Coach' },
+]
 
 // Sliding trust ticker under the hero
 const appFacts = [
@@ -249,53 +260,8 @@ const appSchemas = [
     </div>
   </section>
 
-  <!-- SECTION 6: Testimonials -->
-  <section class="bg-joner-gray py-20 md:py-28">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-12">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">TESTIMONIALS</p>
-        <h2 class="section-heading text-white">REAL RESULTS FROM REAL USERS</h2>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="border border-gray-700 p-8">
-          <div class="text-joner-red text-4xl font-heading leading-none mb-4">"</div>
-          <p class="text-gray-300 font-body text-base leading-relaxed mb-6 italic">
-            The session plans alone are worth the subscription. Changed how I run my academy. My players are improving faster than ever.
-          </p>
-          <div class="border-t border-gray-700 pt-4">
-            <div class="font-heading text-white font-semibold">Coach Dave R.</div>
-            <div class="text-joner-red text-xs font-heading uppercase tracking-wide">Academy Coach</div>
-            <div class="text-gray-500 text-xs font-body mt-0.5">California, USA</div>
-          </div>
-        </div>
-
-        <div class="border border-gray-700 p-8">
-          <div class="text-joner-red text-4xl font-heading leading-none mb-4">"</div>
-          <p class="text-gray-300 font-body text-base leading-relaxed mb-6 italic">
-            My son uses this every day. The follow-along programs are perfect. He can train independently and actually enjoys it.
-          </p>
-          <div class="border-t border-gray-700 pt-4">
-            <div class="font-heading text-white font-semibold">Michelle T.</div>
-            <div class="text-joner-red text-xs font-heading uppercase tracking-wide">Parent</div>
-            <div class="text-gray-500 text-xs font-body mt-0.5">Sydney, Australia</div>
-          </div>
-        </div>
-
-        <div class="border border-gray-700 p-8">
-          <div class="text-joner-red text-4xl font-heading leading-none mb-4">"</div>
-          <p class="text-gray-300 font-body text-base leading-relaxed mb-6 italic">
-            Joner's drills are different to anything else out there. Technical, detailed, and you can feel the improvement immediately.
-          </p>
-          <div class="border-t border-gray-700 pt-4">
-            <div class="font-heading text-white font-semibold">James K.</div>
-            <div class="text-joner-red text-xs font-heading uppercase tracking-wide">Player</div>
-            <div class="text-gray-500 text-xs font-body mt-0.5">Melbourne, Australia</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+  <!-- SECTION 6: Testimonials (best of the bank, sliding bar) -->
+  <TestimonialsSlider heading="Testimonials" items={bestTestimonials} />
 
   <!-- SECTION 7: Final CTA Block -->
   <section class="bg-joner-black py-20 md:py-28">
