@@ -4,7 +4,7 @@ import { validateEmailFormat, validateEmailQuality } from './_email-quality.js'
 const FALLBACK_RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'leejones@jonerfootball.com'
 const duplicateBuckets = new Map()
 const DUPLICATE_WINDOW_MS = 15 * 60 * 1000
-const DEFAULT_WAIVER_TABLE = 'Player Onboarding & Waiver'
+const DEFAULT_WAIVER_TABLE = 'JFP Waiver & Player Info'
 const DEFAULT_TEAM_SUBSCRIPTIONS_SHEET_ID = process.env.CAMP_REGISTRATION_SHEET_ID || '1SbGmivi3yqFaBKoMAhoNd5ufUga99DaQBj2noXNJr4k'
 const TEAM_SUBSCRIPTIONS_SHEET = process.env.TEAM_SUBSCRIPTIONS_SHEET_TAB || 'Team Subscriptions Leads'
 const TEAM_SUBSCRIPTIONS_HEADERS = [
@@ -294,7 +294,7 @@ async function airtableRequest(path, init = {}) {
 }
 
 async function findExistingWaiverRecord({ playerFullName, email, term }) {
-  const formula = `AND(LOWER({Email})='${escapeFormulaValue(email.toLowerCase())}',LOWER({Player Full Name})='${escapeFormulaValue(playerFullName.toLowerCase())}',{Term}='${escapeFormulaValue(term)}')`
+  const formula = `AND(LOWER({Parent Email})='${escapeFormulaValue(email.toLowerCase())}',LOWER({Player Full Name})='${escapeFormulaValue(playerFullName.toLowerCase())}',{Term}='${escapeFormulaValue(term)}')`
   const params = new URLSearchParams({
     maxRecords: '1',
     filterByFormula: formula,
@@ -304,12 +304,17 @@ async function findExistingWaiverRecord({ playerFullName, email, term }) {
 }
 
 function buildWaiverSummary(body) {
+  const term = clean(body.term, 80) || 'Term 3 2026'
   const parts = [
-    'Parent/guardian confirms the player details and medical information supplied are accurate.',
-    'Parent/guardian understands football training involves physical activity and accepts the normal risks involved in participation.',
-    'Parent/guardian confirms the player is fit to participate, unless medical notes have been listed on this form.',
-    'Parent/guardian authorises Joner Football staff to seek urgent medical assistance if needed during a session.',
-    'Parent/guardian accepts the Term 2 payment commitment and understands that missed sessions, late arrival or non-attendance do not automatically remove the payment commitment.',
+    `JFP Program Waiver and Agreement accepted for ${term}.`,
+    'Parent/guardian confirms the player details, emergency contact details and medical information supplied are accurate.',
+    'Parent/guardian understands football training includes running, striking the ball, changes of direction, physical contact, group activity and normal physical risk.',
+    'Parent/guardian confirms the player is fit to participate unless medical notes have been listed on this form.',
+    'Parent/guardian authorises Joner Football staff to seek urgent medical assistance or emergency treatment if needed during a session.',
+    'Parent/guardian understands that once a spot is confirmed, the player is locked in for the full term and payment is required.',
+    'Parent/guardian understands payment must be made before the term starts unless Dean or Ligia approve another arrangement in writing.',
+    'Parent/guardian understands no make-up sessions are offered for missed sessions, late arrival or non-attendance.',
+    'Parent/guardian understands the waiver must be completed before the player trains or kicks a ball.',
   ]
   const medical = clean(body.medicalNotes, 1200)
   if (medical) parts.push(`Medical notes supplied: ${medical}`)
@@ -326,41 +331,53 @@ async function handlePlayerWaiver(body, res) {
     mobileNumber: clean(body.mobileNumber, 80),
     playerMobileNumber: clean(body.playerMobileNumber, 80),
     medicalNotes: clean(body.medicalNotes, 1200),
-    term: clean(body.term, 80) || 'Term 2',
+    emergencyContactName: clean(body.emergencyContactName, 180),
+    emergencyContactPhone: clean(body.emergencyContactPhone, 80),
+    term: clean(body.term, 80) || 'Term 3 2026',
     paymentCommitmentAccepted: body.paymentCommitmentAccepted === true || body.paymentCommitmentAccepted === 'true' || body.paymentCommitmentAccepted === 'on',
+    noMakeUpAccepted: body.noMakeUpAccepted === true || body.noMakeUpAccepted === 'true' || body.noMakeUpAccepted === 'on',
+    emergencyTreatmentPermission: body.emergencyTreatmentPermission === true || body.emergencyTreatmentPermission === 'true' || body.emergencyTreatmentPermission === 'on',
+    mediaPermission: body.mediaPermission === true || body.mediaPermission === 'true' || body.mediaPermission === 'on',
     waiverAccepted: body.waiverAccepted === true || body.waiverAccepted === 'true' || body.waiverAccepted === 'on',
     parentSignature: clean(body.parentSignature, 180),
   }
 
-  if (!submitted.playerFullName || !submitted.dob || !submitted.parentName || !submitted.email || !submitted.mobileNumber) {
-    return res.status(400).json({ success: false, error: 'Please complete all required player and parent fields.' })
+  if (!submitted.playerFullName || !submitted.dob || !submitted.parentName || !submitted.email || !submitted.mobileNumber || !submitted.emergencyContactName || !submitted.emergencyContactPhone) {
+    return res.status(400).json({ success: false, error: 'Please complete all required player, parent and emergency contact fields.' })
   }
   const emailCheck = await validateEmailQuality(submitted.email, { label: 'parent email' })
   if (!emailCheck.ok) {
     return res.status(400).json({ success: false, error: emailCheck.error || 'Please enter a valid parent email address.' })
   }
   submitted.email = emailCheck.email
-  if (!submitted.paymentCommitmentAccepted || !submitted.waiverAccepted || !submitted.parentSignature) {
-    return res.status(400).json({ success: false, error: 'Please accept the waiver, payment commitment and add the parent/guardian signature.' })
+  if (!submitted.paymentCommitmentAccepted || !submitted.noMakeUpAccepted || !submitted.emergencyTreatmentPermission || !submitted.waiverAccepted || !submitted.parentSignature) {
+    return res.status(400).json({ success: false, error: 'Please accept the waiver, payment terms, no make-up sessions, emergency treatment permission and add the parent/guardian signature.' })
   }
 
   const signedAt = new Date().toISOString()
   const fields = {
     'Player Full Name': submitted.playerFullName,
-    DOB: submitted.dob,
-    'Parent Name': submitted.parentName,
-    'Current Club': submitted.currentClub,
-    Email: submitted.email,
-    'Mobile Number': submitted.mobileNumber,
+    'Date of Birth': submitted.dob,
+    'Parent/Guardian Name': submitted.parentName,
+    'Parent Email': submitted.email,
+    'Parent Mobile Number': submitted.mobileNumber,
     'Player Mobile Number': submitted.playerMobileNumber,
+    'Current Club': submitted.currentClub,
     'Medical Notes': submitted.medicalNotes || 'None supplied',
+    'Emergency Contact Name': submitted.emergencyContactName,
+    'Emergency Contact Phone': submitted.emergencyContactPhone,
     Term: submitted.term,
-    'Spot Confirmed': 'Submitted',
-    'Payment Commitment Accepted': 'Yes',
-    'Waiver Accepted': 'Yes',
-    'Waiver Summary': buildWaiverSummary(submitted),
+    'Waiver Version': 'JFP Term 3 2026 full waiver v2',
+    'Waiver Accepted - Full Terms': true,
+    'No Make-Up Sessions Accepted': true,
+    'Payment Terms Accepted - Full Term': true,
+    'Emergency Treatment Permission': true,
+    'Media Permission': Boolean(submitted.mediaPermission),
     'Parent/Guardian Signature': submitted.parentSignature,
-    'Date Signed': signedAt,
+    'Signed Date': signedAt.slice(0, 10),
+    'Form Review Status': 'Needs Review',
+    'Spot Confirmed': true,
+    'JFP Program Waiver and Agreement': buildWaiverSummary(submitted),
     'Internal Notes': `Submitted from jonerfootball.com/player-waiver on ${signedAt}`,
   }
 
