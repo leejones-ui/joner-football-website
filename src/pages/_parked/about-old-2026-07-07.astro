@@ -1,0 +1,724 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import EmailCapture from '../components/EmailCapture.astro'
+import SEOFAQ from '../components/SEOFAQ.astro'
+import GeoAnswers from '../components/GeoAnswers.astro'
+import { faqSchema, breadcrumbSchema } from '../lib/seoSchema'
+import { aiSearchQuestions, leePersonSchema } from '../lib/aiSearchContent'
+
+const aboutPageSchema = {
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  "name": "About Lee Jones & Joner Football",
+  "description": "About Lee Jones and Joner Football: A Licence coach, published author, and one of the world's Top 10 technical trainers.",
+  "url": "https://jonerfootball.com/about/",
+  "mainEntity": { "@id": "https://jonerfootball.com/about/#lee-jones" }
+}
+
+const aboutFAQs = aiSearchQuestions
+
+const schema = [
+  aboutPageSchema,
+  leePersonSchema,
+  breadcrumbSchema([
+    { name: 'Home', url: 'https://jonerfootball.com/' },
+    { name: 'About Lee Jones', url: 'https://jonerfootball.com/about/' },
+  ]),
+  faqSchema(aboutFAQs),
+]
+
+const coachingVideos = [
+  {
+    id: 'X2Lb84oetsQ',
+    title: '1o1 Training',
+    banner: '1o1 Training'
+  },
+  {
+    id: 'axQYlKahQ58',
+    title: 'Our Story',
+    banner: 'Our Story'
+  },
+  {
+    id: '8xfWkNLdVYE',
+    title: 'Group Training',
+    banner: 'Group Training'
+  },
+  {
+    id: '6Lk7pztLhEw',
+    title: 'Training Pros',
+    banner: 'Training Pros'
+  }
+]
+
+const contactEnquiryOptions = [
+  { value: 'training-sydney', label: 'Training Enquiries (Sydney)', intro: 'Tell us about the player and what type of training you are looking for.' },
+  { value: 'general', label: 'General Enquiries', intro: 'Ask us anything and the team will point you in the right direction.' },
+  { value: 'joners-juniors', label: 'Joners Juniors Enquiries', intro: 'For parents enquiring about the Joners Juniors program.' },
+  { value: 'coaching-role', label: 'Apply For A Coaching Role', intro: 'Tell us about your coaching background and why you want to work with Joner Football.' },
+]
+
+import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import { fetchSanityPage } from '../lib/sanityPages'
+import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+
+const sanityPage = await fetchSanityPage('about')
+---
+
+{shouldReplaceSanityPage(sanityPage) ? (
+  <SanityPageRenderer page={sanityPage} />
+) : (
+<BaseLayout
+  title="About Lee Jones | A Licence Coach & Joner Football Founder"
+  description="About Lee Jones: A Licence coach, published author, Top 10 technical trainer and founder of Joner Football."
+  schema={schema}
+>
+
+  <!-- HERO: Spotlight card with Lee photo -->
+  <section class="bg-joner-black pt-10 pb-12 md:pt-16 md:pb-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-black">
+
+        <!-- Spotlight beams -->
+        <div class="spotlight spotlight-a" aria-hidden="true"></div>
+        <div class="spotlight spotlight-b" aria-hidden="true"></div>
+
+        <!-- Grain / vignette -->
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.18),transparent_55%)] pointer-events-none"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(255,255,255,0.06),transparent_60%)] pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col lg:flex-row min-h-[560px] lg:min-h-[640px]">
+
+          <!-- LEFT: Copy -->
+          <div class="flex-1 px-6 py-10 sm:px-10 sm:py-14 lg:p-14 flex flex-col justify-center">
+            <p class="text-joner-red font-heading text-xs sm:text-sm uppercase tracking-[0.25em] mb-4">
+              From Sydney to the World
+            </p>
+            <h1 class="font-heading text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold uppercase leading-[0.92] mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-500">
+              The Joner<br/>Football<br/>Story
+            </h1>
+            <p class="text-neutral-300 font-body text-base sm:text-lg max-w-lg leading-relaxed mb-8">
+              I'm Lee Jones. I built Joner Football to give every player on earth access to the technical coaching that used to live behind academy gates. Master the ball, and the game opens up.
+            </p>
+            <div class="flex flex-wrap gap-3">
+              <a href="#story" class="btn-red text-sm">My Story</a>
+              <a href="https://www.instagram.com/leejonerjones" target="_blank" rel="noopener" class="btn-outline text-sm">
+                Follow Me on Instagram
+              </a>
+            </div>
+          </div>
+
+          <!-- RIGHT: Lee spotlight photo (replaces the 3D robot) -->
+          <div class="relative flex-1 min-h-[420px] sm:min-h-[480px] lg:min-h-0">
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(255,255,255,0.18),transparent_55%)] pointer-events-none z-10"></div>
+            <img
+              src="/images/about/lee-spotlight-hero.webp"
+              alt="Lee Jones, founder of Joner Football, on the pitch"
+              class="absolute inset-0 w-full h-full object-cover object-[center_top]"
+              loading="eager"
+            />
+            <!-- Side-fade so the photo blends with the dark card -->
+            <div class="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black via-black/60 to-transparent lg:block hidden pointer-events-none"></div>
+            <div class="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none"></div>
+          </div>
+
+        </div>
+
+        <!-- Bottom stats bar -->
+        <div class="relative z-10 grid grid-cols-2 md:grid-cols-6 border-t border-white/10 bg-black/40 backdrop-blur-sm">
+          <div class="p-4 sm:p-5 text-center border-r border-white/10">
+            <div class="font-heading text-white text-2xl md:text-3xl font-bold">2.5M+</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">Followers</div>
+          </div>
+          <div class="p-4 sm:p-5 text-center md:border-r border-white/10">
+            <div class="font-heading text-white text-2xl md:text-3xl font-bold">50K+</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">App Downloads</div>
+          </div>
+          <div class="p-4 sm:p-5 text-center border-r border-t md:border-t-0 border-white/10">
+            <div class="font-heading text-white text-2xl md:text-3xl font-bold">15+</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">Countries</div>
+          </div>
+          <div class="p-4 sm:p-5 text-center border-t md:border-t-0 md:border-r border-white/10">
+            <div class="font-heading text-joner-red text-2xl md:text-3xl font-bold">Author</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">3 Published Books</div>
+          </div>
+          <div class="p-4 sm:p-5 text-center border-r border-t md:border-t-0 border-white/10">
+            <div class="font-heading text-white text-2xl md:text-3xl font-bold">1,500+</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">Training Drills</div>
+          </div>
+          <div class="p-4 sm:p-5 text-center border-t md:border-t-0 border-white/10">
+            <div class="font-heading text-white text-2xl md:text-3xl font-bold">JFP HQ</div>
+            <div class="text-neutral-500 text-[10px] sm:text-xs font-body uppercase tracking-wider mt-1">Belrose, Sydney</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- LEE'S STORY -->
+  <section id="story" class="bg-joner-black py-16 md:py-28 scroll-mt-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
+
+        <!-- Sticky photo column -->
+        <div class="lg:col-span-5 order-1 lg:order-2">
+          <div class="lg:sticky lg:top-24 space-y-4">
+            <div class="relative overflow-hidden rounded-xl border border-white/10">
+              <img
+                src="/images/about/lee-coaching-pitch.webp"
+                alt="Lee Jones coaching on the pitch at JFP HQ"
+                class="w-full h-auto object-cover"
+                loading="lazy"
+              />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <img
+                src="/images/about/lee-action.webp"
+                alt="Lee Jones demonstrating ball control"
+                class="w-full aspect-square object-cover rounded-lg border border-white/10"
+                loading="lazy"
+              />
+              <img
+                src="/images/about/lee-portrait-smile.webp"
+                alt="Lee Jones, founder of Joner Football"
+                class="w-full aspect-square object-cover rounded-lg border border-white/10"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Story copy -->
+        <div class="lg:col-span-7 order-2 lg:order-1">
+          <div class="inline-block bg-joner-red px-3 py-1 font-heading text-xs uppercase tracking-widest text-white mb-4">The Founder</div>
+          <h2 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase mb-8 leading-tight">
+            Lee 'Joner' Jones
+          </h2>
+
+          <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-6">
+            Football gave me a lot early: Wrexham AFC, the chance to play for my country Wales, and coaching qualifications before most people my age were even thinking about coaching. I earned my UEFA C licence at 16, held my UEFA B by 19, and later earned my A Licence. At 19 I was appointed Academy Director at Rhyl FC Academy. I took my U14s to an international tournament in France, lifted the trophy, and walked away with the best coach award.
+          </p>
+
+          <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-6">
+            A qualified teacher, I ran a community football project for unemployed adults and ex-offenders in Wales, then coached at Llandudno FC as a player/coach. After trialling for A-League clubs including Central Coast Mariners, I packed my boots and moved to Sydney. Joner Football started with one player, one ball, and a borrowed patch of grass.
+          </p>
+
+          <div class="border-l-4 border-joner-red pl-6 mb-8 bg-white/5 py-4 pr-4 rounded-r-lg">
+            <p class="text-white font-heading text-lg md:text-xl uppercase tracking-wide leading-snug">
+              In 2017, Joner Football was voted one of the Top 10 Technical Trainers in the World.
+            </p>
+          </div>
+
+          <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-6">
+            Since then I've coached A-League, W-League, and elite international players. Built a social following north of 2.5 million footballers. Launched the <a href="/app" class="text-joner-red hover:underline">Joner Football App</a> with 50,000+ downloads and 1,500+ training drills. Run <a href="/camps" class="text-joner-red hover:underline">camps</a> across 15+ countries. Watched players I've coached go on to professional and international careers.
+          </p>
+
+          <!-- Penguin author card -->
+          <div class="border border-white/10 bg-gradient-to-br from-white/[0.06] to-transparent p-6 rounded-lg mb-8">
+            <div class="flex items-center gap-2 text-joner-red font-heading text-[11px] uppercase tracking-[0.32em] mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+              </svg>
+              Published Author
+            </div>
+            <h3 class="font-heading text-white text-xl md:text-2xl uppercase tracking-wide mb-2 leading-tight">
+              3 Books with Penguin
+            </h3>
+            <p class="text-neutral-300 font-body text-sm md:text-base leading-relaxed">
+              Three coaching books, published with Penguin, one of the biggest book publishers in the world. The full Joner Football methodology, in print. Links coming soon.
+            </p>
+          </div>
+
+          <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-10">
+            Today, Joner Football operates out of JFP HQ in Belrose, Sydney. A state-of-the-art indoor facility purpose-built for technical development. The coaching philosophy has never changed: master the ball, and the game opens up. Every drill, every session, every camp is built around technical excellence, high intensity, and real player development.
+          </p>
+
+          <!-- Pillars -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="border border-white/10 bg-white/5 p-5 rounded-lg">
+              <div class="font-heading text-joner-red text-sm uppercase tracking-widest mb-2">01</div>
+              <h3 class="font-heading text-white text-lg uppercase tracking-wide mb-2">Technique First</h3>
+              <p class="text-neutral-400 text-sm font-body leading-relaxed">Master the ball before anything else.</p>
+            </div>
+            <div class="border border-white/10 bg-white/5 p-5 rounded-lg">
+              <div class="font-heading text-joner-red text-sm uppercase tracking-widest mb-2">02</div>
+              <h3 class="font-heading text-white text-lg uppercase tracking-wide mb-2">High Intensity</h3>
+              <p class="text-neutral-400 text-sm font-body leading-relaxed">Train like the game. No standing around.</p>
+            </div>
+            <div class="border border-white/10 bg-white/5 p-5 rounded-lg">
+              <div class="font-heading text-joner-red text-sm uppercase tracking-widest mb-2">03</div>
+              <h3 class="font-heading text-white text-lg uppercase tracking-wide mb-2">Real Development</h3>
+              <p class="text-neutral-400 text-sm font-body leading-relaxed">Long-term player growth, not quick fixes.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- WATCH LEE COACH -->
+  <section class="bg-gradient-to-b from-joner-black via-joner-gray to-joner-black py-16 md:py-24 relative overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.12),transparent_60%)] pointer-events-none"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div class="text-center mb-12">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Watch Lee Coach</p>
+        <h2 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white uppercase leading-tight">
+          See the<br class="sm:hidden"/> Methodology
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+        {coachingVideos.map((video) => (
+          <div class="group">
+            <div class="flex items-center gap-3 mb-3 pl-1">
+              <span class="w-2 h-2 rounded-full bg-joner-red"></span>
+              <span class="text-white/80 font-heading text-[11px] sm:text-xs uppercase tracking-[0.32em]">{video.banner}</span>
+              <span class="flex-1 h-px bg-gradient-to-r from-white/15 to-transparent"></span>
+            </div>
+            <div class="relative overflow-hidden rounded-xl border border-white/10 bg-black aspect-video">
+              <iframe
+                srcdoc={`<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img{position:absolute;width:100%;height:100%;object-fit:cover;top:0;left:0}.p{position:absolute;left:50%;top:50%;width:80px;height:80px;margin:-40px 0 0 -40px;background:#E30613;border-radius:999px;display:flex;align-items:center;justify-content:center}.p:before{content:'';display:block;width:0;height:0;margin-left:6px;border-left:22px solid #fff;border-top:14px solid transparent;border-bottom:14px solid transparent}</style><a href=https://www.youtube.com/embed/${video.id}?autoplay=1><img src=https://img.youtube.com/vi/${video.id}/maxresdefault.jpg alt='${video.title}'><div class='p'></div></a>`}
+                src={`https://www.youtube.com/embed/${video.id}`}
+                title={video.title}
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+                class="absolute inset-0 w-full h-full"
+              ></iframe>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div class="text-center mt-12">
+        <a href="https://www.youtube.com/@jonerfootball" target="_blank" rel="noopener" class="btn-outline text-sm">
+          More on YouTube
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOLLOW LEE / Instagram CTA -->
+  <section class="bg-joner-black py-16 md:py-24">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a0a0a] via-black to-[#0a0a1a]">
+
+        <!-- Decorative gradient blob -->
+        <div class="absolute -top-32 -right-32 w-96 h-96 bg-joner-red opacity-20 blur-[120px] rounded-full pointer-events-none"></div>
+        <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-white opacity-5 blur-[120px] rounded-full pointer-events-none"></div>
+
+        <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-0 items-stretch">
+          <!-- Photo -->
+          <div class="relative min-h-[300px] md:min-h-[440px] order-2 md:order-1">
+            <img
+              src="/images/about/lee-with-players.webp"
+              alt="Lee Jones coaching young players"
+              class="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black via-black/40 to-transparent pointer-events-none"></div>
+          </div>
+
+          <!-- Copy -->
+          <div class="p-8 sm:p-10 md:p-12 flex flex-col justify-center order-1 md:order-2">
+            <div class="flex items-center gap-2 text-joner-red font-heading text-xs uppercase tracking-[0.25em] mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
+              </svg>
+              Lee's Personal Instagram
+            </div>
+            <h2 class="font-heading text-3xl sm:text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">
+              Follow me<br/>Off the Pitch
+            </h2>
+            <p class="text-neutral-300 font-body text-base md:text-lg leading-relaxed mb-8">
+              Behind the scenes from JFP HQ, the family, the camps, the wins and the work. The personal side of building Joner Football.
+            </p>
+            <a
+              href="https://www.instagram.com/leejonerjones"
+              target="_blank"
+              rel="noopener"
+              class="inline-flex items-center justify-center gap-2 bg-white text-black font-heading text-sm uppercase tracking-[0.18em] px-6 py-4 rounded-full hover:bg-joner-red hover:text-white transition-colors w-full sm:w-auto"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
+              </svg>
+              @leejonerjones
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- APP CTA -->
+  <section class="bg-joner-red py-12 md:py-16">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
+        Continue Your Training at Home
+      </h2>
+      <p class="text-white/85 font-body mb-6 text-base md:text-lg">
+        Continue your training at home with the Joner Football App. 1,500+ drills, session plans, and follow-along programs.
+      </p>
+      <a href="/app" class="btn-outline text-base px-8 py-4 border-white text-white hover:bg-white hover:text-joner-red">
+        Try the World's #1 Football App Free
+      </a>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact" class="bg-joner-black py-16 md:py-24 scroll-mt-32">
+    <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-10">
+        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">Get in Touch</p>
+        <h2 class="section-heading text-white mb-4">Contact Us</h2>
+        <p class="mx-auto max-w-2xl font-body text-base leading-relaxed text-gray-400 md:text-lg">
+          Choose what you need and the form will change. One place for training, Joners Juniors, general questions, and coaching applications.
+        </p>
+      </div>
+
+      <form id="contact-smart-form" class="space-y-5 border border-gray-800 bg-joner-gray p-5 md:p-8">
+        <div>
+          <label for="enquiryType" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-gray-400">What can we help with?</label>
+          <select id="enquiryType" name="enquiryType" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
+            {contactEnquiryOptions.map((option) => (
+              <option value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <p id="form-intro" class="mt-3 font-body text-sm text-gray-400">Tell us about the player and what type of training you are looking for.</p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input data-name-field type="text" name="name" placeholder="Full name" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <input type="email" name="email" placeholder="Email address" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input type="tel" name="phone" placeholder="Phone number" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <input data-location-field="default" type="text" name="location" placeholder="Location" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <select data-location-field="training" name="trainingLocation" class="hidden min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none" disabled>
+            <option value="">Preferred Sydney location</option>
+            <option>HQ (Belrose)</option>
+            <option>North Turramurra</option>
+            <option>Rydalmere Park</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <div data-fields="training-sydney joners-juniors" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input type="text" name="playerName" placeholder="Player name" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <input data-player-age-field type="text" name="playerAge" placeholder="Player age" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+        </div>
+
+        <div data-fields="training-sydney" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input type="text" name="playerLevel" placeholder="Player level or team" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <select name="trainingInterest" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
+            <option value="">Training interest</option>
+            <option>Joner Football Performance</option>
+            <option>Private training</option>
+            <option>Group training</option>
+            <option>Game analysis</option>
+            <option>Not sure yet</option>
+          </select>
+        </div>
+
+        <div data-fields="joners-juniors" class="grid grid-cols-1 gap-4 sm:grid-cols-2 hidden">
+          <select name="juniorProgram" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
+            <option value="">Program interest</option>
+            <option>Joner 6-8 Year Old Program</option>
+            <option>Joner Football Performance pathway</option>
+            <option>Not sure yet</option>
+          </select>
+          <input type="text" name="parentGoal" placeholder="Main goal for the player" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+        </div>
+
+        <div data-fields="coaching-role" class="grid grid-cols-1 gap-4 sm:grid-cols-2 hidden">
+          <input type="text" name="coachingExperience" placeholder="Coaching experience" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <input type="text" name="qualifications" placeholder="Qualifications" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+        </div>
+
+        <div data-fields="coaching-role" class="hidden">
+          <input type="text" name="availability" placeholder="Availability" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+        </div>
+
+        <div data-fields="coaching-role" class="hidden">
+          <label for="cvFile" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-gray-400">Attach CV</label>
+          <input id="cvFile" type="file" name="cvFile" accept=".pdf,.doc,.docx,.pages" class="block w-full cursor-pointer border border-dashed border-gray-700 bg-joner-black px-4 py-4 font-body text-sm text-gray-300 file:mr-4 file:border-0 file:bg-joner-red file:px-4 file:py-2 file:font-heading file:text-xs file:uppercase file:tracking-[0.16em] file:text-white hover:border-joner-red focus:border-joner-red focus:outline-none" />
+          <p class="mt-2 font-body text-xs text-gray-500">PDF, Word, or Pages file. Max 5MB.</p>
+        </div>
+
+        <textarea name="message" placeholder="Message" required rows="5" class="w-full resize-none border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none"></textarea>
+
+        <label class="flex gap-3 border border-gray-800 bg-joner-black/60 p-4 font-body text-sm leading-relaxed text-gray-300">
+          <input type="checkbox" name="marketingOptIn" value="true" class="mt-1 h-4 w-4 shrink-0 accent-joner-red" />
+          <span>Yes, send me Joner Football updates, offers, app news, camps, and training tips by email.</span>
+        </label>
+
+        <p id="contact-form-status" class="hidden font-body text-sm"></p>
+        <button type="submit" class="btn-red w-full text-sm">Send Enquiry</button>
+      </form>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function () {
+      var options = {
+        'training-sydney': {
+          label: 'Training Enquiries (Sydney)',
+          intro: 'Tell us about the player and what type of training you are looking for.',
+          button: 'Send Training Enquiry'
+        },
+        'general': {
+          label: 'General Enquiries',
+          intro: 'Ask us anything and the team will point you in the right direction.',
+          button: 'Send General Enquiry'
+        },
+        'joners-juniors': {
+          label: 'Joners Juniors Enquiries',
+          intro: 'For parents enquiring about the Joners Juniors program.',
+          button: 'Send Joners Juniors Enquiry'
+        },
+        'coaching-role': {
+          label: 'Apply For A Coaching Role',
+          intro: 'Tell us about your coaching background and why you want to work with Joner Football.',
+          button: 'Send Coaching Application'
+        }
+      };
+
+      var form = document.getElementById('contact-smart-form');
+      if (!form) return;
+      var typeSelect = form.querySelector('[name="enquiryType"]');
+      var intro = document.getElementById('form-intro');
+      var submit = form.querySelector('button[type="submit"]');
+      var status = document.getElementById('contact-form-status');
+
+      function setStatus(message, ok) {
+        if (!status) return;
+        status.textContent = message || '';
+        status.className = message ? 'font-body text-sm ' + (ok ? 'text-green-400' : 'text-amber-400') : 'hidden font-body text-sm';
+      }
+
+      function syncNamePlaceholder() {
+        var selected = typeSelect.value || 'training-sydney';
+        var nameField = form.querySelector('[data-name-field]');
+        var playerAgeField = form.querySelector('[data-player-age-field]');
+        if (!nameField) return;
+        if (selected !== 'training-sydney') {
+          nameField.placeholder = 'Full name';
+          return;
+        }
+        var age = playerAgeField ? parseInt(String(playerAgeField.value || '').replace(/[^0-9]/g, ''), 10) : NaN;
+        nameField.placeholder = age >= 18 ? 'Full name' : 'Parent name';
+      }
+
+      function syncFields() {
+        var selected = typeSelect.value || 'training-sydney';
+        var config = options[selected] || options['training-sydney'];
+        if (intro) intro.textContent = config.intro;
+        if (submit) submit.textContent = config.button;
+
+        form.querySelectorAll('[data-fields]').forEach(function (group) {
+          var show = String(group.getAttribute('data-fields') || '').split(' ').indexOf(selected) !== -1;
+          group.classList.toggle('hidden', !show);
+          group.querySelectorAll('input, select, textarea').forEach(function (field) {
+            field.disabled = !show;
+            if (field.classList.contains('conditional-required')) field.required = show;
+          });
+        });
+
+        var defaultLocation = form.querySelector('[data-location-field="default"]');
+        var trainingLocation = form.querySelector('[data-location-field="training"]');
+        var isTraining = selected === 'training-sydney';
+        if (defaultLocation && trainingLocation) {
+          defaultLocation.classList.toggle('hidden', isTraining);
+          defaultLocation.disabled = isTraining;
+          trainingLocation.classList.toggle('hidden', !isTraining);
+          trainingLocation.disabled = !isTraining;
+          trainingLocation.required = isTraining;
+        }
+        syncNamePlaceholder();
+      }
+
+      var params = new URLSearchParams(window.location.search || '');
+      var requestedType = params.get('type');
+      if (requestedType && options[requestedType]) typeSelect.value = requestedType;
+
+      typeSelect.addEventListener('change', function () {
+        setStatus('', true);
+        syncFields();
+      });
+      var playerAgeField = form.querySelector('[data-player-age-field]');
+      if (playerAgeField) playerAgeField.addEventListener('input', syncNamePlaceholder);
+      syncFields();
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        setStatus('', true);
+        var originalText = submit ? submit.textContent : 'Send Enquiry';
+        var formData = new FormData(form);
+        var emailInput = form.querySelector('input[name="email"]');
+
+        if (window.JonerEmailGuard && emailInput) {
+          var validation = window.JonerEmailGuard.validateEmail(formData.get('email'));
+          window.JonerEmailGuard.setFeedback(emailInput, validation);
+          if (!validation.valid) {
+            emailInput.reportValidity();
+            return;
+          }
+        }
+
+        if (submit) {
+          submit.disabled = true;
+          submit.textContent = 'Sending...';
+          submit.classList.add('opacity-70', 'cursor-not-allowed');
+        }
+
+        var payload = {};
+        formData.forEach(function (value, key) {
+          if (!(value instanceof File)) payload[key] = value;
+        });
+        if (payload.enquiryType === 'training-sydney' && payload.trainingLocation) payload.location = payload.trainingLocation;
+        payload.marketingOptIn = formData.get('marketingOptIn') === 'true';
+
+        var fileInput = form.querySelector('input[name="cvFile"]');
+        var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+        var filePromise = Promise.resolve();
+        if (payload.enquiryType === 'coaching-role' && file) {
+          if (file.size > 5 * 1024 * 1024) {
+            setStatus('CV file is too large. Max 5MB.', false);
+            if (submit) {
+              submit.disabled = false;
+              submit.textContent = originalText;
+              submit.classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+            return;
+          }
+          filePromise = new Promise(function (resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function () {
+              var result = String(reader.result || '');
+              payload.cvFile = {
+                name: file.name,
+                type: file.type || 'application/octet-stream',
+                content: result.split(',')[1] || ''
+              };
+              resolve();
+            };
+            reader.onerror = function () { reject(new Error('Could not read CV file.')); };
+            reader.readAsDataURL(file);
+          });
+        }
+
+        var tokenPromise = window.JonerRecaptcha && window.JonerRecaptcha.getToken
+          ? window.JonerRecaptcha.getToken('contact')
+          : Promise.resolve('');
+
+        filePromise.then(function () { return tokenPromise; }).then(function (token) {
+          payload.recaptchaToken = token;
+          return fetch('/api/contact-enquiry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (!data || !data.success) throw new Error((data && data.error) || 'Could not send enquiry.');
+          form.reset();
+          syncFields();
+          setStatus('Done. Your enquiry has been sent.', true);
+        })
+        .catch(function (error) {
+          setStatus(error && error.message ? error.message : 'Could not send enquiry. Please try again.', false);
+        })
+        .finally(function () {
+          if (submit) {
+            submit.disabled = false;
+            submit.textContent = originalText;
+            submit.classList.remove('opacity-70', 'cursor-not-allowed');
+          }
+        });
+      });
+    })();
+  </script>
+
+  <GeoAnswers
+    title="Joner Football, explained fast."
+    intro="The short version for anyone meeting Joner Football for the first time."
+    blocks={[
+      {
+        heading: 'Who this is for',
+        body: 'Players, parents and coaches anywhere in the world who want technical football coaching they can trust, whether that is in person in Sydney, at a camp, or through the app.',
+      },
+      {
+        heading: 'What Joner Football is',
+        body: 'A football coaching and player development company founded by Lee Jones in Sydney in 2013. It grew from private sessions into The HQ, global camps, coach education and the Joner Football App.',
+      },
+      {
+        heading: 'Why players trust it',
+        body: 'The coaching went viral because the detail is real: first touch, striking, ball mastery and 1v1 work taught with the energy and standards Lee built over 20 years on the pitch.',
+      },
+      {
+        heading: 'Best next step',
+        body: 'Train with the app from anywhere, book Sydney training, or take your player to a camp. Every pathway runs on the same coaching method.',
+      },
+    ]}
+    links={[
+      { label: 'The football training app', href: '/app' },
+      { label: 'Sydney training', href: '/training' },
+      { label: 'Football camps', href: '/camps' },
+      { label: 'The HQ', href: '/hq' },
+      { label: 'App for coaches', href: '/app/for-coaches' },
+    ]}
+  />
+
+  <SEOFAQ
+    title="Common questions about Joner Football."
+    items={aboutFAQs}
+  />
+
+  <EmailCapture />
+
+  <style>
+    /* Animated spotlight beams for the hero card */
+    .spotlight {
+      position: absolute;
+      pointer-events: none;
+      z-index: 1;
+      filter: blur(80px);
+      opacity: 0;
+      animation: spotlight-fade 2s ease-out 0.2s forwards;
+    }
+    .spotlight-a {
+      top: -20%;
+      left: -10%;
+      width: 70%;
+      height: 80%;
+      background: radial-gradient(ellipse at center, rgba(255,255,255,0.35), transparent 60%);
+      transform: rotate(-20deg);
+    }
+    .spotlight-b {
+      bottom: -25%;
+      right: -15%;
+      width: 65%;
+      height: 80%;
+      background: radial-gradient(ellipse at center, rgba(227,6,19,0.30), transparent 60%);
+      transform: rotate(15deg);
+      animation-delay: 0.6s;
+    }
+    @keyframes spotlight-fade {
+      from { opacity: 0; transform: translateY(20px) rotate(var(--rot, 0deg)); }
+      to { opacity: 1; transform: translateY(0) rotate(var(--rot, 0deg)); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .spotlight { animation: none; opacity: 1; }
+    }
+  </style>
+
+</BaseLayout>
+)}
