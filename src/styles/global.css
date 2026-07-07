@@ -143,6 +143,36 @@ img { object-fit: cover; object-position: center; }
 a, button, input, select, textarea { -webkit-tap-highlight-color: rgba(227, 6, 19, 0.24); }
 a, button { touch-action: manipulation; }
 
+/* Make every form dropdown obvious on mobile and desktop.
+   Native select arrows can disappear on dark Joner forms, especially iPhone Safari. */
+select:not([multiple]) {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  cursor: pointer;
+  padding-right: 3.25rem !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #E8000D 50%),
+    linear-gradient(135deg, #E8000D 50%, transparent 50%),
+    linear-gradient(to bottom, rgba(232, 0, 13, 0.65), rgba(232, 0, 13, 0.65)) !important;
+  background-position:
+    calc(100% - 24px) 50%,
+    calc(100% - 15px) 50%,
+    calc(100% - 46px) 50% !important;
+  background-size:
+    9px 9px,
+    9px 9px,
+    1px 28px !important;
+  background-repeat: no-repeat !important;
+}
+
+select:not([multiple]):focus {
+  box-shadow: 0 0 0 1px rgba(232, 0, 13, 0.35);
+}
+
+select::-ms-expand {
+  display: none;
+}
+
 @media (max-width: 767px) {
   .btn-red,
   .btn-outline {
