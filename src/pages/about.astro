@@ -31,7 +31,6 @@ const filmRoom = [
   description="A Licence coach. Author with Penguin. Founder of Joner Football. From Sydney to the world, technique above everything."
   ogImage="https://jonerfootball.com/images/about-lee/hero-poster.jpg"
   schema={[aboutPageSchema, leePersonSchema, crumbs]}
-  hideChrome={true}
 >
   <div id="al-root" class="al-root">
 
@@ -43,12 +42,6 @@ const filmRoom = [
         <span class="al-loader-line"></span>
       </div>
     </div>
-
-    <!-- Slim header -->
-    <header class="al-top">
-      <a class="al-top-brand" href="/">JONER FOOTBALL</a>
-      <a class="al-top-link" href="/join/">Train With Joner</a>
-    </header>
 
     <!-- HERO -->
     <section class="al-hero" id="al-hero">
@@ -118,11 +111,17 @@ const filmRoom = [
     <!-- THE ROAD -->
     <section class="al-road">
       <figure class="al-road-photo">
-        <div class="al-road-photo-frame"><img src="/images/about-lee/camp-ball.jpg" alt="Lee coaching on the ball among young players at a Joner Football camp" loading="lazy" /></div>
+        <div class="al-road-photo-frame">
+          <picture>
+            <source media="(max-width: 900px)" srcset="/images/about-lee/new-hero.jpg" />
+            <img src="/images/about-lee/camp-ball.jpg" alt="Lee coaching on the grass" loading="lazy" decoding="async" />
+          </picture>
+        </div>
       </figure>
       <div class="al-road-body">
         <p class="al-eyebrow">THE ROAD</p>
         <ol class="al-road-list">
+          <li class="al-road-item"><span class="al-road-year">Everton</span><span class="al-road-text">Played for eight years as a junior.</span></li>
           <li class="al-road-item"><span class="al-road-year">Wrexham</span><span class="al-road-text">Raised in the academy game at Wrexham AFC, then capped by Wales.</span></li>
           <li class="al-road-item"><span class="al-road-year">16</span><span class="al-road-text">UEFA C Licence.</span></li>
           <li class="al-road-item"><span class="al-road-year">19</span><span class="al-road-text">UEFA B Licence. Academy Director at Rhyl FC the same year.</span></li>
@@ -178,20 +177,27 @@ const filmRoom = [
           <div class="al-col al-col-lead" aria-hidden="true"></div>
 
           <div class="al-col al-col-high">
+            <figure class="al-tile al-tile-md al-bw">
+              <span class="al-tile-label">DAY ONE · AN EMPTY HQ</span>
+              <div class="al-tile-frame"><img src="/images/about-lee/empty-shed.jpg" alt="Lee and Carolina inside the empty warehouse that became the Joner Football HQ" loading="lazy" decoding="async" /></div>
+            </figure>
+          </div>
+
+          <div class="al-col al-col-mid">
             <figure class="al-tile al-tile-wide">
               <span class="al-tile-label">HARBOUR BRIDGE</span>
-              <div class="al-tile-frame"><img src="/images/about-lee/harbour.jpg" alt="Lee walking with a football at Sydney Harbour Bridge" loading="lazy" decoding="async" /></div>
+              <div class="al-tile-frame"><img class="al-face-mid" src="/images/about-lee/harbour.jpg" alt="Lee walking with a football at Sydney Harbour Bridge" loading="lazy" decoding="async" /></div>
             </figure>
           </div>
 
           <div class="al-col al-col-low">
             <figure class="al-tile al-tile-sm al-bw">
               <span class="al-tile-label">CAMP DAY</span>
-              <div class="al-tile-frame"><img src="/images/about-lee/camp-ball.jpg" alt="Lee on the ball at a Joner Football camp" loading="lazy" decoding="async" /></div>
+              <div class="al-tile-frame"><img class="al-face-top" src="/images/about-lee/camp-ball.jpg" alt="Lee on the ball at a Joner Football camp" loading="lazy" decoding="async" /></div>
             </figure>
             <figure class="al-tile al-tile-sm">
               <span class="al-tile-label">SYDNEY</span>
-              <div class="al-tile-frame"><img src="/images/about-lee/young-pros.jpg" alt="Lee with two young professional players on a Sydney pitch" loading="lazy" decoding="async" /></div>
+              <div class="al-tile-frame"><img class="al-face-top" src="/images/about-lee/young-pros.jpg" alt="Lee with two young professional players on a Sydney pitch" loading="lazy" decoding="async" /></div>
             </figure>
           </div>
 
@@ -205,11 +211,11 @@ const filmRoom = [
           <div class="al-col al-col-high">
             <figure class="al-tile al-tile-sm">
               <span class="al-tile-label">TRAINING PROS</span>
-              <div class="al-tile-frame"><img src="/images/about-lee/lefondre.jpg" alt="Lee Jones with striker Adam Le Fondre" loading="lazy" decoding="async" /></div>
+              <div class="al-tile-frame"><img class="al-face-upper" src="/images/about-lee/lefondre.jpg" alt="Lee Jones with striker Adam Le Fondre" loading="lazy" decoding="async" /></div>
             </figure>
             <figure class="al-tile al-tile-sm">
               <span class="al-tile-label">TELEVISION</span>
-              <div class="al-tile-frame"><img src="/images/about-lee/studio.jpg" alt="Lee smiling in the television studio" loading="lazy" decoding="async" /></div>
+              <div class="al-tile-frame"><img class="al-face-upper" src="/images/about-lee/studio.jpg" alt="Lee smiling in the television studio" loading="lazy" decoding="async" /></div>
             </figure>
           </div>
 
@@ -248,22 +254,18 @@ const filmRoom = [
           <div class="al-col al-col-mid">
             <figure class="al-tile al-tile-sm">
               <span class="al-tile-label">CAMPS</span>
-              <div class="al-tile-frame"><img src="/images/about-lee/camp-family.jpg" alt="Lee with around one hundred camp players, footballs spelling JONER" loading="lazy" decoding="async" /></div>
+              <div class="al-tile-frame"><img class="al-face-mid" src="/images/about-lee/camp-family.jpg" alt="Lee with around one hundred camp players, footballs spelling JONER" loading="lazy" decoding="async" /></div>
             </figure>
             <figure class="al-tile al-tile-sm al-bw">
               <span class="al-tile-label">INDOOR NIGHTS · 2020</span>
-              <div class="al-tile-frame"><img src="/images/about-lee/arena.jpg" alt="Lee smiling in a dark indoor football arena" loading="lazy" decoding="async" /></div>
+              <div class="al-tile-frame"><img class="al-face-upper" src="/images/about-lee/arena.jpg" alt="Lee smiling in a dark indoor football arena" loading="lazy" decoding="async" /></div>
             </figure>
           </div>
 
           <div class="al-col al-col-high">
-            <figure class="al-tile al-tile-sm al-bw">
-              <span class="al-tile-label">BELROSE · BEFORE</span>
-              <div class="al-tile-frame"><img src="/images/about-lee/empty-shed.jpg" alt="Lee and Carolina inside the empty warehouse that became the Joner Football HQ" loading="lazy" decoding="async" /></div>
-            </figure>
-            <figure class="al-tile al-tile-sm">
+            <figure class="al-tile al-tile-md">
               <span class="al-tile-label">AUTHOR · PENGUIN</span>
-              <div class="al-tile-frame"><img src="/images/about-lee/books.jpg" alt="Lee holding two Joner Football books published with Penguin" loading="lazy" decoding="async" /></div>
+              <div class="al-tile-frame"><img class="al-face-top" src="/images/about-lee/books.jpg" alt="Lee holding two Joner Football books published with Penguin" loading="lazy" decoding="async" /></div>
             </figure>
           </div>
 
@@ -336,11 +338,11 @@ html.lenis, html.lenis body { height: auto; }
 .al-root {
   --al-ink: #0b0b0c;
   --al-ink2: #121214;
-  --al-bone: #ece8df;
-  --al-mute: #8d887d;
-  --al-gold: #c9a227;
-  --al-gold-hi: #e8c96a;
-  --al-hair: rgba(236, 232, 223, 0.14);
+  --al-bone: #f5f4f1;
+  --al-mute: #8f8d8a;
+  --al-gold: #ff4d5a;
+  --al-gold-hi: #ff7b85;
+  --al-hair: rgba(245, 244, 241, 0.15);
   --al-serif: 'Fraunces', Georgia, serif;
   --al-sans: 'DM Sans', system-ui, sans-serif;
   --al-script: 'Mrs Saint Delafield', cursive;
@@ -372,15 +374,6 @@ html.lenis, html.lenis body { height: auto; }
 .al-loader-line::after { content: ''; position: absolute; inset: 0; background: var(--al-gold); transform: scaleX(0); transform-origin: left; animation: al-load 1.1s cubic-bezier(.77,0,.18,1) forwards; }
 @keyframes al-load { to { transform: scaleX(1); } }
 
-/* Header */
-.al-top {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 22px clamp(20px, 4vw, 56px);
-  mix-blend-mode: difference;
-}
-.al-top-brand { font-family: var(--al-serif); font-weight: 600; letter-spacing: 0.26em; font-size: 0.82rem; color: #fff; }
-.al-top-link { font-size: 0.7rem; letter-spacing: 0.24em; text-transform: uppercase; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.4); padding-bottom: 3px; }
 
 /* Hero */
 .al-hero { position: relative; height: 100svh; min-height: 620px; overflow: hidden; }
@@ -408,7 +401,7 @@ html.lenis, html.lenis body { height: auto; }
   position: absolute; z-index: 3; left: 50%; top: 30%; width: 380px; height: 380px;
   transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none;
   opacity: 0; transition: opacity 0.45s ease; mix-blend-mode: screen;
-  background: radial-gradient(circle, rgba(232,201,106,0.16) 0%, rgba(232,201,106,0.06) 42%, transparent 70%);
+  background: radial-gradient(circle, rgba(255,99,110,0.15) 0%, rgba(255,99,110,0.05) 42%, transparent 70%);
 }
 .al-hero.is-revealing .al-spot { opacity: 1; }
 .al-face-hint {
@@ -417,7 +410,7 @@ html.lenis, html.lenis body { height: auto; }
   font-size: 0.58rem; letter-spacing: 0.34em; text-indent: 0.34em; text-transform: uppercase;
   color: rgba(236,232,223,0.72); transition: opacity 0.5s ease;
 }
-.al-face-hint::before, .al-face-hint::after { content: ''; width: 28px; height: 1px; background: rgba(232,201,106,0.5); }
+.al-face-hint::before, .al-face-hint::after { content: ''; width: 28px; height: 1px; background: rgba(255,123,133,0.55); }
 .al-hero-copy {
   position: absolute; left: 0; right: 0; bottom: clamp(72px, 12vh, 130px);
   text-align: center; z-index: 4; pointer-events: none;
@@ -457,7 +450,7 @@ html.lenis, html.lenis body { height: auto; }
 .al-marquee { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 1vh; z-index: 0; }
 .al-marquee-row { display: flex; flex-wrap: nowrap; white-space: nowrap; font-family: var(--al-serif); font-weight: 500; font-size: clamp(5rem, 16vw, 18rem); line-height: 1; will-change: transform; }
 .al-marquee-row span { display: inline-block; flex: 0 0 auto; }
-.al-marquee-a { color: transparent; -webkit-text-stroke: 1px rgba(201, 162, 39, 0.30); }
+.al-marquee-a { color: transparent; -webkit-text-stroke: 1px rgba(255, 77, 90, 0.34); }
 .al-marquee-b { color: rgba(236, 232, 223, 0.05); font-style: italic; }
 .al-manifesto-inner { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 clamp(22px, 5vw, 40px); text-align: center; }
 .al-manifesto-quote {
@@ -556,6 +549,11 @@ html.lenis, html.lenis body { height: auto; }
 .al-tile.al-bw .al-tile-frame img { filter: grayscale(1) contrast(1.06); transition: filter 0.9s cubic-bezier(.22,.61,.36,1); }
 .al-tile.al-bw:hover .al-tile-frame img { filter: grayscale(0) contrast(1); }
 .al-tile-frame img { transition: transform 0.9s cubic-bezier(.22,.61,.36,1); }
+.al-face-top { object-position: 50% 12% !important; }
+.al-face-upper { object-position: 50% 24% !important; }
+.al-face-mid { object-position: 50% 38% !important; }
+.al-road-photo-frame picture { display: block; width: 100%; height: 100%; }
+.al-road-photo-frame img { object-position: 50% 18%; }
 .al-tile:hover .al-tile-frame img { transform: scale(1.04); }
 
 /* Film room */
@@ -580,7 +578,7 @@ html.lenis, html.lenis body { height: auto; }
 .al-yt-play {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
   width: 76px; height: 76px; border-radius: 50%;
-  border: 1px solid rgba(232, 201, 106, 0.9);
+  border: 1px solid rgba(255, 123, 133, 0.9);
   background: rgba(11, 11, 12, 0.35); backdrop-filter: blur(4px);
   transition: transform 0.4s cubic-bezier(.22,.61,.36,1), background 0.4s;
 }
@@ -654,7 +652,6 @@ html.lenis, html.lenis body { height: auto; }
   .al-yt-note { display: none; }
   .al-hero-meta { display: none; }
   .al-hero-eyebrow { letter-spacing: 0.28em; text-indent: 0.28em; }
-  .al-top-link { display: none; }
 }
 
 /* Reduced motion */
@@ -867,8 +864,7 @@ html.lenis, html.lenis body { height: auto; }
       .set('.al-loader', { display: 'none' })
       .from('.al-hero-word', { yPercent: 110, duration: 1.1, ease: 'power4.out', stagger: 0.12 }, '-=0.45')
       .from('.al-hero-script', { opacity: 0, scale: 0.7, rotate: -14, duration: 0.8, ease: 'back.out(1.6)' }, '-=0.55')
-      .from('.al-hero .al-fade', { opacity: 0, y: 14, duration: 0.7, stagger: 0.08, ease: 'power2.out' }, '-=0.5')
-      .from('.al-top', { opacity: 0, y: -12, duration: 0.6 }, '-=0.6');
+      .from('.al-hero .al-fade', { opacity: 0, y: 14, duration: 0.7, stagger: 0.08, ease: 'power2.out' }, '-=0.5');
 
     /* ---------- Hero scroll: parallax and 3D drift ---------- */
     gsap.to('.al-hero-video', {
