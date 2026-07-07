@@ -28,7 +28,7 @@ const sampleSessionUrl = 'https://app.jonerfootball.com/programs/coaches-session
 const freeBundleUrl = 'https://app.jonerfootball.com/checkout/new?o=226775'
 
 // Coaches Only is included in the Max Plan tier. Monthly and annual use the same checkout IDs as the draft join Max plan.
-const yearlyPrice = '$249 USD'
+const yearlyPrice = '$249.99 USD'
 const monthlyPrice = '$39.99 USD'
 
 // FAQ schema so Google can pull these as rich results in search
@@ -50,7 +50,7 @@ const productSchema = {
     {
       '@type': 'Offer',
       name: 'Annual Plan',
-      price: '249.00',
+      price: '249.99',
       priceCurrency: 'USD',
       availability: 'https://schema.org/InStock',
       url: 'https://jonerfootball.com/app/for-coaches/'
@@ -173,11 +173,11 @@ const included = [
 const faqs: Array<{ q: string; a: string }> = [
   {
     q: 'How much is Coaches Only?',
-    a: 'Coaches Only is included in the Max Plan tier inside the Joner Football App. $39.99 USD per month, or $249 USD per year. That works out at $20.83 per month when billed annually.'
+    a: 'Coaches Only is included in the Max Plan tier inside the Joner Football App. $39.99 USD per month, or $249.99 USD per year. That works out at $20.83 per month when billed annually.'
   },
   {
     q: 'Can I pay monthly?',
-    a: 'Yes. You can join Coaches Only on a monthly Max Plan at $39.99 USD per month, or save by going annual at $249 USD per year.'
+    a: 'Yes. You can join Coaches Only on a monthly Max Plan at $39.99 USD per month, or save by going annual at $249.99 USD per year.'
   },
   {
     q: 'Who is Coaches Only for?',
@@ -201,11 +201,11 @@ const faqs: Array<{ q: string; a: string }> = [
   },
   {
     q: 'Does it include the rest of the Joner Football App?',
-    a: 'Yes. Coaches Only gives you the coaches tier plus the wider Joner Football App. 1,500+ training videos, the session planner, daily challenges, and the community.'
+    a: 'Yes. Coaches Only gives you the coaches tier plus the wider Joner Football App. 2,000+ training videos, the session planner, daily challenges, and the community.'
   },
   {
     q: 'Can I cancel?',
-    a: 'Yes. Cancel anytime from inside your account. Monthly cancels at the next billing date. Annual keeps access for the year you paid for, with no surprise auto-charges.'
+    a: 'Yes. Cancel anytime from inside your account. Monthly cancels at the next billing date. Annual keeps access for the full year you paid for.'
   }
 ]
 
@@ -294,7 +294,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
           <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">WHY IT EXISTS</p>
           <h2 class="font-heading text-4xl md:text-6xl font-bold text-joner-black uppercase leading-none mb-6">STOP WINGING YOUR SESSIONS</h2>
           <p class="text-lg text-gray-700 font-body mb-6 max-w-xl">
-            Detailed session plans, ready to run, built around team training, small group training and 1on1's. Voice over videos and PDF session plans.
+            Tuesday, 5pm, still no session plan. Every coach knows that feeling. Coaches Only gives you detailed session plans ready to run, built around team training, small group training and 1on1's. Voice over videos and PDF session plans included.
           </p>
           <p class="font-heading uppercase text-2xl text-joner-red mb-6">Free bundle session below!</p>
 
