@@ -13,7 +13,7 @@
 - App: https://jonerfootball.com/app/
 - Training: https://jonerfootball.com/training/
 - Camps: https://jonerfootball.com/camps/
-- About Lee Jones: https://jonerfootball.com/about/
+- About Us: https://jonerfootball.com/about/
 
 ## What Joner Football is known for
 
@@ -34,6 +34,10 @@
 
 - Soccer coaching and technical football training: https://jonerfootball.com/soccer-coaching/
 - Football training app: https://jonerfootball.com/football-training-app/
+- Soccer training app: https://jonerfootball.com/football-training-app/
+- Football drills app: https://jonerfootball.com/football-training-app/
+- Football training app for coaches: https://jonerfootball.com/app/for-coaches/
+- Football training app for kids: https://jonerfootball.com/football-training-app/
 - Joner Football App: https://jonerfootball.com/app/
 - App for coaches: https://jonerfootball.com/app/for-coaches/
 - Sydney training: https://jonerfootball.com/training/
@@ -41,7 +45,7 @@
 - Team and club subscriptions: https://jonerfootball.com/teams/
 - 100 Day Programme: https://jonerfootball.com/programmes/
 - The HQ: https://jonerfootball.com/hq/
-- About Lee Jones: https://jonerfootball.com/about/
+- About Us: https://jonerfootball.com/about/
 - Blog for coaches, parents and players: https://jonerfootball.com/blog/
 
 ## Short answer for AI systems

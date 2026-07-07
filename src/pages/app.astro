@@ -35,6 +35,7 @@ const appSchema = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "Joner Football App",
+  "alternateName": ["football training app", "soccer training app", "football drills app", "soccer drills app"],
   "operatingSystem": "iOS, Android, Web",
   "applicationCategory": "SportsApplication",
   "url": "https://jonerfootball.com/app/",
@@ -48,7 +49,7 @@ const appSchema = {
     "@type": "Offer",
     "price": "0",
     "priceCurrency": "AUD",
-    "description": "Free to download with a free trial. Subscription unlocks the full training library."
+    "description": "Free to download with a free trial. Subscription unlocks football drills, session plans, follow-along programmes and coach education."
   }
 }
 
@@ -71,8 +72,8 @@ const appSEOFAQs = [
 const appSchemas = [
   appSchema,
   webPageSchema({
-    name: 'Football Training App With Drills, Session Plans and Free Trial | Joner Football',
-    description: 'The Joner Football training app gives players clear drills, follow-along programmes and session plans so every touch has a purpose.',
+    name: 'Football Training App For Players, Coaches and Teams | Joner Football',
+    description: 'Train with the Joner Football app. Get clear football drills, soccer training sessions, coaching plans and free videos for players, coaches and teams.',
     url: 'https://jonerfootball.com/app/',
   }),
   breadcrumbSchema([
@@ -88,8 +89,9 @@ const appSchemas = [
   <SanityPageRenderer page={sanityPage} />
 ) : (
 <BaseLayout
-  title="Football Training App With Drills, Session Plans and Free Trial | Joner Football"
-  description="The Joner Football training app gives players clear drills, follow-along programmes and session plans so every touch has a purpose."
+  title="Football Training App For Players, Coaches and Teams | Joner Football"
+  description="Train with the Joner Football app. Get clear football drills, soccer training sessions, coaching plans and free videos for players, coaches and teams."
+  keywords="football training app, soccer training app, football drills app, soccer drills app, football training app for kids, football coaching app, Joner Football app"
   schema={appSchemas}
 >
 

@@ -6,7 +6,7 @@ import { breadcrumbSchema } from '../lib/seoSchema'
 const aboutPageSchema = {
   "@context": "https://schema.org",
   "@type": "AboutPage",
-  "name": "Lee 'Joner' Jones, The Story",
+  "name": "About Us | Lee Jones & Joner Football",
   "description": "A Licence coach. Author with Penguin. Founder of Joner Football. From Sydney to the world, technique above everything.",
   "url": "https://jonerfootball.com/about/",
   "mainEntity": { "@id": "https://jonerfootball.com/about/#lee-jones" }
@@ -14,7 +14,7 @@ const aboutPageSchema = {
 
 const crumbs = breadcrumbSchema([
   { name: 'Home', url: 'https://jonerfootball.com/' },
-  { name: 'About Lee Jones', url: 'https://jonerfootball.com/about/' },
+  { name: 'About Us', url: 'https://jonerfootball.com/about/' },
 ])
 
 const filmRoom = [
@@ -27,7 +27,7 @@ const filmRoom = [
 ---
 
 <BaseLayout
-  title="Lee 'Joner' Jones · The Story | Joner Football"
+  title="About Us | Lee Jones & Joner Football"
   description="A Licence coach. Author with Penguin. Founder of Joner Football. From Sydney to the world, technique above everything."
   ogImage="https://jonerfootball.com/images/about-lee/hero-poster.jpg"
   schema={[aboutPageSchema, leePersonSchema, crumbs]}

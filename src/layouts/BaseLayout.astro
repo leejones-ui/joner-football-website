@@ -10,6 +10,7 @@ export interface Props {
   canonical?: string
   ogImage?: string
   ogType?: 'website' | 'article'
+  keywords?: string
   noindex?: boolean
   schema?: object | object[]
   hideChrome?: boolean
@@ -22,6 +23,7 @@ const {
   canonical,
   ogImage = 'https://jonerfootball.com/images/og-default.jpg',
   ogType = 'website',
+  keywords,
   noindex = false,
   schema,
   hideChrome = false,
@@ -105,6 +107,7 @@ const allSchemas = schema
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    {keywords && <meta name="keywords" content={keywords} />}
     {noindex && <meta name="robots" content="noindex, nofollow" />}
     <title>{title}</title>
     <meta name="application-name" content="Joner Football" />

@@ -24,6 +24,46 @@
       "permanent": true
     },
     {
+      "source": "/soccer-training-app",
+      "destination": "/football-training-app",
+      "permanent": true
+    },
+    {
+      "source": "/soccer-training-app/",
+      "destination": "/football-training-app",
+      "permanent": true
+    },
+    {
+      "source": "/football-drills-app",
+      "destination": "/football-training-app",
+      "permanent": true
+    },
+    {
+      "source": "/football-drills-app/",
+      "destination": "/football-training-app",
+      "permanent": true
+    },
+    {
+      "source": "/football-training-app-for-kids",
+      "destination": "/football-training-app",
+      "permanent": true
+    },
+    {
+      "source": "/football-training-app-for-kids/",
+      "destination": "/football-training-app",
+      "permanent": true
+    },
+    {
+      "source": "/football-training-app-for-coaches",
+      "destination": "/app/for-coaches",
+      "permanent": true
+    },
+    {
+      "source": "/football-training-app-for-coaches/",
+      "destination": "/app/for-coaches",
+      "permanent": true
+    },
+    {
       "source": "/jfp",
       "destination": "/training#jfp",
       "permanent": true
