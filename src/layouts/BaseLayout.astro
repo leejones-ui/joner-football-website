@@ -367,6 +367,32 @@ const allSchemas = schema
           return match ? decodeURIComponent(match[2]) : '';
         }
 
+        function isJonerDomain() {
+          return /(^|\.)jonerfootball\.com$/.test(window.location.hostname || '');
+        }
+
+        function setSharedCookie(name, value) {
+          if (!value || !isJonerDomain()) return;
+          var maxAgeSeconds = 90 * 24 * 60 * 60;
+          var secure = window.location.protocol === 'https:' ? '; Secure' : '';
+          document.cookie = name + '=' + value + '; domain=.jonerfootball.com; path=/; max-age=' + maxAgeSeconds + '; SameSite=Lax' + secure;
+        }
+
+        // Share the Meta click-id (_fbc) and browser-id (_fbp) across .jonerfootball.com so the Uscreen
+        // checkout on app.jonerfootball.com reports Purchase/Subscribe/CompleteRegistration WITH the click-id.
+        function ensureSharedMetaCookies() {
+          if (!isJonerDomain()) return;
+          var fbclid = new URLSearchParams(window.location.search || '').get('fbclid');
+          var existingFbc = getCookie('_fbc');
+          if (fbclid && !existingFbc) {
+            setSharedCookie('_fbc', 'fb.1.' + Date.now() + '.' + fbclid);
+          } else if (existingFbc) {
+            setSharedCookie('_fbc', existingFbc);
+          }
+          var fbp = getCookie('_fbp');
+          if (fbp) setSharedCookie('_fbp', fbp);
+        }
+
         function getEventId(eventName) {
           if (window.crypto && typeof window.crypto.randomUUID === 'function') return eventName + '.' + window.crypto.randomUUID();
           return eventName + '.' + Date.now() + '.' + Math.random().toString(16).slice(2);
@@ -540,6 +566,10 @@ const allSchemas = schema
 
           trackLandingPageViewContent();
 
+          // Share _fbc/_fbp to .jonerfootball.com now, and again once Meta's async pixel has set _fbp.
+          ensureSharedMetaCookies();
+          window.setTimeout(ensureSharedMetaCookies, 2000);
+
           var trackingParams = collectTrackingParams();
 
           document.querySelectorAll('a[href]').forEach(function (anchor) {
@@ -552,6 +582,8 @@ const allSchemas = schema
             if (!anchor) return;
             trackMoneyClick(anchor);
             if (!isAppOutboundLink(anchor)) return;
+            // Guarantee the shared click-id/browser-id cookies exist at the moment we hand off to Uscreen.
+            ensureSharedMetaCookies();
             anchor.href = appendTrackingParams(anchor.href, collectTrackingParams());
             if (anchor.href.indexOf('/checkout/new') !== -1) {
               trackStandardCheckoutEvents(anchor);
