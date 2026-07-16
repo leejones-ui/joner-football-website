@@ -501,7 +501,8 @@ export default async function handler(req, res) {
         email: validation.email,
         attributes: {
           FIRSTNAME: firstName,
-          WEBSITE_SOURCE: source
+          WEBSITE_SOURCE: source,
+          SOURCE: source
         },
         listIds,
         updateEnabled: true

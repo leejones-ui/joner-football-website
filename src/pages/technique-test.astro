@@ -50,6 +50,7 @@ const secondaryCta = getSanityCta(sanityPage?.secondaryCta, { label: 'Train in S
         <button type="submit" class="btn-red w-full text-sm px-6 py-3 font-heading uppercase tracking-wider">
           Take the Test
         </button>
+        <p id="gate-status" class="min-h-6 text-sm text-red-300" aria-live="polite"></p>
       </form>
     </div>
   </section>
@@ -104,8 +105,9 @@ const secondaryCta = getSanityCta(sanityPage?.secondaryCta, { label: 'Train in S
       var form = document.getElementById('gate-form');
       var testSection = document.getElementById('test-section');
       var ctaSection = document.getElementById('cta-section');
+      var gateStatus = document.getElementById('gate-status');
 
-      form.addEventListener('submit', function (e) {
+      form.addEventListener('submit', async function (e) {
         e.preventDefault();
         e.stopImmediatePropagation();
 
@@ -114,6 +116,7 @@ const secondaryCta = getSanityCta(sanityPage?.secondaryCta, { label: 'Train in S
         var emailInput = form.querySelector('input[name="email"]');
         var email = emailInput.value.trim();
         var iframe = document.getElementById('test-iframe');
+        var submitButton = form.querySelector('button[type="submit"]');
 
         if (window.JonerEmailGuard) {
           window.JonerEmailGuard.protectEmailInput(emailInput);
@@ -127,6 +130,41 @@ const secondaryCta = getSanityCta(sanityPage?.secondaryCta, { label: 'Train in S
         }
 
         if (!name || !email) return;
+
+        if (gateStatus) gateStatus.textContent = '';
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent = 'Loading Test...';
+        }
+
+        try {
+          var recaptchaToken = window.JonerRecaptcha && window.JonerRecaptcha.getToken
+            ? await window.JonerRecaptcha.getToken('subscribe')
+            : '';
+          var response = await fetch('/api/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: email,
+              firstName: name,
+              listId: 2,
+              source: 'Technique Test Started',
+              marketingConsent: true,
+              recaptchaToken: recaptchaToken || ''
+            })
+          });
+          var result = await response.json().catch(function () { return {}; });
+          if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Could not start the test. Please try again.');
+          }
+        } catch (error) {
+          if (gateStatus) gateStatus.textContent = error.message || 'Could not start the test. Please try again.';
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Take the Test';
+          }
+          return;
+        }
 
         try {
           localStorage.setItem('joner_tech_test_name', name);
