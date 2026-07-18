@@ -164,6 +164,26 @@
       "permanent": false
     },
     {
+      "source": "/camps/sydney-july-2026",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/camps/sydney-july-2026/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/camps/sydney-big-1-july",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
+      "source": "/camps/sydney-big-1-july/",
+      "destination": "/camps",
+      "permanent": true
+    },
+    {
       "source": "/images/camps/sydney-2026/photos/lee-miguel-coaching.jpg",
       "destination": "/images/camps/sydney-2026/photos/rydalmere-camp-running.jpg",
       "permanent": false
