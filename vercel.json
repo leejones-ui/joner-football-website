@@ -170,22 +170,22 @@
     },
     {
       "source": "/sydneyjuly2026",
-      "destination": "/camps/sydney-july-2026",
+      "destination": "/camps",
       "permanent": true
     },
     {
       "source": "/sydneyjuly2026/",
-      "destination": "/camps/sydney-july-2026",
+      "destination": "/camps",
       "permanent": true
     },
     {
       "source": "/elitecampbookings/sydneycamp",
-      "destination": "/camps/sydney-july-2026",
+      "destination": "/camps",
       "permanent": true
     },
     {
       "source": "/elitecampbookings/sydneycamp/",
-      "destination": "/camps/sydney-july-2026",
+      "destination": "/camps",
       "permanent": true
     },
     {

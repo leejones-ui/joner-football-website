@@ -310,6 +310,9 @@ export async function getStaticPaths() {
 }
 
 const slug = Astro.params.slug || ''
+if (slug === 'sydney-big-1-july' || slug === 'sydney-july-2026') {
+  return Astro.redirect('/camps', 301)
+}
 let sanityCamp: CampMap | null = null
 
 try {
