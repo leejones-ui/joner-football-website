@@ -425,6 +425,14 @@ export default async function handler(req, res) {
     })
   }
 
+  if (req.method === 'POST' && String(process.env.CAMP_WEBHOOKS_RETIRED || '').toLowerCase() === 'true') {
+    return res.status(200).json({
+      received: true,
+      endpoint: 'camp-payment-webhook',
+      status: 'retired_no_active_camps',
+    })
+  }
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
     return res.status(405).json({ success: false, error: 'Method not allowed' })
