@@ -1741,11 +1741,15 @@ const homepageSchemas = [
          expensive full-screen effects that make Safari repaint every image on
          every scroll frame. Opacity-only crossfades preserve the blend. */
       @media (orientation: landscape) and (hover: none) and (pointer: coarse) and (min-height: 601px) {
+        .story-shell {
+          touch-action: pan-y;
+          overflow-anchor: none;
+        }
         .story-viewport {
-          contain: strict;
-          transform: translateZ(0);
-          backface-visibility: hidden;
-          -webkit-backface-visibility: hidden;
+          contain: none;
+          transform: none;
+          backface-visibility: visible;
+          -webkit-backface-visibility: visible;
         }
 
         .story-bg {
@@ -1774,9 +1778,17 @@ const homepageSchemas = [
           filter: saturate(1.14) contrast(1.03) drop-shadow(0 0.55rem 0.7rem rgba(0,0,0,0.38));
         }
         .story-copy { transition-duration: 200ms; }
+        .story-overlay[data-state="active"] { animation: none; }
+        .growth-bar { transform: scaleY(1) !important; transition: none !important; }
+        .metric-card,
+        .path-card,
+        .primary-path-card,
+        .global-proof-card,
+        .phone-shell,
         .action-card,
         .growth-card,
         .story-cta-link { backdrop-filter: none; }
+        .action-card { transition: border-color 160ms ease, background-color 160ms ease; }
       }
 
       @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) {
@@ -2055,7 +2067,7 @@ const homepageSchemas = [
                 class="h-full w-full object-cover"
                 src={beat.image}
                 alt={beat.alt}
-                loading={index === 0 ? 'eager' : 'lazy'}
+                loading="eager"
                 decoding="async"
                 fetchpriority={index === 0 ? 'high' : 'auto'}
                 style={mediaStyle(beat)}
@@ -2284,23 +2296,30 @@ const homepageSchemas = [
         var labels = Array.prototype.slice.call(shell.querySelectorAll('[data-story-label]'));
         var growthCounters = Array.prototype.slice.call(shell.querySelectorAll('[data-growth-count]'));
         var heroWords = Array.prototype.slice.call(shell.querySelectorAll('[data-hero-word]'));
+        backgrounds.forEach(function (background) {
+          var image = background.tagName === 'PICTURE' ? background.querySelector('img') : null;
+          if (image && typeof image.decode === 'function') image.decode().catch(function () {});
+        });
         var total = copies.length;
         var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         var lastIndex = -1;
         var hasScrolled = false;
         var growthPlayed = false;
         var viewportEl = shell.querySelector('.story-viewport');
+        var railFillEl = shell.querySelector('.story-rail-fill');
+        var ballSystemEl = shell.querySelector('[data-story-ball]');
+        var ballPulseEl = ballSystemEl ? ballSystemEl.querySelector('.story-ball-pulse') : null;
         var vpW = window.innerWidth;
         var vpH = window.innerHeight;
         var shellTop = 0;
         var scrollableDistance = 1;
         var lastProgress = -1;
-        var lastCss = {};
+        var lastStyles = {};
 
-        function setStoryCss(name, value) {
-          if (lastCss[name] === value) return;
-          lastCss[name] = value;
-          shell.style.setProperty(name, value);
+        function setElementStyle(element, property, value, key) {
+          if (!element || lastStyles[key] === value) return;
+          lastStyles[key] = value;
+          element.style[property] = value;
         }
 
         // Measured on init and resize only, so per-frame marker math never
@@ -2371,7 +2390,9 @@ const homepageSchemas = [
 
           var marker = beatMarkers[nextIndex] || beatMarkers[0];
           var maskSize = marker.maskSize || 0;
-          shell.style.setProperty('--ball-size', marker.ballSize || 'clamp(4.8rem, 5.8vw, 5.8rem)');
+          var ballSize = marker.ballSize || 'clamp(4.8rem, 5.8vw, 5.8rem)';
+          setElementStyle(ballPulseEl, 'width', ballSize, 'ball-width');
+          setElementStyle(ballPulseEl, 'height', ballSize, 'ball-height');
           shell.style.setProperty('--mask-x', (marker.maskX || marker.x) + '%');
           shell.style.setProperty('--mask-y', (marker.maskY || marker.y) + '%');
           shell.style.setProperty('--mask-size', maskSize + 'vw');
@@ -2415,7 +2436,7 @@ const homepageSchemas = [
         function apply(nextIndex, progress) {
           var localProgress = clamp((progress * total) - nextIndex, 0, 1);
 
-          setStoryCss('--story-progress', progress.toFixed(5));
+          setElementStyle(railFillEl, 'transform', 'scaleY(' + progress.toFixed(5) + ')', 'rail-progress');
 
           var markerFrom = beatMarkers[nextIndex] || beatMarkers[0];
           var markerX = markerFrom.x;
@@ -2429,14 +2450,16 @@ const homepageSchemas = [
           }
 
           if (nextIndex < 2) {
-            setStoryCss('--marker-px-x', ((markerX / 100) * vpW).toFixed(1) + 'px');
-            setStoryCss('--marker-px-y', ((markerY / 100) * vpH).toFixed(1) + 'px');
+            var markerPxX = ((markerX / 100) * vpW).toFixed(1) + 'px';
+            var markerPxY = ((markerY / 100) * vpH).toFixed(1) + 'px';
+            setElementStyle(ballSystemEl, 'transform', 'translate3d(' + markerPxX + ', ' + markerPxY + ', 0)', 'ball-position');
             var slideTwoFly = nextIndex === 1 ? smoothstep(clamp((localProgress - 0.72) / 0.22, 0, 1)) : 0;
             var ballOpacity = nextIndex === 0 ? 1 : (1 - slideTwoFly);
-            setStoryCss('--ball-opacity', ballOpacity.toFixed(4));
-            setStoryCss('--ball-fly-scale', (1 - (slideTwoFly * 0.78)).toFixed(4));
+            var ballScale = (1 - (slideTwoFly * 0.78)).toFixed(4);
+            setElementStyle(ballSystemEl, 'opacity', ballOpacity.toFixed(4), 'ball-opacity');
+            setElementStyle(ballPulseEl, 'transform', 'translate(-50%, -50%) scale(' + ballScale + ')', 'ball-scale');
           } else {
-            setStoryCss('--ball-opacity', '0');
+            setElementStyle(ballSystemEl, 'opacity', '0', 'ball-opacity');
           }
 
           if (!hasScrolled && progress > 0.012) {
