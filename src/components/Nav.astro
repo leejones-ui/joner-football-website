@@ -173,10 +173,10 @@
 </nav>
 
 <style>
-  /* Force hamburger on any touch device regardless of viewport width.
-     Catches iPad portrait + landscape (including 12.9" at 1366px) where
-     hover dropdowns don't work because there is no hover state. */
-  @media (hover: none) and (pointer: coarse) {
+  /* Portrait tablets and short landscape phones use the mobile menu. Landscape
+     iPads use the full desktop header alongside the desktop storyboard. */
+  @media (hover: none) and (pointer: coarse) and (orientation: portrait),
+         (hover: none) and (pointer: coarse) and (max-height: 600px) {
     #main-nav .nav-desktop { display: none !important; }
     #main-nav .nav-desktop-cta { display: none !important; }
     #main-nav .nav-mobile-btn { display: flex !important; }

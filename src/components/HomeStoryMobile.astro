@@ -291,8 +291,9 @@ const choices = [
   /* accelerating fall: a drop that brakes before vanishing reads mushy */
   .mobile-story-cue-drop { position: absolute; left: 0; top: 0; width: 1px; height: 0.75rem; background: #e30613; animation: mobileCueDrop 2.2s cubic-bezier(.5,0,.75,.45) infinite; }
   @keyframes mobileCueDrop { 0% { transform: translateY(-0.85rem); } 62%, 100% { transform: translateY(2.25rem); } }
-  /* Show mobile story on narrow viewports OR any touch device (iPads of all sizes). */
-  @media (max-width: 1024px), (hover: none) and (pointer: coarse) { .mobile-story { display: block; } }
+  /* Phone layouts and portrait tablets stay mobile. Landscape iPads use the
+     wide desktop storyboard; short landscape phones remain mobile. */
+  @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) { .mobile-story { display: block; } }
   @media (prefers-reduced-motion: reduce) {
     .mobile-story-beat, .mobile-story-copy, .mobile-story-kicker, .mobile-story-copy h2, .mobile-story-copy p,
     .mobile-story-ctas, .mobile-story-choices, .mobile-story-stamp,
