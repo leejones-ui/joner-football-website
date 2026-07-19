@@ -174,12 +174,16 @@
 
 <style>
   /* Portrait tablets and short landscape phones use the mobile menu. Landscape
-     iPads use the full desktop header alongside the desktop storyboard. */
+     iPads use the full desktop header with tap-enabled dropdowns. */
   @media (hover: none) and (pointer: coarse) and (orientation: portrait),
          (hover: none) and (pointer: coarse) and (max-height: 600px) {
     #main-nav .nav-desktop { display: none !important; }
     #main-nav .nav-desktop-cta { display: none !important; }
     #main-nav .nav-mobile-btn { display: flex !important; }
+  }
+  @media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-height: 601px) {
+    #main-nav .nav-desktop .group.touch-open > div { display: block !important; }
+    #main-nav .nav-desktop .group.touch-open > a { color: #E8000D; }
   }
 </style>
 
@@ -202,4 +206,39 @@
   closeBtn?.addEventListener('click', closeMenu)
   overlay?.addEventListener('click', closeMenu)
   menu?.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu))
+
+  const touchLandscape = window.matchMedia('(hover: none) and (pointer: coarse) and (orientation: landscape) and (min-height: 601px)')
+  const desktopGroups = Array.from(document.querySelectorAll('#main-nav .nav-desktop .group'))
+  function closeDesktopDropdowns(except = null) {
+    desktopGroups.forEach((group) => {
+      if (group === except) return
+      group.classList.remove('touch-open')
+      group.children[0]?.setAttribute('aria-expanded', 'false')
+    })
+  }
+  desktopGroups.forEach((group) => {
+    const trigger = group.children[0]
+    const panel = group.children[1]
+    if (!(trigger instanceof HTMLAnchorElement) || !(panel instanceof HTMLElement)) return
+    trigger.setAttribute('aria-haspopup', 'true')
+    trigger.setAttribute('aria-expanded', 'false')
+    trigger.addEventListener('click', (event) => {
+      if (!touchLandscape.matches) return
+      event.preventDefault()
+      const willOpen = !group.classList.contains('touch-open')
+      closeDesktopDropdowns(group)
+      group.classList.toggle('touch-open', willOpen)
+      trigger.setAttribute('aria-expanded', String(willOpen))
+    })
+  })
+  document.addEventListener('click', (event) => {
+    if (!touchLandscape.matches || !(event.target instanceof Node)) return
+    if (!document.getElementById('main-nav')?.contains(event.target)) closeDesktopDropdowns()
+  })
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeDesktopDropdowns()
+  })
+  const closeOnModeChange = () => closeDesktopDropdowns()
+  if (typeof touchLandscape.addEventListener === 'function') touchLandscape.addEventListener('change', closeOnModeChange)
+  else if (typeof touchLandscape.addListener === 'function') touchLandscape.addListener(closeOnModeChange)
 </script>

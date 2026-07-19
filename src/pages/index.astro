@@ -1737,7 +1737,7 @@ const homepageSchemas = [
         font-size: 0.72rem !important;
       }
 
-      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) {
+      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse) {
         .jfp-journey {
           display: none !important;
         }
@@ -1772,10 +1772,10 @@ const homepageSchemas = [
         }
       }
 
-      /* Phones and portrait tablets use the mobile story. Landscape iPads use
-         the full desktop storyboard so wide images are not forced into a
-         portrait crop. Short landscape phones remain mobile. */
-      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) {
+      /* Phones and touch tablets use the native-scroll story. Landscape iPads
+         keep desktop navigation and wide desktop images, but avoid the heavy
+         computer-only scroll-animation engine. */
+      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse) {
         #storyboard-desktop {
           display: none;
         }
@@ -2225,7 +2225,7 @@ const homepageSchemas = [
         return value * value * (3 - (2 * value));
       }
 
-      var mobileStoryQuery = window.matchMedia('(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px)');
+      var mobileStoryQuery = window.matchMedia('(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse)');
       var desktopStoryStarted = false;
 
       function initDesktopStory() {
