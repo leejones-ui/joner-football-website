@@ -7,7 +7,6 @@ const beats = [
     title: 'Technique Above Everything',
     body: '',
     image: '/images/home-mobile-story/mobile-story-01-action.webp',
-    desktopImage: '/images/home-storyboard/01-kick-clean.webp',
     ctas: [['Train Today', 'https://app.jonerfootball.com']],
   },
   {
@@ -17,7 +16,6 @@ const beats = [
     title: 'It Started With A Bag Of Balls',
     body: 'In 2013 it started with an idea. Joner Football was born. Now we are recognised all over the world.',
     image: '/images/home-mobile-story/mobile-story-02-origin.webp',
-    desktopImage: '/images/home-storyboard/02-origin-clean.webp',
     stamp: 'EST 2013',
   },
   {
@@ -27,7 +25,6 @@ const beats = [
     title: 'Local Sessions. Global Reach.',
     body: 'The work spread through videos, players, parents, coaches, and millions of touches online.',
     image: '/images/home-mobile-story/mobile-story-03-growth.webp',
-    desktopImage: '/images/home-storyboard/03-method-filming.webp',
     growth: true,
     ctas: [
       ['YouTube', 'https://www.youtube.com/@jonerfootball'],
@@ -45,7 +42,6 @@ const beats = [
     title: 'A Method Like No Other',
     body: 'Every technical detail gets coached through energy, passion & positivity.',
     image: '/images/home-mobile-story/mobile-story-04-joner-way.webp',
-    desktopImage: '/images/home-storyboard/04-joner-way-dsc08725.webp',
     ctas: [['Train With Us In Sydney', '/contact']],
   },
   {
@@ -55,7 +51,6 @@ const beats = [
     title: 'Coaching Worldwide',
     body: 'From Sydney to camps, clinics, and football communities around the world.',
     image: '/images/home-mobile-story/mobile-story-05-camps.webp',
-    desktopImage: '/images/home-storyboard/05-global-camps.webp',
     ctas: [['Elite Camps', '/camps']],
   },
   {
@@ -65,7 +60,6 @@ const beats = [
     title: 'Worlds #1 Football Coaching APP',
     body: 'Built for players, parents, and coaches to train with clarity, confidence, and purpose.',
     image: '/images/home-mobile-story/mobile-story-05-app.webp',
-    desktopImage: '/images/home-storyboard/06-app-session-planning.webp',
     video: '/images/home-storyboard/06-app-header-video-desktop.mp4',
     ctas: [
       ['7 Day Free Trial', 'https://app.jonerfootball.com/categories/category-vpi8uazway4'],
@@ -78,7 +72,6 @@ const beats = [
     title: 'A Home Of Our Own',
     body: 'Sydney, Australia. Belrose. Our home.',
     image: '/images/home-mobile-story/mobile-story-07-hq-photo.webp',
-    desktopImage: '/images/home-storyboard/07-facility-hq.webp',
     ctas: [['Visit HQ Map', 'https://maps.google.com/?q=20+Narabang+Way+Belrose']],
   },
   {
@@ -88,7 +81,6 @@ const beats = [
     title: 'Choose Your Next Step',
     body: 'Train online, train with us, join a camp, or get inside the Joner Football Hub.',
     image: '/images/home-mobile-story/mobile-story-08-action.webp',
-    desktopImage: '/images/home-storyboard/08-action-coach-night.webp',
     choose: true,
   },
 ]
@@ -117,14 +109,11 @@ const choices = [
         <article class="mobile-story-beat" data-mobile-beat data-index={index} style={`opacity:${index === 0 ? 1 : 0};`}>
           <div class="mobile-story-canvas" aria-hidden="true">
             {beat.video ? (
-              <video class="mobile-story-media mobile-story-video" muted loop playsinline preload="metadata" poster={beat.desktopImage || beat.image} aria-label={beat.title}>
+              <video class="mobile-story-media mobile-story-video" muted loop playsinline preload="metadata" poster={beat.image} aria-label={beat.title}>
                 <source src={beat.video} type="video/mp4" />
               </video>
             ) : (
-              <picture>
-                {beat.desktopImage && <source media="(orientation: landscape) and (hover: none) and (pointer: coarse) and (min-height: 601px)" srcset={beat.desktopImage} />}
-                <img class="mobile-story-media" src={beat.image} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
-              </picture>
+              <img class="mobile-story-media" src={beat.image} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
             )}
             <div class="mobile-story-shade"></div>
           </div>
@@ -302,28 +291,9 @@ const choices = [
   /* accelerating fall: a drop that brakes before vanishing reads mushy */
   .mobile-story-cue-drop { position: absolute; left: 0; top: 0; width: 1px; height: 0.75rem; background: #e30613; animation: mobileCueDrop 2.2s cubic-bezier(.5,0,.75,.45) infinite; }
   @keyframes mobileCueDrop { 0% { transform: translateY(-0.85rem); } 62%, 100% { transform: translateY(2.25rem); } }
-  /* Native-scroll story for phones, portrait tablets and touch iPads. In
-     landscape the wide desktop sources and desktop header are used, without
-     running the heavy desktop scroll-animation engine. */
-  @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse) { .mobile-story { display: block; } }
-  @media (orientation: landscape) and (hover: none) and (pointer: coarse) and (min-height: 601px) {
-    .mobile-story-beat { min-height: calc(100svh - 4rem); }
-    .mobile-story-canvas,
-    .mobile-story-beat:first-child .mobile-story-canvas { -webkit-mask-image: none; mask-image: none; }
-    .mobile-story-shade { background: linear-gradient(90deg, rgba(0,0,0,0.58), rgba(0,0,0,0.1) 72%), linear-gradient(180deg, rgba(0,0,0,0.16), rgba(0,0,0,0.48)); }
-    .mobile-story-copy h2 { font-size: clamp(3rem, 7vw, 5.4rem); }
-    .mobile-story-copy p:not(.mobile-story-kicker) { max-width: 30rem; font-size: 1.05rem; }
-    .mobile-story-ctas a,
-    .mobile-story-choices a,
-    .mobile-growth-card { backdrop-filter: none; }
-    .mobile-story-beat:nth-child(1) .mobile-story-media { object-position: 50% 50%; }
-    .mobile-story-beat:nth-child(2) .mobile-story-media { object-position: 56% 50%; }
-    .mobile-story-beat:nth-child(3) .mobile-story-media { object-position: 48% 48%; }
-    .mobile-story-beat:nth-child(4) .mobile-story-media { object-position: 50% 44%; }
-    .mobile-story-beat:nth-child(5) .mobile-story-media { object-position: 50% 46%; }
-    .mobile-story-beat:nth-child(7) .mobile-story-media { object-position: 56% 50%; }
-    .mobile-story-beat:nth-child(8) .mobile-story-media { object-position: 50% 38%; }
-  }
+  /* Phone layouts and portrait tablets stay mobile. Landscape iPads use the
+     wide desktop storyboard; short landscape phones remain mobile. */
+  @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) { .mobile-story { display: block; } }
   @media (prefers-reduced-motion: reduce) {
     .mobile-story-beat, .mobile-story-copy, .mobile-story-kicker, .mobile-story-copy h2, .mobile-story-copy p,
     .mobile-story-ctas, .mobile-story-choices, .mobile-story-stamp,

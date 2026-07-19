@@ -1737,7 +1737,49 @@ const homepageSchemas = [
         font-size: 0.72rem !important;
       }
 
-      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse) {
+      /* iPad landscape keeps the full desktop experience but strips the
+         expensive full-screen effects that make Safari repaint every image on
+         every scroll frame. Opacity-only crossfades preserve the blend. */
+      @media (orientation: landscape) and (hover: none) and (pointer: coarse) and (min-height: 601px) {
+        .story-viewport {
+          contain: strict;
+          transform: translateZ(0);
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+        }
+
+        .story-bg {
+          opacity: 0;
+          visibility: hidden;
+          transform: none;
+          filter: none;
+          will-change: auto;
+          transition: opacity 460ms cubic-bezier(.22,.61,.36,1), visibility 0s linear 460ms;
+        }
+
+        .story-bg[data-state="active"],
+        .story-bg[data-media="video"][data-state="active"] {
+          opacity: 1;
+          visibility: visible;
+          transform: none;
+          filter: none;
+          will-change: opacity;
+          transition: opacity 460ms cubic-bezier(.22,.61,.36,1), visibility 0s;
+        }
+
+        .story-shade { transition: none; }
+        .story-vignette { box-shadow: none; }
+        .story-ball-system { transition: opacity 240ms ease; }
+        .story-ball-image {
+          filter: saturate(1.14) contrast(1.03) drop-shadow(0 0.55rem 0.7rem rgba(0,0,0,0.38));
+        }
+        .story-copy { transition-duration: 200ms; }
+        .action-card,
+        .growth-card,
+        .story-cta-link { backdrop-filter: none; }
+      }
+
+      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) {
         .jfp-journey {
           display: none !important;
         }
@@ -1772,10 +1814,10 @@ const homepageSchemas = [
         }
       }
 
-      /* Phones and touch tablets use the native-scroll story. Landscape iPads
-         keep desktop navigation and wide desktop images, but avoid the heavy
-         computer-only scroll-animation engine. */
-      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse) {
+      /* Phones and portrait tablets use the mobile story. Landscape iPads keep
+         the complete desktop storyboard, including the wide image blends and
+         spinning ball, with a touch-optimised scroll engine. */
+      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) {
         #storyboard-desktop {
           display: none;
         }
@@ -2225,8 +2267,9 @@ const homepageSchemas = [
         return value * value * (3 - (2 * value));
       }
 
-      var mobileStoryQuery = window.matchMedia('(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse)');
+      var mobileStoryQuery = window.matchMedia('(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px)');
       var desktopStoryStarted = false;
+      var refreshDesktopStory = function () {};
 
       function initDesktopStory() {
         var shell = document.querySelector('[data-story-shell]');
@@ -2248,6 +2291,16 @@ const homepageSchemas = [
         var viewportEl = shell.querySelector('.story-viewport');
         var vpW = window.innerWidth;
         var vpH = window.innerHeight;
+        var shellTop = 0;
+        var scrollableDistance = 1;
+        var lastProgress = -1;
+        var lastCss = {};
+
+        function setStoryCss(name, value) {
+          if (lastCss[name] === value) return;
+          lastCss[name] = value;
+          shell.style.setProperty(name, value);
+        }
 
         // Measured on init and resize only, so per-frame marker math never
         // reads layout.
@@ -2255,6 +2308,10 @@ const homepageSchemas = [
           if (!viewportEl) return;
           vpW = viewportEl.clientWidth || window.innerWidth;
           vpH = viewportEl.clientHeight || window.innerHeight;
+          var rect = shell.getBoundingClientRect();
+          shellTop = (window.scrollY || window.pageYOffset || 0) + rect.top;
+          scrollableDistance = Math.max(shell.offsetHeight - window.innerHeight, 1);
+          lastProgress = -1;
         }
 
         function formatGrowth(value, format) {
@@ -2302,6 +2359,7 @@ const homepageSchemas = [
         function applyIndex(nextIndex) {
           lastIndex = nextIndex;
           shell.dataset.active = String(nextIndex);
+          shell.dataset.ballActive = nextIndex < 2 ? 'true' : 'false';
 
           var marker = beatMarkers[nextIndex] || beatMarkers[0];
           var maskSize = marker.maskSize || 0;
@@ -2349,7 +2407,7 @@ const homepageSchemas = [
         function apply(nextIndex, progress) {
           var localProgress = clamp((progress * total) - nextIndex, 0, 1);
 
-          shell.style.setProperty('--story-progress', String(progress));
+          setStoryCss('--story-progress', progress.toFixed(5));
 
           var markerFrom = beatMarkers[nextIndex] || beatMarkers[0];
           var markerX = markerFrom.x;
@@ -2362,13 +2420,16 @@ const homepageSchemas = [
             markerY = lerp(markerFrom.y, markerTo.y, heroMarkerAmount);
           }
 
-          shell.style.setProperty('--marker-px-x', ((markerX / 100) * vpW).toFixed(1) + 'px');
-          shell.style.setProperty('--marker-px-y', ((markerY / 100) * vpH).toFixed(1) + 'px');
-
-          var slideTwoFly = nextIndex === 1 ? smoothstep(clamp((localProgress - 0.72) / 0.22, 0, 1)) : 0;
-          var ballOpacity = nextIndex === 0 ? 1 : nextIndex === 1 ? (1 - slideTwoFly) : 0;
-          shell.style.setProperty('--ball-opacity', String(ballOpacity));
-          shell.style.setProperty('--ball-fly-scale', String(1 - (slideTwoFly * 0.78)));
+          if (nextIndex < 2) {
+            setStoryCss('--marker-px-x', ((markerX / 100) * vpW).toFixed(1) + 'px');
+            setStoryCss('--marker-px-y', ((markerY / 100) * vpH).toFixed(1) + 'px');
+            var slideTwoFly = nextIndex === 1 ? smoothstep(clamp((localProgress - 0.72) / 0.22, 0, 1)) : 0;
+            var ballOpacity = nextIndex === 0 ? 1 : (1 - slideTwoFly);
+            setStoryCss('--ball-opacity', ballOpacity.toFixed(4));
+            setStoryCss('--ball-fly-scale', (1 - (slideTwoFly * 0.78)).toFixed(4));
+          } else {
+            setStoryCss('--ball-opacity', '0');
+          }
 
           if (!hasScrolled && progress > 0.012) {
             hasScrolled = true;
@@ -2379,9 +2440,10 @@ const homepageSchemas = [
         }
 
         function update() {
-          var rect = shell.getBoundingClientRect();
-          var scrollable = shell.offsetHeight - window.innerHeight;
-          var progress = scrollable > 0 ? clamp(-rect.top / scrollable, 0, 1) : 0;
+          var scrollY = window.scrollY || window.pageYOffset || 0;
+          var progress = clamp((scrollY - shellTop) / scrollableDistance, 0, 1);
+          if (Math.abs(progress - lastProgress) < 0.00015) return;
+          lastProgress = progress;
           var index = Math.min(total - 1, Math.floor(progress * total));
           apply(index, progress);
         }
@@ -2396,11 +2458,12 @@ const homepageSchemas = [
           });
         }
 
-        window.addEventListener('scroll', requestUpdate, { passive: true });
-        window.addEventListener('resize', function () {
+        refreshDesktopStory = function () {
           measureViewport();
           requestUpdate();
-        });
+        };
+        window.addEventListener('scroll', requestUpdate, { passive: true });
+        window.addEventListener('resize', refreshDesktopStory);
         measureViewport();
         update();
 
@@ -2416,6 +2479,9 @@ const homepageSchemas = [
       var onStoryModeChange = function (event) {
         if (!event.matches) {
           initDesktopStory();
+          window.requestAnimationFrame(function () {
+            window.requestAnimationFrame(refreshDesktopStory);
+          });
           return;
         }
         document.querySelectorAll('[data-story-shell] video').forEach(function (video) { video.pause(); });
@@ -2425,6 +2491,10 @@ const homepageSchemas = [
       } else if (typeof mobileStoryQuery.addListener === 'function') {
         mobileStoryQuery.addListener(onStoryModeChange);
       }
+      window.addEventListener('orientationchange', function () {
+        window.setTimeout(refreshDesktopStory, 120);
+        window.setTimeout(refreshDesktopStory, 360);
+      });
     })();
   </script>
 
