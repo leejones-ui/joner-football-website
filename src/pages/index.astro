@@ -2268,6 +2268,7 @@ const homepageSchemas = [
       }
 
       var mobileStoryQuery = window.matchMedia('(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px)');
+      var touchLandscapeQuery = window.matchMedia('(orientation: landscape) and (hover: none) and (pointer: coarse) and (min-height: 601px)');
       var desktopStoryStarted = false;
       var refreshDesktopStory = function () {};
 
@@ -2337,6 +2338,13 @@ const homepageSchemas = [
           growthPlayed = true;
           shell.setAttribute('data-growth-played', '');
           if (prefersReduced) return;
+          if (touchLandscapeQuery.matches) {
+            growthCounters.forEach(function (counter) {
+              var target = Number(counter.getAttribute('data-growth-target')) || 0;
+              counter.textContent = formatGrowth(target, counter.getAttribute('data-growth-format') || 'plain');
+            });
+            return;
+          }
 
           var DURATION = 1100;
           var startTime = null;
@@ -2378,7 +2386,7 @@ const homepageSchemas = [
             background.setAttribute('data-state', active ? 'active' : 'inactive');
 
             if (background.tagName === 'VIDEO') {
-              if (active) {
+              if (active && !touchLandscapeQuery.matches) {
                 var playPromise = background.play();
                 if (playPromise && typeof playPromise.catch === 'function') {
                   playPromise.catch(function () {});
