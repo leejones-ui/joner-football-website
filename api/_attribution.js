@@ -1,5 +1,17 @@
 const MARKER = '__jfa1__'
-const CONTAINERS = ['utm_params', 'tracking_params', 'metadata', 'custom_data', 'customer', 'user', 'data']
+const CONTAINERS = [
+  'utm_params',
+  'utm',
+  'tracking_params',
+  'query_params',
+  'metadata',
+  'custom_data',
+  'customer',
+  'user',
+  'data',
+  'payload',
+  'event_data',
+]
 
 function clean(value, max = 240) {
   if (value === undefined || value === null) return undefined

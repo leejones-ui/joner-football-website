@@ -357,11 +357,20 @@ const allSchemas = schema
           }
         }
 
-        function prepareUscreenTrackingParams(trackingParams) {
+        function appendUscreenTrackingParams(href, trackingParams) {
+          var decoratedHref = appendTrackingParams(href, trackingParams);
           if (!window.JonerAttribution || typeof window.JonerAttribution.encodeForUscreen !== 'function') {
-            return trackingParams;
+            return decoratedHref;
           }
-          return window.JonerAttribution.encodeForUscreen(trackingParams);
+          try {
+            var url = new URL(decoratedHref, window.location.href);
+            var encoded = window.JonerAttribution.encodeForUscreen(url.searchParams);
+            var encodedSource = encoded.get('utm_source');
+            if (encodedSource) url.searchParams.set('utm_source', encodedSource);
+            return url.toString();
+          } catch (e) {
+            return decoratedHref;
+          }
         }
 
         function isAppOutboundLink(anchor) {
@@ -577,7 +586,7 @@ const allSchemas = schema
           function decorateAppOutboundLinks(params) {
             document.querySelectorAll('a[href]').forEach(function (anchor) {
               if (!isAppOutboundLink(anchor)) return;
-              anchor.href = appendTrackingParams(anchor.href, prepareUscreenTrackingParams(params));
+              anchor.href = appendUscreenTrackingParams(anchor.href, params);
             });
           }
 
@@ -593,7 +602,7 @@ const allSchemas = schema
             if (!isAppOutboundLink(anchor)) return;
             // Guarantee the shared click-id/browser-id cookies exist at the moment we hand off to Uscreen.
             ensureSharedMetaCookies();
-            anchor.href = appendTrackingParams(anchor.href, prepareUscreenTrackingParams(collectTrackingParams()));
+            anchor.href = appendUscreenTrackingParams(anchor.href, collectTrackingParams());
             if (anchor.href.indexOf('/checkout/new') !== -1) {
               trackStandardCheckoutEvents(anchor);
               trackEvent(getCheckoutEventName(anchor), {

@@ -205,9 +205,19 @@ function buildContactAttributes(data, eventType) {
   return Object.fromEntries(Object.entries(attrs).filter(([, value]) => value !== undefined && value !== null && value !== ''))
 }
 
-function compactBrevoAttributes(attributes) {
+export function compactBrevoAttributes(attributes) {
+  const retryKeys = [
+    'FIRSTNAME',
+    'UTM_SOURCE',
+    'UTM_MEDIUM',
+    'UTM_CAMPAIGN',
+    'UTM_CONTENT',
+    'UTM_TERM',
+    'LAST_USCREEN_EVENT',
+    'LAST_USCREEN_EVENT_DATE',
+  ]
   return Object.fromEntries(
-    Object.entries(attributes).filter(([key]) => ['FIRSTNAME', 'LAST_USCREEN_EVENT', 'LAST_USCREEN_EVENT_DATE'].includes(key)),
+    Object.entries(attributes).filter(([key]) => retryKeys.includes(key)),
   )
 }
 
@@ -334,6 +344,26 @@ export async function processUscreenPayload(data) {
   return { accepted: true, event: eventType, processed: true, offerId, brevo }
 }
 
+export function parseUscreenBody(body) {
+  if (body === undefined || body === null || body === '') return {}
+  if (typeof body === 'string') {
+    let parsed
+    try {
+      parsed = JSON.parse(body)
+    } catch {
+      throw new Error('Invalid JSON webhook body')
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('Webhook body must be a JSON object')
+    }
+    return parsed
+  }
+  if (typeof body !== 'object' || Array.isArray(body)) {
+    throw new Error('Webhook body must be an object')
+  }
+  return body
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Allow', 'GET, POST, OPTIONS')
@@ -349,7 +379,12 @@ export default async function handler(req, res) {
     return json(res, 405, { success: false, error: 'Method not allowed' })
   }
 
-  const data = req.body && typeof req.body === 'object' ? req.body : {}
+  let data
+  try {
+    data = parseUscreenBody(req.body)
+  } catch {
+    return json(res, 400, { success: false, error: 'Invalid webhook JSON' })
+  }
   const eventType = normalizeEventType(data.event || data.type || data.event_type)
 
   try {
