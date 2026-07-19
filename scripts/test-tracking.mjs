@@ -5,6 +5,7 @@ import vm from 'node:vm'
 import { fileURLToPath } from 'node:url'
 import { extractAttribution, extractMetaIdentity } from '../api/_attribution.js'
 import { compactBrevoAttributes, parseUscreenBody } from '../api/_uscreen-webhook.js'
+import subscribeHandler from '../api/subscribe.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const browserSource = fs.readFileSync(path.join(root, 'public/tracking-attribution.js'), 'utf8')
@@ -109,6 +110,38 @@ assert.deepEqual(fallback, {
   UTM_CONTENT: 'video',
   UTM_TERM: 'coach',
 })
+
+function mockResponse() {
+  return {
+    statusCode: 200,
+    payload: undefined,
+    headers: {},
+    setHeader(key, value) { this.headers[key] = value; return this },
+    status(code) { this.statusCode = code; return this },
+    json(payload) { this.payload = payload; return this },
+    end() { return this },
+  }
+}
+
+const invalidWebhookResponse = mockResponse()
+await subscribeHandler(
+  { method: 'POST', query: { uscreen_webhook: '1' }, body: '{invalid' },
+  invalidWebhookResponse,
+)
+assert.equal(invalidWebhookResponse.statusCode, 400)
+assert.equal(invalidWebhookResponse.payload?.error, 'Invalid webhook JSON')
+
+const validWebhookResponse = mockResponse()
+await subscribeHandler(
+  {
+    method: 'POST',
+    query: { uscreen_webhook: '1' },
+    body: '{"event":"tracking.qa","email":"tracking-test@example.com"}',
+  },
+  validWebhookResponse,
+)
+assert.equal(validWebhookResponse.statusCode, 200)
+assert.equal(validWebhookResponse.payload?.reason, 'unhandled-event-type')
 
 const baseLayout = fs.readFileSync(path.join(root, 'src/layouts/BaseLayout.astro'), 'utf8')
 const teamsPage = fs.readFileSync(path.join(root, 'src/pages/teams.astro'), 'utf8')

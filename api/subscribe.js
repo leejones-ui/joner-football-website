@@ -1,5 +1,5 @@
 import { cleanString, protectForm } from './_security.js'
-import { processUscreenPayload } from './_uscreen-webhook.js'
+import { parseUscreenBody, processUscreenPayload } from './_uscreen-webhook.js'
 import dns from 'node:dns/promises'
 
 const COMMON_DOMAINS = [
@@ -426,7 +426,12 @@ export default async function handler(req, res) {
       return res.status(405).json({ success: false, error: 'Method not allowed' })
     }
 
-    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
+    let body
+    try {
+      body = parseUscreenBody(req.body)
+    } catch {
+      return res.status(400).json({ success: false, error: 'Invalid webhook JSON' })
+    }
     const eventType = String(body.event || body.type || body.event_type || 'unknown')
       .trim()
       .toLowerCase()
