@@ -343,6 +343,19 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
         .then(function (data) {
           if (!data || !data.success) throw new Error((data && data.error) || 'Could not send enquiry.');
           submitted = true;
+          if (window.JonerTracking && typeof window.JonerTracking.trackEvent === 'function') {
+            window.JonerTracking.trackEvent('team_subscription_interest', {
+              custom_data: {
+                form_id: 'team-subscription-enquiry-form',
+                page_path: '/teams',
+                persistence_status: 'confirmed'
+              },
+              user_data: {
+                email: payload.email,
+                phone: payload.phone
+              }
+            });
+          }
           form.reset();
           setStatus('Done. Your demo request has been sent. We will be in touch to book a time.', true);
         })

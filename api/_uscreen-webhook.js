@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import { extractAttribution, extractMetaIdentity } from './_attribution.js'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
@@ -18,24 +19,33 @@ async function sendPaidConversionToMeta(data, email, total) {
   const em = sha256Hex(email)
   if (!em) return { skipped: 'no-email' }
   const orderId = String(data.order_id || data.transaction_id || data.id || Date.now())
-  // Uscreen charges customers in their local currency (USD/GBP/AUD/EUR/CAD...).
-  // Send the order's REAL currency + value; Meta auto-converts every currency to
-  // the ad account currency (AUD) for reporting. Fallback to AUD (account
-  // currency) only when Uscreen omits the currency.
+  // Keep this as CompleteRegistration because Uscreen already emits the canonical
+  // Purchase event. A second Purchase stream would risk double-counting revenue.
   const currency = String(data.currency || data.localized_amounts?.currency || 'AUD').trim().toUpperCase().slice(0, 10)
   const value = Number.isFinite(Number(total)) ? Number(total) : undefined
+  const eventTime = Math.floor(Date.now() / 1000)
+  const attribution = extractAttribution(data)
+  const metaIdentity = extractMetaIdentity(data, eventTime)
+  const userData = { em: [em] }
+  if (metaIdentity.fbc) userData.fbc = metaIdentity.fbc
+  if (metaIdentity.fbp) userData.fbp = metaIdentity.fbp
   const payload = {
     data: [{
       event_name: 'CompleteRegistration',
-      event_time: Math.floor(Date.now() / 1000),
-      event_id: `Purchase.${orderId}`,
+      event_time: eventTime,
+      event_id: `CompleteRegistration.${orderId}`,
       action_source: 'website',
       event_source_url: 'https://app.jonerfootball.com/checkout/success',
-      user_data: { em: [em] },
+      user_data: userData,
       custom_data: {
         currency,
         value,
         subscription_plan: String(data.offer_title || data.subscription_title || data.title || '').slice(0, 120) || undefined,
+        utm_source: attribution.utm_source,
+        utm_medium: attribution.utm_medium,
+        utm_campaign: attribution.utm_campaign,
+        utm_content: attribution.utm_content,
+        utm_term: attribution.utm_term,
       },
     }],
   }
@@ -46,7 +56,7 @@ async function sendPaidConversionToMeta(data, email, total) {
       body: JSON.stringify(payload),
     })
     const text = await r.text().catch(() => '')
-    return { ok: r.ok, status: r.status, eventId: `Purchase.${orderId}`, body: text.slice(0, 200) }
+    return { ok: r.ok, status: r.status, eventId: `CompleteRegistration.${orderId}`, body: text.slice(0, 200) }
   } catch (e) {
     return { error: String(e?.message || e).slice(0, 160) }
   }
@@ -171,12 +181,8 @@ function extractName(data) {
   )
 }
 
-function extractUtm(data, key) {
-  const utm = nestedObject(data, 'utm_params')
-  return data[key] || utm[key]
-}
-
 function buildContactAttributes(data, eventType) {
+  const attribution = extractAttribution(data)
   const attrs = {
     FIRSTNAME: cleanValue(data.name || data.customer_name || data.customer_display_name || data.user_name, 180),
     USCREEN_USER_ID: cleanValue(data.user_id || data.id, 120),
@@ -186,11 +192,11 @@ function buildContactAttributes(data, eventType) {
     USCREEN_ORIGIN: cleanValue(data.origin, 120),
     USCREEN_CURRENCY: cleanValue(data.currency || data.localized_amounts?.currency, 20),
     USCREEN_TAGS: cleanValue(data.tags, 500),
-    UTM_SOURCE: cleanValue(extractUtm(data, 'utm_source'), 180),
-    UTM_MEDIUM: cleanValue(extractUtm(data, 'utm_medium'), 180),
-    UTM_TERM: cleanValue(extractUtm(data, 'utm_term'), 180),
-    UTM_CONTENT: cleanValue(extractUtm(data, 'utm_content'), 180),
-    UTM_CAMPAIGN: cleanValue(extractUtm(data, 'utm_campaign'), 180),
+    UTM_SOURCE: cleanValue(attribution.utm_source, 180),
+    UTM_MEDIUM: cleanValue(attribution.utm_medium, 180),
+    UTM_TERM: cleanValue(attribution.utm_term, 180),
+    UTM_CONTENT: cleanValue(attribution.utm_content, 180),
+    UTM_CAMPAIGN: cleanValue(attribution.utm_campaign, 180),
     NEWS_OPT_IN: data.opted_in_for_news_and_updates,
     COMMUNITY_OPT_IN: data.opted_in_for_community_updates,
     LAST_USCREEN_EVENT: cleanValue(eventType, 80),

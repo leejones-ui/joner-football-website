@@ -222,6 +222,7 @@ const allSchemas = schema
     </main>
     {!hideChrome && <Footer />}
 
+    <script is:inline src="/tracking-attribution.js"></script>
     <script is:inline>
       (function () {
         var TRACKING_PARAM_PREFIXES = ['utm_'];
@@ -354,6 +355,13 @@ const allSchemas = schema
           } catch (e) {
             return href;
           }
+        }
+
+        function prepareUscreenTrackingParams(trackingParams) {
+          if (!window.JonerAttribution || typeof window.JonerAttribution.encodeForUscreen !== 'function') {
+            return trackingParams;
+          }
+          return window.JonerAttribution.encodeForUscreen(trackingParams);
         }
 
         function isAppOutboundLink(anchor) {
@@ -513,9 +521,7 @@ const allSchemas = schema
             if (text.indexOf('plus') !== -1 || href.indexOf('o=230699') !== -1 || href.indexOf('o=183092') !== -1) return 'join_plus_click';
             if (text.indexOf('max') !== -1 || href.indexOf('o=230698') !== -1 || href.indexOf('o=202578') !== -1) return 'join_max_click';
           }
-          if (path === '/teams' && (href.indexOf('#team-subscription-form') !== -1 || text.indexOf('quote') !== -1 || text.indexOf('enquir') !== -1 || text.indexOf('club pricing') !== -1)) {
-            return text.indexOf('club pricing') !== -1 ? 'club_pricing_click' : 'team_subscription_interest';
-          }
+          if (path === '/teams' && text.indexOf('club pricing') !== -1) return 'club_pricing_click';
           if (href.indexOf('app.jonerfootball.com/checkout/new') !== -1) return 'app_checkout_click';
           return '';
         }
@@ -548,11 +554,7 @@ const allSchemas = schema
                 trackEvent('camp_form_submit', { custom_data: { form_id: id || 'camp-form', page_path: path } });
               }, true);
             }
-            if (path === '/teams' || id === 'team-subscription-enquiry-form') {
-              form.addEventListener('submit', function () {
-                trackEvent('team_subscription_interest', { custom_data: { form_id: id || 'team-form', page_path: path } });
-              }, true);
-            }
+
           });
         }
 
@@ -572,10 +574,17 @@ const allSchemas = schema
 
           var trackingParams = collectTrackingParams();
 
-          document.querySelectorAll('a[href]').forEach(function (anchor) {
-            if (!isAppOutboundLink(anchor)) return;
-            anchor.href = appendTrackingParams(anchor.href, trackingParams);
-          });
+          function decorateAppOutboundLinks(params) {
+            document.querySelectorAll('a[href]').forEach(function (anchor) {
+              if (!isAppOutboundLink(anchor)) return;
+              anchor.href = appendTrackingParams(anchor.href, prepareUscreenTrackingParams(params));
+            });
+          }
+
+          decorateAppOutboundLinks(trackingParams);
+          window.addEventListener('load', function () {
+            decorateAppOutboundLinks(collectTrackingParams());
+          }, { once: true });
 
           document.addEventListener('click', function (event) {
             var anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
@@ -584,7 +593,7 @@ const allSchemas = schema
             if (!isAppOutboundLink(anchor)) return;
             // Guarantee the shared click-id/browser-id cookies exist at the moment we hand off to Uscreen.
             ensureSharedMetaCookies();
-            anchor.href = appendTrackingParams(anchor.href, collectTrackingParams());
+            anchor.href = appendTrackingParams(anchor.href, prepareUscreenTrackingParams(collectTrackingParams()));
             if (anchor.href.indexOf('/checkout/new') !== -1) {
               trackStandardCheckoutEvents(anchor);
               trackEvent(getCheckoutEventName(anchor), {
