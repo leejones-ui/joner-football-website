@@ -7,7 +7,6 @@ const beats = [
     title: 'Technique Above Everything',
     body: '',
     image: '/images/home-mobile-story/mobile-story-01-action.webp',
-    landscapeImage: '/images/home-storyboard/01-kick-clean.webp',
     ctas: [['Train Today', 'https://app.jonerfootball.com']],
   },
   {
@@ -17,7 +16,6 @@ const beats = [
     title: 'It Started With A Bag Of Balls',
     body: 'In 2013 it started with an idea. Joner Football was born. Now we are recognised all over the world.',
     image: '/images/home-mobile-story/mobile-story-02-origin.webp',
-    landscapeImage: '/images/home-storyboard/02-origin-clean.webp',
     stamp: 'EST 2013',
   },
   {
@@ -27,7 +25,6 @@ const beats = [
     title: 'Local Sessions. Global Reach.',
     body: 'The work spread through videos, players, parents, coaches, and millions of touches online.',
     image: '/images/home-mobile-story/mobile-story-03-growth.webp',
-    landscapeImage: '/images/home-storyboard/03-method-filming.webp',
     growth: true,
     ctas: [
       ['YouTube', 'https://www.youtube.com/@jonerfootball'],
@@ -45,7 +42,6 @@ const beats = [
     title: 'A Method Like No Other',
     body: 'Every technical detail gets coached through energy, passion & positivity.',
     image: '/images/home-mobile-story/mobile-story-04-joner-way.webp',
-    landscapeImage: '/images/home-storyboard/04-joner-way-dsc08725.webp',
     ctas: [['Train With Us In Sydney', '/contact']],
   },
   {
@@ -55,7 +51,6 @@ const beats = [
     title: 'Coaching Worldwide',
     body: 'From Sydney to camps, clinics, and football communities around the world.',
     image: '/images/home-mobile-story/mobile-story-05-camps.webp',
-    landscapeImage: '/images/home-storyboard/05-global-camps.webp',
     ctas: [['Elite Camps', '/camps']],
   },
   {
@@ -65,7 +60,6 @@ const beats = [
     title: 'Worlds #1 Football Coaching APP',
     body: 'Built for players, parents, and coaches to train with clarity, confidence, and purpose.',
     image: '/images/home-mobile-story/mobile-story-05-app.webp',
-    landscapeImage: '/images/home-mobile-story/mobile-story-05-app.webp',
     video: '/images/home-storyboard/06-app-header-video-desktop.mp4',
     ctas: [
       ['7 Day Free Trial', 'https://app.jonerfootball.com/categories/category-vpi8uazway4'],
@@ -78,7 +72,6 @@ const beats = [
     title: 'A Home Of Our Own',
     body: 'Sydney, Australia. Belrose. Our home.',
     image: '/images/home-mobile-story/mobile-story-07-hq-photo.webp',
-    landscapeImage: '/images/home-storyboard/07-facility-hq.webp',
     ctas: [['Visit HQ Map', 'https://maps.google.com/?q=20+Narabang+Way+Belrose']],
   },
   {
@@ -88,7 +81,6 @@ const beats = [
     title: 'Choose Your Next Step',
     body: 'Train online, train with us, join a camp, or get inside the Joner Football Hub.',
     image: '/images/home-mobile-story/mobile-story-08-action.webp',
-    landscapeImage: '/images/home-storyboard/08-action-coach-night.webp',
     choose: true,
   },
 ]
@@ -117,29 +109,14 @@ const choices = [
         <article class="mobile-story-beat" data-mobile-beat data-index={index} style={`opacity:${index === 0 ? 1 : 0};`}>
           <div class="mobile-story-canvas" aria-hidden="true">
             {beat.video ? (
-              <>
-                <picture class="mobile-story-landscape-poster">
-                  <source media="(orientation: landscape) and (hover: none) and (pointer: coarse) and (min-height: 601px)" srcset={beat.landscapeImage} />
-                  <img class="mobile-story-media" src={beat.image} alt="" loading="lazy" decoding="async" />
-                </picture>
-                <video class="mobile-story-media mobile-story-video" muted loop playsinline preload="metadata" poster={beat.image} aria-label={beat.title}>
-                  <source src={beat.video} type="video/mp4" />
-                </video>
-              </>
+              <video class="mobile-story-media mobile-story-video" muted loop playsinline preload="metadata" poster={beat.image} aria-label={beat.title}>
+                <source src={beat.video} type="video/mp4" />
+              </video>
             ) : (
-              <picture class="mobile-story-picture">
-                <source media="(orientation: landscape) and (hover: none) and (pointer: coarse) and (min-height: 601px)" srcset={beat.landscapeImage} />
-                <img class="mobile-story-media" src={beat.image} alt="" loading={index < 2 ? 'eager' : 'lazy'} decoding="async" />
-              </picture>
+              <img class="mobile-story-media" src={beat.image} alt="" loading={index === 0 ? 'eager' : 'lazy'} decoding="async" />
             )}
             <div class="mobile-story-shade"></div>
           </div>
-
-          {index < 2 && (
-            <div class:list={['tablet-story-ball', index === 1 && 'tablet-story-ball--origin']} aria-hidden="true">
-              <img src="/images/home-storyboard/yellow-football-object.webp" alt="" />
-            </div>
-          )}
 
           <div class="mobile-story-copy">
             {beat.stamp && <strong class="mobile-story-stamp">{beat.stamp}</strong>}
@@ -217,9 +194,6 @@ const choices = [
     -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 85%, transparent 100%);
     mask-image: linear-gradient(180deg, #000 0%, #000 85%, transparent 100%);
   }
-  .mobile-story-picture { display: contents; }
-  .mobile-story-landscape-poster,
-  .tablet-story-ball { display: none; }
   .mobile-story-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; filter: saturate(1.02) contrast(1.08) brightness(0.86); transform: translateZ(0); }
   .mobile-story-video { z-index: 0; background: #000; }
   .mobile-story-beat:nth-child(1) .mobile-story-media { object-position: 53% 44%; }
@@ -317,127 +291,9 @@ const choices = [
   /* accelerating fall: a drop that brakes before vanishing reads mushy */
   .mobile-story-cue-drop { position: absolute; left: 0; top: 0; width: 1px; height: 0.75rem; background: #e30613; animation: mobileCueDrop 2.2s cubic-bezier(.5,0,.75,.45) infinite; }
   @keyframes mobileCueDrop { 0% { transform: translateY(-0.85rem); } 62%, 100% { transform: translateY(2.25rem); } }
-  /* Phones and portrait tablets keep the established mobile story. */
+  /* Phone layouts and portrait tablets stay mobile. Landscape iPads use the
+     wide desktop storyboard; short landscape phones remain mobile. */
   @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) { .mobile-story { display: block; } }
-
-  /* Physical iPads use a dedicated native-scroll landscape story. It keeps
-     the desktop photography, hierarchy and spinning ball, but has no sticky
-     canvas, no fixed progress rail and no scroll-frame rendering work. */
-  @media (orientation: landscape) and (hover: none) and (pointer: coarse) and (min-height: 601px) {
-    .mobile-story { display: block; overflow: clip; }
-    .mobile-story-track,
-    .mobile-story-sticky { position: relative; background: #050505; }
-    .mobile-story-beat,
-    .mobile-story-beat + .mobile-story-beat {
-      height: 100svh;
-      min-height: 44rem;
-      margin-top: 0;
-      overflow: hidden;
-      content-visibility: auto;
-      contain-intrinsic-size: auto 100svh;
-    }
-    .mobile-story-beat:first-child { height: calc(100svh - 4rem); min-height: 44rem; }
-    .mobile-story-canvas,
-    .mobile-story-beat:first-child .mobile-story-canvas {
-      inset: 0;
-      -webkit-mask-image: none;
-      mask-image: none;
-    }
-    .mobile-story-canvas::before,
-    .mobile-story-canvas::after {
-      content: '';
-      position: absolute;
-      inset-inline: 0;
-      z-index: 2;
-      height: 7%;
-      pointer-events: none;
-    }
-    .mobile-story-canvas::before { top: 0; background: linear-gradient(to bottom, #050505 0%, rgba(5,5,5,0) 100%); }
-    .mobile-story-canvas::after { bottom: 0; background: linear-gradient(to top, #050505 0%, rgba(5,5,5,0) 100%); }
-    .mobile-story-beat:first-child .mobile-story-canvas::before { display: none; }
-    .mobile-story-picture { display: contents; }
-    .mobile-story-landscape-poster { display: contents; }
-    .mobile-story-video { display: none; }
-    .mobile-story-media {
-      transform: none;
-      filter: saturate(1.04) contrast(1.06) brightness(0.86);
-      object-position: 50% 50%;
-    }
-    .mobile-story-beat:nth-child(1) .mobile-story-media { object-position: 50% 50%; }
-    .mobile-story-beat:nth-child(2) .mobile-story-media { object-position: 56% 50%; }
-    .mobile-story-beat:nth-child(3) .mobile-story-media { object-position: 48% 48%; }
-    .mobile-story-beat:nth-child(4) .mobile-story-media { object-position: 50% 44%; }
-    .mobile-story-beat:nth-child(5) .mobile-story-media { object-position: 50% 46%; }
-    .mobile-story-beat:nth-child(6) .mobile-story-media { object-position: 50% 50%; }
-    .mobile-story-beat:nth-child(7) .mobile-story-media { object-position: 56% 50%; }
-    .mobile-story-beat:nth-child(8) .mobile-story-media { object-position: 50% 38%; }
-    .mobile-story-shade {
-      background:
-        linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.04) 42%, rgba(0,0,0,0.6)),
-        linear-gradient(90deg, rgba(0,0,0,0.74), rgba(0,0,0,0.16) 62%, rgba(0,0,0,0.12));
-    }
-    .mobile-story-copy,
-    .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-copy,
-    .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-kicker,
-    .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-copy h2,
-    .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-copy p:not(.mobile-story-kicker),
-    .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-ctas,
-    .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-choices,
-    .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-growth-card {
-      opacity: 1 !important;
-      visibility: visible !important;
-      transform: none !important;
-      transition: none !important;
-    }
-    .mobile-story-copy { left: 8rem; right: auto; top: 18%; bottom: auto; width: min(37rem, 48vw); max-width: none; text-align: left; display: block; }
-    .mobile-story-beat:nth-child(1) .mobile-story-copy,
-    .mobile-story-beat:nth-child(2) .mobile-story-copy,
-    .mobile-story-beat:nth-child(6) .mobile-story-copy {
-      inset: 0;
-      width: auto;
-      padding: 0 16vw;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-    .mobile-story-beat:nth-child(3) .mobile-story-copy { top: 10%; width: min(39rem, 52vw); }
-    .mobile-story-beat:nth-child(4) .mobile-story-copy { left: 8rem; right: auto; top: 34%; text-align: left; }
-    .mobile-story-beat:nth-child(4) .mobile-story-ctas { justify-content: flex-start; }
-    .mobile-story-beat:nth-child(5) .mobile-story-copy { left: 8rem; top: 22%; }
-    .mobile-story-beat:nth-child(7) .mobile-story-copy { left: 8rem; top: auto; bottom: 10%; }
-    .mobile-story-beat:nth-child(8) .mobile-story-copy { inset: 0; width: auto; padding: 0 13vw; display: flex; align-items: center; justify-content: center; text-align: center; }
-    .mobile-story-copy h2 { font-size: clamp(3.2rem, 7vw, 6.4rem); line-height: 0.9; }
-    .mobile-story-copy p:not(.mobile-story-kicker) { max-width: 34rem; font-size: 1.05rem; }
-    .mobile-story-kicker { font-size: 0.78rem; }
-    .mobile-story-stamp { left: 8rem; top: 2.2rem; }
-    .mobile-story-ctas a,
-    .mobile-story-choices a,
-    .mobile-growth-card { backdrop-filter: none; }
-    .mobile-story-beat:nth-child(3) .mobile-story-ctas { max-width: 34rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .mobile-growth-card { max-width: 34rem; padding: 1rem; }
-    .mobile-growth-card > strong { font-size: clamp(3.4rem, 6vw, 5.4rem); }
-    .mobile-story-choices { max-width: 44rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .mobile-story-rail { display: none; }
-    .tablet-story-ball {
-      position: absolute;
-      display: block;
-      left: 24.2%;
-      top: 46%;
-      z-index: 8;
-      width: clamp(4.8rem, 5.8vw, 5.8rem);
-      aspect-ratio: 1;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      filter: drop-shadow(0 0.8rem 1rem rgba(0,0,0,0.44));
-    }
-    .tablet-story-ball--origin { left: 54%; top: 48%; width: clamp(4.4rem, 5.2vw, 5.4rem); }
-    .tablet-story-ball img { display: block; width: 100%; height: 100%; object-fit: contain; animation: tabletBallSpin 1.35s linear infinite; }
-    @keyframes tabletBallSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .mobile-growth-bars span,
-    .mobile-growth-card > strong,
-    .mobile-growth-grid strong { transform: none !important; transition: none !important; }
-  }
   @media (prefers-reduced-motion: reduce) {
     .mobile-story-beat, .mobile-story-copy, .mobile-story-kicker, .mobile-story-copy h2, .mobile-story-copy p,
     .mobile-story-ctas, .mobile-story-choices, .mobile-story-stamp,
@@ -452,7 +308,6 @@ const choices = [
     if (!root) return;
 
     var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var tabletLandscape = window.matchMedia('(orientation: landscape) and (hover: none) and (pointer: coarse) and (min-height: 601px)');
     // Hidden initial states are gated on this class, so content can never be
     // stuck invisible without JS, and reduced motion keeps everything static.
     if (!prefersReduced) root.classList.add('is-motion');
@@ -464,7 +319,7 @@ const choices = [
 
     // Seed counters to zero so the count-up only ever moves upward. SSR
     // finals stay in place for no-JS and reduced motion.
-    if (!prefersReduced && !tabletLandscape.matches) {
+    if (!prefersReduced) {
       counters.forEach(function (counter) {
         counter.textContent = formatGrowth(0, counter.getAttribute('data-format') || 'plain');
       });
@@ -496,12 +351,6 @@ const choices = [
       growthPlayed = true;
       root.classList.add('is-growth-played');
       if (prefersReduced) return;
-      if (tabletLandscape.matches) {
-        counters.forEach(function (counter) {
-          counter.textContent = formatGrowth(Number(counter.getAttribute('data-target')) || 0, counter.getAttribute('data-format') || 'plain');
-        });
-        return;
-      }
       var DURATION = 2400;
       var startTime = null;
       function frame(now) {
@@ -540,7 +389,7 @@ const choices = [
         beat.classList.toggle('is-active', isActive);
         var video = beat.querySelector('video');
         if (video) {
-          if (isActive && !tabletLandscape.matches) { var p = video.play(); if (p && p.catch) p.catch(function () {}); }
+          if (isActive) { var p = video.play(); if (p && p.catch) p.catch(function () {}); }
           else video.pause();
         }
       });
@@ -590,7 +439,6 @@ const choices = [
     }
     function startListening() {
       if (listening) return;
-      if (tabletLandscape.matches) return;
       listening = true;
       window.addEventListener('scroll', onScroll, { passive: true });
       window.addEventListener('resize', onScroll);
@@ -626,13 +474,5 @@ const choices = [
       if (bestRatio > 0) setActive(bestIndex);
     }, { threshold: [0, 0.15, 0.3, 0.5, 0.7, 0.85, 1] });
     beats.forEach(function (beat) { activeObserver.observe(beat); });
-
-    function onTabletModeChange() {
-      root.querySelectorAll('video').forEach(function (video) { video.pause(); });
-      if (tabletLandscape.matches) stopListening();
-      else if (root.classList.contains('is-in-view')) startListening();
-    }
-    if (typeof tabletLandscape.addEventListener === 'function') tabletLandscape.addEventListener('change', onTabletModeChange);
-    else if (typeof tabletLandscape.addListener === 'function') tabletLandscape.addListener(onTabletModeChange);
   })();
 </script>

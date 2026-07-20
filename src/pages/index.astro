@@ -1791,7 +1791,7 @@ const homepageSchemas = [
         .action-card { transition: border-color 160ms ease, background-color 160ms ease; }
       }
 
-      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse) {
+      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) {
         .jfp-journey {
           display: none !important;
         }
@@ -1826,10 +1826,10 @@ const homepageSchemas = [
         }
       }
 
-      /* Phones, portrait tablets and physical touch iPads use native-flow
-         stories. Landscape iPads receive a dedicated wide composition in the
-         mobile-story component, with no sticky canvas to trigger Safari bounce. */
-      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse) {
+      /* Phones and portrait tablets use the mobile story. Landscape iPads keep
+         the complete desktop storyboard, with Safari toolbar resize events
+         isolated from the sticky canvas measurements. */
+      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) {
         #storyboard-desktop {
           display: none;
         }
@@ -2279,7 +2279,7 @@ const homepageSchemas = [
         return value * value * (3 - (2 * value));
       }
 
-      var mobileStoryQuery = window.matchMedia('(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse)');
+      var mobileStoryQuery = window.matchMedia('(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px)');
       var touchLandscapeQuery = window.matchMedia('(orientation: landscape) and (hover: none) and (pointer: coarse) and (min-height: 601px)');
       var desktopStoryStarted = false;
       var refreshDesktopStory = function () {};
@@ -2315,6 +2315,7 @@ const homepageSchemas = [
         var scrollableDistance = 1;
         var lastProgress = -1;
         var lastStyles = {};
+        var measuredWidth = window.innerWidth;
 
         function setElementStyle(element, property, value, key) {
           if (!element || lastStyles[key] === value) return;
@@ -2328,6 +2329,7 @@ const homepageSchemas = [
           if (!viewportEl) return;
           vpW = viewportEl.clientWidth || window.innerWidth;
           vpH = viewportEl.clientHeight || window.innerHeight;
+          measuredWidth = window.innerWidth;
           var rect = shell.getBoundingClientRect();
           shellTop = (window.scrollY || window.pageYOffset || 0) + rect.top;
           scrollableDistance = Math.max(shell.offsetHeight - window.innerHeight, 1);
@@ -2489,12 +2491,20 @@ const homepageSchemas = [
           });
         }
 
-        refreshDesktopStory = function () {
+        refreshDesktopStory = function (force) {
+          var widthChanged = Math.abs(window.innerWidth - measuredWidth) > 2;
+          // iOS Safari emits resize events while the address/tool bars move.
+          // Re-measuring the sticky shell on those height-only events changes
+          // its scroll range mid-gesture and presents as a bouncing canvas.
+          if (touchLandscapeQuery.matches && force !== true && !widthChanged) {
+            requestUpdate();
+            return;
+          }
           measureViewport();
           requestUpdate();
         };
         window.addEventListener('scroll', requestUpdate, { passive: true });
-        window.addEventListener('resize', refreshDesktopStory);
+        window.addEventListener('resize', function () { refreshDesktopStory(false); });
         measureViewport();
         update();
 
@@ -2511,7 +2521,7 @@ const homepageSchemas = [
         if (!event.matches) {
           initDesktopStory();
           window.requestAnimationFrame(function () {
-            window.requestAnimationFrame(refreshDesktopStory);
+            window.requestAnimationFrame(function () { refreshDesktopStory(true); });
           });
           return;
         }
@@ -2523,8 +2533,8 @@ const homepageSchemas = [
         mobileStoryQuery.addListener(onStoryModeChange);
       }
       window.addEventListener('orientationchange', function () {
-        window.setTimeout(refreshDesktopStory, 120);
-        window.setTimeout(refreshDesktopStory, 360);
+        window.setTimeout(function () { refreshDesktopStory(true); }, 120);
+        window.setTimeout(function () { refreshDesktopStory(true); }, 360);
       });
     })();
   </script>
