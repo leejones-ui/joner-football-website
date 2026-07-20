@@ -1791,7 +1791,7 @@ const homepageSchemas = [
         .action-card { transition: border-color 160ms ease, background-color 160ms ease; }
       }
 
-      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) {
+      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse) {
         .jfp-journey {
           display: none !important;
         }
@@ -1826,10 +1826,10 @@ const homepageSchemas = [
         }
       }
 
-      /* Phones and portrait tablets use the mobile story. Landscape iPads keep
-         the complete desktop storyboard, including the wide image blends and
-         spinning ball, with a touch-optimised scroll engine. */
-      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px) {
+      /* Phones, portrait tablets and physical touch iPads use native-flow
+         stories. Landscape iPads receive a dedicated wide composition in the
+         mobile-story component, with no sticky canvas to trigger Safari bounce. */
+      @media (max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse) {
         #storyboard-desktop {
           display: none;
         }
@@ -2279,7 +2279,7 @@ const homepageSchemas = [
         return value * value * (3 - (2 * value));
       }
 
-      var mobileStoryQuery = window.matchMedia('(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px)');
+      var mobileStoryQuery = window.matchMedia('(max-width: 767px), (max-height: 600px), (orientation: portrait) and (max-width: 1024px), (hover: none) and (pointer: coarse)');
       var touchLandscapeQuery = window.matchMedia('(orientation: landscape) and (hover: none) and (pointer: coarse) and (min-height: 601px)');
       var desktopStoryStarted = false;
       var refreshDesktopStory = function () {};
