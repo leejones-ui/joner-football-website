@@ -6,6 +6,7 @@ export const JUNIORS_CLASS = 'Saturday 9:15am to 10:00am'
 export const JUNIORS_TERM = '25 July 2026 to 26 September 2026'
 export const JUNIORS_SHEET_TAB = 'Joners Juniors'
 export const JUNIORS_AIRTABLE_TABLE = 'Joners Juniors'
+export const STALE_CLAIM_MS = 15 * 60 * 1000
 
 // This is the verified live 15-column Joners Juniors tab. Do not add columns.
 export const JUNIORS_HEADERS = [
@@ -117,12 +118,12 @@ export function rowFromRegistration(registration, details = {}) {
 export function confirmationStatus(value = '') {
   try {
     const parsed = JSON.parse(clean(value, 500))
-    return { customer: parsed.customer || '', internal: parsed.internal || '', ...(parsed.eventId ? { eventId: parsed.eventId } : {}), ...(parsed.processing ? { processing: true } : {}), ...(parsed.airtable ? { airtable: parsed.airtable } : {}), ...(parsed.airtableRecordId ? { airtableRecordId: parsed.airtableRecordId } : {}) }
+    return { customer: parsed.customer || '', internal: parsed.internal || '', ...(parsed.eventId ? { eventId: parsed.eventId } : {}), ...(parsed.processing ? { processing: true } : {}), ...(parsed.processingAt ? { processingAt: parsed.processingAt } : {}), ...(parsed.customerAt ? { customerAt: parsed.customerAt } : {}), ...(parsed.internalAt ? { internalAt: parsed.internalAt } : {}), ...(parsed.airtable ? { airtable: parsed.airtable } : {}), ...(parsed.airtableRecordId ? { airtableRecordId: parsed.airtableRecordId } : {}) }
   } catch { return { customer: '', internal: '' } }
 }
 
 export function serializeConfirmationStatus(status) {
-  return JSON.stringify({ customer: status.customer || '', internal: status.internal || '', ...(status.eventId ? { eventId: status.eventId } : {}), ...(status.processing ? { processing: true } : {}), ...(status.airtable ? { airtable: status.airtable } : {}), ...(status.airtableRecordId ? { airtableRecordId: status.airtableRecordId } : {}) })
+  return JSON.stringify({ customer: status.customer || '', internal: status.internal || '', ...(status.eventId ? { eventId: status.eventId } : {}), ...(status.processing ? { processing: true, ...(status.processingAt ? { processingAt: status.processingAt } : {}) } : {}), ...(status.customerAt ? { customerAt: status.customerAt } : {}), ...(status.internalAt ? { internalAt: status.internalAt } : {}), ...(status.airtable ? { airtable: status.airtable } : {}), ...(status.airtableRecordId ? { airtableRecordId: status.airtableRecordId } : {}) })
 }
 
 // Google Sheets is not a CAS. Re-read the durable claim after writing it, and
@@ -136,14 +137,30 @@ export function shouldUpsertAirtable(status) {
   return status?.airtable !== 'synced'
 }
 
-// `in_progress` is durable suppression: a retry must not send a second copy after an
-// email API success if the following status write failed. That residual limitation is
-// documented and tested; the webhook returns non-2xx so Stripe retries the remaining work.
-export function shouldClaimEmail(status, kind) {
-  return !['in_progress', 'sent'].includes(status?.[kind])
+function timestampMs(value) {
+  if (value instanceof Date) return value.getTime()
+  if (typeof value === 'number') return value
+  const parsed = Date.parse(String(value || ''))
+  return Number.isFinite(parsed) ? parsed : NaN
 }
 
-export function shouldSendEmail(sentAt) { return !clean(sentAt, 80) }
+export function isFreshClaim(timestamp, now = Date.now(), thresholdMs = STALE_CLAIM_MS) {
+  const claimedAt = timestampMs(timestamp)
+  const nowAt = timestampMs(now)
+  // Legacy in-progress values have no timestamp; retain their duplicate
+  // suppression for backward compatibility. New claims always include one.
+  return !Number.isFinite(claimedAt) || !Number.isFinite(nowAt) || nowAt - claimedAt < thresholdMs
+}
+
+export function shouldDuplicateProcessing(status, eventId, now = Date.now()) {
+  return Boolean(status?.processing && eventClaimOwnsRow(status, eventId) && isFreshClaim(status.processingAt, now))
+}
+
+export function shouldClaimEmail(status, kind, now = Date.now()) {
+  if (status?.[kind] === 'sent') return false
+  if (status?.[kind] === 'in_progress') return !isFreshClaim(status?.[`${kind}At`], now)
+  return true
+}
 
 export function confirmationEmail({ registration, internal = false, refs = {}, reviewNote = '' }) {
   const player = escapeHtml(registration.player)

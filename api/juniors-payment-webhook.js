@@ -1,6 +1,6 @@
 import { verifyStripeWebhook } from './_stripe-webhook.js'
 import { readRows, updateCell } from './_camp-automation.js'
-import { confirmationEmail, confirmationStatus, eventClaimOwnsRow, isPaidJuniorsEvent, JUNIORS_HEADERS, JUNIORS_SHEET_TAB, paidEventDetails, serializeConfirmationStatus, shouldClaimEmail, shouldUpsertAirtable } from './_juniors-flow.js'
+import { confirmationEmail, confirmationStatus, eventClaimOwnsRow, isPaidJuniorsEvent, JUNIORS_HEADERS, JUNIORS_SHEET_TAB, paidEventDetails, serializeConfirmationStatus, shouldClaimEmail, shouldDuplicateProcessing, shouldUpsertAirtable } from './_juniors-flow.js'
 import { sendJuniorsEmail } from './_juniors-email.js'
 
 export const config = { api: { bodyParser: false } }
@@ -97,8 +97,8 @@ async function processPaid(event) {
   // cannot create a second record while this event is in flight.
   const eventId = event.id || details.checkoutSessionId
   if (status.eventId && !eventClaimOwnsRow(status, eventId)) return { ignored: true, reason: 'different-event-claim', registrationId: details.registrationId }
-  if (status.processing && eventClaimOwnsRow(status, eventId)) return { duplicate: true, registrationId: details.registrationId }
-  status = { ...status, eventId, processing: true }
+  if (shouldDuplicateProcessing(status, eventId)) return { duplicate: true, registrationId: details.registrationId }
+  status = { ...status, eventId, processing: true, processingAt: new Date().toISOString() }
   await updateStatus(tab(), rowNumber, status)
   // Google Sheets is not CAS. Re-read O immediately and only continue if this
   // event still owns the claim, protecting against cross-instance races.
@@ -114,11 +114,11 @@ async function processPaid(event) {
       await persistStatus(rowNumber, status, airtableRecordId)
     } catch (error) {
       // Release the durable claim when the upsert itself fails so Stripe retry can recover.
-      try { await updateStatus(tab(), rowNumber, { ...status, processing: false }) } catch { /* original failure is the actionable error */ }
+      try { await updateStatus(tab(), rowNumber, { ...status, processing: false, processingAt: '' }) } catch { /* original failure is the actionable error */ }
       throw error
     }
   }
-  status = { ...status, processing: false }
+  status = { ...status, processing: false, processingAt: '' }
   await persistStatus(rowNumber, status, airtableRecordId)
   const internalEmail = process.env.JUNIORS_INTERNAL_EMAIL || 'ligia@jonerfootball.com'
   const replyTo = process.env.JUNIORS_REPLY_TO_EMAIL || 'ligia@jonerfootball.com'
@@ -129,7 +129,7 @@ async function processPaid(event) {
   ]) {
     if (!shouldClaimEmail(status, kind)) continue
     const priorStatus = status
-    status = { ...status, [kind]: 'in_progress' }
+    status = { ...status, [kind]: 'in_progress', [`${kind}At`]: new Date().toISOString() }
     try {
       await persistStatus(rowNumber, status, airtableRecordId)
     } catch (error) {
@@ -155,8 +155,11 @@ export default async function handler(req, res) {
     const registrationId = paidEventDetails(event).registrationId
     const prior = locks.get(registrationId) || Promise.resolve()
     const current = prior.then(() => processPaid(event))
-    locks.set(registrationId, current.catch(() => {}))
-    try { return res.status(200).json({ received: true, ...(await current) }) } finally { if (locks.get(registrationId) === current) locks.delete(registrationId) }
+    let tracked
+    const cleanup = () => { if (locks.get(registrationId) === tracked) locks.delete(registrationId) }
+    tracked = current.then(cleanup, cleanup)
+    locks.set(registrationId, tracked)
+    try { return res.status(200).json({ received: true, ...(await current) }) } finally { cleanup() }
   } catch (error) {
     console.error('Joners Juniors webhook failed:', error?.message || 'unknown error')
     return res.status(500).json({ received: false, error: 'Webhook processing failed; Stripe should retry.' })

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import {
   JUNIORS_AMOUNT_AUD, JUNIORS_CLASS, JUNIORS_HEADERS, JUNIORS_TERM, confirmationEmail,
   confirmationStatus, isPaidJuniorsEvent, normaliseRegistration, paidEventDetails,
-  eventClaimOwnsRow, rowFromRegistration, serializeConfirmationStatus, shouldClaimEmail, shouldUpsertAirtable, stripeCheckoutForm,
+  eventClaimOwnsRow, isFreshClaim, rowFromRegistration, serializeConfirmationStatus, shouldClaimEmail, shouldDuplicateProcessing, shouldUpsertAirtable, stripeCheckoutForm,
   validateJuniorsRegistration,
 } from '../api/_juniors-flow.js'
 import { brevoAttributes } from '../api/juniors-registration.js'
@@ -88,6 +88,16 @@ test('event claim ownership survives re-read and rejects a different event steal
   assert.equal(shouldUpsertAirtable({ eventId: 'evt_1', processing: false }), true)
 })
 
+test('processing and email claims recover after the deterministic 15-minute lease', () => {
+  const now = Date.parse('2026-07-01T00:20:00.000Z')
+  assert.equal(isFreshClaim('2026-07-01T00:10:01.000Z', now), true)
+  assert.equal(isFreshClaim('2026-07-01T00:04:59.000Z', now), false)
+  assert.equal(shouldDuplicateProcessing({ eventId: 'evt_1', processing: true, processingAt: '2026-07-01T00:10:01.000Z' }, 'evt_1', now), true)
+  assert.equal(shouldDuplicateProcessing({ eventId: 'evt_1', processing: true, processingAt: '2026-07-01T00:04:59.000Z' }, 'evt_1', now), false)
+  assert.equal(shouldClaimEmail({ customer: 'in_progress', customerAt: '2026-07-01T00:04:59.000Z' }, 'customer', now), true)
+  assert.equal(shouldClaimEmail({ customer: 'in_progress', customerAt: '2026-07-01T00:10:01.000Z' }, 'customer', now), false)
+})
+
 test('parent confirmation copy has no camp, jersey or payment-reminder wording', () => {
   const html = confirmationEmail({ registration: valid() })
   assert.match(html, /Your Joners Juniors spot is confirmed/)
@@ -111,6 +121,26 @@ test('public registration errors are generic and do not expose provider messages
   const source = readFileSync(new URL('../api/juniors-registration.js', import.meta.url), 'utf8')
   assert.match(source, /Could not save your registration\. Please try again\./)
   assert.doesNotMatch(source, /error: error\?\.message/)
+})
+
+test('registration persists before Checkout and updates column M before returning its URL', () => {
+  const source = readFileSync(new URL('../api/juniors-registration.js', import.meta.url), 'utf8')
+  assert.ok(source.indexOf('await appendRow(') < source.indexOf('await createCheckout('))
+  assert.ok(source.indexOf('await updateCell(') < source.indexOf('return res.status(200).json'))
+  assert.ok(source.includes("updateCell(sheetId(), tab(), index + 1, 'M', checkout.id)"))
+})
+
+test('test-email endpoint requires the secret header and uses a rate limit', () => {
+  const source = readFileSync(new URL('../api/juniors-email-test.js', import.meta.url), 'utf8')
+  assert.ok(source.includes("req.headers['x-juniors-email-test-secret']"))
+  assert.equal(source.includes('body.secret'), false)
+  assert.ok(source.includes("rateLimit(req, { key: 'joners-juniors-email-test'"))
+  assert.ok(source.includes('body.send !== true'))
+})
+
+test('webhook lock cleanup compares and deletes the tracked promise', () => {
+  const source = readFileSync(new URL('../api/juniors-payment-webhook.js', import.meta.url), 'utf8')
+  assert.ok(source.includes('locks.get(registrationId) === tracked'))
 })
 
 test('Airtable confirmation status is patched after durable Google status writes', () => {

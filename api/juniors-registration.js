@@ -1,6 +1,6 @@
 import { protectForm } from './_security.js'
 import { validateEmailQuality } from './_email-quality.js'
-import { appendRow } from './_camp-automation.js'
+import { appendRow, readRows, updateCell } from './_camp-automation.js'
 import { JUNIORS_HEADERS, JUNIORS_SHEET_TAB, normaliseRegistration, rowFromRegistration, validateJuniorsRegistration, stripeCheckoutForm } from './_juniors-flow.js'
 
 const sheetId = () => process.env.JUNIORS_SHEET_ID || process.env.CAMP_REGISTRATION_SHEET_ID
@@ -45,10 +45,14 @@ export default async function handler(req, res) {
     if (!validation.ok) return res.status(400).json({ success: false, error: validation.error })
     if (!sheetId()) return res.status(503).json({ success: false, error: 'Joners Juniors payment records are not configured.' })
 
+    await appendRow(sheetId(), tab(), rowFromRegistration(registration, { paymentStatus: 'pending' }), JUNIORS_HEADERS)
     const brevo = await addParentToBrevo(registration)
     const checkout = await createCheckout(req, registration)
     // Paid At, Amount Paid and confirmation status remain blank until the signed paid webhook.
-    await appendRow(sheetId(), tab(), rowFromRegistration(registration, { paymentStatus: 'pending', checkoutSessionId: checkout.id }), JUNIORS_HEADERS)
+    const rows = await readRows(sheetId(), tab(), JUNIORS_HEADERS)
+    const index = rows.findIndex((row, i) => i > 0 && row[1] === registration.registrationId)
+    if (index < 0) throw new Error('Pending Joners Juniors registration could not be found.')
+    await updateCell(sheetId(), tab(), index + 1, 'M', checkout.id)
     return res.status(200).json({ success: true, registrationId: registration.registrationId, paymentLink: checkout.url, checkoutSessionId: checkout.id, brevo: { listId: brevo.listId } })
   } catch (error) {
     console.error('Joners Juniors registration failed:', error?.message || 'unknown error')
