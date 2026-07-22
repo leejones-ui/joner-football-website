@@ -1,0 +1,438 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const penguinPage = 'https://www.penguin.com.au/books/joner-football-presents-greatest-goal-scorers-9781761359781'
+const paperbackPage = penguinPage
+const ebookPage = 'https://www.penguin.com.au/books/joner-football-presents-greatest-goal-scorers-9781761359798'
+const authorPage = 'https://www.penguin.com.au/authors/lee-jones'
+const categoryPage = 'https://www.penguin.com.au/browse/young-readers-non-fiction'
+const midfieldMastersPage = 'https://www.penguin.com.au/books/joner-football-presents-midfield-masters-9781761359804'
+
+const retailers = [
+  {
+    name: 'Amazon',
+    mark: 'a',
+    href: 'https://www.amazon.com.au/dp/1761359789?_encoding=UTF8&tag=prhau08-22',
+  },
+  {
+    name: 'Booktopia',
+    mark: 'b',
+    href: 'https://booktopia.sjv.io/c/1298845/607517/9632?u=http://www.booktopia.com.au/link/prod9781761359781.html',
+  },
+  {
+    name: 'International',
+    mark: 'R',
+    href: 'https://www.readings.com.au/product/9781761359781',
+  },
+]
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Book',
+  name: 'Joner Football presents: Greatest Goal Scorers!',
+  alternateName: 'Joner Football presents: Greatest Goal Scorers! including Messi, Ronaldo and Haaland!',
+  author: {
+    '@type': 'Person',
+    name: 'Lee Jones',
+  },
+  isbn: '9781761359781',
+  numberOfPages: 96,
+  bookFormat: 'https://schema.org/Paperback',
+  datePublished: '2026-07-21',
+  publisher: {
+    '@type': 'Organization',
+    name: 'Penguin',
+  },
+  image: 'https://jonerfootball.com/images/shop/greatest-goal-scorers/cover.jpg',
+  url: 'https://jonerfootball.com/shop/greatest-goal-scorers/',
+  offers: {
+    '@type': 'AggregateOffer',
+    lowPrice: '12.99',
+    priceCurrency: 'AUD',
+    availability: 'https://schema.org/PreOrder',
+  },
+}
+---
+
+<BaseLayout
+  title="Greatest Goal Scorers! by Lee Jones | Joner Football"
+  description="Pre-order Joner Football presents: Greatest Goal Scorers! by Lee Jones, a fully illustrated football guide for young players aged six and up."
+  canonical="https://jonerfootball.com/shop/greatest-goal-scorers/"
+  ogImage="https://jonerfootball.com/images/shop/greatest-goal-scorers/cover.jpg"
+  schema={schema}
+>
+  <article class="book-page">
+    <div class="book-shell">
+      <section class="product-grid" aria-labelledby="book-title">
+        <aside class="cover-column">
+          <a class="cover-link" href={penguinPage} target="_blank" rel="noopener noreferrer" aria-label="Open the official Penguin page for Greatest Goal Scorers">
+            <img class="main-cover" src="/images/shop/greatest-goal-scorers/cover.jpg" alt="Cover of Joner Football presents: Greatest Goal Scorers!" width="400" height="613" />
+          </a>
+
+          <a class="look-inside" href={penguinPage} target="_blank" rel="noopener noreferrer">
+            Look inside
+          </a>
+
+          <dl class="book-facts">
+            <div><dt>Published:</dt><dd>21 July 2026</dd></div>
+            <div><dt>ISBN:</dt><dd>9781761359781</dd></div>
+            <div><dt>Imprint:</dt><dd>Penguin</dd></div>
+            <div><dt>Format:</dt><dd>Paperback</dd></div>
+            <div><dt>Pages:</dt><dd>96</dd></div>
+            <div><dt>RRP:</dt><dd>$12.99</dd></div>
+          </dl>
+
+          <div class="category-block">
+            <span>Categories:</span>
+            <a href={categoryPage} target="_blank" rel="noopener noreferrer">Young readers non-fiction</a>
+          </div>
+        </aside>
+
+        <div class="product-content">
+          <header class="book-heading">
+            <h1 id="book-title">Joner Football presents: Greatest Goal Scorers!</h1>
+            <p class="subtitle">including Messi, Ronaldo and Haaland!</p>
+            <a class="author-link" href={authorPage} target="_blank" rel="noopener noreferrer">Lee Jones</a>
+          </header>
+
+          <section class="format-section" aria-labelledby="formats-title">
+            <h2 id="formats-title">Formats &amp; editions</h2>
+            <div class="format-cards">
+              <a class="format-card is-active" href={paperbackPage} target="_blank" rel="noopener noreferrer">
+                <img src="/images/shop/greatest-goal-scorers/cover.jpg" alt="Paperback edition cover" width="50" height="77" />
+                <span>Paperback</span>
+                <small>21 July 2026</small>
+              </a>
+              <a class="format-card" href={ebookPage} target="_blank" rel="noopener noreferrer">
+                <img src="/images/shop/greatest-goal-scorers/ebook-cover.jpg" alt="EBook edition cover" width="50" height="77" />
+                <span>EBook</span>
+                <small>21 July 2026</small>
+              </a>
+            </div>
+          </section>
+
+          <section class="retailer-section" aria-labelledby="retailer-title">
+            <h2 id="retailer-title">Pre-order from...</h2>
+            <div class="retailer-grid">
+              {retailers.map((retailer) => (
+                <a class="retailer-button" href={retailer.href} target="_blank" rel="noopener noreferrer">
+                  <span class={`retailer-mark retailer-mark--${retailer.name.toLowerCase()}`} aria-hidden="true">{retailer.mark}</span>
+                  <span>{retailer.name}</span>
+                  <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" /></svg>
+                </a>
+              ))}
+            </div>
+          </section>
+
+          <section class="book-description" aria-labelledby="book-description-title">
+            <h2 id="book-description-title">Learn from the best and celebrate the greats, from elite football training academy @JonerFootball</h2>
+
+            <p>Want to dribble like Messi? Fake it past defenders like Mbappé? Perfect the Ronaldo stepover or flick it with flair like Neymar?</p>
+
+            <p>Welcome to <em>Joner Football presents</em>, the ultimate series for kids who don’t just watch the game . . . they live it.</p>
+
+            <div class="description-more" id="description-more">
+              <p>Packed with mind-blowing DID-YOU-KNOW facts, epic football biographies and easy-to-follow, play-by-play diagrams, these fully illustrated guides show you exactly how to master the moves of the world’s greatest stars. Slip one into your kit bag next to your water bottle and shin pads, and take your game to the next level.</p>
+
+              <p>Created by professional coach Lee Jones, founder of the hugely popular Joner Football training academy, this series brings elite-level knowledge straight to you. From academy drills to viral challenges, Joner Football has inspired a global community of young players with high-energy, game-changing content.</p>
+
+              <p>Kicking off with Lee’s list of the game’s GREATEST GOAL SCORERS, you’ll learn how to nail Ronaldo’s signature Step-Over, glide through defenders like Lamine Yamal, and dominate 1v1s like a masterful Messi.</p>
+
+              <p>The perfect football collectible for kids aged six and up, whether you’re on the pitch every weekend or glued to matchday coverage. Celebrates the icons, moments and skills that define the modern game!</p>
+            </div>
+
+            <button class="read-more" type="button" aria-expanded="false" aria-controls="description-more" data-expand-description>Read more</button>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <section class="author-section" aria-labelledby="about-author-title">
+      <div class="author-shell">
+        <div class="author-copy">
+          <h2 id="about-author-title">About the author</h2>
+          <a class="author-name" href={authorPage} target="_blank" rel="noopener noreferrer">Lee Jones</a>
+          <div class="author-description" id="author-description">
+            <p>Lee Jones is a former professional footballer and the founder of Joner Football, a global training brand followed by more than 2.5 million football fans, coaches and players around the world.</p>
+            <p>Lee loves helping kids learn new skills and enjoy the game. Through Joner Football, he has helped thousands of young players in Australia and all over the world build confidence, improve their technique and have more fun on the pitch through training programmes, camps, his app and online coaching.</p>
+            <p>In 2017, Joner Football was named one of the top 10 football technical training brands in the world.</p>
+            <p>Lee has coached everyone from kids taking their very first kicks to professional players at the highest level. His mission is simple. To help the next generation fall in love with football and believe in what they can achieve.</p>
+          </div>
+          <button class="read-more" type="button" aria-expanded="false" aria-controls="author-description" data-expand-author>Read more</button>
+        </div>
+
+        <a class="author-photo-link" href={authorPage} target="_blank" rel="noopener noreferrer" aria-label="Read more about Lee Jones">
+          <img class="author-photo" src="/images/shop/greatest-goal-scorers/lee-jones.jpg" alt="Portrait photo of Lee Jones" width="400" height="400" />
+        </a>
+
+        <div class="also-by">
+          <h2>Also by Lee Jones</h2>
+          <a class="also-book" href={midfieldMastersPage} target="_blank" rel="noopener noreferrer">
+            <img src="/images/shop/greatest-goal-scorers/midfield-masters.jpg" alt="Joner Football presents: Midfield Masters!" width="400" height="614" />
+          </a>
+        </div>
+      </div>
+    </section>
+  </article>
+</BaseLayout>
+
+<style>
+  .book-page {
+    --paper: #ffffff;
+    --ink: #0a0a0a;
+    --muted: #747474;
+    --line: #e7e7e7;
+    --panel: #f4f4f4;
+    --red: #e8000d;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'DM Sans', Arial, sans-serif;
+  }
+
+  .book-page h1,
+  .book-page h2 {
+    font-family: 'DM Sans', Arial, sans-serif;
+    text-transform: none;
+    letter-spacing: -0.03em;
+  }
+
+  .book-shell,
+  .author-shell {
+    width: min(1120px, calc(100% - 40px));
+    margin: 0 auto;
+  }
+
+  .book-shell { padding: 80px 0 72px; }
+
+  .product-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 334px) minmax(0, 1fr);
+    gap: clamp(64px, 9vw, 112px);
+    align-items: start;
+  }
+
+  .cover-column { min-width: 0; }
+  .cover-link { display: block; }
+  .main-cover {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.18);
+  }
+
+  .look-inside {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    margin-top: 28px;
+    border: 1px solid #7a7a7a;
+    border-radius: 7px;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+  }
+  .look-inside:hover,
+  .look-inside:focus-visible { border-color: var(--red); color: var(--red); background: #fff7f7; }
+
+  .book-facts { margin: 24px 0 0; font-size: 12px; line-height: 1.7; }
+  .book-facts div { display: flex; gap: 4px; }
+  .book-facts dt { font-weight: 600; }
+  .book-facts dd { margin: 0; }
+
+  .category-block { display: grid; gap: 6px; margin-top: 20px; font-size: 12px; }
+  .category-block a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+  .category-block a:hover { color: var(--red); }
+
+  .book-heading { padding: 2px 0 34px; border-bottom: 2px solid var(--line); }
+
+  .book-heading h1 {
+    max-width: 720px;
+    margin: 0;
+    font-size: clamp(32px, 3.2vw, 48px);
+    font-weight: 700;
+    line-height: 1.08;
+  }
+  .subtitle { margin: 5px 0 8px; color: var(--muted); font-size: 19px; font-weight: 300; }
+  .author-link { color: var(--ink); font-size: 24px; text-decoration: none; }
+  .author-link:hover { color: var(--red); }
+
+  .format-section,
+  .retailer-section { padding: 34px 0; border-bottom: 2px solid var(--line); }
+  .format-section h2,
+  .retailer-section h2 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .format-cards { display: flex; gap: 12px; }
+  .format-card {
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    width: 80px;
+    padding: 9px 7px 10px;
+    border: 1px solid #d3d3d3;
+    border-radius: 6px;
+    color: var(--ink);
+    font-size: 12px;
+    line-height: 1.25;
+    text-decoration: none;
+  }
+  .format-card.is-active { border-color: #666; background: #fafafa; }
+  .format-card:hover,
+  .format-card:focus-visible { border-color: var(--red); }
+  .format-card img { width: 46px; height: 70px; object-fit: cover; }
+  .format-card small { font-size: 11px; white-space: nowrap; }
+
+  .retailer-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .retailer-button {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) 18px;
+    align-items: center;
+    gap: 10px;
+    min-height: 54px;
+    padding: 8px 14px;
+    border: 1px solid #6d6d6d;
+    border-radius: 7px;
+    background: #fafafa;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: border-color 160ms ease, color 160ms ease, transform 160ms ease;
+  }
+  .retailer-button:hover,
+  .retailer-button:focus-visible { color: var(--red); border-color: var(--red); transform: translateY(-1px); }
+  .retailer-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+  .retailer-mark {
+    display: grid;
+    place-items: center;
+    width: 27px;
+    height: 27px;
+    font-family: Georgia, serif;
+    font-size: 23px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .retailer-mark--amazon { border-bottom: 3px solid var(--red); }
+  .retailer-mark--booktopia { background: var(--ink); color: #fff; font-size: 19px; }
+  .retailer-mark--international { color: var(--red); font-size: 25px; }
+
+  .book-description { padding: 34px 0 0; font-size: 17px; line-height: 1.6; }
+  .book-description h2 { margin: 0 0 30px; font-size: 21px; font-weight: 500; line-height: 1.4; }
+  .book-description p { margin: 0 0 28px; }
+  .description-more,
+  .author-description { overflow: hidden; }
+  .description-more:not(.is-open) {
+    max-height: 0;
+    opacity: 0;
+  }
+  .description-more.is-open { max-height: 900px; opacity: 1; }
+  .description-more { transition: max-height 300ms ease, opacity 220ms ease; }
+
+  .read-more {
+    display: inline-flex;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    color: var(--red);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .read-more:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  .author-section { background: var(--panel); }
+  .author-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 208px;
+    gap: 48px 80px;
+    padding: 70px 0 76px;
+  }
+  .author-copy h2,
+  .also-by h2 { margin: 0 0 24px; color: #777; font-size: 23px; font-weight: 500; }
+  .author-name { display: inline-block; margin-bottom: 10px; color: var(--ink); font-size: 16px; font-weight: 600; text-decoration: none; }
+  .author-name:hover { color: var(--red); }
+  .author-description { max-height: 77px; font-size: 15px; line-height: 1.55; transition: max-height 300ms ease; }
+  .author-description.is-open { max-height: 700px; }
+  .author-description p { margin: 0 0 16px; }
+  .author-photo-link { align-self: center; }
+  .author-photo { display: block; width: 208px; aspect-ratio: 1; border-radius: 50%; object-fit: cover; }
+
+  .also-by { grid-column: 1 / -1; }
+  .also-book { display: inline-block; width: 145px; color: var(--ink); text-decoration: none; }
+  .also-book img { display: block; width: 132px; height: auto; object-fit: contain; box-shadow: 0 8px 18px rgba(0, 0, 0, 0.13); }
+  .also-book:hover img,
+  .also-book:focus-visible img { outline: 2px solid var(--red); outline-offset: 4px; }
+
+  :global(.book-page a:focus-visible),
+  :global(.book-page button:focus-visible) { outline: 3px solid rgba(232, 0, 13, 0.3); outline-offset: 3px; }
+
+  @media (max-width: 900px) {
+    .book-shell { padding-top: 48px; }
+    .product-grid { gap: 48px; grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); }
+    .retailer-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 700px) {
+    .book-shell,
+    .author-shell { width: min(100% - 32px, 560px); }
+    .book-shell { padding: 18px 0 48px; }
+    .product-grid { display: flex; flex-direction: column; gap: 36px; }
+    .cover-column { display: contents; }
+    .cover-link { order: 1; width: min(58vw, 304px); margin: 0 auto; }
+    .look-inside { order: 2; width: min(58vw, 304px); margin: -10px auto 0; }
+    .product-content { display: contents; }
+    .book-heading { order: 3; width: 100%; padding: 0 0 32px; text-align: center; }
+    .book-heading h1 { font-size: clamp(29px, 8vw, 38px); line-height: 1.16; }
+    .subtitle { margin-top: 12px; font-size: 16px; }
+    .author-link { font-size: 21px; }
+    .format-section { order: 4; width: 100%; text-align: center; }
+    .format-cards { justify-content: center; }
+    .retailer-section { order: 5; width: 100%; padding-top: 38px; }
+    .retailer-section h2 { text-align: center; font-size: 16px; }
+    .retailer-grid { grid-template-columns: 1fr; gap: 12px; }
+    .retailer-button { min-height: 64px; font-size: 17px; }
+    .book-description { order: 6; width: 100%; font-size: 16px; }
+    .book-description h2 { font-size: 20px; }
+    .book-facts { order: 7; width: 100%; margin-top: 0; }
+    .category-block { order: 8; width: 100%; margin-top: -20px; }
+    .author-shell { grid-template-columns: 1fr; gap: 32px; padding: 48px 0 56px; }
+    .author-photo-link { grid-row: 1; justify-self: center; }
+    .author-copy { grid-row: 2; }
+    .author-copy h2,
+    .also-by h2 { font-size: 21px; }
+    .also-by { grid-column: 1; }
+
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .description-more,
+    .author-description,
+    .retailer-button { transition: none; }
+  }
+</style>
+
+<script>
+  function bindExpander(buttonSelector, contentSelector) {
+    const button = document.querySelector(buttonSelector)
+    const content = document.querySelector(contentSelector)
+    if (!(button instanceof HTMLButtonElement) || !(content instanceof HTMLElement)) return
+
+    button.addEventListener('click', () => {
+      const open = button.getAttribute('aria-expanded') === 'true'
+      button.setAttribute('aria-expanded', String(!open))
+      content.classList.toggle('is-open', !open)
+      button.textContent = open ? 'Read more' : 'Read less'
+    })
+  }
+
+  bindExpander('[data-expand-description]', '#description-more')
+  bindExpander('[data-expand-author]', '#author-description')
+</script>
