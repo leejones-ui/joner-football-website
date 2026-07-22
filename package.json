@@ -10,6 +10,7 @@
     "prebuild": "node scripts/guard-app-hero.mjs",
     "build": "astro build",
     "test:tracking": "node scripts/test-tracking.mjs",
+    "test:juniors": "node --test scripts/test-juniors.mjs",
     "preview": "astro preview",
     "astro": "astro",
     "seed:pages": "node scripts/seed-sanity-pages.mjs",
