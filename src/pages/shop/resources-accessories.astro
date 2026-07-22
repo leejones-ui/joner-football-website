@@ -3,20 +3,12 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
 
 const resources = [
   {
-    title: 'Joner Football Presents: Greatest Goal Scorers!',
+    title: 'Official Joner Football Books',
     price: 'Available now',
     image: '/images/shop/greatest-goal-scorers/cover.jpg',
-    href: '/shop/greatest-goal-scorers',
-    text: 'The Joner Football kids book celebrating the greatest goal scorers, packed with skills, diagrams and facts.',
-    cta: 'Buy Now',
-  },
-  {
-    title: 'Joner Football Presents: Midfield Masters!',
-    price: 'Available now',
-    image: '/images/books/midfield-masters/cover.jpg',
-    href: '/shop/midfield-masters',
-    text: 'The Joner Football kids book for midfielders who want to learn from the best, with skills, diagrams and facts.',
-    cta: 'Buy Now',
+    href: '/books',
+    text: 'Get Greatest Goal Scorers and Midfield Masters in paperback, eBook or through international ordering.',
+    cta: 'Shop The Books',
   },
   {
     title: 'Scanning Training Tool',
@@ -60,17 +52,17 @@ const sanityPage = await fetchSanityPage('shop-resources-accessories')
     </section>
 
     <section class="px-4 md:px-8 py-10 md:py-16">
-      <div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-7">
+      <div class="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-7">
         {resources.map((resource) => (
           <article class="group flex flex-col overflow-hidden border border-white/10 bg-white text-joner-black shadow-2xl shadow-black/30">
-            <a href={resource.href} target="_blank" rel="noopener" class="block overflow-hidden bg-joner-black">
+            <a href={resource.href} target={resource.href.startsWith('http') ? '_blank' : undefined} rel={resource.href.startsWith('http') ? 'noopener' : undefined} class="block overflow-hidden bg-joner-black">
               <img src={resource.image} alt={resource.title} class="w-full aspect-[4/5] object-cover object-center transition-transform duration-500 group-hover:scale-105" loading="lazy" />
             </a>
             <div class="flex flex-1 flex-col p-5 md:p-6">
               <div class="mb-4 inline-flex w-fit items-center bg-joner-red px-4 py-2 font-heading uppercase tracking-[0.08em] text-white text-lg shadow-lg shadow-joner-red/25">{resource.price}</div>
               <h2 class="font-heading uppercase text-3xl md:text-4xl leading-none mb-3">{resource.title}</h2>
               <p class="text-sm md:text-base leading-relaxed text-gray-600 mb-6">{resource.text}</p>
-              <a href={resource.href} target="_blank" rel="noopener" class="btn-red mt-auto w-full text-center">{resource.cta}</a>
+              <a href={resource.href} target={resource.href.startsWith('http') ? '_blank' : undefined} rel={resource.href.startsWith('http') ? 'noopener' : undefined} class="btn-red mt-auto w-full text-center">{resource.cta}</a>
             </div>
           </article>
         ))}

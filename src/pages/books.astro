@@ -48,21 +48,9 @@ const schema = {
   schema={schema}
 >
   <div class="books-page">
-    <section class="books-hero">
-      <div class="books-hero__inner">
-        <p class="books-kicker">Official Joner Football books</p>
-        <h1>Learn from the greats.<br /><span>Take it to the pitch.</span></h1>
-        <p class="books-intro">Football books for young players who want to understand the best, master their moves and improve their own game.</p>
-        <a class="books-jump" href="#choose-your-book">Choose your book</a>
-      </div>
-    </section>
-
     <section class="books-collection" id="choose-your-book" aria-labelledby="books-title">
       <div class="books-shell">
-        <div class="books-heading">
-          <p>Books by Lee Jones</p>
-          <h2 id="books-title">Choose your book</h2>
-        </div>
+        <h1 id="books-title" class="sr-only">Joner Football books by Lee Jones</h1>
 
         <div class="books-grid">
           {books.map((book) => (
@@ -87,7 +75,7 @@ const schema = {
                     <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" /></svg>
                   </a>
                   <a class="international-option" href={book.international} target="_blank" rel="noopener noreferrer">
-                    <span>International orders</span>
+                    <span>International orders <small>(outside Australia)</small></span>
                     <small>Readings</small>
                     <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" /></svg>
                   </a>
@@ -98,21 +86,6 @@ const schema = {
             </article>
           ))}
 
-          <article class="book-card book-card--soon" aria-labelledby="coming-soon-title">
-            <div class="book-card__cover-link book-card__cover-link--static">
-              <span class="soon-badge">Coming soon</span>
-              <img class="book-card__cover" src="/images/books/coming-soon/50-football-drills.png" alt="Concept cover for 50 Football Drills by Lee Jones, coming soon" width="1024" height="1536" />
-            </div>
-            <div class="book-card__body">
-              <h3 id="coming-soon-title">50 Football Drills</h3>
-              <p class="book-card__subtitle">A new Joner Football book for players and coaches.</p>
-              <p class="book-card__author">Lee Jones</p>
-              <div class="coming-soon-panel">
-                <span>Coming soon</span>
-                <small>More details will be announced here.</small>
-              </div>
-            </div>
-          </article>
         </div>
       </div>
     </section>
@@ -201,21 +174,20 @@ const schema = {
   .books-jump:hover,
   .books-jump:focus-visible { background: #fff; color: var(--black); }
 
-  .books-collection { padding: clamp(70px, 9vw, 120px) 0; }
+  .books-collection { padding: 40px 0 90px; }
   .books-shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
   .books-heading { display: block; margin-bottom: 44px; }
   .books-heading > p { margin-bottom: 7px; }
   .books-heading h2 { margin: 0; font-size: clamp(36px, 5vw, 62px); line-height: 1; }
 
-  .books-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start; }
+  .books-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; max-width: 840px; margin: 0 auto; }
   .book-card { overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.16); background: #111; }
   .book-card__cover-link { position: relative; display: grid; place-items: center; min-height: 470px; padding: 34px; background: #f2f2f2; }
   .book-card__cover-link--static { cursor: default; }
   .book-card__cover { display: block; width: min(100%, 250px); height: auto; object-fit: contain; box-shadow: 0 20px 34px rgba(0, 0, 0, 0.24); transition: transform 180ms ease; }
   a.book-card__cover-link:hover .book-card__cover { transform: translateY(-5px); }
 
-  .live-badge,
-  .soon-badge {
+  .live-badge {
     position: absolute;
     top: 16px;
     left: 16px;
@@ -228,7 +200,7 @@ const schema = {
     letter-spacing: 0.13em;
     text-transform: uppercase;
   }
-  .soon-badge { background: var(--black); }
+
 
   .book-card__body { padding: 25px 22px 26px; }
   .book-card h3 { margin: 0; font-size: 28px; line-height: 1.08; letter-spacing: 0.03em; }
@@ -261,33 +233,17 @@ const schema = {
   .all-retailers { display: inline-block; margin-top: 18px; color: #fff; font-size: 12px; text-decoration: underline; text-decoration-color: var(--red); text-underline-offset: 4px; }
   .all-retailers:hover { color: var(--red); }
 
-  .coming-soon-panel { display: grid; gap: 5px; min-height: 107px; padding: 20px; border: 1px solid rgba(232, 0, 13, 0.5); background: rgba(232, 0, 13, 0.08); }
-  .coming-soon-panel span { color: #fff; font-family: 'Anton', Impact, sans-serif; font-size: 22px; letter-spacing: 0.08em; text-transform: uppercase; }
-  .coming-soon-panel small { color: var(--soft); line-height: 1.4; }
 
   .books-page :global(a:focus-visible) { outline: 3px solid rgba(232, 0, 13, 0.45); outline-offset: 3px; }
 
   @media (max-width: 980px) {
     .books-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .book-card--soon { grid-column: 1 / -1; width: calc(50% - 12px); }
-    .books-hero { background-size: 340px auto; }
   }
 
   @media (max-width: 650px) {
-    .books-hero {
-      background:
-        linear-gradient(180deg, rgba(8, 8, 8, 0.35), rgba(8, 8, 8, 0.98) 54%),
-        url('/images/shop/greatest-goal-scorers/cover.jpg') center 14% / 200px auto no-repeat;
-    }
-    .books-hero__inner { width: min(100% - 32px, 520px); padding: 260px 0 66px; text-align: center; }
-    .books-hero h1 { font-size: clamp(42px, 13vw, 62px); }
-    .books-intro { font-size: 16px; }
-    .books-jump { width: 100%; }
+    .books-collection { padding: 14px 0 64px; }
     .books-shell { width: min(100% - 32px, 520px); }
-    .books-heading { display: block; margin-bottom: 30px; text-align: center; }
-    .books-heading h2 { font-size: 43px; }
     .books-grid { grid-template-columns: 1fr; gap: 22px; }
-    .book-card--soon { grid-column: auto; width: auto; }
     .book-card__cover-link { min-height: 420px; padding: 30px; }
     .book-card__cover { width: min(100%, 230px); }
     .book-card__subtitle { min-height: 0; }
