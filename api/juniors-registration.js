@@ -52,6 +52,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, registrationId: registration.registrationId, paymentLink: checkout.url, checkoutSessionId: checkout.id, brevo: { listId: brevo.listId } })
   } catch (error) {
     console.error('Joners Juniors registration failed:', error?.message || 'unknown error')
-    return res.status(500).json({ success: false, error: error?.message || 'Could not save registration. Please try again.' })
+    return res.status(500).json({ success: false, error: 'Could not save your registration. Please try again.' })
   }
 }

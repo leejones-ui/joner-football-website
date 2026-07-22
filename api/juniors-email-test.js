@@ -10,7 +10,7 @@ function jsonBody(req) {
 function allowedRecipients() {
   return new Set([
     process.env.JUNIORS_INTERNAL_EMAIL || 'ligia@jonerfootball.com',
-    process.env.JUNIORS_REPLY_TO_EMAIL || 'ligia@jonerfootball.com',
+    process.env.JUNIORS_EMAIL_TEST_REPLY_TO || 'leejones@jonerfootball.com',
     ...(process.env.JUNIORS_EMAIL_TEST_RECIPIENTS || '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean),
   ])
 }
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   const html = confirmationEmail({ registration, reviewNote: 'TEST FOR REVIEW ONLY: Ligia, please review the parent confirmation below. No Stripe event or customer record was created.' })
   if (body.previewOnly !== false && body.send !== true) return res.status(200).json({ success: true, previewOnly: true, subject, html })
   try {
-    await sendJuniorsEmail({ to, subject, html, replyTo: process.env.JUNIORS_REPLY_TO_EMAIL || 'ligia@jonerfootball.com' })
+    await sendJuniorsEmail({ to, subject, html, replyTo: process.env.JUNIORS_EMAIL_TEST_REPLY_TO || 'leejones@jonerfootball.com' })
     return res.status(200).json({ success: true, sent: true, subject })
   } catch (error) {
     console.error('Joners Juniors test email failed:', error?.message || 'unknown error')

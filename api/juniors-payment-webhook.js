@@ -1,6 +1,6 @@
 import { verifyStripeWebhook } from './_stripe-webhook.js'
 import { readRows, updateCell } from './_camp-automation.js'
-import { confirmationEmail, confirmationStatus, isPaidJuniorsEvent, JUNIORS_HEADERS, JUNIORS_SHEET_TAB, paidEventDetails, serializeConfirmationStatus, shouldClaimEmail } from './_juniors-flow.js'
+import { confirmationEmail, confirmationStatus, eventClaimOwnsRow, isPaidJuniorsEvent, JUNIORS_HEADERS, JUNIORS_SHEET_TAB, paidEventDetails, serializeConfirmationStatus, shouldClaimEmail, shouldUpsertAirtable } from './_juniors-flow.js'
 import { sendJuniorsEmail } from './_juniors-email.js'
 
 export const config = { api: { bodyParser: false } }
@@ -41,13 +41,18 @@ export async function upsertPaidAirtable(registration, details) {
   return created.id
 }
 
+export async function syncAirtableConfirmationStatus(recordId, status) {
+  if (!recordId) throw new Error('Joners Juniors Airtable record is unavailable.')
+  await airtableRequest(`/${recordId}`, { method: 'PATCH', body: JSON.stringify({ fields: { 'Confirmation Email Status': serializeConfirmationStatus(status) } }) })
+}
+
 export function airtableFieldsFromRegistration(registration, details = {}) {
   return {
     'Player Full Name': registration.player, 'Date of Birth': registration.dateOfBirth, 'Parent Name': registration.parent,
     'Parent Email': registration.email, 'Parent Mobile': registration.mobile, 'Medical History / Allergies': registration.medical,
     'Class': registration.className, 'Session Day': 'Saturday', 'Session Time': '9:15am to 10:00am',
     'Location': 'Joner Football HQ, Unit 2, 20 Narabang Way, Belrose', 'Term': registration.termDates, 'Fee': 220,
-    'Payment Status': 'paid', 'Paid Via': 'Stripe', 'Paid At': details.paidAt || '', 'Registration ID': registration.registrationId,
+    'Payment Status': 'Paid', 'Paid Via': 'Stripe', 'Paid At': details.paidAt || '', 'Registration ID': registration.registrationId,
     'Stripe Checkout Session ID': details.checkoutSessionId || '', 'Stripe PaymentIntent ID': details.paymentIntentId || '',
     'Heard About Us': registration.source, 'Confirmation Email Status': details.confirmationEmailStatus || '',
     'Internal Notes': 'Joners Juniors paid signup',
@@ -56,6 +61,11 @@ export function airtableFieldsFromRegistration(registration, details = {}) {
 
 async function updateStatus(sheet, rowNumber, status) {
   await updateCell(sheetId(), sheet, rowNumber, 'O', serializeConfirmationStatus(status))
+}
+
+async function persistStatus(rowNumber, status, airtableRecordId) {
+  await updateStatus(tab(), rowNumber, status)
+  if (airtableRecordId) await syncAirtableConfirmationStatus(airtableRecordId, status)
 }
 
 async function processPaid(event) {
@@ -85,19 +95,31 @@ async function processPaid(event) {
   // Claim the payment event in the single durable status cell before the
   // Airtable upsert. A duplicate delivery on another server instance then
   // cannot create a second record while this event is in flight.
-  if (status.processing && status.eventId === event.id) return { duplicate: true, registrationId: details.registrationId }
-  status = { ...status, eventId: event.id || details.checkoutSessionId, processing: true }
+  const eventId = event.id || details.checkoutSessionId
+  if (status.eventId && !eventClaimOwnsRow(status, eventId)) return { ignored: true, reason: 'different-event-claim', registrationId: details.registrationId }
+  if (status.processing && eventClaimOwnsRow(status, eventId)) return { duplicate: true, registrationId: details.registrationId }
+  status = { ...status, eventId, processing: true }
   await updateStatus(tab(), rowNumber, status)
+  // Google Sheets is not CAS. Re-read O immediately and only continue if this
+  // event still owns the claim, protecting against cross-instance races.
+  const claimedRows = await readRows(sheetId(), tab(), JUNIORS_HEADERS)
+  const claimedRow = claimedRows.find((row, i) => i > 0 && row[1] === details.registrationId)
+  if (!claimedRow || !eventClaimOwnsRow(claimedRow[14], eventId)) throw new Error('Juniors event claim was lost.')
   let airtableRecordId
-  try {
-    airtableRecordId = await upsertPaidAirtable(registration, { ...details, confirmationEmailStatus: serializeConfirmationStatus(status) })
-  } catch (error) {
-    // Release the durable claim when the upsert itself fails so Stripe retry can recover.
-    try { await updateStatus(tab(), rowNumber, { ...status, processing: false }) } catch { /* original failure is the actionable error */ }
-    throw error
+  airtableRecordId = status.airtableRecordId || ''
+  if (shouldUpsertAirtable(status)) {
+    try {
+      airtableRecordId = await upsertPaidAirtable(registration, { ...details, confirmationEmailStatus: serializeConfirmationStatus(status) })
+      status = { ...status, airtable: 'synced', airtableRecordId }
+      await persistStatus(rowNumber, status, airtableRecordId)
+    } catch (error) {
+      // Release the durable claim when the upsert itself fails so Stripe retry can recover.
+      try { await updateStatus(tab(), rowNumber, { ...status, processing: false }) } catch { /* original failure is the actionable error */ }
+      throw error
+    }
   }
   status = { ...status, processing: false }
-  await updateStatus(tab(), rowNumber, status)
+  await persistStatus(rowNumber, status, airtableRecordId)
   const internalEmail = process.env.JUNIORS_INTERNAL_EMAIL || 'ligia@jonerfootball.com'
   const replyTo = process.env.JUNIORS_REPLY_TO_EMAIL || 'ligia@jonerfootball.com'
 
@@ -106,13 +128,19 @@ async function processPaid(event) {
     ['internal', internalEmail, `PAID Joners Juniors signup: ${registration.player}`, true],
   ]) {
     if (!shouldClaimEmail(status, kind)) continue
+    const priorStatus = status
     status = { ...status, [kind]: 'in_progress' }
-    await updateStatus(tab(), rowNumber, status)
+    try {
+      await persistStatus(rowNumber, status, airtableRecordId)
+    } catch (error) {
+      try { await updateStatus(tab(), rowNumber, priorStatus) } catch { /* preserve the original failure */ }
+      throw error
+    }
     // If send succeeds but this next status write fails, leave in_progress and throw;
     // Stripe retries, and in_progress suppresses a duplicate while the other email can proceed.
     await sendJuniorsEmail({ to, subject, replyTo: internal ? undefined : replyTo, html: confirmationEmail({ registration, internal, refs: { ...details, airtableRecordId, sheetRef: tab() } }) })
     status = { ...status, [kind]: 'sent' }
-    await updateStatus(tab(), rowNumber, status)
+    await persistStatus(rowNumber, status, airtableRecordId)
   }
   return { paid: true, registrationId: details.registrationId, airtableRecordId, confirmationEmailStatus: status }
 }

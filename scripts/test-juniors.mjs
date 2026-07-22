@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import {
   JUNIORS_AMOUNT_AUD, JUNIORS_CLASS, JUNIORS_HEADERS, JUNIORS_TERM, confirmationEmail,
   confirmationStatus, isPaidJuniorsEvent, normaliseRegistration, paidEventDetails,
-  rowFromRegistration, serializeConfirmationStatus, shouldClaimEmail, stripeCheckoutForm,
+  eventClaimOwnsRow, rowFromRegistration, serializeConfirmationStatus, shouldClaimEmail, shouldUpsertAirtable, stripeCheckoutForm,
   validateJuniorsRegistration,
 } from '../api/_juniors-flow.js'
 import { brevoAttributes } from '../api/juniors-registration.js'
@@ -37,7 +37,7 @@ test('Airtable fields match the verified live field names exactly', () => {
   const fields = airtableFieldsFromRegistration(valid(), { paidAt: '2026-07-01T00:00:00Z', checkoutSessionId: 'cs_1', paymentIntentId: 'pi_1' })
   const expected = ['Player Full Name', 'Date of Birth', 'Parent Name', 'Parent Email', 'Parent Mobile', 'Medical History / Allergies', 'Class', 'Session Day', 'Session Time', 'Location', 'Term', 'Fee', 'Payment Status', 'Paid Via', 'Paid At', 'Registration ID', 'Stripe Checkout Session ID', 'Stripe PaymentIntent ID', 'Heard About Us', 'Confirmation Email Status', 'Internal Notes']
   assert.deepEqual(Object.keys(fields), expected)
-  assert.equal(fields['Payment Status'], 'paid')
+  assert.equal(fields['Payment Status'], 'Paid')
   assert.equal(fields['Fee'], 220)
 })
 
@@ -77,6 +77,15 @@ test('independent durable email status prevents duplicate customer or internal s
   const processing = confirmationStatus('{"customer":"","internal":"","eventId":"evt_1","processing":true}')
   assert.equal(processing.processing, true)
   assert.equal(processing.eventId, 'evt_1')
+  assert.equal(serializeConfirmationStatus({ ...processing, airtable: 'synced', airtableRecordId: 'rec_1' }), '{"customer":"","internal":"","eventId":"evt_1","processing":true,"airtable":"synced","airtableRecordId":"rec_1"}')
+})
+
+test('event claim ownership survives re-read and rejects a different event stealing a completed row', () => {
+  assert.equal(eventClaimOwnsRow('{"eventId":"evt_1","processing":true}', 'evt_1'), true)
+  assert.equal(eventClaimOwnsRow({ eventId: 'evt_1', processing: false }, 'evt_1'), true)
+  assert.equal(eventClaimOwnsRow({ eventId: 'evt_1', processing: false }, 'evt_2'), false)
+  assert.equal(shouldUpsertAirtable({ airtable: 'synced' }), false)
+  assert.equal(shouldUpsertAirtable({ eventId: 'evt_1', processing: false }), true)
 })
 
 test('parent confirmation copy has no camp, jersey or payment-reminder wording', () => {
@@ -93,5 +102,20 @@ test('test-email endpoint is secret protected, allowlisted, preview-only by defa
   assert.match(source, /Recipient is not an approved test address/)
   assert.match(source, /TEST FOR REVIEW ONLY/)
   assert.match(source, /previewOnly !== false/)
+  assert.match(source, /JUNIORS_EMAIL_TEST_REPLY_TO \|\| 'leejones@jonerfootball\.com'/)
+  assert.doesNotMatch(source, /JUNIORS_REPLY_TO_EMAIL \|\| 'ligia@jonerfootball\.com'/)
   assert.doesNotMatch(source, /juniors-payment-webhook/)
+})
+
+test('public registration errors are generic and do not expose provider messages', () => {
+  const source = readFileSync(new URL('../api/juniors-registration.js', import.meta.url), 'utf8')
+  assert.match(source, /Could not save your registration\. Please try again\./)
+  assert.doesNotMatch(source, /error: error\?\.message/)
+})
+
+test('Airtable confirmation status is patched after durable Google status writes', () => {
+  const source = readFileSync(new URL('../api/juniors-payment-webhook.js', import.meta.url), 'utf8')
+  assert.match(source, /updateCell\(sheetId\(\), sheet, rowNumber, 'O'/)
+  assert.match(source, /syncAirtableConfirmationStatus\(airtableRecordId, status\)/)
+  assert.match(source, /await persistStatus\(rowNumber, status, airtableRecordId\)/)
 })

@@ -117,12 +117,23 @@ export function rowFromRegistration(registration, details = {}) {
 export function confirmationStatus(value = '') {
   try {
     const parsed = JSON.parse(clean(value, 500))
-    return { customer: parsed.customer || '', internal: parsed.internal || '', ...(parsed.eventId ? { eventId: parsed.eventId } : {}), ...(parsed.processing ? { processing: true } : {}) }
+    return { customer: parsed.customer || '', internal: parsed.internal || '', ...(parsed.eventId ? { eventId: parsed.eventId } : {}), ...(parsed.processing ? { processing: true } : {}), ...(parsed.airtable ? { airtable: parsed.airtable } : {}), ...(parsed.airtableRecordId ? { airtableRecordId: parsed.airtableRecordId } : {}) }
   } catch { return { customer: '', internal: '' } }
 }
 
 export function serializeConfirmationStatus(status) {
-  return JSON.stringify({ customer: status.customer || '', internal: status.internal || '', ...(status.eventId ? { eventId: status.eventId } : {}), ...(status.processing ? { processing: true } : {}) })
+  return JSON.stringify({ customer: status.customer || '', internal: status.internal || '', ...(status.eventId ? { eventId: status.eventId } : {}), ...(status.processing ? { processing: true } : {}), ...(status.airtable ? { airtable: status.airtable } : {}), ...(status.airtableRecordId ? { airtableRecordId: status.airtableRecordId } : {}) })
+}
+
+// Google Sheets is not a CAS. Re-read the durable claim after writing it, and
+// never allow a different Stripe event to replace an existing claim.
+export function eventClaimOwnsRow(value, eventId) {
+  const status = typeof value === 'string' ? confirmationStatus(value) : (value || {})
+  return Boolean(eventId) && status.eventId === eventId
+}
+
+export function shouldUpsertAirtable(status) {
+  return status?.airtable !== 'synced'
 }
 
 // `in_progress` is durable suppression: a retry must not send a second copy after an
