@@ -1,44 +1,45 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const penguinPage = 'https://www.penguin.com.au/books/joner-football-presents-greatest-goal-scorers-9781761359781'
+const penguinPage = 'https://www.penguin.com.au/books/joner-football-presents-midfield-masters-9781761359804'
 const paperbackPage = penguinPage
-const ebookPage = 'https://www.penguin.com.au/books/joner-football-presents-greatest-goal-scorers-9781761359798'
+const ebookPage = 'https://www.penguin.com.au/books/joner-football-presents-midfield-masters-9781761359811'
 const authorPage = 'https://www.penguin.com.au/authors/lee-jones'
 const categoryPage = 'https://www.penguin.com.au/browse/young-readers-non-fiction'
-const midfieldMastersPage = '/shop/midfield-masters/'
-const internationalOrdersPage = 'https://www.readings.com.au/product/9781761359781'
+const childrensCategoryPage = 'https://www.penguin.com.au/browse/childrens-and-ya-fiction'
+const greatestGoalScorersPage = 'https://jonerfootball.com/shop/greatest-goal-scorers/'
+const internationalOrdersPage = 'https://www.readings.com.au/product/9781761359804'
 
 const retailers = [
   {
     name: 'Amazon',
     key: 'amazon',
     mark: 'a',
-    href: 'https://www.amazon.com.au/dp/1761359789?_encoding=UTF8&tag=prhau08-22',
+    href: 'https://www.amazon.com.au/dp/1761359800?_encoding=UTF8&tag=prhau08-22',
   },
   {
     name: 'Big W',
     key: 'big-w',
     mark: 'W',
-    href: 'https://www.bigw.com.au/product/joner-football-presents-greatest-goal-scorers-by-lee-jones/p/6083268',
+    href: 'https://www.bigw.com.au/product/joner-football-presents-midfield-masters-by-lee-jones/p/6083269',
   },
   {
     name: 'Booktopia',
     key: 'booktopia',
     mark: 'b',
-    href: 'https://booktopia.sjv.io/c/1298845/607517/9632?u=http://www.booktopia.com.au/link/prod9781761359781.html',
+    href: 'https://booktopia.sjv.io/c/1298845/607517/9632?u=http://www.booktopia.com.au/link/prod9781761359804.html',
   },
   {
     name: 'Dymocks',
     key: 'dymocks',
     mark: 'D',
-    href: 'https://www.dymocks.com.au/9781761359781',
+    href: 'https://www.dymocks.com.au/9781761359804',
   },
   {
     name: 'QBD',
     key: 'qbd',
     mark: 'Q',
-    href: 'https://www.qbd.com.au/product/9781761359781.htm',
+    href: 'https://www.qbd.com.au/product/9781761359804.htm',
   },
   {
     name: 'Readings',
@@ -50,26 +51,26 @@ const retailers = [
     name: 'Your Bookstore',
     key: 'your-bookstore',
     mark: 'Y',
-    href: 'https://yourbookstore.io/catalog/search?isbn=9781761359781',
+    href: 'https://yourbookstore.io/catalog/search?isbn=9781761359804',
   },
   {
     name: 'Abbeys',
     key: 'abbeys',
     mark: 'A',
-    href: 'https://www.abbeys.com.au/api/product.do?isbn=9781761359781',
+    href: 'https://www.abbeys.com.au/api/product.do?isbn=9781761359804',
   },
 ]
 
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'Book',
-  name: 'Joner Football presents: Greatest Goal Scorers!',
-  alternateName: 'Joner Football presents: Greatest Goal Scorers! including Messi, Ronaldo and Haaland!',
+  name: 'Joner Football presents: Midfield Masters!',
+  alternateName: 'Joner Football presents: Midfield Masters! including Bellingham, De Bruyne and Modrić!',
   author: {
     '@type': 'Person',
     name: 'Lee Jones',
   },
-  isbn: '9781761359781',
+  isbn: '9781761359804',
   numberOfPages: 96,
   bookFormat: 'https://schema.org/Paperback',
   datePublished: '2026-07-21',
@@ -77,8 +78,8 @@ const schema = {
     '@type': 'Organization',
     name: 'Penguin',
   },
-  image: 'https://jonerfootball.com/images/shop/greatest-goal-scorers/cover.jpg',
-  url: 'https://jonerfootball.com/shop/greatest-goal-scorers/',
+  image: 'https://jonerfootball.com/images/books/midfield-masters/cover.jpg',
+  url: 'https://jonerfootball.com/shop/midfield-masters/',
   offers: {
     '@type': 'AggregateOffer',
     lowPrice: '12.99',
@@ -89,18 +90,18 @@ const schema = {
 ---
 
 <BaseLayout
-  title="Greatest Goal Scorers! by Lee Jones | Joner Football"
-  description="Buy Joner Football presents: Greatest Goal Scorers! by Lee Jones, a fully illustrated football guide for young players aged six and up."
-  canonical="https://jonerfootball.com/shop/greatest-goal-scorers/"
-  ogImage="https://jonerfootball.com/images/shop/greatest-goal-scorers/cover.jpg"
+  title="Midfield Masters! by Lee Jones | Joner Football"
+  description="Buy Joner Football presents: Midfield Masters! by Lee Jones, a fully illustrated football guide for young players aged six and up."
+  canonical="https://jonerfootball.com/shop/midfield-masters/"
+  ogImage="https://jonerfootball.com/images/books/midfield-masters/cover.jpg"
   schema={schema}
 >
   <article class="book-page">
     <div class="book-shell">
       <section class="product-grid" aria-labelledby="book-title">
         <aside class="cover-column">
-          <a class="cover-link" href={penguinPage} target="_blank" rel="noopener noreferrer" aria-label="Open the official Penguin page for Greatest Goal Scorers">
-            <img class="main-cover" src="/images/shop/greatest-goal-scorers/cover.jpg" alt="Cover of Joner Football presents: Greatest Goal Scorers!" width="400" height="613" />
+          <a class="cover-link" href={penguinPage} target="_blank" rel="noopener noreferrer" aria-label="Open the official Penguin page for Midfield Masters">
+            <img class="main-cover" src="/images/books/midfield-masters/cover.jpg" alt="Cover of Joner Football presents: Midfield Masters!" width="400" height="614" />
           </a>
 
           <a class="look-inside" href={penguinPage} target="_blank" rel="noopener noreferrer">
@@ -109,7 +110,7 @@ const schema = {
 
           <dl class="book-facts">
             <div><dt>Published:</dt><dd>21 July 2026</dd></div>
-            <div><dt>ISBN:</dt><dd>9781761359781</dd></div>
+            <div><dt>ISBN:</dt><dd>9781761359804</dd></div>
             <div><dt>Imprint:</dt><dd>Penguin</dd></div>
             <div><dt>Format:</dt><dd>Paperback</dd></div>
             <div><dt>Pages:</dt><dd>96</dd></div>
@@ -118,14 +119,15 @@ const schema = {
 
           <div class="category-block">
             <span>Categories:</span>
+            <a href={childrensCategoryPage} target="_blank" rel="noopener noreferrer">Children's and YA fiction</a>
             <a href={categoryPage} target="_blank" rel="noopener noreferrer">Young readers non-fiction</a>
           </div>
         </aside>
 
         <div class="product-content">
           <header class="book-heading">
-            <h1 id="book-title">Joner Football presents: Greatest Goal Scorers!</h1>
-            <p class="subtitle">including Messi, Ronaldo and Haaland!</p>
+            <h1 id="book-title">Joner Football presents: Midfield Masters!</h1>
+            <p class="subtitle">including Bellingham, De Bruyne and Modrić!</p>
             <a class="author-link" href={authorPage} target="_blank" rel="noopener noreferrer">Lee Jones</a>
           </header>
 
@@ -133,12 +135,12 @@ const schema = {
             <h2 id="formats-title">Formats &amp; editions</h2>
             <div class="format-cards">
               <a class="format-card is-active" href={paperbackPage} target="_blank" rel="noopener noreferrer">
-                <img src="/images/shop/greatest-goal-scorers/cover.jpg" alt="Paperback edition cover" width="50" height="77" />
+                <img src="/images/books/midfield-masters/cover.jpg" alt="Paperback edition cover" width="50" height="77" />
                 <span>Paperback</span>
                 <small>21 July 2026</small>
               </a>
               <a class="format-card" href={ebookPage} target="_blank" rel="noopener noreferrer">
-                <img src="/images/shop/greatest-goal-scorers/ebook-cover.jpg" alt="EBook edition cover" width="50" height="77" />
+                <img src="/images/books/midfield-masters/ebook-cover.jpg" alt="EBook edition cover" width="50" height="77" />
                 <span>EBook</span>
                 <small>21 July 2026</small>
               </a>
@@ -166,7 +168,7 @@ const schema = {
           <section class="book-description" aria-labelledby="book-description-title">
             <h2 id="book-description-title">Learn from the best and celebrate the greats, from elite football training academy @JonerFootball</h2>
 
-            <p>Want to dribble like Messi? Fake it past defenders like Mbappé? Perfect the Ronaldo stepover or flick it with flair like Neymar?</p>
+            <p>Want to fake it like Bellingham? Dominate like Modrić? Score like Rice or pass like De Bruyne?</p>
 
             <p>Welcome to <em>Joner Football presents</em>, the ultimate series for kids who don’t just watch the game . . . they live it.</p>
 
@@ -175,7 +177,7 @@ const schema = {
 
               <p>Created by professional coach Lee Jones, founder of the hugely popular Joner Football training academy, this series brings elite-level knowledge straight to you. From academy drills to viral challenges, Joner Football has inspired a global community of young players with high-energy, game-changing content.</p>
 
-              <p>Kicking off with Lee’s list of the game’s GREATEST GOAL SCORERS, you’ll learn how to nail Ronaldo’s signature Step-Over, glide through defenders like Lamine Yamal, and dominate 1v1s like a masterful Messi.</p>
+              <p>'Get it outta there' with Lee’s list of the game’s MIDFIELD MASTERS! Learn how to do Bellingham's famous fake shot, Pedri's disguised drop and Vitinha's inside roll!</p>
 
               <p>The perfect football collectible for kids aged six and up, whether you’re on the pitch every weekend or glued to matchday coverage. Celebrates the icons, moments and skills that define the modern game!</p>
             </div>
@@ -206,8 +208,8 @@ const schema = {
 
         <div class="also-by">
           <h2>Also by Lee Jones</h2>
-          <a class="also-book" href={midfieldMastersPage}>
-            <img src="/images/shop/greatest-goal-scorers/midfield-masters.jpg" alt="Joner Football presents: Midfield Masters!" width="400" height="614" />
+          <a class="also-book" href={greatestGoalScorersPage}>
+            <img src="/images/shop/greatest-goal-scorers/cover.jpg" alt="Joner Football presents: Greatest Goal Scorers!" width="400" height="613" />
           </a>
         </div>
       </div>

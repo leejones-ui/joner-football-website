@@ -4,19 +4,19 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
 const resources = [
   {
     title: 'Joner Football Presents: Greatest Goal Scorers!',
-    price: 'Pre-order AUD 12.99',
-    image: '/images/shop/books/joner-football-greatest-goal-scorers-preorder.jpg',
-    href: 'https://www.penguin.com.au/books/joner-football-presents-greatest-goal-scorers-9781761359781',
-    text: 'The new Joner Football kids book celebrating the greatest goal scorers, packed with skills, drills and stats. Coming July.',
-    cta: 'Pre-order Now',
+    price: 'Available now',
+    image: '/images/shop/greatest-goal-scorers/cover.jpg',
+    href: '/shop/greatest-goal-scorers',
+    text: 'The Joner Football kids book celebrating the greatest goal scorers, packed with skills, diagrams and facts.',
+    cta: 'Buy Now',
   },
   {
     title: 'Joner Football Presents: Midfield Masters!',
-    price: 'Pre-order AUD 12.99',
-    image: '/images/shop/books/joner-football-midfield-masters-preorder.jpg',
-    href: 'https://www.penguin.com.au/books/joner-football-presents-midfield-masters-9781761359804',
-    text: 'The new Joner Football kids book for midfielders who want to learn from the best, with skills, drills and stats. Coming July.',
-    cta: 'Pre-order Now',
+    price: 'Available now',
+    image: '/images/books/midfield-masters/cover.jpg',
+    href: '/shop/midfield-masters',
+    text: 'The Joner Football kids book for midfielders who want to learn from the best, with skills, diagrams and facts.',
+    cta: 'Buy Now',
   },
   {
     title: 'Scanning Training Tool',
@@ -46,7 +46,7 @@ const sanityPage = await fetchSanityPage('shop-resources-accessories')
 {shouldReplaceSanityPage(sanityPage) ? (
   <SanityPageRenderer page={sanityPage} />
 ) : (
-<BaseLayout title="Books, Resources And Accessories | Joner Football Shop" description="Shop Joner Football books, training resources and accessories, including pre-order kids football books, scanning tools and number-recognition tools.">
+<BaseLayout title="Books, Resources And Accessories | Joner Football Shop" description="Shop Joner Football books, training resources and accessories, including kids football books, scanning tools and number-recognition tools.">
   <main class="bg-joner-black text-white">
     <section class="relative overflow-hidden border-b border-white/10">
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(220,0,0,0.35),transparent_34%),linear-gradient(135deg,#050505_0%,#111_52%,#050505_100%)]"></div>
@@ -54,7 +54,7 @@ const sanityPage = await fetchSanityPage('shop-resources-accessories')
         <div class="max-w-4xl">
           <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-4">Joner Football Shop</p>
           <h1 class="font-heading uppercase text-6xl md:text-8xl lg:text-9xl leading-none mb-6">Resources & Accessories</h1>
-          <p class="text-lg md:text-xl text-white/75 max-w-2xl leading-relaxed">Pre-order the new Joner Football books, then shop training tools and session resources built to help players scan earlier, react faster, and make better decisions.</p>
+          <p class="text-lg md:text-xl text-white/75 max-w-2xl leading-relaxed">Shop the new Joner Football books, then browse training tools and session resources built to help players scan earlier, react faster, and make better decisions.</p>
         </div>
       </div>
     </section>
