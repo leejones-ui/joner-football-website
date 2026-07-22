@@ -1,10 +1,12 @@
 import { verifyStripeWebhook } from './_stripe-webhook.js'
 import { readRows, updateCell } from './_camp-automation.js'
-import { confirmationEmail, JUNIORS_HEADERS, JUNIORS_SHEET_TAB, isPaidJuniorsEvent, paidEventDetails, shouldSendEmail } from './_juniors-flow.js'
+import { confirmationEmail, confirmationStatus, isPaidJuniorsEvent, JUNIORS_HEADERS, JUNIORS_SHEET_TAB, paidEventDetails, serializeConfirmationStatus, shouldClaimEmail } from './_juniors-flow.js'
+import { sendJuniorsEmail } from './_juniors-email.js'
 
 export const config = { api: { bodyParser: false } }
 const sheetId = () => process.env.JUNIORS_SHEET_ID || process.env.CAMP_REGISTRATION_SHEET_ID
 const tab = () => process.env.JUNIORS_SHEET_TAB || JUNIORS_SHEET_TAB
+const locks = new Map()
 
 async function rawBody(req) {
   if (typeof req.body === 'string') return req.body
@@ -27,17 +29,10 @@ async function airtableRequest(path, init = {}) {
 
 function formulaValue(value) { return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'") }
 
-async function upsertPaidAirtable(registration, details) {
-  const table = process.env.JUNIORS_AIRTABLE_TABLE || 'Joners Juniors'
+export async function upsertPaidAirtable(registration, details) {
   const formula = `{Registration ID}='${formulaValue(registration.registrationId)}'`
   const found = await airtableRequest(`?maxRecords=1&filterByFormula=${encodeURIComponent(formula)}`)
-  const fields = {
-    'Registration ID': registration.registrationId, Programme: 'Joners Juniors', Player: registration.player, Parent: registration.parent,
-    'Parent Email': registration.email, Mobile: registration.mobile, 'Date Of Birth': registration.dateOfBirth,
-    'Medical / Allergies': registration.medical, Class: registration.className, 'Term Dates': registration.termDates,
-    'Amount AUD': 220, 'Payment Status': 'paid', 'Stripe Checkout Session ID': details.checkoutSessionId,
-    'Stripe Payment Intent ID': details.paymentIntentId, 'Paid At': new Date().toISOString(), Source: registration.source,
-  }
+  const fields = airtableFieldsFromRegistration(registration, details)
   if (found.records?.[0]?.id) {
     await airtableRequest(`/${found.records[0].id}`, { method: 'PATCH', body: JSON.stringify({ fields }) })
     return found.records[0].id
@@ -46,12 +41,80 @@ async function upsertPaidAirtable(registration, details) {
   return created.id
 }
 
-async function sendEmail({ to, subject, html, replyTo }) {
-  const apiKey = process.env.BREVO_API_KEY
-  if (!apiKey) throw new Error('Brevo email is not configured.')
-  const response = await fetch('https://api.brevo.com/v3/smtp/email', { method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/json', 'api-key': apiKey }, body: JSON.stringify({ sender: { name: 'Joner Football', email: process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com' }, to: [{ email: to }], ...(replyTo ? { replyTo: { email: replyTo, name: 'Ligia' } } : {}), subject, html }) })
-  if (!response.ok) throw new Error('Brevo email send failed.')
-  return true
+export function airtableFieldsFromRegistration(registration, details = {}) {
+  return {
+    'Player Full Name': registration.player, 'Date of Birth': registration.dateOfBirth, 'Parent Name': registration.parent,
+    'Parent Email': registration.email, 'Parent Mobile': registration.mobile, 'Medical History / Allergies': registration.medical,
+    'Class': registration.className, 'Session Day': 'Saturday', 'Session Time': '9:15am to 10:00am',
+    'Location': 'Joner Football HQ, Unit 2, 20 Narabang Way, Belrose', 'Term': registration.termDates, 'Fee': 220,
+    'Payment Status': 'paid', 'Paid Via': 'Stripe', 'Paid At': details.paidAt || '', 'Registration ID': registration.registrationId,
+    'Stripe Checkout Session ID': details.checkoutSessionId || '', 'Stripe PaymentIntent ID': details.paymentIntentId || '',
+    'Heard About Us': registration.source, 'Confirmation Email Status': details.confirmationEmailStatus || '',
+    'Internal Notes': 'Joners Juniors paid signup',
+  }
+}
+
+async function updateStatus(sheet, rowNumber, status) {
+  await updateCell(sheetId(), sheet, rowNumber, 'O', serializeConfirmationStatus(status))
+}
+
+async function processPaid(event) {
+  const details = paidEventDetails(event)
+  if (details.amountTotal !== 22000 || details.currency !== 'aud' || !details.registrationId) return { ignored: true, reason: 'amount-or-registration-mismatch' }
+  const rows = await readRows(sheetId(), tab(), JUNIORS_HEADERS)
+  const index = rows.findIndex((row, i) => i > 0 && row[1] === details.registrationId)
+  if (index < 0) return { ignored: true, reason: 'registration-not-found' }
+  const rowNumber = index + 1
+  const registration = {
+    registrationId: rows[index][1], paymentStatus: rows[index][2], player: rows[index][3], dateOfBirth: rows[index][4],
+    parent: rows[index][5], email: rows[index][6], mobile: rows[index][7], medical: rows[index][8], source: rows[index][9],
+    className: rows[index][10], termDates: '25 July 2026 to 26 September 2026', amountAud: 220,
+  }
+  details.checkoutSessionId ||= rows[index][12] || ''
+  details.paymentIntentId ||= rows[index][13] || ''
+  details.paidAt = new Date().toISOString()
+
+  // These writes make paid processing and email claims durable in the 15-column row.
+  await updateCell(sheetId(), tab(), rowNumber, 'A', details.paidAt)
+  await updateCell(sheetId(), tab(), rowNumber, 'C', 'paid')
+  await updateCell(sheetId(), tab(), rowNumber, 'L', '220')
+  await updateCell(sheetId(), tab(), rowNumber, 'M', details.checkoutSessionId)
+  await updateCell(sheetId(), tab(), rowNumber, 'N', details.paymentIntentId)
+
+  let status = confirmationStatus(rows[index][14])
+  // Claim the payment event in the single durable status cell before the
+  // Airtable upsert. A duplicate delivery on another server instance then
+  // cannot create a second record while this event is in flight.
+  if (status.processing && status.eventId === event.id) return { duplicate: true, registrationId: details.registrationId }
+  status = { ...status, eventId: event.id || details.checkoutSessionId, processing: true }
+  await updateStatus(tab(), rowNumber, status)
+  let airtableRecordId
+  try {
+    airtableRecordId = await upsertPaidAirtable(registration, { ...details, confirmationEmailStatus: serializeConfirmationStatus(status) })
+  } catch (error) {
+    // Release the durable claim when the upsert itself fails so Stripe retry can recover.
+    try { await updateStatus(tab(), rowNumber, { ...status, processing: false }) } catch { /* original failure is the actionable error */ }
+    throw error
+  }
+  status = { ...status, processing: false }
+  await updateStatus(tab(), rowNumber, status)
+  const internalEmail = process.env.JUNIORS_INTERNAL_EMAIL || 'ligia@jonerfootball.com'
+  const replyTo = process.env.JUNIORS_REPLY_TO_EMAIL || 'ligia@jonerfootball.com'
+
+  for (const [kind, to, subject, internal] of [
+    ['customer', registration.email, 'Your Joners Juniors spot is confirmed', false],
+    ['internal', internalEmail, `PAID Joners Juniors signup: ${registration.player}`, true],
+  ]) {
+    if (!shouldClaimEmail(status, kind)) continue
+    status = { ...status, [kind]: 'in_progress' }
+    await updateStatus(tab(), rowNumber, status)
+    // If send succeeds but this next status write fails, leave in_progress and throw;
+    // Stripe retries, and in_progress suppresses a duplicate while the other email can proceed.
+    await sendJuniorsEmail({ to, subject, replyTo: internal ? undefined : replyTo, html: confirmationEmail({ registration, internal, refs: { ...details, airtableRecordId, sheetRef: tab() } }) })
+    status = { ...status, [kind]: 'sent' }
+    await updateStatus(tab(), rowNumber, status)
+  }
+  return { paid: true, registrationId: details.registrationId, airtableRecordId, confirmationEmailStatus: status }
 }
 
 export default async function handler(req, res) {
@@ -61,32 +124,15 @@ export default async function handler(req, res) {
     await verifyStripeWebhook(raw, req.headers['stripe-signature'], process.env.STRIPE_JUNIORS_WEBHOOK_SECRET)
     const event = JSON.parse(raw)
     if (!isPaidJuniorsEvent(event)) return res.status(200).json({ received: true, ignored: true, reason: 'not-paid-juniors-event' })
-    const details = paidEventDetails(event)
-    if (details.amountTotal !== 22000 || details.currency !== 'aud' || !details.registrationId) return res.status(200).json({ received: true, ignored: true, reason: 'amount-or-registration-mismatch' })
-    const rows = await readRows(sheetId(), tab(), JUNIORS_HEADERS)
-    const index = rows.findIndex((row, i) => i > 0 && row[1] === details.registrationId)
-    if (index < 0) return res.status(200).json({ received: true, ignored: true, reason: 'registration-not-found' })
-    const rowNumber = index + 1
-    const registration = { submittedAt: rows[index][0], registrationId: rows[index][1], paymentStatus: rows[index][2], programme: rows[index][3], player: rows[index][4], parent: rows[index][5], email: rows[index][6], mobile: rows[index][7], dateOfBirth: rows[index][8], medical: rows[index][9], className: rows[index][10], termDates: rows[index][11], amountAud: 220, source: rows[index][18] }
-    details.checkoutSessionId ||= rows[index][13] || ''
-    details.paymentIntentId ||= rows[index][14] || ''
-    const alreadyPaid = rows[index][2] === 'paid'
-    if (!alreadyPaid) {
-      await updateCell(sheetId(), tab(), rowNumber, 'C', 'paid')
-      if (details.checkoutSessionId) await updateCell(sheetId(), tab(), rowNumber, 'N', details.checkoutSessionId)
-      if (details.paymentIntentId) await updateCell(sheetId(), tab(), rowNumber, 'O', details.paymentIntentId)
-    }
-    const airtableRecordId = await upsertPaidAirtable(registration, details)
-    if (rows[index][15] !== airtableRecordId) await updateCell(sheetId(), tab(), rowNumber, 'P', airtableRecordId)
-    let customerSent = !shouldSendEmail(rows[index][16])
-    let internalSent = !shouldSendEmail(rows[index][17])
-    if (!customerSent) { await sendEmail({ to: registration.email, replyTo: process.env.JUNIORS_REPLY_TO_EMAIL || 'ligia@jonerfootball.com', subject: 'Your Joners Juniors spot is confirmed', html: confirmationEmail({ registration }) }); await updateCell(sheetId(), tab(), rowNumber, 'Q', new Date().toISOString()); customerSent = true }
-    if (!internalSent) { await sendEmail({ to: process.env.JUNIORS_INTERNAL_EMAIL || 'ligia@jonerfootball.com', subject: `PAID Joners Juniors signup: ${registration.player}`, html: confirmationEmail({ registration, internal: true, refs: { ...details, airtableRecordId, sheetRef: tab() } }) }); await updateCell(sheetId(), tab(), rowNumber, 'R', new Date().toISOString()); internalSent = true }
-    return res.status(200).json({ received: true, paid: true, registrationId: details.registrationId, airtableRecordId, customerSent, internalSent })
+    const registrationId = paidEventDetails(event).registrationId
+    const prior = locks.get(registrationId) || Promise.resolve()
+    const current = prior.then(() => processPaid(event))
+    locks.set(registrationId, current.catch(() => {}))
+    try { return res.status(200).json({ received: true, ...(await current) }) } finally { if (locks.get(registrationId) === current) locks.delete(registrationId) }
   } catch (error) {
     console.error('Joners Juniors webhook failed:', error?.message || 'unknown error')
-    return res.status(400).json({ received: false, error: error?.message || 'Webhook failed.' })
+    return res.status(500).json({ received: false, error: 'Webhook processing failed; Stripe should retry.' })
   }
 }
 
-export { upsertPaidAirtable, sendEmail }
+export { airtableRequest, sendJuniorsEmail }
