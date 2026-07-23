@@ -5,6 +5,7 @@ import vm from 'node:vm'
 import { fileURLToPath } from 'node:url'
 import { extractAttribution, extractMetaIdentity } from '../api/_attribution.js'
 import { compactBrevoAttributes, parseUscreenBody } from '../api/_uscreen-webhook.js'
+import { buildLeadAttribution } from '../api/contact-enquiry.js'
 import subscribeHandler from '../api/subscribe.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -86,6 +87,38 @@ const identity = extractMetaIdentity({ metadata: { fbclid: 'fb-click-123', fbp: 
 assert.equal(identity.fbp, 'fb.1.browser')
 assert.equal(identity.fbc, 'fb.1.1234000.fb-click-123')
 
+const teamLeadAttribution = buildLeadAttribution({
+  utm_source: 'facebook',
+  utm_medium: 'paid_social',
+  utm_campaign: 'Teams Demo July',
+  utm_content: 'Coach Testimonial Video',
+  utm_term: 'Academy Owners',
+  fbclid: 'fb-click-team-123',
+  campaign_id: 'cmp-123',
+  adset_id: 'set-456',
+  ad_id: 'ad-789',
+  placement: 'instagram_reels',
+  landing_page: 'https://jonerfootball.com/teams?utm_source=facebook',
+  referrer: 'https://l.facebook.com/',
+}, '2026-07-23T04:00:00.000Z')
+assert.deepEqual(teamLeadAttribution, {
+  trafficSource: 'Facebook / Instagram Ads',
+  utmSource: 'facebook',
+  utmMedium: 'paid_social',
+  campaign: 'Teams Demo July',
+  campaignId: 'cmp-123',
+  adSet: 'Academy Owners',
+  adSetId: 'set-456',
+  ad: 'Coach Testimonial Video',
+  adId: 'ad-789',
+  placement: 'instagram_reels',
+  fbclid: 'fb-click-team-123',
+  landingPage: 'https://jonerfootball.com/teams?utm_source=facebook',
+  referrer: 'https://l.facebook.com/',
+})
+assert.equal(buildLeadAttribution({ utm_source: 'instagram', utm_medium: 'organic_social' }).trafficSource, 'Facebook / Instagram Organic')
+assert.equal(buildLeadAttribution({ fbclid: 'click-only' }).trafficSource, 'Facebook / Instagram Ads')
+
 assert.deepEqual(parseUscreenBody('{"event":"user.created","utm_campaign":"json-body"}'), {
   event: 'user.created',
   utm_campaign: 'json-body',
@@ -151,6 +184,9 @@ assert.equal(baseLayout.includes('appendUscreenTrackingParams'), true)
 assert.equal(teamsPage.match(/trackEvent\('team_subscription_interest'/g)?.length, 1, 'success event must occur exactly once')
 assert.ok(teamsPage.indexOf("if (!data || !data.success)") < teamsPage.indexOf("trackEvent('team_subscription_interest'"), 'event must follow success gate')
 assert.ok(teamsPage.includes("persistence_status: 'confirmed'"))
+assert.ok(teamsPage.includes('payload.landing_page = window.location.href'))
+assert.ok(teamsPage.includes('window.JonerTracking.collectTrackingParams()'))
+assert.ok(baseLayout.includes("'campaign_id', 'adset_id', 'ad_id'"))
 assert.ok(webhook.includes("event_name: 'CompleteRegistration'"), 'do not create a duplicate Purchase stream')
 assert.equal(webhook.includes("event_name: 'Purchase'"), false, 'webhook must not add a second Purchase stream')
 assert.ok(webhook.includes('extractMetaIdentity'))

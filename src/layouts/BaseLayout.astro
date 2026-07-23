@@ -226,7 +226,11 @@ const allSchemas = schema
     <script is:inline>
       (function () {
         var TRACKING_PARAM_PREFIXES = ['utm_'];
-        var TRACKING_PARAM_KEYS = ['fbclid', 'gclid', 'ttclid', 'msclkid'];
+        var TRACKING_PARAM_KEYS = [
+          'fbclid', 'gclid', 'ttclid', 'msclkid',
+          'campaign_id', 'adset_id', 'ad_id',
+          'campaign_name', 'adset_name', 'ad_name', 'placement'
+        ];
         var STORAGE_KEY = 'joner_tracking_params';
         var META_TEST_EVENT_STORAGE_KEY = 'joner_meta_test_event_code';
 

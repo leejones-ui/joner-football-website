@@ -326,6 +326,13 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
         formData.forEach(function (value, key) { payload[key] = value; });
         payload.marketingOptIn = true;
         payload.message = 'Team subscription demo request';
+        payload.landing_page = window.location.href;
+        payload.referrer = document.referrer || '';
+        if (window.JonerTracking && typeof window.JonerTracking.collectTrackingParams === 'function') {
+          window.JonerTracking.collectTrackingParams().forEach(function (value, key) {
+            if (value) payload[key] = value;
+          });
+        }
 
         var tokenPromise = window.JonerRecaptcha && window.JonerRecaptcha.getToken
           ? window.JonerRecaptcha.getToken('contact')

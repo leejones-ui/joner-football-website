@@ -1,5 +1,6 @@
 import { cleanString, protectForm } from './_security.js'
 import { validateEmailFormat, validateEmailQuality } from './_email-quality.js'
+import { extractAttribution, extractMetaIdentity } from './_attribution.js'
 
 const FALLBACK_RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'leejones@jonerfootball.com'
 const duplicateBuckets = new Map()
@@ -22,6 +23,19 @@ const TEAM_SUBSCRIPTIONS_HEADERS = [
   'Next Action',
   'Owner',
   'Notes',
+  'Traffic Source',
+  'UTM Source',
+  'UTM Medium',
+  'Campaign',
+  'Campaign ID',
+  'Ad Set',
+  'Ad Set ID',
+  'Ad',
+  'Ad ID',
+  'Placement',
+  'Facebook Click ID',
+  'Landing Page',
+  'Referrer',
 ]
 
 const TYPES = {
@@ -54,6 +68,42 @@ const BREVO_LIST_IDS = {
 
 function clean(value, max = 1000) {
   return cleanString(value, max)
+}
+
+export function buildLeadAttribution(body = {}, submittedAt = new Date().toISOString()) {
+  const utm = extractAttribution(body)
+  const eventTime = Math.floor(Date.parse(submittedAt) / 1000) || Math.floor(Date.now() / 1000)
+  const meta = extractMetaIdentity(body, eventTime)
+  const campaign = clean(body.campaign_name || utm.utm_campaign, 240)
+  const adSet = clean(body.adset_name || utm.utm_term, 240)
+  const ad = clean(body.ad_name || utm.utm_content, 240)
+  const rawSource = clean(utm.utm_source, 180)
+  const rawMedium = clean(utm.utm_medium, 180)
+  const hasMetaClick = Boolean(meta.fbclid || meta.fbc)
+  const isMetaSource = hasMetaClick || /^(facebook|instagram|meta|fb|ig)(?:$|[\s_-])/i.test(rawSource)
+  const hasPaidSignal = Boolean(
+    hasMetaClick || body.campaign_id || body.adset_id || body.ad_id ||
+    /(?:paid|cpc|ppc|display|retarget)/i.test(rawMedium)
+  )
+  const trafficSource = isMetaSource
+    ? (hasPaidSignal ? 'Facebook / Instagram Ads' : 'Facebook / Instagram Organic')
+    : (rawSource || (clean(body.referrer, 1200) ? 'Referral / untagged' : 'Direct / untagged'))
+
+  return {
+    trafficSource,
+    utmSource: rawSource,
+    utmMedium: clean(utm.utm_medium, 180),
+    campaign,
+    campaignId: clean(body.campaign_id || body.utm_id, 180),
+    adSet,
+    adSetId: clean(body.adset_id, 180),
+    ad,
+    adId: clean(body.ad_id, 180),
+    placement: clean(body.placement, 180),
+    fbclid: clean(meta.fbclid, 500),
+    landingPage: clean(body.landing_page || body.landingPage, 1200),
+    referrer: clean(body.referrer, 1200),
+  }
 }
 
 function base64url(input) {
@@ -137,7 +187,7 @@ async function ensureTeamSubscriptionsSheet(sheetId) {
     })
   }
 
-  const headerRange = `${encodeURIComponent(title)}!A1:N1`
+  const headerRange = `${encodeURIComponent(title)}!A1:AA1`
   const current = await sheetsFetch(`${sheetId}/values/${headerRange}`)
   const currentHeaders = current.values?.[0] || []
   const missingHeaders = TEAM_SUBSCRIPTIONS_HEADERS.some((header, index) => currentHeaders[index] !== header)
@@ -169,8 +219,21 @@ async function appendTeamSubscriptionLead(enquiry) {
     'Reply with team pricing and setup questions',
     'Lee / Reswin',
     '',
+    enquiry.attribution.trafficSource,
+    enquiry.attribution.utmSource,
+    enquiry.attribution.utmMedium,
+    enquiry.attribution.campaign,
+    enquiry.attribution.campaignId,
+    enquiry.attribution.adSet,
+    enquiry.attribution.adSetId,
+    enquiry.attribution.ad,
+    enquiry.attribution.adId,
+    enquiry.attribution.placement,
+    enquiry.attribution.fbclid,
+    enquiry.attribution.landingPage,
+    enquiry.attribution.referrer,
   ]
-  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(TEAM_SUBSCRIPTIONS_SHEET)}!A:N:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(TEAM_SUBSCRIPTIONS_SHEET)}!A:AA:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
     method: 'POST',
     body: JSON.stringify({ values: [row] }),
   })
@@ -454,6 +517,16 @@ async function sendEmail(enquiry) {
       ${row('Qualifications', enquiry.qualifications)}
       ${row('Availability', enquiry.availability)}
       ${row('Message', enquiry.message)}
+      ${enquiry.type === 'team-subscriptions' ? row('Traffic source', enquiry.attribution.trafficSource) : ''}
+      ${enquiry.type === 'team-subscriptions' ? row('UTM source / medium', [enquiry.attribution.utmSource, enquiry.attribution.utmMedium].filter(Boolean).join(' / ')) : ''}
+      ${enquiry.type === 'team-subscriptions' ? row('Campaign', enquiry.attribution.campaign) : ''}
+      ${enquiry.type === 'team-subscriptions' ? row('Ad set', enquiry.attribution.adSet) : ''}
+      ${enquiry.type === 'team-subscriptions' ? row('Ad', enquiry.attribution.ad) : ''}
+      ${enquiry.type === 'team-subscriptions' ? row('Campaign / ad IDs', [enquiry.attribution.campaignId, enquiry.attribution.adSetId, enquiry.attribution.adId].filter(Boolean).join(' / ')) : ''}
+      ${enquiry.type === 'team-subscriptions' ? row('Placement', enquiry.attribution.placement) : ''}
+      ${enquiry.type === 'team-subscriptions' ? row('Facebook click captured', enquiry.attribution.fbclid ? 'Yes' : 'No') : ''}
+      ${enquiry.type === 'team-subscriptions' ? row('Landing page', enquiry.attribution.landingPage) : ''}
+      ${enquiry.type === 'team-subscriptions' ? row('Referrer', enquiry.attribution.referrer) : ''}
       ${row('Submitted at', enquiry.submittedAt)}
     </table>
   `
@@ -534,8 +607,9 @@ export default async function handler(req, res) {
     if (type === 'player-waiver') return await handlePlayerWaiver(body, res)
 
     const typeLabel = TYPES[type] || TYPES.general
+    const submittedAt = new Date().toISOString()
     const enquiry = {
-      submittedAt: new Date().toISOString(),
+      submittedAt,
       type,
       typeLabel,
       name: clean(body.name, 160),
@@ -558,6 +632,7 @@ export default async function handler(req, res) {
       cvAttachment: type === 'coaching-role' ? cleanAttachment(body.cvFile) : null,
       marketingOptIn: body.marketingOptIn === true || body.marketingOptIn === 'true' || body.marketingOptIn === 'on',
       recipientEmail: RECIPIENTS[type] || FALLBACK_RECIPIENT_EMAIL,
+      attribution: buildLeadAttribution(body, submittedAt),
     }
 
     const requiresMessage = enquiry.type !== 'team-subscriptions'
