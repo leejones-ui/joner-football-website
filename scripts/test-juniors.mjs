@@ -132,10 +132,12 @@ test('registration persists before Checkout and updates column M before returnin
 
 test('test-email endpoint requires the secret header and uses a rate limit', () => {
   const source = readFileSync(new URL('../api/juniors-email-test.js', import.meta.url), 'utf8')
+  const emailHelper = readFileSync(new URL('../api/_juniors-email.js', import.meta.url), 'utf8')
   assert.ok(source.includes("req.headers['x-juniors-email-test-secret']"))
   assert.equal(source.includes('body.secret'), false)
   assert.ok(source.includes("rateLimit(req, { key: 'joners-juniors-email-test'"))
   assert.ok(source.includes('body.send !== true'))
+  assert.match(emailHelper, /htmlContent:\s*html/)
 })
 
 test('webhook lock cleanup compares and deletes the tracked promise', () => {
