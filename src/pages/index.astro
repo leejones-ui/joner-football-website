@@ -2044,7 +2044,7 @@ const homepageSchemas = [
               muted
               loop
               playsinline
-              preload="metadata"
+              preload="auto"
               poster={beat.image}
               style={mediaStyle(beat)}
               data-media="video"
@@ -2409,10 +2409,29 @@ const homepageSchemas = [
             background.setAttribute('data-state', active ? 'active' : 'inactive');
 
             if (background.tagName === 'VIDEO') {
-              if (active && !touchLandscapeQuery.matches) {
-                var playPromise = background.play();
-                if (playPromise && typeof playPromise.catch === 'function') {
-                  playPromise.catch(function () {});
+              if (active) {
+                // The app beat is a muted, inline background video. It is safe
+                // to autoplay on iPad and only runs while beat 06 is active,
+                // so Safari is not decoding it through the rest of the story.
+                var playVideo = function () {
+                  var playPromise = background.play();
+                  if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise.catch(function () {});
+                  }
+                };
+                if (!background.dataset.storyStarted) {
+                  background.dataset.storyStarted = 'true';
+                  var startFromVisibleFrame = function () {
+                    // The source opens on a near-black half-second. Start on
+                    // the clear app-phone frame so iPad users see movement at
+                    // once instead of mistaking the video for a blank panel.
+                    try { background.currentTime = 1.5; } catch (error) {}
+                    if (background.getAttribute('data-state') === 'active') playVideo();
+                  };
+                  if (background.readyState >= 1) startFromVisibleFrame();
+                  else background.addEventListener('loadedmetadata', startFromVisibleFrame, { once: true });
+                } else {
+                  playVideo();
                 }
               } else {
                 background.pause();
