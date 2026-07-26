@@ -3,7 +3,7 @@ import { validateEmailFormat, validateEmailQuality } from './_email-quality.js'
 import { extractAttribution, extractMetaIdentity } from './_attribution.js'
 
 const FALLBACK_RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'leejones@jonerfootball.com'
-const TEAM_SUBSCRIPTIONS_REQUIRED_EMAIL = 'teams@jonerfootball.com'
+const TEAM_SUBSCRIPTIONS_REQUIRED_EMAILS = ['teams@jonerfootball.com', 'Reswin@jonerfootball.com']
 const duplicateBuckets = new Map()
 const DUPLICATE_WINDOW_MS = 15 * 60 * 1000
 const DEFAULT_WAIVER_TABLE = 'JFP Waiver & Player Info'
@@ -49,13 +49,15 @@ const TYPES = {
   'player-waiver': 'Player Onboarding & Waiver',
 }
 
-function withRequiredRecipient(value, requiredEmail) {
+function withRequiredRecipients(value, requiredEmails) {
   const recipients = String(value || '')
     .split(',')
     .map((email) => email.trim())
     .filter(Boolean)
-  if (!recipients.some((email) => email.toLowerCase() === requiredEmail.toLowerCase())) {
-    recipients.push(requiredEmail)
+  for (const requiredEmail of requiredEmails) {
+    if (!recipients.some((email) => email.toLowerCase() === requiredEmail.toLowerCase())) {
+      recipients.push(requiredEmail)
+    }
   }
   return recipients.join(',')
 }
@@ -66,9 +68,9 @@ const RECIPIENTS = {
   general: process.env.CONTACT_GENERAL_EMAIL || FALLBACK_RECIPIENT_EMAIL,
   'joners-juniors': process.env.CONTACT_JUNIORS_EMAIL || FALLBACK_RECIPIENT_EMAIL,
   'coaching-role': process.env.CONTACT_COACHING_EMAIL || FALLBACK_RECIPIENT_EMAIL,
-  'team-subscriptions': withRequiredRecipient(
-    process.env.CONTACT_TEAM_SUBSCRIPTIONS_EMAIL || 'Reswin@jonerfootball.com,leejones@jonerfootball.com',
-    TEAM_SUBSCRIPTIONS_REQUIRED_EMAIL,
+  'team-subscriptions': withRequiredRecipients(
+    process.env.CONTACT_TEAM_SUBSCRIPTIONS_EMAIL || 'leejones@jonerfootball.com',
+    TEAM_SUBSCRIPTIONS_REQUIRED_EMAILS,
   ),
 }
 
