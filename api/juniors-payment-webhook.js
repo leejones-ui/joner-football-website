@@ -68,7 +68,10 @@ async function persistStatus(rowNumber, status, airtableRecordId) {
   if (airtableRecordId) await syncAirtableConfirmationStatus(airtableRecordId, status)
 }
 
-async function processPaid(event) {
+export const JONERS_JUNIORS_INTERNAL_EMAIL = 'jonersjuniors@jonerfootball.com'
+export const JONERS_JUNIORS_REPLY_TO_EMAIL = 'jonersjuniors@jonerfootball.com'
+
+export async function processPaid(event) {
   const details = paidEventDetails(event)
   if (details.amountTotal !== 22000 || details.currency !== 'aud' || !details.registrationId) return { ignored: true, reason: 'amount-or-registration-mismatch' }
   const rows = await readRows(sheetId(), tab(), JUNIORS_HEADERS)
@@ -120,8 +123,8 @@ async function processPaid(event) {
   }
   status = { ...status, processing: false, processingAt: '' }
   await persistStatus(rowNumber, status, airtableRecordId)
-  const internalEmail = process.env.JUNIORS_INTERNAL_EMAIL || 'ligia@jonerfootball.com'
-  const replyTo = process.env.JUNIORS_REPLY_TO_EMAIL || 'ligia@jonerfootball.com'
+  const internalEmail = JONERS_JUNIORS_INTERNAL_EMAIL
+  const replyTo = JONERS_JUNIORS_REPLY_TO_EMAIL
 
   for (const [kind, to, subject, internal] of [
     ['customer', registration.email, 'Your Joners Juniors spot is confirmed', false],
