@@ -362,7 +362,12 @@ const allSchemas = schema
         }
 
         function appendUscreenTrackingParams(href, trackingParams) {
-          var decoratedHref = appendTrackingParams(href, trackingParams);
+          var enrichedParams = new URLSearchParams(trackingParams ? trackingParams.toString() : '');
+          var fbp = getCookie('_fbp');
+          var fbc = getCookie('_fbc');
+          if (fbp) enrichedParams.set('fbp', fbp);
+          if (fbc) enrichedParams.set('fbc', fbc);
+          var decoratedHref = appendTrackingParams(href, enrichedParams);
           if (!window.JonerAttribution || typeof window.JonerAttribution.encodeForUscreen !== 'function') {
             return decoratedHref;
           }
@@ -371,6 +376,10 @@ const allSchemas = schema
             var encoded = window.JonerAttribution.encodeForUscreen(url.searchParams);
             var encodedSource = encoded.get('utm_source');
             if (encodedSource) url.searchParams.set('utm_source', encodedSource);
+            // Meta browser IDs are already packed into utm_source for the webhook.
+            // Do not leave them as extra visible checkout query parameters.
+            url.searchParams.delete('fbp');
+            url.searchParams.delete('fbc');
             return url.toString();
           } catch (e) {
             return decoratedHref;
