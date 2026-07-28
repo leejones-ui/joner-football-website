@@ -1,5 +1,5 @@
 import { cleanString, protectForm } from './_security.js'
-import { parseUscreenBody, processUscreenPayload } from './_uscreen-webhook.js'
+import { isValidUscreenWebhookSecret, parseUscreenBody, processUscreenPayload } from './_uscreen-webhook.js'
 import dns from 'node:dns/promises'
 
 const COMMON_DOMAINS = [
@@ -424,6 +424,9 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'GET, POST, OPTIONS')
       return res.status(405).json({ success: false, error: 'Method not allowed' })
+    }
+    if (!isValidUscreenWebhookSecret(req)) {
+      return res.status(401).json({ success: false, error: 'Unauthorized webhook' })
     }
 
     let body
