@@ -4,7 +4,7 @@ import { extractAttribution, extractMetaIdentity } from './_attribution.js'
 
 const FALLBACK_RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'leejones@jonerfootball.com'
 export const JONERS_JUNIORS_RECIPIENT_EMAIL = 'jonersjuniors@jonerfootball.com'
-export const TEAM_SUBSCRIPTIONS_RECIPIENT_EMAILS = ['leejones@jonerfootball.com', 'Reswin@jonerfootball.com']
+export const TEAM_SUBSCRIPTIONS_RECIPIENT_EMAILS = ['teams@jonerfootball.com']
 const duplicateBuckets = new Map()
 const DUPLICATE_WINDOW_MS = 15 * 60 * 1000
 const DEFAULT_WAIVER_TABLE = 'JFP Waiver & Player Info'
