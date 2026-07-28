@@ -547,7 +547,16 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
-    return json(res, 200, { status: 'healthy', service: 'uscreen-webhook', timestamp: new Date().toISOString() })
+    return json(res, 200, {
+      status: 'healthy',
+      service: 'uscreen-webhook',
+      configured: {
+        secureWebhook: Boolean(process.env.USCREEN_WEBHOOK_SECRET),
+        attributionStore: Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
+        metaCapi: Boolean(process.env.META_CAPI_TOKEN),
+      },
+      timestamp: new Date().toISOString(),
+    })
   }
 
   if (req.method !== 'POST') {

@@ -7,6 +7,7 @@ import { extractAttribution, extractMetaIdentity } from '../api/_attribution.js'
 import { buildVerifiedMetaEvent, compactBrevoAttributes, isValidUscreenWebhookSecret, mergeStoredAttribution, parseUscreenBody, processUscreenPayload } from '../api/_uscreen-webhook.js'
 import { buildLeadAttribution } from '../api/contact-enquiry.js'
 import subscribeHandler from '../api/subscribe.js'
+import uscreenWebhookHandler from '../api/uscreen-webhook.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const browserSource = fs.readFileSync(path.join(root, 'public/tracking-attribution.js'), 'utf8')
@@ -194,6 +195,29 @@ function mockResponse() {
     json(payload) { this.payload = payload; return this },
     end() { return this },
   }
+}
+
+const healthEnv = {
+  USCREEN_WEBHOOK_SECRET: process.env.USCREEN_WEBHOOK_SECRET,
+  KV_REST_API_URL: process.env.KV_REST_API_URL,
+  KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN,
+  META_CAPI_TOKEN: process.env.META_CAPI_TOKEN,
+}
+process.env.USCREEN_WEBHOOK_SECRET = 'health-secret'
+process.env.KV_REST_API_URL = 'https://kv.health.test'
+process.env.KV_REST_API_TOKEN = 'health-token'
+process.env.META_CAPI_TOKEN = 'meta-health-token'
+const healthResponse = mockResponse()
+await uscreenWebhookHandler({ method: 'GET', query: {}, headers: {} }, healthResponse)
+assert.equal(healthResponse.statusCode, 200)
+assert.deepEqual(healthResponse.payload?.configured, {
+  secureWebhook: true,
+  attributionStore: true,
+  metaCapi: true,
+})
+for (const [key, value] of Object.entries(healthEnv)) {
+  if (value === undefined) delete process.env[key]
+  else process.env[key] = value
 }
 
 const invalidWebhookResponse = mockResponse()
