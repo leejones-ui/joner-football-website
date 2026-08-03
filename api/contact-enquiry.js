@@ -72,6 +72,11 @@ function clean(value, max = 1000) {
   return cleanString(value, max)
 }
 
+export function isAccepted(value) {
+  if (value === true) return true
+  return ['true', 'on', 'yes'].includes(String(value ?? '').trim().toLowerCase())
+}
+
 export function buildLeadAttribution(body = {}, submittedAt = new Date().toISOString()) {
   const utm = extractAttribution(body)
   const eventTime = Math.floor(Date.parse(submittedAt) / 1000) || Math.floor(Date.now() / 1000)
@@ -399,11 +404,11 @@ async function handlePlayerWaiver(body, res) {
     emergencyContactName: clean(body.emergencyContactName, 180),
     emergencyContactPhone: clean(body.emergencyContactPhone, 80),
     term: clean(body.term, 80) || 'Term 3 2026',
-    paymentCommitmentAccepted: body.paymentCommitmentAccepted === true || body.paymentCommitmentAccepted === 'true' || body.paymentCommitmentAccepted === 'on',
-    noMakeUpAccepted: body.noMakeUpAccepted === true || body.noMakeUpAccepted === 'true' || body.noMakeUpAccepted === 'on',
-    emergencyTreatmentPermission: body.emergencyTreatmentPermission === true || body.emergencyTreatmentPermission === 'true' || body.emergencyTreatmentPermission === 'on',
-    mediaPermission: body.mediaPermission === true || body.mediaPermission === 'true' || body.mediaPermission === 'on',
-    waiverAccepted: body.waiverAccepted === true || body.waiverAccepted === 'true' || body.waiverAccepted === 'on',
+    paymentCommitmentAccepted: isAccepted(body.paymentCommitmentAccepted),
+    noMakeUpAccepted: isAccepted(body.noMakeUpAccepted),
+    emergencyTreatmentPermission: isAccepted(body.emergencyTreatmentPermission),
+    mediaPermission: isAccepted(body.mediaPermission),
+    waiverAccepted: isAccepted(body.waiverAccepted),
     parentSignature: clean(body.parentSignature, 180),
   }
 
