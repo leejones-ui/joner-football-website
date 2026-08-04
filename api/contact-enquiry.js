@@ -8,10 +8,14 @@ export const TEAM_SUBSCRIPTIONS_RECIPIENT_EMAILS = ['teams@jonerfootball.com', '
 const duplicateBuckets = new Map()
 const DUPLICATE_WINDOW_MS = 15 * 60 * 1000
 const DEFAULT_WAIVER_TABLE = 'JFP Waiver & Player Info'
-const DEFAULT_TEAM_SUBSCRIPTIONS_SHEET_ID = process.env.CAMP_REGISTRATION_SHEET_ID || '1SbGmivi3yqFaBKoMAhoNd5ufUga99DaQBj2noXNJr4k'
-const TEAM_SUBSCRIPTIONS_SHEET = process.env.TEAM_SUBSCRIPTIONS_SHEET_TAB || 'Team Subscriptions Leads'
-const TEAM_SUBSCRIPTIONS_HEADERS = [
+const DEFAULT_TEAM_SUBSCRIPTIONS_SHEET_ID = '1KB5m7KwQPM7D0ctBY7H23x-2oUYSaiX-GJV0jlyYBvw'
+export const TEAM_SUBSCRIPTIONS_SHEET = process.env.TEAM_SUBSCRIPTIONS_SHEET_TAB || 'Hot Leads'
+export const TEAM_SUBSCRIPTIONS_HEADERS = [
   'Submitted At',
+  'Lead ID',
+  'Priority',
+  'Due Date',
+  'Action',
   'Status',
   'Name',
   'Email',
@@ -20,24 +24,12 @@ const TEAM_SUBSCRIPTIONS_HEADERS = [
   'Number Of Players',
   'Number Of Coaches',
   'Location',
-  'Message',
-  'Source',
-  'Next Action',
   'Owner',
+  'Last Contact',
+  'Next Action',
+  'Source',
+  'Message',
   'Notes',
-  'Traffic Source',
-  'UTM Source',
-  'UTM Medium',
-  'Campaign',
-  'Campaign ID',
-  'Ad Set',
-  'Ad Set ID',
-  'Ad',
-  'Ad ID',
-  'Placement',
-  'Facebook Click ID',
-  'Landing Page',
-  'Referrer',
 ]
 
 const TYPES = {
@@ -199,7 +191,7 @@ async function ensureTeamSubscriptionsSheet(sheetId) {
     })
   }
 
-  const headerRange = `${encodeURIComponent(title)}!A1:AA1`
+  const headerRange = `${encodeURIComponent(title)}!A1:S1`
   const current = await sheetsFetch(`${sheetId}/values/${headerRange}`)
   const currentHeaders = current.values?.[0] || []
   const missingHeaders = TEAM_SUBSCRIPTIONS_HEADERS.some((header, index) => currentHeaders[index] !== header)
@@ -211,13 +203,34 @@ async function ensureTeamSubscriptionsSheet(sheetId) {
   }
 }
 
-async function appendTeamSubscriptionLead(enquiry) {
-  if (enquiry.type !== 'team-subscriptions') return
-  const sheetId = process.env.TEAM_SUBSCRIPTIONS_SHEET_ID || DEFAULT_TEAM_SUBSCRIPTIONS_SHEET_ID
-  if (!sheetId) throw new Error('Team subscriptions sheet is not configured.')
-  await ensureTeamSubscriptionsSheet(sheetId)
-  const row = [
-    enquiry.submittedAt,
+export function buildTeamSubscriptionRow(enquiry) {
+  const submittedAt = String(enquiry.submittedAt || new Date().toISOString())
+  const leadId = `web_${submittedAt.replace(/\D/g, '').slice(0, 14)}_${base64url(enquiry.email).slice(0, 8)}`
+  const attribution = enquiry.attribution || {}
+  const attributionNotes = [
+    ['Traffic Source', attribution.trafficSource],
+    ['UTM Source', attribution.utmSource],
+    ['UTM Medium', attribution.utmMedium],
+    ['Campaign', attribution.campaign],
+    ['Campaign ID', attribution.campaignId],
+    ['Ad Set', attribution.adSet],
+    ['Ad Set ID', attribution.adSetId],
+    ['Ad', attribution.ad],
+    ['Ad ID', attribution.adId],
+    ['Placement', attribution.placement],
+    ['Facebook Click ID', attribution.fbclid],
+    ['Landing Page', attribution.landingPage],
+    ['Referrer', attribution.referrer],
+  ]
+    .filter(([, value]) => value)
+    .map(([label, value]) => `${label}: ${value}`)
+    .join(' | ')
+  return [
+    submittedAt,
+    leadId,
+    'P1',
+    submittedAt.slice(0, 10),
+    'Reply and qualify',
     'New enquiry',
     enquiry.name,
     enquiry.email,
@@ -226,26 +239,22 @@ async function appendTeamSubscriptionLead(enquiry) {
     enquiry.numberOfPlayers,
     enquiry.numberOfCoaches,
     enquiry.location,
-    enquiry.message || 'Team subscription enquiry',
-    'jonerfootball.com/teams',
-    'Reply with team pricing and setup questions',
     'Lee / Reswin',
     '',
-    enquiry.attribution.trafficSource,
-    enquiry.attribution.utmSource,
-    enquiry.attribution.utmMedium,
-    enquiry.attribution.campaign,
-    enquiry.attribution.campaignId,
-    enquiry.attribution.adSet,
-    enquiry.attribution.adSetId,
-    enquiry.attribution.ad,
-    enquiry.attribution.adId,
-    enquiry.attribution.placement,
-    enquiry.attribution.fbclid,
-    enquiry.attribution.landingPage,
-    enquiry.attribution.referrer,
+    'Reply with team pricing and setup questions',
+    'jonerfootball.com/teams',
+    enquiry.message || 'Team subscription enquiry',
+    attributionNotes,
   ]
-  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(TEAM_SUBSCRIPTIONS_SHEET)}!A:AA:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+}
+
+async function appendTeamSubscriptionLead(enquiry) {
+  if (enquiry.type !== 'team-subscriptions') return
+  const sheetId = process.env.TEAM_SUBSCRIPTIONS_SHEET_ID || DEFAULT_TEAM_SUBSCRIPTIONS_SHEET_ID
+  if (!sheetId) throw new Error('Team subscriptions sheet is not configured.')
+  await ensureTeamSubscriptionsSheet(sheetId)
+  const row = buildTeamSubscriptionRow(enquiry)
+  await sheetsFetch(`${sheetId}/values/${encodeURIComponent(TEAM_SUBSCRIPTIONS_SHEET)}!A:S:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
     method: 'POST',
     body: JSON.stringify({ values: [row] }),
   })
