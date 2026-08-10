@@ -637,8 +637,11 @@ export async function processUscreenPayload(data) {
         const claim = await claimFirstPaidEvent(eventData, email, metaEvent)
         if (claim.status === 'unavailable') throw new Error('First-paid idempotency store unavailable')
         const sameEvent = !claim.existing?.eventId || claim.existing.eventId === eventId
-        const emissionEnabled = process.env.META_FIRST_PAID_ENABLED === 'true'
-        if (!emissionEnabled && claim.status !== 'sent' && sameEvent) {
+        const candidateStates = new Set(['claimed', 'pending', 'candidate'])
+        // Hard safety boundary: webhooks only create or preserve a candidate.
+        // The canonical first-paid event can only be released by the manual
+        // operator script after authoritative Uscreen payment-history review.
+        if (sameEvent && candidateStates.has(claim.status)) {
           await markFirstPaidCandidate(claim.key, claim.record || claim.existing || {
             eventId,
             uscreenUserId: firstPaidUserId(eventData),
@@ -654,20 +657,6 @@ export async function processUscreenPayload(data) {
             JF_FIRST_PAID_CANDIDATE_AT: cleanValue(eventData.event_date || eventData.created_at || new Date().toISOString(), 40),
             JF_FIRST_PAID_CANDIDATE_TRANSACTION_ID: cleanValue(transactionId, 180),
             JF_FIRST_PAID_CANDIDATE_EVENT_ID: cleanValue(eventId, 220),
-          }
-        } else if (claim.status !== 'sent' && sameEvent) {
-          const meta = await sendMetaEventPayload(metaEvent, eventData.meta_test_event_code || eventData.test_event_code)
-          if (!meta?.ok) {
-            if (claim.key) await releaseFirstPaidClaim(claim.key, eventId)
-            throw new Error(`Meta first-paid conversion failed: ${meta?.status || meta?.skipped || meta?.error || 'unknown'}`)
-          }
-          await markFirstPaidEventSent(claim.key, eventId)
-          console.info('Uscreen->Meta first paid membership', { ok: true, eventId, reason: firstPaid.reason })
-          attributes = {
-            ...attributes,
-            JF_FIRST_PAID_AT: cleanValue(eventData.event_date || eventData.created_at || new Date().toISOString(), 40),
-            JF_FIRST_PAID_TRANSACTION_ID: cleanValue(transactionId, 180),
-            JF_FIRST_PAID_EVENT_ID: cleanValue(eventId, 220),
           }
         }
       } else {

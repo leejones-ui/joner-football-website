@@ -1,7 +1,9 @@
 import crypto from 'node:crypto'
 
-const META_PIXEL_ID = process.env.META_PIXEL_ID || '1025098535155731'
+const EXPECTED_META_PIXEL_ID = '232666285545279'
+const META_PIXEL_ID = process.env.META_PIXEL_ID || EXPECTED_META_PIXEL_ID
 const TEN_YEARS = 10 * 365 * 24 * 60 * 60
+const SEND_LOCK_SECONDS = 5 * 60
 
 function sha256(value) {
   return crypto.createHash('sha256').update(String(value)).digest('hex')
@@ -74,22 +76,46 @@ async function main() {
   if (confirmation !== '--confirm-verified-first-paid') {
     throw new Error('Sending requires --confirm-verified-first-paid after Uscreen payment-history verification')
   }
-  const event = record.metaEvent
-  if (!event || event.event_name !== 'JF_First_Paid_Membership' || event.event_id !== record.eventId) {
-    throw new Error('Stored candidate payload is invalid')
+  if (META_PIXEL_ID !== EXPECTED_META_PIXEL_ID) {
+    throw new Error(`Refusing to send to unexpected Meta Pixel: ${META_PIXEL_ID}`)
   }
-  const token = process.env.META_CAPI_TOKEN
-  if (!token) throw new Error('META_CAPI_TOKEN is required')
-  const response = await fetch(`https://graph.facebook.com/v21.0/${META_PIXEL_ID}/events?access_token=${encodeURIComponent(token)}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ data: [event] }),
-  })
-  const body = await response.text()
-  if (!response.ok) throw new Error(`Meta CAPI rejected the candidate: ${response.status}`)
-  const updated = { ...record, status: 'sent', sentAt: new Date().toISOString() }
-  await kv(['SET', key, JSON.stringify(updated), 'EX', TEN_YEARS])
-  console.log(JSON.stringify({ status: 'sent', eventId: record.eventId, metaStatus: response.status, responseReceived: Boolean(body) }))
+
+  const lockKey = `${key}:send-lock`
+  const lockToken = crypto.randomUUID()
+  const lock = await kv(['SET', lockKey, lockToken, 'NX', 'EX', SEND_LOCK_SECONDS])
+  if (lock !== 'OK') throw new Error('Candidate send already in progress')
+
+  try {
+    const currentRaw = await kv(['GET', key])
+    if (!currentRaw) throw new Error('Candidate disappeared before send')
+    const current = typeof currentRaw === 'string' ? JSON.parse(currentRaw) : currentRaw
+    if (current.status !== 'candidate') throw new Error(`Candidate is not awaiting verification: ${current.status}`)
+    if (String(current.uscreenUserId) !== String(userId)) throw new Error('Candidate identity mismatch before send')
+    const event = current.metaEvent
+    if (!event || event.event_name !== 'JF_First_Paid_Membership' || event.event_id !== current.eventId) {
+      throw new Error('Stored candidate payload is invalid')
+    }
+    const expectedEventId = `JF_First_Paid_Membership.${sha256(`uscreen:${userId}`)}`
+    if (event.event_id !== expectedEventId) throw new Error('Stored candidate event ID is not tied to the Uscreen user ID')
+    const token = process.env.META_CAPI_TOKEN
+    if (!token) throw new Error('META_CAPI_TOKEN is required')
+    const response = await fetch(`https://graph.facebook.com/v21.0/${META_PIXEL_ID}/events?access_token=${encodeURIComponent(token)}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ data: [event] }),
+    })
+    const body = await response.text()
+    if (!response.ok) throw new Error(`Meta CAPI rejected the candidate: ${response.status}`)
+    let receipt
+    try { receipt = JSON.parse(body) } catch { throw new Error('Meta CAPI returned an unreadable success response') }
+    if (Number(receipt?.events_received) !== 1) throw new Error('Meta CAPI did not confirm exactly one received event')
+    const updated = { ...current, status: 'sent', sentAt: new Date().toISOString(), metaEventsReceived: 1 }
+    await kv(['SET', key, JSON.stringify(updated), 'EX', TEN_YEARS])
+    console.log(JSON.stringify({ status: 'sent', eventId: current.eventId, metaStatus: response.status, eventsReceived: 1 }))
+  } finally {
+    const activeLock = await kv(['GET', lockKey]).catch(() => undefined)
+    if (activeLock === lockToken) await kv(['DEL', lockKey]).catch(() => undefined)
+  }
 }
 
 main().catch((error) => {

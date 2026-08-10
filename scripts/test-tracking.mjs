@@ -310,7 +310,6 @@ const originalBrevoKey = process.env.BREVO_API_KEY
 const originalMetaToken = process.env.META_CAPI_TOKEN
 const originalKvUrl = process.env.KV_REST_API_URL
 const originalKvToken = process.env.KV_REST_API_TOKEN
-const originalFirstPaidEnabled = process.env.META_FIRST_PAID_ENABLED
 const metaBodies = []
 const brevoBodies = []
 const kvStore = new Map()
@@ -318,7 +317,6 @@ process.env.BREVO_API_KEY = 'test-brevo-key'
 process.env.META_CAPI_TOKEN = 'test-meta-token'
 process.env.KV_REST_API_URL = 'https://kv.test'
 process.env.KV_REST_API_TOKEN = 'test-kv-token'
-process.env.META_FIRST_PAID_ENABLED = 'true'
 globalThis.fetch = async (url, options = {}) => {
   const target = String(url)
   if (target === 'https://kv.test') {
@@ -366,19 +364,24 @@ globalThis.fetch = async (url, options = {}) => {
   throw new Error(`Unexpected test fetch: ${target}`)
 }
 try {
+  const metaBeforeFirstPaid = metaBodies.length
   await processUscreenPayload({
     event: 'order.paid', email: 'tracking-test@example.com', user_id: 'user-paid-123',
     order_id: 'paid-123', transaction_id: 'ch_paid_123',
     event_date: '2026-07-29T01:02:03Z', offer_id: 230698, offer_title: 'Max', total: 59,
     currency: 'AUD', utm_source: 'Not available',
   })
-  assert.equal(metaBodies.at(-1).data[0].event_name, 'JF_First_Paid_Membership')
-  assert.equal(metaBodies.at(-1).data[0].custom_data.utm_campaign, 'coaches_pro')
-  assert.equal(metaBodies.at(-1).data[0].user_data.fbc, 'fb.1.1234000.fb-click-123')
-  assert.equal(brevoBodies.at(-1).attributes.JF_FIRST_PAID_TRANSACTION_ID, 'ch_paid_123')
-  assert.equal(JSON.stringify(metaBodies.at(-1)).includes('user-paid-123'), false, 'raw Uscreen user ID must not appear in the Meta payload')
-  const firstPaidEventId = metaBodies.at(-1).data[0].event_id
-  const firstPaidMetaCount = metaBodies.length
+  assert.equal(metaBodies.length, metaBeforeFirstPaid, 'webhook must never send the canonical first-paid event')
+  const firstPaidKey = [...kvStore.keys()].find((key) => key.startsWith('jf:meta:first-paid:'))
+  assert.ok(firstPaidKey, 'first-paid candidate must be stored in KV')
+  const firstPaidRecord = JSON.parse(kvStore.get(firstPaidKey))
+  assert.equal(firstPaidRecord.status, 'candidate')
+  assert.equal(firstPaidRecord.metaEvent.event_name, 'JF_First_Paid_Membership')
+  assert.equal(firstPaidRecord.metaEvent.custom_data.utm_campaign, 'coaches_pro')
+  assert.equal(firstPaidRecord.metaEvent.user_data.fbc, 'fb.1.1234000.fb-click-123')
+  assert.equal(brevoBodies.at(-1).attributes.JF_FIRST_PAID_CANDIDATE_TRANSACTION_ID, 'ch_paid_123')
+  assert.equal(JSON.stringify(firstPaidRecord.metaEvent).includes('user-paid-123'), false, 'raw Uscreen user ID must not appear in the Meta payload')
+  const firstPaidEventId = firstPaidRecord.eventId
 
   await processUscreenPayload({
     event: 'order.paid', email: 'tracking-test@example.com', user_id: 'user-paid-123',
@@ -386,8 +389,8 @@ try {
     event_date: '2026-08-29T01:02:03Z', offer_id: 230698, offer_title: 'Max', total: 59,
     currency: 'AUD',
   })
-  assert.equal(metaBodies.length, firstPaidMetaCount, 'a later order for the same stable user must not emit again')
-  assert.equal(metaBodies.at(-1).data[0].event_id, firstPaidEventId, 'canonical identity must remain stable across order IDs')
+  assert.equal(metaBodies.length, metaBeforeFirstPaid, 'a later order for the same stable user must not emit')
+  assert.equal(JSON.parse(kvStore.get(firstPaidKey)).eventId, firstPaidEventId, 'canonical identity must remain stable across order IDs')
 
   await processUscreenPayload({
     event: 'order.paid', email: 'existing-renewer@example.com', user_id: 'existing-user-1',
@@ -395,7 +398,7 @@ try {
     event_date: '2026-07-30T01:02:03Z', offer_id: 230698, offer_title: 'Max', total: 59,
     currency: 'AUD',
   })
-  assert.equal(metaBodies.length, firstPaidMetaCount, 'renewals must not emit the canonical acquisition event')
+  assert.equal(metaBodies.length, metaBeforeFirstPaid, 'renewals must not emit the canonical acquisition event')
 
   await processUscreenPayload({
     event: 'order.paid', email: 'tracking-test@example.com', order_id: 'trial-123',
@@ -413,17 +416,28 @@ try {
   assert.equal(brevoBodies.at(-1).attributes.UTM_CAMPAIGN, 'JF Teams - Traffic - Book A Demo')
   assert.equal(brevoBodies.at(-1).attributes.META_FBC, 'fb.1.1234000.fb-click-123')
 
+  const beforeKvFirstPaid = metaBodies.length
   await processUscreenPayload({
     event: 'order.paid', email: 'tracking-new@example.com', user_id: 'user-123',
     order_id: 'paid-from-kv-123', transaction_id: 'ch_paid_from_kv_123',
     event_date: '2026-07-29T02:02:03Z', offer_id: 230698, offer_title: 'Max', total: 59,
     currency: 'AUD',
   })
-  assert.equal(metaBodies.at(-1).data[0].event_name, 'JF_First_Paid_Membership')
-  assert.equal(metaBodies.at(-1).data[0].custom_data.utm_campaign, 'JF Teams - Traffic - Book A Demo')
-  assert.equal(metaBodies.at(-1).data[0].user_data.fbc, 'fb.1.1234000.fb-click-123')
+  assert.equal(metaBodies.length, beforeKvFirstPaid, 'first-paid webhook must remain candidate-only even when an enable flag is set')
+  const kvCandidate = [...kvStore.values()].map((value) => JSON.parse(value)).find((value) => value.uscreenUserId === 'user-123' && value.status === 'candidate')
+  assert.equal(kvCandidate.metaEvent.custom_data.utm_campaign, 'JF Teams - Traffic - Book A Demo')
+  assert.equal(kvCandidate.metaEvent.user_data.fbc, 'fb.1.1234000.fb-click-123')
 
-  process.env.META_FIRST_PAID_ENABLED = 'false'
+  process.env.META_FIRST_PAID_ENABLED = 'true'
+  const beforeFlaggedRetry = metaBodies.length
+  await processUscreenPayload({
+    event: 'order.paid', email: 'tracking-new@example.com', user_id: 'user-123',
+    order_id: 'paid-from-kv-retry', transaction_id: 'ch_paid_from_kv_retry',
+    event_date: '2026-07-29T02:03:03Z', offer_id: 230698, offer_title: 'Max', total: 59,
+    currency: 'AUD',
+  })
+  assert.equal(metaBodies.length, beforeFlaggedRetry, 'META_FIRST_PAID_ENABLED must not create an automatic send path')
+  delete process.env.META_FIRST_PAID_ENABLED
   const beforeShadow = metaBodies.length
   await processUscreenPayload({
     event: 'order.paid', email: 'brand-new@example.com', user_id: 'shadow-user-1',
@@ -453,8 +467,7 @@ try {
   else process.env.KV_REST_API_URL = originalKvUrl
   if (originalKvToken === undefined) delete process.env.KV_REST_API_TOKEN
   else process.env.KV_REST_API_TOKEN = originalKvToken
-  if (originalFirstPaidEnabled === undefined) delete process.env.META_FIRST_PAID_ENABLED
-  else process.env.META_FIRST_PAID_ENABLED = originalFirstPaidEnabled
+  delete process.env.META_FIRST_PAID_ENABLED
 }
 
 const baseLayout = fs.readFileSync(path.join(root, 'src/layouts/BaseLayout.astro'), 'utf8')
@@ -482,5 +495,11 @@ assert.ok(webhook.includes("'JF_Trial_Started'"), 'zero-value trial orders need 
 assert.ok(webhook.includes("'JF_Account_Created'"), 'new accounts need a dedicated verified Meta event')
 assert.ok(webhook.includes('extractMetaIdentity'))
 assert.ok(webhook.includes('utm_campaign: attribution.utm_campaign'))
+assert.equal(webhook.includes('META_FIRST_PAID_ENABLED'), false, 'webhook must have no automatic canonical first-paid release flag')
+assert.equal(webhook.includes('sendMetaEventPayload(metaEvent'), false, 'webhook must never send a first-paid candidate directly')
+const replayScript = fs.readFileSync(path.join(root, 'scripts/first-paid-candidate.mjs'), 'utf8')
+assert.ok(replayScript.includes("EXPECTED_META_PIXEL_ID = '232666285545279'"), 'manual replay must target the production pixel')
+assert.ok(replayScript.includes("'NX', 'EX', SEND_LOCK_SECONDS"), 'manual replay must take an atomic send lock')
+assert.ok(replayScript.includes('Stored candidate event ID is not tied to the Uscreen user ID'), 'manual replay must verify stable user-based identity')
 
 console.log('tracking regression tests passed')
