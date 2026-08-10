@@ -232,6 +232,9 @@ const allSchemas = schema
           'campaign_name', 'adset_name', 'ad_name', 'placement'
         ];
         var STORAGE_KEY = 'joner_tracking_params';
+        var FIRST_TOUCH_KEY = 'joner_tracking_first_touch';
+        var LAST_TOUCH_KEY = 'joner_tracking_last_touch';
+        var ATTRIBUTION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
         var META_TEST_EVENT_STORAGE_KEY = 'joner_meta_test_event_code';
 
         function isTrackingParam(key) {
@@ -242,6 +245,35 @@ const allSchemas = schema
           return false;
         }
 
+        function readPersistentTracking(key) {
+          try {
+            var raw = window.localStorage.getItem(key);
+            if (!raw) return new URLSearchParams();
+            var record = JSON.parse(raw);
+            if (!record || !record.params || !record.saved_at || Date.now() - Number(record.saved_at) > ATTRIBUTION_MAX_AGE_MS) {
+              window.localStorage.removeItem(key);
+              return new URLSearchParams();
+            }
+            return new URLSearchParams(record.params);
+          } catch (e) {
+            return new URLSearchParams();
+          }
+        }
+
+        function writePersistentTracking(key, params) {
+          if (!params || !params.toString()) return;
+          try {
+            window.localStorage.setItem(key, JSON.stringify({
+              params: params.toString(),
+              saved_at: Date.now()
+            }));
+          } catch (e) {}
+        }
+
+        function getFirstTouchParams() {
+          return readPersistentTracking(FIRST_TOUCH_KEY);
+        }
+
         function collectTrackingParams() {
           var params = new URLSearchParams(window.location.search || '');
           var trackingParams = new URLSearchParams();
@@ -250,13 +282,26 @@ const allSchemas = schema
           });
           if (trackingParams.toString()) {
             try { window.sessionStorage.setItem(STORAGE_KEY, trackingParams.toString()); } catch (e) {}
+            if (!getFirstTouchParams().toString()) writePersistentTracking(FIRST_TOUCH_KEY, trackingParams);
+            writePersistentTracking(LAST_TOUCH_KEY, trackingParams);
             return trackingParams;
           }
           try {
             var stored = window.sessionStorage.getItem(STORAGE_KEY);
             if (stored) return new URLSearchParams(stored);
           } catch (e) {}
-          return new URLSearchParams();
+          var lastTouch = readPersistentTracking(LAST_TOUCH_KEY);
+          if (lastTouch.toString()) return lastTouch;
+          return getFirstTouchParams();
+        }
+
+        function appendFirstTouchParams(params) {
+          var output = new URLSearchParams(params ? params.toString() : '');
+          var firstTouch = getFirstTouchParams();
+          firstTouch.forEach(function (value, key) {
+            if (value && isTrackingParam(key)) output.set('first_' + key, value);
+          });
+          return output;
         }
 
         function paramsToObject(params) {
@@ -367,7 +412,7 @@ const allSchemas = schema
         }
 
         function appendUscreenTrackingParams(href, trackingParams) {
-          var enrichedParams = new URLSearchParams(trackingParams ? trackingParams.toString() : '');
+          var enrichedParams = appendFirstTouchParams(trackingParams);
           var fbp = getCookie('_fbp');
           var fbc = getCookie('_fbc');
           if (fbp) enrichedParams.set('fbp', fbp);
@@ -381,10 +426,13 @@ const allSchemas = schema
             var encoded = window.JonerAttribution.encodeForUscreen(url.searchParams);
             var encodedSource = encoded.get('utm_source');
             if (encodedSource) url.searchParams.set('utm_source', encodedSource);
-            // Meta browser IDs are already packed into utm_source for the webhook.
+            // Meta browser IDs and first-touch fields are packed into utm_source for the webhook.
             // Do not leave them as extra visible checkout query parameters.
             url.searchParams.delete('fbp');
             url.searchParams.delete('fbc');
+            Array.from(url.searchParams.keys()).forEach(function (key) {
+              if (key.indexOf('first_') === 0) url.searchParams.delete(key);
+            });
             return url.toString();
           } catch (e) {
             return decoratedHref;
@@ -465,7 +513,7 @@ const allSchemas = schema
           options = options || {};
           var eventId = options.event_id || getEventId(eventName);
           var trackingParams = collectTrackingParams();
-          var customData = Object.assign({}, paramsToObject(trackingParams), options.custom_data || {});
+          var customData = Object.assign({}, paramsToObject(appendFirstTouchParams(trackingParams)), options.custom_data || {});
           var userData = Object.assign({
             fbp: getCookie('_fbp'),
             fbc: getCookie('_fbc')
@@ -587,6 +635,7 @@ const allSchemas = schema
         function initTracking() {
           window.JonerTracking = {
             collectTrackingParams: collectTrackingParams,
+            getFirstTouchParams: getFirstTouchParams,
             appendTrackingParams: appendTrackingParams,
             trackGa4Event: trackGa4Event,
             trackEvent: trackEvent
@@ -613,6 +662,12 @@ const allSchemas = schema
           }, { once: true });
 
           document.addEventListener('click', function (event) {
+            var playButton = event.target && event.target.closest ? event.target.closest('[data-pbv-play]') : null;
+            if (playButton && getPathname() === '/app/for-coaches') {
+              trackEvent('CoachesPageVideoPlay', {
+                custom_data: { content_name: 'Coaches Only intro video', page_path: getPathname() }
+              });
+            }
             var anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
             if (!anchor) return;
             trackMoneyClick(anchor);
@@ -629,6 +684,22 @@ const allSchemas = schema
           }, true);
 
           initFormIntentTracking();
+
+          var coachesPricing = document.querySelector('[data-coaches-pricing]');
+          if (coachesPricing && 'IntersectionObserver' in window) {
+            var pricingTracked = false;
+            var pricingObserver = new IntersectionObserver(function (entries) {
+              entries.forEach(function (entry) {
+                if (pricingTracked || !entry.isIntersecting || entry.intersectionRatio < 0.35) return;
+                pricingTracked = true;
+                trackEvent('CoachesPagePricingView', {
+                  custom_data: { content_name: 'Coaches Only Max pricing', page_path: getPathname() }
+                });
+                pricingObserver.disconnect();
+              });
+            }, { threshold: [0.35] });
+            pricingObserver.observe(coachesPricing);
+          }
 
           var deepScrollTracked = false;
           function trackDeepScroll() {

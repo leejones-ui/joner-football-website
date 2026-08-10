@@ -28,6 +28,11 @@ const ALLOWED_EVENTS = new Set([
   'WebsiteDeepScroll',
   'CoachesPageClickToCheckout',
   'CoachesPageDeepScroll',
+  'CoachesPageFreeBundleClick',
+  'CoachesPageFreeSessionClick',
+  'CoachesPageJoinClick',
+  'CoachesPageVideoPlay',
+  'CoachesPagePricingView',
 ])
 
 function cleanString(value, max = 500) {
