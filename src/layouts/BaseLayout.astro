@@ -304,12 +304,17 @@ const allSchemas = schema
           catch (e) { return ''; }
         }
 
+        var PLAN_TYPE_BY_OFFER_ID = {
+          '183083': 'monthly', '230697': 'annual',
+          '230699': 'monthly', '183092': 'annual',
+          '230698': 'monthly', '202578': 'annual'
+        };
+
         function getPlanType(anchor) {
           if (!anchor) return '';
           if (anchor.dataset && anchor.dataset.metaPlanType) return anchor.dataset.metaPlanType;
           var offerId = getCheckoutOfferId(anchor);
-          if (offerId === '183092') return 'annual';
-          if (offerId === '183083') return 'monthly';
+          if (PLAN_TYPE_BY_OFFER_ID[offerId]) return PLAN_TYPE_BY_OFFER_ID[offerId];
           var text = (anchor.textContent || '').toLowerCase();
           if (text.indexOf('annual') !== -1 || text.indexOf('year') !== -1) return 'annual';
           if (text.indexOf('monthly') !== -1 || text.indexOf('month') !== -1) return 'monthly';
@@ -512,8 +517,7 @@ const allSchemas = schema
         function getCheckoutEventName(anchor) {
           if (anchor && anchor.dataset && anchor.dataset.metaCheckoutEvent) return anchor.dataset.metaCheckoutEvent;
           var path = window.location.pathname || '';
-          var href = anchor && anchor.href ? anchor.href : '';
-          if (path.indexOf('/workshops/coaches-course') === 0 || path.indexOf('/app/for-coaches') === 0 || href.indexOf('o=202578') !== -1) return 'CoachesPageClickToCheckout';
+          if (path.indexOf('/workshops/coaches-course') === 0 || path.indexOf('/app/for-coaches') === 0) return 'CoachesPageClickToCheckout';
           return 'WebsiteClickToCheckout';
         }
 

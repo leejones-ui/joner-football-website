@@ -21,6 +21,8 @@
     var content = clean(params.get('utm_content'), 240);
     var term = clean(params.get('utm_term'), 180);
     var campaignId = clean(params.get('utm_id') || params.get('campaign_id'), 180);
+    var adsetId = clean(params.get('adset_id'), 180);
+    var adId = clean(params.get('ad_id'), 180);
     var placement = clean(params.get('placement'), 120);
     var fbclid = clean(params.get('fbclid'), 500);
     var fbp = clean(params.get('fbp'), 240);
@@ -35,6 +37,8 @@
     if (content) packed.set('k', content);
     if (term) packed.set('t', term);
     if (campaignId) packed.set('i', campaignId);
+    if (adsetId) packed.set('a', adsetId);
+    if (adId) packed.set('d', adId);
     if (placement) packed.set('p', placement);
     if (fbp) packed.set('b', fbp);
     if (fbc) packed.set('q', fbc);
@@ -57,6 +61,9 @@
       utm_content: clean(packed.get('k'), 240) || undefined,
       utm_term: clean(packed.get('t'), 180) || undefined,
       utm_id: clean(packed.get('i'), 180) || undefined,
+      campaign_id: clean(packed.get('i'), 180) || undefined,
+      adset_id: clean(packed.get('a'), 180) || undefined,
+      ad_id: clean(packed.get('d'), 180) || undefined,
       placement: clean(packed.get('p'), 120) || undefined,
       fbclid: clean(packed.get('f'), 500) || undefined,
       fbp: clean(packed.get('b'), 240) || undefined,
