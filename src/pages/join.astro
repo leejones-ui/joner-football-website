@@ -234,7 +234,7 @@ const faqs = [
                 ]}>{plan.trial}</p>
 
                 {plan.url ? (
-                  <a href={plan.url} class:list={['mt-5 flex min-h-[3.25rem] w-full items-center justify-center px-5 py-3.5 text-center text-sm', plan.style === 'featured' || plan.style === 'club' ? 'jf-btn-dark' : 'jf-btn']}>{plan.cta}</a>
+                  <a href={plan.url} data-ga-event="JoinClubPricingClick" data-plan-target="club" class:list={['mt-5 flex min-h-[3.25rem] w-full items-center justify-center px-5 py-3.5 text-center text-sm', plan.style === 'featured' || plan.style === 'club' ? 'jf-btn-dark' : 'jf-btn']}>{plan.cta}</a>
                 ) : (
                   <a href={plan.annualUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class:list={['plan-cta mt-5 flex min-h-[3.25rem] w-full items-center justify-center px-5 py-3.5 text-center text-sm', plan.style === 'featured' || plan.style === 'club' ? 'jf-btn-dark' : 'jf-btn']}>{plan.cta}</a>
                 )}
@@ -353,7 +353,7 @@ const faqs = [
                   </li>
                 ))}
               </ul>
-              <a href="#max" class="jf-btn-dark mt-8 px-8 py-4">Join Max</a>
+              <a href="#max" data-ga-event="JoinPlanAnchorClick" data-plan-target="max" class="jf-btn-dark mt-8 px-8 py-4">Join Max</a>
             </div>
             <div class="relative min-h-[260px] lg:min-h-full">
               <img src="/app/uploads/2026/05/soccer-coach-goal-instruction.webp" alt="Lee coaching detail with players" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full object-cover" />
@@ -370,7 +370,7 @@ const faqs = [
         <h2 class="mb-8 font-heading text-3xl uppercase tracking-tight md:text-4xl">Before you join.</h2>
         <div class="space-y-3">
           {faqs.map(([q, a]) => (
-            <details class="group rounded-2xl border border-gray-200 bg-white p-6">
+            <details data-faq-question={q} class="group rounded-2xl border border-gray-200 bg-white p-6">
               <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-heading text-lg uppercase">
                 {q}
                 <span class="text-[#E30613] transition-transform group-open:rotate-45">+</span>
@@ -387,10 +387,10 @@ const faqs = [
       <div class="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
         <h2 class="font-heading text-4xl uppercase leading-[0.95] text-white md:text-6xl">Choose your level and get to work.</h2>
         <div class="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href="#plus" class="jf-btn-dark px-8 py-4">Join Plus</a>
-          <a href="#max" class="jf-btn-dark px-8 py-4">Join Max</a>
+          <a href="#plus" data-ga-event="JoinPlanAnchorClick" data-plan-target="plus" class="jf-btn-dark px-8 py-4">Join Plus</a>
+          <a href="#max" data-ga-event="JoinPlanAnchorClick" data-plan-target="max" class="jf-btn-dark px-8 py-4">Join Max</a>
         </div>
-        <a href="#starter" class="mt-5 inline-block font-body text-sm text-white/90 underline underline-offset-4 hover:text-white">Just want the basics? Choose Starter</a>
+        <a href="#starter" data-ga-event="JoinPlanAnchorClick" data-plan-target="starter" class="mt-5 inline-block font-body text-sm text-white/90 underline underline-offset-4 hover:text-white">Just want the basics? Choose Starter</a>
       </div>
     </section>
 
@@ -404,7 +404,7 @@ const faqs = [
         <p class="font-heading text-sm uppercase text-[#0A0A0A]">Joner Football App</p>
         <p id="sticky-price" class="font-body text-xs text-gray-600">From $10.83/mo billed annually</p>
       </div>
-      <a href="#plans" class="jf-btn px-6 py-3 text-sm">Choose Plan</a>
+      <a href="#plans" data-ga-event="JoinPlanAnchorClick" data-plan-target="plans" class="jf-btn px-6 py-3 text-sm">Choose Plan</a>
     </div>
   </div>
 
@@ -553,7 +553,10 @@ const faqs = [
       })
       ctas.forEach((el) => {
         const href = el.getAttribute('data-' + mode + '-url')
-        if (href) el.setAttribute('href', href)
+        if (!href) return
+        const tracking = window.JonerTracking?.collectTrackingParams()
+        const decorated = window.JonerTracking?.appendUscreenTrackingParams(href, tracking)
+        el.setAttribute('href', decorated || href)
       })
       if (note) note.textContent = 'Prices shown in ' + regionPrices.code + ' (' + regionPrices.country + ')'
       const stickyPrice = document.getElementById('sticky-price')
@@ -561,7 +564,16 @@ const faqs = [
       currentMode = mode
     }
 
-    toggles.forEach((t) => t.addEventListener('click', () => setBilling(t.getAttribute('data-billing') || 'annual', true)))
+    toggles.forEach((t) => t.addEventListener('click', () => {
+      const billingMode = t.getAttribute('data-billing') || 'annual'
+      setBilling(billingMode, true)
+      window.JonerTracking?.trackEvent('JoinBillingToggle', {
+        custom_data: {
+          billing_mode: billingMode,
+          page_path: window.location.pathname,
+        },
+      })
+    }))
     const note = document.getElementById('currency-note')
 
     function setRegion(region) {
@@ -570,6 +582,18 @@ const faqs = [
     }
 
     setBilling('annual', false)
+
+    document.querySelectorAll('details[data-faq-question]').forEach((details) => {
+      details.addEventListener('toggle', () => {
+        if (!details.open) return
+        window.JonerTracking?.trackEvent('JoinFaqOpen', {
+          custom_data: {
+            question: details.getAttribute('data-faq-question') || '',
+            page_path: window.location.pathname,
+          },
+        })
+      })
+    })
 
     fetch('https://ipapi.co/json/')
       .then((r) => { if (!r.ok) throw new Error('ipapi blocked'); return r.json() })

@@ -496,6 +496,7 @@ try {
 
 const baseLayout = fs.readFileSync(path.join(root, 'src/layouts/BaseLayout.astro'), 'utf8')
 const coachesPage = fs.readFileSync(path.join(root, 'src/pages/app/for-coaches.astro'), 'utf8')
+const joinPage = fs.readFileSync(path.join(root, 'src/pages/join.astro'), 'utf8')
 const trackEventApi = fs.readFileSync(path.join(root, 'api/track-event.js'), 'utf8')
 const teamsPage = fs.readFileSync(path.join(root, 'src/pages/teams.astro'), 'utf8')
 const webhook = fs.readFileSync(path.join(root, 'api/_uscreen-webhook.js'), 'utf8')
@@ -517,6 +518,12 @@ for (const eventName of [
   'CoachesPageFreeBundleClick', 'CoachesPageFreeSessionClick', 'CoachesPageJoinClick',
   'CoachesPageVideoPlay', 'CoachesPagePricingView',
 ]) assert.ok(trackEventApi.includes(`'${eventName}'`), `CAPI allow-list must include ${eventName}`)
+for (const eventName of [
+  'JoinBillingToggle', 'JoinClubPricingClick', 'JoinPlanAnchorClick', 'JoinFaqOpen',
+]) assert.ok(trackEventApi.includes(`'${eventName}'`), `CAPI allow-list must include ${eventName}`)
+for (const eventName of ['join_starter_click', 'join_plus_click', 'join_max_click']) {
+  assert.ok(trackEventApi.includes(`'${eventName}'`), `CAPI allow-list must include ${eventName}`)
+}
 assert.ok(coachesPage.includes('data-ga-event="CoachesPageJoinClick"'), 'hero and sticky join hops must be measured')
 assert.ok(coachesPage.includes('data-ga-event="CoachesPageFreeSessionClick"'), 'free session exits must be measured')
 assert.ok(coachesPage.includes('data-coaches-pricing'), 'pricing visibility must be observable')
@@ -525,6 +532,14 @@ for (const mapping of [
   "'183083': 'monthly'", "'230697': 'annual'", "'230699': 'monthly'",
   "'183092': 'annual'", "'230698': 'monthly'", "'202578': 'annual'",
 ]) assert.ok(baseLayout.includes(mapping), `missing checkout mapping ${mapping}`)
+for (const offerId of ['183083', '230697', '230699', '183092', '230698', '202578']) {
+  assert.ok(joinPage.includes(`o=${offerId}`), `join page must expose tracked offer ${offerId}`)
+}
+assert.ok(joinPage.includes('data-ga-event="JoinClubPricingClick"'), 'club pricing CTA must be measured')
+assert.ok(joinPage.includes('data-ga-event="JoinPlanAnchorClick"'), 'internal plan anchors must be measured')
+assert.ok(joinPage.includes("trackEvent('JoinBillingToggle'"), 'monthly and annual toggle intent must be measured')
+assert.ok(joinPage.includes("trackEvent('JoinFaqOpen'"), 'FAQ opens must be measured')
+assert.ok(joinPage.includes('appendUscreenTrackingParams(href, tracking)'), 'billing toggles must not strip checkout attribution')
 assert.equal(baseLayout.includes("href.indexOf('o=202578') !== -1) return 'CoachesPageClickToCheckout'"), false, 'Max annual on /join must not be classified as a coach-page checkout')
 assert.ok(publicWebhook.includes("import uscreenWebhookHandler from './_uscreen-webhook.js'"), 'configured Uscreen webhook URL must import the real handler')
 assert.ok(publicWebhook.includes('return uscreenWebhookHandler(req, res)'), 'public webhook wrapper must invoke the real handler')
