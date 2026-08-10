@@ -607,7 +607,8 @@ const allSchemas = schema
             custom_data: {
               link_url: anchor.href,
               link_text: (anchor.textContent || '').trim().slice(0, 120),
-              page_path: getPathname()
+              page_path: getPathname(),
+              target_plan: anchor.getAttribute('data-plan-target') || undefined
             }
           });
         }
@@ -637,6 +638,7 @@ const allSchemas = schema
             collectTrackingParams: collectTrackingParams,
             getFirstTouchParams: getFirstTouchParams,
             appendTrackingParams: appendTrackingParams,
+            appendUscreenTrackingParams: appendUscreenTrackingParams,
             trackGa4Event: trackGa4Event,
             trackEvent: trackEvent
           };

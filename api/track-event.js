@@ -33,6 +33,10 @@ const ALLOWED_EVENTS = new Set([
   'CoachesPageJoinClick',
   'CoachesPageVideoPlay',
   'CoachesPagePricingView',
+  'JoinBillingToggle',
+  'JoinClubPricingClick',
+  'JoinPlanAnchorClick',
+  'JoinFaqOpen',
 ])
 
 function cleanString(value, max = 500) {
