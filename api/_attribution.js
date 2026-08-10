@@ -54,6 +54,16 @@ export function decodeUscreenSource(value) {
     fbclid: clean(packed.get('f'), 500),
     fbp: clean(packed.get('b'), 240),
     fbc: clean(packed.get('q'), 500),
+    first_utm_source: clean(packed.get('S'), 180),
+    first_utm_medium: clean(packed.get('M'), 180),
+    first_utm_campaign: clean(packed.get('C'), 240),
+    first_utm_content: clean(packed.get('K'), 240),
+    first_utm_term: clean(packed.get('T'), 180),
+    first_utm_id: clean(packed.get('I'), 180),
+    first_campaign_id: clean(packed.get('I'), 180),
+    first_adset_id: clean(packed.get('A'), 180),
+    first_ad_id: clean(packed.get('D'), 180),
+    first_placement: clean(packed.get('P'), 120),
     encoded_source: raw,
   }
 }
@@ -72,6 +82,16 @@ export function extractAttribution(data) {
     adset_id: clean(firstValue(data, 'adset_id') || decoded.adset_id, 180),
     ad_id: clean(firstValue(data, 'ad_id') || decoded.ad_id, 180),
     placement: clean(firstValue(data, 'placement') || decoded.placement, 120),
+    first_utm_source: clean(firstValue(data, 'first_utm_source') || decoded.first_utm_source, 180),
+    first_utm_medium: clean(firstValue(data, 'first_utm_medium') || decoded.first_utm_medium, 180),
+    first_utm_campaign: clean(firstValue(data, 'first_utm_campaign') || decoded.first_utm_campaign, 240),
+    first_utm_content: clean(firstValue(data, 'first_utm_content') || decoded.first_utm_content, 240),
+    first_utm_term: clean(firstValue(data, 'first_utm_term') || decoded.first_utm_term, 180),
+    first_utm_id: clean(firstValue(data, 'first_utm_id') || firstValue(data, 'first_campaign_id') || decoded.first_utm_id, 180),
+    first_campaign_id: clean(firstValue(data, 'first_campaign_id') || firstValue(data, 'first_utm_id') || decoded.first_campaign_id, 180),
+    first_adset_id: clean(firstValue(data, 'first_adset_id') || decoded.first_adset_id, 180),
+    first_ad_id: clean(firstValue(data, 'first_ad_id') || decoded.first_ad_id, 180),
+    first_placement: clean(firstValue(data, 'first_placement') || decoded.first_placement, 120),
     encoded_source: decoded.encoded_source,
   }
 }

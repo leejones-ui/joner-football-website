@@ -258,7 +258,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
             Lee’s session plans, voice-over drills, coaching PDFs, and full training videos inside the Joner Football App.
           </p>
           <div class="mb-4">
-            <a href="/join" class="btn-red text-base px-8 py-4 inline-flex text-center" data-meta-checkout-event="CoachesPageClickToCheckout">JOIN COACHES ONLY</a>
+            <a href="/join" class="btn-red text-base px-8 py-4 inline-flex text-center" data-ga-event="CoachesPageJoinClick">JOIN COACHES ONLY</a>
           </div>
           <p class="text-gray-200 font-body text-base">
             <span class="text-gray-200">From </span><span class="font-heading text-white font-semibold">$20.83 USD</span><span class="text-gray-200"> per month. Max Plan tier. Cancel anytime.</span>
@@ -300,7 +300,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 
           <div class="flex flex-col sm:flex-row gap-4">
             <a href={freeBundleUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-meta-checkout-event="CoachesPageFreeBundleClick">DOWNLOAD FREE BUNDLE!</a>
-            <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center">WATCH A FREE SESSION</a>
+            <a href={sampleSessionUrl} target="_blank" rel="noopener noreferrer" class="btn-red text-base px-8 py-4 text-center" data-ga-event="CoachesPageFreeSessionClick">WATCH A FREE SESSION</a>
           </div>
         </div>
         <div class="order-1 lg:order-2 overflow-hidden rounded-[28px] bg-black/5 p-1 shadow-[0_28px_70px_rgba(0,0,0,0.24)] ring-1 ring-black/10">
@@ -520,7 +520,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
 
 
     {/* ========== 6. PRICING (Max Plan tier, dual options, value-led) ========== */}
-    <section class="bg-white text-joner-black py-16 md:py-24">
+    <section class="bg-white text-joner-black py-16 md:py-24" data-coaches-pricing>
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12">
           <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">THE MAX PLAN</p>
@@ -659,7 +659,7 @@ const sanityPage = await fetchSanityPage('app-for-coaches')
   </main>
 
   {/* Sticky mobile CTA: revealed once the user scrolls past the hero. Mirrors the /app pattern. */}
-  <a href="/join" class="coaches-mobile-cta btn-red" data-meta-checkout-event="CoachesPageMobileStickyClick">JOIN COACHES ONLY</a>
+  <a href="/join" class="coaches-mobile-cta btn-red" data-ga-event="CoachesPageJoinClick">JOIN COACHES ONLY</a>
 
   {/* Match the /programmes display typography (Kanit italic), scoped to this page only */}
   <style is:global>

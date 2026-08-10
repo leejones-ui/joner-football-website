@@ -31,6 +31,16 @@ const original = new URLSearchParams({
   adset_id: 'adset-id-456',
   ad_id: 'ad-id-789',
   placement: 'instagram_reels',
+  first_utm_source: 'instagram',
+  first_utm_medium: 'paid_social',
+  first_utm_campaign: 'first-coach-touch',
+  first_utm_content: 'first-video',
+  first_utm_term: 'first-coach-adset',
+  first_utm_id: 'first-campaign-001',
+  first_campaign_id: 'first-campaign-001',
+  first_adset_id: 'first-adset-002',
+  first_ad_id: 'first-ad-003',
+  first_placement: 'facebook_reels',
 })
 const encoded = browser.encodeForUscreen(original)
 assert.equal(encoded.get('utm_campaign'), original.get('utm_campaign'))
@@ -53,6 +63,16 @@ assert.deepEqual(JSON.parse(JSON.stringify(browserDecoded)), {
   placement: 'instagram_reels',
   fbp: 'fb.1.browser-123',
   fbc: 'fb.1.1234000.fb-click-123',
+  first_utm_source: 'instagram',
+  first_utm_medium: 'paid_social',
+  first_utm_campaign: 'first-coach-touch',
+  first_utm_content: 'first-video',
+  first_utm_term: 'first-coach-adset',
+  first_utm_id: 'first-campaign-001',
+  first_campaign_id: 'first-campaign-001',
+  first_adset_id: 'first-adset-002',
+  first_ad_id: 'first-ad-003',
+  first_placement: 'facebook_reels',
   encoded_source: encoded.get('utm_source'),
 })
 
@@ -67,6 +87,10 @@ assert.equal(serverDecoded.campaign_id, 'campaign-123')
 assert.equal(serverDecoded.adset_id, 'adset-id-456')
 assert.equal(serverDecoded.ad_id, 'ad-id-789')
 assert.equal(serverDecoded.placement, 'instagram_reels')
+assert.equal(serverDecoded.first_utm_campaign, 'first-coach-touch')
+assert.equal(serverDecoded.first_campaign_id, 'first-campaign-001')
+assert.equal(serverDecoded.first_adset_id, 'first-adset-002')
+assert.equal(serverDecoded.first_ad_id, 'first-ad-003')
 const encodedIdentity = extractMetaIdentity({ utm_source: encoded.get('utm_source') })
 assert.equal(encodedIdentity.fbp, 'fb.1.browser-123')
 assert.equal(encodedIdentity.fbc, 'fb.1.1234000.fb-click-123')
@@ -471,6 +495,8 @@ try {
 }
 
 const baseLayout = fs.readFileSync(path.join(root, 'src/layouts/BaseLayout.astro'), 'utf8')
+const coachesPage = fs.readFileSync(path.join(root, 'src/pages/app/for-coaches.astro'), 'utf8')
+const trackEventApi = fs.readFileSync(path.join(root, 'api/track-event.js'), 'utf8')
 const teamsPage = fs.readFileSync(path.join(root, 'src/pages/teams.astro'), 'utf8')
 const webhook = fs.readFileSync(path.join(root, 'api/_uscreen-webhook.js'), 'utf8')
 const publicWebhook = fs.readFileSync(path.join(root, 'api/uscreen-webhook.js'), 'utf8')
@@ -482,6 +508,19 @@ assert.ok(teamsPage.includes("persistence_status: 'confirmed'"))
 assert.ok(teamsPage.includes('payload.landing_page = window.location.href'))
 assert.ok(teamsPage.includes('window.JonerTracking.collectTrackingParams()'))
 assert.ok(baseLayout.includes("'campaign_id', 'adset_id', 'ad_id'"))
+assert.ok(baseLayout.includes("joner_tracking_first_touch"), 'first-touch attribution must persist beyond one browser session')
+assert.ok(baseLayout.includes("joner_tracking_last_touch"), 'last-touch attribution must persist beyond one browser session')
+assert.ok(baseLayout.includes('window.localStorage'), 'campaign attribution must survive the 7-14 day buyer journey')
+assert.ok(baseLayout.includes("trackEvent('CoachesPageVideoPlay'"), 'the coaches intro video play needs a journey event')
+assert.ok(baseLayout.includes("trackEvent('CoachesPagePricingView'"), 'the coaches pricing section needs a journey event')
+for (const eventName of [
+  'CoachesPageFreeBundleClick', 'CoachesPageFreeSessionClick', 'CoachesPageJoinClick',
+  'CoachesPageVideoPlay', 'CoachesPagePricingView',
+]) assert.ok(trackEventApi.includes(`'${eventName}'`), `CAPI allow-list must include ${eventName}`)
+assert.ok(coachesPage.includes('data-ga-event="CoachesPageJoinClick"'), 'hero and sticky join hops must be measured')
+assert.ok(coachesPage.includes('data-ga-event="CoachesPageFreeSessionClick"'), 'free session exits must be measured')
+assert.ok(coachesPage.includes('data-coaches-pricing'), 'pricing visibility must be observable')
+assert.ok(webhook.includes('226775: [LISTS.coachesFreeBundleUsers, LISTS.freeSessionLeads]'), 'coach free-bundle claims must enter Brevo coach and free-session lists')
 for (const mapping of [
   "'183083': 'monthly'", "'230697': 'annual'", "'230699': 'monthly'",
   "'183092': 'annual'", "'230698': 'monthly'", "'202578': 'annual'",
