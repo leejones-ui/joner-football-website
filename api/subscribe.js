@@ -1,4 +1,5 @@
 import { cleanString, protectForm } from './_security.js'
+import { extractAttribution, extractMetaIdentity } from './_attribution.js'
 import { isValidUscreenWebhookSecret, parseUscreenBody, processUscreenPayload } from './_uscreen-webhook.js'
 import dns from 'node:dns/promises'
 
@@ -465,7 +466,7 @@ export default async function handler(req, res) {
         offerId: Number(body.offer_id || body.subscription_id) || null,
         error: error?.message || String(error),
       })
-      return res.status(200).json({ status: 'accepted', event: eventType, processed: false, queuedForReview: true })
+      return res.status(503).json({ status: 'retry', event: eventType, processed: false, retryRequired: true })
     }
   }
 
@@ -498,6 +499,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Email opt-in is required to access the free Hub.' })
     }
 
+    const attribution = extractAttribution(body)
+    const metaIdentity = extractMetaIdentity(body)
+    const trackingAttributes = {
+      UTM_SOURCE: cleanString(attribution.utm_source || '', 180) || undefined,
+      UTM_MEDIUM: cleanString(attribution.utm_medium || '', 180) || undefined,
+      UTM_CAMPAIGN: cleanString(attribution.utm_campaign || '', 180) || undefined,
+      UTM_CONTENT: cleanString(attribution.utm_content || '', 180) || undefined,
+      UTM_TERM: cleanString(attribution.utm_term || '', 180) || undefined,
+      UTM_ID: cleanString(attribution.utm_id || '', 180) || undefined,
+      META_CAMPAIGN_ID: cleanString(attribution.campaign_id || '', 180) || undefined,
+      META_ADSET_ID: cleanString(attribution.adset_id || '', 180) || undefined,
+      META_AD_ID: cleanString(attribution.ad_id || '', 180) || undefined,
+      UTM_PLACEMENT: cleanString(attribution.placement || '', 120) || undefined,
+      META_FBC: cleanString(metaIdentity.fbc || '', 500) || undefined,
+      META_FBP: cleanString(metaIdentity.fbp || '', 240) || undefined,
+    }
+
     const brevoResponse = await fetch('https://api.brevo.com/v3/contacts', {
       method: 'POST',
       headers: {
@@ -510,7 +528,8 @@ export default async function handler(req, res) {
         attributes: {
           FIRSTNAME: firstName,
           WEBSITE_SOURCE: source,
-          SOURCE: source
+          SOURCE: source,
+          ...trackingAttributes
         },
         listIds,
         updateEnabled: true

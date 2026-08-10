@@ -10,7 +10,7 @@ const META_PIXEL_ID = '232666285545279'
 const META_EVENTS = {
   accountCreated: 'JF_Account_Created',
   trialStarted: 'JF_Trial_Started',
-  paidPurchase: 'JF_Paid_Purchase',
+  firstPaidMembership: 'JF_First_Paid_Membership',
 }
 
 function sha256Hex(value) {
@@ -40,6 +40,11 @@ export function buildVerifiedMetaEvent(eventName, data, email, total) {
   const attribution = extractAttribution(data)
   const metaIdentity = extractMetaIdentity(data, eventTime)
   const userData = { em: [em] }
+  const stableUserId = cleanValue(
+    data.user_id || data.customer_id || data.customer?.id || data.user?.id,
+    180,
+  )
+  if (stableUserId) userData.external_id = [sha256Hex(`uscreen:${stableUserId}`)]
   if (metaIdentity.fbc) userData.fbc = metaIdentity.fbc
   if (metaIdentity.fbp) userData.fbp = metaIdentity.fbp
   const value = Number.isFinite(Number(total)) ? Number(total) : undefined
@@ -54,26 +59,27 @@ export function buildVerifiedMetaEvent(eventName, data, email, total) {
       currency: String(data.currency || data.localized_amounts?.currency || 'AUD').trim().toUpperCase().slice(0, 10),
       value,
       subscription_plan: String(data.offer_title || data.subscription_title || data.title || '').slice(0, 120) || undefined,
-      conversion_stage: eventName === META_EVENTS.paidPurchase ? 'paid' : eventName === META_EVENTS.trialStarted ? 'trial' : 'account_created',
+      conversion_stage: eventName === META_EVENTS.firstPaidMembership ? 'first_paid_membership' : eventName === META_EVENTS.trialStarted ? 'trial' : 'account_created',
       utm_source: attribution.utm_source,
       utm_medium: attribution.utm_medium,
       utm_campaign: attribution.utm_campaign,
       utm_content: attribution.utm_content,
       utm_term: attribution.utm_term,
       utm_id: attribution.utm_id,
+      campaign_id: attribution.campaign_id,
+      adset_id: attribution.adset_id,
+      ad_id: attribution.ad_id,
       placement: attribution.placement,
     },
   }
 }
 
-async function sendVerifiedConversionToMeta(eventName, data, email, total) {
+async function sendMetaEventPayload(event, testEventCode) {
   const token = process.env.META_CAPI_TOKEN
   if (!token) return { skipped: 'no-capi-token' }
-  const event = buildVerifiedMetaEvent(eventName, data, email, total)
-  if (!event) return { skipped: 'no-email' }
+  if (!event) return { skipped: 'no-event' }
   const payload = { data: [event] }
-  const testEventCode = cleanValue(data.meta_test_event_code || data.test_event_code, 100)
-  if (testEventCode) payload.test_event_code = testEventCode
+  if (testEventCode) payload.test_event_code = cleanValue(testEventCode, 100)
   try {
     const r = await fetch(`https://graph.facebook.com/v21.0/${META_PIXEL_ID}/events?access_token=${encodeURIComponent(token)}`, {
       method: 'POST',
@@ -85,6 +91,11 @@ async function sendVerifiedConversionToMeta(eventName, data, email, total) {
   } catch (e) {
     return { error: String(e?.message || e).slice(0, 160) }
   }
+}
+
+async function sendVerifiedConversionToMeta(eventName, data, email, total) {
+  const event = buildVerifiedMetaEvent(eventName, data, email, total)
+  return sendMetaEventPayload(event, data.meta_test_event_code || data.test_event_code)
 }
 
 const LISTS = {
@@ -141,6 +152,33 @@ const ALL_CHURNED_LISTS = [
   LISTS.churnedMonthly, LISTS.churnedAnnual, LISTS.churnedCoaches,
   LISTS.starterChurned, LISTS.plusChurned, LISTS.maxChurned,
 ]
+const ALL_PAID_HISTORY_LISTS = new Set([...ALL_ACTIVE_LISTS, ...ALL_CHURNED_LISTS])
+
+export function classifyFirstPaidAcquisition({ eventType, offerId, total, transactionId, contactSnapshot }) {
+  if (eventType !== 'order.paid' || !TIER_BY_OFFER_ID[offerId] || !(Number(total) > 0)) {
+    return { eligible: false, reason: 'not-positive-paid-order' }
+  }
+  // The reconciled web checkout currently produces Stripe charge IDs. This
+  // deliberately fails closed for Apple/Google IAP and any unknown channel.
+  if (!/^ch_[A-Za-z0-9_]+$/.test(String(transactionId || ''))) {
+    return { eligible: false, reason: 'unreconciled-payment-channel' }
+  }
+  if (!contactSnapshot || contactSnapshot.status === 'error' || contactSnapshot.status === 'unavailable') {
+    return { eligible: false, reason: 'paid-history-unavailable' }
+  }
+  const listIds = new Set((contactSnapshot.listIds || []).map(Number))
+  if ([...listIds].some((id) => ALL_PAID_HISTORY_LISTS.has(id))) {
+    return { eligible: false, reason: 'existing-member-payment' }
+  }
+  const attrs = contactSnapshot.attributes || {}
+  if (attrs.JF_FIRST_PAID_TRANSACTION_ID || attrs.JF_FIRST_PAID_AT) {
+    return { eligible: false, reason: 'existing-member-payment' }
+  }
+  if (listIds.has(LISTS.trialUsers)) {
+    return { eligible: true, reason: 'trial-converted-first-paid' }
+  }
+  return { eligible: true, reason: 'first-paid-membership' }
+}
 
 const OWNERSHIP_LISTS_BY_OFFER_ID = {
   226775: [LISTS.coachesFreeBundleUsers, LISTS.freeSessionLeads],
@@ -234,6 +272,9 @@ function buildContactAttributes(data, eventType) {
     UTM_CONTENT: cleanValue(attribution.utm_content, 180),
     UTM_CAMPAIGN: cleanValue(attribution.utm_campaign, 180),
     UTM_ID: cleanValue(attribution.utm_id, 180),
+    META_CAMPAIGN_ID: cleanValue(attribution.campaign_id, 180),
+    META_ADSET_ID: cleanValue(attribution.adset_id, 180),
+    META_AD_ID: cleanValue(attribution.ad_id, 180),
     UTM_PLACEMENT: cleanValue(attribution.placement, 120),
     META_FBC: cleanValue(metaIdentity.fbc, 500),
     META_FBP: cleanValue(metaIdentity.fbp, 240),
@@ -254,9 +295,18 @@ export function compactBrevoAttributes(attributes) {
     'UTM_CONTENT',
     'UTM_TERM',
     'UTM_ID',
+    'META_CAMPAIGN_ID',
+    'META_ADSET_ID',
+    'META_AD_ID',
     'UTM_PLACEMENT',
     'META_FBC',
     'META_FBP',
+    'JF_FIRST_PAID_AT',
+    'JF_FIRST_PAID_TRANSACTION_ID',
+    'JF_FIRST_PAID_EVENT_ID',
+    'JF_FIRST_PAID_CANDIDATE_AT',
+    'JF_FIRST_PAID_CANDIDATE_TRANSACTION_ID',
+    'JF_FIRST_PAID_CANDIDATE_EVENT_ID',
     'LAST_USCREEN_EVENT',
     'LAST_USCREEN_EVENT_DATE',
   ]
@@ -315,20 +365,24 @@ async function brevoUpsertContact({ email, listIds, name, attributes, unlinkList
   return { success: true, listIds: cleanListIds }
 }
 
-async function brevoGetContactAttributes(email) {
+async function brevoGetContactSnapshot(email) {
   const apiKey = process.env.BREVO_API_KEY
-  if (!apiKey || !email) return {}
+  if (!apiKey || !email) return { status: 'unavailable', attributes: {}, listIds: [] }
   try {
     const response = await fetch(`https://api.brevo.com/v3/contacts/${encodeURIComponent(email)}`, {
       headers: { accept: 'application/json', 'api-key': apiKey },
     })
-    if (response.status === 404) return {}
+    if (response.status === 404) return { status: 'not_found', attributes: {}, listIds: [] }
     if (!response.ok) throw new Error(`Brevo contact lookup failed: ${response.status}`)
     const body = await response.json()
-    return body?.attributes && typeof body.attributes === 'object' ? body.attributes : {}
+    return {
+      status: 'found',
+      attributes: body?.attributes && typeof body.attributes === 'object' ? body.attributes : {},
+      listIds: Array.isArray(body?.listIds) ? body.listIds.map(Number).filter(Number.isFinite) : [],
+    }
   } catch (error) {
-    console.error('Brevo attribution lookup failed (non-fatal)', error?.message || String(error))
-    return {}
+    console.error('Brevo paid-history lookup failed', error?.message || String(error))
+    return { status: 'error', attributes: {}, listIds: [] }
   }
 }
 
@@ -357,6 +411,73 @@ async function kvCommand(command) {
   return body?.result
 }
 
+function firstPaidStorageKey(data) {
+  const customer = nestedObject(data, 'customer')
+  const user = nestedObject(data, 'user')
+  const userId = cleanValue(data.user_id || data.customer_id || customer.id || user.id, 180)
+  if (!userId) return undefined
+  return `jf:meta:first-paid:${sha256Hex(`uscreen:${userId}`)}`
+}
+
+function firstPaidEventId(data, email) {
+  const key = firstPaidStorageKey(data, email)
+  const identityHash = key?.split(':').at(-1)
+  return identityHash ? `${META_EVENTS.firstPaidMembership}.${identityHash}` : undefined
+}
+
+function firstPaidUserId(data) {
+  const customer = nestedObject(data, 'customer')
+  const user = nestedObject(data, 'user')
+  return cleanValue(data.user_id || data.customer_id || customer.id || user.id, 180)
+}
+
+async function getFirstPaidClaim(key) {
+  const raw = await kvCommand(['GET', key])
+  if (!raw) return undefined
+  try { return typeof raw === 'string' ? JSON.parse(raw) : raw }
+  catch { return undefined }
+}
+
+async function claimFirstPaidEvent(data, email, event) {
+  const eventId = event?.event_id
+  const key = firstPaidStorageKey(data, email)
+  if (!key || !eventId || !process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+    return { status: 'unavailable' }
+  }
+  const existing = await getFirstPaidClaim(key)
+  if (existing) return { status: existing.status || 'pending', key, existing }
+  const record = {
+    eventId,
+    status: 'pending',
+    claimedAt: new Date().toISOString(),
+    uscreenUserId: firstPaidUserId(data),
+    metaEvent: event,
+  }
+  const result = await kvCommand(['SET', key, JSON.stringify(record), 'NX', 'EX', 10 * 365 * 24 * 60 * 60])
+  if (result === 'OK') return { status: 'claimed', key, record }
+  const raced = await getFirstPaidClaim(key)
+  return { status: raced?.status || 'pending', key, existing: raced }
+}
+
+async function markFirstPaidCandidate(key, record) {
+  await kvCommand(['SET', key, JSON.stringify({
+    ...record,
+    status: 'candidate',
+    awaitingVerificationSince: new Date().toISOString(),
+  }), 'EX', 10 * 365 * 24 * 60 * 60])
+}
+
+async function markFirstPaidEventSent(key, eventId) {
+  const existing = await getFirstPaidClaim(key)
+  const record = { ...existing, eventId, status: 'sent', sentAt: new Date().toISOString() }
+  await kvCommand(['SET', key, JSON.stringify(record), 'EX', 10 * 365 * 24 * 60 * 60])
+}
+
+async function releaseFirstPaidClaim(key, eventId) {
+  const existing = await getFirstPaidClaim(key)
+  if (existing?.eventId === eventId && existing?.status !== 'sent') await kvCommand(['DEL', key])
+}
+
 async function storeAttributionSnapshot(data, email) {
   const attribution = extractAttribution(data)
   const metaIdentity = extractMetaIdentity(data)
@@ -368,6 +489,9 @@ async function storeAttributionSnapshot(data, email) {
     utm_content: attribution.utm_content,
     utm_term: attribution.utm_term,
     utm_id: attribution.utm_id,
+    campaign_id: attribution.campaign_id,
+    adset_id: attribution.adset_id,
+    ad_id: attribution.ad_id,
     placement: attribution.placement,
     fbc: metaIdentity.fbc,
     fbp: metaIdentity.fbp,
@@ -412,6 +536,9 @@ export function mergeStoredAttribution(data, attributes = {}) {
     utm_content: attributes.utm_content || attributes.UTM_CONTENT,
     utm_term: attributes.utm_term || attributes.UTM_TERM,
     utm_id: attributes.utm_id || attributes.UTM_ID,
+    campaign_id: attributes.campaign_id || attributes.META_CAMPAIGN_ID || attributes.UTM_ID,
+    adset_id: attributes.adset_id || attributes.META_ADSET_ID,
+    ad_id: attributes.ad_id || attributes.META_AD_ID,
     placement: attributes.placement || attributes.UTM_PLACEMENT,
     fbc: attributes.fbc || attributes.META_FBC,
     fbp: attributes.fbp || attributes.META_FBP,
@@ -433,6 +560,7 @@ export async function processUscreenPayload(data) {
   const email = extractEmail(data)
   const name = extractName(data)
   let eventData = data
+  let contactSnapshot = { status: 'unavailable', attributes: {}, listIds: [] }
 
   if (!email) return { accepted: true, event: eventType, skipped: true, reason: 'missing-email' }
   if (!EMAIL_RE.test(email)) return { accepted: true, event: eventType, skipped: true, reason: 'invalid-email' }
@@ -442,9 +570,10 @@ export async function processUscreenPayload(data) {
   // Brevo remains only a non-critical fallback and CRM mirror.
   if (eventType === 'order.paid') {
     eventData = mergeStoredAttribution(data, await loadAttributionSnapshot(data, email))
-    eventData = mergeStoredAttribution(eventData, await brevoGetContactAttributes(email))
+    contactSnapshot = await brevoGetContactSnapshot(email)
+    eventData = mergeStoredAttribution(eventData, contactSnapshot.attributes)
   }
-  const attributes = buildContactAttributes(eventData, eventType)
+  let attributes = buildContactAttributes(eventData, eventType)
 
   let listIds = []
   let unlinkListIds = []
@@ -489,15 +618,60 @@ export async function processUscreenPayload(data) {
         console.error('Meta trial-started conversion failed (non-fatal)', e?.message || String(e))
       }
     } else if (offerId && TIER_BY_OFFER_ID[offerId] && total !== undefined && total > 0) {
-      // Paid order: add to the proper tier active list (22/23/24).
+      // Every positive paid order still updates active/churn CRM truth. Only the
+      // first reconciled web membership is allowed to become Meta's acquisition
+      // optimisation signal.
       const tier = TIER_BY_OFFER_ID[offerId]
       listIds = [ACTIVE_LIST_BY_TIER[tier]].filter(Boolean)
-      // Bridge this PAID conversion to Meta CAPI (guarded, never blocks Brevo).
-      try {
-        const meta = await sendVerifiedConversionToMeta(META_EVENTS.paidPurchase, eventData, email, total)
-        console.info('Uscreen->Meta verified paid purchase', meta)
-      } catch (e) {
-        console.error('Meta paid conversion failed (non-fatal)', e?.message || String(e))
+      const firstPaid = classifyFirstPaidAcquisition({
+        eventType, offerId, total, transactionId, contactSnapshot,
+      })
+      if (firstPaid.reason === 'paid-history-unavailable') {
+        throw new Error('Cannot verify first-paid history; retry required')
+      }
+      if (firstPaid.eligible) {
+        const eventId = firstPaidEventId(eventData, email)
+        const metaEvent = buildVerifiedMetaEvent(META_EVENTS.firstPaidMembership, eventData, email, total)
+        if (!eventId || !metaEvent) throw new Error('Stable first-paid identity unavailable')
+        metaEvent.event_id = eventId
+        const claim = await claimFirstPaidEvent(eventData, email, metaEvent)
+        if (claim.status === 'unavailable') throw new Error('First-paid idempotency store unavailable')
+        const sameEvent = !claim.existing?.eventId || claim.existing.eventId === eventId
+        const emissionEnabled = process.env.META_FIRST_PAID_ENABLED === 'true'
+        if (!emissionEnabled && claim.status !== 'sent' && sameEvent) {
+          await markFirstPaidCandidate(claim.key, claim.record || claim.existing || {
+            eventId,
+            uscreenUserId: firstPaidUserId(eventData),
+            metaEvent,
+          })
+          console.info('Uscreen->Meta first paid candidate awaiting verification', {
+            eventId,
+            uscreenUserId: firstPaidUserId(eventData),
+            reason: firstPaid.reason,
+          })
+          attributes = {
+            ...attributes,
+            JF_FIRST_PAID_CANDIDATE_AT: cleanValue(eventData.event_date || eventData.created_at || new Date().toISOString(), 40),
+            JF_FIRST_PAID_CANDIDATE_TRANSACTION_ID: cleanValue(transactionId, 180),
+            JF_FIRST_PAID_CANDIDATE_EVENT_ID: cleanValue(eventId, 220),
+          }
+        } else if (claim.status !== 'sent' && sameEvent) {
+          const meta = await sendMetaEventPayload(metaEvent, eventData.meta_test_event_code || eventData.test_event_code)
+          if (!meta?.ok) {
+            if (claim.key) await releaseFirstPaidClaim(claim.key, eventId)
+            throw new Error(`Meta first-paid conversion failed: ${meta?.status || meta?.skipped || meta?.error || 'unknown'}`)
+          }
+          await markFirstPaidEventSent(claim.key, eventId)
+          console.info('Uscreen->Meta first paid membership', { ok: true, eventId, reason: firstPaid.reason })
+          attributes = {
+            ...attributes,
+            JF_FIRST_PAID_AT: cleanValue(eventData.event_date || eventData.created_at || new Date().toISOString(), 40),
+            JF_FIRST_PAID_TRANSACTION_ID: cleanValue(transactionId, 180),
+            JF_FIRST_PAID_EVENT_ID: cleanValue(eventId, 220),
+          }
+        }
+      } else {
+        console.info('Uscreen->Meta first paid skipped', { reason: firstPaid.reason, offerId })
       }
     } else {
       reason = 'order-paid-no-list-rule'
@@ -593,6 +767,6 @@ export default async function handler(req, res) {
       offerId: toInt(data.offer_id ?? data.subscription_id) || null,
       error: error?.message || String(error),
     })
-    return json(res, 200, { status: 'accepted', event: eventType, processed: false, queuedForReview: true })
+    return json(res, 503, { status: 'retry', event: eventType, processed: false, retryRequired: true })
   }
 }
