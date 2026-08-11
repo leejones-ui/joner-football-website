@@ -1,5 +1,6 @@
 import { cleanString, protectForm } from './_security.js'
 import { extractAttribution, extractMetaIdentity } from './_attribution.js'
+import { linkJourneyIdentity } from './_journey-ledger.js'
 import { isValidUscreenWebhookSecret, parseUscreenBody, processUscreenPayload } from './_uscreen-webhook.js'
 import dns from 'node:dns/promises'
 
@@ -543,6 +544,14 @@ export default async function handler(req, res) {
     if (!brevoResponse.ok) {
       const message = data.message || 'Could not add email to Brevo.'
       return res.status(brevoResponse.status).json({ success: false, error: message })
+    }
+
+    if (body.jf_journey_id) {
+      try {
+        await linkJourneyIdentity(body.jf_journey_id, { email: validation.email })
+      } catch (journeyError) {
+        console.error('Journey email link failed (non-fatal):', journeyError?.message || String(journeyError))
+      }
     }
 
     try {

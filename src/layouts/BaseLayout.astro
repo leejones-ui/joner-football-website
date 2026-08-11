@@ -229,13 +229,14 @@ const allSchemas = schema
         var TRACKING_PARAM_KEYS = [
           'fbclid', 'gclid', 'ttclid', 'msclkid',
           'campaign_id', 'adset_id', 'ad_id',
-          'campaign_name', 'adset_name', 'ad_name', 'placement'
+          'campaign_name', 'adset_name', 'ad_name', 'placement', 'jf_journey_id'
         ];
         var STORAGE_KEY = 'joner_tracking_params';
         var FIRST_TOUCH_KEY = 'joner_tracking_first_touch';
         var LAST_TOUCH_KEY = 'joner_tracking_last_touch';
         var ATTRIBUTION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
         var META_TEST_EVENT_STORAGE_KEY = 'joner_meta_test_event_code';
+        var JOURNEY_STORAGE_KEY = 'joner_journey_id';
 
         function isTrackingParam(key) {
           if (TRACKING_PARAM_KEYS.indexOf(key) !== -1) return true;
@@ -274,6 +275,31 @@ const allSchemas = schema
           return readPersistentTracking(FIRST_TOUCH_KEY);
         }
 
+        function readJourneyToken() {
+          try {
+            var raw = window.localStorage.getItem(JOURNEY_STORAGE_KEY);
+            if (!raw) return '';
+            var record = JSON.parse(raw);
+            if (!record || !record.token || !record.saved_at || Date.now() - Number(record.saved_at) > ATTRIBUTION_MAX_AGE_MS * 2) {
+              window.localStorage.removeItem(JOURNEY_STORAGE_KEY);
+              return '';
+            }
+            return String(record.token || '').slice(0, 160);
+          } catch (e) { return ''; }
+        }
+
+        function saveJourneyToken(token) {
+          if (!token) return;
+          try { window.localStorage.setItem(JOURNEY_STORAGE_KEY, JSON.stringify({ token: token, saved_at: Date.now() })); } catch (e) {}
+        }
+
+        function withJourneyToken(params) {
+          var output = new URLSearchParams(params ? params.toString() : '');
+          var token = readJourneyToken();
+          if (token) output.set('jf_journey_id', token);
+          return output;
+        }
+
         function collectTrackingParams() {
           var params = new URLSearchParams(window.location.search || '');
           var trackingParams = new URLSearchParams();
@@ -284,15 +310,15 @@ const allSchemas = schema
             try { window.sessionStorage.setItem(STORAGE_KEY, trackingParams.toString()); } catch (e) {}
             if (!getFirstTouchParams().toString()) writePersistentTracking(FIRST_TOUCH_KEY, trackingParams);
             writePersistentTracking(LAST_TOUCH_KEY, trackingParams);
-            return trackingParams;
+            return withJourneyToken(trackingParams);
           }
           try {
             var stored = window.sessionStorage.getItem(STORAGE_KEY);
-            if (stored) return new URLSearchParams(stored);
+            if (stored) return withJourneyToken(new URLSearchParams(stored));
           } catch (e) {}
           var lastTouch = readPersistentTracking(LAST_TOUCH_KEY);
-          if (lastTouch.toString()) return lastTouch;
-          return getFirstTouchParams();
+          if (lastTouch.toString()) return withJourneyToken(lastTouch);
+          return withJourneyToken(getFirstTouchParams());
         }
 
         function appendFirstTouchParams(params) {
@@ -396,6 +422,37 @@ const allSchemas = schema
           var viewContentData = getViewContentForPath();
           if (!viewContentData) return;
           trackEvent('ViewContent', { custom_data: viewContentData });
+        }
+
+        function initJourneyLedger() {
+          var params = collectTrackingParams();
+          var existingToken = readJourneyToken();
+          var hasAcquisitionSignal = false;
+          params.forEach(function (value, key) {
+            if (value && key !== 'jf_journey_id') hasAcquisitionSignal = true;
+          });
+          if (!existingToken && !hasAcquisitionSignal) return Promise.resolve('');
+          var attribution = paramsToObject(appendFirstTouchParams(params));
+          attribution.fbp = getCookie('_fbp') || attribution.fbp;
+          attribution.fbc = getCookie('_fbc') || attribution.fbc;
+          return fetch('/api/journey', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jf_journey_id: existingToken,
+              attribution: attribution,
+              page_path: window.location.pathname || '/',
+              referrer: document.referrer || ''
+            }),
+            keepalive: true
+          }).then(function (response) {
+            if (!response.ok) return null;
+            return response.json();
+          }).then(function (data) {
+            var token = data && data.jf_journey_id;
+            if (token) saveJourneyToken(token);
+            return token || '';
+          }).catch(function () { return ''; });
         }
 
         function appendTrackingParams(href, trackingParams) {
@@ -659,6 +716,9 @@ const allSchemas = schema
           }
 
           decorateAppOutboundLinks(trackingParams);
+          initJourneyLedger().then(function (token) {
+            if (token) decorateAppOutboundLinks(collectTrackingParams());
+          });
           window.addEventListener('load', function () {
             decorateAppOutboundLinks(collectTrackingParams());
           }, { once: true });
