@@ -99,10 +99,11 @@ const canonical = 'https://jonerfootball.com/free-bundle/'
       }
 
       function getUtmParams() {
-        var params = new URLSearchParams(window.location.search);
         var out = {};
-        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (key) {
-          var value = params.get(key);
+        var params = window.JonerTracking && typeof window.JonerTracking.collectTrackingParams === 'function'
+          ? window.JonerTracking.collectTrackingParams()
+          : new URLSearchParams(window.location.search || '');
+        params.forEach(function (value, key) {
           if (value) out[key] = value;
         });
         return out;
