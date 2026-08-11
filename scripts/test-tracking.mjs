@@ -8,6 +8,8 @@ import { buildVerifiedMetaEvent, classifyFirstPaidAcquisition, compactBrevoAttri
 import { buildLeadAttribution } from '../api/contact-enquiry.js'
 import subscribeHandler from '../api/subscribe.js'
 import uscreenWebhookHandler from '../api/uscreen-webhook.js'
+import { reconcileAuthoritativeFirstPaid } from './lib/first-paid-reconciliation.mjs'
+import { reconcileAttributedConversions } from './lib/meta-uscreen-reconciliation.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const browserSource = fs.readFileSync(path.join(root, 'public/tracking-attribution.js'), 'utf8')
@@ -132,6 +134,10 @@ assert.equal(verifiedPaid.user_data.fbp, 'fb.1.browser-123')
 assert.equal(verifiedPaid.user_data.fbc, 'fb.1.1234000.fb-click-123')
 assert.equal(verifiedPaid.user_data.external_id.length, 1)
 assert.match(verifiedPaid.user_data.external_id[0], /^[a-f0-9]{64}$/)
+const noCurrencyCandidate = buildVerifiedMetaEvent('JF_First_Paid_Membership', {
+  ...stitched, currency: undefined, localized_amounts: undefined,
+}, stitched.email, stitched.total)
+assert.equal(noCurrencyCandidate.custom_data.currency, undefined, 'purchase currency must never default to AUD')
 
 const firstPaidBase = {
   eventType: 'order.paid', offerId: 230698, total: 59, transactionId: 'ch_first_paid_123',
@@ -167,6 +173,147 @@ assert.equal(classifyFirstPaidAcquisition({
   ...firstPaidBase, total: 0,
   contactSnapshot: { status: 'not_found', listIds: [], attributes: {} },
 }).reason, 'not-positive-paid-order')
+
+const webEvidence = {
+  history_complete: true,
+  next_cursor: null,
+  user: {
+    id: 32584033,
+    plan_history: [{ plan_id: 230698, origin: 'web' }],
+  },
+  payments: [{
+    id: 57806670,
+    amount: 3999,
+    currency: 'USD',
+    status: 'paid',
+    paid_at: '2026-08-10T11:05:21.000-04:00',
+    kind: 'subscription',
+    source_id: 230698,
+    provider: 'stripe',
+    provider_invoice_id: 'in_1U2ulLCXA04kVlYCrb4mvvHR',
+  }],
+}
+assert.deepEqual(reconcileAuthoritativeFirstPaid({
+  expectedUserId: 32584033,
+  invoiceId: 'in_1U2ulLCXA04kVlYCrb4mvvHR',
+  evidence: webEvidence,
+}), {
+  eligible: true,
+  reason: 'verified-first-paid-web',
+  userId: '32584033',
+  invoiceId: 'in_1U2ulLCXA04kVlYCrb4mvvHR',
+  paymentId: '57806670',
+  offerId: '230698',
+  channel: 'web',
+  provider: 'stripe',
+  currency: 'USD',
+  value: 39.99,
+  paidAt: '2026-08-10T11:05:21.000-04:00',
+})
+assert.equal(reconcileAuthoritativeFirstPaid({
+  expectedUserId: 32584033,
+  invoiceId: 'in_1U2ulLCXA04kVlYCrb4mvvHR',
+  evidence: { ...webEvidence, history_complete: false },
+}).reason, 'payment-history-incomplete')
+assert.equal(reconcileAuthoritativeFirstPaid({
+  expectedUserId: 32584033,
+  invoiceId: 'in_renewal',
+  evidence: {
+    ...webEvidence,
+    payments: [
+      webEvidence.payments[0],
+      { ...webEvidence.payments[0], id: 2, provider_invoice_id: 'in_renewal', paid_at: '2026-09-10T11:05:21.000-04:00' },
+    ],
+  },
+}).reason, 'renewal-not-first-paid')
+for (const origin of ['external_apple', 'external_google', 'admin', 'manual']) {
+  assert.equal(reconcileAuthoritativeFirstPaid({
+    expectedUserId: 32584033,
+    invoiceId: 'in_1U2ulLCXA04kVlYCrb4mvvHR',
+    evidence: { ...webEvidence, user: { ...webEvidence.user, plan_history: [{ plan_id: 230698, origin }] } },
+  }).reason, 'non-web-purchase')
+}
+assert.equal(reconcileAuthoritativeFirstPaid({
+  expectedUserId: 32584033,
+  invoiceId: 'in_1U2ulLCXA04kVlYCrb4mvvHR',
+  evidence: {
+    ...webEvidence,
+    payments: [webEvidence.payments[0], { ...webEvidence.payments[0], id: 3, status: 'refunded' }],
+  },
+}).reason, 'invoice-refunded')
+assert.equal(reconcileAuthoritativeFirstPaid({
+  expectedUserId: 32584033,
+  invoiceId: 'in_free',
+  evidence: {
+    ...webEvidence,
+    payments: [{ ...webEvidence.payments[0], id: 4, amount: 0, provider_invoice_id: 'in_free' }],
+  },
+}).reason, 'not-positive-paid-invoice')
+assert.equal(reconcileAuthoritativeFirstPaid({
+  expectedUserId: 32584033,
+  invoiceId: 'in_1U2ulLCXA04kVlYCrb4mvvHR',
+  evidence: {
+    ...webEvidence,
+    user: {
+      ...webEvidence.user,
+      plan_history: [
+        { plan_id: 230698, origin: 'external_apple', started_at: '2025-01-01T00:00:00Z', ended_at: '2025-02-01T00:00:00Z' },
+        { plan_id: 230698, origin: 'web', started_at: '2026-08-10T11:03:00-04:00', ended_at: null },
+      ],
+    },
+  },
+}).channel, 'web', 'same-plan history must select the channel active at invoice time')
+assert.equal(reconcileAuthoritativeFirstPaid({
+  expectedUserId: 32584033,
+  invoiceId: 'in_1U2ulLCXA04kVlYCrb4mvvHR',
+  evidence: {
+    ...webEvidence,
+    user: { ...webEvidence.user, plan_history: Array.from({ length: 50 }, () => ({ plan_id: 230698, origin: 'web' })) },
+  },
+}).reason, 'plan-history-may-be-truncated')
+
+const reconciliationRecord = {
+  status: 'sent',
+  eventId: 'JF_First_Paid_Membership.stable-user-hash',
+  reconciliation: {
+    historyComplete: true,
+    invoiceId: 'in_verified',
+    value: 39.99,
+    currency: 'USD',
+  },
+}
+assert.deepEqual(reconcileAttributedConversions({
+  metaReport: {
+    spend: 33,
+    spend_currency: 'AUD',
+    conversions: [{
+      event_id: reconciliationRecord.eventId,
+      campaign_id: 'campaign-1', adset_id: 'adset-1', ad_id: 'ad-1',
+      value: 39.99, currency: 'USD', value_in_spend_currency: 61.25,
+    }],
+  },
+  uscreenRecords: { records: [reconciliationRecord] },
+}), {
+  ok: true,
+  conversionCount: 1,
+  sourceRevenue: { USD: 39.99 },
+  spend: 33,
+  spendCurrency: 'AUD',
+  cpa: 33,
+  roas: 1.8561,
+  roasBlockedReason: undefined,
+})
+assert.equal(reconcileAttributedConversions({
+  metaReport: { conversions: [{ event_id: reconciliationRecord.eventId, value: 39.99, currency: 'USD' }] },
+  uscreenRecords: { records: [reconciliationRecord] },
+}).failures[0].reason, 'meta-attribution-identity-incomplete')
+assert.equal(reconcileAttributedConversions({
+  metaReport: { conversions: [{
+    event_id: reconciliationRecord.eventId,
+    campaign_id: 'campaign-1', adset_id: 'adset-1', ad_id: 'ad-1', value: 39.99, currency: 'AUD',
+  }] },
+  uscreenRecords: { records: [reconciliationRecord] },
+}).failures[0].reason, 'value-or-currency-mismatch')
 
 const existingDestination = browser.encodeForUscreen(new URLSearchParams({
   utm_source: 'free_bundle',
