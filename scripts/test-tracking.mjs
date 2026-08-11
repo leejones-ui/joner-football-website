@@ -165,6 +165,13 @@ assert.equal(classifyFirstPaidAcquisition({
   transactionId: 'iap_apple_123',
   contactSnapshot: { status: 'not_found', listIds: [], attributes: {} },
 }).reason, 'unreconciled-payment-channel')
+for (const origin of ['external_apple', 'external_google', 'app_store', 'play_store']) {
+  assert.equal(classifyFirstPaidAcquisition({
+    ...firstPaidBase,
+    origin,
+    contactSnapshot: { status: 'not_found', listIds: [], attributes: {} },
+  }).reason, 'non-web-payment-origin')
+}
 assert.equal(classifyFirstPaidAcquisition({
   ...firstPaidBase,
   contactSnapshot: { status: 'error', listIds: [], attributes: {} },
