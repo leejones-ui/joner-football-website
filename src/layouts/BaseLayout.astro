@@ -929,6 +929,12 @@ const allSchemas = schema
                 formData.forEach(function (value, key) {
                   if (!(value instanceof File) && payload[key] === undefined) payload[key] = value;
                 });
+                var trackingParams = window.JonerTracking && typeof window.JonerTracking.collectTrackingParams === 'function'
+                  ? window.JonerTracking.collectTrackingParams()
+                  : new URLSearchParams(window.location.search || '');
+                trackingParams.forEach(function (value, key) {
+                  if (value && payload[key] === undefined) payload[key] = value;
+                });
                 return fetch('/api/subscribe', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
