@@ -64,6 +64,7 @@ export function decodeUscreenSource(value) {
     first_adset_id: clean(packed.get('A'), 180),
     first_ad_id: clean(packed.get('D'), 180),
     first_placement: clean(packed.get('P'), 120),
+    jf_journey_id: clean(packed.get('j'), 160),
     encoded_source: raw,
   }
 }
@@ -92,6 +93,7 @@ export function extractAttribution(data) {
     first_adset_id: clean(firstValue(data, 'first_adset_id') || decoded.first_adset_id, 180),
     first_ad_id: clean(firstValue(data, 'first_ad_id') || decoded.first_ad_id, 180),
     first_placement: clean(firstValue(data, 'first_placement') || decoded.first_placement, 120),
+    jf_journey_id: clean(firstValue(data, 'jf_journey_id') || decoded.jf_journey_id, 160),
     encoded_source: decoded.encoded_source,
   }
 }

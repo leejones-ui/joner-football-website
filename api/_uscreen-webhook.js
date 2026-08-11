@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import { extractAttribution, extractMetaIdentity } from './_attribution.js'
+import { enrichPayloadFromJourney, journeyStoreConfigured } from './_journey-ledger.js'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
@@ -614,6 +615,10 @@ export async function processUscreenPayload(data) {
   if (!email) return { accepted: true, event: eventType, skipped: true, reason: 'missing-email' }
   if (!EMAIL_RE.test(email)) return { accepted: true, event: eventType, skipped: true, reason: 'invalid-email' }
 
+  // Prefer the signed first-party journey ledger. It can resolve directly from
+  // the checkout token, then later by Uscreen user id or the same email hash.
+  eventData = await enrichPayloadFromJourney(data, email)
+
   // Uscreen often includes attribution on User Created but omits it from the
   // later trial/paid Order Paid webhook. First-party KV is the durable join;
   // Brevo remains only a non-critical fallback and CRM mirror.
@@ -771,6 +776,7 @@ export default async function handler(req, res) {
       configured: {
         secureWebhook: Boolean(process.env.USCREEN_WEBHOOK_SECRET),
         attributionStore: Boolean(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
+        journeyLedger: journeyStoreConfigured(),
         metaCapi: Boolean(process.env.META_CAPI_TOKEN),
       },
       timestamp: new Date().toISOString(),

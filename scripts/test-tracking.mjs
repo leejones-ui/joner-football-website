@@ -10,6 +10,7 @@ import subscribeHandler from '../api/subscribe.js'
 import uscreenWebhookHandler from '../api/uscreen-webhook.js'
 import { reconcileAuthoritativeFirstPaid } from './lib/first-paid-reconciliation.mjs'
 import { reconcileAttributedConversions } from './lib/meta-uscreen-reconciliation.mjs'
+import { createJourneyToken, verifyJourneyToken, mergeJourneyRecord } from '../api/_journey-ledger.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const browserSource = fs.readFileSync(path.join(root, 'public/tracking-attribution.js'), 'utf8')
@@ -18,6 +19,25 @@ vm.createContext(context)
 vm.runInContext(browserSource, context)
 const browser = context.window.JonerAttribution
 assert.ok(browser, 'browser attribution codec must load')
+
+process.env.JOURNEY_SIGNING_SECRET = 'tracking-test-secret-with-enough-entropy'
+const journeyToken = createJourneyToken('018f47fb-1357-7b2a-9d44-6e8f90e25f4c')
+assert.equal(verifyJourneyToken(journeyToken), '018f47fb-1357-7b2a-9d44-6e8f90e25f4c')
+assert.equal(verifyJourneyToken(journeyToken + 'tampered'), undefined)
+const mergedJourney = mergeJourneyRecord({
+  id: 'journey-1',
+  created_at: '2026-08-11T00:00:00.000Z',
+  first_touch: { utm_campaign: 'first-campaign', ad_id: 'ad-1' },
+  latest_touch: { utm_campaign: 'old-latest' },
+}, {
+  touched_at: '2026-08-11T01:00:00.000Z',
+  attribution: { utm_campaign: 'new-latest', ad_id: 'ad-2' },
+  page_path: '/join',
+})
+assert.equal(mergedJourney.first_touch.utm_campaign, 'first-campaign')
+assert.equal(mergedJourney.latest_touch.utm_campaign, 'new-latest')
+assert.equal(mergedJourney.latest_touch.ad_id, 'ad-2')
+assert.equal(mergedJourney.latest_page_path, '/join')
 
 const original = new URLSearchParams({
   utm_source: 'facebook',
@@ -43,6 +63,7 @@ const original = new URLSearchParams({
   first_adset_id: 'first-adset-002',
   first_ad_id: 'first-ad-003',
   first_placement: 'facebook_reels',
+  jf_journey_id: journeyToken,
 })
 const encoded = browser.encodeForUscreen(original)
 assert.equal(encoded.get('utm_campaign'), original.get('utm_campaign'))
@@ -75,6 +96,7 @@ assert.deepEqual(JSON.parse(JSON.stringify(browserDecoded)), {
   first_adset_id: 'first-adset-002',
   first_ad_id: 'first-ad-003',
   first_placement: 'facebook_reels',
+  jf_journey_id: journeyToken,
   encoded_source: encoded.get('utm_source'),
 })
 
@@ -93,6 +115,7 @@ assert.equal(serverDecoded.first_utm_campaign, 'first-coach-touch')
 assert.equal(serverDecoded.first_campaign_id, 'first-campaign-001')
 assert.equal(serverDecoded.first_adset_id, 'first-adset-002')
 assert.equal(serverDecoded.first_ad_id, 'first-ad-003')
+assert.equal(serverDecoded.jf_journey_id, journeyToken)
 const encodedIdentity = extractMetaIdentity({ utm_source: encoded.get('utm_source') })
 assert.equal(encodedIdentity.fbp, 'fb.1.browser-123')
 assert.equal(encodedIdentity.fbc, 'fb.1.1234000.fb-click-123')
@@ -449,6 +472,7 @@ assert.equal(healthResponse.statusCode, 200)
 assert.deepEqual(healthResponse.payload?.configured, {
   secureWebhook: true,
   attributionStore: true,
+  journeyLedger: true,
   metaCapi: true,
 })
 for (const [key, value] of Object.entries(healthEnv)) {

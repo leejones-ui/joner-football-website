@@ -7,7 +7,7 @@
     'campaign_id', 'adset_id', 'ad_id', 'placement', 'fbclid', 'fbp', 'fbc',
     'first_utm_source', 'first_utm_medium', 'first_utm_campaign', 'first_utm_content',
     'first_utm_term', 'first_utm_id', 'first_campaign_id', 'first_adset_id',
-    'first_ad_id', 'first_placement'
+    'first_ad_id', 'first_placement', 'jf_journey_id'
   ];
 
   function clean(value, max) {
@@ -39,13 +39,23 @@
     var firstAdsetId = clean(params.get('first_adset_id'), 180);
     var firstAdId = clean(params.get('first_ad_id'), 180);
     var firstPlacement = clean(params.get('first_placement'), 120);
+    var journeyId = clean(params.get('jf_journey_id'), 160);
 
-    if (!campaign || source.indexOf(MARKER) !== -1) return params;
+    if (source.indexOf(MARKER) !== -1) {
+      if (journeyId) {
+        var markerIndex = source.indexOf(MARKER);
+        var existingPacked = new URLSearchParams(source.slice(markerIndex + MARKER.length));
+        existingPacked.set('j', journeyId);
+        params.set('utm_source', source.slice(0, markerIndex) + MARKER + existingPacked.toString());
+      }
+      return params;
+    }
+    if (!campaign && !journeyId) return params;
 
     var packed = new URLSearchParams();
     packed.set('s', source);
     if (medium) packed.set('m', medium);
-    packed.set('c', campaign);
+    if (campaign) packed.set('c', campaign);
     if (content) packed.set('k', content);
     if (term) packed.set('t', term);
     if (campaignId) packed.set('i', campaignId);
@@ -64,6 +74,7 @@
     if (firstAdsetId) packed.set('A', firstAdsetId);
     if (firstAdId) packed.set('D', firstAdId);
     if (firstPlacement) packed.set('P', firstPlacement);
+    if (journeyId) packed.set('j', journeyId);
     params.set('utm_source', source + MARKER + packed.toString());
     return params;
   }
@@ -99,6 +110,7 @@
       first_adset_id: clean(packed.get('A'), 180) || undefined,
       first_ad_id: clean(packed.get('D'), 180) || undefined,
       first_placement: clean(packed.get('P'), 120) || undefined,
+      jf_journey_id: clean(packed.get('j'), 160) || undefined,
       encoded_source: raw,
     };
   }
