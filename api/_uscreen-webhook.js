@@ -48,6 +48,8 @@ export function buildVerifiedMetaEvent(eventName, data, email, total) {
   if (metaIdentity.fbc) userData.fbc = metaIdentity.fbc
   if (metaIdentity.fbp) userData.fbp = metaIdentity.fbp
   const value = Number.isFinite(Number(total)) ? Number(total) : undefined
+  const rawCurrency = String(data.currency || data.localized_amounts?.currency || '').trim().toUpperCase()
+  const currency = /^[A-Z]{3}$/.test(rawCurrency) ? rawCurrency : undefined
   return {
     event_name: eventName,
     event_time: eventTime,
@@ -56,7 +58,10 @@ export function buildVerifiedMetaEvent(eventName, data, email, total) {
     event_source_url: 'https://app.jonerfootball.com/checkout/success',
     user_data: userData,
     custom_data: {
-      currency: String(data.currency || data.localized_amounts?.currency || 'AUD').trim().toUpperCase().slice(0, 10),
+      // Never invent a purchase currency. First-paid candidates are corrected
+      // from the authoritative Uscreen invoice by the operator reconciliation
+      // step before Meta is allowed to receive them.
+      currency,
       value,
       subscription_plan: String(data.offer_title || data.subscription_title || data.title || '').slice(0, 120) || undefined,
       conversion_stage: eventName === META_EVENTS.firstPaidMembership ? 'first_paid_membership' : eventName === META_EVENTS.trialStarted ? 'trial' : 'account_created',
@@ -471,6 +476,11 @@ async function claimFirstPaidEvent(data, email, event) {
     status: 'pending',
     claimedAt: new Date().toISOString(),
     uscreenUserId: firstPaidUserId(data),
+    uscreenOrderId: cleanValue(data.order_id || data.id, 180),
+    webhookTransactionId: cleanValue(data.transaction_id, 180),
+    offerId: toInt(data.offer_id ?? data.subscription_id),
+    webhookTotal: toFloat(data.total),
+    webhookCurrency: cleanValue(data.currency || data.localized_amounts?.currency, 10),
     metaEvent: event,
   }
   const result = await kvCommand(['SET', key, JSON.stringify(record), 'NX', 'EX', 10 * 365 * 24 * 60 * 60])
@@ -675,6 +685,11 @@ export async function processUscreenPayload(data) {
           await markFirstPaidCandidate(claim.key, claim.record || claim.existing || {
             eventId,
             uscreenUserId: firstPaidUserId(eventData),
+            uscreenOrderId: cleanValue(eventData.order_id || eventData.id, 180),
+            webhookTransactionId: transactionId,
+            offerId,
+            webhookTotal: total,
+            webhookCurrency: cleanValue(eventData.currency || eventData.localized_amounts?.currency, 10),
             metaEvent,
           })
           console.info('Uscreen->Meta first paid candidate awaiting verification', {

@@ -9,7 +9,7 @@
     "dev": "astro dev",
     "prebuild": "node scripts/guard-app-hero.mjs",
     "build": "astro build",
-    "test:tracking": "node scripts/test-tracking.mjs",
+    "test:tracking": "node scripts/test-tracking.mjs && node scripts/test-first-paid-operator.mjs",
     "test:juniors": "node --test scripts/test-juniors.mjs",
     "test:teams-crm": "node scripts/test-team-subscriptions-crm.mjs",
     "preview": "astro preview",
