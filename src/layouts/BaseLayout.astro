@@ -487,6 +487,7 @@ const allSchemas = schema
             // Do not leave them as extra visible checkout query parameters.
             url.searchParams.delete('fbp');
             url.searchParams.delete('fbc');
+            url.searchParams.delete('jf_journey_id');
             Array.from(url.searchParams.keys()).forEach(function (key) {
               if (key.indexOf('first_') === 0) url.searchParams.delete(key);
             });
