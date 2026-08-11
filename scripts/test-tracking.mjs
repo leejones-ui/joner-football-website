@@ -682,6 +682,7 @@ const webhook = fs.readFileSync(path.join(root, 'api/_uscreen-webhook.js'), 'utf
 const publicWebhook = fs.readFileSync(path.join(root, 'api/uscreen-webhook.js'), 'utf8')
 assert.equal(baseLayout.includes("trackEvent('team_subscription_interest'"), false, 'global raw submit/click tracking must be removed')
 assert.equal(baseLayout.includes('appendUscreenTrackingParams'), true)
+assert.ok(baseLayout.includes("url.searchParams.delete('jf_journey_id')"), 'signed journey token must be packed, not duplicated as a raw checkout parameter')
 assert.equal(teamsPage.match(/trackEvent\('team_subscription_interest'/g)?.length, 1, 'success event must occur exactly once')
 assert.ok(teamsPage.indexOf("if (!data || !data.success)") < teamsPage.indexOf("trackEvent('team_subscription_interest'"), 'event must follow success gate')
 assert.ok(teamsPage.includes("persistence_status: 'confirmed'"))
