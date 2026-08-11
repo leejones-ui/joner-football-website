@@ -168,10 +168,18 @@ const ALL_CHURNED_LISTS = [
   LISTS.starterChurned, LISTS.plusChurned, LISTS.maxChurned,
 ]
 const ALL_PAID_HISTORY_LISTS = new Set([...ALL_ACTIVE_LISTS, ...ALL_CHURNED_LISTS])
+const NON_WEB_PAYMENT_ORIGINS = new Set([
+  'external_apple', 'external_google', 'apple', 'google_play',
+  'ios', 'android', 'app_store', 'play_store',
+])
 
-export function classifyFirstPaidAcquisition({ eventType, offerId, total, transactionId, contactSnapshot }) {
+export function classifyFirstPaidAcquisition({ eventType, offerId, total, transactionId, origin, contactSnapshot }) {
   if (eventType !== 'order.paid' || !TIER_BY_OFFER_ID[offerId] || !(Number(total) > 0)) {
     return { eligible: false, reason: 'not-positive-paid-order' }
+  }
+  const paymentOrigin = String(origin || '').trim().toLowerCase()
+  if (NON_WEB_PAYMENT_ORIGINS.has(paymentOrigin)) {
+    return { eligible: false, reason: 'non-web-payment-origin' }
   }
   // The reconciled web checkout currently produces Stripe charge IDs. This
   // deliberately fails closed for Apple/Google IAP and any unknown channel.
@@ -481,6 +489,7 @@ async function claimFirstPaidEvent(data, email, event) {
     offerId: toInt(data.offer_id ?? data.subscription_id),
     webhookTotal: toFloat(data.total),
     webhookCurrency: cleanValue(data.currency || data.localized_amounts?.currency, 10),
+    webhookOrigin: cleanValue(data.origin, 120),
     metaEvent: event,
   }
   const result = await kvCommand(['SET', key, JSON.stringify(record), 'NX', 'EX', 10 * 365 * 24 * 60 * 60])
@@ -664,7 +673,7 @@ export async function processUscreenPayload(data) {
       const tier = TIER_BY_OFFER_ID[offerId]
       listIds = [ACTIVE_LIST_BY_TIER[tier]].filter(Boolean)
       const firstPaid = classifyFirstPaidAcquisition({
-        eventType, offerId, total, transactionId, contactSnapshot,
+        eventType, offerId, total, transactionId, origin: eventData.origin, contactSnapshot,
       })
       if (firstPaid.reason === 'paid-history-unavailable') {
         throw new Error('Cannot verify first-paid history; retry required')
@@ -690,6 +699,7 @@ export async function processUscreenPayload(data) {
             offerId,
             webhookTotal: total,
             webhookCurrency: cleanValue(eventData.currency || eventData.localized_amounts?.currency, 10),
+            webhookOrigin: cleanValue(eventData.origin, 120),
             metaEvent,
           })
           console.info('Uscreen->Meta first paid candidate awaiting verification', {
