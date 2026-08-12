@@ -2,6 +2,7 @@
   'use strict';
 
   var MARKER = '__jfa1__';
+  var LEDGER_JOURNEY_KEY = 'joner_attribution_ledger_journey_id';
   var TRACKING_KEYS = [
     'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id',
     'campaign_id', 'adset_id', 'ad_id', 'placement', 'fbclid', 'fbp', 'fbc',
@@ -12,6 +13,35 @@
 
   function clean(value, max) {
     return String(value || '').trim().slice(0, max || 240);
+  }
+
+  function ledgerJourneyId() {
+    try {
+      var existing = clean(root.localStorage && root.localStorage.getItem(LEDGER_JOURNEY_KEY), 80);
+      if (/^jfy_[A-Za-z0-9_-]{20,80}$/.test(existing)) return existing;
+      var bytes = new Uint8Array(18);
+      root.crypto.getRandomValues(bytes);
+      var raw = '';
+      for (var i = 0; i < bytes.length; i++) raw += String.fromCharCode(bytes[i]);
+      var id = 'jfy_' + btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      root.localStorage.setItem(LEDGER_JOURNEY_KEY, id);
+      document.cookie = 'jfa_journey=' + encodeURIComponent(id) + '; Max-Age=7776000; Path=/; Domain=.jonerfootball.com; SameSite=Lax; Secure';
+      return id;
+    } catch (e) { return ''; }
+  }
+
+  function recordEvent(eventName, data) {
+    var id = ledgerJourneyId();
+    if (!id || !root.fetch) return id;
+    try {
+      root.fetch('/api/attribution-event', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(Object.assign({}, data || {}, { event_name: eventName, journey_id: id })),
+        keepalive: true
+      }).catch(function () {});
+    } catch (e) {}
+    return id;
   }
 
   function encodeForUscreen(input) {
@@ -120,5 +150,7 @@
     trackingKeys: TRACKING_KEYS.slice(),
     encodeForUscreen: encodeForUscreen,
     decodeUscreenSource: decodeUscreenSource,
+    journeyId: ledgerJourneyId,
+    recordEvent: recordEvent,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

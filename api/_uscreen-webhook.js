@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import { extractAttribution, extractMetaIdentity } from './_attribution.js'
 import { enrichPayloadFromJourney, journeyStoreConfigured } from './_journey-ledger.js'
+import { reconcilePayment } from './checkout-bridge.js'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
@@ -619,6 +620,48 @@ export async function processUscreenPayload(data) {
   // the checkout token, then later by Uscreen user id or the same email hash.
   eventData = await enrichPayloadFromJourney(data, email)
 
+  let reconciliation
+  let sale
+  const authoritativeSaleEvent = ['order.paid', 'subscription.renewed', 'recurring.payment.successful', 'payment.refunded', 'refund.created'].includes(eventType)
+  if (authoritativeSaleEvent) {
+    try {
+      reconciliation = await reconcilePayment({ ...eventData, email_hash: sha256Hex(email) })
+    } catch {
+      reconciliation = { classification: 'unknown', confidence: 'none', evidence: ['reconciliation_error'] }
+    }
+    const saleId = cleanValue(eventData.invoice_id || eventData.payment_id || transactionId || eventData.order_id || eventData.id, 180)
+    if (saleId) {
+      try {
+        const { appendSale } = await import('./_attribution-ledger.js')
+        sale = await appendSale({
+        sale_id: `${eventType}:${saleId}`,
+        kind: eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'payment',
+        invoice_id: cleanValue(eventData.invoice_id, 180),
+        payment_id: cleanValue(eventData.payment_id || transactionId, 180),
+        occurred_at: cleanValue(eventData.event_date || eventData.paid_at || eventData.created_at, 40) || new Date().toISOString(),
+        offer_id: offerId,
+        plan: cleanValue(eventData.offer_title || eventData.subscription_title || eventData.title, 180),
+        amount: total,
+        currency: cleanValue(eventData.currency || eventData.localized_amounts?.currency, 20),
+        billing_origin: cleanValue(eventData.origin || eventData.payment_origin || eventData.provider, 80) || (eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'web'),
+        acquisition: reconciliation.classification || 'unknown',
+        confidence: reconciliation.confidence || 'none',
+        evidence: reconciliation.evidence || ['no_safe_join'],
+        source: reconciliation.source,
+        medium: reconciliation.medium,
+        campaign: reconciliation.campaign,
+        adset: reconciliation.adset,
+        ad: reconciliation.ad,
+        placement: reconciliation.placement,
+        landing_page: reconciliation.landing_page,
+        journey_id: reconciliation.journey_id,
+        })
+      } catch {
+        sale = { sale_id: `${eventType}:${saleId}`, failed: true }
+      }
+    }
+  }
+
   // Uscreen often includes attribution on User Created but omits it from the
   // later trial/paid Order Paid webhook. First-party KV is the durable join;
   // Brevo remains only a non-critical fallback and CRM mirror.
@@ -737,10 +780,10 @@ export async function processUscreenPayload(data) {
     unlinkListIds = [...ALL_CHURNED_LISTS, LISTS.trialUsersChurned, LISTS.trialUsers, LISTS.failedPayments]
   }
 
-  if (!listIds.length) return { accepted: true, event: eventType, skipped: true, reason, offerId }
+  if (!listIds.length) return { accepted: true, event: eventType, skipped: true, reason, offerId, reconciliation, sale }
 
   const brevo = await brevoUpsertContact({ email, listIds, name, attributes, unlinkListIds })
-  return { accepted: true, event: eventType, processed: true, offerId, brevo }
+  return { accepted: true, event: eventType, processed: true, offerId, brevo, reconciliation, sale }
 }
 
 export function parseUscreenBody(body) {

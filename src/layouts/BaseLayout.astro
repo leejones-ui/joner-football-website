@@ -470,6 +470,10 @@ const allSchemas = schema
 
         function appendUscreenTrackingParams(href, trackingParams) {
           var enrichedParams = appendFirstTouchParams(trackingParams);
+          var ledgerJourneyId = window.JonerAttribution && window.JonerAttribution.journeyId
+            ? window.JonerAttribution.journeyId()
+            : '';
+          if (ledgerJourneyId) enrichedParams.set('journey_id', ledgerJourneyId);
           var fbp = getCookie('_fbp');
           var fbc = getCookie('_fbc');
           if (fbp) enrichedParams.set('fbp', fbp);
@@ -717,6 +721,14 @@ const allSchemas = schema
           }
 
           decorateAppOutboundLinks(trackingParams);
+          if (window.JonerAttribution && window.JonerAttribution.recordEvent) {
+            window.JonerAttribution.recordEvent('page_view', Object.assign({
+              path: window.location.pathname || '/',
+              url: window.location.href,
+              page_title: document.title,
+              referrer: document.referrer || ''
+            }, paramsToObject(appendFirstTouchParams(trackingParams))));
+          }
           initJourneyLedger().then(function (token) {
             if (token) decorateAppOutboundLinks(collectTrackingParams());
           });
@@ -737,6 +749,14 @@ const allSchemas = schema
             if (!isAppOutboundLink(anchor)) return;
             // Guarantee the shared click-id/browser-id cookies exist at the moment we hand off to Uscreen.
             ensureSharedMetaCookies();
+            if (window.JonerAttribution && window.JonerAttribution.recordEvent) {
+              window.JonerAttribution.recordEvent('checkout_click', Object.assign({
+                path: window.location.pathname || '/',
+                destination_url: anchor.href,
+                cta: (anchor.textContent || '').trim().slice(0, 180),
+                offer_id: getCheckoutOfferId(anchor)
+              }, paramsToObject(appendFirstTouchParams(collectTrackingParams()))));
+            }
             anchor.href = appendUscreenTrackingParams(anchor.href, collectTrackingParams());
             if (anchor.href.indexOf('/checkout/new') !== -1) {
               trackStandardCheckoutEvents(anchor);
