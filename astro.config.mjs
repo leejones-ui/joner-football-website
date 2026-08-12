@@ -3,13 +3,14 @@ import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import sitemap from '@astrojs/sitemap';
 
-const appSeoSitemapRules = {
+const appSeoSitemapRules = /** @type {const} */ ({
   '/app/': { priority: 1.0, changefreq: 'weekly' },
   '/football-training-app/': { priority: 0.95, changefreq: 'weekly' },
   '/join/': { priority: 0.9, changefreq: 'weekly' },
   '/app/for-coaches/': { priority: 0.85, changefreq: 'monthly' },
   '/free-bundle/': { priority: 0.8, changefreq: 'monthly' },
-};
+  '/reviews/': { priority: 0.9, changefreq: 'weekly' },
+});
 
 export default defineConfig({
   site: 'https://jonerfootball.com',
@@ -40,11 +41,11 @@ export default defineConfig({
     },
     serialize: (item) => {
       const pathname = new URL(item.url).pathname;
-      const appSeoRule = appSeoSitemapRules[pathname];
+      const appSeoRule = appSeoSitemapRules[/** @type {keyof typeof appSeoSitemapRules} */ (pathname)];
 
       if (appSeoRule) {
         item.priority = appSeoRule.priority;
-        item.changefreq = appSeoRule.changefreq;
+        item.changefreq = /** @type {any} */ (appSeoRule.changefreq);
       }
 
       if (pathname.startsWith('/blog/')) {
