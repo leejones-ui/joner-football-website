@@ -5,11 +5,12 @@ interface Props {
   src: string
   poster: string
   label?: string
+  playPosition?: 'center' | 'top-right'
 }
-const { src, poster, label = 'Play video' } = Astro.props
+const { src, poster, label = 'Play video', playPosition = 'center' } = Astro.props
 ---
 
-<div class="pbv aspect-video overflow-hidden rounded-2xl bg-black ring-1 ring-white/10 shadow-[0_28px_70px_rgba(0,0,0,0.5)]" data-pbv data-src={src}>
+<div class="pbv aspect-video overflow-hidden rounded-2xl bg-black ring-1 ring-white/10 shadow-[0_28px_70px_rgba(0,0,0,0.5)]" data-pbv data-src={src} data-play-position={playPosition}>
   <video class="pbv__video h-full w-full object-cover" playsinline preload="none" poster={poster}>
     Your browser does not support video playback.
   </video>
@@ -30,6 +31,10 @@ const { src, poster, label = 'Play video' } = Astro.props
   }
   .pbv__play svg { width: 34px; height: 34px; margin-left: 4px; }
   .pbv__play:hover { transform: scale(1.06); background: #E8000D; }
+  .pbv[data-play-position="top-right"] .pbv__play {
+    inset: 8% 6% auto auto;
+    margin: 0;
+  }
   .pbv[data-playing="true"] .pbv__play { opacity: 0; pointer-events: none; }
   @media (max-width: 640px) {
     .pbv__play { width: 64px; height: 64px; }
