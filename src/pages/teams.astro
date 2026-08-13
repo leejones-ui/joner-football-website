@@ -90,8 +90,8 @@ const teamSEOFAQs = [
 
 const schema = [
   webPageSchema({
-    name: 'JF Teams | Football Team Training And Player Tracking | Joner Football',
-    description: 'JF Teams connects what your players do at training with what they do at home. Set assignments, track completion with points and photo proof, plan sessions and manage every team in one place.',
+    name: 'JF Teams | Player And Coach Development For Clubs | Joner Football',
+    description: 'JF Teams develops every player and supports every coach. Set assignments, track completion with points and photo proof, plan sessions and manage every team in one place.',
     url: 'https://jonerfootball.com/teams/',
   }),
   {
@@ -115,10 +115,10 @@ import { fetchSanityPage } from '../lib/sanityPages'
 import { getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 
 const sanityPage = await fetchSanityPage('teams')
-const pageTitle = sanityPage?.seo?.title || 'JF Teams | Football Team Training And Player Tracking | Joner Football'
-const pageDescription = sanityPage?.seo?.description || 'JF Teams connects what your players do at training with what they do at home. Set assignments, track completion, plan sessions and manage every team in one place.'
+const pageTitle = sanityPage?.seo?.title || 'JF Teams | Player And Coach Development For Clubs | Joner Football'
+const pageDescription = sanityPage?.seo?.description || 'JF Teams develops every player and supports every coach. Set assignments, track completion, plan sessions and manage every team in one place.'
 const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'JF Teams')
-const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Your Players Away From Training')
+const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Every Player. Support Every Coach.')
 ---
 
 {shouldReplaceSanityPage(sanityPage) ? (
@@ -157,7 +157,7 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Your Playe
           {/* The logo is the JF Teams eyebrow (reads JF TEAMS in red), so no duplicate text line under it */}
           <img src="/images/teams/logo/jf-teams-stacked-red.svg" alt={heroEyebrow} class="h-24 sm:h-28 md:h-32 w-auto mb-6" width="150" height="150" loading="eager" />
           <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl font-bold text-white uppercase leading-none mb-5">{heroHeadline}</h1>
-          <p class="text-gray-200 font-body text-lg md:text-xl max-w-xl mb-7">Set the work, track who is actually doing it, and manage every team in one place.</p>
+          <p class="text-gray-200 font-body text-lg md:text-xl max-w-xl mb-7">Set the work and track who is actually doing it. Every coach gets the full Max Plan library, session planners and Ask Joner.</p>
           <div>
             <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex text-center">BOOK A DEMO</a>
           </div>
@@ -226,8 +226,8 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Your Playe
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="max-w-3xl mb-10 md:mb-14">
           <img src="/images/teams/logo/jf-teams-stacked-red.svg" alt="JF Teams" class="h-16 md:h-20 w-auto mb-6" width="110" height="110" loading="lazy" />
-          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-6">Everything In One Place</h2>
-          <p class="font-body text-lg text-gray-300 max-w-2xl">JF Teams connects what your players do at training with what they do away from it, and keeps it all somewhere you can actually manage.</p>
+          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-6">One Platform. Better Players. Better Coaches.</h2>
+          <p class="font-body text-lg text-gray-300 max-w-2xl">JF Teams connects what your players do at training with what they do away from it, and gives every coach the resources to deliver better sessions. All in one place.</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -295,7 +295,6 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Your Playe
       <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div class="mb-12 text-center">
           <img src="/images/teams/logo/jf-teams-stacked-red.svg" alt="JF Teams" class="mx-auto h-16 md:h-20 w-auto mb-6" width="110" height="110" loading="lazy" />
-          <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">JF Teams</p>
           <h2 class="font-heading text-4xl font-black uppercase leading-none text-white sm:text-5xl">Book Your Team Demo</h2>
           <p class="mx-auto mt-5 max-w-xl font-body text-base leading-relaxed text-neutral-400">
             Tell us about your squad and we will show you exactly how it works. You can also email us at <a href="mailto:teams@jonerfootball.com" class="text-white underline underline-offset-4 hover:text-joner-red transition-colors">teams@jonerfootball.com</a> to see the packages.
@@ -456,7 +455,7 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Your Playe
     <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
       <img src="/images/teams/logo/jf-teams-stacked-red.svg" alt="JF Teams" class="mx-auto h-16 md:h-20 w-auto mb-6" width="110" height="110" loading="lazy" />
       <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase leading-none mb-4">
-        See It For Your Squad
+        Build Better Players And Better Coaches
       </h2>
       <p class="text-neutral-300 font-body text-lg mb-8 max-w-xl mx-auto">
         Book a quick demo and we will show you exactly how JF Teams works for your club.
