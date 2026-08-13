@@ -537,6 +537,12 @@ globalThis.fetch = async (url, options = {}) => {
       const deleted = kvStore.delete(command[1]) ? 1 : 0
       return { ok: true, status: 200, async json() { return { result: deleted } } }
     }
+    if (command[0] === 'ZADD' || command[0] === 'ZREM' || command[0] === 'HINCRBY' || command[0] === 'LPUSH' || command[0] === 'EXPIRE') {
+      return { ok: true, status: 200, async json() { return { result: command[0] === 'ZADD' ? 1 : 'OK' } } }
+    }
+    if (command[0] === 'ZRANGE' || command[0] === 'ZREVRANGE' || command[0] === 'SCAN' || command[0] === 'LRANGE' || command[0] === 'HGETALL') {
+      return { ok: true, status: 200, async json() { return { result: command[0] === 'SCAN' ? ['0', []] : [] } } }
+    }
   }
   if (target.includes('/contacts/') && (!options.method || options.method === 'GET')) {
     if (target.includes('brand-new')) {

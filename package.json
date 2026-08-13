@@ -11,6 +11,7 @@
     "build": "astro build",
     "test:tracking": "node scripts/test-tracking.mjs && node scripts/test-first-paid-operator.mjs",
     "test:attribution": "node scripts/test-attribution-ledger.mjs",
+    "test:reliability": "node scripts/test-reliability-layer.mjs",
     "test:juniors": "node --test scripts/test-juniors.mjs",
     "test:teams-crm": "node scripts/test-team-subscriptions-crm.mjs",
     "preview": "astro preview",
