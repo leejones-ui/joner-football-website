@@ -5,6 +5,10 @@
       "dest": "/api/subscribe?uscreen_webhook=1"
     },
     {
+      "src": "/go/(?<token>[a-z0-9-]+)",
+      "dest": "/api/go?token=$token"
+    },
+    {
       "src": "/",
       "methods": [
         "POST"
