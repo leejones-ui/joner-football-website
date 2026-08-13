@@ -1,4 +1,4 @@
-import { getTrackingLink } from './_tracking-link-bank.js'
+import { getTrackingDestination, getTrackingLink } from './_tracking-link-bank.js'
 
 const safe = (value, max = 240) => String(value || '').trim().slice(0, max)
 
@@ -8,7 +8,7 @@ export default function handler(req, res) {
   const link = getTrackingLink(req.query?.token)
   if (!link.source) return res.status(404).json({ success: false, error: 'Unknown tracking link' })
 
-  const destination = new URL(link.destination, 'https://jonerfootball.com')
+  const destination = new URL(getTrackingDestination(req.query?.to, link.destination), 'https://jonerfootball.com')
   destination.searchParams.set('utm_source', link.source)
   destination.searchParams.set('utm_medium', link.channel)
   destination.searchParams.set('utm_campaign', safe(req.query?.campaign) || link.campaign)
@@ -16,6 +16,7 @@ export default function handler(req, res) {
   destination.searchParams.set('link_token', link.token)
   destination.searchParams.set('source_detail', link.source)
   destination.searchParams.set('source_taxonomy', link.source)
+  destination.searchParams.set('destination_token', safe(req.query?.to) || 'join')
 
   res.setHeader('Cache-Control', 'private, no-store, max-age=0')
   return res.redirect(302, destination.toString())

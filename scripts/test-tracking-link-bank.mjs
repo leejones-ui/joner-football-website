@@ -33,10 +33,16 @@ assert.equal(leeUrl.searchParams.get('utm_source'), 'lee_manual_email')
 assert.equal(leeUrl.searchParams.get('source_taxonomy'), 'lee_manual_email')
 
 const custom = response()
-handler(request('brevo', { campaign: 'aug18-pro-training', content: 'button-a' }), custom)
+handler(request('brevo', { campaign: 'aug18-pro-training', content: 'button-a', to: 'free-watch' }), custom)
 const customUrl = new URL(custom.location)
 assert.equal(customUrl.searchParams.get('utm_campaign'), 'aug18-pro-training')
 assert.equal(customUrl.searchParams.get('utm_content'), 'button-a')
+assert.equal(customUrl.pathname, '/free-bundle/watch')
+assert.equal(customUrl.searchParams.get('destination_token'), 'free-watch')
+
+const unsafeDestination = response()
+handler(request('x-post', { to: 'https://evil.example' }), unsafeDestination)
+assert.equal(new URL(unsafeDestination.location).pathname, '/join')
 
 const unknown = response()
 handler(request('not-real'), unknown)
