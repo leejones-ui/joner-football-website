@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import { extractAttribution, extractMetaIdentity } from './_attribution.js'
 import { enrichPayloadFromJourney, journeyStoreConfigured } from './_journey-ledger.js'
 import { reconcilePayment } from './checkout-bridge.js'
+import { classifySource } from './_source-taxonomy.js'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
@@ -646,6 +647,8 @@ export async function processUscreenPayload(data) {
         billing_origin: cleanValue(eventData.origin || eventData.payment_origin || eventData.provider, 80) || (eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'web'),
         uscreen_user_id: cleanValue(eventData.user_id || eventData.customer_id || eventData.user?.id || eventData.customer?.id, 120),
         customer_reference: sha256Hex(email)?.slice(0, 16),
+        customer_name: name,
+        source_taxonomy: classifySource(eventData),
         acquisition: reconciliation.classification || 'unknown',
         confidence: reconciliation.confidence || 'none',
         evidence: reconciliation.evidence || ['no_safe_join'],

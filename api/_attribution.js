@@ -94,6 +94,12 @@ export function extractAttribution(data) {
     first_ad_id: clean(firstValue(data, 'first_ad_id') || decoded.first_ad_id, 180),
     first_placement: clean(firstValue(data, 'first_placement') || decoded.first_placement, 120),
     jf_journey_id: clean(firstValue(data, 'jf_journey_id') || decoded.jf_journey_id, 160),
+    gclid: clean(firstValue(data, 'gclid'), 500),
+    ga_client_id: clean(firstValue(data, 'ga_client_id') || firstValue(data, 'client_id'), 180),
+    ga_session_id: clean(firstValue(data, 'ga_session_id') || firstValue(data, 'session_id'), 180),
+    source_detail: clean(firstValue(data, 'source_detail'), 240),
+    link_token: clean(firstValue(data, 'link_token'), 240),
+    source_taxonomy: clean(firstValue(data, 'source_taxonomy'), 80),
     encoded_source: decoded.encoded_source,
   }
 }
