@@ -55,6 +55,8 @@ export default async function handler(req, res) {
       journey.identity_source = identity.identity_source
       await indexEmailJourney(identity.email_hash, journeyId, new Date().toISOString())
     }
+    const uscreenUserId = String(body.uscreen_user_id || body.user_id || '').trim().slice(0, 180)
+    if (uscreenUserId) journey.uscreen_user_id = uscreenUserId
     journey.checkout = { ...(journey.checkout || {}), checkout_id: String(body.checkout_id || '').slice(0, 120) || undefined, bridged_at: new Date().toISOString() }
     const { upsertJourney } = await import('./_attribution-ledger.js')
     await upsertJourney(journey)

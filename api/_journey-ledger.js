@@ -8,7 +8,7 @@ const TOUCH_FIELDS = [
   'campaign_id', 'campaign_name', 'adset_id', 'adset_name', 'ad_id', 'ad_name', 'placement', 'first_utm_source',
   'first_utm_medium', 'first_utm_campaign', 'first_utm_content', 'first_utm_term',
   'first_utm_id', 'first_campaign_id', 'first_adset_id', 'first_ad_id', 'first_placement',
-  'fbclid', 'fbc', 'fbp',
+  'fbclid', 'fbc', 'fbp', 'gclid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy',
 ]
 
 function signingSecret() {

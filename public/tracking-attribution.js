@@ -4,7 +4,7 @@
   var MARKER = '__jfa1__';
   var LEDGER_JOURNEY_KEY = 'joner_attribution_ledger_journey_id';
   var TRACKING_KEYS = [
-    'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id',
+    'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'gclid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy',
     'campaign_id', 'adset_id', 'ad_id', 'placement', 'fbclid', 'fbp', 'fbc',
     'first_utm_source', 'first_utm_medium', 'first_utm_campaign', 'first_utm_content',
     'first_utm_term', 'first_utm_id', 'first_campaign_id', 'first_adset_id',
