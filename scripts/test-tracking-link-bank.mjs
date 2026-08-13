@@ -45,6 +45,23 @@ handler(request('x-post', { to: 'https://evil.example' }), unsafeDestination)
 assert.equal(new URL(unsafeDestination.location).pathname, '/join')
 assert.equal(new URL(unsafeDestination.location).searchParams.get('destination_token'), 'join')
 
+const destinations = {
+  home: '/', 'football-training-app': '/football-training-app', 'free-bundle': '/free-bundle',
+  'free-watch': '/free-bundle/watch', 'hub-resources': '/hub/resources', programmes: '/programmes',
+  training: '/training', 'professional-training': '/training/professional-training',
+  'game-analysis': '/training/game-analysis', 'jfp-programme': '/training/jfp-program',
+  'technique-test': '/technique-test', shop: '/shop', 'training-programs': '/shop/training-programs',
+  books: '/books', teams: '/teams', camps: '/camps', workshops: '/workshops',
+  'coaches-course': '/workshops/coaches-course', contact: '/contact',
+}
+for (const [to, path] of Object.entries(destinations)) {
+  const res = response()
+  handler(request('instagram-post', { to, campaign: 'destination-test' }), res)
+  const url = new URL(res.location)
+  assert.equal(url.pathname, path, to)
+  assert.equal(url.searchParams.get('destination_token'), to)
+}
+
 const unknown = response()
 handler(request('not-real'), unknown)
 assert.equal(unknown.statusCode, 404)
