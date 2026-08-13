@@ -644,6 +644,8 @@ export async function processUscreenPayload(data) {
         amount: total,
         currency: cleanValue(eventData.currency || eventData.localized_amounts?.currency, 20),
         billing_origin: cleanValue(eventData.origin || eventData.payment_origin || eventData.provider, 80) || (eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'web'),
+        uscreen_user_id: cleanValue(eventData.user_id || eventData.customer_id || eventData.user?.id || eventData.customer?.id, 120),
+        customer_reference: sha256Hex(email)?.slice(0, 16),
         acquisition: reconciliation.classification || 'unknown',
         confidence: reconciliation.confidence || 'none',
         evidence: reconciliation.evidence || ['no_safe_join'],
