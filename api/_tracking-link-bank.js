@@ -36,3 +36,8 @@ export function getTrackingLink(token) {
 export function getTrackingDestination(key, fallback = '/join') {
   return TRACKING_DESTINATIONS[String(key || '').trim().toLowerCase()] || fallback
 }
+
+export function getTrackingDestinationToken(key, fallback = 'join') {
+  const token = String(key || '').trim().toLowerCase()
+  return TRACKING_DESTINATIONS[token] ? token : fallback
+}

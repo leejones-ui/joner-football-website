@@ -43,6 +43,7 @@ assert.equal(customUrl.searchParams.get('destination_token'), 'free-watch')
 const unsafeDestination = response()
 handler(request('x-post', { to: 'https://evil.example' }), unsafeDestination)
 assert.equal(new URL(unsafeDestination.location).pathname, '/join')
+assert.equal(new URL(unsafeDestination.location).searchParams.get('destination_token'), 'join')
 
 const unknown = response()
 handler(request('not-real'), unknown)
