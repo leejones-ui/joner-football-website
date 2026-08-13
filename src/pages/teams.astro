@@ -30,6 +30,38 @@ const tickerFacts = [
   'Grassroots To Professional Videos',
 ]
 
+// What is inside JF Teams (straight from Lee's demo video)
+const jfTeamsFeatures = [
+  {
+    title: 'Set Assignments',
+    body: 'Set an assignment for the whole group to do at home. Pull it from the Joner Football App, a YouTube link, an external link, or just write a simple note.',
+  },
+  {
+    title: 'Points And Leaderboard',
+    body: 'Players earn points when they complete the assignment you set. That builds real accountability and a bit of healthy competition inside the team.',
+  },
+  {
+    title: 'Photo Proof',
+    body: 'Players can upload photo proof of the work. It earns them extra points and shows you they are actually doing it, not just ticking a box.',
+  },
+  {
+    title: 'Full Max Plan For Every Coach',
+    body: 'Every coach gets the full Max Plan library inside the app. Detailed session plans, voice over drills, how I work with my players, and an endless amount of training videos.',
+  },
+  {
+    title: 'Two Ways To Plan Sessions',
+    body: 'A quick on the go session plan for parents and grassroots coaches, or the detailed session planner for coaches who want to build and deliver in full depth.',
+  },
+  {
+    title: 'Ask Joner',
+    body: 'Direct access to me. Ask about a session topic, session planning, or any advice that helps you deliver a better session with your team.',
+  },
+  {
+    title: 'Managers Dashboard',
+    body: 'Running a large club or organisation? Manage every team from one place, assign coaches to specific teams, and see the whole organisation at a glance.',
+  },
+]
+
 // Solution carousel slides (premium graphics, "what's inside" style like /app)
 const teamSlides = [
   { image: '/images/teams/solution-maxplan.jpg', alt: 'Every player and coach gets the app on the Max Plan' },
@@ -47,31 +79,33 @@ const whoItsFor = [
 ]
 
 const teamSEOFAQs = [
-  { q: 'Can a full team use the Joner Football App?', a: 'Yes. Joner Football can support team and club subscriptions so every player gets access to the same training detail, programmes and app pathway.' },
-  { q: 'Who are team subscriptions for?', a: 'They are built for clubs, academies, schools and coaches who want players doing better work between team sessions.' },
-  { q: 'Do coaches get access with a team subscription?', a: 'Yes. Coach access is part of the setup, so coaches can use session plans, drills and coaching detail that match what their players train in the app.' },
-  { q: 'How much does a team subscription cost?', a: 'Pricing depends on squad size and coach access. Send the enquiry form with your numbers and Joner Football will come back with the right option for your club.' },
-  { q: 'How does a team get started?', a: 'Send an enquiry with your club, squad size and coach access needs. Joner Football will follow up with the cleanest setup for your players.' },
+  { q: 'What is JF Teams?', a: 'JF Teams is the Joner Football platform for clubs, teams and organisations. It connects what your players do at training with what they do away from it, and keeps assignments, tracking, session planning and coach resources in one central place.' },
+  { q: 'How do coaches set work for players?', a: 'Coaches set assignments for the whole group to do at home. An assignment can come from the Joner Football App, a YouTube link, an external link, or a simple note written by the coach.' },
+  { q: 'How do you track if players are actually doing it?', a: 'Players earn points on the team leaderboard when they complete an assignment, and they can upload photo proof of the work for extra points. That gives coaches real visibility instead of guessing whether homework sent by message was done.' },
+  { q: 'What do coaches get with JF Teams?', a: 'Every coach gets the full Max Plan content library inside the Joner Football App, including detailed session plans, voice over training drills and hundreds of training videos. Coaches also get two session planners and Ask Joner, which is direct access to Lee Jones.' },
+  { q: 'Can a large club manage multiple teams?', a: 'Yes. The managers dashboard lets you manage every team in your organisation from one place and assign coaches to specific teams.' },
+  { q: 'How much does JF Teams cost?', a: 'Pricing depends on squad size and coach access. Email teams@jonerfootball.com or send the enquiry form with your numbers and Joner Football will come back with the right package for your club.' },
+  { q: 'How does a club get started?', a: 'Email teams@jonerfootball.com or send the enquiry form with your club, squad size and coach numbers. Joner Football will book a demo and set up the cleanest option for your organisation.' },
 ]
 
 const schema = [
   webPageSchema({
-    name: 'Football Team Training App | Club Subscriptions | Joner Football',
-    description: 'Give your football team access to Joner Football training. Team subscriptions help players train with clearer drills, programmes and coach-led detail.',
+    name: 'JF Teams | Football Team Training And Player Tracking | Joner Football',
+    description: 'JF Teams connects what your players do at training with what they do at home. Set assignments, track completion with points and photo proof, plan sessions and manage every team in one place.',
     url: 'https://jonerfootball.com/teams/',
   }),
   {
     '@context': 'https://schema.org',
     '@type': 'Service',
-    name: 'Joner Football Team Subscriptions',
+    name: 'JF Teams',
     provider: { '@type': 'Organization', name: 'Joner Football' },
-    serviceType: 'Football team training app subscription',
+    serviceType: 'Football team training and player development platform',
     areaServed: 'Worldwide',
   },
   breadcrumbSchema([
     { name: 'Home', url: 'https://jonerfootball.com/' },
     { name: 'Football Training App', url: 'https://jonerfootball.com/app/' },
-    { name: 'Team Subscriptions', url: 'https://jonerfootball.com/teams/' },
+    { name: 'JF Teams', url: 'https://jonerfootball.com/teams/' },
   ]),
   faqSchema(teamSEOFAQs),
 ]
@@ -81,10 +115,10 @@ import { fetchSanityPage } from '../lib/sanityPages'
 import { getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 
 const sanityPage = await fetchSanityPage('teams')
-const pageTitle = sanityPage?.seo?.title || 'Football Team Training App and Club Subscriptions | Joner Football'
-const pageDescription = sanityPage?.seo?.description || 'Team and club subscriptions for the Joner Football App. Give players clear drills, coach resources and training to follow between sessions.'
-const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'Team and Club Subscriptions')
-const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole Squad With One App')
+const pageTitle = sanityPage?.seo?.title || 'JF Teams | Football Team Training And Player Tracking | Joner Football'
+const pageDescription = sanityPage?.seo?.description || 'JF Teams connects what your players do at training with what they do at home. Set assignments, track completion, plan sessions and manage every team in one place.'
+const heroEyebrow = getSanityText(sanityPage?.heroEyebrow, 'JF Teams')
+const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Your Players Away From Training')
 ---
 
 {shouldReplaceSanityPage(sanityPage) ? (
@@ -120,9 +154,10 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
       </div>
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center min-h-[440px] md:min-h-[520px] py-14 md:py-16">
         <div class="max-w-2xl">
-          <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-5">{heroEyebrow}</p>
+          {/* The logo is the JF Teams eyebrow (reads JF TEAMS in red), so no duplicate text line under it */}
+          <img src="/images/teams/logo/jf-teams-stacked-red.svg" alt={heroEyebrow} class="h-24 sm:h-28 md:h-32 w-auto mb-6" width="150" height="150" loading="eager" />
           <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl font-bold text-white uppercase leading-none mb-5">{heroHeadline}</h1>
-          <p class="text-gray-200 font-body text-lg md:text-xl max-w-xl mb-7">Give your whole club one clean setup. Every player training between sessions.</p>
+          <p class="text-gray-200 font-body text-lg md:text-xl max-w-xl mb-7">Set the work, track who is actually doing it, and manage every team in one place.</p>
           <div>
             <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex text-center">BOOK A DEMO</a>
           </div>
@@ -132,11 +167,11 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
 
     <FactsMarquee facts={tickerFacts} />
 
-    {/* WATCH THIS FIRST. Team subscriptions video. */}
+    {/* WATCH THIS FIRST. JF Teams demo video. */}
     <section class="bg-joner-black py-12 md:py-16">
       <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
         <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red sm:text-sm">Watch This First</p>
-        <h2 class="mb-6 font-heading text-2xl md:text-4xl font-bold uppercase leading-tight text-white">See how team subscriptions work.</h2>
+        <h2 class="mb-6 font-heading text-2xl md:text-4xl font-bold uppercase leading-tight text-white">See how JF Teams work.</h2>
         <PlayButtonVideo src="/videos/jf-teams-demo-video.mp4" poster="/images/teams/jf-teams-demo-video-poster.jpg" label="Play the Joner Football Teams demo video" playPosition="top-right" />
       </div>
     </section>
@@ -161,11 +196,11 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
           <div class="max-w-xl">
             <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-4">THE REALITY</p>
             <h2 class="font-heading text-5xl xl:text-6xl font-bold text-white uppercase leading-none mb-6">Team Training Is <span class="text-joner-red">Not Enough</span></h2>
-            <p class="font-body text-lg text-gray-200 mb-8 max-w-lg">Your players are with you 2 or 3 days a week. The days in between are where they pull ahead, or fall behind.</p>
+            <p class="font-body text-lg text-gray-200 mb-8 max-w-lg">Coaches send drills and homework through WhatsApp or Messenger, then have no idea if any of it actually got done. Across a club with multiple teams it is harder again.</p>
             <ul class="space-y-4 mb-9">
-              <li class="flex items-center gap-3 font-heading uppercase text-white text-lg xl:text-xl tracking-wide"><span class="w-2.5 h-2.5 rounded-full bg-joner-red shrink-0"></span>Off-Season Drop-Off Is Real</li>
-              <li class="flex items-center gap-3 font-heading uppercase text-white text-lg xl:text-xl tracking-wide"><span class="w-2.5 h-2.5 rounded-full bg-joner-red shrink-0"></span>Coaches Need A Way To Guide Homework</li>
-              <li class="flex items-center gap-3 font-heading uppercase text-white text-lg xl:text-xl tracking-wide"><span class="w-2.5 h-2.5 rounded-full bg-joner-red shrink-0"></span>Fully Structured Sessions With Max Plan</li>
+              <li class="flex items-center gap-3 font-heading uppercase text-white text-lg xl:text-xl tracking-wide"><span class="w-2.5 h-2.5 rounded-full bg-joner-red shrink-0"></span>Homework Sent By Message Gets Lost</li>
+              <li class="flex items-center gap-3 font-heading uppercase text-white text-lg xl:text-xl tracking-wide"><span class="w-2.5 h-2.5 rounded-full bg-joner-red shrink-0"></span>No Way To Track Who Is Doing It</li>
+              <li class="flex items-center gap-3 font-heading uppercase text-white text-lg xl:text-xl tracking-wide"><span class="w-2.5 h-2.5 rounded-full bg-joner-red shrink-0"></span>Multiple Teams Make It Harder Again</li>
             </ul>
             <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">BOOK A CALL WITH JONER</a>
           </div>
@@ -186,6 +221,31 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
     {/* SOLUTION (image carousel, "what's inside" style like /app) */}
     <CoachesHighlightsCarousel heading="What Your Squad Gets" slides={teamSlides} marquee />
 
+    {/* INSIDE JF TEAMS (the features, straight from Lee's demo video) */}
+    <section class="bg-joner-black py-16 md:py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="max-w-3xl mb-10 md:mb-14">
+          <img src="/images/teams/logo/jf-teams-stacked-red.svg" alt="JF Teams" class="h-16 md:h-20 w-auto mb-6" width="110" height="110" loading="lazy" />
+          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-6">Everything In One Place</h2>
+          <p class="font-body text-lg text-gray-300 max-w-2xl">JF Teams connects what your players do at training with what they do away from it, and keeps it all somewhere you can actually manage.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {jfTeamsFeatures.map((f, i) => (
+            <article class="bg-joner-gray border border-gray-800 rounded-2xl p-6 flex flex-col">
+              <span class="font-heading text-joner-red text-3xl leading-none mb-4">{String(i + 1).padStart(2, '0')}</span>
+              <h3 class="font-heading text-xl text-white uppercase leading-tight mb-3 tracking-wide">{f.title}</h3>
+              <p class="text-gray-300 font-body text-sm leading-relaxed">{f.body}</p>
+            </article>
+          ))}
+        </div>
+
+        <div class="mt-12">
+          <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">BOOK A DEMO</a>
+        </div>
+      </div>
+    </section>
+
     {/* WHO IS TEACHING YOU (matches the coaches page exactly: mobile baked graphic, desktop live text + photo) */}
     <section class="bg-joner-gray py-12 md:py-20">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -203,9 +263,9 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
             <h2 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-4">LEE JONES.</h2>
             <p class="text-gray-300 font-body text-lg mb-4">Over 20 years coaching players, coaches, and parents around the world. From grassroots kids to professional players.</p>
             <p class="font-heading text-joner-red text-xl uppercase italic leading-snug mb-4">Built by Lee Jones, trusted by players and coaches worldwide.</p>
-            <p class="text-gray-300 font-body text-base leading-relaxed mb-6">I have spent years creating sessions that help players improve faster, with over 285,000 players and coaches following Joner Football across YouTube and social media. Team Subscriptions bring that same proven training system into your club, so your players keep developing away from team sessions and your coaches have a clear, trusted library to support them every week.</p>
+            <p class="text-gray-300 font-body text-base leading-relaxed mb-6">I have been coaching for 20 years and I get the same question every time. How do you develop players away from normal club training, and how do you track if they are actually doing it? That is exactly why I built JF Teams, so your players keep developing away from sessions and your coaches have a clear, trusted library behind them every week.</p>
             <blockquote class="border-l-4 border-joner-red pl-5 py-2 mb-8">
-              <p class="font-heading text-xl md:text-2xl text-white italic leading-snug">"I built this app to help players, coaches, clubs and organisations around the world improve all in one place."</p>
+              <p class="font-heading text-xl md:text-2xl text-white italic leading-snug">"My intention with JF Teams has always been simple. Make player development more structured, more consistent, and easier to manage in one place."</p>
               <footer class="mt-3">
                 <p class="font-heading text-base text-white not-italic">Lee Jones</p>
                 <p class="text-[#999999] text-xs uppercase tracking-widest font-heading mt-1">Founder, Joner Football</p>
@@ -234,10 +294,11 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
     <section id="team-subscription-form" class="bg-neutral-950 py-20 md:py-28 scroll-mt-24">
       <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div class="mb-12 text-center">
-          <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">Team Subscriptions</p>
+          <img src="/images/teams/logo/jf-teams-stacked-red.svg" alt="JF Teams" class="mx-auto h-16 md:h-20 w-auto mb-6" width="110" height="110" loading="lazy" />
+          <p class="mb-3 font-heading text-xs uppercase tracking-[0.28em] text-joner-red">JF Teams</p>
           <h2 class="font-heading text-4xl font-black uppercase leading-none text-white sm:text-5xl">Book Your Team Demo</h2>
           <p class="mx-auto mt-5 max-w-xl font-body text-base leading-relaxed text-neutral-400">
-            Tell us about your squad and we will show you exactly how it works.
+            Tell us about your squad and we will show you exactly how it works. You can also email us at <a href="mailto:teams@jonerfootball.com" class="text-white underline underline-offset-4 hover:text-joner-red transition-colors">teams@jonerfootball.com</a> to see the packages.
           </p>
         </div>
 
@@ -310,7 +371,7 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
           return;
         }
         setStatus('', true);
-        var originalText = submit ? submit.textContent : 'Send Team Subscription Enquiry';
+        var originalText = submit ? submit.textContent : 'Book My Demo';
         var formData = new FormData(form);
         var emailInput = form.querySelector('input[name="email"]');
 
@@ -332,7 +393,7 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
         var payload = {};
         formData.forEach(function (value, key) { payload[key] = value; });
         payload.marketingOptIn = true;
-        payload.message = 'Team subscription demo request';
+        payload.message = 'JF Teams demo request';
         payload.landing_page = window.location.href;
         payload.referrer = document.referrer || '';
         if (window.JonerTracking && typeof window.JonerTracking.collectTrackingParams === 'function') {
@@ -393,37 +454,41 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
   {/* CLOSING CTA (drives back to the demo form) */}
   <section class="bg-joner-black py-16 md:py-24">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <img src="/images/teams/logo/jf-teams-stacked-red.svg" alt="JF Teams" class="mx-auto h-16 md:h-20 w-auto mb-6" width="110" height="110" loading="lazy" />
       <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase leading-none mb-4">
         See It For Your Squad
       </h2>
       <p class="text-neutral-300 font-body text-lg mb-8 max-w-xl mx-auto">
-        Book a quick demo and we will show you exactly how it works for your team.
+        Book a quick demo and we will show you exactly how JF Teams works for your club.
       </p>
       <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-block">
         Book A Demo
       </a>
+      <p class="text-neutral-400 font-body text-sm mt-5">
+        Or email <a href="mailto:teams@jonerfootball.com" class="text-white underline underline-offset-4 hover:text-joner-red transition-colors">teams@jonerfootball.com</a>
+      </p>
     </div>
   </section>
 
   <GeoAnswers
-    title="Team subscriptions, explained fast."
-    intro="The short version for club coaches, academies and schools weighing up a team football training app."
+    title="JF Teams, explained fast."
+    intro="The short version for club coaches, academies and organisations weighing up a team football training platform."
     blocks={[
       {
         heading: 'Who this is for',
-        body: 'Club coaches, academies, schools and associations that want every player in the squad training properly between team sessions, with one clean setup instead of dozens of individual accounts.',
+        body: 'Club coaches, academies, schools and organisations that want every player developing away from team training, with one central place to manage it instead of chasing homework through group chats.',
       },
       {
         heading: 'What you get',
-        body: 'Full Joner Football App access for every player, coach access with session plans and drills, and a shared training standard so the whole squad works on first touch, striking and 1v1 ability the same way.',
+        body: 'Assignments you set for the whole group, points and a leaderboard with photo proof so you can see who is actually doing the work, the full Max Plan library for every coach, two session planners, Ask Joner for direct access to Lee, and a managers dashboard for multi team clubs.',
       },
       {
         heading: 'Why it works',
-        body: 'Players only see their coach once or twice a week. A team subscription turns the days in between into structured development time, so players arrive at training sharper and games show it.',
+        body: 'Homework sent through WhatsApp or Messenger cannot be tracked. JF Teams connects training and home work in one system, so players get accountability and healthy competition, and coaches finally get visibility.',
       },
       {
         heading: 'Best next step',
-        body: 'Book a team demo with your squad size and coach numbers. Joner Football shows you how it works and sets up the right club option, and you can explore the app yourself first to see what your players would train.',
+        body: 'Email teams@jonerfootball.com or send the enquiry form with your club, squad size and coach numbers. Joner Football will book a demo and set up the right package for your organisation.',
       },
     ]}
     links={[
@@ -436,8 +501,8 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Train Your Whole S
   />
 
   <SEOFAQ
-    title="Questions about team app access."
-    intro="For clubs, academies and coaches who want every player training with a clearer plan."
+    title="Questions about JF Teams."
+    intro="For clubs, academies and organisations who want every player developing with a clearer plan."
     items={teamSEOFAQs}
   />
 
