@@ -13,6 +13,7 @@
     "test:attribution": "node scripts/test-attribution-ledger.mjs",
     "test:source-taxonomy": "node scripts/test-source-taxonomy.mjs",
     "test:attribution-privacy": "node scripts/test-attribution-privacy.mjs",
+    "test:reliability": "node scripts/test-reliability-layer.mjs",
     "test:juniors": "node --test scripts/test-juniors.mjs",
     "test:teams-crm": "node scripts/test-team-subscriptions-crm.mjs",
     "preview": "astro preview",
