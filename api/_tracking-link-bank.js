@@ -10,6 +10,8 @@ export const TRACKING_LINK_BANK = Object.freeze({
   'lee-email': { channel: 'email', source: 'lee_manual_email', campaign: 'lee-inbox-app', content: 'manual-email', destination: '/join' },
   'tiktok-bio': { channel: 'social', source: 'tiktok', campaign: 'app-evergreen', content: 'bio', destination: '/join' },
   'tiktok-dm': { channel: 'social', source: 'tiktok', campaign: 'app-dm', content: 'manual-dm', destination: '/join' },
+  'youtube-main': { channel: 'social', source: 'youtube', campaign: 'main-channel', content: 'description-or-comment', destination: '/join' },
+  'youtube-spanish': { channel: 'social', source: 'youtube', campaign: 'spanish-channel', content: 'description-or-comment', destination: '/join' },
   'x-post': { channel: 'social', source: 'x', campaign: 'app-content', content: 'post', destination: '/join' },
   'x-reply': { channel: 'social', source: 'x', campaign: 'app-content', content: 'reply', destination: '/join' },
   'x-dm': { channel: 'social', source: 'x', campaign: 'app-dm', content: 'manual-dm', destination: '/join' },
