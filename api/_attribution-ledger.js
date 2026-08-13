@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 
 export const LEDGER_TTL_SECONDS = 90 * 24 * 60 * 60
+export const MAX_SALES = 50
 export const JOURNEY_COOKIE = 'jfa_journey'
 export const ATTRIBUTION_CLASSES = new Set(['exact_paid_meta', 'email', 'organic', 'direct', 'referral', 'apple', 'google', 'unknown'])
 
@@ -185,16 +186,24 @@ export async function appendSale(sale, fetchImpl = fetch) {
   const saleId = clean(sale.sale_id, 180)
   if (!saleId) throw new Error('sale_id is required')
   const claimed = await kvCommand(['SET', saleKey(saleId), JSON.stringify(sale), 'NX', 'EX', String(LEDGER_TTL_SECONDS * 4)], fetchImpl)
-  if (claimed?.result === 'OK') await kvCommand(['ZADD', salesIndexKey, String(Date.parse(sale.occurred_at) || Date.now()), saleId], fetchImpl)
+  if (claimed?.result === 'OK') {
+    await kvCommand(['ZADD', salesIndexKey, String(Date.parse(sale.occurred_at) || Date.now()), saleId], fetchImpl)
+    const overflow = await kvCommand(['ZRANGE', salesIndexKey, '0', String(-(MAX_SALES + 1))], fetchImpl)
+    const staleIds = Array.isArray(overflow?.result) ? overflow.result : []
+    if (staleIds.length) {
+      await kvCommand(['ZREM', salesIndexKey, ...staleIds], fetchImpl)
+      await kvCommand(['DEL', ...staleIds.map(saleKey)], fetchImpl)
+    }
+  }
   return { ...sale, duplicate: claimed?.result !== 'OK' }
 }
 
 export async function listSales(fetchImpl = fetch) {
-  const ids = await kvCommand(['ZRANGE', salesIndexKey, '0', '-1'], fetchImpl)
+  const ids = await kvCommand(['ZREVRANGE', salesIndexKey, '0', String(MAX_SALES - 1)], fetchImpl)
   const sales = []
   for (const id of (Array.isArray(ids?.result) ? ids.result : [])) {
     const row = await kvCommand(['GET', saleKey(id)], fetchImpl)
     if (row?.result) { try { sales.push(JSON.parse(row.result)) } catch {} }
   }
-  return sales.sort((a, b) => String(a.occurred_at).localeCompare(String(b.occurred_at)))
+  return sales.sort((a, b) => String(b.occurred_at).localeCompare(String(a.occurred_at))).slice(0, MAX_SALES)
 }
