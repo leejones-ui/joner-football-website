@@ -1,4 +1,4 @@
-import { getTrackingDestination, getTrackingLink } from './_tracking-link-bank.js'
+import { getTrackingDestination, getTrackingDestinationToken, getTrackingLink } from './_tracking-link-bank.js'
 
 const safe = (value, max = 240) => String(value || '').trim().slice(0, max)
 
@@ -16,7 +16,7 @@ export default function handler(req, res) {
   destination.searchParams.set('link_token', link.token)
   destination.searchParams.set('source_detail', link.source)
   destination.searchParams.set('source_taxonomy', link.source)
-  destination.searchParams.set('destination_token', safe(req.query?.to) || 'join')
+  destination.searchParams.set('destination_token', getTrackingDestinationToken(req.query?.to))
 
   res.setHeader('Cache-Control', 'private, no-store, max-age=0')
   return res.redirect(302, destination.toString())
