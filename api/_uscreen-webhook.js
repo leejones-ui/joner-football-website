@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import { extractAttribution, extractMetaIdentity } from './_attribution.js'
 import { enrichPayloadFromJourney, journeyStoreConfigured } from './_journey-ledger.js'
 import { reconcilePayment } from './checkout-bridge.js'
+import { classifySource } from './_source-taxonomy.js'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
@@ -632,8 +633,8 @@ export async function processUscreenPayload(data) {
     const saleId = cleanValue(eventData.invoice_id || eventData.payment_id || transactionId || eventData.order_id || eventData.id, 180)
     if (saleId) {
       try {
-        const { appendSale } = await import('./_attribution-ledger.js')
-        sale = await appendSale({
+        const { appendReliableSale } = await import('./_reliability-ledger.js')
+        sale = await appendReliableSale({
         sale_id: `${eventType}:${saleId}`,
         kind: eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'payment',
         invoice_id: cleanValue(eventData.invoice_id, 180),
@@ -646,6 +647,8 @@ export async function processUscreenPayload(data) {
         billing_origin: cleanValue(eventData.origin || eventData.payment_origin || eventData.provider, 80) || (eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'web'),
         uscreen_user_id: cleanValue(eventData.user_id || eventData.customer_id || eventData.user?.id || eventData.customer?.id, 120),
         customer_reference: sha256Hex(email)?.slice(0, 16),
+        customer_name: name,
+        source_taxonomy: classifySource(eventData),
         acquisition: reconciliation.classification || 'unknown',
         confidence: reconciliation.confidence || 'none',
         evidence: reconciliation.evidence || ['no_safe_join'],
@@ -658,8 +661,11 @@ export async function processUscreenPayload(data) {
         landing_page: reconciliation.landing_page,
         journey_id: reconciliation.journey_id,
         })
-      } catch {
-        sale = { sale_id: `${eventType}:${saleId}`, failed: true }
+      } catch (error) {
+        // A durable sale record with an incomplete secondary index must still
+        // fail the webhook so the provider retries and the dead-letter queue
+        // records the incident. listReliableSales also self-heals the index.
+        throw error
       }
     }
   }
@@ -856,6 +862,16 @@ export default async function handler(req, res) {
     })
     return json(res, 200, { status: 'accepted', event: result.event, processed: Boolean(result.processed), skipped: Boolean(result.skipped), reason: result.reason || undefined })
   } catch (error) {
+    try {
+      const { recordWebhookFailure } = await import('./_reliability-ledger.js')
+      await recordWebhookFailure({
+        event_id: cleanValue(data.id || data.event_id || data.transaction_id, 180) || `${eventType}:${crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex').slice(0, 24)}`,
+        payload: data,
+        error: error?.message || String(error),
+      })
+    } catch (recordError) {
+      console.error('Could not record webhook dead letter', recordError?.message || String(recordError))
+    }
     console.error('Uscreen webhook processing failed after receipt', {
       event: eventType,
       id: cleanValue(data.id, 80),
