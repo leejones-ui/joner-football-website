@@ -121,6 +121,40 @@ const encodedIdentity = extractMetaIdentity({ utm_source: encoded.get('utm_sourc
 assert.equal(encodedIdentity.fbp, 'fb.1.browser-123')
 assert.equal(encodedIdentity.fbc, 'fb.1.1234000.fb-click-123')
 
+// Checkout links are decorated more than once: initial DOM ready, signed journey
+// response, window load, and again at click. Re-decoration must be lossless.
+const reencoded = browser.encodeForUscreen(encoded)
+const redecoded = extractAttribution({ utm_source: reencoded.get('utm_source') })
+const reencodedIdentity = extractMetaIdentity({ utm_source: reencoded.get('utm_source') })
+assert.equal(redecoded.campaign_id, 'campaign-123')
+assert.equal(redecoded.adset_id, 'adset-id-456')
+assert.equal(redecoded.ad_id, 'ad-id-789')
+assert.equal(redecoded.placement, 'instagram_reels')
+assert.equal(redecoded.jf_journey_id, journeyToken)
+assert.equal(reencodedIdentity.fbp, 'fb.1.browser-123')
+assert.equal(reencodedIdentity.fbc, 'fb.1.1234000.fb-click-123')
+
+const beforeMetaCookie = browser.encodeForUscreen(new URLSearchParams({
+  utm_source: 'facebook',
+  utm_medium: 'paid_social',
+  utm_campaign: 'late-cookie-test',
+  campaign_id: 'campaign-late',
+  adset_id: 'adset-late',
+  ad_id: 'ad-late',
+  placement: 'instagram_reels',
+  fbclid: 'click-late',
+}))
+const afterMetaCookieParams = new URLSearchParams(beforeMetaCookie)
+afterMetaCookieParams.set('fbp', 'fb.1.browser-late')
+afterMetaCookieParams.set('fbc', 'fb.1.1234000.click-late')
+afterMetaCookieParams.set('jf_journey_id', journeyToken)
+const afterMetaCookie = browser.encodeForUscreen(afterMetaCookieParams)
+const lateIdentity = extractMetaIdentity({ utm_source: afterMetaCookie.get('utm_source') })
+const lateAttribution = extractAttribution({ utm_source: afterMetaCookie.get('utm_source') })
+assert.equal(lateIdentity.fbp, 'fb.1.browser-late')
+assert.equal(lateIdentity.fbc, 'fb.1.1234000.click-late')
+assert.equal(lateAttribution.jf_journey_id, journeyToken)
+
 const stitched = mergeStoredAttribution({
   event: 'order.paid',
   email: 'tracking-test@example.com',
