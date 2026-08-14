@@ -48,7 +48,10 @@
     var params = input instanceof URLSearchParams
       ? new URLSearchParams(input.toString())
       : new URLSearchParams(input || '');
-    var source = clean(params.get('utm_source') || 'direct', 120);
+    var rawSource = String(params.get('utm_source') || 'direct').trim();
+    // Checkout links are decorated repeatedly as the signed journey and Meta
+    // cookies become available. Preserve an existing packed source in full.
+    var source = clean(rawSource, rawSource.indexOf(MARKER) !== -1 ? 1200 : 120);
     var medium = clean(params.get('utm_medium'), 180);
     var campaign = clean(params.get('utm_campaign'), 240);
     var content = clean(params.get('utm_content'), 240);
@@ -72,12 +75,27 @@
     var journeyId = clean(params.get('jf_journey_id'), 160);
 
     if (source.indexOf(MARKER) !== -1) {
-      if (journeyId) {
-        var markerIndex = source.indexOf(MARKER);
-        var existingPacked = new URLSearchParams(source.slice(markerIndex + MARKER.length));
-        existingPacked.set('j', journeyId);
-        params.set('utm_source', source.slice(0, markerIndex) + MARKER + existingPacked.toString());
+      var markerIndex = source.indexOf(MARKER);
+      var existingPacked = new URLSearchParams(source.slice(markerIndex + MARKER.length));
+      var sourcePrefix = clean(source.slice(0, markerIndex), 120);
+      if (sourcePrefix && !existingPacked.get('s')) existingPacked.set('s', sourcePrefix);
+      var refresh = [
+        ['m', medium], ['c', campaign], ['k', content], ['t', term],
+        ['i', campaignId], ['a', adsetId], ['d', adId], ['p', placement],
+        ['b', fbp], ['S', firstSource], ['M', firstMedium], ['C', firstCampaign],
+        ['K', firstContent], ['T', firstTerm], ['I', firstCampaignId],
+        ['A', firstAdsetId], ['D', firstAdId], ['P', firstPlacement], ['j', journeyId]
+      ];
+      for (var r = 0; r < refresh.length; r++) {
+        if (refresh[r][1]) existingPacked.set(refresh[r][0], refresh[r][1]);
       }
+      if (fbc) {
+        existingPacked.set('q', fbc);
+        existingPacked.delete('f');
+      } else if (fbclid && !existingPacked.get('q')) {
+        existingPacked.set('f', fbclid);
+      }
+      params.set('utm_source', sourcePrefix + MARKER + existingPacked.toString());
       return params;
     }
     if (!campaign && !journeyId) return params;
