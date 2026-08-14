@@ -176,16 +176,6 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Every Play
       </div>
     </section>
 
-    {/* WHO IS IT FOR (scroll-reveal, mirrors the coaches page) */}
-    <ScrollRevealSection
-      eyebrow="WHO IS IT FOR?"
-      heading="Built For Every Setup"
-      mobileImage="/images/teams/who-its-for-mobile.jpg"
-      desktopImage="/images/teams/who-its-for-desktop.jpg"
-      items={whoItsFor}
-      alt="Lee Jones coaching a team"
-    />
-
     {/* SOLUTION: swipeable feature carousel with live lower-third text */}
     <CoachesHighlightsCarousel heading="What Your Squad Gets" slides={teamSlides} featureOverlay />
 
@@ -209,6 +199,16 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Every Play
         />
       </div>
     </section>
+
+    {/* WHO IS IT FOR (scroll-reveal, mirrors the coaches page) */}
+    <ScrollRevealSection
+      eyebrow="WHO IS IT FOR?"
+      heading="Built For Every Setup"
+      mobileImage="/images/teams/who-its-for-mobile.jpg"
+      desktopImage="/images/teams/who-its-for-desktop.jpg"
+      items={whoItsFor}
+      alt="Lee Jones coaching a team"
+    />
 
     {/* WHO IS TEACHING YOU (matches the coaches page exactly: mobile baked graphic, desktop live text + photo) */}
     <section class="bg-joner-gray py-12 md:py-20">
