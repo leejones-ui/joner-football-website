@@ -1,4 +1,17 @@
 import { getJourney, listSales } from './_attribution-ledger.js'
+import { listReliableSales, reliablePaymentIdentity } from './_reliability-ledger.js'
+
+function mergedSales(legacy, reliable) {
+  const byPayment = new Map()
+  for (const sale of [...reliable, ...legacy]) {
+    const key = reliablePaymentIdentity(sale)
+    const existing = byPayment.get(key)
+    byPayment.set(key, existing ? { ...existing, ...sale } : sale)
+  }
+  return [...byPayment.values()]
+    .sort((a, b) => String(b.occurred_at || b.paid_at || '').localeCompare(String(a.occurred_at || a.paid_at || '')))
+    .slice(0, 50)
+}
 
 function json(res, status, body) { return res.status(status).json(body) }
 function authorized(req) {
@@ -12,7 +25,8 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return json(res, 405, { success: false, error: 'Method not allowed' })
   try {
     const ids = String(req.query?.journey_ids || '').split(',').map((id) => id.trim()).filter(Boolean).slice(0, 100)
-    const sales = await listSales()
+    const [legacySales, reliableSales] = await Promise.all([listSales(), listReliableSales()])
+    const sales = mergedSales(legacySales, reliableSales)
     const rows = []
     for (const id of ids) {
       const journey = await getJourney(id)
