@@ -34,35 +34,30 @@ const tickerFacts = [
 // supplied imagery stays clean and the feature copy remains responsive.
 const teamSlides = [
   {
-    eyebrow: '01 / 05',
     image: '/images/teams/features/set-assignments.webp',
     title: 'Set Assignments',
     note: 'Send training tasks to every player from one place.',
     alt: 'A player completing football training beside the JF Teams assignment dashboard',
   },
   {
-    eyebrow: '02 / 05',
     image: '/images/teams/features/max-plan-for-all.webp',
     title: 'Max Plan For All',
     note: 'Give every coach and player access to the full Joner Football App.',
     alt: 'A coach with players beside the Joner Football App on phone and tablet',
   },
   {
-    eyebrow: '03 / 05',
     image: '/images/teams/features/leaderboard.webp',
     title: 'Leaderboard',
     note: 'Create accountability with points, rankings and healthy competition.',
     alt: 'Two football players competing beside the JF Teams leaderboard',
   },
   {
-    eyebrow: '04 / 05',
     image: '/images/teams/features/club-management.webp',
     title: 'Club Management',
     note: 'Manage every team and coach from one dashboard.',
     alt: 'A coach on the pitch beside the JF Teams club management dashboard',
   },
   {
-    eyebrow: '05 / 05',
     image: '/images/teams/features/ask-joner.webp',
     title: 'Ask Joner',
     note: 'Get direct access to Joner for session and player advice.',
@@ -79,7 +74,7 @@ const whoItsFor = [
 ]
 
 const teamSEOFAQs = [
-  { q: 'What is JF Teams?', a: 'JF Teams is the Joner Football platform for clubs, teams and organisations. It connects what your players do at training with what they do away from it, and keeps assignments, tracking, session planning and coach resources in one central place.' },
+  { q: 'What is JF Teams?', a: 'JF Teams combines full Joner Football App access with a dedicated Teams Dashboard, giving players and coaches one connected platform for training, assignments, tracking, communication and planning.' },
   { q: 'How do coaches set work for players?', a: 'Coaches set assignments for the whole group to do at home. An assignment can come from the Joner Football App, a YouTube link, an external link, or a simple note written by the coach.' },
   { q: 'How do you track if players are actually doing it?', a: 'Players earn points on the team leaderboard when they complete an assignment, and they can upload photo proof of the work for extra points. That gives coaches real visibility instead of guessing whether homework sent by message was done.' },
   { q: 'What do coaches get with JF Teams?', a: 'Every coach gets the full Max Plan content library inside the Joner Football App, including detailed session plans, voice over training drills and hundreds of training videos. Coaches also get two session planners and Ask Joner, which is direct access to Lee Jones.' },
@@ -415,28 +410,29 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Every Play
   </script>
 
   <GeoAnswers
-    title="JF Teams, explained fast."
-    intro="The short version for club coaches, academies and organisations weighing up a team football training platform."
+    title="JF Teams, at a glance."
+    intro="One platform connecting player development, coach development and team management."
     blocks={[
       {
         heading: 'Who this is for',
-        body: 'Club coaches, academies, schools and organisations that want every player developing away from team training, with one central place to manage it instead of chasing homework through group chats.',
+        body: 'For clubs, academies, schools and football organisations that want to extend player development beyond team sessions.',
       },
       {
         heading: 'What you get',
-        body: 'Assignments you set for the whole group, points and a leaderboard with photo proof so you can see who is actually doing the work, the full Max Plan library for every coach, two session planners, Ask Joner for direct access to Lee, and a managers dashboard for multi team clubs.',
+        body: 'Full Joner Football App access for every seat, plus the Teams Dashboard for assignments, tracking, communication, planning and team management.',
       },
       {
         heading: 'Why it works',
-        body: 'Homework sent through WhatsApp or Messenger cannot be tracked. JF Teams connects training and home work in one system, so players get accountability and healthy competition, and coaches finally get visibility.',
+        body: 'Players train from the same content their coaches use. Coaches assign and track development, keeping training connected between team sessions.',
       },
       {
         heading: 'Best next step',
-        body: 'Email teams@jonerfootball.com or send the enquiry form with your club, squad size and coach numbers. Joner Football will book a demo and set up the right package for your organisation.',
+        body: 'Book a demo to see the platform in action. We will learn about your organisation and prepare a tailored proposal for your team.',
       },
     ]}
+    ctaHref="#team-subscription-form"
+    ctaLabel="Book A Demo"
     links={[
-      { label: 'Book a demo', href: '#team-subscription-form' },
       { label: 'The football training app', href: '/app' },
       { label: 'App for coaches', href: '/app/for-coaches' },
       { label: '100 Day Programme', href: '/programmes' },
@@ -446,7 +442,7 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Every Play
 
   <SEOFAQ
     title="Questions about JF Teams."
-    intro="For clubs, academies and organisations who want every player developing with a clearer plan."
+    intro="Everything you need to know about access, assignments, tracking, team management and getting started."
     items={teamSEOFAQs}
   />
 

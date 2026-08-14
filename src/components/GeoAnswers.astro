@@ -19,6 +19,8 @@ interface Props {
   blocks: AnswerBlock[]
   links?: RelatedLink[]
   linksHeading?: string
+  ctaHref?: string
+  ctaLabel?: string
 }
 
 const {
@@ -28,6 +30,8 @@ const {
   blocks,
   links = [],
   linksHeading = 'Related Joner Football pages',
+  ctaHref,
+  ctaLabel = 'Learn more',
 } = Astro.props
 ---
 
@@ -47,6 +51,15 @@ const {
         </div>
       ))}
     </div>
+
+    {ctaHref && (
+      <div class="mt-8 text-center">
+        <a href={ctaHref} class="btn-red inline-flex min-h-[44px] items-center justify-center px-8 py-4 text-sm">
+          {ctaLabel}
+          <span class="ml-2" aria-hidden="true">&rarr;</span>
+        </a>
+      </div>
+    )}
 
     {links.length > 0 && (
       <div class="mt-10">
