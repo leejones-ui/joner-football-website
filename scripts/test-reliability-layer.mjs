@@ -9,6 +9,7 @@ import {
   getAnonymousAggregates,
   MAX_DETAILED_SALES,
 } from '../api/_reliability-ledger.js'
+import reliabilityHandler from '../api/uscreen-reliability.js'
 
 const strings = new Map()
 const hashes = new Map()
@@ -67,4 +68,19 @@ const aggregates = await getAnonymousAggregates(fakeFetch)
 assert.equal(aggregates.google.count, 56)
 assert.equal(aggregates.google.revenue, 62)
 assert.equal((await listReliableSales(fakeFetch)).length, MAX_DETAILED_SALES)
+
+const originalFetch = globalThis.fetch
+globalThis.fetch = fakeFetch
+process.env.USCREEN_RELIABILITY_TOKEN = 'test-token'
+let responseStatus = 0
+let responseBody
+const response = {
+  status(value) { responseStatus = value; return this },
+  json(value) { responseBody = value; return value },
+}
+await reliabilityHandler({ method: 'GET', headers: { authorization: 'Bearer test-token' } }, response)
+globalThis.fetch = originalFetch
+assert.equal(responseStatus, 200)
+assert.ok(Array.isArray(responseBody.sales))
+assert.equal(responseBody.sales.length, MAX_DETAILED_SALES)
 console.log('reliability layer tests passed')
