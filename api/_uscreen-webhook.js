@@ -1,8 +1,8 @@
 import crypto from 'node:crypto'
 import { extractAttribution, extractMetaIdentity } from './_attribution.js'
+import { classifySource } from './_source-taxonomy.js'
 import { enrichPayloadFromJourney, journeyStoreConfigured } from './_journey-ledger.js'
 import { reconcilePayment } from './checkout-bridge.js'
-import { classifySource } from './_source-taxonomy.js'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
@@ -621,22 +621,35 @@ export async function processUscreenPayload(data) {
   // the checkout token, then later by Uscreen user id or the same email hash.
   eventData = await enrichPayloadFromJourney(data, email)
 
+  // Resolve durable attribution before writing the sale. Paid and renewal
+  // events often omit the fields present on account creation.
+  const authoritativeSaleEvent = ['order.paid', 'subscription.renewed', 'recurring.payment.successful', 'payment.refunded', 'refund.created'].includes(eventType)
+  if (authoritativeSaleEvent) {
+    eventData = mergeStoredAttribution(eventData, await loadAttributionSnapshot(eventData, email))
+    if (eventType === 'order.paid') {
+      contactSnapshot = await brevoGetContactSnapshot(email)
+      eventData = mergeStoredAttribution(eventData, contactSnapshot.attributes)
+    }
+  }
+
   let reconciliation
   let sale
-  const authoritativeSaleEvent = ['order.paid', 'subscription.renewed', 'recurring.payment.successful', 'payment.refunded', 'refund.created'].includes(eventType)
   if (authoritativeSaleEvent) {
     try {
       reconciliation = await reconcilePayment({ ...eventData, email_hash: sha256Hex(email) })
     } catch {
       reconciliation = { classification: 'unknown', confidence: 'none', evidence: ['reconciliation_error'] }
     }
-    const saleId = cleanValue(eventData.invoice_id || eventData.payment_id || transactionId || eventData.order_id || eventData.id, 180)
+    const kind = eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'payment'
+    const stablePaymentId = cleanValue(eventData.invoice_id || eventData.payment_id || transactionId || eventData.order_id || eventData.id, 180)
+    const saleId = stablePaymentId ? `${kind}:${stablePaymentId}` : undefined
     if (saleId) {
       try {
         const { appendReliableSale } = await import('./_reliability-ledger.js')
         sale = await appendReliableSale({
-        sale_id: `${eventType}:${saleId}`,
-        kind: eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'payment',
+        sale_id: saleId,
+        kind,
+        provider_payment_id: stablePaymentId,
         invoice_id: cleanValue(eventData.invoice_id, 180),
         payment_id: cleanValue(eventData.payment_id || transactionId, 180),
         occurred_at: cleanValue(eventData.event_date || eventData.paid_at || eventData.created_at, 40) || new Date().toISOString(),
@@ -647,7 +660,6 @@ export async function processUscreenPayload(data) {
         billing_origin: cleanValue(eventData.origin || eventData.payment_origin || eventData.provider, 80) || (eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'web'),
         uscreen_user_id: cleanValue(eventData.user_id || eventData.customer_id || eventData.user?.id || eventData.customer?.id, 120),
         customer_reference: sha256Hex(email)?.slice(0, 16),
-        customer_name: name,
         source_taxonomy: classifySource(eventData),
         acquisition: reconciliation.classification || 'unknown',
         confidence: reconciliation.confidence || 'none',

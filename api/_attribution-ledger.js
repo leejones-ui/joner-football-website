@@ -96,7 +96,7 @@ export function classifyAttribution({ journey, payment = {}, now = Date.now() } 
   const touch = journey?.last_touch || journey?.first_touch || {}
   const age = Date.parse(payment.paid_at || payment.created_at || 0)
   const within90 = !age || now - age <= LEDGER_TTL_SECONDS * 1000
-  const explicitJourney = normalizeJourneyId(payment.journey_id)
+  const explicitJourney = clean(payment.journey_id || payment.jf_journey_id, MAX.journey)
   if (explicitJourney && explicitJourney === journey?.journey_id && within90) {
     const paidMeta = isExactPaidMeta(touch)
     return { classification: paidMeta ? 'exact_paid_meta' : classifyTouch(touch), confidence: paidMeta ? 'high' : 'high', evidence: ['explicit_journey_id', 'touch_within_90_days'] }

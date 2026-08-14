@@ -138,6 +138,20 @@ export async function linkJourneyIdentity(token, { email, uscreenUserId } = {}) 
   return { linked: true, id }
 }
 
+// Resolve only a cryptographically valid first-party token. The signed token
+// is the public journey identifier; the UUID inside it is only the KV key.
+export async function getSignedJourney(token) {
+  const id = verifyJourneyToken(token)
+  if (!id) return undefined
+  const record = await readJourney(id)
+  if (!record) return undefined
+  return {
+    ...record,
+    journey_id: token,
+    last_touch: record.latest_touch || record.last_touch || record.first_touch || {},
+  }
+}
+
 async function journeyIdFromIndexes(data, email) {
   const attribution = extractAttribution(data)
   const tokenId = verifyJourneyToken(attribution.jf_journey_id || data?.jf_journey_id)

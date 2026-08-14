@@ -24,9 +24,14 @@ export async function reliabilityKv(command, fetchImpl = fetch) {
 const resultOf = async (cmd, fetchImpl) => (await reliabilityKv(cmd, fetchImpl))?.result
 const parse = (raw) => { try { return typeof raw === 'string' ? JSON.parse(raw) : raw } catch { return null } }
 const cleanId = (value) => String(value || '').trim().slice(0, 180)
+export function reliablePaymentIdentity(sale) {
+  const providerId = cleanId(sale.provider_payment_id || sale.payment_id || sale.invoice_id || sale.order_id || sale.id || sale.sale_id)
+  const kind = cleanId(sale.kind || 'payment').toLowerCase() || 'payment'
+  return `${kind}:${providerId}`
+}
 
 export async function appendReliableSale(sale, fetchImpl = fetch) {
-  const saleId = cleanId(sale.sale_id)
+  const saleId = cleanId(sale.sale_id) || reliablePaymentIdentity(sale)
   if (!saleId) throw new Error('sale_id is required')
   const record = { ...sale, sale_id: saleId, ledger_version: 1, persisted_at: new Date().toISOString() }
   const claimed = await resultOf(['SET', saleKey(saleId), JSON.stringify(record), 'NX', 'EX', String(TTL)], fetchImpl)
@@ -99,7 +104,7 @@ export async function replayWebhookFailure(eventId, processor, fetchImpl = fetch
 
 function channelOf(sale) { return String(sale.acquisition || sale.channel || sale.billing_origin || 'unknown').toLowerCase().replace(/[^a-z0-9_:-]/g, '_').slice(0, 50) || 'unknown' }
 async function updateAnonymousAggregate(sale, fetchImpl) {
-  const paymentId = cleanId(sale.payment_id || sale.invoice_id || sale.sale_id)
+  const paymentId = reliablePaymentIdentity(sale)
   const claimed = await resultOf(['SET', paymentClaimKey(paymentId), '1', 'NX', 'EX', String(TTL)], fetchImpl)
   if (claimed !== 'OK') return false
   const amount = Number(sale.amount || 0)
@@ -116,6 +121,6 @@ export async function getAnonymousAggregates(fetchImpl = fetch) {
 }
 export async function reconcileAuthoritativePayments(payments, fetchImpl = fetch) {
   const results = []
-  for (const payment of payments || []) results.push(await appendReliableSale({ ...payment, sale_id: `reconcile:${cleanId(payment.payment_id || payment.invoice_id || payment.id)}`, kind: payment.kind || 'payment', acquisition: channelOf(payment) }, fetchImpl))
+  for (const payment of payments || []) results.push(await appendReliableSale({ ...payment, sale_id: reliablePaymentIdentity(payment), kind: payment.kind || 'payment', acquisition: channelOf(payment) }, fetchImpl))
   return results
 }
