@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { createJourneyId, normalizeJourneyId, mergeTouch, sanitizeEvent, classifyAttribution, sha256, ATTRIBUTION_CLASSES, appendSale, listSales, MAX_SALES } from '../api/_attribution-ledger.js'
+import { mergedSales } from '../api/attribution-report.js'
 
 const id = createJourneyId(() => Buffer.alloc(18, 7))
 assert.match(id, /^jfy_[A-Za-z0-9_-]{24}$/)
@@ -59,4 +60,13 @@ assert.equal(rollingSales.length, MAX_SALES)
 assert.equal(rollingSales[0].sale_id, `sale-${MAX_SALES + 4}`)
 assert.equal(rollingSales.at(-1).sale_id, 'sale-5')
 assert.equal(strings.has('jfa:sale:sale-0'), false)
+
+const merged = mergedSales([], [
+  { sale_id: 'order.paid:ch_1', payment_id: 'ch_1', uscreen_user_id: '123', customer_name: 'Test', plan: 'Max - Annual', amount: 249.99, kind: 'payment', occurred_at: '2026-08-14T00:05:00Z', acquisition: 'unknown' },
+  { sale_id: 'reconcile:99', payment_id: '99', customer_reference: '123', customer_name: 'Test', plan: 'Max - Annual', amount: 249.99, currency: 'USD', kind: 'payment', paid_at: '2026-08-14T00:00:00Z', acquisition: 'unknown' },
+  { sale_id: 'renewal:ch_2', payment_id: 'ch_2', uscreen_user_id: '123', customer_name: 'Test', plan: 'Max - Annual', amount: 249.99, kind: 'renewal', occurred_at: '2027-08-14T00:05:00Z', acquisition: 'unknown' },
+])
+assert.equal(merged.length, 2)
+assert.ok(merged.some((sale) => sale.currency === 'USD' && sale.payment_id === 'ch_1'))
+assert.ok(merged.some((sale) => sale.kind === 'renewal'))
 console.log('attribution ledger tests passed')
