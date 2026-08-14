@@ -57,6 +57,10 @@ assert.equal((await replayWebhookFailure('evt-1', async () => { replayed++ }, fa
 assert.equal(replayed, 1)
 
 await reconcileAuthoritativePayments([{ payment_id: 'r1', amount: 7, currency: 'USD', occurred_at: '2026-02-01T00:00:00Z', channel: 'google' }], fakeFetch)
+await appendReliableSale({ sale_id: 'payment:provider-1', kind: 'payment', payment_id: 'provider-1', amount: 9 }, fakeFetch)
+assert.equal((await appendReliableSale({ sale_id: 'payment:provider-1', kind: 'payment', payment_id: 'provider-1', amount: 9 }, fakeFetch)).duplicate, true)
+assert.equal((await appendReliableSale({ sale_id: 'renewal:provider-1', kind: 'renewal', payment_id: 'provider-1', amount: 9 }, fakeFetch)).duplicate, false)
+assert.equal((await appendReliableSale({ sale_id: 'refund:provider-1', kind: 'refund', payment_id: 'provider-1', amount: -9 }, fakeFetch)).duplicate, false)
 await reconcileAuthoritativePayments([{ payment_id: 'r1', amount: 7, currency: 'USD', occurred_at: '2026-02-01T00:00:00Z', channel: 'google' }], fakeFetch)
 await reconcileAuthoritativePayments(Array.from({ length: 55 }, (_, i) => ({ payment_id: `r${i + 2}`, amount: 1, occurred_at: '2026-02-02T00:00:00Z', channel: 'google' })), fakeFetch)
 const aggregates = await getAnonymousAggregates(fakeFetch)

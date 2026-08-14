@@ -1,4 +1,5 @@
 import { getJourney, normalizeJourneyId, sanitizeIdentity, sha256, classifyAttribution, getEmailJourneyCandidates, indexEmailJourney } from './_attribution-ledger.js'
+import { getSignedJourney, verifyJourneyToken } from './_journey-ledger.js'
 
 function json(res, status, body) { return res.status(status).json(body) }
 function cors(req, res) { const origin = req.headers?.origin; if (origin === 'https://app.jonerfootball.com') res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS'); res.setHeader('Access-Control-Allow-Headers', 'content-type') }
@@ -22,7 +23,19 @@ export async function reconcilePayment(payment) {
       fbclid: touch.fbclid,
     }
   }
-  const journeyId = normalizeJourneyId(payment.journey_id)
+  const suppliedJourneyId = payment.journey_id || payment.jf_journey_id
+  const signedJourneyId = verifyJourneyToken(suppliedJourneyId)
+  if (signedJourneyId) {
+    const journey = await getSignedJourney(suppliedJourneyId)
+    if (journey) return { ...withTouch(classifyAttribution({ journey, payment: { ...payment, journey_id: suppliedJourneyId } }), journey), join_method: 'signed_journey_id' }
+    return { classification: 'unknown', confidence: 'none', evidence: ['signed_journey_not_found'], join_method: 'signed_journey_id' }
+  }
+  // A malformed signed token must fail closed rather than falling through to
+  // an email join that an attacker could use to misattribute a payment.
+  if (suppliedJourneyId && String(suppliedJourneyId).includes('.')) {
+    return { classification: 'unknown', confidence: 'none', evidence: ['invalid_signed_journey_id'], join_method: 'none' }
+  }
+  const journeyId = normalizeJourneyId(suppliedJourneyId)
   if (journeyId) {
     const journey = await getJourney(journeyId)
     if (journey) return { ...withTouch(classifyAttribution({ journey, payment }), journey), join_method: 'explicit_journey_id' }

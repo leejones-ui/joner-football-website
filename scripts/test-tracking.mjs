@@ -11,6 +11,7 @@ import uscreenWebhookHandler from '../api/uscreen-webhook.js'
 import { reconcileAuthoritativeFirstPaid } from './lib/first-paid-reconciliation.mjs'
 import { reconcileAttributedConversions } from './lib/meta-uscreen-reconciliation.mjs'
 import { createJourneyToken, verifyJourneyToken, mergeJourneyRecord } from '../api/_journey-ledger.js'
+import { reconcilePayment } from '../api/checkout-bridge.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const browserSource = fs.readFileSync(path.join(root, 'public/tracking-attribution.js'), 'utf8')
@@ -540,7 +541,7 @@ globalThis.fetch = async (url, options = {}) => {
     if (command[0] === 'ZADD' || command[0] === 'ZREM' || command[0] === 'HINCRBY' || command[0] === 'LPUSH' || command[0] === 'EXPIRE') {
       return { ok: true, status: 200, async json() { return { result: command[0] === 'ZADD' ? 1 : 'OK' } } }
     }
-    if (command[0] === 'ZRANGE' || command[0] === 'ZREVRANGE' || command[0] === 'SCAN' || command[0] === 'LRANGE' || command[0] === 'HGETALL') {
+    if (command[0] === 'ZRANGE' || command[0] === 'ZREVRANGE' || command[0] === 'ZRANGEBYSCORE' || command[0] === 'SCAN' || command[0] === 'LRANGE' || command[0] === 'HGETALL') {
       return { ok: true, status: 200, async json() { return { result: command[0] === 'SCAN' ? ['0', []] : [] } } }
     }
   }
@@ -572,6 +573,20 @@ globalThis.fetch = async (url, options = {}) => {
   throw new Error(`Unexpected test fetch: ${target}`)
 }
 try {
+  const signedJourney = createJourneyToken('118f47fb-1357-7b2a-9d44-6e8f90e25f4c')
+  kvStore.set('jf:journey:118f47fb-1357-7b2a-9d44-6e8f90e25f4c', JSON.stringify({
+    id: '118f47fb-1357-7b2a-9d44-6e8f90e25f4c',
+    latest_touch: { utm_source: 'facebook', utm_medium: 'paid_social', campaign_id: 'cmp', adset_id: 'set', ad_id: 'ad', fbc: 'fb.1.click' },
+  }))
+  const signedResult = await reconcilePayment({ jf_journey_id: signedJourney, paid_at: '2026-08-01T00:00:00Z' })
+  assert.equal(signedResult.join_method, 'signed_journey_id')
+  assert.equal(signedResult.classification, 'exact_paid_meta')
+  const tamperedResult = await reconcilePayment({ jf_journey_id: signedJourney + 'tampered', email: 'tracking-test@example.com' })
+  assert.equal(tamperedResult.classification, 'unknown')
+  assert.equal(tamperedResult.evidence[0], 'invalid_signed_journey_id')
+  const noTokenResult = await reconcilePayment({ email: 'no-safe-join@example.com' })
+  assert.equal(noTokenResult.evidence[0], 'no_safe_join')
+
   const metaBeforeFirstPaid = metaBodies.length
   await processUscreenPayload({
     event: 'order.paid', email: 'tracking-test@example.com', user_id: 'user-paid-123',
