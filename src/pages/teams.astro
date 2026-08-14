@@ -64,10 +64,36 @@ const jfTeamsFeatures = [
 
 // Solution carousel slides (premium graphics, "what's inside" style like /app)
 const teamSlides = [
-  { image: '/images/teams/solution-maxplan.jpg', alt: 'Every player and coach gets the app on the Max Plan' },
-  { image: '/images/teams/solution-community.jpg', alt: 'Your own private team community inside the app' },
-  { image: '/images/teams/solution-homework.jpg', alt: 'Your coach can set the homework and send drills to players' },
-  { image: '/images/teams/solution-direct-access.jpg', alt: 'Coaches get direct access to Joner and his methods' }
+  {
+    image: '/images/teams/features/set-assignments.webp',
+    title: 'Set Assignments',
+    note: 'Send training tasks to every player from one place.',
+    alt: 'A player completing football training beside the JF Teams assignment dashboard',
+  },
+  {
+    image: '/images/teams/features/max-plan-for-all.webp',
+    title: 'Max Plan For All',
+    note: 'Give every coach and player access to the full Joner Football App.',
+    alt: 'A coach with players beside the Joner Football App on phone and tablet',
+  },
+  {
+    image: '/images/teams/features/leaderboard.webp',
+    title: 'Leaderboard',
+    note: 'Create accountability with points, rankings and healthy competition.',
+    alt: 'Two football players competing beside the JF Teams leaderboard',
+  },
+  {
+    image: '/images/teams/features/team-chat.webp',
+    title: 'Team Chat',
+    note: 'Keep players, parents and coaches connected.',
+    alt: 'A coach leading players beside the JF Teams chat screen',
+  },
+  {
+    image: '/images/teams/features/club-management.webp',
+    title: 'Club Management',
+    note: 'Manage every team and coach from one dashboard.',
+    alt: 'A coach on the pitch beside the JF Teams club management dashboard',
+  },
 ]
 
 // "Who is it for" scroll-reveal callouts (mirrors the coaches page)
@@ -219,7 +245,28 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Every Play
     />
 
     {/* SOLUTION (image carousel, "what's inside" style like /app) */}
-    <CoachesHighlightsCarousel heading="What Your Squad Gets" slides={teamSlides} marquee />
+    <CoachesHighlightsCarousel heading="What Your Squad Gets" slides={teamSlides} />
+
+    {/* DASHBOARD OVERVIEW (full infographic supplied by Lee) */}
+    <section id="teams-dashboard-overview" class="bg-joner-black pb-12 md:pb-20 scroll-mt-20" aria-labelledby="teams-dashboard-overview-heading">
+      <h2 id="teams-dashboard-overview-heading" class="sr-only">Teams Dashboard Overview</h2>
+      <p class="px-4 pb-3 font-heading text-xs uppercase tracking-[0.2em] text-white/70 md:hidden">Swipe to explore the dashboard</p>
+      <div
+        class="overflow-x-auto overscroll-x-contain border-y border-white/10 bg-[#f3f4f6]"
+        role="region"
+        aria-label="Scrollable Teams dashboard overview"
+        tabindex="0"
+      >
+        <img
+          src="/images/teams/teams-dashboard-overview.webp"
+          alt="Teams Dashboard Overview showing the club manager home screen with callouts for the team calendar, Joner Football App access, session planner, Ask Joner, leaderboard, team chat, training assignments, multiple team management and player progress tracking"
+          class="block h-auto w-full min-w-[1100px] md:min-w-0"
+          width="2858"
+          height="1600"
+          loading="lazy"
+        />
+      </div>
+    </section>
 
     {/* INSIDE JF TEAMS (the features, straight from Lee's demo video) */}
     <section class="bg-joner-black py-16 md:py-24">
