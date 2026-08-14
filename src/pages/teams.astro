@@ -62,37 +62,43 @@ const jfTeamsFeatures = [
   },
 ]
 
-// Solution carousel slides (premium graphics, "what's inside" style like /app)
+// Team feature carousel. Live text sits over the lower-left third so the
+// supplied imagery stays clean and the feature copy remains responsive.
 const teamSlides = [
   {
+    eyebrow: '01 / 05',
     image: '/images/teams/features/set-assignments.webp',
     title: 'Set Assignments',
     note: 'Send training tasks to every player from one place.',
     alt: 'A player completing football training beside the JF Teams assignment dashboard',
   },
   {
+    eyebrow: '02 / 05',
     image: '/images/teams/features/max-plan-for-all.webp',
     title: 'Max Plan For All',
     note: 'Give every coach and player access to the full Joner Football App.',
     alt: 'A coach with players beside the Joner Football App on phone and tablet',
   },
   {
+    eyebrow: '03 / 05',
     image: '/images/teams/features/leaderboard.webp',
     title: 'Leaderboard',
     note: 'Create accountability with points, rankings and healthy competition.',
     alt: 'Two football players competing beside the JF Teams leaderboard',
   },
   {
+    eyebrow: '04 / 05',
     image: '/images/teams/features/team-chat.webp',
     title: 'Team Chat',
     note: 'Keep players, parents and coaches connected.',
     alt: 'A coach leading players beside the JF Teams chat screen',
   },
   {
+    eyebrow: '05 / 05',
     image: '/images/teams/features/club-management.webp',
     title: 'Club Management',
     note: 'Manage every team and coach from one dashboard.',
-    alt: 'A coach on the pitch beside the JF Teams club management dashboard',
+    alt: 'A coach on the pitch beside the JF Teams club management dashboard'
   },
 ]
 
@@ -244,8 +250,8 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Every Play
       alt="Lee Jones coaching a team"
     />
 
-    {/* SOLUTION (image carousel, "what's inside" style like /app) */}
-    <CoachesHighlightsCarousel heading="What Your Squad Gets" slides={teamSlides} />
+    {/* SOLUTION: swipeable feature carousel with live lower-third text */}
+    <CoachesHighlightsCarousel heading="What Your Squad Gets" slides={teamSlides} featureOverlay />
 
     {/* DASHBOARD OVERVIEW (full infographic supplied by Lee) */}
     <section id="teams-dashboard-overview" class="bg-joner-black pb-12 md:pb-20 scroll-mt-20" aria-labelledby="teams-dashboard-overview-heading">

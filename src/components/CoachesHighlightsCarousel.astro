@@ -22,9 +22,10 @@ interface Props {
   ctaLabel?: string
   marquee?: boolean
   compact?: boolean
+  featureOverlay?: boolean
 }
 
-const { heading = "What's inside Coaches Only.", slides, ctaHref, ctaLabel = 'Join now', marquee = false, compact = false } = Astro.props
+const { heading = "What's inside Coaches Only.", slides, ctaHref, ctaLabel = 'Join now', marquee = false, compact = false, featureOverlay = false } = Astro.props
 
 // In marquee mode render the slides twice so the auto-scroll loops seamlessly.
 const renderSlides = marquee ? [...slides, ...slides] : slides
@@ -89,18 +90,34 @@ const renderSlides = marquee ? [...slides, ...slides] : slides
             )}
             {(slide.title || ctaHref) && (
               <>
-                <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none"></div>
+                <div class:list={[
+                  'absolute inset-0 pointer-events-none',
+                  featureOverlay
+                    ? 'bg-gradient-to-t from-black/95 via-black/35 to-transparent'
+                    : 'bg-gradient-to-t from-black/75 via-black/10 to-transparent',
+                ]}></div>
                 <div class="absolute inset-0 z-10 p-6 sm:p-9 md:p-12 lg:p-14 flex flex-col justify-end gap-5">
                   {slide.title && (
                     <div class="max-w-[34rem]">
                       {slide.eyebrow && (
-                        <p class="font-body text-white/90 text-sm md:text-base mb-3 tracking-wide">{slide.eyebrow}</p>
+                        <p class:list={[
+                          'text-sm md:text-base mb-3',
+                          featureOverlay
+                            ? 'font-heading font-bold uppercase tracking-[0.2em] text-joner-red'
+                            : 'font-body text-white/90 tracking-wide',
+                        ]}>{slide.eyebrow}</p>
                       )}
-                      <h3 class="font-body text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold leading-[1.08] chl-headline">
+                      <h3 class:list={[
+                        'text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-[1.08] chl-headline',
+                        featureOverlay ? 'font-heading font-bold uppercase' : 'font-body font-semibold',
+                      ]}>
                         {slide.title}
                       </h3>
                       {slide.note && (
-                        <p class="mt-4 font-body text-white/85 text-xs sm:text-sm md:text-base">{slide.note}</p>
+                        <p class:list={[
+                          'mt-4 font-body text-sm md:text-base',
+                          featureOverlay ? 'max-w-md text-white leading-relaxed' : 'text-white/85',
+                        ]}>{slide.note}</p>
                       )}
                     </div>
                   )}
