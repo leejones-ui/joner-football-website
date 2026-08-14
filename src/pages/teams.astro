@@ -30,38 +30,6 @@ const tickerFacts = [
   'Grassroots To Professional Videos',
 ]
 
-// What is inside JF Teams (straight from Lee's demo video)
-const jfTeamsFeatures = [
-  {
-    title: 'Set Assignments',
-    body: 'Set an assignment for the whole group to do at home. Pull it from the Joner Football App, a YouTube link, an external link, or just write a simple note.',
-  },
-  {
-    title: 'Points And Leaderboard',
-    body: 'Players earn points when they complete the assignment you set. That builds real accountability and a bit of healthy competition inside the team.',
-  },
-  {
-    title: 'Photo Proof',
-    body: 'Players can upload photo proof of the work. It earns them extra points and shows you they are actually doing it, not just ticking a box.',
-  },
-  {
-    title: 'Full Max Plan For Every Coach',
-    body: 'Every coach gets the full Max Plan library inside the app. Detailed session plans, voice over drills, how I work with my players, and an endless amount of training videos.',
-  },
-  {
-    title: 'Two Ways To Plan Sessions',
-    body: 'A quick on the go session plan for parents and grassroots coaches, or the detailed session planner for coaches who want to build and deliver in full depth.',
-  },
-  {
-    title: 'Ask Joner',
-    body: 'Direct access to me. Ask about a session topic, session planning, or any advice that helps you deliver a better session with your team.',
-  },
-  {
-    title: 'Managers Dashboard',
-    body: 'Running a large club or organisation? Manage every team from one place, assign coaches to specific teams, and see the whole organisation at a glance.',
-  },
-]
-
 // Team feature carousel. Live text sits over the lower-left third so the
 // supplied imagery stays clean and the feature copy remains responsive.
 const teamSlides = [
@@ -271,31 +239,6 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Every Play
           height="1600"
           loading="lazy"
         />
-      </div>
-    </section>
-
-    {/* INSIDE JF TEAMS (the features, straight from Lee's demo video) */}
-    <section class="bg-joner-black py-16 md:py-24">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="max-w-3xl mb-10 md:mb-14">
-          <img src="/images/teams/logo/jf-teams-stacked-red.svg" alt="JF Teams" class="h-16 md:h-20 w-auto mb-6" width="110" height="110" loading="lazy" />
-          <h2 class="font-heading text-4xl md:text-6xl font-bold text-white uppercase leading-none mb-6">One Platform. Better Players. Better Coaches.</h2>
-          <p class="font-body text-lg text-gray-300 max-w-2xl">JF Teams connects what your players do at training with what they do away from it, and gives every coach the resources to deliver better sessions. All in one place.</p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {jfTeamsFeatures.map((f, i) => (
-            <article class="bg-joner-gray border border-gray-800 rounded-2xl p-6 flex flex-col">
-              <span class="font-heading text-joner-red text-3xl leading-none mb-4">{String(i + 1).padStart(2, '0')}</span>
-              <h3 class="font-heading text-xl text-white uppercase leading-tight mb-3 tracking-wide">{f.title}</h3>
-              <p class="text-gray-300 font-body text-sm leading-relaxed">{f.body}</p>
-            </article>
-          ))}
-        </div>
-
-        <div class="mt-12">
-          <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex">BOOK A DEMO</a>
-        </div>
       </div>
     </section>
 
