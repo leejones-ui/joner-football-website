@@ -1,5 +1,5 @@
 import { getJourney, normalizeJourneyId, sanitizeIdentity, sha256, classifyAttribution, getEmailJourneyCandidates, indexEmailJourney } from './_attribution-ledger.js'
-import { getSignedJourney, verifyJourneyToken } from './_journey-ledger.js'
+import { getSignedJourney, linkJourneyIdentity, verifyJourneyToken } from './_journey-ledger.js'
 
 function json(res, status, body) { return res.status(status).json(body) }
 function cors(req, res) { const origin = req.headers?.origin; if (origin === 'https://app.jonerfootball.com') res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS'); res.setHeader('Access-Control-Allow-Headers', 'content-type') }
@@ -58,6 +58,16 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { success: false, error: 'Method not allowed' })
   try {
     const body = parse(req)
+    const suppliedToken = body.jf_journey_id || body.journey_id
+    if (verifyJourneyToken(suppliedToken)) {
+      const journey = await getSignedJourney(suppliedToken)
+      if (!journey) return json(res, 404, { success: false, error: 'Journey not found' })
+      const linked = await linkJourneyIdentity(suppliedToken, {
+        email: body.email,
+        uscreenUserId: body.uscreen_user_id || body.user_id,
+      })
+      return json(res, 200, { success: true, journey_id: suppliedToken, linked: linked.linked })
+    }
     const journeyId = normalizeJourneyId(body.journey_id)
     if (!journeyId) return json(res, 400, { success: false, error: 'Valid journey_id is required' })
     const journey = await getJourney(journeyId)

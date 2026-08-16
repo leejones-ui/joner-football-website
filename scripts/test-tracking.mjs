@@ -15,7 +15,18 @@ import { reconcilePayment } from '../api/checkout-bridge.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const browserSource = fs.readFileSync(path.join(root, 'public/tracking-attribution.js'), 'utf8')
-const context = { URLSearchParams, window: {} }
+const browserStorage = new Map()
+const browserDocument = { cookie: '' }
+const context = {
+  URLSearchParams,
+  document: browserDocument,
+  window: {
+    localStorage: {
+      getItem: (key) => browserStorage.get(key) || null,
+      setItem: (key, value) => browserStorage.set(key, value),
+    },
+  },
+}
 vm.createContext(context)
 vm.runInContext(browserSource, context)
 const browser = context.window.JonerAttribution
@@ -25,6 +36,13 @@ process.env.JOURNEY_SIGNING_SECRET = 'tracking-test-secret-with-enough-entropy'
 const journeyToken = createJourneyToken('018f47fb-1357-7b2a-9d44-6e8f90e25f4c')
 assert.equal(verifyJourneyToken(journeyToken), '018f47fb-1357-7b2a-9d44-6e8f90e25f4c')
 assert.equal(verifyJourneyToken(journeyToken + 'tampered'), undefined)
+assert.equal(browser.saveJourneyToken(journeyToken), true)
+assert.equal(browser.journeyToken(), journeyToken)
+assert.match(browserDocument.cookie, /^jf_journey_id=/)
+assert.equal(browser.saveJourneyToken('jfy_unsigned_legacy_token'), false)
+const baseLayoutSource = fs.readFileSync(path.join(root, 'src/layouts/BaseLayout.astro'), 'utf8')
+assert.match(baseLayoutSource, /enrichedParams\.set\('jf_journey_id', signedJourneyToken\)/)
+assert.doesNotMatch(baseLayoutSource, /enrichedParams\.set\('journey_id', ledgerJourneyId\)/)
 const mergedJourney = mergeJourneyRecord({
   id: 'journey-1',
   created_at: '2026-08-11T00:00:00.000Z',
