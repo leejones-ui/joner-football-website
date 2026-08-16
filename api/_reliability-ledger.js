@@ -25,7 +25,12 @@ const resultOf = async (cmd, fetchImpl) => (await reliabilityKv(cmd, fetchImpl))
 const parse = (raw) => { try { return typeof raw === 'string' ? JSON.parse(raw) : raw } catch { return null } }
 const cleanId = (value) => String(value || '').trim().slice(0, 180)
 export function reliablePaymentIdentity(sale) {
-  const providerId = cleanId(sale.provider_payment_id || sale.payment_id || sale.invoice_id || sale.order_id || sale.id || sale.sale_id)
+  const providerId = cleanId(
+    sale.provider_payment_id || sale.payment_id
+    || sale.provider_invoice_id || sale.invoice_id
+    || sale.provider_order_id || sale.order_id
+    || sale.provider_sale_id,
+  )
   if (!providerId) return ''
   const kind = cleanId(sale.kind || 'payment').toLowerCase() || 'payment'
   return `${kind}:${providerId}`
@@ -51,8 +56,9 @@ function mergeReliableSale(existing, incoming) {
 }
 
 export async function appendReliableSale(sale, fetchImpl = fetch) {
-  const saleId = cleanId(sale.sale_id) || reliablePaymentIdentity(sale)
-  if (!saleId) throw new Error('payment identity is required')
+  const paymentIdentity = reliablePaymentIdentity(sale)
+  if (!paymentIdentity) throw new Error('payment identity is required')
+  const saleId = cleanId(sale.sale_id) || paymentIdentity
   const record = { ...sale, sale_id: saleId, ledger_version: 1, persisted_at: new Date().toISOString() }
   const claimed = await resultOf(['SET', saleKey(saleId), JSON.stringify(record), 'NX', 'EX', String(TTL)], fetchImpl)
   if (claimed !== 'OK') {

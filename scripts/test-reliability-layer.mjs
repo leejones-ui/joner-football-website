@@ -45,20 +45,21 @@ async function fakeFetch(_url, options) {
 process.env.KV_REST_API_URL = 'https://kv.invalid'; process.env.KV_REST_API_TOKEN = 'test'
 
 assert.equal(reliablePaymentIdentity({}), '')
+assert.equal(reliablePaymentIdentity({ id: 'webhook-event-1', sale_id: 'synthetic-ledger-row' }), '')
 await assert.rejects(
-  () => appendReliableSale({ occurred_at: '2026-01-01T00:00:00Z', amount: 10 }, fakeFetch),
+  () => appendReliableSale({ sale_id: 'synthetic-ledger-row', id: 'webhook-event-1', occurred_at: '2026-01-01T00:00:00Z', amount: 10 }, fakeFetch),
   /payment identity is required/,
 )
 
-await appendReliableSale({ sale_id: 'a', occurred_at: '2026-01-01T00:00:00Z', amount: 10, acquisition: 'facebook' }, fakeFetch)
-assert.equal((await appendReliableSale({ sale_id: 'a', amount: 10, currency: 'AUD', acquisition: 'unknown' }, fakeFetch)).duplicate, true)
+await appendReliableSale({ sale_id: 'a', payment_id: 'pay-a', occurred_at: '2026-01-01T00:00:00Z', amount: 10, acquisition: 'facebook' }, fakeFetch)
+assert.equal((await appendReliableSale({ sale_id: 'a', payment_id: 'pay-a', amount: 10, currency: 'AUD', acquisition: 'unknown' }, fakeFetch)).duplicate, true)
 const updatedDuplicate = (await listReliableSales(fakeFetch)).find((sale) => sale.sale_id === 'a')
 assert.equal(updatedDuplicate.currency, 'AUD')
 assert.equal(updatedDuplicate.acquisition, 'facebook')
-for (let i=1;i<=MAX_DETAILED_SALES;i++) await appendReliableSale({ sale_id: String(i), occurred_at: `2026-01-01T00:00:${String(i).padStart(2,'0')}Z`, amount: 1, acquisition: 'facebook' }, fakeFetch)
+for (let i=1;i<=MAX_DETAILED_SALES;i++) await appendReliableSale({ sale_id: String(i), payment_id: `pay-${i}`, occurred_at: `2026-01-01T00:00:${String(i).padStart(2,'0')}Z`, amount: 1, acquisition: 'facebook' }, fakeFetch)
 assert.equal((await listReliableSales(fakeFetch)).length, MAX_DETAILED_SALES)
 failCommand = 'ZADD'
-await assert.rejects(() => appendReliableSale({ sale_id: 'partial', occurred_at: '2026-01-02T00:00:00Z', amount: 4, acquisition: 'email' }, fakeFetch))
+await assert.rejects(() => appendReliableSale({ sale_id: 'partial', payment_id: 'pay-partial', occurred_at: '2026-01-02T00:00:00Z', amount: 4, acquisition: 'email' }, fakeFetch))
 assert.ok((await listReliableSales(fakeFetch)).some((sale) => sale.sale_id === 'partial'))
 
 await recordWebhookFailure({ event_id: 'evt-1', payload: { event: 'order.paid' }, error: 'Brevo down' }, fakeFetch)
