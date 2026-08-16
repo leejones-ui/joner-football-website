@@ -32,8 +32,7 @@ export function reliablePaymentIdentity(sale) {
     || sale.provider_sale_id,
   )
   if (!providerId) return ''
-  const kind = cleanId(sale.kind || 'payment').toLowerCase() || 'payment'
-  return `${kind}:${providerId}`
+  return providerId
 }
 
 function meaningful(value) {
@@ -138,6 +137,15 @@ export async function replayWebhookFailure(eventId, processor, fetchImpl = fetch
 function channelOf(sale) { return String(sale.acquisition || sale.channel || sale.billing_origin || 'unknown').toLowerCase().replace(/[^a-z0-9_:-]/g, '_').slice(0, 50) || 'unknown' }
 async function updateAnonymousAggregate(sale, fetchImpl) {
   const paymentId = reliablePaymentIdentity(sale)
+  // Before 2026-08-16 the claim key included the event kind. Migrate that
+  // claim lazily so reconciliation cannot count an already-recorded payment
+  // again after identity was tightened to the authoritative provider ID.
+  const legacyKind = cleanId(sale.kind || 'payment').toLowerCase() || 'payment'
+  const legacyClaim = await resultOf(['GET', paymentClaimKey(`${legacyKind}:${paymentId}`)], fetchImpl)
+  if (legacyClaim) {
+    await resultOf(['SET', paymentClaimKey(paymentId), '1', 'NX', 'EX', String(TTL)], fetchImpl)
+    return false
+  }
   const claimed = await resultOf(['SET', paymentClaimKey(paymentId), '1', 'NX', 'EX', String(TTL)], fetchImpl)
   if (claimed !== 'OK') return false
   const amount = Number(sale.amount || 0)

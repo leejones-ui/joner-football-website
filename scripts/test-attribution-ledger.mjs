@@ -78,6 +78,10 @@ const authoritativeWins = mergedSales(
 )
 assert.equal(authoritativeWins[0].acquisition, 'facebook')
 assert.equal(authoritativeWins[0].currency, 'AUD')
+assert.equal(mergedSales(
+  [{ payment_id: 'same-provider-payment', kind: 'payment', acquisition: 'facebook' }],
+  [{ payment_id: 'same-provider-payment', kind: 'refund', acquisition: 'facebook', amount: -10 }],
+).length, 1)
 assert.ok(merged.some((sale) => sale.currency === 'USD' && sale.payment_id === 'ch_1'))
 assert.ok(merged.some((sale) => sale.kind === 'renewal'))
 console.log('attribution ledger tests passed')
