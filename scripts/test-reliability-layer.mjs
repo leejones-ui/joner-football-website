@@ -44,7 +44,10 @@ async function fakeFetch(_url, options) {
 process.env.KV_REST_API_URL = 'https://kv.invalid'; process.env.KV_REST_API_TOKEN = 'test'
 
 await appendReliableSale({ sale_id: 'a', occurred_at: '2026-01-01T00:00:00Z', amount: 10, acquisition: 'facebook' }, fakeFetch)
-assert.equal((await appendReliableSale({ sale_id: 'a', amount: 10 }, fakeFetch)).duplicate, true)
+assert.equal((await appendReliableSale({ sale_id: 'a', amount: 10, currency: 'AUD', acquisition: 'unknown' }, fakeFetch)).duplicate, true)
+const updatedDuplicate = (await listReliableSales(fakeFetch)).find((sale) => sale.sale_id === 'a')
+assert.equal(updatedDuplicate.currency, 'AUD')
+assert.equal(updatedDuplicate.acquisition, 'facebook')
 for (let i=1;i<=MAX_DETAILED_SALES;i++) await appendReliableSale({ sale_id: String(i), occurred_at: `2026-01-01T00:00:${String(i).padStart(2,'0')}Z`, amount: 1, acquisition: 'facebook' }, fakeFetch)
 assert.equal((await listReliableSales(fakeFetch)).length, MAX_DETAILED_SALES)
 failCommand = 'ZADD'
