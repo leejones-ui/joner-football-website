@@ -26,6 +26,7 @@ async function fakeFetch(_url, options) {
     if (opts.includes('NX') && strings.has(key)) result = null
     else { strings.set(key, value); result = 'OK' }
   } else if (command === 'GET') result = strings.get(args[0]) || null
+  else if (command === 'MGET') result = args.map((key) => strings.get(key) || null)
   else if (command === 'DEL') { for (const key of args) strings.delete(key); result = args.length }
   else if (command === 'SCAN') {
     const keys = [...new Set([...strings.keys(), ...hashes.keys()])].filter((key) => key.startsWith(args[2]?.replace('*', '') || ''))
@@ -48,6 +49,9 @@ assert.equal(reliablePaymentIdentity({}), '')
 assert.equal(reliablePaymentIdentity({ id: 'webhook-event-1', sale_id: 'synthetic-ledger-row' }), '')
 assert.equal(reliablePaymentIdentity({ kind: 'payment', payment_id: 'provider-shared' }), 'provider-shared')
 assert.equal(reliablePaymentIdentity({ kind: 'refund', payment_id: 'provider-shared' }), 'provider-shared')
+strings.set('jfa:reliability:payment:payment:legacy-provider-shared', '1')
+await appendReliableSale({ sale_id: 'refund:legacy-provider-shared', kind: 'refund', payment_id: 'legacy-provider-shared', amount: -10, acquisition: 'unknown' }, fakeFetch)
+assert.equal((await getAnonymousAggregates(fakeFetch)).unknown, undefined)
 await assert.rejects(
   () => appendReliableSale({ sale_id: 'synthetic-ledger-row', id: 'webhook-event-1', occurred_at: '2026-01-01T00:00:00Z', amount: 10 }, fakeFetch),
   /payment identity is required/,

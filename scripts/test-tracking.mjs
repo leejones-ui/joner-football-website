@@ -602,6 +602,9 @@ globalThis.fetch = async (url, options = {}) => {
       const deleted = kvStore.delete(command[1]) ? 1 : 0
       return { ok: true, status: 200, async json() { return { result: deleted } } }
     }
+    if (command[0] === 'MGET') {
+      return { ok: true, status: 200, async json() { return { result: command.slice(1).map((key) => kvStore.get(key) || null) } } }
+    }
     if (command[0] === 'ZADD' || command[0] === 'ZREM' || command[0] === 'HINCRBY' || command[0] === 'LPUSH' || command[0] === 'EXPIRE') {
       return { ok: true, status: 200, async json() { return { result: command[0] === 'ZADD' ? 1 : 'OK' } } }
     }

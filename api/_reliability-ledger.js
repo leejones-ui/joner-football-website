@@ -141,8 +141,9 @@ async function updateAnonymousAggregate(sale, fetchImpl) {
   // claim lazily so reconciliation cannot count an already-recorded payment
   // again after identity was tightened to the authoritative provider ID.
   const legacyKind = cleanId(sale.kind || 'payment').toLowerCase() || 'payment'
-  const legacyClaim = await resultOf(['GET', paymentClaimKey(`${legacyKind}:${paymentId}`)], fetchImpl)
-  if (legacyClaim) {
+  const legacyKinds = [...new Set(['payment', 'renewal', 'refund', legacyKind])]
+  const legacyClaims = await resultOf(['MGET', ...legacyKinds.map((kind) => paymentClaimKey(`${kind}:${paymentId}`))], fetchImpl)
+  if (Array.isArray(legacyClaims) && legacyClaims.some(Boolean)) {
     await resultOf(['SET', paymentClaimKey(paymentId), '1', 'NX', 'EX', String(TTL)], fetchImpl)
     return false
   }
