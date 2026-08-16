@@ -6,6 +6,7 @@ import {
   listWebhookFailures,
   replayWebhookFailure,
   reconcileAuthoritativePayments,
+  reliablePaymentIdentity,
   getAnonymousAggregates,
   MAX_DETAILED_SALES,
 } from '../api/_reliability-ledger.js'
@@ -42,6 +43,12 @@ async function fakeFetch(_url, options) {
   return { ok: true, json: async () => ({ result }) }
 }
 process.env.KV_REST_API_URL = 'https://kv.invalid'; process.env.KV_REST_API_TOKEN = 'test'
+
+assert.equal(reliablePaymentIdentity({}), '')
+await assert.rejects(
+  () => appendReliableSale({ occurred_at: '2026-01-01T00:00:00Z', amount: 10 }, fakeFetch),
+  /payment identity is required/,
+)
 
 await appendReliableSale({ sale_id: 'a', occurred_at: '2026-01-01T00:00:00Z', amount: 10, acquisition: 'facebook' }, fakeFetch)
 assert.equal((await appendReliableSale({ sale_id: 'a', amount: 10, currency: 'AUD', acquisition: 'unknown' }, fakeFetch)).duplicate, true)

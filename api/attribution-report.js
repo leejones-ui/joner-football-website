@@ -17,8 +17,12 @@ function samePaymentShape(a, b) {
 
 export function mergedSales(legacy, reliable) {
   const byPayment = new Map()
+  let unjoinableIndex = 0
   for (const sale of [...reliable, ...legacy]) {
-    const key = reliablePaymentIdentity(sale)
+    const identity = reliablePaymentIdentity(sale)
+    // Missing authoritative payment IDs must remain separate and unattributed;
+    // never collapse unrelated payments under one empty identity.
+    const key = identity || `unjoinable:${unjoinableIndex++}`
     const existing = byPayment.get(key)
     byPayment.set(key, existing ? { ...existing, ...sale } : sale)
   }
