@@ -24,6 +24,7 @@ export async function reliabilityKv(command, fetchImpl = fetch) {
 const resultOf = async (cmd, fetchImpl) => (await reliabilityKv(cmd, fetchImpl))?.result
 const parse = (raw) => { try { return typeof raw === 'string' ? JSON.parse(raw) : raw } catch { return null } }
 const cleanId = (value) => String(value || '').trim().slice(0, 180)
+const NON_AUTHORITATIVE_PAYMENT_IDS = new Set(['unknown', 'none', 'null', 'undefined', 'n/a', 'na', 'not_applicable', 'no_safe_join'])
 export function reliablePaymentIdentity(sale) {
   const providerId = cleanId(
     sale.provider_payment_id || sale.payment_id
@@ -31,7 +32,7 @@ export function reliablePaymentIdentity(sale) {
     || sale.provider_order_id || sale.order_id
     || sale.provider_sale_id,
   )
-  if (!providerId) return ''
+  if (!providerId || NON_AUTHORITATIVE_PAYMENT_IDS.has(providerId.toLowerCase())) return ''
   return providerId
 }
 

@@ -47,6 +47,9 @@ process.env.KV_REST_API_URL = 'https://kv.invalid'; process.env.KV_REST_API_TOKE
 
 assert.equal(reliablePaymentIdentity({}), '')
 assert.equal(reliablePaymentIdentity({ id: 'webhook-event-1', sale_id: 'synthetic-ledger-row' }), '')
+for (const sentinel of ['unknown', 'none', 'null', 'undefined', 'n/a']) {
+  assert.equal(reliablePaymentIdentity({ payment_id: sentinel }), '')
+}
 assert.equal(reliablePaymentIdentity({ kind: 'payment', payment_id: 'provider-shared' }), 'provider-shared')
 assert.equal(reliablePaymentIdentity({ kind: 'refund', payment_id: 'provider-shared' }), 'provider-shared')
 strings.set('jfa:reliability:payment:payment:legacy-provider-shared', '1')
