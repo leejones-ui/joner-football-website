@@ -30,16 +30,42 @@ export function reliablePaymentIdentity(sale) {
   return `${kind}:${providerId}`
 }
 
+function meaningful(value) {
+  const text = cleanId(value).toLowerCase()
+  return Boolean(text && !['unknown', 'none', 'null', 'direct', 'no_safe_join'].includes(text))
+}
+
+function mergeReliableSale(existing, incoming) {
+  const patch = Object.fromEntries(Object.entries(incoming).filter(([, value]) => value !== undefined && value !== null && value !== ''))
+  const merged = {
+    ...(existing || {}),
+    ...patch,
+    sale_id: incoming.sale_id,
+    ledger_version: 1,
+    persisted_at: existing?.persisted_at || incoming.persisted_at,
+    updated_at: new Date().toISOString(),
+  }
+  if (meaningful(existing?.acquisition) && !meaningful(incoming?.acquisition)) merged.acquisition = existing.acquisition
+  return merged
+}
+
 export async function appendReliableSale(sale, fetchImpl = fetch) {
   const saleId = cleanId(sale.sale_id) || reliablePaymentIdentity(sale)
   if (!saleId) throw new Error('sale_id is required')
   const record = { ...sale, sale_id: saleId, ledger_version: 1, persisted_at: new Date().toISOString() }
   const claimed = await resultOf(['SET', saleKey(saleId), JSON.stringify(record), 'NX', 'EX', String(TTL)], fetchImpl)
   if (claimed !== 'OK') {
+    // Authoritative reconciliation may learn missing currency/provider fields
+    // after the webhook's first write. Backfill those fields without allowing
+    // an "unknown" retry to erase a previously verified acquisition source.
+    const existing = parse(await resultOf(['GET', saleKey(saleId)], fetchImpl))
+    const merged = mergeReliableSale(existing, record)
+    await resultOf(['SET', saleKey(saleId), JSON.stringify(merged), 'EX', String(TTL)], fetchImpl)
+    await reliabilityKv(['ZADD', salesIndexKey, String(Date.parse(merged.occurred_at) || Date.now()), saleId], fetchImpl)
     // A prior attempt may have persisted the sale but failed while updating
     // anonymous aggregates; the aggregate claim makes this safe to retry.
-    await updateAnonymousAggregate(record, fetchImpl)
-    return { ...record, duplicate: true }
+    await updateAnonymousAggregate(merged, fetchImpl)
+    return { ...merged, duplicate: true }
   }
   try {
     await reliabilityKv(['ZADD', salesIndexKey, String(Date.parse(record.occurred_at) || Date.now()), saleId], fetchImpl)

@@ -14,12 +14,22 @@ function json(res, status, payload) {
   return res.status(status).json(payload)
 }
 
+function cors(req, res) {
+  const origin = String(req.headers?.origin || '').trim()
+  if (origin === 'https://app.jonerfootball.com') res.setHeader('Access-Control-Allow-Origin', origin)
+  res.setHeader('Vary', 'Origin')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'content-type')
+}
+
 export default async function handler(req, res) {
+  cors(req, res)
+  if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method === 'GET') {
     return json(res, 200, { status: 'healthy', configured: journeyStoreConfigured() })
   }
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'GET, POST')
+    res.setHeader('Allow', 'GET, POST, OPTIONS')
     return json(res, 405, { success: false, error: 'Method not allowed' })
   }
   if (!journeyStoreConfigured()) return json(res, 503, { success: false, error: 'Journey ledger is not configured' })

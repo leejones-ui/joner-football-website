@@ -12,6 +12,7 @@ import { reconcileAuthoritativeFirstPaid } from './lib/first-paid-reconciliation
 import { reconcileAttributedConversions } from './lib/meta-uscreen-reconciliation.mjs'
 import { createJourneyToken, verifyJourneyToken, mergeJourneyRecord } from '../api/_journey-ledger.js'
 import { reconcilePayment } from '../api/checkout-bridge.js'
+import journeyHandler from '../api/journey.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const browserSource = fs.readFileSync(path.join(root, 'public/tracking-attribution.js'), 'utf8')
@@ -41,8 +42,12 @@ assert.equal(browser.journeyToken(), journeyToken)
 assert.match(browserDocument.cookie, /^jf_journey_id=/)
 assert.equal(browser.saveJourneyToken('jfy_unsigned_legacy_token'), false)
 const baseLayoutSource = fs.readFileSync(path.join(root, 'src/layouts/BaseLayout.astro'), 'utf8')
+const uscreenHeadSource = fs.readFileSync(path.join(root, 'scripts/uscreen-head-attribution-v1.js'), 'utf8')
 assert.match(baseLayoutSource, /enrichedParams\.set\('jf_journey_id', signedJourneyToken\)/)
 assert.doesNotMatch(baseLayoutSource, /enrichedParams\.set\('journey_id', ledgerJourneyId\)/)
+assert.match(uscreenHeadSource, /\/api\/journey/)
+assert.match(uscreenHeadSource, /main_instagram_linktree/)
+assert.match(uscreenHeadSource, /app_instagram/)
 const mergedJourney = mergeJourneyRecord({
   id: 'journey-1',
   created_at: '2026-08-11T00:00:00.000Z',
@@ -508,6 +513,11 @@ function mockResponse() {
     end() { return this },
   }
 }
+
+const journeyCorsResponse = mockResponse()
+await journeyHandler({ method: 'OPTIONS', headers: { origin: 'https://app.jonerfootball.com' } }, journeyCorsResponse)
+assert.equal(journeyCorsResponse.statusCode, 204)
+assert.equal(journeyCorsResponse.headers['Access-Control-Allow-Origin'], 'https://app.jonerfootball.com')
 
 const healthEnv = {
   USCREEN_WEBHOOK_SECRET: process.env.USCREEN_WEBHOOK_SECRET,
