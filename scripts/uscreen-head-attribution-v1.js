@@ -1,4 +1,4 @@
-/* Joner Football / Uscreen Head Code v1.0.0
+/* Joner Football / Uscreen Head Code v1.1.0
  * Paste into Uscreen Head Code. Uses only browser-standard APIs and documented DOM.
  */
 (function () {
