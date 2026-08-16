@@ -94,8 +94,15 @@ export function sanitizeIdentity(input = {}) {
 
 export function classifyAttribution({ journey, payment = {}, now = Date.now() } = {}) {
   const touch = journey?.last_touch || journey?.first_touch || {}
-  const age = Date.parse(payment.paid_at || payment.created_at || 0)
-  const within90 = !age || now - age <= LEDGER_TTL_SECONDS * 1000
+  // Uscreen's live order.paid webhook uses event_date, while authoritative
+  // payment reconciliation uses paid_at/created_at. Date.parse(0) resolves to
+  // 1999 rather than an invalid date, so the previous fallback incorrectly
+  // rejected a current signed journey as older than 90 days whenever the live
+  // webhook omitted paid_at and created_at.
+  const rawOccurredAt = payment.paid_at || payment.event_date || payment.occurred_at || payment.created_at
+  const occurredAt = rawOccurredAt ? Date.parse(rawOccurredAt) : NaN
+  const within90 = !Number.isFinite(occurredAt)
+    || (occurredAt <= now && now - occurredAt <= LEDGER_TTL_SECONDS * 1000)
   const explicitJourney = clean(payment.journey_id || payment.jf_journey_id, MAX.journey)
   if (explicitJourney && explicitJourney === journey?.journey_id && within90) {
     const paidMeta = isExactPaidMeta(touch)
