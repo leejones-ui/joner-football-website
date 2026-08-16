@@ -43,10 +43,12 @@ assert.match(browserDocument.cookie, /^jf_journey_id=/)
 assert.equal(browser.saveJourneyToken('jfy_unsigned_legacy_token'), false)
 const baseLayoutSource = fs.readFileSync(path.join(root, 'src/layouts/BaseLayout.astro'), 'utf8')
 const uscreenHeadSource = fs.readFileSync(path.join(root, 'scripts/uscreen-head-attribution-v1.js'), 'utf8')
+const uscreenWebhookSource = fs.readFileSync(path.join(root, 'api/_uscreen-webhook.js'), 'utf8')
 assert.match(baseLayoutSource, /enrichedParams\.set\('jf_journey_id', signedJourneyToken\)/)
 assert.doesNotMatch(baseLayoutSource, /enrichedParams\.set\('journey_id', ledgerJourneyId\)/)
 assert.match(uscreenHeadSource, /\/api\/journey/)
 assert.match(uscreenHeadSource, /main_instagram_linktree/)
+assert.doesNotMatch(uscreenWebhookSource, /const stablePaymentId = .*eventData\.id/)
 assert.match(uscreenHeadSource, /app_instagram/)
 const mergedJourney = mergeJourneyRecord({
   id: 'journey-1',
