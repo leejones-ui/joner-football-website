@@ -46,6 +46,8 @@ process.env.KV_REST_API_URL = 'https://kv.invalid'; process.env.KV_REST_API_TOKE
 
 assert.equal(reliablePaymentIdentity({}), '')
 assert.equal(reliablePaymentIdentity({ id: 'webhook-event-1', sale_id: 'synthetic-ledger-row' }), '')
+assert.equal(reliablePaymentIdentity({ kind: 'payment', payment_id: 'provider-shared' }), 'provider-shared')
+assert.equal(reliablePaymentIdentity({ kind: 'refund', payment_id: 'provider-shared' }), 'provider-shared')
 await assert.rejects(
   () => appendReliableSale({ sale_id: 'synthetic-ledger-row', id: 'webhook-event-1', occurred_at: '2026-01-01T00:00:00Z', amount: 10 }, fakeFetch),
   /payment identity is required/,
