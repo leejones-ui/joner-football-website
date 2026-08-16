@@ -24,22 +24,55 @@ export async function reliabilityKv(command, fetchImpl = fetch) {
 const resultOf = async (cmd, fetchImpl) => (await reliabilityKv(cmd, fetchImpl))?.result
 const parse = (raw) => { try { return typeof raw === 'string' ? JSON.parse(raw) : raw } catch { return null } }
 const cleanId = (value) => String(value || '').trim().slice(0, 180)
+const NON_AUTHORITATIVE_PAYMENT_IDS = new Set(['unknown', 'none', 'null', 'undefined', 'n/a', 'n-a', 'na', 'not_applicable', 'no_safe_join'])
 export function reliablePaymentIdentity(sale) {
-  const providerId = cleanId(sale.provider_payment_id || sale.payment_id || sale.invoice_id || sale.order_id || sale.id || sale.sale_id)
-  const kind = cleanId(sale.kind || 'payment').toLowerCase() || 'payment'
-  return `${kind}:${providerId}`
+  const providerId = cleanId(
+    sale.provider_payment_id || sale.payment_id
+    || sale.provider_invoice_id || sale.invoice_id
+    || sale.provider_order_id || sale.order_id
+    || sale.provider_sale_id,
+  )
+  if (!providerId || NON_AUTHORITATIVE_PAYMENT_IDS.has(providerId.toLowerCase())) return ''
+  return providerId
+}
+
+function meaningful(value) {
+  const text = cleanId(value).toLowerCase()
+  return Boolean(text && !['unknown', 'none', 'null', 'direct', 'no_safe_join'].includes(text))
+}
+
+function mergeReliableSale(existing, incoming) {
+  const patch = Object.fromEntries(Object.entries(incoming).filter(([, value]) => value !== undefined && value !== null && value !== ''))
+  const merged = {
+    ...(existing || {}),
+    ...patch,
+    sale_id: incoming.sale_id,
+    ledger_version: 1,
+    persisted_at: existing?.persisted_at || incoming.persisted_at,
+    updated_at: new Date().toISOString(),
+  }
+  if (meaningful(existing?.acquisition) && !meaningful(incoming?.acquisition)) merged.acquisition = existing.acquisition
+  return merged
 }
 
 export async function appendReliableSale(sale, fetchImpl = fetch) {
-  const saleId = cleanId(sale.sale_id) || reliablePaymentIdentity(sale)
-  if (!saleId) throw new Error('sale_id is required')
+  const paymentIdentity = reliablePaymentIdentity(sale)
+  if (!paymentIdentity) throw new Error('payment identity is required')
+  const saleId = cleanId(sale.sale_id) || paymentIdentity
   const record = { ...sale, sale_id: saleId, ledger_version: 1, persisted_at: new Date().toISOString() }
   const claimed = await resultOf(['SET', saleKey(saleId), JSON.stringify(record), 'NX', 'EX', String(TTL)], fetchImpl)
   if (claimed !== 'OK') {
+    // Authoritative reconciliation may learn missing currency/provider fields
+    // after the webhook's first write. Backfill those fields without allowing
+    // an "unknown" retry to erase a previously verified acquisition source.
+    const existing = parse(await resultOf(['GET', saleKey(saleId)], fetchImpl))
+    const merged = mergeReliableSale(existing, record)
+    await resultOf(['SET', saleKey(saleId), JSON.stringify(merged), 'EX', String(TTL)], fetchImpl)
+    await reliabilityKv(['ZADD', salesIndexKey, String(Date.parse(merged.occurred_at) || Date.now()), saleId], fetchImpl)
     // A prior attempt may have persisted the sale but failed while updating
     // anonymous aggregates; the aggregate claim makes this safe to retry.
-    await updateAnonymousAggregate(record, fetchImpl)
-    return { ...record, duplicate: true }
+    await updateAnonymousAggregate(merged, fetchImpl)
+    return { ...merged, duplicate: true }
   }
   try {
     await reliabilityKv(['ZADD', salesIndexKey, String(Date.parse(record.occurred_at) || Date.now()), saleId], fetchImpl)
@@ -105,6 +138,16 @@ export async function replayWebhookFailure(eventId, processor, fetchImpl = fetch
 function channelOf(sale) { return String(sale.acquisition || sale.channel || sale.billing_origin || 'unknown').toLowerCase().replace(/[^a-z0-9_:-]/g, '_').slice(0, 50) || 'unknown' }
 async function updateAnonymousAggregate(sale, fetchImpl) {
   const paymentId = reliablePaymentIdentity(sale)
+  // Before 2026-08-16 the claim key included the event kind. Migrate that
+  // claim lazily so reconciliation cannot count an already-recorded payment
+  // again after identity was tightened to the authoritative provider ID.
+  const legacyKind = cleanId(sale.kind || 'payment').toLowerCase() || 'payment'
+  const legacyKinds = [...new Set(['payment', 'renewal', 'refund', legacyKind])]
+  const legacyClaims = await resultOf(['MGET', ...legacyKinds.map((kind) => paymentClaimKey(`${kind}:${paymentId}`))], fetchImpl)
+  if (Array.isArray(legacyClaims) && legacyClaims.some(Boolean)) {
+    await resultOf(['SET', paymentClaimKey(paymentId), '1', 'NX', 'EX', String(TTL)], fetchImpl)
+    return false
+  }
   const claimed = await resultOf(['SET', paymentClaimKey(paymentId), '1', 'NX', 'EX', String(TTL)], fetchImpl)
   if (claimed !== 'OK') return false
   const amount = Number(sale.amount || 0)

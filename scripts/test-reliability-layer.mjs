@@ -6,6 +6,7 @@ import {
   listWebhookFailures,
   replayWebhookFailure,
   reconcileAuthoritativePayments,
+  reliablePaymentIdentity,
   getAnonymousAggregates,
   MAX_DETAILED_SALES,
 } from '../api/_reliability-ledger.js'
@@ -25,6 +26,7 @@ async function fakeFetch(_url, options) {
     if (opts.includes('NX') && strings.has(key)) result = null
     else { strings.set(key, value); result = 'OK' }
   } else if (command === 'GET') result = strings.get(args[0]) || null
+  else if (command === 'MGET') result = args.map((key) => strings.get(key) || null)
   else if (command === 'DEL') { for (const key of args) strings.delete(key); result = args.length }
   else if (command === 'SCAN') {
     const keys = [...new Set([...strings.keys(), ...hashes.keys()])].filter((key) => key.startsWith(args[2]?.replace('*', '') || ''))
@@ -43,12 +45,30 @@ async function fakeFetch(_url, options) {
 }
 process.env.KV_REST_API_URL = 'https://kv.invalid'; process.env.KV_REST_API_TOKEN = 'test'
 
-await appendReliableSale({ sale_id: 'a', occurred_at: '2026-01-01T00:00:00Z', amount: 10, acquisition: 'facebook' }, fakeFetch)
-assert.equal((await appendReliableSale({ sale_id: 'a', amount: 10 }, fakeFetch)).duplicate, true)
-for (let i=1;i<=MAX_DETAILED_SALES;i++) await appendReliableSale({ sale_id: String(i), occurred_at: `2026-01-01T00:00:${String(i).padStart(2,'0')}Z`, amount: 1, acquisition: 'facebook' }, fakeFetch)
+assert.equal(reliablePaymentIdentity({}), '')
+assert.equal(reliablePaymentIdentity({ id: 'webhook-event-1', sale_id: 'synthetic-ledger-row' }), '')
+for (const sentinel of ['unknown', 'none', 'null', 'undefined', 'n/a', 'n-a', 'na', 'not_applicable', 'no_safe_join']) {
+  assert.equal(reliablePaymentIdentity({ payment_id: sentinel }), '')
+}
+assert.equal(reliablePaymentIdentity({ kind: 'payment', payment_id: 'provider-shared' }), 'provider-shared')
+assert.equal(reliablePaymentIdentity({ kind: 'refund', payment_id: 'provider-shared' }), 'provider-shared')
+strings.set('jfa:reliability:payment:payment:legacy-provider-shared', '1')
+await appendReliableSale({ sale_id: 'refund:legacy-provider-shared', kind: 'refund', payment_id: 'legacy-provider-shared', amount: -10, acquisition: 'unknown' }, fakeFetch)
+assert.equal((await getAnonymousAggregates(fakeFetch)).unknown, undefined)
+await assert.rejects(
+  () => appendReliableSale({ sale_id: 'synthetic-ledger-row', id: 'webhook-event-1', occurred_at: '2026-01-01T00:00:00Z', amount: 10 }, fakeFetch),
+  /payment identity is required/,
+)
+
+await appendReliableSale({ sale_id: 'a', payment_id: 'pay-a', occurred_at: '2026-01-01T00:00:00Z', amount: 10, acquisition: 'facebook' }, fakeFetch)
+assert.equal((await appendReliableSale({ sale_id: 'a', payment_id: 'pay-a', amount: 10, currency: 'AUD', acquisition: 'unknown' }, fakeFetch)).duplicate, true)
+const updatedDuplicate = (await listReliableSales(fakeFetch)).find((sale) => sale.sale_id === 'a')
+assert.equal(updatedDuplicate.currency, 'AUD')
+assert.equal(updatedDuplicate.acquisition, 'facebook')
+for (let i=1;i<=MAX_DETAILED_SALES;i++) await appendReliableSale({ sale_id: String(i), payment_id: `pay-${i}`, occurred_at: `2026-01-01T00:00:${String(i).padStart(2,'0')}Z`, amount: 1, acquisition: 'facebook' }, fakeFetch)
 assert.equal((await listReliableSales(fakeFetch)).length, MAX_DETAILED_SALES)
 failCommand = 'ZADD'
-await assert.rejects(() => appendReliableSale({ sale_id: 'partial', occurred_at: '2026-01-02T00:00:00Z', amount: 4, acquisition: 'email' }, fakeFetch))
+await assert.rejects(() => appendReliableSale({ sale_id: 'partial', payment_id: 'pay-partial', occurred_at: '2026-01-02T00:00:00Z', amount: 4, acquisition: 'email' }, fakeFetch))
 assert.ok((await listReliableSales(fakeFetch)).some((sale) => sale.sale_id === 'partial'))
 
 await recordWebhookFailure({ event_id: 'evt-1', payload: { event: 'order.paid' }, error: 'Brevo down' }, fakeFetch)

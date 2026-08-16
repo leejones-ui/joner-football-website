@@ -291,6 +291,9 @@ const allSchemas = schema
         function saveJourneyToken(token) {
           if (!token) return;
           try { window.localStorage.setItem(JOURNEY_STORAGE_KEY, JSON.stringify({ token: token, saved_at: Date.now() })); } catch (e) {}
+          if (window.JonerAttribution && typeof window.JonerAttribution.saveJourneyToken === 'function') {
+            window.JonerAttribution.saveJourneyToken(token);
+          }
         }
 
         function withJourneyToken(params) {
@@ -470,10 +473,8 @@ const allSchemas = schema
 
         function appendUscreenTrackingParams(href, trackingParams) {
           var enrichedParams = appendFirstTouchParams(trackingParams);
-          var ledgerJourneyId = window.JonerAttribution && window.JonerAttribution.journeyId
-            ? window.JonerAttribution.journeyId()
-            : '';
-          if (ledgerJourneyId) enrichedParams.set('journey_id', ledgerJourneyId);
+          var signedJourneyToken = readJourneyToken();
+          if (signedJourneyToken) enrichedParams.set('jf_journey_id', signedJourneyToken);
           var fbp = getCookie('_fbp');
           var fbc = getCookie('_fbc');
           if (fbp) enrichedParams.set('fbp', fbp);

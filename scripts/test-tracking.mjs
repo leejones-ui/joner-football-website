@@ -12,10 +12,22 @@ import { reconcileAuthoritativeFirstPaid } from './lib/first-paid-reconciliation
 import { reconcileAttributedConversions } from './lib/meta-uscreen-reconciliation.mjs'
 import { createJourneyToken, verifyJourneyToken, mergeJourneyRecord } from '../api/_journey-ledger.js'
 import { reconcilePayment } from '../api/checkout-bridge.js'
+import journeyHandler from '../api/journey.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const browserSource = fs.readFileSync(path.join(root, 'public/tracking-attribution.js'), 'utf8')
-const context = { URLSearchParams, window: {} }
+const browserStorage = new Map()
+const browserDocument = { cookie: '' }
+const context = {
+  URLSearchParams,
+  document: browserDocument,
+  window: {
+    localStorage: {
+      getItem: (key) => browserStorage.get(key) || null,
+      setItem: (key, value) => browserStorage.set(key, value),
+    },
+  },
+}
 vm.createContext(context)
 vm.runInContext(browserSource, context)
 const browser = context.window.JonerAttribution
@@ -25,6 +37,19 @@ process.env.JOURNEY_SIGNING_SECRET = 'tracking-test-secret-with-enough-entropy'
 const journeyToken = createJourneyToken('018f47fb-1357-7b2a-9d44-6e8f90e25f4c')
 assert.equal(verifyJourneyToken(journeyToken), '018f47fb-1357-7b2a-9d44-6e8f90e25f4c')
 assert.equal(verifyJourneyToken(journeyToken + 'tampered'), undefined)
+assert.equal(browser.saveJourneyToken(journeyToken), true)
+assert.equal(browser.journeyToken(), journeyToken)
+assert.match(browserDocument.cookie, /^jf_journey_id=/)
+assert.equal(browser.saveJourneyToken('jfy_unsigned_legacy_token'), false)
+const baseLayoutSource = fs.readFileSync(path.join(root, 'src/layouts/BaseLayout.astro'), 'utf8')
+const uscreenHeadSource = fs.readFileSync(path.join(root, 'scripts/uscreen-head-attribution-v1.js'), 'utf8')
+const uscreenWebhookSource = fs.readFileSync(path.join(root, 'api/_uscreen-webhook.js'), 'utf8')
+assert.match(baseLayoutSource, /enrichedParams\.set\('jf_journey_id', signedJourneyToken\)/)
+assert.doesNotMatch(baseLayoutSource, /enrichedParams\.set\('journey_id', ledgerJourneyId\)/)
+assert.match(uscreenHeadSource, /\/api\/journey/)
+assert.match(uscreenHeadSource, /main_instagram_linktree/)
+assert.doesNotMatch(uscreenWebhookSource, /const stablePaymentId = .*eventData\.id/)
+assert.match(uscreenHeadSource, /app_instagram/)
 const mergedJourney = mergeJourneyRecord({
   id: 'journey-1',
   created_at: '2026-08-11T00:00:00.000Z',
@@ -491,6 +516,11 @@ function mockResponse() {
   }
 }
 
+const journeyCorsResponse = mockResponse()
+await journeyHandler({ method: 'OPTIONS', headers: { origin: 'https://app.jonerfootball.com' } }, journeyCorsResponse)
+assert.equal(journeyCorsResponse.statusCode, 204)
+assert.equal(journeyCorsResponse.headers['Access-Control-Allow-Origin'], 'https://app.jonerfootball.com')
+
 const healthEnv = {
   USCREEN_WEBHOOK_SECRET: process.env.USCREEN_WEBHOOK_SECRET,
   KV_REST_API_URL: process.env.KV_REST_API_URL,
@@ -571,6 +601,9 @@ globalThis.fetch = async (url, options = {}) => {
     if (command[0] === 'DEL') {
       const deleted = kvStore.delete(command[1]) ? 1 : 0
       return { ok: true, status: 200, async json() { return { result: deleted } } }
+    }
+    if (command[0] === 'MGET') {
+      return { ok: true, status: 200, async json() { return { result: command.slice(1).map((key) => kvStore.get(key) || null) } } }
     }
     if (command[0] === 'ZADD' || command[0] === 'ZREM' || command[0] === 'HINCRBY' || command[0] === 'LPUSH' || command[0] === 'EXPIRE') {
       return { ok: true, status: 200, async json() { return { result: command[0] === 'ZADD' ? 1 : 'OK' } } }

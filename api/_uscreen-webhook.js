@@ -641,7 +641,7 @@ export async function processUscreenPayload(data) {
       reconciliation = { classification: 'unknown', confidence: 'none', evidence: ['reconciliation_error'] }
     }
     const kind = eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'payment'
-    const stablePaymentId = cleanValue(eventData.invoice_id || eventData.payment_id || transactionId || eventData.order_id || eventData.id, 180)
+    const stablePaymentId = cleanValue(eventData.invoice_id || eventData.payment_id || transactionId || eventData.order_id, 180)
     const saleId = stablePaymentId ? `${kind}:${stablePaymentId}` : undefined
     if (saleId) {
       try {

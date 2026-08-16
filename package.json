@@ -9,7 +9,7 @@
     "dev": "astro dev",
     "prebuild": "node scripts/guard-app-hero.mjs",
     "build": "astro build",
-    "test:tracking": "node scripts/test-tracking.mjs && node scripts/test-first-paid-operator.mjs",
+    "test:tracking": "node scripts/test-tracking-link-bank.mjs && node scripts/test-tracking.mjs && node scripts/test-first-paid-operator.mjs",
     "test:attribution": "node scripts/test-attribution-ledger.mjs",
     "test:source-taxonomy": "node scripts/test-source-taxonomy.mjs",
     "test:tracking-links": "node scripts/test-tracking-link-bank.mjs",

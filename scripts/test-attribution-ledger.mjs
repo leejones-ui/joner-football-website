@@ -63,10 +63,25 @@ assert.equal(strings.has('jfa:sale:sale-0'), false)
 
 const merged = mergedSales([], [
   { sale_id: 'order.paid:ch_1', payment_id: 'ch_1', uscreen_user_id: '123', customer_name: 'Test', plan: 'Max - Annual', amount: 249.99, kind: 'payment', occurred_at: '2026-08-14T00:05:00Z', acquisition: 'unknown' },
-  { sale_id: 'reconcile:99', payment_id: '99', customer_reference: '123', customer_name: 'Test', plan: 'Max - Annual', amount: 249.99, currency: 'USD', kind: 'payment', paid_at: '2026-08-14T00:00:00Z', acquisition: 'unknown' },
+  { sale_id: 'reconcile:99', payment_id: 'ch_1', customer_reference: '123', customer_name: 'Test', plan: 'Max - Annual', amount: 249.99, currency: 'USD', kind: 'payment', paid_at: '2026-08-14T00:00:00Z', acquisition: 'unknown' },
   { sale_id: 'renewal:ch_2', payment_id: 'ch_2', uscreen_user_id: '123', customer_name: 'Test', plan: 'Max - Annual', amount: 249.99, kind: 'renewal', occurred_at: '2027-08-14T00:05:00Z', acquisition: 'unknown' },
 ])
 assert.equal(merged.length, 2)
+const unjoinable = mergedSales([], [
+  { occurred_at: '2026-08-14T01:00:00Z', amount: 10, currency: 'AUD', acquisition: 'unknown' },
+  { occurred_at: '2026-08-14T02:00:00Z', amount: 20, currency: 'AUD', acquisition: 'unknown' },
+])
+assert.equal(unjoinable.length, 2)
+const authoritativeWins = mergedSales(
+  [{ sale_id: 'legacy:pay-authoritative', payment_id: 'pay-authoritative', acquisition: 'unknown', amount: 10 }],
+  [{ sale_id: 'payment:pay-authoritative', payment_id: 'pay-authoritative', acquisition: 'facebook', amount: 10, currency: 'AUD' }],
+)
+assert.equal(authoritativeWins[0].acquisition, 'facebook')
+assert.equal(authoritativeWins[0].currency, 'AUD')
+assert.equal(mergedSales(
+  [{ payment_id: 'same-provider-payment', kind: 'payment', acquisition: 'facebook' }],
+  [{ payment_id: 'same-provider-payment', kind: 'refund', acquisition: 'facebook', amount: -10 }],
+).length, 1)
 assert.ok(merged.some((sale) => sale.currency === 'USD' && sale.payment_id === 'ch_1'))
 assert.ok(merged.some((sale) => sale.kind === 'renewal'))
 console.log('attribution ledger tests passed')

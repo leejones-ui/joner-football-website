@@ -1,22 +1,105 @@
-/* Joner Football / Uscreen Head Code v1.0.0
+/* Joner Football / Uscreen Head Code v1.2.0
  * Paste into Uscreen Head Code. Uses only browser-standard APIs and documented DOM.
  */
 (function () {
   'use strict';
-  var cookieName = 'jfa_journey';
-  function readCookie() { var m = document.cookie.match(new RegExp('(?:^|; )' + cookieName + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; }
-  function journey() { var id = readCookie(); return /^jfy_[A-Za-z0-9_-]{20,80}$/.test(id) ? id : ''; }
+  var cookieName = 'jf_journey_id';
+  var tokenPattern = /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{32,64}$/;
+  var pending = [];
+  var bootstrapping = false;
   var sent = {};
-  function post(data) {
-    var id = journey(); if (!id || !window.fetch) return;
-    data.journey_id = id;
-    var key = data.email ? String(data.email).trim().toLowerCase() : data.event_name;
-    if (sent[key]) return; sent[key] = true;
-    // Keep identity in the HTTPS request body; never put email in a URL/log.
-    window.fetch('https://jonerfootball.com/api/checkout-bridge', { method: 'POST', mode: 'cors', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data), keepalive: true }).catch(function () { delete sent[key]; });
+
+  function readCookie() {
+    var match = document.cookie.match(new RegExp('(?:^|; )' + cookieName + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : '';
   }
-  function emailInput(target) { return target && ((target.matches && target.matches('input[type="email"], input[name*="email" i]')) ? target : target.querySelector && target.querySelector('input[type="email"], input[name*="email" i]')); }
-  function capture(input) { var value = input && String(input.value || '').trim(); if (value && value.indexOf('@') > 0) post({ event_name: 'checkout_identity', email: value, identity_source: 'uscreen_head', checkout_id: location.pathname }); }
+  function journey() {
+    var token = readCookie();
+    return tokenPattern.test(token) ? token : '';
+  }
+  function saveJourney(token) {
+    if (!tokenPattern.test(String(token || ''))) return '';
+    document.cookie = cookieName + '=' + encodeURIComponent(token) + '; Max-Age=7776000; Path=/; Domain=.jonerfootball.com; Secure; SameSite=Lax';
+    try { window.localStorage.setItem(cookieName, token); } catch (_) {}
+    return token;
+  }
+  function referrerSource() {
+    var host = '';
+    try { host = new URL(document.referrer).hostname.toLowerCase(); } catch (_) {}
+    if (/^(l\.)?instagram\.com$/.test(host)) return 'app_instagram';
+    if (host === 'linktr.ee' || host.endsWith('.linktr.ee')) return 'main_instagram_linktree';
+    if (host === 'l.facebook.com' || host === 'facebook.com' || host.endsWith('.facebook.com')) return 'facebook';
+    if (host === 't.co' || host === 'x.com' || host.endsWith('.twitter.com')) return 'x';
+    if (host === 'threads.net' || host.endsWith('.threads.net')) return 'threads';
+    if (host === 'tiktok.com' || host.endsWith('.tiktok.com')) return 'tiktok';
+    if (host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be') return 'youtube';
+    if (host.indexOf('google.') === 0 || host.indexOf('.google.') > -1) return 'google';
+    return '';
+  }
+  function attribution() {
+    var params = new URLSearchParams(location.search);
+    var source = String(params.get('utm_source') || '').trim();
+    var referred = referrerSource();
+    if (source.toLowerCase() === 'youtube-es' && (referred === 'app_instagram' || referred === 'main_instagram_linktree')) source = referred;
+    if (!source) source = referred;
+    if (!source) return null;
+    return {
+      utm_source: source,
+      utm_medium: params.get('utm_medium') || (source === 'google' ? 'organic' : 'social'),
+      utm_campaign: params.get('utm_campaign') || (referred ? 'legacy-profile-link' : ''),
+      utm_content: params.get('utm_content') || '',
+      utm_term: params.get('utm_term') || '',
+      campaign_id: params.get('campaign_id') || params.get('utm_id') || '',
+      adset_id: params.get('adset_id') || '',
+      ad_id: params.get('ad_id') || '',
+      fbclid: params.get('fbclid') || '',
+      gclid: params.get('gclid') || '',
+      ttclid: params.get('ttclid') || '',
+      msclkid: params.get('msclkid') || ''
+    };
+  }
+  function flush(token) {
+    var callbacks = pending.slice(); pending = []; bootstrapping = false;
+    for (var i = 0; i < callbacks.length; i++) callbacks[i](token || '');
+  }
+  function ensureJourney(callback) {
+    var existing = journey();
+    if (existing) return callback(existing);
+    pending.push(callback);
+    if (bootstrapping) return;
+    var touch = attribution();
+    if (!touch || !window.fetch) return flush('');
+    bootstrapping = true;
+    window.fetch('https://jonerfootball.com/api/journey', {
+      method: 'POST', mode: 'cors', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ attribution: touch, page_path: location.pathname, referrer: document.referrer }),
+      keepalive: true
+    }).then(function (response) { return response.ok ? response.json() : {}; })
+      .then(function (data) { flush(saveJourney(data.jf_journey_id)); })
+      .catch(function () { flush(''); });
+  }
+  function post(data) {
+    if (!window.fetch) return;
+    ensureJourney(function (token) {
+      if (!token) return;
+      data.jf_journey_id = token;
+      var key = data.email ? String(data.email).trim().toLowerCase() : data.event_name;
+      if (sent[key]) return; sent[key] = true;
+      // Keep identity in the HTTPS request body; never put email in a URL/log.
+      window.fetch('https://jonerfootball.com/api/checkout-bridge', {
+        method: 'POST', mode: 'cors', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(data), keepalive: true
+      }).catch(function () { delete sent[key]; });
+    });
+  }
+  function emailInput(target) {
+    return target && ((target.matches && target.matches('input[type="email"], input[name*="email" i]'))
+      ? target : target.querySelector && target.querySelector('input[type="email"], input[name*="email" i]'));
+  }
+  function capture(input) {
+    var value = input && String(input.value || '').trim();
+    if (value && value.indexOf('@') > 0) post({ event_name: 'checkout_identity', email: value, identity_source: 'uscreen_head', checkout_id: location.pathname });
+  }
   function observe() {
     var inputs = document.querySelectorAll('input[type="email"], input[name*="email" i]');
     for (var i = 0; i < inputs.length; i++) {
