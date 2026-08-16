@@ -3,13 +3,13 @@
  */
 (function () {
   'use strict';
-  var cookieName = 'jfa_journey';
+  var cookieName = 'jf_journey_id';
   function readCookie() { var m = document.cookie.match(new RegExp('(?:^|; )' + cookieName + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ''; }
-  function journey() { var id = readCookie(); return /^jfy_[A-Za-z0-9_-]{20,80}$/.test(id) ? id : ''; }
+  function journey() { var id = readCookie(); return /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{32,64}$/.test(id) ? id : ''; }
   var sent = {};
   function post(data) {
     var id = journey(); if (!id || !window.fetch) return;
-    data.journey_id = id;
+    data.jf_journey_id = id;
     var key = data.email ? String(data.email).trim().toLowerCase() : data.event_name;
     if (sent[key]) return; sent[key] = true;
     // Keep identity in the HTTPS request body; never put email in a URL/log.

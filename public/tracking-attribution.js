@@ -3,6 +3,9 @@
 
   var MARKER = '__jfa1__';
   var LEDGER_JOURNEY_KEY = 'joner_attribution_ledger_journey_id';
+  var SIGNED_JOURNEY_STORAGE_KEY = 'joner_journey_id';
+  var SIGNED_JOURNEY_COOKIE = 'jf_journey_id';
+  var SIGNED_JOURNEY_RE = /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{32,64}$/;
   var TRACKING_KEYS = [
     'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'gclid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy',
     'campaign_id', 'adset_id', 'ad_id', 'placement', 'fbclid', 'fbp', 'fbc',
@@ -13,6 +16,38 @@
 
   function clean(value, max) {
     return String(value || '').trim().slice(0, max || 240);
+  }
+
+  function readCookie(name) {
+    try {
+      var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+      return match ? decodeURIComponent(match[1]) : '';
+    } catch (e) { return ''; }
+  }
+
+  function signedJourneyToken() {
+    try {
+      var raw = root.localStorage && root.localStorage.getItem(SIGNED_JOURNEY_STORAGE_KEY);
+      if (raw) {
+        var record = JSON.parse(raw);
+        var stored = clean(record && record.token, 160);
+        if (SIGNED_JOURNEY_RE.test(stored)) return stored;
+      }
+    } catch (e) {}
+    var cookieToken = clean(readCookie(SIGNED_JOURNEY_COOKIE), 160);
+    return SIGNED_JOURNEY_RE.test(cookieToken) ? cookieToken : '';
+  }
+
+  function saveSignedJourneyToken(token) {
+    var safeToken = clean(token, 160);
+    if (!SIGNED_JOURNEY_RE.test(safeToken)) return false;
+    try {
+      if (root.localStorage) root.localStorage.setItem(SIGNED_JOURNEY_STORAGE_KEY, JSON.stringify({ token: safeToken, saved_at: Date.now() }));
+    } catch (e) {}
+    try {
+      document.cookie = SIGNED_JOURNEY_COOKIE + '=' + encodeURIComponent(safeToken) + '; Max-Age=15552000; Path=/; Domain=.jonerfootball.com; SameSite=Lax; Secure';
+    } catch (e) {}
+    return true;
   }
 
   function ledgerJourneyId() {
@@ -169,6 +204,8 @@
     encodeForUscreen: encodeForUscreen,
     decodeUscreenSource: decodeUscreenSource,
     journeyId: ledgerJourneyId,
+    journeyToken: signedJourneyToken,
+    saveJourneyToken: saveSignedJourneyToken,
     recordEvent: recordEvent,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
