@@ -129,6 +129,9 @@ export async function linkJourneyIdentity(token, { email, uscreenUserId } = {}) 
   if (emailValue) {
     updated.email_sha256 = sha256(emailValue)
     await kvCommand(['SET', `jf:journey:index:email:${updated.email_sha256}`, id, 'EX', JOURNEY_TTL_SECONDS])
+    const candidatesKey = `jf:journey:index:email-candidates:${updated.email_sha256}`
+    await kvCommand(['SADD', candidatesKey, id])
+    await kvCommand(['EXPIRE', candidatesKey, JOURNEY_TTL_SECONDS])
   }
   if (userId) {
     updated.uscreen_user_id = userId
@@ -152,26 +155,44 @@ export async function getSignedJourney(token) {
   }
 }
 
-async function journeyIdFromIndexes(data, email) {
+export async function resolveJourneyIdentity(data, email) {
   const attribution = extractAttribution(data)
-  const tokenId = verifyJourneyToken(attribution.jf_journey_id || data?.jf_journey_id)
-  if (tokenId) return tokenId
   const userId = clean(data?.user_id || data?.customer_id || data?.customer?.id || data?.user?.id, 180)
   if (userId) {
     const indexed = await kvCommand(['GET', `jf:journey:index:uscreen:${userId}`])
-    if (indexed) return clean(indexed, 36)
+    const indexedId = clean(indexed, 36)
+    if (indexedId && await readJourney(indexedId)) return { id: indexedId, join_method: 'uscreen_user_id' }
   }
+  const tokenId = verifyJourneyToken(attribution.jf_journey_id || data?.jf_journey_id)
+  if (tokenId && await readJourney(tokenId)) return { id: tokenId, join_method: 'signed_journey_id' }
   const emailValue = normalizedEmail(email)
-  if (emailValue) return clean(await kvCommand(['GET', `jf:journey:index:email:${sha256(emailValue)}`]), 36)
-  return undefined
+  if (!emailValue) return { join_method: 'none' }
+  const emailHash = sha256(emailValue)
+  const candidateIds = await kvCommand(['SMEMBERS', `jf:journey:index:email-candidates:${emailHash}`])
+  const unique = [...new Set((Array.isArray(candidateIds) ? candidateIds : []).map((value) => clean(value, 36)).filter(Boolean))]
+  const active = []
+  for (const id of unique) if (await readJourney(id)) active.push(id)
+  if (active.length > 1) return { join_method: 'hashed_email', ambiguous: true }
+  if (active.length === 1) return { id: active[0], join_method: 'hashed_email' }
+  const legacyId = clean(await kvCommand(['GET', `jf:journey:index:email:${emailHash}`]), 36)
+  return legacyId && await readJourney(legacyId)
+    ? { id: legacyId, join_method: 'hashed_email_legacy' }
+    : { join_method: 'hashed_email' }
+}
+
+export async function getJourneyByUscreenUserId(uscreenUserId) {
+  const userId = clean(uscreenUserId, 180)
+  if (!userId || !kvConfig()) return undefined
+  const id = clean(await kvCommand(['GET', `jf:journey:index:uscreen:${userId}`]), 36)
+  return id ? getSignedJourney(createJourneyToken(id)) : undefined
 }
 
 export async function enrichPayloadFromJourney(data, email) {
   if (!kvConfig()) return data
   try {
-    const id = await journeyIdFromIndexes(data, email)
-    if (!id) return data
-    const record = await readJourney(id)
+    const resolution = await resolveJourneyIdentity(data, email)
+    if (!resolution.id || resolution.ambiguous) return data
+    const record = await readJourney(resolution.id)
     if (!record) return data
     const merged = { ...data }
     const storedTouch = { ...record.first_touch, ...record.latest_touch }
@@ -179,7 +200,7 @@ export async function enrichPayloadFromJourney(data, email) {
       const current = clean(merged[key], 1200)
       if (!current || /^(not available|unknown|none|null|direct)$/i.test(current)) merged[key] = value
     }
-    merged.jf_journey_id = createJourneyToken(id)
+    merged.jf_journey_id = createJourneyToken(resolution.id)
     const userId = clean(data?.user_id || data?.customer_id || data?.customer?.id || data?.user?.id, 180)
     await linkJourneyIdentity(merged.jf_journey_id, { email, uscreenUserId: userId })
     return merged

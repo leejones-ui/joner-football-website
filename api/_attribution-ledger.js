@@ -127,11 +127,12 @@ export function isExactPaidMeta(touch = {}) {
 function classifyTouch(touch = {}) {
   const source = String(touch.utm_source || touch.source || '').toLowerCase()
   if (touch.apple || source.includes('apple')) return 'apple'
-  if (source.includes('google') || touch.gclid) return 'google'
   if (isExactPaidMeta(touch)) return 'exact_paid_meta'
-  if (source === 'email' || source.includes('newsletter') || source.includes('brevo')) return 'email'
   if (touch.utm_medium === 'organic' || source.includes('organic')) return 'organic'
-  if (touch.referrer) return 'referral'
+  if (source.includes('google') || touch.gclid) return 'google'
+  if (source === 'email' || source.includes('newsletter') || source.includes('brevo')) return 'email'
+  if (source === 'referral' || touch.utm_medium === 'referral' || touch.referrer) return 'referral'
+  if (source === 'direct' || touch.utm_medium === 'direct') return 'direct'
   if (source || touch.utm_campaign) return 'unknown'
   return 'direct'
 }
