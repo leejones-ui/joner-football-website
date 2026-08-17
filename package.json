@@ -14,6 +14,7 @@
     "test:source-taxonomy": "node scripts/test-source-taxonomy.mjs",
     "test:tracking-links": "node scripts/test-tracking-link-bank.mjs",
     "test:attribution-privacy": "node scripts/test-attribution-privacy.mjs",
+    "test:buyer-source": "node scripts/test-buyer-source-attribution.mjs",
     "test:reliability": "node scripts/test-reliability-layer.mjs",
     "test:juniors": "node --test scripts/test-juniors.mjs",
     "test:teams-crm": "node scripts/test-team-subscriptions-crm.mjs",

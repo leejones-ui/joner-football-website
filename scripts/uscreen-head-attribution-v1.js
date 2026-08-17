@@ -1,9 +1,11 @@
-/* Joner Football / Uscreen Head Code v1.2.0
+/* Joner Football / Uscreen Head Code v1.3.0
  * Paste into Uscreen Head Code. Uses only browser-standard APIs and documented DOM.
  */
 (function () {
   'use strict';
   var cookieName = 'jf_journey_id';
+  var tokenSavedAtKey = cookieName + '_saved_at';
+  var tokenMaxAgeMs = 90 * 24 * 60 * 60 * 1000;
   var tokenPattern = /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{32,64}$/;
   var pending = [];
   var bootstrapping = false;
@@ -15,17 +17,28 @@
   }
   function journey() {
     var token = readCookie();
+    if (!token) {
+      try {
+        token = window.localStorage.getItem(cookieName) || '';
+        var savedAt = Number(window.localStorage.getItem(tokenSavedAtKey) || 0);
+        if (!savedAt || Date.now() - savedAt > tokenMaxAgeMs) token = '';
+      } catch (_) {}
+    }
     return tokenPattern.test(token) ? token : '';
   }
   function saveJourney(token) {
     if (!tokenPattern.test(String(token || ''))) return '';
     document.cookie = cookieName + '=' + encodeURIComponent(token) + '; Max-Age=7776000; Path=/; Domain=.jonerfootball.com; Secure; SameSite=Lax';
     try { window.localStorage.setItem(cookieName, token); } catch (_) {}
+    try { window.localStorage.setItem(tokenSavedAtKey, String(Date.now())); } catch (_) {}
     return token;
   }
-  function referrerSource() {
+  function referrerHost() {
     var host = '';
     try { host = new URL(document.referrer).hostname.toLowerCase(); } catch (_) {}
+    return host;
+  }
+  function referrerSource(host) {
     if (/^(l\.)?instagram\.com$/.test(host)) return 'app_instagram';
     if (host === 'linktr.ee' || host.endsWith('.linktr.ee')) return 'main_instagram_linktree';
     if (host === 'l.facebook.com' || host === 'facebook.com' || host.endsWith('.facebook.com')) return 'facebook';
@@ -33,19 +46,22 @@
     if (host === 'threads.net' || host.endsWith('.threads.net')) return 'threads';
     if (host === 'tiktok.com' || host.endsWith('.tiktok.com')) return 'tiktok';
     if (host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be') return 'youtube';
-    if (host.indexOf('google.') === 0 || host.indexOf('.google.') > -1) return 'google';
+    if (['google.com', 'google.com.au', 'google.co.uk', 'google.ca', 'google.co.nz'].indexOf(host.replace(/^www\./, '')) !== -1) return 'google';
+    if (host && !/(^|\.)jonerfootball\.com$/.test(host)) return 'referral';
     return '';
   }
   function attribution() {
     var params = new URLSearchParams(location.search);
     var source = String(params.get('utm_source') || '').trim();
-    var referred = referrerSource();
+    var host = referrerHost();
+    var referred = referrerSource(host);
     if (source.toLowerCase() === 'youtube-es' && (referred === 'app_instagram' || referred === 'main_instagram_linktree')) source = referred;
-    if (!source) source = referred;
-    if (!source) return null;
+    if (!source) source = referred || 'direct';
+    var social = ['app_instagram', 'main_instagram_linktree', 'facebook', 'x', 'threads', 'tiktok', 'youtube'].indexOf(source) !== -1;
+    var medium = params.get('utm_medium') || (source === 'google' ? 'organic' : source === 'direct' ? 'direct' : source === 'referral' ? 'referral' : social ? 'organic_social' : 'social');
     return {
       utm_source: source,
-      utm_medium: params.get('utm_medium') || (source === 'google' ? 'organic' : 'social'),
+      utm_medium: medium,
       utm_campaign: params.get('utm_campaign') || (referred ? 'legacy-profile-link' : ''),
       utm_content: params.get('utm_content') || '',
       utm_term: params.get('utm_term') || '',
@@ -55,7 +71,9 @@
       fbclid: params.get('fbclid') || '',
       gclid: params.get('gclid') || '',
       ttclid: params.get('ttclid') || '',
-      msclkid: params.get('msclkid') || ''
+      msclkid: params.get('msclkid') || '',
+      source_taxonomy: source === 'referral' ? 'referral' : source === 'direct' ? 'direct' : source === 'google' && medium === 'organic' ? 'google_organic' : source,
+      source_detail: source === 'referral' ? host.slice(0, 180) : ''
     };
   }
   function flush(token) {

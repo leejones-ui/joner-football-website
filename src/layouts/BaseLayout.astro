@@ -284,7 +284,8 @@ const allSchemas = schema
               window.localStorage.removeItem(JOURNEY_STORAGE_KEY);
               return '';
             }
-            return String(record.token || '').slice(0, 160);
+            var token = String(record.token || '').slice(0, 160);
+            return /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{32,64}$/.test(token) ? token : '';
           } catch (e) { return ''; }
         }
 
@@ -321,7 +322,50 @@ const allSchemas = schema
           } catch (e) {}
           var lastTouch = readPersistentTracking(LAST_TOUCH_KEY);
           if (lastTouch.toString()) return withJourneyToken(lastTouch);
-          return withJourneyToken(getFirstTouchParams());
+          var firstTouch = getFirstTouchParams();
+          if (firstTouch.toString()) return withJourneyToken(firstTouch);
+          var classified = classifyBrowserEntry();
+          writePersistentTracking(FIRST_TOUCH_KEY, classified);
+          writePersistentTracking(LAST_TOUCH_KEY, classified);
+          return withJourneyToken(classified);
+        }
+
+        function classifyBrowserEntry() {
+          var output = new URLSearchParams();
+          var host = '';
+          try { host = new URL(document.referrer || '').hostname.toLowerCase(); } catch (e) {}
+          if (!host || /(^|\.)jonerfootball\.com$/.test(host)) {
+            output.set('utm_source', 'direct');
+            output.set('utm_medium', 'direct');
+            output.set('source_taxonomy', 'direct');
+            return output;
+          }
+          var normalHost = host.replace(/^www\./, '');
+          var googleHosts = ['google.com', 'google.com.au', 'google.co.uk', 'google.ca', 'google.co.nz'];
+          var searchHost = googleHosts.indexOf(normalHost) !== -1 || /(^|\.)bing\.com$/.test(host)
+            || /(^|\.)search\.yahoo\.[a-z.]+$/.test(host) || /(^|\.)duckduckgo\.com$/.test(host);
+          if (searchHost) {
+            var isGoogle = googleHosts.indexOf(normalHost) !== -1;
+            output.set('utm_source', isGoogle ? 'google' : 'organic');
+            output.set('utm_medium', 'organic');
+            output.set('source_taxonomy', isGoogle ? 'google_organic' : 'organic');
+            return output;
+          }
+          var social = host.match(/(^|\.)(instagram|facebook|tiktok|youtube|twitter|threads)\.(com|net)$/);
+          if (social || host === 'youtu.be' || host === 't.co' || host === 'x.com') {
+            var source = host === 't.co' || host === 'x.com' || host.indexOf('twitter.') !== -1 ? 'x'
+              : host === 'youtu.be' || host.indexOf('youtube.') !== -1 ? 'youtube'
+              : host.split('.').slice(-2)[0];
+            output.set('utm_source', source);
+            output.set('utm_medium', 'organic_social');
+            output.set('source_taxonomy', source);
+            return output;
+          }
+          output.set('utm_source', 'referral');
+          output.set('utm_medium', 'referral');
+          output.set('source_taxonomy', 'referral');
+          output.set('source_detail', host.slice(0, 180));
+          return output;
         }
 
         function appendFirstTouchParams(params) {
@@ -430,11 +474,8 @@ const allSchemas = schema
         function initJourneyLedger() {
           var params = collectTrackingParams();
           var existingToken = readJourneyToken();
-          var hasAcquisitionSignal = false;
-          params.forEach(function (value, key) {
-            if (value && key !== 'jf_journey_id') hasAcquisitionSignal = true;
-          });
-          if (!existingToken && !hasAcquisitionSignal) return Promise.resolve('');
+          // Every website entrant gets a signed first-party journey. Direct is
+          // explicit and is never allowed to replace an existing first touch.
           var attribution = paramsToObject(appendFirstTouchParams(params));
           attribution.fbp = getCookie('_fbp') || attribution.fbp;
           attribution.fbc = getCookie('_fbc') || attribution.fbc;
@@ -730,7 +771,8 @@ const allSchemas = schema
               referrer: document.referrer || ''
             }, paramsToObject(appendFirstTouchParams(trackingParams))));
           }
-          initJourneyLedger().then(function (token) {
+          var journeyReady = initJourneyLedger();
+          journeyReady.then(function (token) {
             if (token) decorateAppOutboundLinks(collectTrackingParams());
           });
           window.addEventListener('load', function () {
@@ -748,6 +790,14 @@ const allSchemas = schema
             if (!anchor) return;
             trackMoneyClick(anchor);
             if (!isAppOutboundLink(anchor)) return;
+            if (!readJourneyToken()) {
+              event.preventDefault();
+              journeyReady.then(function () {
+                anchor.href = appendUscreenTrackingParams(anchor.href, collectTrackingParams());
+                window.location.assign(anchor.href);
+              });
+              return;
+            }
             // Guarantee the shared click-id/browser-id cookies exist at the moment we hand off to Uscreen.
             ensureSharedMetaCookies();
             if (window.JonerAttribution && window.JonerAttribution.recordEvent) {

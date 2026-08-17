@@ -1,5 +1,5 @@
 import { getJourney, normalizeJourneyId, sanitizeIdentity, sha256, classifyAttribution, getEmailJourneyCandidates, indexEmailJourney } from './_attribution-ledger.js'
-import { getSignedJourney, linkJourneyIdentity, verifyJourneyToken } from './_journey-ledger.js'
+import { getJourneyByUscreenUserId, getSignedJourney, linkJourneyIdentity, verifyJourneyToken } from './_journey-ledger.js'
 
 function json(res, status, body) { return res.status(status).json(body) }
 function cors(req, res) { const origin = req.headers?.origin; if (origin === 'https://app.jonerfootball.com') res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS'); res.setHeader('Access-Control-Allow-Headers', 'content-type') }
@@ -22,6 +22,11 @@ export async function reconcilePayment(payment) {
       fbp: touch.fbp,
       fbclid: touch.fbclid,
     }
+  }
+  const uscreenUserId = payment.user_id || payment.uscreen_user_id || payment.customer_id || payment.customer?.id || payment.user?.id
+  if (uscreenUserId) {
+    const journey = await getJourneyByUscreenUserId(uscreenUserId)
+    if (journey) return { ...withTouch(classifyAttribution({ journey, payment: { ...payment, journey_id: journey.journey_id } }), journey), join_method: 'uscreen_user_id' }
   }
   const suppliedJourneyId = payment.journey_id || payment.jf_journey_id
   const signedJourneyId = verifyJourneyToken(suppliedJourneyId)

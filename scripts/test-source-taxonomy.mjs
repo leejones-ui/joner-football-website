@@ -12,9 +12,11 @@ const cases = [
   [{ utm_source: 'meta', utm_medium: 'paid_social' }, 'meta_ads'],
   [{ utm_source: 'google', utm_medium: 'organic' }, 'google_organic'],
   [{ utm_source: 'google', utm_medium: 'cpc', gclid: 'abc' }, 'google_ads'],
+  [{ utm_source: 'organic', utm_medium: 'organic' }, 'organic'],
+  [{ utm_source: 'referral', utm_medium: 'referral', source_detail: 'partner.example' }, 'referral'],
   [{}, 'direct'],
   [{ utm_source: 'partner', referrer: 'https://example.com' }, 'unknown'],
 ]
 for (const [input, expected] of cases) assert.equal(classifySource(input), expected)
-assert.deepEqual([...SOURCE_TAXONOMY], ['brevo/email', 'lee_manual_email', 'instagram', 'facebook', 'manychat', 'tiktok', 'x', 'threads', 'meta_ads', 'google_organic', 'google_ads', 'direct', 'unknown'])
+assert.deepEqual([...SOURCE_TAXONOMY], ['brevo/email', 'lee_manual_email', 'instagram', 'facebook', 'manychat', 'tiktok', 'x', 'threads', 'meta_ads', 'google_organic', 'google_ads', 'organic', 'referral', 'direct', 'unknown'])
 console.log('source taxonomy tests passed')

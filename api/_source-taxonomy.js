@@ -1,6 +1,6 @@
 export const SOURCE_TAXONOMY = Object.freeze([
   'brevo/email', 'lee_manual_email', 'instagram', 'facebook', 'manychat',
-  'tiktok', 'x', 'threads', 'meta_ads', 'google_organic', 'google_ads', 'direct', 'unknown',
+  'tiktok', 'x', 'threads', 'meta_ads', 'google_organic', 'google_ads', 'organic', 'referral', 'direct', 'unknown',
 ])
 const KNOWN = new Set(SOURCE_TAXONOMY)
 const clean = (value, max = 240) => String(value ?? '').trim().toLowerCase().slice(0, max)
@@ -24,6 +24,8 @@ export function classifySource(input = {}) {
   if (source === 'threads') return 'threads'
   if (source === 'google' && ['cpc', 'ppc', 'paid', 'google_ads'].includes(medium)) return 'google_ads'
   if (source === 'google' && ['organic', 'seo'].includes(medium)) return 'google_organic'
+  if (medium === 'organic' || source === 'organic') return 'organic'
+  if (medium === 'referral' || source === 'referral') return 'referral'
   if (!source && !medium && !detail && !input.referrer) return 'direct'
   return 'unknown'
 }
