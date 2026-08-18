@@ -78,6 +78,10 @@ assert.equal((await replayWebhookFailure('evt-1', async () => { replayed++ }, fa
 assert.equal(replayed, 1)
 
 await reconcileAuthoritativePayments([{ payment_id: 'r1', amount: 7, currency: 'USD', occurred_at: '2026-02-01T00:00:00Z', channel: 'google' }], fakeFetch)
+const [refundReconciled] = await reconcileAuthoritativePayments([
+  { payment_id: 'refund-reconcile-1', kind: 'refund', payment_status: 'paid', amount: -7, currency: 'USD', occurred_at: '2026-02-01T00:01:00Z', channel: 'google' },
+], fakeFetch)
+assert.equal(refundReconciled.payment_status, 'refunded')
 await appendReliableSale({ sale_id: 'payment:provider-1', kind: 'payment', payment_id: 'provider-1', amount: 9 }, fakeFetch)
 assert.equal((await appendReliableSale({ sale_id: 'payment:provider-1', kind: 'payment', payment_id: 'provider-1', amount: 9 }, fakeFetch)).duplicate, true)
 assert.equal((await appendReliableSale({ sale_id: 'renewal:provider-1', kind: 'renewal', payment_id: 'provider-1', amount: 9 }, fakeFetch)).duplicate, false)

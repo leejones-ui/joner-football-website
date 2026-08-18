@@ -138,6 +138,12 @@ export async function replayWebhookFailure(eventId, processor, fetchImpl = fetch
 function channelOf(sale) { return String(sale.acquisition || sale.channel || sale.billing_origin || 'unknown').toLowerCase().replace(/[^a-z0-9_:-]/g, '_').slice(0, 50) || 'unknown' }
 async function updateAnonymousAggregate(sale, fetchImpl) {
   const paymentId = reliablePaymentIdentity(sale)
+  const kind = String(sale.kind || '').toLowerCase()
+  const paymentStatus = String(sale.payment_status || sale.paymentStatus || '').toLowerCase()
+  const amount = Number(sale.amount || 0)
+  // Anonymous sales totals are revenue-only. Refunds and non-positive rows stay
+  // in the durable ledger for reconciliation but can never increment sales.
+  if (kind === 'refund' || ['refund', 'refunded'].includes(paymentStatus) || !Number.isFinite(amount) || amount <= 0) return false
   // Before 2026-08-16 the claim key included the event kind. Migrate that
   // claim lazily so reconciliation cannot count an already-recorded payment
   // again after identity was tightened to the authoritative provider ID.
@@ -150,7 +156,6 @@ async function updateAnonymousAggregate(sale, fetchImpl) {
   }
   const claimed = await resultOf(['SET', paymentClaimKey(paymentId), '1', 'NX', 'EX', String(TTL)], fetchImpl)
   if (claimed !== 'OK') return false
-  const amount = Number(sale.amount || 0)
   const channel = channelOf(sale)
   await reliabilityKv(['HINCRBY', `${aggregateKey}:${channel}`, 'count', '1'], fetchImpl)
   await reliabilityKv(['HINCRBY', `${aggregateKey}:${channel}`, 'revenue_cents', String(Math.round(amount * 100))], fetchImpl)
@@ -164,6 +169,15 @@ export async function getAnonymousAggregates(fetchImpl = fetch) {
 }
 export async function reconcileAuthoritativePayments(payments, fetchImpl = fetch) {
   const results = []
-  for (const payment of payments || []) results.push(await appendReliableSale({ ...payment, sale_id: reliablePaymentIdentity(payment), kind: payment.kind || 'payment', acquisition: channelOf(payment) }, fetchImpl))
+  for (const payment of payments || []) {
+    const kind = payment.kind || 'payment'
+    results.push(await appendReliableSale({
+      ...payment,
+      sale_id: reliablePaymentIdentity(payment),
+      kind,
+      payment_status: kind === 'refund' ? 'refunded' : payment.payment_status || payment.paymentStatus || 'paid',
+      acquisition: channelOf(payment),
+    }, fetchImpl))
+  }
   return results
 }

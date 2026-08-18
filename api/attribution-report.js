@@ -4,7 +4,15 @@ import { getAnonymousAggregates, listReliableSales, reliablePaymentIdentity } fr
 export function mergedSales(legacy, reliable) {
   const byPayment = new Map()
   let unjoinableIndex = 0
-  for (const sale of [...legacy, ...reliable]) {
+  for (const rawSale of [...legacy, ...reliable]) {
+    const sale = {
+      ...rawSale,
+      // Historical durable records predate payment_status. Their normalised
+      // kind was emitted only by authoritative successful-payment handlers.
+      payment_status: rawSale.kind === 'refund'
+        ? 'refunded'
+        : rawSale.payment_status || rawSale.paymentStatus || (['payment', 'renewal'].includes(rawSale.kind) ? 'paid' : undefined),
+    }
     const identity = reliablePaymentIdentity(sale)
     // Missing authoritative payment IDs must remain separate and unattributed;
     // never collapse unrelated payments under one empty identity.

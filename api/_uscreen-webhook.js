@@ -649,6 +649,7 @@ export async function processUscreenPayload(data) {
         sale = await appendReliableSale({
         sale_id: saleId,
         kind,
+        payment_status: kind === 'refund' ? 'refunded' : 'paid',
         provider_payment_id: stablePaymentId,
         invoice_id: cleanValue(eventData.invoice_id, 180),
         payment_id: cleanValue(eventData.payment_id || transactionId, 180),

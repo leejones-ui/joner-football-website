@@ -13,6 +13,11 @@ const next = mergeTouch(record, { journey_id: id, utm_source: 'google', gclid: '
 assert.equal(next.first_touch.utm_source, 'facebook')
 assert.equal(next.last_touch.utm_source, 'google')
 
+const tiktok = mergeTouch(null, { journey_id: id, utm_source: 'tiktok', ttclid: 'tt-click-123' }, '2026-08-12T00:00:00.000Z')
+assert.equal(tiktok.first_touch.ttclid, 'tt-click-123')
+const microsoft = mergeTouch(null, { journey_id: id, utm_source: 'bing', msclkid: 'ms-click-123' }, '2026-08-12T00:00:00.000Z')
+assert.equal(microsoft.first_touch.msclkid, 'ms-click-123')
+
 const event = sanitizeEvent({ journey_id: id, event_name: 'checkout_click', cta: 'Join Plus', utm_source: 'facebook', adset: 'set-1', placement: 'feed' })
 assert.equal(event.journey_id, id)
 assert.equal(event.attribution.adset, 'set-1')
@@ -70,6 +75,12 @@ const merged = mergedSales([], [
   { sale_id: 'renewal:ch_2', payment_id: 'ch_2', uscreen_user_id: '123', customer_name: 'Test', plan: 'Max - Annual', amount: 249.99, kind: 'renewal', occurred_at: '2027-08-14T00:05:00Z', acquisition: 'unknown' },
 ])
 assert.equal(merged.length, 2)
+assert.equal(merged.find((sale) => sale.payment_id === 'ch_1').payment_status, 'paid')
+assert.equal(merged.find((sale) => sale.payment_id === 'ch_2').payment_status, 'paid')
+const refundNormalised = mergedSales([], [
+  { sale_id: 'refund:ch_3', payment_id: 'ch_3', amount: 12.50, kind: 'refund', payment_status: 'paid', occurred_at: '2027-08-14T00:06:00Z' },
+])
+assert.equal(refundNormalised[0].payment_status, 'refunded')
 const unjoinable = mergedSales([], [
   { occurred_at: '2026-08-14T01:00:00Z', amount: 10, currency: 'AUD', acquisition: 'unknown' },
   { occurred_at: '2026-08-14T02:00:00Z', amount: 20, currency: 'AUD', acquisition: 'unknown' },
