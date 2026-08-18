@@ -7,7 +7,7 @@
   var SIGNED_JOURNEY_COOKIE = 'jf_journey_id';
   var SIGNED_JOURNEY_RE = /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{32,64}$/;
   var TRACKING_KEYS = [
-    'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'gclid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy',
+    'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'utm_id', 'gclid', 'ttclid', 'msclkid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy',
     'campaign_id', 'adset_id', 'ad_id', 'placement', 'fbclid', 'fbp', 'fbc',
     'first_utm_source', 'first_utm_medium', 'first_utm_campaign', 'first_utm_content',
     'first_utm_term', 'first_utm_id', 'first_campaign_id', 'first_adset_id',
@@ -98,6 +98,8 @@
     var fbclid = clean(params.get('fbclid'), 500);
     var fbp = clean(params.get('fbp'), 240);
     var fbc = clean(params.get('fbc'), 500);
+    var ttclid = clean(params.get('ttclid'), 500);
+    var msclkid = clean(params.get('msclkid'), 500);
     var firstSource = clean(params.get('first_utm_source'), 120);
     var firstMedium = clean(params.get('first_utm_medium'), 180);
     var firstCampaign = clean(params.get('first_utm_campaign'), 240);
@@ -117,7 +119,8 @@
       var refresh = [
         ['m', medium], ['c', campaign], ['k', content], ['t', term],
         ['i', campaignId], ['a', adsetId], ['d', adId], ['p', placement],
-        ['b', fbp], ['S', firstSource], ['M', firstMedium], ['C', firstCampaign],
+        ['b', fbp], ['x', ttclid], ['y', msclkid],
+        ['S', firstSource], ['M', firstMedium], ['C', firstCampaign],
         ['K', firstContent], ['T', firstTerm], ['I', firstCampaignId],
         ['A', firstAdsetId], ['D', firstAdId], ['P', firstPlacement], ['j', journeyId]
       ];
@@ -133,7 +136,9 @@
       params.set('utm_source', sourcePrefix + MARKER + existingPacked.toString());
       return params;
     }
-    if (!campaign && !journeyId) return params;
+    // A click ID alone is attribution evidence. Pack it even when a platform
+    // did not provide campaign metadata and no signed journey exists yet.
+    if (!campaign && !journeyId && !ttclid && !msclkid) return params;
 
     var packed = new URLSearchParams();
     packed.set('s', source);
@@ -148,6 +153,8 @@
     if (fbp) packed.set('b', fbp);
     if (fbc) packed.set('q', fbc);
     else if (fbclid) packed.set('f', fbclid);
+    if (ttclid) packed.set('x', ttclid);
+    if (msclkid) packed.set('y', msclkid);
     if (firstSource) packed.set('S', firstSource);
     if (firstMedium) packed.set('M', firstMedium);
     if (firstCampaign) packed.set('C', firstCampaign);
@@ -183,6 +190,8 @@
       fbclid: clean(packed.get('f'), 500) || undefined,
       fbp: clean(packed.get('b'), 240) || undefined,
       fbc: clean(packed.get('q'), 500) || undefined,
+      ttclid: clean(packed.get('x'), 500) || undefined,
+      msclkid: clean(packed.get('y'), 500) || undefined,
       first_utm_source: clean(packed.get('S'), 180) || undefined,
       first_utm_medium: clean(packed.get('M'), 180) || undefined,
       first_utm_campaign: clean(packed.get('C'), 240) || undefined,

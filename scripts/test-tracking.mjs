@@ -57,12 +57,14 @@ const mergedJourney = mergeJourneyRecord({
   latest_touch: { utm_campaign: 'old-latest' },
 }, {
   touched_at: '2026-08-11T01:00:00.000Z',
-  attribution: { utm_campaign: 'new-latest', ad_id: 'ad-2' },
+  attribution: { utm_campaign: 'new-latest', ad_id: 'ad-2', ttclid: 'tt-click-journey', msclkid: 'ms-click-journey' },
   page_path: '/join',
 })
 assert.equal(mergedJourney.first_touch.utm_campaign, 'first-campaign')
 assert.equal(mergedJourney.latest_touch.utm_campaign, 'new-latest')
 assert.equal(mergedJourney.latest_touch.ad_id, 'ad-2')
+assert.equal(mergedJourney.latest_touch.ttclid, 'tt-click-journey')
+assert.equal(mergedJourney.latest_touch.msclkid, 'ms-click-journey')
 assert.equal(mergedJourney.latest_page_path, '/join')
 
 const original = new URLSearchParams({
@@ -419,6 +421,43 @@ assert.equal(existingDecoded.utm_content, 'session plan / video')
 
 const noCampaign = browser.encodeForUscreen(new URLSearchParams({ utm_source: 'organic', utm_medium: 'social' }))
 assert.equal(noCampaign.get('utm_source'), 'organic')
+
+for (const source of ['instagram', 'tiktok', 'youtube', 'x', 'threads']) {
+  const social = browser.encodeForUscreen(new URLSearchParams({
+    utm_source: source,
+    utm_medium: 'organic_social',
+    utm_campaign: 'social-source-proof',
+    utm_content: 'profile-link',
+  }))
+  const socialDecoded = extractAttribution({ utm_source: social.get('utm_source') })
+  assert.equal(socialDecoded.utm_source, source)
+  assert.equal(socialDecoded.utm_medium, 'organic_social')
+  assert.equal(socialDecoded.utm_campaign, 'social-source-proof')
+}
+
+assert.ok(browser.trackingKeys.includes('ttclid'))
+assert.ok(browser.trackingKeys.includes('msclkid'))
+const nonMetaClickIds = extractAttribution({ ttclid: 'tt-click-123', msclkid: 'ms-click-123' })
+assert.equal(nonMetaClickIds.ttclid, 'tt-click-123')
+assert.equal(nonMetaClickIds.msclkid, 'ms-click-123')
+const packedNonMeta = browser.encodeForUscreen(new URLSearchParams({
+  utm_source: 'tiktok',
+  utm_campaign: 'paid-social-proof',
+  ttclid: 'tt-packed-123',
+  msclkid: 'ms-packed-123',
+}))
+const packedNonMetaDecoded = extractAttribution({ utm_source: packedNonMeta.get('utm_source') })
+assert.equal(packedNonMetaDecoded.ttclid, 'tt-packed-123')
+assert.equal(packedNonMetaDecoded.msclkid, 'ms-packed-123')
+const clickOnlyPacked = browser.encodeForUscreen(new URLSearchParams({
+  utm_source: 'tiktok',
+  ttclid: 'tt-no-campaign',
+  msclkid: 'ms-no-campaign',
+}))
+const clickOnlyDecoded = extractAttribution({ utm_source: clickOnlyPacked.get('utm_source') })
+assert.equal(clickOnlyDecoded.utm_source, 'tiktok')
+assert.equal(clickOnlyDecoded.ttclid, 'tt-no-campaign')
+assert.equal(clickOnlyDecoded.msclkid, 'ms-no-campaign')
 
 const nestedDecoded = extractAttribution({
   metadata: {

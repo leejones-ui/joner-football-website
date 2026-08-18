@@ -4,10 +4,10 @@ export const LEDGER_TTL_SECONDS = 90 * 24 * 60 * 60
 export const MAX_SALES = 50
 export const JOURNEY_COOKIE = 'jfa_journey'
 export const ATTRIBUTION_CLASSES = new Set(['exact_paid_meta', 'email', 'organic', 'direct', 'referral', 'apple', 'google', 'unknown'])
-export const FIRST_PARTY_TRACKING_KEYS = ['gclid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy']
+export const FIRST_PARTY_TRACKING_KEYS = ['gclid', 'ttclid', 'msclkid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy']
 
 const MAX = { journey: 80, event: 80, text: 240, url: 1000 }
-const TRACKING_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'fbc', 'fbp', 'gclid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy', 'campaign', 'campaign_id', 'adset', 'adset_id', 'ad', 'ad_id', 'placement']
+const TRACKING_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'fbc', 'fbp', 'gclid', 'ttclid', 'msclkid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy', 'campaign', 'campaign_id', 'adset', 'adset_id', 'ad', 'ad_id', 'placement']
 const EVENT_NAMES = new Set(['page_view', 'cta_click', 'checkout_click', 'checkout_bridge', 'checkout_identity', 'form_start', 'form_submit', 'purchase', 'subscription', 'refund', 'renewal'])
 
 export function clean(value, max = MAX.text) {
