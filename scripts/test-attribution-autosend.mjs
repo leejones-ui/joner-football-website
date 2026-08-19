@@ -7,6 +7,7 @@ process.env.KV_REST_API_URL = 'https://kv.invalid'
 process.env.KV_REST_API_TOKEN = 'test'
 process.env.META_CAPI_TOKEN = 'test-capi-token'
 process.env.JOURNEY_SIGNING_SECRET = 'test-signing-secret'
+process.env.BREVO_API_KEY = 'test-brevo-key'
 
 const strings = new Map()
 const hashes = new Map()
@@ -185,6 +186,57 @@ const sha256 = (value) => crypto.createHash('sha256').update(String(value).trim(
   assert.equal(presented.has_fbp, true)
   assert.equal(presented.has_fbclid, true)
   assert.equal(presented.customer_reference, 'a'.repeat(16))
+}
+
+// 7. Deterministic end-to-end fixture: Facebook ad click -> website journey ->
+// checkout identity -> Uscreen order.paid -> reconciliation -> exactly one
+// canonical Meta event carrying the exact ad identity.
+{
+  metaCalls = []
+  const { processUscreenPayload } = await import('../api/_uscreen-webhook.js')
+  const email = 'e2e.buyer@example.com'
+  // Ad click lands on the website; a journey is minted with the ad identity.
+  const { token } = await createOrTouchJourney({
+    attribution: {
+      utm_source: 'facebook', utm_medium: 'paid_social', utm_campaign: 'jf_coaches_max',
+      utm_content: 'planning_session', campaign_id: '120249257260070035',
+      adset_id: '120249271941100035', ad_id: '120249272080270035', placement: 'feed',
+      fbclid: 'E2ECLICK', fbc: 'fb.1.1700000000000.E2ECLICK', fbp: 'fb.1.1700000000000.222',
+    },
+    page_path: '/app/for-coaches',
+  })
+  // Checkout: the head code links the buyer's email and Uscreen user id.
+  await linkJourneyIdentity(token, { email, uscreenUserId: 'u-e2e-7' })
+  // Uscreen sends the positive paid webhook (Stripe web charge, Max tier).
+  const result = await processUscreenPayload({
+    event: 'order.paid', email, user_id: 'u-e2e-7',
+    order_id: 'e2e-order-7', transaction_id: 'ch_e2e_7', invoice_id: 'inv-e2e-7',
+    event_date: new Date().toISOString(), offer_id: 202578, offer_title: 'Max - Annual',
+    total: 249.99, currency: 'USD',
+  })
+  assert.equal(result.processed, true)
+  assert.equal(result.reconciliation.classification, 'exact_paid_meta', 'the sale must join to the exact Meta journey')
+  assert.equal(result.sale.acquisition, 'exact_paid_meta')
+  assert.equal(result.sale.campaign, '120249257260070035')
+  const canonical = metaCalls.filter((call) => call.data[0].event_name === 'JF_First_Paid_Membership')
+  assert.equal(canonical.length, 1, 'exactly one canonical event for the whole flow')
+  const event = canonical[0].data[0]
+  assert.equal(event.custom_data.value, 249.99)
+  assert.equal(event.custom_data.currency, 'USD')
+  assert.equal(event.custom_data.campaign_id, '120249257260070035')
+  assert.equal(event.custom_data.adset_id, '120249271941100035')
+  assert.equal(event.custom_data.ad_id, '120249272080270035')
+  assert.ok(event.user_data.fbc, 'canonical event must carry fbc')
+  assert.ok(event.user_data.fbp, 'canonical event must carry fbp')
+  assert.ok(event.user_data.em?.length, 'canonical event must carry hashed email')
+  // A duplicate webhook delivery must not send a second canonical event.
+  await processUscreenPayload({
+    event: 'order.paid', email, user_id: 'u-e2e-7',
+    order_id: 'e2e-order-7', transaction_id: 'ch_e2e_7', invoice_id: 'inv-e2e-7',
+    event_date: new Date().toISOString(), offer_id: 202578, offer_title: 'Max - Annual',
+    total: 249.99, currency: 'USD',
+  })
+  assert.equal(metaCalls.filter((call) => call.data[0].event_name === 'JF_First_Paid_Membership').length, 1, 'duplicate webhook must not re-emit')
 }
 
 console.log('test-attribution-autosend: all assertions passed')

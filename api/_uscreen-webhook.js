@@ -749,10 +749,12 @@ export async function processUscreenPayload(data) {
   }
 
   // Uscreen often includes attribution on User Created but omits it from the
-  // later trial/paid Order Paid webhook. First-party KV is the durable join;
-  // Brevo remains only a non-critical fallback and CRM mirror.
-  if (eventType === 'order.paid') {
-    eventData = mergeStoredAttribution(data, await loadAttributionSnapshot(data, email))
+  // later trial/paid Order Paid webhook. The authoritative-sale block above
+  // already merged the journey ledger, the KV snapshot and Brevo into
+  // eventData; rebuilding from the raw payload here would throw away the
+  // journey's campaign/adset/ad identity, so merge into eventData only.
+  if (eventType === 'order.paid' && !authoritativeSaleEvent) {
+    eventData = mergeStoredAttribution(eventData, await loadAttributionSnapshot(eventData, email))
     contactSnapshot = await brevoGetContactSnapshot(email)
     eventData = mergeStoredAttribution(eventData, contactSnapshot.attributes)
   }
