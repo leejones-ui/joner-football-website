@@ -126,8 +126,15 @@ test('public registration errors are generic and do not expose provider messages
 test('registration persists before Checkout and updates column M before returning its URL', () => {
   const source = readFileSync(new URL('../api/juniors-registration.js', import.meta.url), 'utf8')
   assert.ok(source.indexOf('await appendRow(') < source.indexOf('await createCheckout('))
-  assert.ok(source.indexOf('await updateCell(') < source.indexOf('return res.status(200).json'))
+  assert.ok(source.indexOf('await updateCell(') < source.indexOf('return res.status(200).json({ success: true, registrationId: registration.registrationId, paymentLink'))
   assert.ok(source.includes("updateCell(sheetId(), tab(), index + 1, 'M', checkout.id)"))
+})
+
+test('full class waitlist path sends no Checkout request and routes internally to Joners Juniors', () => {
+  const source = readFileSync(new URL('../api/juniors-registration.js', import.meta.url), 'utf8')
+  assert.ok(source.indexOf("registration.waitlist ? 'waitlist' : 'pending'") >= 0)
+  assert.ok(source.indexOf("if (registration.waitlist)") < source.indexOf('await createCheckout('))
+  assert.ok(source.includes("to: 'jonersjuniors@jonerfootball.com'"))
 })
 
 test('test-email endpoint requires the secret header and uses a rate limit', () => {

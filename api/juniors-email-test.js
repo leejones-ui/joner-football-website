@@ -10,7 +10,7 @@ function jsonBody(req) {
 }
 function allowedRecipients() {
   return new Set([
-    process.env.JUNIORS_INTERNAL_EMAIL || 'ligia@jonerfootball.com',
+    'jonersjuniors@jonerfootball.com',
     process.env.JUNIORS_EMAIL_TEST_REPLY_TO || 'leejones@jonerfootball.com',
     ...(process.env.JUNIORS_EMAIL_TEST_RECIPIENTS || '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean),
   ])

@@ -120,7 +120,7 @@ async function processPaid(event) {
   }
   status = { ...status, processing: false, processingAt: '' }
   await persistStatus(rowNumber, status, airtableRecordId)
-  const internalEmail = process.env.JUNIORS_INTERNAL_EMAIL || 'ligia@jonerfootball.com'
+  const internalEmail = 'jonersjuniors@jonerfootball.com'
   const replyTo = process.env.JUNIORS_REPLY_TO_EMAIL || 'ligia@jonerfootball.com'
 
   for (const [kind, to, subject, internal] of [

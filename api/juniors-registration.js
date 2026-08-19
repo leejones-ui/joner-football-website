@@ -1,7 +1,8 @@
 import { protectForm } from './_security.js'
 import { validateEmailQuality } from './_email-quality.js'
 import { appendRow, readRows, updateCell } from './_camp-automation.js'
-import { JUNIORS_HEADERS, JUNIORS_SHEET_TAB, normaliseRegistration, rowFromRegistration, validateJuniorsRegistration, stripeCheckoutForm } from './_juniors-flow.js'
+import { JUNIORS_HEADERS, JUNIORS_SHEET_TAB, normaliseRegistration, rowFromRegistration, validateJuniorsRegistration, stripeCheckoutForm, waitlistEmail } from './_juniors-flow.js'
+import { sendJuniorsEmail } from './_juniors-email.js'
 
 const sheetId = () => process.env.JUNIORS_SHEET_ID || process.env.CAMP_REGISTRATION_SHEET_ID
 const tab = () => process.env.JUNIORS_SHEET_TAB || JUNIORS_SHEET_TAB
@@ -45,8 +46,12 @@ export default async function handler(req, res) {
     if (!validation.ok) return res.status(400).json({ success: false, error: validation.error })
     if (!sheetId()) return res.status(503).json({ success: false, error: 'Joners Juniors payment records are not configured.' })
 
-    await appendRow(sheetId(), tab(), rowFromRegistration(registration, { paymentStatus: 'pending' }), JUNIORS_HEADERS)
+    await appendRow(sheetId(), tab(), rowFromRegistration(registration, { paymentStatus: registration.waitlist ? 'waitlist' : 'pending' }), JUNIORS_HEADERS)
     const brevo = await addParentToBrevo(registration)
+    if (registration.waitlist) {
+      await sendJuniorsEmail({ to: 'jonersjuniors@jonerfootball.com', subject: `WAITLIST Joners Juniors signup: ${registration.player}`, html: waitlistEmail(registration), replyTo: registration.email })
+      return res.status(200).json({ success: true, waitlist: true, registrationId: registration.registrationId, brevo: { listId: brevo.listId } })
+    }
     const checkout = await createCheckout(req, registration)
     // Paid At, Amount Paid and confirmation status remain blank until the signed paid webhook.
     const rows = await readRows(sheetId(), tab(), JUNIORS_HEADERS)

@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 
 const title = 'Joners Juniors | Belrose Kids Football Training | Joner Football'
-const description = 'Joners Juniors at Joner Football HQ in Belrose. Saturday football training for young boys and girls, ages 3 to early primary. Book a spot online.'
+const description = 'Joners Juniors at Joner Football HQ in Belrose. Saturday football training for young boys and girls, ages 3 to early primary. Join the waitlist online.'
 const canonical = 'https://jonerfootball.com/jonersjuniors/'
 
 const heroVideoId = 'Z6CzRtufcW4'
@@ -120,7 +120,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
         <h1>Joners Juniors</h1>
         <p class="jj-hero__lead">A fun, safe football pathway for young boys and girls learning the game for the first time.</p>
         <div class="jj-hero__actions">
-          <a href="#book" class="btn-red text-sm">Book Now</a>
+          <a href="#book" class="btn-red text-sm">Join Waitlist</a>
         </div>
       </div>
     </section>
@@ -140,7 +140,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
           ))}
         </div>
         <p class="jj-note">There is also a Saturday selection only group. Please only choose that option on the form if a Joner Football coach has asked you to.</p>
-        <a href="#book" class="btn-red text-sm">Book Now</a>
+        <a href="#book" class="btn-red text-sm">Join Waitlist</a>
       </div>
     </section>
 
@@ -155,7 +155,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
         <div class="jj-benefits">
           {benefits.map((item) => <div><span>✓</span>{item}</div>)}
         </div>
-        <a href="#book" class="btn-red text-sm">Book Now</a>
+        <a href="#book" class="btn-red text-sm">Join Waitlist</a>
       </div>
     </section>
 
@@ -172,7 +172,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
             </figure>
           ))}
         </div>
-        <div class="jj-section-cta"><a href="#book" class="btn-red text-sm">Book Now</a></div>
+        <div class="jj-section-cta"><a href="#book" class="btn-red text-sm">Join Waitlist</a></div>
       </div>
     </section>
 
@@ -182,7 +182,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
           <p class="jj-section-eyebrow">Watch This</p>
           <h2>What the program feels like.</h2>
           <p>Quick look at the energy, environment and fun inside Joners Juniors. Parents can see the style before booking.</p>
-          <a href="#book" class="btn-red text-sm">Book Now</a>
+          <a href="#book" class="btn-red text-sm">Join Waitlist</a>
         </div>
         <div class="jj-video-card">
           <iframe
@@ -200,9 +200,9 @@ const sanityPage = await fetchSanityPage('joners-juniors')
       <img src="/images/training/joners-juniors/img8317.webp" alt="Joners Juniors booking backdrop" loading="lazy" decoding="async" />
       <div class="jj-wrap jj-form-grid">
         <div class="jj-form-copy">
-          <p class="jj-section-eyebrow">Book Now</p>
-          <h2>Register your child.</h2>
-          <p>Fill in the form, complete payment securely through Stripe, and your child’s spot will be confirmed once payment is verified.</p>
+          <p class="jj-section-eyebrow">Class Full</p>
+          <h2>Join the waitlist.</h2>
+          <p>This class is currently full. Join the waitlist and we will contact you if a place becomes available. No payment is taken.</p>
           <div class="jj-form-facts">
             <span>Saturday mornings</span>
             <span>HQ Belrose</span>
@@ -217,6 +217,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
           <input type="hidden" name="playerFirstName" />
           <input type="hidden" name="playerSurname" />
           <input type="hidden" name="age" />
+          <input type="hidden" name="waitlist" value="true" />
 
           <div class="jj-form__grid">
             <label><span>Players Full Name: *</span><input required name="playerFullName" /></label>
@@ -243,15 +244,15 @@ const sanityPage = await fetchSanityPage('joners-juniors')
                 <option>Saturday 9:15am</option>
               </select>
             </label>
-            <div class="jj-stripe-only">
-              <span>Payment</span>
-              <strong>Pay with Stripe</strong>
+            <div class="jj-stripe-only jj-waitlist-notice">
+              <span>Class status</span>
+              <strong>Full, waitlist open</strong>
             </div>
           </div>
           <label class="jj-check"><input required type="checkbox" name="agreementAccepted" /><span>I have read and agree to the <a href="/terms" target="_blank" rel="noopener">training agreement</a>.</span></label>
-          <p class="jj-payment-note">After you register, you will be sent to Stripe to complete payment.</p>
+          <p class="jj-payment-note">No payment is taken. We will contact you if a place becomes available.</p>
           <p id="juniors-form-message" class="jj-form-message" role="alert"></p>
-          <button type="submit" class="btn-red w-full text-sm jj-form-submit">Book Now</button>
+          <button type="submit" class="btn-red w-full text-sm jj-form-submit">Join Waitlist</button>
         </form>
       </div>
     </section>
@@ -270,11 +271,11 @@ const sanityPage = await fetchSanityPage('joners-juniors')
             </details>
           ))}
         </div>
-        <div class="jj-section-cta"><a href="#book" class="btn-red text-sm">Book Now</a></div>
+        <div class="jj-section-cta"><a href="#book" class="btn-red text-sm">Join Waitlist</a></div>
       </div>
     </section>
 
-    <a href="#book" class="jj-mobile-cta btn-red text-sm">Book Now</a>
+    <a href="#book" class="jj-mobile-cta btn-red text-sm">Join Waitlist</a>
   </main>
 
   <style>
@@ -352,6 +353,8 @@ const sanityPage = await fetchSanityPage('joners-juniors')
     .jj-stripe-only { min-height: 52px; border: 1px solid #d1d1d1; background: #f7f7f7; padding: 13px 14px; }
     .jj-stripe-only span { display: block; margin-bottom: 8px; color: #111; font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; }
     .jj-stripe-only strong { display: block; color: #050505; font-weight: 800; }
+    .jj-waitlist-notice { border-color: var(--jj-red); }
+    .jj-waitlist-notice strong { color: var(--jj-red); }
     .jj-payment-note { margin: 6px 0 16px; color: #555; font-size: .9rem; line-height: 1.45; font-weight: 700; }
     .jj-form-message { display: none; margin: 12px 0 0; border: 1px solid #222; padding: 12px; font-weight: 700; }
     .jj-form-message.is-visible { display: block; }
@@ -405,7 +408,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
         event.preventDefault();
         setMessage('', '');
         var submitButton = form.querySelector('button[type="submit"]');
-        var originalText = submitButton ? submitButton.textContent : 'Book Now';
+        var originalText = submitButton ? submitButton.textContent : 'Join Waitlist';
         var emailInput = form.querySelector('input[type="email"]');
 
         if (!form.checkValidity()) {
@@ -447,6 +450,10 @@ const sanityPage = await fetchSanityPage('joners-juniors')
           if (!response.ok || !result.success) throw new Error(result.error || 'Could not save booking.');
 
           form.reset();
+          if (result.waitlist) {
+            setMessage('You are on the Joners Juniors waitlist. We will contact you if a place becomes available.', 'success');
+            return;
+          }
           setMessage('Done. Your Joners Juniors registration has been saved. Redirecting to Stripe...', 'success');
           if (!result.paymentLink) throw new Error('Secure Stripe checkout could not be created. Please try again.');
           window.location.href = result.paymentLink;

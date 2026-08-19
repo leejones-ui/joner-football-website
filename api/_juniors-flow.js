@@ -38,6 +38,7 @@ export function normaliseRegistration(body = {}, now = new Date()) {
     agreementAccepted: body.agreementAccepted === true || body.agreementAccepted === 'true' || body.agreementAccepted === 'on',
     paymentStatus: 'pending',
     amountAud: JUNIORS_AMOUNT_AUD / 100,
+    waitlist: body.waitlist === true || body.waitlist === 'true' || body.waitlist === 'on',
   }
 }
 
@@ -169,6 +170,10 @@ export function confirmationEmail({ registration, internal = false, refs = {}, r
   if (internal) return `<div style="font-family:Arial,sans-serif;color:#111;max-width:680px"><h1 style="background:#050505;color:#fff;padding:20px;border-left:8px solid #e30613">PAID Joners Juniors signup: ${player}</h1>${details}<p><b>Contact:</b> ${escapeHtml(registration.email)} / ${escapeHtml(registration.mobile)}<br><b>DOB:</b> ${escapeHtml(registration.dateOfBirth)}<br><b>Medical:</b> ${escapeHtml(registration.medical)}<br><b>Amount:</b> AUD $220.00<br><b>Registration:</b> ${escapeHtml(registration.registrationId)}<br><b>Stripe Checkout:</b> ${escapeHtml(refs.checkoutSessionId || '')}<br><b>Stripe Payment Intent:</b> ${escapeHtml(refs.paymentIntentId || '')}<br><b>Sheet:</b> ${escapeHtml(refs.sheetRef || JUNIORS_SHEET_TAB)}<br><b>Airtable:</b> ${escapeHtml(refs.airtableRecordId || 'Joners Juniors')}</p></div>`
   const note = reviewNote ? `<div style="background:#fff3cd;border:2px solid #9a6700;padding:16px;margin-bottom:18px;font-family:Arial,sans-serif"><strong>${escapeHtml(reviewNote)}</strong></div>` : ''
   return `${note}<!doctype html><html><body style="margin:0;background:#f2f2ef;font-family:Arial,Helvetica,sans-serif;color:#111"><div style="max-width:620px;margin:0 auto;padding:18px"><div style="background:#050505;color:#fff;padding:24px;border-top:8px solid #e30613"><div style="color:#e30613;font-weight:900;letter-spacing:2px">JONER FOOTBALL</div><h1 style="font-size:34px;line-height:1.05;margin:18px 0">Your Joners Juniors spot is confirmed</h1><p style="font-size:17px;line-height:1.5">Hi ${parent}, ${player}'s spot is confirmed.</p></div><div style="background:#fff;padding:24px">${details}<p style="line-height:1.6">Saturday training runs from 9:15am to 10:00am at Joner Football HQ, Unit 2, 20 Narabang Way, Belrose.</p><p style="line-height:1.6">Term 3 runs from 25 July 2026 to 26 September 2026. Please bring suitable footwear and a drink bottle.</p><p style="line-height:1.6">If you need anything, reply to Ligia and the team will help you out.</p><p style="font-weight:800">See you at HQ,<br>Lee<br><span style="color:#e30613">Joner Football</span></p></div></div></body></html>`
+}
+
+export function waitlistEmail(registration) {
+  return `<div style="font-family:Arial,sans-serif;color:#111;max-width:680px"><h1 style="background:#050505;color:#fff;padding:20px;border-left:8px solid #e30613">WAITLIST Joners Juniors signup: ${escapeHtml(registration.player)}</h1><p><b>Parent:</b> ${escapeHtml(registration.parent)}<br><b>Email:</b> ${escapeHtml(registration.email)}<br><b>Mobile:</b> ${escapeHtml(registration.mobile)}<br><b>DOB:</b> ${escapeHtml(registration.dateOfBirth)}<br><b>Class:</b> ${escapeHtml(registration.className)}<br><b>Registration:</b> ${escapeHtml(registration.registrationId)}</p><p>Payment was intentionally not created because the class is full. Contact the parent if a place becomes available.</p></div>`
 }
 
 export function escapeHtml(value) { return clean(value, 4000).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') }
