@@ -1,5 +1,8 @@
-/* Joner Football / Uscreen Head Code v1.3.0
+/* Joner Football / Uscreen Head Code v1.4.0
  * Paste into Uscreen Head Code. Uses only browser-standard APIs and documented DOM.
+ * v1.4: reads the journey token out of the packed utm_source (cookie-free
+ * fallback) and posts the checkout page's own click identity (fbc/fbp/fbclid)
+ * with every bridge event.
  */
 (function () {
   'use strict';
@@ -15,6 +18,18 @@
     var match = document.cookie.match(new RegExp('(?:^|; )' + cookieName + '=([^;]*)'));
     return match ? decodeURIComponent(match[1]) : '';
   }
+  function packedJourneyToken() {
+    // The website packs the journey token as j= inside utm_source using the
+    // __jfa1__ marker. When third-party storage fails, the URL itself still
+    // carries the identity into this page.
+    try {
+      var source = new URLSearchParams(location.search).get('utm_source') || '';
+      var markerAt = source.indexOf('__jfa1__');
+      if (markerAt === -1) return '';
+      var packed = new URLSearchParams(source.slice(markerAt + '__jfa1__'.length));
+      return packed.get('j') || '';
+    } catch (_) { return ''; }
+  }
   function journey() {
     var token = readCookie();
     if (!token) {
@@ -24,7 +39,15 @@
         if (!savedAt || Date.now() - savedAt > tokenMaxAgeMs) token = '';
       } catch (_) {}
     }
+    if (!tokenPattern.test(token)) {
+      var fromUrl = packedJourneyToken();
+      if (tokenPattern.test(fromUrl)) return saveJourney(fromUrl);
+    }
     return tokenPattern.test(token) ? token : '';
+  }
+  function metaCookie(name) {
+    var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : '';
   }
   function saveJourney(token) {
     if (!tokenPattern.test(String(token || ''))) return '';
@@ -69,6 +92,8 @@
       adset_id: params.get('adset_id') || '',
       ad_id: params.get('ad_id') || '',
       fbclid: params.get('fbclid') || '',
+      fbc: metaCookie('_fbc') || params.get('fbc') || '',
+      fbp: metaCookie('_fbp') || params.get('fbp') || '',
       gclid: params.get('gclid') || '',
       ttclid: params.get('ttclid') || '',
       msclkid: params.get('msclkid') || '',
@@ -101,6 +126,9 @@
     ensureJourney(function (token) {
       if (!token) return;
       data.jf_journey_id = token;
+      // Click identity captured on this page rides along so the journey's
+      // latest touch gains fbc/fbp even when the pixel set them app-side only.
+      data.attribution = attribution();
       var key = data.email ? String(data.email).trim().toLowerCase() : data.event_name;
       if (sent[key]) return; sent[key] = true;
       // Keep identity in the HTTPS request body; never put email in a URL/log.

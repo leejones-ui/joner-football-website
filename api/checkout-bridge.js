@@ -57,6 +57,57 @@ export async function reconcilePayment(payment) {
   return { ...withTouch(classifyAttribution({ journey: candidates[0], payment: { ...payment, email_hash: emailHash } }), candidates[0]), join_method: 'hashed_email_time_bounded' }
 }
 
+// A checkout identity can arrive after the payment webhook already classified
+// the sale unknown. Re-run the join for recent unknown sales that reference
+// this email hash so a late identity still attributes the payment. Bounded and
+// non-fatal: the bridge response never waits on perfection here.
+export async function retriggerUnknownSalesForEmail(emailHash) {
+  if (!emailHash) return { checked: 0, reclassified: 0 }
+  const out = { checked: 0, reclassified: 0 }
+  try {
+    const { listReliableSales, appendReliableSale } = await import('./_reliability-ledger.js')
+    const sales = await listReliableSales(fetch, 100)
+    const prefix = String(emailHash).slice(0, 16)
+    for (const sale of sales) {
+      if (out.checked >= 10) break
+      const acquisition = String(sale.acquisition || '').toLowerCase()
+      if (acquisition && !['unknown', 'none'].includes(acquisition)) continue
+      if (sale.kind === 'refund') continue
+      const matches = sale.email_sha256 === emailHash || (!sale.email_sha256 && sale.customer_reference === prefix)
+      if (!matches) continue
+      const occurred = Date.parse(sale.occurred_at || '') || 0
+      if (!occurred || Date.now() - occurred > 7 * 24 * 60 * 60 * 1000) continue
+      out.checked += 1
+      const reconciliation = await reconcilePayment({
+        user_id: sale.uscreen_user_id,
+        email_hash: emailHash,
+        event_date: sale.occurred_at,
+      })
+      const classification = String(reconciliation?.classification || '').toLowerCase()
+      if (!classification || ['unknown', 'none'].includes(classification)) continue
+      await appendReliableSale({
+        ...sale,
+        email_sha256: sale.email_sha256 || emailHash,
+        acquisition: reconciliation.classification,
+        confidence: reconciliation.confidence,
+        evidence: [...(reconciliation.evidence || []), 'late_identity_retrigger'],
+        source: reconciliation.source,
+        medium: reconciliation.medium,
+        campaign: reconciliation.campaign,
+        adset: reconciliation.adset,
+        ad: reconciliation.ad,
+        placement: reconciliation.placement,
+        landing_page: reconciliation.landing_page,
+        journey_id: reconciliation.journey_id,
+        join_method: reconciliation.join_method,
+        last_reconciled_at: new Date().toISOString(),
+      })
+      out.reclassified += 1
+    }
+  } catch { /* non-fatal */ }
+  return out
+}
+
 export default async function handler(req, res) {
   cors(req, res)
   if (req.method === 'OPTIONS') return res.status(204).end()
@@ -70,7 +121,14 @@ export default async function handler(req, res) {
       const linked = await linkJourneyIdentity(suppliedToken, {
         email: body.email,
         uscreenUserId: body.uscreen_user_id || body.user_id,
+        // Click identity the head code observed on the checkout page (fbc/fbp
+        // set by the pixel on the app domain). Gap-fill only, never overwrite.
+        clickIdentity: body.attribution && typeof body.attribution === 'object' ? body.attribution : undefined,
       })
+      if (body.email) {
+        const emailHash = sha256(String(body.email).trim().toLowerCase())
+        await retriggerUnknownSalesForEmail(emailHash)
+      }
       return json(res, 200, { success: true, journey_id: suppliedToken, linked: linked.linked })
     }
     const journeyId = normalizeJourneyId(body.journey_id)
@@ -82,6 +140,7 @@ export default async function handler(req, res) {
       journey.email_hash = identity.email_hash
       journey.identity_source = identity.identity_source
       await indexEmailJourney(identity.email_hash, journeyId, new Date().toISOString())
+      await retriggerUnknownSalesForEmail(identity.email_hash)
     }
     const uscreenUserId = String(body.uscreen_user_id || body.user_id || '').trim().slice(0, 180)
     if (uscreenUserId) journey.uscreen_user_id = uscreenUserId

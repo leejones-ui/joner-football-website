@@ -700,17 +700,22 @@ try {
     event_date: '2026-07-29T01:02:03Z', offer_id: 230698, offer_title: 'Max', total: 59,
     currency: 'AUD', utm_source: 'Not available',
   })
-  assert.equal(metaBodies.length, metaBeforeFirstPaid, 'webhook must never send the canonical first-paid event')
-  const firstPaidKey = [...kvStore.keys()].find((key) => key.startsWith('jf:meta:first-paid:'))
-  assert.ok(firstPaidKey, 'first-paid candidate must be stored in KV')
+  assert.equal(metaBodies.length, metaBeforeFirstPaid + 1, 'webhook must auto-send the canonical first-paid event once gates pass')
+  const sentEvent = metaBodies.at(-1).data[0]
+  assert.equal(sentEvent.event_name, 'JF_First_Paid_Membership')
+  assert.equal(sentEvent.custom_data.utm_campaign, 'coaches_pro')
+  assert.equal(sentEvent.user_data.fbc, 'fb.1.1234000.fb-click-123')
+  assert.equal(sentEvent.custom_data.value, 59)
+  assert.equal(sentEvent.custom_data.currency, 'AUD')
+  const firstPaidKey = [...kvStore.keys()].find((key) => key.startsWith('jf:meta:first-paid:') && !key.endsWith(':send-lock'))
+  assert.ok(firstPaidKey, 'first-paid claim must be stored in KV')
   const firstPaidRecord = JSON.parse(kvStore.get(firstPaidKey))
-  assert.equal(firstPaidRecord.status, 'candidate')
-  assert.equal(firstPaidRecord.metaEvent.event_name, 'JF_First_Paid_Membership')
-  assert.equal(firstPaidRecord.metaEvent.custom_data.utm_campaign, 'coaches_pro')
-  assert.equal(firstPaidRecord.metaEvent.user_data.fbc, 'fb.1.1234000.fb-click-123')
-  assert.equal(brevoBodies.at(-1).attributes.JF_FIRST_PAID_CANDIDATE_TRANSACTION_ID, 'ch_paid_123')
-  assert.equal(JSON.stringify(firstPaidRecord.metaEvent).includes('user-paid-123'), false, 'raw Uscreen user ID must not appear in the Meta payload')
+  assert.equal(firstPaidRecord.status, 'sent', 'a safe auto-send must mark the claim sent')
+  assert.equal(sentEvent.event_id, firstPaidRecord.eventId)
+  assert.equal(brevoBodies.at(-1).attributes.JF_FIRST_PAID_TRANSACTION_ID, 'ch_paid_123')
+  assert.equal(JSON.stringify(sentEvent).includes('user-paid-123'), false, 'raw Uscreen user ID must not appear in the Meta payload')
   const firstPaidEventId = firstPaidRecord.eventId
+  const metaBeforeDuplicates = metaBodies.length
 
   await processUscreenPayload({
     event: 'order.paid', email: 'tracking-test@example.com', user_id: 'user-paid-123',
@@ -718,7 +723,7 @@ try {
     event_date: '2026-08-29T01:02:03Z', offer_id: 230698, offer_title: 'Max', total: 59,
     currency: 'AUD',
   })
-  assert.equal(metaBodies.length, metaBeforeFirstPaid, 'a later order for the same stable user must not emit')
+  assert.equal(metaBodies.length, metaBeforeDuplicates, 'a later order for the same stable user must not emit again')
   assert.equal(JSON.parse(kvStore.get(firstPaidKey)).eventId, firstPaidEventId, 'canonical identity must remain stable across order IDs')
 
   await processUscreenPayload({
@@ -727,7 +732,7 @@ try {
     event_date: '2026-07-30T01:02:03Z', offer_id: 230698, offer_title: 'Max', total: 59,
     currency: 'AUD',
   })
-  assert.equal(metaBodies.length, metaBeforeFirstPaid, 'renewals must not emit the canonical acquisition event')
+  assert.equal(metaBodies.length, metaBeforeDuplicates, 'renewals must not emit the canonical acquisition event')
 
   await processUscreenPayload({
     event: 'order.paid', email: 'tracking-test@example.com', order_id: 'trial-123',
@@ -752,10 +757,11 @@ try {
     event_date: '2026-07-29T02:02:03Z', offer_id: 230698, offer_title: 'Max', total: 59,
     currency: 'AUD',
   })
-  assert.equal(metaBodies.length, beforeKvFirstPaid, 'first-paid webhook must remain candidate-only even when an enable flag is set')
-  const kvCandidate = [...kvStore.values()].map((value) => JSON.parse(value)).find((value) => value.uscreenUserId === 'user-123' && value.status === 'candidate')
-  assert.equal(kvCandidate.metaEvent.custom_data.utm_campaign, 'JF Teams - Traffic - Book A Demo')
-  assert.equal(kvCandidate.metaEvent.user_data.fbc, 'fb.1.1234000.fb-click-123')
+  assert.equal(metaBodies.length, beforeKvFirstPaid + 1, 'a second distinct buyer must auto-send exactly one canonical event')
+  const kvSentEvent = metaBodies.at(-1).data[0]
+  assert.equal(kvSentEvent.event_name, 'JF_First_Paid_Membership')
+  assert.equal(kvSentEvent.custom_data.utm_campaign, 'JF Teams - Traffic - Book A Demo')
+  assert.equal(kvSentEvent.user_data.fbc, 'fb.1.1234000.fb-click-123')
 
   process.env.META_FIRST_PAID_ENABLED = 'true'
   const beforeFlaggedRetry = metaBodies.length
@@ -765,7 +771,7 @@ try {
     event_date: '2026-07-29T02:03:03Z', offer_id: 230698, offer_title: 'Max', total: 59,
     currency: 'AUD',
   })
-  assert.equal(metaBodies.length, beforeFlaggedRetry, 'META_FIRST_PAID_ENABLED must not create an automatic send path')
+  assert.equal(metaBodies.length, beforeFlaggedRetry, 'an already-sent claim must never re-emit, flag or not')
   delete process.env.META_FIRST_PAID_ENABLED
   const beforeShadow = metaBodies.length
   await processUscreenPayload({
@@ -774,8 +780,9 @@ try {
     event_date: '2026-08-10T03:30:00Z', offer_id: 230699, offer_title: 'Plus', total: 29,
     currency: 'AUD', utm_source: 'facebook', utm_campaign: 'app-buyers',
   })
-  assert.equal(metaBodies.length, beforeShadow, 'shadow mode must not send the canonical event before verification')
-  assert.equal(brevoBodies.at(-1).attributes.JF_FIRST_PAID_CANDIDATE_TRANSACTION_ID, 'ch_shadow_paid_123')
+  assert.equal(metaBodies.length, beforeShadow + 1, 'a brand-new verified buyer must emit exactly one canonical event')
+  assert.equal(metaBodies.at(-1).data[0].event_name, 'JF_First_Paid_Membership')
+  assert.equal(brevoBodies.at(-1).attributes.JF_FIRST_PAID_TRANSACTION_ID, 'ch_shadow_paid_123')
   await assert.rejects(
     processUscreenPayload({
       event: 'order.paid', email: 'brand-new-no-id@example.com',
@@ -859,7 +866,9 @@ assert.ok(webhook.includes("'JF_Account_Created'"), 'new accounts need a dedicat
 assert.ok(webhook.includes('extractMetaIdentity'))
 assert.ok(webhook.includes('utm_campaign: attribution.utm_campaign'))
 assert.equal(webhook.includes('META_FIRST_PAID_ENABLED'), false, 'webhook must have no automatic canonical first-paid release flag')
-assert.equal(webhook.includes('sendMetaEventPayload(metaEvent'), false, 'webhook must never send a first-paid candidate directly')
+assert.ok(webhook.includes('attemptFirstPaidAutoSend'), 'the canonical first-paid event must send automatically through the guarded path')
+assert.ok(webhook.includes(':send-lock'), 'the automatic send must take an atomic send lock')
+assert.ok(webhook.includes('metaEventsReceived(result) === 1'), 'the automatic send must require Meta events_received receipt before marking sent')
 const replayScript = fs.readFileSync(path.join(root, 'scripts/first-paid-candidate.mjs'), 'utf8')
 assert.ok(replayScript.includes("EXPECTED_META_PIXEL_ID = '232666285545279'"), 'manual replay must target the production pixel')
 assert.ok(replayScript.includes("'NX', 'EX', SEND_LOCK_SECONDS"), 'manual replay must take an atomic send lock')

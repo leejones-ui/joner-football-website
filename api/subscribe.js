@@ -461,6 +461,19 @@ export default async function handler(req, res) {
         reason: result.reason || undefined,
       })
     } catch (error) {
+      // This rewrite target is the live production webhook path, so it must
+      // dead-letter failures exactly like api/uscreen-webhook.js does. If the
+      // provider stops retrying, the payload still survives for replay.
+      try {
+        const { recordWebhookFailure } = await import('./_reliability-ledger.js')
+        await recordWebhookFailure({
+          event_id: cleanString(String(body.id || body.event_id || body.transaction_id || ''), 180) || `${eventType}:${Date.now()}`,
+          payload: body,
+          error: error?.message || String(error),
+        })
+      } catch (recordError) {
+        console.error('Could not record webhook dead letter', recordError?.message || String(recordError))
+      }
       console.error('Uscreen webhook processing failed after receipt', {
         event: eventType,
         id: cleanString(body.id || '', 80),

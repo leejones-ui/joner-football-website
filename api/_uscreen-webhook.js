@@ -3,6 +3,7 @@ import { extractAttribution, extractMetaIdentity } from './_attribution.js'
 import { classifySource } from './_source-taxonomy.js'
 import { enrichPayloadFromJourney, journeyStoreConfigured } from './_journey-ledger.js'
 import { reconcilePayment } from './checkout-bridge.js'
+import { setHealthField, bumpHealthCounter, recordAlert } from './_attribution-health.js'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
@@ -509,10 +510,50 @@ async function markFirstPaidCandidate(key, record) {
   }), 'EX', 10 * 365 * 24 * 60 * 60])
 }
 
-async function markFirstPaidEventSent(key, eventId) {
+async function markFirstPaidEventSent(key, eventId, metaResponse) {
   const existing = await getFirstPaidClaim(key)
-  const record = { ...existing, eventId, status: 'sent', sentAt: new Date().toISOString() }
+  const record = { ...existing, eventId, status: 'sent', sentAt: new Date().toISOString(), metaResponse }
   await kvCommand(['SET', key, JSON.stringify(record), 'EX', 10 * 365 * 24 * 60 * 60])
+}
+
+function metaEventsReceived(result) {
+  try { return Number(JSON.parse(result?.body || '{}')?.events_received || 0) } catch { return 0 }
+}
+
+// Automatic canonical send. The gates already passed (positive paid tier order,
+// web Stripe charge, no paid history). This adds the transport-level safety the
+// operator script used to provide: value/currency proof, a send lock, and a
+// Meta events_received receipt before the claim is marked sent. Anything that
+// cannot send safely stays a candidate for the hourly cron to retry or enrich.
+export async function attemptFirstPaidAutoSend({ key, record, metaEvent, testEventCode }) {
+  const baseRecord = { ...(record || {}), metaEvent }
+  const value = Number(metaEvent?.custom_data?.value)
+  const currency = String(metaEvent?.custom_data?.currency || '')
+  const hold = async (reason, extra = {}) => {
+    await markFirstPaidCandidate(key, {
+      ...baseRecord,
+      ...extra,
+      autoSendHold: reason,
+      attempts: Number(baseRecord.attempts || 0) + (extra.attempted ? 1 : 0),
+      lastAttemptAt: new Date().toISOString(),
+    })
+    return { sent: false, reason }
+  }
+  if (!process.env.META_CAPI_TOKEN) return hold('no-capi-token')
+  if (!(value > 0)) return hold('missing-positive-value')
+  if (!/^[A-Z]{3}$/.test(currency)) return hold('missing-currency')
+  const lock = await kvCommand(['SET', `${key}:send-lock`, new Date().toISOString(), 'NX', 'EX', 300])
+  if (lock !== 'OK') return hold('send-locked')
+  const result = await sendMetaEventPayload(metaEvent, testEventCode)
+  if (result?.ok && metaEventsReceived(result) === 1) {
+    await markFirstPaidEventSent(key, metaEvent.event_id, { status: result.status, body: result.body })
+    await bumpHealthCounter('meta_first_paid_sent')
+    await setHealthField('meta_first_paid_last_sent_at', new Date().toISOString())
+    return { sent: true, result }
+  }
+  await bumpHealthCounter('meta_first_paid_failed')
+  await recordAlert({ type: 'canonical_event_send_failed', event_id: metaEvent.event_id, detail: String(result?.body || result?.error || result?.status || 'unknown').slice(0, 200) })
+  return hold('send-failed', { attempted: true, lastError: String(result?.body || result?.error || result?.status || 'unknown').slice(0, 300) })
 }
 
 async function releaseFirstPaidClaim(key, eventId) {
@@ -614,6 +655,12 @@ export async function processUscreenPayload(data) {
   let eventData = data
   let contactSnapshot = { status: 'unavailable', attributes: {}, listIds: [] }
 
+  // Continuity heartbeat: the cron compares this against Uscreen's invoice
+  // stream to detect webhook delivery gaps. Never fatal.
+  await setHealthField('webhook_last_event_at', new Date().toISOString())
+  await setHealthField('webhook_last_event_type', eventType)
+  await bumpHealthCounter('webhook_events_received')
+
   if (!email) return { accepted: true, event: eventType, skipped: true, reason: 'missing-email' }
   if (!EMAIL_RE.test(email)) return { accepted: true, event: eventType, skipped: true, reason: 'invalid-email' }
 
@@ -661,6 +708,14 @@ export async function processUscreenPayload(data) {
         billing_origin: cleanValue(eventData.origin || eventData.payment_origin || eventData.provider, 80) || (eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'web'),
         uscreen_user_id: cleanValue(eventData.user_id || eventData.customer_id || eventData.user?.id || eventData.customer?.id, 120),
         customer_reference: sha256Hex(email)?.slice(0, 16),
+        // Full email hash (never the email) so the cron and the late-identity
+        // retrigger can re-run the journey join after the fact. The dashboard
+        // report strips this field before anything leaves the server.
+        email_sha256: sha256Hex(email),
+        join_method: reconciliation.join_method,
+        has_fbc: Boolean(reconciliation.fbc),
+        has_fbp: Boolean(reconciliation.fbp),
+        has_fbclid: Boolean(reconciliation.fbclid),
         source_taxonomy: classifySource(eventData),
         acquisition: reconciliation.classification || 'unknown',
         confidence: reconciliation.confidence || 'none',
@@ -680,6 +735,16 @@ export async function processUscreenPayload(data) {
         // records the incident. listReliableSales also self-heals the index.
         throw error
       }
+      // Mark every id Uscreen could later report for this payment as seen, so
+      // the continuity check does not re-import a sale the webhook already
+      // recorded under a different provider id (invoice vs Stripe charge).
+      try {
+        const seenIds = [eventData.invoice_id, eventData.order_id, eventData.id, eventData.payment_id, transactionId]
+          .map((value) => cleanValue(value, 180)).filter(Boolean)
+        for (const id of new Set(seenIds)) {
+          await kvCommand(['SET', `jfa:reliability:invoice-seen:${id}`, saleId, 'NX', 'EX', 90 * 24 * 60 * 60])
+        }
+      } catch { /* non-fatal */ }
     }
   }
 
@@ -756,11 +821,14 @@ export async function processUscreenPayload(data) {
         if (claim.status === 'unavailable') throw new Error('First-paid idempotency store unavailable')
         const sameEvent = !claim.existing?.eventId || claim.existing.eventId === eventId
         const candidateStates = new Set(['claimed', 'pending', 'candidate'])
-        // Hard safety boundary: webhooks only create or preserve a candidate.
-        // The canonical first-paid event can only be released by the manual
-        // operator script after authoritative Uscreen payment-history review.
+        // The canonical first-paid event now sends automatically once the
+        // payment gates pass. attemptFirstPaidAutoSend still enforces positive
+        // value, a real currency, a send lock and Meta's events_received
+        // receipt; anything unsafe is preserved as a candidate for the hourly
+        // cron (which can enrich currency from the authoritative invoice) or
+        // for the manual operator backstop.
         if (sameEvent && candidateStates.has(claim.status)) {
-          await markFirstPaidCandidate(claim.key, claim.record || claim.existing || {
+          const claimRecord = claim.record || claim.existing || {
             eventId,
             uscreenUserId: firstPaidUserId(eventData),
             uscreenOrderId: cleanValue(eventData.order_id || eventData.id, 180),
@@ -770,17 +838,34 @@ export async function processUscreenPayload(data) {
             webhookCurrency: cleanValue(eventData.currency || eventData.localized_amounts?.currency, 10),
             webhookOrigin: cleanValue(eventData.origin, 120),
             metaEvent,
+          }
+          const autoSend = await attemptFirstPaidAutoSend({
+            key: claim.key,
+            record: claimRecord,
+            metaEvent,
+            testEventCode: data.meta_test_event_code || data.test_event_code,
           })
-          console.info('Uscreen->Meta first paid candidate awaiting verification', {
+          console.info('Uscreen->Meta first paid auto-send', {
             eventId,
             uscreenUserId: firstPaidUserId(eventData),
-            reason: firstPaid.reason,
+            gateReason: firstPaid.reason,
+            sent: autoSend.sent,
+            holdReason: autoSend.reason,
           })
-          attributes = {
-            ...attributes,
-            JF_FIRST_PAID_CANDIDATE_AT: cleanValue(eventData.event_date || eventData.created_at || new Date().toISOString(), 40),
-            JF_FIRST_PAID_CANDIDATE_TRANSACTION_ID: cleanValue(transactionId, 180),
-            JF_FIRST_PAID_CANDIDATE_EVENT_ID: cleanValue(eventId, 220),
+          if (autoSend.sent) {
+            attributes = {
+              ...attributes,
+              JF_FIRST_PAID_AT: cleanValue(eventData.event_date || eventData.created_at || new Date().toISOString(), 40),
+              JF_FIRST_PAID_TRANSACTION_ID: cleanValue(transactionId, 180),
+              JF_FIRST_PAID_EVENT_ID: cleanValue(eventId, 220),
+            }
+          } else {
+            attributes = {
+              ...attributes,
+              JF_FIRST_PAID_CANDIDATE_AT: cleanValue(eventData.event_date || eventData.created_at || new Date().toISOString(), 40),
+              JF_FIRST_PAID_CANDIDATE_TRANSACTION_ID: cleanValue(transactionId, 180),
+              JF_FIRST_PAID_CANDIDATE_EVENT_ID: cleanValue(eventId, 220),
+            }
           }
         }
       } else {

@@ -1,6 +1,9 @@
 import crypto from 'node:crypto'
 
-export const MAX_DETAILED_SALES = 50
+// Detailed rows retained in the live index. The dashboard shows the newest 50;
+// older rows past this cap are archived (never deleted) so per-sale evidence
+// survives beyond the display window.
+export const MAX_DETAILED_SALES = 400
 const TTL = 10 * 365 * 24 * 60 * 60
 const salesIndexKey = 'jfa:reliability:sales:index'
 const failuresKey = 'jfa:reliability:webhook:failures'
@@ -90,6 +93,12 @@ async function trimDetailedSales(fetchImpl) {
   const ids = await resultOf(['ZRANGE', salesIndexKey, '0', String(-(MAX_DETAILED_SALES + 1))], fetchImpl)
   const stale = Array.isArray(ids) ? ids : []
   if (!stale.length) return
+  // Archive, never delete: the row moves to an archive key with the same TTL
+  // so historical evidence stays recoverable after it leaves the live index.
+  for (const id of stale) {
+    const row = await resultOf(['GET', saleKey(id)], fetchImpl)
+    if (row) await resultOf(['SET', `jfa:reliability:archive:${cleanId(id)}`, typeof row === 'string' ? row : JSON.stringify(row), 'EX', String(TTL)], fetchImpl)
+  }
   await reliabilityKv(['ZREM', salesIndexKey, ...stale], fetchImpl)
   await reliabilityKv(['DEL', ...stale.map(saleKey)], fetchImpl)
 }
@@ -102,14 +111,15 @@ async function scanSaleKeys(fetchImpl) {
   return rows
 }
 
-export async function listReliableSales(fetchImpl = fetch) {
-  const indexed = await resultOf(['ZREVRANGE', salesIndexKey, '0', String(MAX_DETAILED_SALES - 1)], fetchImpl)
+export async function listReliableSales(fetchImpl = fetch, limit = MAX_DETAILED_SALES) {
+  const cap = Math.min(Math.max(Number(limit) || MAX_DETAILED_SALES, 1), MAX_DETAILED_SALES)
+  const indexed = await resultOf(['ZREVRANGE', salesIndexKey, '0', String(cap - 1)], fetchImpl)
   const ids = Array.isArray(indexed) ? indexed : []
   const byId = new Map()
   for (const id of ids) { const row = parse(await resultOf(['GET', saleKey(id)], fetchImpl)); if (row) byId.set(row.sale_id, row) }
   // Self-healing: recover records written before an index failure.
   for (const row of await scanSaleKeys(fetchImpl)) byId.set(row.sale_id, row)
-  const rows = [...byId.values()].sort((a,b) => String(b.occurred_at || '').localeCompare(String(a.occurred_at || ''))).slice(0, MAX_DETAILED_SALES)
+  const rows = [...byId.values()].sort((a,b) => String(b.occurred_at || '').localeCompare(String(a.occurred_at || ''))).slice(0, cap)
   for (const row of rows) await reliabilityKv(['ZADD', salesIndexKey, String(Date.parse(row.occurred_at) || Date.now()), row.sale_id], fetchImpl)
   return rows
 }

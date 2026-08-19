@@ -118,7 +118,7 @@ export async function createOrTouchJourney({ token, attribution, page_path, refe
   return { token: signedToken, record }
 }
 
-export async function linkJourneyIdentity(token, { email, uscreenUserId } = {}) {
+export async function linkJourneyIdentity(token, { email, uscreenUserId, clickIdentity } = {}) {
   const id = verifyJourneyToken(token)
   if (!id) return { linked: false, reason: 'invalid-token' }
   const record = await readJourney(id)
@@ -126,6 +126,19 @@ export async function linkJourneyIdentity(token, { email, uscreenUserId } = {}) 
   const emailValue = normalizedEmail(email)
   const userId = clean(uscreenUserId, 180)
   const updated = { ...record, updated_at: new Date().toISOString() }
+  // Click identity observed on the checkout page (fbc/fbp set by the pixel on
+  // the app domain) fills gaps only; it never overwrites a recorded touch.
+  if (clickIdentity && typeof clickIdentity === 'object') {
+    const fill = {}
+    for (const key of ['fbc', 'fbp', 'fbclid', 'gclid', 'ttclid', 'msclkid', 'campaign_id', 'adset_id', 'ad_id', 'placement']) {
+      const value = clean(clickIdentity[key], key === 'fbc' || key === 'fbclid' ? 500 : 240)
+      if (value) fill[key] = value
+    }
+    if (Object.keys(fill).length) {
+      updated.latest_touch = { ...fill, ...(record.latest_touch || {}) }
+      updated.first_touch = { ...fill, ...(record.first_touch || {}) }
+    }
+  }
   if (emailValue) {
     updated.email_sha256 = sha256(emailValue)
     await kvCommand(['SET', `jf:journey:index:email:${updated.email_sha256}`, id, 'EX', JOURNEY_TTL_SECONDS])
