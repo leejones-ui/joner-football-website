@@ -150,6 +150,16 @@ async function checkInvoiceContinuity({ deep }) {
   if (!out.apiAvailable) return out
   const lookbackMs = (deep ? 7 * 24 : 6) * 60 * 60 * 1000
   const pages = deep ? 3 : 1
+  // The webhook records web sales under Stripe charge ids, not invoice ids, so
+  // an unseen invoice is only a real gap when no ledger row matches the same
+  // customer, amount and time window.
+  const recentRows = await listReliableSales(fetch, 200).catch(() => [])
+  const matchesExistingRow = (invoice, paidAtMs) => recentRows.some((row) => {
+    if (String(row.uscreen_user_id || '') !== String(invoice.user_id || '')) return false
+    if (Math.abs(Number(row.amount || 0) - Number(invoice.amount) / 100) > 0.01) return false
+    const rowAt = Date.parse(row.occurred_at || '') || 0
+    return rowAt && Math.abs(rowAt - paidAtMs) < 90 * 60 * 1000
+  })
   for (let page = 1; page <= pages; page += 1) {
     const invoices = await uscreenGet(`/invoices?per_page=100&page=${page}`)
     if (!Array.isArray(invoices) || !invoices.length) break
@@ -162,6 +172,10 @@ async function checkInvoiceContinuity({ deep }) {
       out.scanned += 1
       const seen = await kv(['GET', `jfa:reliability:invoice-seen:${invoice.id}`])
       if (seen) continue
+      if (matchesExistingRow(invoice, paidAtMs)) {
+        await kv(['SET', `jfa:reliability:invoice-seen:${invoice.id}`, 'matched-existing-row', 'EX', String(90 * 24 * 60 * 60)])
+        continue
+      }
       // Gap: the webhook never recorded this paid invoice.
       let emailHash
       let reconciliation
