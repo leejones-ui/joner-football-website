@@ -97,12 +97,16 @@ assert.equal(emailResolution.id, directJourney.record.id)
 const emailEnriched = await enrichPayloadFromJourney({}, 'direct-test@example.invalid')
 assert.equal(emailEnriched.jf_journey_id, directJourney.token)
 
-const ambiguousJourney = await createOrTouchJourney({ attribution: { utm_source: 'referral', utm_medium: 'referral', source_taxonomy: 'referral' } })
-await linkJourneyIdentity(ambiguousJourney.token, { email: 'direct-test@example.invalid' })
-const ambiguousResolution = await resolveJourneyIdentity({}, 'direct-test@example.invalid')
-assert.equal(ambiguousResolution.ambiguous, true)
-const ambiguousEnriched = await enrichPayloadFromJourney({}, 'direct-test@example.invalid')
-assert.equal(ambiguousEnriched.jf_journey_id, undefined)
+// Two journeys linked by the same checkout email are the same person, so the
+// most recently updated journey wins instead of failing ambiguous (a returning
+// device plus a fresh ad click was blocking real paid attribution).
+const latestJourney = await createOrTouchJourney({ attribution: { utm_source: 'referral', utm_medium: 'referral', source_taxonomy: 'referral' } })
+await linkJourneyIdentity(latestJourney.token, { email: 'direct-test@example.invalid' })
+const latestResolution = await resolveJourneyIdentity({}, 'direct-test@example.invalid')
+assert.equal(latestResolution.join_method, 'hashed_email_latest')
+assert.equal(latestResolution.id, latestJourney.record.id)
+const latestEnriched = await enrichPayloadFromJourney({}, 'direct-test@example.invalid')
+assert.equal(latestEnriched.jf_journey_id, latestJourney.token)
 
 globalThis.fetch = originalFetch
 

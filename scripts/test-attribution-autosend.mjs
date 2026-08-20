@@ -239,4 +239,28 @@ const sha256 = (value) => crypto.createHash('sha256').update(String(value).trim(
   assert.equal(metaCalls.filter((call) => call.data[0].event_name === 'JF_First_Paid_Membership').length, 1, 'duplicate webhook must not re-emit')
 }
 
+// 8. Same email, two journeys (returning device plus fresh ad click): the most
+// recently updated journey wins instead of failing ambiguous.
+{
+  const email = 'e2e.twojourneys@example.com'
+  const emailHash = sha256(email)
+  const { token: oldToken } = await createOrTouchJourney({ attribution: { utm_source: 'direct' }, page_path: '/' })
+  await linkJourneyIdentity(oldToken, { email })
+  await new Promise((resolve) => setTimeout(resolve, 5))
+  const { token: adToken } = await createOrTouchJourney({
+    attribution: {
+      utm_source: 'fb', utm_medium: 'paid_social', utm_campaign: 'test-camp',
+      campaign_id: '111', adset_id: '222', ad_id: '333', placement: 'feed',
+      fbclid: 'TWOJRN', fbc: 'fb.1.1700000000000.TWOJRN',
+    },
+    page_path: '/app/for-coaches',
+  })
+  await linkJourneyIdentity(adToken, { email })
+  const { reconcilePayment } = await import('../api/checkout-bridge.js')
+  const result = await reconcilePayment({ email_hash: emailHash, event_date: new Date().toISOString() })
+  assert.equal(result.join_method, 'hashed_email_latest', 'multiple same-email journeys must resolve to the latest touch')
+  assert.equal(result.classification, 'exact_paid_meta')
+  assert.equal(result.campaign, '111')
+}
+
 console.log('test-attribution-autosend: all assertions passed')

@@ -879,6 +879,13 @@ export async function processUscreenPayload(data) {
   } else if (eventType === 'invoice.overdue') {
     // A failed/late payment: flag them for the dunning lane and the dashboard tile.
     listIds = [LISTS.failedPayments]
+  } else if (eventType === 'success.recurring' || eventType === 'success.payment') {
+    // Uscreen also announces charges under these names (observed live
+    // 2026-08-20), usually minutes before the order.paid that carries the real
+    // payment ids. The journey enrichment at the top already linked identity;
+    // the ledger row and first-paid gates wait for order.paid, and the hourly
+    // continuity check covers any order.paid that never arrives.
+    reason = 'recurring-notification-acknowledged'
   } else {
     reason = 'unhandled-event-type'
   }

@@ -181,13 +181,26 @@ export async function resolveJourneyIdentity(data, email) {
   const emailValue = normalizedEmail(email)
   if (!emailValue) return { join_method: 'none' }
   const emailHash = sha256(emailValue)
-  const candidateIds = await kvCommand(['SMEMBERS', `jf:journey:index:email-candidates:${emailHash}`])
+  return resolveJourneyByEmailHash(emailHash)
+}
+
+// All candidates under one email hash were linked by the same email typed at
+// checkout, so they are the same person across devices or sessions. When more
+// than one journey exists, last touch wins: the most recently updated journey
+// is the one that led to the payment being reconciled.
+export async function resolveJourneyByEmailHash(emailHash) {
+  const hash = clean(emailHash, 64)
+  if (!hash || !kvConfig()) return { join_method: 'none' }
+  const candidateIds = await kvCommand(['SMEMBERS', `jf:journey:index:email-candidates:${hash}`])
   const unique = [...new Set((Array.isArray(candidateIds) ? candidateIds : []).map((value) => clean(value, 36)).filter(Boolean))]
   const active = []
-  for (const id of unique) if (await readJourney(id)) active.push(id)
-  if (active.length > 1) return { join_method: 'hashed_email', ambiguous: true }
-  if (active.length === 1) return { id: active[0], join_method: 'hashed_email' }
-  const legacyId = clean(await kvCommand(['GET', `jf:journey:index:email:${emailHash}`]), 36)
+  for (const id of unique) { const record = await readJourney(id); if (record) active.push({ id, record }) }
+  if (active.length > 1) {
+    active.sort((a, b) => String(b.record.updated_at || b.record.created_at || '').localeCompare(String(a.record.updated_at || a.record.created_at || '')))
+    return { id: active[0].id, join_method: 'hashed_email_latest' }
+  }
+  if (active.length === 1) return { id: active[0].id, join_method: 'hashed_email' }
+  const legacyId = clean(await kvCommand(['GET', `jf:journey:index:email:${hash}`]), 36)
   return legacyId && await readJourney(legacyId)
     ? { id: legacyId, join_method: 'hashed_email_legacy' }
     : { join_method: 'hashed_email' }

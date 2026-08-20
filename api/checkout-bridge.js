@@ -47,14 +47,31 @@ export async function reconcilePayment(payment) {
   }
   const emailHash = payment.email_hash || sha256(payment.email)
   if (!emailHash) return { classification: 'unknown', confidence: 'none', evidence: ['no_email_or_journey'], join_method: 'none' }
+  // Signed-ledger email candidates first (the head code links these), then the
+  // legacy jfy ledger. Candidates under one email hash are the same person, so
+  // when several exist the most recently updated journey wins (last touch).
+  try {
+    const { resolveJourneyByEmailHash, getSignedJourney: getSigned, createJourneyToken } = await import('./_journey-ledger.js')
+    const resolution = await resolveJourneyByEmailHash(emailHash)
+    if (resolution?.id) {
+      const journey = await getSigned(createJourneyToken(resolution.id))
+      if (journey) {
+        return {
+          ...withTouch(classifyAttribution({ journey, payment: { ...payment, email_hash: emailHash, journey_id: journey.journey_id } }), journey),
+          join_method: resolution.join_method || 'hashed_email_signed',
+        }
+      }
+    }
+  } catch { /* fall through to the legacy ledger */ }
   const indexed = await getEmailJourneyCandidates(emailHash)
   const candidates = []
   for (const item of indexed) {
     const journey = await getJourney(item.journey_id)
     if (journey?.email_hash === emailHash) candidates.push(journey)
   }
-  if (candidates.length !== 1) return { classification: 'unknown', confidence: 'none', evidence: candidates.length ? ['ambiguous_hashed_email_candidates'] : ['no_safe_join'], join_method: 'hashed_email_time_bounded' }
-  return { ...withTouch(classifyAttribution({ journey: candidates[0], payment: { ...payment, email_hash: emailHash } }), candidates[0]), join_method: 'hashed_email_time_bounded' }
+  if (!candidates.length) return { classification: 'unknown', confidence: 'none', evidence: ['no_safe_join'], join_method: 'hashed_email_time_bounded' }
+  candidates.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))
+  return { ...withTouch(classifyAttribution({ journey: candidates[0], payment: { ...payment, email_hash: emailHash } }), candidates[0]), join_method: candidates.length > 1 ? 'hashed_email_latest' : 'hashed_email_time_bounded' }
 }
 
 // A checkout identity can arrive after the payment webhook already classified
