@@ -50,6 +50,40 @@ function authorized(req) {
   return Boolean(expected && actual === `Bearer ${expected}`)
 }
 
+// Buyer display names for the owner dashboard. Names only, never emails or
+// phones; fetched from Uscreen on demand and cached in KV so one report call
+// does not hammer the API. Only served when the owner proxy asks for them.
+async function attachBuyerNames(sales) {
+  const apiKey = process.env.USCREEN_API_KEY
+  if (!apiKey) return sales
+  const kvUrl = process.env.KV_REST_API_URL
+  const kvToken = process.env.KV_REST_API_TOKEN
+  const kv = async (command) => {
+    if (!kvUrl || !kvToken) return undefined
+    const response = await fetch(kvUrl, { method: 'POST', headers: { authorization: `Bearer ${kvToken}`, 'content-type': 'application/json' }, body: JSON.stringify(command) })
+    return response.ok ? (await response.json())?.result : undefined
+  }
+  const out = []
+  for (const sale of sales) {
+    const uid = String(sale.uscreen_user_id || '').trim()
+    if (!uid) { out.push(sale); continue }
+    let name
+    try {
+      name = await kv(['GET', `jfa:buyer-name:${uid}`])
+      if (!name) {
+        const response = await fetch(`https://www.uscreen.io/publisher_api/v1/customers/${encodeURIComponent(uid)}`, { headers: { Authorization: apiKey, Accept: 'application/json' } })
+        if (response.ok) {
+          const customer = await response.json()
+          name = String(customer?.display_name || customer?.name || '').trim().slice(0, 80)
+          if (name) await kv(['SET', `jfa:buyer-name:${uid}`, name, 'EX', String(7 * 24 * 60 * 60)])
+        }
+      }
+    } catch { /* name is a nicety, never fatal */ }
+    out.push(name ? { ...sale, buyer_name: name } : sale)
+  }
+  return out
+}
+
 export default async function handler(req, res) {
   if (!authorized(req)) return json(res, 401, { success: false, error: 'Unauthorized' })
   if (req.method !== 'GET') return json(res, 405, { success: false, error: 'Method not allowed' })
@@ -59,7 +93,8 @@ export default async function handler(req, res) {
     const [legacySales, reliableSales, aggregates, health, alerts, failures] = await Promise.all([
       listSales(), listReliableSales(fetch, limit), getAnonymousAggregates(), getHealth(), listAlerts(20), listWebhookFailures().catch(() => []),
     ])
-    const sales = mergedSales(legacySales, reliableSales).map(presentSale)
+    let sales = mergedSales(legacySales, reliableSales).map(presentSale)
+    if (req.query?.include_names === '1') sales = await attachBuyerNames(sales)
     const rows = []
     for (const id of ids) {
       const journey = await getJourney(id)
