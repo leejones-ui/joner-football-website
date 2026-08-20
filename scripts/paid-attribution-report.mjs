@@ -59,6 +59,19 @@ async function brevoContact(email) {
 const PAID_HISTORY_LISTS = new Set([21, 22, 23, 24, 30, 31, 32, 57, 58, 59])
 
 async function main() {
+  const generatedAt = new Date().toISOString()
+  // Fail safely: a missing required source aborts instead of producing a
+  // silently incomplete report that could show false GREEN results.
+  const sourceHealth = { uscreen: false, kv: false, brevo: Boolean(BREVO_KEY) }
+  const probe = await uscreen('/invoices?per_page=1')
+  sourceHealth.uscreen = Array.isArray(probe)
+  try { await kv('PING'); sourceHealth.kv = true } catch { sourceHealth.kv = false }
+  if (!sourceHealth.uscreen || !sourceHealth.kv) {
+    console.error(`FATAL: required source unavailable (uscreen=${sourceHealth.uscreen}, kv=${sourceHealth.kv}). No report written.`)
+    process.exit(2)
+  }
+  if (!sourceHealth.brevo) console.error('WARNING: Brevo key missing; paid-history checks degrade and verdicts cap at AMBER.')
+
   console.error(`Reading Uscreen invoices, last ${DAYS} days (max ${MAX_INVOICES})...`)
   const invoices = []
   for (let page = 1; page <= Math.ceil(MAX_INVOICES / 100); page += 1) {
@@ -149,11 +162,41 @@ async function main() {
     let verdict = 'RED'
     let verdictReason = acquisitionKind
     if (['first-ever-paid-candidate', 'new-buyer-plus-renewal-in-window', 'first-ever-paid-verified'].includes(acquisitionKind)) {
-      if (attributionReconciled && canonicalSent && metaReceipt) { verdict = 'GREEN'; verdictReason = 'first paid, payment verified, attribution reconciled, canonical event received' }
+      if (attributionReconciled && canonicalSent && metaReceipt && BREVO_KEY) { verdict = 'GREEN'; verdictReason = 'first paid, payment verified, attribution reconciled, canonical event received' }
+      else if (attributionReconciled && canonicalSent && metaReceipt) { verdict = 'AMBER'; verdictReason = 'all evidence present but the Brevo mirror was unavailable to this run' }
       else { verdict = 'AMBER'; verdictReason = `paid verified; ${attributionReconciled ? '' : 'attribution unreconciled; '}${canonicalSent ? '' : 'canonical event not sent; '}${metaReceipt ? '' : 'no Meta receipt'}`.trim() }
     }
 
     const first = paidPositives.sort((a, b) => Number(a.paid_at) - Number(b.paid_at))[0]
+
+    // Source classification for first-ever buyers, per the reconciliation
+    // contract. Meta requires reconciled ledger evidence, never a guess.
+    const KNOWN_META_CAMPAIGNS = new Set(['120249257260070035'])
+    const campaignValue = String(bestSale?.campaign || decoded.campaign_id || touch.campaign_id || '')
+    const sourceValue = String(attributionSource || '').toLowerCase()
+    let sourceClass = 'unattributed_first_paid'
+    if (!hasPositive) sourceClass = 'not_applicable'
+    else if (attributionReconciled && (String(bestSale?.acquisition) === 'exact_paid_meta' || KNOWN_META_CAMPAIGNS.has(campaignValue))) sourceClass = 'meta_attributed_first_paid'
+    else if (['brevo', 'email'].includes(sourceValue)) sourceClass = 'brevo_email_first_paid'
+    else if (['organic', 'direct', 'referral', 'google'].includes(sourceValue) || String(bestSale?.acquisition) === 'organic' || String(bestSale?.acquisition) === 'direct') sourceClass = 'organic_direct_first_paid'
+    else if (sourceValue) sourceClass = 'other_identifiable_source'
+
+    // Dry-run release eligibility only. This script never sends events.
+    const webChargeEvidence = userSales.some((row) => /^ch_/.test(String(row.payment_id || row.provider_payment_id || '')))
+    const eligibleForRelease = ['first-ever-paid-candidate', 'new-buyer-plus-renewal-in-window'].includes(acquisitionKind)
+      && !canonicalSent
+      && webChargeEvidence
+      && !['apple', 'android', 'ios'].includes(String(first?.origin || userInvoices[0]?.origin || '').toLowerCase())
+
+    const evidencePaths = [
+      first ? `uscreen:/invoices/${first.id}` : `uscreen:/customers/${userId}`,
+      `uscreen:/customers/${userId}`,
+      resolvedId ? `kv:jf:journey:${resolvedId}` : null,
+      ...userSales.slice(0, 3).map((row) => `kv:jfa:reliability:sale:${row.sale_id}`),
+      claim ? `kv:jf:meta:first-paid:${sha256(`uscreen:${userId}`)}` : null,
+      contact ? 'brevo:contacts/<hashed>' : null,
+    ].filter(Boolean)
+
     rows.push({
       uscreen_user_id: userId,
       email_hash_prefix: emailHash ? emailHash.slice(0, 12) : null,
@@ -182,17 +225,36 @@ async function main() {
       capi_claim_status: claim?.status || null,
       meta_event_id: claim?.eventId || null,
       meta_receipt_confirmed: metaReceipt,
+      source_class: sourceClass,
+      eligible_for_release_dry_run: eligibleForRelease,
       verdict,
       verdict_reason: verdictReason,
+      evidence_paths: evidencePaths.join('; '),
+      generated_at: generatedAt,
     })
   }
+
+  // Duplicate detection: one canonical event id per buyer, ever.
+  const eventIds = rows.map((row) => row.meta_event_id).filter(Boolean)
+  const duplicateEventIds = [...new Set(eventIds.filter((id, index) => eventIds.indexOf(id) !== index))]
+  if (duplicateEventIds.length) console.error(`WARNING: duplicate canonical event ids detected: ${duplicateEventIds.join(', ')}`)
 
   rows.sort((a, b) => String(b.first_paid_at || '').localeCompare(String(a.first_paid_at || '')))
   const stamp = new Date().toISOString().slice(0, 10)
   const outDir = path.join(process.cwd(), 'reports')
   fs.mkdirSync(outDir, { recursive: true })
 
-  fs.writeFileSync(path.join(outDir, `paid-attribution-${stamp}.json`), JSON.stringify({ generated_at: new Date().toISOString(), window_days: DAYS, candidates: rows }, null, 2))
+  const firstEver = rows.filter((row) => ['first-ever-paid-candidate', 'new-buyer-plus-renewal-in-window', 'first-ever-paid-verified'].includes(row.acquisition_kind))
+  const dryRunRelease = rows.filter((row) => row.eligible_for_release_dry_run)
+  fs.writeFileSync(path.join(outDir, `paid-attribution-${stamp}.json`), JSON.stringify({
+    generated_at: generatedAt,
+    window_days: DAYS,
+    source_health: sourceHealth,
+    duplicate_event_ids: duplicateEventIds,
+    first_ever_paid_count: firstEver.length,
+    dry_run_release_candidates: dryRunRelease.map((row) => ({ uscreen_user_id: row.uscreen_user_id, first_paid_invoice_id: row.first_paid_invoice_id, amount: row.first_paid_amount, currency: row.first_paid_currency, source_class: row.source_class, reason: 'eligible pending Barry approval; nothing sent' })),
+    candidates: rows,
+  }, null, 2))
 
   const csvColumns = Object.keys(rows[0] || { none: true })
   const csv = [csvColumns.join(',')].concat(rows.map((row) => csvColumns.map((key) => {
@@ -214,6 +276,25 @@ async function main() {
     '| Verdict | User | First paid | Amount | Origin | Kind | Source | Campaign | CAPI | Receipt | Reason |',
     '|---|---|---|---|---|---|---|---|---|---|---|',
     ...rows.map((row) => `| ${row.verdict} | ${row.uscreen_user_id} | ${row.first_paid_at ? row.first_paid_at.slice(0, 16) : ''} | ${row.first_paid_amount ?? ''} ${row.first_paid_currency ?? ''} | ${row.billing_origin ?? ''} | ${row.acquisition_kind} | ${row.source_platform ?? ''} | ${row.campaign ?? ''} | ${row.capi_claim_status ?? ''} | ${row.meta_receipt_confirmed ? 'yes' : 'no'} | ${row.verdict_reason} |`),
+    '',
+    '## First-ever paid buyer reconciliation',
+    '',
+    `${firstEver.length} first-ever paid buyers in the window, by source class:`,
+    '',
+    ...Object.entries(firstEver.reduce((acc, row) => { acc[row.source_class] = (acc[row.source_class] || 0) + 1; return acc }, {})).map(([name, count]) => `- ${name}: ${count}`),
+    '',
+    '| User | First paid | Amount | Origin | Source class | Journey | Ledger | CAPI | Receipt |',
+    '|---|---|---|---|---|---|---|---|---|',
+    ...firstEver.map((row) => `| ${row.uscreen_user_id} | ${row.first_paid_at ? row.first_paid_at.slice(0, 16) : ''} | ${row.first_paid_amount ?? ''} ${row.first_paid_currency ?? ''} | ${row.billing_origin ?? ''} | ${row.source_class} | ${row.journey_joined ? 'yes' : 'no'} | ${row.ledger_acquisition ?? 'none'} | ${row.capi_claim_status ?? 'none'} | ${row.meta_receipt_confirmed ? 'yes' : 'no'} |`),
+    '',
+    '## Dry-run release candidates (NOTHING SENT)',
+    '',
+    dryRunRelease.length
+      ? `${dryRunRelease.length} buyers are eligible for a canonical event release pending Barry's independent verification: ${dryRunRelease.map((row) => row.uscreen_user_id).join(', ')}. This script sends nothing; release is a separate, explicitly approved operation.`
+      : 'No unreleased eligible candidates in this window.',
+    '',
+    `Duplicate canonical event ids: ${duplicateEventIds.length ? duplicateEventIds.join(', ') : 'none detected'}.`,
+    `Source health: uscreen=${sourceHealth.uscreen}, kv=${sourceHealth.kv}, brevo=${sourceHealth.brevo}.`,
     '',
     'RED covers trials, renewals, reactivations and payment-free records by definition; it does not mean an error. Raw emails are never written to this pack.',
   ].join('\n')
