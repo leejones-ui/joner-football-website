@@ -130,6 +130,9 @@ async function reconcileUnknownSales(limit = 50) {
         landing_page: reconciliation.landing_page,
         journey_id: reconciliation.journey_id,
         join_method: reconciliation.join_method,
+        has_fbc: Boolean(reconciliation.fbc) || sale.has_fbc,
+        has_fbp: Boolean(reconciliation.fbp) || sale.has_fbp,
+        has_fbclid: Boolean(reconciliation.fbclid) || sale.has_fbclid,
         reconcile_attempts: attempts,
         last_reconciled_at: new Date().toISOString(),
       })
