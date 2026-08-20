@@ -27,3 +27,4 @@ pnpm-debug.log*
 public/videos/app/*.mp4
 public/videos/app/*.webm
 .env*.local
+reports/
