@@ -100,6 +100,7 @@ assert.equal(emailEnriched.jf_journey_id, directJourney.token)
 // Two journeys linked by the same checkout email are the same person, so the
 // most recently updated journey wins instead of failing ambiguous (a returning
 // device plus a fresh ad click was blocking real paid attribution).
+await new Promise((resolve) => setTimeout(resolve, 5))
 const latestJourney = await createOrTouchJourney({ attribution: { utm_source: 'referral', utm_medium: 'referral', source_taxonomy: 'referral' } })
 await linkJourneyIdentity(latestJourney.token, { email: 'direct-test@example.invalid' })
 const latestResolution = await resolveJourneyIdentity({}, 'direct-test@example.invalid')
