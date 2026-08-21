@@ -185,6 +185,7 @@ async function main() {
     const webChargeEvidence = userSales.some((row) => /^ch_/.test(String(row.payment_id || row.provider_payment_id || '')))
     const eligibleForRelease = ['first-ever-paid-candidate', 'new-buyer-plus-renewal-in-window'].includes(acquisitionKind)
       && !canonicalSent
+      && claim?.status !== 'suppressed'
       && webChargeEvidence
       && !['apple', 'android', 'ios'].includes(String(first?.origin || userInvoices[0]?.origin || '').toLowerCase())
 
