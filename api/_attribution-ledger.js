@@ -133,8 +133,9 @@ function classifyTouch(touch = {}) {
   if (source === 'email' || source.includes('newsletter') || source.includes('brevo')) return 'email'
   if (source === 'referral' || touch.utm_medium === 'referral' || touch.referrer) return 'referral'
   if (source === 'direct' || touch.utm_medium === 'direct') return 'direct'
-  if (source || touch.utm_campaign) return 'unknown'
-  return 'direct'
+  if (source || touch.utm_campaign || touch.referrer) return 'unknown'
+  // Missing first-touch evidence is not proof of a direct visit.
+  return 'unknown'
 }
 
 function getKvConfig() {

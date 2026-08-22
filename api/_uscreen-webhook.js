@@ -728,6 +728,9 @@ export async function processUscreenPayload(data) {
         placement: reconciliation.placement,
         landing_page: reconciliation.landing_page,
         journey_id: reconciliation.journey_id,
+        first_touch: reconciliation.first_touch,
+        last_touch: reconciliation.last_touch,
+        journey_events: reconciliation.journey_events,
         })
       } catch (error) {
         // A durable sale record with an incomplete secondary index must still

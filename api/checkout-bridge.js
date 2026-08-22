@@ -21,6 +21,9 @@ export async function reconcilePayment(payment) {
       fbc: touch.fbc,
       fbp: touch.fbp,
       fbclid: touch.fbclid,
+      first_touch: journey?.first_touch,
+      last_touch: journey?.last_touch,
+      journey_events: Array.isArray(journey?.events) ? journey.events.slice(-20) : [],
     }
   }
   const uscreenUserId = payment.user_id || payment.uscreen_user_id || payment.customer_id || payment.customer?.id || payment.user?.id
