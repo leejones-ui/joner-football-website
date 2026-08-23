@@ -302,6 +302,13 @@ body .billing-toggle[aria-pressed="true"], body .billing-toggle:hover {
   color: #FFFFFF !important;
 }
 
+/* Site-wide readable type rule. Page-level display-font experiments are
+   intentionally overridden so Safari and mobile users get one consistent,
+   legible Joner family everywhere. */
+body * {
+  font-family: 'DM Sans', Arial, sans-serif !important;
+}
+
 /* Scrollbar hide utility */
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
