@@ -212,17 +212,19 @@ body .btn-glass {
   color: #FFFFFF !important;
   border: 2px solid #E8000D !important;
   border-radius: 8px !important;
-  font-family: 'Anton', Impact, sans-serif;
-  font-weight: 700;
+  font-family: 'DM Sans', Arial, sans-serif !important;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
   text-transform: uppercase;
-  letter-spacing: .045em !important;
-  line-height: 1.12 !important;
+  letter-spacing: .02em !important;
+  line-height: 1.2 !important;
   text-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
   overflow: hidden;
-  min-height: 48px;
+  min-height: 52px;
+  padding: .85rem 1.25rem !important;
   text-align: center;
 }
 .jf-btn, .jf-btn-dark { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; text-decoration: none; cursor: pointer; }
@@ -287,10 +289,12 @@ body .coach-closer-pill-btn {
 }
 body .reviews-filter,
 body .billing-toggle {
+  font-size: .95rem !important;
   border: 2px solid #E8000D !important;
   background: #0A0A0A !important;
   color: #FFFFFF !important;
 }
+body .read-more { font-size: .95rem !important; }
 body .reviews-filter.active, body .reviews-filter:hover,
 body .billing-toggle[aria-pressed="true"], body .billing-toggle:hover {
   background: #1A1A1A !important;
