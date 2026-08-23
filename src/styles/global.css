@@ -198,81 +198,103 @@ select::-ms-expand {
   }
 }
 
-/* === Joner clean button system === */
-/* Adaptive buttons for draftjoin and any new buttons. .jf-btn = light bg (black -> red). .jf-btn-dark = dark bg (white -> red). */
-.jf-btn, .jf-btn-dark {
-  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-  border-radius: 9999px;
-  font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: .08em; line-height: 1;
-  text-decoration: none; cursor: pointer; border: 2px solid transparent;
-  transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .15s ease;
-}
-.jf-btn { background: #0A0A0A; color: #fff; }
-.jf-btn:hover { background: #E8000D; color: #fff; }
-.jf-btn-dark { background: #fff; color: #0A0A0A; }
-.jf-btn-dark:hover { background: #E8000D; color: #fff; }
-
-/* Clean hover-to-red buttons on every page EXCEPT the home page (home keeps its existing style). */
+/* === Joner Option 2 button system === */
+/* Solid black buttons, a clear Joner red edge, no glass, no blur. */
+.jf-btn, .jf-btn-dark,
 body .btn-red,
 body .btn-outline,
 body .nav-download-cta,
 body .hub-btn,
 body .story-cta-link:not(.store-badge),
-body .jxfs__btn {
-  background: #FFFFFF !important;
-  color: #0A0A0A !important;
-  border: 2px solid #FFFFFF !important;
-  letter-spacing: .12em;
+body .jxfs__btn,
+body .btn-glass {
+  background: #0A0A0A !important;
+  color: #FFFFFF !important;
+  border: 2px solid #E8000D !important;
+  border-radius: 8px !important;
+  font-family: 'Anton', Impact, sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .045em !important;
+  line-height: 1.12 !important;
   text-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
+  overflow: hidden;
+  min-height: 48px;
+  text-align: center;
 }
+.jf-btn, .jf-btn-dark { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; text-decoration: none; cursor: pointer; }
 body .btn-red::before,
 body .btn-outline::before,
 body .nav-download-cta::before,
 body .hub-btn::before,
 body .story-cta-link:not(.store-badge)::before,
-body .jxfs__btn::before { content: none !important; }
+body .jxfs__btn::before,
+body .btn-glass::before,
+body .btn-glass-underline { content: none !important; display: none !important; }
+.jf-btn:hover, .jf-btn-dark:hover,
 body .btn-red:hover,
 body .btn-outline:hover,
 body .nav-download-cta:hover,
 body .hub-btn:hover,
 body .story-cta-link:not(.store-badge):hover,
-body .jxfs__btn:hover {
-  background: #E8000D !important;
-  border-color: #E8000D !important;
+body .jxfs__btn:hover,
+body .btn-glass:hover {
+  background: #1A1A1A !important;
+  border-color: #FFFFFF !important;
   color: #FFFFFF !important;
   transform: translateY(-1px);
-  box-shadow: none !important;
 }
-/* Outline variants stay see-through until hover */
+.jf-btn:focus-visible, .jf-btn-dark:focus-visible,
+body .btn-red:focus-visible, body .btn-outline:focus-visible,
+body .nav-download-cta:focus-visible, body .hub-btn:focus-visible,
+body .story-cta-link:not(.store-badge):focus-visible, body .jxfs__btn:focus-visible,
+body .btn-glass:focus-visible {
+  outline: 3px solid #FFFFFF;
+  outline-offset: 3px;
+}
+body .hub-btn--outline,
 body .btn-outline,
-body .hub-btn--outline {
-  background: transparent !important;
-  border-color: rgba(255,255,255,.7) !important;
+.jf-btn-dark {
+  background: #0A0A0A !important;
+  border-color: #E8000D !important;
   color: #FFFFFF !important;
 }
-body .btn-outline:hover,
-body .hub-btn--outline:hover {
-  background: #E8000D !important;
+body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-red, .btn-outline, .nav-download-cta, .hub-btn, .story-cta-link:not(.store-badge), .jxfs__btn, .btn-glass),
+body :is(.text-joner-black, .text-black) :is(.btn-red, .btn-outline, .btn-glass) {
+  background: #0A0A0A !important;
   border-color: #E8000D !important;
+  color: #FFFFFF !important;
+}
+body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-red, .btn-outline, .nav-download-cta, .hub-btn, .story-cta-link:not(.store-badge), .jxfs__btn, .btn-glass):hover,
+body :is(.text-joner-black, .text-black) :is(.btn-red, .btn-outline, .btn-glass):hover {
+  background: #1A1A1A !important;
+  border-color: #FFFFFF !important;
   color: #FFFFFF !important;
 }
 
-/* Light-section CTA safety: white buttons disappear on white cards/sections. */
-body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-red, .nav-download-cta, .hub-btn, .story-cta-link:not(.store-badge), .jxfs__btn),
-body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-outline, .hub-btn--outline),
-body :is(.text-joner-black, .text-black) :is(.btn-red, .btn-outline) {
-  background: #0A0A0A !important;
-  border-color: #0A0A0A !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 12px 26px rgba(0,0,0,0.18) !important;
+/* Custom controls that sit outside the shared utility classes. */
+body .reviews-filter,
+body .billing-toggle,
+body .hq-video-button,
+body .retailer-button,
+body .read-more,
+body .coach-closer-pill-btn {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-weight: 700;
 }
-body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-red, .btn-outline, .nav-download-cta, .hub-btn, .story-cta-link:not(.store-badge), .jxfs__btn):hover,
-body :is(.text-joner-black, .text-black) :is(.btn-red, .btn-outline):hover {
-  background: #E8000D !important;
-  border-color: #E8000D !important;
+body .reviews-filter,
+body .billing-toggle {
+  border: 2px solid #E8000D !important;
+  background: #0A0A0A !important;
+  color: #FFFFFF !important;
+}
+body .reviews-filter.active, body .reviews-filter:hover,
+body .billing-toggle[aria-pressed="true"], body .billing-toggle:hover {
+  background: #1A1A1A !important;
+  border-color: #FFFFFF !important;
   color: #FFFFFF !important;
 }
 
