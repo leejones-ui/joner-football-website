@@ -3,6 +3,7 @@ import {
   TEAM_SUBSCRIPTIONS_HEADERS,
   TEAM_SUBSCRIPTIONS_SHEET,
   buildTeamSubscriptionRow,
+  isLikelyBotTeamSubmission,
 } from '../api/contact-enquiry.js'
 
 assert.equal(TEAM_SUBSCRIPTIONS_SHEET, 'Hot Leads')
@@ -40,5 +41,14 @@ assert.equal(row[16], 'jonerfootball.com/teams')
 assert.match(row[18], /Traffic Source: Facebook \/ Instagram Ads/)
 assert.match(row[18], /Campaign: Teams launch/)
 assert.match(row[18], /Ad ID: ad-123/)
+
+assert.equal(isLikelyBotTeamSubmission({
+  type: 'team-subscriptions',
+  name: 'Carl Stanfield',
+  clubTeam: 'Seaforth',
+  location: 'Sydney',
+  numberOfPlayers: '1884',
+  numberOfCoaches: '116',
+}), false)
 
 console.log('Team Subscriptions three-lane CRM regression test passed')

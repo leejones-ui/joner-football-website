@@ -306,10 +306,12 @@ function isLikelyBotSubmission(enquiry) {
   return fields.filter(looksLikeRandomToken).length >= 2
 }
 
-function isLikelyBotTeamSubmission(enquiry) {
+export function isLikelyBotTeamSubmission(enquiry) {
   if (enquiry.type !== 'team-subscriptions') return false
-  if (!numberInRange(enquiry.numberOfPlayers, 1, 1000)) return true
-  if (!numberInRange(enquiry.numberOfCoaches, 1, 200)) return true
+  // Large clubs can legitimately submit four-digit player counts. Keep a
+  // generous sanity ceiling for bot protection without rejecting real clubs.
+  if (!numberInRange(enquiry.numberOfPlayers, 1, 10000)) return true
+  if (!numberInRange(enquiry.numberOfCoaches, 1, 1000)) return true
   const identityFields = [enquiry.name, enquiry.location, enquiry.clubTeam]
   if (identityFields.filter(looksLikeRandomToken).length >= 1) return true
   if (/^[a-z]{1,3}\d{6,}$/i.test(enquiry.name)) return true
