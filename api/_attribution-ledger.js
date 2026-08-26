@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 export const LEDGER_TTL_SECONDS = 90 * 24 * 60 * 60
 export const MAX_SALES = 50
 export const JOURNEY_COOKIE = 'jfa_journey'
-export const ATTRIBUTION_CLASSES = new Set(['exact_paid_meta', 'email', 'organic', 'direct', 'referral', 'apple', 'google', 'unknown'])
+export const ATTRIBUTION_CLASSES = new Set(['exact_paid_meta', 'meta', 'email', 'organic', 'direct', 'referral', 'apple', 'google', 'unknown'])
 export const FIRST_PARTY_TRACKING_KEYS = ['gclid', 'ttclid', 'msclkid', 'ga_client_id', 'ga_session_id', 'source_detail', 'link_token', 'source_taxonomy']
 
 const MAX = { journey: 80, event: 80, text: 240, url: 1000 }
@@ -114,6 +114,18 @@ export function classifyAttribution({ journey, payment = {}, now = Date.now() } 
   return { classification: 'unknown', confidence: 'none', evidence: ['no_safe_join'] }
 }
 
+export function isMetaTouch(touch = {}) {
+  const source = String(touch.utm_source || touch.source || '').toLowerCase()
+  const medium = String(touch.utm_medium || '').toLowerCase().replace(/[- ]/g, '_')
+  return Boolean(
+    touch.fbclid
+    || touch.fbc
+    || ['facebook', 'instagram', 'meta'].includes(source)
+    || medium === 'paid_social'
+    || medium === 'paidsocial'
+  )
+}
+
 export function isExactPaidMeta(touch = {}) {
   const source = String(touch.utm_source || touch.source || '').toLowerCase()
   const medium = String(touch.utm_medium || '').toLowerCase().replace(/[- ]/g, '_')
@@ -128,6 +140,10 @@ function classifyTouch(touch = {}) {
   const source = String(touch.utm_source || touch.source || '').toLowerCase()
   if (touch.apple || source.includes('apple')) return 'apple'
   if (isExactPaidMeta(touch)) return 'exact_paid_meta'
+  // Meta source/click proof is still a Meta sale when the ad URL did not
+  // preserve every campaign, ad-set, or ad identifier. Keep exact ad-level
+  // proof separate, but do not mislabel a known Meta conversion as unknown.
+  if (isMetaTouch(touch)) return 'meta'
   if (touch.utm_medium === 'organic' || source.includes('organic')) return 'organic'
   if (source.includes('google') || touch.gclid) return 'google'
   if (source === 'email' || source.includes('newsletter') || source.includes('brevo')) return 'email'

@@ -138,7 +138,7 @@
     }
     // A click ID alone is attribution evidence. Pack it even when a platform
     // did not provide campaign metadata and no signed journey exists yet.
-    if (!campaign && !journeyId && !ttclid && !msclkid) return params;
+    if (!campaign && !journeyId && !ttclid && !msclkid && !fbclid && !fbc) return params;
 
     var packed = new URLSearchParams();
     packed.set('s', source);

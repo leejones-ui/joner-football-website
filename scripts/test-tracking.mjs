@@ -458,6 +458,12 @@ const clickOnlyDecoded = extractAttribution({ utm_source: clickOnlyPacked.get('u
 assert.equal(clickOnlyDecoded.utm_source, 'tiktok')
 assert.equal(clickOnlyDecoded.ttclid, 'tt-no-campaign')
 assert.equal(clickOnlyDecoded.msclkid, 'ms-no-campaign')
+const metaClickOnlyPacked = browser.encodeForUscreen(new URLSearchParams({
+  utm_source: 'facebook',
+  fbclid: 'fb-no-campaign',
+}))
+const metaClickOnlyDecoded = extractMetaIdentity({ utm_source: metaClickOnlyPacked.get('utm_source') }, 1234)
+assert.equal(metaClickOnlyDecoded.fbclid, 'fb-no-campaign')
 
 const nestedDecoded = extractAttribution({
   metadata: {
