@@ -1,7 +1,7 @@
 const META_GRAPH_VERSION = 'v21.0'
 const META_DEFAULT_ACCOUNT = 'act_601203457715082'
 const USCREEN_API_BASE = 'https://www.uscreen.io/publisher_api/v1'
-const MAX_INVOICE_PAGES = 5
+const MAX_INVOICE_PAGES = 8
 const MAX_SALES = 400
 const META_PURCHASE_ACTIONS = new Set([
   'purchase',
@@ -59,6 +59,12 @@ export function extractActionValue(actionValues = [], priority = META_PURCHASE_A
   return extractDedupedAction(actionValues, priority)
 }
 
+export const FB20_COUPON = 'FB20'
+
+function invoiceCoupon(invoice) {
+  return text(invoice?.coupon).toUpperCase()
+}
+
 export function invoiceInWindow(invoice, window) {
   const paidAt = Number(invoice?.paid_at)
   if (!Number.isFinite(paidAt) || paidAt <= 0) return false
@@ -100,6 +106,8 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
   const matchRate = metaReportedPurchases > 0 ? Number((confirmedUscreenBuyers / metaReportedPurchases).toFixed(3)) : null
   const metaRevenue = number(meta?.purchase_value)
   const uscreenRevenue = paidInvoices.reduce((sum, invoice) => sum + ((number(invoice.amount) || 0) / 100), 0)
+  const fb20Invoices = paidInvoices.filter((invoice) => invoiceCoupon(invoice) === FB20_COUPON)
+  const fb20Revenue = fb20Invoices.reduce((sum, invoice) => sum + ((number(invoice.amount) || 0) / 100), 0)
   const confirmedUserSet = new Set(confirmedUsers)
   const confirmedRevenue = paidInvoices.reduce((sum, invoice) => {
     if (!confirmedUserSet.has(text(invoice.user_id))) return sum
@@ -131,6 +139,8 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
     match_rate: matchRate,
     uscreen_paid_value: Number(uscreenRevenue.toFixed(2)),
     confirmed_buyer_revenue: Number(confirmedRevenue.toFixed(2)),
+    fb20_redemptions: fb20Invoices.length,
+    fb20_revenue: Number(fb20Revenue.toFixed(2)),
     verdict,
     verdict_reason: verdictReason,
     definitions: {
@@ -140,6 +150,7 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
       pending_recent_conversions: 'Reserved for a future payment-delay window; zero in this exact-window implementation.',
       confirmed_buyer_revenue: 'Paid Uscreen invoice value in the window from confirmed Meta buyers only. The only revenue figure allowed into confirmed ROAS.',
       meta_purchase_dedup: 'Meta purchase count uses one action type only (omni_purchase preferred); alias action types are never summed.',
+      fb20_redemptions: 'Paid invoices in the window carrying the Meta-ads-only coupon FB20. Hard proof of an ad-driven sale, app store purchases included.',
     },
   }
 }
@@ -241,6 +252,78 @@ export async function fetchMetaReport(window, fetchImpl = fetch) {
     spend: number(row.spend) || 0,
     currency: text(row.account_currency || row.currency || process.env.META_AD_ACCOUNT_CURRENCY).toUpperCase() || null,
   }
+}
+
+export function buildDailySeries({ window, metaDaily = [], invoices = [], sales = [] }) {
+  const days = []
+  for (let t = Date.parse(`${window.from}T00:00:00Z`); t <= Date.parse(`${window.to}T00:00:00Z`); t += 86400000) {
+    days.push(new Date(t).toISOString().slice(0, 10))
+  }
+  const metaByDay = new Map()
+  for (const row of Array.isArray(metaDaily) ? metaDaily : []) {
+    metaByDay.set(text(row?.date_start), {
+      spend: number(row?.spend) || 0,
+      purchases: extractActionCount(row?.actions),
+    })
+  }
+  const metaUserIds = new Set()
+  for (const sale of Array.isArray(sales) ? sales : []) {
+    const userId = text(sale?.uscreen_user_id)
+    if (userId && isMetaSale(sale)) metaUserIds.add(userId)
+  }
+  const blank = () => ({
+    spend: 0, meta_purchases: 0, uscreen_paid_buyers: 0, uscreen_paid_value: 0,
+    uscreen_trials: 0, confirmed_meta_buyers: 0, fb20_redemptions: 0,
+    app_paid_buyers: 0, web_paid_buyers: 0,
+  })
+  const byDay = new Map(days.map((d) => [d, blank()]))
+  const seenPaid = new Map()
+  for (const invoice of Array.isArray(invoices) ? invoices : []) {
+    if (!invoiceInWindow(invoice, window)) continue
+    const day = new Date(Number(invoice.paid_at) * 1000).toISOString().slice(0, 10)
+    const row = byDay.get(day)
+    if (!row) continue
+    if (isPositivePaidInvoice(invoice)) {
+      const userId = text(invoice.user_id)
+      let seen = seenPaid.get(day)
+      if (!seen) { seen = new Set(); seenPaid.set(day, seen) }
+      if (userId && !seen.has(userId)) {
+        seen.add(userId)
+        row.uscreen_paid_buyers += 1
+        if (metaUserIds.has(userId)) row.confirmed_meta_buyers += 1
+        const origin = text(invoice.origin).toLowerCase()
+        if (origin.includes('stripe') || origin.includes('paypal')) row.web_paid_buyers += 1
+        else if (origin) row.app_paid_buyers += 1
+      }
+      row.uscreen_paid_value += (number(invoice.amount) || 0) / 100
+      if (invoiceCoupon(invoice) === FB20_COUPON) row.fb20_redemptions += 1
+    } else if (isTrialInvoice(invoice)) {
+      row.uscreen_trials += 1
+    }
+  }
+  return days.map((d) => {
+    const row = byDay.get(d)
+    const meta = metaByDay.get(d)
+    if (meta) { row.spend = meta.spend; row.meta_purchases = meta.purchases }
+    row.spend = Number(row.spend.toFixed(2))
+    row.uscreen_paid_value = Number(row.uscreen_paid_value.toFixed(2))
+    return { date: d, ...row }
+  })
+}
+
+export async function fetchMetaDailyReport(window, fetchImpl = fetch) {
+  const { metaToken } = config()
+  if (!metaToken) throw new Error('meta_not_configured')
+  const account = process.env.META_AD_ACCOUNT_ID || META_DEFAULT_ACCOUNT
+  const params = new URLSearchParams({
+    fields: 'spend,actions,action_values',
+    level: 'account',
+    time_increment: '1',
+    time_range: JSON.stringify({ since: window.from, until: window.to }),
+    access_token: metaToken,
+  })
+  const body = await getJson(`https://graph.facebook.com/${META_GRAPH_VERSION}/${encodeURIComponent(account)}/insights?${params}`, { headers: { accept: 'application/json' } }, fetchImpl)
+  return Array.isArray(body?.data) ? body.data : []
 }
 
 export async function fetchUscreenInvoices(window, fetchImpl = fetch) {

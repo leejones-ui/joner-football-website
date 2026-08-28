@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import handler from '../api/meta-uscreen-reconciliation.js'
-import { addPhaseTwoThree, buildReconciliation, extractActionCount, previousWindow, resolveWindow } from '../api/_meta-uscreen-reconciliation.js'
+import { addPhaseTwoThree, buildDailySeries, buildReconciliation, extractActionCount, previousWindow, resolveWindow } from '../api/_meta-uscreen-reconciliation.js'
 
 assert.deepEqual(resolveWindow({ from: '2026-08-26', to: '2026-08-27' }), {
   from: '2026-08-26', to: '2026-08-27', timezone: 'UTC',
@@ -41,7 +41,40 @@ assert.equal(report.unknown_sales, 1)
 assert.equal(report.unmatched_meta_purchases, 8)
 assert.equal(report.match_rate, 0.111)
 assert.equal(report.confirmed_buyer_revenue, 100)
+assert.equal(report.fb20_redemptions, 0)
 assert.equal(report.verdict, 'AMBER')
+
+// FB20 coupon invoices count as hard ad proof and are case-insensitive.
+const fb20Report = buildReconciliation({
+  window,
+  meta: { purchases: 1, purchase_value: 20, spend: 10 },
+  invoices: [
+    { id: 'i1', user_id: 'u1', status: 'paid', amount: 2000, paid_at: paidAt, coupon: 'fb20' },
+    { id: 'i2', user_id: 'u2', status: 'paid', amount: 3000, paid_at: paidAt, coupon: 'JF20' },
+  ],
+  sales: [],
+  sourceHealth: { meta: true, uscreen: true, kv: true },
+})
+assert.equal(fb20Report.fb20_redemptions, 1)
+assert.equal(fb20Report.fb20_revenue, 20)
+
+// Daily series buckets Meta spend, invoices, trials and coupon proof by UTC day.
+const series = buildDailySeries({
+  window,
+  metaDaily: [
+    { date_start: '2026-08-26', spend: '12.50', actions: [{ action_type: 'omni_purchase', value: '3' }, { action_type: 'purchase', value: '3' }] },
+  ],
+  invoices: [
+    { id: 'd1', user_id: 'buyer-1', status: 'paid', amount: 10000, paid_at: paidAt, origin: 'Stripe Payments' },
+    { id: 'd2', user_id: 'buyer-2', status: 'paid', amount: 1499, paid_at: trialAt, origin: 'Android Payments', coupon: 'FB20' },
+    { id: 'd3', user_id: 'trial-1', status: 'paid', amount: 0, paid_at: trialAt, trial: true },
+  ],
+  sales: [{ uscreen_user_id: 'buyer-1', acquisition: 'exact_paid_meta', occurred_at: '2026-08-26T12:05:00Z' }],
+})
+assert.equal(series.length, 2)
+assert.deepEqual(series[0], { date: '2026-08-26', spend: 12.5, meta_purchases: 3, uscreen_paid_buyers: 1, uscreen_paid_value: 100, uscreen_trials: 0, confirmed_meta_buyers: 1, fb20_redemptions: 0, app_paid_buyers: 0, web_paid_buyers: 1 })
+assert.deepEqual(series[1], { date: '2026-08-27', spend: 0, meta_purchases: 0, uscreen_paid_buyers: 1, uscreen_paid_value: 14.99, uscreen_trials: 1, confirmed_meta_buyers: 0, fb20_redemptions: 1, app_paid_buyers: 1, web_paid_buyers: 0 })
+assert.doesNotMatch(JSON.stringify(series), /buyer-1|trial-1/)
 const previous = addPhaseTwoThree({
   report: { ...report, meta_reported_purchases: 4, confirmed_meta_buyers: 2, uscreen_paid_signups: 3, uscreen_trials: 0, unknown_sales: 1, match_rate: 0.5, uscreen_paid_value: 200 },
   previousReport: null,
