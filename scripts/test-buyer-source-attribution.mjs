@@ -9,7 +9,8 @@ import { reconcilePayment } from '../api/checkout-bridge.js'
 const id = createJourneyId(() => Buffer.alloc(18, 9))
 
 assert.equal(classifyAttribution({ journey: { last_touch: {} }, payment: { journey_id: 'wrong' } }).classification, 'unknown')
-assert.equal(classifyAttribution({ journey: { journey_id: id, last_touch: {} }, payment: { journey_id: id } }).classification, 'direct')
+// Upstream c7861be: a journey with no acquisition evidence stays 'unknown'; direct is never assumed.
+assert.equal(classifyAttribution({ journey: { journey_id: id, last_touch: {} }, payment: { journey_id: id } }).classification, 'unknown')
 assert.equal(classifyAttribution({ journey: { journey_id: id, last_touch: { utm_source: 'google', utm_medium: 'organic' } }, payment: { journey_id: id } }).classification, 'organic')
 assert.equal(classifyAttribution({ journey: { journey_id: id, last_touch: { referrer: 'https://example.com/article' } }, payment: { journey_id: id } }).classification, 'referral')
 

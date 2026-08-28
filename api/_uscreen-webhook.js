@@ -51,6 +51,12 @@ export function buildVerifiedMetaEvent(eventName, data, email, total) {
   if (stableUserId) userData.external_id = [sha256Hex(`uscreen:${stableUserId}`)]
   if (metaIdentity.fbc) userData.fbc = metaIdentity.fbc
   if (metaIdentity.fbp) userData.fbp = metaIdentity.fbp
+  // Journey-recorded browser identity (see _journey-ledger). Meta scores
+  // client_ip_address + client_user_agent heavily in Event Match Quality.
+  const journeyClientIp = cleanValue(data.jf_client_ip, 64)
+  const journeyClientUa = cleanValue(data.jf_client_user_agent, 512)
+  if (journeyClientIp) userData.client_ip_address = journeyClientIp
+  if (journeyClientUa) userData.client_user_agent = journeyClientUa
   const value = Number.isFinite(Number(total)) ? Number(total) : undefined
   const rawCurrency = String(data.currency || data.localized_amounts?.currency || '').trim().toUpperCase()
   const currency = /^[A-Z]{3}$/.test(rawCurrency) ? rawCurrency : undefined

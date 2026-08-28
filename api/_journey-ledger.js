@@ -94,6 +94,13 @@ export function mergeJourneyRecord(existing, touch = {}) {
     latest_page_path: clean(touch.page_path, 500) || existing?.latest_page_path,
     first_referrer: existing?.first_referrer || clean(touch.referrer, 800),
     latest_referrer: clean(touch.referrer, 800) || existing?.latest_referrer,
+    // Real visitor network identity captured at journey time. The Uscreen
+    // webhook arrives from Uscreen's servers, so these are the only genuine
+    // client_ip_address/client_user_agent values available for CAPI events.
+    first_client_ip: existing?.first_client_ip || clean(touch.client_ip, 64),
+    latest_client_ip: clean(touch.client_ip, 64) || existing?.latest_client_ip,
+    first_client_user_agent: existing?.first_client_user_agent || clean(touch.client_user_agent, 512),
+    latest_client_user_agent: clean(touch.client_user_agent, 512) || existing?.latest_client_user_agent,
   }
 }
 
@@ -108,12 +115,12 @@ async function writeJourney(record) {
   await kvCommand(['SET', `jf:journey:${record.id}`, JSON.stringify(record), 'EX', JOURNEY_TTL_SECONDS])
 }
 
-export async function createOrTouchJourney({ token, attribution, page_path, referrer } = {}) {
+export async function createOrTouchJourney({ token, attribution, page_path, referrer, client_ip, client_user_agent } = {}) {
   let id = verifyJourneyToken(token)
   if (!id) id = crypto.randomUUID()
   const signedToken = createJourneyToken(id)
   const existing = await readJourney(id)
-  const record = mergeJourneyRecord(existing, { id, attribution, page_path, referrer })
+  const record = mergeJourneyRecord(existing, { id, attribution, page_path, referrer, client_ip, client_user_agent })
   await writeJourney(record)
   return { token: signedToken, record }
 }
@@ -227,6 +234,10 @@ export async function enrichPayloadFromJourney(data, email) {
       if (!current || /^(not available|unknown|none|null|direct)$/i.test(current)) merged[key] = value
     }
     merged.jf_journey_id = createJourneyToken(resolution.id)
+    const journeyClientIp = clean(record.latest_client_ip || record.first_client_ip, 64)
+    const journeyClientUa = clean(record.latest_client_user_agent || record.first_client_user_agent, 512)
+    if (journeyClientIp && !merged.jf_client_ip) merged.jf_client_ip = journeyClientIp
+    if (journeyClientUa && !merged.jf_client_user_agent) merged.jf_client_user_agent = journeyClientUa
     const userId = clean(data?.user_id || data?.customer_id || data?.customer?.id || data?.user?.id, 180)
     await linkJourneyIdentity(merged.jf_journey_id, { email, uscreenUserId: userId })
     return merged

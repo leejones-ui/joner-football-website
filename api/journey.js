@@ -41,11 +41,16 @@ export default async function handler(req, res) {
     if (!verifyJourneyToken(existingToken) && !hasAcquisitionSignal(attribution)) {
       return json(res, 400, { success: false, error: 'Acquisition signal is required' })
     }
+    const clientIp = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+      || String(req.headers['x-real-ip'] || '').trim() || undefined
+    const clientUserAgent = String(req.headers['user-agent'] || '').trim() || undefined
     const result = await createOrTouchJourney({
       token: existingToken,
       attribution,
       page_path: body.page_path,
       referrer: body.referrer,
+      client_ip: clientIp,
+      client_user_agent: clientUserAgent,
     })
     return json(res, 200, { success: true, jf_journey_id: result.token })
   } catch (error) {

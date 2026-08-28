@@ -6,11 +6,18 @@ assert.deepEqual(resolveWindow({ from: '2026-08-26', to: '2026-08-27' }), {
   from: '2026-08-26', to: '2026-08-27', timezone: 'UTC',
 })
 assert.throws(() => resolveWindow({ from: '2026-08-01', to: '2026-09-01' }), /31 days/)
+// Alias action types are the SAME purchases reported three ways. They must
+// never be summed: use the best single alias only.
 assert.equal(extractActionCount([
   { action_type: 'purchase', value: '2' },
   { action_type: 'offsite_conversion.fb_pixel_purchase', value: '3' },
   { action_type: 'link_click', value: '999' },
-]), 5)
+]), 3)
+assert.equal(extractActionCount([
+  { action_type: 'purchase', value: '47' },
+  { action_type: 'offsite_conversion.fb_pixel_purchase', value: '47' },
+  { action_type: 'omni_purchase', value: '47' },
+]), 47)
 
 const window = { from: '2026-08-26', to: '2026-08-27', timezone: 'UTC' }
 const paidAt = Math.floor(Date.parse('2026-08-26T12:00:00Z') / 1000)
@@ -33,6 +40,7 @@ assert.equal(report.uscreen_trials, 1)
 assert.equal(report.unknown_sales, 1)
 assert.equal(report.unmatched_meta_purchases, 8)
 assert.equal(report.match_rate, 0.111)
+assert.equal(report.confirmed_buyer_revenue, 100)
 assert.equal(report.verdict, 'AMBER')
 const previous = addPhaseTwoThree({
   report: { ...report, meta_reported_purchases: 4, confirmed_meta_buyers: 2, uscreen_paid_signups: 3, uscreen_trials: 0, unknown_sales: 1, match_rate: 0.5, uscreen_paid_value: 200 },
@@ -43,7 +51,9 @@ const previous = addPhaseTwoThree({
 const enhanced = addPhaseTwoThree({ report, previousReport: previous, meta: { spend: 250, currency: 'USD' }, sourceHealth: { meta: true, uscreen: true, kv: true } })
 assert.equal(enhanced.schema_version, 2)
 assert.equal(enhanced.commercial.confirmed_cac, 250)
-assert.equal(enhanced.commercial.confirmed_roas, 0.88)
+// ROAS uses confirmed-buyer revenue (100) only, never whole-window revenue.
+assert.equal(enhanced.commercial.confirmed_roas, 0.4)
+assert.equal(enhanced.commercial.uscreen_window_revenue, 220)
 assert.equal(enhanced.comparison.delta.match_rate, -0.389)
 assert.ok(enhanced.alerts.some((alert) => alert.code === 'META_PURCHASES_UNMATCHED'))
 assert.deepEqual(previousWindow(window), { from: '2026-08-24', to: '2026-08-25', timezone: 'UTC' })

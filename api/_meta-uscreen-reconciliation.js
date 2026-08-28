@@ -36,16 +36,27 @@ export function resolveWindow(query = {}, now = new Date()) {
   return { from, to, timezone: 'UTC' }
 }
 
-export function extractActionCount(actions = [], names = META_PURCHASE_ACTIONS) {
-  return (Array.isArray(actions) ? actions : []).reduce((sum, action) => {
-    return names.has(text(action?.action_type)) ? sum + (number(action?.value) || 0) : sum
-  }, 0)
+// Meta reports the same purchase under several alias action_types
+// (purchase, offsite_conversion.fb_pixel_purchase, omni_purchase). Summing
+// aliases triple-counts, so take the first alias present in priority order.
+const META_PURCHASE_ACTION_PRIORITY = ['omni_purchase', 'offsite_conversion.fb_pixel_purchase', 'purchase']
+
+function extractDedupedAction(rows, priority) {
+  const list = Array.isArray(rows) ? rows : []
+  for (const name of priority) {
+    const row = list.find((action) => text(action?.action_type) === name)
+    const value = row === undefined ? undefined : number(row?.value)
+    if (value !== undefined) return value
+  }
+  return 0
 }
 
-export function extractActionValue(actionValues = [], names = META_PURCHASE_ACTIONS) {
-  return (Array.isArray(actionValues) ? actionValues : []).reduce((sum, action) => {
-    return names.has(text(action?.action_type)) ? sum + (number(action?.value) || 0) : sum
-  }, 0)
+export function extractActionCount(actions = [], priority = META_PURCHASE_ACTION_PRIORITY) {
+  return extractDedupedAction(actions, priority)
+}
+
+export function extractActionValue(actionValues = [], priority = META_PURCHASE_ACTION_PRIORITY) {
+  return extractDedupedAction(actionValues, priority)
 }
 
 export function invoiceInWindow(invoice, window) {
@@ -89,6 +100,11 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
   const matchRate = metaReportedPurchases > 0 ? Number((confirmedUscreenBuyers / metaReportedPurchases).toFixed(3)) : null
   const metaRevenue = number(meta?.purchase_value)
   const uscreenRevenue = paidInvoices.reduce((sum, invoice) => sum + ((number(invoice.amount) || 0) / 100), 0)
+  const confirmedUserSet = new Set(confirmedUsers)
+  const confirmedRevenue = paidInvoices.reduce((sum, invoice) => {
+    if (!confirmedUserSet.has(text(invoice.user_id))) return sum
+    return sum + ((number(invoice.amount) || 0) / 100)
+  }, 0)
   const verdict = sourceHealth?.meta && sourceHealth?.uscreen && sourceHealth?.kv
     ? (unmatchedMetaPurchases > 0 || unknownSales > 0 ? 'AMBER' : 'GREEN')
     : 'RED'
@@ -114,6 +130,7 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
     pending_recent_conversions: 0,
     match_rate: matchRate,
     uscreen_paid_value: Number(uscreenRevenue.toFixed(2)),
+    confirmed_buyer_revenue: Number(confirmedRevenue.toFixed(2)),
     verdict,
     verdict_reason: verdictReason,
     definitions: {
@@ -121,6 +138,8 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
       match_rate: 'confirmed_meta_buyers divided by Meta-reported purchases; null when Meta reports zero purchases.',
       unknown_sales: 'Unique paid Uscreen users in the window without a Meta-classified sale ledger row.',
       pending_recent_conversions: 'Reserved for a future payment-delay window; zero in this exact-window implementation.',
+      confirmed_buyer_revenue: 'Paid Uscreen invoice value in the window from confirmed Meta buyers only. The only revenue figure allowed into confirmed ROAS.',
+      meta_purchase_dedup: 'Meta purchase count uses one action type only (omni_purchase preferred); alias action types are never summed.',
     },
   }
 }
@@ -142,13 +161,18 @@ export function previousWindow(window) {
 export function addPhaseTwoThree({ report, previousReport, meta, previousMeta, sourceHealth, generatedAt = new Date().toISOString() }) {
   const spend = number(meta?.spend) || 0
   const confirmed = report.confirmed_meta_buyers || 0
-  const revenue = number(report.uscreen_paid_value) || 0
+  // Confirmed commercials may only ever be computed from confirmed-buyer
+  // revenue. Whole-window Uscreen revenue is reported separately as context
+  // and must never inflate ROAS (AMBER contract).
+  const revenue = number(report.confirmed_buyer_revenue) || 0
   const cac = confirmed > 0 && spend > 0 ? Number((spend / confirmed).toFixed(2)) : null
-  const roas = spend > 0 && revenue > 0 ? Number((revenue / spend).toFixed(4)) : null
+  const roas = spend > 0 && confirmed > 0 ? Number((revenue / spend).toFixed(4)) : null
   const metrics = {
     spend: Number(spend.toFixed(2)),
     spend_currency: text(meta?.currency).toUpperCase() || null,
     confirmed_revenue: Number(revenue.toFixed(2)),
+    confirmed_revenue_currency: text(report.uscreen_currency).toUpperCase() || 'USD',
+    uscreen_window_revenue: number(report.uscreen_paid_value) ?? null,
     confirmed_cac: cac,
     confirmed_roas: roas,
   }
@@ -204,7 +228,7 @@ export async function fetchMetaReport(window, fetchImpl = fetch) {
   if (!metaToken) throw new Error('meta_not_configured')
   const account = process.env.META_AD_ACCOUNT_ID || META_DEFAULT_ACCOUNT
   const params = new URLSearchParams({
-    fields: 'spend,actions,action_values',
+    fields: 'spend,actions,action_values,account_currency',
     level: 'account',
     time_range: JSON.stringify({ since: window.from, until: window.to }),
     access_token: metaToken,
@@ -215,7 +239,7 @@ export async function fetchMetaReport(window, fetchImpl = fetch) {
     purchases: extractActionCount(row.actions),
     purchase_value: extractActionValue(row.action_values),
     spend: number(row.spend) || 0,
-    currency: text(row.currency || process.env.META_AD_ACCOUNT_CURRENCY).toUpperCase() || null,
+    currency: text(row.account_currency || row.currency || process.env.META_AD_ACCOUNT_CURRENCY).toUpperCase() || null,
   }
 }
 
