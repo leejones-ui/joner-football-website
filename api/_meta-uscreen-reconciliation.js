@@ -1,0 +1,257 @@
+const META_GRAPH_VERSION = 'v21.0'
+const META_DEFAULT_ACCOUNT = 'act_601203457715082'
+const USCREEN_API_BASE = 'https://www.uscreen.io/publisher_api/v1'
+const MAX_INVOICE_PAGES = 5
+const MAX_SALES = 400
+const META_PURCHASE_ACTIONS = new Set([
+  'purchase',
+  'offsite_conversion.fb_pixel_purchase',
+  'omni_purchase',
+])
+
+const text = (value) => value === undefined || value === null ? '' : String(value).trim()
+const number = (value) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+export function validDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(text(value)) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`))
+}
+
+export function defaultWindow(now = new Date()) {
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  end.setUTCDate(end.getUTCDate() - 1)
+  const start = new Date(end)
+  return { from: start.toISOString().slice(0, 10), to: end.toISOString().slice(0, 10) }
+}
+
+export function resolveWindow(query = {}, now = new Date()) {
+  const fallback = defaultWindow(now)
+  const from = text(query.from) || fallback.from
+  const to = text(query.to) || fallback.to
+  if (!validDate(from) || !validDate(to) || from > to) throw new Error('Use a valid from/to date window')
+  const span = (Date.parse(`${to}T23:59:59Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000
+  if (span > 31) throw new Error('Date window cannot exceed 31 days')
+  return { from, to, timezone: 'UTC' }
+}
+
+export function extractActionCount(actions = [], names = META_PURCHASE_ACTIONS) {
+  return (Array.isArray(actions) ? actions : []).reduce((sum, action) => {
+    return names.has(text(action?.action_type)) ? sum + (number(action?.value) || 0) : sum
+  }, 0)
+}
+
+export function extractActionValue(actionValues = [], names = META_PURCHASE_ACTIONS) {
+  return (Array.isArray(actionValues) ? actionValues : []).reduce((sum, action) => {
+    return names.has(text(action?.action_type)) ? sum + (number(action?.value) || 0) : sum
+  }, 0)
+}
+
+export function invoiceInWindow(invoice, window) {
+  const paidAt = Number(invoice?.paid_at)
+  if (!Number.isFinite(paidAt) || paidAt <= 0) return false
+  const date = new Date(paidAt * 1000).toISOString().slice(0, 10)
+  return date >= window.from && date <= window.to
+}
+
+export function isPositivePaidInvoice(invoice) {
+  return text(invoice?.status).toLowerCase() === 'paid' && (number(invoice?.amount) || 0) > 0
+}
+
+export function isTrialInvoice(invoice) {
+  return invoice?.trial === true || (text(invoice?.status).toLowerCase() === 'paid' && (number(invoice?.amount) || 0) === 0)
+}
+
+export function isMetaSale(sale) {
+  const acquisition = text(sale?.acquisition || sale?.channel).toLowerCase()
+  return ['meta', 'facebook', 'instagram', 'exact_paid_meta'].includes(acquisition) || Boolean(sale?.has_fbc || sale?.has_fbclid || sale?.fbc || sale?.fbclid) && acquisition !== 'unknown'
+}
+
+export function buildReconciliation({ window, meta, invoices, sales, sourceHealth, generatedAt = new Date().toISOString() }) {
+  const paidInvoices = (Array.isArray(invoices) ? invoices : []).filter((invoice) => invoiceInWindow(invoice, window) && isPositivePaidInvoice(invoice))
+  const trialInvoices = (Array.isArray(invoices) ? invoices : []).filter((invoice) => invoiceInWindow(invoice, window) && isTrialInvoice(invoice))
+  const paidUsers = new Set(paidInvoices.map((invoice) => text(invoice.user_id)).filter(Boolean))
+  const trialUsers = new Set(trialInvoices.map((invoice) => text(invoice.user_id)).filter(Boolean))
+  const salesByUser = new Map()
+  for (const sale of Array.isArray(sales) ? sales : []) {
+    const userId = text(sale?.uscreen_user_id)
+    if (!userId || !isMetaSale(sale)) continue
+    const existing = salesByUser.get(userId)
+    if (!existing || text(sale.occurred_at) > text(existing.occurred_at)) salesByUser.set(userId, sale)
+  }
+  const confirmedUsers = [...paidUsers].filter((userId) => salesByUser.has(userId))
+  const confirmedTrials = [...trialUsers].filter((userId) => salesByUser.has(userId))
+  const metaReportedPurchases = Math.round(number(meta?.purchases) || 0)
+  const confirmedUscreenBuyers = confirmedUsers.length
+  const unknownSales = Math.max(paidUsers.size - confirmedUscreenBuyers, 0)
+  const unmatchedMetaPurchases = Math.max(metaReportedPurchases - confirmedUscreenBuyers, 0)
+  const matchRate = metaReportedPurchases > 0 ? Number((confirmedUscreenBuyers / metaReportedPurchases).toFixed(3)) : null
+  const metaRevenue = number(meta?.purchase_value)
+  const uscreenRevenue = paidInvoices.reduce((sum, invoice) => sum + ((number(invoice.amount) || 0) / 100), 0)
+  const verdict = sourceHealth?.meta && sourceHealth?.uscreen && sourceHealth?.kv
+    ? (unmatchedMetaPurchases > 0 || unknownSales > 0 ? 'AMBER' : 'GREEN')
+    : 'RED'
+  const verdictReason = verdict === 'GREEN'
+    ? 'Required sources fresh; Meta purchases reconcile to Uscreen buyers.'
+    : verdict === 'AMBER'
+      ? 'Required sources available, but some purchases or Uscreen buyers are not joined.'
+      : 'A required reconciliation source is unavailable.'
+  return {
+    schema_version: 1,
+    generated_at: generatedAt,
+    period: window,
+    source_health: sourceHealth,
+    meta_reported_purchases: metaReportedPurchases,
+    meta_reported_purchase_value: metaRevenue === undefined ? null : Number(metaRevenue.toFixed(2)),
+    confirmed_uscreen_buyers: confirmedUscreenBuyers,
+    confirmed_meta_buyers: confirmedUscreenBuyers,
+    uscreen_paid_signups: paidUsers.size,
+    uscreen_trials: trialUsers.size,
+    meta_attributed_trials: confirmedTrials.length,
+    unknown_sales: unknownSales,
+    unmatched_meta_purchases: unmatchedMetaPurchases,
+    pending_recent_conversions: 0,
+    match_rate: matchRate,
+    uscreen_paid_value: Number(uscreenRevenue.toFixed(2)),
+    verdict,
+    verdict_reason: verdictReason,
+    definitions: {
+      confirmed_meta_buyer: 'Unique Uscreen user with a positive paid invoice in the window and a Meta-classified sale ledger row.',
+      match_rate: 'confirmed_meta_buyers divided by Meta-reported purchases; null when Meta reports zero purchases.',
+      unknown_sales: 'Unique paid Uscreen users in the window without a Meta-classified sale ledger row.',
+      pending_recent_conversions: 'Reserved for a future payment-delay window; zero in this exact-window implementation.',
+    },
+  }
+}
+
+function delta(current, previous) {
+  if (current === null || current === undefined || previous === null || previous === undefined) return null
+  return Number((Number(current) - Number(previous)).toFixed(3))
+}
+
+export function previousWindow(window) {
+  const start = Date.parse(`${window.from}T00:00:00Z`)
+  const end = Date.parse(`${window.to}T23:59:59Z`)
+  const span = end - start
+  const previousEnd = new Date(start - 1)
+  const previousStart = new Date(start - span - 1)
+  return { from: previousStart.toISOString().slice(0, 10), to: previousEnd.toISOString().slice(0, 10), timezone: window.timezone }
+}
+
+export function addPhaseTwoThree({ report, previousReport, meta, previousMeta, sourceHealth, generatedAt = new Date().toISOString() }) {
+  const spend = number(meta?.spend) || 0
+  const confirmed = report.confirmed_meta_buyers || 0
+  const revenue = number(report.uscreen_paid_value) || 0
+  const cac = confirmed > 0 && spend > 0 ? Number((spend / confirmed).toFixed(2)) : null
+  const roas = spend > 0 && revenue > 0 ? Number((revenue / spend).toFixed(4)) : null
+  const metrics = {
+    spend: Number(spend.toFixed(2)),
+    spend_currency: text(meta?.currency).toUpperCase() || null,
+    confirmed_revenue: Number(revenue.toFixed(2)),
+    confirmed_cac: cac,
+    confirmed_roas: roas,
+  }
+  const comparisonFields = ['meta_reported_purchases', 'confirmed_meta_buyers', 'uscreen_paid_signups', 'uscreen_trials', 'unknown_sales', 'match_rate']
+  const comparison = { current: {}, previous: {}, delta: {} }
+  for (const field of comparisonFields) {
+    comparison.current[field] = report[field] ?? null
+    comparison.previous[field] = previousReport?.[field] ?? null
+    comparison.delta[field] = delta(comparison.current[field], comparison.previous[field])
+  }
+  comparison.current.confirmed_cac = cac
+  comparison.previous.confirmed_cac = previousReport?.commercial?.confirmed_cac ?? null
+  comparison.delta.confirmed_cac = delta(comparison.current.confirmed_cac, comparison.previous.confirmed_cac)
+  const alerts = []
+  if (!sourceHealth.meta || !sourceHealth.uscreen || !sourceHealth.kv) alerts.push({ severity: 'RED', code: 'SOURCE_UNAVAILABLE', message: 'A required reconciliation source is unavailable.' })
+  if (report.unmatched_meta_purchases > 0) alerts.push({ severity: 'AMBER', code: 'META_PURCHASES_UNMATCHED', count: report.unmatched_meta_purchases, message: 'Meta-reported purchases do not yet have verified Uscreen buyer matches.' })
+  if (report.unknown_sales > 0) alerts.push({ severity: 'AMBER', code: 'USCREEN_SALES_UNATTRIBUTED', count: report.unknown_sales, message: 'Positive Uscreen buyers have no Meta-classified ledger match.' })
+  if (report.uscreen_paid_signups > 0 && report.confirmed_meta_buyers === 0) alerts.push({ severity: 'AMBER', code: 'ZERO_CONFIRMED_META_BUYERS', message: 'Uscreen paid activity exists but no Meta-attributed buyer is verified.' })
+  if (spend > 0 && confirmed === 0) alerts.push({ severity: 'AMBER', code: 'NO_CONFIRMED_CAC', message: 'Spend is present but confirmed CAC cannot be calculated until a buyer is verified.' })
+  return {
+    ...report,
+    schema_version: 2,
+    generated_at: generatedAt,
+    commercial: metrics,
+    comparison,
+    alerts,
+    freshness: {
+      requested_period: report.period,
+      generated_at: generatedAt,
+      sources_queried: sourceHealth,
+      interpretation: 'Source availability is verified for this request; upstream event/payment latency remains possible.',
+    },
+    phase_status: { phase_1: 'complete', phase_2: 'complete', phase_3: 'complete' },
+  }
+}
+
+function config() {
+  const metaToken = process.env.META_CAPI_TOKEN || process.env.FACEBOOK_ACCESS_TOKEN || process.env.FACEBOOK_API_KEY || process.env.META_ACCESS_TOKEN
+  const uscreenKey = process.env.USCREEN_API_KEY
+  const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL
+  const kvToken = process.env.KV_REST_API_READ_ONLY_TOKEN || process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN
+  return { metaToken, uscreenKey, kvUrl, kvToken }
+}
+
+async function getJson(url, options = {}, fetchImpl = fetch) {
+  const response = await fetchImpl(url, options)
+  if (!response.ok) throw new Error(`upstream_${response.status}`)
+  return response.json()
+}
+
+export async function fetchMetaReport(window, fetchImpl = fetch) {
+  const { metaToken } = config()
+  if (!metaToken) throw new Error('meta_not_configured')
+  const account = process.env.META_AD_ACCOUNT_ID || META_DEFAULT_ACCOUNT
+  const params = new URLSearchParams({
+    fields: 'spend,actions,action_values',
+    level: 'account',
+    time_range: JSON.stringify({ since: window.from, until: window.to }),
+    access_token: metaToken,
+  })
+  const body = await getJson(`https://graph.facebook.com/${META_GRAPH_VERSION}/${encodeURIComponent(account)}/insights?${params}`, { headers: { accept: 'application/json' } }, fetchImpl)
+  const row = Array.isArray(body?.data) ? body.data[0] || {} : {}
+  return {
+    purchases: extractActionCount(row.actions),
+    purchase_value: extractActionValue(row.action_values),
+    spend: number(row.spend) || 0,
+    currency: text(row.currency || process.env.META_AD_ACCOUNT_CURRENCY).toUpperCase() || null,
+  }
+}
+
+export async function fetchUscreenInvoices(window, fetchImpl = fetch) {
+  const { uscreenKey } = config()
+  if (!uscreenKey) throw new Error('uscreen_not_configured')
+  const invoices = []
+  for (let page = 1; page <= MAX_INVOICE_PAGES; page += 1) {
+    const batch = await getJson(`${USCREEN_API_BASE}/invoices?per_page=100&page=${page}`, { headers: { Authorization: `Bearer ${uscreenKey}`, accept: 'application/json' } }, fetchImpl)
+    if (!Array.isArray(batch) || !batch.length) break
+    invoices.push(...batch)
+    const oldest = Math.min(...batch.map((invoice) => Number(invoice?.paid_at || 0) * 1000).filter(Boolean))
+    if (oldest && oldest < Date.parse(`${window.from}T00:00:00Z`)) break
+  }
+  return invoices
+}
+
+async function kv(command, fetchImpl = fetch) {
+  const { kvUrl, kvToken } = config()
+  if (!kvUrl || !kvToken) throw new Error('kv_not_configured')
+  return getJson(kvUrl, { method: 'POST', headers: { authorization: `Bearer ${kvToken}`, 'content-type': 'application/json' }, body: JSON.stringify(command) }, fetchImpl).then((body) => body?.result)
+}
+
+export async function fetchReliableSales(fetchImpl = fetch) {
+  const ids = await kv(['ZREVRANGE', 'jfa:reliability:sales:index', '0', String(MAX_SALES - 1)], fetchImpl)
+  const sales = []
+  for (const id of Array.isArray(ids) ? ids : []) {
+    const raw = await kv(['GET', `jfa:reliability:sale:${id}`], fetchImpl)
+    try { if (raw) sales.push(typeof raw === 'string' ? JSON.parse(raw) : raw) } catch { /* ignore malformed ledger row */ }
+  }
+  return sales
+}
+
+export function authorised(req) {
+  const expected = process.env.META_USCREEN_RECONCILIATION_TOKEN
+  return Boolean(expected && text(req?.headers?.authorization) === `Bearer ${expected}`)
+}
+
+export { config, META_PURCHASE_ACTIONS }
