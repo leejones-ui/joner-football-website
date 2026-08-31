@@ -21,6 +21,7 @@ export const TRACKING_LINK_BANK = Object.freeze({
   'tiktok-dm': { channel: 'social', source: 'tiktok', campaign: 'app-dm', content: 'manual-dm', destination: '/join' },
   'youtube': { channel: 'social', source: 'youtube', campaign: 'main-channel', content: 'description-or-comment', destination: '/join' },
   'youtube-main': { channel: 'social', source: 'youtube', campaign: 'main-channel', content: 'description-or-comment', destination: '/join' },
+  'youtube-coaches': { channel: 'social', source: 'youtube_coaches', campaign: 'coaches-channel', content: 'description-or-comment', destination: '/join' },
   'youtube-spanish': { channel: 'social', source: 'youtube', campaign: 'spanish-channel', content: 'description-or-comment', destination: '/join' },
   'x': { channel: 'social', source: 'x', campaign: 'app-content', content: 'post', destination: '/join' },
   'twitter': { channel: 'social', source: 'x', campaign: 'app-content', content: 'post', destination: '/join' },
