@@ -547,16 +547,6 @@ async function sendEmail(enquiry) {
       ${row('Qualifications', enquiry.qualifications)}
       ${row('Availability', enquiry.availability)}
       ${row('Message', enquiry.message)}
-      ${enquiry.type === 'team-subscriptions' ? row('Traffic source', enquiry.attribution.trafficSource) : ''}
-      ${enquiry.type === 'team-subscriptions' ? row('UTM source / medium', [enquiry.attribution.utmSource, enquiry.attribution.utmMedium].filter(Boolean).join(' / ')) : ''}
-      ${enquiry.type === 'team-subscriptions' ? row('Campaign', enquiry.attribution.campaign) : ''}
-      ${enquiry.type === 'team-subscriptions' ? row('Ad set', enquiry.attribution.adSet) : ''}
-      ${enquiry.type === 'team-subscriptions' ? row('Ad', enquiry.attribution.ad) : ''}
-      ${enquiry.type === 'team-subscriptions' ? row('Campaign / ad IDs', [enquiry.attribution.campaignId, enquiry.attribution.adSetId, enquiry.attribution.adId].filter(Boolean).join(' / ')) : ''}
-      ${enquiry.type === 'team-subscriptions' ? row('Placement', enquiry.attribution.placement) : ''}
-      ${enquiry.type === 'team-subscriptions' ? row('Facebook click captured', enquiry.attribution.fbclid ? 'Yes' : 'No') : ''}
-      ${enquiry.type === 'team-subscriptions' ? row('Landing page', enquiry.attribution.landingPage) : ''}
-      ${enquiry.type === 'team-subscriptions' ? row('Referrer', enquiry.attribution.referrer) : ''}
       ${row('Submitted at', enquiry.submittedAt)}
     </table>
   `
