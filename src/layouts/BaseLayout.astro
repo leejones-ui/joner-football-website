@@ -523,6 +523,25 @@ const allSchemas = schema
           }
         }
 
+        // Attribution coupon. Auto-applied at the Uscreen checkout ONLY for
+        // visitors proven to have arrived from a paid Meta placement, so every
+        // redemption is a verified ad-driven web sale. Set to '' to switch off.
+        var META_AD_COUPON = 'FB10';
+
+        function isPaidMetaClick(params) {
+          // An fbclid alone is NOT proof of a paid click: organic Facebook and
+          // Instagram link clicks carry one too. Only the paid medium and the
+          // ad ids that our ad destination URLs set prove a paid placement.
+          if (!params) return false;
+          var source = String(params.get('utm_source') || '').toLowerCase();
+          var medium = String(params.get('utm_medium') || '').toLowerCase();
+          var isMetaSource = source === 'fb' || source === 'ig' || source === 'an'
+            || source.indexOf('facebook') === 0 || source.indexOf('instagram') === 0 || source.indexOf('meta') === 0;
+          if (!isMetaSource) return false;
+          if (medium.indexOf('paid') !== -1) return true;
+          return Boolean(params.get('ad_id') || params.get('adset_id') || params.get('campaign_id'));
+        }
+
         function appendUscreenTrackingParams(href, trackingParams) {
           var enrichedParams = appendFirstTouchParams(trackingParams);
           var signedJourneyToken = readJourneyToken();
@@ -533,6 +552,13 @@ const allSchemas = schema
           if (fbc) enrichedParams.set('fbc', fbc);
           var decoratedHref = appendTrackingParams(href, enrichedParams);
           if (!window.JonerAttribution || typeof window.JonerAttribution.encodeForUscreen !== 'function') {
+            if (META_AD_COUPON && isPaidMetaClick(enrichedParams)) {
+              try {
+                var plainUrl = new URL(decoratedHref, window.location.href);
+                if (!plainUrl.searchParams.get('coupon')) plainUrl.searchParams.set('coupon', META_AD_COUPON);
+                return plainUrl.toString();
+              } catch (e) { return decoratedHref; }
+            }
             return decoratedHref;
           }
           try {
@@ -548,6 +574,11 @@ const allSchemas = schema
             Array.from(url.searchParams.keys()).forEach(function (key) {
               if (key.indexOf('first_') === 0) url.searchParams.delete(key);
             });
+            // Added after codec packing so the checkout still receives it, and
+            // never overriding a coupon already chosen for this link.
+            if (META_AD_COUPON && !url.searchParams.get('coupon') && isPaidMetaClick(enrichedParams)) {
+              url.searchParams.set('coupon', META_AD_COUPON);
+            }
             return url.toString();
           } catch (e) {
             return decoratedHref;
