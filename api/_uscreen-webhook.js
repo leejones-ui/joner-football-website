@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import { extractAttribution, extractMetaIdentity } from './_attribution.js'
+import { decodeUscreenSource, extractAttribution, extractMetaIdentity } from './_attribution.js'
 import { classifySource } from './_source-taxonomy.js'
 import { enrichPayloadFromJourney, journeyStoreConfigured } from './_journey-ledger.js'
 import { reconcilePayment } from './checkout-bridge.js'
@@ -124,6 +124,56 @@ async function sendMetaEventPayload(event, testEventCode) {
 // no join could ever prove. A payment against a recurring access created well
 // before the payment is a renewal regardless of what the event calls itself.
 const RENEWAL_MIN_ACCESS_AGE_MS = 21 * 24 * 60 * 60 * 1000
+
+// Uscreen stores the signup-time utm_params and referrer on the customer
+// object, including the full packed __jfa1__ codec when the buyer came
+// through the website. When a webhook event arrives with no usable signal
+// (common for events Uscreen fires without checkout context), that stored
+// attribution is the buyer's own first-party history and can resolve the
+// same signed journey the live checkout would have.
+export async function fetchCustomerSignupAttribution(userId, fetchImpl = fetch) {
+  const apiKey = process.env.USCREEN_API_KEY
+  const id = cleanValue(userId, 120)
+  if (!apiKey || !id) return undefined
+  try {
+    const response = await fetchImpl(`https://www.uscreen.io/publisher_api/v1/customers/${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bearer ${apiKey}`, accept: 'application/json' },
+      signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+    })
+    if (!response.ok) return undefined
+    const customer = await response.json()
+    const utm = customer?.utm_params || {}
+    const out = {}
+    for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
+      const value = cleanValue(utm[key], 1200)
+      if (value) out[key] = value
+    }
+    const referrer = cleanValue(customer?.referrer, 800)
+    if (referrer) out.referrer = referrer
+    return Object.keys(out).length ? out : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export async function mergeCustomerSignupAttribution(eventData, fetchImpl = fetch) {
+  const identity = extractMetaIdentity(eventData || {})
+  const rawSource = String(eventData?.utm_source || '')
+  // A live checkout signal always wins: never fetch when the event already
+  // carries a click id, a journey token, or the packed codec.
+  if (identity.fbc || identity.fbclid || eventData?.jf_journey_id || rawSource.includes('__jfa1__')) return eventData
+  const userId = eventData?.user_id || eventData?.customer_id || eventData?.user?.id || eventData?.customer?.id
+  const signup = await fetchCustomerSignupAttribution(userId, fetchImpl)
+  if (!signup) return eventData
+  const merged = { ...eventData }
+  for (const [key, value] of Object.entries(signup)) {
+    if (!cleanValue(merged[key], 1200)) merged[key] = value
+  }
+  const decoded = decodeUscreenSource(signup.utm_source)
+  if (decoded.jf_journey_id && !merged.jf_journey_id) merged.jf_journey_id = decoded.jf_journey_id
+  merged.jf_attribution_fallback = 'uscreen_customer_signup_utms'
+  return merged
+}
 
 export async function refineSaleKind(kind, eventData, fetchImpl = fetch) {
   if (kind !== 'payment') return kind
@@ -712,6 +762,7 @@ export async function processUscreenPayload(data) {
   // Prefer the signed first-party journey ledger. It can resolve directly from
   // the checkout token, then later by Uscreen user id or the same email hash.
   eventData = await enrichPayloadFromJourney(data, email)
+  eventData = await mergeCustomerSignupAttribution(eventData)
 
   // Resolve durable attribution before writing the sale. Paid and renewal
   // events often omit the fields present on account creation.
@@ -765,7 +816,10 @@ export async function processUscreenPayload(data) {
         source_taxonomy: classifySource(eventData),
         acquisition: reconciliation.classification || 'unknown',
         confidence: reconciliation.confidence || 'none',
-        evidence: reconciliation.evidence || ['no_safe_join'],
+        evidence: [
+          ...(reconciliation.evidence || ['no_safe_join']),
+          ...(eventData.jf_attribution_fallback ? ['uscreen_customer_signup_utms'] : []),
+        ],
         source: reconciliation.source,
         medium: reconciliation.medium,
         campaign: reconciliation.campaign,

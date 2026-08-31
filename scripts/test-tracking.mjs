@@ -4,7 +4,7 @@ import path from 'node:path'
 import vm from 'node:vm'
 import { fileURLToPath } from 'node:url'
 import { extractAttribution, extractMetaIdentity } from '../api/_attribution.js'
-import { buildVerifiedMetaEvent, classifyFirstPaidAcquisition, compactBrevoAttributes, isValidUscreenWebhookSecret, mergeStoredAttribution, parseUscreenBody, processUscreenPayload, refineSaleKind } from '../api/_uscreen-webhook.js'
+import { buildVerifiedMetaEvent, classifyFirstPaidAcquisition, compactBrevoAttributes, isValidUscreenWebhookSecret, mergeCustomerSignupAttribution, mergeStoredAttribution, parseUscreenBody, processUscreenPayload, refineSaleKind } from '../api/_uscreen-webhook.js'
 import { buildLeadAttribution } from '../api/contact-enquiry.js'
 import subscribeHandler from '../api/subscribe.js'
 import uscreenWebhookHandler from '../api/uscreen-webhook.js'
@@ -919,4 +919,41 @@ console.log('tracking regression tests passed')
   assert.equal(await refineSaleKind('renewal', paymentData, accessFetch([])), 'renewal')
   assert.equal(await refineSaleKind('refund', paymentData, accessFetch([])), 'refund')
   console.log('renewal refinement tests passed')
+}
+
+
+// --- customer signup attribution fallback ---------------------------------
+{
+  process.env.USCREEN_API_KEY = 'test-uscreen-key'
+  const packed = 'ig__jfa1__s=ig&m=paid_social&c=JF+Coaches+Max&d=120249272080270035&j=2216fb5a-cd92-4fc8-b28d-f9a4f55980eb.faketokenfaketokenfaketokenfaketoken'
+  const customerFetch = (utm, referrer = '') => async () => ({ ok: true, json: async () => ({ utm_params: utm, referrer }) })
+
+  // Bare event gains the stored codec, journey token and paid-social medium.
+  const merged = await mergeCustomerSignupAttribution({ user_id: '123' }, customerFetch({ utm_source: packed }))
+  assert.equal(merged.utm_source, packed)
+  assert.equal(merged.jf_journey_id, '2216fb5a-cd92-4fc8-b28d-f9a4f55980eb.faketokenfaketokenfaketokenfaketoken')
+  assert.equal(merged.jf_attribution_fallback, 'uscreen_customer_signup_utms')
+
+  // Live checkout signal wins: codec present means no fetch at all.
+  const untouched = await mergeCustomerSignupAttribution({ user_id: '123', utm_source: packed }, async () => { throw new Error('must not fetch') })
+  assert.equal(untouched.jf_attribution_fallback, undefined)
+
+  // Click id present: no fetch.
+  const withFbc = await mergeCustomerSignupAttribution({ user_id: '123', fbc: 'fb.1.1.click' }, async () => { throw new Error('must not fetch') })
+  assert.equal(withFbc.jf_attribution_fallback, undefined)
+
+  // Empty stored attribution leaves the event unchanged.
+  const empty = await mergeCustomerSignupAttribution({ user_id: '123' }, customerFetch({ utm_source: null, utm_medium: null }))
+  assert.equal(empty.jf_attribution_fallback, undefined)
+
+  // API failure is non-fatal.
+  const failed = await mergeCustomerSignupAttribution({ user_id: '123' }, async () => { throw new Error('down') })
+  assert.equal(failed.jf_attribution_fallback, undefined)
+
+  // Existing bare utm fields are never overwritten, but the journey token still lands.
+  const bare = await mergeCustomerSignupAttribution({ user_id: '123', utm_source: 'newsletter' }, customerFetch({ utm_source: packed, utm_medium: 'paid_social' }))
+  assert.equal(bare.utm_source, 'newsletter')
+  assert.equal(bare.utm_medium, 'paid_social')
+  assert.equal(bare.jf_journey_id, '2216fb5a-cd92-4fc8-b28d-f9a4f55980eb.faketokenfaketokenfaketokenfaketoken')
+  console.log('customer signup attribution fallback tests passed')
 }
