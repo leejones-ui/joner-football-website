@@ -4,7 +4,7 @@ import path from 'node:path'
 import vm from 'node:vm'
 import { fileURLToPath } from 'node:url'
 import { extractAttribution, extractMetaIdentity } from '../api/_attribution.js'
-import { buildVerifiedMetaEvent, classifyFirstPaidAcquisition, compactBrevoAttributes, isValidUscreenWebhookSecret, mergeStoredAttribution, parseUscreenBody, processUscreenPayload } from '../api/_uscreen-webhook.js'
+import { buildVerifiedMetaEvent, classifyFirstPaidAcquisition, compactBrevoAttributes, isValidUscreenWebhookSecret, mergeStoredAttribution, parseUscreenBody, processUscreenPayload, refineSaleKind } from '../api/_uscreen-webhook.js'
 import { buildLeadAttribution } from '../api/contact-enquiry.js'
 import subscribeHandler from '../api/subscribe.js'
 import uscreenWebhookHandler from '../api/uscreen-webhook.js'
@@ -881,3 +881,42 @@ assert.ok(replayScript.includes("'NX', 'EX', SEND_LOCK_SECONDS"), 'manual replay
 assert.ok(replayScript.includes('Stored candidate event ID is not tied to the Uscreen user ID'), 'manual replay must verify stable user-based identity')
 
 console.log('tracking regression tests passed')
+
+
+// --- renewal refinement: access age beats event-name guessing -------------
+{
+  process.env.USCREEN_API_KEY = 'test-uscreen-key'
+  const yearOld = Math.floor(Date.now() / 1000) - 370 * 86400
+  const lastWeek = Math.floor(Date.now() / 1000) - 6 * 86400
+  const accessFetch = (rows, ok = true) => async () => ({ ok, json: async () => rows })
+  const paymentData = { user_id: '26436700', offer_id: '202578', event_date: new Date().toISOString() }
+
+  // Year-old recurring access on the same product: order.paid is a renewal.
+  assert.equal(await refineSaleKind('payment', paymentData, accessFetch([
+    { id: 1, created_at: yearOld, product_id: 202578, product_type: 'recurring' },
+  ])), 'renewal')
+
+  // Access created days ago: genuinely a first payment.
+  assert.equal(await refineSaleKind('payment', paymentData, accessFetch([
+    { id: 1, created_at: lastWeek, product_id: 202578, product_type: 'recurring' },
+  ])), 'payment')
+
+  // Old access on a DIFFERENT product never relabels a new purchase.
+  assert.equal(await refineSaleKind('payment', paymentData, accessFetch([
+    { id: 1, created_at: yearOld, product_id: 999999, product_type: 'recurring' },
+  ])), 'payment')
+
+  // Unknown offer id: never guess from unrelated history.
+  assert.equal(await refineSaleKind('payment', { user_id: '26436700' }, accessFetch([
+    { id: 1, created_at: yearOld, product_id: 202578, product_type: 'recurring' },
+  ])), 'payment')
+
+  // API failure stays non-fatal and keeps the named kind.
+  assert.equal(await refineSaleKind('payment', paymentData, async () => { throw new Error('down') }), 'payment')
+  assert.equal(await refineSaleKind('payment', paymentData, accessFetch([], false)), 'payment')
+
+  // Non-payment kinds pass straight through.
+  assert.equal(await refineSaleKind('renewal', paymentData, accessFetch([])), 'renewal')
+  assert.equal(await refineSaleKind('refund', paymentData, accessFetch([])), 'refund')
+  console.log('renewal refinement tests passed')
+}

@@ -118,6 +118,45 @@ async function sendMetaEventPayload(event, testEventCode) {
   }
 }
 
+// Uscreen fires renewal cycles through several event names, including plain
+// order.paid. Event-name matching alone stamps year-old subscribers as fresh
+// payments, which pollutes the fresh-start buyer ledger with UNKNOWN sources
+// no join could ever prove. A payment against a recurring access created well
+// before the payment is a renewal regardless of what the event calls itself.
+const RENEWAL_MIN_ACCESS_AGE_MS = 21 * 24 * 60 * 60 * 1000
+
+export async function refineSaleKind(kind, eventData, fetchImpl = fetch) {
+  if (kind !== 'payment') return kind
+  const apiKey = process.env.USCREEN_API_KEY
+  const userId = cleanValue(eventData?.user_id || eventData?.customer_id || eventData?.user?.id || eventData?.customer?.id, 120)
+  if (!apiKey || !userId) return kind
+  try {
+    const response = await fetchImpl(`https://www.uscreen.io/publisher_api/v1/customers/${encodeURIComponent(userId)}/accesses`, {
+      headers: { Authorization: `Bearer ${apiKey}`, accept: 'application/json' },
+      signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+    })
+    if (!response.ok) return kind
+    const accesses = await response.json()
+    if (!Array.isArray(accesses)) return kind
+    const paidAtRaw = Date.parse(String(eventData?.event_date || eventData?.paid_at || eventData?.created_at || ''))
+    const paidAtMs = Number.isFinite(paidAtRaw) ? paidAtRaw : Date.now()
+    const offer = cleanValue(eventData?.offer_id || eventData?.product_id, 80)
+    const agedRecurringAccess = accesses.some((access) => {
+      const createdMs = Number(access?.created_at) * 1000
+      if (!Number.isFinite(createdMs) || createdMs <= 0) return false
+      if (paidAtMs - createdMs < RENEWAL_MIN_ACCESS_AGE_MS) return false
+      if (String(access?.product_type || '').toLowerCase() !== 'recurring') return false
+      // With a known offer, only that product's access counts. Without one,
+      // never guess: an old unrelated subscription must not relabel a genuinely
+      // new purchase of something else.
+      return offer ? String(access?.product_id) === String(offer) : false
+    })
+    return agedRecurringAccess ? 'renewal' : kind
+  } catch {
+    return kind
+  }
+}
+
 async function sendVerifiedConversionToMeta(eventName, data, email, total) {
   const event = buildVerifiedMetaEvent(eventName, data, email, total)
   return sendMetaEventPayload(event, data.meta_test_event_code || data.test_event_code)
@@ -693,7 +732,8 @@ export async function processUscreenPayload(data) {
     } catch {
       reconciliation = { classification: 'unknown', confidence: 'none', evidence: ['reconciliation_error'] }
     }
-    const kind = eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'payment'
+    const namedKind = eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'payment'
+    const kind = await refineSaleKind(namedKind, eventData)
     const stablePaymentId = cleanValue(eventData.invoice_id || eventData.payment_id || transactionId || eventData.order_id, 180)
     const saleId = stablePaymentId ? `${kind}:${stablePaymentId}` : undefined
     if (saleId) {
