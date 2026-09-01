@@ -1,7 +1,12 @@
 const META_GRAPH_VERSION = 'v21.0'
 const META_DEFAULT_ACCOUNT = 'act_601203457715082'
 const USCREEN_API_BASE = 'https://www.uscreen.io/publisher_api/v1'
-const MAX_INVOICE_PAGES = 8
+// Uscreen silently caps per_page at 30 regardless of the value sent, so a
+// low page cap quietly truncates history and makes older windows under-report.
+// 90 pages covers roughly 60 days at current volume.
+const USCREEN_PER_PAGE = 30
+const MAX_INVOICE_PAGES = 90
+const INVOICE_PAGE_CONCURRENCY = 6
 const MAX_SALES = 400
 const META_PURCHASE_ACTIONS = new Set([
   'purchase',
@@ -113,8 +118,9 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
     if (!confirmedUserSet.has(text(invoice.user_id))) return sum
     return sum + ((number(invoice.amount) || 0) / 100)
   }, 0)
+  const historyComplete = !(Array.isArray(invoices) && invoices.truncated)
   const verdict = sourceHealth?.meta && sourceHealth?.uscreen && sourceHealth?.kv
-    ? (unmatchedMetaPurchases > 0 || unknownSales > 0 ? 'AMBER' : 'GREEN')
+    ? (unmatchedMetaPurchases > 0 || unknownSales > 0 || !historyComplete ? 'AMBER' : 'GREEN')
     : 'RED'
   const verdictReason = verdict === 'GREEN'
     ? 'Required sources fresh; Meta purchases reconcile to Uscreen buyers.'
@@ -138,6 +144,7 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
     pending_recent_conversions: 0,
     match_rate: matchRate,
     uscreen_paid_value: Number(uscreenRevenue.toFixed(2)),
+    invoice_history_complete: !(Array.isArray(invoices) && invoices.truncated),
     confirmed_buyer_revenue: Number(confirmedRevenue.toFixed(2)),
     fb20_redemptions: fb20Invoices.length,
     fb20_revenue: Number(fb20Revenue.toFixed(2)),
@@ -150,7 +157,8 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
       pending_recent_conversions: 'Reserved for a future payment-delay window; zero in this exact-window implementation.',
       confirmed_buyer_revenue: 'Paid Uscreen invoice value in the window from confirmed Meta buyers only. The only revenue figure allowed into confirmed ROAS.',
       meta_purchase_dedup: 'Meta purchase count uses one action type only (omni_purchase preferred); alias action types are never summed.',
-      fb20_redemptions: 'Paid invoices in the window carrying the Meta-ads-only coupon FB20. Hard proof of an ad-driven sale, app store purchases included.',
+      fb20_redemptions: 'Paid invoices in the window carrying the Meta-ads-only attribution coupon. Hard proof of an ad-driven WEB CHECKOUT sale; native app-store billing cannot take web coupons.',
+      invoice_history_complete: 'False when the Uscreen invoice fetch could not page back to the window start. Every Uscreen count is then a floor, not a total, and must not be compared against other windows.',
     },
   }
 }
@@ -199,6 +207,7 @@ export function addPhaseTwoThree({ report, previousReport, meta, previousMeta, s
   comparison.delta.confirmed_cac = delta(comparison.current.confirmed_cac, comparison.previous.confirmed_cac)
   const alerts = []
   if (!sourceHealth.meta || !sourceHealth.uscreen || !sourceHealth.kv) alerts.push({ severity: 'RED', code: 'SOURCE_UNAVAILABLE', message: 'A required reconciliation source is unavailable.' })
+  if (report.invoice_history_complete === false) alerts.push({ severity: 'RED', code: 'INVOICE_HISTORY_TRUNCATED', message: 'Uscreen invoice history did not reach the window start. Uscreen counts are a floor, not a total; do not compare this window against another.' })
   if (report.unmatched_meta_purchases > 0) alerts.push({ severity: 'AMBER', code: 'META_PURCHASES_UNMATCHED', count: report.unmatched_meta_purchases, message: 'Meta-reported purchases do not yet have verified Uscreen buyer matches.' })
   if (report.unknown_sales > 0) alerts.push({ severity: 'AMBER', code: 'USCREEN_SALES_UNATTRIBUTED', count: report.unknown_sales, message: 'Positive Uscreen buyers have no Meta-classified ledger match.' })
   if (report.uscreen_paid_signups > 0 && report.confirmed_meta_buyers === 0) alerts.push({ severity: 'AMBER', code: 'ZERO_CONFIRMED_META_BUYERS', message: 'Uscreen paid activity exists but no Meta-attributed buyer is verified.' })
@@ -329,14 +338,32 @@ export async function fetchMetaDailyReport(window, fetchImpl = fetch) {
 export async function fetchUscreenInvoices(window, fetchImpl = fetch) {
   const { uscreenKey } = config()
   if (!uscreenKey) throw new Error('uscreen_not_configured')
+  const headers = { Authorization: `Bearer ${uscreenKey}`, accept: 'application/json' }
+  const windowStart = Date.parse(`${window.from}T00:00:00Z`)
   const invoices = []
-  for (let page = 1; page <= MAX_INVOICE_PAGES; page += 1) {
-    const batch = await getJson(`${USCREEN_API_BASE}/invoices?per_page=100&page=${page}`, { headers: { Authorization: `Bearer ${uscreenKey}`, accept: 'application/json' } }, fetchImpl)
-    if (!Array.isArray(batch) || !batch.length) break
-    invoices.push(...batch)
-    const oldest = Math.min(...batch.map((invoice) => Number(invoice?.paid_at || 0) * 1000).filter(Boolean))
-    if (oldest && oldest < Date.parse(`${window.from}T00:00:00Z`)) break
+  let reachedStart = false
+  let exhausted = false
+  let nextPage = 1
+  while (!reachedStart && !exhausted && nextPage <= MAX_INVOICE_PAGES) {
+    const pages = []
+    for (let i = 0; i < INVOICE_PAGE_CONCURRENCY && nextPage + i <= MAX_INVOICE_PAGES; i += 1) pages.push(nextPage + i)
+    nextPage += pages.length
+    const batches = await Promise.all(pages.map((page) => getJson(
+      `${USCREEN_API_BASE}/invoices?per_page=${USCREEN_PER_PAGE}&page=${page}`,
+      { headers },
+      fetchImpl,
+    ).catch(() => null)))
+    for (const batch of batches) {
+      if (!Array.isArray(batch) || !batch.length) { exhausted = true; continue }
+      invoices.push(...batch)
+      const oldest = Math.min(...batch.map((invoice) => Number(invoice?.paid_at || 0) * 1000).filter(Boolean))
+      if (oldest && oldest < windowStart) reachedStart = true
+    }
   }
+  // A window whose start was never reached means the ledger is incomplete and
+  // every count derived from it is a floor, not a total. Say so loudly rather
+  // than reporting a confidently wrong number.
+  invoices.truncated = !reachedStart && !exhausted
   return invoices
 }
 

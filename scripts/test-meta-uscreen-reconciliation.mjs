@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import handler from '../api/meta-uscreen-reconciliation.js'
-import { addPhaseTwoThree, buildDailySeries, buildReconciliation, extractActionCount, previousWindow, resolveWindow } from '../api/_meta-uscreen-reconciliation.js'
+import { addPhaseTwoThree, buildDailySeries, buildReconciliation, extractActionCount, fetchUscreenInvoices, previousWindow, resolveWindow } from '../api/_meta-uscreen-reconciliation.js'
 
 assert.deepEqual(resolveWindow({ from: '2026-08-26', to: '2026-08-27' }), {
   from: '2026-08-26', to: '2026-08-27', timezone: 'UTC',
@@ -129,3 +129,49 @@ statusCode = 0
 await handler({ method: 'GET', headers: { authorization: 'Bearer wrong-token' }, query: {} }, response)
 assert.equal(statusCode, 401)
 console.log('meta-uscreen reconciliation tests passed')
+
+
+// --- invoice pagination must reach the window start or admit truncation ----
+{
+  process.env.USCREEN_API_KEY = 'test-uscreen-key'
+  const day = (iso) => Math.floor(Date.parse(iso) / 1000)
+  // Uscreen caps per_page at 30 no matter what is requested.
+  const makePager = (totalPages, oldestIso) => async (url) => {
+    const page = Number(new URL(url).searchParams.get('page'))
+    if (page > totalPages) return { ok: true, json: async () => [] }
+    const stamp = page === totalPages ? day(oldestIso) : day('2026-08-30T12:00:00Z')
+    return { ok: true, json: async () => Array.from({ length: 30 }, (_, i) => ({ id: `p${page}-${i}`, user_id: `u${page}-${i}`, status: 'paid', amount: 1499, paid_at: stamp })) }
+  }
+  const win = { from: '2026-08-01', to: '2026-08-31', timezone: 'UTC' }
+
+  // Reaches back past the window start: complete, and far more than the old
+  // 8-page cap would have returned.
+  const complete = await fetchUscreenInvoices(win, makePager(20, '2026-07-25T12:00:00Z'))
+  assert.equal(complete.truncated, false)
+  assert.ok(complete.length > 240, `expected more than the old 8-page cap, got ${complete.length}`)
+
+  // Runs out of pages before the window start: must admit truncation.
+  const truncated = await fetchUscreenInvoices({ from: '2020-01-01', to: '2026-08-31', timezone: 'UTC' }, async (url) => {
+    const page = Number(new URL(url).searchParams.get('page'))
+    if (page > 200) return { ok: true, json: async () => [] }
+    return { ok: true, json: async () => Array.from({ length: 30 }, (_, i) => ({ id: `t${page}-${i}`, user_id: `u${i}`, status: 'paid', amount: 1499, paid_at: day('2026-08-30T12:00:00Z') })) }
+  })
+  assert.equal(truncated.truncated, true)
+
+  // Truncation is reported, alerts RED, and can never read GREEN.
+  const truncatedReport = buildReconciliation({
+    window: win,
+    meta: { purchases: 0, purchase_value: 0, spend: 10 },
+    invoices: truncated,
+    sales: [],
+    sourceHealth: { meta: true, uscreen: true, kv: true },
+  })
+  assert.equal(truncatedReport.invoice_history_complete, false)
+  assert.equal(truncatedReport.verdict, 'AMBER')
+  const withAlerts = addPhaseTwoThree({ report: truncatedReport, previousReport: null, meta: { spend: 10, currency: 'AUD' }, sourceHealth: { meta: true, uscreen: true, kv: true } })
+  assert.ok(withAlerts.alerts.some((a) => a.code === 'INVOICE_HISTORY_TRUNCATED' && a.severity === 'RED'))
+
+  // A complete fetch reports complete.
+  assert.equal(buildReconciliation({ window: win, meta: { purchases: 0, purchase_value: 0, spend: 10 }, invoices: complete, sales: [], sourceHealth: { meta: true, uscreen: true, kv: true } }).invoice_history_complete, true)
+  console.log('invoice pagination tests passed')
+}

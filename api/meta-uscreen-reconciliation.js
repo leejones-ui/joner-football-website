@@ -1,8 +1,10 @@
-import { addPhaseTwoThree, buildDailySeries, buildReconciliation, config, fetchMetaDailyReport, fetchMetaReport, fetchReliableSales, fetchUscreenInvoices, previousWindow, resolveWindow, authorised } from './_meta-uscreen-reconciliation.js'
+import { addPhaseTwoThree, buildDailySeries, buildReconciliation, config as readConfig, fetchMetaDailyReport, fetchMetaReport, fetchReliableSales, fetchUscreenInvoices, previousWindow, resolveWindow, authorised } from './_meta-uscreen-reconciliation.js'
 
 function json(res, status, body) {
   return res.status(status).json(body)
 }
+
+export const config = { maxDuration: 60 }
 
 export default async function handler(req, res) {
   if (!authorised(req)) return json(res, 401, { success: false, error: 'Unauthorized' })
@@ -18,7 +20,7 @@ export default async function handler(req, res) {
   const started = Date.now()
   const sourceHealth = { meta: false, uscreen: false, kv: false }
   try {
-    const settings = config()
+    const settings = readConfig()
     if (!settings.metaToken || !settings.uscreenKey || !settings.kvUrl || !settings.kvToken) {
       return json(res, 503, { success: false, error: 'Reconciliation source is not configured' })
     }
