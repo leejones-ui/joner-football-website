@@ -6,7 +6,10 @@ const USCREEN_API_BASE = 'https://www.uscreen.io/publisher_api/v1'
 // 90 pages covers roughly 60 days at current volume.
 const USCREEN_PER_PAGE = 30
 const MAX_INVOICE_PAGES = 90
-const INVOICE_PAGE_CONCURRENCY = 6
+// Uscreen rate-limits (HTTP 429) well before this many parallel reads, and a
+// throttled page must never be mistaken for the end of the data.
+const INVOICE_PAGE_CONCURRENCY = 3
+const INVOICE_PAGE_RETRIES = 3
 const MAX_SALES = 400
 const META_PURCHASE_ACTIONS = new Set([
   'purchase',
@@ -343,26 +346,40 @@ export async function fetchUscreenInvoices(window, fetchImpl = fetch) {
   const invoices = []
   let reachedStart = false
   let exhausted = false
+  let failed = false
   let nextPage = 1
-  while (!reachedStart && !exhausted && nextPage <= MAX_INVOICE_PAGES) {
+
+  const fetchPage = async (page) => {
+    for (let attempt = 0; attempt < INVOICE_PAGE_RETRIES; attempt += 1) {
+      try {
+        return await getJson(`${USCREEN_API_BASE}/invoices?per_page=${USCREEN_PER_PAGE}&page=${page}`, { headers }, fetchImpl)
+      } catch (error) {
+        // Back off and retry: a 429 is a throttle, never a signal that the
+        // invoice history has ended.
+        if (attempt === INVOICE_PAGE_RETRIES - 1) return { error: String(error?.message || error) }
+        await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)))
+      }
+    }
+    return { error: 'unreachable' }
+  }
+
+  while (!reachedStart && !exhausted && !failed && nextPage <= MAX_INVOICE_PAGES) {
     const pages = []
     for (let i = 0; i < INVOICE_PAGE_CONCURRENCY && nextPage + i <= MAX_INVOICE_PAGES; i += 1) pages.push(nextPage + i)
     nextPage += pages.length
-    const batches = await Promise.all(pages.map((page) => getJson(
-      `${USCREEN_API_BASE}/invoices?per_page=${USCREEN_PER_PAGE}&page=${page}`,
-      { headers },
-      fetchImpl,
-    ).catch(() => null)))
+    const batches = await Promise.all(pages.map(fetchPage))
     for (const batch of batches) {
-      if (!Array.isArray(batch) || !batch.length) { exhausted = true; continue }
+      // A page that errored after retries is unknown, NOT the end of history.
+      if (!Array.isArray(batch)) { failed = true; continue }
+      // Only a genuinely empty page means the history is exhausted.
+      if (!batch.length) { exhausted = true; continue }
       invoices.push(...batch)
       const oldest = Math.min(...batch.map((invoice) => Number(invoice?.paid_at || 0) * 1000).filter(Boolean))
       if (oldest && oldest < windowStart) reachedStart = true
     }
   }
-  // A window whose start was never reached means the ledger is incomplete and
-  // every count derived from it is a floor, not a total. Say so loudly rather
-  // than reporting a confidently wrong number.
+  // Complete only when the window start was actually reached, or the invoice
+  // history genuinely ran out. Anything else is a floor, not a total.
   invoices.truncated = !reachedStart && !exhausted
   return invoices
 }

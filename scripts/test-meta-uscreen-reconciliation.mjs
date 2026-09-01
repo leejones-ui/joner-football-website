@@ -175,3 +175,36 @@ console.log('meta-uscreen reconciliation tests passed')
   assert.equal(buildReconciliation({ window: win, meta: { purchases: 0, purchase_value: 0, spend: 10 }, invoices: complete, sales: [], sourceHealth: { meta: true, uscreen: true, kv: true } }).invoice_history_complete, true)
   console.log('invoice pagination tests passed')
 }
+
+
+// --- a throttled page is never the end of history -------------------------
+{
+  process.env.USCREEN_API_KEY = 'test-uscreen-key'
+  const day = (iso) => Math.floor(Date.parse(iso) / 1000)
+  const win = { from: '2026-08-01', to: '2026-08-31', timezone: 'UTC' }
+  const rows = (page, stamp) => Array.from({ length: 30 }, (_, i) => ({ id: `r${page}-${i}`, user_id: `u${page}-${i}`, status: 'paid', amount: 1499, paid_at: stamp }))
+
+  // A page that 429s twice then succeeds must be retried, not treated as the end.
+  const attempts = new Map()
+  const flaky = async (url) => {
+    const page = Number(new URL(url).searchParams.get('page'))
+    const n = (attempts.get(page) || 0) + 1
+    attempts.set(page, n)
+    if (page === 2 && n <= 2) return { ok: false, status: 429, text: async () => 'rate limited', json: async () => ({}) }
+    if (page > 12) return { ok: true, json: async () => [] }
+    return { ok: true, json: async () => rows(page, page === 12 ? day('2026-07-20T12:00:00Z') : day('2026-08-30T12:00:00Z')) }
+  }
+  const recovered = await fetchUscreenInvoices(win, flaky)
+  assert.equal(recovered.truncated, false, 'retried fetch should reach the window start')
+  assert.ok(recovered.length >= 360, `expected full history, got ${recovered.length}`)
+  assert.ok((attempts.get(2) || 0) >= 3, 'page 2 should have been retried')
+
+  // A page that fails permanently must mark truncation, never false-complete.
+  const broken = await fetchUscreenInvoices(win, async (url) => {
+    const page = Number(new URL(url).searchParams.get('page'))
+    if (page >= 3) return { ok: false, status: 429, text: async () => 'rate limited', json: async () => ({}) }
+    return { ok: true, json: async () => rows(page, day('2026-08-30T12:00:00Z')) }
+  })
+  assert.equal(broken.truncated, true, 'a permanently failing page must report truncation')
+  console.log('invoice rate-limit tests passed')
+}
