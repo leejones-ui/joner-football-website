@@ -202,7 +202,7 @@ const sanityPage = await fetchSanityPage('training')
 
       <div class="training-next-step__grid" aria-label="Choose your Joner Football training path">
         {trainingPrograms.map((program) => (
-          <a href={program.href} class="training-next-step__card" aria-label={`View ${program.title}`}>
+          <a id={program.label === 'PRO' ? 'pro-training' : undefined} href={program.href} class="training-next-step__card scroll-mt-24" aria-label={`View ${program.title}`}>
             <img src={program.cardImage || program.circleImage} alt="" aria-hidden="true" loading="lazy" class="training-next-step__card-bg" />
             <span class="training-next-step__shade" aria-hidden="true"></span>
             <span class="training-next-step__badge">{program.label}</span>
@@ -218,7 +218,7 @@ const sanityPage = await fetchSanityPage('training')
   </section>
 
   <!-- JFP pathway -->
-  <section class="jfp-pathway-lite" aria-labelledby="jfp-pathway-title">
+  <section id="jfp" class="jfp-pathway-lite scroll-mt-24" aria-labelledby="jfp-pathway-title">
     <div class="jfp-pathway-lite__inner">
       <header class="jfp-pathway-lite__header">
         <p>JFP Pathway</p>
@@ -227,7 +227,7 @@ const sanityPage = await fetchSanityPage('training')
       </header>
 
       <div class="jfp-pathway-lite__map" aria-label="JFP player pathway">
-        <a href="/jonersjuniors/" class="jfp-pathway-lite__stage">
+        <a id="joners-juniors" href="/jonersjuniors/" class="jfp-pathway-lite__stage scroll-mt-24">
           <img src="/images/training/joners-juniors-wheel.jpg" alt="Joners Juniors training" loading="lazy" />
           <span>Stage 1</span>
           <strong>Joners Juniors</strong>
@@ -309,7 +309,7 @@ const sanityPage = await fetchSanityPage('training')
   </section>
 
   <!-- Training Enquiry Form -->
-  <section id="training-form" class="bg-joner-black py-16 md:py-24 scroll-mt-32">
+  <section id="jfp-form" class="bg-joner-black py-16 md:py-24 scroll-mt-32">
     <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
       <div class="mb-8 text-center">
         <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Enquire</p>

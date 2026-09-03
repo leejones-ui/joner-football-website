@@ -29,6 +29,7 @@ export default defineConfig({
         '/home-object-prototype/',
         '/home-storyboard-prototype/',
         '/draftjoin/',
+        '/join-old-2026-06-15/',
 
         '/new-coaching-role/',
         '/training/joners-juniors/',
