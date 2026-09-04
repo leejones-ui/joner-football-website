@@ -475,15 +475,28 @@ export default async function handler(req, res) {
         result = { ignored: true, reason: 'not-paid', paymentStatus }
       } else {
         const registrationId = registrationIdFromSession(session)
-        if (!registrationId) throw new Error('Stripe session missing registrationId metadata.')
-        const stripePaymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id
-        result = await confirmPaidRegistration(registrationId, {
-          paidAmount: internalAudAmountFromSession(session),
-          stripeCheckoutSessionId: session.id,
-          stripePaymentIntentId,
-          stripePaymentIntentSheetValue: stripePaymentIntentSheetValue(stripePaymentIntentId, session._stripeDashboardAccountId),
-        })
-        if (!signatureVerified) result.signatureVerification = 'stripe-session-lookup'
+        if (!registrationId) {
+          // Not a camp booking. Stripe delivers checkout.session.completed to
+          // EVERY endpoint subscribed to it, account-wide, so this branch sees
+          // download sales, WooCommerce orders and JF Teams subscriptions as
+          // well as camps. Throwing here returned HTTP 400 for all of them,
+          // which Stripe reads as a broken endpoint: it retries for days and
+          // will eventually disable the endpoint, taking real camp bookings
+          // down with it. An event that is not ours is not an error.
+          //
+          // This matches what the payment_intent.succeeded branch above has
+          // always done; only the session branch was missing it.
+          result = { ignored: true, reason: 'missing-registrationId-metadata', type: event.type }
+        } else {
+          const stripePaymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id
+          result = await confirmPaidRegistration(registrationId, {
+            paidAmount: internalAudAmountFromSession(session),
+            stripeCheckoutSessionId: session.id,
+            stripePaymentIntentId,
+            stripePaymentIntentSheetValue: stripePaymentIntentSheetValue(stripePaymentIntentId, session._stripeDashboardAccountId),
+          })
+          if (!signatureVerified) result.signatureVerification = 'stripe-session-lookup'
+        }
       }
     }
 
