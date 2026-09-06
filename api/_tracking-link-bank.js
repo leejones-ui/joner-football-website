@@ -68,6 +68,9 @@ export const TRACKING_DESTINATIONS = Object.freeze({
   workshops: '/workshops',
   'coaches-course': '/workshops/coaches-course',
   contact: '/contact',
+  'training-enquiries': '/training-enquiries/',
+  'joners-juniors': '/joners-juniors/',
+  mindsetseminar: '/mindsetseminar',
 })
 
 export function getTrackingLink(token) {
