@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { isAccepted, normaliseProgramme } from '../api/contact-enquiry.js'
+import { buildWaiverSummary, isAccepted, normaliseProgramme } from '../api/contact-enquiry.js'
 
 assert.equal(isAccepted(true), true)
 assert.equal(isAccepted('true'), true)
@@ -19,4 +19,8 @@ assert.equal(normaliseProgramme('juniors'), 'Joners Juniors')
 assert.equal(normaliseProgramme(''), 'JFP')
 assert.equal(normaliseProgramme('unknown'), 'JFP')
 
-console.log('player waiver checkbox and programme parsing: ok')
+const evergreenSummary = buildWaiverSummary({ programme: 'JFP' })
+assert.match(evergreenSummary, /accepted for JFP\./)
+assert.doesNotMatch(evergreenSummary, /Term\s*3/i)
+
+console.log('player waiver evergreen labels, checkbox and programme parsing: ok')

@@ -383,7 +383,8 @@ async function findExistingWaiverRecord({ playerFullName, email, term, programme
   const programmeFormula = programme === 'JFP'
     ? `OR({Programme}='JFP',{Programme}=BLANK())`
     : `{Programme}='${escapeFormulaValue(programme)}'`
-  const formula = `AND(LOWER({Parent Email})='${escapeFormulaValue(email.toLowerCase())}',LOWER({Player Full Name})='${escapeFormulaValue(playerFullName.toLowerCase())}',{Term}='${escapeFormulaValue(term)}',${programmeFormula})`
+  const termFormula = term ? `{Term}='${escapeFormulaValue(term)}'` : '{Term}=BLANK()'
+  const formula = `AND(LOWER({Parent Email})='${escapeFormulaValue(email.toLowerCase())}',LOWER({Player Full Name})='${escapeFormulaValue(playerFullName.toLowerCase())}',${termFormula},${programmeFormula})`
   const params = new URLSearchParams({
     maxRecords: '1',
     filterByFormula: formula,
@@ -392,11 +393,12 @@ async function findExistingWaiverRecord({ playerFullName, email, term, programme
   return data.records?.[0]?.id || null
 }
 
-function buildWaiverSummary(body) {
-  const term = clean(body.term, 80) || 'Term 3 2026'
+export function buildWaiverSummary(body) {
+  const term = clean(body.term, 80)
   const programme = normaliseProgramme(body.programme)
+  const termDescription = term ? `, ${term}` : ''
   const parts = [
-    `Joner Football Programme Waiver and Agreement accepted for ${programme}, ${term}.`,
+    `Joner Football Programme Waiver and Agreement accepted for ${programme}${termDescription}.`,
     'Parent/guardian confirms the player details, emergency contact details and medical information supplied are accurate.',
     'Parent/guardian understands football training includes running, striking the ball, changes of direction, physical contact, group activity and normal physical risk.',
     'Parent/guardian confirms the player is fit to participate unless medical notes have been listed on this form.',
@@ -424,7 +426,7 @@ async function handlePlayerWaiver(body, res) {
     medicalNotes: clean(body.medicalNotes, 1200),
     emergencyContactName: clean(body.emergencyContactName, 180),
     emergencyContactPhone: clean(body.emergencyContactPhone, 80),
-    term: clean(body.term, 80) || 'Term 3 2026',
+    term: clean(body.term, 80),
     paymentCommitmentAccepted: isAccepted(body.paymentCommitmentAccepted),
     noMakeUpAccepted: isAccepted(body.noMakeUpAccepted),
     emergencyTreatmentPermission: isAccepted(body.emergencyTreatmentPermission),
@@ -459,7 +461,7 @@ async function handlePlayerWaiver(body, res) {
     'Emergency Contact Name': submitted.emergencyContactName,
     'Emergency Contact Phone': submitted.emergencyContactPhone,
     Term: submitted.term,
-    'Waiver Version': 'Joner Football Term 3 2026 combined waiver v3',
+    'Waiver Version': 'JFP evergreen combined waiver v4',
     'Waiver Accepted - Full Terms': true,
     'No Make-Up Sessions Accepted': true,
     'Payment Terms Accepted - Full Term': true,
