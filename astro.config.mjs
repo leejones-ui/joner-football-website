@@ -34,7 +34,6 @@ export default defineConfig({
         '/new-coaching-role/',
         '/training/joners-juniors/',
         '/training/jfp-program/',
-        '/player-waiver/',
         '/email-assets/',
         '/free-bundle/watch/',
       ];
