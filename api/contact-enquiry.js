@@ -460,7 +460,7 @@ async function handlePlayerWaiver(body, res) {
     'Medical Notes': submitted.medicalNotes || 'None supplied',
     'Emergency Contact Name': submitted.emergencyContactName,
     'Emergency Contact Phone': submitted.emergencyContactPhone,
-    Term: submitted.term,
+    ...(submitted.term ? { Term: submitted.term } : {}),
     'Waiver Version': 'JFP evergreen combined waiver v4',
     'Waiver Accepted - Full Terms': true,
     'No Make-Up Sessions Accepted': true,
