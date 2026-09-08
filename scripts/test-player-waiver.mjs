@@ -1,26 +1,18 @@
 import assert from 'node:assert/strict'
-import { buildWaiverSummary, isAccepted, normaliseProgramme } from '../api/contact-enquiry.js'
+import { readFile } from 'node:fs/promises'
 
-assert.equal(isAccepted(true), true)
-assert.equal(isAccepted('true'), true)
-assert.equal(isAccepted('on'), true)
-assert.equal(isAccepted('yes'), true)
-assert.equal(isAccepted('YES'), true)
-assert.equal(isAccepted(false), false)
-assert.equal(isAccepted('false'), false)
-assert.equal(isAccepted(''), false)
-assert.equal(isAccepted(undefined), false)
+const page = await readFile(new URL('../src/pages/player-waiver.astro', import.meta.url), 'utf8')
+const api = await readFile(new URL('../api/contact-enquiry.js', import.meta.url), 'utf8')
+const airtableUrl = 'https://airtable.com/apphU4R0BtVIu5YqT/pagdSqWlCfZJyiPxq/form'
 
-assert.equal(normaliseProgramme('JFP'), 'JFP')
-assert.equal(normaliseProgramme('jfp'), 'JFP')
-assert.equal(normaliseProgramme('Joners Juniors'), 'Joners Juniors')
-assert.equal(normaliseProgramme('joners-juniors'), 'Joners Juniors')
-assert.equal(normaliseProgramme('juniors'), 'Joners Juniors')
-assert.equal(normaliseProgramme(''), 'JFP')
-assert.equal(normaliseProgramme('unknown'), 'JFP')
+assert.match(page, new RegExp(airtableUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+assert.match(page, /JFP Player Info \+ Waiver Form/)
+assert.match(page, /parents and guardians must complete/i)
+assert.doesNotMatch(page, /<form\b/i)
+assert.doesNotMatch(page, /fetch\s*\(/i)
+assert.doesNotMatch(page, /method\s*=\s*["']POST["']/i)
+assert.doesNotMatch(page, /payment|make-up|emergency treatment|liability|media permission|three[- ]strike|term\s*3/i)
+assert.doesNotMatch(api, /player-waiver|handlePlayerWaiver|airtableRequest|AIRTABLE_WAIVER/i)
+assert.doesNotMatch(api, /Term\s*3/i)
 
-const evergreenSummary = buildWaiverSummary({ programme: 'JFP' })
-assert.match(evergreenSummary, /accepted for JFP\./)
-assert.doesNotMatch(evergreenSummary, /Term\s*3/i)
-
-console.log('player waiver evergreen labels, checkbox and programme parsing: ok')
+console.log('player waiver route uses Airtable handoff only: ok')

@@ -7,7 +7,6 @@ export const JONERS_JUNIORS_RECIPIENT_EMAIL = 'jonersjuniors@jonerfootball.com'
 export const TEAM_SUBSCRIPTIONS_RECIPIENT_EMAILS = ['teams@jonerfootball.com', 'Reswin@jonerfootball.com']
 const duplicateBuckets = new Map()
 const DUPLICATE_WINDOW_MS = 15 * 60 * 1000
-const DEFAULT_WAIVER_TABLE = 'JFP Waiver & Player Info'
 const DEFAULT_TEAM_SUBSCRIPTIONS_SHEET_ID = '1KB5m7KwQPM7D0ctBY7H23x-2oUYSaiX-GJV0jlyYBvw'
 export const TEAM_SUBSCRIPTIONS_SHEET = process.env.TEAM_SUBSCRIPTIONS_SHEET_TAB || 'Hot Leads'
 export const TEAM_SUBSCRIPTIONS_HEADERS = [
@@ -39,7 +38,6 @@ const TYPES = {
   'joners-juniors': 'Joners Juniors Enquiries',
   'coaching-role': 'Apply For A Coaching Role',
   'team-subscriptions': 'Team Subscriptions Enquiry',
-  'player-waiver': 'Player Onboarding & Waiver',
 }
 
 const RECIPIENTS = {
@@ -62,16 +60,6 @@ const BREVO_LIST_IDS = {
 
 function clean(value, max = 1000) {
   return cleanString(value, max)
-}
-
-export function isAccepted(value) {
-  if (value === true) return true
-  return ['true', 'on', 'yes'].includes(String(value ?? '').trim().toLowerCase())
-}
-
-export function normaliseProgramme(value) {
-  const programme = clean(value, 80).toLowerCase().replace(/[^a-z]/g, '')
-  return programme === 'jonersjuniors' || programme === 'juniors' ? 'Joners Juniors' : 'JFP'
 }
 
 export function buildLeadAttribution(body = {}, submittedAt = new Date().toISOString()) {
@@ -350,149 +338,6 @@ function cleanAttachment(file) {
   return { name, content }
 }
 
-function airtableConfig() {
-  const token = process.env.AIRTABLE_API_TOKEN || process.env.AIRTABLE_TOKEN
-  const baseId = process.env.AIRTABLE_BASE_ID
-  const table = process.env.AIRTABLE_WAIVER_TABLE || process.env.AIRTABLE_WAIVER_TABLE_ID || DEFAULT_WAIVER_TABLE
-  if (!token || !baseId) throw new Error('Airtable is not configured.')
-  return { token, baseId, table }
-}
-
-function escapeFormulaValue(value) {
-  return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")
-}
-
-async function airtableRequest(path, init = {}) {
-  const { token, baseId, table } = airtableConfig()
-  const response = await fetch(`https://api.airtable.com/v0/${baseId}/${encodeURIComponent(table)}${path}`, {
-    ...init,
-    headers: {
-      authorization: `Bearer ${token}`,
-      'content-type': 'application/json',
-      ...(init.headers || {}),
-    },
-  })
-  const text = await response.text()
-  let data = {}
-  try { data = text ? JSON.parse(text) : {} } catch { data = {} }
-  if (!response.ok) throw new Error(data?.error?.message || `Airtable request failed: ${response.status}`)
-  return data
-}
-
-async function findExistingWaiverRecord({ playerFullName, email, term, programme }) {
-  const programmeFormula = programme === 'JFP'
-    ? `OR({Programme}='JFP',{Programme}=BLANK())`
-    : `{Programme}='${escapeFormulaValue(programme)}'`
-  const termFormula = term ? `{Term}='${escapeFormulaValue(term)}'` : '{Term}=BLANK()'
-  const formula = `AND(LOWER({Parent Email})='${escapeFormulaValue(email.toLowerCase())}',LOWER({Player Full Name})='${escapeFormulaValue(playerFullName.toLowerCase())}',${termFormula},${programmeFormula})`
-  const params = new URLSearchParams({
-    maxRecords: '1',
-    filterByFormula: formula,
-  })
-  const data = await airtableRequest(`?${params.toString()}`, { method: 'GET' })
-  return data.records?.[0]?.id || null
-}
-
-export function buildWaiverSummary(body) {
-  const term = clean(body.term, 80)
-  const programme = normaliseProgramme(body.programme)
-  const termDescription = term ? `, ${term}` : ''
-  const parts = [
-    `Joner Football Programme Waiver and Agreement accepted for ${programme}${termDescription}.`,
-    'Parent/guardian confirms the player details, emergency contact details and medical information supplied are accurate.',
-    'Parent/guardian understands football training includes running, striking the ball, changes of direction, physical contact, group activity and normal physical risk.',
-    'Parent/guardian confirms the player is fit to participate unless medical notes have been listed on this form.',
-    'Parent/guardian authorises Joner Football staff to seek urgent medical assistance or emergency treatment if needed during a session.',
-    'Parent/guardian understands that once a spot is confirmed, the player is locked in for the full term and payment is required.',
-    'Parent/guardian understands payment must be made before the term starts unless Dean or Ligia approve another arrangement in writing.',
-    'Parent/guardian understands no make-up sessions are offered for missed sessions, late arrival or non-attendance.',
-    'Parent/guardian understands the waiver must be completed before the player trains or kicks a ball.',
-  ]
-  const medical = clean(body.medicalNotes, 1200)
-  if (medical) parts.push(`Medical notes supplied: ${medical}`)
-  return parts.join('\n')
-}
-
-async function handlePlayerWaiver(body, res) {
-  const submitted = {
-    programme: normaliseProgramme(body.programme),
-    playerFullName: clean(body.playerFullName, 180),
-    dob: clean(body.dob, 80),
-    parentName: clean(body.parentName, 180),
-    currentClub: clean(body.currentClub, 180),
-    email: clean(body.email, 220).toLowerCase(),
-    mobileNumber: clean(body.mobileNumber, 80),
-    playerMobileNumber: clean(body.playerMobileNumber, 80),
-    medicalNotes: clean(body.medicalNotes, 1200),
-    emergencyContactName: clean(body.emergencyContactName, 180),
-    emergencyContactPhone: clean(body.emergencyContactPhone, 80),
-    term: clean(body.term, 80),
-    paymentCommitmentAccepted: isAccepted(body.paymentCommitmentAccepted),
-    noMakeUpAccepted: isAccepted(body.noMakeUpAccepted),
-    emergencyTreatmentPermission: isAccepted(body.emergencyTreatmentPermission),
-    mediaPermission: isAccepted(body.mediaPermission),
-    waiverAccepted: isAccepted(body.waiverAccepted),
-    parentSignature: clean(body.parentSignature, 180),
-  }
-
-  if (!submitted.playerFullName || !submitted.dob || !submitted.parentName || !submitted.email || !submitted.mobileNumber || !submitted.emergencyContactName || !submitted.emergencyContactPhone) {
-    return res.status(400).json({ success: false, error: 'Please complete all required player, parent and emergency contact fields.' })
-  }
-  const emailCheck = await validateEmailQuality(submitted.email, { label: 'parent email' })
-  if (!emailCheck.ok) {
-    return res.status(400).json({ success: false, error: emailCheck.error || 'Please enter a valid parent email address.' })
-  }
-  submitted.email = emailCheck.email
-  if (!submitted.paymentCommitmentAccepted || !submitted.noMakeUpAccepted || !submitted.emergencyTreatmentPermission || !submitted.waiverAccepted || !submitted.parentSignature) {
-    return res.status(400).json({ success: false, error: 'Please accept the waiver, payment terms, no make-up sessions, emergency treatment permission and add the parent/guardian signature.' })
-  }
-
-  const signedAt = new Date().toISOString()
-  const fields = {
-    'Programme': submitted.programme,
-    'Player Full Name': submitted.playerFullName,
-    'Date of Birth': submitted.dob,
-    'Parent/Guardian Name': submitted.parentName,
-    'Parent Email': submitted.email,
-    'Parent Mobile Number': submitted.mobileNumber,
-    'Player Mobile Number': submitted.playerMobileNumber,
-    'Current Club': submitted.currentClub,
-    'Medical Notes': submitted.medicalNotes || 'None supplied',
-    'Emergency Contact Name': submitted.emergencyContactName,
-    'Emergency Contact Phone': submitted.emergencyContactPhone,
-    ...(submitted.term ? { Term: submitted.term } : {}),
-    'Waiver Version': 'JFP evergreen combined waiver v4',
-    'Waiver Accepted - Full Terms': true,
-    'No Make-Up Sessions Accepted': true,
-    'Payment Terms Accepted - Full Term': true,
-    'Emergency Treatment Permission': true,
-    'Media Permission': Boolean(submitted.mediaPermission),
-    'Parent/Guardian Signature': submitted.parentSignature,
-    'Signed Date': signedAt.slice(0, 10),
-    'Form Review Status': 'Needs Review',
-    'Spot Confirmed': true,
-    'JFP Program Waiver and Agreement': buildWaiverSummary(submitted),
-    'Joner Football Programme Waiver and Agreement': buildWaiverSummary(submitted),
-    'Internal Notes': `${submitted.programme} submission from jonerfootball.com/player-waiver on ${signedAt}`,
-  }
-
-  const existingId = await findExistingWaiverRecord(submitted)
-  if (existingId) {
-    await airtableRequest(`/${existingId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ fields }),
-    })
-    return res.status(200).json({ success: true, updated: true })
-  }
-
-  await airtableRequest('', {
-    method: 'POST',
-    body: JSON.stringify({ fields }),
-  })
-  return res.status(200).json({ success: true, created: true })
-}
-
-
 function duplicateKey(enquiry) {
   return [
     enquiry.type,
@@ -623,10 +468,8 @@ export default async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
     const type = clean(body.enquiryType, 80)
-    const protection = await protectForm(req, res, type === 'player-waiver' ? 'player-waiver' : 'contact-enquiry', body)
+    const protection = await protectForm(req, res, 'contact-enquiry', body)
     if (!protection.ok) return protection.response
-
-    if (type === 'player-waiver') return await handlePlayerWaiver(body, res)
 
     const typeLabel = TYPES[type] || TYPES.general
     const submittedAt = new Date().toISOString()

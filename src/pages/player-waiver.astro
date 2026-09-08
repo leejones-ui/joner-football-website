@@ -1,8 +1,9 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 
-const title = 'JFP Waiver'
-const description = 'JFP and Joners Juniors player details, emergency contact, medical information, payment terms and waiver form.'
+const title = 'JFP Player Info + Waiver Form'
+const description = 'Complete the JFP Player Info + Waiver Form securely in Airtable before your player attends training.'
+const airtableFormUrl = 'https://airtable.com/apphU4R0BtVIu5YqT/pagdSqWlCfZJyiPxq/form'
 ---
 
 <BaseLayout title={title} description={description} noindex={true} hideMobileAppCta={true}>
@@ -12,228 +13,23 @@ const description = 'JFP and Joners Juniors player details, emergency contact, m
         <img src="/images/home-storyboard/04-joner-way-dsc08725.webp" alt="" class="h-full w-full object-cover" loading="eager" />
       </div>
       <div class="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/35"></div>
-      <div class="relative mx-auto grid min-h-[44vh] max-w-6xl items-end px-5 pb-10 pt-24 sm:px-8 lg:px-10">
+      <div class="relative mx-auto flex min-h-[48vh] max-w-6xl items-end px-5 pb-12 pt-24 sm:px-8 lg:px-10 lg:pb-16">
         <div class="max-w-3xl">
           <p class="font-heading text-sm uppercase tracking-[0.18em] text-joner-red">Joner Football Programmes</p>
-          <h1 class="mt-4 font-heading text-5xl leading-[0.95] tracking-[0.04em] text-white sm:text-6xl lg:text-7xl">JFP waiver</h1>
-          <p class="mt-5 max-w-2xl font-body text-lg leading-relaxed text-white/78">Please complete this before the player trains. This form covers JFP and Joners Juniors, and updates player details, medical notes, emergency contact, payment terms and parent/guardian waiver acceptance.</p>
+          <h1 class="mt-4 font-heading text-5xl leading-[0.95] tracking-[0.04em] text-white sm:text-6xl lg:text-7xl">JFP player info + waiver form</h1>
+          <p class="mt-5 max-w-2xl font-body text-lg leading-relaxed text-white/78">Parents and guardians must complete the JFP Player Info + Waiver Form in Airtable before the player attends training.</p>
         </div>
       </div>
     </section>
 
-    <section class="mx-auto grid max-w-6xl gap-8 px-5 py-10 sm:px-8 lg:grid-cols-[0.82fr_1.18fr] lg:px-10 lg:py-14">
-      <aside class="space-y-4">
-        <div class="border border-white/10 bg-white/[0.04] p-5">
-          <p class="font-heading text-xl uppercase tracking-[0.08em] text-white">Before You Start</p>
-          <ul class="mt-4 space-y-3 font-body text-sm leading-relaxed text-white/70">
-            <li>Use the parent or guardian email address you want Joner Football to contact.</li>
-            <li>Medical notes must include allergies, injuries, asthma, medication or anything coaches should know.</li>
-            <li>The typed parent/guardian name counts as the signature for this form.</li>
-          </ul>
-        </div>
-        <div class="border-l-4 border-joner-red bg-white p-5 text-joner-black">
-          <p class="font-heading text-2xl uppercase tracking-[0.06em]">JFP waiver</p>
-          <p class="mt-2 font-body text-sm leading-relaxed text-gray-700">This form is for JFP and Joners Juniors players. Submit one form per player. A player must complete the waiver before they train or kick a ball.</p>
-        </div>
-      </aside>
-
-      <form id="player-waiver-form" class="bg-white p-5 text-joner-black shadow-[0_30px_90px_rgba(0,0,0,.35)] sm:p-7 lg:p-8" novalidate>
-        <input type="hidden" name="enquiryType" value="player-waiver" />
-
-
-        <div class="mb-7">
-          <p class="font-heading text-sm uppercase tracking-[0.18em] text-joner-red">Player Details</p>
-          <h2 class="mt-2 font-heading text-3xl uppercase tracking-[0.04em] text-joner-black">Update the player record</h2>
-        </div>
-
-        <div class="grid gap-5 sm:grid-cols-2">
-          <label class="block sm:col-span-2">
-            <span class="waiver-label">Programme *</span>
-            <select required name="programme" class="waiver-input">
-              <option value="">Select the player's programme</option>
-              <option value="JFP">JFP</option>
-              <option value="Joners Juniors">Joners Juniors</option>
-            </select>
-          </label>
-          <label class="block">
-            <span class="waiver-label">Player full name *</span>
-            <input required name="playerFullName" autocomplete="name" class="waiver-input" />
-          </label>
-          <label class="block">
-            <span class="waiver-label">Player date of birth *</span>
-            <input required name="dob" type="date" class="waiver-input" />
-          </label>
-          <label class="block">
-            <span class="waiver-label">Parent/guardian name *</span>
-            <input required name="parentName" autocomplete="name" class="waiver-input" />
-          </label>
-          <label class="block">
-            <span class="waiver-label">Parent/guardian email *</span>
-            <input required name="email" type="email" autocomplete="email" class="waiver-input" />
-          </label>
-          <label class="block">
-            <span class="waiver-label">Parent/guardian mobile *</span>
-            <input required name="mobileNumber" autocomplete="tel" class="waiver-input" />
-          </label>
-          <label class="block">
-            <span class="waiver-label">Player mobile</span>
-            <input name="playerMobileNumber" autocomplete="tel" class="waiver-input" />
-          </label>
-          <label class="block sm:col-span-2">
-            <span class="waiver-label">Current club or team</span>
-            <input name="currentClub" class="waiver-input" />
-          </label>
-          <label class="block sm:col-span-2">
-            <span class="waiver-label">Medical notes</span>
-            <textarea name="medicalNotes" rows="5" class="waiver-input resize-y" placeholder="Allergies, injuries, asthma, medication, conditions or anything coaches should know. Write none if there is nothing to note."></textarea>
-          </label>
-          <label class="block">
-            <span class="waiver-label">Emergency contact name *</span>
-            <input required name="emergencyContactName" autocomplete="name" class="waiver-input" />
-          </label>
-          <label class="block">
-            <span class="waiver-label">Emergency contact phone *</span>
-            <input required name="emergencyContactPhone" autocomplete="tel" class="waiver-input" />
-          </label>
-        </div>
-
-        <div class="mt-8 border border-gray-200 bg-gray-50 p-5">
-          <p class="font-heading text-2xl uppercase tracking-[0.05em] text-joner-black">Joner Football Programme Waiver and Agreement</p>
-          <div class="mt-4 space-y-4 font-body text-sm leading-relaxed text-gray-700">
-            <p>I confirm the player details, emergency contact details and medical information supplied are accurate. I will tell Joner Football if the player has any new injury, medical condition or relevant change during the term.</p>
-            <p>I understand football training includes running, striking the ball, changes of direction, physical contact, group activity and normal physical risk. I confirm the player is fit to participate unless I have listed medical notes above.</p>
-            <p>I authorise Joner Football staff to seek urgent medical assistance or emergency treatment for the player if needed during a session.</p>
-            <p>I understand that once a spot is confirmed, the player is locked in for the full term and payment is required.</p>
-            <p>I understand payment must be made before the term starts unless Dean or Ligia approve another arrangement in writing.</p>
-            <p>I understand no make-up sessions are offered for missed sessions, late arrival or non-attendance.</p>
-            <p>I understand the waiver must be completed before the player trains or kicks a ball.</p>
-          </div>
-
-          <label class="mt-5 flex gap-3 font-body text-sm leading-relaxed text-gray-800">
-            <input required type="checkbox" name="waiverAccepted" value="yes" class="mt-1 h-5 w-5 accent-joner-red" />
-            <span>I accept the full Joner Football Programme Waiver and Agreement as the parent/guardian.</span>
-          </label>
-          <label class="mt-3 flex gap-3 font-body text-sm leading-relaxed text-gray-800">
-            <input required type="checkbox" name="paymentCommitmentAccepted" value="yes" class="mt-1 h-5 w-5 accent-joner-red" />
-            <span>I accept the full-term payment commitment.</span>
-          </label>
-          <label class="mt-3 flex gap-3 font-body text-sm leading-relaxed text-gray-800">
-            <input required type="checkbox" name="noMakeUpAccepted" value="yes" class="mt-1 h-5 w-5 accent-joner-red" />
-            <span>I understand no make-up sessions are offered.</span>
-          </label>
-          <label class="mt-3 flex gap-3 font-body text-sm leading-relaxed text-gray-800">
-            <input required type="checkbox" name="emergencyTreatmentPermission" value="yes" class="mt-1 h-5 w-5 accent-joner-red" />
-            <span>I give permission for Joner Football staff to seek emergency medical assistance if required.</span>
-          </label>
-          <label class="mt-3 flex gap-3 font-body text-sm leading-relaxed text-gray-800">
-            <input type="checkbox" name="mediaPermission" value="yes" class="mt-1 h-5 w-5 accent-joner-red" />
-            <span>I give media permission for appropriate Joner Football training photos or videos. Leave unticked if you do not give permission.</span>
-          </label>
-        </div>
-
-        <label class="mt-6 block">
-          <span class="waiver-label">Parent/guardian signature *</span>
-          <input required name="parentSignature" class="waiver-input" placeholder="Type your full name" />
-        </label>
-
-        <div id="waiver-message" class="mt-5 hidden border p-4 font-body text-sm leading-relaxed"></div>
-
-        <button type="submit" class="btn-red mt-6 w-full">Submit player form</button>
-        <p class="mt-3 font-body text-xs leading-relaxed text-gray-500">Your submission goes directly to Joner Football's secure Airtable waiver record.</p>
-      </form>
+    <section class="mx-auto max-w-4xl px-5 py-12 sm:px-8 lg:px-10 lg:py-20">
+      <div class="border-l-4 border-joner-red bg-white p-7 text-joner-black shadow-[0_30px_90px_rgba(0,0,0,.35)] sm:p-10">
+        <p class="font-heading text-sm uppercase tracking-[0.18em] text-joner-red">Action required</p>
+        <h2 class="mt-3 font-heading text-3xl uppercase tracking-[0.04em] sm:text-4xl">Complete the form in Airtable</h2>
+        <p class="mt-5 max-w-2xl font-body text-base leading-relaxed text-gray-700">Use the official JFP Player Info + Waiver Form to provide the required player information. The form opens in Airtable and is the only place to submit it.</p>
+        <a class="btn-red mt-8 inline-flex w-full items-center justify-center text-center sm:w-auto" href={airtableFormUrl} target="_blank" rel="noopener noreferrer">Open JFP Player Info + Waiver Form</a>
+        <p class="mt-5 break-all font-body text-sm leading-relaxed text-gray-500">Airtable form: <a class="underline decoration-joner-red underline-offset-4" href={airtableFormUrl} target="_blank" rel="noopener noreferrer">{airtableFormUrl}</a></p>
+      </div>
     </section>
   </main>
 </BaseLayout>
-
-<style>
-  .waiver-label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-family: Anton, Impact, sans-serif;
-    font-size: 0.78rem;
-    letter-spacing: 0.13em;
-    text-transform: uppercase;
-    color: #111111;
-  }
-  .waiver-input {
-    min-height: 52px;
-    width: 100%;
-    border: 1px solid #d4d4d4;
-    background: #f8f8f8;
-    padding: 0.85rem 1rem;
-    font-family: "DM Sans", system-ui, sans-serif;
-    font-size: 1rem;
-    color: #111111;
-    outline: none;
-  }
-  .waiver-input:focus {
-    border-color: #e30613;
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.12);
-  }
-  .waiver-input::placeholder {
-    color: #777777;
-  }
-</style>
-
-<script>
-  const form = document.getElementById('player-waiver-form') as HTMLFormElement | null
-  const message = document.getElementById('waiver-message') as HTMLElement | null
-
-  const programmeSelect = form?.querySelector('select[name="programme"]') as HTMLSelectElement | null
-  const requestedProgramme = new URLSearchParams(window.location.search).get('programme')?.toLowerCase() || ''
-  if (programmeSelect) {
-    if (requestedProgramme === 'joners-juniors' || requestedProgramme === 'juniors') programmeSelect.value = 'Joners Juniors'
-    if (requestedProgramme === 'jfp') programmeSelect.value = 'JFP'
-  }
-
-  function showMessage(type: 'success' | 'error', text: string) {
-    if (!message) return
-    message.classList.remove('hidden', 'border-green-600', 'bg-green-50', 'text-green-900', 'border-red-600', 'bg-red-50', 'text-red-900')
-    if (type === 'success') message.classList.add('border-green-600', 'bg-green-50', 'text-green-900')
-    else message.classList.add('border-red-600', 'bg-red-50', 'text-red-900')
-    message.textContent = text
-  }
-
-  form?.addEventListener('submit', async (event) => {
-    event.preventDefault()
-    if (!form.checkValidity()) {
-      form.reportValidity()
-      return
-    }
-
-    const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement | null
-    if (submitButton) {
-      submitButton.disabled = true
-      submitButton.textContent = 'Submitting...'
-    }
-
-    try {
-      const data = new FormData(form)
-      const payload = Object.fromEntries(data.entries()) as Record<string, string>
-      payload.paymentCommitmentAccepted = data.has('paymentCommitmentAccepted') ? 'yes' : ''
-      payload.noMakeUpAccepted = data.has('noMakeUpAccepted') ? 'yes' : ''
-      payload.emergencyTreatmentPermission = data.has('emergencyTreatmentPermission') ? 'yes' : ''
-      payload.mediaPermission = data.has('mediaPermission') ? 'yes' : ''
-      payload.waiverAccepted = data.has('waiverAccepted') ? 'yes' : ''
-
-      const response = await fetch('/api/contact-enquiry', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok || !result.success) throw new Error(result.error || 'Submission failed')
-
-      form.reset()
-      showMessage('success', 'Submitted. Thanks, the player form and waiver have been sent to Joner Football.')
-    } catch (error) {
-      showMessage('error', error instanceof Error ? error.message : 'Something went wrong. Please try again.')
-    } finally {
-      if (submitButton) {
-        submitButton.disabled = false
-        submitButton.textContent = 'Submit player form'
-      }
-    }
-  })
-</script>
