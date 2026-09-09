@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   let window
   try { window = resolveWindow(req.query || {}) } catch (error) { return res.status(400).json({ success: false, error: error.message }) }
   try {
-    const cohort = await fetchTrialCohort(window)
+    const cohort = await fetchTrialCohort(window, fetch, new Date(), { includeFreebies: String(req.query?.freebies || '') === '1' })
     const wantsRows = String(req.query?.rows || '') !== '0'
     return res.status(200).json({ success: true, schema_version: 1, ...cohort, rows: wantsRows ? cohort.rows : undefined })
   } catch (error) {

@@ -57,7 +57,11 @@ export function classifyTrialAttribution({ sale, customer }) {
   return { channel: origin.includes('app') ? 'unknown_app_signup' : origin.includes('web') ? 'unknown_web_signup' : 'unknown', confidence: 'none', evidence: 'no_signal' }
 }
 
-export function buildTrialCohort({ window, invoices = [], sales = [], customers = new Map(), now = new Date() }) {
+export function isFreebie(invoice) {
+  return text(invoice?.kind).toLowerCase() === 'freebie'
+}
+
+export function buildTrialCohort({ window, invoices = [], sales = [], customers = new Map(), now = new Date(), includeFreebies = false }) {
   const nowMs = now.getTime()
   const byUser = new Map()
   for (const invoice of invoices) {
@@ -65,7 +69,9 @@ export function buildTrialCohort({ window, invoices = [], sales = [], customers 
     const paidAt = number(invoice?.paid_at)
     if (!userId || !paidAt) continue
     const entry = byUser.get(userId) || { trials: [], paid: [] }
-    if (isTrialInvoice(invoice)) entry.trials.push(invoice)
+    // A $0 "freebie" is a free-section signup, not a 7-day plan trial. Keep it
+    // out of the trial cohort unless the caller asks for it.
+    if (isTrialInvoice(invoice)) { if (includeFreebies || !isFreebie(invoice)) entry.trials.push(invoice) }
     else if (isPositivePaidInvoice(invoice)) entry.paid.push(invoice)
     byUser.set(userId, entry)
   }
@@ -98,7 +104,8 @@ export function buildTrialCohort({ window, invoices = [], sales = [], customers 
       uscreen_user_id: userId,
       trial_started_at: startedAt,
       trial_ends_at: new Date(trialEndsMs).toISOString(),
-      plan: text(first.offer_title || first.subscription_title || first.title || first.product_title || first.description) || undefined,
+      kind: text(first.kind) || undefined,
+      plan_id: text(first.source_id) || undefined,
       status,
       converted_at: conversion ? iso(conversion.paid_at) : undefined,
       converted_amount: conversion ? Number(((number(conversion.amount) || 0) / 100).toFixed(2)) : undefined,
@@ -124,7 +131,7 @@ export function buildTrialCohort({ window, invoices = [], sales = [], customers 
   const rate = (b) => { const decided = b.converted + b.ended_not_converted; return decided ? Number((b.converted / decided).toFixed(3)) : null }
   summary.conversion_rate_of_decided = rate(summary)
   for (const b of Object.values(byChannel)) b.conversion_rate_of_decided = rate(b)
-  return { window, generated_at: now.toISOString(), trial_days: TRIAL_DAYS, summary, by_channel: byChannel, rows }
+  return { window, generated_at: now.toISOString(), trial_days: TRIAL_DAYS, includes_freebies: includeFreebies, summary, by_channel: byChannel, rows }
 }
 
 async function fetchCustomer(id, fetchImpl) {
@@ -143,10 +150,10 @@ async function fetchCustomer(id, fetchImpl) {
   return undefined
 }
 
-export async function fetchTrialCohort(window, fetchImpl = fetch, now = new Date()) {
+export async function fetchTrialCohort(window, fetchImpl = fetch, now = new Date(), { includeFreebies = false } = {}) {
   const [invoices, sales] = await Promise.all([fetchUscreenInvoices(window, fetchImpl), fetchReliableSales(fetchImpl).catch(() => [])])
   // Only look up customers whose ledger row cannot already explain them.
-  const provisional = buildTrialCohort({ window, invoices, sales, now })
+  const provisional = buildTrialCohort({ window, invoices, sales, now, includeFreebies })
   const needLookup = provisional.rows.filter((row) => row.attribution.evidence !== 'journey_ledger').map((row) => row.uscreen_user_id).slice(0, MAX_CUSTOMER_LOOKUPS)
   const customers = new Map()
   for (let i = 0; i < needLookup.length; i += CUSTOMER_CONCURRENCY) {
@@ -154,7 +161,8 @@ export async function fetchTrialCohort(window, fetchImpl = fetch, now = new Date
     const results = await Promise.all(batch.map((id) => fetchCustomer(id, fetchImpl)))
     results.forEach((customer, index) => { if (customer) customers.set(batch[index], customer) })
   }
-  const cohort = buildTrialCohort({ window, invoices, sales, customers, now })
+  const cohort = buildTrialCohort({ window, invoices, sales, customers, now, includeFreebies })
+  cohort.freebie_signups_in_window = invoices.filter((inv) => isTrialInvoice(inv) && isFreebie(inv) && String(new Date(Number(inv.paid_at) * 1000).toISOString()).slice(0, 10) >= window.from && String(new Date(Number(inv.paid_at) * 1000).toISOString()).slice(0, 10) <= window.to).length
   cohort.invoice_history_complete = !invoices.truncated
   cohort.customer_lookups = { attempted: needLookup.length, resolved: customers.size, capped: provisional.rows.length > MAX_CUSTOMER_LOOKUPS }
   return cohort

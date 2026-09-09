@@ -14,6 +14,8 @@ const invoices = [
   { id: 4, user_id: 'u3', status: 'paid', amount: 0, trial: true, paid_at: s('2026-09-06T10:00:00Z') },
   // trial before the window: excluded
   { id: 5, user_id: 'u4', status: 'paid', amount: 0, trial: true, paid_at: s('2026-08-01T10:00:00Z') },
+  // free-section signup ($0 freebie) is not a plan trial
+  { id: 7, user_id: 'u6', status: 'paid', amount: 0, kind: 'freebie', paid_at: s('2026-09-01T10:00:00Z') },
   // paid without any trial: not part of the cohort
   { id: 6, user_id: 'u5', status: 'paid', amount: 3999, paid_at: s('2026-09-01T10:00:00Z') },
 ]
@@ -45,4 +47,6 @@ assert.equal(classifyTrialAttribution({ customer: { utm_params: { utm_source: 'i
 assert.equal(classifyTrialAttribution({ sale: { acquisition: 'unknown' }, customer: { origin: 'web_sign_up' } }).channel, 'unknown_web_signup')
 // PII never appears in rows
 assert.ok(!JSON.stringify(cohort).match(/@|email/i))
+assert.ok(!cohort.rows.find((r) => r.uscreen_user_id === 'u6'))
+assert.equal(buildTrialCohort({ window, invoices, sales, customers, now, includeFreebies: true }).summary.trials, 4)
 console.log('trial cohort tests passed')
