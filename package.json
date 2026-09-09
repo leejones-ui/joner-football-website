@@ -9,7 +9,7 @@
     "dev": "astro dev",
     "prebuild": "node scripts/guard-app-hero.mjs",
     "build": "astro build",
-    "test": "npm run test:player-waiver && npm run test:tracking && npm run test:attribution && npm run test:source-taxonomy && npm run test:attribution-privacy && npm run test:buyer-source && npm run test:reliability && npm run test:autosend && npm run test:camp-webhook",
+    "test": "npm run test:player-waiver && npm run test:tracking && npm run test:attribution && npm run test:source-taxonomy && npm run test:attribution-privacy && npm run test:buyer-source && npm run test:reliability && npm run test:autosend && npm run test:camp-webhook && npm run test:trial-cohort",
     "test:player-waiver": "node scripts/test-player-waiver.mjs",
     "test:autosend": "node scripts/test-attribution-autosend.mjs",
     "test:tracking": "node scripts/test-tracking-link-bank.mjs && node scripts/test-tracking.mjs && node scripts/test-first-paid-operator.mjs",
@@ -28,7 +28,8 @@
     "studio": "sanity dev",
     "studio:deploy": "sanity deploy",
     "test:meta-uscreen-reconciliation": "node scripts/test-meta-uscreen-reconciliation.mjs",
-    "test:camp-webhook": "node scripts/test-camp-webhook-isolation.mjs"
+    "test:camp-webhook": "node scripts/test-camp-webhook-isolation.mjs",
+    "test:trial-cohort": "node scripts/test-trial-cohort.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.2",
