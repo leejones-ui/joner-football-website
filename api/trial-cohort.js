@@ -1,7 +1,7 @@
 import { authorised, resolveWindow } from './_meta-uscreen-reconciliation.js'
 import { fetchTrialCohort } from './_trial-cohort.js'
 
-export const config = { maxDuration: 60 }
+export const config = { maxDuration: 300 }
 
 export default async function handler(req, res) {
   if (!authorised(req)) return res.status(401).json({ success: false, error: 'Unauthorized' })
