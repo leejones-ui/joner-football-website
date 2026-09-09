@@ -47,8 +47,8 @@ const teamSlides = [
   },
   {
     image: '/images/teams/features/max-plan-for-all.webp',
-    title: 'Max Plan For All',
-    note: 'Give every coach and player access to the full Joner Football App.',
+    title: 'App Access For Your Team',
+    note: 'Every coach gets Max. Players get Starter on Lite, Plus on Squad and Pro, and Max on Organisation.',
     alt: 'A coach with players beside the Joner Football App on phone and tablet',
   },
   {
@@ -74,12 +74,12 @@ const whoItsFor = [
 ]
 
 const teamSEOFAQs = [
-  { q: 'What is JF Teams?', a: 'JF Teams combines full Joner Football App access with a dedicated Teams Dashboard, giving players and coaches one connected platform for training, assignments, tracking, communication and planning.' },
+  { q: 'What is JF Teams?', a: 'JF Teams combines App content matched to your plan with a dedicated Teams Dashboard, giving players and coaches one connected platform for training, assignments, tracking, communication and planning.' },
   { q: 'How do coaches set work for players?', a: 'Coaches set assignments for the whole group to do at home. An assignment can come from the Joner Football App, a YouTube link, an external link, or a simple note written by the coach.' },
   { q: 'How do you track if players are actually doing it?', a: 'Players earn points on the team leaderboard when they complete an assignment, and they can upload photo proof of the work for extra points. That gives coaches real visibility instead of guessing whether homework sent by message was done.' },
-  { q: 'What do coaches get with JF Teams?', a: 'Every coach gets the full Max Plan content library inside the Joner Football App, including detailed session plans, voice over training drills and hundreds of training videos. Coaches also get two session planners and Ask Joner, which is direct access to Lee Jones.' },
-  { q: 'Can a large club manage multiple teams?', a: 'Yes. The managers dashboard lets you manage every team in your organisation from one place and assign coaches to specific teams.' },
-  { q: 'How much does JF Teams cost?', a: 'Pricing depends on squad size and coach access. Email teams@jonerfootball.com or send the enquiry form with your numbers and Joner Football will come back with the right package for your club.' },
+  { q: 'What do coaches get with JF Teams?', a: 'Every coach gets the full Max Plan content library inside the Joner Football App, including detailed session plans, voice over training drills and hundreds of training videos. Lite includes the on-the-go planner. Squad and Pro add the detailed planner. Ask Joner is included with Pro and Organisation.' },
+  { q: 'Can a large club manage multiple teams?', a: 'Yes. Squad includes management for two teams. Pro includes four coaches and unlimited teams within its 50-player allowance. Organisation capacity is agreed in your quote.' },
+  { q: 'How much does JF Teams cost?', a: 'Choose Lite, Squad or Pro on the Teams pricing page. Player places are separate from coach places. Organisation pricing and capacity are agreed in a quote.' },
   { q: 'How does a club get started?', a: 'Email teams@jonerfootball.com or send the enquiry form with your club, squad size and coach numbers. Joner Football will book a demo and set up the cleanest option for your organisation.' },
 ]
 
@@ -152,9 +152,10 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Every Play
           {/* The logo is the JF Teams eyebrow (reads JF TEAMS in red), so no duplicate text line under it */}
           <img src="/images/teams/logo/jf-teams-stacked-red.svg" alt={heroEyebrow} class="h-24 sm:h-28 md:h-32 w-auto mb-6" width="150" height="150" loading="eager" />
           <h1 class="font-heading text-4xl sm:text-5xl md:text-6xl font-bold text-white uppercase leading-none mb-5">{heroHeadline}</h1>
-          <p class="text-gray-200 font-body text-lg md:text-xl max-w-xl mb-7">Set the work and track who is actually doing it. Every coach gets the full Max Plan library, session planners and Ask Joner.</p>
+          <p class="text-gray-200 font-body text-lg md:text-xl max-w-xl mb-7">Set the work and track who is actually doing it. Every coach gets the Max App library. Choose the player content, planners and team capacity that fit your club.</p>
           <div>
-            <a href="#team-subscription-form" class="btn-red text-base px-8 py-4 inline-flex text-center">BOOK A DEMO</a>
+            <a href="https://teams.jonerfootball.com/join" class="btn-red text-base px-8 py-4 inline-flex text-center">COMPARE TEAMS PLANS</a>
+            <a href="#team-subscription-form" class="ml-4 inline-flex px-4 py-4 text-white underline underline-offset-4">Book a demo</a>
           </div>
         </div>
       </div>

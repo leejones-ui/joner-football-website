@@ -70,7 +70,7 @@ const plans = [
     priceLabel: 'Custom', trial: 'Built for your group', cta: 'Request Club Pricing',
     url: '/teams/#team-subscription-form', style: 'club',
     features: [
-      { text: 'Full app access for your group', lead: true },
+      { text: 'App access matched to your Teams plan', lead: true },
       'Player and coach logins',
       'Team or club section in the app',
       'Club onboarding',
@@ -80,7 +80,7 @@ const plans = [
   },
 ]
 
-const compareCols = ['Starter', 'Plus', 'Max', 'Club']
+const compareCols = ['Starter', 'Plus', 'Max', 'Teams']
 const compareGroups = [
   {
     title: 'Train on your own',
@@ -132,7 +132,7 @@ const ladder = [
   { name: 'Starter', accent: false, body: 'All the essentials. For players who want simple solo training they can follow straight away and start building better habits with the ball.' },
   { name: 'Plus', accent: true, body: 'For players, parents and coaches who want a clear training pathway, more structure and direct guidance from Lee.' },
   { name: 'Max', accent: false, body: 'For serious players and coaches who want the full Joner system, including Coaches Only, session plans, game study and how Lee builds training.' },
-  { name: 'Team / Club', accent: false, body: 'For teams, clubs and academies who want unlimited players and coaches inside their own Joner Football app section and community.' },
+  { name: 'Team / Club', accent: false, body: 'For teams, clubs and academies. Compare Lite, Squad and Pro for defined player and coach allowances, or request an Organisation quote.' },
 ]
 
 const faqs = [
@@ -141,7 +141,7 @@ const faqs = [
   ['Can I cancel?', 'Yes. You manage your subscription in the app and can cancel anytime. You keep access until the end of the period you paid for.'],
   ['Is Max only for coaches?', 'No. Max is the full Joner Football App for serious players, parents and coaches. The Coaches Only section is included, it is not the only thing in there.'],
   ['Can parents use the app?', 'Yes. Plenty of parents use it to give their player a clear plan at home instead of guessing.'],
-  ['Can teams or clubs join?', 'Yes. Team and Club is request only. We set your group up with player and coach access in one system, then scope the pricing to your size.'],
+  ['Can teams or clubs join?', 'Yes. The individual App plans above are for one account. Teams has separate Lite, Squad and Pro plans; Organisation capacity and pricing are agreed by quote.'],
 ]
 ---
 
@@ -183,7 +183,7 @@ const faqs = [
             <button type="button" data-billing="monthly" aria-pressed="false" class="billing-toggle relative z-10 flex-1 rounded-full py-2.5 text-center font-heading text-sm uppercase tracking-wider text-gray-600 transition-colors">Monthly</button>
             <button type="button" data-billing="annual" aria-pressed="true" class="billing-toggle relative z-10 flex-1 rounded-full py-2.5 text-center font-heading text-sm uppercase tracking-wider text-white transition-colors">Annual <span class="text-[#E30613]">save</span></button>
           </div>
-          <p id="currency-note" class="font-body text-xs text-gray-500">Prices shown in AUD</p>
+          <p id="currency-note" class="font-body text-xs text-gray-500">Prices shown in USD</p>
         </div>
 
         <!-- 4 columns -->
@@ -305,7 +305,9 @@ const faqs = [
                       <td class="p-2.5 font-body text-[0.72rem] font-semibold leading-tight text-gray-800 sm:p-4 sm:text-sm">{row[0]}</td>
                       {row[1].map((on, i) => (
                         <td class:list={['p-2.5 text-center sm:p-4', (compareCols[i] === 'Plus' || compareCols[i] === 'Max') && 'bg-gray-50/70']}>
-                          {on
+                          {i === 3 && group.title !== 'Teams and clubs'
+                            ? <a href="https://teams.jonerfootball.com/join" class="font-body text-xs underline underline-offset-2">By Teams plan</a>
+                            : on
                             ? <span class="font-heading text-base text-[#16a34a] sm:text-lg">&check;</span>
                             : <span class="font-heading text-base text-gray-300 sm:text-lg">&times;</span>}
                         </td>
@@ -545,7 +547,7 @@ const faqs = [
       subs.forEach((el) => {
         const planId = el.getAttribute('data-plan')
         const plan = regionPrices.plans[planId]
-        el.textContent = mode === 'annual' && plan ? 'billed annually' : ''
+        el.textContent = mode === 'annual' && plan ? fmt(plan.annual) + ' billed yearly' : 'billed monthly'
       })
       saves.forEach((el) => {
         const planId = el.getAttribute('data-plan')
