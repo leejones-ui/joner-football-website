@@ -783,11 +783,6 @@
       "permanent": true
     },
     {
-      "source": "/new-coaching-role/",
-      "destination": "/about",
-      "permanent": true
-    },
-    {
       "source": "/lee-jones-head-coach-owner/",
       "destination": "/about",
       "permanent": true
