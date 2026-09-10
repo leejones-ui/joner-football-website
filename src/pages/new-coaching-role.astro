@@ -4,109 +4,64 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 const schema = {
   '@context': 'https://schema.org',
   '@type': 'JobPosting',
-  title: 'Full Time Coaching Position',
-  description: 'Joner Football is hiring a full time football coach in Sydney. International applicants accepted.',
-  hiringOrganization: {
-    '@type': 'Organization',
-    name: 'Joner Football',
-    sameAs: 'https://jonerfootball.com',
-  },
+  title: 'Football Coach',
+  description: 'Joner Football is accepting applications from qualified, experienced football coaches for its growing programme in Sydney, Australia. Applications are welcome worldwide.',
+  hiringOrganization: { '@type': 'Organization', name: 'Joner Football', sameAs: 'https://jonerfootball.com' },
   jobLocation: {
     '@type': 'Place',
-    address: {
-      '@type': 'PostalAddress',
-      addressLocality: 'Sydney',
-      addressCountry: 'AU',
-    },
+    address: { '@type': 'PostalAddress', addressLocality: 'Sydney', addressCountry: 'AU' },
   },
-  employmentType: 'FULL_TIME',
 }
-
-import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
-import { fetchSanityPage } from '../lib/sanityPages'
-import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
-
-const sanityPage = await fetchSanityPage('new-coaching-role')
 ---
 
-{shouldReplaceSanityPage(sanityPage) ? (
-  <SanityPageRenderer page={sanityPage} />
-) : (
 <BaseLayout
   title="Apply For A Coaching Role | Joner Football"
-  description="Joner Football is hiring. Apply for a full time coaching position in Sydney. International applicants accepted."
+  description="Joner Football is growing. Apply to join our coaching team in Sydney, Australia. Qualified coaches with 1on1 and small group experience are welcome worldwide."
+  canonical="https://jonerfootball.com/new-coaching-role/"
+  ogImage="https://jonerfootball.com/images/contact/coaching-role-hero.jpg"
   schema={schema}
-  noindex={true}
 >
-  <section class="relative min-h-[66vh] flex items-center justify-center overflow-hidden bg-joner-black pt-24">
+  <section class="relative flex min-h-[68dvh] items-end overflow-hidden bg-joner-black pt-24">
     <div class="absolute inset-0">
-      <img
-        src="/images/contact/coaching-role-hero.jpg"
-        alt="Lee Jones coaching on the pitch at Joner Football"
-        class="h-full w-full object-cover object-center"
-      />
-      <div class="absolute inset-0 bg-black/66"></div>
-      <div class="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-joner-black to-transparent"></div>
+      <img src="/images/contact/coaching-role-hero.jpg" alt="Joner Football coach working with players on the pitch" class="h-full w-full object-cover object-center" />
+      <div class="absolute inset-0 bg-black/65"></div>
+      <div class="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-joner-black to-transparent"></div>
     </div>
-
-    <div class="relative z-10 mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
-      <p class="mb-4 font-heading text-sm uppercase tracking-[0.32em] text-joner-red">We Are Hiring</p>
-      <h1 class="font-heading text-6xl font-black uppercase leading-none text-white md:text-8xl lg:text-9xl">Join Our Team</h1>
+    <div class="relative z-10 mx-auto w-full max-w-7xl px-5 pb-16 sm:px-8 md:pb-24">
+      <p class="mb-5 font-heading text-xs font-bold uppercase tracking-[0.3em] text-joner-red">Join Joner Football</p>
+      <h1 class="max-w-4xl font-heading text-6xl font-black uppercase leading-[0.88] tracking-tight text-white sm:text-8xl lg:text-[9rem]">Coach the<br /><span class="text-joner-red">Joner way.</span></h1>
+      <p class="mt-7 max-w-xl font-body text-lg leading-relaxed text-gray-200 md:text-xl">Our programme is growing. We are looking for experienced, qualified coaches who care about doing the work properly.</p>
     </div>
   </section>
 
   <section class="bg-joner-black py-16 md:py-24">
-    <div class="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
-      <div class="overflow-hidden border border-gray-800 bg-joner-gray">
-        <img
-          src="/images/camps/joner-camps/lee-coaching-group.jpg"
-          alt="Lee Jones coaching a group at Joner Football"
-          class="h-full min-h-[520px] w-full object-cover object-center"
-        />
+    <div class="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+      <div>
+        <p class="mb-4 font-heading text-xs font-bold uppercase tracking-[0.28em] text-joner-red">The opportunity</p>
+        <h2 class="max-w-2xl font-heading text-4xl font-black uppercase leading-[0.95] text-white md:text-6xl">Build better footballers with us.</h2>
+        <div class="mt-7 space-y-5 font-body text-base leading-relaxed text-gray-300 md:text-lg">
+          <p>Joner Football is a growing football coaching programme based in Sydney, Australia. We work with players through 1on1 coaching and small group training, with a clear focus on technical quality.</p>
+          <p>This is a chance to join a team, work in a high-standard coaching environment, and explore life in Sydney. Applications are welcome from coaches around the world.</p>
+        </div>
+        <div class="mt-10 overflow-hidden border border-gray-800">
+          <img src="/images/camps/joner-camps/lee-coaching-group.jpg" alt="Lee Jones coaching a small group at Joner Football" class="aspect-[4/3] w-full object-cover" loading="lazy" />
+        </div>
       </div>
 
-      <div class="border border-gray-800 bg-joner-gray p-6 text-center md:p-10">
-        <p class="mb-3 font-heading text-sm uppercase tracking-[0.26em] text-joner-red">Role Requirements</p>
-        <h2 class="mx-auto max-w-3xl font-heading text-4xl font-black uppercase leading-tight text-white md:text-5xl">We Are Looking For The Best</h2>
-
-        <div class="mx-auto mt-6 max-w-3xl space-y-5 font-body text-base leading-relaxed text-gray-300">
-          <p>
-            We are not looking for any ordinary coach, we are looking for the best. We are looking for someone that is willing to go above and beyond, someone that is willing to over deliver, and above all a great person that can be added to Joner Football.
-          </p>
-          <p class="font-heading text-xl uppercase tracking-wide text-white">International applicants accepted.</p>
-        </div>
-
-        <div class="mt-10 grid gap-8 text-left md:grid-cols-2">
-          <div class="border border-gray-800 bg-joner-black p-6">
-            <h3 class="mb-4 font-heading text-xl font-bold uppercase text-white">Role</h3>
-            <ul class="space-y-3 font-body text-sm leading-relaxed text-gray-300">
-              <li>Full time coaching position</li>
-              <li>Needs to be able to coach early mornings and afternoons</li>
-              <li>Monday to Saturday</li>
-              <li>International applicants accepted</li>
-            </ul>
-          </div>
-
-          <div class="border border-gray-800 bg-joner-black p-6">
-            <h3 class="mb-4 font-heading text-xl font-bold uppercase text-white">Requirements</h3>
-            <ul class="space-y-3 font-body text-sm leading-relaxed text-gray-300">
-              <li>Experience within football, ideally coming from a professional background</li>
-              <li>Experience within coaching, more particular small group and 1on1 training</li>
-              <li>Able to demonstrate a good level of skill to our players</li>
-              <li>Passionate about developing players</li>
-              <li>Hold a valid drivers licence</li>
-              <li>Great communication skills</li>
-              <li>Full working with children check</li>
-              <li>Be willing to move to Sydney and live here if from overseas</li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="mt-12 flex justify-center border-t border-gray-800 pt-10">
-          <a href="/contact?type=coaching-role" class="btn-red px-12 py-6 text-lg md:text-xl">Apply For Coaching Role</a>
-        </div>
+      <div class="border border-gray-800 bg-joner-gray p-6 sm:p-9">
+        <p class="mb-3 font-heading text-xs font-bold uppercase tracking-[0.28em] text-joner-red">Before you apply</p>
+        <h2 class="font-heading text-3xl font-black uppercase leading-tight text-white md:text-5xl">You must have</h2>
+        <ul class="mt-8 space-y-4 font-body text-base leading-relaxed text-gray-200 md:text-lg">
+          <li class="flex gap-4 border-t border-gray-700 pt-4"><span class="font-heading text-joner-red">01</span><span>Full coaching qualifications.</span></li>
+          <li class="flex gap-4 border-t border-gray-700 pt-4"><span class="font-heading text-joner-red">02</span><span>Experience coaching both 1on1 and small group training.</span></li>
+          <li class="flex gap-4 border-t border-gray-700 pt-4"><span class="font-heading text-joner-red">03</span><span>A full driving licence and your own car.</span></li>
+          <li class="flex gap-4 border-t border-gray-700 pt-4"><span class="font-heading text-joner-red">04</span><span>A Working With Children Check.</span></li>
+          <li class="flex gap-4 border-t border-gray-700 pt-4"><span class="font-heading text-joner-red">05</span><span>The ability to demonstrate football skills correctly. This is crucial.</span></li>
+          <li class="flex gap-4 border-y border-gray-700 py-4"><span class="font-heading text-joner-red">06</span><span>A strong work ethic and real passion for developing players.</span></li>
+        </ul>
+        <p class="mt-7 font-body text-sm leading-relaxed text-gray-400">If you are looking to explore Sydney and become part of a growing coaching team, we want to hear from you.</p>
+        <div class="mt-10 border-t border-gray-700 pt-8"><a href="/contact?type=coaching-role" class="btn-red inline-flex w-full justify-center px-8 py-5 text-base sm:w-auto">Apply for coaching role</a></div>
       </div>
     </div>
   </section>
 </BaseLayout>
-)}
