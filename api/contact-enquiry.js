@@ -333,9 +333,21 @@ function cleanAttachment(file) {
   const name = clean(file.name || 'cv', 180)
   const content = String(file.content || '').replace(/[^A-Za-z0-9+/=]/g, '')
   if (!name || !content) return null
-  const bytes = Math.ceil((content.length * 3) / 4)
+  const extension = name.toLowerCase().split('.').pop()
+  const allowedExtensions = new Set(['pdf', 'doc', 'docx'])
+  if (!allowedExtensions.has(extension)) throw new Error('CV must be a PDF, DOC, or DOCX file.')
+  if (content.length > 7 * 1024 * 1024) throw new Error('CV file is too large. Max 5MB.')
+  let decoded
+  try { decoded = Buffer.from(content, 'base64') } catch (error) { throw new Error('CV file could not be read.') }
+  const isPdf = decoded.subarray(0, 5).toString('ascii') === '%PDF-'
+  const isDoc = decoded.subarray(0, 4).equals(Buffer.from([0xD0, 0xCF, 0x11, 0xE0]))
+  const isDocx = decoded.subarray(0, 2).equals(Buffer.from([0x50, 0x4B]))
+  if ((extension === 'pdf' && !isPdf) || (extension === 'doc' && !isDoc) || (extension === 'docx' && !isDocx)) {
+    throw new Error('The CV file type could not be verified.')
+  }
+  const bytes = decoded.length
   if (bytes > 5 * 1024 * 1024) throw new Error('CV file is too large. Max 5MB.')
-  return { name, content }
+  return { name, content, type: extension === 'pdf' ? 'application/pdf' : extension === 'doc' ? 'application/msword' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
 }
 
 function duplicateKey(enquiry) {
@@ -392,6 +404,9 @@ async function sendEmail(enquiry) {
       ${row('Main goal', enquiry.parentGoal)}
       ${row('Coaching experience', enquiry.coachingExperience)}
       ${row('Qualifications', enquiry.qualifications)}
+      ${row('Demo or coaching link', enquiry.demoLink)}
+      ${row('Requirements confirmed', enquiry.requirementsConfirmed ? 'Yes' : 'No')}
+      ${row('Recruitment consent', enquiry.recruitmentConsent ? 'Yes' : 'No')}
       ${row('Availability', enquiry.availability)}
       ${row('Message', enquiry.message)}
       ${row('Submitted at', enquiry.submittedAt)}
@@ -492,15 +507,18 @@ export default async function handler(req, res) {
       parentGoal: clean(body.parentGoal, 240),
       coachingExperience: clean(body.coachingExperience, 500),
       qualifications: clean(body.qualifications, 500),
+      demoLink: clean(body.demoLink, 1000),
       availability: clean(body.availability, 240),
       message: clean(body.message, 2500),
       cvAttachment: type === 'coaching-role' ? cleanAttachment(body.cvFile) : null,
+      requirementsConfirmed: body.requirementsConfirmed === true || body.requirementsConfirmed === 'true' || body.requirementsConfirmed === 'on',
+      recruitmentConsent: body.recruitmentConsent === true || body.recruitmentConsent === 'true' || body.recruitmentConsent === 'on',
       marketingOptIn: body.marketingOptIn === true || body.marketingOptIn === 'true' || body.marketingOptIn === 'on',
       recipientEmail: RECIPIENTS[type] || FALLBACK_RECIPIENT_EMAIL,
       attribution: buildLeadAttribution(body, submittedAt),
     }
 
-    const requiresMessage = enquiry.type !== 'team-subscriptions'
+    const requiresMessage = !['team-subscriptions', 'coaching-role'].includes(enquiry.type)
     if (!enquiry.name || !enquiry.email || !enquiry.phone || (requiresMessage && !enquiry.message)) {
       return res.status(400).json({ success: false, error: 'Please complete all required fields.' })
     }
@@ -531,6 +549,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Please add your coaching experience and qualifications.' })
     }
 
+    if (type === 'coaching-role' && (!enquiry.cvAttachment || !enquiry.requirementsConfirmed || !enquiry.recruitmentConsent)) {
+      return res.status(400).json({ success: false, error: 'Please attach your CV and confirm the requirements and recruitment consent.' })
+    }
+
     const duplicate = isDuplicateSubmission(enquiry)
     if (duplicate) return res.status(200).json({ success: true, duplicate: true })
     await sendEmail(enquiry)
@@ -548,6 +570,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true })
   } catch (error) {
     console.error('Contact enquiry failed:', error)
-    return res.status(500).json({ success: false, error: 'Enquiry could not be sent. Please try again.' })
+    const isValidationError = /^(CV |The CV|Your CV)/i.test(String(error?.message || ''))
+    return res.status(isValidationError ? 400 : 500).json({ success: false, error: isValidationError ? error.message : 'Enquiry could not be sent. Please try again.' })
   }
 }
