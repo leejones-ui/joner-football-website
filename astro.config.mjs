@@ -36,6 +36,7 @@ export default defineConfig({
         '/training/jfp-program/',
         '/email-assets/',
         '/free-bundle/watch/',
+        '/coaching-pros-free/',
       ];
       return !pathname.startsWith('/drafts/') && !excludedPaths.includes(pathname);
     },

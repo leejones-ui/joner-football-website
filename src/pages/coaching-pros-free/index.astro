@@ -1,0 +1,388 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const episodeUrl = 'https://app.jonerfootball.com/programs/coaching-pros-ep-1-e5a655'
+---
+
+<BaseLayout
+  title="Free Coaching Pros Episode 1 | JF APP"
+  description="Watch Lee Jones coach real players and explain the drills, details and decisions behind the session in Coaching Pros Episode 1."
+  canonical="https://jonerfootball.com/coaching-pros-free/"
+  ogImage="https://jonerfootball.com/images/coaches-only/dsc05109-hero.webp"
+  noindex
+  hideChrome
+  hideMobileAppCta
+>
+  <section class="acquisition-page" aria-labelledby="page-title">
+    <div class="photo-panel" role="img" aria-label="Lee Jones coaching young football players on the pitch"></div>
+
+    <div class="content-panel">
+      <div class="content-inner">
+        <div class="brand-card" aria-label="Joner Football App">
+          <img
+            src="/images/brand/joner-app-logo-horizontal.jpg"
+            alt="Joner Football App"
+            width="1280"
+            height="720"
+          />
+        </div>
+
+        <p class="eyebrow">FREE COACHING PROS · EPISODE 1</p>
+        <h1 id="page-title">Coach the drill.<br /><span>Understand the why.</span></h1>
+        <p class="intro">
+          Watch the full first episode as Lee coaches real players, explains each drill and shows the decisions that make a session work.
+        </p>
+
+        <ul class="benefits" aria-label="What you will learn">
+          <li><span aria-hidden="true">01</span> See how Lee delivers the session</li>
+          <li><span aria-hidden="true">02</span> Hear what he corrects and why</li>
+          <li><span aria-hidden="true">03</span> Take practical detail into your next training</li>
+        </ul>
+
+        <form id="coaching-pros-form" class="lead-form" novalidate>
+          <div class="field">
+            <label for="lead-email">Your email</label>
+            <input
+              id="lead-email"
+              name="email"
+              type="email"
+              inputmode="email"
+              autocomplete="email"
+              maxlength="200"
+              placeholder="coach@example.com"
+              required
+              aria-describedby="episode-note form-status"
+            />
+          </div>
+
+          <label class="consent-row" for="marketing-consent">
+            <input id="marketing-consent" name="marketingConsent" type="checkbox" />
+            <span>
+              Send me coaching tips and JF App updates. Optional. See our
+              <a href="/privacy/">Privacy Policy</a>.
+            </span>
+          </label>
+
+          <button type="submit" id="watch-button">Watch Episode 1 Free</button>
+          <p id="form-status" class="form-status" role="status" aria-live="polite"></p>
+          <p id="episode-note" class="episode-note">
+            Opens in the JF App. You may need to sign in or create a free account.
+          </p>
+        </form>
+
+        <p class="audience-note">Made for grassroots coaches — including parents stepping up to coach the team.</p>
+      </div>
+    </div>
+  </section>
+
+  <script define:vars={{ episodeUrl }}>
+    const form = document.getElementById('coaching-pros-form')
+    const emailInput = document.getElementById('lead-email')
+    const consentInput = document.getElementById('marketing-consent')
+    const button = document.getElementById('watch-button')
+    const status = document.getElementById('form-status')
+
+    form?.addEventListener('submit', async (event) => {
+      event.preventDefault()
+      if (!(emailInput instanceof HTMLInputElement) ||
+          !(consentInput instanceof HTMLInputElement) ||
+          !(button instanceof HTMLButtonElement) ||
+          !(status instanceof HTMLElement)) return
+
+      status.textContent = ''
+      status.classList.remove('is-error')
+
+      if (!emailInput.checkValidity()) {
+        emailInput.reportValidity()
+        return
+      }
+
+      button.disabled = true
+      button.textContent = 'Opening episode…'
+
+      try {
+        const recaptcha = window.JonerRecaptcha
+        const recaptchaToken = recaptcha ? await recaptcha.getToken('coaching_pros_lead') : ''
+        const response = await fetch('/api/coaching-pros-lead', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            email: emailInput.value,
+            marketingConsent: consentInput.checked,
+            recaptchaToken,
+          }),
+        })
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok || data.success !== true) {
+          throw new Error(data.error || 'We could not open the episode. Please try again.')
+        }
+
+        window.location.assign(episodeUrl)
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : 'We could not open the episode. Please try again.'
+        status.classList.add('is-error')
+        status.focus()
+        button.disabled = false
+        button.textContent = 'Watch Episode 1 Free'
+      }
+    })
+  </script>
+</BaseLayout>
+
+<style>
+  :global(body) {
+    margin: 0;
+    background: #090909;
+    color: #fff;
+  }
+
+  .acquisition-page {
+    min-height: 100svh;
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(470px, 0.92fr);
+    background: #090909;
+  }
+
+  .photo-panel {
+    min-height: 100svh;
+    background:
+      linear-gradient(90deg, rgba(0, 0, 0, 0.08) 45%, #090909 100%),
+      linear-gradient(0deg, rgba(0, 0, 0, 0.56), rgba(0, 0, 0, 0.08) 50%),
+      url('/images/coaches-only/dsc05109-hero.webp') center center / cover no-repeat;
+  }
+
+  .content-panel {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    padding: clamp(2rem, 5vw, 5.5rem);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .content-panel::before {
+    content: '';
+    position: absolute;
+    inset: auto -9rem -10rem auto;
+    width: 25rem;
+    height: 25rem;
+    border: 4.5rem solid rgba(226, 0, 26, 0.09);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .content-inner {
+    width: min(100%, 610px);
+    max-width: 100%;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .brand-card {
+    width: 190px;
+    aspect-ratio: 16 / 6;
+    overflow: hidden;
+    background: #fff;
+    margin-bottom: 2rem;
+  }
+
+  .brand-card img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  .eyebrow {
+    color: #ff1734;
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    margin: 0 0 0.8rem;
+  }
+
+  h1 {
+    font-family: Impact, 'Arial Narrow', sans-serif;
+    font-size: clamp(3.1rem, 5.2vw, 6.4rem);
+    font-weight: 900;
+    letter-spacing: -0.025em;
+    line-height: 0.88;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  h1 span { color: #ef0b27; }
+
+  .intro {
+    max-width: 55ch;
+    color: #d5d5d5;
+    font-size: clamp(1rem, 1.25vw, 1.15rem);
+    line-height: 1.6;
+    margin: 1.45rem 0 1.25rem;
+  }
+
+  .benefits {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.55rem;
+    display: grid;
+    gap: 0.6rem;
+    color: #f3f3f3;
+    font-weight: 700;
+  }
+
+  .benefits li { display: flex; align-items: center; gap: 0.75rem; }
+  .benefits li span { color: #ef0b27; font-size: 0.72rem; letter-spacing: 0.12em; }
+
+  .lead-form {
+    border-top: 1px solid #383838;
+    padding-top: 1.4rem;
+  }
+
+  .field label {
+    display: block;
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .field input {
+    width: 100%;
+    min-height: 54px;
+    box-sizing: border-box;
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    background: #171717;
+    color: #fff;
+    padding: 0.85rem 1rem;
+    font: inherit;
+  }
+
+  .field input:focus-visible,
+  .consent-row input:focus-visible,
+  button:focus-visible,
+  a:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 3px;
+  }
+
+  .consent-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    color: #bcbcbc;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    margin: 0.85rem 0 1rem;
+    cursor: pointer;
+  }
+
+  .consent-row input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    margin: 0.1rem 0 0;
+    accent-color: #ef0b27;
+  }
+
+  .consent-row a { color: #fff; text-underline-offset: 3px; }
+
+  button {
+    width: 100%;
+    min-height: 58px;
+    border: 0;
+    border-radius: 4px;
+    background: #ed0b27;
+    color: #fff;
+    font: inherit;
+    font-weight: 900;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 10px 35px rgba(237, 11, 39, 0.23);
+  }
+
+  button:hover { background: #ff1734; }
+  button:disabled { cursor: wait; opacity: 0.72; }
+
+  .form-status {
+    margin: 0.8rem 0 0;
+    min-height: 1.2em;
+    color: #fff;
+    font-size: 0.86rem;
+  }
+
+  .form-status.is-error {
+    background: rgba(237, 11, 39, 0.14);
+    border-left: 3px solid #ed0b27;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .episode-note,
+  .audience-note {
+    color: #8f8f8f;
+    font-size: 0.76rem;
+    line-height: 1.45;
+    margin: 0.55rem 0 0;
+  }
+
+  .audience-note {
+    border-top: 1px solid #242424;
+    margin-top: 1.35rem;
+    padding-top: 1rem;
+  }
+
+  @media (max-width: 860px) {
+    .acquisition-page {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+    }
+    .photo-panel {
+      min-height: 43svh;
+      background-position: center 34%;
+      background-image:
+        linear-gradient(0deg, #090909 0%, rgba(9, 9, 9, 0.02) 45%),
+        url('/images/coaches-only/dsc05109-hero.webp');
+    }
+    .content-panel {
+      width: 100%;
+      max-width: 100%;
+      padding: 0.5rem clamp(1rem, 5vw, 1.5rem) 2.5rem;
+    }
+    .content-inner { margin: 0 auto; }
+    .brand-card { width: 150px; max-width: 46vw; margin-bottom: 1.4rem; }
+    h1 {
+      max-width: 100%;
+      font-size: clamp(2.35rem, 11vw, 4.25rem);
+      line-height: 0.94;
+      letter-spacing: -0.015em;
+      overflow-wrap: normal;
+    }
+    h1 span { display: block; }
+    .intro,
+    .benefits,
+    .lead-form,
+    .audience-note {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+  }
+
+  @media (max-width: 350px) {
+    .content-panel { padding-inline: 0.9rem; }
+    h1 { font-size: clamp(2.15rem, 10.8vw, 2.4rem); }
+    .eyebrow { font-size: 0.68rem; letter-spacing: 0.12em; }
+    button { font-size: 0.9rem; letter-spacing: 0.02em; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; }
+  }
+</style>
