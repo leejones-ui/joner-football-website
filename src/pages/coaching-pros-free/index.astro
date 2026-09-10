@@ -152,6 +152,8 @@ const episodeUrl = 'https://app.jonerfootball.com/programs/coaching-pros-ep-1-e5
   }
 
   .content-panel {
+    width: 100%;
+    min-width: 0;
     display: flex;
     align-items: center;
     padding: clamp(2rem, 5vw, 5.5rem);
@@ -172,6 +174,8 @@ const episodeUrl = 'https://app.jonerfootball.com/programs/coaching-pros-ep-1-e5
 
   .content-inner {
     width: min(100%, 610px);
+    max-width: 100%;
+    min-width: 0;
     position: relative;
     z-index: 1;
   }
@@ -334,7 +338,11 @@ const episodeUrl = 'https://app.jonerfootball.com/programs/coaching-pros-ep-1-e5
   }
 
   @media (max-width: 860px) {
-    .acquisition-page { display: block; }
+    .acquisition-page {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+    }
     .photo-panel {
       min-height: 43svh;
       background-position: center 34%;
@@ -342,10 +350,36 @@ const episodeUrl = 'https://app.jonerfootball.com/programs/coaching-pros-ep-1-e5
         linear-gradient(0deg, #090909 0%, rgba(9, 9, 9, 0.02) 45%),
         url('/images/coaches-only/dsc05109-hero.webp');
     }
-    .content-panel { padding: 0.5rem 1.25rem 2.5rem; }
+    .content-panel {
+      width: 100%;
+      max-width: 100%;
+      padding: 0.5rem clamp(1rem, 5vw, 1.5rem) 2.5rem;
+    }
     .content-inner { margin: 0 auto; }
-    .brand-card { width: 150px; margin-bottom: 1.4rem; }
-    h1 { font-size: clamp(3rem, 14vw, 5rem); }
+    .brand-card { width: 150px; max-width: 46vw; margin-bottom: 1.4rem; }
+    h1 {
+      max-width: 100%;
+      font-size: clamp(2.35rem, 11vw, 4.25rem);
+      line-height: 0.94;
+      letter-spacing: -0.015em;
+      overflow-wrap: normal;
+    }
+    h1 span { display: block; }
+    .intro,
+    .benefits,
+    .lead-form,
+    .audience-note {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+  }
+
+  @media (max-width: 350px) {
+    .content-panel { padding-inline: 0.9rem; }
+    h1 { font-size: clamp(2.15rem, 10.8vw, 2.4rem); }
+    .eyebrow { font-size: 0.68rem; letter-spacing: 0.12em; }
+    button { font-size: 0.9rem; letter-spacing: 0.02em; }
   }
 
   @media (prefers-reduced-motion: reduce) {
