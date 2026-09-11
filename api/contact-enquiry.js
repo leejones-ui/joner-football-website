@@ -407,7 +407,7 @@ export async function sendEmail(enquiry) {
       ${row('Main goal', enquiry.parentGoal)}
       ${row('Coaching experience', enquiry.coachingExperience)}
       ${row('Qualifications', enquiry.qualifications)}
-      ${row('Availability', enquiry.availability)}
+      ${enquiry.type !== 'coaching-role' ? row('Availability', enquiry.availability) : ''}
       ${row('Coaching demonstration video link', enquiry.coachingDemoUrl)}
       ${row('Message', enquiry.message)}
       ${row('Submitted at', enquiry.submittedAt)}
