@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { pickStep, planNurture } from '../api/_ad-trial-nurture.js'
+process.env.AD_TRIAL_NURTURE_FROM = '2026-09-01T00:00:00Z'
 const now = new Date('2026-09-11T12:00:00Z')
 const row = (started, status = 'in_trial', channel = 'meta_ads') => ({ uscreen_user_id: started, trial_started_at: started, trial_ends_at: new Date(Date.parse(started) + 7 * 86400000).toISOString(), status, attribution: { channel } })
 assert.equal(pickStep(row('2026-09-11T02:00:00Z'), now), undefined)            // 10 hours in: too early
@@ -16,4 +17,5 @@ const planningRow = { ...row('2026-09-10T06:00:00Z'), attribution: { channel: 'm
 assert.equal(planNurture([planningRow], now)[0].templateId, 329)
 const structuresRow = { ...row('2026-09-10T07:00:00Z'), attribution: { channel: 'meta_ads', ad: 'JF Coaches Max - Coaching Structures V2' } }
 assert.equal(planNurture([structuresRow], now)[0].templateId, 326)
+assert.equal(pickStep({ ...row('2026-08-30T06:00:00Z'), trial_ends_at: '2026-09-20T00:00:00Z' }, now), undefined) // before go-live: never nurtured
 console.log('ad trial nurture tests passed')

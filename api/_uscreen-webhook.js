@@ -215,6 +215,10 @@ async function sendVerifiedConversionToMeta(eventName, data, email, total) {
 const LISTS = {
   appUsersMega: Number(process.env.BREVO_APP_USERS_MEGA_LIST_ID || 36),
   trialUsers: Number(process.env.BREVO_TRIAL_USERS_LIST_ID || 21),
+  // Trials that started from a paid Meta click. Kept out of Trial Users (#21)
+  // so the generic trial automations skip them; the website's ad-trial
+  // nurture (api/_ad-trial-nurture.js) emails them instead.
+  trialUsersMetaAds: Number(process.env.BREVO_TRIAL_USERS_META_ADS_LIST_ID || 63),
   monthlySubscribers: Number(process.env.BREVO_MONTHLY_SUBSCRIBERS_LIST_ID || 22),
   annualSubscribers: Number(process.env.BREVO_ANNUAL_SUBSCRIBERS_LIST_ID || 23),
   coachesPlanSubscribers: Number(process.env.BREVO_COACHES_PLAN_SUBSCRIBERS_LIST_ID || 24),
@@ -272,6 +276,15 @@ const NON_WEB_PAYMENT_ORIGINS = new Set([
   'ios', 'android', 'app_store', 'play_store',
 ])
 
+const PAID_META_SOURCE_RE = /^(fb|ig|an|facebook|instagram|meta)/i
+// A trial counts as a paid-Meta trial when the click carried a Meta source with
+// a paid medium or a Meta ad/adset/campaign id, on either the last or first touch.
+export function isPaidMetaTrial(data) {
+  const a = extractAttribution(data) || {}
+  const touch = (source, medium, ...ids) => PAID_META_SOURCE_RE.test(String(source || '')) && (/paid/i.test(String(medium || '')) || ids.some(Boolean))
+  return touch(a.utm_source, a.utm_medium, a.ad_id, a.adset_id, a.campaign_id) || touch(a.first_utm_source, a.first_utm_medium, a.first_ad_id, a.first_adset_id, a.first_campaign_id)
+}
+
 export function classifyFirstPaidAcquisition({ eventType, offerId, total, transactionId, origin, contactSnapshot }) {
   if (eventType !== 'order.paid' || !TIER_BY_OFFER_ID[offerId] || !(Number(total) > 0)) {
     return { eligible: false, reason: 'not-positive-paid-order' }
@@ -296,7 +309,7 @@ export function classifyFirstPaidAcquisition({ eventType, offerId, total, transa
   if (attrs.JF_FIRST_PAID_TRANSACTION_ID || attrs.JF_FIRST_PAID_AT) {
     return { eligible: false, reason: 'existing-member-payment' }
   }
-  if (listIds.has(LISTS.trialUsers)) {
+  if (listIds.has(LISTS.trialUsers) || listIds.has(LISTS.trialUsersMetaAds)) {
     return { eligible: true, reason: 'trial-converted-first-paid' }
   }
   return { eligible: true, reason: 'first-paid-membership' }
@@ -890,7 +903,7 @@ export async function processUscreenPayload(data) {
       reason = listIds.length ? '' : 'no-churn-list-for-offer'
     }
     // They churned: pull them out of every active list, trial and failed-payment.
-    unlinkListIds = [LISTS.trialUsers, ...ALL_ACTIVE_LISTS, LISTS.failedPayments]
+    unlinkListIds = [LISTS.trialUsers, LISTS.trialUsersMetaAds, ...ALL_ACTIVE_LISTS, LISTS.failedPayments]
   } else if (eventType === 'ownership.created') {
     listIds = offerId ? (OWNERSHIP_LISTS_BY_OFFER_ID[offerId] || []) : []
     reason = listIds.length ? '' : 'no-ownership-list-for-offer'
@@ -898,7 +911,7 @@ export async function processUscreenPayload(data) {
     if (offerId && OWNERSHIP_LISTS_BY_OFFER_ID[offerId] && total === 0) {
       listIds = OWNERSHIP_LISTS_BY_OFFER_ID[offerId]
     } else if (offerId && TRIAL_ELIGIBLE_OFFER_IDS.has(offerId) && total === 0) {
-      listIds = [LISTS.trialUsers]
+      listIds = [isPaidMetaTrial(eventData) ? LISTS.trialUsersMetaAds : LISTS.trialUsers]
       try {
         const meta = await sendVerifiedConversionToMeta(META_EVENTS.trialStarted, eventData, email, 0)
         console.info('Uscreen->Meta verified trial started', meta)
@@ -995,7 +1008,7 @@ export async function processUscreenPayload(data) {
 
   // A paid order means they are active again: pull them out of every churned and trial list.
   if (eventType === 'order.paid' && listIds.some((id) => ALL_ACTIVE_LISTS.includes(id))) {
-    unlinkListIds = [...ALL_CHURNED_LISTS, LISTS.trialUsersChurned, LISTS.trialUsers, LISTS.failedPayments]
+    unlinkListIds = [...ALL_CHURNED_LISTS, LISTS.trialUsersChurned, LISTS.trialUsers, LISTS.trialUsersMetaAds, LISTS.failedPayments]
   }
 
   if (!listIds.length) return { accepted: true, event: eventType, skipped: true, reason, offerId, reconciliation, sale }

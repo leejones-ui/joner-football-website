@@ -14,6 +14,10 @@ export const NURTURE_STEPS = Object.freeze([
   { step: 'day3', templateId: 327, minDays: 3, maxDays: 6 },
   { step: 'day6', templateId: 328, minDays: 6, maxDays: 7 },
 ])
+// Only trials that started after go-live are nurtured. Earlier Meta trialists
+// are already inside the generic Brevo trial automations and must not be
+// emailed twice.
+export const nurtureFrom = () => process.env.AD_TRIAL_NURTURE_FROM || '2026-09-11T14:00:00Z'
 const LOOKBACK_DAYS = 9
 const SENT_TTL_SECONDS = 60 * 60 * 24 * 60
 const sentKey = (userId, step) => `jf:nurture:ad-trial:${userId}:${step}`
@@ -22,6 +26,7 @@ const DAY = 86400000
 export function pickStep(row, now = new Date(), steps = NURTURE_STEPS) {
   if (row?.attribution?.channel !== 'meta_ads') return undefined
   if (row.status === 'converted') return undefined
+  if (Date.parse(row.trial_started_at) < Date.parse(nurtureFrom())) return undefined
   const days = (now.getTime() - Date.parse(row.trial_started_at)) / DAY
   if (!Number.isFinite(days)) return undefined
   // Day 6 must land before the trial actually ends.
