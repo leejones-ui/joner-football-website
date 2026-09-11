@@ -99,3 +99,33 @@ export async function runAdTrialNurture({ dryRun = true, now = new Date(), fetch
   }
   return summary
 }
+
+// Sync every Meta-ad trialist in the cohort into the Brevo "Trial Users - Meta
+// Ads" list so Lee can see them, and so future Brevo work can target them.
+// Adds to the list only; never removes anyone from any other list.
+export const META_TRIAL_LIST_ID = Number(process.env.BREVO_TRIAL_USERS_META_ADS_LIST_ID || 63)
+
+export async function syncMetaTrialList({ from, to, now = new Date(), fetchImpl = fetch } = {}) {
+  const apiKey = process.env.BREVO_API_KEY
+  if (!apiKey) throw new Error('brevo_not_configured')
+  const window = { from: from || new Date(now.getTime() - 31 * DAY).toISOString().slice(0, 10), to: to || now.toISOString().slice(0, 10), timezone: 'UTC' }
+  const cohort = await fetchTrialCohort(window, fetchImpl, now)
+  const summary = { window, cohort_complete: cohort.invoice_history_complete, meta_trials: 0, added_or_updated: 0, skipped_no_email: 0, failed: 0, by_status: {} }
+  if (!cohort.invoice_history_complete) { summary.aborted = 'invoice_history_incomplete'; return summary }
+  for (const row of cohort.rows) {
+    if (row.attribution?.channel !== 'meta_ads') continue
+    summary.meta_trials += 1
+    summary.by_status[row.status] = (summary.by_status[row.status] || 0) + 1
+    let customer
+    try { customer = await fetchCustomerEmail(row.uscreen_user_id, fetchImpl) } catch { customer = undefined }
+    if (!customer?.email || !customer.email.includes('@')) { summary.skipped_no_email += 1; continue }
+    const response = await fetchImpl('https://api.brevo.com/v3/contacts', {
+      method: 'POST',
+      headers: { 'api-key': apiKey, 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ email: customer.email, listIds: [META_TRIAL_LIST_ID], updateEnabled: true, attributes: { USCREEN_USER_ID: String(row.uscreen_user_id), ...(row.attribution?.ad ? { UTM_CONTENT: String(row.attribution.ad).slice(0, 180) } : {}) } }),
+    })
+    if (response.ok || response.status === 204) summary.added_or_updated += 1
+    else { summary.failed += 1; summary.last_error = `brevo_${response.status}` }
+  }
+  return summary
+}

@@ -1,4 +1,4 @@
-import { runAdTrialNurture } from './_ad-trial-nurture.js'
+import { runAdTrialNurture, syncMetaTrialList } from './_ad-trial-nurture.js'
 
 export const config = { maxDuration: 300 }
 
@@ -18,6 +18,10 @@ export default async function handler(req, res) {
   const forcedDry = String(req.query?.dry_run ?? '') === '1'
   const dryRun = !live || forcedDry
   try {
+    if (String(req.query?.action || '') === 'sync-list') {
+      const summary = await syncMetaTrialList({ from: req.query?.from, to: req.query?.to })
+      return res.status(200).json({ success: true, action: 'sync-list', ...summary })
+    }
     const summary = await runAdTrialNurture({ dryRun })
     return res.status(200).json({ success: true, live_switch: live, ...summary })
   } catch (error) {
