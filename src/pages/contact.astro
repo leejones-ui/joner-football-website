@@ -148,6 +148,12 @@ const heroImage = getSanityImageUrl(sanityPage?.heroImage, '/images/contact/lee-
         </div>
 
         <div data-fields="coaching-role" class="hidden">
+          <label for="coachingDemoUrl" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-gray-400">Coaching demonstration video link</label>
+          <input id="coachingDemoUrl" type="url" name="coachingDemoUrl" placeholder="https://..." inputmode="url" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
+          <p class="mt-2 font-body text-xs leading-relaxed text-gray-500">Share a publicly viewable video or accessible share link showing you coaching or demonstrating your skills.</p>
+        </div>
+
+        <div data-fields="coaching-role" class="hidden">
           <label for="cvFile" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-gray-400">Attach CV</label>
           <input id="cvFile" type="file" name="cvFile" accept=".pdf,.doc,.docx,.pages" class="block w-full cursor-pointer border border-dashed border-gray-700 bg-joner-black px-4 py-4 font-body text-sm text-gray-300 file:mr-4 file:border-0 file:bg-joner-red file:px-4 file:py-2 file:font-heading file:text-xs file:uppercase file:tracking-[0.16em] file:text-white hover:border-joner-red focus:border-joner-red focus:outline-none" />
           <p class="mt-2 font-body text-xs text-gray-500">PDF, Word, or Pages file. Max 5MB.</p>

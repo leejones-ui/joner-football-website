@@ -338,6 +338,20 @@ function cleanAttachment(file) {
   return { name, content }
 }
 
+function validateCoachingDemoUrl(value) {
+  const candidate = clean(value, 2000)
+  if (!candidate) return { ok: true, value: '' }
+  try {
+    const parsed = new URL(candidate)
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) return { ok: false, value: '' }
+    return { ok: true, value: parsed.href }
+  } catch (error) {
+    return { ok: false, value: '' }
+  }
+}
+
+export { validateCoachingDemoUrl }
+
 function duplicateKey(enquiry) {
   return [
     enquiry.type,
@@ -368,7 +382,7 @@ function rememberSubmission(enquiry) {
   duplicateBuckets.set(duplicateKey(enquiry), { createdAt: Date.now() })
 }
 
-async function sendEmail(enquiry) {
+export async function sendEmail(enquiry) {
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey) throw new Error('Email service is not configured.')
 
@@ -394,6 +408,7 @@ async function sendEmail(enquiry) {
       ${row('Coaching experience', enquiry.coachingExperience)}
       ${row('Qualifications', enquiry.qualifications)}
       ${row('Availability', enquiry.availability)}
+      ${row('Coaching demonstration video link', enquiry.coachingDemoUrl)}
       ${row('Message', enquiry.message)}
       ${row('Submitted at', enquiry.submittedAt)}
     </table>
@@ -495,6 +510,7 @@ export default async function handler(req, res) {
       coachingExperience: clean(body.coachingExperience, 500),
       qualifications: clean(body.qualifications, 500),
       availability: clean(body.availability, 240),
+      coachingDemoUrl: '',
       message: clean(body.message, 2500),
       cvAttachment: type === 'coaching-role' ? cleanAttachment(body.cvFile) : null,
       marketingOptIn: body.marketingOptIn === true || body.marketingOptIn === 'true' || body.marketingOptIn === 'on',
@@ -535,6 +551,12 @@ export default async function handler(req, res) {
 
     if (type === 'coaching-role' && !/^\d+$/.test(enquiry.age)) {
       return res.status(400).json({ success: false, error: 'Please enter your age in years.' })
+    }
+
+    if (type === 'coaching-role') {
+      const demoUrl = validateCoachingDemoUrl(body.coachingDemoUrl)
+      if (!demoUrl.ok) return res.status(400).json({ success: false, error: 'Please enter a valid http or https coaching demonstration link.' })
+      enquiry.coachingDemoUrl = demoUrl.value
     }
 
     const duplicate = isDuplicateSubmission(enquiry)
