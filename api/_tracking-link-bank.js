@@ -45,6 +45,7 @@ export const TRACKING_DESTINATIONS = Object.freeze({
   'free-watch': '/free-bundle/watch',
   'app-home': 'https://app.jonerfootball.com',
   'app-memberships': 'https://app.jonerfootball.com/account/memberships',
+  'app-coaches-section': 'https://app.jonerfootball.com/categories/category-8-7szqoiq00',
   'pro-training-session-1': 'https://app.jonerfootball.com/programs/coaching-pros-ep-1-e5a655',
   'team-training-14-17-part-1': 'https://app.jonerfootball.com/programs/14th_july_day01_camp-footage_part_01-e04318',
   'young-ballers-1v1': 'https://app.jonerfootball.com/programs/3d03c7',

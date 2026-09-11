@@ -12,4 +12,8 @@ assert.equal(pickStep(row('2026-09-08T06:00:00Z', 'in_trial', 'google'), now), u
 const plan = planNurture([row('2026-09-10T06:00:00Z'), row('2026-09-08T06:00:00Z', 'converted'), row('2026-09-05T06:00:00Z')], now)
 assert.deepEqual(plan.map((p) => p.step), ['day1', 'day6'])
 assert.deepEqual(plan.map((p) => p.templateId), [326, 328])
+const planningRow = { ...row('2026-09-10T06:00:00Z'), attribution: { channel: 'meta_ads', ad: 'JF Coaches Max - Planning Session Hook 01 V2 - Clean Website' } }
+assert.equal(planNurture([planningRow], now)[0].templateId, 329)
+const structuresRow = { ...row('2026-09-10T07:00:00Z'), attribution: { channel: 'meta_ads', ad: 'JF Coaches Max - Coaching Structures V2' } }
+assert.equal(planNurture([structuresRow], now)[0].templateId, 326)
 console.log('ad trial nurture tests passed')

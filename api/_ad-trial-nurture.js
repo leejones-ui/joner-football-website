@@ -6,6 +6,9 @@ import { fetchTrialCohort } from './_trial-cohort.js'
 import { config } from './_meta-uscreen-reconciliation.js'
 import { reliabilityKv } from './_reliability-ledger.js'
 
+// Day 1 is matched to the ad the person clicked: Planning Session clickers get
+// the session-plan email (329), everyone else the full-session email (326).
+export const DAY1_TEMPLATE_BY_AD = Object.freeze([{ match: /planning session/i, templateId: 329 }])
 export const NURTURE_STEPS = Object.freeze([
   { step: 'day1', templateId: 326, minDays: 1, maxDays: 3 },
   { step: 'day3', templateId: 327, minDays: 3, maxDays: 6 },
@@ -30,7 +33,10 @@ export function planNurture(rows, now = new Date()) {
   const plan = []
   for (const row of rows || []) {
     const step = pickStep(row, now)
-    if (step) plan.push({ uscreen_user_id: row.uscreen_user_id, step: step.step, templateId: step.templateId, trial_started_at: row.trial_started_at, ad: row.attribution?.ad })
+    if (!step) continue
+    const ad = String(row.attribution?.ad || '')
+    const variant = step.step === 'day1' ? DAY1_TEMPLATE_BY_AD.find((v) => v.match.test(ad)) : undefined
+    plan.push({ uscreen_user_id: row.uscreen_user_id, step: step.step, templateId: variant ? variant.templateId : step.templateId, trial_started_at: row.trial_started_at, ad })
   }
   return plan
 }
