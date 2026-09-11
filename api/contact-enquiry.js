@@ -380,6 +380,7 @@ async function sendEmail(enquiry) {
       ${row('Name', enquiry.name)}
       ${row('Email', enquiry.email)}
       ${row('Phone', enquiry.phone)}
+      ${row('Age (years)', enquiry.age)}
       ${row('Location', enquiry.location)}
       ${row('Player name', enquiry.playerName)}
       ${row('Player age', enquiry.playerAge)}
@@ -480,6 +481,7 @@ export default async function handler(req, res) {
       name: clean(body.name, 160),
       email: clean(body.email, 200).toLowerCase(),
       phone: clean(body.phone, 80),
+      age: clean(body.age, 3),
       location: clean(body.location, 160),
       playerName: clean(body.playerName, 160),
       playerAge: clean(body.playerAge, 40),
@@ -529,6 +531,10 @@ export default async function handler(req, res) {
 
     if (type === 'coaching-role' && (!enquiry.coachingExperience || !enquiry.qualifications)) {
       return res.status(400).json({ success: false, error: 'Please add your coaching experience and qualifications.' })
+    }
+
+    if (type === 'coaching-role' && !/^\d{1,3}$/.test(enquiry.age)) {
+      return res.status(400).json({ success: false, error: 'Please enter your age in years.' })
     }
 
     const duplicate = isDuplicateSubmission(enquiry)
