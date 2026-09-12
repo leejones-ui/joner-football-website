@@ -26,9 +26,9 @@ const report = buildReconciliation({
   window,
   meta: { purchases: 9, purchase_value: 900, spend: 250 },
   invoices: [
-    { id: 'invoice-private-1', user_id: 'buyer-1', status: 'paid', amount: 10000, paid_at: paidAt },
-    { id: 'invoice-private-2', user_id: 'buyer-2', status: 'paid', amount: 12000, paid_at: paidAt },
-    { id: 'invoice-private-3', user_id: 'trial-1', status: 'paid', amount: 0, paid_at: trialAt, trial: true },
+    { id: 'invoice-private-1', user_id: 'buyer-1', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 10000, paid_at: paidAt },
+    { id: 'invoice-private-2', user_id: 'buyer-2', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 12000, paid_at: paidAt },
+    { id: 'invoice-private-3', user_id: 'trial-1', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 0, paid_at: trialAt, trial: true },
   ],
   sales: [{ uscreen_user_id: 'buyer-1', acquisition: 'exact_paid_meta', occurred_at: '2026-08-26T12:05:00Z' }],
   sourceHealth: { meta: true, uscreen: true, kv: true },
@@ -49,8 +49,8 @@ const fb20Report = buildReconciliation({
   window,
   meta: { purchases: 1, purchase_value: 20, spend: 10 },
   invoices: [
-    { id: 'i1', user_id: 'u1', status: 'paid', amount: 2000, paid_at: paidAt, coupon: 'fb20' },
-    { id: 'i2', user_id: 'u2', status: 'paid', amount: 3000, paid_at: paidAt, coupon: 'JF20' },
+    { id: 'i1', user_id: 'u1', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 2000, paid_at: paidAt, coupon: 'fb20' },
+    { id: 'i2', user_id: 'u2', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 3000, paid_at: paidAt, coupon: 'JF20' },
   ],
   sales: [],
   sourceHealth: { meta: true, uscreen: true, kv: true },
@@ -65,9 +65,9 @@ const series = buildDailySeries({
     { date_start: '2026-08-26', spend: '12.50', actions: [{ action_type: 'omni_purchase', value: '3' }, { action_type: 'purchase', value: '3' }] },
   ],
   invoices: [
-    { id: 'd1', user_id: 'buyer-1', status: 'paid', amount: 10000, paid_at: paidAt, origin: 'Stripe Payments' },
-    { id: 'd2', user_id: 'buyer-2', status: 'paid', amount: 1499, paid_at: trialAt, origin: 'Android Payments', coupon: 'FB20' },
-    { id: 'd3', user_id: 'trial-1', status: 'paid', amount: 0, paid_at: trialAt, trial: true },
+    { id: 'd1', user_id: 'buyer-1', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 10000, paid_at: paidAt, origin: 'Stripe Payments' },
+    { id: 'd2', user_id: 'buyer-2', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 1499, paid_at: trialAt, origin: 'Android Payments', coupon: 'FB20' },
+    { id: 'd3', user_id: 'trial-1', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 0, paid_at: trialAt, trial: true },
   ],
   sales: [{ uscreen_user_id: 'buyer-1', acquisition: 'exact_paid_meta', occurred_at: '2026-08-26T12:05:00Z' }],
 })
@@ -105,7 +105,7 @@ globalThis.fetch = async (url, options = {}) => {
   }
   if (String(url).includes('uscreen.io')) {
     const page = new URL(url).searchParams.get('page')
-    return { ok: true, json: async () => page === '1' ? [{ id: 'invoice-private-1', user_id: 'buyer-1', status: 'paid', amount: 10000, paid_at: paidAt }, { id: 'invoice-private-2', user_id: 'buyer-2', status: 'paid', amount: 12000, paid_at: paidAt }] : [] }
+    return { ok: true, json: async () => page === '1' ? [{ id: 'invoice-private-1', user_id: 'buyer-1', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 10000, paid_at: paidAt }, { id: 'invoice-private-2', user_id: 'buyer-2', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 12000, paid_at: paidAt }] : [] }
   }
   const command = JSON.parse(options.body)
   if (command[0] === 'ZREVRANGE') return { ok: true, json: async () => ({ result: ['sale-1'] }) }
@@ -140,7 +140,7 @@ console.log('meta-uscreen reconciliation tests passed')
     const page = Number(new URL(url).searchParams.get('page'))
     if (page > totalPages) return { ok: true, json: async () => [] }
     const stamp = page === totalPages ? day(oldestIso) : day('2026-08-30T12:00:00Z')
-    return { ok: true, json: async () => Array.from({ length: 30 }, (_, i) => ({ id: `p${page}-${i}`, user_id: `u${page}-${i}`, status: 'paid', amount: 1499, paid_at: stamp })) }
+    return { ok: true, json: async () => Array.from({ length: 30 }, (_, i) => ({ id: `p${page}-${i}`, user_id: `u${page}-${i}`, status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 1499, paid_at: stamp })) }
   }
   const win = { from: '2026-08-01', to: '2026-08-31', timezone: 'UTC' }
 
@@ -154,7 +154,7 @@ console.log('meta-uscreen reconciliation tests passed')
   const truncated = await fetchUscreenInvoices({ from: '2020-01-01', to: '2026-08-31', timezone: 'UTC' }, async (url) => {
     const page = Number(new URL(url).searchParams.get('page'))
     if (page > 200) return { ok: true, json: async () => [] }
-    return { ok: true, json: async () => Array.from({ length: 30 }, (_, i) => ({ id: `t${page}-${i}`, user_id: `u${i}`, status: 'paid', amount: 1499, paid_at: day('2026-08-30T12:00:00Z') })) }
+    return { ok: true, json: async () => Array.from({ length: 30 }, (_, i) => ({ id: `t${page}-${i}`, user_id: `u${i}`, status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 1499, paid_at: day('2026-08-30T12:00:00Z') })) }
   })
   assert.equal(truncated.truncated, true)
 
@@ -182,7 +182,7 @@ console.log('meta-uscreen reconciliation tests passed')
   process.env.USCREEN_API_KEY = 'test-uscreen-key'
   const day = (iso) => Math.floor(Date.parse(iso) / 1000)
   const win = { from: '2026-08-01', to: '2026-08-31', timezone: 'UTC' }
-  const rows = (page, stamp) => Array.from({ length: 30 }, (_, i) => ({ id: `r${page}-${i}`, user_id: `u${page}-${i}`, status: 'paid', amount: 1499, paid_at: stamp }))
+  const rows = (page, stamp) => Array.from({ length: 30 }, (_, i) => ({ id: `r${page}-${i}`, user_id: `u${page}-${i}`, status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 1499, paid_at: stamp }))
 
   // A page that 429s twice then succeeds must be retried, not treated as the end.
   const attempts = new Map()

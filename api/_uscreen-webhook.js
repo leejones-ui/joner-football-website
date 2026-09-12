@@ -1,3 +1,4 @@
+import { readInvoiceTruth, receiptAccepted } from './_invoice-truth.js'
 import crypto from 'node:crypto'
 import { decodeUscreenSource, extractAttribution, extractMetaIdentity } from './_attribution.js'
 import { classifySource } from './_source-taxonomy.js'
@@ -628,40 +629,38 @@ function metaEventsReceived(result) {
   try { return Number(JSON.parse(result?.body || '{}')?.events_received || 0) } catch { return 0 }
 }
 
-// Automatic canonical send. The gates already passed (positive paid tier order,
-// web Stripe charge, no paid history). This adds the transport-level safety the
-// operator script used to provide: value/currency proof, a send lock, and a
-// Meta events_received receipt before the claim is marked sent. Anything that
-// cannot send safely stays a candidate for the hourly cron to retry or enrich.
+// Canonical release requires independently reconciled full payment history.
+// Webhook-only candidates stay held. Durable transport attempts are not blindly retried.
 export async function attemptFirstPaidAutoSend({ key, record, metaEvent, testEventCode }) {
-  const baseRecord = { ...(record || {}), metaEvent }
-  const value = Number(metaEvent?.custom_data?.value)
-  const currency = String(metaEvent?.custom_data?.currency || '')
-  const hold = async (reason, extra = {}) => {
-    await markFirstPaidCandidate(key, {
-      ...baseRecord,
-      ...extra,
-      autoSendHold: reason,
-      attempts: Number(baseRecord.attempts || 0) + (extra.attempted ? 1 : 0),
-      lastAttemptAt: new Date().toISOString(),
-    })
-    return { sent: false, reason }
+  // Never overwrite an accepted record or retry an ambiguous transport attempt.
+  const lock = await kvCommand(['SET', `${key}:send-lock`, crypto.randomUUID(), 'NX', 'EX', 300])
+  if (lock !== 'OK') return { sent: false, reason: 'send-locked' }
+  const current = await getFirstPaidClaim(key)
+  const expectedHash = crypto.createHash('sha256').update(`uscreen:${current?.uscreenUserId}`).digest('hex')
+  if (!current || key !== `jf:meta:first-paid:${expectedHash}` || current.eventId !== `JF_First_Paid_Membership.${expectedHash}` || current.eventId !== metaEvent?.event_id) return { sent: false, reason: 'identity-mismatch' }
+  if (current.status === 'sent' || receiptAccepted(current)) return { sent: false, reason: 'already-sent' }
+  if (current.sendAttemptedAt || current.status === 'sending') return { sent: false, reason: 'transport-outcome-requires-review' }
+  const proof = current.reconciliation
+  // Full history is supplied by the existing explicit operator reconciliation.
+  if (current.status !== 'verified' || proof?.historyComplete !== true || proof?.channel !== 'web' || !proof?.evidenceHash) {
+    if (['pending','candidate'].includes(current.status)) await markFirstPaidCandidate(key, { ...current, autoSendHold: 'authoritative-history-required' })
+    return { sent: false, reason: 'authoritative-history-required' }
   }
-  if (!process.env.META_CAPI_TOKEN) return hold('no-capi-token')
-  if (!(value > 0)) return hold('missing-positive-value')
-  if (!/^[A-Z]{3}$/.test(currency)) return hold('missing-currency')
-  const lock = await kvCommand(['SET', `${key}:send-lock`, new Date().toISOString(), 'NX', 'EX', 300])
-  if (lock !== 'OK') return hold('send-locked')
-  const result = await sendMetaEventPayload(metaEvent, testEventCode)
+  const truth = await readInvoiceTruth({ invoiceId: proof.paymentId, userId: current.uscreenUserId, offerId: current.offerId })
+  if (!truth.verified || !(truth.amount > 0) || truth.channel !== 'web' || truth.currency !== proof.currency || truth.amount !== proof.value) return { sent: false, reason: 'authoritative-invoice-required' }
+  const event = { ...current.metaEvent, event_time: Math.floor(Date.parse(truth.paidAt) / 1000), custom_data: { ...current.metaEvent.custom_data, value: truth.amount, currency: truth.currency } }
+  if (!process.env.META_CAPI_TOKEN || testEventCode) return { sent: false, reason: 'production-transport-unavailable' }
+  await kvCommand(['SET', key, JSON.stringify({ ...current, metaEvent: event, status: 'sending', sendAttemptedAt: new Date().toISOString() }), 'EX', 10 * 365 * 24 * 60 * 60])
+  const result = await sendMetaEventPayload(event)
   if (result?.ok && metaEventsReceived(result) === 1) {
-    await markFirstPaidEventSent(key, metaEvent.event_id, { status: result.status, body: result.body })
+    await markFirstPaidEventSent(key, event.event_id, { status: result.status, body: result.body })
     await bumpHealthCounter('meta_first_paid_sent')
     await setHealthField('meta_first_paid_last_sent_at', new Date().toISOString())
     return { sent: true, result }
   }
+  // Preserve sending state on timeouts/rejections; no blind automatic replay.
   await bumpHealthCounter('meta_first_paid_failed')
-  await recordAlert({ type: 'canonical_event_send_failed', event_id: metaEvent.event_id, detail: String(result?.body || result?.error || result?.status || 'unknown').slice(0, 200) })
-  return hold('send-failed', { attempted: true, lastError: String(result?.body || result?.error || result?.status || 'unknown').slice(0, 300) })
+  return { sent: false, reason: 'transport-outcome-requires-review' }
 }
 
 async function releaseFirstPaidClaim(key, eventId) {
@@ -800,6 +799,11 @@ export async function processUscreenPayload(data) {
     const kind = await refineSaleKind(namedKind, eventData)
     const stablePaymentId = cleanValue(eventData.invoice_id || eventData.payment_id || transactionId || eventData.order_id, 180)
     const saleId = stablePaymentId ? `${kind}:${stablePaymentId}` : undefined
+    const paymentTruth = kind === 'refund' ? { verified: false, reason: 'refund-reconciliation-required' } : await readInvoiceTruth({
+      invoiceId: eventData.invoice_id || eventData.order_id,
+      userId: eventData.user_id || eventData.customer_id || eventData.user?.id,
+      offerId,
+    })
     if (saleId) {
       try {
         const { appendReliableSale } = await import('./_reliability-ledger.js')
@@ -810,11 +814,17 @@ export async function processUscreenPayload(data) {
         provider_payment_id: stablePaymentId,
         invoice_id: cleanValue(eventData.invoice_id, 180),
         payment_id: cleanValue(eventData.payment_id || transactionId, 180),
-        occurred_at: cleanValue(eventData.event_date || eventData.paid_at || eventData.created_at, 40) || new Date().toISOString(),
+        occurred_at: paymentTruth.verified && paymentTruth.paidAt || cleanValue(eventData.event_date || eventData.paid_at || eventData.created_at, 40) || new Date().toISOString(),
         offer_id: offerId,
         plan: cleanValue(eventData.offer_title || eventData.subscription_title || eventData.title, 180),
-        amount: total,
-        currency: cleanValue(eventData.currency || eventData.localized_amounts?.currency, 20),
+        amount: paymentTruth.verified ? paymentTruth.amount : null,
+        currency: paymentTruth.verified ? paymentTruth.currency : null,
+        webhook_amount: total,
+        webhook_currency: cleanValue(eventData.currency || eventData.localized_amounts?.currency, 20),
+        payment_verification: paymentTruth,
+        trial: paymentTruth.verified ? paymentTruth.trial : null,
+        product_type: paymentTruth.verified ? paymentTruth.productType : null,
+        payment_channel: paymentTruth.verified ? paymentTruth.channel : 'unknown',
         billing_origin: cleanValue(eventData.origin || eventData.payment_origin || eventData.provider, 80) || (eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'web'),
         uscreen_user_id: cleanValue(eventData.user_id || eventData.customer_id || eventData.user?.id || eventData.customer?.id, 120),
         customer_reference: sha256Hex(email)?.slice(0, 16),
@@ -910,7 +920,7 @@ export async function processUscreenPayload(data) {
   } else if (eventType === 'order.paid') {
     if (offerId && OWNERSHIP_LISTS_BY_OFFER_ID[offerId] && total === 0) {
       listIds = OWNERSHIP_LISTS_BY_OFFER_ID[offerId]
-    } else if (offerId && TRIAL_ELIGIBLE_OFFER_IDS.has(offerId) && total === 0) {
+    } else if (offerId && TRIAL_ELIGIBLE_OFFER_IDS.has(offerId) && total === 0 && sale?.payment_verification?.trial === true) {
       listIds = [isPaidMetaTrial(eventData) ? LISTS.trialUsersMetaAds : LISTS.trialUsers]
       try {
         const meta = await sendVerifiedConversionToMeta(META_EVENTS.trialStarted, eventData, email, 0)

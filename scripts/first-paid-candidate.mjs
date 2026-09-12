@@ -109,6 +109,7 @@ async function main() {
     const { evidence, evidenceHash } = loadEvidence(evidencePath)
     const result = reconcileAuthoritativeFirstPaid({ expectedUserId: userId, invoiceId, evidence })
     if (!result.eligible) throw new Error(`Uscreen reconciliation rejected candidate: ${result.reason}`)
+    if (String(record.uscreenOrderId || '') !== result.paymentId) throw new Error('Uscreen invoice does not match the webhook order; independently verify the transaction join first')
     if (record.offerId && String(record.offerId) !== result.offerId) throw new Error('Uscreen invoice offer does not match webhook offer')
     const expectedEventId = `JF_First_Paid_Membership.${sha256(`uscreen:${userId}`)}`
     const event = record.metaEvent
@@ -166,6 +167,7 @@ async function main() {
     const currentRaw = await kv(['GET', key])
     if (!currentRaw) throw new Error('Candidate disappeared before send')
     const current = typeof currentRaw === 'string' ? JSON.parse(currentRaw) : currentRaw
+    if (current.sendAttemptedAt) throw new Error('Prior transport attempt requires independent outcome review; automatic retry forbidden')
     if (current.status !== 'verified') throw new Error(`Candidate is not verified before send: ${current.status}`)
     if (String(current.uscreenUserId) !== String(userId)) throw new Error('Candidate identity mismatch before send')
     if (!current.reconciliation?.historyComplete || current.reconciliation?.channel !== 'web') {
@@ -179,10 +181,12 @@ async function main() {
     if (!/^[A-Z]{3}$/.test(String(event.custom_data?.currency || '')) || !(Number(event.custom_data?.value) > 0)) {
       throw new Error('Candidate value/currency is not authoritative')
     }
+    if (event.custom_data.value !== current.reconciliation.value || event.custom_data.currency !== current.reconciliation.currency) throw new Error('Event money does not match authoritative reconciliation')
     const token = process.env.META_CAPI_TOKEN
     if (!token) throw new Error('META_CAPI_TOKEN is required')
     const payload = { data: [event] }
     if (testEventCode) payload.test_event_code = testEventCode
+    await kv(['SET', key, JSON.stringify({ ...current, status: 'sending', sendAttemptedAt: new Date().toISOString() }), 'EX', TEN_YEARS])
     const response = await fetch(`${META_GRAPH_BASE_URL}/${META_PIXEL_ID}/events?access_token=${encodeURIComponent(token)}`, {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload),
     })
@@ -196,6 +200,8 @@ async function main() {
       status: 'sent',
       sentAt: new Date().toISOString(),
       metaEventsReceived: 1,
+      metaResponse: { status: response.status, body },
+      sendAttemptedAt: new Date().toISOString(),
       metaTestEvent: Boolean(testEventCode),
     }
     await kv(['SET', key, JSON.stringify(updated), 'EX', TEN_YEARS])

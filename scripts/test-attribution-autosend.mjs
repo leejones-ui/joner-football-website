@@ -8,6 +8,7 @@ process.env.KV_REST_API_TOKEN = 'test'
 process.env.META_CAPI_TOKEN = 'test-capi-token'
 process.env.JOURNEY_SIGNING_SECRET = 'test-signing-secret'
 process.env.BREVO_API_KEY = 'test-brevo-key'
+process.env.USCREEN_API_KEY = 'test-uscreen-key'
 
 const strings = new Map()
 const hashes = new Map()
@@ -69,6 +70,7 @@ globalThis.fetch = async function mockFetch(url, options = {}) {
     metaCalls.push(JSON.parse(options.body))
     return { ok: metaOk, status: metaOk ? 200 : 400, text: async () => JSON.stringify(metaResponse) }
   }
+  if (target.includes('www.uscreen.io/publisher_api/v1/invoices/101')) return { ok: true, json: async () => ({id:101,user_id:1001,product_id:3,status:'paid',amount:22731,currency:'USD',paid_at:1788884915,origin:'stripe',product_type:'recurring',trial:false}) }
   if (target.includes('api.brevo.com')) {
     return { ok: true, status: 200, json: async () => ({ attributes: {}, listIds: [] }), text: async () => '{}' }
   }
@@ -83,64 +85,39 @@ const { presentSale } = await import('../api/attribution-report.js')
 
 const sha256 = (value) => crypto.createHash('sha256').update(String(value).trim().toLowerCase()).digest('hex')
 
-// 1. Automatic canonical send: gates passed, value and currency present, Meta
-// confirms receipt, claim becomes sent, exactly one Graph call.
-{
-  const data = { user_id: 'u-1001', order_id: 'ord-1', transaction_id: 'ch_test1', total: 249.99, currency: 'USD', event: 'order.paid' }
-  const metaEvent = buildVerifiedMetaEvent('JF_First_Paid_Membership', data, 'buyer1@example.com', 249.99)
-  const key = 'jf:meta:first-paid:test-user-1'
-  const result = await attemptFirstPaidAutoSend({ key, record: { eventId: metaEvent.event_id }, metaEvent })
-  assert.equal(result.sent, true, 'auto-send must succeed with value, currency and Meta receipt')
-  assert.equal(metaCalls.length, 1, 'exactly one Meta call')
-  const claim = JSON.parse(strings.get(key))
-  assert.equal(claim.status, 'sent')
-  assert.ok(claim.metaResponse, 'Meta response recorded on the claim')
-}
-
-// 2. Idempotency: a second attempt for the same user hits the send lock and
-// never produces a second Meta call marked sent.
-{
-  metaCalls = []
-  const data = { user_id: 'u-1001', order_id: 'ord-1', transaction_id: 'ch_test1', total: 249.99, currency: 'USD' }
-  const metaEvent = buildVerifiedMetaEvent('JF_First_Paid_Membership', data, 'buyer1@example.com', 249.99)
-  const key = 'jf:meta:first-paid:test-user-1'
-  const result = await attemptFirstPaidAutoSend({ key, record: { eventId: metaEvent.event_id }, metaEvent })
-  assert.equal(result.sent, false)
-  assert.equal(result.reason, 'send-locked')
-  assert.equal(metaCalls.length, 0, 'no duplicate Meta call under the lock')
-}
-
-// 3. Missing currency: held as candidate, no Meta call.
-{
-  metaCalls = []
-  const data = { user_id: 'u-2002', order_id: 'ord-2', transaction_id: 'ch_test2', total: 39.99 }
-  const metaEvent = buildVerifiedMetaEvent('JF_First_Paid_Membership', data, 'buyer2@example.com', 39.99)
-  assert.equal(metaEvent.custom_data.currency, undefined)
-  const key = 'jf:meta:first-paid:test-user-2'
-  const result = await attemptFirstPaidAutoSend({ key, record: { eventId: metaEvent.event_id }, metaEvent })
-  assert.equal(result.sent, false)
-  assert.equal(result.reason, 'missing-currency')
-  assert.equal(metaCalls.length, 0)
-  assert.equal(JSON.parse(strings.get(key)).status, 'candidate')
-}
-
-// 4. Meta does not confirm receipt: held for retry, alert recorded.
-{
-  metaCalls = []
-  metaResponse = { events_received: 0 }
-  const data = { user_id: 'u-3003', order_id: 'ord-3', transaction_id: 'ch_test3', total: 19.99, currency: 'USD' }
-  const metaEvent = buildVerifiedMetaEvent('JF_First_Paid_Membership', data, 'buyer3@example.com', 19.99)
-  const key = 'jf:meta:first-paid:test-user-3'
-  const result = await attemptFirstPaidAutoSend({ key, record: { eventId: metaEvent.event_id }, metaEvent })
-  assert.equal(result.sent, false)
-  assert.equal(result.reason, 'send-failed')
-  const claim = JSON.parse(strings.get(key))
-  assert.equal(claim.status, 'candidate')
-  assert.equal(Number(claim.attempts), 1)
-  const alerts = (lists.get('jfa:alerts:list') || []).map((row) => JSON.parse(row))
-  assert.ok(alerts.some((alert) => alert.type === 'canonical_event_send_failed'), 'send failure raises an alert')
-  metaResponse = { events_received: 1 }
-}
+// Verified invoice replaces wrong webhook money. No real network is permitted.
+const key = `jf:meta:first-paid:${sha256('uscreen:1001')}`
+const metaEvent = buildVerifiedMetaEvent('JF_First_Paid_Membership', {user_id:'1001',order_id:'101',offer_id:3,currency:'GBP'}, 'buyer@example.com', 252.58)
+metaEvent.event_id = `JF_First_Paid_Membership.${sha256('uscreen:1001')}`
+const verified = {status:'verified',eventId:metaEvent.event_id,uscreenUserId:'1001',uscreenOrderId:'101',offerId:3,metaEvent,reconciliation:{paymentId:'101',historyComplete:true,channel:'web',evidenceHash:'synthetic-history',value:227.31,currency:'USD'}}
+strings.set(key,JSON.stringify(verified))
+let result = await attemptFirstPaidAutoSend({key,record:verified,metaEvent})
+assert.equal(result.sent,true)
+assert.equal(metaCalls.length,1)
+assert.equal(metaCalls[0].data[0].custom_data.value,227.31)
+assert.equal(metaCalls[0].data[0].custom_data.currency,'USD')
+// Expired lock still cannot resend or overwrite an accepted event.
+strings.delete(`${key}:send-lock`)
+const sentRecord = strings.get(key)
+result = await attemptFirstPaidAutoSend({key,record:verified,metaEvent})
+assert.equal(result.reason,'already-sent');assert.equal(strings.get(key),sentRecord);assert.equal(metaCalls.length,1)
+// Merely positive value/currency is insufficient.
+strings.delete(`${key}:send-lock`);strings.set(key,JSON.stringify({...verified,status:'pending',reconciliation:undefined}))
+result = await attemptFirstPaidAutoSend({key,metaEvent})
+assert.equal(result.reason,'authoritative-history-required');assert.equal(metaCalls.length,1)
+assert.equal(JSON.parse(strings.get(key)).status,'candidate')
+// Ambiguous transport is durable, and must not retry after lock expiry.
+strings.delete(`${key}:send-lock`);strings.set(key,JSON.stringify(verified));metaResponse={events_received:0}
+result = await attemptFirstPaidAutoSend({key,metaEvent})
+assert.equal(result.reason,'transport-outcome-requires-review');assert.equal(JSON.parse(strings.get(key)).status,'sending')
+strings.delete(`${key}:send-lock`)
+result=await attemptFirstPaidAutoSend({key,metaEvent})
+assert.equal(result.reason,'transport-outcome-requires-review');assert.equal(metaCalls.length,2)
+metaResponse={events_received:1}
+// A held lock must not mutate an accepted record.
+strings.set(key, sentRecord)
+result=await attemptFirstPaidAutoSend({key,metaEvent})
+assert.equal(result.reason,'send-locked');assert.equal(strings.get(key),sentRecord)
 
 // 5. Late identity retrigger: an unknown sale becomes attributed once the
 // buyer's email is linked to a journey with Meta evidence.
@@ -219,16 +196,8 @@ const sha256 = (value) => crypto.createHash('sha256').update(String(value).trim(
   assert.equal(result.sale.acquisition, 'exact_paid_meta')
   assert.equal(result.sale.campaign, '120249257260070035')
   const canonical = metaCalls.filter((call) => call.data[0].event_name === 'JF_First_Paid_Membership')
-  assert.equal(canonical.length, 1, 'exactly one canonical event for the whole flow')
-  const event = canonical[0].data[0]
-  assert.equal(event.custom_data.value, 249.99)
-  assert.equal(event.custom_data.currency, 'USD')
-  assert.equal(event.custom_data.campaign_id, '120249257260070035')
-  assert.equal(event.custom_data.adset_id, '120249271941100035')
-  assert.equal(event.custom_data.ad_id, '120249272080270035')
-  assert.ok(event.user_data.fbc, 'canonical event must carry fbc')
-  assert.ok(event.user_data.fbp, 'canonical event must carry fbp')
-  assert.ok(event.user_data.em?.length, 'canonical event must carry hashed email')
+  assert.equal(canonical.length, 0, 'unverified webhook never becomes a paid conversion')
+  assert.equal(result.sale.amount, null, 'unverified webhook amount is excluded')
   // A duplicate webhook delivery must not send a second canonical event.
   await processUscreenPayload({
     event: 'order.paid', email, user_id: 'u-e2e-7',
@@ -236,7 +205,7 @@ const sha256 = (value) => crypto.createHash('sha256').update(String(value).trim(
     event_date: new Date().toISOString(), offer_id: 202578, offer_title: 'Max - Annual',
     total: 249.99, currency: 'USD',
   })
-  assert.equal(metaCalls.filter((call) => call.data[0].event_name === 'JF_First_Paid_Membership').length, 1, 'duplicate webhook must not re-emit')
+  assert.equal(metaCalls.filter((call) => call.data[0].event_name === 'JF_First_Paid_Membership').length, 0, 'duplicate webhook must not re-emit')
 }
 
 // 8. Same email, two journeys (returning device plus fresh ad click): the most

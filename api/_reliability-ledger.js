@@ -191,3 +191,35 @@ export async function reconcileAuthoritativePayments(payments, fetchImpl = fetch
   }
   return results
 }
+
+// Read-only range inventory, including archives and rows whose index write failed.
+// A bounded/incomplete scan never produces a complete total.
+export async function readReliableRange({ from, to, maxPages = 100, maxRows = 10000 }, fetchImpl = fetch) {
+  const start = Date.parse(from), end = Date.parse(to)
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) throw new Error('Invalid reporting range')
+  const records = new Map()
+  let complete = true, pages = 0, malformed = 0
+  for (const prefix of ['jfa:reliability:sale:', 'jfa:reliability:archive:']) {
+    let cursor = '0'
+    do {
+      const result = await resultOf(['SCAN', cursor, 'MATCH', `${prefix}*`, 'COUNT', '200'], fetchImpl)
+      if (!Array.isArray(result) || !Array.isArray(result[1])) throw new Error('Invalid ledger scan')
+      cursor = String(result[0]); pages++
+      for (let i = 0; i < result[1].length; i += 100) {
+        const keys = result[1].slice(i, i + 100)
+        const values = await resultOf(['MGET', ...keys], fetchImpl)
+        if (!Array.isArray(values) || values.length !== keys.length) throw new Error('Incomplete ledger batch')
+        values.forEach(raw => {
+          const row = parse(raw)
+          if (!row?.sale_id || !Number.isFinite(Date.parse(row.occurred_at || row.paid_at))) { malformed++; return }
+          const old = records.get(row.sale_id)
+          if (!old || Date.parse(row.updated_at || row.persisted_at || 0) > Date.parse(old.updated_at || old.persisted_at || 0)) records.set(row.sale_id, row)
+        })
+      }
+      if (pages >= maxPages || records.size >= maxRows) { complete = false; break }
+    } while (cursor !== '0')
+    if (!complete) break
+  }
+  return { sales: [...records.values()].filter(row => { const at = Date.parse(row.occurred_at || row.paid_at); return at >= start && at < end }),
+    coverage: { complete: complete && malformed === 0, archives_included: true, scanned_records: records.size, malformed_records: malformed, from, to, interval: '[from,to)', consistency: 'Bounded live scan; not an atomic snapshot or proof that every Uscreen invoice reached the ledger.' } }
+}

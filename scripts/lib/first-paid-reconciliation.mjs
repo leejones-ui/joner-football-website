@@ -1,5 +1,5 @@
 const WEB_ORIGINS = new Set(['web'])
-const WEB_PROVIDERS = new Set(['stripe'])
+const WEB_PROVIDERS = new Set(['stripe', 'paypal', 'native_paypal'])
 const REFUND_STATUSES = new Set(['refunded', 'partially_refunded', 'chargeback', 'disputed'])
 
 function text(value) {
@@ -17,6 +17,7 @@ function paymentTime(payment) {
 }
 
 function paymentAmount(payment) {
+  if (payment?.amount === null || payment?.amount === undefined || payment?.amount === '') return NaN
   const amount = Number(payment?.amount)
   return Number.isFinite(amount) ? amount : NaN
 }
@@ -60,7 +61,7 @@ export function reconcileAuthoritativeFirstPaid({ expectedUserId, invoiceId, evi
     return fail('plan-history-may-be-truncated')
   }
 
-  const invoiceRows = evidence.payments.filter((payment) => text(payment?.provider_invoice_id) === targetInvoice)
+  const invoiceRows = evidence.payments.filter((payment) => targetInvoice.startsWith('uscreen:') ? text(payment?.id) === targetInvoice.slice(8) : text(payment?.provider_invoice_id) === targetInvoice)
   if (!invoiceRows.length) return fail('invoice-not-found')
   if (invoiceRows.some((payment) => REFUND_STATUSES.has(text(payment?.status).toLowerCase()))) {
     return fail('invoice-refunded')
@@ -75,14 +76,14 @@ export function reconcileAuthoritativeFirstPaid({ expectedUserId, invoiceId, evi
 
   const positivePaidSubscriptions = evidence.payments
     .filter((payment) => (
-      text(payment?.status).toLowerCase() === 'paid'
+      (text(payment?.status).toLowerCase() === 'paid' || REFUND_STATUSES.has(text(payment?.status).toLowerCase()))
       && text(payment?.kind).toLowerCase() === 'subscription'
       && paymentAmount(payment) > 0
     ))
     .sort((a, b) => paymentTime(a) - paymentTime(b) || text(a?.id).localeCompare(text(b?.id)))
 
   if (!positivePaidSubscriptions.length) return fail('not-positive-paid-invoice')
-  if (text(positivePaidSubscriptions[0]?.provider_invoice_id) !== targetInvoice) {
+  if (text(positivePaidSubscriptions[0]?.id) !== text(selected.id)) {
     return fail('renewal-not-first-paid')
   }
 
@@ -92,8 +93,11 @@ export function reconcileAuthoritativeFirstPaid({ expectedUserId, invoiceId, evi
     return fail('non-web-purchase', { channel: channel || 'unknown', provider: provider || 'unknown' })
   }
 
+  if (!Number.isFinite(paymentTime(selected))) return fail('paid-time-missing')
+  if (positivePaidSubscriptions.some(p => !Number.isFinite(paymentTime(p)))) return fail('history-paid-time-missing')
+  if (positivePaidSubscriptions.filter(p => paymentTime(p) === paymentTime(selected)).length > 1) return fail('first-payment-order-ambiguous')
   const currency = text(selected.currency).toUpperCase()
-  if (!/^[A-Z]{3}$/.test(currency)) return fail('authoritative-currency-invalid')
+  if (!['USD','GBP','AUD','EUR','CAD','NZD'].includes(currency)) return fail('authoritative-currency-invalid')
   const amountMinor = paymentAmount(selected)
   const value = amountMinor / 100
   if (!Number.isFinite(value) || value <= 0) return fail('not-positive-paid-invoice')

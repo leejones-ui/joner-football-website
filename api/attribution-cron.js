@@ -1,3 +1,4 @@
+import { reconcileInvoiceLedger } from './_invoice-ledger-reconciliation.js'
 import { listReliableSales, appendReliableSale, listWebhookFailures } from './_reliability-ledger.js'
 import { reconcilePayment } from './checkout-bridge.js'
 import { attemptFirstPaidAutoSend } from './_uscreen-webhook.js'
@@ -250,6 +251,7 @@ export default async function handler(req, res) {
   const started = Date.now()
   const summary = { deep }
   try {
+    summary.invoiceMoney = await reconcileInvoiceLedger({ limit: deep ? 25 : 10 })
     summary.firstPaid = await retryFirstPaidCandidates(deep ? 100 : 25)
     summary.unknowns = await reconcileUnknownSales(deep ? 150 : 50)
     summary.continuity = await checkInvoiceContinuity({ deep })

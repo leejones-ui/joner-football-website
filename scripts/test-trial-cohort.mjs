@@ -6,18 +6,18 @@ const window = { from: '2026-08-11', to: '2026-09-09' }
 const now = new Date('2026-09-09T12:00:00Z')
 const invoices = [
   // converted trial from a Meta ad (ledger row)
-  { id: 1, user_id: 'u1', status: 'paid', amount: 0, trial: true, paid_at: s('2026-08-20T10:00:00Z') },
-  { id: 2, user_id: 'u1', status: 'paid', amount: 5699, currency: 'AUD', paid_at: s('2026-08-27T10:05:00Z') },
+  { id: 1, user_id: 'u1', status: 'paid', product_type: 'recurring', product_id: 230699, amount: 0, trial: true, paid_at: s('2026-08-20T10:00:00Z') },
+  { id: 2, user_id: 'u1', status: 'paid', product_type: 'recurring', product_id: 230699, amount: 5699, currency: 'AUD', paid_at: s('2026-08-27T10:05:00Z') },
   // lapsed trial, signup UTMs say paid Meta via codec
-  { id: 3, user_id: 'u2', status: 'paid', amount: 0, paid_at: s('2026-08-25T10:00:00Z') },
+  { id: 3, user_id: 'u2', status: 'paid', product_type: 'recurring', product_id: 230699, amount: 0, trial: true, paid_at: s('2026-08-25T10:00:00Z') },
   // still in trial, app signup, no signal
-  { id: 4, user_id: 'u3', status: 'paid', amount: 0, trial: true, paid_at: s('2026-09-06T10:00:00Z') },
+  { id: 4, user_id: 'u3', status: 'paid', product_type: 'recurring', product_id: 230699, amount: 0, trial: true, paid_at: s('2026-09-06T10:00:00Z') },
   // trial before the window: excluded
-  { id: 5, user_id: 'u4', status: 'paid', amount: 0, trial: true, paid_at: s('2026-08-01T10:00:00Z') },
+  { id: 5, user_id: 'u4', status: 'paid', product_type: 'recurring', product_id: 230699, amount: 0, trial: true, paid_at: s('2026-08-01T10:00:00Z') },
   // free-section signup ($0 freebie) is not a plan trial
-  { id: 7, user_id: 'u6', status: 'paid', amount: 0, kind: 'freebie', paid_at: s('2026-09-01T10:00:00Z') },
+  { id: 7, user_id: 'u6', status: 'paid', product_type: 'freebie', product_id: 226775, amount: 0, trial: false, paid_at: s('2026-09-01T10:00:00Z') },
   // paid without any trial: not part of the cohort
-  { id: 6, user_id: 'u5', status: 'paid', amount: 3999, paid_at: s('2026-09-01T10:00:00Z') },
+  { id: 6, user_id: 'u5', status: 'paid', product_type: 'recurring', product_id: 230699, amount: 3999, paid_at: s('2026-09-01T10:00:00Z') },
 ]
 const sales = [{ uscreen_user_id: 'u1', acquisition: 'exact_paid_meta', confidence: 'high', source: 'ig', medium: 'paid_social', campaign: 'JF Coaches Max', ad: 'Planning Session' }]
 const customers = new Map([
@@ -48,5 +48,5 @@ assert.equal(classifyTrialAttribution({ sale: { acquisition: 'unknown' }, custom
 // PII never appears in rows
 assert.ok(!JSON.stringify(cohort).match(/@|email/i))
 assert.ok(!cohort.rows.find((r) => r.uscreen_user_id === 'u6'))
-assert.equal(buildTrialCohort({ window, invoices, sales, customers, now, includeFreebies: true }).summary.trials, 4)
+assert.equal(buildTrialCohort({ window, invoices, sales, customers, now, includeFreebies: true }).summary.trials, 3)
 console.log('trial cohort tests passed')

@@ -10,7 +10,7 @@ const userId = '32584033'
 const eventId = `JF_First_Paid_Membership.${crypto.createHash('sha256').update(`uscreen:${userId}`).digest('hex')}`
 const key = `jf:meta:first-paid:${eventId.split('.').at(-1)}`
 const store = new Map([[key, JSON.stringify({
-  status: 'candidate', eventId, uscreenUserId: userId, offerId: 230698,
+  status: 'candidate', eventId, uscreenUserId: userId, uscreenOrderId: '57806670', offerId: 230698,
   metaEvent: {
     event_name: 'JF_First_Paid_Membership', event_id: eventId, event_time: 1,
     action_source: 'website', event_source_url: 'https://app.jonerfootball.com/checkout/success',

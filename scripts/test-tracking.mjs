@@ -706,19 +706,14 @@ try {
     event_date: '2026-07-29T01:02:03Z', offer_id: 230698, offer_title: 'Max', total: 59,
     currency: 'AUD', utm_source: 'Not available',
   })
-  assert.equal(metaBodies.length, metaBeforeFirstPaid + 1, 'webhook must auto-send the canonical first-paid event once gates pass')
-  const sentEvent = metaBodies.at(-1).data[0]
-  assert.equal(sentEvent.event_name, 'JF_First_Paid_Membership')
-  assert.equal(sentEvent.custom_data.utm_campaign, 'coaches_pro')
-  assert.equal(sentEvent.user_data.fbc, 'fb.1.1234000.fb-click-123')
-  assert.equal(sentEvent.custom_data.value, 59)
-  assert.equal(sentEvent.custom_data.currency, 'AUD')
+  assert.equal(metaBodies.length, metaBeforeFirstPaid, 'webhook without full invoice history stays candidate-only')
   const firstPaidKey = [...kvStore.keys()].find((key) => key.startsWith('jf:meta:first-paid:') && !key.endsWith(':send-lock'))
   assert.ok(firstPaidKey, 'first-paid claim must be stored in KV')
   const firstPaidRecord = JSON.parse(kvStore.get(firstPaidKey))
-  assert.equal(firstPaidRecord.status, 'sent', 'a safe auto-send must mark the claim sent')
+  assert.equal(firstPaidRecord.status, 'candidate', 'missing authoritative history must hold a candidate')
+  const sentEvent = firstPaidRecord.metaEvent
   assert.equal(sentEvent.event_id, firstPaidRecord.eventId)
-  assert.equal(brevoBodies.at(-1).attributes.JF_FIRST_PAID_TRANSACTION_ID, 'ch_paid_123')
+  assert.equal(brevoBodies.at(-1).attributes.JF_FIRST_PAID_TRANSACTION_ID, undefined, 'unverified candidate cannot stamp confirmed first-paid CRM history')
   assert.equal(JSON.stringify(sentEvent).includes('user-paid-123'), false, 'raw Uscreen user ID must not appear in the Meta payload')
   const firstPaidEventId = firstPaidRecord.eventId
   const metaBeforeDuplicates = metaBodies.length
@@ -745,8 +740,7 @@ try {
     event_date: '2026-07-29T01:02:03Z', offer_id: 230698, offer_title: 'Max', total: 0,
     currency: 'AUD',
   })
-  assert.equal(metaBodies.at(-1).data[0].event_name, 'JF_Trial_Started')
-  assert.equal(metaBodies.at(-1).data[0].custom_data.utm_campaign, 'coaches_pro')
+  assert.equal(metaBodies.length, metaBeforeDuplicates, 'zero webhook without invoice trial=true cannot emit a trial')
 
   await processUscreenPayload({
     event: 'user.created', email: 'tracking-new@example.com', user_id: 'user-123',
@@ -763,8 +757,8 @@ try {
     event_date: '2026-07-29T02:02:03Z', offer_id: 230698, offer_title: 'Max', total: 59,
     currency: 'AUD',
   })
-  assert.equal(metaBodies.length, beforeKvFirstPaid + 1, 'a second distinct buyer must auto-send exactly one canonical event')
-  const kvSentEvent = metaBodies.at(-1).data[0]
+  assert.equal(metaBodies.length, beforeKvFirstPaid, 'a second buyer also requires authoritative invoice history')
+  const kvSentEvent = [...kvStore.values()].map(raw => { try { return JSON.parse(raw) } catch { return {} } }).find(row => row.uscreenUserId === 'user-123').metaEvent
   assert.equal(kvSentEvent.event_name, 'JF_First_Paid_Membership')
   assert.equal(kvSentEvent.custom_data.utm_campaign, 'JF Teams - Traffic - Book A Demo')
   assert.equal(kvSentEvent.user_data.fbc, 'fb.1.1234000.fb-click-123')
@@ -786,9 +780,8 @@ try {
     event_date: '2026-08-10T03:30:00Z', offer_id: 230699, offer_title: 'Plus', total: 29,
     currency: 'AUD', utm_source: 'facebook', utm_campaign: 'app-buyers',
   })
-  assert.equal(metaBodies.length, beforeShadow + 1, 'a brand-new verified buyer must emit exactly one canonical event')
-  assert.equal(metaBodies.at(-1).data[0].event_name, 'JF_First_Paid_Membership')
-  assert.equal(brevoBodies.at(-1).attributes.JF_FIRST_PAID_TRANSACTION_ID, 'ch_shadow_paid_123')
+  assert.equal(metaBodies.length, beforeShadow, 'brand-new webhook claim is not verified payment history')
+  assert.equal(brevoBodies.at(-1).attributes.JF_FIRST_PAID_TRANSACTION_ID, undefined)
   await assert.rejects(
     processUscreenPayload({
       event: 'order.paid', email: 'brand-new-no-id@example.com',

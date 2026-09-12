@@ -1,35 +1,22 @@
 import assert from 'node:assert/strict'
 import handler from '../api/attribution-report.js'
-
-process.env.ATTRIBUTION_REPORT_TOKEN = 'test-report-token'
-process.env.KV_REST_API_URL = 'https://kv.invalid'
-process.env.KV_REST_API_TOKEN = 'test-kv-token'
-
-const calls = []
-globalThis.fetch = async (_url, options) => {
-  const command = JSON.parse(options.body)
-  calls.push(command)
-  const [verb, key] = command
-  let result = null
-  if (verb === 'ZREVRANGE' && key === 'jfa:reliability:sales:index') result = ['reconcile:payment-1']
-  else if (verb === 'GET' && key === 'jfa:reliability:sale:reconcile:payment-1') result = JSON.stringify({
-    sale_id: 'reconcile:payment-1', payment_id: 'payment-1', occurred_at: '2026-08-12T22:36:23.000Z',
-    customer_name: 'Joe Ransom', customer_reference: '32668339', plan: 'Max - Annual', amount: 124.99,
-    currency: 'USD', acquisition: 'unknown', confidence: 'none', evidence: ['no_safe_join'],
-  })
-  else if (verb === 'SCAN') result = ['0', []]
-  else if (verb === 'ZRANGE') result = []
-  else if (verb === 'ZADD') result = 0
-  return { ok: true, json: async () => ({ result }) }
+process.env.ATTRIBUTION_REPORT_TOKEN='test-report-token'
+process.env.KV_REST_API_URL='https://kv.invalid'
+process.env.KV_REST_API_TOKEN='test-only'
+delete process.env.USCREEN_API_KEY
+const calls=[]
+const rows=Array.from({length:80},(_,i)=>({sale_id:`payment:${i}`,payment_id:`payment:${i}`,occurred_at:'2026-09-10T00:00:00Z',offer_id:'3',uscreen_user_id:String(i),amount:999,currency:'GBP',payment_status:'paid',kind:'payment',payment_verification:{verified:true,userId:String(i),offerId:'3',invoiceId:String(i),amount:10,currency:'USD'}}))
+globalThis.fetch=async(_url,options)=>{
+ const cmd=JSON.parse(options.body);calls.push(cmd)
+ let result=null
+ if(cmd[0]==='SCAN') result=['0',cmd[3].includes(':archive:')?rows.slice(40).map(r=>r.sale_id):rows.slice(0,40).map(r=>r.sale_id)]
+ if(cmd[0]==='MGET') result=cmd.slice(1).map(key=>key.startsWith('jf:meta:')?null:JSON.stringify(rows.find(r=>r.sale_id===key)))
+ if(cmd[0]==='LRANGE'||cmd[0]==='HGETALL') result=[]
+ if(!['SCAN','MGET','GET','LRANGE','HGETALL'].includes(cmd[0])) throw Error(`Unexpected mutation ${cmd[0]}`)
+ return {ok:true,json:async()=>({result})}
 }
-
-let statusCode = 0, body
-const req = { method: 'GET', headers: { authorization: 'Bearer test-report-token' }, query: {} }
-const res = { status(code) { statusCode = code; return this }, json(value) { body = value; return value } }
-await handler(req, res)
-assert.equal(statusCode, 200)
-assert.equal(body.sales.length, 1)
-assert.equal(body.sales[0].customer_name, 'Joe Ransom')
-assert.equal(body.sales[0].payment_id, 'payment-1')
-assert.ok(calls.some(([verb, key]) => verb === 'ZREVRANGE' && key === 'jfa:reliability:sales:index'))
-console.log('attribution report reliability test passed')
+let code,body
+await handler({method:'GET',headers:{authorization:'Bearer test-report-token'},query:{from:'2026-09-01',to:'2026-09-12',limit:10}},{status(c){code=c;return this},json(b){body=b;return b}})
+assert.equal(code,200);assert.equal(body.sales.length,10);assert.equal(body.range_totals.paid_invoices,80);assert.deepEqual(body.range_totals.revenue_by_currency,{USD:800});assert.equal(body.summary.totals.payments,null)
+assert.equal(body.sales[0].amount,10);assert.equal(body.coverage.archives_included,true)
+console.log('PASS: archive-inclusive totals independent of 10 displayed rows; verified money only; no report writes')

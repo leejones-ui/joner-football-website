@@ -2,7 +2,7 @@
 // whether it converted, lapsed, or is still running. Uscreen is the source of
 // truth for trials and conversions; the KV sales ledger and the customer's
 // signup-time UTMs supply attribution. No PII leaves this module.
-import { fetchUscreenInvoices, isPositivePaidInvoice, isTrialInvoice, fetchReliableSales, config } from './_meta-uscreen-reconciliation.js'
+import { fetchUscreenInvoices, isPositivePaidInvoice, isTrialInvoice, invoiceProductType, invoiceProductId, fetchReliableSales, config } from './_meta-uscreen-reconciliation.js'
 import { decodeUscreenSource } from './_attribution.js'
 
 export const TRIAL_DAYS = 7
@@ -58,7 +58,7 @@ export function classifyTrialAttribution({ sale, customer }) {
 }
 
 export function isFreebie(invoice) {
-  return text(invoice?.kind).toLowerCase() === 'freebie'
+  return invoiceProductType(invoice) === 'freebie'
 }
 
 export function buildTrialCohort({ window, invoices = [], sales = [], customers = new Map(), now = new Date(), includeFreebies = false }) {
@@ -69,9 +69,8 @@ export function buildTrialCohort({ window, invoices = [], sales = [], customers 
     const paidAt = number(invoice?.paid_at)
     if (!userId || !paidAt) continue
     const entry = byUser.get(userId) || { trials: [], paid: [] }
-    // A $0 "freebie" is a free-section signup, not a 7-day plan trial. Keep it
-    // out of the trial cohort unless the caller asks for it.
-    if (isTrialInvoice(invoice)) { if (includeFreebies || !isFreebie(invoice)) entry.trials.push(invoice) }
+    // Freebie signups are reported separately and never enter trial metrics.
+    if (isTrialInvoice(invoice)) entry.trials.push(invoice)
     else if (isPositivePaidInvoice(invoice)) entry.paid.push(invoice)
     byUser.set(userId, entry)
   }
@@ -94,7 +93,10 @@ export function buildTrialCohort({ window, invoices = [], sales = [], customers 
     if (startDay < window.from || startDay > window.to) continue
     const startMs = number(first.paid_at) * 1000
     const trialEndsMs = startMs + TRIAL_DAYS * 86400000
-    const conversion = entry.paid.filter((inv) => number(inv.paid_at) * 1000 > startMs).sort((a, b) => number(a.paid_at) - number(b.paid_at))[0]
+    const productId = invoiceProductId(first)
+    // A different plan purchase is not proof this trial converted. Missing
+    // product identity stays unverified rather than matching by user alone.
+    const conversion = entry.paid.filter((inv) => productId && invoiceProductId(inv) === productId && ['recurring', 'subscription'].includes(invoiceProductType(inv)) && number(inv.paid_at) * 1000 > startMs).sort((a, b) => number(a.paid_at) - number(b.paid_at))[0]
     let status
     if (conversion) status = 'converted'
     else if (nowMs >= trialEndsMs) status = 'ended_not_converted'
@@ -104,8 +106,8 @@ export function buildTrialCohort({ window, invoices = [], sales = [], customers 
       uscreen_user_id: userId,
       trial_started_at: startedAt,
       trial_ends_at: new Date(trialEndsMs).toISOString(),
-      kind: text(first.kind) || undefined,
-      plan_id: text(first.source_id) || undefined,
+      kind: invoiceProductType(first) || undefined,
+      plan_id: productId || undefined,
       status,
       converted_at: conversion ? iso(conversion.paid_at) : undefined,
       converted_amount: conversion ? Number(((number(conversion.amount) || 0) / 100).toFixed(2)) : undefined,
@@ -131,7 +133,7 @@ export function buildTrialCohort({ window, invoices = [], sales = [], customers 
   const rate = (b) => { const decided = b.converted + b.ended_not_converted; return decided ? Number((b.converted / decided).toFixed(3)) : null }
   summary.conversion_rate_of_decided = rate(summary)
   for (const b of Object.values(byChannel)) b.conversion_rate_of_decided = rate(b)
-  return { window, generated_at: now.toISOString(), trial_days: TRIAL_DAYS, includes_freebies: includeFreebies, summary, by_channel: byChannel, rows }
+  return { window, generated_at: now.toISOString(), trial_days: TRIAL_DAYS, includes_freebies: false, summary, by_channel: byChannel, rows }
 }
 
 async function fetchCustomer(id, fetchImpl) {
@@ -162,7 +164,7 @@ export async function fetchTrialCohort(window, fetchImpl = fetch, now = new Date
     results.forEach((customer, index) => { if (customer) customers.set(batch[index], customer) })
   }
   const cohort = buildTrialCohort({ window, invoices, sales, customers, now, includeFreebies })
-  cohort.freebie_signups_in_window = invoices.filter((inv) => isTrialInvoice(inv) && isFreebie(inv) && String(new Date(Number(inv.paid_at) * 1000).toISOString()).slice(0, 10) >= window.from && String(new Date(Number(inv.paid_at) * 1000).toISOString()).slice(0, 10) <= window.to).length
+  cohort.freebie_signups_in_window = invoices.filter((inv) => isFreebie(inv) && String(new Date(Number(inv.paid_at) * 1000).toISOString()).slice(0, 10) >= window.from && String(new Date(Number(inv.paid_at) * 1000).toISOString()).slice(0, 10) <= window.to).length
   cohort.invoice_history_complete = !invoices.truncated
   cohort.customer_lookups = { attempted: needLookup.length, resolved: customers.size, capped: provisional.rows.length > MAX_CUSTOMER_LOOKUPS }
   return cohort

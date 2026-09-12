@@ -84,8 +84,22 @@ export function isPositivePaidInvoice(invoice) {
   return text(invoice?.status).toLowerCase() === 'paid' && (number(invoice?.amount) || 0) > 0
 }
 
+export function invoiceProductType(invoice) {
+  return text(invoice?.product_type || invoice?.kind).toLowerCase()
+}
+
+export function invoiceProductId(invoice) {
+  return text(invoice?.product_id || invoice?.source_id)
+}
+
 export function isTrialInvoice(invoice) {
-  return invoice?.trial === true || (text(invoice?.status).toLowerCase() === 'paid' && (number(invoice?.amount) || 0) === 0)
+  // A paid $0 invoice alone may be a freebie or a discounted membership.
+  // Publisher supplies product_type/product_id; MCP uses kind/source_id.
+  return invoice?.trial === true
+    && ['recurring', 'subscription'].includes(invoiceProductType(invoice))
+    && text(invoice?.status).toLowerCase() === 'paid'
+    && invoice?.amount !== null && text(invoice?.amount) !== ''
+    && number(invoice?.amount) === 0
 }
 
 export function isMetaSale(sale) {
@@ -121,6 +135,14 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
     if (!confirmedUserSet.has(text(invoice.user_id))) return sum
     return sum + ((number(invoice.amount) || 0) / 100)
   }, 0)
+  const confirmedRevenueByCurrency = {}
+  for (const invoice of paidInvoices) {
+    if (!confirmedUserSet.has(text(invoice.user_id))) continue
+    const currency = /^[A-Z]{3}$/.test(text(invoice.currency).toUpperCase()) ? text(invoice.currency).toUpperCase() : 'UNKNOWN'
+    confirmedRevenueByCurrency[currency] = Number(((confirmedRevenueByCurrency[currency] || 0) + (number(invoice.amount) || 0) / 100).toFixed(2))
+  }
+  const confirmedCurrencies = Object.keys(confirmedRevenueByCurrency)
+  const confirmedCurrency = confirmedCurrencies.length === 1 && confirmedCurrencies[0] !== 'UNKNOWN' ? confirmedCurrencies[0] : null
   const historyComplete = !(Array.isArray(invoices) && invoices.truncated)
   const verdict = sourceHealth?.meta && sourceHealth?.uscreen && sourceHealth?.kv
     ? (unmatchedMetaPurchases > 0 || unknownSales > 0 || !historyComplete ? 'AMBER' : 'GREEN')
@@ -148,7 +170,10 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
     match_rate: matchRate,
     uscreen_paid_value: Number(uscreenRevenue.toFixed(2)),
     invoice_history_complete: !(Array.isArray(invoices) && invoices.truncated),
-    confirmed_buyer_revenue: Number(confirmedRevenue.toFixed(2)),
+    confirmed_buyer_revenue: confirmedCurrencies.length <= 1 ? Number(confirmedRevenue.toFixed(2)) : null,
+    confirmed_buyer_revenue_currency: confirmedCurrency,
+    confirmed_buyer_revenue_by_currency: confirmedRevenueByCurrency,
+    ledger_coverage: { scope: 'latest_live_records', limit: MAX_SALES, archives_included: false, complete_campaign_history: false },
     fb20_redemptions: fb20Invoices.length,
     fb20_revenue: Number(fb20Revenue.toFixed(2)),
     verdict,
@@ -188,15 +213,26 @@ export function addPhaseTwoThree({ report, previousReport, meta, previousMeta, s
   // and must never inflate ROAS (AMBER contract).
   const revenue = number(report.confirmed_buyer_revenue) || 0
   const cac = confirmed > 0 && spend > 0 ? Number((spend / confirmed).toFixed(2)) : null
-  const roas = spend > 0 && confirmed > 0 ? Number((revenue / spend).toFixed(4)) : null
+  const spendCurrency = text(meta?.currency).toUpperCase()
+  const revenueCurrency = text(report.confirmed_buyer_revenue_currency).toUpperCase()
+  const revenueCurrencies = Object.keys(report.confirmed_buyer_revenue_by_currency || {})
+  const roasReason = !(spend > 0) ? 'no-positive-spend'
+    : !(confirmed > 0) ? 'no-matched-paid-buyers'
+    : revenueCurrencies.length > 1 ? 'multiple-revenue-currencies'
+    : !/^[A-Z]{3}$/.test(spendCurrency) || !/^[A-Z]{3}$/.test(revenueCurrency) ? 'currency-unverified'
+    : spendCurrency !== revenueCurrency ? 'currency-mismatch'
+    : null
+  const roas = roasReason ? null : Number((revenue / spend).toFixed(4))
   const metrics = {
     spend: Number(spend.toFixed(2)),
-    spend_currency: text(meta?.currency).toUpperCase() || null,
-    confirmed_revenue: Number(revenue.toFixed(2)),
-    confirmed_revenue_currency: text(report.uscreen_currency).toUpperCase() || 'USD',
+    spend_currency: spendCurrency || null,
+    confirmed_revenue: report.confirmed_buyer_revenue === null ? null : Number(revenue.toFixed(2)),
+    confirmed_revenue_currency: revenueCurrency || null,
+    confirmed_revenue_by_currency: report.confirmed_buyer_revenue_by_currency || {},
     uscreen_window_revenue: number(report.uscreen_paid_value) ?? null,
     confirmed_cac: cac,
     confirmed_roas: roas,
+    confirmed_roas_reason: roasReason,
   }
   const comparisonFields = ['meta_reported_purchases', 'confirmed_meta_buyers', 'uscreen_paid_signups', 'uscreen_trials', 'unknown_sales', 'match_rate']
   const comparison = { current: {}, previous: {}, delta: {} }
