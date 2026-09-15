@@ -1,0 +1,79 @@
+---
+const questions = [
+  { key:'audience', title:'Who is the training for?', options:[['self','Me'],['child','My child'],['team','A team or club']] },
+  { key:'goal', title:'What is the main goal?', options:[['basics','Build the basics'],['programme','Follow a training programme'],['coaching','Plan and coach better']] },
+  { key:'access', title:'What access do you need?', options:[['training','Training videos and programmes'],['coaches','Coaches Only and session plans'],['team','Team logins and assignments']] },
+]
+---
+<div class="app-finder-banner">
+  <div><strong>Not sure which plan?</strong><span>Three quick questions will help.</span></div>
+  <button type="button" class="join-button outline" data-open-app-finder>Find my plan <span aria-hidden="true">↗</span></button>
+</div>
+<dialog id="app-plan-finder" aria-labelledby="app-finder-title">
+  <div class="app-finder-head"><p id="app-finder-title">Find my plan</p><button type="button" class="app-finder-close" aria-label="Close plan finder">×</button></div>
+  <div class="app-finder-progress" aria-hidden="true"><span></span></div>
+  <p class="app-finder-step" aria-live="polite">Question 1 of 3</p>
+  {questions.map((q, index)=><fieldset data-finder-step={index} hidden={index!==0}>
+    <legend tabindex="-1">{q.title}</legend>
+    <div class="app-finder-options">{q.options.map(([value,label])=><label><input type="radio" name={`finder-${q.key}`} value={value}/><span>{label}</span><span class="app-finder-choice" aria-hidden="true"></span></label>)}</div>
+  </fieldset>)}
+  <div class="app-finder-result" hidden>
+    <p class="app-finder-eyebrow">Your best fit</p><h2 tabindex="-1"></h2><p class="app-finder-reason"></p>
+    <p class="app-finder-price"></p><p class="app-finder-trial"></p>
+    <a class="join-button" data-finder-result-link>See your plan</a>
+    <button type="button" class="app-finder-restart">Start again</button>
+  </div>
+  <div class="app-finder-actions"><button type="button" class="app-finder-back" hidden>Back</button><button type="button" class="join-button app-finder-next" disabled>Next</button></div>
+</dialog>
+<script>
+  import { recommendAppPlan } from '../lib/app-plan-recommendation.js'
+  const dialog = document.querySelector<HTMLDialogElement>('#app-plan-finder')!
+  const steps = [...dialog.querySelectorAll<HTMLFieldSetElement>('[data-finder-step]')]
+  const next = dialog.querySelector<HTMLButtonElement>('.app-finder-next')!
+  const back = dialog.querySelector<HTMLButtonElement>('.app-finder-back')!
+  const result = dialog.querySelector<HTMLElement>('.app-finder-result')!
+  const resultLink = dialog.querySelector<HTMLAnchorElement>('[data-finder-result-link]')!
+  let step = 0, opener: HTMLElement | null = null, previousOverflow = ''
+  function answer(name) { return dialog.querySelector<HTMLInputElement>(`input[name="finder-${name}"]:checked`)?.value }
+  function render(focus = false) {
+    steps.forEach((el, index) => { el.hidden = step!==index })
+    result.hidden = step!==3
+    dialog.querySelector<HTMLElement>('.app-finder-actions')!.hidden = step===3
+    dialog.querySelector<HTMLElement>('.app-finder-step')!.textContent = step===3 ? 'Your recommendation' : `Question ${step+1} of 3`
+    dialog.querySelector<HTMLElement>('.app-finder-progress span')!.style.width = `${Math.min(3,step+1)/3*100}%`
+    back.hidden = step===0
+    next.textContent = step===2 ? 'Show my plan' : 'Next'
+    next.disabled = step<3 && !steps[step].querySelector('input:checked')
+    if (step===3) {
+      const recommendation = recommendAppPlan({ audience:answer('audience'),goal:answer('goal'),access:answer('access') })
+      if (!recommendation) return
+      result.querySelector('h2')!.textContent = recommendation.name
+      result.querySelector('.app-finder-reason')!.textContent = recommendation.reason
+      const club = recommendation.id==='club'
+      const card = document.getElementById(recommendation.id)
+      const yearly = document.querySelector('[data-billing="annual"]')?.getAttribute('aria-pressed')==='true'
+      result.querySelector('.app-finder-price')!.textContent = club ? 'A plan for your player and coach numbers.' : yearly ? (card?.querySelector('.billing-sub')?.textContent || '') : `${card?.querySelector('.billing-price')?.textContent || ''} billed monthly`
+      result.querySelector('.app-finder-trial')!.textContent = club ? '' : recommendation.id==='max' ? 'Paid access from day one. No free trial.' : 'Start with a 7-day free trial.'
+      resultLink.href = club ? '/teams/' : `#${recommendation.id}`
+      resultLink.textContent = club ? 'See Teams plans' : `See ${recommendation.name} plan`
+      resultLink.dataset.planTarget = recommendation.id
+      resultLink.dataset.gaEvent = club ? 'JoinClubPricingClick' : 'JoinPlanAnchorClick'
+      if(focus)result.querySelector<HTMLElement>('h2')!.focus()
+    } else if(focus)steps[step].querySelector('legend')!.focus()
+  }
+  document.querySelectorAll<HTMLElement>('[data-open-app-finder]').forEach(button=>button.addEventListener('click',()=>{
+    opener=button;step=0;dialog.querySelectorAll<HTMLInputElement>('input').forEach(input=>input.checked=false);render();previousOverflow=document.body.style.overflow;dialog.showModal();document.body.style.overflow='hidden'
+    window.JonerTracking?.trackEvent('JoinPlanFinderOpen',{custom_data:{page_path:location.pathname}})
+  }))
+  dialog.querySelector('.app-finder-close')!.addEventListener('click',()=>dialog.close())
+  dialog.addEventListener('close',()=>{document.body.style.overflow=previousOverflow;opener?.focus()})
+  dialog.addEventListener('change',()=>render())
+  document.addEventListener('app-billing-updated',()=>{if(dialog.open && step===3)render()})
+  next.addEventListener('click',()=>{if(next.disabled)return;step++;render(true);if(step===3)window.JonerTracking?.trackEvent('JoinPlanFinderComplete',{custom_data:{plan:resultLink.dataset.planTarget,page_path:location.pathname}})})
+  back.addEventListener('click',()=>{step=Math.max(0,step-1);render(true)})
+  dialog.querySelector('.app-finder-restart')!.addEventListener('click',()=>{step=0;dialog.querySelectorAll<HTMLInputElement>('input').forEach(input=>input.checked=false);render(true)})
+  resultLink.addEventListener('click',()=>{
+    const target=resultLink.getAttribute('href');dialog.close()
+    if(target?.startsWith('#'))requestAnimationFrame(()=>{const card=document.querySelector(target);card?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});card?.querySelector<HTMLElement>('h2')?.focus({preventScroll:true})})
+  })
+</script>
