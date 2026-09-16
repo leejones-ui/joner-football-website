@@ -194,7 +194,7 @@ const faqs = [
               <tbody>{compareGroups.map(group=><>
                 <tr class="app-compare-group"><th colspan="5" scope="colgroup">{group.title}</th></tr>
                 {group.rows.map(row=><tr><th scope="row">{row[0]}</th>{row[1].map((on,i)=><td>
-                  {i===3 && group.title!=='Teams and clubs' ? <a href="/teams/">By Teams plan</a> : on ? <span class="app-compare-yes" aria-label="Included">✓</span> : <span class="app-compare-no" aria-label="Not included">−</span>}
+                  {i===3 && group.title!=='Teams and clubs' ? <a href="/teams/">Explore Teams plans</a> : on ? <span class="app-compare-yes" aria-label="Included">✓</span> : <span class="app-compare-no" aria-label="Not included">−</span>}
                 </td>)}</tr>)}
               </>)}</tbody>
             </table>
