@@ -292,6 +292,35 @@ const faqs = [
       return mode === 'annual' ? plan.annual / 12 : plan.monthly
     }
 
+    const priceFrames = new Map<Element, number>()
+    function updatePrice(el: Element, to: number, animate: boolean) {
+      const pending = priceFrames.get(el)
+      if (pending !== undefined) cancelAnimationFrame(pending)
+      priceFrames.delete(el)
+      const from = Number((el.textContent || '').replace(/[^0-9.]/g, ''))
+      const region = currentRegion
+      // Assistive technology gets the final price, not the animation's intermediate values.
+      el.setAttribute('aria-label', fmt(to, region))
+      if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches || !Number.isFinite(from) || from === to) {
+        el.textContent = fmt(to, region)
+        return
+      }
+      let start: number | null = null
+      function frame(now: number) {
+        if (start === null) start = now
+        const progress = Math.min((now - start) / 520, 1)
+        const eased = 1 - Math.pow(1 - progress, 3)
+        el.textContent = fmt(from + (to - from) * eased, region)
+        if (progress < 1) priceFrames.set(el, requestAnimationFrame(frame))
+        else {
+          el.textContent = fmt(to, region)
+          priceFrames.delete(el)
+          document.dispatchEvent(new Event('app-billing-updated'))
+        }
+      }
+      priceFrames.set(el, requestAnimationFrame(frame))
+    }
+
     function regionFromCountryCode(countryCode) {
       const c = countryCode || ''
       if (c === 'AU') return 'AU'
@@ -322,7 +351,7 @@ const faqs = [
         const planId = el.getAttribute('data-plan')
         const to = priceForPlan(planId, mode)
         if (to === null) return
-        el.textContent = fmt(to)
+        updatePrice(el, to, Boolean(animate && mode !== currentMode))
       })
       periods.forEach((el) => { el.textContent = el.getAttribute('data-' + mode) || '' })
       compares.forEach((el) => {
