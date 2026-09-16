@@ -37,12 +37,13 @@ function setup() {
   assert.equal(dialog.getAttribute('aria-labelledby'),'pf-dialog-title')
   assert.equal(d.querySelector('#pf-dialog-title').textContent,'Find my plan')
   assert.equal(d.querySelectorAll('[data-finder-step] .pf-option-copy > span').length,0,'Main answers use concise labels only')
-  assert.ok(d.querySelector('[data-finder-step="2"]').compareDocumentPosition(d.querySelector('.pf-photo')) & w.Node.DOCUMENT_POSITION_FOLLOWING,'Photo sits below the answers')
+  assert.equal(dialog.querySelectorAll('img').length,0,'Keep the questionnaire photo-free')
+  assert.equal(d.querySelectorAll('input[name="finder-goals"]').length,8)
+  assert.equal(d.querySelectorAll('.pf-content-group:last-child input').length,4)
   assert.equal(dialog.open,false,'Never open automatically')
   assert.equal(d.querySelectorAll('#app-plan-finder input:checked').length,0)
   click('[data-open-app-finder]')
   assert.equal(dialog.open,true)
-  assert.equal(d.querySelector('.pf-photo').hidden,false)
   assert.equal(d.body.style.overflow,'hidden')
   assert.equal(d.querySelector('.pf-next').disabled,true)
   pick('roles','parent');pick('roles','player');next()
@@ -54,7 +55,6 @@ function setup() {
   assert.equal(d.querySelector('[data-finder-step="2"]').hidden,false)
   next()
   assert.equal(d.querySelector('.pf-result').dataset.plan,'plus')
-  assert.equal(d.querySelector('.pf-photo').hidden,true,'Keep the recommendation focused')
   assert.equal(d.querySelector('.pf-upgrade').hidden,false)
   assert.equal(d.querySelector('.pf-result-link').getAttribute('href'),'#plus')
   d.querySelector('[data-billing="annual"]').setAttribute('aria-pressed','false')
@@ -116,3 +116,15 @@ for(const access of ['individual','group','both']) {
   dom.window.close()
 }
 console.log('PASS: DOM journeys, multi-select, close/resume, billing, full-library exclusivity, group routing, clarification, stale-answer invalidation and event deduplication')
+
+// Messaging is included in Plus; learning Lee's coaching can add Max resources.
+{
+  const {dom,d,click,pick,next}=setup()
+  click('[data-open-app-finder]');pick('roles','player');next();pick('goals','basics');next();pick('content','message-lee');next()
+  assert.equal(d.querySelector('.pf-result').dataset.plan,'plus')
+  click('.pf-edit');next();pick('goals','lee-coaching');next();next()
+  assert.equal(d.querySelector('[data-finder-extra="coaching"]').hidden,false)
+  pick('coaching','include');next()
+  assert.equal(d.querySelector('.pf-result').dataset.plan,'max')
+  dom.window.close()
+}

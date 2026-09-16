@@ -47,3 +47,9 @@ Local preview: http://127.0.0.1:4326/join/ on the home Mac. Server left running 
 - Readable body-font section headings: Player training, Learn from Lee, Coaching resources.
 - Moved the existing coaching photo below the answers; hidden it on the recommendation screen.
 - Kept multi-select, conditional clarification, billing, plan targeting and explicit-click opening.
+# Follow-up revision — 16 September, photo-free questionnaire
+
+- Removed all questionnaire photos following Lee’s live review; other join-page photos are unchanged.
+- Added eighth goal: “Learn how Lee coaches sessions”. Uses the existing coaching clarification when selected content does not already require Max.
+- Added fourth coaching-resource option: “Message Lee directly”. Minimum tier is Plus, matching the live join-page feature list (also included in Max).
+- Preserved pricing, checkout links, existing answer IDs and multi-select behaviour.

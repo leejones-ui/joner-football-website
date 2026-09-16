@@ -33,7 +33,7 @@ const questions = [
           </div>
         </fieldset>
         <fieldset data-finder-extra="coaching" hidden>
-          <legend tabindex="-1">Want coaching resources too?</legend><p class="pf-hint">Your picks so far cover player training.</p>
+          <legend tabindex="-1">Want coaching resources too?</legend><p class="pf-hint">Your picks don’t include Coaches Only yet.</p>
           <div class="pf-options pf-one-column">
             <label class="pf-option"><input type="radio" name="finder-coaching" value="include"/><span class="pf-option-copy"><strong>Yes, include Coaches Only</strong><span>Session plans and coaching breakdowns</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
             <label class="pf-option"><input type="radio" name="finder-coaching" value="training-only"/><span class="pf-option-copy"><strong>No, just my selected training</strong></span><span class="pf-check" aria-hidden="true">✓</span></label>
@@ -48,7 +48,6 @@ const questions = [
           <aside class="pf-upgrade" hidden><h3>Want everything?</h3><p>Max adds Coaches Only, session plans and breakdowns.</p><a class="pf-text-link" href="#max" data-finder-max>Compare with Max <span aria-hidden="true">↗</span></a><p class="pf-upgrade-trial">Paid from day one. No free trial.</p></aside>
           <button type="button" class="pf-text-link pf-edit">Edit my answers</button>
         </section>
-        <div class="pf-photo"><img src="/app/uploads/2026/05/soccer-coach-goal-instruction.webp" alt="Lee coaching players on the pitch" loading="lazy" width="600" height="600"/></div>
       </div>
       <footer class="pf-footer"><button type="button" class="pf-back" hidden>← Back</button><p class="pf-selection" aria-live="polite"></p><button type="button" class="join-button pf-next" disabled>Continue →</button></footer>
     </div>
@@ -107,7 +106,6 @@ const questions = [
     dialog.querySelector<HTMLElement>('.pf-footer')!.hidden = isResult
     dialog.querySelector<HTMLElement>('.pf-step')!.textContent = isResult ? 'Your recommendation' : typeof step === 'number' ? `Question ${step + 1} of 3` : 'One quick check'
     dialog.querySelector<HTMLElement>('.pf-progress span')!.style.width = `${typeof step === 'number' ? (step + 1) / 3 * 100 : 100}%`
-    dialog.querySelector<HTMLElement>('.pf-photo')!.hidden = isResult
     back.hidden = step === 0
     const inputs = field ? [...(field as HTMLFieldSetElement).querySelectorAll<HTMLInputElement>('input:checked')] : []
     next.disabled = !inputs.length

@@ -15,6 +15,7 @@ export const goals = [
   { id: 'coaching', title: 'Improve my coaching' },
   { id: 'planning', title: 'Plan better sessions' },
   { id: 'team', title: 'Help my team improve' },
+  { id: 'lee-coaching', title: 'Learn how Lee coaches sessions' },
 ]
 // Public plan contract, not category membership: categories can mix tier samples.
 // Plus goalkeeper / recorded-live collections verified in Uscreen 2026-09-16.
@@ -37,6 +38,8 @@ export const contentGroups = [
     { id: 'team-training', title: 'Team-training sessions', tier: 'max' },
     { id: 'session-plans', title: 'Session plans & PDFs', tier: 'max' },
     { id: 'coach-education', title: 'Coach education', tier: 'max' },
+    // The live join page includes direct messaging in Plus and Max, not Max only.
+    { id: 'message-lee', title: 'Message Lee directly', tier: 'plus' },
   ] },
 ]
 export const contentOptions = contentGroups.flatMap(group => group.options)
@@ -48,7 +51,7 @@ export function needsGroupQuestion({ roles = [], goals: selectedGoals = [] } = {
 }
 export function needsCoachingClarification({ goals: selectedGoals = [], content = [], fullLibrary = false, access } = {}) {
   return !fullLibrary && !['group', 'both'].includes(access)
-    && selectedGoals.some(id => ['coaching', 'planning'].includes(id))
+    && selectedGoals.some(id => ['coaching', 'planning', 'lee-coaching'].includes(id))
     && !contentOptions.some(option => content.includes(option.id) && option.tier === 'max')
 }
 export function recommendAppPlan(answers = {}) {
