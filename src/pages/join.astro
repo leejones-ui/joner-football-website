@@ -26,14 +26,14 @@ const plans = [
     ],
   },
   {
-    id: 'plus', name: 'Plus', badge: 'Most Popular', tag: 'Structured training programmes',
+    id: 'plus', name: 'Plus', badge: '', tag: 'Structured training programmes',
     monthlyPrice: '$19.99', monthlyNum: '19.99',
     annualMonthlyPrice: '$15.00', annualMonthlyNum: '15.00',
     annualSave: 'Save $59.89 a year',
     trial: '7-day free trial', cta: 'Start 7-day free trial',
     monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=230699',
     annualUrl: 'https://app.jonerfootball.com/checkout/new?o=183092',
-    style: 'featured',
+    style: 'plain',
     features: [
       { text: 'Everything in Starter', lead: true },
       '100 Day Transformation Program',
@@ -46,14 +46,14 @@ const plans = [
     ],
   },
   {
-    id: 'max', name: 'Max', badge: '', tag: 'The full App, plus Coaches Only',
+    id: 'max', name: 'Max', badge: 'Most Popular', tag: 'The full App, plus Coaches Only',
     monthlyPrice: '$39.99', monthlyNum: '39.99',
     annualMonthlyPrice: '$20.83', annualMonthlyNum: '20.83',
     annualSave: 'Save $229.89 a year',
-    trial: 'Paid access from day one', cta: 'Get Max',
+    trial: 'Paid access from day one', cta: 'Get Max Plan',
     monthlyUrl: 'https://app.jonerfootball.com/checkout/new?o=230698',
     annualUrl: 'https://app.jonerfootball.com/checkout/new?o=202578',
-    style: 'max',
+    style: 'featured',
     features: [
       { text: 'Everything in Plus', lead: true },
       'Full access to the entire app',
@@ -175,7 +175,7 @@ const faqs = [
             </div>
             <p class:list={['app-plan-trial',plan.id==='max' && 'paid']}>{plan.trial}</p>
             {plan.url ? <a href={plan.url} data-ga-event="JoinClubPricingClick" data-plan-target="club" class="join-button outline">{plan.cta}</a> :
-              <a href={plan.annualUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class="plan-cta join-button">{plan.cta}</a>}
+              <a href={plan.annualUrl} data-monthly-url={plan.monthlyUrl} data-annual-url={plan.annualUrl} target="_blank" rel="noopener noreferrer" class:list={['plan-cta join-button', plan.id==='max' && 'max-cta']}>{plan.cta}</a>}
             <ul class="app-plan-features">{plan.features.map(feature=>{
               const label=typeof feature==='string'?feature:feature.text
               return <li><span class="app-plan-tick" aria-hidden="true">✓</span><span class:list={[typeof feature==='object' && feature.lead && 'feature-lead',typeof feature==='object' && feature.coaches && 'feature-coaches']}>{label}</span></li>
