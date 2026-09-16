@@ -4,6 +4,44 @@
 // signup-time UTMs supply attribution. No PII leaves this module.
 import { fetchUscreenInvoices, isPositivePaidInvoice, isTrialInvoice, invoiceProductType, invoiceProductId, fetchReliableSales, config } from './_meta-uscreen-reconciliation.js'
 import { decodeUscreenSource } from './_attribution.js'
+import { reliabilityKv } from './_reliability-ledger.js'
+
+// Uscreen deletes $0 trial invoices later (cancelled or lapsed trials vanish
+// from the invoice list within days), so a trial start must be remembered the
+// first time it is seen or the cohort silently shrinks. Snapshots live in KV.
+const SNAPSHOT_KEY = (userId) => `jf:trial-cohort:start:${userId}`
+const SNAPSHOT_INDEX = 'jf:trial-cohort:index'
+const SNAPSHOT_TTL_SECONDS = 60 * 60 * 24 * 400
+
+export async function loadTrialSnapshots(fetchImpl = fetch) {
+  const ids = await reliabilityKv(['SMEMBERS', SNAPSHOT_INDEX], fetchImpl).then((r) => r?.result).catch(() => null)
+  const out = new Map()
+  for (const id of Array.isArray(ids) ? ids : []) {
+    const raw = await reliabilityKv(['GET', SNAPSHOT_KEY(id)], fetchImpl).then((r) => r?.result).catch(() => null)
+    try { if (raw) out.set(String(id), typeof raw === 'string' ? JSON.parse(raw) : raw) } catch { /* ignore */ }
+  }
+  return out
+}
+
+export async function saveTrialSnapshot(row, fetchImpl = fetch) {
+  const id = text(row?.uscreen_user_id)
+  if (!id) return false
+  const snapshot = { uscreen_user_id: id, trial_started_at: row.trial_started_at, trial_ends_at: row.trial_ends_at, attribution: row.attribution, kind: row.kind, plan_id: row.plan_id, first_seen_at: new Date().toISOString() }
+  const set = await reliabilityKv(['SET', SNAPSHOT_KEY(id), JSON.stringify(snapshot), 'NX', 'EX', String(SNAPSHOT_TTL_SECONDS)], fetchImpl).then((r) => r?.result).catch(() => null)
+  await reliabilityKv(['SADD', SNAPSHOT_INDEX, id], fetchImpl).catch(() => null)
+  return Boolean(set)
+}
+
+export async function upgradeTrialSnapshotAttribution(id, attribution, fetchImpl = fetch) {
+  // Only ever replace a no-signal snapshot with a real one; never downgrade.
+  const raw = await reliabilityKv(['GET', SNAPSHOT_KEY(id)], fetchImpl).then((r) => r?.result).catch(() => null)
+  if (!raw) return false
+  const snap = typeof raw === 'string' ? JSON.parse(raw) : raw
+  if (snap?.attribution?.evidence !== 'no_signal' || !attribution || attribution.evidence === 'no_signal') return false
+  snap.attribution = attribution
+  await reliabilityKv(['SET', SNAPSHOT_KEY(id), JSON.stringify(snap), 'EX', String(SNAPSHOT_TTL_SECONDS)], fetchImpl).catch(() => null)
+  return true
+}
 
 export const TRIAL_DAYS = 7
 const CUSTOMER_CONCURRENCY = 3
@@ -61,7 +99,7 @@ export function isFreebie(invoice) {
   return invoiceProductType(invoice) === 'freebie'
 }
 
-export function buildTrialCohort({ window, invoices = [], sales = [], customers = new Map(), now = new Date(), includeFreebies = false }) {
+export function buildTrialCohort({ window, invoices = [], sales = [], customers = new Map(), now = new Date(), includeFreebies = false, snapshots = new Map() }) {
   const nowMs = now.getTime()
   const byUser = new Map()
   for (const invoice of invoices) {
@@ -84,6 +122,14 @@ export function buildTrialCohort({ window, invoices = [], sales = [], customers 
     if (!existing || (['unknown', 'none', ''].includes(text(existing.acquisition).toLowerCase()) && !['unknown', 'none', ''].includes(acq))) salesByUser.set(id, sale)
   }
 
+  // Remembered trial starts whose $0 invoice Uscreen has since removed.
+  for (const [userId, snap] of snapshots) {
+    const entry = byUser.get(userId) || { trials: [], paid: [] }
+    if (!entry.trials.length && snap?.trial_started_at) {
+      entry.trials.push({ user_id: userId, paid_at: Math.floor(Date.parse(snap.trial_started_at) / 1000), amount: 0, status: 'paid', kind: snap.kind, source_id: snap.plan_id, __snapshot: true })
+      byUser.set(userId, entry)
+    }
+  }
   const rows = []
   for (const [userId, entry] of byUser) {
     if (!entry.trials.length) continue
@@ -101,8 +147,12 @@ export function buildTrialCohort({ window, invoices = [], sales = [], customers 
     if (conversion) status = 'converted'
     else if (nowMs >= trialEndsMs) status = 'ended_not_converted'
     else status = 'in_trial'
-    const attribution = classifyTrialAttribution({ sale: salesByUser.get(userId), customer: customers.get(userId) })
+    let attribution = classifyTrialAttribution({ sale: salesByUser.get(userId), customer: customers.get(userId) })
+    const snap = snapshots.get(userId)
+    // A remembered attribution beats a live lookup that has lost its signal.
+    if (snap?.attribution && snap.attribution.evidence !== 'no_signal' && attribution.evidence === 'no_signal') attribution = snap.attribution
     rows.push({
+      invoice_present: !first.__snapshot,
       uscreen_user_id: userId,
       trial_started_at: startedAt,
       trial_ends_at: new Date(trialEndsMs).toISOString(),
@@ -163,7 +213,16 @@ export async function fetchTrialCohort(window, fetchImpl = fetch, now = new Date
     const results = await Promise.all(batch.map((id) => fetchCustomer(id, fetchImpl)))
     results.forEach((customer, index) => { if (customer) customers.set(batch[index], customer) })
   }
-  const cohort = buildTrialCohort({ window, invoices, sales, customers, now, includeFreebies })
+  const cohort = buildTrialCohort({ window, invoices, sales, customers, now, includeFreebies, snapshots })
+  // Remember every trial start seen with a live invoice, and upgrade any
+  // remembered no-signal attribution that now has a real one.
+  let remembered = 0
+  for (const row of cohort.rows) {
+    if (!row.invoice_present) continue
+    if (!snapshots.has(row.uscreen_user_id)) { if (await saveTrialSnapshot(row, fetchImpl)) remembered += 1 }
+    else if (await upgradeTrialSnapshotAttribution(row.uscreen_user_id, row.attribution, fetchImpl)) remembered += 1
+  }
+  cohort.snapshots = { loaded: snapshots.size, remembered_this_run: remembered, rows_from_snapshot_only: cohort.rows.filter((r) => !r.invoice_present).length }
   cohort.freebie_signups_in_window = invoices.filter((inv) => isFreebie(inv) && String(new Date(Number(inv.paid_at) * 1000).toISOString()).slice(0, 10) >= window.from && String(new Date(Number(inv.paid_at) * 1000).toISOString()).slice(0, 10) <= window.to).length
   cohort.invoice_history_complete = !invoices.truncated
   cohort.customer_lookups = { attempted: needLookup.length, resolved: customers.size, capped: provisional.rows.length > MAX_CUSTOMER_LOOKUPS }
