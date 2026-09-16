@@ -38,3 +38,12 @@ Existing consent-aware JonerTracking transport retained. Events: JoinPlanFinderO
 
 ## Review and rollout
 Local preview: http://127.0.0.1:4326/join/ on the home Mac. Server left running for Lee to review. Codex panel opening was queued, not confirmed visible. Desktop/mobile CSS implemented; real-browser visual QA and final Lee approval remain before production promotion. Use the existing website deployment workflow, not a new Sites project. Keep the original unrelated edits untouched. No remote push or deployment performed.
+# Design revision — 16 September, after live review
+
+- Restored the original compact “Not sure which plan?” banner and outlined button.
+- Removed the questionnaire sidebar; reduced the dialog width from 1,020px to 680px.
+- Shortened roles, goals and content choices to single labels; retained all option IDs and tier mappings.
+- Main-question hint: “Select more than one if needed.”
+- Readable body-font section headings: Player training, Learn from Lee, Coaching resources.
+- Moved the existing coaching photo below the answers; hidden it on the recommendation screen.
+- Kept multi-select, conditional clarification, billing, plan targeting and explicit-click opening.

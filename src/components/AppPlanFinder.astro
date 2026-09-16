@@ -2,71 +2,56 @@
 import { audiences, goals, contentGroups } from '../lib/app-plan-recommendation.js'
 import '../styles/app-plan-finder.css'
 const questions = [
-  { key: 'roles', title: 'Which of these describe you?', hint: 'You might be a player, parent and coach. Select all that apply.', options: audiences },
-  { key: 'goals', title: 'What would you like to achieve?', hint: 'Your goals don’t have to fit in one box. Select everything you want help with.', options: goals },
+  { key: 'roles', title: 'Which of these describe you?', hint: 'Select more than one if needed.', options: audiences },
+  { key: 'goals', title: 'What are your goals?', hint: 'Select more than one if needed.', options: goals },
 ]
 ---
-<section class="pf-invitation" aria-labelledby="pf-invitation-title">
-  <div class="pf-invitation-copy">
-    <p class="pf-kicker">A plan built around you</p>
-    <h2 id="pf-invitation-title">Your football. Your goals.<br/><span>Find your plan.</span></h2>
-    <p>Tell us what you want to work on. We’ll match you with the right level of the App.</p>
-  </div>
-  <div class="pf-invitation-actions">
-    <button type="button" class="join-button" data-open-app-finder aria-haspopup="dialog" aria-controls="app-plan-finder">Find my plan <span aria-hidden="true">↗</span></button>
-    <span class="pf-no-pressure">Three questions. No email needed.</span>
-    <a href="#plans" class="pf-text-link" data-finder-compare>Compare all plans instead</a>
-  </div>
-</section>
-<dialog id="app-plan-finder" aria-labelledby="pf-dialog-title" aria-describedby="pf-dialog-description">
-  <div class="pf-shell">
-    <aside class="pf-story" aria-label="Your plan finder journey">
-      <div class="pf-story-top"><p class="pf-kicker">Joner Football App</p><h2 id="pf-dialog-title">Your next<br/>level starts<br/><em>with you.</em></h2><p id="pf-dialog-description">Find the training and coaching content that fits your football.</p></div>
-      <ol class="pf-journey"><li data-journey="0"><span>01</span> Your football</li><li data-journey="1"><span>02</span> Your goals</li><li data-journey="2"><span>03</span> Your wishlist</li></ol>
-      <div class="pf-photo"><img src="/app/uploads/2026/05/soccer-coach-goal-instruction.webp" alt="Lee coaching players on the pitch" loading="lazy" width="600" height="600"/><p>Technique above everything.</p></div>
-    </aside>
+<div class="app-finder-banner">
+  <div><strong>Not sure which plan?</strong><span>Three quick questions will help.</span></div>
+  <button type="button" class="join-button outline" data-open-app-finder aria-haspopup="dialog" aria-controls="app-plan-finder">Find my plan <span aria-hidden="true">↗</span></button>
+</div>
+<dialog id="app-plan-finder" aria-labelledby="pf-dialog-title">
     <div class="pf-panel">
-      <header class="pf-topbar"><p class="pf-step" aria-live="polite">Question 1 of 3</p><button type="button" class="pf-close" aria-label="Close plan finder">×</button></header>
+      <header class="pf-topbar"><div><p id="pf-dialog-title">Find my plan</p><p class="pf-step" aria-live="polite">Question 1 of 3</p></div><button type="button" class="pf-close" aria-label="Close plan finder">×</button></header>
       <div class="pf-progress" aria-hidden="true"><span></span></div>
       <div class="pf-scroll">
         {questions.map((q, index) => <fieldset data-finder-step={index} hidden={index !== 0}>
           <legend tabindex="-1">{q.title}</legend><p class="pf-hint">{q.hint}</p>
-          <div class="pf-options">{q.options.map(option => <label class="pf-option"><input type="checkbox" name={`finder-${q.key}`} value={option.id}/><span class="pf-option-copy"><strong>{option.title}</strong><span>{option.detail}</span></span><span class="pf-check" aria-hidden="true">✓</span></label>)}</div>
+          <div class="pf-options">{q.options.map(option => <label class="pf-option"><input type="checkbox" name={`finder-${q.key}`} value={option.id}/><span class="pf-option-copy"><strong>{option.title}</strong></span><span class="pf-check" aria-hidden="true">✓</span></label>)}</div>
         </fieldset>)}
         <fieldset data-finder-step="2" hidden>
-          <legend tabindex="-1">What would you love to unlock?</legend><p class="pf-hint">Build your training wishlist. Select everything you’d actually use.</p>
-          <label class="pf-option pf-everything"><input type="checkbox" name="finder-full" value="full"/><span class="pf-option-copy"><strong>I want the full library</strong><span>Show me everything the App has to offer</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
-          <p class="pf-or">Or choose what matters to you</p>
-          {contentGroups.map(group => <div class="pf-content-group"><h3>{group.title}</h3><div class="pf-options">{group.options.map(option => <label class="pf-option"><input type="checkbox" name="finder-content" value={option.id}/><span class="pf-option-copy"><strong>{option.title}</strong><span>{option.detail}</span></span><span class="pf-check" aria-hidden="true">✓</span></label>)}</div></div>)}
+          <legend tabindex="-1">What would you like access to?</legend><p class="pf-hint">Select more than one if needed.</p>
+          <label class="pf-option pf-everything"><input type="checkbox" name="finder-full" value="full"/><span class="pf-option-copy"><strong>Everything — the full library</strong></span><span class="pf-check" aria-hidden="true">✓</span></label>
+          {contentGroups.map(group => <div class="pf-content-group"><h3>{group.title}</h3><div class="pf-options">{group.options.map(option => <label class="pf-option"><input type="checkbox" name="finder-content" value={option.id}/><span class="pf-option-copy"><strong>{option.title}</strong></span><span class="pf-check" aria-hidden="true">✓</span></label>)}</div></div>)}
         </fieldset>
         <fieldset data-finder-extra="access" hidden>
-          <legend tabindex="-1">Resources for you.<br/>Or access for your group?</legend><p class="pf-hint">A coach can use the App for ideas without needing a Teams subscription. Choose the setup you need.</p>
+          <legend tabindex="-1">Who needs access?</legend><p class="pf-hint">Choose one.</p>
           <div class="pf-options pf-one-column">
-            <label class="pf-option"><input type="radio" name="finder-access" value="individual"/><span class="pf-option-copy"><strong>Resources to use myself</strong><span>Training and coaching content on one personal account</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
-            <label class="pf-option"><input type="radio" name="finder-access" value="group"/><span class="pf-option-copy"><strong>Accounts for my players and coaches</strong><span>Separate logins, assignments and progress tracking</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
-            <label class="pf-option"><input type="radio" name="finder-access" value="both"/><span class="pf-option-copy"><strong>Both</strong><span>Coaching resources for me and a connected setup for my group</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
+            <label class="pf-option"><input type="radio" name="finder-access" value="individual"/><span class="pf-option-copy"><strong>Just me</strong><span>Training and coaching ideas for my own use</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
+            <label class="pf-option"><input type="radio" name="finder-access" value="group"/><span class="pf-option-copy"><strong>My players and coaches</strong><span>Separate logins, assignments and tracking</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
+            <label class="pf-option"><input type="radio" name="finder-access" value="both"/><span class="pf-option-copy"><strong>Both</strong><span>My own resources plus access for my group</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
           </div>
         </fieldset>
         <fieldset data-finder-extra="coaching" hidden>
-          <legend tabindex="-1">Would you like coaching resources too?</legend><p class="pf-hint">You mentioned developing your coaching, but your wishlist focuses on player training. Let’s make sure we get this right.</p>
+          <legend tabindex="-1">Want coaching resources too?</legend><p class="pf-hint">Your picks so far cover player training.</p>
           <div class="pf-options pf-one-column">
-            <label class="pf-option"><input type="radio" name="finder-coaching" value="include"/><span class="pf-option-copy"><strong>Yes, include Coaches Only</strong><span>Session plans, coaching guidance and breakdowns</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
-            <label class="pf-option"><input type="radio" name="finder-coaching" value="training-only"/><span class="pf-option-copy"><strong>Just the training I selected</strong><span>I don’t need the extra coaching resources right now</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
+            <label class="pf-option"><input type="radio" name="finder-coaching" value="include"/><span class="pf-option-copy"><strong>Yes, include Coaches Only</strong><span>Session plans and coaching breakdowns</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
+            <label class="pf-option"><input type="radio" name="finder-coaching" value="training-only"/><span class="pf-option-copy"><strong>No, just my selected training</strong></span><span class="pf-check" aria-hidden="true">✓</span></label>
           </div>
         </fieldset>
         <section class="pf-result" hidden aria-labelledby="pf-result-title">
           <p class="pf-kicker">Your best fit</p><h2 id="pf-result-title" tabindex="-1"></h2><p class="pf-result-reason"></p>
-          <div class="pf-matches"><h3>Why it fits your wishlist</h3><ul></ul></div>
+          <div class="pf-matches"><h3>Your picks, covered</h3><ul></ul></div>
           <div class="pf-price-box"><p class="pf-price"></p><p class="pf-billing"></p><p class="pf-trial"></p></div>
           <a class="join-button pf-result-link" data-finder-result-link>See your plan</a>
           <p class="pf-account-note"></p>
-          <aside class="pf-upgrade" hidden><p class="pf-kicker">Want to go deeper?</p><h3>There’s more with Max.</h3><p>Unlock Coaches Only, session plans, team-training ideas and Lee’s coaching breakdowns.</p><a class="pf-text-link" href="#max" data-finder-max>Compare with Max <span aria-hidden="true">↗</span></a><p class="pf-upgrade-trial">Max is paid access from day one. No free trial.</p></aside>
+          <aside class="pf-upgrade" hidden><h3>Want everything?</h3><p>Max adds Coaches Only, session plans and breakdowns.</p><a class="pf-text-link" href="#max" data-finder-max>Compare with Max <span aria-hidden="true">↗</span></a><p class="pf-upgrade-trial">Paid from day one. No free trial.</p></aside>
           <button type="button" class="pf-text-link pf-edit">Edit my answers</button>
         </section>
+        <div class="pf-photo"><img src="/app/uploads/2026/05/soccer-coach-goal-instruction.webp" alt="Lee coaching players on the pitch" loading="lazy" width="600" height="600"/></div>
       </div>
-      <footer class="pf-footer"><button type="button" class="pf-back" hidden>← Back</button><p class="pf-selection" aria-live="polite">Select all that apply</p><button type="button" class="join-button pf-next" disabled>Continue →</button></footer>
+      <footer class="pf-footer"><button type="button" class="pf-back" hidden>← Back</button><p class="pf-selection" aria-live="polite"></p><button type="button" class="join-button pf-next" disabled>Continue →</button></footer>
     </div>
-  </div>
 </dialog>
 <script>
   import { needsGroupQuestion, recommendAppPlan } from '../lib/app-plan-recommendation.js'
@@ -122,12 +107,12 @@ const questions = [
     dialog.querySelector<HTMLElement>('.pf-footer')!.hidden = isResult
     dialog.querySelector<HTMLElement>('.pf-step')!.textContent = isResult ? 'Your recommendation' : typeof step === 'number' ? `Question ${step + 1} of 3` : 'One quick check'
     dialog.querySelector<HTMLElement>('.pf-progress span')!.style.width = `${typeof step === 'number' ? (step + 1) / 3 * 100 : 100}%`
-    dialog.querySelectorAll<HTMLElement>('[data-journey]').forEach((el, index) => { el.dataset.current = String(typeof step === 'number' ? step === index : index === 2); el.dataset.done = String(typeof step === 'number' ? step > index : true) })
+    dialog.querySelector<HTMLElement>('.pf-photo')!.hidden = isResult
     back.hidden = step === 0
     const inputs = field ? [...(field as HTMLFieldSetElement).querySelectorAll<HTMLInputElement>('input:checked')] : []
     next.disabled = !inputs.length
     next.textContent = typeof step === 'number' && step < 2 ? 'Continue →' : step === 2 && needsGroupQuestion(answers()) ? 'Continue →' : 'Find my plan ↗'
-    dialog.querySelector<HTMLElement>('.pf-selection')!.textContent = inputs.length ? step === 2 && selected('full').length ? 'Full library selected' : `${inputs.length} selected` : typeof step === 'number' ? 'Select all that apply' : 'Choose one option'
+    dialog.querySelector<HTMLElement>('.pf-selection')!.textContent = inputs.length ? step === 2 && selected('full').length ? 'Full library selected' : `${inputs.length} selected` : ''
     panel.dataset.view = String(step)
     if (isResult) updateResult()
     if (focus) {
