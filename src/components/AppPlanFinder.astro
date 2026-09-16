@@ -1,79 +1,183 @@
 ---
+import { audiences, goals, contentGroups } from '../lib/app-plan-recommendation.js'
+import '../styles/app-plan-finder.css'
 const questions = [
-  { key:'audience', title:'Who is the training for?', options:[['self','Me'],['child','My child'],['team','A team or club']] },
-  { key:'goal', title:'What is the main goal?', options:[['basics','Build the basics'],['programme','Follow a training programme'],['coaching','Plan and coach better']] },
-  { key:'access', title:'What access do you need?', options:[['training','Training videos and programmes'],['coaches','Coaches Only and session plans'],['team','Team logins and assignments']] },
+  { key: 'roles', title: 'Which of these describe you?', hint: 'You might be a player, parent and coach. Select all that apply.', options: audiences },
+  { key: 'goals', title: 'What would you like to achieve?', hint: 'Your goals don’t have to fit in one box. Select everything you want help with.', options: goals },
 ]
 ---
-<div class="app-finder-banner">
-  <div><strong>Not sure which plan?</strong><span>Three quick questions will help.</span></div>
-  <button type="button" class="join-button outline" data-open-app-finder>Find my plan <span aria-hidden="true">↗</span></button>
-</div>
-<dialog id="app-plan-finder" aria-labelledby="app-finder-title">
-  <div class="app-finder-head"><p id="app-finder-title">Find my plan</p><button type="button" class="app-finder-close" aria-label="Close plan finder">×</button></div>
-  <div class="app-finder-progress" aria-hidden="true"><span></span></div>
-  <p class="app-finder-step" aria-live="polite">Question 1 of 3</p>
-  {questions.map((q, index)=><fieldset data-finder-step={index} hidden={index!==0}>
-    <legend tabindex="-1">{q.title}</legend>
-    <div class="app-finder-options">{q.options.map(([value,label])=><label><input type="radio" name={`finder-${q.key}`} value={value}/><span>{label}</span><span class="app-finder-choice" aria-hidden="true"></span></label>)}</div>
-  </fieldset>)}
-  <div class="app-finder-result" hidden>
-    <p class="app-finder-eyebrow">Your best fit</p><h2 tabindex="-1"></h2><p class="app-finder-reason"></p>
-    <p class="app-finder-price"></p><p class="app-finder-trial"></p>
-    <a class="join-button" data-finder-result-link>See your plan</a>
-    <button type="button" class="app-finder-restart">Start again</button>
+<section class="pf-invitation" aria-labelledby="pf-invitation-title">
+  <div class="pf-invitation-copy">
+    <p class="pf-kicker">A plan built around you</p>
+    <h2 id="pf-invitation-title">Your football. Your goals.<br/><span>Find your plan.</span></h2>
+    <p>Tell us what you want to work on. We’ll match you with the right level of the App.</p>
   </div>
-  <div class="app-finder-actions"><button type="button" class="app-finder-back" hidden>Back</button><button type="button" class="join-button app-finder-next" disabled>Next</button></div>
+  <div class="pf-invitation-actions">
+    <button type="button" class="join-button" data-open-app-finder aria-haspopup="dialog" aria-controls="app-plan-finder">Find my plan <span aria-hidden="true">↗</span></button>
+    <span class="pf-no-pressure">Three questions. No email needed.</span>
+    <a href="#plans" class="pf-text-link" data-finder-compare>Compare all plans instead</a>
+  </div>
+</section>
+<dialog id="app-plan-finder" aria-labelledby="pf-dialog-title" aria-describedby="pf-dialog-description">
+  <div class="pf-shell">
+    <aside class="pf-story" aria-label="Your plan finder journey">
+      <div class="pf-story-top"><p class="pf-kicker">Joner Football App</p><h2 id="pf-dialog-title">Your next<br/>level starts<br/><em>with you.</em></h2><p id="pf-dialog-description">Find the training and coaching content that fits your football.</p></div>
+      <ol class="pf-journey"><li data-journey="0"><span>01</span> Your football</li><li data-journey="1"><span>02</span> Your goals</li><li data-journey="2"><span>03</span> Your wishlist</li></ol>
+      <div class="pf-photo"><img src="/app/uploads/2026/05/soccer-coach-goal-instruction.webp" alt="Lee coaching players on the pitch" loading="lazy" width="600" height="600"/><p>Technique above everything.</p></div>
+    </aside>
+    <div class="pf-panel">
+      <header class="pf-topbar"><p class="pf-step" aria-live="polite">Question 1 of 3</p><button type="button" class="pf-close" aria-label="Close plan finder">×</button></header>
+      <div class="pf-progress" aria-hidden="true"><span></span></div>
+      <div class="pf-scroll">
+        {questions.map((q, index) => <fieldset data-finder-step={index} hidden={index !== 0}>
+          <legend tabindex="-1">{q.title}</legend><p class="pf-hint">{q.hint}</p>
+          <div class="pf-options">{q.options.map(option => <label class="pf-option"><input type="checkbox" name={`finder-${q.key}`} value={option.id}/><span class="pf-option-copy"><strong>{option.title}</strong><span>{option.detail}</span></span><span class="pf-check" aria-hidden="true">✓</span></label>)}</div>
+        </fieldset>)}
+        <fieldset data-finder-step="2" hidden>
+          <legend tabindex="-1">What would you love to unlock?</legend><p class="pf-hint">Build your training wishlist. Select everything you’d actually use.</p>
+          <label class="pf-option pf-everything"><input type="checkbox" name="finder-full" value="full"/><span class="pf-option-copy"><strong>I want the full library</strong><span>Show me everything the App has to offer</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
+          <p class="pf-or">Or choose what matters to you</p>
+          {contentGroups.map(group => <div class="pf-content-group"><h3>{group.title}</h3><div class="pf-options">{group.options.map(option => <label class="pf-option"><input type="checkbox" name="finder-content" value={option.id}/><span class="pf-option-copy"><strong>{option.title}</strong><span>{option.detail}</span></span><span class="pf-check" aria-hidden="true">✓</span></label>)}</div></div>)}
+        </fieldset>
+        <fieldset data-finder-extra="access" hidden>
+          <legend tabindex="-1">Resources for you.<br/>Or access for your group?</legend><p class="pf-hint">A coach can use the App for ideas without needing a Teams subscription. Choose the setup you need.</p>
+          <div class="pf-options pf-one-column">
+            <label class="pf-option"><input type="radio" name="finder-access" value="individual"/><span class="pf-option-copy"><strong>Resources to use myself</strong><span>Training and coaching content on one personal account</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
+            <label class="pf-option"><input type="radio" name="finder-access" value="group"/><span class="pf-option-copy"><strong>Accounts for my players and coaches</strong><span>Separate logins, assignments and progress tracking</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
+            <label class="pf-option"><input type="radio" name="finder-access" value="both"/><span class="pf-option-copy"><strong>Both</strong><span>Coaching resources for me and a connected setup for my group</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
+          </div>
+        </fieldset>
+        <fieldset data-finder-extra="coaching" hidden>
+          <legend tabindex="-1">Would you like coaching resources too?</legend><p class="pf-hint">You mentioned developing your coaching, but your wishlist focuses on player training. Let’s make sure we get this right.</p>
+          <div class="pf-options pf-one-column">
+            <label class="pf-option"><input type="radio" name="finder-coaching" value="include"/><span class="pf-option-copy"><strong>Yes, include Coaches Only</strong><span>Session plans, coaching guidance and breakdowns</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
+            <label class="pf-option"><input type="radio" name="finder-coaching" value="training-only"/><span class="pf-option-copy"><strong>Just the training I selected</strong><span>I don’t need the extra coaching resources right now</span></span><span class="pf-check" aria-hidden="true">✓</span></label>
+          </div>
+        </fieldset>
+        <section class="pf-result" hidden aria-labelledby="pf-result-title">
+          <p class="pf-kicker">Your best fit</p><h2 id="pf-result-title" tabindex="-1"></h2><p class="pf-result-reason"></p>
+          <div class="pf-matches"><h3>Why it fits your wishlist</h3><ul></ul></div>
+          <div class="pf-price-box"><p class="pf-price"></p><p class="pf-billing"></p><p class="pf-trial"></p></div>
+          <a class="join-button pf-result-link" data-finder-result-link>See your plan</a>
+          <p class="pf-account-note"></p>
+          <aside class="pf-upgrade" hidden><p class="pf-kicker">Want to go deeper?</p><h3>There’s more with Max.</h3><p>Unlock Coaches Only, session plans, team-training ideas and Lee’s coaching breakdowns.</p><a class="pf-text-link" href="#max" data-finder-max>Compare with Max <span aria-hidden="true">↗</span></a><p class="pf-upgrade-trial">Max is paid access from day one. No free trial.</p></aside>
+          <button type="button" class="pf-text-link pf-edit">Edit my answers</button>
+        </section>
+      </div>
+      <footer class="pf-footer"><button type="button" class="pf-back" hidden>← Back</button><p class="pf-selection" aria-live="polite">Select all that apply</p><button type="button" class="join-button pf-next" disabled>Continue →</button></footer>
+    </div>
+  </div>
 </dialog>
 <script>
-  import { recommendAppPlan } from '../lib/app-plan-recommendation.js'
+  import { needsGroupQuestion, recommendAppPlan } from '../lib/app-plan-recommendation.js'
   const dialog = document.querySelector<HTMLDialogElement>('#app-plan-finder')!
-  const steps = [...dialog.querySelectorAll<HTMLFieldSetElement>('[data-finder-step]')]
-  const next = dialog.querySelector<HTMLButtonElement>('.app-finder-next')!
-  const back = dialog.querySelector<HTMLButtonElement>('.app-finder-back')!
-  const result = dialog.querySelector<HTMLElement>('.app-finder-result')!
+  const panel = dialog.querySelector<HTMLElement>('.pf-panel')!
+  const scroll = dialog.querySelector<HTMLElement>('.pf-scroll')!
+  const next = dialog.querySelector<HTMLButtonElement>('.pf-next')!
+  const back = dialog.querySelector<HTMLButtonElement>('.pf-back')!
+  const result = dialog.querySelector<HTMLElement>('.pf-result')!
   const resultLink = dialog.querySelector<HTMLAnchorElement>('[data-finder-result-link]')!
-  let step = 0, opener: HTMLElement | null = null, previousOverflow = ''
-  function answer(name) { return dialog.querySelector<HTMLInputElement>(`input[name="finder-${name}"]:checked`)?.value }
-  function render(focus = false) {
-    steps.forEach((el, index) => { el.hidden = step!==index })
-    result.hidden = step!==3
-    dialog.querySelector<HTMLElement>('.app-finder-actions')!.hidden = step===3
-    dialog.querySelector<HTMLElement>('.app-finder-step')!.textContent = step===3 ? 'Your recommendation' : `Question ${step+1} of 3`
-    dialog.querySelector<HTMLElement>('.app-finder-progress span')!.style.width = `${Math.min(3,step+1)/3*100}%`
-    back.hidden = step===0
-    next.textContent = step===2 ? 'Show my plan' : 'Next'
-    next.disabled = step<3 && !steps[step].querySelector('input:checked')
-    if (step===3) {
-      const recommendation = recommendAppPlan({ audience:answer('audience'),goal:answer('goal'),access:answer('access') })
-      if (!recommendation) return
-      result.querySelector('h2')!.textContent = recommendation.name
-      result.querySelector('.app-finder-reason')!.textContent = recommendation.reason
-      const club = recommendation.id==='club'
-      const card = document.getElementById(recommendation.id)
-      const yearly = document.querySelector('[data-billing="annual"]')?.getAttribute('aria-pressed')==='true'
-      result.querySelector('.app-finder-price')!.textContent = club ? 'A plan for your player and coach numbers.' : yearly ? (card?.querySelector('.billing-sub')?.textContent || '') : `${card?.querySelector('.billing-price')?.textContent || ''} billed monthly`
-      result.querySelector('.app-finder-trial')!.textContent = club ? '' : recommendation.id==='max' ? 'Paid access from day one. No free trial.' : 'Start with a 7-day free trial.'
-      resultLink.href = club ? '/teams/' : `#${recommendation.id}`
-      resultLink.textContent = club ? 'See Teams plans' : `See ${recommendation.name} plan`
-      resultLink.dataset.planTarget = recommendation.id
-      resultLink.dataset.gaEvent = club ? 'JoinClubPricingClick' : 'JoinPlanAnchorClick'
-      if(focus)result.querySelector<HTMLElement>('h2')!.focus()
-    } else if(focus)steps[step].querySelector('legend')!.focus()
+  let step: number | string = 0
+  let opener: HTMLElement | null = null
+  let previousOverflow = ''
+  let lastCompleted = ''
+  const selected = (name: string) => [...dialog.querySelectorAll<HTMLInputElement>(`input[name="finder-${name}"]:checked`)].map(input => input.value)
+  const answers = () => ({ roles: selected('roles'), goals: selected('goals'), content: selected('content'), fullLibrary: selected('full').length > 0, access: selected('access')[0], coaching: selected('coaching')[0] })
+  function track(event: string, data = {}) {
+    // Reuse consent-aware tracking; never send role or content-answer details.
+    window.JonerTracking?.trackEvent(event, { custom_data: { page_path: location.pathname, finder_version: 'wishlist-v2', ...data } })
   }
-  document.querySelectorAll<HTMLElement>('[data-open-app-finder]').forEach(button=>button.addEventListener('click',()=>{
-    opener=button;step=0;dialog.querySelectorAll<HTMLInputElement>('input').forEach(input=>input.checked=false);render();previousOverflow=document.body.style.overflow;dialog.showModal();document.body.style.overflow='hidden'
-    window.JonerTracking?.trackEvent('JoinPlanFinderOpen',{custom_data:{page_path:location.pathname}})
+  function updateResult() {
+    const rec = recommendAppPlan(answers())
+    if (!rec || 'needs' in rec) return
+    const group = rec.id === 'club'
+    result.dataset.plan = rec.id
+    result.querySelector('h2')!.textContent = group ? 'Joner Football Teams' : `${rec.name} is your best fit.`
+    result.querySelector('.pf-result-reason')!.textContent = rec.reason
+    result.querySelector('ul')!.replaceChildren(...rec.matches.map(match => { const li = document.createElement('li'); li.textContent = match; return li }))
+    result.querySelector('.pf-account-note')!.textContent = rec.note
+    const card = document.getElementById(rec.id)
+    const annual = document.querySelector('[data-billing="annual"]')?.getAttribute('aria-pressed') === 'true'
+    const amount = card?.querySelector('.billing-price')?.textContent?.trim() || ''
+    const currency = document.querySelector('#currency-note')?.textContent?.replace('Prices shown in ', '') || 'USD'
+    result.querySelector('.pf-price')!.textContent = group ? 'Built for your group.' : `${amount}${annual ? ' /mo' : ' /month'}`
+    result.querySelector('.pf-billing')!.textContent = group ? 'Compare plans for your player and coach numbers.' : `${card?.querySelector('.billing-sub')?.textContent || ''} · ${currency}`
+    result.querySelector('.pf-trial')!.textContent = group ? 'App access varies by Teams plan and role.' : rec.id === 'max' ? 'Paid access from day one. No free trial.' : 'Start with a 7-day free trial.'
+    resultLink.href = group ? '/teams/' : `#${rec.id}`
+    resultLink.textContent = group ? 'Explore Teams plans ↗' : `See ${rec.name} plan ↗`
+    resultLink.dataset.planTarget = rec.id
+    resultLink.dataset.gaEvent = group ? 'JoinClubPricingClick' : 'JoinPlanAnchorClick'
+    resultLink.classList.toggle('max-cta', rec.id === 'max')
+    result.querySelector<HTMLElement>('.pf-upgrade')!.hidden = group || rec.id === 'max'
+  }
+  function render(focus = false) {
+    const isResult = step === 'result'
+    let field: HTMLFieldSetElement | null = null
+    dialog.querySelectorAll<HTMLFieldSetElement>('fieldset').forEach(el => {
+      const visible = typeof step === 'number' ? el.dataset.finderStep === String(step) : el.dataset.finderExtra === step
+      el.hidden = !visible
+      if (visible) field = el
+    })
+    result.hidden = !isResult
+    dialog.querySelector<HTMLElement>('.pf-footer')!.hidden = isResult
+    dialog.querySelector<HTMLElement>('.pf-step')!.textContent = isResult ? 'Your recommendation' : typeof step === 'number' ? `Question ${step + 1} of 3` : 'One quick check'
+    dialog.querySelector<HTMLElement>('.pf-progress span')!.style.width = `${typeof step === 'number' ? (step + 1) / 3 * 100 : 100}%`
+    dialog.querySelectorAll<HTMLElement>('[data-journey]').forEach((el, index) => { el.dataset.current = String(typeof step === 'number' ? step === index : index === 2); el.dataset.done = String(typeof step === 'number' ? step > index : true) })
+    back.hidden = step === 0
+    const inputs = field ? [...(field as HTMLFieldSetElement).querySelectorAll<HTMLInputElement>('input:checked')] : []
+    next.disabled = !inputs.length
+    next.textContent = typeof step === 'number' && step < 2 ? 'Continue →' : step === 2 && needsGroupQuestion(answers()) ? 'Continue →' : 'Find my plan ↗'
+    dialog.querySelector<HTMLElement>('.pf-selection')!.textContent = inputs.length ? step === 2 && selected('full').length ? 'Full library selected' : `${inputs.length} selected` : typeof step === 'number' ? 'Select all that apply' : 'Choose one option'
+    panel.dataset.view = String(step)
+    if (isResult) updateResult()
+    if (focus) {
+      scroll.scrollTop = 0
+      const target = isResult ? result.querySelector<HTMLElement>('h2') : (field as HTMLFieldSetElement | null)?.querySelector<HTMLElement>('legend')
+      target?.focus({ preventScroll: true })
+    }
+  }
+  function finish() {
+    const rec = recommendAppPlan(answers())
+    if (!rec) return
+    if ('needs' in rec) { step = rec.needs; render(true); return }
+    step = 'result'; render(true)
+    const signature = JSON.stringify(answers())
+    if (signature !== lastCompleted) { track('JoinPlanFinderComplete', { plan: rec.id }); lastCompleted = signature }
+  }
+  document.querySelectorAll<HTMLElement>('[data-open-app-finder]').forEach(button => button.addEventListener('click', () => {
+    if (dialog.open) return
+    opener = button; previousOverflow = document.body.style.overflow
+    render(); dialog.showModal(); document.body.style.overflow = 'hidden'; render(true)
+    track('JoinPlanFinderOpen')
   }))
-  dialog.querySelector('.app-finder-close')!.addEventListener('click',()=>dialog.close())
-  dialog.addEventListener('close',()=>{document.body.style.overflow=previousOverflow;opener?.focus()})
-  dialog.addEventListener('change',()=>render())
-  document.addEventListener('app-billing-updated',()=>{if(dialog.open && step===3)render()})
-  next.addEventListener('click',()=>{if(next.disabled)return;step++;render(true);if(step===3)window.JonerTracking?.trackEvent('JoinPlanFinderComplete',{custom_data:{plan:resultLink.dataset.planTarget,page_path:location.pathname}})})
-  back.addEventListener('click',()=>{step=Math.max(0,step-1);render(true)})
-  dialog.querySelector('.app-finder-restart')!.addEventListener('click',()=>{step=0;dialog.querySelectorAll<HTMLInputElement>('input').forEach(input=>input.checked=false);render(true)})
-  resultLink.addEventListener('click',()=>{
-    const target=resultLink.getAttribute('href');dialog.close()
-    if(target?.startsWith('#'))requestAnimationFrame(()=>{const card=document.querySelector(target);card?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});card?.querySelector<HTMLElement>('h2')?.focus({preventScroll:true})})
+  dialog.querySelector('.pf-close')!.addEventListener('click', () => dialog.close())
+  dialog.addEventListener('close', () => { document.body.style.overflow = previousOverflow; opener?.focus({ preventScroll: true }) })
+  dialog.addEventListener('change', event => {
+    const input = event.target as HTMLInputElement
+    if (input.name === 'finder-full' && input.checked) dialog.querySelectorAll<HTMLInputElement>('input[name="finder-content"]').forEach(el => el.checked = false)
+    if (input.name === 'finder-content' && input.checked) dialog.querySelector<HTMLInputElement>('input[name="finder-full"]')!.checked = false
+    if (typeof step === 'number') dialog.querySelectorAll<HTMLInputElement>('input[name="finder-access"], input[name="finder-coaching"]').forEach(el => el.checked = false)
+    if (input.name === 'finder-access') dialog.querySelectorAll<HTMLInputElement>('input[name="finder-coaching"]').forEach(el => el.checked = false)
+    render()
   })
+  next.addEventListener('click', () => { if (next.disabled) return; if (typeof step === 'number' && step < 2) { step++; render(true) } else finish() })
+  back.addEventListener('click', () => { step = typeof step === 'number' ? Math.max(0, step - 1) : step === 'coaching' && needsGroupQuestion(answers()) ? 'access' : 2; render(true) })
+  dialog.querySelector('.pf-edit')!.addEventListener('click', () => { step = 0; render(true) })
+  document.addEventListener('app-billing-updated', () => { if (step === 'result') updateResult() })
+  function goToPlan(event: MouseEvent) {
+    const link = event.currentTarget as HTMLAnchorElement
+    const hash = link.getAttribute('href')
+    if (!hash?.startsWith('#') || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    event.preventDefault(); dialog.close()
+    if (link.hasAttribute('data-finder-max')) track('JoinPlanFinderUpgradeClick', { plan: 'max' })
+    requestAnimationFrame(() => {
+      const card = document.getElementById(hash.slice(1))
+      card?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })
+      card?.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true })
+    })
+  }
+  resultLink.addEventListener('click', goToPlan)
+  dialog.querySelector<HTMLAnchorElement>('[data-finder-max]')!.addEventListener('click', goToPlan)
+  document.querySelector('[data-finder-compare]')?.addEventListener('click', () => track('JoinPlanFinderSkip'))
+  render()
 </script>
