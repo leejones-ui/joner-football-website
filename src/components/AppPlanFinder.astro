@@ -10,6 +10,11 @@ const questions = [
   <div><strong>Not sure which plan?</strong><span>Three quick questions will help.</span></div>
   <button type="button" class="join-button outline" data-open-app-finder aria-haspopup="dialog" aria-controls="app-plan-finder">Find my plan <span aria-hidden="true">↗</span></button>
 </div>
+<aside class="pf-nudge" aria-label="Plan help" hidden>
+  <button type="button" class="pf-nudge-close" aria-label="Dismiss plan help">×</button>
+  <strong>Need a hand choosing?</strong>
+  <button type="button" class="pf-text-link" data-open-app-finder aria-haspopup="dialog" aria-controls="app-plan-finder">Find my plan →</button>
+</aside>
 <dialog id="app-plan-finder" aria-labelledby="pf-dialog-title">
     <div class="pf-panel">
       <header class="pf-topbar"><div><p id="pf-dialog-title">Find my plan</p><p class="pf-step" aria-live="polite">Question 1 of 3</p></div><button type="button" class="pf-close" aria-label="Close plan finder">×</button></header>
@@ -65,6 +70,26 @@ const questions = [
   let opener: HTMLElement | null = null
   let previousOverflow = ''
   let lastCompleted = ''
+  const nudge = document.querySelector<HTMLElement>('.pf-nudge')!
+  const bannerOpener = document.querySelector<HTMLElement>('.app-finder-banner [data-open-app-finder]')!
+  const helpSeenKey = 'jf-app-plan-help-seen'
+  let helpDismissed = false
+  try { helpDismissed = sessionStorage.getItem(helpSeenKey) === 'yes' } catch {}
+  const helpTimer = window.setTimeout(() => {
+    if (!helpDismissed && !dialog.open && document.visibilityState === 'visible' && matchMedia('(min-width: 1051px)').matches) nudge.hidden = false
+  }, 30000)
+  function dismissHelp() {
+    helpDismissed = true
+    nudge.hidden = true
+    window.clearTimeout(helpTimer)
+    // Session-only UI preference; no identity, answers or tracking data.
+    try { sessionStorage.setItem(helpSeenKey, 'yes') } catch {}
+  }
+  nudge.querySelector('.pf-nudge-close')!.addEventListener('click', () => {
+    dismissHelp()
+    bannerOpener.focus({ preventScroll: true })
+  })
+  document.querySelectorAll('.app-plan-card > a.join-button').forEach(link => link.addEventListener('click', dismissHelp))
   const selected = (name: string) => [...dialog.querySelectorAll<HTMLInputElement>(`input[name="finder-${name}"]:checked`)].map(input => input.value)
   const answers = () => ({ roles: selected('roles'), goals: selected('goals'), content: selected('content'), fullLibrary: selected('full').length > 0, access: selected('access')[0], coaching: selected('coaching')[0] })
   function track(event: string, data = {}) {
@@ -129,7 +154,10 @@ const questions = [
   }
   document.querySelectorAll<HTMLElement>('[data-open-app-finder]').forEach(button => button.addEventListener('click', () => {
     if (dialog.open) return
-    opener = button; previousOverflow = document.body.style.overflow
+    // The nudge disappears on click, so restore focus to the permanent trigger.
+    opener = nudge.contains(button) ? bannerOpener : button
+    dismissHelp()
+    previousOverflow = document.body.style.overflow
     render(); dialog.showModal(); document.body.style.overflow = 'hidden'; render(true)
     track('JoinPlanFinderOpen')
   }))

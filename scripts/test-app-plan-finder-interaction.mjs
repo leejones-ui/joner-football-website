@@ -12,21 +12,25 @@ const script = component.match(/<script>([\s\S]*?)<\/script>/)[1]
 const bundled = await build({stdin:{contents:script,loader:'ts',resolveDir:path.join(root,'src/components')},bundle:true,write:false,format:'iife',target:'es2022'})
 const html = fs.readFileSync(path.join(root,'dist/join/index.html'),'utf8')
 
-function setup() {
+function setup({ seen = false, width = 1440 } = {}) {
   const dom = new JSDOM(html, {url:'http://localhost/join/',runScripts:'outside-only',pretendToBeVisual:true})
   const w=dom.window, d=w.document, events=[]
   w.HTMLDialogElement.prototype.showModal=function(){this.open=true}
   w.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new w.Event('close'))}
   w.HTMLElement.prototype.scrollIntoView=function(){}
   w.requestAnimationFrame=fn=>{fn();return 0}
-  w.matchMedia=()=>({matches:true})
+  w.matchMedia=query=>({matches:query==='(min-width: 1051px)'?width>=1051:true})
+  const timers=[]
+  w.setTimeout=(fn,delay)=>{timers.push({fn,delay});return timers.length}
+  w.clearTimeout=()=>{}
+  if(seen)w.sessionStorage.setItem('jf-app-plan-help-seen','yes')
   w.JonerTracking={trackEvent:(name,data)=>events.push({name,data})}
   w.eval(bundled.outputFiles[0].text)
   const dialog=d.querySelector('#app-plan-finder')
   const click=selector=>{const el=d.querySelector(selector);assert.ok(el,selector);el.click()}
   const pick=(key,id)=>click(`input[name="finder-${key}"][value="${id}"]`)
   const next=()=>click('.pf-next')
-  return {dom,w,d,dialog,events,click,pick,next}
+  return {dom,w,d,dialog,events,click,pick,next,timers}
 }
 
 // Standard parent journey, mixed roles, saved state and price synchronisation.
@@ -116,6 +120,37 @@ for(const access of ['individual','group','both']) {
   dom.window.close()
 }
 console.log('PASS: DOM journeys, multi-select, close/resume, billing, full-library exclusivity, group routing, clarification, stale-answer invalidation and event deduplication')
+
+// Nonmodal desktop helper, shared finder, session dismissal and stable return focus.
+{
+  const {dom,w,d,dialog,click,timers}=setup()
+  const nudge=d.querySelector('.pf-nudge')
+  assert.equal(nudge.hidden,true)
+  assert.equal(timers[0].delay,30000)
+  timers[0].fn()
+  assert.equal(nudge.hidden,false)
+  assert.equal(dialog.open,false,'The timed prompt never opens the questionnaire')
+  click('.pf-nudge [data-open-app-finder]')
+  assert.equal(dialog.open,true)
+  assert.equal(nudge.hidden,true)
+  assert.equal(w.sessionStorage.getItem('jf-app-plan-help-seen'),'yes')
+  click('.pf-close')
+  assert.equal(d.activeElement,d.querySelector('.app-finder-banner [data-open-app-finder]'))
+  timers[0].fn();assert.equal(nudge.hidden,true)
+  dom.window.close()
+}
+for(const config of [{seen:true},{width:390}]) {
+  const {dom,d,timers}=setup(config)
+  timers[0].fn();assert.equal(d.querySelector('.pf-nudge').hidden,true)
+  dom.window.close()
+}
+{
+  const {dom,w,d,click,timers}=setup()
+  timers[0].fn();click('.pf-nudge-close')
+  assert.equal(d.querySelector('.pf-nudge').hidden,true)
+  assert.equal(w.sessionStorage.getItem('jf-app-plan-help-seen'),'yes')
+  dom.window.close()
+}
 
 // Messaging is included in Plus; learning Lee's coaching can add Max resources.
 {

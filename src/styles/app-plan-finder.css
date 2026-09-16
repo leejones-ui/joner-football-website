@@ -1,6 +1,9 @@
 /* Restore the compact join-page prompt. The questionnaire opens only on click. */
 .app-finder-banner{display:flex;align-items:center;justify-content:space-between;gap:20px;max-width:700px;margin:0 auto 18px;padding:12px 18px;border:1px solid #e3dcd8;background:#fffdfa;border-radius:16px}
 .app-finder-banner strong{display:block;font-size:15px}.app-finder-banner span:not(button span){display:block;font-size:14px;color:#686b67;margin-top:3px}.app-finder-banner .join-button{flex-shrink:0}
+.pf-nudge{position:fixed;right:24px;bottom:24px;z-index:80;max-width:calc(100% - 32px);padding:16px 44px 10px 18px;background:#fff;border:1px solid #d3ded6;border-radius:15px;box-shadow:0 6px 30px #0c2c1a20;font-family:var(--font-body);color:#252727}
+.pf-nudge[hidden]{display:none!important}.pf-nudge strong{display:block;font-size:14px;line-height:1.5}.pf-nudge .pf-text-link{display:block;color:#a9081a;font-size:14px}.pf-nudge-close{position:absolute;right:4px;top:4px;width:44px;height:44px;border:0;background:none;color:#65766b;font-size:23px;cursor:pointer}.pf-nudge button:focus-visible{outline:3px solid #c90a19;outline-offset:3px}
+@media(max-width:1050px){.pf-nudge{display:none}}
 
 #app-plan-finder{box-sizing:border-box;width:min(680px,calc(100% - 32px));max-width:680px;padding:0;border:0;border-radius:20px;max-height:calc(100dvh - 40px);background:#fffefb;color:#252727;overflow:hidden;margin:auto;font-family:var(--font-body);box-shadow:0 30px 90px #0004}
 #app-plan-finder::backdrop{background:#1b222a75;backdrop-filter:blur(4px)}#app-plan-finder [hidden]{display:none!important}#app-plan-finder *{box-sizing:border-box}
