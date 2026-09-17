@@ -128,10 +128,16 @@ export default async function handler(req, res) {
       sale.acquisition_category = acquisitionCategory(sale)
       sale.reported_amount = sale.amount
       sale.reported_currency = sale.currency
-      sale.amount = sale.payment_verification?.verified ? sale.payment_verification.amount : null
-      sale.currency = sale.payment_verification?.verified ? sale.payment_verification.currency : null
-      sale.payment_channel = sale.payment_verification?.verified ? sale.payment_verification.channel : 'unknown'
-      sale.trial = sale.payment_verification?.verified ? sale.payment_verification.trial : null
+      // Verified invoices override the reported values. Unverified rows keep the
+      // webhook-reported amount, currency and trial flag so the dashboard can
+      // still show them; proof_checks and payment_verification carry the
+      // verification state separately. (Lee, 2026-09-17: restore the sales page.)
+      const verified = sale.payment_verification?.verified
+      sale.amount = verified ? sale.payment_verification.amount : sale.amount
+      sale.currency = verified ? sale.payment_verification.currency : sale.currency
+      sale.payment_channel = verified ? sale.payment_verification.channel : (sale.billing_origin || 'unknown')
+      sale.trial = verified ? sale.payment_verification.trial : (sale.trial ?? null)
+      sale.amount_verified = Boolean(verified)
     }
     const rangeTotals = aggregateVerifiedSales(allSales, inventory.coverage.complete)
     let sales = allSales.slice(0, limit).map(presentSale)
