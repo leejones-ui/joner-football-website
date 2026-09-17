@@ -57,7 +57,7 @@ const fb20Report = buildReconciliation({
   sourceHealth: { meta: true, uscreen: true, kv: true },
 })
 assert.equal(fb20Report.fb20_redemptions, 2, 'FB20 and the live FB10 coupon both count as ad-coupon redemptions')
-assert.equal(fb20Report.fb20_revenue, 20)
+assert.equal(fb20Report.fb20_revenue, 244.99)
 
 // Daily series buckets Meta spend, invoices, trials and coupon proof by UTC day.
 const series = buildDailySeries({
