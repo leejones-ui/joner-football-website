@@ -817,12 +817,15 @@ export async function processUscreenPayload(data) {
         occurred_at: paymentTruth.verified && paymentTruth.paidAt || cleanValue(eventData.event_date || eventData.paid_at || eventData.created_at, 40) || new Date().toISOString(),
         offer_id: offerId,
         plan: cleanValue(eventData.offer_title || eventData.subscription_title || eventData.title, 180),
-        amount: paymentTruth.verified ? paymentTruth.amount : null,
-        currency: paymentTruth.verified ? paymentTruth.currency : null,
+        // Verified invoice money wins; otherwise keep the webhook-reported value
+        // so the ledger is never blank. amount_verified records which it was.
+        amount: paymentTruth.verified ? paymentTruth.amount : total,
+        currency: paymentTruth.verified ? paymentTruth.currency : cleanValue(eventData.currency || eventData.localized_amounts?.currency, 20),
+        amount_verified: Boolean(paymentTruth.verified),
         webhook_amount: total,
         webhook_currency: cleanValue(eventData.currency || eventData.localized_amounts?.currency, 20),
         payment_verification: paymentTruth,
-        trial: paymentTruth.verified ? paymentTruth.trial : null,
+        trial: paymentTruth.verified ? paymentTruth.trial : (offerId && TRIAL_ELIGIBLE_OFFER_IDS.has(offerId) && total === 0 ? true : null),
         product_type: paymentTruth.verified ? paymentTruth.productType : null,
         payment_channel: paymentTruth.verified ? paymentTruth.channel : 'unknown',
         billing_origin: cleanValue(eventData.origin || eventData.payment_origin || eventData.provider, 80) || (eventType.includes('refund') ? 'refund' : (eventType.includes('renew') || eventType.includes('recurring')) ? 'renewal' : 'web'),
@@ -920,7 +923,7 @@ export async function processUscreenPayload(data) {
   } else if (eventType === 'order.paid') {
     if (offerId && OWNERSHIP_LISTS_BY_OFFER_ID[offerId] && total === 0) {
       listIds = OWNERSHIP_LISTS_BY_OFFER_ID[offerId]
-    } else if (offerId && TRIAL_ELIGIBLE_OFFER_IDS.has(offerId) && total === 0 && sale?.payment_verification?.trial === true) {
+    } else if (offerId && TRIAL_ELIGIBLE_OFFER_IDS.has(offerId) && total === 0 && (sale?.payment_verification?.verified ? sale.payment_verification.trial === true : true)) {
       listIds = [isPaidMetaTrial(eventData) ? LISTS.trialUsersMetaAds : LISTS.trialUsers]
       try {
         const meta = await sendVerifiedConversionToMeta(META_EVENTS.trialStarted, eventData, email, 0)

@@ -197,7 +197,8 @@ assert.equal(result.reason,'send-locked');assert.equal(strings.get(key),sentReco
   assert.equal(result.sale.campaign, '120249257260070035')
   const canonical = metaCalls.filter((call) => call.data[0].event_name === 'JF_First_Paid_Membership')
   assert.equal(canonical.length, 0, 'unverified webhook never becomes a paid conversion')
-  assert.equal(result.sale.amount, null, 'unverified webhook amount is excluded')
+  assert.equal(result.sale.amount, 249.99, 'unverified webhook keeps its reported amount')
+  assert.equal(result.sale.amount_verified, false, 'and is marked unverified')
   // A duplicate webhook delivery must not send a second canonical event.
   await processUscreenPayload({
     event: 'order.paid', email, user_id: 'u-e2e-7',

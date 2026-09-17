@@ -135,8 +135,10 @@ export default async function handler(req, res) {
       // still show them; proof_checks and payment_verification carry the
       // verification state separately. (Lee, 2026-09-17: restore the sales page.)
       const verified = sale.payment_verification?.verified
-      sale.amount = verified ? sale.payment_verification.amount : sale.amount
-      sale.currency = verified ? sale.payment_verification.currency : sale.currency
+      // Rows written between 12 and 17 Sep 2026 stored null amounts with the
+      // webhook value in webhook_amount; read that back so no sale is blank.
+      sale.amount = verified ? sale.payment_verification.amount : (sale.amount ?? sale.webhook_amount ?? sale.reported_amount)
+      sale.currency = verified ? sale.payment_verification.currency : (sale.currency ?? sale.webhook_currency ?? sale.reported_currency)
       sale.payment_channel = verified ? sale.payment_verification.channel : (sale.billing_origin || 'unknown')
       sale.trial = verified ? sale.payment_verification.trial : (sale.trial ?? null)
       sale.amount_verified = Boolean(verified)

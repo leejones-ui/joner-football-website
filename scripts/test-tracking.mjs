@@ -740,7 +740,10 @@ try {
     event_date: '2026-07-29T01:02:03Z', offer_id: 230698, offer_title: 'Max', total: 0,
     currency: 'AUD',
   })
-  assert.equal(metaBodies.length, metaBeforeDuplicates, 'zero webhook without invoice trial=true cannot emit a trial')
+  // Restored 2026-09-17: a $0 order on a trial-eligible plan is a trial start
+  // unless a verified invoice says otherwise, so the trial signal still fires.
+  assert.equal(metaBodies.length, metaBeforeDuplicates + 1, 'zero webhook on a trial-eligible plan emits the trial signal')
+  assert.equal(metaBodies.at(-1).data[0].event_name, 'JF_Trial_Started')
 
   await processUscreenPayload({
     event: 'user.created', email: 'tracking-new@example.com', user_id: 'user-123',
