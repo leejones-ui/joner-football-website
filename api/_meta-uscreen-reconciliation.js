@@ -67,7 +67,9 @@ export function extractActionValue(actionValues = [], priority = META_PURCHASE_A
   return extractDedupedAction(actionValues, priority)
 }
 
+// The live ad coupon is FB10 (since 2026-09-01); FB20 was the earlier name. Both count.
 export const FB20_COUPON = 'FB20'
+export const AD_COUPONS = new Set(['FB10', 'FB20'])
 
 function invoiceCoupon(invoice) {
   return text(invoice?.coupon).toUpperCase()
@@ -128,7 +130,7 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
   const matchRate = metaReportedPurchases > 0 ? Number((confirmedUscreenBuyers / metaReportedPurchases).toFixed(3)) : null
   const metaRevenue = number(meta?.purchase_value)
   const uscreenRevenue = paidInvoices.reduce((sum, invoice) => sum + ((number(invoice.amount) || 0) / 100), 0)
-  const fb20Invoices = paidInvoices.filter((invoice) => invoiceCoupon(invoice) === FB20_COUPON)
+  const fb20Invoices = paidInvoices.filter((invoice) => AD_COUPONS.has(invoiceCoupon(invoice)))
   const fb20Revenue = fb20Invoices.reduce((sum, invoice) => sum + ((number(invoice.amount) || 0) / 100), 0)
   const confirmedUserSet = new Set(confirmedUsers)
   const confirmedRevenue = paidInvoices.reduce((sum, invoice) => {
@@ -344,7 +346,7 @@ export function buildDailySeries({ window, metaDaily = [], invoices = [], sales 
         else if (origin) row.app_paid_buyers += 1
       }
       row.uscreen_paid_value += (number(invoice.amount) || 0) / 100
-      if (invoiceCoupon(invoice) === FB20_COUPON) row.fb20_redemptions += 1
+      if (AD_COUPONS.has(invoiceCoupon(invoice))) row.fb20_redemptions += 1
     } else if (isTrialInvoice(invoice)) {
       row.uscreen_trials += 1
     }

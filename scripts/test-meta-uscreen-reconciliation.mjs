@@ -51,11 +51,12 @@ const fb20Report = buildReconciliation({
   invoices: [
     { id: 'i1', user_id: 'u1', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 2000, paid_at: paidAt, coupon: 'fb20' },
     { id: 'i2', user_id: 'u2', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 3000, paid_at: paidAt, coupon: 'JF20' },
+    { id: 'i3', user_id: 'u3', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 202578, amount: 22499, paid_at: paidAt, coupon: 'FB10' },
   ],
   sales: [],
   sourceHealth: { meta: true, uscreen: true, kv: true },
 })
-assert.equal(fb20Report.fb20_redemptions, 1)
+assert.equal(fb20Report.fb20_redemptions, 2, 'FB20 and the live FB10 coupon both count as ad-coupon redemptions')
 assert.equal(fb20Report.fb20_revenue, 20)
 
 // Daily series buckets Meta spend, invoices, trials and coupon proof by UTC day.
