@@ -3,6 +3,7 @@ import { validateEmailFormat, validateEmailQuality } from './_email-quality.js'
 import { extractAttribution, extractMetaIdentity } from './_attribution.js'
 
 const FALLBACK_RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'leejones@jonerfootball.com'
+const CONTACT_ENQUIRY_SENDER_EMAIL = process.env.CONTACT_ENQUIRY_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com'
 export const JONERS_JUNIORS_RECIPIENT_EMAIL = 'jonersjuniors@jonerfootball.com'
 export const TEAM_SUBSCRIPTIONS_RECIPIENT_EMAILS = ['teams@jonerfootball.com', 'Reswin@jonerfootball.com']
 const duplicateBuckets = new Map()
@@ -424,7 +425,7 @@ export async function sendEmail(enquiry) {
     body: JSON.stringify({
       sender: {
         name: 'Joner Football Website',
-        email: process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com',
+        email: CONTACT_ENQUIRY_SENDER_EMAIL,
       },
       to: parseRecipients(enquiry.recipientEmail),
       replyTo: { email: enquiry.email, name: enquiry.name },
