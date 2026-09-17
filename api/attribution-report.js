@@ -101,7 +101,9 @@ export default async function handler(req, res) {
       readReliableRange({ from, to }), getHealth(), listAlerts(20), listWebhookFailures().catch(() => []),
     ])
     // Canonical records are joined only by the existing per-user key and invoice proof.
-    const allSales = mergedSales([], inventory.sales)
+    // The range scan returns KV order, not time order. Newest first, so the
+    // display limit shows the most recent sales rather than an arbitrary slice.
+    const allSales = mergedSales([], inventory.sales).sort((a, b) => (Date.parse(b.occurred_at || b.paid_at) || 0) - (Date.parse(a.occurred_at || a.paid_at) || 0))
     const invoiceCache = new Map(), canonicalCache = new Map()
     // Bounded live verification. Unverified historical rows remain visible, never silently valued.
     const candidates = allSales.filter(sale => /^\d+$/.test(String(sale.invoice_id || sale.order_id || ''))).slice(0, 5)
