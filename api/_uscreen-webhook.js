@@ -892,6 +892,11 @@ export async function processUscreenPayload(data) {
   let listIds = []
   let unlinkListIds = []
   let reason = ''
+  // The Meta acquisition signal fails closed, but it must never take the Brevo
+  // CRM write down with it. Anything that blocks the signal is parked here and
+  // raised only after the tier list membership has been written, so the paying
+  // member always lands on their active list and Uscreen still sees a retry.
+  let deferredMetaRetry = ''
 
   if (eventType === 'user.created') {
     listIds = [LISTS.appUsersMega]
@@ -941,63 +946,73 @@ export async function processUscreenPayload(data) {
         eventType, offerId, total, transactionId, origin: eventData.origin, contactSnapshot,
       })
       if (firstPaid.reason === 'paid-history-unavailable') {
-        throw new Error('Cannot verify first-paid history; retry required')
-      }
-      if (firstPaid.eligible) {
-        const eventId = firstPaidEventId(eventData, email)
-        const metaEvent = buildVerifiedMetaEvent(META_EVENTS.firstPaidMembership, eventData, email, total)
-        if (!eventId || !metaEvent) throw new Error('Stable first-paid identity unavailable')
-        metaEvent.event_id = eventId
-        const claim = await claimFirstPaidEvent(eventData, email, metaEvent)
-        if (claim.status === 'unavailable') throw new Error('First-paid idempotency store unavailable')
-        const sameEvent = !claim.existing?.eventId || claim.existing.eventId === eventId
-        const candidateStates = new Set(['claimed', 'pending', 'candidate'])
-        // The canonical first-paid event now sends automatically once the
-        // payment gates pass. attemptFirstPaidAutoSend still enforces positive
-        // value, a real currency, a send lock and Meta's events_received
-        // receipt; anything unsafe is preserved as a candidate for the hourly
-        // cron (which can enrich currency from the authoritative invoice) or
-        // for the manual operator backstop.
-        if (sameEvent && candidateStates.has(claim.status)) {
-          const claimRecord = claim.record || claim.existing || {
-            eventId,
-            uscreenUserId: firstPaidUserId(eventData),
-            uscreenOrderId: cleanValue(eventData.order_id || eventData.id, 180),
-            webhookTransactionId: transactionId,
-            offerId,
-            webhookTotal: total,
-            webhookCurrency: cleanValue(eventData.currency || eventData.localized_amounts?.currency, 10),
-            webhookOrigin: cleanValue(eventData.origin, 120),
-            metaEvent,
-          }
-          const autoSend = await attemptFirstPaidAutoSend({
-            key: claim.key,
-            record: claimRecord,
-            metaEvent,
-            testEventCode: data.meta_test_event_code || data.test_event_code,
-          })
-          console.info('Uscreen->Meta first paid auto-send', {
-            eventId,
-            uscreenUserId: firstPaidUserId(eventData),
-            gateReason: firstPaid.reason,
-            sent: autoSend.sent,
-            holdReason: autoSend.reason,
-          })
-          if (autoSend.sent) {
-            attributes = {
-              ...attributes,
-              JF_FIRST_PAID_AT: cleanValue(eventData.event_date || eventData.created_at || new Date().toISOString(), 40),
-              JF_FIRST_PAID_TRANSACTION_ID: cleanValue(transactionId, 180),
-              JF_FIRST_PAID_EVENT_ID: cleanValue(eventId, 220),
+        // The Brevo read failed, so we cannot prove this is a first payment.
+        // The ad signal stays closed, the CRM list write below still runs, and
+        // the retry is raised afterwards.
+        deferredMetaRetry = 'Cannot verify first-paid history'
+        console.warn('Uscreen->Meta first paid deferred', { reason: firstPaid.reason, offerId })
+      } else if (firstPaid.eligible) {
+        try {
+          const eventId = firstPaidEventId(eventData, email)
+          const metaEvent = buildVerifiedMetaEvent(META_EVENTS.firstPaidMembership, eventData, email, total)
+          if (!eventId || !metaEvent) throw new Error('Stable first-paid identity unavailable')
+          metaEvent.event_id = eventId
+          const claim = await claimFirstPaidEvent(eventData, email, metaEvent)
+          if (claim.status === 'unavailable') throw new Error('First-paid idempotency store unavailable')
+          const sameEvent = !claim.existing?.eventId || claim.existing.eventId === eventId
+          const candidateStates = new Set(['claimed', 'pending', 'candidate'])
+          // The canonical first-paid event now sends automatically once the
+          // payment gates pass. attemptFirstPaidAutoSend still enforces positive
+          // value, a real currency, a send lock and Meta's events_received
+          // receipt; anything unsafe is preserved as a candidate for the hourly
+          // cron (which can enrich currency from the authoritative invoice) or
+          // for the manual operator backstop.
+          if (sameEvent && candidateStates.has(claim.status)) {
+            const claimRecord = claim.record || claim.existing || {
+              eventId,
+              uscreenUserId: firstPaidUserId(eventData),
+              uscreenOrderId: cleanValue(eventData.order_id || eventData.id, 180),
+              webhookTransactionId: transactionId,
+              offerId,
+              webhookTotal: total,
+              webhookCurrency: cleanValue(eventData.currency || eventData.localized_amounts?.currency, 10),
+              webhookOrigin: cleanValue(eventData.origin, 120),
+              metaEvent,
             }
-          } else {
-            attributes = {
-              ...attributes,
-              JF_FIRST_PAID_CANDIDATE_AT: cleanValue(eventData.event_date || eventData.created_at || new Date().toISOString(), 40),
-              JF_FIRST_PAID_CANDIDATE_TRANSACTION_ID: cleanValue(transactionId, 180),
-              JF_FIRST_PAID_CANDIDATE_EVENT_ID: cleanValue(eventId, 220),
+            const autoSend = await attemptFirstPaidAutoSend({
+              key: claim.key,
+              record: claimRecord,
+              metaEvent,
+              testEventCode: data.meta_test_event_code || data.test_event_code,
+            })
+            console.info('Uscreen->Meta first paid auto-send', {
+              eventId,
+              uscreenUserId: firstPaidUserId(eventData),
+              gateReason: firstPaid.reason,
+              sent: autoSend.sent,
+              holdReason: autoSend.reason,
+            })
+            if (autoSend.sent) {
+              attributes = {
+                ...attributes,
+                JF_FIRST_PAID_AT: cleanValue(eventData.event_date || eventData.created_at || new Date().toISOString(), 40),
+                JF_FIRST_PAID_TRANSACTION_ID: cleanValue(transactionId, 180),
+                JF_FIRST_PAID_EVENT_ID: cleanValue(eventId, 220),
+              }
+            } else {
+              attributes = {
+                ...attributes,
+                JF_FIRST_PAID_CANDIDATE_AT: cleanValue(eventData.event_date || eventData.created_at || new Date().toISOString(), 40),
+                JF_FIRST_PAID_CANDIDATE_TRANSACTION_ID: cleanValue(transactionId, 180),
+                JF_FIRST_PAID_CANDIDATE_EVENT_ID: cleanValue(eventId, 220),
+              }
             }
           }
+        } catch (error) {
+          // Same rule as the unverifiable read above: the ad signal is held, the
+          // CRM write still happens, and the retry is raised after it.
+          deferredMetaRetry = error?.message || String(error)
+          console.warn('Uscreen->Meta first paid deferred', { reason: deferredMetaRetry, offerId })
         }
       } else {
         console.info('Uscreen->Meta first paid skipped', { reason: firstPaid.reason, offerId })
@@ -1028,9 +1043,21 @@ export async function processUscreenPayload(data) {
     unlinkListIds = [...ALL_CHURNED_LISTS, ...ALL_ACTIVE_LISTS, LISTS.trialUsersChurned, LISTS.trialUsers, LISTS.trialUsersMetaAds, LISTS.failedPayments]
   }
 
-  if (!listIds.length) return { accepted: true, event: eventType, skipped: true, reason, offerId, reconciliation, sale }
+  if (!listIds.length) {
+    if (deferredMetaRetry) throw new Error(`${deferredMetaRetry}; retry required`)
+    return { accepted: true, event: eventType, skipped: true, reason, offerId, reconciliation, sale }
+  }
 
   const brevo = await brevoUpsertContact({ email, listIds, name, attributes, unlinkListIds })
+  // The tier list membership is now written, so a retry can only improve the
+  // Meta signal. Raising here gives Uscreen its 503 and the dead-letter ledger
+  // its record without ever costing the paying member their CRM list.
+  if (deferredMetaRetry) {
+    console.warn('Uscreen webhook CRM write completed, Meta first-paid signal still unresolved', {
+      email_hash: sha256Hex(email), offerId, brevo, reason: deferredMetaRetry,
+    })
+    throw new Error(`${deferredMetaRetry}; retry required`)
+  }
   return { accepted: true, event: eventType, processed: true, offerId, brevo, reconciliation, sale }
 }
 
