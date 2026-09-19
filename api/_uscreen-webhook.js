@@ -1020,8 +1020,12 @@ export async function processUscreenPayload(data) {
   }
 
   // A paid order means they are active again: pull them out of every churned and trial list.
+  // It also means this tier is now the only true one, so drop every other active tier list.
+  // Without this an upgrade (Starter to Max) leaves the contact on both lists forever, which
+  // is what put 91 stale contacts on Starter Active while Max Active ran short.
+  // brevoUpsertContact already filters the target lists back out of the unlink set.
   if (eventType === 'order.paid' && listIds.some((id) => ALL_ACTIVE_LISTS.includes(id))) {
-    unlinkListIds = [...ALL_CHURNED_LISTS, LISTS.trialUsersChurned, LISTS.trialUsers, LISTS.trialUsersMetaAds, LISTS.failedPayments]
+    unlinkListIds = [...ALL_CHURNED_LISTS, ...ALL_ACTIVE_LISTS, LISTS.trialUsersChurned, LISTS.trialUsers, LISTS.trialUsersMetaAds, LISTS.failedPayments]
   }
 
   if (!listIds.length) return { accepted: true, event: eventType, skipped: true, reason, offerId, reconciliation, sale }
