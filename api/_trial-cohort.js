@@ -203,9 +203,13 @@ async function fetchCustomer(id, fetchImpl) {
 }
 
 export async function fetchTrialCohort(window, fetchImpl = fetch, now = new Date(), { includeFreebies = false } = {}) {
-  const [invoices, sales] = await Promise.all([fetchUscreenInvoices(window, fetchImpl), fetchReliableSales(fetchImpl).catch(() => [])])
+  const [invoices, sales, snapshots] = await Promise.all([
+    fetchUscreenInvoices(window, fetchImpl),
+    fetchReliableSales(fetchImpl).catch(() => []),
+    loadTrialSnapshots(fetchImpl).catch(() => new Map()),
+  ])
   // Only look up customers whose ledger row cannot already explain them.
-  const provisional = buildTrialCohort({ window, invoices, sales, now, includeFreebies })
+  const provisional = buildTrialCohort({ window, invoices, sales, now, includeFreebies, snapshots })
   const needLookup = provisional.rows.filter((row) => row.attribution.evidence !== 'journey_ledger').map((row) => row.uscreen_user_id).slice(0, MAX_CUSTOMER_LOOKUPS)
   const customers = new Map()
   for (let i = 0; i < needLookup.length; i += CUSTOMER_CONCURRENCY) {

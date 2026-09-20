@@ -50,3 +50,34 @@ assert.ok(!JSON.stringify(cohort).match(/@|email/i))
 assert.ok(!cohort.rows.find((r) => r.uscreen_user_id === 'u6'))
 assert.equal(buildTrialCohort({ window, invoices, sales, customers, now, includeFreebies: true }).summary.trials, 3)
 console.log('trial cohort tests passed')
+
+// End-to-end guard: fetchTrialCohort must actually run. A missing snapshot load
+// once shipped a ReferenceError that unit tests on buildTrialCohort could not see.
+process.env.USCREEN_API_KEY = 'test-key'
+process.env.KV_REST_API_URL = 'https://kv.test'
+process.env.KV_REST_API_TOKEN = 'kv-test'
+const { fetchTrialCohort } = await import('../api/_trial-cohort.js')
+const trialAt = Math.floor(Date.parse('2026-09-08T10:00:00Z') / 1000)
+const fakeFetch = async (url, options) => {
+  const target = String(url)
+  if (target.includes('/invoices')) {
+    const page = Number(new URL(target).searchParams.get('page'))
+    const body = page === 1
+      ? [{ id: 'live-1', user_id: 'live-user', status: 'paid', amount: 0, trial: true, product_type: 'recurring', product_id: 230699, paid_at: trialAt }]
+      : []
+    return { ok: true, status: 200, json: async () => body }
+  }
+  if (target.includes('/customers/')) return { ok: true, status: 200, json: async () => ({ utm_params: {}, origin: 'web_sign_up' }) }
+  if (target.includes('kv.test')) {
+    const command = JSON.parse(options.body)[0]
+    if (command === 'SMEMBERS') return { ok: true, status: 200, json: async () => ({ result: [] }) }
+    if (command === 'ZREVRANGE') return { ok: true, status: 200, json: async () => ({ result: [] }) }
+    return { ok: true, status: 200, json: async () => ({ result: 'OK' }) }
+  }
+  throw new Error('unexpected fetch ' + target)
+}
+const live = await fetchTrialCohort({ from: '2026-09-01', to: '2026-09-15', timezone: 'UTC' }, fakeFetch, new Date('2026-09-21T12:00:00Z'))
+assert.equal(live.summary.trials, 1)
+assert.equal(live.invoice_history_complete, true)
+assert.ok(live.snapshots, 'snapshot accounting is reported')
+console.log('trial cohort fetch smoke test passed')
