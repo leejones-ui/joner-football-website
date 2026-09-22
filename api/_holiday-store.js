@@ -152,8 +152,9 @@ export function sydneyTimeLabel(iso) {
 export const DEFAULT_CONFIG = {
   holidayLabel: 'School Holiday Sessions',
   coaches: [
-    { id: 'lee', name: 'Lee', tier: 'lee', active: true },
     { id: 'dean', name: 'Dean', tier: 'coach', active: true },
+    { id: 'lee', name: 'Lee', tier: 'lee', active: false },
+    { id: 'sam', name: 'Sam', tier: 'coach', active: false },
   ],
   prices: { lee: { one: 0, shared: 0, group: 0 }, coach: { one: 0, shared: 0, group: 0 } },
   defaultLocation: 'The HQ, Belrose',

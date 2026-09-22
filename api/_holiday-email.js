@@ -4,10 +4,11 @@ import { appendRow, DEFAULT_SHEET_ID } from './_camp-automation.js'
 import { formatAud, sydneyDateLabel, sydneyTimeLabel, TYPE_LABELS } from './_holiday-store.js'
 
 export const HOLIDAY_SHEET = 'Holiday Bookings'
+// Coaches read this tab to see who is coming, so it carries no money and no
+// Stripe ids. Revenue lives in the admin Bookings tab and in Stripe.
 export const HOLIDAY_HEADERS = [
-  'Paid At', 'Booking ID', 'Status', 'Coach', 'Session Type', 'Date', 'Start', 'End', 'Location',
-  'Players', 'Player Ages', 'Parent Name', 'Email', 'Mobile', 'Notes', 'Amount AUD',
-  'Stripe Session ID', 'Stripe Payment ID', 'Needs Attention',
+  'Updated At', 'Status', 'Date', 'Start', 'End', 'Coach', 'Session Type', 'Players', 'Player Ages',
+  'Parent Name', 'Mobile', 'Email', 'Notes', 'Location', 'Booking ID', 'Needs Attention',
 ]
 
 function escapeHtml(value) {
@@ -129,28 +130,37 @@ export async function sendHolidayAdminAlert({ booking, slot, coachName }) {
   return brevoSend({ toEmail: to, toName: 'Lee', subject, html: shell({ preheader: subject, heading: 'New Holiday Booking', children }), replyTo: booking.email })
 }
 
-export async function appendHolidaySheetRow({ booking, slot, coachName }) {
-  const sheetId = process.env.HOLIDAY_SHEET_ID || DEFAULT_SHEET_ID
-  const row = [
-    booking.paidAt || new Date().toISOString(),
-    booking.id,
-    booking.status,
-    coachName,
-    TYPE_LABELS[booking.type] || TYPE_LABELS[slot.type] || slot.type,
+export function holidaySheetId() {
+  return process.env.HOLIDAY_SHEET_ID || DEFAULT_SHEET_ID
+}
+
+function sheetRow({ booking, slot, coachName }, status) {
+  return [
+    new Date().toISOString(),
+    status,
     slot.date,
     sydneyTimeLabel(slot.startsAt),
     sydneyTimeLabel(slot.endsAt),
-    slot.location,
+    coachName,
+    TYPE_LABELS[booking.type] || TYPE_LABELS[slot.type] || slot.type,
     (booking.players || []).map((p) => p.name).join(', '),
     (booking.players || []).map((p) => p.age).join(', '),
     booking.parentName,
-    booking.email,
     booking.mobile,
+    booking.email,
     booking.notes || '',
-    (Number(booking.priceCents || 0) / 100).toFixed(2),
-    booking.stripeSessionId || '',
-    booking.stripePaymentIntentId || '',
+    slot.location,
+    booking.id,
     booking.needsAttention || '',
   ]
-  await appendRow(sheetId, HOLIDAY_SHEET, row, HOLIDAY_HEADERS)
+}
+
+export async function appendHolidaySheetRow(context) {
+  await appendRow(holidaySheetId(), HOLIDAY_SHEET, sheetRow(context, 'BOOKED'), HOLIDAY_HEADERS)
+}
+
+// Append-only: a cancellation is a new row that names the original booking id,
+// so a coach scanning the tab sees the change without anyone editing cells.
+export async function appendHolidayCancellationRow(context) {
+  await appendRow(holidaySheetId(), HOLIDAY_SHEET, sheetRow(context, 'CANCELLED'), HOLIDAY_HEADERS)
 }

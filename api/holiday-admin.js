@@ -6,8 +6,8 @@ import {
   seatCounts, publicSlot, listBookings, getBooking, saveBooking, releaseSeats, clean, sydneyIso, validateSlotInput,
   siteUrl, stripeFetch,
 } from './_holiday-store.js'
-import { HOLIDAY_SHEET } from './_holiday-email.js'
-import { DEFAULT_SHEET_ID } from './_camp-automation.js'
+import { HOLIDAY_SHEET, HOLIDAY_HEADERS, holidaySheetId, appendHolidayCancellationRow } from './_holiday-email.js'
+import { ensureSheetTab } from './_camp-automation.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true })
 
       case 'getConfig':
-        return res.status(200).json({ success: true, config, sheetUrl: `https://docs.google.com/spreadsheets/d/${process.env.HOLIDAY_SHEET_ID || DEFAULT_SHEET_ID}`, sheetTab: HOLIDAY_SHEET })
+        return res.status(200).json({ success: true, config, sheetUrl: `https://docs.google.com/spreadsheets/d/${holidaySheetId()}`, sheetTab: HOLIDAY_SHEET })
 
       case 'saveConfig': {
         const next = await saveConfig(body.config || {})
@@ -134,12 +134,40 @@ export default async function handler(req, res) {
         const wasPaid = booking.status === 'paid'
         const cancelled = { ...booking, status: 'cancelled', cancelledAt: new Date().toISOString(), cancelledBy: 'admin', refundDue: wasPaid }
         await saveBooking(cancelled)
+        if (wasPaid) {
+          const slot = await getSlot(booking.slotId)
+          const coachName = (slot && (config.coaches.find((c) => c.id === slot.coachId)?.name)) || booking.coachName || ''
+          if (slot) await appendHolidayCancellationRow({ booking: cancelled, slot, coachName }).catch((error) => console.error('holiday cancellation row failed', error))
+        }
         return res.status(200).json({
           success: true,
           changed: true,
           refundDue: wasPaid,
           stripeUrl: booking.stripePaymentIntentId ? `https://dashboard.stripe.com/payments/${booking.stripePaymentIntentId}` : '',
         })
+      }
+
+      case 'sheetIdentity': {
+        // Which Google account the site writes the roster as. Share the sheet
+        // with this address (Editor) and the tab appears on the first booking.
+        let clientEmail = ''
+        try {
+          const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON || ''
+          const text = raw.trim().startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8')
+          clientEmail = JSON.parse(text).client_email || ''
+        } catch {}
+        return res.status(200).json({ success: true, clientEmail, sheetId: holidaySheetId(), sheetTab: HOLIDAY_SHEET, sheetUrl: `https://docs.google.com/spreadsheets/d/${holidaySheetId()}` })
+      }
+
+      case 'checkSheet': {
+        // Creates the tab and headers if missing. Fails loudly if the service
+        // account cannot see the sheet, which is the usual reason.
+        try {
+          await ensureSheetTab(holidaySheetId(), HOLIDAY_SHEET, HOLIDAY_HEADERS)
+          return res.status(200).json({ success: true, ok: true, sheetUrl: `https://docs.google.com/spreadsheets/d/${holidaySheetId()}`, sheetTab: HOLIDAY_SHEET })
+        } catch (error) {
+          return res.status(200).json({ success: true, ok: false, error: error.message, sheetId: holidaySheetId() })
+        }
       }
 
       case 'registerStripeWebhook': {
