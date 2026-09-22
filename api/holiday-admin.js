@@ -15,7 +15,7 @@ function fail(res, status, error, extra = {}) { return res.status(status).json({
 async function slotsWithCounts(config) {
   const slots = await listSlots({ includeCancelled: true })
   const counts = await seatCounts(slots.map((s) => s.id))
-  return slots.map((slot) => ({ ...publicSlot(slot, config, counts[slot.id] || 0), priceOverrideCents: slot.priceCents }))
+  return slots.map((slot) => ({ ...publicSlot(slot, config, counts[slot.id]), priceOverrideCents: slot.priceCents }))
 }
 
 function adminBooking(booking, slotsById, config) {

@@ -57,14 +57,15 @@ import BaseLayout from '../layouts/BaseLayout.astro'
               <div>
                 <label class="lbl" for="s-type">Type</label>
                 <select id="s-type" class="inp">
+                  <option value="open">Open (parent chooses)</option>
                   <option value="one">1 to 1</option>
                   <option value="shared">Shared (2)</option>
                   <option value="group">Group</option>
                 </select>
               </div>
               <div>
-                <label class="lbl" for="s-capacity">Capacity</label>
-                <input id="s-capacity" type="number" min="1" max="20" value="1" class="inp" disabled />
+                <label class="lbl" for="s-capacity">Max players</label>
+                <input id="s-capacity" type="number" min="1" max="20" value="6" class="inp" />
               </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
@@ -345,8 +346,8 @@ import BaseLayout from '../layouts/BaseLayout.astro'
     $('s-type').addEventListener('change', () => {
       const type = $('s-type').value
       const cap = $('s-capacity')
-      cap.disabled = type !== 'group'
-      cap.value = type === 'one' ? 1 : type === 'shared' ? 2 : Math.max(3, Number(cap.value) || 4)
+      cap.disabled = type === 'one' || type === 'shared'
+      cap.value = type === 'one' ? 1 : type === 'shared' ? 2 : Math.max(3, Number(cap.value) || 6)
     })
     function renderPills(list, target, remove) {
       target.innerHTML = list.map((v, i) => `<span class="pill">${esc(v)} <button type="button" data-remove="${i}" aria-label="Remove">&times;</button></span>`).join('')
@@ -415,7 +416,7 @@ import BaseLayout from '../layouts/BaseLayout.astro'
                   <span class="badge">${esc(s.typeLabel)}</span>
                   ${s.status === 'cancelled' ? '<span class="badge">Cancelled</span>' : ''}
                 </div>
-                <p class="text-white/70 text-sm mt-1">${esc(s.taken)} of ${esc(s.capacity)} booked &middot; ${esc(s.priceLabel)}${s.priceOverrideCents != null ? ' (override)' : ''} &middot; ${esc(s.location)}${s.notes ? ` &middot; ${esc(s.notes)}` : ''}</p>
+                <p class="text-white/70 text-sm mt-1">${esc(s.taken)} of ${esc(s.capacity)} booked &middot; ${s.type === 'open' && !s.lockedType ? s.options.map((o) => `${esc(o.label)} ${esc(o.priceLabel)}`).join(' / ') : esc(s.priceLabel)}${s.priceOverrideCents != null ? ' (override)' : ''} &middot; ${esc(s.location)}${s.notes ? ` &middot; ${esc(s.notes)}` : ''}</p>
               </div>
               <div>
                 ${s.status === 'open'

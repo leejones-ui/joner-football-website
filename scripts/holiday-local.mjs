@@ -66,10 +66,13 @@ function redis(cmd) {
     case 'ZREVRANGE': { const z = zset(args[0]); return [...z.entries()].sort((a, b) => b[1] - a[1]).slice(Number(args[1]), Number(args[2]) + 1).map(([m]) => m) }
     case 'EVAL': {
       // Only the hold script exists. Emulate it exactly.
-      const [, , seatsKey, now, capacity, want, expiry, bookingId] = args
+      const [, , seatsKey, typeKey, now, capacity, want, expiry, bookingId, type] = args
       const z = zset(seatsKey)
       for (const [m, s] of z) if (s <= Number(now)) z.delete(m)
+      const current = live(typeKey)?.value
+      if (z.size > 0 && current && current !== type) return -1
       if (z.size + Number(want) > Number(capacity)) return 0
+      store.set(typeKey, { type: 's', value: type, expiresAt: 0 })
       for (let i = 1; i <= Number(want); i++) z.set(`${bookingId}#${i}`, Number(expiry))
       return 1
     }

@@ -14,7 +14,11 @@ export const HOLD_MINUTES = 31
 export const CHECKOUT_EXPIRES_MINUTES = 30
 export const CONFIRMED_SCORE = 9007199254740000
 export const SESSION_TYPES = ['one', 'shared', 'group']
-export const TYPE_LABELS = { one: '1 to 1', shared: 'Shared', group: 'Group' }
+// 'open' slots let the first family to book choose the type; that choice
+// then locks the slot for everyone after them.
+export const SLOT_TYPES = [...SESSION_TYPES, 'open']
+export const TYPE_LABELS = { one: '1 to 1', shared: 'Shared', group: 'Group', open: 'Your choice' }
+export const GROUP_CAPACITY_DEFAULT = 6
 export const TIERS = ['lee', 'coach']
 const COOKIE_NAME = 'jf_holiday'
 const COOKIE_DAYS = 14
@@ -78,6 +82,7 @@ export const keys = {
   config: () => 'holiday:config',
   slots: () => 'holiday:slots',
   seats: (slotId) => `holiday:seats:${slotId}`,
+  slotType: (slotId) => `holiday:slottype:${slotId}`,
   booking: (id) => `holiday:booking:${id}`,
   bookingsIndex: () => 'holiday:bookings',
   session: (sid) => `holiday:session:${sid}`,
@@ -218,7 +223,7 @@ export function capacityForType(type, requested) {
   if (type === 'one') return 1
   if (type === 'shared') return 2
   const n = Number(requested)
-  return Number.isInteger(n) && n >= 3 && n <= 20 ? n : 4
+  return Number.isInteger(n) && n >= 3 && n <= 20 ? n : GROUP_CAPACITY_DEFAULT
 }
 
 export function validateSlotInput(input, config) {
@@ -233,7 +238,7 @@ export function validateSlotInput(input, config) {
   const durationMin = Number(input.durationMin)
   if (!Number.isInteger(durationMin) || durationMin < 30 || durationMin > 180) errors.push('Duration must be between 30 and 180 minutes.')
   const type = clean(input.type, 10)
-  if (!SESSION_TYPES.includes(type)) errors.push('Session type must be 1 to 1, shared or group.')
+  if (!SLOT_TYPES.includes(type)) errors.push('Session type must be 1 to 1, shared, group or open.')
   const rawPrice = input.priceCents
   let priceCents = null
   if (rawPrice !== null && rawPrice !== undefined && rawPrice !== '') {
@@ -315,11 +320,21 @@ export async function reopenSlot(slotId) {
 
 // Purge expired holds, count what is left, refuse if the request would exceed
 // capacity, otherwise add one member per seat. One round trip, one atomic step.
+// Purge expired holds, count what is left, refuse if the request would exceed
+// capacity, otherwise add one member per seat. One round trip, one atomic step.
+//
+// KEYS[2] is the slot's chosen type. An empty slot has no type yet (or its
+// old type no longer counts, because everyone who chose it has gone), so the
+// caller's choice is recorded. A non-empty slot keeps its type and refuses a
+// caller asking for a different one with -1.
 export const HOLD_SCRIPT = `
 redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
 local taken = redis.call('ZCARD', KEYS[1])
 local want = tonumber(ARGV[3])
+local current = redis.call('GET', KEYS[2])
+if taken > 0 and current and current ~= ARGV[6] then return -1 end
 if taken + want > tonumber(ARGV[2]) then return 0 end
+redis.call('SET', KEYS[2], ARGV[6])
 for i = 1, want do
   redis.call('ZADD', KEYS[1], ARGV[4], ARGV[5] .. '#' .. i)
 end
@@ -329,9 +344,10 @@ export function seatMembers(bookingId, seats) {
   return Array.from({ length: seats }, (_, i) => `${bookingId}#${i + 1}`)
 }
 
-export async function holdSeats({ slotId, bookingId, seats, capacity, holdExpiresMs, nowMs = Date.now() }) {
-  const result = await kvCommand(['EVAL', HOLD_SCRIPT, '1', keys.seats(slotId), String(nowMs), String(capacity), String(seats), String(holdExpiresMs), bookingId])
-  return Number(result) === 1
+// Returns 'held', 'full' or 'type-locked'.
+export async function holdSeats({ slotId, bookingId, seats, capacity, type, holdExpiresMs, nowMs = Date.now() }) {
+  const result = Number(await kvCommand(['EVAL', HOLD_SCRIPT, '2', keys.seats(slotId), keys.slotType(slotId), String(nowMs), String(capacity), String(seats), String(holdExpiresMs), bookingId, type]))
+  return result === 1 ? 'held' : result === -1 ? 'type-locked' : 'full'
 }
 
 export async function confirmSeats(slotId, bookingId, seats) {
@@ -343,15 +359,22 @@ export async function releaseSeats(slotId, bookingId, seats) {
   await kvCommand(['ZREM', keys.seats(slotId), ...seatMembers(bookingId, seats)])
 }
 
+// { slotId: { taken, lockedType } }. lockedType only means something while
+// taken > 0; an emptied slot is open to a fresh choice.
 export async function seatCounts(slotIds, nowMs = Date.now()) {
   if (!slotIds.length) return {}
   const commands = slotIds.flatMap((id) => [
     ['ZREMRANGEBYSCORE', keys.seats(id), '-inf', String(nowMs)],
     ['ZCARD', keys.seats(id)],
+    ['GET', keys.slotType(id)],
   ])
   const results = await kvPipeline(commands)
   const counts = {}
-  slotIds.forEach((id, i) => { counts[id] = Number(results[i * 2 + 1] || 0) })
+  slotIds.forEach((id, i) => {
+    const taken = Number(results[i * 3 + 1] || 0)
+    const lockedType = taken > 0 && typeof results[i * 3 + 2] === 'string' ? results[i * 3 + 2] : null
+    counts[id] = { taken, lockedType }
+  })
   return counts
 }
 
@@ -479,11 +502,41 @@ export function siteUrl(req) {
 
 // ---------- public shapes ----------
 
-export function publicSlot(slot, config, taken = 0) {
+// The type a slot is effectively running as: its fixed type, or for an open
+// slot the type its first booker chose (null while nobody has).
+export function effectiveType(slot, lockedType) {
+  return slot.type === 'open' ? (lockedType || null) : slot.type
+}
+
+export function effectiveCapacity(slot, type) {
+  if (slot.type !== 'open') return slot.capacity
+  if (type === 'one') return 1
+  if (type === 'shared') return 2
+  return slot.capacity
+}
+
+export function slotOptions(slot, config) {
+  const types = slot.type === 'open' ? SESSION_TYPES : [slot.type]
+  return types.map((type) => ({
+    type,
+    label: TYPE_LABELS[type],
+    capacity: effectiveCapacity(slot, type),
+    priceCents: resolvePriceCents({ ...slot, type }, config),
+    priceLabel: formatAud(resolvePriceCents({ ...slot, type }, config)),
+  }))
+}
+
+export function publicSlot(slot, config, count = { taken: 0, lockedType: null }) {
+  const taken = typeof count === 'number' ? count : Number(count?.taken || 0)
+  const lockedType = typeof count === 'object' && count ? count.lockedType : null
   const coach = coachById(config, slot.coachId)
-  const priceCents = resolvePriceCents(slot, config)
-  const remaining = Math.max(0, slot.capacity - taken)
+  const runningAs = effectiveType(slot, lockedType)
+  const capacity = runningAs ? effectiveCapacity(slot, runningAs) : slot.capacity
+  const priceCents = runningAs ? resolvePriceCents({ ...slot, type: runningAs }, config) : resolvePriceCents(slot, config)
+  const remaining = Math.max(0, capacity - taken)
   return {
+    options: slotOptions(slot, config),
+    lockedType: runningAs && slot.type === 'open' ? runningAs : null,
     id: slot.id,
     coachId: slot.coachId,
     coachName: coach?.name || slot.coachId,
@@ -497,8 +550,8 @@ export function publicSlot(slot, config, taken = 0) {
     endsAt: slot.endsAt,
     durationMin: slot.durationMin,
     type: slot.type,
-    typeLabel: TYPE_LABELS[slot.type],
-    capacity: slot.capacity,
+    typeLabel: runningAs ? TYPE_LABELS[runningAs] : TYPE_LABELS.open,
+    capacity,
     taken,
     remaining,
     priceCents,

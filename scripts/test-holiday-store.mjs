@@ -4,7 +4,7 @@ import {
   sydneyIso, sydneyOffset, addMinutesIso, sydneyTimeLabel, sydneyDateLabel,
   signAccessCookie, verifyAccessCookie, passwordMatches,
   normaliseConfig, resolvePriceCents, validateSlotInput, capacityForType,
-  HOLD_SCRIPT, seatMembers, formatAud,
+  HOLD_SCRIPT, seatMembers, formatAud, publicSlot, effectiveCapacity, effectiveType,
 } from '../api/_holiday-store.js'
 
 let passed = 0
@@ -73,16 +73,39 @@ test('slot validation forces capacity by type and rejects bad input', () => {
   assert.equal(good.slot.location, 'The HQ, Belrose')
   assert.equal(capacityForType('one', 9), 1)
   assert.equal(capacityForType('shared', 9), 2)
-  assert.equal(capacityForType('group', 99), 4)
+  assert.equal(capacityForType('group', 99), 6)
   const bad = validateSlotInput({ coachId: 'nobody', date: '1 Oct', startTime: '9am', durationMin: 5, type: 'private' }, config)
   assert.equal(bad.ok, false)
   assert.equal(bad.errors.length, 5)
 })
 
-test('hold script purges before counting and adds one member per seat', () => {
+test('hold script purges before counting, locks the type, and adds one member per seat', () => {
   assert.ok(HOLD_SCRIPT.indexOf('ZREMRANGEBYSCORE') < HOLD_SCRIPT.indexOf('ZCARD'))
+  assert.ok(HOLD_SCRIPT.indexOf('ZCARD') < HOLD_SCRIPT.indexOf("current ~= ARGV[6]"))
   assert.ok(HOLD_SCRIPT.includes("taken + want > tonumber(ARGV[2])"))
+  assert.ok(HOLD_SCRIPT.indexOf("return -1") < HOLD_SCRIPT.indexOf("return 0"))
   assert.deepEqual(seatMembers('HOL-1', 2), ['HOL-1#1', 'HOL-1#2'])
+})
+
+test('open slots run as whatever the first booker chose', () => {
+  const config = normaliseConfig({ prices: { coach: { one: 12000, shared: 9000, group: 8000 } } })
+  const open = validateSlotInput({ coachId: 'dean', date: '2026-09-28', startTime: '10:00', durationMin: 60, type: 'open' }, config)
+  assert.equal(open.ok, true)
+  assert.equal(open.slot.capacity, 6)
+  const slot = { ...open.slot, id: 'S', startsAt: '2026-09-28T10:00:00+10:00', endsAt: '2026-09-28T11:00:00+10:00', status: 'open' }
+  const fresh = publicSlot(slot, config, { taken: 0, lockedType: null })
+  assert.equal(fresh.lockedType, null)
+  assert.equal(fresh.typeLabel, 'Your choice')
+  assert.deepEqual(fresh.options.map((o) => [o.type, o.capacity, o.priceCents]), [['one', 1, 12000], ['shared', 2, 9000], ['group', 6, 8000]])
+  const asShared = publicSlot(slot, config, { taken: 1, lockedType: 'shared' })
+  assert.equal(asShared.lockedType, 'shared')
+  assert.equal(asShared.capacity, 2)
+  assert.equal(asShared.remaining, 1)
+  assert.equal(asShared.priceCents, 9000)
+  const asOne = publicSlot(slot, config, { taken: 1, lockedType: 'one' })
+  assert.equal(asOne.remaining, 0)
+  assert.equal(effectiveCapacity(slot, 'group'), 6)
+  assert.equal(effectiveType(slot, null), null)
 })
 
 console.log(`\n${passed} holiday store checks passed`)

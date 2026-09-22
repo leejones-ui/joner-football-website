@@ -53,7 +53,7 @@ function detailRows(rows) {
 
 export function renderHolidayConfirmationEmail({ booking, slot, coachName }) {
   const players = (booking.players || []).map((p) => p.name).join(', ')
-  const typeLabel = TYPE_LABELS[slot.type] || slot.type
+  const typeLabel = TYPE_LABELS[booking.type] || TYPE_LABELS[slot.type] || slot.type
   const subject = `Booked: ${coachName} on ${sydneyDateLabel(slot.startsAt)} at ${sydneyTimeLabel(slot.startsAt)}`
   const children = `
     <tr><td style="padding:0 26px 8px;">
@@ -114,7 +114,7 @@ export async function sendHolidayAdminAlert({ booking, slot, coachName }) {
         ${detailRows([
           ['When', `${sydneyDateTime(slot.startsAt)} to ${sydneyTimeLabel(slot.endsAt)}`],
           ['Coach', coachName],
-          ['Session', TYPE_LABELS[slot.type] || slot.type],
+          ['Session', TYPE_LABELS[booking.type] || TYPE_LABELS[slot.type] || slot.type],
           ['Players', players],
           ['Parent', booking.parentName],
           ['Email', booking.email],
@@ -136,7 +136,7 @@ export async function appendHolidaySheetRow({ booking, slot, coachName }) {
     booking.id,
     booking.status,
     coachName,
-    TYPE_LABELS[slot.type] || slot.type,
+    TYPE_LABELS[booking.type] || TYPE_LABELS[slot.type] || slot.type,
     slot.date,
     sydneyTimeLabel(slot.startsAt),
     sydneyTimeLabel(slot.endsAt),

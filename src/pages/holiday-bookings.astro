@@ -83,6 +83,11 @@ const description = 'Book school holiday coaching sessions with Joner Football c
           <button id="sheet-close" type="button" class="text-white/70 hover:text-white text-2xl leading-none min-w-[44px] min-h-[44px]" aria-label="Close">&times;</button>
         </div>
         <form id="book-form" class="px-5 py-5 space-y-5" novalidate>
+          <div id="type-block" hidden>
+            <label class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Session type</label>
+            <div id="type-options" class="grid gap-2" role="radiogroup"></div>
+            <p class="text-xs text-white/50 mt-2">You choose for this time slot. Whatever you pick is what the session runs as, and other families can only join a shared or group session.</p>
+          </div>
           <div id="seats-block">
             <label class="block text-white font-heading text-sm uppercase tracking-wider mb-2">How many players?</label>
             <div class="flex items-center gap-3">
@@ -142,7 +147,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
   (function () {
     const $ = (id) => document.getElementById(id)
     const gate = $('holiday-gate'), app = $('holiday-app')
-    const state = { data: null, coach: 'all', type: 'all', slot: null, seats: 1, submitting: false }
+    const state = { data: null, coach: 'all', type: 'all', slot: null, seats: 1, submitting: false, sessionType: null }
 
     function recaptcha(action) {
       return window.JonerRecaptcha && typeof window.JonerRecaptcha.getToken === 'function' ? window.JonerRecaptcha.getToken(action) : Promise.resolve('')
@@ -250,7 +255,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
 
     function renderFilters() {
       const { coaches, slots } = state.data
-      const types = [...new Set(slots.map((s) => s.type))]
+      const types = [...new Set(slots.flatMap((s) => s.type === 'open' ? (s.lockedType ? [s.lockedType] : ['one', 'shared', 'group']) : [s.type]))]
       const typeLabels = { one: '1 to 1', shared: 'Shared', group: 'Group' }
       $('coach-filters').innerHTML = coaches.length > 1
         ? [chip('All coaches', 'all', state.coach, 'coach'), ...coaches.map((c) => chip(c.name, c.id, state.coach, 'coach'))].join('')
@@ -269,14 +274,21 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       renderSlots()
     })
 
+    function isOpenChoice(slot) { return slot.type === 'open' && !slot.lockedType }
     function placesText(slot) {
       if (slot.remaining <= 0) return 'No places left'
+      if (isOpenChoice(slot)) return 'Available. First to book chooses the session type.'
+      if (slot.lockedType) return `Running as a ${slot.typeLabel} session. ${slot.remaining} of ${slot.capacity} place${slot.capacity === 1 ? '' : 's'} left.`
       if (slot.type === 'one') return 'Available'
       return `${slot.remaining} of ${slot.capacity} place${slot.capacity === 1 ? '' : 's'} left`
     }
+    function priceLine(slot) {
+      if (isOpenChoice(slot)) return slot.options.map((o) => `<strong class="text-white">${esc(o.label)} ${esc(o.priceLabel)}</strong>`).join(' <span class="text-white/40">&middot;</span> ') + ' <span class="text-white/60">per player</span>'
+      return `<strong class="text-white">${esc(slot.priceLabel)}</strong> per player`
+    }
 
     function renderSlots() {
-      const slots = state.data.slots.filter((s) => (state.coach === 'all' || s.coachId === state.coach) && (state.type === 'all' || s.type === state.type))
+      const slots = state.data.slots.filter((s) => (state.coach === 'all' || s.coachId === state.coach) && (state.type === 'all' || s.type === 'open' && !s.lockedType || (s.lockedType || s.type) === state.type))
       const list = $('slots-list')
       if (!slots.length) {
         list.innerHTML = ''
@@ -312,9 +324,10 @@ const description = 'Book school holiday coaching sessions with Joner Football c
             <div class="flex flex-wrap items-center gap-2 mb-1">
               <span class="font-heading text-xl">${esc(slot.startLabel)} to ${esc(slot.endLabel)}</span>
               <span class="badge ${slot.coachTier === 'lee' ? 'badge-lee' : ''}">${esc(slot.coachName)}</span>
-              <span class="badge">${esc(slot.typeLabel)}</span>
+              ${isOpenChoice(slot) ? '' : `<span class="badge">${esc(slot.typeLabel)}</span>`}
             </div>
-            <p class="text-white/70 text-sm">${esc(slot.location)} &middot; ${esc(slot.durationMin)} min &middot; <strong class="text-white">${esc(slot.priceLabel)}</strong> per player</p>
+            <p class="text-white/70 text-sm">${esc(slot.location)} &middot; ${esc(slot.durationMin)} min</p>
+            <p class="text-white/70 text-sm mt-1">${priceLine(slot)}</p>
             <p class="text-sm mt-1 ${full ? 'text-white/50' : 'text-white/80'}">${esc(placesText(slot))}</p>
             ${slot.notes ? `<p class="text-white/60 text-sm mt-1">${esc(slot.notes)}</p>` : ''}
           </div>
@@ -334,14 +347,44 @@ const description = 'Book school holiday coaching sessions with Joner Football c
     })
 
     // ----- booking sheet -----
+    function chosen() {
+      const slot = state.slot
+      if (isOpenChoice(slot)) {
+        const opt = slot.options.find((o) => o.type === state.sessionType) || slot.options[0]
+        return { type: opt.type, label: opt.label, capacity: opt.capacity, remaining: opt.capacity, priceCents: opt.priceCents, priceLabel: opt.priceLabel }
+      }
+      return { type: slot.lockedType || slot.type, label: slot.typeLabel, capacity: slot.capacity, remaining: slot.remaining, priceCents: slot.priceCents, priceLabel: slot.priceLabel }
+    }
+    function renderTypeOptions() {
+      const slot = state.slot
+      const block = $('type-block')
+      if (!isOpenChoice(slot)) { block.hidden = true; return }
+      block.hidden = false
+      const hints = { one: 'Just your player with the coach.', shared: 'Two players. Bring one, or another family can take the other place.', group: 'Up to 6 players. Others can join.' }
+      $('type-options').innerHTML = slot.options.map((o) => `
+        <label class="flex items-center gap-3 border ${state.sessionType === o.type ? 'border-joner-red' : 'border-gray-700'} px-4 py-3 cursor-pointer min-h-[52px]">
+          <input type="radio" name="sessionType" value="${esc(o.type)}" ${state.sessionType === o.type ? 'checked' : ''} class="accent-[#E8000D] h-5 w-5" />
+          <span class="flex-1"><span class="font-heading uppercase text-base">${esc(o.label)}</span> <span class="text-white/60 text-sm">${esc(hints[o.type] || '')}</span></span>
+          <span class="font-heading text-lg">${esc(o.priceLabel)}</span>
+        </label>`).join('')
+    }
+    document.addEventListener('change', (e) => {
+      if (e.target.name !== 'sessionType') return
+      state.sessionType = e.target.value
+      state.seats = 1
+      renderTypeOptions()
+      renderSeats()
+    })
+
     function openSheet(slot) {
       state.slot = slot
       state.seats = 1
+      state.sessionType = isOpenChoice(slot) ? slot.options[0].type : (slot.lockedType || slot.type)
       $('sheet-title').textContent = `${slot.coachName}, ${slot.dateLabel}`
-      $('sheet-subtitle').textContent = `${slot.startLabel} to ${slot.endLabel} at ${slot.location}. ${slot.typeLabel} session, ${slot.priceLabel} per player.`
-      $('seats-block').hidden = slot.remaining <= 1
+      $('sheet-subtitle').textContent = `${slot.startLabel} to ${slot.endLabel} at ${slot.location}.` + (isOpenChoice(slot) ? '' : ` ${slot.typeLabel} session, ${slot.priceLabel} per player.`)
       $('book-status').textContent = ''
       $('book-form').reset()
+      renderTypeOptions()
       renderSeats()
       $('sheet-backdrop').hidden = false
       $('sheet').hidden = false
@@ -360,7 +403,9 @@ const description = 'Book school holiday coaching sessions with Joner Football c
 
     function renderSeats() {
       const slot = state.slot
-      const max = Math.max(1, slot.remaining)
+      const pick = chosen()
+      const max = Math.max(1, pick.remaining)
+      $('seats-block').hidden = max <= 1
       $('seats-value').textContent = String(state.seats)
       $('seats-minus').disabled = state.seats <= 1
       $('seats-plus').disabled = state.seats >= max
@@ -380,11 +425,11 @@ const description = 'Book school holiday coaching sessions with Joner Football c
             <input name="playerAge" type="number" min="4" max="18" inputmode="numeric" required value="${esc(existing[i]?.age || '')}" class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base focus:outline-none focus:border-joner-red min-h-[44px]" />
           </div>
         </div>`).join('')
-      const total = slot.priceCents * state.seats / 100
+      const total = pick.priceCents * state.seats / 100
       $('pay-button').textContent = `Pay A$${total % 1 === 0 ? total.toFixed(0) : total.toFixed(2)} with Stripe`
     }
     $('seats-minus').addEventListener('click', () => { if (state.seats > 1) { state.seats -= 1; renderSeats() } })
-    $('seats-plus').addEventListener('click', () => { if (state.seats < state.slot.remaining) { state.seats += 1; renderSeats() } })
+    $('seats-plus').addEventListener('click', () => { if (state.seats < chosen().remaining) { state.seats += 1; renderSeats() } })
 
     $('book-form').addEventListener('submit', async (event) => {
       event.preventDefault()
@@ -414,6 +459,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             slotId: state.slot.id,
+            type: chosen().type,
             seats: state.seats,
             players,
             parentName: $('parentName').value.trim(),
@@ -434,7 +480,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
         }
         if (!res.ok || !data.url) { status.classList.add('text-joner-red'); status.textContent = data.error || 'Could not start the payment. Try again.'; return }
         try { sessionStorage.setItem('jf_holiday_booking', data.bookingId) } catch {}
-        track('InitiateCheckout', { content_category: 'holiday_session', content_name: state.slot.coachName, value: state.slot.priceCents * state.seats / 100, currency: 'AUD', booking_id: data.bookingId })
+        track('InitiateCheckout', { content_category: 'holiday_session', content_name: state.slot.coachName, value: chosen().priceCents * state.seats / 100, currency: 'AUD', booking_id: data.bookingId })
         status.textContent = 'Taking you to Stripe'
         window.location.href = data.url
       } catch {

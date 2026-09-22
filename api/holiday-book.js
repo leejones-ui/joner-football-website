@@ -6,7 +6,8 @@ import { validateEmailQuality } from './_email-quality.js'
 import {
   requireHolidayAccess, getConfig, getSlot, getBooking, coachById, resolvePriceCents,
   holdSeats, releaseSeats, saveBooking, indexBooking, newId, clean, siteUrl, stripeFetch,
-  seatCounts, sydneyDateLabel, sydneyTimeLabel, TYPE_LABELS, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES,
+  seatCounts, sydneyDateLabel, sydneyTimeLabel, TYPE_LABELS, SESSION_TYPES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES,
+  effectiveType, effectiveCapacity,
 } from './_holiday-store.js'
 import crypto from 'node:crypto'
 
@@ -68,8 +69,25 @@ export default async function handler(req, res) {
     return fail(res, 409, 'That session is too close to book online now. Email us and we will try to fit you in.', { code: 'too_late' })
   }
 
+  // An open slot runs as whatever its first booker chose. Until someone has
+  // a live hold or a paid seat, the caller's choice stands; after that the
+  // slot's type is fixed and the Lua script refuses a different one.
+  let type = slot.type
+  if (slot.type === 'open') {
+    const current = (await seatCounts([slot.id], nowMs))[slot.id]
+    const locked = effectiveType(slot, current?.lockedType)
+    const requested = clean(body.type, 10)
+    if (locked) type = locked
+    else if (SESSION_TYPES.includes(requested)) type = requested
+    else return fail(res, 400, 'Choose 1 to 1, shared or group.')
+    if (locked && SESSION_TYPES.includes(requested) && requested !== locked) {
+      return fail(res, 409, `That session is already running as a ${TYPE_LABELS[locked]} session. Join it as that, or pick another time.`, { code: 'type_locked', lockedType: locked })
+    }
+  }
+  const capacity = effectiveCapacity(slot, type)
+
   const seats = Number(body.seats || 1)
-  if (!Number.isInteger(seats) || seats < 1 || seats > slot.capacity) return fail(res, 400, 'Choose how many players are coming.')
+  if (!Number.isInteger(seats) || seats < 1 || seats > capacity) return fail(res, 400, 'Choose how many players are coming.')
   const playersCheck = validatePlayers(body.players, seats)
   if (playersCheck.error) return fail(res, 400, playersCheck.error)
 
@@ -85,22 +103,27 @@ export default async function handler(req, res) {
   const email = emailCheck.email
 
   const coach = coachById(config, slot.coachId)
-  const unitCents = resolvePriceCents(slot, config)
+  const unitCents = resolvePriceCents({ ...slot, type }, config)
   if (!unitCents) return fail(res, 503, 'This session has no price set yet. Please try again later.')
 
   const bookingId = newId('HOL')
   const holdExpiresMs = nowMs + HOLD_MINUTES * 60_000
-  const held = await holdSeats({ slotId: slot.id, bookingId, seats, capacity: slot.capacity, holdExpiresMs, nowMs })
-  if (!held) {
+  const held = await holdSeats({ slotId: slot.id, bookingId, seats, capacity, type, holdExpiresMs, nowMs })
+  if (held === 'type-locked') {
     const counts = await seatCounts([slot.id], nowMs)
-    const remaining = Math.max(0, slot.capacity - (counts[slot.id] || 0))
+    const locked = counts[slot.id]?.lockedType
+    return fail(res, 409, `That session was just booked as a ${TYPE_LABELS[locked] || 'different'} session. Refresh and join it, or pick another time.`, { code: 'type_locked', lockedType: locked })
+  }
+  if (held !== 'held') {
+    const counts = await seatCounts([slot.id], nowMs)
+    const remaining = Math.max(0, capacity - (counts[slot.id]?.taken || 0))
     return fail(res, 409, remaining > 0
       ? `Only ${remaining} place${remaining === 1 ? '' : 's'} left in that session. Change the number of players or pick another time.`
       : 'That session was just taken. Pick another time.', { code: 'slot_full', remaining })
   }
 
   const releaseToken = crypto.randomBytes(16).toString('hex')
-  const typeLabel = TYPE_LABELS[slot.type]
+  const typeLabel = TYPE_LABELS[type]
   const base = siteUrl(req)
   const productName = `${coach?.name || 'Coach'}: ${typeLabel} session, ${sydneyDateLabel(slot.startsAt)} ${sydneyTimeLabel(slot.startsAt)}`
 
@@ -139,7 +162,7 @@ export default async function handler(req, res) {
     slotId: slot.id,
     coachId: slot.coachId,
     coachName: coach?.name || slot.coachId,
-    type: slot.type,
+    type,
     seats,
     players: playersCheck.players,
     parentName,

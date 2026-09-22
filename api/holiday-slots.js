@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       coaches: config.coaches
         .filter((c) => c.active && activeCoachIds.has(c.id))
         .map((c) => ({ id: c.id, name: c.name, tier: c.tier })),
-      slots: slots.map((slot) => publicSlot(slot, config, counts[slot.id] || 0)),
+      slots: slots.map((slot) => publicSlot(slot, config, counts[slot.id])),
     })
   } catch (error) {
     console.error('holiday-slots failed', error)
