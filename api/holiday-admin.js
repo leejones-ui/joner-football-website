@@ -4,6 +4,7 @@ import { rateLimit } from './_security.js'
 import {
   requireAdmin, getConfig, saveConfig, listSlots, getSlot, upsertSlot, cancelSlot, reopenSlot,
   seatCounts, publicSlot, listBookings, getBooking, saveBooking, releaseSeats, clean, sydneyIso, validateSlotInput,
+  siteUrl, stripeFetch,
 } from './_holiday-store.js'
 import { HOLIDAY_SHEET } from './_holiday-email.js'
 import { DEFAULT_SHEET_ID } from './_camp-automation.js'
@@ -139,6 +140,29 @@ export default async function handler(req, res) {
           refundDue: wasPaid,
           stripeUrl: booking.stripePaymentIntentId ? `https://dashboard.stripe.com/payments/${booking.stripePaymentIntentId}` : '',
         })
+      }
+
+      case 'registerStripeWebhook': {
+        // Registers this site's holiday webhook on the Stripe account whose
+        // key already lives in Vercel, so the key never leaves the server.
+        // Stripe reveals the signing secret only at creation, so it comes back
+        // once here for pasting into STRIPE_HOLIDAY_WEBHOOK_SECRET_SYDNEY.
+        const url = `${siteUrl(req)}/api/holiday-payment-webhook`
+        const existing = await stripeFetch('/webhook_endpoints?limit=100')
+        const match = (existing.data || []).find((w) => w.url === url)
+        if (match) {
+          return res.status(200).json({ success: true, existing: true, id: match.id, url, status: match.status, enabled_events: match.enabled_events, configured: Boolean(process.env.STRIPE_HOLIDAY_WEBHOOK_SECRET_SYDNEY) })
+        }
+        const created = await stripeFetch('/webhook_endpoints', {
+          method: 'POST',
+          body: {
+            url,
+            description: 'Joner Football school holiday bookings',
+            'enabled_events[0]': 'checkout.session.completed',
+            'enabled_events[1]': 'checkout.session.expired',
+          },
+        })
+        return res.status(200).json({ success: true, existing: false, id: created.id, url, secret: created.secret, livemode: created.livemode })
       }
 
       default:
