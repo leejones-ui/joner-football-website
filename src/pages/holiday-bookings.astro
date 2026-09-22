@@ -1,0 +1,452 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const title = 'School Holiday Sessions | Joner Football'
+const description = 'Book school holiday coaching sessions with Joner Football coaches at The HQ, Belrose.'
+---
+
+<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/holiday-bookings/" noindex hideMobileAppCta>
+  <main class="bg-joner-black text-white min-h-screen">
+
+    <!-- Gate -->
+    <section id="holiday-gate" class="relative overflow-hidden border-b border-white/10 min-h-[70vh] flex items-center">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(232,0,13,0.28),transparent_34%),linear-gradient(135deg,#000_0%,#111_58%,#050505_100%)]"></div>
+      <div class="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-joner-red to-transparent"></div>
+      <div class="relative w-full max-w-xl mx-auto px-4 sm:px-6 py-16 md:py-24 text-center">
+        <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-5">School Holiday Coaching</p>
+        <h1 class="font-heading uppercase text-5xl md:text-7xl leading-none mb-5">Book Your Session.</h1>
+        <p class="text-white/75 text-base md:text-lg leading-relaxed mb-8">Enter the password from your Joner Football message to see coach availability and book.</p>
+        <form id="gate-form" class="flex flex-col gap-3 text-left" novalidate>
+          <label for="gate-password" class="block text-white font-heading text-sm uppercase tracking-wider">Password</label>
+          <input id="gate-password" name="password" type="password" autocomplete="off" required
+            class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base focus:outline-none focus:border-joner-red placeholder-gray-500 min-h-[48px]" />
+          <button type="submit" class="btn-red w-full min-h-[48px] mt-2">Enter</button>
+          <p id="gate-status" class="text-sm text-white/70 min-h-[1.25rem]" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- Booking app -->
+    <section id="holiday-app" hidden>
+      <div class="relative overflow-hidden border-b border-white/10">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(232,0,13,0.22),transparent_34%),linear-gradient(135deg,#000_0%,#111_58%,#050505_100%)]"></div>
+        <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8 md:pt-16 md:pb-10">
+          <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-4">School Holiday Coaching</p>
+          <h1 id="app-heading" class="font-heading uppercase text-4xl md:text-6xl leading-none mb-4">School Holiday Sessions</h1>
+          <p class="text-white/75 text-base md:text-lg leading-relaxed max-w-2xl">Pick a coach, pick a time, pay with Stripe. Your place is confirmed the moment payment goes through.</p>
+        </div>
+      </div>
+
+      <div id="notice" class="hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        <div class="rounded-xl border border-joner-red/40 bg-joner-red/10 px-4 py-3 text-sm text-white/90" role="status"></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="sticky top-0 z-30 bg-joner-black/95 backdrop-blur border-b border-white/10">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-2">
+          <div id="coach-filters" class="flex gap-2 overflow-x-auto no-scrollbar" role="group" aria-label="Filter by coach"></div>
+          <div id="type-filters" class="flex gap-2 overflow-x-auto no-scrollbar" role="group" aria-label="Filter by session type"></div>
+        </div>
+      </div>
+
+      <!-- Slots -->
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+        <div id="slots-loading" class="space-y-4">
+          <div class="h-6 w-40 rounded bg-white/10 animate-pulse"></div>
+          <div class="h-28 rounded-2xl bg-white/5 animate-pulse"></div>
+          <div class="h-28 rounded-2xl bg-white/5 animate-pulse"></div>
+        </div>
+        <div id="slots-empty" hidden class="rounded-2xl border border-white/10 bg-white/[0.04] p-8 text-center">
+          <p class="font-heading uppercase text-2xl mb-2">No Sessions Listed Yet</p>
+          <p class="text-white/70">Availability goes up before each holiday period. Come back soon, or email <a class="underline decoration-joner-red underline-offset-4" href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a>.</p>
+        </div>
+        <div id="slots-error" hidden class="rounded-2xl border border-white/10 bg-white/[0.04] p-8 text-center">
+          <p class="font-heading uppercase text-2xl mb-2">Could Not Load Sessions</p>
+          <p class="text-white/70 mb-5">Something went wrong on our side.</p>
+          <button id="retry" type="button" class="btn-outline">Try Again</button>
+        </div>
+        <div id="slots-list" class="space-y-10"></div>
+      </div>
+    </section>
+
+    <!-- Booking sheet -->
+    <div id="sheet-backdrop" hidden class="fixed inset-0 z-40 bg-black/70"></div>
+    <div id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title"
+      class="fixed z-50 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center">
+      <div class="bg-[#111] text-white border-t md:border border-white/15 rounded-t-3xl md:rounded-2xl w-full md:max-w-lg max-h-[92vh] md:max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div class="sticky top-0 bg-[#111] border-b border-white/10 px-5 py-4 flex items-start justify-between gap-4">
+          <div>
+            <p class="font-heading uppercase tracking-[0.18em] text-joner-red text-xs mb-1">Book This Session</p>
+            <h2 id="sheet-title" class="font-heading uppercase text-2xl leading-none"></h2>
+            <p id="sheet-subtitle" class="text-white/70 text-sm mt-1"></p>
+          </div>
+          <button id="sheet-close" type="button" class="text-white/70 hover:text-white text-2xl leading-none min-w-[44px] min-h-[44px]" aria-label="Close">&times;</button>
+        </div>
+        <form id="book-form" class="px-5 py-5 space-y-5" novalidate>
+          <div id="seats-block">
+            <label class="block text-white font-heading text-sm uppercase tracking-wider mb-2">How many players?</label>
+            <div class="flex items-center gap-3">
+              <button type="button" id="seats-minus" class="min-w-[44px] min-h-[44px] border border-gray-600 text-xl" aria-label="Fewer players">-</button>
+              <span id="seats-value" class="font-heading text-2xl min-w-[2ch] text-center">1</span>
+              <button type="button" id="seats-plus" class="min-w-[44px] min-h-[44px] border border-gray-600 text-xl" aria-label="More players">+</button>
+              <span id="seats-hint" class="text-sm text-white/60"></span>
+            </div>
+          </div>
+          <div id="players" class="space-y-3"></div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="parentName" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Parent or guardian</label>
+              <input id="parentName" name="parentName" type="text" autocomplete="name" required class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base focus:outline-none focus:border-joner-red min-h-[44px]" />
+            </div>
+            <div>
+              <label for="mobile" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Mobile</label>
+              <input id="mobile" name="mobile" type="tel" autocomplete="tel" inputmode="tel" required class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base focus:outline-none focus:border-joner-red min-h-[44px]" />
+            </div>
+          </div>
+          <div>
+            <label for="email" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" inputmode="email" required class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base focus:outline-none focus:border-joner-red min-h-[44px]" />
+          </div>
+          <div>
+            <label for="notes" class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Anything the coach should know? <span class="text-white/50 normal-case tracking-normal">(optional)</span></label>
+            <textarea id="notes" name="notes" rows="2" class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base focus:outline-none focus:border-joner-red"></textarea>
+          </div>
+          <label class="flex items-start gap-3 text-sm text-white/80">
+            <input id="agreement" name="agreementAccepted" type="checkbox" class="mt-1 h-5 w-5 accent-[#E8000D]" required />
+            <span>I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" class="underline decoration-joner-red underline-offset-4">terms</a> and understand sessions are paid in full at booking.</span>
+          </label>
+          <p id="book-status" class="text-sm text-joner-red min-h-[1.25rem]" aria-live="polite"></p>
+          <div class="sticky bottom-0 bg-[#111] pt-2 pb-1">
+            <button id="pay-button" type="submit" class="btn-red w-full min-h-[52px]">Pay with Stripe</button>
+            <p class="text-xs text-white/50 text-center mt-2">Secure payment by Stripe. Your place is held for 30 minutes while you pay.</p>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+  .chip { white-space: nowrap; border: 1px solid rgba(255,255,255,.25); padding: .5rem .9rem; font-family: var(--font-heading); text-transform: uppercase; letter-spacing: .08em; font-size: .8rem; min-height: 40px; }
+  .chip[aria-pressed="true"] { background: #E8000D; border-color: #E8000D; color: #fff; }
+  .slot-card { border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); border-radius: 1rem; padding: 1.1rem 1.2rem; display: grid; gap: .8rem; }
+  .slot-card.full { opacity: .5; }
+  @media (min-width: 640px) { .slot-card { grid-template-columns: 1fr auto; align-items: center; } }
+  .badge { display: inline-block; font-family: var(--font-heading); text-transform: uppercase; letter-spacing: .1em; font-size: .68rem; padding: .2rem .5rem; border: 1px solid rgba(255,255,255,.3); }
+  .badge-lee { background: #E8000D; border-color: #E8000D; }
+</style>
+
+<script>
+  (function () {
+    const $ = (id) => document.getElementById(id)
+    const gate = $('holiday-gate'), app = $('holiday-app')
+    const state = { data: null, coach: 'all', type: 'all', slot: null, seats: 1, submitting: false }
+
+    function recaptcha(action) {
+      return window.JonerRecaptcha && typeof window.JonerRecaptcha.getToken === 'function' ? window.JonerRecaptcha.getToken(action) : Promise.resolve('')
+    }
+    function track(name, data) {
+      if (window.JonerTracking && typeof window.JonerTracking.trackEvent === 'function') window.JonerTracking.trackEvent(name, { custom_data: data })
+    }
+    function notice(text) {
+      const box = $('notice')
+      if (!text) { box.classList.add('hidden'); return }
+      box.firstElementChild.textContent = text
+      box.classList.remove('hidden')
+    }
+    function esc(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+    }
+
+    // ----- gate -----
+    async function checkAccess() {
+      try {
+        const res = await fetch('/api/holiday-access', { credentials: 'same-origin' })
+        const data = await res.json()
+        return data.ok === true
+      } catch { return false }
+    }
+
+    $('gate-form').addEventListener('submit', async (event) => {
+      event.preventDefault()
+      const status = $('gate-status')
+      const button = event.target.querySelector('button')
+      status.textContent = 'Checking'
+      button.disabled = true
+      try {
+        const recaptchaToken = await recaptcha('holiday_gate')
+        const res = await fetch('/api/holiday-access', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ password: $('gate-password').value, recaptchaToken }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.ok) { status.textContent = data.error || 'That password is not right.'; return }
+        status.textContent = ''
+        showApp()
+      } catch {
+        status.textContent = 'Could not check the password. Try again.'
+      } finally {
+        button.disabled = false
+      }
+    })
+
+    function showApp() {
+      gate.hidden = true
+      app.hidden = false
+      handleCancelledReturn().then(loadSlots)
+    }
+
+    // ----- cancelled return from Stripe -----
+    async function handleCancelledReturn() {
+      const params = new URLSearchParams(location.search)
+      if (params.get('payment') !== 'cancelled') return
+      const bookingId = params.get('booking_id'), releaseToken = params.get('release')
+      history.replaceState({}, '', location.pathname)
+      if (!bookingId || !releaseToken) return
+      try {
+        await fetch('/api/holiday-book', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'release', bookingId, releaseToken }),
+        })
+      } catch {}
+      notice('Payment cancelled. Nothing was charged and your place was released.')
+    }
+
+    // ----- slots -----
+    async function loadSlots() {
+      $('slots-loading').hidden = false
+      $('slots-empty').hidden = true
+      $('slots-error').hidden = true
+      $('slots-list').innerHTML = ''
+      try {
+        const res = await fetch('/api/holiday-slots', { credentials: 'same-origin' })
+        if (res.status === 401) { app.hidden = true; gate.hidden = false; return }
+        const data = await res.json()
+        if (!res.ok || !data.success) throw new Error(data.error || 'failed')
+        state.data = data
+        $('app-heading').textContent = data.holidayLabel || 'School Holiday Sessions'
+        try {
+          state.coach = sessionStorage.getItem('jf_holiday_coach') || 'all'
+          state.type = sessionStorage.getItem('jf_holiday_type') || 'all'
+        } catch {}
+        if (state.coach !== 'all' && !data.coaches.some((c) => c.id === state.coach)) state.coach = 'all'
+        renderFilters()
+        renderSlots()
+      } catch {
+        $('slots-error').hidden = false
+      } finally {
+        $('slots-loading').hidden = true
+      }
+    }
+    $('retry').addEventListener('click', loadSlots)
+
+    function chip(label, value, current, group) {
+      return `<button type="button" class="chip" data-group="${group}" data-value="${esc(value)}" aria-pressed="${current === value}">${esc(label)}</button>`
+    }
+
+    function renderFilters() {
+      const { coaches, slots } = state.data
+      const types = [...new Set(slots.map((s) => s.type))]
+      const typeLabels = { one: '1 to 1', shared: 'Shared', group: 'Group' }
+      $('coach-filters').innerHTML = coaches.length > 1
+        ? [chip('All coaches', 'all', state.coach, 'coach'), ...coaches.map((c) => chip(c.name, c.id, state.coach, 'coach'))].join('')
+        : ''
+      $('type-filters').innerHTML = types.length > 1
+        ? [chip('All types', 'all', state.type, 'type'), ...['one', 'shared', 'group'].filter((t) => types.includes(t)).map((t) => chip(typeLabels[t], t, state.type, 'type'))].join('')
+        : ''
+    }
+
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('.chip')
+      if (!button) return
+      state[button.dataset.group] = button.dataset.value
+      try { sessionStorage.setItem(`jf_holiday_${button.dataset.group}`, button.dataset.value) } catch {}
+      renderFilters()
+      renderSlots()
+    })
+
+    function placesText(slot) {
+      if (slot.remaining <= 0) return 'No places left'
+      if (slot.type === 'one') return 'Available'
+      return `${slot.remaining} of ${slot.capacity} place${slot.capacity === 1 ? '' : 's'} left`
+    }
+
+    function renderSlots() {
+      const slots = state.data.slots.filter((s) => (state.coach === 'all' || s.coachId === state.coach) && (state.type === 'all' || s.type === state.type))
+      const list = $('slots-list')
+      if (!slots.length) {
+        list.innerHTML = ''
+        $('slots-empty').hidden = false
+        return
+      }
+      $('slots-empty').hidden = true
+      const byDate = new Map()
+      for (const slot of slots) {
+        if (!byDate.has(slot.date)) byDate.set(slot.date, { label: slot.dateLabel, slots: [] })
+        byDate.get(slot.date).slots.push(slot)
+      }
+      list.innerHTML = [...byDate.values()].map((day) => {
+        const allFull = day.slots.every((s) => s.remaining <= 0)
+        return `
+          <section>
+            <div class="flex items-baseline justify-between mb-4">
+              <h2 class="font-heading uppercase text-2xl md:text-3xl">${esc(day.label)}</h2>
+              ${allFull ? '<span class="badge">All sessions full</span>' : ''}
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+              ${day.slots.map(slotCard).join('')}
+            </div>
+          </section>`
+      }).join('')
+    }
+
+    function slotCard(slot) {
+      const full = slot.remaining <= 0
+      return `
+        <article class="slot-card ${full ? 'full' : ''}">
+          <div>
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+              <span class="font-heading text-xl">${esc(slot.startLabel)} to ${esc(slot.endLabel)}</span>
+              <span class="badge ${slot.coachTier === 'lee' ? 'badge-lee' : ''}">${esc(slot.coachName)}</span>
+              <span class="badge">${esc(slot.typeLabel)}</span>
+            </div>
+            <p class="text-white/70 text-sm">${esc(slot.location)} &middot; ${esc(slot.durationMin)} min &middot; <strong class="text-white">${esc(slot.priceLabel)}</strong> per player</p>
+            <p class="text-sm mt-1 ${full ? 'text-white/50' : 'text-white/80'}">${esc(placesText(slot))}</p>
+            ${slot.notes ? `<p class="text-white/60 text-sm mt-1">${esc(slot.notes)}</p>` : ''}
+          </div>
+          <div>
+            ${full
+              ? '<span class="badge">Full</span>'
+              : `<button type="button" class="btn-red w-full sm:w-auto min-h-[48px]" data-book="${esc(slot.id)}">Book</button>`}
+          </div>
+        </article>`
+    }
+
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-book]')
+      if (!button) return
+      const slot = state.data.slots.find((s) => s.id === button.dataset.book)
+      if (slot) openSheet(slot)
+    })
+
+    // ----- booking sheet -----
+    function openSheet(slot) {
+      state.slot = slot
+      state.seats = 1
+      $('sheet-title').textContent = `${slot.coachName}, ${slot.dateLabel}`
+      $('sheet-subtitle').textContent = `${slot.startLabel} to ${slot.endLabel} at ${slot.location}. ${slot.typeLabel} session, ${slot.priceLabel} per player.`
+      $('seats-block').hidden = slot.remaining <= 1
+      $('book-status').textContent = ''
+      $('book-form').reset()
+      renderSeats()
+      $('sheet-backdrop').hidden = false
+      $('sheet').hidden = false
+      document.body.style.overflow = 'hidden'
+      setTimeout(() => $('players').querySelector('input')?.focus(), 50)
+    }
+    function closeSheet() {
+      $('sheet-backdrop').hidden = true
+      $('sheet').hidden = true
+      document.body.style.overflow = ''
+      state.slot = null
+    }
+    $('sheet-close').addEventListener('click', closeSheet)
+    $('sheet-backdrop').addEventListener('click', closeSheet)
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sheet').hidden) closeSheet() })
+
+    function renderSeats() {
+      const slot = state.slot
+      const max = Math.max(1, slot.remaining)
+      $('seats-value').textContent = String(state.seats)
+      $('seats-minus').disabled = state.seats <= 1
+      $('seats-plus').disabled = state.seats >= max
+      $('seats-hint').textContent = max > 1 ? `Up to ${max}. Bring a sibling or a friend.` : ''
+      const existing = [...$('players').querySelectorAll('[data-player]')].map((row) => ({
+        name: row.querySelector('[name="playerName"]').value,
+        age: row.querySelector('[name="playerAge"]').value,
+      }))
+      $('players').innerHTML = Array.from({ length: state.seats }, (_, i) => `
+        <div class="grid grid-cols-[1fr_88px] gap-3" data-player="${i}">
+          <div>
+            <label class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Player ${state.seats > 1 ? i + 1 : ''} name</label>
+            <input name="playerName" type="text" required value="${esc(existing[i]?.name || '')}" class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base focus:outline-none focus:border-joner-red min-h-[44px]" />
+          </div>
+          <div>
+            <label class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Age</label>
+            <input name="playerAge" type="number" min="4" max="18" inputmode="numeric" required value="${esc(existing[i]?.age || '')}" class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base focus:outline-none focus:border-joner-red min-h-[44px]" />
+          </div>
+        </div>`).join('')
+      const total = slot.priceCents * state.seats / 100
+      $('pay-button').textContent = `Pay A$${total % 1 === 0 ? total.toFixed(0) : total.toFixed(2)} with Stripe`
+    }
+    $('seats-minus').addEventListener('click', () => { if (state.seats > 1) { state.seats -= 1; renderSeats() } })
+    $('seats-plus').addEventListener('click', () => { if (state.seats < state.slot.remaining) { state.seats += 1; renderSeats() } })
+
+    $('book-form').addEventListener('submit', async (event) => {
+      event.preventDefault()
+      if (state.submitting || !state.slot) return
+      const form = event.target
+      const status = $('book-status')
+      const players = [...form.querySelectorAll('[data-player]')].map((row) => ({
+        name: row.querySelector('[name="playerName"]').value.trim(),
+        age: Number(row.querySelector('[name="playerAge"]').value),
+      }))
+      if (players.some((p) => p.name.length < 2)) { status.textContent = 'Enter each player\'s name.'; return }
+      if (players.some((p) => !Number.isInteger(p.age) || p.age < 4 || p.age > 18)) { status.textContent = 'Player age must be between 4 and 18.'; return }
+      if (window.JonerEmailGuard && typeof window.JonerEmailGuard.validateEmail === 'function') {
+        const check = window.JonerEmailGuard.validateEmail($('email').value)
+        if (check && check.ok === false) { status.textContent = check.error || 'Check the email address.'; return }
+      }
+      if (!$('agreement').checked) { status.textContent = 'Please accept the terms to continue.'; return }
+
+      state.submitting = true
+      $('pay-button').disabled = true
+      status.classList.remove('text-joner-red')
+      status.textContent = 'Holding your place'
+      try {
+        const recaptchaToken = await recaptcha('holiday_book')
+        const res = await fetch('/api/holiday-book', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            slotId: state.slot.id,
+            seats: state.seats,
+            players,
+            parentName: $('parentName').value.trim(),
+            mobile: $('mobile').value.trim(),
+            email: $('email').value.trim(),
+            notes: $('notes').value.trim(),
+            agreementAccepted: true,
+            recaptchaToken,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.status === 401) { closeSheet(); app.hidden = true; gate.hidden = false; return }
+        if (res.status === 409 || res.status === 404) {
+          closeSheet()
+          notice(data.error || 'That session was just taken. Pick another time.')
+          loadSlots()
+          return
+        }
+        if (!res.ok || !data.url) { status.classList.add('text-joner-red'); status.textContent = data.error || 'Could not start the payment. Try again.'; return }
+        try { sessionStorage.setItem('jf_holiday_booking', data.bookingId) } catch {}
+        track('InitiateCheckout', { content_category: 'holiday_session', content_name: state.slot.coachName, value: state.slot.priceCents * state.seats / 100, currency: 'AUD', booking_id: data.bookingId })
+        status.textContent = 'Taking you to Stripe'
+        window.location.href = data.url
+      } catch {
+        status.classList.add('text-joner-red')
+        status.textContent = 'Could not start the payment. Try again.'
+      } finally {
+        state.submitting = false
+        $('pay-button').disabled = false
+      }
+    })
+
+    // ----- boot -----
+    checkAccess().then((ok) => { if (ok) showApp(); else { gate.hidden = false; setTimeout(() => $('gate-password').focus(), 50) } })
+  })()
+</script>

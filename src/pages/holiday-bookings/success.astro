@@ -1,0 +1,129 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const title = 'Session Booked | Joner Football'
+const description = 'Your Joner Football school holiday session is booked.'
+---
+
+<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/holiday-bookings/success/" noindex hideMobileAppCta>
+  <main class="bg-joner-black text-white min-h-screen">
+    <section class="relative overflow-hidden border-b border-white/10">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(232,0,13,0.28),transparent_34%),linear-gradient(135deg,#000_0%,#111_58%,#050505_100%)]"></div>
+      <div class="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-joner-red to-transparent"></div>
+      <div class="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 text-center">
+        <p id="eyebrow" class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-5">Confirming Payment</p>
+        <h1 id="heading" class="font-heading uppercase text-5xl md:text-7xl leading-none mb-6">One Moment.</h1>
+        <p id="lead" class="text-lg md:text-2xl text-white/80 max-w-2xl mx-auto leading-relaxed">We are confirming your payment with Stripe.</p>
+      </div>
+    </section>
+
+    <section class="px-4 sm:px-6 lg:px-8 py-12">
+      <div class="max-w-3xl mx-auto">
+        <div id="card" hidden class="rounded-2xl border border-white/10 bg-white/[0.04] p-6 md:p-8 shadow-2xl shadow-black/30">
+          <p class="font-heading uppercase tracking-[0.18em] text-joner-red text-xs mb-4">Your Booking</p>
+          <dl id="details" class="grid grid-cols-[110px_1fr] gap-y-3 gap-x-4 text-base md:text-lg"></dl>
+          <div class="mt-8 flex flex-col sm:flex-row gap-3">
+            <a id="calendar" href="#" class="btn-red text-center" download="joner-football-session.ics">Add To Calendar</a>
+            <a href="/holiday-bookings/" class="btn-outline text-center">Book Another Session</a>
+          </div>
+          <p class="text-white/60 text-sm mt-6">A confirmation email is on its way. If it is not there in a few minutes, look in junk or spam, then email <a class="underline decoration-joner-red underline-offset-4 text-white" href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a>.</p>
+        </div>
+        <div id="help" hidden class="rounded-2xl border border-white/10 bg-white/[0.04] p-6 md:p-8 text-center">
+          <p class="text-white/80 leading-relaxed mb-5">If you paid and this page does not update, do not pay again. Email <a class="underline decoration-joner-red underline-offset-4 text-white" href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a> with your booking reference and we will sort it.</p>
+          <a href="/holiday-bookings/" class="btn-outline">Back To Sessions</a>
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<script>
+  (function () {
+    const $ = (id) => document.getElementById(id)
+    const params = new URLSearchParams(location.search)
+    const sessionId = params.get('session_id') || ''
+    const bookingId = params.get('booking_id') || ''
+    let attempts = 0
+
+    function esc(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+    }
+
+    function setHero(eyebrow, heading, lead) {
+      $('eyebrow').textContent = eyebrow
+      $('heading').textContent = heading
+      $('lead').textContent = lead
+    }
+
+    function icsDate(iso) {
+      return new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
+    }
+
+    function calendarLink(b) {
+      if (!b.startsAt || !b.endsAt) return null
+      const lines = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Joner Football//Holiday Sessions//EN', 'BEGIN:VEVENT',
+        `UID:${b.id}@jonerfootball.com`,
+        `DTSTAMP:${icsDate(new Date().toISOString())}`,
+        `DTSTART:${icsDate(b.startsAt)}`,
+        `DTEND:${icsDate(b.endsAt)}`,
+        `SUMMARY:Joner Football: ${b.typeLabel} session with ${b.coachName}`,
+        `LOCATION:${b.location}`,
+        `DESCRIPTION:Players: ${b.players.map((p) => p.name).join(', ')}. Arrive 10 minutes early with boots, shin pads and water.`,
+        'END:VEVENT', 'END:VCALENDAR',
+      ]
+      return 'data:text/calendar;charset=utf-8,' + encodeURIComponent(lines.join('\r\n'))
+    }
+
+    function showPaid(b) {
+      setHero('Payment Complete', 'Your Session Is Booked.', `${b.players.map((p) => p.name).join(' and ')} ${b.players.length > 1 ? 'are' : 'is'} in with ${b.coachName}.`)
+      $('details').innerHTML = [
+        ['When', `${b.dateLabel}, ${b.startLabel} to ${b.endLabel}`],
+        ['Where', b.location],
+        ['Session', `${b.typeLabel} with ${b.coachName}`],
+        ['Players', b.players.map((p) => p.name).join(', ')],
+        ['Paid', b.priceLabel],
+        ['Reference', b.id],
+      ].map(([k, v]) => `<dt class="text-white/60 uppercase tracking-wider text-xs font-heading pt-1">${esc(k)}</dt><dd class="font-semibold">${esc(v)}</dd>`).join('')
+      const ics = calendarLink(b)
+      if (ics) $('calendar').href = ics; else $('calendar').hidden = true
+      $('card').hidden = false
+      $('help').hidden = true
+
+      let fired = false
+      try { fired = sessionStorage.getItem(`jf_holiday_purchase_${b.id}`) === '1' } catch {}
+      if (!fired && window.JonerTracking && typeof window.JonerTracking.trackEvent === 'function') {
+        window.JonerTracking.trackEvent('Purchase', {
+          custom_data: { content_name: 'holiday_session', content_category: 'holiday_session', value: b.priceCents / 100, currency: 'AUD', booking_id: b.id, stripe_session_id: sessionId },
+        })
+        try { sessionStorage.setItem(`jf_holiday_purchase_${b.id}`, '1') } catch {}
+      }
+    }
+
+    function showFailed(message) {
+      setHero('Booking Not Found', 'We Could Not Find That Booking.', message)
+      $('help').hidden = false
+    }
+
+    async function confirm() {
+      if (!sessionId) { showFailed('This page needs to be opened from your Stripe payment.'); return }
+      attempts += 1
+      try {
+        const res = await fetch(`/api/holiday-confirm?session_id=${encodeURIComponent(sessionId)}`, { credentials: 'same-origin' })
+        const data = await res.json().catch(() => ({}))
+        if (res.status === 404) { showFailed(`Reference ${bookingId || 'unknown'}. If you paid, email us and we will find it.`); return }
+        if (data.status === 'paid' && data.booking) { showPaid(data.booking); return }
+        if (data.status === 'expired') { showFailed('This payment session expired before it was completed. Nothing was charged. Go back and book again.'); return }
+        if (data.status === 'cancelled') { setHero('Booking Cancelled', 'This Booking Was Cancelled.', 'If you paid, a refund is on its way or has already been made. Email us if you have any questions.'); $('help').hidden = false; return }
+      } catch {}
+      if (attempts < 12) {
+        setHero('Confirming Payment', 'Almost There.', 'Your payment is still processing. This page will update on its own.')
+        setTimeout(confirm, 5000)
+      } else {
+        showFailed('Your payment is taking longer than usual to confirm. Do not pay again.')
+      }
+    }
+
+    confirm()
+  })()
+</script>

@@ -20,6 +20,9 @@ export default defineConfig({
       // Keep this list in sync with pages that set noindex: a URL should never
       // be noindexed and listed in the sitemap at the same time.
       const excludedPaths = [
+        '/holiday-bookings/',
+        '/holiday-bookings/success/',
+        '/holiday-admin/',
         '/checkout-success/',
         '/camp-success/',
         '/download-success/',

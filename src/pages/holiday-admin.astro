@@ -1,0 +1,502 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="Holiday Bookings Admin | Joner Football" description="Private admin for school holiday session bookings." canonical="https://jonerfootball.com/holiday-admin/" noindex hideChrome>
+  <main class="bg-joner-black text-white min-h-screen">
+    <!-- Secret prompt -->
+    <section id="admin-gate" class="min-h-[70vh] flex items-center">
+      <div class="w-full max-w-md mx-auto px-4 py-16">
+        <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-4">Holiday Bookings</p>
+        <h1 class="font-heading uppercase text-4xl md:text-5xl leading-none mb-6">Admin</h1>
+        <form id="gate-form" class="space-y-3" novalidate>
+          <label for="secret" class="block text-white font-heading text-sm uppercase tracking-wider">Admin secret</label>
+          <input id="secret" type="password" autocomplete="off" class="w-full bg-joner-gray border border-gray-700 text-white px-4 py-3 font-body text-base focus:outline-none focus:border-joner-red min-h-[48px]" />
+          <button type="submit" class="btn-red w-full min-h-[48px]">Open Admin</button>
+          <p id="gate-status" class="text-sm text-joner-red min-h-[1.25rem]" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- Admin app -->
+    <section id="admin-app" hidden>
+      <div class="border-b border-white/10">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-2">Holiday Bookings</p>
+            <h1 class="font-heading uppercase text-3xl md:text-5xl leading-none">Admin</h1>
+          </div>
+          <div class="flex flex-wrap gap-2 text-sm">
+            <a href="/holiday-bookings/" target="_blank" rel="noopener noreferrer" class="btn-outline min-h-[40px] py-2 px-4">View parent page</a>
+            <a id="sheet-link" href="#" target="_blank" rel="noopener noreferrer" class="btn-outline min-h-[40px] py-2 px-4">Open roster sheet</a>
+            <button id="logout" type="button" class="btn-outline min-h-[40px] py-2 px-4">Lock</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sticky top-0 z-20 bg-joner-black/95 backdrop-blur border-b border-white/10">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex gap-2 overflow-x-auto" role="tablist">
+          <button type="button" class="tab" data-tab="slots" aria-selected="true">Slots</button>
+          <button type="button" class="tab" data-tab="bookings" aria-selected="false">Bookings</button>
+          <button type="button" class="tab" data-tab="settings" aria-selected="false">Prices and Coaches</button>
+        </div>
+      </div>
+
+      <div id="flash" hidden class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-4"><div class="rounded-xl border border-joner-red/40 bg-joner-red/10 px-4 py-3 text-sm" role="status"></div></div>
+
+      <!-- SLOTS -->
+      <div id="tab-slots" class="tabpanel max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid gap-8 lg:grid-cols-[380px_1fr]">
+        <div class="space-y-6">
+          <form id="slot-form" class="rounded-2xl border border-white/10 bg-white/[0.04] p-5 space-y-4" novalidate>
+            <h2 class="font-heading uppercase text-2xl">Add Slots</h2>
+            <div>
+              <label class="lbl" for="s-coach">Coach</label>
+              <select id="s-coach" class="inp"></select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="lbl" for="s-type">Type</label>
+                <select id="s-type" class="inp">
+                  <option value="one">1 to 1</option>
+                  <option value="shared">Shared (2)</option>
+                  <option value="group">Group</option>
+                </select>
+              </div>
+              <div>
+                <label class="lbl" for="s-capacity">Capacity</label>
+                <input id="s-capacity" type="number" min="1" max="20" value="1" class="inp" disabled />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="lbl" for="s-duration">Minutes</label>
+                <select id="s-duration" class="inp"></select>
+              </div>
+              <div>
+                <label class="lbl" for="s-price">Price override (A$)</label>
+                <input id="s-price" type="number" min="0" step="0.01" placeholder="default" class="inp" />
+              </div>
+            </div>
+            <div>
+              <label class="lbl">Dates</label>
+              <div class="flex gap-2">
+                <input id="s-date" type="date" class="inp" />
+                <button type="button" id="s-date-add" class="btn-outline min-h-[44px] px-4 shrink-0">Add</button>
+              </div>
+              <div id="s-dates" class="flex flex-wrap gap-2 mt-2"></div>
+            </div>
+            <div>
+              <label class="lbl">Start times</label>
+              <div class="flex gap-2">
+                <input id="s-time" type="time" step="900" class="inp" />
+                <button type="button" id="s-time-add" class="btn-outline min-h-[44px] px-4 shrink-0">Add</button>
+              </div>
+              <div id="s-times" class="flex flex-wrap gap-2 mt-2"></div>
+            </div>
+            <div>
+              <label class="lbl" for="s-location">Location</label>
+              <input id="s-location" type="text" class="inp" />
+            </div>
+            <div>
+              <label class="lbl" for="s-notes">Note shown to parents (optional)</label>
+              <input id="s-notes" type="text" maxlength="300" class="inp" />
+            </div>
+            <button type="submit" class="btn-red w-full min-h-[48px]">Create slots</button>
+            <p id="slot-status" class="text-sm min-h-[1.25rem]" aria-live="polite"></p>
+          </form>
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-heading uppercase text-2xl">All Slots</h2>
+            <label class="text-sm text-white/70 flex items-center gap-2"><input id="show-cancelled" type="checkbox" class="accent-[#E8000D]" /> Show cancelled</label>
+          </div>
+          <div id="slots-list" class="space-y-6"><p class="text-white/60">Loading</p></div>
+        </div>
+      </div>
+
+      <!-- BOOKINGS -->
+      <div id="tab-bookings" class="tabpanel max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8" hidden>
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 class="font-heading uppercase text-2xl">Bookings</h2>
+          <div class="flex flex-wrap gap-2 items-center">
+            <select id="b-filter" class="inp min-h-[40px] py-2 w-auto">
+              <option value="paid">Paid</option>
+              <option value="held">Holding (unpaid)</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="expired">Expired</option>
+              <option value="all">All</option>
+            </select>
+            <button id="b-refresh" type="button" class="btn-outline min-h-[40px] py-2 px-4">Refresh</button>
+            <button id="b-csv" type="button" class="btn-outline min-h-[40px] py-2 px-4">Download CSV</button>
+          </div>
+        </div>
+        <div id="bookings-list" class="overflow-x-auto"><p class="text-white/60">Loading</p></div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div id="tab-settings" class="tabpanel max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8" hidden>
+        <form id="settings-form" class="grid gap-8 lg:grid-cols-2" novalidate>
+          <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5 space-y-4">
+            <h2 class="font-heading uppercase text-2xl">Prices Per Player</h2>
+            <p class="text-white/60 text-sm">Whole dollars. Lee's tier and the coach tier each get a price for every session type. A slot can override its price when you add it.</p>
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-white/60 uppercase tracking-wider text-xs"><th class="py-2"></th><th class="py-2">1 to 1</th><th class="py-2">Shared</th><th class="py-2">Group</th></tr></thead>
+              <tbody>
+                <tr><td class="py-2 font-heading uppercase">Lee</td><td><input data-price="lee.one" type="number" min="0" class="inp" /></td><td><input data-price="lee.shared" type="number" min="0" class="inp" /></td><td><input data-price="lee.group" type="number" min="0" class="inp" /></td></tr>
+                <tr><td class="py-2 font-heading uppercase">Coach</td><td><input data-price="coach.one" type="number" min="0" class="inp" /></td><td><input data-price="coach.shared" type="number" min="0" class="inp" /></td><td><input data-price="coach.group" type="number" min="0" class="inp" /></td></tr>
+              </tbody>
+            </table>
+            <div>
+              <label class="lbl" for="c-label">Heading on the parent page</label>
+              <input id="c-label" type="text" maxlength="80" class="inp" />
+            </div>
+            <div>
+              <label class="lbl" for="c-location">Default location</label>
+              <input id="c-location" type="text" maxlength="120" class="inp" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="lbl" for="c-durations">Durations offered (minutes, comma separated)</label>
+                <input id="c-durations" type="text" class="inp" placeholder="60, 90" />
+              </div>
+              <div>
+                <label class="lbl" for="c-cutoff">Close bookings this many hours before</label>
+                <input id="c-cutoff" type="number" min="0" max="72" class="inp" />
+              </div>
+            </div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5 space-y-4">
+            <h2 class="font-heading uppercase text-2xl">Coaches</h2>
+            <p class="text-white/60 text-sm">Tier decides which price row applies. Inactive coaches keep their slots but cannot be picked for new ones.</p>
+            <div id="coaches" class="space-y-2"></div>
+            <button type="button" id="coach-add" class="btn-outline min-h-[40px] py-2 px-4">Add coach</button>
+            <div class="pt-4 border-t border-white/10">
+              <button type="submit" class="btn-red w-full min-h-[48px]">Save settings</button>
+              <p id="settings-status" class="text-sm min-h-[1.25rem] mt-2" aria-live="polite"></p>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<style>
+  .lbl { display:block; color:#fff; font-family: var(--font-heading); font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.4rem; }
+  .inp { width:100%; background:#1a1a1a; border:1px solid #3a3a3a; color:#fff; padding:.7rem .9rem; font-size:1rem; min-height:44px; }
+  .inp:focus { outline:none; border-color:#E8000D; }
+  .inp:disabled { opacity:.5; }
+  .tab { white-space:nowrap; border:1px solid rgba(255,255,255,.25); padding:.5rem 1rem; font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.08em; font-size:.85rem; min-height:40px; }
+  .tab[aria-selected="true"] { background:#E8000D; border-color:#E8000D; }
+  .pill { display:inline-flex; align-items:center; gap:.4rem; border:1px solid rgba(255,255,255,.3); padding:.3rem .6rem; font-size:.85rem; }
+  .pill button { color:#E8000D; font-weight:900; }
+  .slot-row { display:grid; grid-template-columns: 1fr auto; gap:.6rem; align-items:center; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.03); padding:.8rem 1rem; border-radius:.75rem; }
+  .slot-row.cancelled { opacity:.45; }
+  .badge { display:inline-block; font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.1em; font-size:.66rem; padding:.15rem .45rem; border:1px solid rgba(255,255,255,.3); }
+  .badge-lee { background:#E8000D; border-color:#E8000D; }
+  .badge-warn { background:#E8000D; border-color:#E8000D; }
+  table.bk { width:100%; font-size:.85rem; border-collapse:collapse; min-width:900px; }
+  table.bk th, table.bk td { text-align:left; padding:.55rem .6rem; border-bottom:1px solid rgba(255,255,255,.1); vertical-align:top; }
+  table.bk th { color:rgba(255,255,255,.6); text-transform:uppercase; letter-spacing:.08em; font-size:.7rem; }
+  .link-btn { color:#fff; text-decoration:underline; text-decoration-color:#E8000D; text-underline-offset:4px; }
+</style>
+
+<script>
+  (function () {
+    const $ = (id) => document.getElementById(id)
+    const KEY = 'jf_holiday_admin'
+    const state = { config: null, slots: [], bookings: [], dates: [], times: [] }
+    const typeLabels = { one: '1 to 1', shared: 'Shared', group: 'Group' }
+
+    function esc(v) { return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) }
+    function secret() { try { return sessionStorage.getItem(KEY) || '' } catch { return '' } }
+    function flash(text) {
+      const box = $('flash')
+      if (!text) { box.hidden = true; return }
+      box.firstElementChild.textContent = text
+      box.hidden = false
+      clearTimeout(flash.t)
+      flash.t = setTimeout(() => { box.hidden = true }, 6000)
+    }
+
+    async function api(action, payload = {}) {
+      const res = await fetch('/api/holiday-admin', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-holiday-admin-secret': secret() },
+        body: JSON.stringify({ action, ...payload }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 401) { lock(); throw new Error('Admin secret rejected.') }
+      if (!res.ok || !data.success) throw new Error(data.error || 'Request failed.')
+      return data
+    }
+
+    function lock() {
+      try { sessionStorage.removeItem(KEY) } catch {}
+      $('admin-app').hidden = true
+      $('admin-gate').hidden = false
+    }
+    $('logout').addEventListener('click', lock)
+
+    $('gate-form').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      try { sessionStorage.setItem(KEY, $('secret').value.trim()) } catch {}
+      $('gate-status').textContent = 'Checking'
+      try {
+        await api('ping')
+        $('gate-status').textContent = ''
+        $('secret').value = ''
+        open()
+      } catch (error) {
+        $('gate-status').textContent = error.message
+      }
+    })
+
+    async function open() {
+      $('admin-gate').hidden = true
+      $('admin-app').hidden = false
+      await loadConfig()
+      await loadSlots()
+    }
+
+    // ----- tabs -----
+    document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t === tab)))
+      document.querySelectorAll('.tabpanel').forEach((p) => { p.hidden = p.id !== `tab-${tab.dataset.tab}` })
+      if (tab.dataset.tab === 'bookings') loadBookings()
+    }))
+
+    // ----- config -----
+    async function loadConfig() {
+      const data = await api('getConfig')
+      state.config = data.config
+      $('sheet-link').href = data.sheetUrl
+      renderConfigForms()
+    }
+
+    function renderConfigForms() {
+      const c = state.config
+      $('s-coach').innerHTML = c.coaches.filter((x) => x.active).map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')
+      $('s-duration').innerHTML = c.defaultDurations.map((d) => `<option value="${d}">${d}</option>`).join('')
+      if (!$('s-location').value) $('s-location').value = c.defaultLocation
+      document.querySelectorAll('[data-price]').forEach((input) => {
+        const [tier, type] = input.dataset.price.split('.')
+        input.value = Math.round((c.prices[tier]?.[type] || 0) / 100)
+      })
+      $('c-label').value = c.holidayLabel
+      $('c-location').value = c.defaultLocation
+      $('c-durations').value = c.defaultDurations.join(', ')
+      $('c-cutoff').value = c.bookingCutoffHours
+      renderCoaches(c.coaches)
+    }
+
+    function renderCoaches(coaches) {
+      $('coaches').innerHTML = coaches.map((x, i) => `
+        <div class="grid grid-cols-[1fr_110px_auto] gap-2 items-center" data-coach="${i}">
+          <input type="text" value="${esc(x.name)}" data-field="name" class="inp" placeholder="Name" />
+          <select data-field="tier" class="inp"><option value="lee" ${x.tier === 'lee' ? 'selected' : ''}>Lee price</option><option value="coach" ${x.tier === 'coach' ? 'selected' : ''}>Coach price</option></select>
+          <label class="text-sm text-white/70 flex items-center gap-1"><input type="checkbox" data-field="active" ${x.active ? 'checked' : ''} class="accent-[#E8000D]" /> Active</label>
+          <input type="hidden" data-field="id" value="${esc(x.id)}" />
+        </div>`).join('')
+    }
+    $('coach-add').addEventListener('click', () => {
+      const coaches = readCoaches()
+      coaches.push({ id: '', name: '', tier: 'coach', active: true })
+      renderCoaches(coaches)
+    })
+    function readCoaches() {
+      return [...$('coaches').querySelectorAll('[data-coach]')].map((row) => ({
+        id: row.querySelector('[data-field="id"]').value,
+        name: row.querySelector('[data-field="name"]').value.trim(),
+        tier: row.querySelector('[data-field="tier"]').value,
+        active: row.querySelector('[data-field="active"]').checked,
+      })).filter((c) => c.name)
+    }
+
+    $('settings-form').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const prices = { lee: {}, coach: {} }
+      document.querySelectorAll('[data-price]').forEach((input) => {
+        const [tier, type] = input.dataset.price.split('.')
+        prices[tier][type] = Math.round(Number(input.value || 0) * 100)
+      })
+      const status = $('settings-status')
+      status.textContent = 'Saving'
+      try {
+        const data = await api('saveConfig', {
+          config: {
+            prices,
+            coaches: readCoaches(),
+            holidayLabel: $('c-label').value,
+            defaultLocation: $('c-location').value,
+            defaultDurations: $('c-durations').value.split(',').map((v) => Number(v.trim())).filter(Boolean),
+            bookingCutoffHours: Number($('c-cutoff').value),
+          },
+        })
+        state.config = data.config
+        renderConfigForms()
+        status.textContent = 'Saved.'
+      } catch (error) {
+        status.textContent = error.message
+      }
+    })
+
+    // ----- slot form -----
+    $('s-type').addEventListener('change', () => {
+      const type = $('s-type').value
+      const cap = $('s-capacity')
+      cap.disabled = type !== 'group'
+      cap.value = type === 'one' ? 1 : type === 'shared' ? 2 : Math.max(3, Number(cap.value) || 4)
+    })
+    function renderPills(list, target, remove) {
+      target.innerHTML = list.map((v, i) => `<span class="pill">${esc(v)} <button type="button" data-remove="${i}" aria-label="Remove">&times;</button></span>`).join('')
+      target.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => { remove(Number(b.dataset.remove)) }))
+    }
+    function renderDates() { renderPills(state.dates.map((d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })), $('s-dates'), (i) => { state.dates.splice(i, 1); renderDates() }) }
+    function renderTimes() { renderPills(state.times, $('s-times'), (i) => { state.times.splice(i, 1); renderTimes() }) }
+    $('s-date-add').addEventListener('click', () => {
+      const v = $('s-date').value
+      if (v && !state.dates.includes(v)) { state.dates.push(v); state.dates.sort(); renderDates() }
+      const next = new Date(`${v}T00:00:00`); next.setDate(next.getDate() + 1)
+      if (v) $('s-date').value = next.toISOString().slice(0, 10)
+    })
+    $('s-time-add').addEventListener('click', () => {
+      const v = $('s-time').value
+      if (v && !state.times.includes(v)) { state.times.push(v); state.times.sort(); renderTimes() }
+    })
+
+    $('slot-form').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const status = $('slot-status')
+      if (!state.dates.length || !state.times.length) { status.textContent = 'Add at least one date and one start time.'; return }
+      const price = $('s-price').value
+      const template = {
+        coachId: $('s-coach').value,
+        type: $('s-type').value,
+        capacity: Number($('s-capacity').value),
+        durationMin: Number($('s-duration').value),
+        priceCents: price === '' ? null : Math.round(Number(price) * 100),
+        location: $('s-location').value,
+        notes: $('s-notes').value,
+      }
+      status.textContent = 'Creating'
+      try {
+        const data = await api('bulkAddSlots', { template, dates: state.dates, times: state.times })
+        status.textContent = `${data.created} created${data.skipped ? `, ${data.skipped} skipped (already existed)` : ''}.`
+        state.dates = []; state.times = []; renderDates(); renderTimes()
+        await loadSlots()
+      } catch (error) {
+        status.textContent = error.message
+      }
+    })
+
+    // ----- slots list -----
+    async function loadSlots() {
+      const data = await api('listSlots')
+      state.slots = data.slots
+      renderSlots()
+    }
+    $('show-cancelled').addEventListener('change', renderSlots)
+    function renderSlots() {
+      const showCancelled = $('show-cancelled').checked
+      const slots = state.slots.filter((s) => showCancelled || s.status === 'open')
+      if (!slots.length) { $('slots-list').innerHTML = '<p class="text-white/60">No slots yet. Add some on the left.</p>'; return }
+      const byDate = new Map()
+      for (const s of slots) { if (!byDate.has(s.date)) byDate.set(s.date, { label: s.dateLabel, slots: [] }); byDate.get(s.date).slots.push(s) }
+      $('slots-list').innerHTML = [...byDate.values()].map((day) => `
+        <section>
+          <h3 class="font-heading uppercase text-xl mb-2">${esc(day.label)}</h3>
+          <div class="space-y-2">${day.slots.map((s) => `
+            <div class="slot-row ${s.status === 'cancelled' ? 'cancelled' : ''}">
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-heading text-lg">${esc(s.startLabel)} to ${esc(s.endLabel)}</span>
+                  <span class="badge ${s.coachTier === 'lee' ? 'badge-lee' : ''}">${esc(s.coachName)}</span>
+                  <span class="badge">${esc(s.typeLabel)}</span>
+                  ${s.status === 'cancelled' ? '<span class="badge">Cancelled</span>' : ''}
+                </div>
+                <p class="text-white/70 text-sm mt-1">${esc(s.taken)} of ${esc(s.capacity)} booked &middot; ${esc(s.priceLabel)}${s.priceOverrideCents != null ? ' (override)' : ''} &middot; ${esc(s.location)}${s.notes ? ` &middot; ${esc(s.notes)}` : ''}</p>
+              </div>
+              <div>
+                ${s.status === 'open'
+                  ? `<button type="button" class="link-btn text-sm" data-cancel-slot="${esc(s.id)}">Cancel</button>`
+                  : `<button type="button" class="link-btn text-sm" data-reopen-slot="${esc(s.id)}">Reopen</button>`}
+              </div>
+            </div>`).join('')}
+          </div>
+        </section>`).join('')
+    }
+    document.addEventListener('click', async (e) => {
+      const cancel = e.target.closest('[data-cancel-slot]')
+      const reopen = e.target.closest('[data-reopen-slot]')
+      if (cancel) {
+        const s = state.slots.find((x) => x.id === cancel.dataset.cancelSlot)
+        if (!confirm(`Cancel ${s.coachName} ${s.dateLabel} ${s.startLabel}? ${s.taken ? `${s.taken} booked place(s) will need a refund in Stripe.` : ''}`)) return
+        try { await api('cancelSlot', { slotId: s.id }); flash('Slot cancelled.'); await loadSlots() } catch (error) { flash(error.message) }
+      }
+      if (reopen) {
+        try { await api('reopenSlot', { slotId: reopen.dataset.reopenSlot }); flash('Slot reopened.'); await loadSlots() } catch (error) { flash(error.message) }
+      }
+    })
+
+    // ----- bookings -----
+    async function loadBookings() {
+      $('bookings-list').innerHTML = '<p class="text-white/60">Loading</p>'
+      try {
+        const data = await api('listBookings')
+        state.bookings = data.bookings
+        renderBookings()
+      } catch (error) { $('bookings-list').innerHTML = `<p class="text-joner-red">${esc(error.message)}</p>` }
+    }
+    $('b-refresh').addEventListener('click', loadBookings)
+    $('b-filter').addEventListener('change', renderBookings)
+    function filteredBookings() {
+      const f = $('b-filter').value
+      return state.bookings.filter((b) => f === 'all' || b.status === f)
+    }
+    function renderBookings() {
+      const rows = filteredBookings()
+      if (!rows.length) { $('bookings-list').innerHTML = '<p class="text-white/60">Nothing here.</p>'; return }
+      $('bookings-list').innerHTML = `
+        <table class="bk">
+          <thead><tr><th>Session</th><th>Players</th><th>Parent</th><th>Contact</th><th>Paid</th><th>Status</th><th></th></tr></thead>
+          <tbody>${rows.map((b) => `
+            <tr>
+              <td><strong>${esc(b.dateLabel)} ${esc(b.startLabel)}</strong><br>${esc(b.coachName)} &middot; ${esc(b.typeLabel)}${b.slotStatus !== 'open' ? '<br><span class="badge badge-warn">Slot ' + esc(b.slotStatus) + '</span>' : ''}</td>
+              <td>${b.players.map((p) => `${esc(p.name)} (${esc(p.age)})`).join('<br>')}${b.notes ? `<br><span class="text-white/60">${esc(b.notes)}</span>` : ''}</td>
+              <td>${esc(b.parentName)}</td>
+              <td><a class="link-btn" href="mailto:${esc(b.email)}">${esc(b.email)}</a><br><a class="link-btn" href="tel:${esc(b.mobile)}">${esc(b.mobile)}</a></td>
+              <td>A$${(b.priceCents / 100).toFixed(2)}<br><span class="text-white/60">${b.paidAt ? new Date(b.paidAt).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : ''}</span></td>
+              <td>${esc(b.status)}${b.needsAttention ? `<br><span class="badge badge-warn">${esc(b.needsAttention)}</span>` : ''}</td>
+              <td class="whitespace-nowrap">${b.stripeUrl ? `<a class="link-btn" href="${esc(b.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a><br>` : ''}${b.status === 'paid' || b.status === 'held' ? `<button type="button" class="link-btn" data-cancel-booking="${esc(b.id)}">Cancel</button>` : ''}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`
+    }
+    document.addEventListener('click', async (e) => {
+      const button = e.target.closest('[data-cancel-booking]')
+      if (!button) return
+      const b = state.bookings.find((x) => x.id === button.dataset.cancelBooking)
+      if (!confirm(`Cancel booking for ${b.players.map((p) => p.name).join(', ')}? ${b.status === 'paid' ? 'You will need to refund it in Stripe.' : ''}`)) return
+      try {
+        const data = await api('cancelBooking', { bookingId: b.id })
+        flash(data.refundDue ? 'Cancelled. Refund it in Stripe.' : 'Cancelled.')
+        if (data.refundDue && data.stripeUrl) window.open(data.stripeUrl, '_blank', 'noopener')
+        await loadBookings()
+      } catch (error) { flash(error.message) }
+    })
+    $('b-csv').addEventListener('click', () => {
+      const rows = filteredBookings()
+      const head = ['Booking ID', 'Status', 'Date', 'Start', 'Coach', 'Type', 'Players', 'Ages', 'Parent', 'Email', 'Mobile', 'Notes', 'Amount AUD', 'Paid At', 'Needs Attention']
+      const csv = [head, ...rows.map((b) => [b.id, b.status, b.dateLabel, b.startLabel, b.coachName, b.typeLabel, b.players.map((p) => p.name).join('; '), b.players.map((p) => p.age).join('; '), b.parentName, b.email, b.mobile, b.notes, (b.priceCents / 100).toFixed(2), b.paidAt, b.needsAttention])]
+        .map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
+      const a = document.createElement('a')
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv)
+      a.download = `holiday-bookings-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+    })
+
+    // ----- boot -----
+    if (secret()) open().catch(() => lock())
+  })()
+</script>
