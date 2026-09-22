@@ -64,16 +64,14 @@ function redis(cmd) {
     case 'ZCARD': return zset(args[0]).size
     case 'ZREMRANGEBYSCORE': { const z = zset(args[0]); const max = Number(args[2]); let n = 0; for (const [m, s] of z) if (s <= max) { z.delete(m); n++ } return n }
     case 'ZREVRANGE': { const z = zset(args[0]); return [...z.entries()].sort((a, b) => b[1] - a[1]).slice(Number(args[1]), Number(args[2]) + 1).map(([m]) => m) }
+    case 'ZRANGE': { const z = zset(args[0]); return [...z.entries()].sort((a, b) => a[1] - b[1]).slice(Number(args[1]), Number(args[2]) + 1).map(([m]) => m) }
     case 'EVAL': {
       // Only the hold script exists. Emulate it exactly.
-      const [, , seatsKey, typeKey, now, capacity, want, expiry, bookingId, type] = args
+      const [, , seatsKey, now, expiry, bookingId] = args
       const z = zset(seatsKey)
       for (const [m, s] of z) if (s <= Number(now)) z.delete(m)
-      const current = live(typeKey)?.value
-      if (z.size > 0 && current && current !== type) return -1
-      if (z.size + Number(want) > Number(capacity)) return 0
-      store.set(typeKey, { type: 's', value: type, expiresAt: 0 })
-      for (let i = 1; i <= Number(want); i++) z.set(`${bookingId}#${i}`, Number(expiry))
+      if (z.size > 0) return 0
+      z.set(bookingId, Number(expiry))
       return 1
     }
     default: throw new Error(`mock redis: unsupported ${name}`)
@@ -82,6 +80,8 @@ function redis(cmd) {
 
 // ---------- mock stripe ----------
 const sessions = new Map()
+const sheetRows = []
+const SHEET_HEADERS = ['Updated At', 'Status', 'Date', 'Start', 'End', 'Coach', 'Session Type', 'Players', 'Player Ages', 'Parent Name', 'Mobile', 'Email', 'Notes', 'Location', 'Booking ID', 'Needs Attention']
 function stripeSession(body) {
   const id = `cs_test_${crypto.randomBytes(12).toString('hex')}`
   const params = new URLSearchParams(body)
@@ -115,17 +115,33 @@ globalThis.fetch = async (url, init = {}) => {
     const s = sessions.get(id)
     return s ? json(s) : json({ error: { message: 'No such checkout session' } }, 404)
   }
-  if (u.startsWith('https://api.brevo.com')) { log('brevo', JSON.parse(init.body).subject); return json({ messageId: 'local' }) }
+  if (u.startsWith('https://api.brevo.com')) {
+    if (faults.has('email')) return new Response('{"code":"unauthorized"}', { status: 401 })
+    const payload = JSON.parse(init.body)
+    const id = (payload.htmlContent.match(/HOL-[0-9A-Z-]+/) || [''])[0]
+    log('brevo', `${payload.subject} [${id}]`)
+    return json({ messageId: 'local' })
+  }
   if (u.startsWith('https://oauth2.googleapis.com/token')) return json({ access_token: 'local', expires_in: 3600 })
   if (u.includes('sheets.googleapis.com')) {
-    if (u.includes(':append')) { log('sheet', 'row appended'); return json({}) }
-    if (u.includes('/values/')) return json({ values: [[]] })
+    if (u.includes(':append')) {
+      if (faults.has('sheet')) return new Response('{"error":{"message":"The caller does not have permission"}}', { status: 403 })
+      const row = JSON.parse(init.body).values[0]
+      sheetRows.push(row)
+      log('sheet', `row appended [${row.find((c) => String(c).startsWith('HOL-')) || ''}]`)
+      return json({})
+    }
+    if (u.includes('/values/')) {
+      if (faults.has('sheet')) return new Response('{"error":{"message":"The caller does not have permission"}}', { status: 403 })
+      return json({ values: [SHEET_HEADERS, ...sheetRows] })
+    }
     return json({ sheets: [{ properties: { title: 'Holiday Bookings' } }] })
   }
   return realFetch(url, init)
 }
 
 const events = []
+const faults = new Set()
 function log(kind, detail) { events.push({ at: new Date().toISOString(), kind, detail }); console.log(`[${kind}] ${detail}`) }
 
 // ---------- request shim ----------
@@ -196,6 +212,12 @@ const server = http.createServer(async (req, res) => {
       <p><a href="?cs=${s.id}&action=cancel">Cancel and go back</a></p></body>`)
   }
 
+  if (url.pathname === '/__fail') {
+    const what = url.searchParams.get('what')
+    if (url.searchParams.get('on') === '1') faults.add(what); else faults.delete(what)
+    res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ faults: [...faults] }))
+  }
+  if (url.pathname === '/__sheet') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(sheetRows)) }
   if (url.pathname === '/__events') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(events)) }
   if (url.pathname === '/__sessions') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify([...sessions.values()])) }
 

@@ -5,9 +5,9 @@ import { protectForm } from './_security.js'
 import { validateEmailQuality } from './_email-quality.js'
 import {
   requireHolidayAccess, getConfig, getSlot, getBooking, coachById, resolvePriceCents,
-  holdSeats, releaseSeats, saveBooking, indexBooking, newId, clean, siteUrl, stripeFetch,
-  seatCounts, sydneyDateLabel, sydneyTimeLabel, TYPE_LABELS, SESSION_TYPES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES,
-  effectiveType, effectiveCapacity,
+  holdSlot, releaseSlot, saveBooking, indexBooking, newId, clean, siteUrl, stripeFetch,
+  sydneyDateLabel, sydneyTimeLabel, TYPE_LABELS, SESSION_TYPES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES,
+  maxPlayersForType,
 } from './_holiday-store.js'
 import crypto from 'node:crypto'
 
@@ -36,7 +36,7 @@ async function releaseHeld(req, res, body) {
     return fail(res, 403, 'Not allowed.')
   }
   if (booking.status === 'held') {
-    await releaseSeats(booking.slotId, booking.id, booking.seats)
+    await releaseSlot(booking.slotId, booking.id)
     await saveBooking({ ...booking, status: 'cancelled', cancelledAt: new Date().toISOString(), cancelledBy: 'parent' })
   }
   return res.status(200).json({ success: true, released: true })
@@ -62,32 +62,26 @@ export default async function handler(req, res) {
 
   const config = await getConfig()
   const slot = await getSlot(body.slotId)
-  if (!slot || slot.status !== 'open') return fail(res, 404, 'That session is no longer available.', { code: 'slot_gone' })
+  if (!slot) return fail(res, 404, 'That session is no longer available.', { code: 'slot_gone' })
+  if (slot.status === 'blocked') return fail(res, 409, 'That time is already booked. Pick another time.', { code: 'slot_full' })
+  if (slot.status !== 'open') return fail(res, 404, 'That session is no longer available.', { code: 'slot_gone' })
 
   const nowMs = Date.now()
   if (new Date(slot.startsAt).getTime() <= nowMs + config.bookingCutoffHours * 60 * 60_000) {
     return fail(res, 409, 'That session is too close to book online now. Email us and we will try to fit you in.', { code: 'too_late' })
   }
 
-  // An open slot runs as whatever its first booker chose. Until someone has
-  // a live hold or a paid seat, the caller's choice stands; after that the
-  // slot's type is fixed and the Lua script refuses a different one.
-  let type = slot.type
-  if (slot.type === 'open') {
-    const current = (await seatCounts([slot.id], nowMs))[slot.id]
-    const locked = effectiveType(slot, current?.lockedType)
-    const requested = clean(body.type, 10)
-    if (locked) type = locked
-    else if (SESSION_TYPES.includes(requested)) type = requested
-    else return fail(res, 400, 'Choose 1 to 1, shared or group.')
-    if (locked && SESSION_TYPES.includes(requested) && requested !== locked) {
-      return fail(res, 409, `That session is already running as a ${TYPE_LABELS[locked]} session. Join it as that, or pick another time.`, { code: 'type_locked', lockedType: locked })
-    }
+  // The type only sets the per-player price and how many of this family's
+  // players can come. Whatever they pick, the booking takes the whole hour.
+  const requested = clean(body.type, 10)
+  const type = slot.type === 'open' ? requested : slot.type
+  if (!SESSION_TYPES.includes(type) || (slot.type !== 'open' && requested && requested !== slot.type)) {
+    return fail(res, 400, 'Choose 1 to 1, shared or group.')
   }
-  const capacity = effectiveCapacity(slot, type)
+  const maxPlayers = maxPlayersForType(slot, type)
 
   const seats = Number(body.seats || 1)
-  if (!Number.isInteger(seats) || seats < 1 || seats > capacity) return fail(res, 400, 'Choose how many players are coming.')
+  if (!Number.isInteger(seats) || seats < 1 || seats > maxPlayers) return fail(res, 400, `A ${TYPE_LABELS[type]} session is for up to ${maxPlayers} player${maxPlayers === 1 ? '' : 's'}.`)
   const playersCheck = validatePlayers(body.players, seats)
   if (playersCheck.error) return fail(res, 400, playersCheck.error)
 
@@ -108,19 +102,8 @@ export default async function handler(req, res) {
 
   const bookingId = newId('HOL')
   const holdExpiresMs = nowMs + HOLD_MINUTES * 60_000
-  const held = await holdSeats({ slotId: slot.id, bookingId, seats, capacity, type, holdExpiresMs, nowMs })
-  if (held === 'type-locked') {
-    const counts = await seatCounts([slot.id], nowMs)
-    const locked = counts[slot.id]?.lockedType
-    return fail(res, 409, `That session was just booked as a ${TYPE_LABELS[locked] || 'different'} session. Refresh and join it, or pick another time.`, { code: 'type_locked', lockedType: locked })
-  }
-  if (held !== 'held') {
-    const counts = await seatCounts([slot.id], nowMs)
-    const remaining = Math.max(0, capacity - (counts[slot.id]?.taken || 0))
-    return fail(res, 409, remaining > 0
-      ? `Only ${remaining} place${remaining === 1 ? '' : 's'} left in that session. Change the number of players or pick another time.`
-      : 'That session was just taken. Pick another time.', { code: 'slot_full', remaining })
-  }
+  const held = await holdSlot({ slotId: slot.id, bookingId, holdExpiresMs, nowMs })
+  if (held !== 'held') return fail(res, 409, 'That time was just booked by someone else. Pick another time.', { code: 'slot_full' })
 
   const releaseToken = crypto.randomBytes(16).toString('hex')
   const typeLabel = TYPE_LABELS[type]
@@ -153,7 +136,7 @@ export default async function handler(req, res) {
     })
   } catch (error) {
     console.error('holiday checkout failed', error)
-    await releaseSeats(slot.id, bookingId, seats).catch(() => {})
+    await releaseSlot(slot.id, bookingId).catch(() => {})
     return fail(res, 502, 'Could not start the payment. Nothing has been charged. Please try again.')
   }
 

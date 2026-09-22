@@ -2,10 +2,11 @@
 // Nothing here is reachable without HOLIDAY_ADMIN_SECRET.
 import { rateLimit } from './_security.js'
 import {
-  requireAdmin, getConfig, saveConfig, listSlots, getSlot, upsertSlot, cancelSlot, reopenSlot,
-  seatCounts, publicSlot, listBookings, getBooking, saveBooking, releaseSeats, clean, sydneyIso, validateSlotInput,
+  requireAdmin, getConfig, saveConfig, listSlots, getSlot, upsertSlot, cancelSlot, reopenSlot, setSlotStatus,
+  slotOwners, publicSlot, listBookings, getBooking, saveBooking, releaseSlot, clean, sydneyIso, validateSlotInput,
   siteUrl, stripeFetch,
 } from './_holiday-store.js'
+import { repairBooking, effectsSummary } from './_holiday-finalise.js'
 import { HOLIDAY_SHEET, HOLIDAY_HEADERS, holidaySheetId, appendHolidayCancellationRow } from './_holiday-email.js'
 import { ensureSheetTab } from './_camp-automation.js'
 
@@ -14,17 +15,19 @@ function fail(res, status, error, extra = {}) { return res.status(status).json({
 
 async function slotsWithCounts(config) {
   const slots = await listSlots({ includeCancelled: true })
-  const counts = await seatCounts(slots.map((s) => s.id))
-  return slots.map((slot) => ({ ...publicSlot(slot, config, counts[slot.id]), priceOverrideCents: slot.priceCents }))
+  const owners = await slotOwners(slots.map((s) => s.id))
+  return slots.map((slot) => ({ ...publicSlot(slot, config, owners[slot.id]), priceOverrideCents: slot.priceCents }))
 }
 
 function adminBooking(booking, slotsById, config) {
   const slot = slotsById[booking.slotId]
-  const view = slot ? publicSlot(slot, config, 0) : null
+  const view = slot ? publicSlot(slot, config) : null
   return {
     id: booking.id,
     status: booking.status,
     needsAttention: booking.needsAttention || '',
+    effects: booking.status === 'paid' ? effectsSummary(booking) : null,
+    effectDetail: booking.effects || {},
     createdAt: booking.createdAt,
     paidAt: booking.paidAt || '',
     seats: booking.seats,
@@ -78,7 +81,7 @@ export default async function handler(req, res) {
       case 'upsertSlot': {
         const result = await upsertSlot(body.slot || {}, config)
         if (!result.ok) return fail(res, 400, result.errors.join(' '), { errors: result.errors })
-        return res.status(200).json({ success: true, slot: publicSlot(result.slot, config, 0) })
+        return res.status(200).json({ success: true, slot: publicSlot(result.slot, config) })
       }
 
       case 'bulkAddSlots': {
@@ -92,6 +95,8 @@ export default async function handler(req, res) {
         if (dates.length * times.length > 120) return fail(res, 400, 'That is more than 120 slots at once. Split it up.')
         const shape = validateSlotInput({ ...template, date: dates[0], startTime: times[0] }, config)
         if (!shape.ok) return fail(res, 400, shape.errors.join(' '), { errors: shape.errors })
+        // "Already booked offline": create the hour so parents see it as taken.
+        const blocked = body.blocked === true
         const existing = await listSlots()
         const taken = new Set(existing.map((s) => `${s.coachId}|${s.startsAt}`))
         const created = []
@@ -101,7 +106,10 @@ export default async function handler(req, res) {
             const key = `${shape.slot.coachId}|${sydneyIso(date, startTime)}`
             if (taken.has(key)) { skipped += 1; continue }
             const result = await upsertSlot({ ...template, date, startTime }, config)
-            if (result.ok) { created.push(result.slot.id); taken.add(key) }
+            if (result.ok) {
+              if (blocked) await setSlotStatus(result.slot.id, 'blocked')
+              created.push(result.slot.id); taken.add(key)
+            }
           }
         }
         return res.status(200).json({ success: true, created: created.length, skipped })
@@ -110,13 +118,29 @@ export default async function handler(req, res) {
       case 'cancelSlot': {
         const slot = await cancelSlot(body.slotId)
         if (!slot) return fail(res, 404, 'Slot not found.')
-        return res.status(200).json({ success: true, slot: publicSlot(slot, config, 0) })
+        return res.status(200).json({ success: true, slot: publicSlot(slot, config) })
       }
 
       case 'reopenSlot': {
         const slot = await reopenSlot(body.slotId)
         if (!slot) return fail(res, 404, 'Slot not found.')
-        return res.status(200).json({ success: true, slot: publicSlot(slot, config, 0) })
+        return res.status(200).json({ success: true, slot: publicSlot(slot, config) })
+      }
+
+      case 'blockSlot': {
+        // Mark an hour as booked offline. Refuses if a family already holds it.
+        const owners = await slotOwners([clean(body.slotId, 60)])
+        const owner = owners[clean(body.slotId, 60)]
+        if (owner?.booked) return fail(res, 409, `That hour already has a booking (${owner.ownerId}). Cancel it first.`)
+        const slot = await setSlotStatus(body.slotId, 'blocked')
+        if (!slot) return fail(res, 404, 'Slot not found.')
+        return res.status(200).json({ success: true, slot: publicSlot(slot, config) })
+      }
+
+      case 'repairBooking': {
+        const result = await repairBooking(clean(body.bookingId, 60))
+        if (!result.ok) return fail(res, 400, 'Only paid bookings can be repaired.')
+        return res.status(200).json({ success: true, ...result })
       }
 
       case 'listBookings': {
@@ -130,7 +154,7 @@ export default async function handler(req, res) {
         const booking = await getBooking(body.bookingId)
         if (!booking) return fail(res, 404, 'Booking not found.')
         if (booking.status === 'cancelled') return res.status(200).json({ success: true, booking, changed: false })
-        await releaseSeats(booking.slotId, booking.id, booking.seats)
+        await releaseSlot(booking.slotId, booking.id)
         const wasPaid = booking.status === 'paid'
         const cancelled = { ...booking, status: 'cancelled', cancelledAt: new Date().toISOString(), cancelledBy: 'admin', refundDue: wasPaid }
         await saveBooking(cancelled)

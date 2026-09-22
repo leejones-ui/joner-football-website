@@ -1,6 +1,6 @@
 // What parents see: every open future slot with places remaining and price.
 // Never returns who booked what.
-import { requireHolidayAccess, getConfig, listSlots, seatCounts, publicSlot } from './_holiday-store.js'
+import { requireHolidayAccess, getConfig, listSlots, slotOwners, publicSlot } from './_holiday-store.js'
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     const nowMs = Date.now()
     const cutoffMs = nowMs + config.bookingCutoffHours * 60 * 60_000
     const slots = (await listSlots()).filter((slot) => new Date(slot.startsAt).getTime() > cutoffMs)
-    const counts = await seatCounts(slots.map((s) => s.id), nowMs)
+    const owners = await slotOwners(slots.map((s) => s.id), nowMs)
     const coachesWithSlots = new Set(slots.map((s) => s.coachId))
 
     // Every coach is listed so parents can see who else is coming. A coach
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
       holidayLabel: config.holidayLabel,
       location: config.defaultLocation,
       coaches: config.coaches.map((c) => ({ id: c.id, name: c.name, tier: c.tier, available: c.active && coachesWithSlots.has(c.id) })),
-      slots: slots.filter((s) => config.coaches.find((c) => c.id === s.coachId)?.active).map((slot) => publicSlot(slot, config, counts[slot.id])),
+      slots: slots.filter((s) => config.coaches.find((c) => c.id === s.coachId)?.active).map((slot) => publicSlot(slot, config, owners[slot.id])),
     })
   } catch (error) {
     console.error('holiday-slots failed', error)

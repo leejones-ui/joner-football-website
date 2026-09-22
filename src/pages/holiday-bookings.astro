@@ -49,9 +49,8 @@ const description = 'Book school holiday coaching sessions with Joner Football c
 
       <!-- Legend -->
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-2 flex flex-wrap gap-x-5 gap-y-2 text-xs text-white/60">
-        <span class="flex items-center gap-2"><i class="legend-dot bg-white"></i> Open</span>
-        <span class="flex items-center gap-2"><i class="legend-dot border border-joner-red"></i> Join a session</span>
-        <span class="flex items-center gap-2"><i class="legend-dot bg-white/10"></i> Full</span>
+        <span class="flex items-center gap-2"><i class="legend-dot bg-white"></i> Free</span>
+        <span class="flex items-center gap-2"><i class="legend-dot bg-white/10"></i> Booked</span>
       </div>
 
       <!-- Days and times -->
@@ -89,7 +88,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
           <div id="type-block" hidden>
             <label class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Session type</label>
             <div id="type-options" class="grid gap-2" role="radiogroup"></div>
-            <p class="text-xs text-white/50 mt-2">First to book chooses. Other families can then join a shared or group session.</p>
+            <p class="text-xs text-white/50 mt-2">This books the whole hour for your players. Nobody else joins.</p>
           </div>
           <div id="locked-block" hidden class="rounded-xl border border-joner-red/40 bg-joner-red/10 px-4 py-3 text-sm"></div>
           <div id="seats-block">
@@ -290,16 +289,8 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       renderSlots()
     })
 
-    function tileState(slot) {
-      if (slot.remaining <= 0) return 'full'
-      if (slot.lockedType) return 'join'
-      return 'open'
-    }
     function tileSub(slot) {
-      const s = tileState(slot)
-      if (s === 'full') return 'Full'
-      if (s === 'join') return `${esc(slot.typeLabel)} &middot; ${esc(slot.remaining)} left`
-      return `to ${esc(slot.endLabel)}`
+      return slot.booked ? 'Booked' : `to ${esc(slot.endLabel)}`
     }
 
     function renderSlots() {
@@ -313,20 +304,18 @@ const description = 'Book school holiday coaching sessions with Joner Football c
         byDate.get(slot.date).slots.push(slot)
       }
       list.innerHTML = [...byDate.values()].map((day) => {
-        const free = day.slots.filter((s) => s.remaining > 0).length
+        const free = day.slots.filter((s) => !s.booked).length
         return `
           <section>
             <div class="day">
               <h2 class="day-name">${esc(day.label)}</h2>
-              <span class="day-count">${free ? `${free} time${free === 1 ? '' : 's'} open` : 'All full'}</span>
+              <span class="day-count">${free ? `${free} time${free === 1 ? '' : 's'} free` : 'Fully booked'}</span>
             </div>
             <div class="times">
-              ${day.slots.map((slot) => {
-                const s = tileState(slot)
-                return s === 'full'
-                  ? `<div class="tile full" aria-disabled="true"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">Full</span></div>`
-                  : `<button type="button" class="tile ${s}" data-book="${esc(slot.id)}"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">${tileSub(slot)}</span></button>`
-              }).join('')}
+              ${day.slots.map((slot) => slot.booked
+                ? `<div class="tile full" aria-disabled="true"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">Booked</span></div>`
+                : `<button type="button" class="tile open" data-book="${esc(slot.id)}"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">${tileSub(slot)}</span></button>`
+              ).join('')}
             </div>
           </section>`
       }).join('')
@@ -340,32 +329,23 @@ const description = 'Book school holiday coaching sessions with Joner Football c
     })
 
     // ----- booking sheet -----
-    function isOpenChoice(slot) { return slot.type === 'open' && !slot.lockedType }
     function chosen() {
       const slot = state.slot
-      if (isOpenChoice(slot)) {
-        const opt = slot.options.find((o) => o.type === state.sessionType) || slot.options[0]
-        return { type: opt.type, label: opt.label, capacity: opt.capacity, remaining: opt.capacity, priceCents: opt.priceCents, priceLabel: opt.priceLabel }
-      }
-      return { type: slot.lockedType || slot.type, label: slot.typeLabel, capacity: slot.capacity, remaining: slot.remaining, priceCents: slot.priceCents, priceLabel: slot.priceLabel }
+      const opt = slot.options.find((o) => o.type === state.sessionType) || slot.options[0]
+      return { type: opt.type, label: opt.label, maxPlayers: opt.maxPlayers, priceCents: opt.priceCents, priceLabel: opt.priceLabel }
     }
     function renderTypeOptions() {
       const slot = state.slot
       const block = $('type-block'), locked = $('locked-block')
-      if (!isOpenChoice(slot)) {
-        block.hidden = true
-        locked.hidden = false
-        locked.innerHTML = `This time is running as a <strong>${esc(slot.typeLabel)}</strong> session at <strong>${esc(slot.priceLabel)}</strong> per player. ${esc(slot.remaining)} place${slot.remaining === 1 ? '' : 's'} left.`
-        return
-      }
       locked.hidden = true
+      if (slot.options.length < 2) { block.hidden = true; return }
       block.hidden = false
-      const hints = { one: 'Just your player with the coach.', shared: 'Two players. Bring one, or another family can join.', group: 'Up to 6 players. Others can join.' }
+      const hints = { one: 'One player with the coach.', shared: 'Two players you bring.', group: 'Up to 6 players you bring.' }
       $('type-options').innerHTML = slot.options.map((o) => `
         <label class="flex items-center gap-3 border ${state.sessionType === o.type ? 'border-joner-red bg-joner-red/10' : 'border-gray-700'} px-4 py-3 cursor-pointer min-h-[52px]">
           <input type="radio" name="sessionType" value="${esc(o.type)}" ${state.sessionType === o.type ? 'checked' : ''} class="accent-[#E8000D] h-5 w-5" />
           <span class="flex-1"><span class="font-heading uppercase text-base">${esc(o.label)}</span> <span class="text-white/60 text-sm">${esc(hints[o.type] || '')}</span></span>
-          <span class="font-heading text-lg">${esc(o.priceLabel)}</span>
+          <span class="font-heading text-lg">${esc(o.priceLabel)}<span class="text-white/50 text-xs"> each</span></span>
         </label>`).join('')
     }
     document.addEventListener('change', (e) => {
@@ -380,7 +360,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       const coach = state.data.coaches.find((c) => c.id === slot.coachId)
       state.slot = slot
       state.seats = 1
-      state.sessionType = isOpenChoice(slot) ? slot.options[0].type : (slot.lockedType || slot.type)
+      state.sessionType = slot.options[0].type
       $('sheet-title').textContent = `${slot.dateLabel}, ${slot.startLabel} to ${slot.endLabel}`
       $('sheet-subtitle').textContent = `${coach ? coachLabel(coach) : slot.coachName} at ${slot.location}. ${slot.durationMin} minutes.`
       $('book-status').textContent = ''
@@ -403,12 +383,13 @@ const description = 'Book school holiday coaching sessions with Joner Football c
 
     function renderSeats() {
       const pick = chosen()
-      const max = Math.max(1, pick.remaining)
+      const max = Math.max(1, pick.maxPlayers)
+      if (state.seats > max) state.seats = max
       $('seats-block').hidden = max <= 1
       $('seats-value').textContent = String(state.seats)
       $('seats-minus').disabled = state.seats <= 1
       $('seats-plus').disabled = state.seats >= max
-      $('seats-hint').textContent = max > 1 ? `Up to ${max}. Bring a sibling or a friend.` : ''
+      $('seats-hint').textContent = max > 1 ? `Up to ${max} players from your family or friends.` : ''
       const existing = [...$('players').querySelectorAll('[data-player]')].map((row) => ({
         name: row.querySelector('[name="playerName"]').value,
         age: row.querySelector('[name="playerAge"]').value,
@@ -428,7 +409,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       $('pay-button').textContent = `Pay A$${total % 1 === 0 ? total.toFixed(0) : total.toFixed(2)} with Stripe`
     }
     $('seats-minus').addEventListener('click', () => { if (state.seats > 1) { state.seats -= 1; renderSeats() } })
-    $('seats-plus').addEventListener('click', () => { if (state.seats < chosen().remaining) { state.seats += 1; renderSeats() } })
+    $('seats-plus').addEventListener('click', () => { if (state.seats < chosen().maxPlayers) { state.seats += 1; renderSeats() } })
 
     $('book-form').addEventListener('submit', async (event) => {
       event.preventDefault()
@@ -473,7 +454,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
         if (res.status === 401) { closeSheet(); app.hidden = true; gate.hidden = false; return }
         if (res.status === 409 || res.status === 404) {
           closeSheet()
-          notice(data.error || 'That time was just taken. Pick another.')
+          notice(data.error || 'That time was just booked by someone else. Pick another.')
           loadSlots()
           return
         }

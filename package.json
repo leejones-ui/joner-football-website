@@ -12,6 +12,7 @@
     "test": "npm run test:player-waiver && npm run test:tracking && npm run test:attribution && npm run test:source-taxonomy && npm run test:attribution-privacy && npm run test:buyer-source && npm run test:reliability && npm run test:autosend && npm run test:camp-webhook && npm run test:trial-cohort && npm run test:ad-trial-nurture && npm run test:paid-meta-trial && npm run test:coaching-demo-link && npm run test:invoice-truth && npm run test:uscreen-tier-list && npm run test:holiday",
     "test:player-waiver": "node scripts/test-player-waiver.mjs",
     "test:holiday": "node scripts/test-holiday-store.mjs",
+    "test:holiday-flow": "node scripts/test-holiday-flow.mjs",
     "test:autosend": "node scripts/test-attribution-autosend.mjs",
     "test:tracking": "node scripts/test-tracking-link-bank.mjs && node scripts/test-tracking.mjs && node scripts/test-first-paid-operator.mjs",
     "test:attribution": "node scripts/test-attribution-ledger.mjs",

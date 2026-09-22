@@ -1,6 +1,6 @@
 // Confirmation email, Lee's alert and the roster sheet row for a paid holiday
 // booking. Same Brevo and Sheets plumbing as camps, holiday-specific copy.
-import { appendRow, DEFAULT_SHEET_ID } from './_camp-automation.js'
+import { appendRow, readRows, DEFAULT_SHEET_ID } from './_camp-automation.js'
 import { formatAud, sydneyDateLabel, sydneyTimeLabel, TYPE_LABELS } from './_holiday-store.js'
 
 export const HOLIDAY_SHEET = 'Holiday Bookings'
@@ -153,6 +153,15 @@ function sheetRow({ booking, slot, coachName }, status) {
     booking.id,
     booking.needsAttention || '',
   ]
+}
+
+// True if a BOOKED row for this booking id is already in the tab, so a retry
+// after an unknown outcome never doubles it up.
+export async function sheetHasBooking(bookingId) {
+  const rows = await readRows(holidaySheetId(), HOLIDAY_SHEET, HOLIDAY_HEADERS)
+  const idCol = HOLIDAY_HEADERS.indexOf('Booking ID')
+  const statusCol = HOLIDAY_HEADERS.indexOf('Status')
+  return rows.some((r) => r[idCol] === bookingId && r[statusCol] === 'BOOKED')
 }
 
 export async function appendHolidaySheetRow(context) {

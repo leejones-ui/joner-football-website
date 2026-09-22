@@ -24,6 +24,13 @@ registration Google Sheet, parents get a Brevo confirmation, Lee gets an alert.
 | `scripts/test-holiday-store.mjs` | Unit checks (`npm run test:holiday`) |
 | `scripts/holiday-local.mjs` | Local harness with mock KV and mock Stripe (see below) |
 
+## One booking owns the hour
+
+Lee's rule: whoever books an hour gets the whole hour. Choosing 1 to 1, shared
+or group only sets the price per player and how many of **their own** players
+they may bring (1, 2, or up to 6). No other family can buy into it. A paid or
+held hour is shown as Booked and refuses every later booking of any type.
+
 ## How a booking works
 
 1. Parent enters the password. Server checks it and sets a signed cookie (14 days).
@@ -35,8 +42,13 @@ registration Google Sheet, parents get a Brevo confirmation, Lee gets an alert.
    saves the booking as `held`.
 5. Parent pays on Stripe.
 6. Stripe calls the webhook, or the success page calls `holiday-confirm`, whichever is
-   first. Both call `finaliseBooking`, which claims the booking once, marks the seats
-   confirmed, writes the sheet row, sends the two emails.
+   first. Both call `finaliseBooking`, which takes a short lease, confirms the hour, then
+   runs three effects (roster row, parent email, Lee alert). Each effect records its own
+   outcome on the booking: done, failed, or uncertain. A crash mid-flight leaves a stale
+   lease that the next caller takes over. Admin shows anything not done and offers Repair,
+   which retries definite failures only. An uncertain outcome (the provider may or may not
+   have acted) is never retried automatically, because a duplicate email is worse than a
+   late one; the sheet is the exception, since a retry checks for the row first.
 7. If the parent abandons, Stripe sends `checkout.session.expired` and the hold is
    released. Holds also lapse on their own after 31 minutes.
 
@@ -73,6 +85,9 @@ live one.
   Stripe payment opens so you can refund it there.
 - Cancel a slot: Slots tab -> Cancel. Paid bookings in it are flagged in the Bookings
   tab for a refund.
+- An hour booked offline: Slots tab -> Block, or tick Blocked when creating slots. Parents
+  see it as Booked. Blocking refuses if a family already holds that hour.
+- A booking showing a failed effect: Bookings tab -> Repair.
 - New holiday period: add the new slots. Change the password if you want a fresh start.
 
 ## Local testing
@@ -81,6 +96,10 @@ live one.
 npm run build
 node scripts/holiday-local.mjs
 ```
+
+`npm run test:holiday-flow -- <port>` runs the nine acceptance checks against a running
+harness (exclusivity, concurrency, pricing, expiry, stale release, duplicate webhook,
+failure recovery, blocked hours). `/__fail?what=sheet&on=1` injects provider failures.
 
 Serves the built site at `http://localhost:4321` with an in-memory KV and a mock
 Stripe page (pay, pay without webhook, expire, cancel). Parent password `holiday`,

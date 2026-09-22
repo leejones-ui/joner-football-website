@@ -4,7 +4,7 @@ import {
   sydneyIso, sydneyOffset, addMinutesIso, sydneyTimeLabel, sydneyDateLabel,
   signAccessCookie, verifyAccessCookie, passwordMatches,
   normaliseConfig, resolvePriceCents, validateSlotInput, capacityForType,
-  HOLD_SCRIPT, seatMembers, formatAud, publicSlot, effectiveCapacity, effectiveType,
+  HOLD_SCRIPT, formatAud, publicSlot, maxPlayersForType, slotOptions,
 } from '../api/_holiday-store.js'
 
 let passed = 0
@@ -79,33 +79,37 @@ test('slot validation forces capacity by type and rejects bad input', () => {
   assert.equal(bad.errors.length, 5)
 })
 
-test('hold script purges before counting, locks the type, and adds one member per seat', () => {
+test('hold script takes the whole slot, and only when it is empty', () => {
   assert.ok(HOLD_SCRIPT.indexOf('ZREMRANGEBYSCORE') < HOLD_SCRIPT.indexOf('ZCARD'))
-  assert.ok(HOLD_SCRIPT.indexOf('ZCARD') < HOLD_SCRIPT.indexOf("current ~= ARGV[6]"))
-  assert.ok(HOLD_SCRIPT.includes("taken + want > tonumber(ARGV[2])"))
-  assert.ok(HOLD_SCRIPT.indexOf("return -1") < HOLD_SCRIPT.indexOf("return 0"))
-  assert.deepEqual(seatMembers('HOL-1', 2), ['HOL-1#1', 'HOL-1#2'])
+  assert.ok(HOLD_SCRIPT.includes("if redis.call('ZCARD', KEYS[1]) > 0 then return 0 end"))
+  // One member per booking: the slot has an owner, not a seat count.
+  assert.ok(HOLD_SCRIPT.includes("redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3])"))
+  assert.ok(!HOLD_SCRIPT.includes('for i = 1'))
 })
 
-test('open slots run as whatever the first booker chose', () => {
+test('a booking owns the whole hour whatever type it picks', () => {
   const config = normaliseConfig({ prices: { coach: { one: 12000, shared: 9000, group: 8000 } } })
   const open = validateSlotInput({ coachId: 'dean', date: '2026-09-28', startTime: '10:00', durationMin: 60, type: 'open' }, config)
   assert.equal(open.ok, true)
   assert.equal(open.slot.capacity, 6)
   const slot = { ...open.slot, id: 'S', startsAt: '2026-09-28T10:00:00+10:00', endsAt: '2026-09-28T11:00:00+10:00', status: 'open' }
-  const fresh = publicSlot(slot, config, { taken: 0, lockedType: null })
-  assert.equal(fresh.lockedType, null)
-  assert.equal(fresh.typeLabel, 'Your choice')
-  assert.deepEqual(fresh.options.map((o) => [o.type, o.capacity, o.priceCents]), [['one', 1, 12000], ['shared', 2, 9000], ['group', 6, 8000]])
-  const asShared = publicSlot(slot, config, { taken: 1, lockedType: 'shared' })
-  assert.equal(asShared.lockedType, 'shared')
-  assert.equal(asShared.capacity, 2)
-  assert.equal(asShared.remaining, 1)
-  assert.equal(asShared.priceCents, 9000)
-  const asOne = publicSlot(slot, config, { taken: 1, lockedType: 'one' })
-  assert.equal(asOne.remaining, 0)
-  assert.equal(effectiveCapacity(slot, 'group'), 6)
-  assert.equal(effectiveType(slot, null), null)
+
+  const free = publicSlot(slot, config, { booked: false, ownerId: null })
+  assert.equal(free.booked, false)
+  assert.deepEqual(free.options.map((o) => [o.type, o.maxPlayers, o.priceCents]), [['one', 1, 12000], ['shared', 2, 9000], ['group', 6, 8000]])
+
+  // Booked as a 1 to 1 by one family: the hour is gone, not "1 of 6 taken".
+  const taken = publicSlot(slot, config, { booked: true, ownerId: 'HOL-1' })
+  assert.equal(taken.booked, true)
+  assert.equal(taken.ownerId, 'HOL-1')
+
+  // Blocked by Lee for an offline booking reads the same way to parents.
+  assert.equal(publicSlot({ ...slot, status: 'blocked' }, config, { booked: false }).booked, true)
+
+  assert.equal(maxPlayersForType(slot, 'one'), 1)
+  assert.equal(maxPlayersForType(slot, 'shared'), 2)
+  assert.equal(maxPlayersForType(slot, 'group'), 6)
+  assert.equal(slotOptions({ ...slot, type: 'one' }, config).length, 1)
 })
 
 console.log(`\n${passed} holiday store checks passed`)
