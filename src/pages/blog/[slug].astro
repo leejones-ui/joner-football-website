@@ -33,6 +33,7 @@ export async function getStaticPaths() {
         body,
         richBody,
         publishedAt,
+        _updatedAt,
         category,
         coverImageUrl,
         coverImageAltText,
@@ -68,6 +69,14 @@ const { post } = Astro.props
 const formattedDate = post.publishedAt
   ? new Date(post.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   : ''
+
+// Last-modified comes from Sanity's own _updatedAt, never a synthetic "today".
+// Fallback posts carry no edit history, so they report their publish date.
+const updatedIso = (() => {
+  const raw = post._updatedAt || post.publishedAt
+  const parsed = raw ? new Date(raw) : null
+  return parsed && !Number.isNaN(parsed.getTime()) ? parsed.toISOString().split('T')[0] : ''
+})()
 
 const bodyHtml = portableTextToHtml(post.richBody || []) || plainTextToHtml(post.body || '')
 const postImage = post.image || post.coverImageUrl || '/images/training/jfp-session.webp'
@@ -118,6 +127,31 @@ const blogSeoOverrides: Record<string, { title?: string; description?: string }>
   },
 }
 
+// Several posts are genuinely numbered lists ("1. Toe Taps", "2. V-Pulls").
+// Marking those up as an ItemList describes what a reader actually sees, which
+// is the schema answer engines can use. FAQPage is deliberately NOT used here:
+// these headings are steps and topics, not questions, and FAQ markup that does
+// not match visible Q&A is invalid.
+const listItems = Array.from(bodyHtml.matchAll(/<h2[^>]*>\s*(\d+)\.\s*([^<]+?)\s*<\/h2>/gi))
+  .map((match) => ({ position: Number(match[1]), name: match[2].trim() }))
+  .filter((item) => item.name.length > 1)
+  .sort((a, b) => a.position - b.position)
+
+const listSchema = listItems.length >= 3
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: post.title,
+      numberOfItems: listItems.length,
+      itemListOrder: 'https://schema.org/ItemListOrderAscending',
+      itemListElement: listItems.map((item, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name: item.name,
+      })),
+    }
+  : undefined
+
 const slugKey = post.slug?.current || post.slug || Astro.params.slug || ''
 const seoOverride = blogSeoOverrides[slugKey] || {}
 const seoTitle = seoOverride.title || `${post.title} | Joner Football Blog`
@@ -129,6 +163,8 @@ const seoDescription = seoOverride.description || post.excerpt || ''
   seoTitle={seoTitle}
   description={seoDescription}
   date={formattedDate}
+  updated={updatedIso}
+  extraSchema={listSchema}
   category={post.category || ''}
   readTime=""
   image={postImage}
