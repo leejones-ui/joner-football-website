@@ -1,0 +1,155 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+// Landing page for the Joner Football WhatsApp group wind-down. Name and email
+// straight into the Sydney Database list in Brevo. api/subscribe rejects a
+// submission with no name, and FIRSTNAME is what personalises every campaign.
+// noindex because the link is handed out directly, not something to rank.
+const SYDNEY_DATABASE_LIST_ID = 6
+const SOURCE = 'whatsapp-sydney-2026-09'
+---
+<BaseLayout
+  title="Stay with Joner Football"
+  description="The Joner Football WhatsApp group is closing. Add your email to keep getting sessions, camp dates and news."
+  noindex={true}
+  hideMobileAppCta={true}
+>
+  <section class="relative min-h-[620px] flex items-center justify-center py-20 overflow-hidden">
+    <div class="absolute inset-0">
+      <img src="/images/training/hero-bg.webp" alt="" aria-hidden="true" class="w-full h-full object-cover object-center" />
+      <div class="absolute inset-0" style="background:rgba(0,0,0,0.78)"></div>
+    </div>
+
+    <div class="relative z-10 w-full max-w-xl mx-auto px-5 text-center">
+      <div class="h-1 w-16 mx-auto mb-7" style="background:#E8000D"></div>
+
+      <h1 class="font-heading text-4xl md:text-5xl font-bold text-white uppercase leading-tight mb-5">
+        Don't lose touch
+      </h1>
+
+      <p class="text-base md:text-lg leading-relaxed mb-3" style="color:#CCCCCC">
+        The WhatsApp group is closing down. Everything moves to email from here.
+      </p>
+      <p class="text-base md:text-lg leading-relaxed mb-9" style="color:#CCCCCC">
+        Sessions, camp dates, new training and anything happening in Sydney. Add your details and you stay on the list.
+      </p>
+
+      <form id="stay-form" class="text-left" novalidate>
+        <label for="stay-name" class="block text-xs uppercase tracking-widest mb-2" style="color:#8A8A8A">First name</label>
+        <input
+          id="stay-name"
+          name="firstName"
+          type="text"
+          autocomplete="given-name"
+          required
+          placeholder="Your first name"
+          class="w-full px-4 py-4 text-base text-white rounded-sm mb-4"
+          style="background:#1E1E1E;border:1px solid #333333"
+        />
+        <label for="stay-email" class="block text-xs uppercase tracking-widest mb-2" style="color:#8A8A8A">Your email</label>
+        <input
+          id="stay-email"
+          name="email"
+          type="email"
+          inputmode="email"
+          autocomplete="email"
+          required
+          placeholder="you@example.com"
+          class="w-full px-4 py-4 text-base text-white rounded-sm mb-3"
+          style="background:#1E1E1E;border:1px solid #333333"
+        />
+        <button
+          id="stay-button"
+          type="submit"
+          class="w-full px-6 py-4 font-heading font-bold uppercase tracking-wide text-white rounded-sm"
+          style="background:#E8000D"
+        >
+          Keep me on the list
+        </button>
+        <p id="stay-message" role="status" aria-live="polite" class="mt-4 text-sm text-center min-h-[20px]" style="color:#FF8A8A"></p>
+        <p class="mt-3 text-xs text-center leading-relaxed" style="color:#7A7A7A">
+          No spam, and you can unsubscribe from any email in one click.
+        </p>
+      </form>
+
+      <div id="stay-success" class="hidden">
+        <div class="px-6 py-10 rounded-sm" style="background:#1E1E1E;border:1px solid #2C2C2C">
+          <div class="text-5xl mb-4">&#9989;</div>
+          <h2 class="font-heading text-2xl font-bold text-white uppercase mb-3">You're on the list</h2>
+          <p class="text-base leading-relaxed mb-6" style="color:#CCCCCC">
+            That's it, nothing else to do. Next time there is news you will get it by email.
+          </p>
+          <a href="/app" class="inline-block px-6 py-3 font-heading font-bold uppercase tracking-wide text-white rounded-sm" style="background:#E8000D">
+            See the app while you're here
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script define:vars={{ listId: SYDNEY_DATABASE_LIST_ID, source: SOURCE }}>
+    (function () {
+      var form = document.getElementById('stay-form')
+      var nameInput = document.getElementById('stay-name')
+      var input = document.getElementById('stay-email')
+      var button = document.getElementById('stay-button')
+      var message = document.getElementById('stay-message')
+      var success = document.getElementById('stay-success')
+      if (!form || !nameInput || !input || !button || !message || !success) return
+
+      function fail(text) {
+        message.style.color = '#FF8A8A'
+        message.textContent = text
+        button.disabled = false
+        button.textContent = 'Keep me on the list'
+      }
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault()
+        message.textContent = ''
+
+        var firstName = String(nameInput.value || '').trim()
+        if (!firstName) {
+          fail('Enter your first name.')
+          nameInput.focus()
+          return
+        }
+
+        var email = String(input.value || '').trim().toLowerCase()
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+          fail('Enter a valid email address.')
+          input.focus()
+          return
+        }
+
+        button.disabled = true
+        button.textContent = 'Adding you...'
+
+        fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email,
+            firstName: firstName,
+            listId: listId,
+            source: source,
+            marketingConsent: true
+          })
+        })
+          .then(function (response) {
+            return response.json().then(function (data) { return { ok: response.ok, data: data } })
+          })
+          .then(function (result) {
+            if (!result.ok || !result.data || !result.data.success) {
+              throw new Error((result.data && result.data.error) || 'That did not go through. Try again.')
+            }
+            form.classList.add('hidden')
+            success.classList.remove('hidden')
+          })
+          .catch(function (error) {
+            fail(error.message || 'That did not go through. Try again.')
+          })
+      })
+    })()
+  </script>
+</BaseLayout>
