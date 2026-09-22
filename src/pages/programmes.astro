@@ -96,6 +96,7 @@ const programSchemas = [
 import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
 import { fetchSanityPage } from '../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+import StickyMobileCta from '../components/StickyMobileCta.astro'
 
 const sanityPage = await fetchSanityPage('programmes')
 ---
@@ -294,5 +295,6 @@ const sanityPage = await fetchSanityPage('programmes')
     }
     .programmes-page :is(h1, h2, h3) { font-weight: 900; letter-spacing: -0.015em; }
   </style>
+  <StickyMobileCta href="https://app.jonerfootball.com/programs/6-weeks-program-week-1-session-1-41ba39?utm_source=product&utm_medium=share&utm_campaign=content_share&utm_term=3247148&utm_content=copy" label="TRY A FREE SESSION" external />
 </BaseLayout>
 )}

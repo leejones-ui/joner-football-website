@@ -108,6 +108,7 @@ const schema = [
 import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
 import { fetchSanityPage } from '../lib/sanityPages'
 import { getSanityText, shouldReplaceSanityPage } from '../lib/sanityPageUtils'
+import StickyMobileCta from '../components/StickyMobileCta.astro'
 
 const sanityPage = await fetchSanityPage('teams')
 const pageTitle = sanityPage?.seo?.title || 'JF Teams | Player And Coach Development For Clubs | Joner Football'
@@ -460,5 +461,6 @@ const heroHeadline = getSanityText(sanityPage?.heroHeadline, 'Develop Every Play
     .teams-page :is(h1, h2, h3) { font-weight: 900; letter-spacing: -0.015em; }
   </style>
 
+  <StickyMobileCta href="#team-subscription-form" label="COMPARE TEAMS PLANS" />
 </BaseLayout>
 )}
