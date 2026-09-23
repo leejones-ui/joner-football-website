@@ -490,6 +490,20 @@ export async function stripeFetch(path, { method = 'GET', body } = {}) {
   return data
 }
 
+// Closes an unpaid Checkout Session so a released hour cannot be paid for
+// afterwards. Best effort: a session that is already complete or expired
+// refuses, which is fine.
+export async function expireCheckoutSession(sessionId) {
+  if (!sessionId) return false
+  try {
+    await stripeFetch(`/checkout/sessions/${encodeURIComponent(sessionId)}/expire`, { method: 'POST', body: {} })
+    return true
+  } catch (error) {
+    console.warn('holiday checkout expire skipped', sessionId, error.message)
+    return false
+  }
+}
+
 export function siteUrl(req) {
   return (process.env.PUBLIC_SITE_URL || process.env.SITE_URL || `https://${req?.headers?.host || 'jonerfootball.com'}`).replace(/\/$/, '')
 }

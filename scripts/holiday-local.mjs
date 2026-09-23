@@ -110,6 +110,11 @@ globalThis.fetch = async (url, init = {}) => {
     return json({ result: redis(payload) })
   }
   if (u.startsWith('https://api.stripe.com/v1/checkout/sessions')) {
+    if (init.method === 'POST' && u.endsWith('/expire')) {
+      const s = sessions.get(decodeURIComponent(u.split('/').slice(-2)[0]))
+      if (!s || s.status !== 'open') return json({ error: { message: 'Only open sessions can be expired' } }, 400)
+      s.status = 'expired'; log('stripe', `expired ${s.id}`); return json(s)
+    }
     if (init.method === 'POST') return json(stripeSession(init.body))
     const id = decodeURIComponent(u.split('/').pop())
     const s = sessions.get(id)

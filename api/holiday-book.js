@@ -7,7 +7,7 @@ import {
   requireHolidayAccess, getConfig, getSlot, getBooking, coachById, resolvePriceCents,
   holdSlot, releaseSlot, saveBooking, indexBooking, newId, clean, siteUrl, stripeFetch,
   sydneyDateLabel, sydneyTimeLabel, TYPE_LABELS, SESSION_TYPES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES,
-  maxPlayersForType,
+  maxPlayersForType, expireCheckoutSession,
 } from './_holiday-store.js'
 import crypto from 'node:crypto'
 
@@ -36,6 +36,7 @@ async function releaseHeld(req, res, body) {
     return fail(res, 403, 'Not allowed.')
   }
   if (booking.status === 'held') {
+    await expireCheckoutSession(booking.stripeSessionId)
     await releaseSlot(booking.slotId, booking.id)
     await saveBooking({ ...booking, status: 'cancelled', cancelledAt: new Date().toISOString(), cancelledBy: 'parent' })
   }

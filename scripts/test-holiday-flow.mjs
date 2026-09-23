@@ -140,6 +140,8 @@ await test('a cancelled checkout releases the hour, and a stale release cannot s
   const token = new URL(sessions.find((s) => s.id === csOf(first.body)).cancel_url).searchParams.get('release')
   await api('/api/holiday-book', { method: 'POST', body: JSON.stringify({ action: 'release', bookingId: first.body.bookingId, releaseToken: token }) })
   assert.equal((await slots()).find((s) => s.id === id).booked, false)
+  const closed = (await (await fetch(`${B}/__sessions`)).json()).find((s) => s.id === csOf(first.body))
+  assert.equal(closed.status, 'expired', 'the Stripe page is closed so the released hour cannot be paid for')
   // Someone else books it, then the old release replays: it must not free them.
   const second = await paced(() => book(id, 'group', TWO, 'third@example.com'))
   assert.equal(second.status, 200)

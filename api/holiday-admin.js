@@ -4,7 +4,7 @@ import { rateLimit } from './_security.js'
 import {
   requireAdmin, getConfig, saveConfig, listSlots, getSlot, upsertSlot, cancelSlot, reopenSlot, setSlotStatus,
   slotOwners, publicSlot, listBookings, getBooking, saveBooking, releaseSlot, clean, sydneyIso, validateSlotInput,
-  siteUrl, stripeFetch, refundFor, formatAud,
+  siteUrl, stripeFetch, refundFor, formatAud, expireCheckoutSession, TYPE_LABELS,
 } from './_holiday-store.js'
 import { repairBooking, effectsSummary } from './_holiday-finalise.js'
 import { HOLIDAY_SHEET, HOLIDAY_HEADERS, holidaySheetId, appendHolidayCancellationRow } from './_holiday-email.js'
@@ -47,7 +47,7 @@ function adminBooking(booking, slotsById, config) {
     notes: booking.notes || '',
     priceCents: booking.priceCents,
     coachName: view?.coachName || booking.coachName || '',
-    typeLabel: view?.typeLabel || booking.type,
+    typeLabel: TYPE_LABELS[booking.type] || view?.typeLabel || booking.type,
     dateLabel: view?.dateLabel || '',
     startLabel: view?.startLabel || '',
     slotId: booking.slotId,
@@ -170,6 +170,7 @@ export default async function handler(req, res) {
         const booking = await getBooking(body.bookingId)
         if (!booking) return fail(res, 404, 'Booking not found.')
         if (booking.status === 'cancelled') return res.status(200).json({ success: true, booking, changed: false })
+        if (booking.status === 'held') await expireCheckoutSession(booking.stripeSessionId)
         await releaseSlot(booking.slotId, booking.id)
         const wasPaid = booking.status === 'paid'
         const policySlot = await getSlot(booking.slotId)
