@@ -50,6 +50,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       <!-- Legend -->
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-2 flex flex-wrap gap-x-5 gap-y-2 text-xs text-white/85">
         <span class="flex items-center gap-2"><i class="legend-dot bg-white"></i> Free</span>
+        <span class="flex items-center gap-2"><i class="legend-dot legend-pending"></i> Being booked</span>
         <span class="flex items-center gap-2"><i class="legend-dot bg-white/10"></i> Booked</span>
       </div>
 
@@ -81,6 +82,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
             <p class="font-heading uppercase tracking-[0.18em] text-joner-red text-xs mb-1">Book This Session</p>
             <h2 id="sheet-title" class="font-heading uppercase text-2xl leading-none"></h2>
             <p id="sheet-subtitle" class="text-white/90 text-sm mt-1"></p>
+            <p id="hold-timer" class="hold-timer mt-2" hidden></p>
           </div>
           <button id="sheet-close" type="button" class="text-white/90 hover:text-white text-2xl leading-none min-w-[44px] min-h-[44px]" aria-label="Close">&times;</button>
         </div>
@@ -170,6 +172,10 @@ const description = 'Book school holiday coaching sessions with Joner Football c
   .tile.join { background: rgba(232,0,13,.10); border-color:#E8000D; color:#fff; }
   .tile.join .tile-sub { color:#ff5a63; }
   .tile.full { background: rgba(255,255,255,.08); color: rgba(255,255,255,.55); cursor: not-allowed; }
+  .tile.pending { background: transparent; border: 1px dashed rgba(255,255,255,.45); color: rgba(255,255,255,.75); cursor: not-allowed; }
+  .legend-pending { border: 1px dashed rgba(255,255,255,.6); }
+  .hold-timer { display:inline-block; background:#ffb020; color:#0A0A0A; font-weight:700; font-size:.85rem; padding:.3rem .6rem; }
+  #holiday-app .btn-red, #holiday-app .btn-outline, #sheet .btn-red, #holiday-gate .btn-red { text-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
   .tile.full .tile-time { text-decoration: line-through; }
 </style>
 
@@ -231,7 +237,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
     function showApp() {
       gate.hidden = true
       app.hidden = false
-      handleCancelledReturn().then(loadSlots)
+      handleCancelledReturn().then(() => loadSlots())
     }
 
     async function handleCancelledReturn() {
@@ -251,11 +257,14 @@ const description = 'Book school holiday coaching sessions with Joner Football c
     }
 
     // ----- data -----
-    async function loadSlots() {
-      $('slots-loading').hidden = false
-      $('slots-empty').hidden = true
-      $('slots-error').hidden = true
-      $('slots-list').innerHTML = ''
+    // quiet: refresh in place without the loading skeleton.
+    async function loadSlots(quiet) {
+      if (!quiet) {
+        $('slots-loading').hidden = false
+        $('slots-empty').hidden = true
+        $('slots-error').hidden = true
+        $('slots-list').innerHTML = ''
+      }
       try {
         const res = await fetch('/api/holiday-slots', { credentials: 'same-origin' })
         if (res.status === 401) { app.hidden = true; gate.hidden = false; return }
@@ -275,7 +284,10 @@ const description = 'Book school holiday coaching sessions with Joner Football c
         $('slots-loading').hidden = true
       }
     }
-    $('retry').addEventListener('click', loadSlots)
+    $('retry').addEventListener('click', () => loadSlots())
+    // Keep everyone's view current so a taken hour crosses out without a reload.
+    setInterval(() => { if (!app.hidden && $('sheet').hidden && !document.hidden) loadSlots(true) }, 20000)
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && !app.hidden && $('sheet').hidden) loadSlots(true) })
 
     function renderCoaches() {
       $('coaches').innerHTML = state.data.coaches.map((c) => `
@@ -294,7 +306,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
     })
 
     function tileSub(slot) {
-      return slot.booked ? 'Booked' : `to ${esc(slot.endLabel)}`
+      return `to ${esc(slot.endLabel)}`
     }
 
     function renderSlots() {
@@ -316,7 +328,9 @@ const description = 'Book school holiday coaching sessions with Joner Football c
               <span class="day-count">${free ? `${free} time${free === 1 ? '' : 's'} free` : 'Fully booked'}</span>
             </div>
             <div class="times">
-              ${day.slots.map((slot) => slot.booked
+              ${day.slots.map((slot) => slot.booked && slot.pending
+                ? `<div class="tile pending" aria-disabled="true"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">Being booked</span></div>`
+                : slot.booked
                 ? `<div class="tile full" aria-disabled="true"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">Booked</span></div>`
                 : `<button type="button" class="tile open" data-book="${esc(slot.id)}"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">${tileSub(slot)}</span></button>`
               ).join('')}
@@ -325,12 +339,68 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       }).join('')
     }
 
-    document.addEventListener('click', (event) => {
+    // Tapping a time locks it for this parent while they fill in the form.
+    document.addEventListener('click', async (event) => {
       const button = event.target.closest('[data-book]')
-      if (!button) return
+      if (!button || state.reserving) return
       const slot = state.data.slots.find((s) => s.id === button.dataset.book)
-      if (slot) openSheet(slot)
+      if (!slot) return
+      state.reserving = true
+      button.disabled = true
+      button.querySelector('.tile-sub').textContent = 'Holding'
+      try {
+        const recaptchaToken = await recaptcha('holiday_reserve')
+        const res = await fetch('/api/holiday-book', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'reserve', slotId: slot.id, recaptchaToken }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.status === 401) { app.hidden = true; gate.hidden = false; return }
+        if (!res.ok) { notice(data.error || 'That time was just taken. Pick another.'); loadSlots(true); return }
+        state.hold = { bookingId: data.bookingId, releaseToken: data.releaseToken, expiresAt: new Date(data.expiresAt).getTime(), slotId: slot.id }
+        openSheet(slot)
+      } catch {
+        notice('Could not hold that time. Try again.')
+        loadSlots(true)
+      } finally {
+        state.reserving = false
+      }
     })
+
+    function releaseHold(useBeacon) {
+      const hold = state.hold
+      state.hold = null
+      clearInterval(state.timer)
+      if (!hold) return
+      const body = JSON.stringify({ action: 'release', bookingId: hold.bookingId, releaseToken: hold.releaseToken })
+      if (useBeacon && navigator.sendBeacon) navigator.sendBeacon('/api/holiday-book', new Blob([body], { type: 'application/json' }))
+      else fetch('/api/holiday-book', { method: 'POST', credentials: 'same-origin', keepalive: true, headers: { 'content-type': 'application/json' }, body }).catch(() => {})
+    }
+    // Leaving the page with the form open hands the hour straight back,
+    // except when leaving is the jump to Stripe.
+    window.addEventListener('pagehide', () => { if (!state.toStripe) releaseHold(true) })
+
+    function startTimer() {
+      const el = $('hold-timer')
+      clearInterval(state.timer)
+      const tick = () => {
+        if (!state.hold) return
+        const left = Math.max(0, state.hold.expiresAt - Date.now())
+        const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000)
+        el.hidden = false
+        el.textContent = `This time is held for you for ${m}:${String(s).padStart(2, '0')}`
+        if (left <= 0) {
+          clearInterval(state.timer)
+          state.hold = null
+          closeSheet(true)
+          notice('Your 10 minutes ran out, so the time was released. Tap it again if it is still free.')
+          loadSlots(true)
+        }
+      }
+      tick()
+      state.timer = setInterval(tick, 1000)
+    }
 
     // ----- booking sheet -----
     function chosen() {
@@ -374,15 +444,18 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       $('sheet-backdrop').hidden = false
       $('sheet').hidden = false
       document.body.style.overflow = 'hidden'
+      startTimer()
     }
-    function closeSheet() {
+    function closeSheet(keepHold) {
       $('sheet-backdrop').hidden = true
       $('sheet').hidden = true
+      $('hold-timer').hidden = true
       document.body.style.overflow = ''
       state.slot = null
+      if (!keepHold) { releaseHold(false); setTimeout(() => loadSlots(true), 400) }
     }
-    $('sheet-close').addEventListener('click', closeSheet)
-    $('sheet-backdrop').addEventListener('click', closeSheet)
+    $('sheet-close').addEventListener('click', () => closeSheet())
+    $('sheet-backdrop').addEventListener('click', () => closeSheet())
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sheet').hidden) closeSheet() })
 
     function renderSeats() {
@@ -443,6 +516,8 @@ const description = 'Book school holiday coaching sessions with Joner Football c
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             slotId: state.slot.id,
+            bookingId: state.hold?.bookingId,
+            releaseToken: state.hold?.releaseToken,
             type: chosen().type,
             seats: state.seats,
             players,
@@ -457,7 +532,8 @@ const description = 'Book school holiday coaching sessions with Joner Football c
         const data = await res.json().catch(() => ({}))
         if (res.status === 401) { closeSheet(); app.hidden = true; gate.hidden = false; return }
         if (res.status === 409 || res.status === 404) {
-          closeSheet()
+          state.hold = null
+          closeSheet(true)
           notice(data.error || 'That time was just booked by someone else. Pick another.')
           loadSlots()
           return
@@ -466,6 +542,8 @@ const description = 'Book school holiday coaching sessions with Joner Football c
         try { sessionStorage.setItem('jf_holiday_booking', data.bookingId) } catch {}
         track('InitiateCheckout', { content_category: 'holiday_session', content_name: state.slot.coachName, value: chosen().priceCents * state.seats / 100, currency: 'AUD', booking_id: data.bookingId })
         status.textContent = 'Taking you to Stripe'
+        state.toStripe = true
+        clearInterval(state.timer)
         window.location.href = data.url
       } catch {
         status.classList.add('text-joner-red')

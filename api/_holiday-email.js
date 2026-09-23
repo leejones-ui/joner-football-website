@@ -1,7 +1,7 @@
 // Confirmation email, Lee's alert and the roster sheet row for a paid holiday
 // booking. Same Brevo and Sheets plumbing as camps, holiday-specific copy.
-import { appendRow, readRows, DEFAULT_SHEET_ID } from './_camp-automation.js'
-import { formatAud, sydneyDateLabel, sydneyTimeLabel, TYPE_LABELS, CANCELLATION_POLICY } from './_holiday-store.js'
+import { appendRow, readRows, ensureSheetTab, sheetsFetch, DEFAULT_SHEET_ID } from './_camp-automation.js'
+import { formatAud, sydneyDateLabel, sydneyTimeLabel, TYPE_LABELS, CANCELLATION_POLICY, listBookings, listSlots, getConfig, coachById } from './_holiday-store.js'
 
 export const HOLIDAY_SHEET = 'Holiday Bookings'
 // Coaches read this tab to see who is coming, so it carries no money and no
@@ -55,15 +55,15 @@ function detailRows(rows) {
 export function renderHolidayConfirmationEmail({ booking, slot, coachName }) {
   const players = (booking.players || []).map((p) => p.name).join(', ')
   const typeLabel = TYPE_LABELS[booking.type] || TYPE_LABELS[slot.type] || slot.type
-  const subject = `Booked: ${coachName} on ${sydneyDateLabel(slot.startsAt)} at ${sydneyTimeLabel(slot.startsAt)}`
+  const subject = `Booked: Coach ${coachName} on ${sydneyDateLabel(slot.startsAt)} at ${sydneyTimeLabel(slot.startsAt)}`
   const children = `
     <tr><td style="padding:0 26px 8px;">
-      <p style="margin:0 0 18px;color:#e6e6e6;font-size:16px;line-height:1.6;">Payment received. ${escapeHtml(players)} ${booking.players.length > 1 ? 'are' : 'is'} booked in with ${escapeHtml(coachName)}. Here are the details.</p>
+      <p style="margin:0 0 18px;color:#e6e6e6;font-size:16px;line-height:1.6;">Payment received. ${escapeHtml(players)} ${booking.players.length > 1 ? 'are' : 'is'} booked in with Coach ${escapeHtml(coachName)}. Here are the details.</p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         ${detailRows([
           ['When', `${sydneyDateTime(slot.startsAt)} to ${sydneyTimeLabel(slot.endsAt)}`],
           ['Where', slot.location],
-          ['Session', `${typeLabel} with ${coachName}`],
+          ['Session', `${typeLabel} with Coach ${coachName}`],
           ['Players', players],
           ['Paid', formatAud(booking.priceCents)],
           ['Booking ID', booking.id],
@@ -163,6 +163,50 @@ export async function sheetHasBooking(bookingId) {
   const idCol = HOLIDAY_HEADERS.indexOf('Booking ID')
   const statusCol = HOLIDAY_HEADERS.indexOf('Status')
   return rows.some((r) => r[idCol] === bookingId && r[statusCol] === 'BOOKED')
+}
+
+// ---------- coach roster ----------
+//
+// The tab coaches read. Rewritten in full from the booking store every time
+// something changes, so it is always a clean timetable sorted by day and
+// time: cancellations simply drop out, and a retry can never duplicate a
+// row. No money, no Stripe, no emails.
+export const ROSTER_HEADERS = ['Day', 'Time', 'Coach', 'Session', 'Players', 'Ages', 'Parent', 'Mobile', 'Notes']
+
+export async function rebuildRoster() {
+  const [config, slots, bookings] = await Promise.all([getConfig(), listSlots({ includeCancelled: true }), listBookings({ limit: 1000 })])
+  const slotsById = Object.fromEntries(slots.map((s) => [s.id, s]))
+  const nowMs = Date.now() - 12 * 3600_000
+  const entries = []
+  for (const b of bookings) {
+    const slot = slotsById[b.slotId]
+    if (b.status !== 'paid' || !slot || new Date(slot.endsAt).getTime() < nowMs) continue
+    entries.push({ slot, row: [
+      (b.players || []).map((p) => p.name).join(', '),
+      (b.players || []).map((p) => p.age).join(', '),
+      b.parentName || '', b.mobile || '', b.notes || '',
+    ], type: TYPE_LABELS[b.type] || b.type })
+  }
+  for (const slot of slots) {
+    if (slot.status !== 'blocked' || new Date(slot.endsAt).getTime() < nowMs) continue
+    entries.push({ slot, row: ['Booked offline', '', '', '', ''], type: '' })
+  }
+  entries.sort((a, b) => a.slot.startsAt.localeCompare(b.slot.startsAt) || a.slot.coachId.localeCompare(b.slot.coachId))
+  const rows = entries.map(({ slot, row, type }) => [
+    sydneyDateLabel(slot.startsAt),
+    `${sydneyTimeLabel(slot.startsAt)} to ${sydneyTimeLabel(slot.endsAt)}`,
+    `Coach ${coachById(config, slot.coachId)?.name || slot.coachId}`,
+    type,
+    ...row,
+  ])
+  const sheetId = holidaySheetId()
+  const tab = encodeURIComponent(HOLIDAY_SHEET)
+  await ensureSheetTab(sheetId, HOLIDAY_SHEET, ROSTER_HEADERS)
+  await sheetsFetch(`${sheetId}/values/${tab}!A2:Z2000:clear`, { method: 'POST', body: '{}' })
+  if (rows.length) {
+    await sheetsFetch(`${sheetId}/values/${tab}!A2?valueInputOption=RAW`, { method: 'PUT', body: JSON.stringify({ values: rows }) })
+  }
+  return { rows: rows.length }
 }
 
 export async function appendHolidaySheetRow(context) {

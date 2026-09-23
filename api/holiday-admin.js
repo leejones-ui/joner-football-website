@@ -7,8 +7,14 @@ import {
   siteUrl, stripeFetch, refundFor, formatAud, expireCheckoutSession, TYPE_LABELS,
 } from './_holiday-store.js'
 import { repairBooking, effectsSummary } from './_holiday-finalise.js'
-import { HOLIDAY_SHEET, HOLIDAY_HEADERS, holidaySheetId, appendHolidayCancellationRow } from './_holiday-email.js'
+import { HOLIDAY_SHEET, ROSTER_HEADERS, holidaySheetId, rebuildRoster } from './_holiday-email.js'
 import { ensureSheetTab } from './_camp-automation.js'
+
+// Keep the coach roster in step after any change that affects it. A sheet
+// outage must never block the admin action itself.
+async function syncRoster() {
+  try { await rebuildRoster() } catch (error) { console.error('holiday roster rebuild failed', error) }
+}
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -23,7 +29,7 @@ async function slotsWithCounts(config) {
     return {
       ...publicSlot(slot, config, owners[slot.id]),
       priceOverrideCents: slot.priceCents,
-      bookedBy: owner ? { id: owner.id, status: owner.status, players: (owner.players || []).map((p) => p.name), parentName: owner.parentName, typeLabel: owner.type } : null,
+      bookedBy: owner ? { id: owner.id, status: owner.status, players: (owner.players || []).map((p) => p.name), parentName: owner.parentName || '', typeLabel: owner.type || '' } : null,
     }
   })
 }
@@ -121,18 +127,21 @@ export default async function handler(req, res) {
             }
           }
         }
+        if (blocked) await syncRoster()
         return res.status(200).json({ success: true, created: created.length, skipped })
       }
 
       case 'cancelSlot': {
         const slot = await cancelSlot(body.slotId)
         if (!slot) return fail(res, 404, 'Slot not found.')
+        await syncRoster()
         return res.status(200).json({ success: true, slot: publicSlot(slot, config) })
       }
 
       case 'reopenSlot': {
         const slot = await reopenSlot(body.slotId)
         if (!slot) return fail(res, 404, 'Slot not found.')
+        await syncRoster()
         return res.status(200).json({ success: true, slot: publicSlot(slot, config) })
       }
 
@@ -143,6 +152,7 @@ export default async function handler(req, res) {
         if (owner?.booked) return fail(res, 409, `That hour already has a booking (${owner.ownerId}). Cancel it first.`)
         const slot = await setSlotStatus(body.slotId, 'blocked')
         if (!slot) return fail(res, 404, 'Slot not found.')
+        await syncRoster()
         return res.status(200).json({ success: true, slot: publicSlot(slot, config) })
       }
 
@@ -151,6 +161,11 @@ export default async function handler(req, res) {
         if (!booking) return fail(res, 404, 'Booking not found.')
         const refund = refundFor(booking, await getSlot(booking.slotId))
         return res.status(200).json({ success: true, refund: { ...refund, label: formatAud(refund.cents), paidLabel: formatAud(refund.paidCents) } })
+      }
+
+      case 'rebuildRoster': {
+        const result = await rebuildRoster()
+        return res.status(200).json({ success: true, ...result })
       }
 
       case 'repairBooking': {
@@ -177,11 +192,7 @@ export default async function handler(req, res) {
         const refund = wasPaid ? refundFor(booking, policySlot) : null
         const cancelled = { ...booking, status: 'cancelled', cancelledAt: new Date().toISOString(), cancelledBy: 'admin', refundDue: wasPaid, refund }
         await saveBooking(cancelled)
-        if (wasPaid) {
-          const slot = await getSlot(booking.slotId)
-          const coachName = (slot && (config.coaches.find((c) => c.id === slot.coachId)?.name)) || booking.coachName || ''
-          if (slot) await appendHolidayCancellationRow({ booking: cancelled, slot, coachName }).catch((error) => console.error('holiday cancellation row failed', error))
-        }
+        if (wasPaid) await syncRoster()
         return res.status(200).json({
           success: true,
           changed: true,
@@ -207,7 +218,7 @@ export default async function handler(req, res) {
         // Creates the tab and headers if missing. Fails loudly if the service
         // account cannot see the sheet, which is the usual reason.
         try {
-          await ensureSheetTab(holidaySheetId(), HOLIDAY_SHEET, HOLIDAY_HEADERS)
+          await ensureSheetTab(holidaySheetId(), HOLIDAY_SHEET, ROSTER_HEADERS)
           return res.status(200).json({ success: true, ok: true, sheetUrl: `https://docs.google.com/spreadsheets/d/${holidaySheetId()}`, sheetTab: HOLIDAY_SHEET })
         } catch (error) {
           return res.status(200).json({ success: true, ok: false, error: error.message, sheetId: holidaySheetId() })

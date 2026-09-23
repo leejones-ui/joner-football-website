@@ -7,7 +7,7 @@
 // human rather than retried blind, because a second email is worse than a
 // late one.
 import { getBooking, saveBooking, getSlot, getConfig, coachById, confirmSlot, releaseSlot, slotOwners, kvCommand, keys, clean } from './_holiday-store.js'
-import { sendHolidayConfirmationEmail, sendHolidayAdminAlert, appendHolidaySheetRow, sheetHasBooking } from './_holiday-email.js'
+import { sendHolidayConfirmationEmail, sendHolidayAdminAlert, rebuildRoster } from './_holiday-email.js'
 
 const LEASE_SECONDS = 120
 export const EFFECTS = ['sheet', 'email', 'adminAlert']
@@ -56,11 +56,8 @@ async function runEffect(name, booking, fn) {
 
 async function runEffects(booking, slot, coachName) {
   const context = { booking, slot: slot || { type: booking.type, location: '', startsAt: '', endsAt: '', date: '' }, coachName }
-  // The sheet is the one effect we can make safe to retry: check for the row first.
-  await runEffect('sheet', booking, async () => {
-    if (await sheetHasBooking(booking.id)) return
-    await appendHolidaySheetRow(context)
-  })
+  // The roster is rewritten in full from the store, so retrying it is always safe.
+  await runEffect('sheet', booking, () => rebuildRoster())
   await runEffect('email', booking, () => sendHolidayConfirmationEmail(context))
   await runEffect('adminAlert', booking, () => sendHolidayAdminAlert(context))
   return booking.effects

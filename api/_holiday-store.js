@@ -11,6 +11,8 @@
 import crypto from 'node:crypto'
 
 export const HOLD_MINUTES = 31
+// How long an hour stays locked while a parent fills in the form, before Pay.
+export const RESERVE_MINUTES = 10
 export const CHECKOUT_EXPIRES_MINUTES = 30
 export const CONFIRMED_SCORE = 9007199254740000
 export const SESSION_TYPES = ['one', 'shared', 'group']
@@ -341,6 +343,20 @@ redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3])
 return 1`
 
 // Returns 'held' or 'taken'.
+// Pushes this booking's hold out to a new expiry, but only if it still owns
+// the slot and its hold has not lapsed. Used when a parent who reserved the
+// hour on opening the form goes on to pay.
+export const EXTEND_SCRIPT = `
+local score = redis.call('ZSCORE', KEYS[1], ARGV[3])
+if not score or tonumber(score) <= tonumber(ARGV[1]) then return 0 end
+redis.call('ZADD', KEYS[1], 'XX', ARGV[2], ARGV[3])
+return 1`
+
+export async function extendHold({ slotId, bookingId, holdExpiresMs, nowMs = Date.now() }) {
+  const result = Number(await kvCommand(['EVAL', EXTEND_SCRIPT, '1', keys.seats(slotId), String(nowMs), String(holdExpiresMs), bookingId]))
+  return result === 1
+}
+
 export async function holdSlot({ slotId, bookingId, holdExpiresMs, nowMs = Date.now() }) {
   const result = Number(await kvCommand(['EVAL', HOLD_SCRIPT, '1', keys.seats(slotId), String(nowMs), String(holdExpiresMs), bookingId]))
   return result === 1 ? 'held' : 'taken'
@@ -375,8 +391,16 @@ export async function slotOwners(slotIds, nowMs = Date.now()) {
 // ---------- bookings ----------
 
 export async function saveBooking(booking) {
-  await kvSetJson(keys.booking(booking.id), booking, BOOKING_TTL_SECONDS)
+  // A reservation nobody paid for is only worth keeping briefly.
+  const ttl = booking.status === 'reserving' ? 60 * 60 * 24 : BOOKING_TTL_SECONDS
+  await kvSetJson(keys.booking(booking.id), booking, ttl)
   return booking
+}
+
+export async function getBookings(ids) {
+  if (!ids.length) return []
+  const results = await kvPipeline(ids.map((id) => ['GET', keys.booking(id)]))
+  return results.map(parseJson)
 }
 
 export async function getBooking(id) {
@@ -543,9 +567,11 @@ export function slotOptions(slot, config) {
   }))
 }
 
-export function publicSlot(slot, config, owner = { booked: false, ownerId: null }) {
+export function publicSlot(slot, config, owner = { booked: false, ownerId: null, pending: false }) {
   const coach = coachById(config, slot.coachId)
   const booked = slot.status === 'blocked' || Boolean(owner?.booked)
+  // pending: another parent has it open or is paying, so it may yet come free.
+  const pending = slot.status !== 'blocked' && Boolean(owner?.booked && owner?.pending)
   return {
     id: slot.id,
     coachId: slot.coachId,
@@ -564,6 +590,7 @@ export function publicSlot(slot, config, owner = { booked: false, ownerId: null 
     maxPlayers: maxPlayersForType(slot, slot.type === 'open' ? 'group' : slot.type),
     options: slotOptions(slot, config),
     booked,
+    pending,
     ownerId: owner?.ownerId || null,
     location: slot.location,
     notes: slot.notes || '',

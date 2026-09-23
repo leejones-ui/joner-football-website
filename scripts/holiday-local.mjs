@@ -67,8 +67,15 @@ function redis(cmd) {
     case 'ZRANGE': { const z = zset(args[0]); return [...z.entries()].sort((a, b) => a[1] - b[1]).slice(Number(args[1]), Number(args[2]) + 1).map(([m]) => m) }
     case 'EVAL': {
       // Only the hold script exists. Emulate it exactly.
-      const [, , seatsKey, now, expiry, bookingId] = args
+      const [script, , seatsKey, now, expiry, bookingId] = args
       const z = zset(seatsKey)
+      if (script.includes('ZSCORE')) {
+        // extend: only if this booking still owns a live hold
+        const score = z.get(bookingId)
+        if (score === undefined || score <= Number(now)) return 0
+        z.set(bookingId, Number(expiry))
+        return 1
+      }
       for (const [m, s] of z) if (s <= Number(now)) z.delete(m)
       if (z.size > 0) return 0
       z.set(bookingId, Number(expiry))
@@ -134,6 +141,18 @@ globalThis.fetch = async (url, init = {}) => {
       const row = JSON.parse(init.body).values[0]
       sheetRows.push(row)
       log('sheet', `row appended [${row.find((c) => String(c).startsWith('HOL-')) || ''}]`)
+      return json({})
+    }
+    if (u.includes(':clear')) {
+      if (faults.has('sheet')) return new Response('{"error":{"message":"The caller does not have permission"}}', { status: 403 })
+      sheetRows.length = 0
+      return json({})
+    }
+    if (u.includes('/values/') && init.method === 'PUT' && u.includes('!A2')) {
+      if (faults.has('sheet')) return new Response('{"error":{"message":"The caller does not have permission"}}', { status: 403 })
+      const rows = JSON.parse(init.body).values
+      sheetRows.length = 0; sheetRows.push(...rows)
+      log('sheet', `roster rewritten, ${rows.length} rows`)
       return json({})
     }
     if (u.includes('/values/')) {

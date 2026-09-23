@@ -20,12 +20,16 @@ async function api(path, init = {}) {
   const res = await fetch(`${B}${path}`, { ...init, headers: { 'content-type': 'application/json', cookie, ...(init.headers || {}) } })
   return { status: res.status, body: await j(res) }
 }
-function book(slotId, type, players, email = 'parent@example.com') {
+function book(slotId, type, players, email = 'parent@example.com', hold = {}) {
   return api('/api/holiday-book', {
     method: 'POST',
-    body: JSON.stringify({ slotId, type, seats: players.length, players, parentName: 'Parent Test', mobile: '0400000000', email, agreementAccepted: true }),
+    body: JSON.stringify({ slotId, type, seats: players.length, players, parentName: 'Parent Test', mobile: '0400000000', email, agreementAccepted: true, ...hold }),
   })
 }
+function reserve(slotId) {
+  return api('/api/holiday-book', { method: 'POST', body: JSON.stringify({ action: 'reserve', slotId }) })
+}
+async function roster() { return (await fetch(`${B}/__sheet`)).json() }
 const KID = [{ name: 'Kid One', age: 9 }]
 const TWO = [{ name: 'Kid One', age: 9 }, { name: 'Kid Two', age: 11 }]
 const csOf = (body) => body.url.split('cs=')[1]
@@ -44,12 +48,12 @@ async function paced(fn) {
 
 // ---------- setup ----------
 await adm('saveConfig', { config: { prices: { coach: { one: 12000, shared: 9000, group: 8000 } }, holidayLabel: 'Flow Test' } })
-const dates = ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05']
+const dates = ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06']
 await adm('bulkAddSlots', { template: { coachId: 'dean', type: 'open', capacity: 6, durationMin: 60 }, dates, times: ['10:00', '11:00', '12:00', '13:00'] })
 const access = await fetch(`${B}/api/holiday-access`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'holiday' }) })
 cookie = access.headers.get('set-cookie').split(';')[0]
 const pool = await freeSlots()
-assert.ok(pool.length >= 12, `need slots, got ${pool.length}`)
+assert.ok(pool.length >= 15, `need slots, got ${pool.length}`)
 let next = 0
 const take = () => pool[next++].id
 
@@ -110,10 +114,15 @@ await test('6+. paid, then a duplicate webhook: one confirmation, one roster row
   const confirm = await (await fetch(`${B}/api/holiday-confirm?session_id=${cs}`)).json()
   assert.equal(confirm.status, 'paid')
   const events = await (await fetch(`${B}/__events`)).json()
-  const rows = events.filter((e) => e.kind === 'sheet' && e.detail.includes(r.body.bookingId))
   const mails = events.filter((e) => e.kind === 'brevo' && e.detail.includes(r.body.bookingId))
-  assert.equal(rows.length, 1, `one sheet row, saw ${rows.length}`)
   assert.equal(mails.length, 2, `parent email + Lee alert, saw ${mails.length}`)
+  const startLabel = (await slots()).find((s) => s.id === id).startLabel
+  const dayLabel = (await slots()).find((s) => s.id === id).dateLabel
+  const mine = (await roster()).filter((row) => row[0] === dayLabel && row[1].startsWith(startLabel + ' '))
+  assert.equal(mine.length, 1, `booking appears once on the roster, saw ${mine.length}`)
+  const row = (await roster())[0]
+  assert.equal(row.length, 9, 'roster has 9 columns')
+  assert.ok(!row.some((c) => /A\$|\$\d|cs_test|pi_test|@/.test(String(c))), 'roster carries no money, Stripe ids or emails')
   const booking = (await adm('listBookings')).bookings.find((b) => b.id === r.body.bookingId)
   assert.equal(booking.status, 'paid')
   assert.deepEqual(booking.effects.pending, [])
@@ -164,9 +173,8 @@ await test('7. a failed side effect is recorded and repaired, never silently los
   booking = (await adm('listBookings')).bookings.find((b) => b.id === r.body.bookingId)
   assert.deepEqual(booking.effects.failed, [])
   assert.equal(booking.effects.ok, true, 'repaired')
-  const events = await (await fetch(`${B}/__events`)).json()
-  const rows = events.filter((e) => e.kind === 'sheet' && e.detail.includes(r.body.bookingId))
-  assert.equal(rows.length, 1, 'repair wrote the row exactly once')
+  const onRoster = (await roster()).filter((row) => row[6] === 'Parent Test' && row[4] === 'Kid One')
+  assert.ok(onRoster.length >= 1, 'repair put the booking on the roster')
 })
 
 await test('blocked hours show as booked and refuse bookings', async () => {
@@ -178,6 +186,43 @@ await test('blocked hours show as booked and refuse bookings', async () => {
   assert.equal(r.status, 409)
   const withBooking = await adm('blockSlot', { slotId: pool[1].id })
   assert.equal(withBooking.success, false, 'cannot block an hour a family already holds')
+})
+
+await test('tapping a time locks it: nobody else can take it while the form is open', async () => {
+  const id = take()
+  const a = await reserve(id)
+  assert.equal(a.status, 200, 'first parent gets the hold')
+  const b = await reserve(id)
+  assert.equal(b.status, 409, 'second parent cannot open it')
+  assert.match(b.body.error, /Someone is booking that time right now/)
+  const listed = (await slots()).find((s) => s.id === id)
+  assert.equal(listed.booked, true)
+  assert.equal(listed.pending, true, 'shown as being booked, not as sold')
+  const sneak = await paced(() => book(id, 'one', KID, 'sneak@example.com'))
+  assert.equal(sneak.status, 409, 'paying without the hold is refused')
+  const mine = await paced(() => book(id, 'one', KID, 'first@example.com', { bookingId: a.body.bookingId, releaseToken: a.body.releaseToken }))
+  assert.equal(mine.status, 200, 'the parent holding it can pay')
+  assert.equal(mine.body.bookingId, a.body.bookingId, 'same booking carried through to Stripe')
+})
+
+await test('closing the form hands the time straight back', async () => {
+  const id = take()
+  const a = await reserve(id)
+  await api('/api/holiday-book', { method: 'POST', body: JSON.stringify({ action: 'release', bookingId: a.body.bookingId, releaseToken: a.body.releaseToken }) })
+  const listed = (await slots()).find((s) => s.id === id)
+  assert.equal(listed.booked, false)
+  const b = await reserve(id)
+  assert.equal(b.status, 200, 'next parent can now take it')
+})
+
+await test('a paid hour shows as Booked, not Being booked', async () => {
+  const id = take()
+  const a = await reserve(id)
+  const r = await paced(() => book(id, 'one', KID, 'p@example.com', { bookingId: a.body.bookingId, releaseToken: a.body.releaseToken }))
+  await stripe(csOf(r.body), 'pay')
+  const listed = (await slots()).find((s) => s.id === id)
+  assert.equal(listed.booked, true)
+  assert.equal(listed.pending, false)
 })
 
 console.log(`\n${passed} holiday flow checks passed`)

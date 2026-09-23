@@ -211,6 +211,7 @@ import BaseLayout from '../layouts/BaseLayout.astro'
   #admin-app .text-white\/60, #admin-app .text-white\/70 { color:#e8e8e8 !important; }
   #admin-app, #admin-app input, #admin-app select, #admin-app table.bk { font-size:1rem; }
   .link-btn { font-size:.95rem; }
+  #admin-app .btn-outline, #admin-app .btn-red, #admin-gate .btn-red { text-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
   .badge { display:inline-block; font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.1em; font-size:.66rem; padding:.15rem .45rem; border:1px solid rgba(255,255,255,.3); }
   .badge-lee { background:#E8000D; border-color:#E8000D; }
   .badge-warn { background:#E8000D; border-color:#E8000D; }
@@ -425,10 +426,12 @@ import BaseLayout from '../layouts/BaseLayout.astro'
       return 'free'
     }
     function slotStateLabel(s) {
+      if (s.bookedBy?.status === 'reserving') return 'Filling in form'
       return { cancelled: 'Removed', blocked: 'Booked offline', paid: 'Booked online', held: 'Paying now', free: 'Free' }[slotState(s)]
     }
     function slotDetail(s) {
       const b = s.bookedBy
+      if (b?.status === 'reserving') return 'A parent has this open right now. It frees itself after 10 minutes if they do not pay.'
       if (b) return `${esc(b.players.join(', '))} &middot; ${esc(typeLabels[b.typeLabel] || b.typeLabel)} &middot; parent ${esc(b.parentName)}`
       if (s.status === 'blocked') return 'Parents see this as Booked.'
       if (s.status === 'cancelled') return 'Hidden from parents.'
