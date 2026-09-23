@@ -148,7 +148,7 @@ globalThis.fetch = async (url, init = {}) => {
       sheetRows.length = 0
       return json({})
     }
-    if (u.includes('/values/') && init.method === 'PUT' && u.includes('!A2')) {
+    if (u.includes('/values/') && init.method === 'PUT' && (u.includes('!A2') || u.includes('!A1?'))) {
       if (faults.has('sheet')) return new Response('{"error":{"message":"The caller does not have permission"}}', { status: 403 })
       const rows = JSON.parse(init.body).values
       sheetRows.length = 0; sheetRows.push(...rows)

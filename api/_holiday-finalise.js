@@ -7,10 +7,10 @@
 // human rather than retried blind, because a second email is worse than a
 // late one.
 import { getBooking, saveBooking, getSlot, getConfig, coachById, confirmSlot, releaseSlot, slotOwners, kvCommand, keys, clean } from './_holiday-store.js'
-import { sendHolidayConfirmationEmail, sendHolidayAdminAlert, rebuildRoster } from './_holiday-email.js'
+import { sendHolidayConfirmationEmail, sendHolidayAdminAlert, sendHolidayCoachAlert, rebuildRoster } from './_holiday-email.js'
 
 const LEASE_SECONDS = 120
-export const EFFECTS = ['sheet', 'email', 'adminAlert']
+export const EFFECTS = ['sheet', 'email', 'adminAlert', 'coachAlert']
 
 export function bookingIdFromSession(session) {
   return clean(session?.metadata?.holidayBookingId || '', 60)
@@ -60,6 +60,7 @@ async function runEffects(booking, slot, coachName) {
   await runEffect('sheet', booking, () => rebuildRoster())
   await runEffect('email', booking, () => sendHolidayConfirmationEmail(context))
   await runEffect('adminAlert', booking, () => sendHolidayAdminAlert(context))
+  await runEffect('coachAlert', booking, () => sendHolidayCoachAlert(context))
   return booking.effects
 }
 

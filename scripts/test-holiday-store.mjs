@@ -70,7 +70,7 @@ test('slot validation forces capacity by type and rejects bad input', () => {
   const good = validateSlotInput({ coachId: 'lee', date: '2026-10-01', startTime: '09:00', durationMin: 60, type: 'group', capacity: 6 }, config)
   assert.equal(good.ok, true)
   assert.equal(good.slot.capacity, 6)
-  assert.equal(good.slot.location, 'The HQ, Belrose')
+  assert.equal(good.slot.location, 'Joner Football HQ, Belrose')
   assert.equal(capacityForType('one', 9), 1)
   assert.equal(capacityForType('shared', 9), 2)
   assert.equal(capacityForType('group', 99), 6)

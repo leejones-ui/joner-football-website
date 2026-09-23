@@ -2,7 +2,7 @@
 // Nothing here is reachable without HOLIDAY_ADMIN_SECRET.
 import { rateLimit } from './_security.js'
 import {
-  requireAdmin, getConfig, saveConfig, listSlots, getSlot, upsertSlot, cancelSlot, reopenSlot, setSlotStatus,
+  requireAdmin, getConfig, saveConfig, listSlots, getSlot, upsertSlot, cancelSlot, reopenSlot, setSlotStatus, setSlotField,
   slotOwners, publicSlot, listBookings, getBooking, saveBooking, releaseSlot, clean, sydneyIso, validateSlotInput,
   siteUrl, stripeFetch, refundFor, formatAud, expireCheckoutSession, TYPE_LABELS,
 } from './_holiday-store.js'
@@ -161,6 +161,23 @@ export default async function handler(req, res) {
         if (!booking) return fail(res, 404, 'Booking not found.')
         const refund = refundFor(booking, await getSlot(booking.slotId))
         return res.status(200).json({ success: true, refund: { ...refund, label: formatAud(refund.cents), paidLabel: formatAud(refund.paidCents) } })
+      }
+
+      case 'renameLocation': {
+        // Point every slot at a new location name, e.g. after the official
+        // address changed. Slots store the name, so this is a bulk rewrite.
+        const from = clean(body.from, 120)
+        const to = clean(body.to, 120)
+        if (!to) return fail(res, 400, 'Give the new location name.')
+        const all = await listSlots({ includeCancelled: true })
+        let changed = 0
+        for (const s of all) {
+          if (from && s.location !== from) continue
+          await setSlotField(s.id, 'location', to)
+          changed += 1
+        }
+        await syncRoster()
+        return res.status(200).json({ success: true, changed })
       }
 
       case 'rebuildRoster': {

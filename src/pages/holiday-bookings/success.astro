@@ -69,7 +69,7 @@ const description = 'Your Joner Football school holiday session is booked.'
         `DTSTART:${icsDate(b.startsAt)}`,
         `DTEND:${icsDate(b.endsAt)}`,
         `SUMMARY:Joner Football: ${b.typeLabel} session with ${b.coachName}`,
-        `LOCATION:${b.location}`,
+        `LOCATION:${b.address ? `${b.location}\\, ${b.address.replace(/,/g, '\\,')}` : b.location}`,
         `DESCRIPTION:Players: ${b.players.map((p) => p.name).join(', ')}. Arrive 10 minutes early with boots, shin pads and water.`,
         'END:VEVENT', 'END:VCALENDAR',
       ]
@@ -80,7 +80,7 @@ const description = 'Your Joner Football school holiday session is booked.'
       setHero('Payment Complete', 'Your Session Is Booked.', `${b.players.map((p) => p.name).join(' and ')} ${b.players.length > 1 ? 'are' : 'is'} in with ${b.coachName}.`)
       $('details').innerHTML = [
         ['When', `${b.dateLabel}, ${b.startLabel} to ${b.endLabel}`],
-        ['Where', b.location],
+        ['Where', b.address ? `${b.location}, ${b.address}` : b.location],
         ['Session', `${b.typeLabel} with ${b.coachName}`],
         ['Players', b.players.map((p) => p.name).join(', ')],
         ['Paid', b.priceLabel],

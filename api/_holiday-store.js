@@ -153,15 +153,28 @@ export function sydneyTimeLabel(iso) {
 export const DEFAULT_CONFIG = {
   holidayLabel: 'School Holiday Sessions',
   coaches: [
-    { id: 'dean', name: 'Dean', tier: 'coach', active: true },
+    { id: 'dean', name: 'Dean', tier: 'coach', active: true, email: 'jonerfootballdean@gmail.com' },
     { id: 'lee', name: 'Lee', tier: 'lee', active: false },
     { id: 'sam', name: 'Sam', tier: 'coach', active: false },
   ],
   prices: { lee: { one: 0, shared: 0, group: 0 }, coach: { one: 0, shared: 0, group: 0 } },
-  defaultLocation: 'The HQ, Belrose',
+  defaultLocation: 'Joner Football HQ, Belrose',
+  address: '20 Narabang Way (Unit 2), Belrose NSW 2085',
+  // Staff who get the full booking alert, money included. Coaches get their
+  // own alert without the money, at the email on their coach entry.
+  staffEmails: ['ligia@jonerfootball.com'],
   defaultDurations: [60, 90],
   bookingCutoffHours: 2,
   updatedAt: null,
+}
+
+function validEmail(value) {
+  const email = clean(value, 200).toLowerCase()
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ''
+}
+
+export function mapsUrl(config) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${config.defaultLocation}, ${config.address}`)}`
 }
 
 export function normaliseConfig(input = {}) {
@@ -172,6 +185,7 @@ export function normaliseConfig(input = {}) {
         name: clean(c.name, 60),
         tier: TIERS.includes(c.tier) ? c.tier : 'coach',
         active: c.active !== false,
+        email: validEmail(c.email),
       })).filter((c) => c.id && c.name)
     : base.coaches
   const prices = {}
@@ -191,6 +205,8 @@ export function normaliseConfig(input = {}) {
     coaches,
     prices,
     defaultLocation: clean(input.defaultLocation, 120) || base.defaultLocation,
+    address: clean(input.address, 160) || base.address,
+    staffEmails: Array.isArray(input.staffEmails) ? [...new Set(input.staffEmails.map(validEmail).filter(Boolean))] : base.staffEmails,
     defaultDurations: durations.length ? durations : base.defaultDurations,
     bookingCutoffHours: Number.isFinite(cutoff) && cutoff >= 0 && cutoff <= 72 ? cutoff : base.bookingCutoffHours,
     updatedAt: input.updatedAt || null,
@@ -298,6 +314,15 @@ export async function upsertSlot(input, config) {
   }
   await kvCommand(['HSET', keys.slots(), slot.id, JSON.stringify(slot)])
   return { ok: true, slot }
+}
+
+export async function setSlotField(slotId, field, value) {
+  const slot = await getSlot(slotId)
+  if (!slot || !['location', 'notes'].includes(field)) return null
+  slot[field] = value
+  slot.updatedAt = new Date().toISOString()
+  await kvCommand(['HSET', keys.slots(), slot.id, JSON.stringify(slot)])
+  return slot
 }
 
 export async function setSlotStatus(slotId, status) {
@@ -613,6 +638,7 @@ export function bookingSummary(booking, slot, config) {
     startsAt: slot?.startsAt || '',
     endsAt: slot?.endsAt || '',
     location: slot?.location || '',
+    address: config?.address || '',
     priceCents: booking.priceCents,
     priceLabel: formatAud(booking.priceCents),
     needsAttention: booking.needsAttention || '',

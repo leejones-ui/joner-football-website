@@ -272,7 +272,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
         if (!res.ok || !data.success) throw new Error(data.error || 'failed')
         state.data = data
         $('app-heading').textContent = data.holidayLabel || 'School Holiday Sessions'
-        $('app-lead').textContent = `All sessions at ${data.location || 'The HQ, Belrose'}. Pick a coach, then tap a time.`
+        $('app-lead').textContent = `All sessions at ${data.location}, ${data.address}. Pick a coach, then tap a time.`
         try { state.coach = sessionStorage.getItem('jf_holiday_coach') } catch {}
         const pickable = data.coaches.filter((c) => c.available)
         if (!pickable.some((c) => c.id === state.coach)) state.coach = pickable[0]?.id || null

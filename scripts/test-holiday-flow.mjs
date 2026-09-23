@@ -107,7 +107,7 @@ await test('a 1 to 1 refuses a second player, and group refuses a seventh', asyn
 
 await test('6+. paid, then a duplicate webhook: one confirmation, one roster row', async () => {
   const id = take()
-  const r = await paced(() => book(id, 'one', KID))
+  const r = await paced(() => book(id, 'one', [{ name: 'Roster Check', age: 9 }]))
   const cs = csOf(r.body)
   await stripe(cs, 'pay')
   await stripe(cs, 'pay')  // duplicate delivery
@@ -115,14 +115,13 @@ await test('6+. paid, then a duplicate webhook: one confirmation, one roster row
   assert.equal(confirm.status, 'paid')
   const events = await (await fetch(`${B}/__events`)).json()
   const mails = events.filter((e) => e.kind === 'brevo' && e.detail.includes(r.body.bookingId))
-  assert.equal(mails.length, 2, `parent email + Lee alert, saw ${mails.length}`)
-  const startLabel = (await slots()).find((s) => s.id === id).startLabel
-  const dayLabel = (await slots()).find((s) => s.id === id).dateLabel
-  const mine = (await roster()).filter((row) => row[0] === dayLabel && row[1].startsWith(startLabel + ' '))
+  assert.equal(mails.length, 3, `parent email, staff alert and coach alert, saw ${mails.length}`)
+  const sheet = await roster()
+  const mine = sheet.filter((row) => row.includes('Roster Check (9)'))
   assert.equal(mine.length, 1, `booking appears once on the roster, saw ${mine.length}`)
-  const row = (await roster())[0]
-  assert.equal(row.length, 9, 'roster has 9 columns')
-  assert.ok(!row.some((c) => /A\$|\$\d|cs_test|pi_test|@/.test(String(c))), 'roster carries no money, Stripe ids or emails')
+  assert.ok(sheet.some((row) => /^COACH DEAN/.test(row[0])), 'roster is grouped under a coach heading')
+  assert.equal(mine[0].length, 7, 'roster has 7 columns')
+  assert.ok(!sheet.flat().some((c) => /A\$|\$\d|cs_test|pi_test|@/.test(String(c))), 'roster carries no money, Stripe ids or emails')
   const booking = (await adm('listBookings')).bookings.find((b) => b.id === r.body.bookingId)
   assert.equal(booking.status, 'paid')
   assert.deepEqual(booking.effects.pending, [])
@@ -160,7 +159,7 @@ await test('a cancelled checkout releases the hour, and a stale release cannot s
 
 await test('7. a failed side effect is recorded and repaired, never silently lost', async () => {
   const id = take()
-  const r = await paced(() => book(id, 'one', KID, 'fail-sheet@example.com'))
+  const r = await paced(() => book(id, 'one', [{ name: 'Repair Check', age: 9 }], 'fail-sheet@example.com'))
   await fetch(`${B}/__fail?what=sheet&on=1`)
   await stripe(csOf(r.body), 'pay')
   let booking = (await adm('listBookings')).bookings.find((b) => b.id === r.body.bookingId)
@@ -173,8 +172,8 @@ await test('7. a failed side effect is recorded and repaired, never silently los
   booking = (await adm('listBookings')).bookings.find((b) => b.id === r.body.bookingId)
   assert.deepEqual(booking.effects.failed, [])
   assert.equal(booking.effects.ok, true, 'repaired')
-  const onRoster = (await roster()).filter((row) => row[6] === 'Parent Test' && row[4] === 'Kid One')
-  assert.ok(onRoster.length >= 1, 'repair put the booking on the roster')
+  const onRoster = (await roster()).filter((row) => row.includes('Repair Check (9)'))
+  assert.equal(onRoster.length, 1, 'repair put the booking on the roster exactly once')
 })
 
 await test('blocked hours show as booked and refuse bookings', async () => {

@@ -153,8 +153,16 @@ import BaseLayout from '../layouts/BaseLayout.astro'
               <input id="c-label" type="text" maxlength="80" class="inp" />
             </div>
             <div>
-              <label class="lbl" for="c-location">Default location</label>
+              <label class="lbl" for="c-location">Location name</label>
               <input id="c-location" type="text" maxlength="120" class="inp" />
+            </div>
+            <div>
+              <label class="lbl" for="c-address">Address</label>
+              <input id="c-address" type="text" maxlength="160" class="inp" />
+            </div>
+            <div>
+              <label class="lbl" for="c-staff">Staff alerts, with prices (comma separated)</label>
+              <input id="c-staff" type="text" class="inp" placeholder="ligia@jonerfootball.com" />
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
@@ -306,6 +314,8 @@ import BaseLayout from '../layouts/BaseLayout.astro'
       })
       $('c-label').value = c.holidayLabel
       $('c-location').value = c.defaultLocation
+      $('c-address').value = c.address || ''
+      $('c-staff').value = (c.staffEmails || []).join(', ')
       $('c-durations').value = c.defaultDurations.join(', ')
       $('c-cutoff').value = c.bookingCutoffHours
       renderCoaches(c.coaches)
@@ -313,11 +323,12 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 
     function renderCoaches(coaches) {
       $('coaches').innerHTML = coaches.map((x, i) => `
-        <div class="grid grid-cols-[1fr_110px_auto] gap-2 items-center" data-coach="${i}">
+        <div class="grid grid-cols-[1fr_110px_auto] gap-2 items-center pt-2 border-t border-white/10" data-coach="${i}">
           <input type="text" value="${esc(x.name)}" data-field="name" class="inp" placeholder="Name" />
           <select data-field="tier" class="inp"><option value="lee" ${x.tier === 'lee' ? 'selected' : ''}>Lee price</option><option value="coach" ${x.tier === 'coach' ? 'selected' : ''}>Coach price</option></select>
           <label class="text-sm text-white/70 flex items-center gap-1"><input type="checkbox" data-field="active" ${x.active ? 'checked' : ''} class="accent-[#E8000D]" /> Active</label>
           <input type="hidden" data-field="id" value="${esc(x.id)}" />
+          <input type="email" value="${esc(x.email || '')}" data-field="email" class="inp col-span-3" placeholder="Coach email for booking alerts (no prices sent)" />
         </div>`).join('')
     }
     $('coach-add').addEventListener('click', () => {
@@ -331,6 +342,7 @@ import BaseLayout from '../layouts/BaseLayout.astro'
         name: row.querySelector('[data-field="name"]').value.trim(),
         tier: row.querySelector('[data-field="tier"]').value,
         active: row.querySelector('[data-field="active"]').checked,
+        email: row.querySelector('[data-field="email"]').value.trim(),
       })).filter((c) => c.name)
     }
 
@@ -350,6 +362,8 @@ import BaseLayout from '../layouts/BaseLayout.astro'
             coaches: readCoaches(),
             holidayLabel: $('c-label').value,
             defaultLocation: $('c-location').value,
+            address: $('c-address').value,
+            staffEmails: $('c-staff').value.split(',').map((v) => v.trim()).filter(Boolean),
             defaultDurations: $('c-durations').value.split(',').map((v) => Number(v.trim())).filter(Boolean),
             bookingCutoffHours: Number($('c-cutoff').value),
           },
@@ -500,13 +514,13 @@ import BaseLayout from '../layouts/BaseLayout.astro'
     }
     function deliveryCell(b) {
       if (!b.effects) return ''
-      const names = { sheet: 'Sheet', email: 'Email', adminAlert: 'Alert' }
+      const names = { sheet: 'Sheet', email: 'Parent email', adminAlert: 'Staff alert', coachAlert: 'Coach alert' }
       const mark = (k) => {
         const st = b.effectDetail?.[k]?.status || 'pending'
         const cls = st === 'done' ? 'ok' : st === 'uncertain' ? 'warn' : 'bad'
         return `<span class="dlv dlv-${cls}" title="${esc(st)}">${names[k]} ${st === 'done' ? 'sent' : esc(st)}</span>`
       }
-      return `<div class="mt-1 flex flex-wrap gap-1">${['sheet', 'email', 'adminAlert'].map(mark).join('')}</div>`
+      return `<div class="mt-1 flex flex-wrap gap-1">${['sheet', 'email', 'adminAlert', 'coachAlert'].map(mark).join('')}</div>`
     }
     function renderBookings() {
       const rows = filteredBookings()

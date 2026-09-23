@@ -24,6 +24,7 @@ export default async function handler(req, res) {
       success: true,
       holidayLabel: config.holidayLabel,
       location: config.defaultLocation,
+      address: config.address,
       coaches: config.coaches.map((c) => ({ id: c.id, name: c.name, tier: c.tier, available: c.active && coachesWithSlots.has(c.id) })),
       slots: slots.filter((s) => config.coaches.find((c) => c.id === s.coachId)?.active).map((slot) => publicSlot(slot, config, owners[slot.id])),
     })
