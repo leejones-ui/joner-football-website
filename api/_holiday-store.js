@@ -494,6 +494,21 @@ export function siteUrl(req) {
   return (process.env.PUBLIC_SITE_URL || process.env.SITE_URL || `https://${req?.headers?.host || 'jonerfootball.com'}`).replace(/\/$/, '')
 }
 
+// ---------- cancellation policy ----------
+
+// Lee's policy: cancel 24 hours or more before the session for a full
+// refund. Inside 24 hours, half is refunded. Refunds are made by hand in
+// Stripe; this only works out what is owed.
+export const CANCELLATION_POLICY = 'Cancel 24 hours or more before your session for a full refund. Cancellations within 24 hours of the session are refunded 50%.'
+
+export function refundFor(booking, slot, nowMs = Date.now()) {
+  const paid = Number(booking.amountPaidCents ?? booking.priceCents ?? 0)
+  const startsMs = slot?.startsAt ? new Date(slot.startsAt).getTime() : 0
+  const hoursBefore = startsMs ? (startsMs - nowMs) / 3_600_000 : 0
+  const percent = hoursBefore >= 24 ? 100 : 50
+  return { percent, cents: Math.round(paid * percent / 100), paidCents: paid, hoursBefore: Math.round(hoursBefore * 10) / 10 }
+}
+
 // ---------- public shapes ----------
 
 // The ways a family can book this hour, and what each costs per player.

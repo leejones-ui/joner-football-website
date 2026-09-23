@@ -1,7 +1,7 @@
 // Confirmation email, Lee's alert and the roster sheet row for a paid holiday
 // booking. Same Brevo and Sheets plumbing as camps, holiday-specific copy.
 import { appendRow, readRows, DEFAULT_SHEET_ID } from './_camp-automation.js'
-import { formatAud, sydneyDateLabel, sydneyTimeLabel, TYPE_LABELS } from './_holiday-store.js'
+import { formatAud, sydneyDateLabel, sydneyTimeLabel, TYPE_LABELS, CANCELLATION_POLICY } from './_holiday-store.js'
 
 export const HOLIDAY_SHEET = 'Holiday Bookings'
 // Coaches read this tab to see who is coming, so it carries no money and no
@@ -73,7 +73,8 @@ export function renderHolidayConfirmationEmail({ booking, slot, coachName }) {
     <tr><td style="padding:18px 26px 26px;">
       <p style="margin:0 0 10px;color:#ffffff;font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">Before you arrive</p>
       <p style="margin:0 0 8px;color:#e6e6e6;font-size:15px;line-height:1.6;">Arrive 10 minutes early. Bring boots, shin pads, a full water bottle and a ball if you have one.</p>
-      <p style="margin:0 0 8px;color:#e6e6e6;font-size:15px;line-height:1.6;">Need to change or cancel? Reply to this email as soon as you can and we will sort it out.</p>
+      <p style="margin:0 0 8px;color:#e6e6e6;font-size:15px;line-height:1.6;">Need to change or cancel? Reply to this email as soon as you can.</p>
+      <p style="margin:0 0 8px;color:#e6e6e6;font-size:15px;line-height:1.6;"><strong style="color:#ffffff;">Cancellation policy:</strong> ${escapeHtml(CANCELLATION_POLICY)}</p>
     </td></tr>`
   return { subject, html: shell({ preheader: subject, heading: 'Your Session Is Booked.', children }) }
 }

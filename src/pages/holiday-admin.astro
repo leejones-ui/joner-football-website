@@ -102,6 +102,7 @@ import BaseLayout from '../layouts/BaseLayout.astro'
               <label class="lbl" for="s-notes">Note shown to parents (optional)</label>
               <input id="s-notes" type="text" maxlength="300" class="inp" />
             </div>
+            <label class="flex items-center gap-3 text-base text-white"><input id="s-blocked" type="checkbox" class="h-5 w-5 accent-[#E8000D]" /> Already booked (show parents as Booked)</label>
             <button type="submit" class="btn-red w-full min-h-[48px]">Create slots</button>
             <p id="slot-status" class="text-sm min-h-[1.25rem]" aria-live="polite"></p>
           </form>
@@ -192,13 +193,31 @@ import BaseLayout from '../layouts/BaseLayout.astro'
   .pill { display:inline-flex; align-items:center; gap:.4rem; border:1px solid rgba(255,255,255,.3); padding:.3rem .6rem; font-size:.85rem; }
   .pill button { color:#E8000D; font-weight:900; }
   .slot-row { display:grid; grid-template-columns: 1fr auto; gap:.6rem; align-items:center; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.03); padding:.8rem 1rem; border-radius:.75rem; }
-  .slot-row.cancelled { opacity:.45; }
+  .slot-row.cancelled { opacity:.55; }
+  .slot-row.free { border-left:4px solid #ffffff; }
+  .slot-row.paid, .slot-row.held { border-left:4px solid #E8000D; background: rgba(232,0,13,.08); }
+  .slot-row.blocked { border-left:4px solid #9a9a9a; }
+  .row-detail { color:#f2f2f2; font-size:.95rem; line-height:1.45; }
+  .state-pill { font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.08em; font-size:.72rem; padding:.2rem .55rem; }
+  .state-free { background:#fff; color:#0A0A0A; }
+  .state-paid { background:#E8000D; color:#fff; }
+  .state-held { background:#ffb020; color:#0A0A0A; }
+  .state-blocked { background:#5a5a5a; color:#fff; }
+  .state-cancelled { background:#2a2a2a; color:#ccc; }
+  .dlv { font-size:.7rem; padding:.1rem .4rem; text-transform:uppercase; letter-spacing:.06em; }
+  .dlv-ok { background:#1f5f2e; color:#fff; }
+  .dlv-warn { background:#ffb020; color:#0A0A0A; }
+  .dlv-bad { background:#E8000D; color:#fff; }
+  #admin-app .text-white\/60, #admin-app .text-white\/70 { color:#e8e8e8 !important; }
+  #admin-app, #admin-app input, #admin-app select, #admin-app table.bk { font-size:1rem; }
+  .link-btn { font-size:.95rem; }
   .badge { display:inline-block; font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.1em; font-size:.66rem; padding:.15rem .45rem; border:1px solid rgba(255,255,255,.3); }
   .badge-lee { background:#E8000D; border-color:#E8000D; }
   .badge-warn { background:#E8000D; border-color:#E8000D; }
   table.bk { width:100%; font-size:.85rem; border-collapse:collapse; min-width:900px; }
   table.bk th, table.bk td { text-align:left; padding:.55rem .6rem; border-bottom:1px solid rgba(255,255,255,.1); vertical-align:top; }
-  table.bk th { color:rgba(255,255,255,.6); text-transform:uppercase; letter-spacing:.08em; font-size:.7rem; }
+  table.bk th { color:#dcdcdc; text-transform:uppercase; letter-spacing:.08em; font-size:.78rem; }
+  table.bk td { color:#f2f2f2; }
   .link-btn { color:#fff; text-decoration:underline; text-decoration-color:#E8000D; text-underline-offset:4px; }
 </style>
 
@@ -382,7 +401,7 @@ import BaseLayout from '../layouts/BaseLayout.astro'
       }
       status.textContent = 'Creating'
       try {
-        const data = await api('bulkAddSlots', { template, dates: state.dates, times: state.times })
+        const data = await api('bulkAddSlots', { template, dates: state.dates, times: state.times, blocked: $('s-blocked').checked })
         status.textContent = `${data.created} created${data.skipped ? `, ${data.skipped} skipped (already existed)` : ''}.`
         state.dates = []; state.times = []; renderDates(); renderTimes()
         await loadSlots()
@@ -398,9 +417,26 @@ import BaseLayout from '../layouts/BaseLayout.astro'
       renderSlots()
     }
     $('show-cancelled').addEventListener('change', renderSlots)
+    function slotState(s) {
+      if (s.status === 'cancelled') return 'cancelled'
+      if (s.status === 'blocked') return 'blocked'
+      if (s.bookedBy?.status === 'paid') return 'paid'
+      if (s.bookedBy) return 'held'
+      return 'free'
+    }
+    function slotStateLabel(s) {
+      return { cancelled: 'Removed', blocked: 'Booked offline', paid: 'Booked online', held: 'Paying now', free: 'Free' }[slotState(s)]
+    }
+    function slotDetail(s) {
+      const b = s.bookedBy
+      if (b) return `${esc(b.players.join(', '))} &middot; ${esc(typeLabels[b.typeLabel] || b.typeLabel)} &middot; parent ${esc(b.parentName)}`
+      if (s.status === 'blocked') return 'Parents see this as Booked.'
+      if (s.status === 'cancelled') return 'Hidden from parents.'
+      return s.options.map((o) => `${esc(o.label)} ${esc(o.priceLabel)}`).join(' &middot; ') + (s.priceOverrideCents != null ? ' (custom price)' : '')
+    }
     function renderSlots() {
       const showCancelled = $('show-cancelled').checked
-      const slots = state.slots.filter((s) => showCancelled || s.status === 'open')
+      const slots = state.slots.filter((s) => showCancelled || s.status !== 'cancelled')
       if (!slots.length) { $('slots-list').innerHTML = '<p class="text-white/60">No slots yet. Add some on the left.</p>'; return }
       const byDate = new Map()
       for (const s of slots) { if (!byDate.has(s.date)) byDate.set(s.date, { label: s.dateLabel, slots: [] }); byDate.get(s.date).slots.push(s) }
@@ -408,20 +444,20 @@ import BaseLayout from '../layouts/BaseLayout.astro'
         <section>
           <h3 class="font-heading uppercase text-xl mb-2">${esc(day.label)}</h3>
           <div class="space-y-2">${day.slots.map((s) => `
-            <div class="slot-row ${s.status === 'cancelled' ? 'cancelled' : ''}">
+            <div class="slot-row ${s.status === 'cancelled' ? 'cancelled' : ''} ${slotState(s)}">
               <div>
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="font-heading text-lg">${esc(s.startLabel)} to ${esc(s.endLabel)}</span>
-                  <span class="badge ${s.coachTier === 'lee' ? 'badge-lee' : ''}">${esc(s.coachName)}</span>
-                  <span class="badge">${esc(s.typeLabel)}</span>
-                  ${s.status === 'cancelled' ? '<span class="badge">Cancelled</span>' : ''}
+                  <span class="badge ${s.coachTier === 'lee' ? 'badge-lee' : ''}">Coach ${esc(s.coachName)}</span>
+                  <span class="state-pill state-${slotState(s)}">${esc(slotStateLabel(s))}</span>
                 </div>
-                <p class="text-white/70 text-sm mt-1">${esc(s.taken)} of ${esc(s.capacity)} booked &middot; ${s.type === 'open' && !s.lockedType ? s.options.map((o) => `${esc(o.label)} ${esc(o.priceLabel)}`).join(' / ') : esc(s.priceLabel)}${s.priceOverrideCents != null ? ' (override)' : ''} &middot; ${esc(s.location)}${s.notes ? ` &middot; ${esc(s.notes)}` : ''}</p>
+                <p class="row-detail mt-1">${slotDetail(s)}</p>
               </div>
-              <div>
-                ${s.status === 'open'
-                  ? `<button type="button" class="link-btn text-sm" data-cancel-slot="${esc(s.id)}">Cancel</button>`
-                  : `<button type="button" class="link-btn text-sm" data-reopen-slot="${esc(s.id)}">Reopen</button>`}
+              <div class="flex flex-col items-end gap-1">
+                ${s.status === 'open' && !s.booked ? `<button type="button" class="link-btn" data-block-slot="${esc(s.id)}">Mark booked</button>` : ''}
+                ${s.status === 'blocked' ? `<button type="button" class="link-btn" data-reopen-slot="${esc(s.id)}">Make free</button>` : ''}
+                ${s.status === 'cancelled' ? `<button type="button" class="link-btn" data-reopen-slot="${esc(s.id)}">Reopen</button>` : ''}
+                ${s.status !== 'cancelled' && !s.bookedBy ? `<button type="button" class="link-btn" data-cancel-slot="${esc(s.id)}">Remove</button>` : ''}
               </div>
             </div>`).join('')}
           </div>
@@ -432,11 +468,15 @@ import BaseLayout from '../layouts/BaseLayout.astro'
       const reopen = e.target.closest('[data-reopen-slot]')
       if (cancel) {
         const s = state.slots.find((x) => x.id === cancel.dataset.cancelSlot)
-        if (!confirm(`Cancel ${s.coachName} ${s.dateLabel} ${s.startLabel}? ${s.taken ? `${s.taken} booked place(s) will need a refund in Stripe.` : ''}`)) return
-        try { await api('cancelSlot', { slotId: s.id }); flash('Slot cancelled.'); await loadSlots() } catch (error) { flash(error.message) }
+        if (!confirm(`Remove Coach ${s.coachName}, ${s.dateLabel} ${s.startLabel}? Parents will no longer see it.`)) return
+        try { await api('cancelSlot', { slotId: s.id }); flash('Removed.'); await loadSlots() } catch (error) { flash(error.message) }
+      }
+      const block = e.target.closest('[data-block-slot]')
+      if (block) {
+        try { await api('blockSlot', { slotId: block.dataset.blockSlot }); flash('Marked as booked.'); await loadSlots() } catch (error) { flash(error.message) }
       }
       if (reopen) {
-        try { await api('reopenSlot', { slotId: reopen.dataset.reopenSlot }); flash('Slot reopened.'); await loadSlots() } catch (error) { flash(error.message) }
+        try { await api('reopenSlot', { slotId: reopen.dataset.reopenSlot }); flash('Now free to book.'); await loadSlots() } catch (error) { flash(error.message) }
       }
     })
 
@@ -455,6 +495,16 @@ import BaseLayout from '../layouts/BaseLayout.astro'
       const f = $('b-filter').value
       return state.bookings.filter((b) => f === 'all' || b.status === f)
     }
+    function deliveryCell(b) {
+      if (!b.effects) return ''
+      const names = { sheet: 'Sheet', email: 'Email', adminAlert: 'Alert' }
+      const mark = (k) => {
+        const st = b.effectDetail?.[k]?.status || 'pending'
+        const cls = st === 'done' ? 'ok' : st === 'uncertain' ? 'warn' : 'bad'
+        return `<span class="dlv dlv-${cls}" title="${esc(st)}">${names[k]} ${st === 'done' ? 'sent' : esc(st)}</span>`
+      }
+      return `<div class="mt-1 flex flex-wrap gap-1">${['sheet', 'email', 'adminAlert'].map(mark).join('')}</div>`
+    }
     function renderBookings() {
       const rows = filteredBookings()
       if (!rows.length) { $('bookings-list').innerHTML = '<p class="text-white/60">Nothing here.</p>'; return }
@@ -468,8 +518,8 @@ import BaseLayout from '../layouts/BaseLayout.astro'
               <td>${esc(b.parentName)}</td>
               <td><a class="link-btn" href="mailto:${esc(b.email)}">${esc(b.email)}</a><br><a class="link-btn" href="tel:${esc(b.mobile)}">${esc(b.mobile)}</a></td>
               <td>A$${(b.priceCents / 100).toFixed(2)}<br><span class="text-white/60">${b.paidAt ? new Date(b.paidAt).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : ''}</span></td>
-              <td>${esc(b.status)}${b.needsAttention ? `<br><span class="badge badge-warn">${esc(b.needsAttention)}</span>` : ''}</td>
-              <td class="whitespace-nowrap">${b.stripeUrl ? `<a class="link-btn" href="${esc(b.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a><br>` : ''}${b.status === 'paid' || b.status === 'held' ? `<button type="button" class="link-btn" data-cancel-booking="${esc(b.id)}">Cancel</button>` : ''}</td>
+              <td>${esc(b.status)}${b.needsAttention ? `<br><span class="badge badge-warn">${esc(b.needsAttention)}</span>` : ''}${deliveryCell(b)}</td>
+              <td class="whitespace-nowrap">${b.stripeUrl ? `<a class="link-btn" href="${esc(b.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a><br>` : ''}${b.status === 'paid' || b.status === 'held' ? `<button type="button" class="link-btn" data-cancel-booking="${esc(b.id)}">Cancel</button>` : ''}${b.effects && (b.effects.failed.length || b.effects.pending.length) ? `<br><button type="button" class="link-btn" data-repair-booking="${esc(b.id)}">Repair</button>` : ''}</td>
             </tr>`).join('')}
           </tbody>
         </table>`
@@ -478,13 +528,25 @@ import BaseLayout from '../layouts/BaseLayout.astro'
       const button = e.target.closest('[data-cancel-booking]')
       if (!button) return
       const b = state.bookings.find((x) => x.id === button.dataset.cancelBooking)
-      if (!confirm(`Cancel booking for ${b.players.map((p) => p.name).join(', ')}? ${b.status === 'paid' ? 'You will need to refund it in Stripe.' : ''}`)) return
+      let policy = ''
+      if (b.status === 'paid') {
+        try {
+          const p = (await api('refundPreview', { bookingId: b.id })).refund
+          policy = `\n\nPolicy: ${p.hoursBefore >= 24 ? 'more' : 'less'} than 24 hours before the session, so refund ${p.percent}%: ${p.label} of ${p.paidLabel}. You refund it in Stripe.`
+        } catch {}
+      }
+      if (!confirm(`Cancel booking for ${b.players.map((p) => p.name).join(', ')}?${policy}`)) return
       try {
         const data = await api('cancelBooking', { bookingId: b.id })
-        flash(data.refundDue ? 'Cancelled. Refund it in Stripe.' : 'Cancelled.')
+        flash(data.refundDue && data.refund ? `Cancelled. Refund ${data.refund.label} (${data.refund.percent}%) in Stripe.` : 'Cancelled.')
         if (data.refundDue && data.stripeUrl) window.open(data.stripeUrl, '_blank', 'noopener')
         await loadBookings()
       } catch (error) { flash(error.message) }
+    })
+    document.addEventListener('click', async (e) => {
+      const button = e.target.closest('[data-repair-booking]')
+      if (!button) return
+      try { await api('repairBooking', { bookingId: button.dataset.repairBooking }); flash('Repair run.'); await loadBookings() } catch (error) { flash(error.message) }
     })
     $('b-csv').addEventListener('click', () => {
       const rows = filteredBookings()

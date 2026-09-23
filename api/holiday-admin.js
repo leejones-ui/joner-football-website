@@ -4,7 +4,7 @@ import { rateLimit } from './_security.js'
 import {
   requireAdmin, getConfig, saveConfig, listSlots, getSlot, upsertSlot, cancelSlot, reopenSlot, setSlotStatus,
   slotOwners, publicSlot, listBookings, getBooking, saveBooking, releaseSlot, clean, sydneyIso, validateSlotInput,
-  siteUrl, stripeFetch,
+  siteUrl, stripeFetch, refundFor, formatAud,
 } from './_holiday-store.js'
 import { repairBooking, effectsSummary } from './_holiday-finalise.js'
 import { HOLIDAY_SHEET, HOLIDAY_HEADERS, holidaySheetId, appendHolidayCancellationRow } from './_holiday-email.js'
@@ -16,7 +16,16 @@ function fail(res, status, error, extra = {}) { return res.status(status).json({
 async function slotsWithCounts(config) {
   const slots = await listSlots({ includeCancelled: true })
   const owners = await slotOwners(slots.map((s) => s.id))
-  return slots.map((slot) => ({ ...publicSlot(slot, config, owners[slot.id]), priceOverrideCents: slot.priceCents }))
+  const ownerIds = [...new Set(Object.values(owners).map((o) => o.ownerId).filter(Boolean))]
+  const ownerBookings = Object.fromEntries((await Promise.all(ownerIds.map((id) => getBooking(id)))).filter(Boolean).map((b) => [b.id, b]))
+  return slots.map((slot) => {
+    const owner = ownerBookings[owners[slot.id]?.ownerId]
+    return {
+      ...publicSlot(slot, config, owners[slot.id]),
+      priceOverrideCents: slot.priceCents,
+      bookedBy: owner ? { id: owner.id, status: owner.status, players: (owner.players || []).map((p) => p.name), parentName: owner.parentName, typeLabel: owner.type } : null,
+    }
+  })
 }
 
 function adminBooking(booking, slotsById, config) {
@@ -137,6 +146,13 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, slot: publicSlot(slot, config) })
       }
 
+      case 'refundPreview': {
+        const booking = await getBooking(clean(body.bookingId, 60))
+        if (!booking) return fail(res, 404, 'Booking not found.')
+        const refund = refundFor(booking, await getSlot(booking.slotId))
+        return res.status(200).json({ success: true, refund: { ...refund, label: formatAud(refund.cents), paidLabel: formatAud(refund.paidCents) } })
+      }
+
       case 'repairBooking': {
         const result = await repairBooking(clean(body.bookingId, 60))
         if (!result.ok) return fail(res, 400, 'Only paid bookings can be repaired.')
@@ -156,7 +172,9 @@ export default async function handler(req, res) {
         if (booking.status === 'cancelled') return res.status(200).json({ success: true, booking, changed: false })
         await releaseSlot(booking.slotId, booking.id)
         const wasPaid = booking.status === 'paid'
-        const cancelled = { ...booking, status: 'cancelled', cancelledAt: new Date().toISOString(), cancelledBy: 'admin', refundDue: wasPaid }
+        const policySlot = await getSlot(booking.slotId)
+        const refund = wasPaid ? refundFor(booking, policySlot) : null
+        const cancelled = { ...booking, status: 'cancelled', cancelledAt: new Date().toISOString(), cancelledBy: 'admin', refundDue: wasPaid, refund }
         await saveBooking(cancelled)
         if (wasPaid) {
           const slot = await getSlot(booking.slotId)
@@ -167,6 +185,7 @@ export default async function handler(req, res) {
           success: true,
           changed: true,
           refundDue: wasPaid,
+          refund: refund ? { ...refund, label: formatAud(refund.cents), paidLabel: formatAud(refund.paidCents) } : null,
           stripeUrl: booking.stripePaymentIntentId ? `https://dashboard.stripe.com/payments/${booking.stripePaymentIntentId}` : '',
         })
       }

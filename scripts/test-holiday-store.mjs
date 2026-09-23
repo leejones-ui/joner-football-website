@@ -4,7 +4,7 @@ import {
   sydneyIso, sydneyOffset, addMinutesIso, sydneyTimeLabel, sydneyDateLabel,
   signAccessCookie, verifyAccessCookie, passwordMatches,
   normaliseConfig, resolvePriceCents, validateSlotInput, capacityForType,
-  HOLD_SCRIPT, formatAud, publicSlot, maxPlayersForType, slotOptions,
+  HOLD_SCRIPT, formatAud, publicSlot, maxPlayersForType, slotOptions, refundFor,
 } from '../api/_holiday-store.js'
 
 let passed = 0
@@ -110,6 +110,17 @@ test('a booking owns the whole hour whatever type it picks', () => {
   assert.equal(maxPlayersForType(slot, 'shared'), 2)
   assert.equal(maxPlayersForType(slot, 'group'), 6)
   assert.equal(slotOptions({ ...slot, type: 'one' }, config).length, 1)
+})
+
+test('cancellation policy: full refund at 24 hours or more, half inside 24', () => {
+  const slot = { startsAt: '2026-10-01T10:00:00+10:00' }
+  const booking = { amountPaidCents: 24000 }
+  const start = new Date(slot.startsAt).getTime()
+  assert.deepEqual(refundFor(booking, slot, start - 48 * 3600_000).percent, 100)
+  assert.equal(refundFor(booking, slot, start - 24 * 3600_000).percent, 100, 'exactly 24 hours counts as on time')
+  assert.equal(refundFor(booking, slot, start - 23.9 * 3600_000).percent, 50)
+  assert.equal(refundFor(booking, slot, start - 23.9 * 3600_000).cents, 12000)
+  assert.equal(refundFor(booking, slot, start + 3600_000).percent, 50, 'after the start is still inside 24 hours')
 })
 
 console.log(`\n${passed} holiday store checks passed`)

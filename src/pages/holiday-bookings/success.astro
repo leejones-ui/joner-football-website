@@ -26,7 +26,8 @@ const description = 'Your Joner Football school holiday session is booked.'
             <a id="calendar" href="#" class="btn-red text-center" download="joner-football-session.ics">Add To Calendar</a>
             <a href="/holiday-bookings/" class="btn-outline text-center">Book Another Session</a>
           </div>
-          <p class="text-white/60 text-sm mt-6">A confirmation email is on its way. If it is not there in a few minutes, look in junk or spam, then email <a class="underline decoration-joner-red underline-offset-4 text-white" href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a>.</p>
+          <p class="text-white text-sm mt-6"><strong>Cancellation policy:</strong> cancel 24 hours or more before your session for a full refund. Cancellations within 24 hours of the session are refunded 50%.</p>
+          <p class="text-white/85 text-sm mt-3">A confirmation email is on its way. If it is not there in a few minutes, look in junk or spam, then email <a class="underline decoration-joner-red underline-offset-4 text-white" href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a>.</p>
         </div>
         <div id="help" hidden class="rounded-2xl border border-white/10 bg-white/[0.04] p-6 md:p-8 text-center">
           <p class="text-white/80 leading-relaxed mb-5">If you paid and this page does not update, do not pay again. Email <a class="underline decoration-joner-red underline-offset-4 text-white" href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a> with your booking reference and we will sort it.</p>
@@ -84,7 +85,7 @@ const description = 'Your Joner Football school holiday session is booked.'
         ['Players', b.players.map((p) => p.name).join(', ')],
         ['Paid', b.priceLabel],
         ['Reference', b.id],
-      ].map(([k, v]) => `<dt class="text-white/60 uppercase tracking-wider text-xs font-heading pt-1">${esc(k)}</dt><dd class="font-semibold">${esc(v)}</dd>`).join('')
+      ].map(([k, v]) => `<dt class="text-white/85 uppercase tracking-wider text-xs font-heading pt-1">${esc(k)}</dt><dd class="font-semibold">${esc(v)}</dd>`).join('')
       const ics = calendarLink(b)
       if (ics) $('calendar').href = ics; else $('calendar').hidden = true
       $('card').hidden = false
