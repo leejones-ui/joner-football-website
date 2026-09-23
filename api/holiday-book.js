@@ -8,7 +8,7 @@ import {
   requireHolidayAccess, getConfig, getSlot, getBooking, coachById, resolvePriceCents,
   holdSlot, releaseSlot, saveBooking, indexBooking, newId, clean, siteUrl, stripeFetch,
   sydneyDateLabel, sydneyTimeLabel, TYPE_LABELS, SESSION_TYPES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES,
-  maxPlayersForType, expireCheckoutSession, extendHold, RESERVE_MINUTES,
+  maxPlayersForType, minPlayersForType, expireCheckoutSession, extendHold, RESERVE_MINUTES,
 } from './_holiday-store.js'
 import crypto from 'node:crypto'
 
@@ -118,9 +118,13 @@ export default async function handler(req, res) {
     return fail(res, 400, 'Choose 1 to 1, shared or group.')
   }
   const maxPlayers = maxPlayersForType(slot, type)
+  const minPlayers = minPlayersForType(slot, type)
 
   const seats = Number(body.seats || 1)
-  if (!Number.isInteger(seats) || seats < 1 || seats > maxPlayers) return fail(res, 400, `A ${TYPE_LABELS[type]} session is for up to ${maxPlayers} player${maxPlayers === 1 ? '' : 's'}.`)
+  if (!Number.isInteger(seats) || seats > maxPlayers) return fail(res, 400, `A ${TYPE_LABELS[type]} session is for up to ${maxPlayers} player${maxPlayers === 1 ? '' : 's'}.`)
+  if (seats < minPlayers) return fail(res, 400, minPlayers === maxPlayers
+    ? `This group session is for exactly ${minPlayers} players. Add all ${minPlayers} to book it.`
+    : `This group session needs at least ${minPlayers} players.`)
   const playersCheck = validatePlayers(body.players, seats)
   if (playersCheck.error) return fail(res, 400, playersCheck.error)
 

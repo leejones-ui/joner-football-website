@@ -406,7 +406,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
     function chosen() {
       const slot = state.slot
       const opt = slot.options.find((o) => o.type === state.sessionType) || slot.options[0]
-      return { type: opt.type, label: opt.label, maxPlayers: opt.maxPlayers, priceCents: opt.priceCents, priceLabel: opt.priceLabel }
+      return { type: opt.type, label: opt.label, minPlayers: opt.minPlayers || 1, maxPlayers: opt.maxPlayers, priceCents: opt.priceCents, priceLabel: opt.priceLabel }
     }
     function renderTypeOptions() {
       const slot = state.slot
@@ -425,7 +425,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
     document.addEventListener('change', (e) => {
       if (e.target.name !== 'sessionType') return
       state.sessionType = e.target.value
-      state.seats = 1
+      state.seats = chosen().minPlayers
       renderTypeOptions()
       renderSeats()
     })
@@ -433,8 +433,8 @@ const description = 'Book school holiday coaching sessions with Joner Football c
     function openSheet(slot) {
       const coach = state.data.coaches.find((c) => c.id === slot.coachId)
       state.slot = slot
-      state.seats = 1
       state.sessionType = slot.options[0].type
+      state.seats = slot.options[0].minPlayers || 1
       $('sheet-title').textContent = `${slot.dateLabel}, ${slot.startLabel} to ${slot.endLabel}`
       $('sheet-subtitle').textContent = `${coach ? coachLabel(coach) : slot.coachName} at ${slot.location}. ${slot.durationMin} minutes.`
       $('book-status').textContent = ''
@@ -461,12 +461,16 @@ const description = 'Book school holiday coaching sessions with Joner Football c
     function renderSeats() {
       const pick = chosen()
       const max = Math.max(1, pick.maxPlayers)
+      const min = Math.min(max, Math.max(1, pick.minPlayers))
       if (state.seats > max) state.seats = max
+      if (state.seats < min) state.seats = min
       $('seats-block').hidden = max <= 1
       $('seats-value').textContent = String(state.seats)
-      $('seats-minus').disabled = state.seats <= 1
+      $('seats-minus').disabled = state.seats <= min
       $('seats-plus').disabled = state.seats >= max
-      $('seats-hint').textContent = max > 1 ? `Up to ${max} players from your family or friends.` : ''
+      $('seats-hint').textContent = min === max && min > 1 ? `This group is for ${min} players. Add all ${min} to book.`
+        : min > 1 ? `${min} to ${max} players.`
+        : max > 1 ? `Up to ${max} players from your family or friends.` : ''
       const existing = [...$('players').querySelectorAll('[data-player]')].map((row) => ({
         name: row.querySelector('[name="playerName"]').value,
         age: row.querySelector('[name="playerAge"]').value,
@@ -485,7 +489,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       const total = pick.priceCents * state.seats / 100
       $('pay-button').textContent = `Pay A$${total % 1 === 0 ? total.toFixed(0) : total.toFixed(2)} with Stripe`
     }
-    $('seats-minus').addEventListener('click', () => { if (state.seats > 1) { state.seats -= 1; renderSeats() } })
+    $('seats-minus').addEventListener('click', () => { if (state.seats > chosen().minPlayers) { state.seats -= 1; renderSeats() } })
     $('seats-plus').addEventListener('click', () => { if (state.seats < chosen().maxPlayers) { state.seats += 1; renderSeats() } })
 
     $('book-form').addEventListener('submit', async (event) => {

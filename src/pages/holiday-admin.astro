@@ -67,6 +67,10 @@ import BaseLayout from '../layouts/BaseLayout.astro'
                 <label class="lbl" for="s-capacity">Max players</label>
                 <input id="s-capacity" type="number" min="1" max="20" value="6" class="inp" />
               </div>
+              <div>
+                <label class="lbl" for="s-min">Min players (group only)</label>
+                <input id="s-min" type="number" min="1" max="20" value="1" class="inp" />
+              </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
@@ -409,6 +413,7 @@ import BaseLayout from '../layouts/BaseLayout.astro'
         coachId: $('s-coach').value,
         type: $('s-type').value,
         capacity: Number($('s-capacity').value),
+        minPlayers: Number($('s-min').value) || 1,
         durationMin: Number($('s-duration').value),
         priceCents: price === '' ? null : Math.round(Number(price) * 100),
         location: $('s-location').value,

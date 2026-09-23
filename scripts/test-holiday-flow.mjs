@@ -185,6 +185,20 @@ await test('players must be 7 or older', async () => {
   assert.equal(seven.status, 200, 'a 7 year old can book')
 })
 
+await test('a group of 4 needs all 4 players', async () => {
+  const made = await adm('bulkAddSlots', { template: { coachId: 'dean', type: 'group', capacity: 4, minPlayers: 4, durationMin: 60 }, dates: ['2026-11-09'], times: ['17:00'] })
+  assert.equal(made.created, 1)
+  const slot = (await slots()).find((s) => s.date === '2026-11-09')
+  assert.deepEqual(slot.options.map((o) => [o.type, o.minPlayers, o.maxPlayers]), [['group', 4, 4]], 'group only, 4 exactly')
+  const three = await paced(() => book(slot.id, 'group', [1, 2, 3].map((i) => ({ name: `G${i} Player`, age: 9 }))))
+  assert.equal(three.status, 400)
+  assert.match(three.body.error, /exactly 4 players/)
+  const one = await paced(() => book(slot.id, 'one', KID))
+  assert.equal(one.status, 400, 'no 1 to 1 on a group slot')
+  const four = await paced(() => book(slot.id, 'group', [1, 2, 3, 4].map((i) => ({ name: `G${i} Player`, age: 9 }))))
+  assert.equal(four.status, 200)
+})
+
 await test('blocked hours show as booked and refuse bookings', async () => {
   const id = take()
   const blocked = await adm('blockSlot', { slotId: id })

@@ -277,6 +277,7 @@ export function validateSlotInput(input, config) {
       priceCents,
       location: clean(input.location, 120) || config.defaultLocation,
       notes: clean(input.notes, 300),
+      minPlayers: minPlayersFor(type, input.minPlayers, capacityForType(type, input.capacity)),
     },
   }
 }
@@ -318,7 +319,7 @@ export async function upsertSlot(input, config) {
 
 export async function setSlotField(slotId, field, value) {
   const slot = await getSlot(slotId)
-  if (!slot || !['location', 'notes'].includes(field)) return null
+  if (!slot || !['location', 'notes', 'minPlayers'].includes(field)) return null
   slot[field] = value
   slot.updatedAt = new Date().toISOString()
   await kvCommand(['HSET', keys.slots(), slot.id, JSON.stringify(slot)])
@@ -581,11 +582,25 @@ export function maxPlayersForType(slot, type) {
   return Math.max(3, Number(slot.capacity) || GROUP_CAPACITY_DEFAULT)
 }
 
+// The fewest players a booking must bring. Only a fixed group slot can
+// demand more than one (Lee's evening groups need all 4).
+export function minPlayersFor(type, requested, capacity) {
+  if (type !== 'group') return 1
+  const n = Number(requested)
+  return Number.isInteger(n) && n >= 1 ? Math.min(n, capacity) : 1
+}
+
+export function minPlayersForType(slot, type) {
+  if (slot.type !== 'group' || type !== 'group') return 1
+  return Math.min(Math.max(1, Number(slot.minPlayers) || 1), maxPlayersForType(slot, type))
+}
+
 export function slotOptions(slot, config) {
   const types = slot.type === 'open' ? SESSION_TYPES : [slot.type]
   return types.map((type) => ({
     type,
     label: TYPE_LABELS[type],
+    minPlayers: minPlayersForType(slot, type),
     maxPlayers: maxPlayersForType(slot, type),
     priceCents: resolvePriceCents({ ...slot, type }, config),
     priceLabel: formatAud(resolvePriceCents({ ...slot, type }, config)),

@@ -180,6 +180,16 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, changed })
       }
 
+      case 'setMinPlayers': {
+        const slot = await getSlot(clean(body.slotId, 60))
+        if (!slot) return fail(res, 404, 'Slot not found.')
+        if (slot.type !== 'group') return fail(res, 400, 'Only a group slot can require more than one player.')
+        const n = Number(body.minPlayers)
+        if (!Number.isInteger(n) || n < 1 || n > slot.capacity) return fail(res, 400, `Minimum must be between 1 and ${slot.capacity}.`)
+        const updated = await setSlotField(slot.id, 'minPlayers', n)
+        return res.status(200).json({ success: true, slot: publicSlot(updated, config) })
+      }
+
       case 'rebuildRoster': {
         const result = await rebuildRoster()
         return res.status(200).json({ success: true, ...result })

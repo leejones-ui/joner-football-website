@@ -4,7 +4,7 @@ import {
   sydneyIso, sydneyOffset, addMinutesIso, sydneyTimeLabel, sydneyDateLabel,
   signAccessCookie, verifyAccessCookie, passwordMatches,
   normaliseConfig, resolvePriceCents, validateSlotInput, capacityForType,
-  HOLD_SCRIPT, formatAud, publicSlot, maxPlayersForType, slotOptions, refundFor,
+  HOLD_SCRIPT, formatAud, publicSlot, maxPlayersForType, minPlayersForType, slotOptions, refundFor,
 } from '../api/_holiday-store.js'
 
 let passed = 0
@@ -121,6 +121,18 @@ test('cancellation policy: full refund at 24 hours or more, half inside 24', () 
   assert.equal(refundFor(booking, slot, start - 23.9 * 3600_000).percent, 50)
   assert.equal(refundFor(booking, slot, start - 23.9 * 3600_000).cents, 12000)
   assert.equal(refundFor(booking, slot, start + 3600_000).percent, 50, 'after the start is still inside 24 hours')
+})
+
+test('a group of 4 can demand all 4 players; other types never demand more than 1', () => {
+  const config = normaliseConfig({})
+  const g = validateSlotInput({ coachId: 'lee', date: '2026-09-30', startTime: '17:00', durationMin: 60, type: 'group', capacity: 4, minPlayers: 4 }, config)
+  assert.equal(g.slot.minPlayers, 4)
+  assert.equal(minPlayersForType({ ...g.slot }, 'group'), 4)
+  assert.deepEqual(slotOptions(g.slot, config).map((o) => [o.type, o.minPlayers, o.maxPlayers]), [['group', 4, 4]])
+  const open = validateSlotInput({ coachId: 'dean', date: '2026-09-28', startTime: '10:00', durationMin: 60, type: 'open', minPlayers: 4 }, config)
+  assert.equal(open.slot.minPlayers, 1, 'an open slot ignores a minimum')
+  const tooMany = validateSlotInput({ coachId: 'lee', date: '2026-09-30', startTime: '17:00', durationMin: 60, type: 'group', capacity: 4, minPlayers: 9 }, config)
+  assert.equal(tooMany.slot.minPlayers, 4, 'minimum never exceeds the group size')
 })
 
 console.log(`\n${passed} holiday store checks passed`)
