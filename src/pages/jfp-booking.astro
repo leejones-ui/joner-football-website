@@ -1,0 +1,453 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+const title = 'JFP Term Booking | Joner Football'
+const description = 'Book a place in a Joner Football Performance group for the term.'
+---
+
+<BaseLayout title={title} description={description} canonical="https://jonerfootball.com/jfp-booking/" noindex hideMobileAppCta>
+  <main class="bg-joner-black text-white min-h-screen" id="jfp">
+
+    <section id="gate" hidden class="relative overflow-hidden border-b border-white/10 min-h-[70vh] flex items-center">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(232,0,13,0.28),transparent_34%),linear-gradient(135deg,#000_0%,#111_58%,#050505_100%)]"></div>
+      <div class="relative w-full max-w-xl mx-auto px-4 sm:px-6 py-16 md:py-24 text-center">
+        <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-5">Joner Football Performance</p>
+        <h1 class="font-heading uppercase text-5xl md:text-7xl leading-none mb-5">Book Your Term.</h1>
+        <p class="text-white/90 text-base md:text-lg mb-8">Enter the password from your Joner Football message.</p>
+        <form id="gate-form" class="flex flex-col gap-3 text-left" novalidate>
+          <label for="gate-password" class="lbl">Password</label>
+          <input id="gate-password" type="password" autocomplete="off" class="inp" />
+          <button type="submit" class="btn-red w-full min-h-[48px] mt-2">Enter</button>
+          <p id="gate-status" class="text-sm text-white/90 min-h-[1.25rem]" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <section id="notice-only" hidden class="min-h-[60vh] flex items-center">
+      <div class="max-w-xl mx-auto px-4 text-center">
+        <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-4">Joner Football Performance</p>
+        <h1 id="notice-heading" class="font-heading uppercase text-4xl md:text-6xl leading-none mb-4">One Moment.</h1>
+        <p id="notice-text" class="text-white/90 text-lg"></p>
+      </div>
+    </section>
+
+    <section id="app" hidden>
+      <div class="relative overflow-hidden border-b border-white/10">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(232,0,13,0.25),transparent_40%),linear-gradient(135deg,#000_0%,#111_58%,#050505_100%)]"></div>
+        <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-7 md:pt-14">
+          <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-3">Joner Football Performance</p>
+          <h1 id="term-heading" class="font-heading uppercase text-4xl md:text-6xl leading-none mb-3">Term Booking</h1>
+          <p id="term-lead" class="text-white/90 text-base md:text-lg"></p>
+        </div>
+      </div>
+
+      <div id="notice" class="hidden max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-4"><div class="rounded-xl border border-joner-red/40 bg-joner-red/10 px-4 py-3 text-sm" role="status"></div></div>
+
+      <div class="sticky top-0 z-30 bg-joner-black/95 backdrop-blur border-b border-white/10">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col gap-2">
+          <div class="flex items-center gap-2 overflow-x-auto no-scrollbar" id="day-chips" role="group" aria-label="Days"></div>
+          <div class="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <div id="loc-chips" class="flex gap-2" role="group" aria-label="Locations"></div>
+            <span class="flex-1"></span>
+            <div class="view-toggle" role="group" aria-label="View">
+              <button type="button" data-view="list" aria-pressed="true">List</button>
+              <button type="button" data-view="week" aria-pressed="false">Week</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/85 mb-5">
+          <span class="flex items-center gap-2"><i class="dot bg-white"></i> Places available</span>
+          <span class="flex items-center gap-2"><i class="dot dot-apply"></i> Apply to join</span>
+          <span class="flex items-center gap-2"><i class="dot bg-white/15"></i> Full</span>
+        </div>
+        <div id="loading" class="space-y-3"><div class="h-24 rounded-2xl bg-white/5 animate-pulse"></div><div class="h-24 rounded-2xl bg-white/5 animate-pulse"></div></div>
+        <div id="empty" hidden class="panel text-center"><p class="font-heading uppercase text-2xl mb-2">Nothing Matches</p><p class="text-white/85">Try more days or all locations.</p></div>
+        <div id="error" hidden class="panel text-center"><p class="font-heading uppercase text-2xl mb-2">Could Not Load Groups</p><p id="error-text" class="text-white/85 mb-4"></p><button id="retry" type="button" class="btn-outline">Try Again</button></div>
+        <div id="list" class="space-y-8"></div>
+        <div id="week" hidden class="overflow-x-auto"><div id="week-grid" class="week-grid"></div></div>
+      </div>
+    </section>
+
+    <!-- Sheet -->
+    <div id="backdrop" hidden class="fixed inset-0 z-40 bg-black/70"></div>
+    <div id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title" class="fixed z-50 inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center">
+      <div class="bg-[#111] text-white border-t md:border border-white/15 rounded-t-3xl md:rounded-2xl w-full md:max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl">
+        <div class="sticky top-0 bg-[#111] border-b border-white/10 px-5 py-4 flex items-start justify-between gap-4 z-10">
+          <div>
+            <p id="sheet-eyebrow" class="font-heading uppercase tracking-[0.18em] text-joner-red text-xs mb-1">Book This Group</p>
+            <h2 id="sheet-title" class="font-heading uppercase text-2xl leading-none"></h2>
+            <p id="sheet-sub" class="text-white/90 text-sm mt-1"></p>
+            <p id="timer" class="timer mt-2" hidden></p>
+          </div>
+          <button id="sheet-close" type="button" class="text-white/80 hover:text-white text-2xl leading-none min-w-[44px] min-h-[44px]" aria-label="Close">&times;</button>
+        </div>
+
+        <!-- step 1: how many -->
+        <div id="step-count" class="px-5 py-5 space-y-5">
+          <div>
+            <p class="lbl">How many players?</p>
+            <div class="flex items-center gap-3">
+              <button type="button" id="count-minus" class="stepper" aria-label="Fewer">-</button>
+              <span id="count-value" class="font-heading text-3xl min-w-[2ch] text-center">1</span>
+              <button type="button" id="count-plus" class="stepper" aria-label="More">+</button>
+              <span id="count-hint" class="text-sm text-white/85"></span>
+            </div>
+          </div>
+          <div class="panel-sm"><p id="price-line" class="text-base"></p></div>
+          <p id="count-status" class="text-sm text-joner-red min-h-[1.25rem]" aria-live="polite"></p>
+          <button id="hold-button" type="button" class="btn-red w-full min-h-[52px]">Hold my place</button>
+          <p class="text-xs text-white/80 text-center">We hold the place for 10 minutes while you fill in your details.</p>
+        </div>
+
+        <!-- step 2: details -->
+        <form id="step-details" hidden class="px-5 py-5 space-y-5" novalidate>
+          <div id="players" class="space-y-3"></div>
+          <div id="club-row" hidden>
+            <label for="club" class="lbl">Current club and level</label>
+            <input id="club" type="text" class="inp" placeholder="e.g. Manly United, U12 Div 1" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><label for="parentName" class="lbl">Parent or guardian</label><input id="parentName" type="text" autocomplete="name" class="inp" /></div>
+            <div><label for="mobile" class="lbl">Mobile</label><input id="mobile" type="tel" autocomplete="tel" inputmode="tel" class="inp" /></div>
+          </div>
+          <div><label for="email" class="lbl">Email</label><input id="email" type="email" autocomplete="email" inputmode="email" class="inp" /></div>
+          <div><label for="notes" class="lbl"><span id="notes-label">Anything the coach should know?</span> <span class="text-white/70 normal-case tracking-normal">(optional)</span></label><textarea id="notes" rows="2" class="inp"></textarea></div>
+          <div id="terms-box" class="panel-sm">
+            <p class="font-heading uppercase tracking-wider text-sm mb-1">Before you pay</p>
+            <p class="text-sm text-white leading-relaxed">The term is paid in full at booking. Every player must complete the Joner Football waiver before their first session; we send the link straight after payment.</p>
+          </div>
+          <label id="agree-row" class="flex items-start gap-3 text-sm text-white">
+            <input id="agree" type="checkbox" class="mt-1 h-5 w-5 accent-[#E8000D]" />
+            <span>I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" class="underline decoration-joner-red underline-offset-4">terms</a> and will complete the waiver before the first session.</span>
+          </label>
+          <p id="details-status" class="text-sm text-joner-red min-h-[1.25rem]" aria-live="polite"></p>
+          <div class="sticky bottom-0 bg-[#111] pt-2 pb-1">
+            <button id="submit-button" type="submit" class="btn-red w-full min-h-[52px]">Pay with Stripe</button>
+            <p id="submit-hint" class="text-xs text-white/80 text-center mt-2">Secure payment by Stripe.</p>
+          </div>
+        </form>
+
+        <div id="step-done" hidden class="px-5 py-8 text-center">
+          <p class="font-heading uppercase text-3xl mb-3">Application Sent.</p>
+          <p class="text-white/90">Lee or Ligia will review it and email you. If approved you will get a link to pay and secure the place.</p>
+          <button type="button" id="done-close" class="btn-outline mt-6">Close</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style is:global>
+  #jfp .no-scrollbar::-webkit-scrollbar { display: none; }
+  #jfp .no-scrollbar { scrollbar-width: none; }
+  #jfp .lbl, #sheet .lbl { display:block; color:#fff; font-family:var(--font-heading); font-size:.85rem; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.45rem; }
+  #jfp .inp, #sheet .inp { width:100%; background:#1a1a1a; border:1px solid #3a3a3a; color:#fff; padding:.75rem .9rem; font-size:1rem; min-height:46px; font-family:var(--font-body); }
+  #jfp .inp:focus, #sheet .inp:focus { outline:none; border-color:#E8000D; }
+  #jfp .btn-red, #jfp .btn-outline, #sheet .btn-red, #sheet .btn-outline { text-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
+  #jfp .panel { border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04); border-radius:1rem; padding:2rem; }
+  #sheet .panel-sm { border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.05); border-radius:.75rem; padding:.9rem 1rem; }
+  #jfp .dot { display:inline-block; width:12px; height:12px; border-radius:3px; }
+  #jfp .dot-apply { border:2px solid #E8000D; }
+  #jfp .chip { white-space:nowrap; border:1px solid rgba(255,255,255,.3); padding:.5rem .9rem; font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.08em; font-size:.82rem; min-height:40px; color:#fff; }
+  #jfp .chip[aria-pressed="true"] { background:#fff; color:#0A0A0A; border-color:#fff; }
+  #jfp .view-toggle { display:flex; border:1px solid rgba(255,255,255,.3); }
+  #jfp .view-toggle button { padding:.5rem .9rem; font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.08em; font-size:.82rem; min-height:40px; color:#fff; }
+  #jfp .view-toggle button[aria-pressed="true"] { background:#E8000D; }
+  #jfp .day-head { display:flex; align-items:baseline; gap:.75rem; margin-bottom:.8rem; }
+  #jfp .day-name { font-family:var(--font-heading); text-transform:uppercase; font-size:1.6rem; line-height:1; background:#E8000D; color:#fff; padding:.35rem .6rem .25rem; }
+  #jfp .day-count { color:rgba(255,255,255,.85); font-size:.85rem; text-transform:uppercase; letter-spacing:.1em; }
+  #jfp .cards { display:grid; gap:.7rem; grid-template-columns:1fr; }
+  @media (min-width:700px) { #jfp .cards { grid-template-columns:repeat(2, minmax(0,1fr)); } }
+  @media (min-width:1050px) { #jfp .cards { grid-template-columns:repeat(3, minmax(0,1fr)); } }
+  #jfp .card { display:grid; grid-template-columns:auto 1fr; gap:.3rem 1rem; align-items:center; text-align:left; border-radius:1rem; padding:1rem 1.1rem; border:1px solid transparent; width:100%; }
+  #jfp .card .t { font-family:var(--font-heading); font-size:1.9rem; line-height:1; grid-row:span 2; }
+  #jfp .card .l { font-weight:700; }
+  #jfp .card .m { font-size:.85rem; }
+  #jfp .card .s { grid-column:1 / -1; font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.08em; font-size:.8rem; margin-top:.4rem; }
+  #jfp .card.open { background:#fff; color:#0A0A0A; }
+  #jfp .card.open .m { color:rgba(10,10,10,.75); }
+  #jfp .card.open .s { color:#E8000D; }
+  #jfp .card.apply { background:rgba(232,0,13,.08); border-color:#E8000D; color:#fff; }
+  #jfp .card.apply .m { color:rgba(255,255,255,.85); }
+  #jfp .card.apply .s { color:#ff6b73; }
+  #jfp .card.full { background:rgba(255,255,255,.07); color:rgba(255,255,255,.6); cursor:not-allowed; }
+  #jfp .card.full .t { text-decoration:line-through; }
+  #jfp .week-grid { display:grid; grid-template-columns:repeat(var(--cols), minmax(150px, 1fr)); gap:.6rem; min-width:calc(var(--cols) * 150px); }
+  #jfp .week-col h3 { font-family:var(--font-heading); text-transform:uppercase; font-size:1.1rem; background:#E8000D; padding:.35rem .6rem .25rem; margin-bottom:.5rem; }
+  #jfp .week-col .card { grid-template-columns:1fr; padding:.7rem .8rem; margin-bottom:.5rem; }
+  #jfp .week-col .card .t { font-size:1.35rem; grid-row:auto; }
+  #sheet .stepper { min-width:48px; min-height:48px; border:1px solid #666; font-size:1.4rem; color:#fff; }
+  #sheet .stepper:disabled { opacity:.35; }
+  #sheet .timer { display:inline-block; background:#ffb020; color:#0A0A0A; font-weight:700; font-size:.85rem; padding:.3rem .6rem; }
+</style>
+
+<script>
+  (function () {
+    const $ = (id) => document.getElementById(id)
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    const S = { data: null, days: [], location: 'all', view: 'list', group: null, count: 1, hold: null, timer: null, toStripe: false, busy: false }
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+    const rc = (a) => window.JonerRecaptcha?.getToken ? window.JonerRecaptcha.getToken(a) : Promise.resolve('')
+    const track = (n, d) => { try { window.JonerTracking?.trackEvent?.(n, { custom_data: d }) } catch {} }
+    const post = (body) => fetch('/api/jfp-book', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    function notice(t) { const b = $('notice'); if (!t) return b.classList.add('hidden'); b.firstElementChild.textContent = t; b.classList.remove('hidden') }
+    function remember() { try { sessionStorage.setItem('jfp_filters', JSON.stringify({ days: S.days, location: S.location, view: S.view })) } catch {} }
+    function recall() { try { Object.assign(S, JSON.parse(sessionStorage.getItem('jfp_filters') || '{}')) } catch {} }
+
+    // ----- approved application link: no password needed -----
+    async function handleApproved() {
+      const q = new URLSearchParams(location.search)
+      const id = q.get('approved'), token = q.get('token')
+      if (!id || !token) return false
+      $('notice-only').hidden = false
+      $('notice-heading').textContent = 'Taking You To Payment.'
+      $('notice-text').textContent = 'One moment while we open your secure Stripe checkout.'
+      try {
+        const res = await post({ action: 'payApproved', applicationId: id, token })
+        const d = await res.json().catch(() => ({}))
+        if (res.ok && d.url) { window.location.href = d.url; return true }
+        $('notice-heading').textContent = d.code === 'already_paid' ? 'Already Paid.' : 'Link Not Valid.'
+        $('notice-text').textContent = d.error || 'Contact Joner Football and we will sort it out.'
+      } catch { $('notice-text').textContent = 'Could not open the payment. Try again, or contact Joner Football.' }
+      return true
+    }
+
+    // ----- gate -----
+    async function hasAccess() { try { return (await (await fetch('/api/jfp-access', { credentials: 'same-origin' })).json()).ok === true } catch { return false } }
+    $('gate-form').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const st = $('gate-status'), btn = e.target.querySelector('button')
+      st.textContent = 'Checking'; btn.disabled = true
+      try {
+        const res = await fetch('/api/jfp-access', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: $('gate-password').value, recaptchaToken: await rc('jfp_gate') }) })
+        const d = await res.json()
+        if (!res.ok || !d.ok) { st.textContent = d.error || 'That password is not right.'; return }
+        st.textContent = ''; showApp()
+      } catch { st.textContent = 'Could not check the password. Try again.' } finally { btn.disabled = false }
+    })
+
+    function showApp() { $('gate').hidden = true; $('app').hidden = false; cancelledReturn().then(() => load()) }
+
+    async function cancelledReturn() {
+      const q = new URLSearchParams(location.search)
+      if (q.get('payment') !== 'cancelled') return
+      history.replaceState({}, '', location.pathname)
+      if (q.get('booking_id') && q.get('release')) await post({ action: 'release', bookingId: q.get('booking_id'), releaseToken: q.get('release') }).catch(() => {})
+      notice('Payment cancelled. Nothing was charged and the place was released.')
+    }
+
+    // ----- data -----
+    async function load(quiet) {
+      if (!quiet) { $('loading').hidden = false; $('error').hidden = true }
+      try {
+        const res = await fetch('/api/jfp-groups', { credentials: 'same-origin' })
+        if (res.status === 401) { $('app').hidden = true; $('gate').hidden = false; return }
+        const d = await res.json()
+        if (!res.ok || !d.success) throw new Error(d.error || 'Could not load groups.')
+        S.data = d
+        $('term-heading').textContent = d.term
+        $('term-lead').textContent = `10 weeks from ${d.termStart}. ${d.priceLabel} per player for the term. Pick your days, then a group.`
+        if (!S.days.length) S.days = DAYS.filter((day) => d.groups.some((g) => g.day === day))
+        renderFilters(); render()
+        $('error').hidden = true
+      } catch (err) {
+        if (!quiet) { $('error').hidden = false; $('error-text').textContent = err.message }
+      } finally { $('loading').hidden = true }
+    }
+    $('retry').addEventListener('click', () => load())
+    setInterval(() => { if (!$('app').hidden && $('sheet').hidden && !document.hidden) load(true) }, 30000)
+
+    function renderFilters() {
+      const days = DAYS.filter((day) => S.data.groups.some((g) => g.day === day))
+      const locs = [...new Set(S.data.groups.map((g) => g.location))].sort()
+      $('day-chips').innerHTML = days.map((day) => `<button type="button" class="chip" data-day="${esc(day)}" aria-pressed="${S.days.includes(day)}">${esc(day.slice(0, 3))}</button>`).join('')
+        + `<button type="button" class="chip" data-day="__all" aria-pressed="false">All days</button>`
+      $('loc-chips').innerHTML = [`<button type="button" class="chip" data-loc="all" aria-pressed="${S.location === 'all'}">All locations</button>`,
+        ...locs.map((l) => `<button type="button" class="chip" data-loc="${esc(l)}" aria-pressed="${S.location === l}">${esc(l)}</button>`)].join('')
+      document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)))
+    }
+    document.addEventListener('click', (e) => {
+      const d = e.target.closest('[data-day]'); const l = e.target.closest('[data-loc]'); const v = e.target.closest('[data-view]')
+      if (d) {
+        const all = DAYS.filter((day) => S.data.groups.some((g) => g.day === day))
+        if (d.dataset.day === '__all') S.days = all
+        else S.days = S.days.includes(d.dataset.day) ? S.days.filter((x) => x !== d.dataset.day) : [...S.days, d.dataset.day]
+        if (!S.days.length) S.days = [d.dataset.day === '__all' ? all[0] : d.dataset.day]
+      }
+      if (l) S.location = l.dataset.loc
+      if (v) S.view = v.dataset.view
+      if (d || l || v) { remember(); renderFilters(); render() }
+    })
+
+    function visible() {
+      return S.data.groups.filter((g) => S.days.includes(g.day) && (S.location === 'all' || g.location === S.location))
+        .sort((a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || a.sortTime.localeCompare(b.sortTime))
+    }
+    function state(g) { return g.mode === 'application' ? 'apply' : g.full ? 'full' : 'open' }
+    function status(g) {
+      if (g.mode === 'application') return 'Apply to join'
+      if (g.full) return 'Full'
+      return `${g.placesLeft} place${g.placesLeft === 1 ? '' : 's'} left`
+    }
+    function card(g) {
+      const s = state(g)
+      const inner = `<span class="t">${esc(g.time)}</span><span class="l">${esc(g.location)}</span><span class="m">${esc(g.coachName)}${g.coachName ? ' &middot; ' : ''}${esc(g.programme.replace(/ 10 weeks$/, ''))}</span><span class="s">${esc(status(g))}</span>`
+      return s === 'full' ? `<div class="card full" aria-disabled="true">${inner}</div>` : `<button type="button" class="card ${s}" data-group="${esc(g.id)}">${inner}</button>`
+    }
+    function render() {
+      const list = visible()
+      $('empty').hidden = list.length > 0
+      $('list').hidden = S.view !== 'list'; $('week').hidden = S.view !== 'week'
+      if (S.view === 'list') {
+        const byDay = DAYS.map((day) => [day, list.filter((g) => g.day === day)]).filter(([, gs]) => gs.length)
+        $('list').innerHTML = byDay.map(([day, gs]) => {
+          const free = gs.filter((g) => g.mode === 'direct' && !g.full).length
+          return `<section><div class="day-head"><h2 class="day-name">${esc(day)}</h2><span class="day-count">${free ? `${free} group${free === 1 ? '' : 's'} with places` : gs.some((g) => g.mode === 'application') ? 'Apply only' : 'All full'}</span></div><div class="cards">${gs.map(card).join('')}</div></section>`
+        }).join('')
+      } else {
+        const cols = S.days.filter((day) => list.some((g) => g.day === day))
+        $('week-grid').style.setProperty('--cols', String(Math.max(cols.length, 1)))
+        $('week-grid').innerHTML = cols.map((day) => `<div class="week-col"><h3>${esc(day.slice(0, 3))}</h3>${list.filter((g) => g.day === day).map(card).join('')}</div>`).join('')
+      }
+    }
+
+    // ----- sheet -----
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-group]')
+      if (!b) return
+      const g = S.data.groups.find((x) => x.id === b.dataset.group)
+      if (g) openSheet(g)
+    })
+    function openSheet(g) {
+      S.group = g; S.count = 1; S.hold = null
+      $('sheet-eyebrow').textContent = g.mode === 'application' ? 'Apply For This Group' : 'Book This Group'
+      $('sheet-title').textContent = `${g.day} ${g.time}`
+      $('sheet-sub').textContent = `${g.location}${g.coachName ? `, ${g.coachName}` : ''}. ${g.sessions} weeks, ${g.firstDate} to ${g.lastDate}.`
+      $('timer').hidden = true
+      $('step-count').hidden = g.mode === 'application'
+      $('step-details').hidden = g.mode !== 'application'
+      $('step-done').hidden = true
+      $('club-row').hidden = g.mode !== 'application'
+      $('terms-box').hidden = g.mode === 'application'
+      $('agree-row').hidden = g.mode === 'application'
+      $('notes-label').textContent = g.mode === 'application' ? 'Why is this group right for them?' : 'Anything the coach should know?'
+      $('submit-button').textContent = g.mode === 'application' ? 'Send application' : 'Pay with Stripe'
+      $('submit-hint').textContent = g.mode === 'application' ? 'No payment now. We will be in touch.' : 'Secure payment by Stripe.'
+      $('count-status').textContent = ''; $('details-status').textContent = ''
+      $('step-details').reset()
+      if (g.mode === 'application') { S.count = 1; renderPlayers(true) }
+      renderCount()
+      $('backdrop').hidden = false; $('sheet').hidden = false; document.body.style.overflow = 'hidden'
+    }
+    function closeSheet(keep) {
+      $('backdrop').hidden = true; $('sheet').hidden = true; document.body.style.overflow = ''
+      clearInterval(S.timer)
+      if (!keep) release(false)
+      S.group = null
+      setTimeout(() => load(true), 300)
+    }
+    $('sheet-close').addEventListener('click', () => closeSheet())
+    $('backdrop').addEventListener('click', () => closeSheet())
+    $('done-close').addEventListener('click', () => closeSheet(true))
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sheet').hidden) closeSheet() })
+
+    function maxCount() { const g = S.group; return g.mode === 'application' ? 3 : Math.min(3, Math.max(1, g.placesLeft)) }
+    function renderCount() {
+      const g = S.group, max = maxCount()
+      if (S.count > max) S.count = max
+      $('count-value').textContent = String(S.count)
+      $('count-minus').disabled = S.count <= 1
+      $('count-plus').disabled = S.count >= max
+      $('count-hint').textContent = max > 1 ? `Up to ${max}` : 'Last place'
+      const total = (g.priceCents * S.count) / 100
+      $('price-line').innerHTML = `<strong>${esc(g.priceLabel)}</strong> per player for the term. Total <strong>A$${total % 1 ? total.toFixed(2) : total.toFixed(0)}</strong>.`
+    }
+    $('count-minus').addEventListener('click', () => { if (S.count > 1) { S.count--; renderCount() } })
+    $('count-plus').addEventListener('click', () => { if (S.count < maxCount()) { S.count++; renderCount() } })
+
+    $('hold-button').addEventListener('click', async () => {
+      if (S.busy) return
+      S.busy = true; $('hold-button').disabled = true; $('count-status').textContent = ''
+      try {
+        const res = await post({ action: 'reserve', groupId: S.group.id, players: S.count, recaptchaToken: await rc('jfp_reserve') })
+        const d = await res.json().catch(() => ({}))
+        if (res.status === 401) { closeSheet(true); $('app').hidden = true; $('gate').hidden = false; return }
+        if (!res.ok) { $('count-status').textContent = d.error || 'Could not hold the place.'; if (d.code === 'full') load(true); return }
+        S.hold = { bookingId: d.bookingId, releaseToken: d.releaseToken, expiresAt: Date.parse(d.expiresAt) }
+        $('step-count').hidden = true; $('step-details').hidden = false
+        renderPlayers(false); startTimer()
+      } catch { $('count-status').textContent = 'Could not hold the place. Try again.' } finally { S.busy = false; $('hold-button').disabled = false }
+    })
+
+    function renderPlayers(apply) {
+      $('players').innerHTML = (apply ? `<div><p class="lbl">How many players?</p><div class="flex items-center gap-3 mb-2"><button type="button" class="stepper" id="app-minus">-</button><span id="app-count" class="font-heading text-3xl min-w-[2ch] text-center">${S.count}</span><button type="button" class="stepper" id="app-plus">+</button></div></div>` : '')
+        + Array.from({ length: S.count }, (_, i) => `<div class="grid grid-cols-[1fr_92px] gap-3" data-player>
+          <div><label class="lbl">Player ${S.count > 1 ? i + 1 : ''} full name</label><input name="pname" type="text" class="inp" /></div>
+          <div><label class="lbl">Age</label><input name="page" type="number" min="7" max="18" inputmode="numeric" class="inp" /></div></div>`).join('')
+      if (apply) {
+        $('app-minus').onclick = () => { if (S.count > 1) { S.count--; renderPlayers(true) } }
+        $('app-plus').onclick = () => { if (S.count < 3) { S.count++; renderPlayers(true) } }
+      }
+    }
+
+    function startTimer() {
+      clearInterval(S.timer)
+      const tick = () => {
+        if (!S.hold) return
+        const left = Math.max(0, S.hold.expiresAt - Date.now())
+        $('timer').hidden = false
+        $('timer').textContent = `Place held for you for ${Math.floor(left / 60000)}:${String(Math.floor((left % 60000) / 1000)).padStart(2, '0')}`
+        if (left <= 0) { clearInterval(S.timer); S.hold = null; closeSheet(true); notice('Your 10 minutes ran out, so the place was released. Tap the group again if it is still free.') }
+      }
+      tick(); S.timer = setInterval(tick, 1000)
+    }
+
+    function release(beacon) {
+      const h = S.hold; S.hold = null; clearInterval(S.timer)
+      if (!h) return
+      const body = JSON.stringify({ action: 'release', bookingId: h.bookingId, releaseToken: h.releaseToken })
+      if (beacon && navigator.sendBeacon) navigator.sendBeacon('/api/jfp-book', new Blob([body], { type: 'application/json' }))
+      else fetch('/api/jfp-book', { method: 'POST', credentials: 'same-origin', keepalive: true, headers: { 'content-type': 'application/json' }, body }).catch(() => {})
+    }
+    window.addEventListener('pagehide', () => { if (!S.toStripe) release(true) })
+
+    $('step-details').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      if (S.busy) return
+      const g = S.group, st = $('details-status')
+      const players = [...document.querySelectorAll('[data-player]')].map((r) => ({ name: r.querySelector('[name=pname]').value.trim(), age: Number(r.querySelector('[name=page]').value) }))
+      if (players.some((p) => p.name.length < 2)) { st.textContent = 'Enter each player\'s full name.'; return }
+      if (players.some((p) => !Number.isInteger(p.age) || p.age < 7 || p.age > 18)) { st.textContent = 'JFP is for players aged 7 to 18.'; return }
+      if (g.mode === 'direct' && !$('agree').checked) { st.textContent = 'Please accept the terms to continue.'; return }
+      S.busy = true; $('submit-button').disabled = true; st.classList.remove('text-joner-red'); st.textContent = g.mode === 'application' ? 'Sending' : 'Opening secure payment'
+      const common = { groupId: g.id, players, parentName: $('parentName').value.trim(), mobile: $('mobile').value.trim(), email: $('email').value.trim(), notes: $('notes').value.trim() }
+      try {
+        const body = g.mode === 'application'
+          ? { action: 'apply', ...common, playersCount: players.length, club: $('club').value.trim(), recaptchaToken: await rc('jfp_apply') }
+          : { ...common, bookingId: S.hold?.bookingId, releaseToken: S.hold?.releaseToken, agreementAccepted: true, recaptchaToken: await rc('jfp_book') }
+        const res = await post(body)
+        const d = await res.json().catch(() => ({}))
+        if (res.status === 401) { closeSheet(true); $('app').hidden = true; $('gate').hidden = false; return }
+        if (!res.ok) {
+          st.classList.add('text-joner-red'); st.textContent = d.error || 'Something went wrong. Try again.'
+          if (d.code === 'hold_lost') { S.hold = null; setTimeout(() => { closeSheet(true); notice(d.error) }, 1500) }
+          return
+        }
+        if (g.mode === 'application') { $('step-details').hidden = true; $('step-done').hidden = false; S.hold = null; return }
+        track('InitiateCheckout', { content_category: 'jfp_term', content_name: `${g.day} ${g.time}`, value: (g.priceCents * players.length) / 100, currency: 'AUD' })
+        S.toStripe = true; clearInterval(S.timer)
+        window.location.href = d.url
+      } catch { st.classList.add('text-joner-red'); st.textContent = 'Something went wrong. Nothing was charged. Try again.' }
+      finally { S.busy = false; $('submit-button').disabled = false }
+    })
+
+    // ----- boot -----
+    recall()
+    handleApproved().then(async (handled) => {
+      if (handled) return
+      if (await hasAccess()) showApp(); else { $('gate').hidden = false; setTimeout(() => $('gate-password').focus(), 50) }
+    })
+  })()
+</script>

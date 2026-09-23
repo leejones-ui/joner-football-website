@@ -1,0 +1,102 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="Booked | Joner Football Performance" description="Your JFP term place is booked." canonical="https://jonerfootball.com/jfp-booking/success/" noindex hideMobileAppCta>
+  <main class="bg-joner-black text-white min-h-screen" id="jfp-ok">
+    <section class="relative overflow-hidden border-b border-white/10">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(232,0,13,0.28),transparent_34%),linear-gradient(135deg,#000_0%,#111_58%,#050505_100%)]"></div>
+      <div class="relative max-w-3xl mx-auto px-4 sm:px-6 py-16 md:py-24 text-center">
+        <p id="eyebrow" class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-5">Confirming Payment</p>
+        <h1 id="heading" class="font-heading uppercase text-5xl md:text-7xl leading-none mb-6">One Moment.</h1>
+        <p id="lead" class="text-lg md:text-2xl text-white/90 max-w-2xl mx-auto">We are confirming your payment with Stripe.</p>
+      </div>
+    </section>
+    <section class="px-4 sm:px-6 py-12">
+      <div class="max-w-3xl mx-auto space-y-6">
+        <div id="waiver" hidden class="rounded-2xl border-2 border-joner-red bg-joner-red/10 p-6 md:p-8">
+          <p class="font-heading uppercase tracking-[0.18em] text-joner-red text-xs mb-2">Required before the first session</p>
+          <h2 class="font-heading uppercase text-3xl leading-none mb-3">Complete The Waiver.</h2>
+          <p class="text-white mb-5">Every player needs a signed waiver. It takes two minutes. We have also emailed you this link.</p>
+          <a id="waiver-link" href="#" target="_blank" rel="noopener noreferrer" class="btn-red">Complete the waiver</a>
+        </div>
+        <div id="card" hidden class="rounded-2xl border border-white/10 bg-white/[0.04] p-6 md:p-8">
+          <p class="font-heading uppercase tracking-[0.18em] text-joner-red text-xs mb-4">Your Booking</p>
+          <dl id="details" class="grid grid-cols-[120px_1fr] gap-y-3 gap-x-4 text-base md:text-lg"></dl>
+          <div class="mt-8 flex flex-col sm:flex-row gap-3">
+            <a id="calendar" href="#" class="btn-outline text-center" download="jfp-term.ics">Add all 10 to calendar</a>
+          </div>
+        </div>
+        <div id="help" hidden class="rounded-2xl border border-white/10 bg-white/[0.04] p-6 md:p-8 text-center">
+          <p class="text-white/90 mb-5">If you paid and this page does not update, do not pay again. Email <a class="underline decoration-joner-red underline-offset-4 text-white" href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a> and we will sort it.</p>
+          <a href="/jfp-booking/" class="btn-outline">Back to groups</a>
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<style is:global>
+  #jfp-ok .btn-red, #jfp-ok .btn-outline { text-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
+</style>
+
+<script>
+  (function () {
+    const $ = (id) => document.getElementById(id)
+    const q = new URLSearchParams(location.search)
+    const sid = q.get('session_id') || ''
+    let tries = 0
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+    const hero = (e, h, l) => { $('eyebrow').textContent = e; $('heading').textContent = h; $('lead').textContent = l }
+
+    function ics(b) {
+      const [hh, mm] = (() => { const m = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i.exec(b.time24 || ''); if (!m) return [16, 0]; let h = Number(m[1]) % 12; if (m[3].toLowerCase() === 'pm') h += 12; return [h, Number(m[2] || 0)] })()
+      const pad = (n) => String(n).padStart(2, '0')
+      const first = b.isoDates[0].replace(/-/g, '')
+      const endMin = hh * 60 + mm + (b.durationMin || 60)
+      const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Joner Football//JFP//EN', 'BEGIN:VEVENT',
+        `UID:${b.id}@jonerfootball.com`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
+        `DTSTART;TZID=Australia/Sydney:${first}T${pad(hh)}${pad(mm)}00`,
+        `DTEND;TZID=Australia/Sydney:${first}T${pad(Math.floor(endMin / 60))}${pad(endMin % 60)}00`,
+        `RRULE:FREQ=WEEKLY;COUNT=${b.isoDates.length}`,
+        `SUMMARY:JFP ${b.day} ${b.time}${b.coachName ? ` with ${b.coachName}` : ''}`,
+        `LOCATION:${b.address.replace(/,/g, '\\,')}`,
+        'END:VEVENT', 'END:VCALENDAR']
+      return 'data:text/calendar;charset=utf-8,' + encodeURIComponent(lines.join('\r\n'))
+    }
+
+    function paid(b) {
+      hero('Payment Complete', 'You Are Booked In.', `${b.players.map((p) => p.name).join(' and ')} ${b.players.length > 1 ? 'are' : 'is'} in ${b.term}, ${b.day} ${b.time}.`)
+      $('details').innerHTML = [
+        ['Group', `${b.day} ${b.time}`], ['Where', b.address], ['Coach', b.coachName || 'Joner Football'],
+        ['Players', b.players.map((p) => p.name).join(', ')], ['First session', b.firstDate], ['All dates', b.dates.join(', ')],
+        ['Paid', b.priceLabel], ['Reference', b.id],
+      ].map(([k, v]) => `<dt class="text-white/80 uppercase tracking-wider text-xs font-heading pt-1">${esc(k)}</dt><dd class="font-semibold">${esc(v)}</dd>`).join('')
+      $('calendar').href = ics(b)
+      if (b.waiverUrl) { $('waiver').hidden = false; $('waiver-link').href = b.waiverUrl }
+      $('card').hidden = false; $('help').hidden = true
+      let fired = false; try { fired = sessionStorage.getItem(`jfp_purchase_${b.id}`) === '1' } catch {}
+      if (!fired && window.JonerTracking?.trackEvent) {
+        window.JonerTracking.trackEvent('Purchase', { custom_data: { content_name: 'jfp_term', content_category: 'jfp_term', currency: 'AUD', booking_id: b.id, stripe_session_id: sid } })
+        try { sessionStorage.setItem(`jfp_purchase_${b.id}`, '1') } catch {}
+      }
+    }
+    function failed(msg) { hero('Booking Not Found', 'We Could Not Find That Booking.', msg); $('help').hidden = false }
+
+    async function check() {
+      if (!sid) return failed('Open this page from your Stripe payment.')
+      tries++
+      try {
+        const res = await fetch(`/api/jfp-confirm?session_id=${encodeURIComponent(sid)}`)
+        const d = await res.json().catch(() => ({}))
+        if (res.status === 404) return failed('If you paid, email us and we will find it.')
+        if (d.status === 'paid') return paid(d.booking)
+        if (d.status === 'expired') return failed('The payment session expired before it was finished. Nothing was charged.')
+        if (d.status === 'cancelled') return failed('This booking was cancelled. Contact us if you have questions.')
+      } catch {}
+      if (tries < 12) { hero('Confirming Payment', 'Almost There.', 'Your payment is still processing. This page updates on its own.'); setTimeout(check, 5000) }
+      else failed('Your payment is taking longer than usual. Do not pay again.')
+    }
+    check()
+  })()
+</script>

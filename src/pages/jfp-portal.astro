@@ -1,62 +1,488 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
+import BaseLayout from '../layouts/BaseLayout.astro'
 ---
-<BaseLayout title="JFP Staff Portal | Joner Football" description="Private Joner Football Performance staff portal." noindex hideMobileAppCta>
- <main class="min-h-screen bg-neutral-950 px-6 py-16 text-white">
-  <div class="mx-auto max-w-6xl">
-   <p class="text-sm uppercase tracking-widest text-red-400">Joner Football Performance</p><h1 class="mt-4 font-heading text-5xl uppercase">Staff portal</h1>
-   <form id="login" class="mt-10 grid max-w-md gap-5">
-    <p class="text-neutral-300">Sign in with your separate JFP account.</p>
-    <label class="grid gap-2">Username<input name="username" autocomplete="username" required maxlength="200" class="rounded-lg border border-white/20 bg-neutral-900 p-3" /></label>
-    <label class="grid gap-2">Password<input name="password" type="password" autocomplete="current-password" required maxlength="256" class="rounded-lg border border-white/20 bg-neutral-900 p-3" /></label>
-    <button class="rounded-full bg-red-600 p-3 font-bold">Sign in</button>
-   </form>
-   <p id="status" role="status" class="my-6 text-amber-200"></p>
-   <section id="portal" hidden>
-    <div class="flex items-center justify-between"><h2 id="heading" class="text-2xl font-bold"></h2><button id="logout" class="rounded border border-white/30 px-4 py-2">Sign out</button></div>
-    <div id="admin-navigation" hidden class="mt-8 flex flex-wrap gap-2" aria-label="Programme sections">{['Overview','Registrations','Sessions','Applications'].map((name,i)=><button data-admin-tab={name.toLowerCase()} aria-pressed={i===0?'true':'false'} class="rounded-full border border-white/20 px-5 py-3 font-bold aria-pressed:bg-white aria-pressed:text-black">{name}</button>)}</div>
-    <div id="summary" hidden class="mt-8 grid gap-4 md:grid-cols-3"><div class="rounded-xl border border-white/15 bg-white/5 p-6"><p class="text-sm text-neutral-400">Registration records</p><p id="registration-count" class="mt-3 text-4xl font-bold">—</p></div><div class="rounded-xl border border-white/15 bg-white/5 p-6"><p class="text-sm text-neutral-400">Fees awaiting reconciliation</p><p id="pending-count" class="mt-3 text-4xl font-bold">—</p></div><div class="rounded-xl border border-white/15 bg-white/5 p-6"><p class="text-sm text-neutral-400">Verified programme net</p><p class="mt-3 text-xl font-bold text-amber-200">Reconciliation pending</p></div></div>
-    <div id="section-message" hidden class="mt-8 rounded-xl border border-white/15 p-8"><h3 id="section-title" class="text-2xl font-bold"></h3><p id="section-description" class="mt-3 max-w-2xl text-neutral-300"></p></div>
-    <p id="freshness" class="my-4 text-sm text-neutral-400"></p>
-    <p id="notice" class="my-6 rounded-lg border border-amber-200/30 p-4 text-amber-200"></p>
-    <div id="registration-table" class="overflow-x-auto"><table class="w-full text-left text-sm"><thead id="columns" class="border-b border-white/30"></thead><tbody id="rows"></tbody></table></div>
-   </section>
-  </div>
- </main>
+
+<BaseLayout title="JFP Portal | Joner Football" description="Joner Football Performance staff portal." canonical="https://jonerfootball.com/jfp-portal/" noindex hideChrome>
+  <main id="portal" class="bg-joner-black text-white min-h-screen">
+
+    <!-- Sign in / set up -->
+    <section id="auth" hidden class="min-h-screen flex items-center">
+      <div class="w-full max-w-md mx-auto px-4 py-16">
+        <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-sm mb-3">Joner Football Performance</p>
+        <h1 id="auth-heading" class="font-heading uppercase text-4xl md:text-5xl leading-none mb-6">Staff Portal</h1>
+
+        <form id="login-form" class="space-y-4" novalidate>
+          <div><label class="lbl" for="l-email">Email</label><input id="l-email" type="email" autocomplete="username" class="inp" /></div>
+          <div><label class="lbl" for="l-pass">Password</label><input id="l-pass" type="password" autocomplete="current-password" class="inp" /></div>
+          <button type="submit" class="btn-red w-full min-h-[50px]">Sign in</button>
+        </form>
+
+        <form id="code-form" hidden class="space-y-4" novalidate>
+          <p class="text-white/90">We emailed a 6 digit code to <strong id="code-to"></strong>. It works for 10 minutes.</p>
+          <div><label class="lbl" for="l-code">Code</label><input id="l-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="inp text-2xl tracking-[.4em]" /></div>
+          <button type="submit" class="btn-red w-full min-h-[50px]">Confirm</button>
+          <button type="button" id="code-back" class="link w-full text-center">Start again</button>
+        </form>
+
+        <form id="setup-form" hidden class="space-y-4" novalidate>
+          <p class="text-white/90">Hi <strong id="setup-name"></strong>. Choose a password for <strong id="setup-email"></strong>. Use at least 12 characters; a short sentence works well.</p>
+          <div><label class="lbl" for="s-pass">New password</label><input id="s-pass" type="password" autocomplete="new-password" class="inp" /></div>
+          <div><label class="lbl" for="s-pass2">Type it again</label><input id="s-pass2" type="password" autocomplete="new-password" class="inp" /></div>
+          <button type="submit" class="btn-red w-full min-h-[50px]">Save password</button>
+        </form>
+
+        <p id="auth-status" class="text-sm text-joner-red min-h-[1.25rem] mt-4" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- App -->
+    <section id="shell" hidden>
+      <header class="border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p class="font-heading uppercase tracking-[0.28em] text-joner-red text-xs mb-2">Joner Football Performance</p>
+            <h1 id="shell-heading" class="font-heading uppercase text-3xl md:text-4xl leading-none">Portal</h1>
+            <p id="shell-sub" class="text-white/85 text-sm mt-1"></p>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="who" class="text-sm text-white/90"></span>
+            <button id="signout" type="button" class="btn-outline-sm">Sign out</button>
+          </div>
+        </div>
+        <nav id="tabs" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3 flex gap-2 overflow-x-auto no-scrollbar" role="tablist"></nav>
+      </header>
+      <div id="flash" hidden class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4"><div class="rounded-xl border border-joner-red/40 bg-joner-red/10 px-4 py-3 text-sm" role="status"></div></div>
+      <div id="view" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8"></div>
+    </section>
+  </main>
 </BaseLayout>
+
+<style is:global>
+  #portal .lbl { display:block; color:#fff; font-family:var(--font-heading); font-size:.82rem; text-transform:uppercase; letter-spacing:.08em; margin-bottom:.4rem; }
+  #portal .inp { width:100%; background:#1a1a1a; border:1px solid #3a3a3a; color:#fff; padding:.7rem .85rem; font-size:1rem; min-height:44px; font-family:var(--font-body); }
+  #portal .inp:focus { outline:none; border-color:#E8000D; }
+  #portal select.inp { padding-right:2rem; }
+  #portal .btn-red, #portal .btn-outline { text-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
+  #portal .btn-outline-sm { border:1px solid rgba(255,255,255,.5); padding:.45rem .9rem; font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.08em; font-size:.8rem; color:#fff; }
+  #portal .btn-sm { background:#E8000D; padding:.45rem .9rem; font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.06em; font-size:.8rem; color:#fff; }
+  #portal .btn-sm:disabled { opacity:.5; }
+  #portal .link { color:#fff; text-decoration:underline; text-decoration-color:#E8000D; text-underline-offset:4px; font-size:.92rem; }
+  #portal .tab { white-space:nowrap; border:1px solid rgba(255,255,255,.28); padding:.5rem .95rem; font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.08em; font-size:.82rem; min-height:40px; color:#fff; }
+  #portal .tab[aria-selected="true"] { background:#E8000D; border-color:#E8000D; }
+  #portal .no-scrollbar::-webkit-scrollbar { display:none; }
+  #portal .h2 { font-family:var(--font-heading); text-transform:uppercase; font-size:1.6rem; line-height:1; margin:0 0 1rem; }
+  #portal .h3 { font-family:var(--font-heading); text-transform:uppercase; font-size:1.15rem; margin:0 0 .6rem; }
+  #portal .muted { color:#d8d8d8; font-size:.9rem; }
+  #portal .kpis { display:grid; gap:.75rem; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  @media (min-width:900px) { #portal .kpis { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+  #portal .kpi { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:1rem; padding:1rem 1.1rem; }
+  #portal .kpi .n { font-family:var(--font-heading); font-size:2.2rem; line-height:1; }
+  #portal .kpi .k { text-transform:uppercase; letter-spacing:.1em; font-size:.72rem; color:#d0d0d0; margin-top:.35rem; }
+  #portal .kpi.red { background:#E8000D; border-color:#E8000D; }
+  #portal .kpi.red .k { color:#fff; }
+  #portal .panel { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); border-radius:1rem; padding:1.2rem; }
+  #portal .grid2 { display:grid; gap:1rem; grid-template-columns:1fr; }
+  @media (min-width:900px) { #portal .grid2 { grid-template-columns:1fr 1fr; } }
+  #portal table.t { width:100%; border-collapse:collapse; font-size:.92rem; min-width:760px; }
+  #portal table.t th, #portal table.t td { text-align:left; padding:.6rem .55rem; border-bottom:1px solid rgba(255,255,255,.1); vertical-align:top; color:#f2f2f2; }
+  #portal table.t th { color:#cfcfcf; text-transform:uppercase; letter-spacing:.08em; font-size:.72rem; }
+  #portal .scroll { overflow-x:auto; }
+  #portal .pill { display:inline-block; font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.08em; font-size:.7rem; padding:.18rem .5rem; }
+  #portal .p-direct { background:#fff; color:#0A0A0A; }
+  #portal .p-application { background:#E8000D; color:#fff; }
+  #portal .p-closed { background:#4a4a4a; color:#fff; }
+  #portal .p-ok { background:#1f5f2e; color:#fff; }
+  #portal .p-warn { background:#ffb020; color:#0A0A0A; }
+  #portal .p-bad { background:#E8000D; color:#fff; }
+  #portal .bar { height:8px; background:rgba(255,255,255,.12); border-radius:4px; overflow:hidden; margin-top:.4rem; }
+  #portal .bar > i { display:block; height:100%; background:#E8000D; }
+  #portal .week { display:grid; gap:.7rem; grid-template-columns:repeat(var(--cols),minmax(170px,1fr)); min-width:calc(var(--cols)*170px); }
+  #portal .week h3 { font-family:var(--font-heading); text-transform:uppercase; font-size:1.05rem; background:#E8000D; padding:.35rem .6rem .25rem; margin-bottom:.5rem; }
+  #portal .slot { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-left:4px solid #fff; border-radius:.6rem; padding:.6rem .7rem; margin-bottom:.5rem; }
+  #portal .slot.application { border-left-color:#E8000D; }
+  #portal .slot.closed { border-left-color:#6a6a6a; }
+  #portal .slot .tt { font-family:var(--font-heading); font-size:1.2rem; }
+  #portal .filters { display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:1rem; align-items:end; }
+  #portal .filters .inp { min-height:40px; padding:.45rem .7rem; width:auto; }
+</style>
+
 <script>
- const login=document.querySelector<HTMLFormElement>('#login')!,portal=document.querySelector<HTMLElement>('#portal')!,status=document.querySelector<HTMLElement>('#status')!;
- const money=(value:unknown)=>typeof value==='number'?new Intl.NumberFormat('en-AU',{style:'currency',currency:'AUD'}).format(value):'Pending';
- function row(values:unknown[],header=false){const tr=document.createElement('tr');for(const value of values){const td=document.createElement(header?'th':'td');td.textContent=String(value??'Pending');td.className='border-b border-white/10 px-3 py-4';tr.append(td);}return tr;}
- async function request(url:string,options:RequestInit={}){const response=await fetch(url,{credentials:'same-origin',cache:'no-store',...options});const data=await response.json().catch(()=>({error:'Portal services are not available in this preview.'}));if(!response.ok)throw Error(data.error||'Request failed');return data;}
- async function load(){
-  const {user}=await request('/api/jfp-session');login.hidden=true;portal.hidden=false;
-  document.querySelector('#heading')!.textContent=user.role==='coach'?'My coaching hours':'Term 4 · Programme finances';
-  const data=await request('/api/jfp-overview');document.querySelector('#freshness')!.textContent=`Last verified: ${new Date(data.updatedAt).toLocaleString('en-AU')}`;
-  const columns=document.querySelector('#columns')!,rows=document.querySelector('#rows')!;columns.replaceChildren();rows.replaceChildren();
-  if(data.kind==='admin'){
-   document.querySelector<HTMLElement>('#admin-navigation')!.hidden=false;
-   document.querySelector<HTMLElement>('#summary')!.hidden=false;
-   document.querySelector('#registration-count')!.textContent=String(data.rows.length);
-   document.querySelector('#pending-count')!.textContent=String(data.rows.filter((r:{netCollectedAud:unknown})=>r.netCollectedAud===null).length);
-   document.querySelector('#notice')!.textContent=data.notice;
-   columns.append(row(['Player','Term fee','Gross paid','Balance','Stripe fees','Net collected','Reconciliation'],true));
-   for(const r of data.rows)rows.append(row([r.player,money(r.feeAud),money(r.grossPaidAud),money(r.balanceAud),money(r.stripeFeeAud),money(r.netCollectedAud),r.reconciliation]));
-  }else{
-   document.querySelector('#notice')!.textContent='Scheduled hours and approved worked hours are shown separately. This is not a payroll statement.';
-   columns.append(row(['Date','Start','End','Location','Status','Scheduled hours','Approved worked hours'],true));
-   for(const s of data.sessions)rows.append(row([s.date,s.startTime,s.endTime,s.location,s.status,typeof s.scheduledMinutes==='number'?(s.scheduledMinutes/60).toFixed(2):'Pending',typeof s.approvedWorkedMinutes==='number'?(s.approvedWorkedMinutes/60).toFixed(2):'Pending']));
-  }
- }
- document.querySelectorAll<HTMLButtonElement>('[data-admin-tab]').forEach(button=>button.addEventListener('click',()=>{
-  const tab=button.dataset.adminTab;document.querySelectorAll<HTMLButtonElement>('[data-admin-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
-  document.querySelector<HTMLElement>('#summary')!.hidden=tab!=='overview';
-  document.querySelector<HTMLElement>('#registration-table')!.hidden=tab==='sessions'||tab==='applications';
-  document.querySelector<HTMLElement>('#section-message')!.hidden=tab!=='sessions'&&tab!=='applications';
-  document.querySelector('#section-title')!.textContent=tab==='sessions'?'Group setup':'Applications';
-  document.querySelector('#section-description')!.textContent=tab==='sessions'?'Each group needs a verified coach, age range, ability level, capacity and entry type: direct booking or application. Current player reservations remain protected. Group editing is being built.':'Application-only groups will send requests here for review before payment is unlocked. Application submission and approval are being built; this is not a live application queue.';
- }));
- login.addEventListener('submit',async event=>{event.preventDefault();status.textContent='Signing in…';const button=login.querySelector('button')!;button.disabled=true;try{const form=new FormData(login);await request('/api/jfp-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:form.get('username'),password:form.get('password')})});login.reset();status.textContent='';await load();}catch(error){status.textContent=error instanceof Error?error.message:'Unable to sign in';}finally{button.disabled=false;}});
- document.querySelector('#logout')!.addEventListener('click',async()=>{try{await request('/api/jfp-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({logout:true})});window.location.reload();}catch{status.textContent='Could not sign out. Please try again.';}});
- load().catch(error=>{status.textContent=error.message;});
+  (function () {
+    const $ = (id) => document.getElementById(id)
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    const S = { user: null, tab: '', challenge: '', cache: {}, filters: { day: '', location: '', coach: '', q: '' } }
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+    const money = (c) => `A$${(Number(c || 0) / 100).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const hrs = (m) => `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}`
+    function flash(t) { const b = $('flash'); if (!t) return (b.hidden = true); b.firstElementChild.textContent = t; b.hidden = false; clearTimeout(flash.t); flash.t = setTimeout(() => (b.hidden = true), 6000) }
+    function status(t) { $('auth-status').textContent = t || '' }
+
+    async function session(body) {
+      const res = await fetch('/api/jfp-session', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+      return { res, d: await res.json().catch(() => ({})) }
+    }
+    async function api(action, extra = {}) {
+      const res = await fetch('/api/jfp-portal-data', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, ...extra }) })
+      const d = await res.json().catch(() => ({}))
+      if (res.status === 401) { showAuth(); throw new Error('Please sign in again.') }
+      if (!res.ok || d.success === false) throw new Error(d.error || 'Something went wrong.')
+      return d
+    }
+
+    // ----- auth -----
+    function showAuth(mode = 'login') {
+      $('shell').hidden = true; $('auth').hidden = false
+      $('login-form').hidden = mode !== 'login'; $('code-form').hidden = mode !== 'code'; $('setup-form').hidden = mode !== 'setup'
+      $('auth-heading').textContent = mode === 'setup' ? 'Set Up Your Login' : 'Staff Portal'
+    }
+    $('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault(); status('Signing in')
+      const { res, d } = await session({ action: 'login', email: $('l-email').value.trim(), password: $('l-pass').value })
+      if (!res.ok) return status(d.error || 'Could not sign in.')
+      $('l-pass').value = ''
+      if (d.needCode) { S.challenge = d.challenge; $('code-to').textContent = d.sentTo; status(''); showAuth('code'); setTimeout(() => $('l-code').focus(), 50); return }
+      status(''); boot()
+    })
+    $('code-form').addEventListener('submit', async (e) => {
+      e.preventDefault(); status('Checking')
+      const { res, d } = await session({ action: 'verify', challenge: S.challenge, code: $('l-code').value.trim() })
+      if (!res.ok) { status(d.error || 'That code did not work.'); return }
+      $('l-code').value = ''; status(''); boot()
+    })
+    $('code-back').addEventListener('click', () => { S.challenge = ''; status(''); showAuth('login') })
+    $('setup-form').addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const a = $('s-pass').value, b = $('s-pass2').value
+      if (a.length < 12) return status('Use at least 12 characters.')
+      if (a !== b) return status('The two passwords do not match.')
+      status('Saving')
+      const token = new URLSearchParams(location.search).get('setup')
+      const { res, d } = await session({ action: 'setup', token, password: a })
+      if (!res.ok) return status(d.error || 'Could not save the password.')
+      history.replaceState({}, '', location.pathname)
+      $('l-email').value = d.email || ''; $('s-pass').value = ''; $('s-pass2').value = ''
+      showAuth('login'); status(''); flashAuth('Password saved. Sign in now.')
+    })
+    function flashAuth(t) { $('auth-status').classList.remove('text-joner-red'); status(t); setTimeout(() => $('auth-status').classList.add('text-joner-red'), 4000) }
+    $('signout').addEventListener('click', async () => { await session({ action: 'logout' }); S.user = null; S.cache = {}; showAuth('login') })
+
+    // ----- shell -----
+    const ADMIN_TABS = [['overview', 'Overview'], ['timetable', 'Timetable'], ['groups', 'Groups'], ['players', 'Players'], ['bookings', 'Online bookings'], ['applications', 'Applications'], ['money', 'Money'], ['coaches', 'Coach view'], ['settings', 'Settings']]
+    function tabs() {
+      if (S.user.role === 'coach') return [['mine', 'My sessions']]
+      return S.user.role === 'owner' ? [...ADMIN_TABS, ['logins', 'Logins']] : ADMIN_TABS
+    }
+    async function boot() {
+      const res = await fetch('/api/jfp-session', { credentials: 'same-origin' })
+      if (res.status === 503) { showAuth('login'); status('The portal is not open yet.'); return }
+      if (!res.ok) return showAuth('login')
+      S.user = (await res.json()).user
+      $('auth').hidden = true; $('shell').hidden = false
+      $('who').textContent = `${S.user.name} · ${S.user.role === 'owner' ? 'Owner' : S.user.role === 'finance-admin' ? 'Admin' : 'Coach'}`
+      $('tabs').innerHTML = tabs().map(([k, l]) => `<button type="button" class="tab" data-tab="${k}" role="tab">${esc(l)}</button>`).join('')
+      go(tabs()[0][0])
+    }
+    document.addEventListener('click', (e) => { const t = e.target.closest('[data-tab]'); if (t) go(t.dataset.tab) })
+    async function go(tab) {
+      S.tab = tab
+      document.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)))
+      $('view').innerHTML = '<p class="muted">Loading</p>'
+      try { await (VIEWS[tab] || (() => {}))() } catch (err) { $('view').innerHTML = `<div class="panel"><p class="text-joner-red">${esc(err.message)}</p></div>` }
+    }
+
+    function filterBar(groups, { withSearch = false } = {}) {
+      const locs = [...new Set(groups.map((g) => g.location))].sort()
+      const coaches = [...new Set(groups.map((g) => g.coachName).filter(Boolean))].sort()
+      const f = S.filters
+      return `<div class="filters">
+        <div><label class="lbl">Day</label><select class="inp" data-f="day"><option value="">All days</option>${DAYS.map((d) => `<option ${f.day === d ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
+        <div><label class="lbl">Location</label><select class="inp" data-f="location"><option value="">All</option>${locs.map((l) => `<option ${f.location === l ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
+        <div><label class="lbl">Coach</label><select class="inp" data-f="coach"><option value="">All</option>${coaches.map((c) => `<option ${f.coach === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
+        ${withSearch ? `<div><label class="lbl">Search</label><input class="inp" data-f="q" value="${esc(f.q)}" placeholder="Player or parent" /></div>` : ''}
+      </div>`
+    }
+    document.addEventListener('change', (e) => { const k = e.target.dataset?.f; if (k) { S.filters[k] = e.target.value; go(S.tab) } })
+    document.addEventListener('input', (e) => { if (e.target.dataset?.f === 'q') { S.filters.q = e.target.value; clearTimeout(S.qt); S.qt = setTimeout(() => go(S.tab).then(() => { const i = document.querySelector('[data-f=q]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length) } }), 350) } })
+    const match = (g) => (!S.filters.day || g.day === S.filters.day) && (!S.filters.location || g.location === S.filters.location) && (!S.filters.coach || g.coachName === S.filters.coach)
+    const modeLabel = { direct: 'Open', application: 'Apply', closed: 'Closed' }
+    const sortG = (a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || a.sortTime.localeCompare(b.sortTime) || a.location.localeCompare(b.location)
+
+    // ----- views -----
+    const VIEWS = {
+      async overview() {
+        const d = await api('overview')
+        S.cache.overview = d
+        $('shell-heading').textContent = d.term
+        $('shell-sub').textContent = `Starts ${d.termStart}. Airtable read ${new Date(d.syncedAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}.`
+        const t = d.totals, f = d.finance
+        const busiest = d.groups.filter((g) => g.mode === 'direct').sort((a, b) => a.placesLeft - b.placesLeft).slice(0, 6)
+        $('view').innerHTML = `
+          <div class="kpis mb-6">
+            <div class="kpi red"><div class="n">${t.players}</div><div class="k">Players in the term</div></div>
+            <div class="kpi"><div class="n">${t.placesLeft}</div><div class="k">Places left in open groups</div></div>
+            <div class="kpi"><div class="n">${t.onlineBookings}</div><div class="k">Booked online</div></div>
+            <div class="kpi"><div class="n">${t.pendingApplications}</div><div class="k">Applications waiting</div></div>
+          </div>
+          ${t.needsAttention ? `<div class="panel mb-6" style="border-color:#E8000D"><p><strong>${t.needsAttention} online booking${t.needsAttention === 1 ? '' : 's'} need attention.</strong> Something did not finish (Airtable, ledger or an email). Open Online bookings and press Repair.</p></div>` : ''}
+          <div class="grid2 mb-6">
+            <div class="panel"><p class="h3">Money in Airtable</p>
+              <p class="muted mb-3">${esc(f.airtable.label)}.</p>
+              <div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+                <div><div class="n font-heading text-2xl">${money(f.airtable.feesCents)}</div><div class="muted">Term fees</div></div>
+                <div><div class="n font-heading text-2xl">${money(f.airtable.paidCents)}</div><div class="muted">Paid</div></div>
+                <div><div class="n font-heading text-2xl" style="color:#ff6b73">${money(f.airtable.outstandingCents)}</div><div class="muted">Outstanding (${f.airtable.outstandingPlayers})</div></div>
+              </div></div>
+            <div class="panel"><p class="h3">Paid online</p>
+              <p class="muted mb-3">${esc(f.online.note)}</p>
+              <div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+                <div><div class="n font-heading text-2xl">${money(f.online.grossCents)}</div><div class="muted">Taken</div></div>
+                <div><div class="n font-heading text-2xl">${money(f.online.stripeFeesCents)}</div><div class="muted">Stripe fees</div></div>
+                <div><div class="n font-heading text-2xl">${money(f.online.netCents)}</div><div class="muted">Net collected</div></div>
+              </div></div>
+          </div>
+          <div class="panel"><p class="h3">Open groups filling up</p>
+            <div class="scroll"><table class="t"><thead><tr><th>Group</th><th>Coach</th><th>Filled</th><th>Left</th></tr></thead><tbody>
+            ${busiest.map((g) => `<tr><td><strong>${esc(g.day)} ${esc(g.time)}</strong><br>${esc(g.location)}</td><td>${esc(g.coachName)}</td><td style="min-width:160px">${g.existingPlayers + g.onlinePlayers} of ${g.capacity}<div class="bar"><i style="width:${Math.min(100, ((g.existingPlayers + g.onlinePlayers) / Math.max(1, g.capacity)) * 100)}%"></i></div></td><td>${g.placesLeft}</td></tr>`).join('') || '<tr><td colspan="4">No open groups yet. Open some under Groups.</td></tr>'}
+            </tbody></table></div></div>`
+      },
+
+      async timetable() {
+        const d = await api('groups')
+        const groups = d.groups.filter(match).sort(sortG)
+        const cols = DAYS.filter((day) => groups.some((g) => g.day === day))
+        $('view').innerHTML = `<p class="h2">Weekly Timetable</p>${filterBar(d.groups)}
+          <div class="flex flex-wrap gap-4 mb-4 muted"><span><span class="pill p-direct">Open</span> bookable online</span><span><span class="pill p-application">Apply</span> by application</span><span><span class="pill p-closed">Closed</span> not online</span></div>
+          <div class="scroll"><div class="week" style="--cols:${Math.max(cols.length, 1)}">
+          ${cols.map((day) => `<div><h3>${day.slice(0, 3)}</h3>${groups.filter((g) => g.day === day).map((g) => {
+            const filled = g.existingPlayers + g.onlinePlayers
+            return `<div class="slot ${g.mode}"><div class="flex justify-between items-baseline gap-2"><span class="tt">${esc(g.time)}</span><span class="pill p-${g.mode}">${modeLabel[g.mode]}</span></div>
+              <div class="text-sm font-bold">${esc(g.location)}</div>
+              <div class="muted">${esc([g.coachName, ...g.extraCoachNames].filter(Boolean).join(', ') || 'No coach')}</div>
+              <div class="muted">${filled} of ${g.capacity} players${g.onlinePlayers ? ` (${g.onlinePlayers} online)` : ''}</div>
+              <div class="bar"><i style="width:${Math.min(100, (filled / Math.max(1, g.capacity)) * 100)}%"></i></div></div>`
+          }).join('')}</div>`).join('') || '<p class="muted">No groups match.</p>'}
+          </div></div>`
+      },
+
+      async groups() {
+        const d = await api('groups')
+        const groups = d.groups.filter(match).sort(sortG)
+        const coachOpts = (sel) => `<option value="">None</option>` + d.coaches.map((c) => `<option value="${esc(c.id)}" ${c.id === sel ? 'selected' : ''}>${esc(c.name)}</option>`).join('')
+        $('view').innerHTML = `<div class="flex flex-wrap items-end justify-between gap-3 mb-4"><div><p class="h2">Groups</p><p class="muted">Set how many players each group takes and whether new families can book, apply or not see it at all. Existing players always keep their place.</p></div>
+          <button type="button" class="btn-sm" id="sync">Add new groups from Airtable</button></div>
+          ${filterBar(d.groups)}
+          <div class="scroll"><table class="t"><thead><tr><th>Group</th><th>Coach</th><th>Players now</th><th>Capacity</th><th>New families</th><th>Minutes</th><th>Note on booking page</th><th></th></tr></thead><tbody>
+          ${groups.map((g) => `<tr data-row="${esc(g.id)}">
+            <td><strong>${esc(g.day)} ${esc(g.time)}</strong><br>${esc(g.location)}<br><span class="muted">${esc(g.programme)}</span></td>
+            <td><select class="inp" data-k="coachId">${coachOpts(g.coachId)}</select>${g.extraCoachNames.length ? `<div class="muted mt-1">Also: ${esc(g.extraCoachNames.join(', '))}</div>` : ''}</td>
+            <td>${g.existingPlayers + g.onlinePlayers}${g.onlinePlayers ? `<div class="muted">${g.onlinePlayers} online</div>` : ''}</td>
+            <td><input class="inp" type="number" min="0" max="60" value="${g.capacity}" data-k="capacity" style="width:84px"></td>
+            <td><select class="inp" data-k="mode"><option value="direct" ${g.mode === 'direct' ? 'selected' : ''}>Can book</option><option value="application" ${g.mode === 'application' ? 'selected' : ''}>Apply only</option><option value="closed" ${g.mode === 'closed' ? 'selected' : ''}>Closed</option></select></td>
+            <td><input class="inp" type="number" min="15" max="180" value="${g.durationMin}" data-k="durationMin" style="width:84px"></td>
+            <td><input class="inp" value="${esc(g.publicNote || '')}" data-k="publicNote" maxlength="200"></td>
+            <td><button type="button" class="btn-sm" data-save="${esc(g.id)}">Save</button></td></tr>`).join('')}
+          </tbody></table></div>`
+        $('sync').onclick = async () => { try { const r = await api('syncGroups'); flash(`${r.added} new group${r.added === 1 ? '' : 's'} added.`); go('groups') } catch (e) { flash(e.message) } }
+      },
+
+      async players() {
+        const [d, g] = await Promise.all([api('roster'), S.cache.groups || api('groups')])
+        S.cache.groups = g
+        const q = S.filters.q.toLowerCase()
+        const rows = d.rows.filter((r) => (!S.filters.day || r.day === S.filters.day) && (!S.filters.location || r.location === S.filters.location) && (!S.filters.coach || r.coach.toLowerCase().startsWith(S.filters.coach.toLowerCase())) && (!q || r.player.toLowerCase().includes(q) || r.parent.toLowerCase().includes(q)))
+          .sort((a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || a.sortTime.localeCompare(b.sortTime) || a.player.localeCompare(b.player))
+        const st = (s) => s === 'Paid' ? 'p-ok' : s === 'Partially Paid' ? 'p-warn' : s === 'Unpaid' ? 'p-bad' : 'p-closed'
+        $('view').innerHTML = `<p class="h2">Players (${rows.length})</p><p class="muted mb-3">Live from Airtable Term 4 Players. Edit players in Airtable; this view follows within a minute.</p>
+          ${filterBar(g.groups, { withSearch: true })}
+          <div class="scroll"><table class="t"><thead><tr><th>Player</th><th>Group</th><th>Coach</th><th>Parent</th><th>Contact</th><th>Payment</th><th>Balance</th></tr></thead><tbody>
+          ${rows.map((r) => `<tr><td><strong>${esc(r.player)}</strong>${r.online ? ' <span class="pill p-direct">Online</span>' : ''}<div class="muted">${esc(r.confirmation)}</div></td>
+            <td>${esc(r.day)} ${esc(r.time)}<br><span class="muted">${esc(r.location)}</span></td><td>${esc(r.coach)}</td><td>${esc(r.parent)}</td>
+            <td>${r.email ? `<a class="link" href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : ''}${r.phone ? `<br><a class="link" href="tel:${esc(r.phone)}">${esc(r.phone)}</a>` : ''}</td>
+            <td><span class="pill ${st(r.paymentStatus)}">${esc(r.paymentStatus || 'Not set')}</span><div class="muted">${esc(r.paymentType)}</div></td>
+            <td>${r.balanceCents > 0 ? `<strong style="color:#ff6b73">${money(r.balanceCents)}</strong>` : money(r.balanceCents)}</td></tr>`).join('')}
+          </tbody></table></div>`
+      },
+
+      async bookings() {
+        const d = await api('bookings')
+        const eff = (b) => b.effects ? ['airtable', 'ledger', 'parentEmail', 'staffAlert', 'coachAlert'].map((k) => {
+          const s = b.effectDetail?.[k]?.status || 'pending'
+          const names = { airtable: 'Airtable', ledger: 'Ledger', parentEmail: 'Parent email', staffAlert: 'Staff alert', coachAlert: 'Coach alert' }
+          return `<span class="pill ${s === 'done' ? 'p-ok' : s === 'uncertain' ? 'p-warn' : 'p-bad'}" title="${esc(s)}">${names[k]}</span>`
+        }).join(' ') : ''
+        $('view').innerHTML = `<p class="h2">Online Bookings</p><p class="muted mb-4">Every booking made on the website. Green means that step finished.</p>
+          <div class="scroll"><table class="t"><thead><tr><th>When</th><th>Group</th><th>Players</th><th>Parent</th><th>Paid</th><th>Status</th><th></th></tr></thead><tbody>
+          ${d.bookings.map((b) => `<tr><td>${new Date(b.paidAt || b.createdAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</td>
+            <td>${esc(b.group)}${b.source === 'application' ? '<br><span class="pill p-application">From application</span>' : ''}</td>
+            <td>${b.players.map((p) => `${esc(p.name)} (${esc(p.age)})`).join('<br>')}</td>
+            <td>${esc(b.parentName)}<br><a class="link" href="mailto:${esc(b.email)}">${esc(b.email)}</a><br>${esc(b.mobile)}</td>
+            <td>${money(b.amountCents)}${b.stripeFeeCents != null ? `<div class="muted">fee ${money(b.stripeFeeCents)}</div>` : ''}</td>
+            <td>${esc(b.status)}${b.needsAttention ? `<br><span class="pill p-warn">${esc(b.needsAttention)}</span>` : ''}<div class="mt-1 flex flex-wrap gap-1">${eff(b)}</div></td>
+            <td class="whitespace-nowrap">${b.stripeUrl ? `<a class="link" target="_blank" rel="noopener noreferrer" href="${esc(b.stripeUrl)}">Stripe</a><br>` : ''}${b.effects && !b.effects.ok ? `<button type="button" class="link" data-repair="${esc(b.id)}">Repair</button><br>` : ''}${['paid', 'held'].includes(b.status) ? `<button type="button" class="link" data-cancel="${esc(b.id)}">Cancel</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7">No online bookings yet.</td></tr>'}
+          </tbody></table></div>`
+      },
+
+      async applications() {
+        const d = await api('applications')
+        const pending = d.applications.filter((a) => a.status === 'pending')
+        const rest = d.applications.filter((a) => a.status !== 'pending')
+        const row = (a) => `<tr><td>${new Date(a.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</td><td><strong>${esc(a.group)}</strong><br><span class="muted">${esc(a.programme)}</span></td>
+          <td>${a.players.map((p) => `${esc(p.name)} (${esc(p.age)})`).join('<br>')}</td><td>${esc(a.club || '')}</td><td>${esc(a.notes || '')}</td>
+          <td>${esc(a.parentName)}<br><a class="link" href="mailto:${esc(a.email)}">${esc(a.email)}</a><br>${esc(a.mobile)}</td>
+          <td>${a.status === 'pending' ? `<button type="button" class="btn-sm" data-approve="${esc(a.id)}">Approve</button> <button type="button" class="link" data-reject="${esc(a.id)}">Reject</button>` : `<span class="pill ${a.status === 'approved' ? 'p-ok' : 'p-closed'}">${esc(a.status)}</span>`}</td></tr>`
+        const table = (list) => `<div class="scroll"><table class="t"><thead><tr><th>Sent</th><th>Group</th><th>Players</th><th>Club / level</th><th>Why</th><th>Parent</th><th></th></tr></thead><tbody>${list.map(row).join('') || '<tr><td colspan="7">None.</td></tr>'}</tbody></table></div>`
+        $('view').innerHTML = `<p class="h2">Applications</p><p class="muted mb-4">Approving emails the family a private link to pay. The place is only taken when they pay.</p>
+          <p class="h3">Waiting (${pending.length})</p>${table(pending)}<p class="h3 mt-8">Decided</p>${table(rest)}`
+      },
+
+      async money() {
+        const d = await api('finance')
+        const f = d.finance
+        $('view').innerHTML = `<p class="h2">Money</p>
+          <div class="grid2 mb-6">
+            <div class="panel"><p class="h3">${esc(f.airtable.label)}</p>
+              <table class="t" style="min-width:0"><tbody>
+              <tr><td>Players holding a place</td><td><strong>${f.airtable.players}</strong></td></tr>
+              <tr><td>Term fees</td><td><strong>${money(f.airtable.feesCents)}</strong></td></tr>
+              <tr><td>Paid</td><td><strong>${money(f.airtable.paidCents)}</strong></td></tr>
+              <tr><td>Outstanding</td><td><strong style="color:#ff6b73">${money(f.airtable.outstandingCents)}</strong> across ${f.airtable.outstandingPlayers} players</td></tr>
+              ${Object.entries(f.airtable.byStatus).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v} players</td></tr>`).join('')}
+              </tbody></table><p class="muted mt-3">${esc(f.airtable.note)}</p></div>
+            <div class="panel"><p class="h3">${esc(f.online.label)}</p>
+              <table class="t" style="min-width:0"><tbody>
+              <tr><td>Bookings</td><td><strong>${f.online.bookings}</strong> (${f.online.players} players)</td></tr>
+              <tr><td>Taken</td><td><strong>${money(f.online.grossCents)}</strong></td></tr>
+              <tr><td>Stripe fees (exact)</td><td><strong>${money(f.online.stripeFeesCents)}</strong>${f.online.feesPending ? ` <span class="pill p-warn">${f.online.feesPending} pending</span>` : ''}</td></tr>
+              <tr><td>Net collected</td><td><strong>${money(f.online.netCents)}</strong></td></tr>
+              </tbody></table><p class="muted mt-3">${esc(f.online.note)}</p></div>
+          </div>
+          <div class="panel"><p class="h3">Outstanding balances (${f.outstanding.length})</p>
+            <div class="scroll"><table class="t"><thead><tr><th>Player</th><th>Parent</th><th>Group</th><th>Status</th><th>Owing</th></tr></thead><tbody>
+            ${f.outstanding.map((o) => `<tr><td>${esc(o.player)}</td><td>${esc(o.parent)}</td><td>${esc(o.group)}</td><td>${esc(o.status)}</td><td><strong>${money(o.balanceCents)}</strong></td></tr>`).join('') || '<tr><td colspan="5">Nothing outstanding.</td></tr>'}
+            </tbody></table></div></div>`
+      },
+
+      async coaches() {
+        const g = await api('groups')
+        const id = S.filters.coachView || g.coaches[0]?.id
+        const d = await api('myGroups', { coachId: id })
+        $('view').innerHTML = `<p class="h2">Coach View</p><p class="muted mb-3">Exactly what each coach sees when they sign in.</p>
+          <div class="filters"><div><label class="lbl">Coach</label><select class="inp" id="cv">${g.coaches.map((c) => `<option value="${esc(c.id)}" ${c.id === id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div></div>
+          ${coachHtml(d)}`
+        $('cv').onchange = (e) => { S.filters.coachView = e.target.value; go('coaches') }
+      },
+
+      async mine() {
+        const d = await api('myGroups')
+        $('shell-heading').textContent = `Coach ${d.coach}`
+        $('shell-sub').textContent = d.term
+        $('view').innerHTML = coachHtml(d)
+      },
+
+      async settings() {
+        const d = await api('getConfig')
+        const c = d.config
+        $('view').innerHTML = `<p class="h2">Settings</p>
+          <form id="cfg" class="grid2">
+            <div class="panel space-y-4">
+              <div><label class="lbl">Waiver link (sent after payment)</label><input class="inp" name="waiverUrl" value="${esc(c.waiverUrl)}" placeholder="https://airtable.com/..." /></div>
+              <div><label class="lbl">Staff alerts, with money (comma separated)</label><input class="inp" name="staffEmails" value="${esc(c.staffEmails.join(', '))}" /></div>
+              <div><label class="lbl">Term price per player (A$)</label><input class="inp" name="price" type="number" min="1" value="${c.priceCents / 100}" ${d.canEditPrice ? '' : 'disabled'} />${d.canEditPrice ? '' : '<p class="muted mt-1">Only Lee can change the price.</p>'}</div>
+            </div>
+            <div class="panel space-y-3"><p class="h3">Coach alert emails</p><p class="muted">A coach gets an email when a new player joins their group. No money is included.</p>
+              ${c.coaches.map((x) => `<div><label class="lbl">Coach ${esc(x.name)}</label><input class="inp" data-coach="${esc(x.id)}" value="${esc(x.email)}" placeholder="No alerts" /></div>`).join('')}
+              <button type="submit" class="btn-sm mt-2">Save settings</button></div>
+          </form>`
+        $('cfg').onsubmit = async (e) => {
+          e.preventDefault()
+          const fd = new FormData(e.target)
+          const config = { waiverUrl: fd.get('waiverUrl'), staffEmails: String(fd.get('staffEmails') || '').split(',').map((s) => s.trim()).filter(Boolean), coachEmails: [...document.querySelectorAll('[data-coach]')].map((i) => ({ id: i.dataset.coach, email: i.value.trim() })) }
+          if (d.canEditPrice) config.priceCents = Math.round(Number(fd.get('price')) * 100)
+          try { await api('saveConfig', { config }); flash('Saved.') } catch (err) { flash(err.message) }
+        }
+      },
+
+      async logins() {
+        const d = await api('users')
+        const roleName = { owner: 'Owner (Lee)', 'finance-admin': 'Admin, sees money (Ligia)', coach: 'Coach' }
+        $('view').innerHTML = `<p class="h2">Logins</p><p class="muted mb-4">Each person gets a one-time email link to choose their own password. You and admins also get a code by email at every sign-in. Switching someone off signs them out everywhere at once.</p>
+          <div class="grid2">
+            <div class="panel"><p class="h3">People</p><div class="scroll"><table class="t" style="min-width:0"><thead><tr><th>Name</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>
+            ${d.users.map((u) => `<tr><td><strong>${esc(u.name)}</strong><br><span class="muted">${esc(u.email)}</span></td><td>${esc(roleName[u.role] || u.role)}${u.coachId ? `<div class="muted">${esc(u.coachId)}</div>` : ''}</td>
+              <td>${!u.passwordSet ? '<span class="pill p-warn">Invite sent</span>' : u.active ? '<span class="pill p-ok">Active</span>' : '<span class="pill p-closed">Off</span>'}${u.lastLoginAt ? `<div class="muted">Last in ${new Date(u.lastLoginAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</div>` : ''}</td>
+              <td class="whitespace-nowrap">${u.passwordSet ? `<button type="button" class="link" data-active="${esc(u.email)}" data-on="${!u.active}">${u.active ? 'Switch off' : 'Switch on'}</button><br>` : ''}<button type="button" class="link" data-reinvite="${esc(u.email)}">Send new link</button></td></tr>`).join('') || '<tr><td colspan="4">Nobody yet.</td></tr>'}
+            </tbody></table></div></div>
+            <form id="inv" class="panel space-y-3"><p class="h3">Invite someone</p>
+              <div><label class="lbl">Name</label><input class="inp" name="name" /></div>
+              <div><label class="lbl">Email</label><input class="inp" name="email" type="email" /></div>
+              <div><label class="lbl">Role</label><select class="inp" name="role" id="inv-role"><option value="coach">Coach</option><option value="finance-admin">Admin, sees money</option><option value="owner">Owner</option></select></div>
+              <div id="inv-coach"><label class="lbl">Which coach</label><select class="inp" name="coachId">${d.coaches.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></div>
+              <button type="submit" class="btn-sm">Email set-up link</button></form>
+          </div>`
+        S.cache.users = d.users
+        $('inv-role').onchange = (e) => { $('inv-coach').hidden = e.target.value !== 'coach' }
+        $('inv').onsubmit = async (e) => {
+          e.preventDefault(); const fd = new FormData(e.target)
+          const user = { name: fd.get('name'), email: fd.get('email'), role: fd.get('role'), coachId: fd.get('role') === 'coach' ? fd.get('coachId') : '' }
+          if (!confirm(`Email a set-up link to ${user.email}?`)) return
+          try { await api('invite', { user }); flash(`Set-up link emailed to ${user.email}.`); go('logins') } catch (err) { flash(err.message) }
+        }
+      },
+    }
+
+    function coachHtml(d) {
+      const byDay = DAYS.map((day) => [day, d.groups.filter((g) => g.day === day).sort((a, b) => a.sortTime.localeCompare(b.sortTime))]).filter(([, gs]) => gs.length)
+      const players = d.groups.reduce((t, g) => t + g.players.length, 0)
+      return `<div class="kpis mb-6">
+          <div class="kpi red"><div class="n">${d.groups.length}</div><div class="k">Sessions a week</div></div>
+          <div class="kpi"><div class="n">${hrs(d.hours.perWeekMinutes)}</div><div class="k">Scheduled per week</div></div>
+          <div class="kpi"><div class="n">${hrs(d.hours.termMinutes)}</div><div class="k">Scheduled this term (${d.hours.weeks} weeks)</div></div>
+          <div class="kpi"><div class="n">${players}</div><div class="k">Players</div></div>
+        </div>
+        <p class="muted mb-4">Scheduled hours from the timetable. They do not include cancelled sessions and are not a pay calculation.</p>
+        ${byDay.map(([day, gs]) => `<p class="h3 mt-6">${day}</p><div class="grid2">${gs.map((g) => `<div class="panel">
+            <div class="flex justify-between items-baseline"><span class="font-heading text-2xl">${esc(g.time)}</span><span class="muted">${g.durationMin} min</span></div>
+            <p class="font-bold">${esc(g.location)} <span class="muted">${esc(g.programme)}</span></p>
+            <p class="muted mb-2">${esc(g.dates[0])} to ${esc(g.dates.at(-1))}</p>
+            <p class="lbl mt-3">Players (${g.players.length})</p>
+            <ul class="space-y-1">${g.players.map((p) => `<li>${esc(p.name)}${p.age ? ` <span class="muted">(${p.age})</span>` : ''}</li>`).join('') || '<li class="muted">No players yet</li>'}</ul></div>`).join('')}</div>`).join('') || '<div class="panel"><p>No sessions assigned yet.</p></div>'}`
+    }
+
+    // row actions
+    document.addEventListener('click', async (e) => {
+      const save = e.target.closest('[data-save]'), rep = e.target.closest('[data-repair]'), can = e.target.closest('[data-cancel]')
+      const ap = e.target.closest('[data-approve]'), rj = e.target.closest('[data-reject]'), act = e.target.closest('[data-active]'), ri = e.target.closest('[data-reinvite]')
+      try {
+        if (save) {
+          const row = document.querySelector(`[data-row="${CSS.escape(save.dataset.save)}"]`)
+          const group = Object.fromEntries([...row.querySelectorAll('[data-k]')].map((i) => [i.dataset.k, i.value]))
+          save.disabled = true; await api('updateGroup', { id: save.dataset.save, group }); save.disabled = false; flash('Group saved.')
+        }
+        if (rep) { await api('repairBooking', { bookingId: rep.dataset.repair }); flash('Repair run.'); go('bookings') }
+        if (can) {
+          if (!confirm('Cancel this booking and free the place? If it was paid, refund it in Stripe and update Airtable.')) return
+          const r = await api('cancelBooking', { bookingId: can.dataset.cancel }); flash(r.wasPaid ? 'Cancelled. Refund it in Stripe and update the Airtable row.' : 'Cancelled.')
+          if (r.wasPaid && r.stripeUrl) window.open(r.stripeUrl, '_blank', 'noopener'); go('bookings')
+        }
+        if (ap) { if (!confirm('Approve and email this family a private payment link?')) return; await api('decideApplication', { id: ap.dataset.approve, decision: 'approve' }); flash('Approved. Payment link emailed.'); go('applications') }
+        if (rj) { const note = prompt('Reason (kept private, not emailed):') ?? null; if (note === null) return; await api('decideApplication', { id: rj.dataset.reject, decision: 'reject', note }); flash('Rejected. Contact the family yourself.'); go('applications') }
+        if (act) { await api('setActive', { email: act.dataset.active, active: act.dataset.on === 'true' }); flash('Updated.'); go('logins') }
+        if (ri) {
+          const u = (S.cache.users || []).find((x) => x.email === ri.dataset.reinvite)
+          if (!u || !confirm(`Email a new set-up link to ${u.email}?`)) return
+          await api('invite', { user: { name: u.name, email: u.email, role: u.role, coachId: u.coachId } }); flash('New link emailed.'); go('logins')
+        }
+      } catch (err) { flash(err.message); if (save) save.disabled = false }
+    })
+
+    // ----- boot -----
+    const setup = new URLSearchParams(location.search).get('setup')
+    if (setup) {
+      session({ action: 'inviteInfo', token: setup }).then(({ res, d }) => {
+        showAuth('setup')
+        if (!res.ok) { $('setup-form').hidden = true; status(d.error || 'This link is not valid.'); return }
+        $('setup-name').textContent = d.name; $('setup-email').textContent = d.email
+      })
+    } else boot()
+  })()
 </script>

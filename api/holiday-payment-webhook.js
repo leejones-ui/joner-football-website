@@ -8,6 +8,7 @@
 import { verifyStripeWebhook } from './_stripe-webhook.js'
 import { stripeFetch, clean } from './_holiday-store.js'
 import { finaliseBooking, expireBooking, bookingIdFromSession } from './_holiday-finalise.js'
+import { finaliseJfpBooking, expireJfpBooking, jfpBookingIdFromSession } from './_jfp-finalise.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -54,6 +55,27 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('holiday webhook could not read session', error)
     return res.status(verified ? 500 : 200).json({ success: false, error: 'Could not read session' })
+  }
+
+  // One Stripe endpoint on the Sydney account serves both booking systems;
+  // the session's own metadata says which one it belongs to.
+  const jfpId = jfpBookingIdFromSession(session)
+  if (jfpId) {
+    try {
+      if (type === 'checkout.session.completed' || type === 'checkout.session.async_payment_succeeded') {
+        if (session.payment_status !== 'paid') return res.status(200).json({ success: true, skipped: 'not-paid', jfpId })
+        const r = await finaliseJfpBooking(jfpId, session)
+        return res.status(200).json({ success: true, jfpId, already: r.already === true, verified })
+      }
+      if (type === 'checkout.session.expired' || type === 'checkout.session.async_payment_failed') {
+        const r = await expireJfpBooking(jfpId)
+        return res.status(200).json({ success: true, jfpId, released: r.changed, verified })
+      }
+      return res.status(200).json({ success: true, ignored: type })
+    } catch (error) {
+      console.error('jfp webhook failed', error)
+      return res.status(500).json({ success: false, error: 'Webhook processing failed' })
+    }
   }
 
   const bookingId = bookingIdFromSession(session)

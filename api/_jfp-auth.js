@@ -3,12 +3,12 @@ import { promisify } from 'node:util';
 const scrypt = promisify(scryptCallback);
 export const COOKIE = '__Host-jfp_staff';
 export const SESSION_SECONDS = 8 * 60 * 60;
-const digest = value => createHash('sha256').update(value).digest('hex');
+export const digest = value => createHash('sha256').update(value).digest('hex');
 const sessionKey = token => `jfp:auth:session:${digest(token)}`;
 export const normaliseUsername = value => typeof value === 'string' ? value.trim().toLowerCase() : '';
 
 export async function passwordHash(password) {
-  if (typeof password !== 'string' || password.length < 16 || password.length > 256) throw new Error('Use a password of 16–256 characters');
+  if (typeof password !== 'string' || password.length < 12 || password.length > 256) throw new Error('Use a password of at least 12 characters');
   const salt = randomBytes(16).toString('hex');
   const hash = await scrypt(password, salt, 64);
   return `scrypt:${salt}:${hash.toString('hex')}`;
@@ -47,6 +47,10 @@ export function createAuthStore(kv, now = () => Date.now()) {
       const matches=await passwordValid(password,user?.passwordHash || dummy);
       if(!matches || user?.active!==true || !['owner','finance-admin','coach'].includes(user.role)) return null;
       if(user.role==='coach' && !user.coachId) return null;
+      await kv(['DEL',`jfp:auth:limit:user:${digest(username)}`]);
+      return { username, user };
+    },
+    async openSession(username, user) {
       const token=randomBytes(32).toString('hex');
       await kv(['SET',sessionKey(token),JSON.stringify({username,version:user.sessionVersion,expiresAt:now()+SESSION_SECONDS*1000}),'EX',SESSION_SECONDS]);
       return token;
@@ -58,7 +62,7 @@ export function createAuthStore(kv, now = () => Date.now()) {
       const user=await get(`jfp:auth:user:${digest(session.username)}`);
       if(!user || user.active!==true || user.sessionVersion!==session.version || !['owner','finance-admin','coach'].includes(user.role)) return null;
       if(user.role==='coach' && !user.coachId) return null;
-      return {verified:true,active:true,id:user.id,name:user.name,role:user.role,coachId:user.coachId};
+      return {verified:true,active:true,id:user.id,name:user.name,email:session.username,role:user.role,coachId:user.coachId};
     },
     async logout(token) { if(/^[a-f0-9]{64}$/.test(token)) await kv(['DEL',sessionKey(token)]); },
   };

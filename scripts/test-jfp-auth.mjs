@@ -14,7 +14,9 @@ test('sessions revoke immediately when account disabled or logged out',async()=>
  const user={id:'a',name:'Coach',active:true,role:'coach',coachId:'a',sessionVersion:1,passwordHash:await passwordHash('test-only-long-password')};
  db.set(key,JSON.stringify(user)); const auth=createAuthStore(kv);
  assert.equal(await auth.login('coach@example.test','wrong','test'),null);
- const token=await auth.login('coach@example.test','test-only-long-password','test');
+ const ok=await auth.login('coach@example.test','test-only-long-password','test');
+ assert.equal(ok.user.coachId,'a');
+ const token=await auth.openSession(ok.username,ok.user);
  assert.equal((await auth.principal(token)).coachId,'a');
  db.set(key,JSON.stringify({...user,active:false}));assert.equal(await auth.principal(token),null);
  db.set(key,JSON.stringify(user));await auth.logout(token);assert.equal(await auth.principal(token),null);
