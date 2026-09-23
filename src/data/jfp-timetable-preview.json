@@ -1,0 +1,153 @@
+{
+  "asOf": "2026-09-23",
+  "term": "Term 4 2026",
+  "starts": "12 October 2026",
+  "ends": "19 December 2026",
+  "weeks": 10,
+  "sessions": [
+    {
+      "id": "review-1",
+      "day": "Friday",
+      "time": "6:30am",
+      "location": "Rydalmere"
+    },
+    {
+      "id": "review-2",
+      "day": "Wednesday",
+      "time": "5:25pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-3",
+      "day": "Wednesday",
+      "time": "6:30am",
+      "location": "NTRA"
+    },
+    {
+      "id": "review-4",
+      "day": "Wednesday",
+      "time": "4:20pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-5",
+      "day": "Thursday",
+      "time": "4:20pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-6",
+      "day": "Monday",
+      "time": "6:15am",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-7",
+      "day": "Thursday",
+      "time": "6:30am",
+      "location": "NTRA"
+    },
+    {
+      "id": "review-8",
+      "day": "Saturday",
+      "time": "10:15am",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-9",
+      "day": "Thursday",
+      "time": "5:25pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-10",
+      "day": "Friday",
+      "time": "5pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-11",
+      "day": "Tuesday",
+      "time": "6:30pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-12",
+      "day": "Wednesday",
+      "time": "11am",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-13",
+      "day": "Tuesday",
+      "time": "4:20pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-14",
+      "day": "Friday",
+      "time": "4pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-15",
+      "day": "Tuesday",
+      "time": "5:25pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-16",
+      "day": "Monday",
+      "time": "6:30pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-17",
+      "day": "Monday",
+      "time": "5:25pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-18",
+      "day": "Wednesday",
+      "time": "6:30pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-19",
+      "day": "Wednesday",
+      "time": "10am",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-20",
+      "day": "Thursday",
+      "time": "6:30pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-21",
+      "day": "Saturday",
+      "time": "8am",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-22",
+      "day": "Monday",
+      "time": "4:20pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-23",
+      "day": "Monday",
+      "time": "1pm",
+      "location": "Belrose HQ"
+    },
+    {
+      "id": "review-24",
+      "day": "Wednesday",
+      "time": "3:30pm",
+      "location": "Belrose HQ"
+    }
+  ]
+}

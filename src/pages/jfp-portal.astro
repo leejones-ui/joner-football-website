@@ -1,0 +1,47 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="JFP Staff Portal | Joner Football" description="Private Joner Football Performance staff portal." noindex hideMobileAppCta>
+ <main class="min-h-screen bg-neutral-950 px-6 py-16 text-white">
+  <div class="mx-auto max-w-6xl">
+   <p class="text-sm uppercase tracking-widest text-red-400">Joner Football Performance</p><h1 class="mt-4 font-heading text-5xl uppercase">Staff portal</h1>
+   <form id="login" class="mt-10 grid max-w-md gap-5">
+    <p class="text-neutral-300">Sign in with your separate JFP account.</p>
+    <label class="grid gap-2">Username<input name="username" autocomplete="username" required maxlength="200" class="rounded-lg border border-white/20 bg-neutral-900 p-3" /></label>
+    <label class="grid gap-2">Password<input name="password" type="password" autocomplete="current-password" required maxlength="256" class="rounded-lg border border-white/20 bg-neutral-900 p-3" /></label>
+    <button class="rounded-full bg-red-600 p-3 font-bold">Sign in</button>
+   </form>
+   <p id="status" role="status" class="my-6 text-amber-200"></p>
+   <section id="portal" hidden>
+    <div class="flex items-center justify-between"><h2 id="heading" class="text-2xl font-bold"></h2><button id="logout" class="rounded border border-white/30 px-4 py-2">Sign out</button></div>
+    <p id="freshness" class="my-4 text-sm text-neutral-400"></p>
+    <p id="notice" class="my-6 rounded-lg border border-amber-200/30 p-4 text-amber-200"></p>
+    <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead id="columns" class="border-b border-white/30"></thead><tbody id="rows"></tbody></table></div>
+   </section>
+  </div>
+ </main>
+</BaseLayout>
+<script>
+ const login=document.querySelector<HTMLFormElement>('#login')!,portal=document.querySelector<HTMLElement>('#portal')!,status=document.querySelector<HTMLElement>('#status')!;
+ const money=(value:unknown)=>typeof value==='number'?new Intl.NumberFormat('en-AU',{style:'currency',currency:'AUD'}).format(value):'Pending';
+ function row(values:unknown[],header=false){const tr=document.createElement('tr');for(const value of values){const td=document.createElement(header?'th':'td');td.textContent=String(value??'Pending');td.className='border-b border-white/10 px-3 py-4';tr.append(td);}return tr;}
+ async function request(url:string,options:RequestInit={}){const response=await fetch(url,{credentials:'same-origin',cache:'no-store',...options});const data=await response.json();if(!response.ok)throw Error(data.error||'Request failed');return data;}
+ async function load(){
+  const {user}=await request('/api/jfp-session');login.hidden=true;portal.hidden=false;
+  document.querySelector('#heading')!.textContent=user.role==='coach'?'My coaching hours':'Term 4 · Programme finances';
+  const data=await request('/api/jfp-overview');document.querySelector('#freshness')!.textContent=`Last verified: ${new Date(data.updatedAt).toLocaleString('en-AU')}`;
+  const columns=document.querySelector('#columns')!,rows=document.querySelector('#rows')!;columns.replaceChildren();rows.replaceChildren();
+  if(data.kind==='admin'){
+   document.querySelector('#notice')!.textContent=data.notice;
+   columns.append(row(['Player','Term fee','Gross paid','Balance','Stripe fees','Net collected','Reconciliation'],true));
+   for(const r of data.rows)rows.append(row([r.player,money(r.feeAud),money(r.grossPaidAud),money(r.balanceAud),money(r.stripeFeeAud),money(r.netCollectedAud),r.reconciliation]));
+  }else{
+   document.querySelector('#notice')!.textContent='Scheduled hours and approved worked hours are shown separately. This is not a payroll statement.';
+   columns.append(row(['Date','Start','End','Location','Status','Scheduled hours','Approved worked hours'],true));
+   for(const s of data.sessions)rows.append(row([s.date,s.startTime,s.endTime,s.location,s.status,typeof s.scheduledMinutes==='number'?(s.scheduledMinutes/60).toFixed(2):'Pending',typeof s.approvedWorkedMinutes==='number'?(s.approvedWorkedMinutes/60).toFixed(2):'Pending']));
+  }
+ }
+ login.addEventListener('submit',async event=>{event.preventDefault();status.textContent='Signing in…';const button=login.querySelector('button')!;button.disabled=true;try{const form=new FormData(login);await request('/api/jfp-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:form.get('username'),password:form.get('password')})});login.reset();status.textContent='';await load();}catch(error){status.textContent=error instanceof Error?error.message:'Unable to sign in';}finally{button.disabled=false;}});
+ document.querySelector('#logout')!.addEventListener('click',async()=>{try{await request('/api/jfp-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({logout:true})});window.location.reload();}catch{status.textContent='Could not sign out. Please try again.';}});
+ load().catch(error=>{status.textContent=error.message;});
+</script>
