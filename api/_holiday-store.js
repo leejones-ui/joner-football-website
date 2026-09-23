@@ -363,6 +363,8 @@ export async function reopenSlot(slotId) {
 // hold expiry, or a far-future constant once paid. Purge expired holds, then
 // take the slot only if it is empty. One round trip, one atomic step.
 export const HOLD_SCRIPT = `
+local slot = redis.call('HGET', KEYS[2], ARGV[4])
+if not slot or cjson.decode(slot).status ~= 'open' then return 0 end
 redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
 if redis.call('ZCARD', KEYS[1]) > 0 then return 0 end
 redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3])
@@ -384,7 +386,7 @@ export async function extendHold({ slotId, bookingId, holdExpiresMs, nowMs = Dat
 }
 
 export async function holdSlot({ slotId, bookingId, holdExpiresMs, nowMs = Date.now() }) {
-  const result = Number(await kvCommand(['EVAL', HOLD_SCRIPT, '1', keys.seats(slotId), String(nowMs), String(holdExpiresMs), bookingId]))
+  const result = Number(await kvCommand(['EVAL', HOLD_SCRIPT, '2', keys.seats(slotId), keys.slots(), String(nowMs), String(holdExpiresMs), bookingId, slotId]))
   return result === 1 ? 'held' : 'taken'
 }
 
