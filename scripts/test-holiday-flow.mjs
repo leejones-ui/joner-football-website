@@ -53,7 +53,7 @@ await adm('bulkAddSlots', { template: { coachId: 'dean', type: 'open', capacity:
 const access = await fetch(`${B}/api/holiday-access`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'holiday' }) })
 cookie = access.headers.get('set-cookie').split(';')[0]
 const pool = await freeSlots()
-assert.ok(pool.length >= 15, `need slots, got ${pool.length}`)
+assert.ok(pool.length >= 16, `need slots, got ${pool.length}`)
 let next = 0
 const take = () => pool[next++].id
 
@@ -174,6 +174,15 @@ await test('7. a failed side effect is recorded and repaired, never silently los
   assert.equal(booking.effects.ok, true, 'repaired')
   const onRoster = (await roster()).filter((row) => row.includes('Repair Check (9)'))
   assert.equal(onRoster.length, 1, 'repair put the booking on the roster exactly once')
+})
+
+await test('players must be 7 or older', async () => {
+  const id = take()
+  const six = await paced(() => book(id, 'one', [{ name: 'Too Young', age: 6 }]))
+  assert.equal(six.status, 400)
+  assert.match(six.body.error, /aged 7 to 18/)
+  const seven = await paced(() => book(id, 'one', [{ name: 'Just Old Enough', age: 7 }]))
+  assert.equal(seven.status, 200, 'a 7 year old can book')
 })
 
 await test('blocked hours show as booked and refuse bookings', async () => {

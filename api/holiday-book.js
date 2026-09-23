@@ -15,6 +15,10 @@ import crypto from 'node:crypto'
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
 
+// Holiday sessions are for players aged 7 to 18.
+export const MIN_AGE = 7
+export const MAX_AGE = 18
+
 function validatePlayers(input, seats) {
   const list = Array.isArray(input) ? input.slice(0, seats) : []
   if (list.length !== seats) return { error: `Enter a name and age for each of the ${seats} player${seats === 1 ? '' : 's'}.` }
@@ -23,7 +27,7 @@ function validatePlayers(input, seats) {
     const name = clean(p?.name, 80)
     const age = Number(p?.age)
     if (name.length < 2) return { error: 'Enter each player\'s name.' }
-    if (!Number.isInteger(age) || age < 4 || age > 18) return { error: 'Player age must be between 4 and 18.' }
+    if (!Number.isInteger(age) || age < MIN_AGE || age > MAX_AGE) return { error: `Holiday sessions are for players aged ${MIN_AGE} to ${MAX_AGE}.` }
     players.push({ name, age })
   }
   return { players }

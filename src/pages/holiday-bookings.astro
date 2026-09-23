@@ -478,8 +478,8 @@ const description = 'Book school holiday coaching sessions with Joner Football c
             <input name="playerName" type="text" required value="${esc(existing[i]?.name || '')}" class="inp" />
           </div>
           <div>
-            <label class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Age</label>
-            <input name="playerAge" type="number" min="4" max="18" inputmode="numeric" required value="${esc(existing[i]?.age || '')}" class="inp" />
+            <label class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Age (7+)</label>
+            <input name="playerAge" type="number" min="7" max="18" inputmode="numeric" required value="${esc(existing[i]?.age || '')}" class="inp" />
           </div>
         </div>`).join('')
       const total = pick.priceCents * state.seats / 100
@@ -498,7 +498,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
         age: Number(row.querySelector('[name="playerAge"]').value),
       }))
       if (players.some((p) => p.name.length < 2)) { status.textContent = 'Enter each player\'s name.'; return }
-      if (players.some((p) => !Number.isInteger(p.age) || p.age < 4 || p.age > 18)) { status.textContent = 'Player age must be between 4 and 18.'; return }
+      if (players.some((p) => !Number.isInteger(p.age) || p.age < 7 || p.age > 18)) { status.textContent = 'Holiday sessions are for players aged 7 to 18.'; return }
       if (window.JonerEmailGuard && typeof window.JonerEmailGuard.validateEmail === 'function') {
         const check = window.JonerEmailGuard.validateEmail($('email').value)
         if (check && check.ok === false) { status.textContent = check.error || 'Check the email address.'; return }
