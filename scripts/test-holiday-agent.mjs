@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
-import { agentIdentity, CHANGE_AVAILABILITY_SCRIPT, changeAvailability } from '../api/_holiday-agent-access.js'
+import { agentIdentity, CHANGE_AVAILABILITY_SCRIPT, MOVE_SLOT_SCRIPT, changeAvailability, moveUnbookedSlot } from '../api/_holiday-agent-access.js'
 import { HOLD_SCRIPT } from '../api/_holiday-store.js'
 
 test('Barry and Forge have independent expiring credentials', () => {
@@ -30,4 +30,19 @@ test('booking and availability scripts inspect the same slot state atomically', 
 
 test('invalid status is refused before accessing KV', async () => {
   assert.deepEqual(await changeAvailability('slot-1', 'cancelled'), { ok: false, reason: 'invalid' })
+})
+
+test('time move requires current slot time and a valid same-day window', async () => {
+  const slot = { id: 'SLOT-1', date: '2026-09-30', startsAt: '2026-09-30T19:00:00+10:00', durationMin: 60 }
+  assert.deepEqual(await moveUnbookedSlot(slot, '2026-09-30T18:00:00+10:00', '18:00'), { ok: false, reason: 'invalid' })
+  assert.deepEqual(await moveUnbookedSlot(slot, slot.startsAt, '24:00'), { ok: false, reason: 'invalid' })
+  assert.deepEqual(await moveUnbookedSlot(slot, slot.startsAt, '23:30'), { ok: false, reason: 'invalid' })
+})
+
+test('time move atomically guards holds, changed slots and coach overlaps', () => {
+  assert.match(MOVE_SLOT_SCRIPT, /slot\.startsAt ~= ARGV\[2\]/)
+  assert.match(MOVE_SLOT_SCRIPT, /ZCARD.*KEYS\[2\]/)
+  assert.match(MOVE_SLOT_SCRIPT, /other\.coachId == slot\.coachId/)
+  assert.match(MOVE_SLOT_SCRIPT, /newStart < otherStart/)
+  assert.match(MOVE_SLOT_SCRIPT, /HSET.*KEYS\[1\]/)
 })
