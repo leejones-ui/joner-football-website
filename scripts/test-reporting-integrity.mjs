@@ -29,7 +29,7 @@ assert.equal(normal.rows[0].converted_amount,227.31)
 assert.equal(buildTrialCohort({window,now,invoices:[base,{...paid,product_id:202578}]}).summary.converted,0)
 assert.equal(buildTrialCohort({window,now,invoices:[{...base,product_id:undefined},paid]}).summary.converted,0)
 assert.equal(buildTrialCohort({window,now,invoices:[base,{...paid,user_id:'other-user'}]}).summary.converted,0)
-const reconcile = invoices => buildReconciliation({window,meta:{purchases:1},invoices,sales:[{uscreen_user_id:'fixture-user',acquisition:'exact_paid_meta',source:'fb',medium:'paid_social',ad_id:'120249785829550035'}],sourceHealth})
+const reconcile = invoices => buildReconciliation({window,meta:{purchases:1},invoices,sales:[{uscreen_user_id:'fixture-user',acquisition:'exact_paid_meta',source:'fb',medium:'paid_social',ad_id:'1234567890123456'}],sourceHealth})
 const commercial = (report,currency='AUD') => addPhaseTwoThree({report,meta:{spend:214.13,currency},sourceHealth}).commercial
 const r = reconcile([paid])
 assert.equal(commercial(r).confirmed_roas,null)

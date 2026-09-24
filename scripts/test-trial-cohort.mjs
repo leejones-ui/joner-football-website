@@ -19,9 +19,9 @@ const invoices = [
   // paid without any trial: not part of the cohort
   { id: 6, user_id: 'u5', status: 'paid', product_type: 'recurring', product_id: 230699, amount: 3999, paid_at: s('2026-09-01T10:00:00Z') },
 ]
-const sales = [{ uscreen_user_id: 'u1', acquisition: 'exact_paid_meta', confidence: 'high', source: 'ig', medium: 'paid_social', campaign: 'JF Coaches Max', ad: 'Planning Session', ad_id: '120249785829550035' }]
+const sales = [{ uscreen_user_id: 'u1', acquisition: 'exact_paid_meta', confidence: 'high', source: 'ig', medium: 'paid_social', campaign: 'JF Coaches Max', ad: 'Planning Session', ad_id: '1234567890123456' }]
 const customers = new Map([
-  ['u2', { utm_params: { utm_source: 'fb__jfa1__s=fb&m=paid_social&c=JF%20Coaches%20Max&k=Coaching%20Structures%20V2&d=120249785829550035' } }],
+  ['u2', { utm_params: { utm_source: 'fb__jfa1__s=fb&m=paid_social&c=JF%20Coaches%20Max&k=Coaching%20Structures%20V2&d=1234567890123456' } }],
   ['u3', { origin: 'app_sign_up', utm_params: {} }],
 ])
 const cohort = buildTrialCohort({ window, invoices, sales, customers, now })

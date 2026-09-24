@@ -30,7 +30,7 @@ const report = buildReconciliation({
     { id: 'invoice-private-2', user_id: 'buyer-2', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 12000, paid_at: paidAt },
     { id: 'invoice-private-3', user_id: 'trial-1', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 0, paid_at: trialAt, trial: true },
   ],
-  sales: [{ uscreen_user_id: 'buyer-1', acquisition: 'exact_paid_meta', source: 'fb', medium: 'paid_social', ad_id: '120249785829550035', occurred_at: '2026-08-26T12:05:00Z' }],
+  sales: [{ uscreen_user_id: 'buyer-1', acquisition: 'exact_paid_meta', source: 'fb', medium: 'paid_social', ad_id: '1234567890123456', occurred_at: '2026-08-26T12:05:00Z' }],
   sourceHealth: { meta: true, uscreen: true, kv: true },
 })
 assert.equal(report.meta_reported_purchases, 9)
@@ -70,7 +70,7 @@ const series = buildDailySeries({
     { id: 'd2', user_id: 'buyer-2', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 1499, paid_at: trialAt, origin: 'Android Payments', coupon: 'FB20' },
     { id: 'd3', user_id: 'trial-1', status: 'paid', currency: 'USD', product_type: 'recurring', product_id: 230699, amount: 0, paid_at: trialAt, trial: true },
   ],
-  sales: [{ uscreen_user_id: 'buyer-1', acquisition: 'exact_paid_meta', source: 'fb', medium: 'paid_social', ad_id: '120249785829550035', occurred_at: '2026-08-26T12:05:00Z' }],
+  sales: [{ uscreen_user_id: 'buyer-1', acquisition: 'exact_paid_meta', source: 'fb', medium: 'paid_social', ad_id: '1234567890123456', occurred_at: '2026-08-26T12:05:00Z' }],
 })
 assert.equal(series.length, 2)
 assert.deepEqual(series[0], { date: '2026-08-26', spend: 12.5, meta_purchases: 3, uscreen_paid_buyers: 1, uscreen_paid_value: 100, uscreen_trials: 0, confirmed_meta_buyers: 1, fb20_redemptions: 0, app_paid_buyers: 0, web_paid_buyers: 1 })
@@ -110,7 +110,7 @@ globalThis.fetch = async (url, options = {}) => {
   }
   const command = JSON.parse(options.body)
   if (command[0] === 'ZREVRANGE') return { ok: true, json: async () => ({ result: ['sale-1'] }) }
-  if (command[0] === 'GET') return { ok: true, json: async () => ({ result: JSON.stringify({ uscreen_user_id: 'buyer-1', acquisition: 'exact_paid_meta', source: 'fb', medium: 'paid_social', ad_id: '120249785829550035', occurred_at: '2026-08-26T12:05:00Z' }) }) }
+  if (command[0] === 'GET') return { ok: true, json: async () => ({ result: JSON.stringify({ uscreen_user_id: 'buyer-1', acquisition: 'exact_paid_meta', source: 'fb', medium: 'paid_social', ad_id: '1234567890123456', occurred_at: '2026-08-26T12:05:00Z' }) }) }
   return { ok: true, json: async () => ({ result: null }) }
 }
 

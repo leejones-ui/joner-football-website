@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { classifyTrialAttribution, buildTrialCohort } from '../api/_trial-cohort.js'
 import { isMetaSale, buildReconciliation, buildDailySeries } from '../api/_meta-uscreen-reconciliation.js'
-const paid = { acquisition: 'exact_paid_meta', source: 'fb', medium: 'paid_social', campaign: '120249257260070035', ad: '120249785829550035' }
+const paid = { acquisition: 'exact_paid_meta', source: 'fb', medium: 'paid_social', campaign: '1234567890123457', ad: '1234567890123456' }
 const organic = { acquisition: 'instagram', source: 'instagram', medium: 'organic_social' }
 const cases = [
   [organic, 'meta_organic'],
@@ -20,7 +20,7 @@ for (const [sale, channel] of cases) {
 assert.equal(classifyTrialAttribution({ sale: cases[7][0] }).paid_assisted, true)
 const codec = `fb__jfa1__s=fb&m=paid_social&i=${paid.campaign}&d=${paid.ad}`
 assert.equal(classifyTrialAttribution({ customer: { utm_params: { utm_source: codec } } }).channel, 'meta_ads')
-assert.equal(classifyTrialAttribution({ customer: { utm_params: { utm_source: 'instagram__jfa1__s=instagram&m=organic_social&i=120249257260070035' } } }).channel, 'meta_organic')
+assert.equal(classifyTrialAttribution({ customer: { utm_params: { utm_source: 'instagram__jfa1__s=instagram&m=organic_social&i=1234567890123457' } } }).channel, 'meta_organic')
 const stamp = Math.floor(Date.parse('2026-09-23T12:00:00Z') / 1000)
 const window = { from: '2026-09-23', to: '2026-09-23', timezone: 'UTC' }
 const invoices = cases.slice(0, 7).map((_, i) => ({ user_id: `u${i}`, status: 'paid', product_type: 'recurring', product_id: 123, trial: true, amount: 0, paid_at: stamp }))
