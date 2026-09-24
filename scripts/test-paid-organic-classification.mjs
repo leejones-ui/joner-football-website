@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { classifyPaidMeta } from '../api/_paid-meta-evidence.js'
 import { classifyTrialAttribution, buildTrialCohort } from '../api/_trial-cohort.js'
 import { isMetaSale, buildReconciliation, buildDailySeries } from '../api/_meta-uscreen-reconciliation.js'
 const paid = { acquisition: 'exact_paid_meta', source: 'fb', medium: 'paid_social', campaign: '1234567890123457', ad: '1234567890123456' }
@@ -47,3 +48,11 @@ assert.equal(renewal.renewal_meta_buyers, 1)
 assert.equal(renewal.verified_first_payment_meta_buyers, 0)
 assert.equal(renewal.verdict, 'AMBER')
 console.log('paid/organic attribution regression passed')
+
+// Early paid clicks carried only the campaign id; still paid proof.
+assert.equal(classifyPaidMeta({ utm_source: 'ig', utm_medium: 'paid_social', campaign_id: '120249257260070035' }).channel, 'meta_ads')
+// Main Instagram bio traffic is organic, not unknown.
+assert.equal(classifyPaidMeta({ utm_source: 'main_instagram', utm_medium: 'social' }).channel, 'meta_organic')
+// A campaign name alone is still not proof.
+assert.equal(classifyPaidMeta({ utm_source: 'fb', utm_medium: 'paid_social', campaign_id: 'JF Coaches Max' }).channel, 'unknown')
+console.log('paid meta evidence widening tests passed')

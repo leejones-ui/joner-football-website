@@ -1,7 +1,7 @@
 // Shared conservative reporting classification. Click cookies, platform names,
 // acquisition labels and campaign names are not proof of paid advertising.
 const clean = (v) => String(v ?? '').trim().toLowerCase()
-const META = new Set(['fb', 'ig', 'an', 'facebook', 'instagram', 'meta', 'app_instagram', 'app_facebook', 'meta_ads'])
+const META = new Set(['fb', 'ig', 'an', 'facebook', 'instagram', 'meta', 'app_instagram', 'app_facebook', 'meta_ads', 'main_instagram', 'main_facebook'])
 const PAID = new Set(['paid_social', 'paidsocial', 'paid', 'cpc'])
 const ORGANIC = new Set(['social', 'organic', 'organic_social', 'organic-social'])
 const adId = (v) => /^\d{15,20}$/.test(String(v ?? '').trim())
@@ -12,7 +12,9 @@ function touchStatus(touch) {
   const medium = mediumOf(touch)
   if (!META.has(source)) return 'unknown'
   if (ORGANIC.has(medium)) return 'organic'
-  if (PAID.has(medium) && adId(touch?.ad_id || touch?.ad)) return 'paid'
+  // A paid medium plus any Meta object id from the ad URL tags (ad, ad set or
+  // campaign) is paid proof. Some early clicks carried only the campaign id.
+  if (PAID.has(medium) && [touch?.ad_id, touch?.ad, touch?.adset_id, touch?.adset, touch?.campaign_id, touch?.utm_id].some(adId)) return 'paid'
   return 'unknown'
 }
 // Last-touch labels are primary; first-touch paid proof is disclosed as an
