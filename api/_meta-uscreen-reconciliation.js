@@ -109,11 +109,19 @@ export function isMetaSale(sale) {
   return classifyPaidMeta(sale).channel === 'meta_ads'
 }
 
+// One ledger row per buyer. A row that carries paid-ad proof wins over later
+// rows that lost it (renewals, re-deliveries, app-side events); otherwise the
+// latest row is used.
 function latestSalesByUser(sales) {
   const byUser = new Map()
   for (const sale of Array.isArray(sales) ? sales : []) {
     const id = text(sale?.uscreen_user_id)
-    if (id && (!byUser.has(id) || text(sale.occurred_at) > text(byUser.get(id).occurred_at))) byUser.set(id, sale)
+    if (!id) continue
+    const current = byUser.get(id)
+    if (!current) { byUser.set(id, sale); continue }
+    const saleMeta = isMetaSale(sale), currentMeta = isMetaSale(current)
+    if (saleMeta !== currentMeta) { if (saleMeta) byUser.set(id, sale); continue }
+    if (text(sale.occurred_at) > text(current.occurred_at)) byUser.set(id, sale)
   }
   return byUser
 }
@@ -179,7 +187,7 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
     confirmed_buyer_revenue: confirmedCurrencies.length <= 1 ? Number(confirmedRevenue.toFixed(2)) : null,
     confirmed_buyer_revenue_currency: confirmedCurrency,
     confirmed_buyer_revenue_by_currency: confirmedRevenueByCurrency,
-    ledger_coverage: { scope: 'latest_live_records', limit: MAX_SALES, archives_included: false, complete_campaign_history: false },
+    ledger_coverage: { scope: 'live_records_plus_archives', limit: MAX_SALES, archives_included: true },
     fb20_redemptions: fb20Invoices.length,
     fb20_revenue: Number(fb20Revenue.toFixed(2)),
     verdict,
@@ -437,6 +445,27 @@ export async function fetchReliableSales(fetchImpl = fetch) {
     const raw = await kv(['GET', `jfa:reliability:sale:${id}`], fetchImpl)
     try { if (raw) sales.push(typeof raw === 'string' ? JSON.parse(raw) : raw) } catch { /* ignore malformed ledger row */ }
   }
+  // Older rows are moved to jfa:reliability:archive:* once the live set is
+  // full. Without them, buyers from earlier in a window silently disappear.
+  const seen = new Set(sales.map((sale) => text(sale?.sale_id)))
+  try {
+    let cursor = '0'; let pages = 0
+    do {
+      const result = await kv(['SCAN', cursor, 'MATCH', 'jfa:reliability:archive:*', 'COUNT', '500'], fetchImpl)
+      if (!Array.isArray(result) || !Array.isArray(result[1])) break
+      cursor = String(result[0]); pages += 1
+      const keys = result[1]
+      for (let i = 0; i < keys.length; i += 100) {
+        const values = await kv(['MGET', ...keys.slice(i, i + 100)], fetchImpl)
+        for (const raw of Array.isArray(values) ? values : []) {
+          try {
+            const row = raw && (typeof raw === 'string' ? JSON.parse(raw) : raw)
+            if (row?.sale_id && !seen.has(text(row.sale_id))) { seen.add(text(row.sale_id)); sales.push(row) }
+          } catch { /* ignore malformed archive row */ }
+        }
+      }
+    } while (cursor !== '0' && pages < 50)
+  } catch { /* archives are additive; the live set still stands alone */ }
   return sales
 }
 
