@@ -1,3 +1,4 @@
+import { classifyPaidMeta } from './_paid-meta-evidence.js'
 const META_GRAPH_VERSION = 'v21.0'
 const META_DEFAULT_ACCOUNT = 'act_601203457715082'
 const USCREEN_API_BASE = 'https://www.uscreen.io/publisher_api/v1'
@@ -105,8 +106,16 @@ export function isTrialInvoice(invoice) {
 }
 
 export function isMetaSale(sale) {
-  const acquisition = text(sale?.acquisition || sale?.channel).toLowerCase()
-  return ['meta', 'facebook', 'instagram', 'exact_paid_meta'].includes(acquisition) || Boolean(sale?.has_fbc || sale?.has_fbclid || sale?.fbc || sale?.fbclid) && acquisition !== 'unknown'
+  return classifyPaidMeta(sale).channel === 'meta_ads'
+}
+
+function latestSalesByUser(sales) {
+  const byUser = new Map()
+  for (const sale of Array.isArray(sales) ? sales : []) {
+    const id = text(sale?.uscreen_user_id)
+    if (id && (!byUser.has(id) || text(sale.occurred_at) > text(byUser.get(id).occurred_at))) byUser.set(id, sale)
+  }
+  return byUser
 }
 
 export function buildReconciliation({ window, meta, invoices, sales, sourceHealth, generatedAt = new Date().toISOString() }) {
@@ -114,15 +123,11 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
   const trialInvoices = (Array.isArray(invoices) ? invoices : []).filter((invoice) => invoiceInWindow(invoice, window) && isTrialInvoice(invoice))
   const paidUsers = new Set(paidInvoices.map((invoice) => text(invoice.user_id)).filter(Boolean))
   const trialUsers = new Set(trialInvoices.map((invoice) => text(invoice.user_id)).filter(Boolean))
-  const salesByUser = new Map()
-  for (const sale of Array.isArray(sales) ? sales : []) {
-    const userId = text(sale?.uscreen_user_id)
-    if (!userId || !isMetaSale(sale)) continue
-    const existing = salesByUser.get(userId)
-    if (!existing || text(sale.occurred_at) > text(existing.occurred_at)) salesByUser.set(userId, sale)
-  }
-  const confirmedUsers = [...paidUsers].filter((userId) => salesByUser.has(userId))
-  const confirmedTrials = [...trialUsers].filter((userId) => salesByUser.has(userId))
+  const salesByUser = latestSalesByUser(sales)
+  const confirmedUsers = [...paidUsers].filter((userId) => isMetaSale(salesByUser.get(userId)))
+  const confirmedTrials = [...trialUsers].filter((userId) => isMetaSale(salesByUser.get(userId)))
+  const confirmedFirstPaymentBuyers = confirmedUsers.filter((userId) => salesByUser.get(userId)?.proof_checks?.first_payment_verified === true).length
+  const confirmedRenewalBuyers = confirmedUsers.filter((userId) => salesByUser.get(userId)?.kind === 'renewal').length
   const metaReportedPurchases = Math.round(number(meta?.purchases) || 0)
   const confirmedUscreenBuyers = confirmedUsers.length
   const unknownSales = Math.max(paidUsers.size - confirmedUscreenBuyers, 0)
@@ -145,15 +150,12 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
   }
   const confirmedCurrencies = Object.keys(confirmedRevenueByCurrency)
   const confirmedCurrency = confirmedCurrencies.length === 1 && confirmedCurrencies[0] !== 'UNKNOWN' ? confirmedCurrencies[0] : null
-  const historyComplete = !(Array.isArray(invoices) && invoices.truncated)
   const verdict = sourceHealth?.meta && sourceHealth?.uscreen && sourceHealth?.kv
-    ? (unmatchedMetaPurchases > 0 || unknownSales > 0 || !historyComplete ? 'AMBER' : 'GREEN')
+    ? 'AMBER' // Ad ID format is not live account/ownership validation; never assert full attribution GREEN.
     : 'RED'
-  const verdictReason = verdict === 'GREEN'
-    ? 'Required sources fresh; Meta purchases reconcile to Uscreen buyers.'
-    : verdict === 'AMBER'
-      ? 'Required sources available, but some purchases or Uscreen buyers are not joined.'
-      : 'A required reconciliation source is unavailable.'
+  const verdictReason = verdict === 'AMBER'
+    ? 'Paid-ad identity is format-checked but account ownership and the complete acquisition chain are not verified; totals are provisional.'
+    : 'A required reconciliation source is unavailable.'
   return {
     schema_version: 1,
     generated_at: generatedAt,
@@ -163,6 +165,8 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
     meta_reported_purchase_value: metaRevenue === undefined ? null : Number(metaRevenue.toFixed(2)),
     confirmed_uscreen_buyers: confirmedUscreenBuyers,
     confirmed_meta_buyers: confirmedUscreenBuyers,
+    verified_first_payment_meta_buyers: confirmedFirstPaymentBuyers,
+    renewal_meta_buyers: confirmedRenewalBuyers,
     uscreen_paid_signups: paidUsers.size,
     uscreen_trials: trialUsers.size,
     meta_attributed_trials: confirmedTrials.length,
@@ -181,7 +185,9 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
     verdict,
     verdict_reason: verdictReason,
     definitions: {
-      confirmed_meta_buyer: 'Unique Uscreen user with a positive paid invoice in the window and a Meta-classified sale ledger row.',
+      confirmed_meta_buyer: 'Unique Uscreen user with a positive paid invoice in the window and last-touch Meta paid medium plus numeric ad ID; account ownership and first-payment status are not implied.',
+      verified_first_payment_meta_buyers: 'Subset with an independently marked complete first-payment history.',
+      renewal_meta_buyers: 'Subset whose most recent ledger kind is renewal; other buyer statuses may remain unverified.',
       match_rate: 'confirmed_meta_buyers divided by Meta-reported purchases; null when Meta reports zero purchases.',
       unknown_sales: 'Unique paid Uscreen users in the window without a Meta-classified sale ledger row.',
       pending_recent_conversions: 'Reserved for a future payment-delay window; zero in this exact-window implementation.',
@@ -316,11 +322,7 @@ export function buildDailySeries({ window, metaDaily = [], invoices = [], sales 
       purchases: extractActionCount(row?.actions),
     })
   }
-  const metaUserIds = new Set()
-  for (const sale of Array.isArray(sales) ? sales : []) {
-    const userId = text(sale?.uscreen_user_id)
-    if (userId && isMetaSale(sale)) metaUserIds.add(userId)
-  }
+  const metaUserIds = new Set([...latestSalesByUser(sales)].filter(([, sale]) => isMetaSale(sale)).map(([id]) => id))
   const blank = () => ({
     spend: 0, meta_purchases: 0, uscreen_paid_buyers: 0, uscreen_paid_value: 0,
     uscreen_trials: 0, confirmed_meta_buyers: 0, fb20_redemptions: 0,

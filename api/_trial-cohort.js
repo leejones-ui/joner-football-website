@@ -4,6 +4,7 @@
 // signup-time UTMs supply attribution. No PII leaves this module.
 import { fetchUscreenInvoices, isPositivePaidInvoice, isTrialInvoice, invoiceProductType, invoiceProductId, fetchReliableSales, config } from './_meta-uscreen-reconciliation.js'
 import { decodeUscreenSource } from './_attribution.js'
+import { classifyPaidMeta } from './_paid-meta-evidence.js'
 import { reliabilityKv } from './_reliability-ledger.js'
 
 // Uscreen deletes $0 trial invoices later (cancelled or lapsed trials vanish
@@ -53,20 +54,22 @@ const number = (value) => { const n = Number(value); return Number.isFinite(n) ?
 const iso = (unixSeconds) => new Date(Number(unixSeconds) * 1000).toISOString()
 const day = (isoString) => String(isoString || '').slice(0, 10)
 
-const META_SOURCES = /^(fb|ig|an|facebook|instagram|meta)/i
-
 export function classifyTrialAttribution({ sale, customer }) {
   // 1. Ledger row written at trial/checkout time carries the joined journey.
   const acquisition = text(sale?.acquisition).toLowerCase()
   if (sale && acquisition && !['unknown', 'none'].includes(acquisition)) {
-    const meta = ['meta', 'facebook', 'instagram', 'exact_paid_meta'].includes(acquisition) || META_SOURCES.test(text(sale.source))
+    const classification = classifyPaidMeta(sale)
     return {
-      channel: meta ? 'meta_ads' : (text(sale.source) || acquisition),
-      confidence: text(sale.confidence) || 'medium',
+      channel: classification.channel !== 'unknown' ? classification.channel : (/^(fb|ig|an|facebook|instagram|meta|app_instagram|app_facebook|meta_ads)$/i.test(text(sale.source)) || ['meta', 'facebook', 'instagram', 'exact_paid_meta', 'unknown'].includes(acquisition) ? 'unknown' : (text(sale.source) || acquisition)),
+      confidence: classification.confidence,
+      paid_assisted: classification.paid_assisted,
       source: text(sale.source) || undefined,
       medium: text(sale.medium) || undefined,
       campaign: text(sale.campaign) || undefined,
       ad: text(sale.ad) || undefined,
+      ad_id: text(sale.last_touch?.ad_id || sale.ad_id || sale.ad) || undefined,
+      first_touch: sale.first_touch ? { utm_source: text(sale.first_touch.utm_source), utm_medium: text(sale.first_touch.utm_medium), ad_id: text(sale.first_touch.ad_id) } : undefined,
+      acquisition,
       evidence: 'journey_ledger',
     }
   }
@@ -77,14 +80,16 @@ export function classifyTrialAttribution({ sale, customer }) {
     const decoded = decodeUscreenSource(rawSource) || {}
     const source = text(decoded.utm_source) || rawSource
     const medium = text(decoded.utm_medium || utm.utm_medium)
-    const paid = /paid/i.test(medium) || Boolean(decoded.ad_id || decoded.adset_id || decoded.campaign_id)
-    const meta = META_SOURCES.test(source)
+    const classification = classifyPaidMeta({ source, medium, ad_id: decoded.ad_id || utm.ad_id, first_touch: { utm_source: decoded.first_utm_source, utm_medium: decoded.first_utm_medium, ad_id: decoded.first_ad_id } })
     return {
-      channel: meta && paid ? 'meta_ads' : meta ? 'meta_organic' : source,
-      confidence: meta && paid ? 'high' : 'medium',
+      channel: classification.channel !== 'unknown' ? classification.channel : 'unknown',
+      confidence: classification.confidence,
+      paid_assisted: classification.paid_assisted,
       source, medium: medium || undefined,
       campaign: text(decoded.utm_campaign || utm.utm_campaign) || undefined,
       ad: text(decoded.utm_content) || undefined,
+      ad_id: text(decoded.ad_id || utm.ad_id) || undefined,
+      first_touch: decoded.first_utm_source ? { utm_source: text(decoded.first_utm_source), utm_medium: text(decoded.first_utm_medium), ad_id: text(decoded.first_ad_id) } : undefined,
       evidence: 'uscreen_signup_utms',
     }
   }
@@ -150,7 +155,11 @@ export function buildTrialCohort({ window, invoices = [], sales = [], customers 
     let attribution = classifyTrialAttribution({ sale: salesByUser.get(userId), customer: customers.get(userId) })
     const snap = snapshots.get(userId)
     // A remembered attribution beats a live lookup that has lost its signal.
-    if (snap?.attribution && snap.attribution.evidence !== 'no_signal' && attribution.evidence === 'no_signal') attribution = snap.attribution
+    if (snap?.attribution && snap.attribution.evidence !== 'no_signal' && attribution.evidence === 'no_signal') {
+      const legacy = snap.attribution
+      const classification = classifyPaidMeta(legacy)
+      attribution = { ...legacy, channel: classification.channel !== 'unknown' ? classification.channel : 'unknown', confidence: classification.confidence, paid_assisted: classification.paid_assisted, evidence: 'snapshot_reclassified' }
+    }
     rows.push({
       invoice_present: !first.__snapshot,
       uscreen_user_id: userId,
