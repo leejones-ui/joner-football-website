@@ -1,6 +1,7 @@
 import { cleanString, protectForm } from './_security.js'
 import { validateEmailFormat, validateEmailQuality } from './_email-quality.js'
 import { extractAttribution, extractMetaIdentity } from './_attribution.js'
+import { captureWebsiteContact } from './_master-contact-capture.js'
 
 const FALLBACK_RECIPIENT_EMAIL = process.env.CONTACT_FORM_RECIPIENT_EMAIL || 'leejones@jonerfootball.com'
 const CONTACT_ENQUIRY_SENDER_EMAIL = process.env.CONTACT_ENQUIRY_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com'
@@ -574,6 +575,14 @@ export default async function handler(req, res) {
     } catch (sheetError) {
       console.error('Team subscription sheet append failed:', sheetError)
     }
+    const masterCapture = await captureWebsiteContact({
+      endpoint: 'contact-enquiry', form: enquiry.type, phone: enquiry.phone, email: enquiry.email,
+      name: enquiry.name, contactType: enquiry.type === 'joners-juniors' ? 'Parent/Guardian' : '',
+      country: body.country || body.countryCode || (['training-sydney', 'joners-juniors'].includes(enquiry.type) ? 'AU' : ''),
+      players: enquiry.playerName ? [{ name: enquiry.playerName }] : [],
+      source: `contact-${enquiry.type}`, sourceLabel: enquiry.typeLabel, submittedAt: enquiry.submittedAt,
+    })
+    if (masterCapture.status === 'failed') console.error('Master contact capture failed:', masterCapture.reason)
     return res.status(200).json({ success: true })
   } catch (error) {
     console.error('Contact enquiry failed:', error)

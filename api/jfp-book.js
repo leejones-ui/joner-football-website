@@ -16,6 +16,7 @@ import {
 } from './_jfp-store.js'
 import { airtableCounts } from './_jfp-airtable.js'
 import { sendApplicationReceived, sendApplicationAlert } from './_jfp-email.js'
+import { captureWebsiteContact } from './_master-contact-capture.js'
 
 const MAX_PLAYERS = 3
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -159,6 +160,8 @@ async function submit(req, res, body) {
   booking.stripeSessionId = session.id
   await saveBooking(booking)
   await indexBooking(booking)
+  const masterCapture = await captureWebsiteContact({ endpoint: 'jfp-book', form: 'jfp-direct-booking', country: 'AU', players: booking.players, phone: booking.mobile, email: booking.email, parentName: booking.parentName, contactType: 'Parent/Guardian', source: 'jfp-direct-booking', sourceLabel: 'JFP term booking', submittedAt: booking.createdAt })
+  if (masterCapture.status === 'failed') console.error('Master contact capture failed:', masterCapture.reason)
   return res.status(200).json({ success: true, bookingId: booking.id, url: session.url })
 }
 
@@ -188,6 +191,8 @@ async function apply(req, res, body) {
     sendApplicationReceived({ application, group, config }).catch((e) => console.error('jfp application ack failed', e)),
     sendApplicationAlert({ application, group, config }).catch((e) => console.error('jfp application alert failed', e)),
   ])
+  const masterCapture = await captureWebsiteContact({ endpoint: 'jfp-book', form: 'jfp-application', country: 'AU', players: application.players, phone: application.mobile, email: application.email, parentName: application.parentName, contactType: 'Parent/Guardian', source: 'jfp-application', sourceLabel: 'JFP Pathway application', submittedAt: application.createdAt })
+  if (masterCapture.status === 'failed') console.error('Master contact capture failed:', masterCapture.reason)
   return res.status(200).json({ success: true, applicationId: application.id })
 }
 

@@ -1,4 +1,5 @@
 import { protectForm } from './_security.js'
+import { captureWebsiteContact } from './_master-contact-capture.js'
 
 const RECIPIENT_EMAIL = 'joner1on1info@gmail.com'
 
@@ -138,6 +139,14 @@ export default async function handler(req, res) {
 
     await sendBrevoEmail(application)
     const brevo = await addSelectionApplicationToBrevo(application)
+    const masterCapture = await captureWebsiteContact({
+      endpoint: 'selection-application', form: 'la-tcpe-selection', phone: application.mobileNumber,
+      email: application.email, name: application.parentFullName,
+      country: body.country || body.countryCode, players: [{ name: application.playerFullName }],
+      contactType: application.parentFullName ? 'Parent/Guardian' : '', source: 'la-tcpe-selection-application',
+      sourceLabel: application.camp, submittedAt: application.submittedAt,
+    })
+    if (masterCapture.status === 'failed') console.error('Master contact capture failed:', masterCapture.reason)
     return res.status(200).json({ success: true, brevo })
   } catch (error) {
     console.error('Selection application failed:', error)

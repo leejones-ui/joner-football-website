@@ -1,6 +1,7 @@
 import { cleanString, protectForm } from './_security.js'
 import { extractAttribution, extractMetaIdentity } from './_attribution.js'
 import { linkJourneyIdentity } from './_journey-ledger.js'
+import { captureWebsiteContact } from './_master-contact-capture.js'
 import { isValidUscreenWebhookSecret, parseUscreenBody, processUscreenPayload } from './_uscreen-webhook.js'
 import dns from 'node:dns/promises'
 
@@ -575,6 +576,12 @@ export default async function handler(req, res) {
         return res.status(502).json({ success: false, error: 'Email captured, but the free bundle email could not send yet. Please click the videos button below.' })
       }
     }
+
+    const masterCapture = await captureWebsiteContact({
+      endpoint: 'subscribe', form: source, phone: body.phone, email: validation.email,
+      name: firstName, country: body.country || body.countryCode, source: `subscribe-${source}`, sourceLabel: source,
+    })
+    if (masterCapture.status === 'failed') console.error('Master contact capture failed:', masterCapture.reason)
 
     return res.status(200).json({ success: true })
   } catch (error) {

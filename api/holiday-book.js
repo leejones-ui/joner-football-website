@@ -11,6 +11,7 @@ import {
   maxPlayersForType, minPlayersForType, expireCheckoutSession, extendHold, RESERVE_MINUTES,
 } from './_holiday-store.js'
 import crypto from 'node:crypto'
+import { captureWebsiteContact } from './_master-contact-capture.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -217,6 +218,8 @@ export default async function handler(req, res) {
   }
   await saveBooking(booking)
   await indexBooking(booking)
+  const masterCapture = await captureWebsiteContact({ endpoint: 'holiday-book', form: 'school-holiday-booking', country: 'AU', players: booking.players, phone: booking.mobile, email: booking.email, parentName: booking.parentName, contactType: 'Parent/Guardian', source: 'school-holiday-booking', sourceLabel: 'School Holiday Sessions', submittedAt: booking.createdAt })
+  if (masterCapture.status === 'failed') console.error('Master contact capture failed:', masterCapture.reason)
 
   return res.status(200).json({ success: true, bookingId, url: session.url })
 }

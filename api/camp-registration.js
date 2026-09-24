@@ -1,4 +1,5 @@
 import { protectForm } from './_security.js'
+import { captureWebsiteContact } from './_master-contact-capture.js'
 import { validateEmailFormat, validateEmailQuality } from './_email-quality.js'
 import { sendRegistrationEmail } from './_camp-automation.js'
 import { campPaymentConfig, selectedDayKey, siteUrl } from './_camp-payment-options.js'
@@ -580,6 +581,14 @@ export default async function handler(req, res) {
         customerEmail = { skipped: false, failed: true }
       }
     }
+    const masterCapture = await captureWebsiteContact({
+      endpoint: 'camp-registration', form: registration.camp, phone: registration.mobile,
+      email: registration.email, parentName: registration.parentName,
+      country: body.country || body.countryCode, players: [{ name: `${registration.playerFirstName} ${registration.playerSurname}` }],
+      contactType: 'Parent/Guardian', source: registration.source || registration.camp,
+      sourceLabel: registration.camp, submittedAt: registration.submittedAt,
+    })
+    if (masterCapture.status === 'failed') console.error('Master contact capture failed:', masterCapture.reason)
 
     return res.status(200).json({
       success: true,

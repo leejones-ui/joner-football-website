@@ -2,6 +2,7 @@ import { protectForm } from './_security.js'
 import { validateEmailQuality } from './_email-quality.js'
 import { appendRow, readRows, updateCell } from './_camp-automation.js'
 import { JUNIORS_HEADERS, JUNIORS_SHEET_TAB, normaliseRegistration, rowFromRegistration, validateJuniorsRegistration, stripeCheckoutForm } from './_juniors-flow.js'
+import { captureWebsiteContact } from './_master-contact-capture.js'
 
 const sheetId = () => process.env.JUNIORS_SHEET_ID || process.env.CAMP_REGISTRATION_SHEET_ID
 const tab = () => process.env.JUNIORS_SHEET_TAB || JUNIORS_SHEET_TAB
@@ -53,6 +54,12 @@ export default async function handler(req, res) {
     const index = rows.findIndex((row, i) => i > 0 && row[1] === registration.registrationId)
     if (index < 0) throw new Error('Pending Joners Juniors registration could not be found.')
     await updateCell(sheetId(), tab(), index + 1, 'M', checkout.id)
+    const masterCapture = await captureWebsiteContact({
+      endpoint: 'juniors-registration', form: 'joners-juniors-paid-registration', phone: registration.mobile,
+      email: registration.email, parentName: registration.parent, contactType: 'Parent/Guardian',
+      country: 'AU', players: [{ name: registration.player }], source: 'joners-juniors-registration', sourceLabel: 'Joners Juniors', submittedAt: registration.submittedAt,
+    })
+    if (masterCapture.status === 'failed') console.error('Master contact capture failed:', masterCapture.reason)
     return res.status(200).json({ success: true, registrationId: registration.registrationId, paymentLink: checkout.url, checkoutSessionId: checkout.id, brevo: { listId: brevo.listId } })
   } catch (error) {
     console.error('Joners Juniors registration failed:', error?.message || 'unknown error')
