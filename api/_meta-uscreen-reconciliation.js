@@ -109,19 +109,26 @@ export function isMetaSale(sale) {
   return classifyPaidMeta(sale).channel === 'meta_ads'
 }
 
-// One ledger row per buyer. A row that carries paid-ad proof wins over later
-// rows that lost it (renewals, re-deliveries, app-side events); otherwise the
-// latest row is used.
+// An ad acquisition: paid-ad evidence on a first payment or trial row. A renewal
+// or refund is never an ad win, even when the customer's journey is ad-tagged.
+export function isMetaAcquisition(sale) {
+  return isMetaSale(sale) && !['renewal', 'refund'].includes(text(sale?.kind).toLowerCase())
+}
+
+// One ledger row per buyer: the latest acquisition row (payment or trial).
+// Renewals and refunds never replace it, so a later renewal cannot turn an
+// ad buyer into a non-buyer or an old organic member into an ad win.
 function latestSalesByUser(sales) {
   const byUser = new Map()
+  const isLater = (a, b) => text(a.occurred_at) > text(b.occurred_at)
+  const secondary = (sale) => ['renewal', 'refund'].includes(text(sale?.kind).toLowerCase())
   for (const sale of Array.isArray(sales) ? sales : []) {
     const id = text(sale?.uscreen_user_id)
     if (!id) continue
     const current = byUser.get(id)
     if (!current) { byUser.set(id, sale); continue }
-    const saleMeta = isMetaSale(sale), currentMeta = isMetaSale(current)
-    if (saleMeta !== currentMeta) { if (saleMeta) byUser.set(id, sale); continue }
-    if (text(sale.occurred_at) > text(current.occurred_at)) byUser.set(id, sale)
+    if (secondary(sale) !== secondary(current)) { if (!secondary(sale)) byUser.set(id, sale); continue }
+    if (isLater(sale, current)) byUser.set(id, sale)
   }
   return byUser
 }

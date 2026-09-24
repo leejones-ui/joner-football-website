@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { classifyPaidMeta } from '../api/_paid-meta-evidence.js'
 import { classifyTrialAttribution, buildTrialCohort } from '../api/_trial-cohort.js'
-import { isMetaSale, buildReconciliation, buildDailySeries } from '../api/_meta-uscreen-reconciliation.js'
+import { isMetaSale, isMetaAcquisition, buildReconciliation, buildDailySeries } from '../api/_meta-uscreen-reconciliation.js'
 const paid = { acquisition: 'exact_paid_meta', source: 'fb', medium: 'paid_social', campaign: '1234567890123457', ad: '1234567890123456' }
 const organic = { acquisition: 'instagram', source: 'instagram', medium: 'organic_social' }
 const cases = [
@@ -56,3 +56,9 @@ assert.equal(classifyPaidMeta({ utm_source: 'main_instagram', utm_medium: 'socia
 // A campaign name alone is still not proof.
 assert.equal(classifyPaidMeta({ utm_source: 'fb', utm_medium: 'paid_social', campaign_id: 'JF Coaches Max' }).channel, 'unknown')
 console.log('paid meta evidence widening tests passed')
+
+// Renewals are never ad wins, even with an ad-tagged journey.
+const adRow = { utm_source: 'fb', utm_medium: 'paid_social', ad_id: '120249785829550035' }
+assert.equal(isMetaAcquisition({ ...adRow, kind: 'payment' }), true)
+assert.equal(isMetaAcquisition({ ...adRow, kind: 'renewal' }), false)
+console.log('renewal exclusion tests passed')
