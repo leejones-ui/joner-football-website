@@ -1,6 +1,14 @@
 {
   "routes": [
     {
+      "src": "/images/email/(?<file>[^\\s%]+?\\.(?:jpg|jpeg|png|gif|webp))(?:\\s|%0[aAdD]|%20|%09)+",
+      "status": 301,
+      "headers": {
+        "Location": "/images/email/$file",
+        "Cache-Control": "public, max-age=86400"
+      }
+    },
+    {
       "src": "/api/uscreen-webhook",
       "dest": "/api/subscribe?uscreen_webhook=1"
     },
