@@ -1,48 +1,77 @@
-// JFP term bookings: the group model, place holds and bookings.
+// JFP term bookings: groups, place holds, bookings, requests and the audit log.
 //
-// Airtable Term 4 Players stays the roster of record. Existing families live
-// there and are never touched by this code. Places a group has left are:
+// Airtable Term 4 Players is the roster of record. KV (Upstash) keeps only
+// what Airtable cannot: group settings, atomic place holds, sign-in codes and
+// sessions, applications, waitlist, payment requests and the audit log.
 //
-//   capacity - players already in Airtable (not booked online) - online places in KV
+// Places a group has left:
 //
-// Online places are held in KV the moment a parent opens the form, the same
-// Lua pattern the holiday system proved, but counting places rather than
-// taking a whole hour. Once paid, the booking is written into Airtable and
-// tagged so it is not counted twice.
+//   capacity - Airtable players holding a place - live KV holds
+//
+// A hold is taken the moment a parent starts a booking and lives in KV until
+// the payment is written into Airtable. After that the Airtable row counts
+// the place and the hold is let go after a short overlap, so a place can be
+// briefly under-sold but never over-sold.
 import crypto from 'node:crypto'
-import { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, newId, formatAud, claimOnce } from './_holiday-store.js'
+import { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, newId, formatAud, claimOnce, stripeFetch } from './_holiday-store.js'
 
 export { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, newId, formatAud, claimOnce }
 
-export const RESERVE_MINUTES = 10
+export const RESERVE_MINUTES = 15
 export const HOLD_MINUTES = 31
 export const CHECKOUT_EXPIRES_MINUTES = 30
+// How long a paid hold lingers after Airtable has the row. Covers a reader
+// that counted Airtable a moment before the write landed.
+export const SETTLE_SECONDS = Number.isFinite(Number(process.env.JFP_SETTLE_SECONDS)) && process.env.JFP_SETTLE_SECONDS !== '' ? Number(process.env.JFP_SETTLE_SECONDS) : 20
 export const CONFIRMED_SCORE = 9007199254740000
-export const MODES = ['direct', 'application', 'closed']
+// direct = book and pay online. application = Pathway and squads, staff
+// approve. enquire = 1 to 1, we get in touch. closed = not shown to parents.
+export const MODES = ['direct', 'application', 'enquire', 'closed']
+export const LABELS = ['Small group', 'Pathway', 'Squad', '1 to 1', 'Trial']
 export const ONLINE_TAG = 'JFP-ONLINE'
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+export const ADMIN_TAG = 'JFP-ADMIN'
+export const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+export const MAX_PLAYERS = 4
+// 1 to 1 coaching is not a timetable slot parents can see (each slot belongs
+// to one player). Enquiries go to this stand-in group instead.
+export const ONE_TO_ONE = Object.freeze({ id: 'one-to-one', day: '1 to 1 coaching', time: 'times on request', location: 'Belrose HQ', label: '1 to 1', programme: 'JFP 1 on 1', mode: 'enquire', minAge: null, maxAge: null, durationMin: 60, capacity: 1, coachId: '', extraCoachIds: [], girlsOnly: 'no', publicNote: '' })
 
 export const keys = {
   config: () => 'jfp:config',
+  holdsBy: (email) => `jfp:holds-by:${crypto.createHash('sha256').update(String(email)).digest('hex').slice(0, 32)}`,
   groups: () => 'jfp:groups',
   seats: (gid) => `jfp:seats:${gid}`,
   booking: (id) => `jfp:booking:${id}`,
   bookings: () => 'jfp:bookings',
   application: (id) => `jfp:application:${id}`,
   applications: () => 'jfp:applications',
+  payreq: (id) => `jfp:payreq:${id}`,
+  payreqs: () => 'jfp:payreqs',
+  audit: () => 'jfp:audit',
+  roster: () => 'jfp:roster-cache',
   airtableCounts: () => 'jfp:airtable-counts',
   finalised: (id) => `jfp:finalised:${id}`,
+  attendance: (gid, date) => `jfp:att:${gid}:${date}`,
 }
 
 // ---------- config ----------
+
+export const DEFAULT_LOCATIONS = [
+  { id: 'belrose', match: 'belrose', name: 'Belrose HQ', address: 'Joner Football HQ, 20 Narabang Way (Unit 2), Belrose NSW 2085', maps: 'https://maps.google.com/?q=20+Narabang+Way+Belrose+NSW+2085', photo: '/images/hq/hq-hero-lee-exterior.webp', blurb: 'Our home ground. Small groups after school and on Saturdays.' },
+  { id: 'ntra', match: 'ntra', name: 'North Turramurra', address: 'North Turramurra Recreation Area, North Turramurra NSW 2074', maps: 'https://maps.google.com/?q=North+Turramurra+Recreation+Area', photo: '/images/training/jfp/jfp-training-2.jpg', blurb: 'Early morning squads, Wednesday and Thursday.' },
+  { id: 'rydalmere', match: 'rydalmere', name: 'Rydalmere Park', address: 'Rydalmere Park, Rydalmere NSW 2116', maps: 'https://maps.google.com/?q=Rydalmere+Park+NSW', photo: '/images/training/jfp/jfp-training-4.webp', blurb: 'Early morning squad on Fridays.' },
+]
 
 export const DEFAULT_CONFIG = {
   term: 'Term 4 2026',
   termStart: '2026-10-12',
   weeks: 10,
   priceCents: 85000,
-  waiverUrl: '',
+  waiverUrl: 'https://airtable.com/apphU4R0BtVIu5YqT/pagdSqWlCfZJyiPxq/form',
+  waiverVersion: 'JFP Term 4 2026 online waiver v1',
   staffEmails: ['ligia@jonerfootball.com'],
+  // Super admins: everything, including money. Sign in with an emailed code.
+  superAdmins: ['leejones@jonerfootball.com', 'ligia@jonerfootball.com'],
   coaches: [
     { id: 'dean', name: 'Dean', airtableName: 'Dean Mac', email: 'jonerfootballdean@gmail.com' },
     { id: 'sam', name: 'Sam', airtableName: 'Sam Yorks', email: 'jonerfootballsam@gmail.com' },
@@ -50,28 +79,54 @@ export const DEFAULT_CONFIG = {
     { id: 'ruby', name: 'Ruby', airtableName: 'Ruby Fanoosh', email: '' },
     { id: 'luke', name: 'Luke', airtableName: 'Luke Bakos', email: '' },
   ],
-  minAge: 7,
-  maxAge: 18,
+  // Coach logins stay off until Lee says so, even for coaches with an email.
+  coachLoginsEnabled: false,
+  locations: DEFAULT_LOCATIONS,
+  minAge: 6,
+  maxAge: 19,
 }
 
-function validEmail(v) {
+export function ownerEmail() { return (process.env.JFP_OWNER_EMAIL || 'leejones@jonerfootball.com').toLowerCase() }
+
+export function validEmail(v) {
   const e = clean(v, 200).toLowerCase()
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : ''
+}
+
+function cleanLocations(list, fallback) {
+  if (!Array.isArray(list) || !list.length) return fallback
+  const out = list.map((l) => ({
+    id: clean(l.id, 30).toLowerCase().replace(/[^a-z0-9-]/g, ''),
+    match: clean(l.match, 40).toLowerCase(),
+    name: clean(l.name, 60),
+    address: clean(l.address, 160),
+    maps: /^https:\/\//.test(l.maps || '') ? clean(l.maps, 300) : '',
+    photo: /^\/images\/[\w./-]+$/.test(l.photo || '') ? l.photo : '',
+    blurb: clean(l.blurb, 160),
+  })).filter((l) => l.id && l.name && l.match)
+  return out.length ? out : fallback
 }
 
 export function normaliseConfig(input = {}) {
   const b = structuredClone(DEFAULT_CONFIG)
   const price = Number(input.priceCents)
+  const emails = (list, fallback) => (Array.isArray(list) ? [...new Set(list.map(validEmail).filter(Boolean))] : fallback)
+  const supers = emails(input.superAdmins, b.superAdmins)
   return {
     term: clean(input.term, 40) || b.term,
     termStart: /^\d{4}-\d{2}-\d{2}$/.test(input.termStart || '') ? input.termStart : b.termStart,
     weeks: Number.isInteger(Number(input.weeks)) && Number(input.weeks) >= 1 && Number(input.weeks) <= 20 ? Number(input.weeks) : b.weeks,
     priceCents: Number.isInteger(price) && price > 0 ? price : b.priceCents,
-    waiverUrl: /^https:\/\//.test(input.waiverUrl || '') ? clean(input.waiverUrl, 500) : (input.waiverUrl === '' ? '' : b.waiverUrl),
-    staffEmails: Array.isArray(input.staffEmails) ? [...new Set(input.staffEmails.map(validEmail).filter(Boolean))] : b.staffEmails,
+    waiverUrl: /^https:\/\//.test(input.waiverUrl || '') ? clean(input.waiverUrl, 500) : b.waiverUrl,
+    waiverVersion: clean(input.waiverVersion, 80) || b.waiverVersion,
+    staffEmails: emails(input.staffEmails, b.staffEmails),
+    // Lee (the owner) is always a super admin and can never be removed.
+    superAdmins: [...new Set([ownerEmail(), ...(supers.length ? supers : b.superAdmins)])],
     coaches: Array.isArray(input.coaches) && input.coaches.length
       ? input.coaches.map((c) => ({ id: clean(c.id, 30).toLowerCase().replace(/[^a-z0-9-]/g, ''), name: clean(c.name, 60), airtableName: clean(c.airtableName, 80), email: validEmail(c.email) })).filter((c) => c.id && c.name)
       : b.coaches,
+    coachLoginsEnabled: input.coachLoginsEnabled === true,
+    locations: cleanLocations(input.locations, b.locations),
     minAge: Number(input.minAge) >= 3 && Number(input.minAge) <= 18 ? Number(input.minAge) : b.minAge,
     maxAge: Number(input.maxAge) >= 5 && Number(input.maxAge) <= 25 ? Number(input.maxAge) : b.maxAge,
   }
@@ -86,7 +141,12 @@ export async function saveConfig(partial) {
 export function coachById(config, id) { return config.coaches.find((c) => c.id === id) || null }
 export function coachByAirtableName(config, name) {
   const n = clean(name, 80).toLowerCase()
+  if (!n) return null
   return config.coaches.find((c) => c.airtableName.toLowerCase() === n || c.name.toLowerCase() === n.split(' ')[0]) || null
+}
+export function locationFor(config, name) {
+  const n = clean(name, 80).toLowerCase()
+  return config.locations.find((l) => n.includes(l.match)) || { id: n.replace(/[^a-z0-9]+/g, '-') || 'other', match: n, name: clean(name, 80) || 'Other', address: clean(name, 80), maps: '', photo: '', blurb: '' }
 }
 
 // ---------- time and dates ----------
@@ -115,6 +175,16 @@ export function dateLabel(iso) {
 
 export function dayOrder(day) { const i = DAYS.indexOf(day); return i < 0 ? 9 : i }
 
+// Age on the first day of term, from an ISO date of birth.
+export function ageOn(dob, onIso) {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(dob || '')) return null
+  const [y, m, d] = dob.slice(0, 10).split('-').map(Number)
+  const [oy, om, od] = onIso.split('-').map(Number)
+  let age = oy - y
+  if (om < m || (om === m && od < d)) age -= 1
+  return age >= 0 && age < 100 ? age : null
+}
+
 // ---------- groups ----------
 
 export function groupId(day, time, location) {
@@ -130,23 +200,36 @@ export function validateGroup(input, config, existing = {}) {
   if (merged.coachId && !coachById(config, merged.coachId)) errors.push('Unknown coach.')
   const capacity = Number(merged.capacity)
   if (!Number.isInteger(capacity) || capacity < 0 || capacity > 60) errors.push('Capacity must be a whole number from 0 to 60.')
-  if (!MODES.includes(merged.mode)) errors.push('Mode must be direct, application or closed.')
+  if (!MODES.includes(merged.mode)) errors.push('Mode must be book, apply, enquire or closed.')
   const duration = Number(merged.durationMin ?? 60)
   if (!Number.isInteger(duration) || duration < 15 || duration > 180) errors.push('Duration must be 15 to 180 minutes.')
+  const minAge = merged.minAge == null || merged.minAge === '' ? null : Number(merged.minAge)
+  const maxAge = merged.maxAge == null || merged.maxAge === '' ? null : Number(merged.maxAge)
+  if ((minAge != null && (!Number.isInteger(minAge) || minAge < 3 || minAge > 25)) || (maxAge != null && (!Number.isInteger(maxAge) || maxAge < 3 || maxAge > 25))) errors.push('Ages must be whole numbers from 3 to 25.')
+  if (minAge != null && maxAge != null && minAge > maxAge) errors.push('The youngest age cannot be above the oldest.')
+  const label = LABELS.includes(merged.label) ? merged.label : 'Small group'
+  const girls = ['no', 'suggested', 'yes'].includes(merged.girlsOnly) ? merged.girlsOnly : 'no'
   if (errors.length) return { ok: false, errors }
   return {
     ok: true,
     group: {
       id: existing.id || groupId(merged.day, merged.time, merged.location),
       day: merged.day,
-      time: clean(merged.time, 10),
+      time: clean(merged.time, 10).toLowerCase().replace(/\s+/g, ''),
       location: clean(merged.location, 80),
       coachId: merged.coachId || '',
-      extraCoachIds: Array.isArray(merged.extraCoachIds) ? merged.extraCoachIds.filter((c) => coachById(config, c)) : [],
+      extraCoachIds: Array.isArray(merged.extraCoachIds) ? merged.extraCoachIds.filter((c) => coachById(config, c) && c !== merged.coachId) : [],
       programme: clean(merged.programme, 60) || 'JFP 10 weeks',
+      label,
       capacity,
       mode: merged.mode,
       durationMin: duration,
+      minAge,
+      maxAge,
+      // draft: worked out from who is in the group today, Lee still to confirm.
+      ageStatus: merged.ageStatus === 'confirmed' ? 'confirmed' : 'draft',
+      // suggested: looks girls only from the roster, not enforced until 'yes'.
+      girlsOnly: girls,
       publicNote: clean(merged.publicNote, 200),
       updatedAt: new Date().toISOString(),
     },
@@ -155,38 +238,49 @@ export function validateGroup(input, config, existing = {}) {
 
 function parse(v) { if (v == null) return null; if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch { return null } }
 
+export function sortGroups(list) {
+  return list.sort((a, b) => dayOrder(a.day) - dayOrder(b.day) || to24h(a.time).localeCompare(to24h(b.time)) || a.location.localeCompare(b.location))
+}
 export async function listGroups() {
   const raw = await kvCommand(['HGETALL', keys.groups()])
   const out = []
-  for (let i = 0; i + 1 < (raw || []).length; i += 2) { const g = parse(raw[i + 1]); if (g) out.push(g) }
-  return out.sort((a, b) => dayOrder(a.day) - dayOrder(b.day) || to24h(a.time).localeCompare(to24h(b.time)) || a.location.localeCompare(b.location))
+  for (let i = 0; i + 1 < (raw || []).length; i += 2) { const g = parse(raw[i + 1]); if (g) out.push(normaliseStoredGroup(g)) }
+  return sortGroups(out)
 }
-export async function getGroup(id) { return parse(await kvCommand(['HGET', keys.groups(), clean(id, 80)])) }
+// Groups saved before age bands existed still read cleanly.
+export function normaliseStoredGroup(g) {
+  return { label: 'Small group', minAge: null, maxAge: null, ageStatus: 'draft', girlsOnly: 'no', extraCoachIds: [], publicNote: '', ...g }
+}
+export async function getGroup(id) { const g = parse(await kvCommand(['HGET', keys.groups(), clean(id, 80)])); return g ? normaliseStoredGroup(g) : null }
 export async function saveGroup(group) { await kvCommand(['HSET', keys.groups(), group.id, JSON.stringify(group)]); return group }
+export async function deleteGroup(id) { await kvCommand(['HDEL', keys.groups(), clean(id, 80)]) }
+
+// Does this age fit the group? Groups without a band take the whole programme range.
+export function ageFits(group, age, config) {
+  if (!Number.isInteger(age)) return false
+  const lo = group.minAge ?? config.minAge
+  const hi = group.maxAge ?? config.maxAge
+  return age >= lo && age <= hi
+}
 
 // ---------- places ----------
 
-// Purge lapsed holds, then take `want` places only if they fit in what is
-// left. ARGV: now, available (capacity minus Airtable players), want, expiry, bookingId.
+// One script for taking and resizing a hold. Purge lapsed holds, count what
+// others hold, and take `want` places for this booking only if they fit in
+// what is left. Re-running it for the same booking resizes its hold (1 place
+// reserved on opening the form can become 3 at Pay) in one atomic step.
+// ARGV: now, available (capacity minus Airtable players), want, expiry, bookingId.
 export const HOLD_SCRIPT = `
 redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
-local taken = redis.call('ZCARD', KEYS[1])
+local own = 0
+for i = 1, 20 do
+  if redis.call('ZSCORE', KEYS[1], ARGV[5] .. '#' .. i) then own = own + 1 end
+end
 local want = tonumber(ARGV[3])
-if taken + want > tonumber(ARGV[2]) then return 0 end
+if redis.call('ZCARD', KEYS[1]) - own + want > tonumber(ARGV[2]) then return 0 end
+for i = 1, 20 do redis.call('ZREM', KEYS[1], ARGV[5] .. '#' .. i) end
 for i = 1, want do
   redis.call('ZADD', KEYS[1], ARGV[4], ARGV[5] .. '#' .. i)
-end
-return 1`
-
-// Push this booking's live holds to a new expiry, only if every one is still ours.
-export const EXTEND_SCRIPT = `
-local want = tonumber(ARGV[4])
-for i = 1, want do
-  local s = redis.call('ZSCORE', KEYS[1], ARGV[3] .. '#' .. i)
-  if not s or tonumber(s) <= tonumber(ARGV[1]) then return 0 end
-end
-for i = 1, want do
-  redis.call('ZADD', KEYS[1], 'XX', ARGV[2], ARGV[3] .. '#' .. i)
 end
 return 1`
 
@@ -195,14 +289,18 @@ export function members(bookingId, n) { return Array.from({ length: n }, (_, i) 
 export async function holdPlaces({ gid, bookingId, want, available, expiresMs, nowMs = Date.now() }) {
   return Number(await kvCommand(['EVAL', HOLD_SCRIPT, '1', keys.seats(gid), String(nowMs), String(available), String(want), String(expiresMs), bookingId])) === 1
 }
-export async function extendPlaces({ gid, bookingId, want, expiresMs, nowMs = Date.now() }) {
-  return Number(await kvCommand(['EVAL', EXTEND_SCRIPT, '1', keys.seats(gid), String(nowMs), String(expiresMs), bookingId, String(want)])) === 1
-}
+// Paid: keep the places until Airtable has the rows.
 export async function confirmPlaces(gid, bookingId, n) {
   await kvCommand(['ZADD', keys.seats(gid), ...members(bookingId, n).flatMap((m) => [String(CONFIRMED_SCORE), m])])
 }
-export async function releasePlaces(gid, bookingId, n) {
-  await kvCommand(['ZREM', keys.seats(gid), ...members(bookingId, Math.max(n, 6))])
+// Airtable now counts these players. Let the KV places lapse shortly, after
+// every cached count has had time to refresh.
+export async function settlePlaces(gid, bookingId, n, nowMs = Date.now()) {
+  const until = String(nowMs + SETTLE_SECONDS * 1000)
+  await kvCommand(['ZADD', keys.seats(gid), 'XX', ...members(bookingId, Math.max(n, 1)).flatMap((m) => [until, m])])
+}
+export async function releasePlaces(gid, bookingId) {
+  await kvCommand(['ZREM', keys.seats(gid), ...members(bookingId, 20)])
 }
 export async function onlineCounts(gids, nowMs = Date.now()) {
   if (!gids.length) return {}
@@ -214,34 +312,86 @@ export function placesLeft(group, airtableCount, onlineCount) {
   return Math.max(0, Number(group.capacity || 0) - Number(airtableCount || 0) - Number(onlineCount || 0))
 }
 
-// ---------- bookings and applications ----------
-
-export async function saveBooking(b) {
-  const ttl = b.status === 'reserving' ? 86400 : 60 * 60 * 24 * 500
-  await kvSetJson(keys.booking(b.id), b, ttl)
-  return b
+// A parent may hold places in a few groups at once (siblings), not every group.
+export const MAX_HOLDS_PER_PARENT = 3
+export async function parentHoldCount(email, nowMs = Date.now()) {
+  const res = await kvPipeline([['ZREMRANGEBYSCORE', keys.holdsBy(email), '-inf', String(nowMs)], ['ZCARD', keys.holdsBy(email)]])
+  return Number(res[1] || 0)
 }
+export async function noteParentHold(email, bookingId, expiresMs) {
+  await kvPipeline([['ZADD', keys.holdsBy(email), String(expiresMs), bookingId], ['EXPIRE', keys.holdsBy(email), '7200']])
+}
+export async function dropParentHold(email, bookingId) {
+  if (email) await kvCommand(['ZREM', keys.holdsBy(email), bookingId])
+}
+
+// ---------- Stripe Checkout ----------
+
+// Close a Checkout Session so it can no longer be paid. Returns
+//   'expired'  we closed it, or it had already lapsed: safe to release
+//   'complete' it was paid: never cancel, the payment is on its way
+//   'error'    we could not tell: leave everything as it is
+export async function closeCheckout(sessionId) {
+  if (!sessionId) return 'expired'
+  try {
+    await stripeFetch(`/checkout/sessions/${encodeURIComponent(sessionId)}/expire`, { method: 'POST', body: {} })
+    return 'expired'
+  } catch {
+    try {
+      const s = await stripeFetch(`/checkout/sessions/${encodeURIComponent(sessionId)}`)
+      if (s.status === 'complete' || s.payment_status === 'paid') return 'complete'
+      if (s.status === 'expired') return 'expired'
+    } catch {}
+    return 'error'
+  }
+}
+
+// ---------- bookings, applications, payment requests ----------
+
+const LONG = 60 * 60 * 24 * 500
+export async function saveBooking(b) { await kvSetJson(keys.booking(b.id), b, b.status === 'reserving' ? 86400 : LONG); return b }
 export async function getBooking(id) { const c = clean(id, 60); return c ? kvGetJson(keys.booking(c)) : null }
 export async function indexBooking(b) { await kvCommand(['ZADD', keys.bookings(), String(Date.parse(b.createdAt)), b.id]) }
-export async function listBookings(limit = 500) {
-  const ids = await kvCommand(['ZREVRANGE', keys.bookings(), '0', String(limit - 1)])
+async function listIndex(indexKey, recordKey, limit) {
+  const ids = await kvCommand(['ZREVRANGE', indexKey, '0', String(limit - 1)])
   if (!ids?.length) return []
-  return (await kvPipeline(ids.map((id) => ['GET', keys.booking(id)]))).map(parse).filter(Boolean)
+  return (await kvPipeline(ids.map((id) => ['GET', recordKey(id)]))).map(parse).filter(Boolean)
 }
-export async function saveApplication(a) { await kvSetJson(keys.application(a.id), a, 60 * 60 * 24 * 500); await kvCommand(['ZADD', keys.applications(), String(Date.parse(a.createdAt)), a.id]); return a }
-export async function getApplication(id) { return kvGetJson(keys.application(clean(id, 60))) }
-export async function listApplications(limit = 500) {
-  const ids = await kvCommand(['ZREVRANGE', keys.applications(), '0', String(limit - 1)])
-  if (!ids?.length) return []
-  return (await kvPipeline(ids.map((id) => ['GET', keys.application(id)]))).map(parse).filter(Boolean)
+export async function listBookings(limit = 1000) { return listIndex(keys.bookings(), keys.booking, limit) }
+
+// kind: application (Pathway, squads), waitlist (full groups), enquiry (1 to 1)
+export async function saveApplication(a) { await kvSetJson(keys.application(a.id), a, LONG); await kvCommand(['ZADD', keys.applications(), String(Date.parse(a.createdAt)), a.id]); return a }
+export async function getApplication(id) { const c = clean(id, 60); return c ? kvGetJson(keys.application(c)) : null }
+export async function listApplications(limit = 1000) { return listIndex(keys.applications(), keys.application, limit) }
+
+// A request for a family to pay, raised by staff (admin add, balance) or by
+// an approved application. Paying it runs through Stripe like a booking.
+export async function savePayreq(p) { await kvSetJson(keys.payreq(p.id), p, LONG); await kvCommand(['ZADD', keys.payreqs(), String(Date.parse(p.createdAt)), p.id]); return p }
+export async function getPayreq(id) { const c = clean(id, 60); return c ? kvGetJson(keys.payreq(c)) : null }
+export async function listPayreqs(limit = 1000) { return listIndex(keys.payreqs(), keys.payreq, limit) }
+
+// ---------- audit ----------
+
+// Every staff change, newest first. Kept to the last 5000.
+export async function audit(entry) {
+  const row = { at: new Date().toISOString(), ...entry }
+  await kvPipeline([['LPUSH', keys.audit(), JSON.stringify(row)], ['LTRIM', keys.audit(), '0', '4999']])
+  return row
 }
+export async function listAudit(limit = 300) {
+  return ((await kvCommand(['LRANGE', keys.audit(), '0', String(limit - 1)])) || []).map(parse).filter(Boolean)
+}
+
+// ---------- small helpers ----------
 
 export function tokenMatches(supplied, expected) {
   if (typeof supplied !== 'string' || typeof expected !== 'string' || supplied.length !== expected.length || !expected) return false
   return crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))
 }
+export function normName(v) { return String(v || '').toLowerCase().normalize('NFKD').replace(/[^a-z]/g, '') }
+export function digits(v) { return String(v || '').replace(/\D/g, '') }
 
-// ---------- parent access cookie ----------
+// ---------- parent access cookie (the shared booking password) ----------
 
 const PARENT_COOKIE = 'jf_jfp'
 function sha(v) { return crypto.createHash('sha256').update(String(v)).digest() }

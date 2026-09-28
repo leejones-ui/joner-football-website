@@ -65,10 +65,12 @@ export default async function handler(req, res) {
       if (type === 'checkout.session.completed' || type === 'checkout.session.async_payment_succeeded') {
         if (session.payment_status !== 'paid') return res.status(200).json({ success: true, skipped: 'not-paid', jfpId })
         const r = await finaliseJfpBooking(jfpId, session)
-        return res.status(200).json({ success: true, jfpId, already: r.already === true, verified })
+        // Another run is finishing it: answer 500 so Stripe tries again later.
+        if (r.busy) return res.status(500).json({ success: false, jfpId, busy: true })
+        return res.status(200).json({ success: true, jfpId, already: r.already === true, attention: r.attention || '', verified })
       }
       if (type === 'checkout.session.expired' || type === 'checkout.session.async_payment_failed') {
-        const r = await expireJfpBooking(jfpId)
+        const r = await expireJfpBooking(jfpId, session)
         return res.status(200).json({ success: true, jfpId, released: r.changed, verified })
       }
       return res.status(200).json({ success: true, ignored: type })

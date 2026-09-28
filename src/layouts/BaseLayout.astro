@@ -15,6 +15,9 @@ export interface Props {
   schema?: object | object[]
   hideChrome?: boolean
   hideMobileAppCta?: boolean
+  // Private pages (JFP booking, accounts, staff portal): no ad pixels, analytics
+  // or chat widgets, so personal details in URLs never reach third parties.
+  noTracking?: boolean
 }
 
 const {
@@ -28,6 +31,7 @@ const {
   schema,
   hideChrome = false,
   hideMobileAppCta = false,
+  noTracking = false,
 } = Astro.props
 
 const siteUrl = 'https://jonerfootball.com'
@@ -170,11 +174,13 @@ const allSchemas = schema
       </style>
     )}
 
+    {!noTracking && (
+      <Fragment>
     <!-- LEE: Paste your GA4 Measurement ID into Vercel env var PUBLIC_GA4_ID (starts with G-) -->
     <Analytics />
 
     <!-- Meta Pixel -->
-    <script>
+    <script is:inline>
       !function(f,b,e,v,n,t,s)
       {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
       n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -207,6 +213,8 @@ const allSchemas = schema
       ]);
     </script>
 
+      </Fragment>
+    )}
     {recaptchaSiteKey && (
       <script src={`https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`} async defer></script>
     )}
@@ -222,6 +230,8 @@ const allSchemas = schema
     </main>
     {!hideChrome && <Footer />}
 
+    {!noTracking && (
+      <Fragment>
     <script is:inline src="/tracking-attribution.js"></script>
     <script is:inline>
       (function () {
@@ -902,6 +912,8 @@ const allSchemas = schema
         else initTracking();
       })();
     </script>
+      </Fragment>
+    )}
 
     {mobileStickyAllowedPath && !hideChrome && !hideMobileAppCta && (
       <div

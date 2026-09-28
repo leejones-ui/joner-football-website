@@ -15,8 +15,8 @@ const fixtures = [
   ['camp-registration', { playerFirstName: 'Example', playerSurname: 'Player', email: 'parent@example.test', parentName: 'Example Parent', mobile: '+61422123456', age: '10', jerseySize: 'M', numberOfDays: '3', agreementAccepted: true, paymentLink: 'https://example.test/pay' }],
   ['selection-application', { playerFullName: 'Example Player', parentFullName: 'Example Parent', playerAge: '10', playFor: 'Test FC', mobileNumber: '+61422123456', email: 'parent@example.test', hearAbout: 'Friend', applicationMessage: 'Please consider' }],
   ['juniors-registration', { email: 'parent@example.test', mobile: '+61422123456' }],
-  ['jfp-book', { groupId: 'group', bookingId: 'booking', releaseToken: 'token', players: [{ name: 'Example Player', age: 10 }], parentName: 'Example Parent', mobile: '+61422123456', email: 'parent@example.test', agreementAccepted: true }],
-  ['jfp-book', { action: 'apply', groupId: 'group', players: [{ name: 'Example Player', age: 10 }], parentName: 'Example Parent', mobile: '+61422123456', email: 'parent@example.test' }],
+  ['jfp-book', { groupId: 'group', bookingId: 'booking', releaseToken: 'token', players: [{ name: 'Example Player', dob: '2016-01-01', emergencyName: 'Example Contact', emergencyPhone: '+61422123457' }], waiver: { accepted: { terms: true, makeups: true, payment: true, emergency: true }, signature: 'Example Parent' }, parentName: 'Example Parent', mobile: '+61422123456', email: 'parent@example.test', agreementAccepted: true }],
+  ['jfp-book', { action: 'request', kind: 'application', groupId: 'group', players: [{ name: 'Example Player', dob: '2016-01-01' }], parentName: 'Example Parent', mobile: '+61422123456', email: 'parent@example.test' }],
   ['holiday-book', { slotId: 'slot', type: 'one', seats: 1, players: [{ name: 'Example Player', age: 10 }], parentName: 'Example Parent', mobile: '+61422123456', email: 'parent@example.test', agreementAccepted: true }],
 ]
 async function execute(source, body, captureStatus = 'persisted', method = 'POST') {
@@ -43,8 +43,13 @@ async function execute(source, body, captureStatus = 'persisted', method = 'POST
     validateJuniorsRegistration: () => ({ ok: true }), rowFromRegistration: () => [], stripeCheckoutForm: () => 'mock=1',
     readRows: async () => [['head'], ['', 'reg']], JUNIORS_HEADERS: [], JUNIORS_SHEET_TAB: 'Juniors',
     requireParentAccess: () => true, requireHolidayAccess: () => true,
-    getConfig: async () => ({ minAge: 7, maxAge: 18, priceCents: 85000, bookingCutoffHours: 2, term: 'Term' }),
-    getGroup: async () => ({ id: 'group', mode: body.action === 'apply' ? 'application' : 'direct', capacity: 6 }),
+    getConfig: async () => ({ minAge: 7, maxAge: 18, priceCents: 85000, bookingCutoffHours: 2, term: 'Term', termStart: '2026-10-12' }),
+    getGroup: async () => ({ id: 'group', mode: body.kind === 'application' ? 'application' : 'direct', capacity: 6, day: 'Monday', time: '4:20pm', location: 'Belrose HQ' }),
+    sessionFor: async () => ({ email: 'parent@example.test' }), sameOrigin: () => true,
+    loadRoster: async () => ({ players: [], term3: [], waivers: [] }), countsFrom: () => ({}),
+    familyFor: () => ({ emails: ['parent@example.test'], phones: [], parentName: 'Example Parent', mobile: '+61422123456', players: [] }),
+    holdPlaces: async () => true, onlineCounts: async () => ({}), placesLeft: () => 6, ageOn: () => 10, ageFits: () => true,
+    normName: v => String(v || '').toLowerCase().replace(/[^a-z]/g, ''), locationFor: () => ({ name: 'Belrose HQ' }), MAX_PLAYERS: 4, ONE_TO_ONE: { id: 'one-to-one' },
     getSlot: async () => ({ id: 'slot', status: 'open', type: 'one', startsAt: '2027-10-01T10:00:00+10:00', location: 'HQ' }),
     getBooking: async () => body.bookingId ? ({ id: 'booking', groupId: 'group', status: 'reserving', seats: 1, releaseToken: 'token' }) : null,
     tokenMatches: () => true, extendPlaces: async () => true, extendHold: async () => true, holdSlot: async () => 'held',
@@ -99,7 +104,8 @@ for (const [route, body] of fixtures) test(`${route} ${body.action || 'submit'} 
 
 test('phone-bearing API coverage inventory catches new unclassified handlers', () => {
   const covered = [...new Set(fixtures.map(([route]) => `${route}.js`))]
-  const excluded = ['jfp-portal-data.js','camp-payment-webhook.js','camp-confirm-payment.js','juniors-payment-webhook.js','juniors-email-test.js','holiday-admin.js','camp-unpaid-reminders.js','track-event.js']
+  // jfp-account.js: signed-in families already in Airtable signing a waiver; no new contact to capture.
+  const excluded = ['jfp-portal-data.js','jfp-account.js','camp-payment-webhook.js','camp-confirm-payment.js','juniors-payment-webhook.js','juniors-email-test.js','holiday-admin.js','camp-unpaid-reminders.js','track-event.js']
   const found = fs.readdirSync('api').filter(name => !name.startsWith('_') && name.endsWith('.js')).filter(name => {
     const source = fs.readFileSync(`api/${name}`, 'utf8')
     return source.includes('export default') && /\b(phone|mobile|mobileNumber|normaliseRegistration)\b/.test(source)

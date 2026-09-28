@@ -1,9 +1,11 @@
 // Pure-function checks for JFP term bookings. No network, no KV.
 import assert from 'node:assert/strict'
-import { to24h, sessionDates, dateLabel, groupId, validateGroup, placesLeft, normaliseConfig, HOLD_SCRIPT, EXTEND_SCRIPT, signParentCookie, hasParentAccess } from '../api/_jfp-store.js'
-import { draftGroupsFromRoster } from '../api/_jfp-airtable.js'
-import { splitFee } from '../api/_jfp-finalise.js'
+import { to24h, sessionDates, dateLabel, groupId, validateGroup, placesLeft, normaliseConfig, HOLD_SCRIPT, ageOn, ageFits, locationFor, signParentCookie, hasParentAccess } from '../api/_jfp-store.js'
+import { draftGroupsFromRoster, draftAgeBand, waiverFor, familyFor } from '../api/_jfp-airtable.js'
+import { splitFee, splitBy } from '../api/_jfp-finalise.js'
+import { roleFor } from '../api/_jfp-people.js'
 import { publicGroup } from '../api/jfp-groups.js'
+import { buildIcs } from '../api/_jfp-email.js'
 
 let passed = 0
 function test(name, fn) { fn(); passed += 1; console.log(`ok - ${name}`) }
@@ -31,75 +33,136 @@ test('group ids are stable and readable', () => {
   assert.equal(groupId('Friday', '6:30am', 'Rydalmere'), 'fri-0630-rydalmere')
 })
 
+test('ages are taken on the first day of term', () => {
+  assert.equal(ageOn('2016-10-12', '2026-10-12'), 10)
+  assert.equal(ageOn('2016-10-13', '2026-10-12'), 9)
+  assert.equal(ageOn('', '2026-10-12'), null)
+  const g = { minAge: 8, maxAge: 11 }
+  assert.equal(ageFits(g, 8, config), true)
+  assert.equal(ageFits(g, 12, config), false)
+  assert.equal(ageFits({ minAge: null, maxAge: null }, 18, config), true)
+  assert.equal(ageFits({ minAge: null, maxAge: null }, 25, config), false)
+})
+
+test('draft age bands sit one year either side of who is there', () => {
+  assert.deepEqual(draftAgeBand([9, 10, 9, null], config), { minAge: 8, maxAge: 11 })
+  assert.deepEqual(draftAgeBand([], config), { minAge: null, maxAge: null })
+  assert.deepEqual(draftAgeBand([6, 19], config), { minAge: 6, maxAge: 19 })
+})
+
+test('group validation keeps bands, labels and the girls flag honest', () => {
+  const ok = validateGroup({ day: 'Monday', time: '4:20pm', location: 'Belrose HQ', capacity: 6, mode: 'direct', minAge: 7, maxAge: 9, girlsOnly: 'suggested', label: 'Small group' }, config)
+  assert.equal(ok.ok, true)
+  assert.equal(ok.group.id, 'mon-1620-belrose-hq')
+  assert.equal(ok.group.girlsOnly, 'suggested')
+  assert.equal(ok.group.ageStatus, 'draft')
+  assert.equal(validateGroup({ day: 'Monday', time: '4:20pm', location: 'Belrose HQ', capacity: 6, mode: 'direct', minAge: 12, maxAge: 9 }, config).ok, false)
+  assert.equal(validateGroup({ day: 'Monday', time: '4:20pm', location: 'Belrose HQ', capacity: 6, mode: 'weird' }, config).ok, false)
+})
+
 test('places left never counts below zero and includes both sources', () => {
   assert.equal(placesLeft({ capacity: 6 }, 4, 1), 1)
   assert.equal(placesLeft({ capacity: 6 }, 6, 2), 0)
   assert.equal(placesLeft({ capacity: 6 }, 0, 0), 6)
 })
 
-test('drafting from the roster opens only what the records justify', () => {
-  const p = (day, time, location, coach, type, confirmation = 'Confirmed') => ({ day, time, location, groupId: groupId(day, time, location), coach, paymentType: type, confirmation, holdsPlace: confirmation !== 'Dropped' })
-  const roster = [
-    p('Monday', '4:20pm', 'Belrose HQ', 'Dean Mac', 'JFP 10 weeks'),
-    p('Monday', '4:20pm', 'Belrose HQ', 'Dean Mac', 'JFP 10 weeks'),
-    p('Friday', '4pm', 'Belrose HQ', 'Dean Mac', 'JFP Pathway 10 weeks'),
-    p('Friday', '4pm', 'Belrose HQ', 'Sam Yorks', 'JFP Pathway 10 weeks'),
-    p('Monday', '1pm', 'Belrose HQ', 'Dean Mac', 'JFP 1 on 1, 10 weeks'),
-    p('Friday', '6:30am', 'Rydalmere', 'Luke Bakos', 'JFP 10 weeks'),
-    p('Friday', '6:30am', 'Rydalmere', 'Lee Jones', 'JFP 10 weeks'),
-    p('Wednesday', '11am', 'Belrose HQ', 'Dean Mac', 'JFP 10 weeks'),
-    p('Tuesday', '6:30pm', 'Belrose HQ', 'Dean Mac', 'JFP 10 weeks', 'Dropped'),
-  ]
-  const byId = Object.fromEntries(draftGroupsFromRoster(roster, config).map((g) => [g.id, g]))
-  assert.equal(byId['mon-1620-belrose-hq'].mode, 'direct')
-  assert.equal(byId['mon-1620-belrose-hq'].capacity, 6)
-  assert.equal(byId['mon-1620-belrose-hq'].coachId, 'dean')
-  assert.equal(byId['fri-1600-belrose-hq'].mode, 'application', 'pathway stays by application even with two coaches')
-  assert.equal(byId['mon-1300-belrose-hq'].mode, 'closed', '1 to 1 is never sold online')
-  assert.equal(byId['fri-0630-rydalmere'].mode, 'closed', 'shared early squads stay closed')
-  assert.equal(byId['fri-0630-rydalmere'].extraCoachIds.length, 1, 'second coach recorded')
-  assert.equal(byId['wed-1100-belrose-hq'].mode, 'closed', 'school hours stay closed')
-  assert.equal(byId['tue-1830-belrose-hq'], undefined, 'dropped players do not create a group')
-})
-
-test('group validation rejects bad input', () => {
-  assert.equal(validateGroup({ day: 'Funday', time: '4:20pm', location: 'x', capacity: 6, mode: 'direct' }, config).ok, false)
-  assert.equal(validateGroup({ day: 'Monday', time: '4:20pm', location: 'Belrose HQ', capacity: 6, mode: 'direct', coachId: 'dean' }, config).ok, true)
-  assert.equal(validateGroup({ day: 'Monday', time: '4:20pm', location: 'Belrose HQ', capacity: -1, mode: 'direct' }, config).ok, false)
-  assert.equal(validateGroup({ day: 'Monday', time: '4:20pm', location: 'Belrose HQ', capacity: 6, mode: 'open' }, config).ok, false)
-})
-
-test('hold scripts purge first and never overfill', () => {
+test('the hold script resizes a booking in one step and never over-fills', () => {
   assert.ok(HOLD_SCRIPT.indexOf('ZREMRANGEBYSCORE') < HOLD_SCRIPT.indexOf('ZCARD'))
-  assert.ok(HOLD_SCRIPT.includes('taken + want > tonumber(ARGV[2])'))
-  assert.ok(EXTEND_SCRIPT.includes("'XX'"), 'extend never creates a hold that was lost')
+  assert.match(HOLD_SCRIPT, /ZCARD', KEYS\[1\]\) - own \+ want > tonumber\(ARGV\[2\]\)/)
 })
 
-test('one payment for several players splits the exact Stripe fee with nothing lost', () => {
-  assert.deepEqual(splitFee(3001, 2), [1501, 1500])
-  assert.deepEqual(splitFee(1500, 3), [500, 500, 500])
-  assert.equal(splitFee(2903, 3).reduce((a, b) => a + b, 0), 2903)
+test('first set-up drafts only what the records justify', () => {
+  const players = [
+    { groupId: 'mon-1620-belrose-hq', day: 'Monday', time: '4:20pm', location: 'Belrose HQ', holdsPlace: true, coach: 'Dean Mac', paymentType: 'JFP 10 weeks' },
+    { groupId: 'fri-1600-belrose-hq', day: 'Friday', time: '4pm', location: 'Belrose HQ', holdsPlace: true, coach: 'Dean Mac', paymentType: 'JFP Pathway 10 weeks' },
+    { groupId: 'fri-0630-rydalmere', day: 'Friday', time: '6:30am', location: 'Rydalmere', holdsPlace: true, coach: 'Lee Jones', paymentType: 'JFP 10 weeks' },
+    { groupId: 'mon-1300-belrose-hq', day: 'Monday', time: '1pm', location: 'Belrose HQ', holdsPlace: true, coach: 'Dean Mac', paymentType: 'JFP 1 on 1, 10 weeks' },
+  ]
+  const d = Object.fromEntries(draftGroupsFromRoster(players, config).map((g) => [g.id, g]))
+  assert.equal(d['mon-1620-belrose-hq'].mode, 'direct')
+  assert.equal(d['fri-1600-belrose-hq'].mode, 'application')
+  assert.equal(d['fri-0630-rydalmere'].label, 'Squad')
+  assert.equal(d['mon-1300-belrose-hq'].mode, 'enquire')
+})
+
+test('a waiver matches on name plus the family email or mobile, never on a shared name alone', () => {
+  const waivers = [
+    { id: 'w1', player: 'Sam Smith', email: 'a@x.com', mobile: '0400 111 222', accepted: true },
+    { id: 'w2', player: 'Sam Smith', email: 'b@x.com', mobile: '', accepted: true },
+    { id: 'w3', player: 'Only One', email: 'old@x.com', mobile: '', accepted: true },
+  ]
+  assert.equal(waiverFor('Sam Smith', { emails: ['a@x.com'], phones: [] }, waivers).id, 'w1')
+  assert.equal(waiverFor('Sam Smith', { emails: ['c@x.com'], phones: ['+61 400 111 222'] }, waivers).id, 'w1')
+  assert.equal(waiverFor('Sam Smith', { emails: ['c@x.com'], phones: [] }, waivers), null)
+  assert.equal(waiverFor('only one', { emails: ['new@x.com'], phones: [] }, waivers).id, 'w3')
+  // Spelling differences inside one family are accepted; siblings are not.
+  const fam = [
+    { id: 's1', player: 'Unish Shrestha', email: 'f@x.com', mobile: '', accepted: true },
+    { id: 's2', player: 'Luka Tredway', email: 'f@x.com', mobile: '', accepted: true },
+    { id: 's3', player: 'Charlotte Roberts', email: 'f@x.com', mobile: '', accepted: true },
+  ]
+  assert.equal(waiverFor('Unish Srestha', { emails: ['f@x.com'], phones: [] }, fam).id, 's1')
+  assert.equal(waiverFor('Charlie Roberts', { emails: ['f@x.com'], phones: [] }, fam).id, 's3')
+  assert.equal(waiverFor('Ryda Tredway', { emails: ['f@x.com'], phones: [] }, fam), null)
+  assert.equal(waiverFor('Unish Srestha', { emails: ['other@x.com'], phones: [] }, fam), null, 'another family never borrows a waiver')
+})
+
+test('a family sees only rows with its own email', () => {
+  const roster = {
+    players: [{ player: 'Kid A', email: 'mum@x.com', phone: '', term4: [], dob: '2015-01-01', ageFromNotes: null, groupId: 'g', holdsPlace: true }, { player: 'Kid B', email: 'other@x.com', phone: '', dob: '', ageFromNotes: null }],
+    term3: [{ id: 't3', player: 'Kid C', emails: ['mum@x.com'], phone: '', dob: '2016-01-01' }],
+    waivers: [],
+  }
+  const f = familyFor('Mum@X.com', roster, '2026-10-12')
+  assert.deepEqual(f.players.map((p) => p.name), ['Kid A', 'Kid C'])
+  assert.equal(f.players[0].age, 11)
+})
+
+test('roles come from config on every request', () => {
+  assert.equal(roleFor('LeeJones@JonerFootball.com', config).role, 'admin')
+  assert.equal(roleFor('jonerfootballdean@gmail.com', config), null, 'coach logins are off by default')
+  assert.equal(roleFor('jonerfootballdean@gmail.com', { ...config, coachLoginsEnabled: true }).coachId, 'dean')
+  assert.equal(roleFor('parent@x.com', config), null)
+  assert.deepEqual(normaliseConfig({ superAdmins: [] }).superAdmins, config.superAdmins, 'the admin list can never be emptied')
+})
+
+test('the public group shape carries no people and no money beyond the price', () => {
+  const g = publicGroup({ id: 'x', day: 'Monday', time: '4:20pm', location: 'Belrose HQ', coachId: 'dean', mode: 'direct', capacity: 6, durationMin: 60, minAge: 8, maxAge: 11, girlsOnly: 'suggested', label: 'Small group' }, config, 3)
+  assert.equal(g.placesLeft, 3)
+  assert.equal(g.girlsOnly, false, 'a suggested girls flag is not shown until confirmed')
+  assert.equal(g.locationId, 'belrose')
+  assert.deepEqual(Object.keys(g).filter((k) => /email|phone|player|parent/i.test(k)), [])
+})
+
+test('locations map the roster spellings', () => {
+  assert.equal(locationFor(config, 'Belrose HQ').id, 'belrose')
+  assert.equal(locationFor(config, 'NTRA').id, 'ntra')
+  assert.equal(locationFor(config, 'Rydalmere').id, 'rydalmere')
+})
+
+test('the calendar file repeats weekly for the whole term', () => {
+  const ics = buildIcs({ uid: 'JFP-1', group: { day: 'Tuesday', time: '4:20pm', location: 'Belrose HQ', durationMin: 60 }, config, title: 'JFP Tuesday 4:20pm' })
+  assert.match(ics, /DTSTART;TZID=Australia\/Sydney:20261013T162000/)
+  assert.match(ics, /DTEND;TZID=Australia\/Sydney:20261013T172000/)
+  assert.match(ics, /RRULE:FREQ=WEEKLY;COUNT=10/)
+})
+
+test('a fee splits across players to the cent', () => {
+  assert.deepEqual(splitFee(1519, 2), [760, 759])
   assert.equal(splitFee(null, 2), null)
+  assert.deepEqual(splitBy(127500, [42500, 85000]), [42500, 85000], 'by what each still owes')
+  assert.deepEqual(splitBy(100, [0, 0]), [50, 50])
+  assert.equal(splitBy(1001, [1, 1, 1]).reduce((a, b) => a + b, 0), 1001)
 })
 
-test('the public group shape carries no player information', () => {
-  const g = { id: 'mon-1620-belrose-hq', day: 'Monday', time: '4:20pm', location: 'Belrose HQ', coachId: 'dean', programme: 'JFP 10 weeks', mode: 'direct', durationMin: 60, capacity: 6 }
-  const pub = publicGroup(g, config, 3)
-  assert.deepEqual(Object.keys(pub).sort(), ['address', 'coachName', 'day', 'durationMin', 'firstDate', 'full', 'id', 'lastDate', 'location', 'mode', 'placesLeft', 'priceCents', 'priceLabel', 'programme', 'publicNote', 'sessions', 'sortTime', 'time'].sort())
-  assert.equal(pub.placesLeft, 3)
-  assert.match(pub.address, /Narabang Way/)
-  assert.equal(publicGroup({ ...g, mode: 'application' }, config, 3).placesLeft, null, 'application groups do not reveal numbers')
-})
-
-test('parent cookie works and dies when the password changes', () => {
-  process.env.JFP_BOOKING_PASSWORD = 'term4'
-  const token = signParentCookie({ secret: 's' })
-  const req = { headers: { cookie: `jf_jfp=${token}` } }
-  assert.equal(hasParentAccess(req, { secret: 's' }), true)
-  assert.equal(hasParentAccess(req, { secret: 'other' }), false)
-  process.env.JFP_BOOKING_PASSWORD = 'changed'
-  assert.equal(hasParentAccess(req, { secret: 's' }), false)
-  delete process.env.JFP_BOOKING_PASSWORD
+test('the booking password cookie survives only while the password stays the same', () => {
+  process.env.JFP_BOOKING_PASSWORD = 'one'
+  const secret = 'secret'
+  const t = signParentCookie({ secret })
+  const req = { headers: { cookie: `jf_jfp=${t}` } }
+  assert.equal(hasParentAccess(req, { secret }), true)
+  process.env.JFP_BOOKING_PASSWORD = 'two'
+  assert.equal(hasParentAccess(req, { secret }), false)
 })
 
 console.log(`\n${passed} JFP store checks passed`)

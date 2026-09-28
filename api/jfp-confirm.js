@@ -1,9 +1,21 @@
-// The success page asks Stripe directly whether this session is paid and
-// finalises the enrolment if so. The session id is the key; no cookie needed.
+// The success page (and the account page after a payment) asks Stripe
+// directly whether this session is paid and finalises it if so. The Checkout
+// Session id is the key; no cookie needed. Returns no contact details.
 import { stripeFetch } from './_holiday-store.js'
-import { getBooking, getGroup, getConfig, coachById, sessionDates, dateLabel, formatAud, clean } from './_jfp-store.js'
+import { getBooking, getGroup, getConfig, getPayreq, coachById, sessionDates, dateLabel, formatAud, clean, locationFor, to24h } from './_jfp-store.js'
 import { finaliseJfpBooking, jfpBookingIdFromSession } from './_jfp-finalise.js'
-import { locationLine } from './_jfp-email.js'
+
+function groupView(config, group) {
+  const coach = coachById(config, group.coachId)
+  const dates = sessionDates(config, group.day)
+  const loc = locationFor(config, group.location)
+  return {
+    day: group.day, time: group.time, time24: to24h(group.time), durationMin: group.durationMin || 60,
+    location: loc.name, address: loc.address, maps: loc.maps,
+    coachName: coach ? `Coach ${coach.name}` : '',
+    firstDate: dates[0] ? dateLabel(dates[0]) : '', dates: dates.map(dateLabel), isoDates: dates,
+  }
+}
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
@@ -14,30 +26,42 @@ export default async function handler(req, res) {
     const session = await stripeFetch(`/checkout/sessions/${encodeURIComponent(sessionId)}`)
     const id = jfpBookingIdFromSession(session)
     if (!id) return res.status(404).json({ success: false, error: 'Booking not found' })
+    const config = await getConfig()
+
+    if (id.startsWith('PAY-')) {
+      let q = await getPayreq(id)
+      if (!q) return res.status(404).json({ success: false, error: 'Payment not found' })
+      let status = 'pending'
+      if (session.payment_status === 'paid') {
+        const r = await finaliseJfpBooking(id, session)
+        q = r.payreq || q
+        status = r.attention ? 'received' : r.busy ? 'pending' : 'paid'
+      } else if (session.status === 'expired' || (q.status === 'cancelled' && session.status !== 'complete')) status = 'expired'
+      const group = q.groupId ? await getGroup(q.groupId) : null
+      return res.status(200).json({ success: true, status, kind: 'payment', payment: { id: q.id, players: q.playerNames, priceLabel: formatAud(q.paidCents ?? q.amountCents), group: group ? groupView(config, group) : null, term: config.term } })
+    }
+
     let booking = await getBooking(id)
     if (!booking) return res.status(404).json({ success: false, error: 'Booking not found' })
+    // Stripe decides whether money moved. A payment for something already
+    // cancelled is 'received': recorded and flagged, never "nothing charged".
     let status = 'pending'
-    if (booking.status === 'cancelled') status = 'cancelled'
-    else if (session.payment_status === 'paid') { booking = (await finaliseJfpBooking(id, session)).booking || booking; status = 'paid' }
-    else if (session.status === 'expired' || booking.status === 'expired') status = 'expired'
-    const config = await getConfig()
+    if (session.payment_status === 'paid') {
+      const r = await finaliseJfpBooking(id, session)
+      booking = r.booking || booking
+      status = r.attention ? 'received' : r.busy ? 'pending' : 'paid'
+    } else if (session.status === 'expired' || (['expired', 'cancelled'].includes(booking.status) && session.status !== 'complete')) status = 'expired'
     const group = (await getGroup(booking.groupId)) || booking.groupSnapshot
-    const coach = coachById(config, group.coachId)
-    const dates = sessionDates(config, group.day)
     return res.status(200).json({
       success: true,
       status,
+      kind: 'booking',
       booking: {
         id: booking.id,
         term: config.term,
         players: (booking.players || []).map((p) => ({ name: p.name })),
-        day: group.day, time: group.time, location: group.location, address: locationLine(group.location),
-        coachName: coach ? `Coach ${coach.name}` : '',
-        firstDate: dates[0] ? dateLabel(dates[0]) : '',
-        dates: dates.map(dateLabel),
-        isoDates: dates, time24: group.time, durationMin: group.durationMin,
         priceLabel: formatAud(booking.amountPaidCents ?? booking.priceCents),
-        waiverUrl: config.waiverUrl || '',
+        ...groupView(config, group),
       },
     })
   } catch (error) {

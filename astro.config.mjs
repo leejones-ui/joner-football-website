@@ -23,6 +23,7 @@ export default defineConfig({
         '/jfp-booking/',
         '/jfp-booking/success/',
         '/jfp-portal/',
+        '/jfp-account/',
         '/holiday-bookings/',
         '/holiday-bookings/success/',
         '/holiday-admin/',

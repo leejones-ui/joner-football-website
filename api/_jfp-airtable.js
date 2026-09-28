@@ -1,10 +1,11 @@
-// Airtable is the JFP roster of record. This module reads Term 4 Players,
-// counts who already holds a place in each group, and writes paid online
-// bookings back in the same shape staff enter by hand.
+// Airtable is the JFP roster of record. This module reads Term 4 Players (plus
+// Term 3 for coaches and dates of birth, and the waiver table), keeps a short
+// cache so the parent page stays fast, and writes changes back in the same
+// shape staff enter by hand, so Lee's dashboard always shows the truth.
 //
 // The Term 4 session columns are still labelled "Term 3 Day/Time/Location";
 // they hold the Term 4 session, exactly as the Joner Dashboard reads them.
-import { kvGetJson, kvSetJson, keys, groupId, ONLINE_TAG, coachByAirtableName, to24h } from './_jfp-store.js'
+import { kvGetJson, kvSetJson, kvCommand, keys, groupId, ONLINE_TAG, ADMIN_TAG, coachByAirtableName, ageOn, normName, digits, clean } from './_jfp-store.js'
 
 const BASE = process.env.AIRTABLE_BASE_ID || 'apphU4R0BtVIu5YqT'
 export const TABLES = {
@@ -12,10 +13,11 @@ export const TABLES = {
   term3: 'Term 3 Players',
   ledger: 'tblfrXQLMhOcE2PWH',
   waiver: 'tblLziUfKOv1N0f40',
+  attendance: 'tblfwc1VO3ind7cVk',
 }
 // Everyone in these states holds a place. "Not Returning" and "Dropped" do not.
-const HOLDS_PLACE = new Set(['Confirmed', 'Awaiting Reply', 'Needs Follow-up', 'Not Contacted', ''])
-const COUNT_TTL_SECONDS = 60
+export const HOLDS_PLACE = new Set(['Confirmed', 'Awaiting Reply', 'Needs Follow-up', 'Not Contacted', ''])
+const CACHE_SECONDS = 60
 
 function token() {
   const t = process.env.JFP_AIRTABLE_TOKEN || process.env.AIRTABLE_API_TOKEN || process.env.AIRTABLE_TOKEN
@@ -23,7 +25,11 @@ function token() {
   return t
 }
 
-async function airtable(path, { method = 'GET', body } = {}) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+// Airtable allows 5 requests a second per base. Back off on 429 and 5xx a
+// few times before giving up; callers record anything that still fails.
+export async function airtable(path, { method = 'GET', body } = {}, attempt = 0) {
   const res = await fetch(`https://api.airtable.com/v0/${BASE}/${path}`, {
     method,
     headers: { Authorization: `Bearer ${token()}`, ...(body ? { 'content-type': 'application/json' } : {}) },
@@ -33,6 +39,10 @@ async function airtable(path, { method = 'GET', body } = {}) {
   const text = await res.text()
   let data = {}
   try { data = text ? JSON.parse(text) : {} } catch {}
+  if ((res.status === 429 || res.status >= 500) && attempt < 3) {
+    await sleep(600 * 2 ** attempt)
+    return airtable(path, { method, body }, attempt + 1)
+  }
   if (!res.ok) throw new Error(`Airtable ${res.status}: ${data?.error?.message || data?.error?.type || text.slice(0, 160)}`)
   return data
 }
@@ -57,141 +67,270 @@ function text(f, name) {
   if (Array.isArray(v)) return v.join(', ')
   return v == null ? '' : String(v).trim()
 }
+const num = (f, name) => (typeof f[name] === 'number' ? f[name] : null)
 
 const TERM4_FIELDS = [
   'Player Name', 'Parent Name', 'Email', 'Phone', 'Term 3 Day', 'Term 3 Time', 'Term 3 Location', 'Coach',
   'Term 4 Confirmation', 'Term 4 Fee', 'Term 4 Amount Paid', 'Term 4 Balance', 'Term 4 Payment Status',
   'Term 4 Payment Type', 'Term 4 Notes', 'Source Term 3 Record ID', 'Term 4 Stripe Fee AUD',
-  'Term 4 Net Collected AUD', 'Term 4 Fee Reconciliation',
+  'Term 4 Net Collected AUD', 'Term 4 Fee Reconciliation', 'Term 4 Payment Link Notes', 'Term 4 Payment Evidence',
 ]
+const TERM3_FIELDS = ['Player Name', 'Parent Name', 'Email', 'Parent Email 2', 'Phone Number', 'Date of Birth', 'Coach', 'Session Day', 'Session Time', 'Session Location']
+const WAIVER_FIELDS = ['Player Full Name', 'Date of Birth', 'Parent/Guardian Name', 'Parent Email', 'Parent Mobile Number', 'Current Club', 'Term', 'Waiver Version', 'Signed Date', 'Programme', 'Waiver Accepted - Full Terms']
 
-// Every Term 4 row, normalised. Private: staff views only.
-export async function readTerm4() {
-  const rows = await readTable(TABLES.term4, TERM4_FIELDS)
-  return rows.map(({ id, fields: f }) => {
-    const notes = text(f, 'Term 4 Notes')
-    const online = notes.match(new RegExp(`\\[${ONLINE_TAG}:([A-Z0-9-]+)\\]`))
-    const day = text(f, 'Term 3 Day'), time = text(f, 'Term 3 Time'), location = text(f, 'Term 3 Location')
-    return {
-      id,
-      player: text(f, 'Player Name'),
-      parent: text(f, 'Parent Name'),
-      email: text(f, 'Email'),
-      phone: text(f, 'Phone'),
-      day, time, location,
-      groupId: day && time && location ? groupId(day, time, location) : '',
-      coach: text(f, 'Coach'),
-      confirmation: text(f, 'Term 4 Confirmation'),
-      feeAud: typeof f['Term 4 Fee'] === 'number' ? f['Term 4 Fee'] : null,
-      paidAud: typeof f['Term 4 Amount Paid'] === 'number' ? f['Term 4 Amount Paid'] : null,
-      balanceAud: typeof f['Term 4 Balance'] === 'number' ? f['Term 4 Balance'] : null,
-      paymentStatus: text(f, 'Term 4 Payment Status'),
-      paymentType: text(f, 'Term 4 Payment Type'),
-      stripeFeeAud: typeof f['Term 4 Stripe Fee AUD'] === 'number' ? f['Term 4 Stripe Fee AUD'] : null,
-      netAud: typeof f['Term 4 Net Collected AUD'] === 'number' ? f['Term 4 Net Collected AUD'] : null,
-      reconciliation: text(f, 'Term 4 Fee Reconciliation'),
-      notes,
-      sourceTerm3: text(f, 'Source Term 3 Record ID'),
-      onlineBookingId: online ? online[1] : '',
-      holdsPlace: HOLDS_PLACE.has(text(f, 'Term 4 Confirmation')),
-    }
-  })
+// A value inside a double-quoted Airtable formula string.
+export function fq(v) { return String(v ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') }
+
+function tagOf(notes, tag) {
+  const m = String(notes || '').match(new RegExp(`\\[${tag}:([A-Za-z0-9-]+)\\]`))
+  return m ? m[1] : ''
 }
 
-// Coach per player, filled from Term 3 where Term 4 is blank, the same way
-// the Joner Dashboard does it.
-export async function readTerm4WithCoaches() {
-  const [t4, t3] = await Promise.all([readTerm4(), readTable(TABLES.term3, ['Player Name', 'Coach'])])
-  const byId = new Map(t3.map((r) => [r.id, text(r.fields, 'Coach')]))
-  const byName = new Map(t3.map((r) => [text(r.fields, 'Player Name').toLowerCase(), text(r.fields, 'Coach')]))
-  return t4.map((p) => ({ ...p, coach: p.coach || byId.get(p.sourceTerm3) || byName.get(p.player.toLowerCase()) || '' }))
+function term4Row({ id, fields: f }) {
+  const notes = text(f, 'Term 4 Notes')
+  const day = text(f, 'Term 3 Day'), time = text(f, 'Term 3 Time'), location = text(f, 'Term 3 Location')
+  return {
+    id,
+    player: text(f, 'Player Name'),
+    parent: text(f, 'Parent Name'),
+    email: text(f, 'Email').toLowerCase(),
+    phone: text(f, 'Phone'),
+    day, time, location,
+    groupId: day && time && location ? groupId(day, time, location) : '',
+    coach: text(f, 'Coach'),
+    confirmation: text(f, 'Term 4 Confirmation'),
+    feeAud: num(f, 'Term 4 Fee'),
+    paidAud: num(f, 'Term 4 Amount Paid'),
+    balanceAud: num(f, 'Term 4 Balance'),
+    paymentStatus: text(f, 'Term 4 Payment Status'),
+    paymentType: text(f, 'Term 4 Payment Type'),
+    stripeFeeAud: num(f, 'Term 4 Stripe Fee AUD'),
+    netAud: num(f, 'Term 4 Net Collected AUD'),
+    reconciliation: text(f, 'Term 4 Fee Reconciliation'),
+    linkNotes: text(f, 'Term 4 Payment Link Notes'),
+    evidence: text(f, 'Term 4 Payment Evidence'),
+    notes,
+    sourceTerm3: text(f, 'Source Term 3 Record ID'),
+    onlineBookingId: tagOf(notes, ONLINE_TAG),
+    adminAddId: tagOf(notes, ADMIN_TAG),
+    holdsPlace: HOLDS_PLACE.has(text(f, 'Term 4 Confirmation')),
+  }
 }
 
-// Players already holding a place in each group, excluding online bookings
-// (those are counted from KV). Cached briefly so the parent page stays fast;
-// a stale count is at most a minute old and staff edits show up after that.
-export async function airtableCounts({ fresh = false } = {}) {
+// The whole roster, joined the way the Joner Dashboard joins it: coach and
+// date of birth come from Term 3 where Term 4 does not say. Cached briefly;
+// every write clears the cache so staff changes show at once.
+export async function loadRoster({ fresh = false } = {}) {
   if (!fresh) {
-    const cached = await kvGetJson(keys.airtableCounts())
-    if (cached && Date.now() - cached.at < COUNT_TTL_SECONDS * 1000) return cached
+    const cached = await kvGetJson(keys.roster())
+    if (cached && Date.now() - cached.at < CACHE_SECONDS * 1000) return cached
   }
-  const rows = await readTerm4()
-  const counts = {}
-  for (const r of rows) {
-    if (!r.groupId || !r.holdsPlace || r.onlineBookingId) continue
-    counts[r.groupId] = (counts[r.groupId] || 0) + 1
+  const startedAt = Date.now()
+  const [t4, t3, wv] = await Promise.all([readTable(TABLES.term4, TERM4_FIELDS), readTable(TABLES.term3, TERM3_FIELDS), readTable(TABLES.waiver, WAIVER_FIELDS)])
+  const term3 = t3.map(({ id, fields: f }) => ({
+    id, player: text(f, 'Player Name'), parent: text(f, 'Parent Name'),
+    emails: [text(f, 'Email'), text(f, 'Parent Email 2')].map((e) => e.toLowerCase()).filter(Boolean),
+    phone: text(f, 'Phone Number'), dob: text(f, 'Date of Birth'), coach: text(f, 'Coach'),
+    day: text(f, 'Session Day'), time: text(f, 'Session Time'), location: text(f, 'Session Location'),
+  }))
+  const waivers = wv.map(({ id, fields: f }) => ({
+    id, player: text(f, 'Player Full Name'), dob: text(f, 'Date of Birth'), parent: text(f, 'Parent/Guardian Name'),
+    email: text(f, 'Parent Email').toLowerCase(), mobile: text(f, 'Parent Mobile Number'), club: text(f, 'Current Club'),
+    term: text(f, 'Term'), version: text(f, 'Waiver Version'), signedDate: text(f, 'Signed Date'), programme: text(f, 'Programme'),
+    accepted: f['Waiver Accepted - Full Terms'] === true,
+  }))
+  const t3ById = new Map(term3.map((r) => [r.id, r]))
+  const t3ByName = new Map(term3.map((r) => [normName(r.player), r]))
+  const sessionCoaches = new Map()
+  for (const r of term3) {
+    if (!r.coach) continue
+    const k = `${r.day}|${r.time}|${r.location}`.toLowerCase()
+    sessionCoaches.set(k, new Set([...(sessionCoaches.get(k) || []), r.coach]))
   }
-  const out = { at: Date.now(), counts }
-  await kvSetJson(keys.airtableCounts(), out, 3600)
+  const wByName = new Map()
+  for (const w of waivers) { const k = normName(w.player); wByName.set(k, [...(wByName.get(k) || []), w]) }
+  const players = t4.map((raw) => {
+    const p = term4Row(raw)
+    const src = t3ById.get(p.sourceTerm3) || t3ByName.get(normName(p.player))
+    const sess = [...(sessionCoaches.get(`${p.day}|${p.time}|${p.location}`.toLowerCase()) || [])]
+    const dob = src?.dob || (wByName.get(normName(p.player)) || []).find((w) => w.dob)?.dob || ''
+    return { ...p, coach: p.coach || src?.coach || (sess.length === 1 ? sess[0] : ''), dob, ageFromNotes: ageFromNotes(p.notes) }
+  })
+  // Stamped with when the read began, so a slow read is never cached as newer than it is.
+  const out = { at: startedAt, players, term3, waivers }
+  await kvSetJson(keys.roster(), out, 3600)
   return out
 }
 
-// ---------- writes ----------
+export async function bustRosterCache() { await kvCommand(['DEL', keys.roster(), keys.airtableCounts()]) }
 
-export async function createTerm4Players({ booking, group, config, coachAirtableName, feeSplit }) {
-  const today = new Date().toISOString().slice(0, 10)
-  const records = booking.players.map((p, i) => ({
-    fields: {
-      'Player Name': p.name,
-      'Parent Name': booking.parentName,
-      'Email': booking.email,
-      'Phone': booking.mobile,
-      'Term 3 Day': group.day,
-      'Term 3 Time': group.time,
-      'Term 3 Location': group.location,
-      'Coach': coachAirtableName || '',
-      'Term 4 Confirmation': 'Confirmed',
-      'Confirmation Date': today,
-      'Term 4 Fee': booking.unitCents / 100,
-      'Term 4 Amount Paid': booking.unitCents / 100,
-      'Term 4 Payment Status': 'Paid',
-      'Term 4 Payment Type': 'JFP 10 weeks',
-      'Term 4 Notes': `Booked online, age ${p.age}. [${ONLINE_TAG}:${booking.id}]${booking.notes ? `\nParent notes: ${booking.notes}` : ''}`,
-      ...(feeSplit ? {
-        'Term 4 Stripe Fee AUD': feeSplit[i] / 100,
-        'Term 4 Net Collected AUD': (booking.unitCents - feeSplit[i]) / 100,
-        'Term 4 Fee Reconciliation': 'Verified',
-        'Term 4 Payment Evidence': `Stripe ${booking.stripePaymentIntentId} via ${booking.stripeSessionId}. Fee from balance transaction${booking.players.length > 1 ? `, split across ${booking.players.length} players in one payment` : ''}.`,
-      } : {
-        'Term 4 Fee Reconciliation': 'Pending verification',
-        'Term 4 Payment Evidence': `Stripe ${booking.stripePaymentIntentId} via ${booking.stripeSessionId}. Fee not yet read.`,
-      }),
-    },
-  }))
+export function ageFromNotes(notes) { const m = /\bage (\d{1,2})\b/i.exec(notes || ''); return m ? Number(m[1]) : null }
+export function playerAge(p, termStart) { return ageOn(p.dob, termStart) ?? p.ageFromNotes ?? null }
+
+// Places taken in Airtable per group. Online bookings count here too once
+// they are written; their KV hold lapses shortly after (see settlePlaces).
+export function countsFrom(roster) {
+  const counts = {}
+  for (const r of roster.players) {
+    if (!r.groupId || !r.holdsPlace) continue
+    counts[r.groupId] = (counts[r.groupId] || 0) + 1
+  }
+  return counts
+}
+export async function airtableCounts({ fresh = false } = {}) {
+  const roster = await loadRoster({ fresh })
+  return { at: roster.at, counts: countsFrom(roster) }
+}
+
+// ---------- waivers ----------
+
+// A player has a waiver on file when a waiver row carries their name and the
+// family's email (or mobile). Name alone is accepted only when exactly one
+// waiver has that name, so two children with the same name never share one.
+export function waiverFor(playerName, family, waivers) {
+  const n = normName(playerName)
+  if (!n) return null
+  const same = waivers.filter((w) => normName(w.player) === n && w.accepted !== false)
+  const emails = new Set((family.emails || []).map((e) => e.toLowerCase()))
+  const phones = new Set((family.phones || []).map(digits).filter((d) => d.length >= 8).map((d) => d.slice(-9)))
+  const ours = (w) => emails.has(w.email) || (digits(w.mobile).length >= 8 && phones.has(digits(w.mobile).slice(-9)))
+  const strong = same.find(ours)
+  let pick = strong || (same.length === 1 ? same[0] : null)
+  // A spelling difference inside the same family ("Srestha" and "Shrestha"):
+  // accept only a close full name AND a close first name, from a waiver that
+  // carries this family's email or mobile, and only if exactly one fits.
+  if (!pick) {
+    const first = (v) => String(v || '').trim().split(/\s+/)[0]
+    const close = waivers.filter((w) => w.accepted !== false && ours(w) && similar(w.player, playerName) >= 0.72 && similar(first(w.player), first(playerName)) >= 0.5)
+    if (close.length === 1 || (close.length > 1 && close.every((w) => normName(w.player) === normName(close[0].player)))) pick = close[0]
+  }
+  return pick ? { id: pick.id, signedDate: pick.signedDate, term: pick.term, version: pick.version, spelling: normName(pick.player) !== n ? pick.player : '' } : null
+}
+
+// Bigram overlap (Dice) of two names, 0 to 1, letters only.
+export function similar(a, b) {
+  a = normName(a); b = normName(b)
+  if (!a || !b) return 0
+  if (a === b) return 1
+  if (a.length < 2 || b.length < 2) return 0
+  const grams = (x) => { const m = new Map(); for (let i = 0; i < x.length - 1; i += 1) { const g = x.slice(i, i + 2); m.set(g, (m.get(g) || 0) + 1) } return m }
+  const A = grams(a), B = grams(b)
+  let common = 0
+  for (const [g, k] of A) common += Math.min(k, B.get(g) || 0)
+  return (2 * common) / (a.length + b.length - 2)
+}
+
+// Waiver rows the system wrote for a booking or request carry a tag in
+// Internal Notes, so a retry never writes a second waiver.
+export async function findWaiversByTag(tag) {
+  const q = new URLSearchParams({ filterByFormula: `FIND("${fq(tag)}", {Internal Notes})`, pageSize: '20' })
+  const d = await airtable(`${encodeURIComponent(TABLES.waiver)}?${q}`)
+  return (d.records || []).map((r) => r.id)
+}
+
+export async function createWaiverRows(rows) {
   const out = []
-  for (let i = 0; i < records.length; i += 10) {
-    const d = await airtable(encodeURIComponent(TABLES.term4), { method: 'POST', body: { records: records.slice(i, i + 10) } })
+  for (let i = 0; i < rows.length; i += 10) {
+    const d = await airtable(encodeURIComponent(TABLES.waiver), { method: 'POST', body: { typecast: true, records: rows.slice(i, i + 10).map((fields) => ({ fields })) } })
     out.push(...(d.records || []).map((r) => r.id))
   }
   return out
 }
 
-export async function findTerm4ByBooking(bookingId) {
-  const formula = `FIND("[${ONLINE_TAG}:${bookingId}]", {Term 4 Notes})`
+export function waiverFields({ player, parent, config, signature, acceptedAt, media, tag = '' }) {
+  return {
+    'Player Full Name': player.name,
+    ...(player.dob ? { 'Date of Birth': player.dob } : {}),
+    'Parent/Guardian Name': parent.name,
+    'Parent Email': parent.email,
+    ...(parent.mobile ? { 'Parent Mobile Number': parent.mobile } : {}),
+    ...(player.mobile ? { 'Player Mobile Number': player.mobile } : {}),
+    'Current Club': player.club || '',
+    'Medical Notes': player.medical || '',
+    'Emergency Contact Name': player.emergencyName || '',
+    ...(player.emergencyPhone ? { 'Emergency Contact Phone': player.emergencyPhone } : {}),
+    'Term': config.term,
+    'Waiver Version': config.waiverVersion,
+    'Waiver Accepted - Full Terms': true,
+    'No Make-Up Sessions Accepted': true,
+    'Payment Terms Accepted - Full Term': true,
+    'Emergency Treatment Permission': true,
+    'Media Permission': media === true,
+    'Parent/Guardian Signature': signature,
+    'Signed Date': acceptedAt.slice(0, 10),
+    'Form Review Status': 'Needs Review',
+    ...(tag ? { 'Internal Notes': `Signed online. ${tag}` } : {}),
+    'Programme': 'JFP',
+    'JFP Program Waiver and Agreement': `JFP Program Waiver and Agreement accepted online for ${config.term} (${config.waiverVersion}). Signed by ${signature} at ${acceptedAt}.`,
+  }
+}
+
+// ---------- Term 4 writes ----------
+
+export async function createTerm4Rows(fieldsList) {
+  const out = []
+  for (let i = 0; i < fieldsList.length; i += 10) {
+    const d = await airtable(encodeURIComponent(TABLES.term4), { method: 'POST', body: { typecast: true, records: fieldsList.slice(i, i + 10).map((fields) => ({ fields })) } })
+    out.push(...(d.records || []).map((r) => r.id))
+  }
+  await bustRosterCache()
+  return out
+}
+
+export async function updateTerm4Rows(updates) {
+  const out = []
+  for (let i = 0; i < updates.length; i += 10) {
+    const d = await airtable(encodeURIComponent(TABLES.term4), { method: 'PATCH', body: { typecast: true, records: updates.slice(i, i + 10).map(({ id, fields }) => ({ id, fields })) } })
+    out.push(...(d.records || []))
+  }
+  await bustRosterCache()
+  return out
+}
+
+// null only when the row really does not exist; any other failure throws.
+export async function getTerm4Row(id) {
+  if (!/^rec[A-Za-z0-9]{14}$/.test(id || '')) return null
+  try { return term4Row(await airtable(`${encodeURIComponent(TABLES.term4)}/${id}`)) } catch (error) {
+    if (/Airtable 404/.test(error.message)) return null
+    throw error
+  }
+}
+
+// Rows the system wrote for this booking or admin add, so a retry never
+// creates a second enrolment.
+export async function findTerm4ByTag(tag, id) {
+  const formula = `FIND("${fq(`[${tag}:${id}]`)}", {Term 4 Notes})`
   const q = new URLSearchParams({ filterByFormula: formula, pageSize: '20' })
   const d = await airtable(`${encodeURIComponent(TABLES.term4)}?${q}`)
   return (d.records || []).map((r) => r.id)
 }
 
+export function appendNote(existing, line) {
+  const stamp = new Date().toISOString().slice(0, 10)
+  return `${existing ? `${existing}\n` : ''}${stamp}: ${line}`.slice(-4000)
+}
+
+// ---------- ledger ----------
+
 // One ledger row per actual payment, never per player.
-export async function createLedgerRow({ booking, term4Ids, config }) {
+export async function createLedgerRow({ paymentId, config, playerNames, amountCents, paidAt, sourceIds, sessionId, intentId, notes }) {
   const d = await airtable(encodeURIComponent(TABLES.ledger), {
     method: 'POST',
     body: {
       typecast: true,
       records: [{ fields: {
-        'Payment ID': booking.stripePaymentIntentId || booking.id,
+        'Payment ID': paymentId,
         'Term': config.term,
-        'Player Name': booking.players.map((p) => p.name).join(', '),
-        'Amount Paid': (booking.amountPaidCents ?? booking.priceCents) / 100,
+        'Player Name': playerNames.join(', '),
+        'Amount Paid': amountCents / 100,
         'Payment Method': 'Stripe',
         'Payment Status': 'Paid',
-        'Payment Date': (booking.paidAt || new Date().toISOString()).slice(0, 10),
+        'Payment Date': (paidAt || new Date().toISOString()).slice(0, 10),
         'Source Table': 'Term 4 Players',
-        'Source Record ID': term4Ids.join(', '),
-        'Stripe Checkout Session ID': booking.stripeSessionId || '',
-        'Stripe Payment Intent ID': booking.stripePaymentIntentId || '',
-        'Notes': `JFP online booking ${booking.id}${booking.stripeFeeCents != null ? `. Stripe fee A$${(booking.stripeFeeCents / 100).toFixed(2)}` : ''}`,
+        'Source Record ID': sourceIds.join(', '),
+        'Stripe Checkout Session ID': sessionId || '',
+        'Stripe Payment Intent ID': intentId || '',
+        'Notes': notes || '',
         'Updated At': new Date().toISOString(),
       } }],
     },
@@ -200,12 +339,70 @@ export async function createLedgerRow({ booking, term4Ids, config }) {
 }
 
 export async function findLedgerByPayment(paymentId) {
-  const q = new URLSearchParams({ filterByFormula: `{Payment ID} = "${String(paymentId).replace(/"/g, '')}"`, pageSize: '5' })
+  const q = new URLSearchParams({ filterByFormula: `{Payment ID} = "${fq(paymentId)}"`, pageSize: '5' })
   const d = await airtable(`${encodeURIComponent(TABLES.ledger)}?${q}`)
   return (d.records || []).map((r) => r.id)
 }
 
-// Draft groups from who is already booked, for staff to review.
+// ---------- attendance ----------
+
+// One Attendance row per player per session, keyed by Attendance ID so a
+// second tick updates rather than duplicates.
+export async function upsertAttendance({ attendanceId, playerName, week, date, group, coachName, status, markedBy }) {
+  const fields = {
+    'Attendance ID': attendanceId, 'Player Name': playerName, 'Term': 'Term 4', 'Year': Number(date.slice(0, 4)), 'Week Number': week,
+    'Session Date': date, 'Session Day': group.day, 'Session Time': group.time, 'Session Location': group.location,
+    'Coach': coachName || '', 'Attendance Status': status, 'Marked By': markedBy, 'Marked At': new Date().toISOString(), 'Programme': 'JFP',
+  }
+  const q = new URLSearchParams({ filterByFormula: `{Attendance ID} = "${fq(attendanceId)}"`, pageSize: '1' })
+  const found = await airtable(`${encodeURIComponent(TABLES.attendance)}?${q}`)
+  const id = found.records?.[0]?.id
+  if (id) await airtable(encodeURIComponent(TABLES.attendance), { method: 'PATCH', body: { typecast: true, records: [{ id, fields }] } })
+  else await airtable(encodeURIComponent(TABLES.attendance), { method: 'POST', body: { typecast: true, records: [{ fields }] } })
+}
+
+// ---------- families ----------
+
+// Everything a signed-in parent is allowed to see: the players whose rows
+// carry their email, in Term 4, Term 3 or the waiver table. Nothing else.
+export function familyFor(email, roster, termStart) {
+  const e = clean(email, 200).toLowerCase()
+  if (!e) return { emails: [], phones: [], players: [] }
+  const t4 = roster.players.filter((r) => r.email === e)
+  const t3 = roster.term3.filter((r) => r.emails.includes(e))
+  const wv = roster.waivers.filter((w) => w.email === e)
+  const family = {
+    emails: [e],
+    phones: [...t4.map((r) => r.phone), ...t3.map((r) => r.phone), ...wv.map((w) => w.mobile)].filter(Boolean),
+    parentName: t4[0]?.parent || t3[0]?.parent || wv[0]?.parent || '',
+    mobile: t4[0]?.phone || t3[0]?.phone || wv[0]?.mobile || '',
+  }
+  const byName = new Map()
+  const touch = (name) => {
+    const k = normName(name)
+    if (!k) return null
+    if (!byName.has(k)) byName.set(k, { key: k, name: clean(name, 80), dob: '', term4: [], inTerm3: false })
+    return byName.get(k)
+  }
+  for (const r of t4) {
+    const p = touch(r.player)
+    if (!p) continue
+    p.term4.push(r)
+    if (!p.dob && r.dob) p.dob = r.dob
+    if (p.ageHint == null && r.ageFromNotes != null) p.ageHint = r.ageFromNotes
+  }
+  for (const r of t3) { const p = touch(r.player); if (p) { p.inTerm3 = true; if (!p.dob && r.dob) p.dob = r.dob } }
+  for (const w of wv) { const p = touch(w.player); if (p && !p.dob && w.dob) p.dob = w.dob }
+  family.players = [...byName.values()].map((p) => ({
+    ...p,
+    age: ageOn(p.dob, termStart) ?? p.ageHint ?? null,
+    waiver: waiverFor(p.name, family, roster.waivers),
+  })).sort((a, b) => a.name.localeCompare(b.name))
+  return family
+}
+
+// ---------- draft groups (first set-up only) ----------
+
 export function draftGroupsFromRoster(players, config) {
   const by = new Map()
   for (const p of players) {
@@ -223,24 +420,24 @@ export function draftGroupsFromRoster(players, config) {
     const isBelrose = /belrose/i.test(g.location)
     const oneToOne = /1 on 1/i.test(type)
     const pathway = /pathway/i.test(type)
-    // Only what the records can justify opens. Belrose groups hold 6, as the
-    // dashboard assumes. Shared early squads, 1 to 1 slots and anything during
-    // school hours stay closed until staff say otherwise.
-    const hour = Number((/^(\d{2})/.exec(to24h(g.time)) || [])[1] || 0)
-    const schoolHours = hour >= 8 && hour < 15 && !['Saturday', 'Sunday'].includes(g.day)
-    // Pathway is approved by staff one family at a time, so a second coach on
-    // the roster does not need to close it. A shared standard group does.
-    const mode = oneToOne || !isBelrose || schoolHours ? 'closed' : pathway ? 'application' : coachRank.length > 1 ? 'closed' : 'direct'
     return {
       id, day: g.day, time: g.time, location: g.location,
       coachId: coachRank[0]?.[0] || '',
       extraCoachIds: coachRank.slice(1).map(([c]) => c),
       programme: pathway ? 'JFP Pathway 10 weeks' : oneToOne ? 'JFP 1 on 1' : 'JFP 10 weeks',
-      capacity: oneToOne ? 1 : isBelrose ? 6 : g.n,
-      mode,
+      label: oneToOne ? '1 to 1' : pathway ? 'Pathway' : isBelrose ? 'Small group' : 'Squad',
+      capacity: oneToOne ? 1 : isBelrose ? 6 : Math.max(g.n, 6),
+      mode: oneToOne ? 'enquire' : pathway || !isBelrose ? 'application' : 'direct',
       durationMin: 60,
-      publicNote: '',
       currentPlayers: g.n,
     }
   })
+}
+
+// A draft age band from the players in a group today: one year either side
+// of the youngest and oldest, inside the programme range. Staff confirm it.
+export function draftAgeBand(ages, config) {
+  const list = ages.filter((a) => Number.isInteger(a)).sort((a, b) => a - b)
+  if (!list.length) return { minAge: null, maxAge: null }
+  return { minAge: Math.max(config.minAge, list[0] - 1), maxAge: Math.min(config.maxAge, list.at(-1) + 1) }
 }

@@ -1,0 +1,49 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import '../styles/jfp.css'
+---
+
+<BaseLayout title="My JFP account | Joner Football" description="Your Joner Football Performance players, sessions and payments." canonical="https://jonerfootball.com/jfp-account/" noindex noTracking hideChrome hideMobileAppCta>
+  <div class="jfp" id="jfp-account">
+    <header class="j-top">
+      <div class="wrap">
+        <a class="j-brand" href="/"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span>Joner Football<small>Performance programme</small></span></a>
+        <div class="j-top-links"><a class="j-btn j-btn-line j-btn-sm" href="/jfp-booking/">Book a group</a><button type="button" class="j-btn j-btn-ghost j-btn-sm" id="sign-out" hidden>Sign out</button></div>
+      </div>
+    </header>
+
+    <section id="signin" class="j-gate" hidden>
+      <div class="j-card">
+        <p class="j-kicker">My JFP account</p>
+        <h1 style="margin:6px 0 16px">Sign in</h1>
+        <div id="si-mount"></div>
+        <div id="si-foot" style="margin-top:6px"></div>
+      </div>
+    </section>
+
+    <div id="app" class="wrap" style="max-width:860px;padding-bottom:60px" hidden>
+      <div id="banner" style="margin-top:18px"></div>
+      <section class="j-hero">
+        <p class="j-kicker" id="term">JFP</p>
+        <h1 style="margin-top:6px" id="hello">Your players</h1>
+        <p class="muted" id="who" style="margin-top:6px"></p>
+      </section>
+      <section id="todo-wrap" class="j-section" hidden>
+        <h2 style="margin-bottom:10px">To do</h2>
+        <div id="todo"></div>
+      </section>
+      <section class="j-section">
+        <div id="players"></div>
+      </section>
+      <section id="requests-wrap" class="j-section" hidden>
+        <h2 style="margin-bottom:10px">Applications and waitlist</h2>
+        <div id="requests"></div>
+      </section>
+      <p class="muted small">Something not right? Reply to any Joner Football email or write to <a href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a>.</p>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import '../scripts/jfp-account.js'
+</script>

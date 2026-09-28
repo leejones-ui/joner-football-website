@@ -28,6 +28,7 @@ process.env.BREVO_API_KEY = 'local'
 process.env.PUBLIC_SITE_URL = `http://localhost:${PORT}`
 process.env.JFP_BOOKING_PASSWORD = process.env.JFP_BOOKING_PASSWORD || 'term4'
 process.env.JFP_PORTAL_ENABLED = 'true'
+process.env.JFP_SETTLE_SECONDS = process.env.JFP_SETTLE_SECONDS ?? '0'
 process.env.JFP_PORTAL_ORIGIN = `http://localhost:${PORT}`
 process.env.JFP_BOOTSTRAP_SECRET = 'boot'
 process.env.AIRTABLE_API_TOKEN = 'local'
@@ -71,7 +72,18 @@ function redis(cmd) {
     case 'HSET': { const h = hash(args[0]); h.set(args[1], args[2]); return 1 }
     case 'HGET': return live(args[0])?.value.get(args[1]) ?? null
     case 'HGETALL': { const h = live(args[0]); return h ? [...h.value.entries()].flat() : [] }
-    case 'ZADD': { const z = zset(args[0]); let n = 0; for (let i = 1; i < args.length; i += 2) { if (!z.has(args[i + 1])) n++; z.set(args[i + 1], Number(args[i])) } return n }
+    case 'ZADD': {
+      const z = zset(args[0]); let i = 1; let xx = false
+      if (String(args[1]).toUpperCase() === 'XX') { xx = true; i = 2 }
+      let n = 0
+      for (; i < args.length; i += 2) { if (xx && !z.has(args[i + 1])) continue; if (!z.has(args[i + 1])) n++; z.set(args[i + 1], Number(args[i])) }
+      return n
+    }
+    case 'HDEL': { const h = live(args[0]); let n = 0; if (h) for (const f of args.slice(1)) if (h.value.delete(f)) n++; return n }
+    case 'LPUSH': { const e = live(args[0]) || { type: 'l', value: [] }; store.set(args[0], e); e.value.unshift(...args.slice(1).reverse()); return e.value.length }
+    case 'LTRIM': { const e = live(args[0]); if (e) e.value = e.value.slice(Number(args[1]), Number(args[2]) + 1); return 'OK' }
+    case 'LRANGE': { const e = live(args[0]); const end = Number(args[2]); return e ? e.value.slice(Number(args[1]), end === -1 ? undefined : end + 1) : [] }
+    case 'EXPIRE': { const e = live(args[0]); if (!e) return 0; e.expiresAt = Date.now() + Number(args[1]) * 1000; return 1 }
     case 'ZREM': { const z = zset(args[0]); let n = 0; for (const m of args.slice(1)) if (z.delete(m)) n++; return n }
     case 'ZCARD': return zset(args[0]).size
     case 'ZREMRANGEBYSCORE': { const z = zset(args[0]); const max = Number(args[2]); let n = 0; for (const [m, s] of z) if (s <= max) { z.delete(m); n++ } return n }
@@ -85,12 +97,31 @@ function redis(cmd) {
         const n = redis(['INCR', key]); if (n === 1) live(key).expiresAt = Date.now() + Number(ttl) * 1000
         return n
       }
-      if (script.includes('taken + want')) {
-        // JFP hold: places, not a whole slot
+      if (script.includes("redis.call('GET', KEYS[1]) == ARGV[1]")) {
+        // Lease release: delete only if we still hold it
+        const [, , key, token] = args
+        if (live(key)?.value === token) { store.delete(key); return 1 }
+        return 0
+      }
+      if (script.includes('c.tries')) {
+        // JFP sign-in code check: count, compare and consume in one step
+        const [, , key, codeDigest, maxTries] = args
+        const e = live(key)
+        if (!e) return null
+        const c = JSON.parse(e.value)
+        if (c.tries >= Number(maxTries)) { store.delete(key); return null }
+        if (c.code !== codeDigest) { c.tries += 1; e.value = JSON.stringify(c); return null }
+        store.delete(key)
+        return e.value
+      }
+      if (script.includes("ARGV[5] .. '#' .. i")) {
+        // JFP hold: counted places, resized atomically for the same booking
         const [, , key, now, available, want, expiry, id] = args
         const z = zset(key)
         for (const [m, sc] of z) if (sc <= Number(now)) z.delete(m)
-        if (z.size + Number(want) > Number(available)) return 0
+        const own = [...z.keys()].filter((m) => m.startsWith(`${id}#`))
+        if (z.size - own.length + Number(want) > Number(available)) return 0
+        own.forEach((m) => z.delete(m))
         for (let i = 1; i <= Number(want); i++) z.set(`${id}#${i}`, Number(expiry))
         return 1
       }
@@ -124,14 +155,6 @@ function redis(cmd) {
         for (let i = 1; i <= Number(want); i++) z.set(`${bookingId}#${i}`, Number(score))
         return 1
       }
-      if (script.includes("ARGV[3] .. '#' .. i")) {
-        // JFP extend: every place must still be ours and live
-        const [, , key, now, expiry, id, want] = args
-        const z = zset(key)
-        for (let i = 1; i <= Number(want); i++) { const sc = z.get(`${id}#${i}`); if (sc === undefined || sc <= Number(now)) return 0 }
-        for (let i = 1; i <= Number(want); i++) z.set(`${id}#${i}`, Number(expiry))
-        return 1
-      }
       // Holiday scripts. The hold now also takes the slots hash (2 keys) and
       // refuses a slot that is not open.
       const two = String(args[1]) === '2'
@@ -163,42 +186,81 @@ const sessions = new Map()
 const emails = []
 
 // ---------- mock airtable ----------
-// Pretend Term 4 roster: realistic groups, invented players.
-const airtable = { term4: [], ledger: [] }
+// A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
+// JSON file ({ term4, term3, waiver, ledger } record arrays) to load another,
+// for example an anonymised copy of the real roster for screenshots.
+const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [] }
 let recSeq = 1
+const recId = () => `rec${String(recSeq++).padStart(14, '0')}`
 function seedRow(day, time, location, coach, type = 'JFP 10 weeks', confirmation = 'Confirmed', extra = {}) {
-  airtable.term4.push({ id: `rec${String(recSeq++).padStart(6, '0')}`, fields: { 'Player Name': `Player ${recSeq}`, 'Parent Name': `Parent ${recSeq}`, 'Email': `parent${recSeq}@example.com`, 'Phone': '0400000000', 'Term 3 Day': day, 'Term 3 Time': time, 'Term 3 Location': location, 'Coach': coach, 'Term 4 Confirmation': confirmation, 'Term 4 Payment Type': type, 'Term 4 Fee': 850, 'Term 4 Amount Paid': extra.paid ?? 850, 'Term 4 Balance': 850 - (extra.paid ?? 850), 'Term 4 Payment Status': (extra.paid ?? 850) >= 850 ? 'Paid' : (extra.paid ? 'Partially Paid' : 'Unpaid') } })
+  const n = recSeq
+  const paid = extra.paid ?? 850
+  airtable.term4.push({ id: recId(), fields: { 'Player Name': extra.name || `Player ${n}`, 'Parent Name': extra.parent || `Parent ${n}`, 'Email': extra.email || `parent${n}@example.com`, 'Phone': '0400000000', 'Term 3 Day': day, 'Term 3 Time': time, 'Term 3 Location': location, 'Coach': coach, 'Term 4 Confirmation': confirmation, 'Term 4 Payment Type': type, 'Term 4 Fee': 850, 'Term 4 Amount Paid': paid, 'Term 4 Balance': 850 - paid, 'Term 4 Payment Status': paid >= 850 ? 'Paid' : (paid ? 'Partially Paid' : 'Unpaid'), 'Term 4 Notes': extra.notes || '' } })
 }
-for (let i = 0; i < 4; i++) seedRow('Monday', '5:25pm', 'Belrose HQ', 'Dean Mac', 'JFP 10 weeks', 'Confirmed', { paid: i === 0 ? 400 : 850 })
-for (let i = 0; i < 5; i++) seedRow('Tuesday', '5:25pm', 'Belrose HQ', 'Dean Mac')
-for (let i = 0; i < 6; i++) seedRow('Wednesday', '4:20pm', 'Belrose HQ', 'Sam Yorks')
-seedRow('Wednesday', '5:25pm', 'Belrose HQ', 'Sam Yorks', 'JFP 10 weeks', 'Awaiting Reply', { paid: 0 })
-for (let i = 0; i < 3; i++) seedRow('Friday', '4pm', 'Belrose HQ', 'Dean Mac', 'JFP Pathway 10 weeks')
-for (let i = 0; i < 3; i++) seedRow('Friday', '6:30am', 'Rydalmere', i ? 'Luke Bakos' : 'Lee Jones')
-seedRow('Monday', '1pm', 'Belrose HQ', 'Dean Mac', 'JFP 1 on 1, 10 weeks')
-seedRow('Thursday', '4:20pm', 'Belrose HQ', 'Dean Mac', 'JFP 10 weeks', 'Dropped')
+if (process.env.JFP_SEED && fs.existsSync(process.env.JFP_SEED)) {
+  const seed = JSON.parse(fs.readFileSync(process.env.JFP_SEED, 'utf8'))
+  for (const k of Object.keys(airtable)) if (Array.isArray(seed[k])) airtable[k] = seed[k]
+  recSeq = 90000
+} else {
+  for (let i = 0; i < 4; i++) seedRow('Monday', '5:25pm', 'Belrose HQ', 'Dean Mac', 'JFP 10 weeks', 'Confirmed', { paid: i === 0 ? 400 : 850 })
+  for (let i = 0; i < 5; i++) seedRow('Tuesday', '5:25pm', 'Belrose HQ', 'Dean Mac')
+  for (let i = 0; i < 6; i++) seedRow('Wednesday', '4:20pm', 'Belrose HQ', 'Sam Yorks')
+  seedRow('Wednesday', '5:25pm', 'Belrose HQ', 'Sam Yorks', 'JFP 10 weeks', 'Awaiting Reply', { paid: 0 })
+  for (let i = 0; i < 3; i++) seedRow('Friday', '4pm', 'Belrose HQ', 'Dean Mac', 'JFP Pathway 10 weeks')
+  for (let i = 0; i < 3; i++) seedRow('Friday', '6:30am', 'Rydalmere', i ? 'Luke Bakos' : 'Lee Jones')
+  seedRow('Monday', '1pm', 'Belrose HQ', 'Dean Mac', 'JFP 1 on 1, 10 weeks')
+  seedRow('Thursday', '4:20pm', 'Belrose HQ', 'Dean Mac', 'JFP 10 weeks', 'Dropped')
+  // A returning family with a waiver on file, and one without.
+  seedRow('Tuesday', '4:20pm', 'Belrose HQ', 'Sam Yorks', 'JFP 10 weeks', 'Confirmed', { name: 'Riley Returning', parent: 'Rita Returning', email: 'returning@example.com', paid: 850 })
+  airtable.term3.push({ id: recId(), fields: { 'Player Name': 'Riley Returning', 'Email': 'returning@example.com', 'Parent Name': 'Rita Returning', 'Date of Birth': '2015-03-02', 'Coach': 'Sam Yorks', 'Session Day': 'Tuesday', 'Session Time': '4:20pm', 'Session Location': 'Belrose HQ' } })
+  airtable.term3.push({ id: recId(), fields: { 'Player Name': 'Sasha Returning', 'Email': 'returning@example.com', 'Parent Name': 'Rita Returning', 'Date of Birth': '2016-06-10', 'Coach': 'Sam Yorks', 'Session Day': 'Wednesday', 'Session Time': '4:20pm', 'Session Location': 'Belrose HQ' } })
+  airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': 'Riley Returning', 'Parent Email': 'returning@example.com', 'Date of Birth': '2015-03-02', 'Term': 'Term 3 2026', 'Signed Date': '2026-07-14', 'Waiver Accepted - Full Terms': true } })
+  airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': 'Sasha Returning', 'Parent Email': 'returning@example.com', 'Date of Birth': '2016-06-10', 'Term': 'Term 3 2026', 'Signed Date': '2026-07-14', 'Waiver Accepted - Full Terms': true } })
+}
 
+const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance' }
 function airtableResponse(url, init) {
   const u = new URL(url)
-  const table = decodeURIComponent(u.pathname.split('/').pop())
-  const key = table === 'tbl6OIjkU6UsQCeZV' ? 'term4' : table === 'tblfrXQLMhOcE2PWH' ? 'ledger' : table === 'Term 3 Players' ? 'term3' : null
+  const parts = u.pathname.split('/').slice(3).map(decodeURIComponent) // [table, recordId?]
+  const key = TABLE_KEYS[parts[0]]
   if (!key) return { status: 404, body: { error: { type: 'TABLE_NOT_FOUND' } } }
-  if (faults.has('airtable')) return { status: 503, body: { error: { type: 'SERVICE_UNAVAILABLE' } } }
-  const rows = airtable[key] || (airtable[key] = [])
-  if ((init.method || 'GET') === 'POST') {
+  if (faults.has('airtable') || faults.has(`airtable-${key}`)) return { status: 422, body: { error: { type: 'INVALID_VALUE_FOR_COLUMN', message: 'fault injected' } } }
+  const rows = airtable[key]
+  const method = (init.method || 'GET').toUpperCase()
+  if (method === 'POST') {
     const body = JSON.parse(init.body)
-    const created = body.records.map((r) => ({ id: `rec${String(recSeq++).padStart(6, '0')}`, fields: { ...r.fields } }))
+    const created = body.records.map((r) => ({ id: recId(), fields: { ...r.fields } }))
     rows.push(...created)
     log('airtable', `${key} +${created.length}`)
     return { status: 200, body: { records: created } }
   }
+  if (method === 'PATCH') {
+    const body = JSON.parse(init.body)
+    const out = []
+    for (const r of body.records) {
+      const row = rows.find((x) => x.id === r.id)
+      if (!row) return { status: 404, body: { error: { type: 'ROW_DOES_NOT_EXIST' } } }
+      Object.assign(row.fields, r.fields)
+      if (key === 'term4') row.fields['Term 4 Balance'] = Number(row.fields['Term 4 Fee'] || 0) - Number(row.fields['Term 4 Amount Paid'] || 0)
+      out.push(row)
+    }
+    log('airtable', `${key} ~${out.length}`)
+    return { status: 200, body: { records: out } }
+  }
+  if (parts[1]) {
+    const row = rows.find((x) => x.id === parts[1])
+    return row ? { status: 200, body: row } : { status: 404, body: { error: { type: 'NOT_FOUND' } } }
+  }
   const formula = u.searchParams.get('filterByFormula') || ''
   let out = rows
-  const find = formula.match(/^FIND\("(.+)", \{Term 4 Notes\}\)$/)
-  if (find) out = rows.filter((r) => String(r.fields['Term 4 Notes'] || '').includes(find[1]))
-  const eq = formula.match(/^\{Payment ID\} = "(.+)"$/)
-  if (eq) out = rows.filter((r) => r.fields['Payment ID'] === eq[1])
-  return { status: 200, body: { records: out } }
+  const find = formula.match(/^FIND\("(.+)", \{(.+)\}\)$/)
+  if (find) { const needle = find[1].replace(/\\(["\\])/g, '$1'); out = rows.filter((r) => String(r.fields[find[2]] || '').includes(needle)) }
+  const eq = formula.match(/^\{(Payment ID|Attendance ID)\} = "(.+)"$/)
+  if (eq) out = rows.filter((r) => r.fields[eq[1]] === eq[2])
+  const size = Number(u.searchParams.get('pageSize') || 100)
+  const offset = Number(u.searchParams.get('offset') || 0)
+  const page = out.slice(offset, offset + size)
+  return { status: 200, body: { records: page, ...(offset + size < out.length ? { offset: String(offset + size) } : {}) } }
 }
 const sheetRows = []
 const SHEET_HEADERS = ['Updated At', 'Status', 'Date', 'Start', 'End', 'Coach', 'Session Type', 'Players', 'Player Ages', 'Parent Name', 'Mobile', 'Email', 'Notes', 'Location', 'Booking ID', 'Needs Attention']
@@ -253,9 +315,9 @@ globalThis.fetch = async (url, init = {}) => {
   if (u.startsWith('https://api.brevo.com')) {
     if (faults.has('email')) return new Response('{"code":"unauthorized"}', { status: 401 })
     const payload = JSON.parse(init.body)
-    const id = (payload.htmlContent.match(/(?:HOL|JFP|APP)-[0-9A-Z-]+/) || [''])[0]
+    const id = (payload.htmlContent.match(/(?:HOL|JFP|APP|PAY|WAIT|ENQ)-[0-9A-Z-]+/) || [''])[0]
     log('brevo', `${payload.subject} [${id}]`)
-    emails.push({ at: Date.now(), to: payload.to.map((t) => t.email), subject: payload.subject, html: payload.htmlContent })
+    emails.push({ at: Date.now(), to: payload.to.map((t) => t.email), subject: payload.subject, html: payload.htmlContent, attachments: (payload.attachment || []).map((a) => ({ name: a.name, content: Buffer.from(a.content, 'base64').toString('utf8') })) })
     return json({ messageId: 'local' })
   }
   if (u.startsWith('https://oauth2.googleapis.com/token')) return json({ access_token: 'local', expires_in: 3600 })
@@ -310,7 +372,7 @@ function shimRes(res) {
 }
 
 const handlers = {}
-for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-session', 'jfp-portal-data']) {
+for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data']) {
   handlers[name] = (await import(`../api/${name}.js`)).default
 }
 
@@ -369,6 +431,11 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/__airtable') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(airtable)) }
   if (url.pathname === '/__sheet') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(sheetRows)) }
   if (url.pathname === '/__events') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(events)) }
+  if (url.pathname === '/__kv') {
+    // Test-only direct access to the pretend KV, for time travel in tests.
+    const out = redis(JSON.parse(url.searchParams.get('cmd')))
+    res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(typeof out === 'string' ? out : JSON.stringify(out))
+  }
   if (url.pathname === '/__sessions') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify([...sessions.values()])) }
 
   let file = path.join(DIST, decodeURIComponent(url.pathname))
@@ -377,5 +444,10 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' })
   fs.createReadStream(file).pipe(res)
 })
+
+if (process.env.JFP_GROUPS && fs.existsSync(process.env.JFP_GROUPS)) {
+  for (const g of JSON.parse(fs.readFileSync(process.env.JFP_GROUPS, 'utf8'))) redis(['HSET', 'jfp:groups', g.id, JSON.stringify(g)])
+  console.log('loaded JFP groups from', process.env.JFP_GROUPS)
+}
 
 server.listen(PORT, () => console.log(`holiday local harness on http://localhost:${PORT}  (parent password "holiday", admin secret "admin")`))

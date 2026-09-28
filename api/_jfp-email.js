@@ -1,177 +1,245 @@
 // JFP emails, sent through Brevo like every other Joner transactional email.
-import { formatAud, dateLabel, sessionDates, coachById } from './_jfp-store.js'
+// Clean and light on purpose: white card, dark text, one button.
+import { formatAud, dateLabel, sessionDates, coachById, locationFor, to24h } from './_jfp-store.js'
 
-const LOCATIONS = {
-  belrose: 'Joner Football HQ, 20 Narabang Way (Unit 2), Belrose NSW 2085',
-}
-
-function esc(v) {
+export function esc(v) {
   return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
-export function locationLine(location) {
-  return /belrose/i.test(location) ? LOCATIONS.belrose : location
-}
+export function locationLine(config, location) { return locationFor(config, location).address || location }
 
-function shell({ eyebrow = 'Joner Football Performance', heading, body }) {
-  return `<!doctype html><html><body style="margin:0;padding:0;background:#050505;font-family:Arial,Helvetica,sans-serif;color:#fff;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#050505;"><tr><td align="center" style="padding:24px 12px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#111;border:1px solid #252525;border-radius:16px;">
-<tr><td style="padding:32px 26px 8px;">
-<p style="margin:0 0 10px;color:#e8000d;font-size:12px;font-weight:900;letter-spacing:1.8px;text-transform:uppercase;">${esc(eyebrow)}</p>
-<h1 style="margin:0 0 18px;color:#fff;font-size:28px;line-height:1.1;font-weight:900;text-transform:uppercase;">${esc(heading)}</h1>
-</td></tr>${body}
-<tr><td style="padding:24px 26px;background:#0b0b0b;border-top:1px solid #252525;border-radius:0 0 16px 16px;">
-<p style="margin:0;color:#fff;font-size:15px;font-weight:800;">Joner Football</p></td></tr>
+function shell({ preheader = '', heading, body }) {
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
+<body style="margin:0;padding:0;background:#F4F5F7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111827;">
+<span style="display:none;max-height:0;overflow:hidden;">${esc(preheader)}</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F5F7;"><tr><td align="center" style="padding:28px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+<tr><td style="padding:0 6px 14px;font-size:13px;font-weight:700;letter-spacing:.4px;color:#6B7280;">JONER FOOTBALL PERFORMANCE</td></tr>
+<tr><td style="background:#FFFFFF;border:1px solid #E5E7EB;border-radius:16px;padding:30px 26px;">
+<h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;font-weight:800;color:#111827;">${esc(heading)}</h1>
+${body}
+</td></tr>
+<tr><td style="padding:16px 6px;font-size:12px;line-height:1.6;color:#6B7280;">Joner Football, 20 Narabang Way (Unit 2), Belrose NSW 2085. Reply to this email with any questions.</td></tr>
 </table></td></tr></table></body></html>`
 }
 
+function p(html) { return `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#374151;">${html}</p>` }
 function rows(list) {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${list.map(([k, v]) => `<tr>
-<td style="padding:9px 0;border-bottom:1px solid #252525;color:#9a9a9a;font-size:13px;text-transform:uppercase;letter-spacing:1px;width:36%;vertical-align:top;">${esc(k)}</td>
-<td style="padding:9px 0;border-bottom:1px solid #252525;color:#fff;font-size:16px;font-weight:700;vertical-align:top;">${v}</td></tr>`).join('')}</table>`
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px;border-top:1px solid #F0F1F3;">${list.map(([k, v]) => `<tr>
+<td style="padding:10px 0;border-bottom:1px solid #F0F1F3;color:#6B7280;font-size:13px;width:34%;vertical-align:top;">${esc(k)}</td>
+<td style="padding:10px 0;border-bottom:1px solid #F0F1F3;color:#111827;font-size:15px;font-weight:600;vertical-align:top;">${v}</td></tr>`).join('')}</table>`
 }
-
-function p(text) { return `<p style="margin:0 0 12px;color:#e6e6e6;font-size:15px;line-height:1.6;">${text}</p>` }
 function button(label, href) {
-  return `<p style="margin:18px 0;"><a href="${esc(href)}" style="background:#e8000d;color:#fff;text-decoration:none;font-weight:900;font-size:15px;padding:15px 22px;border-radius:8px;display:inline-block;text-transform:uppercase;">${esc(label)}</a></p>`
+  return `<p style="margin:20px 0 8px;"><a href="${esc(href)}" style="background:#111827;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:15px;padding:14px 22px;border-radius:10px;display:inline-block;">${esc(label)}</a></p>`
 }
+function link(label, href) { return `<a href="${esc(href)}" style="color:#1D4ED8;text-decoration:underline;">${esc(label)}</a>` }
 
-async function send({ to, subject, html, replyTo }) {
+async function send({ to, subject, html, replyTo, attachment }) {
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey) throw new Error('BREVO_API_KEY is not configured.')
   const sender = process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com'
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { accept: 'application/json', 'content-type': 'application/json', 'api-key': apiKey },
-    body: JSON.stringify({ sender: { name: 'Joner Football', email: sender }, to, replyTo: { email: replyTo || sender, name: 'Joner Football' }, subject, htmlContent: html }),
+    body: JSON.stringify({ sender: { name: 'Joner Football', email: sender }, to, replyTo: { email: replyTo || sender, name: 'Joner Football' }, subject, htmlContent: html, ...(attachment ? { attachment } : {}) }),
   })
   if (!res.ok) throw new Error(`Brevo ${res.status}: ${(await res.text()).slice(0, 200)}`)
   return true
 }
 
-function staffTo(config) {
+export function staffTo(config) {
   const lee = process.env.JFP_OWNER_EMAIL || process.env.CAMP_SIGNUP_EMAIL || 'leejones@jonerfootball.com'
   return [...new Set([lee, ...(config.staffEmails || [])].map((e) => e.toLowerCase()))].map((email) => ({ email }))
 }
 
-function dateList(config, group) {
-  return sessionDates(config, group.day).map(dateLabel).join(', ')
+// ---------- calendar ----------
+
+export function buildIcs({ uid, group, config, title }) {
+  const dates = sessionDates(config, group.day)
+  if (!dates.length) return ''
+  const [hh, mm] = (to24h(group.time) || '16:00').split(':').map(Number)
+  const end = hh * 60 + mm + (group.durationMin || 60)
+  const pad = (n) => String(n).padStart(2, '0')
+  const day = (iso) => iso.replace(/-/g, '')
+  const loc = locationLine(config, group.location).replace(/([,;])/g, '\\$1')
+  const lines = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Joner Football//JFP//EN', 'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:${uid}@jonerfootball.com`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
+    `DTSTART;TZID=Australia/Sydney:${day(dates[0])}T${pad(hh)}${pad(mm)}00`,
+    `DTEND;TZID=Australia/Sydney:${day(dates[0])}T${pad(Math.floor(end / 60))}${pad(end % 60)}00`,
+    `RRULE:FREQ=WEEKLY;COUNT=${dates.length}`,
+    `SUMMARY:${title.replace(/([,;])/g, '\\$1')}`,
+    `LOCATION:${loc}`,
+    'END:VEVENT', 'END:VCALENDAR',
+  ]
+  return lines.join('\r\n')
+}
+
+function groupRows(config, group) {
+  const loc = locationFor(config, group.location)
+  const coach = coachById(config, group.coachId)
+  const dates = sessionDates(config, group.day)
+  return [
+    ['Group', `${esc(group.day)} ${esc(group.time)}`],
+    ['Where', `${esc(loc.address || group.location)}${loc.maps ? `<br>${link('Open in Maps', loc.maps)}` : ''}`],
+    ['Coach', coach ? `Coach ${esc(coach.name)}` : 'Joner Football coach'],
+    ...(dates.length ? [['Dates', `${esc(dates.length)} weeks, ${esc(dateLabel(dates[0]))} to ${esc(dateLabel(dates.at(-1)))}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(dates.map(dateLabel).join(', '))}</span>`]] : []),
+  ]
+}
+
+// ---------- sign in ----------
+
+export async function sendSignInCode({ email, code, audience }) {
+  const who = audience === 'staff' ? 'the JFP staff portal' : 'your JFP account'
+  const body = `${p(`Here is your code to sign in to ${who}:`)}
+<p style="margin:8px 0 18px;font-size:34px;letter-spacing:8px;font-weight:800;color:#111827;">${esc(code)}</p>
+${p('It works once, for 10 minutes. If you did not ask for it, ignore this email.')}`
+  return send({ to: [{ email }], subject: `Your JFP sign-in code: ${code}`, html: shell({ preheader: `Code ${code}`, heading: 'Your sign-in code', body }) })
 }
 
 // ---------- booking ----------
 
-export async function sendParentConfirmation({ booking, group, config }) {
-  const coach = coachById(config, group.coachId)
+export async function sendParentConfirmation({ booking, group, config, siteUrl }) {
   const players = booking.players.map((x) => esc(x.name)).join(', ')
-  const dates = sessionDates(config, group.day)
-  const body = `<tr><td style="padding:0 26px 8px;">
-${p(`Payment received. ${players} ${booking.players.length > 1 ? 'are' : 'is'} booked into ${esc(config.term)}.`)}
-${rows([
-    ['Group', `${esc(group.day)} ${esc(group.time)}`],
-    ['Where', esc(locationLine(group.location))],
-    ['Coach', coach ? `Coach ${esc(coach.name)}` : 'Joner Football coach'],
-    ['Players', players],
-    ['First session', esc(dateLabel(dates[0]))],
-    ['All 10 dates', esc(dateList(config, group))],
-    ['Paid', esc(formatAud(booking.amountPaidCents ?? booking.priceCents))],
-    ['Reference', esc(booking.id)],
-  ])}
-</td></tr>
-<tr><td style="padding:14px 26px 24px;">
-<p style="margin:0 0 8px;color:#fff;font-size:15px;font-weight:800;text-transform:uppercase;">One more step</p>
-${p('Every player needs a signed waiver before their first session. It takes two minutes.')}
-${config.waiverUrl ? button('Complete the waiver', config.waiverUrl) : p('We will send you the waiver link separately.')}
+  const ics = buildIcs({ uid: booking.id, group, config, title: `JFP ${group.day} ${group.time}` })
+  const body = `${p(`Payment received. ${players} ${booking.players.length > 1 ? 'are' : 'is'} booked into ${esc(config.term)}.`)}
+${rows([...groupRows(config, group), ['Players', players], ['Paid', esc(formatAud(booking.amountPaidCents ?? booking.priceCents))], ['Reference', esc(booking.id)]])}
+${p('The calendar file attached adds all the dates in one tap.')}
 ${p('Arrive 10 minutes early. Bring boots, shin pads and a full water bottle.')}
-${p('Any questions, reply to this email.')}
-</td></tr>`
-  return send({ to: [{ email: booking.email, name: booking.parentName }], subject: `Booked: ${config.term}, ${group.day} ${group.time}`, html: shell({ heading: 'You are booked in.', body }) })
+${siteUrl ? button('View your booking', `${siteUrl}/jfp-account/`) : ''}`
+  return send({
+    to: [{ email: booking.email, name: booking.parentName }],
+    subject: `You're booked in: ${group.day} ${group.time}, ${config.term}`,
+    html: shell({ preheader: `${group.day} ${group.time}, first session ${dateLabel(sessionDates(config, group.day)[0])}`, heading: 'You are booked in', body }),
+    attachment: ics ? [{ name: 'jfp-term.ics', content: Buffer.from(ics).toString('base64') }] : undefined,
+  })
 }
 
 export async function sendStaffAlert({ booking, group, config }) {
   const coach = coachById(config, group.coachId)
-  const body = `<tr><td style="padding:0 26px 24px;">${rows([
+  const body = rows([
     ['Group', `${esc(group.day)} ${esc(group.time)}, ${esc(group.location)}`],
     ['Coach', esc(coach?.name || '')],
-    ['Players', booking.players.map((x) => `${esc(x.name)} (${esc(x.age)})`).join(', ')],
+    ['Players', booking.players.map((x) => `${esc(x.name)}${x.age != null ? ` (${esc(x.age)})` : ''}`).join(', ')],
     ['Parent', esc(booking.parentName)],
     ['Email', esc(booking.email)],
     ['Mobile', esc(booking.mobile)],
-    ['Notes', esc(booking.notes || 'None')],
+    ['New players', booking.players.filter((x) => x.isNew).length ? 'Details and waiver signed online' : 'Returning'],
     ['Paid', esc(formatAud(booking.amountPaidCents ?? booking.priceCents))],
     ['Stripe fee', booking.stripeFeeCents != null ? esc(formatAud(booking.stripeFeeCents)) : 'Pending'],
-    ['Airtable', booking.term4Ids?.length ? `Added to Term 4 Players (${booking.term4Ids.length})` : 'Pending'],
     ['Reference', esc(booking.id)],
-  ])}</td></tr>`
-  return send({ to: staffTo(config), subject: `JFP booking: ${booking.players.map((x) => x.name).join(', ')}, ${group.day} ${group.time}`, html: shell({ heading: 'New JFP Booking', body }), replyTo: booking.email })
+  ])
+  return send({ to: staffTo(config), subject: `JFP booking: ${booking.players.map((x) => x.name).join(', ')}, ${group.day} ${group.time}`, html: shell({ heading: 'New JFP booking', body }), replyTo: booking.email })
 }
 
 export async function sendCoachAlert({ booking, group, config }) {
   const coach = coachById(config, group.coachId)
   if (!coach?.email) return false
-  const body = `<tr><td style="padding:0 26px 24px;">
-${p(`Coach ${esc(coach.name)}, a new player has joined your ${esc(group.day)} ${esc(group.time)} group.`)}
+  const body = `${p(`Coach ${esc(coach.name)}, a new player has joined your ${esc(group.day)} ${esc(group.time)} group.`)}
 ${rows([
     ['Group', `${esc(group.day)} ${esc(group.time)}, ${esc(group.location)}`],
-    ['Players', booking.players.map((x) => `${esc(x.name)} (${esc(x.age)})`).join(', ')],
+    ['Players', booking.players.map((x) => `${esc(x.name)}${x.age != null ? ` (${esc(x.age)})` : ''}`).join(', ')],
     ['First session', esc(dateLabel(sessionDates(config, group.day)[0]))],
     ['Reference', esc(booking.id)],
-  ])}</td></tr>`
-  await send({ to: [{ email: coach.email, name: `Coach ${coach.name}` }], subject: `New player: ${group.day} ${group.time}`, html: shell({ heading: 'New Player In Your Group', body }) })
+  ])}`
+  await send({ to: [{ email: coach.email, name: `Coach ${coach.name}` }], subject: `New player: ${group.day} ${group.time}`, html: shell({ heading: 'New player in your group', body }) })
   return true
 }
 
-// ---------- applications ----------
+// ---------- payment requests (admin adds, balances, approved places) ----------
 
-export async function sendApplicationReceived({ application, group, config }) {
-  const body = `<tr><td style="padding:0 26px 24px;">
-${p(`Thanks ${esc(application.parentName)}. We have your application for ${esc(application.players.map((x) => x.name).join(', '))} to join ${esc(group.day)} ${esc(group.time)} ${esc(group.programme)}.`)}
-${p('Lee or Ligia will review it and come back to you. If it is approved you will get a link to pay and secure the place.')}
-</td></tr>`
-  return send({ to: [{ email: application.email, name: application.parentName }], subject: `Application received: ${group.programme}`, html: shell({ heading: 'Application Received', body }) })
+export async function sendFamilyInvite({ to, parentName, playerNames, group, config, url, needs, amountCents }) {
+  const todo = []
+  if (needs.details) todo.push('add the player details')
+  if (needs.waiver) todo.push('sign the waiver')
+  if (needs.payment) todo.push(`pay ${formatAud(amountCents)}`)
+  const list = todo.length ? `${todo.slice(0, -1).join(', ')}${todo.length > 1 ? ' and ' : ''}${todo.at(-1)}` : ''
+  const body = `${p(`Hi ${esc(parentName || 'there')}, ${esc(playerNames.join(' and '))} ${playerNames.length > 1 ? 'have' : 'has'} a place in ${esc(config.term)}.`)}
+${rows(groupRows(config, group))}
+${list ? p(`To finish, sign in with this email address and ${esc(list)}. It takes a couple of minutes.`) : p('Sign in with this email address to see the booking.')}
+${button(needs.payment ? 'Sign in and finish' : 'View the booking', url)}`
+  return send({ to: [{ email: to, name: parentName }], subject: `${playerNames.join(' and ')}: your ${config.term} place`, html: shell({ preheader: `${group.day} ${group.time}`, heading: 'Your JFP place', body }) })
 }
 
-export async function sendApplicationAlert({ application, group, config }) {
-  const body = `<tr><td style="padding:0 26px 24px;">${rows([
+export async function sendPaymentReceipt({ payreq, group, config, siteUrl }) {
+  const ics = group ? buildIcs({ uid: payreq.id, group, config, title: `JFP ${group.day} ${group.time}` }) : ''
+  const body = `${p(`Thanks ${esc(payreq.parentName || '')}. We have your payment for ${esc(payreq.playerNames.join(' and '))}.`)}
+${rows([...(group ? groupRows(config, group) : []), ['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))], ['Reference', esc(payreq.id)]])}
+${siteUrl ? button('View your account', `${siteUrl}/jfp-account/`) : ''}`
+  return send({
+    to: [{ email: payreq.email, name: payreq.parentName }],
+    subject: `Payment received: ${payreq.playerNames.join(' and ')}`,
+    html: shell({ heading: 'Payment received', body }),
+    attachment: ics ? [{ name: 'jfp-term.ics', content: Buffer.from(ics).toString('base64') }] : undefined,
+  })
+}
+
+export async function sendPaymentStaffAlert({ payreq, group, config }) {
+  const body = rows([
+    ['Players', esc(payreq.playerNames.join(', '))],
+    ['Group', group ? `${esc(group.day)} ${esc(group.time)}, ${esc(group.location)}` : 'Not set'],
+    ['Parent', esc(payreq.parentName)],
+    ['Email', esc(payreq.email)],
+    ['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))],
+    ['Stripe fee', payreq.stripeFeeCents != null ? esc(formatAud(payreq.stripeFeeCents)) : 'Pending'],
+    ['For', esc(payreq.reason || '')],
+    ['Reference', esc(payreq.id)],
+  ])
+  return send({ to: staffTo(config), subject: `JFP payment: ${payreq.playerNames.join(', ')}`, html: shell({ heading: 'Payment received', body }), replyTo: payreq.email })
+}
+
+// ---------- payments that need a person ----------
+
+const ATTENTION = {
+  'paid-after-cancel': 'A family paid for a booking or payment link that had already been cancelled or had expired. Nothing was added to Airtable automatically. Decide whether to give them the place or refund in Stripe.',
+  'second-payment': 'A family paid twice for the same booking or payment link. The first payment is recorded; this second one is not. Refund it in Stripe, or keep it as credit.',
+}
+export async function sendAttentionAlert({ record, reason, info, config }) {
+  const body = `${p(esc(ATTENTION[reason] || 'A payment needs checking.'))}${rows([
+    ['Reference', esc(record.id)],
+    ['Players', esc((record.players || []).map((x) => x.name).join(', ') || (record.playerNames || []).join(', '))],
+    ['Parent', `${esc(record.parentName || '')} ${esc(record.email || '')}`],
+    ['Amount', esc(formatAud(info.amountCents || 0))],
+    ['Stripe', info.intentId ? link(info.intentId, `https://dashboard.stripe.com/payments/${info.intentId}`) : esc(info.sessionId)],
+  ])}${p('It is also flagged in the JFP portal under Payments.')}`
+  return send({ to: staffTo(config), subject: `JFP payment needs checking: ${record.id}`, html: shell({ heading: 'A payment needs checking', body }) })
+}
+
+// ---------- applications, waitlist, enquiries ----------
+
+const KIND_WORD = { application: 'application', waitlist: 'waitlist request', enquiry: 'enquiry' }
+
+export async function sendRequestReceived({ request, group, config }) {
+  const names = esc(request.players.map((x) => x.name).join(' and '))
+  const line = request.kind === 'waitlist'
+    ? `You are on the waitlist for ${esc(group.day)} ${esc(group.time)}. If a place opens we will email you a link to take it.`
+    : request.kind === 'enquiry'
+      ? `Thanks for your enquiry about ${esc(group.label || '1 to 1')} coaching. Lee or Ligia will be in touch.`
+      : `We have your application for ${names} to join ${esc(group.day)} ${esc(group.time)} (${esc(group.label || group.programme)}). Lee or Ligia will review it and reply within 48 hours.`
+  const body = `${p(`Thanks ${esc(request.parentName)}.`)}${p(line)}${rows(groupRows(config, group))}`
+  return send({ to: [{ email: request.email, name: request.parentName }], subject: `Received: your JFP ${KIND_WORD[request.kind] || 'request'}`, html: shell({ heading: 'We have your request', body }) })
+}
+
+export async function sendRequestAlert({ request, group, config }) {
+  const body = `${rows([
+    ['Type', esc(KIND_WORD[request.kind] || request.kind)],
     ['Group', `${esc(group.day)} ${esc(group.time)}, ${esc(group.location)}`],
-    ['Programme', esc(group.programme)],
-    ['Players', application.players.map((x) => `${esc(x.name)} (${esc(x.age)})`).join(', ')],
-    ['Club / level', esc(application.club || 'Not given')],
-    ['Parent', esc(application.parentName)],
-    ['Email', esc(application.email)],
-    ['Mobile', esc(application.mobile)],
-    ['Why', esc(application.notes || 'Not given')],
-  ])}${p('Review it in the JFP portal under Applications.')}</td></tr>`
-  return send({ to: staffTo(config), subject: `JFP application: ${application.players.map((x) => x.name).join(', ')}, ${group.programme}`, html: shell({ heading: 'New Application', body }), replyTo: application.email })
+    ['Players', request.players.map((x) => `${esc(x.name)}${x.age != null ? ` (${esc(x.age)})` : ''}`).join(', ')],
+    ['Club / level', esc(request.club || 'Not given')],
+    ['Parent', esc(request.parentName)],
+    ['Email', esc(request.email)],
+    ['Mobile', esc(request.mobile)],
+    ['Message', esc(request.message || 'None')],
+  ])}${p('Review it in the JFP portal.')}`
+  return send({ to: staffTo(config), subject: `JFP ${KIND_WORD[request.kind] || 'request'}: ${request.players.map((x) => x.name).join(', ')}, ${group.day} ${group.time}`, html: shell({ heading: `New ${KIND_WORD[request.kind] || 'request'}`, body }), replyTo: request.email })
 }
 
-export async function sendApplicationApproved({ application, group, config, payUrl }) {
-  const body = `<tr><td style="padding:0 26px 24px;">
-${p(`Great news ${esc(application.parentName)}. ${esc(application.players.map((x) => x.name).join(', '))} ${application.players.length > 1 ? 'have' : 'has'} a place in ${esc(group.day)} ${esc(group.time)} ${esc(group.programme)}.`)}
-${p('Use the button below to pay and lock it in. The link is just for you and works for 7 days.')}
-${button('Pay and secure the place', payUrl)}
-</td></tr>`
-  return send({ to: [{ email: application.email, name: application.parentName }], subject: `Approved: ${group.programme}`, html: shell({ heading: 'Your Place Is Approved', body }) })
-}
-
-// ---------- staff accounts ----------
-
-export async function sendInvite({ email, name, role, url }) {
-  const what = role === 'coach' ? 'your own timetable and hours' : 'the full JFP programme'
-  const body = `<tr><td style="padding:0 26px 24px;">
-${p(`Hi ${esc(name)}, you have a login for the Joner Football Performance portal, where you can see ${what}.`)}
-${p('Use the button to choose your password. The link works once, for 48 hours.')}
-${button('Set my password', url)}
-${p('If you did not expect this email, ignore it.')}
-</td></tr>`
-  return send({ to: [{ email, name }], subject: 'Your JFP portal login', html: shell({ heading: 'Set Up Your Login', body }) })
-}
-
-export async function sendLoginCode({ email, code }) {
-  const body = `<tr><td style="padding:0 26px 24px;">
-${p('Your JFP portal sign-in code:')}
-<p style="margin:10px 0 18px;font-size:36px;letter-spacing:10px;font-weight:900;color:#fff;">${esc(code)}</p>
-${p('It works for 10 minutes. If you did not try to sign in, change your password.')}
-</td></tr>`
-  return send({ to: [{ email }], subject: `JFP sign-in code ${code}`, html: shell({ heading: 'Sign-in Code', body }) })
+export async function sendPlaceOffered({ request, group, config, url, amountCents }) {
+  const body = `${p(`Great news ${esc(request.parentName)}. ${esc(request.players.map((x) => x.name).join(' and '))} ${request.players.length > 1 ? 'have' : 'has'} a place in ${esc(group.day)} ${esc(group.time)}.`)}
+${rows([...groupRows(config, group), ['To pay', esc(formatAud(amountCents))]])}
+${p('Sign in with this email address to pay and lock it in. The place is held for you for 7 days.')}
+${button('Sign in and pay', url)}`
+  return send({ to: [{ email: request.email, name: request.parentName }], subject: `A place for you: ${group.day} ${group.time}`, html: shell({ heading: 'Your place is ready', body }) })
 }
