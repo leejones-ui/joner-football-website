@@ -90,9 +90,14 @@ export async function finaliseBooking(bookingId, session) {
 
     // Take the slot for real. If a newer booking now holds it (only possible
     // after a late payment), do not confirm over the top of them: flag it.
-    const current = (await slotOwners([booking.slotId]))[booking.slotId]
-    if (current?.booked && current.ownerId !== booking.id) attention.push('slot-taken-by-' + current.ownerId)
-    else await confirmSlot(booking.slotId, booking.id)
+    if (slot?.seatMode === 'shared') {
+      // Places are counted, not owned: keep ours, or flag an overbooking.
+      if (!(await confirmSlot(booking.slotId, booking.id, { seats: Number(booking.seats) || 1, slot }))) attention.push('trial-full')
+    } else {
+      const current = (await slotOwners([booking.slotId]))[booking.slotId]
+      if (current?.booked && current.ownerId !== booking.id) attention.push('slot-taken-by-' + current.ownerId)
+      else await confirmSlot(booking.slotId, booking.id)
+    }
 
     booking = {
       ...booking,

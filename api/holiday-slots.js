@@ -13,9 +13,10 @@ export default async function handler(req, res) {
     const cutoffMs = nowMs + config.bookingCutoffHours * 60 * 60_000
     const slots = (await listSlots()).filter((slot) => new Date(slot.startsAt).getTime() > cutoffMs)
     const owners = await slotOwners(slots.map((s) => s.id), nowMs)
-    const ownerIds = [...new Set(Object.values(owners).map((o) => o.ownerId).filter(Boolean))]
+    const ownerIds = [...new Set(Object.values(owners).flatMap((o) => o.ownerIds || []).filter(Boolean))]
     const statuses = Object.fromEntries((await getBookings(ownerIds)).filter(Boolean).map((b) => [b.id, b.status]))
-    for (const o of Object.values(owners)) if (o.ownerId) o.pending = statuses[o.ownerId] !== 'paid'
+    // Pending: some place is only held, not paid, so it may yet come free.
+    for (const o of Object.values(owners)) if (o.ownerId) o.pending = (o.ownerIds || [o.ownerId]).some((id) => statuses[id] !== 'paid')
     const coachesWithSlots = new Set(slots.map((s) => s.coachId))
 
     // Every coach is listed so parents can see who else is coming. A coach

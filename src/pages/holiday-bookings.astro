@@ -174,6 +174,8 @@ const description = 'Book school holiday coaching sessions with Joner Football c
   .tile.full { background: rgba(255,255,255,.08); color: rgba(255,255,255,.55); cursor: not-allowed; }
   .tile.pending { background: transparent; border: 1px dashed rgba(255,255,255,.45); color: rgba(255,255,255,.75); cursor: not-allowed; }
   .legend-pending { border: 1px dashed rgba(255,255,255,.6); }
+  .tile-tag { display: block; margin-top: 6px; font-size: 11px; line-height: 1.3; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #E8000D; }
+  .tile.full .tile-tag, .tile.pending .tile-tag { color: inherit; opacity: .8; }
   .hold-timer { display:inline-block; background:#ffb020; color:#0A0A0A; font-weight:700; font-size:.85rem; padding:.3rem .6rem; }
   #holiday-app .btn-red, #holiday-app .btn-outline, #sheet .btn-red, #holiday-gate .btn-red { text-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
   .tile.full .tile-time { text-decoration: line-through; }
@@ -306,8 +308,16 @@ const description = 'Book school holiday coaching sessions with Joner Football c
     })
 
     function tileSub(slot) {
+      if (slot.shared) return `${slot.remaining} of ${slot.capacity} left`
       return `to ${esc(slot.endLabel)}`
     }
+    // Trial slots carry a name and an age band, shown under the time.
+    function tileTag(slot) {
+      if (!slot.shared) return ''
+      const ages = slot.minAge != null ? `Ages ${slot.minAge} to ${slot.maxAge}` : ''
+      return `<span class="tile-tag">${esc(slot.title || 'Trial')}${ages ? `<br>${esc(ages)}` : ''}</span>`
+    }
+    const ageRange = (slot) => slot?.minAge != null ? [slot.minAge, slot.maxAge] : [7, 18]
 
     function renderSlots() {
       const slots = state.data.slots.filter((s) => s.coachId === state.coach)
@@ -329,10 +339,10 @@ const description = 'Book school holiday coaching sessions with Joner Football c
             </div>
             <div class="times">
               ${day.slots.map((slot) => slot.booked && slot.pending
-                ? `<div class="tile pending" aria-disabled="true"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">Being booked</span></div>`
+                ? `<div class="tile pending" aria-disabled="true"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">Being booked</span>${tileTag(slot)}</div>`
                 : slot.booked
-                ? `<div class="tile full" aria-disabled="true"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">Booked</span></div>`
-                : `<button type="button" class="tile open" data-book="${esc(slot.id)}"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">${tileSub(slot)}</span></button>`
+                ? `<div class="tile full" aria-disabled="true"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">${slot.shared ? 'Full' : 'Booked'}</span>${tileTag(slot)}</div>`
+                : `<button type="button" class="tile open${slot.shared ? ' trial' : ''}" data-book="${esc(slot.id)}"><span class="tile-time">${esc(slot.startLabel)}</span><span class="tile-sub">${tileSub(slot)}</span>${tileTag(slot)}</button>`
               ).join('')}
             </div>
           </section>`
@@ -436,7 +446,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       state.sessionType = slot.options[0].type
       state.seats = slot.options[0].minPlayers || 1
       $('sheet-title').textContent = `${slot.dateLabel}, ${slot.startLabel} to ${slot.endLabel}`
-      $('sheet-subtitle').textContent = `${coach ? coachLabel(coach) : slot.coachName} at ${slot.location}. ${slot.durationMin} minutes.`
+      $('sheet-subtitle').textContent = `${slot.shared ? `${slot.title || 'Trial'}${slot.minAge != null ? `, ages ${slot.minAge} to ${slot.maxAge}` : ''}. ` : ''}${coach ? coachLabel(coach) : slot.coachName} at ${slot.location}. ${slot.durationMin} minutes.`
       $('book-status').textContent = ''
       $('book-form').reset()
       renderTypeOptions()
@@ -468,7 +478,8 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       $('seats-value').textContent = String(state.seats)
       $('seats-minus').disabled = state.seats <= min
       $('seats-plus').disabled = state.seats >= max
-      $('seats-hint').textContent = min === max && min > 1 ? `This group is for ${min} players. Add all ${min} to book.`
+      $('seats-hint').textContent = state.slot?.shared ? `${max} place${max === 1 ? '' : 's'} left. Book one for each player you are bringing.`
+        : min === max && min > 1 ? `This group is for ${min} players. Add all ${min} to book.`
         : min > 1 ? `${min} to ${max} players.`
         : max > 1 ? `Up to ${max} players from your family or friends.` : ''
       const existing = [...$('players').querySelectorAll('[data-player]')].map((row) => ({
@@ -482,8 +493,8 @@ const description = 'Book school holiday coaching sessions with Joner Football c
             <input name="playerName" type="text" required value="${esc(existing[i]?.name || '')}" class="inp" />
           </div>
           <div>
-            <label class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Age (7+)</label>
-            <input name="playerAge" type="number" min="7" max="18" inputmode="numeric" required value="${esc(existing[i]?.age || '')}" class="inp" />
+            <label class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Age (${ageRange(state.slot).join(' to ')})</label>
+            <input name="playerAge" type="number" min="${ageRange(state.slot)[0]}" max="${ageRange(state.slot)[1]}" inputmode="numeric" required value="${esc(existing[i]?.age || '')}" class="inp" />
           </div>
         </div>`).join('')
       const total = pick.priceCents * state.seats / 100
@@ -502,7 +513,8 @@ const description = 'Book school holiday coaching sessions with Joner Football c
         age: Number(row.querySelector('[name="playerAge"]').value),
       }))
       if (players.some((p) => p.name.length < 2)) { status.textContent = 'Enter each player\'s name.'; return }
-      if (players.some((p) => !Number.isInteger(p.age) || p.age < 7 || p.age > 18)) { status.textContent = 'Holiday sessions are for players aged 7 to 18.'; return }
+      const [lo, hi] = ageRange(state.slot)
+      if (players.some((p) => !Number.isInteger(p.age) || p.age < lo || p.age > hi)) { status.textContent = state.slot.shared ? `This session is for players aged ${lo} to ${hi}.` : 'Holiday sessions are for players aged 7 to 18.'; return }
       if (window.JonerEmailGuard && typeof window.JonerEmailGuard.validateEmail === 'function') {
         const check = window.JonerEmailGuard.validateEmail($('email').value)
         if (check && check.ok === false) { status.textContent = check.error || 'Check the email address.'; return }

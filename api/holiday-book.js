@@ -20,7 +20,10 @@ function fail(res, status, error, extra = {}) { return res.status(status).json({
 export const MIN_AGE = 7
 export const MAX_AGE = 18
 
-function validatePlayers(input, seats) {
+function validatePlayers(input, seats, slot = {}) {
+  // A trial slot can narrow the age band (e.g. 8 to 12).
+  const lo = Number.isInteger(slot.minAge) ? slot.minAge : MIN_AGE
+  const hi = Number.isInteger(slot.maxAge) ? slot.maxAge : MAX_AGE
   const list = Array.isArray(input) ? input.slice(0, seats) : []
   if (list.length !== seats) return { error: `Enter a name and age for each of the ${seats} player${seats === 1 ? '' : 's'}.` }
   const players = []
@@ -28,7 +31,7 @@ function validatePlayers(input, seats) {
     const name = clean(p?.name, 80)
     const age = Number(p?.age)
     if (name.length < 2) return { error: 'Enter each player\'s name.' }
-    if (!Number.isInteger(age) || age < MIN_AGE || age > MAX_AGE) return { error: `Holiday sessions are for players aged ${MIN_AGE} to ${MAX_AGE}.` }
+    if (!Number.isInteger(age) || age < lo || age > hi) return { error: slot.minAge != null ? `This session is for players aged ${lo} to ${hi}.` : `Holiday sessions are for players aged ${MIN_AGE} to ${MAX_AGE}.` }
     players.push({ name, age })
   }
   return { players }
@@ -68,7 +71,7 @@ async function reserve(req, res, body) {
   const bookingId = newId('HOL')
   const holdExpiresMs = nowMs + RESERVE_MINUTES * 60_000
   const held = await holdSlot({ slotId: slot.id, bookingId, holdExpiresMs, nowMs })
-  if (held !== 'held') return fail(res, 409, 'Someone is booking that time right now. Pick another, or try again in a few minutes.', { code: 'slot_full' })
+  if (held !== 'held') return fail(res, 409, slot.seatMode === 'shared' ? 'That session is full right now. Places being paid for can come free, so try again in a few minutes.' : 'Someone is booking that time right now. Pick another, or try again in a few minutes.', { code: 'slot_full' })
 
   const releaseToken = crypto.randomBytes(16).toString('hex')
   await saveBooking({ id: bookingId, slotId: slot.id, coachId: slot.coachId, status: 'reserving', releaseToken, holdExpiresAt: new Date(holdExpiresMs).toISOString(), createdAt: new Date(nowMs).toISOString() })
@@ -126,7 +129,7 @@ export default async function handler(req, res) {
   if (seats < minPlayers) return fail(res, 400, minPlayers === maxPlayers
     ? `This group session is for exactly ${minPlayers} players. Add all ${minPlayers} to book it.`
     : `This group session needs at least ${minPlayers} players.`)
-  const playersCheck = validatePlayers(body.players, seats)
+  const playersCheck = validatePlayers(body.players, seats, slot)
   if (playersCheck.error) return fail(res, 400, playersCheck.error)
 
   const parentName = clean(body.parentName, 100)
@@ -151,20 +154,25 @@ export default async function handler(req, res) {
   const tokenOk = reservation && typeof body.releaseToken === 'string' && reservation.releaseToken &&
     body.releaseToken.length === reservation.releaseToken.length &&
     crypto.timingSafeEqual(Buffer.from(body.releaseToken), Buffer.from(reservation.releaseToken))
+  const shared = slot.seatMode === 'shared'
+  // A shared-seat slot re-holds under the same id, which resizes the one
+  // place reserved on opening the form to the number of players, atomically.
   if (tokenOk && reservation.status === 'reserving' && reservation.slotId === slot.id &&
-      await extendHold({ slotId: slot.id, bookingId: reservation.id, holdExpiresMs, nowMs })) {
+      (shared
+        ? await holdSlot({ slotId: slot.id, bookingId: reservation.id, holdExpiresMs, nowMs, seats }) === 'held'
+        : await extendHold({ slotId: slot.id, bookingId: reservation.id, holdExpiresMs, nowMs }))) {
     bookingId = reservation.id
     releaseToken = reservation.releaseToken
   } else {
     // No reservation, or it lapsed: take the hour now if it is still free.
     bookingId = newId('HOL')
-    const held = await holdSlot({ slotId: slot.id, bookingId, holdExpiresMs, nowMs })
-    if (held !== 'held') return fail(res, 409, 'That time was just booked by someone else. Pick another time.', { code: 'slot_full' })
+    const held = await holdSlot({ slotId: slot.id, bookingId, holdExpiresMs, nowMs, seats })
+    if (held !== 'held') return fail(res, 409, shared ? 'There are not enough places left in that session now. Pick fewer players or another time.' : 'That time was just booked by someone else. Pick another time.', { code: 'slot_full' })
     releaseToken = crypto.randomBytes(16).toString('hex')
   }
   const typeLabel = TYPE_LABELS[type]
   const base = siteUrl(req)
-  const productName = `${coach?.name || 'Coach'}: ${typeLabel} session, ${sydneyDateLabel(slot.startsAt)} ${sydneyTimeLabel(slot.startsAt)}`
+  const productName = `${coach?.name || 'Coach'}: ${slot.title || `${typeLabel} session`}, ${sydneyDateLabel(slot.startsAt)} ${sydneyTimeLabel(slot.startsAt)}`
 
   let session
   try {

@@ -84,7 +84,23 @@ test('hold script takes the whole slot, and only when it is empty', () => {
   assert.ok(HOLD_SCRIPT.includes("if redis.call('ZCARD', KEYS[1]) > 0 then return 0 end"))
   // One member per booking: the slot has an owner, not a seat count.
   assert.ok(HOLD_SCRIPT.includes("redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3])"))
-  assert.ok(!HOLD_SCRIPT.includes('for i = 1'))
+  // Per-place members only ever happen inside the trial (shared-seat) branch.
+  const exclusive = HOLD_SCRIPT.slice(HOLD_SCRIPT.lastIndexOf('end\n') + 4)
+  assert.ok(!exclusive.includes('for i = 1'))
+  assert.ok(HOLD_SCRIPT.indexOf("slot.seatMode == 'shared'") < HOLD_SCRIPT.indexOf('for i = 1'))
+})
+
+test('a trial slot keeps its seat mode, title and age band, and partial edits leave them alone', () => {
+  const config = normaliseConfig({ coaches: [{ id: 'dean', name: 'Dean', tier: 'coach' }] })
+  const base = { coachId: 'dean', date: '2026-10-01', startTime: '10:00', durationMin: 60, type: 'group', capacity: 6, priceCents: 8500 }
+  const trial = validateSlotInput({ ...base, seatMode: 'shared', title: 'Trial sessions for Term 4', minAge: 8, maxAge: 12 }, config)
+  assert.equal(trial.slot.seatMode, 'shared')
+  assert.equal(trial.slot.minAge, 8)
+  assert.equal(trial.slot.maxAge, 12)
+  const edit = validateSlotInput(base, config)
+  assert.ok(!('seatMode' in edit.slot) && !('minAge' in edit.slot))
+  const notGroup = validateSlotInput({ ...base, type: 'one', seatMode: 'shared' }, config)
+  assert.equal(notGroup.slot.seatMode, 'exclusive')
 })
 
 test('a booking owns the whole hour whatever type it picks', () => {

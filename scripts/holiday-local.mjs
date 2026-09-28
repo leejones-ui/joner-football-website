@@ -76,7 +76,7 @@ function redis(cmd) {
     case 'ZCARD': return zset(args[0]).size
     case 'ZREMRANGEBYSCORE': { const z = zset(args[0]); const max = Number(args[2]); let n = 0; for (const [m, s] of z) if (s <= max) { z.delete(m); n++ } return n }
     case 'ZREVRANGE': { const z = zset(args[0]); return [...z.entries()].sort((a, b) => b[1] - a[1]).slice(Number(args[1]), Number(args[2]) + 1).map(([m]) => m) }
-    case 'ZRANGE': { const z = zset(args[0]); return [...z.entries()].sort((a, b) => a[1] - b[1]).slice(Number(args[1]), Number(args[2]) + 1).map(([m]) => m) }
+    case 'ZRANGE': { const z = zset(args[0]); const end = Number(args[2]); return [...z.entries()].sort((a, b) => a[1] - b[1]).slice(Number(args[1]), end === -1 ? undefined : end + 1).map(([m]) => m) }
     case 'EVAL': {
       const script = args[0]
       if (script.includes('INCR')) {
@@ -92,6 +92,36 @@ function redis(cmd) {
         for (const [m, sc] of z) if (sc <= Number(now)) z.delete(m)
         if (z.size + Number(want) > Number(available)) return 0
         for (let i = 1; i <= Number(want); i++) z.set(`${id}#${i}`, Number(expiry))
+        return 1
+      }
+      if (script.includes('seatMode')) {
+        // Holiday hold: exclusive hour, or counted places on a trial slot
+        const [, , seatsKey, slotsKey, now, expiry, bookingId, holdSlotId, want] = args
+        const raw = live(slotsKey)?.value.get(holdSlotId)
+        if (!raw) return 0
+        const slot = JSON.parse(raw)
+        if (slot.status !== 'open') return 0
+        const z = zset(seatsKey)
+        for (const [m, sc] of z) if (sc <= Number(now)) z.delete(m)
+        if (slot.seatMode === 'shared') {
+          const mine = [...z.keys()].filter((m) => m.startsWith(`${bookingId}#`))
+          if (z.size - mine.length + Number(want || 1) > (Number(slot.capacity) || 6)) return 0
+          mine.forEach((m) => z.delete(m))
+          for (let i = 1; i <= Number(want || 1); i++) z.set(`${bookingId}#${i}`, Number(expiry))
+          return 1
+        }
+        if (z.size > 0) return 0
+        z.set(bookingId, Number(expiry))
+        return 1
+      }
+      if (script.includes("ARGV[2] .. '#' .. i")) {
+        // Holiday trial confirm: keep our places or take them if still free
+        const [, , seatsKey, now, bookingId, want, cap, score] = args
+        const z = zset(seatsKey)
+        for (const [m, sc] of z) if (sc <= Number(now)) z.delete(m)
+        const own = [...z.keys()].filter((m) => m.startsWith(`${bookingId}#`)).length
+        if (own < Number(want) && z.size - own + Number(want) > Number(cap)) return 0
+        for (let i = 1; i <= Number(want); i++) z.set(`${bookingId}#${i}`, Number(score))
         return 1
       }
       if (script.includes("ARGV[3] .. '#' .. i")) {

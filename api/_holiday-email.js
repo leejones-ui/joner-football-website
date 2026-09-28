@@ -216,7 +216,7 @@ export async function rebuildRoster() {
     const slot = slotsById[b.slotId]
     if (b.status !== 'paid' || !slot || new Date(slot.endsAt).getTime() < cutoff) continue
     entries.push({ slot, cells: [
-      TYPE_LABELS[b.type] || b.type,
+      slot.title || TYPE_LABELS[b.type] || b.type,
       (b.players || []).map((p) => `${p.name} (${p.age})`).join(', '),
       b.parentName || '', b.mobile || '', b.notes || '',
     ] })

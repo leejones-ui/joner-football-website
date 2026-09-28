@@ -438,6 +438,7 @@ import BaseLayout from '../layouts/BaseLayout.astro'
     }
     $('show-cancelled').addEventListener('change', renderSlots)
     function slotState(s) {
+      if (s.shared && s.status === 'open') return s.seatBookings?.some((b) => b.status === 'paid') ? 'paid' : s.seatBookings?.length ? 'held' : 'free'
       if (s.status === 'cancelled') return 'cancelled'
       if (s.status === 'blocked') return 'blocked'
       if (s.bookedBy?.status === 'paid') return 'paid'
@@ -445,10 +446,16 @@ import BaseLayout from '../layouts/BaseLayout.astro'
       return 'free'
     }
     function slotStateLabel(s) {
+      if (s.shared && s.status === 'open') return `${s.capacity - s.remaining} of ${s.capacity} places taken`
       if (s.bookedBy?.status === 'reserving') return 'Filling in form'
       return { cancelled: 'Removed', blocked: 'Booked offline', paid: 'Booked online', held: 'Paying now', free: 'Free' }[slotState(s)]
     }
     function slotDetail(s) {
+      if (s.shared && s.status === 'open') {
+        const head = `${esc(s.title || 'Trial')}${s.minAge != null ? ` &middot; ages ${s.minAge} to ${s.maxAge}` : ''} &middot; ${esc(s.options[0]?.priceLabel || '')} each`
+        const who = (s.seatBookings || []).map((b) => b.status === 'paid' ? `${esc(b.players.join(', '))} (parent ${esc(b.parentName)})` : `${b.seats} place${b.seats === 1 ? '' : 's'} being booked`)
+        return head + (who.length ? `<br>${who.join('<br>')}` : '')
+      }
       const b = s.bookedBy
       if (b?.status === 'reserving') return 'A parent has this open right now. It frees itself after 10 minutes if they do not pay.'
       if (b) return `${esc(b.players.join(', '))} &middot; ${esc(typeLabels[b.typeLabel] || b.typeLabel)} &middot; parent ${esc(b.parentName)}`

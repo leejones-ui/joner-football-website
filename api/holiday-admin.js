@@ -22,14 +22,17 @@ function fail(res, status, error, extra = {}) { return res.status(status).json({
 async function slotsWithCounts(config) {
   const slots = await listSlots({ includeCancelled: true })
   const owners = await slotOwners(slots.map((s) => s.id))
-  const ownerIds = [...new Set(Object.values(owners).map((o) => o.ownerId).filter(Boolean))]
+  const ownerIds = [...new Set(Object.values(owners).flatMap((o) => o.ownerIds || []).filter(Boolean))]
   const ownerBookings = Object.fromEntries((await Promise.all(ownerIds.map((id) => getBooking(id)))).filter(Boolean).map((b) => [b.id, b]))
+  const view = (b) => ({ id: b.id, status: b.status, seats: b.seats || 1, players: (b.players || []).map((p) => p.name), parentName: b.parentName || '', typeLabel: b.type || '' })
   return slots.map((slot) => {
     const owner = ownerBookings[owners[slot.id]?.ownerId]
     return {
       ...publicSlot(slot, config, owners[slot.id]),
       priceOverrideCents: slot.priceCents,
-      bookedBy: owner ? { id: owner.id, status: owner.status, players: (owner.players || []).map((p) => p.name), parentName: owner.parentName || '', typeLabel: owner.type || '' } : null,
+      bookedBy: owner ? view(owner) : null,
+      // Trial slots hold several families; list every one.
+      seatBookings: slot.seatMode === 'shared' ? (owners[slot.id]?.ownerIds || []).map((id) => ownerBookings[id]).filter(Boolean).map(view) : null,
     }
   })
 }

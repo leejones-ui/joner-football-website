@@ -247,4 +247,53 @@ await test('a paid hour shows as Booked, not Being booked', async () => {
   assert.equal(listed.pending, false)
 })
 
+// ---------- trial slots: separate families share up to 6 places ----------
+await test('trial: families each take places, ages are enforced, and it fills at 6', async () => {
+  const made = await adm('upsertSlot', { slot: { coachId: 'dean', date: '2026-11-09', startTime: '10:00', durationMin: 60, type: 'group', capacity: 6, priceCents: 8500, seatMode: 'shared', title: 'Trial sessions for Term 4', minAge: 8, maxAge: 12 } })
+  const id = made.slot.id
+  let listed = (await slots()).find((s) => s.id === id)
+  assert.equal(listed.shared, true)
+  assert.equal(listed.remaining, 6)
+  assert.equal(listed.title, 'Trial sessions for Term 4')
+  assert.equal(listed.options[0].priceCents, 8500)
+
+  const tooOld = await paced(() => book(id, 'group', [{ name: 'Big Kid', age: 15 }], 'old@example.com'))
+  assert.equal(tooOld.status, 400)
+  assert.match(tooOld.body.error, /aged 8 to 12/)
+
+  // Family A reserves one place then pays for three; family B pays for two.
+  const r = await reserve(id)
+  assert.equal(r.status, 200)
+  const three = [{ name: 'A One', age: 8 }, { name: 'A Two', age: 10 }, { name: 'A Three', age: 12 }]
+  const a = await paced(() => book(id, 'group', three, 'a@example.com', { bookingId: r.body.bookingId, releaseToken: r.body.releaseToken }))
+  assert.equal(a.status, 200)
+  assert.equal(a.body.bookingId, r.body.bookingId, 'reservation grew into the booking')
+  await stripe(csOf(a.body), 'pay')
+  const b = await paced(() => book(id, 'group', TWO, 'b@example.com'))
+  assert.equal(b.status, 200, 'a second family can join')
+  await stripe(csOf(b.body), 'pay')
+  listed = (await slots()).find((s) => s.id === id)
+  assert.equal(listed.remaining, 1)
+  assert.equal(listed.booked, false)
+
+  // Two places wanted, one left: refused. One place: fills it.
+  const over = await paced(() => book(id, 'group', TWO, 'c@example.com'))
+  assert.equal(over.status, 409)
+  assert.match(over.body.error, /not enough places/)
+  const last = await paced(() => book(id, 'group', KID, 'd@example.com'))
+  assert.equal(last.status, 200)
+  listed = (await slots()).find((s) => s.id === id)
+  assert.equal(listed.remaining, 0)
+  assert.equal(listed.booked, true)
+  assert.equal(listed.pending, true, 'last place is held, not paid')
+
+  // Abandoning the last place frees exactly one.
+  await stripe(csOf(last.body), 'expire')
+  listed = (await slots()).find((s) => s.id === id)
+  assert.equal(listed.remaining, 1)
+
+  const admin = (await adm('listSlots')).slots.find((s) => s.id === id)
+  assert.equal(admin.seatBookings.filter((x) => x.status === 'paid').length, 2)
+})
+
 console.log(`\n${passed} holiday flow checks passed`)

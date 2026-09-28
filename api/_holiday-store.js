@@ -278,9 +278,28 @@ export function validateSlotInput(input, config) {
       location: clean(input.location, 120) || config.defaultLocation,
       notes: clean(input.notes, 300),
       minPlayers: minPlayersFor(type, input.minPlayers, capacityForType(type, input.capacity)),
+      ...trialFields(input, type),
     },
   }
 }
+
+// A shared-seat slot (Lee's term trials): separate families each buy
+// places until capacity is reached, instead of one booking owning the hour.
+// Optional title and age band show to parents and are enforced on booking.
+function trialFields(input, type) {
+  const shared = input.seatMode === 'shared' && type === 'group'
+  const minAge = Number(input.minAge), maxAge = Number(input.maxAge)
+  const ages = Number.isInteger(minAge) && Number.isInteger(maxAge) && minAge >= 4 && maxAge <= 25 && minAge <= maxAge
+  // Only fields the caller sent, so an edit from the admin form (which does
+  // not know about trials) never turns a trial back into an exclusive hour.
+  const out = {}
+  if ('seatMode' in input) out.seatMode = shared ? 'shared' : 'exclusive'
+  if ('title' in input) out.title = clean(input.title, 80)
+  if ('minAge' in input || 'maxAge' in input) { out.minAge = ages ? minAge : null; out.maxAge = ages ? maxAge : null }
+  return out
+}
+
+export const isSharedSlot = (slot) => slot?.seatMode === 'shared'
 
 export async function listSlots({ includeCancelled = false } = {}) {
   const raw = await kvCommand(['HGETALL', keys.slots()])
@@ -362,10 +381,29 @@ export async function reopenSlot(slotId) {
 // The owner is one member in a sorted set keyed by the slot. Score is the
 // hold expiry, or a far-future constant once paid. Purge expired holds, then
 // take the slot only if it is empty. One round trip, one atomic step.
+//
+// A shared-seat slot is the exception: each place is its own member,
+// "<bookingId>#<n>", and a booking may take places while the total stays
+// within capacity. Re-holding with the same booking id resizes its places
+// in the same atomic step, so a reservation of 1 can become 3 at Pay.
 export const HOLD_SCRIPT = `
-local slot = redis.call('HGET', KEYS[2], ARGV[4])
-if not slot or cjson.decode(slot).status ~= 'open' then return 0 end
+local raw = redis.call('HGET', KEYS[2], ARGV[4])
+if not raw then return 0 end
+local slot = cjson.decode(raw)
+if slot.status ~= 'open' then return 0 end
 redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
+if slot.seatMode == 'shared' then
+  local want = tonumber(ARGV[5]) or 1
+  local cap = tonumber(slot.capacity) or 6
+  local own = 0
+  for i = 1, 20 do
+    if redis.call('ZSCORE', KEYS[1], ARGV[3] .. '#' .. i) then own = own + 1 end
+  end
+  if redis.call('ZCARD', KEYS[1]) - own + want > cap then return 0 end
+  for i = 1, 20 do redis.call('ZREM', KEYS[1], ARGV[3] .. '#' .. i) end
+  for i = 1, want do redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3] .. '#' .. i) end
+  return 1
+end
 if redis.call('ZCARD', KEYS[1]) > 0 then return 0 end
 redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3])
 return 1`
@@ -385,33 +423,56 @@ export async function extendHold({ slotId, bookingId, holdExpiresMs, nowMs = Dat
   return result === 1
 }
 
-export async function holdSlot({ slotId, bookingId, holdExpiresMs, nowMs = Date.now() }) {
-  const result = Number(await kvCommand(['EVAL', HOLD_SCRIPT, '2', keys.seats(slotId), keys.slots(), String(nowMs), String(holdExpiresMs), bookingId, slotId]))
+export async function holdSlot({ slotId, bookingId, holdExpiresMs, nowMs = Date.now(), seats = 1 }) {
+  const result = Number(await kvCommand(['EVAL', HOLD_SCRIPT, '2', keys.seats(slotId), keys.slots(), String(nowMs), String(holdExpiresMs), bookingId, slotId, String(seats)]))
   return result === 1 ? 'held' : 'taken'
 }
 
-export async function confirmSlot(slotId, bookingId) {
+const seatMembers = (bookingId, seats) => Array.from({ length: seats }, (_, i) => `${bookingId}#${i + 1}`)
+const bookingOfMember = (member) => String(member).replace(/#\d+$/, '')
+
+// A paid shared-seat booking keeps its places, or takes them now if its hold
+// lapsed and they are still free. Returns 0 when the slot filled meanwhile.
+export const CONFIRM_SHARED_SCRIPT = `
+redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
+local want = tonumber(ARGV[3])
+local own = 0
+for i = 1, 20 do
+  if redis.call('ZSCORE', KEYS[1], ARGV[2] .. '#' .. i) then own = own + 1 end
+end
+if own < want and redis.call('ZCARD', KEYS[1]) - own + want > tonumber(ARGV[4]) then return 0 end
+for i = 1, want do redis.call('ZADD', KEYS[1], ARGV[5], ARGV[2] .. '#' .. i) end
+return 1`
+
+export async function confirmSlot(slotId, bookingId, { seats = 1, slot = null, nowMs = Date.now() } = {}) {
+  if (isSharedSlot(slot)) {
+    const cap = Number(slot.capacity) || GROUP_CAPACITY_DEFAULT
+    return Number(await kvCommand(['EVAL', CONFIRM_SHARED_SCRIPT, '1', keys.seats(slotId), String(nowMs), bookingId, String(seats), String(cap), String(CONFIRMED_SCORE)])) === 1
+  }
   await kvCommand(['ZADD', keys.seats(slotId), String(CONFIRMED_SCORE), bookingId])
+  return true
 }
 
-// Removes only this booking's own member, so releasing a stale booking can
-// never free a slot that a newer booking now owns.
+// Removes only this booking's own members, so releasing a stale booking can
+// never free a slot or place that a newer booking now holds.
 export async function releaseSlot(slotId, bookingId) {
-  await kvCommand(['ZREM', keys.seats(slotId), bookingId])
+  await kvCommand(['ZREM', keys.seats(slotId), bookingId, ...seatMembers(bookingId, 20)])
 }
 
-// { slotId: { booked: boolean, ownerId: string|null } }
+// { slotId: { booked, ownerId, taken, ownerIds } }. taken counts places, so
+// a shared-seat slot is full when taken reaches its capacity.
 export async function slotOwners(slotIds, nowMs = Date.now()) {
   if (!slotIds.length) return {}
   const commands = slotIds.flatMap((id) => [
     ['ZREMRANGEBYSCORE', keys.seats(id), '-inf', String(nowMs)],
-    ['ZRANGE', keys.seats(id), '0', '0'],
+    ['ZRANGE', keys.seats(id), '0', '-1'],
   ])
   const results = await kvPipeline(commands)
   const owners = {}
   slotIds.forEach((id, i) => {
     const members = Array.isArray(results[i * 2 + 1]) ? results[i * 2 + 1] : []
-    owners[id] = { booked: members.length > 0, ownerId: members[0] || null }
+    const ownerIds = [...new Set(members.map(bookingOfMember))]
+    owners[id] = { booked: members.length > 0, ownerId: ownerIds[0] || null, taken: members.length, ownerIds }
   })
   return owners
 }
@@ -597,7 +658,11 @@ export function minPlayersForType(slot, type) {
   return Math.min(Math.max(1, Number(slot.minPlayers) || 1), maxPlayersForType(slot, type))
 }
 
-export function slotOptions(slot, config) {
+export function slotOptions(slot, config, remaining = null) {
+  if (isSharedSlot(slot)) {
+    const priceCents = resolvePriceCents(slot, config)
+    return [{ type: 'group', label: slot.title || TYPE_LABELS.group, minPlayers: 1, maxPlayers: Math.max(1, remaining ?? maxPlayersForType(slot, 'group')), priceCents, priceLabel: formatAud(priceCents) }]
+  }
   const types = slot.type === 'open' ? SESSION_TYPES : [slot.type]
   return types.map((type) => ({
     type,
@@ -611,9 +676,12 @@ export function slotOptions(slot, config) {
 
 export function publicSlot(slot, config, owner = { booked: false, ownerId: null, pending: false }) {
   const coach = coachById(config, slot.coachId)
-  const booked = slot.status === 'blocked' || Boolean(owner?.booked)
+  const shared = isSharedSlot(slot)
+  const capacity = shared ? maxPlayersForType(slot, 'group') : null
+  const remaining = shared ? Math.max(0, capacity - Number(owner?.taken || 0)) : null
+  const booked = slot.status === 'blocked' || (shared ? remaining === 0 : Boolean(owner?.booked))
   // pending: another parent has it open or is paying, so it may yet come free.
-  const pending = slot.status !== 'blocked' && Boolean(owner?.booked && owner?.pending)
+  const pending = slot.status !== 'blocked' && booked && Boolean(owner?.pending)
   return {
     id: slot.id,
     coachId: slot.coachId,
@@ -630,7 +698,13 @@ export function publicSlot(slot, config, owner = { booked: false, ownerId: null,
     type: slot.type,
     typeLabel: TYPE_LABELS[slot.type],
     maxPlayers: maxPlayersForType(slot, slot.type === 'open' ? 'group' : slot.type),
-    options: slotOptions(slot, config),
+    options: slotOptions(slot, config, remaining),
+    shared,
+    // Place counts only for trials; an exclusive hour never advertises seats.
+    ...(shared ? { capacity, remaining } : {}),
+    title: slot.title || '',
+    minAge: slot.minAge ?? null,
+    maxAge: slot.maxAge ?? null,
     booked,
     pending,
     ownerId: owner?.ownerId || null,
@@ -648,7 +722,7 @@ export function bookingSummary(booking, slot, config) {
     seats: booking.seats,
     players: (booking.players || []).map((p) => ({ name: p.name })),
     coachName: coach?.name || booking.coachName || '',
-    typeLabel: TYPE_LABELS[booking.type] || booking.type,
+    typeLabel: slot?.title || TYPE_LABELS[booking.type] || booking.type,
     dateLabel: slot ? sydneyDateLabel(slot.startsAt) : '',
     startLabel: slot ? sydneyTimeLabel(slot.startsAt) : '',
     endLabel: slot ? sydneyTimeLabel(slot.endsAt) : '',
