@@ -47,7 +47,7 @@ async function showApp(q) {
 }
 
 function showTab(tab) {
-  if (!['timetable', 'about', 'one-to-one'].includes(tab)) tab = 'timetable'
+  if (!['timetable', 'one-to-one'].includes(tab)) tab = 'timetable'
   document.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== tab })
   document.querySelectorAll('.j-tabs [data-tab]').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'))
 }

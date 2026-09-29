@@ -92,6 +92,8 @@ const points = [
   'Limited spots available each term',
 ]
 
+// Real JFP sessions from Instagram, in the order Lee chose (the first plays first).
+const reels = ['DcuW0kpSNvj', 'DdQr9zfy2eI', 'Db7XJ4LS8EV', 'DbLG35zyndy']
 const videos = [
   { title: 'HQ Training', src: 'https://www.youtube.com/embed/eCmL9QiFtVk?rel=0&controls=1&hd=1' },
   { title: 'On Field Training', src: 'https://www.youtube.com/embed/-V88Iy1X-is?start=466&rel=0&controls=1&hd=1' },
@@ -384,6 +386,38 @@ const sanityPage = await fetchSanityPage('jfp-program')
           <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
             Watch the training environment.
           </h2>
+        </div>
+        <div class="mb-12">
+          <div class="mb-4 flex items-center gap-3 pl-1">
+            <span class="h-2 w-2 rounded-full bg-joner-red"></span>
+            <span class="font-heading text-[11px] uppercase tracking-[0.32em] text-white/80 sm:text-xs">Inside JFP training</span>
+            <span class="h-px flex-1 bg-gradient-to-r from-white/15 to-transparent"></span>
+            <span class="hidden gap-2 md:flex">
+              <button type="button" class="jfp-reels-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="-1" aria-label="Previous video">&larr;</button>
+              <button type="button" class="jfp-reels-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="1" aria-label="Next video">&rarr;</button>
+            </span>
+          </div>
+          <div id="jfp-reels" class="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:px-0" style="scrollbar-width:thin">
+            {reels.map((id, i) => (
+              <div class="w-[300px] shrink-0 snap-start overflow-hidden rounded-xl border border-white/10 bg-white sm:w-[330px]">
+                <iframe
+                  src={`https://www.instagram.com/p/${id}/embed/`}
+                  title={`JFP training video ${i + 1}`}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  scrolling="no"
+                  allow="autoplay; encrypted-media; picture-in-picture; web-share"
+                  class="block h-[560px] w-full border-0 sm:h-[600px]"
+                ></iframe>
+              </div>
+            ))}
+          </div>
+          <p class="mt-2 pl-1 text-sm text-white/60">Swipe to see more. Tap a video to play it.</p>
+          <script is:inline>
+            document.querySelectorAll('.jfp-reels-nav').forEach((b) => b.addEventListener('click', () => {
+              const row = document.getElementById('jfp-reels')
+              if (row) row.scrollBy({ left: Number(b.dataset.dir) * 346, behavior: 'smooth' })
+            }))
+          </script>
         </div>
         <div class="mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:gap-8">
           {videos.map((video) => (
