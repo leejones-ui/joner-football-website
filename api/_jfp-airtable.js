@@ -5,7 +5,7 @@
 //
 // The Term 4 session columns are still labelled "Term 3 Day/Time/Location";
 // they hold the Term 4 session, exactly as the Joner Dashboard reads them.
-import { kvGetJson, kvSetJson, kvCommand, keys, groupId, ONLINE_TAG, ADMIN_TAG, coachByAirtableName, ageOn, normName, digits, clean, listGroups, getConfig } from './_jfp-store.js'
+import { kvGetJson, kvSetJson, kvCommand, kvPipeline, keys, groupId, ONLINE_TAG, ADMIN_TAG, coachByAirtableName, ageOn, normName, digits, clean, listGroups, getConfig, locationFor, to24h } from './_jfp-store.js'
 
 const BASE = process.env.AIRTABLE_BASE_ID || 'apphU4R0BtVIu5YqT'
 export const TABLES = {
@@ -41,8 +41,8 @@ export async function airtable(path, { method = 'GET', body } = {}, attempt = 0)
   const text = await res.text()
   let data = {}
   try { data = text ? JSON.parse(text) : {} } catch {}
-  if ((res.status === 429 || res.status >= 500) && attempt < 3) {
-    await sleep(600 * 2 ** attempt)
+  if ((res.status === 429 || res.status >= 500) && attempt < 5) {
+    await sleep(500 * 2 ** attempt + Math.floor(Math.random() * 400))
     return airtable(path, { method, body }, attempt + 1)
   }
   if (!res.ok) throw new Error(`Airtable ${res.status}: ${data?.error?.message || data?.error?.type || text.slice(0, 160)}`)
@@ -126,12 +126,18 @@ function term4Row({ id, fields: f }) {
 // date of birth come from Term 3 where Term 4 does not say. Cached briefly;
 // every write clears the cache so staff changes show at once.
 export async function loadRoster({ fresh = false } = {}) {
+  const cleared = Number(await kvCommand(['GET', 'jfp:roster-cleared'])) || 0
   if (!fresh) {
     const cached = await kvGetJson(keys.roster())
-    if (cached && Date.now() - cached.at < CACHE_SECONDS * 1000) return placeInGroups(cached)
+    // Never a copy read before the last write cleared the cache.
+    if (cached && cached.at >= cleared && Date.now() - cached.at < CACHE_SECONDS * 1000) return placeInGroups(cached)
   }
   const startedAt = Date.now()
-  const [t4, t3, wv] = await Promise.all([readTable(TABLES.term4, TERM4_FIELDS), readTable(TABLES.term3, TERM3_FIELDS), readTable(TABLES.waiver, WAIVER_FIELDS)])
+  // Term 3 has finished and barely changes: read it at most every 10 minutes,
+  // which keeps a busy moment inside Airtable's 5 requests a second.
+  let t3 = await kvGetJson('jfp:term3-cache')
+  const [t4, wv] = await Promise.all([readTable(TABLES.term4, TERM4_FIELDS), readTable(TABLES.waiver, WAIVER_FIELDS)])
+  if (!t3) { t3 = await readTable(TABLES.term3, TERM3_FIELDS); await kvSetJson('jfp:term3-cache', t3, 600) }
   const term3 = t3.map(({ id, fields: f }) => ({
     id, player: text(f, 'Player Name'), parent: text(f, 'Parent Name'),
     emails: [text(f, 'Email'), text(f, 'Parent Email 2')].map((e) => e.toLowerCase()).filter(Boolean),
@@ -163,7 +169,8 @@ export async function loadRoster({ fresh = false } = {}) {
   })
   // Stamped with when the read began, so a slow read is never cached as newer than it is.
   const out = { at: startedAt, players, term3, waivers }
-  await kvSetJson(keys.roster(), out, 3600)
+  // A slow read that began before a later write must not replace the cache.
+  if (startedAt >= (Number(await kvCommand(['GET', 'jfp:roster-cleared'])) || 0)) await kvSetJson(keys.roster(), out, 3600)
   return placeInGroups(out)
 }
 
@@ -174,6 +181,11 @@ export async function loadRoster({ fresh = false } = {}) {
 export async function placeInGroups(roster, groups, config) {
   if (!groups || !config) [groups, config] = await Promise.all([groups ? groups : listGroups(), config ? config : getConfig()])
   const ids = new Set(groups.map((g) => g.id))
+  // Rows typed a little differently ("Belrose" for "Belrose HQ", "16:20" or
+  // "4.20pm", "wednesday ") still land in their group when exactly one fits.
+  const loose = (day, time, location) => `${String(day || '').trim().toLowerCase().slice(0, 3)}|${looseTime(time)}|${locationFor(config, location).id}`
+  const byLoose = new Map()
+  for (const g of groups) { const k = `${loose(g.day, g.time, g.location)}|${g.byCoach ? g.coachId : ''}`; byLoose.set(k, byLoose.has(k) ? null : g.id) }
   return {
     ...roster,
     players: roster.players.map((p) => {
@@ -181,12 +193,26 @@ export async function placeInGroups(roster, groups, config) {
       if (!base || ids.has(base)) return { ...p, sessionId: base, groupId: base }
       const c = coachByAirtableName(config, p.coach)?.id || ''
       const mine = c ? groupId(p.day, p.time, p.location, c) : ''
-      return { ...p, sessionId: base, groupId: mine && ids.has(mine) ? mine : base }
+      if (mine && ids.has(mine)) return { ...p, sessionId: base, groupId: mine }
+      const k = loose(p.day, p.time, p.location)
+      const found = byLoose.get(`${k}|`) || (c ? byLoose.get(`${k}|${c}`) : null)
+      return { ...p, sessionId: base, groupId: found || base }
     }),
   }
 }
 
-export async function bustRosterCache() { await kvCommand(['DEL', keys.roster(), keys.airtableCounts()]) }
+// "4:20pm", "4.20pm", "4:20 PM", "16:20" -> "16:20"; '' if unreadable.
+export function looseTime(v) {
+  const s = String(v || '').trim().toLowerCase().replace(/\s+/g, '').replace('.', ':')
+  const t = to24h(s)
+  if (t) return t
+  const m = s.match(/^(\d{1,2}):(\d{2})$/)
+  return m && Number(m[1]) < 24 ? `${m[1].padStart(2, '0')}:${m[2]}` : ''
+}
+
+export async function bustRosterCache() {
+  await kvPipeline([['SET', 'jfp:roster-cleared', String(Date.now()), 'EX', '86400'], ['DEL', keys.roster(), keys.airtableCounts()]])
+}
 
 export function ageFromNotes(notes) { const m = /\bage (\d{1,2})\b/i.exec(notes || ''); return m ? Number(m[1]) : null }
 export function playerAge(p, termStart) { return ageOn(p.dob, termStart) ?? p.ageFromNotes ?? null }

@@ -169,6 +169,10 @@ test('morning sessions split by coach: each coach has a group, the Coach column 
   const row = (coach, day = 'Friday', time = '6:30am', location = 'Rydalmere') => ({ player: coach || 'x', coach, day, time, location, sessionId: groupId(day, time, location), groupId: groupId(day, time, location) })
   const r = await placeInGroups({ players: [row('Lee Jones'), row('Dean Mac'), row(''), row('Ruby Fanoosh'), row('Dean Mac', 'Monday', '4:20pm', 'Belrose HQ')] }, groups, config)
   assert.deepEqual(r.players.map((p) => p.groupId), ['fri-0630-rydalmere-lee', 'fri-0630-rydalmere-dean', 'fri-0630-rydalmere', 'fri-0630-rydalmere', 'mon-1620-belrose-hq'])
+  // Typed a little differently in Airtable: still the right group.
+  const full = [{ id: 'mon-1620-belrose-hq', day: 'Monday', time: '4:20pm', location: 'Belrose HQ' }, { id: 'fri-0630-rydalmere-lee', day: 'Friday', time: '6:30am', location: 'Rydalmere', byCoach: true, coachId: 'lee' }]
+  const odd = await placeInGroups({ players: [row('Dean Mac', 'monday ', '4.20pm', 'Belrose'), row('Lee Jones', 'Friday', '06:30', 'Rydalmere Park')] }, full, config)
+  assert.deepEqual(odd.players.map((p) => p.groupId), ['mon-1620-belrose-hq', 'fri-0630-rydalmere-lee'])
 })
 
 test('locations map the roster spellings', () => {

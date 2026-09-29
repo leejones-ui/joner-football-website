@@ -5,9 +5,10 @@ import { stripeFetch } from './_holiday-store.js'
 import { getBooking, getGroup, getConfig, getPayreq, coachById, sessionDates, dateLabel, formatAud, clean, locationFor, to24h } from './_jfp-store.js'
 import { finaliseJfpBooking, jfpBookingIdFromSession } from './_jfp-finalise.js'
 
-function groupView(config, group) {
+// fromIso: joined mid term; only: a trial's one session.
+function groupView(config, group, { fromIso = '', only = '' } = {}) {
   const coach = coachById(config, group.coachId)
-  const dates = sessionDates(config, group.day)
+  const dates = only ? [only] : sessionDates(config, group.day).filter((d) => !fromIso || d >= fromIso)
   const loc = locationFor(config, group.location)
   return {
     day: group.day, time: group.time, time24: to24h(group.time), durationMin: group.durationMin || 60,
@@ -38,7 +39,7 @@ export default async function handler(req, res) {
         status = r.attention ? 'received' : r.busy ? 'pending' : 'paid'
       } else if (session.status === 'expired' || (q.status === 'cancelled' && session.status !== 'complete')) status = 'expired'
       const group = q.groupId ? await getGroup(q.groupId) : null
-      return res.status(200).json({ success: true, status, kind: 'payment', kit: { url: config.kitUrl, note: config.kitNote }, payment: { id: q.id, players: q.playerNames, trial: q.reason === 'trial', trialDate: q.trialDate ? dateLabel(q.trialDate) : '', startDate: q.startDate ? dateLabel(q.startDate) : '', priceLabel: formatAud(q.paidCents ?? q.amountCents), group: group ? groupView(config, group) : null, term: config.term } })
+      return res.status(200).json({ success: true, status, kind: 'payment', kit: { url: config.kitUrl, note: config.kitNote }, payment: { id: q.id, players: q.playerNames, trial: q.reason === 'trial', trialDate: q.trialDate ? dateLabel(q.trialDate) : '', startDate: q.startDate ? dateLabel(q.startDate) : '', priceLabel: formatAud(q.paidCents ?? q.amountCents), group: group ? groupView(config, group, { fromIso: q.startDate || '', only: q.reason === 'trial' ? q.trialDate || '' : '' }) : null, term: config.term } })
     }
 
     let booking = await getBooking(id)
@@ -62,7 +63,7 @@ export default async function handler(req, res) {
         term: config.term,
         players: (booking.players || []).map((p) => ({ name: p.name })),
         priceLabel: formatAud(booking.amountPaidCents ?? booking.priceCents),
-        ...groupView(config, group),
+        ...groupView(config, group, { fromIso: booking.startDate || '' }),
       },
     })
   } catch (error) {

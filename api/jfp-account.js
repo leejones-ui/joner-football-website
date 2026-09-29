@@ -38,8 +38,8 @@ function withDobs(fam, dobs, termStart) {
 
 function paymentLine(row, openReq) {
   if (openReq) return { state: 'due', label: `${formatAud(openReq.amountCents)} to pay`, payreqId: openReq.id }
+  if (/trial/i.test(row.paymentType)) return { state: 'trial', label: row.paymentStatus === 'Paid' ? 'Trial booked and paid' : 'Trial' }
   if (row.paymentStatus === 'Paid') return { state: 'paid', label: 'Paid' }
-  if (/trial/i.test(row.paymentType)) return { state: 'trial', label: 'Trial' }
   // Legacy rows can carry sibling splits and agreed plans, so no amount is
   // shown until staff raise a payment request.
   return { state: 'arranged', label: 'Payment arranged with Joner Football' }
@@ -66,7 +66,10 @@ async function overview(res, parent, body = {}) {
       const g = byGroup[r.groupId] || { day: r.day, time: r.time, location: r.location, durationMin: 60 }
       const coach = coachById(config, g.coachId) || coachByAirtableName(config, r.coach)
       const loc = locationFor(config, r.location)
-      const dates = sessionDates(config, r.day)
+      // Mid term joiners and trials: only their own dates.
+      const trialOn = /trial/i.test(r.paymentType) ? (r.notes.match(/Trial offered for (\d{4}-\d{2}-\d{2})/) || [])[1] : ''
+      const from = (r.notes.match(/(?:from|starts) (\d{4}-\d{2}-\d{2})/) || [])[1] || ''
+      const dates = trialOn ? [trialOn] : sessionDates(config, r.day).filter((d) => !from || d >= from)
       const openReq = mine.find((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(r.id))
       return {
         rowId: r.id, day: r.day, time: r.time, location: loc.name, address: loc.address, maps: loc.maps,

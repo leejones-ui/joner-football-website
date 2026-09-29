@@ -127,7 +127,7 @@ async function capacityCheck(group, adding, force) {
 // an amount. Returns { amountCents, price } or { error }.
 function amountFor(config, group, body, players = 1) {
   const product = PRODUCTS.some((x) => x.key === body.product) ? body.product : (group?.product || 'group')
-  const from = ISO.test(body.startDate || '') ? body.startDate : (group ? nextSessionDate(config, group.day) : '')
+  const from = ISO.test(body.startDate || '') ? body.startDate : (group ? nextSessionDate(config, group.day, Date.now(), group.time) : '')
   const price = priceFor(config, { product, day: group?.day, fromIso: from, players })
   const typed = Number(body.amountCents)
   const amountCents = Number.isInteger(typed) && typed > 0 ? typed : price.totalCents
@@ -148,6 +148,7 @@ async function addPlayer(req, res, principal, config, body) {
   if (cap.error) return fail(res, 409, cap.error, { code: cap.code })
   const dob = ISO.test(body.player?.dob || '') ? body.player.dob : ''
   const age = dob ? ageOn(dob, config.termStart) : (Number.isInteger(Number(body.player?.age)) ? Number(body.player.age) : null)
+  if (payment === 'offline' && !(Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0)) return fail(res, 400, 'Enter the amount they paid.')
   const { amountCents, price, product, from } = amountFor(config, group, body)
   const isTrial = payment === 'trial' || product === 'trial'
   const coach = coachById(config, group.coachId)
@@ -251,6 +252,8 @@ async function removePlayer(res, principal, config, body) {
   // Close any payment page for this player first. If the family has just
   // paid, stop: removing now would leave a payment on a removed row.
   const open = (await listPayreqs()).filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(row.id))
+  const shared = open.find((q) => q.term4Ids.length > 1)
+  if (shared) return fail(res, 409, `${row.player} shares a payment link with ${shared.playerNames.filter((n) => n !== row.player).join(' and ')}. Cancel that link in Payment links first, then remove, and send the others a new one.`, { code: 'shared_link' })
   for (const q of open) {
     const closed = q.status === 'checkout' ? await closeCheckout(q.stripeSessionId) : 'expired'
     if (closed === 'complete') return fail(res, 409, `The family has just paid for ${row.player}. Wait a minute for it to show, then remove and refund in Stripe if needed.`)
@@ -356,6 +359,14 @@ async function sendPaymentLink(req, res, principal, config, body) {
   if (!rows.length) return fail(res, 404, 'Player row not found.')
   const email = validEmail(body.email) || rows[0].email
   if (!email) return fail(res, 400, 'This player has no parent email in Airtable. Add one to send a link.')
+  // One open link per player, so nobody can pay the same place twice.
+  const openLinks = (await listPayreqs()).filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.some((id) => ids.includes(id)))
+  if (openLinks.length && body.replace !== true) return fail(res, 409, `${rows.map((r) => r.player).join(' and ')} already ${openLinks.length > 1 ? 'have open links' : `has an open link for ${formatAud(openLinks[0].amountCents)}`}. Replace it with this new one?`, { code: 'link_open' })
+  for (const q of openLinks) {
+    const c = await cancelLink(q, principal, 'Replaced by a new link')
+    if (c.error) return fail(res, c.status, c.error)
+    for (const r of rows) { const fresh = await getTerm4Row(r.id); if (fresh) Object.assign(r, fresh) }
+  }
   const group = rows[0].groupId ? await getGroup(rows[0].groupId) : null
   // Either what is owing on the rows, or a product from the price list
   // (pro rata from the start date), or an amount staff typed.
@@ -556,6 +567,25 @@ async function draftAges(res, principal, config) {
 
 // ---------- requests: applications, waitlist, enquiries ----------
 
+// Close a payment link so it can no longer be paid: shut the Stripe page,
+// put back what a price-list link changed, and give back a place it held.
+async function cancelLink(q, principal, why) {
+  if (q.status === 'paid') return { status: 409, error: 'Already paid. Refunds are made in Stripe.' }
+  if (!['open', 'checkout'].includes(q.status)) return { released: 0 }
+  const closed = q.status === 'checkout' ? await closeCheckout(q.stripeSessionId) : 'expired'
+  if (closed === 'complete') return { status: 409, error: 'The family has just paid. It will show as paid in a minute; refunds are made in Stripe.' }
+  if (closed === 'error') return { status: 503, error: 'Could not close the family\'s payment page. Try again in a minute.' }
+  await savePayreq({ ...q, status: 'cancelled', cancelledBy: principal.email, cancelledAt: new Date().toISOString() })
+  if (q.restoreFields?.length) {
+    const still = []
+    for (const x of q.restoreFields) if (await getTerm4Row(x.id)) still.push(x)
+    if (still.length) await updateTerm4Rows(still)
+  }
+  const released = ['application', 'waitlist', 'trial', 'admin-add'].includes(q.reason) ? await releaseOffer(q, principal, why) : 0
+  await audit({ by: principal.email, action: 'payreq.cancel', target: q.id, after: { released, why } })
+  return { released }
+}
+
 // Lee's answer to an application or waitlist request:
 //   offer   accepted for the term: pay (pro rata from the start date) to lock in
 //   trial   one trial session first (A$85); after it, "Offer full term" on the board
@@ -566,6 +596,13 @@ async function decideRequest(req, res, principal, config, body) {
   if (!r) return fail(res, 404, 'Request not found.')
   const offering = body.decision === 'offer' || body.decision === 'trial'
   if (offering ? r.status !== 'pending' : !['pending', 'offered'].includes(r.status)) return fail(res, 409, `Already ${r.status}.`)
+  // Saying no (or done) to an offer already made closes its link and gives
+  // the held place back, so a declined family cannot still pay.
+  if (!offering && r.status === 'offered' && r.payreqId) {
+    const q = await getPayreq(r.payreqId)
+    if (q && q.status === 'paid') return fail(res, 409, 'They have already paid for this offer. Remove the player on the timetable instead, and refund in Stripe.')
+    if (q) { const c = await cancelLink(q, principal, body.decision === 'decline' ? 'Offer declined' : 'Offer closed'); if (c.error) return fail(res, c.status, c.error) }
+  }
   if (body.decision === 'decline') {
     const suggest = body.suggestGroupId ? await getGroup(clean(body.suggestGroupId, 80)) : null
     let emailed = false
@@ -589,7 +626,7 @@ async function decideRequest(req, res, principal, config, body) {
   const cap = await capacityCheck(group, r.players.length, body.force === true)
   if (cap.error) return fail(res, 409, cap.error, { code: cap.code })
   const dates = sessionDates(config, group.day)
-  const startDate = dates.includes(body.startDate) ? body.startDate : nextSessionDate(config, group.day)
+  const startDate = dates.includes(body.startDate) ? body.startDate : nextSessionDate(config, group.day, Date.now(), group.time)
   const n = r.players.length
   const { amountCents, price, product } = trial
     ? { amountCents: Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0 ? Number(body.amountCents) : config.prices.trial * n, price: priceFor(config, { product: 'trial' }), product: 'trial' }
@@ -847,20 +884,9 @@ export default async function handler(req, res) {
       case 'cancelPayreq': {
         const q = await getPayreq(body.id)
         if (!q) return fail(res, 404, 'Not found.')
-        if (q.status === 'paid') return fail(res, 409, 'Already paid. Refunds are made in Stripe.')
-        const closed = q.status === 'checkout' ? await closeCheckout(q.stripeSessionId) : 'expired'
-        if (closed === 'complete') return fail(res, 409, 'The family has just paid. It will show as paid in a minute; refunds are made in Stripe.')
-        if (closed === 'error') return fail(res, 503, 'Could not close the family\'s payment page. Try again in a minute.')
-        await savePayreq({ ...q, status: 'cancelled', cancelledBy: principal.email, cancelledAt: new Date().toISOString() })
-        // Put back what a price-list link changed on the rows.
-        if (q.restoreFields?.length) {
-          const still = []
-          for (const x of q.restoreFields) if (await getTerm4Row(x.id)) still.push(x)
-          if (still.length) await updateTerm4Rows(still)
-        }
-        const released = ['application', 'waitlist', 'trial', 'admin-add'].includes(q.reason) ? await releaseOffer(q, principal, 'Link cancelled') : 0
-        await audit({ by: principal.email, action: 'payreq.cancel', target: q.id, after: { released } })
-        return res.status(200).json({ success: true, released })
+        const c = await cancelLink(q, principal, 'Link cancelled')
+        if (c.error) return fail(res, c.status, c.error)
+        return res.status(200).json({ success: true, released: c.released })
       }
       case 'cancelBooking': {
         const b = await getBooking(clean(body.id, 60))

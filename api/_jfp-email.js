@@ -112,7 +112,7 @@ ${siteUrl ? button('Open My JFP', `${siteUrl}/jfp-account/`) : ''}`
   return send({
     to: [{ email: booking.email, name: booking.parentName }],
     subject: `You're booked in: ${group.day} ${group.time}, ${config.term}`,
-    html: shell({ preheader: `${group.day} ${group.time}, first session ${dateLabel(sessionDates(config, group.day)[0])}`, heading: 'You are booked in', body }),
+    html: shell({ preheader: `${group.day} ${group.time}, first session ${dateLabel(booking.startDate || sessionDates(config, group.day)[0])}`, heading: 'You are booked in', body }),
     attachment: ics ? [{ name: 'jfp-term.ics', content: Buffer.from(ics).toString('base64') }] : undefined,
   })
 }
@@ -141,7 +141,7 @@ export async function sendCoachAlert({ booking, group, config }) {
 ${rows([
     ['Group', `${esc(group.day)} ${esc(group.time)}, ${esc(group.location)}`],
     ['Players', booking.players.map((x) => `${esc(x.name)}${x.age != null ? ` (${esc(x.age)})` : ''}`).join(', ')],
-    ['First session', esc(dateLabel(sessionDates(config, group.day)[0]))],
+    ['First session', esc(dateLabel(booking.startDate || sessionDates(config, group.day)[0]))],
     ['Reference', esc(booking.id)],
   ])}`
   await send({ to: [{ email: coach.email, name: `Coach ${coach.name}` }], subject: `New player: ${group.day} ${group.time}`, html: shell({ heading: 'New player in your group', body }) })
@@ -206,6 +206,8 @@ export async function sendPaymentStaffAlert({ payreq, group, config }) {
 const ATTENTION = {
   'paid-after-cancel': 'A family paid for a booking or payment link that had already been cancelled or had expired. Nothing was added to Airtable automatically. Decide whether to give them the place or refund in Stripe.',
   'second-payment': 'A family paid twice for the same booking or payment link. The first payment is recorded; this second one is not. Refund it in Stripe, or keep it as credit.',
+  'overpaid': 'A payment took a player past what their Term 4 row costs (for example two payment links paid for the same child). It is recorded in Airtable. Check the row and refund the extra in Stripe.',
+  'duplicate-enrolment': 'A family booked and paid for a child who already had a place in the same group. Both rows are in Airtable. Remove one and refund in Stripe.',
 }
 export async function sendAttentionAlert({ record, reason, info, config }) {
   const body = `${p(esc(ATTENTION[reason] || 'A payment needs checking.'))}${rows([
@@ -213,6 +215,7 @@ export async function sendAttentionAlert({ record, reason, info, config }) {
     ['Players', esc((record.players || []).map((x) => x.name).join(', ') || (record.playerNames || []).join(', '))],
     ['Parent', `${esc(record.parentName || '')} ${esc(record.email || '')}`],
     ['Amount', esc(formatAud(info.amountCents || 0))],
+    ...(info.extra ? [['Players', esc(info.extra)]] : []),
     ['Stripe', info.intentId ? link(info.intentId, `https://dashboard.stripe.com/payments/${info.intentId}`) : esc(info.sessionId)],
   ])}${p('It is also flagged in the JFP portal under Payments.')}`
   return send({ to: staffTo(config), subject: `JFP payment needs checking: ${record.id}`, html: shell({ heading: 'A payment needs checking', body }) })

@@ -17,11 +17,11 @@ import crypto from 'node:crypto'
 import { stripeFetch } from './_holiday-store.js'
 import {
   getBooking, saveBooking, getGroup, getConfig, confirmPlaces, settlePlaces, releasePlaces, coachById, kvCommand, keys, clean,
-  getPayreq, savePayreq, ONLINE_TAG, audit, claimOnce, dropParentHold,
+  getPayreq, savePayreq, ONLINE_TAG, audit, claimOnce, dropParentHold, normName,
 } from './_jfp-store.js'
 import {
   createTerm4Rows, findTerm4ByTag, updateTerm4Rows, getTerm4Row, createLedgerRow, findLedgerByPayment, createWaiverRows, waiverFields,
-  findWaiversByTag, appendNote, bustRosterCache,
+  findWaiversByTag, appendNote, bustRosterCache, loadRoster,
 } from './_jfp-airtable.js'
 import { sendParentConfirmation, sendStaffAlert, sendCoachAlert, sendPaymentReceipt, sendPaymentStaffAlert, sendAttentionAlert } from './_jfp-email.js'
 
@@ -133,6 +133,17 @@ async function unexpectedPayment(record, session, save, reason) {
   return { ok: true, attention: reason, record }
 }
 
+// Something a person should look at, flagged on the record, logged and
+// emailed to staff once. Never blocks the rest of the payment's effects.
+async function flagAttention(record, reason, save, extra = '') {
+  record.needsAttention = [...new Set([...(record.needsAttention ? String(record.needsAttention).split(', ') : []), reason])].join(', ')
+  await save(record)
+  await audit({ by: 'system', action: `payment.${reason}`, target: record.id, after: { extra } })
+  if (await claimOnce(`jfp:attention:${record.id}:${reason}`)) {
+    try { await sendAttentionAlert({ record, reason, info: { amountCents: record.paidCents ?? record.amountPaidCents ?? 0, intentId: record.stripePaymentIntentId, sessionId: record.stripeSessionId, extra }, config: await getConfig() }) } catch (error) { console.error('jfp attention alert failed', error) }
+  }
+}
+
 // ---------- online bookings ----------
 
 function paidFieldsFresh(unitCents, fee, evidence) {
@@ -176,7 +187,12 @@ async function runBookingEffects(booking, retry = new Set()) {
     const existing = await findTerm4ByTag(ONLINE_TAG, booking.id)
     if (existing.length) { booking.term4Ids = existing } else {
       const fees = splitFee(booking.stripeFeeCents, booking.players.length)
+      // The same child already holding a place here (two tabs, two bookings):
+      // still recorded, because the money moved, but flagged for a refund.
+      const roster = await loadRoster({ fresh: true })
+      const dupes = booking.players.filter((p) => roster.players.some((r) => r.groupId === booking.groupId && r.holdsPlace && normName(r.player) === normName(p.name) && !r.notes.includes(`[${ONLINE_TAG}:${booking.id}]`)))
       booking.term4Ids = await createTerm4Rows(booking.players.map((_, i) => term4Fields({ booking, group: g, coachAirtableName: coach?.airtableName, fee: fees?.[i] ?? null, index: i })))
+      if (dupes.length) await flagAttention(booking, 'duplicate-enrolment', saveBooking, dupes.map((p) => p.name).join(', '))
     }
     // Airtable now holds these places; the KV hold can lapse.
     await settlePlaces(booking.groupId, booking.id, booking.players.length)
@@ -245,6 +261,9 @@ async function runPayreqEffects(payreq, retry = new Set()) {
       } })
     })
     if (updates.length) await updateTerm4Rows(updates)
+    // More paid than the rows cost (two links paid for one player): flag it.
+    const over = rows.filter((row, i) => !row.notes.includes(`[PAID:${payreq.id}]`) && cents(row.paidAud) + share[i] > (cents(row.feeAud) || Infinity))
+    if (over.length) await flagAttention(payreq, 'overpaid', savePayreq, over.map((r) => r.player).join(', '))
   })
   await runEffect('ledger', payreq, save, async () => {
     const paymentId = payreq.stripePaymentIntentId || payreq.id

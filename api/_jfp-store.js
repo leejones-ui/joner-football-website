@@ -245,9 +245,12 @@ export function priceFor(config, { product = 'group', day, fromIso, players = 1 
 }
 
 // The first session still to come for this group.
-export function nextSessionDate(config, day, nowMs = Date.now()) {
+// Today's session counts only until it has started (Sydney time).
+export function nextSessionDate(config, day, nowMs = Date.now(), time = '') {
   const today = sydneyToday(nowMs)
-  return sessionDates(config, day).find((d) => d >= today) || ''
+  const now = new Intl.DateTimeFormat('en-GB', { timeZone: 'Australia/Sydney', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(nowMs))
+  const started = time && to24h(time) && to24h(time) <= now
+  return sessionDates(config, day).find((d) => d > today || (d === today && !started)) || ''
 }
 
 export function dayOrder(day) { const i = DAYS.indexOf(day); return i < 0 ? 9 : i }

@@ -148,7 +148,7 @@ async function family(req, res, body, parent) {
   const group = body.groupId ? await getGroup(body.groupId) : null
   const roster = await loadRoster()
   const fam = familyFor(parent.email, roster, config.termStart)
-  const from = group ? nextSessionDate(config, group.day) : ''
+  const from = group ? nextSessionDate(config, group.day, Date.now(), group.time) : ''
   const one = group ? priceFor(config, { product: group.product, day: group.day, fromIso: from, players: 1 }) : null
   const two = group ? priceFor(config, { product: group.product, day: group.day, fromIso: from, players: 2 }) : null
   return res.status(200).json({
@@ -186,7 +186,7 @@ async function submit(req, res, body, parent) {
   if (group.girlsOnly === 'yes' && body.girlsConfirmed !== true) return fail(res, 400, 'This is a girls group. Confirm each player is a girl to continue.', { code: 'girls' })
   if (body.agreementAccepted !== true) return fail(res, 400, 'Please accept the terms to continue.')
   const n = pl.players.length
-  const from = nextSessionDate(config, group.day)
+  const from = nextSessionDate(config, group.day, Date.now(), group.time)
   if (!from) return fail(res, 410, 'This term has finished for this group.')
   const price = priceFor(config, { product: group.product, day: group.day, fromIso: from, players: n })
 
@@ -212,7 +212,8 @@ async function submit(req, res, body, parent) {
   const taken = countsFrom(roster)[group.id] || 0
   if (!(await holdPlaces({ gid: group.id, bookingId: id, want: n, available: Math.max(0, group.capacity - taken), expiresMs: holdExpiresMs, nowMs }))) {
     const online = (await onlineCounts([group.id]))[group.id] || 0
-    const left = placesLeft(group, taken, online)
+    // The family's own hold is theirs to use, so count it as available.
+    const left = placesLeft(group, taken, online) + (ours ? Number(reservation.seats || 1) : 0)
     return fail(res, 409, left > 0 ? `Only ${left} place${left === 1 ? '' : 's'} left in this group now.` : 'This group has just filled. You can join the waitlist instead.', { code: 'full', placesLeft: left })
   }
 

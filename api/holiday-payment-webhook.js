@@ -70,6 +70,9 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, jfpId, already: r.already === true, attention: r.attention || '', verified })
       }
       if (type === 'checkout.session.expired' || type === 'checkout.session.async_payment_failed') {
+        // Act only on what Stripe itself says now, never on the event type alone.
+        const over = session.status === 'expired' || (type === 'checkout.session.async_payment_failed' && session.payment_status !== 'paid')
+        if (!over) return res.status(200).json({ success: true, skipped: 'session-not-expired', jfpId })
         const r = await expireJfpBooking(jfpId, session)
         return res.status(200).json({ success: true, jfpId, released: r.changed, verified })
       }

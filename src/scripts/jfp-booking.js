@@ -604,7 +604,8 @@ async function pay() {
     btn.disabled = false
     btn.textContent = 'Try again'
     if (r.data.code === 'signin') { S.parent = null; return stepWho() }
-    if (r.data.code === 'full') { S.hold = null; show(r.data.error); load(true); return }
+    // Keep the hold: "only 1 left" still leaves this family their place.
+    if (r.data.code === 'full') { show(r.data.error); load(true); return }
     if (r.data.code === 'paid') { show(r.data.error); return }
     return show(r.data.error || 'Could not start the payment. Nothing has been charged.')
   }

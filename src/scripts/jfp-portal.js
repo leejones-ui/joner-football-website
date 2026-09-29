@@ -428,11 +428,19 @@ async function linkModal(p, g) {
   box.querySelector('#ln-mode').addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (!b) return; mode = b.dataset.m; box.querySelectorAll('#ln-mode button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); box.querySelector('#ln-price').hidden = mode !== 'price' })
   const emailInput = box.querySelector('#ln-email')
   emailInput.addEventListener('input', () => { box.querySelector('#ln-change-row').hidden = emailInput.value.trim().toLowerCase() === (p.email || '').toLowerCase() })
-  const go = async (sendEmail) => {
+  const btns = () => [box.querySelector('#ln-go'), box.querySelector('#ln-copy-go')]
+  const go = async (sendEmail, replace = false) => {
     const priced = mode === 'price' ? read() : {}
     if (mode === 'price' && !(priced.amountCents > 0)) return toast('Enter an amount.')
-    const r = await post('sendPaymentLink', { rowId: p.rowId, ...(mode === 'price' ? priced : {}), email: emailInput.value.trim(), changeEmail: box.querySelector('#ln-change').checked, sendEmail, reason: p.trial && priced.product !== 'trial' ? 'term-after-trial' : undefined })
+    btns().forEach((b) => { b.disabled = true })
+    const body = { rowId: p.rowId, ...(mode === 'price' ? priced : {}), email: emailInput.value.trim(), changeEmail: box.querySelector('#ln-change').checked, sendEmail, replace, reason: p.trial && priced.product !== 'trial' ? 'term-after-trial' : undefined }
+    const r = await post('sendPaymentLink', body)
+    btns().forEach((b) => { b.disabled = false })
     if (r.data.code === 'email_change') { box.querySelector('#ln-change-row').hidden = false; return toast(r.data.error) }
+    if (r.data.code === 'link_open') {
+      if (!confirm(`${r.data.error}\n\nThe old link stops working and the family uses the new one.`)) return
+      return go(sendEmail, true)
+    }
     if (!r.ok) return toast(r.data.error)
     box.querySelector('#ln-out').innerHTML = `<div class="j-box j-box-green" style="margin:10px 0">Link for ${esc(r.data.payreq.amountLabel)} created${r.data.emailed ? ' and emailed' : ''}. <button type="button" class="j-btn j-btn-line j-btn-sm" id="ln-copy">Copy link</button></div>`
     box.querySelector('#ln-copy').addEventListener('click', () => copy(r.data.payreq.url))
@@ -457,9 +465,14 @@ async function termModal(p, g) {
   const draw = () => { const gg = groups.find((x) => x.id === box.querySelector('#tm-g').value) || g; read = priceBlock(box, pr, { day: gg?.day || 'Monday', product: gg?.product || 'group', credit: true, paid: p.paidCents || 0, prefix: 'tm-price', noTrial: true }) }
   draw()
   box.querySelector('#tm-g').addEventListener('change', draw)
-  const go = async (sendEmail) => {
+  const go = async (sendEmail, replace = false) => {
     const v = read()
-    const r = await post('offerTerm', { rowId: p.rowId, groupId: box.querySelector('#tm-g').value, ...v, sendEmail })
+    const b1 = box.querySelector('#tm-go'), b2 = box.querySelector('#tm-copy-go')
+    b1.disabled = true; b2.disabled = true
+    const r = await post('offerTerm', { rowId: p.rowId, groupId: box.querySelector('#tm-g').value, ...v, sendEmail, replace })
+    b1.disabled = false; b2.disabled = false
+    if (r.data.code === 'link_open') { if (confirm(`${r.data.error}\n\nThe old link stops working and the family uses the new one.`)) return go(sendEmail, true); return }
+    if (r.data.code === 'full') { if (confirm(r.data.error)) { b1.disabled = true; const again = await post('offerTerm', { rowId: p.rowId, groupId: box.querySelector('#tm-g').value, ...v, sendEmail, replace, force: true }); b1.disabled = false; if (!again.ok) return toast(again.data.error); r.data = again.data; r.ok = true } else return }
     if (!r.ok) return toast(r.data.error)
     box.querySelector('#tm-out').innerHTML = `<div class="j-box j-box-green" style="margin:10px 0">Offered: ${esc(r.data.payreq.amountLabel)}${r.data.emailed ? ', emailed' : ''}. <button type="button" class="j-btn j-btn-line j-btn-sm" id="tm-copy">Copy link</button></div>`
     box.querySelector('#tm-copy').addEventListener('click', () => copy(r.data.payreq.url))
@@ -679,7 +692,7 @@ async function renderRequests() {
     ${list.length ? list.map((r) => `<article class="j-card" style="padding:16px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><span class="j-pill j-pill-${kind[r.kind]?.[0] || 'grey'}">${esc(kind[r.kind]?.[1] || r.kind)}</span> <b style="margin-left:6px">${esc(r.players.map((p) => `${p.name}${p.age != null ? `, ${p.age}` : ''}`).join(' and '))}</b>
         <p class="muted small" style="margin-top:4px">Wants <b>${esc(r.group)}</b> · ${esc(new Date(r.createdAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</p></div>
-        <span class="j-pill j-pill-grey">${esc(r.status === 'offered' ? (r.offer === 'trial' ? 'trial offered' : 'place offered') : r.status)}</span></div>
+        <span class="j-pill j-pill-grey">${esc(r.status === 'offered' ? (r.offer === 'trial' ? 'Trial offered' : 'Place offered') : ({ pending: 'Waiting', declined: 'Declined', done: 'Done', expired: 'Offer expired' }[r.status] || r.status))}</span></div>
       ${Object.keys(r.answers || {}).length ? `<p class="small" style="margin-top:8px">${Object.entries(r.answers).map(([k, v]) => `<span class="muted">${esc(ANSWER[k] || k)}:</span> <b>${esc(v)}</b>`).join(' · ')}</p>` : r.club ? `<p class="small" style="margin-top:8px"><span class="muted">Club:</span> <b>${esc(r.club)}</b></p>` : ''}
       <p class="small" style="margin-top:6px">${esc(r.parentName)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a> · <a href="tel:${esc(r.mobile)}">${esc(r.mobile)}</a></p>
       ${r.message ? `<p class="small j-box j-box-grey" style="margin-top:8px">${esc(r.message)}</p>` : ''}
@@ -706,7 +719,8 @@ function declineModal(r) {
     <label class="j-field"><span>A line from you <span class="muted">(optional, goes in the email)</span></span><textarea class="j-textarea" id="dc-msg"></textarea></label>
     <label class="j-check"><input type="checkbox" id="dc-send" checked> <span>Email the family a kind no (it says the group is not the right level this term${' '}and points to the suggestion)</span></label>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-danger" id="dc-go">Decline</button></div>`)
-  box.querySelector('#dc-go').addEventListener('click', async () => {
+  box.querySelector('#dc-go').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true
     const res = await post('decideRequest', { id: r.id, decision: 'decline', suggestGroupId: box.querySelector('#dc-g').value, message: box.querySelector('#dc-msg').value.trim(), sendEmail: box.querySelector('#dc-send').checked })
     if (!res.ok) return toast(res.data.error)
     closeModal(); toast(res.data.emailed ? 'Declined and emailed' : 'Declined'); renderRequests()
@@ -737,7 +751,11 @@ async function offerModal(r, decision) {
   box.querySelector('#of-g').addEventListener('change', draw)
   const go = async () => {
     const body = { id: r.id, decision, groupId: box.querySelector('#of-g').value, ...read(), sendEmail: box.querySelector('#of-send').checked }
+    const btn = box.querySelector('#of-go')
+    if (btn.disabled) return
+    btn.disabled = true
     let res = await post('decideRequest', body)
+    btn.disabled = false
     if (res.status === 409 && res.data.code === 'full') {
       if (!(await confirmBox(esc(res.data.error), { ok: 'Offer anyway' }))) return
       res = await post('decideRequest', { ...body, force: true })
