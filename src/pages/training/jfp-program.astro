@@ -94,9 +94,21 @@ const points = [
 
 // Real JFP sessions from Instagram, in the order Lee chose (the first plays first).
 const reels = ['DcuW0kpSNvj', 'DdQr9zfy2eI', 'Db7XJ4LS8EV', 'DbLG35zyndy']
-const videos = [
-  { title: 'HQ Training', src: 'https://www.youtube.com/embed/eCmL9QiFtVk?rel=0&controls=1&hd=1' },
-  { title: 'On Field Training', src: 'https://www.youtube.com/embed/-V88Iy1X-is?start=466&rel=0&controls=1&hd=1' },
+// Lee coaching on the Joner Football YouTube channel. Each card is a still
+// until tapped, so the row swipes smoothly and the page stays light.
+const coaching = [
+  { id: 'EKclfr4Q3l8', title: 'How I Coach Dribbling at Full Speed' },
+  { id: 'HVauEJkSwdI', title: 'How I Coach Players Who Panic Under Pressure' },
+  { id: 'MuTf56qU3oc', title: 'How I Coach Midfielders to Think Faster' },
+  { id: '6Lk7pztLhEw', title: 'Inside Training with Adrian Segecic and Alex Robertson' },
+  { id: 'bpsnUbP0U8s', title: 'How I Coach Players to Be More Physical' },
+  { id: '8xfWkNLdVYE', title: 'How I Coach First Touch Under Pressure' },
+  { id: 'uBlSzlbvsvo', title: 'How I Coach Defensive Attributes Every Footballer Needs' },
+  { id: 'l5__i4F-l_I', title: 'How I Coach Wingers to Be More Direct' },
+  { id: 'Yi7Y5CV9P8Y', title: 'First Touch Under Pressure: 1v2 Group Training' },
+  { id: 'dcw7bayv3Ok', title: 'How I Coach Different Ages With One Setup' },
+  { id: 'eCmL9QiFtVk', title: 'Full 1 on 1 Session at Joner Football HQ' },
+  { id: '-V88Iy1X-is', title: 'Passing Drills to Improve Speed and Accuracy' },
 ]
 
 const faqs = [
@@ -397,7 +409,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
               <button type="button" class="jfp-reels-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="1" aria-label="Next video">&rarr;</button>
             </span>
           </div>
-          <div id="jfp-reels" class="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:px-0" style="scrollbar-width:thin">
+          <div id="jfp-reels" class="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none;overscroll-behavior-x:contain">
             {reels.map((id, i) => (
               <div class="w-[300px] shrink-0 snap-start overflow-hidden rounded-xl border border-white/10 bg-white sm:w-[330px]">
                 <iframe
@@ -406,7 +418,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
                   loading={i === 0 ? 'eager' : 'lazy'}
                   scrolling="no"
                   allow="autoplay; encrypted-media; picture-in-picture; web-share"
-                  class="block h-[560px] w-full border-0 sm:h-[600px]"
+                  class="block h-[520px] w-full border-0 sm:h-[560px]"
                 ></iframe>
               </div>
             ))}
@@ -419,26 +431,48 @@ const sanityPage = await fetchSanityPage('jfp-program')
             }))
           </script>
         </div>
-        <div class="mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:gap-8">
-          {videos.map((video) => (
-            <div class="group">
-              <div class="mb-3 flex items-center gap-3 pl-1">
-                <span class="h-2 w-2 rounded-full bg-joner-red"></span>
-                <span class="font-heading text-[11px] uppercase tracking-[0.32em] text-white/80 sm:text-xs">{video.title}</span>
-                <span class="h-px flex-1 bg-gradient-to-r from-white/15 to-transparent"></span>
+        <div class="mb-10">
+          <div class="mb-4 flex items-center gap-3 pl-1">
+            <span class="h-2 w-2 rounded-full bg-joner-red"></span>
+            <span class="font-heading text-[11px] uppercase tracking-[0.32em] text-white/80 sm:text-xs">How we coach</span>
+            <span class="h-px flex-1 bg-gradient-to-r from-white/15 to-transparent"></span>
+            <span class="hidden gap-2 md:flex">
+              <button type="button" class="jfp-yt-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="-1" aria-label="Previous video">&larr;</button>
+              <button type="button" class="jfp-yt-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="1" aria-label="Next video">&rarr;</button>
+            </span>
+          </div>
+          <div id="jfp-yt" class="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-3 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">
+            {coaching.map((v) => (
+              <div class="w-[280px] shrink-0 snap-start sm:w-[340px]">
+                <button type="button" class="jfp-yt-card group relative block aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black" data-yt={v.id} aria-label={`Play: ${v.title}`}>
+                  <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt="" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+                  <span class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></span>
+                  <span class="absolute left-1/2 top-1/2 grid h-12 w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-joner-red text-white shadow-lg">&#9654;</span>
+                </button>
+                <p class="mt-2 line-clamp-2 pl-1 text-sm font-medium leading-snug text-white/90">{v.title}</p>
               </div>
-              <div class="relative aspect-video overflow-hidden rounded-xl border border-white/10 bg-black">
-                <iframe
-                  src={video.src}
-                  title={video.title}
-                  loading="lazy"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowfullscreen
-                  class="absolute inset-0 h-full w-full"
-                ></iframe>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <p class="mt-1 pl-1 text-sm text-white/60">Swipe for more. <a href="https://www.youtube.com/@jonerfootball" target="_blank" rel="noopener noreferrer" class="underline hover:text-white">All videos on YouTube</a></p>
+          <script is:inline>
+            document.querySelectorAll('.jfp-yt-nav').forEach((b) => b.addEventListener('click', () => {
+              const row = document.getElementById('jfp-yt')
+              if (row) row.scrollBy({ left: Number(b.dataset.dir) * 356, behavior: 'smooth' })
+            }))
+            // Tap a still: swap in the player and start it.
+            document.querySelectorAll('.jfp-yt-card').forEach((c) => c.addEventListener('click', () => {
+              const f = document.createElement('iframe')
+              f.src = 'https://www.youtube-nocookie.com/embed/' + c.dataset.yt + '?autoplay=1&rel=0&playsinline=1'
+              f.title = c.getAttribute('aria-label') || 'Joner Football video'
+              f.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
+              f.allowFullscreen = true
+              f.className = 'absolute inset-0 h-full w-full'
+              const box = document.createElement('div')
+              box.className = 'relative aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black'
+              box.appendChild(f)
+              c.replaceWith(box)
+            }))
+          </script>
         </div>
         <div class="text-center">
           <a href="#training-form" class="btn-red text-sm">Book Now</a>
