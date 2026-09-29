@@ -241,6 +241,17 @@ export async function sendRequestReceived({ request, group, config }) {
   return send({ to: [{ email: request.email, name: request.parentName }], subject: `Received: your JFP ${KIND_WORD[request.kind] || 'request'}`, html: shell({ heading: 'We have your request', body }) })
 }
 
+// A kind no: this group is not the right fit, maybe another one is.
+export async function sendDeclined({ request, group, config, message, suggest, siteUrl }) {
+  const names = esc(request.players.map((x) => x.name).join(' and '))
+  const body = `${p(`Thanks for applying, ${esc(request.parentName)}.`)}
+${p(`Our coaches have looked at ${names}'s application for ${esc(group.day)} ${esc(group.time)}, and it is not the right group for ${request.players.length > 1 ? 'them' : 'this player'} this term. We keep every group at one level so each player is challenged, and we would rather say so now.`)}
+${message ? p(esc(message)) : ''}
+${suggest ? `${p(`A group we think would suit: <b>${esc(suggest.day)} ${esc(suggest.time)}, ${esc(locationFor(config, suggest.location).name)}</b>. Apply for it on the timetable, or reply to this email.`)}` : p('Reply to this email if you would like to talk about another group or 1 to 1 coaching.')}
+${siteUrl ? button('See the timetable', `${siteUrl}/jfp-booking/`) : ''}`
+  return send({ to: [{ email: request.email, name: request.parentName }], subject: `Your JFP application: ${group.day} ${group.time}`, html: shell({ heading: 'About your application', body }) })
+}
+
 const ANSWER_LABELS = { club: 'Club', team: 'Team and age group', playingUp: 'Playing', trainedBefore: 'Trained with Joner before', position: 'Position' }
 
 export async function sendRequestAlert({ request, group, config }) {

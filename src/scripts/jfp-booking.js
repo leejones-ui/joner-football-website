@@ -5,7 +5,7 @@
 // waitlist request or enquiry).
 import { $, esc, api, recaptcha, toast, openSheet, closeSheet, signIn, whoAmI, waiverBlock, money } from './jfp-common.js'
 
-const S = { data: null, filters: { loc: '', coach: '', day: '', show: '' }, phoneDay: '', parent: null, family: null, hold: null, timer: null, toStripe: false }
+const S = { data: null, filters: { loc: '', coach: '', day: '', show: '' }, phoneDay: '', view: 'week', parent: null, family: null, hold: null, timer: null, toStripe: false }
 const SHOW = [['', 'All'], ['book', 'Book now'], ['apply', 'Apply'], ['open', 'Has places']]
 const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const SHORT = { Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat', Sunday: 'Sun' }
@@ -71,15 +71,15 @@ function renderMeta() {
   $('term-name').textContent = d.termLabel || d.term
   $('term-range').textContent = `${d.termRange} · ${d.weeks} weeks`
   $('trial-price').textContent = d.trialPriceLabel
+  const loc = $('f-loc')
+  if (loc.options.length < 2) {
+    for (const l of d.locations) loc.insertAdjacentHTML('beforeend', `<option value="${esc(l.id)}">${esc(l.name)}</option>`)
+    loc.addEventListener('change', () => { S.filters.loc = loc.value; renderLocations(); renderResults() })
+  }
   const coach = $('f-coach')
   if (coach.options.length < 2) {
     for (const c of d.coaches) coach.insertAdjacentHTML('beforeend', `<option value="${esc(c.id)}">${esc(c.name)}</option>`)
     coach.addEventListener('change', () => { S.filters.coach = coach.value; renderResults() })
-  }
-  const day = $('f-day')
-  if (day.options.length < 2) {
-    for (const x of days(d.groups)) day.insertAdjacentHTML('beforeend', `<option value="${esc(x)}">${esc(x)}</option>`)
-    day.addEventListener('change', () => { S.filters.day = day.value; renderResults() })
   }
 }
 
@@ -89,7 +89,7 @@ function renderLocations() {
   $('locs').innerHTML = S.data.locations.map((l) => {
     const badge = l.full ? 'Fully booked' : `${l.groups} group${l.groups === 1 ? '' : 's'} · ${l.spots} spot${l.spots === 1 ? '' : 's'} left`
     return `<button type="button" class="j-loc" data-loc="${esc(l.id)}" aria-pressed="${S.filters.loc === l.id}">
-      <div class="img" style="background-image:url('${esc(l.photo)}')"><span class="badge">${esc(badge)}</span></div>
+      <div class="img">${l.photo ? `<img src="${esc(l.photo)}" alt="" loading="lazy" decoding="async">` : ''}<span class="badge">${esc(badge)}</span></div>
       <div class="body"><h3><span class="j-dot j-dot-${esc(l.id)}"></span> ${esc(l.name)}</h3><p>${esc(l.blurb)}</p>${l.maps ? `<p><a href="${esc(l.maps)}" target="_blank" rel="noopener noreferrer" data-stop>${esc(l.address)}</a></p>` : ''}</div>
     </button>`
   }).join('')
@@ -136,6 +136,24 @@ function block(g) {
   </button>`
 }
 
+// A group as a card, the look parents liked in the first build: the place
+// photo, the time, who it is for, the coach, places and one button.
+function card(g) {
+  const [cls, text] = status(g)
+  const btn = g.mode === 'enquire' ? 'Enquire' : g.full ? 'Join the waitlist' : g.mode === 'direct' ? 'Book' : 'Apply'
+  return `<article class="j-group j-card-photo ${g.full ? 'is-full' : ''}">
+    <button type="button" class="j-card-hit" data-group="${esc(g.id)}" aria-label="${esc(`${g.day} ${g.time}, ${g.coachName}`)}"></button>
+    <div class="ph">${g.photo ? `<img src="${esc(g.photo)}" alt="" loading="lazy" decoding="async">` : ''}${g.full ? '<span class="j-full-banner">Fully booked</span>' : ''}</div>
+    <div class="bd">
+      <p class="when">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` · ${esc(g.label)}` : ''}</p>
+      <p class="who">${esc(agesLabel(g))}</p>
+      <p class="meta"><span class="j-dot j-dot-${esc(g.locationId)}"></span>${esc(g.location)} · ${esc(g.coachName || 'Joner Football')} · ${esc(g.durationMin)} min</p>
+      ${g.requirements?.length ? `<p class="req">${esc(g.requirements.join(' · '))}</p>` : ''}
+      <div class="foot"><span class="st ${cls}">${esc(text)}</span><span class="j-btn ${g.mode === 'direct' && !g.full ? 'j-btn-dark' : 'j-btn-line'} j-btn-sm">${btn}</span></div>
+    </div>
+  </article>`
+}
+
 function renderResults() {
   const list = visible()
   const f = S.filters
@@ -146,34 +164,38 @@ function renderResults() {
     return
   }
   const cols = days(list)
-  // Desktop: the whole week as a grid, like the program spreadsheet.
-  const periods = [['am', 'Morning'], ['pm', 'Afternoon']].filter(([p]) => list.some((g) => g.period === p))
-  const grid = `<div class="j-tt j-desk-only" style="--cols:${cols.length}">
-    ${cols.map((d) => `<div class="j-tt-day">${esc(d)}</div>`).join('')}
-    ${periods.map(([p, label]) => `<div class="j-tt-row">${esc(label)}</div>${cols.map((d) => `<div class="j-tt-cell">${list.filter((g) => g.day === d && g.period === p).map(block).join('')}</div>`).join('')}`).join('')}
-  </div>`
-  // Phones: one day at a time.
+  const phone = window.matchMedia('(max-width: 899px)').matches
+  // A phone always shows one day; a laptop starts on the whole week.
+  const view = phone ? 'day' : S.view
   if (!cols.includes(S.phoneDay)) S.phoneDay = cols[0]
-  $('daybar').innerHTML = cols.map((d) => `<button type="button" role="tab" data-pday="${esc(d)}" aria-selected="${S.phoneDay === d}">${esc(SHORT[d] || d)}</button>`).join('')
+  $('daybar').innerHTML = `${phone ? '' : `<button type="button" role="tab" data-pday="week" aria-selected="${view === 'week'}">Whole week</button>`}${cols.map((d) => `<button type="button" role="tab" data-pday="${esc(d)}" aria-selected="${view === 'day' && S.phoneDay === d}">${esc(phone ? SHORT[d] || d : d)}</button>`).join('')}`
+  const periods = [['am', 'Morning'], ['pm', 'Afternoon']].filter(([p]) => list.some((g) => g.period === p))
+  if (view === 'week') {
+    $('results').innerHTML = `<div class="j-tt" style="--cols:${cols.length};display:grid">
+      ${cols.map((d) => `<div class="j-tt-day">${esc(d)}</div>`).join('')}
+      ${periods.map(([p, label]) => `<div class="j-tt-row">${esc(label)}</div>${cols.map((d) => `<div class="j-tt-cell">${list.filter((g) => g.day === d && g.period === p).map(block).join('')}</div>`).join('')}`).join('')}
+    </div>`
+    return
+  }
   const today = list.filter((g) => g.day === S.phoneDay)
-  const phone = `<div class="j-phone-only">${periods.map(([p, label]) => {
+  $('results').innerHTML = periods.map(([p, label]) => {
     const rows = today.filter((g) => g.period === p)
-    return rows.length ? `<p class="j-tt-row" style="margin:14px 0 8px">${esc(S.phoneDay)} ${esc(label.toLowerCase())}</p><div class="j-list">${rows.map(block).join('')}</div>` : ''
-  }).join('')}</div>`
-  $('results').innerHTML = grid + phone
+    return rows.length ? `<p class="j-tt-row" style="margin:16px 0 10px">${esc(S.phoneDay)} ${esc(label.toLowerCase())}</p><div class="j-grid">${rows.map(card).join('')}</div>` : ''
+  }).join('')
 }
+window.addEventListener('resize', () => { if (S.data) renderResults() })
 
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-stop]')) return
   const tab = e.target.closest('.j-tabs [data-tab]')
   if (tab) { e.preventDefault(); history.replaceState(null, '', `#${tab.dataset.tab}`); showTab(tab.dataset.tab); return }
   const locBtn = e.target.closest('[data-loc]')
-  if (locBtn) { S.filters.loc = S.filters.loc === locBtn.dataset.loc ? '' : locBtn.dataset.loc; renderLocations(); renderResults(); return }
+  if (locBtn) { S.filters.loc = S.filters.loc === locBtn.dataset.loc ? '' : locBtn.dataset.loc; $('f-loc').value = S.filters.loc; renderLocations(); renderResults(); return }
   const s = e.target.closest('[data-show]')
   if (s) { S.filters.show = s.dataset.show; renderFilters(); renderResults(); return }
   const pd = e.target.closest('[data-pday]')
-  if (pd) { S.phoneDay = pd.dataset.pday; renderResults(); return }
-  if (e.target.closest('#f-reset')) { S.filters = { loc: '', coach: '', day: '', show: '' }; $('f-coach').value = ''; $('f-day').value = ''; renderFilters(); renderLocations(); renderResults(); return }
+  if (pd) { if (pd.dataset.pday === 'week') S.view = 'week'; else { S.view = 'day'; S.phoneDay = pd.dataset.pday } renderResults(); return }
+  if (e.target.closest('#f-reset')) { S.filters = { loc: '', coach: '', day: '', show: '' }; $('f-coach').value = ''; $('f-loc').value = ''; renderFilters(); renderLocations(); renderResults(); return }
   if (e.target.closest('#enquire-1to1')) { if (S.data?.privateCoaching) start('enquiry', S.data.privateCoaching); else toast('Email leejones@jonerfootball.com about 1 to 1 coaching.'); return }
   const blk = e.target.closest('[data-group]')
   if (blk) { const g = S.data.groups.find((x) => x.id === blk.dataset.group); if (g) groupSheet(g) }
@@ -189,21 +211,27 @@ function groupSheet(g) {
     g.full ? '<span class="j-pill j-pill-red">Fully booked</span>' : g.placesLeft != null ? `<span class="j-pill j-pill-grey">${taken} of ${g.capacity} places taken</span>` : '',
     g.label && !['Small group'].includes(g.label) ? `<span class="j-pill j-pill-grey">${esc(g.label)}</span>` : '',
   ].join(' ')
-  const who = g.publicNote || (g.mode === 'direct'
-    ? `Players aged ${g.minAge} to ${g.maxAge}${g.girlsOnly ? ', girls only' : ''}. Outside that? You can still apply, and we may offer a trial first.`
-    : `A guide: players aged ${g.minAge} to ${g.maxAge}${g.girlsOnly ? ', girls only' : ''}. Playing up or down an age group? You can still apply${g.trials ? ', we will ask for a trial first' : ''}.`)
+  // Ages as a guide, then what the group asks of a player. Nothing that
+  // invites a family to pick a group above the player's level.
+  const who = `<ul class="j-req">
+      <li>${g.girlsOnly ? 'Girls, ages' : 'Ages'} ${esc(g.minAge)} to ${esc(g.maxAge)}${g.mode === 'direct' ? '' : ' (age guide)'}</li>
+      ${(g.requirements || []).map((r) => `<li>${esc(r)}</li>`).join('')}
+    </ul>
+    ${g.publicNote ? `<p style="margin-top:6px">${esc(g.publicNote)}</p>` : ''}
+    <p class="small" style="margin-top:6px">Our coaches place every player with others at their level, so each ${g.mode === 'direct' ? 'booking is for players who meet the above' : 'application is reviewed'}.</p>`
   const steps = g.full
     ? ['This group is fully booked right now.', 'Join the waitlist and we will contact you if a place opens.']
     : g.mode === 'direct'
       ? [`Sign in with your email, then add the player and sign the waiver.`, `Pay and the place is yours${g.sessions ? `: every session from the next one to ${esc(g.lastDate)}` : ''}.`, 'Joining after the term starts? You only pay for the sessions left.']
-      : ['Apply with the player\'s club and team. It takes 2 minutes.', `We reply within 48 hours with one of two answers:`, 'The place is only held once it is paid.']
+      : ['Apply with the player\'s club and team. It takes 2 minutes.', `We reply within 48 hours with one of three answers:`, 'The place is only held once it is paid.']
   const outcomes = !g.full && g.mode === 'application' ? `<div class="j-outcomes">
       <div class="j-card"><b>Accepted for the term</b><span>If we know the player or they fit the group. Pay to lock in the place.</span></div>
       ${g.trials ? `<div class="j-card"><b>Trial first, ${esc(S.data.trialPriceLabel)}</b><span>One session in this group. If it is a good fit, pay for the rest of the term in My JFP, with the trial taken off.</span></div>` : ''}
+      <div class="j-card"><b>Not this group</b><span>If it is not the right level, we will tell you, and suggest a group that is.</span></div>
     </div>` : ''
   sheet.body.innerHTML = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${pills}</div>
-    <div class="j-box j-box-grey" style="margin-bottom:16px"><b>Who this group is for</b><br>${esc(who)}</div>
+    <div class="j-box j-box-grey" style="margin-bottom:16px"><b>Who this group is for</b>${who}</div>
     <h3 style="margin-bottom:6px">How it works</h3>
     <ol class="j-steps-list">${steps.map((t, i) => `<li><span class="n">${i + 1}</span><span>${t}${i === 1 ? outcomes : ''}</span></li>`).join('')}</ol>
     <p class="muted small" style="margin-top:10px">${esc(g.sessions)} weekly sessions this term, ${esc(g.firstDate)} to ${esc(g.lastDate)}.</p>`

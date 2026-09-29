@@ -23,7 +23,7 @@ import {
 } from './_jfp-airtable.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, PAY_EFFECTS } from './_jfp-finalise.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
-import { sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered } from './_jfp-email.js'
+import { sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined } from './_jfp-email.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -475,7 +475,7 @@ async function saveGroupAction(res, principal, config, body) {
   const input = body.group || {}
   const existing = body.id ? await getGroup(body.id) : null
   if (body.id && !existing) return fail(res, 404, 'Group not found.')
-  const allowed = ['day', 'time', 'location', 'coachId', 'extraCoachIds', 'capacity', 'mode', 'label', 'durationMin', 'minAge', 'maxAge', 'ageStatus', 'girlsOnly', 'publicNote', 'programme', 'byCoach', 'trials', 'questions', 'product']
+  const allowed = ['day', 'time', 'location', 'coachId', 'extraCoachIds', 'capacity', 'mode', 'label', 'durationMin', 'minAge', 'maxAge', 'ageStatus', 'girlsOnly', 'publicNote', 'programme', 'byCoach', 'trials', 'questions', 'requirements', 'product']
   const patch = Object.fromEntries(Object.entries(input).filter(([k]) => allowed.includes(k)))
   for (const k of ['capacity', 'durationMin']) if (k in patch) patch[k] = Number(patch[k])
   for (const k of ['minAge', 'maxAge']) if (k in patch) patch[k] = patch[k] === '' || patch[k] == null ? null : Number(patch[k])
@@ -567,9 +567,15 @@ async function decideRequest(req, res, principal, config, body) {
   const offering = body.decision === 'offer' || body.decision === 'trial'
   if (offering ? r.status !== 'pending' : !['pending', 'offered'].includes(r.status)) return fail(res, 409, `Already ${r.status}.`)
   if (body.decision === 'decline') {
-    await saveApplication({ ...r, status: 'declined', decidedBy: principal.email, decidedAt: new Date().toISOString(), note: clean(body.note, 300) })
-    await audit({ by: principal.email, action: 'request.decline', target: r.id })
-    return res.status(200).json({ success: true, status: 'declined' })
+    const suggest = body.suggestGroupId ? await getGroup(clean(body.suggestGroupId, 80)) : null
+    let emailed = false
+    if (body.sendEmail === true) {
+      const group = (await getGroup(r.groupId)) || (r.groupId === 'one-to-one' ? { day: '1 to 1', time: 'coaching', location: 'Belrose HQ' } : null)
+      if (group) { await sendDeclined({ request: r, group, config, message: clean(body.message, 800), suggest, siteUrl: siteUrl(req) }); emailed = true }
+    }
+    await saveApplication({ ...r, status: 'declined', decidedBy: principal.email, decidedAt: new Date().toISOString(), note: clean(body.message || body.note, 800), suggestedGroupId: suggest?.id || '' })
+    await audit({ by: principal.email, action: 'request.decline', target: r.id, after: { emailed, suggest: suggest?.id || '' } })
+    return res.status(200).json({ success: true, status: 'declined', emailed })
   }
   if (body.decision === 'done') {
     await saveApplication({ ...r, status: 'done', decidedBy: principal.email, decidedAt: new Date().toISOString(), note: clean(body.note, 300) })

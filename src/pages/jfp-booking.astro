@@ -66,12 +66,12 @@ const faqs = [
         <section data-panel="timetable">
           <div class="j-locs" id="locs"></div>
           <div class="j-filters" role="group" aria-label="Filters">
+            <label class="j-age"><span>Location</span><select id="f-loc"><option value="">All locations</option></select></label>
             <label class="j-age"><span>Coach</span><select id="f-coach"><option value="">Any coach</option></select></label>
-            <label class="j-age j-desk-only"><span>Day</span><select id="f-day"><option value="">Any day</option></select></label>
             <div class="j-chips" id="f-show" role="group" aria-label="Show"></div>
             <button type="button" class="j-btn j-btn-ghost j-btn-sm" id="f-reset" hidden>Clear filters</button>
           </div>
-          <div class="j-daybar j-phone-only" id="daybar" role="tablist" aria-label="Day"></div>
+          <div class="j-daybar" id="daybar" role="tablist" aria-label="Day"></div>
           <div id="results" aria-live="polite"></div>
           <div class="j-how">
             <div><b>Apply</b>Most groups. We reply within 48 hours with a place for the term, or a trial session first.</div>

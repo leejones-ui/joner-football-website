@@ -28,7 +28,10 @@
 }
 
 body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !important; }
-.jfp { min-height: 100vh; background: var(--j-bg); color: var(--j-ink); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+.jfp { min-height: 100vh; background: var(--j-bg); color: var(--j-ink); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 15px; line-height: 1.5; }
+/* Thin antialiased text looks fuzzy on ordinary (non retina) laptop screens:
+   only smooth it on sharp screens. */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) { .jfp { -webkit-font-smoothing: antialiased; } }
 .jfp *, .jfp *::before, .jfp *::after { box-sizing: border-box; }
 .jfp h1, .jfp h2, .jfp h3, .jfp h4 { font-family: 'Inter', system-ui, sans-serif; text-transform: none; letter-spacing: -0.02em; color: var(--j-ink); margin: 0; }
 .jfp h1 { font-size: clamp(26px, 5vw, 36px); font-weight: 800; line-height: 1.12; }
@@ -106,9 +109,11 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .j-loc { text-align: left; background: var(--j-surface); border: 1.5px solid var(--j-line); border-radius: var(--j-radius); overflow: hidden; padding: 0; display: flex; flex-direction: column; transition: border-color .12s, box-shadow .12s; }
 .j-loc:hover { box-shadow: var(--j-shadow); }
 .j-loc[aria-pressed="true"] { border-color: var(--j-ink); box-shadow: 0 0 0 1px var(--j-ink); }
-.j-loc .img { height: 112px; background: #E5E7EB center/cover no-repeat; position: relative; }
+.j-loc .img { height: 112px; background: #E5E7EB; position: relative; overflow: hidden; display: block; width: 100%; }
+.j-loc .img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 @media (min-width: 720px) { .j-loc .img { height: 150px; } }
-.j-loc .badge { position: absolute; left: 12px; bottom: 10px; background: rgba(255,255,255,.95); border-radius: 999px; font-size: 12px; font-weight: 700; padding: 4px 10px; color: var(--j-ink); }
+.j-loc .badge { position: absolute; left: 12px; bottom: 10px; z-index: 1; white-space: nowrap; background: rgba(255,255,255,.95); border-radius: 999px; font-size: 12px; font-weight: 700; padding: 4px 10px; color: var(--j-ink); }
+.j-loc .body { display: block; width: 100%; }
 .j-loc .body { padding: 12px 14px 14px; }
 .j-loc .body p { font-size: 13px; color: var(--j-muted); margin-top: 3px; }
 
@@ -328,3 +333,23 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .jp-legend i { width: 8px; height: 8px; border-radius: 50%; }
 .jp-side { position: fixed; right: 0; top: 60px; bottom: 0; width: min(380px, 100vw); background: var(--j-surface); border-left: 1px solid var(--j-line); box-shadow: var(--j-shadow-lg); z-index: 50; padding: 16px; overflow-y: auto; }
 .jp-prices td input { width: 110px; }
+
+/* round 3: day view cards with the place photo, requirements, day bar on laptops */
+.j-daybar { flex-wrap: wrap; }
+@media (min-width: 900px) { .j-daybar { display: inline-flex; margin: 6px 0 4px; } .j-daybar button { flex: none; padding: 8px 16px; } }
+.j-card-photo { position: relative; padding: 0; overflow: hidden; gap: 0; }
+.j-card-photo .j-card-hit { position: absolute; inset: 0; z-index: 2; background: transparent; border: 0; border-radius: inherit; }
+.j-card-photo .j-card-hit:focus-visible { outline: 2px solid var(--j-focus); outline-offset: -2px; }
+.j-card-photo .ph { position: relative; height: 96px; background: #E5E7EB; overflow: hidden; }
+.j-card-photo .ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.j-card-photo .ph .j-full-banner { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; }
+.j-card-photo .bd { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
+.j-card-photo .req { font-size: 12.5px; color: var(--j-ink-2); margin-top: 4px; }
+.j-card-photo .st { font-weight: 700; font-size: 13px; }
+.j-card-photo .s-apply { color: var(--j-blue); } .j-card-photo .s-book { color: var(--j-green); } .j-card-photo .s-full { color: var(--j-red); } .j-card-photo .s-grey { color: var(--j-grey); }
+.j-card-photo.is-full .ph img { filter: grayscale(.5); opacity: .8; }
+.j-card-photo:hover { box-shadow: var(--j-shadow); }
+.j-req { margin: 6px 0 0; padding-left: 18px; }
+.j-req li { margin: 2px 0; }
+.jp-blk .jp-addbtn { display: block; width: 100%; margin-top: 5px; border: 1.5px dashed #D0D5DD; border-radius: 8px; background: transparent; font-size: 11.5px; font-weight: 700; color: var(--j-ink-2); padding: 4px; }
+.jp-blk .jp-addbtn:hover { border-color: var(--j-ink); color: var(--j-ink); }

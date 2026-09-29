@@ -21,6 +21,7 @@ import {
 import { loadRoster, countsFrom, familyFor } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
 import { sendRequestReceived, sendRequestAlert } from './_jfp-email.js'
+import { telegramAlert, requestText } from './_jfp-notify.js'
 import { captureWebsiteContact } from './_master-contact-capture.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -309,9 +310,11 @@ async function request(req, res, body, parent) {
     status: 'pending', createdAt: new Date().toISOString(),
   }
   await saveApplication(record)
+  // The family gets a copy; Lee and Ligia get an email and a Telegram message.
   await Promise.all([
     sendRequestReceived({ request: record, group, config }).catch((e) => console.error('jfp request ack failed', e)),
     sendRequestAlert({ request: record, group, config }).catch((e) => console.error('jfp request alert failed', e)),
+    telegramAlert(requestText({ request: record, group, siteUrl: siteUrl(req) })),
   ])
   const masterCapture = await captureWebsiteContact({ endpoint: 'jfp-book', form: `jfp-${kind}`, country: 'AU', players: record.players.map((x) => ({ name: x.name, age: x.age })), phone: record.mobile, email: record.email, parentName: record.parentName, contactType: 'Parent/Guardian', source: `jfp-${kind}`, sourceLabel: `JFP ${kind}`, submittedAt: record.createdAt })
   if (masterCapture.status === 'failed') console.error('Master contact capture failed:', masterCapture.reason)

@@ -37,6 +37,17 @@ export const QUESTIONS = {
   position: 'Position',
 }
 export const DEFAULT_QUESTIONS = ['club', 'team', 'playingUp', 'trainedBefore']
+// What a group asks of a player, shown to parents under "Who this group is
+// for". Level without saying beginner: Lee ticks what fits each group.
+export const REQUIREMENTS = {
+  club: 'Plays club football this season',
+  npl: 'Plays NPL, or Division 1 club football',
+  rep: 'In a representative, NPL or academy squad',
+  high: 'High level players only',
+  committed: 'Can commit to every session this term',
+  trialNew: 'New players trial first',
+  coach: 'By coach invitation or recommendation',
+}
 export const ONLINE_TAG = 'JFP-ONLINE'
 export const ADMIN_TAG = 'JFP-ADMIN'
 export const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -284,6 +295,7 @@ export function validateGroup(input, config, existing = {}) {
   if (byCoach && !merged.coachId) errors.push('A coach group needs a coach.')
   const product = PRODUCTS.some((p) => p.key === merged.product) ? merged.product : (label === 'Pathway' ? 'pathway' : label === '1 to 1' ? 'oneToOneTerm' : 'group')
   const questions = Array.isArray(merged.questions) ? merged.questions.filter((q) => QUESTIONS[q]) : DEFAULT_QUESTIONS
+  const requirements = Array.isArray(merged.requirements) ? [...new Set(merged.requirements.filter((q) => REQUIREMENTS[q]))] : []
   if (errors.length) return { ok: false, errors }
   return {
     ok: true,
@@ -310,6 +322,7 @@ export function validateGroup(input, config, existing = {}) {
       // Apply groups: whether we may offer a trial first, and what we ask.
       trials: merged.trials !== false,
       questions,
+      requirements,
       product,
       updatedAt: new Date().toISOString(),
     },
@@ -329,7 +342,7 @@ export async function listGroups() {
 }
 // Groups saved before age bands existed still read cleanly.
 export function normaliseStoredGroup(g) {
-  return { label: 'Small group', minAge: null, maxAge: null, ageStatus: 'draft', girlsOnly: 'no', extraCoachIds: [], publicNote: '', byCoach: false, trials: true, questions: DEFAULT_QUESTIONS, product: g?.label === 'Pathway' ? 'pathway' : 'group', ...g }
+  return { label: 'Small group', minAge: null, maxAge: null, ageStatus: 'draft', girlsOnly: 'no', extraCoachIds: [], publicNote: '', byCoach: false, trials: true, questions: DEFAULT_QUESTIONS, requirements: [], product: g?.label === 'Pathway' ? 'pathway' : 'group', ...g }
 }
 export async function getGroup(id) { const g = parse(await kvCommand(['HGET', keys.groups(), clean(id, 80)])); return g ? normaliseStoredGroup(g) : null }
 export async function saveGroup(group) { await kvCommand(['HSET', keys.groups(), group.id, JSON.stringify(group)]); return group }

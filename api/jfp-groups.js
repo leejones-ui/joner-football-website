@@ -2,7 +2,7 @@
 // its coach, place, who it is for, and places left, plus the three locations.
 // An explicit allowlist of fields. Never player names, contacts, notes or
 // payments, and no term price: parents see what they pay when they book.
-import { requireParentAccess, getConfig, listGroups, onlineCounts, placesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, periodOf, dayOrder, QUESTIONS, ONE_TO_ONE } from './_jfp-store.js'
+import { requireParentAccess, getConfig, listGroups, onlineCounts, placesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, periodOf, dayOrder, QUESTIONS, REQUIREMENTS, ONE_TO_ONE } from './_jfp-store.js'
 import { airtableCounts } from './_jfp-airtable.js'
 import { sweepExpiredOffersSometimes } from './_jfp-offers.js'
 
@@ -32,6 +32,8 @@ export function publicGroup(g, config, left) {
     full: counted && left <= 0,
     trials: g.mode === 'application' && g.trials !== false,
     questions: g.mode === 'enquire' ? [] : (g.questions || []).filter((q) => QUESTIONS[q]).map((q) => ({ key: q, label: QUESTIONS[q] })),
+    requirements: (g.requirements || []).filter((q) => REQUIREMENTS[q]).map((q) => REQUIREMENTS[q]),
+    photo: loc.photo || '',
     firstDate: dates[0] ? dateLabel(dates[0]) : '',
     lastDate: dates.at(-1) ? dateLabel(dates.at(-1)) : '',
     sessions: dates.length,
