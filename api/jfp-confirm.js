@@ -38,7 +38,7 @@ export default async function handler(req, res) {
         status = r.attention ? 'received' : r.busy ? 'pending' : 'paid'
       } else if (session.status === 'expired' || (q.status === 'cancelled' && session.status !== 'complete')) status = 'expired'
       const group = q.groupId ? await getGroup(q.groupId) : null
-      return res.status(200).json({ success: true, status, kind: 'payment', payment: { id: q.id, players: q.playerNames, priceLabel: formatAud(q.paidCents ?? q.amountCents), group: group ? groupView(config, group) : null, term: config.term } })
+      return res.status(200).json({ success: true, status, kind: 'payment', kit: { url: config.kitUrl, note: config.kitNote }, payment: { id: q.id, players: q.playerNames, trial: q.reason === 'trial', trialDate: q.trialDate ? dateLabel(q.trialDate) : '', startDate: q.startDate ? dateLabel(q.startDate) : '', priceLabel: formatAud(q.paidCents ?? q.amountCents), group: group ? groupView(config, group) : null, term: config.term } })
     }
 
     let booking = await getBooking(id)
@@ -56,6 +56,7 @@ export default async function handler(req, res) {
       success: true,
       status,
       kind: 'booking',
+      kit: { url: config.kitUrl, note: config.kitNote },
       booking: {
         id: booking.id,
         term: config.term,

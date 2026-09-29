@@ -1,28 +1,50 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import '../styles/jfp.css'
+
+// About JFP: the same story as /training/jfp-program, kept short for parents
+// who are already booking.
+const pillars = [
+  { title: 'Technique first', text: 'Ball mastery, 1v1 detail, weak foot work and game-relevant habits.' },
+  { title: 'High energy', text: 'Sharp, intense, demanding sessions with real standards.' },
+  { title: 'Real development', text: 'Long-term growth across technical, physical and mental.' },
+]
+const gets = [
+  ['10 week terms', 'A clear term structure to build habits and measure progress.'],
+  ['Player reports', 'Development feedback so parents and players know what is improving.'],
+  ['Elite coaching', 'High-detail technical coaching from the Joner Football team.'],
+  ['Joner App', 'Keep training away from sessions with app-based drills.'],
+  ['Game analysis', 'Video and game detail to improve decisions faster.'],
+  ['Mentorship', 'Guidance on standards, mindset and training habits.'],
+]
+const faqs = [
+  ['What does the player need to bring?', 'Boots for synthetic, shin guards, a drink bottle, a waterproof jacket and a good attitude. Training kit is supplied.'],
+  ['Who will be in the group?', 'Coaches group players by age first, then ability. Groups are small, and players can be moved up if they need a stronger challenge.'],
+  ['Will bad weather cancel a session?', 'Only really bad storms. Afternoon sessions at the HQ are indoors.'],
+  ['What if we miss a session?', 'There are no make-up sessions for missed sessions, unless the absence is an injury with a medical certificate.'],
+]
 ---
 
-<BaseLayout title="Book JFP Term 4 | Joner Football" description="Book a Joner Football Performance group for Term 4." canonical="https://jonerfootball.com/jfp-booking/" noindex noTracking hideChrome hideMobileAppCta>
+<BaseLayout title="JFP Term 4 | Joner Football" description="Joner Football Performance Program, Term 4 timetable and bookings." canonical="https://jonerfootball.com/jfp-booking/" noindex noTracking hideChrome hideMobileAppCta>
   <div class="jfp" id="jfp-book">
     <header class="j-top">
       <div class="wrap">
-        <a class="j-brand" href="/"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span>Joner Football<small>Performance programme</small></span></a>
-        <div class="j-top-links"><a class="j-btn j-btn-line j-btn-sm" href="/jfp-account/">My account</a></div>
+        <a class="j-brand" href="/"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span>Joner Football<small>Performance Program</small></span></a>
+        <div class="j-top-links"><a class="j-btn j-btn-line j-btn-sm" href="/jfp-account/">My JFP</a></div>
       </div>
     </header>
 
     <section id="gate" class="j-gate" hidden>
       <div class="j-card">
-        <p class="j-kicker">JFP Term 4</p>
-        <h1 style="margin:6px 0 8px">Book your group</h1>
+        <p class="j-kicker">Joner Football Performance Program</p>
+        <h1 style="margin:6px 0 8px">Term 4 timetable</h1>
         <p class="muted" style="margin-bottom:18px">Enter the booking password from your Joner Football message.</p>
         <form id="gate-form" novalidate>
           <label class="j-field"><span>Booking password</span><input class="j-input" id="gate-password" type="password" autocomplete="current-password" required></label>
           <p class="j-err" id="gate-err" hidden></p>
           <button class="j-btn j-btn-dark j-btn-block j-btn-lg" type="submit" id="gate-btn">Continue</button>
         </form>
-        <p class="muted small" style="margin-top:14px">Already booked? <a href="/jfp-account/">Go to your account</a>.</p>
+        <p class="muted small" style="margin-top:14px">Already with us? <a href="/jfp-account/">Go to My JFP</a>.</p>
       </div>
     </section>
 
@@ -30,41 +52,76 @@ import '../styles/jfp.css'
       <div class="wrap">
         <div id="banner"></div>
         <section class="j-hero">
-          <p class="j-kicker" id="term-kicker">JFP Term 4</p>
-          <h1 style="margin-top:6px">Find the right group</h1>
-          <p class="muted" style="margin-top:8px;max-width:640px">Small groups of up to 6, set by age and level. Pick the player's age and where suits you, and we show the groups that fit.</p>
-          <div class="meta" id="meta"></div>
+          <p class="j-kicker">Joner Football</p>
+          <h1 style="margin-top:4px">Joner Football Performance Program, <span id="term-name">Term 4</span></h1>
+          <p class="muted" id="term-range" style="margin-top:6px"></p>
         </section>
+        <nav class="j-tabs" aria-label="Sections">
+          <a href="#timetable" data-tab="timetable" aria-current="page">Timetable</a>
+          <a href="#about" data-tab="about">About JFP</a>
+          <a href="#one-to-one" data-tab="one-to-one">1 to 1 coaching</a>
+          <a href="/jfp-account/" class="j-tab-right">My JFP</a>
+        </nav>
 
-        <section class="j-section" aria-labelledby="where">
-          <h2 id="where">Where we train</h2>
+        <section data-panel="timetable">
           <div class="j-locs" id="locs"></div>
-        </section>
-
-        <section aria-labelledby="groups-h">
-          <h2 id="groups-h" class="sr">Groups</h2>
           <div class="j-filters" role="group" aria-label="Filters">
-            <div class="j-age"><label for="f-age">Player's age</label>
-              <select id="f-age"><option value="">Any</option></select>
-            </div>
-            <div class="j-chips" id="f-day" role="group" aria-label="When"></div>
+            <label class="j-age"><span>Coach</span><select id="f-coach"><option value="">Any coach</option></select></label>
+            <label class="j-age j-desk-only"><span>Day</span><select id="f-day"><option value="">Any day</option></select></label>
             <div class="j-chips" id="f-show" role="group" aria-label="Show"></div>
+            <button type="button" class="j-btn j-btn-ghost j-btn-sm" id="f-reset" hidden>Clear filters</button>
           </div>
-          <div class="j-results-head"><h2 id="results-title">Groups</h2><button type="button" class="j-btn j-btn-ghost j-btn-sm" id="f-reset" hidden>Clear filters</button></div>
-          <div class="j-grid" id="results" aria-live="polite"></div>
-          <p class="muted small" id="age-note" style="margin-top:12px" hidden>Ages are on the first day of term, Monday 12 October.</p>
+          <div class="j-daybar j-phone-only" id="daybar" role="tablist" aria-label="Day"></div>
+          <div id="results" aria-live="polite"></div>
+          <div class="j-how">
+            <div><b>Apply</b>Most groups. We reply within 48 hours with a place for the term, or a trial session first.</div>
+            <div><b>Book now</b>Players who fit the group book and pay straight away. The place is yours once it is paid.</div>
+            <div><b>Fully booked</b>Join the waitlist and we will be in touch if a place opens.</div>
+          </div>
         </section>
 
-        <section class="j-section" aria-labelledby="how">
-          <h2 id="how" style="margin-bottom:12px">How JFP works</h2>
-          <div class="j-how">
-            <div><b>Small groups</b>Up to 6 players, grouped by age and level, 60 minutes a week for 10 weeks.</div>
-            <div><b>Book</b>Pay online and the place is yours straight away. You get a confirmation email with every date.</div>
-            <div><b>Apply</b>Pathway groups and early morning squads are by application or trial. We reply within 48 hours.</div>
-            <div><b>1 to 1</b>Private coaching on request. Send an enquiry and we will find a time.</div>
+        <section data-panel="about" hidden>
+          <div class="j-about">
+            <div>
+              <p class="j-kicker">The Program</p>
+              <h2 style="font-size:28px;margin-top:6px">Built to help players reach their full potential.</h2>
+              <p class="muted" style="margin-top:10px">Since 2013, JFP has developed thousands of Sydney players. Many have gone on to elite youth squads, professional and international football. Ages 8 and over, all ability levels, term by term, up to three sessions a week.</p>
+              <div class="j-pillars">{pillars.map((p) => <div><b>{p.title}</b><span>{p.text}</span></div>)}</div>
+            </div>
+            <img src="/images/training/jfp/jfp-training-1.webp" alt="Joner Football coach working with a player" loading="lazy">
           </div>
+          <h2 style="margin:26px 0 12px">What players get</h2>
+          <div class="j-gets">{gets.map(([t, d]) => <div><b>{t}</b><span>{d}</span></div>)}</div>
+          <h2 style="margin:26px 0 12px">How joining works</h2>
+          <div class="j-gets">
+            <div><b>1. Pick a group</b><span>Every group is on the timetable with its coach, location and places left.</span></div>
+            <div><b>2. Apply or book</b><span>Most groups are Apply: tell us the player's club and team. Groups marked Book now can be paid for straight away.</span></div>
+            <div><b>3. A place or a trial</b><span>If we know the player, or they fit the group, the place is theirs for the term. Otherwise a trial session first, <span id="trial-price">A$85</span>.</span></div>
+            <div><b>4. Pay to lock it in</b><span>A place is only held once it is paid. After a trial, the trial fee comes off the term.</span></div>
+          </div>
+          <h2 style="margin:26px 0 12px">Payment options</h2>
+          <div class="j-gets">
+            <div><b>Pay in full or with Afterpay</b><span>Card, Apple Pay, Google Pay or Afterpay on Stripe's secure page.</span></div>
+            <div><b>Joining during the term</b><span>You only pay for the sessions left, from the first session you join.</span></div>
+            <div><b>Siblings and two a week</b><span>A lower rate for two siblings, or one player training twice a week.</span></div>
+            <div><b>Trial session</b><span>One session in the group before committing to the term.</span></div>
+          </div>
+          <h2 style="margin:26px 0 12px">Questions</h2>
+          <div class="j-faq">{faqs.map(([q, a]) => <details><summary>{q}</summary><p>{a}</p></details>)}</div>
+          <p class="muted small" style="margin-top:14px"><a href="/training/jfp-program#program" target="_blank" rel="noopener">More about the JFP Program</a></p>
         </section>
-        <p class="muted small" style="padding:10px 0 40px">Questions? Email <a href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a>.</p>
+
+        <section data-panel="one-to-one" hidden>
+          <h2 style="margin-bottom:6px">1 to 1 coaching</h2>
+          <p class="muted" style="max-width:640px;margin-bottom:16px">Private sessions with a Joner Football coach, at the HQ in Belrose. Tell us who it is for and the times that suit, and Lee or Ligia will be in touch.</p>
+          <div class="j-gets">
+            <div><b>Term of 1 to 1s</b><span>One private session a week for the term.</span></div>
+            <div><b>One off 1 to 1</b><span>A single session to work on something specific.</span></div>
+            <div><b>Pathway 1 to 1</b><span>45 minute private sessions for younger players.</span></div>
+          </div>
+          <button type="button" class="j-btn j-btn-dark j-btn-lg" id="enquire-1to1" style="margin-top:18px">Enquire about 1 to 1</button>
+        </section>
+        <p class="muted small" style="padding:26px 0 40px">Questions? Email <a href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a>.</p>
       </div>
     </div>
   </div>

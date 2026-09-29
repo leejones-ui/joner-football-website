@@ -264,9 +264,22 @@ await test('6. admin adds, moves and removes a player; the family gets the sign-
   assert.equal((await at()).term4.find((r) => r.id === rowId).fields['Coach'], 'Dean Mac')
   const full = await portal(lee, 'movePlayer', { rowId, toGroupId: WED420 })
   assert.equal(full.status, 409, 'a full group asks first')
-  const rm = await portal(lee, 'removePlayer', { rowId, reason: 'test' })
-  assert.equal(rm.status, 200)
-  assert.equal((await at()).term4.find((r) => r.id === rowId).fields['Term 4 Confirmation'], 'Dropped')
+  assert.equal((await portal(lee, 'removePlayer', { rowId })).status, 400, 'a reason is needed')
+  const rm = await portal(lee, 'removePlayer', { rowId, reason: 'Moved away', details: 'Family moving to Brisbane' })
+  assert.equal(rm.status, 200, JSON.stringify(rm.data))
+  assert.ok(!(await at()).term4.some((r) => r.id === rowId), 'off Term 4 Players')
+  const kept = (await at()).dropped.find((r) => r.fields['Source Term 4 Record ID'] === rowId)
+  assert.equal(kept.fields['Email'], 'added@example.com', 'the contact is kept')
+  assert.equal(kept.fields['Reason for leaving'], 'Moved away')
+  const removed = (await portal(lee, 'removed')).data.players.find((p) => p.droppedId === kept.id)
+  assert.equal(removed.details, 'Family moving to Brisbane')
+  const back = await portal(lee, 'restorePlayer', { droppedId: kept.id })
+  assert.equal(back.status, 200, JSON.stringify(back.data))
+  const restored = (await at()).term4.find((r) => r.id === back.data.rowId)
+  assert.equal(restored.fields['Term 3 Time'], '5:25pm')
+  assert.equal(restored.fields['Term 4 Confirmation'], 'Confirmed')
+  assert.equal((await portal(lee, 'restorePlayer', { droppedId: kept.id })).status, 409, 'restored once')
+  await portal(lee, 'removePlayer', { rowId: back.data.rowId, reason: 'Other' })
   assert.equal((await fam.call('/api/jfp-account', { action: 'overview' })).data.todo.length, 0, 'open payment cancelled with the removal')
   const log = (await portal(lee, 'audit')).data.entries.map((e) => e.action)
   for (const a of ['player.add', 'player.move', 'player.remove']) assert.ok(log.includes(a), `audit has ${a}`)
@@ -454,6 +467,193 @@ await test('editing a group moves its players in Airtable; ages and modes reach 
   const pub = (await groupsPublic(c)).find((x) => x.id === 'tue-1730-belrose-hq')
   assert.equal(pub.minAge, 11)
   assert.equal(pub.girlsOnly, true)
+})
+
+// ---------- round 2: trials, pro rata, coach groups, link changes ----------
+
+const pricingNow = async () => (await portal(lee, 'pricing')).data
+
+await test('an application from outside the age band is taken, with the group\'s questions answered', async () => {
+  const ap = client()
+  await gate(ap)
+  await signIn(ap, 'trial@example.com')
+  const direct = await ap.call('/api/jfp-book', { action: 'request', kind: 'application', groupId: TUE420, players: [{ name: 'Old Enough', dob: '2010-02-02' }], parentName: 'Tara Trial', mobile: '0400313131', answers: { club: 'Ryde Saints', team: 'U16 Div 2' } })
+  assert.equal(direct.status, 200, 'a Book now group takes an application from a player outside its band')
+  const req = await ap.call('/api/jfp-book', { action: 'request', kind: 'application', groupId: FRI400, players: [{ name: 'Theo Trial', dob: '2012-02-02', emergencyName: 'Tom Trial', emergencyPhone: '0400313132' }], parentName: 'Tara Trial', mobile: '0400313131', answers: { club: 'Gladesville Ravens', team: 'U14', playingUp: 'Playing up', nonsense: 'x' }, waiver: { ...WAIVER, signature: 'Tara Trial' } })
+  assert.equal(req.status, 200, JSON.stringify(req.data))
+  const r = (await portal(lee, 'requests')).data.requests.find((x) => x.id === req.data.id)
+  assert.deepEqual(r.answers, { club: 'Gladesville Ravens', team: 'U14', playingUp: 'Playing up' }, 'only the questions the group asks are kept')
+  globalThis.trialReq = req.data.id
+})
+
+await test('trial first: A$85 holds the place, then the rest of the term pro rata with the trial taken off', async () => {
+  const pr = await pricingNow()
+  const fri = pr.datesByDay.Friday
+  const t = await portal(lee, 'decideRequest', { id: globalThis.trialReq, decision: 'trial', startDate: fri[0].iso })
+  assert.equal(t.status, 200, JSON.stringify(t.data))
+  assert.equal(t.data.payreq.amountLabel, 'A$85')
+  let row = (await at()).term4.find((x) => x.fields['Player Name'] === 'Theo Trial')
+  assert.equal(row.fields['Term 4 Payment Type'], 'JFP Trial')
+  assert.equal(row.fields['Term 4 Confirmation'], 'Awaiting Reply')
+  assert.ok((await emails()).some((e) => e.to.includes('trial@example.com') && /^Trial: Friday 4pm/.test(e.subject)))
+  const fam = client()
+  await signIn(fam, 'trial@example.com')
+  const acc = (await fam.call('/api/jfp-account', { action: 'overview' })).data
+  const todo = acc.todo.find((x) => x.reason === 'trial')
+  assert.match(todo.what, /Trial session/)
+  assert.equal(todo.needsWaiver, false, 'the waiver signed with the application is on file')
+  const pay = await fam.call('/api/jfp-account', { action: 'pay', payreqId: todo.id })
+  assert.equal(pay.status, 200, JSON.stringify(pay.data))
+  await stripe(pay.data.url, 'pay')
+  row = (await at()).term4.find((x) => x.fields['Player Name'] === 'Theo Trial')
+  assert.equal(row.fields['Term 4 Confirmation'], 'Confirmed')
+  assert.equal(row.fields['Term 4 Amount Paid'], 85)
+  // Good trial: the rest of the term from week 4, trial off.
+  const week4 = fri[3].iso
+  const term = await portal(lee, 'offerTerm', { rowId: row.id, startDate: week4, creditTrial: true, sendEmail: true })
+  assert.equal(term.status, 200, JSON.stringify(term.data))
+  const expected = Math.round((45000 * 7) / 10 / 100) * 100 - 8500
+  assert.equal(term.data.payreq.amountLabel, `A$${expected / 100}`, 'Pathway A$450 x 7/10, less the A$85 trial')
+  row = (await at()).term4.find((x) => x.fields['Player Name'] === 'Theo Trial')
+  assert.equal(row.fields['Term 4 Fee'], (expected + 8500) / 100)
+  assert.equal(row.fields['Term 4 Payment Type'], 'JFP Pathway 10 weeks')
+  assert.ok((await emails()).some((e) => e.to.includes('trial@example.com') && /the rest of Term 4/.test(e.subject)))
+  const acc2 = (await fam.call('/api/jfp-account', { action: 'overview' })).data
+  const pay2 = await fam.call('/api/jfp-account', { action: 'pay', payreqId: acc2.todo.find((x) => x.reason === 'term-after-trial').id })
+  await stripe(pay2.data.url, 'pay')
+  row = (await at()).term4.find((x) => x.fields['Player Name'] === 'Theo Trial')
+  assert.equal(row.fields['Term 4 Payment Status'], 'Paid')
+  assert.equal(row.fields['Term 4 Amount Paid'], (expected + 8500) / 100)
+})
+
+await test('morning squads split by coach: each coach has their own places, and the Coach column decides', async () => {
+  const d = await mk({ day: 'Thursday', time: '6:30am', location: 'NTRA', coachId: 'dean', byCoach: true, capacity: 8, mode: 'application', label: 'Squad' })
+  const s2 = await mk({ day: 'Thursday', time: '6:30am', location: 'NTRA', coachId: 'sam', byCoach: true, capacity: 2, mode: 'direct', label: 'Squad', minAge: 8, maxAge: 16 })
+  assert.equal(d, 'thu-0630-ntra-dean')
+  assert.equal((await portal(lee, 'saveGroup', { group: { day: 'Thursday', time: '6:30am', location: 'NTRA', coachId: 'lee', capacity: 8, mode: 'application' } })).status, 409, 'no single group on top of a split session')
+  for (const [gid, name] of [[d, 'Dee One'], [s2, 'Sam One'], [s2, 'Sam Two']]) assert.equal((await portal(lee, 'addPlayer', { groupId: gid, player: { name }, parent: { name: 'Co Parent' }, payment: 'none' })).status, 200)
+  const b = (await portal(lee, 'board')).data
+  assert.deepEqual(b.groups.find((g) => g.id === d).players.map((p) => p.name), ['Dee One'])
+  assert.deepEqual(b.groups.find((g) => g.id === s2).players.map((p) => p.name).sort(), ['Sam One', 'Sam Two'])
+  const c = client()
+  await gate(c)
+  const pub = await groupsPublic(c)
+  assert.equal(pub.find((g) => g.id === s2).full, true, 'Coach Sam is booked out')
+  assert.equal(pub.find((g) => g.id === d).placesLeft, 7, 'Coach Dean still has places')
+  const moved = await portal(lee, 'movePlayer', { rowId: b.groups.find((g) => g.id === s2).players[0].rowId, toGroupId: d })
+  assert.equal(moved.status, 200)
+  const b2 = (await portal(lee, 'board')).data
+  assert.equal(b2.groups.find((g) => g.id === d).players.length, 2, 'a move rewrites the Coach column')
+})
+
+await test('an open link can change amount: same link, the open Stripe page is closed first', async () => {
+  const add = await portal(lee, 'addPlayer', { groupId: TUE420, force: true, player: { name: 'Cam Change' }, parent: { name: 'Cara Change', email: 'change@example.com', mobile: '0400616161' }, payment: 'link', product: 'group', sendEmail: false })
+  assert.equal(add.status, 200, JSON.stringify(add.data))
+  const fam = client()
+  await signIn(fam, 'change@example.com')
+  let acc = (await fam.call('/api/jfp-account', { action: 'overview', pay: add.data.payreq.id })).data
+  await fam.call('/api/jfp-account', { action: 'signWaiver', players: acc.players.map((p) => ({ key: p.key, dob: '2015-05-05', emergencyName: 'E C', emergencyPhone: '0400616162' })), waiver: WAIVER, parentName: 'Cara Change', mobile: '0400616161' })
+  const pay = await fam.call('/api/jfp-account', { action: 'pay', payreqId: add.data.payreq.id })
+  assert.equal(pay.status, 200)
+  const ch = await portal(lee, 'changePayreqAmount', { id: add.data.payreq.id, amountCents: 60000 })
+  assert.equal(ch.status, 200, JSON.stringify(ch.data))
+  assert.equal(ch.data.url, add.data.payreq.url, 'the link stays the same')
+  const sessions = await (await fetch(`${B}/__sessions`)).json()
+  assert.equal(sessions.find((x) => pay.data.url.includes(x.id)).status, 'expired', 'the old payment page is closed')
+  acc = (await fam.call('/api/jfp-account', { action: 'overview' })).data
+  assert.equal(acc.todo[0].amountLabel, 'A$600')
+  const list = (await portal(lee, 'payments')).data.payreqs.find((q) => q.id === add.data.payreq.id)
+  assert.equal(list.views, 1, 'staff see the family opened the link')
+  assert.equal((await at()).term4.find((r) => r.id === add.data.rowId).fields['Term 4 Fee'], 600)
+})
+
+await test('coaches see the whole program with names and ages, never money', async () => {
+  const dean = client()
+  await signIn(dean, 'jonerfootballdean@gmail.com', 'staff')
+  const r = await portal(dean, 'program')
+  assert.equal(r.status, 200)
+  assert.ok(r.data.groups.some((g) => g.coachId === 'sam') && r.data.groups.some((g) => g.mine))
+  assert.ok(!/@|0400|Paid|850|parent|fee/i.test(JSON.stringify(r.data)), 'no money or contact details')
+  assert.equal((await portal(dean, 'pricing')).status, 403)
+})
+
+await test('joining during the term: pro rata for the sessions left, siblings at the two place rate', async () => {
+  const cfg = (await portal(lee, 'getSettings')).data.config
+  await portal(lee, 'saveSettings', { config: { ...cfg, termStart: '2026-09-07' } })
+  const g = await mk({ day: 'Monday', time: '4:20pm', location: 'Belrose HQ', coachId: 'dean', capacity: 6, mode: 'direct', minAge: 8, maxAge: 12 })
+  const pr = await pricingNow()
+  const left = pr.datesByDay.Monday.filter((x) => !x.past).length
+  assert.ok(left > 0 && left < 10)
+  const one = Math.round((85000 * left) / 10 / 100) * 100
+  const each = Math.round((75000 * left) / 10 / 100) * 100
+  const mum = client()
+  await gate(mum)
+  await signIn(mum, 'prorata@example.com')
+  const hold = await mum.call('/api/jfp-book', { action: 'reserve', groupId: g })
+  const fam = (await mum.call('/api/jfp-book', { action: 'family', groupId: g })).data
+  assert.equal(fam.quote.oneCents, one)
+  assert.equal(fam.quote.eachOfTwoCents, each)
+  assert.equal(fam.quote.proRata, true)
+  const ok = await mum.call('/api/jfp-book', { groupId: g, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Pia Pro', dob: '2016-01-01', emergencyName: 'P R', emergencyPhone: '0400717171' }, { name: 'Pete Pro', dob: '2017-01-01', emergencyName: 'P R', emergencyPhone: '0400717171' }], waiver: WAIVER, parentName: 'Pru Pro', mobile: '0400717171', agreementAccepted: true })
+  assert.equal(ok.status, 200, JSON.stringify(ok.data))
+  await stripe(ok.data.url, 'pay')
+  const rows = (await at()).term4.filter((r) => /^P\w+ Pro$/.test(r.fields['Player Name']))
+  assert.equal(rows.length, 2)
+  for (const r of rows) {
+    assert.equal(r.fields['Term 4 Fee'], each / 100)
+    assert.equal(r.fields['Term 4 Payment Type'], 'Sibling / 2 sessions per week')
+    assert.match(r.fields['Term 4 Notes'], /pro rata/)
+  }
+  await portal(lee, 'saveSettings', { config: { ...cfg, termStart: '2026-10-12' } })
+})
+
+await test('after paying a link: a thank you page that points to the training kit', async () => {
+  const cfg = (await portal(lee, 'getSettings')).data.config
+  assert.equal((await portal(lee, 'saveSettings', { config: { ...cfg, kitUrl: 'https://kit.example.com/joner' } })).status, 200)
+  const add = await portal(lee, 'addPlayer', { groupId: WED420, force: true, player: { name: 'Kit Kid', dob: '2015-01-01' }, parent: { name: 'Kim Kit', email: 'kit@example.com', mobile: '0400818181' }, payment: 'link', sendEmail: true })
+  assert.equal(add.status, 200)
+  const mail = (await emails()).find((e) => e.to.includes('kit@example.com') && /place/.test(e.subject))
+  assert.ok(mail.html.includes(add.data.payreq.url.replace(/&/g, '&amp;')) || mail.html.includes(add.data.payreq.url), 'the email links straight to this payment')
+  const fam = client()
+  await signIn(fam, 'kit@example.com')
+  const acc = (await fam.call('/api/jfp-account', { action: 'overview', pay: add.data.payreq.id })).data
+  await fam.call('/api/jfp-account', { action: 'signWaiver', players: acc.players.map((p) => ({ key: p.key, dob: '2015-01-01', emergencyName: 'K K', emergencyPhone: '0400818182' })), waiver: WAIVER, parentName: 'Kim Kit', mobile: '0400818181' })
+  const pay = await fam.call('/api/jfp-account', { action: 'pay', payreqId: add.data.payreq.id })
+  const back = new URL((await stripe(pay.data.url, 'pay')).headers.get('location'))
+  assert.equal(back.pathname, '/jfp-booking/success/')
+  const conf = (await fam.call(`/api/jfp-confirm?session_id=${back.searchParams.get('session_id')}`)).data
+  assert.equal(conf.status, 'paid')
+  assert.equal(conf.kit.url, 'https://kit.example.com/joner')
+  assert.equal((await at()).term4.find((r) => r.id === add.data.rowId).fields['Term 4 Confirmation'], 'Confirmed', 'paid locks the place in')
+})
+
+await test('removing a player who has paid keeps their row as Dropped, with the reason and contact saved', async () => {
+  const kid = (await at()).term4.find((r) => r.fields['Player Name'] === 'Kit Kid')
+  const rm = await portal(lee, 'removePlayer', { rowId: kid.id, reason: 'Injury', details: 'Broken wrist' })
+  assert.equal(rm.status, 200, JSON.stringify(rm.data))
+  assert.equal(rm.data.kept, true)
+  const row = (await at()).term4.find((r) => r.id === kid.id)
+  assert.equal(row.fields['Term 4 Confirmation'], 'Dropped', 'the paid row stays for the takings')
+  assert.ok((await at()).dropped.some((d) => d.fields['Source Term 4 Record ID'] === kid.id && d.fields['Reason for leaving'] === 'Injury'))
+  const list = (await portal(lee, 'removed')).data.players.filter((p) => p.name === 'Kit Kid')
+  assert.equal(list.length, 1, 'listed once, not twice')
+  const back = await portal(lee, 'restorePlayer', { droppedId: list[0].droppedId, force: true })
+  assert.equal(back.status, 200, JSON.stringify(back.data))
+  assert.equal(back.data.rowId, kid.id, 'the same row comes back')
+  assert.equal((await at()).term4.find((r) => r.id === kid.id).fields['Term 4 Confirmation'], 'Confirmed')
+})
+
+await test('a price-list link takes off what is already paid, and a cancelled link puts the row back', async () => {
+  const add = await portal(lee, 'addPlayer', { groupId: TUE420, force: true, player: { name: 'Half Paid' }, parent: { name: 'Hal Paid', email: 'half@example.com', mobile: '0400919191' }, payment: 'none' })
+  await portal(lee, 'markPaid', { rowId: add.data.rowId, amountCents: 42500, method: 'Cash' })
+  const before = (await at()).term4.find((r) => r.id === add.data.rowId).fields
+  const link = await portal(lee, 'sendPaymentLink', { rowId: add.data.rowId, product: 'group', startDate: '2026-10-13', sendEmail: false })
+  assert.equal(link.data.payreq.amountLabel, 'A$425', 'A$850 less the A$425 already paid')
+  assert.equal((await at()).term4.find((r) => r.id === add.data.rowId).fields['Term 4 Fee'], 850)
+  assert.equal((await portal(lee, 'cancelPayreq', { id: link.data.payreq.id })).status, 200)
+  const after = (await at()).term4.find((r) => r.id === add.data.rowId).fields
+  assert.equal(after['Term 4 Fee'], before['Term 4 Fee'])
+  assert.equal(after['Term 4 Payment Type'], before['Term 4 Payment Type'])
 })
 
 console.log(`\n${passed} JFP flow checks passed`)

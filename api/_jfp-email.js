@@ -54,8 +54,8 @@ export function staffTo(config) {
 
 // ---------- calendar ----------
 
-export function buildIcs({ uid, group, config, title }) {
-  const dates = sessionDates(config, group.day)
+export function buildIcs({ uid, group, config, title, fromIso = '', only = '' }) {
+  const dates = only ? [only] : sessionDates(config, group.day).filter((d) => !fromIso || d >= fromIso)
   if (!dates.length) return ''
   const [hh, mm] = (to24h(group.time) || '16:00').split(':').map(Number)
   const end = hh * 60 + mm + (group.durationMin || 60)
@@ -77,22 +77,22 @@ export function buildIcs({ uid, group, config, title }) {
   return lines.join('\r\n')
 }
 
-function groupRows(config, group) {
+function groupRows(config, group, fromIso = '') {
   const loc = locationFor(config, group.location)
   const coach = coachById(config, group.coachId)
-  const dates = sessionDates(config, group.day)
+  const dates = sessionDates(config, group.day).filter((d) => !fromIso || d >= fromIso)
   return [
     ['Group', `${esc(group.day)} ${esc(group.time)}`],
     ['Where', `${esc(loc.address || group.location)}${loc.maps ? `<br>${link('Open in Maps', loc.maps)}` : ''}`],
     ['Coach', coach ? `Coach ${esc(coach.name)}` : 'Joner Football coach'],
-    ...(dates.length ? [['Dates', `${esc(dates.length)} weeks, ${esc(dateLabel(dates[0]))} to ${esc(dateLabel(dates.at(-1)))}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(dates.map(dateLabel).join(', '))}</span>`]] : []),
+    ...(dates.length ? [['Dates', `${esc(dates.length)} ${dates.length === 1 ? 'session' : 'sessions'}, ${esc(dateLabel(dates[0]))} to ${esc(dateLabel(dates.at(-1)))}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(dates.map(dateLabel).join(', '))}</span>`]] : []),
   ]
 }
 
 // ---------- sign in ----------
 
 export async function sendSignInCode({ email, code, audience }) {
-  const who = audience === 'staff' ? 'the JFP staff portal' : 'your JFP account'
+  const who = audience === 'staff' ? 'the JFP staff portal' : 'My JFP'
   const body = `${p(`Here is your code to sign in to ${who}:`)}
 <p style="margin:8px 0 18px;font-size:34px;letter-spacing:8px;font-weight:800;color:#111827;">${esc(code)}</p>
 ${p('It works once, for 10 minutes. If you did not ask for it, ignore this email.')}`
@@ -103,12 +103,12 @@ ${p('It works once, for 10 minutes. If you did not ask for it, ignore this email
 
 export async function sendParentConfirmation({ booking, group, config, siteUrl }) {
   const players = booking.players.map((x) => esc(x.name)).join(', ')
-  const ics = buildIcs({ uid: booking.id, group, config, title: `JFP ${group.day} ${group.time}` })
+  const ics = buildIcs({ uid: booking.id, group, config, title: `JFP ${group.day} ${group.time}`, fromIso: booking.startDate || '' })
   const body = `${p(`Payment received. ${players} ${booking.players.length > 1 ? 'are' : 'is'} booked into ${esc(config.term)}.`)}
-${rows([...groupRows(config, group), ['Players', players], ['Paid', esc(formatAud(booking.amountPaidCents ?? booking.priceCents))], ['Reference', esc(booking.id)]])}
+${rows([...groupRows(config, group, booking.startDate || ''), ['Players', players], ['Paid', esc(formatAud(booking.amountPaidCents ?? booking.priceCents))], ['Reference', esc(booking.id)]])}
 ${p('The calendar file attached adds all the dates in one tap.')}
 ${p('Arrive 10 minutes early. Bring boots, shin pads and a full water bottle.')}
-${siteUrl ? button('View your booking', `${siteUrl}/jfp-account/`) : ''}`
+${siteUrl ? button('Open My JFP', `${siteUrl}/jfp-account/`) : ''}`
   return send({
     to: [{ email: booking.email, name: booking.parentName }],
     subject: `You're booked in: ${group.day} ${group.time}, ${config.term}`,
@@ -150,24 +150,35 @@ ${rows([
 
 // ---------- payment requests (admin adds, balances, approved places) ----------
 
-export async function sendFamilyInvite({ to, parentName, playerNames, group, config, url, needs, amountCents }) {
+export async function sendFamilyInvite({ to, parentName, playerNames, group, config, url, needs, amountCents, trial = false, startDate = '' }) {
   const todo = []
   if (needs.details) todo.push('add the player details')
   if (needs.waiver) todo.push('sign the waiver')
   if (needs.payment) todo.push(`pay ${formatAud(amountCents)}`)
   const list = todo.length ? `${todo.slice(0, -1).join(', ')}${todo.length > 1 ? ' and ' : ''}${todo.at(-1)}` : ''
-  const body = `${p(`Hi ${esc(parentName || 'there')}, ${esc(playerNames.join(' and '))} ${playerNames.length > 1 ? 'have' : 'has'} a place in ${esc(config.term)}.`)}
-${rows(groupRows(config, group))}
-${list ? p(`To finish, sign in with this email address and ${esc(list)}. It takes a couple of minutes.`) : p('Sign in with this email address to see the booking.')}
+  const what = trial ? `a trial session in ${esc(group.day)} ${esc(group.time)}` : `a place in ${esc(config.term)}`
+  const body = `${p(`Hi ${esc(parentName || 'there')}, ${esc(playerNames.join(' and '))} ${playerNames.length > 1 ? 'have' : 'has'} ${what}.`)}
+${rows([...(trial && startDate ? [['Trial', esc(dateLabel(startDate))]] : []), ...groupRows(config, group, trial ? '' : startDate)])}
+${list ? p(`To finish, sign in with this email address and ${esc(list)}. It takes a couple of minutes.${needs.payment ? ' The place is locked in once it is paid.' : ''}`) : p('Sign in with this email address to see the booking.')}
 ${button(needs.payment ? 'Sign in and finish' : 'View the booking', url)}`
-  return send({ to: [{ email: to, name: parentName }], subject: `${playerNames.join(' and ')}: your ${config.term} place`, html: shell({ preheader: `${group.day} ${group.time}`, heading: 'Your JFP place', body }) })
+  return send({ to: [{ email: to, name: parentName }], subject: trial ? `${playerNames.join(' and ')}: your JFP trial` : `${playerNames.join(' and ')}: your ${config.term} place`, html: shell({ preheader: `${group.day} ${group.time}`, heading: trial ? 'Your JFP trial' : 'Your JFP place', body }) })
+}
+
+// After a good trial: the rest of the term, with the trial fee taken off.
+export async function sendTermOffered({ to, parentName, playerNames, group, config, url, amountCents, startDate, creditCents = 0 }) {
+  const body = `${p(`Hi ${esc(parentName || 'there')}. Great trial. We would love ${esc(playerNames.join(' and '))} to join ${esc(group.day)} ${esc(group.time)} for the rest of ${esc(config.term)}.`)}
+${rows([...groupRows(config, group, startDate), ['To pay', `${esc(formatAud(amountCents))}${creditCents ? `<br><span style="color:#6B7280;font-weight:400;font-size:13px;">The ${esc(formatAud(creditCents))} trial is already taken off.</span>` : ''}`]])}
+${p('Sign in with this email address to pay and lock in the place. Card, Apple Pay or Afterpay.')}
+${button('Sign in and pay', url)}`
+  return send({ to: [{ email: to, name: parentName }], subject: `${playerNames.join(' and ')}: the rest of ${config.term}`, html: shell({ heading: 'Your place for the term', body }) })
 }
 
 export async function sendPaymentReceipt({ payreq, group, config, siteUrl }) {
-  const ics = group ? buildIcs({ uid: payreq.id, group, config, title: `JFP ${group.day} ${group.time}` }) : ''
+  const trial = payreq.reason === 'trial'
+  const ics = group ? buildIcs({ uid: payreq.id, group, config, title: trial ? `JFP trial ${group.day} ${group.time}` : `JFP ${group.day} ${group.time}`, fromIso: payreq.startDate || '', only: trial ? payreq.trialDate || '' : '' }) : ''
   const body = `${p(`Thanks ${esc(payreq.parentName || '')}. We have your payment for ${esc(payreq.playerNames.join(' and '))}.`)}
-${rows([...(group ? groupRows(config, group) : []), ['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))], ['Reference', esc(payreq.id)]])}
-${siteUrl ? button('View your account', `${siteUrl}/jfp-account/`) : ''}`
+${rows([...(trial && payreq.trialDate ? [['Trial', esc(dateLabel(payreq.trialDate))]] : []), ...(group ? groupRows(config, group, trial ? '' : payreq.startDate || '').filter(([k]) => !(trial && k === 'Dates')) : []), ['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))], ['Reference', esc(payreq.id)]])}
+${siteUrl ? button('Open My JFP', `${siteUrl}/jfp-account/`) : ''}`
   return send({
     to: [{ email: payreq.email, name: payreq.parentName }],
     subject: `Payment received: ${payreq.playerNames.join(' and ')}`,
@@ -211,23 +222,34 @@ export async function sendAttentionAlert({ record, reason, info, config }) {
 
 const KIND_WORD = { application: 'application', waitlist: 'waitlist request', enquiry: 'enquiry' }
 
+export async function sendTrialOffered({ request, group, config, url, amountCents, trialDate }) {
+  const body = `${p(`Thanks ${esc(request.parentName)}. We would like ${esc(request.players.map((x) => x.name).join(' and '))} to come to a trial in ${esc(group.day)} ${esc(group.time)}.`)}
+${rows([['Trial', esc(dateLabel(trialDate))], ...groupRows(config, group).filter(([k]) => k !== 'Dates'), ['To pay', esc(formatAud(amountCents))]])}
+${p('Sign in with this email address to pay for the trial and it is booked. After the session the coach will let you know, and if it is a good fit you pay for the rest of the term in My JFP, with the trial fee taken off.')}
+${button('Sign in and book the trial', url)}`
+  return send({ to: [{ email: request.email, name: request.parentName }], subject: `Trial: ${group.day} ${group.time}, ${dateLabel(trialDate)}`, html: shell({ heading: 'Your trial session', body }) })
+}
+
 export async function sendRequestReceived({ request, group, config }) {
   const names = esc(request.players.map((x) => x.name).join(' and '))
   const line = request.kind === 'waitlist'
     ? `You are on the waitlist for ${esc(group.day)} ${esc(group.time)}. If a place opens we will email you a link to take it.`
     : request.kind === 'enquiry'
       ? `Thanks for your enquiry about ${esc(group.label || '1 to 1')} coaching. Lee or Ligia will be in touch.`
-      : `We have your application for ${names} to join ${esc(group.day)} ${esc(group.time)} (${esc(group.label || group.programme)}). Lee or Ligia will review it and reply within 48 hours.`
+      : `We have your application for ${names} to join ${esc(group.day)} ${esc(group.time)}. We reply within 48 hours: either a place for the term, or a trial session first.`
   const body = `${p(`Thanks ${esc(request.parentName)}.`)}${p(line)}${rows(groupRows(config, group))}`
   return send({ to: [{ email: request.email, name: request.parentName }], subject: `Received: your JFP ${KIND_WORD[request.kind] || 'request'}`, html: shell({ heading: 'We have your request', body }) })
 }
+
+const ANSWER_LABELS = { club: 'Club', team: 'Team and age group', playingUp: 'Playing', trainedBefore: 'Trained with Joner before', position: 'Position' }
 
 export async function sendRequestAlert({ request, group, config }) {
   const body = `${rows([
     ['Type', esc(KIND_WORD[request.kind] || request.kind)],
     ['Group', `${esc(group.day)} ${esc(group.time)}, ${esc(group.location)}`],
     ['Players', request.players.map((x) => `${esc(x.name)}${x.age != null ? ` (${esc(x.age)})` : ''}`).join(', ')],
-    ['Club / level', esc(request.club || 'Not given')],
+    ...Object.entries(request.answers || {}).map(([k, v]) => [ANSWER_LABELS[k] || k, esc(v)]),
+    ...(request.answers?.club ? [] : [['Club', esc(request.club || 'Not given')]]),
     ['Parent', esc(request.parentName)],
     ['Email', esc(request.email)],
     ['Mobile', esc(request.mobile)],
@@ -236,10 +258,10 @@ export async function sendRequestAlert({ request, group, config }) {
   return send({ to: staffTo(config), subject: `JFP ${KIND_WORD[request.kind] || 'request'}: ${request.players.map((x) => x.name).join(', ')}, ${group.day} ${group.time}`, html: shell({ heading: `New ${KIND_WORD[request.kind] || 'request'}`, body }), replyTo: request.email })
 }
 
-export async function sendPlaceOffered({ request, group, config, url, amountCents }) {
-  const body = `${p(`Great news ${esc(request.parentName)}. ${esc(request.players.map((x) => x.name).join(' and '))} ${request.players.length > 1 ? 'have' : 'has'} a place in ${esc(group.day)} ${esc(group.time)}.`)}
-${rows([...groupRows(config, group), ['To pay', esc(formatAud(amountCents))]])}
-${p('Sign in with this email address to pay and lock it in. The place is held for you for 7 days.')}
+export async function sendPlaceOffered({ request, group, config, url, amountCents, startDate = '' }) {
+  const body = `${p(`Great news ${esc(request.parentName)}. ${esc(request.players.map((x) => x.name).join(' and '))} ${request.players.length > 1 ? 'have' : 'has'} a place in ${esc(group.day)} ${esc(group.time)} for ${esc(config.term)}.`)}
+${rows([...groupRows(config, group, startDate), ['To pay', esc(formatAud(amountCents))]])}
+${p('Sign in with this email address to pay and lock it in. The place is held for you for 7 days, and it is yours once it is paid. Card, Apple Pay or Afterpay.')}
 ${button('Sign in and pay', url)}`
   return send({ to: [{ email: request.email, name: request.parentName }], subject: `A place for you: ${group.day} ${group.time}`, html: shell({ heading: 'Your place is ready', body }) })
 }

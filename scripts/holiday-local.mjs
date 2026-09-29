@@ -70,6 +70,7 @@ function redis(cmd) {
     case 'INCR': { const e = live(args[0]); const n = Number(e?.value || 0) + 1; store.set(args[0], { type: 's', value: String(n), expiresAt: e?.expiresAt || 0 }); return n }
     case 'TTL': { const e = live(args[0]); return e ? (e.expiresAt ? Math.ceil((e.expiresAt - Date.now()) / 1000) : -1) : -2 }
     case 'HSET': { const h = hash(args[0]); h.set(args[1], args[2]); return 1 }
+    case 'HINCRBY': { const h = hash(args[0]); const n = Number(h.get(args[1]) || 0) + Number(args[2]); h.set(args[1], String(n)); return n }
     case 'HGET': return live(args[0])?.value.get(args[1]) ?? null
     case 'HGETALL': { const h = live(args[0]); return h ? [...h.value.entries()].flat() : [] }
     case 'ZADD': {
@@ -189,7 +190,7 @@ const emails = []
 // A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
 // JSON file ({ term4, term3, waiver, ledger } record arrays) to load another,
 // for example an anonymised copy of the real roster for screenshots.
-const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [] }
+const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [] }
 let recSeq = 1
 const recId = () => `rec${String(recSeq++).padStart(14, '0')}`
 function seedRow(day, time, location, coach, type = 'JFP 10 weeks', confirmation = 'Confirmed', extra = {}) {
@@ -218,7 +219,7 @@ if (process.env.JFP_SEED && fs.existsSync(process.env.JFP_SEED)) {
   airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': 'Sasha Returning', 'Parent Email': 'returning@example.com', 'Date of Birth': '2016-06-10', 'Term': 'Term 3 2026', 'Signed Date': '2026-07-14', 'Waiver Accepted - Full Terms': true } })
 }
 
-const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance' }
+const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped' }
 function airtableResponse(url, init) {
   const u = new URL(url)
   const parts = u.pathname.split('/').slice(3).map(decodeURIComponent) // [table, recordId?]
@@ -233,6 +234,13 @@ function airtableResponse(url, init) {
     rows.push(...created)
     log('airtable', `${key} +${created.length}`)
     return { status: 200, body: { records: created } }
+  }
+  if (method === 'DELETE') {
+    const ids = parts[1] ? [parts[1]] : u.searchParams.getAll('records[]')
+    const gone = []
+    for (const id of ids) { const i = rows.findIndex((x) => x.id === id); if (i < 0) return { status: 404, body: { error: { type: 'NOT_FOUND' } } }; rows.splice(i, 1); gone.push({ id, deleted: true }) }
+    log('airtable', `${key} -${gone.length}`)
+    return { status: 200, body: { records: gone } }
   }
   if (method === 'PATCH') {
     const body = JSON.parse(init.body)

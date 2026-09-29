@@ -1,14 +1,15 @@
 // Pure-function checks for JFP term bookings. No network, no KV.
 import assert from 'node:assert/strict'
-import { to24h, sessionDates, dateLabel, groupId, validateGroup, placesLeft, normaliseConfig, HOLD_SCRIPT, ageOn, ageFits, locationFor, signParentCookie, hasParentAccess } from '../api/_jfp-store.js'
-import { draftGroupsFromRoster, draftAgeBand, waiverFor, familyFor } from '../api/_jfp-airtable.js'
+import { to24h, sessionDates, dateLabel, groupId, validateGroup, placesLeft, normaliseConfig, HOLD_SCRIPT, ageOn, ageFits, locationFor, signParentCookie, hasParentAccess, priceFor, periodOf, sydneyToday } from '../api/_jfp-store.js'
+import { draftGroupsFromRoster, draftAgeBand, waiverFor, familyFor, placeInGroups } from '../api/_jfp-airtable.js'
 import { splitFee, splitBy } from '../api/_jfp-finalise.js'
 import { roleFor } from '../api/_jfp-people.js'
 import { publicGroup } from '../api/jfp-groups.js'
 import { buildIcs } from '../api/_jfp-email.js'
 
 let passed = 0
-function test(name, fn) { fn(); passed += 1; console.log(`ok - ${name}`) }
+const queue = []
+function test(name, fn) { queue.push([name, fn]) }
 const config = normaliseConfig({})
 
 test('times read the way the roster writes them', () => {
@@ -126,12 +127,48 @@ test('roles come from config on every request', () => {
   assert.deepEqual(normaliseConfig({ superAdmins: [] }).superAdmins, config.superAdmins, 'the admin list can never be emptied')
 })
 
-test('the public group shape carries no people and no money beyond the price', () => {
+test('the public group shape carries no people and no money', () => {
   const g = publicGroup({ id: 'x', day: 'Monday', time: '4:20pm', location: 'Belrose HQ', coachId: 'dean', mode: 'direct', capacity: 6, durationMin: 60, minAge: 8, maxAge: 11, girlsOnly: 'suggested', label: 'Small group' }, config, 3)
   assert.equal(g.placesLeft, 3)
   assert.equal(g.girlsOnly, false, 'a suggested girls flag is not shown until confirmed')
   assert.equal(g.locationId, 'belrose')
-  assert.deepEqual(Object.keys(g).filter((k) => /email|phone|player|parent/i.test(k)), [])
+  assert.deepEqual(Object.keys(g).filter((k) => /email|phone|player|parent|price|cents/i.test(k)), [])
+  assert.equal(g.period, 'pm')
+  const apply = publicGroup({ id: 'y', day: 'Friday', time: '6:30am', location: 'Rydalmere', coachId: 'lee', mode: 'application', capacity: 8, durationMin: 60, label: 'Squad', questions: ['club', 'team'] }, config, 0)
+  assert.equal(apply.full, true, 'an apply group with no places left shows fully booked')
+  assert.equal(apply.placesLeft, 0)
+  assert.equal(apply.period, 'am')
+  assert.deepEqual(apply.questions.map((q) => q.key), ['club', 'team'])
+})
+
+test('pro rata: joining mid term pays for the sessions left, siblings pay the two place rate', () => {
+  const full = priceFor(config, { product: 'group', day: 'Monday', fromIso: '2026-10-12' })
+  assert.equal(full.unitCents, 85000)
+  assert.equal(full.proRata, false)
+  const wk4 = priceFor(config, { product: 'group', day: 'Monday', fromIso: '2026-11-02' })
+  assert.equal(wk4.sessions, 7)
+  assert.equal(wk4.unitCents, 59500, 'A$850 x 7/10')
+  const sib = priceFor(config, { product: 'group', day: 'Monday', fromIso: '2026-10-12', players: 2 })
+  assert.equal(sib.unitCents, 75000)
+  assert.equal(sib.totalCents, 150000)
+  assert.equal(sib.type, 'Sibling / 2 sessions per week')
+  assert.equal(priceFor(config, { product: 'trial', day: 'Monday', fromIso: '2026-12-14' }).unitCents, 8500, 'a trial is never pro rata')
+  assert.equal(priceFor(config, { product: 'pathway', day: 'Friday', fromIso: '2026-10-16' }).unitCents, 45000)
+  assert.equal(priceFor(normaliseConfig({ prices: { group: 90000 } }), { product: 'group', day: 'Monday' }).unitCents, 90000)
+  assert.equal(priceFor(normaliseConfig({ priceCents: 80000 }), { product: 'group', day: 'Monday' }).unitCents, 80000, 'an old saved term price still counts')
+  assert.match(sydneyToday(Date.parse('2026-10-11T14:30:00Z')), /^2026-10-12$/, 'Sydney is ahead of UTC')
+})
+
+test('morning sessions split by coach: each coach has a group, the Coach column decides', async () => {
+  assert.equal(groupId('Friday', '6:30am', 'Rydalmere', 'lee'), 'fri-0630-rydalmere-lee')
+  const v = validateGroup({ day: 'Friday', time: '6:30am', location: 'Rydalmere', coachId: 'dean', byCoach: true, capacity: 8, mode: 'application' }, config)
+  assert.equal(v.group.id, 'fri-0630-rydalmere-dean')
+  assert.equal(validateGroup({ day: 'Friday', time: '6:30am', location: 'Rydalmere', byCoach: true, capacity: 8, mode: 'application' }, config).ok, false)
+  assert.equal(periodOf({ time: '10:15am' }), 'am')
+  const groups = [{ id: 'fri-0630-rydalmere-lee' }, { id: 'fri-0630-rydalmere-dean' }, { id: 'mon-1620-belrose-hq' }]
+  const row = (coach, day = 'Friday', time = '6:30am', location = 'Rydalmere') => ({ player: coach || 'x', coach, day, time, location, sessionId: groupId(day, time, location), groupId: groupId(day, time, location) })
+  const r = await placeInGroups({ players: [row('Lee Jones'), row('Dean Mac'), row(''), row('Ruby Fanoosh'), row('Dean Mac', 'Monday', '4:20pm', 'Belrose HQ')] }, groups, config)
+  assert.deepEqual(r.players.map((p) => p.groupId), ['fri-0630-rydalmere-lee', 'fri-0630-rydalmere-dean', 'fri-0630-rydalmere', 'fri-0630-rydalmere', 'mon-1620-belrose-hq'])
 })
 
 test('locations map the roster spellings', () => {
@@ -165,4 +202,5 @@ test('the booking password cookie survives only while the password stays the sam
   assert.equal(hasParentAccess(req, { secret }), false)
 })
 
+for (const [name, fn] of queue) { await fn(); passed += 1; console.log(`ok - ${name}`) }
 console.log(`\n${passed} JFP store checks passed`)

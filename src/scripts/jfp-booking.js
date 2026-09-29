@@ -1,11 +1,14 @@
-// JFP booking page. Password gate, locations, age filter, group cards, then
-// a sheet that walks a family through sign in, players, waiver and payment
-// (or an application, waitlist request or enquiry).
-import { $, esc, api, recaptcha, toast, openSheet, closeSheet, signIn, whoAmI, waiverBlock } from './jfp-common.js'
+// JFP booking page. Password gate, then the whole program as a timetable
+// (filter by location, coach, day, book or apply). Tapping a group shows who
+// it is for and how it works, then a sheet walks the family through sign in,
+// players, the group's questions, the waiver and payment (or an application,
+// waitlist request or enquiry).
+import { $, esc, api, recaptcha, toast, openSheet, closeSheet, signIn, whoAmI, waiverBlock, money } from './jfp-common.js'
 
-const S = { data: null, filters: { age: '', loc: '', day: '', show: '' }, parent: null, family: null, hold: null, timer: null, toStripe: false }
-const DAYS = [['', 'Any day'], ['after', 'After school'], ['early', 'Early morning'], ['sat', 'Saturday']]
-const SHOW = [['', 'All'], ['book', 'Book now'], ['apply', 'Apply only']]
+const S = { data: null, filters: { loc: '', coach: '', day: '', show: '' }, phoneDay: '', parent: null, family: null, hold: null, timer: null, toStripe: false }
+const SHOW = [['', 'All'], ['book', 'Book now'], ['apply', 'Apply'], ['open', 'Has places']]
+const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const SHORT = { Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat', Sunday: 'Sun' }
 
 function track(name, data) { try { window.JonerTracking?.trackEvent?.(name, { custom_data: data }) } catch {} }
 
@@ -37,15 +40,23 @@ async function showApp(q) {
     $('banner').innerHTML = '<div class="j-box j-box-amber" style="margin-top:16px">Payment cancelled. Nothing was charged and the place has been released.</div>'
     history.replaceState(null, '', location.pathname)
   }
+  showTab((location.hash || '#timetable').slice(1))
   S.parent = await whoAmI('parent')
   await load()
   setInterval(() => { if (!document.querySelector('.j-sheet')) load(true) }, 45000)
 }
 
+function showTab(tab) {
+  if (!['timetable', 'about', 'one-to-one'].includes(tab)) tab = 'timetable'
+  document.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== tab })
+  document.querySelectorAll('.j-tabs [data-tab]').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'))
+}
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1)))
+
 async function load(quiet) {
   const r = await api('/api/jfp-groups', null, { method: 'GET' })
   if (r.status === 401) { location.reload(); return }
-  if (!r.ok) { if (!quiet) $('results').innerHTML = `<div class="j-empty">${esc(r.data.error || 'Could not load groups. Try again in a minute.')}</div>`; return }
+  if (!r.ok) { if (!quiet) $('results').innerHTML = `<div class="j-empty">${esc(r.data.error || 'Could not load the timetable. Try again in a minute.')}</div>`; return }
   S.data = r.data
   renderMeta()
   renderFilters()
@@ -57,18 +68,26 @@ async function load(quiet) {
 
 function renderMeta() {
   const d = S.data
-  $('term-kicker').textContent = d.term
-  $('meta').innerHTML = [`${d.weeks} weeks, ${d.termStart} to ${d.termEnd}`, `${d.priceLabel} per player`, '60 minute sessions'].map((t) => `<span>${esc(t)}</span>`).join('')
-  const sel = $('f-age')
-  if (sel.options.length < 3) {
-    for (let a = d.minAge; a <= d.maxAge; a += 1) sel.insertAdjacentHTML('beforeend', `<option value="${a}">${a}</option>`)
-    sel.addEventListener('change', () => { S.filters.age = sel.value; renderResults() })
+  $('term-name').textContent = d.termLabel || d.term
+  $('term-range').textContent = `${d.termRange} · ${d.weeks} weeks`
+  $('trial-price').textContent = d.trialPriceLabel
+  const coach = $('f-coach')
+  if (coach.options.length < 2) {
+    for (const c of d.coaches) coach.insertAdjacentHTML('beforeend', `<option value="${esc(c.id)}">${esc(c.name)}</option>`)
+    coach.addEventListener('change', () => { S.filters.coach = coach.value; renderResults() })
+  }
+  const day = $('f-day')
+  if (day.options.length < 2) {
+    for (const x of days(d.groups)) day.insertAdjacentHTML('beforeend', `<option value="${esc(x)}">${esc(x)}</option>`)
+    day.addEventListener('change', () => { S.filters.day = day.value; renderResults() })
   }
 }
 
+function days(list) { return [...new Set(list.map((g) => g.day))].sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b)) }
+
 function renderLocations() {
   $('locs').innerHTML = S.data.locations.map((l) => {
-    const badge = l.bookable ? `${l.bookable} group${l.bookable === 1 ? '' : 's'} to book · ${l.spots} spot${l.spots === 1 ? '' : 's'}` : 'Apply only'
+    const badge = l.full ? 'Fully booked' : `${l.groups} group${l.groups === 1 ? '' : 's'} · ${l.spots} spot${l.spots === 1 ? '' : 's'} left`
     return `<button type="button" class="j-loc" data-loc="${esc(l.id)}" aria-pressed="${S.filters.loc === l.id}">
       <div class="img" style="background-image:url('${esc(l.photo)}')"><span class="badge">${esc(badge)}</span></div>
       <div class="body"><h3><span class="j-dot j-dot-${esc(l.id)}"></span> ${esc(l.name)}</h3><p>${esc(l.blurb)}</p>${l.maps ? `<p><a href="${esc(l.maps)}" target="_blank" rel="noopener noreferrer" data-stop>${esc(l.address)}</a></p>` : ''}</div>
@@ -76,100 +95,123 @@ function renderLocations() {
   }).join('')
 }
 
-function chip(group, value, label, current) {
-  return `<button type="button" class="j-chip" data-${group}="${esc(value)}" aria-pressed="${current === value}">${esc(label)}</button>`
-}
 function renderFilters() {
-  $('f-day').innerHTML = DAYS.map(([v, l]) => chip('day', v, l, S.filters.day)).join('')
-  $('f-show').innerHTML = SHOW.map(([v, l]) => chip('show', v, l, S.filters.show)).join('')
+  $('f-show').innerHTML = SHOW.map(([v, l]) => `<button type="button" class="j-chip" data-show="${esc(v)}" aria-pressed="${S.filters.show === v}">${esc(l)}</button>`).join('')
 }
 
-// ---------- results ----------
-
-function dayPart(g) {
-  const h = Number(g.sortTime.slice(0, 2))
-  if (g.day === 'Saturday' || g.day === 'Sunday') return 'sat'
-  if (h < 9) return 'early'
-  if (h >= 15) return 'after'
-  return 'day'
-}
+// ---------- the timetable ----------
 
 function visible() {
   const f = S.filters
-  const age = f.age === '' ? null : Number(f.age)
   return S.data.groups.filter((g) => {
     if (f.loc && g.locationId !== f.loc) return false
-    if (f.day && dayPart(g) !== f.day) return false
+    if (f.coach && g.coachId !== f.coach) return false
+    if (f.day && g.day !== f.day) return false
     if (f.show === 'book' && g.mode !== 'direct') return false
-    if (f.show === 'apply' && g.mode === 'direct') return false
-    if (age != null && (age < g.minAge || age > g.maxAge)) return false
+    if (f.show === 'apply' && g.mode !== 'application') return false
+    if (f.show === 'open' && (g.full || g.mode === 'enquire')) return false
     return true
-  }).sort((a, b) => (Number(b.mode === 'direct' && !b.full) - Number(a.mode === 'direct' && !a.full)) * (age != null ? 1 : 0) || order(a) - order(b))
+  }).sort((a, b) => order(a) - order(b))
 }
-const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const order = (g) => DAY_ORDER.indexOf(g.day) * 10000 + Number(g.sortTime.replace(':', ''))
 
-function agesLabel(g) { return `${g.girlsOnly ? 'Girls, ' : ''}Ages ${g.minAge} to ${g.maxAge}` }
+function agesLabel(g) { return g.girlsOnly ? `Girls, ages ${g.minAge} to ${g.maxAge}` : `Ages ${g.minAge} to ${g.maxAge}` }
 
-function spots(g) {
-  if (g.mode === 'application') return `<span class="j-pill j-pill-violet">Apply · ${esc(g.label)}</span>`
-  if (g.mode === 'enquire') return `<span class="j-pill j-pill-grey">${esc(g.label)} · enquire</span>`
-  if (g.full) return '<span class="j-pill j-pill-grey">Full</span>'
-  if (g.placesLeft === 1) return '<span class="j-pill j-pill-red">1 spot left</span>'
-  if (g.placesLeft <= 2) return `<span class="j-pill j-pill-amber">${g.placesLeft} spots left</span>`
-  return `<span class="j-pill j-pill-green">${g.placesLeft} spots left</span>`
+function status(g) {
+  if (g.mode === 'enquire') return ['s-grey', 'Enquire']
+  if (g.full) return ['s-full', 'Join the waitlist']
+  const left = `${g.placesLeft} ${g.placesLeft === 1 ? 'spot' : 'spots'} left`
+  return g.mode === 'direct' ? ['s-book', `Book now · ${left}`] : ['s-apply', `Apply · ${left}`]
 }
-function cta(g) {
-  if (g.mode === 'application') return `<button type="button" class="j-btn j-btn-line" data-act="application" data-id="${esc(g.id)}">Apply</button>`
-  if (g.mode === 'enquire') return `<button type="button" class="j-btn j-btn-soft" data-act="enquiry" data-id="${esc(g.id)}">Enquire</button>`
-  if (g.full) return `<button type="button" class="j-btn j-btn-line" data-act="waitlist" data-id="${esc(g.id)}">Join waitlist</button>`
-  return `<button type="button" class="j-btn j-btn-dark" data-act="book" data-id="${esc(g.id)}">Book</button>`
+
+function block(g) {
+  const [cls, text] = status(g)
+  return `<button type="button" class="j-blk j-blk-${esc(g.locationId)} ${g.full ? 'is-full' : ''}" data-group="${esc(g.id)}">
+    ${g.full ? '<span class="j-full-banner">Fully booked</span>' : ''}
+    <span class="t">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</span>
+    <span class="c">${esc(g.coachName || 'Joner Football')}</span>
+    <span class="c"><span class="j-dot j-dot-${esc(g.locationId)}"></span>${esc(g.location)}</span>
+    <span class="c">${esc(agesLabel(g))}</span>
+    <span class="st ${cls}">${esc(text)}</span>
+  </button>`
 }
 
 function renderResults() {
   const list = visible()
   const f = S.filters
-  const loc = S.data.locations.find((l) => l.id === f.loc)
-  const where = loc ? ` at ${loc.name}` : ''
-  $('results-title').textContent = f.age !== ''
-    ? `${list.length} group${list.length === 1 ? '' : 's'} for a ${f.age} year old${where}`
-    : `${list.length} group${list.length === 1 ? '' : 's'}${where}`
-  $('f-reset').hidden = !(f.age || f.loc || f.day || f.show)
-  $('age-note').hidden = f.age === ''
+  $('f-reset').hidden = !(f.loc || f.coach || f.day || f.show)
   if (!list.length) {
-    $('results').innerHTML = `<div class="j-empty" style="grid-column:1/-1">No groups match those filters.${f.age ? ' Try another location or day, or email us about 1 to 1 coaching.' : ''}</div>`
+    $('results').innerHTML = '<div class="j-empty">No groups match those filters. Try another coach, day or location.</div>'
+    $('daybar').innerHTML = ''
     return
   }
-  const pc = S.data.privateCoaching
-  const showPc = pc && f.show !== 'book' && (!f.loc || f.loc === pc.locationId) && !f.day
-  $('results').innerHTML = list.map((g) => `
-    <article class="j-group">
-      <p class="when">${esc(g.day)} · ${esc(g.time)}</p>
-      <p class="who">${esc(agesLabel(g))}</p>
-      <p class="meta"><span class="j-dot j-dot-${esc(g.locationId)}"></span>${esc(g.location)}${g.coachName ? ` · ${esc(g.coachName)}` : ''} · ${esc(g.durationMin)} min</p>
-      ${g.publicNote ? `<p class="note">${esc(g.publicNote)}</p>` : ''}
-      <div class="foot">${spots(g)}${cta(g)}</div>
-    </article>`).join('') + (showPc ? `
-    <article class="j-group">
-      <p class="when">Private coaching</p>
-      <p class="who">1 to 1 coaching</p>
-      <p class="meta"><span class="j-dot j-dot-${esc(pc.locationId)}"></span>${esc(pc.location)} · times on request · all ages</p>
-      <div class="foot"><span class="j-pill j-pill-grey">1 to 1 · enquire</span><button type="button" class="j-btn j-btn-soft" data-act="enquiry" data-id="${esc(pc.id)}">Enquire</button></div>
-    </article>` : '')
+  const cols = days(list)
+  // Desktop: the whole week as a grid, like the program spreadsheet.
+  const periods = [['am', 'Morning'], ['pm', 'Afternoon']].filter(([p]) => list.some((g) => g.period === p))
+  const grid = `<div class="j-tt j-desk-only" style="--cols:${cols.length}">
+    ${cols.map((d) => `<div class="j-tt-day">${esc(d)}</div>`).join('')}
+    ${periods.map(([p, label]) => `<div class="j-tt-row">${esc(label)}</div>${cols.map((d) => `<div class="j-tt-cell">${list.filter((g) => g.day === d && g.period === p).map(block).join('')}</div>`).join('')}`).join('')}
+  </div>`
+  // Phones: one day at a time.
+  if (!cols.includes(S.phoneDay)) S.phoneDay = cols[0]
+  $('daybar').innerHTML = cols.map((d) => `<button type="button" role="tab" data-pday="${esc(d)}" aria-selected="${S.phoneDay === d}">${esc(SHORT[d] || d)}</button>`).join('')
+  const today = list.filter((g) => g.day === S.phoneDay)
+  const phone = `<div class="j-phone-only">${periods.map(([p, label]) => {
+    const rows = today.filter((g) => g.period === p)
+    return rows.length ? `<p class="j-tt-row" style="margin:14px 0 8px">${esc(S.phoneDay)} ${esc(label.toLowerCase())}</p><div class="j-list">${rows.map(block).join('')}</div>` : ''
+  }).join('')}</div>`
+  $('results').innerHTML = grid + phone
 }
 
 document.addEventListener('click', (e) => {
   if (e.target.closest('[data-stop]')) return
+  const tab = e.target.closest('.j-tabs [data-tab]')
+  if (tab) { e.preventDefault(); history.replaceState(null, '', `#${tab.dataset.tab}`); showTab(tab.dataset.tab); return }
   const locBtn = e.target.closest('[data-loc]')
   if (locBtn) { S.filters.loc = S.filters.loc === locBtn.dataset.loc ? '' : locBtn.dataset.loc; renderLocations(); renderResults(); return }
-  const d = e.target.closest('[data-day]')
-  if (d) { S.filters.day = d.dataset.day; renderFilters(); renderResults(); return }
   const s = e.target.closest('[data-show]')
   if (s) { S.filters.show = s.dataset.show; renderFilters(); renderResults(); return }
-  if (e.target.closest('#f-reset')) { S.filters = { age: '', loc: '', day: '', show: '' }; $('f-age').value = ''; renderFilters(); renderLocations(); renderResults(); return }
-  const act = e.target.closest('[data-act]')
-  if (act) start(act.dataset.act, act.dataset.id === S.data.privateCoaching?.id ? S.data.privateCoaching : S.data.groups.find((g) => g.id === act.dataset.id), act)
+  const pd = e.target.closest('[data-pday]')
+  if (pd) { S.phoneDay = pd.dataset.pday; renderResults(); return }
+  if (e.target.closest('#f-reset')) { S.filters = { loc: '', coach: '', day: '', show: '' }; $('f-coach').value = ''; $('f-day').value = ''; renderFilters(); renderLocations(); renderResults(); return }
+  if (e.target.closest('#enquire-1to1')) { if (S.data?.privateCoaching) start('enquiry', S.data.privateCoaching); else toast('Email leejones@jonerfootball.com about 1 to 1 coaching.'); return }
+  const blk = e.target.closest('[data-group]')
+  if (blk) { const g = S.data.groups.find((x) => x.id === blk.dataset.group); if (g) groupSheet(g) }
 })
+
+// ---------- one group: who it is for, how it works ----------
+
+function groupSheet(g) {
+  const sheet = openSheet({ title: `${g.day} ${g.time}`, subtitle: `${g.location} · ${g.coachName || 'Joner Football'} · ${g.durationMin} minutes` })
+  const taken = Math.max(0, g.capacity - Math.max(0, g.placesLeft ?? 0))
+  const pills = [
+    g.mode === 'direct' ? '<span class="j-pill j-pill-green">Book now</span>' : g.mode === 'application' ? '<span class="j-pill j-pill-blue">Apply only</span>' : '<span class="j-pill j-pill-grey">Enquire</span>',
+    g.full ? '<span class="j-pill j-pill-red">Fully booked</span>' : g.placesLeft != null ? `<span class="j-pill j-pill-grey">${taken} of ${g.capacity} places taken</span>` : '',
+    g.label && !['Small group'].includes(g.label) ? `<span class="j-pill j-pill-grey">${esc(g.label)}</span>` : '',
+  ].join(' ')
+  const who = g.publicNote || (g.mode === 'direct'
+    ? `Players aged ${g.minAge} to ${g.maxAge}${g.girlsOnly ? ', girls only' : ''}. Outside that? You can still apply, and we may offer a trial first.`
+    : `A guide: players aged ${g.minAge} to ${g.maxAge}${g.girlsOnly ? ', girls only' : ''}. Playing up or down an age group? You can still apply${g.trials ? ', we will ask for a trial first' : ''}.`)
+  const steps = g.full
+    ? ['This group is fully booked right now.', 'Join the waitlist and we will contact you if a place opens.']
+    : g.mode === 'direct'
+      ? [`Sign in with your email, then add the player and sign the waiver.`, `Pay and the place is yours${g.sessions ? `: every session from the next one to ${esc(g.lastDate)}` : ''}.`, 'Joining after the term starts? You only pay for the sessions left.']
+      : ['Apply with the player\'s club and team. It takes 2 minutes.', `We reply within 48 hours with one of two answers:`, 'The place is only held once it is paid.']
+  const outcomes = !g.full && g.mode === 'application' ? `<div class="j-outcomes">
+      <div class="j-card"><b>Accepted for the term</b><span>If we know the player or they fit the group. Pay to lock in the place.</span></div>
+      ${g.trials ? `<div class="j-card"><b>Trial first, ${esc(S.data.trialPriceLabel)}</b><span>One session in this group. If it is a good fit, pay for the rest of the term in My JFP, with the trial taken off.</span></div>` : ''}
+    </div>` : ''
+  sheet.body.innerHTML = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${pills}</div>
+    <div class="j-box j-box-grey" style="margin-bottom:16px"><b>Who this group is for</b><br>${esc(who)}</div>
+    <h3 style="margin-bottom:6px">How it works</h3>
+    <ol class="j-steps-list">${steps.map((t, i) => `<li><span class="n">${i + 1}</span><span>${t}${i === 1 ? outcomes : ''}</span></li>`).join('')}</ol>
+    <p class="muted small" style="margin-top:10px">${esc(g.sessions)} weekly sessions this term, ${esc(g.firstDate)} to ${esc(g.lastDate)}.</p>`
+  const kind = g.full ? 'waitlist' : g.mode === 'direct' ? 'book' : g.mode === 'application' ? 'application' : 'enquiry'
+  const label = { waitlist: 'Join the waitlist', book: 'Book this group', application: 'Apply for this group', enquiry: 'Enquire' }[kind]
+  sheet.foot.innerHTML = `<button type="button" class="j-btn j-btn-dark j-btn-block j-btn-lg" id="g-go">${label}</button>`
+  sheet.foot.querySelector('#g-go').addEventListener('click', () => start(kind, g))
+}
 
 // ---------- the booking sheet ----------
 
@@ -240,13 +282,15 @@ function startTimer() {
   S.timer = setInterval(tick, 1000)
 }
 
-function stepsFor() { return F.kind === 'book' ? 4 : 3 }
+// Booking and applying both take the waiver; waitlist and enquiries do not.
+function needsWaiverStep() { return F.kind === 'book' || F.kind === 'application' }
+function stepsFor() { return F.kind === 'book' ? 4 : F.kind === 'application' ? 4 : 3 }
 
 function stepWho() {
   F.sheet.setSteps(stepsFor(), 0)
   const g = F.g
   F.sheet.body.innerHTML = `
-    <div class="j-box j-box-grey" style="margin-bottom:16px">${g.id === 'one-to-one' ? '<b>1 to 1 coaching</b><br>Tell us who it is for and the times that suit. Lee or Ligia will be in touch.' : `<b>${esc(agesLabel(g))}</b><br>${esc(g.sessions)} weeks from ${esc(g.firstDate)}${g.priceLabel ? ` · ${esc(g.priceLabel)} per player` : ''}`}</div>
+    <div class="j-box j-box-grey" style="margin-bottom:16px">${g.id === 'one-to-one' ? '<b>1 to 1 coaching</b><br>Tell us who it is for and the times that suit. Lee or Ligia will be in touch.' : `<b>${esc(agesLabel(g))}</b><br>${esc(g.sessions)} weekly sessions, ${esc(g.firstDate)} to ${esc(g.lastDate)}`}</div>
     <h3 style="margin-bottom:10px">Who is training?</h3>
     <button type="button" class="j-choice" data-who="current"><span class="ico">↺</span><span><b>A current JFP player</b><small>Trained with us this year. Sign in with the email we have and your details and waiver are already on file.</small></span></button>
     <button type="button" class="j-choice" data-who="new"><span class="ico">+</span><span><b>New to JFP</b><small>First time with Joner Football. A couple of minutes of details, then the waiver.</small></span></button>`
@@ -276,11 +320,11 @@ function playerRow(p) {
   let status = ''
   let off = false
   if (p.inGroup) { status = '<span class="j-pill j-pill-green">Already in this group</span>'; off = true }
-  else if (p.fits === false) { status = `<span class="j-pill j-pill-grey">Age ${esc(p.age)}, outside this group</span>`; off = true }
+  else if (p.fits === false) status = `<span class="j-pill j-pill-amber">Age ${esc(p.age)}, outside this group: you can apply instead</span>`
   else status = `${p.age != null ? `<span class="muted small">Age ${esc(p.age)}</span> ` : ''}${p.waiverOnFile ? '<span class="j-pill j-pill-green">Waiver on file</span>' : '<span class="j-pill j-pill-amber">Waiver needed</span>'}`
   return `<button type="button" class="j-player ${on ? 'on' : ''} ${off ? 'off' : ''}" data-key="${esc(p.key)}" ${off ? 'disabled' : ''} aria-pressed="${on}">
     <span><b>${esc(p.name)}</b><br>${status}</span><span aria-hidden="true" style="font-size:20px">${on ? '●' : '○'}</span></button>
-    ${on && (p.needsDob || !p.waiverOnFile) ? detailFields(`x-${p.key}`, { dob: p.needsDob, name: false, emergency: !p.waiverOnFile && F.kind === 'book' }) : ''}`
+    ${on && (p.needsDob || !p.waiverOnFile) ? detailFields(`x-${p.key}`, { dob: p.needsDob, name: false, emergency: !p.waiverOnFile && needsWaiverStep() }) : ''}`
 }
 
 function detailFields(id, { dob = true, name = true, emergency = true }) {
@@ -310,12 +354,12 @@ function renderPlayers() {
   F.sheet.body.innerHTML = `
     <p class="muted small" style="margin-bottom:12px">Signed in as <b>${esc(fam.email)}</b> · <button type="button" class="j-btn j-btn-ghost j-btn-sm" id="not-me">Not you?</button></p>
     ${found ? `<h3 style="margin-bottom:8px">Your players</h3>${fam.players.map(playerRow).join('')}` : `<div class="j-box j-box-grey" style="margin-bottom:12px">${F.who === 'current' ? 'We could not find players under this email. If you used another email with us, sign in with that one, or add the player below.' : 'Add the player who will train.'}</div>`}
-    <div id="new-players">${F.newPlayers.map((_, i) => `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><h3>New player ${i + 1}</h3><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-remove-new="${i}">Remove</button></div>${detailFields(`n-${i}`, { dob: true, name: true, emergency: true })}`).join('')}</div>
+    <div id="new-players">${F.newPlayers.map((_, i) => `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><h3>New player ${i + 1}</h3><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-remove-new="${i}">Remove</button></div>${detailFields(`n-${i}`, { dob: true, name: true, emergency: needsWaiverStep() })}`).join('')}</div>
     <button type="button" class="j-btn j-btn-line j-btn-block" id="add-new" style="margin-top:6px">+ Add a new player</button>
     <h3 style="margin:18px 0 8px">Your details</h3>
     <div class="j-two"><label class="j-field"><span>Parent or guardian name</span><input class="j-input" id="p-name" autocomplete="name" value="${esc(fam.parentName || '')}"></label>
     <label class="j-field"><span>Mobile</span><input class="j-input" id="p-mobile" type="tel" autocomplete="tel" inputmode="tel" value="${esc(fam.mobile || '')}"></label></div>
-    <p class="muted small">${esc(agesLabel(g))}. Ages are on Monday 12 October.</p>
+    <p class="muted small">${esc(agesLabel(g))}${F.kind === 'book' ? '' : ' (a guide)'}. Ages are on the first day of term.</p>
     <p class="j-err" id="pl-err" hidden></p>`
   restoreNew()
   F.sheet.foot.innerHTML = `<button type="button" class="j-btn j-btn-dark j-btn-block j-btn-lg" id="pl-next">Continue</button>`
@@ -389,16 +433,65 @@ function nextFromPlayers() {
     if (p.isNew && (name.length < 3 || !/\s/.test(name))) return show('Enter each new player\'s first and last name.')
     const age = p.existing?.age ?? ageOn(p.dob)
     if (age == null) return show(`Enter ${name || 'the player'}'s date of birth.`)
-    if (age < g.minAge || age > g.maxAge) return show(`${name} is ${age} on the first day of term. This group is for ages ${g.minAge} to ${g.maxAge}. Close this and filter by age to see the groups that fit.`)
+    // Book now is for players inside the band. Anyone else applies instead.
+    if (F.kind === 'book' && (age < g.minAge || age > g.maxAge)) {
+      err.innerHTML = `${esc(name)} is ${esc(age)} on the first day of term. This group books online for ages ${esc(g.minAge)} to ${esc(g.maxAge)}, so apply instead: we reply within 48 hours, maybe with a trial first. <button type="button" class="j-btn j-btn-line j-btn-sm" id="to-apply" style="margin-top:8px">Apply instead</button>`
+      err.hidden = false
+      err.querySelector('#to-apply').addEventListener('click', () => { releaseHold(); F.kind = 'application'; F.sheet.setTitle(F.titles.application); F.sheet.timer.hidden = true; renderPlayers(); F.sheet.setSteps(stepsFor(), 1) })
+      return
+    }
     const needsWaiver = p.isNew || !p.existing?.waiverOnFile
-    if (F.kind === 'book' && needsWaiver && (!(p.emergencyName || '').length || (p.emergencyPhone || '').replace(/\D/g, '').length < 8)) return show(`Add an emergency contact and phone for ${name}.`)
+    if (needsWaiverStep() && needsWaiver && (!(p.emergencyName || '').length || (p.emergencyPhone || '').replace(/\D/g, '').length < 8)) return show(`Add an emergency contact and phone for ${name}.`)
   }
   if ((F.parentName || '').length < 2) return show('Enter your name.')
   if ((F.mobile || '').replace(/\D/g, '').length < 8) return show('Enter a mobile number we can reach you on.')
   F.players = list
   const needsWaiver = list.some((p) => p.isNew || !p.existing?.waiverOnFile)
   if (F.kind === 'book') return needsWaiver ? stepWaiver() : stepReview()
+  if (F.kind === 'application') return stepQuestions()
   return stepMessage()
+}
+
+// ---------- the group's questions (applications) ----------
+
+function stepQuestions() {
+  F.sheet.setSteps(stepsFor(), 2)
+  const qs = F.g.questions?.length ? F.g.questions : [{ key: 'club', label: 'Club they play for' }, { key: 'team', label: 'Team and age group' }]
+  const a = F.answers || {}
+  const seg = (key, opts) => `<div class="j-seg" data-seg="${key}">${opts.map((o) => `<button type="button" data-v="${esc(o)}" aria-pressed="${a[key] === o}">${esc(o)}</button>`).join('')}</div>`
+  const field = (q) => {
+    if (q.key === 'playingUp') return `<div class="j-field"><span>${esc(q.label)}</span>${seg('playingUp', ['Own age', 'Playing up', 'Playing down'])}</div>`
+    if (q.key === 'trainedBefore') return `<div class="j-field"><span>${esc(q.label)}</span>${seg('trainedBefore', ['Yes', 'No'])}</div>`
+    const ph = { club: 'For example Belrose Terrey Hills Raiders', team: 'For example U11 Division 1', position: 'For example winger' }[q.key] || ''
+    return `<label class="j-field"><span>${esc(q.label)}</span><input class="j-input" data-q="${esc(q.key)}" value="${esc(a[q.key] || '')}" placeholder="${esc(ph)}"></label>`
+  }
+  F.sheet.body.innerHTML = `
+    <h3 style="margin-bottom:4px">About the player</h3>
+    <p class="muted small" style="margin-bottom:14px">${esc(F.players.map((p) => p.existing?.name || p.name).join(' and '))} · ${esc(F.g.day)} ${esc(F.g.time)}</p>
+    ${qs.map(field).join('')}
+    <label class="j-field"><span>Anything the coach should know <span class="muted">(optional)</span></span><textarea class="j-textarea" id="q-msg">${esc(F.message || '')}</textarea></label>
+    <p class="j-err" id="q-err" hidden></p>`
+  F.sheet.body.querySelectorAll('[data-seg] button').forEach((b) => b.addEventListener('click', () => {
+    const box = b.closest('[data-seg]')
+    box.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+  }))
+  const read = () => {
+    const out = {}
+    F.sheet.body.querySelectorAll('[data-q]').forEach((i) => { out[i.dataset.q] = i.value.trim() })
+    F.sheet.body.querySelectorAll('[data-seg]').forEach((box) => { const on = box.querySelector('[aria-pressed="true"]'); if (on) out[box.dataset.seg] = on.dataset.v })
+    F.message = F.sheet.body.querySelector('#q-msg').value.trim()
+    return out
+  }
+  const needsWaiver = F.players.some((p) => p.isNew || !p.existing?.waiverOnFile)
+  F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="q-back">Back</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="q-next">${needsWaiver ? 'Next: waiver' : 'Send application'}</button></div>`
+  F.sheet.foot.querySelector('#q-back').addEventListener('click', () => { F.answers = read(); renderPlayers(); F.sheet.setSteps(stepsFor(), 1) })
+  F.sheet.foot.querySelector('#q-next').addEventListener('click', () => {
+    F.answers = read()
+    const missing = qs.find((q) => !F.answers[q.key] && ['club', 'team'].includes(q.key))
+    if (missing) { const e = F.sheet.body.querySelector('#q-err'); e.textContent = `Add the ${missing.label.toLowerCase()}.`; e.hidden = false; return }
+    if (needsWaiver) return stepWaiver()
+    sendRequest(F.sheet.foot.querySelector('#q-next'))
+  })
 }
 
 function stepWaiver() {
@@ -414,11 +507,12 @@ function stepWaiver() {
     w.el.querySelector('[data-w="media"]').checked = v.media
     w.el.querySelector('[data-w="signature"]').value = v.signature
   }
-  F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="w-back">Back</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="w-next">Sign and continue</button></div>`
-  F.sheet.foot.querySelector('#w-back').addEventListener('click', () => { F.waiver = w.read(); renderPlayers(); F.sheet.setSteps(stepsFor(), 1) })
+  F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="w-back">Back</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="w-next">${F.kind === 'application' ? 'Sign and send application' : 'Sign and continue'}</button></div>`
+  F.sheet.foot.querySelector('#w-back').addEventListener('click', () => { F.waiver = w.read(); if (F.kind === 'application') return stepQuestions(); renderPlayers(); F.sheet.setSteps(stepsFor(), 1) })
   F.sheet.foot.querySelector('#w-next').addEventListener('click', () => {
     if (!w.complete()) { const e = F.sheet.body.querySelector('#w-err'); e.textContent = 'Tick each of the first four boxes and type your full name to sign.'; e.hidden = false; return }
     F.waiver = w.read()
+    if (F.kind === 'application') return sendRequest(F.sheet.foot.querySelector('#w-next'))
     stepReview()
   })
 }
@@ -433,8 +527,9 @@ function stepReview() {
   F.sheet.setSteps(stepsFor(), 3)
   const g = F.g
   const n = F.players.length
-  const unit = Number(String(S.data.priceLabel).replace(/[^0-9.]/g, ''))
-  const total = unit * n
+  const qt = S.family.quote || {}
+  const unit = n > 1 ? qt.eachOfTwoCents : qt.oneCents
+  const total = money(unit * n)
   F.sheet.body.innerHTML = `
     <h3 style="margin-bottom:10px">Check and pay</h3>
     <dl class="j-kv">
@@ -442,17 +537,17 @@ function stepReview() {
       <dt>Where</dt><dd>${esc(g.location)}</dd>
       <dt>Who for</dt><dd>${esc(agesLabel(g))}</dd>
       <dt>Coach</dt><dd>${esc(g.coachName || 'Joner Football')}</dd>
-      <dt>Dates</dt><dd>${esc(g.sessions)} weeks, ${esc(g.firstDate)} to ${esc(g.lastDate)}</dd>
+      <dt>Sessions</dt><dd>${qt.proRata ? `${esc(qt.sessions)} of ${esc(qt.of)}, from ${esc(qt.firstDate)} to ${esc(g.lastDate)}` : `${esc(qt.sessions || g.sessions)} weeks, ${esc(qt.firstDate || g.firstDate)} to ${esc(g.lastDate)}`}</dd>
       <dt>Players</dt><dd>${esc(F.players.map((p) => p.existing?.name || p.name).join(', '))}</dd>
       <dt>Waiver</dt><dd>${F.waiver ? 'Signed now' : 'On file'}</dd>
-      <dt>Total</dt><dd>A$${esc(total.toLocaleString('en-AU'))}${n > 1 ? ` <span class="muted">(${esc(S.data.priceLabel)} each)</span>` : ''}</dd>
+      <dt>Total</dt><dd>${esc(total)}${n > 1 ? ` <span class="muted">(${esc(money(unit))} each, sibling rate)</span>` : ''}${qt.proRata ? '<br><span class="muted small">The rest of the term only.</span>' : ''}</dd>
     </dl>
     <label class="j-field" style="margin-top:14px"><span>Anything the coach should know? <span class="muted">(optional)</span></span><textarea class="j-textarea" id="r-notes"></textarea></label>
     ${g.girlsOnly ? '<label class="j-check"><input type="checkbox" id="r-girls"> <span>This is a girls group. Each player I am booking is a girl.</span></label>' : ''}
-    <label class="j-check"><input type="checkbox" id="r-terms"> <span>I agree the place is for the full term and payment is required before the term starts. No make-up sessions.</span></label>
-    <p class="muted small" style="margin-top:8px">Card, Apple Pay, Google Pay, Afterpay or Klarna. You pay on Stripe's secure page.</p>
+    <label class="j-check"><input type="checkbox" id="r-terms"> <span>I agree the place is for the rest of the term and is locked in once paid. No make-up sessions.</span></label>
+    <p class="muted small" style="margin-top:8px">Card, Apple Pay, Google Pay or Afterpay. You pay on Stripe's secure page.</p>
     <p class="j-err" id="r-err" hidden></p>`
-  F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="r-back">Back</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="r-pay">Pay A$${esc(total.toLocaleString('en-AU'))}</button></div>`
+  F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="r-back">Back</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="r-pay">Pay ${esc(total)}</button></div>`
   F.sheet.foot.querySelector('#r-back').addEventListener('click', () => {
     if (F.players.some((p) => p.isNew || !p.existing?.waiverOnFile)) return stepWaiver()
     renderPlayers()
@@ -496,29 +591,38 @@ async function pay() {
 function stepMessage() {
   F.sheet.setSteps(stepsFor(), 2)
   const k = F.kind
-  const help = k === 'application' ? 'Tell us about the player: current club and team, level, and what they want from the Pathway.' : k === 'waitlist' ? 'Anything we should know? We email you a link if a place opens.' : 'Which days and times suit you for 1 to 1 coaching?'
+  const help = k === 'waitlist' ? 'Anything we should know? We will contact you if a place opens.' : 'Which days and times suit you for 1 to 1 coaching?'
   F.sheet.body.innerHTML = `
-    ${k === 'application' ? '<label class="j-field"><span>Current club and team</span><input class="j-input" id="m-club"></label>' : ''}
-    <label class="j-field"><span>${k === 'enquiry' ? 'Your message' : 'Anything else'}</span><textarea class="j-textarea" id="m-msg" placeholder="${esc(help)}"></textarea></label>
+    <label class="j-field"><span>${k === 'enquiry' ? 'Your message' : 'Anything else'}</span><textarea class="j-textarea" id="m-msg" placeholder="${esc(help)}">${esc(F.message || '')}</textarea></label>
     <p class="j-err" id="m-err" hidden></p>`
-  const label = k === 'application' ? 'Send application' : k === 'waitlist' ? 'Join the waitlist' : 'Send enquiry'
+  const label = k === 'waitlist' ? 'Join the waitlist' : 'Send enquiry'
   F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="m-back">Back</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="m-send">${label}</button></div>`
   F.sheet.foot.querySelector('#m-back').addEventListener('click', () => { renderPlayers(); F.sheet.setSteps(stepsFor(), 1) })
-  F.sheet.foot.querySelector('#m-send').addEventListener('click', async () => {
-    const btn = F.sheet.foot.querySelector('#m-send')
-    btn.disabled = true
-    const r = await api('/api/jfp-book', {
-      action: 'request', kind: k, groupId: F.g.id, players: payloadPlayers(), parentName: F.parentName, mobile: F.mobile,
-      club: F.sheet.body.querySelector('#m-club')?.value.trim() || '', message: F.sheet.body.querySelector('#m-msg').value.trim(),
-    })
-    btn.disabled = false
-    if (!r.ok) { const e = F.sheet.body.querySelector('#m-err'); e.textContent = r.data.error || 'Could not send. Try again.'; e.hidden = false; return }
-    F.sheet.setSteps(0, 0)
-    F.sheet.body.innerHTML = `<div class="j-box j-box-green"><b>Sent.</b> ${k === 'waitlist' ? 'You are on the waitlist. If a place opens we will email you a link to take it.' : 'Lee or Ligia will review it and reply within 48 hours. We have emailed you a copy.'}</div>
-      <p class="muted" style="margin-top:14px">You can see it any time in <a href="/jfp-account/">your account</a>.</p>`
-    F.sheet.foot.innerHTML = '<button type="button" class="j-btn j-btn-dark j-btn-block" id="m-done">Done</button>'
-    F.sheet.foot.querySelector('#m-done').addEventListener('click', () => closeSheet())
+  F.sheet.foot.querySelector('#m-send').addEventListener('click', () => { F.message = F.sheet.body.querySelector('#m-msg').value.trim(); sendRequest(F.sheet.foot.querySelector('#m-send')) })
+}
+
+async function sendRequest(btn) {
+  const k = F.kind
+  btn.disabled = true
+  const r = await api('/api/jfp-book', {
+    action: 'request', kind: k, groupId: F.g.id, players: payloadPlayers(), parentName: F.parentName, mobile: F.mobile,
+    answers: F.answers || {}, message: F.message || '', waiver: F.waiver || undefined,
   })
+  btn.disabled = false
+  if (!r.ok) {
+    if (r.data.code === 'signin') { S.parent = null; return stepWho() }
+    toast(r.data.error || 'Could not send. Try again.')
+    return
+  }
+  F.sheet.setSteps(0, 0)
+  F.sheet.timer.hidden = true
+  const done = k === 'waitlist'
+    ? 'You are on the waitlist. If a place opens we will be in touch.'
+    : k === 'enquiry' ? 'Lee or Ligia will be in touch about times.' : 'We will reply within 48 hours: a place for the term, or a trial session first. We have emailed you a copy.'
+  F.sheet.body.innerHTML = `<div class="j-box j-box-green"><b>Sent.</b> ${done}</div>
+    <p class="muted" style="margin-top:14px">You can see it any time in <a href="/jfp-account/">My JFP</a>.</p>`
+  F.sheet.foot.innerHTML = '<button type="button" class="j-btn j-btn-dark j-btn-block" id="m-done">Done</button>'
+  F.sheet.foot.querySelector('#m-done').addEventListener('click', () => closeSheet())
 }
 
 boot()

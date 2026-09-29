@@ -10,7 +10,7 @@
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, sessionDates, dateLabel,
-  formatAud, coachById, coachByAirtableName, locationFor, ageOn, normName, audit, closeCheckout, CHECKOUT_EXPIRES_MINUTES,
+  formatAud, coachById, coachByAirtableName, locationFor, ageOn, normName, audit, closeCheckout, kvPipeline, CHECKOUT_EXPIRES_MINUTES,
 } from './_jfp-store.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
@@ -45,11 +45,16 @@ function paymentLine(row, openReq) {
   return { state: 'arranged', label: 'Payment arranged with Joner Football' }
 }
 
-async function overview(res, parent) {
+async function overview(res, parent, body = {}) {
   const config = await getConfig()
   const [roster, groups, payreqs, requests, bookings] = await Promise.all([loadRoster(), listGroups(), listPayreqs(), listApplications(), listBookings()])
   const fam = withDobs(familyFor(parent.email, roster, config.termStart), dobsFrom(requests, parent.email), config.termStart)
   const mine = payreqs.filter((p) => p.email === parent.email && p.status !== 'cancelled')
+  // Opened from a payment link: staff see that the family has looked at it.
+  const opened = mine.find((q) => q.id === clean(body.pay, 60) && ['open', 'checkout'].includes(q.status))
+  // Counted on its own key, never by rewriting the payment record, so a
+  // payment being recorded at the same moment can never be undone.
+  if (opened) await kvPipeline([['HINCRBY', 'jfp:payreq-views', opened.id, '1'], ['HSET', 'jfp:payreq-viewed-at', opened.id, new Date().toISOString()]])
   const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
   const players = fam.players.map((p) => ({
     key: p.key,
@@ -73,7 +78,11 @@ async function overview(res, parent) {
   }))
   const todo = mine.filter((q) => ['open', 'checkout'].includes(q.status)).map((q) => {
     const blockers = q.playerKeys.filter((k) => !fam.players.find((p) => p.key === k)?.waiver)
-    return { id: q.id, amountLabel: formatAud(q.amountCents), players: q.playerNames, reason: q.reason, group: q.groupLabel || '', needsWaiver: blockers.length > 0, expiresAt: q.expiresAt || '' }
+    return {
+      id: q.id, amountLabel: formatAud(q.amountCents), players: q.playerNames, reason: q.reason, group: q.groupLabel || '', needsWaiver: blockers.length > 0, expiresAt: q.expiresAt || '',
+      what: q.reason === 'trial' ? `Trial session${q.trialDate ? `, ${dateLabel(q.trialDate)}` : ''}` : q.startDate ? `From ${dateLabel(q.startDate)} to the end of term${q.creditCents ? `, ${formatAud(q.creditCents)} trial taken off` : ''}` : '',
+      afterpay: q.afterpay !== false,
+    }
   })
   return res.status(200).json({
     success: true,
@@ -84,7 +93,7 @@ async function overview(res, parent) {
     players,
     todo,
     paid: mine.filter((q) => q.status === 'paid').map((q) => ({ id: q.id, amountLabel: formatAud(q.paidCents ?? q.amountCents), players: q.playerNames, paidAt: q.paidAt })),
-    requests: requests.filter((r) => r.email === parent.email).map((r) => ({ id: r.id, kind: r.kind, status: r.status, players: r.players.map((x) => x.name), group: byGroup[r.groupId] ? `${byGroup[r.groupId].day} ${byGroup[r.groupId].time}, ${locationFor(config, byGroup[r.groupId].location).name}` : r.groupId === 'one-to-one' ? '1 to 1 coaching' : '', createdAt: r.createdAt })),
+    requests: requests.filter((r) => r.email === parent.email).map((r) => ({ id: r.id, kind: r.kind, status: r.status, offer: r.offer || '', players: r.players.map((x) => x.name), group: byGroup[r.groupId] ? `${byGroup[r.groupId].day} ${byGroup[r.groupId].time}, ${locationFor(config, byGroup[r.groupId].location).name}` : r.groupId === 'one-to-one' ? '1 to 1 coaching' : '', createdAt: r.createdAt })),
     bookings: bookings.filter((b) => b.email === parent.email && b.status === 'paid').map((b) => ({ id: b.id, players: b.players.map((x) => x.name), amountLabel: formatAud(b.amountPaidCents ?? b.priceCents), paidAt: b.paidAt })),
   })
 }
@@ -144,26 +153,35 @@ async function pay(req, res, parent, body) {
   }
   const group = q.groupId ? await getGroup(q.groupId) : null
   const base = siteUrl(req)
-  const name = `${config.term}: ${q.playerNames.join(', ')}${group ? `, ${group.day} ${group.time}` : ''}`
+  const name = `${q.reason === 'trial' ? 'JFP trial' : config.term}: ${q.playerNames.join(', ')}${group ? `, ${group.day} ${group.time}` : ''}${q.reason === 'trial' && q.trialDate ? `, ${dateLabel(q.trialDate)}` : ''}`
   const session = await stripeFetch('/checkout/sessions', {
     method: 'POST',
     body: {
       mode: 'payment',
       customer_email: q.email,
       expires_at: String(Math.floor(Date.now() / 1000) + CHECKOUT_EXPIRES_MINUTES * 60),
-      success_url: `${base}/jfp-account/?paid=${encodeURIComponent(q.id)}&session_id={CHECKOUT_SESSION_ID}`,
+      // Paid: the thank you page, which points them to the training kit.
+      success_url: `${base}/jfp-booking/success/?pay=${encodeURIComponent(q.id)}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${base}/jfp-account/`,
       'line_items[0][quantity]': '1',
       'line_items[0][price_data][currency]': 'aud',
       'line_items[0][price_data][unit_amount]': String(q.amountCents),
       'line_items[0][price_data][product_data][name]': name.slice(0, 250),
+      // Card only when staff turned Afterpay off for this link.
+      ...(q.afterpay === false ? { 'payment_method_types[0]': 'card' } : {}),
       'metadata[jfpBookingId]': q.id,
       'metadata[source]': q.reason || 'payreq',
       'payment_intent_data[metadata][jfpBookingId]': q.id,
       'payment_intent_data[description]': name.slice(0, 400),
     },
   })
-  await savePayreq({ ...q, status: 'checkout', stripeSessionId: session.id, siteUrl: base })
+  // Staff may have changed the amount while this page was opening.
+  const now = await getPayreq(q.id)
+  if (!now || now.amountCents !== q.amountCents || !['open', 'checkout'].includes(now.status)) {
+    await closeCheckout(session.id)
+    return fail(res, 409, 'This payment was just updated. Refresh the page and try again.', { code: 'changed' })
+  }
+  await savePayreq({ ...now, status: 'checkout', stripeSessionId: session.id, siteUrl: base })
   return res.status(200).json({ success: true, url: session.url })
 }
 
@@ -179,7 +197,7 @@ export default async function handler(req, res) {
     if (!parent) return fail(res, 401, 'Sign in with your email to continue.', { code: 'signin' })
     if (body.action === 'signWaiver') return await signWaiver(res, parent, body)
     if (body.action === 'pay') return await pay(req, res, parent, body)
-    return await overview(res, parent)
+    return await overview(res, parent, body)
   } catch (error) {
     console.error('jfp-account failed', error)
     return fail(res, 500, 'Something went wrong. Try again in a moment.')

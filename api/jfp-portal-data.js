@@ -1,9 +1,9 @@
 // Everything the JFP portal shows and changes, behind a signed-in staff session.
 //
 // Roles, checked here on every action:
-//   admin  Lee and Ligia: the whole programme, players, money, settings
-//   coach  their own sessions: times, player names and ages, attendance.
-//          No money, no parent contact details.
+//   admin  Lee and Ligia: the whole program, players, money, settings
+//   coach  the whole program timetable (names and ages), their own sessions
+//          and registers. No money, no parent contact details.
 //
 // Staff changes write straight into Airtable Term 4 Players, so Lee's
 // dashboard always matches, and every change is recorded in the audit log.
@@ -14,14 +14,16 @@ import {
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
   coachByAirtableName, sessionDates, dateLabel, formatAud, to24h, clean, newId, audit, listAudit, locationFor, validEmail, ageOn,
   normName, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold,
+  PRODUCTS, QUESTIONS, productFor, priceFor, nextSessionDate, sydneyToday, periodOf,
 } from './_jfp-store.js'
 import {
   loadRoster, countsFrom, playerAge, waiverFor, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, draftAgeBand,
   createWaiverRows, waiverFields, findWaiversByTag, bustRosterCache, findTerm4ByTag,
+  getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, listDropped, deleteTerm4Row, RESTORABLE,
 } from './_jfp-airtable.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, PAY_EFFECTS } from './_jfp-finalise.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
-import { sendFamilyInvite, sendPlaceOffered } from './_jfp-email.js'
+import { sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered } from './_jfp-email.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -60,7 +62,9 @@ function playerView(r, config, roster, { money }) {
 }
 
 async function boardData(config) {
-  const [groups, roster, payreqs] = await Promise.all([listGroups(), loadRoster({ fresh: true }), listPayreqs()])
+  const [groups, roster, payreqs, requests] = await Promise.all([listGroups(), loadRoster({ fresh: true }), listPayreqs(), listApplications()])
+  const pendingBy = {}
+  for (const r of requests) if (r.status === 'pending') pendingBy[r.groupId] = (pendingBy[r.groupId] || 0) + 1
   const counts = countsFrom(roster)
   const online = await onlineCounts(groups.map((g) => g.id))
   const openReqByRow = new Map()
@@ -82,6 +86,8 @@ async function boardData(config) {
       confirmed: players.filter((p) => p.dashboard).length,
       players,
       sortTime: to24h(g.time),
+      period: periodOf(g),
+      pendingRequests: pendingBy[g.id] || 0,
     }
   })
   const unassigned = holding.filter((r) => !r.groupId || !known.has(r.groupId)).map((r) => ({ ...playerView(r, config, roster, { money: true }), session: [r.day, r.time, r.location].filter(Boolean).join(' ') || 'No session set' }))
@@ -94,7 +100,8 @@ async function boardData(config) {
       players: holding.length,
       dashboard: roster.players.filter(onDashboard).length,
       awaiting: holding.filter((r) => r.confirmation !== 'Confirmed').length,
-      placesLeft: view.filter((g) => g.mode === 'direct').reduce((t, g) => t + g.placesLeft, 0),
+      placesLeft: view.filter((g) => ['direct', 'application'].includes(g.mode)).reduce((t, g) => t + g.placesLeft, 0),
+      pendingRequests: requests.filter((r) => r.status === 'pending').length,
       waivers: holding.filter((r) => waiverFor(r.player, { emails: [r.email], phones: [r.phone] }, roster.waivers)).length,
     },
   }
@@ -116,6 +123,17 @@ async function capacityCheck(group, adding, force) {
 
 // ---------- players ----------
 
+// The price for a group and product from a start date, unless staff typed
+// an amount. Returns { amountCents, price } or { error }.
+function amountFor(config, group, body, players = 1) {
+  const product = PRODUCTS.some((x) => x.key === body.product) ? body.product : (group?.product || 'group')
+  const from = ISO.test(body.startDate || '') ? body.startDate : (group ? nextSessionDate(config, group.day) : '')
+  const price = priceFor(config, { product, day: group?.day, fromIso: from, players })
+  const typed = Number(body.amountCents)
+  const amountCents = Number.isInteger(typed) && typed > 0 ? typed : price.totalCents
+  return { amountCents, price, product, from }
+}
+
 async function addPlayer(req, res, principal, config, body) {
   const group = await getGroup(body.groupId)
   if (!group) return fail(res, 404, 'Group not found.')
@@ -125,12 +143,13 @@ async function addPlayer(req, res, principal, config, body) {
   const parentName = clean(body.parent?.name, 100)
   const mobile = clean(body.parent?.mobile, 40)
   const payment = ['offline', 'link', 'trial', 'none'].includes(body.payment) ? body.payment : 'none'
-  if ((payment === 'link' || body.sendEmail) && !email) return fail(res, 400, 'Add the parent email so we can send the sign-in and payment link.')
+  if ((payment === 'link' || body.sendEmail) && !email) return fail(res, 400, 'Add the parent email so the family can sign in, sign the waiver and pay.')
   const cap = await capacityCheck(group, 1, body.force === true)
   if (cap.error) return fail(res, 409, cap.error, { code: cap.code })
   const dob = ISO.test(body.player?.dob || '') ? body.player.dob : ''
   const age = dob ? ageOn(dob, config.termStart) : (Number.isInteger(Number(body.player?.age)) ? Number(body.player.age) : null)
-  const amountCents = Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0 ? Number(body.amountCents) : config.priceCents
+  const { amountCents, price, product, from } = amountFor(config, group, body)
+  const isTrial = payment === 'trial' || product === 'trial'
   const coach = coachById(config, group.coachId)
   const addId = newId('ADD')
   const today = new Date().toISOString().slice(0, 10)
@@ -141,33 +160,38 @@ async function addPlayer(req, res, principal, config, body) {
     ...(mobile ? { 'Phone': mobile } : {}),
     'Term 3 Day': group.day, 'Term 3 Time': group.time, 'Term 3 Location': group.location,
     'Coach': coach?.airtableName || '',
-    'Term 4 Confirmation': 'Confirmed',
-    'Confirmation Date': today,
-    'Term 4 Fee': payment === 'trial' ? 0 : config.priceCents / 100,
+    // A link is a place held for this family: confirmed once they pay.
+    'Term 4 Confirmation': payment === 'link' ? 'Awaiting Reply' : 'Confirmed',
+    ...(payment === 'link' ? {} : { 'Confirmation Date': today }),
+    'Term 4 Fee': payment === 'trial' ? 0 : amountCents / 100,
     'Term 4 Amount Paid': payment === 'offline' ? amountCents / 100 : 0,
     'Term 4 Payment Status': payment === 'offline' ? 'Paid' : payment === 'trial' ? 'N/A' : 'Unpaid',
-    'Term 4 Payment Type': payment === 'trial' ? 'JFP Trial' : group.label === 'Pathway' ? 'JFP Pathway 10 weeks' : 'JFP 10 weeks',
-    'Term 4 Notes': `Added by ${principal.name} in the JFP portal${age != null ? `, age ${age}` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}`,
+    'Term 4 Payment Type': isTrial ? 'JFP Trial' : price.type,
+    'Term 4 Notes': `Added by ${principal.name} in the JFP portal${age != null ? `, age ${age}` : ''}${price.proRata && !isTrial ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}`,
     ...(payment === 'offline' ? { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' } : {}),
   }
   const [rowId] = await createTerm4Rows([fields])
   let payreq = null
-  if (payment === 'link') payreq = await createPayreq({ req, principal, config, group, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: 'admin-add' })
+  if (payment === 'link') payreq = await createPayreq({ req, principal, config, group, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: isTrial ? 'trial' : 'admin-add', product, startDate: from, afterpay: body.afterpay !== false })
   let emailed = false
   if (body.sendEmail === true && email) {
     const roster = await loadRoster({ fresh: true })
     const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile] }, roster.waivers))
-    await sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq) }, amountCents })
+    await sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq) }, amountCents, trial: isTrial, startDate: from })
     emailed = true
+    if (payreq) await savePayreq({ ...payreq, emailedAt: new Date().toISOString() })
   }
-  await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed, payreq: payreq?.id || '' } })
-  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq) } : null, emailed })
+  await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed, payreq: payreq?.id || '', cents: payment === 'none' ? 0 : amountCents } })
+  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed })
 }
 
 // No email in the link: it would end up in browser history and server logs.
 function payreqUrl(req, q) { return `${siteUrl(req)}/jfp-account/?pay=${encodeURIComponent(q.id)}` }
 
-async function createPayreq({ req, principal, config, group, rows, email, parentName, amountCents, reason, requestId }) {
+// Offers from requests hold the place for 7 days; balance and term links do not expire.
+const EXPIRING = new Set(['application', 'waitlist', 'trial'])
+
+async function createPayreq({ req, principal, config, group, rows, email, parentName, amountCents, reason, requestId, product = '', startDate = '', afterpay = true, trialDate = '', creditCents = 0, restoreFields = null }) {
   const q = {
     id: newId('PAY'),
     email, parentName,
@@ -177,10 +201,13 @@ async function createPayreq({ req, principal, config, group, rows, email, parent
     groupId: group?.id || '',
     groupLabel: group ? groupSummary(group, config) : '',
     amountCents, reason, requestId: requestId || '',
+    product, productLabel: product ? productFor(product).label : '', startDate, trialDate, creditCents,
+    afterpay: afterpay !== false,
+    ...(restoreFields ? { restoreFields } : {}),
     status: 'open',
     createdBy: principal.email,
     createdAt: new Date().toISOString(),
-    expiresAt: reason === 'admin-add' || reason === 'balance' ? '' : new Date(Date.now() + REQUEST_DAYS * 86400000).toISOString(),
+    expiresAt: EXPIRING.has(reason) ? new Date(Date.now() + REQUEST_DAYS * 86400000).toISOString() : '',
     siteUrl: siteUrl(req),
   }
   await savePayreq(q)
@@ -210,30 +237,89 @@ async function movePlayer(res, principal, config, body) {
   return res.status(200).json({ success: true })
 }
 
-async function removePlayer(res, principal, body) {
+// Why players leave: Lee keeps count, because players move in and out.
+export const LEAVE_REASONS = ['Cost', 'Time or schedule clash', 'Club or school commitments', 'Injury', 'Not the right group or level', 'Trial was not the right fit', 'Moved away', 'Taking a break', 'Joined another program', 'Moved to 1 to 1', 'No reply from the family', 'Other']
+
+// Remove a player: their Term 4 row leaves Term 4 Players, and a copy with
+// the contact details, the reason and the whole row goes to "Players dropped
+// from term 4", so nobody is lost and they can be restored.
+async function removePlayer(res, principal, config, body) {
   const row = await rowOr404(res, body.rowId); if (!row) return
+  const reason = LEAVE_REASONS.includes(body.reason) ? body.reason : ''
+  if (!reason) return fail(res, 400, 'Choose why they are leaving.')
+  const details = clean(body.details, 1000)
   // Close any payment page for this player first. If the family has just
-  // paid, stop: removing now would leave a payment on a dropped row.
+  // paid, stop: removing now would leave a payment on a removed row.
   const open = (await listPayreqs()).filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(row.id))
   for (const q of open) {
     const closed = q.status === 'checkout' ? await closeCheckout(q.stripeSessionId) : 'expired'
     if (closed === 'complete') return fail(res, 409, `The family has just paid for ${row.player}. Wait a minute for it to show, then remove and refund in Stripe if needed.`)
     if (closed === 'error') return fail(res, 503, 'Could not close the family\'s payment page. Try again in a minute.')
   }
-  await updateTerm4Rows([{ id: row.id, fields: {
-    'Term 4 Confirmation': 'Dropped',
-    'Term 4 Notes': appendNote(row.notes, `Removed from ${row.day} ${row.time} by ${principal.name}${body.reason ? `: ${clean(body.reason, 200)}` : ''}.`),
-  } }])
-  for (const q of open) await savePayreq({ ...q, status: 'cancelled', cancelledBy: principal.email, cancelledAt: new Date().toISOString() })
-  await audit({ by: principal.email, action: 'player.remove', target: row.id, before: { status: row.confirmation, group: row.groupId }, after: { status: 'Dropped', name: row.player } })
-  return res.status(200).json({ success: true, wasPaid: row.paymentStatus === 'Paid' })
+  const fields = await getTerm4Fields(row.id)
+  const coach = coachByAirtableName(config, row.coach)
+  const now = new Date().toISOString()
+  // A retry after a part-finished removal reuses the copy it already made.
+  const [existing] = await findDroppedBySource(row.id)
+  const droppedId = existing || await createDroppedRow({
+    'Player Name': row.player, 'Parent Name': row.parent, 'Email': row.email, 'Phone Number': row.phone,
+    'Term Player left': config.term, 'Reason for leaving': reason, 'Reason details': details,
+    'Removed At': now, 'Removed By': principal.name,
+    'Session': [row.day, row.time, row.location].filter(Boolean).join(' '), 'Coach': coach ? coach.airtableName : row.coach,
+    'Payment Status': row.paymentStatus, 'Term 4 Payment Type': row.paymentType,
+    ...(row.feeAud != null ? { 'Term 4 Fee': row.feeAud } : {}), ...(row.paidAud != null ? { 'Term 4 Amount Paid': row.paidAud } : {}),
+    'Term 4 Notes': row.notes, 'Source Term 4 Record ID': row.id, 'Term 4 Row Copy': JSON.stringify(fields).slice(0, 90000),
+  })
+  if (!droppedId) return fail(res, 502, 'Airtable did not save the copy, so the player was not removed. Try again.')
+  // Money already paid stays on Term 4 Players (as Dropped), so the term's
+  // takings and any payment record keep their row. Everyone else comes off.
+  const keepRow = cents(row.paidAud) > 0 || /\[(JFP-ONLINE|PAID):/.test(row.notes)
+  if (keepRow) await updateTerm4Rows([{ id: row.id, fields: { 'Term 4 Confirmation': 'Dropped', 'Term 4 Notes': appendNote(row.notes, `Removed by ${principal.name}: ${reason}${details ? `. ${details}` : ''}. Kept here because money was paid.`) } }])
+  else await deleteTerm4Row(row.id)
+  for (const q of open) await savePayreq({ ...q, status: 'cancelled', cancelledBy: principal.email, cancelledAt: now })
+  await audit({ by: principal.email, action: 'player.remove', target: row.id, before: { status: row.confirmation, group: row.groupId }, after: { name: row.player, reason, details, dropped: droppedId } })
+  return res.status(200).json({ success: true, wasPaid: row.paymentStatus === 'Paid', kept: keepRow, droppedId })
 }
 
+// Put a removed player back in Term 4 Players from their saved copy.
 async function restorePlayer(res, principal, body) {
-  const row = await rowOr404(res, body.rowId); if (!row) return
-  await updateTerm4Rows([{ id: row.id, fields: { 'Term 4 Confirmation': 'Confirmed', 'Term 4 Notes': appendNote(row.notes, `Restored by ${principal.name}.`) } }])
-  await audit({ by: principal.email, action: 'player.restore', target: row.id, before: { status: row.confirmation }, after: { status: 'Confirmed', name: row.player } })
-  return res.status(200).json({ success: true })
+  const d = await getDroppedRow(clean(body.droppedId, 30))
+  if (!d) {
+    // Players removed before this table existed are still in Term 4 as Dropped.
+    const row = await rowOr404(res, body.rowId); if (!row) return
+    await updateTerm4Rows([{ id: row.id, fields: { 'Term 4 Confirmation': 'Confirmed', 'Term 4 Notes': appendNote(row.notes, `Restored by ${principal.name}.`) } }])
+    await audit({ by: principal.email, action: 'player.restore', target: row.id, before: { status: row.confirmation }, after: { status: 'Confirmed', name: row.player } })
+    return res.status(200).json({ success: true })
+  }
+  if (d['Restored']) return fail(res, 409, 'Already restored.')
+  // Kept on Term 4 as Dropped (money was paid): put that same row back.
+  const kept = await getTerm4Row(d['Source Term 4 Record ID'] || '')
+  if (kept) {
+    const g = kept.groupId ? await getGroup(kept.groupId) : null
+    if (g) { const cap = await capacityCheck(g, 1, body.force === true); if (cap.error) return fail(res, 409, cap.error, { code: cap.code }) }
+    await updateTerm4Rows([{ id: kept.id, fields: { 'Term 4 Confirmation': 'Confirmed', 'Term 4 Notes': appendNote(kept.notes, `Restored by ${principal.name}.`) } }])
+    await updateDroppedRow(d.id, { 'Restored': true })
+    await audit({ by: principal.email, action: 'player.restore', target: kept.id, after: { name: kept.player, from: d.id } })
+    return res.status(200).json({ success: true, rowId: kept.id })
+  }
+  let copy = null
+  try { copy = JSON.parse(d['Term 4 Row Copy'] || '') } catch {}
+  if (!copy || typeof copy !== 'object') return fail(res, 422, 'The saved copy of this row cannot be read. Add the player again with Add player.')
+  const fields = Object.fromEntries(RESTORABLE.filter((k) => copy[k] != null && copy[k] !== '').map((k) => [k, copy[k]]))
+  fields['Player Name'] = fields['Player Name'] || d['Player Name']
+  fields['Term 4 Confirmation'] = 'Confirmed'
+  fields['Term 4 Notes'] = appendNote(fields['Term 4 Notes'] || '', `Restored by ${principal.name} (had left: ${d['Reason for leaving'] || 'no reason'}). [RESTORED:${d.id}]`)
+  if (fields['Term 3 Day'] && fields['Term 3 Time'] && fields['Term 3 Location']) {
+    const c = coachByAirtableName(await getConfig(), fields['Coach'] || '')?.id || ''
+    const g = (await getGroup(makeGroupId(fields['Term 3 Day'], fields['Term 3 Time'], fields['Term 3 Location']))) || (c ? await getGroup(makeGroupId(fields['Term 3 Day'], fields['Term 3 Time'], fields['Term 3 Location'], c)) : null)
+    if (g) { const cap = await capacityCheck(g, 1, body.force === true); if (cap.error) return fail(res, 409, cap.error, { code: cap.code }) }
+  }
+  // A retry after a part-finished restore reuses the row it already made.
+  const [earlier] = await findTerm4ByTag('RESTORED', d.id)
+  const rowId = earlier || (await createTerm4Rows([fields]))[0]
+  await updateDroppedRow(d.id, { 'Restored': true, 'Reason details': `${d['Reason details'] ? `${d['Reason details']}\n` : ''}Restored ${new Date().toISOString().slice(0, 10)} by ${principal.name} as ${rowId}.` })
+  await audit({ by: principal.email, action: 'player.restore', target: rowId, after: { name: fields['Player Name'], from: d.id } })
+  return res.status(200).json({ success: true, rowId })
 }
 
 async function markPaid(res, principal, body) {
@@ -270,9 +356,19 @@ async function sendPaymentLink(req, res, principal, config, body) {
   if (!rows.length) return fail(res, 404, 'Player row not found.')
   const email = validEmail(body.email) || rows[0].email
   if (!email) return fail(res, 400, 'This player has no parent email in Airtable. Add one to send a link.')
+  const group = rows[0].groupId ? await getGroup(rows[0].groupId) : null
+  // Either what is owing on the rows, or a product from the price list
+  // (pro rata from the start date), or an amount staff typed.
   const balance = rows.reduce((t, r) => t + Math.max(0, cents(r.balanceAud ?? ((r.feeAud || 0) - (r.paidAud || 0)))), 0)
-  const amountCents = Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0 ? Number(body.amountCents) : balance
-  if (!amountCents) return fail(res, 400, 'Nothing is owing on this row. Enter an amount to charge.')
+  const chosen = PRODUCTS.some((x) => x.key === body.product) ? amountFor(config, group, { ...body, amountCents: undefined }, rows.length) : null
+  const typed = Number(body.amountCents)
+  // What the family has already paid this term comes off a price-list amount.
+  // A trial fee comes off only when staff tick it, and only what was paid.
+  const paidSoFar = rows.reduce((t, r) => t + cents(r.paidAud), 0)
+  const onTrial = rows.some((r) => /trial/i.test(r.paymentType))
+  const credit = !chosen ? 0 : onTrial ? (body.creditTrial === true ? Math.min(paidSoFar, config.prices.trial, chosen.amountCents) : 0) : Math.min(paidSoFar, chosen.amountCents)
+  const amountCents = Number.isInteger(typed) && typed > 0 ? typed : chosen ? chosen.amountCents - credit : balance
+  if (!amountCents) return fail(res, 400, 'Nothing is owing on this row. Choose what they are paying for, or enter an amount.')
   // The family signs in with this email to pay, so their rows must carry it.
   // Changing it hands the player to that inbox, so it needs a deliberate tick.
   const changed = rows.filter((r) => r.email !== email)
@@ -281,17 +377,84 @@ async function sendPaymentLink(req, res, principal, config, body) {
     await updateTerm4Rows(changed.map((r) => ({ id: r.id, fields: { 'Email': email, 'Term 4 Notes': appendNote(r.notes, `Parent email changed from ${r.email || 'none'} to ${email} by ${principal.name} for a payment link.`) } })))
     await audit({ by: principal.email, action: 'player.email', target: changed.map((r) => r.id).join(','), before: { emails: changed.map((r) => r.email) }, after: { email } })
   }
-  const group = rows[0].groupId ? await getGroup(rows[0].groupId) : null
-  const q = await createPayreq({ req, principal, config, group, rows: rows.map((r) => ({ id: r.id, name: r.player })), email, parentName: rows[0].parent, amountCents, reason: 'balance' })
+  // A product link sets what the row costs in Airtable, so the balance and
+  // the dashboard match what the family is asked to pay.
+  // What the rows said before, put back if this link is cancelled unpaid.
+  const restoreFields = chosen ? rows.map((r) => ({ id: r.id, fields: { 'Term 4 Fee': r.feeAud ?? 0, 'Term 4 Payment Type': r.paymentType || 'JFP 10 weeks', 'Term 4 Payment Status': r.paymentStatus || 'Unpaid' } })) : null
+  if (chosen) {
+    const share = splitEven(amountCents, rows.length)
+    await updateTerm4Rows(rows.map((r, i) => ({ id: r.id, fields: {
+      'Term 4 Fee': (cents(r.paidAud) + share[i]) / 100,
+      'Term 4 Payment Type': chosen.price.type,
+      'Term 4 Payment Status': cents(r.paidAud) > 0 ? 'Partially Paid' : 'Unpaid',
+      'Term 4 Notes': appendNote(r.notes, `Payment link by ${principal.name}: ${productFor(chosen.product).label}${chosen.price.proRata ? `, from ${chosen.from} (${chosen.price.sessions} of ${chosen.price.of} sessions)` : ''}${credit ? `, ${formatAud(credit)} ${onTrial ? 'trial' : 'already paid'} taken off` : ''}, ${formatAud(share[i])}.`),
+    } })))
+  }
+  const reason = body.reason === 'term-after-trial' ? 'term-after-trial' : chosen?.product === 'trial' ? 'trial' : 'balance'
+  const q = await createPayreq({ req, principal, config, group, rows: rows.map((r) => ({ id: r.id, name: r.player })), email, parentName: rows[0].parent, amountCents, reason, product: chosen?.product || '', startDate: chosen?.from || '', afterpay: body.afterpay !== false, creditCents: onTrial ? credit : 0, restoreFields })
   let emailed = false
   if (body.sendEmail === true && group) {
     const roster = await loadRoster()
     const needWaiver = rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone] }, roster.waivers))
-    await sendFamilyInvite({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), needs: { details: false, waiver: needWaiver, payment: true }, amountCents })
+    if (reason === 'term-after-trial') await sendTermOffered({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), amountCents, startDate: chosen?.from || '', creditCents: credit })
+    else await sendFamilyInvite({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), needs: { details: false, waiver: needWaiver, payment: true }, amountCents, trial: reason === 'trial', startDate: chosen?.from || '' })
     emailed = true
+    await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
-  await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: ids, cents: amountCents, emailed } })
+  await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: ids, cents: amountCents, product: chosen?.product || 'balance', emailed } })
   return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed })
+}
+
+function splitEven(total, n) {
+  const base = Math.floor(total / n / 100) * 100
+  return Array.from({ length: n }, (_, i) => (i === n - 1 ? total - base * (n - 1) : base))
+}
+
+// Change what an open link asks for. The link itself stays the same: the
+// family opens it and sees the new amount. A payment page already open on
+// Stripe is closed first, so nobody pays the old amount.
+async function changePayreqAmount(req, res, principal, config, body) {
+  const q = await getPayreq(body.id)
+  if (!q) return fail(res, 404, 'Payment link not found.')
+  if (!['open', 'checkout'].includes(q.status)) return fail(res, 409, `This link is ${q.status}. Make a new one instead.`)
+  const amountCents = Number(body.amountCents)
+  if (!Number.isInteger(amountCents) || amountCents <= 0) return fail(res, 400, 'Enter the new amount.')
+  if (q.status === 'checkout') {
+    const closed = await closeCheckout(q.stripeSessionId)
+    if (closed === 'complete') return fail(res, 409, 'The family has just paid the old amount. It will show as paid in a minute.')
+    if (closed === 'error') return fail(res, 503, 'Could not close the family\'s payment page. Try again in a minute.')
+  }
+  const next = { ...q, amountCents, status: 'open', stripeSessionId: '', replacedSessionIds: [...new Set([...(q.replacedSessionIds || []), q.stripeSessionId].filter(Boolean))], changedAt: new Date().toISOString(), changedBy: principal.email }
+  await savePayreq(next)
+  // Keep the Airtable fee in step when the rows only carry this link.
+  const rows = []
+  for (const id of q.term4Ids) { const r = await getTerm4Row(id); if (r) rows.push(r) }
+  const share = splitEven(amountCents, rows.length || 1)
+  if (rows.length && q.product) await updateTerm4Rows(rows.map((r, i) => ({ id: r.id, fields: { 'Term 4 Fee': (cents(r.paidAud) + share[i]) / 100, 'Term 4 Notes': appendNote(r.notes, `Payment link changed from ${formatAud(q.amountCents)} to ${formatAud(amountCents)} by ${principal.name}.`) } })))
+  let emailed = false
+  if (body.sendEmail === true) {
+    const group = q.groupId ? await getGroup(q.groupId) : null
+    if (group) { await sendFamilyInvite({ to: q.email, parentName: q.parentName, playerNames: q.playerNames, group, config, url: payreqUrl(req, q), needs: { details: false, waiver: false, payment: true }, amountCents, trial: q.reason === 'trial', startDate: q.startDate }); emailed = true }
+  }
+  await audit({ by: principal.email, action: 'payreq.change', target: q.id, before: { cents: q.amountCents }, after: { cents: amountCents, emailed } })
+  return res.status(200).json({ success: true, url: payreqUrl(req, next), amountLabel: formatAud(amountCents), emailed })
+}
+
+// After a trial: offer the rest of the term. The trial fee comes off unless
+// staff untick it (Lee: taken off). Pro rata from the start date.
+async function offerTerm(req, res, principal, config, body) {
+  const row = await rowOr404(res, body.rowId); if (!row) return
+  if (!row.email && !validEmail(body.email)) return fail(res, 400, 'This player has no parent email in Airtable.')
+  const group = await getGroup(clean(body.groupId, 80) || row.groupId)
+  if (!group) return fail(res, 404, 'Put the player in a group first.')
+  const out = { ...body, rowIds: [row.id], product: PRODUCTS.some((x) => x.key === body.product && x.key !== 'trial') ? body.product : group.product || 'group', creditTrial: body.creditTrial !== false, reason: 'term-after-trial' }
+  if (group.id !== row.groupId) {
+    const cap = await capacityCheck(group, 1, body.force === true)
+    if (cap.error) return fail(res, 409, cap.error, { code: cap.code })
+    const coach = coachById(config, group.coachId)
+    await updateTerm4Rows([{ id: row.id, fields: { 'Term 3 Day': group.day, 'Term 3 Time': group.time, 'Term 3 Location': group.location, ...(coach ? { 'Coach': coach.airtableName } : {}), 'Term 4 Notes': appendNote(row.notes, `Moved to ${group.day} ${group.time} ${group.location} after the trial by ${principal.name}.`) } }])
+  }
+  return sendPaymentLink(req, res, principal, config, out)
 }
 
 async function searchPlayers(config, body) {
@@ -312,21 +475,26 @@ async function saveGroupAction(res, principal, config, body) {
   const input = body.group || {}
   const existing = body.id ? await getGroup(body.id) : null
   if (body.id && !existing) return fail(res, 404, 'Group not found.')
-  const allowed = ['day', 'time', 'location', 'coachId', 'extraCoachIds', 'capacity', 'mode', 'label', 'durationMin', 'minAge', 'maxAge', 'ageStatus', 'girlsOnly', 'publicNote', 'programme']
+  const allowed = ['day', 'time', 'location', 'coachId', 'extraCoachIds', 'capacity', 'mode', 'label', 'durationMin', 'minAge', 'maxAge', 'ageStatus', 'girlsOnly', 'publicNote', 'programme', 'byCoach', 'trials', 'questions', 'product']
   const patch = Object.fromEntries(Object.entries(input).filter(([k]) => allowed.includes(k)))
   for (const k of ['capacity', 'durationMin']) if (k in patch) patch[k] = Number(patch[k])
   for (const k of ['minAge', 'maxAge']) if (k in patch) patch[k] = patch[k] === '' || patch[k] == null ? null : Number(patch[k])
   if (!existing) {
     const v = validateGroup({ capacity: 6, mode: 'closed', durationMin: 60, label: 'Small group', ...patch }, config)
     if (!v.ok) return fail(res, 400, v.errors.join(' '))
-    if (await getGroup(v.group.id)) return fail(res, 409, 'A group already runs at that day, time and location.')
+    if (await getGroup(v.group.id)) return fail(res, 409, v.group.byCoach ? 'That coach already has a group at that day, time and location.' : 'A group already runs at that day, time and location.')
+    // One session is either one group, or split by coach: never both.
+    const base = makeGroupId(v.group.day, v.group.time, v.group.location)
+    const all = await listGroups()
+    if (v.group.byCoach && all.some((x) => x.id === base)) return fail(res, 409, 'That session is already one group. Edit it, or tick "one group per coach" on it first.')
+    if (!v.group.byCoach && all.some((x) => x.byCoach && makeGroupId(x.day, x.time, x.location) === base)) return fail(res, 409, 'That session is split by coach. Add another coach group instead.')
     await saveGroup({ ...v.group, createdBy: principal.email, createdAt: new Date().toISOString() })
     await audit({ by: principal.email, action: 'group.create', target: v.group.id, after: v.group })
     return res.status(200).json({ success: true, group: v.group })
   }
   const v = validateGroup(patch, config, { ...existing, id: undefined })
   if (!v.ok) return fail(res, 400, v.errors.join(' '))
-  const next = { ...existing, ...v.group, id: makeGroupId(v.group.day, v.group.time, v.group.location) }
+  const next = { ...existing, ...v.group, byCoach: existing.byCoach === true, id: makeGroupId(v.group.day, v.group.time, v.group.location, existing.byCoach ? v.group.coachId : '') }
   const moved = next.id !== existing.id
   const roster = await loadRoster({ fresh: true })
   const rows = roster.players.filter((r) => r.groupId === existing.id && r.holdsPlace)
@@ -339,7 +507,8 @@ async function saveGroupAction(res, principal, config, body) {
     if ((await onlineCounts([existing.id]))[existing.id] > 0) return fail(res, 409, 'A parent is booking this group right now. Try again in 15 minutes.')
     // Every player moves with the group, in Airtable.
     try {
-      if (rows.length) await updateTerm4Rows(rows.map((r) => ({ id: r.id, fields: { 'Term 3 Day': next.day, 'Term 3 Time': next.time, 'Term 3 Location': next.location, 'Term 4 Notes': appendNote(r.notes, `Group changed from ${existing.day} ${existing.time} ${existing.location} to ${next.day} ${next.time} ${next.location} by ${principal.name}. ${marker}`) } })))
+      const nextCoach = coachById(config, next.coachId)
+      if (rows.length) await updateTerm4Rows(rows.map((r) => ({ id: r.id, fields: { 'Term 3 Day': next.day, 'Term 3 Time': next.time, 'Term 3 Location': next.location, ...(next.byCoach && nextCoach ? { 'Coach': nextCoach.airtableName } : {}), 'Term 4 Notes': appendNote(r.notes, `Group changed from ${existing.day} ${existing.time} ${existing.location} to ${next.day} ${next.time} ${next.location} by ${principal.name}. ${marker}`) } })))
     } catch (error) {
       return fail(res, 502, `Airtable stopped part way (${String(error.message).slice(0, 80)}). Some players are on the new time and some on the old. Press Save again to finish the move.`)
     }
@@ -387,10 +556,16 @@ async function draftAges(res, principal, config) {
 
 // ---------- requests: applications, waitlist, enquiries ----------
 
+// Lee's answer to an application or waitlist request:
+//   offer   accepted for the term: pay (pro rata from the start date) to lock in
+//   trial   one trial session first (A$85); after it, "Offer full term" on the board
+//   decline / done
+// Either offer holds the place in Airtable as Awaiting Reply for 7 days.
 async function decideRequest(req, res, principal, config, body) {
   const r = await getApplication(body.id)
   if (!r) return fail(res, 404, 'Request not found.')
-  if (body.decision === 'offer' ? r.status !== 'pending' : !['pending', 'offered'].includes(r.status)) return fail(res, 409, `Already ${r.status}.`)
+  const offering = body.decision === 'offer' || body.decision === 'trial'
+  if (offering ? r.status !== 'pending' : !['pending', 'offered'].includes(r.status)) return fail(res, 409, `Already ${r.status}.`)
   if (body.decision === 'decline') {
     await saveApplication({ ...r, status: 'declined', decidedBy: principal.email, decidedAt: new Date().toISOString(), note: clean(body.note, 300) })
     await audit({ by: principal.email, action: 'request.decline', target: r.id })
@@ -401,39 +576,51 @@ async function decideRequest(req, res, principal, config, body) {
     await audit({ by: principal.email, action: 'request.done', target: r.id })
     return res.status(200).json({ success: true, status: 'done' })
   }
-  if (body.decision !== 'offer') return fail(res, 400, 'Choose offer, decline or done.')
+  if (!offering) return fail(res, 400, 'Choose offer, trial, decline or done.')
+  const trial = body.decision === 'trial'
   const group = await getGroup(clean(body.groupId, 80) || r.groupId)
   if (!group) return fail(res, 404, 'Group not found.')
   const cap = await capacityCheck(group, r.players.length, body.force === true)
   if (cap.error) return fail(res, 409, cap.error, { code: cap.code })
+  const dates = sessionDates(config, group.day)
+  const startDate = dates.includes(body.startDate) ? body.startDate : nextSessionDate(config, group.day)
+  const n = r.players.length
+  const { amountCents, price, product } = trial
+    ? { amountCents: Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0 ? Number(body.amountCents) : config.prices.trial * n, price: priceFor(config, { product: 'trial' }), product: 'trial' }
+    : amountFor(config, group, { ...body, startDate }, n)
+  const share = splitEven(amountCents, n)
   // The place is held in Airtable as Awaiting Reply until the family pays.
   const coach = coachById(config, group.coachId)
   const tag = newId('ADD')
   // A retry after a part-failed offer reuses the rows it already made.
   const earlier = await findTerm4ByTag('JFP-REQ', r.id)
-  const ids = earlier.length ? earlier : await createTerm4Rows(r.players.map((p) => ({
+  const ids = earlier.length ? earlier : await createTerm4Rows(r.players.map((p, i) => ({
     'Player Name': p.name, 'Parent Name': r.parentName, 'Email': r.email, 'Phone': r.mobile,
     'Term 3 Day': group.day, 'Term 3 Time': group.time, 'Term 3 Location': group.location, 'Coach': coach?.airtableName || '',
-    'Term 4 Confirmation': 'Awaiting Reply', 'Term 4 Fee': config.priceCents / 100, 'Term 4 Amount Paid': 0, 'Term 4 Payment Status': 'Unpaid',
-    'Term 4 Payment Type': group.label === 'Pathway' ? 'JFP Pathway 10 weeks' : 'JFP 10 weeks',
-    'Term 4 Notes': `Offered from ${r.kind} by ${principal.name}${p.age != null ? `, age ${p.age}` : ''}. Holds the place for ${REQUEST_DAYS} days until paid. [${ADMIN_TAG}:${tag}] [JFP-REQ:${r.id}]`,
+    'Term 4 Confirmation': 'Awaiting Reply', 'Term 4 Fee': share[i] / 100, 'Term 4 Amount Paid': 0, 'Term 4 Payment Status': 'Unpaid',
+    'Term 4 Payment Type': trial ? 'JFP Trial' : price.type,
+    'Term 4 Notes': `${trial ? `Trial offered for ${startDate}` : `Offered for the term from ${startDate}${price.proRata ? ` (${price.sessions} of ${price.of} sessions, pro rata)` : ''}`} from ${r.kind} by ${principal.name}${p.age != null ? `, age ${p.age}` : ''}${r.answers?.club ? `, plays for ${r.answers.club}${r.answers.team ? ` ${r.answers.team}` : ''}` : ''}. Holds the place for ${REQUEST_DAYS} days until paid. [${ADMIN_TAG}:${tag}] [JFP-REQ:${r.id}]`,
   })))
   // Any waiver the family signed with the request goes to Airtable now.
   const signed = r.players.filter((p) => p.waiver)
   if (signed.length) {
-    const tag = `[JFP-REQ:${r.id}]`
-    if (!(await findWaiversByTag(tag)).length) {
-      await createWaiverRows(signed.map((p) => waiverFields({ player: p, parent: { name: r.parentName, email: r.email, mobile: r.mobile }, config, signature: p.waiver.signature, acceptedAt: p.waiver.acceptedAt, media: p.waiver.media, tag })))
+    const wtag = `[JFP-REQ:${r.id}]`
+    if (!(await findWaiversByTag(wtag)).length) {
+      await createWaiverRows(signed.map((p) => waiverFields({ player: { ...p, club: p.club || r.answers?.club || r.club }, parent: { name: r.parentName, email: r.email, mobile: r.mobile }, config, signature: p.waiver.signature, acceptedAt: p.waiver.acceptedAt, media: p.waiver.media, tag: wtag })))
       await bustRosterCache()
     }
   }
-  const amountCents = Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0 ? Number(body.amountCents) : config.priceCents * r.players.length
-  const q = await createPayreq({ req, principal, config, group, rows: ids.map((id, i) => ({ id, name: r.players[i].name })), email: r.email, parentName: r.parentName, amountCents, reason: r.kind, requestId: r.id })
-  await saveApplication({ ...r, status: 'offered', offeredGroupId: group.id, payreqId: q.id, term4Ids: ids, decidedBy: principal.email, decidedAt: new Date().toISOString() })
+  const q = await createPayreq({ req, principal, config, group, rows: ids.map((id, i) => ({ id, name: r.players[i].name })), email: r.email, parentName: r.parentName, amountCents, reason: trial ? 'trial' : r.kind, requestId: r.id, product, startDate, trialDate: trial ? startDate : '', afterpay: body.afterpay !== false })
+  await saveApplication({ ...r, status: 'offered', offer: trial ? 'trial' : 'term', offeredGroupId: group.id, payreqId: q.id, term4Ids: ids, decidedBy: principal.email, decidedAt: new Date().toISOString() })
   let emailed = false
-  if (body.sendEmail !== false) { await sendPlaceOffered({ request: r, group, config, url: payreqUrl(req, q), amountCents }); emailed = true }
-  await audit({ by: principal.email, action: 'request.offer', target: r.id, after: { group: group.id, payreq: q.id, rows: ids, emailed } })
-  return res.status(200).json({ success: true, status: 'offered', payreq: { id: q.id, url: payreqUrl(req, q) }, emailed })
+  if (body.sendEmail !== false) {
+    if (trial) await sendTrialOffered({ request: r, group, config, url: payreqUrl(req, q), amountCents, trialDate: startDate })
+    else await sendPlaceOffered({ request: r, group, config, url: payreqUrl(req, q), amountCents, startDate, sessions: price.sessions })
+    emailed = true
+    await savePayreq({ ...q, emailedAt: new Date().toISOString() })
+  }
+  await audit({ by: principal.email, action: trial ? 'request.trial' : 'request.offer', target: r.id, after: { group: group.id, payreq: q.id, rows: ids, cents: amountCents, emailed } })
+  return res.status(200).json({ success: true, status: 'offered', payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed })
 }
 
 // ---------- money ----------
@@ -527,6 +714,26 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, coach: coachById(config, coachId).name, term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
     }
 
+    // The whole program as a timetable: names and ages, no money, no contacts.
+    if (action === 'program') {
+      const [groups, roster] = await Promise.all([listGroups(), loadRoster()])
+      const counts = countsFrom(roster)
+      const online = await onlineCounts(groups.map((g) => g.id))
+      return res.status(200).json({
+        success: true, term: config.term,
+        groups: groups.filter((g) => g.mode !== 'closed' || isAdmin).map((g) => {
+          const loc = locationFor(config, g.location)
+          return {
+            id: g.id, day: g.day, time: g.time, sortTime: to24h(g.time), period: periodOf(g), locationId: loc.id, locationName: loc.name,
+            coachId: g.coachId, coachName: coachById(config, g.coachId)?.name || '', label: g.label, mode: g.mode, capacity: g.capacity,
+            minAge: g.minAge, maxAge: g.maxAge, girlsOnly: g.girlsOnly, taken: counts[g.id] || 0, placesLeft: placesLeft(g, counts[g.id], online[g.id]),
+            mine: g.coachId === principal.coachId || (g.extraCoachIds || []).includes(principal.coachId),
+            players: roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !isTestName(r.player)).map((r) => ({ name: r.player, age: playerAge(r, config.termStart), trial: /trial/i.test(r.paymentType), status: r.confirmation })).sort((a, b) => a.name.localeCompare(b.name)),
+          }
+        }),
+      })
+    }
+
     if (action === 'markAttendance') {
       const g = await getGroup(body.groupId)
       if (!g) return fail(res, 404, 'Group not found.')
@@ -560,16 +767,33 @@ export default async function handler(req, res) {
       case 'searchPlayers': return res.status(200).json({ success: true, results: await searchPlayers(config, body) })
       case 'addPlayer': return await addPlayer(req, res, principal, config, body)
       case 'movePlayer': return await movePlayer(res, principal, config, body)
-      case 'removePlayer': return await removePlayer(res, principal, body)
+      case 'removePlayer': return await removePlayer(res, principal, config, body)
       case 'restorePlayer': return await restorePlayer(res, principal, body)
       case 'markPaid': return await markPaid(res, principal, body)
       case 'setTrial': return await setTrial(res, principal, body)
       case 'sendPaymentLink': return await sendPaymentLink(req, res, principal, config, body)
-      case 'removed': {
-        const roster = await loadRoster({ fresh: true })
-        return res.status(200).json({ success: true, players: roster.players.filter((r) => !r.holdsPlace).map((r) => ({ ...playerView(r, config, roster, { money: true }), session: `${r.day} ${r.time} ${r.location}` })) })
+      case 'changePayreqAmount': return await changePayreqAmount(req, res, principal, config, body)
+      case 'offerTerm': return await offerTerm(req, res, principal, config, body)
+      case 'pricing': {
+        const today = sydneyToday()
+        return res.status(200).json({ success: true, weeks: config.weeks, today, prices: config.prices, products: PRODUCTS.map((x) => ({ ...x, cents: config.prices[x.key] })), datesByDay: Object.fromEntries(DAYS.map((d) => [d, sessionDates(config, d).map((iso) => ({ iso, label: dateLabel(iso), past: iso < today }))])) })
       }
-
+      case 'removed': {
+        const [roster, dropped] = await Promise.all([loadRoster({ fresh: true }), listDropped()])
+        const log = (await listAudit(2000)).filter((e) => e.action === 'player.remove')
+        return res.status(200).json({
+          success: true,
+          reasons: LEAVE_REASONS,
+          players: [
+            ...dropped.map((d) => ({ droppedId: d.id, name: d['Player Name'] || '', parent: d['Parent Name'] || '', email: d['Email'] || '', phone: d['Phone Number'] || '', term: d['Term Player left'] || '', reason: d['Reason for leaving'] || '', details: d['Reason details'] || '', removedAt: d['Removed At'] || '', removedBy: d['Removed By'] || '', session: d['Session'] || '', coach: d['Coach'] || '', paymentStatus: d['Payment Status'] || '', type: d['Term 4 Payment Type'] || '', feeCents: cents(d['Term 4 Fee']), paidCents: cents(d['Term 4 Amount Paid']), notes: d['Term 4 Notes'] || '', restored: d['Restored'] === true, contacted: d['Contacted'] === true })),
+            // Removed before the dropped table existed: still in Term 4 as Dropped or Not Returning.
+            ...roster.players.filter((r) => !r.holdsPlace && !dropped.some((d) => d['Source Term 4 Record ID'] === r.id)).map((r) => {
+              const e = log.find((x) => x.target === r.id)
+              return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, phone: r.phone, term: config.term, reason: e?.after?.reason || (r.confirmation === 'Not Returning' ? 'Not returning' : ''), details: e?.after?.details || '', removedAt: e?.at || '', removedBy: e?.by || '', session: [r.day, r.time, r.location].filter(Boolean).join(' '), coach: r.coach, paymentStatus: r.paymentStatus, type: r.paymentType, feeCents: cents(r.feeAud), paidCents: cents(r.paidAud), notes: r.notes, status: r.confirmation, legacy: true }
+            }),
+          ].sort((x, y) => String(y.removedAt).localeCompare(String(x.removedAt))),
+        })
+      }
       case 'groups': {
         const groups = await listGroups()
         return res.status(200).json({ success: true, groups: sortGroups(groups).map((g) => ({ ...g, locationName: locationFor(config, g.location).name })), coaches: config.coaches.map((c) => ({ id: c.id, name: c.name })), modes: MODES, labels: LABELS, days: DAYS.slice(0, 7), locations: config.locations.map((l) => ({ id: l.id, name: l.name, match: l.match })) })
@@ -587,7 +811,9 @@ export default async function handler(req, res) {
       case 'decideRequest': return await decideRequest(req, res, principal, config, body)
 
       case 'payments': {
-        const [bookings, payreqs] = await Promise.all([listBookings(), listPayreqs()])
+        const [bookings, payreqs, viewsRaw, viewedRaw] = await Promise.all([listBookings(), listPayreqs(), kvCommand(['HGETALL', 'jfp:payreq-views']), kvCommand(['HGETALL', 'jfp:payreq-viewed-at'])])
+        const pairs = (raw) => { const o = {}; for (let i = 0; i + 1 < (raw || []).length; i += 2) o[raw[i]] = raw[i + 1]; return o }
+        const views = pairs(viewsRaw), viewed = pairs(viewedRaw)
         return res.status(200).json({
           success: true,
           bookings: bookings.filter((b) => !['reserving'].includes(b.status)).map((b) => ({
@@ -598,7 +824,8 @@ export default async function handler(req, res) {
             effects: b.status === 'paid' ? effectsSummary(b, EFFECTS) : null, needsAttention: b.needsAttention || '', unexpected: (b.unexpectedPayments || []).map((u) => ({ reason: u.reason, amountLabel: formatAud(u.amountCents), stripeUrl: u.intentId ? `https://dashboard.stripe.com/payments/${u.intentId}` : '' })),
           })),
           payreqs: payreqs.map((q) => ({
-            id: q.id, kind: q.reason, status: q.status, createdAt: q.createdAt, paidAt: q.paidAt || '', group: q.groupLabel, players: q.playerNames,
+            id: q.id, kind: q.reason, status: q.status, createdAt: q.createdAt, paidAt: q.paidAt || '', group: q.groupLabel, players: q.playerNames, amountCents: q.amountCents,
+            productLabel: q.productLabel || '', startDate: q.startDate || '', trialDate: q.trialDate || '', emailedAt: q.emailedAt || '', views: Number(views[q.id] || 0), lastViewedAt: viewed[q.id] || '', expiresAt: q.expiresAt || '', afterpay: q.afterpay !== false, term4Ids: q.term4Ids,
             parentName: q.parentName, email: q.email, amountLabel: formatAud(q.paidCents ?? q.amountCents), feeLabel: q.stripeFeeCents != null ? formatAud(q.stripeFeeCents) : '',
             url: payreqUrl(req, q), stripeUrl: q.stripePaymentIntentId ? `https://dashboard.stripe.com/payments/${q.stripePaymentIntentId}` : '',
             effects: q.status === 'paid' ? effectsSummary(q, PAY_EFFECTS) : null, createdBy: q.createdBy, needsAttention: q.needsAttention || '', unexpected: (q.unexpectedPayments || []).map((u) => ({ reason: u.reason, amountLabel: formatAud(u.amountCents), stripeUrl: u.intentId ? `https://dashboard.stripe.com/payments/${u.intentId}` : '' })),
@@ -619,7 +846,13 @@ export default async function handler(req, res) {
         if (closed === 'complete') return fail(res, 409, 'The family has just paid. It will show as paid in a minute; refunds are made in Stripe.')
         if (closed === 'error') return fail(res, 503, 'Could not close the family\'s payment page. Try again in a minute.')
         await savePayreq({ ...q, status: 'cancelled', cancelledBy: principal.email, cancelledAt: new Date().toISOString() })
-        const released = ['application', 'waitlist'].includes(q.reason) ? await releaseOffer(q, principal, 'Offer cancelled') : 0
+        // Put back what a price-list link changed on the rows.
+        if (q.restoreFields?.length) {
+          const still = []
+          for (const x of q.restoreFields) if (await getTerm4Row(x.id)) still.push(x)
+          if (still.length) await updateTerm4Rows(still)
+        }
+        const released = ['application', 'waitlist', 'trial', 'admin-add'].includes(q.reason) ? await releaseOffer(q, principal, 'Link cancelled') : 0
         await audit({ by: principal.email, action: 'payreq.cancel', target: q.id, after: { released } })
         return res.status(200).json({ success: true, released })
       }
@@ -648,7 +881,8 @@ export default async function handler(req, res) {
       case 'saveSettings': {
         const input = body.config || {}
         const patch = {}
-        for (const k of ['term', 'termStart', 'weeks', 'priceCents', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations']) if (k in input) patch[k] = input[k]
+        for (const k of ['term', 'termStart', 'weeks', 'prices', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations', 'kitUrl', 'kitNote']) if (k in input) patch[k] = input[k]
+        if (patch.prices) patch.prices = { ...config.prices, ...patch.prices }
         if (Array.isArray(input.coaches)) patch.coaches = input.coaches
         if ('superAdmins' in patch) {
           const list = (Array.isArray(patch.superAdmins) ? patch.superAdmins : []).map(validEmail).filter(Boolean)

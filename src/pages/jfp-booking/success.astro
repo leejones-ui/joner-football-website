@@ -7,20 +7,26 @@ import '../../styles/jfp.css'
   <div class="jfp" id="jfp-ok">
     <header class="j-top">
       <div class="wrap">
-        <a class="j-brand" href="/"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span>Joner Football<small>Performance programme</small></span></a>
-        <div class="j-top-links"><a class="j-btn j-btn-line j-btn-sm" href="/jfp-account/">My account</a></div>
+        <a class="j-brand" href="/"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span>Joner Football<small>Performance Program</small></span></a>
+        <div class="j-top-links"><a class="j-btn j-btn-line j-btn-sm" href="/jfp-account/">My JFP</a></div>
       </div>
     </header>
     <div class="wrap" style="max-width:640px;padding-top:28px;padding-bottom:60px">
       <p class="j-kicker" id="eyebrow">Confirming payment</p>
       <h1 id="heading" style="margin:6px 0 10px">One moment</h1>
       <p class="muted" id="lead">We are checking your payment with Stripe.</p>
+      <div class="j-card" id="kit" style="padding:20px;margin-top:20px;border-color:#111827" hidden>
+        <p class="j-kicker">Next step</p>
+        <h2 style="margin:4px 0 6px">Get the training kit</h2>
+        <p class="muted" id="kit-note"></p>
+        <a class="j-btn j-btn-dark j-btn-lg" id="kit-go" href="#" target="_blank" rel="noopener noreferrer" style="margin-top:14px">Get the training kit</a>
+      </div>
       <div class="j-card" id="card" style="padding:20px;margin-top:20px" hidden>
         <dl class="j-kv" id="details"></dl>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:18px">
           <a class="j-btn j-btn-dark" id="calendar" href="#" download="jfp-term.ics">Add all dates to calendar</a>
           <a class="j-btn j-btn-line" id="maps" href="#" target="_blank" rel="noopener noreferrer" hidden>Open in Maps</a>
-          <a class="j-btn j-btn-line" href="/jfp-account/">View in my account</a>
+          <a class="j-btn j-btn-line" href="/jfp-account/">Open My JFP</a>
         </div>
       </div>
       <div class="j-box j-box-grey" id="help" style="margin-top:20px" hidden>If you paid and this page does not update, do not pay again. Email <a href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a> and we will sort it. <a href="/jfp-booking/">Back to groups</a>.</div>
@@ -51,9 +57,36 @@ import '../../styles/jfp.css'
     return 'data:text/calendar;charset=utf-8,' + encodeURIComponent(lines.join('\r\n'))
   }
 
-  function paid(b) {
+  function kit(k) {
+    if (!k) return
+    $('kit-note').textContent = k.note || ''
+    if (k.url) { $('kit-go').href = k.url; $('kit').hidden = false }
+  }
+
+  // A payment link (spot, trial, offer, balance): thank you, then the kit.
+  function paidLink(p, k) {
+    const names = p.players
+    const g = p.group
+    hero('Payment complete', 'Thank you', p.trial
+      ? `${names.join(' and ')}'s trial is booked${g ? ` for ${g.day} ${g.time}` : ''}${p.trialDate ? `, ${p.trialDate}` : ''}. We have emailed you the details.`
+      : `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} locked in for ${p.term}${g ? `, ${g.day} ${g.time}` : ''}. We have emailed you a receipt.`)
+    kit(k)
+    $('details').innerHTML = [
+      ...(g ? [['Group', `${g.day} ${g.time}`], ['Where', g.address || g.location], ['Coach', g.coachName || 'Joner Football']] : []),
+      ['Players', names.join(', ')],
+      ...(p.trial ? [['Trial', p.trialDate || (g ? g.firstDate : '')]] : g ? [['First session', p.startDate || g.firstDate]] : []),
+      ['Paid', p.priceLabel], ['Reference', p.id],
+    ].map(([k2, v]) => `<dt>${esc(k2)}</dt><dd>${esc(v)}</dd>`).join('')
+    $('calendar').hidden = true
+    if (g?.maps) { $('maps').href = g.maps; $('maps').hidden = false }
+    $('card').hidden = false
+    $('help').hidden = true
+  }
+
+  function paid(b, k) {
     const names = b.players.map((p) => p.name)
-    hero('Payment complete', 'You are booked in', `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} in ${b.term}, ${b.day} ${b.time}. We have emailed you the details.`)
+    hero('Payment complete', 'Thank you, you are booked in', `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} in ${b.term}, ${b.day} ${b.time}. We have emailed you the details.`)
+    kit(k)
     $('details').innerHTML = [
       ['Group', `${b.day} ${b.time}`], ['Where', b.address || b.location], ['Coach', b.coachName || 'Joner Football'],
       ['Players', names.join(', ')], ['First session', b.firstDate], ['All dates', b.dates.join(', ')], ['Paid', b.priceLabel], ['Reference', b.id],
@@ -78,7 +111,8 @@ import '../../styles/jfp.css'
       const res = await fetch(`/api/jfp-confirm?session_id=${encodeURIComponent(sid)}`)
       const d = await res.json().catch(() => ({}))
       if (res.status === 404) return failed('If you paid, email us and we will find it.')
-      if (d.status === 'paid' && d.booking) return paid(d.booking)
+      if (d.status === 'paid' && d.booking) return paid(d.booking, d.kit)
+      if (d.status === 'paid' && d.payment) return paidLink(d.payment, d.kit)
       if (d.status === 'received') { hero('Payment received', 'We have your payment', 'This booking had been closed before your payment went through, so Lee or Ligia will contact you today to confirm the place or refund you. Do not pay again.'); $('help').hidden = true; return }
       if (d.status === 'expired') return failed('The payment session expired before it was finished. Nothing was charged.')
     } catch {}

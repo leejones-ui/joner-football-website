@@ -5,7 +5,7 @@
 //
 // The Term 4 session columns are still labelled "Term 3 Day/Time/Location";
 // they hold the Term 4 session, exactly as the Joner Dashboard reads them.
-import { kvGetJson, kvSetJson, kvCommand, keys, groupId, ONLINE_TAG, ADMIN_TAG, coachByAirtableName, ageOn, normName, digits, clean } from './_jfp-store.js'
+import { kvGetJson, kvSetJson, kvCommand, keys, groupId, ONLINE_TAG, ADMIN_TAG, coachByAirtableName, ageOn, normName, digits, clean, listGroups, getConfig } from './_jfp-store.js'
 
 const BASE = process.env.AIRTABLE_BASE_ID || 'apphU4R0BtVIu5YqT'
 export const TABLES = {
@@ -14,6 +14,8 @@ export const TABLES = {
   ledger: 'tblfrXQLMhOcE2PWH',
   waiver: 'tblLziUfKOv1N0f40',
   attendance: 'tblfwc1VO3ind7cVk',
+  // Players removed in the portal: contact, reason and a copy of the Term 4 row.
+  dropped: process.env.JFP_DROPPED_TABLE || 'tblLa3AFkRvlUEQEI',
 }
 // Everyone in these states holds a place. "Not Returning" and "Dropped" do not.
 export const HOLDS_PLACE = new Set(['Confirmed', 'Awaiting Reply', 'Needs Follow-up', 'Not Contacted', ''])
@@ -96,6 +98,9 @@ function term4Row({ id, fields: f }) {
     email: text(f, 'Email').toLowerCase(),
     phone: text(f, 'Phone'),
     day, time, location,
+    // The session as Airtable writes it. Which group that is (one group, or
+    // one of several coaches at the same time) is settled in placeInGroups.
+    sessionId: day && time && location ? groupId(day, time, location) : '',
     groupId: day && time && location ? groupId(day, time, location) : '',
     coach: text(f, 'Coach'),
     confirmation: text(f, 'Term 4 Confirmation'),
@@ -123,7 +128,7 @@ function term4Row({ id, fields: f }) {
 export async function loadRoster({ fresh = false } = {}) {
   if (!fresh) {
     const cached = await kvGetJson(keys.roster())
-    if (cached && Date.now() - cached.at < CACHE_SECONDS * 1000) return cached
+    if (cached && Date.now() - cached.at < CACHE_SECONDS * 1000) return placeInGroups(cached)
   }
   const startedAt = Date.now()
   const [t4, t3, wv] = await Promise.all([readTable(TABLES.term4, TERM4_FIELDS), readTable(TABLES.term3, TERM3_FIELDS), readTable(TABLES.waiver, WAIVER_FIELDS)])
@@ -159,7 +164,26 @@ export async function loadRoster({ fresh = false } = {}) {
   // Stamped with when the read began, so a slow read is never cached as newer than it is.
   const out = { at: startedAt, players, term3, waivers }
   await kvSetJson(keys.roster(), out, 3600)
-  return out
+  return placeInGroups(out)
+}
+
+// Put each row in its group. A session with one group is that group. A
+// session split by coach (the early morning squads) goes by the row's coach:
+// Term 4's Coach column, else Term 3's. A row whose coach has no group at
+// that time is left out of every group and shows under "Not in a group".
+export async function placeInGroups(roster, groups, config) {
+  if (!groups || !config) [groups, config] = await Promise.all([groups ? groups : listGroups(), config ? config : getConfig()])
+  const ids = new Set(groups.map((g) => g.id))
+  return {
+    ...roster,
+    players: roster.players.map((p) => {
+      const base = p.sessionId ?? p.groupId
+      if (!base || ids.has(base)) return { ...p, sessionId: base, groupId: base }
+      const c = coachByAirtableName(config, p.coach)?.id || ''
+      const mine = c ? groupId(p.day, p.time, p.location, c) : ''
+      return { ...p, sessionId: base, groupId: mine && ids.has(mine) ? mine : base }
+    }),
+  }
 }
 
 export async function bustRosterCache() { await kvCommand(['DEL', keys.roster(), keys.airtableCounts()]) }
@@ -290,10 +314,53 @@ export async function updateTerm4Rows(updates) {
 // null only when the row really does not exist; any other failure throws.
 export async function getTerm4Row(id) {
   if (!/^rec[A-Za-z0-9]{14}$/.test(id || '')) return null
-  try { return term4Row(await airtable(`${encodeURIComponent(TABLES.term4)}/${id}`)) } catch (error) {
+  try {
+    const row = term4Row(await airtable(`${encodeURIComponent(TABLES.term4)}/${id}`))
+    // As loadRoster does: no coach on the Term 4 row means the Term 3 coach,
+    // which decides the group in a session split by coach.
+    if (!row.coach && /^rec[A-Za-z0-9]{14}$/.test(row.sourceTerm3)) {
+      try { row.coach = text((await airtable(`${encodeURIComponent(TABLES.term3)}/${row.sourceTerm3}`)).fields || {}, 'Coach') } catch {}
+    }
+    if (!row.coach) {
+      const roster = await loadRoster()
+      row.coach = roster.players.find((p) => p.id === row.id)?.coach || ''
+    }
+    return (await placeInGroups({ players: [row] })).players[0]
+  } catch (error) {
     if (/Airtable 404/.test(error.message)) return null
     throw error
   }
+}
+
+// ---------- removed players ----------
+
+// Fields a restore may write back. Formula and lookup columns are left out.
+export const RESTORABLE = ['Player Name', 'Parent Name', 'Email', 'Phone', 'Term 3 Day', 'Term 3 Time', 'Term 3 Location', 'Coach', 'Confirmation Date', 'Term 4 Fee', 'Term 4 Amount Paid', 'Term 4 Payment Status', 'Term 4 Payment Type', 'Term 4 Notes', 'Source Term 3 Record ID', 'Term 4 Stripe Fee AUD', 'Term 4 Net Collected AUD', 'Term 4 Fee Reconciliation', 'Term 4 Payment Link Notes', 'Term 4 Payment Evidence']
+
+export async function getTerm4Fields(id) { return (await airtable(`${encodeURIComponent(TABLES.term4)}/${id}`)).fields || {} }
+
+export async function findDroppedBySource(term4Id) {
+  const q = new URLSearchParams({ filterByFormula: `FIND("${fq(term4Id)}", {Source Term 4 Record ID})`, pageSize: '5' })
+  const d = await airtable(`${encodeURIComponent(TABLES.dropped)}?${q}`)
+  return (d.records || []).map((r) => r.id)
+}
+export async function createDroppedRow(fields) {
+  const d = await airtable(encodeURIComponent(TABLES.dropped), { method: 'POST', body: { typecast: true, records: [{ fields }] } })
+  return d.records?.[0]?.id || ''
+}
+export async function updateDroppedRow(id, fields) {
+  await airtable(encodeURIComponent(TABLES.dropped), { method: 'PATCH', body: { typecast: true, records: [{ id, fields }] } })
+}
+export async function getDroppedRow(id) {
+  if (!/^rec[A-Za-z0-9]{14}$/.test(id || '')) return null
+  try { const r = await airtable(`${encodeURIComponent(TABLES.dropped)}/${id}`); return { id: r.id, ...r.fields } } catch (error) { if (/Airtable 404/.test(error.message)) return null; throw error }
+}
+export async function listDropped() {
+  return (await readTable(TABLES.dropped)).map((r) => ({ id: r.id, ...r.fields }))
+}
+export async function deleteTerm4Row(id) {
+  await airtable(`${encodeURIComponent(TABLES.term4)}?records[]=${encodeURIComponent(id)}`, { method: 'DELETE' })
+  await bustRosterCache()
 }
 
 // Rows the system wrote for this booking or admin add, so a retry never
@@ -435,7 +502,7 @@ export function draftGroupsFromRoster(players, config) {
 }
 
 // A draft age band from the players in a group today: one year either side
-// of the youngest and oldest, inside the programme range. Staff confirm it.
+// of the youngest and oldest, inside the program range. Staff confirm it.
 export function draftAgeBand(ages, config) {
   const list = ages.filter((a) => Number.isInteger(a)).sort((a, b) => a - b)
   if (!list.length) return { minAge: null, maxAge: null }

@@ -1,7 +1,8 @@
-// What parents see: the groups staff have opened, with places left, who each
-// group is for, and the three locations. An explicit allowlist of fields.
-// Never player names, contacts, notes or payments.
-import { requireParentAccess, getConfig, listGroups, onlineCounts, placesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, ONE_TO_ONE } from './_jfp-store.js'
+// What parents see: the whole program as a timetable. Every open group with
+// its coach, place, who it is for, and places left, plus the three locations.
+// An explicit allowlist of fields. Never player names, contacts, notes or
+// payments, and no term price: parents see what they pay when they book.
+import { requireParentAccess, getConfig, listGroups, onlineCounts, placesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, periodOf, dayOrder, QUESTIONS, ONE_TO_ONE } from './_jfp-store.js'
 import { airtableCounts } from './_jfp-airtable.js'
 import { sweepExpiredOffersSometimes } from './_jfp-offers.js'
 
@@ -9,14 +10,16 @@ export function publicGroup(g, config, left) {
   const coach = coachById(config, g.coachId)
   const dates = sessionDates(config, g.day)
   const loc = locationFor(config, g.location)
-  const bookable = g.mode === 'direct'
+  const counted = g.mode === 'direct' || g.mode === 'application'
   return {
     id: g.id,
     day: g.day,
     time: g.time,
     sortTime: to24h(g.time),
+    period: periodOf(g),
     locationId: loc.id,
     location: loc.name,
+    coachId: coach?.id || '',
     coachName: coach ? `Coach ${coach.name}` : '',
     label: g.label || 'Small group',
     mode: g.mode,
@@ -25,12 +28,13 @@ export function publicGroup(g, config, left) {
     maxAge: g.maxAge ?? config.maxAge,
     girlsOnly: g.girlsOnly === 'yes',
     capacity: g.capacity,
-    placesLeft: bookable ? left : null,
-    full: bookable && left <= 0,
+    placesLeft: counted ? left : null,
+    full: counted && left <= 0,
+    trials: g.mode === 'application' && g.trials !== false,
+    questions: g.mode === 'enquire' ? [] : (g.questions || []).filter((q) => QUESTIONS[q]).map((q) => ({ key: q, label: QUESTIONS[q] })),
     firstDate: dates[0] ? dateLabel(dates[0]) : '',
     lastDate: dates.at(-1) ? dateLabel(dates.at(-1)) : '',
     sessions: dates.length,
-    priceLabel: g.mode === 'enquire' ? '' : formatAud(config.priceCents),
     publicNote: g.publicNote || '',
   }
 }
@@ -56,25 +60,33 @@ export default async function handler(req, res) {
       return {
         id: l.id, name: l.name, address: l.address, maps: l.maps, photo: l.photo, blurb: l.blurb,
         groups: mine.length,
-        bookable: mine.filter((g) => g.mode === 'direct').length,
-        spots: mine.filter((g) => g.mode === 'direct').reduce((t, g) => t + (g.placesLeft || 0), 0),
-        applyOnly: mine.length > 0 && mine.every((g) => g.mode !== 'direct'),
+        spots: mine.reduce((t, g) => t + Math.max(0, g.placesLeft || 0), 0),
+        bookable: mine.filter((g) => g.mode === 'direct' && !g.full).length,
+        full: mine.length > 0 && mine.every((g) => g.full),
       }
     }).filter((l) => l.groups > 0)
-    const monday = sessionDates(config, 'Monday')
+    const coaches = [...new Map(list.filter((g) => g.coachId).map((g) => [g.coachId, { id: g.coachId, name: g.coachName }])).values()]
+    const firstDay = open.map((g) => g.day).sort((a, b) => dayOrder(a) - dayOrder(b))[0] || 'Monday'
+    const lastDay = open.map((g) => g.day).sort((a, b) => dayOrder(b) - dayOrder(a))[0] || 'Monday'
+    const startIso = sessionDates(config, firstDay)[0] || config.termStart
+    const endIso = sessionDates(config, lastDay).at(-1) || config.termStart
+    const long = (iso) => new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${iso}T00:00:00Z`)).replace(',', '')
     return res.status(200).json({
       success: true,
       term: config.term,
-      termStart: monday[0] ? dateLabel(monday[0]) : '',
-      termEnd: monday.at(-1) ? dateLabel(monday.at(-1)) : '',
+      termLabel: config.term.replace(/\s*\d{4}$/, ''),
+      termStart: dateLabel(startIso),
+      termEnd: dateLabel(endIso),
+      termRange: `${long(startIso)} to ${long(endIso)} ${endIso.slice(0, 4)}`,
       termStartIso: config.termStart,
       weeks: config.weeks,
-      priceLabel: formatAud(config.priceCents),
+      trialPriceLabel: formatAud(config.prices.trial),
       minAge: config.minAge,
       maxAge: config.maxAge,
       locations,
+      coaches,
       groups: list,
-      // One enquiry card for private coaching, whenever the programme runs any.
+      // One enquiry card for private coaching, whenever the program runs any.
       privateCoaching: groups.some((g) => g.label === '1 to 1') ? { ...publicGroup(ONE_TO_ONE, config, null), sortTime: '99:99', firstDate: '', lastDate: '', sessions: 0 } : null,
     })
   } catch (error) {

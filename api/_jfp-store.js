@@ -24,17 +24,41 @@ export const CHECKOUT_EXPIRES_MINUTES = 30
 // that counted Airtable a moment before the write landed.
 export const SETTLE_SECONDS = Number.isFinite(Number(process.env.JFP_SETTLE_SECONDS)) && process.env.JFP_SETTLE_SECONDS !== '' ? Number(process.env.JFP_SETTLE_SECONDS) : 20
 export const CONFIRMED_SCORE = 9007199254740000
-// direct = book and pay online. application = Pathway and squads, staff
-// approve. enquire = 1 to 1, we get in touch. closed = not shown to parents.
+// direct = book and pay online (players inside the age band). application =
+// staff approve: straight in for the term, or a trial first. enquire = 1 to 1, we get in touch. closed = not shown to parents.
 export const MODES = ['direct', 'application', 'enquire', 'closed']
 export const LABELS = ['Small group', 'Pathway', 'Squad', '1 to 1', 'Trial']
+// What an application asks, per group. Lee picks the questions in the portal.
+export const QUESTIONS = {
+  club: 'Club they play for',
+  team: 'Team and age group',
+  playingUp: 'Playing up, down or at their own age',
+  trainedBefore: 'Trained with Joner before',
+  position: 'Position',
+}
+export const DEFAULT_QUESTIONS = ['club', 'team', 'playingUp', 'trainedBefore']
 export const ONLINE_TAG = 'JFP-ONLINE'
 export const ADMIN_TAG = 'JFP-ADMIN'
 export const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 export const MAX_PLAYERS = 4
 // 1 to 1 coaching is not a timetable slot parents can see (each slot belongs
 // to one player). Enquiries go to this stand-in group instead.
-export const ONE_TO_ONE = Object.freeze({ id: 'one-to-one', day: '1 to 1 coaching', time: 'times on request', location: 'Belrose HQ', label: '1 to 1', programme: 'JFP 1 on 1', mode: 'enquire', minAge: null, maxAge: null, durationMin: 60, capacity: 1, coachId: '', extraCoachIds: [], girlsOnly: 'no', publicNote: '' })
+export const ONE_TO_ONE = Object.freeze({ id: 'one-to-one', day: '1 to 1 coaching', time: 'times on request', location: 'Belrose HQ', label: '1 to 1', programme: 'JFP 1 on 1', mode: 'enquire', minAge: null, maxAge: null, durationMin: 60, capacity: 1, coachId: '', extraCoachIds: [], girlsOnly: 'no', publicNote: '', questions: [], trials: false, product: 'oneToOne' })
+
+// Lee's price list (September 2026). Every amount is editable in the portal.
+// perPlaces: how many places the price covers (two a week, or two siblings).
+// proRata: joining after the term starts pays only for the sessions left.
+export const PRODUCTS = [
+  { key: 'group', label: 'Term, small group', type: 'JFP 10 weeks', proRata: true, perPlaces: 1 },
+  { key: 'twoAWeek', label: 'Two a week, or two siblings', type: 'Sibling / 2 sessions per week', proRata: true, perPlaces: 2 },
+  { key: 'oneToOneTerm', label: 'Term of 1 to 1s', type: 'JFP 1 on 1, 10 weeks', proRata: true, perPlaces: 1 },
+  { key: 'pathway', label: 'JFP Pathway (45 minute class)', type: 'JFP Pathway 10 weeks', proRata: true, perPlaces: 1 },
+  { key: 'pathwayOneToOne', label: 'Pathway 1 to 1 private (45 minutes)', type: 'JFP pathway 1 on 1', proRata: true, perPlaces: 1 },
+  { key: 'trial', label: 'Trial session', type: 'JFP Trial', proRata: false, perPlaces: 1 },
+  { key: 'oneToOne', label: 'One off 1 to 1', type: 'JFP 1 on 1 casual', proRata: false, perPlaces: 1 },
+]
+export const DEFAULT_PRICES = { group: 85000, twoAWeek: 150000, oneToOneTerm: 110000, pathway: 45000, pathwayOneToOne: 85000, trial: 8500, oneToOne: 12000 }
+export function productFor(key) { return PRODUCTS.find((p) => p.key === key) || PRODUCTS[0] }
 
 export const keys = {
   config: () => 'jfp:config',
@@ -58,8 +82,8 @@ export const keys = {
 
 export const DEFAULT_LOCATIONS = [
   { id: 'belrose', match: 'belrose', name: 'Belrose HQ', address: 'Joner Football HQ, 20 Narabang Way (Unit 2), Belrose NSW 2085', maps: 'https://maps.google.com/?q=20+Narabang+Way+Belrose+NSW+2085', photo: '/images/hq/hq-hero-lee-exterior.webp', blurb: 'Our home ground. Small groups after school and on Saturdays.' },
-  { id: 'ntra', match: 'ntra', name: 'North Turramurra', address: 'North Turramurra Recreation Area, North Turramurra NSW 2074', maps: 'https://maps.google.com/?q=North+Turramurra+Recreation+Area', photo: '/images/training/jfp/jfp-training-2.jpg', blurb: 'Early morning squads, Wednesday and Thursday.' },
-  { id: 'rydalmere', match: 'rydalmere', name: 'Rydalmere Park', address: 'Rydalmere Park, Rydalmere NSW 2116', maps: 'https://maps.google.com/?q=Rydalmere+Park+NSW', photo: '/images/training/jfp/jfp-training-4.webp', blurb: 'Early morning squad on Fridays.' },
+  { id: 'ntra', match: 'ntra', name: 'North Turramurra', address: 'North Turramurra Recreation Area, North Turramurra NSW 2074', maps: 'https://maps.google.com/?q=North+Turramurra+Recreation+Area', photo: '/images/training/jfp/jfp-ntra-field.jpg', blurb: 'Early morning squads, Wednesday and Thursday.' },
+  { id: 'rydalmere', match: 'rydalmere', name: 'Rydalmere Park', address: 'Rydalmere Park, Rydalmere NSW 2116', maps: 'https://maps.google.com/?q=Rydalmere+Park+NSW', photo: '/images/training/jfp/jfp-training-4.webp', blurb: 'Early morning squads on Fridays.' },
 ]
 
 export const DEFAULT_CONFIG = {
@@ -67,6 +91,7 @@ export const DEFAULT_CONFIG = {
   termStart: '2026-10-12',
   weeks: 10,
   priceCents: 85000,
+  prices: DEFAULT_PRICES,
   waiverUrl: 'https://airtable.com/apphU4R0BtVIu5YqT/pagdSqWlCfZJyiPxq/form',
   waiverVersion: 'JFP Term 4 2026 online waiver v1',
   staffEmails: ['ligia@jonerfootball.com'],
@@ -81,6 +106,9 @@ export const DEFAULT_CONFIG = {
   ],
   // Coach logins stay off until Lee says so, even for coaches with an email.
   coachLoginsEnabled: false,
+  // After paying, families are sent to get the training kit (another website).
+  kitUrl: '',
+  kitNote: 'Every JFP player trains in the Joner Football training kit. Order yours before the first session.',
   locations: DEFAULT_LOCATIONS,
   minAge: 6,
   maxAge: 19,
@@ -112,11 +140,16 @@ export function normaliseConfig(input = {}) {
   const price = Number(input.priceCents)
   const emails = (list, fallback) => (Array.isArray(list) ? [...new Set(list.map(validEmail).filter(Boolean))] : fallback)
   const supers = emails(input.superAdmins, b.superAdmins)
+  const prices = { ...b.prices }
+  for (const k of Object.keys(prices)) { const v = Number(input.prices?.[k]); if (Number.isInteger(v) && v > 0 && v <= 2000000) prices[k] = v }
+  // A price saved the old way (one term price) still counts.
+  if (!input.prices && Number.isInteger(price) && price > 0) prices.group = price
   return {
     term: clean(input.term, 40) || b.term,
     termStart: /^\d{4}-\d{2}-\d{2}$/.test(input.termStart || '') ? input.termStart : b.termStart,
     weeks: Number.isInteger(Number(input.weeks)) && Number(input.weeks) >= 1 && Number(input.weeks) <= 20 ? Number(input.weeks) : b.weeks,
-    priceCents: Number.isInteger(price) && price > 0 ? price : b.priceCents,
+    priceCents: prices.group,
+    prices,
     waiverUrl: /^https:\/\//.test(input.waiverUrl || '') ? clean(input.waiverUrl, 500) : b.waiverUrl,
     waiverVersion: clean(input.waiverVersion, 80) || b.waiverVersion,
     staffEmails: emails(input.staffEmails, b.staffEmails),
@@ -126,6 +159,8 @@ export function normaliseConfig(input = {}) {
       ? input.coaches.map((c) => ({ id: clean(c.id, 30).toLowerCase().replace(/[^a-z0-9-]/g, ''), name: clean(c.name, 60), airtableName: clean(c.airtableName, 80), email: validEmail(c.email) })).filter((c) => c.id && c.name)
       : b.coaches,
     coachLoginsEnabled: input.coachLoginsEnabled === true,
+    kitUrl: /^https:\/\//.test(input.kitUrl || '') ? clean(input.kitUrl, 500) : (input.kitUrl === '' ? '' : b.kitUrl),
+    kitNote: clean(input.kitNote, 300) || b.kitNote,
     locations: cleanLocations(input.locations, b.locations),
     minAge: Number(input.minAge) >= 3 && Number(input.minAge) <= 18 ? Number(input.minAge) : b.minAge,
     maxAge: Number(input.maxAge) >= 5 && Number(input.maxAge) <= 25 ? Number(input.maxAge) : b.maxAge,
@@ -173,6 +208,37 @@ export function dateLabel(iso) {
   return new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(`${iso}T00:00:00Z`)).replace(',', '')
 }
 
+// Today's date in Sydney, as 2026-10-14.
+export function sydneyToday(nowMs = Date.now()) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(nowMs))
+}
+
+// Sessions from a start date to the end of term, for a weekly group on `day`.
+export function sessionsFrom(config, day, fromIso) {
+  const all = sessionDates(config, day)
+  return fromIso ? all.filter((d) => d >= fromIso) : all
+}
+
+// What a player pays. Term products are pro rata: joining in week 4 of 10
+// pays for the 7 sessions left. Two players in one booking (siblings) pay the
+// two place rate each. Rounded to whole dollars.
+export function priceFor(config, { product = 'group', day, fromIso, players = 1 } = {}) {
+  const prod = productFor(product)
+  let key = prod.key
+  if (players >= 2 && key === 'group') key = 'twoAWeek'
+  const unitFull = Math.round((config.prices[key] ?? DEFAULT_PRICES[key]) / productFor(key).perPlaces)
+  const of = config.weeks
+  const sessions = prod.proRata && day ? sessionsFrom(config, day, fromIso).length : of
+  const unit = prod.proRata && sessions < of ? Math.round((unitFull * sessions) / of / 100) * 100 : unitFull
+  return { product: key, type: productFor(key).type, unitCents: unit, unitFullCents: unitFull, totalCents: unit * players, sessions, of, proRata: prod.proRata && sessions < of, players }
+}
+
+// The first session still to come for this group.
+export function nextSessionDate(config, day, nowMs = Date.now()) {
+  const today = sydneyToday(nowMs)
+  return sessionDates(config, day).find((d) => d >= today) || ''
+}
+
 export function dayOrder(day) { const i = DAYS.indexOf(day); return i < 0 ? 9 : i }
 
 // Age on the first day of term, from an ISO date of birth.
@@ -187,8 +253,13 @@ export function ageOn(dob, onIso) {
 
 // ---------- groups ----------
 
-export function groupId(day, time, location) {
-  return `${day.slice(0, 3)}-${to24h(time).replace(':', '') || time}-${location}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+// A group is one day, time and place. Where several coaches run the same
+// early morning session side by side (North Turramurra, Rydalmere), each
+// coach's group is its own group: the id ends with the coach, and Airtable's
+// Coach column says which one a player is in.
+export function groupId(day, time, location, coachId = '') {
+  const base = `${day.slice(0, 3)}-${to24h(time).replace(':', '') || time}-${location}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  return coachId ? `${base}-${String(coachId).toLowerCase().replace(/[^a-z0-9]+/g, '')}` : base
 }
 
 export function validateGroup(input, config, existing = {}) {
@@ -209,11 +280,16 @@ export function validateGroup(input, config, existing = {}) {
   if (minAge != null && maxAge != null && minAge > maxAge) errors.push('The youngest age cannot be above the oldest.')
   const label = LABELS.includes(merged.label) ? merged.label : 'Small group'
   const girls = ['no', 'suggested', 'yes'].includes(merged.girlsOnly) ? merged.girlsOnly : 'no'
+  const byCoach = merged.byCoach === true
+  if (byCoach && !merged.coachId) errors.push('A coach group needs a coach.')
+  const product = PRODUCTS.some((p) => p.key === merged.product) ? merged.product : (label === 'Pathway' ? 'pathway' : label === '1 to 1' ? 'oneToOneTerm' : 'group')
+  const questions = Array.isArray(merged.questions) ? merged.questions.filter((q) => QUESTIONS[q]) : DEFAULT_QUESTIONS
   if (errors.length) return { ok: false, errors }
   return {
     ok: true,
     group: {
-      id: existing.id || groupId(merged.day, merged.time, merged.location),
+      id: existing.id || groupId(merged.day, merged.time, merged.location, byCoach ? merged.coachId : ''),
+      byCoach,
       day: merged.day,
       time: clean(merged.time, 10).toLowerCase().replace(/\s+/g, ''),
       location: clean(merged.location, 80),
@@ -231,6 +307,10 @@ export function validateGroup(input, config, existing = {}) {
       // suggested: looks girls only from the roster, not enforced until 'yes'.
       girlsOnly: girls,
       publicNote: clean(merged.publicNote, 200),
+      // Apply groups: whether we may offer a trial first, and what we ask.
+      trials: merged.trials !== false,
+      questions,
+      product,
       updatedAt: new Date().toISOString(),
     },
   }
@@ -249,13 +329,13 @@ export async function listGroups() {
 }
 // Groups saved before age bands existed still read cleanly.
 export function normaliseStoredGroup(g) {
-  return { label: 'Small group', minAge: null, maxAge: null, ageStatus: 'draft', girlsOnly: 'no', extraCoachIds: [], publicNote: '', ...g }
+  return { label: 'Small group', minAge: null, maxAge: null, ageStatus: 'draft', girlsOnly: 'no', extraCoachIds: [], publicNote: '', byCoach: false, trials: true, questions: DEFAULT_QUESTIONS, product: g?.label === 'Pathway' ? 'pathway' : 'group', ...g }
 }
 export async function getGroup(id) { const g = parse(await kvCommand(['HGET', keys.groups(), clean(id, 80)])); return g ? normaliseStoredGroup(g) : null }
 export async function saveGroup(group) { await kvCommand(['HSET', keys.groups(), group.id, JSON.stringify(group)]); return group }
 export async function deleteGroup(id) { await kvCommand(['HDEL', keys.groups(), clean(id, 80)]) }
 
-// Does this age fit the group? Groups without a band take the whole programme range.
+// Does this age fit the group? Groups without a band take the whole program range.
 export function ageFits(group, age, config) {
   if (!Number.isInteger(age)) return false
   const lo = group.minAge ?? config.minAge
@@ -307,6 +387,9 @@ export async function onlineCounts(gids, nowMs = Date.now()) {
   const res = await kvPipeline(gids.flatMap((g) => [['ZREMRANGEBYSCORE', keys.seats(g), '-inf', String(nowMs)], ['ZCARD', keys.seats(g)]]))
   return Object.fromEntries(gids.map((g, i) => [g, Number(res[i * 2 + 1] || 0)]))
 }
+
+// Morning or afternoon on the timetable.
+export function periodOf(group) { return (to24h(group.time) || '12:00') < '12:00' ? 'am' : 'pm' }
 
 export function placesLeft(group, airtableCount, onlineCount) {
   return Math.max(0, Number(group.capacity || 0) - Number(airtableCount || 0) - Number(onlineCount || 0))

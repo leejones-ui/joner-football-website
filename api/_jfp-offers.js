@@ -22,7 +22,7 @@ export async function releaseOffer(q, principal, why) {
 export async function sweepExpiredOffers(principal = { email: 'system' }) {
   const now = Date.now()
   for (const q of await listPayreqs()) {
-    if (!['open', 'checkout'].includes(q.status) || !q.expiresAt || Date.parse(q.expiresAt) > now || !['application', 'waitlist'].includes(q.reason)) continue
+    if (!['open', 'checkout'].includes(q.status) || !q.expiresAt || Date.parse(q.expiresAt) > now || !['application', 'waitlist', 'trial'].includes(q.reason)) continue
     const closed = q.status === 'checkout' ? await closeCheckout(q.stripeSessionId) : 'expired'
     if (closed !== 'expired') continue
     await savePayreq({ ...q, status: 'expired', expiredAt: new Date().toISOString() })

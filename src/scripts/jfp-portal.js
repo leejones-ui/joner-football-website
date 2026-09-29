@@ -1,9 +1,10 @@
-// The JFP staff portal. Lee and Ligia see the whole programme and the money;
-// coaches see only their own sessions. Every change goes to Airtable through
-// /api/jfp-portal-data, which checks the role again on the server.
+// The JFP staff portal. Lee and Ligia see the whole program and the money;
+// coaches see the program timetable (names and ages) and their own registers.
+// Every change goes to Airtable through /api/jfp-portal-data, which checks
+// the role again on the server.
 import { $, esc, api, toast, signIn, whoAmI, signOut, money } from './jfp-common.js'
 
-const P = { user: null, tab: '', board: null, loc: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending' }
+const P = { user: null, tab: '', board: null, loc: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', pricing: null }
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const post = (action, body = {}) => api('/api/jfp-portal-data', { action, ...body })
 const view = () => $('view')
@@ -29,8 +30,8 @@ async function showSignIn() {
 }
 
 function tabs() {
-  if (P.user.role !== 'admin') return [['coach', 'My sessions']]
-  return [['board', 'Board'], ['groups', 'Groups'], ['requests', 'Requests'], ['payments', 'Payments'], ['money', 'Money'], ['coach', 'Coach view'], ['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]
+  if (P.user.role !== 'admin') return [['program', 'Program'], ['coach', 'My sessions']]
+  return [['board', 'Timetable'], ['requests', 'Requests'], ['payments', 'Payment links'], ['prices', 'Prices'], ['groups', 'Groups and rules'], ['money', 'Money'], ['coach', 'Registers'], ['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]
 }
 
 function start() {
@@ -50,7 +51,8 @@ async function go(tab) {
   history.replaceState(null, '', `#${tab}`)
   renderNav()
   view().innerHTML = '<p class="muted">Loading</p>'
-  const fn = { board: renderBoard, groups: renderGroups, requests: renderRequests, payments: renderPayments, money: renderMoney, coach: renderCoach, removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  closeSide()
+  const fn = { board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   view().focus({ preventScroll: true })
 }
@@ -125,61 +127,173 @@ const payPill = (p) => {
   if (s === 'N/A') return '<span class="j-pill j-pill-grey">N/A</span>'
   return '<span class="j-pill j-pill-grey">Not set</span>'
 }
-const modeLabel = { direct: 'Book online', application: 'Apply only', enquire: 'Enquire', closed: 'Hidden' }
+const modeLabel = { direct: 'Book now', application: 'Apply only', enquire: 'Enquire', closed: 'Hidden' }
 const modePill = (g) => ({ direct: 'green', application: 'violet', enquire: 'grey', closed: 'grey' }[g.mode])
 const agesText = (g) => (g.minAge != null ? `${g.girlsOnly === 'yes' ? 'Girls ' : ''}${g.minAge} to ${g.maxAge}` : 'Ages not set')
 const timeAgo = (ms) => new Date(ms).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })
 
-// ---------- board ----------
+// ---------- pricing (mirrors priceFor on the server) ----------
+
+async function pricing() {
+  if (!P.pricing) P.pricing = await need(await post('pricing'))
+  return P.pricing
+}
+function priceOf(pr, { product = 'group', day, from, players = 1 }) {
+  const prod = pr.products.find((x) => x.key === product) || pr.products[0]
+  let key = prod.key
+  if (players >= 2 && key === 'group') key = 'twoAWeek'
+  const k = pr.products.find((x) => x.key === key)
+  const unitFull = Math.round(pr.prices[key] / k.perPlaces)
+  const dates = (pr.datesByDay[day] || []).filter((d) => !from || d.iso >= from)
+  const sessions = prod.proRata && day ? dates.length : pr.weeks
+  const unit = prod.proRata && sessions < pr.weeks ? Math.round((unitFull * sessions) / pr.weeks / 100) * 100 : unitFull
+  return { unit, total: unit * players, sessions, of: pr.weeks, proRata: prod.proRata && sessions < pr.weeks }
+}
+function nextDate(pr, day) { return (pr.datesByDay[day] || []).find((d) => !d.past)?.iso || '' }
+function dateOptions(pr, day, selected) {
+  return (pr.datesByDay[day] || []).map((d, i) => `<option value="${esc(d.iso)}" ${d.iso === selected ? 'selected' : ''} ${d.past ? 'disabled' : ''}>Week ${i + 1} · ${esc(d.label)}${d.past ? ' (past)' : ''}</option>`).join('')
+}
+function productOptions(pr, selected, { noTrial = false } = {}) {
+  return pr.products.filter((x) => !(noTrial && x.key === 'trial')).map((x) => `<option value="${esc(x.key)}" ${x.key === selected ? 'selected' : ''}>${esc(x.label)} · ${esc(money(x.cents))}${x.perPlaces > 1 ? ' for two' : ''}</option>`).join('')
+}
+
+// A small priced form block: product, start week, the amount (editable).
+// Returns { el html, read() } wired inside a modal box.
+// paid: already paid this term. On a trial row it comes off only when the
+// trial box is ticked (and never more than the trial price); otherwise it
+// always comes off, so nobody is asked to pay twice.
+function priceBlock(box, pr, { day, product, players = 1, credit = false, paid = 0, prefix = 'pb', noTrial = false }) {
+  const from = nextDate(pr, day)
+  box.querySelector(`#${prefix}`).innerHTML = `
+    <div class="j-two"><label class="j-field"><span>Paying for</span><select class="j-select" id="${prefix}-prod">${productOptions(pr, product, { noTrial })}</select></label>
+    <label class="j-field"><span>Starts</span><select class="j-select" id="${prefix}-from">${dateOptions(pr, day, from)}</select></label></div>
+    ${credit && paid > 0 ? `<label class="j-check"><input type="checkbox" id="${prefix}-credit" checked> <span>Take the ${esc(money(Math.min(paid, pr.prices.trial)))} trial off</span></label>` : ''}
+    <div class="j-two"><label class="j-field"><span>Amount (A$)</span><input class="j-input" id="${prefix}-amt" inputmode="decimal"></label><div class="j-field"><span>&nbsp;</span><p class="muted small" id="${prefix}-why" style="padding-top:10px"></p></div></div>
+    <label class="j-check"><input type="checkbox" id="${prefix}-afterpay" checked> <span>Afterpay allowed</span></label>`
+  const $$ = (id) => box.querySelector(`#${prefix}-${id}`)
+  let typed = false
+  const calc = () => {
+    const q = priceOf(pr, { product: $$('prod').value, day, from: $$('from').value, players })
+    const off = credit ? ($$('credit')?.checked ? Math.min(paid, pr.prices.trial, q.total) : 0) : Math.min(paid, q.total)
+    if (!typed) $$('amt').value = ((q.total - off) / 100).toFixed(2).replace(/\.00$/, '')
+    $$('why').textContent = `${q.proRata ? `Pro rata, ${q.sessions} of ${q.of} sessions` : $$('prod').value === 'trial' || $$('prod').value === 'oneToOne' ? 'One session' : `Full term, ${q.sessions} sessions`}${players > 1 ? `, ${players} players` : ''}${off ? `, less ${money(off)} ${credit ? 'trial' : 'already paid'}` : ''}`
+  }
+  $$('amt').addEventListener('input', () => { typed = true })
+  for (const id of ['prod', 'from', 'credit']) $$(id)?.addEventListener('change', () => { typed = false; calc() })
+  calc()
+  return () => ({ product: $$('prod').value, startDate: $$('from').value, amountCents: Math.round(Number($$('amt').value) * 100), creditTrial: Boolean(credit && $$('credit')?.checked), afterpay: $$('afterpay').checked })
+}
+
+// ---------- timetable (the board) ----------
+
+const PERIODS = [['am', 'Morning'], ['pm', 'Afternoon']]
+const locColor = (id) => `var(--j-loc-${id || 'belrose'})`
 
 async function renderBoard(refresh) {
   if (!P.board || refresh !== false) P.board = await need(await post('board'))
   const B = P.board
   P.coaches = B.coaches
-  const groups = B.groups.filter((g) => !P.loc || g.locationId === P.loc)
+  const groups = B.groups.filter((g) => (!P.loc || g.locationId === P.loc) && (!P.coachFilter || g.coachId === P.coachFilter) && (P.ttView === 'staff' || g.mode !== 'closed'))
   const t = B.totals
   view().innerHTML = `
-    <div class="jp-head"><div><h1>${esc(B.term)}</h1><p class="muted small">Live from Airtable Term 4 Players · updated ${esc(timeAgo(B.at))} · <button type="button" class="j-btn j-btn-ghost j-btn-sm" id="b-refresh">Refresh</button></p></div>
-      <div class="jp-seg" id="b-loc">${[['', 'All'], ...B.locations.map((l) => [l.id, l.name])].map(([v, l]) => `<button type="button" data-loc="${esc(v)}" aria-pressed="${P.loc === v}">${esc(l)}</button>`).join('')}</div></div>
-    <div class="jp-kpis">
-      <div class="jp-kpi"><span>Players holding a place</span><b>${t.players}</b></div>
-      <div class="jp-kpi"><span>Confirmed (dashboard)</span><b>${t.dashboard}</b></div>
-      <div class="jp-kpi"><span>Not confirmed yet</span><b>${t.awaiting}</b></div>
-      <div class="jp-kpi"><span>Spots left to book</span><b>${t.placesLeft}</b></div>
-      <div class="jp-kpi"><span>Waivers on file</span><b>${t.waivers}/${t.players}</b></div>
+    <div class="jp-head"><div><h1>${esc(B.term)}</h1><p class="muted small">${t.dashboard} confirmed · ${t.players} holding a place · ${t.awaiting} not confirmed yet · ${t.pendingRequests} request${t.pendingRequests === 1 ? '' : 's'} waiting · waivers ${t.waivers}/${t.players} · updated ${esc(timeAgo(B.at))} <button type="button" class="j-btn j-btn-ghost j-btn-sm" id="b-refresh">Refresh</button></p></div>
+      <div class="jp-seg" id="b-view">${[['staff', 'Staff view'], ['coach', 'Coach view'], ['parent', 'Parent view']].map(([v, l]) => `<button type="button" data-view="${v}" aria-pressed="${P.ttView === v}">${l}</button>`).join('')}</div></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <div class="jp-seg" id="b-loc">${[['', 'All locations'], ...B.locations.map((l) => [l.id, l.name])].map(([v, l]) => `<button type="button" data-loc="${esc(v)}" aria-pressed="${P.loc === v}">${esc(l)}</button>`).join('')}</div>
+      <select class="j-select" id="b-coach" style="width:auto"><option value="">Any coach</option>${B.coaches.map((c) => `<option value="${esc(c.id)}" ${P.coachFilter === c.id ? 'selected' : ''}>Coach ${esc(c.name)}</option>`).join('')}</select>
+      ${P.ttView === 'staff' ? '<div class="jp-legend" style="margin-left:auto"><span><i class="i-paid"></i>Paid</span><span><i class="i-due"></i>Unpaid</span><span><i class="i-link"></i>Link sent</span><span><i class="i-trial"></i>Trial</span><span><i class="i-off"></i>Not set</span><span><b style="color:#B42318;font-size:10px">W</b> no waiver</span></div>' : ''}
     </div>
-    <p class="muted small" style="margin-bottom:6px">Drag a player onto another group to move them. Tap a player for more.</p>
-    ${DAYS.map((d) => {
-      const list = groups.filter((g) => g.day === d)
-      if (!list.length) return ''
-      return `<div class="jp-day"><h2>${d}</h2><span class="muted small">${list.reduce((a, g) => a + g.players.length, 0)} players</span></div><div class="jp-board">${list.map(groupCard).join('')}</div>`
-    }).join('')}
-    ${B.unassigned.length ? `<div class="jp-day"><h2>Not in a group</h2></div><div class="jp-group">${B.unassigned.map((p) => playerRowHtml(p, '')).join('')}<p class="muted small" style="margin-top:8px">These rows have no session, or a session that is not a group yet. Move them onto a group.</p></div>` : ''}`
+    ${P.ttView === 'staff' ? '<p class="muted small" style="margin-bottom:8px">Tap a group for its rules, Add player or Copy spot link. Tap a name for payment and more. Drag a name onto another group to move them.</p>' : P.ttView === 'coach' ? '<p class="muted small" style="margin-bottom:8px">What a coach sees: every group, names and ages. No money, no contact details.</p>' : '<p class="muted small" style="margin-bottom:8px">What parents see: places left, never names.</p>'}
+    <div class="jp-tt-wrap">${ttGrid(groups)}</div>
+    ${B.unassigned.length && P.ttView === 'staff' ? `<div class="jp-day"><h2>Not in a group</h2></div><div class="jp-group">${B.unassigned.map((p) => playerRowHtml(p, '')).join('')}<p class="muted small" style="margin-top:8px">These rows have no session, or a session with no group (for the split morning squads, a coach with no group at that time). Move them onto a group.</p></div>` : ''}`
   $('b-refresh').addEventListener('click', () => renderBoard(true))
   $('b-loc').addEventListener('click', (e) => { const b = e.target.closest('[data-loc]'); if (b) { P.loc = b.dataset.loc; renderBoard(false) } })
+  $('b-view').addEventListener('click', (e) => { const b = e.target.closest('[data-view]'); if (b) { P.ttView = b.dataset.view; closeSide(); renderBoard(false) } })
+  $('b-coach').addEventListener('change', (e) => { P.coachFilter = e.target.value; renderBoard(false) })
   wireBoard()
+  if (P.sel && P.ttView === 'staff') { const g = P.board.groups.find((x) => x.id === P.sel); if (g) groupSide(g) }
 }
 
-function groupCard(g) {
-  const left = g.mode === 'direct' ? (g.placesLeft > 0 ? `<span class="j-pill j-pill-${g.placesLeft <= 1 ? 'amber' : 'green'}">${g.placesLeft} left</span>` : '<span class="j-pill j-pill-grey">Full</span>') : `<span class="j-pill j-pill-${modePill(g)}">${esc(modeLabel[g.mode])}</span>`
-  return `<section class="jp-group" data-drop="${esc(g.id)}">
-    <div class="jp-group-head"><div><b>${esc(g.time)}</b> · <span>${esc(agesText(g))}</span>${g.minAge != null && g.ageStatus !== 'confirmed' ? ' <span class="j-pill j-pill-amber" title="Draft age band, confirm in Groups">draft</span>' : ''}</div>${left}</div>
-    <div class="jp-sub"><span class="j-dot j-dot-${esc(g.locationId)}"></span>${esc(g.locationName)} · Coach ${esc(g.coachName || 'not set')}${g.extraCoachNames.length ? ` + ${esc(g.extraCoachNames.join(', '))}` : ''} · ${esc(g.label)} · ${g.taken}/${g.capacity}${g.holds ? ` · ${g.holds} being booked` : ''}${g.girlsOnly === 'suggested' ? ' · <span class="j-pill j-pill-amber">girls only?</span>' : ''}</div>
-    ${g.players.map((p) => playerRowHtml(p, g.id)).join('') || '<p class="muted small" style="padding:6px 0">No players yet</p>'}
-    <button type="button" class="jp-add" data-add="${esc(g.id)}">+ Add player</button>
-  </section>`
+function ttGrid(groups) {
+  const cols = DAYS.filter((d) => groups.some((g) => g.day === d))
+  if (!cols.length) return '<div class="j-empty">No groups match.</div>'
+  const periods = PERIODS.filter(([p]) => groups.some((g) => g.period === p))
+  return `<div class="jp-tt" style="--cols:${cols.length}">${cols.map((d) => `<div class="j-tt-day">${esc(d)}</div>`).join('')}
+    ${periods.map(([p, label]) => `<div class="j-tt-row">${esc(label)}</div>${cols.map((d) => `<div class="j-tt-cell">${groups.filter((g) => g.day === d && g.period === p).sort((a, b) => a.sortTime.localeCompare(b.sortTime)).map(ttBlock).join('')}</div>`).join('')}`).join('')}</div>`
+}
+
+function dotFor(p) {
+  if (p.trial) return 'i-trial'
+  if (p.paymentStatus === 'Paid') return 'i-paid'
+  if (p.payreq) return 'i-link'
+  if (['Unpaid', 'Partially Paid'].includes(p.paymentStatus)) return 'i-due'
+  return 'i-off'
+}
+
+function ttBlock(g) {
+  const n = g.players.length
+  const left = g.capacity - n
+  const tag = g.mode === 'direct' ? 'Book now' : g.mode === 'application' ? 'Apply' : g.mode === 'enquire' ? 'Enquire' : 'Hidden'
+  const head = `<div class="jp-blk-head" data-open="${esc(g.id)}"><b>${esc(g.time)}</b>${g.pendingRequests && P.ttView === 'staff' ? ` <span class="j-pill j-pill-violet" style="font-size:10px;padding:0 6px">${g.pendingRequests} new</span>` : ''}<span class="n">${P.ttView === 'parent' ? '' : `${n}/${g.capacity}`}</span></div>
+    <div class="sub" data-open="${esc(g.id)}">${esc(g.coachName || 'No coach')} · ${esc(tag)}${g.label !== 'Small group' ? ` · ${esc(g.label)}` : ''}${g.minAge != null ? ` · ${g.girlsOnly === 'yes' ? 'girls ' : ''}${g.minAge} to ${g.maxAge}` : ''}</div>`
+  let body
+  if (P.ttView === 'parent') {
+    body = left <= 0 ? '<div class="jp-open" style="color:#B42318;font-weight:700">Fully booked · waitlist</div>' : `<div class="jp-open" style="color:${g.mode === 'direct' ? '#067647' : '#175CD3'};font-weight:700">${tag} · ${left} ${left === 1 ? 'spot' : 'spots'} left</div>`
+  } else {
+    body = g.players.map((p) => `<div class="jp-nm" ${P.ttView === 'staff' ? `draggable="true" data-row="${esc(p.rowId)}" data-from="${esc(g.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}, options"` : ''}>${P.ttView === 'staff' ? `<i class="${dotFor(p)}"></i>` : ''}<span class="nmx">${esc(p.name)}${p.age != null ? ` <span class="muted">${esc(p.age)}</span>` : ''}</span>${P.ttView === 'staff' && p.status !== 'Confirmed' ? '<span class="muted" style="font-size:10px">awaiting</span>' : ''}${P.ttView === 'staff' && !p.waiver ? '<span class="w">W</span>' : ''}</div>`).join('')
+    body += left > 0 ? `<div class="jp-open">+ ${left} open</div>` : left < 0 ? `<div class="jp-open" style="color:#B42318">${-left} over capacity</div>` : '<div class="jp-open" style="color:#B42318">Full</div>'
+  }
+  return `<section class="jp-blk ${P.sel === g.id && P.ttView === 'staff' ? 'sel' : ''}" style="--lc:${locColor(g.locationId)}" data-drop="${esc(g.id)}">${head}${body}</section>`
+}
+
+function closeSide() { $('jp-side')?.remove() }
+
+function groupSide(g) {
+  closeSide()
+  P.sel = g.id
+  document.querySelectorAll('.jp-blk.sel').forEach((x) => x.classList.remove('sel'))
+  document.querySelector(`.jp-blk[data-drop="${CSS.escape(g.id)}"]`)?.classList.add('sel')
+  const el = document.createElement('aside')
+  el.className = 'jp-side'
+  el.id = 'jp-side'
+  const left = g.capacity - g.players.length
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><h2>${esc(g.day)} ${esc(g.time)}</h2><p class="muted small">${esc(g.locationName)} · Coach ${esc(g.coachName || 'not set')} · ${g.players.length} of ${g.capacity}</p></div><button type="button" class="j-close" id="sd-x" aria-label="Close">&times;</button></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0"><span class="j-pill j-pill-${modePill(g)}">${esc(modeLabel[g.mode])}</span>${left <= 0 ? '<span class="j-pill j-pill-red">Fully booked</span>' : `<span class="j-pill j-pill-grey">${left} open</span>`}${g.label !== 'Small group' ? `<span class="j-pill j-pill-grey">${esc(g.label)}</span>` : ''}</div>
+    <dl class="j-kv" style="font-size:13px;grid-template-columns:96px 1fr">
+      <dt>Ages</dt><dd>${esc(agesText(g))}${g.ageStatus !== 'confirmed' && g.minAge != null ? ' (draft)' : ''}${g.mode === 'application' ? ', a guide' : g.mode === 'direct' ? ', enforced' : ''}</dd>
+      <dt>Asks</dt><dd>${g.mode === 'application' || g.mode === 'direct' ? esc((g.questions || []).map((q) => ({ club: 'club', team: 'team', playingUp: 'playing up or down', trainedBefore: 'trained before', position: 'position' }[q] || q)).join(', ') || 'nothing extra') : 'n/a'}</dd>
+      <dt>Trials</dt><dd>${g.mode === 'application' ? (g.trials !== false ? 'Allowed' : 'Not offered') : 'n/a'}</dd>
+      <dt>Parents see</dt><dd>${esc(g.publicNote || 'The standard wording')}</dd>
+    </dl>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+      <button type="button" class="j-btn j-btn-dark j-btn-sm" id="sd-add">Add player</button>
+      <button type="button" class="j-btn j-btn-line j-btn-sm" id="sd-link">Copy spot link</button>
+      <button type="button" class="j-btn j-btn-line j-btn-sm" id="sd-edit">Edit rules</button>
+      <button type="button" class="j-btn j-btn-line j-btn-sm" id="sd-reg">Register</button>
+    </div>
+    ${g.pendingRequests ? `<button type="button" class="j-btn j-btn-soft j-btn-block j-btn-sm" id="sd-req" style="margin-top:8px">${g.pendingRequests} request${g.pendingRequests === 1 ? '' : 's'} for this group</button>` : ''}
+    <h3 style="margin:16px 0 6px">Players</h3>
+    ${g.players.map((p) => playerRowHtml(p, g.id)).join('') || '<p class="muted small">No players yet.</p>'}`
+  document.querySelector('.jfp').appendChild(el)
+  el.querySelector('#sd-x').addEventListener('click', () => { P.sel = ''; closeSide(); document.querySelectorAll('.jp-blk.sel').forEach((x) => x.classList.remove('sel')) })
+  el.querySelector('#sd-add').addEventListener('click', () => addPlayerModal(g))
+  el.querySelector('#sd-link').addEventListener('click', () => addPlayerModal(g, { spotLink: true }))
+  el.querySelector('#sd-edit').addEventListener('click', async () => { if (!P.groups) P.groups = await need(await post('groups')); groupModal(P.groups.groups.find((x) => x.id === g.id) || g) })
+  el.querySelector('#sd-reg').addEventListener('click', () => { P.coachId = g.coachId; go('coach') })
+  el.querySelector('#sd-req')?.addEventListener('click', () => go('requests'))
+  wireRows(el)
 }
 
 function playerRowHtml(p, gid) {
   const tags = [
     p.status !== 'Confirmed' ? `<span class="j-pill j-pill-amber">${esc(p.status)}</span>` : '',
     payPill(p),
-    p.payreq ? '<span class="j-pill j-pill-violet" title="Payment link open">Link</span>' : '',
-    p.online ? '<span class="j-pill j-pill-blue" title="Booked online">Online</span>' : '',
+    p.payreq ? `<span class="j-pill j-pill-blue" title="Payment link open">Link ${esc(p.payreq.amountLabel)}</span>` : '',
     p.waiver ? '' : '<span class="j-pill j-pill-grey" title="No waiver on file">No waiver</span>',
   ].join('')
   return `<div class="jp-player" draggable="true" data-row="${esc(p.rowId)}" data-from="${esc(gid)}" tabindex="0" role="button" aria-label="${esc(p.name)}, options">
-    <span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${p.coach && gid && P.board?.groups.find((g) => g.id === gid)?.extraCoachNames.length ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}</span>
+    <span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}</span>
     <span class="tags">${tags}</span></div>`
 }
 
@@ -189,15 +303,20 @@ function findPlayer(rowId) {
   return p ? { p, g: null } : null
 }
 
-function wireBoard() {
-  const v = view()
-  v.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => addPlayerModal(P.board.groups.find((g) => g.id === b.dataset.add))))
-  v.querySelectorAll('[data-row]').forEach((el) => {
-    const open = () => playerMenu(el)
+function wireRows(root) {
+  root.querySelectorAll('[data-row]').forEach((el) => {
+    const open = (e) => { e?.stopPropagation(); playerMenu(el) }
     el.addEventListener('click', open)
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open() } })
     el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', el.dataset.row); e.dataTransfer.effectAllowed = 'move' })
   })
+}
+
+function wireBoard() {
+  const v = view()
+  v.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => { if (P.ttView !== 'staff') return; const g = P.board.groups.find((x) => x.id === b.dataset.open); if (g) groupSide(g) }))
+  if (P.ttView !== 'staff') return
+  wireRows(v)
   v.querySelectorAll('[data-drop]').forEach((zone) => {
     zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drop') })
     zone.addEventListener('dragleave', () => zone.classList.remove('drop'))
@@ -208,7 +327,7 @@ function wireBoard() {
       const found = findPlayer(rowId)
       const to = P.board.groups.find((g) => g.id === zone.dataset.drop)
       if (!found || !to || found.g?.id === to.id) return
-      if (await confirmBox(`Move <b>${esc(found.p.name)}</b> to <b>${esc(to.day)} ${esc(to.time)}, ${esc(to.locationName)}</b>?`, { ok: 'Move' })) doMove(rowId, to.id)
+      if (await confirmBox(`Move <b>${esc(found.p.name)}</b> to <b>${esc(to.day)} ${esc(to.time)}, ${esc(to.locationName)}, Coach ${esc(to.coachName)}</b>?`, { ok: 'Move' })) doMove(rowId, to.id)
     })
   })
 }
@@ -229,8 +348,9 @@ function playerMenu(el) {
     { key: 'info', label: 'Details', run: () => detailsModal(p, g) },
     { key: 'move', label: 'Move to another group', run: () => moveModal(p, g) },
     '-',
-    ...(p.paymentStatus !== 'Paid' ? [{ key: 'link', label: p.payreq ? 'Payment link sent (copy or new)' : 'Send a payment link', run: () => linkModal(p, g) }, { key: 'paid', label: 'Mark paid offline', run: () => paidModal(p) }] : []),
-    { key: 'trial', label: p.trial ? 'End trial (full term)' : 'Mark as trial', run: async () => { const r = await post('setTrial', { rowId: p.rowId, trial: !p.trial }); if (!r.ok) return toast(r.data.error); toast('Updated'); renderBoard(true) } },
+    ...(p.trial ? [{ key: 'term', label: 'Offer full term (after trial)', run: () => termModal(p, g) }] : []),
+    ...(p.paymentStatus !== 'Paid' || p.trial ? [{ key: 'link', label: p.payreq ? `Payment link open (${p.payreq.amountLabel})` : 'Send a payment link', run: () => linkModal(p, g) }, { key: 'paid', label: 'Mark paid offline', run: () => paidModal(p) }] : []),
+    { key: 'trial', label: p.trial ? 'End trial without a link' : 'Mark as trial', run: async () => { const r = await post('setTrial', { rowId: p.rowId, trial: !p.trial }); if (!r.ok) return toast(r.data.error); toast('Updated'); renderBoard(true) } },
     '-',
     { key: 'remove', label: 'Remove from group', danger: true, run: () => removeModal(p, g) },
   ])
@@ -239,7 +359,7 @@ function playerMenu(el) {
 function detailsModal(p, g) {
   modal(`<h2 style="margin-bottom:12px">${esc(p.name)}</h2>
     <dl class="j-kv">
-      <dt>Group</dt><dd>${g ? `${esc(g.day)} ${esc(g.time)}, ${esc(g.locationName)}` : esc(p.session || 'None')}</dd>
+      <dt>Group</dt><dd>${g ? `${esc(g.day)} ${esc(g.time)}, ${esc(g.locationName)}, Coach ${esc(g.coachName)}` : esc(p.session || 'None')}</dd>
       <dt>Age</dt><dd>${p.age != null ? esc(p.age) : 'Not on file'}</dd>
       <dt>Status</dt><dd>${esc(p.status)}</dd>
       <dt>Type</dt><dd>${esc(p.type || 'Not set')}</dd>
@@ -254,7 +374,7 @@ function detailsModal(p, g) {
 }
 
 function groupOptions(selected, { exclude } = {}) {
-  return P.board.groups.filter((g) => g.id !== exclude).map((g) => `<option value="${esc(g.id)}" ${g.id === selected ? 'selected' : ''}>${esc(g.day)} ${esc(g.time)} · ${esc(g.locationName)} · ${esc(agesText(g))} · ${g.taken}/${g.capacity}</option>`).join('')
+  return P.board.groups.filter((g) => g.id !== exclude).map((g) => `<option value="${esc(g.id)}" ${g.id === selected ? 'selected' : ''}>${esc(g.day)} ${esc(g.time)} · ${esc(g.locationName)} · Coach ${esc(g.coachName || '?')} · ${g.players.length}/${g.capacity}</option>`).join('')
 }
 
 function moveModal(p, g) {
@@ -279,58 +399,119 @@ function paidModal(p) {
   })
 }
 
-function linkModal(p, g) {
-  const owing = Math.max(0, p.feeCents - p.paidCents) || p.feeCents || 85000
-  const box = modal(`<h2 style="margin-bottom:6px">Payment link</h2><p class="muted small" style="margin-bottom:12px">${esc(p.name)}${g ? ` · ${esc(g.day)} ${esc(g.time)}` : ''}. The family signs in with their email, signs the waiver if needed, then pays by card.</p>
-    ${p.payreq ? `<div class="j-box j-box-grey" style="margin-bottom:12px">A link for ${esc(p.payreq.amountLabel)} is already open. Making a new one leaves the old one open too; cancel it in Payments if needed.</div>` : ''}
-    <label class="j-field"><span>Amount (A$)</span><input class="j-input" id="ln-amt" inputmode="decimal" value="${(owing / 100).toFixed(2).replace(/\.00$/, '')}"></label>
+// A link for a player already on the board: what is owing, or a product
+// from the price list (pro rata from the start week), or any amount.
+async function linkModal(p, g) {
+  const pr = await pricing()
+  const owing = Math.max(0, p.feeCents - p.paidCents)
+  const box = modal(`<h2 style="margin-bottom:6px">Payment link</h2><p class="muted small" style="margin-bottom:12px">${esc(p.name)}${g ? ` · ${esc(g.day)} ${esc(g.time)}` : ''}. The family signs in with their email, signs the waiver if needed, then pays.</p>
+    ${p.payreq ? `<div class="j-box j-box-grey" style="margin-bottom:12px">A link for ${esc(p.payreq.amountLabel)} is already open. To change its amount, use Payment links. A new link here leaves the old one open.</div>` : ''}
+    <div class="jp-seg" id="ln-mode" style="margin-bottom:12px"><button type="button" data-m="price" aria-pressed="true">From the price list</button><button type="button" data-m="owing" aria-pressed="false">What is owing${owing ? ` (${esc(money(owing))})` : ''}</button></div>
+    <div id="ln-price"></div>
     <label class="j-field"><span>Parent email</span><input class="j-input" id="ln-email" type="email" value="${esc(p.email || '')}"></label>
     <label class="j-check" id="ln-change-row" hidden><input type="checkbox" id="ln-change"> <span>Update the parent email in Airtable to this address. The family signs in with it to pay, and will see this player.</span></label>
     ${p.linkNotes ? `<div class="j-box j-box-amber small" style="margin-bottom:10px"><b>Payment notes in Airtable:</b> ${esc(p.linkNotes)}</div>` : ''}
-    <label class="j-check"><input type="checkbox" id="ln-send" checked> <span>Email the link to the family now</span></label>
     <div id="ln-out"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="ln-go">Create link</button></div>`)
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="ln-copy-go">Copy link only</button><button type="button" class="j-btn j-btn-dark" id="ln-go">Email payment link</button></div>`)
+  let mode = 'price'
+  const read = priceBlock(box, pr, { day: g?.day || 'Monday', product: g?.product || 'group', credit: p.trial, paid: p.paidCents || 0, prefix: 'ln-price' })
+  // Something already owing on the row (an agreed fee): start there.
+  if (owing > 0 && !p.trial) { mode = 'owing'; box.querySelectorAll('#ln-mode button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.m === 'owing'))); box.querySelector('#ln-price').hidden = true }
+  box.querySelector('#ln-mode').addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (!b) return; mode = b.dataset.m; box.querySelectorAll('#ln-mode button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); box.querySelector('#ln-price').hidden = mode !== 'price' })
   const emailInput = box.querySelector('#ln-email')
   emailInput.addEventListener('input', () => { box.querySelector('#ln-change-row').hidden = emailInput.value.trim().toLowerCase() === (p.email || '').toLowerCase() })
-  box.querySelector('#ln-go').addEventListener('click', async () => {
-    const amountCents = Math.round(Number(box.querySelector('#ln-amt').value) * 100)
-    if (!(amountCents > 0)) return toast('Enter an amount.')
-    const btn = box.querySelector('#ln-go'); btn.disabled = true
-    const r = await post('sendPaymentLink', { rowId: p.rowId, amountCents, email: emailInput.value.trim(), changeEmail: box.querySelector('#ln-change').checked, sendEmail: box.querySelector('#ln-send').checked })
-    if (r.data.code === 'email_change') { btn.disabled = false; box.querySelector('#ln-change-row').hidden = false; return toast(r.data.error) }
-    btn.disabled = false
+  const go = async (sendEmail) => {
+    const priced = mode === 'price' ? read() : {}
+    if (mode === 'price' && !(priced.amountCents > 0)) return toast('Enter an amount.')
+    const r = await post('sendPaymentLink', { rowId: p.rowId, ...(mode === 'price' ? priced : {}), email: emailInput.value.trim(), changeEmail: box.querySelector('#ln-change').checked, sendEmail, reason: p.trial && priced.product !== 'trial' ? 'term-after-trial' : undefined })
+    if (r.data.code === 'email_change') { box.querySelector('#ln-change-row').hidden = false; return toast(r.data.error) }
     if (!r.ok) return toast(r.data.error)
     box.querySelector('#ln-out').innerHTML = `<div class="j-box j-box-green" style="margin:10px 0">Link for ${esc(r.data.payreq.amountLabel)} created${r.data.emailed ? ' and emailed' : ''}. <button type="button" class="j-btn j-btn-line j-btn-sm" id="ln-copy">Copy link</button></div>`
     box.querySelector('#ln-copy').addEventListener('click', () => copy(r.data.payreq.url))
-    btn.hidden = true
+    if (!sendEmail) copy(r.data.payreq.url)
+    box.querySelector('#ln-go').hidden = true; box.querySelector('#ln-copy-go').hidden = true
     P.board = null
-  })
+  }
+  box.querySelector('#ln-go').addEventListener('click', () => go(true))
+  box.querySelector('#ln-copy-go').addEventListener('click', () => go(false))
 }
+
+// After a trial: the rest of the term, trial fee off, pro rata from a week.
+async function termModal(p, g) {
+  const pr = await pricing()
+  const box = modal(`<h2 style="margin-bottom:6px">Offer the full term</h2><p class="muted small" style="margin-bottom:12px">${esc(p.name)} trialled in ${g ? `${esc(g.day)} ${esc(g.time)}` : 'a group'}. They pay for the rest of the term to lock the place in.</p>
+    <label class="j-field"><span>Group</span><select class="j-select" id="tm-g">${groupOptions(g?.id)}</select></label>
+    <div id="tm-price"></div>
+    <div id="tm-out"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="tm-copy-go">Copy link only</button><button type="button" class="j-btn j-btn-dark" id="tm-go">Email payment link</button></div>`)
+  let read
+  const groups = P.board.groups
+  const draw = () => { const gg = groups.find((x) => x.id === box.querySelector('#tm-g').value) || g; read = priceBlock(box, pr, { day: gg?.day || 'Monday', product: gg?.product || 'group', credit: true, paid: p.paidCents || 0, prefix: 'tm-price', noTrial: true }) }
+  draw()
+  box.querySelector('#tm-g').addEventListener('change', draw)
+  const go = async (sendEmail) => {
+    const v = read()
+    const r = await post('offerTerm', { rowId: p.rowId, groupId: box.querySelector('#tm-g').value, ...v, sendEmail })
+    if (!r.ok) return toast(r.data.error)
+    box.querySelector('#tm-out').innerHTML = `<div class="j-box j-box-green" style="margin:10px 0">Offered: ${esc(r.data.payreq.amountLabel)}${r.data.emailed ? ', emailed' : ''}. <button type="button" class="j-btn j-btn-line j-btn-sm" id="tm-copy">Copy link</button></div>`
+    box.querySelector('#tm-copy').addEventListener('click', () => copy(r.data.payreq.url))
+    if (!sendEmail) copy(r.data.payreq.url)
+    box.querySelector('#tm-go').hidden = true; box.querySelector('#tm-copy-go').hidden = true
+    P.board = null
+  }
+  box.querySelector('#tm-go').addEventListener('click', () => go(true))
+  box.querySelector('#tm-copy-go').addEventListener('click', () => go(false))
+}
+
+const LEAVE = ['Cost', 'Time or schedule clash', 'Club or school commitments', 'Injury', 'Not the right group or level', 'Trial was not the right fit', 'Moved away', 'Taking a break', 'Joined another program', 'Moved to 1 to 1', 'No reply from the family', 'Other']
 
 function removeModal(p, g) {
   const box = modal(`<h2 style="margin-bottom:6px">Remove ${esc(p.name)}?</h2>
-    <p class="muted small" style="margin-bottom:12px">Sets them to Dropped in Airtable${g ? ` and frees their place in ${esc(g.day)} ${esc(g.time)}` : ''}. You can restore them from Removed players.${p.paymentStatus === 'Paid' ? ' They have paid: any refund is done in Stripe.' : ''}</p>
-    <label class="j-field"><span>Reason <span class="muted">(optional, saved in the notes)</span></span><input class="j-input" id="rm-why"></label>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-danger" id="rm-go">Remove</button></div>`)
+    <p class="muted small" style="margin-bottom:12px">They come off Term 4 Players${g ? ` and their place in ${esc(g.day)} ${esc(g.time)} opens up` : ''}. Their contact details, the reason and a copy of their row go to "Players dropped from term 4" in Airtable, and to Removed players here, where you can restore them.${p.paymentStatus === 'Paid' ? ' They have paid: any refund is done in Stripe.' : ''}</p>
+    <label class="j-field"><span>Why are they leaving?</span><select class="j-select" id="rm-why"><option value="">Choose a reason</option>${LEAVE.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label>
+    <label class="j-field"><span>Details <span class="muted">(what the family said, anything to remember)</span></span><textarea class="j-textarea" id="rm-details"></textarea></label>
+    <p class="j-err" id="rm-err" hidden></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-danger" id="rm-go">Remove from Term 4</button></div>`)
   box.querySelector('#rm-go').addEventListener('click', async () => {
-    const r = await post('removePlayer', { rowId: p.rowId, reason: box.querySelector('#rm-why').value.trim() })
+    const reason = box.querySelector('#rm-why').value
+    if (!reason) { const e = box.querySelector('#rm-err'); e.textContent = 'Choose why they are leaving.'; e.hidden = false; return }
+    const btn = box.querySelector('#rm-go'); btn.disabled = true
+    const r = await post('removePlayer', { rowId: p.rowId, reason, details: box.querySelector('#rm-details').value.trim() })
+    btn.disabled = false
     if (!r.ok) return toast(r.data.error)
-    closeModal(); toast('Removed. Airtable updated.'); renderBoard(true)
+    closeModal(); toast('Removed. Saved to Players dropped from term 4.'); P.sel = ''; closeSide(); renderBoard(true)
   })
 }
 
-function addPlayerModal(g) {
-  const box = modal(`<h2>Add a player</h2><p class="muted small" style="margin:2px 0 14px">${esc(g.day)} ${esc(g.time)} · ${esc(g.locationName)} · ${esc(agesText(g))} · ${g.placesLeft} place${g.placesLeft === 1 ? '' : 's'} left</p>
+// Add a player by hand. With spotLink, the family gets a link to this spot:
+// they sign in, add details, sign the waiver and pay. The place is held for
+// them in Airtable as Awaiting Reply until it is paid.
+async function addPlayerModal(g, { spotLink = false } = {}) {
+  const pr = await pricing()
+  const left = g.capacity - g.players.length
+  const box = modal(`<h2>${spotLink ? 'Send a link to this spot' : 'Add a player'}</h2><p class="muted small" style="margin:2px 0 14px">${esc(g.day)} ${esc(g.time)} · ${esc(g.locationName)} · Coach ${esc(g.coachName || 'not set')} · ${left > 0 ? `${left} place${left === 1 ? '' : 's'} left` : 'full'}</p>
     <label class="j-field"><span>Find an existing player <span class="muted">(Term 4, Term 3 or waivers)</span></span><input class="j-input" id="ap-search" placeholder="Start typing a name" autocomplete="off"></label>
     <div id="ap-results"></div>
     <div class="j-two"><label class="j-field"><span>Player's full name</span><input class="j-input" id="ap-name" autocomplete="off"></label><label class="j-field"><span>Date of birth <span class="muted">(optional)</span></span><input class="j-input" type="date" id="ap-dob"></label></div>
     <div class="j-two"><label class="j-field"><span>Parent name</span><input class="j-input" id="ap-parent"></label><label class="j-field"><span>Mobile</span><input class="j-input" id="ap-mobile" type="tel"></label></div>
     <label class="j-field"><span>Parent email</span><input class="j-input" id="ap-email" type="email"></label>
     <label class="j-field"><span>Payment</span><select class="j-select" id="ap-pay">
-      <option value="link">Send a payment link (A$${(850).toLocaleString()})</option><option value="offline">Already paid offline</option><option value="trial">Trial session</option><option value="none">Decide later</option></select></label>
-    <label class="j-check"><input type="checkbox" id="ap-send" checked> <span>Email the family: sign in, add details, sign the waiver and pay (only the steps they still need)</span></label>
+      <option value="link" selected>Payment link: they sign in, confirm the waiver and pay</option><option value="offline">Already paid offline</option><option value="trial">Free trial, no payment</option><option value="none">Decide later</option></select></label>
+    <div id="ap-price"></div>
+    <label class="j-check"><input type="checkbox" id="ap-send" ${spotLink ? '' : 'checked'}> <span>Email the family now. They sign in, confirm the waiver (or sign it), pay for this group, then get the training kit.</span></label>
     <p class="j-err" id="ap-err" hidden></p>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ap-go">Add to group</button></div>`, { wide: true })
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ap-go"></button></div>`, { wide: true })
+  const read = priceBlock(box, pr, { day: g.day, product: g.product || 'group', prefix: 'ap-price' })
+  const payWatch = () => {
+    const v = box.querySelector('#ap-pay').value
+    const send = box.querySelector('#ap-send').checked
+    box.querySelector('#ap-price').hidden = !['link', 'offline'].includes(v)
+    box.querySelector('#ap-price-afterpay').closest('label').hidden = v !== 'link'
+    box.querySelector('#ap-go').textContent = v === 'link' ? (send ? 'Add and email payment link' : 'Add and copy link') : send ? 'Add and email the family' : 'Add to group'
+  }
+  box.querySelector('#ap-pay').addEventListener('change', payWatch)
+  box.querySelector('#ap-send').addEventListener('change', payWatch)
+  payWatch()
   let timer
   box.querySelector('#ap-search').addEventListener('input', (e) => {
     clearTimeout(timer)
@@ -353,16 +534,18 @@ function addPlayerModal(g) {
       }))
     }, 250)
   })
-  const submit = async (force = false) => {
+  const submit = async () => {
     const err = box.querySelector('#ap-err')
+    const payment = box.querySelector('#ap-pay').value
+    const priced = ['link', 'offline'].includes(payment) ? read() : {}
     const body = {
-      groupId: g.id, force,
+      groupId: g.id,
       player: { name: box.querySelector('#ap-name').value.trim(), dob: box.querySelector('#ap-dob').value },
       parent: { name: box.querySelector('#ap-parent').value.trim(), email: box.querySelector('#ap-email').value.trim(), mobile: box.querySelector('#ap-mobile').value.trim() },
-      payment: box.querySelector('#ap-pay').value, sendEmail: box.querySelector('#ap-send').checked,
+      payment, sendEmail: box.querySelector('#ap-send').checked, ...priced,
     }
     if (body.player.name.length < 3) { err.textContent = 'Enter the player\'s full name.'; err.hidden = false; return }
-    if (body.payment === 'offline') body.method = 'Offline'
+    if (payment === 'offline') body.method = 'Offline'
     const btn = box.querySelector('#ap-go'); btn.disabled = true
     let r = await post('addPlayer', body)
     btn.disabled = false
@@ -373,11 +556,30 @@ function addPlayerModal(g) {
       if (!r.ok) return toast(r.data.error || 'Could not add.')
     } else if (!r.ok) { err.textContent = r.data.error || 'Could not add.'; err.hidden = false; return }
     closeModal()
-    toast(`Added${r.data.emailed ? ' and emailed the family' : ''}. Airtable updated.`)
-    if (r.data.payreq && !r.data.emailed) copy(r.data.payreq.url)
+    if (r.data.payreq) {
+      const url = r.data.payreq.url
+      const done = modal(`<h2 style="margin-bottom:8px">${esc(body.player.name)} is in</h2><p class="muted small" style="margin-bottom:12px">The spot is held in Airtable as Awaiting Reply. It locks in once ${esc(r.data.payreq.amountLabel)} is paid.${r.data.emailed ? ' The family has been emailed.' : ''}</p>
+        <label class="j-field"><span>Link to send the family</span><input class="j-input" value="${esc(url)}" readonly></label>
+        <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="dn-copy">Copy link</button></div>`)
+      done.querySelector('#dn-copy').addEventListener('click', () => copy(url))
+      if (!r.data.emailed) copy(url)
+    } else toast(`Added${r.data.emailed ? ' and emailed the family' : ''}. Airtable updated.`)
     renderBoard(true)
   }
-  box.querySelector('#ap-go').addEventListener('click', () => submit(false))
+  box.querySelector('#ap-go').addEventListener('click', submit)
+}
+
+// ---------- coach: the whole program ----------
+
+async function renderProgram() {
+  const d = await need(await post('program'))
+  const groups = d.groups.map((g) => ({ ...g, players: g.players.map((p) => ({ ...p })) }))
+  view().innerHTML = `<div class="jp-head"><div><h1>${esc(d.term)} program</h1><p class="muted small">Every group, with names and ages. Your groups are outlined.</p></div></div>
+    <div class="jp-tt-wrap">${(() => {
+      const cols = DAYS.filter((dd) => groups.some((g) => g.day === dd))
+      const periods = PERIODS.filter(([p]) => groups.some((g) => g.period === p))
+      return `<div class="jp-tt" style="--cols:${cols.length}">${cols.map((dd) => `<div class="j-tt-day">${esc(dd)}</div>`).join('')}${periods.map(([p, label]) => `<div class="j-tt-row">${esc(label)}</div>${cols.map((dd) => `<div class="j-tt-cell">${groups.filter((g) => g.day === dd && g.period === p).sort((a, b) => a.sortTime.localeCompare(b.sortTime)).map((g) => `<section class="jp-blk ${g.mine ? 'sel' : ''}" style="--lc:${locColor(g.locationId)}"><div class="jp-blk-head"><b>${esc(g.time)}</b><span class="n">${g.players.length}/${g.capacity}</span></div><div class="sub">${esc(g.coachName)} · ${esc(g.locationName)}</div>${g.players.map((x) => `<div class="jp-nm" style="cursor:default"><span class="nmx">${esc(x.name)}${x.age != null ? ` <span class="muted">${esc(x.age)}</span>` : ''}</span>${x.trial ? '<span class="muted" style="font-size:10px">trial</span>' : ''}</div>`).join('')}</section>`).join('')}</div>`).join('')}`).join('')}</div>`
+    })()}</div>`
 }
 
 // ---------- groups ----------
@@ -388,13 +590,13 @@ async function renderGroups() {
   if (!P.board) P.board = await need(await post('board'))
   const taken = Object.fromEntries(P.board.groups.map((g) => [g.id, g.taken]))
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Groups</h1><p class="muted small">What parents see and can book. Changes are live on the parent page straight away.</p></div>
+    <div class="jp-head"><div><h1>Groups and rules</h1><p class="muted small">Each group's coach, places, ages, whether parents book or apply, and what an application asks. Changes are live on the parent page straight away.</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" id="g-draft">Draft age bands from players</button><button type="button" class="j-btn j-btn-dark" id="g-new">+ New group</button></div></div>
-    <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Day</th><th>Time</th><th>Location</th><th>Coach</th><th>Type</th><th>Parents can</th><th>Ages</th><th>Places</th><th></th></tr></thead><tbody>
+    <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Day</th><th>Time</th><th>Location</th><th>Coach</th><th>Type</th><th>Parents can</th><th>Ages</th><th>Trials</th><th>Places</th><th></th></tr></thead><tbody>
     ${d.groups.map((g) => `<tr><td>${esc(g.day)}</td><td>${esc(g.time)}</td><td>${esc(g.locationName)}</td><td>${esc(d.coaches.find((c) => c.id === g.coachId)?.name || '')}${(g.extraCoachIds || []).length ? ` +${g.extraCoachIds.length}` : ''}</td><td>${esc(g.label)}</td>
       <td><span class="j-pill j-pill-${modePill(g)}">${esc(modeLabel[g.mode])}</span></td>
       <td>${esc(agesText(g))}${g.minAge != null && g.ageStatus !== 'confirmed' ? ' <span class="j-pill j-pill-amber">draft</span>' : ''}${g.girlsOnly === 'suggested' ? ' <span class="j-pill j-pill-amber">girls?</span>' : ''}</td>
-      <td>${taken[g.id] ?? 0}/${g.capacity}</td><td><button type="button" class="j-btn j-btn-line j-btn-sm" data-edit="${esc(g.id)}">Edit</button></td></tr>`).join('')}
+      <td>${g.mode === 'application' ? (g.trials !== false ? 'Yes' : 'No') : ''}</td><td>${taken[g.id] ?? 0}/${g.capacity}</td><td><button type="button" class="j-btn j-btn-line j-btn-sm" data-edit="${esc(g.id)}">Edit</button></td></tr>`).join('')}
     </tbody></table></div>`
   $('g-new').addEventListener('click', () => groupModal(null))
   $('g-draft').addEventListener('click', async () => { const r = await post('draftAges'); if (!r.ok) return toast(r.data.error); toast(`${r.data.changed} group${r.data.changed === 1 ? '' : 's'} given a draft age band`); P.board = null; renderGroups() })
@@ -403,7 +605,9 @@ async function renderGroups() {
 
 function groupModal(g) {
   const d = P.groups
-  const v = g || { day: 'Monday', time: '4:20pm', location: 'Belrose HQ', coachId: '', extraCoachIds: [], capacity: 6, mode: 'closed', label: 'Small group', durationMin: 60, minAge: '', maxAge: '', ageStatus: 'draft', girlsOnly: 'no', publicNote: '' }
+  const v = g || { day: 'Monday', time: '4:20pm', location: 'Belrose HQ', coachId: '', extraCoachIds: [], capacity: 4, mode: 'application', label: 'Small group', durationMin: 60, minAge: '', maxAge: '', ageStatus: 'draft', girlsOnly: 'no', publicNote: '', trials: true, questions: ['club', 'team', 'playingUp', 'trainedBefore'], product: 'group', byCoach: false }
+  const QS = [['club', 'Club they play for'], ['team', 'Team and age group'], ['playingUp', 'Playing up or down'], ['trainedBefore', 'Trained with Joner before'], ['position', 'Position']]
+  const PRODS = [['group', 'Term, small group'], ['pathway', 'JFP Pathway'], ['oneToOneTerm', 'Term of 1 to 1s'], ['pathwayOneToOne', 'Pathway 1 to 1']]
   const opt = (list, cur) => list.map(([val, label]) => `<option value="${esc(val)}" ${String(cur) === String(val) ? 'selected' : ''}>${esc(label)}</option>`).join('')
   const box = modal(`<h2 style="margin-bottom:12px">${g ? 'Edit group' : 'New group'}</h2>
     <div class="j-two"><label class="j-field"><span>Day</span><select class="j-select" id="gm-day">${opt(d.days.map((x) => [x, x]), v.day)}</select></label>
@@ -417,16 +621,20 @@ function groupModal(g) {
     <label class="j-field"><span>Girls only</span><select class="j-select" id="gm-girls">${opt([['no', 'No'], ['suggested', 'Looks like it, not enforced'], ['yes', 'Yes, girls only']], v.girlsOnly)}</select></label></div>
     <div class="j-two"><label class="j-field"><span>Places (capacity)</span><input class="j-input" id="gm-cap" inputmode="numeric" value="${v.capacity}"></label><label class="j-field"><span>Minutes</span><input class="j-input" id="gm-dur" inputmode="numeric" value="${v.durationMin}"></label></div>
     <label class="j-field"><span>Extra coaches</span><select class="j-select" id="gm-extra" multiple size="3">${d.coaches.map((c) => `<option value="${esc(c.id)}" ${(v.extraCoachIds || []).includes(c.id) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
-    <label class="j-field"><span>Note parents see <span class="muted">(optional)</span></span><input class="j-input" id="gm-note" value="${esc(v.publicNote || '')}" maxlength="200"></label>
+    <div class="j-two"><label class="j-field"><span>Price from</span><select class="j-select" id="gm-prod">${opt(PRODS, v.product || 'group')}</select></label>
+    <label class="j-check" style="margin-top:22px"><input type="checkbox" id="gm-trials" ${v.trials !== false ? 'checked' : ''}> <span>Apply: we may offer a trial first</span></label></div>
+    <div class="j-field"><span>An application asks</span>${QS.map(([k, l]) => `<label class="j-check" style="padding:4px 0"><input type="checkbox" data-qk="${k}" ${(v.questions || []).includes(k) ? 'checked' : ''}> <span>${esc(l)}</span></label>`).join('')}</div>
+    ${g ? (g.byCoach ? '<p class="muted small" style="margin-bottom:8px">One group per coach at this time: players are in it when their Coach in Airtable is this coach.</p>' : '') : `<label class="j-check"><input type="checkbox" id="gm-bycoach"> <span>One group per coach at this time (like the early morning squads). Players go by their Coach in Airtable.</span></label>`}
+    <label class="j-field"><span>Who this group is for, in words parents see <span class="muted">(optional, replaces the standard wording)</span></span><input class="j-input" id="gm-note" value="${esc(v.publicNote || '')}" maxlength="200" placeholder="For example: Players aged 8 to 11 who play club football"></label>
     ${g ? '<p class="muted small">Changing the day, time or location moves every player in this group in Airtable too.</p>' : ''}
     <p class="j-err" id="gm-err" hidden></p>
     <div style="display:flex;gap:8px;justify-content:space-between;margin-top:10px">${g ? '<button type="button" class="j-btn j-btn-danger" id="gm-del">Delete</button>' : '<span></span>'}<span style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="gm-save">Save</button></span></div>`, { wide: true })
   box.querySelector('#gm-save').addEventListener('click', async () => {
     const val = (id) => box.querySelector(id).value
-    const group = { day: val('#gm-day'), time: val('#gm-time').trim(), location: val('#gm-loc').trim(), coachId: val('#gm-coach'), mode: val('#gm-mode'), label: val('#gm-label'), minAge: val('#gm-min'), maxAge: val('#gm-max'), ageStatus: val('#gm-agest'), girlsOnly: val('#gm-girls'), capacity: val('#gm-cap'), durationMin: val('#gm-dur'), publicNote: val('#gm-note'), extraCoachIds: [...box.querySelector('#gm-extra').selectedOptions].map((o) => o.value).filter((c) => c !== val('#gm-coach')) }
+    const group = { day: val('#gm-day'), time: val('#gm-time').trim(), location: val('#gm-loc').trim(), coachId: val('#gm-coach'), mode: val('#gm-mode'), label: val('#gm-label'), minAge: val('#gm-min'), maxAge: val('#gm-max'), ageStatus: val('#gm-agest'), girlsOnly: val('#gm-girls'), capacity: val('#gm-cap'), durationMin: val('#gm-dur'), publicNote: val('#gm-note'), extraCoachIds: [...box.querySelector('#gm-extra').selectedOptions].map((o) => o.value).filter((c) => c !== val('#gm-coach')), product: val('#gm-prod'), trials: box.querySelector('#gm-trials').checked, questions: [...box.querySelectorAll('[data-qk]')].filter((c) => c.checked).map((c) => c.dataset.qk), ...(g ? {} : { byCoach: Boolean(box.querySelector('#gm-bycoach')?.checked) }) }
     const r = await post('saveGroup', { id: g?.id, group })
     if (!r.ok) { const e = box.querySelector('#gm-err'); e.textContent = r.data.error; e.hidden = false; return }
-    closeModal(); toast(r.data.movedPlayers ? `Saved. ${r.data.movedPlayers} players moved in Airtable.` : 'Saved'); P.board = null; renderGroups()
+    closeModal(); toast(r.data.movedPlayers ? `Saved. ${r.data.movedPlayers} players moved in Airtable.` : 'Saved'); P.board = null; P.groups = null; if (P.tab === 'board') renderBoard(true); else renderGroups()
   })
   box.querySelector('#gm-del')?.addEventListener('click', async () => {
     if (!(await confirmBox(`Delete ${esc(g.day)} ${esc(g.time)}? Only possible when nobody is in it.`, { ok: 'Delete', danger: true }))) return
@@ -438,6 +646,8 @@ function groupModal(g) {
 
 // ---------- requests ----------
 
+const ANSWER = { club: 'Club', team: 'Team', playingUp: 'Playing', trainedBefore: 'Trained with Joner', position: 'Position' }
+
 async function renderRequests() {
   const d = await need(await post('requests'))
   P.pendingCount = d.requests.filter((r) => r.status === 'pending').length
@@ -446,19 +656,21 @@ async function renderRequests() {
   const list = d.requests.filter((r) => P.reqFilter === 'all' || r.status === P.reqFilter)
   const kind = { application: ['violet', 'Application'], waitlist: ['amber', 'Waitlist'], enquiry: ['grey', 'Enquiry'] }
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Requests</h1><p class="muted small">Pathway and squad applications, waitlist and 1 to 1 enquiries.</p></div>
+    <div class="jp-head"><div><h1>Requests</h1><p class="muted small">Applications, waitlist and 1 to 1 enquiries. Accept for the term, offer a trial first, or decline.</p></div>
       <div class="jp-seg" id="rq-f">${[['pending', 'Waiting'], ['offered', 'Offered'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.reqFilter === v}">${l}</button>`).join('')}</div></div>
     ${list.length ? list.map((r) => `<article class="j-card" style="padding:16px;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><span class="j-pill j-pill-${kind[r.kind]?.[0] || 'grey'}">${esc(kind[r.kind]?.[1] || r.kind)}</span> <b style="margin-left:6px">${esc(r.players.map((p) => `${p.name}${p.age != null ? ` (${p.age})` : ''}`).join(', '))}</b>
-        <p class="muted small" style="margin-top:4px">${esc(r.group)} · ${esc(new Date(r.createdAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</p></div>
-        <span class="j-pill j-pill-grey">${esc(r.status)}</span></div>
-      <p class="small" style="margin-top:8px">${esc(r.parentName)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a> · <a href="tel:${esc(r.mobile)}">${esc(r.mobile)}</a>${r.club ? ` · ${esc(r.club)}` : ''}</p>
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><span class="j-pill j-pill-${kind[r.kind]?.[0] || 'grey'}">${esc(kind[r.kind]?.[1] || r.kind)}</span> <b style="margin-left:6px">${esc(r.players.map((p) => `${p.name}${p.age != null ? `, ${p.age}` : ''}`).join(' and '))}</b>
+        <p class="muted small" style="margin-top:4px">Wants <b>${esc(r.group)}</b> · ${esc(new Date(r.createdAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</p></div>
+        <span class="j-pill j-pill-grey">${esc(r.status === 'offered' ? (r.offer === 'trial' ? 'trial offered' : 'place offered') : r.status)}</span></div>
+      ${Object.keys(r.answers || {}).length ? `<p class="small" style="margin-top:8px">${Object.entries(r.answers).map(([k, v]) => `<span class="muted">${esc(ANSWER[k] || k)}:</span> <b>${esc(v)}</b>`).join(' · ')}</p>` : r.club ? `<p class="small" style="margin-top:8px"><span class="muted">Club:</span> <b>${esc(r.club)}</b></p>` : ''}
+      <p class="small" style="margin-top:6px">${esc(r.parentName)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a> · <a href="tel:${esc(r.mobile)}">${esc(r.mobile)}</a></p>
       ${r.message ? `<p class="small j-box j-box-grey" style="margin-top:8px">${esc(r.message)}</p>` : ''}
-      ${r.players.some((p) => p.isNew) ? `<p class="muted small" style="margin-top:6px">New to JFP${r.players.some((p) => p.waiver) ? ', waiver signed' : ''}.</p>` : ''}
-      ${['pending', 'offered'].includes(r.status) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${r.status === 'pending' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-offer="${esc(r.id)}">Offer a place</button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-done="${esc(r.id)}">Mark done</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-decline="${esc(r.id)}">Decline</button></div>` : ''}
+      ${r.players.some((p) => p.isNew) ? `<p class="muted small" style="margin-top:6px">New to JFP${r.players.some((p) => p.waiver) ? ', waiver signed' : ''}.</p>` : r.players.some((p) => p.waiver) ? '<p class="muted small" style="margin-top:6px">Waiver signed with the application.</p>' : ''}
+      ${['pending', 'offered'].includes(r.status) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${r.status === 'pending' && r.kind !== 'enquiry' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-offer="${esc(r.id)}">Accept for the term</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-trial="${esc(r.id)}">Trial first</button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-done="${esc(r.id)}">Mark done</button><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-decline="${esc(r.id)}">Decline</button></div>` : ''}
     </article>`).join('') : '<div class="j-empty">Nothing here.</div>'}`
   $('rq-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { P.reqFilter = b.dataset.f; renderRequests() } })
-  view().querySelectorAll('[data-offer]').forEach((b) => b.addEventListener('click', () => offerModal(d.requests.find((r) => r.id === b.dataset.offer))))
+  view().querySelectorAll('[data-offer]').forEach((b) => b.addEventListener('click', () => offerModal(d.requests.find((r) => r.id === b.dataset.offer), 'offer')))
+  view().querySelectorAll('[data-trial]').forEach((b) => b.addEventListener('click', () => offerModal(d.requests.find((r) => r.id === b.dataset.trial), 'trial')))
   for (const [attr, decision, label] of [['data-done', 'done', 'Mark this request as done?'], ['data-decline', 'decline', 'Decline this request? No email is sent; contact the family yourself.']]) {
     view().querySelectorAll(`[${attr}]`).forEach((b) => b.addEventListener('click', async () => {
       if (!(await confirmBox(label))) return
@@ -469,15 +681,30 @@ async function renderRequests() {
   }
 }
 
-function offerModal(r) {
-  const box = modal(`<h2 style="margin-bottom:6px">Offer a place</h2><p class="muted small" style="margin-bottom:12px">${esc(r.players.map((p) => p.name).join(', '))}. The place is held in Airtable as Awaiting Reply for 7 days while they pay.</p>
+async function offerModal(r, decision) {
+  const pr = await pricing()
+  const trial = decision === 'trial'
+  const box = modal(`<h2 style="margin-bottom:6px">${trial ? 'Offer a trial first' : 'Accept for the term'}</h2><p class="muted small" style="margin-bottom:12px">${esc(r.players.map((p) => p.name).join(', '))}. The place is held in Airtable as Awaiting Reply for 7 days, and locks in once it is paid.</p>
     <label class="j-field"><span>Group</span><select class="j-select" id="of-g">${groupOptions(r.groupId)}</select></label>
-    <label class="j-field"><span>Amount to pay (A$)</span><input class="j-input" id="of-amt" inputmode="decimal" value="${850 * r.players.length}"></label>
-    <label class="j-check"><input type="checkbox" id="of-send" checked> <span>Email the family the offer and payment link</span></label>
+    <div id="of-body"></div>
+    <label class="j-check"><input type="checkbox" id="of-send" checked> <span>Email the family ${trial ? 'the trial date and a link to pay for it' : 'the offer and payment link'}</span></label>
     <div id="of-out"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="of-go">Offer</button></div>`)
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="of-go">${trial ? 'Offer trial' : 'Offer place'}</button></div>`)
+  let read
+  const draw = () => {
+    const g = P.board.groups.find((x) => x.id === box.querySelector('#of-g').value)
+    if (trial) {
+      box.querySelector('#of-body').innerHTML = `<div class="j-two"><label class="j-field"><span>Trial session</span><select class="j-select" id="of-date">${dateOptions(pr, g.day, nextDate(pr, g.day))}</select></label><label class="j-field"><span>Trial price (A$)</span><input class="j-input" id="of-amt" inputmode="decimal" value="${(pr.prices.trial * r.players.length) / 100}"></label></div>`
+      read = () => ({ startDate: box.querySelector('#of-date').value, amountCents: Math.round(Number(box.querySelector('#of-amt').value) * 100) })
+    } else {
+      box.querySelector('#of-body').innerHTML = '<div id="of-price"></div>'
+      read = priceBlock(box, pr, { day: g.day, product: g.product || 'group', players: r.players.length, prefix: 'of-price', noTrial: true })
+    }
+  }
+  draw()
+  box.querySelector('#of-g').addEventListener('change', draw)
   const go = async () => {
-    const body = { id: r.id, decision: 'offer', groupId: box.querySelector('#of-g').value, amountCents: Math.round(Number(box.querySelector('#of-amt').value) * 100), sendEmail: box.querySelector('#of-send').checked }
+    const body = { id: r.id, decision, groupId: box.querySelector('#of-g').value, ...read(), sendEmail: box.querySelector('#of-send').checked }
     let res = await post('decideRequest', body)
     if (res.status === 409 && res.data.code === 'full') {
       if (!(await confirmBox(esc(res.data.error), { ok: 'Offer anyway' }))) return
@@ -489,7 +716,7 @@ function offerModal(r) {
       return renderRequests()
     }
     if (!res.ok) return toast(res.data.error)
-    box.querySelector('#of-out').innerHTML = `<div class="j-box j-box-green" style="margin:10px 0">Offered${res.data.emailed ? ' and emailed' : ''}. <button type="button" class="j-btn j-btn-line j-btn-sm" id="of-copy">Copy payment link</button></div>`
+    box.querySelector('#of-out').innerHTML = `<div class="j-box j-box-green" style="margin:10px 0">${trial ? 'Trial offered' : 'Place offered'}, ${esc(res.data.payreq.amountLabel)}${res.data.emailed ? ', emailed' : ''}. <button type="button" class="j-btn j-btn-line j-btn-sm" id="of-copy">Copy payment link</button></div>`
     box.querySelector('#of-copy').addEventListener('click', () => copy(res.data.payreq.url))
     box.querySelector('#of-go').hidden = true
     box.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => renderRequests()))
@@ -498,31 +725,103 @@ function offerModal(r) {
   box.querySelector('#of-go').addEventListener('click', go)
 }
 
-// ---------- payments ----------
+// ---------- payment links ----------
+
+const REASON = { 'admin-add': 'Spot link', balance: 'Balance', application: 'Application offer', waitlist: 'Waitlist offer', trial: 'Trial', 'term-after-trial': 'Term after trial' }
 
 async function renderPayments() {
   const d = await need(await post('payments'))
-  const eff = (e) => (!e ? '' : e.ok ? '<span class="j-pill j-pill-green">All done</span>' : `<span class="j-pill j-pill-red">${esc([...e.failed, ...e.uncertain, ...e.pending].join(', '))}</span>`)
-  const statusPill = (s) => `<span class="j-pill j-pill-${{ paid: 'green', open: 'amber', checkout: 'amber', held: 'amber', cancelled: 'grey', expired: 'grey' }[s] || 'grey'}">${esc(s === 'checkout' ? 'paying now' : s)}</span>`
+  if (!P.board) P.board = await need(await post('board'))
+  const eff = (e) => (!e ? '' : e.ok ? '<span class="j-pill j-pill-green">Airtable and emails done</span>' : `<span class="j-pill j-pill-red">${esc([...e.failed, ...e.uncertain, ...e.pending].join(', '))}</span>`)
+  const when = (iso) => new Date(iso).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+  const state = (q) => {
+    if (q.status === 'paid') return `<span class="j-pill j-pill-green">Paid</span><div class="muted small" style="margin-top:3px">${q.paidAt ? esc(when(q.paidAt)) : ''}</div>`
+    if (['cancelled', 'expired'].includes(q.status)) return `<span class="j-pill j-pill-grey">${esc(q.status)}</span>`
+    const pill = q.status === 'checkout' ? '<span class="j-pill j-pill-amber">Paying now</span>' : q.views ? `<span class="j-pill j-pill-amber">Opened ${q.views === 1 ? 'once' : `${q.views} times`}</span>` : q.emailedAt ? '<span class="j-pill j-pill-blue">Emailed</span>' : '<span class="j-pill j-pill-blue">Not sent yet</span>'
+    return `${pill}<div class="muted small" style="margin-top:3px">${q.emailedAt ? `Emailed ${esc(when(q.emailedAt))}` : `Made ${esc(when(q.createdAt))}`}${q.expiresAt ? ` · holds until ${esc(new Date(q.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}</div>`
+  }
+  const filt = { open: (q) => ['open', 'checkout'].includes(q.status), paid: (q) => q.status === 'paid', closed: (q) => ['cancelled', 'expired'].includes(q.status) }
+  const counts = Object.fromEntries(Object.entries(filt).map(([k, f]) => [k, d.payreqs.filter(f).length]))
+  const list = d.payreqs.filter(filt[P.linkFilter] || filt.open)
   const attention = [...d.payreqs, ...d.bookings].filter((x) => x.needsAttention)
   const attnWord = { 'paid-after-cancel': 'Paid after it was cancelled', 'second-payment': 'Paid twice', 'late-payment': 'Paid after the hold ran out' }
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Payments</h1><p class="muted small">Online bookings and payment links. Refunds are made in Stripe.</p></div></div>
-    ${attention.length ? `<div class="j-box j-box-red" style="margin-bottom:16px"><b>Needs checking</b>${attention.map((x) => `<div style="margin-top:8px">${esc(x.players.join(', '))} · ${esc(x.parentName)} · ${esc(String(x.needsAttention).split(', ').map((k) => attnWord[k] || k).join(', '))}${(x.unexpected || []).map((u) => ` · ${esc(u.amountLabel)}${u.stripeUrl ? ` <a href="${esc(u.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}`).join('')}</div>`).join('')}<p class="small" style="margin-top:8px">A payment that arrived after a cancel is not added to Airtable. Give the family the place (add them on the board) or refund in Stripe.</p></div>` : ''}
-    <h2 style="margin:6px 0 10px">Payment links</h2>
-    ${d.payreqs.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Players</th><th>Group</th><th>Amount</th><th>Status</th><th>Airtable and emails</th><th></th></tr></thead><tbody>
-      ${d.payreqs.map((q) => `<tr><td><b>${esc(q.players.join(', '))}</b><br><span class="muted small">${esc(q.parentName)} · ${esc(q.email)}</span></td><td>${esc(q.group)}<br><span class="muted small">${esc(q.kind)}</span></td><td>${esc(q.amountLabel)}${q.feeLabel ? `<br><span class="muted small">fee ${esc(q.feeLabel)}</span>` : ''}</td><td>${statusPill(q.status)}</td><td>${eff(q.effects)}</td>
-        <td style="white-space:nowrap">${['open', 'checkout'].includes(q.status) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-copy="${esc(q.url)}">Copy link</button> <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancel-pay="${esc(q.id)}">Cancel</button>` : ''}${q.effects && !q.effects.ok ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(q.id)}">Repair</button>` : ''}${q.stripeUrl ? ` <a class="j-btn j-btn-ghost j-btn-sm" href="${esc(q.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}</td></tr>`).join('')}
-    </tbody></table></div>` : '<div class="j-empty">No payment links yet.</div>'}
+    <div class="jp-head"><div><h1>Payment links</h1><p class="muted small">Make a link for any player, change the amount on an open one, or copy it to send yourself. You never need to open Stripe. Refunds are made in Stripe.</p></div>
+      <button type="button" class="j-btn j-btn-dark" id="pl-new">+ New payment link</button></div>
+    ${attention.length ? `<div class="j-box j-box-red" style="margin-bottom:16px"><b>Needs checking</b>${attention.map((x) => `<div style="margin-top:8px">${esc(x.players.join(', '))} · ${esc(x.parentName)} · ${esc(String(x.needsAttention).split(', ').map((k) => attnWord[k] || k).join(', '))}${(x.unexpected || []).map((u) => ` · ${esc(u.amountLabel)}${u.stripeUrl ? ` <a href="${esc(u.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}`).join('')}</div>`).join('')}<p class="small" style="margin-top:8px">A payment that arrived after a cancel is not added to Airtable. Give the family the place (add them on the timetable) or refund in Stripe.</p></div>` : ''}
+    <div class="jp-seg" id="pl-f" style="margin-bottom:10px">${[['open', `Open ${counts.open}`], ['paid', `Paid ${counts.paid}`], ['closed', `Cancelled or expired ${counts.closed}`]].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.linkFilter === v}">${l}</button>`).join('')}</div>
+    ${list.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>For</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>
+      ${list.map((q) => `<tr><td><b>${esc(q.players.join(', '))}</b><br><span class="muted small">${esc(q.parentName)} · ${esc(q.email)}</span></td>
+        <td>${esc(q.group || 'No group')}<br><span class="muted small">${esc(REASON[q.kind] || q.kind)}${q.productLabel ? ` · ${esc(q.productLabel)}` : ''}${q.trialDate ? ` · trial ${esc(q.trialDate)}` : q.startDate ? ` · from ${esc(q.startDate)}` : ''}${q.afterpay ? '' : ' · card only'}</span></td>
+        <td>${esc(q.amountLabel)}${q.feeLabel ? `<br><span class="muted small">fee ${esc(q.feeLabel)}</span>` : ''}</td><td>${state(q)}${q.status === 'paid' ? `<div style="margin-top:4px">${eff(q.effects)}</div>` : ''}</td>
+        <td style="white-space:nowrap">${['open', 'checkout'].includes(q.status) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-change="${esc(q.id)}">Change amount</button> <button type="button" class="j-btn j-btn-line j-btn-sm" data-copy="${esc(q.url)}">Copy</button> <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancel-pay="${esc(q.id)}">Cancel</button>` : ''}${q.effects && !q.effects.ok ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(q.id)}">Repair</button>` : ''}${q.stripeUrl ? ` <a class="j-btn j-btn-ghost j-btn-sm" href="${esc(q.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}</td></tr>`).join('')}
+    </tbody></table></div>` : '<div class="j-empty">Nothing here.</div>'}
     <h2 style="margin:22px 0 10px">Online bookings</h2>
     ${d.bookings.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Players</th><th>Group</th><th>Paid</th><th>Status</th><th>Airtable and emails</th><th></th></tr></thead><tbody>
-      ${d.bookings.map((b) => `<tr><td><b>${esc(b.players.join(', ') || 'Not chosen yet')}</b><br><span class="muted small">${esc(b.parentName)} · ${esc(b.email)}</span></td><td>${esc(b.group)}</td><td>${esc(b.amountLabel)}${b.feeLabel ? `<br><span class="muted small">fee ${esc(b.feeLabel)}</span>` : ''}</td><td>${statusPill(b.status)}${b.needsAttention ? ` <span class="j-pill j-pill-red">${esc(b.needsAttention)}</span>` : ''}</td><td>${eff(b.effects)}</td>
+      ${d.bookings.map((b) => `<tr><td><b>${esc(b.players.join(', ') || 'Not chosen yet')}</b><br><span class="muted small">${esc(b.parentName)} · ${esc(b.email)}</span></td><td>${esc(b.group)}</td><td>${esc(b.amountLabel)}${b.feeLabel ? `<br><span class="muted small">fee ${esc(b.feeLabel)}</span>` : ''}</td><td><span class="j-pill j-pill-${b.status === 'paid' ? 'green' : b.status === 'held' ? 'amber' : 'grey'}">${esc(b.status)}</span>${b.needsAttention ? ` <span class="j-pill j-pill-red">${esc(b.needsAttention)}</span>` : ''}</td><td>${eff(b.effects)}</td>
         <td style="white-space:nowrap">${b.effects && !b.effects.ok ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(b.id)}">Repair</button>` : ''}${b.status === 'held' ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancel-booking="${esc(b.id)}">Release</button>` : ''}${b.stripeUrl ? ` <a class="j-btn j-btn-ghost j-btn-sm" href="${esc(b.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}</td></tr>`).join('')}
     </tbody></table></div>` : '<div class="j-empty">No online bookings yet.</div>'}`
+  $('pl-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { P.linkFilter = b.dataset.f; renderPayments() } })
+  $('pl-new').addEventListener('click', () => newLinkModal())
   view().querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => copy(b.dataset.copy)))
+  view().querySelectorAll('[data-change]').forEach((b) => b.addEventListener('click', () => changeModal(d.payreqs.find((q) => q.id === b.dataset.change))))
   view().querySelectorAll('[data-repair]').forEach((b) => b.addEventListener('click', async () => { b.disabled = true; const r = await post('repair', { id: b.dataset.repair }); toast(r.ok ? (r.data.summary.ok ? 'Repaired' : 'Still not complete. Check Airtable and try again.') : r.data.error); renderPayments() }))
-  view().querySelectorAll('[data-cancel-pay]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox('Cancel this payment link? The family will not be able to pay with it.'))) return; const r = await post('cancelPayreq', { id: b.dataset.cancelPay }); toast(r.ok ? 'Cancelled' : r.data.error); renderPayments() }))
+  view().querySelectorAll('[data-cancel-pay]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox('Cancel this payment link? The family will not be able to pay with it, and a place held for it goes back.'))) return; const r = await post('cancelPayreq', { id: b.dataset.cancelPay }); toast(r.ok ? 'Cancelled' : r.data.error); P.board = null; renderPayments() }))
   view().querySelectorAll('[data-cancel-booking]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox('Release this held place?'))) return; const r = await post('cancelBooking', { id: b.dataset.cancelBooking }); toast(r.ok ? 'Released' : r.data.error); renderPayments() }))
+}
+
+function changeModal(q) {
+  const box = modal(`<h2 style="margin-bottom:6px">Change the amount</h2><p class="muted small" style="margin-bottom:12px">${esc(q.players.join(', '))} · now ${esc(q.amountLabel)}. The link stays the same: the family opens it and sees the new amount. A payment page they already have open is closed first.</p>
+    <label class="j-field"><span>New amount (A$)</span><input class="j-input" id="ch-amt" inputmode="decimal" value="${(q.amountCents / 100).toFixed(2).replace(/\.00$/, '')}"></label>
+    <label class="j-check"><input type="checkbox" id="ch-send"> <span>Email the family the new amount</span></label>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ch-go">Save</button></div>`)
+  box.querySelector('#ch-go').addEventListener('click', async () => {
+    const amountCents = Math.round(Number(box.querySelector('#ch-amt').value) * 100)
+    if (!(amountCents > 0)) return toast('Enter the new amount.')
+    const r = await post('changePayreqAmount', { id: q.id, amountCents, sendEmail: box.querySelector('#ch-send').checked })
+    if (!r.ok) return toast(r.data.error)
+    closeModal(); toast(`Now ${r.data.amountLabel}${r.data.emailed ? ', emailed' : ''}`); renderPayments()
+  })
+}
+
+// Pick any player on the timetable, then the same link form as the board.
+function newLinkModal() {
+  const all = P.board.groups.flatMap((g) => g.players.map((p) => ({ p, g }))).concat(P.board.unassigned.map((p) => ({ p, g: null })))
+  const box = modal(`<h2 style="margin-bottom:10px">New payment link</h2>
+    <label class="j-field"><span>Player</span><input class="j-input" id="nl-q" placeholder="Start typing a name" autocomplete="off"></label>
+    <div id="nl-res"></div>
+    <p class="muted small">New to JFP? Add them to a group on the timetable with "Send a link to this spot".</p>`)
+  box.querySelector('#nl-q').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase()
+    const hits = q.length < 2 ? [] : all.filter(({ p }) => p.name.toLowerCase().includes(q)).slice(0, 8)
+    box.querySelector('#nl-res').innerHTML = hits.map(({ p, g }, i) => `<button type="button" class="j-player" data-i="${i}"><span><b>${esc(p.name)}</b><br><span class="muted small">${g ? `${esc(g.day)} ${esc(g.time)} · Coach ${esc(g.coachName)}` : 'Not in a group'} · ${esc(p.parent || '')}</span></span>${payPill(p)}</button>`).join('')
+    box.querySelectorAll('[data-i]').forEach((b) => b.addEventListener('click', () => { const h = hits[Number(b.dataset.i)]; closeModal(); linkModal(h.p, h.g) }))
+  })
+}
+
+// ---------- prices (Lee and Ligia only) ----------
+
+async function renderPrices() {
+  const pr = P.pricing = await need(await post('pricing'))
+  view().innerHTML = `<div class="jp-head"><div><h1>Prices</h1><p class="muted small">Private: only you and Ligia see this tab. Parents never see a term price on the timetable; they see what they pay when they book or open a link.</p></div></div>
+    <div class="j-card jp-prices" style="padding:18px;max-width:760px">
+      <table class="jp-table"><thead><tr><th>What</th><th>Price (A$)</th><th>Pro rata</th></tr></thead><tbody>
+      ${pr.products.map((x) => `<tr><td><b>${esc(x.label)}</b><br><span class="muted small">Airtable type: ${esc(x.type)}${x.perPlaces > 1 ? ' · covers two places' : ''}</span></td><td><input class="j-input" data-price="${esc(x.key)}" inputmode="decimal" value="${x.cents / 100}"></td><td>${x.proRata ? 'Yes, sessions left' : 'No'}</td></tr>`).join('')}
+      </tbody></table>
+      <p class="muted small" style="margin-top:12px">Joining in week 4 of ${pr.weeks} pays for ${pr.weeks - 3} sessions: A$850 x ${pr.weeks - 3}/${pr.weeks} = A$${(850 * (pr.weeks - 3)) / pr.weeks}. Two siblings in one booking pay the two place rate each. After a trial, the trial price is taken off the term. Afterpay is on for every link unless you untick it.</p>
+      <p class="j-err" id="pr-err" hidden></p>
+      <button type="button" class="j-btn j-btn-dark" id="pr-save" style="margin-top:10px">Save prices</button>
+    </div>`
+  $('pr-save').addEventListener('click', async () => {
+    const prices = {}
+    view().querySelectorAll('[data-price]').forEach((i) => { prices[i.dataset.price] = Math.round(Number(i.value) * 100) })
+    if (Object.values(prices).some((v) => !(v > 0))) { $('pr-err').textContent = 'Every price needs an amount.'; $('pr-err').hidden = false; return }
+    const r = await post('saveSettings', { config: { prices } })
+    if (!r.ok) { $('pr-err').textContent = r.data.error; $('pr-err').hidden = false; return }
+    P.pricing = null
+    toast('Prices saved')
+    renderPrices()
+  })
 }
 
 // ---------- money ----------
@@ -595,14 +894,35 @@ async function loadAttendance() { renderCoach() }
 
 async function renderRemoved() {
   const d = await need(await post('removed'))
-  view().innerHTML = `<div class="jp-head"><div><h1>Removed players</h1><p class="muted small">Term 4 rows marked Dropped or Not Returning. Restore puts them back as Confirmed in the same session.</p></div></div>
-    ${d.players.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Session</th><th>Status</th><th>Payment</th><th></th></tr></thead><tbody>
-      ${d.players.map((p) => `<tr><td><b>${esc(p.name)}</b><br><span class="muted small">${esc(p.parent)} · ${esc(p.email)}</span></td><td>${esc(p.session)}</td><td>${esc(p.status)}</td><td>${payPill(p)}</td><td><button type="button" class="j-btn j-btn-line j-btn-sm" data-restore="${esc(p.rowId)}">Restore</button></td></tr>`).join('')}
+  const live = d.players.filter((p) => !p.restored)
+  const tally = {}
+  for (const p of live) { const k = p.reason || 'No reason recorded'; tally[k] = (tally[k] || 0) + 1 }
+  const when = (iso) => (iso ? new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
+  view().innerHTML = `<div class="jp-head"><div><h1>Removed players</h1><p class="muted small">Everyone who has left ${esc(live[0]?.term || 'this term')}, and why. Tap a name for the full detail. Kept in Airtable under "Players dropped from term 4".</p></div></div>
+    ${Object.keys(tally).length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${Object.entries(tally).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<span class="j-pill j-pill-grey">${esc(k)} · ${v}</span>`).join('')}</div>` : ''}
+    ${d.players.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Was in</th><th>Why they left</th><th>Removed</th><th>Payment</th><th></th></tr></thead><tbody>
+      ${d.players.map((p, i) => `<tr${p.restored ? ' style="opacity:.55"' : ''}><td><button type="button" class="j-btn j-btn-ghost j-btn-sm" style="padding:0;font-weight:700" data-rm-open="${i}">${esc(p.name)}</button><br><span class="muted small">${esc(p.parent)}${p.email ? ` · ${esc(p.email)}` : ''}</span></td><td>${esc(p.session)}${p.coach ? `<br><span class="muted small">${esc(p.coach)}</span>` : ''}</td><td><b>${esc(p.reason || 'Not recorded')}</b>${p.details ? `<br><span class="muted small">${esc(p.details.slice(0, 90))}${p.details.length > 90 ? '…' : ''}</span>` : ''}</td><td class="small">${esc(when(p.removedAt))}${p.removedBy ? `<br><span class="muted">${esc(p.removedBy)}</span>` : ''}</td><td>${payPill(p)}</td><td>${p.restored ? '<span class="j-pill j-pill-green">Restored</span>' : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-restore="${i}">Restore</button>`}</td></tr>`).join('')}
     </tbody></table></div>` : '<div class="j-empty">Nobody removed.</div>'}`
-  view().querySelectorAll('[data-restore]').forEach((b) => b.addEventListener('click', async () => {
-    if (!(await confirmBox('Restore this player as Confirmed?'))) return
-    const r = await post('restorePlayer', { rowId: b.dataset.restore })
-    toast(r.ok ? 'Restored. Airtable updated.' : r.data.error); P.board = null; renderRemoved()
+  const restore = async (p) => {
+    if (!(await confirmBox(`Put ${esc(p.name)} back in ${esc(p.session || 'their group')} as Confirmed?`))) return
+    const r = await post('restorePlayer', { droppedId: p.droppedId, rowId: p.rowId })
+    toast(r.ok ? 'Restored to Term 4. Airtable updated.' : r.data.error); P.board = null; renderRemoved()
+  }
+  view().querySelectorAll('[data-restore]').forEach((b) => b.addEventListener('click', () => restore(d.players[Number(b.dataset.restore)])))
+  view().querySelectorAll('[data-rm-open]').forEach((b) => b.addEventListener('click', () => {
+    const p = d.players[Number(b.dataset.rmOpen)]
+    const box = modal(`<h2 style="margin-bottom:4px">${esc(p.name)}</h2><p class="muted small" style="margin-bottom:12px">Left ${esc(p.term)}${p.removedAt ? ` on ${esc(when(p.removedAt))}` : ''}${p.removedBy ? `, removed by ${esc(p.removedBy)}` : ''}</p>
+      <div class="j-box j-box-grey" style="margin-bottom:12px"><b>${esc(p.reason || 'No reason recorded')}</b>${p.details ? `<br>${esc(p.details)}` : ''}</div>
+      <dl class="j-kv">
+        <dt>Was in</dt><dd>${esc(p.session || 'Not set')}${p.coach ? `, ${esc(p.coach)}` : ''}</dd>
+        <dt>Parent</dt><dd>${esc(p.parent || '')}</dd>
+        <dt>Email</dt><dd>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : 'None'}</dd>
+        <dt>Mobile</dt><dd>${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : 'None'}</dd>
+        <dt>Payment</dt><dd>${esc(p.paymentStatus || 'Not set')} · paid ${esc(money(p.paidCents))} of ${esc(money(p.feeCents))}${p.type ? ` · ${esc(p.type)}` : ''}</dd>
+        ${p.notes ? `<dt>Notes</dt><dd style="font-weight:400;white-space:pre-wrap">${esc(p.notes)}</dd>` : ''}
+      </dl>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button>${p.restored ? '' : '<button type="button" class="j-btn j-btn-dark" id="rm-restore">Restore to Term 4</button>'}</div>`, { wide: true })
+    box.querySelector('#rm-restore')?.addEventListener('click', () => { closeModal(); restore(p) })
   }))
 }
 
@@ -624,12 +944,15 @@ async function renderSettings() {
     <div class="j-card" style="padding:18px;max-width:760px">
       <h2 style="margin-bottom:12px">Term</h2>
       <div class="j-two"><label class="j-field"><span>Term name</span><input class="j-input" id="s-term" value="${esc(c.term)}"></label><label class="j-field"><span>First day (a Monday)</span><input class="j-input" type="date" id="s-start" value="${esc(c.termStart)}"></label></div>
-      <div class="j-two"><label class="j-field"><span>Weeks</span><input class="j-input" id="s-weeks" inputmode="numeric" value="${c.weeks}"></label><label class="j-field"><span>Price per player (A$)</span><input class="j-input" id="s-price" inputmode="decimal" value="${c.priceCents / 100}"></label></div>
+      <div class="j-two"><label class="j-field"><span>Weeks</span><input class="j-input" id="s-weeks" inputmode="numeric" value="${c.weeks}"></label><div class="j-field"><span>Prices</span><p class="small" style="padding-top:10px">In the <a href="#prices" data-tab="prices">Prices</a> tab.</p></div></div>
       <h2 style="margin:16px 0 12px">Who can sign in</h2>
       <label class="j-field"><span>Super admins (full access and money), one email per line</span><textarea class="j-textarea" id="s-admins">${esc(c.superAdmins.join('\n'))}</textarea></label>
       <label class="j-field"><span>Booking alert emails (Lee always gets them), one per line</span><textarea class="j-textarea" id="s-staff">${esc(c.staffEmails.join('\n'))}</textarea></label>
-      <label class="j-check"><input type="checkbox" id="s-coaches-on" ${c.coachLoginsEnabled ? 'checked' : ''}> <span><b>Coach logins on.</b> Coaches with an email below can sign in and see their own sessions. Nobody is emailed when you switch this on; tell them to go to jonerfootball.com/jfp-portal.</span></label>
+      <label class="j-check"><input type="checkbox" id="s-coaches-on" ${c.coachLoginsEnabled ? 'checked' : ''}> <span><b>Coach logins on.</b> Coaches with an email below can sign in and see the program timetable (names and ages) and their own registers. Never money or parent contact details. Nobody is emailed when you switch this on; tell them to go to jonerfootball.com/jfp-portal.</span></label>
       ${c.coaches.map((co) => `<div class="j-two"><label class="j-field"><span>Coach ${esc(co.name)} (Airtable: ${esc(co.airtableName)})</span><input class="j-input" type="email" data-coach="${esc(co.id)}" value="${esc(co.email)}" placeholder="No login"></label><span></span></div>`).join('')}
+      <h2 style="margin:16px 0 12px">Training kit</h2>
+      <label class="j-field"><span>Kit shop link (families go here after paying)</span><input class="j-input" id="s-kit" value="${esc(c.kitUrl || '')}" placeholder="https://"></label>
+      <label class="j-field"><span>Line above the button</span><input class="j-input" id="s-kitnote" value="${esc(c.kitNote || '')}" maxlength="300"></label>
       <h2 style="margin:16px 0 12px">Waiver</h2>
       <label class="j-field"><span>Backup waiver form link</span><input class="j-input" id="s-waiver" value="${esc(c.waiverUrl)}"></label>
       <p class="muted small">Families sign the waiver on the booking page. This link is the backup.</p>
@@ -641,8 +964,8 @@ async function renderSettings() {
   $('s-save').addEventListener('click', async () => {
     const lines = (id) => $(id).value.split(/\s*[\n,]\s*/).map((s) => s.trim()).filter(Boolean)
     const config = {
-      term: $('s-term').value.trim(), termStart: $('s-start').value, weeks: Number($('s-weeks').value), priceCents: Math.round(Number($('s-price').value) * 100),
-      superAdmins: lines('s-admins'), staffEmails: lines('s-staff'), coachLoginsEnabled: $('s-coaches-on').checked, waiverUrl: $('s-waiver').value.trim(),
+      term: $('s-term').value.trim(), termStart: $('s-start').value, weeks: Number($('s-weeks').value),
+      superAdmins: lines('s-admins'), staffEmails: lines('s-staff'), coachLoginsEnabled: $('s-coaches-on').checked, waiverUrl: $('s-waiver').value.trim(), kitUrl: $('s-kit').value.trim(), kitNote: $('s-kitnote').value.trim(),
       coaches: c.coaches.map((co) => ({ ...co, email: view().querySelector(`[data-coach="${CSS.escape(co.id)}"]`).value.trim() })),
       locations: c.locations.map((l) => { const box = view().querySelector(`[data-loc="${CSS.escape(l.id)}"]`); const v = { ...l }; box.querySelectorAll('[data-lf]').forEach((i) => { v[i.dataset.lf] = i.value.trim() }); return v }),
     }

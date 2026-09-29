@@ -1,4 +1,4 @@
-// The family account page: sign in with an emailed code, then see players,
+// My JFP, the family page: sign in with an emailed code, then see players,
 // sessions, what is paid, waivers, and anything staff asked the family to do.
 import { $, esc, api, toast, openSheet, closeSheet, signIn, whoAmI, signOut, waiverBlock } from './jfp-common.js'
 
@@ -50,7 +50,7 @@ async function confirmPaid(sid) {
 }
 
 async function load() {
-  const r = await api('/api/jfp-account', { action: 'overview' })
+  const r = await api('/api/jfp-account', { action: 'overview', pay: q.get('pay') || '' })
   if (r.status === 401) return showSignIn()
   if (!r.ok) { $('players').innerHTML = `<div class="j-empty">${esc(r.data.error || 'Could not load your account.')}</div>`; return }
   D = r.data
@@ -70,19 +70,23 @@ function render() {
   $('who').innerHTML = `Signed in as <b>${esc(D.email)}</b>`
 
   $('todo-wrap').hidden = !D.todo.length
-  $('todo').innerHTML = D.todo.map((t) => `
-    <div class="j-card" style="padding:16px;margin-bottom:10px" data-todo="${esc(t.id)}">
-      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
-        <div><h3>${esc(t.players.join(' and '))}</h3><p class="muted small">${esc(t.group || 'JFP')}${t.expiresAt ? ` · held for you until ${esc(new Date(t.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}</p></div>
-        <div style="display:flex;gap:8px;align-items:center">${t.needsWaiver
-          ? `<button type="button" class="j-btn j-btn-dark" data-waiver-for="${esc(t.id)}">Sign the waiver</button>`
-          : `<button type="button" class="j-btn j-btn-dark" data-pay="${esc(t.id)}">Pay ${esc(t.amountLabel)}</button>`}</div>
-      </div>
-      ${t.needsWaiver ? `<p class="small" style="margin-top:8px">Then pay ${esc(t.amountLabel)} to lock the place in.</p>` : ''}
+  // Each open link is a short checklist: the waiver, then pay. Opened from
+  // the email link, that one comes first.
+  const want = q.get('pay')
+  const todo = [...D.todo].sort((x, y) => Number(y.id === want) - Number(x.id === want))
+  $('todo').innerHTML = todo.map((t) => `
+    <div class="j-card" style="padding:18px;margin-bottom:12px${t.id === want ? ';border-color:#111827' : ''}" data-todo="${esc(t.id)}">
+      <h3 style="font-size:18px">${esc(t.players.join(' and '))}</h3>
+      <p class="muted small">${esc(t.group || 'JFP')}${t.what ? ` · ${esc(t.what)}` : ''}${t.expiresAt ? ` · held for you until ${esc(new Date(t.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}</p>
+      <ol class="j-steps-list" style="margin-top:6px">
+        <li><span class="n">${t.needsWaiver ? '1' : '✓'}</span><span style="flex:1;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Waiver</b><br><span class="muted small">${t.needsWaiver ? 'Sign the JFP waiver for this player.' : 'On file, nothing to do.'}</span></span>${t.needsWaiver ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-waiver-for="${esc(t.id)}">Sign the waiver</button>` : ''}</span></li>
+        <li><span class="n">2</span><span style="flex:1;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Pay ${esc(t.amountLabel)}</b><br><span class="muted small">${t.reason === 'trial' ? 'Books the trial.' : 'Locks the place in.'} Card, Apple Pay${t.afterpay ? ' or Afterpay' : ''}, on Stripe.</span></span><button type="button" class="j-btn j-btn-dark j-btn-sm" data-pay="${esc(t.id)}" ${t.needsWaiver ? 'disabled title="Sign the waiver first"' : ''}>Pay ${esc(t.amountLabel)}</button></span></li>
+        <li><span class="n">3</span><span><b>Training kit</b><br><span class="muted small">After paying we point you to the training kit.</span></span></li>
+      </ol>
     </div>`).join('')
 
   if (!D.players.length) {
-    $('players').innerHTML = `<div class="j-empty">We do not have any players under <b>${esc(D.email)}</b> yet.<br><br><a class="j-btn j-btn-dark" href="/jfp-booking/">Book a group</a><p class="small" style="margin-top:12px">Used another email with us? Sign out and sign in with that one.</p></div>`
+    $('players').innerHTML = `<div class="j-empty">We do not have any players under <b>${esc(D.email)}</b> yet.<br><br><a class="j-btn j-btn-dark" href="/jfp-booking/">See the timetable</a><p class="small" style="margin-top:12px">Used another email with us? Sign out and sign in with that one.</p></div>`
   } else {
     $('players').innerHTML = `<h2 style="margin-bottom:10px">Players</h2>` + D.players.map((p) => `
       <article class="j-card" style="padding:16px;margin-bottom:12px">
@@ -97,16 +101,16 @@ function render() {
               <div>${payPill(e.payment)}</div>
             </div>
             <details style="margin-top:6px"><summary class="small muted" style="cursor:pointer">All ${esc(e.dates.length)} dates</summary><p class="small" style="margin-top:6px">${esc(e.dates.join(', '))}</p></details>
-          </div>`).join('') : `<p class="muted small" style="margin-top:10px">Not booked into ${esc(D.term)} yet. <a href="/jfp-booking/">Book a group</a></p>`}
+          </div>`).join('') : `<p class="muted small" style="margin-top:10px">Not booked into ${esc(D.term)} yet. <a href="/jfp-booking/">See the timetable</a></p>`}
       </article>`).join('')
   }
 
   $('requests-wrap').hidden = !D.requests.length
   const kind = { application: 'Application', waitlist: 'Waitlist', enquiry: 'Enquiry' }
-  const state = { pending: ['grey', 'Waiting for review'], offered: ['green', 'Place offered, see To do'], declined: ['grey', 'Not this term'], done: ['grey', 'Closed'], expired: ['grey', 'Offer expired, contact us'] }
+  const state = { pending: ['grey', 'Waiting for review, we reply within 48 hours'], offered: ['green', 'Place offered, see To do'], declined: ['grey', 'Not this term'], done: ['grey', 'Closed'], expired: ['grey', 'Offer expired, contact us'] }
   $('requests').innerHTML = D.requests.map((r) => `<div class="j-card" style="padding:14px;margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
     <div><b>${esc(kind[r.kind] || r.kind)}</b> · ${esc(r.players.join(', '))}<p class="muted small">${esc(r.group)}</p></div>
-    <span class="j-pill j-pill-${(state[r.status] || state.pending)[0]}">${esc((state[r.status] || state.pending)[1])}</span></div>`).join('')
+    <span class="j-pill j-pill-${(state[r.status] || state.pending)[0]}">${esc(r.status === 'offered' && r.offer === 'trial' ? 'Trial offered, see To do' : (state[r.status] || state.pending)[1])}</span></div>`).join('')
 }
 
 document.addEventListener('click', async (e) => {

@@ -16,7 +16,7 @@ import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   requireParentAccess, getConfig, getGroup, getBooking, saveBooking, indexBooking, newId, clean, holdPlaces, releasePlaces,
   onlineCounts, placesLeft, tokenMatches, saveApplication, coachById, sessionDates, dateLabel, ageOn, ageFits, normName,
-  locationFor, ONE_TO_ONE, closeCheckout, parentHoldCount, noteParentHold, dropParentHold, MAX_HOLDS_PER_PARENT, RESERVE_MINUTES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES, MAX_PLAYERS,
+  locationFor, ONE_TO_ONE, QUESTIONS, priceFor, nextSessionDate, closeCheckout, parentHoldCount, noteParentHold, dropParentHold, MAX_HOLDS_PER_PARENT, RESERVE_MINUTES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES, MAX_PLAYERS,
 } from './_jfp-store.js'
 import { loadRoster, countsFrom, familyFor } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
@@ -48,14 +48,15 @@ function familyView(family, group, config, roster) {
       waiverOnFile: Boolean(p.waiver),
       waiverSigned: p.waiver?.signedDate || '',
       inGroup,
-      fits: p.age == null ? null : ageFits(group, p.age, config),
+      // Only Book now groups are held to the age band; applications are a guide.
+      fits: p.age == null || group.mode !== 'direct' ? null : ageFits(group, p.age, config),
       groups: p.term4.filter((r) => r.holdsPlace).map((r) => `${r.day} ${r.time}, ${locationFor(config, r.location).name}`),
     }
   })
 }
 
 // Validate the players a parent picked or added. Returns { players } or { error }.
-function checkPlayers(input, { family, group, config, requireWaiver, waiver, roster }) {
+function checkPlayers(input, { family, group, config, requireWaiver, waiver, roster, checkAge = true }) {
   const list = Array.isArray(input) ? input.slice(0, MAX_PLAYERS) : []
   if (!list.length) return { error: 'Choose at least one player.' }
   const seen = new Set()
@@ -73,8 +74,8 @@ function checkPlayers(input, { family, group, config, requireWaiver, waiver, ros
     if ((!existing || existing.age == null) && !ISO.test(dob)) return { error: `Enter ${name}'s date of birth.` }
     const age = existing?.age ?? ageOn(dob, config.termStart)
     if (age == null) return { error: `Check ${name}'s date of birth.` }
-    if (!ageFits(group, age, config)) {
-      return { error: `${name} is ${age} on the first day of term. This group is for ages ${group.minAge ?? config.minAge} to ${group.maxAge ?? config.maxAge}. Filter by age to see the groups that fit.`, code: 'age' }
+    if (checkAge && !ageFits(group, age, config)) {
+      return { error: `${name} is ${age} on the first day of term. This group is for ages ${group.minAge ?? config.minAge} to ${group.maxAge ?? config.maxAge}, so it needs an application. We may offer a trial first.`, code: 'age' }
     }
     if (existing?.term4.some((r) => r.groupId === group.id && r.holdsPlace)) return { error: `${name} is already in this group.` }
     const needsWaiver = !existing?.waiver
@@ -146,11 +147,16 @@ async function family(req, res, body, parent) {
   const group = body.groupId ? await getGroup(body.groupId) : null
   const roster = await loadRoster()
   const fam = familyFor(parent.email, roster, config.termStart)
+  const from = group ? nextSessionDate(config, group.day) : ''
+  const one = group ? priceFor(config, { product: group.product, day: group.day, fromIso: from, players: 1 }) : null
+  const two = group ? priceFor(config, { product: group.product, day: group.day, fromIso: from, players: 2 }) : null
   return res.status(200).json({
     success: true,
     email: parent.email,
     parentName: fam.parentName,
     mobile: fam.mobile,
+    // What this family would pay here, from the next session to the end of term.
+    quote: one ? { oneCents: one.unitCents, eachOfTwoCents: two.unitCents, sessions: one.sessions, of: one.of, proRata: one.proRata, firstDate: from ? dateLabel(from) : '' } : null,
     players: group ? familyView(fam, group, config, roster) : fam.players.map((p) => ({ key: p.key, name: p.name, age: p.age, waiverOnFile: Boolean(p.waiver) })),
   })
 }
@@ -179,6 +185,9 @@ async function submit(req, res, body, parent) {
   if (group.girlsOnly === 'yes' && body.girlsConfirmed !== true) return fail(res, 400, 'This is a girls group. Confirm each player is a girl to continue.', { code: 'girls' })
   if (body.agreementAccepted !== true) return fail(res, 400, 'Please accept the terms to continue.')
   const n = pl.players.length
+  const from = nextSessionDate(config, group.day)
+  if (!from) return fail(res, 410, 'This term has finished for this group.')
+  const price = priceFor(config, { product: group.product, day: group.day, fromIso: from, players: n })
 
   // Keep the reservation id if it is still ours, then resize the hold to n
   // places in one atomic step. Nothing is charged if this fails.
@@ -211,8 +220,12 @@ async function submit(req, res, body, parent) {
     id, groupId: group.id, seats: n, releaseToken,
     email: parent.email, parentName: who.parentName, mobile: who.mobile, notes: clean(body.notes, 500),
     players: pl.players,
-    unitCents: config.priceCents,
-    priceCents: config.priceCents * n,
+    unitCents: price.unitCents,
+    priceCents: price.totalCents,
+    paymentType: price.type,
+    startDate: from,
+    sessions: price.sessions,
+    proRata: price.proRata,
     groupSnapshot: group,
     source: 'direct',
     status: 'held',
@@ -220,7 +233,7 @@ async function submit(req, res, body, parent) {
     siteUrl: siteUrl(req),
   }
   const coach = coachById(config, group.coachId)
-  const dates = sessionDates(config, group.day)
+  const dates = sessionDates(config, group.day).filter((d) => d >= from)
   const loc = locationFor(config, group.location)
   const name = `${config.term}: ${group.day} ${group.time}, ${loc.name}${coach ? ` with Coach ${coach.name}` : ''}`
   let session
@@ -237,7 +250,7 @@ async function submit(req, res, body, parent) {
         'line_items[0][price_data][currency]': 'aud',
         'line_items[0][price_data][unit_amount]': String(booking.unitCents),
         'line_items[0][price_data][product_data][name]': name.slice(0, 250),
-        'line_items[0][price_data][product_data][description]': `${dates.length} weeks, ${dateLabel(dates[0])} to ${dateLabel(dates.at(-1))}. ${pl.players.map((x) => x.name).join(', ')}.`.slice(0, 500),
+        'line_items[0][price_data][product_data][description]': `${dates.length} session${dates.length === 1 ? '' : 's'}, ${dateLabel(dates[0])} to ${dateLabel(dates.at(-1))}${price.proRata ? ` (${dates.length} of ${price.of}, the rest of the term)` : ''}. ${pl.players.map((x) => x.name).join(', ')}.`.slice(0, 500),
         'metadata[jfpBookingId]': id,
         'metadata[groupId]': group.id,
         'metadata[source]': 'direct',
@@ -262,7 +275,15 @@ async function submit(req, res, body, parent) {
   return res.status(200).json({ success: true, bookingId: id, url: session.url })
 }
 
-const REQUEST_MODES = { application: ['application'], waitlist: ['direct', 'application'], enquiry: ['enquire', 'application', 'direct'] }
+// A Book now group also takes applications, for players outside its age band.
+const REQUEST_MODES = { application: ['application', 'direct'], waitlist: ['direct', 'application'], enquiry: ['enquire', 'application', 'direct'] }
+
+// The answers to the questions this group asks, nothing else.
+function answersFor(group, input) {
+  const out = {}
+  for (const q of group.questions || []) if (QUESTIONS[q]) { const v = clean(input?.[q], 160); if (v) out[q] = v }
+  return out
+}
 
 async function request(req, res, body, parent) {
   if (!rateLimit(req, { key: 'jfp-request', limit: 6, windowMs: 60_000 }).allowed) return fail(res, 429, 'Too many tries. Wait a minute and try again.')
@@ -277,13 +298,14 @@ async function request(req, res, body, parent) {
   if (who.error) return fail(res, 400, who.error)
   const w = checkWaiver(body.waiver, who.parentName)
   if (w.error) return fail(res, 400, w.error, { code: 'waiver' })
-  const pl = checkPlayers(body.players, { family: fam, group, config, requireWaiver: false, waiver: w.waiver, roster })
+  const pl = checkPlayers(body.players, { family: fam, group, config, requireWaiver: false, waiver: w.waiver, roster, checkAge: false })
   if (pl.error) return fail(res, 400, pl.error, { code: pl.code })
   const record = {
     id: newId(kind === 'waitlist' ? 'WAIT' : kind === 'enquiry' ? 'ENQ' : 'APP'),
     kind, groupId: group.id, players: pl.players,
     email: parent.email, parentName: who.parentName, mobile: who.mobile,
-    club: clean(body.club, 120), message: clean(body.message, 800),
+    answers: answersFor(group, body.answers),
+    club: clean(body.answers?.club || body.club, 120), message: clean(body.message, 800),
     status: 'pending', createdAt: new Date().toISOString(),
   }
   await saveApplication(record)
