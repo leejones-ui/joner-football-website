@@ -81,8 +81,9 @@ function render() {
       <p class="muted small">${esc(t.group || 'JFP')}${t.what ? ` · ${esc(t.what)}` : ''}${t.expiresAt ? ` · held for you until ${esc(new Date(t.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}</p>
       <ol class="j-steps-list" style="margin-top:6px">
         <li><span class="n">${t.needsWaiver ? '1' : '✓'}</span><span style="flex:1;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Waiver</b><br><span class="muted small">${t.needsWaiver ? 'Sign the JFP waiver for this player.' : 'On file, nothing to do.'}</span></span>${t.needsWaiver ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-waiver-for="${esc(t.id)}">Sign the waiver</button>` : ''}</span></li>
-        <li><span class="n">2</span><span style="flex:1;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Pay ${esc(t.amountLabel)}</b><br><span class="muted small">${t.reason === 'trial' ? 'Books the trial.' : 'Locks the place in.'} Card, Apple Pay${t.afterpay ? ' or Afterpay' : ''}, on Stripe.</span></span><button type="button" class="j-btn j-btn-dark j-btn-sm" data-pay="${esc(t.id)}" ${t.needsWaiver ? 'disabled title="Sign the waiver first"' : ''}>Pay ${esc(t.amountLabel)}</button></span></li>
-        <li><span class="n">3</span><span style="flex:1;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Training kit</b><br><span class="muted small">Every player trains in the Joner kit. It opens the kit shop in a new tab.</span></span>${D.kitUrl ? `<a class="j-btn j-btn-line j-btn-sm" href="${esc(D.kitUrl)}" target="_blank" rel="noopener noreferrer">Get the kit</a>` : ''}</span></li>
+        ${t.needsKit ? `<li><span class="n">${t.kit ? '✓' : '2'}</span><span style="flex:1"><span style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>JF playing kit</b> <span class="j-pill j-pill-red">Required</span><br><span class="muted small">${t.kit ? `Done: ${esc(t.kit.toLowerCase())}.` : `Every player trains in it, ${esc(D.kitPriceLabel || 'A$50')} from BE Teamsport. The shop opens in a new tab.`}</span></span>${D.kitUrl && !t.kit ? `<a class="j-btn j-btn-line j-btn-sm" href="${esc(D.kitUrl)}" target="_blank" rel="noopener noreferrer">Order the kit</a>` : ''}</span>
+          ${t.kit ? '' : `<span style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button type="button" class="j-btn j-btn-dark j-btn-sm" data-kit="ordered" data-kit-for="${esc(t.id)}">I have ordered it</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-kit="has" data-kit-for="${esc(t.id)}">Already has one</button></span>`}</span></li>` : ''}
+        <li><span class="n">${t.needsKit ? '3' : '2'}</span><span style="flex:1;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Pay ${esc(t.amountLabel)}</b><br><span class="muted small">${t.reason === 'trial' ? 'Books the trial.' : 'Locks the place in.'} Card, Apple Pay${t.afterpay ? ' or Afterpay' : ''}, on Stripe.</span></span><button type="button" class="j-btn j-btn-dark j-btn-sm" data-pay="${esc(t.id)}" ${t.needsWaiver ? 'disabled title="Sign the waiver first"' : t.needsKit && !t.kit ? 'disabled title="Confirm the playing kit first"' : ''}>Pay ${esc(t.amountLabel)}</button></span></li>
       </ol>
     </div>`).join('')
 
@@ -140,8 +141,16 @@ document.addEventListener('click', async (e) => {
     if (r.ok && r.data.url) { location.href = r.data.url; return }
     pay.disabled = false
     pay.textContent = 'Try again'
-    if (r.data.code === 'waiver') { load(); toast('Sign the waiver first.') } else toast(r.data.error || 'Could not start the payment.')
+    if (r.data.code === 'waiver') { load(); toast('Sign the waiver first.') } else if (r.data.code === 'kit') { load(); toast('Confirm the JF playing kit first.') } else toast(r.data.error || 'Could not start the payment.')
     return
+  }
+  const kb = e.target.closest('[data-kit]')
+  if (kb) {
+    kb.disabled = true
+    const r = await api('/api/jfp-account', { action: 'confirmKit', payreqId: kb.dataset.kitFor, kit: kb.dataset.kit })
+    if (!r.ok) { kb.disabled = false; return toast(r.data.error || 'Could not save that.') }
+    toast('Thanks. Now you can pay.')
+    return load()
   }
   const nx = e.target.closest('[data-next]')
   if (nx) {

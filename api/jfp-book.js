@@ -185,6 +185,9 @@ async function submit(req, res, body, parent) {
   if (pl.error) return fail(res, 400, pl.error, { code: pl.code })
   if (group.girlsOnly === 'yes' && body.girlsConfirmed !== true) return fail(res, 400, 'This is a girls group. Confirm each player is a girl to continue.', { code: 'girls' })
   if (body.agreementAccepted !== true) return fail(res, 400, 'Please accept the terms to continue.')
+  // The JF playing kit is required for every player (Lee, 30 Sept).
+  const kit = { ordered: 'Ordered', has: 'Already has one' }[body.kit] || ''
+  if (!kit) return fail(res, 400, 'Confirm the JF playing kit. It is required for every player.', { code: 'kit' })
   const n = pl.players.length
   const from = nextSessionDate(config, group.day, Date.now(), group.time)
   if (!from) return fail(res, 410, 'This term has finished for this group.')
@@ -225,6 +228,7 @@ async function submit(req, res, body, parent) {
     unitCents: price.unitCents,
     priceCents: price.totalCents,
     paymentType: price.type,
+    kit,
     startDate: from,
     sessions: price.sessions,
     proRata: price.proRata,

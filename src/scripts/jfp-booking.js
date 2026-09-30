@@ -47,7 +47,7 @@ async function showApp(q) {
 }
 
 function showTab(tab) {
-  if (!['timetable', 'pricing', 'one-to-one'].includes(tab)) tab = 'timetable'
+  if (!['timetable', 'pricing'].includes(tab)) tab = 'timetable'
   document.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== tab })
   document.querySelectorAll('.j-tabs [data-tab]').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'))
 }
@@ -71,8 +71,11 @@ function renderMeta() {
   $('term-name').textContent = d.termLabel || d.term
   $('term-range').textContent = `${d.termRange} · ${d.weeks} weeks`
   $('trial-price').textContent = d.trialPriceLabel
-  if (d.kitUrl) $('kit-tab').href = d.kitUrl
-  $('price-list').innerHTML = (d.pricing || []).map((x) => `<div><b>${esc(x.title)}</b><span class="j-price">${esc(x.price)}</span><span>${esc(x.note)}</span></div>`).join('')
+  if (d.kitUrl) { $('kit-tab').href = d.kitUrl; $('kit-buy').href = d.kitUrl }
+  if (d.kitPriceLabel) $('kit-price').textContent = d.kitPriceLabel
+  const rows = (sec) => (d.pricing || []).filter((x) => x.section === sec).map((x) => `<div class="j-prow"><span><b>${esc(x.title)}</b><small>${esc(x.note)}</small></span><span class="p">${esc(x.price)}</span></div>`).join('')
+  $('price-term').innerHTML = rows('Term')
+  $('price-121').innerHTML = rows('1 to 1')
   const loc = $('f-loc')
   if (loc.options.length < 2) {
     for (const l of d.locations) loc.insertAdjacentHTML('beforeend', `<option value="${esc(l.id)}">${esc(l.name)}</option>`)
@@ -91,7 +94,7 @@ function renderLocations() {
   $('locs').innerHTML = S.data.locations.map((l) => {
     const badge = l.full ? 'Fully booked' : `${l.groups} group${l.groups === 1 ? '' : 's'} · ${l.spots} spot${l.spots === 1 ? '' : 's'} left`
     return `<button type="button" class="j-loc" data-loc="${esc(l.id)}" aria-pressed="${S.filters.loc === l.id}">
-      <div class="img">${l.photo ? `<img src="${esc(l.photo)}" alt="" loading="lazy" decoding="async">` : ''}<span class="banner">${esc(l.banner || l.name)}</span><span class="badge">${esc(badge)}</span></div>
+      <div class="img">${l.photo ? `<img src="${esc(l.photo)}" alt="" loading="lazy" decoding="async">` : ''}<span class="badge">${esc(badge)}</span></div>
       <div class="body"><h3><span class="j-dot j-dot-${esc(l.id)}"></span> ${esc(l.name)}</h3><p>${esc(l.blurb)}</p>${l.maps ? `<p><a href="${esc(l.maps)}" target="_blank" rel="noopener noreferrer" data-stop>${esc(l.address)}</a></p>` : ''}</div>
     </button>`
   }).join('')
@@ -131,28 +134,33 @@ function status(g) {
 function block(g) {
   const [cls, text] = status(g)
   return `<button type="button" class="j-blk j-blk-${esc(g.locationId)} ${g.full ? 'is-full' : ''}" data-group="${esc(g.id)}">
-    ${g.full ? '<span class="j-full-banner">Fully booked</span>' : ''}
+    ${locBanner(g)}
     <span class="t">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</span>
     <span class="a">${esc(agesLabel(g))}</span>
     <span class="c">${esc(g.coachName || 'Joner Football')}</span>
-    <span class="c"><span class="j-dot j-dot-${esc(g.locationId)}"></span>${esc(g.location)}</span>
     <span class="st ${cls}">${esc(text)}</span>
   </button>`
 }
 
-// A group as a card: the time and who it is for stand out, then the coach,
-// the place, places left and one button. The place photos stay in the
-// location banners at the top.
+// Every group carries its location as a banner across the top, in the
+// location's colour. Fully booked sits in the same strip, so every card's
+// time and button line up whether it is full or not.
+function locBanner(g) {
+  return `<span class="j-lb j-lb-${esc(g.locationId)}"><span>${esc(g.locationBanner || g.location)}</span>${g.full ? '<span class="full">Fully booked</span>' : ''}</span>`
+}
+
+// A group as a card: the location banner, then the time and who it is for
+// stand out, then the coach, places left and one button.
 function card(g) {
   const [cls, text] = status(g)
   const btn = g.mode === 'enquire' ? 'Enquire' : g.full ? 'Join the waitlist' : g.mode === 'direct' ? 'Book' : 'Apply'
   return `<article class="j-group j-card-photo ${g.full ? 'is-full' : ''}">
     <button type="button" class="j-card-hit" data-group="${esc(g.id)}" aria-label="${esc(`${g.day} ${g.time}, ${g.coachName}`)}"></button>
-    ${g.full ? '<span class="j-full-banner j-full-top">Fully booked</span>' : ''}
+    ${locBanner(g)}
     <div class="bd">
       <p class="when-big">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</p>
       <p class="who">${esc(agesLabel(g))}</p>
-      <p class="meta"><span class="j-dot j-dot-${esc(g.locationId)}"></span>${esc(g.location)} · ${esc(g.coachName || 'Joner Football')} · ${esc(g.durationMin)} min</p>
+      <p class="meta">${esc(g.location)} · ${esc(g.coachName || 'Joner Football')} · ${esc(g.durationMin)} min</p>
       ${g.requirements?.length ? `<p class="req">${esc(g.requirements.join(' · '))}</p>` : ''}
       <div class="foot"><span class="st ${cls}">${esc(text)}</span><span class="j-btn ${g.mode === 'direct' && !g.full ? 'j-btn-dark' : 'j-btn-line'} j-btn-sm">${btn}</span></div>
     </div>
@@ -201,7 +209,6 @@ document.addEventListener('click', (e) => {
   const pd = e.target.closest('[data-pday]')
   if (pd) { if (pd.dataset.pday === 'week') S.view = 'week'; else { S.view = 'day'; S.phoneDay = pd.dataset.pday } renderResults(); return }
   if (e.target.closest('#f-reset')) { S.filters = { loc: '', coach: '', day: '', show: '' }; $('f-coach').value = ''; $('f-loc').value = ''; renderFilters(); renderLocations(); renderResults(); return }
-  if (e.target.closest('#enquire-1to1')) { if (S.data?.privateCoaching) start('enquiry', S.data.privateCoaching); else toast('Email leejones@jonerfootball.com about 1 to 1 coaching.'); return }
   const blk = e.target.closest('[data-group]')
   if (blk) { const g = S.data.groups.find((x) => x.id === blk.dataset.group); if (g) groupSheet(g) }
 })
@@ -222,6 +229,7 @@ function groupSheet(g) {
       <li>${g.girlsOnly ? 'Girls, ages' : 'Ages'} ${esc(g.minAge)} to ${esc(g.maxAge)}${g.mode === 'direct' ? '' : ' (age guide)'}</li>
       ${(g.requirements || []).map((r) => `<li>${esc(r)}</li>`).join('')}
     </ul>
+    ${g.requirementsText ? `<div class="j-reqtext">${g.requirementsText.split(/\n\s*\n/).map((para) => `<p>${esc(para).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
     ${g.publicNote ? `<p style="margin-top:6px">${esc(g.publicNote)}</p>` : ''}
     <p class="small" style="margin-top:6px">Our coaches place every player with others at their level, so each ${g.mode === 'direct' ? 'booking is for players who meet the above' : 'application is reviewed'}.</p>`
   const steps = g.full
@@ -578,6 +586,7 @@ function stepReview() {
     </dl>
     <label class="j-field" style="margin-top:14px"><span>Anything the coach should know? <span class="muted">(optional)</span></span><textarea class="j-textarea" id="r-notes"></textarea></label>
     ${g.girlsOnly ? '<label class="j-check"><input type="checkbox" id="r-girls"> <span>This is a girls group. Each player I am booking is a girl.</span></label>' : ''}
+    ${kitStep()}
     <label class="j-check"><input type="checkbox" id="r-terms"> <span>I agree the place is for the rest of the term and is locked in once paid. No make-up sessions.</span></label>
     <p class="muted small" style="margin-top:8px">Card, Apple Pay, Google Pay or Afterpay. You pay on Stripe's secure page.</p>
     <p class="j-err" id="r-err" hidden></p>`
@@ -590,9 +599,23 @@ function stepReview() {
   F.sheet.foot.querySelector('#r-pay').addEventListener('click', pay)
 }
 
+// The JF playing kit is required for every player: the family confirms it
+// before paying. The shop opens in a new tab, so this sheet stays open.
+function kitStep() {
+  const url = S.data?.kitUrl || '#'
+  return `<div class="j-kitstep"><span class="j-pill j-pill-red">Required</span>
+    <h4>JF playing kit, ${esc(S.data?.kitPriceLabel || 'A$50')} a player</h4>
+    <p class="muted small">Every player trains in it. <a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Order it from BE Teamsport</a> (opens a new tab).</p>
+    <label class="j-check"><input type="radio" name="r-kit" value="ordered"> <span>I have ordered it, or will order it now</span></label>
+    <label class="j-check"><input type="radio" name="r-kit" value="has"> <span>The player already has the JF playing kit</span></label>
+  </div>`
+}
+
 async function pay() {
   const err = F.sheet.body.querySelector('#r-err')
   const show = (m) => { err.textContent = m; err.hidden = false }
+  const kit = F.sheet.body.querySelector('input[name="r-kit"]:checked')?.value
+  if (!kit) return show('Confirm the JF playing kit. It is required for every player.')
   if (!F.sheet.body.querySelector('#r-terms').checked) return show('Tick the box to agree to the term.')
   const girls = F.sheet.body.querySelector('#r-girls')
   if (girls && !girls.checked) return show('Confirm the players are girls to book this group.')
@@ -604,7 +627,7 @@ async function pay() {
     bookingId: S.hold?.bookingId, releaseToken: S.hold?.releaseToken,
     players: payloadPlayers(), waiver: F.waiver || undefined,
     parentName: F.parentName, mobile: F.mobile, notes: F.sheet.body.querySelector('#r-notes').value.trim(),
-    girlsConfirmed: Boolean(girls?.checked), agreementAccepted: true,
+    girlsConfirmed: Boolean(girls?.checked), agreementAccepted: true, kit,
   })
   if (!r.ok || !r.data.url) {
     btn.disabled = false

@@ -78,6 +78,7 @@ const TERM4_FIELDS = [
   'Term 4 Confirmation', 'Term 4 Fee', 'Term 4 Amount Paid', 'Term 4 Balance', 'Term 4 Payment Status',
   'Term 4 Payment Type', 'Term 4 Notes', 'Source Term 3 Record ID', 'Term 4 Stripe Fee AUD',
   'Term 4 Net Collected AUD', 'Term 4 Fee Reconciliation', 'Term 4 Payment Link Notes', 'Term 4 Payment Evidence',
+  'Training Kit',
 ]
 const TERM3_FIELDS = ['Player Name', 'Parent Name', 'Email', 'Parent Email 2', 'Phone Number', 'Date of Birth', 'Coach', 'Session Day', 'Session Time', 'Session Location']
 const WAIVER_FIELDS = ['Player Full Name', 'Date of Birth', 'Parent/Guardian Name', 'Parent Email', 'Parent Mobile Number', 'Current Club', 'Term', 'Waiver Version', 'Signed Date', 'Programme', 'Waiver Accepted - Full Terms']
@@ -116,6 +117,8 @@ function term4Row({ id, fields: f }) {
     reconciliation: text(f, 'Term 4 Fee Reconciliation'),
     linkNotes: text(f, 'Term 4 Payment Link Notes'),
     evidence: text(f, 'Term 4 Payment Evidence'),
+    // The JF playing kit (required): Ordered or Already has one, from My JFP.
+    kit: text(f, 'Training Kit'),
     notes,
     sourceTerm3: text(f, 'Source Term 3 Record ID'),
     onlineBookingId: tagOf(notes, ONLINE_TAG),
@@ -532,7 +535,7 @@ export function draftGroupsFromRoster(players, config) {
       coachId: coachRank[0]?.[0] || '',
       extraCoachIds: coachRank.slice(1).map(([c]) => c),
       programme: pathway ? 'JFP Pathway 10 weeks' : oneToOne ? 'JFP 1 on 1' : 'JFP 10 weeks',
-      label: oneToOne ? '1 to 1' : pathway ? 'Pathway' : isBelrose ? 'Small group' : 'Squad',
+      label: oneToOne ? '1 to 1' : pathway ? 'Pathway' : 'Small group',
       capacity: oneToOne ? 1 : isBelrose ? 6 : Math.max(g.n, 6),
       mode: oneToOne ? 'enquire' : pathway || !isBelrose ? 'application' : 'direct',
       durationMin: 60,

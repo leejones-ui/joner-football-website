@@ -27,7 +27,9 @@ export const CONFIRMED_SCORE = 9007199254740000
 // direct = book and pay online (players inside the age band). application =
 // staff approve: straight in for the term, or a trial first. enquire = 1 to 1, we get in touch. closed = not shown to parents.
 export const MODES = ['direct', 'application', 'enquire', 'closed']
-export const LABELS = ['Small group', 'Pathway', 'Squad', '1 to 1', 'Trial']
+// 'Squad' is gone (Lee, 30 Sept: we sell small group training): old groups
+// saved as Squad read as Small group.
+export const LABELS = ['Small group', 'Pathway', '1 to 1', 'Trial']
 // What an application asks, per group. Lee picks the questions in the portal.
 export const QUESTIONS = {
   club: 'Club they play for',
@@ -95,8 +97,8 @@ export const keys = {
 
 export const DEFAULT_LOCATIONS = [
   { id: 'belrose', match: 'belrose', name: 'Belrose HQ', banner: 'BELROSE', address: 'Joner Football HQ, 20 Narabang Way (Unit 2), Belrose NSW 2085', maps: 'https://maps.google.com/?q=20+Narabang+Way+Belrose+NSW+2085', photo: '/images/hq/hq-hero-lee-exterior.webp', blurb: 'Our home ground. Small groups after school and on Saturdays.' },
-  { id: 'ntra', match: 'ntra', name: 'North Turramurra', banner: 'NTRA', address: 'North Turramurra Recreation Area, North Turramurra NSW 2074', maps: 'https://maps.google.com/?q=North+Turramurra+Recreation+Area', photo: '/images/training/jfp/jfp-ntra-field.jpg', blurb: 'Early morning squads, Wednesday and Thursday.' },
-  { id: 'rydalmere', match: 'rydalmere', name: 'Rydalmere Park', banner: 'RYDALMERE', address: 'Rydalmere Park, Rydalmere NSW 2116', maps: 'https://maps.google.com/?q=Rydalmere+Park+NSW', photo: '/images/training/jfp/jfp-training-4.webp', blurb: 'Early morning squads on Fridays.' },
+  { id: 'ntra', match: 'ntra', name: 'North Turramurra', banner: 'NTRA', address: 'North Turramurra Recreation Area, North Turramurra NSW 2074', maps: 'https://maps.google.com/?q=North+Turramurra+Recreation+Area', photo: '/images/training/jfp/jfp-ntra-field.jpg', blurb: 'Early morning small groups, Wednesday and Thursday.' },
+  { id: 'rydalmere', match: 'rydalmere', name: 'Rydalmere Park', banner: 'RYDALMERE', address: 'Rydalmere Park, Rydalmere NSW 2116', maps: 'https://maps.google.com/?q=Rydalmere+Park+NSW', photo: '/images/training/jfp/jfp-training-4.webp', blurb: 'Early morning small groups on Fridays.' },
 ]
 
 export const DEFAULT_CONFIG = {
@@ -119,14 +121,15 @@ export const DEFAULT_CONFIG = {
   ],
   // Coach logins stay off until Lee says so, even for coaches with an email.
   coachLoginsEnabled: false,
-  // After paying, families are sent to get the training kit (another website).
-  // Joner Football kit at BE Teamsport. Always opened in a new tab, so the
-  // family's Joner page stays open behind it.
-  kitUrl: 'https://www.besteamsport.com.au/collections/joner-football',
+  // The JF playing kit is required for every player (Lee, 30 Sept). It is
+  // sold by BE Teamsport, so it always opens in a new tab and the family's
+  // Joner page stays open behind it. Families confirm it before they pay.
+  kitUrl: 'https://www.besteamsport.com.au/collections/joner-football/products/jf-playing-kit',
+  kitPriceLabel: 'A$50',
   // Next term: families keep their place with a non-refundable hold fee
   // (taken off next term's price) or pay in full, before it opens to everyone.
   nextTerm: { name: 'Term 1 2027', holdCents: 10000, open: false },
-  kitNote: 'Every JFP player trains in the Joner Football training kit. Order yours before the first session.',
+  kitNote: 'The JF playing kit is required for every JFP player. Order it from BE Teamsport before the first session.',
   locations: DEFAULT_LOCATIONS,
   minAge: 6,
   maxAge: 19,
@@ -181,6 +184,7 @@ export function normaliseConfig(input = {}) {
     coachLoginsEnabled: input.coachLoginsEnabled === true,
     kitUrl: /^https:\/\//.test(input.kitUrl || '') ? clean(input.kitUrl, 500) : (input.kitUrl === '' ? '' : b.kitUrl),
     kitNote: clean(input.kitNote, 300) || b.kitNote,
+    kitPriceLabel: clean(input.kitPriceLabel, 20) || b.kitPriceLabel,
     nextTerm: {
       name: clean(input.nextTerm?.name, 40) || b.nextTerm.name,
       holdCents: Number.isInteger(Number(input.nextTerm?.holdCents)) && Number(input.nextTerm.holdCents) > 0 && Number(input.nextTerm.holdCents) <= 200000 ? Number(input.nextTerm.holdCents) : b.nextTerm.holdCents,
@@ -334,6 +338,7 @@ export function validateGroup(input, config, existing = {}) {
   if ((minAge != null && (!Number.isInteger(minAge) || minAge < 3 || minAge > 25)) || (maxAge != null && (!Number.isInteger(maxAge) || maxAge < 3 || maxAge > 25))) errors.push('Ages must be whole numbers from 3 to 25.')
   if (minAge != null && maxAge != null && minAge > maxAge) errors.push('The youngest age cannot be above the oldest.')
   const label = LABELS.includes(merged.label) ? merged.label : 'Small group'
+  const requirementsText = String(merged.requirementsText ?? '').replace(/\r/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, 1200)
   const girls = ['no', 'suggested', 'yes'].includes(merged.girlsOnly) ? merged.girlsOnly : 'no'
   const byCoach = merged.byCoach === true
   if (byCoach && !merged.coachId) errors.push('A coach group needs a coach.')
@@ -367,6 +372,8 @@ export function validateGroup(input, config, existing = {}) {
       trials: merged.trials !== false,
       questions,
       requirements,
+      // Lee's own words about who the group is for, under the ticked lines.
+      requirementsText,
       product,
       updatedAt: new Date().toISOString(),
     },
@@ -386,7 +393,9 @@ export async function listGroups() {
 }
 // Groups saved before age bands existed still read cleanly.
 export function normaliseStoredGroup(g) {
-  return { label: 'Small group', minAge: null, maxAge: null, ageStatus: 'draft', girlsOnly: 'no', extraCoachIds: [], publicNote: '', byCoach: false, trials: true, questions: DEFAULT_QUESTIONS, requirements: [], product: g?.label === 'Pathway' ? 'pathway' : 'group', ...g }
+  const out = { label: 'Small group', minAge: null, maxAge: null, ageStatus: 'draft', girlsOnly: 'no', extraCoachIds: [], publicNote: '', byCoach: false, trials: true, questions: DEFAULT_QUESTIONS, requirements: [], requirementsText: '', product: g?.label === 'Pathway' ? 'pathway' : 'group', ...g }
+  if (!LABELS.includes(out.label)) out.label = 'Small group'
+  return out
 }
 export async function getGroup(id) { const g = parse(await kvCommand(['HGET', keys.groups(), clean(id, 80)])); return g ? normaliseStoredGroup(g) : null }
 export async function saveGroup(group) { await kvCommand(['HSET', keys.groups(), group.id, JSON.stringify(group)]); return group }

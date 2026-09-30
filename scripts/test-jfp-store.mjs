@@ -82,7 +82,7 @@ test('first set-up drafts only what the records justify', () => {
   const d = Object.fromEntries(draftGroupsFromRoster(players, config).map((g) => [g.id, g]))
   assert.equal(d['mon-1620-belrose-hq'].mode, 'direct')
   assert.equal(d['fri-1600-belrose-hq'].mode, 'application')
-  assert.equal(d['fri-0630-rydalmere'].label, 'Squad')
+  assert.equal(d['fri-0630-rydalmere'].label, 'Small group')
   assert.equal(d['mon-1300-belrose-hq'].mode, 'enquire')
 })
 
@@ -212,3 +212,10 @@ test('the booking password cookie survives only while the password stays the sam
 
 for (const [name, fn] of queue) { await fn(); passed += 1; console.log(`ok - ${name}`) }
 console.log(`\n${passed} JFP store checks passed`)
+
+{
+  // Round 5: Squad reads as Small group, and Lee's requirements paragraph is kept.
+  const { normaliseStoredGroup, validateGroup: vg } = await import('../api/_jfp-store.js')
+  assert.equal(normaliseStoredGroup({ id: 'x', label: 'Squad' }).label, 'Small group')
+  console.log('ok - old Squad groups read as Small group')
+}

@@ -12,7 +12,7 @@ import {
   getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, sessionDates, dateLabel,
   formatAud, coachById, coachByAirtableName, locationFor, ageOn, normName, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES,
 } from './_jfp-store.js'
-import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache } from './_jfp-airtable.js'
+import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq } from './_jfp-next.js'
 
@@ -80,9 +80,11 @@ async function overview(res, parent, body = {}) {
       }
     }),
   }))
+  const rowsById = new Map(fam.players.flatMap((p) => p.term4).map((r) => [r.id, r]))
   const todo = mine.filter((q) => ['open', 'checkout'].includes(q.status)).map((q) => {
     const blockers = q.playerKeys.filter((k) => !fam.players.find((p) => p.key === k)?.waiver)
     return {
+      needsKit: kitRequired(q), kit: kitDone(q, rowsById),
       id: q.id, amountLabel: formatAud(q.amountCents), players: q.playerNames, reason: q.reason, group: q.groupLabel || '', needsWaiver: blockers.length > 0, expiresAt: q.expiresAt || '',
       what: q.reason === 'trial' ? `Trial session${q.trialDate ? `, ${dateLabel(q.trialDate)}` : ''}` : q.startDate ? `From ${dateLabel(q.startDate)} to the end of term${q.creditCents ? `, ${formatAud(q.creditCents)} trial taken off` : ''}` : '',
       afterpay: q.afterpay !== false,
@@ -106,6 +108,7 @@ async function overview(res, parent, body = {}) {
     term: config.term,
     waiverVersion: config.waiverVersion,
     kitUrl: config.kitUrl,
+    kitPriceLabel: config.kitPriceLabel,
     players,
     todo,
     paid: mine.filter((q) => q.status === 'paid').map((q) => ({ id: q.id, amountLabel: formatAud(q.paidCents ?? q.amountCents), players: q.playerNames, paidAt: q.paidAt })),
@@ -193,6 +196,34 @@ async function nextTermChoice(req, res, parent, body) {
   } finally { await kvCommand(['DEL', lock]) }
 }
 
+// The JF playing kit is required for a place in the program (Lee, 30 Sept).
+// A trial is one session, and next term's players already have it.
+function kitRequired(q) { return q.reason !== 'trial' && !q.next }
+function kitDone(q, rowsById) {
+  if (q.kit) return q.kit
+  const rows = (q.term4Ids || []).map((id) => rowsById?.get(id)).filter(Boolean)
+  return rows.length && rows.every((r) => r.kit) ? rows[0].kit : ''
+}
+const KIT = { ordered: 'Ordered', has: 'Already has one' }
+
+async function confirmKit(res, parent, body) {
+  const q = await getPayreq(body.payreqId)
+  if (!q || q.email !== parent.email) return fail(res, 404, 'We could not find that payment.')
+  const choice = KIT[body.kit] ? body.kit : ''
+  if (!choice) return fail(res, 400, 'Choose one: ordered, or already has one.')
+  q.kit = KIT[choice]
+  q.kitAt = new Date().toISOString()
+  await savePayreq(q)
+  // On the player's Term 4 row, so Lee sees it in Airtable and the portal.
+  // The payment still goes ahead if Airtable is slow: the link keeps it too.
+  const ids = (q.term4Ids || []).filter(Boolean)
+  if (ids.length) {
+    try { await updateTerm4Rows(ids.map((id) => ({ id, fields: { 'Training Kit': q.kit } }))) } catch (error) { console.error('jfp kit airtable failed', q.id, error) }
+  }
+  await audit({ by: parent.email, action: 'kit.confirm', target: q.id, after: { kit: q.kit, players: q.playerNames } })
+  return res.status(200).json({ success: true, kit: q.kit })
+}
+
 async function pay(req, res, parent, body) {
   const q = await getPayreq(body.payreqId)
   if (!q || q.email !== parent.email) return fail(res, 404, 'We could not find that payment.')
@@ -204,6 +235,7 @@ async function pay(req, res, parent, body) {
   const fam = familyFor(parent.email, roster, config.termStart)
   const missing = q.playerKeys.filter((k) => !fam.players.find((p) => p.key === k)?.waiver)
   if (missing.length) return fail(res, 400, 'Sign the waiver for each player first.', { code: 'waiver' })
+  if (kitRequired(q) && !kitDone(q, new Map(fam.players.flatMap((p) => p.term4).map((r) => [r.id, r])))) return fail(res, 400, 'Confirm the JF playing kit first. It is required for every player.', { code: 'kit' })
   // Paying again after going back from Stripe: close the first page before
   // opening a second, so one request can never be paid twice.
   if (q.status === 'checkout' && q.stripeSessionId) {
@@ -256,6 +288,7 @@ export default async function handler(req, res) {
     const parent = await sessionFor(req, 'parent')
     if (!parent) return fail(res, 401, 'Sign in with your email to continue.', { code: 'signin' })
     if (body.action === 'signWaiver') return await signWaiver(res, parent, body)
+    if (body.action === 'confirmKit') return await confirmKit(res, parent, body)
     if (body.action === 'pay') return await pay(req, res, parent, body)
     if (body.action === 'nextTermChoice') return await nextTermChoice(req, res, parent, body)
     return await overview(res, parent, body)

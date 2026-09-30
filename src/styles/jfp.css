@@ -365,3 +365,51 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .j-card-photo .j-full-top { position: relative; margin: 0; display: block; }
 
 .j-prices .j-price { display: block; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--j-ink); margin: 2px 0 4px; }
+
+/* ---------- round 5 (Lee, 30 Sept) ---------- */
+/* Tabs read as buttons: they grow a little and fill on hover. */
+.j-tabs { gap: 6px; padding: 4px 2px 0; }
+.j-tabs a { padding: 9px 12px; border-radius: 10px 10px 0 0; transition: transform .14s ease, background-color .14s, color .14s; transform-origin: 50% 100%; }
+.j-tabs a:hover { color: var(--j-ink); background: #EEF0F3; transform: scale(1.08); }
+.j-tabs a:focus-visible { outline: 2px solid var(--j-focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .j-tabs a, .j-tabs a:hover { transition: none; transform: none; } }
+
+/* A location banner across the top of every group, in the location colour.
+   Fully booked rides in the same strip so times and buttons line up. */
+.j-lb { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--lc, var(--j-loc-belrose)); color: #fff; font-family: 'Anton', Impact, sans-serif; font-weight: 400; font-size: 20px; line-height: 1; letter-spacing: .05em; padding: 9px 16px 8px; }
+.j-lb-belrose { --lc: #1570EF; } .j-lb-ntra { --lc: #039855; } .j-lb-rydalmere { --lc: #DC6803; }
+.j-lb .full { font-family: Inter, system-ui, sans-serif; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; background: #fff; color: var(--j-red); border-radius: 999px; padding: 4px 9px; }
+.j-card-photo { display: flex; flex-direction: column; }
+.j-card-photo .bd { flex: 1; }
+.j-card-photo .foot { margin-top: auto; padding-top: 12px; }
+.j-card-photo.is-full .j-lb { filter: saturate(.55); }
+.j-blk::before { display: none; }
+.j-blk { padding-top: 0; }
+.j-blk .j-lb { margin: 0 -10px 8px -14px; font-size: 14px; padding: 6px 10px 5px 14px; }
+.j-blk .j-lb .full { font-size: 9.5px; padding: 3px 6px; }
+.j-blk.is-full .j-lb { filter: saturate(.55); }
+
+/* Requirements in Lee's own words. */
+.j-reqtext { margin-top: 8px; font-size: 14px; color: var(--j-ink-2); }
+.j-reqtext p + p { margin-top: 6px; }
+
+/* Pricing: a plain price list, easy on the eyes. */
+.j-pricing { display: grid; gap: 14px; }
+@media (min-width: 860px) { .j-pricing { grid-template-columns: 1fr 1fr; } }
+.j-pbox { background: var(--j-surface); border: 1px solid var(--j-line); border-radius: var(--j-radius); padding: 6px 20px 8px; }
+.j-pbox h3 { font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--j-muted); padding: 12px 0 4px; }
+.j-prow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 0; border-top: 1px solid #F0F1F3; }
+.j-pbox h3 + div .j-prow:first-child { border-top: 0; }
+.j-prow b { display: block; font-size: 16px; font-weight: 700; color: var(--j-ink); }
+.j-prow small { display: block; font-size: 13px; color: var(--j-muted); margin-top: 2px; }
+.j-prow .p { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--j-ink); white-space: nowrap; }
+.j-pkit { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 14px; background: var(--j-surface); border: 1.5px solid var(--j-ink); border-radius: var(--j-radius); padding: 16px 20px; }
+.j-pkit h3 { font-size: 18px; margin-top: 6px; }
+.j-good { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; font-size: 15px; color: var(--j-ink-2); }
+.j-good li { padding-left: 22px; position: relative; }
+.j-good li::before { content: ''; position: absolute; left: 4px; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--j-ink); }
+
+/* The required kit step before paying. */
+.j-kitstep { border: 1.5px solid var(--j-ink); border-radius: 12px; padding: 14px; margin: 12px 0; }
+.j-kitstep h4 { font-size: 15px; margin: 6px 0 2px; }
+.j-list .j-blk .j-lb { margin: 0 -14px 8px -16px; }

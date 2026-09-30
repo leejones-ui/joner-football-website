@@ -53,6 +53,7 @@ function playerView(r, config, roster, { money }) {
     online: Boolean(r.onlineBookingId),
     addedHere: Boolean(r.adminAddId),
     waiver: Boolean(w),
+    kit: r.kit || '',
     dashboard: onDashboard(r),
     ...(money ? {
       parent: r.parent, email: r.email, phone: r.phone,
@@ -487,7 +488,7 @@ async function saveGroupAction(res, principal, config, body) {
   const input = body.group || {}
   const existing = body.id ? await getGroup(body.id) : null
   if (body.id && !existing) return fail(res, 404, 'Group not found.')
-  const allowed = ['day', 'time', 'location', 'coachId', 'extraCoachIds', 'capacity', 'mode', 'label', 'durationMin', 'minAge', 'maxAge', 'ageStatus', 'girlsOnly', 'publicNote', 'programme', 'byCoach', 'trials', 'questions', 'requirements', 'product']
+  const allowed = ['day', 'time', 'location', 'coachId', 'extraCoachIds', 'capacity', 'mode', 'label', 'durationMin', 'minAge', 'maxAge', 'ageStatus', 'girlsOnly', 'publicNote', 'programme', 'byCoach', 'trials', 'questions', 'requirements', 'requirementsText', 'product']
   const patch = Object.fromEntries(Object.entries(input).filter(([k]) => allowed.includes(k)))
   for (const k of ['capacity', 'durationMin']) if (k in patch) patch[k] = Number(patch[k])
   for (const k of ['minAge', 'maxAge']) if (k in patch) patch[k] = patch[k] === '' || patch[k] == null ? null : Number(patch[k])
@@ -962,7 +963,7 @@ export default async function handler(req, res) {
       case 'saveSettings': {
         const input = body.config || {}
         const patch = {}
-        for (const k of ['term', 'termStart', 'weeks', 'prices', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations', 'kitUrl', 'kitNote', 'skipDates']) if (k in input) patch[k] = input[k]
+        for (const k of ['term', 'termStart', 'weeks', 'prices', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations', 'kitUrl', 'kitNote', 'kitPriceLabel', 'skipDates']) if (k in input) patch[k] = input[k]
         if (patch.prices) patch.prices = { ...config.prices, ...patch.prices }
         if (Array.isArray(input.coaches)) patch.coaches = input.coaches
         if ('superAdmins' in patch) {

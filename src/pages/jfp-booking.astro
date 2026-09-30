@@ -18,10 +18,10 @@ const gets = [
   ['Mentorship', 'Guidance on standards, mindset and training habits.'],
 ]
 const faqs = [
-  ['What does the player need to bring?', 'Boots for synthetic, shin guards, a drink bottle, a waterproof jacket and a good attitude. Training kit is supplied.'],
+  ['What does the player need to bring?', 'The JF playing kit (required for every player, from BE Teamsport), boots for synthetic, shin guards, a drink bottle, a waterproof jacket and a good attitude.'],
   ['Who will be in the group?', 'Coaches group players by age first, then ability. Groups are small, and players can be moved up if they need a stronger challenge.'],
   ['Will bad weather cancel a session?', 'Only really bad storms. Afternoon sessions at the HQ are indoors.'],
-  ['What if we miss a session?', 'There are no make-up sessions for missed sessions, unless the absence is an injury with a medical certificate.'],
+  ['What if we miss a session?', 'There are no make-up sessions and no credits for missed sessions.'],
 ]
 ---
 
@@ -60,8 +60,7 @@ const faqs = [
           <a href="#timetable" data-tab="timetable" aria-current="page">Timetable</a>
           <a href="/training/jfp-program" target="_blank" rel="noopener">About JFP</a>
           <a href="#pricing" data-tab="pricing">Pricing</a>
-          <a href="#one-to-one" data-tab="one-to-one">1 to 1 coaching</a>
-          <a href="https://www.besteamsport.com.au/collections/joner-football" id="kit-tab" target="_blank" rel="noopener noreferrer">Training kit</a>
+          <a href="https://www.besteamsport.com.au/collections/joner-football/products/jf-playing-kit" id="kit-tab" target="_blank" rel="noopener noreferrer">Training kit</a>
           <a href="/jfp-account/" class="j-tab-right">My JFP</a>
         </nav>
 
@@ -99,6 +98,7 @@ const faqs = [
             <div><b>2. Apply or book</b><span>Most groups are Apply: tell us the player's club and team. Groups marked Book now can be paid for straight away.</span></div>
             <div><b>3. A place or a trial</b><span>If we know the player, or they fit the group, the place is theirs for the term. Otherwise a trial session first, <span id="trial-price">A$85</span>.</span></div>
             <div><b>4. Pay to lock it in</b><span>A place is only held once it is paid. After a trial, the trial fee comes off the term.</span></div>
+            <div><b>5. The JF playing kit</b><span>Required for every player, from BE Teamsport. You confirm it before paying.</span></div>
           </div>
           <h2 style="margin:26px 0 12px">Payment options</h2>
           <div class="j-gets">
@@ -113,28 +113,23 @@ const faqs = [
         </section>
 
         <section data-panel="pricing" hidden>
-          <h2 style="margin-bottom:6px">Pricing</h2>
-          <p class="muted" style="max-width:640px;margin-bottom:16px">Every price is for the whole term. A place is locked in once it is paid.</p>
-          <div class="j-gets j-prices" id="price-list"></div>
-          <h3 style="margin:22px 0 10px">Good to know</h3>
-          <div class="j-gets">
-            <div><b>Afterpay</b><span>Pay in four with Afterpay, or by card, Apple Pay or Google Pay on Stripe's secure page.</span></div>
-            <div><b>Joining during the term</b><span>You only pay for the sessions left, from the first session you join.</span></div>
-            <div><b>Public holidays</b><span>No session on public holidays, and those weeks are not charged.</span></div>
-            <div><b>Missed sessions</b><span>No make-up sessions, unless the absence is an injury with a medical certificate.</span></div>
+          <h2 style="margin-bottom:4px">Pricing</h2>
+          <p class="muted" style="margin-bottom:16px">Full term prices.</p>
+          <div class="j-pricing">
+            <div class="j-pbox"><h3>Term programs</h3><div id="price-term"></div></div>
+            <div class="j-pbox"><h3>1 to 1 coaching</h3><div id="price-121"></div></div>
           </div>
+          <div class="j-pkit">
+            <div><span class="j-pill j-pill-red">Required</span><h3>JF playing kit <span id="kit-price">A$50</span></h3><p class="muted small">Every player needs it. Sold by BE Teamsport.</p></div>
+            <a class="j-btn j-btn-dark" id="kit-buy" href="https://www.besteamsport.com.au/collections/joner-football/products/jf-playing-kit" target="_blank" rel="noopener noreferrer">Order the kit</a>
+          </div>
+          <ul class="j-good">
+            <li>Card, Apple Pay, Google Pay or Afterpay.</li>
+            <li>Joining late? You only pay for the sessions left.</li>
+            <li>No make-up sessions.</li>
+          </ul>
         </section>
 
-        <section data-panel="one-to-one" hidden>
-          <h2 style="margin-bottom:6px">1 to 1 coaching</h2>
-          <p class="muted" style="max-width:640px;margin-bottom:16px">Private sessions with a Joner Football coach, at the HQ in Belrose. Tell us who it is for and the times that suit, and Lee or Ligia will be in touch.</p>
-          <div class="j-gets">
-            <div><b>Term of 1 to 1s</b><span>One private session a week for the term.</span></div>
-            <div><b>One off 1 to 1</b><span>A single session to work on something specific.</span></div>
-            <div><b>Pathway 1 to 1</b><span>45 minute private sessions for younger players.</span></div>
-          </div>
-          <button type="button" class="j-btn j-btn-dark j-btn-lg" id="enquire-1to1" style="margin-top:18px">Enquire about 1 to 1</button>
-        </section>
         <p class="muted small" style="padding:26px 0 40px">Questions? Email <a href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a>.</p>
       </div>
     </div>

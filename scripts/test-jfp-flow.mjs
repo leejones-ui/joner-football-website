@@ -17,6 +17,9 @@ function client() {
   const ip = `10.0.${Math.floor(ipSeq / 250)}.${(ipSeq++ % 250) + 1}` // each family on its own connection
   const header = () => [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ')
   async function call(path, body, method = body ? 'POST' : 'GET') {
+    // The JF playing kit is confirmed before every term payment; tests that
+    // check that gate pass noKit.
+    if (path === '/api/jfp-account' && body?.action === 'pay' && !body.noKit) await call(path, { action: 'confirmKit', payreqId: body.payreqId, kit: 'ordered' })
     const res = await fetch(`${B}${path}`, { method, redirect: 'manual', headers: { 'content-type': 'application/json', cookie: header(), 'x-forwarded-for': ip, ...ORIGIN }, body: body ? JSON.stringify(body) : undefined })
     const set = res.headers.getSetCookie?.() || []
     for (const c of set) { const [kv] = c.split(';'); const i = kv.indexOf('='); const k = kv.slice(0, i); const v = kv.slice(i + 1); if (v) jar.set(k, v); else jar.delete(k) }
@@ -105,12 +108,14 @@ await test('2. a new family: sign in, new player details, waiver, pay; Airtable,
   assert.equal(await left(mum, TUE420), tue420Before - 1, 'the hold takes a place at once')
   const fam = await mum.call('/api/jfp-book', { action: 'family', groupId: TUE420 })
   assert.deepEqual(fam.data.players, [])
-  const base = { groupId: TUE420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, parentName: 'Pat Parent', mobile: '0411222333', agreementAccepted: true }
+  const base = { groupId: TUE420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, parentName: 'Pat Parent', mobile: '0411222333', agreementAccepted: true, kit: 'ordered' }
   const tooOld = await mum.call('/api/jfp-book', { ...base, players: [{ name: 'Big Kid', dob: '2010-01-01', emergencyName: 'Gran', emergencyPhone: '0400111222' }], waiver: WAIVER })
   assert.equal(tooOld.status, 400)
   assert.equal(tooOld.data.code, 'age')
   const noWaiver = await mum.call('/api/jfp-book', { ...base, players: [{ name: 'Nina New', dob: '2016-05-01', emergencyName: 'Gran', emergencyPhone: '0400111222' }] })
   assert.equal(noWaiver.data.code, 'waiver')
+  const kitless = await mum.call('/api/jfp-book', { ...base, kit: '', players: [{ name: 'Nina New', dob: '2016-05-01', club: 'Forest FC', emergencyName: 'Gran New', emergencyPhone: '0400111222' }], waiver: WAIVER })
+  assert.equal(kitless.data.code, 'kit', 'a booking needs the kit confirmed')
   const ok = await mum.call('/api/jfp-book', { ...base, players: [{ name: 'Nina New', dob: '2016-05-01', club: 'Forest FC', emergencyName: 'Gran New', emergencyPhone: '0400111222' }], waiver: WAIVER })
   assert.equal(ok.status, 200, JSON.stringify(ok.data))
   assert.equal(ok.data.bookingId, hold.data.bookingId, 'the reservation became the booking')
@@ -154,9 +159,9 @@ await test('3. a returning family is recognised: players, ages and waivers on fi
   assert.equal(fam.parentName, 'Rita Returning')
   const hold = await rita.call('/api/jfp-book', { action: 'reserve', groupId: TUE420 })
   const waiversBefore = (await at()).waiver.length
-  const ok = await rita.call('/api/jfp-book', { groupId: TUE420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ key: sasha.key }], agreementAccepted: true })
+  const ok = await rita.call('/api/jfp-book', { groupId: TUE420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ key: sasha.key }], agreementAccepted: true, kit: 'ordered' })
   assert.equal(ok.status, 200, JSON.stringify(ok.data))
-  const dup = await rita.call('/api/jfp-book', { groupId: TUE420, players: [{ key: riley.key }], agreementAccepted: true })
+  const dup = await rita.call('/api/jfp-book', { groupId: TUE420, players: [{ key: riley.key }], agreementAccepted: true, kit: 'ordered' })
   assert.match(dup.data.error, /already in this group/)
   await stripe(ok.data.url, 'pay')
   const a = await at()
@@ -177,7 +182,7 @@ await test('4. two families racing for the last place: exactly one gets it', asy
   const winner = a.status === 200 ? a : b
   const winnerClient = a.status === 200 ? x : y
   // The winner cannot grow the hold past what is left.
-  const two = await winnerClient.call('/api/jfp-book', { groupId: TUE525, bookingId: winner.data.bookingId, releaseToken: winner.data.releaseToken, players: [{ name: 'Win One', dob: '2014-01-01', emergencyName: 'A B', emergencyPhone: '0400000001' }, { name: 'Win Two', dob: '2014-02-01', emergencyName: 'A B', emergencyPhone: '0400000001' }], waiver: WAIVER, parentName: 'Win Parent', mobile: '0400000001', agreementAccepted: true })
+  const two = await winnerClient.call('/api/jfp-book', { groupId: TUE525, bookingId: winner.data.bookingId, releaseToken: winner.data.releaseToken, players: [{ name: 'Win One', dob: '2014-01-01', emergencyName: 'A B', emergencyPhone: '0400000001' }, { name: 'Win Two', dob: '2014-02-01', emergencyName: 'A B', emergencyPhone: '0400000001' }], waiver: WAIVER, parentName: 'Win Parent', mobile: '0400000001', agreementAccepted: true, kit: 'ordered' })
   assert.equal(two.status, 409)
   // Closing the form hands the place back.
   await winnerClient.call('/api/jfp-book', { action: 'release', bookingId: winner.data.bookingId, releaseToken: winner.data.releaseToken })
@@ -205,12 +210,18 @@ await test('5. an application: parent applies, admin offers a place, parent sign
   const acc = (await ap.call('/api/jfp-account', { action: 'overview' })).data
   assert.equal(acc.todo.length, 1)
   assert.equal(acc.todo[0].needsWaiver, true)
-  const early = await ap.call('/api/jfp-account', { action: 'pay', payreqId: acc.todo[0].id })
+  const early = await ap.call('/api/jfp-account', { action: 'pay', payreqId: acc.todo[0].id, noKit: true })
   assert.equal(early.data.code, 'waiver', 'cannot pay before the waiver')
   const ava = acc.players.find((p) => p.name === 'Ava Apply')
   const signed = await ap.call('/api/jfp-account', { action: 'signWaiver', players: [{ key: ava.key, emergencyName: 'Al Apply', emergencyPhone: '0400999777' }], waiver: { ...WAIVER, signature: 'Amy Apply' }, parentName: 'Amy Apply', mobile: '0400999888' })
   assert.equal(signed.status, 200, JSON.stringify(signed.data))
-  const pay = await ap.call('/api/jfp-account', { action: 'pay', payreqId: acc.todo[0].id })
+  const noKit = await ap.call('/api/jfp-account', { action: 'pay', payreqId: acc.todo[0].id, noKit: true })
+  assert.equal(noKit.data.code, 'kit', 'the JF playing kit is confirmed before paying')
+  assert.equal((await ap.call('/api/jfp-account', { action: 'overview' })).data.todo[0].needsKit, true)
+  const kit = await ap.call('/api/jfp-account', { action: 'confirmKit', payreqId: acc.todo[0].id, kit: 'has' })
+  assert.equal(kit.status, 200, JSON.stringify(kit.data))
+  assert.equal((await at()).term4.find((x) => x.fields['Player Name'] === 'Ava Apply').fields['Training Kit'], 'Already has one', 'the kit answer is on the Term 4 row')
+  const pay = await ap.call('/api/jfp-account', { action: 'pay', payreqId: acc.todo[0].id, noKit: true })
   assert.equal(pay.status, 200, JSON.stringify(pay.data))
   const back = await stripe(pay.data.url, 'pay')
   const sid = new URL(back.headers.get('location')).searchParams.get('session_id')
@@ -322,7 +333,7 @@ await test('7. roles: coaches see only their sessions and no money; parents only
   assert.equal((await rita.call('/api/jfp-account', { action: 'pay', payreqId: someoneElses.id })).status, 404)
   const signOther = await rita.call('/api/jfp-account', { action: 'signWaiver', players: [{ key: 'leoadded', dob: '2015-09-09', emergencyName: 'X Y', emergencyPhone: '0400000009' }], waiver: WAIVER, parentName: 'Rita', mobile: '0400000009' })
   assert.equal(signOther.status, 404)
-  const bookOther = await rita.call('/api/jfp-book', { groupId: TUE420, players: [{ key: 'ninanew' }], agreementAccepted: true })
+  const bookOther = await rita.call('/api/jfp-book', { groupId: TUE420, players: [{ key: 'ninanew' }], agreementAccepted: true, kit: 'ordered' })
   assert.equal(bookOther.status, 400)
   // Cross-site requests are refused.
   const evil = await fetch(`${B}/api/jfp-portal-data`, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://evil.example', cookie: [...lee.jar].map(([k, v]) => `${k}=${v}`).join('; ') }, body: JSON.stringify({ action: 'board' }) })
@@ -345,7 +356,7 @@ await test('an abandoned Stripe checkout releases the place', async () => {
   const beforeLeft = await left(c, TUE420)
   await signIn(c, 'abandon@example.com')
   const hold = await c.call('/api/jfp-book', { action: 'reserve', groupId: TUE420 })
-  const ok = await c.call('/api/jfp-book', { groupId: TUE420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Abe Andon', dob: '2016-01-01', emergencyName: 'X Y', emergencyPhone: '0400444555' }], waiver: WAIVER, parentName: 'Ann Andon', mobile: '0400444555', agreementAccepted: true })
+  const ok = await c.call('/api/jfp-book', { groupId: TUE420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Abe Andon', dob: '2016-01-01', emergencyName: 'X Y', emergencyPhone: '0400444555' }], waiver: WAIVER, parentName: 'Ann Andon', mobile: '0400444555', agreementAccepted: true, kit: 'ordered' })
   assert.equal(ok.status, 200, JSON.stringify(ok.data))
   assert.equal(await left(c, TUE420), beforeLeft - 1)
   await stripe(ok.data.url, 'expire')
@@ -357,7 +368,7 @@ await test('a failed Airtable write is recorded and repaired, never lost', async
   await gate(c)
   await signIn(c, 'repair@example.com')
   const hold = await c.call('/api/jfp-book', { action: 'reserve', groupId: TUE420 })
-  const ok = await c.call('/api/jfp-book', { groupId: TUE420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Rae Pair', dob: '2016-02-02', emergencyName: 'X Y', emergencyPhone: '0400444556' }], waiver: WAIVER, parentName: 'Ray Pair', mobile: '0400444556', agreementAccepted: true })
+  const ok = await c.call('/api/jfp-book', { groupId: TUE420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Rae Pair', dob: '2016-02-02', emergencyName: 'X Y', emergencyPhone: '0400444556' }], waiver: WAIVER, parentName: 'Ray Pair', mobile: '0400444556', agreementAccepted: true, kit: 'ordered' })
   await fetch(`${B}/__fail?what=airtable-term4&on=1`)
   await stripe(ok.data.url, 'pay')
   await fetch(`${B}/__fail?what=airtable-term4&on=0`)
@@ -373,7 +384,7 @@ await test('a payment for a booking that was just cancelled is recorded and flag
   await gate(c)
   await signIn(c, 'late@example.com')
   const hold = await c.call('/api/jfp-book', { action: 'reserve', groupId: TUE420 })
-  const ok = await c.call('/api/jfp-book', { groupId: TUE420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Lana Late', dob: '2016-03-03', emergencyName: 'X Y', emergencyPhone: '0400444557' }], waiver: WAIVER, parentName: 'Lou Late', mobile: '0400444557', agreementAccepted: true })
+  const ok = await c.call('/api/jfp-book', { groupId: TUE420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Lana Late', dob: '2016-03-03', emergencyName: 'X Y', emergencyPhone: '0400444557' }], waiver: WAIVER, parentName: 'Lou Late', mobile: '0400444557', agreementAccepted: true, kit: 'ordered' })
   // The parent closes the form; we close the Stripe page and release.
   await c.call('/api/jfp-book', { action: 'release', bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken })
   // A payment still lands for it (a second tab, a slow bank).
@@ -392,7 +403,7 @@ await test('paying twice for one booking: the first counts, the second is flagge
   await gate(c)
   await signIn(c, 'twice@example.com')
   const hold = await c.call('/api/jfp-book', { action: 'reserve', groupId: TUE420 })
-  const body = { groupId: TUE420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Tia Twice', dob: '2016-04-04', emergencyName: 'X Y', emergencyPhone: '0400444558' }], waiver: WAIVER, parentName: 'Tom Twice', mobile: '0400444558', agreementAccepted: true }
+  const body = { groupId: TUE420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Tia Twice', dob: '2016-04-04', emergencyName: 'X Y', emergencyPhone: '0400444558' }], waiver: WAIVER, parentName: 'Tom Twice', mobile: '0400444558', agreementAccepted: true, kit: 'ordered' }
   const first = await c.call('/api/jfp-book', body)
   const second = await c.call('/api/jfp-book', body)
   assert.equal(second.status, 200, JSON.stringify(second.data))
@@ -594,7 +605,7 @@ await test('joining during the term: pro rata for the sessions left, siblings at
   assert.equal(fam.quote.oneCents, one)
   assert.equal(fam.quote.eachOfTwoCents, each)
   assert.equal(fam.quote.proRata, true)
-  const ok = await mum.call('/api/jfp-book', { groupId: g, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Pia Pro', dob: '2016-01-01', emergencyName: 'P R', emergencyPhone: '0400717171' }, { name: 'Pete Pro', dob: '2017-01-01', emergencyName: 'P R', emergencyPhone: '0400717171' }], waiver: WAIVER, parentName: 'Pru Pro', mobile: '0400717171', agreementAccepted: true })
+  const ok = await mum.call('/api/jfp-book', { groupId: g, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Pia Pro', dob: '2016-01-01', emergencyName: 'P R', emergencyPhone: '0400717171' }, { name: 'Pete Pro', dob: '2017-01-01', emergencyName: 'P R', emergencyPhone: '0400717171' }], waiver: WAIVER, parentName: 'Pru Pro', mobile: '0400717171', agreementAccepted: true, kit: 'ordered' })
   assert.equal(ok.status, 200, JSON.stringify(ok.data))
   await stripe(ok.data.url, 'pay')
   const rows = (await at()).term4.filter((r) => /^P\w+ Pro$/.test(r.fields['Player Name']))
