@@ -35,8 +35,9 @@ export const QUESTIONS = {
   playingUp: 'Playing up, down or at their own age',
   trainedBefore: 'Trained with Joner before',
   position: 'Position',
+  videos: 'Links to videos of the player training or playing (optional)',
 }
-export const DEFAULT_QUESTIONS = ['club', 'team', 'playingUp', 'trainedBefore']
+export const DEFAULT_QUESTIONS = ['club', 'team', 'playingUp', 'trainedBefore', 'videos']
 // What a group asks of a player, shown to parents under "Who this group is
 // for". Level without saying beginner: Lee ticks what fits each group.
 export const REQUIREMENTS = {
@@ -87,14 +88,15 @@ export const keys = {
   airtableCounts: () => 'jfp:airtable-counts',
   finalised: (id) => `jfp:finalised:${id}`,
   attendance: (gid, date) => `jfp:att:${gid}:${date}`,
+  next: (term) => `jfp:next:${String(term).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
 }
 
 // ---------- config ----------
 
 export const DEFAULT_LOCATIONS = [
-  { id: 'belrose', match: 'belrose', name: 'Belrose HQ', address: 'Joner Football HQ, 20 Narabang Way (Unit 2), Belrose NSW 2085', maps: 'https://maps.google.com/?q=20+Narabang+Way+Belrose+NSW+2085', photo: '/images/hq/hq-hero-lee-exterior.webp', blurb: 'Our home ground. Small groups after school and on Saturdays.' },
-  { id: 'ntra', match: 'ntra', name: 'North Turramurra', address: 'North Turramurra Recreation Area, North Turramurra NSW 2074', maps: 'https://maps.google.com/?q=North+Turramurra+Recreation+Area', photo: '/images/training/jfp/jfp-ntra-field.jpg', blurb: 'Early morning squads, Wednesday and Thursday.' },
-  { id: 'rydalmere', match: 'rydalmere', name: 'Rydalmere Park', address: 'Rydalmere Park, Rydalmere NSW 2116', maps: 'https://maps.google.com/?q=Rydalmere+Park+NSW', photo: '/images/training/jfp/jfp-training-4.webp', blurb: 'Early morning squads on Fridays.' },
+  { id: 'belrose', match: 'belrose', name: 'Belrose HQ', banner: 'BELROSE', address: 'Joner Football HQ, 20 Narabang Way (Unit 2), Belrose NSW 2085', maps: 'https://maps.google.com/?q=20+Narabang+Way+Belrose+NSW+2085', photo: '/images/hq/hq-hero-lee-exterior.webp', blurb: 'Our home ground. Small groups after school and on Saturdays.' },
+  { id: 'ntra', match: 'ntra', name: 'North Turramurra', banner: 'NTRA', address: 'North Turramurra Recreation Area, North Turramurra NSW 2074', maps: 'https://maps.google.com/?q=North+Turramurra+Recreation+Area', photo: '/images/training/jfp/jfp-ntra-field.jpg', blurb: 'Early morning squads, Wednesday and Thursday.' },
+  { id: 'rydalmere', match: 'rydalmere', name: 'Rydalmere Park', banner: 'RYDALMERE', address: 'Rydalmere Park, Rydalmere NSW 2116', maps: 'https://maps.google.com/?q=Rydalmere+Park+NSW', photo: '/images/training/jfp/jfp-training-4.webp', blurb: 'Early morning squads on Fridays.' },
 ]
 
 export const DEFAULT_CONFIG = {
@@ -118,7 +120,12 @@ export const DEFAULT_CONFIG = {
   // Coach logins stay off until Lee says so, even for coaches with an email.
   coachLoginsEnabled: false,
   // After paying, families are sent to get the training kit (another website).
-  kitUrl: '',
+  // Joner Football kit at BE Teamsport. Always opened in a new tab, so the
+  // family's Joner page stays open behind it.
+  kitUrl: 'https://www.besteamsport.com.au/collections/joner-football',
+  // Next term: families keep their place with a non-refundable hold fee
+  // (taken off next term's price) or pay in full, before it opens to everyone.
+  nextTerm: { name: 'Term 1 2027', holdCents: 10000, open: false },
   kitNote: 'Every JFP player trains in the Joner Football training kit. Order yours before the first session.',
   locations: DEFAULT_LOCATIONS,
   minAge: 6,
@@ -142,6 +149,7 @@ function cleanLocations(list, fallback) {
     maps: /^https:\/\//.test(l.maps || '') ? clean(l.maps, 300) : '',
     photo: /^\/images\/[\w./-]+$/.test(l.photo || '') ? l.photo : '',
     blurb: clean(l.blurb, 160),
+    banner: clean(l.banner, 30) || (fallback.find((f) => f.id === clean(l.id, 30).toLowerCase())?.banner ?? ''),
   })).filter((l) => l.id && l.name && l.match)
   return out.length ? out : fallback
 }
@@ -159,6 +167,7 @@ export function normaliseConfig(input = {}) {
     term: clean(input.term, 40) || b.term,
     termStart: /^\d{4}-\d{2}-\d{2}$/.test(input.termStart || '') ? input.termStart : b.termStart,
     weeks: Number.isInteger(Number(input.weeks)) && Number(input.weeks) >= 1 && Number(input.weeks) <= 20 ? Number(input.weeks) : b.weeks,
+    skipDates: Array.isArray(input.skipDates) ? [...new Map(input.skipDates.filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x?.date || '')).map((x) => [x.date, { date: x.date, reason: clean(x.reason, 60) || 'No session' }])).values()].sort((a, c) => a.date.localeCompare(c.date)) : [],
     priceCents: prices.group,
     prices,
     waiverUrl: /^https:\/\//.test(input.waiverUrl || '') ? clean(input.waiverUrl, 500) : b.waiverUrl,
@@ -172,6 +181,11 @@ export function normaliseConfig(input = {}) {
     coachLoginsEnabled: input.coachLoginsEnabled === true,
     kitUrl: /^https:\/\//.test(input.kitUrl || '') ? clean(input.kitUrl, 500) : (input.kitUrl === '' ? '' : b.kitUrl),
     kitNote: clean(input.kitNote, 300) || b.kitNote,
+    nextTerm: {
+      name: clean(input.nextTerm?.name, 40) || b.nextTerm.name,
+      holdCents: Number.isInteger(Number(input.nextTerm?.holdCents)) && Number(input.nextTerm.holdCents) > 0 && Number(input.nextTerm.holdCents) <= 200000 ? Number(input.nextTerm.holdCents) : b.nextTerm.holdCents,
+      open: input.nextTerm?.open === true,
+    },
     locations: cleanLocations(input.locations, b.locations),
     minAge: Number(input.minAge) >= 3 && Number(input.minAge) <= 18 ? Number(input.minAge) : b.minAge,
     maxAge: Number(input.maxAge) >= 5 && Number(input.maxAge) <= 25 ? Number(input.maxAge) : b.maxAge,
@@ -212,8 +226,34 @@ export function sessionDates(config, day) {
   const start = new Date(`${config.termStart}T00:00:00Z`)
   const startIdx = (start.getUTCDay() + 6) % 7 // Monday = 0
   const first = new Date(start.getTime() + ((idx - startIdx + 7) % 7) * 86400000)
-  return Array.from({ length: config.weeks }, (_, k) => new Date(first.getTime() + k * 7 * 86400000).toISOString().slice(0, 10))
+  const off = new Set((config.skipDates || []).map((x) => x.date))
+  // Public holidays and cancelled sessions are simply not sessions: the
+  // dates, calendars and pro rata all count only the real ones.
+  return Array.from({ length: config.weeks }, (_, k) => new Date(first.getTime() + k * 7 * 86400000).toISOString().slice(0, 10)).filter((d) => !off.has(d))
 }
+
+// The weekly dates skipped for a day, with why (for calendars and pages).
+export function skippedDates(config, day) {
+  const idx = DAYS.indexOf(day)
+  return (config.skipDates || []).filter((x) => DAYS[(new Date(`${x.date}T00:00:00Z`).getUTCDay() + 6) % 7] === DAYS[idx])
+}
+
+// NSW public holidays Lee may want off, offered in Settings with one tap.
+export const NSW_HOLIDAYS = [
+  { date: '2026-10-05', reason: 'Labour Day' },
+  { date: '2026-12-25', reason: 'Christmas Day' },
+  { date: '2026-12-28', reason: 'Boxing Day (observed)' },
+  { date: '2027-01-01', reason: "New Year's Day" },
+  { date: '2027-01-26', reason: 'Australia Day' },
+  { date: '2027-03-26', reason: 'Good Friday' },
+  { date: '2027-03-27', reason: 'Easter Saturday' },
+  { date: '2027-03-29', reason: 'Easter Monday' },
+  { date: '2027-04-26', reason: 'Anzac Day (observed)' },
+  { date: '2027-06-14', reason: "King's Birthday" },
+  { date: '2027-10-04', reason: 'Labour Day' },
+  { date: '2027-12-27', reason: 'Christmas Day (observed)' },
+  { date: '2027-12-28', reason: 'Boxing Day (observed)' },
+]
 
 export function dateLabel(iso) {
   return new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(`${iso}T00:00:00Z`)).replace(',', '')
@@ -238,7 +278,8 @@ export function priceFor(config, { product = 'group', day, fromIso, players = 1 
   let key = prod.key
   if (players >= 2 && key === 'group') key = 'twoAWeek'
   const unitFull = Math.round((config.prices[key] ?? DEFAULT_PRICES[key]) / productFor(key).perPlaces)
-  const of = config.weeks
+  // A day's term is its real sessions: 10 weeks less any holidays that day.
+  const of = day ? sessionDates(config, day).length || config.weeks : config.weeks
   const sessions = prod.proRata && day ? sessionsFrom(config, day, fromIso).length : of
   const unit = prod.proRata && sessions < of ? Math.round((unitFull * sessions) / of / 100) * 100 : unitFull
   return { product: key, type: productFor(key).type, unitCents: unit, unitFullCents: unitFull, totalCents: unit * players, sessions, of, proRata: prod.proRata && sessions < of, players }

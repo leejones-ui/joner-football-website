@@ -16,6 +16,8 @@ export const TABLES = {
   attendance: 'tblfwc1VO3ind7cVk',
   // Players removed in the portal: contact, reason and a copy of the Term 4 row.
   dropped: process.env.JFP_DROPPED_TABLE || 'tblLa3AFkRvlUEQEI',
+  // Families keeping their place for next term (hold fee, paid, not returning).
+  nextHolds: process.env.JFP_NEXT_TABLE || 'tblahicOyFRUCf7bL',
 }
 // Everyone in these states holds a place. "Not Returning" and "Dropped" do not.
 export const HOLDS_PLACE = new Set(['Confirmed', 'Awaiting Reply', 'Needs Follow-up', 'Not Contacted', ''])
@@ -356,6 +358,18 @@ export async function getTerm4Row(id) {
     if (/Airtable 404/.test(error.message)) return null
     throw error
   }
+}
+
+// ---------- next term ----------
+
+// One row per player per next term, found by the Term 4 row it came from.
+export async function upsertNextHold(term, term4Id, fields) {
+  const q = new URLSearchParams({ filterByFormula: `AND({Next Term} = "${fq(term)}", {Source Term 4 Record ID} = "${fq(term4Id)}")`, pageSize: '1' })
+  const found = await airtable(`${encodeURIComponent(TABLES.nextHolds)}?${q}`)
+  const id = found.records?.[0]?.id
+  const all = { ...fields, 'Next Term': term, 'Source Term 4 Record ID': term4Id, 'Updated At': new Date().toISOString() }
+  if (id) await airtable(encodeURIComponent(TABLES.nextHolds), { method: 'PATCH', body: { typecast: true, records: [{ id, fields: all }] } })
+  else await airtable(encodeURIComponent(TABLES.nextHolds), { method: 'POST', body: { typecast: true, records: [{ fields: all }] } })
 }
 
 // ---------- removed players ----------

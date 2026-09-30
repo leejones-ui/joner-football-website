@@ -10,10 +10,11 @@
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, sessionDates, dateLabel,
-  formatAud, coachById, coachByAirtableName, locationFor, ageOn, normName, audit, closeCheckout, kvPipeline, CHECKOUT_EXPIRES_MINUTES,
+  formatAud, coachById, coachByAirtableName, locationFor, ageOn, normName, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES,
 } from './_jfp-store.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
+import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq } from './_jfp-next.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -87,12 +88,24 @@ async function overview(res, parent, body = {}) {
       afterpay: q.afterpay !== false,
     }
   })
+  // Next term: this family's invited players and where each one stands.
+  const nt = config.nextTerm
+  const statuses = await nextStatuses(nt.name)
+  const nextTerm = fam.players.flatMap((p) => p.term4.filter((r) => r.holdsPlace && (nt.open || statuses[r.id])).map((r) => {
+    const g = byGroup[r.groupId]
+    const st = statuses[r.id] || { status: 'invited' }
+    const pr = nextPrices(config, g)
+    const open = st.payreqId ? mine.find((q) => q.id === st.payreqId && ['open', 'checkout'].includes(q.status)) : null
+    return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, status: st.status, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel, afterHoldLabel: st.status === 'held' ? formatAud(Math.max(0, pr.fullCents - (st.paidCents || 0))) : pr.afterHoldLabel, openPayreqId: open?.id || '' }
+  }))
   return res.status(200).json({
     success: true,
     email: parent.email,
     parentName: fam.parentName,
+    nextTerm: nextTerm.length ? { name: nt.name, players: nextTerm } : null,
     term: config.term,
     waiverVersion: config.waiverVersion,
+    kitUrl: config.kitUrl,
     players,
     todo,
     paid: mine.filter((q) => q.status === 'paid').map((q) => ({ id: q.id, amountLabel: formatAud(q.paidCents ?? q.amountCents), players: q.playerNames, paidAt: q.paidAt })),
@@ -136,6 +149,50 @@ async function signWaiver(res, parent, body) {
   return res.status(200).json({ success: true, created: ids.length })
 }
 
+// Hold the place, pay next term in full, or say not returning.
+async function nextTermChoice(req, res, parent, body) {
+  const config = await getConfig()
+  const nt = config.nextTerm
+  const choice = ['hold', 'full', 'no'].includes(body.choice) ? body.choice : ''
+  if (!choice) return fail(res, 400, 'Choose hold, pay in full or not returning.')
+  const roster = await loadRoster({ fresh: true })
+  const row = roster.players.find((r) => r.id === clean(body.rowId, 30) && r.email === parent.email && r.holdsPlace)
+  if (!row) return fail(res, 404, 'We could not find that player on your account.')
+  // One choice at a time per player (two tabs, a double tap).
+  const lock = `jfp:next-lock:${row.id}`
+  if ((await kvCommand(['SET', lock, '1', 'NX', 'EX', '20'])) !== 'OK') return fail(res, 409, 'Just a moment, that is still being saved.')
+  try {
+  const statuses = await nextStatuses(nt.name)
+  const st = statuses[row.id]
+  if (!nt.open && !st) return fail(res, 403, `${nt.name} places are not open yet.`)
+  if (st && ['held', 'paid'].includes(st.status) && choice !== 'full') return fail(res, 409, `${row.player}'s place is already ${st.status === 'held' ? 'held' : 'paid'}.`)
+  if (st?.status === 'paid') return fail(res, 409, `${row.player} is already paid for ${nt.name}.`)
+  const group = row.groupId ? await getGroup(row.groupId) : null
+  // Any open next-term link for this player closes before a new choice.
+  const existing = st?.payreqId ? await getPayreq(st.payreqId) : null
+  if (existing && ['open', 'checkout'].includes(existing.status) && !(choice !== 'no' && existing.next?.choice === choice)) {
+    const closed = existing.status === 'checkout' ? await closeCheckout(existing.stripeSessionId) : 'expired'
+    if (closed !== 'expired') return fail(res, 409, 'A payment is already on its way. Refresh in a minute.')
+    await savePayreq({ ...existing, status: 'cancelled', cancelledBy: parent.email, cancelledAt: new Date().toISOString() })
+  }
+  if (choice === 'no') {
+    if (st && ['held', 'paid'].includes(st.status)) return fail(res, 409, 'This place is already paid for. Contact Joner Football to cancel it.')
+    await setNextStatus(nt.name, row.id, { status: 'no' })
+    await recordNext({ term: nt.name, row, group, status: 'no', note: clean(body.note, 300), by: parent.email })
+    return res.status(200).json({ success: true, status: 'no' })
+  }
+  // Reuse an open link for the same choice rather than making a second one.
+  if (existing && ['open', 'checkout'].includes(existing.status) && existing.next?.choice === choice) return res.status(200).json({ success: true, payreqId: existing.id })
+  const q = await createNextPayreq({ config, row, group, choice, siteUrl: siteUrl(req) })
+  // A held place paying the rest: charge the full price less the hold paid,
+  // and keep that hold on the link so the total is always recorded right.
+  if (choice === 'full' && st?.status === 'held') await savePayreq({ ...q, amountCents: Math.max(100, q.next.fullCents - (st.paidCents || 0)), next: { ...q.next, holdPaidCents: st.paidCents || 0 }, productLabel: `${nt.name}, the rest of the term` })
+  await setNextStatus(nt.name, row.id, { ...(st || {}), status: st?.status === 'held' ? 'held' : 'invited', payreqId: q.id, paidCents: st?.paidCents || 0 })
+  await audit({ by: parent.email, action: `next.choose.${choice}`, target: row.id, after: { payreq: q.id } })
+  return res.status(200).json({ success: true, payreqId: q.id })
+  } finally { await kvCommand(['DEL', lock]) }
+}
+
 async function pay(req, res, parent, body) {
   const q = await getPayreq(body.payreqId)
   if (!q || q.email !== parent.email) return fail(res, 404, 'We could not find that payment.')
@@ -156,7 +213,7 @@ async function pay(req, res, parent, body) {
   }
   const group = q.groupId ? await getGroup(q.groupId) : null
   const base = siteUrl(req)
-  const name = `${q.reason === 'trial' ? 'JFP trial' : config.term}: ${q.playerNames.join(', ')}${group ? `, ${group.day} ${group.time}` : ''}${q.reason === 'trial' && q.trialDate ? `, ${dateLabel(q.trialDate)}` : ''}`
+  const name = `${q.reason === 'trial' ? 'JFP trial' : q.next ? `${q.productLabel || q.next.term}` : config.term}: ${q.playerNames.join(', ')}${group ? `, ${group.day} ${group.time}` : ''}${q.reason === 'trial' && q.trialDate ? `, ${dateLabel(q.trialDate)}` : ''}`
   const session = await stripeFetch('/checkout/sessions', {
     method: 'POST',
     body: {
@@ -200,6 +257,7 @@ export default async function handler(req, res) {
     if (!parent) return fail(res, 401, 'Sign in with your email to continue.', { code: 'signin' })
     if (body.action === 'signWaiver') return await signWaiver(res, parent, body)
     if (body.action === 'pay') return await pay(req, res, parent, body)
+    if (body.action === 'nextTermChoice') return await nextTermChoice(req, res, parent, body)
     return await overview(res, parent, body)
   } catch (error) {
     console.error('jfp-account failed', error)

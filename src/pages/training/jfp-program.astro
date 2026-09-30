@@ -93,7 +93,7 @@ const points = [
 ]
 
 // Real JFP sessions from Instagram, in the order Lee chose (the first plays first).
-const reels = ['DcuW0kpSNvj', 'DdQr9zfy2eI', 'Db7XJ4LS8EV', 'DbLG35zyndy']
+const reels = ['DcuW0kpSNvj', 'DdQr9zfy2eI', 'Db7XJ4LS8EV', 'DbLG35zyndy', 'Dd5I5CLjxJp', 'DcvIRohBDU-', 'DcQQkUUyNMQ', 'DXyRpezAWwD']
 // Lee coaching on the Joner Football YouTube channel. Each card is a still
 // until tapped, so the row swipes smoothly and the page stays light.
 const coaching = [
@@ -144,7 +144,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
           <div class="relative z-10 flex min-h-[620px] flex-col lg:min-h-[700px] lg:flex-row">
             <div class="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10 sm:py-14 lg:p-14">
               <p class="mb-4 font-heading text-xs uppercase tracking-[0.25em] text-joner-red sm:text-sm">Sydney player development</p>
-              <h1 class="mb-6 bg-gradient-to-b from-white via-neutral-100 to-neutral-500 bg-clip-text font-heading text-5xl font-bold uppercase leading-[0.9] text-transparent sm:text-6xl md:text-7xl lg:text-8xl">
+              <h1 class="mb-6 text-white font-heading text-5xl font-bold uppercase leading-[0.9] sm:text-6xl md:text-7xl lg:text-8xl">
                 Joner Football<br />Performance
               </h1>
               <p class="mb-8 max-w-lg font-body text-base leading-relaxed text-neutral-300 sm:text-lg">
@@ -174,6 +174,104 @@ const sanityPage = await fetchSanityPage('jfp-program')
               </div>
             ))}
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="videos" class="scroll-mt-24 bg-joner-black pb-14 pt-2 md:pb-20 relative overflow-hidden">
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.12),transparent_60%)] pointer-events-none"></div>
+      <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="mb-12 text-center">
+          <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">Have a look</p>
+          <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
+            Watch the training environment.
+          </h2>
+        </div>
+        <div class="mb-12">
+          <div class="mb-4 flex items-center gap-3 pl-1">
+            <span class="h-2 w-2 rounded-full bg-joner-red"></span>
+            <span class="font-heading text-[11px] uppercase tracking-[0.32em] text-white/80 sm:text-xs">Inside JFP training</span>
+            <span class="h-px flex-1 bg-gradient-to-r from-white/15 to-transparent"></span>
+            <span class="hidden gap-2 md:flex">
+              <button type="button" class="jfp-reels-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="-1" aria-label="Previous video">&larr;</button>
+              <button type="button" class="jfp-reels-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="1" aria-label="Next video">&rarr;</button>
+            </span>
+          </div>
+          <div id="jfp-reels" class="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none;overscroll-behavior-x:contain">
+            {reels.map((id, i) => (<>
+              {i === 1 && (
+                <div class="relative w-[300px] shrink-0 snap-start overflow-hidden rounded-xl border border-white/10 bg-black sm:w-[330px]">
+                  <video controls playsinline preload="none" poster="/videos/houston-parent-reel-poster.webp" class="block h-[520px] w-full object-cover sm:h-[560px]">
+                    <source src="/videos/houston-parent-reel.mp4" type="video/mp4" />
+                  </video>
+                  <span class="pointer-events-none absolute left-3 top-3 rounded-full bg-joner-red px-3 py-1 font-body text-xs font-bold text-white">What parents say</span>
+                </div>
+              )}
+              <div class="w-[300px] shrink-0 snap-start overflow-hidden rounded-xl border border-white/10 bg-white sm:w-[330px]">
+                <iframe
+                  src={`https://www.instagram.com/p/${id}/embed/`}
+                  title={`JFP training video ${i + 1}`}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  scrolling="no"
+                  allow="autoplay; encrypted-media; picture-in-picture; web-share"
+                  class="block h-[520px] w-full border-0 sm:h-[560px]"
+                ></iframe>
+              </div>
+            </>))}
+          </div>
+          <p class="mt-2 pl-1 text-sm text-white/60">Swipe to see more. Tap a video to play it.</p>
+          <script is:inline>
+            document.querySelectorAll('.jfp-reels-nav').forEach((b) => b.addEventListener('click', () => {
+              const row = document.getElementById('jfp-reels')
+              if (row) row.scrollBy({ left: Number(b.dataset.dir) * 346, behavior: 'smooth' })
+            }))
+          </script>
+        </div>
+        <div class="mb-10">
+          <div class="mb-4 flex items-center gap-3 pl-1">
+            <span class="h-2 w-2 rounded-full bg-joner-red"></span>
+            <span class="font-heading text-[11px] uppercase tracking-[0.32em] text-white/80 sm:text-xs">How we coach</span>
+            <span class="h-px flex-1 bg-gradient-to-r from-white/15 to-transparent"></span>
+            <span class="hidden gap-2 md:flex">
+              <button type="button" class="jfp-yt-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="-1" aria-label="Previous video">&larr;</button>
+              <button type="button" class="jfp-yt-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="1" aria-label="Next video">&rarr;</button>
+            </span>
+          </div>
+          <div id="jfp-yt" class="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-3 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">
+            {coaching.map((v) => (
+              <div class="w-[280px] shrink-0 snap-start sm:w-[340px]">
+                <button type="button" class="jfp-yt-card group relative block aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black" data-yt={v.id} aria-label={`Play: ${v.title}`}>
+                  <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt="" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+                  <span class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></span>
+                  <span class="absolute left-1/2 top-1/2 grid h-12 w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-joner-red text-white shadow-lg">&#9654;</span>
+                </button>
+                <p class="mt-2 line-clamp-2 pl-1 text-sm font-medium leading-snug text-white/90">{v.title}</p>
+              </div>
+            ))}
+          </div>
+          <p class="mt-1 pl-1 text-sm text-white/60">Swipe for more. <a href="https://www.youtube.com/@jonerfootball" target="_blank" rel="noopener noreferrer" class="underline hover:text-white">All videos on YouTube</a></p>
+          <script is:inline>
+            document.querySelectorAll('.jfp-yt-nav').forEach((b) => b.addEventListener('click', () => {
+              const row = document.getElementById('jfp-yt')
+              if (row) row.scrollBy({ left: Number(b.dataset.dir) * 356, behavior: 'smooth' })
+            }))
+            // Tap a still: swap in the player and start it.
+            document.querySelectorAll('.jfp-yt-card').forEach((c) => c.addEventListener('click', () => {
+              const f = document.createElement('iframe')
+              f.src = 'https://www.youtube-nocookie.com/embed/' + c.dataset.yt + '?autoplay=1&rel=0&playsinline=1'
+              f.title = c.getAttribute('aria-label') || 'Joner Football video'
+              f.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
+              f.allowFullscreen = true
+              f.className = 'absolute inset-0 h-full w-full'
+              const box = document.createElement('div')
+              box.className = 'relative aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black'
+              box.appendChild(f)
+              c.replaceWith(box)
+            }))
+          </script>
+        </div>
+        <div class="text-center">
+          <a href="#training-form" class="btn-red text-sm">Book Now</a>
         </div>
       </div>
     </section>
@@ -390,95 +488,6 @@ const sanityPage = await fetchSanityPage('jfp-program')
       </div>
     </section>
 
-    <section id="videos" class="scroll-mt-24 bg-joner-black py-16 md:py-24 relative overflow-hidden">
-      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.12),transparent_60%)] pointer-events-none"></div>
-      <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="mb-12 text-center">
-          <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">Have a look</p>
-          <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
-            Watch the training environment.
-          </h2>
-        </div>
-        <div class="mb-12">
-          <div class="mb-4 flex items-center gap-3 pl-1">
-            <span class="h-2 w-2 rounded-full bg-joner-red"></span>
-            <span class="font-heading text-[11px] uppercase tracking-[0.32em] text-white/80 sm:text-xs">Inside JFP training</span>
-            <span class="h-px flex-1 bg-gradient-to-r from-white/15 to-transparent"></span>
-            <span class="hidden gap-2 md:flex">
-              <button type="button" class="jfp-reels-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="-1" aria-label="Previous video">&larr;</button>
-              <button type="button" class="jfp-reels-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="1" aria-label="Next video">&rarr;</button>
-            </span>
-          </div>
-          <div id="jfp-reels" class="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none;overscroll-behavior-x:contain">
-            {reels.map((id, i) => (
-              <div class="w-[300px] shrink-0 snap-start overflow-hidden rounded-xl border border-white/10 bg-white sm:w-[330px]">
-                <iframe
-                  src={`https://www.instagram.com/p/${id}/embed/`}
-                  title={`JFP training video ${i + 1}`}
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                  scrolling="no"
-                  allow="autoplay; encrypted-media; picture-in-picture; web-share"
-                  class="block h-[520px] w-full border-0 sm:h-[560px]"
-                ></iframe>
-              </div>
-            ))}
-          </div>
-          <p class="mt-2 pl-1 text-sm text-white/60">Swipe to see more. Tap a video to play it.</p>
-          <script is:inline>
-            document.querySelectorAll('.jfp-reels-nav').forEach((b) => b.addEventListener('click', () => {
-              const row = document.getElementById('jfp-reels')
-              if (row) row.scrollBy({ left: Number(b.dataset.dir) * 346, behavior: 'smooth' })
-            }))
-          </script>
-        </div>
-        <div class="mb-10">
-          <div class="mb-4 flex items-center gap-3 pl-1">
-            <span class="h-2 w-2 rounded-full bg-joner-red"></span>
-            <span class="font-heading text-[11px] uppercase tracking-[0.32em] text-white/80 sm:text-xs">How we coach</span>
-            <span class="h-px flex-1 bg-gradient-to-r from-white/15 to-transparent"></span>
-            <span class="hidden gap-2 md:flex">
-              <button type="button" class="jfp-yt-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="-1" aria-label="Previous video">&larr;</button>
-              <button type="button" class="jfp-yt-nav grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white hover:border-white/60" data-dir="1" aria-label="Next video">&rarr;</button>
-            </span>
-          </div>
-          <div id="jfp-yt" class="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-3 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden" style="scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain">
-            {coaching.map((v) => (
-              <div class="w-[280px] shrink-0 snap-start sm:w-[340px]">
-                <button type="button" class="jfp-yt-card group relative block aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black" data-yt={v.id} aria-label={`Play: ${v.title}`}>
-                  <img src={`https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`} alt="" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
-                  <span class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></span>
-                  <span class="absolute left-1/2 top-1/2 grid h-12 w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-joner-red text-white shadow-lg">&#9654;</span>
-                </button>
-                <p class="mt-2 line-clamp-2 pl-1 text-sm font-medium leading-snug text-white/90">{v.title}</p>
-              </div>
-            ))}
-          </div>
-          <p class="mt-1 pl-1 text-sm text-white/60">Swipe for more. <a href="https://www.youtube.com/@jonerfootball" target="_blank" rel="noopener noreferrer" class="underline hover:text-white">All videos on YouTube</a></p>
-          <script is:inline>
-            document.querySelectorAll('.jfp-yt-nav').forEach((b) => b.addEventListener('click', () => {
-              const row = document.getElementById('jfp-yt')
-              if (row) row.scrollBy({ left: Number(b.dataset.dir) * 356, behavior: 'smooth' })
-            }))
-            // Tap a still: swap in the player and start it.
-            document.querySelectorAll('.jfp-yt-card').forEach((c) => c.addEventListener('click', () => {
-              const f = document.createElement('iframe')
-              f.src = 'https://www.youtube-nocookie.com/embed/' + c.dataset.yt + '?autoplay=1&rel=0&playsinline=1'
-              f.title = c.getAttribute('aria-label') || 'Joner Football video'
-              f.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
-              f.allowFullscreen = true
-              f.className = 'absolute inset-0 h-full w-full'
-              const box = document.createElement('div')
-              box.className = 'relative aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black'
-              box.appendChild(f)
-              c.replaceWith(box)
-            }))
-          </script>
-        </div>
-        <div class="text-center">
-          <a href="#training-form" class="btn-red text-sm">Book Now</a>
-        </div>
-      </div>
-    </section>
 
     <section id="training-form" class="scroll-mt-32 bg-joner-black py-16 md:py-24">
       <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">

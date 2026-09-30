@@ -59,7 +59,9 @@ const faqs = [
         <nav class="j-tabs" aria-label="Sections">
           <a href="#timetable" data-tab="timetable" aria-current="page">Timetable</a>
           <a href="/training/jfp-program" target="_blank" rel="noopener">About JFP</a>
+          <a href="#pricing" data-tab="pricing">Pricing</a>
           <a href="#one-to-one" data-tab="one-to-one">1 to 1 coaching</a>
+          <a href="https://www.besteamsport.com.au/collections/joner-football" id="kit-tab" target="_blank" rel="noopener noreferrer">Training kit</a>
           <a href="/jfp-account/" class="j-tab-right">My JFP</a>
         </nav>
 
@@ -74,8 +76,7 @@ const faqs = [
           <div class="j-daybar" id="daybar" role="tablist" aria-label="Day"></div>
           <div id="results" aria-live="polite"></div>
           <div class="j-how">
-            <div><b>Apply</b>Most groups. We reply within 48 hours with a place for the term, or a trial session first.</div>
-            <div><b>Book now</b>Players who fit the group book and pay straight away. The place is yours once it is paid.</div>
+            <div><b>Apply</b>Every group. We reply within 48 hours: a place for the term, a trial session first, or a group that suits better.</div>
             <div><b>Fully booked</b>Join the waitlist and we will be in touch if a place opens.</div>
           </div>
         </section>
@@ -109,6 +110,19 @@ const faqs = [
           <h2 style="margin:26px 0 12px">Questions</h2>
           <div class="j-faq">{faqs.map(([q, a]) => <details><summary>{q}</summary><p>{a}</p></details>)}</div>
           <p class="muted small" style="margin-top:14px"><a href="/training/jfp-program#program" target="_blank" rel="noopener">More about the JFP Program</a></p>
+        </section>
+
+        <section data-panel="pricing" hidden>
+          <h2 style="margin-bottom:6px">Pricing</h2>
+          <p class="muted" style="max-width:640px;margin-bottom:16px">Every price is for the whole term. A place is locked in once it is paid.</p>
+          <div class="j-gets j-prices" id="price-list"></div>
+          <h3 style="margin:22px 0 10px">Good to know</h3>
+          <div class="j-gets">
+            <div><b>Afterpay</b><span>Pay in four with Afterpay, or by card, Apple Pay or Google Pay on Stripe's secure page.</span></div>
+            <div><b>Joining during the term</b><span>You only pay for the sessions left, from the first session you join.</span></div>
+            <div><b>Public holidays</b><span>No session on public holidays, and those weeks are not charged.</span></div>
+            <div><b>Missed sessions</b><span>No make-up sessions, unless the absence is an injury with a medical certificate.</span></div>
+          </div>
         </section>
 
         <section data-panel="one-to-one" hidden>

@@ -283,7 +283,7 @@ const REQUEST_MODES = { application: ['application', 'direct'], waitlist: ['dire
 // The answers to the questions this group asks, nothing else.
 function answersFor(group, input) {
   const out = {}
-  for (const q of group.questions || []) if (QUESTIONS[q]) { const v = clean(input?.[q], 160); if (v) out[q] = v }
+  for (const q of group.questions || []) if (QUESTIONS[q]) { const v = clean(input?.[q], q === 'videos' ? 600 : 160); if (v) out[q] = v }
   return out
 }
 

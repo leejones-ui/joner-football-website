@@ -2,7 +2,7 @@
 // its coach, place, who it is for, and places left, plus the three locations.
 // An explicit allowlist of fields. Never player names, contacts, notes or
 // payments, and no term price: parents see what they pay when they book.
-import { requireParentAccess, getConfig, listGroups, onlineCounts, placesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, periodOf, dayOrder, QUESTIONS, REQUIREMENTS, ONE_TO_ONE } from './_jfp-store.js'
+import { requireParentAccess, getConfig, listGroups, onlineCounts, placesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, periodOf, dayOrder, QUESTIONS, REQUIREMENTS, ONE_TO_ONE, skippedDates } from './_jfp-store.js'
 import { airtableCounts } from './_jfp-airtable.js'
 import { sweepExpiredOffersSometimes } from './_jfp-offers.js'
 
@@ -38,6 +38,7 @@ export function publicGroup(g, config, left) {
     lastDate: dates.at(-1) ? dateLabel(dates.at(-1)) : '',
     sessions: dates.length,
     publicNote: g.publicNote || '',
+    noSession: skippedDates(config, g.day).map((x) => `${dateLabel(x.date)} (${x.reason})`),
   }
 }
 
@@ -60,7 +61,7 @@ export default async function handler(req, res) {
     const locations = config.locations.map((l) => {
       const mine = list.filter((g) => g.locationId === l.id)
       return {
-        id: l.id, name: l.name, address: l.address, maps: l.maps, photo: l.photo, blurb: l.blurb,
+        id: l.id, name: l.name, banner: l.banner || l.name, address: l.address, maps: l.maps, photo: l.photo, blurb: l.blurb,
         groups: mine.length,
         spots: mine.reduce((t, g) => t + Math.max(0, g.placesLeft || 0), 0),
         bookable: mine.filter((g) => g.mode === 'direct' && !g.full).length,
@@ -83,6 +84,17 @@ export default async function handler(req, res) {
       termStartIso: config.termStart,
       weeks: config.weeks,
       trialPriceLabel: formatAud(config.prices.trial),
+      kitUrl: config.kitUrl,
+      // The Pricing tab: Lee's price list, from the Prices tab in the portal.
+      pricing: [
+        { title: 'Small group, full term', price: formatAud(config.prices.group), note: `${config.weeks} weekly 60 minute sessions, ${formatAud(Math.round(config.prices.group / config.weeks))} a session. Small groups by age and level.` },
+        { title: 'Two a week, or two siblings', price: formatAud(config.prices.twoAWeek), note: `For two places: one player training twice a week, or two siblings. ${formatAud(Math.round(config.prices.twoAWeek / 2))} a place.` },
+        { title: 'JFP Pathway, full term', price: formatAud(config.prices.pathway), note: 'Our younger players program: a 45 minute class each week.' },
+        { title: 'Term of 1 to 1 coaching', price: formatAud(config.prices.oneToOneTerm), note: `One private session a week for the term, ${formatAud(Math.round(config.prices.oneToOneTerm / config.weeks))} a session.` },
+        { title: 'Pathway 1 to 1, full term', price: formatAud(config.prices.pathwayOneToOne), note: 'Private 45 minute sessions for younger players, weekly for the term.' },
+        { title: 'One off 1 to 1', price: formatAud(config.prices.oneToOne), note: 'A single private session to work on something specific.' },
+        { title: 'Trial session', price: formatAud(config.prices.trial), note: 'One session in the group before committing. Taken off the term if the player joins.' },
+      ],
       minAge: config.minAge,
       maxAge: config.maxAge,
       locations,

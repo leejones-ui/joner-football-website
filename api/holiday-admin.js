@@ -1,6 +1,8 @@
 // Lee's side of the booking system. One route, one secret, an action switch.
 // Nothing here is reachable without HOLIDAY_ADMIN_SECRET.
 import { rateLimit } from './_security.js'
+import { staffPrincipal, sameOrigin } from './_jfp-people.js'
+import { getConfig as getJfpConfig } from './_jfp-store.js'
 import {
   requireAdmin, getConfig, saveConfig, listSlots, getSlot, upsertSlot, cancelSlot, reopenSlot, setSlotStatus, setSlotField,
   slotOwners, publicSlot, listBookings, getBooking, saveBooking, releaseSlot, clean, sydneyIso, validateSlotInput,
@@ -75,7 +77,12 @@ export default async function handler(req, res) {
 
   const limited = rateLimit(req, { key: 'holiday-admin', limit: 60, windowMs: 60_000 })
   if (!limited.allowed) return fail(res, 429, 'Slow down a moment.')
-  if (!requireAdmin(req, body)) return fail(res, 401, 'Admin secret is missing or wrong.')
+  // Lee and Ligia manage holidays inside the JFP portal with their own
+  // sign-in. The admin secret still works for scripts.
+  if (!requireAdmin(req, body)) {
+    const staff = sameOrigin(req) ? await staffPrincipal(req, await getJfpConfig()) : null
+    if (!staff || staff.role !== 'admin') return fail(res, 401, 'Sign in to the JFP portal as Lee or Ligia.')
+  }
 
   const action = clean(body.action, 40)
   try {
@@ -263,16 +270,23 @@ export default async function handler(req, res) {
         const url = `${siteUrl(req)}/api/holiday-payment-webhook`
         const existing = await stripeFetch('/webhook_endpoints?limit=100')
         const match = (existing.data || []).find((w) => w.url === url)
+        // JFP also needs refunds, so Airtable and the ledger follow refunds made in Stripe.
+        const EVENTS = ['checkout.session.completed', 'checkout.session.expired', 'charge.refunded', 'charge.refund.updated']
         if (match) {
-          return res.status(200).json({ success: true, existing: true, id: match.id, url, status: match.status, enabled_events: match.enabled_events, configured: Boolean(process.env.STRIPE_HOLIDAY_WEBHOOK_SECRET_SYDNEY) })
+          let events = match.enabled_events
+          if (EVENTS.some((e) => !events.includes(e)) && !events.includes('*')) {
+            const body = {}
+            ;[...new Set([...events, ...EVENTS])].forEach((e, i) => { body[`enabled_events[${i}]`] = e })
+            events = (await stripeFetch(`/webhook_endpoints/${match.id}`, { method: 'POST', body })).enabled_events
+          }
+          return res.status(200).json({ success: true, existing: true, id: match.id, url, status: match.status, enabled_events: events, configured: Boolean(process.env.STRIPE_HOLIDAY_WEBHOOK_SECRET_SYDNEY) })
         }
         const created = await stripeFetch('/webhook_endpoints', {
           method: 'POST',
           body: {
             url,
             description: 'Joner Football school holiday bookings',
-            'enabled_events[0]': 'checkout.session.completed',
-            'enabled_events[1]': 'checkout.session.expired',
+            ...Object.fromEntries(EVENTS.map((e, i) => [`enabled_events[${i}]`, e])),
           },
         })
         return res.status(200).json({ success: true, existing: false, id: created.id, url, secret: created.secret, livemode: created.livemode })

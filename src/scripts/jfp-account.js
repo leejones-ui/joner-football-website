@@ -66,6 +66,7 @@ function payPill(pm) {
 
 function render() {
   $('term').textContent = D.term
+  if (D.kitUrl) $('kit-link').href = D.kitUrl
   $('hello').textContent = D.parentName ? `Hi ${D.parentName.split(' ')[0]}` : 'Your players'
   $('who').innerHTML = `Signed in as <b>${esc(D.email)}</b>`
 
@@ -81,7 +82,7 @@ function render() {
       <ol class="j-steps-list" style="margin-top:6px">
         <li><span class="n">${t.needsWaiver ? '1' : '✓'}</span><span style="flex:1;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Waiver</b><br><span class="muted small">${t.needsWaiver ? 'Sign the JFP waiver for this player.' : 'On file, nothing to do.'}</span></span>${t.needsWaiver ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-waiver-for="${esc(t.id)}">Sign the waiver</button>` : ''}</span></li>
         <li><span class="n">2</span><span style="flex:1;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Pay ${esc(t.amountLabel)}</b><br><span class="muted small">${t.reason === 'trial' ? 'Books the trial.' : 'Locks the place in.'} Card, Apple Pay${t.afterpay ? ' or Afterpay' : ''}, on Stripe.</span></span><button type="button" class="j-btn j-btn-dark j-btn-sm" data-pay="${esc(t.id)}" ${t.needsWaiver ? 'disabled title="Sign the waiver first"' : ''}>Pay ${esc(t.amountLabel)}</button></span></li>
-        <li><span class="n">3</span><span><b>Training kit</b><br><span class="muted small">After paying we point you to the training kit.</span></span></li>
+        <li><span class="n">3</span><span style="flex:1;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Training kit</b><br><span class="muted small">Every player trains in the Joner kit. It opens the kit shop in a new tab.</span></span>${D.kitUrl ? `<a class="j-btn j-btn-line j-btn-sm" href="${esc(D.kitUrl)}" target="_blank" rel="noopener noreferrer">Get the kit</a>` : ''}</span></li>
       </ol>
     </div>`).join('')
 
@@ -105,6 +106,23 @@ function render() {
       </article>`).join('')
   }
 
+  // Next term: keep your place (hold or pay in full) or say not returning.
+  $('next-wrap').hidden = !D.nextTerm
+  if (D.nextTerm) {
+    $('next-title').textContent = `${D.nextTerm.name}: keep your place`
+    $('next').innerHTML = D.nextTerm.players.map((x) => `<div class="j-card" style="padding:16px;margin-bottom:10px">
+      <h3>${esc(x.player)}</h3><p class="muted small">Now: ${esc(x.group)}</p>
+      ${x.status === 'paid' ? '<p style="margin-top:8px"><span class="j-pill j-pill-green">Paid in full, locked in</span></p>'
+        : x.status === 'no' ? '<p style="margin-top:8px"><span class="j-pill j-pill-grey">Not returning</span> <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-next="hold" data-row="' + esc(x.rowId) + '">Changed your mind? Hold the place</button></p>'
+        : x.status === 'held' ? `<p style="margin-top:8px"><span class="j-pill j-pill-violet">Place held</span> <span class="muted small">Pay the rest (${esc(x.afterHoldLabel)}) when you know your schedule.</span></p><button type="button" class="j-btn j-btn-dark j-btn-sm" data-next="full" data-row="${esc(x.rowId)}" style="margin-top:8px">Pay the rest</button>`
+        : `<div class="j-outcomes" style="margin-top:10px">
+            <button type="button" class="j-choice" data-next="full" data-row="${esc(x.rowId)}"><span><b>I can commit: pay ${esc(x.fullLabel)}</b><small>The place is locked in for the term. Card, Apple Pay or Afterpay.</small></span></button>
+            <button type="button" class="j-choice" data-next="hold" data-row="${esc(x.rowId)}"><span><b>Hold my place: ${esc(x.holdLabel)}</b><small>Not sure of next term's schedule yet? Non-refundable, and it comes off the term fee.</small></span></button>
+            <button type="button" class="j-choice" data-next="no" data-row="${esc(x.rowId)}"><span><b>Not returning</b><small>We will offer the spot to someone else.</small></span></button>
+          </div>`}
+    </div>`).join('')
+  }
+
   $('requests-wrap').hidden = !D.requests.length
   const kind = { application: 'Application', waitlist: 'Waitlist', enquiry: 'Enquiry' }
   const state = { pending: ['grey', 'Waiting for review, we reply within 48 hours'], offered: ['green', 'Place offered, see To do'], declined: ['grey', 'Not this term'], done: ['grey', 'Closed'], expired: ['grey', 'Offer expired, contact us'] }
@@ -124,6 +142,20 @@ document.addEventListener('click', async (e) => {
     pay.textContent = 'Try again'
     if (r.data.code === 'waiver') { load(); toast('Sign the waiver first.') } else toast(r.data.error || 'Could not start the payment.')
     return
+  }
+  const nx = e.target.closest('[data-next]')
+  if (nx) {
+    const choice = nx.dataset.next
+    if (choice === 'no' && !confirm('Tell us this player is not returning next term?')) return
+    nx.disabled = true
+    const r = await api('/api/jfp-account', { action: 'nextTermChoice', rowId: nx.dataset.row, choice })
+    if (!r.ok) { nx.disabled = false; return toast(r.data.error || 'Could not save that.') }
+    if (choice === 'no') { toast('Thanks for letting us know.'); return load() }
+    const p = await api('/api/jfp-account', { action: 'pay', payreqId: r.data.payreqId })
+    if (p.ok && p.data.url) { location.href = p.data.url; return }
+    nx.disabled = false
+    if (p.data.code === 'waiver') { await load(); return toast('Sign the waiver first, then pay.') }
+    return toast(p.data.error || 'Could not start the payment.')
   }
   const wt = e.target.closest('[data-waiver-for]')
   if (wt) {

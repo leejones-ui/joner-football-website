@@ -14,7 +14,7 @@ import {
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
   coachByAirtableName, sessionDates, dateLabel, formatAud, to24h, clean, newId, audit, listAudit, locationFor, validEmail, ageOn,
   normName, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold,
-  PRODUCTS, QUESTIONS, productFor, priceFor, nextSessionDate, sydneyToday, periodOf,
+  PRODUCTS, QUESTIONS, productFor, priceFor, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS,
 } from './_jfp-store.js'
 import {
   loadRoster, countsFrom, playerAge, waiverFor, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, draftAgeBand,
@@ -23,7 +23,8 @@ import {
 } from './_jfp-airtable.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, PAY_EFFECTS } from './_jfp-finalise.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
-import { sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined } from './_jfp-email.js'
+import { sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite } from './_jfp-email.js'
+import { nextStatuses, setNextStatus, nextPrices, recordNext } from './_jfp-next.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -815,6 +816,50 @@ export default async function handler(req, res) {
       case 'markPaid': return await markPaid(res, principal, body)
       case 'setTrial': return await setTrial(res, principal, body)
       case 'sendPaymentLink': return await sendPaymentLink(req, res, principal, config, body)
+      case 'nextTerm': {
+        const nt = config.nextTerm
+        const [roster, groups, statuses] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name)])
+        const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
+        const players = roster.players.filter((r) => r.holdsPlace && !isTestName(r.player)).map((r) => {
+          const g = byId[r.groupId]
+          const st = statuses[r.id] || null
+          return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Not in a group', groupId: r.groupId, coach: g ? coachById(config, g.coachId)?.name || '' : '', status: st?.status || '', paidCents: st?.paidCents || 0, at: st?.at || '' }
+        }).sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name))
+        const count = (s) => players.filter((p) => p.status === s).length
+        return res.status(200).json({ success: true, nextTerm: nt, prices: nextPrices(config, null), players, totals: { players: players.length, invited: count('invited'), held: count('held'), paid: count('paid'), no: count('no'), none: players.filter((p) => !p.status).length } })
+      }
+      case 'saveNextTerm': {
+        // Statuses are kept under the term's name: no renaming once families have answered.
+        const newName = clean(body.nextTerm?.name, 40)
+        if (newName && newName !== config.nextTerm.name && Object.keys(await nextStatuses(config.nextTerm.name)).length) return fail(res, 409, `Families have already been invited for ${config.nextTerm.name}, so its name cannot change now.`)
+        const next = await saveConfig({ nextTerm: { ...config.nextTerm, ...(body.nextTerm || {}) } })
+        await audit({ by: principal.email, action: 'next.settings', target: 'config', before: config.nextTerm, after: next.nextTerm })
+        return res.status(200).json({ success: true, nextTerm: next.nextTerm })
+      }
+      case 'nextTermInvite': {
+        const nt = config.nextTerm
+        const ids = new Set((Array.isArray(body.rowIds) ? body.rowIds : []).map((x) => clean(x, 30)))
+        if (!ids.size) return fail(res, 400, 'Choose the players to invite.')
+        const [roster, groups, statuses] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name)])
+        const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
+        const rows = roster.players.filter((r) => ids.has(r.id) && r.holdsPlace)
+        let invited = 0, emailed = 0
+        const families = new Map()
+        for (const r of rows) {
+          if (!statuses[r.id]) { await setNextStatus(nt.name, r.id, { status: 'invited' }); await recordNext({ term: nt.name, row: r, group: byId[r.groupId], status: 'invited', by: principal.email }); invited += 1 }
+          // Email only players invited just now, unless staff ask to send again.
+          if (r.email && (!statuses[r.id] || (body.resend === true && statuses[r.id].status === 'invited'))) families.set(r.email, [...(families.get(r.email) || []), r])
+        }
+        if (body.sendEmail === true) {
+          for (const [email, list] of families) {
+            const pr = nextPrices(config, byId[list[0].groupId])
+            await sendNextTermInvite({ to: email, parentName: list[0].parent, players: list.map((r) => ({ name: r.player, group: byId[r.groupId] ? `${byId[r.groupId].day} ${byId[r.groupId].time}, ${locationFor(config, byId[r.groupId].location).name}` : `${r.day} ${r.time}` })), config, url: `${siteUrl(req)}/jfp-account/#next`, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel })
+            emailed += 1
+          }
+        }
+        await audit({ by: principal.email, action: 'next.invite', target: nt.name, after: { players: rows.length, invited, emailed } })
+        return res.status(200).json({ success: true, invited, emailed })
+      }
       case 'changePayreqAmount': return await changePayreqAmount(req, res, principal, config, body)
       case 'offerTerm': return await offerTerm(req, res, principal, config, body)
       case 'pricing': {
@@ -909,11 +954,15 @@ export default async function handler(req, res) {
 
       case 'audit': return res.status(200).json({ success: true, entries: await listAudit(Number(body.limit) || 300) })
 
-      case 'getSettings': return res.status(200).json({ success: true, config })
+      case 'getSettings': {
+        const all = DAYS.slice(0, 7).flatMap((d) => sessionDates({ ...config, skipDates: [] }, d))
+        const lo = all.sort()[0], hi = all.at(-1)
+        return res.status(200).json({ success: true, config, holidays: NSW_HOLIDAYS.map((h) => ({ ...h, inTerm: h.date >= lo && h.date <= hi, label: dateLabel(h.date) })) })
+      }
       case 'saveSettings': {
         const input = body.config || {}
         const patch = {}
-        for (const k of ['term', 'termStart', 'weeks', 'prices', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations', 'kitUrl', 'kitNote']) if (k in input) patch[k] = input[k]
+        for (const k of ['term', 'termStart', 'weeks', 'prices', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations', 'kitUrl', 'kitNote', 'skipDates']) if (k in input) patch[k] = input[k]
         if (patch.prices) patch.prices = { ...config.prices, ...patch.prices }
         if (Array.isArray(input.coaches)) patch.coaches = input.coaches
         if ('superAdmins' in patch) {

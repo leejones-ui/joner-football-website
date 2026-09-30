@@ -47,7 +47,7 @@ async function showApp(q) {
 }
 
 function showTab(tab) {
-  if (!['timetable', 'one-to-one'].includes(tab)) tab = 'timetable'
+  if (!['timetable', 'pricing', 'one-to-one'].includes(tab)) tab = 'timetable'
   document.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== tab })
   document.querySelectorAll('.j-tabs [data-tab]').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'))
 }
@@ -71,6 +71,8 @@ function renderMeta() {
   $('term-name').textContent = d.termLabel || d.term
   $('term-range').textContent = `${d.termRange} · ${d.weeks} weeks`
   $('trial-price').textContent = d.trialPriceLabel
+  if (d.kitUrl) $('kit-tab').href = d.kitUrl
+  $('price-list').innerHTML = (d.pricing || []).map((x) => `<div><b>${esc(x.title)}</b><span class="j-price">${esc(x.price)}</span><span>${esc(x.note)}</span></div>`).join('')
   const loc = $('f-loc')
   if (loc.options.length < 2) {
     for (const l of d.locations) loc.insertAdjacentHTML('beforeend', `<option value="${esc(l.id)}">${esc(l.name)}</option>`)
@@ -89,14 +91,16 @@ function renderLocations() {
   $('locs').innerHTML = S.data.locations.map((l) => {
     const badge = l.full ? 'Fully booked' : `${l.groups} group${l.groups === 1 ? '' : 's'} · ${l.spots} spot${l.spots === 1 ? '' : 's'} left`
     return `<button type="button" class="j-loc" data-loc="${esc(l.id)}" aria-pressed="${S.filters.loc === l.id}">
-      <div class="img">${l.photo ? `<img src="${esc(l.photo)}" alt="" loading="lazy" decoding="async">` : ''}<span class="badge">${esc(badge)}</span></div>
+      <div class="img">${l.photo ? `<img src="${esc(l.photo)}" alt="" loading="lazy" decoding="async">` : ''}<span class="banner">${esc(l.banner || l.name)}</span><span class="badge">${esc(badge)}</span></div>
       <div class="body"><h3><span class="j-dot j-dot-${esc(l.id)}"></span> ${esc(l.name)}</h3><p>${esc(l.blurb)}</p>${l.maps ? `<p><a href="${esc(l.maps)}" target="_blank" rel="noopener noreferrer" data-stop>${esc(l.address)}</a></p>` : ''}</div>
     </button>`
   }).join('')
 }
 
 function renderFilters() {
-  $('f-show').innerHTML = SHOW.map(([v, l]) => `<button type="button" class="j-chip" data-show="${esc(v)}" aria-pressed="${S.filters.show === v}">${esc(l)}</button>`).join('')
+  // No Book now groups right now (Lee: everything is Apply): no Book now filter.
+  const anyBook = S.data?.groups?.some((g) => g.mode === 'direct')
+  $('f-show').innerHTML = SHOW.filter(([v]) => anyBook || v !== 'book').map(([v, l]) => `<button type="button" class="j-chip" data-show="${esc(v)}" aria-pressed="${S.filters.show === v}">${esc(l)}</button>`).join('')
 }
 
 // ---------- the timetable ----------
@@ -129,23 +133,24 @@ function block(g) {
   return `<button type="button" class="j-blk j-blk-${esc(g.locationId)} ${g.full ? 'is-full' : ''}" data-group="${esc(g.id)}">
     ${g.full ? '<span class="j-full-banner">Fully booked</span>' : ''}
     <span class="t">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</span>
+    <span class="a">${esc(agesLabel(g))}</span>
     <span class="c">${esc(g.coachName || 'Joner Football')}</span>
     <span class="c"><span class="j-dot j-dot-${esc(g.locationId)}"></span>${esc(g.location)}</span>
-    <span class="c">${esc(agesLabel(g))}</span>
     <span class="st ${cls}">${esc(text)}</span>
   </button>`
 }
 
-// A group as a card, the look parents liked in the first build: the place
-// photo, the time, who it is for, the coach, places and one button.
+// A group as a card: the time and who it is for stand out, then the coach,
+// the place, places left and one button. The place photos stay in the
+// location banners at the top.
 function card(g) {
   const [cls, text] = status(g)
   const btn = g.mode === 'enquire' ? 'Enquire' : g.full ? 'Join the waitlist' : g.mode === 'direct' ? 'Book' : 'Apply'
   return `<article class="j-group j-card-photo ${g.full ? 'is-full' : ''}">
     <button type="button" class="j-card-hit" data-group="${esc(g.id)}" aria-label="${esc(`${g.day} ${g.time}, ${g.coachName}`)}"></button>
-    <div class="ph">${g.photo ? `<img src="${esc(g.photo)}" alt="" loading="lazy" decoding="async">` : ''}${g.full ? '<span class="j-full-banner">Fully booked</span>' : ''}</div>
+    ${g.full ? '<span class="j-full-banner j-full-top">Fully booked</span>' : ''}
     <div class="bd">
-      <p class="when">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` · ${esc(g.label)}` : ''}</p>
+      <p class="when-big">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</p>
       <p class="who">${esc(agesLabel(g))}</p>
       <p class="meta"><span class="j-dot j-dot-${esc(g.locationId)}"></span>${esc(g.location)} · ${esc(g.coachName || 'Joner Football')} · ${esc(g.durationMin)} min</p>
       ${g.requirements?.length ? `<p class="req">${esc(g.requirements.join(' · '))}</p>` : ''}
@@ -234,7 +239,7 @@ function groupSheet(g) {
     <div class="j-box j-box-grey" style="margin-bottom:16px"><b>Who this group is for</b>${who}</div>
     <h3 style="margin-bottom:6px">How it works</h3>
     <ol class="j-steps-list">${steps.map((t, i) => `<li><span class="n">${i + 1}</span><span>${t}${i === 1 ? outcomes : ''}</span></li>`).join('')}</ol>
-    <p class="muted small" style="margin-top:10px">${esc(g.sessions)} weekly sessions this term, ${esc(g.firstDate)} to ${esc(g.lastDate)}.</p>`
+    <p class="muted small" style="margin-top:10px">${esc(g.sessions)} weekly sessions this term, ${esc(g.firstDate)} to ${esc(g.lastDate)}.${g.noSession?.length ? ` No session on ${esc(g.noSession.join(', '))}.` : ''}</p>`
   const kind = g.full ? 'waitlist' : g.mode === 'direct' ? 'book' : g.mode === 'application' ? 'application' : 'enquiry'
   const label = { waitlist: 'Join the waitlist', book: 'Book this group', application: 'Apply for this group', enquiry: 'Enquire' }[kind]
   sheet.foot.innerHTML = `<button type="button" class="j-btn j-btn-dark j-btn-block j-btn-lg" id="g-go">${label}</button>`
@@ -491,6 +496,7 @@ function stepQuestions() {
     if (q.key === 'playingUp') return `<div class="j-field"><span>${esc(q.label)}</span>${seg('playingUp', ['Own age', 'Playing up', 'Playing down'])}</div>`
     if (q.key === 'trainedBefore') return `<div class="j-field"><span>${esc(q.label)}</span>${seg('trainedBefore', ['Yes', 'No'])}</div>`
     const ph = { club: 'For example Belrose Terrey Hills Raiders', team: 'For example U11 Division 1', position: 'For example winger' }[q.key] || ''
+    if (q.key === 'videos') return `<label class="j-field"><span>${esc(q.label)}</span><textarea class="j-textarea" data-q="videos" placeholder="Paste YouTube, Instagram, Hudl or Google Drive links, one per line" style="min-height:64px">${esc(a.videos || '')}</textarea><small class="muted small" style="display:block;margin-top:4px">New to Joner? A clip or two of the player helps our coaches place them faster.</small></label>`
     return `<label class="j-field"><span>${esc(q.label)}</span><input class="j-input" data-q="${esc(q.key)}" value="${esc(a[q.key] || '')}" placeholder="${esc(ph)}"></label>`
   }
   F.sheet.body.innerHTML = `

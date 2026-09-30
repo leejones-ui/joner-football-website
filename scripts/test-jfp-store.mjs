@@ -185,7 +185,11 @@ test('the calendar file repeats weekly for the whole term', () => {
   const ics = buildIcs({ uid: 'JFP-1', group: { day: 'Tuesday', time: '4:20pm', location: 'Belrose HQ', durationMin: 60 }, config, title: 'JFP Tuesday 4:20pm' })
   assert.match(ics, /DTSTART;TZID=Australia\/Sydney:20261013T162000/)
   assert.match(ics, /DTEND;TZID=Australia\/Sydney:20261013T172000/)
-  assert.match(ics, /RRULE:FREQ=WEEKLY;COUNT=10/)
+  assert.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 10, 'one event per session')
+  const off = buildIcs({ uid: 'x', group: { day: 'Monday', time: '4:20pm', location: 'Belrose HQ' }, config: normaliseConfig({ skipDates: [{ date: '2026-10-19', reason: 'Test holiday' }] }), title: 'JFP' })
+  assert.equal((off.match(/BEGIN:VEVENT/g) || []).length, 9, 'a skipped week is not in the calendar')
+  assert.ok(!off.includes('20261019'))
+  assert.equal(priceFor(normaliseConfig({ skipDates: [{ date: '2026-10-19' }] }), { product: 'group', day: 'Monday', fromIso: '2026-11-02' }).unitCents, Math.round(85000 * 7 / 9 / 100) * 100, 'pro rata counts only real sessions')
 })
 
 test('a fee splits across players to the cent', () => {

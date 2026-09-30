@@ -353,3 +353,15 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .j-req li { margin: 2px 0; }
 .jp-blk .jp-addbtn { display: block; width: 100%; margin-top: 5px; border: 1.5px dashed #D0D5DD; border-radius: 8px; background: transparent; font-size: 11.5px; font-weight: 700; color: var(--j-ink-2); padding: 4px; }
 .jp-blk .jp-addbtn:hover { border-color: var(--j-ink); color: var(--j-ink); }
+
+/* round 4: location banners, time and ages first, no photo per card */
+.j-loc .banner { position: absolute; left: 12px; top: 10px; z-index: 1; font-family: 'Anton', Impact, sans-serif; font-size: 34px; line-height: 1; letter-spacing: .03em; color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,.55); }
+@media (min-width: 720px) { .j-loc .banner { font-size: 42px; } }
+.j-loc .img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.35), transparent 55%); }
+.j-blk .t { font-size: 17px; }
+.j-blk .a { font-size: 13px; font-weight: 750; color: var(--j-ink); margin: 1px 0 2px; }
+.j-card-photo .when-big { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--j-ink); line-height: 1.1; }
+.j-card-photo .who { font-size: 17px; font-weight: 750; }
+.j-card-photo .j-full-top { position: relative; margin: 0; display: block; }
+
+.j-prices .j-price { display: block; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--j-ink); margin: 2px 0 4px; }

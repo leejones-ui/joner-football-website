@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
 
 @import "tailwindcss";
 
@@ -9,7 +9,8 @@
   --color-joner-gray: #1A1A1A;
   --color-joner-gray-light: #F5F5F5;
   --font-heading: 'Anton', Impact, sans-serif;
-  --font-body: 'DM Sans', system-ui, sans-serif;
+  /* Option C (Lee, 2026-09-30): Inter for body and buttons, Anton for headings only. */
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 /* Base */
@@ -18,10 +19,13 @@ html { overflow-x: clip; }
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }
-body { background-color: #0A0A0A; color: white; font-family: 'DM Sans', system-ui, sans-serif; overflow-x: clip; }
+body { background-color: #0A0A0A; color: white; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; overflow-x: clip; }
 h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transform: uppercase; letter-spacing: 0.05em; }
 
 /* Utility classes we use everywhere */
+/* Buttons, Option C (Lee, 2026-09-30): solid and sharp on every screen.
+   No glass blur, no text shadow and no faked bold Anton, which smeared on
+   ordinary laptop screens. Red for the main action, white for the second. */
 .btn-red,
 .btn-outline,
 .nav-download-cta,
@@ -29,104 +33,59 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Anton', Impact, sans-serif; text-transfor
 .story-cta-link,
 .jxfs__btn {
   position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.34);
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.045)),
-    rgba(5,5,5,0.72);
+  border-radius: 12px;
+  border: 2px solid #E8000D;
+  background: #E8000D;
   color: #FFFFFF;
-  font-family: 'Anton', Impact, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  padding: 0.95rem 1.15rem;
+  font-size: 0.95rem;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 0.8rem 1.3rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 48px;
-  line-height: 1.12;
+  line-height: 1.2;
   text-align: center;
   white-space: normal !important;
   overflow-wrap: anywhere;
   min-width: 0;
   max-width: 100%;
   text-decoration: none;
-  backdrop-filter: blur(14px) saturate(1.15);
-  -webkit-backdrop-filter: blur(14px) saturate(1.15);
-  text-shadow: 0 1px 10px rgba(0,0,0,0.6);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.26),
-    inset 0 -18px 30px rgba(0,0,0,0.28),
-    0 18px 38px rgba(0,0,0,0.42),
-    0 0 0 1px rgba(232,0,13,0.18);
-  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background 140ms ease, color 140ms ease;
+  text-shadow: none;
+  box-shadow: none;
+  transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease, color 120ms ease;
   cursor: pointer;
 }
-.btn-red::before,
-.btn-outline::before,
-.nav-download-cta::before,
-.hub-btn::before,
-.story-cta-link::before,
-.jxfs__btn::before {
-  content: '';
-  position: absolute;
-  inset: 1px;
-  z-index: -1;
-  border-radius: inherit;
-  background:
-    radial-gradient(circle at 28% 12%, rgba(255,255,255,0.34), transparent 26%),
-    linear-gradient(90deg, rgba(232,0,13,0.26), transparent 46%, rgba(255,255,255,0.08));
-  opacity: 0.9;
-}
-.btn-red::after,
-.btn-outline::after,
-.nav-download-cta::after,
-.hub-btn::after,
-.story-cta-link::after,
-.jxfs__btn::after {
-  content: none;
-}
+.btn-red::before, .btn-outline::before, .nav-download-cta::before, .hub-btn::before, .story-cta-link::before, .jxfs__btn::before,
+.btn-red::after, .btn-outline::after, .nav-download-cta::after, .hub-btn::after, .story-cta-link::after, .jxfs__btn::after { content: none; }
 .btn-red:hover,
-.btn-outline:hover,
 .nav-download-cta:hover,
 .hub-btn:hover,
 .story-cta-link:hover,
 .jxfs__btn:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255,255,255,0.58);
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.24), rgba(255,255,255,0.07)),
-    rgba(5,5,5,0.78);
+  transform: translateY(-1px);
+  background: #C4000B;
+  border-color: #C4000B;
   color: #FFFFFF;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.34),
-    inset 0 -18px 30px rgba(0,0,0,0.32),
-    0 22px 46px rgba(0,0,0,0.48),
-    0 0 0 1px rgba(232,0,13,0.36),
-    0 0 26px rgba(232,0,13,0.22);
 }
-.btn-red:active,
-.btn-outline:active,
-.nav-download-cta:active,
-.hub-btn:active,
-.story-cta-link:active,
-.jxfs__btn:active {
-  transform: translateY(0);
-}
-.btn-red,
-.nav-download-cta,
-.hub-btn--red {
-  border-color: rgba(232,0,13,0.72);
-}
+.btn-red:active, .btn-outline:active, .nav-download-cta:active, .hub-btn:active, .story-cta-link:active, .jxfs__btn:active { transform: translateY(0); }
 .btn-outline,
 .hub-btn--outline {
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.035)),
-    rgba(5,5,5,0.42);
-  border-color: rgba(255,255,255,0.42);
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+  color: #0A0A0A;
 }
+.btn-outline:hover,
+.hub-btn--outline:hover {
+  transform: translateY(-1px);
+  background: #E5E7EB;
+  border-color: #E5E7EB;
+  color: #0A0A0A;
+}
+.btn-red:focus-visible, .btn-outline:focus-visible, .nav-download-cta:focus-visible, .hub-btn:focus-visible, .story-cta-link:focus-visible, .jxfs__btn:focus-visible { outline: 3px solid #FFFFFF; outline-offset: 2px; }
 
 .section-heading {
   font-family: 'Anton', Impact, sans-serif;
@@ -190,8 +149,8 @@ select::-ms-expand {
   .hub-btn,
   .story-cta-link,
   .jxfs__btn {
-    letter-spacing: 0.08em;
-    font-size: 0.875rem;
+    letter-spacing: 0;
+    font-size: 0.9rem;
     line-height: 1.16;
     padding-left: 0.95rem;
     padding-right: 0.95rem;
@@ -212,17 +171,22 @@ select::-ms-expand {
 .jf-btn-dark { background: #fff; color: #0A0A0A; }
 .jf-btn-dark:hover { background: #E8000D; color: #fff; }
 
-/* Clean hover-to-red buttons on every page EXCEPT the home page (home keeps its existing style). */
+/* Option C everywhere (Lee, 2026-09-30): red main buttons, white second
+   buttons, sharp Inter text, no letter spacing tricks, no shadows. These
+   override older page-level button styles. */
 body .btn-red,
-body .btn-outline,
 body .nav-download-cta,
 body .hub-btn,
 body .story-cta-link:not(.store-badge),
 body .jxfs__btn {
-  background: #FFFFFF !important;
-  color: #0A0A0A !important;
-  border: 2px solid #FFFFFF !important;
-  letter-spacing: .12em;
+  background: #E8000D !important;
+  color: #FFFFFF !important;
+  border: 2px solid #E8000D !important;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  border-radius: 12px !important;
   text-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -235,44 +199,50 @@ body .hub-btn::before,
 body .story-cta-link:not(.store-badge)::before,
 body .jxfs__btn::before { content: none !important; }
 body .btn-red:hover,
-body .btn-outline:hover,
 body .nav-download-cta:hover,
 body .hub-btn:hover,
 body .story-cta-link:not(.store-badge):hover,
 body .jxfs__btn:hover {
-  background: #E8000D !important;
-  border-color: #E8000D !important;
+  background: #C4000B !important;
+  border-color: #C4000B !important;
   color: #FFFFFF !important;
   transform: translateY(-1px);
-  box-shadow: none !important;
 }
-/* Outline variants stay see-through until hover */
 body .btn-outline,
 body .hub-btn--outline {
-  background: transparent !important;
-  border-color: rgba(255,255,255,.7) !important;
-  color: #FFFFFF !important;
+  background: #FFFFFF !important;
+  border: 2px solid #FFFFFF !important;
+  color: #0A0A0A !important;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  border-radius: 12px !important;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
 }
 body .btn-outline:hover,
 body .hub-btn--outline:hover {
-  background: #E8000D !important;
-  border-color: #E8000D !important;
-  color: #FFFFFF !important;
+  background: #E5E7EB !important;
+  border-color: #E5E7EB !important;
+  color: #0A0A0A !important;
+  transform: translateY(-1px);
 }
 
-/* Light-section CTA safety: white buttons disappear on white cards/sections. */
-body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-red, .nav-download-cta, .hub-btn, .story-cta-link:not(.store-badge), .jxfs__btn),
+/* On white sections the second button turns dark so it never disappears.
+   The red main button already stands out on white. */
 body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-outline, .hub-btn--outline),
-body :is(.text-joner-black, .text-black) :is(.btn-red, .btn-outline) {
+body :is(.text-joner-black, .text-black) .btn-outline {
   background: #0A0A0A !important;
   border-color: #0A0A0A !important;
   color: #FFFFFF !important;
-  box-shadow: 0 12px 26px rgba(0,0,0,0.18) !important;
 }
-body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-red, .btn-outline, .nav-download-cta, .hub-btn, .story-cta-link:not(.store-badge), .jxfs__btn):hover,
-body :is(.text-joner-black, .text-black) :is(.btn-red, .btn-outline):hover {
-  background: #E8000D !important;
-  border-color: #E8000D !important;
+body :is(.bg-white, .bg-joner-white, .bg-gray-50, .bg-gray-100, .bg-joner-gray-light, .join-live-page, .p100-section--white, .hou-info, .jj-page, .jj-section--light, .jj-section--white, .jj-form-panel, .pricing-card, .white-card) :is(.btn-outline, .hub-btn--outline):hover,
+body :is(.text-joner-black, .text-black) .btn-outline:hover {
+  background: #1F2937 !important;
+  border-color: #1F2937 !important;
   color: #FFFFFF !important;
 }
 

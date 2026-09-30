@@ -23,6 +23,7 @@ import {
   createTerm4Rows, findTerm4ByTag, updateTerm4Rows, getTerm4Row, createLedgerRow, findLedgerByPayment, createWaiverRows, waiverFields,
   findWaiversByTag, appendNote, bustRosterCache, loadRoster,
 } from './_jfp-airtable.js'
+import { recordNext, setNextStatus, nextStatuses } from './_jfp-next.js'
 import { sendParentConfirmation, sendStaffAlert, sendCoachAlert, sendPaymentReceipt, sendPaymentStaffAlert, sendAttentionAlert } from './_jfp-email.js'
 
 const LEASE_SECONDS = 120
@@ -229,6 +230,22 @@ async function runPayreqEffects(payreq, retry = new Set()) {
   const save = savePayreq
   for (const k of retry) delete payreq.effects?.[k]
   await runEffect('airtable', payreq, save, async () => {
+    // Next term: no Term 4 row changes; the place is recorded as held or paid.
+    if (payreq.next) {
+      const row = await getTerm4Row(payreq.next.rowId)
+      const before = (await nextStatuses(payreq.next.term))[payreq.next.rowId]
+      // The hold already paid is saved on the link when it is made, so a retry
+      // or repair records the same total every time.
+      const paid = (payreq.paidCents ?? payreq.amountCents) + Number(payreq.next.holdPaidCents || 0)
+      // A link that is no longer this player's current one was paid anyway:
+      // still recorded, flagged for a person to look at.
+      if (before?.payreqId && before.payreqId !== payreq.id && ['held', 'paid'].includes(before.status)) await flagAttention(payreq, 'second-payment', savePayreq, payreq.playerNames.join(', '))
+      const status = payreq.next.choice === 'hold' ? 'held' : 'paid'
+      const who = row || { id: payreq.next.rowId, player: payreq.playerNames[0], parent: payreq.parentName, email: payreq.email, phone: '', coach: '' }
+      await recordNext({ term: payreq.next.term, row: who, group, status, amountCents: paid, holdCents: status === 'held' ? paid : null, paymentId: payreq.stripePaymentIntentId || payreq.id, note: status === 'held' ? `Non-refundable hold, comes off the ${payreq.next.term} fee.` : `${payreq.next.term} paid in full.`, by: payreq.email })
+      await setNextStatus(payreq.next.term, payreq.next.rowId, { status, payreqId: payreq.id, paidCents: paid })
+      return
+    }
     const rows = []
     for (const id of payreq.term4Ids) {
       const row = await getTerm4Row(id)
@@ -261,6 +278,8 @@ async function runPayreqEffects(payreq, retry = new Set()) {
       } })
     })
     if (updates.length) await updateTerm4Rows(updates)
+    // What this payment put on each row, so a later refund takes back only that.
+    payreq.rowShares = Object.fromEntries(rows.map((row, i) => [row.id, share[i]]))
     // More paid than the rows cost (two links paid for one player): flag it.
     const over = rows.filter((row, i) => !row.notes.includes(`[PAID:${payreq.id}]`) && cents(row.paidAud) + share[i] > (cents(row.feeAud) || Infinity))
     if (over.length) await flagAttention(payreq, 'overpaid', savePayreq, over.map((r) => r.player).join(', '))
@@ -270,7 +289,7 @@ async function runPayreqEffects(payreq, retry = new Set()) {
     const existing = await findLedgerByPayment(paymentId)
     if (existing.length) { payreq.ledgerId = existing[0]; return }
     payreq.ledgerId = await createLedgerRow({
-      paymentId, config, playerNames: payreq.playerNames, amountCents: payreq.paidCents ?? payreq.amountCents, paidAt: payreq.paidAt,
+      paymentId, config: payreq.next ? { ...config, term: payreq.next.term } : config, playerNames: payreq.playerNames, amountCents: payreq.paidCents ?? payreq.amountCents, paidAt: payreq.paidAt,
       sourceIds: payreq.term4Ids, sessionId: payreq.stripeSessionId, intentId: payreq.stripePaymentIntentId,
       notes: `JFP payment request ${payreq.id} (${payreq.reason || 'payment'})${payreq.stripeFeeCents != null ? `. Stripe fee A$${(payreq.stripeFeeCents / 100).toFixed(2)}` : ''}`,
     })

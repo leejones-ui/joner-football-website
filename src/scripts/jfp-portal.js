@@ -31,7 +31,7 @@ async function showSignIn() {
 
 function tabs() {
   if (P.user.role !== 'admin') return [['program', 'Program'], ['coach', 'My sessions']]
-  return [['board', 'Timetable'], ['requests', 'Requests'], ['payments', 'Payment links'], ['prices', 'Prices'], ['groups', 'Groups and rules'], ['money', 'Money'], ['coach', 'Registers'], ['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]
+  return [['board', 'Timetable'], ['requests', 'Requests'], ['payments', 'Payment links'], ['holiday', 'Holiday training'], ['next', 'Next term'], ['prices', 'Prices'], ['groups', 'Groups and rules'], ['money', 'Money'], ['coach', 'Registers'], ['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]
 }
 
 function start() {
@@ -52,7 +52,7 @@ async function go(tab) {
   renderNav()
   view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
-  const fn = { board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = { next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   view().focus({ preventScroll: true })
 }
@@ -598,6 +598,50 @@ function pickGroupThenAdd() {
   box.querySelector('#pg-go').addEventListener('click', () => { const g = P.board.groups.find((x) => x.id === box.querySelector('#pg-g').value); closeModal(); if (g) addPlayerModal(g) })
 }
 
+// ---------- next term: hold your place ----------
+
+async function renderNext() {
+  const d = await need(await post('nextTerm'))
+  const nt = d.nextTerm
+  const word = { invited: ['blue', 'Invited'], held: ['violet', 'Held'], paid: ['green', 'Paid in full'], no: ['grey', 'Not returning'] }
+  const t = d.totals
+  view().innerHTML = `<div class="jp-head"><div><h1>Next term</h1><p class="muted small">Current families keep their place before ${esc(nt.name)} opens to everyone: hold it with a non-refundable fee (taken off the term), pay in full, or say they are not returning. Everything is saved in Airtable under "Next term holds".</p></div></div>
+    <div class="j-card" style="padding:16px;margin-bottom:14px;max-width:760px">
+      <div class="j-two"><label class="j-field"><span>Next term</span><input class="j-input" id="nt-name" value="${esc(nt.name)}"></label><label class="j-field"><span>Hold fee (A$, non-refundable)</span><input class="j-input" id="nt-hold" inputmode="decimal" value="${nt.holdCents / 100}"></label></div>
+      <label class="j-check"><input type="checkbox" id="nt-open" ${nt.open ? 'checked' : ''}> <span><b>Open to every current family</b> in My JFP (otherwise only the players you invite below).</span></label>
+      <p class="muted small">Full term is ${esc(d.prices.fullLabel)} (from Prices). A held place pays ${esc(d.prices.afterHoldLabel)} more later.</p>
+      <button type="button" class="j-btn j-btn-dark j-btn-sm" id="nt-save" style="margin-top:8px">Save</button>
+    </div>
+    <div class="jp-kpis"><div class="jp-kpi"><span>Players this term</span><b>${t.players}</b></div><div class="jp-kpi"><span>Held</span><b>${t.held}</b></div><div class="jp-kpi"><span>Paid in full</span><b>${t.paid}</b></div><div class="jp-kpi"><span>Invited, no answer</span><b>${t.invited}</b></div><div class="jp-kpi"><span>Not returning</span><b>${t.no}</b></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><button type="button" class="j-btn j-btn-line j-btn-sm" id="nt-all">Select everyone not invited</button><label class="j-check" style="padding:0"><input type="checkbox" id="nt-email" checked> <span>Email the families</span></label><button type="button" class="j-btn j-btn-dark j-btn-sm" id="nt-invite">Invite selected</button></div>
+    <div class="jp-scroll"><table class="jp-table"><thead><tr><th></th><th>Player</th><th>Group now</th><th>${esc(nt.name)}</th></tr></thead><tbody>
+      ${d.players.map((p) => `<tr><td><input type="checkbox" data-nt="${esc(p.rowId)}" ${p.status ? 'disabled' : ''}></td><td><b>${esc(p.name)}</b><br><span class="muted small">${esc(p.parent)} · ${esc(p.email || 'no email')}</span></td><td>${esc(p.group)}${p.coach ? `<br><span class="muted small">Coach ${esc(p.coach)}</span>` : ''}</td><td>${p.status ? `<span class="j-pill j-pill-${word[p.status][0]}">${word[p.status][1]}</span>${p.paidCents ? ` <span class="muted small">${esc(money(p.paidCents))}</span>` : ''}` : '<span class="muted small">Not invited</span>'}</td></tr>`).join('')}
+    </tbody></table></div>`
+  $('nt-save').addEventListener('click', async () => {
+    const r = await post('saveNextTerm', { nextTerm: { name: $('nt-name').value.trim(), holdCents: Math.round(Number($('nt-hold').value) * 100), open: $('nt-open').checked } })
+    toast(r.ok ? 'Saved' : r.data.error); if (r.ok) renderNext()
+  })
+  $('nt-all').addEventListener('click', () => view().querySelectorAll('[data-nt]:not(:disabled)').forEach((c) => { c.checked = true }))
+  $('nt-invite').addEventListener('click', async (e) => {
+    const rowIds = [...view().querySelectorAll('[data-nt]:checked')].map((c) => c.dataset.nt)
+    if (!rowIds.length) return toast('Tick the players to invite.')
+    if (!(await confirmBox(`Invite ${rowIds.length} player${rowIds.length === 1 ? '' : 's'} to keep their place for ${esc(nt.name)}?${$('nt-email').checked ? ' Their families are emailed.' : ' No email is sent.'}`, { ok: 'Invite' }))) return
+    e.target.disabled = true
+    const r = await post('nextTermInvite', { rowIds, sendEmail: $('nt-email').checked })
+    e.target.disabled = false
+    toast(r.ok ? `${r.data.invited} invited${r.data.emailed ? `, ${r.data.emailed} famil${r.data.emailed === 1 ? 'y' : 'ies'} emailed` : ''}` : r.data.error); renderNext()
+  })
+}
+
+// ---------- holiday training ----------
+
+// The holiday admin (slots, bookings, prices, coaches), signed in with the
+// portal login. The parent holiday booking page is unchanged.
+async function renderHoliday() {
+  view().innerHTML = `<div class="jp-head"><div><h1>Holiday training</h1><p class="muted small">School holiday sessions: slots, bookings, prices and coaches. Parents still book at <a href="/holiday-bookings/" target="_blank" rel="noopener">jonerfootball.com/holiday-bookings</a>.</p></div></div>
+    <iframe src="/jfp-portal/holiday/" title="Holiday training" style="width:100%;height:calc(100vh - 170px);min-height:640px;border:1px solid var(--j-line);border-radius:14px;background:#0A0A0A"></iframe>`
+}
+
 // ---------- coach: the whole program ----------
 
 async function renderProgram() {
@@ -636,7 +680,7 @@ function groupModal(g) {
   const d = P.groups
   const v = g || { day: 'Monday', time: '4:20pm', location: 'Belrose HQ', coachId: '', extraCoachIds: [], capacity: 4, mode: 'application', label: 'Small group', durationMin: 60, minAge: '', maxAge: '', ageStatus: 'draft', girlsOnly: 'no', publicNote: '', trials: true, questions: ['club', 'team', 'playingUp', 'trainedBefore'], product: 'group', byCoach: false }
   const REQS = [['club', 'Plays club football this season'], ['npl', 'Plays NPL, or Division 1 club football'], ['rep', 'In a representative, NPL or academy squad'], ['high', 'High level players only'], ['committed', 'Can commit to every session this term'], ['trialNew', 'New players trial first'], ['coach', 'By coach invitation or recommendation']]
-  const QS = [['club', 'Club they play for'], ['team', 'Team and age group'], ['playingUp', 'Playing up or down'], ['trainedBefore', 'Trained with Joner before'], ['position', 'Position']]
+  const QS = [['club', 'Club they play for'], ['team', 'Team and age group'], ['playingUp', 'Playing up or down'], ['trainedBefore', 'Trained with Joner before'], ['position', 'Position'], ['videos', 'Links to training or game videos']]
   const PRODS = [['group', 'Term, small group'], ['pathway', 'JFP Pathway'], ['oneToOneTerm', 'Term of 1 to 1s'], ['pathwayOneToOne', 'Pathway 1 to 1']]
   const opt = (list, cur) => list.map(([val, label]) => `<option value="${esc(val)}" ${String(cur) === String(val) ? 'selected' : ''}>${esc(label)}</option>`).join('')
   const box = modal(`<h2 style="margin-bottom:12px">${g ? 'Edit group' : 'New group'}</h2>
@@ -677,7 +721,9 @@ function groupModal(g) {
 
 // ---------- requests ----------
 
-const ANSWER = { club: 'Club', team: 'Team', playingUp: 'Playing', trainedBefore: 'Trained with Joner', position: 'Position' }
+const ANSWER = { club: 'Club', team: 'Team', playingUp: 'Playing', trainedBefore: 'Trained with Joner', position: 'Position', videos: 'Videos' }
+// Links a family pasted, made clickable (only http and https).
+const linksHtml = (text) => String(text || '').split(/\s+/).filter((u) => /^https?:\/\/[^\s<>"']+$/.test(u)).map((u) => `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer nofollow">${esc(u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40))}</a>`).join(' · ')
 
 async function renderRequests() {
   const d = await need(await post('requests'))
@@ -693,7 +739,7 @@ async function renderRequests() {
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><span class="j-pill j-pill-${kind[r.kind]?.[0] || 'grey'}">${esc(kind[r.kind]?.[1] || r.kind)}</span> <b style="margin-left:6px">${esc(r.players.map((p) => `${p.name}${p.age != null ? `, ${p.age}` : ''}`).join(' and '))}</b>
         <p class="muted small" style="margin-top:4px">Wants <b>${esc(r.group)}</b> · ${esc(new Date(r.createdAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</p></div>
         <span class="j-pill j-pill-grey">${esc(r.status === 'offered' ? (r.offer === 'trial' ? 'Trial offered' : 'Place offered') : ({ pending: 'Waiting', declined: 'Declined', done: 'Done', expired: 'Offer expired' }[r.status] || r.status))}</span></div>
-      ${Object.keys(r.answers || {}).length ? `<p class="small" style="margin-top:8px">${Object.entries(r.answers).map(([k, v]) => `<span class="muted">${esc(ANSWER[k] || k)}:</span> <b>${esc(v)}</b>`).join(' · ')}</p>` : r.club ? `<p class="small" style="margin-top:8px"><span class="muted">Club:</span> <b>${esc(r.club)}</b></p>` : ''}
+      ${Object.keys(r.answers || {}).length ? `<p class="small" style="margin-top:8px">${Object.entries(r.answers).filter(([k]) => k !== 'videos').map(([k, v]) => `<span class="muted">${esc(ANSWER[k] || k)}:</span> <b>${esc(v)}</b>`).join(' · ')}${r.answers.videos ? `<br><span class="muted">Videos:</span> ${linksHtml(r.answers.videos) || esc(r.answers.videos)}` : ''}</p>` : r.club ? `<p class="small" style="margin-top:8px"><span class="muted">Club:</span> <b>${esc(r.club)}</b></p>` : ''}
       <p class="small" style="margin-top:6px">${esc(r.parentName)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a> · <a href="tel:${esc(r.mobile)}">${esc(r.mobile)}</a></p>
       ${r.message ? `<p class="small j-box j-box-grey" style="margin-top:8px">${esc(r.message)}</p>` : ''}
       ${r.players.some((p) => p.isNew) ? `<p class="muted small" style="margin-top:6px">New to JFP${r.players.some((p) => p.waiver) ? ', waiver signed' : ''}.</p>` : r.players.some((p) => p.waiver) ? '<p class="muted small" style="margin-top:6px">Waiver signed with the application.</p>' : ''}
@@ -989,7 +1035,9 @@ async function renderAudit() {
 }
 
 async function renderSettings() {
-  const c = (await need(await post('getSettings'))).config
+  const sd = await need(await post('getSettings'))
+  const c = sd.config
+  let skips = [...(c.skipDates || [])]
   view().innerHTML = `<div class="jp-head"><div><h1>Settings</h1><p class="muted small">Term details, who can sign in, and alerts.</p></div></div>
     <div class="j-card" style="padding:18px;max-width:760px">
       <h2 style="margin-bottom:12px">Term</h2>
@@ -1000,6 +1048,14 @@ async function renderSettings() {
       <label class="j-field"><span>Booking alert emails (Lee always gets them), one per line</span><textarea class="j-textarea" id="s-staff">${esc(c.staffEmails.join('\n'))}</textarea></label>
       <label class="j-check"><input type="checkbox" id="s-coaches-on" ${c.coachLoginsEnabled ? 'checked' : ''}> <span><b>Coach logins on.</b> Coaches with an email below can sign in and see the program timetable (names and ages) and their own registers. Never money or parent contact details. Nobody is emailed when you switch this on; tell them to go to jonerfootball.com/jfp-portal.</span></label>
       ${c.coaches.map((co) => `<div class="j-two"><label class="j-field"><span>Coach ${esc(co.name)} (Airtable: ${esc(co.airtableName)})</span><input class="j-input" type="email" data-coach="${esc(co.id)}" value="${esc(co.email)}" placeholder="No login"></label><span></span></div>`).join('')}
+      <h2 style="margin:16px 0 6px">No session dates</h2>
+      <p class="muted small" style="margin-bottom:10px">Public holidays and cancelled sessions. Groups on that day skip it: their dates, calendars and pro rata count only real sessions. Save settings after changing.</p>
+      <div id="s-skips"></div>
+      <div class="j-two" style="margin-top:8px"><label class="j-field"><span>Date</span><input class="j-input" type="date" id="s-skip-date"></label><label class="j-field"><span>Why</span><input class="j-input" id="s-skip-why" placeholder="Public holiday, coach away..."></label></div>
+      <button type="button" class="j-btn j-btn-line j-btn-sm" id="s-skip-add">Add date</button>
+      <p class="small" style="margin:12px 0 6px"><b>NSW public holidays</b> <span class="muted">(tap to add)</span></p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="s-hols">${sd.holidays.map((h) => `<button type="button" class="j-chip" data-hol="${esc(h.date)}" data-why="${esc(h.reason)}">${esc(h.label)} ${esc(h.reason)}${h.inTerm ? ' · this term' : ''}</button>`).join('')}</div>
+      <p class="muted small" style="margin-top:6px">${sd.holidays.some((h) => h.inTerm) ? 'Some public holidays fall in this term.' : 'No NSW public holidays fall in this term.'}</p>
       <h2 style="margin:16px 0 12px">Training kit</h2>
       <label class="j-field"><span>Kit shop link (families go here after paying)</span><input class="j-input" id="s-kit" value="${esc(c.kitUrl || '')}" placeholder="https://"></label>
       <label class="j-field"><span>Line above the button</span><input class="j-input" id="s-kitnote" value="${esc(c.kitNote || '')}" maxlength="300"></label>
@@ -1011,11 +1067,18 @@ async function renderSettings() {
       <p class="j-err" id="s-err" hidden></p>
       <button type="button" class="j-btn j-btn-dark j-btn-lg" id="s-save" style="margin-top:8px">Save settings</button>
     </div>`
+  const drawSkips = () => {
+    $('s-skips').innerHTML = skips.length ? skips.map((x, i) => `<div class="jp-player" style="cursor:default"><span><b>${esc(x.date)}</b> ${esc(x.reason)}</span><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-skip-rm="${i}">Remove</button></div>`).join('') : '<p class="muted small">None. Every week of the term runs.</p>'
+    $('s-skips').querySelectorAll('[data-skip-rm]').forEach((b) => b.addEventListener('click', () => { skips.splice(Number(b.dataset.skipRm), 1); drawSkips() }))
+  }
+  drawSkips()
+  $('s-skip-add').addEventListener('click', () => { const d = $('s-skip-date').value; if (!d) return toast('Choose a date.'); skips = [...skips.filter((x) => x.date !== d), { date: d, reason: $('s-skip-why').value.trim() || 'No session' }].sort((a, b) => a.date.localeCompare(b.date)); drawSkips() })
+  $('s-hols').addEventListener('click', (e) => { const b = e.target.closest('[data-hol]'); if (!b) return; skips = [...skips.filter((x) => x.date !== b.dataset.hol), { date: b.dataset.hol, reason: b.dataset.why }].sort((a, c2) => a.date.localeCompare(c2.date)); drawSkips(); toast(`${b.dataset.why} added. Save settings to apply.`) })
   $('s-save').addEventListener('click', async () => {
     const lines = (id) => $(id).value.split(/\s*[\n,]\s*/).map((s) => s.trim()).filter(Boolean)
     const config = {
       term: $('s-term').value.trim(), termStart: $('s-start').value, weeks: Number($('s-weeks').value),
-      superAdmins: lines('s-admins'), staffEmails: lines('s-staff'), coachLoginsEnabled: $('s-coaches-on').checked, waiverUrl: $('s-waiver').value.trim(), kitUrl: $('s-kit').value.trim(), kitNote: $('s-kitnote').value.trim(),
+      superAdmins: lines('s-admins'), staffEmails: lines('s-staff'), coachLoginsEnabled: $('s-coaches-on').checked, waiverUrl: $('s-waiver').value.trim(), kitUrl: $('s-kit').value.trim(), kitNote: $('s-kitnote').value.trim(), skipDates: skips,
       coaches: c.coaches.map((co) => ({ ...co, email: view().querySelector(`[data-coach="${CSS.escape(co.id)}"]`).value.trim() })),
       locations: c.locations.map((l) => { const box = view().querySelector(`[data-loc="${CSS.escape(l.id)}"]`); const v = { ...l }; box.querySelectorAll('[data-lf]').forEach((i) => { v[i.dataset.lf] = i.value.trim() }); return v }),
     }

@@ -190,7 +190,7 @@ const emails = []
 // A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
 // JSON file ({ term4, term3, waiver, ledger } record arrays) to load another,
 // for example an anonymised copy of the real roster for screenshots.
-const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [] }
+const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [] }
 let recSeq = 1
 const recId = () => `rec${String(recSeq++).padStart(14, '0')}`
 function seedRow(day, time, location, coach, type = 'JFP 10 weeks', confirmation = 'Confirmed', extra = {}) {
@@ -219,7 +219,7 @@ if (process.env.JFP_SEED && fs.existsSync(process.env.JFP_SEED)) {
   airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': 'Sasha Returning', 'Parent Email': 'returning@example.com', 'Date of Birth': '2016-06-10', 'Term': 'Term 3 2026', 'Signed Date': '2026-07-14', 'Waiver Accepted - Full Terms': true } })
 }
 
-const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped' }
+const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds' }
 function airtableResponse(url, init) {
   const u = new URL(url)
   const parts = u.pathname.split('/').slice(3).map(decodeURIComponent) // [table, recordId?]
@@ -263,6 +263,8 @@ function airtableResponse(url, init) {
   let out = rows
   const find = formula.match(/^FIND\("(.+)", \{(.+)\}\)$/)
   if (find) { const needle = find[1].replace(/\\(["\\])/g, '$1'); out = rows.filter((r) => String(r.fields[find[2]] || '').includes(needle)) }
+  const and = formula.match(/^AND\(\{(.+?)\} = "(.*?)", \{(.+?)\} = "(.*?)"\)$/)
+  if (and) out = rows.filter((r) => r.fields[and[1]] === and[2] && r.fields[and[3]] === and[4])
   const eq = formula.match(/^\{(Payment ID|Attendance ID)\} = "(.+)"$/)
   if (eq) out = rows.filter((r) => r.fields[eq[1]] === eq[2])
   const size = Number(u.searchParams.get('pageSize') || 100)
@@ -307,7 +309,14 @@ globalThis.fetch = async (url, init = {}) => {
     const pi = decodeURIComponent(u.split('/payment_intents/')[1].split('?')[0])
     const s = [...sessions.values()].find((x) => x.payment_intent === pi)
     if (!s) return json({ error: { message: 'No such payment_intent' } }, 404)
-    return json({ id: pi, latest_charge: { balance_transaction: { fee: Math.round(s.amount_total * 0.0175) + 30 } } })
+    return json({ id: pi, metadata: s.metadata || {}, latest_charge: { balance_transaction: { fee: Math.round(s.amount_total * 0.0175) + 30 } } })
+  }
+  if (u.startsWith('https://api.stripe.com/v1/charges/')) {
+    const ch = decodeURIComponent(u.split('/charges/')[1].split('?')[0])
+    const s = [...sessions.values()].find((x) => x.payment_intent && `ch_${x.payment_intent.slice(3)}` === ch)
+    if (!s) return json({ error: { message: 'No such charge' } }, 404)
+    const refunds = s.refunds || []
+    return json({ id: ch, payment_intent: s.payment_intent, amount: s.amount_total, amount_refunded: refunds.reduce((t, r) => t + r.amount, 0), refunds: { data: refunds } })
   }
   if (u.startsWith('https://api.stripe.com/v1/checkout/sessions')) {
     if (init.method === 'POST' && u.endsWith('/expire')) {
@@ -384,8 +393,8 @@ for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-
   handlers[name] = (await import(`../api/${name}.js`)).default
 }
 
-async function fireWebhook(type, session) {
-  const body = JSON.stringify({ type, data: { object: { id: session.id } } })
+async function fireWebhook(type, session, object) {
+  const body = JSON.stringify({ type, data: { object: object || { id: session.id } } })
   const req = Object.assign(new (await import('node:stream')).Readable({ read() { this.push(body); this.push(null) } }), { method: 'POST', headers: { 'content-type': 'application/json' }, url: '/api/holiday-payment-webhook' })
   await new Promise((resolve) => handlers['holiday-payment-webhook'](req, shimRes({ writeHead() {}, end() { resolve() } })))
   log('webhook', `${type} ${session.id}`)
@@ -408,6 +417,16 @@ const server = http.createServer(async (req, res) => {
     return
   }
 
+  // Pretend Lee refunded in the Stripe dashboard: /__refund?cs=<session>&amount=<cents>
+  if (url.pathname === '/__refund') {
+    const s = sessions.get(url.searchParams.get('cs'))
+    if (!s?.payment_intent) { res.writeHead(404); return res.end('no paid session') }
+    s.refunds = [...(s.refunds || []), { id: `re_${crypto.randomBytes(6).toString('hex')}`, amount: Number(url.searchParams.get('amount')) || s.amount_total, status: 'succeeded', created: Math.floor(Date.now() / 1000) }]
+    const charge = `ch_${s.payment_intent.slice(3)}`
+    await fireWebhook('charge.refunded', s, { id: charge })
+    if (url.searchParams.get('twice')) await fireWebhook('charge.refunded', s, { id: charge })
+    res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, refund: s.refunds.at(-1) }))
+  }
   if (url.pathname === '/mock-stripe/') {
     const s = sessions.get(url.searchParams.get('cs'))
     if (!s) { res.writeHead(404); return res.end('no session') }

@@ -9,6 +9,7 @@ import { verifyStripeWebhook } from './_stripe-webhook.js'
 import { stripeFetch, clean } from './_holiday-store.js'
 import { finaliseBooking, expireBooking, bookingIdFromSession } from './_holiday-finalise.js'
 import { finaliseJfpBooking, expireJfpBooking, jfpBookingIdFromSession } from './_jfp-finalise.js'
+import { jfpIdForCharge, applyJfpRefunds } from './_jfp-refunds.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -42,6 +43,20 @@ export default async function handler(req, res) {
   try { event = JSON.parse(rawBody || '{}') } catch { return res.status(400).json({ success: false, error: 'Invalid payload' }) }
 
   const type = clean(event?.type, 80)
+  // A refund made in Stripe: update the JFP booking or link it paid for.
+  if (type === 'charge.refunded' || type === 'charge.refund.updated') {
+    const chargeId = clean(type === 'charge.refunded' ? event?.data?.object?.id : event?.data?.object?.charge, 120)
+    if (!/^(ch|py)_[A-Za-z0-9_]+$/.test(chargeId)) return res.status(200).json({ success: true, ignored: 'no-charge' })
+    try {
+      const { charge, id, piId } = await jfpIdForCharge(chargeId)
+      if (!id) return res.status(200).json({ success: true, ignored: 'not-jfp' })
+      const r = await applyJfpRefunds(id, charge, piId)
+      return res.status(200).json({ success: true, jfpId: id, refunds: r.applied || 0, verified })
+    } catch (error) {
+      console.error('jfp refund webhook failed', error)
+      return res.status(500).json({ success: false, error: 'Refund processing failed' })
+    }
+  }
   const sessionIdFromEvent = clean(event?.data?.object?.id, 120)
   if (!type.startsWith('checkout.session.') || !/^cs_(test|live)_/.test(sessionIdFromEvent)) {
     return res.status(200).json({ success: true, ignored: 'not-a-checkout-session' })

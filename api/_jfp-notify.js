@@ -31,6 +31,7 @@ export function requestText({ request, group, siteUrl }) {
     `${group.day} ${group.time}${group.location ? `, ${group.location}` : ''}`,
     a.club || request.club ? `Club: ${a.club || request.club}${a.team ? `, ${a.team}` : ''}` : '',
     a.playingUp ? `Playing: ${a.playingUp}` : '',
+    a.videos ? 'Sent videos of the player' : '',
     `Parent: ${request.parentName}`,
     siteUrl ? `Review: ${siteUrl}/jfp-portal/#requests` : '',
   ].filter(Boolean).join('\n')
