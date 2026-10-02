@@ -133,16 +133,53 @@ function latestSalesByUser(sales) {
   return byUser
 }
 
+const positiveAmount = (sale) => number(sale?.amount ?? sale?.webhook_amount) || 0
+const saleDate = (sale) => {
+  const t = Date.parse(text(sale?.occurred_at))
+  return Number.isFinite(t) ? new Date(t).toISOString().slice(0, 10) : ''
+}
+
+// Earliest positive payment per user across the whole ledger (live rows plus
+// archives). A positive payment before the window means the member already
+// existed, so an ad-tagged payment inside the window is a renewal, not a win.
+export function firstPaymentsByUser(sales) {
+  const byUser = new Map()
+  for (const sale of Array.isArray(sales) ? sales : []) {
+    const id = text(sale?.uscreen_user_id)
+    if (!id || text(sale?.kind).toLowerCase() === 'refund' || !(positiveAmount(sale) > 0)) continue
+    const current = byUser.get(id)
+    const stamp = Date.parse(text(sale.occurred_at))
+    if (!current || (Number.isFinite(stamp) && stamp < Date.parse(text(current.occurred_at)))) byUser.set(id, sale)
+  }
+  return byUser
+}
+
+// A paid Uscreen user in the window is one of:
+//   'new'                 first-ever positive payment in the window, paid-ad evidence on the acquisition row
+//   'existing_subscriber' paid-ad evidence but a renewal row, or a positive payment before the window
+//   'none'                no paid-ad evidence
+// Only 'new' is an ad buyer. Renewals are never ad wins (Lee, 2026-09-29).
+export function classifyMetaBuyer(userId, { window, salesByUser, firstPayments }) {
+  const representative = salesByUser.get(userId)
+  if (!isMetaSale(representative)) return 'none'
+  if (!isMetaAcquisition(representative)) return 'existing_subscriber'
+  const first = firstPayments.get(userId)
+  if (first && saleDate(first) && saleDate(first) < window.from) return 'existing_subscriber'
+  return 'new'
+}
+
 export function buildReconciliation({ window, meta, invoices, sales, sourceHealth, generatedAt = new Date().toISOString() }) {
   const paidInvoices = (Array.isArray(invoices) ? invoices : []).filter((invoice) => invoiceInWindow(invoice, window) && isPositivePaidInvoice(invoice))
   const trialInvoices = (Array.isArray(invoices) ? invoices : []).filter((invoice) => invoiceInWindow(invoice, window) && isTrialInvoice(invoice))
   const paidUsers = new Set(paidInvoices.map((invoice) => text(invoice.user_id)).filter(Boolean))
   const trialUsers = new Set(trialInvoices.map((invoice) => text(invoice.user_id)).filter(Boolean))
   const salesByUser = latestSalesByUser(sales)
-  const confirmedUsers = [...paidUsers].filter((userId) => isMetaSale(salesByUser.get(userId)))
+  const firstPayments = firstPaymentsByUser(sales)
+  const buyerStatus = new Map([...paidUsers].map((userId) => [userId, classifyMetaBuyer(userId, { window, salesByUser, firstPayments })]))
+  const confirmedUsers = [...paidUsers].filter((userId) => buyerStatus.get(userId) === 'new')
   const confirmedTrials = [...trialUsers].filter((userId) => isMetaSale(salesByUser.get(userId)))
   const confirmedFirstPaymentBuyers = confirmedUsers.filter((userId) => salesByUser.get(userId)?.proof_checks?.first_payment_verified === true).length
-  const confirmedRenewalBuyers = confirmedUsers.filter((userId) => salesByUser.get(userId)?.kind === 'renewal').length
+  const confirmedRenewalBuyers = [...paidUsers].filter((userId) => buyerStatus.get(userId) === 'existing_subscriber').length
   const metaReportedPurchases = Math.round(number(meta?.purchases) || 0)
   const confirmedUscreenBuyers = confirmedUsers.length
   const unknownSales = Math.max(paidUsers.size - confirmedUscreenBuyers, 0)
@@ -200,9 +237,9 @@ export function buildReconciliation({ window, meta, invoices, sales, sourceHealt
     verdict,
     verdict_reason: verdictReason,
     definitions: {
-      confirmed_meta_buyer: 'Unique Uscreen user with a positive paid invoice in the window and last-touch Meta paid medium plus numeric ad ID; account ownership and first-payment status are not implied.',
+      confirmed_meta_buyer: 'Unique Uscreen user whose FIRST positive payment falls in the window, with last-touch Meta paid medium plus numeric ad ID on the acquisition row. Renewal rows and anyone with an earlier positive payment anywhere in the ledger are excluded; account ownership is not implied.',
       verified_first_payment_meta_buyers: 'Subset with an independently marked complete first-payment history.',
-      renewal_meta_buyers: 'Subset whose most recent ledger kind is renewal; other buyer statuses may remain unverified.',
+      renewal_meta_buyers: 'Ad-tagged paid users in the window excluded as existing subscribers (renewal row, or a positive payment before the window). Never ad wins and never in confirmed_meta_buyers.',
       match_rate: 'confirmed_meta_buyers divided by Meta-reported purchases; null when Meta reports zero purchases.',
       unknown_sales: 'Unique paid Uscreen users in the window without a Meta-classified sale ledger row.',
       pending_recent_conversions: 'Reserved for a future payment-delay window; zero in this exact-window implementation.',
@@ -337,7 +374,9 @@ export function buildDailySeries({ window, metaDaily = [], invoices = [], sales 
       purchases: extractActionCount(row?.actions),
     })
   }
-  const metaUserIds = new Set([...latestSalesByUser(sales)].filter(([, sale]) => isMetaSale(sale)).map(([id]) => id))
+  const salesByUser = latestSalesByUser(sales)
+  const firstPayments = firstPaymentsByUser(sales)
+  const metaUserIds = new Set([...salesByUser.keys()].filter((id) => classifyMetaBuyer(id, { window, salesByUser, firstPayments }) === 'new'))
   const blank = () => ({
     spend: 0, meta_purchases: 0, uscreen_paid_buyers: 0, uscreen_paid_value: 0,
     uscreen_trials: 0, confirmed_meta_buyers: 0, fb20_redemptions: 0,

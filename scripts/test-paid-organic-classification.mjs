@@ -61,4 +61,30 @@ console.log('paid meta evidence widening tests passed')
 const adRow = { utm_source: 'fb', utm_medium: 'paid_social', ad_id: '120249785829550035' }
 assert.equal(isMetaAcquisition({ ...adRow, kind: 'payment' }), true)
 assert.equal(isMetaAcquisition({ ...adRow, kind: 'renewal' }), false)
+
+// An existing subscriber is never an ad buyer, however the renewal row is labelled.
+// Lee, 2026-09-29: four September "buyers" were renewals of pre-campaign members.
+const health = { meta: true, uscreen: true, kv: true }
+// 1. Ad buyer from before the window renews inside it (renewal stored as plain 'payment').
+const augustBuyer = { ...paid, uscreen_user_id: 'u0', kind: 'payment', amount: 33.99, occurred_at: '2026-08-30T10:00:00Z' }
+const septemberRenewal = { ...paid, uscreen_user_id: 'u0', kind: 'payment', amount: 33.99, occurred_at: '2026-09-23T10:00:00Z' }
+const existing = buildReconciliation({ window, meta: { purchases: 1 }, invoices: [paidInvoices[0]], sales: [augustBuyer, septemberRenewal], sourceHealth: health })
+assert.equal(existing.confirmed_meta_buyers, 0, 'earlier positive payment in the ledger means an existing subscriber')
+assert.equal(existing.renewal_meta_buyers, 1)
+assert.equal(existing.confirmed_buyer_revenue, 0)
+assert.equal(buildDailySeries({ window, invoices: [paidInvoices[0]], sales: [augustBuyer, septemberRenewal] })[0].confirmed_meta_buyers, 0)
+// 2. The earlier row lives in a mixed timezone format and under webhook_amount only.
+const archived = { ...paid, uscreen_user_id: 'u0', kind: 'payment', amount: null, webhook_amount: 33.99, occurred_at: '2026-08-13T04:26:51.120-04:00' }
+assert.equal(buildReconciliation({ window, meta: { purchases: 1 }, invoices: [paidInvoices[0]], sales: [archived, septemberRenewal], sourceHealth: health }).confirmed_meta_buyers, 0)
+// 3. A renewal row alone (pre-ledger member) is excluded even with ad evidence.
+assert.equal(buildReconciliation({ window, meta: { purchases: 1 }, invoices: [paidInvoices[0]], sales: [{ ...septemberRenewal, kind: 'renewal' }], sourceHealth: health }).confirmed_meta_buyers, 0)
+// 4. A trial that converts inside the window is a NEW ad buyer: the $0 trial row is not a payment.
+const trialRow = { ...paid, uscreen_user_id: 'u0', kind: 'payment', amount: 0, trial: true, occurred_at: '2026-09-16T10:00:00Z' }
+const conversion = { ...paid, uscreen_user_id: 'u0', kind: 'payment', amount: 33.99, occurred_at: '2026-09-23T10:00:00Z' }
+const converted = buildReconciliation({ window, meta: { purchases: 1 }, invoices: [paidInvoices[0]], sales: [trialRow, conversion], sourceHealth: health })
+assert.equal(converted.confirmed_meta_buyers, 1, 'trial to paid inside the window counts once')
+assert.equal(converted.renewal_meta_buyers, 0)
+// 5. A refund row before the window does not make a first-time buyer an existing subscriber.
+const refund = { ...paid, uscreen_user_id: 'u0', kind: 'refund', amount: 14.99, occurred_at: '2026-08-01T10:00:00Z' }
+assert.equal(buildReconciliation({ window, meta: { purchases: 1 }, invoices: [paidInvoices[0]], sales: [refund, conversion], sourceHealth: health }).confirmed_meta_buyers, 1)
 console.log('renewal exclusion tests passed')
