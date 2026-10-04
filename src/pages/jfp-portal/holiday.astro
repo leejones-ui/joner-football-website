@@ -102,6 +102,21 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
               <label class="lbl" for="s-location">Location</label>
               <input id="s-location" type="text" class="inp" />
             </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="col-span-2">
+                <label class="lbl" for="s-title">Sticker on the time (optional)</label>
+                <input id="s-title" type="text" maxlength="80" placeholder="e.g. Pro's Only" class="inp" />
+              </div>
+              <div>
+                <label class="lbl" for="s-minage">Youngest age (optional)</label>
+                <input id="s-minage" type="number" min="4" max="25" placeholder="any" class="inp" />
+              </div>
+              <div>
+                <label class="lbl" for="s-maxage">Oldest age (blank = no limit)</label>
+                <input id="s-maxage" type="number" min="4" max="25" placeholder="no limit" class="inp" />
+              </div>
+            </div>
+            <label class="flex items-start gap-3 text-base text-white"><input id="s-seats" type="checkbox" class="h-5 w-5 mt-1 accent-[#E8000D]" /> <span>Families each book places until it is full (uses Max players and the price override as the price per player)</span></label>
             <div>
               <label class="lbl" for="s-notes">Note shown to parents (optional)</label>
               <input id="s-notes" type="text" maxlength="300" class="inp" />
@@ -408,7 +423,14 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
         priceCents: price === '' ? null : Math.round(Number(price) * 100),
         location: $('s-location').value,
         notes: $('s-notes').value,
+        title: $('s-title').value.trim(),
+        minAge: $('s-minage').value,
+        maxAge: $('s-maxage').value,
+        seatMode: $('s-seats').checked ? 'shared' : 'exclusive',
       }
+      // Places sold family by family only works as a group hour.
+      if ($('s-seats').checked) template.type = 'group'
+      if (template.maxAge !== '' && template.minAge === '') { status.textContent = 'Set a youngest age too, or leave both ages blank.'; return }
       status.textContent = 'Creating'
       try {
         const data = await api('bulkAddSlots', { template, dates: state.dates, times: state.times, blocked: $('s-blocked').checked })
@@ -442,7 +464,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
     }
     function slotDetail(s) {
       if (s.shared && s.status === 'open') {
-        const head = `${esc(s.title || 'Trial')}${s.minAge != null ? ` &middot; ages ${s.minAge} to ${s.maxAge}` : ''} &middot; ${esc(s.options[0]?.priceLabel || '')} each`
+        const head = `${esc(s.title || 'Trial')}${s.minAge != null ? ` &middot; ages ${s.maxAge == null ? `${s.minAge}+` : `${s.minAge} to ${s.maxAge}`}` : ''} &middot; ${esc(s.options[0]?.priceLabel || '')} each`
         const who = (s.seatBookings || []).map((b) => b.status === 'paid' ? `${esc(b.players.join(', '))} (parent ${esc(b.parentName)})` : `${b.seats} place${b.seats === 1 ? '' : 's'} being booked`)
         return head + (who.length ? `<br>${who.join('<br>')}` : '')
       }
@@ -451,7 +473,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
       if (b) return `${esc(b.players.join(', '))} &middot; ${esc(typeLabels[b.typeLabel] || b.typeLabel)} &middot; parent ${esc(b.parentName)}`
       if (s.status === 'blocked') return 'Parents see this as Booked.'
       if (s.status === 'cancelled') return 'Hidden from parents.'
-      return s.options.map((o) => `${esc(o.label)} ${esc(o.priceLabel)}`).join(' &middot; ') + (s.priceOverrideCents != null ? ' (custom price)' : '')
+      const tag = [s.title ? esc(s.title) : '', s.minAge != null ? `ages ${s.maxAge == null ? `${s.minAge}+` : `${s.minAge} to ${s.maxAge}`}` : ''].filter(Boolean).join(' &middot; ')
+      return (tag ? `${tag}<br>` : '') + s.options.map((o) => `${esc(o.label)} ${esc(o.priceLabel)}`).join(' &middot; ') + (s.priceOverrideCents != null ? ' (custom price)' : '')
     }
     function renderSlots() {
       const showCancelled = $('show-cancelled').checked

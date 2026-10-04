@@ -288,8 +288,10 @@ export function validateSlotInput(input, config) {
 // Optional title and age band show to parents and are enforced on booking.
 function trialFields(input, type) {
   const shared = input.seatMode === 'shared' && type === 'group'
-  const minAge = Number(input.minAge), maxAge = Number(input.maxAge)
-  const ages = Number.isInteger(minAge) && Number.isInteger(maxAge) && minAge >= 4 && maxAge <= 25 && minAge <= maxAge
+  // A youngest age on its own (Lee's Pro's Only: 16 and over) has no top limit.
+  const minAge = input.minAge === '' || input.minAge == null ? NaN : Number(input.minAge)
+  const maxAge = input.maxAge === '' || input.maxAge == null ? null : Number(input.maxAge)
+  const ages = Number.isInteger(minAge) && minAge >= 4 && minAge <= 25 && (maxAge == null || (Number.isInteger(maxAge) && maxAge <= 25 && minAge <= maxAge))
   // Only fields the caller sent, so an edit from the admin form (which does
   // not know about trials) never turns a trial back into an exclusive hour.
   const out = {}

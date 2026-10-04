@@ -312,13 +312,16 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       return `to ${esc(slot.endLabel)}`
     }
     // Trial slots carry a name and an age band, shown under the time.
+    // Ages 8 to 12, or Ages 16+ when there is no top limit.
+    const agesText = (slot) => slot.minAge == null ? '' : slot.maxAge == null ? `Ages ${slot.minAge}+` : `Ages ${slot.minAge} to ${slot.maxAge}`
     function tileTag(slot) {
-      // Any hour can carry a label, like "Pro's Only".
-      if (!slot.shared) return slot.title ? `<span class="tile-tag">${esc(slot.title)}</span>` : ''
-      const ages = slot.minAge != null ? `Ages ${slot.minAge} to ${slot.maxAge}` : ''
-      return `<span class="tile-tag">${esc(slot.title || 'Trial')}${ages ? `<br>${esc(ages)}` : ''}</span>`
+      // Any hour can carry a label, like "Pro's Only", and an age band.
+      const ages = agesText(slot)
+      const label = slot.title || (slot.shared ? 'Trial' : '')
+      if (!label && !ages) return ''
+      return `<span class="tile-tag">${esc(label)}${label && ages ? '<br>' : ''}${esc(ages)}</span>`
     }
-    const ageRange = (slot) => slot?.minAge != null ? [slot.minAge, slot.maxAge] : [7, 18]
+    const ageRange = (slot) => slot?.minAge != null ? [slot.minAge, slot.maxAge ?? 99] : [7, 18]
 
     function renderSlots() {
       const slots = state.data.slots.filter((s) => s.coachId === state.coach)
@@ -447,7 +450,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       state.sessionType = slot.options[0].type
       state.seats = slot.options[0].minPlayers || 1
       $('sheet-title').textContent = `${slot.dateLabel}, ${slot.startLabel} to ${slot.endLabel}`
-      $('sheet-subtitle').textContent = `${slot.shared || slot.title ? `${slot.title || 'Trial'}${slot.minAge != null ? `, ages ${slot.minAge} to ${slot.maxAge}` : ''}. ` : ''}${coach ? coachLabel(coach) : slot.coachName} at ${slot.location}. ${slot.durationMin} minutes.`
+      $('sheet-subtitle').textContent = `${slot.shared || slot.title ? `${slot.title || 'Trial'}${slot.minAge != null ? `, ${agesText(slot).toLowerCase()}` : ''}. ` : ''}${coach ? coachLabel(coach) : slot.coachName} at ${slot.location}. ${slot.durationMin} minutes.`
       $('book-status').textContent = ''
       $('book-form').reset()
       renderTypeOptions()
@@ -494,7 +497,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
             <input name="playerName" type="text" required value="${esc(existing[i]?.name || '')}" class="inp" />
           </div>
           <div>
-            <label class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Age (${ageRange(state.slot).join(' to ')})</label>
+            <label class="block text-white font-heading text-sm uppercase tracking-wider mb-2">Age (${state.slot?.minAge != null && state.slot?.maxAge == null ? `${state.slot.minAge}+` : ageRange(state.slot).join(' to ')})</label>
             <input name="playerAge" type="number" min="${ageRange(state.slot)[0]}" max="${ageRange(state.slot)[1]}" inputmode="numeric" required value="${esc(existing[i]?.age || '')}" class="inp" />
           </div>
         </div>`).join('')

@@ -166,3 +166,17 @@ console.log(`\n${passed} holiday store checks passed`)
   assert.equal(m.minPlayersForType({ type: 'open', capacity: 6, minPlayers: 1 }, 'one'), 1)
   console.log('ok - a minimum-2 choice hour offers shared and group, never 1 to 1')
 }
+
+{
+  // Pro's Only: 4 places sold family by family at A$100, 16 and over, no top age.
+  const m = await import('../api/_holiday-store.js')
+  const config = m.normaliseConfig({})
+  const v = m.validateSlotInput({ coachId: 'lee', date: '2026-10-08', startTime: '08:00', durationMin: 60, type: 'group', capacity: 4, priceCents: 10000, seatMode: 'shared', title: "Pro's Only", minAge: '16', maxAge: '' }, config)
+  assert.equal(v.ok, true)
+  assert.equal(v.slot.seatMode, 'shared'); assert.equal(v.slot.minAge, 16); assert.equal(v.slot.maxAge, null); assert.equal(v.slot.capacity, 4)
+  const opts = m.slotOptions(v.slot, config)
+  assert.deepEqual(opts.map((o) => [o.maxPlayers, o.priceCents]), [[4, 10000]])
+  const blank = m.validateSlotInput({ coachId: 'lee', date: '2026-10-08', startTime: '08:00', durationMin: 60, type: 'open', title: '', minAge: '', maxAge: '' }, config)
+  assert.equal(blank.slot.minAge, null)
+  console.log('ok - a 16 and over hour with 4 places at one price')
+}

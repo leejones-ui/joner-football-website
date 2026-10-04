@@ -23,7 +23,8 @@ export const MAX_AGE = 18
 function validatePlayers(input, seats, slot = {}) {
   // A trial slot can narrow the age band (e.g. 8 to 12).
   const lo = Number.isInteger(slot.minAge) ? slot.minAge : MIN_AGE
-  const hi = Number.isInteger(slot.maxAge) ? slot.maxAge : MAX_AGE
+  // A youngest age with no oldest (16 and over) is open to adults too.
+  const hi = Number.isInteger(slot.maxAge) ? slot.maxAge : Number.isInteger(slot.minAge) ? 99 : MAX_AGE
   const list = Array.isArray(input) ? input.slice(0, seats) : []
   if (list.length !== seats) return { error: `Enter a name and age for each of the ${seats} player${seats === 1 ? '' : 's'}.` }
   const players = []
@@ -31,7 +32,7 @@ function validatePlayers(input, seats, slot = {}) {
     const name = clean(p?.name, 80)
     const age = Number(p?.age)
     if (name.length < 2) return { error: 'Enter each player\'s name.' }
-    if (!Number.isInteger(age) || age < lo || age > hi) return { error: slot.minAge != null ? `This session is for players aged ${lo} to ${hi}.` : `Holiday sessions are for players aged ${MIN_AGE} to ${MAX_AGE}.` }
+    if (!Number.isInteger(age) || age < lo || age > hi) return { error: slot.minAge != null ? (Number.isInteger(slot.maxAge) ? `This session is for players aged ${lo} to ${hi}.` : `This session is for players aged ${lo} and over.`) : `Holiday sessions are for players aged ${MIN_AGE} to ${MAX_AGE}.` }
     players.push({ name, age })
   }
   return { players }
