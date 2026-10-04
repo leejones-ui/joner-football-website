@@ -105,6 +105,7 @@ export const TRACKING_DESTINATIONS = Object.freeze({
   'professional-training': '/training/professional-training',
   'game-analysis': '/training/game-analysis',
   'jfp-programme': '/training/jfp-program',
+  'jfp-booking': '/jfp-booking/',
   'technique-test': '/technique-test',
   shop: '/shop',
   'training-programs': '/shop/training-programs',
