@@ -172,7 +172,7 @@ function term4Fields({ booking, group, coachAirtableName, fee, index }) {
     'Term 4 Amount Paid': booking.unitCents / 100,
     'Term 4 Payment Status': 'Paid',
     'Term 4 Payment Type': booking.paymentType || 'JFP 10 weeks',
-    'Term 4 Notes': `Booked online${p.age != null ? `, age ${p.age}` : ''}${p.isNew ? ', new player' : ''}${booking.proRata ? `, starts ${booking.startDate} (${booking.sessions} sessions, pro rata)` : ''}. [${ONLINE_TAG}:${booking.id}]${booking.notes ? `\nParent notes: ${booking.notes}` : ''}`,
+    'Term 4 Notes': `Booked online${booking.option === 'oneToOne' ? ' as a 1 to 1 for the term [JFP-1TO1]' : ''}${p.age != null ? `, age ${p.age}` : ''}${p.isNew ? ', new player' : ''}${booking.proRata ? `, starts ${booking.startDate} (${booking.sessions} sessions, pro rata)` : ''}. [${ONLINE_TAG}:${booking.id}]${booking.notes ? `\nParent notes: ${booking.notes}` : ''}`,
     ...(p.sourceTerm3 ? { 'Source Term 3 Record ID': p.sourceTerm3 } : {}),
     ...(booking.kit ? { 'Training Kit': booking.kit } : {}),
     ...paidFieldsFresh(booking.unitCents, fee, `Stripe ${booking.stripePaymentIntentId} via ${booking.stripeSessionId}.${fee != null ? ' Fee from balance transaction' : ' Fee not yet read'}${booking.players.length > 1 ? `, split across ${booking.players.length} players in one payment` : ''}.`),

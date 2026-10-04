@@ -43,6 +43,7 @@ export function publicGroup(g, config, left) {
     girlsOnly: g.girlsOnly === 'yes',
     // Popular groups keep taking applications when full (Lee, 5 Oct 2026).
     applyWhenFull: g.mode === 'application' && g.applyWhenFull === true,
+    allowOneToOne: g.mode === 'direct' && g.allowOneToOne === true,
     capacity: g.capacity,
     placesLeft: counted ? left : null,
     full: counted && left <= 0,
@@ -64,7 +65,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && req.query?.coachPhoto) return sendCoachPhoto(req, res)
   res.setHeader('Cache-Control', 'no-store')
   if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' })
-  if (!requireParentAccess(req, res)) return
+  if (!requireParentAccess(req, res, await getConfig())) return
   try {
     await sweepExpiredOffersSometimes()
     const [config, groups] = await Promise.all([getConfig(), listGroups()])
@@ -76,7 +77,7 @@ export default async function handler(req, res) {
       return res.status(503).json({ success: false, error: 'Bookings are briefly unavailable. Try again in a minute.' })
     }
     const online = await onlineCounts(open.map((g) => g.id))
-    const list = open.map((g) => publicGroup(g, config, publicPlacesLeft(g, counts[g.id], online[g.id])))
+    const list = open.map((g) => ({ ...publicGroup(g, config, publicPlacesLeft(g, counts[g.id], online[g.id])), oneToOneOpen: g.mode === 'direct' && g.allowOneToOne === true && !g.showFull && !(counts[g.id] > 0) && !(online[g.id] > 0) }))
     const locations = config.locations.map((l) => {
       const mine = list.filter((g) => g.locationId === l.id)
       return {
@@ -113,7 +114,7 @@ export default async function handler(req, res) {
         { section: 'Term', title: 'Second child, any group', price: formatAud(config.prices.sibling), note: 'When a brother or sister has a paid place' },
         { section: 'Term', title: 'JFP Pathway', price: formatAud(config.prices.pathway), note: 'Younger players, 45 minutes' },
         { section: 'Term', title: 'Trial session', price: formatAud(config.prices.trial), note: 'Comes off the term' },
-        { section: '1 to 1', title: 'Term of 1 to 1s', price: formatAud(config.prices.oneToOneTerm), note: 'One a week' },
+        { section: '1 to 1', title: 'Term of 1 to 1s', price: formatAud(config.prices.oneToOneTerm), note: 'One a week. Book on the timetable where it says Group or 1 to 1' },
         { section: '1 to 1', title: 'Pathway 1 to 1s', price: formatAud(config.prices.pathwayOneToOne), note: 'One a week, 45 minutes' },
         { section: '1 to 1', title: 'One off 1 to 1', price: formatAud(config.prices.oneToOne), note: 'Single session' },
       ],

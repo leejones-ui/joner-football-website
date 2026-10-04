@@ -1,14 +1,14 @@
 // Parent front door for JFP bookings: one shared password, checked here,
 // turned into a signed HttpOnly cookie. Separate password from holidays.
 import { rateLimit, verifyRecaptcha } from './_security.js'
-import { parentPasswordMatches, signParentCookie, parentCookieHeader, hasParentAccess, clean, validEmail } from './_jfp-store.js'
+import { parentPasswordMatches, signParentCookie, parentCookieHeader, hasParentAccess, clean, validEmail, getConfig } from './_jfp-store.js'
 import { sendContactMessage } from './_jfp-email.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
-  if (req.method === 'GET') return res.status(200).json({ success: true, ok: hasParentAccess(req) })
+  if (req.method === 'GET') return res.status(200).json({ success: true, ok: hasParentAccess(req) || (await getConfig()).passwordRequired === false })
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' })
   let body
   try { body = parse(req) } catch { return res.status(400).json({ success: false, error: 'Invalid request' }) }

@@ -228,7 +228,8 @@ export function countsFrom(roster) {
   const counts = {}
   for (const r of roster.players) {
     if (!r.groupId || !r.holdsPlace) continue
-    counts[r.groupId] = (counts[r.groupId] || 0) + 1
+    // A family that booked the hour as a 1 to 1 takes every place in it.
+    counts[r.groupId] = (counts[r.groupId] || 0) + (/\[JFP-1TO1\]/.test(r.notes || '') ? 100 : 1)
   }
   return counts
 }

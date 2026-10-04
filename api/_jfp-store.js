@@ -133,6 +133,8 @@ export const DEFAULT_CONFIG = {
   // Bumped when the coach list above changes, so a config saved earlier
   // picks up the new coaches, full names and emails once.
   coachSeed: 2,
+  // Lee, 5 Oct 2026: no booking password for the public launch email.
+  passwordRequired: false,
   // The JF playing kit is required for every player (Lee, 30 Sept). It is
   // sold by BE Teamsport, so it always opens in a new tab and the family's
   // Joner page stays open behind it. Families confirm it before they pay.
@@ -226,6 +228,7 @@ export function normaliseConfig(input = {}) {
     // switched them on (5 Oct 2026), so the seed turns them on once.
     coachLoginsEnabled: Number(input.coachSeed || 0) < b.coachSeed ? true : input.coachLoginsEnabled === true,
     coachSeed: b.coachSeed,
+    passwordRequired: typeof input.passwordRequired === 'boolean' ? input.passwordRequired : b.passwordRequired,
     // The kit link opens the whole Joner Football shop (Lee, 5 Oct 2026), not
     // one product: an old saved link to the playing kit page moves over.
     kitUrl: /\/products\/jf-playing-kit\/?$/.test(input.kitUrl || '') ? b.kitUrl : /^https:\/\//.test(input.kitUrl || '') ? clean(input.kitUrl, 500) : (input.kitUrl === '' ? '' : b.kitUrl),
@@ -424,6 +427,9 @@ export function validateGroup(input, config, existing = {}) {
       showFull: merged.showFull === true,
       // Full, but families can still apply (Lee picks who gets in).
       applyWhenFull: merged.applyWhenFull === true,
+      // Book now groups: a family may take the whole hour as a 1 to 1 for the
+      // term, only while nobody else is booked (Lee, 5 Oct 2026).
+      allowOneToOne: merged.allowOneToOne === true,
       product,
       updatedAt: new Date().toISOString(),
     },
@@ -639,7 +645,9 @@ export function hasParentAccess(req, { secret = process.env.HOLIDAY_SIGNING_SECR
   } catch { return false }
 }
 export function parentCookieHeader(token) { return `${PARENT_COOKIE}=${token}; Max-Age=${14 * 86400}; Path=/; SameSite=Lax; Secure; HttpOnly` }
-export function requireParentAccess(req, res) {
+export function requireParentAccess(req, res, config) {
+  // The booking password is optional (Settings): off = the page is open.
+  if (config && config.passwordRequired === false) return true
   if (hasParentAccess(req)) return true
   res.status(401).json({ success: false, error: 'Enter the booking password to continue.', code: 'no_access' })
   return false

@@ -168,7 +168,7 @@ function block(g) {
   const [cls, text] = status(g)
   return `<button type="button" class="j-blk j-blk-${esc(g.locationId)} ${g.full ? 'is-full' : ''}" data-group="${esc(g.id)}">
     ${locBanner(g)}
-    <span class="t">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</span>
+    <span class="t">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}${g.allowOneToOne ? ' <span class="j-tag">Group or 1 to 1</span>' : ''}</span>
     <span class="c c-name">${esc(g.coachName || 'Joner Football')}</span>
     ${g.girlsOnly ? '<span class="c">Girls only</span>' : ''}
     <span class="left">${g.mode === 'enquire' ? 'On request' : g.full ? 'Fully booked' : esc(text)}</span>
@@ -192,7 +192,7 @@ function card(g) {
     <button type="button" class="j-card-hit" data-group="${esc(g.id)}" aria-label="${esc(`${g.day} ${g.time}, ${g.coachName}`)}"></button>
     ${locBanner(g)}
     <div class="bd">
-      <p class="when-big">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</p>
+      <p class="when-big">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}${g.allowOneToOne ? ' <span class="j-tag">Group or 1 to 1</span>' : ''}</p>
       <p class="meta" style="margin-top:6px">${coachChip(g, 32)}</p>
       <p class="meta">${esc(g.location)} · ${esc(g.durationMin)} min${g.girlsOnly ? ' · Girls only' : ''}</p>
       <div class="foot"><span class="st ${cls}">${g.mode === 'enquire' ? '' : g.full ? 'Fully booked' : esc(text)}</span><span class="j-btn ${waitOnly(g) ? 'j-btn-wait' : 'j-btn-dark'} j-act">${btn}</span></div>
@@ -601,10 +601,16 @@ function stepReview() {
   const g = F.g
   const n = F.players.length
   const qt = S.family.quote || {}
-  const unit = n > 1 ? qt.eachOfTwoCents : qt.oneCents
+  const soloOk = g.allowOneToOne && n === 1 && g.oneToOneOpen && qt.oneToOneCents
+  if (!soloOk) F.option = 'group'
+  const solo = soloOk && F.option === 'oneToOne'
+  const unit = solo ? qt.oneToOneCents : n > 1 ? qt.eachOfTwoCents : qt.oneCents
   const total = money(unit * n)
   F.sheet.body.innerHTML = `
     <h3 style="margin-bottom:10px">Check and pay</h3>
+    ${soloOk ? `<div class="j-kitstep" style="margin-top:0"><h4 style="margin-top:0">How do you want this hour?</h4>
+      <label class="j-check"><input type="radio" name="r-opt" value="group" ${solo ? '' : 'checked'}> <span><b>Small group, whole term</b> · ${esc(money(qt.oneCents))}<br><span class="muted small">Up to ${esc(g.capacity)} players in the group.</span></span></label>
+      <label class="j-check"><input type="radio" name="r-opt" value="oneToOne" ${solo ? 'checked' : ''}> <span><b>1 to 1, whole term</b> · ${esc(money(qt.oneToOneCents))}<br><span class="muted small">The hour is just for your player with ${esc(g.coachName || 'the coach')}.</span></span></label></div>` : ''}
     <dl class="j-kv">
       <dt>Group</dt><dd>${esc(g.day)} ${esc(g.time)}</dd>
       <dt>Where</dt><dd>${esc(g.location)}</dd>
@@ -613,6 +619,7 @@ function stepReview() {
       <dt>Sessions</dt><dd>${qt.proRata ? `${esc(qt.sessions)} of ${esc(qt.of)}, from ${esc(qt.firstDate)} to ${esc(g.lastDate)}` : `${esc(qt.sessions || g.sessions)} weeks, ${esc(qt.firstDate || g.firstDate)} to ${esc(g.lastDate)}`}</dd>
       <dt>Players</dt><dd>${esc(F.players.map((p) => p.existing?.name || p.name).join(', '))}</dd>
       <dt>Waiver</dt><dd>${F.waiver ? 'Signed now' : 'On file'}</dd>
+      <dt>Booking</dt><dd>${solo ? '1 to 1 for the term' : 'Small group for the term'}</dd>
       <dt>Total</dt><dd>${esc(total)}${n > 1 ? ` <span class="muted">(${esc(money(unit))} each, sibling rate)</span>` : ''}${qt.proRata ? '<br><span class="muted small">The rest of the term only.</span>' : ''}</dd>
     </dl>
     <label class="j-field" style="margin-top:14px"><span>Anything the coach should know? <span class="muted">(optional)</span></span><textarea class="j-textarea" id="r-notes"></textarea></label>
@@ -628,6 +635,7 @@ function stepReview() {
     F.sheet.setSteps(stepsFor(), 1)
   })
   F.sheet.foot.querySelector('#r-pay').addEventListener('click', pay)
+  F.sheet.body.querySelectorAll('[name="r-opt"]').forEach((r) => r.addEventListener('change', () => { F.option = r.value; stepReview() }))
 }
 
 // The JF playing kit is required for every player: the family confirms it
@@ -658,7 +666,7 @@ async function pay() {
     bookingId: S.hold?.bookingId, releaseToken: S.hold?.releaseToken,
     players: payloadPlayers(), waiver: F.waiver || undefined,
     parentName: F.parentName, mobile: F.mobile, notes: F.sheet.body.querySelector('#r-notes').value.trim(),
-    girlsConfirmed: Boolean(girls?.checked), agreementAccepted: true, kit,
+    girlsConfirmed: Boolean(girls?.checked), agreementAccepted: true, kit, option: F.option === 'oneToOne' ? 'oneToOne' : 'group',
   })
   if (!r.ok || !r.data.url) {
     btn.disabled = false
@@ -666,6 +674,7 @@ async function pay() {
     if (r.data.code === 'signin') { S.parent = null; return stepWho() }
     // Keep the hold: "only 1 left" still leaves this family their place.
     if (r.data.code === 'full') { show(r.data.error); load(true); return }
+    if (r.data.code === 'solo_taken') { F.option = 'group'; show(r.data.error); load(true); return }
     if (r.data.code === 'paid') { show(r.data.error); return }
     return show(r.data.error || 'Could not start the payment. Nothing has been charged.')
   }

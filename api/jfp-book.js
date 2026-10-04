@@ -152,6 +152,7 @@ async function family(req, res, body, parent) {
   // One player whose brother or sister already has a paid place: sibling rate.
   const sib = group && (group.product || 'group') === 'group' && paidSiblings(roster.players, parent.email).length > 0
   const one = group ? priceFor(config, { product: sib ? 'sibling' : group.product, day: group.day, fromIso: from, players: 1 }) : null
+  const solo = group?.allowOneToOne ? priceFor(config, { product: 'oneToOneTerm', day: group.day, fromIso: from, players: 1 }) : null
   const two = group ? priceFor(config, { product: group.product, day: group.day, fromIso: from, players: 2 }) : null
   return res.status(200).json({
     success: true,
@@ -159,7 +160,7 @@ async function family(req, res, body, parent) {
     parentName: fam.parentName,
     mobile: fam.mobile,
     // What this family would pay here, from the next session to the end of term.
-    quote: one ? { oneCents: one.unitCents, eachOfTwoCents: two.unitCents, sessions: one.sessions, of: one.of, proRata: one.proRata, firstDate: from ? dateLabel(from) : '' } : null,
+    quote: one ? { oneCents: one.unitCents, oneToOneCents: solo?.unitCents || 0, eachOfTwoCents: two.unitCents, sessions: one.sessions, of: one.of, proRata: one.proRata, firstDate: from ? dateLabel(from) : '' } : null,
     players: group ? familyView(fam, group, config, roster) : fam.players.map((p) => ({ key: p.key, name: p.name, age: p.age, waiverOnFile: Boolean(p.waiver) })),
   })
 }
@@ -193,8 +194,12 @@ async function submit(req, res, body, parent) {
   const n = pl.players.length
   const from = nextSessionDate(config, group.day, Date.now(), group.time)
   if (!from) return fail(res, 410, 'This term has finished for this group.')
-  const sib = n === 1 && (group.product || 'group') === 'group' && paidSiblings(roster.players, parent.email, pl.players.map((x) => x.name)).length > 0
-  const price = priceFor(config, { product: sib ? 'sibling' : group.product, day: group.day, fromIso: from, players: n })
+  // 1 to 1 for the term: one player, and the whole hour (every place) is held.
+  const solo = body.option === 'oneToOne'
+  if (solo && (!group.allowOneToOne || n !== 1)) return fail(res, 400, 'A 1 to 1 is for one player in a group that offers it.')
+  const sib = !solo && n === 1 && (group.product || 'group') === 'group' && paidSiblings(roster.players, parent.email, pl.players.map((x) => x.name)).length > 0
+  const price = priceFor(config, { product: solo ? 'oneToOneTerm' : sib ? 'sibling' : group.product, day: group.day, fromIso: from, players: n })
+  const want = solo ? group.capacity : n
 
   // Keep the reservation id if it is still ours, then resize the hold to n
   // places in one atomic step. Nothing is charged if this fails.
@@ -216,7 +221,9 @@ async function submit(req, res, body, parent) {
   const nowMs = Date.now()
   const holdExpiresMs = nowMs + HOLD_MINUTES * 60_000
   const taken = countsFrom(roster)[group.id] || 0
-  if (!(await holdPlaces({ gid: group.id, bookingId: id, want: n, available: group.showFull ? 0 : Math.max(0, group.capacity - taken), expiresMs: holdExpiresMs, nowMs }))) {
+  if (solo && taken > 0) return fail(res, 409, 'Another family has booked this hour, so it is no longer free for a 1 to 1. You can still book it as a small group.', { code: 'solo_taken' })
+  if (!(await holdPlaces({ gid: group.id, bookingId: id, want, available: group.showFull ? 0 : Math.max(0, group.capacity - taken), expiresMs: holdExpiresMs, nowMs }))) {
+    if (solo) return fail(res, 409, 'Another family is booking this hour right now, so it is not free for a 1 to 1. You can still book it as a small group.', { code: 'solo_taken' })
     const online = (await onlineCounts([group.id]))[group.id] || 0
     // The family's own hold is theirs to use, so count it as available.
     const left = publicPlacesLeft(group, taken, online) + (ours ? Number(reservation.seats || 1) : 0)
@@ -225,7 +232,7 @@ async function submit(req, res, body, parent) {
 
   const booking = {
     ...(ours ? reservation : { createdAt: new Date(nowMs).toISOString() }),
-    id, groupId: group.id, seats: n, releaseToken,
+    id, groupId: group.id, seats: want, releaseToken, option: solo ? 'oneToOne' : 'group',
     email: parent.email, parentName: who.parentName, mobile: who.mobile, notes: clean(body.notes, 500),
     players: pl.players,
     unitCents: price.unitCents,
@@ -335,7 +342,7 @@ export default async function handler(req, res) {
   let body
   try { body = parse(req) } catch { return fail(res, 400, 'Invalid request') }
   try {
-    if (!requireParentAccess(req, res)) return
+    if (!requireParentAccess(req, res, await getConfig())) return
     if (!sameOrigin(req)) return fail(res, 403, 'Invalid request origin')
     if (body.action === 'release') return await release(req, res, body)
     const parent = await sessionFor(req, 'parent')
