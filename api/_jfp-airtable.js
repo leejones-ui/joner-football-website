@@ -424,7 +424,7 @@ export function appendNote(existing, line) {
 // ---------- ledger ----------
 
 // One ledger row per actual payment, never per player.
-export async function createLedgerRow({ paymentId, config, playerNames, amountCents, paidAt, sourceIds, sessionId, intentId, notes }) {
+export async function createLedgerRow({ paymentId, config, playerNames, amountCents, paidAt, sourceIds, sessionId, intentId, notes, method = 'Stripe' }) {
   const d = await airtable(encodeURIComponent(TABLES.ledger), {
     method: 'POST',
     body: {
@@ -434,7 +434,7 @@ export async function createLedgerRow({ paymentId, config, playerNames, amountCe
         'Term': config.term,
         'Player Name': playerNames.join(', '),
         'Amount Paid': amountCents / 100,
-        'Payment Method': 'Stripe',
+        'Payment Method': ['Stripe', 'Bank Transfer', 'Cash', 'Other'].includes(method) ? method : 'Other',
         'Payment Status': 'Paid',
         'Payment Date': (paidAt || new Date().toISOString()).slice(0, 10),
         'Source Table': 'Term 4 Players',
@@ -447,6 +447,12 @@ export async function createLedgerRow({ paymentId, config, playerNames, amountCe
     },
   })
   return d.records?.[0]?.id || ''
+}
+
+// This term's ledger: one row per payment (Stripe, bank transfer, cash).
+export async function listLedger(term) {
+  const rows = await readTable(TABLES.ledger, ['Payment ID', 'Term', 'Player Name', 'Amount Paid', 'Payment Method', 'Payment Status', 'Payment Date', 'Source Record ID', 'Stripe Checkout Session ID', 'Stripe Payment Intent ID', 'Notes'])
+  return rows.map((r) => ({ id: r.id, ...r.fields })).filter((r) => !term || r['Term'] === term)
 }
 
 export async function findLedgerByPayment(paymentId) {

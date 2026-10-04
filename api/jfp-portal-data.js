@@ -21,6 +21,7 @@ import {
   loadRoster, countsFrom, playerAge, waiverFor, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, draftAgeBand,
   createWaiverRows, waiverFields, findWaiversByTag, bustRosterCache, findTerm4ByTag,
   getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, listDropped, deleteTerm4Row, RESTORABLE,
+  listLedger, createLedgerRow,
 } from './_jfp-airtable.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, PAY_EFFECTS } from './_jfp-finalise.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
@@ -28,6 +29,7 @@ import { sendAccountInvite, accountInvite, sendFamilyInvite, sendPlaceOffered, s
 import { nextStatuses, setNextStatus, nextPrices, recordNext } from './_jfp-next.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
+import { jfpStripePayments } from './_jfp-stripe.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -339,19 +341,201 @@ async function restorePlayer(res, principal, body) {
   return res.status(200).json({ success: true, rowId })
 }
 
+// One payment, from any source, onto one or more Term 4 rows (siblings): the
+// rows' paid amount and status, a note, and one ledger row with the method.
+// Cash and bank transfers are the families who do not pay by link (Lee).
+const METHODS = { cash: 'Cash', 'bank transfer': 'Bank Transfer', bank: 'Bank Transfer', stripe: 'Stripe', other: 'Other', offline: 'Other' }
+async function recordPaymentCore(principal, config, body) {
+  const fail = (_res, status, error) => ({ ok: false, status, error })
+  const res = null
+  const ids = [...new Set((Array.isArray(body.rowIds) ? body.rowIds : [body.rowId]).map((x) => clean(x, 30)).filter(Boolean))].slice(0, 6)
+  if (!ids.length) return fail(res, 400, 'Choose a player.')
+  const rows = []
+  for (const id of ids) { const r = await getTerm4Row(id); if (r) rows.push(r) }
+  if (!rows.length) return fail(res, 404, 'Player row not found.')
+  const method = METHODS[String(body.method || '').trim().toLowerCase()] || 'Other'
+  const date = ISO.test(body.date || '') ? body.date : sydneyToday()
+  let amount = Number(body.amountCents)
+  let stripePay = null
+  if (body.stripeSessionId) {
+    const sid = clean(body.stripeSessionId, 120)
+    stripePay = (await jfpStripePayments({ since: config.moneySince, fresh: true })).payments.find((p) => p.id === sid)
+    if (!stripePay) return fail(res, 404, 'That Stripe payment was not found.')
+    const ledger = await listLedger(config.term)
+    if (ledger.some((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].includes(stripePay.id) || (stripePay.intentId && [l['Payment ID'], l['Stripe Payment Intent ID']].includes(stripePay.intentId)))) return fail(res, 409, 'That Stripe payment is already in the ledger.')
+    if (!(amount > 0)) amount = stripePay.amountCents - stripePay.refundedCents
+  }
+  if (!(Number.isInteger(amount) && amount > 0 && amount <= 2000000)) return fail(res, 400, 'Enter the amount received.')
+  // Fill each row up to what it owes, in order; anything over goes on the last row.
+  let left = amount
+  const updates = rows.map((r, i) => {
+    const owe = Math.max(0, cents(r.feeAud) - cents(r.paidAud))
+    const share = i === rows.length - 1 ? left : Math.min(left, owe || Math.floor(amount / rows.length))
+    left -= share
+    const paid = cents(r.paidAud) + share
+    const fee = cents(r.feeAud) || paid
+    return { r, share, fields: {
+      ...(cents(r.feeAud) ? {} : { 'Term 4 Fee': fee / 100 }),
+      'Term 4 Amount Paid': paid / 100,
+      'Term 4 Payment Status': paid >= fee ? 'Paid' : 'Partially Paid',
+      ...(method === 'Stripe' ? {} : { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' }),
+      'Term 4 Notes': appendNote(r.notes, `Payment recorded: ${formatAud(share)} by ${method} on ${date}${stripePay ? ` (Stripe ${stripePay.id})` : ''}, by ${principal.name}.${body.note ? ` ${clean(body.note, 200)}` : ''}`),
+    } }
+  })
+  await updateTerm4Rows(updates.map((u) => ({ id: u.r.id, fields: u.fields })))
+  const paymentId = stripePay ? (stripePay.intentId || stripePay.id) : `${method === 'Cash' ? 'CASH' : method === 'Bank Transfer' ? 'BANK' : 'OFF'}-${newId('T4').slice(3)}`
+  let ledgerId = ''
+  try {
+    ledgerId = await createLedgerRow({ paymentId, config, playerNames: rows.map((r) => r.player), amountCents: amount, paidAt: `${date}T00:00:00+10:00`, sourceIds: rows.map((r) => r.id), sessionId: stripePay?.id || '', intentId: stripePay?.intentId || '', method, notes: `Recorded in the JFP portal by ${principal.name}.${body.note ? ` ${clean(body.note, 200)}` : ''}` })
+  } catch (error) { console.error('jfp ledger row failed', error) }
+  await bustRosterCache()
+  await audit({ by: principal.email, action: 'payment.record', target: rows.map((r) => r.id).join(','), after: { name: rows.map((r) => r.player).join(', '), cents: amount, method, date, stripe: stripePay?.id || '', ledger: Boolean(ledgerId) } })
+  return { ok: true, ledger: Boolean(ledgerId) }
+}
+async function recordPayment(res, principal, config, body) {
+  const r = await recordPaymentCore(principal, config, body)
+  return r.ok ? res.status(200).json({ success: true, ledger: r.ledger }) : fail(res, r.status, r.error)
+}
+
+// Every family whose Stripe payments Airtable does not show yet: record
+// each unrecorded payment against their rows, never more than the gap.
+async function recordStripeAll(res, principal, config) {
+  const m = await moneyData(config, { fresh: true })
+  const ledger = await listLedger(config.term)
+  const known = new Set(ledger.flatMap((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].filter(Boolean)))
+  const pays = (await jfpStripePayments({ since: config.moneySince })).payments.filter((p) => !p.jfpRef && !known.has(p.id) && !(p.intentId && known.has(p.intentId)))
+  const byEmail = new Map()
+  for (const p of m.players.filter((x) => x.status === 'stripe' && x.email)) byEmail.set(p.email, [...(byEmail.get(p.email) || []), p])
+  let recorded = 0
+  const failed = []
+  for (const [email, rows] of byEmail) {
+    const fam = m.players.filter((x) => x.email === email)
+    let gap = Math.max(0, rows[0].stripeCents - fam.reduce((t, x) => t + x.paidCents, 0))
+    for (const p of pays.filter((x) => x.email === email).sort((a, b) => a.at.localeCompare(b.at))) {
+      const net = p.amountCents - p.refundedCents
+      if (net <= 0 || net > gap) continue
+      const r = await recordPaymentCore(principal, config, { rowIds: rows.map((x) => x.rowId), method: 'Stripe', stripeSessionId: p.id })
+      if (r.ok) { recorded += 1; gap -= net } else failed.push(`${rows[0].player}: ${r.error}`)
+    }
+  }
+  return res.status(200).json({ success: true, recorded, failed })
+}
 async function markPaid(res, principal, body) {
-  const row = await rowOr404(res, body.rowId); if (!row) return
-  const fee = cents(row.feeAud) || Number(body.amountCents) || 0
-  const amount = Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0 ? Number(body.amountCents) : fee
-  const paid = cents(row.paidAud) + amount
-  await updateTerm4Rows([{ id: row.id, fields: {
-    'Term 4 Amount Paid': paid / 100,
-    'Term 4 Payment Status': fee && paid < fee ? 'Partially Paid' : 'Paid',
-    'Term 4 Fee Reconciliation': 'Non-Stripe — verified',
-    'Term 4 Notes': appendNote(row.notes, `Marked paid offline, ${formatAud(amount)} (${clean(body.method, 30) || 'method not stated'}), by ${principal.name}.`),
-  } }])
-  await audit({ by: principal.email, action: 'player.markPaid', target: row.id, before: { paidCents: cents(row.paidAud) }, after: { paidCents: paid, name: row.player } })
-  return res.status(200).json({ success: true })
+  return recordPayment(res, principal, await getConfig(), { rowIds: [body.rowId], amountCents: body.amountCents, method: body.method, note: body.note, date: body.date })
+}
+
+// ---------- money: live from Stripe and Airtable ----------
+
+const weekOf = (iso) => {
+  const d = new Date(`${String(iso).slice(0, 10)}T00:00:00Z`)
+  const dow = (d.getUTCDay() + 6) % 7
+  d.setUTCDate(d.getUTCDate() - dow)
+  return d.toISOString().slice(0, 10)
+}
+
+async function moneyData(config, { since, fresh = false } = {}) {
+  const [roster, groups, ledger] = await Promise.all([loadRoster({ fresh: true }), listGroups(), listLedger(config.term).catch(() => [])])
+  let stripe = { payments: [], other: { count: 0, cents: 0 }, since: since || config.moneySince, error: '' }
+  try { stripe = { ...(await jfpStripePayments({ since: since || config.moneySince, fresh })), error: '' } } catch (error) { console.error('jfp stripe read failed', error); stripe.error = 'Stripe could not be read just now. Airtable figures only.' }
+  const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
+  const holding = roster.players.filter((r) => r.holdsPlace && !isTestName(r.player))
+  const net = (p) => p.amountCents - p.refundedCents
+  const stripeByEmail = new Map()
+  for (const p of stripe.payments) if (p.email) stripeByEmail.set(p.email, [...(stripeByEmail.get(p.email) || []), p])
+  const familyEmails = new Set(holding.map((r) => r.email).filter(Boolean))
+  // Each family: what Stripe received against what Airtable records as paid.
+  const families = new Map()
+  for (const r of holding) {
+    const k = r.email || `row:${r.id}`
+    if (!families.has(k)) families.set(k, [])
+    families.get(k).push(r)
+  }
+  const players = []
+  for (const [email, rows] of families) {
+    const pays = stripeByEmail.get(email) || []
+    const stripeCents = pays.reduce((t, p) => t + net(p), 0)
+    const recorded = rows.reduce((t, r) => t + cents(r.paidAud), 0)
+    let unrecorded = Math.max(0, stripeCents - recorded)
+    for (const r of rows.slice().sort((a, b) => (cents(b.feeAud) - cents(b.paidAud)) - (cents(a.feeAud) - cents(a.paidAud)))) {
+      const fee = cents(r.feeAud), paid = cents(r.paidAud), owe = Math.max(0, fee - paid)
+      const markedPaid = /^paid$/i.test(r.paymentStatus || '')
+      let status
+      if (markedPaid || (fee > 0 && paid >= fee)) status = 'paid'
+      else if (unrecorded > 0 && (owe > 0 || !fee)) { status = 'stripe'; unrecorded -= Math.min(unrecorded, owe || unrecorded) }
+      else if (paid > 0) status = 'part'
+      else if (fee > 0) status = 'unpaid'
+      else status = 'unpriced'
+      const g = byId[r.groupId]
+      const loc = g ? locationFor(config, g.location) : locationFor(config, r.location || '')
+      players.push({
+        rowId: r.id, player: r.player, parent: r.parent, email: r.email,
+        group: g ? `${g.day} ${g.time}, ${loc.name}` : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Not in a group',
+        groupId: r.groupId, locationId: loc.id, locationName: loc.name, coach: g ? coachLabel(coachById(config, g.coachId)) : r.coach,
+        feeCents: fee, paidCents: paid, owingCents: status === 'paid' || status === 'stripe' ? 0 : owe,
+        airtableStatus: r.paymentStatus || 'Not set', type: r.paymentType || '', status,
+        stripeCents, stripeCount: pays.length, hasNotes: Boolean((r.notes || '').trim() || (r.linkNotes || '').trim()),
+      })
+    }
+  }
+  players.sort((a, b) => a.player.localeCompare(b.player))
+  const unmatched = stripe.payments.filter((p) => !p.email || !familyEmails.has(p.email))
+  // Cash, bank transfer and other: the ledger, plus rows marked paid offline before the ledger had them.
+  const offlineLedger = ledger.filter((l) => l['Payment Method'] && l['Payment Method'] !== 'Stripe')
+  const ledgerRowIds = new Set(offlineLedger.flatMap((l) => String(l['Source Record ID'] || '').split(',').map((x) => x.trim())))
+  const legacyOffline = holding.filter((r) => r.reconciliation === 'Non-Stripe — verified' && !ledgerRowIds.has(r.id))
+  const offline = [
+    ...offlineLedger.map((l) => ({ date: String(l['Payment Date'] || '').slice(0, 10), method: l['Payment Method'], cents: Math.round(Number(l['Amount Paid'] || 0) * 100), who: l['Player Name'] || '' })),
+    ...legacyOffline.map((r) => ({ date: '', method: 'Other', cents: cents(r.paidAud), who: r.player })),
+  ]
+  const stripeGross = stripe.payments.reduce((t, p) => t + p.amountCents, 0)
+  const stripeRefunds = stripe.payments.reduce((t, p) => t + p.refundedCents, 0)
+  const offlineCents = offline.reduce((t, o) => t + o.cents, 0)
+  // Income by week: Stripe (live) and recorded cash / bank transfer.
+  const weeks = new Map()
+  const start = weekOf(stripe.since || config.moneySince)
+  for (let d = new Date(`${start}T00:00:00Z`); d.toISOString().slice(0, 10) <= sydneyToday(); d.setUTCDate(d.getUTCDate() + 7)) weeks.set(d.toISOString().slice(0, 10), { week: d.toISOString().slice(0, 10), stripe: 0, bank: 0, cash: 0 })
+  for (const p of stripe.payments) { const w = weeks.get(weekOf(p.at.slice(0, 10))); if (w) w.stripe += net(p) }
+  for (const o of offline) { if (!o.date) continue; const w = weeks.get(weekOf(o.date)); if (w) w[o.method === 'Cash' ? 'cash' : 'bank'] += o.cents }
+  const count = (s) => players.filter((p) => p.status === s).length
+  const locations = config.locations.map((l) => {
+    const mine = players.filter((p) => p.locationId === l.id)
+    return { id: l.id, name: l.name, players: mine.length, paid: mine.filter((p) => p.status === 'paid' || p.status === 'stripe').length, owingCents: mine.reduce((t, p) => t + p.owingCents, 0) }
+  }).filter((l) => l.players)
+  return {
+    since: stripe.since, stripeError: stripe.error, stripeAt: stripe.at || '',
+    kpis: {
+      incomeCents: stripeGross - stripeRefunds + offlineCents, stripeCents: stripeGross - stripeRefunds, stripeGrossCents: stripeGross, refundsCents: stripeRefunds,
+      offlineCents, cashCents: offline.filter((o) => o.method === 'Cash').reduce((t, o) => t + o.cents, 0), bankCents: offline.filter((o) => o.method === 'Bank Transfer').reduce((t, o) => t + o.cents, 0),
+      owingCents: players.reduce((t, p) => t + p.owingCents, 0), stripeUnrecordedCents: players.filter((p) => p.status === 'stripe').length,
+      players: players.length, stripePayments: stripe.payments.length,
+    },
+    status: { paid: count('paid'), stripe: count('stripe'), part: count('part'), unpaid: count('unpaid'), unpriced: count('unpriced') },
+    weekly: [...weeks.values()],
+    locations,
+    players,
+    unmatched: unmatched.map((p) => ({ id: p.id, at: p.at, name: p.name, email: p.email, cents: net(p), product: p.product })),
+    otherStripe: stripe.other,
+  }
+}
+
+// One player's payment story: the row, Stripe payments from the family's
+// email, ledger rows, payment links and what staff changed.
+async function playerPayments(config, rowId) {
+  const r = await getTerm4Row(rowId)
+  if (!r) return null
+  const [ledger, payreqs, auditLog] = await Promise.all([listLedger(config.term).catch(() => []), listPayreqs(), listAudit(1500)])
+  let stripe = []
+  try { stripe = (await jfpStripePayments({ since: config.moneySince })).payments.filter((p) => p.email && p.email === r.email) } catch {}
+  const recordedIds = new Set(ledger.flatMap((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].filter(Boolean)))
+  return {
+    rowId: r.id, player: r.player, parent: r.parent, email: r.email, phone: r.phone,
+    feeCents: cents(r.feeAud), paidCents: cents(r.paidAud), status: r.paymentStatus || 'Not set', type: r.paymentType || '',
+    notes: r.notes || '', linkNotes: r.linkNotes || '',
+    stripe: stripe.map((p) => ({ id: p.id, at: p.at, cents: p.amountCents, refundedCents: p.refundedCents, product: p.product, recorded: recordedIds.has(p.id) || (p.intentId && recordedIds.has(p.intentId)) || Boolean(p.jfpRef) })),
+    ledger: ledger.filter((l) => String(l['Source Record ID'] || '').includes(r.id) || (l['Player Name'] || '').split(',').map((x) => x.trim()).includes(r.player)).map((l) => ({ date: l['Payment Date'] || '', method: l['Payment Method'] || '', cents: Math.round(Number(l['Amount Paid'] || 0) * 100), status: l['Payment Status'] || '', notes: l['Notes'] || '' })),
+    links: payreqs.filter((q) => (q.term4Ids || []).includes(r.id)).map((q) => ({ id: q.id, status: q.status, cents: q.amountCents, createdAt: q.createdAt, paidAt: q.paidAt || '' })),
+    history: auditLog.filter((e) => String(e.target || '').includes(r.id)).slice(0, 30).map((e) => ({ at: e.at, by: e.by, action: e.action })),
+  }
 }
 
 async function setTrial(res, principal, body) {
@@ -686,36 +870,6 @@ async function decideRequest(req, res, principal, config, body) {
 
 // ---------- money ----------
 
-function money(config, roster, bookings, payreqs) {
-  const holding = roster.players.filter((r) => r.holdsPlace && !isTestName(r.player))
-  const sum = (list, k) => list.reduce((t, r) => t + cents(r[k]), 0)
-  const byStatus = {}
-  for (const r of holding) { const k = r.paymentStatus || 'Not Set'; byStatus[k] = (byStatus[k] || 0) + 1 }
-  const stripe = [
-    ...bookings.filter((b) => b.status === 'paid').map((b) => ({ kind: 'booking', id: b.id, cents: b.amountPaidCents || 0, fee: b.stripeFeeCents, at: b.paidAt, who: b.players.map((p) => p.name).join(', ') })),
-    ...payreqs.filter((q) => q.status === 'paid').map((q) => ({ kind: q.reason, id: q.id, cents: q.paidCents || 0, fee: q.stripeFeeCents, at: q.paidAt, who: q.playerNames.join(', ') })),
-  ].sort((a, b) => String(b.at).localeCompare(String(a.at)))
-  const gross = stripe.reduce((t, s) => t + s.cents, 0)
-  const fees = stripe.filter((s) => s.fee != null).reduce((t, s) => t + s.fee, 0)
-  // Owing only where Airtable does not already say Paid: many paid rows carry no amount.
-  const owing = holding.filter((r) => (r.balanceAud || 0) > 0 && r.paymentStatus !== 'Paid')
-  return {
-    airtable: {
-      players: holding.length,
-      feesCents: sum(holding, 'feeAud'),
-      paidCents: sum(holding, 'paidAud'),
-      owingCents: sum(owing, 'balanceAud'),
-      owingPlayers: owing.length,
-      stripeFeesCents: sum(holding, 'stripeFeeAud'),
-      netCents: sum(holding, 'netAud'),
-      byStatus,
-    },
-    online: { payments: stripe.length, grossCents: gross, stripeFeesCents: fees, netCents: gross - fees, feesPending: stripe.filter((s) => s.fee == null).length, recent: stripe.slice(0, 30).map((s) => ({ ...s, label: formatAud(s.cents), feeLabel: s.fee != null ? formatAud(s.fee) : 'Pending' })) },
-    openRequests: payreqs.filter((q) => ['open', 'checkout'].includes(q.status)).map((q) => ({ id: q.id, who: q.playerNames.join(', '), parent: q.parentName, email: q.email, label: formatAud(q.amountCents), reason: q.reason, createdAt: q.createdAt, expiresAt: q.expiresAt })),
-    owing: owing.map((r) => ({ rowId: r.id, player: r.player, parent: r.parent, email: r.email, group: `${r.day} ${r.time} ${r.location}`, balanceCents: cents(r.balanceAud), status: r.paymentStatus, linkNotes: r.linkNotes })).sort((a, b) => b.balanceCents - a.balanceCents),
-    notes: 'Airtable totals are as Term 4 Players records them; sibling and shared payments can be split across rows. Stripe fees are exact, from each balance transaction. Net is not profit and is not the bank payout.',
-  }
-}
 
 // ---------- coaches ----------
 
@@ -858,6 +1012,38 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
     await audit({ by: principal.email, action: `timeoff.${status}`, target: t.id })
     return res.status(200).json({ success: true })
   }
+  // On The Go planner sessions (Lee, 5 Oct 2026): each coach's own, Lee and
+  // Ligia see everyone's. The planner page saves its native document here.
+  if (action === 'planList') {
+    const raw = await kvCommand(['HGETALL', 'jfp:otg:index'])
+    const list = []
+    for (let i = 0; i + 1 < (raw || []).length; i += 2) { try { list.push(JSON.parse(raw[i + 1])) } catch {} }
+    return res.status(200).json({ success: true, plans: list.filter((p) => isAdmin || p.owner === principal.email).sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt))) })
+  }
+  if (action === 'planSave') {
+    const doc = body.plan
+    const text = JSON.stringify(doc ?? null)
+    if (!doc || typeof doc !== 'object') return fail(res, 400, 'Nothing to save.')
+    if (text.length > 900000) return fail(res, 413, 'This session is too big to save. Remove an image and try again.')
+    const id = newId('OTG')
+    const summary = { id, title: clean(body.title, 120) || 'On The Go session', owner: principal.email, ownerName: principal.name, savedAt: new Date().toISOString() }
+    await kvCommand(['SET', `jfp:otg:doc:${id}`, text])
+    await kvCommand(['HSET', 'jfp:otg:index', id, JSON.stringify(summary)])
+    await audit({ by: principal.email, action: 'plan.save', target: id, after: { name: summary.title } })
+    return res.status(200).json({ success: true, plan: summary })
+  }
+  if (action === 'planGet' || action === 'planDelete') {
+    const id = clean(body.id, 60)
+    const summary = JSON.parse((await kvCommand(['HGET', 'jfp:otg:index', id])) || 'null')
+    if (!summary || (!isAdmin && summary.owner !== principal.email)) return fail(res, 404, 'Session not found.')
+    if (action === 'planDelete') {
+      await kvCommand(['DEL', `jfp:otg:doc:${id}`])
+      await kvCommand(['HDEL', 'jfp:otg:index', id])
+      await audit({ by: principal.email, action: 'plan.delete', target: id, after: { name: summary.title } })
+      return res.status(200).json({ success: true })
+    }
+    return res.status(200).json({ success: true, plan: { ...summary, onTheGo: JSON.parse((await kvCommand(['GET', `jfp:otg:doc:${id}`])) || 'null') } })
+  }
   if (action === 'savePlans') {
     if (!isAdmin) return fail(res, 403, 'Only Lee or Ligia edit session plans.')
     const link = (v) => (/^https:\/\//.test(v || '') ? clean(v, 500) : '')
@@ -967,7 +1153,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, user: { ...principal, photo: mine?.photo || '' }, coaches: isAdmin ? coachList(config) : [] })
     }
     if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
-    if (['staffOverview', 'requestCover', 'cancelCover', 'requestTimeOff', 'decideTimeOff', 'savePlans'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
+    if (['staffOverview', 'requestCover', 'cancelCover', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
 
     if (action === 'coachSessions') {
       const coachId = isAdmin ? clean(body.coachId, 30) : principal.coachId
@@ -1179,10 +1365,13 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true })
       }
 
-      case 'money': {
-        const [roster, bookings, payreqs] = await Promise.all([loadRoster({ fresh: true }), listBookings(), listPayreqs()])
-        return res.status(200).json({ success: true, money: money(config, roster, bookings, payreqs) })
+      case 'money': return res.status(200).json({ success: true, money: await moneyData(config, { since: ISO.test(body.since || '') ? body.since : '', fresh: body.fresh === true }) })
+      case 'playerPayments': {
+        const d = await playerPayments(config, clean(body.rowId, 30))
+        return d ? res.status(200).json({ success: true, player: d }) : fail(res, 404, 'Player row not found.')
       }
+      case 'recordPayment': return await recordPayment(res, principal, config, body)
+      case 'recordStripeAll': return await recordStripeAll(res, principal, config)
 
       case 'audit': return res.status(200).json({ success: true, entries: await listAudit(Number(body.limit) || 300) })
 
@@ -1194,7 +1383,7 @@ export default async function handler(req, res) {
       case 'saveSettings': {
         const input = body.config || {}
         const patch = {}
-        for (const k of ['passwordRequired', 'term', 'termStart', 'weeks', 'prices', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations', 'kitUrl', 'kitNote', 'kitPriceLabel', 'skipDates']) if (k in input) patch[k] = input[k]
+        for (const k of ['passwordRequired', 'moneySince', 'term', 'termStart', 'weeks', 'prices', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations', 'kitUrl', 'kitNote', 'kitPriceLabel', 'skipDates']) if (k in input) patch[k] = input[k]
         if (patch.prices) patch.prices = { ...config.prices, ...patch.prices }
         if (Array.isArray(input.coaches)) {
           // Photos are saved by their own action; a settings save never drops one.

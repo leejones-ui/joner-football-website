@@ -135,6 +135,8 @@ export const DEFAULT_CONFIG = {
   coachSeed: 2,
   // Lee, 5 Oct 2026: no booking password for the public launch email.
   passwordRequired: false,
+  // Stripe payments from this date count as this term's income (Money tab).
+  moneySince: '2026-09-14',
   // The JF playing kit is required for every player (Lee, 30 Sept). It is
   // sold by BE Teamsport, so it always opens in a new tab and the family's
   // Joner page stays open behind it. Families confirm it before they pay.
@@ -229,6 +231,7 @@ export function normaliseConfig(input = {}) {
     coachLoginsEnabled: Number(input.coachSeed || 0) < b.coachSeed ? true : input.coachLoginsEnabled === true,
     coachSeed: b.coachSeed,
     passwordRequired: typeof input.passwordRequired === 'boolean' ? input.passwordRequired : b.passwordRequired,
+    moneySince: /^\d{4}-\d{2}-\d{2}$/.test(input.moneySince || '') ? input.moneySince : b.moneySince,
     // The kit link opens the whole Joner Football shop (Lee, 5 Oct 2026), not
     // one product: an old saved link to the playing kit page moves over.
     kitUrl: /\/products\/jf-playing-kit\/?$/.test(input.kitUrl || '') ? b.kitUrl : /^https:\/\//.test(input.kitUrl || '') ? clean(input.kitUrl, 500) : (input.kitUrl === '' ? '' : b.kitUrl),

@@ -29,22 +29,93 @@ async function showSignIn() {
   start()
 }
 
-function tabs() {
-  if (P.user.role !== 'admin') return [['program', 'Program'], ['coach', 'My sessions'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['profile', 'My profile']]
-  return [['board', 'Timetable'], ['families', 'Families'], ['requests', 'Requests'], ['payments', 'Payment links'], ['holiday', 'Holiday training'], ['next', 'Next term'], ['prices', 'Prices'], ['groups', 'Groups and rules'], ['money', 'Money'], ['coach', 'Registers'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['coaches', 'Coaches'], ['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]
+// The sidebar: sections, each tab with a line icon. Coaches only ever get
+// their own five tabs; the server checks every request again.
+const NAV = {
+  coach: [['Coaching', [['program', 'Program'], ['coach', 'My sessions'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['profile', 'My profile']]]],
+  admin: [
+    ['Overview', [['overview', 'Dashboard']]],
+    ['Program', [['board', 'Timetable'], ['families', 'Families'], ['requests', 'Requests'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
+    ['Money', [['money', 'Money'], ['payments', 'Payment links'], ['prices', 'Prices']]],
+    ['Coaches', [['coach', 'Registers'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['coaches', 'Coaches']]],
+    ['Admin', [['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]],
+  ],
 }
+const ICON = {
+  overview: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 4v4h6V4z"/>',
+  board: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  program: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  families: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M16 5.6a3 3 0 0 1 0 5.8M17.5 14.3c1.7.6 2.7 2.2 3 4.7"/>',
+  requests: '<path d="M4 6.5h16v10H8.5L4 20z"/><path d="M8 10.5h8M8 13.5h5"/>',
+  groups: '<path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="2"/>',
+  next: '<path d="M5 12h12M13 7l5 5-5 5"/>',
+  holiday: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>',
+  money: '<rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v5M17.5 9.5v5"/>',
+  payments: '<path d="M9.5 14.5 14.5 9.5M8 12l-2 2a3 3 0 0 0 4.2 4.2l2-2M16 12l2-2a3 3 0 0 0-4.2-4.2l-2 2"/>',
+  prices: '<path d="M4 4h7l9 9-7 7-9-9z"/><circle cx="8.5" cy="8.5" r="1.4"/>',
+  coach: '<path d="M8 4.5h8M9 3.5h6v3H9z"/><rect x="5" y="5" width="14" height="16" rx="2.5"/><path d="M8.5 11.5l1.8 1.8 3.5-3.6M8.5 17h7"/>',
+  staff: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9 15l2 2 4-4"/>',
+  plans: '<rect x="4" y="3.5" width="16" height="17" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M4 12h16"/>',
+  coaches: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/>',
+  profile: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/>',
+  removed: '<path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"/>',
+  audit: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8.5"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>',
+}
+const icon = (k) => `<span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICON[k] || ICON.overview}</svg></span>`
+function tabs() { return NAV[P.user.role === 'admin' ? 'admin' : 'coach'].flatMap(([, list]) => list) }
 
 function start() {
   $('app').hidden = false
   $('sign-out').hidden = false
-  $('who-small').textContent = `${P.user.name} · ${P.user.role === 'admin' ? 'Super admin' : 'Coach'}`
+  $('who-name').textContent = P.user.name.replace(/^Coach\s+/, '')
+  $('who-small').textContent = P.user.role === 'admin' ? 'Super admin' : 'Coach'
+  $('me-ini').textContent = P.user.name.replace(/^Coach\s+/, '').split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2).toUpperCase()
   const hash = location.hash.slice(1)
   go(tabs().some(([k]) => k === hash) ? hash : tabs()[0][0])
 }
 
 function renderNav() {
-  $('nav').innerHTML = tabs().map(([k, label]) => `<button type="button" data-tab="${k}" aria-current="${P.tab === k ? 'page' : 'false'}">${esc(label)}${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}</button>`).join('')
+  const sections = NAV[P.user.role === 'admin' ? 'admin' : 'coach']
+  $('nav').innerHTML = sections.map(([title, list]) => `<p class="jp-nav-sec">${esc(title)}</p>${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}</button>`).join('')}`).join('')
 }
+
+// ---------- shell: collapsible sidebar, phone drawer, theme ----------
+
+const root = () => $('jfp-portal')
+function setCollapsed(on) {
+  root().classList.toggle('nav-collapsed', on)
+  $('nav-collapse').setAttribute('aria-expanded', String(!on))
+  $('nav-collapse').title = on ? 'Expand menu' : 'Collapse menu'
+  $('nav-collapse').querySelector('.jp-lbl').textContent = on ? 'Expand' : 'Collapse'
+  try { localStorage.setItem('jfp-nav-collapsed', on ? '1' : '0') } catch {}
+}
+function setDrawer(open) {
+  root().classList.toggle('nav-open', open)
+  $('nav-scrim').hidden = !open
+  $('nav-open').setAttribute('aria-expanded', String(open))
+  if (open) $('nav').querySelector('[aria-current="page"]')?.focus()
+}
+function setTheme(t) {
+  root().dataset.theme = t
+  $('theme-toggle').setAttribute('aria-label', t === 'dark' ? 'Switch to light mode' : 'Switch to dark mode')
+  try { localStorage.setItem('jfp-portal-theme', t) } catch {}
+  if (P.tab === 'overview') renderOverview(true)
+}
+function bindShell() {
+  setCollapsed(root().classList.contains('nav-collapsed'))
+  $('nav-collapse').addEventListener('click', () => setCollapsed(!root().classList.contains('nav-collapsed')))
+  $('nav-open').addEventListener('click', () => setDrawer(!root().classList.contains('nav-open')))
+  $('nav-scrim').addEventListener('click', () => setDrawer(false))
+  $('theme-toggle').addEventListener('click', () => setTheme(root().dataset.theme === 'dark' ? 'light' : 'dark'))
+  $('theme-toggle').setAttribute('aria-label', root().dataset.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode')
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && root().classList.contains('nav-open')) { setDrawer(false); $('nav-open').focus() }
+    // [ toggles the sidebar on a laptop, like most dashboards.
+    if (e.key === '[' && !e.target.closest('input, textarea, select, [contenteditable]') && window.matchMedia('(min-width: 1000px)').matches) setCollapsed(!root().classList.contains('nav-collapsed'))
+  })
+}
+bindShell()
 
 async function go(tab) {
   P.tab = tab
@@ -52,7 +123,8 @@ async function go(tab) {
   renderNav()
   view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
-  const fn = { next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderFamilies, removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  setDrawer(false)
+  const fn = { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderFamilies, removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   view().focus({ preventScroll: true })
 }
@@ -377,7 +449,7 @@ function detailsModal(p, g) {
       <dt>Parent</dt><dd>${esc(p.parent || '')}</dd>
       <dt>Email</dt><dd>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : 'None'}</dd>
       <dt>Mobile</dt><dd>${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : 'None'}</dd>
-      ${p.linkNotes ? `<dt>Payment notes</dt><dd style="font-weight:400">${esc(p.linkNotes)}</dd>` : ''}
+      ${p.linkNotes || p.notes ? `<dt>Notes</dt><dd><button type="button" class="j-btn j-btn-line j-btn-sm" data-notes-row="${esc(p.rowId)}">Show notes</button></dd>` : ''}
     </dl>
     <div style="display:flex;justify-content:flex-end;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`)
 }
@@ -419,7 +491,7 @@ async function linkModal(p, g) {
     <div id="ln-price"></div>
     <label class="j-field"><span>Parent email</span><input class="j-input" id="ln-email" type="email" value="${esc(p.email || '')}"></label>
     <label class="j-check" id="ln-change-row" hidden><input type="checkbox" id="ln-change"> <span>Update the parent email in Airtable to this address. The family signs in with it to pay, and will see this player.</span></label>
-    ${p.linkNotes ? `<div class="j-box j-box-amber small" style="margin-bottom:10px"><b>Payment notes in Airtable:</b> ${esc(p.linkNotes)}</div>` : ''}
+    ${p.linkNotes ? `<details class="j-box j-box-amber small" style="margin-bottom:10px"><summary style="cursor:pointer"><b>This family has payment notes in Airtable</b> (tap to read)</summary><p style="margin-top:6px;white-space:pre-wrap">${esc(p.linkNotes)}</p></details>` : ''}
     <div id="ln-out"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="ln-copy-go">Copy link only</button><button type="button" class="j-btn j-btn-dark" id="ln-go">Email payment link</button></div>`)
   let mode = 'price'
@@ -951,31 +1023,334 @@ async function renderPrices() {
 
 // ---------- money ----------
 
-async function renderMoney() {
-  const m = (await need(await post('money'))).money
-  const a = m.airtable, o = m.online
-  view().innerHTML = `
-    <div class="jp-head"><div><h1>Money</h1><p class="muted small">${esc(m.notes)}</p></div></div>
-    <div class="jp-kpis">
-      <div class="jp-kpi"><span>Players marked Paid</span><b>${a.byStatus.Paid || 0}<span class="muted" style="font-size:14px;font-weight:600"> / ${a.players}</span></b></div>
-      <div class="jp-kpi"><span>Marked Unpaid</span><b>${a.byStatus.Unpaid || 0}</b></div>
-      <div class="jp-kpi"><span>Payment not set</span><b>${a.byStatus['Not Set'] || 0}</b></div>
-      <div class="jp-kpi"><span>Paid online (${o.payments})</span><b>${money(o.grossCents)}</b></div>
-      <div class="jp-kpi"><span>Stripe fees online</span><b>${money(o.stripeFeesCents)}</b></div>
-    </div>
-    <p class="small" style="margin-bottom:16px">All statuses: ${Object.entries(a.byStatus).map(([k, v]) => `${esc(k)} ${v}`).join(' · ')}. In Airtable dollars: fees ${money(a.feesCents)}, amounts paid ${money(a.paidCents)}, balances on rows not marked Paid ${money(a.owingCents)} across ${a.owingPlayers} players. Many rows marked Paid have no amount entered, so the dollar figures are only as good as what is typed in. Online net after Stripe fees ${money(o.netCents)}${o.feesPending ? ` (${o.feesPending} fees still to read)` : ''}.</p>
-    <h2 style="margin-bottom:10px">Owing</h2>
-    ${m.owing.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Group</th><th>Owing</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>
-      ${m.owing.map((r) => `<tr><td><b>${esc(r.player)}</b><br><span class="muted small">${esc(r.parent)} · ${esc(r.email)}</span></td><td>${esc(r.group)}</td><td>${money(r.balanceCents)}</td><td>${esc(r.status)}</td><td class="small" style="max-width:260px">${esc(r.linkNotes || '')}</td><td><button type="button" class="j-btn j-btn-line j-btn-sm" data-link-row="${esc(r.rowId)}">Payment link</button></td></tr>`).join('')}
-    </tbody></table></div>` : '<div class="j-empty">Nothing owing.</div>'}
-    <h2 style="margin:22px 0 10px">Recent online payments</h2>
-    ${o.recent.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>When</th><th>Who</th><th>For</th><th>Amount</th><th>Stripe fee</th></tr></thead><tbody>${o.recent.map((s) => `<tr><td>${esc(s.at ? new Date(s.at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }) : '')}</td><td>${esc(s.who)}</td><td>${esc(s.kind)}</td><td>${esc(s.label)}</td><td>${esc(s.feeLabel)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="j-empty">No online payments yet.</div>'}`
-  view().querySelectorAll('[data-link-row]').forEach((b) => b.addEventListener('click', async () => {
-    if (!P.board) P.board = await need(await post('board'))
-    const f = findPlayer(b.dataset.linkRow)
-    if (f) linkModal(f.p, f.g); else toast('Open the board to send this one.')
-  }))
+// ---------- charts: animated, responsive, accessible ----------
+// Columns grow from the baseline, bars from the left, tiles rise in. Each
+// chart is redrawn at its container's width (no stretching), with a hover
+// and keyboard tooltip and a table view underneath.
+
+const cssVar = (name) => getComputedStyle(root()).getPropertyValue(name).trim()
+const SERIES = [['stripe', 'Stripe', '--c-series-1'], ['bank', 'Bank transfer', '--c-series-2'], ['cash', 'Cash', '--c-series-3']]
+const STATUS = {
+  paid: ['Paid', '--c-good'], stripe: ['Paid in Stripe, not recorded', '--c-series-1'], part: ['Part paid', '--c-warning'],
+  unpaid: ['Unpaid', '--c-critical'], unpriced: ['Not priced', '--c-neutral'],
 }
+const compact = (c) => { const d = c / 100; return d >= 10000 ? `A$${(d / 1000).toFixed(d >= 100000 ? 0 : 1)}K` : `A$${Math.round(d).toLocaleString('en-AU')}` }
+const niceMax = (v) => { if (v <= 0) return 100000; const p = 10 ** Math.floor(Math.log10(v)); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p }
+
+function tip(html, x, y) {
+  const t = $('chart-tip')
+  t.innerHTML = html
+  t.hidden = false
+  const w = t.offsetWidth, h = t.offsetHeight
+  t.style.left = `${Math.min(window.innerWidth - w - 8, Math.max(8, x - w / 2))}px`
+  t.style.top = `${Math.max(8, y - h - 12)}px`
+}
+const untip = () => { $('chart-tip').hidden = true }
+function bindTips(el) {
+  el.querySelectorAll('[data-tip]').forEach((b) => {
+    const show = (e) => { const r = b.getBoundingClientRect(); tip(b.dataset.tip, e?.clientX ?? r.left + r.width / 2, e?.clientY ?? r.top) }
+    b.addEventListener('mousemove', show)
+    b.addEventListener('mouseleave', untip)
+    b.addEventListener('focus', () => show())
+    b.addEventListener('blur', untip)
+  })
+}
+
+// Stacked weekly columns: income by week, by method.
+function weeklyChart(el, weeks, animate) {
+  const W = Math.max(280, el.clientWidth), H = 240, L = 54, B = 26, T = 18
+  const totals = weeks.map((w) => w.stripe + w.bank + w.cash)
+  const max = niceMax(Math.max(...totals, 1))
+  const band = (W - L) / Math.max(weeks.length, 1)
+  const bw = Math.min(24, band * 0.6)
+  const y = (v) => T + (H - T - B) * (1 - v / max)
+  const ticks = [0, 0.5, 1].map((f) => f * max)
+  const lab = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const best = totals.indexOf(Math.max(...totals))
+  const cols = weeks.map((w, i) => {
+    const x = L + band * i + (band - bw) / 2
+    let base = H - B
+    const segs = SERIES.filter(([k]) => w[k] > 0).map(([k, , c], si, arr) => {
+      const h = (H - T - B) * (w[k] / max)
+      const top = base - h
+      const isTop = si === arr.length - 1
+      // 4px rounded data end on the top segment only; 2px surface gap between segments.
+      const path = isTop ? `M${x},${base} V${top + 4} Q${x},${top} ${x + 4},${top} H${x + bw - 4} Q${x + bw},${top} ${x + bw},${top + 4} V${base} Z` : `M${x},${base} V${top} H${x + bw} V${base} Z`
+      base = top - (isTop ? 0 : 2)
+      return `<path class="seg" d="${path}" fill="${cssVar(c)}"/>`
+    }).join('')
+    const tipHtml = `<b>Week of ${esc(lab(w.week))}</b>${SERIES.map(([k, n, c]) => `<span class="row"><i style="background:${cssVar(c)}"></i>${n} ${esc(money(w[k]))}</span>`).join('')}<span class="row">Total ${esc(money(totals[i]))}</span>`
+    return `<g class="band" tabindex="0" data-tip="${esc(tipHtml)}" aria-label="Week of ${esc(lab(w.week))}: ${esc(money(totals[i]))}">
+      <rect class="hit" x="${L + band * i}" y="${T}" width="${band}" height="${H - T - B}"/>
+      <g class="col" style="--i:${i}">${segs}</g>
+      ${i === best && totals[i] > 0 ? `<text class="val fade" style="--i:${i}" x="${x + bw / 2}" y="${y(totals[i]) - 6}" text-anchor="middle">${esc(compact(totals[i]))}</text>` : ''}
+      ${weeks.length <= 8 || i % Math.ceil(weeks.length / 8) === 0 ? `<text class="lab" x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${esc(lab(w.week))}</text>` : ''}
+    </g>`
+  }).join('')
+  el.classList.toggle('anim', Boolean(animate))
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Income by week, Stripe, bank transfer and cash">
+    <g class="grid">${ticks.map((t) => `<line x1="${L}" x2="${W}" y1="${y(t)}" y2="${y(t)}"/>`).join('')}</g>
+    <g class="axis">${ticks.map((t) => `<text x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${esc(compact(t))}</text>`).join('')}</g>
+    ${cols}</svg>`
+  bindTips(el)
+}
+
+// Horizontal bars: players per location, the paid share inside.
+function locationChart(el, locs, animate) {
+  const W = Math.max(260, el.clientWidth), row = 46, H = locs.length * row + 4, L = 126, R = 64
+  const max = Math.max(...locs.map((l) => l.players), 1)
+  el.classList.toggle('anim', Boolean(animate))
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Players by location, and how many have paid">
+    ${locs.map((l, i) => {
+      const y0 = i * row + 12, bh = 18
+      const full = (W - L - R) * (l.players / max)
+      const paid = l.players ? full * (l.paid / l.players) : 0
+      const t = `<b>${esc(l.name)}</b><span class="row"><i style="background:${cssVar('--c-good')}"></i>Paid ${l.paid}</span><span class="row"><i style="background:${cssVar('--c-neutral')}"></i>Not yet ${l.players - l.paid}</span><span class="row">Owing ${esc(money(l.owingCents))}</span>`
+      return `<g class="band" tabindex="0" data-tip="${esc(t)}" aria-label="${esc(l.name)}: ${l.players} players, ${l.paid} paid">
+        <rect class="hit" x="0" y="${y0 - 6}" width="${W}" height="${row - 4}"/>
+        <text class="lab" x="0" y="${y0 + 13}">${esc(l.name)}</text>
+        <g class="bar" style="--i:${i}">
+          <rect x="${L}" y="${y0}" width="${Math.max(0, full)}" height="${bh}" rx="4" fill="${cssVar('--c-neutral')}" opacity=".55"/>
+          ${paid > 0 ? `<rect x="${L}" y="${y0}" width="${Math.max(4, paid - (paid < full ? 2 : 0))}" height="${bh}" rx="4" fill="${cssVar('--c-good')}"/>` : ''}
+        </g>
+        <text class="val fade" style="--i:${i}" x="${L + full + 8}" y="${y0 + 13}">${l.paid}/${l.players}</text>
+      </g>`
+    }).join('')}</svg>`
+  bindTips(el)
+}
+
+function statusBlock(st, animate) {
+  const total = Object.values(st).reduce((t, n) => t + n, 0) || 1
+  const order = ['paid', 'stripe', 'part', 'unpaid', 'unpriced'].filter((k) => st[k])
+  return `<div class="jc ${animate ? 'anim' : ''}">
+    <div class="jc-stack" role="img" aria-label="Payment status of every player">${order.map((k, i) => `<span style="--i:${i};flex:${st[k]};background:${cssVar(STATUS[k][1])}" title="${esc(STATUS[k][0])}: ${st[k]}"></span>`).join('')}</div>
+    <ul class="jc-status">${order.map((k) => `<li><i style="background:${cssVar(STATUS[k][1])}"></i><button type="button" data-money-filter="${k}">${esc(STATUS[k][0])}</button><span class="n">${st[k]}</span><span class="muted small" style="width:42px;text-align:right">${Math.round((st[k] / total) * 100)}%</span></li>`).join('')}</ul>
+  </div>`
+}
+
+function chartTable(head, rows) {
+  return `<details class="jc-table"><summary>Show as a table</summary><table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`
+}
+
+// ---------- dashboard ----------
+
+let resizeTimer = 0
+async function renderOverview(redraw = false) {
+  if (!redraw || !P.money) {
+    view().innerHTML = '<p class="muted">Loading the dashboard</p>'
+    const [m, rq] = await Promise.all([need(await post('money')), post('requests')])
+    P.money = m.money
+    if (rq.ok) { P.pendingCount = rq.data.requests.filter((r) => r.status === 'pending').length; P.requests = rq.data.requests; renderNav() }
+  }
+  const m = P.money, k = m.kpis
+  const hour = Number(new Date().toLocaleString('en-AU', { hour: 'numeric', hour12: false, timeZone: 'Australia/Sydney' }))
+  const hi = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const paidPlayers = m.status.paid + m.status.stripe
+  const pending = (P.requests || []).filter((r) => r.status === 'pending')
+  view().innerHTML = `
+    <div class="jd-head"><div><h1>${hi}, ${esc(P.user.name.split(' ')[0])}</h1><p>Term 4 at a glance. Stripe is read live${m.stripeAt ? `, last checked ${esc(new Date(m.stripeAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}` : ''}.</p></div>
+      <div class="jd-sync"><button type="button" class="j-btn j-btn-line j-btn-sm" id="d-refresh">Refresh from Stripe</button></div></div>
+    ${m.stripeError ? `<div class="j-box j-box-amber" style="margin-bottom:12px">${esc(m.stripeError)}</div>` : ''}
+    <div class="jd-grid">
+      <section class="jd-card jd-hero jd-span-5 jd-in" style="--i:0"><div><p class="lbl">Income this term</p><p class="big">${esc(money(k.incomeCents))}</p></div>
+        <div class="jd-split">${SERIES.map(([key, n, c]) => `<span><span class="jd-key"><i style="background:${cssVar(c)}"></i>${n}</span><b>${esc(money(key === 'stripe' ? k.stripeCents : key === 'bank' ? k.bankCents : k.cashCents))}</b></span>`).join('')}</div></section>
+      <section class="jd-card jd-tiles jd-span-7 jd-in" style="--i:1">
+        <div class="jd-tile"><span class="lbl">Still owing</span><span class="val">${esc(money(k.owingCents))}</span><span class="note">${m.status.unpaid + m.status.part} players</span><button type="button" class="link" data-money-filter="unpaid">See who</button></div>
+        <div class="jd-tile"><span class="lbl">Players paid</span><span class="val">${paidPlayers}<span class="muted" style="font-size:16px;font-weight:650"> / ${k.players}</span></span><span class="note">${Math.round((paidPlayers / Math.max(k.players, 1)) * 100)}% of the term</span></div>
+        <div class="jd-tile"><span class="lbl">Paid in Stripe, not in Airtable</span><span class="val">${m.status.stripe}</span><span class="note">Record them in one click</span><button type="button" class="link" data-money-filter="stripe">Review</button></div>
+        <div class="jd-tile"><span class="lbl">Requests waiting</span><span class="val">${pending.length}</span><span class="note">Applications and waitlist</span><button type="button" class="link" data-tab="requests">Open requests</button></div>
+      </section>
+      <section class="jd-card jd-span-8 jd-in" style="--i:2"><h2>Income by week</h2><p class="sub">Stripe payments (live) and recorded bank transfers and cash</p>
+        <div class="jc" id="c-weekly"></div>
+        <div class="jc-legend">${SERIES.map(([, n, c]) => `<span><i style="background:${cssVar(c)}"></i>${n}</span>`).join('')}</div>
+        ${chartTable(['Week of', 'Stripe', 'Bank transfer', 'Cash'], m.weekly.map((w) => [w.week, money(w.stripe), money(w.bank), money(w.cash)]))}</section>
+      <section class="jd-card jd-span-4 jd-in" style="--i:3"><h2>Payment status</h2><p class="sub">Every player holding a place</p>${statusBlock(m.status, !redraw)}</section>
+      <section class="jd-card jd-span-7 jd-in" style="--i:4"><h2>Paid by location</h2><p class="sub">Green is paid, grey is not yet</p><div class="jc" id="c-locs"></div>
+        ${chartTable(['Location', 'Players', 'Paid', 'Owing'], m.locations.map((l) => [l.name, l.players, l.paid, money(l.owingCents)]))}</section>
+      <section class="jd-card jd-span-5 jd-in" style="--i:5"><h2>Needs you</h2><ul class="jd-list">
+        ${pending.slice(0, 4).map((r) => `<li><button type="button" data-tab="requests">${esc(r.players.map((p) => p.name).join(', '))}</button><span class="muted small">${esc(r.kind === 'application' ? 'Application' : r.kind === 'waitlist' ? 'Waitlist' : 'Enquiry')}</span></li>`).join('')}
+        ${m.status.stripe ? `<li><button type="button" data-money-filter="stripe">${m.status.stripe} Stripe payment${m.status.stripe === 1 ? '' : 's'} to record in Airtable</button><span class="muted small">Money</span></li>` : ''}
+        ${m.status.unpriced ? `<li><button type="button" data-money-filter="unpriced">${m.status.unpriced} players with no price set</button><span class="muted small">Money</span></li>` : ''}
+        ${m.unmatched.length ? `<li><button type="button" data-tab="money">${m.unmatched.length} Stripe payment${m.unmatched.length === 1 ? '' : 's'} not matched to a player</button><span class="muted small">Money</span></li>` : ''}
+        ${!pending.length && !m.status.stripe && !m.status.unpriced && !m.unmatched.length ? '<li><span class="muted">Nothing waiting. Nice.</span></li>' : ''}
+      </ul></section>
+    </div>`
+  weeklyChart($('c-weekly'), m.weekly, !redraw)
+  locationChart($('c-locs'), m.locations, !redraw)
+  $('d-refresh').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true
+    const r = await post('money', { fresh: true })
+    if (r.ok) { P.money = r.data.money; renderOverview(true); toast('Up to date with Stripe') } else toast(r.data.error)
+  })
+}
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    if (P.tab === 'overview' && P.money && $('c-weekly')) { weeklyChart($('c-weekly'), P.money.weekly, false); locationChart($('c-locs'), P.money.locations, false) }
+  }, 150)
+})
+document.addEventListener('click', (e) => {
+  const f = e.target.closest('[data-money-filter]')
+  if (!f) return
+  P.moneyFilter = { ...(P.moneyFilter || {}), status: f.dataset.moneyFilter }
+  go('money')
+})
+
+// ---------- money: search, filters, history, record a payment ----------
+
+const statusPill = (s) => `<span class="jm-status"><i style="background:${cssVar(STATUS[s][1])}"></i>${esc(STATUS[s][0])}</span>`
+
+async function renderMoney() {
+  const r = await need(await post('money'))
+  P.money = r.money
+  const m = P.money
+  P.moneyFilter = { status: '', q: '', loc: '', ...(P.moneyFilter || {}) }
+  const f = P.moneyFilter
+  const counts = { '': m.players.length, ...m.status }
+  view().innerHTML = `
+    <div class="jd-head"><div><h1>Money</h1><p>Every player's payments: Stripe read live, plus the bank transfers and cash you record here.</p></div>
+      <div class="jd-sync"><label class="muted small" for="m-since">Term payments from</label><input class="j-input" type="date" id="m-since" value="${esc(m.since)}" style="width:auto;padding:7px 10px;font-size:13.5px"><button type="button" class="j-btn j-btn-line j-btn-sm" id="m-refresh">Refresh from Stripe</button></div></div>
+    ${m.stripeError ? `<div class="j-box j-box-amber">${esc(m.stripeError)}</div>` : ''}
+    <div class="jd-grid">
+      <section class="jd-card jd-hero jm-hero jd-in" style="--i:0"><div><p class="lbl">Income this term</p><p class="big">${esc(money(m.kpis.incomeCents))}</p></div>
+        <div class="jd-split"><span>Refunded<b>${esc(money(m.kpis.refundsCents))}</b></span><span>Stripe payments<b>${m.kpis.stripePayments}</b></span></div></section>
+      ${[['Stripe', m.kpis.stripeCents, '--c-series-1'], ['Bank transfer', m.kpis.bankCents, '--c-series-2'], ['Cash', m.kpis.cashCents, '--c-series-3'], ['Still owing', m.kpis.owingCents, '--c-critical']].map(([l, v, c], i) => `<section class="jd-card jd-tile jm-tile jd-in" style="--i:${i + 1}"><span class="lbl"><span class="jd-key"><i style="background:${cssVar(c)}"></i>${l}</span></span><span class="val">${esc(money(v))}</span></section>`).join('')}
+    </div>
+    ${m.status.stripe ? `<div class="jm-alert"><span><b>${m.status.stripe} player${m.status.stripe === 1 ? ' has' : 's have'} paid in Stripe</b> but Airtable does not show it yet.</span><span style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line j-btn-sm" data-set-status="stripe">Show them</button><button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-record-all">Record all in Airtable</button></span></div>` : ''}
+    <div class="jm-bar">
+      <div class="jm-search"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2" stroke-linecap="round"/></svg><input class="j-input" id="m-q" type="search" placeholder="Search player, parent or email" value="${esc(f.q)}" autocomplete="off"></div>
+      <select class="j-select" id="m-loc" style="width:auto"><option value="">All locations</option>${m.locations.map((l) => `<option value="${esc(l.id)}" ${f.loc === l.id ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
+      <div class="jm-chips" id="m-chips">${[['', 'All'], ['paid', 'Paid'], ['stripe', 'Paid in Stripe'], ['part', 'Part paid'], ['unpaid', 'Unpaid'], ['unpriced', 'Not priced']].map(([v, l]) => `<button type="button" data-set-status="${v}" aria-pressed="${f.status === v}">${v ? `<i style="background:${cssVar(STATUS[v][1])}"></i>` : ''}${l} <span class="n">${counts[v] || 0}</span></button>`).join('')}</div>
+    </div>
+    <div class="jp-scroll"><table class="jp-table jm-table"><thead><tr><th>Player</th><th>Group</th><th class="num">Fee</th><th class="num">Paid</th><th class="num">Owing</th><th>Status</th><th></th></tr></thead><tbody id="m-rows"></tbody></table></div>
+    <p class="muted small" id="m-count" style="margin-top:8px"></p>
+    ${m.unmatched.length ? `<details class="jd-card" style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">${m.unmatched.length} Stripe payment${m.unmatched.length === 1 ? '' : 's'} not matched to a player</summary><p class="sub" style="margin:6px 0 10px">Paid with an email that is not on any Term 4 row. Match each one to the player it was for.</p>
+      <ul class="jm-hist">${m.unmatched.map((u) => `<li><span><b>${esc(u.name || u.email || 'No name')}</b><small>${esc(u.email)} · ${esc(new Date(u.at).toLocaleDateString('en-AU'))} · ${esc(u.product)}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(u.cents))}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-match="${esc(u.id)}">Match</button></span></li>`).join('')}</ul></details>` : ''}`
+  const draw = () => {
+    const q = f.q.trim().toLowerCase()
+    const list = m.players.filter((p) => (!f.status || p.status === f.status) && (!f.loc || p.locationId === f.loc) && (!q || `${p.player} ${p.parent} ${p.email}`.toLowerCase().includes(q)))
+    $('m-rows').innerHTML = list.map((p) => `<tr data-row="${esc(p.rowId)}"><td><b>${esc(p.player)}</b><br><span class="muted small">${esc(p.parent || '')}</span></td><td class="small">${esc(p.group)}</td><td class="num">${p.feeCents ? esc(money(p.feeCents)) : '<span class="muted">not set</span>'}</td><td class="num">${esc(money(p.paidCents))}${p.status === 'stripe' ? `<br><span class="muted small">Stripe ${esc(money(p.stripeCents))}</span>` : ''}</td><td class="num">${p.owingCents ? `<b>${esc(money(p.owingCents))}</b>` : '<span class="muted">0</span>'}</td><td>${statusPill(p.status)}</td>
+      <td><div class="jm-actions">${p.hasNotes ? `<button type="button" class="jm-icon" data-notes="${esc(p.rowId)}" title="Notes" aria-label="Notes for ${esc(p.player)}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 4h9l4 4v12H6z"/><path d="M9 11h7M9 15h5"/></svg></button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-record="${esc(p.rowId)}">Record payment</button></div></td></tr>`).join('') || '<tr><td colspan="7"><div class="j-empty">No players match.</div></td></tr>'
+    $('m-count').textContent = `${list.length} of ${m.players.length} players · owing ${money(list.reduce((t, p) => t + p.owingCents, 0))}`
+  }
+  draw()
+  $('m-q').addEventListener('input', (e) => { f.q = e.target.value; draw() })
+  $('m-loc').addEventListener('change', (e) => { f.loc = e.target.value; draw() })
+  view().querySelectorAll('[data-set-status]').forEach((b) => b.addEventListener('click', () => { f.status = b.dataset.setStatus; view().querySelectorAll('#m-chips [data-set-status]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.setStatus === f.status))); draw() }))
+  $('m-rows').addEventListener('click', (e) => {
+    const n = e.target.closest('[data-notes]'); if (n) { e.stopPropagation(); return notesModal(n.dataset.notes) }
+    const rec = e.target.closest('[data-record]'); if (rec) { e.stopPropagation(); return recordModal(m.players.find((p) => p.rowId === rec.dataset.record)) }
+    const tr = e.target.closest('[data-row]'); if (tr) historyDrawer(tr.dataset.row)
+  })
+  $('m-refresh').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true
+    const since = $('m-since').value
+    if (since && since !== m.since) await post('saveSettings', { config: { moneySince: since } })
+    const r2 = await post('money', { fresh: true, since })
+    if (!r2.ok) return toast(r2.data.error)
+    toast('Up to date with Stripe'); renderMoney()
+  })
+  $('m-record-all')?.addEventListener('click', async (e) => {
+    const todo = m.players.filter((p) => p.status === 'stripe')
+    if (!(await confirmBox(`Record the Stripe payments for <b>${todo.length}</b> player${todo.length === 1 ? '' : 's'} in Airtable (Term 4 Players and the payment ledger)?`, { ok: 'Record' }))) return
+    e.currentTarget.disabled = true
+    const r2 = await post('recordStripeAll')
+    if (!r2.ok) return toast(r2.data.error)
+    toast(`Recorded ${r2.data.recorded} Stripe payment${r2.data.recorded === 1 ? '' : 's'}`); renderMoney()
+  })
+  view().querySelectorAll('[data-match]').forEach((b) => b.addEventListener('click', () => matchModal(m.unmatched.find((u) => u.id === b.dataset.match))))
+}
+
+async function notesModal(rowId) {
+  const r = await post('playerPayments', { rowId })
+  if (!r.ok) return toast(r.data.error)
+  const p = r.data.player
+  modal(`<h2 style="margin-bottom:4px">Notes</h2><p class="muted small" style="margin-bottom:12px">${esc(p.player)}</p>
+    ${p.linkNotes ? `<h3 class="small muted" style="margin:0 0 6px">Payment notes</h3><div class="jm-notes" style="margin-bottom:12px">${esc(p.linkNotes)}</div>` : ''}
+    ${p.notes ? `<h3 class="small muted" style="margin:0 0 6px">Term 4 notes</h3><div class="jm-notes">${esc(p.notes)}</div>` : '<p class="muted">No notes.</p>'}
+    <div style="display:flex;justify-content:flex-end;margin-top:14px"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })
+}
+
+function recordModal(p, { stripe } = {}) {
+  const owing = p.owingCents || Math.max(0, p.feeCents - p.paidCents) || p.feeCents
+  const box = modal(`<h2 style="margin-bottom:4px">${stripe ? 'Record a Stripe payment' : 'Record a payment'}</h2><p class="muted small" style="margin-bottom:14px">${esc(p.player)} · paid ${esc(money(p.paidCents))} of ${p.feeCents ? esc(money(p.feeCents)) : 'no fee set'}</p>
+    ${stripe ? `<div class="j-box j-box-blue small" style="margin-bottom:12px">Stripe, ${esc(new Date(stripe.at).toLocaleDateString('en-AU'))}: ${esc(money(stripe.cents - (stripe.refundedCents || 0)))} · ${esc(stripe.product)}</div>` : `
+    <div class="j-two"><label class="j-field"><span>Amount (A$)</span><input class="j-input" id="rp-amt" inputmode="decimal" value="${owing ? (owing / 100).toFixed(2).replace(/\.00$/, '') : ''}"></label>
+    <label class="j-field"><span>How they paid</span><select class="j-select" id="rp-how"><option>Bank transfer</option><option>Cash</option><option>Other</option></select></label></div>
+    <div class="j-two"><label class="j-field"><span>Date received</span><input class="j-input" type="date" id="rp-date" value="${new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })}"></label>
+    <label class="j-field"><span>Note <span class="muted">(optional)</span></span><input class="j-input" id="rp-note" maxlength="200" placeholder="For example, paid at the session"></label></div>`}
+    <p class="muted small">Updates Term 4 Players and adds a row to the payment ledger.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="rp-go">Save</button></div>`)
+  box.querySelector('#rp-go').addEventListener('click', async (e) => {
+    const body = stripe ? { rowIds: [p.rowId], method: 'Stripe', stripeSessionId: stripe.id } : { rowIds: [p.rowId], amountCents: Math.round(Number(box.querySelector('#rp-amt').value) * 100), method: box.querySelector('#rp-how').value, date: box.querySelector('#rp-date').value, note: box.querySelector('#rp-note').value.trim() }
+    if (!stripe && !(body.amountCents > 0)) return toast('Enter the amount received.')
+    e.currentTarget.disabled = true
+    const r = await post('recordPayment', body)
+    e.currentTarget.disabled = false
+    if (!r.ok) return toast(r.data.error)
+    closeModal(); closeDrawer(); toast(`Recorded. Airtable updated${r.data.ledger ? ' and the ledger has it' : ''}.`); P.board = null; if (P.tab === 'money') renderMoney()
+  })
+}
+
+function matchModal(u) {
+  const box = modal(`<h2 style="margin-bottom:4px">Match a Stripe payment</h2><p class="muted small" style="margin-bottom:12px">${esc(u.name || u.email)} · ${esc(money(u.cents))} · ${esc(new Date(u.at).toLocaleDateString('en-AU'))}</p>
+    <label class="j-field"><span>Who was it for?</span><input class="j-input" id="mt-q" placeholder="Type a player or parent name" autocomplete="off"></label>
+    <div id="mt-res"></div>`, { wide: true })
+  const res = box.querySelector('#mt-res')
+  box.querySelector('#mt-q').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase()
+    const hits = q.length < 2 ? [] : P.money.players.filter((p) => `${p.player} ${p.parent}`.toLowerCase().includes(q)).slice(0, 8)
+    res.innerHTML = hits.map((p) => `<button type="button" class="j-player" data-pick="${esc(p.rowId)}"><span><b>${esc(p.player)}</b><br><span class="muted small">${esc(p.parent || '')} · ${esc(p.group)}</span></span>${statusPill(p.status)}</button>`).join('')
+  })
+  res.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-pick]'); if (!b) return
+    const p = P.money.players.find((x) => x.rowId === b.dataset.pick)
+    if (!(await confirmBox(`Record ${esc(money(u.cents))} from Stripe against <b>${esc(p.player)}</b>?`, { ok: 'Record' }))) return
+    const r = await post('recordPayment', { rowIds: [p.rowId], method: 'Stripe', stripeSessionId: u.id })
+    if (!r.ok) return toast(r.data.error)
+    closeModal(); toast('Recorded. Airtable updated.'); renderMoney()
+  })
+}
+
+function closeDrawer() { document.querySelector('.jm-drawer')?.remove(); document.querySelector('.jm-drawer-scrim')?.remove() }
+async function historyDrawer(rowId) {
+  closeDrawer()
+  const scrim = document.createElement('div'); scrim.className = 'jp-scrim jm-drawer-scrim'; scrim.style.inset = '0'; scrim.style.zIndex = '65'; scrim.style.position = 'fixed'
+  const d = document.createElement('aside'); d.className = 'jm-drawer'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-label', 'Payment history')
+  d.innerHTML = '<div class="body"><p class="muted">Loading</p></div>'
+  root().append(scrim, d)
+  scrim.addEventListener('click', closeDrawer)
+  const r = await post('playerPayments', { rowId })
+  if (!r.ok) { d.querySelector('.body').innerHTML = `<div class="j-box j-box-red">${esc(r.data.error)}</div>`; return }
+  const p = r.data.player
+  const row = P.money?.players.find((x) => x.rowId === rowId) || { rowId, player: p.player, feeCents: p.feeCents, paidCents: p.paidCents, owingCents: Math.max(0, p.feeCents - p.paidCents), status: 'unpaid' }
+  const when = (iso) => (iso ? new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
+  d.innerHTML = `<header><div><h2 style="font-size:19px">${esc(p.player)}</h2><p class="muted small">${esc(p.parent || '')}${p.email ? ` · ${esc(p.email)}` : ''}</p></div><button type="button" class="j-close" id="dr-x" aria-label="Close">&times;</button></header>
+    <div class="body">
+      <div class="jm-figs"><div><span>Fee</span><b>${p.feeCents ? esc(money(p.feeCents)) : 'Not set'}</b></div><div><span>Paid</span><b>${esc(money(p.paidCents))}</b></div><div><span>Status</span><b style="font-size:14px">${statusPill(row.status)}</b></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="dr-rec">Record a payment</button><button type="button" class="j-btn j-btn-line j-btn-sm" id="dr-link">Send payment link</button>${p.notes || p.linkNotes ? '<button type="button" class="j-btn j-btn-line j-btn-sm" id="dr-notes">Notes</button>' : ''}</div>
+      <h3>Stripe (live)</h3>
+      ${p.stripe.length ? `<ul class="jm-hist">${p.stripe.map((s) => `<li><span>${esc(when(s.at))}<small>${esc(s.product)}${s.refundedCents ? ` · refunded ${esc(money(s.refundedCents))}` : ''}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(s.cents))}</span>${s.recorded ? '<span class="j-pill j-pill-green">In Airtable</span>' : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-rec-stripe="${esc(s.id)}">Record</button>`}</span></li>`).join('')}</ul>` : '<p class="muted small">No Stripe payments from this email this term.</p>'}
+      <h3>Ledger</h3>
+      ${p.ledger.length ? `<ul class="jm-hist">${p.ledger.map((l) => `<li><span>${esc(l.date)}<small>${esc(l.method)}${l.status && l.status !== 'Paid' ? ` · ${esc(l.status)}` : ''}</small></span><span class="amt">${esc(money(l.cents))}</span></li>`).join('')}</ul>` : '<p class="muted small">Nothing in the payment ledger yet.</p>'}
+      <h3>Payment links</h3>
+      ${p.links.length ? `<ul class="jm-hist">${p.links.map((q) => `<li><span>${esc(when(q.createdAt))}<small>${esc({ open: 'Open', checkout: 'At checkout', paid: `Paid ${when(q.paidAt)}`, cancelled: 'Cancelled', expired: 'Expired' }[q.status] || q.status)}</small></span><span class="amt">${esc(money(q.cents))}</span></li>`).join('')}</ul>` : '<p class="muted small">No payment links.</p>'}
+      <h3>Changes</h3>
+      ${p.history.length ? `<ul class="jm-hist">${p.history.map((h) => `<li><span>${esc(h.action.replace(/\./g, ' '))}<small>${esc(h.by)}</small></span><span class="muted small">${esc(when(h.at))}</span></li>`).join('')}</ul>` : '<p class="muted small">No changes recorded.</p>'}
+    </div>`
+  d.querySelector('#dr-x').addEventListener('click', closeDrawer)
+  d.querySelector('#dr-x').focus()
+  d.querySelector('#dr-rec').addEventListener('click', () => recordModal(row))
+  d.querySelector('#dr-notes')?.addEventListener('click', () => notesModal(rowId))
+  d.querySelector('#dr-link').addEventListener('click', async () => {
+    if (!P.board) P.board = await need(await post('board'))
+    const f = findPlayer(rowId)
+    if (f) { closeDrawer(); linkModal(f.p, f.g) } else toast('Open the Timetable to send this one.')
+  })
+  d.querySelectorAll('[data-rec-stripe]').forEach((b) => b.addEventListener('click', () => recordModal(row, { stripe: p.stripe.find((s) => s.id === b.dataset.recStripe) })))
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.querySelector('.jm-drawer') && !document.querySelector('.jp-modal')) closeDrawer() })
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-notes-row]'); if (b) { e.preventDefault(); notesModal(b.dataset.notesRow) } })
 
 // ---------- coach view ----------
 
@@ -1118,18 +1493,41 @@ async function renderStaff() {
   view().querySelectorAll('[data-cv-x]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox('Cancel this cover? The session goes back to its coach.'))) return; const r = await post('cancelCover', { id: b.dataset.cvX }); toast(r.ok ? 'Cover cancelled' : r.data.error); renderStaff() }))
 }
 
+// The On The Go planner: coaches build a session on an A4 pitch page and save
+// it here. Opens in a new tab; Save in the planner lands in this list.
+async function plannerBlock(admin) {
+  const r = await post('planList')
+  const list = r.ok ? r.data.plans : []
+  const when = (iso) => new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+  return `<section class="jd-card" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <div><h2>${admin ? 'Coach sessions' : 'My sessions'}</h2><p class="sub">Build a session on the On The Go planner: drag players, cones and arrows onto the pitch, add the coaching points, then press Save in the planner.</p></div>
+      <a class="j-btn j-btn-dark" href="/jfp-planner/blank.html?new=1" target="_blank" rel="noopener">+ Create a session</a></div>
+    ${list.length ? `<ul class="jm-hist" style="margin-top:12px">${list.map((x) => `<li><span><b>${esc(x.title)}</b><small>${admin ? `${esc(x.ownerName || x.owner)} · ` : ''}saved ${esc(when(x.savedAt))}</small></span><span style="display:flex;gap:6px"><a class="j-btn j-btn-line j-btn-sm" href="/jfp-planner/blank.html?plan=${encodeURIComponent(x.id)}" target="_blank" rel="noopener">Open</a><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-plan-del="${esc(x.id)}">Delete</button></span></li>`).join('')}</ul>` : '<p class="muted small" style="margin-top:12px">No saved sessions yet. Create one and it appears here.</p>'}
+  </section>`
+}
+function bindPlanner() {
+  view().querySelectorAll('[data-plan-del]').forEach((b) => b.addEventListener('click', async () => {
+    if (!(await confirmBox('Delete this session? It cannot be brought back.', { ok: 'Delete', danger: true }))) return
+    const r = await post('planDelete', { id: b.dataset.planDel })
+    toast(r.ok ? 'Deleted' : r.data.error); renderPlans()
+  }))
+}
+
 async function renderPlans() {
   const admin = P.user.role === 'admin'
-  const d = await need(await post('staffOverview'))
+  const [d, planner] = await Promise.all([post('staffOverview').then(need), plannerBlock(admin)])
   const pl = d.plans
   if (!admin) {
     const filled = pl.weeks.filter((w) => w.title || w.focus || w.link)
-    view().innerHTML = `<div class="jp-head"><div><h1>Session plans</h1><p class="muted small">How the program runs and what each week covers.</p></div></div>
+    view().innerHTML = `<div class="jp-head"><div><h1>Session plans</h1><p class="muted small">Your saved sessions, how the program runs and what each week covers.</p></div></div>
+      ${planner}
       ${pl.structure ? `<div class="j-card" style="padding:16px;margin-bottom:14px"><h2 style="margin-bottom:8px">Program structure</h2>${pl.structure.split(/\n\s*\n/).map((x) => `<p style="margin-bottom:8px">${esc(x).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
-      ${filled.length ? filled.map((w) => `<div class="j-card" style="padding:14px 16px;margin-bottom:10px"><b>Week ${w.week}${w.title ? `: ${esc(w.title)}` : ''}</b>${w.focus ? `<p class="small" style="margin-top:4px;white-space:pre-wrap">${esc(w.focus)}</p>` : ''}${w.link ? `<p style="margin-top:6px"><a class="j-btn j-btn-line j-btn-sm" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">Open the session plan</a></p>` : ''}</div>`).join('') : (pl.structure ? '' : '<div class="j-empty">Lee has not added the session plans yet.</div>')}`
+      ${filled.length ? filled.map((w) => `<div class="j-card" style="padding:14px 16px;margin-bottom:10px"><b>Week ${w.week}${w.title ? `: ${esc(w.title)}` : ''}</b>${w.focus ? `<p class="small" style="margin-top:4px;white-space:pre-wrap">${esc(w.focus)}</p>` : ''}${w.link ? `<p style="margin-top:6px"><a class="j-btn j-btn-line j-btn-sm" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">Open the session plan</a></p>` : ''}</div>`).join('') : ''}`
+    bindPlanner()
     return
   }
-  view().innerHTML = `<div class="jp-head"><div><h1>Session plans</h1><p class="muted small">What coaches see in their Session plans tab. Add the program structure, then a title, focus and a link (Google Drive, PDF or the app) for each week.</p></div></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>Session plans</h1><p class="muted small">Every coach's saved sessions, and what coaches see in their Session plans tab: the program structure and each week.</p></div></div>
+    ${planner}
     <div class="j-card" style="padding:16px;max-width:900px">
       <label class="j-field"><span>Program structure</span><textarea class="j-textarea" id="pl-s" rows="8" placeholder="How a JFP session runs, the standards, the term's themes. Leave a blank line between paragraphs.">${esc(pl.structure)}</textarea></label>
       ${pl.weeks.map((w, i) => `<div class="j-card" style="padding:12px;margin-bottom:8px" data-wk="${i}"><b>Week ${w.week}</b>
@@ -1142,6 +1540,7 @@ async function renderPlans() {
     const r = await post('savePlans', { plans: { structure: $('pl-s').value, weeks } })
     toast(r.ok ? 'Saved. Coaches see it now.' : r.data.error)
   })
+  bindPlanner()
 }
 
 // ---------- coaches: names, emails, photos ----------
@@ -1289,7 +1688,7 @@ async function renderRemoved() {
         <dt>Email</dt><dd>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : 'None'}</dd>
         <dt>Mobile</dt><dd>${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : 'None'}</dd>
         <dt>Payment</dt><dd>${esc(p.paymentStatus || 'Not set')} · paid ${esc(money(p.paidCents))} of ${esc(money(p.feeCents))}${p.type ? ` · ${esc(p.type)}` : ''}</dd>
-        ${p.notes ? `<dt>Notes</dt><dd style="font-weight:400;white-space:pre-wrap">${esc(p.notes)}</dd>` : ''}
+        ${p.notes ? `<dt>Notes</dt><dd><details><summary style="cursor:pointer;font-weight:600">Show notes</summary><p style="font-weight:400;white-space:pre-wrap;margin-top:6px">${esc(p.notes)}</p></details></dd>` : ''}
       </dl>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button>${p.restored ? '' : '<button type="button" class="j-btn j-btn-dark" id="rm-restore">Restore to Term 4</button>'}</div>`, { wide: true })
     box.querySelector('#rm-restore')?.addEventListener('click', () => { closeModal(); restore(p) })

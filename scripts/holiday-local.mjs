@@ -280,7 +280,7 @@ function stripeSession(body) {
   const metadata = {}
   for (const [k, v] of params) { const m = k.match(/^metadata\[(.+)\]$/); if (m) metadata[m[1]] = v }
   const session = {
-    id, object: 'checkout.session', status: 'open', payment_status: 'unpaid', metadata,
+    id, object: 'checkout.session', status: 'open', payment_status: 'unpaid', metadata, created: Math.floor(Date.now() / 1000),
     amount_total: Number(params.get('line_items[0][price_data][unit_amount]')) * Number(params.get('line_items[0][quantity]')),
     currency: 'aud', customer_email: params.get('customer_email'),
     success_url: params.get('success_url'), cancel_url: params.get('cancel_url'),
@@ -317,6 +317,17 @@ globalThis.fetch = async (url, init = {}) => {
     if (!s) return json({ error: { message: 'No such charge' } }, 404)
     const refunds = s.refunds || []
     return json({ id: ch, payment_intent: s.payment_intent, amount: s.amount_total, amount_refunded: refunds.reduce((t, r) => t + r.amount, 0), refunds: { data: refunds } })
+  }
+  if (u.startsWith('https://api.stripe.com/v1/payment_links/')) {
+    const id = decodeURIComponent(u.split('/payment_links/')[1].split('/')[0])
+    return json({ data: [{ description: stripeLinks[id] || 'Unknown product' }] })
+  }
+  // The list the Money tab reads: completed sessions, ours and seeded ones.
+  if (u.startsWith('https://api.stripe.com/v1/checkout/sessions?') && (init.method || 'GET') === 'GET') {
+    const q = new URL(u).searchParams
+    const gte = Number(q.get('created[gte]') || 0)
+    const all = [...sessions.values(), ...stripeSeeded].filter((s) => s.status === 'complete' && (s.created || 0) >= gte)
+    return json({ data: all.map((s) => ({ ...s, payment_intent: s.payment_intent ? { id: s.payment_intent, latest_charge: { id: `ch_${String(s.payment_intent).slice(3)}`, amount_refunded: (s.refunds || []).reduce((t, r) => t + r.amount, 0) } } : null })), has_more: false })
   }
   if (u.startsWith('https://api.stripe.com/v1/checkout/sessions')) {
     if (init.method === 'POST' && u.endsWith('/expire')) {
@@ -369,6 +380,9 @@ globalThis.fetch = async (url, init = {}) => {
 
 const events = []
 const faults = new Set()
+// Payments made on Stripe payment links outside the site (seeded by tests).
+const stripeSeeded = []
+const stripeLinks = { plink_jfp850: 'JFP 10 weeks', plink_camp: 'Joner Camp July' }
 function log(kind, detail) { events.push({ at: new Date().toISOString(), kind, detail }); console.log(`[${kind}] ${detail}`) }
 
 // ---------- request shim ----------
@@ -453,6 +467,12 @@ const server = http.createServer(async (req, res) => {
     const what = url.searchParams.get('what')
     if (url.searchParams.get('on') === '1') faults.add(what); else faults.delete(what)
     res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ faults: [...faults] }))
+  }
+  if (url.pathname === '/__stripe-seed') {
+    const p = JSON.parse(await readBody(req) || '{}')
+    const n = stripeSeeded.length + 1
+    stripeSeeded.push({ id: `cs_seed_${n}`, object: 'checkout.session', status: 'complete', payment_status: 'paid', created: Math.floor(Date.parse(p.at || new Date().toISOString()) / 1000), amount_total: p.cents, currency: 'aud', customer_details: { email: p.email, name: p.name || '' }, payment_link: p.link || 'plink_jfp850', payment_intent: `pi_seed_${n}`, metadata: p.metadata || {} })
+    res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, id: `cs_seed_${n}` }))
   }
   if (url.pathname === '/__emails') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(emails)) }
   if (url.pathname === '/__airtable') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(airtable)) }

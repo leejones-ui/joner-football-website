@@ -1,0 +1,47 @@
+@media screen {
+  html { -webkit-text-size-adjust:100%; }
+  body { padding:18px 12px 40px 232px !important; }
+  .page { zoom:var(--jf-page-scale,1); margin:0 auto 24px; }
+  #jb { width:220px !important; padding:12px; box-sizing:border-box; overscroll-behavior:contain; }
+  #jb button, #jb select, #jb input { min-height:44px; box-sizing:border-box; border-radius:7px; }
+  #jb input { width:100%; background:#fff; color:#151515; padding:8px; font:inherit; }
+  #jb .pi { min-height:44px; touch-action:pan-y; user-select:none; -webkit-user-select:none; }
+  #jb .pi:focus-visible { outline:2px solid #ffd23c; }
+  #jb .jf-kit { width:44px; min-height:44px; }
+  #jf-player-controls { display:grid; gap:7px; margin-top:14px; padding-top:12px; border-top:1px solid #596371; }
+  #jf-player-controls h5 { margin:0; }
+  #jf-player-controls p { margin:0; color:#c1d9c9; font-size:12px; line-height:1.35; }
+  #jf-player-controls label { display:grid; gap:4px; color:#fff; font-size:12px; font-weight:700; }
+  #jf-player-controls input[type=range] { padding:0; }
+  .jf-player-choice,.jf-player-nudges { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .jf-player-nudges { grid-template-columns:repeat(3,1fr); }
+  #jf-player-controls button[aria-pressed=true] { background:#ffd633; color:#121212; border-color:#ffd633; }
+  #jf-player-controls button:disabled,#jf-player-controls input:disabled { opacity:.48; }
+  #jf-device-status { font-size:12px; line-height:1.4; color:#c1d9c9; }
+  #jf-tools-toggle { display:none; }
+  #jf-hint { pointer-events:none; }
+  .panel>svg { touch-action:none; user-select:none; -webkit-user-select:none; }
+  [contenteditable=true] { touch-action:manipulation; -webkit-user-select:text; user-select:text; }
+  @media(max-width:900px) {
+    body { padding:66px 10px 30px !important; }
+    #jb { transform:translateX(-100%); width:250px !important; top:58px; height:calc(100dvh - 58px); transition:transform .15s; z-index:100; }
+    body.jf-tools-open #jb { transform:translateX(0); }
+    #jf-tools-toggle { display:block; position:fixed; top:8px; left:10px; z-index:101; min-height:44px; padding:8px 18px; color:white; background:#15191f; border:1px solid #586170; border-radius:8px; font:600 15px Arial; }
+    #jf-hint { display:none; }
+    #jf-player-controls button { min-height:44px; }
+  }
+}
+@media print { .page { zoom:1 !important; } #jf-tools-toggle { display:none!important; } }
+
+.palette-drag-preview{position:fixed;top:0;left:0;width:64px;height:80px;pointer-events:none;z-index:10000;filter:drop-shadow(0 4px 5px #0007)}
+.palette-drag-preview svg{width:100%;height:100%;}
+#jb .pi svg {touch-action:none;}
+
+/* The labelled player display control replaces the older duplicate toggle. */
+#jf-playermode { display:none !important; }
+
+/* Long session names must not push age, difficulty or branding off the page. */
+.titlestrip .tt { min-width:0; flex:1 1 0; }
+.titlestrip h1 { white-space:normal; overflow-wrap:break-word; }
+.titlestrip .num,.titlestrip .meta,.titlestrip .sl { flex-shrink:0; }
+.titlestrip .mb { padding-inline:2.2mm; }

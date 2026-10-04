@@ -911,4 +911,55 @@ await test('round 10: no password when switched off; a Book now hour as a group 
   assert.equal(p3.data.code, 'solo_taken')
 })
 
+await test('round 11: money reads Stripe live, records cash and bank transfer, payment history; coaches save planner sessions', async () => {
+  const seed = (body) => fetch(`${B}/__stripe-seed`, { method: 'POST', body: JSON.stringify(body) }).then((r) => r.json())
+  let m = (await portal(lee, 'money', { fresh: true })).data.money
+  const unpaid = m.players.filter((p) => p.status === 'unpaid' && p.email && p.feeCents > 0 && p.paidCents === 0 && m.players.filter((x) => x.email === p.email).length === 1)
+  assert.ok(unpaid.length >= 2, 'two unpaid players to work with')
+  const [a, b] = unpaid
+  // a paid on a JFP payment link; a camp payment and a holiday payment are not JFP.
+  const seeded = await seed({ email: a.email, name: a.parent, cents: a.feeCents })
+  await seed({ email: 'camp@example.com', cents: 30000, link: 'plink_camp' })
+  await seed({ email: 'holiday@example.com', cents: 15000, metadata: { holidayBookingId: 'HOL-1' } })
+  m = (await portal(lee, 'money', { fresh: true })).data.money
+  assert.equal(m.players.find((p) => p.rowId === a.rowId).status, 'stripe', 'paid in Stripe, not yet in Airtable')
+  assert.ok(m.otherStripe.count >= 1, 'the camp payment is left out')
+  assert.ok(!m.unmatched.some((u) => u.email === 'holiday@example.com'), 'holiday payments are left out')
+  assert.ok(m.kpis.stripeCents >= a.feeCents)
+  const hist = (await portal(lee, 'playerPayments', { rowId: a.rowId })).data.player
+  assert.equal(hist.stripe.length, 1)
+  assert.equal(hist.stripe[0].recorded, false)
+  // Record the Stripe payment: Airtable and the ledger; never twice.
+  assert.equal((await portal(lee, 'recordPayment', { rowIds: [a.rowId], method: 'Stripe', stripeSessionId: seeded.id })).status, 200)
+  assert.equal((await portal(lee, 'recordPayment', { rowIds: [a.rowId], method: 'Stripe', stripeSessionId: seeded.id })).status, 409)
+  // b paid cash at the session.
+  assert.equal((await portal(lee, 'recordPayment', { rowIds: [b.rowId], method: 'Cash', amountCents: b.feeCents, date: '2026-10-05' })).status, 200)
+  const air = await at()
+  for (const x of [a, b]) {
+    const row = air.term4.find((r) => r.id === x.rowId)
+    assert.equal(row.fields['Term 4 Payment Status'], 'Paid')
+    assert.equal(row.fields['Term 4 Amount Paid'], x.feeCents / 100)
+  }
+  assert.ok(air.ledger.some((l) => l.fields['Payment Method'] === 'Cash' && l.fields['Amount Paid'] === b.feeCents / 100))
+  assert.ok(air.ledger.some((l) => l.fields['Payment Method'] === 'Stripe' && l.fields['Stripe Checkout Session ID'] === seeded.id))
+  m = (await portal(lee, 'money', { fresh: true })).data.money
+  assert.equal(m.players.find((p) => p.rowId === a.rowId).status, 'paid')
+  assert.equal(m.players.find((p) => p.rowId === b.rowId).status, 'paid')
+  assert.ok(m.kpis.cashCents >= b.feeCents)
+  assert.ok(m.weekly.length >= 1)
+  // Coaches never see money.
+  const sam = client()
+  await signIn(sam, 'jonerfootballsam@gmail.com', 'staff')
+  for (const action of ['money', 'playerPayments', 'recordPayment']) assert.equal((await portal(sam, action, { rowId: a.rowId })).status, 403)
+  // Planner: a coach saves, lists and opens their own; another coach cannot.
+  const saved = await portal(sam, 'planSave', { title: 'Rondo warm up', plan: { template: 'blank.html', panels: [1, 2, 3] } })
+  assert.equal(saved.status, 200)
+  assert.deepEqual((await portal(sam, 'planList')).data.plans.map((p) => p.title), ['Rondo warm up'])
+  assert.deepEqual((await portal(sam, 'planGet', { id: saved.data.plan.id })).data.plan.onTheGo.panels, [1, 2, 3])
+  const deanC = client()
+  await signIn(deanC, 'jonerfootballdean@gmail.com', 'staff')
+  assert.equal((await portal(deanC, 'planGet', { id: saved.data.plan.id })).status, 404)
+  assert.ok((await portal(lee, 'planList')).data.plans.some((p) => p.id === saved.data.plan.id), 'admins see every coach\'s sessions')
+})
+
 console.log(`\n${passed} JFP flow checks passed`)
