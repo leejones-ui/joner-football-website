@@ -15,7 +15,8 @@ import { kvCommand, clean, validEmail, coachLabel } from './_jfp-store.js'
 
 export const PARENT_COOKIE = '__Host-jfp_parent'
 export const STAFF_COOKIE = '__Host-jfp_staff'
-const SESSION_SECONDS = { parent: 30 * 86400, staff: 12 * 3600 }
+// Staff stay signed in for 30 days too (Lee, 5 Oct 2026). Sign out ends it at once.
+const SESSION_SECONDS = { parent: 30 * 86400, staff: 30 * 86400 }
 const CODE_SECONDS = 10 * 60
 const MAX_TRIES = 5
 

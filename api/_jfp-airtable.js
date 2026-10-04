@@ -117,7 +117,7 @@ function term4Row({ id, fields: f }) {
     reconciliation: text(f, 'Term 4 Fee Reconciliation'),
     linkNotes: text(f, 'Term 4 Payment Link Notes'),
     evidence: text(f, 'Term 4 Payment Evidence'),
-    // The JF playing kit (required): Ordered or Already has one, from My JFP.
+    // The JF playing kit (required): Ordered or Already has one, from My account.
     kit: text(f, 'Training Kit'),
     notes,
     sourceTerm3: text(f, 'Source Term 3 Record ID'),

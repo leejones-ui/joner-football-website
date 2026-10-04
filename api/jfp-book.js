@@ -15,8 +15,8 @@ import { rateLimit, verifyRecaptcha } from './_security.js'
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   requireParentAccess, getConfig, getGroup, getBooking, saveBooking, indexBooking, newId, clean, holdPlaces, releasePlaces,
-  onlineCounts, placesLeft, tokenMatches, saveApplication, coachById, coachLabel, sessionDates, dateLabel, ageOn, ageFits, normName,
-  locationFor, ONE_TO_ONE, QUESTIONS, priceFor, nextSessionDate, closeCheckout, parentHoldCount, noteParentHold, dropParentHold, MAX_HOLDS_PER_PARENT, RESERVE_MINUTES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES, MAX_PLAYERS,
+  onlineCounts, placesLeft, publicPlacesLeft, tokenMatches, saveApplication, coachById, coachLabel, sessionDates, dateLabel, ageOn, ageFits, normName,
+  locationFor, ONE_TO_ONE, QUESTIONS, priceFor, paidSiblings, nextSessionDate, closeCheckout, parentHoldCount, noteParentHold, dropParentHold, MAX_HOLDS_PER_PARENT, RESERVE_MINUTES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES, MAX_PLAYERS,
 } from './_jfp-store.js'
 import { loadRoster, countsFrom, familyFor } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
@@ -34,7 +34,7 @@ async function placesFor(group) {
   const roster = await loadRoster()
   const counts = countsFrom(roster)
   const online = (await onlineCounts([group.id]))[group.id] || 0
-  return { roster, taken: counts[group.id] || 0, left: placesLeft(group, counts[group.id], online) }
+  return { roster, taken: counts[group.id] || 0, left: publicPlacesLeft(group, counts[group.id], online) }
 }
 
 // Who is this parent allowed to book for, and does each player fit?
@@ -119,7 +119,7 @@ async function reserve(req, res, body, parent) {
   const nowMs = Date.now()
   const id = newId('JFP')
   const expiresMs = nowMs + RESERVE_MINUTES * 60_000
-  const ok = await holdPlaces({ gid: group.id, bookingId: id, want: 1, available: Math.max(0, group.capacity - snap.taken), expiresMs, nowMs })
+  const ok = await holdPlaces({ gid: group.id, bookingId: id, want: 1, available: group.showFull ? 0 : Math.max(0, group.capacity - snap.taken), expiresMs, nowMs })
   if (!ok) return fail(res, 409, 'That group has just filled. You can join the waitlist instead.', { code: 'full' })
   const releaseToken = crypto.randomBytes(16).toString('hex')
   await saveBooking({ id, groupId: group.id, seats: 1, status: 'reserving', email: parent.email, releaseToken, holdExpiresAt: new Date(expiresMs).toISOString(), createdAt: new Date(nowMs).toISOString() })
@@ -149,7 +149,9 @@ async function family(req, res, body, parent) {
   const roster = await loadRoster()
   const fam = familyFor(parent.email, roster, config.termStart)
   const from = group ? nextSessionDate(config, group.day, Date.now(), group.time) : ''
-  const one = group ? priceFor(config, { product: group.product, day: group.day, fromIso: from, players: 1 }) : null
+  // One player whose brother or sister already has a paid place: sibling rate.
+  const sib = group && (group.product || 'group') === 'group' && paidSiblings(roster.players, parent.email).length > 0
+  const one = group ? priceFor(config, { product: sib ? 'sibling' : group.product, day: group.day, fromIso: from, players: 1 }) : null
   const two = group ? priceFor(config, { product: group.product, day: group.day, fromIso: from, players: 2 }) : null
   return res.status(200).json({
     success: true,
@@ -191,7 +193,8 @@ async function submit(req, res, body, parent) {
   const n = pl.players.length
   const from = nextSessionDate(config, group.day, Date.now(), group.time)
   if (!from) return fail(res, 410, 'This term has finished for this group.')
-  const price = priceFor(config, { product: group.product, day: group.day, fromIso: from, players: n })
+  const sib = n === 1 && (group.product || 'group') === 'group' && paidSiblings(roster.players, parent.email, pl.players.map((x) => x.name)).length > 0
+  const price = priceFor(config, { product: sib ? 'sibling' : group.product, day: group.day, fromIso: from, players: n })
 
   // Keep the reservation id if it is still ours, then resize the hold to n
   // places in one atomic step. Nothing is charged if this fails.
@@ -213,10 +216,10 @@ async function submit(req, res, body, parent) {
   const nowMs = Date.now()
   const holdExpiresMs = nowMs + HOLD_MINUTES * 60_000
   const taken = countsFrom(roster)[group.id] || 0
-  if (!(await holdPlaces({ gid: group.id, bookingId: id, want: n, available: Math.max(0, group.capacity - taken), expiresMs: holdExpiresMs, nowMs }))) {
+  if (!(await holdPlaces({ gid: group.id, bookingId: id, want: n, available: group.showFull ? 0 : Math.max(0, group.capacity - taken), expiresMs: holdExpiresMs, nowMs }))) {
     const online = (await onlineCounts([group.id]))[group.id] || 0
     // The family's own hold is theirs to use, so count it as available.
-    const left = placesLeft(group, taken, online) + (ours ? Number(reservation.seats || 1) : 0)
+    const left = publicPlacesLeft(group, taken, online) + (ours ? Number(reservation.seats || 1) : 0)
     return fail(res, 409, left > 0 ? `Only ${left} place${left === 1 ? '' : 's'} left in this group now.` : 'This group has just filled. You can join the waitlist instead.', { code: 'full', placesLeft: left })
   }
 

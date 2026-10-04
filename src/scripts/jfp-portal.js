@@ -266,7 +266,7 @@ function groupSide(g) {
   const left = g.capacity - g.players.length
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><h2>${esc(g.day)} ${esc(g.time)}</h2><p class="muted small">${esc(g.locationName)} · Coach ${esc(g.coachName || 'not set')} · ${g.players.length} of ${g.capacity}</p></div><button type="button" class="j-close" id="sd-x" aria-label="Close">&times;</button></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0"><span class="j-pill j-pill-${modePill(g)}">${esc(modeLabel[g.mode])}</span>${left <= 0 ? '<span class="j-pill j-pill-red">Fully booked</span>' : `<span class="j-pill j-pill-grey">${left} open</span>`}${g.label !== 'Small group' ? `<span class="j-pill j-pill-grey">${esc(g.label)}</span>` : ''}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0"><span class="j-pill j-pill-${modePill(g)}">${esc(modeLabel[g.mode])}</span>${g.showFull ? '<span class="j-pill j-pill-red">Shown to families as fully booked</span>' : ''}${left <= 0 ? '<span class="j-pill j-pill-red">Fully booked</span>' : `<span class="j-pill j-pill-grey">${left} open</span>`}${g.label !== 'Small group' ? `<span class="j-pill j-pill-grey">${esc(g.label)}</span>` : ''}</div>
     <dl class="j-kv" style="font-size:13px;grid-template-columns:96px 1fr">
       <dt>Ages</dt><dd>${esc(agesText(g))}${g.ageStatus !== 'confirmed' && g.minAge != null ? ' (draft)' : ''}${g.mode === 'application' ? ', a guide' : g.mode === 'direct' ? ', enforced' : ''}</dd>
       <dt>Asks</dt><dd>${g.mode === 'application' || g.mode === 'direct' ? esc((g.questions || []).map((q) => ({ club: 'club', team: 'team', playingUp: 'playing up or down', trainedBefore: 'trained before', position: 'position' }[q] || q)).join(', ') || 'nothing extra') : 'n/a'}</dd>
@@ -609,7 +609,7 @@ async function renderNext() {
   view().innerHTML = `<div class="jp-head"><div><h1>Next term</h1><p class="muted small">Current families keep their place before ${esc(nt.name)} opens to everyone: hold it with a non-refundable fee (taken off the term), pay in full, or say they are not returning. Everything is saved in Airtable under "Next term holds".</p></div></div>
     <div class="j-card" style="padding:16px;margin-bottom:14px;max-width:760px">
       <div class="j-two"><label class="j-field"><span>Next term</span><input class="j-input" id="nt-name" value="${esc(nt.name)}"></label><label class="j-field"><span>Hold fee (A$, non-refundable)</span><input class="j-input" id="nt-hold" inputmode="decimal" value="${nt.holdCents / 100}"></label></div>
-      <label class="j-check"><input type="checkbox" id="nt-open" ${nt.open ? 'checked' : ''}> <span><b>Open to every current family</b> in My JFP (otherwise only the players you invite below).</span></label>
+      <label class="j-check"><input type="checkbox" id="nt-open" ${nt.open ? 'checked' : ''}> <span><b>Open to every current family</b> in My account (otherwise only the players you invite below).</span></label>
       <p class="muted small">Full term is ${esc(d.prices.fullLabel)} (from Prices). A held place pays ${esc(d.prices.afterHoldLabel)} more later.</p>
       <button type="button" class="j-btn j-btn-dark j-btn-sm" id="nt-save" style="margin-top:8px">Save</button>
     </div>
@@ -668,7 +668,7 @@ async function renderGroups() {
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" id="g-draft">Draft age bands from players</button><button type="button" class="j-btn j-btn-dark" id="g-new">+ New group</button></div></div>
     <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Day</th><th>Time</th><th>Location</th><th>Coach</th><th>Type</th><th>Parents can</th><th>Ages</th><th>Trials</th><th>Places</th><th></th></tr></thead><tbody>
     ${d.groups.map((g) => `<tr><td>${esc(g.day)}</td><td>${esc(g.time)}</td><td>${esc(g.locationName)}</td><td>${esc(d.coaches.find((c) => c.id === g.coachId)?.name || '')}${(g.extraCoachIds || []).length ? ` +${g.extraCoachIds.length}` : ''}</td><td>${esc(g.label)}</td>
-      <td><span class="j-pill j-pill-${modePill(g)}">${esc(modeLabel[g.mode])}</span></td>
+      <td><span class="j-pill j-pill-${modePill(g)}">${esc(modeLabel[g.mode])}</span>${g.showFull ? ' <span class="j-pill j-pill-red">Shown full</span>' : ''}</td>
       <td>${esc(agesText(g))}${g.minAge != null && g.ageStatus !== 'confirmed' ? ' <span class="j-pill j-pill-amber">draft</span>' : ''}${g.girlsOnly === 'suggested' ? ' <span class="j-pill j-pill-amber">girls?</span>' : ''}</td>
       <td>${g.mode === 'application' ? (g.trials !== false ? 'Yes' : 'No') : ''}</td><td>${taken[g.id] ?? 0}/${g.capacity}</td><td><button type="button" class="j-btn j-btn-line j-btn-sm" data-edit="${esc(g.id)}">Edit</button></td></tr>`).join('')}
     </tbody></table></div>`
@@ -698,7 +698,8 @@ function groupModal(g) {
     <label class="j-field"><span>Extra coaches</span><select class="j-select" id="gm-extra" multiple size="3">${d.coaches.map((c) => `<option value="${esc(c.id)}" ${(v.extraCoachIds || []).includes(c.id) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
     <div class="j-two"><label class="j-field"><span>Price from</span><select class="j-select" id="gm-prod">${opt(PRODS, v.product || 'group')}</select></label>
     <label class="j-check" style="margin-top:22px"><input type="checkbox" id="gm-trials" ${v.trials !== false ? 'checked' : ''}> <span>Apply: we may offer a trial first</span></label></div>
-    <div class="j-field"><span>Who this group is for: parents see these under the ages</span>${REQS.map(([k, l]) => `<label class="j-check" style="padding:4px 0"><input type="checkbox" data-rk="${k}" ${(v.requirements || []).includes(k) ? 'checked' : ''}> <span>${esc(l)}</span></label>`).join('')}</div>
+    <label class="j-check"><input type="checkbox" id="gm-full" ${v.showFull ? 'checked' : ''}> <span><b>Show as fully booked.</b> Families only see Join the waitlist. You can still add players here.</span></label>
+    <div class="j-field"><span>Requirements: parents see these when they open the group</span>${REQS.map(([k, l]) => `<label class="j-check" style="padding:4px 0"><input type="checkbox" data-rk="${k}" ${(v.requirements || []).includes(k) ? 'checked' : ''}> <span>${esc(l)}</span></label>`).join('')}</div>
     <label class="j-field"><span>More about who this group is for <span class="muted">(optional, your own words, shown to parents under the ticks)</span></span><textarea class="j-textarea" id="gm-reqtext" rows="5" maxlength="1200" placeholder="For example: This group is for players who are pushing for NPL or academy squads. Expect a fast tempo, lots of 1v1s and high standards. Leave a blank line between paragraphs.">${esc(v.requirementsText || '')}</textarea></label>
     <div class="j-field"><span>An application asks</span>${QS.map(([k, l]) => `<label class="j-check" style="padding:4px 0"><input type="checkbox" data-qk="${k}" ${(v.questions || []).includes(k) ? 'checked' : ''}> <span>${esc(l)}</span></label>`).join('')}</div>
     ${g ? (g.byCoach ? '<p class="muted small" style="margin-bottom:8px">One group per coach at this time: players are in it when their Coach in Airtable is this coach.</p>' : '') : `<label class="j-check"><input type="checkbox" id="gm-bycoach"> <span>One group per coach at this time (like the early morning groups). Players go by their Coach in Airtable.</span></label>`}
@@ -708,7 +709,7 @@ function groupModal(g) {
     <div style="display:flex;gap:8px;justify-content:space-between;margin-top:10px">${g ? '<button type="button" class="j-btn j-btn-danger" id="gm-del">Delete</button>' : '<span></span>'}<span style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="gm-save">Save</button></span></div>`, { wide: true })
   box.querySelector('#gm-save').addEventListener('click', async () => {
     const val = (id) => box.querySelector(id).value
-    const group = { day: val('#gm-day'), time: val('#gm-time').trim(), location: val('#gm-loc').trim(), coachId: val('#gm-coach'), mode: val('#gm-mode'), label: val('#gm-label'), minAge: val('#gm-min'), maxAge: val('#gm-max'), ageStatus: val('#gm-agest'), girlsOnly: val('#gm-girls'), capacity: val('#gm-cap'), durationMin: val('#gm-dur'), publicNote: val('#gm-note'), extraCoachIds: [...box.querySelector('#gm-extra').selectedOptions].map((o) => o.value).filter((c) => c !== val('#gm-coach')), product: val('#gm-prod'), trials: box.querySelector('#gm-trials').checked, questions: [...box.querySelectorAll('[data-qk]')].filter((c) => c.checked).map((c) => c.dataset.qk), requirements: [...box.querySelectorAll('[data-rk]')].filter((c) => c.checked).map((c) => c.dataset.rk), requirementsText: val('#gm-reqtext'), ...(g ? {} : { byCoach: Boolean(box.querySelector('#gm-bycoach')?.checked) }) }
+    const group = { day: val('#gm-day'), time: val('#gm-time').trim(), location: val('#gm-loc').trim(), coachId: val('#gm-coach'), mode: val('#gm-mode'), label: val('#gm-label'), minAge: val('#gm-min'), maxAge: val('#gm-max'), ageStatus: val('#gm-agest'), girlsOnly: val('#gm-girls'), capacity: val('#gm-cap'), durationMin: val('#gm-dur'), publicNote: val('#gm-note'), extraCoachIds: [...box.querySelector('#gm-extra').selectedOptions].map((o) => o.value).filter((c) => c !== val('#gm-coach')), product: val('#gm-prod'), trials: box.querySelector('#gm-trials').checked, showFull: box.querySelector('#gm-full').checked, questions: [...box.querySelectorAll('[data-qk]')].filter((c) => c.checked).map((c) => c.dataset.qk), requirements: [...box.querySelectorAll('[data-rk]')].filter((c) => c.checked).map((c) => c.dataset.rk), requirementsText: val('#gm-reqtext'), ...(g ? {} : { byCoach: Boolean(box.querySelector('#gm-bycoach')?.checked) }) }
     const r = await post('saveGroup', { id: g?.id, group })
     if (!r.ok) { const e = box.querySelector('#gm-err'); e.textContent = r.data.error; e.hidden = false; return }
     closeModal(); toast(r.data.movedPlayers ? `Saved. ${r.data.movedPlayers} players moved in Airtable.` : 'Saved'); P.board = null; P.groups = null; if (P.tab === 'board') renderBoard(true); else renderGroups()
@@ -739,6 +740,7 @@ async function renderRequests() {
       <div class="jp-seg" id="rq-f">${[['pending', 'Waiting'], ['offered', 'Offered'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.reqFilter === v}">${l}</button>`).join('')}</div></div>
     ${list.length ? list.map((r) => `<article class="j-card" style="padding:16px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><span class="j-pill j-pill-${kind[r.kind]?.[0] || 'grey'}">${esc(kind[r.kind]?.[1] || r.kind)}</span> <b style="margin-left:6px">${esc(r.players.map((p) => `${p.name}${p.age != null ? `, ${p.age}` : ''}`).join(' and '))}</b>
+        ${(r.siblings || []).length ? `<span class="j-pill j-pill-green" style="margin-top:4px">Sibling of ${esc(r.siblings.map((x) => x.name).join(', '))} (paid)</span>` : ''}
         <p class="muted small" style="margin-top:4px">Wants <b>${esc(r.group)}</b> · ${esc(new Date(r.createdAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</p></div>
         <span class="j-pill j-pill-grey">${esc(r.status === 'offered' ? (r.offer === 'trial' ? 'Trial offered' : 'Place offered') : ({ pending: 'Waiting', declined: 'Declined', done: 'Done', expired: 'Offer expired' }[r.status] || r.status))}</span></div>
       ${Object.keys(r.answers || {}).length ? `<p class="small" style="margin-top:8px">${Object.entries(r.answers).filter(([k]) => k !== 'videos').map(([k, v]) => `<span class="muted">${esc(ANSWER[k] || k)}:</span> <b>${esc(v)}</b>`).join(' · ')}${r.answers.videos ? `<br><span class="muted">Videos:</span> ${linksHtml(r.answers.videos) || esc(r.answers.videos)}` : ''}</p>` : r.club ? `<p class="small" style="margin-top:8px"><span class="muted">Club:</span> <b>${esc(r.club)}</b></p>` : ''}
@@ -763,13 +765,34 @@ async function renderRequests() {
 
 function declineModal(r) {
   const box = modal(`<h2 style="margin-bottom:6px">Decline</h2><p class="muted small" style="margin-bottom:12px">${esc(r.players.map((p) => p.name).join(', '))} for ${esc(r.group)}.</p>
-    <label class="j-field"><span>Suggest another group <span class="muted">(optional)</span></span><select class="j-select" id="dc-g"><option value="">No suggestion</option>${groupOptions('', { exclude: r.groupId })}</select></label>
+    <div class="j-field"><span>Suggest other groups <span class="muted">(optional, up to 3)</span></span><div id="dc-list"></div><button type="button" class="j-btn j-btn-line j-btn-sm" id="dc-more" style="margin-top:6px">+ Add another suggestion</button></div>
     <label class="j-field"><span>A line from you <span class="muted">(optional, goes in the email)</span></span><textarea class="j-textarea" id="dc-msg"></textarea></label>
-    <label class="j-check"><input type="checkbox" id="dc-send" checked> <span>Email the family a kind no (it says the group is not the right level this term${' '}and points to the suggestion)</span></label>
+    <label class="j-check"><input type="checkbox" id="dc-send" checked> <span>Email the family. Untick to decline without emailing.</span></label>
+    <div class="j-box j-box-grey small" id="dc-preview" style="margin-top:8px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-danger" id="dc-go">Decline</button></div>`)
+  const list = box.querySelector('#dc-list')
+  const addRow = () => {
+    if (list.children.length >= 3) return
+    list.insertAdjacentHTML('beforeend', `<select class="j-select" data-dc style="margin-top:6px"><option value="">Choose a group</option>${groupOptions('', { exclude: r.groupId })}</select>`)
+    box.querySelector('#dc-more').hidden = list.children.length >= 3
+    preview()
+  }
+  const picked = () => [...new Set([...list.querySelectorAll('[data-dc]')].map((s) => s.value).filter(Boolean))]
+  const label = (id) => { const g = P.board?.groups?.find((x) => x.id === id); return g ? `${g.day} ${g.time}, ${g.locationName}` : id }
+  // Exactly what the family will read, so nothing goes out unseen.
+  const preview = () => {
+    const sends = box.querySelector('#dc-send').checked
+    const ids = picked()
+    const msg = box.querySelector('#dc-msg').value.trim()
+    box.querySelector('#dc-preview').innerHTML = sends ? `<b>The email says:</b><br>Thanks for applying, ${esc(r.parentName || '')}. Our coaches have looked at ${esc(r.players.map((p) => p.name).join(' and '))}'s application for ${esc(r.group)}, and it is not the right group this term. We keep every group at one level so each player is challenged, and we would rather say so now.${msg ? `<br>${esc(msg)}` : ''}<br>${ids.length ? `${ids.length === 1 ? 'A group we think would suit' : 'Groups we think would suit'}: ${ids.map((id) => `<b>${esc(label(id))}</b>`).join('; ')}. Apply on the timetable, or reply to this email.` : 'Reply to this email if you would like to talk about another group or 1 to 1 coaching.'}` : '<b>No email.</b> The request is only marked declined.'
+  }
+  box.querySelector('#dc-more').addEventListener('click', addRow)
+  box.addEventListener('change', preview)
+  box.querySelector('#dc-msg').addEventListener('input', preview)
+  addRow()
   box.querySelector('#dc-go').addEventListener('click', async (e) => {
     e.currentTarget.disabled = true
-    const res = await post('decideRequest', { id: r.id, decision: 'decline', suggestGroupId: box.querySelector('#dc-g').value, message: box.querySelector('#dc-msg').value.trim(), sendEmail: box.querySelector('#dc-send').checked })
+    const res = await post('decideRequest', { id: r.id, decision: 'decline', suggestGroupIds: picked(), message: box.querySelector('#dc-msg').value.trim(), sendEmail: box.querySelector('#dc-send').checked })
     if (!res.ok) return toast(res.data.error)
     closeModal(); toast(res.data.emailed ? 'Declined and emailed' : 'Declined'); renderRequests()
   })
@@ -791,8 +814,10 @@ async function offerModal(r, decision) {
       box.querySelector('#of-body').innerHTML = `<div class="j-two"><label class="j-field"><span>Trial session</span><select class="j-select" id="of-date">${dateOptions(pr, g.day, nextDate(pr, g.day))}</select></label><label class="j-field"><span>Trial price (A$)</span><input class="j-input" id="of-amt" inputmode="decimal" value="${(pr.prices.trial * r.players.length) / 100}"></label></div>`
       read = () => ({ startDate: box.querySelector('#of-date').value, amountCents: Math.round(Number(box.querySelector('#of-amt').value) * 100) })
     } else {
-      box.querySelector('#of-body').innerHTML = '<div id="of-price"></div>'
-      read = priceBlock(box, pr, { day: g.day, product: g.product || 'group', players: r.players.length, prefix: 'of-price', noTrial: true })
+      // Sibling rate only when Airtable shows a brother or sister already paid.
+      const sib = (r.siblings || []).length > 0 && r.players.length === 1 && (g.product || 'group') === 'group'
+      box.querySelector('#of-body').innerHTML = `${sib ? `<div class="j-box j-box-green small" style="margin-bottom:8px"><b>Sibling rate applies.</b> ${esc(r.siblings.map((s) => `${s.name}${s.group ? ` (${s.group})` : ''}`).join(', '))} already paid this term.</div>` : ''}<div id="of-price"></div>`
+      read = priceBlock(box, pr, { day: g.day, product: sib ? 'sibling' : (g.product || 'group'), players: r.players.length, prefix: 'of-price', noTrial: true })
     }
   }
   draw()

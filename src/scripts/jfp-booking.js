@@ -6,7 +6,7 @@
 import { $, esc, api, recaptcha, toast, openSheet, closeSheet, signIn, whoAmI, waiverBlock, money } from './jfp-common.js'
 
 const S = { data: null, filters: { loc: '', coach: '', day: '', show: '' }, phoneDay: '', view: 'week', parent: null, family: null, hold: null, timer: null, toStripe: false }
-const SHOW = [['', 'All'], ['book', 'Book now'], ['apply', 'Apply'], ['open', 'Has places']]
+const SHOW = [['', 'All'], ['book', 'Book now'], ['open', 'Has places']]
 const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const SHORT = { Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat', Sunday: 'Sun' }
 
@@ -42,12 +42,13 @@ async function showApp(q) {
   }
   showTab((location.hash || '#timetable').slice(1))
   S.parent = await whoAmI('parent')
+  accountLink()
   await load()
   setInterval(() => { if (!document.querySelector('.j-sheet')) load(true) }, 45000)
 }
 
 function showTab(tab) {
-  if (!['timetable', 'pricing'].includes(tab)) tab = 'timetable'
+  if (!['timetable', 'term', 'pricing'].includes(tab)) tab = 'timetable'
   document.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== tab })
   document.querySelectorAll('.j-tabs [data-tab]').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'))
 }
@@ -66,10 +67,19 @@ async function load(quiet) {
 
 // ---------- top of page ----------
 
+// "Sign in" until a family is signed in, then "My account".
+function accountLink() {
+  const a = $('acct-link')
+  if (a) a.textContent = S.parent ? 'My account' : 'Sign in'
+}
+
 function renderMeta() {
   const d = S.data
   $('term-name').textContent = d.termLabel || d.term
   $('term-range').textContent = `${d.termRange} · ${d.weeks} weeks`
+  $('term-tab').textContent = d.termLabel || 'Term'
+  document.querySelectorAll('.term-name-2').forEach((x) => { x.textContent = d.termLabel || 'This term' })
+  $('term-range-2').textContent = `${d.termRange}, ${d.weeks} weeks`
   $('trial-price').textContent = d.trialPriceLabel
   if (d.kitUrl) { $('kit-tab').href = d.kitUrl; $('kit-buy').href = d.kitUrl }
   if (d.kitPriceLabel) $('kit-price').textContent = d.kitPriceLabel
@@ -95,7 +105,7 @@ function renderLocations() {
     const badge = l.full ? 'Fully booked' : `${l.groups} group${l.groups === 1 ? '' : 's'} · ${l.spots} spot${l.spots === 1 ? '' : 's'} left`
     return `<button type="button" class="j-loc" data-loc="${esc(l.id)}" aria-pressed="${S.filters.loc === l.id}">
       <div class="img">${l.photo ? `<img src="${esc(l.photo)}" alt="" loading="lazy" decoding="async">` : ''}<span class="badge">${esc(badge)}</span></div>
-      <div class="body"><h3><span class="j-dot j-dot-${esc(l.id)}"></span> ${esc(l.name)}</h3><p>${esc(l.blurb)}</p>${l.maps ? `<p><a href="${esc(l.maps)}" target="_blank" rel="noopener noreferrer" data-stop>${esc(l.address)}</a></p>` : ''}</div>
+      <div class="body"><h3><span class="j-dot j-dot-${esc(l.id)}"></span> ${esc(l.name)}</h3>${l.maps ? `<p><a href="${esc(l.maps)}" target="_blank" rel="noopener noreferrer" data-stop>Map</a></p>` : ''}</div>
     </button>`
   }).join('')
 }
@@ -126,7 +136,7 @@ const order = (g) => DAY_ORDER.indexOf(g.day) * 10000 + Number(g.sortTime.replac
 // rules Lee ticks per group, and the JF playing kit (required for everyone).
 function requirementsOf(g, { ages = true } = {}) {
   return [
-    g.id === 'one-to-one' || !ages ? '' : `${g.girlsOnly ? 'Girls, ages' : 'Ages'} ${g.minAge} to ${g.maxAge}${g.mode === 'direct' ? '' : ' (age guide)'}`,
+    g.id === 'one-to-one' || !ages ? '' : `${g.girlsOnly ? 'Girls only. ' : ''}Age guide: ${g.minAge} to ${g.maxAge}`,
     ...(g.requirements || []),
     g.id === 'one-to-one' ? '' : `JF playing kit (${S.data?.kitPriceLabel || 'A$50'})`,
   ].filter(Boolean)
@@ -140,13 +150,13 @@ function coachChip(g, size = 28) {
   return `<span class="j-coach">${pic}<span>${esc(g.coachName)}</span></span>`
 }
 
-function agesLabel(g) { return g.girlsOnly ? `Girls, ages ${g.minAge} to ${g.maxAge}` : `Ages ${g.minAge} to ${g.maxAge}` }
+function agesLabel(g) { return g.girlsOnly ? `Girls, age guide ${g.minAge} to ${g.maxAge}` : `Age guide ${g.minAge} to ${g.maxAge}` }
 
 function status(g) {
   if (g.mode === 'enquire') return ['s-grey', 'Enquire']
   if (g.full) return ['s-full', 'Join the waitlist']
   const left = `${g.placesLeft} ${g.placesLeft === 1 ? 'spot' : 'spots'} left`
-  return g.mode === 'direct' ? ['s-book', `Book now · ${left}`] : ['s-apply', `Apply · ${left}`]
+  return g.mode === 'direct' ? ['s-book', left] : ['s-apply', left]
 }
 
 function block(g) {
@@ -154,10 +164,10 @@ function block(g) {
   return `<button type="button" class="j-blk j-blk-${esc(g.locationId)} ${g.full ? 'is-full' : ''}" data-group="${esc(g.id)}">
     ${locBanner(g)}
     <span class="t">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</span>
-    <span class="a">${esc(agesLabel(g))}</span>
     <span class="c c-name">${esc(g.coachName || 'Joner Football')}</span>
-    ${(g.requirements || []).length ? `<span class="c" style="font-weight:600">${esc(g.requirements[0])}${g.requirements.length > 1 ? ` +${g.requirements.length - 1}` : ''}</span>` : ''}
-    <span class="st ${cls}">${esc(text)}</span>
+    ${g.girlsOnly ? '<span class="c">Girls only</span>' : ''}
+    ${g.mode !== 'enquire' && !g.full ? `<span class="left">${esc(text)}</span>` : ''}
+    <span class="act ${g.full ? 'act-wait' : g.mode === 'direct' ? 'act-book' : 'act-apply'}">${g.mode === 'enquire' ? 'Enquire' : g.full ? 'Join the waitlist' : g.mode === 'direct' ? 'Book' : 'Apply'}</span>
   </button>`
 }
 
@@ -178,11 +188,9 @@ function card(g) {
     ${locBanner(g)}
     <div class="bd">
       <p class="when-big">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</p>
-      <p class="who">${esc(agesLabel(g))}</p>
-      <p class="meta">${coachChip(g, 26)}</p>
-      <p class="meta">${esc(g.location)} · ${esc(g.durationMin)} min</p>
-      <ul class="j-req-mini" aria-label="Requirements">${requirementsOf(g, { ages: false }).map((r) => `<li>${esc(r)}</li>`).join('')}</ul>
-      <div class="foot"><span class="st ${cls}">${esc(text)}</span><span class="j-btn ${g.mode === 'direct' && !g.full ? 'j-btn-dark' : 'j-btn-line'} j-btn-sm">${btn}</span></div>
+      <p class="meta" style="margin-top:6px">${coachChip(g, 32)}</p>
+      <p class="meta">${esc(g.location)} · ${esc(g.durationMin)} min${g.girlsOnly ? ' · Girls only' : ''}</p>
+      <div class="foot">${g.full || g.mode === 'enquire' ? '<span></span>' : `<span class="st ${cls}">${esc(text)}</span>`}<span class="j-btn ${g.full ? 'j-btn-wait' : 'j-btn-dark'} j-act">${btn}</span></div>
     </div>
   </article>`
 }
@@ -256,7 +264,7 @@ function groupSheet(g) {
       : ['Apply with the player\'s club and team. It takes 2 minutes.', `We reply within 48 hours with one of three answers:`, 'The place is only held once it is paid.']
   const outcomes = !g.full && g.mode === 'application' ? `<div class="j-outcomes">
       <div class="j-card"><b>Accepted for the term</b><span>If we know the player or they fit the group. Pay to lock in the place.</span></div>
-      ${g.trials ? `<div class="j-card"><b>Trial first, ${esc(S.data.trialPriceLabel)}</b><span>One session in this group. If it is a good fit, pay for the rest of the term in My JFP, with the trial taken off.</span></div>` : ''}
+      ${g.trials ? `<div class="j-card"><b>Trial first, ${esc(S.data.trialPriceLabel)}</b><span>One session in this group. If it is a good fit, pay for the rest of the term in My account, with the trial taken off.</span></div>` : ''}
       <div class="j-card"><b>Not this group</b><span>If it is not the right level, we will tell you, and suggest a group that is.</span></div>
     </div>` : ''
   sheet.body.innerHTML = `
@@ -418,7 +426,7 @@ function renderPlayers() {
     <h3 style="margin:18px 0 8px">Your details</h3>
     <div class="j-two"><label class="j-field"><span>Parent or guardian name</span><input class="j-input" id="p-name" autocomplete="name" value="${esc(fam.parentName || '')}"></label>
     <label class="j-field"><span>Mobile</span><input class="j-input" id="p-mobile" type="tel" autocomplete="tel" inputmode="tel" value="${esc(fam.mobile || '')}"></label></div>
-    <p class="muted small">${esc(agesLabel(g))}${F.kind === 'book' ? '' : ' (a guide)'}. Ages are on the first day of term.</p>
+    <p class="muted small">${esc(agesLabel(g))}, on the first day of term.</p>
     <p class="j-err" id="pl-err" hidden></p>`
   restoreNew()
   F.sheet.foot.innerHTML = `<button type="button" class="j-btn j-btn-dark j-btn-block j-btn-lg" id="pl-next">Continue</button>`
@@ -696,7 +704,7 @@ async function sendRequest(btn) {
     ? 'You are on the waitlist. If a place opens we will be in touch.'
     : k === 'enquiry' ? 'Lee or Ligia will be in touch about times.' : 'We will reply within 48 hours: a place for the term, or a trial session first. We have emailed you a copy.'
   F.sheet.body.innerHTML = `<div class="j-box j-box-green"><b>Sent.</b> ${done}</div>
-    <p class="muted" style="margin-top:14px">You can see it any time in <a href="/jfp-account/">My JFP</a>.</p>`
+    <p class="muted" style="margin-top:14px">You can see it any time in <a href="/jfp-account/">My account</a>.</p>`
   F.sheet.foot.innerHTML = '<button type="button" class="j-btn j-btn-dark j-btn-block" id="m-done">Done</button>'
   F.sheet.foot.querySelector('#m-done').addEventListener('click', () => closeSheet())
 }

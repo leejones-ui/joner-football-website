@@ -1,16 +1,12 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import JfpHeader from '../../components/JfpHeader.astro'
 import '../../styles/jfp.css'
 ---
 
 <BaseLayout title="Booked | Joner Football Performance" description="Your JFP term place is booked." canonical="https://jonerfootball.com/jfp-booking/success/" noindex noTracking hideChrome hideMobileAppCta>
   <div class="jfp" id="jfp-ok">
-    <header class="j-top">
-      <div class="wrap">
-        <a class="j-brand" href="/"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span>Joner Football<small>Performance Program</small></span></a>
-        <div class="j-top-links"><a class="j-btn j-btn-line j-btn-sm" href="/jfp-account/">My JFP</a></div>
-      </div>
-    </header>
+    <JfpHeader accountLabel="My account" />
     <div class="wrap" style="max-width:640px;padding-top:28px;padding-bottom:60px">
       <p class="j-kicker" id="eyebrow">Confirming payment</p>
       <h1 id="heading" style="margin:6px 0 10px">One moment</h1>
@@ -27,10 +23,10 @@ import '../../styles/jfp.css'
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:18px">
           <a class="j-btn j-btn-dark" id="calendar" href="#" download="jfp-term.ics">Add all dates to calendar</a>
           <a class="j-btn j-btn-line" id="maps" href="#" target="_blank" rel="noopener noreferrer" hidden>Open in Maps</a>
-          <a class="j-btn j-btn-line" href="/jfp-account/">Open My JFP</a>
+          <a class="j-btn j-btn-line" href="/jfp-account/">Open My account</a>
         </div>
       </div>
-      <div class="j-box j-box-grey" id="help" style="margin-top:20px" hidden>If you paid and this page does not update, do not pay again. Email <a href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a> and we will sort it. <a href="/jfp-booking/">Back to groups</a>.</div>
+      <div class="j-box j-box-grey" id="help" style="margin-top:20px" hidden>If you paid and this page does not update, do not pay again. Email <a href="mailto:ligia@jonerfootball.com">ligia@jonerfootball.com</a> and we will sort it. <a href="/jfp-booking/">Back to groups</a>.</div>
     </div>
   </div>
 </BaseLayout>

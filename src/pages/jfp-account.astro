@@ -1,20 +1,17 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import JfpHeader from '../components/JfpHeader.astro'
+import JfpFooter from '../components/JfpFooter.astro'
 import '../styles/jfp.css'
 ---
 
-<BaseLayout title="My JFP | Joner Football" description="Your Joner Football Performance players, sessions and payments." canonical="https://jonerfootball.com/jfp-account/" noindex noTracking hideChrome hideMobileAppCta>
+<BaseLayout title="My account | Joner Football" description="Your Joner Football Performance players, sessions and payments." canonical="https://jonerfootball.com/jfp-account/" noindex noTracking hideChrome hideMobileAppCta>
   <div class="jfp" id="jfp-account">
-    <header class="j-top">
-      <div class="wrap">
-        <a class="j-brand" href="/"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span>Joner Football<small>Performance Program</small></span></a>
-        <div class="j-top-links"><a class="j-btn j-btn-line j-btn-sm" href="/jfp-booking/">Timetable</a><a class="j-btn j-btn-line j-btn-sm" href="https://www.besteamsport.com.au/collections/joner-football/products/jf-playing-kit" id="kit-link" target="_blank" rel="noopener noreferrer">Training kit</a><button type="button" class="j-btn j-btn-ghost j-btn-sm" id="sign-out" hidden>Sign out</button></div>
-      </div>
-    </header>
+    <JfpHeader active="account" />
 
     <section id="signin" class="j-gate" hidden>
       <div class="j-card">
-        <p class="j-kicker">My JFP</p>
+        <p class="j-kicker">My account</p>
         <h1 style="margin:6px 0 16px">Sign in</h1>
         <div id="si-mount"></div>
         <div id="si-foot" style="margin-top:6px"></div>
@@ -43,8 +40,9 @@ import '../styles/jfp.css'
         <h2 style="margin-bottom:10px">Applications, trials and waitlist</h2>
         <div id="requests"></div>
       </section>
-      <p class="muted small">Something not right? Reply to any Joner Football email or write to <a href="mailto:leejones@jonerfootball.com">leejones@jonerfootball.com</a>.</p>
+      <p class="muted small">Something not right? <a href="mailto:ligia@jonerfootball.com?subject=JFP%20Term%204">Contact us</a>.</p>
     </div>
+    <JfpFooter />
   </div>
 </BaseLayout>
 

@@ -65,13 +65,17 @@ export const ONE_TO_ONE = Object.freeze({ id: 'one-to-one', day: '1 to 1 coachin
 export const PRODUCTS = [
   { key: 'group', label: 'Term, small group', type: 'JFP 10 weeks', proRata: true, perPlaces: 1 },
   { key: 'twoAWeek', label: 'Two a week, or two siblings', type: 'Sibling / 2 sessions per week', proRata: true, perPlaces: 2 },
+  // A second child in ANY group, once another child of the same family has a
+  // paid place (Lee, 5 Oct 2026). Default A$650: with the first child's A$850
+  // the family pays the A$1,500 sibling price.
+  { key: 'sibling', label: 'Sibling rate, second child', type: 'Sibling / 2 sessions per week', proRata: true, perPlaces: 1 },
   { key: 'oneToOneTerm', label: 'Term of 1 to 1s', type: 'JFP 1 on 1, 10 weeks', proRata: true, perPlaces: 1 },
   { key: 'pathway', label: 'JFP Pathway (45 minute class)', type: 'JFP Pathway 10 weeks', proRata: true, perPlaces: 1 },
   { key: 'pathwayOneToOne', label: 'Pathway 1 to 1 private (45 minutes)', type: 'JFP pathway 1 on 1', proRata: true, perPlaces: 1 },
   { key: 'trial', label: 'Trial session', type: 'JFP Trial', proRata: false, perPlaces: 1 },
   { key: 'oneToOne', label: 'One off 1 to 1', type: 'JFP 1 on 1 casual', proRata: false, perPlaces: 1 },
 ]
-export const DEFAULT_PRICES = { group: 85000, twoAWeek: 150000, oneToOneTerm: 110000, pathway: 45000, pathwayOneToOne: 85000, trial: 8500, oneToOne: 12000 }
+export const DEFAULT_PRICES = { group: 85000, twoAWeek: 150000, sibling: 65000, oneToOneTerm: 110000, pathway: 45000, pathwayOneToOne: 85000, trial: 8500, oneToOne: 12000 }
 export function productFor(key) { return PRODUCTS.find((p) => p.key === key) || PRODUCTS[0] }
 
 export const keys = {
@@ -132,7 +136,7 @@ export const DEFAULT_CONFIG = {
   // The JF playing kit is required for every player (Lee, 30 Sept). It is
   // sold by BE Teamsport, so it always opens in a new tab and the family's
   // Joner page stays open behind it. Families confirm it before they pay.
-  kitUrl: 'https://www.besteamsport.com.au/collections/joner-football/products/jf-playing-kit',
+  kitUrl: 'https://www.besteamsport.com.au/collections/joner-football',
   kitPriceLabel: 'A$50',
   // Next term: families keep their place with a non-refundable hold fee
   // (taken off next term's price) or pay in full, before it opens to everyone.
@@ -222,7 +226,9 @@ export function normaliseConfig(input = {}) {
     // switched them on (5 Oct 2026), so the seed turns them on once.
     coachLoginsEnabled: Number(input.coachSeed || 0) < b.coachSeed ? true : input.coachLoginsEnabled === true,
     coachSeed: b.coachSeed,
-    kitUrl: /^https:\/\//.test(input.kitUrl || '') ? clean(input.kitUrl, 500) : (input.kitUrl === '' ? '' : b.kitUrl),
+    // The kit link opens the whole Joner Football shop (Lee, 5 Oct 2026), not
+    // one product: an old saved link to the playing kit page moves over.
+    kitUrl: /\/products\/jf-playing-kit\/?$/.test(input.kitUrl || '') ? b.kitUrl : /^https:\/\//.test(input.kitUrl || '') ? clean(input.kitUrl, 500) : (input.kitUrl === '' ? '' : b.kitUrl),
     kitNote: clean(input.kitNote, 300) || b.kitNote,
     kitPriceLabel: clean(input.kitPriceLabel, 20) || b.kitPriceLabel,
     nextTerm: {
@@ -414,6 +420,8 @@ export function validateGroup(input, config, existing = {}) {
       requirements,
       // Lee's own words about who the group is for, under the ticked lines.
       requirementsText,
+      // Families see Fully booked and can only join the waitlist.
+      showFull: merged.showFull === true,
       product,
       updatedAt: new Date().toISOString(),
     },
@@ -501,6 +509,12 @@ export function placesLeft(group, airtableCount, onlineCount) {
   return Math.max(0, Number(group.capacity || 0) - Number(airtableCount || 0) - Number(onlineCount || 0))
 }
 
+// What families see and can book. "Show as fully booked" (Lee, 5 Oct 2026)
+// closes a group to families while staff can still add players to it.
+export function publicPlacesLeft(group, airtableCount, onlineCount) {
+  return group.showFull ? 0 : placesLeft(group, airtableCount, onlineCount)
+}
+
 // A parent may hold places in a few groups at once (siblings), not every group.
 export const MAX_HOLDS_PER_PARENT = 3
 export async function parentHoldCount(email, nowMs = Date.now()) {
@@ -577,6 +591,23 @@ export function tokenMatches(supplied, expected) {
   if (typeof supplied !== 'string' || typeof expected !== 'string' || supplied.length !== expected.length || !expected) return false
   return crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))
 }
+// The family's OTHER children with a paid place this term, straight from
+// Airtable. The sibling rate needs one, so a parent cannot claim it: the
+// email is proven by the sign-in code and the payment is in Term 4 Players.
+export function paidSiblings(rosterPlayers, email, names = []) {
+  const e = validEmail(email)
+  if (!e) return []
+  const mine = new Set(names.map(normName).filter(Boolean))
+  const seen = new Set()
+  return (rosterPlayers || []).filter((r) => {
+    const n = normName(r.player)
+    if (!r.holdsPlace || validEmail(r.email) !== e || !n || mine.has(n) || seen.has(n)) return false
+    if (!(r.paymentStatus === 'Paid' || Number(r.paidAud) > 0)) return false
+    seen.add(n)
+    return true
+  }).map((r) => ({ name: r.player, groupId: r.groupId }))
+}
+
 export function normName(v) { return String(v || '').toLowerCase().normalize('NFKD').replace(/[^a-z]/g, '') }
 export function digits(v) { return String(v || '').replace(/\D/g, '') }
 

@@ -2,7 +2,7 @@
 // its coach, place, who it is for, and places left, plus the three locations.
 // An explicit allowlist of fields. Never player names, contacts, notes or
 // payments, and no term price: parents see what they pay when they book.
-import { requireParentAccess, getConfig, coachLabel, kvGetJson, listGroups, onlineCounts, placesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, periodOf, dayOrder, QUESTIONS, REQUIREMENTS, ONE_TO_ONE, skippedDates } from './_jfp-store.js'
+import { requireParentAccess, getConfig, coachLabel, kvGetJson, listGroups, onlineCounts, publicPlacesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, periodOf, dayOrder, QUESTIONS, REQUIREMENTS, ONE_TO_ONE, skippedDates } from './_jfp-store.js'
 import { airtableCounts } from './_jfp-airtable.js'
 import { sweepExpiredOffersSometimes } from './_jfp-offers.js'
 
@@ -74,7 +74,7 @@ export default async function handler(req, res) {
       return res.status(503).json({ success: false, error: 'Bookings are briefly unavailable. Try again in a minute.' })
     }
     const online = await onlineCounts(open.map((g) => g.id))
-    const list = open.map((g) => publicGroup(g, config, placesLeft(g, counts[g.id], online[g.id])))
+    const list = open.map((g) => publicGroup(g, config, publicPlacesLeft(g, counts[g.id], online[g.id])))
     const locations = config.locations.map((l) => {
       const mine = list.filter((g) => g.locationId === l.id)
       return {
@@ -108,6 +108,7 @@ export default async function handler(req, res) {
       pricing: [
         { section: 'Term', title: 'Small group', price: formatAud(config.prices.group), note: `${config.weeks} sessions` },
         { section: 'Term', title: 'Two a week, or two siblings', price: formatAud(config.prices.twoAWeek), note: 'Two places' },
+        { section: 'Term', title: 'Second child, any group', price: formatAud(config.prices.sibling), note: 'When a brother or sister has a paid place' },
         { section: 'Term', title: 'JFP Pathway', price: formatAud(config.prices.pathway), note: 'Younger players, 45 minutes' },
         { section: 'Term', title: 'Trial session', price: formatAud(config.prices.trial), note: 'Comes off the term' },
         { section: '1 to 1', title: 'Term of 1 to 1s', price: formatAud(config.prices.oneToOneTerm), note: 'One a week' },

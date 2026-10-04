@@ -14,7 +14,7 @@ import {
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
   coachByAirtableName, sessionDates, dateLabel, formatAud, to24h, clean, newId, audit, listAudit, locationFor, validEmail, ageOn,
   normName, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold,
-  PRODUCTS, QUESTIONS, productFor, priceFor, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson,
+  PRODUCTS, QUESTIONS, productFor, priceFor, paidSiblings, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson,
 } from './_jfp-store.js'
 import { coachPhotoUrl } from './jfp-groups.js'
 import {
@@ -115,6 +115,14 @@ function groupSummary(g, config) {
   return `${g.day} ${g.time}, ${loc.name}`
 }
 
+// The sibling rate only when Airtable shows another child of this family
+// with a paid place this term.
+async function siblingGuard(product, email, names) {
+  if (product !== 'sibling') return null
+  const roster = await loadRoster({ fresh: true })
+  return paidSiblings(roster.players, email, names).length ? null : 'No other child of this family has a paid place this term, so the sibling rate does not apply. Choose another price.'
+}
+
 async function capacityCheck(group, adding, force) {
   const roster = await loadRoster()
   const taken = countsFrom(roster)[group.id] || 0
@@ -153,6 +161,8 @@ async function addPlayer(req, res, principal, config, body) {
   const age = dob ? ageOn(dob, config.termStart) : (Number.isInteger(Number(body.player?.age)) ? Number(body.player.age) : null)
   if (payment === 'offline' && !(Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0)) return fail(res, 400, 'Enter the amount they paid.')
   const { amountCents, price, product, from } = amountFor(config, group, body)
+  const sibErr = await siblingGuard(product, email, [clean(body.player?.name, 100)])
+  if (sibErr) return fail(res, 400, sibErr)
   const isTrial = payment === 'trial' || product === 'trial'
   const coach = coachById(config, group.coachId)
   const addId = newId('ADD')
@@ -375,6 +385,7 @@ async function sendPaymentLink(req, res, principal, config, body) {
   // (pro rata from the start date), or an amount staff typed.
   const balance = rows.reduce((t, r) => t + Math.max(0, cents(r.balanceAud ?? ((r.feeAud || 0) - (r.paidAud || 0)))), 0)
   const chosen = PRODUCTS.some((x) => x.key === body.product) ? amountFor(config, group, { ...body, amountCents: undefined }, rows.length) : null
+  if (chosen) { const sibErr = await siblingGuard(chosen.product, rows[0].email, rows.map((r) => r.player)); if (sibErr) return fail(res, 400, sibErr) }
   const typed = Number(body.amountCents)
   // What the family has already paid this term comes off a price-list amount.
   // A trial fee comes off only when staff tick it, and only what was paid.
@@ -489,7 +500,7 @@ async function saveGroupAction(res, principal, config, body) {
   const input = body.group || {}
   const existing = body.id ? await getGroup(body.id) : null
   if (body.id && !existing) return fail(res, 404, 'Group not found.')
-  const allowed = ['day', 'time', 'location', 'coachId', 'extraCoachIds', 'capacity', 'mode', 'label', 'durationMin', 'minAge', 'maxAge', 'ageStatus', 'girlsOnly', 'publicNote', 'programme', 'byCoach', 'trials', 'questions', 'requirements', 'requirementsText', 'product']
+  const allowed = ['day', 'time', 'location', 'coachId', 'extraCoachIds', 'capacity', 'mode', 'label', 'durationMin', 'minAge', 'maxAge', 'ageStatus', 'girlsOnly', 'publicNote', 'programme', 'byCoach', 'trials', 'questions', 'requirements', 'requirementsText', 'product', 'showFull']
   const patch = Object.fromEntries(Object.entries(input).filter(([k]) => allowed.includes(k)))
   for (const k of ['capacity', 'durationMin']) if (k in patch) patch[k] = Number(patch[k])
   for (const k of ['minAge', 'maxAge']) if (k in patch) patch[k] = patch[k] === '' || patch[k] == null ? null : Number(patch[k])
@@ -607,14 +618,16 @@ async function decideRequest(req, res, principal, config, body) {
     if (q) { const c = await cancelLink(q, principal, body.decision === 'decline' ? 'Offer declined' : 'Offer closed'); if (c.error) return fail(res, c.status, c.error) }
   }
   if (body.decision === 'decline') {
-    const suggest = body.suggestGroupId ? await getGroup(clean(body.suggestGroupId, 80)) : null
+    // Up to three groups that would suit better (Lee, 5 Oct 2026).
+    const ids = [...new Set([...(Array.isArray(body.suggestGroupIds) ? body.suggestGroupIds : []), body.suggestGroupId].map((x) => clean(x, 80)).filter((x) => x && x !== r.groupId))].slice(0, 3)
+    const suggestions = (await Promise.all(ids.map((x) => getGroup(x)))).filter(Boolean)
     let emailed = false
     if (body.sendEmail === true) {
       const group = (await getGroup(r.groupId)) || (r.groupId === 'one-to-one' ? { day: '1 to 1', time: 'coaching', location: 'Belrose HQ' } : null)
-      if (group) { await sendDeclined({ request: r, group, config, message: clean(body.message, 800), suggest, siteUrl: siteUrl(req) }); emailed = true }
+      if (group) { await sendDeclined({ request: r, group, config, message: clean(body.message, 800), suggestions, siteUrl: siteUrl(req) }); emailed = true }
     }
-    await saveApplication({ ...r, status: 'declined', decidedBy: principal.email, decidedAt: new Date().toISOString(), note: clean(body.message || body.note, 800), suggestedGroupId: suggest?.id || '' })
-    await audit({ by: principal.email, action: 'request.decline', target: r.id, after: { emailed, suggest: suggest?.id || '' } })
+    await saveApplication({ ...r, status: 'declined', decidedBy: principal.email, decidedAt: new Date().toISOString(), note: clean(body.message || body.note, 800), suggestedGroupId: suggestions[0]?.id || '', suggestedGroupIds: suggestions.map((g) => g.id) })
+    await audit({ by: principal.email, action: 'request.decline', target: r.id, after: { emailed, suggest: suggestions.map((g) => g.id).join(', ') } })
     return res.status(200).json({ success: true, status: 'declined', emailed })
   }
   if (body.decision === 'done') {
@@ -634,6 +647,7 @@ async function decideRequest(req, res, principal, config, body) {
   const { amountCents, price, product } = trial
     ? { amountCents: Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0 ? Number(body.amountCents) : config.prices.trial * n, price: priceFor(config, { product: 'trial' }), product: 'trial' }
     : amountFor(config, group, { ...body, startDate }, n)
+  if (!trial) { const sibErr = await siblingGuard(product, r.email, r.players.map((p) => p.name)); if (sibErr) return fail(res, 400, sibErr) }
   const share = splitEven(amountCents, n)
   // The place is held in Airtable as Awaiting Reply until the family pays.
   const coach = coachById(config, group.coachId)
@@ -926,9 +940,9 @@ export default async function handler(req, res) {
 
       case 'requests': {
         await sweepExpiredOffers(principal)
-        const [list, groups] = await Promise.all([listApplications(), listGroups()])
+        const [list, groups, roster] = await Promise.all([listApplications(), listGroups(), loadRoster()])
         const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
-        return res.status(200).json({ success: true, requests: list.map((r) => ({ ...r, group: byId[r.groupId] ? groupSummary(byId[r.groupId], config) : r.groupId === 'one-to-one' ? '1 to 1 coaching, times on request' : r.groupId, groupLabel: byId[r.groupId]?.label || (r.groupId === 'one-to-one' ? '1 to 1' : '') })) })
+        return res.status(200).json({ success: true, requests: list.map((r) => ({ ...r, siblings: paidSiblings(roster.players, r.email, (r.players || []).map((p) => p.name)).map((s) => ({ name: s.name, group: byId[s.groupId] ? groupSummary(byId[s.groupId], config) : '' })), group: byId[r.groupId] ? groupSummary(byId[r.groupId], config) : r.groupId === 'one-to-one' ? '1 to 1 coaching, times on request' : r.groupId, groupLabel: byId[r.groupId]?.label || (r.groupId === 'one-to-one' ? '1 to 1' : '') })) })
       }
       case 'decideRequest': return await decideRequest(req, res, principal, config, body)
 

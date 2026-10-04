@@ -146,6 +146,12 @@ test('coach seed: an old saved config gains new coaches, full names and emails o
   assert.equal(later.coaches.find((x) => x.id === 'ruby').email, '')
 })
 
+test('the kit link is the whole Joner Football shop, and an old saved product link moves over', () => {
+  assert.equal(config.kitUrl, 'https://www.besteamsport.com.au/collections/joner-football')
+  assert.equal(normaliseConfig({ kitUrl: 'https://www.besteamsport.com.au/collections/joner-football/products/jf-playing-kit' }).kitUrl, 'https://www.besteamsport.com.au/collections/joner-football')
+  assert.equal(normaliseConfig({ kitUrl: 'https://kit.example.com/x' }).kitUrl, 'https://kit.example.com/x')
+})
+
 test('parents see coaches by full name', () => {
   const g = publicGroup({ id: 'x', day: 'Monday', time: '4:20pm', location: 'Belrose HQ', coachId: 'ruby', mode: 'application', capacity: 6, durationMin: 60, minAge: 8, maxAge: 11, label: 'Small group' }, config, 2)
   assert.equal(g.coachName, 'Coach Ruby Fanoosh')

@@ -421,3 +421,85 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .j-req-mini { list-style: none; margin: 8px 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .j-req-mini li { font-size: 12px; line-height: 1.3; padding: 4px 8px; border-radius: 999px; background: #f3f4f6; color: #333; }
 .j-blk .c-name { white-space: normal; overflow: visible; line-height: 1.25; }
+
+/* ---------- round 7 (Lee, 5 Oct 2026): wide, clean, premium ---------- */
+/* Use the whole screen on a monitor, like apple.com: wide content, generous gutters. */
+.jfp-wide .wrap, #jfp-account .j-top .wrap, #jfp-account .j-foot .wrap { max-width: 1680px; padding: 0 clamp(16px, 4vw, 64px); }
+.j-top .wrap { height: 64px; }
+.j-brand span { font-size: 16px; }
+.j-top-links { gap: 6px; }
+.j-toplink { font-size: 14px; font-weight: 600; color: var(--j-ink-2) !important; text-decoration: none; padding: 8px 12px; border-radius: 10px; }
+.j-toplink:hover { background: var(--j-grey-bg); color: var(--j-ink) !important; }
+.jfp-wide .j-hero { padding: clamp(22px, 4vw, 48px) 0 4px; }
+.jfp-wide .j-hero h1 { font-size: clamp(30px, 4.2vw, 52px); font-weight: 800; letter-spacing: -0.035em; line-height: 1.05; }
+.jfp-wide .j-hero p { margin-top: 8px; font-size: clamp(15px, 1.4vw, 18px); }
+.jfp-wide .j-tabs { margin: 18px 0 22px; }
+.jfp-wide .j-tabs a { font-size: 15px; }
+
+/* Location cards: photo, name, map. */
+.jfp-wide .j-loc .img { height: 120px; }
+@media (min-width: 720px) { .jfp-wide .j-loc .img { height: clamp(150px, 13vw, 220px); } }
+.jfp-wide .j-loc .body h3 { font-size: 18px; }
+
+/* Filters: two clean pill selects and chips, no labels. */
+.j-filters { gap: 8px; padding: 18px 0 8px; }
+.j-pillselect { -webkit-appearance: none; appearance: none; font: inherit; font-size: 14px; font-weight: 650; color: var(--j-ink); background: var(--j-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23111827' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 14px center; border: 1.5px solid var(--j-line); border-radius: 999px; padding: 8px 34px 8px 16px; min-height: 40px; cursor: pointer; }
+.j-pillselect:hover { border-color: #C9CED6; }
+.j-filters .j-chip { min-height: 40px; padding: 8px 16px; font-size: 14px; }
+
+/* Week view: more room per day, no ages, a real button on every slot. */
+.jfp-wide .j-tt { gap: 12px; }
+.jfp-wide .j-tt-day { font-size: 15px; }
+.jfp-wide .j-blk { padding: 0 12px 12px 14px; font-size: 13.5px; gap: 2px; cursor: pointer; }
+.jfp-wide .j-blk .j-lb { margin: 0 -12px 10px -14px; }
+.jfp-wide .j-blk .t { font-size: 20px; }
+.j-blk .left { font-size: 12.5px; font-weight: 650; color: var(--j-muted); margin-top: 4px; }
+.j-blk .act { display: flex; align-items: center; justify-content: center; margin-top: 10px; min-height: 40px; border-radius: 10px; font-size: 14px; font-weight: 700; background: var(--j-action); color: #fff; border: 1.5px solid var(--j-action); }
+.j-blk .act-wait { background: #fff; color: var(--j-red); border-color: #F4B4AE; }
+.j-blk.is-full .act { opacity: 1; }
+.j-btn-wait { background: #fff; color: var(--j-red) !important; border-color: #F4B4AE; }
+.j-btn-wait:hover { border-color: var(--j-red); }
+.j-card-photo .j-act { min-height: 44px; padding: 10px 22px; font-size: 15px; font-weight: 700; }
+.j-card-photo .when-big { font-size: 28px; }
+
+/* Desktop only: a slot lifts a little under the mouse. */
+@media (hover: hover) and (min-width: 900px) {
+  .j-blk, .j-card-photo { transition: transform .16s ease, box-shadow .16s ease, border-color .16s; }
+  .j-blk:hover, .j-card-photo:hover { transform: scale(1.04); box-shadow: 0 14px 34px rgba(16, 24, 40, .14); border-color: #C9CED6; position: relative; z-index: 3; }
+  .j-blk:hover .act-apply, .j-blk:hover .act-book { background: #000; }
+}
+@media (prefers-reduced-motion: reduce) { .j-blk:hover, .j-card-photo:hover { transform: none; } }
+
+/* Term info */
+.j-term { display: grid; gap: 22px; align-items: start; }
+@media (min-width: 900px) { .j-term { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px; } }
+.j-term img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 20px; display: block; }
+.j-term h2 { font-size: clamp(24px, 2.6vw, 34px); font-weight: 800; letter-spacing: -0.03em; }
+.j-termlist { display: grid; gap: 0; margin: 18px 0 0; }
+@media (min-width: 640px) { .j-termlist { grid-template-columns: 1fr 1fr; column-gap: 28px; } }
+.j-termlist div { padding: 14px 0; border-top: 1px solid var(--j-line); }
+.j-termlist dt { font-weight: 750; color: var(--j-ink); }
+.j-termlist dd { margin: 3px 0 0; color: var(--j-ink-2); font-size: 14.5px; }
+.j-term-two { display: grid; gap: 14px; margin-top: 28px; }
+@media (min-width: 860px) { .j-term-two { grid-template-columns: 1fr 1fr; } }
+.j-term-two .j-good { margin: 6px 0 16px; }
+
+/* Footer directory */
+.j-foot { margin-top: 56px; background: var(--j-surface); border-top: 1px solid var(--j-line); font-size: 13px; color: var(--j-muted); }
+.j-foot .wrap { padding-top: 32px; padding-bottom: 28px; }
+.j-foot-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 20px; }
+@media (min-width: 860px) { .j-foot-cols { grid-template-columns: repeat(4, 1fr); } }
+.j-foot h4 { font-size: 13px; font-weight: 700; color: var(--j-ink); margin-bottom: 8px; letter-spacing: 0; }
+.j-foot-cols a, .j-foot-cols span { display: block; color: var(--j-muted); text-decoration: none; padding: 3px 0; line-height: 1.45; }
+.j-foot-cols a:hover { color: var(--j-ink); text-decoration: underline; }
+.j-social { display: flex; gap: 14px; margin-top: 8px; }
+.j-social a { color: var(--j-ink-2); padding: 0; }
+.j-foot-base { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--j-line); }
+.j-foot-base a { color: var(--j-muted); text-decoration: none; margin-left: 16px; }
+.j-foot-base a:first-child { margin-left: 0; }
+.j-foot-base a:hover { color: var(--j-ink); }
+@media (max-width: 640px) {
+  .j-filters .j-pillselect { flex: 1 1 0; min-width: 0; padding-left: 14px; padding-right: 30px; }
+  .j-filters .j-chips { flex: 1 1 100%; }
+  .jfp-wide .j-tabs a { padding: 9px 10px; font-size: 14px; }
+}

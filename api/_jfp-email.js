@@ -97,7 +97,7 @@ function groupRows(config, group, fromIso = '') {
 // ---------- sign in ----------
 
 export async function sendSignInCode({ email, code, audience }) {
-  const who = audience === 'staff' ? 'the JFP staff portal' : 'My JFP'
+  const who = audience === 'staff' ? 'the JFP staff portal' : 'My account'
   const body = `${p(`Here is your code to sign in to ${who}:`)}
 <p style="margin:8px 0 18px;font-size:34px;letter-spacing:8px;font-weight:800;color:#111827;">${esc(code)}</p>
 ${p('It works once, for 10 minutes. If you did not ask for it, ignore this email.')}`
@@ -114,7 +114,7 @@ ${rows([...groupRows(config, group, booking.startDate || ''), ['Players', player
 ${p('The calendar file attached adds all the dates in one tap.')}
 ${p('Arrive 10 minutes early. Bring boots, shin pads and a full water bottle.')}
 ${config.kitUrl ? p(`<b>Required:</b> every JFP player trains in the JF playing kit (${config.kitPriceLabel || 'A$50'}). If you have not ordered it yet, ${link('order it from BE Teamsport', config.kitUrl)} before the first session.`) : ''}
-${siteUrl ? button('Open My JFP', `${siteUrl}/jfp-account/`) : ''}`
+${siteUrl ? button('Open My account', `${siteUrl}/jfp-account/`) : ''}`
   return send({
     to: [{ email: booking.email, name: booking.parentName }],
     subject: `You're booked in: ${group.day} ${group.time}, ${config.term}`,
@@ -184,8 +184,8 @@ export async function sendPaymentReceipt({ payreq, group, config, siteUrl }) {
     const held = payreq.next.choice === 'hold'
     const body = `${p(`Thanks ${esc(payreq.parentName || '')}. ${esc(payreq.playerNames.join(' and '))}'s place for ${esc(payreq.next.term)} is ${held ? 'held' : 'paid and locked in'}.`)}
 ${rows([...(group ? [['Group', `${esc(group.day)} ${esc(group.time)}, ${esc(locationFor(config, group.location).name)}`]] : []), ['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))], ...(held ? [['Still to pay', `${esc(formatAud(Math.max(0, payreq.next.fullCents - (payreq.paidCents ?? payreq.amountCents))))} before ${esc(payreq.next.term)} starts`]] : []), ['Reference', esc(payreq.id)]])}
-${held ? p('The hold fee is non-refundable and comes off the term fee. When the new timetable is out we will confirm the group, and you pay the rest in My JFP.') : ''}
-${siteUrl ? button('Open My JFP', `${siteUrl}/jfp-account/`) : ''}`
+${held ? p('The hold fee is non-refundable and comes off the term fee. When the new timetable is out we will confirm the group, and you pay the rest in My account.') : ''}
+${siteUrl ? button('Open My account', `${siteUrl}/jfp-account/`) : ''}`
     return send({ to: [{ email: payreq.email, name: payreq.parentName }], subject: `${payreq.playerNames.join(' and ')}: ${payreq.next.term} ${held ? 'place held' : 'paid'}`, html: shell({ heading: held ? 'Your place is held' : 'You are locked in', body }) })
   }
   const trial = payreq.reason === 'trial'
@@ -193,7 +193,7 @@ ${siteUrl ? button('Open My JFP', `${siteUrl}/jfp-account/`) : ''}`
   const body = `${p(`Thanks ${esc(payreq.parentName || '')}. We have your payment for ${esc(payreq.playerNames.join(' and '))}.`)}
 ${rows([...(trial && payreq.trialDate ? [['Trial', esc(dateLabel(payreq.trialDate))]] : []), ...(group ? groupRows(config, group, trial ? '' : payreq.startDate || '').filter(([k]) => !(trial && k === 'Dates')) : []), ['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))], ['Reference', esc(payreq.id)]])}
 ${config.kitUrl ? p(`<b>Required:</b> every JFP player trains in the JF playing kit (${config.kitPriceLabel || 'A$50'}). If you have not ordered it yet, ${link('order it from BE Teamsport', config.kitUrl)} before the first session.`) : ''}
-${siteUrl ? button('Open My JFP', `${siteUrl}/jfp-account/`) : ''}`
+${siteUrl ? button('Open My account', `${siteUrl}/jfp-account/`) : ''}`
   return send({
     to: [{ email: payreq.email, name: payreq.parentName }],
     subject: `Payment received: ${payreq.playerNames.join(' and ')}`,
@@ -245,7 +245,7 @@ ${rows(players.map((x) => [x.name, esc(x.group)]))}
 ${p(`Know you can commit? <b>Pay ${esc(fullLabel)}</b> for the term and the place is locked in.`)}
 ${p(`Not sure of next term's schedule yet? <b>Hold your place for ${esc(holdLabel)}</b>. It is non-refundable and comes off the term fee.`)}
 ${p('Not coming back? Tell us in the same place, and we will offer the spot to someone else.')}
-${button('Choose in My JFP', url)}`
+${button('Choose in My account', url)}`
   return send({ to: [{ email: to, name: parentName }], subject: `Keep your place for ${config.nextTerm.name}`, html: shell({ heading: `${config.nextTerm.name}: keep your place`, body }) })
 }
 
@@ -254,7 +254,7 @@ const KIND_WORD = { application: 'application', waitlist: 'waitlist request', en
 export async function sendTrialOffered({ request, group, config, url, amountCents, trialDate }) {
   const body = `${p(`Thanks ${esc(request.parentName)}. We would like ${esc(request.players.map((x) => x.name).join(' and '))} to come to a trial in ${esc(group.day)} ${esc(group.time)}.`)}
 ${rows([['Trial', esc(dateLabel(trialDate))], ...groupRows(config, group).filter(([k]) => k !== 'Dates'), ['To pay', esc(formatAud(amountCents))]])}
-${p('Sign in with this email address to pay for the trial and it is booked. After the session the coach will let you know, and if it is a good fit you pay for the rest of the term in My JFP, with the trial fee taken off.')}
+${p('Sign in with this email address to pay for the trial and it is booked. After the session the coach will let you know, and if it is a good fit you pay for the rest of the term in My account, with the trial fee taken off.')}
 ${button('Sign in and book the trial', url)}`
   return send({ to: [{ email: request.email, name: request.parentName }], subject: `Trial: ${group.day} ${group.time}, ${dateLabel(trialDate)}`, html: shell({ heading: 'Your trial session', body }) })
 }
@@ -271,12 +271,12 @@ export async function sendRequestReceived({ request, group, config }) {
 }
 
 // A kind no: this group is not the right fit, maybe another one is.
-export async function sendDeclined({ request, group, config, message, suggest, siteUrl }) {
+export async function sendDeclined({ request, group, config, message, suggestions = [], siteUrl }) {
   const names = esc(request.players.map((x) => x.name).join(' and '))
   const body = `${p(`Thanks for applying, ${esc(request.parentName)}.`)}
 ${p(`Our coaches have looked at ${names}'s application for ${esc(group.day)} ${esc(group.time)}, and it is not the right group for ${request.players.length > 1 ? 'them' : 'this player'} this term. We keep every group at one level so each player is challenged, and we would rather say so now.`)}
 ${message ? p(esc(message)) : ''}
-${suggest ? `${p(`A group we think would suit: <b>${esc(suggest.day)} ${esc(suggest.time)}, ${esc(locationFor(config, suggest.location).name)}</b>. Apply for it on the timetable, or reply to this email.`)}` : p('Reply to this email if you would like to talk about another group or 1 to 1 coaching.')}
+${suggestions.length ? `${p(suggestions.length === 1 ? 'A group we think would suit:' : 'Groups we think would suit:')}<ul style="margin:0 0 14px;padding-left:20px">${suggestions.map((s) => `<li style="margin:4px 0"><b>${esc(s.day)} ${esc(s.time)}, ${esc(locationFor(config, s.location).name)}</b></li>`).join('')}</ul>${p('Apply on the timetable, or reply to this email.')}` : p('Reply to this email if you would like to talk about another group or 1 to 1 coaching.')}
 ${siteUrl ? button('See the timetable', `${siteUrl}/jfp-booking/`) : ''}`
   return send({ to: [{ email: request.email, name: request.parentName }], subject: `Your JFP application: ${group.day} ${group.time}`, html: shell({ heading: 'About your application', body }) })
 }

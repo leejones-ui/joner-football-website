@@ -1,0 +1,18 @@
+---
+// One header for the family pages: the logo and "Joner Football" once,
+// About JFP, and the account button ("Sign in" until a family signs in).
+interface Props { active?: 'booking' | 'account'; accountLabel?: string }
+const { active = 'booking', accountLabel = 'Sign in' } = Astro.props
+---
+<header class="j-top">
+  <div class="wrap">
+    <a class="j-brand" href="/jfp-booking/"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span>Joner Football</span></a>
+    <nav class="j-top-links" aria-label="Main">
+      {active === 'account' && <a class="j-toplink" href="/jfp-booking/">Timetable</a>}
+      <a class="j-toplink" href="/training/jfp-program" target="_blank" rel="noopener">About JFP</a>
+      {active === 'booking'
+        ? <a class="j-btn j-btn-dark j-btn-sm" id="acct-link" href="/jfp-account/">{accountLabel}</a>
+        : <button type="button" class="j-btn j-btn-line j-btn-sm" id="sign-out" hidden>Sign out</button>}
+    </nav>
+  </div>
+</header>

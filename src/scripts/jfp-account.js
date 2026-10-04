@@ -1,4 +1,4 @@
-// My JFP, the family page: sign in with an emailed code, then see players,
+// My account, the family page: sign in with an emailed code, then see players,
 // sessions, what is paid, waivers, and anything staff asked the family to do.
 import { $, esc, api, toast, openSheet, closeSheet, signIn, whoAmI, signOut, waiverBlock } from './jfp-common.js'
 
@@ -66,7 +66,7 @@ function payPill(pm) {
 
 function render() {
   $('term').textContent = D.term
-  if (D.kitUrl) $('kit-link').href = D.kitUrl
+  if (D.kitUrl && $('kit-link')) $('kit-link').href = D.kitUrl
   $('hello').textContent = D.parentName ? `Hi ${D.parentName.split(' ')[0]}` : 'Your players'
   $('who').innerHTML = `Signed in as <b>${esc(D.email)}</b>`
 
