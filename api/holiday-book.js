@@ -123,6 +123,7 @@ export default async function handler(req, res) {
   }
   const maxPlayers = maxPlayersForType(slot, type)
   const minPlayers = minPlayersForType(slot, type)
+  if (minPlayers > maxPlayers) return fail(res, 400, `This session is for ${minPlayers} or more players, so ${TYPE_LABELS[type]} is not available. Choose shared or group.`)
 
   const seats = Number(body.seats || 1)
   if (!Number.isInteger(seats) || seats > maxPlayers) return fail(res, 400, `A ${TYPE_LABELS[type]} session is for up to ${maxPlayers} player${maxPlayers === 1 ? '' : 's'}.`)

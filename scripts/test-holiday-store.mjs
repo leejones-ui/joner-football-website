@@ -146,9 +146,23 @@ test('a group of 4 can demand all 4 players; other types never demand more than 
   assert.equal(minPlayersForType({ ...g.slot }, 'group'), 4)
   assert.deepEqual(slotOptions(g.slot, config).map((o) => [o.type, o.minPlayers, o.maxPlayers]), [['group', 4, 4]])
   const open = validateSlotInput({ coachId: 'dean', date: '2026-09-28', startTime: '10:00', durationMin: 60, type: 'open', minPlayers: 4 }, config)
-  assert.equal(open.slot.minPlayers, 1, 'an open slot ignores a minimum')
+  // Since 4 Oct 2026 a "your choice" hour can set a minimum (Lee: 10:30am is 2 or more).
+  assert.equal(open.slot.minPlayers, 4, 'an open slot keeps its minimum')
+  assert.deepEqual(slotOptions(open.slot, config).map((o) => o.type), ['group'], 'too small for shared or 1 to 1')
   const tooMany = validateSlotInput({ coachId: 'lee', date: '2026-09-30', startTime: '17:00', durationMin: 60, type: 'group', capacity: 4, minPlayers: 9 }, config)
   assert.equal(tooMany.slot.minPlayers, 4, 'minimum never exceeds the group size')
 })
 
 console.log(`\n${passed} holiday store checks passed`)
+
+{
+  // A "your choice" hour with a minimum of 2: no 1 to 1, shared and group stay.
+  const m = await import('../api/_holiday-store.js')
+  const cfg = m.normaliseConfig ? m.normaliseConfig({}) : null
+  const slot = { type: 'open', capacity: 6, minPlayers: m.minPlayersFor('open', 2, 6) }
+  assert.equal(slot.minPlayers, 2)
+  const types = m.SESSION_TYPES.filter((t) => m.maxPlayersForType(slot, t) >= m.minPlayersForType(slot, t))
+  assert.deepEqual(types, ['shared', 'group'])
+  assert.equal(m.minPlayersForType({ type: 'open', capacity: 6, minPlayers: 1 }, 'one'), 1)
+  console.log('ok - a minimum-2 choice hour offers shared and group, never 1 to 1')
+}

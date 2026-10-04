@@ -294,6 +294,7 @@ function trialFields(input, type) {
   // not know about trials) never turns a trial back into an exclusive hour.
   const out = {}
   if ('seatMode' in input) out.seatMode = shared ? 'shared' : 'exclusive'
+  // On any hour, the title is a label on the tile (e.g. "Pro's Only").
   if ('title' in input) out.title = clean(input.title, 80)
   if ('minAge' in input || 'maxAge' in input) { out.minAge = ages ? minAge : null; out.maxAge = ages ? maxAge : null }
   return out
@@ -645,15 +646,19 @@ export function maxPlayersForType(slot, type) {
   return Math.max(3, Number(slot.capacity) || GROUP_CAPACITY_DEFAULT)
 }
 
-// The fewest players a booking must bring. Only a fixed group slot can
-// demand more than one (Lee's evening groups need all 4).
+// The fewest players a booking must bring. A fixed group slot can demand
+// more than one (Lee's evening groups need all 4), and so can a "your
+// choice" hour (minimum 2 = shared or group only, no 1 to 1).
 export function minPlayersFor(type, requested, capacity) {
-  if (type !== 'group') return 1
+  if (type !== 'group' && type !== 'open') return 1
   const n = Number(requested)
   return Number.isInteger(n) && n >= 1 ? Math.min(n, capacity) : 1
 }
 
 export function minPlayersForType(slot, type) {
+  // A "your choice" hour with a minimum: a type too small for it is not
+  // offered, and a booking below it is refused.
+  if (slot.type === 'open') return Math.max(1, Number(slot.minPlayers) || 1)
   if (slot.type !== 'group' || type !== 'group') return 1
   return Math.min(Math.max(1, Number(slot.minPlayers) || 1), maxPlayersForType(slot, type))
 }
@@ -663,7 +668,7 @@ export function slotOptions(slot, config, remaining = null) {
     const priceCents = resolvePriceCents(slot, config)
     return [{ type: 'group', label: slot.title || TYPE_LABELS.group, minPlayers: 1, maxPlayers: Math.max(1, remaining ?? maxPlayersForType(slot, 'group')), priceCents, priceLabel: formatAud(priceCents) }]
   }
-  const types = slot.type === 'open' ? SESSION_TYPES : [slot.type]
+  const types = slot.type === 'open' ? SESSION_TYPES.filter((t) => maxPlayersForType(slot, t) >= minPlayersForType(slot, t)) : [slot.type]
   return types.map((type) => ({
     type,
     label: TYPE_LABELS[type],

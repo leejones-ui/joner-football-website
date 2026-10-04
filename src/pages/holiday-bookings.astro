@@ -313,7 +313,8 @@ const description = 'Book school holiday coaching sessions with Joner Football c
     }
     // Trial slots carry a name and an age band, shown under the time.
     function tileTag(slot) {
-      if (!slot.shared) return ''
+      // Any hour can carry a label, like "Pro's Only".
+      if (!slot.shared) return slot.title ? `<span class="tile-tag">${esc(slot.title)}</span>` : ''
       const ages = slot.minAge != null ? `Ages ${slot.minAge} to ${slot.maxAge}` : ''
       return `<span class="tile-tag">${esc(slot.title || 'Trial')}${ages ? `<br>${esc(ages)}` : ''}</span>`
     }
@@ -446,7 +447,7 @@ const description = 'Book school holiday coaching sessions with Joner Football c
       state.sessionType = slot.options[0].type
       state.seats = slot.options[0].minPlayers || 1
       $('sheet-title').textContent = `${slot.dateLabel}, ${slot.startLabel} to ${slot.endLabel}`
-      $('sheet-subtitle').textContent = `${slot.shared ? `${slot.title || 'Trial'}${slot.minAge != null ? `, ages ${slot.minAge} to ${slot.maxAge}` : ''}. ` : ''}${coach ? coachLabel(coach) : slot.coachName} at ${slot.location}. ${slot.durationMin} minutes.`
+      $('sheet-subtitle').textContent = `${slot.shared || slot.title ? `${slot.title || 'Trial'}${slot.minAge != null ? `, ages ${slot.minAge} to ${slot.maxAge}` : ''}. ` : ''}${coach ? coachLabel(coach) : slot.coachName} at ${slot.location}. ${slot.durationMin} minutes.`
       $('book-status').textContent = ''
       $('book-form').reset()
       renderTypeOptions()
