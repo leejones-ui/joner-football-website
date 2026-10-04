@@ -159,6 +159,11 @@ function status(g) {
   return g.mode === 'direct' ? ['s-book', left] : ['s-apply', left]
 }
 
+// A full group normally takes the waitlist. Groups Lee marks "keep taking
+// applications" (popular spots) still say Apply when full.
+function waitOnly(g) { return g.full && !g.applyWhenFull }
+function actLabel(g) { return g.mode === 'enquire' ? 'Enquire' : waitOnly(g) ? 'Join the waitlist' : g.mode === 'direct' && !g.full ? 'Book' : 'Apply' }
+
 function block(g) {
   const [cls, text] = status(g)
   return `<button type="button" class="j-blk j-blk-${esc(g.locationId)} ${g.full ? 'is-full' : ''}" data-group="${esc(g.id)}">
@@ -166,8 +171,8 @@ function block(g) {
     <span class="t">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</span>
     <span class="c c-name">${esc(g.coachName || 'Joner Football')}</span>
     ${g.girlsOnly ? '<span class="c">Girls only</span>' : ''}
-    ${g.mode !== 'enquire' && !g.full ? `<span class="left">${esc(text)}</span>` : ''}
-    <span class="act ${g.full ? 'act-wait' : g.mode === 'direct' ? 'act-book' : 'act-apply'}">${g.mode === 'enquire' ? 'Enquire' : g.full ? 'Join the waitlist' : g.mode === 'direct' ? 'Book' : 'Apply'}</span>
+    <span class="left">${g.mode === 'enquire' ? 'On request' : g.full ? 'Fully booked' : esc(text)}</span>
+    <span class="act ${waitOnly(g) ? 'act-wait' : g.mode === 'direct' ? 'act-book' : 'act-apply'}">${actLabel(g)}</span>
   </button>`
 }
 
@@ -182,7 +187,7 @@ function locBanner(g) {
 // stand out, then the coach, places left and one button.
 function card(g) {
   const [cls, text] = status(g)
-  const btn = g.mode === 'enquire' ? 'Enquire' : g.full ? 'Join the waitlist' : g.mode === 'direct' ? 'Book' : 'Apply'
+  const btn = actLabel(g)
   return `<article class="j-group j-card-photo ${g.full ? 'is-full' : ''}">
     <button type="button" class="j-card-hit" data-group="${esc(g.id)}" aria-label="${esc(`${g.day} ${g.time}, ${g.coachName}`)}"></button>
     ${locBanner(g)}
@@ -190,7 +195,7 @@ function card(g) {
       <p class="when-big">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</p>
       <p class="meta" style="margin-top:6px">${coachChip(g, 32)}</p>
       <p class="meta">${esc(g.location)} · ${esc(g.durationMin)} min${g.girlsOnly ? ' · Girls only' : ''}</p>
-      <div class="foot">${g.full || g.mode === 'enquire' ? '<span></span>' : `<span class="st ${cls}">${esc(text)}</span>`}<span class="j-btn ${g.full ? 'j-btn-wait' : 'j-btn-dark'} j-act">${btn}</span></div>
+      <div class="foot"><span class="st ${cls}">${g.mode === 'enquire' ? '' : g.full ? 'Fully booked' : esc(text)}</span><span class="j-btn ${waitOnly(g) ? 'j-btn-wait' : 'j-btn-dark'} j-act">${btn}</span></div>
     </div>
   </article>`
 }
@@ -257,12 +262,12 @@ function groupSheet(g) {
     ${g.requirementsText ? `<div class="j-reqtext">${g.requirementsText.split(/\n\s*\n/).map((para) => `<p>${esc(para).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
     ${g.publicNote ? `<p style="margin-top:6px">${esc(g.publicNote)}</p>` : ''}
     <p class="small" style="margin-top:6px">Our coaches place every player with others at their level, so each ${g.mode === 'direct' ? 'booking is for players who meet the above' : 'application is reviewed'}.</p>`
-  const steps = g.full
+  const steps = waitOnly(g)
     ? ['This group is fully booked right now.', 'Join the waitlist and we will contact you if a place opens.']
     : g.mode === 'direct'
       ? [`Sign in with your email, then add the player and sign the waiver.`, `Pay and the place is yours${g.sessions ? `: every session from the next one to ${esc(g.lastDate)}` : ''}.`, 'Joining after the term starts? You only pay for the sessions left.']
       : ['Apply with the player\'s club and team. It takes 2 minutes.', `We reply within 48 hours with one of three answers:`, 'The place is only held once it is paid.']
-  const outcomes = !g.full && g.mode === 'application' ? `<div class="j-outcomes">
+  const outcomes = !waitOnly(g) && g.mode === 'application' ? `<div class="j-outcomes">
       <div class="j-card"><b>Accepted for the term</b><span>If we know the player or they fit the group. Pay to lock in the place.</span></div>
       ${g.trials ? `<div class="j-card"><b>Trial first, ${esc(S.data.trialPriceLabel)}</b><span>One session in this group. If it is a good fit, pay for the rest of the term in My account, with the trial taken off.</span></div>` : ''}
       <div class="j-card"><b>Not this group</b><span>If it is not the right level, we will tell you, and suggest a group that is.</span></div>
@@ -274,7 +279,7 @@ function groupSheet(g) {
     <h3 style="margin-bottom:6px">How it works</h3>
     <ol class="j-steps-list">${steps.map((t, i) => `<li><span class="n">${i + 1}</span><span>${t}${i === 1 ? outcomes : ''}</span></li>`).join('')}</ol>
     <p class="muted small" style="margin-top:10px">${esc(g.sessions)} weekly sessions this term, ${esc(g.firstDate)} to ${esc(g.lastDate)}.${g.noSession?.length ? ` No session on ${esc(g.noSession.join(', '))}.` : ''}</p>`
-  const kind = g.full ? 'waitlist' : g.mode === 'direct' ? 'book' : g.mode === 'application' ? 'application' : 'enquiry'
+  const kind = waitOnly(g) ? 'waitlist' : g.full ? 'application' : g.mode === 'direct' ? 'book' : g.mode === 'application' ? 'application' : 'enquiry'
   const label = { waitlist: 'Join the waitlist', book: 'Book this group', application: 'Apply for this group', enquiry: 'Enquire' }[kind]
   sheet.foot.innerHTML = `<button type="button" class="j-btn j-btn-dark j-btn-block j-btn-lg" id="g-go">${label}</button>`
   sheet.foot.querySelector('#g-go').addEventListener('click', () => start(kind, g))

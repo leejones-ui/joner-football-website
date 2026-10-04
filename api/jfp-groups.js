@@ -41,6 +41,8 @@ export function publicGroup(g, config, left) {
     minAge: g.minAge ?? config.minAge,
     maxAge: g.maxAge ?? config.maxAge,
     girlsOnly: g.girlsOnly === 'yes',
+    // Popular groups keep taking applications when full (Lee, 5 Oct 2026).
+    applyWhenFull: g.mode === 'application' && g.applyWhenFull === true,
     capacity: g.capacity,
     placesLeft: counted ? left : null,
     full: counted && left <= 0,

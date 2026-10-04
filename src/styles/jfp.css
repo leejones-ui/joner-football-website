@@ -504,3 +504,6 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
   .jfp-wide .j-tabs a { padding: 9px 10px; font-size: 14px; }
 }
 .j-box-blue { background: var(--j-blue-bg); color: var(--j-blue); }
+.j-foot-link { background: none; border: 0; padding: 3px 0; font: inherit; color: var(--j-muted); cursor: pointer; text-align: left; display: block; }
+.j-foot-link:hover { color: var(--j-ink); text-decoration: underline; }
+.j-foot-base .j-foot-link { display: inline; margin-left: 16px; }

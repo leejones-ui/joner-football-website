@@ -422,6 +422,8 @@ export function validateGroup(input, config, existing = {}) {
       requirementsText,
       // Families see Fully booked and can only join the waitlist.
       showFull: merged.showFull === true,
+      // Full, but families can still apply (Lee picks who gets in).
+      applyWhenFull: merged.applyWhenFull === true,
       product,
       updatedAt: new Date().toISOString(),
     },

@@ -177,6 +177,14 @@ export async function sendAccountInvite({ to, parentName, ...rest }) {
   return send({ to: [{ email: to, name: parentName }], subject, html, replyTo: 'ligia@jonerfootball.com' })
 }
 
+// The Contact us form on the family pages: straight to Ligia, reply goes
+// to the family.
+export async function sendContactMessage({ name, email, phone, message, page }) {
+  const body = `${rows([['From', esc(name)], ['Email', esc(email)], ['Mobile', esc(phone || 'Not given')], ['Page', esc(page || '')]])}
+${p(esc(message).replace(/\n/g, '<br>'))}`
+  return send({ to: [{ email: 'ligia@jonerfootball.com', name: 'Ligia' }], subject: `JFP contact form: ${name}`, html: shell({ heading: 'New message from the JFP page', body }), replyTo: email })
+}
+
 export async function sendFamilyInvite({ to, parentName, playerNames, group, config, url, needs, amountCents, trial = false, startDate = '' }) {
   const todo = []
   if (needs.details) todo.push('add the player details')

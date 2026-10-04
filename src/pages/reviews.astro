@@ -31,106 +31,78 @@ const schemas = [
 ---
 
 <BaseLayout title={title} description={description} keywords="Joner Football reviews, Joner Football App reviews, football training app reviews, soccer training reviews" schema={schemas}>
-  <main class="reviews-page bg-[#050505] text-white">
-    <section class="review-hero" aria-labelledby="reviews-title">
-      <video autoplay muted loop playsinline preload="metadata" poster="/images/home-storyboard/03-method-filming.webp" aria-hidden="true">
-        <source src="/images/home-storyboard/06-app-header-video-desktop.mp4" type="video/mp4" />
-      </video>
-      <div class="review-hero-shade"></div>
-      <div class="review-hero-grid" aria-hidden="true"></div>
-      <div class="review-shell review-hero-inner">
-        <p class="review-kicker"><span></span> Real words. Real training.</p>
-        <h1 id="reviews-title">Real Joner<br /><em>Football Reviews</em></h1>
-        <p class="review-hero-copy">Players improving. Parents finding a pathway. Coaches taking the work straight onto the pitch.</p>
-        <div class="review-hero-actions">
-          <a class="review-btn review-btn-red" href="#review-wall">Read the reviews</a>
-          <a class="review-btn review-btn-ghost" href="/join">Start free trial</a>
+  <main class="rv">
+    <section class="rv-hero" aria-labelledby="reviews-title">
+      <div class="rv-shell rv-hero-grid">
+        <div>
+          <p class="rv-kicker">Reviews</p>
+          <h1 id="reviews-title">What players, parents and coaches say.</h1>
+          <p class="rv-lead">Real words from the people who train with Joner Football, in Sydney and on the app. Every review shows where it came from and when.</p>
+          <div class="rv-actions">
+            <a class="rv-btn rv-btn-red" href="#review-wall">Read the reviews</a>
+            <a class="rv-btn rv-btn-line" href="/training/jfp-program">Train with us in Sydney</a>
+          </div>
+          <dl class="rv-facts">
+            <div><dt>{jonerReviews.length}</dt><dd>written reviews</dd></div>
+            <div><dt>{jonerReviews.filter((r) => r.audience.includes('Parent')).length + 1}</dt><dd>from parents</dd></div>
+            <div><dt>{jonerReviews.filter((r) => r.audience.includes('Coach')).length}</dt><dd>from coaches</dd></div>
+          </dl>
         </div>
-        <div class="review-proof-strip" aria-label="Review page facts">
-          <div><strong>{jonerReviews.length}</strong><span>Attributable reviews</span></div>
-          <div><strong>3</strong><span>Player, parent & coach voices</span></div>
-          <div><strong>100%</strong><span>Source and date shown</span></div>
-        </div>
-      </div>
-      <a href="#featured-story" class="review-scroll-cue" aria-label="Scroll to featured story"><span></span>SCROLL</a>
-    </section>
-
-    <section id="featured-story" class="feature-story">
-      <div class="review-shell feature-grid">
-        <div class="feature-media" data-reveal>
-          <video autoplay muted loop playsinline preload="metadata" poster="/images/programmes/lee-coaching-red.jpg">
-            <source src="/videos/coaches-web-hero.mp4" type="video/mp4" />
+        <figure class="rv-video">
+          <video controls playsinline preload="metadata" poster="/videos/houston-parent-reel-poster.webp">
+            <source src="/videos/houston-parent-reel-sound.mp4" type="video/mp4" />
           </video>
-          <div class="feature-stamp"><b>Parent</b><span>App member</span></div>
-          <p>Training that brings football home.</p>
-        </div>
-        <article class="feature-quote" data-reveal>
-          <p class="review-kicker"><span></span> Featured member story</p>
-          <blockquote>“{featured.quote}”</blockquote>
-          <div class="feature-byline">
-            <strong>{featured.name}</strong>
-            <span>{featured.audience} · {featured.product}</span>
-          </div>
-          <p class="source-line"><span aria-hidden="true">✓</span> {featured.sourceDetail} · <time datetime={featured.date}>{featured.dateLabel}</time></p>
-        </article>
+          <figcaption><span>Video</span> What parents say about training with Joner Football</figcaption>
+        </figure>
       </div>
     </section>
 
-    <section id="review-wall" class="review-wall">
-      <div class="review-shell">
-        <div class="wall-heading" data-reveal>
-          <div>
-            <p class="review-kicker"><span></span> From the Joner community</p>
-            <h2>Proof from the pitch.</h2>
+    <section class="rv-featured" aria-label="Featured review">
+      <div class="rv-shell">
+        <blockquote>
+          <p>“{featured.quote}”</p>
+          <footer><span class="rv-avatar" aria-hidden="true">{featured.name.slice(0, 1)}</span><span><strong>{featured.name}</strong><small>{featured.audience} · {featured.product}</small></span></footer>
+        </blockquote>
+      </div>
+    </section>
+
+    <section id="review-wall" class="rv-wall">
+      <div class="rv-shell">
+        <div class="rv-wall-head">
+          <h2>Every review</h2>
+          <div class="rv-filters" role="group" aria-label="Filter reviews">
+            {reviewSections.map((section, index) => (
+              <button type="button" class:list={{ active: index === 0 }} data-filter={section} aria-pressed={index === 0 ? 'true' : 'false'}>{section.replace(' reviews', '')}</button>
+            ))}
           </div>
-          <p>These are member words, not polished marketing copy. Names are privacy-safe and each card carries the source and date.</p>
         </div>
-
-        <div class="review-filters" role="group" aria-label="Filter reviews">
-          {reviewSections.map((section, index) => (
-            <button type="button" class:list={{ active: index === 0 }} data-filter={section} aria-pressed={index === 0 ? 'true' : 'false'}>{section.replace(' reviews', '')}</button>
-          ))}
-        </div>
-
-        <div class="review-count" aria-live="polite"><strong data-visible-count>{jonerReviews.length}</strong> reviews shown</div>
-        <div class="reviews-grid">
-          {jonerReviews.map((review, index) => (
-            <article class:list={['review-card', index % 5 === 0 && 'review-card-featured']} data-tags={review.tags.join('|')} data-review-card data-reveal>
-              <div class="card-topline"><span>{String(index + 1).padStart(2, '0')}</span><i>{review.audience}</i></div>
+        <p class="rv-count" aria-live="polite"><strong data-visible-count>{jonerReviews.length}</strong> shown</p>
+        <div class="rv-grid">
+          {jonerReviews.map((review) => (
+            <article class="rv-card" data-tags={review.tags.join('|')} data-review-card>
+              <p class="rv-tag">{review.audience}</p>
               <blockquote>“{review.quote}”</blockquote>
               <footer>
-                <div><strong>{review.name}</strong><span>{review.product}</span></div>
-                <p><span aria-hidden="true">✓</span> {review.source}<br /><time datetime={review.date}>{review.dateLabel}</time></p>
+                <span class="rv-avatar" aria-hidden="true">{review.name.slice(0, 1)}</span>
+                <span><strong>{review.name}</strong><small>{review.product}</small></span>
               </footer>
-              <p class="review-source-detail">{review.sourceDetail}</p>
+              <p class="rv-src">{review.sourceDetail} · <time datetime={review.date}>{review.dateLabel}</time></p>
             </article>
           ))}
         </div>
       </div>
     </section>
 
-    <section class="review-method">
-      <div class="review-shell method-grid">
-        <div data-reveal>
-          <p class="review-kicker"><span></span> How this page is built</p>
-          <h2>Credible by design.</h2>
-        </div>
-        <ol data-reveal>
-          <li><span>01</span><div><strong>Genuine member feedback</strong><p>Drawn from comments, community posts, emails and direct messages received by Joner Football.</p></div></li>
-          <li><span>02</span><div><strong>Readable, attributable evidence</strong><p>Every quote is real HTML with a privacy-safe name, source context and date.</p></div></li>
-          <li><span>03</span><div><strong>No invented ratings</strong><p>We do not turn qualitative feedback into made-up star scores or performance claims.</p></div></li>
-        </ol>
-      </div>
-    </section>
-
-    <section class="review-final-cta">
-      <video autoplay muted loop playsinline preload="none" aria-hidden="true"><source src="/videos/about-lee-kick-reel.mp4" type="video/mp4" /></video>
-      <div class="review-final-overlay"></div>
-      <div class="review-shell review-final-inner" data-reveal>
-        <p class="review-kicker"><span></span> Your work starts here</p>
-        <h2>Don’t just read<br /><em>their progress.</em></h2>
-        <p>Get clear drills, programmes and coaching detail, then put it into practice.</p>
-        <a class="review-btn review-btn-red" href="/join">Choose your plan</a>
+    <section class="rv-cta">
+      <div class="rv-shell rv-cta-grid">
+        <a class="rv-cta-card" href="/training/jfp-program">
+          <img src="/images/training/jfp/jfp-training-1.webp" alt="" loading="lazy" />
+          <span><small>Sydney</small><b>Train with us in person</b>Small group training at Belrose, North Turramurra and Rydalmere.</span>
+        </a>
+        <a class="rv-cta-card" href="/join">
+          <img src="/images/programmes/lee-coaching-red.jpg" alt="" loading="lazy" />
+          <span><small>Anywhere</small><b>Train with the Joner Football App</b>Drills, programmes and coaching detail you can use today.</span>
+        </a>
       </div>
     </section>
   </main>
@@ -151,56 +123,64 @@ const schemas = [
     })
     if (count) count.textContent = String(visible)
   }))
-  const observer = new IntersectionObserver((entries) => entries.forEach((entry) => {
-    if (entry.isIntersecting) { entry.target.classList.add('revealed'); observer.unobserve(entry.target) }
-  }), { threshold: 0.08 })
-  document.querySelectorAll('[data-reveal]').forEach((element) => observer.observe(element))
 </script>
 
 <style>
-  :global(html) { scroll-behavior: smooth; }
-  .reviews-page { --red:#d20a0a; --paper:#f3f0e9; --muted:#a6a6a6; font-family: var(--font-body, Arial, sans-serif); overflow:hidden; }
-  .review-shell { width:min(1180px, calc(100% - 32px)); margin-inline:auto; }
-  .review-kicker { display:flex; align-items:center; gap:.65rem; color:#fff; font:700 .73rem/1 var(--font-heading, Impact, sans-serif); letter-spacing:.22em; text-transform:uppercase; }
-  .review-kicker span { width:34px; height:3px; background:var(--red); display:inline-block; }
-  .review-hero { min-height:92svh; position:relative; display:grid; align-items:end; isolation:isolate; border-bottom:5px solid var(--red); }
-  .review-hero video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:-4; filter:saturate(.65) contrast(1.12); }
-  .review-hero-shade { position:absolute; inset:0; z-index:-3; background:linear-gradient(90deg,rgba(0,0,0,.96) 0%,rgba(0,0,0,.78) 45%,rgba(0,0,0,.3) 76%),linear-gradient(0deg,rgba(0,0,0,.82),transparent 55%); }
-  .review-hero-grid { position:absolute; inset:0; z-index:-2; opacity:.16; background-image:linear-gradient(rgba(255,255,255,.11) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.11) 1px,transparent 1px); background-size:64px 64px; mask-image:linear-gradient(90deg,#000,transparent 80%); }
-  .review-hero-inner { padding:clamp(9rem,18vh,14rem) 0 3.2rem; }
-  .review-hero h1,.wall-heading h2,.review-method h2,.review-final-cta h2 { font-family:var(--font-heading, Impact, sans-serif); text-transform:uppercase; letter-spacing:-.035em; line-height:.86; }
-  .review-hero h1 { max-width:850px; margin:1.25rem 0; font-size:clamp(3.9rem,9vw,8.5rem); }
-  .review-hero h1 em,.review-final-cta h2 em { color:transparent; -webkit-text-stroke:1.5px #fff; font-style:normal; }
-  .review-hero-copy { max-width:630px; color:#d6d6d6; font-size:clamp(1.05rem,2vw,1.3rem); line-height:1.55; }
-  .review-hero-actions { display:flex; flex-wrap:wrap; gap:.75rem; margin-top:2rem; }
-  .review-btn { min-height:50px; display:inline-flex; align-items:center; justify-content:center; padding:.8rem 1.5rem; border:1px solid #fff; color:#fff; font:700 .78rem/1 var(--font-heading, Impact, sans-serif); text-transform:uppercase; letter-spacing:.12em; transition:.2s ease; }
-  .review-btn-red { background:var(--red); border-color:var(--red); box-shadow:6px 6px 0 #fff; }
-  .review-btn-red:hover { transform:translate(3px,3px); box-shadow:3px 3px 0 #fff; }
-  .review-btn-ghost:hover { background:#fff;color:#000; }
-  .review-proof-strip { margin-top:clamp(3rem,8vh,6rem); display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); max-width:800px; border-top:1px solid rgba(255,255,255,.3); padding-top:1.25rem; }
-  .review-proof-strip div { display:grid; gap:.2rem; padding-right:1rem; }
-  .review-proof-strip strong { font:700 clamp(1.7rem,4vw,3rem)/1 var(--font-heading, Impact, sans-serif); }
-  .review-proof-strip span { color:#aaa; font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; }
-  .review-scroll-cue { position:absolute; right:1.5rem; bottom:3rem; display:flex; flex-direction:column; align-items:center; gap:.6rem; color:#aaa; font-size:.58rem; letter-spacing:.2em; writing-mode:vertical-rl; }
-  .review-scroll-cue span { width:1px; height:50px; background:linear-gradient(#fff,transparent); animation:scrollline 1.8s ease-in-out infinite; }
-  @keyframes scrollline { 50% { transform:scaleY(.45); transform-origin:top; } }
-  .feature-story { padding:clamp(4rem,9vw,8rem) 0; background:var(--paper); color:#080808; }
-  .feature-grid { display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); gap:clamp(2rem,6vw,6rem); align-items:center; }
-  .feature-media { min-height:560px; position:relative; overflow:hidden; background:#111; box-shadow:18px 18px 0 var(--red); }
-  .feature-media video { width:100%; height:100%; position:absolute; object-fit:cover; filter:saturate(.75) contrast(1.08); }
-  .feature-media:after { content:''; position:absolute; inset:0; background:linear-gradient(0deg,rgba(0,0,0,.85),transparent 60%); }
-  .feature-media>p { position:absolute; z-index:2; left:1.5rem; bottom:1.5rem; margin:0; color:white; font:700 clamp(1.6rem,3vw,2.5rem)/.95 var(--font-heading, Impact, sans-serif); text-transform:uppercase; max-width:300px; }
-  .feature-stamp { position:absolute; z-index:3; right:0; top:0; background:var(--red); color:#fff; padding:1rem 1.2rem; display:grid; text-transform:uppercase; }
-  .feature-stamp b { font:700 1.1rem var(--font-heading, Impact, sans-serif); }.feature-stamp span{font-size:.62rem;letter-spacing:.14em;}
-  .feature-quote .review-kicker,.review-method .review-kicker { color:#111; }.feature-quote blockquote{font:700 clamp(1.9rem,4vw,3.5rem)/1.05 var(--font-heading, Impact, sans-serif); text-transform:uppercase; margin:1.5rem 0 2rem; letter-spacing:-.02em;}
-  .feature-quote blockquote::first-letter{color:var(--red)}.feature-byline{border-top:3px solid #111;padding-top:1.2rem;display:grid;gap:.25rem}.feature-byline strong{font:700 1.2rem var(--font-heading, Impact, sans-serif);text-transform:uppercase}.feature-byline span,.source-line{color:#555;font-size:.8rem}.source-line span{color:var(--red);font-weight:900}.source-line{margin-top:1rem;}
-  .review-wall { padding:clamp(4rem,9vw,8rem) 0; background:#080808; background-image:radial-gradient(circle at 10% 15%,rgba(210,10,10,.12),transparent 28%); }
-  .wall-heading { display:grid;grid-template-columns:1.4fr .6fr;gap:2rem;align-items:end;border-bottom:1px solid #333;padding-bottom:2rem}.wall-heading h2{font-size:clamp(3.4rem,7vw,7rem);margin:1rem 0 0}.wall-heading>p{color:#aaa;line-height:1.6;margin:0}
-  .review-filters{display:flex;gap:.6rem;overflow-x:auto;padding:1.4rem 0 .5rem;scrollbar-width:none}.review-filters button{flex:none;border:1px solid #3b3b3b;background:#101010;color:#aaa;padding:.75rem 1rem;text-transform:uppercase;font:700 .65rem var(--font-heading, Impact, sans-serif);letter-spacing:.1em;cursor:pointer}.review-filters button.active,.review-filters button:hover{background:var(--red);border-color:var(--red);color:#fff}.review-count{color:#777;font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;margin:1.2rem 0}.review-count strong{color:#fff}
-  .reviews-grid{columns:3 320px;column-gap:1rem}.review-card{break-inside:avoid;margin:0 0 1rem;border:1px solid #292929;background:#111;padding:1.4rem;transition:.25s ease;position:relative}.review-card:hover{border-color:#777;transform:translateY(-3px)}.review-card-featured{border-top:4px solid var(--red)}.review-card[hidden]{display:none}.card-topline{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2e2e2e;padding-bottom:.8rem}.card-topline span{color:var(--red);font:700 1rem var(--font-heading, Impact, sans-serif)}.card-topline i{font-style:normal;color:#888;font-size:.62rem;text-transform:uppercase;letter-spacing:.15em}.review-card blockquote{font:700 clamp(1.18rem,2vw,1.55rem)/1.18 var(--font-heading, Impact, sans-serif);text-transform:uppercase;margin:1.2rem 0 1.8rem}.review-card footer{display:grid;grid-template-columns:1fr auto;gap:1rem;padding-top:1rem;border-top:1px solid #2e2e2e}.review-card footer div{display:grid;gap:.2rem}.review-card footer strong{font:700 .9rem var(--font-heading, Impact, sans-serif);text-transform:uppercase}.review-card footer span,.review-card footer p,.review-source-detail{color:#777;font-size:.64rem;line-height:1.45;margin:0}.review-card footer p{text-align:right}.review-card footer p span{color:var(--red)}.review-source-detail{margin-top:.8rem!important;padding-top:.7rem;border-top:1px dashed #2e2e2e}
-  .review-method{background:var(--paper);color:#0a0a0a;padding:clamp(4rem,9vw,8rem) 0}.method-grid{display:grid;grid-template-columns:.75fr 1.25fr;gap:clamp(3rem,8vw,8rem)}.review-method h2{font-size:clamp(3rem,6vw,6rem);margin:1rem 0}.review-method ol{list-style:none;padding:0;margin:0}.review-method li{display:grid;grid-template-columns:80px 1fr;gap:1rem;border-top:2px solid #111;padding:1.5rem 0}.review-method li>span{color:var(--red);font:700 2rem var(--font-heading, Impact, sans-serif)}.review-method li strong{font:700 1.2rem var(--font-heading, Impact, sans-serif);text-transform:uppercase}.review-method li p{color:#555;line-height:1.5;margin:.4rem 0 0}
-  .review-final-cta{min-height:72svh;position:relative;display:grid;align-items:center;isolation:isolate}.review-final-cta video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;filter:grayscale(.4)}.review-final-overlay{position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(0,0,0,.95),rgba(0,0,0,.35))}.review-final-inner{padding:6rem 0}.review-final-cta h2{font-size:clamp(4rem,9vw,8.5rem);margin:1.5rem 0}.review-final-cta p:not(.review-kicker){max-width:560px;color:#ccc;font-size:1.1rem;line-height:1.6;margin-bottom:2rem}
-  [data-reveal]{opacity:1;transform:none;transition:transform .35s ease}
-  @media(max-width:760px){.review-shell{width:min(100% - 24px,1180px)}.review-hero{min-height:88svh}.review-hero-inner{padding-bottom:2rem}.review-hero h1{font-size:clamp(3.3rem,16vw,5.4rem)}.review-hero-copy{font-size:1rem;max-width:90%}.review-proof-strip{grid-template-columns:1fr;gap:.9rem;margin-top:3rem}.review-proof-strip div{grid-template-columns:70px 1fr;align-items:center;border-top:1px solid rgba(255,255,255,.12);padding-top:.7rem}.review-proof-strip strong{font-size:1.8rem}.review-scroll-cue{display:none}.feature-grid,.wall-heading,.method-grid{grid-template-columns:1fr}.feature-media{min-height:430px;box-shadow:9px 9px 0 var(--red)}.feature-quote blockquote{font-size:1.8rem}.wall-heading h2{font-size:3.5rem}.wall-heading>p{font-size:.9rem}.reviews-grid{columns:1}.review-card{padding:1.15rem}.review-card blockquote{font-size:1.3rem}.review-method li{grid-template-columns:55px 1fr}.review-final-cta{min-height:65svh}.review-final-cta h2{font-size:3.7rem}.review-hero-actions .review-btn{width:100%}}
-  @media(prefers-reduced-motion:reduce){:global(html){scroll-behavior:auto}.review-scroll-cue span{animation:none}[data-reveal]{opacity:1;transform:none;transition:none}}
+  .rv { --red:#d20a0a; background:#0a0a0a; color:#fff; font-family:var(--font-body, Inter, system-ui, sans-serif); }
+  .rv-shell { width:min(1320px, calc(100% - 32px)); margin-inline:auto; }
+  .rv-kicker { color:var(--red); font-weight:800; font-size:.8rem; letter-spacing:.14em; text-transform:uppercase; margin:0 0 14px; }
+  .rv-hero { padding:clamp(110px, 14vw, 170px) 0 clamp(48px, 7vw, 90px); background:radial-gradient(circle at 85% 20%, rgba(210,10,10,.18), transparent 40%); }
+  .rv-hero-grid { display:grid; gap:40px; align-items:center; }
+  @media (min-width:960px) { .rv-hero-grid { grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr); gap:64px; } }
+  .rv h1 { font-family:var(--font-body, Inter, sans-serif); font-weight:800; font-size:clamp(2.4rem, 5.4vw, 4.6rem); line-height:1.02; letter-spacing:-.035em; text-transform:none; margin:0; max-width:14ch; }
+  .rv-lead { color:#c9c9c9; font-size:clamp(1.05rem, 1.6vw, 1.25rem); line-height:1.6; max-width:560px; margin:20px 0 0; }
+  .rv-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:28px; }
+  .rv-btn { display:inline-flex; align-items:center; justify-content:center; min-height:50px; padding:0 24px; border-radius:12px; font-weight:700; font-size:1rem; text-decoration:none; transition:transform .15s, background .15s, border-color .15s; }
+  .rv-btn-red { background:var(--red); color:#fff; }
+  .rv-btn-red:hover { background:#b00808; transform:translateY(-1px); }
+  .rv-btn-line { border:1.5px solid rgba(255,255,255,.35); color:#fff; }
+  .rv-btn-line:hover { border-color:#fff; }
+  .rv-facts { display:flex; gap:clamp(24px, 4vw, 48px); margin:40px 0 0; padding-top:24px; border-top:1px solid rgba(255,255,255,.14); }
+  .rv-facts dt { font-size:clamp(1.8rem, 3vw, 2.4rem); font-weight:800; letter-spacing:-.03em; }
+  .rv-facts dd { margin:2px 0 0; color:#9a9a9a; font-size:.9rem; }
+  .rv-video { margin:0; border-radius:22px; overflow:hidden; background:#151515; border:1px solid rgba(255,255,255,.1); max-width:420px; justify-self:center; width:100%; }
+  .rv-video video { display:block; width:100%; aspect-ratio:9 / 14; object-fit:cover; background:#000; }
+  .rv-video figcaption { padding:14px 16px; font-size:.95rem; color:#d6d6d6; display:flex; gap:10px; align-items:center; }
+  .rv-video figcaption span { background:var(--red); color:#fff; font-size:.72rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:4px 8px; border-radius:6px; }
+  .rv-featured { background:#f4f2ee; color:#111; padding:clamp(56px, 8vw, 110px) 0; }
+  .rv-featured blockquote { margin:0 auto; max-width:980px; }
+  .rv-featured blockquote p { font-size:clamp(1.4rem, 2.8vw, 2.3rem); line-height:1.35; font-weight:600; letter-spacing:-.015em; margin:0; }
+  .rv-featured footer { display:flex; gap:14px; align-items:center; margin-top:28px; }
+  .rv-avatar { width:44px; height:44px; flex:none; border-radius:50%; background:var(--red); color:#fff; display:inline-flex; align-items:center; justify-content:center; font-weight:800; }
+  .rv footer strong { display:block; font-weight:750; }
+  .rv footer small { display:block; color:#7a7a7a; font-size:.85rem; margin-top:2px; }
+  .rv-wall { padding:clamp(56px, 8vw, 110px) 0; }
+  .rv-wall-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:end; gap:18px; }
+  .rv-wall h2 { font-family:var(--font-body, Inter, sans-serif); text-transform:none; font-weight:800; font-size:clamp(1.8rem, 3.4vw, 2.8rem); letter-spacing:-.03em; margin:0; }
+  .rv-filters { display:flex; gap:8px; flex-wrap:wrap; }
+  .rv-filters button { border:1.5px solid rgba(255,255,255,.18); background:transparent; color:#cfcfcf; border-radius:999px; padding:9px 16px; font:600 .92rem var(--font-body, Inter, sans-serif); cursor:pointer; }
+  .rv-filters button:hover { border-color:rgba(255,255,255,.5); color:#fff; }
+  .rv-filters button.active { background:#fff; border-color:#fff; color:#0a0a0a; }
+  .rv-count { color:#8a8a8a; font-size:.9rem; margin:18px 0 22px; }
+  .rv-count strong { color:#fff; }
+  .rv-grid { columns:3 340px; column-gap:18px; }
+  .rv-card { break-inside:avoid; margin:0 0 18px; background:#141414; border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:24px; transition:border-color .15s, transform .15s; }
+  .rv-card:hover { border-color:rgba(255,255,255,.25); transform:translateY(-2px); }
+  .rv-card[hidden] { display:none; }
+  .rv-tag { display:inline-block; font-size:.75rem; font-weight:700; color:#ff8a80; background:rgba(210,10,10,.14); border-radius:999px; padding:4px 10px; margin:0 0 14px; }
+  .rv-card blockquote { margin:0; font-size:1.05rem; line-height:1.6; color:#ececec; }
+  .rv-card footer { display:flex; gap:12px; align-items:center; margin-top:20px; }
+  .rv-card .rv-avatar { width:38px; height:38px; font-size:.95rem; }
+  .rv-src { color:#6f6f6f; font-size:.8rem; margin:14px 0 0; padding-top:12px; border-top:1px solid rgba(255,255,255,.07); }
+  .rv-cta { padding:0 0 clamp(64px, 9vw, 120px); }
+  .rv-cta-grid { display:grid; gap:18px; }
+  @media (min-width:860px) { .rv-cta-grid { grid-template-columns:1fr 1fr; } }
+  .rv-cta-card { position:relative; display:block; min-height:320px; border-radius:22px; overflow:hidden; color:#fff; text-decoration:none; }
+  .rv-cta-card img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transition:transform .4s; }
+  .rv-cta-card::after { content:''; position:absolute; inset:0; background:linear-gradient(0deg, rgba(0,0,0,.88), rgba(0,0,0,.1) 70%); }
+  .rv-cta-card:hover img { transform:scale(1.04); }
+  .rv-cta-card span { position:absolute; z-index:1; left:24px; right:24px; bottom:22px; color:#d6d6d6; font-size:1rem; line-height:1.5; }
+  .rv-cta-card small { display:block; color:var(--red); font-weight:800; font-size:.75rem; letter-spacing:.12em; text-transform:uppercase; }
+  .rv-cta-card b { display:block; color:#fff; font-size:clamp(1.4rem, 2.4vw, 1.9rem); letter-spacing:-.02em; margin:6px 0 4px; }
+  @media (prefers-reduced-motion:reduce) { .rv-card, .rv-cta-card img, .rv-btn { transition:none; } }
 </style>

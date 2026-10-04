@@ -501,7 +501,7 @@ async function saveGroupAction(res, principal, config, body) {
   const input = body.group || {}
   const existing = body.id ? await getGroup(body.id) : null
   if (body.id && !existing) return fail(res, 404, 'Group not found.')
-  const allowed = ['day', 'time', 'location', 'coachId', 'extraCoachIds', 'capacity', 'mode', 'label', 'durationMin', 'minAge', 'maxAge', 'ageStatus', 'girlsOnly', 'publicNote', 'programme', 'byCoach', 'trials', 'questions', 'requirements', 'requirementsText', 'product', 'showFull']
+  const allowed = ['day', 'time', 'location', 'coachId', 'extraCoachIds', 'capacity', 'mode', 'label', 'durationMin', 'minAge', 'maxAge', 'ageStatus', 'girlsOnly', 'publicNote', 'programme', 'byCoach', 'trials', 'questions', 'requirements', 'requirementsText', 'product', 'showFull', 'applyWhenFull']
   const patch = Object.fromEntries(Object.entries(input).filter(([k]) => allowed.includes(k)))
   for (const k of ['capacity', 'durationMin']) if (k in patch) patch[k] = Number(patch[k])
   for (const k of ['minAge', 'maxAge']) if (k in patch) patch[k] = patch[k] === '' || patch[k] == null ? null : Number(patch[k])
