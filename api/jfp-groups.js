@@ -2,9 +2,22 @@
 // its coach, place, who it is for, and places left, plus the three locations.
 // An explicit allowlist of fields. Never player names, contacts, notes or
 // payments, and no term price: parents see what they pay when they book.
-import { requireParentAccess, getConfig, listGroups, onlineCounts, placesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, periodOf, dayOrder, QUESTIONS, REQUIREMENTS, ONE_TO_ONE, skippedDates } from './_jfp-store.js'
+import { requireParentAccess, getConfig, coachLabel, kvGetJson, listGroups, onlineCounts, placesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, periodOf, dayOrder, QUESTIONS, REQUIREMENTS, ONE_TO_ONE, skippedDates } from './_jfp-store.js'
 import { airtableCounts } from './_jfp-airtable.js'
 import { sweepExpiredOffersSometimes } from './_jfp-offers.js'
+
+export function coachPhotoUrl(c) { return `/api/jfp-groups?coachPhoto=${encodeURIComponent(c.id)}&v=${c.photoV}` }
+
+// A coach's profile photo. Public on purpose: parents see it on the
+// timetable, and the portal shows it before anyone signs in.
+async function sendCoachPhoto(req, res) {
+  const id = String(req.query?.coachPhoto || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30)
+  const photo = id ? await kvGetJson(`jfp:coach-photo:${id}`) : null
+  if (!photo?.b64 || !/^image\/(jpeg|png|webp)$/.test(photo.type || '')) return res.status(404).end()
+  res.setHeader('Content-Type', photo.type)
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+  return res.status(200).end(Buffer.from(photo.b64, 'base64'))
+}
 
 export function publicGroup(g, config, left) {
   const coach = coachById(config, g.coachId)
@@ -20,7 +33,8 @@ export function publicGroup(g, config, left) {
     locationId: loc.id,
     location: loc.name,
     coachId: coach?.id || '',
-    coachName: coach ? `Coach ${coach.name}` : '',
+    coachName: coach ? `Coach ${coachLabel(coach)}` : '',
+    coachPhoto: coach?.photoV ? coachPhotoUrl(coach) : '',
     label: g.label || 'Small group',
     mode: g.mode,
     durationMin: g.durationMin,
@@ -45,6 +59,7 @@ export function publicGroup(g, config, left) {
 }
 
 export default async function handler(req, res) {
+  if (req.method === 'GET' && req.query?.coachPhoto) return sendCoachPhoto(req, res)
   res.setHeader('Cache-Control', 'no-store')
   if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' })
   if (!requireParentAccess(req, res)) return
@@ -70,7 +85,7 @@ export default async function handler(req, res) {
         full: mine.length > 0 && mine.every((g) => g.full),
       }
     }).filter((l) => l.groups > 0)
-    const coaches = [...new Map(list.filter((g) => g.coachId).map((g) => [g.coachId, { id: g.coachId, name: g.coachName }])).values()]
+    const coaches = [...new Map(list.filter((g) => g.coachId).map((g) => [g.coachId, { id: g.coachId, name: g.coachName, photo: g.coachPhoto }])).values()]
     const firstDay = open.map((g) => g.day).sort((a, b) => dayOrder(a) - dayOrder(b))[0] || 'Monday'
     const lastDay = open.map((g) => g.day).sort((a, b) => dayOrder(b) - dayOrder(a))[0] || 'Monday'
     const startIso = sessionDates(config, firstDay)[0] || config.termStart

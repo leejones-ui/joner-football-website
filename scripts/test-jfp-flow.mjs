@@ -298,15 +298,33 @@ await test('6. admin adds, moves and removes a player; the family gets the sign-
 
 await test('7. roles: coaches see only their sessions and no money; parents only their own family', async () => {
   const dean = client()
+  const cfg = (await portal(lee, 'getSettings')).data.config
+  assert.equal(cfg.coachLoginsEnabled, true, 'coach logins are on')
+  assert.equal((await portal(lee, 'saveSettings', { config: { coachLoginsEnabled: false } })).status, 200)
   const start = await dean.call('/api/jfp-auth', { action: 'start', email: 'jonerfootballdean@gmail.com', audience: 'staff' })
   assert.equal(start.status, 200)
   assert.ok(!(await emails()).some((e) => e.to.includes('jonerfootballdean@gmail.com')), 'no code while coach logins are off')
-  const cfg = (await portal(lee, 'getSettings')).data.config
-  assert.equal((await portal(lee, 'saveSettings', { config: { ...cfg, coachLoginsEnabled: true } })).status, 200)
+  assert.equal((await portal(lee, 'saveSettings', { config: { coachLoginsEnabled: true } })).status, 200)
   await signIn(dean, 'jonerfootballdean@gmail.com', 'staff')
   const mine = await portal(dean, 'coachSessions', { coachId: 'sam' })
   assert.equal(mine.status, 200)
-  assert.equal(mine.data.coach, 'Dean', 'a coach cannot ask for another coach')
+  assert.equal(mine.data.coach, 'Dean McDonnell', 'a coach cannot ask for another coach')
+  // Profile photo: a coach sets their own, never another coach's.
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+  const up = await portal(dean, 'coachPhoto', { coachId: 'sam', dataUrl: PNG })
+  assert.equal(up.status, 200)
+  assert.match(up.data.photo, /coachPhoto=dean&v=\d+/, 'the photo saves to the coach signed in, whatever coachId says')
+  const img = await fetch(B + up.data.photo)
+  assert.equal(img.status, 200)
+  assert.equal(img.headers.get('content-type'), 'image/png')
+  assert.equal((await portal(dean, 'coachPhoto', { dataUrl: 'data:text/html;base64,PGgxPg==' })).status, 400, 'only images')
+  const me = await portal(dean, 'me')
+  assert.equal(me.data.user.name, 'Coach Dean McDonnell')
+  assert.ok(me.data.user.photo)
+  assert.deepEqual(me.data.coaches, [], 'a coach never gets the coach list with emails')
+  const sam = (await portal(lee, 'me')).data.coaches.find((c) => c.id === 'sam')
+  assert.equal(sam.photo, '', 'Sam has no photo')
+  assert.ok((await portal(lee, 'me')).data.coaches.some((c) => c.id === 'sage' && c.name === 'Sage Melhem'))
   const s = JSON.stringify(mine.data)
   assert.ok(!/@|0400|Paid|850|parent/i.test(s), 'no money or contact details')
   assert.ok(mine.data.sessions.every((x) => x.id !== TUE420), 'only their own sessions')

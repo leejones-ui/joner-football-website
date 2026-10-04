@@ -14,8 +14,9 @@ import {
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
   coachByAirtableName, sessionDates, dateLabel, formatAud, to24h, clean, newId, audit, listAudit, locationFor, validEmail, ageOn,
   normName, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold,
-  PRODUCTS, QUESTIONS, productFor, priceFor, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS,
+  PRODUCTS, QUESTIONS, productFor, priceFor, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson,
 } from './_jfp-store.js'
+import { coachPhotoUrl } from './jfp-groups.js'
 import {
   loadRoster, countsFrom, playerAge, waiverFor, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, draftAgeBand,
   createWaiverRows, waiverFields, findWaiversByTag, bustRosterCache, findTerm4ByTag,
@@ -80,8 +81,8 @@ async function boardData(config) {
     return {
       ...g,
       locationId: loc.id, locationName: loc.name,
-      coachName: coachById(config, g.coachId)?.name || '',
-      extraCoachNames: (g.extraCoachIds || []).map((c) => coachById(config, c)?.name).filter(Boolean),
+      coachName: coachLabel(coachById(config, g.coachId)),
+      extraCoachNames: (g.extraCoachIds || []).map((c) => coachLabel(coachById(config, c))).filter(Boolean),
       taken: counts[g.id] || 0,
       holds: online[g.id] || 0,
       placesLeft: placesLeft(g, counts[g.id], online[g.id]),
@@ -703,6 +704,34 @@ function money(config, roster, bookings, payreqs) {
 
 // ---------- coaches ----------
 
+// Staff see each coach's full name and photo. Emails only for admins.
+function coachList(config, isAdmin = true) {
+  return config.coaches.map((c) => ({ id: c.id, name: coachLabel(c), firstName: c.name, photo: c.photoV ? coachPhotoUrl(c) : '', ...(isAdmin ? { email: c.email, alerts: c.alerts } : {}) }))
+}
+
+// A profile photo, resized in the browser to at most 600 x 750. Stored in KV
+// (not Airtable): it is a picture for the timetable, not a record.
+async function saveCoachPhoto(res, principal, config, body, isAdmin) {
+  const coachId = isAdmin ? clean(body.coachId, 30) : principal.coachId
+  const coach = coachById(config, coachId)
+  if (!coach) return fail(res, 400, 'Choose a coach.')
+  let v = 0
+  if (body.remove === true) {
+    await kvCommand(['DEL', `jfp:coach-photo:${coach.id}`])
+  } else {
+    const m = String(body.dataUrl || '').match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/)
+    if (!m) return fail(res, 400, 'Choose a JPG, PNG or WebP photo.')
+    if (m[2].length > 700000) return fail(res, 413, 'That photo is too big. Try a smaller one.')
+    await kvSetJson(`jfp:coach-photo:${coach.id}`, { type: m[1], b64: m[2], by: principal.email, at: new Date().toISOString() })
+    v = Date.now()
+  }
+  const fresh = await getConfig()
+  const next = await saveConfig({ coaches: fresh.coaches.map((c) => (c.id === coach.id ? { ...c, photoV: v } : c)) })
+  await audit({ by: principal.email, action: body.remove === true ? 'coach.photo.remove' : 'coach.photo', target: coach.id })
+  const c = coachById(next, coach.id)
+  return res.status(200).json({ success: true, photo: c.photoV ? coachPhotoUrl(c) : '' })
+}
+
 function coachSessions(config, groups, roster, coachId, date) {
   const mine = groups.filter((g) => g.coachId === coachId || (g.extraCoachIds || []).includes(coachId))
   const me = coachById(config, coachId)
@@ -717,7 +746,7 @@ function coachSessions(config, groups, roster, coachId, date) {
     return {
       id: g.id, day: g.day, time: g.time, sortTime: to24h(g.time), location: loc.name, address: loc.address, durationMin: g.durationMin,
       label: g.label, minAge: g.minAge, maxAge: g.maxAge, dates: dates.map((d) => ({ iso: d, label: dateLabel(d) })), nextDate: next,
-      players, coachName: me?.name || '',
+      players, coachName: coachLabel(me),
     }
   })
 }
@@ -747,7 +776,11 @@ export default async function handler(req, res) {
     const isAdmin = principal.role === 'admin'
 
     // ---------- coach and admin ----------
-    if (action === 'me') return res.status(200).json({ success: true, user: principal, coaches: isAdmin ? config.coaches.map((c) => ({ id: c.id, name: c.name })) : [] })
+    if (action === 'me') {
+      const mine = principal.coachId ? coachList(config, false).find((c) => c.id === principal.coachId) : null
+      return res.status(200).json({ success: true, user: { ...principal, photo: mine?.photo || '' }, coaches: isAdmin ? coachList(config) : [] })
+    }
+    if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
 
     if (action === 'coachSessions') {
       const coachId = isAdmin ? clean(body.coachId, 30) : principal.coachId
@@ -756,7 +789,7 @@ export default async function handler(req, res) {
       const sessions = coachSessions(config, groups, roster, coachId, clean(body.date, 10))
       for (const s of sessions) s.attendance = await attendanceFor(s.id, s.nextDate)
       const perWeek = sessions.reduce((t, s) => t + s.durationMin, 0)
-      return res.status(200).json({ success: true, coach: coachById(config, coachId).name, term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
+      return res.status(200).json({ success: true, coach: coachLabel(coachById(config, coachId)), coachPhoto: coachList(config, false).find((c) => c.id === coachId)?.photo || '', term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
     }
 
     // The whole program as a timetable: names and ages, no money, no contacts.
@@ -770,7 +803,7 @@ export default async function handler(req, res) {
           const loc = locationFor(config, g.location)
           return {
             id: g.id, day: g.day, time: g.time, sortTime: to24h(g.time), period: periodOf(g), locationId: loc.id, locationName: loc.name,
-            coachId: g.coachId, coachName: coachById(config, g.coachId)?.name || '', label: g.label, mode: g.mode, capacity: g.capacity,
+            coachId: g.coachId, coachName: coachLabel(coachById(config, g.coachId)), label: g.label, mode: g.mode, capacity: g.capacity,
             minAge: g.minAge, maxAge: g.maxAge, girlsOnly: g.girlsOnly, taken: counts[g.id] || 0, placesLeft: placesLeft(g, counts[g.id], online[g.id]),
             mine: g.coachId === principal.coachId || (g.extraCoachIds || []).includes(principal.coachId),
             players: roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !isTestName(r.player)).map((r) => ({ name: r.player, age: playerAge(r, config.termStart), trial: /trial/i.test(r.paymentType), status: r.confirmation })).sort((a, b) => a.name.localeCompare(b.name)),
@@ -797,7 +830,7 @@ export default async function handler(req, res) {
       if (status) {
         try {
           const week = dates.indexOf(date) + 1
-          await upsertAttendance({ attendanceId: `T4-W${week}-${g.day.slice(0, 3)}-${g.time}-${row.player}`, playerName: row.player, week, date, group: g, coachName: principal.role === 'coach' ? principal.name.replace('Coach ', '') : (coachById(config, g.coachId)?.name || ''), status, markedBy: principal.email })
+          await upsertAttendance({ attendanceId: `T4-W${week}-${g.day.slice(0, 3)}-${g.time}-${row.player}`, playerName: row.player, week, date, group: g, coachName: coachById(config, principal.role === 'coach' ? principal.coachId : g.coachId)?.name || '', status, markedBy: principal.email })
           airtable = 'saved'
         } catch (error) { console.error('jfp attendance airtable failed', error); airtable = 'failed' }
       }
@@ -808,7 +841,7 @@ export default async function handler(req, res) {
 
     // ---------- Lee and Ligia ----------
     switch (action) {
-      case 'board': await sweepExpiredOffers(principal); return res.status(200).json({ success: true, ...(await boardData(config)), coaches: config.coaches.map((c) => ({ id: c.id, name: c.name })), locations: config.locations.map((l) => ({ id: l.id, name: l.name })) })
+      case 'board': await sweepExpiredOffers(principal); return res.status(200).json({ success: true, ...(await boardData(config)), coaches: coachList(config), locations: config.locations.map((l) => ({ id: l.id, name: l.name })) })
       case 'searchPlayers': return res.status(200).json({ success: true, results: await searchPlayers(config, body) })
       case 'addPlayer': return await addPlayer(req, res, principal, config, body)
       case 'movePlayer': return await movePlayer(res, principal, config, body)
@@ -824,7 +857,7 @@ export default async function handler(req, res) {
         const players = roster.players.filter((r) => r.holdsPlace && !isTestName(r.player)).map((r) => {
           const g = byId[r.groupId]
           const st = statuses[r.id] || null
-          return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Not in a group', groupId: r.groupId, coach: g ? coachById(config, g.coachId)?.name || '' : '', status: st?.status || '', paidCents: st?.paidCents || 0, at: st?.at || '' }
+          return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Not in a group', groupId: r.groupId, coach: g ? coachLabel(coachById(config, g.coachId)) : '', status: st?.status || '', paidCents: st?.paidCents || 0, at: st?.at || '' }
         }).sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name))
         const count = (s) => players.filter((p) => p.status === s).length
         return res.status(200).json({ success: true, nextTerm: nt, prices: nextPrices(config, null), players, totals: { players: players.length, invited: count('invited'), held: count('held'), paid: count('paid'), no: count('no'), none: players.filter((p) => !p.status).length } })
@@ -885,7 +918,7 @@ export default async function handler(req, res) {
       }
       case 'groups': {
         const groups = await listGroups()
-        return res.status(200).json({ success: true, groups: sortGroups(groups).map((g) => ({ ...g, locationName: locationFor(config, g.location).name })), coaches: config.coaches.map((c) => ({ id: c.id, name: c.name })), modes: MODES, labels: LABELS, days: DAYS.slice(0, 7), locations: config.locations.map((l) => ({ id: l.id, name: l.name, match: l.match })) })
+        return res.status(200).json({ success: true, groups: sortGroups(groups).map((g) => ({ ...g, locationName: locationFor(config, g.location).name })), coaches: coachList(config), modes: MODES, labels: LABELS, days: DAYS.slice(0, 7), locations: config.locations.map((l) => ({ id: l.id, name: l.name, match: l.match })) })
       }
       case 'saveGroup': return await saveGroupAction(res, principal, config, body)
       case 'deleteGroup': return await deleteGroupAction(res, principal, body)
@@ -965,7 +998,15 @@ export default async function handler(req, res) {
         const patch = {}
         for (const k of ['term', 'termStart', 'weeks', 'prices', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations', 'kitUrl', 'kitNote', 'kitPriceLabel', 'skipDates']) if (k in input) patch[k] = input[k]
         if (patch.prices) patch.prices = { ...config.prices, ...patch.prices }
-        if (Array.isArray(input.coaches)) patch.coaches = input.coaches
+        if (Array.isArray(input.coaches)) {
+          // Photos are saved by their own action; a settings save never drops one.
+          patch.coaches = input.coaches.map((c) => ({ ...c, photoV: coachById(config, clean(c.id, 30))?.photoV || 0 }))
+          const ids = patch.coaches.map((c) => clean(c.id, 30))
+          if (new Set(ids).size !== ids.length) return fail(res, 400, 'Two coaches have the same id.')
+          const inUse = (await listGroups()).flatMap((g) => [g.coachId, ...(g.extraCoachIds || [])]).filter(Boolean)
+          const dropped = config.coaches.filter((c) => !ids.includes(c.id) && inUse.includes(c.id))
+          if (dropped.length) return fail(res, 409, `${coachLabel(dropped[0])} still runs a group. Move their groups first.`)
+        }
         if ('superAdmins' in patch) {
           const list = (Array.isArray(patch.superAdmins) ? patch.superAdmins : []).map(validEmail).filter(Boolean)
           if (!list.includes(principal.email)) return fail(res, 400, 'You cannot remove your own admin access.')

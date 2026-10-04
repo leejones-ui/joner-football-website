@@ -121,10 +121,35 @@ test('a family sees only rows with its own email', () => {
 
 test('roles come from config on every request', () => {
   assert.equal(roleFor('LeeJones@JonerFootball.com', config).role, 'admin')
-  assert.equal(roleFor('jonerfootballdean@gmail.com', config), null, 'coach logins are off by default')
-  assert.equal(roleFor('jonerfootballdean@gmail.com', { ...config, coachLoginsEnabled: true }).coachId, 'dean')
+  assert.equal(roleFor('jonerfootballdean@gmail.com', config).coachId, 'dean', 'coach logins are on (Lee, 5 Oct 2026)')
+  assert.equal(roleFor('jonerfootballdean@gmail.com', { ...config, coachLoginsEnabled: false }), null, 'switching logins off locks coaches out')
+  assert.equal(roleFor('sagemelhem@icloud.com', config).coachId, 'sage')
   assert.equal(roleFor('parent@x.com', config), null)
   assert.deepEqual(normaliseConfig({ superAdmins: [] }).superAdmins, config.superAdmins, 'the admin list can never be emptied')
+})
+
+test('coach seed: an old saved config gains new coaches, full names and emails once', () => {
+  const old = { coachLoginsEnabled: false, coaches: [
+    { id: 'dean', name: 'Dean', airtableName: 'Dean Mac', email: 'jonerfootballdean@gmail.com' },
+    { id: 'ruby', name: 'Ruby', airtableName: 'Ruby Fanoosh', email: '' },
+  ] }
+  const c = normaliseConfig(old)
+  assert.equal(c.coachLoginsEnabled, true)
+  assert.equal(c.coaches.find((x) => x.id === 'ruby').email, 'jonerfootballruby@gmail.com')
+  assert.equal(c.coaches.find((x) => x.id === 'ruby').alerts, false, 'new emails do not start coach alerts')
+  assert.equal(c.coaches.find((x) => x.id === 'dean').alerts, true, 'Dean keeps the alerts he already had')
+  assert.equal(c.coaches.find((x) => x.id === 'dean').fullName, 'Dean McDonnell')
+  assert.ok(c.coaches.some((x) => x.id === 'sage' && x.fullName === 'Sage Melhem'))
+  // Once saved at the new seed, Lee's own edits win (a cleared email stays cleared).
+  const later = normaliseConfig({ ...c, coachLoginsEnabled: false, coaches: c.coaches.map((x) => (x.id === 'ruby' ? { ...x, email: '' } : x)) })
+  assert.equal(later.coachLoginsEnabled, false)
+  assert.equal(later.coaches.find((x) => x.id === 'ruby').email, '')
+})
+
+test('parents see coaches by full name', () => {
+  const g = publicGroup({ id: 'x', day: 'Monday', time: '4:20pm', location: 'Belrose HQ', coachId: 'ruby', mode: 'application', capacity: 6, durationMin: 60, minAge: 8, maxAge: 11, label: 'Small group' }, config, 2)
+  assert.equal(g.coachName, 'Coach Ruby Fanoosh')
+  assert.equal(g.coachPhoto, '')
 })
 
 test('the public group shape carries no people and no money', () => {

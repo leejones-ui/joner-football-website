@@ -10,7 +10,7 @@
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, sessionDates, dateLabel,
-  formatAud, coachById, coachByAirtableName, locationFor, ageOn, normName, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES,
+  formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, normName, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES,
 } from './_jfp-store.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
@@ -74,7 +74,7 @@ async function overview(res, parent, body = {}) {
       const openReq = mine.find((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(r.id))
       return {
         rowId: r.id, day: r.day, time: r.time, location: loc.name, address: loc.address, maps: loc.maps,
-        coach: coach ? `Coach ${coach.name}` : '', status: r.confirmation || 'Confirmed',
+        coach: coach ? `Coach ${coachLabel(coach)}` : '', status: r.confirmation || 'Confirmed',
         dates: dates.map(dateLabel), firstDate: dates[0] ? dateLabel(dates[0]) : '',
         payment: paymentLine(r, openReq),
       }

@@ -30,8 +30,8 @@ async function showSignIn() {
 }
 
 function tabs() {
-  if (P.user.role !== 'admin') return [['program', 'Program'], ['coach', 'My sessions']]
-  return [['board', 'Timetable'], ['requests', 'Requests'], ['payments', 'Payment links'], ['holiday', 'Holiday training'], ['next', 'Next term'], ['prices', 'Prices'], ['groups', 'Groups and rules'], ['money', 'Money'], ['coach', 'Registers'], ['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]
+  if (P.user.role !== 'admin') return [['program', 'Program'], ['coach', 'My sessions'], ['profile', 'My profile']]
+  return [['board', 'Timetable'], ['requests', 'Requests'], ['payments', 'Payment links'], ['holiday', 'Holiday training'], ['next', 'Next term'], ['prices', 'Prices'], ['groups', 'Groups and rules'], ['money', 'Money'], ['coach', 'Registers'], ['coaches', 'Coaches'], ['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]
 }
 
 function start() {
@@ -52,7 +52,7 @@ async function go(tab) {
   renderNav()
   view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
-  const fn = { next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = { next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, coaches: renderCoaches, profile: renderProfile, removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   view().focus({ preventScroll: true })
 }
@@ -959,7 +959,7 @@ async function renderCoach() {
   const d = await need(await post('coachSessions', { coachId: P.coachId }))
   const hrs = (min) => `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}m` : ''}`
   view().innerHTML = `
-    <div class="jp-head"><div><h1>${admin ? `Coach ${esc(d.coach)}` : 'My sessions'}</h1><p class="muted small">${esc(d.term)} · ${d.sessions.length} session${d.sessions.length === 1 ? '' : 's'} a week · ${hrs(d.hours.perWeekMinutes)} a week, ${hrs(d.hours.termMinutes)} across the term</p></div>
+    <div class="jp-head"><div style="display:flex;gap:12px;align-items:center">${avatar(d.coachPhoto, d.coach, 48)}<div><h1>${admin ? `Coach ${esc(d.coach)}` : 'My sessions'}</h1><p class="muted small">${esc(d.term)} · ${d.sessions.length} session${d.sessions.length === 1 ? '' : 's'} a week · ${hrs(d.hours.perWeekMinutes)} a week, ${hrs(d.hours.termMinutes)} across the term</p></div></div>
       ${admin ? `<div class="jp-seg" id="c-pick">${P.coaches.map((c) => `<button type="button" data-c="${esc(c.id)}" aria-pressed="${P.coachId === c.id}">${esc(c.name)}</button>`).join('')}</div>` : ''}</div>
     ${admin ? '<p class="muted small" style="margin-bottom:10px">This is exactly what the coach sees when they sign in: times, names and ages. No money, no parent contact details.</p>' : ''}
     ${d.sessions.length ? d.sessions.map((s) => {
@@ -987,6 +987,122 @@ async function renderCoach() {
 }
 
 async function loadAttendance() { renderCoach() }
+
+// ---------- coaches: names, emails, photos ----------
+
+function avatar(url, name, size = 56) {
+  const initials = String(name || '').replace(/^Coach\s+/, '').split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2).toUpperCase()
+  return url
+    ? `<img src="${esc(url)}" alt="" width="${size}" height="${size}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;object-position:50% 20%;flex:none;background:#eee">`
+    : `<span aria-hidden="true" style="width:${size}px;height:${size}px;border-radius:50%;background:#eef0f3;color:#555;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:${Math.round(size / 2.8)}px;flex:none">${esc(initials)}</span>`
+}
+
+// Resize in the browser to a 4:5 portrait, at most 600 x 750, as a JPEG.
+function photoDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!/^image\//.test(file.type || '') && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name || '')) return reject(new Error('Choose a photo.'))
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      const want = 4 / 5
+      let sw = img.naturalWidth, sh = img.naturalHeight, sx = 0, sy = 0
+      if (sw / sh > want) { sw = Math.round(sh * want); sx = Math.round((img.naturalWidth - sw) / 2) } else { sh = Math.round(sw / want) }
+      const w = Math.min(600, sw), h = Math.round(w / want)
+      const cv = document.createElement('canvas')
+      cv.width = w; cv.height = h
+      cv.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, w, h)
+      URL.revokeObjectURL(url)
+      resolve(cv.toDataURL('image/jpeg', 0.85))
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file could not be read. Try a JPG or PNG.')) }
+    img.src = url
+  })
+}
+
+function photoPicker(el, coachId, onDone) {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0]
+    if (!file) return
+    el.disabled = true
+    const was = el.textContent
+    el.textContent = 'Uploading'
+    try {
+      const dataUrl = await photoDataUrl(file)
+      const r = await post('coachPhoto', { coachId, dataUrl })
+      if (!r.ok) throw new Error(r.data.error || 'Could not save the photo.')
+      toast('Photo saved. It shows on the booking page now.')
+      onDone(r.data.photo)
+    } catch (e) { toast(e.message) } finally { el.disabled = false; el.textContent = was }
+  })
+  input.click()
+}
+
+async function renderProfile() {
+  const d = await need(await post('me'))
+  const u = d.user
+  view().innerHTML = `<div class="jp-head"><div><h1>My profile</h1><p class="muted small">Your photo shows to parents on every group you coach.</p></div></div>
+    <div class="j-card" style="padding:18px;max-width:520px;display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+      ${avatar(u.photo, u.name, 120)}
+      <div><h2 style="margin-bottom:4px">${esc(u.name)}</h2><p class="muted small" style="margin-bottom:12px">${esc(u.email)}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-dark" id="pf-up">${u.photo ? 'Change photo' : 'Add a coaching photo'}</button>${u.photo ? '<button type="button" class="j-btn j-btn-line" id="pf-rm">Remove</button>' : ''}</div>
+      <p class="muted small" style="margin-top:10px">A clear photo of you coaching, face visible. It is cropped to a portrait.</p></div>
+    </div>`
+  $('pf-up').addEventListener('click', (e) => photoPicker(e.currentTarget, u.coachId, () => renderProfile()))
+  $('pf-rm')?.addEventListener('click', async () => {
+    if (!(await confirmBox('Remove your photo from the booking page?', { ok: 'Remove' }))) return
+    const r = await post('coachPhoto', { coachId: u.coachId, remove: true })
+    toast(r.ok ? 'Photo removed.' : r.data.error); renderProfile()
+  })
+}
+
+async function renderCoaches() {
+  const [me, sd] = await Promise.all([need(await post('me')), need(await post('getSettings'))])
+  const list = me.coaches
+  const cfg = sd.config
+  let rows = list.map((c) => ({ ...cfg.coaches.find((x) => x.id === c.id), photo: c.photo }))
+  const draw = () => {
+    view().innerHTML = `<div class="jp-head"><div><h1>Coaches</h1><p class="muted small">Full names show to parents on every group. Coaches sign in at <b>jonerfootball.com/jfp-portal</b> with the email here and a 6 digit code. Nobody is emailed from this page.</p></div></div>
+      <label class="j-check" style="max-width:760px"><input type="checkbox" id="co-on" ${cfg.coachLoginsEnabled ? 'checked' : ''}> <span><b>Coach logins on.</b> Coaches see the program timetable (names and ages), their own registers and their profile. Never money or parent contact details.</span></label>
+      <div style="display:grid;gap:12px;max-width:760px;margin-top:12px">${rows.map((c, i) => `<div class="j-card" style="padding:14px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap" data-co="${i}">
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center">${avatar(c.photo, c.fullName, 84)}<button type="button" class="j-btn j-btn-line j-btn-sm" data-photo="${i}">${c.photo ? 'Change photo' : 'Add photo'}</button>${c.photo ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-photo-rm="${i}">Remove</button>` : ''}</div>
+        <div style="flex:1;min-width:220px">
+          <div class="j-two"><label class="j-field"><span>Full name (parents see this)</span><input class="j-input" data-cf="fullName" value="${esc(c.fullName)}"></label>
+          <label class="j-field"><span>Sign-in email</span><input class="j-input" type="email" data-cf="email" value="${esc(c.email)}" placeholder="No login"></label></div>
+          <label class="j-check"><input type="checkbox" data-cf="alerts" ${c.alerts ? 'checked' : ''}> <span>Email them when a family pays for a place in their group</span></label>
+          <p class="muted small">Matches Airtable's Coach column as "${esc(c.airtableName || c.name)}"${c.id === 'lee' ? '. You sign in as super admin, so you see everything.' : ''}</p>
+        </div></div>`).join('')}</div>
+      <div class="j-card" style="padding:14px;max-width:760px;margin-top:12px"><h3 style="margin-bottom:8px">Add a coach</h3>
+        <div class="j-two"><label class="j-field"><span>Full name</span><input class="j-input" id="co-new-name" placeholder="First and last name"></label><label class="j-field"><span>Email</span><input class="j-input" type="email" id="co-new-email"></label></div>
+        <button type="button" class="j-btn j-btn-line j-btn-sm" id="co-add">Add to the list</button></div>
+      <p class="j-err" id="co-err" hidden></p>
+      <button type="button" class="j-btn j-btn-dark j-btn-lg" id="co-save" style="margin-top:12px">Save coaches</button>`
+    const read = () => { rows = rows.map((c, i) => { const box = view().querySelector(`[data-co="${i}"]`); return { ...c, fullName: box.querySelector('[data-cf="fullName"]').value.trim(), email: box.querySelector('[data-cf="email"]').value.trim(), alerts: box.querySelector('[data-cf="alerts"]').checked } }) }
+    view().querySelectorAll('[data-photo]').forEach((b) => b.addEventListener('click', () => { read(); const c = rows[Number(b.dataset.photo)]; if (!list.some((x) => x.id === c.id)) return toast('Save coaches first, then add the photo.'); photoPicker(b, c.id, (url) => { c.photo = url; draw() }) }))
+    view().querySelectorAll('[data-photo-rm]').forEach((b) => b.addEventListener('click', async () => { read(); const c = rows[Number(b.dataset.photoRm)]; const r = await post('coachPhoto', { coachId: c.id, remove: true }); if (r.ok) { c.photo = ''; draw() } else toast(r.data.error) }))
+    $('co-add').addEventListener('click', () => {
+      read()
+      const full = $('co-new-name').value.trim().replace(/\s+/g, ' ')
+      if (!/\s/.test(full)) return toast('Enter their first and last name.')
+      const first = full.split(' ')[0]
+      let id = first.toLowerCase().replace(/[^a-z0-9]/g, '') || 'coach'
+      while (rows.some((c) => c.id === id)) id += '2'
+      rows.push({ id, name: first, fullName: full, airtableName: full, email: $('co-new-email').value.trim(), alerts: false, photo: '' })
+      draw()
+    })
+    $('co-save').addEventListener('click', async () => {
+      read()
+      const bad = rows.find((c) => c.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email))
+      if (bad) { $('co-err').textContent = `Check ${bad.fullName}'s email.`; $('co-err').hidden = false; return }
+      const r = await post('saveSettings', { config: { coachLoginsEnabled: $('co-on').checked, coaches: rows.map(({ photo, ...c }) => c) } })
+      if (!r.ok) { $('co-err').textContent = r.data.error; $('co-err').hidden = false; return }
+      toast('Coaches saved'); P.coaches = null; P.board = null; renderCoaches()
+    })
+  }
+  draw()
+}
 
 // ---------- removed, audit, settings ----------
 
@@ -1048,8 +1164,7 @@ async function renderSettings() {
       <h2 style="margin:16px 0 12px">Who can sign in</h2>
       <label class="j-field"><span>Super admins (full access and money), one email per line</span><textarea class="j-textarea" id="s-admins">${esc(c.superAdmins.join('\n'))}</textarea></label>
       <label class="j-field"><span>Booking alert emails (Lee always gets them), one per line</span><textarea class="j-textarea" id="s-staff">${esc(c.staffEmails.join('\n'))}</textarea></label>
-      <label class="j-check"><input type="checkbox" id="s-coaches-on" ${c.coachLoginsEnabled ? 'checked' : ''}> <span><b>Coach logins on.</b> Coaches with an email below can sign in and see the program timetable (names and ages) and their own registers. Never money or parent contact details. Nobody is emailed when you switch this on; tell them to go to jonerfootball.com/jfp-portal.</span></label>
-      ${c.coaches.map((co) => `<div class="j-two"><label class="j-field"><span>Coach ${esc(co.name)} (Airtable: ${esc(co.airtableName)})</span><input class="j-input" type="email" data-coach="${esc(co.id)}" value="${esc(co.email)}" placeholder="No login"></label><span></span></div>`).join('')}
+      <p class="small">Coach logins, names, emails and photos are in the <a href="#coaches" data-tab="coaches">Coaches</a> tab. Coach logins are <b>${c.coachLoginsEnabled ? 'on' : 'off'}</b>.</p>
       <h2 style="margin:16px 0 6px">No session dates</h2>
       <p class="muted small" style="margin-bottom:10px">Public holidays and cancelled sessions. Groups on that day skip it: their dates, calendars and pro rata count only real sessions. Save settings after changing.</p>
       <div id="s-skips"></div>
@@ -1081,8 +1196,7 @@ async function renderSettings() {
     const lines = (id) => $(id).value.split(/\s*[\n,]\s*/).map((s) => s.trim()).filter(Boolean)
     const config = {
       term: $('s-term').value.trim(), termStart: $('s-start').value, weeks: Number($('s-weeks').value),
-      superAdmins: lines('s-admins'), staffEmails: lines('s-staff'), coachLoginsEnabled: $('s-coaches-on').checked, waiverUrl: $('s-waiver').value.trim(), kitUrl: $('s-kit').value.trim(), kitNote: $('s-kitnote').value.trim(), kitPriceLabel: $('s-kitprice').value.trim(), skipDates: skips,
-      coaches: c.coaches.map((co) => ({ ...co, email: view().querySelector(`[data-coach="${CSS.escape(co.id)}"]`).value.trim() })),
+      superAdmins: lines('s-admins'), staffEmails: lines('s-staff'), waiverUrl: $('s-waiver').value.trim(), kitUrl: $('s-kit').value.trim(), kitNote: $('s-kitnote').value.trim(), kitPriceLabel: $('s-kitprice').value.trim(), skipDates: skips,
       locations: c.locations.map((l) => { const box = view().querySelector(`[data-loc="${CSS.escape(l.id)}"]`); const v = { ...l }; box.querySelectorAll('[data-lf]').forEach((i) => { v[i.dataset.lf] = i.value.trim() }); return v }),
     }
     const r = await post('saveSettings', { config })

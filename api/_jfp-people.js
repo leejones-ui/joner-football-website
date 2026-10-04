@@ -11,7 +11,7 @@
 // Removing someone from the config takes their access away at once, because
 // the role is never stored in the session.
 import crypto from 'node:crypto'
-import { kvCommand, clean, validEmail } from './_jfp-store.js'
+import { kvCommand, clean, validEmail, coachLabel } from './_jfp-store.js'
 
 export const PARENT_COOKIE = '__Host-jfp_parent'
 export const STAFF_COOKIE = '__Host-jfp_staff'
@@ -120,7 +120,7 @@ export async function staffPrincipal(req, config) {
 }
 
 function nameFor(r, config) {
-  if (r.role === 'coach') return `Coach ${config.coaches.find((c) => c.id === r.coachId)?.name || ''}`.trim()
+  if (r.role === 'coach') return `Coach ${coachLabel(config.coaches.find((c) => c.id === r.coachId))}`.trim()
   if (r.email.startsWith('leejones@')) return 'Lee'
   if (r.email.startsWith('ligia@')) return 'Ligia'
   return clean(r.email.split('@')[0], 40)

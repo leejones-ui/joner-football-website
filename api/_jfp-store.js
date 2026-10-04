@@ -112,15 +112,23 @@ export const DEFAULT_CONFIG = {
   staffEmails: ['ligia@jonerfootball.com'],
   // Super admins: everything, including money. Sign in with an emailed code.
   superAdmins: ['leejones@jonerfootball.com', 'ligia@jonerfootball.com'],
+  // name = first name (matches Airtable's Coach column); fullName is what
+  // parents and staff see. photoV is set when a profile photo is uploaded.
   coaches: [
-    { id: 'dean', name: 'Dean', airtableName: 'Dean Mac', email: 'jonerfootballdean@gmail.com' },
-    { id: 'sam', name: 'Sam', airtableName: 'Sam Yorks', email: 'jonerfootballsam@gmail.com' },
-    { id: 'lee', name: 'Lee', airtableName: 'Lee Jones', email: '' },
-    { id: 'ruby', name: 'Ruby', airtableName: 'Ruby Fanoosh', email: '' },
-    { id: 'luke', name: 'Luke', airtableName: 'Luke Bakos', email: '' },
+    // alerts: emailed "new player in your group" when a booking is paid.
+    // Dean and Sam already got these; the others stay off until Lee says.
+    { id: 'lee', name: 'Lee', fullName: 'Lee Jones', airtableName: 'Lee Jones', email: 'leejones@jonerfootball.com', alerts: false },
+    { id: 'dean', name: 'Dean', fullName: 'Dean McDonnell', airtableName: 'Dean Mac', email: 'jonerfootballdean@gmail.com', alerts: true },
+    { id: 'sam', name: 'Sam', fullName: 'Sam York', airtableName: 'Sam Yorks', email: 'jonerfootballsam@gmail.com', alerts: true },
+    { id: 'ruby', name: 'Ruby', fullName: 'Ruby Fanoosh', airtableName: 'Ruby Fanoosh', email: 'jonerfootballruby@gmail.com', alerts: false },
+    { id: 'luke', name: 'Luke', fullName: 'Luke Bakos', airtableName: 'Luke Bakos', email: 'lukebakos20@gmail.com', alerts: false },
+    { id: 'sage', name: 'Sage', fullName: 'Sage Melhem', airtableName: 'Sage Melhem', email: 'sagemelhem@icloud.com', alerts: false },
   ],
-  // Coach logins stay off until Lee says so, even for coaches with an email.
-  coachLoginsEnabled: false,
+  // Coach logins: on since 5 Oct 2026 (Lee). Nobody is emailed by this.
+  coachLoginsEnabled: true,
+  // Bumped when the coach list above changes, so a config saved earlier
+  // picks up the new coaches, full names and emails once.
+  coachSeed: 2,
   // The JF playing kit is required for every player (Lee, 30 Sept). It is
   // sold by BE Teamsport, so it always opens in a new tab and the family's
   // Joner page stays open behind it. Families confirm it before they pay.
@@ -157,6 +165,37 @@ function cleanLocations(list, fallback) {
   return out.length ? out : fallback
 }
 
+function cleanCoach(c) {
+  const name = clean(c.name, 60)
+  return {
+    id: clean(c.id, 30).toLowerCase().replace(/[^a-z0-9-]/g, ''),
+    name,
+    fullName: clean(c.fullName, 80) || name,
+    airtableName: clean(c.airtableName, 80),
+    email: validEmail(c.email),
+    photoV: Number.isInteger(Number(c.photoV)) && Number(c.photoV) > 0 ? Number(c.photoV) : 0,
+    alerts: c.alerts === true,
+  }
+}
+
+// Saved coaches win, except once per coach seed: then missing coaches are
+// added and blank full names and emails filled from the code's list.
+function seedCoaches(input, b) {
+  const saved = Array.isArray(input.coaches) && input.coaches.length ? input.coaches.map(cleanCoach).filter((c) => c.id && c.name) : null
+  if (!saved) return b.coaches.map(cleanCoach)
+  if (Number(input.coachSeed || 0) >= b.coachSeed) return saved
+  const out = saved.map((c) => {
+    const d = b.coaches.find((x) => x.id === c.id)
+    // Before alerts had a switch, every coach with an email got them.
+    return d ? { ...c, fullName: c.fullName && c.fullName !== c.name ? c.fullName : d.fullName, email: c.email || d.email, alerts: Boolean(c.email) && d.alerts } : c
+  })
+  for (const d of b.coaches) if (!out.some((c) => c.id === d.id)) out.push(cleanCoach(d))
+  return out
+}
+
+// What parents and staff see: the coach's full name.
+export function coachLabel(c) { return c ? (c.fullName || c.name) : '' }
+
 export function normaliseConfig(input = {}) {
   const b = structuredClone(DEFAULT_CONFIG)
   const price = Number(input.priceCents)
@@ -178,10 +217,11 @@ export function normaliseConfig(input = {}) {
     staffEmails: emails(input.staffEmails, b.staffEmails),
     // Lee (the owner) is always a super admin and can never be removed.
     superAdmins: [...new Set([ownerEmail(), ...(supers.length ? supers : b.superAdmins)])],
-    coaches: Array.isArray(input.coaches) && input.coaches.length
-      ? input.coaches.map((c) => ({ id: clean(c.id, 30).toLowerCase().replace(/[^a-z0-9-]/g, ''), name: clean(c.name, 60), airtableName: clean(c.airtableName, 80), email: validEmail(c.email) })).filter((c) => c.id && c.name)
-      : b.coaches,
-    coachLoginsEnabled: input.coachLoginsEnabled === true,
+    coaches: seedCoaches(input, b),
+    // A config saved before coach seed 2 had logins off by default: Lee
+    // switched them on (5 Oct 2026), so the seed turns them on once.
+    coachLoginsEnabled: Number(input.coachSeed || 0) < b.coachSeed ? true : input.coachLoginsEnabled === true,
+    coachSeed: b.coachSeed,
     kitUrl: /^https:\/\//.test(input.kitUrl || '') ? clean(input.kitUrl, 500) : (input.kitUrl === '' ? '' : b.kitUrl),
     kitNote: clean(input.kitNote, 300) || b.kitNote,
     kitPriceLabel: clean(input.kitPriceLabel, 20) || b.kitPriceLabel,

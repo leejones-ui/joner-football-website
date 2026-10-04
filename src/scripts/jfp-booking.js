@@ -122,6 +122,24 @@ function visible() {
 }
 const order = (g) => DAY_ORDER.indexOf(g.day) * 10000 + Number(g.sortTime.replace(':', ''))
 
+// What a spot asks of a player, in one list: ages, girls only, the level
+// rules Lee ticks per group, and the JF playing kit (required for everyone).
+function requirementsOf(g, { ages = true } = {}) {
+  return [
+    g.id === 'one-to-one' || !ages ? '' : `${g.girlsOnly ? 'Girls, ages' : 'Ages'} ${g.minAge} to ${g.maxAge}${g.mode === 'direct' ? '' : ' (age guide)'}`,
+    ...(g.requirements || []),
+    g.id === 'one-to-one' ? '' : `JF playing kit (${S.data?.kitPriceLabel || 'A$50'})`,
+  ].filter(Boolean)
+}
+
+function coachChip(g, size = 28) {
+  if (!g.coachName) return ''
+  const pic = g.coachPhoto
+    ? `<img src="${esc(g.coachPhoto)}" alt="" width="${size}" height="${size}" loading="lazy" decoding="async" class="j-coach-pic" style="width:${size}px;height:${size}px">`
+    : `<span class="j-coach-pic j-coach-ini" style="width:${size}px;height:${size}px">${esc(g.coachName.replace(/^Coach\s+/, '').split(/\s+/).map((w) => w[0]).join('').slice(0, 2))}</span>`
+  return `<span class="j-coach">${pic}<span>${esc(g.coachName)}</span></span>`
+}
+
 function agesLabel(g) { return g.girlsOnly ? `Girls, ages ${g.minAge} to ${g.maxAge}` : `Ages ${g.minAge} to ${g.maxAge}` }
 
 function status(g) {
@@ -137,7 +155,8 @@ function block(g) {
     ${locBanner(g)}
     <span class="t">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</span>
     <span class="a">${esc(agesLabel(g))}</span>
-    <span class="c">${esc(g.coachName || 'Joner Football')}</span>
+    <span class="c c-name">${esc(g.coachName || 'Joner Football')}</span>
+    ${(g.requirements || []).length ? `<span class="c" style="font-weight:600">${esc(g.requirements[0])}${g.requirements.length > 1 ? ` +${g.requirements.length - 1}` : ''}</span>` : ''}
     <span class="st ${cls}">${esc(text)}</span>
   </button>`
 }
@@ -160,8 +179,9 @@ function card(g) {
     <div class="bd">
       <p class="when-big">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}</p>
       <p class="who">${esc(agesLabel(g))}</p>
-      <p class="meta">${esc(g.location)} · ${esc(g.coachName || 'Joner Football')} · ${esc(g.durationMin)} min</p>
-      ${g.requirements?.length ? `<p class="req">${esc(g.requirements.join(' · '))}</p>` : ''}
+      <p class="meta">${coachChip(g, 26)}</p>
+      <p class="meta">${esc(g.location)} · ${esc(g.durationMin)} min</p>
+      <ul class="j-req-mini" aria-label="Requirements">${requirementsOf(g, { ages: false }).map((r) => `<li>${esc(r)}</li>`).join('')}</ul>
       <div class="foot"><span class="st ${cls}">${esc(text)}</span><span class="j-btn ${g.mode === 'direct' && !g.full ? 'j-btn-dark' : 'j-btn-line'} j-btn-sm">${btn}</span></div>
     </div>
   </article>`
@@ -225,10 +245,7 @@ function groupSheet(g) {
   ].join(' ')
   // Ages as a guide, then what the group asks of a player. Nothing that
   // invites a family to pick a group above the player's level.
-  const who = `<ul class="j-req">
-      <li>${g.girlsOnly ? 'Girls, ages' : 'Ages'} ${esc(g.minAge)} to ${esc(g.maxAge)}${g.mode === 'direct' ? '' : ' (age guide)'}</li>
-      ${(g.requirements || []).map((r) => `<li>${esc(r)}</li>`).join('')}
-    </ul>
+  const who = `<ul class="j-req">${requirementsOf(g).map((r) => `<li>${esc(r)}</li>`).join('')}</ul>
     ${g.requirementsText ? `<div class="j-reqtext">${g.requirementsText.split(/\n\s*\n/).map((para) => `<p>${esc(para).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
     ${g.publicNote ? `<p style="margin-top:6px">${esc(g.publicNote)}</p>` : ''}
     <p class="small" style="margin-top:6px">Our coaches place every player with others at their level, so each ${g.mode === 'direct' ? 'booking is for players who meet the above' : 'application is reviewed'}.</p>`
@@ -244,7 +261,8 @@ function groupSheet(g) {
     </div>` : ''
   sheet.body.innerHTML = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${pills}</div>
-    <div class="j-box j-box-grey" style="margin-bottom:16px"><b>Who this group is for</b>${who}</div>
+    ${g.coachName ? `<div style="margin-bottom:14px">${coachChip(g, 56)}</div>` : ''}
+    <div class="j-box j-box-grey" style="margin-bottom:16px"><b>Requirements for this spot</b>${who}</div>
     <h3 style="margin-bottom:6px">How it works</h3>
     <ol class="j-steps-list">${steps.map((t, i) => `<li><span class="n">${i + 1}</span><span>${t}${i === 1 ? outcomes : ''}</span></li>`).join('')}</ol>
     <p class="muted small" style="margin-top:10px">${esc(g.sessions)} weekly sessions this term, ${esc(g.firstDate)} to ${esc(g.lastDate)}.${g.noSession?.length ? ` No session on ${esc(g.noSession.join(', '))}.` : ''}</p>`

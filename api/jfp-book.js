@@ -15,7 +15,7 @@ import { rateLimit, verifyRecaptcha } from './_security.js'
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   requireParentAccess, getConfig, getGroup, getBooking, saveBooking, indexBooking, newId, clean, holdPlaces, releasePlaces,
-  onlineCounts, placesLeft, tokenMatches, saveApplication, coachById, sessionDates, dateLabel, ageOn, ageFits, normName,
+  onlineCounts, placesLeft, tokenMatches, saveApplication, coachById, coachLabel, sessionDates, dateLabel, ageOn, ageFits, normName,
   locationFor, ONE_TO_ONE, QUESTIONS, priceFor, nextSessionDate, closeCheckout, parentHoldCount, noteParentHold, dropParentHold, MAX_HOLDS_PER_PARENT, RESERVE_MINUTES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES, MAX_PLAYERS,
 } from './_jfp-store.js'
 import { loadRoster, countsFrom, familyFor } from './_jfp-airtable.js'
@@ -241,7 +241,7 @@ async function submit(req, res, body, parent) {
   const coach = coachById(config, group.coachId)
   const dates = sessionDates(config, group.day).filter((d) => d >= from)
   const loc = locationFor(config, group.location)
-  const name = `${config.term}: ${group.day} ${group.time}, ${loc.name}${coach ? ` with Coach ${coach.name}` : ''}`
+  const name = `${config.term}: ${group.day} ${group.time}, ${loc.name}${coach ? ` with Coach ${coachLabel(coach)}` : ''}`
   let session
   try {
     session = await stripeFetch('/checkout/sessions', {

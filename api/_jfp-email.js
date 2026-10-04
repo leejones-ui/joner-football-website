@@ -1,6 +1,6 @@
 // JFP emails, sent through Brevo like every other Joner transactional email.
 // Clean and light on purpose: white card, dark text, one button.
-import { formatAud, dateLabel, sessionDates, coachById, locationFor, to24h } from './_jfp-store.js'
+import { formatAud, dateLabel, sessionDates, coachById, coachLabel, locationFor, to24h } from './_jfp-store.js'
 
 export function esc(v) {
   return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
@@ -89,7 +89,7 @@ function groupRows(config, group, fromIso = '') {
   return [
     ['Group', `${esc(group.day)} ${esc(group.time)}`],
     ['Where', `${esc(loc.address || group.location)}${loc.maps ? `<br>${link('Open in Maps', loc.maps)}` : ''}`],
-    ['Coach', coach ? `Coach ${esc(coach.name)}` : 'Joner Football coach'],
+    ['Coach', coach ? `Coach ${esc(coachLabel(coach))}` : 'Joner Football coach'],
     ...(dates.length ? [['Dates', `${esc(dates.length)} ${dates.length === 1 ? 'session' : 'sessions'}, ${esc(dateLabel(dates[0]))} to ${esc(dateLabel(dates.at(-1)))}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(dates.map(dateLabel).join(', '))}</span>`]] : []),
   ]
 }
@@ -127,7 +127,7 @@ export async function sendStaffAlert({ booking, group, config }) {
   const coach = coachById(config, group.coachId)
   const body = rows([
     ['Group', `${esc(group.day)} ${esc(group.time)}, ${esc(group.location)}`],
-    ['Coach', esc(coach?.name || '')],
+    ['Coach', esc(coachLabel(coach))],
     ['Players', booking.players.map((x) => `${esc(x.name)}${x.age != null ? ` (${esc(x.age)})` : ''}`).join(', ')],
     ['Parent', esc(booking.parentName)],
     ['Email', esc(booking.email)],
@@ -142,7 +142,7 @@ export async function sendStaffAlert({ booking, group, config }) {
 
 export async function sendCoachAlert({ booking, group, config }) {
   const coach = coachById(config, group.coachId)
-  if (!coach?.email) return false
+  if (!coach?.email || !coach.alerts) return false
   const body = `${p(`Coach ${esc(coach.name)}, a new player has joined your ${esc(group.day)} ${esc(group.time)} group.`)}
 ${rows([
     ['Group', `${esc(group.day)} ${esc(group.time)}, ${esc(group.location)}`],
