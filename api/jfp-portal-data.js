@@ -14,7 +14,7 @@ import {
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
   coachByAirtableName, sessionDates, dateLabel, formatAud, to24h, clean, newId, audit, listAudit, locationFor, validEmail, ageOn,
   normName, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold,
-  PRODUCTS, QUESTIONS, productFor, priceFor, paidSiblings, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson,
+  PRODUCTS, QUESTIONS, productFor, priceFor, paidSiblings, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson, kvGetJson,
 } from './_jfp-store.js'
 import { coachPhotoUrl } from './jfp-groups.js'
 import {
@@ -24,9 +24,10 @@ import {
 } from './_jfp-airtable.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, PAY_EFFECTS } from './_jfp-finalise.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
-import { sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite } from './_jfp-email.js'
+import { sendAccountInvite, accountInvite, sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite } from './_jfp-email.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext } from './_jfp-next.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
+import { telegramAlert } from './_jfp-notify.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -772,6 +773,176 @@ async function attendanceFor(gid, date) {
   return out
 }
 
+// ---------- staff: cover, time off, session plans (Lee, 5 Oct 2026) ----------
+
+// Cover: a coach hands one session date to another coach. It applies at
+// once (the cover coach sees it in My sessions and takes the register);
+// Lee and Ligia see every cover and can cancel it.
+async function listHash(key) {
+  const raw = await kvCommand(['HGETALL', key])
+  const out = []
+  for (let i = 0; i + 1 < (raw || []).length; i += 2) { try { out.push(JSON.parse(raw[i + 1])) } catch {} }
+  return out.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+}
+const listCovers = () => listHash('jfp:cover')
+const listTimeOff = () => listHash('jfp:timeoff')
+const saveCover = (c) => kvCommand(['HSET', 'jfp:cover', c.id, JSON.stringify(c)])
+const saveTimeOff = (t) => kvCommand(['HSET', 'jfp:timeoff', t.id, JSON.stringify(t)])
+export const PLAN_DEFAULT = { structure: '', weeks: Array.from({ length: 10 }, (_, i) => ({ week: i + 1, title: '', focus: '', link: '' })) }
+async function getPlans() { const p = await kvGetJson('jfp:plans'); return p && Array.isArray(p.weeks) ? p : structuredClone(PLAN_DEFAULT) }
+
+function coverView(c, config, groupsById) {
+  const g = groupsById[c.groupId]
+  return { ...c, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : c.groupId, coach: coachLabel(coachById(config, c.coachId)), cover: coachLabel(coachById(config, c.coverCoachId)), dateLabel: dateLabel(c.date) }
+}
+
+async function staffAction(req, res, principal, config, body, isAdmin, action) {
+  const me = principal.coachId || ''
+  const groups = await listGroups()
+  const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
+  if (action === 'staffOverview') {
+    const [covers, timeOff, plans] = await Promise.all([listCovers(), listTimeOff(), getPlans()])
+    const mine = (x) => isAdmin || x.coachId === me || x.coverCoachId === me
+    return res.status(200).json({
+      success: true,
+      covers: covers.filter(mine).map((c) => coverView(c, config, byId)),
+      timeOff: timeOff.filter(mine).map((t) => ({ ...t, coach: coachLabel(coachById(config, t.coachId)) })),
+      coaches: config.coaches.map((c) => ({ id: c.id, name: coachLabel(c) })),
+      mySessions: groups.filter((g) => g.mode !== 'closed' && (isAdmin || g.coachId === me || (g.extraCoachIds || []).includes(me))).map((g) => ({ id: g.id, coachId: g.coachId, label: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, dates: sessionDates(config, g.day).filter((d) => d >= sydneyToday()).map((d) => ({ iso: d, label: dateLabel(d) })) })),
+      plans,
+    })
+  }
+  if (action === 'requestCover') {
+    const g = byId[clean(body.groupId, 80)]
+    if (!g) return fail(res, 404, 'Session not found.')
+    const owner = isAdmin ? (clean(body.coachId, 30) || g.coachId) : me
+    if (!isAdmin && g.coachId !== me && !(g.extraCoachIds || []).includes(me)) return fail(res, 403, 'Not your session.')
+    const date = clean(body.date, 10)
+    if (!sessionDates(config, g.day).includes(date) || date < sydneyToday()) return fail(res, 400, 'Choose an upcoming date for this session.')
+    const cover = coachById(config, clean(body.coverCoachId, 30))
+    if (!cover || cover.id === owner) return fail(res, 400, 'Choose the coach who will cover.')
+    const clash = (await listCovers()).find((c) => c.status === 'active' && c.groupId === g.id && c.date === date)
+    if (clash) return fail(res, 409, `${coachLabel(coachById(config, clash.coverCoachId))} is already covering that session.`)
+    const c = { id: newId('COV'), groupId: g.id, date, coachId: owner, coverCoachId: cover.id, note: clean(body.note, 300), status: 'active', createdAt: new Date().toISOString(), by: principal.email }
+    await saveCover(c)
+    await audit({ by: principal.email, action: 'cover.request', target: c.id, after: { group: g.id, date, cover: cover.id } })
+    await telegramAlert(`JFP cover: ${coachLabel(coachById(config, owner))} is covered by ${coachLabel(cover)}\n${g.day} ${g.time}, ${locationFor(config, g.location).name}, ${dateLabel(date)}${c.note ? `\n${c.note}` : ''}`)
+    return res.status(200).json({ success: true, cover: coverView(c, config, byId) })
+  }
+  if (action === 'cancelCover') {
+    const c = (await listCovers()).find((x) => x.id === clean(body.id, 40))
+    if (!c) return fail(res, 404, 'Not found.')
+    if (!isAdmin && c.coachId !== me) return fail(res, 403, 'Only the coach who asked, Lee or Ligia can cancel a cover.')
+    await saveCover({ ...c, status: 'cancelled', cancelledBy: principal.email, cancelledAt: new Date().toISOString() })
+    await audit({ by: principal.email, action: 'cover.cancel', target: c.id })
+    return res.status(200).json({ success: true })
+  }
+  if (action === 'requestTimeOff') {
+    const coachId = isAdmin ? (clean(body.coachId, 30) || me) : me
+    if (!coachById(config, coachId)) return fail(res, 400, 'Choose a coach.')
+    const from = clean(body.from, 10), to = clean(body.to, 10) || from
+    if (!ISO.test(from) || !ISO.test(to) || to < from) return fail(res, 400, 'Choose the first and last day off.')
+    const t = { id: newId('OFF'), coachId, from, to, reason: clean(body.reason, 300), status: 'pending', createdAt: new Date().toISOString(), by: principal.email }
+    await saveTimeOff(t)
+    await audit({ by: principal.email, action: 'timeoff.request', target: t.id, after: { from, to } })
+    await telegramAlert(`JFP time off request: ${coachLabel(coachById(config, coachId))}\n${dateLabel(from)}${to !== from ? ` to ${dateLabel(to)}` : ''}${t.reason ? `\n${t.reason}` : ''}\nApprove in the portal: Staff tab`)
+    return res.status(200).json({ success: true, timeOff: t })
+  }
+  if (action === 'decideTimeOff') {
+    if (!isAdmin) return fail(res, 403, 'Only Lee or Ligia approve time off.')
+    const t = (await listTimeOff()).find((x) => x.id === clean(body.id, 40))
+    if (!t) return fail(res, 404, 'Not found.')
+    const status = ['approved', 'declined', 'cancelled'].includes(body.status) ? body.status : null
+    if (!status) return fail(res, 400, 'Approve or decline.')
+    await saveTimeOff({ ...t, status, decidedBy: principal.email, decidedAt: new Date().toISOString(), decisionNote: clean(body.note, 300) })
+    await audit({ by: principal.email, action: `timeoff.${status}`, target: t.id })
+    return res.status(200).json({ success: true })
+  }
+  if (action === 'savePlans') {
+    if (!isAdmin) return fail(res, 403, 'Only Lee or Ligia edit session plans.')
+    const link = (v) => (/^https:\/\//.test(v || '') ? clean(v, 500) : '')
+    const plans = {
+      structure: String(body.plans?.structure || '').replace(/\r/g, '').slice(0, 6000),
+      weeks: (Array.isArray(body.plans?.weeks) ? body.plans.weeks : []).slice(0, 20).map((w, i) => ({ week: i + 1, title: clean(w.title, 120), focus: String(w.focus || '').slice(0, 1500), link: link(w.link) })),
+      updatedAt: new Date().toISOString(), updatedBy: principal.email,
+    }
+    await kvSetJson('jfp:plans', plans)
+    await audit({ by: principal.email, action: 'plans.save', target: 'plans' })
+    return res.status(200).json({ success: true, plans })
+  }
+  return null
+}
+
+// ---------- current families: invite them to their account ----------
+
+// Every family holding a Term 4 place, by parent email: paid families get
+// "see your sessions", families with a balance get their pay link. Rows with
+// no fee set are left for staff to price first. Nothing sends until staff
+// press Send; each family is emailed once unless staff resend.
+async function familyPlan(req, config) {
+  const [roster, groups, invitedRaw, payreqs] = await Promise.all([loadRoster({ fresh: true }), listGroups(), kvCommand(['HGETALL', 'jfp:acct-invited']), listPayreqs()])
+  const invited = {}
+  for (let i = 0; i + 1 < (invitedRaw || []).length; i += 2) invited[invitedRaw[i]] = invitedRaw[i + 1]
+  const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
+  const fams = new Map()
+  const noEmail = []
+  for (const r of roster.players.filter((x) => x.holdsPlace && !isTestName(x.player))) {
+    if (!validEmail(r.email)) { noEmail.push({ name: r.player, parent: r.parent }); continue }
+    if (!fams.has(r.email)) fams.set(r.email, [])
+    fams.get(r.email).push(r)
+  }
+  const list = [...fams.entries()].map(([email, rows]) => {
+    const owe = (r) => Math.max(0, cents(r.balanceAud ?? ((r.feeAud || 0) - (r.paidAud || 0))))
+    const owingRows = rows.filter((r) => owe(r) > 0)
+    const unpriced = rows.filter((r) => !owe(r) && r.paymentStatus !== 'Paid' && !(cents(r.paidAud) > 0) && !(cents(r.feeAud) > 0))
+    const open = payreqs.find((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.some((id) => owingRows.some((r) => r.id === id)))
+    return {
+      email, parent: rows[0].parent,
+      players: rows.map((r) => ({ rowId: r.id, name: r.player, group: byId[r.groupId] ? `${byId[r.groupId].day} ${byId[r.groupId].time}, ${locationFor(config, byId[r.groupId].location).name}` : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Group to be confirmed' })),
+      owingCents: owingRows.reduce((t, r) => t + owe(r), 0), owingRowIds: owingRows.map((r) => r.id), openLink: open ? payreqUrl(req, open) : '',
+      kind: owingRows.length ? 'pay' : unpriced.length ? 'noPrice' : 'paid',
+      needsWaiver: rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone] }, roster.waivers)),
+      invitedAt: invited[email] || '', groupId: rows[0].groupId,
+    }
+  }).sort((a, b) => a.parent.localeCompare(b.parent))
+  return { list, noEmail }
+}
+
+async function familyInvites(req, res, principal, config, body) {
+  const plan = await familyPlan(req, config)
+  const signInUrl = `${siteUrl(req)}/jfp-account/`
+  const sample = (f) => accountInvite({ parentName: f.parent, players: f.players, config, signInUrl, payUrl: f.kind === 'pay' ? signInUrl : '', amountCents: f.owingCents, needsWaiver: f.needsWaiver })
+  if (body.send !== true) {
+    const pay = plan.list.find((f) => f.kind === 'pay'), paid = plan.list.find((f) => f.kind === 'paid')
+    return res.status(200).json({ success: true, ...plan, previews: { pay: pay ? sample(pay) : null, paid: paid ? sample(paid) : null } })
+  }
+  // A batch of families per call, so a big send never times out.
+  const want = new Set((Array.isArray(body.emails) ? body.emails : []).map(validEmail).filter(Boolean))
+  const todo = plan.list.filter((f) => want.has(f.email) && f.kind !== 'noPrice' && (!f.invitedAt || body.resend === true)).slice(0, 20)
+  const sent = [], failed = []
+  for (const f of todo) {
+    try {
+      let payUrl = ''
+      if (f.kind === 'pay') {
+        if (f.openLink) payUrl = f.openLink
+        else {
+          const rowsFull = []
+          for (const id of f.owingRowIds) { const r = await getTerm4Row(id); if (r) rowsFull.push(r) }
+          const group = rowsFull[0]?.groupId ? await getGroup(rowsFull[0].groupId) : null
+          const q = await createPayreq({ req, principal, config, group, rows: rowsFull.map((r) => ({ id: r.id, name: r.player })), email: f.email, parentName: f.parent, amountCents: f.owingCents, reason: 'balance', product: '', startDate: '', afterpay: true, creditCents: 0, restoreFields: null })
+          payUrl = payreqUrl(req, q)
+          await savePayreq({ ...q, emailedAt: new Date().toISOString() })
+        }
+      }
+      await sendAccountInvite({ to: f.email, parentName: f.parent, players: f.players, config, signInUrl, payUrl, amountCents: f.owingCents, needsWaiver: f.needsWaiver })
+      await kvCommand(['HSET', 'jfp:acct-invited', f.email, new Date().toISOString()])
+      sent.push(f.email)
+    } catch (error) { console.error('jfp family invite failed', f.email, error); failed.push(f.email) }
+  }
+  await audit({ by: principal.email, action: 'family.invite', target: 'term4', after: { sent: sent.length, failed: failed.length } })
+  return res.status(200).json({ success: true, sent, failed, remaining: [...want].filter((e) => !sent.includes(e) && !failed.includes(e) && plan.list.some((f) => f.email === e && f.kind !== 'noPrice' && (!f.invitedAt || body.resend === true))).length })
+}
+
 // ---------- handler ----------
 
 export default async function handler(req, res) {
@@ -795,12 +966,22 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, user: { ...principal, photo: mine?.photo || '' }, coaches: isAdmin ? coachList(config) : [] })
     }
     if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
+    if (['staffOverview', 'requestCover', 'cancelCover', 'requestTimeOff', 'decideTimeOff', 'savePlans'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
 
     if (action === 'coachSessions') {
       const coachId = isAdmin ? clean(body.coachId, 30) : principal.coachId
       if (!coachById(config, coachId)) return fail(res, 400, 'Choose a coach.')
       const [groups, roster] = await Promise.all([listGroups(), loadRoster()])
       const sessions = coachSessions(config, groups, roster, coachId, clean(body.date, 10))
+      // Sessions this coach is covering, and covers on their own sessions.
+      const covers = (await listCovers()).filter((c) => c.status === 'active' && c.date >= sydneyToday())
+      for (const s of sessions) s.coveredBy = covers.filter((c) => c.groupId === s.id).map((c) => ({ date: c.date, dateLabel: dateLabel(c.date), coach: coachLabel(coachById(config, c.coverCoachId)) }))
+      for (const c of covers.filter((x) => x.coverCoachId === coachId)) {
+        const g = groups.find((x) => x.id === c.groupId)
+        if (!g) continue
+        const [s] = coachSessions(config, [{ ...g, coachId }], roster, coachId, c.date)
+        sessions.push({ ...s, id: g.id, dates: [{ iso: c.date, label: dateLabel(c.date) }], nextDate: c.date, covering: { for: coachLabel(coachById(config, c.coachId)), dateLabel: dateLabel(c.date) } })
+      }
       for (const s of sessions) s.attendance = await attendanceFor(s.id, s.nextDate)
       const perWeek = sessions.reduce((t, s) => t + s.durationMin, 0)
       return res.status(200).json({ success: true, coach: coachLabel(coachById(config, coachId)), coachPhoto: coachList(config, false).find((c) => c.id === coachId)?.photo || '', term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
@@ -829,8 +1010,9 @@ export default async function handler(req, res) {
     if (action === 'markAttendance') {
       const g = await getGroup(body.groupId)
       if (!g) return fail(res, 404, 'Group not found.')
-      if (!isAdmin && g.coachId !== principal.coachId && !(g.extraCoachIds || []).includes(principal.coachId)) return fail(res, 403, 'Not your session.')
       const date = clean(body.date, 10)
+      const covering = (await listCovers()).some((c) => c.status === 'active' && c.groupId === g.id && c.date === date && c.coverCoachId === principal.coachId)
+      if (!isAdmin && !covering && g.coachId !== principal.coachId && !(g.extraCoachIds || []).includes(principal.coachId)) return fail(res, 403, 'Not your session.')
       const dates = sessionDates(config, g.day)
       if (!dates.includes(date)) return fail(res, 400, 'That date is not a session for this group.')
       const status = ['Present', 'Absent', 'Trial', 'Make-up', ''].includes(body.status) ? body.status : null
@@ -856,6 +1038,7 @@ export default async function handler(req, res) {
     // ---------- Lee and Ligia ----------
     switch (action) {
       case 'board': await sweepExpiredOffers(principal); return res.status(200).json({ success: true, ...(await boardData(config)), coaches: coachList(config), locations: config.locations.map((l) => ({ id: l.id, name: l.name })) })
+      case 'familyInvites': return await familyInvites(req, res, principal, config, body)
       case 'searchPlayers': return res.status(200).json({ success: true, results: await searchPlayers(config, body) })
       case 'addPlayer': return await addPlayer(req, res, principal, config, body)
       case 'movePlayer': return await movePlayer(res, principal, config, body)

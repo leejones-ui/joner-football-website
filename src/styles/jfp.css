@@ -503,3 +503,4 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
   .j-filters .j-chips { flex: 1 1 100%; }
   .jfp-wide .j-tabs a { padding: 9px 10px; font-size: 14px; }
 }
+.j-box-blue { background: var(--j-blue-bg); color: var(--j-blue); }

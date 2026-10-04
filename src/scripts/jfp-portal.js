@@ -30,8 +30,8 @@ async function showSignIn() {
 }
 
 function tabs() {
-  if (P.user.role !== 'admin') return [['program', 'Program'], ['coach', 'My sessions'], ['profile', 'My profile']]
-  return [['board', 'Timetable'], ['requests', 'Requests'], ['payments', 'Payment links'], ['holiday', 'Holiday training'], ['next', 'Next term'], ['prices', 'Prices'], ['groups', 'Groups and rules'], ['money', 'Money'], ['coach', 'Registers'], ['coaches', 'Coaches'], ['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]
+  if (P.user.role !== 'admin') return [['program', 'Program'], ['coach', 'My sessions'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['profile', 'My profile']]
+  return [['board', 'Timetable'], ['families', 'Families'], ['requests', 'Requests'], ['payments', 'Payment links'], ['holiday', 'Holiday training'], ['next', 'Next term'], ['prices', 'Prices'], ['groups', 'Groups and rules'], ['money', 'Money'], ['coach', 'Registers'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['coaches', 'Coaches'], ['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]
 }
 
 function start() {
@@ -52,7 +52,7 @@ async function go(tab) {
   renderNav()
   view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
-  const fn = { next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, coaches: renderCoaches, profile: renderProfile, removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = { next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderFamilies, removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   view().focus({ preventScroll: true })
 }
@@ -990,6 +990,8 @@ async function renderCoach() {
     ${d.sessions.length ? d.sessions.map((s) => {
       const date = P.coachDate[s.id] || s.nextDate
       return `<article class="j-card" style="padding:16px;margin-bottom:12px" data-sess="${esc(s.id)}">
+        ${s.covering ? `<div class="j-box j-box-blue small" style="margin-bottom:8px"><b>Covering for ${esc(s.covering.for)}</b> on ${esc(s.covering.dateLabel)}</div>` : ''}
+        ${(s.coveredBy || []).length ? `<div class="j-box j-box-grey small" style="margin-bottom:8px">${s.coveredBy.map((c) => `${esc(c.dateLabel)}: covered by <b>${esc(c.coach)}</b>`).join('<br>')}</div>` : ''}
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
           <select class="j-select" style="width:auto" data-date="${esc(s.id)}">${s.dates.map((x) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select></div>
         <div style="margin-top:10px">${s.players.map((p) => `<div class="jp-player" style="cursor:default"><span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}</span>
@@ -1012,6 +1014,133 @@ async function renderCoach() {
 }
 
 async function loadAttendance() { renderCoach() }
+
+// ---------- current families: invite to their account ----------
+
+async function renderFamilies() {
+  const d = await need(await post('familyInvites'))
+  const kind = { pay: ['amber', 'To pay'], paid: ['green', 'Paid'], noPrice: ['red', 'Needs a price first'] }
+  const ready = d.list.filter((f) => f.kind !== 'noPrice')
+  view().innerHTML = `<div class="jp-head"><div><h1>Families</h1><p class="muted small">Every Term 4 family, by parent email. Send them their account: paid families see their sessions, families who owe get a link to pay what Airtable shows as owing. Nothing is sent until you press Send. Replies go to Ligia.</p></div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="j-pill j-pill-grey">${d.list.length} families</span>
+      <span class="j-pill j-pill-amber">${d.list.filter((f) => f.kind === 'pay').length} to pay</span>
+      <span class="j-pill j-pill-green">${d.list.filter((f) => f.kind === 'paid').length} paid</span>
+      <span class="j-pill j-pill-red">${d.list.filter((f) => f.kind === 'noPrice').length} need a price</span>
+      <span class="j-pill j-pill-grey">${d.list.filter((f) => f.invitedAt).length} already invited</span>
+      ${d.noEmail.length ? `<span class="j-pill j-pill-red">${d.noEmail.length} players with no email</span>` : ''}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button type="button" class="j-btn j-btn-line" id="fm-prev">Show the emails</button>
+      <button type="button" class="j-btn j-btn-dark" id="fm-send">Send to selected</button>
+    </div>
+    <div id="fm-preview" hidden></div>
+    <div class="jp-scroll"><table class="jp-table"><thead><tr><th><input type="checkbox" id="fm-all" aria-label="Select all"></th><th>Family</th><th>Players</th><th>Status</th><th>Invited</th></tr></thead><tbody>
+    ${d.list.map((f) => `<tr><td><input type="checkbox" data-fm="${esc(f.email)}" ${f.kind === 'noPrice' ? 'disabled' : ''}></td><td><b>${esc(f.parent || '')}</b><br><span class="muted small">${esc(f.email)}</span></td><td class="small">${f.players.map((x) => `${esc(x.name)} <span class="muted">${esc(x.group)}</span>`).join('<br>')}</td><td><span class="j-pill j-pill-${kind[f.kind][0]}">${esc(kind[f.kind][1])}${f.kind === 'pay' ? ` ${esc(money(f.owingCents))}` : ''}</span>${f.needsWaiver ? '<br><span class="muted small">Waiver needed</span>' : ''}</td><td class="small">${f.invitedAt ? esc(new Date(f.invitedAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })) : ''}</td></tr>`).join('')}
+    </tbody></table></div>
+    ${d.list.some((f) => f.kind === 'noPrice') ? '<p class="muted small" style="margin-top:8px">"Needs a price first": unpaid with no Term 4 Fee in Airtable. Send them a payment link from the Timetable (tap the player), or set the fee in Airtable, then come back.</p>' : ''}
+    ${d.noEmail.length ? `<p class="muted small">No parent email in Airtable: ${esc(d.noEmail.map((x) => x.name).join(', '))}.</p>` : ''}`
+  const boxes = () => [...view().querySelectorAll('[data-fm]')]
+  $('fm-all').addEventListener('change', (e) => boxes().forEach((b) => { if (!b.disabled) b.checked = e.target.checked && !d.list.find((f) => f.email === b.dataset.fm)?.invitedAt }))
+  $('fm-prev').addEventListener('click', () => {
+    const el = $('fm-preview')
+    el.hidden = !el.hidden
+    el.innerHTML = ['pay', 'paid'].filter((k) => d.previews[k]).map((k) => `<div class="j-card" style="padding:12px;margin-bottom:12px"><p class="small"><b>${k === 'pay' ? 'Families who owe' : 'Paid families'}</b> · Subject: ${esc(d.previews[k].subject)}</p><iframe title="Email preview" style="width:100%;height:560px;border:1px solid #eee;border-radius:10px;margin-top:8px" srcdoc="${esc(d.previews[k].html)}"></iframe></div>`).join('')
+  })
+  $('fm-send').addEventListener('click', async (e) => {
+    const emails = boxes().filter((b) => b.checked).map((b) => b.dataset.fm)
+    if (!emails.length) return toast('Tick the families to email.')
+    const again = emails.filter((x) => d.list.find((f) => f.email === x)?.invitedAt).length
+    if (!(await confirmBox(`Email <b>${emails.length}</b> famil${emails.length === 1 ? 'y' : 'ies'} now?${again ? ` ${again} already had it and will get it again.` : ''} Families who owe get a payment link.`, { ok: 'Send' }))) return
+    const btn = e.currentTarget
+    btn.disabled = true
+    let sent = 0, failed = 0
+    for (let i = 0; i < emails.length; i += 20) {
+      btn.textContent = `Sending ${Math.min(i + 20, emails.length)} of ${emails.length}`
+      const r = await post('familyInvites', { send: true, emails: emails.slice(i, i + 20), resend: again > 0 })
+      if (!r.ok) { toast(r.data.error || 'Sending stopped. Nothing is lost: try again.'); break }
+      sent += r.data.sent.length; failed += r.data.failed.length
+    }
+    toast(`Sent ${sent}${failed ? `, ${failed} failed (try again)` : ''}`)
+    renderFamilies()
+  })
+}
+
+// ---------- cover, time off, session plans ----------
+
+async function renderStaff() {
+  const admin = P.user.role === 'admin'
+  const d = await need(await post('staffOverview'))
+  const pill = { active: ['green', 'Covered'], cancelled: ['grey', 'Cancelled'], pending: ['amber', 'Waiting for approval'], approved: ['green', 'Approved'], declined: ['red', 'Declined'] }
+  const sessOpts = d.mySessions.map((s) => `<option value="${esc(s.id)}">${esc(s.label)}</option>`).join('')
+  view().innerHTML = `<div class="jp-head"><div><h1>Cover and time off</h1><p class="muted small">${admin ? 'Every cover and time off request. Covers apply straight away; time off waits for you or Ligia.' : 'Need someone to take a session? Choose the date and the coach, and they get it in their My sessions straight away. Time off goes to Lee and Ligia to approve.'}</p></div></div>
+    <div class="jp-two" style="display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      <div class="j-card" style="padding:16px"><h2 style="margin-bottom:10px">Request cover</h2>
+        ${d.mySessions.length ? `<label class="j-field"><span>Session</span><select class="j-select" id="cv-g">${sessOpts}</select></label>
+        <label class="j-field"><span>Date</span><select class="j-select" id="cv-d"></select></label>
+        <label class="j-field"><span>Covering coach</span><select class="j-select" id="cv-c"></select></label>
+        <label class="j-field"><span>Note <span class="muted">(optional)</span></span><input class="j-input" id="cv-n" maxlength="300"></label>
+        <button type="button" class="j-btn j-btn-dark" id="cv-go">Put them on this session</button>` : '<p class="muted small">You have no sessions yet.</p>'}
+      </div>
+      <div class="j-card" style="padding:16px"><h2 style="margin-bottom:10px">Request time off</h2>
+        ${admin ? `<label class="j-field"><span>Coach</span><select class="j-select" id="to-c">${d.coaches.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}</select></label>` : ''}
+        <div class="j-two"><label class="j-field"><span>First day off</span><input class="j-input" type="date" id="to-f"></label><label class="j-field"><span>Last day off</span><input class="j-input" type="date" id="to-t"></label></div>
+        <label class="j-field"><span>Reason <span class="muted">(optional)</span></span><input class="j-input" id="to-r" maxlength="300"></label>
+        <button type="button" class="j-btn j-btn-dark" id="to-go">Send for approval</button>
+        <p class="muted small" style="margin-top:8px">Time off does not move your sessions. Arrange cover for each one on the left.</p>
+      </div>
+    </div>
+    <h2 style="margin:22px 0 10px">Time off</h2>
+    ${d.timeOff.length ? d.timeOff.map((t) => `<div class="jp-player" style="cursor:default;align-items:center"><span><b>${esc(t.coach)}</b> · ${esc(t.from)}${t.to !== t.from ? ` to ${esc(t.to)}` : ''}${t.reason ? ` · <span class="muted">${esc(t.reason)}</span>` : ''}</span><span style="display:flex;gap:6px;align-items:center"><span class="j-pill j-pill-${pill[t.status]?.[0] || 'grey'}">${esc(pill[t.status]?.[1] || t.status)}</span>${admin && t.status === 'pending' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-to="${esc(t.id)}" data-st="approved">Approve</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-to="${esc(t.id)}" data-st="declined">Decline</button>` : ''}</span></div>`).join('') : '<p class="muted small">No time off requests.</p>'}
+    <h2 style="margin:22px 0 10px">Covers</h2>
+    ${d.covers.length ? d.covers.map((c) => `<div class="jp-player" style="cursor:default;align-items:center"><span><b>${esc(c.group)}</b> · ${esc(c.dateLabel)}<br><span class="muted small">${esc(c.coach)} covered by <b>${esc(c.cover)}</b>${c.note ? ` · ${esc(c.note)}` : ''}</span></span><span style="display:flex;gap:6px;align-items:center"><span class="j-pill j-pill-${pill[c.status]?.[0] || 'grey'}">${esc(pill[c.status]?.[1] || c.status)}</span>${c.status === 'active' && (admin || c.coachId === P.user.coachId) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-cv-x="${esc(c.id)}">Cancel</button>` : ''}</span></div>`).join('') : '<p class="muted small">No covers.</p>'}`
+  const drawDates = () => {
+    const s = d.mySessions.find((x) => x.id === $('cv-g').value)
+    $('cv-d').innerHTML = (s?.dates || []).map((x) => `<option value="${esc(x.iso)}">${esc(x.label)}</option>`).join('') || '<option value="">No dates left this term</option>'
+    $('cv-c').innerHTML = d.coaches.filter((c) => c.id !== (admin ? s?.coachId : P.user.coachId)).map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')
+  }
+  if ($('cv-g')) { drawDates(); $('cv-g').addEventListener('change', drawDates) }
+  $('cv-go')?.addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true
+    const r = await post('requestCover', { groupId: $('cv-g').value, date: $('cv-d').value, coverCoachId: $('cv-c').value, note: $('cv-n').value.trim() })
+    toast(r.ok ? `${r.data.cover.cover} is on ${r.data.cover.group}, ${r.data.cover.dateLabel}` : r.data.error)
+    renderStaff()
+  })
+  $('to-go').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true
+    const r = await post('requestTimeOff', { coachId: $('to-c')?.value, from: $('to-f').value, to: $('to-t').value || $('to-f').value, reason: $('to-r').value.trim() })
+    toast(r.ok ? (admin ? 'Time off added. Approve it below.' : 'Sent to Lee and Ligia for approval.') : r.data.error)
+    renderStaff()
+  })
+  view().querySelectorAll('[data-to]').forEach((b) => b.addEventListener('click', async () => { const r = await post('decideTimeOff', { id: b.dataset.to, status: b.dataset.st }); toast(r.ok ? 'Updated' : r.data.error); renderStaff() }))
+  view().querySelectorAll('[data-cv-x]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox('Cancel this cover? The session goes back to its coach.'))) return; const r = await post('cancelCover', { id: b.dataset.cvX }); toast(r.ok ? 'Cover cancelled' : r.data.error); renderStaff() }))
+}
+
+async function renderPlans() {
+  const admin = P.user.role === 'admin'
+  const d = await need(await post('staffOverview'))
+  const pl = d.plans
+  if (!admin) {
+    const filled = pl.weeks.filter((w) => w.title || w.focus || w.link)
+    view().innerHTML = `<div class="jp-head"><div><h1>Session plans</h1><p class="muted small">How the program runs and what each week covers.</p></div></div>
+      ${pl.structure ? `<div class="j-card" style="padding:16px;margin-bottom:14px"><h2 style="margin-bottom:8px">Program structure</h2>${pl.structure.split(/\n\s*\n/).map((x) => `<p style="margin-bottom:8px">${esc(x).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
+      ${filled.length ? filled.map((w) => `<div class="j-card" style="padding:14px 16px;margin-bottom:10px"><b>Week ${w.week}${w.title ? `: ${esc(w.title)}` : ''}</b>${w.focus ? `<p class="small" style="margin-top:4px;white-space:pre-wrap">${esc(w.focus)}</p>` : ''}${w.link ? `<p style="margin-top:6px"><a class="j-btn j-btn-line j-btn-sm" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">Open the session plan</a></p>` : ''}</div>`).join('') : (pl.structure ? '' : '<div class="j-empty">Lee has not added the session plans yet.</div>')}`
+    return
+  }
+  view().innerHTML = `<div class="jp-head"><div><h1>Session plans</h1><p class="muted small">What coaches see in their Session plans tab. Add the program structure, then a title, focus and a link (Google Drive, PDF or the app) for each week.</p></div></div>
+    <div class="j-card" style="padding:16px;max-width:900px">
+      <label class="j-field"><span>Program structure</span><textarea class="j-textarea" id="pl-s" rows="8" placeholder="How a JFP session runs, the standards, the term's themes. Leave a blank line between paragraphs.">${esc(pl.structure)}</textarea></label>
+      ${pl.weeks.map((w, i) => `<div class="j-card" style="padding:12px;margin-bottom:8px" data-wk="${i}"><b>Week ${w.week}</b>
+        <div class="j-two" style="margin-top:6px"><label class="j-field"><span>Title</span><input class="j-input" data-f="title" value="${esc(w.title)}" placeholder="For example: 1v1 attacking"></label><label class="j-field"><span>Link to the plan</span><input class="j-input" data-f="link" value="${esc(w.link)}" placeholder="https://"></label></div>
+        <label class="j-field"><span>Focus and key points</span><textarea class="j-textarea" data-f="focus" rows="2">${esc(w.focus)}</textarea></label></div>`).join('')}
+      <button type="button" class="j-btn j-btn-dark j-btn-lg" id="pl-save">Save session plans</button>
+    </div>`
+  $('pl-save').addEventListener('click', async () => {
+    const weeks = [...view().querySelectorAll('[data-wk]')].map((box) => Object.fromEntries([...box.querySelectorAll('[data-f]')].map((i) => [i.dataset.f, i.value.trim()])))
+    const r = await post('savePlans', { plans: { structure: $('pl-s').value, weeks } })
+    toast(r.ok ? 'Saved. Coaches see it now.' : r.data.error)
+  })
+}
 
 // ---------- coaches: names, emails, photos ----------
 

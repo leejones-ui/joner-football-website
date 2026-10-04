@@ -156,6 +156,27 @@ ${rows([
 
 // ---------- payment requests (admin adds, balances, approved places) ----------
 
+// Current Term 4 families: the new booking system, their account, and a
+// pay link when something is owing (Lee, 5 Oct 2026). Replies go to Ligia.
+export function accountInvite({ parentName, players, config, signInUrl, payUrl = '', amountCents = 0, needsWaiver = false }) {
+  const names = players.map((x) => x.name)
+  const who = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
+  const owing = payUrl && amountCents > 0
+  const body = `${p(`Hi ${esc(parentName || 'there')},`)}
+${p(`Joner Football has a new booking system, and your account is ready. Sign in with this email address to see ${esc(who)}'s ${esc(config.term.replace(/\s*\d{4}$/, ''))} sessions, every date and your payments.`)}
+${rows(players.map((x) => [esc(x.name), esc(x.group)]))}
+${owing ? p(`There is <b>${esc(formatAud(amountCents))}</b> to pay for ${esc(config.term.replace(/\s*\d{4}$/, ''))}. You can pay by card, Apple Pay, Google Pay or Afterpay. The place is locked in once it is paid.`) : p('Your place is confirmed. Nothing to pay.')}
+${needsWaiver ? p('When you sign in, please also sign the player waiver. It takes a minute.') : ''}
+${p('There is no password. Enter your email and we send you a 6 digit code.')}
+${button(owing ? 'Sign in and pay' : 'Sign in to your account', owing ? payUrl : signInUrl)}
+${p('Questions? Just reply to this email.')}`
+  return { subject: owing ? `Your JFP account is ready: ${formatAud(amountCents)} to pay` : 'Your JFP account is ready', html: shell({ preheader: 'Sign in to see your sessions', heading: 'Your JFP account', body }) }
+}
+export async function sendAccountInvite({ to, parentName, ...rest }) {
+  const { subject, html } = accountInvite({ parentName, ...rest })
+  return send({ to: [{ email: to, name: parentName }], subject, html, replyTo: 'ligia@jonerfootball.com' })
+}
+
 export async function sendFamilyInvite({ to, parentName, playerNames, group, config, url, needs, amountCents, trial = false, startDate = '' }) {
   const todo = []
   if (needs.details) todo.push('add the player details')

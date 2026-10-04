@@ -809,4 +809,54 @@ await test('round 7: sibling rate only with a paid sibling in Airtable; show as 
   assert.equal((await portal(lee, 'saveGroup', { id: WED420, group: { ...g, showFull: false } })).status, 200)
 })
 
+await test('round 8: coach cover and time off, session plans, and inviting current families', async () => {
+  const dean = client()
+  await signIn(dean, 'jonerfootballdean@gmail.com', 'staff')
+  const DEAN_G = 'tue-1730-belrose-hq' // Tuesday 5:25pm, moved to 5:30pm by an earlier check
+  const ov = (await portal(dean, 'staffOverview')).data
+  const mine = ov.mySessions.find((s) => s.id === DEAN_G)
+  assert.ok(mine, 'Dean sees his own sessions to cover')
+  assert.ok(!ov.mySessions.some((s) => s.id === TUE420), 'and not Sam\'s')
+  assert.equal((await portal(dean, 'requestCover', { groupId: TUE420, date: mine.dates[0].iso, coverCoachId: 'sage' })).status, 403, 'cannot hand over another coach\'s session')
+  const cov = await portal(dean, 'requestCover', { groupId: DEAN_G, date: mine.dates[0].iso, coverCoachId: 'sage', note: 'Away' })
+  assert.equal(cov.status, 200, JSON.stringify(cov.data))
+  assert.equal((await portal(dean, 'requestCover', { groupId: DEAN_G, date: mine.dates[0].iso, coverCoachId: 'sam' })).status, 409, 'one cover per session date')
+  // Sage gets the session that week and can take the register.
+  const sage = client()
+  await signIn(sage, 'sagemelhem@icloud.com', 'staff')
+  const ss = (await portal(sage, 'coachSessions')).data.sessions
+  const covering = ss.find((s) => s.id === DEAN_G && s.covering)
+  assert.ok(covering, 'the cover coach sees the session')
+  assert.equal(covering.nextDate, mine.dates[0].iso)
+  if (covering.players[0]) assert.equal((await portal(sage, 'markAttendance', { groupId: DEAN_G, date: mine.dates[0].iso, rowId: covering.players[0].rowId, status: 'Present' })).status, 200)
+  assert.ok((await portal(dean, 'coachSessions')).data.sessions.find((s) => s.id === DEAN_G).coveredBy.length, 'Dean sees who covers him')
+  assert.equal((await portal(sage, 'cancelCover', { id: cov.data.cover.id })).status, 403, 'only the asking coach or admins cancel')
+  // Time off: coach asks, only admins decide.
+  const off = await portal(dean, 'requestTimeOff', { from: '2026-11-02', to: '2026-11-06', reason: 'Holiday' })
+  assert.equal(off.status, 200)
+  assert.equal((await portal(dean, 'decideTimeOff', { id: off.data.timeOff.id, status: 'approved' })).status, 403)
+  assert.equal((await portal(lee, 'decideTimeOff', { id: off.data.timeOff.id, status: 'approved' })).status, 200)
+  assert.equal((await portal(dean, 'staffOverview')).data.timeOff.find((t) => t.id === off.data.timeOff.id).status, 'approved')
+  // Session plans: admins write, coaches read.
+  assert.equal((await portal(dean, 'savePlans', { plans: { structure: 'x', weeks: [] } })).status, 403)
+  assert.equal((await portal(lee, 'savePlans', { plans: { structure: 'Warm up, technique, game.', weeks: [{ title: '1v1 attacking', focus: 'Feints', link: 'https://example.com/w1' }] } })).status, 200)
+  const pl = (await portal(dean, 'staffOverview')).data.plans
+  assert.equal(pl.weeks[0].title, '1v1 attacking')
+  // Families: a preview first, nothing sent; then a real send to one family.
+  const before = (await emails()).length
+  const fam = (await portal(lee, 'familyInvites')).data
+  assert.equal((await emails()).length, before, 'previewing sends nothing')
+  assert.ok(fam.list.length > 0)
+  assert.equal((await portal(dean, 'familyInvites')).status, 403, 'coaches cannot invite families')
+  const payFam = fam.list.find((f) => f.kind === 'pay')
+  assert.ok(fam.previews.pay && /Sign in and pay/.test(fam.previews.pay.html))
+  assert.ok(!/—|–/.test(fam.previews.pay.html), 'no long dashes')
+  const sent = await portal(lee, 'familyInvites', { send: true, emails: [payFam.email] })
+  assert.deepEqual(sent.data.sent, [payFam.email])
+  const mail = (await emails()).filter((e) => e.to.includes(payFam.email)).at(-1)
+  assert.match(mail.subject, /Your JFP account is ready/)
+  assert.match(mail.html, /jfp-account\/\?pay=PAY-/)
+  assert.deepEqual((await portal(lee, 'familyInvites', { send: true, emails: [payFam.email] })).data.sent, [], 'not twice unless resend')
+})
+
 console.log(`\n${passed} JFP flow checks passed`)
