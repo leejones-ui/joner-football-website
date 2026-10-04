@@ -851,6 +851,9 @@ await test('round 8: coach cover and time off, session plans, and inviting curre
   assert.ok(fam.list.length > 0)
   assert.equal((await portal(dean, 'familyInvites')).status, 403, 'coaches cannot invite families')
   const payFam = fam.list.find((f) => f.kind === 'pay')
+  // A row marked Paid with no amount typed in is never asked to pay.
+  const at4 = (await at()).term4
+  for (const f of fam.list.filter((x) => x.kind === 'pay')) for (const id of f.owingRowIds) assert.notEqual(at4.find((r) => r.id === id)?.fields['Term 4 Payment Status'], 'Paid')
   assert.ok(fam.previews.pay && /Sign in and pay/.test(fam.previews.pay.html))
   assert.ok(!/—|–/.test(fam.previews.pay.html), 'no long dashes')
   const sent = await portal(lee, 'familyInvites', { send: true, emails: [payFam.email] })

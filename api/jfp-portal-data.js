@@ -892,7 +892,8 @@ async function familyPlan(req, config) {
     fams.get(r.email).push(r)
   }
   const list = [...fams.entries()].map(([email, rows]) => {
-    const owe = (r) => Math.max(0, cents(r.balanceAud ?? ((r.feeAud || 0) - (r.paidAud || 0))))
+    // Marked Paid in Airtable means paid, even when no amount was typed in.
+    const owe = (r) => (/^paid$/i.test(r.paymentStatus || '') ? 0 : Math.max(0, cents(r.balanceAud ?? ((r.feeAud || 0) - (r.paidAud || 0)))))
     const owingRows = rows.filter((r) => owe(r) > 0)
     const unpriced = rows.filter((r) => !owe(r) && r.paymentStatus !== 'Paid' && !(cents(r.paidAud) > 0) && !(cents(r.feeAud) > 0))
     const open = payreqs.find((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.some((id) => owingRows.some((r) => r.id === id)))
