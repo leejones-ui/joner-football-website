@@ -28,6 +28,8 @@ process.env.BREVO_API_KEY = 'local'
 process.env.PUBLIC_SITE_URL = `http://localhost:${PORT}`
 process.env.JFP_BOOKING_PASSWORD = process.env.JFP_BOOKING_PASSWORD || 'term4'
 process.env.JFP_PORTAL_ENABLED = 'true'
+process.env.JFP_RELAY_TOKEN = process.env.JFP_RELAY_TOKEN || 'local-relay-token-0123456789abcdef0123'
+process.env.JFP_TEXT_ANYTIME = process.env.JFP_TEXT_ANYTIME || '1'
 process.env.JFP_SETTLE_SECONDS = process.env.JFP_SETTLE_SECONDS ?? '0'
 process.env.JFP_PORTAL_ORIGIN = `http://localhost:${PORT}`
 process.env.JFP_BOOTSTRAP_SECRET = 'boot'
@@ -190,7 +192,7 @@ const emails = []
 // A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
 // JSON file ({ term4, term3, waiver, ledger } record arrays) to load another,
 // for example an anonymised copy of the real roster for screenshots.
-const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [] }
+const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [] }
 let recSeq = 1
 const recId = () => `rec${String(recSeq++).padStart(14, '0')}`
 function seedRow(day, time, location, coach, type = 'JFP 10 weeks', confirmation = 'Confirmed', extra = {}) {
@@ -219,7 +221,7 @@ if (process.env.JFP_SEED && fs.existsSync(process.env.JFP_SEED)) {
   airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': 'Sasha Returning', 'Parent Email': 'returning@example.com', 'Date of Birth': '2016-06-10', 'Term': 'Term 3 2026', 'Signed Date': '2026-07-14', 'Waiver Accepted - Full Terms': true } })
 }
 
-const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds' }
+const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master' }
 function airtableResponse(url, init) {
   const u = new URL(url)
   const parts = u.pathname.split('/').slice(3).map(decodeURIComponent) // [table, recordId?]
@@ -265,6 +267,7 @@ function airtableResponse(url, init) {
   if (find) { const needle = find[1].replace(/\\(["\\])/g, '$1'); out = rows.filter((r) => String(r.fields[find[2]] || '').includes(needle)) }
   const and = formula.match(/^AND\(\{(.+?)\} = "(.*?)", \{(.+?)\} = "(.*?)"\)$/)
   if (and) out = rows.filter((r) => r.fields[and[1]] === and[2] && r.fields[and[3]] === and[4])
+  if (formula === '{Do Not Contact}') out = rows.filter((r) => r.fields['Do Not Contact'])
   const eq = formula.match(/^\{(Payment ID|Attendance ID)\} = "(.+)"$/)
   if (eq) out = rows.filter((r) => r.fields[eq[1]] === eq[2])
   const size = Number(u.searchParams.get('pageSize') || 100)
@@ -403,7 +406,7 @@ function shimRes(res) {
 }
 
 const handlers = {}
-for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data']) {
+for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data', 'jfp-messages', 'jfp-messages-relay']) {
   handlers[name] = (await import(`../api/${name}.js`)).default
 }
 
@@ -429,6 +432,20 @@ const server = http.createServer(async (req, res) => {
     const shimReq = { method: req.method, headers: req.headers, query: Object.fromEntries(url.searchParams), body, url: req.url, socket: req.socket }
     try { await handler(shimReq, shimRes(res)) } catch (error) { console.error(error); res.writeHead(500); res.end(error.message) }
     return
+  }
+
+  // Change a fake Airtable row as if staff edited it: /__patch?table=term4&id=rec..&fields={json}
+  if (url.pathname === '/__patch') {
+    const row = (airtable[url.searchParams.get('table')] || []).find((r) => r.id === url.searchParams.get('id'))
+    if (!row) { res.writeHead(404); return res.end('no row') }
+    Object.assign(row.fields, JSON.parse(url.searchParams.get('fields') || '{}'))
+    res.writeHead(200); return res.end('ok')
+  }
+
+  // A family marked Do Not Contact in the Master Database: /__dnc?email=
+  if (url.pathname === '/__dnc') {
+    airtable.master.push({ id: `rec${crypto.randomBytes(7).toString('hex')}`, createdTime: new Date().toISOString(), fields: { 'Emails from Sources': url.searchParams.get('email') || '', 'Mobile Number': url.searchParams.get('phone') || '', 'Do Not Contact': true } })
+    res.writeHead(200); return res.end('ok')
   }
 
   // Pretend Lee refunded in the Stripe dashboard: /__refund?cs=<session>&amount=<cents>
@@ -497,4 +514,5 @@ if (process.env.JFP_GROUPS && fs.existsSync(process.env.JFP_GROUPS)) {
   console.log('loaded JFP groups from', process.env.JFP_GROUPS)
 }
 
+server.keepAliveTimeout = 65000 // long waits in tests (the text helper reads Messages back) must not drop sockets
 server.listen(PORT, () => console.log(`holiday local harness on http://localhost:${PORT}  (parent password "holiday", admin secret "admin")`))

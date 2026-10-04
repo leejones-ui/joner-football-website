@@ -507,3 +507,7 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .j-foot-link { background: none; border: 0; padding: 3px 0; font: inherit; color: var(--j-muted); cursor: pointer; text-align: left; display: block; }
 .j-foot-link:hover { color: var(--j-ink); text-decoration: underline; }
 .j-foot-base .j-foot-link { display: inline; margin-left: 16px; }
+
+/* Portal Messages: a confirm on top of the open message window. */
+.jp-confirm-over { position: fixed; inset: 0; z-index: 1001; background: rgba(0,0,0,.45); display: grid; place-items: center; }
+.jp-confirm-over .jp-modal { position: relative; inset: auto; transform: none; margin: 0; max-width: min(460px, calc(100vw - 24px)); }

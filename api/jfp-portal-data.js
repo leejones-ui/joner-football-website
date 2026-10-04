@@ -203,12 +203,12 @@ async function addPlayer(req, res, principal, config, body) {
 }
 
 // No email in the link: it would end up in browser history and server logs.
-function payreqUrl(req, q) { return `${siteUrl(req)}/jfp-account/?pay=${encodeURIComponent(q.id)}` }
+export function payreqUrl(req, q) { return `${siteUrl(req)}/jfp-account/?pay=${encodeURIComponent(q.id)}` }
 
 // Offers from requests hold the place for 7 days; balance and term links do not expire.
 const EXPIRING = new Set(['application', 'waitlist', 'trial'])
 
-async function createPayreq({ req, principal, config, group, rows, email, parentName, amountCents, reason, requestId, product = '', startDate = '', afterpay = true, trialDate = '', creditCents = 0, restoreFields = null }) {
+export async function createPayreq({ req, principal, config, group, rows, email, parentName, amountCents, reason, requestId, product = '', startDate = '', afterpay = true, trialDate = '', creditCents = 0, restoreFields = null }) {
   const q = {
     id: newId('PAY'),
     email, parentName,
@@ -1065,7 +1065,7 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
 // "see your sessions", families with a balance get their pay link. Rows with
 // no fee set are left for staff to price first. Nothing sends until staff
 // press Send; each family is emailed once unless staff resend.
-async function familyPlan(req, config) {
+export async function familyPlan(req, config) {
   const [roster, groups, invitedRaw, payreqs] = await Promise.all([loadRoster({ fresh: true }), listGroups(), kvCommand(['HGETALL', 'jfp:acct-invited']), listPayreqs()])
   const invited = {}
   for (let i = 0; i + 1 < (invitedRaw || []).length; i += 2) invited[invitedRaw[i]] = invitedRaw[i + 1]
