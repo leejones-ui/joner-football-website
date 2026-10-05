@@ -1,12 +1,14 @@
 // Separate, revocable availability access for Barry and Forge. Deliberately
 // excludes configuration, prices, bookings, customer data, refunds and deletes.
-import { agentIdentity, changeAvailability, moveUnbookedSlot } from './_holiday-agent-access.js'
+import { agentIdentity, changeAvailability, moveUnbookedSlot, swapUnbookedSlots } from './_holiday-agent-access.js'
+import { audit } from './_jfp-store.js'
 import { listSlots, getSlot, getConfig, slotOwners, clean } from './_holiday-store.js'
 import { rebuildRoster } from './_holiday-email.js'
 import { rateLimit } from './_security.js'
 
-const allowed = new Set(['ping', 'listSlots', 'blockSlot', 'reopenSlot', 'moveSlot'])
-const project = (slot, owner) => ({ id: slot.id, coachId: slot.coachId, startsAt: slot.startsAt, endsAt: slot.endsAt, location: slot.location, status: slot.status, occupied: Boolean(owner?.booked) })
+const allowed = new Set(['ping', 'listSlots', 'blockSlot', 'reopenSlot', 'moveSlot', 'swapSlots'])
+// version is updatedAt: a swap must name the version Barry read.
+const project = (slot, owner) => ({ id: slot.id, coachId: slot.coachId, startsAt: slot.startsAt, endsAt: slot.endsAt, location: slot.location, status: slot.status, occupied: Boolean(owner?.booked), version: slot.updatedAt || '', title: slot.title || '' })
 function reply(res, status, message) { return res.status(status).json({ success: false, error: message }) }
 
 export default async function handler(req, res) {
@@ -22,12 +24,28 @@ export default async function handler(req, res) {
   const action = clean(body.action, 30)
   if (!allowed.has(action)) return reply(res, 403, 'Action is outside scheduling scope')
   try {
-    if (action === 'ping') return res.status(200).json({ success: true, agent: identity, scope: identity === 'barry' ? 'availability,time' : 'availability' })
+    if (action === 'ping') return res.status(200).json({ success: true, agent: identity, scope: identity === 'barry' ? 'availability,time,swap' : 'availability' })
     if (action === 'listSlots') {
       const slots = await listSlots({ includeCancelled: true })
       const owners = await slotOwners(slots.map(s => s.id))
       const config = await getConfig()
       return res.status(200).json({ success: true, slots: slots.map(s => project(s, owners[s.id])), coaches: config.coaches.map(c => ({ id: c.id, name: c.name })) })
+    }
+    if (action === 'swapSlots') {
+      if (identity !== 'barry') return reply(res, 403, 'Time editing is outside this agent’s scope')
+      const a = await getSlot(clean(body.slotIdA, 60)), b = await getSlot(clean(body.slotIdB, 60))
+      if (!a || !b) return reply(res, 404, 'Slot not found')
+      const swapped = await swapUnbookedSlots(a, b, { startsAtA: body.expectedStartsAtA, startsAtB: body.expectedStartsAtB, versionA: body.expectedVersionA, versionB: body.expectedVersionB })
+      if (!swapped.ok) return reply(res, swapped.reason === 'invalid' ? 400 : 409, ({
+        stale: 'A slot changed, or is not open; read both again before swapping.', owned: 'One of the slots has a current booking or hold.',
+        overlap: 'A new time overlaps another slot for this coach.', coach: 'Both slots must be the same coach.', day: 'Both slots must be on the same day.',
+        invalid: 'Send both slot IDs with their current startsAt and version from listSlots.',
+      })[swapped.reason] || 'Those slots cannot be swapped.')
+      const [na, nb] = [await getSlot(a.id), await getSlot(b.id)]
+      console.info('holiday agent swapped slots', { agent: identity, a: a.id, b: b.id })
+      try { await audit({ by: `${identity} (holiday agent)`, action: 'holiday.swapSlots', target: `${a.id} ${b.id}`, before: { [a.id]: a.startsAt, [b.id]: b.startsAt }, after: { [a.id]: na.startsAt, [b.id]: nb.startsAt } }) } catch (error) { console.error('holiday agent audit failed', error) }
+      try { await rebuildRoster() } catch (error) { console.error('holiday agent roster rebuild failed', error) }
+      return res.status(200).json({ success: true, agent: identity, slots: [project(na), project(nb)] })
     }
     const slotId = clean(body.slotId, 60)
     if (action === 'moveSlot') {
