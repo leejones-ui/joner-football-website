@@ -82,6 +82,9 @@ export default async function handler(req, res) {
         const r = await finaliseJfpBooking(jfpId, session)
         // Another run is finishing it: answer 500 so Stripe tries again later.
         if (r.busy) return res.status(500).json({ success: false, jfpId, busy: true })
+        // Paid but the place is not in Airtable yet: 500 so Stripe retries and
+        // the retry finishes the enrolment (Stripe retries for up to 3 days).
+        if (r.enrolled === false) return res.status(500).json({ success: false, jfpId, enrolled: false })
         return res.status(200).json({ success: true, jfpId, already: r.already === true, attention: r.attention || '', verified })
       }
       if (type === 'checkout.session.expired' || type === 'checkout.session.async_payment_failed') {

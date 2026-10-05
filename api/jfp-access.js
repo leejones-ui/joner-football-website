@@ -8,7 +8,8 @@ function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body 
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
-  if (req.method === 'GET') return res.status(200).json({ success: true, ok: hasParentAccess(req) || (await getConfig()).passwordRequired === false })
+  // release: the exact commit serving this request, for release receipts.
+  if (req.method === 'GET') return res.status(200).json({ success: true, ok: hasParentAccess(req) || (await getConfig()).passwordRequired === false, release: String(process.env.VERCEL_GIT_COMMIT_SHA || 'local').slice(0, 12) })
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' })
   let body
   try { body = parse(req) } catch { return res.status(400).json({ success: false, error: 'Invalid request' }) }

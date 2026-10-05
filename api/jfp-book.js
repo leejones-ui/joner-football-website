@@ -128,19 +128,22 @@ async function reserve(req, res, body, parent) {
 }
 
 async function release(req, res, body) {
+  // The answer says what is true, so the page never claims more than this:
+  // state cancelled (released, nothing charged), paid, or unknown.
   const b = await getBooking(body.bookingId)
-  if (!b) return res.status(200).json({ success: true })
+  if (!b) return res.status(200).json({ success: true, released: false, state: 'unknown' })
   if (!tokenMatches(clean(body.releaseToken, 64), b.releaseToken)) return fail(res, 403, 'Not allowed.')
+  if (b.status === 'paid') return res.status(200).json({ success: true, released: false, state: 'paid' })
   if (b.status === 'held' || b.status === 'reserving') {
     // Only release once Stripe confirms the payment page is closed. If it
     // was paid, or we cannot tell, leave the hold: it lapses on its own.
     const closed = b.status === 'held' ? await closeCheckout(b.stripeSessionId) : 'expired'
-    if (closed !== 'expired') return res.status(200).json({ success: true, released: false })
+    if (closed !== 'expired') return res.status(200).json({ success: true, released: false, state: closed === 'complete' ? 'paid' : 'unknown' })
     await releasePlaces(b.groupId, b.id)
     await dropParentHold(b.email, b.id)
     await saveBooking({ ...b, status: 'cancelled', cancelledAt: new Date().toISOString(), cancelledBy: 'parent' })
   }
-  return res.status(200).json({ success: true, released: true })
+  return res.status(200).json({ success: true, released: true, state: 'cancelled' })
 }
 
 async function family(req, res, body, parent) {

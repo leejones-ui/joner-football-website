@@ -1,7 +1,7 @@
 // Offers from applications and the waitlist hold a place in Airtable (as
 // Awaiting Reply) for 7 days. After that, or when staff cancel the offer,
-// the place goes back. The sweep runs when staff open the portal and, at
-// most every 10 minutes, when parents load the booking page.
+// the place goes back. The sweep runs hourly (Vercel cron) and when staff open
+// the portal; a parent loading the timetable never triggers it.
 import { listPayreqs, savePayreq, getApplication, saveApplication, audit, closeCheckout, kvCommand } from './_jfp-store.js'
 import { getTerm4Row, updateTerm4Rows, appendNote } from './_jfp-airtable.js'
 
@@ -31,8 +31,3 @@ export async function sweepExpiredOffers(principal = { email: 'system' }) {
   }
 }
 
-
-export async function sweepExpiredOffersSometimes() {
-  if ((await kvCommand(['SET', 'jfp:offer-sweep', String(Date.now()), 'NX', 'EX', '600'])) !== 'OK') return
-  try { await sweepExpiredOffers({ email: 'booking page' }) } catch (error) { console.error('jfp offer sweep failed', error) }
-}

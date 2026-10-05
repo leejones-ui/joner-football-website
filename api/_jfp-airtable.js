@@ -135,7 +135,7 @@ export async function loadRoster({ fresh = false } = {}) {
   if (!fresh) {
     const cached = await kvGetJson(keys.roster())
     // Never a copy read before the last write cleared the cache.
-    if (cached && cached.at >= cleared && Date.now() - cached.at < CACHE_SECONDS * 1000) return placeInGroups(cached)
+    if (cached && cached.at >= cleared && Date.now() - cached.at < CACHE_SECONDS * 1000) return waiverRules(await placeInGroups(cached))
   }
   const startedAt = Date.now()
   // Term 3 has finished and barely changes: read it at most every 10 minutes,
@@ -176,7 +176,16 @@ export async function loadRoster({ fresh = false } = {}) {
   const out = { at: startedAt, players, term3, waivers }
   // A slow read that began before a later write must not replace the cache.
   if (startedAt >= (Number(await kvCommand(['GET', 'jfp:roster-cleared'])) || 0)) await kvSetJson(keys.roster(), out, 3600)
-  return placeInGroups(out)
+  return waiverRules(await placeInGroups(out))
+}
+
+// Which waivers count (Settings, "Accept waivers signed in an earlier term"):
+// on, any accepted JFP waiver of the family's; off, only this term's.
+async function waiverRules(roster) {
+  const config = await getConfig()
+  if (config.waiverCarryover !== false) return roster
+  const term = config.term
+  return { ...roster, waivers: roster.waivers.filter((w) => w.term === term || String(w.version || '').includes(term)) }
 }
 
 // Put each row in its group. A session with one group is that group. A
@@ -240,9 +249,10 @@ export async function airtableCounts({ fresh = false } = {}) {
 
 // ---------- waivers ----------
 
-// A player has a waiver on file when a waiver row carries their name and the
-// family's email (or mobile). Name alone is accepted only when exactly one
-// waiver has that name, so two children with the same name never share one.
+// A player has a waiver on file only when a waiver row carries their name AND
+// this family's email or mobile. A name alone never counts, even when only one
+// waiver has it: another family's consent is not this family's (launch review,
+// 5 Oct 2026). Anything less is asked to sign again.
 export function waiverFor(playerName, family, waivers) {
   const n = normName(playerName)
   if (!n) return null
@@ -251,7 +261,7 @@ export function waiverFor(playerName, family, waivers) {
   const phones = new Set((family.phones || []).map(digits).filter((d) => d.length >= 8).map((d) => d.slice(-9)))
   const ours = (w) => emails.has(w.email) || (digits(w.mobile).length >= 8 && phones.has(digits(w.mobile).slice(-9)))
   const strong = same.find(ours)
-  let pick = strong || (same.length === 1 ? same[0] : null)
+  let pick = strong || null
   // A spelling difference inside the same family ("Srestha" and "Shrestha"):
   // accept only a close full name AND a close first name, from a waiver that
   // carries this family's email or mobile, and only if exactly one fits.

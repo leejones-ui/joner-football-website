@@ -218,9 +218,22 @@ async function runBookingEffects(booking, retry = new Set()) {
       notes: `JFP online booking ${booking.id}${booking.stripeFeeCents != null ? `. Stripe fee A$${(booking.stripeFeeCents / 100).toFixed(2)}` : ''}`,
     })
   })
+  // Payment received is not the same as booked in: nobody is told "booked"
+  // until the place is in Term 4 Players. Until then staff are alerted, the
+  // webhook asks Stripe to retry, and the success page says "confirming".
+  if (!enrolled(booking)) { await flagAttention(booking, 'roster-pending', save, booking.players.map((p) => p.name).join(', ')); return }
   await runEffect('parentEmail', booking, save, () => sendParentConfirmation({ booking, group: g, config, siteUrl: booking.siteUrl || '' }))
   await runEffect('staffAlert', booking, save, () => sendStaffAlert({ booking, group: g, config }))
   await runEffect('coachAlert', booking, save, () => sendCoachAlert({ booking, group: g, config }))
+  clearAttention(booking, 'roster-pending')
+  await save(booking)
+}
+
+// The place is recorded only when the Airtable step finished.
+export function enrolled(record) { return record?.effects?.airtable?.status === 'done' }
+function clearAttention(record, reason) {
+  const left = String(record.needsAttention || '').split(', ').filter((x) => x && x !== reason)
+  record.needsAttention = left.join(', ')
 }
 
 // ---------- payment requests ----------
@@ -295,8 +308,11 @@ async function runPayreqEffects(payreq, retry = new Set()) {
       notes: `JFP payment request ${payreq.id} (${payreq.reason || 'payment'})${payreq.stripeFeeCents != null ? `. Stripe fee A$${(payreq.stripeFeeCents / 100).toFixed(2)}` : ''}`,
     })
   })
+  if (!enrolled(payreq)) { await flagAttention(payreq, 'roster-pending', save, payreq.playerNames.join(', ')); return }
   await runEffect('parentEmail', payreq, save, () => sendPaymentReceipt({ payreq, group, config, siteUrl: payreq.siteUrl || '' }))
   await runEffect('staffAlert', payreq, save, () => sendPaymentStaffAlert({ payreq, group, config }))
+  clearAttention(payreq, 'roster-pending')
+  await save(payreq)
 }
 
 // ---------- entry points ----------
@@ -337,8 +353,14 @@ export async function finaliseJfpBooking(id, session) {
       if (!isPay) await dropParentHold(record.email, record.id)
       if (isPay) await audit({ by: record.email, action: 'payreq.paid', target: record.id, after: { cents: record.paidCents } })
     }
-    if (isPay) await runPayreqEffects(record); else await runBookingEffects(record)
-    return { ok: true, already: false, [isPay ? 'payreq' : 'booking']: record }
+    // A repeat (Stripe retrying, or the parent's success page) finishes what an
+    // outage left undone: failed steps, and unclear ones that are safe to repeat.
+    const retry = new Set((isPay ? PAY_EFFECTS : EFFECTS).filter((k) => {
+      const st = record.effects?.[k]?.status
+      return st === 'failed' || ((st === 'uncertain' || st === 'running') && IDEMPOTENT.has(k))
+    }))
+    if (isPay) await runPayreqEffects(record, retry); else await runBookingEffects(record, retry)
+    return { ok: true, already: false, enrolled: enrolled(record), [isPay ? 'payreq' : 'booking']: record }
   } finally {
     await dropLease(id, lease)
   }

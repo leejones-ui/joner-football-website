@@ -413,8 +413,9 @@ for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-
 async function fireWebhook(type, session, object) {
   const body = JSON.stringify({ type, data: { object: object || { id: session.id } } })
   const req = Object.assign(new (await import('node:stream')).Readable({ read() { this.push(body); this.push(null) } }), { method: 'POST', headers: { 'content-type': 'application/json' }, url: '/api/holiday-payment-webhook' })
-  await new Promise((resolve) => handlers['holiday-payment-webhook'](req, shimRes({ writeHead() {}, end() { resolve() } })))
-  log('webhook', `${type} ${session.id}`)
+  let status = 200
+  await new Promise((resolve) => handlers['holiday-payment-webhook'](req, shimRes({ writeHead(s) { status = s }, end() { resolve() } })))
+  log('webhook', `${type} ${session.id} -> ${status}`)
 }
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.mp4': 'video/mp4', '.xml': 'application/xml', '.txt': 'text/plain' }

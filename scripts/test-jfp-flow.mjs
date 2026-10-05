@@ -397,6 +397,84 @@ await test('a failed Airtable write is recorded and repaired, never lost', async
   const fixed = await portal(lee, 'repair', { id: ok.data.bookingId })
   assert.equal(fixed.data.summary.ok, true)
   assert.equal((await at()).term4.filter((r) => r.fields['Player Name'] === 'Rae Pair').length, 1)
+  assert.equal((await emails()).filter((e) => e.to.includes('repair@example.com') && /booked in/i.test(e.subject)).length, 1, 'booked in only once, after the repair')
+})
+
+await test('launch review 1: paid while Airtable is down is "payment received, confirming", never "booked in", and recovers on its own', async () => {
+  const c = client()
+  await gate(c)
+  await signIn(c, 'outage@example.com')
+  const WED420 = await mk({ day: 'Saturday', time: '7:00am', location: 'Belrose HQ', coachId: 'dean', capacity: 6, mode: 'direct', minAge: 6, maxAge: 19 })
+  const hold = await c.call('/api/jfp-book', { action: 'reserve', groupId: WED420 })
+  const ok = await c.call('/api/jfp-book', { groupId: WED420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Otto Age', dob: '2015-05-05', emergencyName: 'O A', emergencyPhone: '0400444557' }], waiver: WAIVER, parentName: 'Ola Age', mobile: '0400444557', agreementAccepted: true, kit: 'ordered' })
+  assert.equal(ok.status, 200, JSON.stringify(ok.data))
+  const sid = new URL(ok.data.url).searchParams.get('cs')
+  await fetch(`${B}/__fail?what=airtable-term4&on=1`)
+  await stripe(ok.data.url, 'pay')
+  const ev = await (await fetch(`${B}/__events`)).json()
+  assert.ok(ev.some((e) => e.kind === 'webhook' && e.detail.includes(sid) && e.detail.endsWith('-> 500')), 'the webhook asks Stripe to retry')
+  let conf = await (await fetch(`${B}/api/jfp-confirm?session_id=${sid}`)).json()
+  assert.equal(conf.status, 'confirming', 'the success page does not say booked in')
+  const mails = (await emails()).filter((e) => e.to.includes('outage@example.com'))
+  assert.ok(!mails.some((e) => /booked in/i.test(e.subject)), 'no booked-in email while the roster is missing')
+  assert.ok((await emails()).some((e) => /needs checking/.test(e.subject) && e.html.includes(ok.data.bookingId)), 'staff are told straight away')
+  assert.equal((await at()).term4.filter((r) => r.fields['Player Name'] === 'Otto Age').length, 0)
+  // Airtable back: the next attempt (Stripe's retry or the success page) finishes it.
+  await fetch(`${B}/__fail?what=airtable-term4&on=0`)
+  conf = await (await fetch(`${B}/api/jfp-confirm?session_id=${sid}`)).json()
+  assert.equal(conf.status, 'paid')
+  assert.equal((await at()).term4.filter((r) => r.fields['Player Name'] === 'Otto Age').length, 1)
+  assert.equal((await emails()).filter((e) => e.to.includes('outage@example.com') && /booked in/i.test(e.subject)).length, 1, 'booked in exactly once, after the place exists')
+  const p = (await portal(lee, 'payments')).data.bookings.find((b) => b.id === ok.data.bookingId)
+  assert.ok(!String(p.needsAttention || '').includes('roster-pending'), 'the flag clears once enrolled')
+})
+
+await test('launch review 3: coming back from Stripe says only what the server confirmed', async () => {
+  const c = client()
+  await gate(c)
+  await signIn(c, 'cancel@example.com')
+  const WED420 = await mk({ day: 'Saturday', time: '7:15am', location: 'Belrose HQ', coachId: 'dean', capacity: 6, mode: 'direct', minAge: 6, maxAge: 19 })
+  const hold = await c.call('/api/jfp-book', { action: 'reserve', groupId: WED420 })
+  const ok = await c.call('/api/jfp-book', { groupId: WED420, bookingId: hold.data.bookingId, releaseToken: hold.data.releaseToken, players: [{ name: 'Cal Cel', dob: '2015-06-06', emergencyName: 'C C', emergencyPhone: '0400444558' }], waiver: WAIVER, parentName: 'Cara Cel', mobile: '0400444558', agreementAccepted: true, kit: 'ordered' })
+  // Paid, then the cancel link is opened anyway: never "nothing was charged".
+  await stripe(ok.data.url, 'pay')
+  const r1 = await c.call('/api/jfp-book', { action: 'release', bookingId: ok.data.bookingId, releaseToken: hold.data.releaseToken })
+  assert.deepEqual([r1.data.released, r1.data.state], [false, 'paid'])
+  const r2 = await c.call('/api/jfp-book', { action: 'release', bookingId: 'JFP-unknown', releaseToken: 'x' })
+  assert.deepEqual([r2.data.released, r2.data.state], [false, 'unknown'])
+  // A real cancel: released and nothing charged.
+  const hold2 = await c.call('/api/jfp-book', { action: 'reserve', groupId: WED420 })
+  const ok2 = await c.call('/api/jfp-book', { groupId: WED420, bookingId: hold2.data.bookingId, releaseToken: hold2.data.releaseToken, players: [{ name: 'Cid Cel', dob: '2015-07-07', emergencyName: 'C C', emergencyPhone: '0400444558' }], waiver: WAIVER, parentName: 'Cara Cel', mobile: '0400444558', agreementAccepted: true, kit: 'ordered' })
+  const r3 = await c.call('/api/jfp-book', { action: 'release', bookingId: ok2.data.bookingId, releaseToken: hold2.data.releaseToken })
+  assert.deepEqual([r3.data.released, r3.data.state], [true, 'cancelled'])
+})
+
+await test('review risk: staff and a family racing for the last place: exactly one gets it', async () => {
+  const LAST = await mk({ day: 'Thursday', time: '7:00pm', location: 'Belrose HQ', coachId: 'dean', capacity: 1, mode: 'direct', minAge: 6, maxAge: 19 })
+  const fam = client()
+  await gate(fam)
+  await signIn(fam, 'race@example.com')
+  const [staff, parent] = await Promise.all([
+    portal(lee, 'addPlayer', { groupId: LAST, player: { name: 'Staff Racer', age: 10 }, parent: { name: 'S R', email: '', mobile: '' }, payment: 'none' }),
+    fam.call('/api/jfp-book', { action: 'reserve', groupId: LAST }),
+  ])
+  const wins = [staff.status === 200, parent.status === 200].filter(Boolean).length
+  assert.equal(wins, 1, `exactly one wins (staff ${staff.status}, family ${parent.status})`)
+  // Two staff at once: one gets it, the other is asked "Add anyway?".
+  const LAST2 = await mk({ day: 'Thursday', time: '8:00pm', location: 'Belrose HQ', coachId: 'dean', capacity: 1, mode: 'direct', minAge: 6, maxAge: 19 })
+  const ligia = client()
+  await signIn(ligia, 'ligia@jonerfootball.com', 'staff')
+  const both = await Promise.all([
+    portal(lee, 'addPlayer', { groupId: LAST2, player: { name: 'Lee Racer', age: 10 }, parent: { name: 'L R', email: '', mobile: '' }, payment: 'none' }),
+    portal(ligia, 'addPlayer', { groupId: LAST2, player: { name: 'Ligia Racer', age: 10 }, parent: { name: 'L R', email: '', mobile: '' }, payment: 'none' }),
+  ])
+  assert.equal(both.filter((r) => r.status === 200).length, 1)
+  assert.equal(both.filter((r) => r.data.code === 'full').length, 1)
+  // The public timetable never changes state (no sweep on a read).
+  const before = JSON.stringify((await at()).term4.length)
+  await c2Get()
+  assert.equal(JSON.stringify((await at()).term4.length), before)
+  async function c2Get() { const x = client(); await gate(x); await x.call('/api/jfp-groups') }
 })
 
 await test('a payment for a booking that was just cancelled is recorded and flagged, never lost', async () => {
@@ -613,7 +691,13 @@ await test('joining during the term: pro rata for the sessions left, siblings at
   await portal(lee, 'saveSettings', { config: { ...cfg, termStart: '2026-09-07' } })
   const g = await mk({ day: 'Monday', time: '4:20pm', location: 'Belrose HQ', coachId: 'dean', capacity: 6, mode: 'direct', minAge: 8, maxAge: 12 })
   const pr = await pricingNow()
-  const left = pr.datesByDay.Monday.filter((x) => !x.past).length
+  // A session that has already started today no longer counts (the booking
+  // code's rule), so the test uses the same clock: Sydney time against 4:20pm.
+  const syd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date())
+  const part = (t) => syd.find((x) => x.type === t).value
+  const todayIso = `${part('year')}-${part('month')}-${part('day')}`
+  const startedToday = Number(part('hour')) * 60 + Number(part('minute')) >= 16 * 60 + 20
+  const left = pr.datesByDay.Monday.filter((x) => x.iso > todayIso || (x.iso === todayIso && !startedToday)).length
   assert.ok(left > 0 && left < 10)
   const one = Math.round((85000 * left) / 10 / 100) * 100
   const each = Math.round((75000 * left) / 10 / 100) * 100
@@ -960,6 +1044,24 @@ await test('round 11: money reads Stripe live, records cash and bank transfer, p
   await signIn(deanC, 'jonerfootballdean@gmail.com', 'staff')
   assert.equal((await portal(deanC, 'planGet', { id: saved.data.plan.id })).status, 404)
   assert.ok((await portal(lee, 'planList')).data.plans.some((p) => p.id === saved.data.plan.id), 'admins see every coach\'s sessions')
+})
+
+await test('launch review 2: a waiver counts only with the family email or mobile; earlier-term waivers follow the Settings switch', async () => {
+  const rita = client()
+  await gate(rita)
+  await signIn(rita, 'returning@example.com')
+  const on = (await rita.call('/api/jfp-book', { action: 'family' })).data.players.find((p) => p.name === 'Riley Returning')
+  assert.equal(on.waiverOnFile, true, 'a Term 3 waiver on the family email counts while carryover is on')
+  assert.equal((await portal(lee, 'saveSettings', { config: { waiverCarryover: false } })).status, 200)
+  const off = (await rita.call('/api/jfp-book', { action: 'family' })).data.players.find((p) => p.name === 'Riley Returning')
+  assert.equal(off.waiverOnFile, false, 'with carryover off, only this term\'s waivers count')
+  assert.equal((await portal(lee, 'saveSettings', { config: { waiverCarryover: true } })).status, 200)
+  // Another family's child with the same name never borrows that waiver.
+  const other = client()
+  await gate(other)
+  await signIn(other, 'someone-else@example.com')
+  const req = await other.call('/api/jfp-book', { action: 'family' })
+  assert.ok(!req.data.players.some((p) => p.waiverOnFile), 'nothing on file for a family with no waiver of its own')
 })
 
 console.log(`\n${passed} JFP flow checks passed`)

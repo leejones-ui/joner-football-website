@@ -137,6 +137,8 @@ export const DEFAULT_CONFIG = {
   passwordRequired: false,
   // Stripe payments from this date count as this term's income (Money tab).
   moneySince: '2026-09-14',
+  // Waivers signed in an earlier term still count (Lee to confirm the policy).
+  waiverCarryover: true,
   // The JF playing kit is required for every player (Lee, 30 Sept). It is
   // sold by BE Teamsport, so it always opens in a new tab and the family's
   // Joner page stays open behind it. Families confirm it before they pay.
@@ -232,6 +234,7 @@ export function normaliseConfig(input = {}) {
     coachSeed: b.coachSeed,
     passwordRequired: typeof input.passwordRequired === 'boolean' ? input.passwordRequired : b.passwordRequired,
     moneySince: /^\d{4}-\d{2}-\d{2}$/.test(input.moneySince || '') ? input.moneySince : b.moneySince,
+    waiverCarryover: typeof input.waiverCarryover === 'boolean' ? input.waiverCarryover : b.waiverCarryover,
     // The kit link opens the whole Joner Football shop (Lee, 5 Oct 2026), not
     // one product: an old saved link to the playing kit page moves over.
     kitUrl: /\/products\/jf-playing-kit\/?$/.test(input.kitUrl || '') ? b.kitUrl : /^https:\/\//.test(input.kitUrl || '') ? clean(input.kitUrl, 500) : (input.kitUrl === '' ? '' : b.kitUrl),

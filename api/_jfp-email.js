@@ -248,6 +248,7 @@ export async function sendPaymentStaffAlert({ payreq, group, config }) {
 // ---------- payments that need a person ----------
 
 const ATTENTION = {
+  'roster-pending': 'A family has paid, but Airtable did not save their place, so they have NOT been told they are booked in. The system keeps retrying through Stripe. If this is still flagged in an hour, open Payments in the JFP portal and press Repair, or add the player by hand.',
   'paid-after-cancel': 'A family paid for a booking or payment link that had already been cancelled or had expired. Nothing was added to Airtable automatically. Decide whether to give them the place or refund in Stripe.',
   'second-payment': 'A family paid twice for the same booking or payment link. The first payment is recorded; this second one is not. Refund it in Stripe, or keep it as credit.',
   'overpaid': 'A payment took a player past what their Term 4 row costs (for example two payment links paid for the same child). It is recorded in Airtable. Check the row and refund the extra in Stripe.',

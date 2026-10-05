@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       if (session.payment_status === 'paid') {
         const r = await finaliseJfpBooking(id, session)
         q = r.payreq || q
-        status = r.attention ? 'received' : r.busy ? 'pending' : 'paid'
+        status = r.attention ? 'received' : r.busy ? 'pending' : r.enrolled === false ? 'confirming' : 'paid'
       } else if (session.status === 'expired' || (q.status === 'cancelled' && session.status !== 'complete')) status = 'expired'
       const group = q.groupId ? await getGroup(q.groupId) : null
       return res.status(200).json({ success: true, status, kind: 'payment', kit: { url: config.kitUrl, note: config.kitNote }, payment: { id: q.id, players: q.playerNames, trial: q.reason === 'trial', trialDate: q.trialDate ? dateLabel(q.trialDate) : '', startDate: q.startDate ? dateLabel(q.startDate) : '', priceLabel: formatAud(q.paidCents ?? q.amountCents), group: group ? groupView(config, group, { fromIso: q.startDate || '', only: q.reason === 'trial' ? q.trialDate || '' : '' }) : null, term: config.term } })
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     if (session.payment_status === 'paid') {
       const r = await finaliseJfpBooking(id, session)
       booking = r.booking || booking
-      status = r.attention ? 'received' : r.busy ? 'pending' : 'paid'
+      status = r.attention ? 'received' : r.busy ? 'pending' : r.enrolled === false ? 'confirming' : 'paid'
     } else if (session.status === 'expired' || (['expired', 'cancelled'].includes(booking.status) && session.status !== 'complete')) status = 'expired'
     const group = (await getGroup(booking.groupId)) || booking.groupSnapshot
     return res.status(200).json({

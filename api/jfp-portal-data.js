@@ -8,9 +8,10 @@
 // Staff changes write straight into Airtable Term 4 Players, so Lee's
 // dashboard always matches, and every change is recorded in the audit log.
 import crypto from 'node:crypto'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { siteUrl } from './_holiday-store.js'
 import {
-  getConfig, saveConfig, listGroups, getGroup, saveGroup, deleteGroup, validateGroup, onlineCounts, placesLeft, listBookings, getBooking,
+  getConfig, saveConfig, listGroups, getGroup, saveGroup, deleteGroup, validateGroup, onlineCounts, placesLeft, listBookings, getBooking, holdPlaces,
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
   coachByAirtableName, sessionDates, dateLabel, formatAud, to24h, clean, newId, audit, listAudit, locationFor, validEmail, ageOn,
   normName, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold,
@@ -126,13 +127,28 @@ async function siblingGuard(product, email, names) {
   return paidSiblings(roster.players, email, names).length ? null : 'No other child of this family has a paid place this term, so the sibling rate does not apply. Choose another price.'
 }
 
+// Staff adding, moving or offering a place take the same atomic hold that
+// families take when they book, so a parent and a staff member (or two staff)
+// can never both get the last place. The hold lapses on its own after
+// STAFF_HOLD_SECONDS, by which time the Airtable row counts instead.
+// "Add anyway" (force) skips the check on purpose.
+const STAFF_HOLD_SECONDS = 45
+// Holds taken during one request; released when it ends (the Airtable row,
+// written in the same request, counts from then on).
+const requestHolds = new AsyncLocalStorage()
 async function capacityCheck(group, adding, force) {
+  if (force) return { left: null }
   const roster = await loadRoster()
   const taken = countsFrom(roster)[group.id] || 0
-  const holds = (await onlineCounts([group.id]))[group.id] || 0
-  const left = placesLeft(group, taken, holds)
-  if (left < adding && !force) return { error: `${groupSummary(group, await getConfig())} has ${left} place${left === 1 ? '' : 's'} left. Add anyway?`, code: 'full', left }
-  return { left }
+  const holdId = newId('STAFF')
+  const ok = await holdPlaces({ gid: group.id, bookingId: holdId, want: adding, available: Math.max(0, Number(group.capacity || 0) - taken), expiresMs: Date.now() + STAFF_HOLD_SECONDS * 1000 })
+  if (!ok) {
+    const holds = (await onlineCounts([group.id]))[group.id] || 0
+    const left = placesLeft(group, taken, holds)
+    return { error: `${groupSummary(group, await getConfig())} has ${left} place${left === 1 ? '' : 's'} left. Add anyway?`, code: 'full', left }
+  }
+  requestHolds.getStore()?.push({ gid: group.id, holdId })
+  return { left: placesLeft(group, taken, 0) - adding, holdId }
 }
 
 // ---------- players ----------
@@ -1133,6 +1149,15 @@ async function familyInvites(req, res, principal, config, body) {
 // ---------- handler ----------
 
 export default async function handler(req, res) {
+  const holds = []
+  try {
+    return await requestHolds.run(holds, () => handle(req, res))
+  } finally {
+    for (const h of holds) await releasePlaces(h.gid, h.holdId).catch((e) => console.error('jfp staff hold release failed', e))
+  }
+}
+
+async function handle(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   res.setHeader('X-Content-Type-Options', 'nosniff')
   if (process.env.JFP_PORTAL_ENABLED !== 'true') return fail(res, 503, 'The JFP portal is not open yet.')
@@ -1383,7 +1408,7 @@ export default async function handler(req, res) {
       case 'saveSettings': {
         const input = body.config || {}
         const patch = {}
-        for (const k of ['passwordRequired', 'moneySince', 'term', 'termStart', 'weeks', 'prices', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations', 'kitUrl', 'kitNote', 'kitPriceLabel', 'skipDates']) if (k in input) patch[k] = input[k]
+        for (const k of ['passwordRequired', 'moneySince', 'waiverCarryover', 'term', 'termStart', 'weeks', 'prices', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations', 'kitUrl', 'kitNote', 'kitPriceLabel', 'skipDates']) if (k in input) patch[k] = input[k]
         if (patch.prices) patch.prices = { ...config.prices, ...patch.prices }
         if (Array.isArray(input.coaches)) {
           // Photos are saved by their own action; a settings save never drops one.

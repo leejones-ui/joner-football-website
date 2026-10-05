@@ -95,7 +95,9 @@ test('a waiver matches on name plus the family email or mobile, never on a share
   assert.equal(waiverFor('Sam Smith', { emails: ['a@x.com'], phones: [] }, waivers).id, 'w1')
   assert.equal(waiverFor('Sam Smith', { emails: ['c@x.com'], phones: ['+61 400 111 222'] }, waivers).id, 'w1')
   assert.equal(waiverFor('Sam Smith', { emails: ['c@x.com'], phones: [] }, waivers), null)
-  assert.equal(waiverFor('only one', { emails: ['new@x.com'], phones: [] }, waivers).id, 'w3')
+  // A name alone is never consent, even when only one waiver has it (launch review).
+  assert.equal(waiverFor('only one', { emails: ['new@x.com'], phones: [] }, waivers), null)
+  assert.equal(waiverFor('only one', { emails: ['old@x.com'], phones: [] }, waivers).id, 'w3')
   // Spelling differences inside one family are accepted; siblings are not.
   const fam = [
     { id: 's1', player: 'Unish Shrestha', email: 'f@x.com', mobile: '', accepted: true },

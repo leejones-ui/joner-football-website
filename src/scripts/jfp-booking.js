@@ -36,9 +36,16 @@ async function boot() {
 async function showApp(q) {
   $('app').hidden = false
   if (q.get('payment') === 'cancelled' && q.get('booking_id') && q.get('release')) {
-    api('/api/jfp-book', { action: 'release', bookingId: q.get('booking_id'), releaseToken: q.get('release') })
-    $('banner').innerHTML = '<div class="j-box j-box-amber" style="margin-top:16px">Payment cancelled. Nothing was charged and the place has been released.</div>'
+    // Say only what the server has confirmed (launch review, 5 Oct 2026).
     history.replaceState(null, '', location.pathname)
+    $('banner').innerHTML = '<div class="j-box j-box-grey" style="margin-top:16px">Checking your payment</div>'
+    const r = await api('/api/jfp-book', { action: 'release', bookingId: q.get('booking_id'), releaseToken: q.get('release') }).catch(() => ({ ok: false, data: {} }))
+    const state = r.ok ? r.data.state : 'unknown'
+    $('banner').innerHTML = state === 'cancelled'
+      ? '<div class="j-box j-box-amber" style="margin-top:16px">Payment cancelled. Nothing was charged and the place has been released.</div>'
+      : state === 'paid'
+        ? '<div class="j-box j-box-green" style="margin-top:16px"><b>Your payment went through.</b> We are confirming your place and will email you. Please do not pay again.</div>'
+        : '<div class="j-box j-box-amber" style="margin-top:16px"><b>We could not confirm the cancellation yet.</b> If you finished paying, you will get a confirmation email. Please do not pay again until you hear from us. Questions? Use Contact us at the bottom of the page.</div>'
   }
   showTab((location.hash || '#timetable').slice(1))
   S.parent = await whoAmI('parent')

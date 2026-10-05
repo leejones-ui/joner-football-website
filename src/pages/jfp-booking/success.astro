@@ -81,7 +81,7 @@ import '../../styles/jfp.css'
 
   function paid(b, k) {
     const names = b.players.map((p) => p.name)
-    hero('Payment complete', 'Thank you, you are booked in', `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} in ${b.term}, ${b.day} ${b.time}. We have emailed you the details.`)
+    hero('Payment complete', 'Thank you, you are booked in', `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} in ${b.term}, ${b.day} ${b.time}. Your confirmation email is on its way.`)
     kit(k)
     $('details').innerHTML = [
       ['Group', `${b.day} ${b.time}`], ['Where', b.address || b.location], ['Coach', b.coachName || 'Joner Football'],
@@ -100,6 +100,7 @@ import '../../styles/jfp.css'
   }
   function failed(msg) { hero('Not found', 'We could not find that booking', msg); $('help').hidden = false }
 
+  let confirming = false
   async function check() {
     if (!sid) return failed('Open this page from your Stripe payment.')
     tries += 1
@@ -111,7 +112,16 @@ import '../../styles/jfp.css'
       if (d.status === 'paid' && d.payment) return paidLink(d.payment, d.kit)
       if (d.status === 'received') { hero('Payment received', 'We have your payment', 'This booking had been closed before your payment went through, so Lee or Ligia will contact you today to confirm the place or refund you. Do not pay again.'); $('help').hidden = true; return }
       if (d.status === 'expired') return failed('The payment session expired before it was finished. Nothing was charged.')
+      // Paid, but the place is still being saved: never say "booked" yet.
+      if (d.status === 'confirming') {
+        confirming = true
+        hero('Payment received', 'We are confirming your place', 'Your payment went through. We are still saving your place, which can take a few minutes. You will get a confirmation email as soon as it is done. Please do not pay again.')
+        $('help').hidden = true
+        if (tries < 24) setTimeout(check, 10000)
+        return
+      }
     } catch {}
+    if (confirming) { if (tries < 24) setTimeout(check, 10000); return }
     if (tries < 12) { hero('Confirming payment', 'Almost there', 'Your payment is still processing. This page updates on its own.'); setTimeout(check, 5000) }
     else failed('Your payment is taking longer than usual. Do not pay again.')
   }
