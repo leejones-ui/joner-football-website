@@ -22,7 +22,7 @@ import {
   loadRoster, countsFrom, playerAge, waiverFor, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, draftAgeBand,
   createWaiverRows, waiverFields, findWaiversByTag, bustRosterCache, findTerm4ByTag,
   getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, listDropped, deleteTerm4Row, RESTORABLE,
-  listLedger, createLedgerRow,
+  listLedger, createLedgerRow, listJuniors,
 } from './_jfp-airtable.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, PAY_EFFECTS } from './_jfp-finalise.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
@@ -31,6 +31,7 @@ import { nextStatuses, setNextStatus, nextPrices, recordNext } from './_jfp-next
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { jfpStripePayments } from './_jfp-stripe.js'
+import { allocateTermMoney, venuesForTerm, venuesFromLedger, juniorsByVenue, previousTerm, totalOf } from './_jfp-venues.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -442,6 +443,9 @@ async function markPaid(res, principal, body) {
 
 // ---------- money: live from Stripe and Airtable ----------
 
+// A row with no venue written on it is shown as exactly that.
+const venueNamed = (loc) => (loc.id === 'other' ? { ...loc, name: 'No venue set' } : loc)
+
 const weekOf = (iso) => {
   const d = new Date(`${String(iso).slice(0, 10)}T00:00:00Z`)
   const dow = (d.getUTCDay() + 6) % 7
@@ -450,7 +454,7 @@ const weekOf = (iso) => {
 }
 
 async function moneyData(config, { since, fresh = false } = {}) {
-  const [roster, groups, ledger] = await Promise.all([loadRoster({ fresh: true }), listGroups(), listLedger(config.term).catch(() => [])])
+  const [roster, groups, ledger, juniors] = await Promise.all([loadRoster({ fresh: true }), listGroups(), listLedger(config.term).catch(() => []), listJuniors().catch(() => [])])
   let stripe = { payments: [], other: { count: 0, cents: 0 }, since: since || config.moneySince, error: '' }
   try { stripe = { ...(await jfpStripePayments({ since: since || config.moneySince, fresh })), error: '' } } catch (error) { console.error('jfp stripe read failed', error); stripe.error = 'Stripe could not be read just now. Airtable figures only.' }
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
@@ -513,18 +517,29 @@ async function moneyData(config, { since, fresh = false } = {}) {
   for (const p of stripe.payments) { const w = weeks.get(weekOf(p.at.slice(0, 10))); if (w) w.stripe += net(p) }
   for (const o of offline) { if (!o.date) continue; const w = weeks.get(weekOf(o.date)); if (w) w[o.method === 'Cash' ? 'cash' : 'bank'] += o.cents }
   const count = (s) => players.filter((p) => p.status === s).length
-  const locations = config.locations.map((l) => {
-    const mine = players.filter((p) => p.locationId === l.id)
-    return { id: l.id, name: l.name, players: mine.length, paid: mine.filter((p) => p.status === 'paid' || p.status === 'stripe').length, owingCents: mine.reduce((t, p) => t + p.owingCents, 0) }
-  }).filter((l) => l.players)
+  // Revenue by venue: the same money as "Income this term", on the rows it
+  // paid for, so the venues add up to the income total (Lee, 6 Oct 2026).
+  const venueOf = (r) => { const g = byId[r.groupId]; return venueNamed(g ? locationFor(config, g.location) : locationFor(config, r.location || '')) }
+  const groupOf = (r) => {
+    const g = byId[r.groupId]
+    return g ? { key: g.id, label: `${g.day} ${g.time}`, coach: coachLabel(coachById(config, g.coachId)) } : { key: `none:${r.day}|${r.time}`, label: [r.day, r.time].filter(Boolean).join(' ') || 'Not in a group', coach: r.coach || '' }
+  }
+  const alloc = allocateTermMoney({ rows: roster.players.filter((r) => !isTestName(r.player)), stripe: stripe.payments, ledger, legacy: legacyOffline })
+  for (const p of players) p.receivedCents = totalOf(alloc.byRow.get(p.rowId))
+  const jj = juniorsByVenue(juniors, config.term, (r) => locationFor(config, r.location || ''))
+  const locations = venuesForTerm({ locations: config.locations, rows: roster.players, players, alloc, venueOf, groupOf })
+  for (const j of jj) if (!locations.some((l) => l.id === j.id)) locations.push({ id: j.id, name: j.name, players: 0, paid: 0, owingCents: 0, receivedCents: 0, stripeCents: 0, bankCents: 0, cashCents: 0, otherCents: 0, removedCents: 0, airtableOnlyCents: 0, groups: [] })
+  for (const l of locations) l.juniors = jj.find((j) => j.id === l.id) || null
   return {
-    since: stripe.since, stripeError: stripe.error, stripeAt: stripe.at || '',
+    since: stripe.since, stripeError: stripe.error, stripeAt: stripe.at || '', term: config.term,
     kpis: {
       incomeCents: stripeGross - stripeRefunds + offlineCents, stripeCents: stripeGross - stripeRefunds, stripeGrossCents: stripeGross, refundsCents: stripeRefunds,
       offlineCents, cashCents: offline.filter((o) => o.method === 'Cash').reduce((t, o) => t + o.cents, 0), bankCents: offline.filter((o) => o.method === 'Bank Transfer').reduce((t, o) => t + o.cents, 0),
       owingCents: players.reduce((t, p) => t + p.owingCents, 0), stripeUnrecordedCents: players.filter((p) => p.status === 'stripe').length,
       players: players.length, stripePayments: stripe.payments.length,
+      venuesCents: locations.reduce((t, l) => t + l.receivedCents, 0), unlinkedCents: totalOf(alloc.unlinked),
     },
+    unlinked: { cents: totalOf(alloc.unlinked), items: alloc.unlinked.items.slice(0, 40) },
     status: { paid: count('paid'), stripe: count('stripe'), part: count('part'), unpaid: count('unpaid'), unpriced: count('unpriced') },
     weekly: [...weeks.values()],
     locations,
@@ -532,6 +547,20 @@ async function moneyData(config, { since, fresh = false } = {}) {
     unmatched: unmatched.map((p) => ({ id: p.id, at: p.at, name: p.name, email: p.email, cents: net(p), product: p.product })),
     otherStripe: stripe.other,
   }
+}
+
+// An earlier term by venue, from its payment ledger (Term 3 was reconciled to
+// Stripe). Ledger rows name Term 3 rows, and now and then a Term 4 row.
+async function pastVenues(config) {
+  const term = previousTerm(config.term)
+  const [roster, ledger, juniors] = await Promise.all([loadRoster(), listLedger(term).catch(() => []), listJuniors().catch(() => [])])
+  const venueOf = (r) => venueNamed(locationFor(config, r.location || ''))
+  const groupOf = (r) => ({ key: `${r.day}|${r.time}`.toLowerCase(), label: [r.day, r.time].filter(Boolean).join(' ') || 'Not in a group', coach: r.coach || '' })
+  const out = venuesFromLedger({ locations: config.locations, ledger, rows: [...roster.term3, ...roster.players], venueOf, groupOf })
+  const incomeCents = ledger.reduce((t, l) => t + Math.round(Number(l['Amount Paid'] || 0) * 100), 0)
+  const jj = juniorsByVenue(juniors, term, venueOf)
+  for (const l of out.venues) l.juniors = jj.find((j) => j.id === l.id) || null
+  return { term, incomeCents, ...out }
 }
 
 // One player's payment story: the row, Stripe payments from the family's
@@ -1391,6 +1420,7 @@ async function handle(req, res) {
       }
 
       case 'money': return res.status(200).json({ success: true, money: await moneyData(config, { since: ISO.test(body.since || '') ? body.since : '', fresh: body.fresh === true }) })
+      case 'venues': return res.status(200).json({ success: true, venues: await pastVenues(config) })
       case 'playerPayments': {
         const d = await playerPayments(config, clean(body.rowId, 30))
         return d ? res.status(200).json({ success: true, player: d }) : fail(res, 404, 'Player row not found.')

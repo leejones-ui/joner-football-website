@@ -260,3 +260,20 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 }
 .jp-brand span, .jp-toplink { white-space: nowrap; }
 @media (max-width: 640px) { .jp-top a.jp-toplink { display: none; } .jp-top { padding: 0 10px; gap: 6px; } }
+
+/* Venues: revenue by venue (dashboard card and the venue window). */
+.jv-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 12px; }
+.jv-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; border: 1px solid var(--j-line); background: transparent; color: var(--j-ink); border-radius: 12px; padding: 10px 12px; font: inherit; cursor: pointer; transition: border-color .15s, background .15s; }
+.jv-btn:hover, .jv-btn:focus-visible { border-color: var(--j-muted); background: var(--j-surface-2, #f8f8f7); }
+.jv-btn .nm { font-size: 13px; font-weight: 650; color: var(--j-ink-2); }
+.jv-btn .amt { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+#c-locs [data-venue] { cursor: pointer; }
+.jv-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.jv-switch { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.jv-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin: 18px 0 6px; }
+.jv-kpis .jd-tile .val { font-size: 24px; }
+.jp-modal h3.jv-h3 { font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--j-muted); margin: 18px 0 8px; }
+.jv-players { margin-top: 14px; }
+.jv-players summary { cursor: pointer; font-weight: 650; font-size: 14px; }
+.jv-notes { margin-top: 14px; line-height: 1.5; }
+.jv-notes p + p { margin-top: 4px; }

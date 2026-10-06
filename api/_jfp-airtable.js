@@ -460,6 +460,27 @@ export async function createLedgerRow({ paymentId, config, playerNames, amountCe
 }
 
 // This term's ledger: one row per payment (Stripe, bank transfer, cash).
+// Joners Juniors: one table per term (Term 3, Term 4), for revenue by venue.
+// It changes rarely, so it is read at most every 10 minutes.
+export const JUNIORS_TABLES = (process.env.JFP_JUNIORS_TABLES || 'tblMLhYQ126P5uKLB,tblVzW8E9qumQEtXx').split(',').map((x) => x.trim()).filter(Boolean)
+const JUNIORS_FIELDS = ['Player Full Name', 'Term', 'Location', 'Session Day', 'Session Time', 'Fee', 'Payment Status', 'Paid Via']
+export async function listJuniors() {
+  const hit = await kvGetJson('jfp:juniors-cache')
+  if (Array.isArray(hit)) return hit
+  const out = []
+  let complete = true
+  for (const t of JUNIORS_TABLES) {
+    try {
+      for (const { id, fields: f } of await readTable(t, JUNIORS_FIELDS)) {
+        out.push({ id, player: text(f, 'Player Full Name'), term: text(f, 'Term'), location: text(f, 'Location'), day: text(f, 'Session Day'), time: text(f, 'Session Time'), fee: num(f, 'Fee'), status: text(f, 'Payment Status'), paidVia: text(f, 'Paid Via') })
+      }
+    } catch (error) { complete = false; console.error('jfp juniors read failed', t, error.message) }
+  }
+  // A failed read is never cached, so the next look tries again.
+  if (complete) await kvSetJson('jfp:juniors-cache', out, 600)
+  return out
+}
+
 export async function listLedger(term) {
   const rows = await readTable(TABLES.ledger, ['Payment ID', 'Term', 'Player Name', 'Amount Paid', 'Payment Method', 'Payment Status', 'Payment Date', 'Source Record ID', 'Stripe Checkout Session ID', 'Stripe Payment Intent ID', 'Notes'])
   return rows.map((r) => ({ id: r.id, ...r.fields })).filter((r) => !term || r['Term'] === term)

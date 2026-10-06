@@ -1064,4 +1064,27 @@ await test('launch review 2: a waiver counts only with the family email or mobil
   assert.ok(!req.data.players.some((p) => p.waiverOnFile), 'nothing on file for a family with no waiver of its own')
 })
 
+await test('venues: revenue by venue adds up to income this term; the term before from its ledger; coaches never see it', async () => {
+  const m = (await portal(lee, 'money', { fresh: true })).data.money
+  assert.equal(m.term, 'Term 4 2026')
+  assert.equal(m.locations.reduce((t, l) => t + l.receivedCents, 0) + m.kpis.unlinkedCents, m.kpis.incomeCents, 'the venues add up to Income this term')
+  const hq = m.locations.find((l) => l.name === 'Belrose HQ')
+  assert.ok(hq.receivedCents > 0 && hq.groups.length >= 1)
+  assert.equal(hq.groups.reduce((t, g) => t + g.receivedCents, 0), hq.receivedCents, 'the groups add up to the venue')
+  assert.equal(hq.stripeCents + hq.bankCents + hq.cashCents + hq.otherCents, hq.receivedCents)
+  assert.equal(m.players.filter((p) => p.locationId === hq.id).reduce((t, p) => t + p.receivedCents, 0) + hq.removedCents, hq.receivedCents, 'the players add up to the venue')
+  assert.deepEqual([hq.juniors.paid, hq.juniors.paidCents, hq.juniors.creditCents], [1, 22000, 22000], 'Juniors: paid places only, credit apart')
+  const past = (await portal(lee, 'venues')).data.venues
+  assert.equal(past.term, 'Term 3 2026')
+  const hq3 = past.venues.find((l) => l.name === 'Belrose HQ')
+  assert.deepEqual([hq3.receivedCents, hq3.stripeCents, hq3.bankCents, hq3.players], [161500, 85000, 76500, 2])
+  assert.deepEqual(past.unlinked, { cents: 30000, count: 1 })
+  assert.equal(past.incomeCents, 191500)
+  assert.equal(hq3.juniors.paidCents, 44000)
+  assert.ok(past.players.some((p) => p.player === 'Riley Returning' && p.receivedCents === 85000))
+  const sam = client()
+  await signIn(sam, 'jonerfootballsam@gmail.com', 'staff')
+  assert.equal((await portal(sam, 'venues')).status, 403, 'coaches never see venue money')
+})
+
 console.log(`\n${passed} JFP flow checks passed`)

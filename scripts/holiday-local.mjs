@@ -192,7 +192,7 @@ const emails = []
 // A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
 // JSON file ({ term4, term3, waiver, ledger } record arrays) to load another,
 // for example an anonymised copy of the real roster for screenshots.
-const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [] }
+const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [] }
 let recSeq = 1
 const recId = () => `rec${String(recSeq++).padStart(14, '0')}`
 function seedRow(day, time, location, coach, type = 'JFP 10 weeks', confirmation = 'Confirmed', extra = {}) {
@@ -219,9 +219,19 @@ if (process.env.JFP_SEED && fs.existsSync(process.env.JFP_SEED)) {
   airtable.term3.push({ id: recId(), fields: { 'Player Name': 'Sasha Returning', 'Email': 'returning@example.com', 'Parent Name': 'Rita Returning', 'Date of Birth': '2016-06-10', 'Coach': 'Sam Yorks', 'Session Day': 'Wednesday', 'Session Time': '4:20pm', 'Session Location': 'Belrose HQ' } })
   airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': 'Riley Returning', 'Parent Email': 'returning@example.com', 'Date of Birth': '2015-03-02', 'Term': 'Term 3 2026', 'Signed Date': '2026-07-14', 'Waiver Accepted - Full Terms': true } })
   airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': 'Sasha Returning', 'Parent Email': 'returning@example.com', 'Date of Birth': '2016-06-10', 'Term': 'Term 3 2026', 'Signed Date': '2026-07-14', 'Waiver Accepted - Full Terms': true } })
+  // Term 3 money for revenue by venue: two payments on Term 3 rows, one from a player no longer listed.
+  const [riley3, sasha3] = airtable.term3
+  const t3pay = (id, name, amount, method, source) => airtable.ledger.push({ id: recId(), fields: { 'Payment ID': id, 'Term': 'Term 3 2026', 'Player Name': name, 'Amount Paid': amount, 'Payment Method': method, 'Payment Status': 'Paid', 'Payment Date': '2026-07-20', 'Source Table': 'Term 3 Players', 'Source Record ID': source } })
+  t3pay('T3-SEED-1', 'Riley Returning', 850, 'Stripe', riley3.id)
+  t3pay('T3-SEED-2', 'Sasha Returning', 765, 'Bank Transfer', sasha3.id)
+  t3pay('T3-SEED-3', 'Gone Player', 300, 'Cash', 'recDROPPEDSEED001')
+  // Joners Juniors, Saturday at HQ: Term 3 paid; Term 4 one paid, one on last term's credit, one not yet.
+  const jj = (key, term, status, via) => airtable[key].push({ id: recId(), fields: { 'Player Full Name': `Junior ${recSeq}`, 'Term': term, 'Location': 'Belrose HQ', 'Session Day': 'Saturday', 'Session Time': '9:15am', 'Fee': 220, 'Payment Status': status, ...(via ? { 'Paid Via': via } : {}) } })
+  jj('juniors3', 'Term 3 2026', 'Paid', 'Stripe'); jj('juniors3', 'Term 3 2026', 'Paid', 'Stripe')
+  jj('juniors4', 'Term 4 2026', 'Paid', 'Stripe'); jj('juniors4', 'Term 4 2026', 'Paid', 'Term 3 credit'); jj('juniors4', 'Term 4 2026', 'Unpaid')
 }
 
-const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master' }
+const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4' }
 function airtableResponse(url, init) {
   const u = new URL(url)
   const parts = u.pathname.split('/').slice(3).map(decodeURIComponent) // [table, recordId?]

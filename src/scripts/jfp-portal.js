@@ -1108,7 +1108,7 @@ function locationChart(el, locs, animate) {
       const full = (W - L - R) * (l.players / max)
       const paid = l.players ? full * (l.paid / l.players) : 0
       const t = `<b>${esc(l.name)}</b><span class="row"><i style="background:${cssVar('--c-good')}"></i>Paid ${l.paid}</span><span class="row"><i style="background:${cssVar('--c-neutral')}"></i>Not yet ${l.players - l.paid}</span><span class="row">Owing ${esc(money(l.owingCents))}</span>`
-      return `<g class="band" tabindex="0" data-tip="${esc(t)}" aria-label="${esc(l.name)}: ${l.players} players, ${l.paid} paid">
+      return `<g class="band" tabindex="0" data-venue="${esc(l.id)}" data-tip="${esc(t)}" aria-label="${esc(l.name)}: ${l.players} players, ${l.paid} paid. Open its revenue">
         <rect class="hit" x="0" y="${y0 - 6}" width="${W}" height="${row - 4}"/>
         <text class="lab" x="0" y="${y0 + 13}">${esc(l.name)}</text>
         <g class="bar" style="--i:${i}">
@@ -1167,8 +1167,9 @@ async function renderOverview(redraw = false) {
         <div class="jc-legend">${SERIES.map(([, n, c]) => `<span><i style="background:${cssVar(c)}"></i>${n}</span>`).join('')}</div>
         ${chartTable(['Week of', 'Stripe', 'Bank transfer', 'Cash'], m.weekly.map((w) => [w.week, money(w.stripe), money(w.bank), money(w.cash)]))}</section>
       <section class="jd-card jd-span-4 jd-in" style="--i:3"><h2>Payment status</h2><p class="sub">Every player holding a place</p>${statusBlock(m.status, !redraw)}</section>
-      <section class="jd-card jd-span-7 jd-in" style="--i:4"><h2>Paid by location</h2><p class="sub">Green is paid, grey is not yet</p><div class="jc" id="c-locs"></div>
-        ${chartTable(['Location', 'Players', 'Paid', 'Owing'], m.locations.map((l) => [l.name, l.players, l.paid, money(l.owingCents)]))}</section>
+      <section class="jd-card jd-span-7 jd-in" style="--i:4"><h2>Venues</h2><p class="sub">Click a venue to see its revenue. Bars: green is paid, grey is not yet.</p><div class="jc" id="c-locs"></div>
+        <div class="jv-list">${m.locations.map((l) => `<button type="button" class="jv-btn" data-venue="${esc(l.id)}"><span class="nm">${esc(l.name)}</span><span class="amt">${esc(money(l.receivedCents))}</span><span class="muted small">this term${l.juniors?.paidCents ? ` · + Juniors ${esc(money(l.juniors.paidCents))}` : ''}</span></button>`).join('')}</div>
+        ${chartTable(['Location', 'Players', 'Paid', 'Owing', 'Revenue this term'], m.locations.map((l) => [l.name, l.players, l.paid, money(l.owingCents), money(l.receivedCents)]))}</section>
       <section class="jd-card jd-span-5 jd-in" style="--i:5"><h2>Needs you</h2><ul class="jd-list">
         ${pending.slice(0, 4).map((r) => `<li><button type="button" data-tab="requests">${esc(r.players.map((p) => p.name).join(', '))}</button><span class="muted small">${esc(r.kind === 'application' ? 'Application' : r.kind === 'waitlist' ? 'Waitlist' : 'Enquiry')}</span></li>`).join('')}
         ${m.status.stripe ? `<li><button type="button" data-money-filter="stripe">${m.status.stripe} Stripe payment${m.status.stripe === 1 ? '' : 's'} to record in Airtable</button><span class="muted small">Money</span></li>` : ''}
@@ -1196,6 +1197,71 @@ document.addEventListener('click', (e) => {
   if (!f) return
   P.moneyFilter = { ...(P.moneyFilter || {}), status: f.dataset.moneyFilter }
   go('money')
+})
+
+// ---------- venues: revenue by venue (Lee, 6 Oct 2026) ----------
+
+// This term comes with the dashboard (P.money). The term before is read once
+// from the payment ledger and kept for the session.
+async function venueModal(id, period = 'current') {
+  const m = P.money
+  if (!m) return
+  let past = null
+  if (period === 'previous') {
+    if (!P.venuesPrev) {
+      const r = await post('venues')
+      if (!r.ok) return toast(r.data.error)
+      P.venuesPrev = r.data.venues
+    }
+    past = P.venuesPrev
+  }
+  const now = period === 'current'
+  const list = now ? m.locations : past.venues
+  const v = list.find((x) => x.id === id)
+  const name = v?.name || m.locations.find((x) => x.id === id)?.name || 'Venue'
+  const all = [...new Map([...m.locations, ...(past?.venues || [])].map((x) => [x.id, x.name])).entries()]
+  const players = now ? m.players.filter((p) => p.locationId === id) : past.players.filter((p) => p.locationId === id)
+  const paidList = now ? players.filter((p) => p.receivedCents) : players
+  const split = v ? [['Stripe', v.stripeCents], ['Bank transfer', v.bankCents], ['Cash', v.cashCents], ['Other', v.otherCents]].filter(([, c]) => c).map(([n, c]) => `${n} ${money(c)}`).join(' · ') : ''
+  const notes = now ? [
+    `Revenue is the money that has come in this term: Stripe payments, read live, plus the cash and bank transfers recorded here. Before Stripe fees.`,
+    `All venues add up to Income this term, ${money(m.kpis.incomeCents)}${m.unlinked?.cents ? `, with ${money(m.unlinked.cents)} not linked to a player yet (a payment from an email that is not on any row)` : ''}.`,
+    v?.removedCents ? `Includes ${money(v.removedCents)} from players since removed.` : '',
+    v?.airtableOnlyCents ? `Airtable also shows ${money(v.airtableOnlyCents)} as paid here with no payment this term (paid last term, or typed in). It is not counted.` : '',
+  ] : [
+    `${past.term} from the payment ledger: every Stripe, bank transfer and cash payment, before Stripe fees.`,
+    `All venues add up to ${money(past.incomeCents)}${past.unlinked.cents ? `. ${money(past.unlinked.cents)} (${past.unlinked.count} payment${past.unlinked.count === 1 ? '' : 's'}) belongs to players no longer on the term list, so it is not on a venue` : ''}.`,
+  ]
+  modal(`<div class="jv-top"><h2>${esc(name)}</h2><button type="button" class="j-close" data-close aria-label="Close">&times;</button></div>
+    <div class="jv-switch">
+      <div class="jp-seg" role="group" aria-label="Venue">${all.map(([vid, vn]) => `<button type="button" data-venue="${esc(vid)}" data-vperiod="${period}" aria-pressed="${vid === id}">${esc(vn)}</button>`).join('')}</div>
+      <div class="jp-seg" role="group" aria-label="Term"><button type="button" data-venue="${esc(id)}" data-vperiod="current" aria-pressed="${now}">${esc(m.term || 'This term')} so far</button><button type="button" data-venue="${esc(id)}" data-vperiod="previous" aria-pressed="${!now}">${esc(past?.term || 'Last term')}</button></div>
+    </div>
+    ${!v ? '<p class="muted" style="margin-top:16px">No players or payments at this venue for this term.</p>' : `
+    <div class="jv-kpis">
+      <div class="jd-tile"><span class="lbl">Revenue</span><span class="val">${esc(money(v.receivedCents))}</span><span class="note">${esc(split || 'Nothing in yet')}</span></div>
+      <div class="jd-tile"><span class="lbl">${now ? 'Players paid' : 'Players who paid'}</span><span class="val">${now ? `${v.paid}<span class="muted" style="font-size:16px;font-weight:650"> / ${v.players}</span>` : v.players}</span>${now ? `<span class="note">Still owing ${esc(money(v.owingCents))}</span>` : ''}</div>
+      ${v.juniors ? `<div class="jd-tile"><span class="lbl">Joners Juniors</span><span class="val">${esc(money(v.juniors.paidCents))}</span><span class="note">${v.juniors.paid} of ${v.juniors.players} paid${v.juniors.creditCents ? `, ${esc(money(v.juniors.creditCents))} with last term's credit` : ''}. Not in the JFP total.</span></div>` : ''}
+    </div>
+    <h3 class="jv-h3">By group</h3>
+    <div class="jp-scroll"><table class="jp-table jm-table"><thead><tr><th>Group</th><th>Coach</th><th class="num">Players</th><th class="num">Revenue</th>${now ? '<th class="num">Owing</th>' : ''}</tr></thead><tbody>
+      ${v.groups.map((g) => `<tr><td>${esc(g.label)}</td><td>${esc(g.coach)}</td><td class="num">${g.players}</td><td class="num">${esc(money(g.receivedCents))}</td>${now ? `<td class="num">${esc(money(g.owingCents))}</td>` : ''}</tr>`).join('')}
+    </tbody></table></div>
+    <details class="jv-players"><summary>Who paid (${paidList.length})</summary>
+      <div class="jp-scroll" style="margin-top:8px"><table class="jp-table jm-table"><thead><tr><th>Player</th><th>Group</th><th class="num">Paid</th>${now ? '<th class="num">Owing</th><th>Status</th>' : ''}</tr></thead><tbody>
+        ${paidList.map((p) => `<tr><td>${esc(p.player)}</td><td>${esc(now ? (p.group || '').replace(/, [^,]*$/, '') : p.group)}</td><td class="num">${esc(money(p.receivedCents))}</td>${now ? `<td class="num">${esc(money(p.owingCents))}</td><td>${statusPill(p.status)}</td>` : ''}</tr>`).join('') || `<tr><td colspan="5" class="muted">No payments yet.</td></tr>`}
+      </tbody></table></div></details>`}
+    <div class="jv-notes muted small">${notes.filter(Boolean).map((n) => `<p>${esc(n)}</p>`).join('')}</div>`, { wide: true })
+}
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('[data-venue]')
+  if (!v || !P.money) return
+  venueModal(v.dataset.venue, v.dataset.vperiod || 'current')
+})
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || e.target.tagName === 'BUTTON') return
+  const v = e.target.closest?.('g[data-venue]')
+  if (v && P.money) venueModal(v.dataset.venue)
 })
 
 // ---------- money: search, filters, history, record a payment ----------
