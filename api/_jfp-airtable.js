@@ -481,6 +481,22 @@ export async function listJuniors() {
   return out
 }
 
+// Older terms by venue and session, copied from Lee's Money Register (a Google
+// Sheet) by the Revenue session's import script. No names. Read at most every 10 minutes.
+export const VENUE_HISTORY_TABLE = process.env.JFP_VENUE_HISTORY_TABLE || 'tblgss68pIVTUOttE'
+export async function listVenueHistory() {
+  const hit = await kvGetJson('jfp:venue-history-cache')
+  if (Array.isArray(hit)) return hit
+  const rows = await readTable(VENUE_HISTORY_TABLE, ['Term', 'Kind', 'Venue', 'Session', 'Revenue', 'Stripe', 'Bank Transfer', 'Cash', 'Other', 'Payments', 'Imported At'])
+  const out = rows.map(({ id, fields: f }) => ({
+    id, term: text(f, 'Term'), kind: text(f, 'Kind'), venue: text(f, 'Venue'), session: text(f, 'Session'),
+    revenue: num(f, 'Revenue'), stripe: num(f, 'Stripe'), bank: num(f, 'Bank Transfer'), cash: num(f, 'Cash'), other: num(f, 'Other'),
+    payments: num(f, 'Payments'), importedAt: text(f, 'Imported At'),
+  }))
+  await kvSetJson('jfp:venue-history-cache', out, 600)
+  return out
+}
+
 export async function listLedger(term) {
   const rows = await readTable(TABLES.ledger, ['Payment ID', 'Term', 'Player Name', 'Amount Paid', 'Payment Method', 'Payment Status', 'Payment Date', 'Source Record ID', 'Stripe Checkout Session ID', 'Stripe Payment Intent ID', 'Notes'])
   return rows.map((r) => ({ id: r.id, ...r.fields })).filter((r) => !term || r['Term'] === term)

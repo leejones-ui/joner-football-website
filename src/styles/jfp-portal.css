@@ -277,3 +277,5 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jv-players summary { cursor: pointer; font-weight: 650; font-size: 14px; }
 .jv-notes { margin-top: 14px; line-height: 1.5; }
 .jv-notes p + p { margin-top: 4px; }
+.jv-term { display: inline-flex; align-items: center; gap: 8px; }
+.jv-term select { width: auto; padding: 7px 10px; font-size: 13.5px; }

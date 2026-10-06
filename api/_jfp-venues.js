@@ -185,6 +185,38 @@ export function juniorsByVenue(rows, term, venueOf) {
   return [...out.values()].map((x) => ({ ...x, sessions: [...x.sessions] }))
 }
 
+// Older terms from the Money Register copy (JFP Venue History): the payments
+// listed under each session, by venue. Lee's own typed totals come back too,
+// so the window can say where the two differ.
+export function venuesFromHistory({ locations, rows, term, venueOf }) {
+  const venues = new Map(locations.map((l) => [l.id, blankVenue(l)]))
+  const register = {}
+  let importedAt = ''
+  let incomeCents = 0
+  for (const r of rows) {
+    if (norm(r.term) !== norm(term)) continue
+    importedAt = importedAt || r.importedAt || ''
+    if (r.kind === 'register total') { register[norm(r.venue)] = cents(r.revenue); continue }
+    const v = venueIn(venues, venueOf(r))
+    const c = cents(r.revenue)
+    incomeCents += c
+    v.receivedCents += c
+    v.stripeCents += cents(r.stripe); v.bankCents += cents(r.bank); v.cashCents += cents(r.cash); v.otherCents += cents(r.other)
+    v.players += r.payments || 0
+    const g = groupIn(v, { key: r.session, label: r.session, coach: '' })
+    g.receivedCents += c
+    g.players += r.payments || 0
+  }
+  return { venues: finish(venues), register, importedAt, incomeCents, unlinked: { cents: 0, count: 0 }, players: [] }
+}
+
+const termOrder = (t) => { const m = /term\s*(\d)\s+(\d{4})/i.exec(t || ''); return m ? Number(m[2]) * 10 + Number(m[1]) : 0 }
+// Every term the venue window can show, newest first.
+export function venueTerms({ current, previous, history }) {
+  const list = [...new Set([current, previous, ...history.map((r) => r.term)].filter(Boolean))]
+  return list.sort((a, b) => termOrder(b) - termOrder(a))
+}
+
 // "Term 4 2026" -> "Term 3 2026"; "Term 1 2027" -> "Term 4 2026".
 export function previousTerm(term) {
   const m = /term\s*(\d)\s+(\d{4})/i.exec(term || '')

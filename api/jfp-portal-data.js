@@ -22,7 +22,7 @@ import {
   loadRoster, countsFrom, playerAge, waiverFor, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, draftAgeBand,
   createWaiverRows, waiverFields, findWaiversByTag, bustRosterCache, findTerm4ByTag,
   getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, listDropped, deleteTerm4Row, RESTORABLE,
-  listLedger, createLedgerRow, listJuniors,
+  listLedger, createLedgerRow, listJuniors, listVenueHistory,
 } from './_jfp-airtable.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, PAY_EFFECTS } from './_jfp-finalise.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
@@ -31,7 +31,7 @@ import { nextStatuses, setNextStatus, nextPrices, recordNext } from './_jfp-next
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { jfpStripePayments } from './_jfp-stripe.js'
-import { allocateTermMoney, venuesForTerm, venuesFromLedger, juniorsByVenue, previousTerm, totalOf } from './_jfp-venues.js'
+import { allocateTermMoney, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf } from './_jfp-venues.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -454,7 +454,7 @@ const weekOf = (iso) => {
 }
 
 async function moneyData(config, { since, fresh = false } = {}) {
-  const [roster, groups, ledger, juniors] = await Promise.all([loadRoster({ fresh: true }), listGroups(), listLedger(config.term).catch(() => []), listJuniors().catch(() => [])])
+  const [roster, groups, ledger, juniors, history] = await Promise.all([loadRoster({ fresh: true }), listGroups(), listLedger(config.term).catch(() => []), listJuniors().catch(() => []), listVenueHistory().catch(() => [])])
   let stripe = { payments: [], other: { count: 0, cents: 0 }, since: since || config.moneySince, error: '' }
   try { stripe = { ...(await jfpStripePayments({ since: since || config.moneySince, fresh })), error: '' } } catch (error) { console.error('jfp stripe read failed', error); stripe.error = 'Stripe could not be read just now. Airtable figures only.' }
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
@@ -532,6 +532,7 @@ async function moneyData(config, { since, fresh = false } = {}) {
   for (const l of locations) l.juniors = jj.find((j) => j.id === l.id) || null
   return {
     since: stripe.since, stripeError: stripe.error, stripeAt: stripe.at || '', term: config.term,
+    venueTerms: venueTerms({ current: config.term, previous: previousTerm(config.term), history }),
     kpis: {
       incomeCents: stripeGross - stripeRefunds + offlineCents, stripeCents: stripeGross - stripeRefunds, stripeGrossCents: stripeGross, refundsCents: stripeRefunds,
       offlineCents, cashCents: offline.filter((o) => o.method === 'Cash').reduce((t, o) => t + o.cents, 0), bankCents: offline.filter((o) => o.method === 'Bank Transfer').reduce((t, o) => t + o.cents, 0),
@@ -551,8 +552,16 @@ async function moneyData(config, { since, fresh = false } = {}) {
 
 // An earlier term by venue, from its payment ledger (Term 3 was reconciled to
 // Stripe). Ledger rows name Term 3 rows, and now and then a Term 4 row.
-async function pastVenues(config) {
-  const term = previousTerm(config.term)
+async function pastVenues(config, asked) {
+  const previous = previousTerm(config.term)
+  // Older terms: the copy of Lee's Money Register (Google Sheet).
+  if (asked && asked !== previous) {
+    const history = await listVenueHistory()
+    if (!history.some((r) => r.term === asked)) return null
+    const out = venuesFromHistory({ locations: config.locations, rows: history, term: asked, venueOf: (r) => venueNamed(locationFor(config, r.venue || '')) })
+    return { term: asked, source: 'register', ...out }
+  }
+  const term = previous
   const [roster, ledger, juniors] = await Promise.all([loadRoster(), listLedger(term).catch(() => []), listJuniors().catch(() => [])])
   const venueOf = (r) => venueNamed(locationFor(config, r.location || ''))
   const groupOf = (r) => ({ key: `${r.day}|${r.time}`.toLowerCase(), label: [r.day, r.time].filter(Boolean).join(' ') || 'Not in a group', coach: r.coach || '' })
@@ -560,7 +569,7 @@ async function pastVenues(config) {
   const incomeCents = ledger.reduce((t, l) => t + Math.round(Number(l['Amount Paid'] || 0) * 100), 0)
   const jj = juniorsByVenue(juniors, term, venueOf)
   for (const l of out.venues) l.juniors = jj.find((j) => j.id === l.id) || null
-  return { term, incomeCents, ...out }
+  return { term, source: 'ledger', incomeCents, ...out }
 }
 
 // One player's payment story: the row, Stripe payments from the family's
@@ -1420,7 +1429,10 @@ async function handle(req, res) {
       }
 
       case 'money': return res.status(200).json({ success: true, money: await moneyData(config, { since: ISO.test(body.since || '') ? body.since : '', fresh: body.fresh === true }) })
-      case 'venues': return res.status(200).json({ success: true, venues: await pastVenues(config) })
+      case 'venues': {
+        const v = await pastVenues(config, clean(body.term, 30))
+        return v ? res.status(200).json({ success: true, venues: v }) : fail(res, 404, 'No figures for that term.')
+      }
       case 'playerPayments': {
         const d = await playerPayments(config, clean(body.rowId, 30))
         return d ? res.status(200).json({ success: true, player: d }) : fail(res, 404, 'Player row not found.')

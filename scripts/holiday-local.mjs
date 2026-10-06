@@ -192,7 +192,7 @@ const emails = []
 // A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
 // JSON file ({ term4, term3, waiver, ledger } record arrays) to load another,
 // for example an anonymised copy of the real roster for screenshots.
-const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [] }
+const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [], venueHistory: [] }
 let recSeq = 1
 const recId = () => `rec${String(recSeq++).padStart(14, '0')}`
 function seedRow(day, time, location, coach, type = 'JFP 10 weeks', confirmation = 'Confirmed', extra = {}) {
@@ -228,10 +228,16 @@ if (process.env.JFP_SEED && fs.existsSync(process.env.JFP_SEED)) {
   // Joners Juniors, Saturday at HQ: Term 3 paid; Term 4 one paid, one on last term's credit, one not yet.
   const jj = (key, term, status, via) => airtable[key].push({ id: recId(), fields: { 'Player Full Name': `Junior ${recSeq}`, 'Term': term, 'Location': 'Belrose HQ', 'Session Day': 'Saturday', 'Session Time': '9:15am', 'Fee': 220, 'Payment Status': status, ...(via ? { 'Paid Via': via } : {}) } })
   jj('juniors3', 'Term 3 2026', 'Paid', 'Stripe'); jj('juniors3', 'Term 3 2026', 'Paid', 'Stripe')
+  // Older terms copied from the Money Register (JFP Venue History).
+  const hist = (term, kind, venue, session, revenue, extra = {}) => airtable.venueHistory.push({ id: recId(), fields: { 'Key': `${term} | ${venue} | ${session}`, 'Term': term, 'Kind': kind, 'Venue': venue, 'Session': session, 'Revenue': revenue, 'Imported At': '2026-10-07', ...extra } })
+  hist('Term 2 2026', 'payments', 'Belrose HQ', 'Monday Afternoon (HQ)', 7795, { 'Bank Transfer': 5000, 'Cash': 2795, 'Payments': 11 })
+  hist('Term 2 2026', 'payments', 'Rydalmere', 'Friday Morning (Ryd)', 19396, { 'Bank Transfer': 19396, 'Payments': 23 })
+  hist('Term 2 2026', 'register total', 'Belrose HQ', 'Total typed in the register', 9000)
+  hist('Term 1 2024', 'payments', 'NTRA', 'Thursday Morning (NTRA)', 7525, { 'Cash': 7525, 'Payments': 10 })
   jj('juniors4', 'Term 4 2026', 'Paid', 'Stripe'); jj('juniors4', 'Term 4 2026', 'Paid', 'Term 3 credit'); jj('juniors4', 'Term 4 2026', 'Unpaid')
 }
 
-const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4' }
+const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblgss68pIVTUOttE: 'venueHistory' }
 function airtableResponse(url, init) {
   const u = new URL(url)
   const parts = u.pathname.split('/').slice(3).map(decodeURIComponent) // [table, recordId?]

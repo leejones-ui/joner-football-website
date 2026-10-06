@@ -1082,9 +1082,17 @@ await test('venues: revenue by venue adds up to income this term; the term befor
   assert.equal(past.incomeCents, 191500)
   assert.equal(hq3.juniors.paidCents, 44000)
   assert.ok(past.players.some((p) => p.player === 'Riley Returning' && p.receivedCents === 85000))
+  // Any term: the list runs newest first; older terms come from the Money Register copy.
+  assert.deepEqual(m.venueTerms, ['Term 4 2026', 'Term 3 2026', 'Term 2 2026', 'Term 1 2024'])
+  const t2 = (await portal(lee, 'venues', { term: 'Term 2 2026' })).data.venues
+  assert.equal(t2.source, 'register')
+  assert.deepEqual([t2.venues.find((l) => l.name === 'Belrose HQ').receivedCents, t2.venues.find((l) => l.name === 'Rydalmere Park').bankCents, t2.register['belrose hq']], [779500, 1939600, 900000])
+  assert.equal((await portal(lee, 'venues', { term: 'Term 3 2026' })).data.venues.source, 'ledger')
+  assert.equal((await portal(lee, 'venues', { term: 'Term 9 1999' })).status, 404)
   const sam = client()
   await signIn(sam, 'jonerfootballsam@gmail.com', 'staff')
   assert.equal((await portal(sam, 'venues')).status, 403, 'coaches never see venue money')
+  assert.equal((await portal(sam, 'venues', { term: 'Term 2 2026' })).status, 403)
 })
 
 console.log(`\n${passed} JFP flow checks passed`)

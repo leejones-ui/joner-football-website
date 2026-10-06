@@ -1,6 +1,6 @@
 // Revenue by venue: pure-function checks. No network, no KV.
 import assert from 'node:assert/strict'
-import { splitCents, allocateTermMoney, venuesForTerm, venuesFromLedger, juniorsByVenue, previousTerm, totalOf } from '../api/_jfp-venues.js'
+import { splitCents, allocateTermMoney, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf } from '../api/_jfp-venues.js'
 
 let passed = 0
 function test(name, fn) { fn(); passed += 1; console.log(`ok - ${name}`) }
@@ -110,6 +110,25 @@ test('Joners Juniors: this term only, paid places, last term\'s credit apart', (
   assert.equal(hq.paidCents, 22000)
   assert.equal(hq.creditCents, 22000)
   assert.deepEqual(hq.sessions, ['Saturday 9:15am'])
+})
+
+test('older terms from the Money Register copy: sessions, methods, typed totals; any term in order', () => {
+  const v2 = (r) => ({ 'Belrose HQ': HQ, NTRA, Rydalmere: RYD }[r.venue] || { id: 'other', name: 'Other' })
+  const rows = [
+    { term: 'Term 2 2026', kind: 'payments', venue: 'Belrose HQ', session: 'Monday Afternoon (HQ)', revenue: 7795, bank: 5000, cash: 2795, stripe: 0, other: 0, payments: 11, importedAt: '2026-10-07' },
+    { term: 'Term 2 2026', kind: 'payments', venue: 'Belrose HQ', session: 'JONERS JUNIORS', revenue: 1074, other: 1074, payments: 1 },
+    { term: 'Term 2 2026', kind: 'payments', venue: 'Rydalmere', session: 'Friday Morning (Ryd)', revenue: 19396, bank: 19396, payments: 23 },
+    { term: 'Term 2 2026', kind: 'register total', venue: 'Belrose HQ', session: 'Total typed in the register', revenue: 9000 },
+    { term: 'Term 1 2025', kind: 'payments', venue: 'NTRA', session: 'Thursday Morning (NTRA)', revenue: 100, payments: 1 },
+  ]
+  const out = venuesFromHistory({ locations: LOCS, rows, term: 'Term 2 2026', venueOf: v2 })
+  const hq = out.venues.find((x) => x.id === HQ.id)
+  assert.deepEqual([hq.receivedCents, hq.bankCents, hq.cashCents, hq.otherCents, hq.players, hq.groups.length], [886900, 500000, 279500, 107400, 12, 2])
+  assert.equal(out.incomeCents, 886900 + 1939600)
+  assert.equal(out.register['belrose hq'], 900000)
+  assert.equal(out.importedAt, '2026-10-07')
+  assert.ok(!out.venues.some((x) => x.id === NTRA.id), 'another term is not mixed in')
+  assert.deepEqual(venueTerms({ current: 'Term 4 2026', previous: 'Term 3 2026', history: rows }), ['Term 4 2026', 'Term 3 2026', 'Term 2 2026', 'Term 1 2025'])
 })
 
 test('the term before', () => {
