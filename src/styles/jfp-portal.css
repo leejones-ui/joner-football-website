@@ -53,7 +53,14 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jp-theme[data-theme="dark"] .j-btn-line:hover { border-color: #8a8983; }
 .jp-theme[data-theme="dark"] .j-btn-danger { background: transparent; border-color: rgba(255, 143, 135, .45); }
 .jp-theme[data-theme="dark"] a { color: var(--j-blue); }
+/* Button-links keep their variant ink. "inherit" took the card's near-white
+   text, which on the white j-btn-dark made the label invisible. */
 .jp-theme[data-theme="dark"] a.j-btn { color: inherit; }
+.jp-theme[data-theme="dark"] a.j-btn-dark { color: var(--j-action-ink); }
+.jp-theme[data-theme="dark"] a.j-btn-line,
+.jp-theme[data-theme="dark"] a.j-btn-soft { color: var(--j-ink); }
+.jp-theme[data-theme="dark"] a.j-btn-ghost { color: var(--j-ink-2); }
+.jp-theme[data-theme="dark"] a.j-btn-danger { color: var(--j-red); }
 .jp-theme[data-theme="dark"] .jp-player:hover { background: #212120; }
 .jp-theme[data-theme="dark"] .jp-att button { background: transparent; border-color: #3a3a37; color: var(--j-ink-2); }
 .jp-theme[data-theme="dark"] .jp-seg button[aria-pressed="true"] { background: #33332f; color: var(--j-ink); box-shadow: none; }
