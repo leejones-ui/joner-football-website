@@ -41,7 +41,7 @@ export async function renderMessages(ui) {
       <div class="jp-seg" id="ms-f">${[['pay', `Due on records (${counts.pay})`], ['paid', `Paid (${counts.paid})`], ['noPrice', `No fee set (${counts.noPrice})`], ['notSent', 'Not emailed yet'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${S.filter === v}">${esc(l)}</button>`).join('')}</div>
       <input class="j-input" id="ms-q" placeholder="Search family or player" value="${esc(S.q)}" style="max-width:260px;padding:8px 10px;font-size:14px">
     </div>
-    <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Family</th><th>Players</th><th>Records</th><th>Email</th><th>Text</th><th></th></tr></thead><tbody>
+    <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Parent</th><th>Players</th><th>Records</th><th>Email</th><th>Text</th><th></th></tr></thead><tbody>
     ${list.map((f) => `<tr>
       <td><b>${esc(f.parent || '')}</b><br><span class="muted small">${esc(f.email)}</span>${f.dnc ? '<br><span class="j-pill j-pill-red">Do Not Contact</span>' : ''}</td>
       <td class="small">${f.players.map((x) => esc(x.name)).join('<br>')}</td>
@@ -54,7 +54,7 @@ export async function renderMessages(ui) {
     ${counts.noPrice ? '<p class="muted small" style="margin-top:8px">"No fee set": nothing paid and no Term 4 Fee in Airtable. A blank fee is unknown, not zero, so these families cannot be messaged until the fee is set.</p>' : ''}
     ${d.noEmail.length ? `<p class="muted small">No parent email in Airtable: ${esc(d.noEmail.map((x) => x.name).join(', '))}.</p>` : ''}
     <h2 style="margin:22px 0 10px">Sent and waiting</h2>
-    <div class="jp-scroll"><table class="jp-table"><thead><tr><th>When</th><th>Family</th><th>Channel</th><th>Status</th><th>Detail</th><th></th></tr></thead><tbody>
+    <div class="jp-scroll"><table class="jp-table"><thead><tr><th>When</th><th>Parent</th><th>Channel</th><th>Status</th><th>Detail</th><th></th></tr></thead><tbody>
     ${d.messages.filter((m) => m.status !== 'draft').slice(0, 80).map((m) => `<tr>
       <td class="small">${esc(when(m.events.at(-1)?.at))}</td>
       <td class="small">${m.selfTest ? '<b>Test text to Lee</b>' : `<b>${esc(m.parentName)}</b><br><span class="muted">${esc(m.email)}</span>`}</td>
@@ -75,7 +75,7 @@ export async function renderMessages(ui) {
   }))
   view().querySelectorAll('[data-settle]').forEach((b) => b.addEventListener('click', () => settle(ui, b.dataset.settle)))
   view().querySelectorAll('[data-verify]').forEach((b) => b.addEventListener('click', async () => {
-    const box = modal(`<h2 style="margin-bottom:8px">Did the test text arrive?</h2><p class="small" style="margin-bottom:12px">Only say yes if it is on your phone. Families' texts will come from the same sender.</p>
+    const box = modal(`<h2 style="margin-bottom:8px">Did the test text arrive?</h2><p class="small" style="margin-bottom:12px">Only say yes if it is on your phone. Every parent's text will come from the same sender.</p>
       <label class="j-field"><span>Name shown to staff for this route</span><input class="j-input" id="vr-label" value="Lee (Messages on the HQ Mac)"></label>
       <label class="j-field"><span>Texts start "Hi Sarah, it's ... from Joner Football"</span><input class="j-input" id="vr-name" value="Lee" maxlength="30"></label>
       <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="j-btn j-btn-line" data-close>Not yet</button><button type="button" class="j-btn j-btn-dark" id="vr-yes">Yes, it arrived</button></div>`)

@@ -36,7 +36,7 @@ const NAV = {
   coach: [['Coaching', [['program', 'Program'], ['coach', 'My sessions'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['profile', 'My profile']]]],
   admin: [
     ['Overview', [['overview', 'Dashboard']]],
-    ['Program', [['board', 'Timetable'], ['families', 'Families'], ['messages', 'Messages'], ['requests', 'Requests'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
+    ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['requests', 'Requests'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
     ['Money', [['money', 'Money'], ['payments', 'Payment links'], ['prices', 'Prices']]],
     ['Coaches', [['coach', 'Registers'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['coaches', 'Coaches']]],
     ['Admin', [['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]],
@@ -772,9 +772,9 @@ function groupModal(g) {
     <label class="j-field"><span>Extra coaches</span><select class="j-select" id="gm-extra" multiple size="3">${d.coaches.map((c) => `<option value="${esc(c.id)}" ${(v.extraCoachIds || []).includes(c.id) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
     <div class="j-two"><label class="j-field"><span>Price from</span><select class="j-select" id="gm-prod">${opt(PRODS, v.product || 'group')}</select></label>
     <label class="j-check" style="margin-top:22px"><input type="checkbox" id="gm-trials" ${v.trials !== false ? 'checked' : ''}> <span>Apply: we may offer a trial first</span></label></div>
-    <label class="j-check"><input type="checkbox" id="gm-full" ${v.showFull ? 'checked' : ''}> <span><b>Show as fully booked.</b> Families only see Join the waitlist. You can still add players here.</span></label>
+    <label class="j-check"><input type="checkbox" id="gm-full" ${v.showFull ? 'checked' : ''}> <span><b>Show as fully booked.</b> Parents only see Join the waitlist. You can still add players here.</span></label>
     <label class="j-check"><input type="checkbox" id="gm-1to1" ${v.allowOneToOne ? 'checked' : ''}> <span><b>Group or 1 to 1.</b> For Book now groups: a family can book the whole hour as a 1 to 1 for the term (term of 1 to 1s price), only while nobody else is booked.</span></label>
-    <label class="j-check"><input type="checkbox" id="gm-awf" ${v.applyWhenFull ? 'checked' : ''}> <span><b>Keep taking applications when full.</b> Families still see Apply instead of the waitlist (for popular groups).</span></label>
+    <label class="j-check"><input type="checkbox" id="gm-awf" ${v.applyWhenFull ? 'checked' : ''}> <span><b>Keep taking applications when full.</b> Parents still see Apply instead of the waitlist (for popular groups).</span></label>
     <div class="j-field"><span>Requirements: parents see these when they open the group</span>${REQS.map(([k, l]) => `<label class="j-check" style="padding:4px 0"><input type="checkbox" data-rk="${k}" ${(v.requirements || []).includes(k) ? 'checked' : ''}> <span>${esc(l)}</span></label>`).join('')}</div>
     <label class="j-field"><span>More about who this group is for <span class="muted">(optional, your own words, shown to parents under the ticks)</span></span><textarea class="j-textarea" id="gm-reqtext" rows="5" maxlength="1200" placeholder="For example: This group is for players who are pushing for NPL or academy squads. Expect a fast tempo, lots of 1v1s and high standards. Leave a blank line between paragraphs.">${esc(v.requirementsText || '')}</textarea></label>
     <div class="j-field"><span>An application asks</span>${QS.map(([k, l]) => `<label class="j-check" style="padding:4px 0"><input type="checkbox" data-qk="${k}" ${(v.questions || []).includes(k) ? 'checked' : ''}> <span>${esc(l)}</span></label>`).join('')}</div>
@@ -1479,7 +1479,7 @@ async function renderFamilies() {
   const d = await need(await post('familyInvites'))
   const kind = { pay: ['amber', 'To pay'], paid: ['green', 'Paid'], noPrice: ['red', 'Needs a price first'] }
   const ready = d.list.filter((f) => f.kind !== 'noPrice')
-  view().innerHTML = `<div class="jp-head"><div><h1>Families</h1><p class="muted small">Every Term 4 family, by parent email. Send them their account: paid families see their sessions, families who owe get a link to pay what Airtable shows as owing. Nothing is sent until you press Send. Replies go to Ligia.</p></div></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>Players</h1><p class="muted small">Every Term 4 player, grouped under their parent's email. Send the parent their account: players already paid for see their sessions, anyone who owes gets a link to pay what Airtable shows as owing. Nothing is sent until you press Send. Replies go to Ligia.</p></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       <span class="j-pill j-pill-grey">${d.list.length} families</span>
       <span class="j-pill j-pill-amber">${d.list.filter((f) => f.kind === 'pay').length} to pay</span>
@@ -1493,7 +1493,7 @@ async function renderFamilies() {
       <button type="button" class="j-btn j-btn-dark" id="fm-send">Send to selected</button>
     </div>
     <div id="fm-preview" hidden></div>
-    <div class="jp-scroll"><table class="jp-table"><thead><tr><th><input type="checkbox" id="fm-all" aria-label="Select all"></th><th>Family</th><th>Players</th><th>Status</th><th>Invited</th></tr></thead><tbody>
+    <div class="jp-scroll"><table class="jp-table"><thead><tr><th><input type="checkbox" id="fm-all" aria-label="Select all"></th><th>Parent</th><th>Players</th><th>Status</th><th>Invited</th></tr></thead><tbody>
     ${d.list.map((f) => `<tr><td><input type="checkbox" data-fm="${esc(f.email)}" ${f.kind === 'noPrice' ? 'disabled' : ''}></td><td><b>${esc(f.parent || '')}</b><br><span class="muted small">${esc(f.email)}</span></td><td class="small">${f.players.map((x) => `${esc(x.name)} <span class="muted">${esc(x.group)}</span>`).join('<br>')}</td><td><span class="j-pill j-pill-${kind[f.kind][0]}">${esc(kind[f.kind][1])}${f.kind === 'pay' ? ` ${esc(money(f.owingCents))}` : ''}</span>${f.needsWaiver ? '<br><span class="muted small">Waiver needed</span>' : ''}</td><td class="small">${f.invitedAt ? esc(new Date(f.invitedAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })) : ''}</td></tr>`).join('')}
     </tbody></table></div>
     ${d.list.some((f) => f.kind === 'noPrice') ? '<p class="muted small" style="margin-top:8px">"Needs a price first": unpaid with no Term 4 Fee in Airtable. Send them a payment link from the Timetable (tap the player), or set the fee in Airtable, then come back.</p>' : ''}
@@ -1503,13 +1503,13 @@ async function renderFamilies() {
   $('fm-prev').addEventListener('click', () => {
     const el = $('fm-preview')
     el.hidden = !el.hidden
-    el.innerHTML = ['pay', 'paid'].filter((k) => d.previews[k]).map((k) => `<div class="j-card" style="padding:12px;margin-bottom:12px"><p class="small"><b>${k === 'pay' ? 'Families who owe' : 'Paid families'}</b> · Subject: ${esc(d.previews[k].subject)}</p><iframe title="Email preview" style="width:100%;height:560px;border:1px solid #eee;border-radius:10px;margin-top:8px" srcdoc="${esc(d.previews[k].html)}"></iframe></div>`).join('')
+    el.innerHTML = ['pay', 'paid'].filter((k) => d.previews[k]).map((k) => `<div class="j-card" style="padding:12px;margin-bottom:12px"><p class="small"><b>${k === 'pay' ? 'Owes money' : 'Already paid'}</b> · Subject: ${esc(d.previews[k].subject)}</p><iframe title="Email preview" style="width:100%;height:560px;border:1px solid #eee;border-radius:10px;margin-top:8px" srcdoc="${esc(d.previews[k].html)}"></iframe></div>`).join('')
   })
   $('fm-send').addEventListener('click', async (e) => {
     const emails = boxes().filter((b) => b.checked).map((b) => b.dataset.fm)
     if (!emails.length) return toast('Tick the families to email.')
     const again = emails.filter((x) => d.list.find((f) => f.email === x)?.invitedAt).length
-    if (!(await confirmBox(`Email <b>${emails.length}</b> famil${emails.length === 1 ? 'y' : 'ies'} now?${again ? ` ${again} already had it and will get it again.` : ''} Families who owe get a payment link.`, { ok: 'Send' }))) return
+    if (!(await confirmBox(`Email <b>${emails.length}</b> parent${emails.length === 1 ? '' : 's'} now?${again ? ` ${again} already had it and will get it again.` : ''} Anyone who owes gets a payment link.`, { ok: 'Send' }))) return
     const btn = e.currentTarget
     btn.disabled = true
     let sent = 0, failed = 0
@@ -1818,7 +1818,7 @@ async function renderSettings() {
       <h2 style="margin:16px 0 12px">Waiver</h2>
       <label class="j-check"><input type="checkbox" id="s-wcarry" ${c.waiverCarryover !== false ? 'checked' : ''}> <span><b>Accept waivers signed in an earlier term.</b> Off: every family signs again for ${esc(c.term)}. Either way a waiver only counts when it carries the family's own email or mobile.</span></label>
       <label class="j-field"><span>Backup waiver form link</span><input class="j-input" id="s-waiver" value="${esc(c.waiverUrl)}"></label>
-      <p class="muted small">Families sign the waiver on the booking page. This link is the backup.</p>
+      <p class="muted small">Parents sign the waiver on the booking page. This link is the backup.</p>
       <h2 style="margin:16px 0 12px">Locations</h2>
       ${c.locations.map((l) => `<div class="j-card" style="padding:12px;margin-bottom:8px" data-loc="${esc(l.id)}"><b>${esc(l.name)}</b><div class="j-two" style="margin-top:8px"><label class="j-field"><span>Line under the photo</span><input class="j-input" data-lf="blurb" value="${esc(l.blurb)}"></label><label class="j-field"><span>Photo path</span><input class="j-input" data-lf="photo" value="${esc(l.photo)}"></label></div><label class="j-field"><span>Address</span><input class="j-input" data-lf="address" value="${esc(l.address)}"></label></div>`).join('')}
       <p class="j-err" id="s-err" hidden></p>
