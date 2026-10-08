@@ -22,6 +22,13 @@ if (fs.existsSync(envFile)) for (const l of fs.readFileSync(envFile, 'utf8').spl
 const TOKEN = process.env.JFP_RELAY_TOKEN || fileEnv.JFP_RELAY_TOKEN || ''
 const URL_ = arg('--url', process.env.JFP_RELAY_URL || fileEnv.JFP_RELAY_URL || 'https://jonerfootball.com/api/jfp-messages-relay')
 const IMSG = arg('--imsg', process.env.JFP_IMSG || '/opt/homebrew/bin/imsg')
+// auto = Messages decides (iMessage when the family has it, else SMS). iMessage
+// goes out as the Apple ID's own number and imsg cannot choose it. sms = every
+// text goes as an SMS through the iPhone with the work SIM (Text Message
+// Forwarding), so it always comes from that number and also reaches families
+// without iMessage. Set JFP_TEXT_SERVICE=sms|imessage|auto in relay.env, or --service.
+const SERVICE = (arg('--service', process.env.JFP_TEXT_SERVICE || fileEnv.JFP_TEXT_SERVICE || 'auto') || 'auto').toLowerCase()
+if (!['auto', 'sms', 'imessage'].includes(SERVICE)) { console.error(`--service must be auto, sms or imessage (got ${SERVICE}).`); process.exit(1) }
 const HOST = os.hostname().replace(/\.local$/, '')
 const sha = (s) => crypto.createHash('sha256').update(String(s)).digest('hex')
 const digits = (s) => String(s || '').replace(/\D/g, '').slice(-9)
@@ -68,14 +75,14 @@ async function sendOne(job) {
   // The text must be exactly what was approved.
   if (sha(job.text) !== job.textHash) return relay('receipt', { id: job.id, textHash: job.textHash, outcome: 'failed', error: 'text did not match what was approved; not sent' })
   const since = Date.now()
-  const r = imsg(['send', '--to', job.to, '--text', job.text, '--service', 'auto', '--json'])
+  const r = imsg(['send', '--to', job.to, '--text', job.text, '--service', SERVICE, '--json'])
   if (r.error && r.error.code === 'ENOENT') return relay('receipt', { id: job.id, textHash: job.textHash, outcome: 'failed', error: 'imsg not found; not sent' })
   const back = await readBack(job.to, job.text, since)
   let outcome = 'unknown', error = ''
   if (back.found) outcome = 'sent'
   else if (r.code !== 0) error = `imsg exit ${r.code}: ${(r.err || r.out).replace(/\+?\d[\d\s]{7,}/g, '[number]').slice(0, 200)}`
   else error = 'imsg said sent, but it was not found in Messages afterwards'
-  log(`text ${job.id}: ${outcome}${back.service ? ` via ${back.service}` : ''}`)
+  log(`text ${job.id}: ${outcome}${back.service ? ` via ${back.service}` : ''} (asked for ${SERVICE})`)
   return relay('receipt', { id: job.id, textHash: job.textHash, outcome, service: back.service || '', sender: back.sender || '', providerId: back.providerId || '', readback: back, error })
 }
 
@@ -99,7 +106,7 @@ async function once() {
 if (!TOKEN) { console.error(`No JFP_RELAY_TOKEN (looked in ${envFile}).`); process.exit(1) }
 if (has('--check')) {
   const c = check()
-  console.log(JSON.stringify({ ...c, identities: (c.identities || []).map((x) => (x.includes('@') ? x.replace(/^(.).*(@.*)$/, '$1***$2') : `•••• ${x.slice(-3)}`)) }))
+  console.log(JSON.stringify({ ...c, sendAs: SERVICE, identities: (c.identities || []).map((x) => (x.includes('@') ? x.replace(/^(.).*(@.*)$/, '$1***$2') : `•••• ${x.slice(-3)}`)) }))
   try { const h = await relay('hello', { imsg: c.imsg || '', ok: c.ok, problem: c.problem || '' }); console.log('relay ok, route verified:', Boolean(h.route?.verified)) } catch (e) { console.log('relay:', e.message) }
 } else if (has('--watch')) {
   log('watching for approved texts (Ctrl+C to stop)')

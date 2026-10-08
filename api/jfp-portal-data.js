@@ -223,8 +223,8 @@ async function addPlayer(req, res, principal, config, body) {
 
 // Every Term 4 player flattened for the Players tab: enough to search, filter
 // and show the whole picture without a second call per player.
-async function playersList(req, res, config) {
-  const [roster, groups] = await Promise.all([loadRoster(), listGroups()])
+async function playersList(req, res, config, body = {}) {
+  const [roster, groups] = await Promise.all([loadRoster({ fresh: body.fresh === true }), listGroups()])
   const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
   // placeInGroups resolves each row's groupId the same way the Timetable does,
   // including the coach-split morning squads. A groupId that is not a real
@@ -1381,7 +1381,7 @@ async function handle(req, res) {
       case 'familyInvites': return await familyInvites(req, res, principal, config, body)
       case 'searchPlayers': return res.status(200).json({ success: true, results: await searchPlayers(config, body) })
       case 'addPlayer': return await addPlayer(req, res, principal, config, body)
-      case 'playersList': return await playersList(req, res, config)
+      case 'playersList': return await playersList(req, res, config, body)
       case 'addPlayerNoGroup': return await addPlayerNoGroup(req, res, principal, config, body)
       case 'movePlayer': return await movePlayer(res, principal, config, body)
       case 'removePlayer': return await removePlayer(res, principal, config, body)

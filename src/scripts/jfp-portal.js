@@ -1290,7 +1290,8 @@ async function renderMoney() {
   const counts = { '': m.players.length, ...m.status }
   view().innerHTML = `
     <div class="jd-head"><div><h1>Money</h1><p>Every player's payments: Stripe read live, plus the bank transfers and cash you record here.</p></div>
-      <div class="jd-sync"><label class="muted small" for="m-since">Term payments from</label><input class="j-input" type="date" id="m-since" value="${esc(m.since)}" style="width:auto;padding:7px 10px;font-size:13.5px"><button type="button" class="j-btn j-btn-line j-btn-sm" id="m-refresh">Refresh from Stripe</button></div></div>
+      <div class="jd-sync"><label class="muted small" for="m-since">Term payments from</label><input class="j-input" type="date" id="m-since" value="${esc(m.since)}" style="width:auto;padding:7px 10px;font-size:13.5px"><button type="button" class="j-btn j-btn-line j-btn-sm" id="m-refresh">Refresh from Stripe</button><button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-add">+ Add a player</button></div></div>
+    <p class="muted small" style="margin:-4px 0 10px">Read from Airtable and Stripe at ${esc(new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}. Recording a payment here writes the player's row and the payment ledger in Airtable; anything changed in Airtable shows here when you open this tab or refresh.</p>
     ${m.stripeError ? `<div class="j-box j-box-amber">${esc(m.stripeError)}</div>` : ''}
     <div class="jd-grid">
       <section class="jd-card jd-hero jm-hero jd-in" style="--i:0"><div><p class="lbl">Income this term</p><p class="big">${esc(money(m.kpis.incomeCents))}</p></div>
@@ -1323,6 +1324,7 @@ async function renderMoney() {
     const rec = e.target.closest('[data-record]'); if (rec) { e.stopPropagation(); return recordModal(m.players.find((p) => p.rowId === rec.dataset.record)) }
     const tr = e.target.closest('[data-row]'); if (tr) historyDrawer(tr.dataset.row)
   })
+  $('m-add').addEventListener('click', async () => { PL.at = 0; await go('players'); plAddBox() })
   $('m-refresh').addEventListener('click', async (e) => {
     e.currentTarget.disabled = true
     const since = $('m-since').value
@@ -1530,7 +1532,7 @@ async function renderFamilies() {
 
 // ---------- Players: search, filters, a full record, and adding one ----------
 
-const PL = { q: '', status: '', group: '', coach: '', waiver: '', place: '', data: null }
+const PL = { q: '', status: '', group: '', coach: '', waiver: '', place: '', data: null, at: 0 }
 
 function plMatch(p) {
   const q = PL.q.trim().toLowerCase()
@@ -1619,12 +1621,14 @@ function plAddBox() {
 }
 
 async function renderPlayers() {
-  if (!PL.data) PL.data = await need(await post('playersList'))
+  // Read from Airtable again whenever the tab is opened after half a minute,
+  // so a change made in Airtable shows here without a page reload.
+  if (!PL.data || Date.now() - PL.at > 30000) { PL.data = await need(await post('playersList', { fresh: true })); PL.at = Date.now() }
   const d = PL.data
   const shown = d.players.filter(plMatch)
   const opt = (list, sel, blank) => `<option value="">${blank}</option>` + list.map((x) => `<option value="${esc(x.id)}" ${sel === x.id ? 'selected' : ''}>${esc(x.label || x.name)}</option>`).join('')
   view().innerHTML = `<div class="jp-head"><div><h1>Players</h1><p class="muted small">Every Term 4 player. Search, filter, click anyone to see everything about them.</p></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-dark" id="pl-add">+ Add a player</button><button type="button" class="j-btn j-btn-line" id="pl-invite">Send account invites</button></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="muted small" id="pl-synced">Read from Airtable ${esc(new Date(PL.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}</span><button type="button" class="j-btn j-btn-line" id="pl-refresh">Refresh from Airtable</button><button type="button" class="j-btn j-btn-dark" id="pl-add">+ Add a player</button><button type="button" class="j-btn j-btn-line" id="pl-invite">Send account invites</button></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <input class="j-input" id="pl-q" placeholder="Search name, parent, email, mobile, group" value="${esc(PL.q)}" style="flex:1;min-width:240px">
       <select class="j-select" id="pl-status" style="width:auto">${opt([{ id: 'unpaid', label: 'Not paid' }, { id: 'paid', label: 'Paid' }, { id: 'noprice', label: 'No fee set' }], PL.status, 'Any payment')}</select>
@@ -1644,6 +1648,7 @@ async function renderPlayers() {
   }
   $('pl-clear').addEventListener('click', () => { Object.assign(PL, { q: '', status: '', group: '', coach: '', waiver: '', place: '' }); redraw() })
   $('pl-add').addEventListener('click', () => plAddBox())
+  $('pl-refresh').addEventListener('click', () => { PL.at = 0; renderPlayers() })
   $('pl-invite').addEventListener('click', () => renderFamilies())
   view().querySelectorAll('[data-pl]').forEach((tr) => tr.addEventListener('click', () => {
     const p = d.players.find((x) => x.rowId === tr.dataset.pl)

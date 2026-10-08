@@ -88,7 +88,7 @@ function render() {
     </div>`).join('')
 
   if (!D.players.length) {
-    $('players').innerHTML = `<div class="j-empty">We do not have any players under <b>${esc(D.email)}</b> yet.<br><br><a class="j-btn j-btn-dark" href="/jfp-booking/">See the timetable</a><p class="small" style="margin-top:12px">Used another email with us? Sign out and sign in with that one.</p></div>`
+    $('players').innerHTML = `<div class="j-empty">We do not have any players under <b>${esc(D.email)}</b> yet.<br><br><a class="j-btn j-btn-dark" href="/jfp-booking/">See the timetable</a><p class="small" style="margin-top:12px">Already train with us? You may have booked with a different email. Sign out and sign in with that one, or <button type="button" data-contact style="display:inline;background:none;border:0;padding:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer">tell us the email you used</button> and we will link it for you.</p></div>`
   } else {
     $('players').innerHTML = `<h2 style="margin-bottom:10px">Players</h2>` + D.players.map((p) => `
       <article class="j-card" style="padding:16px;margin-bottom:12px">
