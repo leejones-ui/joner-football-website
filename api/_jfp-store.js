@@ -175,6 +175,22 @@ function cleanLocations(list, fallback) {
   return out.length ? out : fallback
 }
 
+// A mobile number as digits with an optional leading +, or '' when it does not
+// look like a phone number. Families dial it, so it must be dialable.
+export function cleanPhone(v) {
+  const raw = clean(v, 40)
+  if (!raw || !/^[+(\d][\d\s().-]*$/.test(raw)) return ''
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length < 8 || digits.length > 15) return ''
+  return `${raw.startsWith('+') ? '+' : ''}${digits}`
+}
+// 0411222333 -> 0411 222 333, +61411222333 -> +61 411 222 333.
+export function formatPhone(p) {
+  if (/^04\d{8}$/.test(p)) return `${p.slice(0, 4)} ${p.slice(4, 7)} ${p.slice(7)}`
+  if (/^\+614\d{8}$/.test(p)) return `+61 ${p.slice(3, 6)} ${p.slice(6, 9)} ${p.slice(9)}`
+  return p || ''
+}
+
 function cleanCoach(c) {
   const name = clean(c.name, 60)
   return {
@@ -183,6 +199,9 @@ function cleanCoach(c) {
     fullName: clean(c.fullName, 80) || name,
     airtableName: clean(c.airtableName, 80),
     email: validEmail(c.email),
+    // Optional mobile, shown to families on My account so they can reach the
+    // coach quickly. Never invented: blank until Lee or the coach gives it.
+    phone: cleanPhone(c.phone),
     photoV: Number.isInteger(Number(c.photoV)) && Number(c.photoV) > 0 ? Number(c.photoV) : 0,
     alerts: c.alerts === true,
   }

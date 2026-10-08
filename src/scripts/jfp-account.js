@@ -64,6 +64,96 @@ function payPill(pm) {
   return `<span class="j-pill j-pill-${cls}">${esc(pm.label)}</span>`
 }
 
+// ---------- can't make a session ----------
+
+const HOUR = 3600e3
+const DAY = 24 * HOUR
+function hoursAway(ms) { const h = Math.max(0, Math.round((ms - Date.now()) / HOUR)); return h < 1 ? 'less than an hour' : h === 1 ? 'about an hour' : `about ${h} hours` }
+
+// Call and text buttons for each coach who has a number. Nothing is shown for
+// a coach without one.
+function reach(contacts) {
+  return contacts.map((c) => `<span style="display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 8px 0 0"><b>${esc(c.name)}</b> <a class="j-btn j-btn-line j-btn-sm" href="tel:${esc(c.tel)}">Call ${esc(c.phone)}</a><a class="j-btn j-btn-line j-btn-sm" href="sms:${esc(c.tel)}">Text</a></span>`).join('')
+}
+
+function cancelBlock(e, p) {
+  const next = (e.sessions || []).find((s) => s.startMs > Date.now())
+  if (!next) return ''
+  const contacts = e.contacts || []
+  const soon = next.startMs - Date.now() <= DAY
+  const box = soon && contacts.length
+    ? `<div class="j-box j-box-amber" style="margin-top:12px"><b>${next.cancelled ? `You have told us ${esc(p.name)} cannot make ${esc(next.label)}.` : `${esc(next.label)} is ${esc(hoursAway(next.startMs))} away.`}</b> Running late, or need to tell your coach something? Call or text them now.<div>${reach(contacts)}</div></div>`
+    : contacts.length ? `<p class="small" style="margin-top:10px"><span class="muted">Contact your coach:</span> ${contacts.map((c) => `<b>${esc(c.name)}</b> <a href="tel:${esc(c.tel)}" style="text-decoration:underline">${esc(c.phone)}</a>`).join(' · ')}</p>` : ''
+  const told = (e.cancelled || []).map((c) => `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:8px"><span><span class="j-pill j-pill-amber">Team told</span> <b>${esc(c.label)}</b> <span class="muted small">${esc(c.reason)}</span></span><button type="button" class="j-btn j-btn-line j-btn-sm" data-cancel-undo="${esc(c.id)}">Undo, ${esc(p.name.split(' ')[0])} is coming</button></div>`).join('')
+  return `${box}${told}<div style="margin-top:12px"><button type="button" class="j-btn j-btn-line j-btn-sm" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}">Can't make a session</button></div>`
+}
+
+function cancelSheet(e, p) {
+  const open = (e.sessions || []).filter((s) => s.startMs > Date.now())
+  const sheet = openSheet({ title: "Can't make a session", subtitle: `${p.name}, ${e.day} ${e.time}, ${e.location}` })
+  const free = open.filter((s) => !s.cancelled)
+  if (!free.length) {
+    sheet.body.innerHTML = `<div class="j-box j-box-green">You have already told us about every upcoming session for ${esc(p.name)}.</div>`
+    sheet.foot.innerHTML = '<button type="button" class="j-btn j-btn-dark j-btn-block j-btn-lg" id="cx-done">Done</button>'
+    sheet.foot.querySelector('#cx-done').addEventListener('click', () => closeSheet())
+    return
+  }
+  let reason = ''
+  sheet.body.innerHTML = `
+    <label class="j-field"><span>Which session?</span><select class="j-select" id="cx-date">${open.map((s) => `<option value="${esc(s.iso)}" ${s.cancelled ? 'disabled' : ''} ${s.iso === free[0].iso ? 'selected' : ''}>${esc(s.label)}${s.cancelled ? ' (already told)' : ''}</option>`).join('')}</select></label>
+    <div class="j-field"><span>Why?</span><div id="cx-reasons" role="group" aria-label="Reason" style="display:flex;flex-wrap:wrap;gap:8px">${D.reasons.map((r) => `<button type="button" class="j-chip" data-reason="${esc(r.key)}" aria-pressed="false">${esc(r.label)}</button>`).join('')}</div></div>
+    <label class="j-field"><span>Note for the coach <span class="muted" id="cx-hint">(optional)</span></span><textarea class="j-textarea" id="cx-note" maxlength="${esc(D.noteMax)}" rows="3"></textarea></label>
+    <div id="cx-late"></div>
+    <p class="j-err" id="cx-err" hidden></p>`
+  sheet.foot.innerHTML = '<button type="button" class="j-btn j-btn-dark j-btn-block j-btn-lg" id="cx-go">Tell the team</button>'
+  const late = () => {
+    const s = open.find((x) => x.iso === sheet.body.querySelector('#cx-date').value)
+    const soon = s && s.startMs - Date.now() < DAY
+    sheet.body.querySelector('#cx-late').innerHTML = soon ? `<div class="j-box j-box-amber"><b>That is under 24 hours away.</b> We will tell the team straight away.${(e.contacts || []).length ? ' Please also call or text your coach.' : ''}${(e.contacts || []).length ? `<div>${reach(e.contacts)}</div>` : ''}</div>` : ''
+  }
+  late()
+  sheet.body.querySelector('#cx-date').addEventListener('change', late)
+  sheet.body.querySelector('#cx-reasons').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-reason]')
+    if (!b) return
+    reason = b.dataset.reason
+    sheet.body.querySelectorAll('[data-reason]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+    sheet.body.querySelector('#cx-hint').textContent = reason === 'other' ? '(please add a few words)' : '(optional)'
+  })
+  const go = sheet.foot.querySelector('#cx-go')
+  go.addEventListener('click', async () => {
+    const err = sheet.body.querySelector('#cx-err')
+    const note = sheet.body.querySelector('#cx-note').value.trim()
+    const date = sheet.body.querySelector('#cx-date').value
+    err.hidden = true
+    if (!reason) { err.textContent = 'Choose a reason.'; err.hidden = false; return }
+    if (reason === 'other' && note.length < 3) { err.textContent = 'Add a few words so the coach knows why.'; err.hidden = false; return }
+    go.disabled = true
+    go.textContent = 'Sending'
+    const r = await api('/api/jfp-account', { action: 'cancelSession', rowId: e.rowId, date, reason, note })
+    if (!r.ok) {
+      go.disabled = false
+      go.textContent = 'Tell the team'
+      err.textContent = r.data.error || 'Could not send that. Try again.'
+      err.hidden = false
+      if (r.status === 401) { closeSheet(true); showSignIn() }
+      return
+    }
+    const c = r.data.cancellation
+    const names = [...r.data.told.map((t) => t.name), 'the Joner Football team']
+    const who = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
+    const phones = r.data.told.filter((t) => t.tel)
+    sheet.setTitle('Thank you')
+    sheet.body.innerHTML = `<div class="j-box j-box-green"><b>${r.data.already ? 'We already had this one.' : 'Done.'}</b> We have told ${esc(who)} that ${esc(p.name)} cannot make ${esc(c.label)}.</div>
+      ${c.noticeLevel !== 'ok' ? `<p style="margin-top:12px">That is short notice, so please call or text your coach as well${phones.length ? '.' : ' if you can.'}</p>` : ''}
+      ${phones.length ? `<p class="muted small" style="margin-top:12px">Need to reach them quickly?</p><div>${reach(phones)}</div>` : ''}
+      <p class="muted small" style="margin-top:12px">Changed your mind? Use Undo on My account before the session starts.</p>`
+    sheet.foot.innerHTML = '<button type="button" class="j-btn j-btn-dark j-btn-block j-btn-lg" id="cx-done">Done</button>'
+    sheet.foot.querySelector('#cx-done').addEventListener('click', () => closeSheet())
+    load()
+  })
+}
+
 function render() {
   $('term').textContent = D.term
   if (D.kitUrl && $('kit-link')) $('kit-link').href = D.kitUrl
@@ -103,6 +193,7 @@ function render() {
               <div>${payPill(e.payment)}</div>
             </div>
             <details style="margin-top:6px"><summary class="small muted" style="cursor:pointer">All ${esc(e.dates.length)} dates</summary><p class="small" style="margin-top:6px">${esc(e.dates.join(', '))}</p></details>
+            ${cancelBlock(e, p)}
           </div>`).join('') : `<p class="muted small" style="margin-top:10px">Not booked into ${esc(D.term)} yet. <a href="/jfp-booking/">See the timetable</a></p>`}
       </article>`).join('')
   }
@@ -150,6 +241,22 @@ document.addEventListener('click', async (e) => {
     const r = await api('/api/jfp-account', { action: 'confirmKit', payreqId: kb.dataset.kitFor, kit: kb.dataset.kit })
     if (!r.ok) { kb.disabled = false; return toast(r.data.error || 'Could not save that.') }
     toast('Thanks. Now you can pay.')
+    return load()
+  }
+  const cx = e.target.closest('[data-cancel-open]')
+  if (cx) {
+    const p = D.players.find((x) => x.key === cx.dataset.cancelPlayer)
+    const en = p?.enrolments.find((x) => x.rowId === cx.dataset.cancelOpen)
+    if (en) cancelSheet(en, p)
+    return
+  }
+  const undo = e.target.closest('[data-cancel-undo]')
+  if (undo) {
+    if (!confirm('Tell the team this player is coming after all?')) return
+    undo.disabled = true
+    const r = await api('/api/jfp-account', { action: 'withdrawCancel', id: undo.dataset.cancelUndo })
+    if (!r.ok) { undo.disabled = false; return toast(r.data.error || 'Could not undo that.') }
+    toast('Done. We have told the team.')
     return load()
   }
   const nx = e.target.closest('[data-next]')

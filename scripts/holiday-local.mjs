@@ -25,6 +25,10 @@ process.env.HOLIDAY_SIGNING_SECRET = process.env.HOLIDAY_SIGNING_SECRET || 'loca
 process.env.HOLIDAY_ADMIN_SECRET = process.env.HOLIDAY_ADMIN_SECRET || 'admin'
 process.env.STRIPE_SECRET_KEY_SYDNEY = 'sk_test_local'
 process.env.BREVO_API_KEY = 'local'
+// Telegram is faked too (captured at /__telegram): the real bot is never called.
+process.env.JFP_TELEGRAM_BOT_TOKEN = 'local'
+process.env.JFP_TELEGRAM_CHAT_ID = 'local'
+delete process.env.JFP_TELEGRAM_THREAD_ID
 process.env.PUBLIC_SITE_URL = `http://localhost:${PORT}`
 process.env.JFP_BOOKING_PASSWORD = process.env.JFP_BOOKING_PASSWORD || 'term4'
 process.env.JFP_PORTAL_ENABLED = 'true'
@@ -187,6 +191,7 @@ function redis(cmd) {
 // ---------- mock stripe ----------
 const sessions = new Map()
 const emails = []
+const telegrams = []
 
 // ---------- mock airtable ----------
 // A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
@@ -367,6 +372,13 @@ globalThis.fetch = async (url, init = {}) => {
     emails.push({ at: Date.now(), to: payload.to.map((t) => t.email), subject: payload.subject, html: payload.htmlContent, attachments: (payload.attachment || []).map((a) => ({ name: a.name, content: Buffer.from(a.content, 'base64').toString('utf8') })) })
     return json({ messageId: 'local' })
   }
+  if (u.startsWith('https://api.telegram.org/')) {
+    if (faults.has('telegram')) return new Response('{"ok":false}', { status: 502 })
+    const payload = JSON.parse(init.body)
+    log('telegram', String(payload.text).split('\n')[0])
+    telegrams.push({ at: Date.now(), text: payload.text })
+    return json({ ok: true })
+  }
   if (u.startsWith('https://oauth2.googleapis.com/token')) return json({ access_token: 'local', expires_in: 3600 })
   if (u.includes('sheets.googleapis.com')) {
     if (u.includes(':append')) {
@@ -509,6 +521,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, id: `cs_seed_${n}` }))
   }
   if (url.pathname === '/__emails') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(emails)) }
+  if (url.pathname === '/__telegram') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(telegrams)) }
   if (url.pathname === '/__airtable') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(airtable)) }
   if (url.pathname === '/__sheet') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(sheetRows)) }
   if (url.pathname === '/__events') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(events)) }

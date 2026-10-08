@@ -33,12 +33,12 @@ async function showSignIn() {
 // The sidebar: sections, each tab with a line icon. Coaches only ever get
 // their own five tabs; the server checks every request again.
 const NAV = {
-  coach: [['Coaching', [['program', 'Program'], ['coach', 'My sessions'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['profile', 'My profile']]]],
+  coach: [['Coaching', [['program', 'Program'], ['coach', 'My sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['profile', 'My profile']]]],
   admin: [
     ['Overview', [['overview', 'Dashboard']]],
     ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['requests', 'Requests'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
     ['Money', [['money', 'Money'], ['payments', 'Payment links'], ['prices', 'Prices']]],
-    ['Coaches', [['coach', 'Registers'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['coaches', 'Coaches']]],
+    ['Coaches', [['coach', 'Registers'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['coaches', 'Coaches']]],
     ['Admin', [['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]],
   ],
 }
@@ -56,6 +56,7 @@ const ICON = {
   payments: '<path d="M9.5 14.5 14.5 9.5M8 12l-2 2a3 3 0 0 0 4.2 4.2l2-2M16 12l2-2a3 3 0 0 0-4.2-4.2l-2 2"/>',
   prices: '<path d="M4 4h7l9 9-7 7-9-9z"/><circle cx="8.5" cy="8.5" r="1.4"/>',
   coach: '<path d="M8 4.5h8M9 3.5h6v3H9z"/><rect x="5" y="5" width="14" height="16" rx="2.5"/><path d="M8.5 11.5l1.8 1.8 3.5-3.6M8.5 17h7"/>',
+  cancellations: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M10 13.2l4 4M14 13.2l-4 4"/>',
   staff: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9 15l2 2 4-4"/>',
   plans: '<rect x="4" y="3.5" width="16" height="17" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M4 12h16"/>',
   coaches: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/>',
@@ -126,7 +127,7 @@ async function go(tab) {
   view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   view().focus({ preventScroll: true })
 }
@@ -1456,7 +1457,7 @@ async function renderCoach() {
         ${(s.coveredBy || []).length ? `<div class="j-box j-box-grey small" style="margin-bottom:8px">${s.coveredBy.map((c) => `${esc(c.dateLabel)}: covered by <b>${esc(c.coach)}</b>`).join('<br>')}</div>` : ''}
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
           <select class="j-select" style="width:auto" data-date="${esc(s.id)}">${s.dates.map((x) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select></div>
-        <div style="margin-top:10px">${s.players.map((p) => `<div class="jp-player" style="cursor:default"><span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}</span>
+        <div style="margin-top:10px">${s.players.map((p) => `<div class="jp-player" style="cursor:default"><span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}</span>
           <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Present'}">Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Absent'}">Away</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
       </article>`
     }).join('') : '<div class="j-empty">No sessions yet.</div>'}`
@@ -1476,6 +1477,30 @@ async function renderCoach() {
 }
 
 async function loadAttendance() { renderCoach() }
+
+// ---------- cancellations: families who told us a player cannot make a session ----------
+
+async function renderCancellations() {
+  const admin = P.user.role === 'admin'
+  const when = P.cxWhen || 'upcoming'
+  const d = await need(await post('cancellations', { when }))
+  const sum = d.summary
+  const noticePill = (c) => `<span class="j-pill j-pill-${c.noticeLevel === 'very-late' ? 'red' : c.noticeLevel === 'late' ? 'amber' : 'green'}">${esc(c.noticeLabel)}</span>`
+  const submitted = (iso) => new Date(iso).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+  view().innerHTML = `
+    <div class="jp-head"><div><h1>Cancellations</h1><p class="muted small">${admin ? 'Every time a family tells us a player cannot make a session. The place stays held; this is only the heads up.' : 'Families who have told us a player in your groups cannot make a session. Newest first.'}</p></div></div>
+    <div class="jp-kpis"><div class="jp-kpi"><span>Cancellations</span><b>${sum.total}</b></div><div class="jp-kpi"><span>Under 24 h notice</span><b>${sum.under24}</b></div><div class="jp-kpi"><span>Under 2 h notice</span><b>${sum.under2}</b></div><div class="jp-kpi"><span>Average notice</span><b>${sum.total ? `${sum.averageHours} h` : 'None yet'}</b></div><div class="jp-kpi"><span>Median notice</span><b>${sum.total ? `${sum.medianHours} h` : 'None yet'}</b></div></div>
+    <div class="jp-seg" id="cx-f" style="margin:14px 0 10px">${[['upcoming', `Upcoming ${d.counts.upcoming}`], ['past', `Past ${d.counts.past}`], ['all', `All ${d.counts.all}`]].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${when === v}">${l}</button>`).join('')}</div>
+    ${d.cancellations.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Session</th><th>Coach</th><th>Reason</th><th>Notice</th><th>Sent</th></tr></thead><tbody>
+      ${d.cancellations.map((c) => `<tr><td><b>${esc(c.player)}</b>${c.status === 'withdrawn' ? ' <span class="j-pill j-pill-grey">Withdrawn</span>' : ''}${admin && c.parentName ? `<br><span class="muted small">${esc(c.parentName)} · ${esc(c.email)}</span>` : ''}</td>
+        <td><b>${esc(c.dateLabel)}</b><br><span class="muted small">${esc(c.group)} · ${esc(c.location)}</span></td>
+        <td>${c.coaches.length ? esc(c.coaches.map((x) => x.replace(/^Coach /, '')).join(', ')) : '<span class="muted">None</span>'}</td>
+        <td>${esc(c.reason)}${c.note ? `<br><span class="muted small">${esc(c.note)}</span>` : ''}</td>
+        <td>${c.status === 'withdrawn' ? '<span class="muted">Withdrawn</span>' : noticePill(c)}${admin && c.notFullySent?.length ? `<br><span class="j-pill j-pill-red" title="These emails did not go">Not sent: ${esc(c.notFullySent.join(', '))}</span>` : ''}</td>
+        <td class="muted small">${esc(submitted(c.submittedAt))}</td></tr>`).join('')}
+    </tbody></table></div>` : `<div class="j-empty">${when === 'upcoming' ? 'No upcoming cancellations.' : when === 'past' ? 'No past cancellations.' : 'No cancellations yet.'}</div>`}`
+  $('cx-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { P.cxWhen = b.dataset.f; renderCancellations() } })
+}
 
 // ---------- current families: invite to their account ----------
 
@@ -1848,6 +1873,7 @@ async function renderCoaches() {
         <div style="flex:1;min-width:220px">
           <div class="j-two"><label class="j-field"><span>Full name (parents see this)</span><input class="j-input" data-cf="fullName" value="${esc(c.fullName)}"></label>
           <label class="j-field"><span>Sign-in email</span><input class="j-input" type="email" data-cf="email" value="${esc(c.email)}" placeholder="No login"></label></div>
+          <label class="j-field"><span>Mobile (parents see this so they can reach the coach)</span><input class="j-input" type="tel" inputmode="tel" data-cf="phone" value="${esc(c.phone || '')}" placeholder="Not shown until you add it" autocomplete="off"></label>
           <label class="j-check"><input type="checkbox" data-cf="alerts" ${c.alerts ? 'checked' : ''}> <span>Email them when a family pays for a place in their group</span></label>
           <p class="muted small">Matches Airtable's Coach column as "${esc(c.airtableName || c.name)}"${c.id === 'lee' ? '. You sign in as super admin, so you see everything.' : ''}</p>
         </div></div>`).join('')}</div>
@@ -1856,7 +1882,7 @@ async function renderCoaches() {
         <button type="button" class="j-btn j-btn-line j-btn-sm" id="co-add">Add to the list</button></div>
       <p class="j-err" id="co-err" hidden></p>
       <button type="button" class="j-btn j-btn-dark j-btn-lg" id="co-save" style="margin-top:12px">Save coaches</button>`
-    const read = () => { rows = rows.map((c, i) => { const box = view().querySelector(`[data-co="${i}"]`); return { ...c, fullName: box.querySelector('[data-cf="fullName"]').value.trim(), email: box.querySelector('[data-cf="email"]').value.trim(), alerts: box.querySelector('[data-cf="alerts"]').checked } }) }
+    const read = () => { rows = rows.map((c, i) => { const box = view().querySelector(`[data-co="${i}"]`); return { ...c, fullName: box.querySelector('[data-cf="fullName"]').value.trim(), email: box.querySelector('[data-cf="email"]').value.trim(), phone: box.querySelector('[data-cf="phone"]').value.trim(), alerts: box.querySelector('[data-cf="alerts"]').checked } }) }
     view().querySelectorAll('[data-photo]').forEach((b) => b.addEventListener('click', () => { read(); const c = rows[Number(b.dataset.photo)]; if (!list.some((x) => x.id === c.id)) return toast('Save coaches first, then add the photo.'); photoPicker(b, c.id, (url) => { c.photo = url; draw() }) }))
     view().querySelectorAll('[data-photo-rm]').forEach((b) => b.addEventListener('click', async () => { read(); const c = rows[Number(b.dataset.photoRm)]; const r = await post('coachPhoto', { coachId: c.id, remove: true }); if (r.ok) { c.photo = ''; draw() } else toast(r.data.error) }))
     $('co-add').addEventListener('click', () => {
@@ -1866,13 +1892,16 @@ async function renderCoaches() {
       const first = full.split(' ')[0]
       let id = first.toLowerCase().replace(/[^a-z0-9]/g, '') || 'coach'
       while (rows.some((c) => c.id === id)) id += '2'
-      rows.push({ id, name: first, fullName: full, airtableName: full, email: $('co-new-email').value.trim(), alerts: false, photo: '' })
+      rows.push({ id, name: first, fullName: full, airtableName: full, email: $('co-new-email').value.trim(), phone: '', alerts: false, photo: '' })
       draw()
     })
     $('co-save').addEventListener('click', async () => {
       read()
       const bad = rows.find((c) => c.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email))
       if (bad) { $('co-err').textContent = `Check ${bad.fullName}'s email.`; $('co-err').hidden = false; return }
+      const phoneOk = (v) => { const n = v.replace(/\D/g, '').length; return /^[+(\d][\d\s().-]*$/.test(v) && n >= 8 && n <= 15 }
+      const badPhone = rows.find((c) => c.phone && !phoneOk(c.phone))
+      if (badPhone) { $('co-err').textContent = `Check ${badPhone.fullName}'s mobile. Use digits, like 0411 222 333.`; $('co-err').hidden = false; return }
       const r = await post('saveSettings', { config: { coachLoginsEnabled: $('co-on').checked, coaches: rows.map(({ photo, ...c }) => c) } })
       if (!r.ok) { $('co-err').textContent = r.data.error; $('co-err').hidden = false; return }
       toast('Coaches saved'); P.coaches = null; P.board = null; renderCoaches()

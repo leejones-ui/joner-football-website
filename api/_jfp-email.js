@@ -354,3 +354,45 @@ ${p('Sign in with this email address to pay and lock it in. The place is held fo
 ${button('Sign in and pay', url)}`
   return send({ to: [{ email: request.email, name: request.parentName }], subject: `A place for you: ${group.day} ${group.time}`, html: shell({ heading: 'Your place is ready', body }) })
 }
+
+// ---------- a family cannot make a session ----------
+
+const LATE_WORDS = { 'very-late': 'VERY LATE NOTICE (under 2 hours)', late: 'LATE NOTICE (under 24 hours)' }
+
+function cancelBody(rec, { forStaff }) {
+  const withdrawn = rec.event === 'withdrawn'
+  const late = LATE_WORDS[rec.noticeLevel]
+  const intro = withdrawn
+    ? p(`${esc(rec.player)}'s family has taken the cancellation back, so ${esc(rec.player)} is coming to this session after all.`)
+    : p(`A family has told us ${esc(rec.player)} cannot make a session.`)
+  const lateLine = !withdrawn && late ? `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#B42318;"><b>${esc(late)}.</b> The family told us ${esc(rec.noticeLabel.replace(/^late: /, ''))} before the session starts.</p>` : ''
+  const note = rec.note ? esc(rec.note).replace(/\r?\n/g, '<br>') : 'None'
+  const list = [
+    ['Player', esc(rec.player)],
+    ['Session', `${esc(rec.day)} ${esc(rec.time)}, ${esc(rec.location)}`],
+    ['Date', esc(dateLabel(rec.date))],
+    ...(withdrawn ? [] : [['Reason', esc(rec.reason)], ['Note', note], ['Notice given', esc(rec.noticeLabel)]]),
+    ...(forStaff ? [['Parent', esc(rec.parentName || '')], ['Email', esc(rec.email)], ['Coaches', esc((rec.coachNames || []).join(', ') || 'No coach set')]] : []),
+  ]
+  return `${intro}${lateLine}${rows(list)}${forStaff ? p('You can see every cancellation, and how much notice families give, under Cancellations in the JFP portal.') : ''}`
+}
+
+function cancelSubject(rec) {
+  const base = `${rec.player}, ${rec.day} ${rec.time}, ${dateLabel(rec.date)}`
+  if (rec.event === 'withdrawn') return `Back on: ${base}`
+  const tag = rec.noticeLevel === 'very-late' ? 'VERY LATE: ' : rec.noticeLevel === 'late' ? 'LATE NOTICE: ' : ''
+  return `${tag}Can't make it: ${base}`
+}
+
+export async function sendCancelCoachAlert({ rec, coach }) {
+  if (!coach?.email) return false
+  const heading = rec.event === 'withdrawn' ? 'Cancellation withdrawn' : 'A player cannot make a session'
+  await send({ to: [{ email: coach.email, name: `Coach ${coach.name}` }], subject: cancelSubject(rec), html: shell({ preheader: `${rec.player}, ${dateLabel(rec.date)}`, heading, body: cancelBody(rec, { forStaff: false }) }) })
+  return true
+}
+
+export async function sendCancelStaffAlert({ rec, config }) {
+  const heading = rec.event === 'withdrawn' ? 'Cancellation withdrawn' : 'A player cannot make a session'
+  await send({ to: staffTo(config), subject: cancelSubject(rec), html: shell({ preheader: `${rec.player}, ${dateLabel(rec.date)}`, heading, body: cancelBody(rec, { forStaff: true }) }), replyTo: rec.email })
+  return true
+}

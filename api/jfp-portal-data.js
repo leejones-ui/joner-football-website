@@ -14,7 +14,7 @@ import {
   getConfig, saveConfig, listGroups, getGroup, saveGroup, deleteGroup, validateGroup, onlineCounts, placesLeft, listBookings, getBooking, holdPlaces,
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
   coachByAirtableName, sessionDates, dateLabel, formatAud, to24h, clean, newId, audit, listAudit, locationFor, validEmail, ageOn,
-  normName, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold,
+  normName, cleanPhone, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold,
   PRODUCTS, QUESTIONS, productFor, priceFor, paidSiblings, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson, kvGetJson,
 } from './_jfp-store.js'
 import { coachPhotoUrl } from './jfp-groups.js'
@@ -24,6 +24,7 @@ import {
   getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, listDropped, deleteTerm4Row, RESTORABLE,
   listLedger, createLedgerRow, listJuniors, listVenueHistory,
 } from './_jfp-airtable.js'
+import { listCancels, staffView, noticeSummary } from './_jfp-cancel.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, PAY_EFFECTS } from './_jfp-finalise.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite } from './_jfp-email.js'
@@ -1042,6 +1043,34 @@ async function saveCoachPhoto(res, principal, config, body, isAdmin) {
   return res.status(200).json({ success: true, photo: c.photoV ? coachPhotoUrl(c) : '' })
 }
 
+// Parent cancellations a staff member may see: Lee and Ligia see all of them,
+// a coach only the sessions of their own groups (or ones they were told about,
+// as the cover coach).
+function visibleCancels(all, groupsById, principal, config, isAdmin) {
+  if (isAdmin) return all
+  const me = principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || ''
+  if (!me) return []
+  return all.filter((r) => {
+    const g = groupsById[r.groupId]
+    return (r.coachIds || []).includes(me) || (g && (g.coachId === me || (g.extraCoachIds || []).includes(me)))
+  })
+}
+
+async function cancellationsData(res, principal, config, body, isAdmin) {
+  const [all, groups] = await Promise.all([listCancels(), listGroups()])
+  const groupsById = Object.fromEntries(groups.map((g) => [g.id, g]))
+  const mine = visibleCancels(all, groupsById, principal, config, isAdmin)
+  const nowMs = Date.now()
+  const when = ['upcoming', 'past', 'all'].includes(body.when) ? body.when : 'upcoming'
+  const pick = { upcoming: (r) => r.startMs > nowMs, past: (r) => r.startMs <= nowMs, all: () => true }
+  return res.status(200).json({
+    success: true, when, admin: isAdmin,
+    counts: { upcoming: mine.filter(pick.upcoming).length, past: mine.filter(pick.past).length, all: mine.length },
+    summary: noticeSummary(mine),
+    cancellations: mine.filter(pick[when]).slice(0, 500).map((r) => staffView(r, { admin: isAdmin, nowMs })),
+  })
+}
+
 function coachSessions(config, groups, roster, coachId, date) {
   const mine = groups.filter((g) => g.coachId === coachId || (g.extraCoachIds || []).includes(coachId))
   const me = coachById(config, coachId)
@@ -1308,6 +1337,8 @@ async function handle(req, res) {
     if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
     if (['staffOverview', 'requestCover', 'cancelCover', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
 
+    if (action === 'cancellations') return await cancellationsData(res, principal, config, body, isAdmin)
+
     if (action === 'coachSessions') {
       const coachId = isAdmin ? clean(body.coachId, 30) : principal.coachId
       if (!coachById(config, coachId)) return fail(res, 400, 'Choose a coach.')
@@ -1323,6 +1354,13 @@ async function handle(req, res) {
         sessions.push({ ...s, id: g.id, dates: [{ iso: c.date, label: dateLabel(c.date) }], nextDate: c.date, covering: { for: coachLabel(coachById(config, c.coachId)), dateLabel: dateLabel(c.date) } })
       }
       for (const s of sessions) s.attendance = await attendanceFor(s.id, s.nextDate)
+      // Parents who said a player cannot make a date, so the register can mark
+      // them. Display only: attendance is saved exactly as before.
+      const away = (await listCancels()).filter((r) => r.status === 'active')
+      for (const s of sessions) {
+        s.cancelledBy = {}
+        for (const r of away) if (r.groupId === s.id) (s.cancelledBy[r.date] ||= {})[r.rowId] = { reason: r.reason, notice: r.noticeLabel }
+      }
       const perWeek = sessions.reduce((t, s) => t + s.durationMin, 0)
       return res.status(200).json({ success: true, coach: coachLabel(coachById(config, coachId)), coachPhoto: coachList(config, false).find((c) => c.id === coachId)?.photo || '', term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
     }
@@ -1547,6 +1585,8 @@ async function handle(req, res) {
         if (Array.isArray(input.coaches)) {
           // Photos are saved by their own action; a settings save never drops one.
           patch.coaches = input.coaches.map((c) => ({ ...c, photoV: coachById(config, clean(c.id, 30))?.photoV || 0 }))
+          const badPhone = input.coaches.find((c) => clean(c.phone, 40) && !cleanPhone(c.phone))
+          if (badPhone) return fail(res, 400, `Check ${clean(badPhone.fullName || badPhone.name, 80)}'s mobile number. Use digits, like 0411 222 333.`)
           const ids = patch.coaches.map((c) => clean(c.id, 30))
           if (new Set(ids).size !== ids.length) return fail(res, 400, 'Two coaches have the same id.')
           const inUse = (await listGroups()).flatMap((g) => [g.coachId, ...(g.extraCoachIds || [])]).filter(Boolean)

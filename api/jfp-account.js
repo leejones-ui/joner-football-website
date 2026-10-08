@@ -7,11 +7,13 @@
 //   overview    everything above
 //   signWaiver  sign the waiver for players who do not have one on file
 //   pay         start Stripe Checkout for an open payment request
+//   cancelSession / withdrawCancel   "Can't make a session" (KV only)
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
-  getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, sessionDates, dateLabel,
-  formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, normName, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES,
+  getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, dateLabel,
+  formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, normName, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone,
 } from './_jfp-store.js'
+import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq } from './_jfp-next.js'
@@ -48,7 +50,10 @@ function paymentLine(row, openReq) {
 
 async function overview(res, parent, body = {}) {
   const config = await getConfig()
-  const [roster, groups, payreqs, requests, bookings] = await Promise.all([loadRoster(), listGroups(), listPayreqs(), listApplications(), listBookings()])
+  const [roster, groups, payreqs, requests, bookings, allCancels] = await Promise.all([loadRoster(), listGroups(), listPayreqs(), listApplications(), listBookings(), listCancels()])
+  const nowMs = Date.now()
+  // Only this family's own cancellations are ever read out of the list.
+  const myCancels = allCancels.filter((c) => c.email === parent.email && c.status === 'active')
   const fam = withDobs(familyFor(parent.email, roster, config.termStart), dobsFrom(requests, parent.email), config.termStart)
   const mine = payreqs.filter((p) => p.email === parent.email && p.status !== 'cancelled')
   // Opened from a payment link: staff see that the family has looked at it.
@@ -68,15 +73,23 @@ async function overview(res, parent, body = {}) {
       const coach = coachById(config, g.coachId) || coachByAirtableName(config, r.coach)
       const loc = locationFor(config, r.location)
       // Mid term joiners and trials: only their own dates.
-      const trialOn = /trial/i.test(r.paymentType) ? (r.notes.match(/Trial offered for (\d{4}-\d{2}-\d{2})/) || [])[1] : ''
-      const from = (r.notes.match(/(?:from|starts) (\d{4}-\d{2}-\d{2})/) || [])[1] || ''
-      const dates = trialOn ? [trialOn] : sessionDates(config, r.day).filter((d) => !from || d >= from)
+      const dates = rowSessionDates(config, r, byGroup[r.groupId] || null)
+      // Sessions still to come, each with its start (Sydney time) so the page
+      // can offer "Can't make a session" and show how soon the next one is.
+      const mineCancelled = new Map(myCancels.filter((c) => c.rowId === r.id).map((c) => [c.date, c]))
+      const time = rowTime(r, byGroup[r.groupId] || null)
+      const sessions = dates.map((d) => ({ d, n: noticeFor({ date: d, time, nowMs }) })).filter((x) => x.n && x.n.startMs > nowMs)
+        .map(({ d, n }) => ({ iso: d, label: dateLabel(d), startMs: n.startMs, cancelled: mineCancelled.has(d) ? cancelId(r.id, d) : '' }))
       const openReq = mine.find((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(r.id))
       return {
         rowId: r.id, day: r.day, time: r.time, location: loc.name, address: loc.address, maps: loc.maps,
         coach: coach ? `Coach ${coachLabel(coach)}` : '', status: r.confirmation || 'Confirmed',
         dates: dates.map(dateLabel), firstDate: dates[0] ? dateLabel(dates[0]) : '',
         payment: paymentLine(r, openReq),
+        sessions,
+        // Coach mobiles, only where one has been entered. Never an email.
+        contacts: coachesFor(config, r, byGroup[r.groupId] || null).filter((c) => c.phone).map((c) => ({ name: `Coach ${coachLabel(c)}`, phone: formatPhone(c.phone), tel: c.phone })),
+        cancelled: [...mineCancelled.values()].filter((c) => c.startMs > nowMs).sort((a, b) => a.startMs - b.startMs).map(familyView),
       }
     }),
   }))
@@ -111,10 +124,43 @@ async function overview(res, parent, body = {}) {
     kitPriceLabel: config.kitPriceLabel,
     players,
     todo,
+    reasons: Object.entries(REASONS).map(([key, label]) => ({ key, label })),
+    noteMax: NOTE_MAX,
     paid: mine.filter((q) => q.status === 'paid').map((q) => ({ id: q.id, amountLabel: formatAud(q.paidCents ?? q.amountCents), players: q.playerNames, paidAt: q.paidAt })),
     requests: requests.filter((r) => r.email === parent.email).map((r) => ({ id: r.id, kind: r.kind, status: r.status, offer: r.offer || '', players: r.players.map((x) => x.name), group: byGroup[r.groupId] ? `${byGroup[r.groupId].day} ${byGroup[r.groupId].time}, ${locationFor(config, byGroup[r.groupId].location).name}` : r.groupId === 'one-to-one' ? '1 to 1 coaching' : '', createdAt: r.createdAt })),
     bookings: bookings.filter((b) => b.email === parent.email && b.status === 'paid').map((b) => ({ id: b.id, players: b.players.map((x) => x.name), amountLabel: formatAud(b.amountPaidCents ?? b.priceCents), paidAt: b.paidAt })),
   })
+}
+
+// "Can't make a session": saved in KV only, the coach(es) and the team told.
+// The row must carry this family's email in Airtable, the date must be a real
+// upcoming session for that row, and the same session is only ever cancelled
+// once (see _jfp-cancel.js).
+function toldCoaches(config, rec) {
+  return (rec.coachIds || []).map((id) => coachById(config, id)).filter(Boolean).map((c) => ({ name: `Coach ${coachLabel(c)}`, ...(c.phone ? { phone: formatPhone(c.phone), tel: c.phone } : {}) }))
+}
+
+async function cancelSession(res, parent, body) {
+  const config = await getConfig()
+  const roster = await loadRoster({ fresh: true })
+  const fam = familyFor(parent.email, roster, config.termStart)
+  const row = fam.players.flatMap((p) => p.term4).find((r) => r.id === clean(body.rowId, 30) && r.holdsPlace && r.groupId)
+  const group = row ? await getGroup(row.groupId) : null
+  const date = clean(body.date, 10)
+  const out = await submitCancel({
+    config, parentEmail: parent.email, parentName: fam.parentName, row, group, date,
+    reason: clean(body.reason, 20), note: typeof body.note === 'string' ? body.note : '',
+    coverCoachId: group ? await coverCoachFor(group.id, date) : '',
+  })
+  if (!out.ok) return fail(res, out.status, out.error, out.code ? { code: out.code } : {})
+  return res.status(200).json({ success: true, already: out.already, cancellation: familyView(out.record), told: toldCoaches(config, out.record) })
+}
+
+async function withdrawSession(res, parent, body) {
+  const config = await getConfig()
+  const out = await withdrawCancel({ config, parentEmail: parent.email, id: clean(body.id, 40) })
+  if (!out.ok) return fail(res, out.status, out.error, out.code ? { code: out.code } : {})
+  return res.status(200).json({ success: true, already: out.already })
 }
 
 async function signWaiver(res, parent, body) {
@@ -291,6 +337,8 @@ export default async function handler(req, res) {
     if (body.action === 'confirmKit') return await confirmKit(res, parent, body)
     if (body.action === 'pay') return await pay(req, res, parent, body)
     if (body.action === 'nextTermChoice') return await nextTermChoice(req, res, parent, body)
+    if (body.action === 'cancelSession') return await cancelSession(res, parent, body)
+    if (body.action === 'withdrawCancel') return await withdrawSession(res, parent, body)
     return await overview(res, parent, body)
   } catch (error) {
     console.error('jfp-account failed', error)

@@ -36,3 +36,20 @@ export function requestText({ request, group, siteUrl }) {
     siteUrl ? `Review: ${siteUrl}/jfp-portal/#requests` : '',
   ].filter(Boolean).join('\n')
 }
+
+// A family cannot make a session. Player, session, reason and notice only:
+// no note (it is free text and could hold a number), no email, no phone.
+export function cancelText(rec) {
+  const late = rec.noticeLevel === 'very-late' ? ' VERY LATE (under 2 h)' : rec.noticeLevel === 'late' ? ' LATE (under 24 h)' : ''
+  if (rec.event === 'withdrawn') {
+    return [`JFP: cancellation withdrawn, ${rec.player} is coming`, `${rec.day} ${rec.time}, ${rec.location}, ${rec.dateLabel}`].join('\n')
+  }
+  return [
+    `JFP: can't make a session${late}`,
+    rec.player,
+    `${rec.day} ${rec.time}, ${rec.location}, ${rec.dateLabel}`,
+    `Reason: ${rec.reason}`,
+    `Notice: ${rec.noticeLabel}`,
+    rec.coachNames?.length ? `Coach: ${rec.coachNames.join(', ').replace(/Coach /g, '')}` : '',
+  ].filter(Boolean).join('\n')
+}
