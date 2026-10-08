@@ -72,6 +72,12 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jp-theme[data-theme="dark"] .j-player { background: var(--j-surface-2); }
 .jp-theme[data-theme="dark"] .j-seg button[aria-pressed="true"] { background: #33332f; color: var(--j-ink); box-shadow: none; }
 .jp-theme[data-theme="dark"] .jp-att button { background: transparent; border-color: #3a3a37; color: var(--j-ink-2); }
+/* That rule is (0,3,1), the same as ".jp-att button[aria-pressed=true].p",
+   and it loads later, so in dark mode it was repainting the Here/Away marks
+   back to plain grey. Coaches could mark a register and see nothing change.
+   (Ruby, via Lee, 8 Oct 2026.) */
+.jp-theme[data-theme="dark"] .jp-att button[aria-pressed="true"].p { background: var(--j-green-bg); border-color: rgba(111, 220, 140, .55); color: var(--j-green); }
+.jp-theme[data-theme="dark"] .jp-att button[aria-pressed="true"].a { background: var(--j-red-bg); border-color: rgba(255, 143, 135, .55); color: var(--j-red); }
 .jp-theme[data-theme="dark"] .jp-seg button[aria-pressed="true"] { background: #33332f; color: var(--j-ink); box-shadow: none; }
 .jp-theme[data-theme="dark"] .jp-add, .jp-theme[data-theme="dark"] .jp-blk .jp-addbtn { border-color: #3a3a37; }
 .jp-theme[data-theme="dark"] .j-scrim, .jp-theme[data-theme="dark"] .jp-scrim { background: rgba(0, 0, 0, .62); }

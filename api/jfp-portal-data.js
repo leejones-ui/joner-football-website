@@ -935,7 +935,10 @@ function coachList(config, isAdmin = true) {
 // A profile photo, resized in the browser to at most 600 x 750. Stored in KV
 // (not Airtable): it is a picture for the timetable, not a record.
 async function saveCoachPhoto(res, principal, config, body, isAdmin) {
-  const coachId = isAdmin ? clean(body.coachId, 30) : principal.coachId
+  // An admin may be setting someone else's photo, or their own from My
+  // profile, where there is no coachId to send.
+  const ownCoachId = config.coaches.find((c) => c.email && c.email === principal.email)?.id || ''
+  const coachId = isAdmin ? (clean(body.coachId, 30) || ownCoachId) : principal.coachId
   const coach = coachById(config, coachId)
   if (!coach) return fail(res, 400, 'Choose a coach.')
   let v = 0
@@ -1212,8 +1215,11 @@ async function handle(req, res) {
 
     // ---------- coach and admin ----------
     if (action === 'me') {
-      const mine = principal.coachId ? coachList(config, false).find((c) => c.id === principal.coachId) : null
-      return res.status(200).json({ success: true, user: { ...principal, photo: mine?.photo || '' }, coaches: isAdmin ? coachList(config) : [] })
+      // Lee and Ligia have no coachId, but Lee also coaches. Fall back to the
+      // coach record carrying their email so My profile works for them too.
+      const myCoachId = principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || ''
+      const mine = myCoachId ? coachList(config, false).find((c) => c.id === myCoachId) : null
+      return res.status(200).json({ success: true, user: { ...principal, coachId: myCoachId, photo: mine?.photo || '' }, coaches: isAdmin ? coachList(config) : [] })
     }
     if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
     if (['staffOverview', 'requestCover', 'cancelCover', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)

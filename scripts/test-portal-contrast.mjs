@@ -32,7 +32,11 @@ const samples = [
   '<p class="muted">Muted</p>', '<p class="muted small">Muted small</p>', '<p class="sub">Sub</p>',
   '<input class="j-input" value="Input">', '<select class="j-select"><option>Select</option></select>', '<textarea class="j-textarea">Textarea</textarea>',
   '<div class="jp-seg"><button aria-pressed="true">Seg on</button><button aria-pressed="false">Seg off</button></div>',
-  '<div class="jp-att"><button>Att</button></div>', '<div class="jp-kpi"><b>12</b><span>KPI</span></div>',
+  // Register marks: the pressed states are the ones that broke, the resting
+  // button passed the whole time. (Ruby, 8 Oct 2026.)
+  '<div class="jp-att"><button class="p" aria-pressed="false">Here</button><button class="a" aria-pressed="false">Away</button></div>',
+  '<div class="jp-att"><button class="p" aria-pressed="true">Here</button><button class="a" aria-pressed="true">Away</button></div>',
+  '<div class="jp-kpi"><b>12</b><span>KPI</span></div>',
   '<table class="jp-table"><thead><tr><th>Head</th></tr></thead><tbody><tr><td>Cell</td></tr></tbody></table>',
   '<table class="jm-table"><thead><tr><th>Head</th></tr></thead><tbody><tr><td>Cell</td></tr></tbody></table>',
   '<div class="j-empty">Empty</div>', '<div class="j-err">Error</div>', '<div class="jm-status">Status</div>',

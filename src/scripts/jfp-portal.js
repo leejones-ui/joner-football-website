@@ -1641,6 +1641,10 @@ function photoDataUrl(file) {
     if (!/^image\//.test(file.type || '') && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name || '')) return reject(new Error('Choose a photo.'))
     const url = URL.createObjectURL(file)
     const img = new Image()
+    // iPhone photos are usually HEIC. The guard above lets them through but
+    // Chrome cannot decode HEIC, so the only sign was "that file could not be
+    // read". Say what it is and what to do. (Ruby, 8 Oct 2026.)
+    const heic = /heic|heif/i.test(file.type || '') || /\.(heic|heif)$/i.test(file.name || '')
     img.onload = () => {
       const want = 4 / 5
       let sw = img.naturalWidth, sh = img.naturalHeight, sx = 0, sy = 0
@@ -1652,7 +1656,12 @@ function photoDataUrl(file) {
       URL.revokeObjectURL(url)
       resolve(cv.toDataURL('image/jpeg', 0.85))
     }
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file could not be read. Try a JPG or PNG.')) }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error(heic
+        ? 'This browser cannot open iPhone HEIC photos. On an iPhone: Settings, Camera, Formats, Most Compatible, then take the photo again. Or open it in Photos and export it as a JPG.'
+        : 'That file could not be read. Try a JPG or PNG.'))
+    }
     img.src = url
   })
 }
