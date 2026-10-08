@@ -37,6 +37,14 @@ const samples = [
   '<table class="jm-table"><thead><tr><th>Head</th></tr></thead><tbody><tr><td>Cell</td></tr></tbody></table>',
   '<div class="j-empty">Empty</div>', '<div class="j-err">Error</div>', '<div class="jm-status">Status</div>',
   '<div class="jd-key">Key</div>', '<div class="jd-tile"><b>9</b><span>Tile</span></div>', '<div class="jm-alert">Alert</div>',
+  // Added 8 Oct 2026 after Lee found three more white-on-white spots the first
+  // sweep missed: the selected day, a toast, and the player rows. Selected and
+  // pressed states need their own sample, the resting state hides the bug.
+  '<div class="j-daybar"><button aria-selected="true">Whole week</button><button aria-selected="false">Monday</button></div>',
+  '<div class="j-toast">Moved, Airtable updated.</div>',
+  '<button class="j-player">Player row</button>',
+  '<button class="j-player on">Player row selected</button>',
+  '<div class="j-seg"><button aria-pressed="true">Seg on</button><button aria-pressed="false">Seg off</button></div>',
 ]
 // Root classes exactly as src/pages/jfp-portal.astro sets them.
 const page = (theme) => `<!doctype html><html><head><meta charset="utf-8">

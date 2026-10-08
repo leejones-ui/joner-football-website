@@ -62,6 +62,15 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jp-theme[data-theme="dark"] a.j-btn-ghost { color: var(--j-ink-2); }
 .jp-theme[data-theme="dark"] a.j-btn-danger { color: var(--j-red); }
 .jp-theme[data-theme="dark"] .jp-player:hover { background: #212120; }
+/* Hardcoded #fff paired with a token that flips in dark mode. --j-ink is
+   near-white in dark, so "background:#fff; color:var(--j-ink)" and
+   "background:var(--j-ink); color:#fff" both came out white on white: the
+   selected day in the day bar, every toast, and the player rows.
+   (Lee spotted the day bar and a toast, 8 Oct 2026.) */
+.jp-theme[data-theme="dark"] .j-daybar button[aria-selected="true"] { background: #33332f; color: var(--j-ink); box-shadow: none; }
+.jp-theme[data-theme="dark"] .j-toast { color: var(--j-action-ink); }
+.jp-theme[data-theme="dark"] .j-player { background: var(--j-surface-2); }
+.jp-theme[data-theme="dark"] .j-seg button[aria-pressed="true"] { background: #33332f; color: var(--j-ink); box-shadow: none; }
 .jp-theme[data-theme="dark"] .jp-att button { background: transparent; border-color: #3a3a37; color: var(--j-ink-2); }
 .jp-theme[data-theme="dark"] .jp-seg button[aria-pressed="true"] { background: #33332f; color: var(--j-ink); box-shadow: none; }
 .jp-theme[data-theme="dark"] .jp-add, .jp-theme[data-theme="dark"] .jp-blk .jp-addbtn { border-color: #3a3a37; }
