@@ -185,6 +185,14 @@ ${p(esc(message).replace(/\n/g, '<br>'))}`
   return send({ to: [{ email: 'ligia@jonerfootball.com', name: 'Ligia' }], subject: `JFP contact form: ${name}`, html: shell({ heading: 'New message from the JFP page', body }), replyTo: email })
 }
 
+// The kit is compulsory, so every email that sets up a place says so, in the
+// same words. (Lee, 8 Oct 2026: it was missing from the payment-link email.)
+const kitLine = (config) => (config.kitUrl
+  ? p(`<b>The JF playing kit is required for every JFP player (${esc(config.kitPriceLabel || 'A$60')}).</b> If you have not ordered it yet, ${link('order it from BE Teamsport', config.kitUrl)} before the first session.`)
+  : '')
+// Families do not have a password and often think they need to make one.
+const howToSignIn = (to) => p(`<b>How to sign in:</b> press the button, enter <b>${esc(to)}</b>, and we email you a six digit code. Type the code in and you are in. There is no password to set up or remember. Your account keeps every booking, so you can add another session or another child from the same place.`)
+
 export async function sendFamilyInvite({ to, parentName, playerNames, group, config, url, needs, amountCents, trial = false, startDate = '' }) {
   const todo = []
   if (needs.details) todo.push('add the player details')
@@ -195,7 +203,9 @@ export async function sendFamilyInvite({ to, parentName, playerNames, group, con
   const body = `${p(`Hi ${esc(parentName || 'there')}, ${esc(playerNames.join(' and '))} ${playerNames.length > 1 ? 'have' : 'has'} ${what}.`)}
 ${rows([...(trial && startDate ? [['Trial', esc(dateLabel(startDate))]] : []), ...groupRows(config, group, trial ? '' : startDate)])}
 ${list ? p(`To finish, sign in with this email address and ${esc(list)}. It takes a couple of minutes.${needs.payment ? ' The place is locked in once it is paid.' : ''}`) : p('Sign in with this email address to see the booking.')}
-${button(needs.payment ? 'Sign in and finish' : 'View the booking', url)}`
+${button(needs.payment ? 'Sign in and finish' : 'View the booking', url)}
+${howToSignIn(to)}
+${kitLine(config)}`
   return send({ to: [{ email: to, name: parentName }], subject: trial ? `${playerNames.join(' and ')}: your JFP trial` : `${playerNames.join(' and ')}: your ${config.term} place`, html: shell({ preheader: `${group.day} ${group.time}`, heading: trial ? 'Your JFP trial' : 'Your JFP place', body }) })
 }
 
