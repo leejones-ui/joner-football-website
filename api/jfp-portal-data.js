@@ -19,7 +19,7 @@ import {
 } from './_jfp-store.js'
 import { coachPhotoUrl } from './jfp-groups.js'
 import {
-  loadRoster, countsFrom, playerAge, waiverFor, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, draftAgeBand,
+  loadRoster, countsFrom, playerAge, waiverFor, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, draftAgeBand, placeInGroups,
   createWaiverRows, waiverFields, findWaiversByTag, bustRosterCache, findTerm4ByTag,
   getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, listDropped, deleteTerm4Row, RESTORABLE,
   listLedger, createLedgerRow, listJuniors, listVenueHistory,
@@ -217,6 +217,90 @@ async function addPlayer(req, res, principal, config, body) {
   }
   await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed, payreq: payreq?.id || '', cents: payment === 'none' ? 0 : amountCents } })
   return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed })
+}
+
+// ---------- Players tab: one row per player, searchable, with everything ----------
+
+// Every Term 4 player flattened for the Players tab: enough to search, filter
+// and show the whole picture without a second call per player.
+async function playersList(req, res, config) {
+  const [roster, groups] = await Promise.all([loadRoster(), listGroups()])
+  const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
+  // placeInGroups resolves each row's groupId the same way the Timetable does,
+  // including the coach-split morning squads. A groupId that is not a real
+  // group means the row could not be placed: that is the "Not in a group" list.
+  const placed = await placeInGroups(roster, groups, config)
+  const players = placed.players.map((r) => {
+    const g = byGroup[r.groupId] || null
+    const gid = g ? r.groupId : ''
+    const coach = coachById(config, g?.coachId) || coachByAirtableName(config, r.coach)
+    const loc = locationFor(config, r.location)
+    const waiver = waiverFor(r.player, { emails: [r.email], phones: [r.phone] }, roster.waivers)
+    return {
+      rowId: r.id,
+      name: r.player,
+      age: r.dob ? ageOn(r.dob, config.termStart) : null,
+      dob: r.dob || '',
+      parent: r.parent || '',
+      email: r.email || '',
+      phone: r.phone || '',
+      groupId: gid,
+      groupLabel: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : '',
+      day: r.day || '', time: r.time || '', location: loc.name || r.location || '',
+      coach: coach ? coachLabel(coach) : (r.coach || ''),
+      coachId: coach?.id || '',
+      confirmation: r.confirmation || '',
+      paymentStatus: r.paymentStatus || '',
+      paymentType: r.paymentType || '',
+      feeAud: r.feeAud, paidAud: r.paidAud, balanceAud: r.balanceAud,
+      kit: r.kit || '',
+      waiver: waiver ? { onFile: true, term: waiver.term || '', signedDate: waiver.signedDate || '' } : { onFile: false },
+      notes: r.notes || '',
+      inGroup: Boolean(gid),
+      holdsPlace: r.holdsPlace,
+    }
+  })
+  const seen = new Map()
+  for (const p of players) { const k = (p.email || p.name).toLowerCase(); seen.set(k, (seen.get(k) || 0) + 1) }
+  return res.status(200).json({
+    success: true,
+    players: players.sort((a, b) => a.name.localeCompare(b.name)),
+    groups: groups.filter((g) => g.mode !== 'closed').map((g) => ({ id: g.id, label: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, coachId: g.coachId })),
+    coaches: config.coaches.map((c) => ({ id: c.id, name: coachLabel(c) })),
+    locations: config.locations.map((l) => ({ id: l.id, name: l.name })),
+  })
+}
+
+// Add a player straight from the Players tab, with no group. For a family who
+// has agreed a place but has no session yet, and for test rows. A player added
+// here holds no place and takes no capacity until someone puts them in a group.
+async function addPlayerNoGroup(req, res, principal, config, body) {
+  const name = clean(body.name, 80)
+  if (name.length < 3) return fail(res, 400, "Enter the player's full name.")
+  const email = body.email ? validEmail(body.email) : ''
+  if (body.email && !email) return fail(res, 400, 'That email does not look right.')
+  const parentName = clean(body.parent, 100)
+  const mobile = clean(body.mobile, 40)
+  const dob = ISO.test(body.dob || '') ? body.dob : ''
+  const feeAud = Number.isFinite(Number(body.feeAud)) && Number(body.feeAud) >= 0 ? Number(body.feeAud) : null
+  const note = clean(body.note, 300)
+  const fields = {
+    'Player Name': name,
+    ...(parentName ? { 'Parent Name': parentName } : {}),
+    ...(email ? { Email: email } : {}),
+    ...(mobile ? { Phone: mobile } : {}),
+    ...(dob ? { 'Date of Birth': dob } : {}),
+    // No day, time or location on purpose: they are not in a group yet.
+    'Term 4 Confirmation': 'Awaiting Reply',
+    ...(feeAud != null ? { 'Term 4 Fee': feeAud } : {}),
+    'Term 4 Amount Paid': 0,
+    'Term 4 Payment Status': 'Not Set',
+    'Term 4 Notes': `Added by ${principal.name} in the JFP portal Players tab, with no session yet.${note ? ` ${note}` : ''}`,
+  }
+  const [rowId] = await createTerm4Rows([fields])
+  await bustRosterCache()
+  await audit({ by: principal.email, action: 'player.add.nogroup', target: rowId, after: { name, email, feeAud } })
+  return res.status(200).json({ success: true, rowId })
 }
 
 // No email in the link: it would end up in browser history and server logs.
@@ -1297,6 +1381,8 @@ async function handle(req, res) {
       case 'familyInvites': return await familyInvites(req, res, principal, config, body)
       case 'searchPlayers': return res.status(200).json({ success: true, results: await searchPlayers(config, body) })
       case 'addPlayer': return await addPlayer(req, res, principal, config, body)
+      case 'playersList': return await playersList(req, res, config)
+      case 'addPlayerNoGroup': return await addPlayerNoGroup(req, res, principal, config, body)
       case 'movePlayer': return await movePlayer(res, principal, config, body)
       case 'removePlayer': return await removePlayer(res, principal, config, body)
       case 'restorePlayer': return await restorePlayer(res, principal, body)

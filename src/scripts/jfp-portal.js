@@ -126,7 +126,7 @@ async function go(tab) {
   view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderFamilies, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   view().focus({ preventScroll: true })
 }
@@ -1491,6 +1491,7 @@ async function renderFamilies() {
       ${d.noEmail.length ? `<span class="j-pill j-pill-red">${d.noEmail.length} players with no email</span>` : ''}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button type="button" class="j-btn j-btn-line" id="fm-back">Back to players</button>
       <button type="button" class="j-btn j-btn-line" id="fm-prev">Show the emails</button>
       <button type="button" class="j-btn j-btn-dark" id="fm-send">Send to selected</button>
     </div>
@@ -1500,6 +1501,7 @@ async function renderFamilies() {
     </tbody></table></div>
     ${d.list.some((f) => f.kind === 'noPrice') ? '<p class="muted small" style="margin-top:8px">"Needs a price first": unpaid with no Term 4 Fee in Airtable. Send them a payment link from the Timetable (tap the player), or set the fee in Airtable, then come back.</p>' : ''}
     ${d.noEmail.length ? `<p class="muted small">No parent email in Airtable: ${esc(d.noEmail.map((x) => x.name).join(', '))}.</p>` : ''}`
+  $('fm-back').addEventListener('click', () => renderPlayers())
   const boxes = () => [...view().querySelectorAll('[data-fm]')]
   $('fm-all').addEventListener('change', (e) => boxes().forEach((b) => { if (!b.disabled) b.checked = e.target.checked && !d.list.find((f) => f.email === b.dataset.fm)?.invitedAt }))
   $('fm-prev').addEventListener('click', () => {
@@ -1524,6 +1526,129 @@ async function renderFamilies() {
     toast(`Sent ${sent}${failed ? `, ${failed} failed (try again)` : ''}`)
     renderFamilies()
   })
+}
+
+// ---------- Players: search, filters, a full record, and adding one ----------
+
+const PL = { q: '', status: '', group: '', coach: '', waiver: '', place: '', data: null }
+
+function plMatch(p) {
+  const q = PL.q.trim().toLowerCase()
+  if (q && ![p.name, p.parent, p.email, p.phone, p.groupLabel, p.coach].some((v) => String(v || '').toLowerCase().includes(q))) return false
+  if (PL.status === 'paid' && p.paymentStatus !== 'Paid') return false
+  if (PL.status === 'unpaid' && p.paymentStatus === 'Paid') return false
+  if (PL.status === 'noprice' && p.feeAud != null) return false
+  if (PL.group && p.groupId !== PL.group) return false
+  if (PL.coach && p.coachId !== PL.coach) return false
+  if (PL.waiver === 'yes' && !p.waiver.onFile) return false
+  if (PL.waiver === 'no' && p.waiver.onFile) return false
+  if (PL.place === 'in' && !p.inGroup) return false
+  if (PL.place === 'out' && p.inGroup) return false
+  return true
+}
+
+const money0 = (n) => (n == null ? '' : `A$${Number(n).toLocaleString('en-AU')}`)
+
+function plRow(p) {
+  const pay = p.paymentStatus === 'Paid' ? 'green' : p.feeAud == null ? 'red' : 'amber'
+  return `<tr data-pl="${esc(p.rowId)}" style="cursor:pointer">
+    <td><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted small">(${esc(p.age)})</span>` : ''}<br><span class="muted small">${esc(p.parent || 'no parent name')}</span></td>
+    <td>${p.inGroup ? esc(p.groupLabel) : '<span class="j-pill j-pill-red">Not in a group</span>'}<br><span class="muted small">${esc(p.coach || '')}</span></td>
+    <td><span class="j-pill j-pill-${pay}">${esc(p.paymentStatus || 'Not set')}</span>${p.feeAud != null ? `<br><span class="muted small">${esc(money0(p.feeAud))}${p.balanceAud ? `, ${esc(money0(p.balanceAud))} owing` : ''}</span>` : ''}</td>
+    <td>${p.waiver.onFile ? '<span class="j-pill j-pill-green">Waiver</span>' : '<span class="j-pill j-pill-red">No waiver</span>'}</td>
+    <td class="muted small">${esc(p.email || 'no email')}</td>
+  </tr>`
+}
+
+function plDetail(p) {
+  const row = (k, v) => (v ? `<div class="j-kv"><span>${esc(k)}</span><span>${esc(v)}</span></div>` : '')
+  modal(`<h2 style="margin-bottom:2px">${esc(p.name)}</h2>
+    <p class="muted small" style="margin-bottom:14px">${p.age != null ? `Age ${esc(p.age)} on the first day of term` : 'Age not on file'}${p.dob ? ` · born ${esc(p.dob)}` : ''}</p>
+    <h3>Session</h3>
+    ${row('Group', p.inGroup ? p.groupLabel : 'Not in a group')}
+    ${row('Coach', p.coach)}
+    ${row('In Airtable as', [p.day, p.time, p.location].filter(Boolean).join(' ') || 'no session set')}
+    ${row('Confirmation', p.confirmation)}
+    <h3 style="margin-top:14px">Money</h3>
+    ${row('Fee', p.feeAud == null ? 'no fee set' : money0(p.feeAud))}
+    ${row('Paid', money0(p.paidAud))}
+    ${row('Balance', money0(p.balanceAud))}
+    ${row('Status', p.paymentStatus)}
+    ${row('Type', p.paymentType)}
+    <h3 style="margin-top:14px">Family</h3>
+    ${row('Parent', p.parent)}
+    ${row('Email', p.email)}
+    ${row('Mobile', p.phone)}
+    <h3 style="margin-top:14px">Paperwork</h3>
+    ${row('Waiver', p.waiver.onFile ? `On file${p.waiver.term ? `, ${p.waiver.term}` : ''}${p.waiver.signedDate ? `, signed ${p.waiver.signedDate}` : ''}` : 'Not signed')}
+    ${row('Playing kit', p.kit || 'not confirmed')}
+    ${p.notes ? `<h3 style="margin-top:14px">Notes</h3><p class="small" style="white-space:pre-wrap;max-height:220px;overflow:auto">${esc(p.notes)}</p>` : ''}
+    <div style="display:flex;justify-content:flex-end;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })
+}
+
+function plAddBox() {
+  const box = modal(`<h2 style="margin-bottom:4px">Add a player</h2>
+    <p class="muted small" style="margin-bottom:12px">Writes a row to Term 4 Players in Airtable with no session. They hold no place and take no capacity until you put them in a group on the Timetable.</p>
+    <label class="j-field"><span>Player's full name</span><input class="j-input" id="ap-name" autocomplete="off"></label>
+    <div class="j-two"><label class="j-field"><span>Parent name <span class="muted">(optional)</span></span><input class="j-input" id="ap-parent" autocomplete="off"></label>
+    <label class="j-field"><span>Date of birth <span class="muted">(optional)</span></span><input class="j-input" type="date" id="ap-dob"></label></div>
+    <div class="j-two"><label class="j-field"><span>Parent email <span class="muted">(optional)</span></span><input class="j-input" id="ap-email" inputmode="email"></label>
+    <label class="j-field"><span>Mobile <span class="muted">(optional)</span></span><input class="j-input" id="ap-mobile" inputmode="tel"></label></div>
+    <div class="j-two"><label class="j-field"><span>Term 4 fee A$ <span class="muted">(optional)</span></span><input class="j-input" id="ap-fee" inputmode="decimal"></label>
+    <label class="j-field"><span>Note <span class="muted">(optional)</span></span><input class="j-input" id="ap-note" maxlength="200" placeholder="For example, test row"></label></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ap-go">Add player</button></div>`)
+  box.querySelector('#ap-go').addEventListener('click', async (e) => {
+    const btn = e.currentTarget
+    const name = box.querySelector('#ap-name').value.trim()
+    if (name.length < 3) return toast("Enter the player's full name.")
+    const feeRaw = box.querySelector('#ap-fee').value.trim()
+    btn.disabled = true
+    const r = await post('addPlayerNoGroup', {
+      name,
+      parent: box.querySelector('#ap-parent').value.trim(),
+      email: box.querySelector('#ap-email').value.trim(),
+      mobile: box.querySelector('#ap-mobile').value.trim(),
+      dob: box.querySelector('#ap-dob').value,
+      note: box.querySelector('#ap-note').value.trim(),
+      ...(feeRaw ? { feeAud: Number(feeRaw) } : {}),
+    })
+    btn.disabled = false
+    if (!r.ok) return toast(r.data.error)
+    closeModal(); toast('Added. Airtable updated.'); P.board = null; renderPlayers()
+  })
+}
+
+async function renderPlayers() {
+  if (!PL.data) PL.data = await need(await post('playersList'))
+  const d = PL.data
+  const shown = d.players.filter(plMatch)
+  const opt = (list, sel, blank) => `<option value="">${blank}</option>` + list.map((x) => `<option value="${esc(x.id)}" ${sel === x.id ? 'selected' : ''}>${esc(x.label || x.name)}</option>`).join('')
+  view().innerHTML = `<div class="jp-head"><div><h1>Players</h1><p class="muted small">Every Term 4 player. Search, filter, click anyone to see everything about them.</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-dark" id="pl-add">+ Add a player</button><button type="button" class="j-btn j-btn-line" id="pl-invite">Send account invites</button></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <input class="j-input" id="pl-q" placeholder="Search name, parent, email, mobile, group" value="${esc(PL.q)}" style="flex:1;min-width:240px">
+      <select class="j-select" id="pl-status" style="width:auto">${opt([{ id: 'unpaid', label: 'Not paid' }, { id: 'paid', label: 'Paid' }, { id: 'noprice', label: 'No fee set' }], PL.status, 'Any payment')}</select>
+      <select class="j-select" id="pl-group" style="width:auto">${opt(d.groups, PL.group, 'Any group')}</select>
+      <select class="j-select" id="pl-coach" style="width:auto">${opt(d.coaches, PL.coach, 'Any coach')}</select>
+      <select class="j-select" id="pl-waiver" style="width:auto">${opt([{ id: 'yes', label: 'Waiver on file' }, { id: 'no', label: 'No waiver' }], PL.waiver, 'Any waiver')}</select>
+      <select class="j-select" id="pl-place" style="width:auto">${opt([{ id: 'in', label: 'In a group' }, { id: 'out', label: 'Not in a group' }], PL.place, 'In or out')}</select>
+      <button type="button" class="j-btn j-btn-ghost j-btn-sm" id="pl-clear">Clear</button>
+    </div>
+    <p class="muted small" style="margin-bottom:8px">${shown.length} of ${d.players.length} players${shown.length !== d.players.length ? ' match' : ''} · ${d.players.filter((p) => !p.inGroup).length} not in a group · ${d.players.filter((p) => p.feeAud == null).length} with no fee · ${d.players.filter((p) => !p.waiver.onFile).length} with no waiver</p>
+    <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th>Waiver</th><th>Email</th></tr></thead>
+      <tbody>${shown.map(plRow).join('') || '<tr><td colspan="5" class="muted">Nobody matches those filters.</td></tr>'}</tbody></table></div>`
+  const redraw = () => renderPlayers()
+  $('pl-q').addEventListener('input', (e) => { PL.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('pl-q'); i.focus(); i.setSelectionRange(at, at) })
+  for (const [id, key] of [['pl-status', 'status'], ['pl-group', 'group'], ['pl-coach', 'coach'], ['pl-waiver', 'waiver'], ['pl-place', 'place']]) {
+    $(id).addEventListener('change', (e) => { PL[key] = e.target.value; redraw() })
+  }
+  $('pl-clear').addEventListener('click', () => { Object.assign(PL, { q: '', status: '', group: '', coach: '', waiver: '', place: '' }); redraw() })
+  $('pl-add').addEventListener('click', () => plAddBox())
+  $('pl-invite').addEventListener('click', () => renderFamilies())
+  view().querySelectorAll('[data-pl]').forEach((tr) => tr.addEventListener('click', () => {
+    const p = d.players.find((x) => x.rowId === tr.dataset.pl)
+    if (p) plDetail(p)
+  }))
 }
 
 // ---------- cover, time off, session plans ----------
