@@ -149,7 +149,17 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 /* sheet: bottom sheet on phones, side panel on desktop */
 .j-scrim { position: fixed; inset: 0; background: rgba(16, 24, 40, .45); z-index: 60; }
 .j-sheet { position: fixed; z-index: 61; background: var(--j-surface); display: flex; flex-direction: column; box-shadow: var(--j-shadow-lg); left: 0; right: 0; bottom: 0; max-height: 94vh; border-radius: 20px 20px 0 0; }
-@media (min-width: 760px) { .j-sheet { left: auto; top: 0; bottom: 0; width: 520px; max-height: none; border-radius: 0; } }
+/* Desktop: a centred dialog, not a 520px column pinned to the right edge.
+   The apply flow is a multi-step form with waiver text, so it needs reading
+   width. Phones keep the bottom sheet above. (Lee, 8 Oct 2026) */
+@media (min-width: 760px) {
+  .j-sheet { left: 50%; right: auto; top: 50%; bottom: auto; transform: translate(-50%, -50%);
+    width: min(680px, calc(100vw - 64px)); max-height: 88vh; border-radius: 18px; }
+  .j-sheet .j-sheet-head { padding: 20px 26px 14px; }
+  .j-sheet .j-sheet-body { padding: 24px 26px; }
+  .j-sheet .j-sheet-foot { padding: 16px 26px; }
+}
+@media (min-width: 1100px) { .j-sheet { width: 760px; } }
 .j-sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px 12px; border-bottom: 1px solid var(--j-line-2); }
 .j-sheet-body { padding: 18px; overflow-y: auto; flex: 1; }
 .j-sheet-foot { padding: 14px 18px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--j-line-2); background: var(--j-surface); }

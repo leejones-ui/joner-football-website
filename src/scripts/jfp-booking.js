@@ -363,6 +363,14 @@ function startTimer() {
 
 // Booking and applying both take the waiver; waitlist and enquiries do not.
 function needsWaiverStep() { return F.kind === 'book' || F.kind === 'application' }
+// "Current club (optional)" here and "Club they play for" (required) two steps
+// later read as the same question asked twice. Ask it once, on the step that
+// makes it compulsory, and copy the answer onto the player. (Lee, 8 Oct 2026)
+function asksClubLater() {
+  const qs = F.g?.questions?.length ? F.g.questions : [{ key: 'club' }, { key: 'team' }]
+  return F.kind === 'application' && qs.some((q) => q.key === 'club')
+}
+
 function stepsFor() { return F.kind === 'book' ? 4 : F.kind === 'application' ? 4 : 3 }
 
 function stepWho() {
@@ -403,15 +411,15 @@ function playerRow(p) {
   else status = `${p.age != null ? `<span class="muted small">Age ${esc(p.age)}</span> ` : ''}${p.waiverOnFile ? '<span class="j-pill j-pill-green">Waiver on file</span>' : '<span class="j-pill j-pill-amber">Waiver needed</span>'}`
   return `<button type="button" class="j-player ${on ? 'on' : ''} ${off ? 'off' : ''}" data-key="${esc(p.key)}" ${off ? 'disabled' : ''} aria-pressed="${on}">
     <span><b>${esc(p.name)}</b><br>${status}</span><span aria-hidden="true" style="font-size:20px">${on ? '●' : '○'}</span></button>
-    ${on && (p.needsDob || !p.waiverOnFile) ? detailFields(`x-${p.key}`, { dob: p.needsDob, name: false, emergency: !p.waiverOnFile && needsWaiverStep() }) : ''}`
+    ${on && (p.needsDob || !p.waiverOnFile) ? detailFields(`x-${p.key}`, { dob: p.needsDob, name: false, emergency: !p.waiverOnFile && needsWaiverStep(), club: !asksClubLater() }) : ''}`
 }
 
-function detailFields(id, { dob = true, name = true, emergency = true }) {
+function detailFields(id, { dob = true, name = true, emergency = true, club = true }) {
   return `<div class="j-card" style="padding:12px 14px;margin:-2px 0 10px" data-details="${esc(id)}">
     ${name ? `<label class="j-field"><span>Player's full name</span><input class="j-input" data-f="name" autocomplete="off"></label>` : ''}
     ${dob ? `<label class="j-field"><span>Date of birth</span><input class="j-input" type="date" data-f="dob" max="2023-12-31" min="2004-01-01"></label>` : ''}
     ${emergency ? `<div class="j-two"><label class="j-field"><span>Emergency contact</span><input class="j-input" data-f="emergencyName" autocomplete="off"></label><label class="j-field"><span>Their phone</span><input class="j-input" type="tel" data-f="emergencyPhone" inputmode="tel"></label></div>
-    <label class="j-field"><span>Current club <span class="muted">(optional)</span></span><input class="j-input" data-f="club"></label>
+    ${club ? `<label class="j-field"><span>Current club <span class="muted">(optional)</span></span><input class="j-input" data-f="club"></label>` : ''}
     <label class="j-field"><span>Medical notes <span class="muted">(optional)</span></span><input class="j-input" data-f="medical" placeholder="Allergies, asthma, injuries"></label>` : ''}
   </div>`
 }
@@ -433,7 +441,7 @@ function renderPlayers() {
   F.sheet.body.innerHTML = `
     <p class="muted small" style="margin-bottom:12px">Signed in as <b>${esc(fam.email)}</b> · <button type="button" class="j-btn j-btn-ghost j-btn-sm" id="not-me">Not you?</button></p>
     ${found ? `<h3 style="margin-bottom:8px">Your players</h3>${fam.players.map(playerRow).join('')}` : `<div class="j-box j-box-grey" style="margin-bottom:12px">${F.who === 'current' ? 'We could not find players under this email. If you used another email with us, sign in with that one, or add the player below.' : 'Add the player who will train.'}</div>`}
-    <div id="new-players">${F.newPlayers.map((_, i) => `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><h3>New player ${i + 1}</h3><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-remove-new="${i}">Remove</button></div>${detailFields(`n-${i}`, { dob: true, name: true, emergency: needsWaiverStep() })}`).join('')}</div>
+    <div id="new-players">${F.newPlayers.map((_, i) => `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><h3>New player ${i + 1}</h3><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-remove-new="${i}">Remove</button></div>${detailFields(`n-${i}`, { dob: true, name: true, emergency: needsWaiverStep(), club: !asksClubLater() })}`).join('')}</div>
     <button type="button" class="j-btn j-btn-line j-btn-block" id="add-new" style="margin-top:6px">+ Add a new player</button>
     <h3 style="margin:18px 0 8px">Your details</h3>
     <div class="j-two"><label class="j-field"><span>Parent or guardian name</span><input class="j-input" id="p-name" autocomplete="name" value="${esc(fam.parentName || '')}"></label>
@@ -599,8 +607,8 @@ function stepWaiver() {
 
 function payloadPlayers() {
   return F.players.map((p) => (p.isNew
-    ? { name: p.name, dob: p.dob, club: p.club, medical: p.medical, emergencyName: p.emergencyName, emergencyPhone: p.emergencyPhone }
-    : { key: p.key, dob: p.dob, club: p.club, medical: p.medical, emergencyName: p.emergencyName, emergencyPhone: p.emergencyPhone }))
+    ? { name: p.name, dob: p.dob, club: p.club || F.answers?.club || '', medical: p.medical, emergencyName: p.emergencyName, emergencyPhone: p.emergencyPhone }
+    : { key: p.key, dob: p.dob, club: p.club || F.answers?.club || '', medical: p.medical, emergencyName: p.emergencyName, emergencyPhone: p.emergencyPhone }))
 }
 
 function stepReview() {

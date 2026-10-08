@@ -1365,9 +1365,11 @@ function recordModal(p, { stripe } = {}) {
   box.querySelector('#rp-go').addEventListener('click', async (e) => {
     const body = stripe ? { rowIds: [p.rowId], method: 'Stripe', stripeSessionId: stripe.id } : { rowIds: [p.rowId], amountCents: Math.round(Number(box.querySelector('#rp-amt').value) * 100), method: box.querySelector('#rp-how').value, date: box.querySelector('#rp-date').value, note: box.querySelector('#rp-note').value.trim() }
     if (!stripe && !(body.amountCents > 0)) return toast('Enter the amount received.')
-    e.currentTarget.disabled = true
+    // Hold the button: e.currentTarget is null once the handler has awaited.
+    const btn = e.currentTarget
+    btn.disabled = true
     const r = await post('recordPayment', body)
-    e.currentTarget.disabled = false
+    btn.disabled = false
     if (!r.ok) return toast(r.data.error)
     closeModal(); closeDrawer(); toast(`Recorded. Airtable updated${r.data.ledger ? ' and the ledger has it' : ''}.`); P.board = null; if (P.tab === 'money') renderMoney()
   })
