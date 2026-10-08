@@ -16,7 +16,21 @@ export async function renderMessages(ui) {
   const { view, need, modal, closeModal, confirmBox } = ui
   const d = await need(await call('overview'))
   const route = d.route || {}
-  const relayLine = d.relay ? `Mac last checked in ${ago(d.relay.at)}${d.relay.ok === false ? ` · <b style="color:var(--j-red,#B42318)">${esc(d.relay.problem || 'not ready')}</b>` : ''}` : 'The Mac has not checked in yet'
+  // A stale check-in used to look exactly like a healthy one, because ok was
+  // true when the Mac last spoke. Nothing running is the normal reason a text
+  // sits in the queue doing nothing, so say so and say what to do about it.
+  // (Lee lost an evening to this on 7 Oct 2026.)
+  const STALE_MIN = 10
+  const relayAgeMin = d.relay?.at ? Math.round((Date.now() - Date.parse(d.relay.at)) / 60000) : null
+  const stale = relayAgeMin != null && relayAgeMin > STALE_MIN
+  const warn = (t) => `<b style="color:var(--j-red,#B42318)">${t}</b>`
+  const relayLine = !d.relay
+    ? warn('The Mac has never checked in. Run ~/jfp-text watch on the HQ Mac.')
+    : d.relay.ok === false
+      ? `Mac last checked in ${ago(d.relay.at)} · ${warn(esc(d.relay.problem || 'not ready'))}`
+      : stale
+        ? `Mac last checked in ${ago(d.relay.at)} · ${warn('nothing is running on the Mac, so texts will sit here. Run ~/jfp-text watch on the HQ Mac.')}`
+        : `Mac checked in ${ago(d.relay.at)}`
   const counts = { pay: 0, paid: 0, noPrice: 0, check: 0 }
   for (const f of d.families) counts[f.kind] += 1
   const checkIt = d.messages.filter((m) => m.status === 'unknown')
