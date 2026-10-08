@@ -113,7 +113,7 @@ export async function sendParentConfirmation({ booking, group, config, siteUrl }
 ${rows([...groupRows(config, group, booking.startDate || ''), ['Players', players], ['Paid', esc(formatAud(booking.amountPaidCents ?? booking.priceCents))], ['Reference', esc(booking.id)]])}
 ${p('The calendar file attached adds all the dates in one tap.')}
 ${p('Arrive 10 minutes early. Bring boots, shin pads and a full water bottle.')}
-${config.kitUrl ? p(`<b>Required:</b> every JFP player trains in the JF playing kit (${config.kitPriceLabel || 'A$50'}). If you have not ordered it yet, ${link('order it from BE Teamsport', config.kitUrl)} before the first session.`) : ''}
+${config.kitUrl ? p(`<b>Required:</b> every JFP player trains in the JF playing kit (${config.kitPriceLabel || 'A$60'}). If you have not ordered it yet, ${link('order it from BE Teamsport', config.kitUrl)} before the first session.`) : ''}
 ${siteUrl ? button('Open My account', `${siteUrl}/jfp-account/`) : ''}`
   return send({
     to: [{ email: booking.email, name: booking.parentName }],
@@ -221,7 +221,7 @@ ${siteUrl ? button('Open My account', `${siteUrl}/jfp-account/`) : ''}`
   const ics = group ? buildIcs({ uid: payreq.id, group, config, title: trial ? `JFP trial ${group.day} ${group.time}` : `JFP ${group.day} ${group.time}`, fromIso: payreq.startDate || '', only: trial ? payreq.trialDate || '' : '' }) : ''
   const body = `${p(`Thanks ${esc(payreq.parentName || '')}. We have your payment for ${esc(payreq.playerNames.join(' and '))}.`)}
 ${rows([...(trial && payreq.trialDate ? [['Trial', esc(dateLabel(payreq.trialDate))]] : []), ...(group ? groupRows(config, group, trial ? '' : payreq.startDate || '').filter(([k]) => !(trial && k === 'Dates')) : []), ['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))], ['Reference', esc(payreq.id)]])}
-${config.kitUrl ? p(`<b>Required:</b> every JFP player trains in the JF playing kit (${config.kitPriceLabel || 'A$50'}). If you have not ordered it yet, ${link('order it from BE Teamsport', config.kitUrl)} before the first session.`) : ''}
+${config.kitUrl ? p(`<b>Required:</b> every JFP player trains in the JF playing kit (${config.kitPriceLabel || 'A$60'}). If you have not ordered it yet, ${link('order it from BE Teamsport', config.kitUrl)} before the first session.`) : ''}
 ${siteUrl ? button('Open My account', `${siteUrl}/jfp-account/`) : ''}`
   return send({
     to: [{ email: payreq.email, name: payreq.parentName }],

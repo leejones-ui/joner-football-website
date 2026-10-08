@@ -359,8 +359,9 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .j-card-photo .s-apply { color: var(--j-blue); } .j-card-photo .s-book { color: var(--j-green); } .j-card-photo .s-full { color: var(--j-red); } .j-card-photo .s-grey { color: var(--j-grey); }
 .j-card-photo.is-full .ph img { filter: grayscale(.5); opacity: .8; }
 .j-card-photo:hover { box-shadow: var(--j-shadow); }
-.j-req { margin: 6px 0 0; padding-left: 18px; }
-.j-req li { margin: 2px 0; }
+.j-req { margin: 6px 0 0; padding-left: 20px; list-style: disc; }
+.j-req li { margin: 4px 0; }
+.j-reqhead { margin: 14px 0 2px; font-weight: 700; font-size: 14px; }
 .jp-blk .jp-addbtn { display: block; width: 100%; margin-top: 5px; border: 1.5px dashed #D0D5DD; border-radius: 8px; background: transparent; font-size: 11.5px; font-weight: 700; color: var(--j-ink-2); padding: 4px; }
 .jp-blk .jp-addbtn:hover { border-color: var(--j-ink); color: var(--j-ink); }
 

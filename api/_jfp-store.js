@@ -143,7 +143,7 @@ export const DEFAULT_CONFIG = {
   // sold by BE Teamsport, so it always opens in a new tab and the family's
   // Joner page stays open behind it. Families confirm it before they pay.
   kitUrl: 'https://www.besteamsport.com.au/collections/joner-football',
-  kitPriceLabel: 'A$50',
+  kitPriceLabel: 'A$60',
   // Next term: families keep their place with a non-refundable hold fee
   // (taken off next term's price) or pay in full, before it opens to everyone.
   nextTerm: { name: 'Term 1 2027', holdCents: 10000, open: false },

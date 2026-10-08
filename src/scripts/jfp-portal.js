@@ -1824,7 +1824,7 @@ async function renderSettings() {
       <p class="muted small" style="margin-top:6px">${sd.holidays.some((h) => h.inTerm) ? 'Some public holidays fall in this term.' : 'No NSW public holidays fall in this term.'}</p>
       <h2 style="margin:16px 0 12px">Training kit</h2>
       <div class="j-two"><label class="j-field"><span>JF playing kit link (required, families confirm it before paying)</span><input class="j-input" id="s-kit" value="${esc(c.kitUrl || '')}" placeholder="https://"></label>
-      <label class="j-field"><span>Kit price shown to families</span><input class="j-input" id="s-kitprice" value="${esc(c.kitPriceLabel || 'A$50')}" maxlength="20"></label></div>
+      <label class="j-field"><span>Kit price shown to families</span><input class="j-input" id="s-kitprice" value="${esc(c.kitPriceLabel || 'A$60')}" maxlength="20"></label></div>
       <label class="j-field"><span>Line above the button</span><input class="j-input" id="s-kitnote" value="${esc(c.kitNote || '')}" maxlength="300"></label>
       <h2 style="margin:16px 0 12px">Waiver</h2>
       <label class="j-check"><input type="checkbox" id="s-wcarry" ${c.waiverCarryover !== false ? 'checked' : ''}> <span><b>Accept waivers signed in an earlier term.</b> Off: every family signs again for ${esc(c.term)}. Either way a waiver only counts when it carries the family's own email or mobile.</span></label>

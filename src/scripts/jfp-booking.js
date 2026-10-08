@@ -145,7 +145,7 @@ function requirementsOf(g, { ages = true } = {}) {
   return [
     g.id === 'one-to-one' || !ages ? '' : `${g.girlsOnly ? 'Girls only. ' : ''}Age guide: ${g.minAge} to ${g.maxAge}`,
     ...(g.requirements || []),
-    g.id === 'one-to-one' ? '' : `JF playing kit (${S.data?.kitPriceLabel || 'A$50'})`,
+    g.id === 'one-to-one' ? '' : `JF playing kit (${S.data?.kitPriceLabel || 'A$60'})`,
   ].filter(Boolean)
 }
 
@@ -266,7 +266,7 @@ function groupSheet(g) {
   // Ages as a guide, then what the group asks of a player. Nothing that
   // invites a family to pick a group above the player's level.
   const who = `<ul class="j-req">${requirementsOf(g).map((r) => `<li>${esc(r)}</li>`).join('')}</ul>
-    ${g.requirementsText ? `<div class="j-reqtext">${g.requirementsText.split(/\n\s*\n/).map((para) => `<p>${esc(para).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
+    ${g.requirementsText ? `<p class="j-reqhead">Session notes</p><div class="j-reqtext">${g.requirementsText.split(/\n\s*\n/).map((para) => `<p>${esc(para).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
     ${g.publicNote ? `<p style="margin-top:6px">${esc(g.publicNote)}</p>` : ''}
     <p class="small" style="margin-top:6px">Our coaches place every player with others at their level, so each ${g.mode === 'direct' ? 'booking is for players who meet the above' : 'application is reviewed'}.</p>`
   const steps = waitOnly(g)
@@ -658,7 +658,7 @@ function stepReview() {
 function kitStep() {
   const url = S.data?.kitUrl || '#'
   return `<div class="j-kitstep"><span class="j-pill j-pill-red">Required</span>
-    <h4>JF playing kit, ${esc(S.data?.kitPriceLabel || 'A$50')} a player</h4>
+    <h4>JF playing kit, ${esc(S.data?.kitPriceLabel || 'A$60')} a player</h4>
     <p class="muted small">Every player trains in it. <a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Order it from BE Teamsport</a> (opens a new tab).</p>
     <label class="j-check"><input type="radio" name="r-kit" value="ordered"> <span>I have ordered it, or will order it now</span></label>
     <label class="j-check"><input type="radio" name="r-kit" value="has"> <span>The player already has the JF playing kit</span></label>
