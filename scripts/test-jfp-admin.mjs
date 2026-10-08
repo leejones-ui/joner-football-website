@@ -12,12 +12,17 @@ process.env.JFP_ADMIN_TOKEN = token
 process.env.KV_REST_API_URL = 'https://isolated.invalid'
 process.env.KV_REST_API_TOKEN = 'test-only'
 const initial = { id: 'test', day: 'Monday', time: '4:20pm', location: 'Belrose HQ', capacity: 4, mode: 'direct', requirements: [], requirementsText: '', customField: { keep: true }, updatedAt: 'unchanged' }
-let rows, audits, writes, conflict, ambiguous
-function reset() { rows = new Map([['test', JSON.stringify(initial)]]); audits = []; writes = 0; conflict = false; ambiguous = false }
+let rows, audits, writes, conflict, ambiguous, kv
+function reset() { rows = new Map([['test', JSON.stringify(initial)]]); audits = []; writes = 0; conflict = false; ambiguous = false; kv = new Map() }
 globalThis.fetch = async (_url, init) => {
   const cmd = JSON.parse(init.body)
   let result
-  if (cmd[0] === 'GET') result = null
+  if (Array.isArray(cmd[0])) {
+    const out = cmd.map(c => { if (c[0] === 'LPUSH') audits.push(JSON.parse(c[2])); return { result: 1 } })
+    return { ok: true, json: async () => out }
+  }
+  if (cmd[0] === 'GET') result = kv.has(cmd[1]) ? kv.get(cmd[1]) : null
+  else if (cmd[0] === 'SET') { kv.set(cmd[1], cmd[2]); result = 'OK' }
   else if (cmd[0] === 'HGET') result = rows.get(cmd[2]) ?? null
   else if (cmd[0] === 'HGETALL') result = [...rows.entries()].flat()
   else if (cmd[0] === 'EVAL') {
@@ -68,6 +73,19 @@ try {
   await test('identical retries do not write or audit twice', async () => { const b = request([{ id: 'test', requirementsText: 'changed' }]); await call(b); assert.equal((await call(b)).body.changed, 0); assert.equal(writes, 1); assert.equal(audits.length, 1) })
   await test('conflicts return 409 with no writes', async () => { conflict = true; assert.equal((await call(request([{ id: 'test', requirementsText: 'changed' }]))).code, 409); assert.equal(writes, 0) })
   await test('ambiguous commit instructs reconciliation, not blind retry', async () => { ambiguous = true; const r = await call(request([{ id: 'test', requirementsText: 'changed' }])); assert.equal(r.code, 503); assert.match(r.body.error, /unconfirmed/); assert.equal(writes, 1) })
+  await test('setKit changes only the kit price label and audits it', async () => {
+    kv.set(keys.config(), JSON.stringify({ kitPriceLabel: 'A$50' }))
+    const r = await call({ action: 'setKit', kitPriceLabel: 'A$60' })
+    assert.equal(r.code, 200); assert.equal(r.body.kitPriceLabel, 'A$60')
+    assert.equal(JSON.parse(kv.get(keys.config())).kitPriceLabel, 'A$60')
+    assert.equal(audits.length, 1); assert.equal(audits[0].action, 'setKit'); assert.match(audits[0].by, /shared admin token/)
+    const again = await call({ action: 'setKit', kitPriceLabel: 'A$60' })
+    assert.equal(again.body.changed, false); assert.equal(audits.length, 1)
+  })
+  await test('setKit refuses other fields and odd prices', async () => {
+    for (const b of [{ action: 'setKit', kitPriceLabel: '60' }, { action: 'setKit', kitPriceLabel: 'A$60', kitUrl: 'x' }, { action: 'setKit' }, { action: 'setKit', kitPriceLabel: 'A$<b>' }]) assert.equal((await call(b)).code, 400)
+    assert.equal(kv.size, 0)
+  })
   console.log(`${passed} isolated admin tests passed; no live data accessed.`)
 } finally {
   globalThis.fetch = originalFetch

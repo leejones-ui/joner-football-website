@@ -1,6 +1,6 @@
-// Token-scoped criteria administration. No player, payment or Airtable access.
+// Token-scoped administration: group criteria and the kit price. No player, payment or Airtable access.
 import crypto from 'node:crypto'
-import { listGroups, validateGroup, getConfig, REQUIREMENTS, clean, kvCommand, keys, normaliseStoredGroup } from './_jfp-store.js'
+import { listGroups, validateGroup, getConfig, saveConfig, audit, REQUIREMENTS, clean, kvCommand, keys, normaliseStoredGroup } from './_jfp-store.js'
 
 // Compare every original row before writing anything. Criteria and audit records
 // commit together; preserve every other stored field, including unknown fields.
@@ -58,6 +58,18 @@ export default async function handler(req, res) {
     }
     let body
     try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body } catch { return fail(res, 400, 'Invalid JSON.') }
+    if (body && typeof body === 'object' && !Array.isArray(body) && body.action === 'setKit') {
+      if (Object.keys(body).some(k => !['action', 'kitPriceLabel'].includes(k))) return fail(res, 400, 'Only kitPriceLabel is accepted.')
+      const label = typeof body.kitPriceLabel === 'string' ? body.kitPriceLabel.trim() : ''
+      if (!/^A\$\d{1,4}(\.\d{2})?$/.test(label)) return fail(res, 400, 'kitPriceLabel must look like A$60.')
+      const before = (await getConfig()).kitPriceLabel
+      commitAttempted = true
+      if (before !== label) {
+        await saveConfig({ kitPriceLabel: label })
+        await audit({ by: 'jfp-admin (shared admin token)', action: 'setKit', target: 'kitPriceLabel', before: { kitPriceLabel: before }, after: { kitPriceLabel: label } })
+      }
+      return res.status(200).json({ success: true, kitPriceLabel: label, changed: before !== label })
+    }
     if (!body || typeof body !== 'object' || Array.isArray(body) || body.action !== 'setCriteria' || Object.keys(body).some(k => !['action', 'groups'].includes(k))) return fail(res, 400, 'Use POST with action setCriteria and groups.')
     if (!Array.isArray(body.groups) || !body.groups.length || body.groups.length > 100) return fail(res, 400, 'Send between 1 and 100 groups.')
     const seen = new Set()
