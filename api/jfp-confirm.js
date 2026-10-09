@@ -13,7 +13,7 @@ function groupView(config, group, { fromIso = '', only = '' } = {}) {
   return {
     day: group.day, time: group.time, time24: to24h(group.time), durationMin: group.durationMin || 60,
     location: loc.name, address: loc.address, maps: loc.maps,
-    coachName: coach ? `Coach ${coach.name}` : '',
+    coachName: coach ? (coach.fullName || coach.name) : '',
     firstDate: dates[0] ? dateLabel(dates[0]) : '', dates: dates.map(dateLabel), isoDates: dates,
   }
 }
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
         status = r.attention ? 'received' : r.busy ? 'pending' : r.enrolled === false ? 'confirming' : 'paid'
       } else if (session.status === 'expired' || (q.status === 'cancelled' && session.status !== 'complete')) status = 'expired'
       const group = q.groupId ? await getGroup(q.groupId) : null
-      return res.status(200).json({ success: true, status, kind: 'payment', kit: { url: config.kitUrl, note: config.kitNote }, payment: { id: q.id, players: q.playerNames, trial: q.reason === 'trial', trialDate: q.trialDate ? dateLabel(q.trialDate) : '', startDate: q.startDate ? dateLabel(q.startDate) : '', priceLabel: formatAud(q.paidCents ?? q.amountCents), group: group ? groupView(config, group, { fromIso: q.startDate || '', only: q.reason === 'trial' ? q.trialDate || '' : '' }) : null, term: config.term } })
+      return res.status(200).json({ success: true, status, kind: 'payment', kit: { url: config.kitUrl, note: config.kitNote }, payment: { id: q.id, players: q.playerNames, trial: q.reason === 'trial', next: q.next ? { term: q.next.term, choice: q.next.choice } : null, kitDone: Boolean(q.kit), trialDate: q.trialDate ? dateLabel(q.trialDate) : '', startDate: q.startDate ? dateLabel(q.startDate) : '', priceLabel: formatAud(q.paidCents ?? q.amountCents), group: group ? groupView(config, group, { fromIso: q.startDate || '', only: q.reason === 'trial' ? q.trialDate || '' : '' }) : null, term: config.term } })
     }
 
     let booking = await getBooking(id)

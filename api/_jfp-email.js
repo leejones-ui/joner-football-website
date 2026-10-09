@@ -89,7 +89,7 @@ function groupRows(config, group, fromIso = '') {
   return [
     ['Group', `${esc(group.day)} ${esc(group.time)}`],
     ['Where', `${esc(loc.address || group.location)}${loc.maps ? `<br>${link('Open in Maps', loc.maps)}` : ''}`],
-    ['Coach', coach ? `Coach ${esc(coachLabel(coach))}` : 'Joner Football coach'],
+    ['Coach', coach ? esc(coachLabel(coach)) : 'Joner Football coach'],
     ...(dates.length ? [['Dates', `${esc(dates.length)} ${dates.length === 1 ? 'session' : 'sessions'}, ${esc(dateLabel(dates[0]))} to ${esc(dateLabel(dates.at(-1)))}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(dates.map(dateLabel).join(', '))}</span>`]] : []),
   ]
 }

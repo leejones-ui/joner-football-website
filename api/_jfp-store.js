@@ -378,6 +378,9 @@ export function dayOrder(day) { const i = DAYS.indexOf(day); return i < 0 ? 9 : 
 export function ageOn(dob, onIso) {
   if (!/^\d{4}-\d{2}-\d{2}/.test(dob || '')) return null
   const [y, m, d] = dob.slice(0, 10).split('-').map(Number)
+  // A date that does not exist (30 Feb, month 13) is not a date of birth.
+  const real = new Date(Date.UTC(y, m - 1, d))
+  if (real.getUTCFullYear() !== y || real.getUTCMonth() !== m - 1 || real.getUTCDate() !== d) return null
   const [oy, om, od] = onIso.split('-').map(Number)
   let age = oy - y
   if (om < m || (om === m && od < d)) age -= 1

@@ -63,10 +63,21 @@ import '../../styles/jfp.css'
   function paidLink(p, k) {
     const names = p.players
     const g = p.group
+    if (p.next) {
+      // Next term: a hold or a full payment, not a booked Term 4 place, and no kit step.
+      hero('Payment complete', 'Thank you', p.next.choice === 'hold'
+        ? `${names.join(' and ')}'s place for ${p.next.term} is held. We have emailed you a receipt.`
+        : `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} paid for ${p.next.term}. We have emailed you a receipt.`)
+      $('details').innerHTML = [['Players', names.join(', ')], ['Term', p.next.term], ['Paid', p.priceLabel], ['Reference', p.id]].map(([k2, v]) => `<dt>${esc(k2)}</dt><dd>${esc(v)}</dd>`).join('')
+      $('calendar').hidden = true
+      $('card').hidden = false
+      $('help').hidden = true
+      return
+    }
     hero('Payment complete', 'Thank you', p.trial
       ? `${names.join(' and ')}'s trial is booked${g ? ` for ${g.day} ${g.time}` : ''}${p.trialDate ? `, ${p.trialDate}` : ''}. We have emailed you the details.`
       : `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} locked in for ${p.term}${g ? `, ${g.day} ${g.time}` : ''}. We have emailed you a receipt.`)
-    kit(k)
+    if (!p.kitDone) kit(k)
     $('details').innerHTML = [
       ...(g ? [['Group', `${g.day} ${g.time}`], ['Where', g.address || g.location], ['Coach', g.coachName || 'Joner Football']] : []),
       ['Players', names.join(', ')],

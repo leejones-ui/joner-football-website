@@ -21,7 +21,7 @@
   --j-ink: #f5f5f2;
   --j-ink-2: #d4d3cc;
   --j-muted: #a8a79e;
-  --j-faint: #7d7c75;
+  --j-faint: #9b9a90;
   --j-line: #2f2f2d;
   --j-line-2: #262625;
   --j-action: #f5f5f2;
@@ -107,7 +107,7 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 }
 .jp-sidebar { display: flex; flex-direction: column; background: var(--j-surface); border-right: 1px solid var(--j-line); position: sticky; top: var(--jp-top-h); height: calc(100vh - var(--jp-top-h)); overflow: hidden; z-index: 45; }
 .jp-sidebar .jp-nav { position: static; display: flex; flex-direction: column; gap: 2px; padding: 14px 12px; border: 0; background: transparent; overflow-y: auto; overflow-x: hidden; flex: 1; scrollbar-width: thin; }
-.jp-nav-sec { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--j-faint); padding: 14px 12px 6px; white-space: nowrap; transition: opacity .18s; }
+.jp-nav-sec { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--j-muted); padding: 14px 12px 6px; white-space: nowrap; transition: opacity .18s; }
 .jp-nav-sec:first-child { padding-top: 2px; }
 .jp-sidebar .jp-nav button { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px; border-radius: 10px; border: 0; background: transparent; color: var(--j-ink-2); font-size: 14px; font-weight: 600; text-align: left; white-space: nowrap; cursor: pointer; transition: background .15s, color .15s; }
 .jp-sidebar .jp-nav button:hover { background: var(--j-grey-bg); color: var(--j-ink); }
@@ -160,7 +160,7 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 /* ---------- dashboard ---------- */
 .jd-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
 .jd-head p { color: var(--j-muted); font-size: 14px; margin-top: 4px; }
-.jd-sync { display: flex; gap: 8px; align-items: center; color: var(--j-muted); font-size: 12.5px; }
+.jd-sync { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--j-muted); font-size: 12.5px; }
 .jd-grid { display: grid; gap: 14px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
 .jd-card { grid-column: span 12; background: var(--j-surface); border: 1px solid var(--j-line); border-radius: 18px; padding: 18px 20px; min-width: 0; }
 .jd-card h2 { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
@@ -277,7 +277,9 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jd-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 18px; }
 @media (min-width: 1500px) { .jd-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .jp-theme[data-theme="dark"] select.j-select:not([multiple]), .jp-theme[data-theme="dark"] .jfp select.j-select:not([multiple]) {
-  background: #121211 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23d4d3cc' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center;
+  background-color: #121211;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23d4d3cc' stroke-width='2'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important; background-position: right 12px center !important; background-size: 12px 8px !important;
   color: var(--j-ink); border-color: #3a3a37;
 }
 .jp-brand span, .jp-toplink { white-space: nowrap; }

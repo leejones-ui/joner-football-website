@@ -17,8 +17,7 @@ import crypto from 'node:crypto'
 import { stripeFetch } from './_holiday-store.js'
 import {
   getBooking, saveBooking, getGroup, getConfig, confirmPlaces, settlePlaces, releasePlaces, coachById, kvCommand, keys, clean,
-  getPayreq, savePayreq, ONLINE_TAG, audit, claimOnce, dropParentHold, normName,
-} from './_jfp-store.js'
+  getPayreq, savePayreq, ONLINE_TAG, audit, claimOnce, dropParentHold, normName, sydneyToday } from './_jfp-store.js'
 import {
   createTerm4Rows, findTerm4ByTag, updateTerm4Rows, getTerm4Row, createLedgerRow, findLedgerByPayment, createWaiverRows, waiverFields,
   findWaiversByTag, appendNote, bustRosterCache, loadRoster,
@@ -156,7 +155,7 @@ function paidFieldsFresh(unitCents, fee, evidence) {
 
 function term4Fields({ booking, group, coachAirtableName, fee, index }) {
   const p = booking.players[index]
-  const today = new Date().toISOString().slice(0, 10)
+  const today = sydneyToday()
   return {
     'Player Name': p.name,
     'Parent Name': booking.parentName,
@@ -280,7 +279,7 @@ async function runPayreqEffects(payreq, retry = new Set()) {
       updates.push({ id: row.id, fields: {
         'Term 4 Amount Paid': paid / 100,
         'Term 4 Payment Status': paid >= fee ? 'Paid' : 'Partially Paid',
-        ...(['Awaiting Reply', 'Not Contacted', 'Needs Follow-up', ''].includes(row.confirmation) ? { 'Term 4 Confirmation': 'Confirmed', 'Confirmation Date': new Date().toISOString().slice(0, 10) } : {}),
+        ...(['Awaiting Reply', 'Not Contacted', 'Needs Follow-up', ''].includes(row.confirmation) ? { 'Term 4 Confirmation': 'Confirmed', 'Confirmation Date': sydneyToday() } : {}),
         'Term 4 Notes': appendNote(row.notes, `Paid ${(share[i] / 100).toFixed(2)} online. [PAID:${payreq.id}]`),
         // Add to what earlier payments recorded; never overwrite them.
         ...(addedFee != null ? {

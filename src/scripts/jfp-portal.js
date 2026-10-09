@@ -176,7 +176,7 @@ function menu(anchor, items) {
   const m = document.createElement('div')
   m.className = 'jp-menu'
   m.id = 'jp-menu'
-  m.innerHTML = items.map((it) => (it === '-' ? '<hr>' : `<button type="button" data-i="${esc(it.key)}" ${it.danger ? 'style="color:#B42318"' : ''}>${esc(it.label)}</button>`)).join('')
+  m.innerHTML = items.map((it) => (it === '-' ? '<hr>' : `<button type="button" data-i="${esc(it.key)}" ${it.danger ? 'style="color:var(--j-red)"' : ''}>${esc(it.label)}</button>`)).join('')
   document.querySelector('.jfp').appendChild(m)
   const r = anchor.getBoundingClientRect()
   const top = Math.min(r.bottom + 4, window.innerHeight - m.offsetHeight - 8)
@@ -319,10 +319,10 @@ function ttBlock(g) {
     <div class="sub" data-open="${esc(g.id)}">${esc(g.coachName || 'No coach')} · ${esc(tag)}${g.label !== 'Small group' ? ` · ${esc(g.label)}` : ''}${g.minAge != null ? ` · ${g.girlsOnly === 'yes' ? 'girls ' : ''}${g.minAge} to ${g.maxAge}` : ''}</div>`
   let body
   if (P.ttView === 'parent') {
-    body = left <= 0 ? '<div class="jp-open" style="color:#B42318;font-weight:700">Fully booked · waitlist</div>' : `<div class="jp-open" style="color:${g.mode === 'direct' ? '#067647' : '#175CD3'};font-weight:700">${tag} · ${left} ${left === 1 ? 'spot' : 'spots'} left</div>`
+    body = left <= 0 ? '<div class="jp-open" style="color:var(--j-red);font-weight:700">Fully booked · waitlist</div>' : `<div class="jp-open" style="color:${g.mode === 'direct' ? 'var(--j-green)' : 'var(--j-blue)'};font-weight:700">${tag} · ${left} ${left === 1 ? 'spot' : 'spots'} left</div>`
   } else {
     body = g.players.map((p) => `<div class="jp-nm" ${P.ttView === 'staff' ? `draggable="true" data-row="${esc(p.rowId)}" data-from="${esc(g.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}, options"` : ''}>${P.ttView === 'staff' ? `<i class="${dotFor(p)}"></i>` : ''}<span class="nmx">${esc(p.name)}${p.age != null ? ` <span class="muted">${esc(p.age)}</span>` : ''}</span>${P.ttView === 'staff' && p.status !== 'Confirmed' ? '<span class="muted" style="font-size:10px">awaiting</span>' : ''}${P.ttView === 'staff' && !p.waiver ? '<span class="w">W</span>' : ''}</div>`).join('')
-    body += left > 0 ? `<div class="jp-open">+ ${left} open</div>` : left < 0 ? `<div class="jp-open" style="color:#B42318">${-left} over capacity</div>` : '<div class="jp-open" style="color:#B42318">Full</div>'
+    body += left > 0 ? `<div class="jp-open">+ ${left} open</div>` : left < 0 ? `<div class="jp-open" style="color:var(--j-red)">${-left} over capacity</div>` : '<div class="jp-open" style="color:var(--j-red)">Full</div>'
     if (P.ttView === 'staff') body += `<button type="button" class="jp-addbtn" data-add="${esc(g.id)}">+ Add player</button>`
   }
   return `<section class="jp-blk ${P.sel === g.id && P.ttView === 'staff' ? 'sel' : ''}" style="--lc:${locColor(g.locationId)}" data-drop="${esc(g.id)}">${head}${body}</section>`
@@ -477,8 +477,9 @@ function paidModal(p) {
   box.querySelector('#pd-go').addEventListener('click', async () => {
     const amountCents = Math.round(Number(box.querySelector('#pd-amt').value) * 100)
     if (!(amountCents > 0)) return toast('Enter the amount received.')
+    const go = box.querySelector('#pd-go'); go.disabled = true
     const r = await post('markPaid', { rowId: p.rowId, amountCents, method: box.querySelector('#pd-how').value })
-    if (!r.ok) return toast(r.data.error)
+    if (!r.ok) { go.disabled = false; return toast(r.data.error) }
     closeModal(); toast('Marked paid. Airtable updated.'); renderBoard(true)
   })
 }
@@ -522,7 +523,7 @@ async function linkModal(p, g) {
     box.querySelector('#ln-copy').addEventListener('click', () => copy(r.data.payreq.url))
     if (!sendEmail) copy(r.data.payreq.url)
     box.querySelector('#ln-go').hidden = true; box.querySelector('#ln-copy-go').hidden = true
-    P.board = null
+    P.board = null; PL.at = 0
   }
   box.querySelector('#ln-go').addEventListener('click', () => go(true))
   box.querySelector('#ln-copy-go').addEventListener('click', () => go(false))
@@ -554,7 +555,7 @@ async function termModal(p, g) {
     box.querySelector('#tm-copy').addEventListener('click', () => copy(r.data.payreq.url))
     if (!sendEmail) copy(r.data.payreq.url)
     box.querySelector('#tm-go').hidden = true; box.querySelector('#tm-copy-go').hidden = true
-    P.board = null
+    P.board = null; PL.at = 0
   }
   box.querySelector('#tm-go').addEventListener('click', () => go(true))
   box.querySelector('#tm-copy-go').addEventListener('click', () => go(false))
@@ -748,7 +749,7 @@ async function renderGroups() {
       <td>${g.mode === 'application' ? (g.trials !== false ? 'Yes' : 'No') : ''}</td><td>${taken[g.id] ?? 0}/${g.capacity}</td><td><button type="button" class="j-btn j-btn-line j-btn-sm" data-edit="${esc(g.id)}">Edit</button></td></tr>`).join('')}
     </tbody></table></div>`
   $('g-new').addEventListener('click', () => groupModal(null))
-  $('g-draft').addEventListener('click', async () => { const r = await post('draftAges'); if (!r.ok) return toast(r.data.error); toast(`${r.data.changed} group${r.data.changed === 1 ? '' : 's'} given a draft age band`); P.board = null; renderGroups() })
+  $('g-draft').addEventListener('click', async () => { const r = await post('draftAges'); if (!r.ok) return toast(r.data.error); toast(`${r.data.changed} group${r.data.changed === 1 ? '' : 's'} given a draft age band`); P.board = null; PL.at = 0; renderGroups() })
   view().querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => groupModal(d.groups.find((g) => g.id === b.dataset.edit))))
 }
 
@@ -789,13 +790,13 @@ function groupModal(g) {
     const group = { day: val('#gm-day'), time: val('#gm-time').trim(), location: val('#gm-loc').trim(), coachId: val('#gm-coach'), mode: val('#gm-mode'), label: val('#gm-label'), minAge: val('#gm-min'), maxAge: val('#gm-max'), ageStatus: val('#gm-agest'), girlsOnly: val('#gm-girls'), capacity: val('#gm-cap'), durationMin: val('#gm-dur'), publicNote: val('#gm-note'), extraCoachIds: [...box.querySelector('#gm-extra').selectedOptions].map((o) => o.value).filter((c) => c !== val('#gm-coach')), product: val('#gm-prod'), trials: box.querySelector('#gm-trials').checked, showFull: box.querySelector('#gm-full').checked, applyWhenFull: box.querySelector('#gm-awf').checked, allowOneToOne: box.querySelector('#gm-1to1').checked, questions: [...box.querySelectorAll('[data-qk]')].filter((c) => c.checked).map((c) => c.dataset.qk), requirements: [...box.querySelectorAll('[data-rk]')].filter((c) => c.checked).map((c) => c.dataset.rk), requirementsText: val('#gm-reqtext'), ...(g ? {} : { byCoach: Boolean(box.querySelector('#gm-bycoach')?.checked) }) }
     const r = await post('saveGroup', { id: g?.id, group })
     if (!r.ok) { const e = box.querySelector('#gm-err'); e.textContent = r.data.error; e.hidden = false; return }
-    closeModal(); toast(r.data.movedPlayers ? `Saved. ${r.data.movedPlayers} players moved in Airtable.` : 'Saved'); P.board = null; P.groups = null; if (P.tab === 'board') renderBoard(true); else renderGroups()
+    closeModal(); toast(r.data.movedPlayers ? `Saved. ${r.data.movedPlayers} players moved in Airtable.` : 'Saved'); P.board = null; PL.at = 0; P.groups = null; if (P.tab === 'board') renderBoard(true); else renderGroups()
   })
   box.querySelector('#gm-del')?.addEventListener('click', async () => {
     if (!(await confirmBox(`Delete ${esc(g.day)} ${esc(g.time)}? Only possible when nobody is in it.`, { ok: 'Delete', danger: true }))) return
     const r = await post('deleteGroup', { id: g.id })
     if (!r.ok) return toast(r.data.error)
-    toast('Deleted'); P.board = null; renderGroups()
+    toast('Deleted'); P.board = null; PL.at = 0; renderGroups()
   })
 }
 
@@ -912,7 +913,7 @@ async function offerModal(r, decision) {
       if (!res.ok) return toast(res.data.error)
       toast(`Offered${res.data.emailed ? ' and emailed' : ''}`)
       copy(res.data.payreq.url)
-      P.board = null
+      P.board = null; PL.at = 0
       return renderRequests()
     }
     if (!res.ok) return toast(res.data.error)
@@ -920,7 +921,7 @@ async function offerModal(r, decision) {
     box.querySelector('#of-copy').addEventListener('click', () => copy(res.data.payreq.url))
     box.querySelector('#of-go').hidden = true
     box.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => renderRequests()))
-    P.board = null
+    P.board = null; PL.at = 0
   }
   box.querySelector('#of-go').addEventListener('click', go)
 }
@@ -966,7 +967,7 @@ async function renderPayments() {
   view().querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => copy(b.dataset.copy)))
   view().querySelectorAll('[data-change]').forEach((b) => b.addEventListener('click', () => changeModal(d.payreqs.find((q) => q.id === b.dataset.change))))
   view().querySelectorAll('[data-repair]').forEach((b) => b.addEventListener('click', async () => { b.disabled = true; const r = await post('repair', { id: b.dataset.repair }); toast(r.ok ? (r.data.summary.ok ? 'Repaired' : 'Still not complete. Check Airtable and try again.') : r.data.error); renderPayments() }))
-  view().querySelectorAll('[data-cancel-pay]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox('Cancel this payment link? The family will not be able to pay with it, and a place held for it goes back.'))) return; const r = await post('cancelPayreq', { id: b.dataset.cancelPay }); toast(r.ok ? 'Cancelled' : r.data.error); P.board = null; renderPayments() }))
+  view().querySelectorAll('[data-cancel-pay]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox('Cancel this payment link? The family will not be able to pay with it, and a place held for it goes back.'))) return; const r = await post('cancelPayreq', { id: b.dataset.cancelPay }); toast(r.ok ? 'Cancelled' : r.data.error); P.board = null; PL.at = 0; renderPayments() }))
   view().querySelectorAll('[data-cancel-booking]').forEach((b) => b.addEventListener('click', async () => { if (!(await confirmBox('Release this held place?'))) return; const r = await post('cancelBooking', { id: b.dataset.cancelBooking }); toast(r.ok ? 'Released' : r.data.error); renderPayments() }))
 }
 
@@ -1337,9 +1338,10 @@ async function renderMoney() {
   $('m-record-all')?.addEventListener('click', async (e) => {
     const todo = m.players.filter((p) => p.status === 'stripe')
     if (!(await confirmBox(`Record the Stripe payments for <b>${todo.length}</b> player${todo.length === 1 ? '' : 's'} in Airtable (Term 4 Players and the payment ledger)?`, { ok: 'Record' }))) return
-    e.currentTarget.disabled = true
+    const btn = e.currentTarget
+    btn.disabled = true
     const r2 = await post('recordStripeAll')
-    if (!r2.ok) return toast(r2.data.error)
+    if (!r2.ok) { btn.disabled = false; return toast(r2.data.error) }
     toast(`Recorded ${r2.data.recorded} Stripe payment${r2.data.recorded === 1 ? '' : 's'}`); renderMoney()
   })
   view().querySelectorAll('[data-match]').forEach((b) => b.addEventListener('click', () => matchModal(m.unmatched.find((u) => u.id === b.dataset.match))))
@@ -1374,7 +1376,7 @@ function recordModal(p, { stripe } = {}) {
     const r = await post('recordPayment', body)
     btn.disabled = false
     if (!r.ok) return toast(r.data.error)
-    closeModal(); closeDrawer(); toast(`Recorded. Airtable updated${r.data.ledger ? ' and the ledger has it' : ''}.`); P.board = null; if (P.tab === 'money') renderMoney()
+    closeModal(); closeDrawer(); toast(`Recorded. Airtable updated${r.data.ledger ? ' and the ledger has it' : ''}.`); P.board = null; PL.at = 0; if (P.tab === 'money') renderMoney()
   })
 }
 
@@ -1641,14 +1643,15 @@ function plAddBox() {
     })
     btn.disabled = false
     if (!r.ok) return toast(r.data.error)
-    closeModal(); toast('Added. Airtable updated.'); P.board = null; renderPlayers()
+    closeModal(); toast('Added. Airtable updated.'); P.board = null; PL.at = 0; renderPlayers()
   })
 }
 
-async function renderPlayers() {
+async function renderPlayers(keep = false) {
   // Read from Airtable again whenever the tab is opened after half a minute,
-  // so a change made in Airtable shows here without a page reload.
-  if (!PL.data || Date.now() - PL.at > 30000) { PL.data = await need(await post('playersList', { fresh: true })); PL.at = Date.now() }
+  // so a change made in Airtable shows here without a page reload. Typing in
+  // the search box or changing a filter redraws from what is already loaded.
+  if (!PL.data || (!keep && Date.now() - PL.at > 30000)) { PL.data = await need(await post('playersList', { fresh: true })); PL.at = Date.now() }
   const d = PL.data
   const shown = d.players.filter(plMatch)
   const opt = (list, sel, blank) => `<option value="">${blank}</option>` + list.map((x) => `<option value="${esc(x.id)}" ${sel === x.id ? 'selected' : ''}>${esc(x.label || x.name)}</option>`).join('')
@@ -1666,7 +1669,7 @@ async function renderPlayers() {
     <p class="muted small" style="margin-bottom:8px">${shown.length} of ${d.players.length} players${shown.length !== d.players.length ? ' match' : ''} · ${d.players.filter((p) => !p.inGroup).length} not in a group · ${d.players.filter((p) => p.feeAud == null).length} with no fee · ${d.players.filter((p) => !p.waiver.onFile).length} with no waiver</p>
     <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th>Waiver</th><th>Email</th></tr></thead>
       <tbody>${shown.map(plRow).join('') || '<tr><td colspan="5" class="muted">Nobody matches those filters.</td></tr>'}</tbody></table></div>`
-  const redraw = () => renderPlayers()
+  const redraw = () => renderPlayers(true)
   $('pl-q').addEventListener('input', (e) => { PL.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('pl-q'); i.focus(); i.setSelectionRange(at, at) })
   for (const [id, key] of [['pl-status', 'status'], ['pl-group', 'group'], ['pl-coach', 'coach'], ['pl-waiver', 'waiver'], ['pl-place', 'place']]) {
     $(id).addEventListener('change', (e) => { PL[key] = e.target.value; redraw() })
@@ -1904,7 +1907,7 @@ async function renderCoaches() {
       if (badPhone) { $('co-err').textContent = `Check ${badPhone.fullName}'s mobile. Use digits, like 0411 222 333.`; $('co-err').hidden = false; return }
       const r = await post('saveSettings', { config: { coachLoginsEnabled: $('co-on').checked, coaches: rows.map(({ photo, ...c }) => c) } })
       if (!r.ok) { $('co-err').textContent = r.data.error; $('co-err').hidden = false; return }
-      toast('Coaches saved'); P.coaches = null; P.board = null; renderCoaches()
+      toast('Coaches saved'); P.coaches = null; P.board = null; PL.at = 0; renderCoaches()
     })
   }
   draw()
@@ -1926,7 +1929,7 @@ async function renderRemoved() {
   const restore = async (p) => {
     if (!(await confirmBox(`Put ${esc(p.name)} back in ${esc(p.session || 'their group')} as Confirmed?`))) return
     const r = await post('restorePlayer', { droppedId: p.droppedId, rowId: p.rowId })
-    toast(r.ok ? 'Restored to Term 4. Airtable updated.' : r.data.error); P.board = null; renderRemoved()
+    toast(r.ok ? 'Restored to Term 4. Airtable updated.' : r.data.error); P.board = null; PL.at = 0; renderRemoved()
   }
   view().querySelectorAll('[data-restore]').forEach((b) => b.addEventListener('click', () => restore(d.players[Number(b.dataset.restore)])))
   view().querySelectorAll('[data-rm-open]').forEach((b) => b.addEventListener('click', () => {

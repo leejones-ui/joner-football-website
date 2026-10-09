@@ -16,7 +16,7 @@ import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   requireParentAccess, getConfig, getGroup, getBooking, saveBooking, indexBooking, newId, clean, holdPlaces, releasePlaces,
   onlineCounts, placesLeft, publicPlacesLeft, tokenMatches, saveApplication, coachById, coachLabel, sessionDates, dateLabel, ageOn, ageFits, normName,
-  locationFor, ONE_TO_ONE, QUESTIONS, priceFor, paidSiblings, nextSessionDate, closeCheckout, parentHoldCount, noteParentHold, dropParentHold, MAX_HOLDS_PER_PARENT, RESERVE_MINUTES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES, MAX_PLAYERS,
+  locationFor, ONE_TO_ONE, QUESTIONS, priceFor, paidSiblings, nextSessionDate, closeCheckout, parentHoldCount, noteParentHold, dropParentHold, MAX_HOLDS_PER_PARENT, keys, kvCommand, RESERVE_MINUTES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES, MAX_PLAYERS,
 } from './_jfp-store.js'
 import { loadRoster, countsFrom, familyFor } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
@@ -107,10 +107,31 @@ function checkWaiver(input, parentName) {
   return { waiver: { signature, acceptedAt: new Date().toISOString(), media: input.media === true, signedBy: parentName } }
 }
 
+// Coming back from the Stripe page (Back button) and choosing the same group
+// again: the family's own earlier hold on it is replaced, never added to. Only
+// released once Stripe confirms the payment page is closed and unpaid.
+async function releaseOwnHolds(email, groupId) {
+  const ids = (await kvCommand(['ZRANGE', keys.holdsBy(email), '0', '-1'])) || []
+  for (const bid of ids) {
+    const b = await getBooking(bid)
+    if (!b || b.groupId !== groupId || b.email !== email || !['reserving', 'held'].includes(b.status)) continue
+    const closed = b.status === 'held' ? await closeCheckout(b.stripeSessionId) : 'expired'
+    if (closed === 'complete') return 'paid'
+    if (closed !== 'expired') return 'unknown'
+    await releasePlaces(b.groupId, b.id)
+    await dropParentHold(b.email, b.id)
+    await saveBooking({ ...b, status: 'cancelled', cancelledAt: new Date().toISOString(), cancelledBy: 'replaced' })
+  }
+  return 'ok'
+}
+
 async function reserve(req, res, body, parent) {
   if (!rateLimit(req, { key: 'jfp-reserve', limit: 12, windowMs: 60_000 }).allowed) return fail(res, 429, 'Too many tries. Wait a minute and try again.')
   const rc = await verifyRecaptcha(req, body.recaptchaToken)
   if (!rc.ok) return fail(res, 400, rc.error)
+  const earlier = await releaseOwnHolds(parent.email, clean(body.groupId, 80))
+  if (earlier === 'paid') return fail(res, 409, 'Your earlier booking for this group has gone through and is being processed. Check My account in a minute before booking again.', { code: 'processing' })
+  if (earlier === 'unknown') return fail(res, 503, 'Could not check your earlier booking. Try again in a minute.')
   if ((await parentHoldCount(parent.email)) >= MAX_HOLDS_PER_PARENT) return fail(res, 429, 'You are holding places in other groups. Finish or close those bookings first.', { code: 'too_many_holds' })
   const group = await getGroup(body.groupId)
   if (!group || group.mode !== 'direct') return fail(res, 404, 'That group is not taking online bookings.', { code: 'not_bookable' })

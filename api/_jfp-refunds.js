@@ -7,7 +7,7 @@
 //   - note it on the booking or link, the audit log, and email Lee and Ligia
 // Each refund id is applied once, however often Stripe sends the event.
 import { stripeFetch } from './_holiday-store.js'
-import { getBooking, saveBooking, getPayreq, savePayreq, getConfig, audit, formatAud, kvCommand, clean } from './_jfp-store.js'
+import { getBooking, saveBooking, getPayreq, savePayreq, getConfig, audit, formatAud, kvCommand, clean, sydneyToday } from './_jfp-store.js'
 import { getTerm4Row, updateTerm4Rows, appendNote, airtable, TABLES, findLedgerByPayment } from './_jfp-airtable.js'
 import { splitBy } from './_jfp-finalise.js'
 import { sendRefundAlert } from './_jfp-email.js'
@@ -68,7 +68,7 @@ export async function applyJfpRefunds(id, charge, piId) {
       await airtable(encodeURIComponent(TABLES.ledger), { method: 'POST', body: { typecast: true, records: [{ fields: {
         'Payment ID': refund.id, 'Term': record.next?.term || config.term, 'Player Name': (record.playerNames || (record.players || []).map((p) => p.name)).join(', '),
         'Amount Paid': -amount / 100, 'Payment Method': 'Stripe', 'Payment Status': charge.amount_refunded >= charge.amount ? 'Refunded' : 'Partially Refunded',
-        'Payment Date': new Date((refund.created || Date.now() / 1000) * 1000).toISOString().slice(0, 10), 'Source Table': 'Term 4 Players',
+        'Payment Date': sydneyToday((refund.created || Date.now() / 1000) * 1000), 'Source Table': 'Term 4 Players',
         'Source Record ID': (record.term4Ids || []).join(', ') || record.next?.rowId || '', 'Stripe Payment Intent ID': piId || '', 'Notes': `Refund of ${record.id} made in Stripe${refund.reason ? ` (${refund.reason})` : ''}.`,
         'Updated At': new Date().toISOString(),
       } }] } })

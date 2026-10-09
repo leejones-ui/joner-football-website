@@ -5,7 +5,7 @@
 //
 // The Term 4 session columns are still labelled "Term 3 Day/Time/Location";
 // they hold the Term 4 session, exactly as the Joner Dashboard reads them.
-import { kvGetJson, kvSetJson, kvCommand, kvPipeline, keys, groupId, ONLINE_TAG, ADMIN_TAG, coachByAirtableName, ageOn, normName, digits, clean, listGroups, getConfig, locationFor, to24h } from './_jfp-store.js'
+import { kvGetJson, kvSetJson, kvCommand, kvPipeline, keys, groupId, ONLINE_TAG, ADMIN_TAG, coachByAirtableName, ageOn, normName, digits, clean, listGroups, getConfig, locationFor, to24h, sydneyToday } from './_jfp-store.js'
 
 const BASE = process.env.AIRTABLE_BASE_ID || 'apphU4R0BtVIu5YqT'
 export const TABLES = {
@@ -323,7 +323,7 @@ export function waiverFields({ player, parent, config, signature, acceptedAt, me
     'Emergency Treatment Permission': true,
     'Media Permission': media === true,
     'Parent/Guardian Signature': signature,
-    'Signed Date': acceptedAt.slice(0, 10),
+    'Signed Date': sydneyToday(Date.parse(acceptedAt) || Date.now()),
     'Form Review Status': 'Needs Review',
     ...(tag ? { 'Internal Notes': `Signed online. ${tag}` } : {}),
     'Programme': 'JFP',
@@ -427,7 +427,7 @@ export async function findTerm4ByTag(tag, id) {
 }
 
 export function appendNote(existing, line) {
-  const stamp = new Date().toISOString().slice(0, 10)
+  const stamp = sydneyToday()
   return `${existing ? `${existing}\n` : ''}${stamp}: ${line}`.slice(-4000)
 }
 
@@ -446,7 +446,7 @@ export async function createLedgerRow({ paymentId, config, playerNames, amountCe
         'Amount Paid': amountCents / 100,
         'Payment Method': ['Stripe', 'Bank Transfer', 'Cash', 'Other'].includes(method) ? method : 'Other',
         'Payment Status': 'Paid',
-        'Payment Date': (paidAt || new Date().toISOString()).slice(0, 10),
+        'Payment Date': sydneyToday(Date.parse(paidAt || '') || Date.now()),
         'Source Table': 'Term 4 Players',
         'Source Record ID': sourceIds.join(', '),
         'Stripe Checkout Session ID': sessionId || '',
@@ -523,6 +523,17 @@ export async function upsertAttendance({ attendanceId, playerName, week, date, g
   const id = found.records?.[0]?.id
   if (id) await airtable(encodeURIComponent(TABLES.attendance), { method: 'PATCH', body: { typecast: true, records: [{ id, fields }] } })
   else await airtable(encodeURIComponent(TABLES.attendance), { method: 'POST', body: { typecast: true, records: [{ fields }] } })
+}
+
+// A coach taps a mark off again: the row stays (so history shows it was
+// marked and cleared) but its status is emptied, never left saying Present.
+export async function clearAttendance({ attendanceId, markedBy }) {
+  const q = new URLSearchParams({ filterByFormula: `{Attendance ID} = "${fq(attendanceId)}"`, pageSize: '1' })
+  const found = await airtable(`${encodeURIComponent(TABLES.attendance)}?${q}`)
+  const id = found.records?.[0]?.id
+  if (!id) return false
+  await airtable(encodeURIComponent(TABLES.attendance), { method: 'PATCH', body: { typecast: true, records: [{ id, fields: { 'Attendance Status': null, 'Marked By': markedBy, 'Marked At': new Date().toISOString() } }] } })
+  return true
 }
 
 // ---------- families ----------

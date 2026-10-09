@@ -19,7 +19,7 @@ import {
 } from './_jfp-store.js'
 import { coachPhotoUrl } from './jfp-groups.js'
 import {
-  loadRoster, countsFrom, playerAge, waiverFor, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, draftAgeBand, placeInGroups,
+  loadRoster, countsFrom, playerAge, waiverFor, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, clearAttendance, draftAgeBand, placeInGroups,
   createWaiverRows, waiverFields, findWaiversByTag, bustRosterCache, findTerm4ByTag,
   getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, listDropped, deleteTerm4Row, RESTORABLE,
   listLedger, createLedgerRow, listJuniors, listVenueHistory,
@@ -187,7 +187,7 @@ async function addPlayer(req, res, principal, config, body) {
   const isTrial = payment === 'trial' || product === 'trial'
   const coach = coachById(config, group.coachId)
   const addId = newId('ADD')
-  const today = new Date().toISOString().slice(0, 10)
+  const today = sydneyToday()
   const fields = {
     'Player Name': name,
     'Parent Name': parentName,
@@ -438,7 +438,7 @@ async function restorePlayer(res, principal, body) {
   // A retry after a part-finished restore reuses the row it already made.
   const [earlier] = await findTerm4ByTag('RESTORED', d.id)
   const rowId = earlier || (await createTerm4Rows([fields]))[0]
-  await updateDroppedRow(d.id, { 'Restored': true, 'Reason details': `${d['Reason details'] ? `${d['Reason details']}\n` : ''}Restored ${new Date().toISOString().slice(0, 10)} by ${principal.name} as ${rowId}.` })
+  await updateDroppedRow(d.id, { 'Restored': true, 'Reason details': `${d['Reason details'] ? `${d['Reason details']}\n` : ''}Restored ${sydneyToday()} by ${principal.name} as ${rowId}.` })
   await audit({ by: principal.email, action: 'player.restore', target: rowId, after: { name: fields['Player Name'], from: d.id } })
   return res.status(200).json({ success: true, rowId })
 }
@@ -457,6 +457,7 @@ async function recordPaymentCore(principal, config, body) {
   if (!rows.length) return fail(res, 404, 'Player row not found.')
   const method = METHODS[String(body.method || '').trim().toLowerCase()] || 'Other'
   const date = ISO.test(body.date || '') ? body.date : sydneyToday()
+  if (date > sydneyToday()) return fail(res, 400, 'The payment date cannot be in the future.')
   let amount = Number(body.amountCents)
   let stripePay = null
   if (body.stripeSessionId) {
@@ -468,6 +469,17 @@ async function recordPaymentCore(principal, config, body) {
     if (!(amount > 0)) amount = stripePay.amountCents - stripePay.refundedCents
   }
   if (!(Number.isInteger(amount) && amount > 0 && amount <= 2000000)) return fail(res, 400, 'Enter the amount received.')
+  // The same payment cannot be recorded twice by a double click or by two staff
+  // pressing Save together. A Stripe payment is guarded by its own id above.
+  if (!stripePay) {
+    const lock = `jfp:paylock:${rows.map((r) => r.id).sort().join(',')}:${amount}:${method}`
+    if ((await kvCommand(['SET', lock, '1', 'NX', 'EX', '20'])) !== 'OK') return fail(res, 409, 'That payment was just recorded. Refresh to check before entering it again.')
+  }
+  // More than the rows still owe is almost always a typo (850 for 85). Rows with no fee set are not checked.
+  if (!stripePay && !body.allowOver && rows.every((r) => cents(r.feeAud) > 0)) {
+    const owingAll = rows.reduce((t, r) => t + Math.max(0, cents(r.feeAud) - cents(r.paidAud)), 0)
+    if (amount > owingAll) return fail(res, 400, `That is more than the ${formatAud(owingAll)} still owing. Enter the amount received, or change the fee first.`)
+  }
   // Fill each row up to what it owes, in order; anything over goes on the last row.
   let left = amount
   const updates = rows.map((r, i) => {
@@ -1081,7 +1093,7 @@ function coachSessions(config, groups, roster, coachId, date) {
       return { rowId: r.id, name: r.player, age: playerAge(r, config.termStart), coach: c?.name || r.coach || '', mine: !c || c.id === coachId || !(g.extraCoachIds || []).length, trial: /trial/i.test(r.paymentType), status: r.confirmation }
     }).sort((a, b) => Number(b.mine) - Number(a.mine) || a.name.localeCompare(b.name))
     const loc = locationFor(config, g.location)
-    const next = dates.find((d) => d >= (date || new Date().toISOString().slice(0, 10))) || dates.at(-1)
+    const next = dates.find((d) => d >= (date || sydneyToday())) || dates.at(-1)
     return {
       id: g.id, day: g.day, time: g.time, sortTime: to24h(g.time), location: loc.name, address: loc.address, durationMin: g.durationMin,
       label: g.label, minAge: g.minAge, maxAge: g.maxAge, dates: dates.map((d) => ({ iso: d, label: dateLabel(d) })), nextDate: next,
@@ -1407,6 +1419,11 @@ async function handle(req, res) {
           await upsertAttendance({ attendanceId: `T4-W${week}-${g.day.slice(0, 3)}-${g.time}-${row.player}`, playerName: row.player, week, date, group: g, coachName: coachById(config, principal.role === 'coach' ? principal.coachId : g.coachId)?.name || '', status, markedBy: principal.email })
           airtable = 'saved'
         } catch (error) { console.error('jfp attendance airtable failed', error); airtable = 'failed' }
+      } else {
+        try {
+          const week = dates.indexOf(date) + 1
+          airtable = (await clearAttendance({ attendanceId: `T4-W${week}-${g.day.slice(0, 3)}-${g.time}-${row.player}`, markedBy: principal.email })) ? 'cleared' : 'skipped'
+        } catch (error) { console.error('jfp attendance clear failed', error); airtable = 'failed' }
       }
       return res.status(200).json({ success: true, airtable })
     }

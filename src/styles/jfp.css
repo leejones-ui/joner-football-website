@@ -337,7 +337,7 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .jp-nm .w { margin-left: auto; font-size: 9.5px; font-weight: 800; color: var(--j-red); }
 .jp-nm .nmx { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .i-paid { background: #12B76A; } .i-due { background: #F79009; } .i-trial { background: #7A5AF8; } .i-off { background: #98A2B3; } .i-link { background: #2E90FA; }
-.jp-open { color: var(--j-faint); font-size: 11px; margin-top: 2px; }
+.jp-open { color: var(--j-muted); font-size: 11px; margin-top: 2px; }
 .jp-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--j-muted); }
 .jp-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .jp-legend i { width: 8px; height: 8px; border-radius: 50%; }
