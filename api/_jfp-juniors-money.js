@@ -231,7 +231,7 @@ export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfp
     const terms = [...new Set(fam.map((r) => r.term))]
     const linkTerm = s.link ? [...new Set(rows.filter((r) => rowLink(r) === s.link).map((r) => r.term))] : []
     if (!fam.length || terms.length > 1) {
-      unlinked.push({ id: s.id, cents: s.amountCents - s.refundedCents, at: s.at, term: linkTerm.length === 1 ? linkTerm[0] : '', why: terms.length > 1 ? 'The email matches children in more than one term' : 'No Juniors row with this email' })
+      unlinked.push({ id: s.id, cents: s.amountCents - s.refundedCents, at: s.at, term: linkTerm.length === 1 ? linkTerm[0] : '', forPlayer: who.player, fromSheet: who.viaSheet, why: terms.length > 1 ? 'The email matches children in more than one term' : who.player ? 'No Juniors row with this child\'s name or email' : 'No Juniors row with this email' })
       continue
     }
     const open = fam.filter((r) => room(r) == null || room(r) > 0)

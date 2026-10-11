@@ -69,7 +69,7 @@ export async function renderJuniorsMoney(ui) {
     <div class="jp-scroll"><table class="jp-table jm-table"><thead><tr><th>Child</th><th class="jj-sm-hide">Programme</th><th class="num">Fee</th><th class="num">Paid</th><th class="num">Owing</th><th>Status</th><th>Paid via</th></tr></thead><tbody id="jm-rows"></tbody></table></div>
     <p class="muted small" id="jm-count" style="margin-top:8px"></p>
     ${unlinked.length ? `<details class="jd-card" style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">${unlinked.length} Stripe payment${unlinked.length === 1 ? '' : 's'} not matched to a child (${esc(money(t.unlinkedCents))})</summary><p class="sub" style="margin:6px 0 10px">Counted in ${esc(filter.term)} because they came through its payment link, but no Juniors row has the email they used.</p>
-      <ul class="jm-hist">${unlinked.map((u) => `<li><span><b>${esc(when(u.at))}</b><small>${esc(u.why)} · ref ${esc(u.ref)}</small></span><span class="amt">${esc(money(u.cents))}</span></li>`).join('')}</ul></details>` : ''}
+      <ul class="jm-hist">${unlinked.map((u) => `<li><span><b>${esc(u.forPlayer ? `For ${u.forPlayer}` : when(u.at))}</b><small>${u.forPlayer ? `${esc(when(u.at))} · ` : ''}${esc(u.why)} · ref ${esc(u.ref)}</small></span><span class="amt">${esc(money(u.cents))}</span></li>`).join('')}</ul></details>` : ''}
     <details class="jd-card" style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">How this is worked out</summary>
       <ul class="small" style="margin:8px 0 0 18px;line-height:1.7">
         <li>${esc(DEFINITION)}</li>
@@ -79,7 +79,7 @@ export async function renderJuniorsMoney(ui) {
         <li>"Paid, amount not recorded": Airtable says Paid but no Stripe payment was found for that child. It is not counted, and its balance is unknown.</li>
         ${d.coverage.missingLinks ? `<li><b>${d.coverage.missingLinks} payment link on the rows was not found in Stripe.</b></li>` : ''}
         ${d.coverage.alsoInJfp ? `<li><b>${d.coverage.alsoInJfp} Juniors payment${d.coverage.alsoInJfp === 1 ? ' is' : 's are'} also counted in the JFP Money view.</b> Tell Claude.</li>` : '<li>None of these payments is counted in the JFP figures.</li>'}
-        ${d.unassigned ? `<li>${d.unassigned} Juniors payment${d.unassigned === 1 ? '' : 's'} could not be given a term, so ${d.unassigned === 1 ? 'it is' : 'they are'} in no term total.</li>` : ''}
+        ${d.unassigned ? `<li>${d.unassigned} Juniors payment${d.unassigned === 1 ? '' : 's'} could not be given a term, so ${d.unassigned === 1 ? 'it is' : 'they are'} in no term total: ${d.unlinked.filter((u) => !u.term).map((u) => `${esc(money(u.cents))} on ${esc(when(u.at))}${u.forPlayer ? ` for ${esc(u.forPlayer)}` : ''}`).join('; ')}.</li>` : ''}
         ${d.otherCurrency.length ? `<li>${d.otherCurrency.length} payment${d.otherCurrency.length === 1 ? '' : 's'} not in AUD: not added.</li>` : ''}
       </ul></details>`
   const draw = () => {
