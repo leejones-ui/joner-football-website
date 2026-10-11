@@ -32,7 +32,7 @@ import { nextStatuses, setNextStatus, nextPrices, recordNext } from './_jfp-next
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { jfpStripePayments } from './_jfp-stripe.js'
-import { juniorsMoneyData } from './_jfp-juniors-money.js'
+import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
 import { allocateTermMoney, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf } from './_jfp-venues.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -71,8 +71,28 @@ function playerView(r, config, roster, { money }) {
   }
 }
 
+// A Joners Juniors group's children are in the Juniors table for this term,
+// on the same day, time and place. They are shown, marked, and counted in
+// coach hours, but every Term 4 action (move, remove, pay) leaves them alone.
+export const isJuniorsGroup = (g) => g?.label === 'Joners Juniors'
+// The Juniors table writes dates of birth as 05/03/2020 (day first).
+const isoDob = (v) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(v || '').trim()); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : String(v || '') }
+async function juniorsFor(groups, config) {
+  if (!groups.some(isJuniorsGroup)) return {}
+  let rows = []
+  try { rows = await juniorsRoster(config.term) } catch (error) { console.error('jfp juniors roster failed', error.message); return { error: 'Could not read the Joners Juniors table' } }
+  const out = {}
+  for (const g of groups.filter(isJuniorsGroup)) {
+    out[g.id] = rows.filter((r) => r.day && r.time && r.location && makeGroupId(r.day, r.time, r.location) === makeGroupId(g.day, g.time, g.location))
+      .map((r) => ({ rowId: r.id, name: r.player, age: ageOn(isoDob(r.dob), config.termStart), status: 'Confirmed', juniors: true, paidVia: r.paidVia, juniorsStatus: r.status }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }
+  return out
+}
+
 async function boardData(config) {
   const [groups, roster, payreqs, requests] = await Promise.all([listGroups(), loadRoster({ fresh: true }), listPayreqs(), listApplications()])
+  const juniors = await juniorsFor(groups, config)
   const pendingBy = {}
   for (const r of requests) if (r.status === 'pending') pendingBy[r.groupId] = (pendingBy[r.groupId] || 0) + 1
   const counts = countsFrom(roster)
@@ -82,7 +102,7 @@ async function boardData(config) {
   const known = new Set(groups.map((g) => g.id))
   const holding = roster.players.filter((r) => r.holdsPlace)
   const view = groups.map((g) => {
-    const players = holding.filter((r) => r.groupId === g.id).map((r) => ({ ...playerView(r, config, roster, { money: true }), payreq: openReqByRow.get(r.id) || null }))
+    const players = isJuniorsGroup(g) ? (juniors[g.id] || []) : holding.filter((r) => r.groupId === g.id).map((r) => ({ ...playerView(r, config, roster, { money: true }), payreq: openReqByRow.get(r.id) || null }))
       .sort((a, b) => a.name.localeCompare(b.name))
     const loc = locationFor(config, g.location)
     return {
@@ -90,7 +110,8 @@ async function boardData(config) {
       locationId: loc.id, locationName: loc.name,
       coachName: coachLabel(coachById(config, g.coachId)),
       extraCoachNames: (g.extraCoachIds || []).map((c) => coachLabel(coachById(config, c))).filter(Boolean),
-      taken: counts[g.id] || 0,
+      taken: isJuniorsGroup(g) ? players.length : counts[g.id] || 0,
+      juniorsError: isJuniorsGroup(g) ? juniors.error || '' : undefined,
       holds: online[g.id] || 0,
       placesLeft: placesLeft(g, counts[g.id], online[g.id]),
       confirmed: players.filter((p) => p.dashboard).length,
@@ -170,6 +191,7 @@ function amountFor(config, group, body, players = 1) {
 async function addPlayer(req, res, principal, config, body) {
   const group = await getGroup(body.groupId)
   if (!group) return fail(res, 404, 'Group not found.')
+  if (isJuniorsGroup(group)) return fail(res, 400, 'Joners Juniors children are added in the Joners Juniors table, not here.')
   const name = clean(body.player?.name, 80)
   if (name.length < 3) return fail(res, 400, 'Enter the player\'s full name.')
   const email = validEmail(body.parent?.email)
@@ -344,6 +366,7 @@ async function movePlayer(res, principal, config, body) {
   const row = await rowOr404(res, body.rowId); if (!row) return
   const to = await getGroup(body.toGroupId)
   if (!to) return fail(res, 404, 'Group not found.')
+  if (isJuniorsGroup(to)) return fail(res, 400, 'A JFP player cannot be moved into the Joners Juniors class.')
   if (row.groupId === to.id) return fail(res, 400, 'Already in that group.')
   const cap = await capacityCheck(to, 1, body.force === true)
   if (cap.error) return fail(res, 409, cap.error, { code: cap.code })
@@ -1112,12 +1135,12 @@ async function cancellationsData(res, principal, config, body, isAdmin) {
   })
 }
 
-function coachSessions(config, groups, roster, coachId, date) {
+function coachSessions(config, groups, roster, coachId, date, juniors = {}) {
   const mine = groups.filter((g) => g.coachId === coachId || (g.extraCoachIds || []).includes(coachId))
   const me = coachById(config, coachId)
   return mine.map((g) => {
     const dates = sessionDates(config, g.day)
-    const players = roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !isTestName(r.player)).map((r) => {
+    const players = isJuniorsGroup(g) ? (juniors[g.id] || []).map((p) => ({ rowId: p.rowId, name: p.name, age: p.age, coach: me?.name || '', mine: true, trial: false, status: 'Confirmed', juniors: true })) : roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !isTestName(r.player)).map((r) => {
       const c = coachByAirtableName(config, r.coach)
       return { rowId: r.id, name: r.player, age: playerAge(r, config.termStart), coach: c?.name || r.coach || '', mine: !c || c.id === coachId || !(g.extraCoachIds || []).length, trial: /trial/i.test(r.paymentType), status: r.confirmation }
     }).sort((a, b) => Number(b.mine) - Number(a.mine) || a.name.localeCompare(b.name))
@@ -1384,14 +1407,15 @@ async function handle(req, res) {
       const coachId = isAdmin ? clean(body.coachId, 30) : principal.coachId
       if (!coachById(config, coachId)) return fail(res, 400, 'Choose a coach.')
       const [groups, roster] = await Promise.all([listGroups(), loadRoster()])
-      const sessions = coachSessions(config, groups, roster, coachId, clean(body.date, 10))
+      const juniors = await juniorsFor(groups, config)
+      const sessions = coachSessions(config, groups, roster, coachId, clean(body.date, 10), juniors)
       // Sessions this coach is covering, and covers on their own sessions.
       const covers = (await listCovers()).filter((c) => c.status === 'active' && c.date >= sydneyToday())
       for (const s of sessions) s.coveredBy = covers.filter((c) => c.groupId === s.id).map((c) => ({ date: c.date, dateLabel: dateLabel(c.date), coach: coachLabel(coachById(config, c.coverCoachId)) }))
       for (const c of covers.filter((x) => x.coverCoachId === coachId)) {
         const g = groups.find((x) => x.id === c.groupId)
         if (!g) continue
-        const [s] = coachSessions(config, [{ ...g, coachId }], roster, coachId, c.date)
+        const [s] = coachSessions(config, [{ ...g, coachId }], roster, coachId, c.date, juniors)
         sessions.push({ ...s, id: g.id, dates: [{ iso: c.date, label: dateLabel(c.date) }], nextDate: c.date, covering: { for: coachLabel(coachById(config, c.coachId)), dateLabel: dateLabel(c.date) } })
       }
       for (const s of sessions) s.attendance = await attendanceFor(s.id, s.nextDate)
@@ -1409,18 +1433,20 @@ async function handle(req, res) {
     // The whole program as a timetable: names and ages, no money, no contacts.
     if (action === 'program') {
       const [groups, roster] = await Promise.all([listGroups(), loadRoster()])
+      const juniors = await juniorsFor(groups, config)
       const counts = countsFrom(roster)
       const online = await onlineCounts(groups.map((g) => g.id))
       return res.status(200).json({
         success: true, term: config.term,
-        groups: groups.filter((g) => g.mode !== 'closed' || isAdmin).map((g) => {
+        // A Juniors class is closed to JFP bookings but is still on the program.
+        groups: groups.filter((g) => g.mode !== 'closed' || isAdmin || isJuniorsGroup(g)).map((g) => {
           const loc = locationFor(config, g.location)
           return {
             id: g.id, day: g.day, time: g.time, sortTime: to24h(g.time), period: periodOf(g), locationId: loc.id, locationName: loc.name,
             coachId: g.coachId, coachName: coachLabel(coachById(config, g.coachId)), label: g.label, mode: g.mode, capacity: g.capacity,
-            minAge: g.minAge, maxAge: g.maxAge, girlsOnly: g.girlsOnly, taken: counts[g.id] || 0, placesLeft: placesLeft(g, counts[g.id], online[g.id]),
+            minAge: g.minAge, maxAge: g.maxAge, girlsOnly: g.girlsOnly, taken: isJuniorsGroup(g) ? (juniors[g.id] || []).length : counts[g.id] || 0, placesLeft: placesLeft(g, counts[g.id], online[g.id]),
             mine: g.coachId === principal.coachId || (g.extraCoachIds || []).includes(principal.coachId),
-            players: roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !isTestName(r.player)).map((r) => ({ name: r.player, age: playerAge(r, config.termStart), trial: /trial/i.test(r.paymentType), status: r.confirmation })).sort((a, b) => a.name.localeCompare(b.name)),
+            players: isJuniorsGroup(g) ? (juniors[g.id] || []).map((p) => ({ name: p.name, age: p.age, trial: false, status: 'Confirmed', juniors: true })) : roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !isTestName(r.player)).map((r) => ({ name: r.player, age: playerAge(r, config.termStart), trial: /trial/i.test(r.paymentType), status: r.confirmation })).sort((a, b) => a.name.localeCompare(b.name)),
           }
         }),
       })
@@ -1436,8 +1462,14 @@ async function handle(req, res) {
       if (!dates.includes(date)) return fail(res, 400, 'That date is not a session for this group.')
       const status = ['Present', 'Absent', 'Trial', 'Make-up', ''].includes(body.status) ? body.status : null
       if (status === null) return fail(res, 400, 'Invalid status.')
-      const roster = await loadRoster()
-      const row = roster.players.find((r) => r.id === clean(body.rowId, 30) && r.groupId === g.id)
+      let row
+      if (isJuniorsGroup(g)) {
+        const kid = ((await juniorsFor([g], config))[g.id] || []).find((p) => p.rowId === clean(body.rowId, 30))
+        row = kid ? { id: kid.rowId, player: kid.name } : null
+      } else {
+        const roster = await loadRoster()
+        row = roster.players.find((r) => r.id === clean(body.rowId, 30) && r.groupId === g.id)
+      }
       if (!row) return fail(res, 404, 'That player is not in this session.')
       const key = keys.attendance(g.id, date)
       if (status) await kvCommand(['HSET', key, row.id, status]); else await kvCommand(['HDEL', key, row.id])
@@ -1445,7 +1477,7 @@ async function handle(req, res) {
       if (status) {
         try {
           const week = dates.indexOf(date) + 1
-          await upsertAttendance({ attendanceId: `T4-W${week}-${g.day.slice(0, 3)}-${g.time}-${row.player}`, playerName: row.player, week, date, group: g, coachName: coachById(config, principal.role === 'coach' ? principal.coachId : g.coachId)?.name || '', status, markedBy: principal.email })
+          await upsertAttendance({ attendanceId: `${isJuniorsGroup(g) ? 'JJ' : 'T4'}-W${week}-${g.day.slice(0, 3)}-${g.time}-${row.player}`, playerName: row.player, week, date, group: g, coachName: coachById(config, principal.role === 'coach' ? principal.coachId : g.coachId)?.name || '', status, markedBy: principal.email })
           airtable = 'saved'
         } catch (error) { console.error('jfp attendance airtable failed', error); airtable = 'failed' }
       } else {

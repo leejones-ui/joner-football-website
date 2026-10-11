@@ -24,7 +24,7 @@ import { readSheetRange } from './_camp-automation.js'
 
 export const JUNIORS_TABLES = (process.env.JFP_JUNIORS_TABLES || 'tblMLhYQ126P5uKLB,tblVzW8E9qumQEtXx').split(',').map((x) => x.trim()).filter(Boolean)
 export const SYDNEY_ACCOUNT = 'acct_1QyPm0EwxK4ojTS1'
-const FIELDS = ['Player Full Name', 'Parent Name', 'Parent Email', 'Parent Email 2', 'Term', 'Location', 'Session Day', 'Session Time', 'Fee', 'Payment Status', 'Paid Via', 'Paid At', 'Stripe Checkout Session ID', 'Stripe PaymentIntent ID', 'Stripe Payment Link']
+const FIELDS = ['Player Full Name', 'Date of Birth', 'Session Day', 'Session Time', 'Parent Name', 'Parent Email', 'Parent Email 2', 'Term', 'Location', 'Session Day', 'Session Time', 'Fee', 'Payment Status', 'Paid Via', 'Paid At', 'Stripe Checkout Session ID', 'Stripe PaymentIntent ID', 'Stripe Payment Link']
 const CACHE = 'jfp:juniors-money'
 const FRESH_SECONDS = 600
 const MAX_PAGES = 30
@@ -58,7 +58,7 @@ export async function readJuniorsRows(tables = JUNIORS_TABLES, read = readTable)
       rows.push({
         id, table, term: s('Term'), player: s('Player Full Name'), parent: s('Parent Name'),
         emails: [lower(f['Parent Email']), lower(f['Parent Email 2'])].filter(Boolean),
-        location: s('Location'), session: [s('Session Day'), s('Session Time')].filter(Boolean).join(' '),
+        location: s('Location'), session: [s('Session Day'), s('Session Time')].filter(Boolean).join(' '), day: s('Session Day'), time: s('Session Time'), dob: s('Date of Birth'),
         feeCents: cents(f.Fee), status: s('Payment Status'), paidVia: s('Paid Via'), paidAt: s('Paid At'),
         sessionId: s('Stripe Checkout Session ID'), intentId: s('Stripe PaymentIntent ID'), linkUrl: s('Stripe Payment Link'),
       })
@@ -298,6 +298,21 @@ export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfp
       alsoInJfp: sessions.filter((s) => jfpSessionIds.includes(s.id)).length,
     },
   }
+}
+
+// ---------- the Juniors class on the timetable ----------
+
+// This term's Juniors children by session, for the timetable, the coach's
+// register and coach hours. Names and ages only. Read at most once a minute.
+export async function juniorsRoster(term, deps = {}) {
+  const get = deps.kvGetJson || kvGetJson, set = deps.kvSetJson || kvSetJson
+  const key = 'jfp:juniors-roster'
+  let rows = await get(key)
+  if (!Array.isArray(rows)) {
+    rows = (await (deps.readRows || readJuniorsRows)()).map((r) => ({ id: r.id, term: r.term, player: r.player, dob: r.dob, day: r.day, time: r.time, location: r.location, status: r.status, paidVia: r.paidVia }))
+    await set(key, rows, 60)
+  }
+  return rows.filter((r) => r.term === term)
 }
 
 // ---------- cached, with last-known-good ----------

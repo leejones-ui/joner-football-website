@@ -29,7 +29,9 @@ export const CONFIRMED_SCORE = 9007199254740000
 export const MODES = ['direct', 'application', 'enquire', 'closed']
 // 'Squad' is gone (Lee, 30 Sept: we sell small group training): old groups
 // saved as Squad read as Small group.
-export const LABELS = ['Small group', 'Pathway', '1 to 1', 'Trial']
+// 'Joners Juniors' (Lee, 12 Oct 2026): a timetable group whose children come
+// from the Juniors tables, not Term 4 Players (see juniorsRoster).
+export const LABELS = ['Small group', 'Pathway', '1 to 1', 'Trial', 'Joners Juniors']
 // What an application asks, per group. Lee picks the questions in the portal.
 export const QUESTIONS = {
   club: 'Club they play for',

@@ -316,6 +316,7 @@ function dotFor(p) {
   return 'i-off'
 }
 
+const isJJ = (g) => g?.label === 'Joners Juniors'
 function ttBlock(g) {
   const n = g.players.length
   const left = g.capacity - n
@@ -323,6 +324,12 @@ function ttBlock(g) {
   const head = `<div class="jp-blk-head" data-open="${esc(g.id)}"><b>${esc(g.time)}</b>${g.pendingRequests && P.ttView === 'staff' ? ` <span class="j-pill j-pill-violet" style="font-size:10px;padding:0 6px">${g.pendingRequests} new</span>` : ''}<span class="n">${P.ttView === 'parent' ? '' : `${n}/${g.capacity}`}</span></div>
     <div class="sub" data-open="${esc(g.id)}">${esc(g.coachName || 'No coach')} · ${esc(tag)}${g.label !== 'Small group' ? ` · ${esc(g.label)}` : ''}${g.minAge != null ? ` · ${g.girlsOnly === 'yes' ? 'girls ' : ''}${g.minAge} to ${g.maxAge}` : ''}</div>`
   let body
+  if (isJJ(g)) {
+    // Joners Juniors: children from the Juniors table, signed up on the Juniors page.
+    body = P.ttView === 'parent' ? '<div class="jp-open" style="font-weight:700">Joners Juniors · sign up on the Juniors page</div>'
+      : g.players.map((p) => `<div class="jp-nm"><span class="nmx">${esc(p.name)}${p.age != null ? ` <span class="muted">${esc(p.age)}</span>` : ''}</span></div>`).join('') + `<div class="jp-open">${g.juniorsError ? esc(g.juniorsError) : `${n} from the Joners Juniors table`}</div>`
+    return `<section class="jp-blk ${P.sel === g.id && P.ttView === 'staff' ? 'sel' : ''}" style="--lc:${locColor(g.locationId)}">${head}${body}</section>`
+  }
   if (P.ttView === 'parent') {
     body = left <= 0 ? '<div class="jp-open" style="color:var(--j-red);font-weight:700">Fully booked · waitlist</div>' : `<div class="jp-open" style="color:${g.mode === 'direct' ? 'var(--j-green)' : 'var(--j-blue)'};font-weight:700">${tag} · ${left} ${left === 1 ? 'spot' : 'spots'} left</div>`
   } else {
@@ -353,9 +360,10 @@ function groupSide(g) {
       <dt>Trials</dt><dd>${g.mode === 'application' ? (g.trials !== false ? 'Allowed' : 'Not offered') : 'n/a'}</dd>
       <dt>Who for</dt><dd>${(g.requirements || []).length ? esc(g.requirements.map((k) => ({ club: 'club football', npl: 'NPL or Division 1', rep: 'rep, NPL or academy', high: 'high level only', committed: 'every session', trialNew: 'new players trial', coach: 'coach invitation' }[k] || k)).join(', ')) : 'Ages only (set in Edit rules)'}${g.publicNote ? `<br><span class="muted">${esc(g.publicNote)}</span>` : ''}</dd>
     </dl>
+    ${isJJ(g) ? '<p class="j-box j-box-grey small" style="margin-top:12px">Joners Juniors: the children come from the Joners Juniors table in Airtable for this term. Add or change them there. Families sign up on the Juniors page, not here.</p>' : ''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
-      <button type="button" class="j-btn j-btn-dark j-btn-sm" id="sd-add">Add player</button>
-      <button type="button" class="j-btn j-btn-line j-btn-sm" id="sd-link">Copy spot link</button>
+      ${isJJ(g) ? '' : `<button type="button" class="j-btn j-btn-dark j-btn-sm" id="sd-add">Add player</button>
+      <button type="button" class="j-btn j-btn-line j-btn-sm" id="sd-link">Copy spot link</button>`}
       <button type="button" class="j-btn j-btn-line j-btn-sm" id="sd-edit">Edit rules</button>
       <button type="button" class="j-btn j-btn-line j-btn-sm" id="sd-reg">Register</button>
     </div>
@@ -364,8 +372,8 @@ function groupSide(g) {
     ${g.players.map((p) => playerRowHtml(p, g.id)).join('') || '<p class="muted small">No players yet.</p>'}`
   document.querySelector('.jfp').appendChild(el)
   el.querySelector('#sd-x').addEventListener('click', () => { P.sel = ''; closeSide(); document.querySelectorAll('.jp-blk.sel').forEach((x) => x.classList.remove('sel')) })
-  el.querySelector('#sd-add').addEventListener('click', () => addPlayerModal(g))
-  el.querySelector('#sd-link').addEventListener('click', () => addPlayerModal(g, { spotLink: true }))
+  el.querySelector('#sd-add')?.addEventListener('click', () => addPlayerModal(g))
+  el.querySelector('#sd-link')?.addEventListener('click', () => addPlayerModal(g, { spotLink: true }))
   el.querySelector('#sd-edit').addEventListener('click', async () => { if (!P.groups) P.groups = await need(await post('groups')); groupModal(P.groups.groups.find((x) => x.id === g.id) || g) })
   el.querySelector('#sd-reg').addEventListener('click', () => { P.coachId = g.coachId; go('coach') })
   el.querySelector('#sd-req')?.addEventListener('click', () => go('requests'))
@@ -373,6 +381,8 @@ function groupSide(g) {
 }
 
 function playerRowHtml(p, gid) {
+  // Joners Juniors children live in the Juniors table: shown, never moved or charged here.
+  if (p.juniors) return `<div class="jp-player jp-player-jj"><span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}</span><span class="tags"><span class="j-pill j-pill-grey" title="From the Joners Juniors table">Juniors</span></span></div>`
   const tags = [
     p.status !== 'Confirmed' ? `<span class="j-pill j-pill-amber">${esc(p.status)}</span>` : '',
     payPill(p),
@@ -463,7 +473,8 @@ function detailsModal(p, g) {
 }
 
 function groupOptions(selected, { exclude } = {}) {
-  return P.board.groups.filter((g) => g.id !== exclude).map((g) => `<option value="${esc(g.id)}" ${g.id === selected ? 'selected' : ''}>${esc(g.day)} ${esc(g.time)} · ${esc(g.locationName)} · Coach ${esc(g.coachName || '?')} · ${g.players.length}/${g.capacity}</option>`).join('')
+  // A Juniors class never takes JFP players.
+  return P.board.groups.filter((g) => g.id !== exclude && !isJJ(g)).map((g) => `<option value="${esc(g.id)}" ${g.id === selected ? 'selected' : ''}>${esc(g.day)} ${esc(g.time)} · ${esc(g.locationName)} · Coach ${esc(g.coachName || '?')} · ${g.players.length}/${g.capacity}</option>`).join('')
 }
 
 function moveModal(p, g) {

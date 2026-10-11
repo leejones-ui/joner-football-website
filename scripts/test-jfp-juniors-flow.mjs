@@ -59,4 +59,30 @@ await test('only Lee and Ligia: coaches, families and strangers are refused', as
   assert.equal((await client()('/api/jfp-portal-data', { action: 'juniorsMoney' })).status, 401)
 })
 
+await test('Joners Juniors on the timetable and in Coach Sam\'s hours and register', async () => {
+  const before = (await lee('/api/jfp-portal-data', { action: 'coachSessions', coachId: 'sam' })).data
+  const made = await lee('/api/jfp-portal-data', { action: 'saveGroup', group: { day: 'Saturday', time: '9:15am', location: 'Belrose HQ', coachId: 'sam', mode: 'closed', label: 'Joners Juniors', durationMin: 45, capacity: 12, minAge: 3, maxAge: 6 } })
+  assert.equal(made.status, 200, JSON.stringify(made.data))
+  const id = made.data.group.id
+  const board = (await lee('/api/jfp-portal-data', { action: 'board' })).data
+  const g = board.groups.find((x) => x.id === id)
+  assert.deepEqual(g.players.map((p) => p.name), ['Jun Alpha', 'Jun Delta', 'Jun Echo', 'Jun Foxtrot'], 'this term\'s Juniors children')
+  assert.ok(g.players.every((p) => p.juniors))
+  assert.equal(board.totals.players, (await lee('/api/jfp-portal-data', { action: 'board' })).data.totals.players, 'JFP totals unchanged')
+  const after = (await lee('/api/jfp-portal-data', { action: 'coachSessions', coachId: 'sam' })).data
+  assert.equal(after.hours.perWeekMinutes - before.hours.perWeekMinutes, 45, 'Sam gets 45 minutes a week')
+  const jj = after.sessions.find((x) => x.id === id)
+  assert.equal(jj.players.length, 4)
+  const sam = client(); await signIn(sam, 'jonerfootballsam@gmail.com')
+  const date = jj.nextDate
+  const mark = await sam('/api/jfp-portal-data', { action: 'markAttendance', groupId: id, date, rowId: jj.players[0].rowId, status: 'Present' })
+  assert.equal(mark.status, 200, JSON.stringify(mark.data))
+  const prog = (await sam('/api/jfp-portal-data', { action: 'program' })).data
+  assert.ok(prog.groups.some((x) => x.id === id && x.players.length === 4), 'coaches see the class on the Program')
+  const add = await lee('/api/jfp-portal-data', { action: 'addPlayer', groupId: id, player: { name: 'Not A Junior' }, parent: { name: 'P', email: 'p@example.com' }, payment: 'none' })
+  assert.equal(add.status, 400)
+  const pub = await fetch(`${B}/api/jfp-groups`, { headers: { 'x-forwarded-for': '10.9.9.9' } }).then((r) => r.json())
+  assert.ok(!(pub.groups || []).some((x) => x.id === id), 'not offered on the JFP booking page')
+})
+
 console.log(`\n${passed} Juniors portal checks passed`)
