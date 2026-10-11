@@ -19,7 +19,7 @@ import {
 } from './_jfp-store.js'
 import { coachPhotoUrl } from './jfp-groups.js'
 import {
-  loadRoster, countsFrom, playerAge, waiverFor, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, clearAttendance, draftAgeBand, placeInGroups,
+  loadRoster, countsFrom, playerAge, waiverFor, isoDate, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, clearAttendance, draftAgeBand, placeInGroups,
   createWaiverRows, waiverFields, findWaiversByTag, bustRosterCache, findTerm4ByTag,
   getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, listDropped, deleteTerm4Row, RESTORABLE,
   listLedger, createLedgerRow, listJuniors, listVenueHistory,
@@ -49,7 +49,7 @@ function onDashboard(r) {
 }
 
 function playerView(r, config, roster, { money }) {
-  const w = waiverFor(r.player, { emails: [r.email], phones: [r.phone] }, roster.waivers)
+  const w = waiverFor(r.player, { emails: [r.email], phones: [r.phone], dob: r.dob }, roster.waivers)
   return {
     rowId: r.id,
     name: r.player,
@@ -133,7 +133,7 @@ async function boardData(config) {
       awaiting: holding.filter((r) => r.confirmation !== 'Confirmed').length,
       placesLeft: view.filter((g) => ['direct', 'application'].includes(g.mode)).reduce((t, g) => t + g.placesLeft, 0),
       pendingRequests: requests.filter((r) => r.status === 'pending').length,
-      waivers: holding.filter((r) => waiverFor(r.player, { emails: [r.email], phones: [r.phone] }, roster.waivers)).length,
+      waivers: holding.filter((r) => waiverFor(r.player, { emails: [r.email], phones: [r.phone], dob: r.dob }, roster.waivers)).length,
     },
   }
 }
@@ -234,7 +234,7 @@ async function addPlayer(req, res, principal, config, body) {
   let emailed = false
   if (body.sendEmail === true && email) {
     const roster = await loadRoster({ fresh: true })
-    const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile] }, roster.waivers))
+    const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile], dob }, roster.waivers))
     await sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq) }, amountCents, trial: isTrial, startDate: from })
     emailed = true
     if (payreq) await savePayreq({ ...payreq, emailedAt: new Date().toISOString() })
@@ -259,12 +259,15 @@ async function playersList(req, res, config, body = {}) {
     const gid = g ? r.groupId : ''
     const coach = coachById(config, g?.coachId) || coachByAirtableName(config, r.coach)
     const loc = locationFor(config, r.location)
-    const waiver = waiverFor(r.player, { emails: [r.email], phones: [r.phone] }, roster.waivers)
+    const waiver = waiverFor(r.player, { emails: [r.email], phones: [r.phone], dob: r.dob }, roster.waivers)
     return {
       rowId: r.id,
       name: r.player,
-      age: r.dob ? ageOn(r.dob, config.termStart) : null,
-      dob: r.dob || '',
+      // Today's age from the date of birth (Term 3, else the waiver), so it
+      // goes up on each birthday. Club from the player's waiver.
+      dob: isoDate(r.dob) || waiver?.dob || '',
+      age: (isoDate(r.dob) || waiver?.dob) ? ageOn(isoDate(r.dob) || waiver.dob, sydneyToday()) : null,
+      club: waiver?.club || '',
       parent: r.parent || '',
       email: r.email || '',
       phone: r.phone || '',
@@ -278,7 +281,7 @@ async function playersList(req, res, config, body = {}) {
       paymentType: r.paymentType || '',
       feeAud: r.feeAud, paidAud: r.paidAud, balanceAud: r.balanceAud,
       kit: r.kit || '',
-      waiver: waiver ? { onFile: true, term: waiver.term || '', signedDate: waiver.signedDate || '' } : { onFile: false },
+      waiver: waiver ? { onFile: true, term: waiver.term || '', signedDate: waiver.signedDate || '', how: waiver.how || '', spelling: waiver.spelling || '' } : { onFile: false },
       notes: r.notes || '',
       inGroup: Boolean(gid),
       holdsPlace: r.holdsPlace,
@@ -808,7 +811,7 @@ async function sendPaymentLink(req, res, principal, config, body) {
   let emailed = false
   if (body.sendEmail === true && group) {
     const roster = await loadRoster()
-    const needWaiver = rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone] }, roster.waivers))
+    const needWaiver = rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone], dob: r.dob }, roster.waivers))
     if (reason === 'term-after-trial') await sendTermOffered({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), amountCents, startDate: chosen?.from || '', creditCents: credit })
     else await sendFamilyInvite({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), needs: { details: false, waiver: needWaiver, payment: true }, amountCents, trial: reason === 'trial', startDate: chosen?.from || '' })
     emailed = true
@@ -1322,7 +1325,7 @@ export async function familyPlan(req, config) {
       players: rows.map((r) => ({ rowId: r.id, name: r.player, group: byId[r.groupId] ? `${byId[r.groupId].day} ${byId[r.groupId].time}, ${locationFor(config, byId[r.groupId].location).name}` : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Group to be confirmed' })),
       owingCents: owingRows.reduce((t, r) => t + owe(r), 0), owingRowIds: owingRows.map((r) => r.id), openLink: open ? payreqUrl(req, open) : '',
       kind: owingRows.length ? 'pay' : unpriced.length ? 'noPrice' : 'paid',
-      needsWaiver: rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone] }, roster.waivers)),
+      needsWaiver: rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone], dob: r.dob }, roster.waivers)),
       invitedAt: invited[email] || '', accountInvitedAt: acctInvited[email] || '', signedInAt: signedIn[email] || '', groupId: rows[0].groupId,
     }
   }).sort((a, b) => a.parent.localeCompare(b.parent))

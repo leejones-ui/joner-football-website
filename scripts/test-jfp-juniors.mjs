@@ -98,6 +98,19 @@ await test('a parent who paid from another email is matched by the child\'s name
   assert.deepEqual(m.coverage.sheet, { tab: 'Joners Juniors', rows: 2, paid: 2, paidFoundInStripe: 1 })
 })
 
+await test('a payment linked by hand counts once, in the term chosen, for that child', async () => {
+  const rows = [row('benji', { player: 'Benjamin Phillips (Benji)', status: 'Paid', paidVia: 'Term 3 credit', linkUrl: LINK4 })]
+  const s = pay('cs_live_abcdefkaO34G', { email: 'parent@example.com', at: '2026-08-18T04:48:00.000Z', tagged: true })
+  const links = [{ suffix: 'kaO34G', cents: 22000, day: '2026-08-18', rowId: 'benji', term: 'Term 3 2026' }]
+  const m = juniorsMoney(rows, { sessions: [s], links: {} }, { links })
+  assert.equal(m.unlinked.length, 0); assert.equal(m.byHand.length, 1)
+  assert.equal(m.byHand[0].forPlayer, 'Benjamin Phillips (Benji)')
+  assert.equal(get(m, 'benji').status, 'credit', 'Term 4 stays paid with credit')
+  assert.equal(m.byTerm['Term 4 2026'].collectedCents, 0, 'not counted again in Term 4')
+  const wrong = juniorsMoney(rows, { sessions: [s], links: {} }, { links: [{ ...links[0], cents: 21900 }] })
+  assert.equal(wrong.byHand.length, 0, 'a different amount is not that payment')
+})
+
 // ---------- reading ----------
 
 function fakeStripe({ account = SYDNEY_ACCOUNT, pages = 1, failOn = '' } = {}) {

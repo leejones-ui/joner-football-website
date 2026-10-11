@@ -257,20 +257,65 @@ export function waiverFor(playerName, family, waivers) {
   const n = normName(playerName)
   if (!n) return null
   const same = waivers.filter((w) => normName(w.player) === n && w.accepted !== false)
-  const emails = new Set((family.emails || []).map((e) => e.toLowerCase()))
+  const emails = new Set((family.emails || []).filter(Boolean).map((e) => e.toLowerCase()))
   const phones = new Set((family.phones || []).map(digits).filter((d) => d.length >= 8).map((d) => d.slice(-9)))
   const ours = (w) => emails.has(w.email) || (digits(w.mobile).length >= 8 && phones.has(digits(w.mobile).slice(-9)))
-  const strong = same.find(ours)
-  let pick = strong || null
+  const first = (v) => normName(String(v || '').trim().split(/\s+/)[0])
+  let pick = same.find(ours) || null
+  let how = pick ? 'family email or mobile' : ''
   // A spelling difference inside the same family ("Srestha" and "Shrestha"):
   // accept only a close full name AND a close first name, from a waiver that
-  // carries this family's email or mobile, and only if exactly one fits.
+  // carries this family's email or mobile. Two close waivers (siblings,
+  // "Charlotte Roberts" and "Charlie Roberte"): the one whose first name is
+  // exactly this player's.
   if (!pick) {
-    const first = (v) => String(v || '').trim().split(/\s+/)[0]
     const close = waivers.filter((w) => w.accepted !== false && ours(w) && similar(w.player, playerName) >= 0.72 && similar(first(w.player), first(playerName)) >= 0.5)
+    const exactFirst = close.filter((w) => first(w.player) === first(playerName))
     if (close.length === 1 || (close.length > 1 && close.every((w) => normName(w.player) === normName(close[0].player)))) pick = close[0]
+    else if (exactFirst.length === 1) pick = exactFirst[0]
+    if (pick) how = 'same family, spelling differs'
   }
-  return pick ? { id: pick.id, signedDate: pick.signedDate, term: pick.term, version: pick.version, spelling: normName(pick.player) !== n ? pick.player : '' } : null
+  // The same family, under a name written differently: "Ishaan" for Ishaan
+  // Sidhu, "Kobi David Bell", "Dominic" for Dom, "Joseph" for Joey. Only a
+  // waiver carrying this family's email or mobile, and only one child's.
+  if (!pick) {
+    const fam = waivers.filter((w) => w.accepted !== false && ours(w))
+    const one = (list) => (list.length && new Set(list.map((w) => normName(w.player))).size === 1 ? list[0] : null)
+    const pDob = isoDate(family.dob)
+    pick = pDob ? one(fam.filter((w) => isoDate(w.dob) === pDob)) : null
+    if (pick) how = 'same family and date of birth'
+    else {
+      const last = (v) => { const t = String(v || '').trim().split(/\s+/); return t.length > 1 ? normName(t.at(-1)) : '' }
+      const mine = last(playerName)
+      pick = one(fam.filter((w) => sameFirstName(first(w.player), first(playerName)) && (!last(w.player) || !mine || last(w.player) === mine) && !(isoDate(w.dob) && pDob && isoDate(w.dob) !== pDob)))
+      if (pick) how = 'same family, short or full first name'
+    }
+  }
+  // Signed under another email (an older player's own, or the other parent):
+  // the exact full name AND the same date of birth, and only one such waiver name.
+  if (!pick && isoDate(family.dob)) {
+    const dobSame = same.filter((w) => isoDate(w.dob) === isoDate(family.dob))
+    if (dobSame.length) { pick = dobSame[0]; how = 'same name and date of birth' }
+  }
+  return pick ? { id: pick.id, signedDate: pick.signedDate, term: pick.term, version: pick.version, club: pick.club || '', dob: isoDate(pick.dob), spelling: normName(pick.player) !== n ? pick.player : '', how } : null
+}
+
+// Short and full forms of a first name: Dom and Dominic, Joey and Joseph.
+const NICKNAMES = { joey: 'joseph', joe: 'joseph', jimmy: 'james', jim: 'james', billy: 'william', bill: 'william', will: 'william', bobby: 'robert', bob: 'robert', rob: 'robert', mike: 'michael', mick: 'michael', teddy: 'edward', ted: 'edward', tom: 'thomas', tommy: 'thomas', alex: 'alexander', zac: 'zachary', zach: 'zachary', nate: 'nathan', nick: 'nicholas', matt: 'matthew', dan: 'daniel', danny: 'daniel', ben: 'benjamin', benji: 'benjamin', sam: 'samuel', josh: 'joshua', jake: 'jacob', max: 'maximilian', theo: 'theodore', harry: 'henry' }
+export function sameFirstName(a, b) {
+  a = normName(a); b = normName(b)
+  if (!a || !b) return false
+  if (a === b) return true
+  if (Math.min(a.length, b.length) >= 3 && (a.startsWith(b) || b.startsWith(a))) return true
+  return NICKNAMES[a] === b || NICKNAMES[b] === a || (NICKNAMES[a] && NICKNAMES[a] === NICKNAMES[b])
+}
+
+// Dates of birth arrive as 2017-03-05, 05/03/2017 (day first) or blank.
+export function isoDate(v) {
+  const s = String(v || '').trim()
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10)
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s)
+  return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : ''
 }
 
 // Bigram overlap (Dice) of two names, 0 to 1, letters only.
@@ -571,7 +616,7 @@ export function familyFor(email, roster, termStart) {
   family.players = [...byName.values()].map((p) => ({
     ...p,
     age: ageOn(p.dob, termStart) ?? p.ageHint ?? null,
-    waiver: waiverFor(p.name, family, roster.waivers),
+    waiver: waiverFor(p.name, { ...family, dob: p.dob }, roster.waivers),
   })).sort((a, b) => a.name.localeCompare(b.name))
   return family
 }

@@ -70,6 +70,7 @@ export async function renderJuniorsMoney(ui) {
     <p class="muted small" id="jm-count" style="margin-top:8px"></p>
     ${unlinked.length ? `<details class="jd-card" style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">${unlinked.length} Stripe payment${unlinked.length === 1 ? '' : 's'} not matched to a child (${esc(money(t.unlinkedCents))})</summary><p class="sub" style="margin:6px 0 10px">Counted in ${esc(filter.term)} because they came through its payment link, but no Juniors row has the email they used.</p>
       <ul class="jm-hist">${unlinked.map((u) => `<li><span><b>${esc(u.forPlayer ? `For ${u.forPlayer}` : when(u.at))}</b><small>${u.forPlayer ? `${esc(when(u.at))} · ` : ''}${esc(u.why)} · ref ${esc(u.ref)}</small></span><span class="amt">${esc(money(u.cents))}</span></li>`).join('')}</ul></details>` : ''}
+    ${(d.byHand || []).filter((u) => u.term === filter.term).map((u) => `<p class="muted small" style="margin-top:10px">Matched by hand: ${esc(money(u.cents))} on ${esc(when(u.at))} for ${esc(u.forPlayer)}${u.rowTerm && u.rowTerm !== u.term ? ` (counted in ${esc(u.term)}; their ${esc(u.rowTerm)} place is paid with this credit)` : ''}.</p>`).join('')}
     <details class="jd-card" style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">How this is worked out</summary>
       <ul class="small" style="margin:8px 0 0 18px;line-height:1.7">
         <li>${esc(DEFINITION)}</li>

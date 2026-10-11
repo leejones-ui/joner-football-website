@@ -125,17 +125,39 @@ function bindShell() {
 }
 bindShell()
 
-async function go(tab) {
+async function go(tab, { quiet = false } = {}) {
   P.tab = tab
-  history.replaceState(null, '', `#${tab}`)
+  if (!quiet) history.replaceState(null, '', `#${tab}`)
   renderNav()
-  view().innerHTML = '<p class="muted">Loading</p>'
+  if (!quiet) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
   const fn = { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
-  try { await fn() } catch (e) { console.error(e); view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
-  view().focus({ preventScroll: true })
+  try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
+  if (!quiet) view().focus({ preventScroll: true })
 }
+
+// Auto sync (Lee, 12 Oct 2026): the page on screen re-reads Airtable and
+// Stripe by itself every 2 minutes, and as soon as you come back to the
+// browser tab. It waits while you are typing, have a window or menu open, or
+// are part way through something, and keeps your place on the page.
+const AUTO = { tabs: new Set(['overview', 'board', 'families', 'money', 'requests', 'payments', 'program']), lastInput: 0, hiddenAt: 0, busy: false }
+document.addEventListener('input', () => { AUTO.lastInput = Date.now() }, true)
+async function autoSync() {
+  if (AUTO.busy || !P.user || !AUTO.tabs.has(P.tab) || document.visibilityState !== 'visible') return
+  if ($('jp-modal') || $('jp-side') || $('jp-menu') || document.querySelector('.jp-confirm-over, .j-sheet')) return
+  const a = document.activeElement
+  if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return
+  if (Date.now() - AUTO.lastInput < 60000) return
+  AUTO.busy = true
+  const y = window.scrollY
+  try { P.board = null; PL.at = 0; await go(P.tab, { quiet: true }); window.scrollTo(0, y) } finally { AUTO.busy = false }
+}
+setInterval(autoSync, 120000)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') AUTO.hiddenAt = Date.now()
+  else if (AUTO.hiddenAt && Date.now() - AUTO.hiddenAt > 60000) autoSync()
+})
 
 async function need(r) {
   if (r.status === 401) { await showSignIn(); throw new Error('Signed out') }
@@ -273,7 +295,7 @@ async function renderBoard(refresh) {
   if (!P.board || refresh !== false) P.board = await need(await post('board'))
   const B = P.board
   P.coaches = B.coaches
-  const groups = B.groups.filter((g) => (!P.loc || g.locationId === P.loc) && (!P.coachFilter || g.coachId === P.coachFilter) && (!P.day || g.day === P.day) && (P.ttView === 'staff' || g.mode !== 'closed'))
+  const groups = B.groups.filter((g) => (!P.loc || g.locationId === P.loc) && (!P.coachFilter || g.coachId === P.coachFilter) && (!P.day || g.day === P.day) && (P.ttView === 'staff' || g.mode !== 'closed' || isJJ(g)))
   const t = B.totals
   view().innerHTML = `
     <div class="jp-head"><div><h1>${esc(B.term)}</h1><p class="muted small">${t.dashboard} confirmed · ${t.players} holding a place · ${t.awaiting} not confirmed yet · ${t.pendingRequests} request${t.pendingRequests === 1 ? '' : 's'} waiting · waivers ${t.waivers}/${t.players} · updated ${esc(timeAgo(B.at))} <button type="button" class="j-btn j-btn-ghost j-btn-sm" id="b-refresh">Refresh</button></p></div>
@@ -444,7 +466,7 @@ function playerMenu(el) {
   if (!found) return
   const { p, g } = found
   menu(el, [
-    { key: 'info', label: 'Details', run: () => detailsModal(p, g) },
+    { key: 'info', label: 'Details', run: () => openPlayerDetails(p.rowId, () => detailsModal(p, g)) },
     { key: 'move', label: 'Move to another group', run: () => moveModal(p, g) },
     '-',
     ...(p.trial ? [{ key: 'term', label: 'Offer full term (after trial)', run: () => termModal(p, g) }] : []),
@@ -453,6 +475,19 @@ function playerMenu(el) {
     '-',
     { key: 'remove', label: 'Remove from group', danger: true, run: () => removeModal(p, g) },
   ])
+}
+
+// The same player window as the Players tab: full name, age today, date of
+// birth, club, session, money, family, waiver.
+async function openPlayerDetails(rowId, fallback) {
+  let list = PL.data?.players
+  if (!list || Date.now() - PL.at > 30000) {
+    const r = await post('playersList')
+    if (!r.ok) return fallback()
+    PL.data = r.data; PL.at = Date.now(); list = r.data.players
+  }
+  const p = list.find((x) => x.rowId === rowId)
+  return p ? plDetail(p) : fallback()
 }
 
 function detailsModal(p, g) {
@@ -1623,9 +1658,15 @@ function plRow(p) {
 
 function plDetail(p) {
   const row = (k, v) => (v ? `<div class="j-kv"><span>${esc(k)}</span><span>${esc(v)}</span></div>` : '')
+  const born = p.dob ? new Date(`${p.dob}T00:00:00Z`).toLocaleDateString('en-AU', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }) : ''
   modal(`<h2 style="margin-bottom:2px">${esc(p.name)}</h2>
-    <p class="muted small" style="margin-bottom:14px">${p.age != null ? `Age ${esc(p.age)} on the first day of term` : 'Age not on file'}${p.dob ? ` · born ${esc(p.dob)}` : ''}</p>
-    <h3>Session</h3>
+    <p class="muted small" style="margin-bottom:14px">${p.age != null ? `Age ${esc(p.age)}` : 'Age not on file'}${born ? ` · born ${esc(born)}` : ''}${p.club ? ` · ${esc(p.club)}` : ''}</p>
+    <h3>Player</h3>
+    ${row('Full name', p.name)}
+    ${row('Age', p.age != null ? `${p.age} (today, from the date of birth)` : 'not on file: add a date of birth')}
+    ${row('Date of birth', born || 'not on file')}
+    ${row('Club', p.club || 'not on file')}
+    <h3 style="margin-top:14px">Session</h3>
     ${row('Group', p.inGroup ? p.groupLabel : 'Not in a group')}
     ${row('Coach', p.coach)}
     ${row('In Airtable as', [p.day, p.time, p.location].filter(Boolean).join(' ') || 'no session set')}
@@ -1641,7 +1682,7 @@ function plDetail(p) {
     ${row('Email', p.email)}
     ${row('Mobile', p.phone)}
     <h3 style="margin-top:14px">Paperwork</h3>
-    ${row('Waiver', p.waiver.onFile ? `On file${p.waiver.term ? `, ${p.waiver.term}` : ''}${p.waiver.signedDate ? `, signed ${p.waiver.signedDate}` : ''}` : 'Not signed')}
+    ${row('Waiver', p.waiver.onFile ? `On file${p.waiver.term ? `, ${p.waiver.term}` : ''}${p.waiver.signedDate ? `, signed ${p.waiver.signedDate}` : ''}${p.waiver.spelling ? `, signed as "${p.waiver.spelling}"` : ''}` : 'Not signed (no waiver in Airtable for this player)')}
     ${row('Playing kit', p.kit || 'not confirmed')}
     ${p.notes ? `<h3 style="margin-top:14px">Notes</h3><p class="small" style="white-space:pre-wrap;max-height:220px;overflow:auto">${esc(p.notes)}</p>` : ''}
     <div style="display:flex;justify-content:flex-end;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })

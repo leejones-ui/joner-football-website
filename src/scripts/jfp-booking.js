@@ -131,7 +131,7 @@ function visible() {
     if (f.loc && g.locationId !== f.loc) return false
     if (f.coach && g.coachId !== f.coach) return false
     if (f.day && g.day !== f.day) return false
-    if (f.show === 'book' && g.mode !== 'direct') return false
+    if (f.show === 'book' && g.mode !== 'direct' && g.mode !== 'signup') return false
     if (f.show === 'apply' && g.mode !== 'application') return false
     if (f.show === 'open' && (g.full || g.mode === 'enquire')) return false
     return true
@@ -160,6 +160,8 @@ function coachChip(g, size = 28) {
 function agesLabel(g) { return g.girlsOnly ? `Girls, age guide ${g.minAge} to ${g.maxAge}` : `Age guide ${g.minAge} to ${g.maxAge}` }
 
 function status(g) {
+  // Joners Juniors: signed up on its own page (ages 3 to early primary).
+  if (g.mode === 'signup') return ['s-book', 'Ages 3 to early primary']
   if (g.mode === 'enquire') return ['s-grey', 'Enquire']
   if (g.full) return ['s-full', 'Join the waitlist']
   const left = `${g.placesLeft} ${g.placesLeft === 1 ? 'spot' : 'spots'} left`
@@ -169,7 +171,7 @@ function status(g) {
 // A full group normally takes the waitlist. Groups Lee marks "keep taking
 // applications" (popular spots) still say Apply when full.
 function waitOnly(g) { return g.full && !g.applyWhenFull }
-function actLabel(g) { return g.mode === 'enquire' ? 'Enquire' : waitOnly(g) ? 'Join the waitlist' : g.mode === 'direct' && !g.full ? 'Book' : 'Apply' }
+function actLabel(g) { return g.mode === 'signup' ? 'Book now' : g.mode === 'enquire' ? 'Enquire' : waitOnly(g) ? 'Join the waitlist' : g.mode === 'direct' && !g.full ? 'Book' : 'Apply' }
 
 function block(g) {
   const [cls, text] = status(g)
@@ -179,7 +181,7 @@ function block(g) {
     <span class="c c-name">${esc(g.coachName || 'Joner Football')}</span>
     ${g.girlsOnly ? '<span class="c">Girls only</span>' : ''}
     <span class="left">${g.mode === 'enquire' ? 'On request' : g.full ? 'Fully booked' : esc(text)}</span>
-    <span class="act ${waitOnly(g) ? 'act-wait' : g.mode === 'direct' ? 'act-book' : 'act-apply'}">${actLabel(g)}</span>
+    <span class="act ${waitOnly(g) ? 'act-wait' : g.mode === 'direct' || g.mode === 'signup' ? 'act-book' : 'act-apply'}">${actLabel(g)}</span>
   </button>`
 }
 
@@ -250,7 +252,12 @@ document.addEventListener('click', (e) => {
   if (pd) { if (pd.dataset.pday === 'week') S.view = 'week'; else { S.view = 'day'; S.phoneDay = pd.dataset.pday } renderResults(); return }
   if (e.target.closest('#f-reset')) { S.filters = { loc: '', coach: '', day: '', show: '' }; $('f-coach').value = ''; $('f-loc').value = ''; renderFilters(); renderLocations(); renderResults(); return }
   const blk = e.target.closest('[data-group]')
-  if (blk) { const g = S.data.groups.find((x) => x.id === blk.dataset.group); if (g) groupSheet(g) }
+  if (blk) {
+    const g = S.data.groups.find((x) => x.id === blk.dataset.group)
+    // Joners Juniors: Book now goes straight to the Joners Juniors sign-up page.
+    if (g?.signupUrl) { location.href = g.signupUrl; return }
+    if (g) groupSheet(g)
+  }
 })
 
 // ---------- one group: who it is for, how it works ----------

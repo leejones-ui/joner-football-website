@@ -79,7 +79,10 @@ export default async function handler(req, res) {
   if (!requireParentAccess(req, res, await getConfig())) return
   try {
     const [config, groups] = await Promise.all([getConfig(), listGroups()])
-    const open = groups.filter((g) => g.mode !== 'closed')
+    // Joners Juniors is closed to JFP bookings but shown to families as a
+    // card whose Book now goes to the Joners Juniors sign-up page (Lee, 12 Oct).
+    const isJuniors = (g) => g.label === 'Joners Juniors'
+    const open = groups.filter((g) => g.mode !== 'closed' || isJuniors(g))
     let counts
     try { counts = (await airtableCounts()).counts } catch (error) {
       // Without the roster we cannot know what is free, so nothing is bookable.
@@ -87,7 +90,9 @@ export default async function handler(req, res) {
       return res.status(503).json({ success: false, error: 'Bookings are briefly unavailable. Try again in a minute.' })
     }
     const online = await onlineCounts(open.map((g) => g.id))
-    const list = open.map((g) => ({ ...publicGroup(g, config, publicPlacesLeft(g, counts[g.id], online[g.id])), oneToOneOpen: g.mode === 'direct' && g.allowOneToOne === true && !g.showFull && !(counts[g.id] > 0) && !(online[g.id] > 0) }))
+    const list = open.map((g) => isJuniors(g)
+      ? { ...publicGroup(g, config, null), mode: 'signup', signupUrl: '/jonersjuniors', placesLeft: null, full: false, trials: false, questions: [], oneToOneOpen: false }
+      : { ...publicGroup(g, config, publicPlacesLeft(g, counts[g.id], online[g.id])), oneToOneOpen: g.mode === 'direct' && g.allowOneToOne === true && !g.showFull && !(counts[g.id] > 0) && !(online[g.id] > 0) })
     const locations = config.locations.map((l) => {
       const mine = list.filter((g) => g.locationId === l.id)
       return {

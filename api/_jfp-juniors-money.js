@@ -175,7 +175,14 @@ function split(amount, rows, room) {
   return { parts, left }
 }
 
-export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfpSessionIds = [], sheet = null } = {}) {
+// A payment Lee has said is for a child, when nothing else can tell (Benji,
+// 12 Oct 2026: his Term 3 payment, carried to Term 4 as credit). Matched by
+// the end of the Stripe id, the amount and the day, so it can only ever be
+// that one payment. term: which term the money counts in.
+export const JUNIORS_LINKS_KEY = 'jfp:juniors-links'
+const handLink = (links, s) => links.find((l) => l.suffix && s.id.endsWith(l.suffix) && Number(l.cents) === s.amountCents && String(s.at).slice(0, 10) === l.day)
+
+export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfpSessionIds = [], sheet = null, links = [] } = {}) {
   // One payment found twice (row ID, tag, link) is still one payment.
   const sessions = [...new Map((stripe?.sessions || []).filter((s) => s.paid).map((s) => [s.id, s])).values()]
   const linkOfUrl = Object.fromEntries(Object.entries(stripe?.links || {}).map(([id, l]) => [l.url, id]))
@@ -204,6 +211,16 @@ export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfp
     return { player: s.player || hit?.player || '', email: s.email || hit?.email || '', viaSheet: Boolean(hit) }
   }
   const used = new Set()
+  const byHand = []
+  // 0. Linked by hand: counted in the term Lee chose, against that child.
+  for (const s of sessions) {
+    const l = handLink(links, s)
+    if (!l) continue
+    const r = rows.find((x) => x.id === l.rowId)
+    used.add(s.id)
+    if (r && r.term === l.term) { allocate(s, [r]); continue }
+    byHand.push({ id: s.id, cents: s.amountCents - s.refundedCents, at: s.at, term: l.term, forPlayer: r?.player || l.player || '', rowTerm: r?.term || '', note: l.note || '' })
+  }
   // 1. By ID on the row (siblings may share one session: split by fee).
   for (const s of sessions) {
     if (s.currency !== 'aud') { otherCurrency.push({ id: s.id, currency: s.currency, cents: s.amountCents }); used.add(s.id); continue }
@@ -266,13 +283,15 @@ export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfp
   const byTerm = Object.fromEntries(terms.map((term) => {
     const list = out.filter((r) => r.term === term)
     const extra = unlinked.filter((u) => u.term === term)
+    const hand = byHand.filter((u) => u.term === term)
+    const handCents = hand.reduce((t, u) => t + u.cents, 0)
     const sum = (k, l = list) => l.reduce((t, r) => t + (r[k] || 0), 0)
     const unknownOwing = list.filter((r) => r.owingCents == null)
     return [term, {
       term, players: list.length,
-      collectedCents: sum('paidCents') + extra.reduce((t, u) => t + u.cents, 0),
+      collectedCents: sum('paidCents') + handCents + extra.reduce((t, u) => t + u.cents, 0),
       refundedCents: sum('refundedCents'),
-      linkedCents: sum('paidCents'), unlinkedCents: extra.reduce((t, u) => t + u.cents, 0), unlinkedCount: extra.length,
+      linkedCents: sum('paidCents') + handCents, byHandCents: handCents, unlinkedCents: extra.reduce((t, u) => t + u.cents, 0), unlinkedCount: extra.length,
       owingCents: sum('owingCents'), owingComplete: unknownOwing.length === 0,
       creditPlaces: list.filter((r) => r.status === 'credit').length,
       creditValueCents: list.filter((r) => r.status === 'credit').reduce((t, r) => t + (r.feeCents || 0), 0),
@@ -283,6 +302,7 @@ export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfp
   return {
     at: now, terms, byTerm, players: out,
     unlinked: unlinked.map(({ id, ...u }) => ({ ref: `…${id.slice(-6)}`, ...u })),
+    byHand: byHand.map(({ id, ...u }) => ({ ref: `…${id.slice(-6)}`, ...u })),
     unassigned: unlinked.filter((u) => !u.term).length,
     otherCurrency,
     coverage: {
@@ -330,7 +350,8 @@ export async function juniorsMoneyData({ fresh = false } = {}, deps = {}) {
     // The sheet only helps matching: if it cannot be read, say so and go on.
     let sheet
     try { sheet = await (deps.readSheet || readJuniorsSheet)() } catch (error) { console.error('jfp juniors sheet read failed', error.message); sheet = { read: false, why: 'The Joners Juniors sign-up sheet could not be read', rows: [] } }
-    const data = juniorsMoney(rows, stripe, { jfpSessionIds, sheet })
+    const links = (await (deps.readLinks || (async () => (await get(JUNIORS_LINKS_KEY)) || []))()) || []
+    const data = juniorsMoney(rows, stripe, { jfpSessionIds, sheet, links })
     await set(CACHE, data, 60 * 60 * 24 * 30)
     return { ...data, stale: false }
   } catch (error) {
