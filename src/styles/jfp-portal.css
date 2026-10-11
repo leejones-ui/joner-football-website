@@ -303,3 +303,14 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jv-notes p + p { margin-top: 4px; }
 .jv-term { display: inline-flex; align-items: center; gap: 8px; }
 .jv-term select { width: auto; padding: 7px 10px; font-size: 13.5px; }
+
+/* Joners Juniors (Money switch + dashboard card), 11 Oct 2026 */
+.jm-prog { margin-right: 4px; }
+.jj-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.jj-figs { display: flex; gap: 28px; flex-wrap: wrap; }
+.jj-figs > div { display: flex; flex-direction: column; min-width: 110px; }
+.jj-figs .lbl { font-size: 12px; font-weight: 650; color: var(--j-muted); }
+.jj-figs .val { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.jj-figs .note { font-size: 12px; color: var(--j-muted); }
+@media (max-width: 640px) { .jj-figs { gap: 16px; } .jj-figs > div { min-width: 0; flex: 1 1 40%; } .jj-row > .j-btn { width: 100%; } }
+@media (max-width: 640px) { .jj-sm-hide { display: none; } }

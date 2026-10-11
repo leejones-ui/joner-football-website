@@ -32,6 +32,7 @@ import { nextStatuses, setNextStatus, nextPrices, recordNext } from './_jfp-next
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { jfpStripePayments } from './_jfp-stripe.js'
+import { juniorsMoneyData } from './_jfp-juniors-money.js'
 import { allocateTermMoney, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf } from './_jfp-venues.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -1576,6 +1577,16 @@ async function handle(req, res) {
       }
 
       case 'money': return res.status(200).json({ success: true, money: await moneyData(config, { since: ISO.test(body.since || '') ? body.since : '', fresh: body.fresh === true }) })
+      // Joners Juniors (Lee, 11 Oct 2026): its own tables and Stripe payments,
+      // never added into the JFP figures above.
+      case 'juniorsMoney': {
+        try {
+          const j = await juniorsMoneyData({ fresh: body.fresh === true }, { jfpSessionIds: async () => { try { return (await jfpStripePayments({ since: config.moneySince })).payments.map((p) => p.id) } catch { return [] } } })
+          // The term the JFP portal is running, if Juniors has it; else the newest.
+          const current = j.terms.includes(config.term) ? config.term : j.terms[0] || ''
+          return res.status(200).json({ success: true, juniors: { ...j, currentTerm: current } })
+        } catch (error) { return fail(res, 503, error.message) }
+      }
       case 'venues': {
         const v = await pastVenues(config, clean(body.term, 30))
         return v ? res.status(200).json({ success: true, venues: v }) : fail(res, 404, 'No figures for that term.')

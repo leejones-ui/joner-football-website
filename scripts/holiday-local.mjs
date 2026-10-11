@@ -242,6 +242,32 @@ if (process.env.JFP_SEED && fs.existsSync(process.env.JFP_SEED)) {
   jj('juniors4', 'Term 4 2026', 'Paid', 'Stripe'); jj('juniors4', 'Term 4 2026', 'Paid', 'Term 3 credit'); jj('juniors4', 'Term 4 2026', 'Unpaid')
 }
 
+// Joners Juniors demo (JFP_JUNIORS_DEMO=1): invented children and Stripe
+// payments with IDs, emails and a payment link, for the Juniors Money view.
+const JLINK = 'https://buy.stripe.com/test_juniors_t4'
+const juniorsSessions = []
+if (process.env.JFP_JUNIORS_DEMO === '1') {
+  const r = (fields) => ({ id: `rec${crypto.randomBytes(7).toString('hex')}`, createdTime: '2026-07-01T00:00:00Z', fields: { Term: 'Term 3 2026', Location: 'Belrose HQ', 'Session Day': 'Saturday', 'Session Time': '9:15am', Fee: 220, ...fields } })
+  airtable.juniors3.splice(0, Infinity,
+    r({ 'Player Full Name': 'Jun Alpha', 'Parent Name': 'Ann Alpha', 'Parent Email': 'alpha@example.com', 'Payment Status': 'Paid', 'Paid Via': 'Stripe', 'Stripe Checkout Session ID': 'cs_jun_a', 'Stripe PaymentIntent ID': 'pi_jun_a' }),
+    r({ 'Player Full Name': 'Jun Beta', 'Parent Name': 'Bo Beta', 'Parent Email': 'beta@example.com', 'Payment Status': 'Paid', 'Paid Via': 'stripe' }),
+    r({ 'Player Full Name': 'Jun Gamma', 'Parent Name': 'Gil Gamma', 'Parent Email': 'gamma@example.com', 'Payment Status': 'Paid', 'Paid Via': 'stripe' }),
+  )
+  const t4 = (fields) => r({ Term: 'Term 4 2026', 'Stripe Payment Link': JLINK, 'Payment Status': 'Unpaid', ...fields })
+  airtable.juniors4.splice(0, Infinity,
+    t4({ 'Player Full Name': 'Jun Alpha', 'Parent Name': 'Ann Alpha', 'Parent Email': 'alpha@example.com', 'Payment Status': 'Paid', 'Paid Via': 'Term 3 credit' }),
+    t4({ 'Player Full Name': 'Jun Delta', 'Parent Name': 'Di Delta', 'Parent Email': 'delta@example.com' }),
+    t4({ 'Player Full Name': 'Jun Echo', 'Parent Name': 'Ed Echo', 'Parent Email': 'echo@example.com' }),
+    t4({ 'Player Full Name': 'Jun Foxtrot', 'Parent Name': 'Fay Foxtrot', 'Parent Email': 'fox@example.com' }),
+  )
+  const js = (id, x) => ({ id, object: 'checkout.session', status: 'complete', payment_status: 'paid', amount_total: 22000, currency: 'aud', created: 1790000000, metadata: {}, payment_intent: `pi_${id.slice(3)}`, ...x })
+  juniorsSessions.push(
+    js('cs_jun_a', { customer_details: { email: 'alpha@example.com' }, metadata: { programme: 'Joners Juniors' } }),
+    js('cs_jun_b', { customer_details: { email: 'beta@example.com' }, metadata: { programme: 'Joners Juniors' } }),
+    js('cs_jun_d', { customer_details: { email: 'delta@example.com' }, payment_link: 'plink_juniors_t4', created: 1791500000 }),
+    js('cs_jun_x', { customer_details: { email: 'someone@example.com' }, payment_link: 'plink_juniors_t4', created: 1791600000 }),
+  )
+}
 const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblgss68pIVTUOttE: 'venueHistory' }
 function airtableResponse(url, init) {
   const u = new URL(url)
@@ -329,6 +355,9 @@ globalThis.fetch = async (url, init = {}) => {
     const r = airtableResponse(u, init)
     return json(r.body, r.status)
   }
+  if (u.startsWith('https://api.stripe.com/v1/account')) return json({ id: 'acct_1QyPm0EwxK4ojTS1' })
+  if (u.startsWith('https://api.stripe.com/v1/payment_intents/search')) return json({ data: juniorsSessions.filter((x) => x.metadata.programme).map((x) => ({ id: x.payment_intent, status: 'succeeded' })), has_more: false })
+  if (u.startsWith('https://api.stripe.com/v1/payment_links?')) return json({ data: juniorsSessions.length ? [{ id: 'plink_juniors_t4', url: JLINK, active: true }] : [], has_more: false })
   if (u.startsWith('https://api.stripe.com/v1/payment_intents/')) {
     const pi = decodeURIComponent(u.split('/payment_intents/')[1].split('?')[0])
     const s = [...sessions.values()].find((x) => x.payment_intent === pi)
@@ -349,6 +378,11 @@ globalThis.fetch = async (url, init = {}) => {
   // The list the Money tab reads: completed sessions, ours and seeded ones.
   if (u.startsWith('https://api.stripe.com/v1/checkout/sessions?') && (init.method || 'GET') === 'GET') {
     const q = new URL(u).searchParams
+    // Juniors reads by payment link or payment intent.
+    if (q.get('payment_link') || q.get('payment_intent')) {
+      const hit = juniorsSessions.filter((x) => (q.get('payment_link') ? x.payment_link === q.get('payment_link') : x.payment_intent === q.get('payment_intent')))
+      return json({ data: hit.map((x) => ({ ...x, payment_intent: { id: x.payment_intent, latest_charge: { amount_refunded: 0 } } })), has_more: false })
+    }
     const gte = Number(q.get('created[gte]') || 0)
     const all = [...sessions.values(), ...stripeSeeded].filter((s) => s.status === 'complete' && (s.created || 0) >= gte)
     return json({ data: all.map((s) => ({ ...s, payment_intent: s.payment_intent ? { id: s.payment_intent, latest_charge: { id: `ch_${String(s.payment_intent).slice(3)}`, amount_refunded: (s.refunds || []).reduce((t, r) => t + r.amount, 0) } } : null })), has_more: false })
@@ -360,7 +394,9 @@ globalThis.fetch = async (url, init = {}) => {
       s.status = 'expired'; log('stripe', `expired ${s.id}`); return json(s)
     }
     if (init.method === 'POST') return json(stripeSession(init.body))
-    const id = decodeURIComponent(u.split('/').pop())
+    const id = decodeURIComponent(u.split('/').pop().split('?')[0])
+    const j = juniorsSessions.find((x) => x.id === id)
+    if (j) return json({ ...j, payment_intent: { id: j.payment_intent, latest_charge: { amount_refunded: 0 } } })
     const s = sessions.get(id)
     return s ? json(s) : json({ error: { message: 'No such checkout session' } }, 404)
   }

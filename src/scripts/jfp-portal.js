@@ -4,8 +4,10 @@
 // the role again on the server.
 import { $, esc, api, toast, signIn, whoAmI, signOut, money } from './jfp-common.js'
 import { renderMessages } from './jfp-portal-messages.js'
+import { renderJuniorsMoney, programmeSwitch, bindSwitch, juniorsCardShell, fillJuniorsCard } from './jfp-portal-juniors.js'
 
-const P = { user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', pricing: null }
+// jf: the Money programme switch and the Joners Juniors filters.
+const P = { jf: { programme: 'jfp', term: '', status: '', q: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', pricing: null }
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const post = (action, body = {}) => api('/api/jfp-portal-data', { action, ...body })
 const view = () => $('view')
@@ -74,7 +76,10 @@ function start() {
   $('who-name').textContent = P.user.name.replace(/^Coach\s+/, '')
   $('who-small').textContent = P.user.role === 'admin' ? 'Super admin' : 'Coach'
   $('me-ini').textContent = P.user.name.replace(/^Coach\s+/, '').split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2).toUpperCase()
-  const hash = location.hash.slice(1)
+  // A Money link can carry the programme and term: #money?programme=juniors&term=Term%204%202026
+  const [hash, query] = location.hash.slice(1).split('?')
+  const qp = new URLSearchParams(query || '')
+  if (hash === 'money' && qp.get('programme') === 'juniors') Object.assign(P.jf, { programme: 'juniors', term: qp.get('term') || '' })
   go(tabs().some(([k]) => k === hash) ? hash : tabs()[0][0])
 }
 
@@ -1176,10 +1181,12 @@ async function renderOverview(redraw = false) {
         ${pending.slice(0, 4).map((r) => `<li><button type="button" data-tab="requests">${esc(r.players.map((p) => p.name).join(', '))}</button><span class="muted small">${esc(r.kind === 'application' ? 'Application' : r.kind === 'waitlist' ? 'Waitlist' : 'Enquiry')}</span></li>`).join('')}
         ${m.status.stripe ? `<li><button type="button" data-money-filter="stripe">${m.status.stripe} Stripe payment${m.status.stripe === 1 ? '' : 's'} to record in Airtable</button><span class="muted small">Money</span></li>` : ''}
         ${m.status.unpriced ? `<li><button type="button" data-money-filter="unpriced">${m.status.unpriced} players with no price set</button><span class="muted small">Money</span></li>` : ''}
-        ${m.unmatched.length ? `<li><button type="button" data-tab="money">${m.unmatched.length} Stripe payment${m.unmatched.length === 1 ? '' : 's'} not matched to a player</button><span class="muted small">Money</span></li>` : ''}
+        ${m.unmatched.length ? `<li><button type="button" data-money-filter="">${m.unmatched.length} Stripe payment${m.unmatched.length === 1 ? '' : 's'} not matched to a player</button><span class="muted small">Money</span></li>` : ''}
         ${!pending.length && !m.status.stripe && !m.status.unpriced && !m.unmatched.length ? '<li><span class="muted">Nothing waiting. Nice.</span></li>' : ''}
       </ul></section>
+      ${juniorsCardShell()}
     </div>`
+  fillJuniorsCard(juniorsUi())
   weeklyChart($('c-weekly'), m.weekly, !redraw)
   locationChart($('c-locs'), m.locations, !redraw)
   $('d-refresh').addEventListener('click', async (e) => {
@@ -1198,6 +1205,7 @@ document.addEventListener('click', (e) => {
   const f = e.target.closest('[data-money-filter]')
   if (!f) return
   P.moneyFilter = { ...(P.moneyFilter || {}), status: f.dataset.moneyFilter }
+  P.jf.programme = 'jfp'
   go('money')
 })
 
@@ -1283,7 +1291,9 @@ document.addEventListener('keydown', (e) => {
 
 const statusPill = (s) => `<span class="jm-status"><i style="background:${cssVar(STATUS[s][1])}"></i>${esc(STATUS[s][0])}</span>`
 
+const juniorsUi = () => ({ view, post, filter: P.jf, go })
 async function renderMoney() {
+  if (P.jf.programme === 'juniors') return renderJuniorsMoney(juniorsUi())
   const r = await need(await post('money'))
   P.money = r.money
   const m = P.money
@@ -1292,7 +1302,7 @@ async function renderMoney() {
   const counts = { '': m.players.length, ...m.status }
   view().innerHTML = `
     <div class="jd-head"><div><h1>Money</h1><p>Every player's payments: Stripe read live, plus the bank transfers and cash you record here.</p></div>
-      <div class="jd-sync"><label class="muted small" for="m-since">Term payments from</label><input class="j-input" type="date" id="m-since" value="${esc(m.since)}" style="width:auto;padding:7px 10px;font-size:13.5px"><button type="button" class="j-btn j-btn-line j-btn-sm" id="m-refresh">Refresh from Stripe</button><button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-add">+ Add a player</button></div></div>
+      <div class="jd-sync">${programmeSwitch('jfp')}<label class="muted small" for="m-since">Term payments from</label><input class="j-input" type="date" id="m-since" value="${esc(m.since)}" style="width:auto;padding:7px 10px;font-size:13.5px"><button type="button" class="j-btn j-btn-line j-btn-sm" id="m-refresh">Refresh from Stripe</button><button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-add">+ Add a player</button></div></div>
     <p class="muted small" style="margin:-4px 0 10px">Read from Airtable and Stripe at ${esc(new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}. Recording a payment here writes the player's row and the payment ledger in Airtable; anything changed in Airtable shows here when you open this tab or refresh.</p>
     ${m.stripeError ? `<div class="j-box j-box-amber">${esc(m.stripeError)}</div>` : ''}
     <div class="jd-grid">
@@ -1318,6 +1328,7 @@ async function renderMoney() {
     $('m-count').textContent = `${list.length} of ${m.players.length} players · owing ${money(list.reduce((t, p) => t + p.owingCents, 0))}`
   }
   draw()
+  bindSwitch(juniorsUi())
   $('m-q').addEventListener('input', (e) => { f.q = e.target.value; draw() })
   $('m-loc').addEventListener('change', (e) => { f.loc = e.target.value; draw() })
   view().querySelectorAll('[data-set-status]').forEach((b) => b.addEventListener('click', () => { f.status = b.dataset.setStatus; view().querySelectorAll('#m-chips [data-set-status]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.setStatus === f.status))); draw() }))

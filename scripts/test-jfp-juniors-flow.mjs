@@ -1,0 +1,62 @@
+// Joners Juniors in the portal, end to end against the local harness with
+// its invented Juniors data:
+//   JFP_JUNIORS_DEMO=1 HOLIDAY_LOCAL_PORT=5000 node scripts/holiday-local.mjs
+//   node scripts/test-jfp-juniors-flow.mjs 5000
+import assert from 'node:assert/strict'
+const B = `http://localhost:${process.argv[2] || '5000'}`
+let passed = 0, ip = 1
+const test = async (n, fn) => { await fn(); passed += 1; console.log(`ok - ${n}`) }
+function client() {
+  const jar = new Map(), me = `10.9.0.${ip++}`
+  return async (p, body) => {
+    const res = await fetch(`${B}${p}`, { method: 'POST', headers: { 'content-type': 'application/json', origin: B, 'x-forwarded-for': me, cookie: [...jar].map(([k, v]) => `${k}=${v}`).join('; ') }, body: JSON.stringify(body || {}) })
+    for (const c of res.headers.getSetCookie?.() || []) { const [kv] = c.split(';'); const i = kv.indexOf('='); jar.set(kv.slice(0, i), kv.slice(i + 1)) }
+    let data = {}; try { data = await res.json() } catch {}
+    return { status: res.status, data }
+  }
+}
+async function signIn(call, email, audience = 'staff') {
+  const s = await call('/api/jfp-auth', { action: 'start', email, audience })
+  const code = (await (await fetch(`${B}/__emails`)).json()).filter((e) => e.to.includes(email) && /sign-in code/.test(e.subject)).at(-1).subject.match(/(\d{6})/)[1]
+  assert.equal((await call('/api/jfp-auth', { action: 'verify', challenge: s.data.challenge, code })).status, 200)
+}
+const lee = client()
+await signIn(lee, 'leejones@jonerfootball.com')
+const J = (await lee('/api/jfp-portal-data', { action: 'juniorsMoney', fresh: true })).data.juniors
+
+await test('Juniors by term: real Stripe money only, credit apart, unknowns unknown', async () => {
+  assert.deepEqual(J.terms, ['Term 4 2026', 'Term 3 2026'])
+  assert.equal(J.currentTerm, 'Term 4 2026')
+  const t3 = J.byTerm['Term 3 2026'], t4 = J.byTerm['Term 4 2026']
+  assert.equal(t3.collectedCents, 44000, 'row id + Juniors tag; the third Paid row has no payment')
+  assert.equal(t3.counts.unverified, 1); assert.equal(t3.owingComplete, false)
+  assert.equal(t4.collectedCents, 44000, 'one family on the link + one unmatched payment on the Term 4 link')
+  assert.equal(t4.unlinkedCount, 1); assert.equal(t4.owingCents, 44000); assert.equal(t4.owingComplete, true); assert.equal(t4.creditPlaces, 1)
+  const d = J.players.find((p) => p.player === 'Jun Delta')
+  assert.equal(d.status, 'stripe', 'paid in Stripe, Airtable still Unpaid')
+  assert.equal(J.coverage.alsoInJfp, 0)
+  assert.ok(!JSON.stringify(J).includes('@example.com'), 'no family emails sent to the page')
+})
+
+await test('the same figures come back on a second read (dashboard and Money agree)', async () => {
+  const again = (await lee('/api/jfp-portal-data', { action: 'juniorsMoney' })).data.juniors
+  assert.deepEqual(again.byTerm, J.byTerm)
+})
+
+await test('JFP Money figures do not include Juniors', async () => {
+  const m = (await lee('/api/jfp-portal-data', { action: 'money', fresh: true })).data.money
+  assert.ok(!m.players.some((p) => /^Jun /.test(p.player)))
+  assert.ok(!JSON.stringify(m).includes('cs_jun_'))
+})
+
+await test('only Lee and Ligia: coaches, families and strangers are refused', async () => {
+  const dean = client(); await signIn(dean, 'jonerfootballdean@gmail.com')
+  assert.equal((await dean('/api/jfp-portal-data', { action: 'juniorsMoney' })).status, 403)
+  const parent = client(); await signIn(parent, 'alpha@example.com', 'parent')
+  assert.ok([401, 403].includes((await parent('/api/jfp-portal-data', { action: 'juniorsMoney' })).status))
+  const acct = (await parent('/api/jfp-account', { action: 'overview' })).data
+  assert.ok(!JSON.stringify(acct).includes('Jun Delta'), 'a family never sees other Juniors families')
+  assert.equal((await client()('/api/jfp-portal-data', { action: 'juniorsMoney' })).status, 401)
+})
+
+console.log(`\n${passed} Juniors portal checks passed`)
