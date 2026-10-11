@@ -5,6 +5,7 @@
 import { requireParentAccess, getConfig, coachLabel, kvGetJson, listGroups, onlineCounts, publicPlacesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, periodOf, dayOrder, QUESTIONS, REQUIREMENTS, ONE_TO_ONE, skippedDates } from './_jfp-store.js'
 import { airtableCounts } from './_jfp-airtable.js'
 import { sweepExpiredOffers } from './_jfp-offers.js'
+import { reconcileStripe } from './jfp-portal-data.js'
 
 export function coachPhotoUrl(c) { return `/api/jfp-groups?coachPhoto=${encodeURIComponent(c.id)}&v=${c.photoV}` }
 
@@ -68,7 +69,10 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && req.query?.sweep) {
     const secret = process.env.CRON_SECRET
     if (!secret || String(req.headers?.authorization || '') !== `Bearer ${secret}`) return res.status(401).json({ success: false })
-    try { await sweepExpiredOffers({ email: 'hourly check' }); return res.status(200).json({ success: true }) } catch (error) { console.error('jfp offer sweep failed', error); return res.status(500).json({ success: false }) }
+    // Backstop for the Stripe webhook: any JFP payment Airtable does not show yet.
+    let stripe = null
+    try { stripe = await reconcileStripe(await getConfig(), undefined, { alert: true }) } catch (error) { console.error('jfp stripe sync failed', error) }
+    try { await sweepExpiredOffers({ email: 'hourly check' }); return res.status(200).json({ success: true, stripe: stripe ? { recorded: stripe.recorded, failed: stripe.failed?.length || 0, busy: Boolean(stripe.busy) } : null }) } catch (error) { console.error('jfp offer sweep failed', error); return res.status(500).json({ success: false }) }
   }
   res.setHeader('Cache-Control', 'no-store')
   if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' })

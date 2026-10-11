@@ -514,26 +514,54 @@ async function recordPayment(res, principal, config, body) {
 
 // Every family whose Stripe payments Airtable does not show yet: record
 // each unrecorded payment against their rows, never more than the gap.
-async function recordStripeAll(res, principal, config) {
-  const m = await moneyData(config, { fresh: true })
-  const ledger = await listLedger(config.term)
-  const known = new Set(ledger.flatMap((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].filter(Boolean)))
-  const pays = (await jfpStripePayments({ since: config.moneySince })).payments.filter((p) => !p.jfpRef && !known.has(p.id) && !(p.intentId && known.has(p.intentId)))
-  const byEmail = new Map()
-  for (const p of m.players.filter((x) => x.status === 'stripe' && x.email)) byEmail.set(p.email, [...(byEmail.get(p.email) || []), p])
-  let recorded = 0
-  const failed = []
-  for (const [email, rows] of byEmail) {
-    const fam = m.players.filter((x) => x.email === email)
-    let gap = Math.max(0, rows[0].stripeCents - fam.reduce((t, x) => t + x.paidCents, 0))
-    for (const p of pays.filter((x) => x.email === email).sort((a, b) => a.at.localeCompare(b.at))) {
-      const net = p.amountCents - p.refundedCents
-      if (net <= 0 || net > gap) continue
-      const r = await recordPaymentCore(principal, config, { rowIds: rows.map((x) => x.rowId), method: 'Stripe', stripeSessionId: p.id })
-      if (r.ok) { recorded += 1; gap -= net } else failed.push(`${rows[0].player}: ${r.error}`)
+// Runs on its own (Stripe webhook straight away, hourly cron as a backstop,
+// Lee 11 Oct: Stripe, Airtable and the portal must never disagree) and from
+// the Money tab button. Only exact email matches are recorded; anything else
+// is left for staff and, with alert on, flagged once on Telegram.
+const AUTO = { email: 'auto: Stripe sync', name: 'Auto Stripe sync' }
+export async function reconcileStripe(config, principal = AUTO, { alert = false } = {}) {
+  if ((await kvCommand(['SET', 'jfp:stripe-reconcile-lock', '1', 'NX', 'EX', '120'])) !== 'OK') return { busy: true, recorded: 0, failed: [] }
+  try {
+    const m = await moneyData(config, { fresh: true })
+    const ledger = await listLedger(config.term)
+    const known = new Set(ledger.flatMap((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].filter(Boolean)))
+    const all = (await jfpStripePayments({ since: config.moneySince })).payments
+    const pays = all.filter((p) => !p.jfpRef && !known.has(p.id) && !(p.intentId && known.has(p.intentId)))
+    const byEmail = new Map()
+    for (const p of m.players.filter((x) => x.status === 'stripe' && x.email)) byEmail.set(p.email, [...(byEmail.get(p.email) || []), p])
+    let recorded = 0
+    const failed = [], done = [], skipped = []
+    for (const [email, rows] of byEmail) {
+      const fam = m.players.filter((x) => x.email === email)
+      let gap = Math.max(0, rows[0].stripeCents - fam.reduce((t, x) => t + x.paidCents, 0))
+      for (const p of pays.filter((x) => x.email === email).sort((a, b) => a.at.localeCompare(b.at))) {
+        const net = p.amountCents - p.refundedCents
+        if (net <= 0) continue
+        if (net > gap) { skipped.push({ p, who: rows.map((x) => x.player).join(', ') }); continue }
+        const r = await recordPaymentCore(principal, config, { rowIds: rows.map((x) => x.rowId), method: 'Stripe', stripeSessionId: p.id })
+        if (r.ok) { recorded += 1; gap -= net; done.push(`${rows.map((x) => x.player).join(', ')}: ${formatAud(net)}`) } else failed.push(`${rows[0].player}: ${r.error}`)
+      }
     }
+    if (alert) {
+      // New payments only (last 3 days), each flagged once.
+      const fresh = (p) => Date.now() - Date.parse(p.at) < 3 * 86400000
+      const once = async (id) => (await kvCommand(['SET', `jfp:stripe-flagged:${id}`, '1', 'NX', 'EX', String(60 * 86400)])) === 'OK'
+      const lines = []
+      if (done.length) lines.push(`Recorded in Airtable automatically:\n${done.join('\n')}`)
+      for (const u of m.unmatched.filter(fresh)) if (await once(u.id)) lines.push(`Paid but not matched to a player (different email?): ${u.name || 'no name'}, ${formatAud(u.cents)}. Match it in the portal: Money tab.`)
+      for (const x of skipped.filter((y) => fresh(y.p))) if (await once(x.p.id)) lines.push(`Paid more than Airtable says they owe, not recorded: ${x.who}, ${formatAud(x.p.amountCents - x.p.refundedCents)}. Check the fee in Money.`)
+      for (const f of failed) lines.push(`Could not record: ${f}`)
+      if (lines.length) await telegramAlert(`JFP Stripe sync\n${lines.join('\n')}`)
+    }
+    return { recorded, failed, done }
+  } finally {
+    await kvCommand(['DEL', 'jfp:stripe-reconcile-lock'])
   }
-  return res.status(200).json({ success: true, recorded, failed })
+}
+async function recordStripeAll(res, principal, config) {
+  const r = await reconcileStripe(config, principal)
+  if (r.busy) return fail(res, 409, 'The automatic Stripe sync is running right now. Try again in a minute.')
+  return res.status(200).json({ success: true, recorded: r.recorded, failed: r.failed })
 }
 async function markPaid(res, principal, body) {
   return recordPayment(res, principal, await getConfig(), { rowIds: [body.rowId], amountCents: body.amountCents, method: body.method, note: body.note, date: body.date })

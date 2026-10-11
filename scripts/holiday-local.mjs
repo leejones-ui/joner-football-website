@@ -397,7 +397,7 @@ globalThis.fetch = async (url, init = {}) => {
     const id = decodeURIComponent(u.split('/').pop().split('?')[0])
     const j = juniorsSessions.find((x) => x.id === id)
     if (j) return json({ ...j, payment_intent: { id: j.payment_intent, latest_charge: { amount_refunded: 0 } } })
-    const s = sessions.get(id)
+    const s = sessions.get(id) || stripeSeeded.find((x) => x.id === id)
     return s ? json(s) : json({ error: { message: 'No such checkout session' } }, 404)
   }
   if (u.startsWith('https://api.brevo.com')) {
@@ -553,8 +553,10 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/__stripe-seed') {
     const p = JSON.parse(await readBody(req) || '{}')
     const n = stripeSeeded.length + 1
-    stripeSeeded.push({ id: `cs_seed_${n}`, object: 'checkout.session', status: 'complete', payment_status: 'paid', created: Math.floor(Date.parse(p.at || new Date().toISOString()) / 1000), amount_total: p.cents, currency: 'aud', customer_details: { email: p.email, name: p.name || '' }, payment_link: p.link || 'plink_jfp850', payment_intent: `pi_seed_${n}`, metadata: p.metadata || {} })
-    res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, id: `cs_seed_${n}` }))
+    stripeSeeded.push({ id: `cs_test_seed_${n}`, object: 'checkout.session', status: 'complete', payment_status: 'paid', created: Math.floor(Date.parse(p.at || new Date().toISOString()) / 1000), amount_total: p.cents, currency: 'aud', customer_details: { email: p.email, name: p.name || '' }, payment_link: p.link || 'plink_jfp850', payment_intent: `pi_seed_${n}`, metadata: p.metadata || {} })
+    // fire: the Stripe webhook arrives for it, like a real payment link payment.
+    if (p.fire) await fireWebhook('checkout.session.completed', stripeSeeded.at(-1))
+    res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, id: `cs_test_seed_${n}` }))
   }
   if (url.pathname === '/__emails') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(emails)) }
   if (url.pathname === '/__telegram') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(telegrams)) }

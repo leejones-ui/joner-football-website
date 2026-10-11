@@ -102,6 +102,20 @@ export default async function handler(req, res) {
   }
 
   const bookingId = bookingIdFromSession(session)
+  // A JFP payment made through a Stripe payment link (the links Ligia sends)
+  // carries no booking id: record it in Airtable now if its email matches a
+  // family. Never fails the webhook; the hourly sync catches anything missed.
+  if (!bookingId && session.payment_link && session.payment_status === 'paid' && (type === 'checkout.session.completed' || type === 'checkout.session.async_payment_succeeded')) {
+    try {
+      const { reconcileStripe } = await import('./jfp-portal-data.js')
+      const { getConfig } = await import('./_jfp-store.js')
+      const r = await reconcileStripe(await getConfig(), undefined, { alert: true })
+      return res.status(200).json({ success: true, jfpLinkSync: { recorded: r.recorded, busy: Boolean(r.busy) } })
+    } catch (error) {
+      console.error('jfp payment link sync failed', error)
+      return res.status(200).json({ success: true, jfpLinkSync: 'failed' })
+    }
+  }
   if (!bookingId) return res.status(200).json({ success: true, ignored: 'not-holiday' })
 
   try {
