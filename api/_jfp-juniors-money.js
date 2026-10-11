@@ -20,6 +20,7 @@
 import { stripeFetch } from './_holiday-store.js'
 import { kvGetJson, kvSetJson } from './_jfp-store.js'
 import { readTable } from './_jfp-airtable.js'
+import { readSheetRange } from './_camp-automation.js'
 
 export const JUNIORS_TABLES = (process.env.JFP_JUNIORS_TABLES || 'tblMLhYQ126P5uKLB,tblVzW8E9qumQEtXx').split(',').map((x) => x.trim()).filter(Boolean)
 export const SYDNEY_ACCOUNT = 'acct_1QyPm0EwxK4ojTS1'
@@ -29,6 +30,7 @@ const FRESH_SECONDS = 600
 const MAX_PAGES = 30
 
 const lower = (v) => String(v ?? '').trim().toLowerCase()
+const nameKey = (v) => lower(v).normalize('NFKD').replace(/[^a-z]+/g, ' ').trim()
 const cents = (aud) => (typeof aud === 'number' && Number.isFinite(aud) ? Math.round(aud * 100) : null)
 const termOrder = (t) => { const m = /term\s*(\d)\s+(\d{4})/i.exec(t || ''); return m ? Number(m[2]) * 10 + Number(m[1]) : 0 }
 
@@ -76,6 +78,7 @@ function sessionOf(s, how, extra = {}) {
     at: new Date((s.created || 0) * 1000).toISOString(),
     link: typeof s.payment_link === 'string' ? s.payment_link : s.payment_link?.id || '',
     tagged: lower(s.metadata?.programme || s.metadata?.program) === 'joners juniors',
+    player: String(s.metadata?.player || '').trim(), registrationId: String(s.metadata?.registrationId || '').trim(),
     found: [how], ...extra,
   }
 }
@@ -139,6 +142,25 @@ export async function readJuniorsStripe(rows, fetcher = stripeFetch) {
   return { sessions: [...byId.values()], links: linkInfo, missingLinks }
 }
 
+// The website's Joners Juniors sign-up sheet (a tab in the camps sheet).
+// Read only, and only what helps match a payment to a child: no mobiles,
+// dates of birth or medical notes. It never adds money of its own.
+export async function readJuniorsSheet(read = readSheetRange, env = process.env) {
+  const sheetId = env.JUNIORS_SHEET_ID || env.CAMP_REGISTRATION_SHEET_ID || ''
+  const tab = env.JUNIORS_SHEET_TAB || 'Joners Juniors'
+  if (!sheetId) return { read: false, why: 'No sheet id is configured', rows: [] }
+  const values = await read(sheetId, tab, 'A:O')
+  const [head = [], ...body] = values
+  const col = (name) => head.findIndex((h) => lower(h).startsWith(lower(name)))
+  const at = { paidAt: col('Paid At'), reg: col('Registration ID'), status: col('Payment Status'), player: col('Player Full Name'), email: col('Parent Email'), amount: col('Amount Paid'), cs: col('Stripe Checkout Session'), pi: col('Stripe PaymentIntent') }
+  if (at.reg < 0 || at.player < 0) throw new Error(`The "${tab}" tab does not have the expected columns`)
+  const v = (r, i) => (i >= 0 ? String(r[i] ?? '').trim() : '')
+  return { read: true, tab, rows: body.filter((r) => v(r, at.reg) || v(r, at.player)).map((r) => ({
+    registrationId: v(r, at.reg), status: lower(v(r, at.status)), player: v(r, at.player), email: lower(v(r, at.email)),
+    amount: v(r, at.amount), sessionId: v(r, at.cs).match(/cs_[A-Za-z0-9_]+/)?.[0] || '', intentId: v(r, at.pi).match(/pi_[A-Za-z0-9_]+/)?.[0] || '', paidAt: v(r, at.paidAt),
+  })) }
+}
+
 // ---------- the sums (pure, tested) ----------
 
 // Split an amount over rows, each up to what it still needs, in row order.
@@ -153,7 +175,7 @@ function split(amount, rows, room) {
   return { parts, left }
 }
 
-export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfpSessionIds = [] } = {}) {
+export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfpSessionIds = [], sheet = null } = {}) {
   // One payment found twice (row ID, tag, link) is still one payment.
   const sessions = [...new Map((stripe?.sessions || []).filter((s) => s.paid).map((s) => [s.id, s])).values()]
   const linkOfUrl = Object.fromEntries(Object.entries(stripe?.links || {}).map(([id, l]) => [l.url, id]))
@@ -175,6 +197,12 @@ export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfp
     })
     return left
   }
+  // Who a payment was for, from Stripe's own note or the sign-up sheet.
+  const sheetRows = sheet?.rows || []
+  const whoFor = (s) => {
+    const hit = sheetRows.find((x) => (x.sessionId && x.sessionId === s.id) || (x.intentId && x.intentId === s.intentId) || (x.registrationId && x.registrationId === s.registrationId))
+    return { player: s.player || hit?.player || '', email: s.email || hit?.email || '', viaSheet: Boolean(hit) }
+  }
   const used = new Set()
   // 1. By ID on the row (siblings may share one session: split by fee).
   for (const s of sessions) {
@@ -193,7 +221,13 @@ export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfp
     // link no row carries (an older term's link): rows that have no link.
     const onRows = s.link && rows.some((r) => rowLink(r) === s.link)
     const pool = rows.filter((r) => (onRows ? rowLink(r) === s.link : !r.linkUrl))
-    const fam = s.email ? pool.filter((r) => r.emails.includes(s.email)) : []
+    const who = whoFor(s)
+    // The child's name (Stripe note or sign-up sheet) settles it when the
+    // email alone does not, for example a parent who paid from another email.
+    let byName = who.player ? pool.filter((r) => nameKey(r.player) === nameKey(who.player)) : []
+    if (byName.length > 1 && who.email) byName = byName.filter((r) => r.emails.includes(who.email))
+    const byEmail = s.email ? pool.filter((r) => r.emails.includes(s.email)) : []
+    const fam = byName.length && new Set(byName.map((r) => r.term)).size === 1 ? byName : byEmail
     const terms = [...new Set(fam.map((r) => r.term))]
     const linkTerm = s.link ? [...new Set(rows.filter((r) => rowLink(r) === s.link).map((r) => r.term))] : []
     if (!fam.length || terms.length > 1) {
@@ -259,6 +293,7 @@ export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfp
       linksChecked: Object.keys(stripe?.links || {}).length,
       missingLinks: (stripe?.missingLinks || []).length,
       cashAndBank: 'not recorded for Juniors (no Juniors rows in the payment ledger)',
+      sheet: sheet ? (sheet.read ? { tab: sheet.tab, rows: sheetRows.length, paid: sheetRows.filter((x) => x.status === 'paid').length, paidFoundInStripe: sheetRows.filter((x) => x.status === 'paid' && sessions.some((s) => s.id === x.sessionId || (x.intentId && s.intentId === x.intentId))).length } : { error: sheet.why || 'not read' }) : null,
       // Juniors payments the JFP Money view also counts (should be 0).
       alsoInJfp: sessions.filter((s) => jfpSessionIds.includes(s.id)).length,
     },
@@ -277,7 +312,10 @@ export async function juniorsMoneyData({ fresh = false } = {}, deps = {}) {
     const rows = await (deps.readRows || readJuniorsRows)()
     const stripe = await (deps.readStripe || readJuniorsStripe)(rows)
     const jfpSessionIds = deps.jfpSessionIds ? await deps.jfpSessionIds() : []
-    const data = juniorsMoney(rows, stripe, { jfpSessionIds })
+    // The sheet only helps matching: if it cannot be read, say so and go on.
+    let sheet
+    try { sheet = await (deps.readSheet || readJuniorsSheet)() } catch (error) { console.error('jfp juniors sheet read failed', error.message); sheet = { read: false, why: 'The Joners Juniors sign-up sheet could not be read', rows: [] } }
+    const data = juniorsMoney(rows, stripe, { jfpSessionIds, sheet })
     await set(CACHE, data, 60 * 60 * 24 * 30)
     return { ...data, stale: false }
   } catch (error) {

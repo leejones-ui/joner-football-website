@@ -1,7 +1,7 @@
 // Joners Juniors money: synthetic rows and Stripe payments only.
 //   node scripts/test-jfp-juniors.mjs
 import assert from 'node:assert/strict'
-import { juniorsMoney, readJuniorsStripe, readJuniorsRows, juniorsMoneyData, SYDNEY_ACCOUNT } from '../api/_jfp-juniors-money.js'
+import { juniorsMoney, readJuniorsStripe, readJuniorsRows, readJuniorsSheet, juniorsMoneyData, SYDNEY_ACCOUNT } from '../api/_jfp-juniors-money.js'
 
 let passed = 0
 const test = async (name, fn) => { await fn(); passed += 1; console.log(`ok - ${name}`) }
@@ -87,6 +87,17 @@ await test('JFP payments are reported if they overlap (they should not)', async 
   assert.equal(m.coverage.alsoInJfp, 1)
 })
 
+await test('a parent who paid from another email is matched by the child\'s name', async () => {
+  const rows = [row('n1', { term: 'Term 3 2026', player: 'Mia Lee', status: 'Paid', emails: ['home@example.com'] }), row('n2', { term: 'Term 3 2026', player: 'Ari Ng', status: 'Paid' })]
+  const viaStripe = pay('cs_n', { email: 'work@example.com', tagged: true, player: 'Mia  lee' })
+  const viaSheet = pay('cs_s', { email: 'other@example.com', tagged: true })
+  const sheet = { read: true, tab: 'Joners Juniors', rows: [{ registrationId: 'JJ-1', status: 'paid', player: 'Ari Ng', email: 'other@example.com', sessionId: 'cs_s', intentId: '' }, { registrationId: 'JJ-2', status: 'paid', player: 'Zed', email: 'z@example.com', sessionId: 'cs_none', intentId: '' }] }
+  const m = juniorsMoney(rows, { sessions: [viaStripe, viaSheet], links: {} }, { sheet })
+  assert.equal(get(m, 'n1').status, 'paid'); assert.equal(get(m, 'n2').status, 'paid')
+  assert.equal(m.byTerm['Term 3 2026'].collectedCents, 44000, 'the sheet links payments; it never adds money')
+  assert.deepEqual(m.coverage.sheet, { tab: 'Joners Juniors', rows: 2, paid: 2, paidFoundInStripe: 1 })
+})
+
 // ---------- reading ----------
 
 function fakeStripe({ account = SYDNEY_ACCOUNT, pages = 1, failOn = '' } = {}) {
@@ -141,6 +152,17 @@ await test('a refresh that fails keeps the last good figures, marked stale', asy
   const bad = await juniorsMoneyData({ fresh: true }, { ...deps, readStripe: async () => { throw new Error('Stripe down') } })
   assert.equal(bad.stale, true); assert.match(bad.error, /last good/); assert.equal(bad.byTerm['Term 4 2026'].collectedCents, 22000)
   await assert.rejects(juniorsMoneyData({ fresh: true }, { ...deps, kvGetJson: async () => null, readStripe: async () => { throw new Error('Stripe down') } }), /could not be read/)
+})
+
+await test('the sheet: only matching columns are kept; a failed sheet does not zero anything', async () => {
+  const values = [['Paid At', 'Registration ID', 'Payment Status', 'Player Full Name', 'Date of Birth', 'Parent Name', 'Parent Email', 'Parent Mobile', 'Medical History / Allergies', 'Heard About Us', 'Class', 'Amount Paid', 'Stripe Checkout Session ID', 'Stripe PaymentIntent ID / Refund Link'], ['', 'JJ-9', 'Paid', 'Kim', '2019-01-01', 'P', 'K@Example.com', '0400000000', 'Asthma', '', '', '220', 'cs_live_abc', 'https://dashboard.stripe.com/payments/pi_live_9']]
+  const sh = await readJuniorsSheet(async () => values, { JUNIORS_SHEET_ID: 'sheet1' })
+  assert.deepEqual(sh.rows[0], { registrationId: 'JJ-9', status: 'paid', player: 'Kim', email: 'k@example.com', amount: '220', sessionId: 'cs_live_abc', intentId: 'pi_live_9', paidAt: '' })
+  assert.ok(!JSON.stringify(sh).includes('0400000000') && !JSON.stringify(sh).includes('Asthma'))
+  let store = null
+  const d = await juniorsMoneyData({ fresh: true }, { kvGetJson: async () => store, kvSetJson: async (k, v) => { store = v }, readRows: async () => [row('a', { sessionId: 'cs_1' })], readStripe: async () => ({ sessions: [pay('cs_1')], links: {} }), readSheet: async () => { throw new Error('403') } })
+  assert.equal(d.byTerm['Term 4 2026'].collectedCents, 22000)
+  assert.match(d.coverage.sheet.error, /could not be read/)
 })
 
 console.log(`\n${passed} Joners Juniors money checks passed`)

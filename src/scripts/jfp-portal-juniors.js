@@ -74,7 +74,8 @@ export async function renderJuniorsMoney(ui) {
       <ul class="small" style="margin:8px 0 0 18px;line-height:1.7">
         <li>${esc(DEFINITION)}</li>
         <li>Read from ${d.coverage.tables} Juniors tables in Airtable (${d.coverage.rows} children) and ${d.coverage.stripePayments} paid Stripe payments on the Sydney account, found by the IDs on the rows, the Joners Juniors tag on online sign-ups, and ${d.coverage.linksChecked} Juniors payment link${d.coverage.linksChecked === 1 ? '' : 's'}. Each payment counts once.</li>
-        <li>A payment is matched to a child by its Stripe ID, then by the parent's email on the same payment link. One payment for two children is split by fee.</li>
+        <li>A payment is matched to a child by its Stripe ID, then by the child's name (from Stripe or the website's Joners Juniors sign-up sheet), then by the parent's email on the same payment link. One payment for two children is split by fee.</li>
+        ${d.coverage.sheet?.error ? `<li><b>${esc(d.coverage.sheet.error)}</b>, so matching used Airtable and Stripe only.</li>` : d.coverage.sheet ? `<li>Sign-up sheet ("${esc(d.coverage.sheet.tab)}" tab): ${d.coverage.sheet.rows} sign-ups, ${d.coverage.sheet.paid} marked paid, ${d.coverage.sheet.paidFoundInStripe} of those found in Stripe. The sheet is only used to match; it never adds money.</li>` : ''}
         <li>"Paid, amount not recorded": Airtable says Paid but no Stripe payment was found for that child. It is not counted, and its balance is unknown.</li>
         ${d.coverage.missingLinks ? `<li><b>${d.coverage.missingLinks} payment link on the rows was not found in Stripe.</b></li>` : ''}
         ${d.coverage.alsoInJfp ? `<li><b>${d.coverage.alsoInJfp} Juniors payment${d.coverage.alsoInJfp === 1 ? ' is' : 's are'} also counted in the JFP Money view.</b> Tell Claude.</li>` : '<li>None of these payments is counted in the JFP figures.</li>'}
