@@ -1528,49 +1528,59 @@ async function renderCancellations() {
 
 // ---------- current families: invite to their account ----------
 
+const FM = { mode: 'account' }
 async function renderFamilies() {
   const d = await need(await post('familyInvites'))
+  const acct = FM.mode === 'account'
   const kind = { pay: ['amber', 'To pay'], paid: ['green', 'Paid'], noPrice: ['red', 'Needs a price first'] }
-  const ready = d.list.filter((f) => f.kind !== 'noPrice')
-  view().innerHTML = `<div class="jp-head"><div><h1>Players</h1><p class="muted small">Every Term 4 player, grouped under their parent's email. Send the parent their account: players already paid for see their sessions, anyone who owes gets a link to pay what Airtable shows as owing. Nothing is sent until you press Send. Replies go to Ligia.</p></div></div>
+  const signed = d.list.filter((f) => f.signedInAt).length
+  const when = (iso) => new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+  const canTick = (f) => (acct ? !f.signedInAt : f.kind !== 'noPrice')
+  const done = (f) => (acct ? f.accountInvitedAt : f.invitedAt)
+  view().innerHTML = `<div class="jp-head"><div><h1>Account invites</h1><p class="muted small">Every Term 4 family, grouped under the parent's email. Their account already exists: they only need to sign in once with that email.</p></div></div>
+    <div class="jp-seg" id="fm-mode" style="margin-bottom:12px"><button type="button" data-m="account" aria-pressed="${acct}">Sign-in invite, no money (everyone)</button><button type="button" data-m="pay" aria-pressed="${!acct}">With a payment link (families who owe)</button></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       <span class="j-pill j-pill-grey">${d.list.length} families</span>
-      <span class="j-pill j-pill-amber">${d.list.filter((f) => f.kind === 'pay').length} to pay</span>
-      <span class="j-pill j-pill-green">${d.list.filter((f) => f.kind === 'paid').length} paid</span>
-      <span class="j-pill j-pill-red">${d.list.filter((f) => f.kind === 'noPrice').length} need a price</span>
-      <span class="j-pill j-pill-grey">${d.list.filter((f) => f.invitedAt).length} already invited</span>
+      <span class="j-pill j-pill-green">${signed} signed in</span>
+      <span class="j-pill j-pill-amber">${d.list.length - signed} not signed in yet</span>
+      <span class="j-pill j-pill-grey">${d.list.filter(done).length} already sent this invite</span>
+      ${acct ? '' : `<span class="j-pill j-pill-red">${d.list.filter((f) => f.kind === 'noPrice').length} need a price</span>`}
       ${d.noEmail.length ? `<span class="j-pill j-pill-red">${d.noEmail.length} players with no email</span>` : ''}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button type="button" class="j-btn j-btn-line" id="fm-back">Back to players</button>
-      <button type="button" class="j-btn j-btn-line" id="fm-prev">Show the emails</button>
+      <button type="button" class="j-btn j-btn-line" id="fm-prev">Show the email</button>
       <button type="button" class="j-btn j-btn-dark" id="fm-send">Send to selected</button>
     </div>
     <div id="fm-preview" hidden></div>
-    <div class="jp-scroll"><table class="jp-table"><thead><tr><th><input type="checkbox" id="fm-all" aria-label="Select all"></th><th>Parent</th><th>Players</th><th>Status</th><th>Invited</th></tr></thead><tbody>
-    ${d.list.map((f) => `<tr><td><input type="checkbox" data-fm="${esc(f.email)}" ${f.kind === 'noPrice' ? 'disabled' : ''}></td><td><b>${esc(f.parent || '')}</b><br><span class="muted small">${esc(f.email)}</span></td><td class="small">${f.players.map((x) => `${esc(x.name)} <span class="muted">${esc(x.group)}</span>`).join('<br>')}</td><td><span class="j-pill j-pill-${kind[f.kind][0]}">${esc(kind[f.kind][1])}${f.kind === 'pay' ? ` ${esc(money(f.owingCents))}` : ''}</span>${f.needsWaiver ? '<br><span class="muted small">Waiver needed</span>' : ''}</td><td class="small">${f.invitedAt ? esc(new Date(f.invitedAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })) : ''}</td></tr>`).join('')}
+    <div class="jp-scroll"><table class="jp-table"><thead><tr><th><input type="checkbox" id="fm-all" aria-label="Select all"></th><th>Parent</th><th>Players</th><th>Signed in</th><th>${acct ? 'Invite sent' : 'Payment'}</th></tr></thead><tbody>
+    ${d.list.map((f) => `<tr><td><input type="checkbox" data-fm="${esc(f.email)}" ${canTick(f) ? '' : 'disabled'}></td><td><b>${esc(f.parent || '')}</b><br><span class="muted small">${esc(f.email)}</span></td><td class="small">${f.players.map((x) => `${esc(x.name)} <span class="muted">${esc(x.group || '')}</span>`).join('<br>')}</td>
+      <td>${f.signedInAt ? `<span class="j-pill j-pill-green">Yes, ${esc(when(f.signedInAt))}</span>` : '<span class="j-pill j-pill-amber">Not yet</span>'}</td>
+      <td class="small">${acct ? (f.accountInvitedAt ? esc(when(f.accountInvitedAt)) : '<span class="muted">Not sent</span>') : `<span class="j-pill j-pill-${kind[f.kind][0]}">${kind[f.kind][1]}${f.kind === 'pay' ? ` ${esc(money(f.owingCents))}` : ''}</span>${f.invitedAt ? `<br><span class="muted">Sent ${esc(when(f.invitedAt))}</span>` : ''}`}</td></tr>`).join('')}
     </tbody></table></div>
-    ${d.list.some((f) => f.kind === 'noPrice') ? '<p class="muted small" style="margin-top:8px">"Needs a price first": unpaid with no Term 4 Fee in Airtable. Send them a payment link from the Timetable (tap the player), or set the fee in Airtable, then come back.</p>' : ''}
-    ${d.noEmail.length ? `<p class="muted small">No parent email in Airtable: ${esc(d.noEmail.map((x) => x.name).join(', '))}.</p>` : ''}`
+    ${d.noEmail.length ? `<p class="muted small" style="margin-top:8px">No parent email in Airtable, so no invite: ${esc(d.noEmail.map((x) => x.name).join(', '))}.</p>` : ''}`
   $('fm-back').addEventListener('click', () => renderPlayers())
+  view().querySelectorAll('#fm-mode [data-m]').forEach((b) => b.addEventListener('click', () => { FM.mode = b.dataset.m; renderFamilies() }))
   const boxes = () => [...view().querySelectorAll('[data-fm]')]
-  $('fm-all').addEventListener('change', (e) => boxes().forEach((b) => { if (!b.disabled) b.checked = e.target.checked && !d.list.find((f) => f.email === b.dataset.fm)?.invitedAt }))
+  $('fm-all').addEventListener('change', (e) => boxes().forEach((b) => { if (!b.disabled) b.checked = e.target.checked && !done(d.list.find((f) => f.email === b.dataset.fm) || {}) }))
   $('fm-prev').addEventListener('click', () => {
     const el = $('fm-preview')
     el.hidden = !el.hidden
-    el.innerHTML = ['pay', 'paid'].filter((k) => d.previews[k]).map((k) => `<div class="j-card" style="padding:12px;margin-bottom:12px"><p class="small"><b>${k === 'pay' ? 'Owes money' : 'Already paid'}</b> · Subject: ${esc(d.previews[k].subject)}</p><iframe title="Email preview" style="width:100%;height:560px;border:1px solid #eee;border-radius:10px;margin-top:8px" srcdoc="${esc(d.previews[k].html)}"></iframe></div>`).join('')
+    const keys = acct ? ['account'] : ['pay', 'paid']
+    const label = { account: 'Sign-in invite', pay: 'Owes money', paid: 'Already paid' }
+    el.innerHTML = keys.filter((k) => d.previews[k]).map((k) => `<div class="j-card" style="padding:12px;margin-bottom:12px"><p class="small"><b>${label[k]}</b> · Subject: ${esc(d.previews[k].subject)}</p><iframe title="Email preview" style="width:100%;height:560px;border:1px solid var(--j-line);border-radius:10px;background:#fff" srcdoc="${esc(d.previews[k].html)}"></iframe></div>`).join('')
   })
   $('fm-send').addEventListener('click', async (e) => {
     const emails = boxes().filter((b) => b.checked).map((b) => b.dataset.fm)
     if (!emails.length) return toast('Tick the families to email.')
-    const again = emails.filter((x) => d.list.find((f) => f.email === x)?.invitedAt).length
-    if (!(await confirmBox(`Email <b>${emails.length}</b> parent${emails.length === 1 ? '' : 's'} now?${again ? ` ${again} already had it and will get it again.` : ''} Anyone who owes gets a payment link.`, { ok: 'Send' }))) return
+    const again = emails.filter((x) => done(d.list.find((f) => f.email === x) || {})).length
+    if (!(await confirmBox(`Email <b>${emails.length}</b> parent${emails.length === 1 ? '' : 's'} now?${again ? ` ${again} already had it and will get it again.` : ''} ${acct ? 'A sign-in invite with no amounts in it. Anyone already signed in is skipped.' : 'Anyone who owes gets a payment link.'}`, { ok: 'Send' }))) return
     const btn = e.currentTarget
     btn.disabled = true
     let sent = 0, failed = 0
     for (let i = 0; i < emails.length; i += 20) {
       btn.textContent = `Sending ${Math.min(i + 20, emails.length)} of ${emails.length}`
-      const r = await post('familyInvites', { send: true, emails: emails.slice(i, i + 20), resend: again > 0 })
+      const r = await post('familyInvites', { send: true, mode: acct ? 'account' : 'pay', emails: emails.slice(i, i + 20), resend: again > 0 })
       if (!r.ok) { toast(r.data.error || 'Sending stopped. Nothing is lost: try again.'); break }
       sent += r.data.sent.length; failed += r.data.failed.length
     }

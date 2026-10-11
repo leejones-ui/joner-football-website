@@ -158,7 +158,8 @@ ${rows([
 
 // Current Term 4 families: the new booking system, their account, and a
 // pay link when something is owing (Lee, 5 Oct 2026). Replies go to Ligia.
-export function accountInvite({ parentName, players, config, signInUrl, payUrl = '', amountCents = 0, needsWaiver = false }) {
+export function accountInvite({ parentName, players, config, signInUrl, payUrl = '', amountCents = 0, needsWaiver = false, money = true }) {
+  if (!money) return accountOnlyInvite({ parentName, players, config, signInUrl, needsWaiver })
   const names = players.map((x) => x.name)
   const who = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
   const owing = payUrl && amountCents > 0
@@ -171,6 +172,22 @@ ${p('There is no password. Enter your email and we send you a 6 digit code.')}
 ${button(owing ? 'Sign in and pay' : 'Sign in to your account', owing ? payUrl : signInUrl)}
 ${p('Questions? Just reply to this email.')}`
   return { subject: owing ? `Your JFP account is ready: ${formatAud(amountCents)} to pay` : 'Your JFP account is ready', html: shell({ preheader: 'Sign in to see your sessions', heading: 'Your JFP account', body }) }
+}
+// Every Term 4 family, paid or not: just sign in (Lee, 12 Oct 2026). No
+// amounts here, because many families have arrangements agreed with Ligia;
+// what they owe and how is on their account page.
+function accountOnlyInvite({ parentName, players, config, signInUrl, needsWaiver }) {
+  const names = players.map((x) => x.name)
+  const who = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
+  const term = config.term.replace(/\s*\d{4}$/, '')
+  const body = `${p(`Hi ${esc(String(parentName || '').split(' ')[0] || 'there')},`)}
+${p(`Joner Football has a new booking system, and ${esc(who)} already ${names.length > 1 ? 'have' : 'has'} an account. Please sign in once now with this email address. It takes a minute.`)}
+${rows(players.map((x) => [esc(x.name), esc(x.group)]))}
+${p(`In your account you can see ${esc(who)}'s ${esc(term)} sessions and every date, ${needsWaiver ? '<b>sign the player waiver</b>, ' : ''}check payments, and tell us if ${names.length > 1 ? 'a player' : esc(names[0])} cannot make a session.`)}
+${p('There is no password. Enter your email and we send you a 6 digit code.')}
+${button('Sign in to your account', signInUrl)}
+${p('Questions? Just reply to this email and Ligia will help.')}`
+  return { subject: `Sign in to your JFP account${names.length === 1 ? ` for ${names[0]}` : ''}`, html: shell({ preheader: 'One minute: see your sessions, dates and payments', heading: 'Your JFP account', body }) }
 }
 export async function sendAccountInvite({ to, parentName, ...rest }) {
   const { subject, html } = accountInvite({ parentName, ...rest })

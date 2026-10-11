@@ -1300,9 +1300,9 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
 // no fee set are left for staff to price first. Nothing sends until staff
 // press Send; each family is emailed once unless staff resend.
 export async function familyPlan(req, config) {
-  const [roster, groups, invitedRaw, payreqs] = await Promise.all([loadRoster({ fresh: true }), listGroups(), kvCommand(['HGETALL', 'jfp:acct-invited']), listPayreqs()])
-  const invited = {}
-  for (let i = 0; i + 1 < (invitedRaw || []).length; i += 2) invited[invitedRaw[i]] = invitedRaw[i + 1]
+  const [roster, groups, invitedRaw, payreqs, signedRaw, acctRaw] = await Promise.all([loadRoster({ fresh: true }), listGroups(), kvCommand(['HGETALL', 'jfp:acct-invited']), listPayreqs(), kvCommand(['HGETALL', 'jfp:acct-signedin']), kvCommand(['HGETALL', 'jfp:acct-only-invited'])])
+  const hash = (raw) => { const o = {}; for (let i = 0; i + 1 < (raw || []).length; i += 2) o[raw[i]] = raw[i + 1]; return o }
+  const invited = hash(invitedRaw), signedIn = hash(signedRaw), acctInvited = hash(acctRaw)
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
   const fams = new Map()
   const noEmail = []
@@ -1323,7 +1323,7 @@ export async function familyPlan(req, config) {
       owingCents: owingRows.reduce((t, r) => t + owe(r), 0), owingRowIds: owingRows.map((r) => r.id), openLink: open ? payreqUrl(req, open) : '',
       kind: owingRows.length ? 'pay' : unpriced.length ? 'noPrice' : 'paid',
       needsWaiver: rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone] }, roster.waivers)),
-      invitedAt: invited[email] || '', groupId: rows[0].groupId,
+      invitedAt: invited[email] || '', accountInvitedAt: acctInvited[email] || '', signedInAt: signedIn[email] || '', groupId: rows[0].groupId,
     }
   }).sort((a, b) => a.parent.localeCompare(b.parent))
   return { list, noEmail }
@@ -1333,9 +1333,29 @@ async function familyInvites(req, res, principal, config, body) {
   const plan = await familyPlan(req, config)
   const signInUrl = `${siteUrl(req)}/jfp-account/`
   const sample = (f) => accountInvite({ parentName: f.parent, players: f.players, config, signInUrl, payUrl: f.kind === 'pay' ? signInUrl : '', amountCents: f.owingCents, needsWaiver: f.needsWaiver })
+  const accountOnly = body.mode === 'account'
   if (body.send !== true) {
     const pay = plan.list.find((f) => f.kind === 'pay'), paid = plan.list.find((f) => f.kind === 'paid')
-    return res.status(200).json({ success: true, ...plan, previews: { pay: pay ? sample(pay) : null, paid: paid ? sample(paid) : null } })
+    const one = plan.list.find((f) => f.players.length === 1) || plan.list[0]
+    return res.status(200).json({ success: true, ...plan, previews: { pay: pay ? sample(pay) : null, paid: paid ? sample(paid) : null, account: one ? accountInvite({ parentName: one.parent, players: one.players, config, signInUrl, needsWaiver: one.needsWaiver, money: false }) : null } })
+  }
+  // Account only: every family with an email, paid or not, no amounts. Skips
+  // anyone who has already signed in, and anyone already sent this one unless resend.
+  if (accountOnly) {
+    const want = new Set((Array.isArray(body.emails) ? body.emails : []).map(validEmail).filter(Boolean))
+    const todo = plan.list.filter((f) => want.has(f.email) && !f.signedInAt && (!f.accountInvitedAt || body.resend === true)).slice(0, 20)
+    const sent = [], failed = []
+    for (const f of todo) {
+      // One claim per family per 10 minutes: a double click or two staff never email twice.
+      if ((await kvCommand(['SET', `jfp:acct-only-lock:${f.email}`, '1', 'NX', 'EX', '600'])) !== 'OK') continue
+      try {
+        await sendAccountInvite({ to: f.email, parentName: f.parent, players: f.players, config, signInUrl, needsWaiver: f.needsWaiver, money: false })
+        await kvCommand(['HSET', 'jfp:acct-only-invited', f.email, new Date().toISOString()])
+        sent.push(f.email)
+      } catch (error) { console.error('jfp account invite failed', f.email, error); failed.push(f.email); await kvCommand(['DEL', `jfp:acct-only-lock:${f.email}`]) }
+    }
+    await audit({ by: principal.email, action: 'family.accountInvite', target: 'term4', after: { sent: sent.length, failed: failed.length } })
+    return res.status(200).json({ success: true, sent, failed })
   }
   // A batch of families per call, so a big send never times out.
   const want = new Set((Array.isArray(body.emails) ? body.emails : []).map(validEmail).filter(Boolean))

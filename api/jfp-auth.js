@@ -7,7 +7,7 @@
 //   POST { action: 'logout', audience }
 //   GET  ?audience=parent|staff                     -> who is signed in
 import { verifyRecaptcha } from './_security.js'
-import { getConfig } from './_jfp-store.js'
+import { getConfig, kvCommand } from './_jfp-store.js'
 import { startChallenge, verifyChallenge, openSession, cookieHeader, sessionFor, closeSession, roleFor, sameOrigin, clientIp, staffPrincipal } from './_jfp-people.js'
 import { sendSignInCode } from './_jfp-email.js'
 
@@ -66,6 +66,8 @@ export default async function handler(req, res) {
       if (v.audience === 'staff' && !roleFor(v.email, config)) return fail(res, 401, 'That code is not right or has expired. Ask for a new one.')
       const { token, seconds } = await openSession(v.email, v.audience)
       res.setHeader('Set-Cookie', cookieHeader(v.audience, token, seconds))
+      // Who has signed in to their family account, so staff can chase the rest.
+      if (v.audience === 'parent') { try { await kvCommand(['HSET', 'jfp:acct-signedin', v.email, new Date().toISOString()]) } catch {} }
       const role = v.audience === 'staff' ? roleFor(v.email, config) : null
       return res.status(200).json({ success: true, audience: v.audience, email: v.email, role: role?.role || 'parent' })
     }
