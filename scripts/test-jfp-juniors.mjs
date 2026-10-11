@@ -126,6 +126,11 @@ await test('a failed or unfinished read is an error, never a zero', async () => 
   await assert.rejects(readJuniorsStripe([], fakeStripe({ failOn: '/payment_links' }).fetch), /500/)
   await assert.rejects(readJuniorsStripe([], fakeStripe({ pages: 99 }).fetch), /did not finish/)
   await assert.rejects(readJuniorsRows(['tblMissing'], async () => { throw new Error('Airtable 404 TABLE_NOT_FOUND') }), /404/)
+  // Term tables with different columns: an unknown column is dropped, nothing else is.
+  const has = { t3: ['Player Full Name', 'Term', 'Fee', 'Payment Status', 'Paid At'], t4: ['Player Full Name', 'Term', 'Fee', 'Payment Status', 'Stripe Payment Link'] }
+  const read = async (table, fields) => { const bad = fields.find((x) => !has[table].includes(x)); if (bad) throw new Error(`Airtable 422: Unknown field name: "${bad}"`); return [{ id: `rec${table}`, fields: { 'Player Full Name': table, Term: table, Fee: 220, 'Payment Status': 'Paid' } }] }
+  const got = await readJuniorsRows(['t3', 't4'], read)
+  assert.deepEqual(got.map((r) => r.player), ['t3', 't4'])
 })
 
 await test('a refresh that fails keeps the last good figures, marked stale', async () => {

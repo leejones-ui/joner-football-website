@@ -39,8 +39,19 @@ const termOrder = (t) => { const m = /term\s*(\d)\s+(\d{4})/i.exec(t || ''); ret
 export async function readJuniorsRows(tables = JUNIORS_TABLES, read = readTable) {
   const rows = []
   for (const table of tables) {
+    // The term tables do not all have the same columns (Term 3 has Paid At,
+    // Term 4 has the payment link): ask again without any column Airtable
+    // says this table does not have. Any other failure throws.
+    let fields = [...FIELDS], list
+    for (;;) {
+      try { list = await read(table, fields); break } catch (error) {
+        const m = /Unknown field name: "([^"]+)"/.exec(error.message || '')
+        if (!m || !fields.includes(m[1])) throw error
+        fields = fields.filter((x) => x !== m[1])
+      }
+    }
     // readTable pages until Airtable says there is no more, or throws.
-    for (const { id, fields: f } of await read(table, FIELDS)) {
+    for (const { id, fields: f } of list) {
       const s = (k) => (f[k] == null ? '' : String(Array.isArray(f[k]) ? f[k].join(', ') : f[k]).trim())
       rows.push({
         id, table, term: s('Term'), player: s('Player Full Name'), parent: s('Parent Name'),
