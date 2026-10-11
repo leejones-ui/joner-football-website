@@ -1,6 +1,9 @@
-// Token-scoped administration: group criteria and the kit price. No player, payment or Airtable access.
+// Token-scoped administration: group criteria and the kit price, plus two
+// READ-ONLY views for Lee's agent (money and requests). It cannot change
+// players, payments, messages or Airtable.
 import crypto from 'node:crypto'
-import { listGroups, validateGroup, getConfig, saveConfig, audit, REQUIREMENTS, clean, kvCommand, keys, normaliseStoredGroup } from './_jfp-store.js'
+import { moneyData } from './jfp-portal-data.js'
+import { listGroups, listApplications, listPayreqs, validateGroup, getConfig, saveConfig, audit, REQUIREMENTS, clean, kvCommand, keys, normaliseStoredGroup } from './_jfp-store.js'
 
 // Compare every original row before writing anything. Criteria and audit records
 // commit together; preserve every other stored field, including unknown fields.
@@ -53,6 +56,24 @@ export default async function handler(req, res) {
   let commitAttempted = false
   try {
     if (req.method === 'GET') {
+      const view = String(req.query?.view || '')
+      if (view === 'money') {
+        const config = await getConfig()
+        const m = await moneyData(config, { fresh: req.query?.fresh === '1' })
+        const links = (await listPayreqs()).filter((q) => ['open', 'checkout', 'paid'].includes(q.status)).map((q) => ({ id: q.id, status: q.status, term4Ids: q.term4Ids || [], cents: q.amountCents, createdAt: q.createdAt, paidAt: q.paidAt || '' }))
+        return res.status(200).json({ success: true, kpis: m.kpis, status: m.status, players: m.players, unmatched: m.unmatched, stripeError: m.stripeError, links })
+      }
+      if (view === 'requests') {
+        const groups = Object.fromEntries((await listGroups()).map((g) => [g.id, g]))
+        const list = (await listApplications()).map((a) => ({
+          id: a.id, kind: a.kind, status: a.status, createdAt: a.createdAt, offer: a.offer || '',
+          group: groups[a.groupId] ? `${groups[a.groupId].day} ${groups[a.groupId].time}, ${groups[a.groupId].location}` : a.groupId || '',
+          players: (a.players || []).map((p) => ({ name: p.name, age: p.age ?? null })),
+          parentName: a.parentName || '', email: a.email || '',
+          club: a.answers?.club || a.club || '', team: a.answers?.team || '', playingUp: a.answers?.playingUp || '', videos: Boolean(a.answers?.videos),
+        }))
+        return res.status(200).json({ success: true, requests: list })
+      }
       const groups = await listGroups()
       return res.status(200).json({ success: true, allowed: REQUIREMENTS, groups: groups.map(g => Object.fromEntries(['id', 'day', 'time', 'location', 'coachId', 'label', 'minAge', 'maxAge', 'mode', 'requirements', 'requirementsText'].map(k => [k, g[k]]))) })
     }

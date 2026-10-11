@@ -550,7 +550,7 @@ const weekOf = (iso) => {
   return d.toISOString().slice(0, 10)
 }
 
-async function moneyData(config, { since, fresh = false } = {}) {
+export async function moneyData(config, { since, fresh = false } = {}) {
   const [roster, groups, ledger, juniors, history] = await Promise.all([loadRoster({ fresh: true }), listGroups(), listLedger(config.term).catch(() => []), listJuniors().catch(() => []), listVenueHistory().catch(() => [])])
   let stripe = { payments: [], other: { count: 0, cents: 0 }, since: since || config.moneySince, error: '' }
   try { stripe = { ...(await jfpStripePayments({ since: since || config.moneySince, fresh })), error: '' } } catch (error) { console.error('jfp stripe read failed', error); stripe.error = 'Stripe could not be read just now. Airtable figures only.' }
