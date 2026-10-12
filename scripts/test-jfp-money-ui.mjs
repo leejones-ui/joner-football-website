@@ -367,4 +367,113 @@ await test('the venue window: costs, profit after fees and costs, edit, copy las
   p.close()
 })
 
+// ---------- bank transfers to check ----------
+const XA = 'XERO-00000001-aaaa-4bbb-8ccc-000000000001', XC = 'XERO-00000003-aaaa-4bbb-8ccc-000000000003', CB = `CSV-${'b'.repeat(40)}`
+const cand = (rowId, x) => { const pl = players.find((q) => q.rowId === rowId); return { rowId, player: pl.player, parent: pl.parent, locationId: pl.locationId, group: pl.group, status: pl.status, owingCents: pl.owingCents, feeCents: pl.feeCents, score: 3, exact: true, reason: "name matches the parent, amount = what's owing", familyRowIds: [rowId], familyOwingCents: pl.owingCents, ...x } }
+const BANK = () => ({
+  sources: { xeroAt: '2026-10-12T02:30:00.000Z', xeroItems: 3, csvAt: '', csvItems: 1 },
+  items: [
+    { id: XA, date: '2026-10-10', cents: 115000, payer: 'M FEATHERSTONE', description: 'Fast Transfer From M Featherstone', reference: '', source: 'xero', grade: 'high', candidates: [cand('p2', { reason: "name matches the parent, amount = the family's total owing", familyRowIds: ['p2', 'p7'], familyOwingCents: 115000 }), cand('p7', { score: 2, exact: false })] },
+    { id: CB, date: '2026-10-09', cents: 22500, payer: 'Transfer from C Quill', description: 'Transfer from C Quill', reference: '', source: 'csv', grade: 'possible', candidates: [cand('p3', { score: 2 })] },
+    { id: XC, date: '2026-10-08', cents: 5000, payer: 'Q Zanzibarre', description: 'Q Zanzibarre', reference: '', source: 'xero', grade: 'none', candidates: [] },
+  ],
+  counts: { checked: 3, high: 1, possible: 1, none: 1 },
+})
+const bankIds = (p) => [...p.d.querySelectorAll('#m-bank [data-bank]')].map((li) => li.dataset.bank)
+
+await test('bank transfers to check: the count, where it is from, the hint, and it follows the venue', async () => {
+  const m = fresh()
+  for (const pl of m.players) if (['p2', 'p7'].includes(pl.rowId)) pl.familyKey = 'fam@example.com'
+  const p = await openPortal({ money: m, onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: BANK() } : null) })
+  assert.equal(p.posts.filter((b) => b.action === 'bankCheck').length, 1, 'read once, on its own')
+  assert.match(p.text('#m-bank summary'), /^Bank transfers to check 3 2 with a match$/)
+  assert.match(p.text('#m-bank-xero'), /^From Xero, updated /)
+  assert.match(p.text('#m-bank'), /Xero only shows transfers after they're coded in Xero\. Uploading the bank CSV works straight away\./)
+  assert.match(p.text('#m-bank'), /Upload bank statement \(CSV\)\s*CommBank NetBank > Accounts > Export > CSV/)
+  assert.deepEqual(bankIds(p), [XA, CB, XC])
+  const first = p.$(`#m-bank [data-bank="${XA}"]`)
+  const bits = (sel) => [...first.querySelectorAll(sel)].map((x) => x.textContent.replace(/\s+/g, ' ').trim())
+  assert.deepEqual(bits('.top > *'), ['10 Oct', money(115000), 'Likely match'])
+  assert.equal(bits('.payer')[0], 'M FEATHERSTONE Fast Transfer From M Featherstone')
+  assert.deepEqual(bits('.cand > :not(br)'), ['Ben Test', '(Ben Parent)', "name matches the parent, amount = the family's total owing", 'Also: Gus Test'])
+  assert.match(bits('.cand')[0], /owing A\$850/)
+  assert.equal(first.querySelector('[data-bank-rec]').textContent, 'Record for Ben')
+  assert.match(p.$(`#m-bank [data-bank="${XC}"]`).textContent, /No match yet[\s\S]*No player with that name/)
+  assert.equal(p.$(`#m-bank [data-bank="${XC}"] [data-bank-rec]`), null, 'nothing to record for with no match')
+  await p.click('#m-locs [data-mloc="ntra"]')
+  assert.deepEqual(bankIds(p), [CB], 'a venue shows lines whose best match is there')
+  assert.match(p.text('#m-bank summary'), /check 1 1 with a match/)
+  await p.click('#m-locs [data-mloc="rydalmere"]')
+  assert.deepEqual(bankIds(p), [])
+  assert.match(p.text('#m-bank'), /Nothing to check at this venue/)
+  await p.click('#m-locs [data-mloc=""]')
+  assert.deepEqual(bankIds(p), [XA, CB, XC])
+  // The two minute refresh draws Money again without asking the bank again.
+  assert.equal(p.posts.filter((b) => b.action === 'bankCheck').length, 1)
+  assert.deepEqual(p.errors, [])
+  p.close()
+})
+
+await test('bank transfers: record for a family in one tap with the line id, pick another player, hide one, upload a CSV', async () => {
+  const m = fresh()
+  for (const pl of m.players) if (['p2', 'p7'].includes(pl.rowId)) pl.familyKey = 'fam@example.com'
+  let bank = BANK()
+  const p = await openPortal({ money: m, onPost: (b) => {
+    if (b.action === 'bankCheck') return { success: true, bank }
+    if (b.action === 'recordPayment') { bank = { ...bank, items: bank.items.filter((x) => x.id !== b.externalId) }; return { success: true, ledger: true } }
+    if (b.action === 'bankUpload') return { success: true, lines: b.lines.length, added: 1, total: 2 }
+    return null
+  } })
+  await p.click(`#m-bank [data-bank="${XA}"] [data-bank-rec]`)
+  assert.match(p.text('#jp-modal'), /Record a bank transfer Bank, 10\/10\/2026: A\$1,150 · M FEATHERSTONE Who was it for\?/)
+  const boxes = () => [...p.d.querySelectorAll('#bk-rows input')].map((x) => [x.value, x.checked])
+  assert.deepEqual(boxes(), [['p2', true], ['p7', true]], 'the amount is what the family owes, so both are ticked')
+  p.$('#bk-rows input[value="p7"]').checked = false
+  p.$('#bk-rows input[value="p2"]').checked = false
+  await p.click('#bk-go')
+  assert.match(p.text('.j-toast'), /Tick who it was for/)
+  p.$('#bk-rows input[value="p2"]').checked = true
+  p.$('#bk-rows input[value="p7"]').checked = true
+  await p.click('#bk-go')
+  assert.deepEqual(p.posts.find((b) => b.action === 'recordPayment'), { action: 'recordPayment', rowIds: ['p2', 'p7'], amountCents: 115000, method: 'Bank transfer', date: '2026-10-10', note: '', externalId: XA })
+  assert.equal(p.$('#jp-modal'), null)
+  assert.deepEqual(bankIds(p), [CB, XC], 'the recorded line drops off')
+  assert.equal(p.posts.filter((b) => b.action === 'bankCheck').length, 2, 'and the bank is asked again')
+  // Another player: search, pick, record.
+  await p.click(`#m-bank [data-bank="${XC}"] [data-bank-other]`)
+  const q = p.$('#pk-q')
+  q.value = 'cal'
+  q.dispatchEvent(new p.w.Event('input', { bubbles: true }))
+  await p.click('#pk-res [data-pick="p3"]')
+  assert.deepEqual(boxes(), [['p3', true]])
+  assert.ok(p.$('#bk-rows input').disabled, 'one player: nothing to tick')
+  p.$('#bk-note').value = 'Grandma paid'
+  await p.click('#bk-go')
+  assert.deepEqual(p.posts.filter((b) => b.action === 'recordPayment').at(-1), { action: 'recordPayment', rowIds: ['p3'], amountCents: 5000, method: 'Bank transfer', date: '2026-10-08', note: 'Grandma paid', externalId: XC })
+  // Not JFP: hidden for good.
+  await p.click(`#m-bank [data-bank="${CB}"] [data-bank-ignore]`)
+  assert.deepEqual(p.posts.filter((b) => b.action === 'bankIgnore'), [{ action: 'bankIgnore', id: CB }])
+  assert.ok(!bankIds(p).includes(CB))
+  // Upload: read here, only money in is sent.
+  const input = p.$('#m-bank-file')
+  const csvText = '10/10/2026,"+850.00","Fast Transfer From A Brightwater","+1850.00"\r\n09/10/2026,"-12.00","Cones","+1000.00"\r\n'
+  Object.defineProperty(input, 'files', { configurable: true, value: [{ text: async () => csvText }] })
+  input.dispatchEvent(new p.w.Event('change', { bubbles: true }))
+  await p.settle()
+  assert.deepEqual(p.posts.find((b) => b.action === 'bankUpload'), { action: 'bankUpload', lines: [{ date: '2026-10-10', cents: 85000, description: 'Fast Transfer From A Brightwater' }] })
+  assert.match(p.text('.j-toast'), /Read 1 payment in, 1 new/)
+  assert.deepEqual(p.errors, [])
+  p.close()
+})
+
+await test("bank transfers: nothing from Xero yet, and a failed read says so", async () => {
+  const p = await openPortal({ money: fresh(), onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: { sources: { xeroAt: '', xeroItems: 0, csvAt: '', csvItems: 0 }, items: [], counts: {} } } : null) })
+  assert.equal(p.text('#m-bank-xero'), "Xero hasn't sent anything yet")
+  assert.match(p.text('#m-bank'), /Nothing to check\. Every bank transfer/)
+  p.close()
+  const q = await openPortal({ money: fresh(), onPost: (b) => (b.action === 'bankCheck' ? { success: false, error: 'Bank lines could not be read.' } : null) })
+  assert.match(q.text('#m-bank'), /could not be read/)
+  q.close()
+})
+
 console.log(`${passed} money page checks passed`)

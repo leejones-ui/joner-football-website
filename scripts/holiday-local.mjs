@@ -73,6 +73,7 @@ function redis(cmd) {
     case 'DEL': { let n = 0; for (const k of args) if (store.delete(k)) n++; return n }
     case 'SADD': { const e = live(args[0]) || { type: 'set', value: new Set() }; store.set(args[0], e); let n = 0; for (const m of args.slice(1)) if (!e.value.has(m)) { e.value.add(m); n++ } return n }
     case 'SMEMBERS': return [...(live(args[0])?.value || [])]
+    case 'SREM': { const e = live(args[0]); let n = 0; if (e) for (const m of args.slice(1)) if (e.value.delete(m)) n++; return n }
     case 'INCR': { const e = live(args[0]); const n = Number(e?.value || 0) + 1; store.set(args[0], { type: 's', value: String(n), expiresAt: e?.expiresAt || 0 }); return n }
     case 'TTL': { const e = live(args[0]); return e ? (e.expiresAt ? Math.ceil((e.expiresAt - Date.now()) / 1000) : -1) : -2 }
     case 'HSET': { const h = hash(args[0]); h.set(args[1], args[2]); return 1 }
@@ -599,6 +600,19 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' })
   fs.createReadStream(file).pipe(res)
 })
+
+// Bank money in, as the Mac job writes it from Xero: invented payers, none of
+// them on the roster until a test names a row after one.
+if (!process.env.JFP_SEED) {
+  const day = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
+  const x = (n, date, cents, payer, description, reference = '') => ({ id: `XERO-0000000${n}-aaaa-4bbb-8ccc-00000000000${n}`, date, cents, payer, description, reference, reconciled: true })
+  redis(['SET', 'jfp:xero-bank-in', JSON.stringify({ at: new Date(Date.now() - 3600000).toISOString(), source: 'xero', since: day(30), account: 'Business account', items: [
+    x(1, day(2), 85000, 'M FEATHERSTONE', 'Fast Transfer From M Featherstone', 'JFP term 4'),
+    x(2, day(3), 42500, 'Q Zanzibarre', 'Transfer from Q Zanzibarre'),
+    x(3, day(4), 12000, 'Stripe Payments Australia', 'Stripe payout'),
+    x(4, day(5), 85000, 'K Wolstenholme', 'Fast Transfer From K Wolstenholme'),
+  ] })])
+}
 
 if (process.env.JFP_GROUPS && fs.existsSync(process.env.JFP_GROUPS)) {
   for (const g of JSON.parse(fs.readFileSync(process.env.JFP_GROUPS, 'utf8'))) redis(['HSET', 'jfp:groups', g.id, JSON.stringify(g)])

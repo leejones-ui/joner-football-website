@@ -447,3 +447,29 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jv-cost-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .jv-cost-save { justify-content: flex-end; }
 @media (max-width: 640px) { .jv-cost-row { grid-template-columns: minmax(0, 1fr) 6em 44px; } .jv-cost-save .j-btn { flex: 1 1 auto; } }
+/* Bank transfers to check: one card per bank line, big buttons for the phone. */
+.jm-bank summary .n { display: inline-block; min-width: 22px; margin-left: 4px; padding: 0 7px; border-radius: 999px; background: var(--j-ink); color: var(--j-surface); font-size: 12.5px; font-weight: 750; text-align: center; }
+.jm-bank summary .n.muted { background: none; color: var(--j-muted); font-weight: 500; }
+.jm-bank-src { padding-bottom: 10px; border-bottom: 1px solid var(--j-line-2); }
+.jm-bank-src p { margin: 0 0 4px; overflow-wrap: anywhere; }
+.jm-bank-up { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px; }
+.jm-bank-up .j-btn { min-height: 40px; display: inline-flex; align-items: center; cursor: pointer; }
+.jm-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.jm-bank-up label:focus-within { outline: 2px solid var(--j-ink); }
+.jm-bank-list { list-style: none; margin: 0; padding: 0 0 8px; }
+.jm-bank-item { padding: 12px 0; border-top: 1px solid var(--j-line-2); min-width: 0; }
+.jm-bank-item:first-child { border-top: 0; }
+.jm-bank-item .top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.jm-bank-item .when { font-size: 13px; color: var(--j-muted); }
+.jm-bank-item .amt { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.jm-bank-item .payer { margin: 4px 0 0; font-size: 14px; overflow-wrap: anywhere; }
+.jm-bank-item .payer small { display: block; }
+.jm-bank-item .cand { margin: 6px 0 0; font-size: 14px; overflow-wrap: anywhere; }
+.jm-bank-item .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.jm-bank-item .btns .j-btn { min-height: 44px; }
+.jm-bank-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.jm-bank-row { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 10px; border: 1px solid var(--j-line); border-radius: 10px; cursor: pointer; }
+.jm-bank-row input { width: 20px; height: 20px; flex: none; }
+.jm-bank-row span { display: flex; flex-direction: column; min-width: 0; font-size: 14px; }
+.jm-bank-row small { color: var(--j-muted); font-size: 12px; }
+@media (max-width: 640px) { .jm-bank-item .btns .j-btn { flex: 1 1 auto; } }

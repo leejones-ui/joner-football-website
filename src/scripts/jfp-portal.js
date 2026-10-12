@@ -6,6 +6,7 @@ import { $, esc, api, toast, signIn, whoAmI, signOut, money } from './jfp-common
 import { renderMessages } from './jfp-portal-messages.js'
 import { renderJuniorsMoney, programmeSwitch, bindSwitch, juniorsCardShell, fillJuniorsCard } from './jfp-portal-juniors.js'
 import { drawFamilies, sessionModal } from './jfp-portal-family.js'
+import { bankPanel, bindBank, loadBank, bankDone } from './jfp-portal-bank.js'
 
 // jf: the Money programme switch and the Joners Juniors filters.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', pricing: null }
@@ -1746,6 +1747,7 @@ async function renderMoney(pre) {
       <button type="button" class="j-btn j-btn-line j-btn-sm jm-csv" id="m-csv">Download for accountant</button>
     </div>
     <div id="m-scope"></div>
+    <div id="m-bank"></div>
     <div class="jm-bar">
       <div class="jm-chips jm-view" role="group" aria-label="Show"><button type="button" data-money-view="players" aria-pressed="${f.view !== 'family'}">Players</button><button type="button" data-money-view="family" aria-pressed="${f.view === 'family'}">By family</button></div>
       <div class="jm-search"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2" stroke-linecap="round"/></svg><input class="j-input" id="m-q" type="search" placeholder="Search player, parent or email" value="${esc(f.q)}" autocomplete="off"></div>
@@ -1756,10 +1758,23 @@ async function renderMoney(pre) {
     <p class="muted small" id="m-count" style="margin-top:8px"></p>
     <div id="m-unmatched"></div>`
   const scope = () => moneyScope(m, f.loc)
+  // Bank transfers to check: read on their own, and they follow the venue too.
+  const family = (p) => m.players.filter((x) => x.familyKey === p.familyKey).map((x) => x.rowId)
+  const bankUi = {
+    post, toast,
+    redraw: () => { if ($('m-bank') && P.money === m) drawBank() },
+    record: (item, rowId) => {
+      const p = m.players.find((x) => x.rowId === rowId)
+      if (p) recordModal(p, { bank: { item, rowIds: item.candidates.find((c) => c.rowId === rowId)?.familyRowIds || family(p) } })
+    },
+    other: (item) => pickPlayerModal(`${money(item.cents)} from ${item.payer}`, (p) => recordModal(p, { bank: { item, rowIds: family(p) } })),
+  }
+  const drawBank = () => { $('m-bank').innerHTML = bankPanel(f.loc); bindBank($('m-bank'), bankUi) }
   // Everything that follows the venue picked.
   const drawScope = (animate) => {
     const s = scope()
     $('m-scope').innerHTML = scopeTop(m, s, animate ? 'jd-in' : '')
+    drawBank()
     weeklyChart($('m-weekly'), s.weekly, animate)
     const counts = { '': s.players.length }
     for (const p of s.players) counts[p.status] = (counts[p.status] || 0) + 1
@@ -1785,6 +1800,7 @@ async function renderMoney(pre) {
   setHash()
   drawScope(!pre)
   draw()
+  loadBank(bankUi, bankUi.redraw)
   bindSwitch(juniorsUi())
   $('m-locs').addEventListener('click', (e) => {
     const b = e.target.closest('[data-mloc]')
@@ -1850,7 +1866,9 @@ async function notesModal(rowId) {
     <div style="display:flex;justify-content:flex-end;margin-top:14px"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })
 }
 
-function recordModal(p, { stripe } = {}) {
+// bank: a line from Bank transfers to check, { item, rowIds: the family's rows }.
+function recordModal(p, { stripe, bank } = {}) {
+  if (bank) return bankRecordModal(p, bank)
   // Marked paid by hand, never in the ledger: record how it was paid instead
   // of adding it again (Nicholas Casella, A$800 cash, 12 Oct 2026).
   const existing = !stripe && p.unledgeredCents > 0 && !p.owingCents
@@ -1874,6 +1892,51 @@ function recordModal(p, { stripe } = {}) {
     btn.disabled = false
     if (!r.ok) return toast(r.data.error)
     closeModal(); closeDrawer(); toast(`Recorded. Airtable updated${r.data.ledger ? ' and the ledger has it' : ''}.`); P.board = null; PL.at = 0; if (P.tab === 'money') renderMoney()
+  })
+}
+
+// A bank transfer onto one player, or onto brothers and sisters together. The
+// amount and date are the bank's; the line's own id goes in the ledger, so it
+// can never be recorded twice.
+function bankRecordModal(p, { item, rowIds }) {
+  const rows = [p, ...(P.money?.players || []).filter((x) => rowIds.includes(x.rowId) && x.rowId !== p.rowId)]
+  const famOwing = rows.reduce((t, x) => t + (x.owingCents || 0), 0)
+  // Ticked: the player picked, and the whole family when the amount is what they all owe.
+  const all = rows.length > 1 && item.cents === famOwing
+  const box = modal(`<h2 style="margin-bottom:4px">Record a bank transfer</h2>
+    <div class="j-box j-box-blue small" style="margin:8px 0 12px">Bank, ${esc(new Date(`${item.date}T00:00:00`).toLocaleDateString('en-AU'))}: <b>${esc(money(item.cents))}</b> · ${esc(item.payer)}</div>
+    ${rows.length > 1 ? '<p class="small" style="margin:0 0 6px">Who was it for?</p>' : ''}
+    <div class="jm-bank-rows" id="bk-rows">${rows.map((x, i) => `<label class="jm-bank-row"><input type="checkbox" value="${esc(x.rowId)}" ${i === 0 || all ? 'checked' : ''} ${rows.length === 1 ? 'disabled' : ''}><span><b>${esc(x.player)}</b><small>${esc((x.group || '').replace(/, [^,]*$/, ''))} · owing ${esc(money(x.owingCents || 0))}</small></span></label>`).join('')}</div>
+    <label class="j-field"><span>Note <span class="muted">(optional)</span></span><input class="j-input" id="bk-note" maxlength="200"></label>
+    <p class="muted small">Updates Term 4 Players and adds a row to the payment ledger, as a bank transfer on ${esc(new Date(`${item.date}T00:00:00`).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }))}.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="bk-go">Record ${esc(money(item.cents))}</button></div>`)
+  box.querySelector('#bk-go').addEventListener('click', async (e) => {
+    const ids = [...box.querySelectorAll('#bk-rows input:checked')].map((x) => x.value)
+    if (!ids.length) return toast('Tick who it was for.')
+    const btn = e.currentTarget
+    btn.disabled = true
+    const r = await post('recordPayment', { rowIds: ids, amountCents: item.cents, method: 'Bank transfer', date: item.date, note: box.querySelector('#bk-note').value.trim(), externalId: item.id })
+    btn.disabled = false
+    if (!r.ok) return toast(r.data.error)
+    bankDone(item.id)
+    closeModal(); closeDrawer(); toast(`Recorded. Airtable updated${r.data.ledger ? ' and the ledger has it' : ''}.`); P.board = null; PL.at = 0; if (P.tab === 'money') renderMoney()
+  })
+}
+
+// Search this term's players and pick one.
+function pickPlayerModal(what, pick) {
+  const box = modal(`<h2 style="margin-bottom:4px">Who was it for?</h2><p class="muted small" style="margin-bottom:12px">${esc(what)}</p>
+    <label class="j-field"><span>Player or parent</span><input class="j-input" id="pk-q" placeholder="Type a name" autocomplete="off"></label>
+    <div id="pk-res"></div>`, { wide: true })
+  const res = box.querySelector('#pk-res')
+  box.querySelector('#pk-q').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase()
+    const hits = q.length < 2 ? [] : P.money.players.filter((p) => `${p.player} ${p.parent} ${p.email}`.toLowerCase().includes(q)).slice(0, 8)
+    res.innerHTML = hits.map((p) => `<button type="button" class="j-player" data-pick="${esc(p.rowId)}"><span><b>${esc(p.player)}</b><br><span class="muted small">${esc(p.parent || '')} · ${esc(p.group)} · owing ${esc(money(p.owingCents))}</span></span>${statusPill(p.status)}</button>`).join('') || (q.length < 2 ? '' : '<p class="muted small">No player matches.</p>')
+  })
+  res.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pick]')
+    if (b) pick(P.money.players.find((x) => x.rowId === b.dataset.pick))
   })
 }
 

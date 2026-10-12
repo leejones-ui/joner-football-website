@@ -1507,4 +1507,115 @@ await test('venue costs: Lee adds them per venue per term, each venue shows prof
   for (const id of ['saveVenueCosts', 'jv-costs', 'Profit after fees and costs', 'Profit after costs', 'Marked paid but no money found', 'data-pnm-row']) assert.ok(js.includes(id), `the built bundle has ${id}`)
 })
 
+await test('bank transfers to check: Xero and the bank CSV matched to players, recorded once with the line id, hidden, coaches kept out', async () => {
+  const crypto = await import('node:crypto')
+  const kv = async (cmd) => (await fetch(`${B}/__kv?cmd=${encodeURIComponent(JSON.stringify(cmd))}`)).text()
+  const check = async () => { const r = await portal(lee, 'bankCheck'); assert.equal(r.status, 200, JSON.stringify(r.data)); return r.data.bank }
+  const xero = JSON.parse(await kv(['GET', 'jfp:xero-bank-in']))
+  const [fea, zan, , wol] = xero.items
+  // Coaches never see or change any of it.
+  const sam = client()
+  await signIn(sam, 'jonerfootballsam@gmail.com', 'staff')
+  for (const [action, body] of [['bankCheck', {}], ['bankUpload', { lines: [{ date: '2026-10-01', cents: 100, description: 'x' }] }], ['bankIgnore', { id: zan.id }], ['bankUnignore', { id: zan.id }]]) assert.equal((await portal(sam, action, body)).status, 403, action)
+  assert.equal((await portal(sam, 'recordPayment', { rowIds: ['recX'], amountCents: 100, externalId: fea.id })).status, 403)
+
+  // Two new unpaid players, named after two of the Xero payers; the Xero
+  // amounts are set to what they owe.
+  const add = async (name, parent, email) => {
+    const r = await portal(lee, 'addPlayer', { groupId: WED420, force: true, player: { name }, parent: { name: parent, email, mobile: '0400111222' }, payment: 'none' })
+    assert.equal(r.status, 200, JSON.stringify(r.data))
+    return r.data.rowId
+  }
+  const aId = await add('Ollie Featherstone', 'Mia Featherstone', 'feather@example.com')
+  const bId = await add('Kit Wolstenholme', 'Kara Wolstenholme', 'wolst@example.com')
+  let m = (await portal(lee, 'money', { fresh: true })).data.money
+  const a = m.players.find((p) => p.rowId === aId), b = m.players.find((p) => p.rowId === bId)
+  assert.ok(a.owingCents > 0 && b.owingCents > 0, 'both owe their fee')
+  fea.cents = a.owingCents
+  wol.cents = b.owingCents
+  await kv(['SET', 'jfp:xero-bank-in', JSON.stringify(xero)])
+  let bank = await check()
+  assert.equal(bank.sources.xeroItems, 4)
+  assert.equal(bank.sources.xeroAt, xero.at)
+  assert.ok(!bank.items.some((x) => /stripe/i.test(x.payer)), 'a Stripe payout is not a family')
+  const hit = bank.items.find((x) => x.id === fea.id)
+  assert.equal(hit.grade, 'high')
+  assert.deepEqual([hit.candidates[0].rowId, hit.candidates[0].reason, hit.candidates[0].locationId], [a.rowId, "name matches the parent, amount = what's owing", a.locationId])
+  assert.equal(bank.items[0].grade, 'high', 'likely matches first')
+  assert.equal(bank.items.find((x) => x.id === zan.id).grade, 'none')
+
+  // The bank CSV: checked, given ids, kept with what is there for 45 days.
+  const day = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
+  const lines = [{ date: day(1), cents: 30000, description: 'Fast Transfer From Rita Returning' }, { date: day(2), cents: 12345, description: 'Transfer from Unknown Person' }]
+  for (const [body, msg] of [[{ lines: [] }, /No money in/], [{ lines: 'x' }, /No money in/], [{ lines: Array.from({ length: 2001 }, () => lines[0]) }, /2000/], [{ lines: [{ ...lines[0], date: '01/10/2026' }] }, /date or amount/], [{ lines: [{ ...lines[0], date: day(-3) }] }, /date or amount/], [{ lines: [{ ...lines[0], cents: -500 }] }, /date or amount/], [{ lines: [{ ...lines[0], cents: 12.5 }] }, /date or amount/]]) {
+    const r = await portal(lee, 'bankUpload', body)
+    assert.equal(r.status, 400, JSON.stringify(body).slice(0, 80))
+    assert.match(r.data.error, msg)
+  }
+  let up = await portal(lee, 'bankUpload', { lines })
+  assert.deepEqual([up.status, up.data.lines, up.data.added, up.data.total], [200, 2, 2, 2])
+  up = await portal(lee, 'bankUpload', { lines: [lines[0]] })
+  assert.deepEqual([up.data.added, up.data.total], [0, 2], 'the same line again is not added twice')
+  const ttl = Number(await kv(['TTL', 'jfp:bank-csv']))
+  assert.ok(ttl > 44 * 86400 && ttl <= 45 * 86400, `kept 45 days (${ttl})`)
+  const csvIdOf = (l) => `CSV-${crypto.createHash('sha1').update(`${l.date}|${l.cents}|${l.description}`).digest('hex')}`
+  bank = await check()
+  assert.equal(bank.sources.csvItems, 2)
+  assert.ok(bank.sources.csvAt)
+  const rita = bank.items.find((x) => x.id === csvIdOf(lines[0]))
+  assert.ok(rita, 'the CSV line is listed with its id')
+  assert.equal(rita.source, 'csv')
+  assert.equal(rita.grade, 'possible', 'the name matches, the amount does not')
+
+  // Record with the line id: once. The ledger has it as a bank transfer on the bank's date.
+  const bad = await portal(lee, 'recordPayment', { rowIds: [a.rowId], amountCents: fea.cents, method: 'Bank transfer', date: fea.date, externalId: 'BANK-12345678' })
+  assert.equal(bad.status, 400)
+  // The guards still hold: no future date, no more than is owing.
+  assert.equal((await portal(lee, 'recordPayment', { rowIds: [a.rowId], amountCents: fea.cents, date: day(-2), externalId: fea.id })).status, 400)
+  const over = await portal(lee, 'recordPayment', { rowIds: [a.rowId], amountCents: fea.cents + 10000, date: fea.date, externalId: fea.id })
+  assert.equal(over.status, 400)
+  assert.match(over.data.error, /more than/)
+  const ok = await portal(lee, 'recordPayment', { rowIds: [a.rowId], amountCents: fea.cents, method: 'Cash', date: fea.date, externalId: fea.id })
+  assert.equal(ok.status, 200, JSON.stringify(ok.data))
+  assert.equal(ok.data.ledger, true)
+  const air = await at()
+  const led = air.ledger.filter((l) => l.fields['Payment ID'] === fea.id)
+  assert.equal(led.length, 1)
+  assert.deepEqual([led[0].fields['Payment Method'], led[0].fields['Payment Date'], led[0].fields['Amount Paid'], led[0].fields['Source Record ID']], ['Bank Transfer', fea.date, fea.cents / 100, a.rowId], 'always a bank transfer, on the bank date')
+  assert.match(led[0].fields.Notes, /Bank transfer matched from Xero/)
+  const row = air.term4.find((r) => r.id === a.rowId).fields
+  assert.deepEqual([row['Term 4 Payment Status'], row['Term 4 Amount Paid']], ['Paid', fea.cents / 100])
+  assert.match(row['Term 4 Notes'], /Bank transfer matched from Xero/)
+  const again = await portal(lee, 'recordPayment', { rowIds: [b.rowId], amountCents: wol.cents, date: fea.date, externalId: fea.id })
+  assert.equal(again.status, 409, 'never twice, even for another player')
+  assert.equal(Number((await at()).term4.find((r) => r.id === b.rowId).fields['Term 4 Amount Paid'] || 0), 0, 'and nothing was written')
+  assert.ok((await portal(lee, 'audit', { limit: 20 })).data.entries.some((e) => e.action === 'payment.record' && e.after?.bank === fea.id))
+  // Recorded by hand instead, as a bank transfer with the same amount within a week: also off the list.
+  assert.equal((await portal(lee, 'recordPayment', { rowIds: [b.rowId], amountCents: wol.cents, method: 'Bank transfer', date: day(3) })).status, 200)
+  await portal(lee, 'money', { fresh: true })
+  bank = await check()
+  assert.ok(!bank.items.some((x) => x.id === fea.id), 'recorded with its id: gone')
+  assert.ok(!bank.items.some((x) => x.id === wol.id), 'recorded by hand: gone')
+  assert.ok(bank.counts.recorded >= 2)
+  // The money page counts the transfer once, as bank transfer money for that player.
+  m = (await portal(lee, 'money', { fresh: true })).data.money
+  const pa = m.players.find((p) => p.rowId === a.rowId)
+  assert.deepEqual([pa.status, pa.receivedCents], ['paid', fea.cents])
+  assert.ok(m.payments.some((x) => x.method === 'Bank transfer' && x.at === fea.date && x.venueId === a.locationId && x.takenCents === fea.cents))
+
+  // Not JFP: hidden, and back again.
+  for (const id of ['', 'BANK-12345678', 'XERO-1']) assert.equal((await portal(lee, 'bankIgnore', { id })).status, 400)
+  assert.equal((await portal(lee, 'bankIgnore', { id: zan.id })).status, 200)
+  bank = await check()
+  assert.ok(!bank.items.some((x) => x.id === zan.id))
+  assert.ok(bank.counts.ignored >= 1)
+  assert.equal((await portal(lee, 'bankUnignore', { id: zan.id })).status, 200)
+  assert.ok((await check()).items.some((x) => x.id === zan.id))
+  // The built portal has the panel.
+  const fs = await import('node:fs')
+  const html = fs.readFileSync(new URL('../dist/jfp-portal/index.html', import.meta.url), 'utf8')
+  const js = fs.readFileSync(new URL(`../dist/${html.match(/<script type="module" src="\/(_astro\/jfp-portal[^"]+\.js)"/)[1]}`, import.meta.url), 'utf8')
+  for (const t of ['bankCheck', 'Bank transfers to check', 'Upload bank statement (CSV)', 'externalId']) assert.ok(js.includes(t), `the built bundle has ${t}`)
+})
+
 console.log(`\n${passed} JFP flow checks passed`)
