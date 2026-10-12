@@ -99,12 +99,14 @@ export async function doNotContact() {
 
 // ---------- the text ----------
 
-export function textFor({ parentName, players, kind, amountCents, payUrl, signInUrl, config, sender = 'Lee' }) {
+export function textFor({ parentName, players, kind, amountCents, payUrl, signInUrl, config, sender = 'Lee', email = '' }) {
   const first = String(parentName || '').trim().split(/\s+/)[0] || 'there'
   const names = players.map((p) => p.name.split(/\s+/)[0])
   const who = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]
   const term = config.term.replace(/\s*\d{4}$/, '')
   const intro = `Hi ${first}, it's ${sender} from Joner Football.`
+  // The sign-in message to every family (Lee's approved wording, 12 Oct 2026).
+  if (kind === 'signin') return `${intro} Please sign in to ${who}'s new JFP account today: jonerfootball.com/jfp-account with ${email} (the email we have on file). No password, just a code. Sessions, term info and payments are all there. Already paid? Ignore the payment part.`
   if (kind === 'pay' && payUrl) return `${intro} ${who}'s ${term} place shows ${formatAud(amountCents)} due on our records. You can pay securely here (card, Apple Pay or Afterpay): ${payUrl} If you have already paid or something looks wrong, just reply and we will sort it.`
   return `${intro} Your new JFP account is ready: sign in with your email to see ${who}'s ${term} sessions and dates. ${signInUrl} Any questions, just reply.`
 }

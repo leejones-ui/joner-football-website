@@ -50,6 +50,7 @@ export async function renderMessages(ui) {
         ${d.isOwner ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${route.verified ? '<button type="button" class="j-btn j-btn-line j-btn-sm" id="ms-unverify">Turn texts off</button>' : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" id="ms-test">Send me a test text</button></div>` : ''}
       </div>
     </div>
+    <div id="ms-campaign"></div>
     ${checkIt.length ? `<div class="j-box j-box-amber" style="margin-bottom:14px"><b>${checkIt.length} message${checkIt.length === 1 ? '' : 's'} to check.</b> The system could not tell if ${checkIt.length === 1 ? 'it' : 'they'} went. Look in Brevo or in Messages on the Mac, then settle it below. Nothing is sent again by itself.</div>` : ''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
       <div class="jp-seg" id="ms-f">${[['pay', `Due on records (${counts.pay})`], ['paid', `Paid (${counts.paid})`], ['noPrice', `No fee set (${counts.noPrice})`], ['notSent', 'Not emailed yet'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${S.filter === v}">${esc(l)}</button>`).join('')}</div>
@@ -78,6 +79,7 @@ export async function renderMessages(ui) {
       <td>${m.status === 'queued' ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-cancel="${esc(m.id)}">Cancel</button>` : ''}${m.status === 'unknown' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-settle="${esc(m.id)}">Settle</button>` : ''}${d.isOwner && m.selfTest && m.status === 'sent' && !route.verified ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-verify="${esc(m.id)}">It arrived</button>` : ''}</td>
     </tr>`).join('') || '<tr><td colspan="6" class="muted">Nothing sent yet.</td></tr>'}
     </tbody></table></div>`
+  drawCampaign(ui, renderMessages)
 
   const again = () => renderMessages(ui)
   view().querySelector('#ms-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { S.filter = b.dataset.f; again() } })
@@ -194,4 +196,63 @@ function confirmAgain(ui, message) {
     wrap.querySelector('[data-no]').addEventListener('click', () => done(false))
     wrap.querySelector('[data-yes]').addEventListener('click', () => done(true))
   })
+}
+
+// The sign-in message to every family (Lee, 12 Oct 2026): prepare drafts for
+// all, show one email and one text exactly, then Lee sends in batches.
+async function drawCampaign(ui, rerender) {
+  const { need, confirmBox } = ui
+  const el = document.getElementById('ms-campaign')
+  if (!el) return
+  const c = await need(await call('campaign'))
+  const e = c.email, t = c.text
+  const any = e.draft + e.sent + e.problem + t.draft + t.queued + t.sent + t.problem
+  el.innerHTML = `<div class="j-card" style="padding:14px 16px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+      <div><b>Sign-in message to every family</b> <span class="muted small">Email + text: sign in with the email on file, see sessions and term info, pay anything left (ignore if paid).</span>
+        <p class="small" style="margin-top:6px">Emails: <b>${e.draft}</b> ready · ${e.sent} sent${e.problem ? ` · <span style="color:var(--j-red)">${e.problem} to check</span>` : ''} &nbsp;|&nbsp; Texts: <b>${t.draft}</b> ready · ${t.queued} waiting for the Mac · ${t.sent} sent${t.problem ? ` · <span style="color:var(--j-red)">${t.problem} to check</span>` : ''}</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="j-btn j-btn-line j-btn-sm" id="mc-prep">${any ? 'Prepare any missing' : 'Prepare for every family'}</button>
+        ${e.draft || t.draft ? '<button type="button" class="j-btn j-btn-line j-btn-sm" id="mc-show">Show exactly what goes</button>' : ''}
+        ${c.isOwner && e.draft ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" id="mc-send-e">Send ${e.draft} emails</button>` : ''}
+        ${c.isOwner && t.draft ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" id="mc-send-t" ${c.route?.verified ? '' : 'disabled title="Verify the text route first"'}>Queue ${t.draft} texts</button>` : ''}
+      </div>
+    </div>
+    ${t.draft && !c.route?.verified ? '<p class="muted small" style="margin-top:6px">Texts wait until the 0404 780 351 test text is verified above.</p>' : ''}
+    <div id="mc-preview" hidden style="margin-top:12px"></div>
+  </div>`
+  document.getElementById('mc-prep')?.addEventListener('click', async (ev) => {
+    const b = ev.currentTarget; b.disabled = true; b.textContent = 'Preparing...'
+    const r = await call('prepareCampaign')
+    if (!r.ok) { b.disabled = false; return toast(r.data.error) }
+    const x = r.data
+    toast(`Ready: ${x.emails} emails, ${x.texts} texts${x.noPhone.length ? `. ${x.noPhone.length} with no usable mobile` : ''}${x.dnc.length ? `. ${x.dnc.length} Do Not Contact left out` : ''}`)
+    rerender(ui)
+  })
+  document.getElementById('mc-show')?.addEventListener('click', () => {
+    const p = document.getElementById('mc-preview')
+    p.hidden = !p.hidden
+    p.innerHTML = `${c.sample.subject ? `<p class="small"><b>Email</b> · Subject: ${esc(c.sample.subject)}</p><iframe title="Email preview" style="width:100%;height:620px;border:1px solid var(--j-line);border-radius:10px;background:#fff" srcdoc="${esc(c.sample.html)}"></iframe>` : ''}
+      ${c.sample.text ? `<p class="small" style="margin-top:12px"><b>Text</b> (${c.sample.text.length} characters)</p><div class="j-box" style="white-space:pre-wrap">${esc(c.sample.text)}</div>` : ''}
+      <p class="muted small" style="margin-top:8px">One family shown. Every family gets the same words with their own name, players and email.</p>`
+  })
+  const sendAll = async (channel, n, b) => {
+    const basis = channel === 'text' ? 'Current JFP family: service message about their place and account (Lee, 12 Oct 2026)' : ''
+    if (!(await confirmBox(channel === 'email'
+      ? `Email <b>${n}</b> families the sign-in message now? Each goes once. Do Not Contact families are left out.`
+      : `Queue <b>${n}</b> texts from your work number? They go between 8am and 8pm, each once. Families who said no to texts or are Do Not Contact are left out.`, { ok: 'Send' }))) return
+    b.disabled = true
+    let sent = 0, queued = 0, skipped = 0, problem = 0
+    for (let i = 0; i < 20; i++) {
+      b.textContent = channel === 'email' ? `Sending... ${sent}` : `Queuing... ${queued}`
+      const r = await call('sendCampaign', { channel, confirm: true, basis })
+      if (!r.ok) { toast(r.data.error || 'Stopped. Nothing is lost: press again.'); break }
+      sent += r.data.sent; queued += r.data.queued; skipped += r.data.skipped.length; problem += r.data.problem
+      if (!r.data.left) break
+    }
+    toast(channel === 'email' ? `Sent ${sent} emails${skipped ? `, ${skipped} left out` : ''}${problem ? `, ${problem} to check` : ''}` : `Queued ${queued} texts${skipped ? `, ${skipped} left out` : ''}`)
+    rerender(ui)
+  }
+  document.getElementById('mc-send-e')?.addEventListener('click', (ev) => sendAll('email', e.draft, ev.currentTarget))
+  document.getElementById('mc-send-t')?.addEventListener('click', (ev) => sendAll('text', t.draft, ev.currentTarget))
 }

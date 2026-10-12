@@ -25,7 +25,7 @@ ok('signed in as admin', (await signIn(lee, 'leejones@jonerfootball.com', 'staff
 const plan = (await lee('/api/jfp-portal-data', { action: 'familyInvites' })).data
 const acct = plan.previews?.account
 ok('there is a sign-in invite preview', Boolean(acct?.html))
-ok('the sign-in invite has no money in it', acct && !/A\$|to pay|Afterpay|Nothing to pay/i.test(acct.html), acct?.subject)
+ok('the sign-in invite has no amounts and no pay link in it', acct && !/A\$\d|\?pay=|Nothing to pay/i.test(acct.html), acct?.subject)
 ok('no em dashes in the invite', acct && !/—/.test(acct.html + acct.subject))
 const owes = plan.list.find((f) => f.kind === 'pay'), unpriced = plan.list.find((f) => f.kind === 'noPrice')
 const targets = [owes, unpriced].filter(Boolean).map((f) => f.email)

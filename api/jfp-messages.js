@@ -34,6 +34,8 @@ export async function stillValid(req, config, m) {
   if (m.selfTest) return { ok: true }
   const now = await familyNow(req, config, m.email)
   if (!now.fam) return { ok: false, why: 'The family no longer holds a Term 4 place.' }
+  // The sign-in message carries no amount or link, so payments moving never make it wrong.
+  if (m.campaign === 'signin') return { ok: true, now }
   if (now.fam.kind !== m.kind) return { ok: false, why: `The family is now "${now.fam.kind}" in the records, not "${m.kind}".` }
   if (m.payreqId) {
     const q = await getPayreq(m.payreqId)
@@ -110,6 +112,123 @@ async function prepare(req, res, principal, config, body) {
   }
   await audit({ by, action: 'message.prepare', target: email, after: { email: emailMsg.id, text: textMsg?.id || '' } })
   return res.status(200).json({ success: true, family: fam, evidence: now.evidence, email: view(emailMsg), text: textMsg ? view(textMsg) : null, phoneProblem: ph.problem })
+}
+
+// ---------- the sign-in message to every family (Lee, 12 Oct 2026) ----------
+// One press drafts an email and a text for every Term 4 family with Lee's
+// approved wording (no amounts, no links but the account page). Sending is a
+// separate press by Lee, in batches, through the same once-only checks.
+const CAMPAIGN = 'signin'
+async function prepareCampaign(req, res, principal, config) {
+  const [plan, msgs, roster, prefs] = await Promise.all([familyPlan(req, config), listMsgs(1000), loadRoster(), getPrefs()])
+  let dnc = null
+  try { dnc = await doNotContact() } catch { return fail(res, 503, 'Could not check Do Not Contact in Airtable. Try again in a minute.') }
+  const signInUrl = `${siteUrl(req)}/jfp-account/`
+  const route = await routeStatus()
+  const by = principal.email
+  const out = { emails: 0, texts: 0, already: 0, noPhone: [], dnc: [], noTexts: [] }
+  let sample = null
+  for (const f of plan.list) {
+    const mine = msgs.filter((m) => m.email === f.email && m.campaign === CAMPAIGN)
+    const live = (ch) => mine.some((m) => m.channel === ch && !['cancelled', 'failed', 'expired'].includes(m.status))
+    const rows = roster.players.filter((r) => f.players.some((p) => p.rowId === r.id))
+    const ph = familyPhone(rows)
+    if (dnc.has(f.email, ph.phone)) { out.dnc.push(f.parent || f.email); continue }
+    const fam = { ...f, kind: CAMPAIGN }
+    if (!live('email')) {
+      const mail = accountInvite({ parentName: f.parent, players: f.players, config, signInUrl, needsWaiver: f.needsWaiver, money: false, email: f.email })
+      const m = newMsg({ channel: 'email', family: fam, content: mail, target: { ref: f.email, hash: sha(f.email) }, by })
+      m.campaign = CAMPAIGN; m.payloadHash = payloadHash(m)
+      await saveMsg(m); out.emails++
+      sample = sample || { subject: mail.subject, html: mail.html }
+    } else out.already++
+    if (live('text')) continue
+    if (!ph.phone) { out.noPhone.push(`${f.parent || f.email}: ${ph.problem || 'no mobile'}`); continue }
+    if (prefs[f.email]?.text === 'no') { out.noTexts.push(f.parent || f.email); continue }
+    const text = textFor({ parentName: f.parent, players: f.players, kind: CAMPAIGN, signInUrl, config, sender: route.senderName || 'Lee', email: f.email })
+    const t = newMsg({ channel: 'text', family: fam, content: { text }, target: { ref: maskPhone(ph.phone), hash: sha(ph.phone) }, route: { id: 'mac', label: route.label || 'Messages on the HQ Mac' }, by })
+    t.campaign = CAMPAIGN; t.payloadHash = payloadHash(t)
+    await saveMsg(t); out.texts++
+    sample = { ...(sample || {}), text: sample?.text || text }
+  }
+  await audit({ by, action: 'message.campaign.prepare', target: CAMPAIGN, after: { emails: out.emails, texts: out.texts } })
+  return res.status(200).json({ success: true, ...out, sample })
+}
+
+function campaignSummary(msgs) {
+  const mine = msgs.filter((m) => m.campaign === CAMPAIGN)
+  const count = (ch, st) => mine.filter((m) => m.channel === ch && (Array.isArray(st) ? st.includes(m.status) : m.status === st)).length
+  const firstDraft = (ch) => mine.find((m) => m.channel === ch && m.status === 'draft')
+  const e = firstDraft('email'), t = firstDraft('text')
+  return {
+    email: { draft: count('email', 'draft'), sent: count('email', ['sent', 'delivered']), problem: count('email', ['failed', 'unknown']) },
+    text: { draft: count('text', 'draft'), queued: count('text', ['queued', 'claimed']), sent: count('text', ['sent', 'delivered']), problem: count('text', ['failed', 'unknown', 'expired']) },
+    sample: { subject: e?.content.subject || '', html: e?.content.html || '', text: t?.content.text || '' },
+  }
+}
+
+// Lee only. Up to 15 per press (the screen keeps pressing until done).
+async function sendCampaign(req, res, principal, config, body) {
+  if (!isOwner(principal)) return fail(res, 403, 'Only Lee sends the sign-in message to every family.')
+  const channel = body.channel === 'text' ? 'text' : body.channel === 'email' ? 'email' : ''
+  if (!channel) return fail(res, 400, 'Email or text?')
+  if (body.confirm !== true) return fail(res, 400, 'Confirm the send.')
+  const route = await routeStatus()
+  if (channel === 'text') {
+    if (!route.verified) return fail(res, 409, 'The text route is not verified yet. Send yourself the test text first.', { code: 'route' })
+    if (String(body.basis || '').trim().length < 3) return fail(res, 400, 'Say why these families can be texted.')
+  }
+  let dnc
+  try { dnc = await doNotContact() } catch { return fail(res, 503, 'Could not check Do Not Contact in Airtable. Try again in a minute.') }
+  const prefs = await getPrefs()
+  const roster = channel === 'text' ? await loadRoster({ fresh: true }) : null
+  const todo = (await listMsgs(1000)).filter((m) => m.campaign === CAMPAIGN && m.channel === channel && m.status === 'draft').slice(0, 15)
+  const done = { sent: 0, queued: 0, skipped: [], problem: 0 }
+  for (const m of todo) {
+    const check = await stillValid(req, config, m)
+    if (!check.ok) { m.status = 'cancelled'; event(m, principal.email, 'cancelled at send', { why: check.why }); await saveMsg(m); done.skipped.push(`${m.parentName}: ${check.why}`); continue }
+    if (channel === 'email') {
+      if (dnc.has(m.email, '')) { m.status = 'cancelled'; event(m, principal.email, 'cancelled: Do Not Contact'); await saveMsg(m); done.skipped.push(`${m.parentName}: Do Not Contact`); continue }
+      if (!(await claim(m.id, 120))) continue
+      m.status = 'sending'; m.approvedBy = principal.email; m.approvedAt = new Date().toISOString(); m.leaseUntil = new Date(Date.now() + 120000).toISOString()
+      event(m, principal.email, 'approved with the sign-in message to every family, sending')
+      await saveMsg(m)
+      try {
+        const r = await sendEmailExact({ to: m.email, name: m.parentName, subject: m.content.subject, html: m.content.html })
+        m.status = 'sent'; m.receipt = { provider: 'brevo', messageId: r.messageId || '', at: new Date().toISOString() }
+        event(m, 'brevo', 'accepted by Brevo', { messageId: r.messageId || '' })
+        await kvCommand(['HSET', 'jfp:acct-only-invited', m.email, m.receipt.at])
+        done.sent++
+      } catch (error) {
+        m.status = error.definite ? 'failed' : 'unknown'; done.problem++
+        event(m, 'brevo', error.definite ? 'Brevo refused it: not sent' : 'no clear answer from Brevo: check Brevo before sending again', { error: String(error.message).slice(0, 200) })
+      }
+      m.leaseUntil = ''
+      await saveMsg(m)
+      continue
+    }
+    // A text: the same checks as one approved by hand, then queued for the Mac.
+    const ph = familyPhone(roster.players.filter((r) => m.rowIds.includes(r.id)))
+    if (!ph.phone || sha(ph.phone) !== m.target.hash) { m.status = 'cancelled'; event(m, principal.email, 'cancelled: the mobile in Airtable changed'); await saveMsg(m); done.skipped.push(`${m.parentName}: mobile changed`); continue }
+    if (dnc.has(m.email, ph.phone) || prefs[m.email]?.text === 'no') { m.status = 'cancelled'; event(m, principal.email, 'cancelled: no texts for this family'); await saveMsg(m); done.skipped.push(`${m.parentName}: no texts`); continue }
+    m.status = 'queued'; m.approvedBy = principal.email; m.approvedAt = new Date().toISOString()
+    m.expiresAt = new Date(Date.now() + TEXT_EXPIRES_HOURS * 3600000).toISOString()
+    m.route = { ...(m.route || {}), label: route.label || m.route?.label, sender: route.sender || '' }
+    event(m, principal.email, 'approved with the sign-in message to every family: waiting for the Mac', { basis: clean(body.basis, 200), displayedSender: route.sender || '' })
+    await saveMsg(m)
+    done.queued++
+  }
+  const left = (await listMsgs(1000)).filter((m) => m.campaign === CAMPAIGN && m.channel === channel && m.status === 'draft').length
+  await audit({ by: principal.email, action: `message.campaign.${channel}`, target: CAMPAIGN, after: { sent: done.sent, queued: done.queued, skipped: done.skipped.length, problem: done.problem } })
+  return res.status(200).json({ success: true, ...done, left })
+}
+
+async function cancelCampaign(res, principal, body) {
+  const channel = body.channel === 'text' ? 'text' : 'email'
+  let n = 0
+  for (const m of (await listMsgs(1000)).filter((x) => x.campaign === CAMPAIGN && x.channel === channel && x.status === 'draft')) { m.status = 'cancelled'; event(m, principal.email, 'cancelled: sign-in message drafts cleared'); await saveMsg(m); n++ }
+  await audit({ by: principal.email, action: `message.campaign.cancel.${channel}`, target: CAMPAIGN, after: { n } })
+  return res.status(200).json({ success: true, cancelled: n })
 }
 
 async function editText(res, principal, body) {
@@ -290,6 +409,10 @@ export default async function handler(req, res) {
     const action = clean(body.action, 30)
     if (action === 'overview') return res.status(200).json({ ...(await overview(req, config)), isOwner: isOwner(principal), me: principal.email })
     if (action === 'prepare') return await prepare(req, res, principal, config, body)
+    if (action === 'campaign') return res.status(200).json({ success: true, ...campaignSummary(await listMsgs(1000)), route: await routeStatus(), isOwner: isOwner(principal) })
+    if (action === 'prepareCampaign') return await prepareCampaign(req, res, principal, config)
+    if (action === 'sendCampaign') return await sendCampaign(req, res, principal, config, body)
+    if (action === 'cancelCampaign') return await cancelCampaign(res, principal, body)
     if (action === 'get') { const m = await getMsg(body.id); return m ? res.status(200).json({ success: true, message: view(m) }) : fail(res, 404, 'Message not found.') }
     if (action === 'editText') return await editText(res, principal, body)
     if (action === 'approve') return await approve(req, res, principal, config, body)

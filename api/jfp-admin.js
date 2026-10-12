@@ -2,8 +2,9 @@
 // READ-ONLY views for Lee's agent (money and requests). It cannot change
 // players, payments, messages or Airtable.
 import crypto from 'node:crypto'
-import { moneyData } from './jfp-portal-data.js'
-import { listGroups, listApplications, listPayreqs, validateGroup, getConfig, saveConfig, audit, REQUIREMENTS, clean, kvCommand, keys, normaliseStoredGroup } from './_jfp-store.js'
+import { moneyData, createPayreq } from './jfp-portal-data.js'
+import { getTerm4Row } from './_jfp-airtable.js'
+import { listGroups, getGroup, listApplications, listPayreqs, validateGroup, getConfig, saveConfig, audit, REQUIREMENTS, clean, kvCommand, keys, normaliseStoredGroup } from './_jfp-store.js'
 
 // Compare every original row before writing anything. Criteria and audit records
 // commit together; preserve every other stored field, including unknown fields.
@@ -79,6 +80,36 @@ export default async function handler(req, res) {
     }
     let body
     try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body } catch { return fail(res, 400, 'Invalid JSON.') }
+    // A Pay button on the family account page for rows Lee named (12 Oct 2026):
+    // one open payment per family for what Airtable says is still owing. No
+    // email is sent; families see it when they sign in.
+    if (body && typeof body === 'object' && !Array.isArray(body) && body.action === 'raisePayments') {
+      if (Object.keys(body).some(k => !['action', 'rowIds'].includes(k))) return fail(res, 400, 'Only rowIds are accepted.')
+      const ids = [...new Set((Array.isArray(body.rowIds) ? body.rowIds : []).filter(x => /^rec[A-Za-z0-9]{14}$/.test(x)))].slice(0, 60)
+      if (!ids.length) return fail(res, 400, 'Send rowIds.')
+      const config = await getConfig()
+      const open = (await listPayreqs()).filter(q => ['open', 'checkout'].includes(q.status))
+      const fams = new Map()
+      const skipped = []
+      for (const id of ids) {
+        const r = await getTerm4Row(id)
+        if (!r) { skipped.push({ id, why: 'row not found' }); continue }
+        const owe = /^paid$/i.test(r.paymentStatus || '') ? 0 : Math.round(((r.feeAud || 0) - (r.paidAud || 0)) * 100)
+        if (!(r.feeAud > 0) || owe <= 0) { skipped.push({ id, player: r.player, why: 'nothing owing on the row' }); continue }
+        if (!r.email) { skipped.push({ id, player: r.player, why: 'no parent email' }); continue }
+        if (open.some(q => q.term4Ids.includes(r.id))) { skipped.push({ id, player: r.player, why: 'already has an open payment' }); continue }
+        fams.set(r.email, [...(fams.get(r.email) || []), { r, owe }])
+      }
+      commitAttempted = true
+      const made = []
+      for (const [email, rows] of fams) {
+        const group = rows[0].r.groupId ? await getGroup(rows[0].r.groupId) : null
+        const q = await createPayreq({ req, principal: { email: 'jfp-admin (shared admin token)', name: 'Lee' }, config, group, rows: rows.map(x => ({ id: x.r.id, name: x.r.player })), email, parentName: rows[0].r.parent, amountCents: rows.reduce((t, x) => t + x.owe, 0), reason: 'balance', afterpay: true })
+        await audit({ by: 'jfp-admin (shared admin token)', action: 'payreq.raise', target: q.id, after: { email, players: q.playerNames, cents: q.amountCents } })
+        made.push({ id: q.id, players: q.playerNames, cents: q.amountCents })
+      }
+      return res.status(200).json({ success: true, made, skipped })
+    }
     if (body && typeof body === 'object' && !Array.isArray(body) && body.action === 'setKit') {
       if (Object.keys(body).some(k => !['action', 'kitPriceLabel'].includes(k))) return fail(res, 400, 'Only kitPriceLabel is accepted.')
       const label = typeof body.kitPriceLabel === 'string' ? body.kitPriceLabel.trim() : ''

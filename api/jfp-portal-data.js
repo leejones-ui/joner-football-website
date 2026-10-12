@@ -1384,7 +1384,7 @@ async function familyInvites(req, res, principal, config, body) {
   if (body.send !== true) {
     const pay = plan.list.find((f) => f.kind === 'pay'), paid = plan.list.find((f) => f.kind === 'paid')
     const one = plan.list.find((f) => f.players.length === 1) || plan.list[0]
-    return res.status(200).json({ success: true, ...plan, previews: { pay: pay ? sample(pay) : null, paid: paid ? sample(paid) : null, account: one ? accountInvite({ parentName: one.parent, players: one.players, config, signInUrl, needsWaiver: one.needsWaiver, money: false }) : null } })
+    return res.status(200).json({ success: true, ...plan, previews: { pay: pay ? sample(pay) : null, paid: paid ? sample(paid) : null, account: one ? accountInvite({ parentName: one.parent, players: one.players, config, signInUrl, needsWaiver: one.needsWaiver, money: false, email: one.email }) : null } })
   }
   // Account only: every family with an email, paid or not, no amounts. Skips
   // anyone who has already signed in, and anyone already sent this one unless resend.
@@ -1396,7 +1396,7 @@ async function familyInvites(req, res, principal, config, body) {
       // One claim per family per 10 minutes: a double click or two staff never email twice.
       if ((await kvCommand(['SET', `jfp:acct-only-lock:${f.email}`, '1', 'NX', 'EX', '600'])) !== 'OK') continue
       try {
-        await sendAccountInvite({ to: f.email, parentName: f.parent, players: f.players, config, signInUrl, needsWaiver: f.needsWaiver, money: false })
+        await sendAccountInvite({ to: f.email, parentName: f.parent, players: f.players, config, signInUrl, needsWaiver: f.needsWaiver, money: false, email: f.email })
         await kvCommand(['HSET', 'jfp:acct-only-invited', f.email, new Date().toISOString()])
         sent.push(f.email)
       } catch (error) { console.error('jfp account invite failed', f.email, error); failed.push(f.email); await kvCommand(['DEL', `jfp:acct-only-lock:${f.email}`]) }
