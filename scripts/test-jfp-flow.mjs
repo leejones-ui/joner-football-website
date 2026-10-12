@@ -1245,10 +1245,10 @@ await test('venues: revenue by venue adds up to income this term; the term befor
   assert.equal(hq3.juniors.paidCents, 44000)
   assert.ok(past.players.some((p) => p.player === 'Riley Returning' && p.receivedCents === 85000))
   // Any term: the list runs newest first; older terms come from the Money Register copy.
-  assert.deepEqual(m.venueTerms, ['Term 4 2026', 'Term 3 2026', 'Term 2 2026', 'Term 1 2024'])
+  assert.deepEqual(m.venueTerms, ['Term 4 2026', 'Term 3 2026', 'Term 2 2026', 'Term 1 2026', 'Term 4 2025', 'Term 3 2025', 'Term 2 2025', 'Term 1 2025', 'Term 1 2024'])
   const t2 = (await portal(lee, 'venues', { term: 'Term 2 2026' })).data.venues
   assert.equal(t2.source, 'register')
-  assert.deepEqual([t2.venues.find((l) => l.name === 'Belrose HQ').receivedCents, t2.venues.find((l) => l.name === 'Rydalmere Park').bankCents, t2.register['belrose hq']], [779500, 1939600, 900000])
+  assert.deepEqual([t2.venues.find((l) => l.name === 'Belrose HQ').receivedCents, t2.venues.find((l) => l.name === 'Rydalmere Park').bankCents, t2.register['belrose hq']], [612000, 1530000, 900000])
   assert.equal((await portal(lee, 'venues', { term: 'Term 3 2026' })).data.venues.source, 'ledger')
   assert.equal((await portal(lee, 'venues', { term: 'Term 9 1999' })).status, 404)
   const sam = client()
@@ -1693,6 +1693,85 @@ await test('money: a Stripe day is the Sydney day, part paid in Stripe still owe
   const none = m.locations.find((l) => l.id === 'other')
   if (none) assert.equal(none.canCost, false)
   assert.equal((await portal(lee, 'saveVenueCosts', { venueId: 'other', lines: [{ label: 'Field hire', cents: 1000 }] })).status, 400)
+})
+
+await test('money by year: this term live, the term before from its ledger, older terms from the register; adds up, typed totals used and flagged, the year before compared; coaches never see it', async () => {
+  const sum = (list, f) => list.reduce((t, x) => t + (f(x) || 0), 0)
+  const m = (await portal(lee, 'money', { fresh: true })).data.money
+  const r = await portal(lee, 'moneyYear', { year: 2026, fresh: true })
+  assert.equal(r.status, 200, JSON.stringify(r.data))
+  const y = r.data.year
+  const all = y.scopes['']
+  assert.deepEqual(y.years, [2026, 2025, 2024])
+  assert.deepEqual(y.terms, m.venueTerms)
+  assert.deepEqual(all.perTerm.map((t) => [t.term, t.source, t.current]), [['Term 1 2026', 'register', false], ['Term 2 2026', 'register', false], ['Term 3 2026', 'ledger', false], ['Term 4 2026', 'live', true]])
+  // This term is the Money tab's own figure; the term before is the venue window's.
+  const now = all.perTerm[3]
+  assert.deepEqual([now.takenCents, now.keptCents, now.stripeFeeCents, now.unlinkedCents], [m.kpis.incomeCents, m.kpis.netIncomeCents, m.kpis.stripeFeesCents, m.kpis.unlinkedCents])
+  const t3 = (await portal(lee, 'venues', { term: 'Term 3 2026' })).data.venues
+  assert.deepEqual([all.perTerm[2].takenCents, all.perTerm[2].stripeFeeCents, all.perTerm[2].keptCents, all.perTerm[2].unlinkedCents], [t3.incomeCents, t3.stripeFeesCents, t3.netIncomeCents, t3.unlinked.cents])
+  // Terms add up to the year; venues and money not on a venue add up to each term.
+  assert.equal(all.takenCents, sum(all.perTerm, (t) => t.takenCents))
+  for (const t of all.perTerm) assert.equal(sum(y.venues, (v) => y.scopes[v.id].perTerm.find((x) => x.n === t.n).takenCents) + t.unlinkedCents + t.registerGapCents, t.takenCents, `${t.term} adds up`)
+  for (const v of y.venues) assert.equal(y.scopes[v.id].takenCents, sum(y.scopes[v.id].perTerm, (t) => t.takenCents), `${v.name}'s year adds up`)
+  // Term 1 2026: the typed total matches. Term 2 2026: HQ typed A$9,000, A$6,120 listed.
+  assert.deepEqual([all.perTerm[0].registerCents, all.perTerm[0].listedCents], [637500, 637500])
+  assert.deepEqual(all.differences.map((d) => [d.term, d.scope, d.registerCents, d.listedCents]), [['Term 2 2026', 'belrose', 900000, 612000]])
+  assert.deepEqual([all.feeTerms, all.noFeeTerms], [['Term 3 2026', 'Term 4 2026'], ['Term 1 2026', 'Term 2 2026']])
+  assert.equal(all.keptCents, all.perTerm[2].keptCents + now.keptCents)
+  assert.deepEqual([all.compare.terms, all.compare.running, all.compare.previousYear], [[1, 2, 3], ['Term 4 2026'], 2025])
+  assert.equal(all.compare.thisCents, sum(all.perTerm.slice(0, 3), (t) => t.takenCents))
+  assert.deepEqual([y.soFar, y.current], [true, 'Term 4 2026'])
+  // 2025: every term from the register, typed totals where Lee typed them.
+  const y25 = (await portal(lee, 'moneyYear', { year: 2025 })).data.year
+  assert.deepEqual(y25.scopes[''].perTerm.map((t) => [t.term, t.takenCents, t.listedCents]), [['Term 1 2025', 1213500, 1213500], ['Term 2 2025', 875000, 850000], ['Term 3 2025', 725000, 680000], ['Term 4 2025', 850000, 850000]])
+  assert.equal(y25.scopes[''].takenCents, 3663500)
+  assert.deepEqual(y25.scopes[''].differences.map((d) => [d.term, d.scope, d.diffCents]), [['Term 2 2025', 'all', 25000], ['Term 3 2025', 'fields', 45000], ['Term 3 2025', 'all', 45000]])
+  assert.deepEqual([y25.scopes[''].keptCents, y25.scopes[''].noFeeTerms.length], [null, 4], 'no Stripe fees in the register')
+  assert.deepEqual([y25.scopes[''].compare.terms, y25.scopes[''].compare.allTerms, y25.scopes[''].compare.thisCents], [[1], false, 1213500], 'only Term 1 is in both 2025 and 2024')
+  assert.equal(y25.scopes[''].juniorsCents, 66000, 'Joners Juniors as the register has it, under HQ')
+  const y24 = (await portal(lee, 'moneyYear', { year: 2024 })).data.year
+  assert.deepEqual([y24.partial, y24.missing, y24.scopes[''].compare.none, y24.scopes[''].takenCents], [true, ['Term 2 2024', 'Term 3 2024', 'Term 4 2024'], 'nodata', 640000])
+  // Kept for 10 minutes; fresh adds it up again.
+  assert.equal((await portal(lee, 'moneyYear', { year: 2026 })).data.year.at, y.at)
+  assert.notEqual((await portal(lee, 'moneyYear', { year: 2026, fresh: true })).data.year.at, y.at)
+  assert.equal((await portal(lee, 'moneyYear', { year: 2019 })).status, 404, 'a year with no figures')
+  assert.equal((await portal(lee, 'moneyYear', { year: 'last year' })).status, 400)
+  const sam = client()
+  await signIn(sam, 'jonerfootballsam@gmail.com', 'staff')
+  assert.equal((await portal(sam, 'moneyYear', { year: 2026 })).status, 403, 'coaches never see money by year')
+  // An earlier term for the Money tab: payments counted, Lee's typed totals checked.
+  const t2 = (await portal(lee, 'venues', { term: 'Term 2 2026' })).data.venues
+  assert.deepEqual([t2.paymentsCount, t2.hqId], [27, 'belrose'])
+  assert.deepEqual(t2.registerChecks, [{ scope: 'belrose', venueIds: ['belrose'], registerCents: 900000, listedCents: 612000, diffCents: 288000 }])
+  assert.deepEqual(t2.venues.find((v) => v.id === 'belrose').groups.map((g) => [g.label, g.payments, g.bankCents, g.cashCents]), [['Monday Afternoon (HQ)', 9, 400000, 212000]])
+  assert.deepEqual([t3.paymentsCount, t3.unlinkedByKind.cash, t3.unlinked], [3, 30000, { cents: 30000, count: 1 }])
+  assert.equal(sum(t3.venues, (v) => v.payments), 2)
+  // The pages, drawn from these answers in jsdom.
+  const { openPortal } = await import('./jfp-portal-dom.mjs')
+  const { money: aud } = await import('../src/scripts/jfp-common.js')
+  const answer = (b) => (b.action === 'moneyYear' ? { success: true, year: b.year === 2025 ? y25 : y } : b.action === 'venues' ? { success: true, venues: b.term === 'Term 2 2026' ? t2 : t3 } : null)
+  let page = await openPortal({ money: m, hash: '#money?year=2026', onPost: answer })
+  assert.equal(page.text('#y-taken'), aud(all.takenCents))
+  assert.match(page.text('#y-compare'), /^Terms 1 to 3: (up|down) .* on the same terms of 2025\.$/)
+  assert.equal(page.d.querySelectorAll('#y-terms tbody tr[data-term]').length, 4)
+  assert.equal(page.text('#y-venues tr.jv-total td:last-child'), aud(all.takenCents))
+  await page.click('#y-terms [data-open-term="Term 2 2026"]')
+  assert.equal(page.w.location.hash, '#money?term=Term%202%202026')
+  assert.equal(page.text('#m-taken'), aud(t2.incomeCents))
+  assert.match(page.text('#m-register'), /Your register says A\$9,000 for Belrose HQ, the payments listed add up to A\$6,120\./)
+  assert.equal(page.$('[data-record]'), null)
+  assert.deepEqual(page.errors, [])
+  page.close()
+  page = await openPortal({ money: m, hash: '#money?term=Term%203%202026', onPost: answer })
+  assert.equal(page.text('#m-sum'), `Kept after Stripe fees ${aud(t3.netIncomeCents)} · Stripe fees ${aud(t3.stripeFeesCents)}`)
+  assert.deepEqual(page.errors, [])
+  page.close()
+  // The built portal carries the new views.
+  const fs = await import('node:fs')
+  const html = fs.readFileSync(new URL('../dist/jfp-portal/index.html', import.meta.url), 'utf8')
+  const js = fs.readFileSync(new URL(`../dist/${html.match(/<script type="module" src="\/(_astro\/jfp-portal[^"]+\.js)"/)[1]}`, import.meta.url), 'utf8')
+  for (const t of ['moneyYear', 'm-show', 'whole year', 'this term', 'Your register says']) assert.ok(js.includes(t), `the built bundle has ${t}`)
 })
 
 console.log(`\n${passed} JFP flow checks passed`)

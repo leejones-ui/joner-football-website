@@ -35,6 +35,7 @@ import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
 import { matchBank, cleanItem, csvIds, EXTERNAL_ID, BANK_LIMITS, twinOf, looksJfp, feeSizes } from './_jfp-bank-match.js'
 import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
+import { registerChecks, yearsOf, termsOfYear, termFromLive, termFromLedger, termFromRegister, yearSummary } from './_jfp-years.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -1021,7 +1022,9 @@ async function pastVenues(config, asked) {
     const history = await listVenueHistory()
     if (!history.some((r) => r.term === asked)) return null
     const out = venuesFromHistory({ locations: config.locations, rows: history, term: asked, venueOf: (r) => venueNamed(locationFor(config, r.venue || '')) })
-    return pastCosts(config, { term: asked, source: 'register', netIncomeCents: null, ...out })
+    // Lee's typed totals (HQ, the fields, the term) beside the payments listed.
+    const hqId = locationFor(config, 'Belrose HQ').id
+    return pastCosts(config, { term: asked, source: 'register', netIncomeCents: null, ...out, hqId, registerChecks: registerChecks({ register: out.register, venues: out.venues, listedCents: out.incomeCents, hqId }) })
   }
   const term = previous
   const [roster, ledger, juniors] = await Promise.all([loadRoster(), listLedger(term).catch(() => []), listJuniors().catch(() => [])])
@@ -1041,6 +1044,38 @@ function pastCosts(config, v) {
   v.venues = v.venues.map((x) => withCosts(x, costs[x.id]))
   const lastTerm = previousTerm(v.term)
   return { ...v, ...costTotals(v.venues, v.netIncomeCents ?? v.incomeCents), profitBeforeFees: v.netIncomeCents == null, venueCostsLast: { term: lastTerm, byVenue: costsOfTerm(config.venueCosts, lastTerm) } }
+}
+
+// ---------- money by year (Lee, 12 Oct 2026) ----------
+// A whole year on Money: this term from moneyData (live), earlier terms from
+// pastVenues (the ledger, then the Money Register copy), added up by
+// _jfp-years with the year before for the comparison. Kept in KV for 10
+// minutes per year; fresh reads everything again. Never kept when Stripe
+// could not be read, so the next look tries again.
+const YEAR_SECONDS = 600
+const yearKey = (config, year) => `jfp:money-year:v1:${config.term}:${year}`
+async function termsForYear(config, terms, year, { fresh }) {
+  const out = []
+  for (const t of termsOfYear(terms, year)) {
+    if (t === config.term) { out.push(termFromLive(await moneyData(config, { fresh }))); continue }
+    const v = await pastVenues(config, t)
+    if (v) out.push(v.source === 'register' ? termFromRegister(v) : termFromLedger(v))
+  }
+  return out
+}
+export async function moneyYear(config, year, { fresh = false } = {}) {
+  if (!fresh) {
+    const hit = await kvGetJson(yearKey(config, year)).catch(() => null)
+    if (hit?.year === year) return hit
+  }
+  const history = await listVenueHistory().catch(() => [])
+  const terms = venueTerms({ current: config.term, previous: previousTerm(config.term), history })
+  const years = yearsOf(terms)
+  if (!years.includes(year)) return null
+  const [mine, before] = await Promise.all([termsForYear(config, terms, year, { fresh }), years.includes(year - 1) ? termsForYear(config, terms, year - 1, { fresh }) : []])
+  const out = { ...yearSummary({ year, terms: mine, before }), years, terms, term: config.term, at: new Date().toISOString() }
+  if (!out.sources.some((s) => s.error)) await kvSetJson(yearKey(config, year), out, YEAR_SECONDS).catch(() => {})
+  return out
 }
 
 // Lee's costs for one venue in one term. An empty list clears them.
@@ -2215,6 +2250,13 @@ async function handle(req, res) {
       case 'venues': {
         const v = await pastVenues(config, clean(body.term, 30))
         return v ? res.status(200).json({ success: true, venues: v }) : fail(res, 404, 'No figures for that term.')
+      }
+      // A whole year on Money (Lee, 12 Oct 2026): every term of it, by venue.
+      case 'moneyYear': {
+        const year = Number(body.year)
+        if (!Number.isInteger(year) || year < 2000 || year > 2100) return fail(res, 400, 'Pick a year, like 2025.')
+        const y = await moneyYear(config, year, { fresh: body.fresh === true })
+        return y ? res.status(200).json({ success: true, year: y }) : fail(res, 404, 'No figures for that year.')
       }
       case 'playerPayments': {
         const d = await playerPayments(config, clean(body.rowId, 30))

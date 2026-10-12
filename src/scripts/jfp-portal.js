@@ -7,6 +7,7 @@ import { renderMessages } from './jfp-portal-messages.js'
 import { renderJuniorsMoney, programmeSwitch, bindSwitch, juniorsCardShell, fillJuniorsCard } from './jfp-portal-juniors.js'
 import { drawFamilies, sessionModal } from './jfp-portal-family.js'
 import { bankPanel, bindBank, loadBank, bankDone } from './jfp-portal-bank.js'
+import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYearChart } from './jfp-portal-years.js'
 
 // jf: the Money programme switch and the Joners Juniors filters.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', pricing: null }
@@ -80,10 +81,12 @@ function start() {
   $('me-ini').textContent = P.user.name.replace(/^Coach\s+/, '').split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2).toUpperCase()
   // A Money link can carry the programme and term: #money?programme=juniors&term=Term%204%202026
   // or one venue: #money?loc=ntra
+  // or an earlier JFP term or a whole year: #money?term=Term%203%202026, #money?year=2025
   const [hash, query] = location.hash.slice(1).split('?')
   const qp = new URLSearchParams(query || '')
   if (hash === 'money' && qp.get('programme') === 'juniors') Object.assign(P.jf, { programme: 'juniors', term: qp.get('term') || '' })
   if (hash === 'money' && qp.get('loc')) P.moneyFilter = { ...(P.moneyFilter || {}), loc: qp.get('loc') }
+  if (hash === 'money' && qp.get('programme') !== 'juniors' && (qp.get('year') || qp.get('term'))) P.moneyFilter = { ...(P.moneyFilter || {}), year: /^\d{4}$/.test(qp.get('year') || '') ? qp.get('year') : '', term: qp.get('year') ? '' : (qp.get('term') || '').slice(0, 30) }
   go(tabs().some(([k]) => k === hash) ? hash : tabs()[0][0])
 }
 
@@ -1315,13 +1318,14 @@ window.addEventListener('resize', () => {
   resizeTimer = setTimeout(() => {
     if (P.tab === 'overview' && P.money && $('c-weekly')) { weeklyChart($('c-weekly'), P.money.weekly, false); locationChart($('c-locs'), P.money.locations, false) }
     if (P.tab === 'money' && P.money && $('m-weekly')) { const s = moneyScope(P.money, P.moneyFilter?.loc || ''); weeklyChart($('m-weekly'), s.weekly, false, emptyWeekly(s)) }
+    if (P.tab === 'money' && $('y-chart')) redrawYearChart()
   }, 150)
 })
 document.addEventListener('click', (e) => {
   const f = e.target.closest('[data-money-filter]')
   if (!f) return
-  // The dashboard counts every venue, so the list it opens does too.
-  P.moneyFilter = { ...(P.moneyFilter || {}), status: f.dataset.moneyFilter, loc: '' }
+  // The dashboard counts every venue, so the list it opens does too, and it is this term's.
+  P.moneyFilter = { ...(P.moneyFilter || {}), status: f.dataset.moneyFilter, loc: '', term: '', year: '' }
   P.jf.programme = 'jfp'
   go('money')
 })
@@ -1478,7 +1482,11 @@ async function venueModal(id, term = '') {
     if (now) {
       const r = await post('money', { quick: true })
       if (r.ok) { P.money = r.data.money; if (P.tab === 'money') renderMoney(P.money); else if (P.tab === 'overview') renderOverview(true) }
-    } else delete P.venueCache[term]
+    } else {
+      delete P.venueCache[term]
+      // Money showing that term picks up the new costs too.
+      if (P.tab === 'money' && P.moneyFilter?.term === term) renderMoney()
+    }
     venueModal(id, term)
   } })
   // A player in the lists opens their payments, like a row in the Money table.
@@ -1750,19 +1758,86 @@ function saveFile(name, text, type = 'text/csv;charset=utf-8') {
 }
 const downloadMoney = (m, s) => saveFile(`jfp-money-${slug(m.term)}-${s.id || 'all'}.csv`, moneyCsv(m, s))
 
+// ---------- money: an earlier term or a whole year (12 Oct 2026) ----------
+// Money remembers what it shows in P.moneyFilter: this term, an earlier term
+// (term) or a whole year (year), and the venue picked (loc). The views
+// themselves are in jfp-portal-years.js.
+
+function moneyHash(f) {
+  const q = [f.year ? ['year', f.year] : f.term ? ['term', f.term] : null, f.loc ? ['loc', f.loc] : null].filter(Boolean)
+  return q.length ? `#money?${q.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')}` : '#money'
+}
+// An earlier term: the same figures as the venue window, read once a session.
+async function pastTermData(term) {
+  P.venueCache = P.venueCache || {}
+  if (!P.venueCache[term]) {
+    const r = await post('venues', { term })
+    if (r.status === 404) return null
+    P.venueCache[term] = (await need(r)).venues
+  }
+  return P.venueCache[term]
+}
+// A year is added up on the server (and kept there for 10 minutes). Here it is
+// kept for 2 minutes, so the two minute refresh redraws it without asking.
+async function moneyYearData(year, { fresh = false } = {}) {
+  P.yearCache = P.yearCache || {}
+  const hit = P.yearCache[year]
+  if (!fresh && hit && Date.now() - hit.got < 120000) return hit.data
+  const r = await post('moneyYear', { year, ...(fresh ? { fresh: true } : {}) })
+  if (r.status === 404) return null
+  const data = (await need(r)).year
+  P.yearCache[year] = { data, got: Date.now() }
+  return data
+}
+function yearsUi(terms, current, seq, animate) {
+  return {
+    view, post, toast, filter: P.moneyFilter, terms, current, animate,
+    programmeSwitch: programmeSwitch('jfp'), bindSwitch: () => bindSwitch(juniorsUi()),
+    render: () => renderMoney(), setHash: () => { if (P.tab === 'money') history.replaceState(null, '', moneyHash(P.moneyFilter)) },
+    // The page moved on while this was loading.
+    stale: () => P.tab !== 'money' || P.moneySeq !== seq || P.jf.programme !== 'jfp',
+    cssVar, bindTips, compact, niceMax, saveFile, csvCell, slug, keepFolds, isOpen,
+    pastTerm: pastTermData, yearData: moneyYearData,
+  }
+}
+async function renderLookBack(pre, seq) {
+  const f = P.moneyFilter
+  if (pre) P.money = pre
+  if (!P.money) {
+    view().innerHTML = '<p class="muted">Loading</p>'
+    P.money = (await need(await post('money', { quick: true }))).money
+  }
+  if (seq !== P.moneySeq) return
+  const m = P.money
+  const terms = m.venueTerms?.length ? m.venueTerms : [m.term]
+  // A link to this term is today's view; a term or year with no figures falls back to it.
+  if (f.term === m.term) f.term = ''
+  if (f.term && !terms.includes(f.term)) { toast(`No figures for ${f.term}. Showing this term.`); f.term = '' }
+  if (f.year && !terms.some((t) => t.endsWith(` ${f.year}`))) { toast(`No figures for ${f.year}. Showing this term.`); f.year = '' }
+  if (!f.term && !f.year) return renderMoney()
+  // The chart grows in the first time a view is drawn, not on every two minute refresh.
+  const key = f.year ? `year:${f.year}` : `term:${f.term}`
+  const ui = yearsUi(terms, m.term, seq, P.lookKey !== key)
+  P.lookKey = key
+  return f.year ? renderMoneyYear(ui) : renderPastTerm(ui)
+}
+
 async function renderMoney(pre) {
   if (P.jf.programme === 'juniors') return renderJuniorsMoney(juniorsUi())
+  P.moneyFilter = { status: '', q: '', loc: '', view: 'players', term: '', year: '', ...(P.moneyFilter || {}) }
+  const seq = (P.moneySeq = (P.moneySeq || 0) + 1)
+  if (P.moneyFilter.term || P.moneyFilter.year) return renderLookBack(pre, seq)
+  P.lookKey = ''
   const r = pre ? { money: pre } : await need(await post('money', { quick: true }))
   if (!pre) laterMoney('money', (fresh) => renderMoney(fresh))
   P.money = r.money
   const m = P.money
-  P.moneyFilter = { status: '', q: '', loc: '', view: 'players', ...(P.moneyFilter || {}) }
   const f = P.moneyFilter
   if (f.loc && !m.locations.some((l) => l.id === f.loc)) f.loc = ''
-  const setHash = () => { if (P.tab === 'money') history.replaceState(null, '', f.loc ? `#money?loc=${encodeURIComponent(f.loc)}` : '#money') }
+  const setHash = () => { if (P.tab === 'money') history.replaceState(null, '', moneyHash(f)) }
   view().innerHTML = `
     <div class="jd-head"><div><h1>Money</h1><p>Every player's payments: Stripe read live, plus the bank transfers and cash you record here.</p></div>
-      <div class="jd-sync">${programmeSwitch('jfp')}<label class="muted small" for="m-since">Term payments from</label><input class="j-input" type="date" id="m-since" value="${esc(m.since)}" style="width:auto;padding:7px 10px;font-size:13.5px"><button type="button" class="j-btn j-btn-line j-btn-sm" id="m-refresh">Refresh from Stripe</button><button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-add">+ Add a player</button></div></div>
+      <div class="jd-sync">${programmeSwitch('jfp')}${showingPicker(m.venueTerms?.length ? m.venueTerms : [m.term], m.term, f)}<label class="muted small" for="m-since">Term payments from</label><input class="j-input" type="date" id="m-since" value="${esc(m.since)}" style="width:auto;padding:7px 10px;font-size:13.5px"><button type="button" class="j-btn j-btn-line j-btn-sm" id="m-refresh">Refresh from Stripe</button><button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-add">+ Add a player</button></div></div>
     <p class="muted small" style="margin:-4px 0 10px">Read from Airtable and Stripe at ${esc(new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}. Recording a payment here writes the player's row and the payment ledger in Airtable; anything changed in Airtable shows here when you open this tab or refresh.</p>
     ${m.stripeError ? `<div class="j-box j-box-amber">${esc(m.stripeError)}</div>` : ''}
     <div class="jm-scope">
@@ -1826,6 +1901,7 @@ async function renderMoney(pre) {
   draw()
   loadBank(bankUi, bankUi.redraw)
   bindSwitch(juniorsUi())
+  bindShowing({ view, filter: f, render: () => renderMoney() })
   $('m-locs').addEventListener('click', (e) => {
     const b = e.target.closest('[data-mloc]')
     if (!b || b.dataset.mloc === f.loc) return

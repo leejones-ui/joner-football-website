@@ -237,10 +237,30 @@ if (process.env.JFP_SEED && fs.existsSync(process.env.JFP_SEED)) {
   jj('juniors3', 'Term 3 2026', 'Paid', 'Stripe'); jj('juniors3', 'Term 3 2026', 'Paid', 'Stripe')
   // Older terms copied from the Money Register (JFP Venue History).
   const hist = (term, kind, venue, session, revenue, extra = {}) => airtable.venueHistory.push({ id: recId(), fields: { 'Key': `${term} | ${venue} | ${session}`, 'Term': term, 'Kind': kind, 'Venue': venue, 'Session': session, 'Revenue': revenue, 'Imported At': '2026-10-07', ...extra } })
-  hist('Term 2 2026', 'payments', 'Belrose HQ', 'Monday Afternoon (HQ)', 7795, { 'Bank Transfer': 5000, 'Cash': 2795, 'Payments': 11 })
-  hist('Term 2 2026', 'payments', 'Rydalmere', 'Friday Morning (Ryd)', 19396, { 'Bank Transfer': 19396, 'Payments': 23 })
+  hist('Term 2 2026', 'payments', 'Belrose HQ', 'Monday Afternoon (HQ)', 6120, { 'Bank Transfer': 4000, 'Cash': 2120, 'Payments': 9 })
+  hist('Term 2 2026', 'payments', 'Rydalmere', 'Friday Morning (Ryd)', 15300, { 'Bank Transfer': 15300, 'Payments': 18 })
   hist('Term 2 2026', 'register total', 'Belrose HQ', 'Total typed in the register', 9000)
-  hist('Term 1 2024', 'payments', 'NTRA', 'Thursday Morning (NTRA)', 7525, { 'Cash': 7525, 'Payments': 10 })
+  hist('Term 1 2024', 'payments', 'NTRA', 'Thursday Morning (NTRA)', 6400, { 'Cash': 6400, 'Payments': 8 })
+  // Two whole years for Money by year (all invented): typed totals that match,
+  // a grand total and a fields total typed more than the payments listed, a
+  // term with nothing typed, and Joners Juniors under HQ as the register has it.
+  const typed = (term, venue, revenue) => hist(term, 'register total', venue, 'Total typed in the register', revenue)
+  hist('Term 1 2025', 'payments', 'Belrose HQ', 'Monday Afternoon (HQ)', 5525, { 'Bank Transfer': 3825, 'Cash': 1700, 'Payments': 6 })
+  hist('Term 1 2025', 'payments', 'Belrose HQ', 'JONERS JUNIORS', 660, { 'Other': 660, 'Payments': 3 })
+  hist('Term 1 2025', 'payments', 'NTRA', 'Wednesday Morning NTRA', 3400, { 'Bank Transfer': 3400, 'Payments': 4 })
+  hist('Term 1 2025', 'payments', 'Rydalmere', 'Friday Morning (Ryd)', 2550, { 'Cash': 2550, 'Payments': 3 })
+  typed('Term 1 2025', 'Belrose HQ', 6185); typed('Term 1 2025', 'Fields', 5950); typed('Term 1 2025', 'All', 12135)
+  hist('Term 2 2025', 'payments', 'Belrose HQ', 'Tuesday Afternoon (HQ)', 6800, { 'Bank Transfer': 6800, 'Payments': 8 })
+  hist('Term 2 2025', 'payments', 'NTRA', 'Thursday Morning (NTRA)', 1700, { 'Bank Transfer': 1700, 'Payments': 2 })
+  typed('Term 2 2025', 'All', 8750)
+  hist('Term 3 2025', 'payments', 'Belrose HQ', 'Wednesday Afternoon (HQ)', 4250, { 'Bank Transfer': 3400, 'Cash': 850, 'Payments': 5 })
+  hist('Term 3 2025', 'payments', 'Rydalmere', 'Friday Morning (Ryd)', 2550, { 'Bank Transfer': 2550, 'Payments': 3 })
+  typed('Term 3 2025', 'Belrose HQ', 4250); typed('Term 3 2025', 'Fields', 3000); typed('Term 3 2025', 'All', 7250)
+  hist('Term 4 2025', 'payments', 'Belrose HQ', 'Monday Afternoon (HQ)', 5950, { 'Bank Transfer': 5950, 'Payments': 7 })
+  hist('Term 4 2025', 'payments', 'NTRA', 'Wednesday Morning NTRA', 2550, { 'Cash': 2550, 'Payments': 3 })
+  hist('Term 1 2026', 'payments', 'Belrose HQ', 'Monday Afternoon (HQ)', 4675, { 'Bank Transfer': 3825, 'Other': 850, 'Payments': 6 })
+  hist('Term 1 2026', 'payments', 'NTRA', 'Wednesday Morning NTRA', 1700, { 'Bank Transfer': 1700, 'Payments': 2 })
+  typed('Term 1 2026', 'All', 6375)
   jj('juniors4', 'Term 4 2026', 'Paid', 'Stripe'); jj('juniors4', 'Term 4 2026', 'Paid', 'Term 3 credit'); jj('juniors4', 'Term 4 2026', 'Unpaid')
 }
 

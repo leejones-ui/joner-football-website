@@ -197,24 +197,35 @@ export function venuesForTerm({ locations, rows, players, alloc, venueOf, groupO
   return finish(venues)
 }
 
+// Money by method on a session, and how many payments it had (past terms,
+// for the Money tab's look back and the year view).
+const addKind = (x, kind, c) => { x[`${kind}Cents`] = (x[`${kind}Cents`] || 0) + c }
+
 // An earlier term from the payment ledger alone (Term 3 was reconciled to
 // Stripe): each payment on the rows it names, each row at its session's venue.
+// paymentsCount: ledger lines with money; each venue and group also counts
+// the lines it has a part of (payments) and its money by method.
+// unlinkedByKind: the money not on a venue, by method.
 export function venuesFromLedger({ locations, ledger, rows, venueOf, groupOf }) {
   const venues = new Map(locations.map((l) => [l.id, blankVenue(l)]))
   const byId = new Map(rows.map((r) => [r.id, r]))
   const unlinked = { cents: 0, count: 0 }
-  let unlinkedFeeCents = 0, stripeFeesCents = 0, feesPendingCount = 0
+  const unlinkedByKind = { stripe: 0, bank: 0, cash: 0, other: 0 }
+  let unlinkedFeeCents = 0, stripeFeesCents = 0, feesPendingCount = 0, paymentsCount = 0
   const paying = new Map() // rowId -> cents
   const feeOn = new Map() // rowId -> fee cents
-  for (const l of ledger) {
+  const linesAt = new Map() // venue id, or venue id + group key -> ledger lines
+  const seen = (key, n) => { if (!linesAt.has(key)) linesAt.set(key, new Set()); linesAt.get(key).add(n) }
+  for (const [n, l] of ledger.entries()) {
     const amount = cents(l['Amount Paid'])
     if (!amount) continue
+    paymentsCount += 1
     const kind = methodKind(l['Payment Method'])
     const fee = ledgerFeeCents(l)
     if (kind === 'stripe' && fee == null) feesPendingCount += 1
     stripeFeesCents += fee || 0
     const targets = sourceIds(l).map((id) => byId.get(id)).filter(Boolean)
-    if (!targets.length) { unlinked.cents += amount; unlinked.count += 1; unlinkedFeeCents += fee || 0; continue }
+    if (!targets.length) { unlinked.cents += amount; unlinked.count += 1; unlinkedByKind[kind] += amount; unlinkedFeeCents += fee || 0; continue }
     const parts = splitCents(amount, targets.map(() => 1)), fees = splitCents(fee || 0, targets.map(() => 1))
     targets.forEach((r, i) => {
       const v = venueIn(venues, venueOf(r))
@@ -224,6 +235,9 @@ export function venuesFromLedger({ locations, ledger, rows, venueOf, groupOf }) 
       const g = groupIn(v, groupOf(r))
       g.receivedCents += parts[i]
       g.stripeFeeCents += fees[i]
+      addKind(g, kind, parts[i])
+      seen(v.id, n)
+      seen(`${v.id}|${g.key}`, n)
       paying.set(r.id, (paying.get(r.id) || 0) + parts[i])
       feeOn.set(r.id, (feeOn.get(r.id) || 0) + fees[i])
     })
@@ -239,7 +253,12 @@ export function venuesFromLedger({ locations, ledger, rows, venueOf, groupOf }) 
     const fee = feeOn.get(rowId) || 0
     players.push({ rowId, player: r.player, group: g.label, coach: g.coach || '', locationId: v.id, receivedCents: got, stripeFeeCents: fee, netReceivedCents: got - fee })
   }
-  return { venues: finish(venues), unlinked, unlinkedFeeCents, stripeFeesCents, feesPendingCount, players: players.sort((a, b) => a.player.localeCompare(b.player)) }
+  const out = finish(venues)
+  for (const v of out) {
+    v.payments = linesAt.get(v.id)?.size || 0
+    for (const g of v.groups) g.payments = linesAt.get(`${v.id}|${g.key}`)?.size || 0
+  }
+  return { venues: out, unlinked, unlinkedByKind, unlinkedFeeCents, stripeFeesCents, feesPendingCount, paymentsCount, players: players.sort((a, b) => a.player.localeCompare(b.player)) }
 }
 
 // Joners Juniors for a term, by venue: paid registrations only. A place paid
@@ -263,12 +282,13 @@ export function juniorsByVenue(rows, term, venueOf) {
 
 // Older terms from the Money Register copy (JFP Venue History): the payments
 // listed under each session, by venue. Lee's own typed totals come back too,
-// so the window can say where the two differ.
+// so the window can say where the two differ. players here counts payments
+// (the register lists payments, not places); payments says so plainly.
 export function venuesFromHistory({ locations, rows, term, venueOf }) {
   const venues = new Map(locations.map((l) => [l.id, blankVenue(l)]))
   const register = {}
   let importedAt = ''
-  let incomeCents = 0
+  let incomeCents = 0, paymentsCount = 0
   for (const r of rows) {
     if (norm(r.term) !== norm(term)) continue
     importedAt = importedAt || r.importedAt || ''
@@ -276,15 +296,19 @@ export function venuesFromHistory({ locations, rows, term, venueOf }) {
     const v = venueIn(venues, venueOf(r))
     const c = cents(r.revenue)
     incomeCents += c
+    paymentsCount += r.payments || 0
     v.receivedCents += c
     v.stripeCents += cents(r.stripe); v.bankCents += cents(r.bank); v.cashCents += cents(r.cash); v.otherCents += cents(r.other)
     v.players += r.payments || 0
+    v.payments = (v.payments || 0) + (r.payments || 0)
     const g = groupIn(v, { key: r.session, label: r.session, coach: '' })
     g.receivedCents += c
     g.players += r.payments || 0
+    g.payments = (g.payments || 0) + (r.payments || 0)
+    for (const [kind, x] of [['stripe', r.stripe], ['bank', r.bank], ['cash', r.cash], ['other', r.other]]) addKind(g, kind, cents(x))
   }
   // The register has no Stripe fees: not known, not nothing.
-  return { venues: finish(venues, { feesKnown: false }), register, importedAt, incomeCents, unlinked: { cents: 0, count: 0 }, unlinkedFeeCents: null, stripeFeesCents: null, feesPendingCount: 0, players: [] }
+  return { venues: finish(venues, { feesKnown: false }), register, importedAt, incomeCents, paymentsCount, unlinked: { cents: 0, count: 0 }, unlinkedFeeCents: null, stripeFeesCents: null, feesPendingCount: 0, players: [] }
 }
 
 const termOrder = (t) => { const m = /term\s*(\d)\s+(\d{4})/i.exec(t || ''); return m ? Number(m[2]) * 10 + Number(m[1]) : 0 }
