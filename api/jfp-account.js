@@ -110,6 +110,8 @@ async function overview(res, parent, body = {}) {
       id: q.id, amountLabel: formatAud(q.amountCents), players: q.playerNames, reason: q.reason, group: q.groupLabel || '', needsWaiver: blockers.length > 0, expiresAt: q.expiresAt || '',
       what: q.reason === 'trial' ? `Trial session${q.trialDate ? `, ${dateLabel(q.trialDate)}` : ''}` : q.startDate ? `From ${dateLabel(q.startDate)} to the end of term${q.creditCents ? `, ${formatAud(q.creditCents)} trial taken off` : ''}` : '',
       afterpay: q.afterpay !== false,
+      // A family invoice: each place and what it costs.
+      places: q.reason === 'family' && Array.isArray(q.places) ? q.places.map((x) => ({ name: x.name, label: x.label, amountLabel: formatAud(x.owingCents) })) : [],
     }
   })
   // Next term: this family's invited players and where each one stands.
@@ -279,6 +281,23 @@ async function confirmKit(res, parent, body) {
   return res.status(200).json({ success: true, kit: q.kit })
 }
 
+// A family invoice shows each place on Stripe's page; anything else (or an
+// invoice whose amount staff changed) is one line.
+function lineItems(q, name) {
+  const places = q.reason === 'family' && Array.isArray(q.places) ? q.places : []
+  const list = places.length > 1 && places.reduce((t, x) => t + x.owingCents, 0) === q.amountCents
+    ? places.map((x) => ({ cents: x.owingCents, name: `JFP: ${x.name}, ${x.label}` }))
+    : [{ cents: q.amountCents, name }]
+  const out = {}
+  list.forEach((x, i) => {
+    out[`line_items[${i}][quantity]`] = '1'
+    out[`line_items[${i}][price_data][currency]`] = 'aud'
+    out[`line_items[${i}][price_data][unit_amount]`] = String(x.cents)
+    out[`line_items[${i}][price_data][product_data][name]`] = x.name.slice(0, 250)
+  })
+  return out
+}
+
 async function pay(req, res, parent, body) {
   const q = await getPayreq(body.payreqId)
   if (!q || !ownsPayreq(q, familyFor(parent.email, await loadRoster(), (await getConfig()).termStart), parent.email)) return fail(res, 404, 'We could not find that payment.')
@@ -310,10 +329,7 @@ async function pay(req, res, parent, body) {
       // Paid: the thank you page, which points them to the training kit.
       success_url: `${base}/jfp-booking/success/?pay=${encodeURIComponent(q.id)}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${base}/jfp-account/`,
-      'line_items[0][quantity]': '1',
-      'line_items[0][price_data][currency]': 'aud',
-      'line_items[0][price_data][unit_amount]': String(q.amountCents),
-      'line_items[0][price_data][product_data][name]': name.slice(0, 250),
+      ...lineItems(q, name),
       // Card only when staff turned Afterpay off for this link.
       ...(q.afterpay === false ? { 'payment_method_types[0]': 'card' } : {}),
       'metadata[jfpBookingId]': q.id,

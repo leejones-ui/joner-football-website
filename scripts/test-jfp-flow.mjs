@@ -535,6 +535,63 @@ await test('a payment link across two players is split by what each still owes',
   }
 })
 
+await test('family invoice: each place keeps its own price, one link for the family, one ledger line per player', async () => {
+  const parent = { name: 'Rae Family', email: 'family-invoice@example.com', mobile: '0400555111' }
+  const add = async (groupId, name) => { const r = await portal(lee, 'addPlayer', { groupId, force: true, player: { name }, parent, payment: 'none' }); assert.equal(r.status, 200, JSON.stringify(r.data)); return r.data.rowId }
+  const a1 = await add(WED420, 'Aya Family'), a2 = await add(TUE525, 'Aya Family'), k = await add(TUE420, 'Kai Family')
+  // The mistake found live: the family total typed into every row.
+  for (const id of [a1, a2, k]) assert.equal((await portal(lee, 'editPlayer', { rowId: id, fields: { feeAud: 2250 } })).status, 200)
+  const old = await portal(lee, 'sendPaymentLink', { rowIds: [k], amountCents: 10000, sendEmail: false })
+  assert.equal(old.status, 200, JSON.stringify(old.data))
+  const m = (await portal(lee, 'money', { fresh: true })).data.money
+  const fam = m.players.filter((p) => [a1, a2, k].includes(p.rowId))
+  assert.equal(new Set(fam.map((p) => p.familyKey)).size, 1, 'the three places are one family')
+  assert.equal(fam.find((p) => p.rowId === k).openLink.id, old.data.payreq.id)
+  assert.equal(m.prices.familyPlace, 75000)
+  const places = [a1, a2, k].map((rowId) => ({ rowId, feeCents: 75000, paymentType: 'Sibling / 2 sessions per week' }))
+  const ask = await portal(lee, 'familyInvoice', { places, sendEmail: true })
+  assert.equal(ask.status, 409, 'an open link is never replaced without a yes')
+  assert.equal(ask.data.code, 'link_open')
+  const inv = await portal(lee, 'familyInvoice', { places, sendEmail: true, replace: true })
+  assert.equal(inv.status, 200, JSON.stringify(inv.data))
+  assert.equal(inv.data.payreq.amountLabel, 'A$2250')
+  assert.equal(inv.data.replaced, 1)
+  const air = await at()
+  for (const id of [a1, a2, k]) {
+    const f = air.term4.find((r) => r.id === id).fields
+    assert.equal(f['Term 4 Fee'], 750)
+    assert.equal(f['Term 4 Payment Type'], 'Sibling / 2 sessions per week')
+  }
+  const links = (await portal(lee, 'payments')).data.payreqs
+  assert.equal(links.find((q) => q.id === old.data.payreq.id).status, 'cancelled')
+  assert.ok(air.term4.find((r) => r.id === k), 'replacing a link never removes the place')
+  const mail = (await emails()).filter((e) => e.to.includes(parent.email) && /invoice/.test(e.subject)).at(-1)
+  assert.ok(mail && mail.html.includes('Aya Family') && mail.html.includes('Kai Family') && mail.html.includes('A$2250'))
+  const c = client()
+  await signIn(c, parent.email)
+  const acc = (await c.call('/api/jfp-account', { action: 'overview' })).data
+  const todo = acc.todo.find((t) => t.id === inv.data.payreq.id)
+  assert.equal(todo.places.length, 3)
+  await c.call('/api/jfp-account', { action: 'signWaiver', players: acc.players.map((p) => ({ key: p.key, dob: '2014-04-04', emergencyName: 'E C', emergencyPhone: '0400555112' })), waiver: WAIVER, parentName: parent.name, mobile: parent.mobile })
+  const pay = await c.call('/api/jfp-account', { action: 'pay', payreqId: todo.id })
+  assert.equal(pay.status, 200, JSON.stringify(pay.data))
+  const session = (await (await fetch(`${B}/__sessions`)).json()).find((x) => pay.data.url.includes(x.id))
+  assert.equal(session.amount_total, 225000)
+  assert.equal(session.line_count, 3, 'Stripe lists each place')
+  await stripe(pay.data.url, 'pay')
+  const after = await at()
+  for (const id of [a1, a2, k]) {
+    const f = after.term4.find((r) => r.id === id).fields
+    assert.equal(f['Term 4 Amount Paid'], 750)
+    assert.equal(f['Term 4 Payment Status'], 'Paid')
+  }
+  const lines = after.ledger.filter((l) => String(l.fields['Source Record ID']).split(', ').some((x) => [a1, a2, k].includes(x)))
+  assert.equal(lines.length, 3, 'one ledger line per player')
+  assert.deepEqual(lines.map((l) => l.fields['Amount Paid']), [750, 750, 750])
+  assert.equal(new Set(lines.map((l) => l.fields['Payment ID'])).size, 3)
+  assert.equal(new Set(lines.map((l) => l.fields['Stripe Checkout Session ID'])).size, 1, 'all from the one payment')
+})
+
 await test('a flood of parallel code guesses still gets only five tries', async () => {
   const c = client()
   const s = await c.call('/api/jfp-auth', { action: 'start', email: 'flood@example.com', audience: 'parent' })

@@ -5,6 +5,7 @@
 import { $, esc, api, toast, signIn, whoAmI, signOut, money } from './jfp-common.js'
 import { renderMessages } from './jfp-portal-messages.js'
 import { renderJuniorsMoney, programmeSwitch, bindSwitch, juniorsCardShell, fillJuniorsCard } from './jfp-portal-juniors.js'
+import { drawFamilies } from './jfp-portal-family.js'
 
 // jf: the Money programme switch and the Joners Juniors filters.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', pricing: null }
@@ -145,7 +146,7 @@ const AUTO = { tabs: new Set(['overview', 'board', 'families', 'money', 'request
 document.addEventListener('input', () => { AUTO.lastInput = Date.now() }, true)
 async function autoSync() {
   if (AUTO.busy || !P.user || !AUTO.tabs.has(P.tab) || document.visibilityState !== 'visible') return
-  if ($('jp-modal') || $('jp-side') || $('jp-menu') || document.querySelector('.jp-confirm-over, .j-sheet')) return
+  if ($('jp-modal') || $('jp-side') || $('jp-menu') || document.querySelector('.jp-confirm-over, .j-sheet, .jf-changed')) return
   const a = document.activeElement
   if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return
   if (Date.now() - AUTO.lastInput < 60000) return
@@ -1393,7 +1394,7 @@ function editPlayerModal(p) {
 function laterMoney(tab, apply) {
   post('money').then((r) => {
     if (!r.ok || P.tab !== tab) return
-    if ($('jp-modal') || $('jp-side') || $('jp-menu') || document.querySelector('.jp-confirm-over')) return
+    if ($('jp-modal') || $('jp-side') || $('jp-menu') || document.querySelector('.jp-confirm-over, .jf-changed')) return
     const a = document.activeElement
     if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return
     const y = window.scrollY
@@ -1408,7 +1409,7 @@ async function renderMoney(pre) {
   if (!pre) laterMoney('money', (fresh) => renderMoney(fresh))
   P.money = r.money
   const m = P.money
-  P.moneyFilter = { status: '', q: '', loc: '', ...(P.moneyFilter || {}) }
+  P.moneyFilter = { status: '', q: '', loc: '', view: 'players', ...(P.moneyFilter || {}) }
   const f = P.moneyFilter
   const counts = { '': m.players.length, ...m.status }
   view().innerHTML = `
@@ -1423,15 +1424,18 @@ async function renderMoney(pre) {
     </div>
     ${m.status.stripe ? `<div class="jm-alert"><span><b>${m.status.stripe} player${m.status.stripe === 1 ? ' has' : 's have'} paid in Stripe</b> but Airtable does not show it yet.</span><span style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line j-btn-sm" data-set-status="stripe">Show them</button><button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-record-all">Record all in Airtable</button></span></div>` : ''}
     <div class="jm-bar">
+      <div class="jm-chips jm-view" role="group" aria-label="Show"><button type="button" data-money-view="players" aria-pressed="${f.view !== 'family'}">Players</button><button type="button" data-money-view="family" aria-pressed="${f.view === 'family'}">By family</button></div>
       <div class="jm-search"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2" stroke-linecap="round"/></svg><input class="j-input" id="m-q" type="search" placeholder="Search player, parent or email" value="${esc(f.q)}" autocomplete="off"></div>
       <select class="j-select" id="m-loc" style="width:auto"><option value="">All locations</option>${m.locations.map((l) => `<option value="${esc(l.id)}" ${f.loc === l.id ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
       <div class="jm-chips" id="m-chips">${[['', 'All'], ['paid', 'Paid'], ['stripe', 'Paid in Stripe'], ['part', 'Part paid'], ['unpaid', 'Unpaid'], ['unpriced', 'Not priced']].map(([v, l]) => `<button type="button" data-set-status="${v}" aria-pressed="${f.status === v}">${v ? `<i style="background:${cssVar(STATUS[v][1])}"></i>` : ''}${l} <span class="n">${counts[v] || 0}</span></button>`).join('')}</div>
     </div>
-    <div class="jp-scroll"><table class="jp-table jm-table"><thead><tr><th>Player</th><th>Group</th><th class="num">Fee</th><th class="num">Paid</th><th class="num">Owing</th><th>Status</th><th></th></tr></thead><tbody id="m-rows"></tbody></table></div>
+    <div id="m-fams" ${f.view === 'family' ? '' : 'hidden'}></div>
+    <div class="jp-scroll" id="m-table" ${f.view === 'family' ? 'hidden' : ''}><table class="jp-table jm-table"><thead><tr><th>Player</th><th>Group</th><th class="num">Fee</th><th class="num">Paid</th><th class="num">Owing</th><th>Status</th><th></th></tr></thead><tbody id="m-rows"></tbody></table></div>
     <p class="muted small" id="m-count" style="margin-top:8px"></p>
     ${m.unmatched.length ? `<details class="jd-card" style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">${m.unmatched.length} Stripe payment${m.unmatched.length === 1 ? '' : 's'} not matched to a player</summary><p class="sub" style="margin:6px 0 10px">Paid with an email that is not on any Term 4 row. Match each one to the player it was for.</p>
       <ul class="jm-hist">${m.unmatched.map((u) => `<li><span><b>${esc(u.name || u.email || 'No name')}</b><small>${esc(u.email)} · ${esc(new Date(u.at).toLocaleDateString('en-AU'))} · ${esc(u.product)}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(u.cents))}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-match="${esc(u.id)}">Match</button></span></li>`).join('')}</ul></details>` : ''}`
   const draw = () => {
+    if (f.view === 'family') { $('m-count').textContent = ''; return drawFamilies($('m-fams'), { m, f, post, toast, confirmBox, statusPill, done: () => { P.board = null; PL.at = 0; renderMoney() } }) }
     const q = f.q.trim().toLowerCase()
     const list = m.players.filter((p) => (!f.status || p.status === f.status) && (!f.loc || p.locationId === f.loc) && (!q || `${p.player} ${p.parent} ${p.email}`.toLowerCase().includes(q)))
     $('m-rows').innerHTML = list.map((p) => `<tr data-row="${esc(p.rowId)}"><td><b>${esc(p.player)}</b><br><span class="muted small">${esc(p.parent || '')}</span></td><td class="small">${esc(p.group)}</td><td class="num">${p.feeCents ? esc(money(p.feeCents)) : '<span class="muted">not set</span>'}</td><td class="num">${esc(money(p.paidCents))}${p.status === 'stripe' ? `<br><span class="muted small">Stripe ${esc(money(p.stripeCents))}</span>` : ''}</td><td class="num">${p.owingCents ? `<b>${esc(money(p.owingCents))}</b>` : '<span class="muted">0</span>'}</td><td>${statusPill(p.status)}</td>
@@ -1441,6 +1445,12 @@ async function renderMoney(pre) {
   draw()
   bindSwitch(juniorsUi())
   $('m-q').addEventListener('input', (e) => { f.q = e.target.value; draw() })
+  view().querySelectorAll('[data-money-view]').forEach((b) => b.addEventListener('click', () => {
+    f.view = b.dataset.moneyView
+    view().querySelectorAll('[data-money-view]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.moneyView === f.view)))
+    $('m-fams').hidden = f.view !== 'family'; $('m-table').hidden = f.view === 'family'
+    draw()
+  }))
   $('m-loc').addEventListener('change', (e) => { f.loc = e.target.value; draw() })
   view().querySelectorAll('[data-set-status]').forEach((b) => b.addEventListener('click', () => { f.status = b.dataset.setStatus; view().querySelectorAll('#m-chips [data-set-status]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.setStatus === f.status))); draw() }))
   $('m-rows').addEventListener('click', (e) => {

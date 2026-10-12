@@ -317,6 +317,8 @@ function airtableResponse(url, init) {
   if (formula === '{Do Not Contact}') out = rows.filter((r) => r.fields['Do Not Contact'])
   const eq = formula.match(/^\{(Payment ID|Attendance ID)\} = "(.+)"$/)
   if (eq) out = rows.filter((r) => r.fields[eq[1]] === eq[2])
+  const pre = formula.match(/^OR\(\{Payment ID\} = "(.+)", LEFT\(\{Payment ID\}, \d+\) = "(.+)#"\)$/)
+  if (pre) out = rows.filter((r) => r.fields['Payment ID'] === pre[1] || String(r.fields['Payment ID'] || '').startsWith(`${pre[2]}#`))
   const size = Number(u.searchParams.get('pageSize') || 100)
   const offset = Number(u.searchParams.get('offset') || 0)
   const page = out.slice(offset, offset + size)
@@ -331,7 +333,8 @@ function stripeSession(body) {
   for (const [k, v] of params) { const m = k.match(/^metadata\[(.+)\]$/); if (m) metadata[m[1]] = v }
   const session = {
     id, object: 'checkout.session', status: 'open', payment_status: 'unpaid', metadata, created: Math.floor(Date.now() / 1000),
-    amount_total: Number(params.get('line_items[0][price_data][unit_amount]')) * Number(params.get('line_items[0][quantity]')),
+    amount_total: [...params.keys()].filter((k) => /^line_items\[\d+\]\[quantity\]$/.test(k)).reduce((t, k) => { const i = k.match(/\d+/)[0]; return t + Number(params.get(`line_items[${i}][price_data][unit_amount]`)) * Number(params.get(k)) }, 0),
+    line_count: [...params.keys()].filter((k) => /^line_items\[\d+\]\[quantity\]$/.test(k)).length,
     currency: 'aud', customer_email: params.get('customer_email'),
     success_url: params.get('success_url'), cancel_url: params.get('cancel_url'),
     expires_at: Number(params.get('expires_at')), payment_intent: null,

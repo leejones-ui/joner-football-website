@@ -232,6 +232,18 @@ ${kitLine(config)}`
   return send({ to: [{ email: to, name: parentName }], subject: trial ? `${playerNames.join(' and ')}: your JFP trial` : `${playerNames.join(' and ')}: your ${config.term} place`, html: shell({ preheader: `${group.day} ${group.time}`, heading: trial ? 'Your JFP trial' : 'Your JFP place', body }) })
 }
 
+// One invoice for the whole family: each place and its price, one total.
+export async function sendFamilyInvoice({ to, parentName, places, config, url, amountCents, needWaiver = false }) {
+  const names = [...new Set(places.map((x) => x.name))]
+  const body = `${p(`Hi ${esc(parentName || 'there')}, here is ${esc(config.term)} for ${esc(names.join(' and '))} in one payment.`)}
+${rows([...places.map((x) => [esc(x.name), `${esc(x.label)}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(formatAud(x.owingCents))}${x.paidCents ? ` (${esc(formatAud(x.feeCents))}, ${esc(formatAud(x.paidCents))} already paid)` : ''}</span>`]), ['Total to pay', esc(formatAud(amountCents))]])}
+${p(`Sign in with this email address to ${needWaiver ? 'sign the waiver and ' : ''}pay. Card, Apple Pay or Afterpay. The places are locked in once it is paid.`)}
+${button('Sign in and pay', url)}
+${howToSignIn(to)}
+${kitLine(config)}`
+  return send({ to: [{ email: to, name: parentName }], subject: `${names.join(' and ')}: your ${config.term} invoice`, html: shell({ preheader: `${formatAud(amountCents)} for ${names.length} player${names.length > 1 ? 's' : ''}`, heading: 'Your family invoice', body }) })
+}
+
 // After a good trial: the rest of the term, with the trial fee taken off.
 export async function sendTermOffered({ to, parentName, playerNames, group, config, url, amountCents, startDate, creditCents = 0 }) {
   const body = `${p(`Hi ${esc(parentName || 'there')}. Great trial. We would love ${esc(playerNames.join(' and '))} to join ${esc(group.day)} ${esc(group.time)} for the rest of ${esc(config.term)}.`)}

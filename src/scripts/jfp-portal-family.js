@@ -1,0 +1,144 @@
+// Money > By family (Lee, 12 Oct 2026): one invoice per family, while every
+// place keeps its own price on its own row. Pick each place's price, see the
+// family total, and send one link. When the family pays, the money goes onto
+// each player's row by what that place owed, and the payment ledger gets one
+// line per player.
+import { esc, money } from './jfp-common.js'
+
+// Price buttons. type is what the row's Payment Type becomes.
+const PRESETS = [
+  { key: 'group', label: 'Full term', type: 'JFP 10 weeks' },
+  { key: 'familyPlace', label: 'Family rate', type: 'Sibling / 2 sessions per week', hint: 'every place once a family has two or more' },
+  { key: 'sibling', label: 'Sibling', type: 'Sibling / 2 sessions per week' },
+  { key: 'pathway', label: 'Pathway', type: 'JFP Pathway 10 weeks' },
+  { key: 'pathwayOneToOne', label: 'Pathway 1 to 1', type: 'JFP pathway 1 on 1' },
+  { key: 'oneToOneTerm', label: '1 to 1 term', type: 'JFP 1 on 1, 10 weeks' },
+]
+// Places the family rate applies to: ordinary group places, not pathway or 1 to 1.
+const familyRateFits = (p) => !p.product || p.product === 'group'
+
+export function familiesOf(players) {
+  const by = new Map()
+  for (const p of players) {
+    const k = p.familyKey || p.email || `row:${p.rowId}`
+    if (!by.has(k)) by.set(k, [])
+    by.get(k).push(p)
+  }
+  return [...by.entries()].map(([key, places]) => ({
+    key, places,
+    parent: places.find((p) => p.parent)?.parent || '',
+    email: places.find((p) => p.email)?.email || '',
+    names: [...new Set(places.map((p) => p.player))],
+    links: [...new Map(places.filter((p) => p.openLink).map((p) => [p.openLink.id, p.openLink])).values()],
+  })).sort((a, b) => (b.places.length > 1) - (a.places.length > 1) || a.names[0].localeCompare(b.names[0]))
+}
+
+// The family list. ui: { m, f, post, toast, confirmBox, statusPill, done }
+export function drawFamilies(box, ui) {
+  const { m, f } = ui
+  const q = f.q.trim().toLowerCase()
+  const fams = familiesOf(m.players).filter((fam) => (!f.status || fam.places.some((p) => p.status === f.status))
+    && (!f.loc || fam.places.some((p) => p.locationId === f.loc))
+    && (!q || fam.places.some((p) => `${p.player} ${p.parent} ${p.email}`.toLowerCase().includes(q))))
+  const many = fams.filter((x) => x.places.length > 1).length
+  box.innerHTML = `<p class="muted small" style="margin:0 0 10px">${fams.length} famil${fams.length === 1 ? 'y' : 'ies'}${many ? `, ${many} with more than one place` : ''}. Set each place's price, then send the family one invoice. When it is paid, each player is marked paid with their own amount, and the payment ledger gets a line per player.</p>`
+    + (fams.map((fam) => card(fam, ui)).join('') || '<div class="j-empty">No families match.</div>')
+  box.querySelectorAll('[data-fam]').forEach((el) => bindCard(el, fams.find((x) => x.key === el.dataset.fam), ui))
+}
+
+function card(fam, ui) {
+  const { m } = ui
+  const owing = fam.places.reduce((t, p) => t + p.owingCents, 0)
+  return `<section class="jd-card jf-fam" data-fam="${esc(fam.key)}">
+    <header><div><h3>${esc(fam.names.join(', '))}</h3><p class="muted small">${esc(fam.parent || 'No parent name')}${fam.email ? ` · ${esc(fam.email)}` : ' · <b>no email</b>'} · ${fam.places.length} place${fam.places.length === 1 ? '' : 's'}</p></div>
+      <div class="jf-fam-now"><span class="muted small">Owing now</span><b>${esc(money(owing))}</b></div></header>
+    ${fam.links.length ? `<p class="jf-fam-links">Open link${fam.links.length > 1 ? 's' : ''}: ${fam.links.map((l) => `${esc(l.players.join(' + '))} ${esc(money(l.amountCents))}${l.family ? ' (family invoice)' : ''}`).join(' · ')}</p>` : ''}
+    <div class="jf-places">${fam.places.map((p) => `<div class="jf-place" data-place="${esc(p.rowId)}">
+      <div class="jf-who"><b>${esc(p.player)}</b><span class="muted small">${esc(p.group)}</span><span class="small">${ui.statusPill(p.status)}${p.paidCents ? ` <span class="muted">· ${esc(money(p.paidCents))} paid</span>` : ''}</span></div>
+      <div class="jf-price">
+        <div class="jm-chips jf-presets">${PRESETS.map((x) => `<button type="button" data-preset="${x.key}" title="${esc(x.hint || x.type)}">${esc(x.label)} ${esc(money(m.prices[x.key]))}</button>`).join('')}</div>
+        <div class="jf-custom"><label class="muted small" for="jf-fee-${esc(p.rowId)}">This place A$</label><input class="j-input" id="jf-fee-${esc(p.rowId)}" data-fee inputmode="decimal" value="${p.feeCents ? p.feeCents / 100 : ''}" placeholder="price"><span class="muted small" data-type>${esc(p.type || 'Payment type not set')}</span></div>
+      </div></div>`).join('')}</div>
+    <footer>
+      ${fam.places.filter(familyRateFits).length > 1 ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-family-rate>Family rate: ${esc(money(m.prices.familyPlace))} a place</button>` : '<span></span>'}
+      <div class="jf-total"><span class="muted small">Invoice</span><b data-total></b></div>
+      <label class="j-check small"><input type="checkbox" data-email ${fam.email ? 'checked' : 'disabled'}> <span>Email it to the family</span></label>
+      <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-save>Save prices only</button>
+      <button type="button" class="j-btn j-btn-dark j-btn-sm" data-send ${fam.email ? '' : 'disabled title="Add a parent email with Edit first"'}>Send family invoice</button>
+    </footer>
+    <p class="j-err" data-err hidden></p>
+  </section>`
+}
+
+function bindCard(el, fam, ui) {
+  const { m } = ui
+  // What each place is set to now: its price and payment type.
+  const state = new Map(fam.places.map((p) => [p.rowId, { feeCents: p.feeCents || null, type: p.type || '' }]))
+  const placeEl = (id) => el.querySelector(`[data-place="${CSS.escape(id)}"]`)
+  const total = () => fam.places.reduce((t, p) => { const s = state.get(p.rowId); return t + Math.max(0, (s.feeCents ?? 0) - p.paidCents) }, 0)
+  const paint = () => {
+    for (const p of fam.places) {
+      const s = state.get(p.rowId), pe = placeEl(p.rowId)
+      pe.querySelectorAll('[data-preset]').forEach((b) => b.setAttribute('aria-pressed', String(s.feeCents === m.prices[b.dataset.preset] && PRESETS.find((x) => x.key === b.dataset.preset).type === s.type)))
+      pe.querySelector('[data-type]').textContent = s.type || 'Payment type not set'
+      pe.classList.toggle('jf-changed', s.feeCents !== (p.feeCents || null) || s.type !== (p.type || ''))
+    }
+    el.querySelector('[data-total]').textContent = money(total())
+  }
+  const set = (id, feeCents, type) => { const s = state.get(id); s.feeCents = feeCents; if (type != null) s.type = type; placeEl(id).querySelector('[data-fee]').value = feeCents == null ? '' : feeCents / 100; paint() }
+  el.addEventListener('click', async (e) => {
+    const pr = e.target.closest('[data-preset]')
+    if (pr) { const x = PRESETS.find((y) => y.key === pr.dataset.preset); return set(pr.closest('[data-place]').dataset.place, m.prices[x.key], x.type) }
+    if (e.target.closest('[data-family-rate]')) { for (const p of fam.places.filter(familyRateFits)) set(p.rowId, m.prices.familyPlace, PRESETS[1].type); return }
+    const send = e.target.closest('[data-send]'), save = e.target.closest('[data-save]')
+    if (!send && !save) return
+    const places = fam.places.map((p) => ({ rowId: p.rowId, ...state.get(p.rowId) }))
+    const err = el.querySelector('[data-err]')
+    const missing = places.filter((x) => x.feeCents == null)
+    if (missing.length) { err.textContent = `Set a price for ${missing.map((x) => fam.places.find((p) => p.rowId === x.rowId).player).join(' and ')}.`; err.hidden = false; return }
+    err.hidden = true
+    if (save) return saveOnly(el, fam, places, ui)
+    const email = el.querySelector('[data-email]').checked
+    const lines = fam.places.map((p) => `${esc(p.player)}, ${esc(p.group)}: ${esc(money(state.get(p.rowId).feeCents))}${p.paidCents ? ` (${esc(money(p.paidCents))} paid)` : ''}`).join('<br>')
+    if (!(await ui.confirmBox(`<b>One invoice for ${esc(money(total()))}</b> to ${esc(fam.email)}${email ? ', emailed now' : ', not emailed (you can copy the link)'}.<br><br>${lines}`, { ok: 'Send invoice' }))) return
+    await submit(el, fam, places, { sendEmail: email }, ui)
+  })
+  el.querySelectorAll('[data-fee]').forEach((inp) => inp.addEventListener('input', () => {
+    const id = inp.closest('[data-place]').dataset.place, v = inp.value.trim()
+    state.get(id).feeCents = v === '' || !Number.isFinite(Number(v)) ? null : Math.round(Number(v) * 100)
+    paint()
+  }))
+  paint()
+}
+
+async function submit(el, fam, places, opts, ui, replace = false) {
+  const btn = el.querySelector('[data-send]')
+  btn.disabled = true
+  const r = await ui.post('familyInvoice', { places, ...opts, replace })
+  btn.disabled = false
+  if (!r.ok && r.data.code === 'link_open') {
+    if (await ui.confirmBox(esc(r.data.error), { ok: 'Replace with one invoice' })) return submit(el, fam, places, opts, ui, true)
+    return
+  }
+  if (!r.ok) { const err = el.querySelector('[data-err]'); err.textContent = r.data.error; err.hidden = false; return }
+  if (!r.data.payreq) { ui.toast(r.data.message || 'Prices saved'); return ui.done() }
+  try { await navigator.clipboard.writeText(r.data.payreq.url) } catch {}
+  ui.toast(`Family invoice ${r.data.payreq.amountLabel} ${r.data.emailed ? `emailed to ${fam.email}` : 'made'}. Link copied.${r.data.replaced ? ` ${r.data.replaced} older link${r.data.replaced > 1 ? 's' : ''} closed.` : ''}`, 7000)
+  ui.done()
+}
+
+// Prices only, no invoice: each changed place through Edit's own action.
+async function saveOnly(el, fam, places, ui) {
+  const changed = places.filter((x) => { const p = fam.places.find((y) => y.rowId === x.rowId); return x.feeCents !== (p.feeCents || null) || x.type !== (p.type || '') })
+  if (!changed.length) return ui.toast('Nothing changed')
+  for (const x of changed) {
+    const p = fam.places.find((y) => y.rowId === x.rowId)
+    const fields = {}
+    if (x.feeCents !== (p.feeCents || null)) fields.feeAud = x.feeCents / 100
+    if (x.type && x.type !== p.type) fields.paymentType = x.type
+    const r = await ui.post('editPlayer', { rowId: x.rowId, fields })
+    if (!r.ok) { const err = el.querySelector('[data-err]'); err.textContent = `${p.player}: ${r.data.error}`; err.hidden = false; return }
+  }
+  ui.toast(`Saved ${changed.length} price${changed.length > 1 ? 's' : ''} to Airtable${fam.links.length ? '. The open link still asks for the old amount: send a family invoice to replace it.' : ''}`, fam.links.length ? 8000 : 3600)
+  ui.done()
+}

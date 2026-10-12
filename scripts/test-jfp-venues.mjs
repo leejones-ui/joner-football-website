@@ -131,6 +131,18 @@ test('older terms from the Money Register copy: sessions, methods, typed totals;
   assert.deepEqual(venueTerms({ current: 'Term 4 2026', previous: 'Term 3 2026', history: rows }), ['Term 4 2026', 'Term 3 2026', 'Term 2 2026', 'Term 1 2025'])
 })
 
+test('a family invoice: one Stripe payment, one ledger line per player, each player gets their own part', () => {
+  const rows = [row('f1', 'Belrose HQ', { email: 'fam@example.com', feeAud: 850 }), row('f2', 'NTRA', { email: 'fam@example.com', feeAud: 450 })]
+  const ledger = [
+    { 'Payment ID': 'pi_f', 'Payment Method': 'Stripe', 'Amount Paid': 850, 'Source Record ID': 'f1', 'Stripe Payment Intent ID': 'pi_f', 'Player Name': 'Player f1' },
+    { 'Payment ID': 'pi_f#2', 'Payment Method': 'Stripe', 'Amount Paid': 450, 'Source Record ID': 'f2', 'Stripe Payment Intent ID': 'pi_f', 'Player Name': 'Player f2' },
+  ]
+  const alloc = allocateTermMoney({ rows, stripe: [{ id: 'cs_f', intentId: 'pi_f', email: 'fam@example.com', amountCents: 130000, refundedCents: 0 }], ledger })
+  assert.equal(totalOf(alloc.byRow.get('f1')), 85000)
+  assert.equal(totalOf(alloc.byRow.get('f2')), 45000)
+  assert.equal(totalOf(alloc.unlinked), 0)
+})
+
 test('the term before', () => {
   assert.equal(previousTerm('Term 4 2026'), 'Term 3 2026')
   assert.equal(previousTerm('Term 1 2027'), 'Term 4 2026')

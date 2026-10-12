@@ -563,8 +563,12 @@ export async function listLedger(term) {
   return rows.map((r) => ({ id: r.id, ...r.fields })).filter((r) => !term || r['Term'] === term)
 }
 
-export async function findLedgerByPayment(paymentId) {
-  const q = new URLSearchParams({ filterByFormula: `{Payment ID} = "${fq(paymentId)}"`, pageSize: '5' })
+// A payment split per player has lines "<id>", "<id>#2", "<id>#3"...: found
+// together unless exact is asked for.
+export async function findLedgerByPayment(paymentId, { exact = false } = {}) {
+  const id = fq(paymentId)
+  const formula = exact ? `{Payment ID} = "${id}"` : `OR({Payment ID} = "${id}", LEFT({Payment ID}, ${String(paymentId).length + 1}) = "${id}#")`
+  const q = new URLSearchParams({ filterByFormula: formula, pageSize: '20' })
   const d = await airtable(`${encodeURIComponent(TABLES.ledger)}?${q}`)
   return (d.records || []).map((r) => r.id)
 }

@@ -299,6 +299,27 @@ async function runPayreqEffects(payreq, retry = new Set()) {
   })
   await runEffect('ledger', payreq, save, async () => {
     const paymentId = payreq.stripePaymentIntentId || payreq.id
+    // One payment for several players (a family invoice, siblings): one
+    // ledger line per player with what went onto their row (Lee, 12 Oct
+    // 2026), all carrying the same Stripe ids. "<id>#2" and on for the rest,
+    // so a retry adds only the lines still missing.
+    const shares = payreq.rowShares && !payreq.next ? payreq.term4Ids.map((id, i) => ({ id, name: payreq.playerNames[i] || '', cents: Number(payreq.rowShares[id] || 0) })).filter((x) => x.cents > 0) : []
+    if (shares.length > 1) {
+      const total = payreq.paidCents ?? payreq.amountCents
+      const ids = []
+      for (const [i, x] of shares.entries()) {
+        const lineId = i ? `${paymentId}#${i + 1}` : paymentId
+        const found = await findLedgerByPayment(lineId, { exact: true })
+        ids.push(found[0] || await createLedgerRow({
+          paymentId: lineId, config, playerNames: [x.name], amountCents: x.cents, paidAt: payreq.paidAt,
+          sourceIds: [x.id], sessionId: payreq.stripeSessionId, intentId: payreq.stripePaymentIntentId,
+          notes: `JFP payment request ${payreq.id} (${payreq.reason || 'payment'}): ${x.name}'s part, ${i + 1} of ${shares.length}, of one payment of A$${(total / 100).toFixed(2)} for ${payreq.playerNames.join(', ')}${payreq.stripeFeeCents != null ? `. Stripe fee on the whole payment A$${(payreq.stripeFeeCents / 100).toFixed(2)}` : ''}`,
+        }))
+      }
+      payreq.ledgerId = ids[0]
+      payreq.ledgerIds = ids
+      return
+    }
     const existing = await findLedgerByPayment(paymentId)
     if (existing.length) { payreq.ledgerId = existing[0]; return }
     payreq.ledgerId = await createLedgerRow({

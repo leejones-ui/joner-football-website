@@ -55,13 +55,22 @@ export function allocateTermMoney({ rows, stripe = [], ledger = [], legacy = [] 
   // A Stripe payment recorded in the portal names its rows in the ledger;
   // otherwise it belongs to the family whose email paid.
   const stripeLedger = ledger.filter((l) => methodKind(l['Payment Method']) === 'stripe')
+  // A payment split per player has one ledger line each (a family invoice).
+  const recordedLines = (p) => stripeLedger.filter((x) => Number(x['Amount Paid']) > 0 && [x['Payment ID'], x['Stripe Checkout Session ID'], x['Stripe Payment Intent ID']].some((v) => v && (v === p.id || (p.intentId && v === p.intentId))))
   const recordedFor = (p) => {
-    const l = stripeLedger.find((x) => [x['Payment ID'], x['Stripe Checkout Session ID'], x['Stripe Payment Intent ID']].some((v) => v && (v === p.id || (p.intentId && v === p.intentId))))
+    const l = recordedLines(p)[0]
     return l ? sourceIds(l).map((id) => byId.get(id)).filter(Boolean) : []
   }
   for (const p of stripe) {
     const amount = (p.amountCents || 0) - (p.refundedCents || 0)
     if (!amount) continue
+    const lines = recordedLines(p)
+    if (lines.length > 1) {
+      // Each player's line gets its part of what Stripe actually kept.
+      const parts = splitCents(amount, lines.map((l) => cents(l['Amount Paid'])))
+      lines.forEach((l, i) => put(sourceIds(l).map((id) => byId.get(id)), parts[i], 'stripe', { id: p.id, at: String(p.at || '').slice(0, 10), who: l['Player Name'] || p.name || p.email || '' }))
+      continue
+    }
     let targets = recordedFor(p)
     if (!targets.length && p.email) {
       const family = rows.filter((r) => rowEmails(r).includes(p.email))

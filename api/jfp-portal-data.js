@@ -27,7 +27,7 @@ import {
 import { listCancels, staffView, noticeSummary } from './_jfp-cancel.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, PAY_EFFECTS } from './_jfp-finalise.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
-import { sendAccountInvite, accountInvite, sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite } from './_jfp-email.js'
+import { sendAccountInvite, accountInvite, sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice } from './_jfp-email.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext } from './_jfp-next.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
@@ -639,7 +639,9 @@ const weekOf = (iso) => {
 
 export async function moneyData(config, { since, fresh = false, quick = false } = {}) {
   // quick (first paint): the last Stripe read and the 60 second roster cache.
-  const [roster, groups, ledger, juniors, history] = await Promise.all([loadRoster({ fresh: !quick }), listGroups(), listLedger(config.term).catch(() => []), listJuniors().catch(() => []), listVenueHistory().catch(() => [])])
+  const [roster, groups, ledger, juniors, history, payreqs] = await Promise.all([loadRoster({ fresh: !quick }), listGroups(), listLedger(config.term).catch(() => []), listJuniors().catch(() => []), listVenueHistory().catch(() => []), listPayreqs().catch(() => [])])
+  const openLinkFor = new Map()
+  for (const q of payreqs) if (['open', 'checkout'].includes(q.status)) for (const id of q.term4Ids || []) openLinkFor.set(id, { id: q.id, amountCents: q.amountCents, players: q.playerNames, family: q.reason === 'family', createdAt: q.createdAt })
   let stripe = { payments: [], other: { count: 0, cents: 0 }, since: since || config.moneySince, error: '' }
   try { stripe = { ...(await jfpStripePayments({ since: since || config.moneySince, fresh, quick: quick && !fresh })), error: '' } } catch (error) { console.error('jfp stripe read failed', error); stripe.error = 'Stripe could not be read just now. Airtable figures only.' }
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
@@ -647,7 +649,7 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
   const net = (p) => p.amountCents - p.refundedCents
   const stripeByEmail = new Map()
   for (const p of stripe.payments) if (p.email) stripeByEmail.set(p.email, [...(stripeByEmail.get(p.email) || []), p])
-  const familyEmails = new Set(holding.map((r) => r.email).filter(Boolean))
+  const familyEmails = new Set(holding.flatMap(rowEmails))
   // Each family: what Stripe received against what Airtable records as paid.
   const families = new Map()
   for (const r of holding) {
@@ -657,7 +659,8 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
   }
   const players = []
   for (const [email, rows] of families) {
-    const pays = stripeByEmail.get(email) || []
+    // Payments from either parent's address count for the family.
+    const pays = [...new Map([email, ...rows.flatMap(rowEmails)].flatMap((e) => stripeByEmail.get(e) || []).map((p) => [p.id, p])).values()]
     const stripeCents = pays.reduce((t, p) => t + net(p), 0)
     const recorded = rows.reduce((t, r) => t + cents(r.paidAud), 0)
     let unrecorded = Math.max(0, stripeCents - recorded)
@@ -673,7 +676,7 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
       const g = byId[r.groupId]
       const loc = g ? locationFor(config, g.location) : locationFor(config, r.location || '')
       players.push({
-        rowId: r.id, player: r.player, parent: r.parent, email: r.email, phone: r.phone || '',
+        rowId: r.id, player: r.player, parent: r.parent, email: r.email, phone: r.phone || '', familyKey: email, openLink: openLinkFor.get(r.id) || null, product: productOfRow(r, g),
         group: g ? `${g.day} ${g.time}, ${loc.name}` : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Not in a group',
         groupId: r.groupId, locationId: loc.id, locationName: loc.name, coach: g ? coachLabel(coachById(config, g.coachId)) : r.coach,
         feeCents: fee, paidCents: paid, owingCents: status === 'paid' || status === 'stripe' ? 0 : owe,
@@ -717,6 +720,9 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
   for (const l of locations) l.juniors = jj.find((j) => j.id === l.id) || null
   return {
     since: stripe.since, stripeError: stripe.error, stripeAt: stripe.at || '', term: config.term,
+    // For the family invoice price buttons. Family rate: every place at the
+    // two-a-week price per place once a family has two or more (Lee, 12 Oct).
+    prices: { ...config.prices, familyPlace: Math.round(config.prices.twoAWeek / 2) },
     venueTerms: venueTerms({ current: config.term, previous: previousTerm(config.term), history }),
     kpis: {
       incomeCents: stripeGross - stripeRefunds + offlineCents, stripeCents: stripeGross - stripeRefunds, stripeGrossCents: stripeGross, refundsCents: stripeRefunds,
@@ -852,6 +858,91 @@ async function sendPaymentLink(req, res, principal, config, body) {
   }
   await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: ids, cents: amountCents, product: chosen?.product || 'balance', emailed } })
   return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed })
+}
+
+// What a row's place is, for the family invoice price buttons.
+function productOfRow(r, g) {
+  const t = String(r.paymentType || '').toLowerCase()
+  if (/pathway/.test(t) && /1 on 1/.test(t)) return 'pathwayOneToOne'
+  if (/pathway/.test(t)) return 'pathway'
+  if (/1 on 1/.test(t)) return 'oneToOneTerm'
+  if (/trial/.test(t)) return 'trial'
+  return g?.product || 'group'
+}
+
+// One invoice for a family (Lee, 12 Oct 2026): every place keeps its own
+// price on its own Term 4 row, the family gets one link for what all of them
+// still owe, and when it is paid the money goes onto each row by what that
+// row owed, with one ledger line per player. Any open link for these places
+// is replaced (after Lee says yes); the places themselves are never released.
+async function familyInvoice(req, res, principal, config, body) {
+  const asked = (Array.isArray(body.places) ? body.places : []).slice(0, 10)
+  if (!asked.length) return fail(res, 400, 'Choose the places to invoice.')
+  const rows = []
+  for (const a of asked) {
+    const r = await getTerm4Row(clean(a.rowId, 30))
+    if (!r) return fail(res, 404, 'A player row was not found in Airtable. Refresh and try again.')
+    const feeCents = Number(a.feeCents)
+    if (!Number.isInteger(feeCents) || feeCents < 0 || feeCents > 2000000) return fail(res, 400, `Enter a price for ${r.player}.`)
+    const type = a.paymentType && PAYMENT_TYPES.includes(a.paymentType) ? a.paymentType : ''
+    rows.push({ row: r, feeCents, type })
+  }
+  if (new Set(rows.map((x) => x.row.id)).size !== rows.length) return fail(res, 400, 'A place is listed twice.')
+  const email = validEmail(body.email) || rows[0].row.email
+  if (!email) return fail(res, 400, 'This family has no parent email in Airtable. Add one with Edit first.')
+  const strangers = rows.filter((x) => !rowEmails(x.row).includes(email))
+  if (strangers.length) return fail(res, 400, `${strangers.map((x) => x.row.player).join(' and ')} ${strangers.length > 1 ? 'are' : 'is'} under a different parent email. Make the emails match with Edit first.`)
+  const ids = rows.map((x) => x.row.id)
+  const openLinks = (await listPayreqs()).filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.some((id) => ids.includes(id)))
+  // A link that also covers a place not on this invoice would leave that place unpaid.
+  const outside = openLinks.filter((q) => q.term4Ids.some((id) => !ids.includes(id)))
+  if (outside.length) return fail(res, 409, `${outside[0].playerNames.join(' and ')} share an open link with someone not on this invoice. Add them here, or cancel that link in Payment links first.`)
+  if (openLinks.length && body.replace !== true) {
+    return fail(res, 409, `This family already has ${openLinks.length === 1 ? 'an open link' : `${openLinks.length} open links`} (${openLinks.map((q) => `${q.playerNames.join(' + ')} ${formatAud(q.amountCents)}`).join(', ')}). Replace ${openLinks.length === 1 ? 'it' : 'them'} with this one invoice?`, { code: 'link_open' })
+  }
+  for (const q of openLinks) {
+    const c = await cancelLink(q, principal, 'Replaced by a family invoice', { keepPlace: true })
+    if (c.error) return fail(res, c.status, c.error)
+  }
+  // Each place's price on its own row. The balance is Airtable's formula.
+  const updates = []
+  for (const x of rows) {
+    const r = await getTerm4Row(x.row.id) || x.row
+    x.row = r
+    const paid = cents(r.paidAud)
+    const fields = {}
+    if (cents(r.feeAud) !== x.feeCents || r.feeAud == null) fields['Term 4 Fee'] = x.feeCents / 100
+    if (x.type && x.type !== r.paymentType) fields['Term 4 Payment Type'] = x.type
+    const status = x.feeCents > 0 && paid >= x.feeCents ? 'Paid' : paid > 0 ? 'Partially Paid' : 'Unpaid'
+    if (Object.keys(fields).length && status !== r.paymentStatus) fields['Term 4 Payment Status'] = status
+    if (Object.keys(fields).length) {
+      fields['Term 4 Notes'] = appendNote(r.notes, `Family invoice by ${principal.name}: this place ${formatAud(x.feeCents)}${x.type ? ` (${x.type})` : ''}${r.feeAud != null && cents(r.feeAud) !== x.feeCents ? `, was ${formatAud(cents(r.feeAud))}` : ''}.`)
+      updates.push({ id: r.id, fields, before: { fee: r.feeAud, type: r.paymentType, status: r.paymentStatus } })
+    }
+    x.owingCents = Math.max(0, x.feeCents - paid)
+    x.paidCents = paid
+  }
+  if (updates.length) await updateTerm4Rows(updates.map(({ id, fields }) => ({ id, fields })))
+  const owing = rows.filter((x) => x.owingCents > 0)
+  const amountCents = owing.reduce((t, x) => t + x.owingCents, 0)
+  await audit({ by: principal.email, action: 'player.family-prices', target: ids.join(','), before: updates.map((u) => ({ id: u.id, ...u.before })), after: rows.map((x) => ({ id: x.row.id, cents: x.feeCents, type: x.type })) })
+  if (!amountCents) return res.status(200).json({ success: true, payreq: null, saved: updates.length, message: 'Prices saved. Nothing is owing, so no invoice was made.' })
+  const groups = Object.fromEntries((await listGroups()).map((g) => [g.id, g]))
+  const placeLabel = (r) => { const g = groups[r.groupId]; return g ? groupSummary(g, config) : [r.day, r.time, r.location].filter(Boolean).join(' ') }
+  const q = await createPayreq({ req, principal, config, group: null, rows: owing.map((x) => ({ id: x.row.id, name: x.row.player })), email, parentName: rows[0].row.parent, amountCents, reason: 'family', afterpay: body.afterpay !== false })
+  q.places = owing.map((x) => ({ rowId: x.row.id, name: x.row.player, label: placeLabel(x.row), feeCents: x.feeCents, paidCents: x.paidCents, owingCents: x.owingCents }))
+  q.groupLabel = [...new Set(q.places.map((x) => x.label))].join(' · ')
+  await savePayreq(q)
+  let emailed = false
+  if (body.sendEmail === true) {
+    const roster = await loadRoster()
+    const needWaiver = owing.some((x) => !waiverFor(x.row.player, { emails: rowEmails(x.row), phones: [x.row.phone], dob: x.row.dob }, roster.waivers))
+    await sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents, needWaiver })
+    emailed = true
+    await savePayreq({ ...q, emailedAt: new Date().toISOString() })
+  }
+  await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: q.term4Ids, cents: amountCents, product: 'family', emailed, replaced: openLinks.map((x) => x.id) } })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed, replaced: openLinks.length })
 }
 
 function splitEven(total, n) {
@@ -1018,13 +1109,15 @@ async function draftAges(res, principal, config) {
 
 // Close a payment link so it can no longer be paid: shut the Stripe page,
 // put back what a price-list link changed, and give back a place it held.
-async function cancelLink(q, principal, why) {
+async function cancelLink(q, principal, why, { keepPlace = false } = {}) {
   if (q.status === 'paid') return { status: 409, error: 'Already paid. Refunds are made in Stripe.' }
   if (!['open', 'checkout'].includes(q.status)) return { released: 0 }
   const closed = q.status === 'checkout' ? await closeCheckout(q.stripeSessionId) : 'expired'
   if (closed === 'complete') return { status: 409, error: 'The family has just paid. It will show as paid in a minute; refunds are made in Stripe.' }
   if (closed === 'error') return { status: 503, error: 'Could not close the family\'s payment page. Try again in a minute.' }
-  await savePayreq({ ...q, status: 'cancelled', cancelledBy: principal.email, cancelledAt: new Date().toISOString() })
+  await savePayreq({ ...q, status: 'cancelled', cancelledBy: principal.email, cancelledAt: new Date().toISOString(), ...(keepPlace ? { cancelReason: why } : {}) })
+  // Replaced by a family invoice: the place and the new prices stay as they are.
+  if (keepPlace) { await audit({ by: principal.email, action: 'payreq.cancel', target: q.id, after: { released: 0, why } }); return { released: 0 } }
   if (q.restoreFields?.length) {
     const still = []
     for (const x of q.restoreFields) if (await getTerm4Row(x.id)) still.push(x)
@@ -1573,6 +1666,7 @@ async function handle(req, res) {
       case 'markPaid': return await markPaid(res, principal, body)
       case 'setTrial': return await setTrial(res, principal, body)
       case 'sendPaymentLink': return await sendPaymentLink(req, res, principal, config, body)
+      case 'familyInvoice': return await familyInvoice(req, res, principal, config, body)
       case 'nextTerm': {
         const nt = config.nextTerm
         const [roster, groups, statuses] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name)])
