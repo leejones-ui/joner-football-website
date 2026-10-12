@@ -639,7 +639,11 @@ await test('morning squads split by coach: each coach has their own places, and 
   const d = await mk({ day: 'Thursday', time: '6:30am', location: 'NTRA', coachId: 'dean', byCoach: true, capacity: 8, mode: 'application', label: 'Squad' })
   const s2 = await mk({ day: 'Thursday', time: '6:30am', location: 'NTRA', coachId: 'sam', byCoach: true, capacity: 2, mode: 'direct', label: 'Squad', minAge: 8, maxAge: 16 })
   assert.equal(d, 'thu-0630-ntra-dean')
-  assert.equal((await portal(lee, 'saveGroup', { group: { day: 'Thursday', time: '6:30am', location: 'NTRA', coachId: 'lee', capacity: 8, mode: 'application' } })).status, 409, 'no single group on top of a split session')
+  // A group added at a split session becomes that coach's own group (Dean, 12 Oct).
+  const extra = await portal(lee, 'saveGroup', { group: { day: 'Thursday', time: '6:30am', location: 'NTRA', coachId: 'lee', capacity: 8, mode: 'application' } })
+  assert.equal(extra.status, 200); assert.equal(extra.data.group.id, 'thu-0630-ntra-lee', 'an extra coach at a split session gets their own group')
+  assert.equal((await portal(lee, 'saveGroup', { group: { day: 'Thursday', time: '6:30am', location: 'NTRA', coachId: 'dean', capacity: 8, mode: 'application' } })).status, 409, 'a coach never gets two groups at one session')
+  assert.equal((await portal(lee, 'deleteGroup', { id: 'thu-0630-ntra-lee' })).status, 200)
   for (const [gid, name] of [[d, 'Dee One'], [s2, 'Sam One'], [s2, 'Sam Two']]) assert.equal((await portal(lee, 'addPlayer', { groupId: gid, player: { name }, parent: { name: 'Co Parent' }, payment: 'none' })).status, 200)
   const b = (await portal(lee, 'board')).data
   assert.deepEqual(b.groups.find((g) => g.id === d).players.map((p) => p.name), ['Dee One'])

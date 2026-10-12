@@ -811,17 +811,28 @@ function groupModal(g) {
   const QS = [['club', 'Club they play for'], ['team', 'Team and age group'], ['playingUp', 'Playing up or down'], ['trainedBefore', 'Trained with Joner before'], ['position', 'Position'], ['videos', 'Links to training or game videos']]
   const PRODS = [['group', 'Term, small group'], ['pathway', 'JFP Pathway'], ['oneToOneTerm', 'Term of 1 to 1s'], ['pathwayOneToOne', 'Pathway 1 to 1']]
   const opt = (list, cur) => list.map(([val, label]) => `<option value="${esc(val)}" ${String(cur) === String(val) ? 'selected' : ''}>${esc(label)}</option>`).join('')
+  // Drop-downs everywhere (Lee, 12 Oct): times every 5 minutes from 6am to
+  // 9pm plus any time a group already uses, the places groups already run,
+  // and sensible ages, places and lengths. The current value is always kept.
+  const mins = (t) => { const m = String(t).toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/); return m ? ((Number(m[1]) % 12) + (m[3] === 'pm' ? 12 : 0)) * 60 + Number(m[2] || 0) : 9999 }
+  const label12 = (n) => { const h = Math.floor(n / 60), m = n % 60; return `${h % 12 || 12}${m ? `:${String(m).padStart(2, '0')}` : ''}${h < 12 ? 'am' : 'pm'}` }
+  const groupsNow = (P.board?.groups || d.groups || [])
+  const times = [...new Set([...Array.from({ length: (21 - 6) * 12 + 1 }, (_, i) => label12(360 + i * 5)), ...groupsNow.map((x) => x.time), v.time].filter(Boolean))].sort((a, b) => mins(a) - mins(b))
+  const places = [...new Set(['Belrose HQ', 'NTRA', 'Rydalmere', ...groupsNow.map((x) => x.location), v.location].filter(Boolean))]
+  const ages = [['', 'No limit'], ...Array.from({ length: 16 }, (_, i) => [String(i + 4), String(i + 4)])]
+  const caps = Array.from({ length: 20 }, (_, i) => [String(i + 1), String(i + 1)])
+  const durs = [...new Set([30, 45, 50, 55, 60, 75, 90, 120, Number(v.durationMin) || 60])].sort((a, b) => a - b).map((n) => [String(n), `${n} minutes`])
   const box = modal(`<h2 style="margin-bottom:12px">${g ? 'Edit group' : 'New group'}</h2>
     <div class="j-two"><label class="j-field"><span>Day</span><select class="j-select" id="gm-day">${opt(d.days.map((x) => [x, x]), v.day)}</select></label>
-    <label class="j-field"><span>Start time</span><input class="j-input" id="gm-time" value="${esc(v.time)}" placeholder="4:20pm"></label></div>
-    <div class="j-two"><label class="j-field"><span>Location (as written in Airtable)</span><input class="j-input" id="gm-loc" value="${esc(v.location)}" list="gm-locs"><datalist id="gm-locs"><option>Belrose HQ</option><option>NTRA</option><option>Rydalmere</option></datalist></label>
+    <label class="j-field"><span>Start time</span><select class="j-select" id="gm-time">${opt(times.map((t) => [t, t]), v.time)}</select></label></div>
+    <div class="j-two"><label class="j-field"><span>Location</span><select class="j-select" id="gm-loc">${opt(places.map((x) => [x, x === 'NTRA' ? 'North Turramurra (NTRA)' : x === 'Rydalmere' ? 'Rydalmere Park' : x]), v.location)}</select></label>
     <label class="j-field"><span>Coach</span><select class="j-select" id="gm-coach"><option value="">Not set</option>${opt(d.coaches.map((c) => [c.id, c.name]), v.coachId)}</select></label></div>
     <div class="j-two"><label class="j-field"><span>Parents can</span><select class="j-select" id="gm-mode">${opt(d.modes.map((m) => [m, modeLabel[m]]), v.mode)}</select></label>
     <label class="j-field"><span>Type</span><select class="j-select" id="gm-label">${opt(d.labels.map((x) => [x, x]), v.label)}</select></label></div>
-    <div class="j-two"><label class="j-field"><span>Youngest age</span><input class="j-input" id="gm-min" inputmode="numeric" value="${v.minAge ?? ''}"></label><label class="j-field"><span>Oldest age</span><input class="j-input" id="gm-max" inputmode="numeric" value="${v.maxAge ?? ''}"></label></div>
+    <div class="j-two"><label class="j-field"><span>Youngest age</span><select class="j-select" id="gm-min">${opt(ages, v.minAge ?? '')}</select></label><label class="j-field"><span>Oldest age</span><select class="j-select" id="gm-max">${opt(ages, v.maxAge ?? '')}</select></label></div>
     <div class="j-two"><label class="j-field"><span>Age band</span><select class="j-select" id="gm-agest">${opt([['draft', 'Draft, to confirm'], ['confirmed', 'Confirmed']], v.ageStatus)}</select></label>
     <label class="j-field"><span>Girls only</span><select class="j-select" id="gm-girls">${opt([['no', 'No'], ['suggested', 'Looks like it, not enforced'], ['yes', 'Yes, girls only']], v.girlsOnly)}</select></label></div>
-    <div class="j-two"><label class="j-field"><span>Places (capacity)</span><input class="j-input" id="gm-cap" inputmode="numeric" value="${v.capacity}"></label><label class="j-field"><span>Minutes</span><input class="j-input" id="gm-dur" inputmode="numeric" value="${v.durationMin}"></label></div>
+    <div class="j-two"><label class="j-field"><span>Places (capacity)</span><select class="j-select" id="gm-cap">${opt(caps, v.capacity)}</select></label><label class="j-field"><span>Length</span><select class="j-select" id="gm-dur">${opt(durs, v.durationMin)}</select></label></div>
     <label class="j-field"><span>Extra coaches</span><select class="j-select" id="gm-extra" multiple size="3">${d.coaches.map((c) => `<option value="${esc(c.id)}" ${(v.extraCoachIds || []).includes(c.id) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
     <div class="j-two"><label class="j-field"><span>Price from</span><select class="j-select" id="gm-prod">${opt(PRODS, v.product || 'group')}</select></label>
     <label class="j-check" style="margin-top:22px"><input type="checkbox" id="gm-trials" ${v.trials !== false ? 'checked' : ''}> <span>Apply: we may offer a trial first</span></label></div>

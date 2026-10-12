@@ -896,21 +896,32 @@ async function saveGroupAction(res, principal, config, body) {
   for (const k of ['capacity', 'durationMin']) if (k in patch) patch[k] = Number(patch[k])
   for (const k of ['minAge', 'maxAge']) if (k in patch) patch[k] = patch[k] === '' || patch[k] == null ? null : Number(patch[k])
   if (!existing) {
-    const v = validateGroup({ capacity: 6, mode: 'closed', durationMin: 60, label: 'Small group', ...patch }, config)
+    let v = validateGroup({ capacity: 6, mode: 'closed', durationMin: 60, label: 'Small group', ...patch }, config)
     if (!v.ok) return fail(res, 400, v.errors.join(' '))
-    if (await getGroup(v.group.id)) return fail(res, 409, v.group.byCoach ? 'That coach already has a group at that day, time and location.' : 'A group already runs at that day, time and location.')
-    // One session is either one group, or split by coach: never both.
-    const base = makeGroupId(v.group.day, v.group.time, v.group.location)
+    // A second coach at a session that already runs: it becomes that coach's
+    // own group (id ends in the coach), never one group that takes everyone's
+    // players (Dean, Wed 6:30am NTRA, 12 Oct 2026).
     const all = await listGroups()
-    if (v.group.byCoach && all.some((x) => x.id === base)) return fail(res, 409, 'That session is already one group. Edit it, or tick "one group per coach" on it first.')
-    if (!v.group.byCoach && all.some((x) => x.byCoach && makeGroupId(x.day, x.time, x.location) === base)) return fail(res, 409, 'That session is split by coach. Add another coach group instead.')
+    const base = makeGroupId(v.group.day, v.group.time, v.group.location)
+    const sameSession = all.filter((x) => makeGroupId(x.day, x.time, x.location) === base)
+    if (sameSession.length && !v.group.byCoach) {
+      if (!v.group.coachId) return fail(res, 400, 'A group already runs at that day, time and location. Choose the coach for this extra group.')
+      if (sameSession.some((x) => x.coachId === v.group.coachId)) return fail(res, 409, 'That coach already has a group at that day, time and location.')
+      v = validateGroup({ capacity: 6, mode: 'closed', durationMin: 60, label: 'Small group', ...patch, byCoach: true }, config)
+      if (!v.ok) return fail(res, 400, v.errors.join(' '))
+      // The groups already there keep their ids from now on when edited.
+      for (const x of sameSession) if (!x.byCoach) await saveGroup({ ...x, byCoach: true })
+    }
+    if (await getGroup(v.group.id)) return fail(res, 409, 'That coach already has a group at that day, time and location.')
     await saveGroup({ ...v.group, createdBy: principal.email, createdAt: new Date().toISOString() })
     await audit({ by: principal.email, action: 'group.create', target: v.group.id, after: v.group })
     return res.status(200).json({ success: true, group: v.group })
   }
   const v = validateGroup(patch, config, { ...existing, id: undefined })
   if (!v.ok) return fail(res, 400, v.errors.join(' '))
-  const next = { ...existing, ...v.group, byCoach: existing.byCoach === true, id: makeGroupId(v.group.day, v.group.time, v.group.location, existing.byCoach ? v.group.coachId : '') }
+  // A coach group is one whose id carries its coach, or is flagged as one.
+  const coachGroup = existing.byCoach === true || existing.id !== makeGroupId(existing.day, existing.time, existing.location)
+  const next = { ...existing, ...v.group, byCoach: coachGroup, id: makeGroupId(v.group.day, v.group.time, v.group.location, coachGroup ? v.group.coachId : '') }
   const moved = next.id !== existing.id
   const roster = await loadRoster({ fresh: true })
   const rows = roster.players.filter((r) => r.groupId === existing.id && r.holdsPlace)

@@ -194,23 +194,33 @@ async function waiverRules(roster) {
 // that time is left out of every group and shows under "Not in a group".
 export async function placeInGroups(roster, groups, config) {
   if (!groups || !config) [groups, config] = await Promise.all([groups ? groups : listGroups(), config ? config : getConfig()])
-  const ids = new Set(groups.map((g) => g.id))
   // Rows typed a little differently ("Belrose" for "Belrose HQ", "16:20" or
-  // "4.20pm", "wednesday ") still land in their group when exactly one fits.
+  // "4.20pm", "wednesday ") still land in their session.
   const loose = (day, time, location) => `${String(day || '').trim().toLowerCase().slice(0, 3)}|${looseTime(time)}|${locationFor(config, location).id}`
-  const byLoose = new Map()
-  for (const g of groups) { const k = `${loose(g.day, g.time, g.location)}|${g.byCoach ? g.coachId : ''}`; byLoose.set(k, byLoose.has(k) ? null : g.id) }
+  const bySlot = new Map()
+  for (const g of groups) { const k = loose(g.day, g.time, g.location); bySlot.set(k, [...(bySlot.get(k) || []), g]) }
+  const byId = new Map(groups.map((g) => [g.id, g]))
   return {
     ...roster,
     players: roster.players.map((p) => {
       const base = p.sessionId ?? p.groupId
-      if (!base || ids.has(base)) return { ...p, sessionId: base, groupId: base }
+      if (!base) return { ...p, sessionId: base, groupId: base }
       const c = coachByAirtableName(config, p.coach)?.id || ''
-      const mine = c ? groupId(p.day, p.time, p.location, c) : ''
-      if (mine && ids.has(mine)) return { ...p, sessionId: base, groupId: mine }
-      const k = loose(p.day, p.time, p.location)
-      const found = byLoose.get(`${k}|`) || (c ? byLoose.get(`${k}|${c}`) : null)
-      return { ...p, sessionId: base, groupId: found || base }
+      const slot = bySlot.get(loose(p.day, p.time, p.location)) || []
+      // Groups saved without day/time (older data): match by id as before.
+      if (!slot.length) {
+        const mine = c ? groupId(p.day, p.time, p.location, c) : ''
+        return { ...p, sessionId: base, groupId: mine && byId.has(mine) ? mine : base }
+      }
+      // One group at that day, time and place: that is the group.
+      if (slot.length === 1) return { ...p, sessionId: base, groupId: slot[0].id }
+      // Several groups share the session (a coach each, e.g. the early
+      // mornings): the row's Coach decides, whatever the groups are called.
+      // A group added later with no coach in its id (Dean, Wed 12 Oct) never
+      // swallows the others (Lee, 12 Oct 2026).
+      const hit = c ? slot.find((g) => g.coachId === c) || slot.find((g) => (g.extraCoachIds || []).includes(c)) : null
+      // No coach, or a coach with no group there: "Not in a group" for staff to place.
+      return { ...p, sessionId: base, groupId: hit ? hit.id : byId.has(base) ? `${base}~unplaced` : base }
     }),
   }
 }
