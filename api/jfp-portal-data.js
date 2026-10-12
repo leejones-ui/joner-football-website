@@ -33,8 +33,8 @@ import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
-import { matchBank, cleanItem, csvId, EXTERNAL_ID, BANK_LIMITS } from './_jfp-bank-match.js'
-import { allocateTermMoney, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
+import { matchBank, cleanItem, csvIds, EXTERNAL_ID, BANK_LIMITS, twinOf, looksJfp, feeSizes } from './_jfp-bank-match.js'
+import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -587,9 +587,19 @@ async function recordPaymentCore(principal, config, body) {
     if (!ISO.test(body.date || '')) date = sydneyToday(Date.parse(stripePay.at))
   }
   if (!(Number.isInteger(amount) && amount > 0 && amount <= 2000000)) return fail(res, 400, 'Enter the amount received.')
+  // A bank line: never twice (the ledger, and the claim kept for good even
+  // if the ledger write failed), and not its other copy (Xero / CSV) either,
+  // unless Lee says it is a different transfer.
+  let bankLine = null
   if (externalId) {
     const ledger = await listLedger(config.term)
     if (ledger.some((l) => String(l['Payment ID'] || '').replace(/#\d+$/, '') === externalId)) return fail(res, 409, 'That bank transfer is already in the ledger.')
+    if (await kvCommand(['GET', bankClaim(externalId)])) return fail(res, 409, 'That bank transfer is already recorded.')
+    const src = await bankSources()
+    const seen = [...src.xero, ...src.csv].find((x) => x.id === externalId)
+    bankLine = { id: externalId, source: externalId.startsWith('XERO-') ? 'xero' : 'csv', cents: seen?.cents || amount, date: seen?.date || date, payer: seen?.payer || '', ...(body.confirmTwin === true ? { distinct: true } : {}), at: new Date().toISOString() }
+    const twin = body.confirmTwin === true ? null : twinOf(bankLine, await bankRecorded())
+    if (twin) return { ok: false, status: 409, code: 'twin', error: `This looks like the same transfer as the ${formatAud(twin.cents)} from ${twin.payer || 'the bank'} on ${twin.date}, already recorded from ${twin.source === 'xero' ? 'Xero' : 'the bank CSV'}. Only record it if it is a different payment.` }
   }
   // The same payment cannot be recorded twice by a double click or by two staff
   // pressing Save together. A Stripe payment is guarded by its own id above.
@@ -629,6 +639,8 @@ async function recordPaymentCore(principal, config, body) {
   if (!(await lockOnce())) return fail(res, 409, 'That payment was just recorded. Refresh to check before entering it again.')
   // Two staff recording the same bank line for different players at once.
   if (externalId && (await kvCommand(['SET', `jfp:paylock:${externalId}`, '1', 'NX', 'EX', '20'])) !== 'OK') return fail(res, 409, 'That bank transfer was just recorded. Refresh to check.')
+  // Claimed for good before any row changes; given back only if the rows could not be written.
+  if (bankLine && (await kvCommand(['SET', bankClaim(externalId), JSON.stringify(bankLine), 'NX'])) !== 'OK') return fail(res, 409, 'That bank transfer is already recorded.')
   // Fill each row up to what it owes, in order; anything over goes on the last row.
   let left = amount
   const updates = rows.map((r, i) => {
@@ -645,7 +657,14 @@ async function recordPaymentCore(principal, config, body) {
       'Term 4 Notes': appendNote(r.notes, `Payment recorded: ${formatAud(share)} by ${method} on ${date}${stripePay ? ` (Stripe ${stripePay.id})` : ''}, by ${principal.name}.${matched}${body.note ? ` ${clean(body.note, 200)}` : ''}`),
     } }
   })
-  await updateTerm4Rows(updates.map((u) => ({ id: u.r.id, fields: u.fields })))
+  try {
+    await updateTerm4Rows(updates.map((u) => ({ id: u.r.id, fields: u.fields })))
+  } catch (error) {
+    if (bankLine) await kvCommand(['DEL', bankClaim(externalId)]).catch(() => {})
+    throw error
+  }
+  // The list the matcher reads; the claim above is what guards.
+  if (bankLine) await kvCommand(['HSET', BANK.recorded, externalId, JSON.stringify({ ...bankLine, rowIds: rows.map((r) => r.id) })]).catch((error) => console.error('jfp bank recorded list failed', error))
   const paymentId = externalId || (stripePay ? (stripePay.intentId || stripePay.id) : `${method === 'Cash' ? 'CASH' : method === 'Bank Transfer' ? 'BANK' : 'OFF'}-${newId('T4').slice(3)}`)
   let ledgerId = ''
   try {
@@ -662,7 +681,7 @@ async function recordPaymentCore(principal, config, body) {
 }
 async function recordPayment(res, principal, config, body) {
   const r = await recordPaymentCore(principal, config, body)
-  return r.ok ? res.status(200).json({ success: true, ledger: r.ledger }) : fail(res, r.status, r.error)
+  return r.ok ? res.status(200).json({ success: true, ledger: r.ledger }) : fail(res, r.status, r.error, r.code ? { code: r.code } : undefined)
 }
 
 // Every family whose Stripe payments Airtable does not show yet: record
@@ -743,6 +762,9 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
   for (const q of payreqs) if (['open', 'checkout'].includes(q.status)) for (const id of q.term4Ids || []) openLinkFor.set(id, { id: q.id, amountCents: q.amountCents, players: q.playerNames, family: q.reason === 'family', createdAt: q.createdAt })
   let stripe = { payments: [], next: [], other: { count: 0, cents: 0 }, since: since || config.moneySince, error: '' }
   try { stripe = { ...(await jfpStripePayments({ since: since || config.moneySince, fresh, quick: quick && !fresh, term: config.term })), error: '' } } catch (error) { console.error('jfp stripe read failed', error); stripe.error = 'Stripe could not be read just now. Airtable figures only.' }
+  // The Sydney day each payment was made (before 11 am in summer is still
+  // yesterday in UTC), as cash and bank transfers are dated.
+  for (const p of [...stripe.payments, ...(stripe.next || [])]) p.day = sydneyToday(Date.parse(p.at))
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
   const holding = roster.players.filter((r) => r.holdsPlace && !isTestName(r.player))
   const net = (p) => p.amountCents - p.refundedCents
@@ -766,13 +788,13 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
     for (const r of rows.slice().sort((a, b) => (cents(b.feeAud) - cents(b.paidAud)) - (cents(a.feeAud) - cents(a.paidAud)))) {
       const fee = cents(r.feeAud), paid = cents(r.paidAud), owe = Math.max(0, fee - paid)
       const markedPaid = /^paid$/i.test(r.paymentStatus || '')
-      let status
+      let status, applied = 0
       if (isSessionType(r.paymentType)) status = 'session'
       else if (fee > 0 && paid >= fee) status = 'paid'
       // Marked Paid by hand with no amount, and the family's Stripe payment is
       // not on the row yet (Ligia's links, Sept 2026): record it, so the
       // amount shows, the ledger has it and the venues add up.
-      else if (unrecorded > 0 && (owe > 0 || !fee)) { status = 'stripe'; unrecorded -= Math.min(unrecorded, owe || unrecorded) }
+      else if (unrecorded > 0 && (owe > 0 || !fee)) { status = 'stripe'; applied = Math.min(unrecorded, owe || unrecorded); unrecorded -= applied }
       else if (markedPaid) status = 'paid'
       else if (paid > 0) status = 'part'
       else if (fee > 0) status = 'unpaid'
@@ -785,6 +807,9 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
         groupId: r.groupId, locationId: loc.id, locationName: loc.name, coach: g ? coachLabel(coachById(config, g.coachId)) : r.coach,
         feeCents: fee, paidCents: paid, owingCents: status === 'paid' || status === 'stripe' ? 0 : owe, perSessionCents: r.perSessionCents || null,
         airtableStatus: r.paymentStatus || 'Not set', type: r.paymentType || '', status,
+        // 'stripe': the Stripe money not on the row yet that counts for it,
+        // and what is still owing after it (owingCents shows 0 until recorded).
+        stripeAppliedCents: applied, stillOwingCents: status === 'stripe' ? Math.max(0, owe - applied) : (status === 'paid' ? 0 : owe),
         stripeCents, stripeCount: pays.length, hasNotes: Boolean((r.notes || '').trim() || (r.linkNotes || '').trim()),
       })
     }
@@ -814,7 +839,7 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
   const start = weekOf(stripe.since || config.moneySince)
   const blankWeek = (week) => ({ week, stripe: 0, bank: 0, cash: 0, fee: 0 })
   for (let d = new Date(`${start}T00:00:00Z`); d.toISOString().slice(0, 10) <= sydneyToday(); d.setUTCDate(d.getUTCDate() + 7)) weeks.set(d.toISOString().slice(0, 10), blankWeek(d.toISOString().slice(0, 10)))
-  for (const p of stripe.payments) { const w = weeks.get(weekOf(p.at.slice(0, 10))); if (w) { w.stripe += net(p); w.fee += feeOf(p) } }
+  for (const p of stripe.payments) { const w = weeks.get(weekOf(p.day)); if (w) { w.stripe += net(p); w.fee += feeOf(p) } }
   for (const o of offline) { if (!o.date) continue; const w = weeks.get(weekOf(o.date)); if (w) w[o.method === 'Cash' ? 'cash' : 'bank'] += o.cents }
   const count = (s) => players.filter((p) => p.status === s).length
   // Revenue by venue: the same money as "Income this term", on the rows it
@@ -830,6 +855,8 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
     p.receivedCents = totalOf(m)
     p.stripeFeeCents = m?.fee || 0
     p.netReceivedCents = p.receivedCents - p.stripeFeeCents
+    // Stripe payments on this row whose fee is not known yet.
+    p.stripeFeePending = m?.feePending || 0
   }
   // Marked paid in Airtable, but less money on the row this term than Airtable
   // says (paid last term, typed in, or never came in). For Lee to check.
@@ -845,7 +872,8 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
   // Venue costs this term. A venue with costs and no players yet still shows.
   const costs = costsOfTerm(config.venueCosts, config.term)
   for (const loc of config.locations) if (costs[loc.id] && !locations.some((l) => l.id === loc.id)) locations.push({ ...emptyVenue(loc), juniors: null })
-  for (const l of locations) Object.assign(l, withCosts(l, costs[l.id]))
+  // Only a real venue can have costs ("No venue set" cannot).
+  for (const l of locations) Object.assign(l, withCosts(l, costs[l.id]), { canCost: config.locations.some((c) => c.id === l.id) })
   // Each venue's income by week, so its chart follows the venue picked.
   const venueOfRow = new Map(roster.players.map((r) => [r.id, venueOf(r).id]))
   const weeklyByVenue = Object.fromEntries(locations.map((l) => [l.id, new Map([...weeks.keys()].map((k) => [k, blankWeek(k)]))]))
@@ -872,12 +900,12 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
   const payments = [...lines.values()].map((l) => {
     const p = l.kind === 'stripe' ? payById.get(l.id) : null
     const known = !p || p.feeKnown
-    return { id: l.id, at: l.at, method: METHOD_LABEL[l.kind], payMethod: p?.payMethod || '', who: [...l.who].join(', '), venueId: l.venueId, takenCents: l.cents + l.refunded, refundedCents: l.refunded, feeCents: known ? l.fee : null, feeGstCents: known ? l.gst : null, keptCents: l.cents - l.fee }
+    return { id: l.id, at: l.at, method: METHOD_LABEL[l.kind], payMethod: p?.payMethod || '', who: [...l.who].join(', '), venueId: l.venueId, takenCents: l.cents + l.refunded, refundedCents: l.refunded, feeCents: known ? l.fee : null, feeGstCents: known ? l.gst : null, keptCents: known ? l.cents - l.fee : null }
   }).sort((a, b) => (a.at || '9').localeCompare(b.at || '9') || a.id.localeCompare(b.id))
   // What the places should bring in this term, and how much of it is in.
   const expecting = players.filter((p) => !['session', 'unpriced'].includes(p.status))
   const expectedCents = expecting.reduce((t, p) => t + p.feeCents, 0)
-  const collectedCents = expecting.reduce((t, p) => t + Math.max(0, p.feeCents - p.owingCents), 0)
+  const collectedCents = expecting.reduce((t, p) => t + collectedOf(p), 0)
   const incomeCents = stripeGross - stripeRefunds + offlineCents
   const costed = costTotals(locations, incomeCents - fees.stripeFeesCents)
   const lastTerm = previousTerm(config.term)
@@ -923,32 +951,48 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
 // Money in from the bank, matched to the players who probably sent it. Lee
 // confirms each with one tap (recordPayment with externalId). Read only when
 // the panel is opened, never by the two minute refresh.
-const BANK = { xero: 'jfp:xero-bank-in', csv: 'jfp:bank-csv', ignored: 'jfp:bank-ignored' }
+// recorded: every bank line recorded so far, kept for good (a hash of
+// { id, source, cents, date, payer, distinct }); claim: one key per line, set
+// before the rows are written, so no line is ever recorded twice.
+const BANK = { xero: 'jfp:xero-bank-in', csv: 'jfp:bank-csv', ignored: 'jfp:bank-ignored', recorded: 'jfp:bank-recorded' }
+const bankClaim = (id) => `jfp:bank-recorded:${id}`
 async function bankSources() {
   const [xero, csv] = await Promise.all([kvGetJson(BANK.xero).catch(() => null), kvGetJson(BANK.csv).catch(() => null)])
   const list = (x, source) => (Array.isArray(x?.items) ? x.items.map((i) => cleanItem(i, source)).filter(Boolean) : [])
   return { xero: list(xero, 'xero'), csv: list(csv, 'csv'), xeroAt: typeof xero?.at === 'string' ? xero.at : '', csvAt: typeof csv?.at === 'string' ? csv.at : '' }
 }
-async function bankCheck(config) {
-  const [src, m, ledger, ignored] = await Promise.all([bankSources(), moneyData(config, { quick: true }), listLedger(config.term).catch(() => []), kvCommand(['SMEMBERS', BANK.ignored]).catch(() => [])])
-  const { items, counts } = matchBank({ items: [...src.xero, ...src.csv], players: m.players, ledger, ignored: Array.isArray(ignored) ? ignored : [], since: config.moneySince })
-  return { sources: { xeroAt: src.xeroAt, xeroItems: src.xero.length, csvAt: src.csvAt, csvItems: src.csv.length }, items: items.slice(0, 300), counts }
+async function bankRecorded() {
+  const flat = await kvCommand(['HGETALL', BANK.recorded]).catch(() => [])
+  const out = []
+  for (let i = 1; Array.isArray(flat) && i < flat.length; i += 2) { try { const r = JSON.parse(flat[i]); if (r?.id) out.push(r) } catch {} }
+  return out
 }
-async function bankUpload(res, principal, body) {
+async function bankCheck(config) {
+  const [src, m, ledger, ignored, recorded] = await Promise.all([bankSources(), moneyData(config, { quick: true }), listLedger(config.term).catch(() => []), kvCommand(['SMEMBERS', BANK.ignored]).catch(() => []), bankRecorded()])
+  const { items, counts, hidden } = matchBank({ items: [...src.xero, ...src.csv], players: m.players, ledger, ignored: Array.isArray(ignored) ? ignored : [], since: config.moneySince, recorded })
+  return { sources: { xeroAt: src.xeroAt, xeroItems: src.xero.length, csvAt: src.csvAt, csvItems: src.csv.length }, items: items.slice(0, 300), counts, hidden: hidden.slice(0, 60) }
+}
+async function bankUpload(res, principal, config, body) {
   const lines = body.lines
   if (!Array.isArray(lines) || !lines.length) return fail(res, 400, 'No money in found in that file.')
   if (lines.length > BANK_LIMITS.lines) return fail(res, 400, `That is more than ${BANK_LIMITS.lines} lines. Export a shorter date range.`)
   const today = sydneyToday()
-  const fresh = []
+  const parsed = []
   for (const l of lines) {
     const date = String(l?.date || ''), cents = Number(l?.cents), description = String(l?.description || '').replace(/\s+/g, ' ').trim().slice(0, BANK_LIMITS.description)
     if (!ISO.test(date) || date > today || !Number.isInteger(cents) || cents <= 0 || cents > BANK_LIMITS.cents) return fail(res, 400, 'A line in that file has a date or amount that does not look right.')
-    fresh.push({ id: csvId(date, cents, description), date, cents, payer: description, description })
+    parsed.push({ date, cents, description })
   }
+  // Two identical lines in one file are two transfers: each gets its own id.
+  const ids = csvIds(parsed)
+  // Only money that could be JFP is kept: anything else on the account stays out.
+  const players = (await moneyData(config, { quick: true })).players
+  const sizes = feeSizes(players)
+  const fresh = parsed.map((l, i) => ({ id: ids[i], date: l.date, cents: l.cents, payer: l.description, description: l.description })).filter((x) => looksJfp(x, players, sizes))
   if ((await kvCommand(['SET', 'jfp:bank-csv-lock', '1', 'NX', 'EX', '10'])) !== 'OK') return fail(res, 409, 'Another upload is saving. Try again in a moment.')
-  try { return await bankSave(res, principal, fresh) } finally { await kvCommand(['DEL', 'jfp:bank-csv-lock']) }
+  try { return await bankSave(res, principal, fresh, parsed.length) } finally { await kvCommand(['DEL', 'jfp:bank-csv-lock']) }
 }
-async function bankSave(res, principal, fresh) {
+async function bankSave(res, principal, fresh, read) {
   // Kept with what is there, for 45 days from the last upload; older lines drop off.
   const old = await kvGetJson(BANK.csv).catch(() => null)
   const keepFrom = new Date(Date.now() - BANK_LIMITS.csvDays * 86400000).toISOString().slice(0, 10)
@@ -957,8 +1001,8 @@ async function bankSave(res, principal, fresh) {
   for (const x of fresh) byId.set(x.id, x)
   const items = [...byId.values()].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5000)
   await kvSetJson(BANK.csv, { at: new Date().toISOString(), source: 'csv', items }, BANK_LIMITS.csvDays * 86400)
-  await audit({ by: principal.email, action: 'money.bankUpload', target: 'csv', after: { lines: fresh.length, added: byId.size - before } })
-  return res.status(200).json({ success: true, lines: fresh.length, added: byId.size - before, total: items.length })
+  await audit({ by: principal.email, action: 'money.bankUpload', target: 'csv', after: { lines: read, kept: fresh.length, added: byId.size - before } })
+  return res.status(200).json({ success: true, lines: read, kept: fresh.length, added: byId.size - before, total: items.length })
 }
 async function bankIgnore(res, principal, body, undo) {
   const id = String(body.id || '')
@@ -2180,7 +2224,7 @@ async function handle(req, res) {
       case 'saveVenueCosts': return await saveVenueCosts(res, principal, body)
       case 'recordStripeAll': return await recordStripeAll(res, principal, config)
       case 'bankCheck': return res.status(200).json({ success: true, bank: await bankCheck(config) })
-      case 'bankUpload': return await bankUpload(res, principal, body)
+      case 'bankUpload': return await bankUpload(res, principal, config, body)
       case 'bankIgnore': return await bankIgnore(res, principal, body, false)
       case 'bankUnignore': return await bankIgnore(res, principal, body, true)
 

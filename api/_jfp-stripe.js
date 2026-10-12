@@ -12,7 +12,7 @@
 // transaction (GST included, never an estimate), the net and how it was paid.
 // A refund never gives the fee back, so a refunded payment keeps its fee.
 import { stripeFetch } from './_holiday-store.js'
-import { kvGetJson, kvSetJson, kvCommand, kvPipeline } from './_jfp-store.js'
+import { kvGetJson, kvSetJson, kvPipeline } from './_jfp-store.js'
 
 // v2 has the fees. The old cache had none, so it is never read.
 const CACHE = 'jfp:stripe-payments:v2'
@@ -59,24 +59,31 @@ export function feeFrom(charge) {
 }
 const feeFields = (f) => (f ? { feeCents: f.fee, feeGstCents: f.gst, stripeNetCents: f.net, feeKnown: true } : { feeCents: null, feeGstCents: null, stripeNetCents: null, feeKnown: false })
 
-// Fees missing from the list: the cache first, then Stripe for a few.
+// Fees missing from the list: the cache first, then Stripe for a few. One
+// read for every kept fee and every "asked lately" marker, then at most
+// FEE_LOOKUPS markers set and asked, however many are still missing.
+const tryKey = (intentId) => `jfp:stripe-fee-try:${intentId}`
 async function fillFees(payments) {
   const missing = payments.filter((p) => !p.feeKnown && p.intentId)
   if (!missing.length) return
-  const hits = await kvPipeline(missing.map((p) => ['GET', feeKey(p.intentId)]))
-  let asked = 0
+  const hits = await kvPipeline(missing.flatMap((p) => [['GET', feeKey(p.intentId)], ['GET', tryKey(p.intentId)]]))
+  const found = new Map()
+  const ask = []
   for (const [i, p] of missing.entries()) {
     let f = null
-    try { f = typeof hits[i] === 'string' ? JSON.parse(hits[i]) : null } catch {}
-    if (!f && asked < FEE_LOOKUPS && (await kvCommand(['SET', `jfp:stripe-fee-try:${p.intentId}`, '1', 'NX', 'EX', String(FEE_RETRY_SECONDS)])) === 'OK') {
-      asked += 1
-      try {
-        f = feeFrom((await stripeFetch(`/payment_intents/${encodeURIComponent(p.intentId)}?expand[]=latest_charge.balance_transaction`))?.latest_charge)
-        if (f) await kvSetJson(feeKey(p.intentId), f)
-      } catch (error) { console.error('jfp stripe fee read failed', p.intentId, error.message) }
-    }
-    if (f && typeof f.fee === 'number') Object.assign(p, feeFields(f), { payMethod: p.payMethod || f.method || '' })
+    try { f = typeof hits[2 * i] === 'string' ? JSON.parse(hits[2 * i]) : null } catch {}
+    if (f && typeof f.fee === 'number') found.set(p, f)
+    else if (hits[2 * i + 1] == null && ask.length < FEE_LOOKUPS) ask.push(p)
   }
+  const marks = ask.length ? await kvPipeline(ask.map((p) => ['SET', tryKey(p.intentId), '1', 'NX', 'EX', String(FEE_RETRY_SECONDS)])) : []
+  for (const [i, p] of ask.entries()) {
+    if (marks[i] !== 'OK') continue
+    try {
+      const f = feeFrom((await stripeFetch(`/payment_intents/${encodeURIComponent(p.intentId)}?expand[]=latest_charge.balance_transaction`))?.latest_charge)
+      if (f) { await kvSetJson(feeKey(p.intentId), f); found.set(p, f) }
+    } catch (error) { console.error('jfp stripe fee read failed', p.intentId, error.message) }
+  }
+  for (const [p, f] of found) Object.assign(p, feeFields(f), { payMethod: p.payMethod || f.method || '' })
 }
 
 // Next term paid early is kept apart. A payment that names its term counts

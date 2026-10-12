@@ -6,7 +6,18 @@ import crypto from 'node:crypto'
 
 export const EXTERNAL_ID = /^(XERO|CSV)-[A-Za-z0-9-]{6,80}$/
 export const BANK_LIMITS = { lines: 2000, cents: 5000000, description: 200, csvDays: 45, earlyDays: 14, sameDays: 7 }
-export const csvId = (date, cents, description) => `CSV-${crypto.createHash('sha1').update(`${date}|${cents}|${description}`).digest('hex')}`
+// n: the 2nd, 3rd... line in one file with the same date, amount and
+// description (two real transfers that look alike). The first keeps the
+// plain id, so an export that overlaps an earlier one gives the same ids.
+export const csvId = (date, cents, description, n = 1) => `CSV-${crypto.createHash('sha1').update(`${date}|${cents}|${description}${n > 1 ? `|${n}` : ''}`).digest('hex')}`
+export function csvIds(lines) {
+  const seen = new Map()
+  return lines.map((l) => {
+    const k = `${l.date}|${l.cents}|${l.description}`
+    seen.set(k, (seen.get(k) || 0) + 1)
+    return csvId(l.date, l.cents, l.description, seen.get(k))
+  })
+}
 
 // Words the bank puts in front of a payer's name, and titles.
 const NOISE = [/\bfast transfer from\b/gi, /\btransfer from\b/gi, /\bnetbank\b/gi, /\bcommbank app\b/gi, /\bosko payment from\b/gi, /\bdirect credit\b/gi, /\bpayment from\b/gi]
@@ -103,20 +114,9 @@ export function gradeOf(score, exact) {
   if (score >= 2 || (score >= 1 && exact)) return 'possible'
   return 'none'
 }
-
 const dayGap = (a, b) => Math.abs(Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86400000
 const addDays = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
 const ledgerBase = (id) => String(id || '').replace(/#\d+$/, '')
-
-// Already in the ledger: by its own id, or as a bank transfer, cash or other
-// payment of the same amount within a week from someone with the same name.
-export function recordedIn(item, ledgerPays) {
-  return ledgerPays.some((l) => {
-    if (l.id === item.id) return true
-    if (l.method === 'Stripe' || l.cents !== item.cents || !l.date || dayGap(l.date, item.date) > BANK_LIMITS.sameDays) return false
-    return l.rows.some((r) => rowScore({ payer: item.payer, description: item.payer }, r).score >= 1)
-  })
-}
 
 // The ledger as payments: lines "<id>", "<id>#2"... added back together,
 // with the rows they paid for (for the names).
@@ -147,16 +147,98 @@ export function cleanItem(x, source) {
   return { id, date, cents, payer, description, reference: String(x.reference || '').replace(/\s+/g, ' ').trim().slice(0, 120), source }
 }
 
-// The same transfer in Xero and in the CSV: keep the Xero line.
-function dropTwins(items) {
-  const xero = items.filter((x) => x.source === 'xero')
-  return items.filter((x) => x.source !== 'csv' || !xero.some((y) => y.cents === x.cents && dayGap(y.date, x.date) <= 1 && (rowScore(y, { parent: x.payer, player: '' }).score >= 1 || nameTokens(y.payer).join(' ') === nameTokens(x.payer).join(' '))))
+// The same transfer seen twice: in Xero and in the CSV, the same amount, at
+// most a day apart, from the same payer.
+const payerKey = (x) => nameTokens(x.payer || x.description).join(' ')
+export function sameTransfer(a, b) {
+  if (a.source === b.source || a.cents !== b.cents || !a.date || !b.date || dayGap(a.date, b.date) > 1) return false
+  if (!payerKey(a) || !payerKey(b)) return false
+  return payerKey(a) === payerKey(b) || rowScore(a, { parent: b.payer || b.description, player: '' }).score >= 1
 }
 
+// One to one: each left takes at most one right and each right is taken at
+// most once, closest date first, a Xero line before a CSV one.
+function pairUp(lefts, rights, fits) {
+  const pairs = []
+  for (const l of lefts) for (const r of rights) if (fits(l, r)) pairs.push([l, r, dayGap(l.date, r.date)])
+  pairs.sort((a, b) => a[2] - b[2] || Number(a[1].source !== 'xero') - Number(b[1].source !== 'xero') || String(a[1].id).localeCompare(String(b[1].id)))
+  const usedL = new Set(), out = new Map()
+  for (const [l, r] of pairs) {
+    if (usedL.has(l) || out.has(r)) continue
+    usedL.add(l)
+    out.set(r, l)
+  }
+  return out
+}
+
+// Bank lines recorded so far (KV jfp:bank-recorded): { id, source, cents,
+// date, payer, distinct }. Two recorded lines that are the same transfer
+// (both copies recorded) pair off; each one left can stand for one more copy.
+// distinct: Lee said it was a different transfer, so it pairs with nothing.
+export function unpairedRecorded(recorded) {
+  const xero = recorded.filter((r) => r.source === 'xero' && !r.distinct)
+  const csv = recorded.filter((r) => r.source === 'csv' && !r.distinct)
+  const paired = pairUp(xero, csv, sameTransfer)
+  const used = new Set([...paired.keys(), ...paired.values()])
+  return recorded.filter((r) => !used.has(r))
+}
+// The recorded line this bank line is probably the other copy of, or null.
+export function twinOf(item, recorded) {
+  return unpairedRecorded(recorded.filter((r) => r.id !== item.id))
+    .filter((r) => !r.distinct && sameTransfer(r, item))
+    .sort((a, b) => dayGap(a.date, item.date) - dayGap(b.date, item.date))[0] || null
+}
+
+const isBankId = (id) => /^(XERO|CSV)-/.test(id)
+const sourceOfId = (id) => (String(id).startsWith('XERO-') ? 'xero' : 'csv')
+const namesRow = (x) => (r) => rowScore({ payer: x.payer, description: x.payer }, r).score >= 1
+
+// Which lines are already recorded. Every ledger payment and recorded line
+// stands for one bank line only:
+//   1. its own id, in the ledger or the recorded store
+//   2. the other copy (Xero or CSV) of a recorded line
+//   3. a payment typed in by hand (bank transfer, cash, other), the same
+//      amount within a week, from someone with the same name
+// The same transfer in Xero and the CSV, neither recorded, shows once as the
+// Xero line: its CSV copy is in twins.
+export function settle(items, pays, recorded = []) {
+  const done = new Set()
+  const store = new Set(recorded.map((r) => r.id))
+  const own = new Set(pays.map((p) => p.id))
+  for (const x of items) if (own.has(x.id) || store.has(x.id)) done.add(x.id)
+  // Recorded lines: the store, or the ledger alone (names from its rows).
+  const lines = [...recorded]
+  for (const p of pays) if (isBankId(p.id) && !store.has(p.id)) lines.push({ id: p.id, source: sourceOfId(p.id), cents: p.cents, date: p.date, payer: '', rows: p.rows })
+  const fitsCopy = (r, x) => !r.distinct && (r.payer ? sameTransfer(r, x) : r.source !== x.source && r.cents === x.cents && Boolean(r.date) && dayGap(r.date, x.date) <= 1 && (r.rows || []).some(namesRow(x)))
+  const open = items.filter((x) => !done.has(x.id))
+  for (const x of pairUp(unpairedRecorded(lines), open, fitsCopy).keys()) done.add(x.id)
+  const xero = items.filter((x) => x.source === 'xero' && !done.has(x.id))
+  const csv = items.filter((x) => x.source === 'csv' && !done.has(x.id))
+  const twins = new Set([...pairUp(xero, csv, sameTransfer).keys()].map((x) => x.id))
+  // A XERO-/CSV- payment only ever stands for its own line or its copy, never this.
+  const hand = pays.filter((p) => !isBankId(p.id) && p.method !== 'Stripe' && p.date && p.cents > 0)
+  const left = items.filter((x) => !done.has(x.id) && !twins.has(x.id))
+  const fitsHand = (p, x) => p.cents === x.cents && dayGap(p.date, x.date) <= BANK_LIMITS.sameDays && p.rows.some(namesRow(x))
+  for (const x of pairUp(hand, left, fitsHand).keys()) done.add(x.id)
+  return { recorded: done, twins }
+}
+
+// Amounts a place could cost: what anyone owes, a fee, two or three fees.
+export function feeSizes(players) {
+  const s = new Set()
+  for (const p of players) for (const c of [p.owingCents, p.feeCents, p.feeCents * 2, p.feeCents * 3]) if (c > 0) s.add(c)
+  return s
+}
+// A line nobody on the term could have sent, for no amount a place costs, is
+// most likely not JFP money: it is never kept or shown.
+export const looksJfp = (item, players, sizes = feeSizes(players)) => !notFamily(item) && (sizes.has(item.cents) || players.some((p) => rowScore(item, p).score >= 1))
+
 // Every bank line still to check, with up to three players it is probably for.
-//   players: moneyData players (this term's rows only)
-//   ledger:  this term's ledger rows (Airtable fields)
-export function matchBank({ items, players, ledger = [], ignored = [], since = '' }) {
+//   players:  moneyData players (this term's rows only)
+//   ledger:   this term's ledger rows (Airtable fields)
+//   recorded: bank lines recorded so far (see unpairedRecorded)
+// hidden: the lines Lee hid that look like JFP money, so he can show them again.
+export function matchBank({ items, players, ledger = [], ignored = [], since = '', recorded = [] }) {
   const skip = new Set(ignored)
   const from = since ? addDays(since, -BANK_LIMITS.earlyDays) : ''
   const rowsById = new Map(players.map((p) => [p.rowId, p]))
@@ -166,14 +248,22 @@ export function matchBank({ items, players, ledger = [], ignored = [], since = '
   const famOf = new Map()
   for (const p of players) for (const k of famKey(p)) famOf.set(k, [...(famOf.get(k) || []), p])
   const family = (p) => [...new Map(famKey(p).flatMap((k) => famOf.get(k) || []).map((x) => [x.rowId, x])).values()]
-  const counts = { checked: 0, high: 0, possible: 0, none: 0, recorded: 0, ignored: 0, notFamily: 0, early: 0 }
-  const out = []
-  for (const item of dropTwins(items)) {
+  const counts = { checked: 0, high: 0, possible: 0, none: 0, recorded: 0, ignored: 0, notFamily: 0, early: 0, twins: 0, notJfp: 0 }
+  const sizes = feeSizes(players)
+  // Too early, not a family or hidden: left out before anything is matched.
+  const live = [], hidden = []
+  for (const item of items) {
     counts.checked += 1
-    if (skip.has(item.id)) { counts.ignored += 1; continue }
-    if (from && item.date < from) { counts.early += 1; continue }
-    if (notFamily(item)) { counts.notFamily += 1; continue }
-    if (recordedIn(item, pays)) { counts.recorded += 1; continue }
+    if (from && item.date < from) counts.early += 1
+    else if (notFamily(item)) counts.notFamily += 1
+    else if (skip.has(item.id)) { counts.ignored += 1; if (looksJfp(item, players, sizes)) hidden.push(item) }
+    else live.push(item)
+  }
+  const { recorded: done, twins } = settle(live, pays, recorded)
+  const out = []
+  for (const item of live) {
+    if (twins.has(item.id)) { counts.twins += 1; continue }
+    if (done.has(item.id)) { counts.recorded += 1; continue }
     const cands = []
     for (const p of players) {
       const { score, why } = rowScore(item, p)
@@ -188,6 +278,8 @@ export function matchBank({ items, players, ledger = [], ignored = [], since = '
         familyRowIds: fam.map((x) => x.rowId), familyOwingCents: famOwing,
       })
     }
+    // Nobody who could have sent it, and not an amount a place costs: not shown, only counted.
+    if (!cands.length && !sizes.has(item.cents)) { counts.notJfp += 1; continue }
     cands.sort((a, b) => b.score - a.score || Number(b.exact) - Number(a.exact) || Number(b.owingCents > 0) - Number(a.owingCents > 0) || a.player.localeCompare(b.player))
     const top = cands.slice(0, 3)
     const grade = top.length ? gradeOf(top[0].score, top[0].exact) : 'none'
@@ -196,5 +288,6 @@ export function matchBank({ items, players, ledger = [], ignored = [], since = '
   }
   const rank = { high: 0, possible: 1, none: 2 }
   out.sort((a, b) => rank[a.grade] - rank[b.grade] || b.date.localeCompare(a.date) || a.id.localeCompare(b.id))
-  return { items: out, counts }
+  hidden.sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id))
+  return { items: out, counts, hidden: hidden.map(({ id, date, cents, payer, source }) => ({ id, date, cents, payer, source })) }
 }

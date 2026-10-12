@@ -9,7 +9,7 @@ process.env.STRIPE_SECRET_KEY_SYDNEY = 'sk_test_only'
 delete process.env.STRIPE_HOLIDAY_SECRET_KEY
 
 const { feeFrom, feeTotals, splitTerms, jfpStripePayments, feeKey } = await import('../api/_jfp-stripe.js')
-const { allocateTermMoney, venuesForTerm, venuesFromLedger, venuesFromHistory, totalOf, emptyVenue, LEDGER_FEE } = await import('../api/_jfp-venues.js')
+const { allocateTermMoney, venuesForTerm, venuesFromLedger, venuesFromHistory, totalOf, emptyVenue, LEDGER_FEE, collectedOf, stillOwing } = await import('../api/_jfp-venues.js')
 
 let passed = 0
 const queue = []
@@ -272,6 +272,50 @@ test('the term before: fees from its ledger; a Stripe line with no fee is pendin
   assert.equal(out.players.find((p) => p.rowId === 't1').netReceivedCents, 85000 + 30000 - 1720)
   const reg = venuesFromHistory({ locations: LOCS, rows: [{ term: 'Term 2 2026', kind: 'payments', venue: 'Belrose HQ', session: 'Monday', revenue: 100, stripe: 100, payments: 1 }], term: 'Term 2 2026', venueOf: (r) => venueOf({ location: r.venue }) })
   assert.deepEqual([reg.stripeFeesCents, reg.venues[0].stripeFeeCents, reg.venues[0].netCents, reg.venues[0].groups[0].stripeFeeCents], [null, null, null, null], 'not known, not nothing')
+})
+
+
+test('a fee still missing costs a few KV writes per read, not one per payment', async () => {
+  reset()
+  listed = Array.from({ length: 40 }, (_, i) => session(100 + i, { bt: null }))
+  await jfpStripePayments({ fresh: true, term: 'Term 4 2026' })
+  kvLog.length = 0
+  retrieves = []
+  await jfpStripePayments({ fresh: true, term: 'Term 4 2026' })
+  const writes = kvLog.filter(([cmd, key]) => cmd === 'SET' && key.startsWith('jfp:stripe-fee-try:'))
+  assert.ok(writes.length <= 10, `${writes.length} marker writes`)
+  assert.equal(retrieves.length, 10, 'the next ten not tried yet')
+  assert.ok(retrieves.every((pi) => Number(pi.slice(3)) >= 110), 'never one asked in the last 10 minutes')
+})
+
+test('a Stripe payment is on the Sydney day it was made: Monday 7:30 am in summer is Monday', () => {
+  const rows = [row('m1', 'Belrose HQ', { email: 'mon@example.com' })]
+  // 2026-10-12 07:30 AEDT is 2026-10-11 20:30 UTC.
+  const p = pay('cs_mon', 'mon@example.com', 10000, 300, { at: '2026-10-11T20:30:00.000Z', day: '2026-10-12' })
+  const alloc = allocateTermMoney({ rows, stripe: [p] })
+  assert.deepEqual(alloc.entries.map((e) => e.at), ['2026-10-12'])
+  assert.deepEqual(alloc.parts.map((x) => x.at), ['2026-10-12'])
+})
+
+test('paid in Stripe, not recorded yet: only the Stripe money counts as in, the rest is still owing', () => {
+  const part = { rowId: 's', status: 'stripe', feeCents: 85000, paidCents: 0, owingCents: 0, stripeAppliedCents: 10000 }
+  assert.equal(collectedOf(part), 10000)
+  assert.equal(stillOwing(part), 75000)
+  assert.equal(collectedOf({ ...part, stripeAppliedCents: 85000 }), 85000)
+  assert.equal(stillOwing({ ...part, stripeAppliedCents: 85000 }), 0)
+  assert.equal(collectedOf({ rowId: 'x', status: 'part', feeCents: 85000, paidCents: 20000, owingCents: 65000 }), 20000)
+  const rows = [row('s', 'Belrose HQ'), row('u', 'Belrose HQ')]
+  const players = [part, { rowId: 'u', status: 'unpaid', feeCents: 85000, paidCents: 0, owingCents: 85000 }]
+  const v = venuesForTerm({ locations: LOCS, rows, players, alloc: allocateTermMoney({ rows, stripe: [] }), venueOf, groupOf }).find((x) => x.id === HQ.id)
+  assert.deepEqual([v.expectedCents, v.collectedCents, v.collectedPct], [170000, 10000, 5])
+  assert.deepEqual(v.owingRowIds.sort(), ['s', 'u'], 'a part payment in Stripe stays on the owing list')
+})
+
+test('a row whose Stripe fee is not known yet says so', () => {
+  const rows = [row('k1', 'Belrose HQ', { email: 'k@example.com' })]
+  const alloc = allocateTermMoney({ rows, stripe: [pay('cs_k1', 'k@example.com', 40000, null), pay('cs_k2', 'k@example.com', 45000, 900)] })
+  assert.deepEqual([alloc.byRow.get('k1').fee, alloc.byRow.get('k1').feePending], [900, 1])
+  assert.equal(totalOf(alloc.byRow.get('k1')), 85000, 'the flag is not money')
 })
 
 for (const [name, fn] of queue) { await fn(); passed += 1; console.log(`ok - ${name}`) }

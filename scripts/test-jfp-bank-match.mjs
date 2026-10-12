@@ -2,7 +2,7 @@
 // the grades and the matcher. No network; every name and amount is invented.
 import assert from 'node:assert/strict'
 import { parseBankCsv, bankDate, bankCents, csvCells } from '../src/scripts/jfp-bank-csv.js'
-import { nameTokens, peopleIn, personScore, rowScore, amountFit, gradeOf, notFamily, matchBank, cleanItem, csvId, similarity, EXTERNAL_ID } from '../api/_jfp-bank-match.js'
+import { nameTokens, peopleIn, personScore, rowScore, amountFit, gradeOf, notFamily, matchBank, cleanItem, csvId, csvIds, similarity, EXTERNAL_ID, twinOf, looksJfp } from '../api/_jfp-bank-match.js'
 
 let passed = 0
 function test(name, fn) { fn(); passed += 1; console.log(`ok - ${name}`) }
@@ -102,8 +102,9 @@ test('the matcher: high and possible matches, siblings, top three, the reasons',
   const items = [
     item(1, '2026-10-10', 127500, 'Fast Transfer From M Featherstone'),
     item(2, '2026-10-09', 45000, 'L Brightwat'),
-    item(3, '2026-10-08', 30000, 'Q Zanzibarre'),
+    item(3, '2026-10-08', 42500, 'Q Zanzibarre'),
     item(4, '2026-10-07', 85000, 'T Wolstenholme'),
+    item(7, '2026-10-07', 31337, 'Z Nobodyknows 1on1 coaching'),
   ]
   const { items: out, counts } = matchBank({ items, players: PLAYERS, since: '2026-09-28' })
   const by = Object.fromEntries(out.map((x) => [x.id.slice(5, 13), x]))
@@ -119,7 +120,9 @@ test('the matcher: high and possible matches, siblings, top three, the reasons',
   assert.deepEqual(by['00000003'].candidates, [])
   assert.equal(by['00000004'].grade, 'high', 'surname and the fee')
   assert.equal(by['00000004'].candidates[0].reason, 'surname matches the parent, amount = the fee')
-  assert.deepEqual([counts.high, counts.possible, counts.none], [3, 0, 1])
+  assert.deepEqual([counts.high, counts.possible, counts.none, counts.notJfp], [3, 0, 1, 1])
+  assert.ok(!by['00000007'], 'no player could have sent it and no fee is that amount: not shown at all')
+  assert.ok(!JSON.stringify(out).includes('Nobodyknows'))
   assert.deepEqual(out.map((x) => x.grade), ['high', 'high', 'high', 'none'], 'high first')
   // A different amount from a name that matches: possible.
   const p = matchBank({ items: [item(5, '2026-10-10', 1000, 'M Featherstone')], players: PLAYERS }).items[0]
@@ -157,6 +160,79 @@ test('the matcher skips what is recorded, ignored, too early, or not a family', 
   const csv = cleanItem({ id: csvId('2026-10-09', 45000, 'Transfer from L Brightwater'), date: '2026-10-09', cents: 45000, description: 'Transfer from L Brightwater' }, 'csv')
   const both = matchBank({ items: [items[1], csv], players: PLAYERS })
   assert.deepEqual(both.items.map((x) => x.source), ['xero'])
+})
+
+
+const csvItem = (date, cents, description, n = 1) => cleanItem({ id: csvId(date, cents, description, n), date, cents, description }, 'csv')
+const led = (id, cents, date, rowId, method = 'Bank Transfer') => ({ 'Payment ID': id, 'Payment Method': method, 'Amount Paid': cents / 100, 'Payment Date': date, 'Source Record ID': rowId })
+
+test('one ledger payment stands for one bank line: a second transfer of the same amount from the family still shows', () => {
+  // Two children paid separately, two days apart, the first recorded with its id.
+  const a = item(11, '2026-10-06', 85000, 'M Featherstone'), b = item(12, '2026-10-08', 85000, 'M Featherstone')
+  let r = matchBank({ items: [a, b], players: PLAYERS, ledger: [led(a.id, 85000, a.date, 'r1')] })
+  assert.deepEqual(r.items.map((x) => x.id), [b.id])
+  assert.equal(r.counts.recorded, 1)
+  // Typed in by hand once: it takes the closest line only.
+  r = matchBank({ items: [a, b], players: PLAYERS, ledger: [led('BANK-HAND2', 85000, '2026-10-07', 'r1')] })
+  assert.equal(r.items.length, 1)
+  assert.equal(r.counts.recorded, 1)
+  // Every week the same amount (session by session): one hand entry, one line.
+  const weeks = [1, 8, 15].map((d, i) => item(20 + i, `2026-10-${String(d).padStart(2, '0')}`, 5000, 'L Brightwater'))
+  r = matchBank({ items: weeks, players: PLAYERS, ledger: [led('CASH-W1', 5000, '2026-10-08', 'r4')] })
+  assert.deepEqual(r.items.map((x) => x.date).sort(), ['2026-10-01', '2026-10-15'])
+  // A recorded Xero line never hides another Xero line, however alike.
+  r = matchBank({ items: [a, b], players: PLAYERS, ledger: [led(a.id, 85000, a.date, 'r1')], recorded: [{ id: a.id, source: 'xero', cents: 85000, date: a.date, payer: a.payer }] })
+  assert.deepEqual(r.items.map((x) => x.id), [b.id])
+})
+
+test('the same transfer in Xero and the CSV: once, one to one, and a recorded copy hides the other copy only', () => {
+  const x1 = item(31, '2026-10-09', 30000, 'Fast Transfer From P Testerly')
+  const c1 = csvItem('2026-10-09', 30000, 'Fast Transfer From P Testerly')
+  const c2 = csvItem('2026-10-09', 30000, 'Fast Transfer From P Testerly', 2)
+  assert.notEqual(c1.id, c2.id)
+  const players = [player('t1', 'Ada Testerly', 'Pat Testerly', { feeCents: 30000, owingCents: 30000 }), player('t2', 'Bo Testerly', 'Pat Testerly', { email: 't1@example.com', feeCents: 30000, owingCents: 30000 })]
+  // Two transfers that day in the CSV, one coded in Xero so far: two lines, not one.
+  let r = matchBank({ items: [x1, c1, c2], players })
+  assert.deepEqual(r.items.map((x) => x.source).sort(), ['csv', 'xero'])
+  assert.equal(r.counts.twins, 1)
+  // The CSV copy recorded for a grandparent's payment: the Xero copy that turns up later is recorded too.
+  const gran = csvItem('2026-10-10', 30000, 'Transfer from G Oldfield')
+  const xg = item(32, '2026-10-11', 30000, 'G OLDFIELD')
+  const rec = [{ id: gran.id, source: 'csv', cents: 30000, date: gran.date, payer: gran.payer }]
+  r = matchBank({ items: [xg], players, ledger: [led(gran.id, 30000, gran.date, 't1')], recorded: rec })
+  assert.deepEqual([r.items.length, r.counts.recorded], [0, 1])
+  // But a second, different Xero transfer from them is still shown.
+  const xg2 = item(33, '2026-10-10', 30000, 'G OLDFIELD')
+  r = matchBank({ items: [xg, xg2], players, ledger: [led(gran.id, 30000, gran.date, 't1')], recorded: rec })
+  assert.equal(r.items.length, 1)
+  // Recorded before the store existed (the ledger only): the copy is matched by the row's names.
+  r = matchBank({ items: [item(34, '2026-10-09', 30000, 'P Testerly')], players, ledger: [led(c1.id, 30000, c1.date, 't1')] })
+  assert.equal(r.items.length, 0)
+  // twinOf, for the server's check: the copy of a recorded line, never a line already paired.
+  assert.equal(twinOf(xg, rec)?.id, gran.id)
+  assert.equal(twinOf(xg, [...rec, { id: xg2.id, source: 'xero', cents: 30000, date: xg2.date, payer: xg2.payer }]), null, 'both copies are recorded already')
+  assert.equal(twinOf(xg, [{ ...rec[0], distinct: true }]), null, 'Lee said it was a different transfer')
+  assert.equal(twinOf(item(35, '2026-10-14', 30000, 'G OLDFIELD'), rec), null, 'too far apart')
+  assert.equal(twinOf(item(36, '2026-10-10', 30100, 'G OLDFIELD'), rec), null, 'another amount')
+})
+
+test('CSV ids: identical lines in one file get their own ids, the same each upload', () => {
+  const l = { date: '2026-10-11', cents: 42500, description: 'Fast Transfer From A Testname' }
+  const ids = csvIds([l, l, { ...l, cents: 100 }])
+  assert.equal(new Set(ids).size, 3)
+  assert.equal(ids[0], csvId(l.date, l.cents, l.description), 'the first keeps the plain id')
+  assert.deepEqual(csvIds([l, l]), ids.slice(0, 2))
+})
+
+test('only JFP money is shown: hidden lines that look like JFP come back in hidden, the rest never', () => {
+  const fam = item(41, '2026-10-09', 85000, 'M Featherstone'), odd = item(42, '2026-10-09', 7777, 'Z Clientperson')
+  const r = matchBank({ items: [fam, odd], players: PLAYERS, ignored: [fam.id, odd.id] })
+  assert.deepEqual(r.hidden.map((x) => x.id), [fam.id])
+  assert.deepEqual(Object.keys(r.hidden[0]).sort(), ['cents', 'date', 'id', 'payer', 'source'])
+  assert.ok(looksJfp(fam, PLAYERS))
+  assert.ok(!looksJfp(odd, PLAYERS))
+  assert.ok(looksJfp(item(43, '2026-10-09', 42500, 'Z Clientperson'), PLAYERS), 'a fee-sized amount is kept')
+  assert.ok(!looksJfp(item(44, '2026-10-09', 85000, 'Stripe Payments Australia'), PLAYERS))
 })
 
 test('bank line ids: Xero and CSV only, and bad lines are dropped', () => {

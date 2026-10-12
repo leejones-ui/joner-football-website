@@ -57,7 +57,8 @@ export function allocateTermMoney({ rows, stripe = [], ledger = [], legacy = [] 
   const unlinked = { stripe: 0, bank: 0, cash: 0, other: 0, fee: 0, items: [] }
   const entries = []
   const pieces = []
-  const put = (targets, amount, kind, what, fee = 0, { refunded = 0, gst = 0 } = {}) => {
+  // pending: a Stripe payment whose fee is not known yet; its rows count it.
+  const put = (targets, amount, kind, what, fee = 0, { refunded = 0, gst = 0, pending = false } = {}) => {
     const list = targets.filter(Boolean)
     if (!list.length) {
       unlinked[kind] += amount
@@ -69,9 +70,10 @@ export function allocateTermMoney({ rows, stripe = [], ledger = [], legacy = [] 
     const weights = list.map((r) => cents(r.feeAud))
     const [parts, fees, refunds, gsts] = [amount, fee, refunded, gst].map((x) => splitCents(x, weights))
     list.forEach((r, i) => {
-      const x = byRow.get(r.id) || { stripe: 0, bank: 0, cash: 0, other: 0, fee: 0 }
+      const x = byRow.get(r.id) || { stripe: 0, bank: 0, cash: 0, other: 0, fee: 0, feePending: 0 }
       x[kind] += parts[i]
       x.fee += fees[i]
+      if (pending) x.feePending += 1
       byRow.set(r.id, x)
       if (what.at) entries.push({ rowId: r.id, at: what.at, kind, cents: parts[i], fee: fees[i] })
       pieces.push({ ...what, kind, rowId: r.id, cents: parts[i], fee: fees[i], refunded: refunds[i], gst: gsts[i] })
@@ -98,7 +100,7 @@ export function allocateTermMoney({ rows, stripe = [], ledger = [], legacy = [] 
       // Each player's line gets its part of what Stripe actually kept, and of the fee.
       const weights = lines.map((l) => cents(l['Amount Paid']))
       const [parts, fees, refunds, gsts] = [amount, fee, refunded, gst].map((x) => splitCents(x, weights))
-      lines.forEach((l, i) => put(sourceIds(l).map((id) => byId.get(id)), parts[i], 'stripe', { id: p.id, at: String(p.at || '').slice(0, 10), who: l['Player Name'] || p.name || p.email || '' }, fees[i], { refunded: refunds[i], gst: gsts[i] }))
+      lines.forEach((l, i) => put(sourceIds(l).map((id) => byId.get(id)), parts[i], 'stripe', { id: p.id, at: p.day || String(p.at || '').slice(0, 10), who: l['Player Name'] || p.name || p.email || '' }, fees[i], { refunded: refunds[i], gst: gsts[i], pending: !p.feeKnown }))
       continue
     }
     let targets = recordedFor(p)
@@ -107,7 +109,7 @@ export function allocateTermMoney({ rows, stripe = [], ledger = [], legacy = [] 
       const holding = family.filter((r) => r.holdsPlace)
       targets = holding.length ? holding : family
     }
-    put(targets, amount, 'stripe', { id: p.id, at: String(p.at || '').slice(0, 10), who: p.name || p.email || '' }, fee, { refunded, gst })
+    put(targets, amount, 'stripe', { id: p.id, at: p.day || String(p.at || '').slice(0, 10), who: p.name || p.email || '' }, fee, { refunded, gst, pending: !p.feeKnown })
   }
   // Cash, bank transfer and other: the same ledger rows "Income this term" counts.
   for (const l of ledger) {
@@ -120,6 +122,10 @@ export function allocateTermMoney({ rows, stripe = [], ledger = [], legacy = [] 
   return { byRow, unlinked, entries, parts: pieces }
 }
 
+// Of a place's fee, how much is in. A row paid in Stripe but not recorded yet
+// counts only the Stripe money that is there, not the whole fee.
+export const stillOwing = (p) => (p.status === 'stripe' ? Math.max(0, (p.feeCents || 0) - (p.paidCents || 0) - (p.stripeAppliedCents || 0)) : p.owingCents || 0)
+export const collectedOf = (p) => (p.status === 'stripe' ? Math.min(p.feeCents || 0, (p.paidCents || 0) + (p.stripeAppliedCents || 0)) : Math.max(0, (p.feeCents || 0) - (p.owingCents || 0)))
 const blankMoney = () => ({ stripeFeeCents: 0, expectedCents: 0, collectedCents: 0, owingRowIds: [] })
 const blankVenue = (loc) => ({ id: loc.id, name: loc.name, players: 0, paid: 0, owingCents: 0, receivedCents: 0, stripeCents: 0, bankCents: 0, cashCents: 0, otherCents: 0, removedCents: 0, removedFeeCents: 0, airtableOnlyCents: 0, ...blankMoney(), groups: new Map() })
 const blankGroup = (g) => ({ key: g.key, label: g.label, coach: g.coach || '', players: 0, receivedCents: 0, owingCents: 0, ...blankMoney() })
@@ -181,8 +187,8 @@ export function venuesForTerm({ locations, rows, players, alloc, venueOf, groupO
     g.players += 1
     g.owingCents += p.owingCents || 0
     for (const x of [v, g]) {
-      if (expects(p)) { x.expectedCents += p.feeCents || 0; x.collectedCents += Math.max(0, (p.feeCents || 0) - (p.owingCents || 0)) }
-      if (p.owingCents > 0) x.owingRowIds.push(p.rowId)
+      if (expects(p)) { x.expectedCents += p.feeCents || 0; x.collectedCents += collectedOf(p) }
+      if (stillOwing(p) > 0) x.owingRowIds.push(p.rowId)
     }
     // Marked paid in Airtable, but no payment this term that we can see.
     const got = totalOf(alloc.byRow.get(p.rowId))
