@@ -711,7 +711,9 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
     }
   }
   players.sort((a, b) => a.player.localeCompare(b.player))
-  const unmatched = stripe.payments.filter((p) => !p.email || !familyEmails.has(p.email))
+  // Paid from an email not on any row, and not already put on a row in the ledger.
+  const inLedger = new Set(ledger.flatMap((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].filter(Boolean)))
+  const unmatched = stripe.payments.filter((p) => (!p.email || !familyEmails.has(p.email)) && !inLedger.has(p.id) && !(p.intentId && inLedger.has(p.intentId)) && p.amountCents - p.refundedCents > 0)
   // Cash, bank transfer and other: the ledger, plus rows marked paid offline before the ledger had them.
   const offlineLedger = ledger.filter((l) => l['Payment Method'] && l['Payment Method'] !== 'Stripe')
   const ledgerRowIds = new Set(offlineLedger.flatMap((l) => String(l['Source Record ID'] || '').split(',').map((x) => x.trim())))
