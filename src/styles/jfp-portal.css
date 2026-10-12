@@ -213,7 +213,8 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jc-legend span { display: inline-flex; align-items: center; gap: 7px; }
 .jc-legend i { width: 10px; height: 10px; border-radius: 3px; }
 .jc-table { margin-top: 10px; font-size: 12.5px; }
-.jc-table summary { cursor: pointer; color: var(--j-muted); font-weight: 600; }
+.jc-table summary { cursor: pointer; color: var(--j-muted); font-weight: 600; min-height: 40px; display: flex; align-items: center; }
+.jc-empty { margin: 18px 0; }
 .jc-table table { width: 100%; border-collapse: collapse; margin-top: 8px; }
 .jc-table th, .jc-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--j-line-2); font-variant-numeric: tabular-nums; }
 .jp-tip { position: fixed; z-index: 90; pointer-events: none; background: var(--j-ink); color: var(--j-bg); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; line-height: 1.45; box-shadow: var(--j-shadow-lg); max-width: 240px; }
@@ -467,9 +468,17 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jm-bank-item .cand { margin: 6px 0 0; font-size: 14px; overflow-wrap: anywhere; }
 .jm-bank-item .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .jm-bank-item .btns .j-btn { min-height: 44px; }
+/* Hide sits apart from the record buttons so a thumb doesn't land on it. */
+.jm-bank-item .btns [data-bank-ignore] { margin-left: auto; }
+.jm-bank-hidden { margin-top: 8px; font-size: 13.5px; }
+.jm-bank-hidden summary { min-height: 40px; display: flex; align-items: center; cursor: pointer; color: var(--j-muted); font-weight: 650; }
+.jm-bank-hidden .jm-hist li { gap: 8px; }
+.jm-bank-hidden .jm-hist li > span { min-width: 0; overflow-wrap: anywhere; }
+.jm-bank-hidden .j-btn { min-height: 40px; flex: 0 0 auto; }
+.jv-total td { font-weight: 750; border-top: 1px solid var(--j-line); }
 .jm-bank-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
 .jm-bank-row { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 10px; border: 1px solid var(--j-line); border-radius: 10px; cursor: pointer; }
 .jm-bank-row input { width: 20px; height: 20px; flex: none; }
 .jm-bank-row span { display: flex; flex-direction: column; min-width: 0; font-size: 14px; }
 .jm-bank-row small { color: var(--j-muted); font-size: 12px; }
-@media (max-width: 640px) { .jm-bank-item .btns .j-btn { flex: 1 1 auto; } }
+@media (max-width: 640px) { .jm-bank-item .btns .j-btn { flex: 1 1 auto; } .jm-bank-item .btns [data-bank-ignore] { flex: 1 1 100%; margin: 6px 0 0; } }

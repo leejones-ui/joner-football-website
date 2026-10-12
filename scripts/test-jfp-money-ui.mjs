@@ -25,7 +25,7 @@ const players = [
   player('p6', 'Fin Test', 'other', { status: 'unpriced' }),
   player('p7', 'Gus Test', 'ntra', { feeCents: 30000, owingCents: 30000, status: 'unpaid' }),
 ]
-const line = (id, at, method, payMethod, who, venueId, taken, refunded, fee, gst) => ({ id, at, method, payMethod, who, venueId, takenCents: taken, refundedCents: refunded, feeCents: fee, feeGstCents: gst, keptCents: taken - refunded - (fee || 0) })
+const line = (id, at, method, payMethod, who, venueId, taken, refunded, fee, gst) => ({ id, at, method, payMethod, who, venueId, takenCents: taken, refundedCents: refunded, feeCents: fee, feeGstCents: gst, keptCents: fee == null ? null : taken - refunded - fee })
 const payments = [
   line('cs_1', '2026-10-05', 'Stripe', 'card', 'Ava Parent', 'belrose', 85000, 0, 1720, 156),
   line('cs_2', '2026-10-06', 'Stripe', 'afterpay_clearpay', 'Dee Parent', 'ntra', 90000, 5000, 6000, 545),
@@ -76,7 +76,7 @@ await test('all venues: kept after Stripe fees leads, with taken, fees, refunds,
   assert.equal(p.text('#m-kept'), money(285040))
   assert.equal(p.text('#m-sum'), `Taken ${money(298000)} · Stripe fees ${money(7960)} · Refunded ${money(5000)}`)
   assert.equal(p.text('#m-pending'), '1 fee still loading')
-  assert.match(p.text('#m-expect'), new RegExp(`Expected this term ${money(412500).replace('$', '\\$')} · 66% paid`))
+  assert.equal(p.text('#m-expect'), `Expected this term ${money(412500)} · 66% marked paid (${money(275000)})`, 'marked paid in Airtable, said plainly')
   assert.equal(p.$('#m-expect .jm-meter span').style.width, '66%')
   assert.deepEqual(tiles(p), ['stripe', 'bank', 'cash', 'other', 'owing'], 'Other shows when there is some')
   assert.equal(p.$('#m-scope .jm-tiles').dataset.n, '5')
@@ -84,7 +84,8 @@ await test('all venues: kept after Stripe fees leads, with taken, fees, refunds,
   assert.deepEqual([...p.d.querySelectorAll('#m-locs [data-mloc]')].map((b) => b.dataset.mloc), ['', 'belrose', 'ntra', 'rydalmere', 'other'])
   assert.equal(p.$('#m-locs [data-mloc=""]').getAttribute('aria-pressed'), 'true')
   assert.match(p.text('#m-locs [data-mloc="ntra"]'), /North Turramurra A\$990 kept/)
-  assert.equal(p.text('#m-unlinked'), `${money(10000)} isn't linked to a player yet, so it sits under All.`)
+  assert.equal(p.text('#m-unlinked'), `${money(9760)} kept (${money(10000)} paid in) isn't linked to a player yet, so it sits under All.`, 'after fees, like the venue buttons beside it')
+  assert.equal(p.text('#m-undated'), `${money(3000)} has no date (or came in before the first week), so it isn't in the chart.`)
   assert.match(p.text('#m-next summary'), /Paid for next term: A\$500 \(not counted in this term\)/)
   assert.ok(p.$('#m-unmatched details'), 'the unmatched list shows under All')
   assert.match(p.text('#m-scope .jm-alert'), /1 player has paid in Stripe/)
@@ -114,7 +115,7 @@ await test('one tap on a venue: every figure follows it, unlinked money and the 
   assert.match(p.text('#m-scope .lbl'), /Kept after Stripe fees · North Turramurra/)
   assert.equal(p.text('#m-sum'), `Taken ${money(110000)} · Stripe fees ${money(6000)} · Refunded ${money(5000)}`)
   assert.equal(p.$('#m-pending'), null)
-  assert.match(p.text('#m-expect'), /A\$1,575 · 66% paid/)
+  assert.match(p.text('#m-expect'), /A\$1,575 · 66% marked paid/)
   assert.deepEqual(tiles(p), ['stripe', 'bank', 'cash', 'owing'], 'no Other here')
   assert.deepEqual([tile(p, 'stripe'), tile(p, 'bank'), tile(p, 'cash'), tile(p, 'owing')], [85000, 20000, 0, 52500].map(money))
   assert.equal(p.text('#m-scope [data-tile="owing"] .note'), '2 players')
@@ -189,9 +190,9 @@ await test('download for the accountant: players and payments for the venue pick
   const pay = find(r, 'Date')
   assert.deepEqual(r[pay], ['Date', 'Method', 'Paid by or for', 'Taken (A$)', 'Stripe fee (A$)', 'GST in fee (A$)', 'Refunded (A$)', 'Kept (A$)', 'Venue', 'Reference'])
   assert.deepEqual(r[pay + 1], ['2026-10-05', 'Stripe (Card / Link)', 'Ava Parent', '850.00', '17.20', '1.56', '0.00', '832.80', 'Belrose HQ', 'cs_1'])
-  assert.deepEqual(r[pay + 2].slice(0, 8), ['2026-10-10', 'Stripe (Card / Link)', 'Late Payer', '50.00', '', '', '0.00', '50.00'], 'a fee not known yet is blank, never 0')
-  assert.deepEqual(r[pay + 3], ['Total', '', '', '900.00', '17.20', '1.56', '0.00', '882.80', '', ''])
-  assert.match(text, /A blank Stripe fee was not known yet/)
+  assert.deepEqual(r[pay + 2].slice(0, 8), ['2026-10-10', 'Stripe (Card / Link)', 'Late Payer', '50.00', '', '', '0.00', ''], 'a fee not known yet is blank, never 0, and so is kept')
+  assert.deepEqual(r[pay + 3], ['Total', '', '', '900.00', '17.20', '1.56', '0.00', '832.80', '', ''])
+  assert.match(text, /A blank Stripe fee \(and kept\) was not known yet/)
   // All venues: unlinked money is in, and text that looks like a formula stays text.
   await p.click('#m-locs [data-mloc=""]')
   await p.click('#m-csv');
@@ -203,23 +204,39 @@ await test('download for the accountant: players and payments for the venue pick
   const pt = find(r, 'Total')
   assert.deepEqual(r[pt].slice(4, 8), ['2930.00', '1375.00', '79.60', '2850.40'], 'the players add up to the term')
   const total = find(r, 'Total', pt + 1)
-  assert.deepEqual(r[total].slice(3, 8), ['2980.00', '79.60', '7.23', '50.00', '2850.40'], 'the payments add up to the term')
+  assert.deepEqual(r[total].slice(3, 8), ['2980.00', '79.60', '7.23', '50.00', '2800.40'], 'the payments add up to the term (the one with no fee yet has no kept)')
   const stranger = r.find((x) => x[9] === 'cs_3')
   assert.deepEqual([stranger[2], stranger[8]], ["'@Stranger", 'Not linked to a player'])
   assert.ok(r.find((x) => x[9] === 'OFF-1')[0] === '', 'marked paid offline, no date')
   p.close()
+  // A player whose Stripe fee is still loading: their fee and kept are blank, not 0.00.
+  const m2 = fresh()
+  Object.assign(m2.players.find((x) => x.rowId === 'p1'), { stripeFeeCents: 0, netReceivedCents: 85000, stripeFeePending: 1 })
+  const q = await openPortal({ money: m2, hash: '#money?loc=belrose' })
+  await q.click('#m-csv')
+  const rows2 = csvRows((await q.csv()).text)
+  assert.deepEqual(rows2.find((x) => x[0] === 'Ava Test').slice(6, 8), ['', ''])
+  q.close()
 })
 
 await test('the venue window: kept as the main number, expected, who still owes biggest first, tap for their payments', async () => {
   const p = await openPortal({ money: fresh(), hash: '#overview', player: { player: 'Gus Test', parent: 'Gus Parent', email: 'p7@example.com', feeCents: 30000, paidCents: 0, stripe: [{ id: 'cs_n1', at: '2026-10-09T00:00:00.000Z', cents: 50000, refundedCents: 0, product: 'JFP Term 1 2027 hold', recorded: false, feeCents: 1020, payMethod: 'card', nextTerm: true }], ledger: [], links: [], history: [] } })
   const btn = p.$('.jv-list [data-venue="ntra"]')
   assert.equal(btn.querySelector('.amt').textContent, money(99000), 'the dashboard venue shows what was kept')
-  assert.match(btn.textContent, /kept after fees · taken A\$1,050/)
+  assert.match(btn.textContent, /kept after fees · paid in A\$1,050/)
   await p.click(btn)
   assert.equal(p.text('#jv-kept'), money(99000))
-  assert.match(p.text('.jv-kept'), /Kept after Stripe fees.*Taken A\$1,100 · Stripe fees A\$60 · Refunded A\$50/)
+  assert.match(p.text('.jv-kept'), /Kept after Stripe fees.*Taken A\$1,100 · Refunded A\$50 · Paid in A\$1,050 · Stripe fees A\$60/)
+  // One meaning each: Taken is before refunds, Paid in after. The groups add up to Paid in.
+  const table = p.$('#jp-modal .jm-table')
+  const col = [...table.querySelectorAll('thead th')].findIndex((th) => th.textContent === 'Paid in')
+  assert.ok(col > 0, 'the group column is Paid in')
+  const cents = (t) => Math.round(Number(t.replace(/[^0-9.]/g, '')) * 100)
+  const groupSum = [...table.querySelectorAll('tbody tr:not(.jv-total)')].reduce((t, tr) => t + cents(tr.children[col].textContent), 0)
+  assert.equal(groupSum, 105000)
+  assert.match(p.text('.jv-kept'), new RegExp(`Paid in ${money(groupSum).replace('$', '\\$')}`))
   assert.doesNotMatch(p.text('#jp-modal'), /Before Stripe fees/i)
-  assert.match(p.text('#jp-modal .jv-kpis'), /Expected this term\s*A\$1,575\s*66% paid \(A\$1,050\)/)
+  assert.match(p.text('#jp-modal .jv-kpis'), /Expected this term\s*A\$1,575\s*66% marked paid \(A\$1,050\)/)
   const owing = [...p.d.querySelectorAll('#jv-owing [data-owe-row]')].map((b) => b.dataset.oweRow)
   assert.deepEqual(owing, ['p7', 'p3'], 'biggest first')
   assert.match(p.text('#jv-owing summary'), /Still owing \(2\) · A\$525/)
@@ -421,7 +438,7 @@ await test('bank transfers: record for a family in one tap with the line id, pic
   const p = await openPortal({ money: m, onPost: (b) => {
     if (b.action === 'bankCheck') return { success: true, bank }
     if (b.action === 'recordPayment') { bank = { ...bank, items: bank.items.filter((x) => x.id !== b.externalId) }; return { success: true, ledger: true } }
-    if (b.action === 'bankUpload') return { success: true, lines: b.lines.length, added: 1, total: 2 }
+    if (b.action === 'bankUpload') return { success: true, lines: b.lines.length, kept: b.lines.length, added: 1, total: 2 }
     return null
   } })
   await p.click(`#m-bank [data-bank="${XA}"] [data-bank-rec]`)
@@ -450,10 +467,20 @@ await test('bank transfers: record for a family in one tap with the line id, pic
   p.$('#bk-note').value = 'Grandma paid'
   await p.click('#bk-go')
   assert.deepEqual(p.posts.filter((b) => b.action === 'recordPayment').at(-1), { action: 'recordPayment', rowIds: ['p3'], amountCents: 5000, method: 'Bank transfer', date: '2026-10-08', note: 'Grandma paid', externalId: XC })
-  // Not JFP: hidden for good.
+  // Not JFP: asked first (easy to hit by mistake on a phone), then under Hidden, where it can come back.
   await p.click(`#m-bank [data-bank="${CB}"] [data-bank-ignore]`)
+  assert.match(p.text('#jp-modal'), /Hide A\$225 from .*It goes under Hidden/)
+  await p.click('#jp-modal [data-no]')
+  assert.deepEqual(p.posts.filter((b) => b.action === 'bankIgnore'), [], 'Cancel hides nothing')
+  assert.ok(bankIds(p).includes(CB))
+  await p.click(`#m-bank [data-bank="${CB}"] [data-bank-ignore]`)
+  await p.click('#jp-modal [data-yes]')
   assert.deepEqual(p.posts.filter((b) => b.action === 'bankIgnore'), [{ action: 'bankIgnore', id: CB }])
   assert.ok(!bankIds(p).includes(CB))
+  assert.match(p.text('#m-bank-hidden summary'), /Hidden \(1\)/)
+  bank = { ...bank, hidden: [] }
+  await p.click(`#m-bank-hidden [data-bank-hid="${CB}"] [data-bank-show]`)
+  assert.deepEqual(p.posts.filter((b) => b.action === 'bankUnignore'), [{ action: 'bankUnignore', id: CB }])
   // Upload: read here, only money in is sent.
   const input = p.$('#m-bank-file')
   const csvText = '10/10/2026,"+850.00","Fast Transfer From A Brightwater","+1850.00"\r\n09/10/2026,"-12.00","Cones","+1000.00"\r\n'
@@ -461,14 +488,88 @@ await test('bank transfers: record for a family in one tap with the line id, pic
   input.dispatchEvent(new p.w.Event('change', { bubbles: true }))
   await p.settle()
   assert.deepEqual(p.posts.find((b) => b.action === 'bankUpload'), { action: 'bankUpload', lines: [{ date: '2026-10-10', cents: 85000, description: 'Fast Transfer From A Brightwater' }] })
-  assert.match(p.text('.j-toast'), /Read 1 payment in, 1 new/)
+  assert.match(p.text('.j-toast'), /Read 1 payment in\. 1 could be JFP, 1 new/)
   assert.deepEqual(p.errors, [])
   p.close()
 })
 
+
+await test('bank transfers: an old Xero update is flagged; the other copy of a recorded transfer asks first', async () => {
+  const old = new Date(Date.now() - 30 * 3600000).toISOString()
+  let twinAsked = 0
+  const p = await openPortal({ money: fresh(), onPost: (b) => {
+    if (b.action === 'bankCheck') return { success: true, bank: { ...BANK(), sources: { xeroAt: old, xeroItems: 2, csvAt: '', csvItems: 0 } } }
+    if (b.action === 'recordPayment' && !b.confirmTwin) { twinAsked += 1; return { status: 409, success: false, code: 'twin', error: 'This looks like the same transfer as the A$1,150 from M FEATHERSTONE on 2026-10-10, already recorded from the bank CSV. Only record it if it is a different payment.' } }
+    if (b.action === 'recordPayment') return { success: true, ledger: true }
+    return null
+  } })
+  assert.match(p.text('#m-bank-stale'), /^Xero hasn't updated since \d+ \w+\. Upload the bank CSV for now\.$/)
+  await p.click(`#m-bank [data-bank="${XA}"] [data-bank-rec]`)
+  await p.click('#bk-go')
+  assert.equal(twinAsked, 1)
+  assert.match(p.text('#jp-modal'), /looks like the same transfer/)
+  await p.click('#jp-modal [data-no]')
+  assert.equal(p.posts.filter((b) => b.action === 'recordPayment').length, 1, 'Cancel records nothing')
+  await p.click(`#m-bank [data-bank="${XA}"] [data-bank-rec]`)
+  await p.click('#bk-go')
+  await p.click('#jp-modal [data-yes]')
+  assert.equal(p.posts.filter((b) => b.action === 'recordPayment' && b.confirmTwin === true && b.externalId === XA).length, 1)
+  assert.deepEqual(p.errors, [])
+  p.close()
+})
+
+await test('a venue with no money: a plain line, not an empty chart; no costs for "No venue set"', async () => {
+  const m = fresh()
+  for (const l of m.locations) l.canCost = l.id !== 'other'
+  const p = await openPortal({ money: m, hash: '#money?loc=other' })
+  assert.equal(p.text('#m-weekly'), 'No money in yet at No venue set.')
+  assert.equal(p.$('#m-weekly svg'), null)
+  assert.equal(p.text('#m-fees .muted'), 'No Stripe payments yet.')
+  assert.doesNotMatch(p.text('#m-fees'), /GST|on 0 payments/)
+  assert.equal(p.$('#m-add-costs'), null, 'no costs to add for players with no venue')
+  await p.click('#m-locs [data-mloc="rydalmere"]')
+  assert.ok(p.$('#m-add-costs'), 'a real venue can have costs')
+  p.close()
+  const q = await openPortal({ money: m, hash: '#overview' })
+  await q.click('.jv-list [data-venue="other"]')
+  assert.equal(q.$('#jv-cost-edit'), null)
+  assert.equal(q.text('#jv-no-costs'), 'Set a venue on these players to add costs.')
+  q.close()
+})
+
+await test('paid in Stripe but only part of the fee: still on the owing list for what is left; folds stay open on refresh', async () => {
+  const m = fresh()
+  Object.assign(m.players.find((x) => x.rowId === 'p4'), { stripeCents: 10000, stripeAppliedCents: 10000, stillOwingCents: 75000, owingCents: 0 })
+  m.paidNoMoney = [{ rowId: 'p5', player: 'Eve Test', locationId: 'rydalmere', group: 'Monday 4:20pm, Rydalmere Park', status: 'paid', feeCents: 85000, airtableSaysCents: 85000, foundCents: 0, missingCents: 85000 }]
+  const p = await openPortal({ money: m, hash: '#overview' })
+  await p.click('.jv-list [data-venue="ntra"]')
+  const owing = [...p.d.querySelectorAll('#jv-owing [data-owe-row]')].map((b) => b.dataset.oweRow)
+  assert.deepEqual(owing, ['p4', 'p7', 'p3'])
+  assert.match(p.text('#jv-owing [data-owe-row="p4"]'), /A\$750/)
+  assert.match(p.text('#jv-owing summary'), /Still owing \(3\) · A\$1,275/)
+  p.close()
+  const q = await openPortal({ money: m })
+  assert.match(q.text('#m-expect'), /A\$850 of that has no money found/)
+  await q.click('#m-pnm-go')
+  assert.equal(q.$('#m-pnm').open, true)
+  q.$('#m-next').open = true
+  q.$('#m-next').dispatchEvent(new q.w.Event('toggle'))
+  q.$('#m-weekly-table').open = true
+  q.$('#m-weekly-table').dispatchEvent(new q.w.Event('toggle'))
+  // The quiet redraw (a click on the venue already picked redraws the same way).
+  await q.click('#m-locs [data-mloc="ntra"]')
+  await q.click('#m-locs [data-mloc=""]')
+  assert.equal(q.$('#m-pnm').open, true, 'still open')
+  assert.equal(q.$('#m-next').open, true)
+  assert.equal(q.$('#m-weekly-table').open, true)
+  assert.deepEqual(q.errors, [])
+  q.close()
+})
+
 await test("bank transfers: nothing from Xero yet, and a failed read says so", async () => {
   const p = await openPortal({ money: fresh(), onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: { sources: { xeroAt: '', xeroItems: 0, csvAt: '', csvItems: 0 }, items: [], counts: {} } } : null) })
-  assert.equal(p.text('#m-bank-xero'), "Xero hasn't sent anything yet")
+  assert.equal(p.text('#m-bank-xero'), 'No Xero update in the last 3 days')
+  assert.match(p.text('#m-bank-stale'), /Xero has stopped sending\. Upload the bank CSV for now\./)
   assert.match(p.text('#m-bank'), /Nothing to check\. Every bank transfer/)
   p.close()
   const q = await openPortal({ money: fresh(), onPost: (b) => (b.action === 'bankCheck' ? { success: false, error: 'Bank lines could not be read.' } : null) })

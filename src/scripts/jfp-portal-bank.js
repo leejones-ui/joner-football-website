@@ -6,8 +6,9 @@
 import { esc, money } from './jfp-common.js'
 import { parseBankCsv } from './jfp-bank-csv.js'
 
-const B = { data: null, at: 0, loading: null, open: false, draw: () => {} }
+const B = { data: null, at: 0, loading: null, open: false, hiddenOpen: false, draw: () => {} }
 const STALE = 5 * 60000
+const STALE_XERO = 26 * 3600000
 
 // ui: { post, toast }. Calls draw() when the answer comes in.
 // Money may have been drawn again while waiting: the newest page is the one redrawn.
@@ -38,8 +39,12 @@ export function bankPanel(loc) {
   const items = bankItems(loc)
   const toCheck = items.filter((x) => x.grade !== 'none').length
   const src = d?.sources || {}
-  const xero = src.xeroAt ? `From Xero, updated ${new Date(src.xeroAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : "Xero hasn't sent anything yet"
+  const xero = src.xeroAt ? `From Xero, updated ${new Date(src.xeroAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : 'No Xero update in the last 3 days'
   const csv = src.csvAt ? ` · Bank CSV uploaded ${new Date(src.csvAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}` : ''
+  // The Mac sends Xero twice a day. Over a day old means it has stopped.
+  const stale = d && !d.error && (!src.xeroAt || Date.now() - Date.parse(src.xeroAt) > STALE_XERO)
+  const staleNote = !stale ? '' : src.xeroAt ? `Xero hasn't updated since ${new Date(src.xeroAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}. Upload the bank CSV for now.` : 'Xero has stopped sending. Upload the bank CSV for now.'
+  const hidden = loc ? [] : d?.hidden || []
   const count = !d ? '<span class="n muted">checking</span>' : d.error ? '' : `<span class="n">${items.length}</span>`
   const list = !d ? '<p class="muted small">Checking the bank lines</p>'
     : d.error ? `<div class="j-box j-box-amber small">${esc(d.error)}</div>`
@@ -48,10 +53,12 @@ export function bankPanel(loc) {
   return `<details class="jm-next jm-bank" id="m-bank-box" ${B.open ? 'open' : ''}><summary>Bank transfers to check ${count}${toCheck ? ` <small class="muted">${toCheck} with a match</small>` : ''}</summary>
     <div class="jm-bank-src">
       <p class="small" id="m-bank-xero">${esc(xero)}${esc(csv)}</p>
+      ${staleNote ? `<p class="j-box j-box-amber small" id="m-bank-stale">${esc(staleNote)}</p>` : ''}
       <p class="small muted">Xero only shows transfers after they're coded in Xero. Uploading the bank CSV works straight away.</p>
       <div class="jm-bank-up"><label class="j-btn j-btn-line j-btn-sm" for="m-bank-file">Upload bank statement (CSV)</label><input type="file" id="m-bank-file" accept=".csv,text/csv,text/plain" class="jm-file"><span class="small muted">CommBank NetBank &gt; Accounts &gt; Export &gt; CSV</span></div>
     </div>
-    ${list}</details>`
+    ${list}
+    ${hidden.length ? `<details class="jm-bank-hidden" id="m-bank-hidden"${B.hiddenOpen ? ' open' : ''}><summary>Hidden (${hidden.length})</summary><ul class="jm-hist">${hidden.map((x) => `<li data-bank-hid="${esc(x.id)}"><span><b>${esc(money(x.cents))}</b> <small>${esc(when(x.date))} · ${esc(x.payer)}</small></span><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-show>Show again</button></li>`).join('')}</ul></details>` : ''}</details>`
 }
 
 function itemHtml(x) {
@@ -65,11 +72,13 @@ function itemHtml(x) {
   </li>`
 }
 
-// ui: { post, toast, record(item, rowId), other(item), redraw() }
+// ui: { post, toast, confirm(html, opts), record(item, rowId), other(item), redraw() }
 export function bindBank(el, ui) {
   const box = el.querySelector('#m-bank-box')
   if (!box) return
-  box.addEventListener('toggle', () => { B.open = box.open; if (box.open) loadBank(ui, ui.redraw) })
+  box.addEventListener('toggle', (e) => { if (e.target !== box) return; B.open = box.open; if (box.open) loadBank(ui, ui.redraw) })
+  const hid = el.querySelector('#m-bank-hidden')
+  hid?.addEventListener('toggle', () => { B.hiddenOpen = hid.open })
   el.querySelector('#m-bank-file')?.addEventListener('change', async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -78,11 +87,21 @@ export function bindBank(el, ui) {
     if (p.error) return ui.toast(p.error)
     const r = await ui.post('bankUpload', { lines: p.lines })
     if (!r.ok) return ui.toast(r.data.error)
-    ui.toast(`Read ${p.lines.length} payment${p.lines.length === 1 ? '' : 's'} in, ${r.data.added} new.${p.cut ? ` The oldest ${p.cut} were left out.` : ''}`)
+    const kept = r.data.kept ?? p.lines.length
+    ui.toast(`Read ${p.lines.length} payment${p.lines.length === 1 ? '' : 's'} in. ${kept} could be JFP, ${r.data.added} new.${p.cut ? ` The oldest ${p.cut} were left out.` : ''}`, 6000)
     B.open = true
     loadBank(ui, ui.redraw, { force: true })
   })
   box.addEventListener('click', async (e) => {
+    const show = e.target.closest('[data-bank-show]')
+    if (show) {
+      const id = show.closest('[data-bank-hid]').dataset.bankHid
+      show.disabled = true
+      const r = await ui.post('bankUnignore', { id })
+      if (!r.ok) { show.disabled = false; return ui.toast(r.data.error) }
+      ui.toast('Back on the list')
+      return loadBank(ui, ui.redraw, { force: true })
+    }
     const li = e.target.closest('[data-bank]')
     if (!li) return
     const item = B.data.items.find((x) => x.id === li.dataset.bank)
@@ -91,11 +110,14 @@ export function bindBank(el, ui) {
     if (e.target.closest('[data-bank-other]')) return ui.other(item)
     const ig = e.target.closest('[data-bank-ignore]')
     if (!ig) return
+    // Easy to hit by mistake on a phone, so ask first. It can be shown again under Hidden.
+    if (!(await ui.confirm(`Hide <b>${esc(money(item.cents))}</b> from ${esc(item.payer)}? It goes under Hidden at the bottom of this list, where you can show it again.`, { ok: 'Hide it' }))) return
     ig.disabled = true
     const r = await ui.post('bankIgnore', { id: item.id })
     if (!r.ok) { ig.disabled = false; return ui.toast(r.data.error) }
     B.data.items = B.data.items.filter((x) => x.id !== item.id)
-    ui.toast(`Hidden: ${money(item.cents)} from ${item.payer}`)
+    B.data.hidden = [{ id: item.id, date: item.date, cents: item.cents, payer: item.payer, source: item.source }, ...(B.data.hidden || []).filter((x) => x.id !== item.id)]
+    ui.toast(`Hidden: ${money(item.cents)} from ${item.payer}. Show it again under Hidden.`, 6000)
     ui.redraw()
   })
 }

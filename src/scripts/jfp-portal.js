@@ -152,7 +152,7 @@ const AUTO = { tabs: new Set(['overview', 'board', 'families', 'money', 'request
 document.addEventListener('input', () => { AUTO.lastInput = Date.now() }, true)
 async function autoSync() {
   if (AUTO.busy || !P.user || !AUTO.tabs.has(P.tab) || document.visibilityState !== 'visible') return
-  if ($('jp-modal') || $('jp-side') || $('jp-menu') || document.querySelector('.jp-confirm-over, .j-sheet, .jf-changed')) return
+  if ($('jp-modal') || $('jp-side') || $('jp-menu') || document.querySelector('.jp-confirm-over, .j-sheet, .jf-changed, .jm-drawer')) return
   const a = document.activeElement
   if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return
   if (Date.now() - AUTO.lastInput < 60000) return
@@ -1176,9 +1176,10 @@ function bindTips(el) {
 }
 
 // Stacked weekly columns: income by week, by method.
-function weeklyChart(el, weeks, animate) {
+function weeklyChart(el, weeks, animate, empty = 'No money in yet.') {
   const W = Math.max(280, el.clientWidth), H = 240, L = 54, B = 26, T = 18
   const totals = weeks.map((w) => w.stripe + w.bank + w.cash)
+  if (!totals.some((t) => t > 0)) { el.innerHTML = `<p class="muted small jc-empty">${esc(empty)}</p>`; return }
   const max = niceMax(Math.max(...totals, 1))
   const band = (W - L) / Math.max(weeks.length, 1)
   const bw = Math.min(24, band * 0.6)
@@ -1248,8 +1249,8 @@ function statusBlock(st, animate) {
   </div>`
 }
 
-function chartTable(head, rows) {
-  return `<details class="jc-table"><summary>Show as a table</summary><table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`
+function chartTable(head, rows, id = '') {
+  return `<details class="jc-table"${id ? ` id="${id}" ${P.moneyOpen?.has(id) ? 'open' : ''}` : ''}><summary>Show as a table</summary><table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></details>`
 }
 
 // ---------- dashboard ----------
@@ -1289,8 +1290,8 @@ async function renderOverview(redraw = false) {
         ${chartTable(['Week of', 'Stripe', 'Bank transfer', 'Cash'], m.weekly.map((w) => [w.week, money(w.stripe), money(w.bank), money(w.cash)]))}</section>
       <section class="jd-card jd-span-4 jd-in" style="--i:3"><h2>Payment status</h2><p class="sub">Every player holding a place</p>${statusBlock(m.status, !redraw)}</section>
       <section class="jd-card jd-span-7 jd-in" style="--i:4"><h2>Venues</h2><p class="sub">Tap a venue to see its money. Bars: green is paid, grey is not yet.</p><div class="jc" id="c-locs"></div>
-        <div class="jv-list">${m.locations.map((l) => `<button type="button" class="jv-btn" data-venue="${esc(l.id)}"><span class="nm">${esc(l.name)}</span><span class="amt">${esc(money(l.netCents ?? l.receivedCents))}</span><span class="muted small">kept after fees · taken ${esc(money(l.receivedCents))}${l.juniors?.paidCents ? ` · + Juniors ${esc(money(l.juniors.paidCents))}` : ''}</span></button>`).join('')}</div>
-        ${chartTable(['Location', 'Players', 'Paid', 'Owing', 'Taken this term', 'Kept after Stripe fees'], m.locations.map((l) => [l.name, l.players, l.paid, money(l.owingCents), money(l.receivedCents), money(l.netCents ?? l.receivedCents)]))}</section>
+        <div class="jv-list">${m.locations.map((l) => `<button type="button" class="jv-btn" data-venue="${esc(l.id)}"><span class="nm">${esc(l.name)}</span><span class="amt">${esc(money(l.netCents ?? l.receivedCents))}</span><span class="muted small">kept after fees · paid in ${esc(money(l.receivedCents))}${l.juniors?.paidCents ? ` · + Juniors ${esc(money(l.juniors.paidCents))}` : ''}</span></button>`).join('')}</div>
+        ${chartTable(['Location', 'Players', 'Paid', 'Owing', 'Paid in (after refunds)', 'Kept after Stripe fees'], m.locations.map((l) => [l.name, l.players, l.paid, money(l.owingCents), money(l.receivedCents), money(l.netCents ?? l.receivedCents)]))}</section>
       <section class="jd-card jd-span-5 jd-in" style="--i:5"><h2>Needs you</h2><ul class="jd-list">
         ${pending.slice(0, 4).map((r) => `<li><button type="button" data-tab="requests">${esc(r.players.map((p) => p.name).join(', '))}</button><span class="muted small">${esc(r.kind === 'application' ? 'Application' : r.kind === 'waitlist' ? 'Waitlist' : 'Enquiry')}</span></li>`).join('')}
         ${m.status.stripe ? `<li><button type="button" data-money-filter="stripe">${m.status.stripe} Stripe payment${m.status.stripe === 1 ? '' : 's'} to record in Airtable</button><span class="muted small">Money</span></li>` : ''}
@@ -1313,7 +1314,7 @@ window.addEventListener('resize', () => {
   clearTimeout(resizeTimer)
   resizeTimer = setTimeout(() => {
     if (P.tab === 'overview' && P.money && $('c-weekly')) { weeklyChart($('c-weekly'), P.money.weekly, false); locationChart($('c-locs'), P.money.locations, false) }
-    if (P.tab === 'money' && P.money && $('m-weekly')) weeklyChart($('m-weekly'), moneyScope(P.money, P.moneyFilter?.loc || '').weekly, false)
+    if (P.tab === 'money' && P.money && $('m-weekly')) { const s = moneyScope(P.money, P.moneyFilter?.loc || ''); weeklyChart($('m-weekly'), s.weekly, false, emptyWeekly(s)) }
   }, 150)
 })
 document.addEventListener('click', (e) => {
@@ -1331,7 +1332,10 @@ document.addEventListener('click', (e) => {
 // and kept for the session: the term before from its payment ledger, older
 // terms from the copy of the Money Register.
 // A venue's costs for the term (rent, cleaning, field hire) and its profit.
-function costsBlock(v) {
+// "No venue set" is not a place with rent: its players need a venue first.
+const canCost = (m, id) => m.locations.find((l) => l.id === id)?.canCost ?? id !== 'other'
+function costsBlock(v, can = true) {
+  if (!can) return '<section class="jv-costs" id="jv-costs"><h3 class="jv-h3">Costs this term</h3><p class="muted small" id="jv-no-costs">Set a venue on these players to add costs.</p></section>'
   const lines = v?.costLines || []
   const costs = v?.costsCents || 0
   const before = v ? v.profitBeforeFees : false
@@ -1408,7 +1412,12 @@ async function venueModal(id, term = '') {
   const terms = m.venueTerms?.length ? m.venueTerms : [m.term]
   const players = now ? m.players.filter((p) => p.locationId === id) : (past.players || []).filter((p) => p.locationId === id)
   const paidList = now ? players.filter((p) => p.receivedCents) : players
-  const owingList = now ? players.filter((p) => p.owingCents > 0).sort((a, b) => b.owingCents - a.owingCents || a.player.localeCompare(b.player)) : []
+  // Paid in Stripe but not recorded yet still owes what the Stripe money doesn't cover.
+  const owes = (p) => p.stillOwingCents ?? p.owingCents
+  const owingList = now ? players.filter((p) => owes(p) > 0).sort((a, b) => owes(b) - owes(a) || a.player.localeCompare(b.player)) : []
+  const owingTotal = owingList.reduce((t, p) => t + owes(p), 0)
+  const costable = canCost(m, id)
+  const pnmHere = now ? (m.paidNoMoney || []).filter((x) => x.locationId === id).reduce((t, x) => t + x.missingCents, 0) : 0
   // Fees are known for this term and the term before (its ledger), not for the Money Register.
   const feesKnown = v ? typeof v.stripeFeeCents === 'number' : false
   const s = now && v ? moneyScope(m, id) : null
@@ -1421,7 +1430,7 @@ async function venueModal(id, term = '') {
   const listed = id === 'belrose' ? v?.receivedCents || 0 : listedFields
   const notes = now ? [
     'Kept is what is left after Stripe takes its fee on each payment. Bank transfers and cash have no fee. A refund gives the money back, but Stripe keeps its fee.',
-    `All venues add up to the term's ${money(m.kpis.netIncomeCents ?? m.kpis.incomeCents)} kept${m.unlinked?.cents ? `, with ${money(m.unlinked.cents)} not linked to a player yet (a payment from an email that is not on any row)` : ''}.`,
+    m.unlinked?.cents ? `All venues plus ${money(m.unlinked.cents - (m.kpis.unlinkedFeeCents || 0))} kept (${money(m.unlinked.cents)} paid in) that isn't linked to a player yet (a payment from an email that is not on any row) add up to the term's ${money(m.kpis.netIncomeCents ?? m.kpis.incomeCents)} kept.` : `All venues add up to the term's ${money(m.kpis.netIncomeCents ?? m.kpis.incomeCents)} kept.`,
     s?.pending ? `${s.pending} Stripe fee${s.pending === 1 ? ' is' : 's are'} still loading, so kept may be a little high for now.` : '',
     v?.removedCents ? `Includes ${money(v.removedCents)} from players since removed.` : '',
     v?.airtableOnlyCents ? `Airtable also shows ${money(v.airtableOnlyCents)} as paid here with no payment this term (paid last term, or typed in). It is not counted.` : '',
@@ -1441,29 +1450,31 @@ async function venueModal(id, term = '') {
       <div class="jp-seg" role="group" aria-label="Venue">${all.map(([vid, vn]) => `<button type="button" data-venue="${esc(vid)}" data-vterm="${esc(term)}" aria-pressed="${vid === id}">${esc(vn)}</button>`).join('')}</div>
       <label class="jv-term"><span class="muted small">Term</span><select class="j-select" id="jv-term">${terms.map((t) => `<option value="${esc(t === m.term ? '' : t)}" ${(now ? t === m.term : t === term) ? 'selected' : ''}>${esc(t === m.term ? `${t} so far` : t)}</option>`).join('')}</select></label>
     </div>
-    ${!v ? `<p class="muted" style="margin-top:16px">No players or payments at this venue for this term.</p>${costsBlock(null)}` : `
+    ${!v ? `<p class="muted" style="margin-top:16px">No players or payments at this venue for this term.</p>${costsBlock(null, costable)}` : `
     <div class="jv-kpis">
       ${feesKnown
-        ? `<div class="jd-tile jv-kept"><span class="lbl">Kept after Stripe fees</span><span class="val" id="jv-kept">${esc(money(v.netCents))}</span><span class="note">Taken ${esc(money(taken))} · Stripe fees ${esc(money(v.stripeFeeCents))}${refunded ? ` · Refunded ${esc(money(refunded))}` : ''}</span>${split ? `<span class="note">${esc(split)}</span>` : ''}</div>`
+        ? `<div class="jd-tile jv-kept"><span class="lbl">Kept after Stripe fees</span><span class="val" id="jv-kept">${esc(money(v.netCents))}</span><span class="note">Taken ${esc(money(taken))}${refunded ? ` · Refunded ${esc(money(refunded))} · Paid in ${esc(money(v.receivedCents))}` : ''} · Stripe fees ${esc(money(v.stripeFeeCents))}</span>${split ? `<span class="note">${esc(split)}</span>` : ''}</div>`
         : `<div class="jd-tile jv-kept"><span class="lbl">Taken</span><span class="val" id="jv-kept">${esc(money(v.receivedCents))}</span><span class="note">Stripe fees not known for this term</span>${split ? `<span class="note">${esc(split)}</span>` : ''}</div>`}
-      <div class="jd-tile"><span class="lbl">${now ? 'Players paid' : reg ? 'Payments' : 'Players who paid'}</span><span class="val">${now ? `${v.paid}<span class="muted" style="font-size:16px;font-weight:650"> / ${v.players}</span>` : v.players}</span>${now ? `<span class="note">Still owing ${esc(money(v.owingCents))}</span>` : ''}</div>
-      ${now && v.expectedCents ? `<div class="jd-tile"><span class="lbl">Expected this term</span><span class="val">${esc(money(v.expectedCents))}</span><span class="note">${v.collectedPct}% paid (${esc(money(v.collectedCents))})</span>${meter(v.collectedPct)}</div>` : ''}
+      <div class="jd-tile"><span class="lbl">${now ? 'Players paid' : reg ? 'Payments' : 'Players who paid'}</span><span class="val">${now ? `${v.paid}<span class="muted" style="font-size:16px;font-weight:650"> / ${v.players}</span>` : v.players}</span>${now ? `<span class="note">Still owing ${esc(money(owingTotal))}</span>` : ''}</div>
+      ${now && v.expectedCents ? `<div class="jd-tile"><span class="lbl">Expected this term</span><span class="val">${esc(money(v.expectedCents))}</span><span class="note">${v.collectedPct}% marked paid (${esc(money(v.collectedCents))})${pnmHere ? `. ${esc(money(pnmHere))} of that has no money found` : ''}</span>${meter(v.collectedPct)}</div>` : ''}
       ${v.juniors ? `<div class="jd-tile"><span class="lbl">Joners Juniors</span><span class="val">${esc(money(v.juniors.paidCents))}</span><span class="note">${v.juniors.paid} of ${v.juniors.players} paid${v.juniors.creditCents ? `, ${esc(money(v.juniors.creditCents))} with last term's credit` : ''}. Not in the JFP total.</span></div>` : ''}
     </div>
-    ${costsBlock(v)}
+    ${costsBlock(v, costable)}
     <h3 class="jv-h3">${reg ? 'By session' : 'By group'}</h3>
-    <div class="jp-scroll"><table class="jp-table jm-table"><thead><tr><th>${reg ? 'Session' : 'Group'}</th>${reg ? '' : '<th>Coach</th>'}<th class="num">${reg ? 'Payments' : 'Players'}</th><th class="num">Taken</th>${feesKnown ? '<th class="num">Kept</th>' : ''}${now ? '<th class="num">Owing</th>' : ''}</tr></thead><tbody>
+    <div class="jp-scroll"><table class="jp-table jm-table"><thead><tr><th>${reg ? 'Session' : 'Group'}</th>${reg ? '' : '<th>Coach</th>'}<th class="num">${reg ? 'Payments' : 'Players'}</th><th class="num">${now ? 'Paid in' : 'Taken'}</th>${feesKnown ? '<th class="num">Kept</th>' : ''}${now ? '<th class="num">Owing</th>' : ''}</tr></thead><tbody>
       ${v.groups.map((g) => `<tr><td>${esc(g.label)}</td>${reg ? '' : `<td>${esc(g.coach)}</td>`}<td class="num">${g.players}</td><td class="num">${esc(money(g.receivedCents))}</td>${feesKnown ? `<td class="num">${esc(money(g.netCents))}</td>` : ''}${now ? `<td class="num">${esc(money(g.owingCents))}</td>` : ''}</tr>`).join('')}
+      ${v.groups.length > 1 ? `<tr class="jv-total"><td>Total</td>${reg ? '' : '<td></td>'}<td class="num">${v.groups.reduce((t, g) => t + g.players, 0)}</td><td class="num">${esc(money(v.receivedCents))}</td>${feesKnown ? `<td class="num">${esc(money(v.netCents))}</td>` : ''}${now ? `<td class="num">${esc(money(v.owingCents))}</td>` : ''}</tr>` : ''}
     </tbody></table></div>
-    ${now ? `<details class="jv-players" id="jv-owing" ${owingList.length ? 'open' : ''}><summary>Still owing (${owingList.length})${owingList.length ? ` · ${esc(money(v.owingCents))}` : ''}</summary>
-      ${owingList.length ? `<ul class="jv-owe">${owingList.map((p) => `<li><button type="button" data-owe-row="${esc(p.rowId)}"><span class="who"><b>${esc(p.player)}</b> <small>${esc(groupName(p))}</small></span> <span class="amt">${esc(money(p.owingCents))} <small>${statusPill(p.status)}</small></span></button></li>`).join('')}</ul>` : '<p class="muted small" style="margin-top:8px">Nobody owes anything here.</p>'}</details>` : ''}
+    ${now && refunded ? `<p class="muted small">Paid in is after refunds: taken ${esc(money(taken))} less ${esc(money(refunded))} refunded.</p>` : ''}
+    ${now ? `<details class="jv-players" id="jv-owing" ${owingList.length ? 'open' : ''}><summary>Still owing (${owingList.length})${owingList.length ? ` · ${esc(money(owingTotal))}` : ''}</summary>
+      ${owingList.length ? `<ul class="jv-owe">${owingList.map((p) => `<li><button type="button" data-owe-row="${esc(p.rowId)}"><span class="who"><b>${esc(p.player)}</b> <small>${esc(groupName(p))}</small></span> <span class="amt">${esc(money(owes(p)))} <small>${statusPill(p.status)}</small></span></button></li>`).join('')}</ul>` : '<p class="muted small" style="margin-top:8px">Nobody owes anything here.</p>'}</details>` : ''}
     ${reg ? '' : `<details class="jv-players"><summary>Who paid (${paidList.length})</summary>
       <div class="jp-scroll" style="margin-top:8px"><table class="jp-table jm-table"><thead><tr><th>Player</th><th>Group</th><th class="num">Paid</th>${feesKnown ? '<th class="num">Kept</th>' : ''}${now ? '<th class="num">Owing</th><th>Status</th>' : ''}</tr></thead><tbody>
         ${paidList.map((p) => `<tr ${now ? `data-owe-row="${esc(p.rowId)}"` : ''}><td>${esc(p.player)}</td><td>${esc(groupName(p))}</td><td class="num">${esc(money(p.receivedCents))}</td>${feesKnown ? `<td class="num">${esc(money(p.netReceivedCents ?? p.receivedCents))}</td>` : ''}${now ? `<td class="num">${esc(money(p.owingCents))}</td><td>${statusPill(p.status)}</td>` : ''}</tr>`).join('') || `<tr><td colspan="6" class="muted">No payments yet.</td></tr>`}
       </tbody></table></div></details>`}`}
     <div class="jv-notes muted small">${notes.filter(Boolean).map((n) => `<p>${esc(n)}</p>`).join('')}</div>`, { wide: true })
   box.querySelector('#jv-term').addEventListener('change', (e) => venueModal(id, e.target.value))
-  bindCosts(box, { id, term: now ? m.term : past.term, lines: v?.costLines || [], last: (now ? m.venueCostsLast : past.venueCostsLast) || null, reopen: async () => {
+  if (costable) bindCosts(box, { id, term: now ? m.term : past.term, lines: v?.costLines || [], last: (now ? m.venueCostsLast : past.venueCostsLast) || null, reopen: async () => {
     if (now) {
       const r = await post('money', { quick: true })
       if (r.ok) { P.money = r.data.money; if (P.tab === 'money') renderMoney(P.money); else if (P.tab === 'overview') renderOverview(true) }
@@ -1538,7 +1549,7 @@ function editPlayerModal(p) {
 function laterMoney(tab, apply) {
   post('money').then((r) => {
     if (!r.ok || P.tab !== tab) return
-    if ($('jp-modal') || $('jp-side') || $('jp-menu') || document.querySelector('.jp-confirm-over, .jf-changed')) return
+    if ($('jp-modal') || $('jp-side') || $('jp-menu') || document.querySelector('.jp-confirm-over, .jf-changed, .jm-drawer')) return
     const a = document.activeElement
     if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return
     const y = window.scrollY
@@ -1595,7 +1606,7 @@ function moneyScope(m, loc) {
       kept: k.netIncomeCents ?? k.incomeCents, received: k.incomeCents, fees: k.stripeFeesCents || 0, refunded: k.refundsCents || 0, gst: k.feeGstCents || 0, pending: k.feesPendingCount || 0,
       stripe: k.stripeCents, bank: k.bankCents, cash: k.cashCents, other: k.otherCents || 0, owing: k.owingCents,
       expected: k.expectedCents || 0, collected: k.collectedCents || 0, pct: k.collectedPct ?? null, byMethod: k.feesByMethod || methodsOf(stripeLines),
-      costs: k.venueCostsCents || 0, profit: k.profitCents ?? (k.netIncomeCents ?? k.incomeCents), hasCosts: (k.venuesWithCosts || 0) > 0, pnm: m.paidNoMoney || [],
+      costs: k.venueCostsCents || 0, profit: k.profitCents ?? (k.netIncomeCents ?? k.incomeCents), hasCosts: (k.venuesWithCosts || 0) > 0, pnm: m.paidNoMoney || [], canCost: false,
     }
   }
   return {
@@ -1603,17 +1614,26 @@ function moneyScope(m, loc) {
     kept: v.netCents ?? v.receivedCents, received: v.receivedCents, fees: v.stripeFeeCents || 0, refunded: sum('refundedCents'), gst: sum('feeGstCents'), pending: new Set(stripeLines.filter((x) => x.feeCents == null).map((x) => x.id)).size,
     stripe: v.stripeCents, bank: v.bankCents, cash: v.cashCents, other: v.otherCents || 0, owing: v.owingCents,
     expected: v.expectedCents || 0, collected: v.collectedCents || 0, pct: v.collectedPct ?? null, byMethod: methodsOf(stripeLines),
-    costs: v.costsCents || 0, profit: v.profitCents ?? (v.netCents ?? v.receivedCents), hasCosts: (v.costLines || []).length > 0, pnm: (m.paidNoMoney || []).filter((x) => x.locationId === v.id),
+    costs: v.costsCents || 0, profit: v.profitCents ?? (v.netCents ?? v.receivedCents), hasCosts: (v.costLines || []).length > 0, pnm: (m.paidNoMoney || []).filter((x) => x.locationId === v.id), canCost: canCost(m, v.id),
   }
 }
 // Profit can be below zero: "-A$120", not "A$-120".
 const signedMoney = (c) => (c < 0 ? `-${money(-c)}` : money(c))
 const WAGES_NOTE = "Coach wages aren't in this unless you add them as a cost."
 // Marked paid in Airtable, but less money came in for them this term.
+// Folds on Money that stay open when the page redraws itself.
+const isOpen = (id) => (P.moneyOpen?.has(id) ? 'open' : '')
+function keepFolds(root) {
+  P.moneyOpen = P.moneyOpen || new Set()
+  root.querySelectorAll('details[id]').forEach((d) => d.addEventListener('toggle', () => { if (d.open) P.moneyOpen.add(d.id); else P.moneyOpen.delete(d.id) }))
+}
+// Money in the total that the weekly chart can't show: no date, or before the first week.
+const undatedOf = (s) => Math.max(0, s.received - s.weekly.reduce((t, w) => t + w.stripe + w.bank + w.cash, 0))
+const emptyWeekly = (s) => `No money in yet${s.id ? ` at ${s.name}` : ''}.`
 function paidNoMoneyList(list) {
   if (!list.length) return ''
   const missing = list.reduce((t, x) => t + x.missingCents, 0)
-  return `<details class="jm-next jm-pnm" id="m-pnm"><summary>Marked paid but no money found: <b>${plural(list.length, 'player')}</b> · <b>${esc(money(missing))}</b></summary>
+  return `<details class="jm-next jm-pnm" id="m-pnm" ${isOpen('m-pnm')}><summary>Marked paid but no money found: <b>${plural(list.length, 'player')}</b> · <b>${esc(money(missing))}</b></summary>
     <p class="small muted">Airtable says these are paid, but less money came in for them this term than it shows. They may have paid last term, or the amount was typed in. Tap one to check.</p>
     <ul class="jv-owe">${list.map((x) => `<li><button type="button" data-pnm-row="${esc(x.rowId)}"><span class="who"><b>${esc(x.player)}</b> <small>${esc((x.group || '').replace(/, [^,]*$/, ''))} · Airtable says ${esc(money(x.airtableSaysCents))} · found ${esc(money(x.foundCents))}</small></span><span class="amt">${esc(money(x.missingCents))} <small>not found</small></span></button></li>`).join('')}</ul></details>`
 }
@@ -1632,19 +1652,21 @@ function scopeTop(m, s, cls) {
   ]
   const stripeHere = s.players.filter((p) => p.status === 'stripe').length
   const k = m.kpis
+  const pnmCents = s.pnm.reduce((t, x) => t + x.missingCents, 0)
+  const undated = undatedOf(s)
   return `<div class="jd-grid">
       <section class="jd-card jd-hero jm-hero jm-net ${cls}" style="--i:0"><div>
         <p class="lbl">Kept after Stripe fees${s.id ? ` · ${esc(s.name)}` : ''}</p>
         <p class="big" id="m-kept">${esc(money(s.kept))}</p>
         <p class="jm-sum" id="m-sum"><span>Taken <b>${esc(money(s.received + s.refunded))}</b></span> · <span>Stripe fees <b>${esc(money(s.fees))}</b></span> · <span>Refunded <b>${esc(money(s.refunded))}</b></span></p>
         ${s.pending ? `<p class="jm-pending" id="m-pending">${plural(s.pending, 'fee')} still loading</p>` : ''}
-        ${s.hasCosts ? `<p class="jm-profit" id="m-profit">Profit after costs <b>${esc(signedMoney(s.profit))}</b><small>Venue costs ${esc(money(s.costs))}. ${esc(WAGES_NOTE)}</small></p>` : s.id ? `<button type="button" class="jm-linkbtn" data-venue="${esc(s.id)}" id="m-add-costs">Add ${esc(s.name)}'s costs to see profit</button>` : ''}</div>
-        ${s.expected ? `<div class="jm-expect" id="m-expect"><p>Expected this term <b>${esc(money(s.expected))}</b> · <b>${s.pct ?? 0}%</b> paid</p>${meter(s.pct)}</div>` : ''}
+        ${s.hasCosts ? `<p class="jm-profit" id="m-profit">Profit after costs <b>${esc(signedMoney(s.profit))}</b><small>Venue costs ${esc(money(s.costs))}. ${esc(WAGES_NOTE)}</small></p>` : s.canCost ? `<button type="button" class="jm-linkbtn" data-venue="${esc(s.id)}" id="m-add-costs">Add ${esc(s.name)}'s costs to see profit</button>` : ''}</div>
+        ${s.expected ? `<div class="jm-expect" id="m-expect"><p>Expected this term <b>${esc(money(s.expected))}</b> · <b>${s.pct ?? 0}%</b> marked paid (${esc(money(s.collected))})</p>${meter(s.pct)}${pnmCents ? `<button type="button" class="jm-linkbtn" id="m-pnm-go">${esc(money(pnmCents))} of that has no money found</button>` : ''}</div>` : ''}
       </section>
       <div class="jm-tiles" data-n="${tiles.length}">${tiles.map(([key, l, v, c, note], i) => `<section class="jd-card jd-tile jm-tile ${cls}" style="--i:${i + 1}" data-tile="${key}"><span class="lbl"><span class="jd-key"><i style="background:${cssVar(c)}"></i>${l}</span></span><span class="val">${esc(money(v || 0))}</span>${note ? `<span class="note">${esc(note)}</span>` : ''}</section>`).join('')}</div>
     </div>
-    ${!s.id && m.unlinked?.cents ? `<p class="jm-note" id="m-unlinked">${esc(money(m.unlinked.cents))} isn't linked to a player yet, so it sits under All.</p>` : ''}
-    ${!s.id && k.nextTermCents > 0 ? `<details class="jm-next" id="m-next"><summary>Paid for next term: <b>${esc(money(k.nextTermCents))}</b> (not counted in this term)</summary>
+    ${!s.id && m.unlinked?.cents ? `<p class="jm-note" id="m-unlinked">${esc(money(m.unlinked.cents - (k.unlinkedFeeCents || 0)))} kept (${esc(money(m.unlinked.cents))} paid in) isn't linked to a player yet, so it sits under All.</p>` : ''}
+    ${!s.id && k.nextTermCents > 0 ? `<details class="jm-next" id="m-next" ${isOpen('m-next')}><summary>Paid for next term: <b>${esc(money(k.nextTermCents))}</b> (not counted in this term)</summary>
       <ul class="jm-hist">${(m.nextTermPayments || []).map((p) => `<li><span><b>${esc(p.name || p.email || 'No name')}</b><small>${esc(new Date(p.at).toLocaleDateString('en-AU'))}${p.forTerm ? ` · ${esc(p.forTerm)}` : ''}</small></span><span class="amt">${esc(money(p.cents))}</span></li>`).join('')}</ul></details>` : ''}
     ${paidNoMoneyList(s.pnm)}
     ${stripeHere ? `<div class="jm-alert"><span><b>${plural(stripeHere, 'player')}${s.id ? ` at ${esc(s.name)}` : ''} ${stripeHere === 1 ? 'has' : 'have'} paid in Stripe</b> but Airtable does not show it yet.</span><span class="jm-alert-go"><button type="button" class="j-btn j-btn-line j-btn-sm" data-set-status="stripe">Show them</button><button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-record-all">Record all in Airtable</button></span></div>` : ''}
@@ -1652,7 +1674,8 @@ function scopeTop(m, s, cls) {
       <section class="jd-card jm-week ${cls}" style="--i:6"><h2>Money in by week</h2><p class="sub">${esc(s.name)}: Stripe, bank transfer and cash, by the week it came in</p>
         <div class="jc" id="m-weekly"></div>
         <div class="jc-legend">${SERIES.map(([, n, c]) => `<span><i style="background:${cssVar(c)}"></i>${n}</span>`).join('')}</div>
-        ${chartTable(['Week of', 'Stripe', 'Bank transfer', 'Cash', 'Stripe fees'], s.weekly.map((w) => [w.week, money(w.stripe), money(w.bank), money(w.cash), money(w.fee || 0)]))}</section>
+        ${undated ? `<p class="muted small" id="m-undated">${esc(money(undated))} has no date (or came in before the first week), so it isn't in the chart.</p>` : ''}
+        ${chartTable(['Week of', 'Stripe', 'Bank transfer', 'Cash', 'Stripe fees'], s.weekly.map((w) => [w.week, money(w.stripe), money(w.bank), money(w.cash), money(w.fee || 0)]), 'm-weekly-table')}</section>
       ${feesCard(s, cls)}
     </div>`
 }
@@ -1661,9 +1684,9 @@ function feesCard(s, cls) {
   const rows = feeRows(s.byMethod)
   const count = rows.reduce((t, r) => t + r.count, 0)
   return `<section class="jd-card jm-fees ${cls}" style="--i:7" id="m-fees"><h2>Stripe fees</h2><p class="sub">${esc(s.name)}, this term</p>
-    <p class="jm-fee-total"><b>${esc(money(s.fees))}</b> on ${plural(count, 'payment')}</p>
-    ${rows.length ? `<ul class="jm-feelist">${rows.map((r) => `<li><span>${esc(r.label)}<small>${plural(r.count, 'payment')}${r.pendingCount ? ` · ${r.pendingCount} still loading` : ''}</small></span><b>${esc(money(r.feeCents))}</b></li>`).join('')}</ul>` : '<p class="muted small">No Stripe payments yet.</p>'}
-    <p class="small jm-gst">GST in these fees: <b>${esc(money(s.gst))}</b> (claimable)</p>
+    ${!count ? '<p class="muted small">No Stripe payments yet.</p>' : `<p class="jm-fee-total"><b>${esc(money(s.fees))}</b> on ${plural(count, 'payment')}</p>
+    <ul class="jm-feelist">${rows.map((r) => `<li><span>${esc(r.label)}<small>${plural(r.count, 'payment')}${r.pendingCount ? ` · ${r.pendingCount} still loading` : ''}</small></span><b>${esc(money(r.feeCents))}</b></li>`).join('')}</ul>
+    <p class="small jm-gst">GST in these fees: <b>${esc(money(s.gst))}</b> (claimable)</p>`}
   </section>`
 }
 
@@ -1696,7 +1719,7 @@ function moneyCsv(m, s) {
   add('Players')
   add('Player', 'Group', 'Venue', 'Fee (A$)', 'Paid this term (A$)', 'Owing (A$)', 'Stripe fee (A$)', 'Kept (A$)', 'Status')
   const players = s.players.filter((p) => p.feeCents || p.receivedCents || p.paidCents || p.owingCents)
-  for (const p of players) add(p.player, (p.group || '').replace(/, [^,]*$/, ''), venueName(p.locationId), aud(p.feeCents || 0), aud(p.receivedCents || 0), aud(p.owingCents || 0), aud(p.stripeFeeCents || 0), aud(p.netReceivedCents ?? p.receivedCents ?? 0), STATUS[p.status]?.[0] || p.status)
+  for (const p of players) add(p.player, (p.group || '').replace(/, [^,]*$/, ''), venueName(p.locationId), aud(p.feeCents || 0), aud(p.receivedCents || 0), aud(p.owingCents || 0), p.stripeFeePending ? '' : aud(p.stripeFeeCents || 0), p.stripeFeePending ? '' : aud(p.netReceivedCents ?? p.receivedCents ?? 0), STATUS[p.status]?.[0] || p.status)
   // Money that is in the venue's figures but not on a player listed above.
   const venues = s.id ? m.locations.filter((l) => l.id === s.id) : m.locations
   const removed = sum(venues, 'removedCents'), removedFee = sum(venues, 'removedFeeCents')
@@ -1711,7 +1734,7 @@ function moneyCsv(m, s) {
   add('Date', 'Method', 'Paid by or for', 'Taken (A$)', 'Stripe fee (A$)', 'GST in fee (A$)', 'Refunded (A$)', 'Kept (A$)', 'Venue', 'Reference')
   for (const x of s.lines) add(x.at, x.method === 'Stripe' && x.payMethod ? `Stripe (${methodName(x.payMethod)})` : x.method, x.who, aud(x.takenCents), aud(x.feeCents), aud(x.feeGstCents), aud(x.refundedCents), aud(x.keptCents), venueName(x.venueId), x.id)
   add('Total', '', '', aud(sum(s.lines, 'takenCents')), aud(sum(s.lines, 'feeCents')), aud(sum(s.lines, 'feeGstCents')), aud(sum(s.lines, 'refundedCents')), aud(sum(s.lines, 'keptCents')), '', '')
-  if (s.lines.some((x) => x.feeCents == null)) add('A blank Stripe fee was not known yet when this was downloaded.')
+  if (s.lines.some((x) => x.feeCents == null) || players.some((p) => p.stripeFeePending)) add('A blank Stripe fee (and kept) was not known yet when this was downloaded.')
   return out.join('\r\n')
 }
 const slug = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -1761,7 +1784,7 @@ async function renderMoney(pre) {
   // Bank transfers to check: read on their own, and they follow the venue too.
   const family = (p) => m.players.filter((x) => x.familyKey === p.familyKey).map((x) => x.rowId)
   const bankUi = {
-    post, toast,
+    post, toast, confirm: confirmBox,
     redraw: () => { if ($('m-bank') && P.money === m) drawBank() },
     record: (item, rowId) => {
       const p = m.players.find((x) => x.rowId === rowId)
@@ -1774,8 +1797,9 @@ async function renderMoney(pre) {
   const drawScope = (animate) => {
     const s = scope()
     $('m-scope').innerHTML = scopeTop(m, s, animate ? 'jd-in' : '')
+    keepFolds($('m-scope'))
     drawBank()
-    weeklyChart($('m-weekly'), s.weekly, animate)
+    weeklyChart($('m-weekly'), s.weekly, animate, emptyWeekly(s))
     const counts = { '': s.players.length }
     for (const p of s.players) counts[p.status] = (counts[p.status] || 0) + 1
     $('m-chips').innerHTML = [['', 'All'], ['paid', 'Paid'], ['part', 'Part paid'], ['unpaid', 'Unpaid'], ['session', 'Session by session'], ['unpriced', 'No price set'], ['stripe', 'Paid in Stripe']].filter(([v]) => v !== 'stripe' || counts.stripe || f.status === 'stripe').map(([v, l]) => `<button type="button" data-set-status="${v}" aria-pressed="${f.status === v}">${v ? `<i style="background:${cssVar(STATUS[v][1])}"></i>` : ''}${l} <span class="n">${counts[v] || 0}</span></button>`).join('')
@@ -1825,6 +1849,7 @@ async function renderMoney(pre) {
     if (b) return setStatus(b.dataset.setStatus)
     const pr = e.target.closest('[data-pnm-row]')
     if (pr) return historyDrawer(pr.dataset.pnmRow)
+    if (e.target.closest('#m-pnm-go')) { const d = $('m-pnm'); if (d) { d.open = true; P.moneyOpen?.add('m-pnm'); d.scrollIntoView?.({ behavior: 'smooth', block: 'start' }) } return }
     const all = e.target.closest('#m-record-all')
     if (!all) return
     // Recording runs for every venue, so the count is every venue's.
@@ -1915,8 +1940,14 @@ function bankRecordModal(p, { item, rowIds }) {
     if (!ids.length) return toast('Tick who it was for.')
     const btn = e.currentTarget
     btn.disabled = true
-    const r = await post('recordPayment', { rowIds: ids, amountCents: item.cents, method: 'Bank transfer', date: item.date, note: box.querySelector('#bk-note').value.trim(), externalId: item.id })
+    const body = { rowIds: ids, amountCents: item.cents, method: 'Bank transfer', date: item.date, note: box.querySelector('#bk-note').value.trim(), externalId: item.id }
+    let r = await post('recordPayment', body)
     btn.disabled = false
+    // The other copy (Xero or the bank CSV) of a transfer already recorded: only if Lee says it is a different one.
+    if (r.status === 409 && r.data.code === 'twin') {
+      if (!(await confirmBox(`${esc(r.data.error)}`, { ok: "It's a different payment" }))) return
+      r = await post('recordPayment', { ...body, confirmTwin: true })
+    }
     if (!r.ok) return toast(r.data.error)
     bankDone(item.id)
     closeModal(); closeDrawer(); toast(`Recorded. Airtable updated${r.data.ledger ? ' and the ledger has it' : ''}.`); P.board = null; PL.at = 0; if (P.tab === 'money') renderMoney()

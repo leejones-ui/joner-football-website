@@ -42,7 +42,8 @@ export async function openPortal({ money, hash = '#money', player = null, onPost
     const body = init.body ? JSON.parse(init.body) : {}
     posts.push(body)
     const custom = onPost?.(body)
-    if (custom) return reply(custom)
+    // { status, ...json } answers with that HTTP status.
+    if (custom) { const { status, ...json } = custom; return reply(typeof status === 'number' ? json : custom, typeof status === 'number' ? status : 200) }
     if (body.action === 'money') return reply({ success: true, money })
     if (body.action === 'requests') return reply({ success: true, requests: [] })
     if (body.action === 'juniorsMoney') return reply({ success: false, error: 'Not in this test.' }, 503)
