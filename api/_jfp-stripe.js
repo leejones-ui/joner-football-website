@@ -114,5 +114,22 @@ export async function stripeScan({ from, to }) {
     if (!d.has_more || !(d.data || []).length) break
     after = d.data.at(-1).id
   }
+  // Card payments that did not come through Checkout (invoices, charges made
+  // in the dashboard): listed apart so nothing is missed.
+  const seen = new Set(out.map((x) => x.intentId).filter(Boolean))
+  after = ''
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const q = new URLSearchParams({ limit: '100', 'created[gte]': String(gte), 'created[lt]': String(lt) })
+    q.append('expand[]', 'data.latest_charge')
+    if (after) q.set('starting_after', after)
+    const d = await stripeFetch(`/payment_intents?${q}`)
+    for (const x of d.data || []) {
+      if (x.status !== 'succeeded' || seen.has(x.id)) continue
+      const ch = x.latest_charge && typeof x.latest_charge === 'object' ? x.latest_charge : null
+      out.push({ id: x.id, intentId: x.id, at: new Date(x.created * 1000).toISOString(), email: String(ch?.billing_details?.email || x.receipt_email || '').toLowerCase(), name: String(ch?.billing_details?.name || ''), amountCents: x.amount_received || x.amount || 0, refundedCents: ch?.amount_refunded || 0, product: '', link: '', description: x.description || '', metadata: x.metadata || {}, customFields: [], notCheckout: true, invoice: x.invoice || '' })
+    }
+    if (!d.has_more || !(d.data || []).length) break
+    after = d.data.at(-1).id
+  }
   return out
 }
