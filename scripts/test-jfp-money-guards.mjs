@@ -26,7 +26,9 @@ ok('more than is owing is refused', over.status === 400, JSON.stringify(over.dat
 const future = await call('/api/jfp-portal-data', { action: 'recordPayment', rowId: owing.rowId, amountCents: fee, method: 'Cash', date: '2031-01-01' })
 ok('a payment dated in the future is refused', future.status === 400, JSON.stringify(future.data))
 const [a, b] = await Promise.all([1, 2].map(() => call('/api/jfp-portal-data', { action: 'markPaid', rowId: owing.rowId, amountCents: fee, method: 'Cash' })))
-ok('two at the same moment: exactly one is recorded', [a.status, b.status].sort().join() === '200,409', `${a.status} ${b.status}`)
+// The second is refused either by the lock (409) or, if the first has already
+// landed, by the nothing-left-owing check (400). Either way only one counts.
+ok('two at the same moment: exactly one is recorded', [a.status, b.status].filter((x) => x === 200).length === 1 && [a.status, b.status].some((x) => x === 409 || x === 400), `${a.status} ${b.status}`)
 const after = (await call('/api/jfp-portal-data', { action: 'playersList' })).data.players.find((p) => p.rowId === owing.rowId)
 ok('the row is paid once, not twice', Math.round(after.paidAud * 100) === paidBefore + fee, `${after.paidAud} vs ${(paidBefore + fee) / 100}`)
 const again = await call('/api/jfp-portal-data', { action: 'markPaid', rowId: owing.rowId, amountCents: fee, method: 'Cash' })
