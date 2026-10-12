@@ -16,9 +16,9 @@ const amt = (c) => (c == null ? '<span class="muted">unknown</span>' : esc(money
 const when = (iso) => (iso ? new Date(iso).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', year: 'numeric' }) : '')
 const time = (iso) => (iso ? new Date(iso).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '')
 
-export async function juniorsData(post, { fresh = false } = {}) {
+export async function juniorsData(post, { fresh = false, quick = false } = {}) {
   if (!fresh && J.data && Date.now() - J.at < 60000) return J.data
-  const r = await post('juniorsMoney', { fresh })
+  const r = await post('juniorsMoney', { fresh, quick })
   if (!r.ok) throw new Error(r.data?.error || 'Could not load Joners Juniors.')
   J.data = r.data.juniors
   J.at = Date.now()
@@ -123,7 +123,7 @@ export async function fillJuniorsCard(ui) {
   const el = document.getElementById('jj-card')
   if (!el) return
   let d
-  try { d = await juniorsData(ui.post) } catch (e) {
+  try { d = await juniorsData(ui.post, { quick: !ui.again }) } catch (e) {
     el.innerHTML = `<h2>Joners Juniors</h2><div class="j-box j-box-amber small" style="margin-top:8px">${esc(e.message)} No total is shown rather than a wrong one.</div>`
     return
   }
@@ -143,4 +143,6 @@ export async function fillJuniorsCard(ui) {
     ${d.stale ? `<div class="j-box j-box-amber small" style="margin-top:10px">Not up to date: last good figures from ${esc(time(d.at))}.</div>` : ''}
     <p class="muted small" style="margin-top:10px">${esc(DEFINITION)}</p>`
   el.querySelector('#jj-open').addEventListener('click', () => { ui.filter.programme = 'juniors'; ui.filter.term = term; ui.filter.status = ''; ui.go('money') })
+  // Shown from the last reading: fetch the latest and fill the card again.
+  if (d.quick && !ui.again) { J.data = null; fillJuniorsCard({ ...ui, again: true }) }
 }

@@ -90,4 +90,19 @@ await test('Joners Juniors on the timetable and in Coach Sam\'s hours and regist
   assert.ok(!JSON.stringify(card).includes('Jun '), 'no children named on the public page')
 })
 
+await test('Money: edit a player\'s fee and details (Lee and Ligia only), saved to Airtable and logged', async () => {
+  const m = (await lee('/api/jfp-portal-data', { action: 'money', quick: true })).data.money
+  const p = m.players.find((x) => x.feeCents)
+  const r = await lee('/api/jfp-portal-data', { action: 'editPlayer', rowId: p.rowId, fields: { feeAud: 750, paymentType: 'Sibling / 2 sessions per week', parent: 'Pat Edited' } })
+  assert.equal(r.status, 200, JSON.stringify(r.data))
+  const row = (await (await fetch(`${B}/__airtable`)).json()).term4.find((x) => x.id === p.rowId).fields
+  assert.equal(row['Term 4 Fee'], 750); assert.equal(row['Term 4 Payment Type'], 'Sibling / 2 sessions per week'); assert.equal(row['Parent Name'], 'Pat Edited')
+  assert.equal((await lee('/api/jfp-portal-data', { action: 'editPlayer', rowId: p.rowId, fields: { email: 'not-an-email' } })).status, 400)
+  assert.equal((await lee('/api/jfp-portal-data', { action: 'editPlayer', rowId: p.rowId, fields: { feeAud: -5 } })).status, 400)
+  const dean = client(); await signIn(dean, 'jonerfootballdean@gmail.com')
+  assert.equal((await dean('/api/jfp-portal-data', { action: 'editPlayer', rowId: p.rowId, fields: { feeAud: 1 } })).status, 403)
+  const log = JSON.stringify((await lee('/api/jfp-portal-data', { action: 'audit' })).data)
+  assert.ok(log.includes('player.edit'))
+})
+
 console.log(`\n${passed} Juniors portal checks passed`)

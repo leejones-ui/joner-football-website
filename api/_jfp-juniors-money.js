@@ -339,10 +339,11 @@ export async function juniorsRoster(term, deps = {}) {
 
 // { ...juniorsMoney, stale, error }. A failed refresh keeps the last good
 // result, marked stale with its time; with no last good result it throws.
-export async function juniorsMoneyData({ fresh = false } = {}, deps = {}) {
+export async function juniorsMoneyData({ fresh = false, quick = false } = {}, deps = {}) {
   const get = deps.kvGetJson || kvGetJson, set = deps.kvSetJson || kvSetJson
   const hit = await get(CACHE)
-  if (!fresh && hit?.at && Date.now() - Date.parse(hit.at) < FRESH_SECONDS * 1000) return { ...hit, stale: false }
+  // quick (first paint): the last good figures from the last 6 hours, marked with their time.
+  if (!fresh && hit?.at && Date.now() - Date.parse(hit.at) < (quick ? 6 * 3600 : FRESH_SECONDS) * 1000) return { ...hit, stale: false, quick: quick && Date.now() - Date.parse(hit.at) >= FRESH_SECONDS * 1000 }
   try {
     const rows = await (deps.readRows || readJuniorsRows)()
     const stripe = await (deps.readStripe || readJuniorsStripe)(rows)

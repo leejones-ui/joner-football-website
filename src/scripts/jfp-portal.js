@@ -292,7 +292,7 @@ const PERIODS = [['am', 'Morning'], ['pm', 'Afternoon']]
 const locColor = (id) => `var(--j-loc-${id || 'belrose'})`
 
 async function renderBoard(refresh) {
-  if (!P.board || refresh !== false) P.board = await need(await post('board'))
+  if (!P.board || refresh !== false) P.board = await need(await post('board', refresh === 'hard' ? { fresh: true } : {}))
   const B = P.board
   P.coaches = B.coaches
   const groups = B.groups.filter((g) => (!P.loc || g.locationId === P.loc) && (!P.coachFilter || g.coachId === P.coachFilter) && (!P.day || g.day === P.day) && (P.ttView === 'staff' || g.mode !== 'closed' || isJJ(g)))
@@ -310,7 +310,7 @@ async function renderBoard(refresh) {
     ${P.ttView === 'staff' ? '<p class="muted small" style="margin-bottom:8px">Tap a group for its rules, Add player or Copy spot link. Tap a name for payment and more. Drag a name onto another group to move them.</p>' : P.ttView === 'coach' ? '<p class="muted small" style="margin-bottom:8px">What a coach sees: every group, names and ages. No money, no contact details.</p>' : '<p class="muted small" style="margin-bottom:8px">What parents see: places left, never names.</p>'}
     <div class="jp-tt-wrap">${ttGrid(groups)}</div>
     ${B.unassigned.length && P.ttView === 'staff' ? `<div class="jp-day"><h2>Not in a group</h2></div><div class="jp-group">${B.unassigned.map((p) => playerRowHtml(p, '')).join('')}<p class="muted small" style="margin-top:8px">These rows have no session, or a session with no group (for the split morning groups, a coach with no group at that time). Move them onto a group.</p></div>` : ''}`
-  $('b-refresh').addEventListener('click', () => renderBoard(true))
+  $('b-refresh').addEventListener('click', () => renderBoard('hard'))
   $('b-loc').addEventListener('click', (e) => { const b = e.target.closest('[data-loc]'); if (b) { P.loc = b.dataset.loc; renderBoard(false) } })
   $('b-view').addEventListener('click', (e) => { const b = e.target.closest('[data-view]'); if (b) { P.ttView = b.dataset.view; closeSide(); renderBoard(false) } })
   $('b-coach').addEventListener('change', (e) => { P.coachFilter = e.target.value; renderBoard(false) })
@@ -614,7 +614,7 @@ async function termModal(p, g) {
 
 const LEAVE = ['Cost', 'Time or schedule clash', 'Club or school commitments', 'Injury', 'Not the right group or level', 'Trial was not the right fit', 'Moved away', 'Taking a break', 'Joined another program', 'Moved to 1 to 1', 'No reply from the family', 'Other']
 
-function removeModal(p, g) {
+function removeModal(p, g, after) {
   const box = modal(`<h2 style="margin-bottom:6px">Remove ${esc(p.name)}?</h2>
     <p class="muted small" style="margin-bottom:12px">They come off Term 4 Players${g ? ` and their place in ${esc(g.day)} ${esc(g.time)} opens up` : ''}. Their contact details, the reason and a copy of their row go to "Players dropped from term 4" in Airtable, and to Removed players here, where you can restore them.${p.paymentStatus === 'Paid' ? ' They have paid: any refund is done in Stripe.' : ''}</p>
     <label class="j-field"><span>Why are they leaving?</span><select class="j-select" id="rm-why"><option value="">Choose a reason</option>${LEAVE.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label>
@@ -628,7 +628,7 @@ function removeModal(p, g) {
     const r = await post('removePlayer', { rowId: p.rowId, reason, details: box.querySelector('#rm-details').value.trim() })
     btn.disabled = false
     if (!r.ok) return toast(r.data.error)
-    closeModal(); toast('Removed. Saved to Players dropped from term 4.'); P.sel = ''; closeSide(); renderBoard(true)
+    closeModal(); toast('Removed. Saved to Players dropped from term 4.'); P.sel = ''; closeSide(); P.board = null; PL.at = 0; (after || (() => renderBoard(true)))()
   })
 }
 
@@ -1204,7 +1204,10 @@ let resizeTimer = 0
 async function renderOverview(redraw = false) {
   if (!redraw || !P.money) {
     view().innerHTML = '<p class="muted">Loading the dashboard</p>'
-    const [m, rq] = await Promise.all([need(await post('money')), post('requests')])
+    // First paint from the last reading, then the latest a moment later.
+    const [mr, rq] = await Promise.all([post('money', { quick: true }), post('requests')])
+    const m = await need(mr)
+    laterMoney('overview', (fresh) => { P.money = fresh; renderOverview(true) })
     P.money = m.money
     if (rq.ok) { P.pendingCount = rq.data.requests.filter((r) => r.status === 'pending').length; P.requests = rq.data.requests; renderNav() }
   }
@@ -1349,9 +1352,60 @@ document.addEventListener('keydown', (e) => {
 const statusPill = (s) => `<span class="jm-status"><i style="background:${cssVar(STATUS[s][1])}"></i>${esc(STATUS[s][0])}</span>`
 
 const juniorsUi = () => ({ view, post, filter: P.jf, go })
-async function renderMoney() {
+// Edit a player's details from Money: name, family, fee and payment type.
+const PAY_TYPES = ['JFP 10 weeks', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
+function editPlayerModal(p) {
+  if (!p) return
+  const box = modal(`<h2 style="margin-bottom:4px">Edit ${esc(p.player)}</h2>
+    <p class="muted small" style="margin-bottom:12px">Saves to their row in Term 4 Players. The balance updates from the fee. Payments are recorded with Record payment.</p>
+    <label class="j-field"><span>Player's full name</span><input class="j-input" id="ep-name" value="${esc(p.player)}"></label>
+    <div class="j-two"><label class="j-field"><span>Fee for this place (A$)</span><input class="j-input" id="ep-fee" inputmode="decimal" value="${p.feeCents == null ? '' : p.feeCents / 100}" placeholder="not set"></label>
+    <label class="j-field"><span>Payment type</span><select class="j-select" id="ep-type"><option value="">Not set</option>${PAY_TYPES.map((t) => `<option ${t === p.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label></div>
+    <div class="j-two"><label class="j-field"><span>Parent name</span><input class="j-input" id="ep-parent" value="${esc(p.parent || '')}"></label>
+    <label class="j-field"><span>Mobile</span><input class="j-input" id="ep-phone" inputmode="tel" value="${esc(p.phone || '')}"></label></div>
+    <label class="j-field"><span>Parent email</span><input class="j-input" id="ep-email" inputmode="email" value="${esc(p.email || '')}"></label>
+    <p class="j-err" id="ep-err" hidden></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ep-go">Save</button></div>`, { wide: true })
+  box.querySelector('#ep-go').addEventListener('click', async (e) => {
+    const v = (id) => box.querySelector(id).value.trim()
+    const fee = v('#ep-fee')
+    const fields = {}
+    if (v('#ep-name') !== p.player) fields.name = v('#ep-name')
+    if (v('#ep-parent') !== (p.parent || '')) fields.parent = v('#ep-parent')
+    if (v('#ep-email') !== (p.email || '')) fields.email = v('#ep-email')
+    if (v('#ep-phone') !== (p.phone || '')) fields.phone = v('#ep-phone')
+    if ((fee === '' ? null : Math.round(Number(fee) * 100)) !== p.feeCents) fields.feeAud = fee === '' ? null : Number(fee)
+    if (v('#ep-type') !== (p.type || '')) fields.paymentType = v('#ep-type')
+    if (!Object.keys(fields).length) return closeModal()
+    e.currentTarget.disabled = true
+    const r = await post('editPlayer', { rowId: p.rowId, fields })
+    if (!r.ok) { e.currentTarget.disabled = false; const er = box.querySelector('#ep-err'); er.textContent = r.data.error; er.hidden = false; return }
+    closeModal()
+    const links = r.data.openLinks || []
+    toast(links.length ? `Saved. Note: ${links.length} open payment link${links.length === 1 ? '' : 's'} for ${links.map((l) => `${l.players.join(' + ')} (${money(l.amountCents)})`).join(', ')}: change the amount in Payment links if it is now wrong.` : 'Saved to Airtable', links.length ? 9000 : 3600)
+    P.board = null; PL.at = 0; renderMoney()
+  })
+}
+
+// Pages draw at once from the last reading (quick), then ask for the latest
+// and redraw quietly if you are still on the page and not in the middle of
+// something.
+function laterMoney(tab, apply) {
+  post('money').then((r) => {
+    if (!r.ok || P.tab !== tab) return
+    if ($('jp-modal') || $('jp-side') || $('jp-menu') || document.querySelector('.jp-confirm-over')) return
+    const a = document.activeElement
+    if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return
+    const y = window.scrollY
+    apply(r.data.money)
+    window.scrollTo(0, y)
+  })
+}
+
+async function renderMoney(pre) {
   if (P.jf.programme === 'juniors') return renderJuniorsMoney(juniorsUi())
-  const r = await need(await post('money'))
+  const r = pre ? { money: pre } : await need(await post('money', { quick: true }))
+  if (!pre) laterMoney('money', (fresh) => renderMoney(fresh))
   P.money = r.money
   const m = P.money
   P.moneyFilter = { status: '', q: '', loc: '', ...(P.moneyFilter || {}) }
@@ -1381,7 +1435,7 @@ async function renderMoney() {
     const q = f.q.trim().toLowerCase()
     const list = m.players.filter((p) => (!f.status || p.status === f.status) && (!f.loc || p.locationId === f.loc) && (!q || `${p.player} ${p.parent} ${p.email}`.toLowerCase().includes(q)))
     $('m-rows').innerHTML = list.map((p) => `<tr data-row="${esc(p.rowId)}"><td><b>${esc(p.player)}</b><br><span class="muted small">${esc(p.parent || '')}</span></td><td class="small">${esc(p.group)}</td><td class="num">${p.feeCents ? esc(money(p.feeCents)) : '<span class="muted">not set</span>'}</td><td class="num">${esc(money(p.paidCents))}${p.status === 'stripe' ? `<br><span class="muted small">Stripe ${esc(money(p.stripeCents))}</span>` : ''}</td><td class="num">${p.owingCents ? `<b>${esc(money(p.owingCents))}</b>` : '<span class="muted">0</span>'}</td><td>${statusPill(p.status)}</td>
-      <td><div class="jm-actions">${p.hasNotes ? `<button type="button" class="jm-icon" data-notes="${esc(p.rowId)}" title="Notes" aria-label="Notes for ${esc(p.player)}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 4h9l4 4v12H6z"/><path d="M9 11h7M9 15h5"/></svg></button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-record="${esc(p.rowId)}">Record payment</button></div></td></tr>`).join('') || '<tr><td colspan="7"><div class="j-empty">No players match.</div></td></tr>'
+      <td><div class="jm-actions">${p.hasNotes ? `<button type="button" class="jm-icon" data-notes="${esc(p.rowId)}" title="Notes" aria-label="Notes for ${esc(p.player)}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 4h9l4 4v12H6z"/><path d="M9 11h7M9 15h5"/></svg></button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-record="${esc(p.rowId)}">Record payment</button><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-edit-row="${esc(p.rowId)}">Edit</button><button type="button" class="j-btn j-btn-ghost j-btn-sm jm-del" data-remove-row="${esc(p.rowId)}" aria-label="Remove ${esc(p.player)}">Remove</button></div></td></tr>`).join('') || '<tr><td colspan="7"><div class="j-empty">No players match.</div></td></tr>'
     $('m-count').textContent = `${list.length} of ${m.players.length} players · owing ${money(list.reduce((t, p) => t + p.owingCents, 0))}`
   }
   draw()
@@ -1392,6 +1446,8 @@ async function renderMoney() {
   $('m-rows').addEventListener('click', (e) => {
     const n = e.target.closest('[data-notes]'); if (n) { e.stopPropagation(); return notesModal(n.dataset.notes) }
     const rec = e.target.closest('[data-record]'); if (rec) { e.stopPropagation(); return recordModal(m.players.find((p) => p.rowId === rec.dataset.record)) }
+    const ed = e.target.closest('[data-edit-row]'); if (ed) { e.stopPropagation(); return editPlayerModal(m.players.find((p) => p.rowId === ed.dataset.editRow)) }
+    const rm = e.target.closest('[data-remove-row]'); if (rm) { e.stopPropagation(); const p = m.players.find((x) => x.rowId === rm.dataset.removeRow); return removeModal({ rowId: p.rowId, name: p.player, paymentStatus: p.airtableStatus }, null, () => renderMoney()) }
     const tr = e.target.closest('[data-row]'); if (tr) historyDrawer(tr.dataset.row)
   })
   $('m-add').addEventListener('click', async () => { PL.at = 0; await go('players'); plAddBox() })

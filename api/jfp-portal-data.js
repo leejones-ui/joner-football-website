@@ -90,8 +90,10 @@ async function juniorsFor(groups, config) {
   return out
 }
 
-async function boardData(config) {
-  const [groups, roster, payreqs, requests] = await Promise.all([listGroups(), loadRoster({ fresh: true }), listPayreqs(), listApplications()])
+// The roster cache is cleared by every change made here, so the board can use
+// it; Refresh asks Airtable again (fresh).
+async function boardData(config, { fresh = false } = {}) {
+  const [groups, roster, payreqs, requests] = await Promise.all([listGroups(), loadRoster({ fresh }), listPayreqs(), listApplications()])
   const juniors = await juniorsFor(groups, config)
   const pendingBy = {}
   for (const r of requests) if (r.status === 'pending') pendingBy[r.groupId] = (pendingBy[r.groupId] || 0) + 1
@@ -383,6 +385,36 @@ async function movePlayer(res, principal, config, body) {
   return res.status(200).json({ success: true })
 }
 
+// Edit a player's details from Money (Lee, 12 Oct 2026): name, family
+// contacts, the fee and the payment type. Payments are not edited here: they
+// are recorded or undone on their own. The balance is Airtable's formula.
+// If an open payment link no longer matches the new fee, say so.
+const PAYMENT_TYPES = ['JFP 10 weeks', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
+async function editPlayer(res, principal, config, body) {
+  const row = await rowOr404(res, body.rowId); if (!row) return
+  const f = body.fields || {}
+  const fields = {}
+  const before = {}
+  if ('name' in f) { const v = clean(f.name, 80); if (v.length < 3) return fail(res, 400, "Enter the player's full name."); fields['Player Name'] = v; before.name = row.player }
+  if ('parent' in f) { fields['Parent Name'] = clean(f.parent, 80); before.parent = row.parent }
+  if ('email' in f) { const v = f.email ? validEmail(f.email) : ''; if (f.email && !v) return fail(res, 400, 'That email does not look right.'); fields['Email'] = v; before.email = row.email }
+  if ('phone' in f) { fields['Phone'] = clean(f.phone, 30); before.phone = row.phone }
+  if ('feeAud' in f) {
+    if (f.feeAud === null || f.feeAud === '') { fields['Term 4 Fee'] = null } else {
+      const v = Number(f.feeAud)
+      if (!Number.isFinite(v) || v < 0 || v > 20000) return fail(res, 400, 'Enter the fee in dollars, for example 750.')
+      fields['Term 4 Fee'] = Math.round(v * 100) / 100
+    }
+    before.feeAud = row.feeAud
+  }
+  if ('paymentType' in f) { if (f.paymentType && !PAYMENT_TYPES.includes(f.paymentType)) return fail(res, 400, 'Choose a payment type from the list.'); fields['Term 4 Payment Type'] = f.paymentType || null; before.paymentType = row.paymentType }
+  if (!Object.keys(fields).length) return fail(res, 400, 'Nothing to change.')
+  await updateTerm4Rows([{ id: row.id, fields }])
+  await audit({ by: principal.email, action: 'player.edit', target: row.id, before, after: fields })
+  const open = (await listPayreqs()).filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(row.id))
+  return res.status(200).json({ success: true, openLinks: open.map((q) => ({ id: q.id, amountCents: q.amountCents, players: q.playerNames })) })
+}
+
 // Why players leave: Lee keeps count, because players move in and out.
 export const LEAVE_REASONS = ['Cost', 'Time or schedule clash', 'Club or school commitments', 'Injury', 'Not the right group or level', 'Trial was not the right fit', 'Moved away', 'Taking a break', 'Joined another program', 'Moved to 1 to 1', 'No reply from the family', 'Other']
 
@@ -605,10 +637,11 @@ const weekOf = (iso) => {
   return d.toISOString().slice(0, 10)
 }
 
-export async function moneyData(config, { since, fresh = false } = {}) {
-  const [roster, groups, ledger, juniors, history] = await Promise.all([loadRoster({ fresh: true }), listGroups(), listLedger(config.term).catch(() => []), listJuniors().catch(() => []), listVenueHistory().catch(() => [])])
+export async function moneyData(config, { since, fresh = false, quick = false } = {}) {
+  // quick (first paint): the last Stripe read and the 60 second roster cache.
+  const [roster, groups, ledger, juniors, history] = await Promise.all([loadRoster({ fresh: !quick }), listGroups(), listLedger(config.term).catch(() => []), listJuniors().catch(() => []), listVenueHistory().catch(() => [])])
   let stripe = { payments: [], other: { count: 0, cents: 0 }, since: since || config.moneySince, error: '' }
-  try { stripe = { ...(await jfpStripePayments({ since: since || config.moneySince, fresh })), error: '' } } catch (error) { console.error('jfp stripe read failed', error); stripe.error = 'Stripe could not be read just now. Airtable figures only.' }
+  try { stripe = { ...(await jfpStripePayments({ since: since || config.moneySince, fresh, quick: quick && !fresh })), error: '' } } catch (error) { console.error('jfp stripe read failed', error); stripe.error = 'Stripe could not be read just now. Airtable figures only.' }
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
   const holding = roster.players.filter((r) => r.holdsPlace && !isTestName(r.player))
   const net = (p) => p.amountCents - p.refundedCents
@@ -640,7 +673,7 @@ export async function moneyData(config, { since, fresh = false } = {}) {
       const g = byId[r.groupId]
       const loc = g ? locationFor(config, g.location) : locationFor(config, r.location || '')
       players.push({
-        rowId: r.id, player: r.player, parent: r.parent, email: r.email,
+        rowId: r.id, player: r.player, parent: r.parent, email: r.email, phone: r.phone || '',
         group: g ? `${g.day} ${g.time}, ${loc.name}` : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Not in a group',
         groupId: r.groupId, locationId: loc.id, locationName: loc.name, coach: g ? coachLabel(coachById(config, g.coachId)) : r.coach,
         feeCents: fee, paidCents: paid, owingCents: status === 'paid' || status === 'stripe' ? 0 : owe,
@@ -1527,7 +1560,7 @@ async function handle(req, res) {
 
     // ---------- Lee and Ligia ----------
     switch (action) {
-      case 'board': await sweepExpiredOffers(principal); return res.status(200).json({ success: true, ...(await boardData(config)), coaches: coachList(config), locations: config.locations.map((l) => ({ id: l.id, name: l.name })) })
+      case 'board': await sweepExpiredOffers(principal); return res.status(200).json({ success: true, ...(await boardData(config, { fresh: body.fresh === true })), coaches: coachList(config), locations: config.locations.map((l) => ({ id: l.id, name: l.name })) })
       case 'familyInvites': return await familyInvites(req, res, principal, config, body)
       case 'searchPlayers': return res.status(200).json({ success: true, results: await searchPlayers(config, body) })
       case 'addPlayer': return await addPlayer(req, res, principal, config, body)
@@ -1535,6 +1568,7 @@ async function handle(req, res) {
       case 'addPlayerNoGroup': return await addPlayerNoGroup(req, res, principal, config, body)
       case 'movePlayer': return await movePlayer(res, principal, config, body)
       case 'removePlayer': return await removePlayer(res, principal, config, body)
+      case 'editPlayer': return await editPlayer(res, principal, config, body)
       case 'restorePlayer': return await restorePlayer(res, principal, body)
       case 'markPaid': return await markPaid(res, principal, body)
       case 'setTrial': return await setTrial(res, principal, body)
@@ -1670,12 +1704,12 @@ async function handle(req, res) {
         return res.status(200).json({ success: true })
       }
 
-      case 'money': return res.status(200).json({ success: true, money: await moneyData(config, { since: ISO.test(body.since || '') ? body.since : '', fresh: body.fresh === true }) })
+      case 'money': return res.status(200).json({ success: true, money: await moneyData(config, { since: ISO.test(body.since || '') ? body.since : '', fresh: body.fresh === true, quick: body.quick === true }) })
       // Joners Juniors (Lee, 11 Oct 2026): its own tables and Stripe payments,
       // never added into the JFP figures above.
       case 'juniorsMoney': {
         try {
-          const j = await juniorsMoneyData({ fresh: body.fresh === true }, { jfpSessionIds: async () => { try { return (await jfpStripePayments({ since: config.moneySince })).payments.map((p) => p.id) } catch { return [] } } })
+          const j = await juniorsMoneyData({ fresh: body.fresh === true, quick: body.quick === true }, { jfpSessionIds: async () => { try { return (await jfpStripePayments({ since: config.moneySince })).payments.map((p) => p.id) } catch { return [] } } })
           // The term the JFP portal is running, if Juniors has it; else the newest.
           const current = j.terms.includes(config.term) ? config.term : j.terms[0] || ''
           return res.status(200).json({ success: true, juniors: { ...j, currentTerm: current } })

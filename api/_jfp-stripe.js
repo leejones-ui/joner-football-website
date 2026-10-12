@@ -37,11 +37,13 @@ export function classifySession(s, product) {
 }
 
 // { since, at, payments: [...], other: { count, cents } }
-export async function jfpStripePayments({ since, fresh = false } = {}) {
+// quick: any read from the last 6 hours is fine (the page shows it at once,
+// then asks again for the latest).
+export async function jfpStripePayments({ since, fresh = false, quick = false } = {}) {
   const sinceIso = /^\d{4}-\d{2}-\d{2}$/.test(since || '') ? since : '2026-09-01'
   if (!fresh) {
     const hit = await kvGetJson(CACHE)
-    if (hit && hit.since === sinceIso && Date.now() - Date.parse(hit.at) < CACHE_SECONDS * 1000) return hit
+    if (hit && hit.since === sinceIso && Date.now() - Date.parse(hit.at) < (quick ? 6 * 3600 : CACHE_SECONDS) * 1000) return hit
   }
   const gte = Math.floor(Date.parse(`${sinceIso}T00:00:00+10:00`) / 1000)
   const payments = []
