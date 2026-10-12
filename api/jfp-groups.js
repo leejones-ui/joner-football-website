@@ -39,8 +39,10 @@ export function publicGroup(g, config, left) {
     label: g.label || 'Small group',
     mode: g.mode,
     durationMin: g.durationMin,
-    minAge: g.minAge ?? config.minAge,
-    maxAge: g.maxAge ?? config.maxAge,
+    // No age range on a session (Lee, 12 Oct 2026: every session except his
+    // own): parents see "All ages and levels can apply", never a default range.
+    minAge: g.minAge ?? null,
+    maxAge: g.maxAge ?? null,
     girlsOnly: g.girlsOnly === 'yes',
     // Popular groups keep taking applications when full (Lee, 5 Oct 2026).
     applyWhenFull: g.mode === 'application' && g.applyWhenFull === true,
