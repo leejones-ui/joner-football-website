@@ -227,7 +227,7 @@ async function addPlayer(req, res, principal, config, body) {
     'Term 4 Amount Paid': payment === 'offline' ? amountCents / 100 : 0,
     'Term 4 Payment Status': payment === 'offline' ? 'Paid' : payment === 'trial' ? 'N/A' : 'Unpaid',
     'Term 4 Payment Type': isTrial ? 'JFP Trial' : price.type,
-    'Term 4 Notes': `Added by ${principal.name} in the JFP portal${age != null ? `, age ${age}` : ''}${price.proRata && !isTrial ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}`,
+    'Term 4 Notes': `Added by ${principal.name} in the JFP portal${age != null ? `, age ${age}` : ''}${price.fixedSessions && !isTrial ? `, half term from ${from} (${price.sessions} sessions)` : price.proRata && !isTrial ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}`,
     ...(payment === 'offline' ? { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' } : {}),
   }
   const [rowId] = await createTerm4Rows([fields])
@@ -237,7 +237,7 @@ async function addPlayer(req, res, principal, config, body) {
   if (body.sendEmail === true && email) {
     const roster = await loadRoster({ fresh: true })
     const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile], dob }, roster.waivers))
-    await sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq) }, amountCents, trial: isTrial, startDate: from })
+    await sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq) }, amountCents, trial: isTrial, startDate: from, product })
     emailed = true
     if (payreq) await savePayreq({ ...payreq, emailedAt: new Date().toISOString() })
   }
@@ -389,7 +389,7 @@ async function movePlayer(res, principal, config, body) {
 // contacts, the fee and the payment type. Payments are not edited here: they
 // are recorded or undone on their own. The balance is Airtable's formula.
 // If an open payment link no longer matches the new fee, say so.
-const PAYMENT_TYPES = [SESSION_TYPE, 'JFP 10 weeks', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
+const PAYMENT_TYPES = [SESSION_TYPE, 'JFP 10 weeks', 'JFP Half term (5 weeks)', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
 async function editPlayer(res, principal, config, body) {
   const row = await rowOr404(res, body.rowId); if (!row) return
   const f = body.fields || {}
@@ -869,7 +869,7 @@ async function sendPaymentLink(req, res, principal, config, body) {
       'Term 4 Fee': (cents(r.paidAud) + share[i]) / 100,
       'Term 4 Payment Type': chosen.price.type,
       'Term 4 Payment Status': cents(r.paidAud) > 0 ? 'Partially Paid' : 'Unpaid',
-      'Term 4 Notes': appendNote(r.notes, `Payment link by ${principal.name}: ${productFor(chosen.product).label}${chosen.price.proRata ? `, from ${chosen.from} (${chosen.price.sessions} of ${chosen.price.of} sessions)` : ''}${credit ? `, ${formatAud(credit)} ${onTrial ? 'trial' : 'already paid'} taken off` : ''}, ${formatAud(share[i])}.`),
+      'Term 4 Notes': appendNote(r.notes, `Payment link by ${principal.name}: ${productFor(chosen.product).label}${chosen.price.fixedSessions ? `, from ${chosen.from} (${chosen.price.sessions} sessions)` : chosen.price.proRata ? `, from ${chosen.from} (${chosen.price.sessions} of ${chosen.price.of} sessions)` : ''}${credit ? `, ${formatAud(credit)} ${onTrial ? 'trial' : 'already paid'} taken off` : ''}, ${formatAud(share[i])}.`),
     } })))
   }
   const reason = body.reason === 'term-after-trial' ? 'term-after-trial' : chosen?.product === 'trial' ? 'trial' : 'balance'
@@ -879,7 +879,7 @@ async function sendPaymentLink(req, res, principal, config, body) {
     const roster = await loadRoster()
     const needWaiver = rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone], dob: r.dob }, roster.waivers))
     if (reason === 'term-after-trial') await sendTermOffered({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), amountCents, startDate: chosen?.from || '', creditCents: credit })
-    else await sendFamilyInvite({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), needs: { details: false, waiver: needWaiver, payment: true }, amountCents, trial: reason === 'trial', startDate: chosen?.from || '' })
+    else await sendFamilyInvite({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), needs: { details: false, waiver: needWaiver, payment: true }, amountCents, trial: reason === 'trial', startDate: chosen?.from || '', product: chosen?.product || '' })
     emailed = true
     await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
@@ -894,6 +894,7 @@ function productOfRow(r, g) {
   if (/pathway/.test(t)) return 'pathway'
   if (/1 on 1/.test(t)) return 'oneToOneTerm'
   if (/trial/.test(t)) return 'trial'
+  if (/half term/.test(t)) return 'halfTerm'
   return g?.product || 'group'
 }
 

@@ -66,6 +66,8 @@ export const ONE_TO_ONE = Object.freeze({ id: 'one-to-one', day: '1 to 1 coachin
 // proRata: joining after the term starts pays only for the sessions left.
 export const PRODUCTS = [
   { key: 'group', label: 'Term, small group', type: 'JFP 10 weeks', proRata: true, perPlaces: 1 },
+  // Half a term: 5 sessions from the start date (Lee, 12 Oct 2026, A$425).
+  { key: 'halfTerm', label: 'Half term (5 weeks)', type: 'JFP Half term (5 weeks)', proRata: false, perPlaces: 1, sessions: 5 },
   { key: 'twoAWeek', label: 'Two a week, or two siblings', type: 'Sibling / 2 sessions per week', proRata: true, perPlaces: 2 },
   // A second child in ANY group, once another child of the same family has a
   // paid place (Lee, 5 Oct 2026). Default A$650: with the first child's A$850
@@ -77,8 +79,14 @@ export const PRODUCTS = [
   { key: 'trial', label: 'Trial session', type: 'JFP Trial', proRata: false, perPlaces: 1 },
   { key: 'oneToOne', label: 'One off 1 to 1', type: 'JFP 1 on 1 casual', proRata: false, perPlaces: 1 },
 ]
-export const DEFAULT_PRICES = { group: 85000, twoAWeek: 150000, sibling: 65000, oneToOneTerm: 110000, pathway: 45000, pathwayOneToOne: 85000, trial: 8500, oneToOne: 12000 }
+export const DEFAULT_PRICES = { group: 85000, halfTerm: 42500, twoAWeek: 150000, sibling: 65000, oneToOneTerm: 110000, pathway: 45000, pathwayOneToOne: 85000, trial: 8500, oneToOne: 12000 }
 export function productFor(key) { return PRODUCTS.find((p) => p.key === key) || PRODUCTS[0] }
+// A product that covers a set number of sessions (half term): only those dates.
+export function limitDates(dates, product) {
+  const n = PRODUCTS.find((p) => p.key === product)?.sessions
+  return n ? dates.slice(0, n) : dates
+}
+export const isHalfTermType = (type) => /half term/i.test(String(type || ''))
 
 export const keys = {
   config: () => 'jfp:config',
@@ -381,6 +389,13 @@ export function priceFor(config, { product = 'group', day, fromIso, players = 1 
   const unitFull = Math.round((config.prices[key] ?? DEFAULT_PRICES[key]) / productFor(key).perPlaces)
   // A day's term is its real sessions: 10 weeks less any holidays that day.
   const of = day ? sessionDates(config, day).length || config.weeks : config.weeks
+  if (prod.sessions) {
+    // Half term: a set number of sessions; fewer left in the term pays for fewer.
+    const left = day ? sessionsFrom(config, day, fromIso).length : prod.sessions
+    const n = Math.min(prod.sessions, left || prod.sessions)
+    const unit = n < prod.sessions ? Math.round((unitFull * n) / prod.sessions / 100) * 100 : unitFull
+    return { product: key, type: prod.type, unitCents: unit, unitFullCents: unitFull, totalCents: unit * players, sessions: n, of: prod.sessions, proRata: n < prod.sessions, players, fixedSessions: prod.sessions }
+  }
   const sessions = prod.proRata && day ? sessionsFrom(config, day, fromIso).length : of
   const unit = prod.proRata && sessions < of ? Math.round((unitFull * sessions) / of / 100) * 100 : unitFull
   return { product: key, type: productFor(key).type, unitCents: unit, unitFullCents: unitFull, totalCents: unit * players, sessions, of, proRata: prod.proRata && sessions < of, players }

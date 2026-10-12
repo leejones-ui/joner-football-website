@@ -1,6 +1,6 @@
 // JFP emails, sent through Brevo like every other Joner transactional email.
 // Clean and light on purpose: white card, dark text, one button.
-import { formatAud, dateLabel, sessionDates, coachById, coachLabel, locationFor, to24h } from './_jfp-store.js'
+import { formatAud, dateLabel, sessionDates, coachById, coachLabel, locationFor, to24h, limitDates } from './_jfp-store.js'
 
 export function esc(v) {
   return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
@@ -54,8 +54,8 @@ export function staffTo(config) {
 
 // ---------- calendar ----------
 
-export function buildIcs({ uid, group, config, title, fromIso = '', only = '' }) {
-  const dates = only ? [only] : sessionDates(config, group.day).filter((d) => !fromIso || d >= fromIso)
+export function buildIcs({ uid, group, config, title, fromIso = '', only = '', product = '' }) {
+  const dates = only ? [only] : limitDates(sessionDates(config, group.day).filter((d) => !fromIso || d >= fromIso), product)
   if (!dates.length) return ''
   const [hh, mm] = (to24h(group.time) || '16:00').split(':').map(Number)
   const end = hh * 60 + mm + (group.durationMin || 60)
@@ -82,10 +82,10 @@ export function buildIcs({ uid, group, config, title, fromIso = '', only = '' })
   return lines.join('\r\n')
 }
 
-function groupRows(config, group, fromIso = '') {
+function groupRows(config, group, fromIso = '', product = '') {
   const loc = locationFor(config, group.location)
   const coach = coachById(config, group.coachId)
-  const dates = sessionDates(config, group.day).filter((d) => !fromIso || d >= fromIso)
+  const dates = limitDates(sessionDates(config, group.day).filter((d) => !fromIso || d >= fromIso), product)
   return [
     ['Group', `${esc(group.day)} ${esc(group.time)}`],
     ['Where', `${esc(loc.address || group.location)}${loc.maps ? `<br>${link('Open in Maps', loc.maps)}` : ''}`],
@@ -216,7 +216,7 @@ const kitLine = (config) => (config.kitUrl
 // Families do not have a password and often think they need to make one.
 const howToSignIn = (to) => p(`<b>How to sign in:</b> press the button, enter <b>${esc(to)}</b>, and we email you a six digit code. Type the code in and you are in. There is no password to set up or remember. Your account keeps every booking, so you can add another session or another child from the same place.`)
 
-export async function sendFamilyInvite({ to, parentName, playerNames, group, config, url, needs, amountCents, trial = false, startDate = '' }) {
+export async function sendFamilyInvite({ to, parentName, playerNames, group, config, url, needs, amountCents, trial = false, startDate = '', product = '' }) {
   const todo = []
   if (needs.details) todo.push('add the player details')
   if (needs.waiver) todo.push('sign the waiver')
@@ -224,7 +224,7 @@ export async function sendFamilyInvite({ to, parentName, playerNames, group, con
   const list = todo.length ? `${todo.slice(0, -1).join(', ')}${todo.length > 1 ? ' and ' : ''}${todo.at(-1)}` : ''
   const what = trial ? `a trial session in ${esc(group.day)} ${esc(group.time)}` : `a place in ${esc(config.term)}`
   const body = `${p(`Hi ${esc(parentName || 'there')}, ${esc(playerNames.join(' and '))} ${playerNames.length > 1 ? 'have' : 'has'} ${what}.`)}
-${rows([...(trial && startDate ? [['Trial', esc(dateLabel(startDate))]] : []), ...groupRows(config, group, trial ? '' : startDate)])}
+${rows([...(trial && startDate ? [['Trial', esc(dateLabel(startDate))]] : []), ...groupRows(config, group, trial ? '' : startDate, product)])}
 ${list ? p(`To finish, sign in with this email address and ${esc(list)}. It takes a couple of minutes.${needs.payment ? ' The place is locked in once it is paid.' : ''}`) : p('Sign in with this email address to see the booking.')}
 ${button(needs.payment ? 'Sign in and finish' : 'View the booking', url)}
 ${howToSignIn(to)}
@@ -263,9 +263,9 @@ ${siteUrl ? button('Open My account', `${siteUrl}/jfp-account/`) : ''}`
     return send({ to: [{ email: payreq.email, name: payreq.parentName }], subject: `${payreq.playerNames.join(' and ')}: ${payreq.next.term} ${held ? 'place held' : 'paid'}`, html: shell({ heading: held ? 'Your place is held' : 'You are locked in', body }) })
   }
   const trial = payreq.reason === 'trial'
-  const ics = group ? buildIcs({ uid: payreq.id, group, config, title: trial ? `JFP trial ${group.day} ${group.time}` : `JFP ${group.day} ${group.time}`, fromIso: payreq.startDate || '', only: trial ? payreq.trialDate || '' : '' }) : ''
+  const ics = group ? buildIcs({ uid: payreq.id, group, config, title: trial ? `JFP trial ${group.day} ${group.time}` : `JFP ${group.day} ${group.time}`, fromIso: payreq.startDate || '', only: trial ? payreq.trialDate || '' : '', product: payreq.product || '' }) : ''
   const body = `${p(`Thanks ${esc(payreq.parentName || '')}. We have your payment for ${esc(payreq.playerNames.join(' and '))}.`)}
-${rows([...(trial && payreq.trialDate ? [['Trial', esc(dateLabel(payreq.trialDate))]] : []), ...(group ? groupRows(config, group, trial ? '' : payreq.startDate || '').filter(([k]) => !(trial && k === 'Dates')) : []), ['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))], ['Reference', esc(payreq.id)]])}
+${rows([...(trial && payreq.trialDate ? [['Trial', esc(dateLabel(payreq.trialDate))]] : []), ...(group ? groupRows(config, group, trial ? '' : payreq.startDate || '', payreq.product || '').filter(([k]) => !(trial && k === 'Dates')) : []), ['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))], ['Reference', esc(payreq.id)]])}
 ${config.kitUrl ? p(`<b>Required:</b> every JFP player trains in the JF playing kit (${config.kitPriceLabel || 'A$60'}). If you have not ordered it yet, ${link('order it from BE Teamsport', config.kitUrl)} before the first session.`) : ''}
 ${siteUrl ? button('Open My account', `${siteUrl}/jfp-account/`) : ''}`
   return send({

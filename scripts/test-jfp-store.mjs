@@ -252,3 +252,20 @@ console.log(`\n${passed} JFP store checks passed`)
   assert.equal(normaliseStoredGroup({ id: 'x', label: 'Squad' }).label, 'Small group')
   console.log('ok - old Squad groups read as Small group')
 }
+
+{
+  // Half term (Lee, 12 Oct 2026): 5 sessions at A$425 from the start date.
+  const { rowSessionDates } = await import('../api/_jfp-cancel.js')
+  const h = priceFor(config, { product: 'halfTerm', day: 'Monday', fromIso: '2026-10-12' })
+  assert.equal(h.totalCents, 42500)
+  assert.equal(h.sessions, 5)
+  assert.equal(h.type, 'JFP Half term (5 weeks)')
+  const mondays = sessionDates(config, 'Monday')
+  const late = priceFor(config, { product: 'halfTerm', day: 'Monday', fromIso: mondays.at(-3) })
+  assert.equal(late.sessions, 3, 'three left in the term')
+  assert.equal(late.totalCents, 25500, 'pays for the three')
+  const row = { paymentType: 'JFP Half term (5 weeks)', day: 'Monday', notes: `Added by Lee in the JFP portal, half term from ${mondays[1]} (5 sessions).` }
+  assert.deepEqual(rowSessionDates(config, row, { day: 'Monday' }), mondays.slice(1, 6), 'the family sees only their 5 sessions')
+  assert.equal(buildIcs({ uid: 'x', group: { day: 'Monday', time: '4:20pm', location: 'Belrose HQ' }, config, title: 't', fromIso: mondays[1], product: 'halfTerm' }).match(/BEGIN:VEVENT/g).length, 5)
+  console.log('ok - half term: A$425 for 5 sessions, fewer left pays less, only those dates in the account and calendar')
+}

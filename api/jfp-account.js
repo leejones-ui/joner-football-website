@@ -108,7 +108,7 @@ async function overview(res, parent, body = {}) {
     return {
       needsKit: kitRequired(q), kit: kitDone(q, rowsById),
       id: q.id, amountLabel: formatAud(q.amountCents), players: q.playerNames, reason: q.reason, group: q.groupLabel || '', needsWaiver: blockers.length > 0, expiresAt: q.expiresAt || '',
-      what: q.reason === 'trial' ? `Trial session${q.trialDate ? `, ${dateLabel(q.trialDate)}` : ''}` : q.startDate ? `From ${dateLabel(q.startDate)} to the end of term${q.creditCents ? `, ${formatAud(q.creditCents)} trial taken off` : ''}` : '',
+      what: q.reason === 'trial' ? `Trial session${q.trialDate ? `, ${dateLabel(q.trialDate)}` : ''}` : q.product === 'halfTerm' && q.startDate ? `Half term, 5 sessions from ${dateLabel(q.startDate)}` : q.startDate ? `From ${dateLabel(q.startDate)} to the end of term${q.creditCents ? `, ${formatAud(q.creditCents)} trial taken off` : ''}` : '',
       afterpay: q.afterpay !== false,
       // A family invoice: each place and what it costs.
       places: ['family', 'sessions'].includes(q.reason) && Array.isArray(q.places) ? q.places.map((x) => ({ name: x.name, label: x.label, amountLabel: formatAud(x.owingCents) })) : [],

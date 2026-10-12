@@ -11,7 +11,7 @@
 // The notice a family gave (session start minus the moment they sent it) is
 // stored in minutes so Lee can report on it.
 import crypto from 'node:crypto'
-import { kvCommand, clean, sessionDates, dateLabel, to24h, coachById, coachByAirtableName, coachLabel, locationFor, audit } from './_jfp-store.js'
+import { kvCommand, clean, sessionDates, dateLabel, to24h, coachById, coachByAirtableName, coachLabel, locationFor, audit, limitDates, isHalfTermType } from './_jfp-store.js'
 import { sendCancelStaffAlert, sendCancelCoachAlert, staffTo } from './_jfp-email.js'
 import { telegramAlert, cancelText } from './_jfp-notify.js'
 
@@ -82,7 +82,9 @@ export function rowSessionDates(config, row, group) {
   const trialOn = /trial/i.test(row.paymentType || '') ? (notes.match(/Trial offered for (\d{4}-\d{2}-\d{2})/) || [])[1] : ''
   if (trialOn) return [trialOn]
   const from = (notes.match(/(?:from|starts) (\d{4}-\d{2}-\d{2})/) || [])[1] || ''
-  return sessionDates(config, group?.day || row.day).filter((d) => !from || d >= from)
+  const dates = sessionDates(config, group?.day || row.day).filter((d) => !from || d >= from)
+  // Half term: only the sessions paid for.
+  return isHalfTermType(row.paymentType) ? limitDates(dates, 'halfTerm') : dates
 }
 
 // Start time of a row's session, from the group if there is one.

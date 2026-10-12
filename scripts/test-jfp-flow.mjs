@@ -626,6 +626,22 @@ await test('session by session: pink in Money, a link for the sessions (sisters 
   assert.equal(m.players.find((p) => p.rowId === j).status, 'session', 'stays pink after paying')
 })
 
+await test('half term: add a player for 5 weeks at A$425, the family sees those 5 sessions only', async () => {
+  const pr = (await portal(lee, 'pricing')).data
+  assert.ok(pr.products.some((x) => x.key === 'halfTerm' && x.cents === 42500), 'in Paying for, A$425')
+  const add = await portal(lee, 'addPlayer', { groupId: TUE420, force: true, player: { name: 'Hal Half' }, parent: { name: 'Hal Parent', email: 'half@example.com', mobile: '0400999111' }, payment: 'link', product: 'halfTerm', sendEmail: true })
+  assert.equal(add.status, 200, JSON.stringify(add.data))
+  const f = (await at()).term4.find((r) => r.id === add.data.rowId).fields
+  assert.equal(f['Term 4 Fee'], 425)
+  assert.equal(f['Term 4 Payment Type'], 'JFP Half term (5 weeks)')
+  const c = client()
+  await signIn(c, 'half@example.com')
+  const acc = (await c.call('/api/jfp-account', { action: 'overview' })).data
+  assert.equal(acc.players[0].enrolments[0].dates.length, 5)
+  assert.match(acc.todo[0].what, /Half term, 5 sessions from/)
+  assert.equal(acc.todo[0].amountLabel, 'A$425')
+})
+
 await test('a flood of parallel code guesses still gets only five tries', async () => {
   const c = client()
   const s = await c.call('/api/jfp-auth', { action: 'start', email: 'flood@example.com', audience: 'parent' })

@@ -259,6 +259,13 @@ function priceOf(pr, { product = 'group', day, from, players = 1 }) {
   const k = pr.products.find((x) => x.key === key)
   const unitFull = Math.round(pr.prices[key] / k.perPlaces)
   const dates = (pr.datesByDay[day] || []).filter((d) => !from || d.iso >= from)
+  // Half term: a set number of sessions from the start date.
+  if (prod.sessions) {
+    const n = Math.min(prod.sessions, day ? dates.length || prod.sessions : prod.sessions)
+    const unitFull = Math.round(pr.prices[prod.key] / prod.perPlaces)
+    const unit = n < prod.sessions ? Math.round((unitFull * n) / prod.sessions / 100) * 100 : unitFull
+    return { unit, total: unit * players, sessions: n, of: prod.sessions, proRata: n < prod.sessions, fixed: true, last: dates[n - 1]?.label || '' }
+  }
   const sessions = prod.proRata && day ? dates.length : pr.weeks
   const unit = prod.proRata && sessions < pr.weeks ? Math.round((unitFull * sessions) / pr.weeks / 100) * 100 : unitFull
   return { unit, total: unit * players, sessions, of: pr.weeks, proRata: prod.proRata && sessions < pr.weeks }
@@ -290,7 +297,7 @@ function priceBlock(box, pr, { day, product, players = 1, credit = false, paid =
     const q = priceOf(pr, { product: $$('prod').value, day, from: $$('from').value, players })
     const off = credit ? ($$('credit')?.checked ? Math.min(paid, pr.prices.trial, q.total) : 0) : Math.min(paid, q.total)
     if (!typed) $$('amt').value = ((q.total - off) / 100).toFixed(2).replace(/\.00$/, '')
-    $$('why').textContent = `${q.proRata ? `Pro rata, ${q.sessions} of ${q.of} sessions` : $$('prod').value === 'trial' || $$('prod').value === 'oneToOne' ? 'One session' : `Full term, ${q.sessions} sessions`}${players > 1 ? `, ${players} players` : ''}${off ? `, less ${money(off)} ${credit ? 'trial' : 'already paid'}` : ''}`
+    $$('why').textContent = `${q.fixed ? `Half term, ${q.sessions} sessions${q.last ? `, to ${q.last}` : ''}` : q.proRata ? `Pro rata, ${q.sessions} of ${q.of} sessions` : $$('prod').value === 'trial' || $$('prod').value === 'oneToOne' ? 'One session' : `Full term, ${q.sessions} sessions`}${players > 1 ? `, ${players} players` : ''}${off ? `, less ${money(off)} ${credit ? 'trial' : 'already paid'}` : ''}`
   }
   $$('amt').addEventListener('input', () => { typed = true })
   for (const id of ['prod', 'from', 'credit']) $$(id)?.addEventListener('change', () => { typed = false; calc() })
@@ -1362,7 +1369,7 @@ const statusPill = (s) => `<span class="jm-status"><i style="background:${cssVar
 
 const juniorsUi = () => ({ view, post, filter: P.jf, go })
 // Edit a player's details from Money: name, family, fee and payment type.
-const PAY_TYPES = ['JFP Session by session', 'JFP 10 weeks', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
+const PAY_TYPES = ['JFP Session by session', 'JFP 10 weeks', 'JFP Half term (5 weeks)', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
 function editPlayerModal(p) {
   if (!p) return
   const box = modal(`<h2 style="margin-bottom:4px">Edit ${esc(p.player)}</h2>
