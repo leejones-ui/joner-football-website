@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "prebuild": "node scripts/guard-app-hero.mjs",
+    "prebuild": "node scripts/guard-app-hero.mjs && node scripts/guard-jfp-deploy.mjs",
     "build": "astro build",
     "test": "npm run test:master-contact-capture && npm run test:player-waiver && npm run test:tracking && npm run test:attribution && npm run test:source-taxonomy && npm run test:attribution-privacy && npm run test:buyer-source && npm run test:reliability && npm run test:autosend && npm run test:camp-webhook && npm run test:trial-cohort && npm run test:meta-uscreen-reconciliation && npm run test:ad-trial-nurture && npm run test:paid-meta-trial && npm run test:coaching-demo-link && npm run test:invoice-truth && npm run test:uscreen-tier-list && npm run test:holiday && npm run test:jfp",
     "test:player-waiver": "node scripts/test-player-waiver.mjs",
