@@ -86,7 +86,7 @@ function start() {
 
 function renderNav() {
   const sections = NAV[P.user.role === 'admin' ? 'admin' : 'coach']
-  $('nav').innerHTML = sections.map(([title, list]) => `<p class="jp-nav-sec">${esc(title)}</p>${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}</button>`).join('')}`).join('')
+  $('nav').innerHTML = sections.map(([title, list]) => `<p class="jp-nav-sec">${esc(title)}</p>${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}</button>`).join('')}`).join('')
 }
 
 // ---------- shell: collapsible sidebar, phone drawer, theme ----------
@@ -135,8 +135,11 @@ async function go(tab, { quiet = false } = {}) {
   setDrawer(false)
   const fn = { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
+  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts() } else cancelBanner()
   if (!quiet) view().focus({ preventScroll: true })
 }
+// New cancellations show up within two minutes, whatever page is open.
+setInterval(() => { if (P.user && document.visibilityState === 'visible') checkCancelAlerts() }, 120000)
 
 // Auto sync (Lee, 12 Oct 2026): the page on screen re-reads Airtable and
 // Stripe by itself every 2 minutes, and as soon as you come back to the
@@ -1625,7 +1628,29 @@ async function loadAttendance() { renderCoach() }
 
 // ---------- cancellations: families who told us a player cannot make a session ----------
 
+// New cancellations since this person last looked: a count on the tab and,
+// for coaches, a banner on their pages until they open Cancellations.
+async function checkCancelAlerts() {
+  const r = await post('cancelAlerts')
+  if (!r.ok) return
+  const before = P.cxNew?.count || 0
+  P.cxNew = r.data
+  if (before !== r.data.count) renderNav()
+  cancelBanner()
+}
+function cancelBanner() {
+  document.querySelector('.jp-cx-banner')?.remove()
+  const n = P.cxNew?.count || 0
+  if (!n || P.user?.role === 'admin' || P.tab === 'cancellations') return
+  const first = P.cxNew.latest[0]
+  const box = document.createElement('div')
+  box.className = 'j-box jp-cx-banner'
+  box.innerHTML = `<span><b>${n === 1 ? 'A player cannot make a session' : `${n} new cancellations`}</b><br><span class="small">${P.cxNew.latest.slice(0, 3).map((c) => `${esc(c.player)}, ${esc(c.dateLabel)} ${esc(c.time)} (${esc(c.reason)}, ${esc(c.noticeLabel)})`).join('<br>')}${n > 3 ? '<br>and more' : ''}</span></span><button type="button" class="j-btn j-btn-dark j-btn-sm" data-tab="cancellations">See ${n === 1 ? 'it' : 'them'}</button>`
+  view().prepend(box)
+}
+
 async function renderCancellations() {
+  if (P.cxNew?.count) { P.cxNew = { count: 0, latest: [] }; renderNav() }
   const admin = P.user.role === 'admin'
   const when = P.cxWhen || 'upcoming'
   const d = await need(await post('cancellations', { when }))

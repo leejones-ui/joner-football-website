@@ -1355,7 +1355,26 @@ function visibleCancels(all, groupsById, principal, config, isAdmin) {
   })
 }
 
+// New cancellations for this person since they last opened Cancellations
+// (Lee, 12 Oct 2026: coaches notified in their portal too, not only by email).
+// Upcoming sessions only; a withdrawn one is no longer news.
+const CANCEL_SEEN = 'jfp:cancel-seen'
+async function cancelAlerts(res, principal, config, isAdmin) {
+  const [all, groups, seen] = await Promise.all([listCancels(), listGroups(), kvCommand(['HGET', CANCEL_SEEN, principal.email])])
+  const groupsById = Object.fromEntries(groups.map((g) => [g.id, g]))
+  const since = Number(seen) || 0, nowMs = Date.now()
+  const fresh = visibleCancels(all, groupsById, principal, config, isAdmin)
+    .filter((r) => r.status === 'active' && r.startMs > nowMs && (r.submittedMs || Date.parse(r.submittedAt) || 0) > since)
+    .sort((a, b) => a.startMs - b.startMs)
+  return res.status(200).json({
+    success: true, count: fresh.length,
+    latest: fresh.slice(0, 5).map((r) => ({ player: r.player, dateLabel: r.dateLabel, time: r.time, day: r.day, location: r.location, reason: r.reason, noticeLabel: r.noticeLabel, noticeLevel: r.noticeLevel })),
+  })
+}
+
 async function cancellationsData(res, principal, config, body, isAdmin) {
+  // Opening the list counts as having seen them.
+  await kvCommand(['HSET', CANCEL_SEEN, principal.email, String(Date.now())])
   const [all, groups] = await Promise.all([listCancels(), listGroups()])
   const groupsById = Object.fromEntries(groups.map((g) => [g.id, g]))
   const mine = visibleCancels(all, groupsById, principal, config, isAdmin)
@@ -1657,6 +1676,7 @@ async function handle(req, res) {
     if (['staffOverview', 'requestCover', 'cancelCover', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
 
     if (action === 'cancellations') return await cancellationsData(res, principal, config, body, isAdmin)
+    if (action === 'cancelAlerts') return await cancelAlerts(res, principal, config, isAdmin)
 
     if (action === 'coachSessions') {
       const coachId = isAdmin ? clean(body.coachId, 30) : principal.coachId

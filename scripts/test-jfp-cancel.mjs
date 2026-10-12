@@ -363,6 +363,16 @@ await test('staff: Lee sees every cancellation, a coach only those of their own 
 
   const sam = client(); await signIn(sam, 'jonerfootballsam@gmail.com', 'staff')
   const dean = client(); await signIn(dean, 'jonerfootballdean@gmail.com', 'staff')
+  // In the portal too: each coach sees a count of new ones for their own
+  // groups until they open Cancellations.
+  const deanNew = (await portal(dean, 'cancelAlerts')).data
+  assert.equal(deanNew.count, 1, JSON.stringify(deanNew))
+  assert.equal(deanNew.latest[0].player, OTHER.fields['Player Name'])
+  assert.ok(!JSON.stringify(deanNew).includes('@'), 'no family contact in the alert')
+  const samNew = (await portal(sam, 'cancelAlerts')).data
+  assert.ok(samNew.count >= 1 && samNew.latest.every((x) => x.player !== OTHER.fields['Player Name']), 'Sam is not told about Dean\'s group')
+  await portal(dean, 'cancellations', { when: 'upcoming' })
+  assert.equal((await portal(dean, 'cancelAlerts')).data.count, 0, 'seen once opened')
   const s = (await portal(sam, 'cancellations', { when: 'all' })).data
   assert.equal(s.admin, false)
   const sNames = new Set(s.cancellations.map((c) => c.player))

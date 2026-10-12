@@ -345,3 +345,5 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jf-srow { border: 1px solid var(--j-line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
 .jf-srow .j-two { margin-top: 8px; }
 .jm-pink { border-color: var(--c-pink) !important; color: var(--c-pink) !important; }
+/* A family cancelled a session in this coach's group (until they look). */
+.jp-cx-banner { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; background: var(--j-red-bg, #FEF3F2); border: 1px solid color-mix(in srgb, var(--c-critical) 40%, transparent); }
