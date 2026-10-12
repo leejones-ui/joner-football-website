@@ -2,7 +2,7 @@
 // READ-ONLY views for Lee's agent (money and requests). It cannot change
 // players, payments, messages or Airtable.
 import crypto from 'node:crypto'
-import { moneyData, createPayreq } from './jfp-portal-data.js'
+import { moneyData, createPayreq, saveGroupAction } from './jfp-portal-data.js'
 import { getTerm4Row } from './_jfp-airtable.js'
 import { listGroups, getGroup, listApplications, listPayreqs, validateGroup, getConfig, saveConfig, audit, REQUIREMENTS, clean, kvCommand, keys, normaliseStoredGroup } from './_jfp-store.js'
 
@@ -109,6 +109,13 @@ export default async function handler(req, res) {
         made.push({ id: q.id, players: q.playerNames, cents: q.amountCents })
       }
       return res.status(200).json({ success: true, made, skipped })
+    }
+    // A new group for Lee from chat (13 Oct 2026), through the same checks the
+    // portal's group editor uses (a second coach at a session gets their own group).
+    if (body && typeof body === 'object' && !Array.isArray(body) && body.action === 'createGroup') {
+      if (Object.keys(body).some(k => !['action', 'group'].includes(k))) return fail(res, 400, 'Only group is accepted.')
+      commitAttempted = true
+      return await saveGroupAction(res, { email: 'jfp-admin (shared admin token)', name: 'Lee' }, await getConfig(), { group: body.group || {} })
     }
     if (body && typeof body === 'object' && !Array.isArray(body) && body.action === 'setKit') {
       if (Object.keys(body).some(k => !['action', 'kitPriceLabel'].includes(k))) return fail(res, 400, 'Only kitPriceLabel is accepted.')

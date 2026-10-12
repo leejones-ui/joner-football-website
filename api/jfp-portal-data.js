@@ -1426,7 +1426,7 @@ async function searchPlayers(config, body) {
 
 // ---------- groups ----------
 
-async function saveGroupAction(res, principal, config, body) {
+export async function saveGroupAction(res, principal, config, body) {
   const input = body.group || {}
   const existing = body.id ? await getGroup(body.id) : null
   if (body.id && !existing) return fail(res, 404, 'Group not found.')
