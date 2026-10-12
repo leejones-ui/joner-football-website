@@ -198,6 +198,33 @@ test('a family invoice: the fee splits by each player\'s line, like the money', 
   assert.ok(alloc.entries.some((e) => e.rowId === 'f2' && e.kind === 'bank' && e.fee === 0), 'a bank transfer has no fee')
 })
 
+test('parts for the download: every payment\'s money, refund, fee and GST, on its rows to the cent', () => {
+  const rows = [row('p1', 'Belrose HQ', { email: 'two@example.com', feeAud: 850 }), row('p2', 'NTRA', { email: 'two@example.com', feeAud: 425 }), row('p3', 'NTRA', { email: 'back@example.com' }), row('p4', 'Rydalmere')]
+  const stripe = [
+    pay('cs_two', 'two@example.com', 127500, 2601, { refundedCents: 12750, feeGstCents: 237 }), // two venues, part refunded
+    pay('cs_back', 'back@example.com', 85000, null, { refundedCents: 85000 }), // all given back, fee not known yet
+    pay('cs_who', 'who@example.com', 9000, 200, { feeGstCents: 18 }), // not linked
+  ]
+  const ledger = [{ 'Payment ID': 'CASH-1', 'Payment Method': 'Cash', 'Amount Paid': 200, 'Source Record ID': 'p4', 'Payment Date': '2026-10-07', 'Player Name': 'Player p4' }]
+  const alloc = allocateTermMoney({ rows, stripe, ledger, legacy: [row('p5', 'Rydalmere', { paidAud: 100 })] })
+  const of = (id) => alloc.parts.filter((x) => x.id === id)
+  const sum = (list, k) => list.reduce((t, x) => t + x[k], 0)
+  const two = of('cs_two')
+  assert.deepEqual(two.map((x) => x.rowId), ['p1', 'p2'])
+  assert.deepEqual([sum(two, 'cents'), sum(two, 'refunded'), sum(two, 'fee'), sum(two, 'gst')], [114750, 12750, 2601, 237], 'every cent of a split payment is on a row')
+  assert.deepEqual(two.map((x) => x.refunded), [8500, 4250], 'the refund splits like the money')
+  assert.deepEqual(two.map((x) => x.cents), [76500, 38250])
+  const back = of('cs_back')
+  assert.deepEqual(back.map((x) => [x.rowId, x.cents, x.refunded, x.fee]), [['p3', 0, 85000, 0]], 'a full refund with no fee yet is still listed')
+  assert.ok(!alloc.unlinked.items.some((i) => i.id === 'cs_back'))
+  assert.deepEqual(of('cs_who').map((x) => [x.rowId, x.cents, x.fee, x.gst]), [['', 9000, 200, 18]], 'not linked: rowId is blank')
+  assert.deepEqual(of('CASH-1').map((x) => [x.rowId, x.kind, x.cents, x.fee, x.at]), [['p4', 'cash', 20000, 0, '2026-10-07']])
+  assert.deepEqual(of('p5').map((x) => [x.kind, x.cents, x.at]), [['other', 10000, '']], 'marked paid offline, no date')
+  const income = stripe.reduce((t, p) => t + p.amountCents - p.refundedCents, 0) + 20000 + 10000
+  assert.equal(sum(alloc.parts, 'cents'), income, 'the parts add up to income')
+  assert.equal(sum(alloc.parts, 'fee'), feesOn(alloc) + alloc.unlinked.fee)
+})
+
 test('venues and groups: fees, net, expected and collected, who owes; fees add up to the term\'s', () => {
   const rows = [row('a', 'Belrose HQ'), row('b', 'Belrose HQ', { time: '5:25pm' }), row('c', 'NTRA'), row('d', 'NTRA', { feeAud: 0 }), row('gone', 'Belrose HQ', { holdsPlace: false })]
   const stripe = [pay('cs_a', 'a@example.com', 85000, 1720), pay('cs_gone', 'gone@example.com', 85000, 1720, { refundedCents: 85000 }), pay('cs_x', 'x@example.com', 1000, 40)]

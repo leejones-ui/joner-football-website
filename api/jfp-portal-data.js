@@ -834,6 +834,24 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
     w[e.kind === 'stripe' ? 'stripe' : e.kind === 'cash' ? 'cash' : 'bank'] += e.cents
     w.fee += e.fee
   }
+  // One line per payment per venue it paid for (or not linked), for the
+  // accountant's download: taken, refunded, Stripe's fee and the GST in it.
+  const payById = new Map(stripe.payments.map((p) => [p.id, p]))
+  const lines = new Map()
+  for (const x of alloc.parts) {
+    const venueId = (x.rowId && venueOfRow.get(x.rowId)) || ''
+    const key = `${x.kind}|${x.id}|${venueId}`
+    const l = lines.get(key) || { id: x.id, at: x.at, kind: x.kind, venueId, who: new Set(), cents: 0, fee: 0, refunded: 0, gst: 0 }
+    if (x.who) l.who.add(x.who)
+    for (const k of ['cents', 'fee', 'refunded', 'gst']) l[k] += x[k] || 0
+    lines.set(key, l)
+  }
+  const METHOD_LABEL = { stripe: 'Stripe', bank: 'Bank transfer', cash: 'Cash', other: 'Other' }
+  const payments = [...lines.values()].map((l) => {
+    const p = l.kind === 'stripe' ? payById.get(l.id) : null
+    const known = !p || p.feeKnown
+    return { id: l.id, at: l.at, method: METHOD_LABEL[l.kind], payMethod: p?.payMethod || '', who: [...l.who].join(', '), venueId: l.venueId, takenCents: l.cents + l.refunded, refundedCents: l.refunded, feeCents: known ? l.fee : null, feeGstCents: known ? l.gst : null, keptCents: l.cents - l.fee }
+  }).sort((a, b) => (a.at || '9').localeCompare(b.at || '9') || a.id.localeCompare(b.id))
   // What the places should bring in this term, and how much of it is in.
   const expecting = players.filter((p) => !['session', 'unpriced'].includes(p.status))
   const expectedCents = expecting.reduce((t, p) => t + p.feeCents, 0)
@@ -862,6 +880,7 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
     status: { paid: count('paid'), stripe: count('stripe'), part: count('part'), unpaid: count('unpaid'), unpriced: count('unpriced'), session: count('session') },
     weekly: [...weeks.values()],
     weeklyByVenue: Object.fromEntries(Object.entries(weeklyByVenue).map(([id, m]) => [id, [...m.values()]])),
+    payments,
     nextTermPayments: nextTerm.slice(0, 60).map((p) => ({ id: p.id, at: p.at, name: p.name, email: p.email, cents: net(p), feeCents: p.feeKnown ? p.feeCents : null, product: p.product, forTerm: p.forTerm })),
     locations,
     players,

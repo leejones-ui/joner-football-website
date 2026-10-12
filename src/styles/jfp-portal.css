@@ -351,3 +351,74 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jp-ntag { margin-left: auto; font-size: 10px; font-weight: 700; padding: 0 6px; border-radius: 999px; background: var(--j-violet-bg, #F4F3FF); color: var(--j-violet, #5925DC); cursor: help; white-space: nowrap; }
 .jp-player .nm:has(.jp-cnote) { white-space: normal; overflow: visible; text-overflow: clip; min-width: 0; flex: 1 1 auto; }
 .jp-cnote { display: block; white-space: normal; overflow-wrap: anywhere; margin-top: 4px; font-size: 12.5px; color: var(--j-ink-2); background: var(--j-violet-bg, #F4F3FF); border-radius: 8px; padding: 3px 8px; }
+
+/* Money: kept after Stripe fees, and one venue at a time (12 Oct 2026). */
+.jm-scope { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin: 4px 0 14px; }
+.jm-locs { flex: 1 1 100%; display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); min-width: 0; }
+.jm-locs button { min-height: 52px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 1px; text-align: left; border: 1.5px solid var(--j-line); background: transparent; color: var(--j-ink); border-radius: 12px; padding: 8px 12px; font: inherit; cursor: pointer; min-width: 0; transition: border-color .15s, background .15s; }
+.jm-locs button:hover { border-color: var(--j-muted); }
+.jm-locs button[aria-pressed="true"] { background: var(--j-ink); color: var(--j-bg); border-color: var(--j-ink); }
+.jm-locs .nm { font-size: 14px; font-weight: 750; line-height: 1.2; overflow-wrap: anywhere; }
+.jm-locs .amt { font-size: 12.5px; font-weight: 600; opacity: .75; font-variant-numeric: tabular-nums; }
+.jm-csv { align-self: center; min-height: 40px; margin-left: auto; }
+@media (min-width: 1200px) { .jm-locs { flex-basis: 520px; } }
+.jm-hero.jm-net { grid-column: span 12; }
+.jm-hero .jm-sum, .jd-hero .jm-sum { margin-top: 10px; font-size: 13.5px; color: var(--j-muted); line-height: 1.5; }
+.jm-sum b { color: var(--j-ink); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.jm-sum > span { white-space: nowrap; }
+.jm-pending { margin-top: 6px; font-size: 12.5px; font-weight: 650; color: var(--j-amber); }
+.jm-expect p { font-size: 13.5px; color: var(--j-muted); }
+.jm-expect b { color: var(--j-ink); font-variant-numeric: tabular-nums; }
+.jm-meter { display: block; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--c-neutral) 45%, transparent); overflow: hidden; margin-top: 8px; }
+.jm-meter > span { display: block; height: 100%; border-radius: 4px; background: var(--c-good); }
+.jm-tiles { grid-column: span 12; display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
+.jm-tiles .jm-tile { grid-column: auto; min-width: 0; }
+.jm-tiles .jd-tile .val { font-size: clamp(21px, 2.3vw, 28px); overflow-wrap: anywhere; }
+.jm-tiles[data-n="5"] .jm-tile:last-child { grid-column: span 2; }
+@media (min-width: 720px) {
+  .jm-tiles[data-n="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .jm-tiles[data-n="5"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1200px) {
+  .jm-hero.jm-net { grid-column: span 5; }
+  .jm-tiles { grid-column: span 7; }
+  .jm-tiles[data-n="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.jm-note { margin: 12px 2px 0; font-size: 13px; color: var(--j-muted); }
+.jm-next { margin-top: 12px; border: 1px solid var(--j-line); border-radius: 14px; padding: 0 16px; background: var(--j-surface); }
+.jm-next summary { cursor: pointer; padding: 12px 0; font-size: 14px; line-height: 1.45; }
+.jm-next b { font-variant-numeric: tabular-nums; }
+.jm-next .jm-hist { padding-bottom: 8px; }
+.jm-alert-go { display: flex; gap: 8px; flex-wrap: wrap; }
+.jm-charts { margin-top: 14px; }
+.jm-week, .jm-fees { grid-column: span 12; }
+@media (min-width: 1200px) { .jm-week { grid-column: span 8; } .jm-fees { grid-column: span 4; } }
+.jm-fee-total { margin-top: 12px; font-size: 13.5px; color: var(--j-muted); }
+.jm-fee-total b { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--j-ink); margin-right: 4px; font-variant-numeric: tabular-nums; }
+.jm-feelist { list-style: none; margin: 10px 0 0; padding: 0; }
+.jm-feelist li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--j-line-2); font-size: 13.5px; }
+.jm-feelist li:first-child { border-top: 0; }
+.jm-feelist small { display: block; color: var(--j-muted); font-size: 12px; }
+.jm-feelist b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.jm-gst { margin-top: 10px; color: var(--j-ink-2); }
+/* The venue window: who still owes, biggest first; tap one for their payments. */
+.jv-kpis .jv-kept .val { font-size: 30px; }
+.jv-owe { list-style: none; margin: 8px 0 0; padding: 0; }
+.jv-owe li + li { border-top: 1px solid var(--j-line-2); }
+.jv-owe button { width: 100%; min-height: 48px; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 4px; background: none; border: 0; color: var(--j-ink); font: inherit; text-align: left; cursor: pointer; border-radius: 8px; }
+.jv-owe button:hover, .jv-owe button:focus-visible { background: var(--j-surface-2, #f8f8f7); }
+.jv-owe .who { display: flex; flex-direction: column; min-width: 0; font-size: 14px; }
+.jv-owe small { color: var(--j-muted); font-size: 12px; }
+.jv-owe .amt { display: flex; flex-direction: column; align-items: flex-end; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.jv-players summary { padding: 10px 0; }
+#jv-owing + .jv-players { margin-top: 6px; }
+.jv-players tr[data-owe-row] { cursor: pointer; }
+@media (pointer: coarse) { .jm-chips button, .jm-view button, .jv-switch .jp-seg button { min-height: 40px; } }
+@media (max-width: 640px) {
+  .jm-locs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .jm-csv { width: 100%; }
+  .jm-chips button, .jm-view button { min-height: 40px; }
+  .jv-switch .jp-seg button { min-height: 40px; }
+  .jm-alert-go { width: 100%; }
+  .jm-alert-go .j-btn { flex: 1 1 auto; min-height: 40px; }
+}

@@ -49,22 +49,32 @@ export function splitCents(total, weights) {
 // in); stripe: live JFP payments; ledger: this term's ledger; legacy: rows
 // marked paid offline before the ledger had them (counted as Other).
 // entries: each dated part on its row, for income by week at a venue.
+// parts: every piece of every payment, on its row or not linked (rowId ''),
+// with its share of the refund and of the GST in the fee, for the download.
 export function allocateTermMoney({ rows, stripe = [], ledger = [], legacy = [] }) {
   const byId = new Map(rows.map((r) => [r.id, r]))
   const byRow = new Map()
   const unlinked = { stripe: 0, bank: 0, cash: 0, other: 0, fee: 0, items: [] }
   const entries = []
-  const put = (targets, amount, kind, what, fee = 0) => {
+  const pieces = []
+  const put = (targets, amount, kind, what, fee = 0, { refunded = 0, gst = 0 } = {}) => {
     const list = targets.filter(Boolean)
-    if (!list.length) { unlinked[kind] += amount; unlinked.fee += fee; unlinked.items.push({ ...what, kind, cents: amount, ...(fee ? { feeCents: fee } : {}) }); return }
+    if (!list.length) {
+      unlinked[kind] += amount
+      unlinked.fee += fee
+      if (amount || fee) unlinked.items.push({ ...what, kind, cents: amount, ...(fee ? { feeCents: fee } : {}) })
+      pieces.push({ ...what, kind, rowId: '', cents: amount, fee, refunded, gst })
+      return
+    }
     const weights = list.map((r) => cents(r.feeAud))
-    const parts = splitCents(amount, weights), fees = splitCents(fee, weights)
+    const [parts, fees, refunds, gsts] = [amount, fee, refunded, gst].map((x) => splitCents(x, weights))
     list.forEach((r, i) => {
       const x = byRow.get(r.id) || { stripe: 0, bank: 0, cash: 0, other: 0, fee: 0 }
       x[kind] += parts[i]
       x.fee += fees[i]
       byRow.set(r.id, x)
       if (what.at) entries.push({ rowId: r.id, at: what.at, kind, cents: parts[i], fee: fees[i] })
+      pieces.push({ ...what, kind, rowId: r.id, cents: parts[i], fee: fees[i], refunded: refunds[i], gst: gsts[i] })
     })
   }
   // A Stripe payment recorded in the portal names its rows in the ledger;
@@ -77,16 +87,18 @@ export function allocateTermMoney({ rows, stripe = [], ledger = [], legacy = [] 
     return l ? sourceIds(l).map((id) => byId.get(id)).filter(Boolean) : []
   }
   for (const p of stripe) {
-    const amount = (p.amountCents || 0) - (p.refundedCents || 0)
+    const refunded = p.refundedCents || 0
+    const amount = (p.amountCents || 0) - refunded
     // A refund keeps its fee, so a fully refunded payment still has a cost to place.
     const fee = p.feeKnown ? p.feeCents || 0 : 0
-    if (!amount && !fee) continue
+    const gst = p.feeKnown ? p.feeGstCents || 0 : 0
+    if (!amount && !fee && !refunded) continue
     const lines = recordedLines(p)
     if (lines.length > 1) {
       // Each player's line gets its part of what Stripe actually kept, and of the fee.
       const weights = lines.map((l) => cents(l['Amount Paid']))
-      const parts = splitCents(amount, weights), fees = splitCents(fee, weights)
-      lines.forEach((l, i) => put(sourceIds(l).map((id) => byId.get(id)), parts[i], 'stripe', { id: p.id, at: String(p.at || '').slice(0, 10), who: l['Player Name'] || p.name || p.email || '' }, fees[i]))
+      const [parts, fees, refunds, gsts] = [amount, fee, refunded, gst].map((x) => splitCents(x, weights))
+      lines.forEach((l, i) => put(sourceIds(l).map((id) => byId.get(id)), parts[i], 'stripe', { id: p.id, at: String(p.at || '').slice(0, 10), who: l['Player Name'] || p.name || p.email || '' }, fees[i], { refunded: refunds[i], gst: gsts[i] }))
       continue
     }
     let targets = recordedFor(p)
@@ -95,7 +107,7 @@ export function allocateTermMoney({ rows, stripe = [], ledger = [], legacy = [] 
       const holding = family.filter((r) => r.holdsPlace)
       targets = holding.length ? holding : family
     }
-    put(targets, amount, 'stripe', { id: p.id, at: String(p.at || '').slice(0, 10), who: p.name || p.email || '' }, fee)
+    put(targets, amount, 'stripe', { id: p.id, at: String(p.at || '').slice(0, 10), who: p.name || p.email || '' }, fee, { refunded, gst })
   }
   // Cash, bank transfer and other: the same ledger rows "Income this term" counts.
   for (const l of ledger) {
@@ -105,7 +117,7 @@ export function allocateTermMoney({ rows, stripe = [], ledger = [], legacy = [] 
     put(sourceIds(l).map((id) => byId.get(id)), amount, methodKind(l['Payment Method']), { id: l.id || l['Payment ID'] || '', at: String(l['Payment Date'] || '').slice(0, 10), who: l['Player Name'] || '' })
   }
   for (const r of legacy) put([r], cents(r.paidAud), 'other', { id: r.id, at: '', who: r.player })
-  return { byRow, unlinked, entries }
+  return { byRow, unlinked, entries, parts: pieces }
 }
 
 const blankMoney = () => ({ stripeFeeCents: 0, expectedCents: 0, collectedCents: 0, owingRowIds: [] })

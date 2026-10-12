@@ -1342,4 +1342,65 @@ await test('money after Stripe fees: the real fee on every payment, net income, 
   assert.ok(hist.stripe.some((p) => p.nextTerm && p.feeCents > 0 && p.payMethod === 'card'), JSON.stringify(hist.stripe))
 })
 
+await test('money page: the payment lines add up per venue, and the page shows each venue\'s own kept, tiles and download', async () => {
+  const m = (await portal(lee, 'money', { fresh: true })).data.money
+  const sum = (list, k) => list.reduce((t, x) => t + (x[k] || 0), 0)
+  const k = m.kpis
+  assert.ok(m.payments.length > 5, 'a line for each payment')
+  for (const x of m.payments) {
+    assert.equal(x.keptCents, x.takenCents - x.refundedCents - (x.feeCents || 0), `${x.id}: kept is taken less refunds and the fee`)
+    assert.ok(['Stripe', 'Bank transfer', 'Cash', 'Other'].includes(x.method))
+    if (x.method !== 'Stripe') assert.deepEqual([x.feeCents, x.refundedCents], [0, 0], 'only Stripe has a fee or a refund')
+  }
+  assert.equal(sum(m.payments, 'takenCents') - sum(m.payments, 'refundedCents'), k.incomeCents, 'the lines add up to income')
+  assert.equal(sum(m.payments, 'refundedCents'), k.refundsCents, 'every refund is on a line')
+  assert.equal(sum(m.payments, 'feeCents'), k.stripeFeesCents)
+  assert.equal(sum(m.payments, 'feeGstCents'), k.feeGstCents)
+  assert.equal(sum(m.payments, 'keptCents'), k.netIncomeCents)
+  assert.ok(m.payments.some((x) => x.refundedCents > 0), 'the refunded Afterpay payment is listed')
+  assert.ok(!m.payments.some((x) => m.nextTermPayments.some((n) => n.id === x.id)), 'next term money is not on a line')
+  const loose = m.payments.filter((x) => !x.venueId)
+  assert.equal(sum(loose, 'takenCents') - sum(loose, 'refundedCents'), k.unlinkedCents)
+  assert.equal(sum(loose, 'feeCents'), k.unlinkedFeeCents)
+  for (const l of m.locations) {
+    const lines = m.payments.filter((x) => x.venueId === l.id)
+    assert.equal(sum(lines, 'takenCents') - sum(lines, 'refundedCents'), l.receivedCents, `${l.name}: its lines add up to the venue`)
+    assert.equal(sum(lines, 'feeCents'), l.stripeFeeCents, `${l.name}: and to its fees`)
+    assert.equal(sum(lines, 'keptCents'), l.netCents, `${l.name}: and to what it kept`)
+    assert.equal(sum(m.weeklyByVenue[l.id], 'stripe') , sum(lines.filter((x) => x.method === 'Stripe' && x.at), 'takenCents') - sum(lines.filter((x) => x.method === 'Stripe' && x.at), 'refundedCents'), `${l.name}: its weekly Stripe money is its own`)
+  }
+  // The page, drawn from this payload in jsdom.
+  const { openPortal, csvRows } = await import('./jfp-portal-dom.mjs')
+  const { money: aud } = await import('../src/scripts/jfp-common.js')
+  const page = await openPortal({ money: m })
+  assert.equal(page.text('#m-kept'), aud(k.netIncomeCents))
+  assert.equal(page.text('#m-sum'), `Taken ${aud(k.incomeCents + k.refundsCents)} · Stripe fees ${aud(k.stripeFeesCents)} · Refunded ${aud(k.refundsCents)}`)
+  const shown = [...page.d.querySelectorAll('#m-locs [data-mloc]')].map((b) => b.dataset.mloc)
+  assert.deepEqual(shown, ['', ...m.locations.filter((l) => l.id !== 'other' || l.players || l.receivedCents || l.stripeFeeCents).map((l) => l.id)])
+  for (const l of m.locations.filter((x) => shown.includes(x.id))) {
+    await page.click(`#m-locs [data-mloc="${l.id}"]`)
+    assert.equal(page.w.location.hash, `#money?loc=${l.id}`)
+    assert.equal(page.text('#m-kept'), aud(l.netCents), `${l.name}: kept`)
+    assert.equal(page.text('#m-scope [data-tile="stripe"] .val'), aud(l.stripeCents))
+    assert.equal(page.text('#m-scope [data-tile="owing"] .val'), aud(l.owingCents))
+    assert.equal(page.d.querySelectorAll('#m-rows tr[data-row]').length, m.players.filter((p) => p.locationId === l.id).length || 0)
+    assert.equal(page.$('#m-unmatched details'), null)
+    await page.click('#m-csv')
+    const { name, text } = await page.csv()
+    assert.equal(name, `jfp-money-term-4-2026-${l.id}.csv`)
+    const rows = csvRows(text)
+    assert.deepEqual(rows.find((r) => r[0] === 'Kept after Stripe fees'), ['Kept after Stripe fees', (l.netCents / 100).toFixed(2)])
+    assert.equal(rows.filter((r) => r[0] === 'Total').at(-1)[7], (l.netCents / 100).toFixed(2), `${l.name}: the payments in the download add up to what it kept`)
+  }
+  assert.deepEqual(page.errors, [])
+  page.close()
+  // The built portal carries the new page.
+  const fs = await import('node:fs')
+  const html = fs.readFileSync(new URL('../dist/jfp-portal/index.html', import.meta.url), 'utf8')
+  const src = html.match(/<script type="module" src="\/(_astro\/jfp-portal[^"]+\.js)"/)[1]
+  const js = fs.readFileSync(new URL(`../dist/${src}`, import.meta.url), 'utf8')
+  for (const id of ['m-locs', 'm-kept', 'm-sum', 'm-csv', 'm-fees', 'm-weekly', 'jv-owing', 'Download for accountant', 'Kept after Stripe fees', 'Paid for next term']) assert.ok(js.includes(id), `the built bundle has ${id}`)
+  assert.ok(!/Before Stripe fees/.test(js))
+})
+
 console.log(`\n${passed} JFP flow checks passed`)
