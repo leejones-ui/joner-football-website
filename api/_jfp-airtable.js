@@ -5,7 +5,7 @@
 //
 // The Term 4 session columns are still labelled "Term 3 Day/Time/Location";
 // they hold the Term 4 session, exactly as the Joner Dashboard reads them.
-import { kvGetJson, kvSetJson, kvCommand, kvPipeline, keys, groupId, ONLINE_TAG, ADMIN_TAG, coachByAirtableName, ageOn, normName, digits, clean, listGroups, getConfig, locationFor, to24h, sydneyToday } from './_jfp-store.js'
+import { kvGetJson, kvSetJson, kvCommand, kvPipeline, keys, groupId, ONLINE_TAG, ADMIN_TAG, coachByAirtableName, ageOn, normName, digits, clean, listGroups, getConfig, locationFor, to24h, sydneyToday, emailsIn, rowEmails } from './_jfp-store.js'
 
 const BASE = process.env.AIRTABLE_BASE_ID || 'apphU4R0BtVIu5YqT'
 export const TABLES = {
@@ -98,7 +98,8 @@ function term4Row({ id, fields: f }) {
     id,
     player: text(f, 'Player Name'),
     parent: text(f, 'Parent Name'),
-    email: text(f, 'Email').toLowerCase(),
+    email: emailsIn(text(f, 'Email'))[0] || '',
+    emails: emailsIn(text(f, 'Email')),
     phone: text(f, 'Phone'),
     day, time, location,
     // The session as Airtable writes it. Which group that is (one group, or
@@ -145,13 +146,13 @@ export async function loadRoster({ fresh = false } = {}) {
   if (!t3) { t3 = await readTable(TABLES.term3, TERM3_FIELDS); await kvSetJson('jfp:term3-cache', t3, 600) }
   const term3 = t3.map(({ id, fields: f }) => ({
     id, player: text(f, 'Player Name'), parent: text(f, 'Parent Name'),
-    emails: [text(f, 'Email'), text(f, 'Parent Email 2')].map((e) => e.toLowerCase()).filter(Boolean),
+    emails: [...new Set([...emailsIn(text(f, 'Email')), ...emailsIn(text(f, 'Parent Email 2'))])],
     phone: text(f, 'Phone Number'), dob: text(f, 'Date of Birth'), coach: text(f, 'Coach'),
     day: text(f, 'Session Day'), time: text(f, 'Session Time'), location: text(f, 'Session Location'),
   }))
   const waivers = wv.map(({ id, fields: f }) => ({
     id, player: text(f, 'Player Full Name'), dob: text(f, 'Date of Birth'), parent: text(f, 'Parent/Guardian Name'),
-    email: text(f, 'Parent Email').toLowerCase(), mobile: text(f, 'Parent Mobile Number'), club: text(f, 'Current Club'),
+    email: emailsIn(text(f, 'Parent Email'))[0] || '', mobile: text(f, 'Parent Mobile Number'), club: text(f, 'Current Club'),
     term: text(f, 'Term'), version: text(f, 'Waiver Version'), signedDate: text(f, 'Signed Date'), programme: text(f, 'Programme'),
     accepted: f['Waiver Accepted - Full Terms'] === true,
   }))
@@ -170,7 +171,12 @@ export async function loadRoster({ fresh = false } = {}) {
     const src = t3ById.get(p.sourceTerm3) || t3ByName.get(normName(p.player))
     const sess = [...(sessionCoaches.get(`${p.day}|${p.time}|${p.location}`.toLowerCase()) || [])]
     const dob = src?.dob || (wByName.get(normName(p.player)) || []).find((w) => w.dob)?.dob || ''
-    return { ...p, coach: p.coach || src?.coach || (sess.length === 1 ? sess[0] : ''), dob, ageFromNotes: ageFromNotes(p.notes) }
+    // A second parent's email from Term 3 ("Parent Email 2") also opens the
+    // family's account: only from the row's own Term 3 record, or a same-name
+    // record that shares one of this row's addresses.
+    const linked = src && (src.id === p.sourceTerm3 || src.emails.some((e) => p.emails.includes(e)))
+    const emails = linked ? [...new Set([...p.emails, ...src.emails])] : p.emails
+    return { ...p, email: p.email || emails[0] || '', emails, coach: p.coach || src?.coach || (sess.length === 1 ? sess[0] : ''), dob, ageFromNotes: ageFromNotes(p.notes) }
   })
   // Stamped with when the read began, so a slow read is never cached as newer than it is.
   const out = { at: startedAt, players, term3, waivers }
@@ -596,13 +602,15 @@ export async function clearAttendance({ attendanceId, markedBy }) {
 // Everything a signed-in parent is allowed to see: the players whose rows
 // carry their email, in Term 4, Term 3 or the waiver table. Nothing else.
 export function familyFor(email, roster, termStart) {
-  const e = clean(email, 200).toLowerCase()
+  const e = emailsIn(email)[0] || ''
   if (!e) return { emails: [], phones: [], players: [] }
-  const t4 = roster.players.filter((r) => r.email === e)
+  const t4 = roster.players.filter((r) => rowEmails(r).includes(e))
   const t3 = roster.term3.filter((r) => r.emails.includes(e))
-  const wv = roster.waivers.filter((w) => w.email === e)
+  // Both parents' addresses, so waivers and payments under either one count.
+  const emails = [...new Set([e, ...t4.flatMap(rowEmails), ...t3.flatMap((r) => r.emails)])]
+  const wv = roster.waivers.filter((w) => emails.includes(w.email))
   const family = {
-    emails: [e],
+    emails,
     phones: [...t4.map((r) => r.phone), ...t3.map((r) => r.phone), ...wv.map((w) => w.mobile)].filter(Boolean),
     parentName: t4[0]?.parent || t3[0]?.parent || wv[0]?.parent || '',
     mobile: t4[0]?.phone || t3[0]?.phone || wv[0]?.mobile || '',

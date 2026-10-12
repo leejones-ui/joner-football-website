@@ -162,6 +162,16 @@ export function validEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : ''
 }
 
+// Every address in an Airtable email cell. Some cells were pasted from a mail
+// app as "name@x.com <name@x.com>", or hold two addresses; a family signs in
+// with the bare address, so that is what we compare.
+export function emailsIn(v) {
+  const found = String(v || '').toLowerCase().match(/[^\s<>,;:"'()[\]]+@[^\s<>,;:"'()[\]]+\.[a-z]{2,}/g) || []
+  return [...new Set(found)]
+}
+// A Term 4 row's addresses (rows from an older cache only have .email).
+export const rowEmails = (r) => (r?.emails?.length ? r.emails : emailsIn(r?.email))
+
 function cleanLocations(list, fallback) {
   if (!Array.isArray(list) || !list.length) return fallback
   const out = list.map((l) => ({
@@ -639,7 +649,7 @@ export function paidSiblings(rosterPlayers, email, names = []) {
   const seen = new Set()
   return (rosterPlayers || []).filter((r) => {
     const n = normName(r.player)
-    if (!r.holdsPlace || validEmail(r.email) !== e || !n || mine.has(n) || seen.has(n)) return false
+    if (!r.holdsPlace || !rowEmails(r).includes(e) || !n || mine.has(n) || seen.has(n)) return false
     if (!(r.paymentStatus === 'Paid' || Number(r.paidAud) > 0)) return false
     seen.add(n)
     return true

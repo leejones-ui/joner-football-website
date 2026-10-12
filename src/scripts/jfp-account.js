@@ -194,7 +194,7 @@ function render() {
             </div>
             <details style="margin-top:6px"><summary class="small muted" style="cursor:pointer">All ${esc(e.dates.length)} dates</summary><p class="small" style="margin-top:6px">${esc(e.dates.join(', '))}</p></details>
             ${cancelBlock(e, p)}
-          </div>`).join('') : `<p class="muted small" style="margin-top:10px">Not booked into ${esc(D.term)} yet. <a href="/jfp-booking/">See the timetable</a></p>`}
+          </div>`).join('') : p.placeNoSession ? `<p class="muted small" style="margin-top:10px">${esc(p.name)} has a place for ${esc(D.term)}. We are confirming the day and time and will be in touch.</p>` : `<p class="muted small" style="margin-top:10px">Not booked into ${esc(D.term)} yet. <a href="/jfp-booking/">See the timetable</a></p>`}
       </article>`).join('')
   }
 

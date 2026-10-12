@@ -10,6 +10,8 @@
 const cents = (aud) => Math.round(Number(aud || 0) * 100)
 const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ')
 const KINDS = ['stripe', 'bank', 'cash', 'other']
+// Every address on a row (one cell can hold two, or "a@x.com <a@x.com>").
+const rowEmails = (r) => (r.emails?.length ? r.emails : (String(r.email || '').toLowerCase().match(/[^\s<>,;:"'()[\]]+@[^\s<>,;:"'()[\]]+\.[a-z]{2,}/g) || []))
 
 export const methodKind = (m) => (/cash/i.test(m || '') ? 'cash' : /bank/i.test(m || '') ? 'bank' : /stripe/i.test(m || '') ? 'stripe' : 'other')
 const sourceIds = (l) => String(l['Source Record ID'] || '').split(',').map((x) => x.trim()).filter(Boolean)
@@ -62,7 +64,7 @@ export function allocateTermMoney({ rows, stripe = [], ledger = [], legacy = [] 
     if (!amount) continue
     let targets = recordedFor(p)
     if (!targets.length && p.email) {
-      const family = rows.filter((r) => r.email && r.email === p.email)
+      const family = rows.filter((r) => rowEmails(r).includes(p.email))
       const holding = family.filter((r) => r.holdsPlace)
       targets = holding.length ? holding : family
     }

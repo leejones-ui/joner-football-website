@@ -15,7 +15,7 @@ import {
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
   coachByAirtableName, sessionDates, dateLabel, formatAud, to24h, clean, newId, audit, listAudit, locationFor, validEmail, ageOn,
   normName, cleanPhone, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold,
-  PRODUCTS, QUESTIONS, productFor, priceFor, paidSiblings, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson, kvGetJson,
+  PRODUCTS, QUESTIONS, productFor, priceFor, paidSiblings, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson, kvGetJson, rowEmails, emailsIn,
 } from './_jfp-store.js'
 import { coachPhotoUrl } from './jfp-groups.js'
 import {
@@ -49,7 +49,7 @@ function onDashboard(r) {
 }
 
 function playerView(r, config, roster, { money }) {
-  const w = waiverFor(r.player, { emails: [r.email], phones: [r.phone], dob: r.dob }, roster.waivers)
+  const w = waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)
   return {
     rowId: r.id,
     name: r.player,
@@ -135,7 +135,7 @@ async function boardData(config, { fresh = false } = {}) {
       awaiting: holding.filter((r) => r.confirmation !== 'Confirmed').length,
       placesLeft: view.filter((g) => ['direct', 'application'].includes(g.mode)).reduce((t, g) => t + g.placesLeft, 0),
       pendingRequests: requests.filter((r) => r.status === 'pending').length,
-      waivers: holding.filter((r) => waiverFor(r.player, { emails: [r.email], phones: [r.phone], dob: r.dob }, roster.waivers)).length,
+      waivers: holding.filter((r) => waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)).length,
     },
   }
 }
@@ -261,7 +261,7 @@ async function playersList(req, res, config, body = {}) {
     const gid = g ? r.groupId : ''
     const coach = coachById(config, g?.coachId) || coachByAirtableName(config, r.coach)
     const loc = locationFor(config, r.location)
-    const waiver = waiverFor(r.player, { emails: [r.email], phones: [r.phone], dob: r.dob }, roster.waivers)
+    const waiver = waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)
     return {
       rowId: r.id,
       name: r.player,
@@ -764,7 +764,7 @@ async function playerPayments(config, rowId) {
   if (!r) return null
   const [ledger, payreqs, auditLog] = await Promise.all([listLedger(config.term).catch(() => []), listPayreqs(), listAudit(1500)])
   let stripe = []
-  try { stripe = (await jfpStripePayments({ since: config.moneySince })).payments.filter((p) => p.email && p.email === r.email) } catch {}
+  try { stripe = (await jfpStripePayments({ since: config.moneySince })).payments.filter((p) => p.email && rowEmails(r).includes(p.email)) } catch {}
   const recordedIds = new Set(ledger.flatMap((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].filter(Boolean)))
   return {
     rowId: r.id, player: r.player, parent: r.parent, email: r.email, phone: r.phone,

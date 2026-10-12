@@ -11,7 +11,7 @@
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, dateLabel,
-  formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, normName, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone,
+  formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone,
 } from './_jfp-store.js'
 import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
@@ -39,6 +39,13 @@ function withDobs(fam, dobs, termStart) {
   return fam
 }
 
+// A payment request belongs to the family when it went to any of their
+// addresses (both parents), written however Airtable had it at the time.
+function ownsPayreq(q, fam, email) {
+  const mine = new Set([email, ...(fam?.emails || [])])
+  return Boolean(q) && emailsIn(q.email).some((e) => mine.has(e))
+}
+
 function paymentLine(row, openReq) {
   if (openReq) return { state: 'due', label: `${formatAud(openReq.amountCents)} to pay`, payreqId: openReq.id }
   if (/trial/i.test(row.paymentType)) return { state: 'trial', label: row.paymentStatus === 'Paid' ? 'Trial booked and paid' : 'Trial' }
@@ -55,7 +62,7 @@ async function overview(res, parent, body = {}) {
   // Only this family's own cancellations are ever read out of the list.
   const myCancels = allCancels.filter((c) => c.email === parent.email && c.status === 'active')
   const fam = withDobs(familyFor(parent.email, roster, config.termStart), dobsFrom(requests, parent.email), config.termStart)
-  const mine = payreqs.filter((p) => p.email === parent.email && p.status !== 'cancelled')
+  const mine = payreqs.filter((p) => ownsPayreq(p, fam, parent.email) && p.status !== 'cancelled')
   // Opened from a payment link: staff see that the family has looked at it.
   const opened = mine.find((q) => q.id === clean(body.pay, 60) && ['open', 'checkout'].includes(q.status))
   // Counted on its own key, never by rewriting the payment record, so a
@@ -68,6 +75,8 @@ async function overview(res, parent, body = {}) {
     age: p.age,
     needsDob: !p.dob,
     waiver: p.waiver ? { onFile: true, signedDate: p.waiver.signedDate, term: p.waiver.term } : { onFile: false },
+    // A place staff have confirmed but not yet given a day and time.
+    placeNoSession: p.term4.some((r) => r.holdsPlace && !r.groupId),
     enrolments: p.term4.filter((r) => r.holdsPlace && r.groupId).map((r) => {
       const g = byGroup[r.groupId] || { day: r.day, time: r.time, location: r.location, durationMin: 60 }
       const coach = coachById(config, g.coachId) || coachByAirtableName(config, r.coach)
@@ -205,7 +214,7 @@ async function nextTermChoice(req, res, parent, body) {
   const choice = ['hold', 'full', 'no'].includes(body.choice) ? body.choice : ''
   if (!choice) return fail(res, 400, 'Choose hold, pay in full or not returning.')
   const roster = await loadRoster({ fresh: true })
-  const row = roster.players.find((r) => r.id === clean(body.rowId, 30) && r.email === parent.email && r.holdsPlace)
+  const row = roster.players.find((r) => r.id === clean(body.rowId, 30) && rowEmails(r).includes(parent.email) && r.holdsPlace)
   if (!row) return fail(res, 404, 'We could not find that player on your account.')
   // One choice at a time per player (two tabs, a double tap).
   const lock = `jfp:next-lock:${row.id}`
@@ -254,7 +263,7 @@ const KIT = { ordered: 'Ordered', has: 'Already has one' }
 
 async function confirmKit(res, parent, body) {
   const q = await getPayreq(body.payreqId)
-  if (!q || q.email !== parent.email) return fail(res, 404, 'We could not find that payment.')
+  if (!q || !ownsPayreq(q, familyFor(parent.email, await loadRoster(), (await getConfig()).termStart), parent.email)) return fail(res, 404, 'We could not find that payment.')
   const choice = KIT[body.kit] ? body.kit : ''
   if (!choice) return fail(res, 400, 'Choose one: ordered, or already has one.')
   q.kit = KIT[choice]
@@ -272,7 +281,7 @@ async function confirmKit(res, parent, body) {
 
 async function pay(req, res, parent, body) {
   const q = await getPayreq(body.payreqId)
-  if (!q || q.email !== parent.email) return fail(res, 404, 'We could not find that payment.')
+  if (!q || !ownsPayreq(q, familyFor(parent.email, await loadRoster(), (await getConfig()).termStart), parent.email)) return fail(res, 404, 'We could not find that payment.')
   if (q.status === 'paid') return fail(res, 409, 'This is already paid.', { code: 'paid' })
   if (!['open', 'checkout'].includes(q.status)) return fail(res, 410, 'This payment is no longer open. Contact Joner Football.')
   if (q.expiresAt && Date.parse(q.expiresAt) < Date.now()) return fail(res, 410, 'This payment link has expired. Contact Joner Football and we will send a new one.')
