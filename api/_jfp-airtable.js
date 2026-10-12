@@ -6,6 +6,7 @@
 // The Term 4 session columns are still labelled "Term 3 Day/Time/Location";
 // they hold the Term 4 session, exactly as the Joner Dashboard reads them.
 import { kvGetJson, kvSetJson, kvCommand, kvPipeline, keys, groupId, ONLINE_TAG, ADMIN_TAG, coachByAirtableName, ageOn, normName, digits, clean, listGroups, getConfig, locationFor, to24h, sydneyToday, emailsIn, rowEmails } from './_jfp-store.js'
+import { LEDGER_FEE } from './_jfp-venues.js'
 
 const BASE = process.env.AIRTABLE_BASE_ID || 'apphU4R0BtVIu5YqT'
 export const TABLES = {
@@ -561,8 +562,17 @@ export async function listVenueHistory() {
   return out
 }
 
+const LEDGER_FIELDS = ['Payment ID', 'Term', 'Player Name', 'Amount Paid', 'Payment Method', 'Payment Status', 'Payment Date', 'Source Record ID', 'Stripe Checkout Session ID', 'Stripe Payment Intent ID', 'Notes']
+// The Stripe fee per payment (Term 3 has it). If the column is ever renamed,
+// the ledger is still read, just without fees.
+const LEDGER_FEE_FIELDS = [LEDGER_FEE]
 export async function listLedger(term) {
-  const rows = await readTable(TABLES.ledger, ['Payment ID', 'Term', 'Player Name', 'Amount Paid', 'Payment Method', 'Payment Status', 'Payment Date', 'Source Record ID', 'Stripe Checkout Session ID', 'Stripe Payment Intent ID', 'Notes'])
+  let rows
+  try { rows = await readTable(TABLES.ledger, [...LEDGER_FIELDS, ...LEDGER_FEE_FIELDS]) } catch (error) {
+    if (!/unknown[ _]field/i.test(error.message)) throw error
+    console.error('jfp ledger fee column missing', error.message)
+    rows = await readTable(TABLES.ledger, LEDGER_FIELDS)
+  }
   return rows.map((r) => ({ id: r.id, ...r.fields })).filter((r) => !term || r['Term'] === term)
 }
 

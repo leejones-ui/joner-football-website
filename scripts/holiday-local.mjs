@@ -226,8 +226,9 @@ if (process.env.JFP_SEED && fs.existsSync(process.env.JFP_SEED)) {
   airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': 'Sasha Returning', 'Parent Email': 'returning@example.com', 'Date of Birth': '2016-06-10', 'Term': 'Term 3 2026', 'Signed Date': '2026-07-14', 'Waiver Accepted - Full Terms': true } })
   // Term 3 money for revenue by venue: two payments on Term 3 rows, one from a player no longer listed.
   const [riley3, sasha3] = airtable.term3
-  const t3pay = (id, name, amount, method, source) => airtable.ledger.push({ id: recId(), fields: { 'Payment ID': id, 'Term': 'Term 3 2026', 'Player Name': name, 'Amount Paid': amount, 'Payment Method': method, 'Payment Status': 'Paid', 'Payment Date': '2026-07-20', 'Source Table': 'Term 3 Players', 'Source Record ID': source } })
-  t3pay('T3-SEED-1', 'Riley Returning', 850, 'Stripe', riley3.id)
+  const t3pay = (id, name, amount, method, source, extra = {}) => airtable.ledger.push({ id: recId(), fields: { 'Payment ID': id, 'Term': 'Term 3 2026', 'Player Name': name, 'Amount Paid': amount, 'Payment Method': method, 'Payment Status': 'Paid', 'Payment Date': '2026-07-20', 'Source Table': 'Term 3 Players', 'Source Record ID': source, ...extra } })
+  // Term 3 Stripe lines carry their fee (an invented one here).
+  t3pay('T3-SEED-1', 'Riley Returning', 850, 'Stripe', riley3.id, { 'Term 3 Stripe Fee AUD': 17.2 })
   t3pay('T3-SEED-2', 'Sasha Returning', 765, 'Bank Transfer', sasha3.id)
   t3pay('T3-SEED-3', 'Gone Player', 300, 'Cash', 'recDROPPEDSEED001')
   // Joners Juniors, Saturday at HQ: Term 3 paid; Term 4 one paid, one on last term's credit, one not yet.
@@ -345,6 +346,22 @@ function stripeSession(body) {
   return session
 }
 
+// Pretend Stripe fees. Invented rules, not real rates: card (and anything
+// else) 2% + 20c, Afterpay 7% + 40c, GST one eleventh of the fee. A session
+// with btLate has no balance transaction in the list yet (just paid); it is
+// there when the payment intent is read on its own.
+function mockBalance(s) {
+  const amount = s.amount_total || 0
+  const fee = s.payMethod === 'afterpay_clearpay' ? Math.round(amount * 0.07) + 40 : Math.round(amount * 0.02) + 20
+  const gst = Math.round(fee / 11)
+  return { id: `txn_${String(s.payment_intent).slice(3)}`, object: 'balance_transaction', amount, fee, net: amount - fee, fee_details: [{ type: 'stripe_fee', amount: fee - gst }, { type: 'tax', amount: gst }] }
+}
+function mockCharge(s, { expandBalance = false, late = false } = {}) {
+  const id = `ch_${String(s.payment_intent).slice(3)}`
+  return { id, amount_refunded: (s.refunds || []).reduce((t, r) => t + r.amount, 0), payment_method_details: { type: s.payMethod || 'card' }, balance_transaction: late ? null : expandBalance ? mockBalance(s) : `txn_${String(s.payment_intent).slice(3)}` }
+}
+const paidSession = (pi) => [...sessions.values(), ...stripeSeeded].find((x) => x.payment_intent === pi)
+
 const realFetch = globalThis.fetch
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url)
@@ -363,13 +380,14 @@ globalThis.fetch = async (url, init = {}) => {
   if (u.startsWith('https://api.stripe.com/v1/payment_links?')) return json({ data: juniorsSessions.length ? [{ id: 'plink_juniors_t4', url: JLINK, active: true }] : [], has_more: false })
   if (u.startsWith('https://api.stripe.com/v1/payment_intents/')) {
     const pi = decodeURIComponent(u.split('/payment_intents/')[1].split('?')[0])
-    const s = [...sessions.values()].find((x) => x.payment_intent === pi)
+    const s = paidSession(pi)
     if (!s) return json({ error: { message: 'No such payment_intent' } }, 404)
-    return json({ id: pi, metadata: s.metadata || {}, latest_charge: { balance_transaction: { fee: Math.round(s.amount_total * 0.0175) + 30 } } })
+    log('stripe', `retrieve ${pi}`)
+    return json({ id: pi, metadata: s.metadata || {}, latest_charge: mockCharge(s, { expandBalance: new URL(u).searchParams.getAll('expand[]').includes('latest_charge.balance_transaction') }) })
   }
   if (u.startsWith('https://api.stripe.com/v1/charges/')) {
     const ch = decodeURIComponent(u.split('/charges/')[1].split('?')[0])
-    const s = [...sessions.values()].find((x) => x.payment_intent && `ch_${x.payment_intent.slice(3)}` === ch)
+    const s = [...sessions.values(), ...stripeSeeded].find((x) => x.payment_intent && `ch_${x.payment_intent.slice(3)}` === ch)
     if (!s) return json({ error: { message: 'No such charge' } }, 404)
     const refunds = s.refunds || []
     return json({ id: ch, payment_intent: s.payment_intent, amount: s.amount_total, amount_refunded: refunds.reduce((t, r) => t + r.amount, 0), refunds: { data: refunds } })
@@ -388,7 +406,8 @@ globalThis.fetch = async (url, init = {}) => {
     }
     const gte = Number(q.get('created[gte]') || 0)
     const all = [...sessions.values(), ...stripeSeeded].filter((s) => s.status === 'complete' && (s.created || 0) >= gte)
-    return json({ data: all.map((s) => ({ ...s, payment_intent: s.payment_intent ? { id: s.payment_intent, latest_charge: { id: `ch_${String(s.payment_intent).slice(3)}`, amount_refunded: (s.refunds || []).reduce((t, r) => t + r.amount, 0) } } : null })), has_more: false })
+    const expandBalance = q.getAll('expand[]').includes('data.payment_intent.latest_charge.balance_transaction')
+    return json({ data: all.map((s) => ({ ...s, payment_intent: s.payment_intent ? { id: s.payment_intent, latest_charge: mockCharge(s, { expandBalance, late: s.btLate }) } : null })), has_more: false })
   }
   if (u.startsWith('https://api.stripe.com/v1/checkout/sessions')) {
     if (init.method === 'POST' && u.endsWith('/expire')) {
@@ -518,7 +537,7 @@ const server = http.createServer(async (req, res) => {
 
   // Pretend Lee refunded in the Stripe dashboard: /__refund?cs=<session>&amount=<cents>
   if (url.pathname === '/__refund') {
-    const s = sessions.get(url.searchParams.get('cs'))
+    const s = sessions.get(url.searchParams.get('cs')) || stripeSeeded.find((x) => x.id === url.searchParams.get('cs'))
     if (!s?.payment_intent) { res.writeHead(404); return res.end('no paid session') }
     s.refunds = [...(s.refunds || []), { id: `re_${crypto.randomBytes(6).toString('hex')}`, amount: Number(url.searchParams.get('amount')) || s.amount_total, status: 'succeeded', created: Math.floor(Date.now() / 1000) }]
     const charge = `ch_${s.payment_intent.slice(3)}`
@@ -556,7 +575,8 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/__stripe-seed') {
     const p = JSON.parse(await readBody(req) || '{}')
     const n = stripeSeeded.length + 1
-    stripeSeeded.push({ id: `cs_test_seed_${n}`, object: 'checkout.session', status: 'complete', payment_status: 'paid', created: Math.floor(Date.parse(p.at || new Date().toISOString()) / 1000), amount_total: p.cents, currency: 'aud', customer_details: { email: p.email, name: p.name || '' }, payment_link: p.link || 'plink_jfp850', payment_intent: `pi_seed_${n}`, metadata: p.metadata || {} })
+    // method: how it was paid (card, afterpay_clearpay...); btLate: Stripe has no fee for it in the list yet.
+    stripeSeeded.push({ id: `cs_test_seed_${n}`, object: 'checkout.session', status: 'complete', payment_status: 'paid', created: Math.floor(Date.parse(p.at || new Date().toISOString()) / 1000), amount_total: p.cents, currency: 'aud', customer_details: { email: p.email, name: p.name || '' }, payment_link: p.link || 'plink_jfp850', payment_intent: `pi_seed_${n}`, metadata: p.metadata || {}, payMethod: p.method || 'card', btLate: Boolean(p.btLate) })
     // fire: the Stripe webhook arrives for it, like a real payment link payment.
     if (p.fire) await fireWebhook('checkout.session.completed', stripeSeeded.at(-1))
     res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, id: `cs_test_seed_${n}` }))

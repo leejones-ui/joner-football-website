@@ -1257,4 +1257,89 @@ await test('venues: revenue by venue adds up to income this term; the term befor
   assert.equal((await portal(sam, 'venues', { term: 'Term 2 2026' })).status, 403)
 })
 
+await test('money after Stripe fees: the real fee on every payment, net income, venues add up with fees, next term apart', async () => {
+  const seed = (body) => fetch(`${B}/__stripe-seed`, { method: 'POST', body: JSON.stringify(body) }).then((r) => r.json())
+  const money = async () => (await portal(lee, 'money', { fresh: true })).data.money
+  const retrieved = async (pi) => (await (await fetch(`${B}/__events`)).json()).filter((e) => e.kind === 'stripe' && e.detail === `retrieve ${pi}`).length
+  // The harness's invented fee rules (scripts/holiday-local.mjs mockBalance).
+  const mockFee = (cents, method = 'card') => (method === 'afterpay_clearpay' ? Math.round(cents * 0.07) + 40 : Math.round(cents * 0.02) + 20)
+  const sumOf = (list, k) => list.reduce((t, x) => t + (x[k] || 0), 0)
+  const checkAddsUp = (m) => {
+    const k = m.kpis
+    for (const key of ['stripeFeesCents', 'feeGstCents', 'feesPendingCount', 'netIncomeCents', 'otherCents', 'expectedCents', 'collectedCents', 'unlinkedFeeCents', 'nextTermCents', 'nextTermCount']) assert.equal(typeof k[key], 'number', `kpis.${key}`)
+    assert.equal(k.netIncomeCents, k.incomeCents - k.stripeFeesCents, 'net income is income less Stripe fees')
+    assert.equal(k.cashCents + k.bankCents + k.otherCents, k.offlineCents)
+    assert.equal(sumOf(m.locations, 'receivedCents') + k.unlinkedCents, k.incomeCents, 'the venues still add up to income')
+    assert.equal(sumOf(m.locations, 'stripeFeeCents') + k.unlinkedFeeCents, k.stripeFeesCents, 'the venues\' fees add up to the term\'s fees')
+    assert.equal(sumOf(k.feesByMethod, 'feeCents'), k.stripeFeesCents)
+    assert.equal(sumOf(m.weekly, 'fee'), k.stripeFeesCents, 'the weekly fees add up')
+    assert.ok(k.collectedPct === null || (k.collectedPct >= 0 && k.collectedPct <= 100))
+    for (const l of m.locations) {
+      assert.equal(l.netCents, l.receivedCents - l.stripeFeeCents, `${l.name}: net is received less fees`)
+      assert.equal(sumOf(l.groups, 'stripeFeeCents'), l.stripeFeeCents, `${l.name}: the groups' fees add up`)
+      assert.equal(sumOf(l.groups, 'receivedCents'), l.receivedCents, `${l.name}: the groups add up`)
+      assert.equal(l.stripeCents + l.bankCents + l.cashCents + l.otherCents, l.receivedCents, `${l.name}: the methods add up`)
+      assert.equal(sumOf(m.players.filter((p) => p.locationId === l.id), 'stripeFeeCents') + l.removedFeeCents, l.stripeFeeCents, `${l.name}: the players' fees add up`)
+      assert.equal(sumOf(m.weeklyByVenue[l.id], 'fee'), l.stripeFeeCents, `${l.name}: its weekly fees add up`)
+      assert.deepEqual(m.weeklyByVenue[l.id].map((w) => w.week), m.weekly.map((w) => w.week), `${l.name}: the same weeks as the total`)
+    }
+    for (const p of m.players) assert.equal(p.netReceivedCents, p.receivedCents - p.stripeFeeCents)
+  }
+  let m = await money()
+  checkAddsUp(m)
+  assert.ok(m.kpis.stripeFeesCents > 0, 'every site payment has a fee')
+  assert.equal(m.kpis.feesPendingCount, 0)
+  assert.ok(m.kpis.feeGstCents > 0 && m.kpis.feeGstCents < m.kpis.stripeFeesCents)
+  // The family that kept their places for Term 1 2027 (the next term test): that money is not this term's.
+  assert.ok(m.kpis.nextTermCount >= 2 && m.kpis.nextTermCents >= 85000, JSON.stringify(m.kpis))
+  assert.ok(m.nextTermPayments.some((p) => p.email === 'next@example.com' && p.forTerm === 'Term 1 2027'))
+  const nextFam = m.players.filter((p) => p.email === 'next@example.com')
+  assert.ok(nextFam.length && nextFam.every((p) => p.stripeCents === 0 && p.status !== 'stripe'), 'next term money is not on this term\'s rows')
+  assert.ok(!m.unmatched.some((u) => m.nextTermPayments.some((n) => n.id === u.id)))
+  const before = m.kpis
+  // An early hold paid on a link the old way (no term on it), a fee Stripe has not
+  // worked out yet, and an Afterpay payment with its higher fee.
+  const unpaid = m.players.find((p) => p.status === 'unpaid' && p.email && m.players.filter((x) => x.email === p.email).length === 1)
+  await seed({ email: unpaid.email, cents: 10000, metadata: { jfpBookingId: 'PAY-SEEDNEXT', source: 'next-hold' } })
+  const late = await seed({ email: 'fees-late@example.com', name: 'Late Fee', cents: 42500, btLate: true })
+  const ap = await seed({ email: 'fees-afterpay@example.com', name: 'After Pay', cents: 40000, method: 'afterpay_clearpay' })
+  const latePi = late.id.replace('cs_test_seed_', 'pi_seed_')
+  m = await money()
+  checkAddsUp(m)
+  assert.equal(m.kpis.nextTermCount, before.nextTermCount + 1)
+  assert.equal(m.kpis.nextTermCents, before.nextTermCents + 10000)
+  assert.equal(m.players.find((p) => p.rowId === unpaid.rowId).status, 'unpaid', 'a hold for next term does not pay this term')
+  assert.equal(m.kpis.incomeCents, before.incomeCents + 42500 + 40000)
+  assert.equal(m.kpis.stripeFeesCents, before.stripeFeesCents + mockFee(42500) + mockFee(40000, 'afterpay_clearpay'), 'the fee Stripe had not worked out was read on its own')
+  assert.equal(m.kpis.feesPendingCount, 0)
+  assert.equal(await retrieved(latePi), 1)
+  const kept = JSON.parse(await (await fetch(`${B}/__kv?cmd=${encodeURIComponent(JSON.stringify(['GET', `jfp:stripe-fee:${latePi}`]))}`)).text())
+  assert.equal(kept.fee, mockFee(42500), 'and kept')
+  assert.equal(await (await fetch(`${B}/__kv?cmd=${encodeURIComponent(JSON.stringify(['TTL', `jfp:stripe-fee:${latePi}`]))}`)).text(), '-1', 'for good')
+  const afterpay = m.kpis.feesByMethod.find((x) => x.method === 'afterpay_clearpay')
+  assert.ok(afterpay && afterpay.feeCents >= mockFee(40000, 'afterpay_clearpay'))
+  m = await money()
+  assert.equal(await retrieved(latePi), 1, 'a kept fee is never asked for again')
+  // A refund gives the money back, never the fee.
+  const fees = m.kpis.stripeFeesCents, income = m.kpis.incomeCents
+  assert.equal((await fetch(`${B}/__refund?cs=${ap.id}`)).status, 200)
+  m = await money()
+  checkAddsUp(m)
+  assert.equal(m.kpis.incomeCents, income - 40000)
+  assert.equal(m.kpis.stripeFeesCents, fees, 'a refunded payment keeps its fee')
+  assert.equal(m.kpis.netIncomeCents, m.kpis.incomeCents - fees)
+  // The term before: its ledger has the fees.
+  const past = (await portal(lee, 'venues')).data.venues
+  assert.equal(past.stripeFeesCents, 1720)
+  assert.equal(past.netIncomeCents, past.incomeCents - 1720)
+  const hq3 = past.venues.find((l) => l.name === 'Belrose HQ')
+  assert.deepEqual([hq3.stripeFeeCents, hq3.netCents], [1720, hq3.receivedCents - 1720])
+  const t2 = (await portal(lee, 'venues', { term: 'Term 2 2026' })).data.venues
+  assert.equal(t2.stripeFeesCents, null, 'the Money Register has no fees: not known')
+  assert.ok(t2.venues.every((l) => l.stripeFeeCents === null && l.netCents === null))
+  // The drawer shows each payment's fee and how it was paid.
+  const hist = (await portal(lee, 'playerPayments', { rowId: nextFam[0].rowId })).data.player
+  assert.ok(hist.stripe.some((p) => p.nextTerm && p.feeCents > 0 && p.payMethod === 'card'), JSON.stringify(hist.stripe))
+})
+
 console.log(`\n${passed} JFP flow checks passed`)

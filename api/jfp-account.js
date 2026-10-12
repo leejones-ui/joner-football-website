@@ -335,6 +335,8 @@ async function pay(req, res, parent, body) {
       ...(q.afterpay === false ? { 'payment_method_types[0]': 'card' } : {}),
       'metadata[jfpBookingId]': q.id,
       'metadata[source]': q.reason || 'payreq',
+      // Next term paid early names its term, so Money keeps it out of this term.
+      ...(q.next?.term ? { 'metadata[jfpTerm]': q.next.term } : {}),
       'payment_intent_data[metadata][jfpBookingId]': q.id,
       'payment_intent_data[description]': name.slice(0, 400),
     },

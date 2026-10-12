@@ -7,13 +7,25 @@
 // online bookings (metadata.jfpBookingId) or one of the JFP payment links
 // (its product name says JFP). Holiday bookings share the account and are
 // left out (metadata.holidayBookingId), as is anything else.
+//
+// Each payment carries what Stripe kept: the fee from its balance
+// transaction (GST included, never an estimate), the net and how it was paid.
+// A refund never gives the fee back, so a refunded payment keeps its fee.
 import { stripeFetch } from './_holiday-store.js'
-import { kvGetJson, kvSetJson } from './_jfp-store.js'
+import { kvGetJson, kvSetJson, kvCommand, kvPipeline } from './_jfp-store.js'
 
-const CACHE = 'jfp:stripe-payments'
+// v2 has the fees. The old cache had none, so it is never read.
+const CACHE = 'jfp:stripe-payments:v2'
 const CACHE_SECONDS = 300
 const MAX_PAGES = 20
-// "Sebastian Noble — Additional Tuesday Term 4 session" (Ligia's links) is JFP too.
+// A fee Stripe had not worked out when the list was read is asked for on its
+// own, a few per read, each at most every 10 minutes, then kept for good.
+const FEE_LOOKUPS = 10
+const FEE_RETRY_SECONDS = 600
+export const feeKey = (intentId) => `jfp:stripe-fee:${intentId}`
+// Next term paid early (hold the place, or the full term) is not this term's income.
+export const NEXT_TERM_SOURCES = new Set(['next-hold', 'next-full'])
+// Personal payment links named after the player are JFP too ("<player> - Additional Tuesday Term 4 session").
 export const JFP_PRODUCT = /\bJFP\b|Joner Football Performance|Pathway|1 ?on ?1|1 to 1|Trial|Drop ?in|Sibling|\bTerm [1-4]\b/i
 export const NOT_JFP = /camp|holiday|clinic|workshop|app subscription|teams|junior/i
 
@@ -37,14 +49,52 @@ export function classifySession(s, product) {
   return 'other'
 }
 
-// { since, at, payments: [...], other: { count, cents } }
-// quick: any read from the last 6 hours is fine (the page shows it at once,
-// then asks again for the latest).
-export async function jfpStripePayments({ since, fresh = false, quick = false } = {}) {
+// The fee on a charge, from its balance transaction: { fee, gst, net, method },
+// or null while Stripe has not made one yet.
+export function feeFrom(charge) {
+  const bt = charge?.balance_transaction
+  if (!bt || typeof bt !== 'object' || typeof bt.fee !== 'number') return null
+  const gst = (bt.fee_details || []).filter((d) => d.type === 'tax').reduce((t, d) => t + (d.amount || 0), 0)
+  return { fee: bt.fee, gst, net: typeof bt.net === 'number' ? bt.net : null, method: charge.payment_method_details?.type || '' }
+}
+const feeFields = (f) => (f ? { feeCents: f.fee, feeGstCents: f.gst, stripeNetCents: f.net, feeKnown: true } : { feeCents: null, feeGstCents: null, stripeNetCents: null, feeKnown: false })
+
+// Fees missing from the list: the cache first, then Stripe for a few.
+async function fillFees(payments) {
+  const missing = payments.filter((p) => !p.feeKnown && p.intentId)
+  if (!missing.length) return
+  const hits = await kvPipeline(missing.map((p) => ['GET', feeKey(p.intentId)]))
+  let asked = 0
+  for (const [i, p] of missing.entries()) {
+    let f = null
+    try { f = typeof hits[i] === 'string' ? JSON.parse(hits[i]) : null } catch {}
+    if (!f && asked < FEE_LOOKUPS && (await kvCommand(['SET', `jfp:stripe-fee-try:${p.intentId}`, '1', 'NX', 'EX', String(FEE_RETRY_SECONDS)])) === 'OK') {
+      asked += 1
+      try {
+        f = feeFrom((await stripeFetch(`/payment_intents/${encodeURIComponent(p.intentId)}?expand[]=latest_charge.balance_transaction`))?.latest_charge)
+        if (f) await kvSetJson(feeKey(p.intentId), f)
+      } catch (error) { console.error('jfp stripe fee read failed', p.intentId, error.message) }
+    }
+    if (f && typeof f.fee === 'number') Object.assign(p, feeFields(f), { payMethod: p.payMethod || f.method || '' })
+  }
+}
+
+// Next term paid early is kept apart. A payment that names its term counts
+// for that term; one that does not (made before the term was written on
+// it) is always next term's.
+const isNextTerm = (p, term) => p.nextTerm && (!p.forTerm || p.forTerm !== term)
+export function splitTerms(out, term) {
+  return { ...out, payments: out.payments.filter((p) => !isNextTerm(p, term)), next: out.payments.filter((p) => isNextTerm(p, term)) }
+}
+
+// { since, at, payments: [...this term], next: [...next term], other: { count, cents } }
+// term: the current term (config.term). quick: any read from the last 6
+// hours is fine (the page shows it at once, then asks again for the latest).
+export async function jfpStripePayments({ since, fresh = false, quick = false, term = '' } = {}) {
   const sinceIso = /^\d{4}-\d{2}-\d{2}$/.test(since || '') ? since : '2026-09-01'
   if (!fresh) {
     const hit = await kvGetJson(CACHE)
-    if (hit && hit.since === sinceIso && Date.now() - Date.parse(hit.at) < (quick ? 6 * 3600 : CACHE_SECONDS) * 1000) return hit
+    if (hit && hit.since === sinceIso && Array.isArray(hit.payments) && Date.now() - Date.parse(hit.at) < (quick ? 6 * 3600 : CACHE_SECONDS) * 1000) return splitTerms(hit, term)
   }
   const gte = Math.floor(Date.parse(`${sinceIso}T00:00:00+10:00`) / 1000)
   const payments = []
@@ -52,7 +102,8 @@ export async function jfpStripePayments({ since, fresh = false, quick = false } 
   let after = ''
   for (let page = 0; page < MAX_PAGES; page++) {
     const q = new URLSearchParams({ limit: '100', status: 'complete', 'created[gte]': String(gte) })
-    q.append('expand[]', 'data.payment_intent.latest_charge')
+    // Four levels, Stripe's most: the charge's balance transaction has the fee.
+    q.append('expand[]', 'data.payment_intent.latest_charge.balance_transaction')
     if (after) q.set('starting_after', after)
     const d = await stripeFetch(`/checkout/sessions?${q}`)
     for (const s of d.data || []) {
@@ -63,6 +114,8 @@ export async function jfpStripePayments({ since, fresh = false, quick = false } 
       if (kind === 'other') { other = { count: other.count + 1, cents: other.cents + (s.amount_total || 0) }; continue }
       const pi = s.payment_intent && typeof s.payment_intent === 'object' ? s.payment_intent : null
       const charge = pi?.latest_charge && typeof pi.latest_charge === 'object' ? pi.latest_charge : null
+      // Nothing charged (a full discount): no fee.
+      const fee = !s.amount_total ? { fee: 0, gst: 0, net: 0 } : feeFrom(charge)
       payments.push({
         id: s.id,
         intentId: pi?.id || (typeof s.payment_intent === 'string' ? s.payment_intent : ''),
@@ -74,14 +127,41 @@ export async function jfpStripePayments({ since, fresh = false, quick = false } 
         product: product || 'JFP',
         source: s.metadata?.jfpBookingId ? 'online' : 'link',
         jfpRef: s.metadata?.jfpBookingId || '',
+        payMethod: charge?.payment_method_details?.type || '',
+        ...feeFields(fee),
+        nextTerm: NEXT_TERM_SOURCES.has(s.metadata?.source || ''),
+        forTerm: s.metadata?.jfpTerm || '',
       })
     }
     if (!d.has_more || !(d.data || []).length) break
     after = d.data.at(-1).id
   }
+  // A fee that cannot be found now shows as not known yet, never as nothing.
+  try { await fillFees(payments) } catch (error) { console.error('jfp stripe fees failed', error.message) }
   const out = { since: sinceIso, at: new Date().toISOString(), payments: payments.sort((a, b) => b.at.localeCompare(a.at)), other }
   await kvSetJson(CACHE, out)
-  return out
+  return splitTerms(out, term)
+}
+
+// What Stripe kept on this term's payments, all of them, refunded ones too.
+export function feeTotals(payments) {
+  const known = (p) => (p.feeKnown ? p.feeCents || 0 : 0)
+  const byMethod = new Map()
+  for (const p of payments) {
+    const k = p.payMethod || 'unknown'
+    const x = byMethod.get(k) || { method: k, count: 0, grossCents: 0, feeCents: 0, pendingCount: 0 }
+    x.count += 1
+    x.grossCents += p.amountCents || 0
+    x.feeCents += known(p)
+    if (!p.feeKnown) x.pendingCount += 1
+    byMethod.set(k, x)
+  }
+  return {
+    stripeFeesCents: payments.reduce((t, p) => t + known(p), 0),
+    feeGstCents: payments.reduce((t, p) => t + (p.feeKnown ? p.feeGstCents || 0 : 0), 0),
+    feesPendingCount: payments.filter((p) => !p.feeKnown).length,
+    feesByMethod: [...byMethod.values()].sort((a, b) => b.grossCents - a.grossCents || a.method.localeCompare(b.method)),
+  }
 }
 
 // Read only: every paid Checkout Session in a date range (Sydney dates), with

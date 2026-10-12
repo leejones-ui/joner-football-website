@@ -2,8 +2,8 @@
 // twice (double click / two staff), cannot exceed what is owing by mistake, and
 // cannot be dated in the future. Run against the local harness (fake Airtable):
 //   npm run build && node scripts/holiday-local.mjs   (one terminal)
-//   node scripts/test-jfp-money-guards.mjs            (another)
-const B = 'http://localhost:4321', O = { origin: B, 'content-type': 'application/json' }
+//   node scripts/test-jfp-money-guards.mjs 4321       (another; the port is optional)
+const B = `http://localhost:${Number(process.argv[2] || 4321)}`, O = { origin: B, 'content-type': 'application/json' }
 const jar = new Map(); const ck = () => [...jar].map(([k, v]) => `${k}=${v}`).join('; ')
 async function call(p, body) {
   const r = await fetch(B + p, { method: 'POST', headers: { ...O, cookie: ck() }, body: JSON.stringify(body) })
