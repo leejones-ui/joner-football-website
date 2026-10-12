@@ -123,6 +123,8 @@ function term4Row({ id, fields: f }) {
     notes,
     sourceTerm3: text(f, 'Source Term 3 Record ID'),
     perSessionCents: Number(tagOf(notes, 'PERSESSION')) || null,
+    // First session for a player who starts later in the term (staff set it).
+    startsFrom: /^\d{4}-\d{2}-\d{2}$/.test(tagOf(notes, 'STARTS')) ? tagOf(notes, 'STARTS') : '',
     onlineBookingId: tagOf(notes, ONLINE_TAG),
     adminAddId: tagOf(notes, ADMIN_TAG),
     holdsPlace: HOLDS_PLACE.has(text(f, 'Term 4 Confirmation')),

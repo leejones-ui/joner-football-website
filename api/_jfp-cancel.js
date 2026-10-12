@@ -81,7 +81,8 @@ export function rowSessionDates(config, row, group) {
   const notes = row.notes || ''
   const trialOn = /trial/i.test(row.paymentType || '') ? (notes.match(/Trial offered for (\d{4}-\d{2}-\d{2})/) || [])[1] : ''
   if (trialOn) return [trialOn]
-  const from = (notes.match(/(?:from|starts) (\d{4}-\d{2}-\d{2})/) || [])[1] || ''
+  // A start week staff set ([STARTS:date]) wins over older "from <date>" notes.
+  const from = (notes.match(/\[STARTS:(\d{4}-\d{2}-\d{2})\]/) || notes.match(/(?:from|starts) (\d{4}-\d{2}-\d{2})/) || [])[1] || ''
   const dates = sessionDates(config, group?.day || row.day).filter((d) => !from || d >= from)
   // Half term: only the sessions paid for.
   return isHalfTermType(row.paymentType) ? limitDates(dates, 'halfTerm') : dates

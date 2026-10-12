@@ -347,3 +347,7 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jm-pink { border-color: var(--c-pink) !important; color: var(--c-pink) !important; }
 /* A family cancelled a session in this coach's group (until they look). */
 .jp-cx-banner { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; background: var(--j-red-bg, #FEF3F2); border: 1px solid color-mix(in srgb, var(--c-critical) 40%, transparent); }
+/* Notes for coaches and later starts. */
+.jp-ntag { margin-left: auto; font-size: 10px; font-weight: 700; padding: 0 6px; border-radius: 999px; background: var(--j-violet-bg, #F4F3FF); color: var(--j-violet, #5925DC); cursor: help; white-space: nowrap; }
+.jp-player .nm:has(.jp-cnote) { white-space: normal; overflow: visible; text-overflow: clip; min-width: 0; flex: 1 1 auto; }
+.jp-cnote { display: block; white-space: normal; overflow-wrap: anywhere; margin-top: 4px; font-size: 12.5px; color: var(--j-ink-2); background: var(--j-violet-bg, #F4F3FF); border-radius: 8px; padding: 3px 8px; }

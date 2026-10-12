@@ -642,6 +642,32 @@ await test('half term: add a player for 5 weeks at A$425, the family sees those 
   assert.equal(acc.todo[0].amountLabel, 'A$425')
 })
 
+await test('note for coaches + a later start: coaches see it on the register and program; the family sees dates from that week', async () => {
+  const add = await portal(lee, 'addPlayer', { groupId: TUE420, force: true, player: { name: 'Wren Weekthree' }, parent: { name: 'Wren Parent', email: 'week3@example.com', mobile: '0400888111' }, payment: 'none' })
+  assert.equal(add.status, 200, JSON.stringify(add.data))
+  const pr = (await portal(lee, 'pricing')).data
+  const wk3 = pr.datesByDay.Tuesday[2].iso
+  const set = await portal(lee, 'setCoachNote', { rowId: add.data.rowId, text: 'Back from a broken wrist, no goalkeeping', startDate: wk3 })
+  assert.equal(set.status, 200, JSON.stringify(set.data))
+  assert.match((await at()).term4.find((r) => r.id === add.data.rowId).fields['Term 4 Notes'], new RegExp(`\\[STARTS:${wk3}\\]`))
+  const sam = client(); await signIn(sam, 'jonerfootballsam@gmail.com', 'staff')
+  const reg = (await portal(sam, 'coachSessions')).data.sessions.find((x) => x.id === TUE420)
+  const p = reg.players.find((x) => x.rowId === add.data.rowId)
+  assert.equal(p.note, 'Back from a broken wrist, no goalkeeping')
+  assert.match(p.startsLabel, /week 3/)
+  const prog = (await portal(sam, 'program')).data.groups.find((g) => g.id === TUE420).players.find((x) => x.name === 'Wren Weekthree')
+  assert.equal(prog.startsFrom, wk3)
+  const fam = client(); await signIn(fam, 'week3@example.com')
+  const en = (await fam.call('/api/jfp-account', { action: 'overview' })).data.players[0].enrolments[0]
+  assert.equal(en.firstDate, pr.datesByDay.Tuesday[2].label, 'first session is week 3')
+  assert.ok(!JSON.stringify(await fam.call('/api/jfp-account', { action: 'overview' })).includes('broken wrist'), 'families never see the coach note')
+  // Clearing it.
+  assert.equal((await portal(lee, 'setCoachNote', { rowId: add.data.rowId, text: '', startDate: '' })).status, 200)
+  const again = (await portal(sam, 'coachSessions')).data.sessions.find((x) => x.id === TUE420).players.find((x) => x.rowId === add.data.rowId)
+  assert.equal(again.note, '')
+  assert.equal(again.startsFrom, '')
+})
+
 await test('a flood of parallel code guesses still gets only five tries', async () => {
   const c = client()
   const s = await c.call('/api/jfp-auth', { action: 'start', email: 'flood@example.com', audience: 'parent' })

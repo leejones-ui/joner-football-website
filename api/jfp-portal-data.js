@@ -93,7 +93,7 @@ async function juniorsFor(groups, config) {
 // The roster cache is cleared by every change made here, so the board can use
 // it; Refresh asks Airtable again (fresh).
 async function boardData(config, { fresh = false } = {}) {
-  const [groups, roster, payreqs, requests] = await Promise.all([listGroups(), loadRoster({ fresh }), listPayreqs(), listApplications()])
+  const [groups, roster, payreqs, requests, notes] = await Promise.all([listGroups(), loadRoster({ fresh }), listPayreqs(), listApplications(), coachNotes()])
   const juniors = await juniorsFor(groups, config)
   const pendingBy = {}
   for (const r of requests) if (r.status === 'pending') pendingBy[r.groupId] = (pendingBy[r.groupId] || 0) + 1
@@ -104,7 +104,7 @@ async function boardData(config, { fresh = false } = {}) {
   const known = new Set(groups.map((g) => g.id))
   const holding = roster.players.filter((r) => r.holdsPlace)
   const view = groups.map((g) => {
-    const players = isJuniorsGroup(g) ? (juniors[g.id] || []) : holding.filter((r) => r.groupId === g.id).map((r) => ({ ...playerView(r, config, roster, { money: true }), payreq: openReqByRow.get(r.id) || null }))
+    const players = isJuniorsGroup(g) ? (juniors[g.id] || []) : holding.filter((r) => r.groupId === g.id).map((r) => ({ ...playerView(r, config, roster, { money: true }), ...coachInfo(r, notes, config), payreq: openReqByRow.get(r.id) || null }))
       .sort((a, b) => a.name.localeCompare(b.name))
     const loc = locationFor(config, g.location)
     return {
@@ -382,6 +382,45 @@ async function movePlayer(res, principal, config, body) {
     'Term 4 Notes': appendNote(row.notes, `Moved from ${row.day} ${row.time} ${row.location} to ${to.day} ${to.time} ${to.location} by ${principal.name}.`),
   } }])
   await audit({ by: principal.email, action: 'player.move', target: row.id, before: { group: row.groupId }, after: { group: to.id, name: row.player } })
+  return res.status(200).json({ success: true })
+}
+
+// Notes for coaches (Lee, 12 Oct 2026: "Frankie King and Alanna Mirigliani
+// only start in week 3"). The note text is for coaches only and lives in KV
+// (Term 4 Notes holds payment history coaches never see). A start date goes
+// on the Airtable row as [STARTS:date], so the family's account, the
+// register and cancellations all count from that week.
+const COACH_NOTES = 'jfp:coach-notes'
+async function coachNotes() {
+  const flat = await kvCommand(['HGETALL', COACH_NOTES]) || []
+  const out = {}
+  for (let i = 0; i < flat.length; i += 2) { try { out[flat[i]] = JSON.parse(flat[i + 1]) } catch {} }
+  return out
+}
+// What a coach is shown about a player: the note and when they start.
+function coachInfo(r, notes, config) {
+  const n = notes[r.id]
+  const groupDates = sessionDates(config, r.day)
+  const week = r.startsFrom ? groupDates.indexOf(r.startsFrom) + 1 : 0
+  return {
+    note: n?.text || '',
+    startsFrom: r.startsFrom || '',
+    startsLabel: r.startsFrom ? `Starts ${dateLabel(r.startsFrom)}${week > 0 ? ` (week ${week})` : ''}` : '',
+  }
+}
+async function setCoachNote(res, principal, config, body) {
+  const row = await rowOr404(res, body.rowId); if (!row) return
+  const text = clean(body.text, 300)
+  const start = ISO.test(body.startDate || '') ? body.startDate : ''
+  if (start && !sessionDates(config, row.day).includes(start)) return fail(res, 400, 'Choose one of this group\'s session dates.')
+  const before = { text: (await coachNotes())[row.id]?.text || '', startsFrom: row.startsFrom }
+  if (text) await kvCommand(['HSET', COACH_NOTES, row.id, JSON.stringify({ text, by: principal.email, at: new Date().toISOString() })])
+  else await kvCommand(['HDEL', COACH_NOTES, row.id])
+  if (start !== row.startsFrom) {
+    const base = String(row.notes || '').replace(/\s*\[STARTS:[^\]]*\]/g, '')
+    await updateTerm4Rows([{ id: row.id, fields: { 'Term 4 Notes': start ? appendNote(base, `Starts ${start} (set by ${principal.name}). [STARTS:${start}]`) : appendNote(base, `Start week cleared by ${principal.name}: from the start of term.`) } }])
+  }
+  await audit({ by: principal.email, action: 'player.coachNote', target: row.id, before, after: { text, startsFrom: start } })
   return res.status(200).json({ success: true })
 }
 
@@ -1390,14 +1429,14 @@ async function cancellationsData(res, principal, config, body, isAdmin) {
   })
 }
 
-function coachSessions(config, groups, roster, coachId, date, juniors = {}) {
+function coachSessions(config, groups, roster, coachId, date, juniors = {}, notes = {}) {
   const mine = groups.filter((g) => g.coachId === coachId || (g.extraCoachIds || []).includes(coachId))
   const me = coachById(config, coachId)
   return mine.map((g) => {
     const dates = sessionDates(config, g.day)
     const players = isJuniorsGroup(g) ? (juniors[g.id] || []).map((p) => ({ rowId: p.rowId, name: p.name, age: p.age, coach: me?.name || '', mine: true, trial: false, status: 'Confirmed', juniors: true })) : roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !isTestName(r.player)).map((r) => {
       const c = coachByAirtableName(config, r.coach)
-      return { rowId: r.id, name: r.player, age: playerAge(r, config.termStart), coach: c?.name || r.coach || '', mine: !c || c.id === coachId || !(g.extraCoachIds || []).length, trial: /trial/i.test(r.paymentType), status: r.confirmation }
+      return { rowId: r.id, name: r.player, age: playerAge(r, config.termStart), coach: c?.name || r.coach || '', mine: !c || c.id === coachId || !(g.extraCoachIds || []).length, trial: /trial/i.test(r.paymentType), status: r.confirmation, ...coachInfo(r, notes, config) }
     }).sort((a, b) => Number(b.mine) - Number(a.mine) || a.name.localeCompare(b.name))
     const loc = locationFor(config, g.location)
     const next = dates.find((d) => d >= (date || sydneyToday())) || dates.at(-1)
@@ -1682,16 +1721,16 @@ async function handle(req, res) {
     if (action === 'coachSessions') {
       const coachId = isAdmin ? clean(body.coachId, 30) : principal.coachId
       if (!coachById(config, coachId)) return fail(res, 400, 'Choose a coach.')
-      const [groups, roster] = await Promise.all([listGroups(), loadRoster()])
+      const [groups, roster, notes] = await Promise.all([listGroups(), loadRoster(), coachNotes()])
       const juniors = await juniorsFor(groups, config)
-      const sessions = coachSessions(config, groups, roster, coachId, clean(body.date, 10), juniors)
+      const sessions = coachSessions(config, groups, roster, coachId, clean(body.date, 10), juniors, notes)
       // Sessions this coach is covering, and covers on their own sessions.
       const covers = (await listCovers()).filter((c) => c.status === 'active' && c.date >= sydneyToday())
       for (const s of sessions) s.coveredBy = covers.filter((c) => c.groupId === s.id).map((c) => ({ date: c.date, dateLabel: dateLabel(c.date), coach: coachLabel(coachById(config, c.coverCoachId)) }))
       for (const c of covers.filter((x) => x.coverCoachId === coachId)) {
         const g = groups.find((x) => x.id === c.groupId)
         if (!g) continue
-        const [s] = coachSessions(config, [{ ...g, coachId }], roster, coachId, c.date, juniors)
+        const [s] = coachSessions(config, [{ ...g, coachId }], roster, coachId, c.date, juniors, notes)
         sessions.push({ ...s, id: g.id, dates: [{ iso: c.date, label: dateLabel(c.date) }], nextDate: c.date, covering: { for: coachLabel(coachById(config, c.coachId)), dateLabel: dateLabel(c.date) } })
       }
       for (const s of sessions) s.attendance = await attendanceFor(s.id, s.nextDate)
@@ -1708,7 +1747,7 @@ async function handle(req, res) {
 
     // The whole program as a timetable: names and ages, no money, no contacts.
     if (action === 'program') {
-      const [groups, roster] = await Promise.all([listGroups(), loadRoster()])
+      const [groups, roster, notes] = await Promise.all([listGroups(), loadRoster(), coachNotes()])
       const juniors = await juniorsFor(groups, config)
       const counts = countsFrom(roster)
       const online = await onlineCounts(groups.map((g) => g.id))
@@ -1722,7 +1761,7 @@ async function handle(req, res) {
             coachId: g.coachId, coachName: coachLabel(coachById(config, g.coachId)), label: g.label, mode: g.mode, capacity: g.capacity,
             minAge: g.minAge, maxAge: g.maxAge, girlsOnly: g.girlsOnly, taken: isJuniorsGroup(g) ? (juniors[g.id] || []).length : counts[g.id] || 0, placesLeft: placesLeft(g, counts[g.id], online[g.id]),
             mine: g.coachId === principal.coachId || (g.extraCoachIds || []).includes(principal.coachId),
-            players: isJuniorsGroup(g) ? (juniors[g.id] || []).map((p) => ({ name: p.name, age: p.age, trial: false, status: 'Confirmed', juniors: true })) : roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !isTestName(r.player)).map((r) => ({ name: r.player, age: playerAge(r, config.termStart), trial: /trial/i.test(r.paymentType), status: r.confirmation })).sort((a, b) => a.name.localeCompare(b.name)),
+            players: isJuniorsGroup(g) ? (juniors[g.id] || []).map((p) => ({ name: p.name, age: p.age, trial: false, status: 'Confirmed', juniors: true })) : roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !isTestName(r.player)).map((r) => ({ name: r.player, age: playerAge(r, config.termStart), trial: /trial/i.test(r.paymentType), status: r.confirmation, ...coachInfo(r, notes, config) })).sort((a, b) => a.name.localeCompare(b.name)),
           }
         }),
       })
@@ -1778,6 +1817,7 @@ async function handle(req, res) {
       case 'movePlayer': return await movePlayer(res, principal, config, body)
       case 'removePlayer': return await removePlayer(res, principal, config, body)
       case 'editPlayer': return await editPlayer(res, principal, config, body)
+      case 'setCoachNote': return await setCoachNote(res, principal, config, body)
       case 'restorePlayer': return await restorePlayer(res, principal, body)
       case 'markPaid': return await markPaid(res, principal, body)
       case 'setTrial': return await setTrial(res, principal, body)

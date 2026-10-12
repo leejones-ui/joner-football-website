@@ -355,6 +355,37 @@ function dotFor(p) {
 }
 
 const isJJ = (g) => g?.label === 'Joners Juniors'
+// Notes for coaches and a later start week, shown wherever a coach sees the
+// player (Lee, 12 Oct 2026).
+const todayIso = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
+const notYet = (p, date = todayIso()) => Boolean(p.startsFrom && date < p.startsFrom)
+function noteChip(p) {
+  if (!p.note && !notYet(p)) return ''
+  const wk = (p.startsLabel.match(/week (\d+)/) || [])[1]
+  const tip = [notYet(p) ? p.startsLabel : '', p.note].filter(Boolean).join('. ')
+  return `<span class="jp-ntag" title="${esc(tip)}">${notYet(p) ? (wk ? `Wk ${wk}` : 'Later') : 'Note'}</span>`
+}
+function noteLine(p, date) {
+  const bits = [notYet(p, date) ? `<b>${esc(p.startsLabel)}: not started yet</b>` : '', p.note ? esc(p.note) : ''].filter(Boolean)
+  return bits.length ? `<span class="jp-cnote">${bits.join(' · ')}</span>` : ''
+}
+async function coachNoteModal(p, g) {
+  const pr = await pricing()
+  const dates = (pr.datesByDay[g?.day] || [])
+  const box = modal(`<h2 style="margin-bottom:4px">Note for coaches</h2><p class="muted small" style="margin-bottom:12px">${esc(p.name)}${g ? ` · ${esc(g.day)} ${esc(g.time)}` : ''}. Coaches see this on their register, the timetable and the program. Families never see it.</p>
+    <label class="j-field"><span>Note <span class="muted">(optional, up to 300 characters)</span></span><textarea class="j-input" id="cn-text" rows="3" maxlength="300" placeholder="e.g. Recovering from an ankle injury, no heading">${esc(p.note || '')}</textarea></label>
+    <label class="j-field"><span>Starts</span><select class="j-select" id="cn-start"><option value="">From the start of term</option>${dates.map((d, i) => `<option value="${esc(d.iso)}" ${d.iso === p.startsFrom ? 'selected' : ''}>Week ${i + 1} · ${esc(d.label)}</option>`).join('')}</select></label>
+    <p class="muted small">A later start also shows the family only their sessions from that week.</p>
+    <p class="j-err" id="cn-err" hidden></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="cn-go">Save</button></div>`, { wide: true })
+  box.querySelector('#cn-go').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true
+    const r = await post('setCoachNote', { rowId: p.rowId, text: box.querySelector('#cn-text').value, startDate: box.querySelector('#cn-start').value })
+    if (!r.ok) { e.currentTarget.disabled = false; const er = box.querySelector('#cn-err'); er.textContent = r.data.error; er.hidden = false; return }
+    closeModal(); toast('Saved. Coaches will see it.'); renderBoard(true)
+  })
+}
+
 function ttBlock(g) {
   const n = g.players.length
   const left = g.capacity - n
@@ -371,7 +402,7 @@ function ttBlock(g) {
   if (P.ttView === 'parent') {
     body = left <= 0 ? '<div class="jp-open" style="color:var(--j-red);font-weight:700">Fully booked · waitlist</div>' : `<div class="jp-open" style="color:${g.mode === 'direct' ? 'var(--j-green)' : 'var(--j-blue)'};font-weight:700">${tag} · ${left} ${left === 1 ? 'spot' : 'spots'} left</div>`
   } else {
-    body = g.players.map((p) => `<div class="jp-nm" ${P.ttView === 'staff' ? `draggable="true" data-row="${esc(p.rowId)}" data-from="${esc(g.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}, options"` : ''}>${P.ttView === 'staff' ? `<i class="${dotFor(p)}"></i>` : ''}<span class="nmx">${esc(p.name)}${p.age != null ? ` <span class="muted">${esc(p.age)}</span>` : ''}</span>${P.ttView === 'staff' && p.status !== 'Confirmed' ? '<span class="muted" style="font-size:10px">awaiting</span>' : ''}${P.ttView === 'staff' && !p.waiver ? '<span class="w">W</span>' : ''}</div>`).join('')
+    body = g.players.map((p) => `<div class="jp-nm" ${P.ttView === 'staff' ? `draggable="true" data-row="${esc(p.rowId)}" data-from="${esc(g.id)}" tabindex="0" role="button" aria-label="${esc(p.name)}, options"` : ''}>${P.ttView === 'staff' ? `<i class="${dotFor(p)}"></i>` : ''}<span class="nmx">${esc(p.name)}${p.age != null ? ` <span class="muted">${esc(p.age)}</span>` : ''}</span>${noteChip(p)}${P.ttView === 'staff' && p.status !== 'Confirmed' ? '<span class="muted" style="font-size:10px">awaiting</span>' : ''}${P.ttView === 'staff' && !p.waiver ? '<span class="w">W</span>' : ''}</div>`).join('')
     body += left > 0 ? `<div class="jp-open">+ ${left} open</div>` : left < 0 ? `<div class="jp-open" style="color:var(--j-red)">${-left} over capacity</div>` : '<div class="jp-open" style="color:var(--j-red)">Full</div>'
     if (P.ttView === 'staff') body += `<button type="button" class="jp-addbtn" data-add="${esc(g.id)}">+ Add player</button>`
   }
@@ -427,6 +458,8 @@ function playerRowHtml(p, gid) {
     p.payreq ? `<span class="j-pill j-pill-blue" title="Payment link open">Link ${esc(p.payreq.amountLabel)}</span>` : '',
     p.waiver ? '' : '<span class="j-pill j-pill-grey" title="No waiver on file">No waiver</span>',
     p.kit ? `<span class="j-pill j-pill-green" title="JF playing kit: ${esc(p.kit)}">Kit</span>` : '',
+    notYet(p) ? `<span class="j-pill j-pill-violet">${esc(p.startsLabel)}</span>` : '',
+    p.note ? `<span class="j-pill j-pill-grey" title="${esc(p.note)}">Coach note</span>` : '',
   ].join('')
   return `<div class="jp-player" draggable="true" data-row="${esc(p.rowId)}" data-from="${esc(gid)}" tabindex="0" role="button" aria-label="${esc(p.name)}, options">
     <span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}</span>
@@ -484,6 +517,7 @@ function playerMenu(el) {
   menu(el, [
     { key: 'info', label: 'Details', run: () => openPlayerDetails(p.rowId, () => detailsModal(p, g)) },
     { key: 'move', label: 'Move to another group', run: () => moveModal(p, g) },
+    { key: 'note', label: p.note || p.startsFrom ? 'Edit note for coaches' : 'Note for coaches (or a later start)', run: () => coachNoteModal(p, g) },
     '-',
     ...(p.trial ? [{ key: 'term', label: 'Offer full term (after trial)', run: () => termModal(p, g) }] : []),
     ...(p.paymentStatus !== 'Paid' || p.trial ? [{ key: 'link', label: p.payreq ? `Payment link open (${p.payreq.amountLabel})` : 'Send a payment link', run: () => linkModal(p, g) }, { key: 'paid', label: 'Mark paid offline', run: () => paidModal(p) }] : []),
@@ -1612,7 +1646,7 @@ async function renderCoach() {
         ${(s.coveredBy || []).length ? `<div class="j-box j-box-grey small" style="margin-bottom:8px">${s.coveredBy.map((c) => `${esc(c.dateLabel)}: covered by <b>${esc(c.coach)}</b>`).join('<br>')}</div>` : ''}
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
           <select class="j-select" style="width:auto" data-date="${esc(s.id)}">${s.dates.map((x) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select></div>
-        <div style="margin-top:10px">${s.players.map((p) => `<div class="jp-player" style="cursor:default"><span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}</span>
+        <div style="margin-top:10px">${s.players.map((p) => `<div class="jp-player" style="cursor:default"><span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
           <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Present'}">Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Absent'}">Away</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
       </article>`
     }).join('') : '<div class="j-empty">No sessions yet.</div>'}`
