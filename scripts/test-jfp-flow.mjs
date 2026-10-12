@@ -668,6 +668,31 @@ await test('note for coaches + a later start: coaches see it on the register and
   assert.equal(again.startsFrom, '')
 })
 
+await test('marked paid by hand (A$800 cash, never in the ledger): record how it was paid, never twice', async () => {
+  const add = await portal(lee, 'addPlayer', { groupId: TUE420, force: true, player: { name: 'Nico Cashman' }, parent: { name: 'Nico Parent', email: 'cash@example.com', mobile: '0400777999' }, payment: 'none' })
+  const id = add.data.rowId
+  await fetch(`${B}/__patch?table=term4&id=${id}&fields=${encodeURIComponent(JSON.stringify({ 'Term 4 Fee': 800, 'Term 4 Amount Paid': 800, 'Term 4 Payment Status': 'Paid' }))}`)
+  await fetch(`${B}/__kv?cmd=${encodeURIComponent(JSON.stringify(['SET', 'jfp:roster-cleared', String(Date.now())]))}`)
+  let m = (await portal(lee, 'money', { fresh: true })).data.money
+  const before = m.kpis.cashCents
+  const p = m.players.find((x) => x.rowId === id)
+  assert.equal(p.unledgeredCents, 80000)
+  assert.equal(p.owingCents, 0)
+  const plain = await portal(lee, 'recordPayment', { rowIds: [id], amountCents: 80000, method: 'cash' })
+  assert.equal(plain.status, 400, 'adding it again is refused')
+  const r = await portal(lee, 'recordPayment', { rowIds: [id], amountCents: 80000, method: 'cash', existing: true, note: 'paid at the first session' })
+  assert.equal(r.status, 200, JSON.stringify(r.data))
+  const row = (await at()).term4.find((x) => x.id === id).fields
+  assert.equal(row['Term 4 Amount Paid'], 800, 'still A$800, not A$1,600')
+  const lines = (await at()).ledger.filter((l) => l.fields['Source Record ID'] === id)
+  assert.equal(lines.length, 1)
+  assert.equal(lines[0].fields['Payment Method'], 'Cash')
+  m = (await portal(lee, 'money', { fresh: true })).data.money
+  assert.equal(m.kpis.cashCents, before + 80000, 'now in the Cash total')
+  assert.equal(m.players.find((x) => x.rowId === id).unledgeredCents, 0)
+  assert.equal((await portal(lee, 'recordPayment', { rowIds: [id], amountCents: 80000, method: 'cash', existing: true })).status, 400, 'never twice')
+})
+
 await test('a flood of parallel code guesses still gets only five tries', async () => {
   const c = client()
   const s = await c.call('/api/jfp-auth', { action: 'start', email: 'flood@example.com', audience: 'parent' })

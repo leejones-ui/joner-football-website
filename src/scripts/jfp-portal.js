@@ -1545,8 +1545,12 @@ async function notesModal(rowId) {
 }
 
 function recordModal(p, { stripe } = {}) {
-  const owing = p.owingCents || Math.max(0, p.feeCents - p.paidCents) || p.feeCents
+  // Marked paid by hand, never in the ledger: record how it was paid instead
+  // of adding it again (Nicholas Casella, A$800 cash, 12 Oct 2026).
+  const existing = !stripe && p.unledgeredCents > 0 && !p.owingCents
+  const owing = existing ? p.unledgeredCents : p.owingCents || Math.max(0, p.feeCents - p.paidCents) || p.feeCents
   const box = modal(`<h2 style="margin-bottom:4px">${stripe ? 'Record a Stripe payment' : 'Record a payment'}</h2><p class="muted small" style="margin-bottom:14px">${esc(p.player)} · paid ${esc(money(p.paidCents))} of ${p.feeCents ? esc(money(p.feeCents)) : 'no fee set'}</p>
+    ${existing ? `<div class="j-box j-box-blue small" style="margin-bottom:12px"><b>${esc(money(p.unledgeredCents))} already shows as paid</b> but how it was paid is not recorded. Saving records the method and adds it to your Cash or Bank transfer totals. It does not add to what ${esc(p.player)} has paid.</div>` : ''}
     ${stripe ? `<div class="j-box j-box-blue small" style="margin-bottom:12px">Stripe, ${esc(new Date(stripe.at).toLocaleDateString('en-AU'))}: ${esc(money(stripe.cents - (stripe.refundedCents || 0)))} · ${esc(stripe.product)}</div>` : `
     <div class="j-two"><label class="j-field"><span>Amount (A$)</span><input class="j-input" id="rp-amt" inputmode="decimal" value="${owing ? (owing / 100).toFixed(2).replace(/\.00$/, '') : ''}"></label>
     <label class="j-field"><span>How they paid</span><select class="j-select" id="rp-how"><option>Bank transfer</option><option>Cash</option><option>Other</option></select></label></div>
@@ -1555,7 +1559,7 @@ function recordModal(p, { stripe } = {}) {
     <p class="muted small">Updates Term 4 Players and adds a row to the payment ledger.</p>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="rp-go">Save</button></div>`)
   box.querySelector('#rp-go').addEventListener('click', async (e) => {
-    const body = stripe ? { rowIds: [p.rowId], method: 'Stripe', stripeSessionId: stripe.id } : { rowIds: [p.rowId], amountCents: Math.round(Number(box.querySelector('#rp-amt').value) * 100), method: box.querySelector('#rp-how').value, date: box.querySelector('#rp-date').value, note: box.querySelector('#rp-note').value.trim() }
+    const body = stripe ? { rowIds: [p.rowId], method: 'Stripe', stripeSessionId: stripe.id } : { existing, rowIds: [p.rowId], amountCents: Math.round(Number(box.querySelector('#rp-amt').value) * 100), method: box.querySelector('#rp-how').value, date: box.querySelector('#rp-date').value, note: box.querySelector('#rp-note').value.trim() }
     if (!stripe && !(body.amountCents > 0)) return toast('Enter the amount received.')
     // Hold the button: e.currentTarget is null once the handler has awaited.
     const btn = e.currentTarget
@@ -1581,7 +1585,8 @@ function matchModal(u) {
     const b = e.target.closest('[data-pick]'); if (!b) return
     const p = P.money.players.find((x) => x.rowId === b.dataset.pick)
     if (!(await confirmBox(`Record ${esc(money(u.cents))} from Stripe against <b>${esc(p.player)}</b>?`, { ok: 'Record' }))) return
-    const r = await post('recordPayment', { rowIds: [p.rowId], method: 'Stripe', stripeSessionId: u.id })
+    // Already marked paid by hand: only link the Stripe payment to the row.
+    const r = await post('recordPayment', { rowIds: [p.rowId], method: 'Stripe', stripeSessionId: u.id, existing: p.unledgeredCents >= u.cents && !p.owingCents })
     if (!r.ok) return toast(r.data.error)
     closeModal(); toast('Recorded. Airtable updated.'); renderMoney()
   })

@@ -584,15 +584,40 @@ async function recordPaymentCore(principal, config, body) {
   if (!(Number.isInteger(amount) && amount > 0 && amount <= 2000000)) return fail(res, 400, 'Enter the amount received.')
   // The same payment cannot be recorded twice by a double click or by two staff
   // pressing Save together. A Stripe payment is guarded by its own id above.
-  if (!stripePay) {
+  // Taken only once the payment has passed every check, so a refused try never blocks the right one.
+  const lockOnce = async () => {
+    if (stripePay) return true
     const lock = `jfp:paylock:${rows.map((r) => r.id).sort().join(',')}:${amount}:${method}`
-    if ((await kvCommand(['SET', lock, '1', 'NX', 'EX', '20'])) !== 'OK') return fail(res, 409, 'That payment was just recorded. Refresh to check before entering it again.')
+    return (await kvCommand(['SET', lock, '1', 'NX', 'EX', '20'])) === 'OK'
+  }
+  // Already marked paid in Airtable but never put in the ledger (Lee, 12 Oct
+  // 2026: Nicholas Casella, A$800 cash): record HOW it was paid, without
+  // adding the amount to the row a second time.
+  if (body.existing === true) {
+    if (rows.length !== 1) return fail(res, 400, 'One player at a time.')
+    const r = rows[0]
+    const ledger = await listLedger(config.term)
+    const inLedger = ledger.filter((l) => String(l['Source Record ID'] || '').split(',').map((x) => x.trim()).includes(r.id)).reduce((t, l) => t + Math.round(Number(l['Amount Paid'] || 0) * 100), 0)
+    const room = cents(r.paidAud) - inLedger
+    if (amount > room) return fail(res, 400, room > 0 ? `Only ${formatAud(room)} of what ${r.player} has paid is not in the ledger yet.` : `Everything ${r.player} has paid is already in the ledger.`)
+    if (!(await lockOnce())) return fail(res, 409, 'That payment was just recorded. Refresh to check before entering it again.')
+    await updateTerm4Rows([{ id: r.id, fields: {
+      ...(method === 'Stripe' ? {} : { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' }),
+      'Term 4 Notes': appendNote(r.notes, `Payment method recorded: ${formatAud(amount)} of the amount already marked paid was ${method}${stripePay ? ` (Stripe ${stripePay.id})` : ''} on ${date}, by ${principal.name}.${body.note ? ` ${clean(body.note, 200)}` : ''}`),
+    } }])
+    const paymentId = stripePay ? (stripePay.intentId || stripePay.id) : `${method === 'Cash' ? 'CASH' : method === 'Bank Transfer' ? 'BANK' : 'OFF'}-${newId('T4').slice(3)}`
+    let ledgerId = ''
+    try { ledgerId = await createLedgerRow({ paymentId, config, playerNames: [r.player], amountCents: amount, paidAt: `${date}T00:00:00+10:00`, sourceIds: [r.id], sessionId: stripePay?.id || '', intentId: stripePay?.intentId || '', method, notes: `Recorded in the JFP portal by ${principal.name}: already marked paid in Airtable, method now recorded.${body.note ? ` ${clean(body.note, 200)}` : ''}` }) } catch (error) { console.error('jfp ledger row failed', error) }
+    await bustRosterCache()
+    await audit({ by: principal.email, action: 'payment.method', target: r.id, after: { name: r.player, cents: amount, method, date, stripe: stripePay?.id || '', ledger: Boolean(ledgerId) } })
+    return { ok: true, ledger: Boolean(ledgerId) }
   }
   // More than the rows still owe is almost always a typo (850 for 85). Rows with no fee set are not checked.
   if (!stripePay && !body.allowOver && rows.every((r) => cents(r.feeAud) > 0)) {
     const owingAll = rows.reduce((t, r) => t + Math.max(0, cents(r.feeAud) - cents(r.paidAud)), 0)
     if (amount > owingAll) return fail(res, 400, `That is more than the ${formatAud(owingAll)} still owing. Enter the amount received, or change the fee first.`)
   }
+  if (!(await lockOnce())) return fail(res, 409, 'That payment was just recorded. Refresh to check before entering it again.')
   // Fill each row up to what it owes, in order; anything over goes on the last row.
   let left = amount
   const updates = rows.map((r, i) => {
@@ -699,6 +724,10 @@ const weekOf = (iso) => {
 export async function moneyData(config, { since, fresh = false, quick = false } = {}) {
   // quick (first paint): the last Stripe read and the 60 second roster cache.
   const [roster, groups, ledger, juniors, history, payreqs] = await Promise.all([loadRoster({ fresh: !quick }), listGroups(), listLedger(config.term).catch(() => []), listJuniors().catch(() => []), listVenueHistory().catch(() => []), listPayreqs().catch(() => [])])
+  // What each row's paid amount has in the ledger, so a row marked paid by
+  // hand can have its cash, bank or Stripe payment recorded.
+  const ledgerByRow = new Map()
+  for (const l of ledger) for (const id of String(l['Source Record ID'] || '').split(',').map((x) => x.trim()).filter(Boolean)) ledgerByRow.set(id, (ledgerByRow.get(id) || 0) + Math.round(Number(l['Amount Paid'] || 0) * 100))
   const openLinkFor = new Map()
   for (const q of payreqs) if (['open', 'checkout'].includes(q.status)) for (const id of q.term4Ids || []) openLinkFor.set(id, { id: q.id, amountCents: q.amountCents, players: q.playerNames, family: q.reason === 'family', createdAt: q.createdAt })
   let stripe = { payments: [], other: { count: 0, cents: 0 }, since: since || config.moneySince, error: '' }
@@ -740,7 +769,7 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
       const g = byId[r.groupId]
       const loc = g ? locationFor(config, g.location) : locationFor(config, r.location || '')
       players.push({
-        rowId: r.id, player: r.player, parent: r.parent, email: r.email, phone: r.phone || '', familyKey: email, openLink: openLinkFor.get(r.id) || null, product: productOfRow(r, g),
+        rowId: r.id, player: r.player, parent: r.parent, email: r.email, phone: r.phone || '', familyKey: email, openLink: openLinkFor.get(r.id) || null, unledgeredCents: Math.max(0, paid - (ledgerByRow.get(r.id) || 0)), product: productOfRow(r, g),
         group: g ? `${g.day} ${g.time}, ${loc.name}` : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Not in a group',
         groupId: r.groupId, locationId: loc.id, locationName: loc.name, coach: g ? coachLabel(coachById(config, g.coachId)) : r.coach,
         feeCents: fee, paidCents: paid, owingCents: status === 'paid' || status === 'stripe' ? 0 : owe, perSessionCents: r.perSessionCents || null,
