@@ -295,3 +295,63 @@ export function previousTerm(term) {
   const t = Number(m[1]), y = Number(m[2])
   return t > 1 ? `Term ${t - 1} ${y}` : `Term 4 ${y - 1}`
 }
+
+// Venue costs (Lee, 12 Oct 2026): rent, cleaning, field hire and the like,
+// typed in per venue per term and kept in config.venueCosts, so a venue can
+// show what is left after its costs. Coach wages only count if added as a line.
+export const COST_LIMITS = { lines: 20, label: 40, cents: 50000000 }
+const COST_TERM = /^term\s*[1-4]\s+\d{4}$/i
+export const costTermOk = (t) => COST_TERM.test(String(t || '').trim())
+
+// Strict, for a save: an error to show, or the lines as they will be kept.
+export function checkCostLines(lines) {
+  if (!Array.isArray(lines)) return { error: 'Send the cost lines as a list.' }
+  if (lines.length > COST_LIMITS.lines) return { error: `Up to ${COST_LIMITS.lines} cost lines per venue.` }
+  const out = []
+  for (const [i, x] of lines.entries()) {
+    const label = String(x?.label ?? '').trim().replace(/\s+/g, ' ')
+    if (!label) return { error: `Line ${i + 1} needs a name, like "Field hire".` }
+    if (label.length > COST_LIMITS.label) return { error: `Keep "${label.slice(0, 20)}…" to ${COST_LIMITS.label} letters or fewer.` }
+    const c = x?.cents
+    if (typeof c !== 'number' || !Number.isInteger(c) || c < 0 || c > COST_LIMITS.cents) return { error: `Check the amount for "${label}".` }
+    out.push({ label, cents: c })
+  }
+  return { lines: out }
+}
+
+// Lenient, for config read back from KV: bad lines and terms are dropped.
+export function cleanVenueCosts(input) {
+  const out = {}
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return out
+  for (const [term, byVenue] of Object.entries(input).slice(0, 40)) {
+    if (!costTermOk(term) || !byVenue || typeof byVenue !== 'object') continue
+    const venues = {}
+    for (const [id, lines] of Object.entries(byVenue).slice(0, 30)) {
+      const vid = String(id).trim().toLowerCase().slice(0, 30)
+      if (!vid || !Array.isArray(lines)) continue
+      const kept = lines.slice(0, COST_LIMITS.lines).map((x) => checkCostLines([x]).lines?.[0]).filter(Boolean)
+      if (kept.length) venues[vid] = kept
+    }
+    if (Object.keys(venues).length) out[term.trim()] = venues
+  }
+  return out
+}
+
+const termKey = (costs, term) => Object.keys(costs || {}).find((k) => norm(k) === norm(term))
+export const costsOfTerm = (costs, term) => (costs || {})[termKey(costs, term)] || {}
+const sumLines = (lines) => (lines || []).reduce((t, x) => t + (x.cents || 0), 0)
+
+// Each venue gets its cost lines, what they come to, and profit: kept after
+// Stripe fees less costs. When fees are not known (the Money Register) it is
+// taken less costs, flagged profitBeforeFees.
+export function withCosts(venue, lines = []) {
+  const costsCents = sumLines(lines)
+  const before = venue.netCents == null
+  return { ...venue, costLines: lines, costsCents, profitCents: (before ? venue.receivedCents || 0 : venue.netCents) - costsCents, profitBeforeFees: before }
+}
+// The term as a whole: every venue's costs, and profit from all its money
+// (money not linked to a player counts too).
+export function costTotals(venues, keptCents) {
+  const venueCostsCents = venues.reduce((t, v) => t + (v.costsCents || 0), 0)
+  return { venueCostsCents, profitCents: keptCents - venueCostsCents, venuesWithCosts: venues.filter((v) => v.costLines?.length).length }
+}

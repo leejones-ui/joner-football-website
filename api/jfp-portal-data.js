@@ -33,7 +33,7 @@ import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
-import { allocateTermMoney, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue } from './_jfp-venues.js'
+import { allocateTermMoney, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -820,10 +820,21 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
     p.stripeFeeCents = m?.fee || 0
     p.netReceivedCents = p.receivedCents - p.stripeFeeCents
   }
+  // Marked paid in Airtable, but less money on the row this term than Airtable
+  // says (paid last term, typed in, or never came in). For Lee to check.
+  const paidNoMoney = players.flatMap((p) => {
+    const says = p.paidCents > 0 ? p.paidCents : /^paid$/i.test(p.airtableStatus) && p.feeCents > 0 ? p.feeCents : 0
+    if (says <= p.receivedCents) return []
+    return [{ rowId: p.rowId, player: p.player, locationId: p.locationId, group: p.group, status: p.status, feeCents: p.feeCents, airtableSaysCents: says, foundCents: p.receivedCents, missingCents: says - p.receivedCents }]
+  }).sort((a, b) => b.missingCents - a.missingCents || a.player.localeCompare(b.player))
   const jj = juniorsByVenue(juniors, config.term, (r) => locationFor(config, r.location || ''))
   const locations = venuesForTerm({ locations: config.locations, rows: roster.players, players, alloc, venueOf, groupOf })
   for (const j of jj) if (!locations.some((l) => l.id === j.id)) locations.push(emptyVenue(j))
   for (const l of locations) l.juniors = jj.find((j) => j.id === l.id) || null
+  // Venue costs this term. A venue with costs and no players yet still shows.
+  const costs = costsOfTerm(config.venueCosts, config.term)
+  for (const loc of config.locations) if (costs[loc.id] && !locations.some((l) => l.id === loc.id)) locations.push({ ...emptyVenue(loc), juniors: null })
+  for (const l of locations) Object.assign(l, withCosts(l, costs[l.id]))
   // Each venue's income by week, so its chart follows the venue picked.
   const venueOfRow = new Map(roster.players.map((r) => [r.id, venueOf(r).id]))
   const weeklyByVenue = Object.fromEntries(locations.map((l) => [l.id, new Map([...weeks.keys()].map((k) => [k, blankWeek(k)]))]))
@@ -857,6 +868,8 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
   const expectedCents = expecting.reduce((t, p) => t + p.feeCents, 0)
   const collectedCents = expecting.reduce((t, p) => t + Math.max(0, p.feeCents - p.owingCents), 0)
   const incomeCents = stripeGross - stripeRefunds + offlineCents
+  const costed = costTotals(locations, incomeCents - fees.stripeFeesCents)
+  const lastTerm = previousTerm(config.term)
   return {
     since: stripe.since, stripeError: stripe.error, stripeAt: stripe.at || '', term: config.term,
     // For the family invoice price buttons. Family rate: every place at the
@@ -875,7 +888,13 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
       unlinkedFeeCents: alloc.unlinked.fee, feesByMethod: fees.feesByMethod,
       expectedCents, collectedCents, collectedPct: expectedCents ? Math.floor((collectedCents * 100) / expectedCents) : null,
       nextTermCents: nextTerm.reduce((t, p) => t + net(p), 0), nextTermCount: nextTerm.length, nextTermFeeCents: nextTerm.reduce((t, p) => t + feeOf(p), 0),
+      // Kept after fees less every venue's costs.
+      venueCostsCents: costed.venueCostsCents, profitCents: costed.profitCents, venuesWithCosts: costed.venuesWithCosts,
+      paidNoMoneyCount: paidNoMoney.length, paidNoMoneyCents: paidNoMoney.reduce((t, x) => t + x.missingCents, 0),
     },
+    paidNoMoney,
+    // Last term's lines, for "Copy last term's costs".
+    venueCostsLast: { term: lastTerm, byVenue: costsOfTerm(config.venueCosts, lastTerm) },
     unlinked: { cents: totalOf(alloc.unlinked), items: alloc.unlinked.items.slice(0, 40) },
     status: { paid: count('paid'), stripe: count('stripe'), part: count('part'), unpaid: count('unpaid'), unpriced: count('unpriced'), session: count('session') },
     weekly: [...weeks.values()],
@@ -898,7 +917,7 @@ async function pastVenues(config, asked) {
     const history = await listVenueHistory()
     if (!history.some((r) => r.term === asked)) return null
     const out = venuesFromHistory({ locations: config.locations, rows: history, term: asked, venueOf: (r) => venueNamed(locationFor(config, r.venue || '')) })
-    return { term: asked, source: 'register', netIncomeCents: null, ...out }
+    return pastCosts(config, { term: asked, source: 'register', netIncomeCents: null, ...out })
   }
   const term = previous
   const [roster, ledger, juniors] = await Promise.all([loadRoster(), listLedger(term).catch(() => []), listJuniors().catch(() => [])])
@@ -908,7 +927,44 @@ async function pastVenues(config, asked) {
   const incomeCents = ledger.reduce((t, l) => t + Math.round(Number(l['Amount Paid'] || 0) * 100), 0)
   const jj = juniorsByVenue(juniors, term, venueOf)
   for (const l of out.venues) l.juniors = jj.find((j) => j.id === l.id) || null
-  return { term, source: 'ledger', incomeCents, netIncomeCents: incomeCents - out.stripeFeesCents, ...out }
+  return pastCosts(config, { term, source: 'ledger', incomeCents, netIncomeCents: incomeCents - out.stripeFeesCents, ...out })
+}
+
+// An earlier term's venue costs; with no Stripe fees known, profit is taken less costs.
+function pastCosts(config, v) {
+  const costs = costsOfTerm(config.venueCosts, v.term)
+  for (const loc of config.locations) if (costs[loc.id] && !v.venues.some((x) => x.id === loc.id)) v.venues.push({ ...emptyVenue(loc), stripeFeeCents: v.netIncomeCents == null ? null : 0, netCents: v.netIncomeCents == null ? null : 0, juniors: null })
+  v.venues = v.venues.map((x) => withCosts(x, costs[x.id]))
+  const lastTerm = previousTerm(v.term)
+  return { ...v, ...costTotals(v.venues, v.netIncomeCents ?? v.incomeCents), profitBeforeFees: v.netIncomeCents == null, venueCostsLast: { term: lastTerm, byVenue: costsOfTerm(config.venueCosts, lastTerm) } }
+}
+
+// Lee's costs for one venue in one term. An empty list clears them.
+async function saveVenueCosts(res, principal, body) {
+  const term = clean(body.term, 40)
+  if (!costTermOk(term)) return fail(res, 400, 'Pick the term, like "Term 4 2026".')
+  // One costs save at a time, so two venues saved together both keep.
+  if ((await kvCommand(['SET', 'jfp:costlock', '1', 'NX', 'EX', '10'])) !== 'OK') return fail(res, 409, 'Costs are being saved just now. Try again in a moment.')
+  try { return await saveVenueCostsLocked(res, principal, body, term) } finally { await kvCommand(['DEL', 'jfp:costlock']).catch(() => {}) }
+}
+async function saveVenueCostsLocked(res, principal, body, term) {
+  const config = await getConfig()
+  const venueId = clean(body.venueId, 30)
+  const loc = config.locations.find((l) => l.id === venueId)
+  if (!loc) return fail(res, 400, 'Pick a venue.')
+  const checked = checkCostLines(body.lines)
+  if (checked.error) return fail(res, 400, checked.error)
+  const all = structuredClone(config.venueCosts || {})
+  const key = Object.keys(all).find((k) => k.toLowerCase() === term.toLowerCase()) || term
+  const before = all[key]?.[venueId] || []
+  all[key] = { ...(all[key] || {}) }
+  if (checked.lines.length) all[key][venueId] = checked.lines
+  else delete all[key][venueId]
+  if (!Object.keys(all[key]).length) delete all[key]
+  const next = await saveConfig({ venueCosts: all })
+  const lines = next.venueCosts[key]?.[venueId] || []
+  await audit({ by: principal.email, action: 'money.venueCosts', target: `${key}:${venueId}`, before, after: lines })
+  return res.status(200).json({ success: true, term: key, venueId, lines, costsCents: lines.reduce((t, x) => t + x.cents, 0) })
 }
 
 // One player's payment story: the row, Stripe payments from the family's
@@ -2061,6 +2117,7 @@ async function handle(req, res) {
         return d ? res.status(200).json({ success: true, player: d }) : fail(res, 404, 'Player row not found.')
       }
       case 'recordPayment': return await recordPayment(res, principal, config, body)
+      case 'saveVenueCosts': return await saveVenueCosts(res, principal, body)
       case 'recordStripeAll': return await recordStripeAll(res, principal, config)
 
       case 'audit': return res.status(200).json({ success: true, entries: await listAudit(Number(body.limit) || 300) })

@@ -263,4 +263,108 @@ await test('the dashboard\'s "see who" opens Money for every venue, whichever ve
   p.close()
 })
 
+
+// ---------- venue costs, profit, marked paid but no money found ----------
+const costed = () => {
+  const m = fresh()
+  const hq = m.locations.find((l) => l.id === 'belrose')
+  Object.assign(hq, { costLines: [{ label: 'Hall hire', cents: 30000 }, { label: 'Cleaning', cents: 4280 }], costsCents: 34280, profitCents: 88280 - 34280, profitBeforeFees: false })
+  for (const l of m.locations) if (l.id !== 'belrose') Object.assign(l, { costLines: [], costsCents: 0, profitCents: l.netCents, profitBeforeFees: false })
+  Object.assign(m.kpis, { venueCostsCents: 34280, profitCents: 285040 - 34280, venuesWithCosts: 1, paidNoMoneyCount: 2, paidNoMoneyCents: 125000 })
+  m.venueCostsLast = { term: 'Term 3 2026', byVenue: { ntra: [{ label: 'Field hire', cents: 41000 }] } }
+  m.paidNoMoney = [
+    { rowId: 'p5', player: 'Eve Test', locationId: 'rydalmere', group: 'Monday 4:20pm, Rydalmere Park', status: 'paid', feeCents: 85000, airtableSaysCents: 85000, foundCents: 0, missingCents: 85000 },
+    { rowId: 'p3', player: 'Cal Test', locationId: 'ntra', group: 'Monday 4:20pm, North Turramurra', status: 'part', feeCents: 42500, airtableSaysCents: 60000, foundCents: 20000, missingCents: 40000 },
+  ]
+  return m
+}
+
+await test('profit after costs: under All when a venue has costs, per venue when it has its own, and in the download', async () => {
+  const p = await openPortal({ money: costed() })
+  assert.match(p.text('#m-profit'), new RegExp(`Profit after costs ${money(250760).replace('$', '\\$')}`))
+  assert.match(p.text('#m-profit'), /Venue costs A\$342\.80\. Coach wages aren't in this unless you add them as a cost\./)
+  await p.click('#m-locs [data-mloc="belrose"]')
+  assert.match(p.text('#m-profit'), /Profit after costs A\$540(?!\d)/)
+  await p.click('#m-locs [data-mloc="ntra"]')
+  assert.equal(p.$('#m-profit'), null, 'no costs at this venue, so no profit line')
+  assert.match(p.text('#m-add-costs'), /Add North Turramurra's costs/)
+  await p.click('#m-add-costs')
+  assert.ok(p.$('#jp-modal #jv-costs'), 'the button opens the venue window at its costs')
+  p.close()
+  const q = await openPortal({ money: costed(), hash: '#money?loc=belrose' })
+  await q.click('#m-csv')
+  const r = csvRows((await q.csv()).text)
+  assert.deepEqual(r.find((x) => x[0] === 'Venue costs'), ['Venue costs', '342.80'])
+  assert.deepEqual(r.find((x) => x[0] === 'Profit after costs'), ['Profit after costs', '540.00'])
+  q.close()
+  const none = await openPortal({ money: fresh() })
+  assert.equal(none.$('#m-profit'), null, 'no costs anywhere: nothing about profit')
+  assert.equal(none.$('#m-pnm'), null)
+  none.close()
+})
+
+await test('marked paid but no money found: listed by venue, biggest gap first, a tap opens the payments', async () => {
+  const p = await openPortal({ money: costed() })
+  assert.match(p.text('#m-pnm summary'), /Marked paid but no money found: 2 players · A\$1,250/)
+  assert.deepEqual([...p.d.querySelectorAll('#m-pnm [data-pnm-row]')].map((b) => b.dataset.pnmRow), ['p5', 'p3'])
+  assert.match(p.text('#m-pnm [data-pnm-row="p3"]'), /Cal Test Monday 4:20pm · Airtable says A\$600 · found A\$200 ?A\$400 not found/)
+  await p.click('#m-locs [data-mloc="ntra"]')
+  assert.deepEqual([...p.d.querySelectorAll('#m-pnm [data-pnm-row]')].map((b) => b.dataset.pnmRow), ['p3'], 'follows the venue')
+  await p.click('#m-pnm [data-pnm-row="p3"]')
+  assert.ok(p.$('.jm-drawer'))
+  assert.ok(p.posts.some((b) => b.action === 'playerPayments' && b.rowId === 'p3'))
+  await p.click('#m-locs [data-mloc="belrose"]')
+  assert.equal(p.$('#m-pnm'), null, 'none at this venue')
+  assert.deepEqual(p.errors, [])
+  p.close()
+})
+
+await test('the venue window: costs, profit after fees and costs, edit, copy last term, save', async () => {
+  let saved = null
+  const after = costed()
+  const p = await openPortal({ money: costed(), hash: '#overview', onPost: (b) => {
+    if (b.action !== 'saveVenueCosts') return null
+    saved = b
+    const nt = after.locations.find((l) => l.id === 'ntra')
+    Object.assign(nt, { costLines: b.lines, costsCents: b.lines.reduce((t, x) => t + x.cents, 0) })
+    nt.profitCents = nt.netCents - nt.costsCents
+    return { success: true, term: b.term, venueId: b.venueId, lines: b.lines, costsCents: nt.costsCents }
+  } })
+  await p.click('.jv-list [data-venue="belrose"]')
+  assert.deepEqual([...p.d.querySelectorAll('#jv-costs .jm-feelist li')].map((li) => li.textContent.replace(/\s+/g, ' ').trim()), ['Hall hireA$300', 'CleaningA$42.80', 'Total costsA$342.80'])
+  assert.equal(p.text('#jv-profit'), money(54000))
+  assert.match(p.text('#jv-costs'), /Profit after fees and costs.*Kept after Stripe fees A\$882\.80 less costs A\$342\.80/)
+  assert.match(p.text('#jv-costs'), /Coach wages aren't in this unless you add them as a cost/)
+  await p.click('#jp-modal [data-venue="ntra"]')
+  assert.match(p.text('#jv-costs'), /No costs added yet/)
+  assert.equal(p.text('#jv-cost-edit'), 'Add costs')
+  await p.click('#jv-cost-edit')
+  assert.equal(p.d.querySelectorAll('#jv-cost-rows .jv-cost-row').length, 1, 'one blank line to start')
+  // A line with an amount and no name is refused before anything is sent.
+  p.$('#jv-cost-rows [data-cc]').value = '50'
+  await p.click('#jv-cost-go')
+  assert.equal(saved, null)
+  assert.match(p.text('.j-toast'), /Give each cost a name/)
+  await p.click('#jv-cost-copy')
+  const rows = () => [...p.d.querySelectorAll('#jv-cost-rows .jv-cost-row')].map((r) => [r.querySelector('[data-cl]').value, r.querySelector('[data-cc]').value])
+  assert.deepEqual(rows(), [['Field hire', '410']], "last term's lines copied in")
+  await p.click('#jv-cost-add')
+  const last = p.d.querySelectorAll('#jv-cost-rows .jv-cost-row')[1]
+  last.querySelector('[data-cl]').value = 'Lights'
+  last.querySelector('[data-cc]').value = 'A$1,234.50'
+  await p.click('#jv-cost-add')
+  await p.click(p.d.querySelectorAll('#jv-cost-rows [data-cost-del]')[2])
+  assert.equal(rows().length, 2, 'a line can be taken out')
+  p.$('#jv-cost-rows [data-cc]').value = '420'
+  const before = p.posts.filter((b) => b.action === 'money').length
+  // The page reads Money again after a save.
+  p.w.fetch = ((orig) => async (url, init) => { const b = init?.body ? JSON.parse(init.body) : {}; if (b.action === 'money') { p.posts.push(b); return { ok: true, status: 200, json: async () => ({ success: true, money: after }) } } return orig(url, init) })(p.w.fetch)
+  await p.click('#jv-cost-go')
+  assert.deepEqual(saved, { action: 'saveVenueCosts', term: 'Term 4 2026', venueId: 'ntra', lines: [{ label: 'Field hire', cents: 42000 }, { label: 'Lights', cents: 123450 }] })
+  assert.ok(p.posts.filter((b) => b.action === 'money').length > before, 'Money is read again')
+  assert.equal(p.text('#jv-profit'), `-${money(165450 - 99000)}`, 'a loss shows with a minus')
+  assert.deepEqual(p.errors, [])
+  p.close()
+})
+
 console.log(`${passed} money page checks passed`)

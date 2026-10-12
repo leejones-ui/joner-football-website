@@ -1403,4 +1403,108 @@ await test('money page: the payment lines add up per venue, and the page shows e
   assert.ok(!/Before Stripe fees/.test(js))
 })
 
+
+await test('venue costs: Lee adds them per venue per term, each venue shows profit; marked paid but no money found is listed', async () => {
+  const sum = (list, k) => list.reduce((t, x) => t + (x[k] || 0), 0)
+  const save = (c, body) => portal(c, 'saveVenueCosts', { term: 'Term 4 2026', venueId: 'belrose', ...body })
+  const sam = client()
+  await signIn(sam, 'jonerfootballsam@gmail.com', 'staff')
+  assert.equal((await save(sam, { lines: [{ label: 'Hall hire', cents: 100 }] })).status, 403, 'coaches cannot set costs')
+  assert.equal((await portal(sam, 'money')).status, 403)
+  const bad = [
+    [{ lines: Array.from({ length: 21 }, (_, i) => ({ label: `Line ${i}`, cents: 100 })) }, /20/],
+    [{ lines: [{ label: 'x'.repeat(41), cents: 100 }] }, /40/],
+    [{ lines: [{ label: 'Hall hire', cents: -1 }] }, /amount/],
+    [{ lines: [{ label: 'Hall hire', cents: 50000001 }] }, /amount/],
+    [{ lines: [{ label: 'Hall hire', cents: 12.5 }] }, /amount/],
+    [{ lines: [{ label: '', cents: 100 }] }, /name/],
+    [{ lines: 'rent' }, /list/],
+    [{ venueId: 'moon', lines: [] }, /venue/],
+    [{ term: 'Summer camp', lines: [] }, /term/],
+  ]
+  for (const [body, msg] of bad) {
+    const r = await save(lee, body)
+    assert.equal(r.status, 400, JSON.stringify(body).slice(0, 80))
+    assert.match(r.data.error, msg)
+  }
+  const ok = await save(lee, { lines: [{ label: 'Hall hire', cents: 30000 }, { label: ' Cleaning ', cents: 4500 }] })
+  assert.equal(ok.status, 200, JSON.stringify(ok.data))
+  assert.deepEqual(ok.data.lines, [{ label: 'Hall hire', cents: 30000 }, { label: 'Cleaning', cents: 4500 }])
+  assert.equal(ok.data.costsCents, 34500)
+  const log = (await portal(lee, 'audit', { limit: 20 })).data.entries
+  assert.ok(log.some((e) => e.action === 'money.venueCosts' && e.target === 'Term 4 2026:belrose'), 'the change is in the audit log')
+  assert.equal((await portal(lee, 'saveVenueCosts', { term: 'Term 3 2026', venueId: 'ntra', lines: [{ label: 'Field hire', cents: 41000 }] })).status, 200)
+  assert.equal((await portal(lee, 'saveVenueCosts', { term: 'Term 2 2026', venueId: 'rydalmere', lines: [{ label: 'Field hire', cents: 10000 }] })).status, 200)
+  // Settings saves leave the costs alone.
+  assert.equal((await portal(lee, 'saveSettings', { config: { kitNote: 'Kit note for the costs test' } })).status, 200)
+
+  let m = (await portal(lee, 'money', { fresh: true })).data.money
+  let k = m.kpis
+  const hq = m.locations.find((l) => l.id === 'belrose')
+  assert.deepEqual(hq.costLines, ok.data.lines)
+  assert.equal(hq.costsCents, 34500)
+  assert.equal(hq.profitCents, hq.netCents - 34500, 'profit is kept after fees less costs')
+  assert.equal(hq.profitBeforeFees, false)
+  for (const l of m.locations.filter((x) => x.id !== 'belrose')) assert.deepEqual([l.costsCents, l.profitCents], [0, l.netCents], `${l.name}: no costs, profit is what it kept`)
+  assert.equal(k.venueCostsCents, 34500)
+  assert.equal(k.venuesWithCosts, 1)
+  assert.equal(k.profitCents, k.netIncomeCents - 34500)
+  assert.equal(sum(m.locations, 'profitCents') + k.unlinkedCents - k.unlinkedFeeCents, k.profitCents, 'All\'s profit counts money not linked to a player too')
+  assert.equal(sum(m.locations, 'receivedCents') + k.unlinkedCents, k.incomeCents, 'the venues still add up to income')
+  assert.deepEqual(m.venueCostsLast, { term: 'Term 3 2026', byVenue: { ntra: [{ label: 'Field hire', cents: 41000 }] } }, "last term's costs, to copy")
+
+  const t3 = (await portal(lee, 'venues', { term: 'Term 3 2026' })).data.venues
+  const nt3 = t3.venues.find((l) => l.id === 'ntra')
+  assert.ok(nt3, 'a venue with costs shows even with no money that term')
+  assert.equal(nt3.costsCents, 41000)
+  assert.equal(nt3.profitCents, nt3.netCents - 41000)
+  assert.equal(t3.profitBeforeFees, false)
+  assert.equal(t3.profitCents, t3.netIncomeCents - 41000)
+  const t2 = (await portal(lee, 'venues', { term: 'Term 2 2026' })).data.venues
+  const ry2 = t2.venues.find((l) => l.id === 'rydalmere')
+  assert.equal(ry2.netCents, null)
+  assert.equal(ry2.profitCents, ry2.receivedCents - 10000, 'fees not known: taken less costs')
+  assert.equal(ry2.profitBeforeFees, true)
+  assert.deepEqual([t2.profitBeforeFees, t2.venueCostsCents, t2.profitCents], [true, 10000, t2.incomeCents - 10000])
+  assert.equal((await portal(sam, 'venues', { term: 'Term 2 2026' })).status, 403)
+
+  // Marked paid but no money found.
+  for (const x of m.paidNoMoney) {
+    const p = m.players.find((y) => y.rowId === x.rowId)
+    assert.ok(p, 'each one is a player on the list')
+    assert.equal(x.foundCents, p.receivedCents)
+    assert.ok(x.airtableSaysCents > x.foundCents)
+    assert.equal(x.missingCents, x.airtableSaysCents - x.foundCents)
+    assert.equal(x.locationId, p.locationId)
+  }
+  assert.deepEqual([k.paidNoMoneyCount, k.paidNoMoneyCents], [m.paidNoMoney.length, sum(m.paidNoMoney, 'missingCents')])
+  assert.ok(m.paidNoMoney.length >= 1, 'the harness has rows marked paid with no money this term')
+  const sorted = m.paidNoMoney.map((x) => x.missingCents)
+  assert.deepEqual(sorted, [...sorted].sort((a, b) => b - a), 'biggest gap first')
+  const fully = m.players.filter((p) => p.paidCents > 0 && p.receivedCents >= p.paidCents)
+  assert.ok(!fully.some((p) => m.paidNoMoney.some((x) => x.rowId === p.rowId)), 'a row whose money is all there is not listed')
+  // Marked Paid by hand with no amount, a fee set and no money: listed at its fee.
+  const quiet = m.players.find((p) => p.status === 'unpaid' && p.feeCents > 0 && !p.paidCents && !p.receivedCents)
+  assert.ok(quiet, 'an unpaid row to mark')
+  const before = (await at()).term4.find((r) => r.id === quiet.rowId).fields['Term 4 Payment Status'] ?? ''
+  const patch = (v) => fetch(`${B}/__patch?table=term4&id=${quiet.rowId}&fields=${encodeURIComponent(JSON.stringify({ 'Term 4 Payment Status': v }))}`)
+  await patch('Paid')
+  m = (await portal(lee, 'money', { fresh: true })).data.money
+  const row = m.paidNoMoney.find((x) => x.rowId === quiet.rowId)
+  assert.deepEqual(row && [row.airtableSaysCents, row.foundCents, row.missingCents], [quiet.feeCents, 0, quiet.feeCents])
+  await patch(before)
+
+  // An empty list clears a venue's costs.
+  assert.equal((await save(lee, { lines: [] })).status, 200)
+  for (const [term, venueId] of [['Term 3 2026', 'ntra'], ['Term 2 2026', 'rydalmere']]) assert.equal((await portal(lee, 'saveVenueCosts', { term, venueId, lines: [] })).status, 200)
+  m = (await portal(lee, 'money', { fresh: true })).data.money
+  assert.deepEqual([m.kpis.venueCostsCents, m.kpis.venuesWithCosts, m.kpis.profitCents], [0, 0, m.kpis.netIncomeCents])
+  assert.deepEqual((await portal(lee, 'getSettings')).data.config.venueCosts, {})
+  // The built portal carries the costs and the review list.
+  const fs = await import('node:fs')
+  const html = fs.readFileSync(new URL('../dist/jfp-portal/index.html', import.meta.url), 'utf8')
+  const js = fs.readFileSync(new URL(`../dist/${html.match(/<script type="module" src="\/(_astro\/jfp-portal[^"]+\.js)"/)[1]}`, import.meta.url), 'utf8')
+  for (const id of ['saveVenueCosts', 'jv-costs', 'Profit after fees and costs', 'Profit after costs', 'Marked paid but no money found', 'data-pnm-row']) assert.ok(js.includes(id), `the built bundle has ${id}`)
+})
+
 console.log(`\n${passed} JFP flow checks passed`)

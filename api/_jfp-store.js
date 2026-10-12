@@ -14,6 +14,7 @@
 // briefly under-sold but never over-sold.
 import crypto from 'node:crypto'
 import { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, newId, formatAud, claimOnce, stripeFetch } from './_holiday-store.js'
+import { cleanVenueCosts } from './_jfp-venues.js'
 
 export { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, newId, formatAud, claimOnce }
 
@@ -296,6 +297,8 @@ export function normaliseConfig(input = {}) {
       open: input.nextTerm?.open === true,
     },
     locations: cleanLocations(input.locations, b.locations),
+    // { '<term>': { '<venueId>': [{ label, cents }] } }, set by saveVenueCosts.
+    venueCosts: cleanVenueCosts(input.venueCosts),
     minAge: Number(input.minAge) >= 3 && Number(input.minAge) <= 18 ? Number(input.minAge) : b.minAge,
     maxAge: Number(input.maxAge) >= 5 && Number(input.maxAge) <= 25 ? Number(input.maxAge) : b.maxAge,
   }
