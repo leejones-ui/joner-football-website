@@ -92,7 +92,27 @@ function start() {
 
 function renderNav() {
   const sections = NAV[P.user.role === 'admin' ? 'admin' : 'coach']
-  $('nav').innerHTML = sections.map(([title, list]) => `<p class="jp-nav-sec">${esc(title)}</p>${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}</button>`).join('')}`).join('')
+  // Each heading opens and closes its group; the group holding the open tab stays open.
+  const open = navOpen()
+  $('nav').innerHTML = sections.map(([title, list]) => {
+    const here = list.some(([k]) => k === P.tab)
+    const shut = sections.length > 1 && !here && open[title] !== true
+    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}</button>`).join('')}</div></div>`
+  }).join('')
+}
+
+function navOpen() {
+  try { return JSON.parse(localStorage.getItem('jfp-nav-open') || '{}') || {} } catch { return {} }
+}
+
+function toggleNavGroup(title) {
+  const open = navOpen()
+  const grp = [...document.querySelectorAll('.jp-navgrp')].find((g) => g.querySelector('[data-navsec]')?.dataset.navsec === title)
+  const nowShut = !grp?.classList.contains('shut')
+  open[title] = !nowShut
+  try { localStorage.setItem('jfp-nav-open', JSON.stringify(open)) } catch {}
+  grp?.classList.toggle('shut', nowShut)
+  grp?.querySelector('[data-navsec]')?.setAttribute('aria-expanded', nowShut ? 'false' : 'true')
 }
 
 // ---------- shell: collapsible sidebar, phone drawer, theme ----------
@@ -2724,6 +2744,8 @@ async function renderSettings() {
 }
 
 document.addEventListener('click', async (e) => {
+  const sec = e.target.closest('[data-navsec]')
+  if (sec) { toggleNavGroup(sec.dataset.navsec); return }
   const t = e.target.closest('[data-tab]')
   if (t) { go(t.dataset.tab); return }
   if (e.target.closest('#sign-out')) { await signOut('staff'); location.href = '/jfp-portal/' }

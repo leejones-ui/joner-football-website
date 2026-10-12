@@ -109,6 +109,13 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jp-sidebar .jp-nav { position: static; display: flex; flex-direction: column; gap: 2px; padding: 14px 12px; border: 0; background: transparent; overflow-y: auto; overflow-x: hidden; flex: 1; scrollbar-width: thin; }
 .jp-nav-sec { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--j-muted); padding: 14px 12px 6px; white-space: nowrap; transition: opacity .18s; }
 .jp-nav-sec:first-child { padding-top: 2px; }
+.jp-sidebar .jp-nav button.jp-nav-sec { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 36px; padding: 12px 12px 6px; border-radius: 8px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--j-muted); background: transparent; }
+.jp-sidebar .jp-nav button.jp-nav-sec:hover { color: var(--j-ink); background: transparent; }
+.jp-nav-sec svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s; }
+.jp-navgrp.shut .jp-nav-sec svg { transform: rotate(-90deg); }
+.jp-navgrp.shut .jp-navlist { display: none; }
+.jp-navlist { display: flex; flex-direction: column; gap: 2px; }
+.jp-navgrp:first-child .jp-nav-sec { padding-top: 2px; }
 .jp-sidebar .jp-nav button { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px; border-radius: 10px; border: 0; background: transparent; color: var(--j-ink-2); font-size: 14px; font-weight: 600; text-align: left; white-space: nowrap; cursor: pointer; transition: background .15s, color .15s; }
 .jp-sidebar .jp-nav button:hover { background: var(--j-grey-bg); color: var(--j-ink); }
 .jp-sidebar .jp-nav button[aria-current="page"] { background: var(--j-grey-bg); color: var(--j-ink); }
@@ -130,7 +137,8 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
   .jp-collapse { display: flex; }
   .nav-collapsed .jp-collapse svg { transform: rotate(180deg); }
   .nav-collapsed .jp-lbl, .nav-collapsed .jp-me-txt, .nav-collapsed .jp-nav-sec { opacity: 0; pointer-events: none; }
-  .nav-collapsed .jp-nav-sec { height: 10px; padding: 0; overflow: hidden; }
+  .nav-collapsed .jp-nav-sec { height: 10px; min-height: 0 !important; padding: 0 !important; overflow: hidden; }
+  .nav-collapsed .jp-navgrp.shut .jp-navlist { display: flex; }
   .nav-collapsed .jp-sidebar .jp-nav .count { position: absolute; top: 2px; right: 4px; padding: 0 5px; font-size: 10px; min-width: 16px; }
   /* Collapsed: the label shows as a tooltip beside the icon. */
   .nav-collapsed .jp-sidebar .jp-nav button[data-label]:hover::after, .nav-collapsed .jp-sidebar .jp-nav button[data-label]:focus-visible::after {
