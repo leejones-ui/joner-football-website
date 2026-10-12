@@ -31,7 +31,7 @@ import { sendAccountInvite, accountInvite, sendFamilyInvite, sendPlaceOffered, s
 import { nextStatuses, setNextStatus, nextPrices, recordNext } from './_jfp-next.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
-import { jfpStripePayments } from './_jfp-stripe.js'
+import { stripeScan, jfpStripePayments } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
 import { allocateTermMoney, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf } from './_jfp-venues.js'
 
@@ -1749,6 +1749,7 @@ async function handle(req, res) {
       case 'setTrial': return await setTrial(res, principal, body)
       case 'sendPaymentLink': return await sendPaymentLink(req, res, principal, config, body)
       case 'familyInvoice': return await familyInvoice(req, res, principal, config, body)
+      case 'stripeScan': return res.status(200).json({ success: true, payments: await stripeScan({ from: clean(body.from, 10), to: clean(body.to, 10) }) })
       case 'sessionInvoice': return await sessionInvoice(req, res, principal, config, body)
       case 'nextTerm': {
         const nt = config.nextTerm

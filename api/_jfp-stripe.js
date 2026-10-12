@@ -82,3 +82,37 @@ export async function jfpStripePayments({ since, fresh = false, quick = false } 
   await kvSetJson(CACHE, out)
   return out
 }
+
+// Read only: every paid Checkout Session in a date range (Sydney dates), with
+// what it was for, so staff can find payments made before the portal (Lee,
+// 12 Oct 2026: Term 4 links Ligia sent on 8 Sept). At most 70 days.
+export async function stripeScan({ from, to }) {
+  const ok = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d || '')
+  if (!ok(from) || !ok(to) || to < from) throw new Error('Choose a from and to date.')
+  if ((Date.parse(to) - Date.parse(from)) / 86400000 > 70) throw new Error('At most 70 days at a time.')
+  const gte = Math.floor(Date.parse(`${from}T00:00:00+10:00`) / 1000), lt = Math.floor(Date.parse(`${to}T00:00:00+10:00`) / 1000) + 86400
+  const out = []
+  let after = ''
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const q = new URLSearchParams({ limit: '100', status: 'complete', 'created[gte]': String(gte), 'created[lt]': String(lt) })
+    q.append('expand[]', 'data.line_items')
+    q.append('expand[]', 'data.payment_intent.latest_charge')
+    if (after) q.set('starting_after', after)
+    const d = await stripeFetch(`/checkout/sessions?${q}`)
+    for (const x of d.data || []) {
+      if (x.payment_status !== 'paid') continue
+      const pi = x.payment_intent && typeof x.payment_intent === 'object' ? x.payment_intent : null
+      const link = typeof x.payment_link === 'string' ? x.payment_link : x.payment_link?.id || ''
+      out.push({
+        id: x.id, intentId: pi?.id || '', at: new Date(x.created * 1000).toISOString(),
+        email: String(x.customer_details?.email || x.customer_email || '').trim().toLowerCase(), name: String(x.customer_details?.name || '').trim(),
+        amountCents: x.amount_total || 0, refundedCents: pi?.latest_charge?.amount_refunded || 0,
+        product: (x.line_items?.data || []).map((i) => i.description).filter(Boolean).join(', ') || (link ? await linkProduct(link) : ''),
+        link, description: pi?.description || '', metadata: x.metadata || {}, customFields: (x.custom_fields || []).map((f) => `${f.label?.custom || f.key}: ${f.text?.value || f.dropdown?.value || f.numeric?.value || ''}`),
+      })
+    }
+    if (!d.has_more || !(d.data || []).length) break
+    after = d.data.at(-1).id
+  }
+  return out
+}
