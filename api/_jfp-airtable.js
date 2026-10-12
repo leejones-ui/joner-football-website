@@ -122,6 +122,7 @@ function term4Row({ id, fields: f }) {
     kit: text(f, 'Training Kit'),
     notes,
     sourceTerm3: text(f, 'Source Term 3 Record ID'),
+    perSessionCents: Number(tagOf(notes, 'PERSESSION')) || null,
     onlineBookingId: tagOf(notes, ONLINE_TAG),
     adminAddId: tagOf(notes, ADMIN_TAG),
     holdsPlace: HOLDS_PLACE.has(text(f, 'Term 4 Confirmation')),

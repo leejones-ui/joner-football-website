@@ -142,3 +142,51 @@ async function saveOnly(el, fam, places, ui) {
   ui.toast(`Saved ${changed.length} price${changed.length > 1 ? 's' : ''} to Airtable${fam.links.length ? '. The open link still asks for the old amount: send a family invoice to replace it.' : ''}`, fam.links.length ? 8000 : 3600)
   ui.done()
 }
+
+// Session by session (pink): bill the sessions a player came to at their own
+// price, as a payment link or recorded as paid by bank or cash. Brothers and
+// sisters on the same email who also pay by the session can go on one link.
+export function sessionModal(p, ui) {
+  const { m } = ui
+  const kin = m.players.filter((x) => x.status === 'session' && x.familyKey === p.familyKey)
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
+  const box = ui.modal(`<h2 style="margin-bottom:4px">Sessions: ${esc(p.player)}</h2>
+    <p class="muted small" style="margin-bottom:12px">Pays session by session. Enter the sessions to bill and the price per session; it is added to their fee in Airtable, so Money and the ledger stay right.</p>
+    ${kin.map((x) => `<div class="jf-srow" data-srow="${esc(x.rowId)}">
+      <label class="j-check"><input type="checkbox" data-on ${x.rowId === p.rowId ? 'checked' : ''}> <span><b>${esc(x.player)}</b><br><span class="muted small">${esc(x.group)}</span></span></label>
+      <div class="j-two"><label class="j-field"><span>Sessions</span><input class="j-input" data-n inputmode="numeric" value="1"></label>
+      <label class="j-field"><span>Price per session (A$)</span><input class="j-input" data-per inputmode="decimal" value="${x.perSessionCents ? x.perSessionCents / 100 : ''}" placeholder="e.g. 50"></label></div></div>`).join('')}
+    <label class="j-field"><span>Which sessions (optional, shows on the invoice)</span><input class="j-input" id="ss-what" placeholder="e.g. 8 and 15 October"></label>
+    <div class="j-outcomes" style="margin:6px 0 10px">
+      <label class="j-check"><input type="radio" name="ss-mode" value="link" checked> <span><b>Send a payment link</b> <span class="muted small">card or Apple Pay</span></span></label>
+      <label class="j-check"><input type="radio" name="ss-mode" value="paid"> <span><b>Already paid</b> <span class="muted small">bank transfer or cash</span></span></label>
+    </div>
+    <div id="ss-link"><label class="j-check small"><input type="checkbox" id="ss-email" ${p.email ? 'checked' : 'disabled'}> <span>Email the link to ${esc(p.email || 'the family (no email on file)')}</span></label></div>
+    <div id="ss-paid" hidden class="j-two"><label class="j-field"><span>Paid by</span><select class="j-select" id="ss-method"><option>Bank Transfer</option><option>Cash</option></select></label><label class="j-field"><span>Date</span><input class="j-input" type="date" id="ss-date" value="${today}" max="${today}"></label></div>
+    <p style="margin:10px 0 0"><b>Total <span id="ss-total"></span></b></p>
+    <p class="j-err" id="ss-err" hidden></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ss-go">Send link</button></div>`, { wide: true })
+  const mode = () => box.querySelector('[name="ss-mode"]:checked').value
+  const picked = () => [...box.querySelectorAll('[data-srow]')].filter((r) => r.querySelector('[data-on]').checked).map((r) => ({ rowId: r.dataset.srow, sessions: Math.round(Number(r.querySelector('[data-n]').value)), perSessionCents: Math.round(Number(r.querySelector('[data-per]').value) * 100) }))
+  const paint = () => {
+    const rows = picked()
+    box.querySelector('#ss-total').textContent = money(rows.reduce((t, x) => t + (x.sessions > 0 && x.perSessionCents > 0 ? x.sessions * x.perSessionCents : 0), 0))
+    box.querySelector('#ss-link').hidden = mode() !== 'link'; box.querySelector('#ss-paid').hidden = mode() !== 'paid'
+    box.querySelector('#ss-go').textContent = mode() === 'link' ? 'Send link' : 'Record payment'
+  }
+  box.addEventListener('input', paint); box.addEventListener('change', paint); paint()
+  const go = async (replace = false) => {
+    const btn = box.querySelector('#ss-go'), err = box.querySelector('#ss-err')
+    const rows = picked()
+    if (!rows.length) { err.textContent = 'Tick at least one player.'; err.hidden = false; return }
+    btn.disabled = true
+    const r = await ui.post('sessionInvoice', { rows, what: box.querySelector('#ss-what').value, mode: mode(), sendEmail: box.querySelector('#ss-email').checked, method: box.querySelector('#ss-method').value, date: box.querySelector('#ss-date').value, replace })
+    btn.disabled = false
+    if (!r.ok && r.data.code === 'link_open') { if (await ui.confirmBox(esc(r.data.error), { ok: 'Replace it' })) return go(true); return }
+    if (!r.ok) { err.textContent = r.data.error; err.hidden = false; return }
+    ui.closeModal()
+    if (r.data.payreq) { try { await navigator.clipboard.writeText(r.data.payreq.url) } catch {} ui.toast(`Link for ${r.data.payreq.amountLabel} ${r.data.emailed ? 'emailed' : 'made'}. Link copied.`, 6000) } else ui.toast(`Recorded ${r.data.recorded}`)
+    ui.done()
+  }
+  box.querySelector('#ss-go').addEventListener('click', () => go())
+}

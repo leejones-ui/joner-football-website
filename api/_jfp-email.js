@@ -233,15 +233,15 @@ ${kitLine(config)}`
 }
 
 // One invoice for the whole family: each place and its price, one total.
-export async function sendFamilyInvoice({ to, parentName, places, config, url, amountCents, needWaiver = false }) {
+export async function sendFamilyInvoice({ to, parentName, places, config, url, amountCents, needWaiver = false, sessions = false }) {
   const names = [...new Set(places.map((x) => x.name))]
-  const body = `${p(`Hi ${esc(parentName || 'there')}, here is ${esc(config.term)} for ${esc(names.join(' and '))} in one payment.`)}
+  const body = `${p(sessions ? `Hi ${esc(parentName || 'there')}, here are ${esc(names.join(' and '))}'s JFP sessions to pay.` : `Hi ${esc(parentName || 'there')}, here is ${esc(config.term)} for ${esc(names.join(' and '))} in one payment.`)}
 ${rows([...places.map((x) => [esc(x.name), `${esc(x.label)}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(formatAud(x.owingCents))}${x.paidCents ? ` (${esc(formatAud(x.feeCents))}, ${esc(formatAud(x.paidCents))} already paid)` : ''}</span>`]), ['Total to pay', esc(formatAud(amountCents))]])}
-${p(`Sign in with this email address to ${needWaiver ? 'sign the waiver and ' : ''}pay. Card, Apple Pay or Afterpay. The places are locked in once it is paid.`)}
+${p(`Sign in with this email address to ${needWaiver ? 'sign the waiver and ' : ''}pay. ${sessions ? 'Card or Apple Pay.' : 'Card, Apple Pay or Afterpay. The places are locked in once it is paid.'}`)}
 ${button('Sign in and pay', url)}
 ${howToSignIn(to)}
 ${kitLine(config)}`
-  return send({ to: [{ email: to, name: parentName }], subject: `${names.join(' and ')}: your ${config.term} invoice`, html: shell({ preheader: `${formatAud(amountCents)} for ${names.length} player${names.length > 1 ? 's' : ''}`, heading: 'Your family invoice', body }) })
+  return send({ to: [{ email: to, name: parentName }], subject: sessions ? `${names.join(' and ')}: JFP sessions invoice` : `${names.join(' and ')}: your ${config.term} invoice`, html: shell({ preheader: `${formatAud(amountCents)} for ${names.length} player${names.length > 1 ? 's' : ''}`, heading: sessions ? 'Your sessions invoice' : 'Your family invoice', body }) })
 }
 
 // After a good trial: the rest of the term, with the trial fee taken off.

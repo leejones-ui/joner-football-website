@@ -111,7 +111,7 @@ async function overview(res, parent, body = {}) {
       what: q.reason === 'trial' ? `Trial session${q.trialDate ? `, ${dateLabel(q.trialDate)}` : ''}` : q.startDate ? `From ${dateLabel(q.startDate)} to the end of term${q.creditCents ? `, ${formatAud(q.creditCents)} trial taken off` : ''}` : '',
       afterpay: q.afterpay !== false,
       // A family invoice: each place and what it costs.
-      places: q.reason === 'family' && Array.isArray(q.places) ? q.places.map((x) => ({ name: x.name, label: x.label, amountLabel: formatAud(x.owingCents) })) : [],
+      places: ['family', 'sessions'].includes(q.reason) && Array.isArray(q.places) ? q.places.map((x) => ({ name: x.name, label: x.label, amountLabel: formatAud(x.owingCents) })) : [],
     }
   })
   // Next term: this family's invited players and where each one stands.
@@ -255,7 +255,8 @@ async function nextTermChoice(req, res, parent, body) {
 
 // The JF playing kit is required for a place in the program (Lee, 30 Sept).
 // A trial is one session, and next term's players already have it.
-function kitRequired(q) { return q.reason !== 'trial' && !q.next }
+// Session by session players already train with us: no kit step.
+function kitRequired(q) { return q.reason !== 'trial' && q.reason !== 'sessions' && !q.next }
 function kitDone(q, rowsById) {
   if (q.kit) return q.kit
   const rows = (q.term4Ids || []).map((id) => rowsById?.get(id)).filter(Boolean)
@@ -284,8 +285,8 @@ async function confirmKit(res, parent, body) {
 // A family invoice shows each place on Stripe's page; anything else (or an
 // invoice whose amount staff changed) is one line.
 function lineItems(q, name) {
-  const places = q.reason === 'family' && Array.isArray(q.places) ? q.places : []
-  const list = places.length > 1 && places.reduce((t, x) => t + x.owingCents, 0) === q.amountCents
+  const places = ['family', 'sessions'].includes(q.reason) && Array.isArray(q.places) ? q.places : []
+  const list = places.length >= (q.reason === 'sessions' ? 1 : 2) && places.reduce((t, x) => t + x.owingCents, 0) === q.amountCents
     ? places.map((x) => ({ cents: x.owingCents, name: `JFP: ${x.name}, ${x.label}` }))
     : [{ cents: q.amountCents, name }]
   const out = {}

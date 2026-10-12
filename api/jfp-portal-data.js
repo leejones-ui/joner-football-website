@@ -15,7 +15,7 @@ import {
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
   coachByAirtableName, sessionDates, dateLabel, formatAud, to24h, clean, newId, audit, listAudit, locationFor, validEmail, ageOn,
   normName, cleanPhone, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold,
-  PRODUCTS, QUESTIONS, productFor, priceFor, paidSiblings, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson, kvGetJson, rowEmails, emailsIn,
+  PRODUCTS, QUESTIONS, productFor, priceFor, paidSiblings, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson, kvGetJson, rowEmails, emailsIn, SESSION_TYPE, isSessionType, withPerSession,
 } from './_jfp-store.js'
 import { coachPhotoUrl } from './jfp-groups.js'
 import {
@@ -389,7 +389,7 @@ async function movePlayer(res, principal, config, body) {
 // contacts, the fee and the payment type. Payments are not edited here: they
 // are recorded or undone on their own. The balance is Airtable's formula.
 // If an open payment link no longer matches the new fee, say so.
-const PAYMENT_TYPES = ['JFP 10 weeks', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
+const PAYMENT_TYPES = [SESSION_TYPE, 'JFP 10 weeks', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
 async function editPlayer(res, principal, config, body) {
   const row = await rowOr404(res, body.rowId); if (!row) return
   const f = body.fields || {}
@@ -408,6 +408,19 @@ async function editPlayer(res, principal, config, body) {
     before.feeAud = row.feeAud
   }
   if ('paymentType' in f) { if (f.paymentType && !PAYMENT_TYPES.includes(f.paymentType)) return fail(res, 400, 'Choose a payment type from the list.'); fields['Term 4 Payment Type'] = f.paymentType || null; before.paymentType = row.paymentType }
+  // Switching to session by session: the term fee goes, so nothing is owing
+  // until sessions are billed (the fee becomes what they have paid so far).
+  if (fields['Term 4 Payment Type'] && isSessionType(fields['Term 4 Payment Type']) && !isSessionType(row.paymentType) && !('feeAud' in f)) {
+    fields['Term 4 Fee'] = cents(row.paidAud) / 100
+    fields['Term 4 Payment Status'] = cents(row.paidAud) > 0 ? 'Paid' : 'Unpaid'
+    before.feeAud = row.feeAud
+  }
+  if ('perSessionAud' in f) {
+    const v = f.perSessionAud === null || f.perSessionAud === '' ? 0 : Number(f.perSessionAud)
+    if (!Number.isFinite(v) || v < 0 || v > 2000) return fail(res, 400, 'Enter the price per session in dollars, for example 50.')
+    fields['Term 4 Notes'] = withPerSession(row.notes, Math.round(v * 100))
+    before.perSessionCents = row.perSessionCents
+  }
   if (!Object.keys(fields).length) return fail(res, 400, 'Nothing to change.')
   await updateTerm4Rows([{ id: row.id, fields }])
   await audit({ by: principal.email, action: 'player.edit', target: row.id, before, after: fields })
@@ -668,7 +681,8 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
       const fee = cents(r.feeAud), paid = cents(r.paidAud), owe = Math.max(0, fee - paid)
       const markedPaid = /^paid$/i.test(r.paymentStatus || '')
       let status
-      if (markedPaid || (fee > 0 && paid >= fee)) status = 'paid'
+      if (isSessionType(r.paymentType)) status = 'session'
+      else if (markedPaid || (fee > 0 && paid >= fee)) status = 'paid'
       else if (unrecorded > 0 && (owe > 0 || !fee)) { status = 'stripe'; unrecorded -= Math.min(unrecorded, owe || unrecorded) }
       else if (paid > 0) status = 'part'
       else if (fee > 0) status = 'unpaid'
@@ -679,7 +693,7 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
         rowId: r.id, player: r.player, parent: r.parent, email: r.email, phone: r.phone || '', familyKey: email, openLink: openLinkFor.get(r.id) || null, product: productOfRow(r, g),
         group: g ? `${g.day} ${g.time}, ${loc.name}` : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Not in a group',
         groupId: r.groupId, locationId: loc.id, locationName: loc.name, coach: g ? coachLabel(coachById(config, g.coachId)) : r.coach,
-        feeCents: fee, paidCents: paid, owingCents: status === 'paid' || status === 'stripe' ? 0 : owe,
+        feeCents: fee, paidCents: paid, owingCents: status === 'paid' || status === 'stripe' ? 0 : owe, perSessionCents: r.perSessionCents || null,
         airtableStatus: r.paymentStatus || 'Not set', type: r.paymentType || '', status,
         stripeCents, stripeCount: pays.length, hasNotes: Boolean((r.notes || '').trim() || (r.linkNotes || '').trim()),
       })
@@ -732,7 +746,7 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
       venuesCents: locations.reduce((t, l) => t + l.receivedCents, 0), unlinkedCents: totalOf(alloc.unlinked),
     },
     unlinked: { cents: totalOf(alloc.unlinked), items: alloc.unlinked.items.slice(0, 40) },
-    status: { paid: count('paid'), stripe: count('stripe'), part: count('part'), unpaid: count('unpaid'), unpriced: count('unpriced') },
+    status: { paid: count('paid'), stripe: count('stripe'), part: count('part'), unpaid: count('unpaid'), unpriced: count('unpriced'), session: count('session') },
     weekly: [...weeks.values()],
     locations,
     players,
@@ -943,6 +957,74 @@ async function familyInvoice(req, res, principal, config, body) {
   }
   await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: q.term4Ids, cents: amountCents, product: 'family', emailed, replaced: openLinks.map((x) => x.id) } })
   return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed, replaced: openLinks.length })
+}
+
+// Session by session (Lee, 12 Oct 2026): bill the sessions a player came to,
+// at their own price per session. The sessions are added to the row's fee
+// (so the balance, Money and the ledger stay right), then either a payment
+// link for exactly that, or recorded as already paid by bank or cash.
+// Several rows of one family (sisters) can go on one link.
+async function sessionInvoice(req, res, principal, config, body) {
+  const asked = (Array.isArray(body.rows) ? body.rows : []).slice(0, 6)
+  if (!asked.length) return fail(res, 400, 'Choose a player.')
+  const rows = []
+  for (const a of asked) {
+    const r = await getTerm4Row(clean(a.rowId, 30))
+    if (!r) return fail(res, 404, 'Player row not found in Airtable.')
+    const sessions = Number(a.sessions), per = Number(a.perSessionCents)
+    if (!Number.isInteger(sessions) || sessions < 1 || sessions > 20) return fail(res, 400, `How many sessions for ${r.player}? (1 to 20)`)
+    if (!Number.isInteger(per) || per < 100 || per > 200000) return fail(res, 400, `Enter the price per session for ${r.player}.`)
+    rows.push({ row: r, sessions, per, cents: sessions * per })
+  }
+  const what = clean(body.what, 120)
+  const amountCents = rows.reduce((t, x) => t + x.cents, 0)
+  const paidNow = body.mode === 'paid'
+  const email = rows[0].row.email
+  if (!paidNow && !email) return fail(res, 400, 'This player has no parent email in Airtable. Add one with Edit first.')
+  if (!paidNow && rows.some((x) => !rowEmails(x.row).includes(email))) return fail(res, 400, 'These players are under different parent emails. Send them one at a time.')
+  const ids = rows.map((x) => x.row.id)
+  let openLinks = []
+  if (!paidNow) {
+    openLinks = (await listPayreqs()).filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.some((id) => ids.includes(id)))
+    if (openLinks.some((q) => q.term4Ids.some((id) => !ids.includes(id)))) return fail(res, 409, 'One of these players shares an open link with someone else. Cancel it in Payment links first.')
+    if (openLinks.length && body.replace !== true) return fail(res, 409, `There is already an open link (${openLinks.map((q) => `${q.playerNames.join(' + ')} ${formatAud(q.amountCents)}`).join(', ')}). Replace it with this one?`, { code: 'link_open' })
+    // A replaced session link takes its sessions back off the fee (restoreFields).
+    for (const q of openLinks) { const c = await cancelLink(q, principal, 'Replaced by a new session link'); if (c.error) return fail(res, c.status, c.error) }
+  }
+  const restoreFields = []
+  const updates = []
+  for (const x of rows) {
+    const r = (await getTerm4Row(x.row.id)) || x.row
+    x.row = r
+    restoreFields.push({ id: r.id, fields: { 'Term 4 Fee': r.feeAud ?? 0, 'Term 4 Payment Status': r.paymentStatus || 'Unpaid' } })
+    // Not yet session by session: the term fee goes; sessions build up from what is paid.
+    const fee = (isSessionType(r.paymentType) ? cents(r.feeAud) : cents(r.paidAud)) + x.cents
+    updates.push({ id: r.id, fields: {
+      'Term 4 Fee': fee / 100,
+      'Term 4 Payment Status': cents(r.paidAud) >= fee ? 'Paid' : cents(r.paidAud) > 0 ? 'Partially Paid' : 'Unpaid',
+      ...(isSessionType(r.paymentType) ? {} : { 'Term 4 Payment Type': SESSION_TYPE }),
+      'Term 4 Notes': appendNote(withPerSession(r.notes, x.per), `Sessions billed by ${principal.name}: ${x.sessions} x ${formatAud(x.per)} = ${formatAud(x.cents)}${what ? ` (${what})` : ''}${paidNow ? ', paid' : ', payment link'}.`),
+    } })
+  }
+  await updateTerm4Rows(updates)
+  await audit({ by: principal.email, action: 'player.sessions', target: ids.join(','), after: { rows: rows.map((x) => ({ id: x.row.id, sessions: x.sessions, per: x.per })), what, mode: paidNow ? 'paid' : 'link' } })
+  if (paidNow) {
+    const out = await recordPaymentCore(principal, config, { rowIds: ids, amountCents, method: body.method, date: body.date, note: `${rows.map((x) => `${x.row.player} ${x.sessions} x ${formatAud(x.per)}`).join(', ')}${what ? ` (${what})` : ''}` })
+    if (!out.ok) { await updateTerm4Rows(restoreFields); return fail(res, out.status, out.error) }
+    return res.status(200).json({ success: true, recorded: formatAud(amountCents) })
+  }
+  const q = await createPayreq({ req, principal, config, group: null, rows: rows.map((x) => ({ id: x.row.id, name: x.row.player })), email, parentName: rows[0].row.parent, amountCents, reason: 'sessions', afterpay: false, restoreFields })
+  q.places = rows.map((x) => ({ rowId: x.row.id, name: x.row.player, label: `${x.sessions} session${x.sessions > 1 ? 's' : ''} at ${formatAud(x.per)}${what ? `, ${what}` : ''}`, feeCents: x.cents, paidCents: 0, owingCents: x.cents }))
+  q.groupLabel = 'Session by session'
+  await savePayreq(q)
+  let emailed = false
+  if (body.sendEmail === true) {
+    await sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents, needWaiver: false, sessions: true })
+    emailed = true
+    await savePayreq({ ...q, emailedAt: new Date().toISOString() })
+  }
+  await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: ids, cents: amountCents, product: 'sessions', emailed } })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed })
 }
 
 function splitEven(total, n) {
@@ -1667,6 +1749,7 @@ async function handle(req, res) {
       case 'setTrial': return await setTrial(res, principal, body)
       case 'sendPaymentLink': return await sendPaymentLink(req, res, principal, config, body)
       case 'familyInvoice': return await familyInvoice(req, res, principal, config, body)
+      case 'sessionInvoice': return await sessionInvoice(req, res, principal, config, body)
       case 'nextTerm': {
         const nt = config.nextTerm
         const [roster, groups, statuses] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name)])

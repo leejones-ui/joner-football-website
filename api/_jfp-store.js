@@ -169,6 +169,17 @@ export function emailsIn(v) {
   const found = String(v || '').toLowerCase().match(/[^\s<>,;:"'()[\]]+@[^\s<>,;:"'()[\]]+\.[a-z]{2,}/g) || []
   return [...new Set(found)]
 }
+// Players who pay session by session (Lee, 12 Oct 2026: mostly the pro
+// players, e.g. A$50 a session): shown pink, invoiced for the sessions they
+// come to rather than a term fee. Price per session sits in the row's notes
+// as [PERSESSION:<cents>].
+export const SESSION_TYPE = 'JFP Session by session'
+export const isSessionType = (type) => /session by session|drop-in|1 on 1 casual/i.test(String(type || ''))
+export function withPerSession(notes, cents) {
+  const base = String(notes || '').replace(/\s*\[PERSESSION:\d+\]/g, '')
+  return cents > 0 ? `${base}${base ? ' ' : ''}[PERSESSION:${cents}]` : base
+}
+
 // A Term 4 row's addresses (rows from an older cache only have .email).
 export const rowEmails = (r) => (r?.emails?.length ? r.emails : emailsIn(r?.email))
 

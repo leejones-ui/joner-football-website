@@ -592,6 +592,40 @@ await test('family invoice: each place keeps its own price, one link for the fam
   assert.equal(new Set(lines.map((l) => l.fields['Stripe Checkout Session ID'])).size, 1, 'all from the one payment')
 })
 
+await test('session by session: pink in Money, a link for the sessions (sisters on one link), or recorded as a bank payment', async () => {
+  const parent = { name: 'Sam Sisters', email: 'sessions@example.com', mobile: '0400666111' }
+  const add = async (name) => (await portal(lee, 'addPlayer', { groupId: WED420, force: true, player: { name }, parent, payment: 'none' })).data.rowId
+  const j = await add('Jay Sister'), i = await add('Ivy Sister')
+  for (const id of [j, i]) assert.equal((await portal(lee, 'editPlayer', { rowId: id, fields: { paymentType: 'JFP Session by session', perSessionAud: 50 } })).status, 200)
+  let m = (await portal(lee, 'money', { fresh: true })).data.money
+  assert.deepEqual(m.players.filter((p) => [j, i].includes(p.rowId)).map((p) => [p.status, p.perSessionCents]), [['session', 5000], ['session', 5000]])
+  const link = await portal(lee, 'sessionInvoice', { rows: [{ rowId: j, sessions: 2, perSessionCents: 5000 }, { rowId: i, sessions: 2, perSessionCents: 5000 }], what: '8 and 15 Oct', sendEmail: true })
+  assert.equal(link.status, 200, JSON.stringify(link.data))
+  assert.equal(link.data.payreq.amountLabel, 'A$200')
+  let air = await at()
+  assert.equal(air.term4.find((r) => r.id === j).fields['Term 4 Fee'], 100)
+  const c = client()
+  await signIn(c, parent.email)
+  const acc = (await c.call('/api/jfp-account', { action: 'overview' })).data
+  const todo = acc.todo.find((t) => t.id === link.data.payreq.id)
+  assert.equal(todo.needsKit, false, 'no kit step for sessions')
+  await c.call('/api/jfp-account', { action: 'signWaiver', players: acc.players.map((p) => ({ key: p.key, dob: '2010-02-02', emergencyName: 'E C', emergencyPhone: '0400666112' })), waiver: WAIVER, parentName: parent.name, mobile: parent.mobile })
+  const pay = await c.call('/api/jfp-account', { action: 'pay', payreqId: todo.id, noKit: true })
+  assert.equal(pay.status, 200, JSON.stringify(pay.data))
+  await stripe(pay.data.url, 'pay')
+  air = await at()
+  for (const id of [j, i]) assert.equal(air.term4.find((r) => r.id === id).fields['Term 4 Amount Paid'], 100)
+  // The next week, paid by bank transfer.
+  const bank = await portal(lee, 'sessionInvoice', { rows: [{ rowId: j, sessions: 1, perSessionCents: 5000 }], mode: 'paid', method: 'bank transfer' })
+  assert.equal(bank.status, 200, JSON.stringify(bank.data))
+  air = await at()
+  const row = air.term4.find((r) => r.id === j).fields
+  assert.equal(row['Term 4 Fee'], 150)
+  assert.equal(row['Term 4 Amount Paid'], 150)
+  m = (await portal(lee, 'money', { fresh: true })).data.money
+  assert.equal(m.players.find((p) => p.rowId === j).status, 'session', 'stays pink after paying')
+})
+
 await test('a flood of parallel code guesses still gets only five tries', async () => {
   const c = client()
   const s = await c.call('/api/jfp-auth', { action: 'start', email: 'flood@example.com', audience: 'parent' })

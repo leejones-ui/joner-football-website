@@ -5,7 +5,7 @@
 import { $, esc, api, toast, signIn, whoAmI, signOut, money } from './jfp-common.js'
 import { renderMessages } from './jfp-portal-messages.js'
 import { renderJuniorsMoney, programmeSwitch, bindSwitch, juniorsCardShell, fillJuniorsCard } from './jfp-portal-juniors.js'
-import { drawFamilies } from './jfp-portal-family.js'
+import { drawFamilies, sessionModal } from './jfp-portal-family.js'
 
 // jf: the Money programme switch and the Joners Juniors filters.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', pricing: null }
@@ -221,14 +221,22 @@ async function copy(text) {
   try { await navigator.clipboard.writeText(text); toast('Link copied') } catch { prompt('Copy this link', text) }
 }
 
+// Four payment colours everywhere in the portal (Lee, 12 Oct 2026):
+// red unpaid, green paid, orange part paid, pink session by session.
+const SESSION_RE = /session by session|drop-in|1 on 1 casual/i
+function payKind(p) {
+  if (SESSION_RE.test(p.type || p.paymentType || '')) return 'session'
+  const s = p.paymentStatus
+  if (s === 'Paid') return 'paid'
+  if (s === 'Partially Paid') return 'part'
+  return 'unpaid'
+}
+const PAY_KIND = { paid: ['green', 'Paid'], part: ['orange', 'Part paid'], unpaid: ['red', 'Unpaid'], session: ['pink', 'Session by session'] }
 const payPill = (p) => {
   if (p.trial) return '<span class="j-pill j-pill-blue">Trial</span>'
-  const s = p.paymentStatus
-  if (s === 'Paid') return '<span class="j-pill j-pill-green">Paid</span>'
-  if (s === 'Partially Paid') return '<span class="j-pill j-pill-amber">Part paid</span>'
-  if (s === 'Unpaid') return '<span class="j-pill j-pill-red">Unpaid</span>'
-  if (s === 'N/A') return '<span class="j-pill j-pill-grey">N/A</span>'
-  return '<span class="j-pill j-pill-grey">Not set</span>'
+  if (p.paymentStatus === 'N/A') return '<span class="j-pill j-pill-grey">N/A</span>'
+  const [c, l] = PAY_KIND[payKind(p)]
+  return `<span class="j-pill j-pill-${c}">${l}</span>`
 }
 const modeLabel = { direct: 'Book now', application: 'Apply only', enquire: 'Enquire', closed: 'Hidden' }
 const modePill = (g) => ({ direct: 'green', application: 'violet', enquire: 'grey', closed: 'grey' }[g.mode])
@@ -306,7 +314,7 @@ async function renderBoard(refresh) {
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
       <div class="jp-seg" id="b-loc">${[['', 'All locations'], ...B.locations.map((l) => [l.id, l.name])].map(([v, l]) => `<button type="button" data-loc="${esc(v)}" aria-pressed="${P.loc === v}">${esc(l)}</button>`).join('')}</div>
       <select class="j-select" id="b-coach" style="width:auto"><option value="">Any coach</option>${B.coaches.map((c) => `<option value="${esc(c.id)}" ${P.coachFilter === c.id ? 'selected' : ''}>Coach ${esc(c.name)}</option>`).join('')}</select>
-      ${P.ttView === 'staff' ? '<div class="jp-legend" style="margin-left:auto"><span><i class="i-paid"></i>Paid</span><span><i class="i-due"></i>Unpaid</span><span><i class="i-link"></i>Link sent</span><span><i class="i-trial"></i>Trial</span><span><i class="i-off"></i>Not set</span><span><b style="color:#B42318;font-size:10px">W</b> no waiver</span></div>' : ''}
+      ${P.ttView === 'staff' ? '<div class="jp-legend" style="margin-left:auto"><span><i class="i-due"></i>Unpaid</span><span><i class="i-paid"></i>Paid</span><span><i class="i-part"></i>Part paid</span><span><i class="i-session"></i>Session by session</span><span><i class="i-trial"></i>Trial</span><span><b style="color:#B42318;font-size:10px">W</b> no waiver</span></div>' : ''}
     </div>
     ${P.ttView === 'staff' ? '<p class="muted small" style="margin-bottom:8px">Tap a group for its rules, Add player or Copy spot link. Tap a name for payment and more. Drag a name onto another group to move them.</p>' : P.ttView === 'coach' ? '<p class="muted small" style="margin-bottom:8px">What a coach sees: every group, names and ages. No money, no contact details.</p>' : '<p class="muted small" style="margin-bottom:8px">What parents see: places left, never names.</p>'}
     <div class="jp-tt-wrap">${ttGrid(groups)}</div>
@@ -333,10 +341,7 @@ function ttGrid(groups) {
 
 function dotFor(p) {
   if (p.trial) return 'i-trial'
-  if (p.paymentStatus === 'Paid') return 'i-paid'
-  if (p.payreq) return 'i-link'
-  if (['Unpaid', 'Partially Paid'].includes(p.paymentStatus)) return 'i-due'
-  return 'i-off'
+  return { paid: 'i-paid', part: 'i-part', unpaid: 'i-due', session: 'i-session' }[payKind(p)]
 }
 
 const isJJ = (g) => g?.label === 'Joners Juniors'
@@ -1098,8 +1103,8 @@ async function renderPrices() {
 const cssVar = (name) => getComputedStyle(root()).getPropertyValue(name).trim()
 const SERIES = [['stripe', 'Stripe', '--c-series-1'], ['bank', 'Bank transfer', '--c-series-2'], ['cash', 'Cash', '--c-series-3']]
 const STATUS = {
-  paid: ['Paid', '--c-good'], stripe: ['Paid in Stripe, not recorded', '--c-series-1'], part: ['Part paid', '--c-warning'],
-  unpaid: ['Unpaid', '--c-critical'], unpriced: ['Not priced', '--c-neutral'],
+  paid: ['Paid', '--c-good'], stripe: ['Paid in Stripe, not recorded', '--c-series-1'], part: ['Part paid', '--c-orange'],
+  unpaid: ['Unpaid', '--c-critical'], unpriced: ['Unpaid, no price set', '--c-critical'], session: ['Session by session', '--c-pink'],
 }
 const compact = (c) => { const d = c / 100; return d >= 10000 ? `A$${(d / 1000).toFixed(d >= 100000 ? 0 : 1)}K` : `A$${Math.round(d).toLocaleString('en-AU')}` }
 const niceMax = (v) => { if (v <= 0) return 100000; const p = 10 ** Math.floor(Math.log10(v)); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p }
@@ -1354,14 +1359,15 @@ const statusPill = (s) => `<span class="jm-status"><i style="background:${cssVar
 
 const juniorsUi = () => ({ view, post, filter: P.jf, go })
 // Edit a player's details from Money: name, family, fee and payment type.
-const PAY_TYPES = ['JFP 10 weeks', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
+const PAY_TYPES = ['JFP Session by session', 'JFP 10 weeks', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
 function editPlayerModal(p) {
   if (!p) return
   const box = modal(`<h2 style="margin-bottom:4px">Edit ${esc(p.player)}</h2>
     <p class="muted small" style="margin-bottom:12px">Saves to their row in Term 4 Players. The balance updates from the fee. Payments are recorded with Record payment.</p>
     <label class="j-field"><span>Player's full name</span><input class="j-input" id="ep-name" value="${esc(p.player)}"></label>
     <div class="j-two"><label class="j-field"><span>Fee for this place (A$)</span><input class="j-input" id="ep-fee" inputmode="decimal" value="${p.feeCents == null ? '' : p.feeCents / 100}" placeholder="not set"></label>
-    <label class="j-field"><span>Payment type</span><select class="j-select" id="ep-type"><option value="">Not set</option>${PAY_TYPES.map((t) => `<option ${t === p.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label></div>
+    <label class="j-field"><span>Payment type</span><select class="j-select" id="ep-type"><option value="">Not set</option>${[...new Set([...PAY_TYPES, p.type].filter(Boolean))].map((t) => `<option ${t === p.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label></div>
+    <label class="j-field" id="ep-per-wrap"><span>Price per session (A$), for session by session</span><input class="j-input" id="ep-per" inputmode="decimal" value="${p.perSessionCents ? p.perSessionCents / 100 : ''}" placeholder="e.g. 50"></label>
     <div class="j-two"><label class="j-field"><span>Parent name</span><input class="j-input" id="ep-parent" value="${esc(p.parent || '')}"></label>
     <label class="j-field"><span>Mobile</span><input class="j-input" id="ep-phone" inputmode="tel" value="${esc(p.phone || '')}"></label></div>
     <label class="j-field"><span>Parent email</span><input class="j-input" id="ep-email" inputmode="email" value="${esc(p.email || '')}"></label>
@@ -1377,6 +1383,8 @@ function editPlayerModal(p) {
     if (v('#ep-phone') !== (p.phone || '')) fields.phone = v('#ep-phone')
     if ((fee === '' ? null : Math.round(Number(fee) * 100)) !== p.feeCents) fields.feeAud = fee === '' ? null : Number(fee)
     if (v('#ep-type') !== (p.type || '')) fields.paymentType = v('#ep-type')
+    const per = v('#ep-per')
+    if ((per === '' ? null : Math.round(Number(per) * 100)) !== (p.perSessionCents || null)) fields.perSessionAud = per === '' ? null : Number(per)
     if (!Object.keys(fields).length) return closeModal()
     e.currentTarget.disabled = true
     const r = await post('editPlayer', { rowId: p.rowId, fields })
@@ -1427,7 +1435,7 @@ async function renderMoney(pre) {
       <div class="jm-chips jm-view" role="group" aria-label="Show"><button type="button" data-money-view="players" aria-pressed="${f.view !== 'family'}">Players</button><button type="button" data-money-view="family" aria-pressed="${f.view === 'family'}">By family</button></div>
       <div class="jm-search"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2" stroke-linecap="round"/></svg><input class="j-input" id="m-q" type="search" placeholder="Search player, parent or email" value="${esc(f.q)}" autocomplete="off"></div>
       <select class="j-select" id="m-loc" style="width:auto"><option value="">All locations</option>${m.locations.map((l) => `<option value="${esc(l.id)}" ${f.loc === l.id ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
-      <div class="jm-chips" id="m-chips">${[['', 'All'], ['paid', 'Paid'], ['stripe', 'Paid in Stripe'], ['part', 'Part paid'], ['unpaid', 'Unpaid'], ['unpriced', 'Not priced']].map(([v, l]) => `<button type="button" data-set-status="${v}" aria-pressed="${f.status === v}">${v ? `<i style="background:${cssVar(STATUS[v][1])}"></i>` : ''}${l} <span class="n">${counts[v] || 0}</span></button>`).join('')}</div>
+      <div class="jm-chips" id="m-chips">${[['', 'All'], ['paid', 'Paid'], ['part', 'Part paid'], ['unpaid', 'Unpaid'], ['session', 'Session by session'], ['unpriced', 'No price set'], ['stripe', 'Paid in Stripe']].filter(([v]) => !v || v !== 'stripe' || counts.stripe).map(([v, l]) => `<button type="button" data-set-status="${v}" aria-pressed="${f.status === v}">${v ? `<i style="background:${cssVar(STATUS[v][1])}"></i>` : ''}${l} <span class="n">${counts[v] || 0}</span></button>`).join('')}</div>
     </div>
     <div id="m-fams" ${f.view === 'family' ? '' : 'hidden'}></div>
     <div class="jp-scroll" id="m-table" ${f.view === 'family' ? 'hidden' : ''}><table class="jp-table jm-table"><thead><tr><th>Player</th><th>Group</th><th class="num">Fee</th><th class="num">Paid</th><th class="num">Owing</th><th>Status</th><th></th></tr></thead><tbody id="m-rows"></tbody></table></div>
@@ -1438,8 +1446,8 @@ async function renderMoney(pre) {
     if (f.view === 'family') { $('m-count').textContent = ''; return drawFamilies($('m-fams'), { m, f, post, toast, confirmBox, statusPill, done: () => { P.board = null; PL.at = 0; renderMoney() } }) }
     const q = f.q.trim().toLowerCase()
     const list = m.players.filter((p) => (!f.status || p.status === f.status) && (!f.loc || p.locationId === f.loc) && (!q || `${p.player} ${p.parent} ${p.email}`.toLowerCase().includes(q)))
-    $('m-rows').innerHTML = list.map((p) => `<tr data-row="${esc(p.rowId)}"><td><b>${esc(p.player)}</b><br><span class="muted small">${esc(p.parent || '')}</span></td><td class="small">${esc(p.group)}</td><td class="num">${p.feeCents ? esc(money(p.feeCents)) : '<span class="muted">not set</span>'}</td><td class="num">${esc(money(p.paidCents))}${p.status === 'stripe' ? `<br><span class="muted small">Stripe ${esc(money(p.stripeCents))}</span>` : ''}</td><td class="num">${p.owingCents ? `<b>${esc(money(p.owingCents))}</b>` : '<span class="muted">0</span>'}</td><td>${statusPill(p.status)}</td>
-      <td><div class="jm-actions">${p.hasNotes ? `<button type="button" class="jm-icon" data-notes="${esc(p.rowId)}" title="Notes" aria-label="Notes for ${esc(p.player)}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 4h9l4 4v12H6z"/><path d="M9 11h7M9 15h5"/></svg></button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-record="${esc(p.rowId)}">Record payment</button><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-edit-row="${esc(p.rowId)}">Edit</button><button type="button" class="j-btn j-btn-ghost j-btn-sm jm-del" data-remove-row="${esc(p.rowId)}" aria-label="Remove ${esc(p.player)}">Remove</button></div></td></tr>`).join('') || '<tr><td colspan="7"><div class="j-empty">No players match.</div></td></tr>'
+    $('m-rows').innerHTML = list.map((p) => `<tr data-row="${esc(p.rowId)}"><td><b>${esc(p.player)}</b><br><span class="muted small">${esc(p.parent || '')}</span></td><td class="small">${esc(p.group)}</td><td class="num">${p.status === 'session' ? `${p.perSessionCents ? `${esc(money(p.perSessionCents))}<br><span class="muted small">a session</span>` : '<span class="muted">per session</span>'}${p.feeCents ? `<br><span class="muted small">${esc(money(p.feeCents))} billed</span>` : ''}` : p.feeCents ? esc(money(p.feeCents)) : '<span class="muted">not set</span>'}</td><td class="num">${esc(money(p.paidCents))}${p.status === 'stripe' ? `<br><span class="muted small">Stripe ${esc(money(p.stripeCents))}</span>` : ''}</td><td class="num">${p.owingCents ? `<b>${esc(money(p.owingCents))}</b>` : '<span class="muted">0</span>'}</td><td>${statusPill(p.status)}</td>
+      <td><div class="jm-actions">${p.hasNotes ? `<button type="button" class="jm-icon" data-notes="${esc(p.rowId)}" title="Notes" aria-label="Notes for ${esc(p.player)}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 4h9l4 4v12H6z"/><path d="M9 11h7M9 15h5"/></svg></button>` : ''}${p.status === 'session' ? `<button type="button" class="j-btn j-btn-line j-btn-sm jm-pink" data-sessions="${esc(p.rowId)}">Sessions${p.perSessionCents ? ` · ${esc(money(p.perSessionCents))}` : ''}</button>` : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-record="${esc(p.rowId)}">Record payment</button>`}<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-edit-row="${esc(p.rowId)}">Edit</button><button type="button" class="j-btn j-btn-ghost j-btn-sm jm-del" data-remove-row="${esc(p.rowId)}" aria-label="Remove ${esc(p.player)}">Remove</button></div></td></tr>`).join('') || '<tr><td colspan="7"><div class="j-empty">No players match.</div></td></tr>'
     $('m-count').textContent = `${list.length} of ${m.players.length} players · owing ${money(list.reduce((t, p) => t + p.owingCents, 0))}`
   }
   draw()
@@ -1457,6 +1465,7 @@ async function renderMoney(pre) {
     const n = e.target.closest('[data-notes]'); if (n) { e.stopPropagation(); return notesModal(n.dataset.notes) }
     const rec = e.target.closest('[data-record]'); if (rec) { e.stopPropagation(); return recordModal(m.players.find((p) => p.rowId === rec.dataset.record)) }
     const ed = e.target.closest('[data-edit-row]'); if (ed) { e.stopPropagation(); return editPlayerModal(m.players.find((p) => p.rowId === ed.dataset.editRow)) }
+    const ss = e.target.closest('[data-sessions]'); if (ss) { e.stopPropagation(); return sessionModal(m.players.find((p) => p.rowId === ss.dataset.sessions), { m, post, toast, confirmBox, modal, closeModal, done: () => { P.board = null; PL.at = 0; renderMoney() } }) }
     const rm = e.target.closest('[data-remove-row]'); if (rm) { e.stopPropagation(); const p = m.players.find((x) => x.rowId === rm.dataset.removeRow); return removeModal({ rowId: p.rowId, name: p.player, paymentStatus: p.airtableStatus }, null, () => renderMoney()) }
     const tr = e.target.closest('[data-row]'); if (tr) historyDrawer(tr.dataset.row)
   })
@@ -1723,11 +1732,10 @@ function plMatch(p) {
 const money0 = (n) => (n == null ? '' : `A$${Number(n).toLocaleString('en-AU')}`)
 
 function plRow(p) {
-  const pay = p.paymentStatus === 'Paid' ? 'green' : p.feeAud == null ? 'red' : 'amber'
   return `<tr data-pl="${esc(p.rowId)}" style="cursor:pointer">
     <td><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted small">(${esc(p.age)})</span>` : ''}<br><span class="muted small">${esc(p.parent || 'no parent name')}</span></td>
     <td>${p.inGroup ? esc(p.groupLabel) : '<span class="j-pill j-pill-red">Not in a group</span>'}<br><span class="muted small">${esc(p.coach || '')}</span></td>
-    <td><span class="j-pill j-pill-${pay}">${esc(p.paymentStatus || 'Not set')}</span>${p.feeAud != null ? `<br><span class="muted small">${esc(money0(p.feeAud))}${p.balanceAud ? `, ${esc(money0(p.balanceAud))} owing` : ''}</span>` : ''}</td>
+    <td>${payPill(p)}${p.feeAud != null ? `<br><span class="muted small">${esc(money0(p.feeAud))}${p.balanceAud ? `, ${esc(money0(p.balanceAud))} owing` : ''}</span>` : ''}</td>
     <td>${p.waiver.onFile ? '<span class="j-pill j-pill-green">Waiver</span>' : '<span class="j-pill j-pill-red">No waiver</span>'}</td>
     <td class="muted small">${esc(p.email || 'no email')}</td>
   </tr>`

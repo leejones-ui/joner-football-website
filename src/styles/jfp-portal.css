@@ -10,7 +10,7 @@
   --jp-top-h: 60px;
   --jp-ease: cubic-bezier(.2, .8, .2, 1);
   --c-series-1: #2a78d6; --c-series-2: #eb6834; --c-series-3: #1baf7a;
-  --c-good: #0ca30c; --c-warning: #fab219; --c-critical: #d03b3b; --c-neutral: #b4b3ad;
+  --c-good: #0ca30c; --c-warning: #fab219; --c-critical: #d03b3b; --c-neutral: #b4b3ad; --c-orange: #f97316; --c-pink: #ec4899;
   --c-grid: #e8e7e3; --c-accent: #d20a0a;
 }
 .jp-theme[data-theme="dark"] {
@@ -338,3 +338,10 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
   .jf-fam footer { justify-content: stretch; }
   .jf-fam footer .j-btn { flex: 1 1 auto; }
 }
+
+/* Payment colours in dark mode. */
+.jp-theme[data-theme="dark"] .j-pill-orange { background: rgba(249, 115, 22, .16); color: #fdba74; }
+.jp-theme[data-theme="dark"] .j-pill-pink { background: rgba(236, 72, 153, .16); color: #f9a8d4; }
+.jf-srow { border: 1px solid var(--j-line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+.jf-srow .j-two { margin-top: 8px; }
+.jm-pink { border-color: var(--c-pink) !important; color: var(--c-pink) !important; }
