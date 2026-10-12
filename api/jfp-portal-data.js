@@ -528,7 +528,7 @@ async function recordPaymentCore(principal, config, body) {
   for (const id of ids) { const r = await getTerm4Row(id); if (r) rows.push(r) }
   if (!rows.length) return fail(res, 404, 'Player row not found.')
   const method = METHODS[String(body.method || '').trim().toLowerCase()] || 'Other'
-  const date = ISO.test(body.date || '') ? body.date : sydneyToday()
+  let date = ISO.test(body.date || '') ? body.date : sydneyToday()
   if (date > sydneyToday()) return fail(res, 400, 'The payment date cannot be in the future.')
   let amount = Number(body.amountCents)
   let stripePay = null
@@ -539,6 +539,8 @@ async function recordPaymentCore(principal, config, body) {
     const ledger = await listLedger(config.term)
     if (ledger.some((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].includes(stripePay.id) || (stripePay.intentId && [l['Payment ID'], l['Stripe Payment Intent ID']].includes(stripePay.intentId)))) return fail(res, 409, 'That Stripe payment is already in the ledger.')
     if (!(amount > 0)) amount = stripePay.amountCents - stripePay.refundedCents
+    // The day the family paid, not the day it was recorded.
+    if (!ISO.test(body.date || '')) date = sydneyToday(Date.parse(stripePay.at))
   }
   if (!(Number.isInteger(amount) && amount > 0 && amount <= 2000000)) return fail(res, 400, 'Enter the amount received.')
   // The same payment cannot be recorded twice by a double click or by two staff
@@ -572,7 +574,12 @@ async function recordPaymentCore(principal, config, body) {
   const paymentId = stripePay ? (stripePay.intentId || stripePay.id) : `${method === 'Cash' ? 'CASH' : method === 'Bank Transfer' ? 'BANK' : 'OFF'}-${newId('T4').slice(3)}`
   let ledgerId = ''
   try {
-    ledgerId = await createLedgerRow({ paymentId, config, playerNames: rows.map((r) => r.player), amountCents: amount, paidAt: `${date}T00:00:00+10:00`, sourceIds: rows.map((r) => r.id), sessionId: stripePay?.id || '', intentId: stripePay?.intentId || '', method, notes: `Recorded in the JFP portal by ${principal.name}.${body.note ? ` ${clean(body.note, 200)}` : ''}` })
+    // One ledger line per player, each with their part (Lee, 12 Oct 2026).
+    const parts = updates.filter((u) => u.share > 0)
+    for (const [i, u] of parts.entries()) {
+      const id = await createLedgerRow({ paymentId: i ? `${paymentId}#${i + 1}` : paymentId, config, playerNames: [u.r.player], amountCents: u.share, paidAt: `${date}T00:00:00+10:00`, sourceIds: [u.r.id], sessionId: stripePay?.id || '', intentId: stripePay?.intentId || '', method, notes: `Recorded in the JFP portal by ${principal.name}${parts.length > 1 ? `: ${u.r.player}'s part, ${i + 1} of ${parts.length}, of ${formatAud(amount)} for ${parts.map((x) => x.r.player).join(', ')}` : ''}.${body.note ? ` ${clean(body.note, 200)}` : ''}` })
+      ledgerId = ledgerId || id
+    }
   } catch (error) { console.error('jfp ledger row failed', error) }
   await bustRosterCache()
   await audit({ by: principal.email, action: 'payment.record', target: rows.map((r) => r.id).join(','), after: { name: rows.map((r) => r.player).join(', '), cents: amount, method, date, stripe: stripePay?.id || '', ledger: Boolean(ledgerId) } })
@@ -682,8 +689,12 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
       const markedPaid = /^paid$/i.test(r.paymentStatus || '')
       let status
       if (isSessionType(r.paymentType)) status = 'session'
-      else if (markedPaid || (fee > 0 && paid >= fee)) status = 'paid'
+      else if (fee > 0 && paid >= fee) status = 'paid'
+      // Marked Paid by hand with no amount, and the family's Stripe payment is
+      // not on the row yet (Ligia's links, Sept 2026): record it, so the
+      // amount shows, the ledger has it and the venues add up.
       else if (unrecorded > 0 && (owe > 0 || !fee)) { status = 'stripe'; unrecorded -= Math.min(unrecorded, owe || unrecorded) }
+      else if (markedPaid) status = 'paid'
       else if (paid > 0) status = 'part'
       else if (fee > 0) status = 'unpaid'
       else status = 'unpriced'

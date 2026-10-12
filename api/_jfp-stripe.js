@@ -13,8 +13,9 @@ import { kvGetJson, kvSetJson } from './_jfp-store.js'
 const CACHE = 'jfp:stripe-payments'
 const CACHE_SECONDS = 300
 const MAX_PAGES = 20
-export const JFP_PRODUCT = /\bJFP\b|Joner Football Performance|Pathway|1 ?on ?1|1 to 1|Trial|Drop ?in|Sibling/i
-export const NOT_JFP = /camp|holiday|clinic|workshop|app subscription|teams/i
+// "Sebastian Noble — Additional Tuesday Term 4 session" (Ligia's links) is JFP too.
+export const JFP_PRODUCT = /\bJFP\b|Joner Football Performance|Pathway|1 ?on ?1|1 to 1|Trial|Drop ?in|Sibling|\bTerm [1-4]\b/i
+export const NOT_JFP = /camp|holiday|clinic|workshop|app subscription|teams|junior/i
 
 async function linkProduct(linkId) {
   const key = `jfp:stripe-link:${linkId}`
