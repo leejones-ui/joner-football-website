@@ -134,7 +134,7 @@ async function start() {
     show('home')
     const el = document.querySelector(`[data-todo="${CSS.escape(payId)}"]`)
     if (el) { el.scrollIntoView({ block: 'center' }); el.style.boxShadow = '0 0 0 2px #fff' }
-    else if (D && !D.todo.length) toast('That payment is already done or no longer open.')
+    else if (D && !D.todo.length && !(D.juniors?.todo || []).length) toast('That payment is already done or no longer open.')
   }
   loadProfiles()
 }
@@ -144,7 +144,9 @@ async function confirmPaid(sid) {
   for (let i = 0; i < 12; i += 1) {
     const r = await api(`/api/jfp-confirm?session_id=${encodeURIComponent(sid)}`, null, { method: 'GET' })
     if (r.ok && r.data.status === 'paid') {
-      $('banner').innerHTML = `<div class="j-box j-box-green" style="margin-bottom:16px"><b>Payment received.</b> Thank you. We have emailed you a receipt${r.data.payment?.group ? ' and the session dates' : ''}.</div>`
+      $('banner').innerHTML = r.data.kind === 'juniors'
+        ? `<div class="j-box j-box-green" style="margin-bottom:16px"><b>Payment received.</b> Thank you. ${esc((r.data.payment?.players || []).join(' and '))}${r.data.payment?.next?.choice === 'hold' ? `'s place for ${esc(r.data.payment.next.term)} is held` : `'s Joners Juniors place for ${esc(r.data.payment?.term || '')} is paid`}. We have emailed you a receipt.</div>`
+        : `<div class="j-box j-box-green" style="margin-bottom:16px"><b>Payment received.</b> Thank you. We have emailed you a receipt${r.data.payment?.group ? ' and the session dates' : ''}.</div>`
       history.replaceState(null, '', location.pathname)
       await load()
       return
@@ -293,7 +295,7 @@ function todoCards() {
   })
   const rows = [...waivers, ...info]
   const list = rows.length ? `<div class="ja-card ja-todo"><div class="ja-card-head"><div><p class="ja-kicker"><i></i>To do</p><h3 class="ja-h3" style="margin-top:8px;font-size:18px">${rows.length} thing${rows.length === 1 ? '' : 's'} to finish</h3></div></div><ul class="ja-list">${rows.map((r, i) => `<li class="ja-row"><span class="ja-num">${i + 1}</span><div><b>${esc(r.title)}</b><small>${esc(r.sub)}</small></div>${r.btn}</li>`).join('')}</ul></div>` : ''
-  return pays.join('') + list
+  return pays.join('') + jjTodoCards() + list
 }
 
 function renderHome() {
@@ -308,6 +310,12 @@ function renderHome() {
       <button type="button" class="ja-promo red" data-go="app"><img src="/images/app/joner-app-main-iphone-current-transparent.webp" alt="" loading="lazy"><span class="go">${ic('arrow')}</span><p class="ja-kicker"><i></i>Free for JFP players</p><h3>The JF App</h3><p>Keep training between sessions.</p></button>
     </div></div></section>`
   const watch = `<section class="ja-sec">${secHead('Watch at HQ', 'Real sessions from inside Joner Football HQ.', 'r-home')}<div class="ja-rail-wrap"><div class="ja-rail" id="r-home">${hqVideos.slice(0, 6).map(vidCard).join('')}</div></div><p style="margin-top:14px"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-go="videos">All training videos ${ic('arrow')}</button></p></section>`
+  // A Juniors-only family: the Juniors card and its to do, no JFP "nothing booked".
+  if (!D.players.length && D.juniors) {
+    el.innerHTML = `<header class="ja-head"><p class="ja-kicker"><i></i>Joners Juniors · ${esc(D.juniors.term)}</p><h1 class="ja-display">${name ? `Hi ${esc(name)}` : 'Welcome'}</h1></header>
+      <div class="ja-home"><div class="ja-stack">${jjHomeCard()}</div><div class="ja-stack">${todoCards()}${requestsBlock()}</div></div>${watch}`
+    return
+  }
   if (!D.players.length) {
     el.innerHTML = `${head}
       <div class="ja-ticket" style="min-height:420px"><img src="${IMG}/photos/ntra-field-900x1100.webp" alt=""><div class="ja-ticket-top"><span class="ja-live"><i></i>${esc(D.term)}</span></div>
@@ -329,7 +337,7 @@ function renderHome() {
       <div class="ja-stack">${ups.length ? ticket(ups[0]) : `<div class="ja-card"><h3 class="ja-h3">No more sessions this term</h3><p class="ja-muted" style="margin-top:6px">See you next term. <button type="button" class="ja-link" data-go="keep">Keep your spot</button>.</p></div>`}
         ${ups.slice(1).map((x) => `<div class="ja-card"><div class="ja-row" style="border:0;padding:0"><span class="ja-avatar">${esc(initials(x.p.name))}</span><div><b>${esc(x.p.name)}: ${esc(fmt(x.next.startMs, { weekday: 'short', day: 'numeric', month: 'short' }))}, ${esc(x.e.time)}</b><small>${esc(x.e.location)}${x.e.coach ? ` · ${esc(x.e.coach)}` : ''} · ${esc(countdown(x.next.startMs))}</small></div><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-cancel-open="${esc(x.e.rowId)}" data-cancel-player="${esc(x.p.key)}" data-cancel-date="${esc(x.next.iso)}">Can't make it</button></div></div>`).join('')}
       </div>
-      <div class="ja-stack">${todoCards()}${players}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b style="color:#fff">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b style="color:#fff">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
+      <div class="ja-stack">${todoCards()}${players}${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b style="color:#fff">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b style="color:#fff">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
     </div>
     ${promos}${watch}`
 }
@@ -346,7 +354,9 @@ function requestsBlock() {
 function renderSessions() {
   const el = document.querySelector('[data-pane="sessions"]')
   if (!D.players.some((p) => p.enrolments.length)) {
-    el.innerHTML = `${pageHead('My sessions', D.term, 'Nothing booked yet.')}<a class="ja-btn ja-btn-red" href="${links.booking}">See the timetable</a>`
+    el.innerHTML = D.juniors
+      ? `${pageHead('My sessions', D.juniors.term, 'Every Joners Juniors class this term. The next one is marked.')}${jjSessions()}`
+      : `${pageHead('My sessions', D.term, 'Nothing booked yet.')}<a class="ja-btn ja-btn-red" href="${links.booking}">See the timetable</a>`
     return
   }
   el.innerHTML = `${pageHead('My sessions', D.term, 'Every date this term. The next one is in red. Can\'t make one? Tap it and tell your coach.')}
@@ -368,7 +378,7 @@ function renderSessions() {
           return `<li class="ja-date ${cls}"><span class="d"><b>${esc(dd)}</b><i>${esc(mon)}</i></span><span class="w"><b>${esc(dow)} ${esc(e.time)}${label === nextLabel ? '<span class="ja-tag">Next</span>' : ''}${c ? '<span class="ja-tag amber">You told us</span>' : ''}</b>Week ${i + 1}${c ? `, ${esc(c.reason)}` : ''}</span>${right}</li>`
         }).join('')}</ol>
       </section>`
-    }).join('')).join('')}`
+    }).join('')).join('')}${jjSessions()}`
 }
 
 // ---------- player information ----------
@@ -774,14 +784,14 @@ function cancelSheet(e, p, preset = '') {
 // ---------- waiver ----------
 
 function waiverSheet(keys) {
-  const players = D.players.filter((p) => keys.includes(p.key))
+  const players = [...D.players, ...(D.juniors?.children || [])].filter((p) => keys.includes(p.key))
   if (!players.length) return
   const sheet = openSheet({ title: 'Sign the waiver', subtitle: players.map((p) => p.name).join(', ') })
-  const w = waiverBlock(D.term)
+  const w = waiverBlock(players.some((p) => p.key.startsWith('jj:')) ? `${D.term}, JFP and Joners Juniors` : D.term)
   sheet.body.innerHTML = players.map((p) => `
     <div class="j-card" style="padding:12px 14px;margin-bottom:10px" data-wp="${esc(p.key)}">
       <h3 style="margin-bottom:8px">${esc(p.name)}</h3>
-      ${p.needsDob ? '<label class="j-field"><span>Date of birth</span><input class="j-input" type="date" data-f="dob" min="2004-01-01" max="2023-12-31"></label>' : ''}
+      ${p.needsDob ? `<label class="j-field"><span>Date of birth</span><input class="j-input" type="date" data-f="dob" min="2004-01-01" max="${p.key.startsWith('jj:') ? new Date().toISOString().slice(0, 10) : '2023-12-31'}"></label>` : ''}
       <div class="j-two"><label class="j-field"><span>Emergency contact</span><input class="j-input" data-f="emergencyName"></label><label class="j-field"><span>Their phone</span><input class="j-input" type="tel" inputmode="tel" data-f="emergencyPhone"></label></div>
       <div class="j-two"><label class="j-field"><span>Current club <span class="muted">(optional)</span></span><input class="j-input" data-f="club"></label><label class="j-field"><span>Medical notes <span class="muted">(optional)</span></span><input class="j-input" data-f="medical"></label></div>
     </div>`).join('') + `
@@ -902,7 +912,13 @@ document.addEventListener('click', async (e) => {
     if (p.data.code === 'waiver') { await load(); return toast('Sign the waiver first, then pay.') }
     return toast(p.data.error || 'Could not start the payment.')
   }
+  const jp = t.closest('[data-jjpay], [data-jjask], [data-jjnext]')
+  if (jp) return jjAct(jp)
   const wt = t.closest('[data-waiver-for]')
+  if (wt && D.juniors?.todo?.some((x) => x.id === wt.dataset.waiverFor)) {
+    const td = D.juniors.todo.find((x) => x.id === wt.dataset.waiverFor)
+    return waiverSheet(D.juniors.children.filter((c) => !c.waiver.onFile && td.players.includes(c.name)).map((c) => c.key))
+  }
   if (wt) {
     const td = D.todo.find((x) => x.id === wt.dataset.waiverFor)
     const keys = D.players.filter((p) => !p.waiver.onFile && td.players.includes(p.name)).map((p) => p.key)
@@ -912,5 +928,90 @@ document.addEventListener('click', async (e) => {
   if (wp) return waiverSheet([wp.dataset.waiverPlayer])
 })
 window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (D && PANELS.includes(h) && h !== current) show(h) })
+
+// ---------- Joners Juniors: the same login, its own cards ----------
+// Nothing here shows for a family with no Juniors child (D.juniors is null).
+
+const jjDot = (pm) => `<span class="ja-dot ${{ paid: 'ok', due: 'bad', owing: 'bad', part: 'warn', arranged: 'warn' }[pm.state] || ''}">${esc(pm.label)}</span>`
+
+function jjTodoCards() {
+  const J = D.juniors
+  if (!J?.todo?.length) return ''
+  const want = q.get('pay')
+  return [...J.todo].sort((x, y) => Number(y.id === want) - Number(x.id === want)).map((t) => `
+    <div class="ja-card ja-todo" data-todo="${esc(t.id)}">
+      <div class="ja-card-head"><div><p class="ja-kicker"><i></i>Joners Juniors</p><h3 class="ja-h3" style="margin-top:8px;font-size:18px">${esc(t.players.join(' and '))}</h3>
+      <p class="ja-muted ja-small" style="margin-top:3px">${t.places?.length ? t.places.map((x) => `${esc(x.name)}: ${esc(x.amountLabel)}`).join('<br>') : esc(t.what || '')}${t.places?.length && t.what ? `<br>${esc(t.what)}` : ''}</p></div></div>
+      <ul class="ja-list">
+        <li class="ja-row"><span class="ja-num ${t.needsWaiver ? '' : 'done'}">${t.needsWaiver ? '1' : ic('check')}</span><div><b>Waiver</b><small>${t.needsWaiver ? 'One family waiver covers JFP and Joners Juniors.' : 'On file.'}</small></div>${t.needsWaiver ? `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-for="${esc(t.id)}">Sign</button>` : ''}</li>
+        <li class="ja-row"><span class="ja-num">2</span><div><b>Pay ${esc(t.amountLabel)}</b><small>Card, Apple Pay or Google Pay.</small></div><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-jjpay="${esc(t.id)}" ${t.needsWaiver ? 'disabled title="Sign the waiver first"' : ''}>Pay</button></li>
+      </ul>
+    </div>`).join('')
+}
+
+function jjNextBlock(c) {
+  const x = c.next
+  if (!x) return ''
+  const title = `<p class="ja-small" style="margin-top:12px"><b>${esc(D.juniors.nextTerm?.name || 'Next term')}</b></p>`
+  if (x.status === 'paid') return `${title}<p style="margin-top:6px"><span class="ja-dot ok">Paid in full, locked in</span></p>`
+  if (x.status === 'held') return `${title}<p class="ja-small ja-muted" style="margin-top:6px"><span class="ja-dot ok">Place held</span> Pay the rest (${esc(x.afterHoldLabel)}) when you are ready.</p><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-jjnext="full" data-row="${esc(c.rowId)}" style="margin-top:8px">Pay the rest</button>`
+  if (x.status === 'no') return `${title}<p style="margin-top:6px"><span class="ja-dot">Not returning</span> <button type="button" class="ja-link ja-small" data-jjnext="full" data-row="${esc(c.rowId)}">Changed your mind? Pay ${esc(x.fullLabel)}</button></p>`
+  return `${title}<ul class="ja-list">
+      <li class="ja-row"><div><b>Keep the place: ${esc(x.fullLabel)}</b><small>Locked in for the term.</small></div><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-jjnext="full" data-row="${esc(c.rowId)}">Pay</button></li>
+      ${x.holdLabel ? `<li class="ja-row"><div><b>Hold the place: ${esc(x.holdLabel)}</b><small>Not sure yet? Non-refundable, and it comes off the term fee.</small></div><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-jjnext="hold" data-row="${esc(c.rowId)}">Hold</button></li>` : ''}
+      <li class="ja-row"><div><b>Not returning</b><small>We will offer the spot to a family on the waitlist.</small></div><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-jjnext="no" data-row="${esc(c.rowId)}">Tell us</button></li>
+    </ul>`
+}
+
+// The Joners Juniors card on Home: the class, each child, paid, waiver, Pay, next term.
+function jjHomeCard() {
+  const J = D.juniors
+  if (!J) return ''
+  return `<div class="ja-card" id="jj-home"><div class="ja-card-head"><div><p class="ja-kicker"><i></i>Joners Juniors</p><h3 class="ja-h3" style="margin-top:8px">${esc(J.classLabel)}</h3><p class="ja-muted ja-small" style="margin-top:3px">${esc(J.location)} · ${esc(J.term)}${J.datesLabel ? `, ${esc(J.datesLabel)}` : ''}</p></div></div>
+    <ul class="ja-list">${J.children.map((c) => `<li class="ja-row" data-jjchild="${esc(c.rowId)}"><span class="ja-avatar">${esc(initials(c.name))}</span><div><b>${esc(c.name)}</b><small>${c.nextDate ? `Next class ${esc(c.nextDate)}` : c.firstDate ? `First class ${esc(c.firstDate)}` : esc(c.className)}${c.age != null ? ` · age ${esc(c.age)}` : ''}</small>
+        ${c.payment.canPay ? `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" style="margin-top:8px" data-jjask="${esc(c.rowId)}">${c.payment.state === 'part' ? 'Pay what is left' : `Pay ${esc(c.payment.label.replace(/ to pay$/, ''))}`}</button>` : ''}
+        ${jjNextBlock(c)}</div>
+      <div class="ja-flags">${jjDot(c.payment)}${c.waiver.onFile ? '<span class="ja-dot ok">Waiver</span>' : `<button type="button" class="ja-dot bad" data-waiver-player="${esc(c.key)}">Sign waiver</button>`}</div></li>`).join('')}</ul>
+    ${J.paid?.length ? `<p class="ja-muted ja-small" style="margin-top:10px">Paid online: ${J.paid.map((x) => `${esc(x.amountLabel)} for ${esc(x.players.join(', '))} (${esc(x.what)})`).join('; ')}</p>` : ''}</div>`
+}
+
+// My sessions: every Juniors class date, the next one marked.
+function jjSessions() {
+  const J = D.juniors
+  if (!J) return ''
+  return J.children.map((c) => `<section class="ja-card" style="margin-bottom:14px">
+      <div class="ja-enrol-head"><img src="${IMG}/photos/hq-indoor-800x1000.webp" alt="" loading="lazy"><div><h2>${esc(c.name)}</h2><p>Joners Juniors · ${esc(c.className)} · ${esc(c.location)}</p><p style="margin-top:6px">${jjDot(c.payment)}</p></div></div>
+      <ol class="ja-dates">${c.dates.map((label, i) => {
+        const [dow, dd, mon] = String(label).split(' ')
+        const next = label === c.nextDate
+        return `<li class="ja-date ${next ? 'is-next' : ''}"><span class="d"><b>${esc(dd || '')}</b><i>${esc(mon || '')}</i></span><span class="w"><b>${esc(dow || label)}${next ? '<span class="ja-tag">Next</span>' : ''}</b>Week ${i + 1}</span><span></span></li>`
+      }).join('')}</ol>
+    </section>`).join('')
+}
+
+async function jjAct(b) {
+  b.disabled = true
+  const again = () => { b.disabled = false }
+  const go = async (payreqId) => {
+    const r = await api('/api/jfp-account', { action: 'jjPay', payreqId })
+    if (r.ok && r.data.url) { location.href = r.data.url; return }
+    again()
+    if (r.data.code === 'waiver') { await load(); return toast('Sign the waiver first, then pay.') }
+    toast(r.data.error || 'Could not start the payment.')
+    if (r.status === 409) load()
+  }
+  if (b.dataset.jjpay) return go(b.dataset.jjpay)
+  if (b.dataset.jjask) {
+    const r = await api('/api/jfp-account', { action: 'jjRequestPay', rowIds: [b.dataset.jjask] })
+    if (!r.ok) { again(); toast(r.data.error || 'Could not start the payment.'); if (r.data.code === 'paid') load(); return }
+    return go(r.data.payreqId)
+  }
+  const choice = b.dataset.jjnext
+  if (choice === 'no' && !confirm('Tell us this child is not returning next term?')) return again()
+  const r = await api('/api/jfp-account', { action: 'jjNextChoice', rowId: b.dataset.row, choice })
+  if (!r.ok) { again(); return toast(r.data.error || 'Could not save that.') }
+  if (choice === 'no') { toast('Thanks for letting us know.'); return load() }
+  return go(r.data.payreqId)
+}
 
 boot()

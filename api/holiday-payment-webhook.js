@@ -9,6 +9,7 @@ import { verifyStripeWebhook } from './_stripe-webhook.js'
 import { stripeFetch, clean } from './_holiday-store.js'
 import { finaliseBooking, expireBooking, bookingIdFromSession } from './_holiday-finalise.js'
 import { finaliseJfpBooking, expireJfpBooking, jfpBookingIdFromSession } from './_jfp-finalise.js'
+import { jjWebhook } from './_jj-pay.js'
 import { jfpIdForCharge, applyJfpRefunds } from './_jfp-refunds.js'
 
 export const config = { api: { bodyParser: false } }
@@ -70,6 +71,16 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('holiday webhook could not read session', error)
     return res.status(verified ? 500 : 200).json({ success: false, error: 'Could not read session' })
+  }
+
+  // Joners Juniors payments from the family account (metadata jjPayreqId):
+  // the Juniors rows and nothing of JFP's.
+  try {
+    const jj = await jjWebhook(type, session)
+    if (jj) return res.status(jj.status).json({ ...jj.body, verified })
+  } catch (error) {
+    console.error('jj webhook failed', error)
+    return res.status(500).json({ success: false, error: 'Webhook processing failed' })
   }
 
   // One Stripe endpoint on the Sydney account serves both booking systems;

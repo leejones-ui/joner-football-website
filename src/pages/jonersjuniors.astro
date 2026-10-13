@@ -218,10 +218,9 @@ const sanityPage = await fetchSanityPage('joners-juniors')
         </div>
 
         <div id="juniors-closed" class="jj-closed" role="status" hidden>
-          <p class="jj-section-eyebrow">Registrations closed</p>
-          <h3><span data-jj="termShort">{jj.termShort}</span> registrations are closed.</h3>
-          <p>Get in touch and we will let you know as soon as a place opens.</p>
-          <a href="/contact" class="btn-red text-sm">Contact us</a>
+          <p class="jj-section-eyebrow" id="juniors-closed-kicker">Registrations closed</p>
+          <h3 id="juniors-closed-title"><span data-jj="termShort">{jj.termShort}</span> registrations are closed.</h3>
+          <p id="juniors-closed-text">Join the waitlist below and we will contact you as soon as a place opens. Nothing is charged.</p>
         </div>
 
         <form id="juniors-registration-form" class="jj-form" novalidate>
@@ -257,13 +256,13 @@ const sanityPage = await fetchSanityPage('joners-juniors')
                 {jj.classes.map((c) => <option>{`${c.day} ${c.time}`}</option>)}
               </select>
             </label>
-            <div class="jj-stripe-only">
+            <div class="jj-stripe-only" id="juniors-stripe-only">
               <span>Payment</span>
               <strong>Pay with Stripe</strong>
             </div>
           </div>
           <label class="jj-check"><input required type="checkbox" name="agreementAccepted" /><span>I have read and agree to the <a href="/terms" target="_blank" rel="noopener">training agreement</a>.</span></label>
-          <p class="jj-payment-note">After you register, you will be sent to Stripe to complete payment.</p>
+          <p class="jj-payment-note" id="juniors-payment-note">After you register, you will be sent to Stripe to complete payment.</p>
           <p id="juniors-form-message" class="jj-form-message" role="alert"></p>
           <button type="submit" class="btn-red w-full text-sm jj-form-submit">Book Now</button>
         </form>
@@ -423,13 +422,29 @@ const sanityPage = await fetchSanityPage('joners-juniors')
           select.appendChild(keep);
           jj.classes.forEach(function (c) { var o = document.createElement('option'); o.textContent = c.day + ' ' + c.time; select.appendChild(o); });
         }
-        var closed = jj.registrationOpen === false;
-        var form = document.getElementById('juniors-registration-form');
-        var note = document.getElementById('juniors-closed');
-        if (form) form.hidden = closed;
-        if (note) note.hidden = !closed;
+        if (jj.waitlist) window.JJWaitlist(jj.registrationOpen === false ? 'closed' : 'full');
       }).catch(function () {});
     })();
+
+    // Closed, or every place taken: the same form joins the waitlist instead
+    // of going to Stripe. Nothing is charged.
+    window.JJWaitlist = function (why) {
+      var form = document.getElementById('juniors-registration-form');
+      var note = document.getElementById('juniors-closed');
+      if (!form || !note) return;
+      form.dataset.waitlist = '1';
+      note.hidden = false;
+      document.getElementById('juniors-closed-kicker').textContent = why === 'closed' ? 'Registrations closed' : 'Class full';
+      if (why !== 'closed') document.getElementById('juniors-closed-title').textContent = 'The class is full.';
+      var pay = document.getElementById('juniors-payment-note');
+      if (pay) pay.textContent = 'You are joining the waitlist. Nothing is charged. We contact you in the order families asked.';
+      var stripe = document.getElementById('juniors-stripe-only');
+      if (stripe) stripe.hidden = true;
+      var select = document.getElementById('juniors-class');
+      if (select) select.required = false;
+      var button = form.querySelector('button[type="submit"]');
+      if (button) button.textContent = 'Join the waitlist';
+    };
 
     (function () {
       var form = document.getElementById('juniors-registration-form');
@@ -478,6 +493,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
           payload.age = payload.dateOfBirth || 'DOB not supplied';
           payload.agreementAccepted = data.get('agreementAccepted') === 'on';
           payload.recaptchaToken = window.JonerRecaptcha ? await window.JonerRecaptcha.getToken('joners_juniors_registration') : '';
+          payload.waitlist = form.dataset.waitlist === '1';
 
           var response = await fetch('/api/juniors-registration', {
             method: 'POST',
@@ -485,7 +501,18 @@ const sanityPage = await fetchSanityPage('joners-juniors')
             body: JSON.stringify(payload),
           });
           var result = await response.json();
+          // The class filled (or closed) while the page was open: offer the waitlist.
+          if (response.status === 409 && result.waitlist && !payload.waitlist) {
+            window.JJWaitlist(result.closed ? 'closed' : 'full');
+            setMessage(result.error || 'The class is full. Press Join the waitlist to ask for a place.', 'error');
+            return;
+          }
           if (!response.ok || !result.success) throw new Error(result.error || 'Could not save booking.');
+          if (result.waitlist) {
+            form.reset();
+            setMessage(result.already ? 'You are already on the waitlist for this child. We will be in touch.' : 'Thank you. You are on the waitlist. We will contact you as soon as a place opens.', 'success');
+            return;
+          }
 
           form.reset();
           setMessage('Done. Your Joners Juniors registration has been saved. Redirecting to Stripe...', 'success');
@@ -496,7 +523,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
         } finally {
           if (submitButton) {
             submitButton.disabled = false;
-            submitButton.textContent = originalText;
+            submitButton.textContent = form.dataset.waitlist === '1' ? 'Join the waitlist' : originalText;
           }
         }
       });

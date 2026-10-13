@@ -17,6 +17,9 @@
 //   [JJ-REG:<registration id>]  [JJ-CS:<Stripe Checkout Session>]  [JJ-PI:<PaymentIntent>]
 //   [JJ-ADD:<portal add id>]    [JJ-REMOVED:<yyyy-mm-dd>]           [JJ-PAY:<payment id>:<cents>]
 //   [JJ-VOID:<payment id>]
+//   [JJ-PAID:<JJPAY id>]        a Juniors payment request paid online (stage 2)
+//   [JJ-NEXT:<last term's row>] the next term's row made by re-enrolling
+//   [JJ-REQ:<request id>]       the row made when a waitlist request was accepted
 // A child is "removed" (soft, like JFP's removed players) while the row
 // carries [JJ-REMOVED:...]. The row stays in Airtable; restoring takes the
 // tag off and notes who did it.
@@ -118,6 +121,15 @@ export function parseJJRecord(record, table = '', term = '') {
     registrationId: txt(pick(f, 'registrationId')) || tagValue(notes, 'JJ-REG'),
     sessionId: txt(pick(f, 'sessionId')) || tagValue(notes, 'JJ-CS'),
     intentId: txt(pick(f, 'intentId')) || tagValue(notes, 'JJ-PI'),
+    // Every Stripe payment on the row: the column and each [JJ-CS] / [JJ-PI]
+    // tag (a hold then the rest, or a part payment then a family payment).
+    sessionIds: [...new Set([txt(pick(f, 'sessionId')), ...tagValues(notes, 'JJ-CS')].filter(Boolean))],
+    intentIds: [...new Set([txt(pick(f, 'intentId')), ...tagValues(notes, 'JJ-PI')].filter(Boolean))],
+    // Paid through a Juniors payment request ([JJ-PAID:<JJPAY id>]).
+    paidRequests: tagValues(notes, 'JJ-PAID'),
+    // Re-enrolled from last term's row ([JJ-NEXT:<row id>]); accepted from a request ([JJ-REQ:<id>]).
+    nextFrom: tagValue(notes, 'JJ-NEXT'),
+    requestId: tagValue(notes, 'JJ-REQ'),
     linkUrl: txt(pick(f, 'link')),
     medical: txt(pick(f, 'medical')) || lastLine(notes, 'Medical'),
     heard: txt(pick(f, 'heard')),

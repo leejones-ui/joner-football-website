@@ -4,6 +4,8 @@ import { confirmationEmail, confirmationStatus, eventClaimOwnsRow, isPaidJuniors
 import { sendJuniorsEmail } from './_juniors-email.js'
 import { configOrDefaults, tableFor, findByRegistration, writeJJRow, NAMES } from './_jj-data.js'
 import { coachById } from './_jfp-store.js'
+import { stripeFetch } from './_holiday-store.js'
+import { jjWebhook } from './_jj-pay.js'
 
 export const config = { api: { bodyParser: false } }
 const sheetId = () => process.env.JUNIORS_SHEET_ID || process.env.CAMP_REGISTRATION_SHEET_ID
@@ -187,6 +189,15 @@ export default async function handler(req, res) {
     const raw = await rawBody(req)
     await verifyStripeWebhook(raw, req.headers['stripe-signature'], process.env.STRIPE_JUNIORS_WEBHOOK_SECRET)
     const event = JSON.parse(raw)
+    // A Juniors payment from the family account (stage 2): the session is
+    // read again from Stripe, and the same finalise as the main webhook runs
+    // (a lease and per-row tags, so both arriving changes nothing twice).
+    const obj = event?.data?.object || {}
+    if (String(event.type || '').startsWith('checkout.session.') && obj.metadata?.jjPayreqId && /^cs_(test|live)_/.test(obj.id || '')) {
+      const session = await stripeFetch(`/checkout/sessions/${encodeURIComponent(obj.id)}`)
+      const jj = await jjWebhook(event.type, session)
+      if (jj) return res.status(jj.status).json({ received: jj.status === 200, ...jj.body })
+    }
     if (!isPaidJuniorsEvent(event)) return res.status(200).json({ received: true, ignored: true, reason: 'not-paid-juniors-event' })
     const registrationId = paidEventDetails(event).registrationId
     const prior = locks.get(registrationId) || Promise.resolve()

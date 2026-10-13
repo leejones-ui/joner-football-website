@@ -74,7 +74,7 @@ export async function readJuniorsRows(tables = JUNIORS_TABLES, read = readTable)
         emails: r.emails,
         location: r.location, session: [r.day, r.time].filter(Boolean).join(' '), day: r.day, time: r.time, dob: r.dobText,
         feeCents: r.feeCents, status: r.status, paidVia: r.paidVia, paidAt: r.paidAt,
-        sessionId: r.sessionId, intentId: r.intentId, linkUrl: r.linkUrl,
+        sessionId: r.sessionId, intentId: r.intentId, sessionIds: r.sessionIds, intentIds: r.intentIds, linkUrl: r.linkUrl,
         registrationId: r.registrationId, removed: r.removed,
       })
     }
@@ -102,6 +102,11 @@ function sessionOf(s, how, extra = {}) {
   }
 }
 
+// Every Stripe id a row names: its column and each tag (stage 2: a hold then
+// the rest, a part payment then the family's online payment).
+const sessionsOf = (r) => (r.sessionIds?.length ? r.sessionIds : r.sessionId ? [r.sessionId] : [])
+const intentsOf = (r) => (r.intentIds?.length ? r.intentIds : r.intentId ? [r.intentId] : [])
+
 // The balance transaction carries Stripe's fee (four levels: Stripe's most).
 const EXPAND = 'expand[]=payment_intent.latest_charge.balance_transaction'
 const EXPAND_LIST = 'expand[]=data.payment_intent.latest_charge.balance_transaction'
@@ -127,8 +132,8 @@ export async function readJuniorsStripe(rows, fetcher = stripeFetch, deps = {}) 
   const byId = new Map()
   const add = (x) => { const old = byId.get(x.id); if (old) old.found = [...new Set([...old.found, ...x.found])]; else byId.set(x.id, x) }
   // 1. Sessions named on the rows.
-  for (const id of [...new Set(rows.map((r) => r.sessionId).filter((v) => /^cs_/.test(v)))]) add(sessionOf(await fetcher(`/checkout/sessions/${encodeURIComponent(id)}?${EXPAND}`), 'row id'))
-  for (const pi of [...new Set(rows.filter((r) => !r.sessionId && /^pi_/.test(r.intentId)).map((r) => r.intentId))]) {
+  for (const id of [...new Set(rows.flatMap(sessionsOf).filter((v) => /^cs_/.test(v)))]) add(sessionOf(await fetcher(`/checkout/sessions/${encodeURIComponent(id)}?${EXPAND}`), 'row id'))
+  for (const pi of [...new Set(rows.filter((r) => !sessionsOf(r).length).flatMap(intentsOf).filter((v) => /^pi_/.test(v)))]) {
     for (const s of await listAll(`/checkout/sessions?payment_intent=${encodeURIComponent(pi)}&${EXPAND_LIST}`, fetcher)) add(sessionOf(s, 'row id'))
   }
   // 2. Online sign-ups tagged Joners Juniors.
@@ -269,7 +274,7 @@ export function juniorsMoney(rows, stripe, { now = new Date().toISOString(), jfp
   for (const s of sessions) {
     if (used.has(s.id)) continue
     if (s.currency !== 'aud') { otherCurrency.push({ id: s.id, currency: s.currency, cents: s.amountCents }); used.add(s.id); continue }
-    const targets = rows.filter((r) => (r.sessionId && r.sessionId === s.id) || (r.intentId && r.intentId === s.intentId) || (r.registrationId && s.registrationId && r.registrationId === s.registrationId))
+    const targets = rows.filter((r) => sessionsOf(r).includes(s.id) || (s.intentId && intentsOf(r).includes(s.intentId)) || (r.registrationId && s.registrationId && r.registrationId === s.registrationId))
     if (!targets.length) continue
     used.add(s.id)
     const left = allocate(s, targets)

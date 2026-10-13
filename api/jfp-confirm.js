@@ -4,6 +4,7 @@
 import { stripeFetch } from './_holiday-store.js'
 import { getBooking, getGroup, getConfig, getPayreq, coachById, sessionDates, dateLabel, formatAud, clean, locationFor, to24h } from './_jfp-store.js'
 import { finaliseJfpBooking, jfpBookingIdFromSession } from './_jfp-finalise.js'
+import { jjPayreqIdFromSession, getJJPayreq, finaliseJJPayreq } from './_jj-pay.js'
 
 // fromIso: joined mid term; only: a trial's one session.
 function groupView(config, group, { fromIso = '', only = '' } = {}) {
@@ -25,6 +26,19 @@ export default async function handler(req, res) {
   if (!/^cs_(test|live)_[A-Za-z0-9]+$/.test(sessionId)) return res.status(400).json({ success: false, error: 'Missing session' })
   try {
     const session = await stripeFetch(`/checkout/sessions/${encodeURIComponent(sessionId)}`)
+    // Joners Juniors, paid from the family account.
+    const jjId = jjPayreqIdFromSession(session)
+    if (jjId) {
+      let q = await getJJPayreq(jjId)
+      if (!q) return res.status(404).json({ success: false, error: 'Payment not found' })
+      let status = 'pending'
+      if (session.payment_status === 'paid') {
+        const r = await finaliseJJPayreq(jjId, session)
+        q = r.payreq || q
+        status = r.attention ? 'received' : r.busy ? 'pending' : r.recorded === false ? 'confirming' : 'paid'
+      } else if (session.status === 'expired' || (q.status === 'cancelled' && session.status !== 'complete')) status = 'expired'
+      return res.status(200).json({ success: true, status, kind: 'juniors', payment: { id: q.id, players: q.playerNames, term: q.next?.term || q.term, next: q.next ? { term: q.next.term, choice: q.next.choice } : null, priceLabel: formatAud(q.paidCents ?? q.amountCents) } })
+    }
     const id = jfpBookingIdFromSession(session)
     if (!id) return res.status(404).json({ success: false, error: 'Booking not found' })
     const config = await getConfig()

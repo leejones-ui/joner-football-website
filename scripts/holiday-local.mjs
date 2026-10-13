@@ -208,7 +208,7 @@ const telegrams = []
 // A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
 // JSON file ({ term4, term3, waiver, ledger } record arrays) to load another,
 // for example an anonymised copy of the real roster for screenshots.
-const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [], venueHistory: [], profiles: [] }
+const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [], juniorsNext: [], venueHistory: [], profiles: [] }
 let recSeq = 1
 const recId = () => `rec${String(recSeq++).padStart(14, '0')}`
 function seedRow(day, time, location, coach, type = 'JFP 10 weeks', confirmation = 'Confirmed', extra = {}) {
@@ -310,12 +310,16 @@ const JJ_SCHEMA = {
   juniors3: ['Player Full Name', 'Date of Birth', 'Parent Name', 'Parent Email', 'Parent Mobile', 'Class', 'Session Day', 'Session Time', 'Location', 'Term', 'Fee', 'Payment Status', 'Paid Via', 'Paid At', 'Registration ID', 'Stripe Checkout Session ID', 'Stripe PaymentIntent ID', 'Heard About Us', 'Confirmation Email Status', 'Internal Notes', 'Source Term 3 Record ID', 'Moved From Term 3 At', 'Coach', 'Parent Email 2', 'Parent Mobile 2', 'Waiver Status', 'Waiver Requested At'],
   juniors4: ['Player Full Name', 'Payment Status', 'Parent Name', 'Parent Email', 'Parent Mobile', 'Date of Birth', 'Term', 'Session Day', 'Session Time', 'Location', 'Coach', 'Fee', 'Paid Via', 'Confirmation Status', 'Confirmation Date', 'Waiver Status', 'Source Term 3 Record ID', 'Stripe Payment Link', 'Notes'],
 }
+// A pretend next-term Juniors table (stage 2 re-enrolment), made the way
+// staff would: a copy of the Term 4 table's columns. Tests point
+// config.juniors.tables at it.
+JJ_SCHEMA.juniorsNext = [...JJ_SCHEMA.juniors4]
 function jjUnknown(key, names) {
   const have = JJ_SCHEMA[key]
   const bad = have && names.find((n) => !have.includes(n))
   return bad ? { status: 422, body: { error: { type: 'UNKNOWN_FIELD_NAME', message: `Unknown field name: "${bad}"` } } } : null
 }
-const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblF25gfo0fZcqdPT: 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblgss68pIVTUOttE: 'venueHistory', tblTt7jWK3s2me45B: 'profiles' }
+const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblF25gfo0fZcqdPT: 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblJJNextTerm0001: 'juniorsNext', tblgss68pIVTUOttE: 'venueHistory', tblTt7jWK3s2me45B: 'profiles' }
 function airtableResponse(url, init) {
   const u = new URL(url)
   const parts = u.pathname.split('/').slice(3).map(decodeURIComponent) // [table, recordId?]

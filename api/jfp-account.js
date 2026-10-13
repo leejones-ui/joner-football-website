@@ -10,6 +10,8 @@
 //   cancelSession / withdrawCancel   "Can't make a session" (KV only)
 //   nextTermInterest   "I want to keep my spot" before next term opens (no payment)
 //   profiles / saveProfile   Player information: club, position, contacts (Airtable)
+//   jjPay / jjRequestPay / jjNextChoice   Joners Juniors (stage 2, _jj-account.js):
+//               the same family login shows and pays Juniors children too
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, dateLabel,
@@ -21,6 +23,7 @@ import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, no
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, nextInterest, interestKey } from './_jfp-next.js'
+import { jjAccountView, jjPay, jjRequestPay, jjNextChoice, familyJJ, jjWaiverRows, markJJWaivers } from './_jj-account.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -76,7 +79,13 @@ async function overview(res, parent, body = {}) {
   // payment being recorded at the same moment can never be undone.
   if (opened) await kvPipeline([['HINCRBY', 'jfp:payreq-views', opened.id, '1'], ['HSET', 'jfp:payreq-viewed-at', opened.id, new Date().toISOString()]])
   const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
-  const players = fam.players.map((p) => ({
+  // Joners Juniors children on the same login (null for a JFP-only family).
+  const juniors = await jjAccountView({ config, parentEmail: parent.email, fam, roster, pay: body.pay })
+  // A Juniors child with a family waiver would otherwise also show as a JFP
+  // player with no sessions: they show once, under Joners Juniors.
+  const jjNames = new Set((juniors?.children || []).map((c) => normName(c.name)))
+  const jfpPlayers = fam.players.filter((p) => !(jjNames.has(p.key) && !p.term4.length))
+  const players = jfpPlayers.map((p) => ({
     key: p.key,
     name: p.name,
     age: p.age,
@@ -146,7 +155,7 @@ async function overview(res, parent, body = {}) {
   return res.status(200).json({
     success: true,
     email: parent.email,
-    parentName: fam.parentName,
+    parentName: fam.parentName || juniors?.parentName || '',
     nextTerm: nextTerm.length ? { name: nt.name, players: nextTerm } : null,
     keep,
     termStart: config.termStart,
@@ -163,6 +172,7 @@ async function overview(res, parent, body = {}) {
     paid: mine.filter((q) => q.status === 'paid').map((q) => ({ id: q.id, amountLabel: formatAud(q.paidCents ?? q.amountCents), players: q.playerNames, paidAt: q.paidAt })),
     requests: requests.filter((r) => r.email === parent.email).map((r) => ({ id: r.id, kind: r.kind, status: r.status, offer: r.offer || '', players: r.players.map((x) => x.name), group: byGroup[r.groupId] ? `${byGroup[r.groupId].day} ${byGroup[r.groupId].time}, ${locationFor(config, byGroup[r.groupId].location).name}` : r.groupId === 'one-to-one' ? '1 to 1 coaching' : '', createdAt: r.createdAt })),
     bookings: bookings.filter((b) => b.email === parent.email && b.status === 'paid').map((b) => ({ id: b.id, players: b.players.map((x) => x.name), amountLabel: formatAud(b.amountPaidCents ?? b.priceCents), paidAt: b.paidAt })),
+    juniors,
   })
 }
 
@@ -208,10 +218,21 @@ async function signWaiver(res, parent, body) {
   const parentName = clean(body.parentName, 100) || fam.parentName
   const mobile = clean(body.mobile, 40) || fam.mobile
   if (parentName.length < 2 || !phoneOk(mobile)) return fail(res, 400, 'Enter your name and mobile.')
-  const list = Array.isArray(body.players) ? body.players.slice(0, 6) : []
-  if (!list.length) return fail(res, 400, 'Choose the players to sign for.')
+  const all = Array.isArray(body.players) ? body.players.slice(0, 6) : []
+  if (!all.length) return fail(res, 400, 'Choose the players to sign for.')
   const acceptedAt = new Date().toISOString()
   const rows = []
+  // Joners Juniors children ("jj:<row id>"): the same family waiver.
+  const jjList = all.filter((x) => String(x?.key || '').startsWith('jj:'))
+  const list = all.filter((x) => !String(x?.key || '').startsWith('jj:'))
+  let jjRowIds = []
+  if (jjList.length) {
+    const f = await familyJJ(config, parent.email, fam)
+    if (!f) return fail(res, 404, 'We could not find that child on your account.')
+    const j = jjWaiverRows({ config, list: jjList, f, roster, parent, parentName, mobile, signature, acceptedAt, media: body.waiver?.media === true, waiverFields, phoneOk })
+    if (j.error) return fail(res, j.status, j.error)
+    rows.push(...j.rows); jjRowIds = j.rowIds
+  }
   for (const x of list) {
     const p = fam.players.find((f) => f.key === clean(x.key, 80))
     if (!p) return fail(res, 404, 'We could not find that player on your account.')
@@ -228,6 +249,7 @@ async function signWaiver(res, parent, body) {
   if (!rows.length) return res.status(200).json({ success: true, created: 0 })
   const ids = await createWaiverRows(rows)
   await bustRosterCache()
+  if (jjRowIds.length) await markJJWaivers(config, jjRowIds, parentName)
   await audit({ by: parent.email, action: 'waiver.signed', target: ids.join(','), after: { players: rows.map((r) => r['Player Full Name']) } })
   return res.status(200).json({ success: true, created: ids.length })
 }
@@ -427,6 +449,18 @@ async function pay(req, res, parent, body) {
   return res.status(200).json({ success: true, url: session.url })
 }
 
+// Joners Juniors: pay, ask to pay, next term (_jj-account.js).
+async function juniorsAction(req, res, parent, body) {
+  const config = await getConfig()
+  const roster = await loadRoster({ fresh: body.action === 'jjPay' })
+  const fam = familyFor(parent.email, roster, config.termStart)
+  const ctx = { config, parent, fam, roster, body }
+  const r = body.action === 'jjPay' ? await jjPay(req, ctx) : body.action === 'jjRequestPay' ? await jjRequestPay(req, ctx) : await jjNextChoice(req, ctx)
+  if (!r.ok) return fail(res, r.status, r.error, r.code ? { code: r.code } : {})
+  const { ok, ...rest } = r
+  return res.status(200).json({ success: true, ...rest })
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -444,6 +478,7 @@ export default async function handler(req, res) {
     if (body.action === 'nextTermInterest') return await nextTermInterest(res, parent, body)
     if (body.action === 'profiles') return await profiles(res, parent)
     if (body.action === 'saveProfile') return await saveMyProfile(res, parent, body)
+    if (['jjPay', 'jjRequestPay', 'jjNextChoice'].includes(body.action)) return await juniorsAction(req, res, parent, body)
     if (body.action === 'cancelSession') return await cancelSession(res, parent, body)
     if (body.action === 'withdrawCancel') return await withdrawSession(res, parent, body)
     return await overview(res, parent, body)

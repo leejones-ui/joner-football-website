@@ -37,7 +37,10 @@ export const JJ_DEFAULTS = Object.freeze({
   ageLabel: 'Ages 3 to early primary',
   // The Airtable table for each term's children (base apphU4R0BtVIu5YqT).
   tables: { 'Term 3 2026': 'tblMLhYQ126P5uKLB', 'Term 4 2026': 'tblVzW8E9qumQEtXx' },
-  nextTerm: { name: 'Term 1 2027', termStart: '', open: false },
+  // Next term, for re-enrolment (Invites). priceCents null = this term's
+  // price. holdCents null = no hold: families pay in full or say not
+  // returning. The next term's children go into tables[nextTerm.name].
+  nextTerm: { name: 'Term 1 2027', termStart: '', open: false, priceCents: null, holdCents: null },
 })
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/
@@ -123,6 +126,8 @@ export function normaliseJuniors(input = {}) {
       name: jjClean(src.nextTerm?.name, 40) || b.nextTerm.name,
       termStart: ISO.test(src.nextTerm?.termStart || '') ? src.nextTerm.termStart : '',
       open: src.nextTerm?.open === true,
+      priceCents: centsOr(src.nextTerm?.priceCents, null, { allowNull: true }),
+      holdCents: centsOr(src.nextTerm?.holdCents, null, { allowNull: true }),
     },
   }
 }
@@ -152,6 +157,16 @@ export function validateJuniors(input = {}, current = JJ_DEFAULTS) {
     const cap = Number(c?.capacity)
     if (!Number.isInteger(cap) || cap < 0 || cap > 60) errors.push(`Places must be a whole number from 0 to 60${n}.`)
   })
+  const nt = merged.nextTerm && typeof merged.nextTerm === 'object' ? merged.nextTerm : {}
+  for (const [k, label] of [['priceCents', 'next term\'s price'], ['holdCents', 'hold']]) {
+    if (nt[k] == null || nt[k] === '') continue
+    const v = Number(nt[k])
+    if (!Number.isInteger(v) || v < 100 || v > 200000) errors.push(`The ${label} must be between A$1 and A$2,000, or left blank.`)
+  }
+  if (nt.holdCents != null && nt.holdCents !== '') {
+    const full = nt.priceCents != null && nt.priceCents !== '' ? Number(nt.priceCents) : Number(merged.priceCents)
+    if (Number(nt.holdCents) >= full) errors.push('The hold must be less than next term\'s price.')
+  }
   if (merged.tables && typeof merged.tables === 'object') {
     for (const [t, id] of Object.entries(merged.tables)) if (!TABLE.test(String(id || '').trim())) errors.push(`The Airtable table for ${jjClean(t, 40) || 'a term'} should look like tbl followed by 14 letters and numbers.`)
   }
@@ -214,4 +229,12 @@ export function juniorsPublic(jjInput) {
     ageLabel: jj.ageLabel,
     nextTerm: { name: jj.nextTerm.name, open: jj.nextTerm.open },
   }
+}
+
+// Next term's price and hold: { name, fullCents, holdCents (0 = no hold), table }.
+export function nextTermOf(jjInput) {
+  const jj = normaliseJuniors(jjInput)
+  const nt = jj.nextTerm
+  const fullCents = nt.priceCents ?? jj.priceCents
+  return { name: nt.name, termStart: nt.termStart, open: nt.open, fullCents, holdCents: nt.holdCents && nt.holdCents < fullCents ? nt.holdCents : 0, table: jj.tables[nt.name] || '' }
 }

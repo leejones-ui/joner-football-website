@@ -15,8 +15,15 @@ import { readJJTable, getJJRow, writeJJRow, tableFor, termTables, isEnrolled, do
 import { validateJuniors, juniorsPublic, juniorsDates, capacityOf, classLabelOf, datesLabelOf } from './_jj-config.js'
 import { juniorsMoneyData, readJJLedger, saveJJLedger, dropJJLedger, JUNIORS_TABLES, METHODS } from './_jfp-juniors-money.js'
 import { jfpStripePayments } from './_jfp-stripe.js'
+import { siteUrl } from './_holiday-store.js'
+import { KINDS, invitePlan, invitePreviews, sendInvites, readInvites } from './_jj-invites.js'
+import { listJJRequests, getJJRequest, saveJJRequest, requestsView } from './_jj-requests.js'
+import { listJJPayreqs, getJJPayreq, cancelJJPayreq, repairJJPayreq, jjViews, jjPayreqUrl, jjNextStatuses, isOpen, JJ_PAY_EFFECTS } from './_jj-pay.js'
+import { nextTermOf } from './_jj-config.js'
 
-export const JJ_ACTIONS = new Set(['jjSettings', 'jjSaveSettings', 'jjPlayers', 'jjDashboard', 'jjAddPlayer', 'jjEditPlayer', 'jjAddNote', 'jjRemovePlayer', 'jjRestorePlayer', 'jjRecordPayment', 'jjVoidPayment'])
+export const JJ_ACTIONS = new Set(['jjSettings', 'jjSaveSettings', 'jjPlayers', 'jjDashboard', 'jjAddPlayer', 'jjEditPlayer', 'jjAddNote', 'jjRemovePlayer', 'jjRestorePlayer', 'jjRecordPayment', 'jjVoidPayment',
+  // Stage 2: Invites, Requests & waitlist, and the online payments behind them.
+  'jjInvites', 'jjRequests', 'jjDecideRequest', 'jjPayments', 'jjRepairPayment', 'jjCancelPayreq'])
 export const JJ_LEAVE_REASONS = ['Cost', 'Time or schedule clash', 'Moved up to JFP', 'Not ready yet', 'Moved away', 'Taking a break', 'Joined another program', 'No reply from the family', 'Other']
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 const SETTINGS_KEYS = ['term', 'termStart', 'weeks', 'skipDates', 'datesLabel', 'classes', 'classLabel', 'location', 'priceCents', 'siblingPriceCents', 'registrationOpen', 'waiverVersion', 'ageLabel', 'tables', 'nextTerm']
@@ -135,6 +142,8 @@ export function needsList(o, jj) {
   if (c.noprice) add('noprice', `${c.noprice} with no fee set`, { tab: 'jj-players', filter: 'noprice', count: c.noprice })
   if (o.current && s.capacity && s.enrolled >= s.capacity) add('full', `The class is full (${s.enrolled} of ${s.capacity})`, { tab: 'jj-settings' })
   if (o.current && !jj.registrationOpen) add('closed', 'Website registrations are closed', { tab: 'jj-settings' })
+  if (o.waiting) add('waiting', `${o.waiting} on the waitlist${o.current && s.placesLeft ? `, and ${s.placesLeft} place${s.placesLeft === 1 ? ' is' : 's are'} free` : ''}`, { tab: 'jj-requests', count: o.waiting })
+  if (o.payAttention) add('payments', `${o.payAttention} online payment${o.payAttention === 1 ? ' needs' : 's need'} checking`, { tab: 'jj-invites', count: o.payAttention })
   return list
 }
 
@@ -148,31 +157,35 @@ async function rowOr404(res, table, rowId, term) {
 }
 const dollars = (v) => (v === null || v === '' || v === undefined ? undefined : Number(v))
 
-async function addPlayer(res, principal, config, body) {
+// Add a child to the current term's table. Used by Players (Add a child)
+// and by Requests & waitlist (accept). Returns { ok, rowId, recorded } or
+// { ok:false, status, error, code }.
+export async function addChildCore(principal, config, body, { tag = '', source = 'in the JFP portal (Joners Juniors)' } = {}) {
+  const no = (status, error, code) => ({ ok: false, status, error, ...(code ? { code } : {}) })
   const jj = config.juniors
   const { term, table } = { term: jj.term, table: tableFor(config, jj.term) }
   const name = plain(body.player?.name, 80)
-  if (name.length < 3) return fail(res, 400, "Enter the child's full name.")
+  if (name.length < 3) return no(400, "Enter the child's full name.")
   const email = body.parent?.email ? validEmail(body.parent.email) : ''
-  if (body.parent?.email && !email) return fail(res, 400, 'That parent email does not look right.')
+  if (body.parent?.email && !email) return no(400, 'That parent email does not look right.')
   const mobile = plain(body.parent?.mobile, 40)
-  if (mobile && !cleanPhone(mobile)) return fail(res, 400, 'Check the mobile number. Use digits, like 0411 222 333.')
+  if (mobile && !cleanPhone(mobile)) return no(400, 'Check the mobile number. Use digits, like 0411 222 333.')
   const dob = ISO.test(body.player?.dob || '') ? body.player.dob : ''
-  if (dob && (ageOn(dob, sydneyToday()) == null || dob > sydneyToday())) return fail(res, 400, 'Check the date of birth.')
+  if (dob && (ageOn(dob, sydneyToday()) == null || dob > sydneyToday())) return no(400, 'Check the date of birth.')
   const payment = ['none', 'offline', 'free'].includes(body.payment) ? body.payment : 'none'
   const fee = payment === 'free' ? 0 : dollars(body.feeAud) ?? jj.priceCents / 100
-  if (!Number.isFinite(fee) || fee < 0 || fee > 2000) return fail(res, 400, 'Enter the fee in dollars, for example 220.')
-  if (payment === 'offline' && !(Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0)) return fail(res, 400, 'Enter the amount they paid.')
+  if (!Number.isFinite(fee) || fee < 0 || fee > 2000) return no(400, 'Enter the fee in dollars, for example 220.')
+  if (payment === 'offline' && !(Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0)) return no(400, 'Enter the amount they paid.')
   const lock = `jj:add-lock:${table}`
-  if ((await kvCommand(['SET', lock, '1', 'NX', 'EX', '15'])) !== 'OK') return fail(res, 409, 'Someone is adding a child right now. Try again in a moment.')
+  if ((await kvCommand(['SET', lock, '1', 'NX', 'EX', '15'])) !== 'OK') return no(409, 'Someone is adding a child right now. Try again in a moment.')
   let rowId
   try {
     const rows = await readJJTable(table, { term, fresh: true })
     const enrolled = rows.filter(isEnrolled)
     const dup = enrolled.find((r) => normName(r.player) === normName(name) && (!email || !r.emails.length || r.emails.includes(email)))
-    if (dup && body.force !== true) return fail(res, 409, `${dup.player} is already in ${term}. Add anyway?`, { code: 'duplicate' })
+    if (dup && body.force !== true) return no(409, `${dup.player} is already in ${term}. Add anyway?`, 'duplicate')
     const cls = jj.classes[0]
-    if (cls && enrolled.length >= cls.capacity && body.force !== true) return fail(res, 409, `The class has ${enrolled.length} of ${cls.capacity} places taken. Add anyway?`, { code: 'full' })
+    if (cls && enrolled.length >= cls.capacity && body.force !== true) return no(409, `The class has ${enrolled.length} of ${cls.capacity} places taken. Add anyway?`, 'full')
     let waiverOn = false
     try { const roster = await loadRoster(); waiverOn = Boolean(waiverFor(name, { emails: email ? [email] : [], phones: [mobile], dob }, roster.waivers)) } catch {}
     const coach = coachById(config, cls?.coachId || '')
@@ -184,7 +197,7 @@ async function addPlayer(res, principal, config, body) {
         fee, status: payment === 'free' ? 'N/A' : 'Unpaid', waiverStatus: waiverOn ? 'Completed' : 'Needed',
         ...(plain(body.player?.medical, 600) ? { medical: plain(body.player.medical, 600) } : {}),
       },
-      note: `Added by ${principal.name} in the JFP portal (Joners Juniors).${plain(body.note, 300) ? ` ${plain(body.note, 300)}` : ''} [JJ-ADD:${addId}]`,
+      note: `Added by ${principal.name} ${source}.${plain(body.note, 300) ? ` ${plain(body.note, 300)}` : ''} [JJ-ADD:${addId}]${tag ? ` ${tag}` : ''}`,
     })
   } finally { await kvCommand(['DEL', lock]).catch(() => {}) }
   let recorded = null
@@ -192,8 +205,13 @@ async function addPlayer(res, principal, config, body) {
     const r = await recordCore(principal, config, { rowIds: [rowId], term, amountCents: Number(body.amountCents), method: body.method || 'Cash', date: body.date, note: 'Paid when added.', allowOver: true })
     recorded = r.ok ? { id: r.id } : { error: r.error }
   }
-  await audit({ by: principal.email, action: 'jj.player.add', target: rowId, after: { name, term, payment, feeAud: fee, recorded: recorded?.id || '' } })
-  return out(res, { rowId, recorded })
+  await audit({ by: principal.email, action: 'jj.player.add', target: rowId, after: { name, term, payment, feeAud: fee, recorded: recorded?.id || '', ...(tag ? { tag } : {}) } })
+  return { ok: true, rowId, recorded, term, table, name, email }
+}
+
+async function addPlayer(res, principal, config, body) {
+  const r = await addChildCore(principal, config, body)
+  return r.ok ? out(res, { rowId: r.rowId, recorded: r.recorded }) : fail(res, r.status, r.error, r.code ? { code: r.code } : {})
 }
 
 async function editPlayer(res, principal, config, body) {
@@ -367,7 +385,7 @@ function settingsView(config) {
   const jj = config.juniors
   return {
     juniors: jj,
-    derived: { dates: juniorsDates(jj).map((iso) => ({ iso, label: dateLabel(iso) })), datesLabel: datesLabelOf(jj), classLabel: classLabelOf(jj), capacity: capacityOf(jj) },
+    derived: { dates: juniorsDates(jj).map((iso) => ({ iso, label: dateLabel(iso) })), datesLabel: datesLabelOf(jj), classLabel: classLabelOf(jj), capacity: capacityOf(jj), next: nextTermOf(jj) },
     public: juniorsPublic(jj),
     coaches: config.coaches.map((c) => ({ id: c.id, name: coachLabel(c) })),
   }
@@ -377,18 +395,102 @@ async function saveSettings(res, principal, config, body) {
   const input = body.juniors && typeof body.juniors === 'object' ? body.juniors : {}
   const patch = Object.fromEntries(SETTINGS_KEYS.filter((k) => k in input).map((k) => [k, input[k]]))
   if (!Object.keys(patch).length) return fail(res, 400, 'Nothing to change.')
+  // Next term is changed field by field, so saving its name never drops its price or hold.
+  if (patch.nextTerm && typeof patch.nextTerm === 'object') patch.nextTerm = { ...config.juniors.nextTerm, ...patch.nextTerm }
   if (Array.isArray(patch.classes)) {
     const bad = patch.classes.find((c) => c?.coachId && !coachById(config, c.coachId))
     if (bad) return fail(res, 400, 'Choose a coach from the list.')
   }
   const checked = validateJuniors(patch, config.juniors)
   if (!checked.ok) return fail(res, 400, checked.errors.join(' '))
+  // Families already invited for next term under its name: the name stays.
+  const oldNext = config.juniors.nextTerm.name
+  if (checked.juniors.nextTerm.name !== oldNext && Object.keys(await jjNextStatuses(oldNext)).length) return fail(res, 409, `Families have already been invited for ${oldNext}, so its name cannot change now.`)
   const before = config.juniors
   const next = await saveConfig({ juniors: checked.juniors })
   await audit({ by: principal.email, action: 'jj.settings', target: 'config.juniors', before, after: next.juniors })
   // The class and the money read the term's table: start them afresh.
   await bustJJ(tableFor(next, next.juniors.term)).catch(() => {})
   return out(res, { ...settingsView(next), warnings: checked.warnings })
+}
+
+// ---------- invites ----------
+
+async function invitesAction(req, res, principal, config, body) {
+  const kind = KINDS.includes(body.kind) ? body.kind : 'new'
+  const filter = ['unpaid', 'waiver', 'both'].includes(body.filter) ? body.filter : 'both'
+  const site = siteUrl(req)
+  const overview = await jjOverview(config, { fresh: body.send === true || body.fresh === true })
+  const plan = await invitePlan(config, overview, kind, { site, filter })
+  if (body.send !== true) return out(res, { ...plan, filter, previews: invitePreviews(plan, config, { site, email: body.previewEmail ? String(body.previewEmail).toLowerCase() : '' }) })
+  const r = await sendInvites(plan, config, principal, { emails: Array.isArray(body.emails) ? body.emails : [], resend: body.resend === true, site, filter })
+  if (r.error) return fail(res, r.status || 400, r.error)
+  return out(res, r)
+}
+
+// ---------- requests and waitlist ----------
+
+async function requestsData(config) {
+  const [list, invites, rows] = await Promise.all([listJJRequests(), readInvites(), readJJTable(tableFor(config, config.juniors.term), { term: config.juniors.term }).catch(() => [])])
+  const enrolled = rows.filter(isEnrolled).length
+  const capacity = capacityOf(config.juniors)
+  return { ...requestsView(list, { rowsById: new Map(rows.map((r) => [r.id, r])), invites, placesLeft: Math.max(0, capacity - enrolled) }), enrolled, capacity, term: config.juniors.term, registrationOpen: config.juniors.registrationOpen }
+}
+
+async function decideRequest(res, principal, config, body) {
+  const r = await getJJRequest(body.id)
+  if (!r) return fail(res, 404, 'That request was not found.')
+  const decision = ['accept', 'decline', 'wait'].includes(body.decision) ? body.decision : ''
+  if (!decision) return fail(res, 400, 'Choose accept, decline or back to the waitlist.')
+  const lock = `jj:request-lock:${r.id}`
+  if ((await kvCommand(['SET', lock, '1', 'NX', 'EX', '20'])) !== 'OK') return fail(res, 409, 'Someone is deciding this request right now.')
+  try {
+    const now = new Date().toISOString()
+    const step = (status, extra = {}) => ({ ...r, ...extra, status, decidedBy: principal.name, decidedAt: now, history: [...(r.history || []), { status, by: principal.name, at: now, ...(extra.declineReason ? { reason: extra.declineReason } : {}) }] })
+    if (decision === 'accept') {
+      if (r.status === 'accepted') return fail(res, 409, `${r.player.name} was already accepted.`)
+      const added = await addChildCore(principal, config, { player: { name: r.player.name, dob: r.player.dob, medical: r.player.medical }, parent: r.parent, payment: 'none', note: `From the waitlist (asked ${r.createdAt.slice(0, 10)}).`, force: body.force === true }, { tag: `[JJ-REQ:${r.id}]`, source: 'from Requests & waitlist' })
+      if (!added.ok) return fail(res, added.status, added.code === 'full' ? `${added.error.replace(/ Add anyway\?$/, '')} Accept anyway?` : added.error, added.code ? { code: added.code } : {})
+      await saveJJRequest(step('accepted', { rowId: added.rowId }))
+      await audit({ by: principal.email, action: 'jj.request.accept', target: r.id, after: { rowId: added.rowId, name: r.player.name } })
+      return out(res, { status: 'accepted', rowId: added.rowId, email: r.parent.email })
+    }
+    if (decision === 'decline') {
+      if (r.status === 'declined') return fail(res, 409, 'That request was already declined.')
+      if (r.status === 'accepted') return fail(res, 409, `${r.player.name} is already in the class. Remove them in Players instead.`)
+      const reason = plain(body.reason, 200)
+      await saveJJRequest(step('declined', { declineReason: reason }))
+      await audit({ by: principal.email, action: 'jj.request.decline', target: r.id, after: { reason } })
+      return out(res, { status: 'declined' })
+    }
+    if (r.status !== 'declined') return fail(res, 409, 'Only a declined request can go back on the waitlist.')
+    await saveJJRequest(step('waiting', { declineReason: '' }))
+    await audit({ by: principal.email, action: 'jj.request.wait', target: r.id })
+    return out(res, { status: 'waiting' })
+  } finally { await kvCommand(['DEL', lock]).catch(() => {}) }
+}
+
+// ---------- online payments ----------
+
+function effectsLine(q) {
+  const e = q.effects || {}
+  const failed = JJ_PAY_EFFECTS.filter((k) => e[k]?.status === 'failed'), unclear = JJ_PAY_EFFECTS.filter((k) => ['uncertain', 'running'].includes(e[k]?.status))
+  return { failed, unclear, airtable: e.airtable?.status || '', error: e.airtable?.error || '' }
+}
+async function paymentsData(req) {
+  const [list, views] = await Promise.all([listJJPayreqs(), jjViews()])
+  const site = siteUrl(req)
+  return list.slice(0, 300).map((q) => {
+    const fx = effectsLine(q)
+    return {
+      id: q.id, kind: q.kind, reason: q.reason, status: q.status, email: q.email, parent: q.parentName, players: q.playerNames, term: q.next?.term || q.term,
+      what: q.next ? (q.next.choice === 'hold' ? 'Hold for next term' : 'Next term in full') : 'This term',
+      amountCents: q.amountCents, paidCents: q.paidCents ?? null, feeCents: q.stripeFeeCents ?? null,
+      createdAt: q.createdAt, paidAt: q.paidAt || '', views: Number(views.views[q.id]) || 0, viewedAt: views.viewedAt[q.id] || '',
+      url: isOpen(q) ? jjPayreqUrl(site, q) : '', attention: q.needsAttention || '', ...fx,
+      needsCheck: q.status === 'paid' && (fx.failed.length > 0 || fx.airtable !== 'done' || Boolean(q.needsAttention)),
+    }
+  })
 }
 
 // ---------- router ----------
@@ -403,6 +505,9 @@ export async function jjAction(req, res, principal, config, body, action) {
     }
     case 'jjDashboard': {
       const o = await jjOverview(config, { fresh: body.fresh === true })
+      const [reqs, pays] = await Promise.all([listJJRequests().catch(() => []), listJJPayreqs().catch(() => [])])
+      o.waiting = reqs.filter((r) => r.status === 'waiting').length
+      o.payAttention = pays.filter((q) => q.status === 'paid' && (q.effects?.airtable?.status !== 'done' || q.needsAttention)).length
       const { players, ...rest } = o
       return out(res, { ...rest, needs: needsList(o, config.juniors), registrationOpen: config.juniors.registrationOpen, public: juniorsPublic(config.juniors), attendance: { ready: false, note: 'Attendance by week arrives with Registers.' } })
     }
@@ -416,6 +521,24 @@ export async function jjAction(req, res, principal, config, body, action) {
       return r.ok ? out(res, { id: r.id }) : fail(res, r.status, r.error, r.code ? { code: r.code } : {})
     }
     case 'jjVoidPayment': return await voidPayment(res, principal, config, body)
+    case 'jjInvites': return await invitesAction(req, res, principal, config, body)
+    case 'jjRequests': return out(res, await requestsData(config))
+    case 'jjDecideRequest': return await decideRequest(res, principal, config, body)
+    case 'jjPayments': return out(res, { payments: await paymentsData(req) })
+    case 'jjRepairPayment': {
+      const r = await repairJJPayreq(clean(body.id, 60))
+      if (!r.ok) return fail(res, r.reason === 'busy' ? 409 : 400, r.reason === 'busy' ? 'That payment is being finished right now. Try again in a minute.' : 'Only a paid payment can be tried again.')
+      await audit({ by: principal.email, action: 'jj.payment.repair', target: r.payreq.id, after: effectsLine(r.payreq) })
+      return out(res, { done: r.payreq.effects?.airtable?.status === 'done', ...effectsLine(r.payreq) })
+    }
+    case 'jjCancelPayreq': {
+      const q = await getJJPayreq(body.id)
+      if (!q) return fail(res, 404, 'That payment was not found.')
+      if (!isOpen(q)) return fail(res, 409, `That payment is already ${q.status}.`)
+      if (!(await cancelJJPayreq(q, principal.email, plain(body.reason, 200) || 'cancelled by staff'))) return fail(res, 409, 'The family is paying it on Stripe right now. Refresh in a minute.')
+      await audit({ by: principal.email, action: 'jj.payreq.cancel', target: q.id, after: { cents: q.amountCents } })
+      return out(res, {})
+    }
     default: return fail(res, 400, `Unknown action: ${action}`)
   }
 }
