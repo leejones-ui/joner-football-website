@@ -10,6 +10,7 @@ import { bankPanel, bindBank, loadBank, bankDone, bankStale } from './jfp-portal
 import { renderHolidayMoney, holidayStale } from './jfp-portal-holiday.js'
 import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYearChart } from './jfp-portal-years.js'
 import { renderPricesPage, quickModal, progPill, WHERE as QUICK_WHERE } from './jfp-portal-quick.js'
+import { textComposer, payLinkText, trialText, helloText } from './jfp-portal-text.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', linkProg: 'all', pricing: null }
@@ -727,6 +728,7 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     <label class="j-field"><span>Payment</span><select class="j-select" id="ap-pay">
       <option value="link" selected>Payment link: they sign in, confirm the waiver and pay</option><option value="offline">Already paid offline</option><option value="sessions">Session by session: their own price, billed from Money</option><option value="trial">Free trial, no payment</option><option value="none">Decide later</option></select></label>
     <div id="ap-price"></div>
+    <label class="j-field" id="ap-trial-wrap" hidden><span>Trial date</span><select class="j-select" id="ap-trial">${dateOptions(pr, g.day, nextDate(pr, g.day))}</select></label>
     <label class="j-field" id="ap-per-wrap" hidden><span>Price per session (A$) <span class="muted">(optional, or set it when you bill)</span></span><input class="j-input" id="ap-per" inputmode="decimal" placeholder="e.g. 80"></label>
     <label class="j-check"><input type="checkbox" id="ap-send" ${spotLink ? '' : 'checked'}> <span>Email the family now. They sign in, confirm the waiver (or sign it), pay for this group, then get the training kit.</span></label>
     <p class="j-err" id="ap-err" hidden></p>
@@ -737,6 +739,7 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     const send = box.querySelector('#ap-send').checked
     box.querySelector('#ap-price').hidden = !['link', 'offline'].includes(v)
     box.querySelector('#ap-per-wrap').hidden = v !== 'sessions'
+    box.querySelector('#ap-trial-wrap').hidden = v !== 'trial'
     box.querySelector('#ap-price-afterpay').closest('label').hidden = v !== 'link'
     box.querySelector('#ap-go').textContent = v === 'link' ? (send ? 'Add and email payment link' : 'Add and copy link') : send ? 'Add and email the family' : 'Add to group'
   }
@@ -777,6 +780,7 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     }
     if (body.player.name.length < 3) { err.textContent = 'Enter the player\'s full name.'; err.hidden = false; return }
     if (payment === 'offline') body.method = 'Offline'
+    if (payment === 'trial') body.startDate = box.querySelector('#ap-trial').value
     if (payment === 'sessions') {
       const per = box.querySelector('#ap-per').value.trim()
       if (per) {
@@ -794,13 +798,23 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
       if (!r.ok) return toast(r.data.error || 'Could not add.')
     } else if (!r.ok) { err.textContent = r.data.error || 'Could not add.'; err.hidden = false; return }
     closeModal()
+    const mobile = body.parent.mobile
+    const where = `${g.day} ${g.time}, ${g.locationName}`
+    const textIt = (text, title) => textComposer({ modal, toast, rowIds: [r.data.rowId], parent: body.parent.name, mobile, text, title })
     if (r.data.payreq) {
       const url = r.data.payreq.url
-      const done = modal(`<h2 style="margin-bottom:8px">${esc(body.player.name)} is in</h2><p class="muted small" style="margin-bottom:12px">The spot is held in Airtable as Awaiting Reply. It locks in once ${esc(r.data.payreq.amountLabel)} is paid.${r.data.emailed ? ' The family has been emailed.' : ''}</p>
-        <label class="j-field"><span>Link to send the family</span><input class="j-input" value="${esc(url)}" readonly></label>
-        <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="dn-copy">Copy link</button></div>`)
+      const done = modal(`<h2 style="margin-bottom:6px">${r.data.emailed ? 'Payment link emailed' : 'Payment link ready'}</h2><p class="muted small" style="margin-bottom:12px"><b>${esc(body.player.name)}</b> is held in ${esc(where)} as Awaiting Reply, and locks in once ${esc(r.data.payreq.amountLabel)} is paid.${r.data.emailed ? ` We emailed ${esc(body.parent.email)}.` : ''} Now text them the same link.</p>
+        <label class="j-field"><span>Payment link</span><input class="j-input" value="${esc(url)}" readonly></label>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="dn-copy">Copy link</button><button type="button" class="j-btn j-btn-dark" id="dn-text" ${mobile ? '' : 'disabled title="No mobile entered"'}>Text it to ${esc(String(body.parent.name || 'the family').split(' ')[0])}</button></div>
+        ${mobile ? '' : '<p class="muted small" style="margin-top:8px">No mobile was entered. Add one with Edit on the Players tab to text them.</p>'}`)
       done.querySelector('#dn-copy').addEventListener('click', () => copy(url))
+      done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url }), `Text ${body.parent.name || 'the family'} the payment link`) })
       if (!r.data.emailed) copy(url)
+    } else if (payment === 'trial' && mobile) {
+      const when = box.querySelector('#ap-trial').selectedOptions[0]?.textContent || ''
+      const done = modal(`<h2 style="margin-bottom:6px">Trial booked</h2><p class="muted small" style="margin-bottom:12px"><b>${esc(body.player.name)}</b> trials on ${esc(when)} in ${esc(where)}. ${esc(g.coachName ? `Coach ${g.coachName}` : 'The coach')} sees it as a trial in their sessions, and is asked for feedback after it.${r.data.emailed ? ' The family has been emailed.' : ''}</p>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="dn-text">Text ${esc(String(body.parent.name || 'the family').split(' ')[0])} the trial details</button></div>`)
+      done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(trialText({ parent: body.parent.name, player: body.player.name, when, where: `${g.time}, ${g.locationName}` }), 'Text the trial details') })
     } else toast(`Added${r.data.emailed ? ' and emailed the family' : ''}. Airtable updated.`)
     renderBoard(true)
   }
@@ -2162,6 +2176,7 @@ async function renderCoach() {
     <div class="jp-head"><div style="display:flex;gap:12px;align-items:center">${avatar(d.coachPhoto, d.coach, 48)}<div><h1>${admin ? `Coach ${esc(d.coach)}` : 'My sessions'}</h1><p class="muted small">${esc(d.term)} · ${d.sessions.length} session${d.sessions.length === 1 ? '' : 's'} a week · ${hrs(d.hours.perWeekMinutes)} a week, ${hrs(d.hours.termMinutes)} across the term</p></div></div>
       ${admin ? `<div class="jp-seg" id="c-pick">${P.coaches.map((c) => `<button type="button" data-c="${esc(c.id)}" aria-pressed="${P.coachId === c.id}">${esc(c.name)}</button>`).join('')}</div>` : ''}</div>
     ${admin ? '<p class="muted small" style="margin-bottom:10px">This is exactly what the coach sees when they sign in: times, names and ages. No money, no parent contact details.</p>' : ''}
+    ${trialCards(d.trials || [])}
     ${d.sessions.length ? d.sessions.map((s) => {
       const date = P.coachDate[s.id] || s.nextDate
       return `<article class="j-card" style="padding:16px;margin-bottom:12px" data-sess="${esc(s.id)}">
@@ -2169,11 +2184,12 @@ async function renderCoach() {
         ${(s.coveredBy || []).length ? `<div class="j-box j-box-grey small" style="margin-bottom:8px">${s.coveredBy.map((c) => `${esc(c.dateLabel)}: covered by <b>${esc(c.coach)}</b>`).join('<br>')}</div>` : ''}
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
           <select class="j-select" style="width:auto" data-date="${esc(s.id)}">${s.dates.map((x) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select></div>
-        <div style="margin-top:10px">${s.players.map((p) => `<div class="jp-player" style="cursor:default"><span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
+        <div style="margin-top:10px">${s.players.filter((p) => !p.trialDate || p.trialDate === date).map((p) => `<div class="jp-player" style="cursor:default"><span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
           <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Present'}">Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Absent'}">Away</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
       </article>`
     }).join('') : '<div class="j-empty">No sessions yet.</div>'}`
   $('c-pick')?.addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (b) { P.coachId = b.dataset.c; renderCoach() } })
+  view().querySelectorAll('[data-trial-fb]').forEach((b) => b.addEventListener('click', () => trialFeedbackModal((d.trials || []).find((t) => t.rowId === b.dataset.trialFb), d.verdicts)))
   view().querySelectorAll('[data-date]').forEach((sel) => sel.addEventListener('change', () => { P.coachDate[sel.dataset.date] = sel.value; loadAttendance(sel.dataset.date, sel.value) }))
   view().querySelectorAll('[data-att]').forEach((b) => b.addEventListener('click', async () => {
     const card = b.closest('[data-sess]')
@@ -2186,6 +2202,43 @@ async function renderCoach() {
     if (!r.ok) { toast(r.data.error || 'Could not save'); renderCoach() }
     else if (r.data.airtable === 'failed') toast('Saved here. Airtable attendance did not update; it will not affect the session.')
   }))
+}
+
+// Trials in this coach's sessions (Ligia, 13 Oct 2026): a reminder on the
+// day, then a short form after it so Lee and Ligia hear how it went.
+function trialCards(trials) {
+  if (!trials.length) return ''
+  const due = trials.filter((t) => t.due)
+  const next = trials.filter((t) => t.upcoming)
+  const done = trials.filter((t) => t.feedback)
+  return `<section class="j-card" style="padding:16px;margin-bottom:14px;border-color:${due.length ? 'var(--j-amber)' : 'var(--j-line)'}">
+    <h3 style="font-size:16px;margin-bottom:4px">Trial players</h3>
+    <p class="muted small" style="margin-bottom:8px">Treat them like everyone else. After the session, tell Lee and Ligia how it went: they use it to offer the right group.</p>
+    ${due.map((t) => `<div class="jp-player" style="cursor:default"><span class="nm"><b>${esc(t.name)}</b>${t.age != null ? ` <span class="muted">(${esc(t.age)})</span>` : ''} <span class="j-pill j-pill-blue">Trial</span><br><span class="muted small">${esc(t.dateLabel || 'Trial')} · ${esc(t.session)}</span></span><button type="button" class="j-btn j-btn-dark j-btn-sm" data-trial-fb="${esc(t.rowId)}">Give feedback</button></div>`).join('')}
+    ${next.map((t) => `<div class="jp-player" style="cursor:default"><span class="nm"><b>${esc(t.name)}</b>${t.age != null ? ` <span class="muted">(${esc(t.age)})</span>` : ''} <span class="j-pill j-pill-blue">Trial</span><br><span class="muted small">Trialling ${esc(t.dateLabel)} · ${esc(t.session)}</span></span><span class="muted small">Feedback after the session</span></div>`).join('')}
+    ${done.map((t) => `<div class="jp-player" style="cursor:default"><span class="nm">${esc(t.name)} <span class="j-pill j-pill-green">Feedback sent</span><br><span class="muted small">${esc(t.feedback.verdict)}, ${esc(new Date(t.feedback.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}</span></span><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-trial-fb="${esc(t.rowId)}">Update</button></div>`).join('')}
+  </section>`
+}
+function trialFeedbackModal(t, verdicts = []) {
+  if (!t) return
+  let verdict = t.feedback?.verdict || ''
+  const box = modal(`<h2 style="margin-bottom:2px">How did ${esc(t.name.split(' ')[0])}'s trial go?</h2>
+    <p class="muted small" style="margin-bottom:14px">${esc(t.dateLabel || 'Trial')} · ${esc(t.session)}. Goes to Lee and Ligia, and onto ${esc(t.name.split(' ')[0])}'s player information.</p>
+    <div class="j-field"><span>Overall</span><div class="j-chips" style="flex-wrap:wrap" id="tf-v">${verdicts.map((v) => `<button type="button" class="j-chip" data-v="${esc(v)}" aria-pressed="${v === verdict}">${esc(v)}</button>`).join('')}</div></div>
+    <div class="j-two"><label class="j-field"><span>Level compared with the group</span><select class="j-select" id="tf-level"><option value="">Choose</option>${['Below the group', 'About right', 'Above the group'].map((x) => `<option>${x}</option>`).join('')}</select></label>
+    <label class="j-field"><span>Best group for them <span class="muted">(optional)</span></span><input class="j-input" id="tf-best" placeholder="For example, Tue 5:25pm Belrose"></label></div>
+    <label class="j-field"><span>Notes for Lee and Ligia</span><textarea class="j-textarea" id="tf-notes" rows="5" placeholder="Strengths, what to work on, attitude, anything they should know"></textarea></label>
+    <p class="j-err" id="tf-err" hidden></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="tf-go">Send to Lee and Ligia</button></div>`, { wide: true })
+  box.querySelector('#tf-v').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; verdict = b.dataset.v; box.querySelectorAll('[data-v]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))) })
+  box.querySelector('#tf-go').addEventListener('click', async (e) => {
+    const err = box.querySelector('#tf-err'); err.hidden = true
+    const btn = e.currentTarget; btn.disabled = true
+    const r = await post('trialFeedback', { rowId: t.rowId, verdict, level: box.querySelector('#tf-level').value, best: box.querySelector('#tf-best').value.trim(), notes: box.querySelector('#tf-notes').value.trim() })
+    btn.disabled = false
+    if (!r.ok) { err.textContent = r.data.error || 'Could not send.'; err.hidden = false; return }
+    closeModal(); toast('Sent to Lee and Ligia. Thank you.'); renderCoach()
+  })
 }
 
 async function loadAttendance() { renderCoach() }
@@ -2357,7 +2410,11 @@ async function plEdit(p) {
     <div class="j-two">${txt('pe-p2name', 'Second parent <span class="muted">(optional)</span>', v.parent2Name)}${txt('pe-p2mob', 'Second parent mobile', v.parent2Mobile, 'type="tel"')}</div>
     ${txt('pe-p2email', 'Second parent email <span class="muted">(optional)</span>', v.parent2Email, 'type="email"')}
     <h3 style="margin-top:8px">Football</h3>
-    <div class="j-two">${txt('pe-club', 'Club', v.club, 'placeholder="For example, Manly United"')}${txt('pe-team', 'Team and age group', v.team, 'placeholder="For example, U13 Div 1"')}</div>
+    <div class="j-two">${txt('pe-club', 'Club', v.club, 'placeholder="For example, Manly United" list="pe-clubs" autocomplete="off"')}${txt('pe-team', 'Team and age group', v.team, 'placeholder="For example, U13 Div 1"')}</div>
+    <datalist id="pe-clubs">${(opts.clubs || []).map((c) => `<option value="${esc(c)}">`).join('')}</datalist>
+    <div class="j-two">${txt('pe-assoc', 'Association <span class="muted">(optional)</span>', v.association, 'placeholder="For example, MWFA or NWSF"')}${txt('pe-prev', 'Previous clubs <span class="muted">(optional)</span>', v.previousClubs)}</div>
+    <div class="j-two"><label class="j-field"><span>Years playing</span>${sel('pe-years', opts.years || ['Under 1 year', '1 to 2 years', '3 to 4 years', '5 or more years'], v.yearsPlaying, 'Not known')}</label>${txt('pe-rep', 'Rep, academy or squads <span class="muted">(optional)</span>', v.repTeam, 'placeholder="For example, Manly United academy"')}</div>
+    ${txt('pe-other', 'Other training each week <span class="muted">(optional)</span>', v.otherTraining, 'placeholder="For example, futsal on Mondays"')}
     <div class="j-two"><label class="j-field"><span>Level</span>${sel('pe-level', opts.levels, v.level, 'Not known')}</label><label class="j-field"><span>Plays</span>${sel('pe-up', opts.playingUp || ['Own age', 'Playing up', 'Playing down'], v.playingUp, 'Not known')}</label></div>
     <div class="j-field"><span>Positions</span><div class="j-chips" style="flex-wrap:wrap" id="pe-pos">${opts.positions.map((x) => `<button type="button" class="j-chip" data-pos="${esc(x)}" aria-pressed="${(v.positions || []).includes(x)}">${esc(x)}</button>`).join('')}</div></div>
     <label class="j-field"><span>Stronger foot</span>${sel('pe-foot', opts.feet || ['Right', 'Left', 'Both'], v.foot, 'Not known')}</label>
@@ -2377,6 +2434,7 @@ async function plEdit(p) {
     const changed = Object.fromEntries(Object.entries(row).filter(([k, x]) => x !== (d.row[k] || '')))
     const values = {
       dob: val('pe-dob'), club: val('pe-club'), team: val('pe-team'), level: val('pe-level'), playingUp: val('pe-up'), foot: val('pe-foot'),
+      association: val('pe-assoc'), previousClubs: val('pe-prev'), yearsPlaying: val('pe-years'), repTeam: val('pe-rep'), otherTraining: val('pe-other'),
       positions: [...box.querySelectorAll('[data-pos][aria-pressed="true"]')].map((b) => b.dataset.pos),
       parent2Name: val('pe-p2name'), parent2Mobile: val('pe-p2mob'), parent2Email: val('pe-p2email'),
       emergencyName: val('pe-ename'), emergencyPhone: val('pe-ephone'), emergencyRelation: val('pe-erel'), medical: val('pe-med'), goals: val('pe-goals'),
@@ -2424,7 +2482,13 @@ function plDetail(p) {
     ${row('Plays', p.profile?.playingUp)}
     ${row('Positions', (p.profile?.positions || []).join(', '))}
     ${row('Stronger foot', p.profile?.foot)}
+    ${row('Association', p.profile?.association)}
+    ${row('Years playing', p.profile?.yearsPlaying)}
+    ${row('Rep or academy', p.profile?.repTeam)}
     ${p.profile?.updatedAt ? row('Updated', `${new Date(p.profile.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}${p.profile.updatedFrom === 'Family account' ? ' by the family' : ''}`) : ''}
+    ${p.trial ? `<h3 style="margin-top:14px">Trial</h3>
+    ${row('Trial date', p.trialDate || 'not set')}
+    ${p.trialFeedback ? `${row('Coach said', `${p.trialFeedback.verdict}${p.trialFeedback.level ? `, level ${p.trialFeedback.level.toLowerCase()}` : ''}${p.trialFeedback.best ? `, best group: ${p.trialFeedback.best}` : ''}`)}${row('From', `Coach ${p.trialFeedback.byName}, ${new Date(p.trialFeedback.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`)}<p class="small" style="white-space:pre-wrap;margin:6px 0 0">${esc(p.trialFeedback.notes)}</p>` : row('Coach feedback', 'not in yet (the coach is asked after the trial)')}` : ''}
     <h3 style="margin-top:14px">Session</h3>
     ${row('Group', p.inGroup ? p.groupLabel : 'Not in a group')}
     ${row('Coach', p.coach)}
@@ -2444,8 +2508,9 @@ function plDetail(p) {
     ${row('Waiver', p.waiver.onFile ? `On file${p.waiver.term ? `, ${p.waiver.term}` : ''}${p.waiver.signedDate ? `, signed ${p.waiver.signedDate}` : ''}${p.waiver.spelling ? `, signed as "${p.waiver.spelling}"` : ''}` : 'Not signed (no waiver in Airtable for this player)')}
     ${row('Playing kit', p.kit || 'not confirmed')}
     ${p.notes ? `<h3 style="margin-top:14px">Notes</h3><p class="small" style="white-space:pre-wrap;max-height:220px;overflow:auto">${esc(p.notes)}</p>` : ''}
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="pd-edit">Edit</button></div>`, { wide: true })
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="pd-text">Text family</button><button type="button" class="j-btn j-btn-dark" id="pd-edit">Edit</button></div>`, { wide: true })
   $('pd-edit')?.addEventListener('click', () => { closeModal(); plEdit(p) })
+  $('pd-text')?.addEventListener('click', () => { closeModal(); textComposer({ modal, toast, rowIds: [p.rowId], parent: p.parent, mobile: p.phone, text: helloText({ parent: p.parent }), title: `Text ${p.parent || 'the family'}` }) })
 }
 
 function plAddBox() {

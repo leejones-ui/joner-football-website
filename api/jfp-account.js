@@ -16,7 +16,7 @@ import {
   formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType,
 } from './_jfp-store.js'
 import { telegramAlert } from './_jfp-notify.js'
-import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, waiverPrefill, LEVELS, PLAYING_UP, POSITIONS, FEET } from './_jfp-profiles.js'
+import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, waiverPrefill, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
@@ -267,7 +267,7 @@ async function profiles(res, parent) {
     const prefill = prof ? {} : await waiverPrefill(p.waiver?.id)
     players.push({ key: p.key, name: p.name, age: p.age, profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || p.dob || '', parentName: prefill.parentName || fam.parentName || '', parentMobile: prefill.parentMobile || fam.mobile || '' } })
   }
-  return res.status(200).json({ success: true, players, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET } })
+  return res.status(200).json({ success: true, players, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubs: clubSuggestions(roster.waivers) } })
 }
 
 async function saveMyProfile(res, parent, body) {

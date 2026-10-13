@@ -219,6 +219,32 @@ await test('every step is in the audit log', async () => {
   for (const a of ['message.prepare', 'message.email.sent', 'message.text.queued', 'message.text.sent', 'message.route.verify', 'message.reconcile', 'message.pref']) assert.ok(actions.includes(a), a)
 })
 
+await test('text one family from the portal: exact words, from the verified route, never to a family that said no', async () => {
+  const add = await lee.call('/api/jfp-portal-data', { action: 'addPlayer', groupId: g.data.group.id, force: true, player: { name: 'Quinn Quick' }, parent: { name: 'Quinn Parent', email: 'quick@example.com', mobile: '0411 222 333' }, payment: 'none' })
+  assert.equal(add.status, 200, JSON.stringify(add.data))
+  const rowId = add.data.rowId
+  assert.equal((await msg(lee, 'quickText', { rowIds: [rowId], text: 'Hi' })).status, 400, 'a real text')
+  const q = await msg(ligia, 'quickText', { rowIds: [rowId], text: 'Hi Quinn, it is Lee from Joner Football. Your link: https://jonerfootball.com/jfp-account/' })
+  assert.equal(q.status, 200, JSON.stringify(q.data))
+  assert.equal(q.data.message.status, 'queued', 'Ligia pressing Send is the approval')
+  assert.ok(!JSON.stringify(q.data).includes('0411 222 333') && !JSON.stringify(q.data).includes('0411222333'), 'the number is masked')
+  const before = fakeSends()
+  sidecar('ok')
+  assert.equal(fakeSends(), before + 1, 'the Mac sent it')
+  assert.equal((await msg(lee, 'get', { id: q.data.message.id })).data.message.status, 'sent')
+  // A family that said no to texts is never texted from here.
+  assert.equal((await msg(lee, 'setPref', { email: 'quick@example.com', text: 'no' })).status, 200)
+  const no = await msg(lee, 'quickText', { rowIds: [rowId], text: 'Hi Quinn, one more thing from Joner Football.' })
+  assert.equal(no.status, 409); assert.match(no.data.error, /asked not to get texts/)
+  // Route off: nothing is queued, and the portal says why.
+  assert.equal((await msg(lee, 'unverifyRoute')).status, 200)
+  assert.equal((await msg(lee, 'setPref', { email: 'quick@example.com', text: 'yes', how: 'asked us to text them' })).status, 200)
+  const off = await msg(lee, 'quickText', { rowIds: [rowId], text: 'Hi Quinn, one more thing from Joner Football.' })
+  assert.equal(off.status, 409); assert.equal(off.data.code, 'route')
+  const coach = (await lee.call('/api/jfp-portal-data', { action: 'audit' })).data
+  assert.ok(JSON.stringify(coach).includes('message.quicktext'))
+})
+
 fs.rmSync(FAKE_DB, { force: true })
 console.log(`\n${passed} JFP messages checks passed`)
 process.exit(0)

@@ -101,7 +101,7 @@ export async function renderMessages(ui) {
     })
   }))
   view().querySelector('#ms-test')?.addEventListener('click', () => {
-    const box = modal(`<h2 style="margin-bottom:8px">Send yourself a test text</h2><p class="small" style="margin-bottom:12px">It goes through the same queue and the HQ Mac as family texts. The Mac has to be running the text helper.</p>
+    const box = modal(`<h2 style="margin-bottom:8px">Send yourself a test text</h2><p class="small" style="margin-bottom:12px">It goes through the same queue and the office Mac (your work number) as family texts. The Mac has to be running the text helper.</p>
       <label class="j-field"><span>Your mobile</span><input class="j-input" id="st-phone" inputmode="tel" placeholder="04xx xxx xxx"></label>
       <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="st-go">Queue the test</button></div>`)
     box.querySelector('#st-go').addEventListener('click', async () => {

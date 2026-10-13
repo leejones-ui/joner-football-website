@@ -399,8 +399,14 @@ function renderInfo() {
       </div><span class="ja-avatar">${esc(initials(pl.name))}</span></div>
       <div class="ja-form">
         <h4>Football</h4>
-        ${f('club', 'Club', v.club, 'placeholder="For example, Manly United" autocomplete="off"')}
+        ${f('club', 'Club', v.club, `placeholder="For example, Manly United" autocomplete="off" list="clubs-${esc(pl.key)}"`)}
+        <datalist id="clubs-${esc(pl.key)}">${(o.clubs || []).map((c) => `<option value="${esc(c)}">`).join('')}</datalist>
         ${f('team', 'Team and age group', v.team, 'placeholder="For example, U13 Div 1" autocomplete="off"')}
+        ${f('association', 'Association <span class="muted">(optional)</span>', v.association, 'placeholder="For example, MWFA or NWSF"')}
+        ${f('previousClubs', 'Previous clubs <span class="muted">(optional)</span>', v.previousClubs)}
+        <label class="j-field"><span>Years playing</span><select class="j-select" data-f="yearsPlaying"><option value="">Choose</option>${(o.years || ['Under 1 year', '1 to 2 years', '3 to 4 years', '5 or more years']).map((x) => `<option ${v.yearsPlaying === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+        ${f('repTeam', 'Rep, academy or squads <span class="muted">(optional)</span>', v.repTeam, 'placeholder="For example, Manly United academy"')}
+        ${f('otherTraining', 'Other training each week <span class="muted">(optional)</span>', v.otherTraining, 'placeholder="For example, futsal on Mondays"')}
         <label class="j-field"><span>Level</span><select class="j-select" data-f="level"><option value="">Choose</option>${o.levels.map((x) => `<option ${v.level === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
         ${seg('playingUp', o.playingUp)}
         <div class="j-field full"><span>Positions <span class="muted">(choose any)</span></span><div class="ja-seg" data-multi="positions">${o.positions.map((x) => `<button type="button" class="j-chip" data-val="${esc(x)}" aria-pressed="${(v.positions || []).includes(x)}">${esc(x)}</button>`).join('')}</div></div>

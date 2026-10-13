@@ -10,7 +10,7 @@ import { quickUrl } from './_jfp-quick.js'
 import { familyPlan, createPayreq, payreqUrl } from './jfp-portal-data.js'
 import {
   newMsg, getMsg, saveMsg, listMsgs, event, isFinal, claim, payloadHash, evidenceOf, familyPhone, maskPhone, normalisePhone, sha,
-  textFor, doNotContact, getPrefs, setPref, relayStatus, routeStatus, saveRoute, sendEmailExact, keys, STATUS_LABELS, TEXT_HOURS, TEXT_EXPIRES_HOURS,
+  textFor, doNotContact, getPrefs, setPref, relayStatus, routeStatus, saveRoute, sendEmailExact, keys, STATUS_LABELS, TEXT_HOURS, TEXT_EXPIRES_HOURS, textHoursOpen,
 } from './_jfp-messages.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -33,6 +33,9 @@ export async function familyNow(req, config, email) {
 // Before anything is sent: is this still exactly what the records say?
 export async function stillValid(req, config, m) {
   if (m.selfTest) return { ok: true }
+  // A text Lee or Ligia wrote and sent from a player's page (quickText): the
+  // words are theirs, so there is no prepared amount or link to go stale.
+  if (m.quick) return { ok: true }
   const now = await familyNow(req, config, m.email)
   if (!now.fam) return { ok: false, why: 'The family no longer holds a Term 4 place.' }
   // The sign-in message carries no amount or link, so payments moving never make it wrong.
@@ -395,6 +398,44 @@ async function unverifyRoute(res, principal) {
   return res.status(200).json({ success: true })
 }
 
+// Text one family now (Lee, 13 Oct 2026): from the "player added" window and
+// the Players tab. Lee or Ligia see the exact words, can change them, and
+// press Send: that press is the approval. It goes out from the work number
+// through the office Mac like every portal text, between 8am and 8pm, and
+// never to a family that said no to texts or is marked Do Not Contact.
+async function quickText(res, principal, body) {
+  const roster = await loadRoster({ fresh: true })
+  const ids = (Array.isArray(body.rowIds) ? body.rowIds : [body.rowId]).map((x) => clean(x, 30)).filter(Boolean)
+  const rows = roster.players.filter((r) => ids.includes(r.id))
+  if (!rows.length) return fail(res, 404, 'Player not found in Airtable.')
+  const email = rows[0].email
+  if (!email) return fail(res, 400, 'This family has no email in Airtable. Add one with Edit first.')
+  const ph = familyPhone(rows)
+  if (!ph.phone) return fail(res, 400, `${ph.problem || 'No mobile in Airtable'}. Fix it with Edit on the Players tab, then send.`)
+  const text = String(body.text || '').replace(/\r/g, '').trim()
+  if (text.length < 10 || text.length > 640) return fail(res, 400, 'Keep the text between 10 and 640 characters.')
+  const prefs = await getPrefs()
+  if (prefs[email]?.text === 'no') return fail(res, 409, 'This family asked not to get texts. Email them instead.')
+  let dnc
+  try { dnc = await doNotContact() } catch { return fail(res, 503, 'Could not check Do Not Contact in Airtable. Try again in a minute.') }
+  if (dnc.has(email, ph.phone)) return fail(res, 409, 'This family is marked Do Not Contact.')
+  const route = await routeStatus()
+  // Until Lee has checked one test text from the work number, nothing goes
+  // to a family from the portal (it would sit in the queue and expire).
+  if (!route.verified) return fail(res, 409, 'Portal texts are off until Lee sends himself one test text (Messages tab, Send me a test text) and confirms it arrived. Use Text from my phone for now.', { code: 'route' })
+  if (prefs[email]?.text !== 'yes') await setPref(email, { text: 'yes', how: `Booked by ${principal.name || principal.email}, who texted them their own booking details`, by: principal.email, at: new Date().toISOString() })
+  const m = newMsg({ channel: 'text', family: { email, parent: rows[0].parent, players: rows.map((r) => ({ name: r.player, rowId: r.id })), kind: 'quick' }, content: { text }, target: { ref: maskPhone(ph.phone), hash: sha(ph.phone) }, by: principal.email, route: { id: 'mac', label: 'Messages on the office Mac' } })
+  m.quick = true
+  m.status = 'queued'
+  m.approvedBy = principal.email
+  m.approvedAt = m.createdAt
+  m.expiresAt = new Date(Date.now() + TEXT_EXPIRES_HOURS * 3600000).toISOString()
+  event(m, principal.email, 'written and sent from the portal')
+  await saveMsg(m)
+  await audit({ by: principal.email, action: 'message.quicktext', target: m.id, after: { players: m.players, to: m.target.ref } })
+  return res.status(200).json({ success: true, message: view(m), routeVerified: Boolean(route.verified), hoursOpen: textHoursOpen(), to: maskPhone(ph.phone) })
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -410,6 +451,7 @@ export default async function handler(req, res) {
     if (principal.role !== 'admin') return fail(res, 403, 'Only Lee or Ligia send messages to families.')
     const action = clean(body.action, 30)
     if (action === 'overview') return res.status(200).json({ ...(await overview(req, config)), isOwner: isOwner(principal), me: principal.email })
+    if (action === 'quickText') return await quickText(res, principal, body)
     if (action === 'prepare') return await prepare(req, res, principal, config, body)
     if (action === 'campaign') return res.status(200).json({ success: true, ...campaignSummary(await listMsgs(1000)), route: await routeStatus(), isOwner: isOwner(principal) })
     if (action === 'prepareCampaign') return await prepareCampaign(req, res, principal, config)

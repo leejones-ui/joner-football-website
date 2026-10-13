@@ -30,7 +30,7 @@ import { repairJfpBooking, effectsSummary, EFFECTS, payEffectsFor } from './_jfp
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest } from './_jfp-next.js'
-import { allProfiles, findProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, LEVELS, PLAYING_UP, POSITIONS, FEET } from './_jfp-profiles.js'
+import { allProfiles, findProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
@@ -239,7 +239,7 @@ export async function addPlayer(req, res, principal, config, body) {
     'Term 4 Amount Paid': payment === 'offline' ? amountCents / 100 : 0,
     'Term 4 Payment Status': payment === 'offline' ? 'Paid' : payment === 'trial' ? 'N/A' : 'Unpaid',
     'Term 4 Payment Type': isTrial ? 'JFP Trial' : payment === 'sessions' ? SESSION_TYPE : price.type,
-    'Term 4 Notes': `Added by ${principal.name} in the JFP portal${age != null ? `, age ${age}` : ''}${price.fixedSessions && !isTrial ? `, half term from ${from} (${price.sessions} sessions)` : price.proRata && !isTrial ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${payment === 'sessions' ? `\nSession by session${perSession ? ` at ${formatAud(perSession)} a session` : ''}.` : ''}`,
+    'Term 4 Notes': `Added by ${principal.name} in the JFP portal${isTrial && from ? `. Trial offered for ${from}` : ''}${age != null ? `, age ${age}` : ''}${price.fixedSessions && !isTrial ? `, half term from ${from} (${price.sessions} sessions)` : price.proRata && !isTrial ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${payment === 'sessions' ? `\nSession by session${perSession ? ` at ${formatAud(perSession)} a session` : ''}.` : ''}`,
     ...(payment === 'offline' ? { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' } : {}),
   }
   if (perSession) fields['Term 4 Notes'] = withPerSession(fields['Term 4 Notes'], perSession)
@@ -265,7 +265,7 @@ export async function addPlayer(req, res, principal, config, body) {
 async function playersList(req, res, config, body = {}) {
   // Player information (club, level, positions) is read with the list, so the
   // tab can filter on it when placing players. A failed read only hides it.
-  const [roster, groups, profiles] = await Promise.all([loadRoster({ fresh: body.fresh === true }), listGroups(), allProfiles().catch((e) => { console.error('jfp profiles read failed', e); return null })])
+  const [roster, groups, profiles, trialFb] = await Promise.all([loadRoster({ fresh: body.fresh === true }), listGroups(), allProfiles().catch((e) => { console.error('jfp profiles read failed', e); return null }), trialFeedbackAll()])
   const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
   // placeInGroups resolves each row's groupId the same way the Timetable does,
   // including the coach-split morning squads. A groupId that is not a real
@@ -288,6 +288,7 @@ async function playersList(req, res, config, body = {}) {
       age: dob ? ageOn(dob, sydneyToday()) : null,
       club: prof?.club || waiver?.club || '',
       profile: profileSummary(prof),
+      trial: /trial/i.test(r.paymentType), trialDate: trialDateOf(r), trialFeedback: trialFb[r.id] || null,
       parent: r.parent || '',
       email: r.email || '',
       phone: r.phone || '',
@@ -495,7 +496,7 @@ async function getPlayerProfile(res, config, body) {
   const prof = await findProfile({ key, rowIds: [row.id] })
   const waiver = prof ? null : waiverFor(row.player, { emails: rowEmails(row), phones: [row.phone], dob: row.dob }, roster.waivers)
   const prefill = waiver ? await waiverPrefill(waiver.id) : {}
-  return res.status(200).json({ success: true, row: { rowId: row.id, name: row.player, parent: row.parent, email: row.email, phone: row.phone }, profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || isoDate(row.dob) || '' }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET } })
+  return res.status(200).json({ success: true, row: { rowId: row.id, name: row.player, parent: row.parent, email: row.email, phone: row.phone }, profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || isoDate(row.dob) || '' }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubs: clubSuggestions(roster.waivers) } })
 }
 async function savePlayerProfile(res, principal, config, body) {
   const row = await rowOr404(res, body.rowId); if (!row) return
@@ -2045,7 +2046,8 @@ function coachSessions(config, groups, roster, coachId, date, juniors = {}, note
     const dates = sessionDates(config, g.day)
     const players = isJuniorsGroup(g) ? (juniors[g.id] || []).map((p) => ({ rowId: p.rowId, name: p.name, age: p.age, coach: me?.name || '', mine: true, trial: false, status: 'Confirmed', juniors: true })) : roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !isTestName(r.player)).map((r) => {
       const c = coachByAirtableName(config, r.coach)
-      return { rowId: r.id, name: r.player, age: playerAge(r, config.termStart), coach: c?.name || r.coach || '', mine: !c || c.id === coachId || !(g.extraCoachIds || []).length, trial: /trial/i.test(r.paymentType), status: r.confirmation, ...coachInfo(r, notes, config) }
+      const trial = /trial/i.test(r.paymentType)
+      return { rowId: r.id, name: r.player, age: playerAge(r, config.termStart), coach: c?.name || r.coach || '', mine: !c || c.id === coachId || !(g.extraCoachIds || []).length, trial, trialDate: trial ? trialDateOf(r) : '', status: r.confirmation, ...coachInfo(r, notes, config) }
     }).sort((a, b) => Number(b.mine) - Number(a.mine) || a.name.localeCompare(b.name))
     const loc = locationFor(config, g.location)
     const next = dates.find((d) => d >= (date || sydneyToday())) || dates.at(-1)
@@ -2055,6 +2057,55 @@ function coachSessions(config, groups, roster, coachId, date, juniors = {}, note
       players, coachName: coachLabel(me),
     }
   })
+}
+
+// ---------- trials: the coach tells Lee and Ligia how it went ----------
+// Ligia, 13 Oct 2026: coaches must know a player is on trial, and Lee and
+// Ligia need to hear from the coach after it. Saved in KV (the coach portal
+// reads it fast) and on the player's profile in Airtable, and Lee and Ligia
+// get a Telegram message.
+const TRIAL_FEEDBACK = 'jfp:trial-feedback'
+const trialDateOf = (r) => (String(r.notes || '').match(/Trial offered for (\d{4}-\d{2}-\d{2})/) || [])[1] || ''
+export const TRIAL_VERDICTS = ['Ready for this group', 'Better in another group', 'Needs a lower level', 'Not the right fit yet']
+async function trialFeedbackAll() {
+  const raw = (await kvCommand(['HGETALL', TRIAL_FEEDBACK])) || []
+  const out = {}
+  for (let i = 0; i + 1 < raw.length; i += 2) { try { out[raw[i]] = JSON.parse(raw[i + 1]) } catch {} }
+  return out
+}
+// The trial players in this coach's sessions, and whether feedback is due.
+function coachTrials(sessions, feedback, today) {
+  const out = []
+  for (const s of sessions) for (const p of s.players) {
+    if (!p.trial || !p.mine) continue
+    const date = p.trialDate || ''
+    const fb = feedback[p.rowId] || null
+    out.push({ rowId: p.rowId, name: p.name, age: p.age, groupId: s.id, session: `${s.day} ${s.time}, ${s.location}`, date, dateLabel: date ? dateLabel(date) : '', due: !fb && (!date || date <= today), upcoming: Boolean(date && date > today), feedback: fb ? { at: fb.at, by: fb.byName, verdict: fb.verdict } : null })
+  }
+  return out.sort((a, b) => Number(b.due) - Number(a.due) || (a.date || '').localeCompare(b.date || ''))
+}
+async function saveTrialFeedback(res, principal, config, isAdmin, body) {
+  const row = await rowOr404(res, body.rowId); if (!row) return
+  if (!/trial/i.test(row.paymentType)) return fail(res, 400, 'That player is not on a trial.')
+  const groups = await listGroups()
+  const g = groups.find((x) => x.id === row.groupId) || null
+  if (!isAdmin && !(g && (g.coachId === principal.coachId || (g.extraCoachIds || []).includes(principal.coachId)))) return fail(res, 403, 'Not your session.')
+  const verdict = TRIAL_VERDICTS.includes(body.verdict) ? body.verdict : ''
+  if (!verdict) return fail(res, 400, 'Choose how the trial went.')
+  const level = ['Below the group', 'About right', 'Above the group'].includes(body.level) ? body.level : ''
+  const best = clean(body.best, 120)
+  const notes = String(body.notes || '').replace(/\r/g, '').trim().slice(0, 1500)
+  if (notes.length < 10) return fail(res, 400, 'Add a few words for Lee and Ligia: strengths, what to work on, attitude.')
+  const byName = principal.name || principal.email
+  const fb = { at: new Date().toISOString(), by: principal.email, byName, verdict, level, best, notes, date: trialDateOf(row) }
+  await kvCommand(['HSET', TRIAL_FEEDBACK, row.id, JSON.stringify(fb)])
+  const where = g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : [row.day, row.time, row.location].filter(Boolean).join(' ')
+  const line = `${sydneyToday()}, Coach ${byName} (trial ${fb.date || 'date not set'}, ${where}): ${verdict}${level ? `. Level: ${level.toLowerCase()}` : ''}${best ? `. Best group: ${best}` : ''}.\n${notes}`
+  const key = profileKey(row.player, row.email)
+  try { await addTrialFeedback({ existing: await findProfile({ key, rowIds: [row.id] }), name: row.player, key, emails: rowEmails(row), rowIds: [row.id], line, by: principal.email }) } catch (e) { console.error('jfp trial feedback airtable failed', e) }
+  if (!isTestName(row.player)) await telegramAlert(`Trial feedback: ${row.player} (${where}) from Coach ${byName}: ${verdict}${best ? `, best group: ${best}` : ''}. Full notes on the Players tab.`)
+  await audit({ by: principal.email, action: 'trial.feedback', target: row.id, after: { verdict, level } })
+  return res.status(200).json({ success: true })
 }
 
 async function attendanceFor(gid, date) {
@@ -2350,8 +2401,9 @@ async function handle(req, res) {
         s.cancelledBy = {}
         for (const r of away) if (r.groupId === s.id) (s.cancelledBy[r.date] ||= {})[r.rowId] = { reason: r.reason, notice: r.noticeLabel }
       }
+      const trials = coachTrials(sessions, await trialFeedbackAll(), sydneyToday())
       const perWeek = sessions.reduce((t, s) => t + s.durationMin, 0)
-      return res.status(200).json({ success: true, coach: coachLabel(coachById(config, coachId)), coachPhoto: coachList(config, false).find((c) => c.id === coachId)?.photo || '', term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
+      return res.status(200).json({ success: true, trials, verdicts: TRIAL_VERDICTS, coach: coachLabel(coachById(config, coachId)), coachPhoto: coachList(config, false).find((c) => c.id === coachId)?.photo || '', term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
     }
 
     // The whole program as a timetable: names and ages, no money, no contacts.
@@ -2412,6 +2464,8 @@ async function handle(req, res) {
       }
       return res.status(200).json({ success: true, airtable })
     }
+
+    if (action === 'trialFeedback') return await saveTrialFeedback(res, principal, config, isAdmin, body)
 
     if (!isAdmin) return fail(res, 403, 'Not allowed.')
 

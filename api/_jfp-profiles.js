@@ -17,17 +17,19 @@ export const LEVELS = ['A-League academy', 'NPL', 'Youth league (BYL or GYL)', '
 export const PLAYING_UP = ['Own age', 'Playing up', 'Playing down']
 export const POSITIONS = ['Goalkeeper', 'Centre back', 'Full back', 'Defensive midfield', 'Central midfield', 'Attacking midfield', 'Winger', 'Striker']
 export const FEET = ['Right', 'Left', 'Both']
+export const YEARS = ['Under 1 year', '1 to 2 years', '3 to 4 years', '5 or more years']
 
 // The editable values and their Airtable columns.
 const FIELD = {
   dob: 'Date of Birth', club: 'Club', team: 'Team', level: 'Level', playingUp: 'Playing Up', positions: 'Positions', foot: 'Preferred Foot',
+  association: 'Association', previousClubs: 'Previous Clubs', yearsPlaying: 'Years Playing', repTeam: 'Rep or Academy', otherTraining: 'Other Training',
   parentName: 'Parent Name', parentMobile: 'Parent Mobile', parent2Name: 'Second Parent Name', parent2Email: 'Second Parent Email', parent2Mobile: 'Second Parent Mobile',
   emergencyName: 'Emergency Contact Name', emergencyPhone: 'Emergency Contact Phone', emergencyRelation: 'Emergency Contact Relationship',
   medical: 'Medical Notes', goals: 'Player Goals',
 }
 export const PROFILE_KEYS = Object.keys(FIELD)
 // What the Players tab list shows and filters on. No contacts, no medical.
-export const SUMMARY_KEYS = ['dob', 'club', 'team', 'level', 'playingUp', 'positions', 'foot']
+export const SUMMARY_KEYS = ['dob', 'club', 'team', 'level', 'playingUp', 'positions', 'foot', 'association', 'yearsPlaying', 'repTeam']
 
 export const profileKey = (name, email) => `${normName(name)}|${String(email || '').trim().toLowerCase()}`
 const list = (v) => String(v || '').split(',').map((x) => x.trim()).filter(Boolean)
@@ -51,7 +53,7 @@ export function cleanProfile(input = {}) {
   const v = {}
   const errors = []
   const has = (k) => Object.prototype.hasOwnProperty.call(input, k)
-  for (const k of ['club', 'team', 'parentName', 'parent2Name', 'emergencyName', 'emergencyRelation']) if (has(k)) v[k] = clean(input[k], 80)
+  for (const k of ['club', 'team', 'parentName', 'parent2Name', 'emergencyName', 'emergencyRelation', 'association', 'previousClubs', 'repTeam', 'otherTraining']) if (has(k)) v[k] = clean(input[k], 120)
   for (const k of ['medical', 'goals']) if (has(k)) v[k] = String(input[k] ?? '').replace(/\r/g, '').trim().slice(0, 1000)
   for (const k of ['parentMobile', 'parent2Mobile', 'emergencyPhone']) {
     if (!has(k)) continue
@@ -71,6 +73,7 @@ export function cleanProfile(input = {}) {
   if (has('level')) v.level = LEVELS.includes(input.level) ? input.level : ''
   if (has('playingUp')) v.playingUp = PLAYING_UP.includes(input.playingUp) ? input.playingUp : ''
   if (has('foot')) v.foot = FEET.includes(input.foot) ? input.foot : ''
+  if (has('yearsPlaying')) v.yearsPlaying = YEARS.includes(input.yearsPlaying) ? input.yearsPlaying : ''
   if (has('positions')) v.positions = [...new Set((Array.isArray(input.positions) ? input.positions : []).filter((x) => POSITIONS.includes(x)))]
   return { values: v, errors: [...new Set(errors)] }
 }
@@ -127,7 +130,7 @@ export async function saveProfile({ existing, name, key, emails, rowIds, values,
   for (const [k, val] of Object.entries(values)) {
     if (k === 'dob') fields[FIELD.dob] = val || null
     else if (k === 'positions') fields[FIELD.positions] = val
-    else if (['level', 'playingUp', 'foot'].includes(k)) fields[FIELD[k]] = val || null
+    else if (['level', 'playingUp', 'foot', 'yearsPlaying'].includes(k)) fields[FIELD[k]] = val || null
     else fields[FIELD[k]] = val
   }
   const body = { typecast: true, records: [existing ? { id: existing.id, fields } : { fields }] }
@@ -163,4 +166,28 @@ export async function waiverPrefill(waiverId) {
       emergencyName: f['Emergency Contact Name'] || '', emergencyPhone: f['Emergency Contact Phone'] || '', medical: f['Medical Notes'] || '',
     }
   } catch { return {} }
+}
+
+// Coach feedback after a trial, newest first, kept on the player's profile
+// so it is there next term too (Lee and Ligia, 13 Oct 2026).
+export async function addTrialFeedback({ existing, name, key, emails, rowIds, line, by }) {
+  const before = existing ? String((await airtable(`${PROFILES_TABLE}/${existing.id}`)).fields?.['Trial Feedback'] || '') : ''
+  const fields = {
+    'Player Name': clean(name, 100), 'Player Key': key,
+    'Family Emails': [...new Set([...(existing?.emails || []), ...emails.map((e) => String(e || '').trim().toLowerCase())].filter(Boolean))].join(', '),
+    'Term 4 Record IDs': [...new Set([...(existing?.rowIds || []), ...rowIds].filter(Boolean))].join(', '),
+    'Trial Feedback': `${line}${before ? `\n\n${before}` : ''}`.slice(0, 20000),
+  }
+  await airtable(PROFILES_TABLE, { method: existing ? 'PATCH' : 'POST', body: { typecast: true, records: [existing ? { id: existing.id, fields } : { fields }] } })
+  await audit({ by, action: 'profile.trialFeedback', target: key, after: { rows: rowIds } })
+}
+
+// Club names families have already given us (waivers and profiles), most
+// common first, so everyone spells a club the same way.
+export function clubSuggestions(waivers = [], profiles = []) {
+  const count = new Map()
+  const add = (c) => { const v = clean(c, 60); if (v.length < 3 || /^(n\/?a|none|no|nil|-)$/i.test(v)) return; const k = v.toLowerCase(); const cur = count.get(k) || { name: v, n: 0 }; cur.n += 1; count.set(k, cur) }
+  for (const w of waivers) add(w.club)
+  for (const p of profiles) add(p.club)
+  return [...count.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name)).slice(0, 150).map((x) => x.name)
 }

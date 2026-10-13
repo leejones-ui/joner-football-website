@@ -2021,4 +2021,32 @@ await test('keep my spot: before next term opens a family can say they want it, 
   assert.equal((await other.call('/api/jfp-account', { action: 'nextTermInterest', rowId })).status, 404, 'only for your own players')
 })
 
+await test('trials: a dated trial shows to its coach, on that date only, and the coach tells Lee and Ligia how it went', async () => {
+  const dates = (await portal(lee, 'pricing')).data
+  const add = await portal(lee, 'addPlayer', { groupId: TUE420, force: true, player: { name: 'Tia Trial', age: 10 }, parent: { name: 'Tia Parent', email: 'tia@example.com', mobile: '0400 333 444' }, payment: 'trial', startDate: '2026-10-13' })
+  assert.equal(add.status, 200, JSON.stringify(add.data))
+  const row = (await at()).term4.find((r) => r.id === add.data.rowId).fields
+  assert.match(row['Term 4 Notes'], /Trial offered for 2026-10-13/)
+  assert.equal(row['Term 4 Payment Type'], 'JFP Trial')
+  const sam = (await portal(lee, 'coachSessions', { coachId: 'sam' })).data
+  const t = sam.trials.find((x) => x.rowId === add.data.rowId)
+  assert.ok(t, 'the coach sees the trial')
+  assert.equal(t.date, '2026-10-13')
+  const p = sam.sessions.flatMap((s) => s.players).find((x) => x.rowId === add.data.rowId)
+  assert.equal(p.trial, true); assert.equal(p.trialDate, '2026-10-13')
+  assert.equal((await portal(lee, 'trialFeedback', { rowId: add.data.rowId, verdict: 'Ready for this group', notes: 'short' })).status, 400, 'a few words are needed')
+  const tg = (await (await fetch(`${B}/__telegram`)).json()).length
+  const fb = await portal(lee, 'trialFeedback', { rowId: add.data.rowId, verdict: 'Better in another group', level: 'Above the group', best: 'Tue 5:25pm Belrose', notes: 'Sharp first touch, wants a harder group.' })
+  assert.equal(fb.status, 200, JSON.stringify(fb.data))
+  assert.equal((await (await fetch(`${B}/__telegram`)).json()).length, tg + 1, 'Lee and Ligia are told')
+  const after = (await portal(lee, 'coachSessions', { coachId: 'sam' })).data.trials.find((x) => x.rowId === add.data.rowId)
+  assert.equal(after.due, false); assert.equal(after.feedback.verdict, 'Better in another group')
+  const prof = (await at()).profiles.find((r) => (r.fields['Term 4 Record IDs'] || '').includes(add.data.rowId))
+  assert.match(prof.fields['Trial Feedback'], /Better in another group/)
+  const pl = (await portal(lee, 'playersList', { fresh: true })).data.players.find((x) => x.rowId === add.data.rowId)
+  assert.equal(pl.trialFeedback.best, 'Tue 5:25pm Belrose')
+  assert.equal((await portal(lee, 'trialFeedback', { rowId: (await at()).term4[0].id, verdict: 'Ready for this group', notes: 'not a trial player' })).status, 400)
+  void dates
+})
+
 console.log(`\n${passed} JFP flow checks passed`)
