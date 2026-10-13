@@ -1,6 +1,6 @@
 import { verifyStripeWebhook } from './_stripe-webhook.js'
 import { readRows, updateCell } from './_camp-automation.js'
-import { confirmationEmail, confirmationStatus, eventClaimOwnsRow, isPaidJuniorsEvent, JUNIORS_HEADERS, JUNIORS_SHEET_TAB, paidEventDetails, serializeConfirmationStatus, shouldClaimEmail, shouldDuplicateProcessing, shouldUpsertAirtable } from './_juniors-flow.js'
+import { confirmationEmail, confirmationStatus, eventClaimOwnsRow, isPaidJuniorsEvent, JUNIORS_HEADERS, JUNIORS_SHEET_TAB, JUNIORS_TERM, paidEventDetails, serializeConfirmationStatus, shouldClaimEmail, shouldDuplicateProcessing, shouldUpsertAirtable } from './_juniors-flow.js'
 import { sendJuniorsEmail } from './_juniors-email.js'
 
 export const config = { api: { bodyParser: false } }
@@ -81,7 +81,7 @@ export async function processPaid(event) {
   const registration = {
     registrationId: rows[index][1], paymentStatus: rows[index][2], player: rows[index][3], dateOfBirth: rows[index][4],
     parent: rows[index][5], email: rows[index][6], mobile: rows[index][7], medical: rows[index][8], source: rows[index][9],
-    className: rows[index][10], termDates: '25 July 2026 to 26 September 2026', amountAud: 220,
+    className: rows[index][10], termDates: JUNIORS_TERM, amountAud: 220,
   }
   details.checkoutSessionId ||= rows[index][12] || ''
   details.paymentIntentId ||= rows[index][13] || ''

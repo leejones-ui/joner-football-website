@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto'
 export const JUNIORS_PROGRAMME = 'Joners Juniors'
 export const JUNIORS_AMOUNT_AUD = 22000
 export const JUNIORS_CLASS = 'Saturday 9:15am to 10:00am'
-export const JUNIORS_TERM = '25 July 2026 to 26 September 2026'
+export const JUNIORS_TERM_NAME = 'Term 4 2026'
+export const JUNIORS_TERM = '12 October 2026 to 19 December 2026'
 export const JUNIORS_SHEET_TAB = 'Joners Juniors'
 export const JUNIORS_AIRTABLE_TABLE = 'Joners Juniors'
 export const STALE_CLAIM_MS = 15 * 60 * 1000
@@ -69,7 +70,7 @@ export function stripeCheckoutForm(registration, siteUrl) {
     'line_items[0][quantity]': '1',
     'line_items[0][price_data][currency]': 'aud',
     'line_items[0][price_data][unit_amount]': String(JUNIORS_AMOUNT_AUD),
-    'line_items[0][price_data][product_data][name]': 'Joners Juniors Term 3 2026',
+    'line_items[0][price_data][product_data][name]': `Joners Juniors ${JUNIORS_TERM_NAME}`,
     'line_items[0][price_data][product_data][metadata][programme]': JUNIORS_PROGRAMME,
     'line_items[0][price_data][product_data][metadata][class]': JUNIORS_CLASS,
     'metadata[registrationId]': registration.registrationId,
@@ -168,7 +169,7 @@ export function confirmationEmail({ registration, internal = false, refs = {}, r
   const details = `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;color:#111"><tr><td style="padding:9px 0;font-weight:800">Player</td><td style="padding:9px 0">${player}</td></tr><tr><td style="padding:9px 0;font-weight:800">Parent</td><td style="padding:9px 0">${parent}</td></tr><tr><td style="padding:9px 0;font-weight:800">Class</td><td style="padding:9px 0">${escapeHtml(registration.className)}</td></tr><tr><td style="padding:9px 0;font-weight:800">Term</td><td style="padding:9px 0">${escapeHtml(registration.termDates)}</td></tr></table>`
   if (internal) return `<div style="font-family:Arial,sans-serif;color:#111;max-width:680px"><h1 style="background:#050505;color:#fff;padding:20px;border-left:8px solid #e30613">PAID Joners Juniors signup: ${player}</h1>${details}<p><b>Contact:</b> ${escapeHtml(registration.email)} / ${escapeHtml(registration.mobile)}<br><b>DOB:</b> ${escapeHtml(registration.dateOfBirth)}<br><b>Medical:</b> ${escapeHtml(registration.medical)}<br><b>Amount:</b> AUD $220.00<br><b>Registration:</b> ${escapeHtml(registration.registrationId)}<br><b>Stripe Checkout:</b> ${escapeHtml(refs.checkoutSessionId || '')}<br><b>Stripe Payment Intent:</b> ${escapeHtml(refs.paymentIntentId || '')}<br><b>Sheet:</b> ${escapeHtml(refs.sheetRef || JUNIORS_SHEET_TAB)}<br><b>Airtable:</b> ${escapeHtml(refs.airtableRecordId || 'Joners Juniors')}</p></div>`
   const note = reviewNote ? `<div style="background:#fff3cd;border:2px solid #9a6700;padding:16px;margin-bottom:18px;font-family:Arial,sans-serif"><strong>${escapeHtml(reviewNote)}</strong></div>` : ''
-  return `${note}<!doctype html><html><body style="margin:0;background:#f2f2ef;font-family:Arial,Helvetica,sans-serif;color:#111"><div style="max-width:620px;margin:0 auto;padding:18px"><div style="background:#050505;color:#fff;padding:24px;border-top:8px solid #e30613"><div style="color:#e30613;font-weight:900;letter-spacing:2px">JONER FOOTBALL</div><h1 style="font-size:34px;line-height:1.05;margin:18px 0">Your Joners Juniors spot is confirmed</h1><p style="font-size:17px;line-height:1.5">Hi ${parent}, ${player}'s spot is confirmed.</p></div><div style="background:#fff;padding:24px">${details}<p style="line-height:1.6">Saturday training runs from 9:15am to 10:00am at Joner Football HQ, Unit 2, 20 Narabang Way, Belrose.</p><p style="line-height:1.6">Term 3 runs from 25 July 2026 to 26 September 2026. Please bring suitable footwear and a drink bottle.</p><p style="line-height:1.6">If you need anything, reply to Ligia and the team will help you out.</p><p style="font-weight:800">See you at HQ,<br>Lee<br><span style="color:#e30613">Joner Football</span></p></div></div></body></html>`
+  return `${note}<!doctype html><html><body style="margin:0;background:#f2f2ef;font-family:Arial,Helvetica,sans-serif;color:#111"><div style="max-width:620px;margin:0 auto;padding:18px"><div style="background:#050505;color:#fff;padding:24px;border-top:8px solid #e30613"><div style="color:#e30613;font-weight:900;letter-spacing:2px">JONER FOOTBALL</div><h1 style="font-size:34px;line-height:1.05;margin:18px 0">Your Joners Juniors spot is confirmed</h1><p style="font-size:17px;line-height:1.5">Hi ${parent}, ${player}'s spot is confirmed.</p></div><div style="background:#fff;padding:24px">${details}<p style="line-height:1.6">Saturday training runs from 9:15am to 10:00am at Joner Football HQ, Unit 2, 20 Narabang Way, Belrose.</p><p style="line-height:1.6">${JUNIORS_TERM_NAME} runs from ${JUNIORS_TERM}. Please bring suitable footwear and a drink bottle.</p><p style="line-height:1.6">If you need anything, reply to Ligia and the team will help you out.</p><p style="font-weight:800">See you at HQ,<br>Lee<br><span style="color:#e30613">Joner Football</span></p></div></div></body></html>`
 }
 
 export function escapeHtml(value) { return clean(value, 4000).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') }
