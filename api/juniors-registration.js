@@ -3,6 +3,7 @@ import { validateEmailQuality } from './_email-quality.js'
 import { appendRow, readRows, updateCell } from './_camp-automation.js'
 import { JUNIORS_HEADERS, JUNIORS_SHEET_TAB, normaliseRegistration, rowFromRegistration, validateJuniorsRegistration, stripeCheckoutForm } from './_juniors-flow.js'
 import { captureWebsiteContact } from './_master-contact-capture.js'
+import { configOrDefaults } from './_jj-data.js'
 
 const sheetId = () => process.env.JUNIORS_SHEET_ID || process.env.CAMP_REGISTRATION_SHEET_ID
 const tab = () => process.env.JUNIORS_SHEET_TAB || JUNIORS_SHEET_TAB
@@ -40,7 +41,10 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
     const protection = await protectForm(req, res, 'joners-juniors-registration', body)
     if (!protection.ok) return protection.response
-    const registration = normaliseRegistration(body)
+    // Term, dates, class and price from the Joners Juniors settings (portal).
+    const { config } = await configOrDefaults()
+    if (config.juniors.registrationOpen === false) return res.status(409).json({ success: false, closed: true, error: 'Joners Juniors registrations are closed right now. Please contact us and we will let you know when places open.' })
+    const registration = normaliseRegistration(body, new Date(), config.juniors)
     const emailCheck = await validateEmailQuality(registration.email, { label: 'parent email' })
     const validation = validateJuniorsRegistration(registration, () => emailCheck)
     if (!validation.ok) return res.status(400).json({ success: false, error: validation.error })

@@ -102,7 +102,9 @@ test('parent confirmation copy has no camp, jersey or payment-reminder wording',
   const html = confirmationEmail({ registration: valid() })
   assert.match(html, /Your Joners Juniors spot is confirmed/)
   assert.match(html, /Saturday training runs from 9:15am to 10:00am/)
-  assert.match(html, /12 October 2026 to 19 December 2026/)
+  // The term comes from the Juniors settings (default Term 4 2026), never the old Term 3 text.
+  assert.match(html, /Term 4 runs from 17 October 2026 to 19 December 2026/)
+  assert.doesNotMatch(html, /Term 3|25 July 2026/)
   assert.doesNotMatch(html, /camp|jersey|refund|reminder|unpaid/i)
 })
 

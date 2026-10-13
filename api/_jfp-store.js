@@ -16,6 +16,7 @@ import crypto from 'node:crypto'
 import { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, newId, formatAud, claimOnce, stripeFetch } from './_holiday-store.js'
 import { cleanVenueCosts } from './_jfp-venues.js'
 import { cleanCustomPrices } from './_jfp-prices.js'
+import { normaliseJuniors } from './_jj-config.js'
 
 export { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, newId, formatAud, claimOnce }
 
@@ -305,6 +306,8 @@ export function normaliseConfig(input = {}) {
     customPrices: cleanCustomPrices(input.customPrices),
     minAge: Number(input.minAge) >= 3 && Number(input.minAge) <= 18 ? Number(input.minAge) : b.minAge,
     maxAge: Number(input.maxAge) >= 5 && Number(input.maxAge) <= 25 ? Number(input.maxAge) : b.maxAge,
+    // Joners Juniors: its own term, dates, class, price and tables (_jj-config.js).
+    juniors: normaliseJuniors(input.juniors),
   }
 }
 

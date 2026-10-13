@@ -1,10 +1,16 @@
 import { randomUUID } from 'node:crypto'
+import { JJ_DEFAULTS, normaliseJuniors, classLabelOf, datesLabelOf, timeLineOf, termShort } from './_jj-config.js'
 
+// The term, dates, class, place and price come from the Joners Juniors
+// settings (config.juniors, edited in the portal), passed in as `jj`. These
+// constants are only the defaults (Term 4 2026), for code that has none.
+const DEFAULT_JJ = normaliseJuniors(JJ_DEFAULTS)
 export const JUNIORS_PROGRAMME = 'Joners Juniors'
-export const JUNIORS_AMOUNT_AUD = 22000
-export const JUNIORS_CLASS = 'Saturday 9:15am to 10:00am'
-export const JUNIORS_TERM_NAME = 'Term 4 2026'
-export const JUNIORS_TERM = '12 October 2026 to 19 December 2026'
+// Cents (the name is older than the settings).
+export const JUNIORS_AMOUNT_AUD = DEFAULT_JJ.priceCents
+export const JUNIORS_CLASS = classLabelOf(DEFAULT_JJ)
+export const JUNIORS_TERM_NAME = DEFAULT_JJ.term
+export const JUNIORS_TERM = datesLabelOf(DEFAULT_JJ)
 export const JUNIORS_SHEET_TAB = 'Joners Juniors'
 export const JUNIORS_AIRTABLE_TABLE = 'Joners Juniors'
 export const STALE_CLAIM_MS = 15 * 60 * 1000
@@ -21,8 +27,20 @@ export function clean(value, max = 500) {
   return String(value ?? '').replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, max)
 }
 
-export function normaliseRegistration(body = {}, now = new Date()) {
+// What a registration needs from the settings: term, dates, class, place, price.
+export function juniorsTerms(jjInput = DEFAULT_JJ) {
+  const jj = normaliseJuniors(jjInput)
+  const cls = jj.classes[0]
+  return {
+    term: jj.term, termShort: termShort(jj.term), termDates: datesLabelOf(jj), className: classLabelOf(jj),
+    day: cls?.day || '', time: cls?.time || '', sessionTime: timeLineOf(cls), classLocation: cls?.location || '',
+    venue: jj.location, amountCents: jj.priceCents, coachId: cls?.coachId || '',
+  }
+}
+
+export function normaliseRegistration(body = {}, now = new Date(), jj = DEFAULT_JJ) {
   const player = clean(body.playerFullName || `${body.playerFirstName || ''} ${body.playerSurname || ''}`, 160).replace(/\s+/g, ' ')
+  const t = juniorsTerms(jj)
   return {
     submittedAt: now.toISOString(),
     registrationId: clean(body.registrationId, 120) || `JJ-${now.getTime()}-${randomUUID().slice(0, 8).toUpperCase()}`,
@@ -33,12 +51,14 @@ export function normaliseRegistration(body = {}, now = new Date()) {
     mobile: clean(body.mobile, 80),
     dateOfBirth: clean(body.dateOfBirth || body.dob, 80),
     medical: clean(body.medicalHistory || body.medical, 1200) || 'None supplied',
-    className: JUNIORS_CLASS,
-    termDates: JUNIORS_TERM,
+    className: t.className,
+    termDates: t.termDates,
+    term: t.term, termShort: t.termShort, day: t.day, time: t.time, sessionTime: t.sessionTime, classLocation: t.classLocation, venue: t.venue,
     source: clean(body.heardAboutUs || body.source, 120),
     agreementAccepted: body.agreementAccepted === true || body.agreementAccepted === 'true' || body.agreementAccepted === 'on',
     paymentStatus: 'pending',
-    amountAud: JUNIORS_AMOUNT_AUD / 100,
+    amountCents: t.amountCents,
+    amountAud: t.amountCents / 100,
   }
 }
 
@@ -60,8 +80,14 @@ export function isJuniorsMetadata(metadata = {}) {
   return clean(metadata.programme || metadata.program || '', 80).toLowerCase() === JUNIORS_PROGRAMME.toLowerCase()
 }
 
+// Checkout at the price saved in the settings, with the term and the amount
+// in the metadata, so the webhook checks the amount this checkout asked for
+// (a price change mid checkout cannot refuse a real payment).
 export function stripeCheckoutForm(registration, siteUrl) {
   const base = String(siteUrl || '').replace(/\/$/, '')
+  const amount = Number.isInteger(registration.amountCents) && registration.amountCents > 0 ? registration.amountCents : JUNIORS_AMOUNT_AUD
+  const term = registration.term || DEFAULT_JJ.term
+  const className = registration.className || JUNIORS_CLASS
   return new URLSearchParams({
     mode: 'payment',
     success_url: `${base}/jonersjuniors/?payment=success&registration_id=${encodeURIComponent(registration.registrationId)}&session_id={CHECKOUT_SESSION_ID}#book`,
@@ -69,18 +95,21 @@ export function stripeCheckoutForm(registration, siteUrl) {
     customer_email: registration.email,
     'line_items[0][quantity]': '1',
     'line_items[0][price_data][currency]': 'aud',
-    'line_items[0][price_data][unit_amount]': String(JUNIORS_AMOUNT_AUD),
-    'line_items[0][price_data][product_data][name]': `Joners Juniors ${JUNIORS_TERM_NAME}`,
+    'line_items[0][price_data][unit_amount]': String(amount),
+    'line_items[0][price_data][product_data][name]': `Joners Juniors ${term}`,
     'line_items[0][price_data][product_data][metadata][programme]': JUNIORS_PROGRAMME,
-    'line_items[0][price_data][product_data][metadata][class]': JUNIORS_CLASS,
+    'line_items[0][price_data][product_data][metadata][class]': className,
     'metadata[registrationId]': registration.registrationId,
     'metadata[programme]': JUNIORS_PROGRAMME,
     'metadata[player]': registration.player,
-    'metadata[class]': JUNIORS_CLASS,
+    'metadata[class]': className,
+    'metadata[term]': term,
+    'metadata[amountCents]': String(amount),
     'payment_intent_data[metadata][registrationId]': registration.registrationId,
     'payment_intent_data[metadata][programme]': JUNIORS_PROGRAMME,
     'payment_intent_data[metadata][player]': registration.player,
-    'payment_intent_data[metadata][class]': JUNIORS_CLASS,
+    'payment_intent_data[metadata][class]': className,
+    'payment_intent_data[metadata][term]': term,
   })
 }
 
@@ -92,6 +121,8 @@ export function paidEventDetails(event = {}) {
     programme: clean(metadata.programme || metadata.program, 80),
     player: clean(metadata.player, 160),
     className: clean(metadata.class, 120),
+    term: clean(metadata.term, 40),
+    expectedCents: /^\d{1,7}$/.test(String(metadata.amountCents || '')) ? Number(metadata.amountCents) : null,
     checkoutSessionId: clean(object.id, 120),
     paymentIntentId: clean(typeof object.payment_intent === 'string' ? object.payment_intent : object.payment_intent?.id, 120),
     amountTotal: Number(object.amount_total || 0),
@@ -163,13 +194,17 @@ export function shouldClaimEmail(status, kind, now = Date.now()) {
   return true
 }
 
+const audCents = (c) => `AUD $${(c / 100).toFixed(2)}`
 export function confirmationEmail({ registration, internal = false, refs = {}, reviewNote = '' }) {
+  // A registration made before the settings existed has none of these: the defaults.
+  const t = { ...juniorsTerms(DEFAULT_JJ), ...Object.fromEntries(Object.entries(registration).filter(([, v]) => v !== undefined && v !== null && v !== '')) }
   const player = escapeHtml(registration.player)
   const parent = escapeHtml(registration.parent)
-  const details = `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;color:#111"><tr><td style="padding:9px 0;font-weight:800">Player</td><td style="padding:9px 0">${player}</td></tr><tr><td style="padding:9px 0;font-weight:800">Parent</td><td style="padding:9px 0">${parent}</td></tr><tr><td style="padding:9px 0;font-weight:800">Class</td><td style="padding:9px 0">${escapeHtml(registration.className)}</td></tr><tr><td style="padding:9px 0;font-weight:800">Term</td><td style="padding:9px 0">${escapeHtml(registration.termDates)}</td></tr></table>`
-  if (internal) return `<div style="font-family:Arial,sans-serif;color:#111;max-width:680px"><h1 style="background:#050505;color:#fff;padding:20px;border-left:8px solid #e30613">PAID Joners Juniors signup: ${player}</h1>${details}<p><b>Contact:</b> ${escapeHtml(registration.email)} / ${escapeHtml(registration.mobile)}<br><b>DOB:</b> ${escapeHtml(registration.dateOfBirth)}<br><b>Medical:</b> ${escapeHtml(registration.medical)}<br><b>Amount:</b> AUD $220.00<br><b>Registration:</b> ${escapeHtml(registration.registrationId)}<br><b>Stripe Checkout:</b> ${escapeHtml(refs.checkoutSessionId || '')}<br><b>Stripe Payment Intent:</b> ${escapeHtml(refs.paymentIntentId || '')}<br><b>Sheet:</b> ${escapeHtml(refs.sheetRef || JUNIORS_SHEET_TAB)}<br><b>Airtable:</b> ${escapeHtml(refs.airtableRecordId || 'Joners Juniors')}</p></div>`
+  const amountCents = Number.isInteger(registration.amountCents) ? registration.amountCents : Math.round(Number(registration.amountAud || 0) * 100) || t.amountCents
+  const details = `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;color:#111"><tr><td style="padding:9px 0;font-weight:800">Player</td><td style="padding:9px 0">${player}</td></tr><tr><td style="padding:9px 0;font-weight:800">Parent</td><td style="padding:9px 0">${parent}</td></tr><tr><td style="padding:9px 0;font-weight:800">Class</td><td style="padding:9px 0">${escapeHtml(t.className)}</td></tr><tr><td style="padding:9px 0;font-weight:800">Term</td><td style="padding:9px 0">${escapeHtml(t.termDates)}</td></tr></table>`
+  if (internal) return `<div style="font-family:Arial,sans-serif;color:#111;max-width:680px"><h1 style="background:#050505;color:#fff;padding:20px;border-left:8px solid #e30613">PAID Joners Juniors signup: ${player}</h1>${details}<p><b>Contact:</b> ${escapeHtml(registration.email)} / ${escapeHtml(registration.mobile)}<br><b>DOB:</b> ${escapeHtml(registration.dateOfBirth)}<br><b>Medical:</b> ${escapeHtml(registration.medical)}<br><b>Amount:</b> ${escapeHtml(audCents(amountCents))}<br><b>Term:</b> ${escapeHtml(t.term)}<br><b>Registration:</b> ${escapeHtml(registration.registrationId)}<br><b>Stripe Checkout:</b> ${escapeHtml(refs.checkoutSessionId || '')}<br><b>Stripe Payment Intent:</b> ${escapeHtml(refs.paymentIntentId || '')}<br><b>Sheet:</b> ${escapeHtml(refs.sheetRef || JUNIORS_SHEET_TAB)}<br><b>Airtable:</b> ${escapeHtml(refs.airtableRecordId || 'Joners Juniors')}</p></div>`
   const note = reviewNote ? `<div style="background:#fff3cd;border:2px solid #9a6700;padding:16px;margin-bottom:18px;font-family:Arial,sans-serif"><strong>${escapeHtml(reviewNote)}</strong></div>` : ''
-  return `${note}<!doctype html><html><body style="margin:0;background:#f2f2ef;font-family:Arial,Helvetica,sans-serif;color:#111"><div style="max-width:620px;margin:0 auto;padding:18px"><div style="background:#050505;color:#fff;padding:24px;border-top:8px solid #e30613"><div style="color:#e30613;font-weight:900;letter-spacing:2px">JONER FOOTBALL</div><h1 style="font-size:34px;line-height:1.05;margin:18px 0">Your Joners Juniors spot is confirmed</h1><p style="font-size:17px;line-height:1.5">Hi ${parent}, ${player}'s spot is confirmed.</p></div><div style="background:#fff;padding:24px">${details}<p style="line-height:1.6">Saturday training runs from 9:15am to 10:00am at Joner Football HQ, Unit 2, 20 Narabang Way, Belrose.</p><p style="line-height:1.6">${JUNIORS_TERM_NAME} runs from ${JUNIORS_TERM}. Please bring suitable footwear and a drink bottle.</p><p style="line-height:1.6">If you need anything, reply to Ligia and the team will help you out.</p><p style="font-weight:800">See you at HQ,<br>Lee<br><span style="color:#e30613">Joner Football</span></p></div></div></body></html>`
+  return `${note}<!doctype html><html><body style="margin:0;background:#f2f2ef;font-family:Arial,Helvetica,sans-serif;color:#111"><div style="max-width:620px;margin:0 auto;padding:18px"><div style="background:#050505;color:#fff;padding:24px;border-top:8px solid #e30613"><div style="color:#e30613;font-weight:900;letter-spacing:2px">JONER FOOTBALL</div><h1 style="font-size:34px;line-height:1.05;margin:18px 0">Your Joners Juniors spot is confirmed</h1><p style="font-size:17px;line-height:1.5">Hi ${parent}, ${player}'s spot is confirmed.</p></div><div style="background:#fff;padding:24px">${details}<p style="line-height:1.6">${escapeHtml(t.day)} training runs from ${escapeHtml(t.sessionTime)} at ${escapeHtml(t.venue)}.</p><p style="line-height:1.6">${escapeHtml(t.termShort)} runs from ${escapeHtml(t.termDates)}. Please bring suitable footwear and a drink bottle.</p><p style="line-height:1.6">If you need anything, reply to Ligia and the team will help you out.</p><p style="font-weight:800">See you at HQ,<br>Lee<br><span style="color:#e30613">Joner Football</span></p></div></div></body></html>`
 }
 
 export function escapeHtml(value) { return clean(value, 4000).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;') }

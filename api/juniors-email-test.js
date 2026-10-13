@@ -1,6 +1,7 @@
 import { confirmationEmail, normaliseRegistration } from './_juniors-flow.js'
 import { sendJuniorsEmail } from './_juniors-email.js'
 import { rateLimit } from './_security.js'
+import { configOrDefaults } from './_jj-data.js'
 
 const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 function jsonBody(req) {
@@ -28,10 +29,12 @@ export default async function handler(req, res) {
 
   const to = String(body.toEmail || body.email || '').trim().toLowerCase()
   if (!validEmail.test(to) || !allowedRecipients().has(to)) return res.status(400).json({ success: false, error: 'Recipient is not an approved test address.' })
+  // The same term, dates and class as the real confirmation (the settings).
+  const { config } = await configOrDefaults()
   const registration = normaliseRegistration({
     playerFullName: body.playerFullName || 'Preview Player', parentName: body.parentName || 'Ligia', email: to,
     mobile: body.mobile || '0400000000', dateOfBirth: body.dateOfBirth || '01/01/2021', source: body.heardAboutUs || 'Test preview', agreementAccepted: true,
-  })
+  }, new Date(), config.juniors)
   const subject = body.subject || '[TEST FOR REVIEW] Your Joners Juniors spot is confirmed'
   const html = confirmationEmail({ registration, reviewNote: 'TEST FOR REVIEW ONLY: Ligia, please review the parent confirmation below. No Stripe event or customer record was created.' })
   if (body.previewOnly !== false && body.send !== true) return res.status(200).json({ success: true, previewOnly: true, subject, html })

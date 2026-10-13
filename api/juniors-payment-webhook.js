@@ -1,7 +1,9 @@
 import { verifyStripeWebhook } from './_stripe-webhook.js'
 import { readRows, updateCell } from './_camp-automation.js'
-import { confirmationEmail, confirmationStatus, eventClaimOwnsRow, isPaidJuniorsEvent, JUNIORS_HEADERS, JUNIORS_SHEET_TAB, JUNIORS_TERM, paidEventDetails, serializeConfirmationStatus, shouldClaimEmail, shouldDuplicateProcessing, shouldUpsertAirtable } from './_juniors-flow.js'
+import { confirmationEmail, confirmationStatus, eventClaimOwnsRow, isPaidJuniorsEvent, JUNIORS_HEADERS, JUNIORS_SHEET_TAB, JUNIORS_AMOUNT_AUD, paidEventDetails, serializeConfirmationStatus, shouldClaimEmail, shouldDuplicateProcessing, shouldUpsertAirtable, juniorsTerms } from './_juniors-flow.js'
 import { sendJuniorsEmail } from './_juniors-email.js'
+import { configOrDefaults, tableFor, findByRegistration, writeJJRow, NAMES } from './_jj-data.js'
+import { coachById } from './_jfp-store.js'
 
 export const config = { api: { bodyParser: false } }
 const sheetId = () => process.env.JUNIORS_SHEET_ID || process.env.CAMP_REGISTRATION_SHEET_ID
@@ -27,31 +29,52 @@ async function airtableRequest(path, init = {}) {
   return data
 }
 
-function formulaValue(value) { return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'") }
-
-export async function upsertPaidAirtable(registration, details) {
-  const formula = `{Registration ID}='${formulaValue(registration.registrationId)}'`
-  const found = await airtableRequest(`?maxRecords=1&filterByFormula=${encodeURIComponent(formula)}`)
-  const fields = airtableFieldsFromRegistration(registration, details)
-  if (found.records?.[0]?.id) {
-    await airtableRequest(`/${found.records[0].id}`, { method: 'PATCH', body: JSON.stringify({ fields }) })
-    return found.records[0].id
+// The paid child goes into the Juniors table for the term they paid for
+// (config.juniors.tables), through the Juniors data layer: a column that
+// table does not have is left out, and the registration and Stripe ids are
+// kept in the row's notes instead, so a retry finds the same row and the
+// money is matched to it. The old single "Joners Juniors" table setting is a
+// last resort only.
+const recordTables = new Map()
+const BY_NAME = Object.fromEntries(Object.entries(NAMES).flatMap(([key, names]) => names.map((n) => [n, key])))
+export function canonicalFromAirtable(fields) {
+  const set = {}
+  let note = ''
+  for (const [name, value] of Object.entries(fields)) {
+    const key = BY_NAME[name]
+    if (key === 'notes') note = value
+    else if (key) set[key] = value
   }
-  const created = await airtableRequest('', { method: 'POST', body: JSON.stringify({ fields }) })
-  return created.id
+  return { set, note }
+}
+
+export async function upsertPaidAirtable(registration, details, config) {
+  // The term paid for; a term with no table set falls back to the current term's.
+  const table = tableFor(config, registration.term) || tableFor(config) || process.env.JUNIORS_AIRTABLE_TABLE || 'Joners Juniors'
+  const existing = await findByRegistration(table, registration.registrationId)
+  const { set, note } = canonicalFromAirtable(airtableFieldsFromRegistration(registration, details))
+  const coach = coachById(config, registration.coachId || '')
+  if (coach?.airtableName) set.coach = coach.airtableName
+  const id = await writeJJRow(table, { id: existing?.id || '', set, note: existing ? '' : note })
+  recordTables.set(id, table)
+  return id
 }
 
 export async function syncAirtableConfirmationStatus(recordId, status) {
   if (!recordId) throw new Error('Joners Juniors Airtable record is unavailable.')
-  await airtableRequest(`/${recordId}`, { method: 'PATCH', body: JSON.stringify({ fields: { 'Confirmation Email Status': serializeConfirmationStatus(status) } }) })
+  const table = recordTables.get(recordId) || tableFor((await configOrDefaults()).config) || process.env.JUNIORS_AIRTABLE_TABLE || 'Joners Juniors'
+  // A table with no "Confirmation Email Status" column: nothing to write (the sheet keeps it).
+  await writeJJRow(table, { id: recordId, set: { confirmationEmail: serializeConfirmationStatus(status) } })
 }
 
 export function airtableFieldsFromRegistration(registration, details = {}) {
   return {
     'Player Full Name': registration.player, 'Date of Birth': registration.dateOfBirth, 'Parent Name': registration.parent,
     'Parent Email': registration.email, 'Parent Mobile': registration.mobile, 'Medical History / Allergies': registration.medical,
-    'Class': registration.className, 'Session Day': 'Saturday', 'Session Time': '9:15am to 10:00am',
-    'Location': 'Joner Football HQ, Unit 2, 20 Narabang Way, Belrose', 'Term': registration.termDates, 'Fee': 220,
+    // The same day, time and place as the rows staff add (Saturday, 9:15am,
+    // Belrose HQ), so the class and the register find the child.
+    'Class': registration.className, 'Session Day': registration.day || juniorsTerms().day, 'Session Time': registration.time || juniorsTerms().time,
+    'Location': registration.classLocation || juniorsTerms().classLocation, 'Term': registration.term || juniorsTerms().term, 'Fee': (registration.amountCents ?? JUNIORS_AMOUNT_AUD) / 100,
     'Payment Status': 'Paid', 'Paid Via': 'Stripe', 'Paid At': details.paidAt || '', 'Registration ID': registration.registrationId,
     'Stripe Checkout Session ID': details.checkoutSessionId || '', 'Stripe PaymentIntent ID': details.paymentIntentId || '',
     'Heard About Us': registration.source, 'Confirmation Email Status': details.confirmationEmailStatus || '',
@@ -73,15 +96,25 @@ export const JONERS_JUNIORS_REPLY_TO_EMAIL = 'jonersjuniors@jonerfootball.com'
 
 export async function processPaid(event) {
   const details = paidEventDetails(event)
-  if (details.amountTotal !== 22000 || details.currency !== 'aud' || !details.registrationId) return { ignored: true, reason: 'amount-or-registration-mismatch' }
+  const { config } = await configOrDefaults()
+  // The amount this checkout asked for (in its metadata), or for a checkout
+  // made before that was added, the price then (A$220) or now.
+  const allowed = details.expectedCents ? [details.expectedCents] : [JUNIORS_AMOUNT_AUD, config.juniors.priceCents]
+  if (!allowed.includes(details.amountTotal) || details.currency !== 'aud' || !details.registrationId) return { ignored: true, reason: 'amount-or-registration-mismatch' }
   const rows = await readRows(sheetId(), tab(), JUNIORS_HEADERS)
   const index = rows.findIndex((row, i) => i > 0 && row[1] === details.registrationId)
   if (index < 0) return { ignored: true, reason: 'registration-not-found' }
   const rowNumber = index + 1
+  // The term this checkout was for (its metadata), else the term running now.
+  const jj = config.juniors
+  const t = juniorsTerms(jj)
+  const term = details.term || jj.term
   const registration = {
+    ...t,
     registrationId: rows[index][1], paymentStatus: rows[index][2], player: rows[index][3], dateOfBirth: rows[index][4],
     parent: rows[index][5], email: rows[index][6], mobile: rows[index][7], medical: rows[index][8], source: rows[index][9],
-    className: rows[index][10], termDates: JUNIORS_TERM, amountAud: 220,
+    className: rows[index][10] || t.className, term, termShort: term === jj.term ? t.termShort : term.replace(/\s+\d{4}$/, ''), termDates: term === jj.term ? t.termDates : term,
+    amountCents: details.amountTotal, amountAud: details.amountTotal / 100,
   }
   details.checkoutSessionId ||= rows[index][12] || ''
   details.paymentIntentId ||= rows[index][13] || ''
@@ -90,7 +123,7 @@ export async function processPaid(event) {
   // These writes make paid processing and email claims durable in the 15-column row.
   await updateCell(sheetId(), tab(), rowNumber, 'A', details.paidAt)
   await updateCell(sheetId(), tab(), rowNumber, 'C', 'paid')
-  await updateCell(sheetId(), tab(), rowNumber, 'L', '220')
+  await updateCell(sheetId(), tab(), rowNumber, 'L', String(registration.amountAud))
   await updateCell(sheetId(), tab(), rowNumber, 'M', details.checkoutSessionId)
   await updateCell(sheetId(), tab(), rowNumber, 'N', details.paymentIntentId)
 
@@ -112,7 +145,7 @@ export async function processPaid(event) {
   airtableRecordId = status.airtableRecordId || ''
   if (shouldUpsertAirtable(status)) {
     try {
-      airtableRecordId = await upsertPaidAirtable(registration, { ...details, confirmationEmailStatus: serializeConfirmationStatus(status) })
+      airtableRecordId = await upsertPaidAirtable(registration, { ...details, confirmationEmailStatus: serializeConfirmationStatus(status) }, config)
       status = { ...status, airtable: 'synced', airtableRecordId }
       await persistStatus(rowNumber, status, airtableRecordId)
     } catch (error) {

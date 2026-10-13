@@ -1,5 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+// Term, dates, class, place, price and open or closed come from the Joners
+// Juniors settings (portal > Joners Juniors > Settings). The page is built
+// with the defaults and then reads /api/juniors-info as it loads, so a
+// change Ligia saves shows within a minute, with no deploy.
+import { JJ_DEFAULTS, juniorsPublic } from '../../api/_jj-config.js'
+const jj = juniorsPublic(JJ_DEFAULTS)
+const partOfDay = (time) => (/am$/i.test(time || '') ? 'mornings' : 'afternoons')
 
 const title = 'Joners Juniors | Belrose Kids Football Training | Joner Football'
 const description = 'Joners Juniors at Joner Football HQ in Belrose. Saturday football training for young boys and girls, ages 3 to early primary. Book a spot online.'
@@ -16,12 +23,12 @@ const photos = [
 ]
 
 const details = [
-  { label: 'Age', value: 'Ages 3 to early primary' },
-  { label: 'Day', value: 'Saturday mornings' },
-  { label: 'Time', value: '9:15am to 10:00am' },
-  { label: 'Location', value: 'Joner Football HQ, Unit 2, 20 Narabang Way, Belrose' },
-  { label: 'Term Dates', value: 'Term 4: 12 October 2026 to 19 December 2026' },
-  { label: 'Term Fee', value: '$220 for 10 weeks' },
+  { label: 'Age', value: jj.ageLabel, key: 'ageLabel' },
+  { label: 'Day', value: `${jj.day} ${partOfDay(jj.classes[0]?.time)}`, key: 'dayLine' },
+  { label: 'Time', value: jj.timeLabel, key: 'timeLabel' },
+  { label: 'Location', value: jj.location, key: 'location' },
+  { label: 'Term Dates', value: jj.termDatesLine, key: 'termDatesLine' },
+  { label: 'Term Fee', value: jj.feeLine, key: 'feeLine' },
 ]
 
 const benefits = [
@@ -135,7 +142,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
           {details.map((item) => (
             <div class="jj-detail-card">
               <span>{item.label}</span>
-              <strong>{item.value}</strong>
+              <strong data-jj={item.key}>{item.value}</strong>
             </div>
           ))}
         </div>
@@ -204,10 +211,17 @@ const sanityPage = await fetchSanityPage('joners-juniors')
           <h2>Register your child.</h2>
           <p>Fill in the form, complete payment securely through Stripe, and your child’s spot will be confirmed once payment is verified.</p>
           <div class="jj-form-facts">
-            <span>Saturday mornings</span>
+            <span data-jj="dayLine">{`${jj.day} ${partOfDay(jj.classes[0]?.time)}`}</span>
             <span>HQ Belrose</span>
-            <span>Ages 3 to early primary</span>
+            <span data-jj="ageLabel">{jj.ageLabel}</span>
           </div>
+        </div>
+
+        <div id="juniors-closed" class="jj-closed" role="status" hidden>
+          <p class="jj-section-eyebrow">Registrations closed</p>
+          <h3><span data-jj="termShort">{jj.termShort}</span> registrations are closed.</h3>
+          <p>Get in touch and we will let you know as soon as a place opens.</p>
+          <a href="/contact" class="btn-red text-sm">Contact us</a>
         </div>
 
         <form id="juniors-registration-form" class="jj-form" novalidate>
@@ -238,9 +252,9 @@ const sanityPage = await fetchSanityPage('joners-juniors')
             </label>
             <label>
               <span>Select Your Class:</span>
-              <select required name="numberOfDays">
+              <select required name="numberOfDays" id="juniors-class">
                 <option value="">Select your class:</option>
-                <option>Saturday 9:15am</option>
+                {jj.classes.map((c) => <option>{`${c.day} ${c.time}`}</option>)}
               </select>
             </label>
             <div class="jj-stripe-only">
@@ -353,6 +367,9 @@ const sanityPage = await fetchSanityPage('joners-juniors')
     .jj-stripe-only span { display: block; margin-bottom: 8px; color: #111; font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; }
     .jj-stripe-only strong { display: block; color: #050505; font-weight: 800; }
     .jj-payment-note { margin: 6px 0 16px; color: #555; font-size: .9rem; line-height: 1.45; font-weight: 700; }
+    .jj-closed { background: #fff; color: #050505; padding: clamp(22px, 4vw, 34px); box-shadow: 0 36px 95px rgba(0,0,0,.25); }
+    .jj-closed h3 { margin: 10px 0 12px; font-family: JJKanit, Anton, Impact, sans-serif; font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(1.8rem, 5vw, 2.6rem); line-height: .95; }
+    .jj-closed p:not(.jj-section-eyebrow) { color: #444; line-height: 1.55; margin: 0 0 18px; }
     .jj-form-message { display: none; margin: 12px 0 0; border: 1px solid #222; padding: 12px; font-weight: 700; }
     .jj-form-message.is-visible { display: block; }
     .jj-form-message.is-error { border-color: #b91c1c; color: #b91c1c; }
@@ -390,6 +407,30 @@ const sanityPage = await fetchSanityPage('joners-juniors')
   </style>
 
   <script is:inline>
+    // The term, dates, class, price and open or closed, as saved in the portal.
+    (function () {
+      var partOfDay = function (t) { return /am$/i.test(t || '') ? 'mornings' : 'afternoons'; };
+      fetch('/api/juniors-info', { headers: { accept: 'application/json' } }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+        var jj = d && d.juniors;
+        if (!jj) return;
+        var first = (jj.classes || [])[0] || {};
+        var values = { ageLabel: jj.ageLabel, dayLine: jj.day ? jj.day + ' ' + partOfDay(first.time) : '', timeLabel: jj.timeLabel, location: jj.location, termDatesLine: jj.termDatesLine, feeLine: jj.feeLine, termShort: jj.termShort };
+        document.querySelectorAll('[data-jj]').forEach(function (el) { var v = values[el.getAttribute('data-jj')]; if (v) el.textContent = v; });
+        var select = document.getElementById('juniors-class');
+        if (select && jj.classes && jj.classes.length) {
+          var keep = select.options[0];
+          select.innerHTML = '';
+          select.appendChild(keep);
+          jj.classes.forEach(function (c) { var o = document.createElement('option'); o.textContent = c.day + ' ' + c.time; select.appendChild(o); });
+        }
+        var closed = jj.registrationOpen === false;
+        var form = document.getElementById('juniors-registration-form');
+        var note = document.getElementById('juniors-closed');
+        if (form) form.hidden = closed;
+        if (note) note.hidden = !closed;
+      }).catch(function () {});
+    })();
+
     (function () {
       var form = document.getElementById('juniors-registration-form');
       var message = document.getElementById('juniors-form-message');

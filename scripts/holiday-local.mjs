@@ -40,6 +40,15 @@ process.env.JFP_BOOTSTRAP_SECRET = 'boot'
 process.env.AIRTABLE_API_TOKEN = 'local'
 process.env.AIRTABLE_BASE_ID = 'apphU4R0BtVIu5YqT'
 delete process.env.RECAPTCHA_SECRET_KEY
+// Joners Juniors website sign-up: its sheet tab and its Stripe webhook secret.
+process.env.JUNIORS_SHEET_ID = 'local-jj-sheet'
+process.env.STRIPE_JUNIORS_WEBHOOK_SECRET = 'whsec_local_juniors'
+delete process.env.JUNIORS_AIRTABLE_TABLE
+// The sign-up checks the parent email's domain has mail: no real DNS here.
+{
+  const dnsp = (await import('node:dns/promises')).default
+  dnsp.resolveMx = async (domain) => (/\.invalid$/.test(domain) ? [] : [{ exchange: 'mx.local', priority: 10 }])
+}
 // The Sheets client signs a service-account JWT before it calls Google. A
 // throwaway RSA key keeps that code path real while the network is mocked.
 const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 })
@@ -272,17 +281,20 @@ const juniorsSessions = []
 if (process.env.JFP_JUNIORS_DEMO === '1') {
   const r = (fields) => ({ id: `rec${crypto.randomBytes(7).toString('hex')}`, createdTime: '2026-07-01T00:00:00Z', fields: { Term: 'Term 3 2026', Location: 'Belrose HQ', 'Session Day': 'Saturday', 'Session Time': '9:15am', Fee: 220, ...fields } })
   airtable.juniors3.splice(0, Infinity,
-    r({ 'Player Full Name': 'Jun Alpha', 'Parent Name': 'Ann Alpha', 'Parent Email': 'alpha@example.com', 'Payment Status': 'Paid', 'Paid Via': 'Stripe', 'Stripe Checkout Session ID': 'cs_jun_a', 'Stripe PaymentIntent ID': 'pi_jun_a' }),
-    r({ 'Player Full Name': 'Jun Beta', 'Parent Name': 'Bo Beta', 'Parent Email': 'beta@example.com', 'Payment Status': 'Paid', 'Paid Via': 'stripe' }),
-    r({ 'Player Full Name': 'Jun Gamma', 'Parent Name': 'Gil Gamma', 'Parent Email': 'gamma@example.com', 'Payment Status': 'Paid', 'Paid Via': 'stripe' }),
+    r({ 'Player Full Name': 'Jun Alpha', 'Parent Name': 'Ann Alpha', 'Parent Email': 'alpha@example.com', 'Date of Birth': '05/03/2021', 'Payment Status': 'Paid', 'Paid Via': 'Stripe', 'Stripe Checkout Session ID': 'cs_jun_a', 'Stripe PaymentIntent ID': 'pi_jun_a' }),
+    r({ 'Player Full Name': 'Jun Beta', 'Parent Name': 'Bo Beta', 'Parent Email': 'beta@example.com', 'Date of Birth': '11/09/2020', 'Payment Status': 'Paid', 'Paid Via': 'stripe' }),
+    r({ 'Player Full Name': 'Jun Gamma', 'Parent Name': 'Gil Gamma', 'Parent Email': 'gamma@example.com', 'Date of Birth': '23/01/2022', 'Payment Status': 'Paid', 'Paid Via': 'stripe' }),
   )
   const t4 = (fields) => r({ Term: 'Term 4 2026', 'Stripe Payment Link': JLINK, 'Payment Status': 'Unpaid', ...fields })
   airtable.juniors4.splice(0, Infinity,
-    t4({ 'Player Full Name': 'Jun Alpha', 'Parent Name': 'Ann Alpha', 'Parent Email': 'alpha@example.com', 'Payment Status': 'Paid', 'Paid Via': 'Term 3 credit' }),
-    t4({ 'Player Full Name': 'Jun Delta', 'Parent Name': 'Di Delta', 'Parent Email': 'delta@example.com' }),
-    t4({ 'Player Full Name': 'Jun Echo', 'Parent Name': 'Ed Echo', 'Parent Email': 'echo@example.com' }),
-    t4({ 'Player Full Name': 'Jun Foxtrot', 'Parent Name': 'Fay Foxtrot', 'Parent Email': 'fox@example.com' }),
+    t4({ 'Player Full Name': 'Jun Alpha', 'Parent Name': 'Ann Alpha', 'Parent Email': 'alpha@example.com', 'Parent Mobile': '0400000101', 'Payment Status': 'Paid', 'Paid Via': 'Term 3 credit', 'Waiver Status': 'Needed' }),
+    t4({ 'Player Full Name': 'Jun Delta', 'Parent Name': 'Di Delta', 'Parent Email': 'delta@example.com', 'Parent Mobile': '0400000102', 'Waiver Status': 'Needed', Notes: '2026-10-06: Invented note for the demo.' }),
+    // Echo's family also has a JFP player (Riley Returning): one family account.
+    t4({ 'Player Full Name': 'Jun Echo', 'Parent Name': 'Rita Returning', 'Parent Email': 'returning@example.com', 'Parent Mobile': '0400000103', 'Waiver Status': 'Needed' }),
+    t4({ 'Player Full Name': 'Jun Foxtrot', 'Parent Name': 'Fay Foxtrot', 'Parent Email': 'fox@example.com', 'Waiver Status': 'Completed' }),
   )
+  // One family waiver (the JFP waiver table) covers a Juniors child too.
+  airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': 'Jun Alpha', 'Parent Email': 'alpha@example.com', 'Date of Birth': '2021-03-05', 'Term': 'Term 3 2026', 'Signed Date': '2026-07-20', 'Programme': 'Joners Juniors', 'Waiver Accepted - Full Terms': true } })
   const js = (id, x) => ({ id, object: 'checkout.session', status: 'complete', payment_status: 'paid', amount_total: 22000, currency: 'aud', created: 1790000000, metadata: {}, payment_intent: `pi_${id.slice(3)}`, ...x })
   juniorsSessions.push(
     js('cs_jun_a', { customer_details: { email: 'alpha@example.com' }, metadata: { programme: 'Joners Juniors' } }),
@@ -290,6 +302,18 @@ if (process.env.JFP_JUNIORS_DEMO === '1') {
     js('cs_jun_d', { customer_details: { email: 'delta@example.com' }, payment_link: 'plink_juniors_t4', created: 1791500000 }),
     js('cs_jun_x', { customer_details: { email: 'someone@example.com' }, payment_link: 'plink_juniors_t4', created: 1791600000 }),
   )
+}
+// The real Joners Juniors columns (13 Oct 2026). Unlike the other pretend
+// tables, these refuse a column they do not have, the way Airtable does, so
+// the portal and the webhook are tested against the tables as they are.
+const JJ_SCHEMA = {
+  juniors3: ['Player Full Name', 'Date of Birth', 'Parent Name', 'Parent Email', 'Parent Mobile', 'Class', 'Session Day', 'Session Time', 'Location', 'Term', 'Fee', 'Payment Status', 'Paid Via', 'Paid At', 'Registration ID', 'Stripe Checkout Session ID', 'Stripe PaymentIntent ID', 'Heard About Us', 'Confirmation Email Status', 'Internal Notes', 'Source Term 3 Record ID', 'Moved From Term 3 At', 'Coach', 'Parent Email 2', 'Parent Mobile 2', 'Waiver Status', 'Waiver Requested At'],
+  juniors4: ['Player Full Name', 'Payment Status', 'Parent Name', 'Parent Email', 'Parent Mobile', 'Date of Birth', 'Term', 'Session Day', 'Session Time', 'Location', 'Coach', 'Fee', 'Paid Via', 'Confirmation Status', 'Confirmation Date', 'Waiver Status', 'Source Term 3 Record ID', 'Stripe Payment Link', 'Notes'],
+}
+function jjUnknown(key, names) {
+  const have = JJ_SCHEMA[key]
+  const bad = have && names.find((n) => !have.includes(n))
+  return bad ? { status: 422, body: { error: { type: 'UNKNOWN_FIELD_NAME', message: `Unknown field name: "${bad}"` } } } : null
 }
 const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblF25gfo0fZcqdPT: 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblgss68pIVTUOttE: 'venueHistory', tblTt7jWK3s2me45B: 'profiles' }
 function airtableResponse(url, init) {
@@ -300,6 +324,13 @@ function airtableResponse(url, init) {
   if (faults.has('airtable') || faults.has(`airtable-${key}`)) return { status: 422, body: { error: { type: 'INVALID_VALUE_FOR_COLUMN', message: 'fault injected' } } }
   const rows = airtable[key]
   const method = (init.method || 'GET').toUpperCase()
+  if (JJ_SCHEMA[key]) {
+    const named = method === 'POST' || method === 'PATCH' ? JSON.parse(init.body).records.flatMap((r) => Object.keys(r.fields || {})) : u.searchParams.getAll('fields[]')
+    const refused = jjUnknown(key, named)
+    if (refused) return refused
+    const inFormula = [...(u.searchParams.get('filterByFormula') || '').matchAll(/\{([^}]+)\}/g)].map((m) => m[1])
+    if (inFormula.some((n) => !JJ_SCHEMA[key].includes(n))) return { status: 422, body: { error: { type: 'INVALID_FILTER_BY_FORMULA', message: `Unknown field names: ${inFormula.filter((n) => !JJ_SCHEMA[key].includes(n)).join(', ').toLowerCase()}` } } }
+  }
   if (method === 'POST') {
     const body = JSON.parse(init.body)
     const created = body.records.map((r) => ({ id: recId(), fields: { ...r.fields } }))
@@ -348,6 +379,9 @@ function airtableResponse(url, init) {
   return { status: 200, body: { records: page, ...(offset + size < out.length ? { offset: String(offset + size) } : {}) } }
 }
 const sheetRows = []
+const brevoContacts = []
+// Row 1 is the live 15 column header of the Joners Juniors tab.
+const juniorsSheet = [['Paid At', 'Registration ID', 'Payment Status', 'Player Full Name', 'Date of Birth', 'Parent Name', 'Parent Email', 'Parent Mobile', 'Medical History / Allergies', 'Heard About Us', 'Class', 'Amount Paid', 'Stripe Checkout Session ID', 'Stripe PaymentIntent ID / Refund Link', 'Confirmation Email Status']]
 const SHEET_HEADERS = ['Updated At', 'Status', 'Date', 'Start', 'End', 'Coach', 'Session Type', 'Players', 'Player Ages', 'Parent Name', 'Mobile', 'Email', 'Notes', 'Location', 'Booking ID', 'Needs Attention']
 function stripeSession(body) {
   const id = `cs_test_${crypto.randomBytes(12).toString('hex')}`
@@ -382,7 +416,9 @@ function mockCharge(s, { expandBalance = false, late = false } = {}) {
   const id = `ch_${String(s.payment_intent).slice(3)}`
   return { id, amount_refunded: (s.refunds || []).reduce((t, r) => t + r.amount, 0), payment_method_details: { type: s.payMethod || 'card' }, balance_transaction: late ? null : expandBalance ? mockBalance(s) : `txn_${String(s.payment_intent).slice(3)}` }
 }
-const paidSession = (pi) => [...sessions.values(), ...stripeSeeded].find((x) => x.payment_intent === pi)
+const paidSession = (pi) => [...sessions.values(), ...stripeSeeded, ...juniorsSessions].find((x) => x.payment_intent === pi)
+// Juniors payments: the invented ones, and website sign-ups paid on the mock checkout.
+const allJuniors = () => [...juniorsSessions, ...[...sessions.values()].filter((x) => (x.status === 'complete' || x.payment_status === 'paid') && (x.metadata?.programme === 'Joners Juniors' || x.piMetadata?.programme === 'Joners Juniors'))]
 
 const realFetch = globalThis.fetch
 globalThis.fetch = async (url, init = {}) => {
@@ -398,8 +434,8 @@ globalThis.fetch = async (url, init = {}) => {
     return json(r.body, r.status)
   }
   if (u.startsWith('https://api.stripe.com/v1/account')) return json({ id: 'acct_1QyPm0EwxK4ojTS1' })
-  // Juniors reads its tag from the payment intent: seeded Juniors payments, and quick links made for Juniors.
-  if (u.startsWith('https://api.stripe.com/v1/payment_intents/search')) return json({ data: [...juniorsSessions.filter((x) => x.metadata.programme), ...[...sessions.values()].filter((x) => x.payment_status === 'paid' && x.piMetadata?.programme === 'Joners Juniors')].map((x) => ({ id: x.payment_intent, status: 'succeeded' })), has_more: false })
+  // Juniors reads its tag from the payment intent: seeded Juniors payments, Juniors payment requests, and quick links made for Juniors.
+  if (u.startsWith('https://api.stripe.com/v1/payment_intents/search')) return json({ data: allJuniors().filter((x) => (x.metadata?.programme || x.piMetadata?.programme) === 'Joners Juniors').map((x) => ({ id: x.payment_intent, status: 'succeeded' })), has_more: false })
   if (u.startsWith('https://api.stripe.com/v1/payment_links?')) return json({ data: juniorsSessions.length ? [{ id: 'plink_juniors_t4', url: JLINK, active: true }] : [], has_more: false })
   if (u.startsWith('https://api.stripe.com/v1/payment_intents/')) {
     const pi = decodeURIComponent(u.split('/payment_intents/')[1].split('?')[0])
@@ -424,8 +460,9 @@ globalThis.fetch = async (url, init = {}) => {
     const q = new URL(u).searchParams
     // Juniors reads by payment link or payment intent.
     if (q.get('payment_link') || q.get('payment_intent')) {
-      const hit = [...juniorsSessions, ...(q.get('payment_intent') ? [...sessions.values()] : [])].filter((x) => (q.get('payment_link') ? x.payment_link === q.get('payment_link') : x.payment_intent === q.get('payment_intent')))
-      return json({ data: hit.map((x) => ({ ...x, payment_intent: { id: x.payment_intent, latest_charge: { amount_refunded: (x.refunds || []).reduce((t, r) => t + r.amount, 0) } } })), has_more: false })
+      const hit = (q.get('payment_intent') ? [...juniorsSessions, ...sessions.values()] : allJuniors()).filter((x) => (q.get('payment_link') ? x.payment_link === q.get('payment_link') : x.payment_intent === q.get('payment_intent')))
+      const bt = q.getAll('expand[]').includes('data.payment_intent.latest_charge.balance_transaction')
+      return json({ data: hit.map((x) => ({ ...x, payment_intent: { id: x.payment_intent, latest_charge: mockCharge(x, { expandBalance: bt }) } })), has_more: false })
     }
     const gte = Number(q.get('created[gte]') || 0)
     const all = [...sessions.values(), ...stripeSeeded].filter((s) => s.status === 'complete' && (s.created || 0) >= gte)
@@ -441,9 +478,15 @@ globalThis.fetch = async (url, init = {}) => {
     if (init.method === 'POST') return json(stripeSession(init.body))
     const id = decodeURIComponent(u.split('/').pop().split('?')[0])
     const j = juniorsSessions.find((x) => x.id === id)
-    if (j) return json({ ...j, payment_intent: { id: j.payment_intent, latest_charge: { amount_refunded: 0 } } })
+    if (j) return json({ ...j, payment_intent: { id: j.payment_intent, latest_charge: mockCharge(j, { expandBalance: new URL(u).searchParams.getAll('expand[]').includes('payment_intent.latest_charge.balance_transaction') }) } })
     const s = sessions.get(id) || stripeSeeded.find((x) => x.id === id)
     return s ? json(s) : json({ error: { message: 'No such checkout session' } }, 404)
+  }
+  if (u.startsWith('https://api.brevo.com/v3/contacts')) {
+    const payload = JSON.parse(init.body)
+    brevoContacts.push({ email: payload.email, listIds: payload.listIds })
+    log('brevo', `contact ${payload.listIds}`)
+    return json({ id: brevoContacts.length })
   }
   if (u.startsWith('https://api.brevo.com')) {
     if (faults.has('email')) return new Response('{"code":"unauthorized"}', { status: 401 })
@@ -461,6 +504,25 @@ globalThis.fetch = async (url, init = {}) => {
     return json({ ok: true })
   }
   if (u.startsWith('https://oauth2.googleapis.com/token')) return json({ access_token: 'local', expires_in: 3600 })
+  // The Joners Juniors sign-up tab: its own pretend sheet.
+  if (u.includes('sheets.googleapis.com') && u.includes('/local-jj-sheet')) {
+    if (faults.has('sheet')) return new Response('{"error":{"message":"The caller does not have permission"}}', { status: 403 })
+    if (u.includes('?fields=sheets')) return json({ sheets: [{ properties: { title: 'Joners Juniors', sheetId: 7 } }] })
+    if (u.includes(':batchUpdate')) return json({})
+    if (u.includes(':append')) { juniorsSheet.push(JSON.parse(init.body).values[0].map((c) => String(c ?? ''))); log('sheet', 'juniors row appended'); return json({}) }
+    const cell = decodeURIComponent(u).match(/!([A-Z])(\d+):[A-Z]\d+\?/)
+    if (init.method === 'PUT' && cell) {
+      const [, col, n] = cell
+      const row = Number(n) - 1
+      if (row === 0) return json({})
+      while (juniorsSheet.length <= row) juniorsSheet.push([])
+      const r = juniorsSheet[row]
+      while (r.length <= col.charCodeAt(0) - 65) r.push('')
+      r[col.charCodeAt(0) - 65] = String(JSON.parse(init.body).values[0][0] ?? '')
+      return json({})
+    }
+    return json({ values: juniorsSheet })
+  }
   if (u.includes('sheets.googleapis.com')) {
     if (u.includes(':append')) {
       if (faults.has('sheet')) return new Response('{"error":{"message":"The caller does not have permission"}}', { status: 403 })
@@ -515,7 +577,7 @@ function shimRes(res) {
 }
 
 const handlers = {}
-for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data', 'jfp-messages', 'jfp-messages-relay', 'jfp-pay', 'jfp-admin']) {
+for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data', 'jfp-messages', 'jfp-messages-relay', 'jfp-pay', 'jfp-admin', 'juniors-info', 'juniors-registration', 'juniors-payment-webhook']) {
   handlers[name] = (await import(`../api/${name}.js`)).default
 }
 
@@ -538,7 +600,8 @@ const server = http.createServer(async (req, res) => {
     if (!handler) { res.writeHead(404); return res.end('no such api') }
     const raw = await readBody(req)
     let body = raw
-    if (name !== 'holiday-payment-webhook' && raw && (req.headers['content-type'] || '').includes('json')) { try { body = JSON.parse(raw) } catch {} }
+    // Webhooks check the signature on the raw body.
+    if (!['holiday-payment-webhook', 'juniors-payment-webhook'].includes(name) && raw && (req.headers['content-type'] || '').includes('json')) { try { body = JSON.parse(raw) } catch {} }
     const shimReq = { method: req.method, headers: req.headers, query: Object.fromEntries(url.searchParams), body, url: req.url, socket: req.socket }
     try { await handler(shimReq, shimRes(res)) } catch (error) { console.error(error); res.writeHead(500); res.end(error.message) }
     return
@@ -609,6 +672,8 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/__emails') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(emails)) }
   if (url.pathname === '/__telegram') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(telegrams)) }
   if (url.pathname === '/__airtable') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(airtable)) }
+  if (url.pathname === '/__juniors-sheet') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(juniorsSheet)) }
+  if (url.pathname === '/__brevo-contacts') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(brevoContacts)) }
   if (url.pathname === '/__sheet') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(sheetRows)) }
   if (url.pathname === '/__events') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(events)) }
   if (url.pathname === '/__kv') {
