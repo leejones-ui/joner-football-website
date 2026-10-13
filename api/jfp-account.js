@@ -288,6 +288,8 @@ async function nextTermInterest(res, parent, body) {
 // the row has no parent at all. Then the page says "My profile", not "Your players".
 const bareName = (n) => normName(String(n || '').replace(/\([^)]*\)/g, ' '))
 function isSelf(p, fam, profileDob = '') {
+  // Staff ticked "Player is their own contact" when adding them: that decides.
+  if (p.term4.length && p.term4.every((r) => r.ownContact)) return true
   const age = ageOn(profileDob || p.dob || '', sydneyToday())
   if (age != null && age >= 18) return true
   if (!fam.parentName) return fam.players.filter((x) => x.term4.length).length === 1
