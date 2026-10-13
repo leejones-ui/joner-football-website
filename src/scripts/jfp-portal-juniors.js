@@ -5,6 +5,9 @@
 // Juniors figures are never added into the JFP ones: they come from the
 // Juniors tables, their own Stripe payments and the Juniors payment ledger.
 import { esc, money, toast } from './jfp-common.js'
+import { moneyHead, bindTip, programmeSwitch, bindSwitch, quietOk, markUpdated } from './jfp-portal-programmes.js'
+// The programme picker lives with the other Money views now; kept here for old imports.
+export { programmeSwitch, bindSwitch }
 
 const J = { data: null, at: 0 }
 const STATUS = {
@@ -20,10 +23,12 @@ const when = (iso) => (iso ? new Date(String(iso).length === 10 ? `${iso}T00:00:
 const time = (iso) => (iso ? new Date(iso).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '')
 const METHOD = { card: 'Card', afterpay_clearpay: 'Afterpay', klarna: 'Klarna', zip: 'Zip', au_becs_debit: 'Direct debit', link: 'Link' }
 
-export async function juniorsData(post, { fresh = false, quick = false } = {}) {
-  if (!fresh && J.data && Date.now() - J.at < 60000) return J.data
+// force: ask the server even with a reading from the last minute (the
+// background refresh behind a first paint).
+export async function juniorsData(post, { fresh = false, quick = false, force = false } = {}) {
+  if (!fresh && !force && J.data && Date.now() - J.at < 60000) return J.data
   const r = await post('juniorsMoney', { fresh, quick })
-  if (!r.ok) throw new Error(r.data?.error || 'Could not load Joners Juniors.')
+  if (!r.ok || !r.data?.juniors) throw new Error(r.data?.error || 'Could not load Joners Juniors.')
   J.data = r.data.juniors
   J.at = Date.now()
   return J.data
@@ -33,10 +38,6 @@ export function forgetJuniors() { J.data = null; J.at = 0 }
 
 function setHash(term) { history.replaceState(null, '', `#jj-money?term=${encodeURIComponent(term)}`) }
 
-// The programme switch at the top of Money: JFP Money or Joners Juniors Money.
-export function programmeSwitch(current) {
-  return `<div class="jp-seg jm-prog" role="group" aria-label="Programme">${[['jfp', 'JFP'], ['juniors', 'Joners Juniors'], ['holiday', 'Holiday training']].map(([v, l]) => `<button type="button" data-programme="${v}" aria-pressed="${current === v}">${l}</button>`).join('')}</div>`
-}
 
 // ---------- the download ----------
 
@@ -94,7 +95,8 @@ function saveFile(name, text) {
 
 // ---------- Money: Joners Juniors ----------
 
-const headHtml = (sub, extra = '') => `<div class="jd-head"><div><h1>Money</h1><p>${sub}</p></div><div class="jd-sync">${programmeSwitch('juniors')}${extra}</div></div>`
+// Money, the controls in one row, and "Updated 1:53 pm · Refresh (i)".
+const headHtml = (d, extra = '') => moneyHead({ controls: `${programmeSwitch('juniors')}${extra}`, at: d?.at || '', loading: !d, tip: `${esc(DEFINITION)} Joners Juniors has its own Airtable tables, Stripe payments and payment ledger; none of it is in the JFP figures.`, refresh: d ? 'jm-refresh' : '' })
 
 function earlierHtml(d) {
   const years = d.years || []
@@ -105,25 +107,45 @@ function earlierHtml(d) {
     ${d.historyError ? `<p class="muted small">${esc(d.historyError)}</p>` : ''}</details>`
 }
 
+// The last reading paints at once (Lee, 13 Oct 2026: switching was slow);
+// the latest is read behind it and drawn quietly if nobody is busy.
 export async function renderJuniorsMoney(ui) {
-  const { view, post, filter } = ui
-  view().innerHTML = `<div class="jj-view">${headHtml('Joners Juniors')}<p class="muted">Loading Joners Juniors from Airtable and Stripe</p></div>`
-  bindSwitch(ui)
+  const { view, post } = ui
+  const had = J.data
+  const stale = () => ui.stale?.() || false
+  if (had) paintJuniors(ui, had)
+  else {
+    view().innerHTML = `<div class="jj-view">${headHtml(null)}<p class="muted">Loading Joners Juniors from Airtable and Stripe</p></div>`
+    bindSwitch(ui)
+  }
+  if (had && Date.now() - J.at < 60000 && !had.quick) return
   let d
-  try { d = await juniorsData(post) } catch (e) {
-    view().innerHTML = `<div class="jj-view">${headHtml('Joners Juniors')}<div class="j-box j-box-red">${esc(e.message)} Nothing is shown rather than a wrong total. Try Refresh in a minute.</div><button type="button" class="j-btn j-btn-line j-btn-sm" id="jm-retry" style="margin-top:10px">Try again</button></div>`
+  try { d = await juniorsData(post, { quick: !had, force: true }) } catch (e) {
+    if (had || stale()) return
+    view().innerHTML = `<div class="jj-view">${headHtml(null)}<div class="j-box j-box-red">${esc(e.message)} Nothing is shown rather than a wrong total. Try again in a minute.</div><button type="button" class="j-btn j-btn-line j-btn-sm" id="jm-retry" style="margin-top:10px">Try again</button></div>`
     bindSwitch(ui)
     view().querySelector('#jm-retry').addEventListener('click', () => { J.data = null; renderJuniorsMoney(ui) })
     return
   }
+  if (stale()) return
+  const redraw = (x) => { const y = window.scrollY; paintJuniors(ui, x); window.scrollTo(0, y) }
+  if (!had || quietOk()) redraw(d); else markUpdated(view(), d.at)
+  // Painted from the last good figures: the latest behind them.
+  if (d.quick) {
+    const later = await juniorsData(post, { force: true }).catch(() => null)
+    if (later && !stale() && quietOk()) redraw(later)
+  }
+}
+
+function paintJuniors(ui, d) {
+  const { view, post, filter } = ui
   if (!filter.term || !d.terms.includes(filter.term)) filter.term = d.currentTerm
   setHash(filter.term)
   const t = d.byTerm[filter.term] || { players: 0, collectedCents: 0, refundedCents: 0, owingCents: 0, owingComplete: true, counts: {}, unlinkedCents: 0, unlinkedCount: 0, creditPlaces: 0, unresolved: 0, linkedCents: 0, stripeCents: 0, cashCents: 0, bankCents: 0, feesCents: 0, keptCents: 0, feesPending: 0, lines: [] }
   const inTerm = d.players.filter((p) => p.term === filter.term)
   const unlinked = d.unlinked.filter((u) => u.term === filter.term)
   view().innerHTML = `<div class="jj-view">
-    ${headHtml('Joners Juniors: its own Airtable tables, Stripe payments and payment ledger. Not included in the JFP figures.', `<label class="muted small" for="jm-term">Term</label><select class="j-select" id="jm-term" style="width:auto;min-height:40px">${d.terms.map((x) => `<option ${x === filter.term ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select><button type="button" class="j-btn j-btn-line j-btn-sm" id="jm-refresh">Refresh</button>`)}
-    <p class="muted small" style="margin:-4px 0 10px">Last refreshed ${esc(time(d.at))}. ${esc(DEFINITION)}</p>
+    ${headHtml(d, `<label class="jm-show"><span class="muted small">Term</span><select class="j-select" id="jm-term">${d.terms.map((x) => `<option ${x === filter.term ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>`)}
     ${d.stale ? `<div class="j-box j-box-amber" style="margin-bottom:10px"><b>Not up to date.</b> ${esc(d.error || '')} (from ${esc(time(d.at))})</div>` : ''}
     <div class="jd-grid">
       <section class="jd-card jd-hero jm-hero jd-in" style="--i:0"><div><p class="lbl">Collected, ${esc(filter.term)}</p><p class="big">${esc(money(t.collectedCents))}</p><p class="small" style="opacity:.8">After refunds</p></div>
@@ -183,20 +205,9 @@ export async function renderJuniorsMoney(ui) {
     renderJuniorsMoney(ui)
   })
   bindSwitch(ui)
+  bindTip(view())
 }
 
-// JFP and holiday training are views of Money; Joners Juniors has its own
-// Money page in its section. The switch moves between all three.
-export function bindSwitch(ui) {
-  ui.view().querySelectorAll('[data-programme]').forEach((b) => b.addEventListener('click', () => {
-    const want = b.dataset.programme
-    if (b.getAttribute('aria-pressed') === 'true') return
-    if (want === 'juniors') { ui.filter.programme = 'jfp'; return ui.go('jj-money') }
-    ui.filter.programme = want === 'holiday' ? 'holiday' : 'jfp'
-    if (want === 'jfp') history.replaceState(null, '', '#money')
-    ui.go('money')
-  }))
-}
 
 // ---------- the dashboard card ----------
 

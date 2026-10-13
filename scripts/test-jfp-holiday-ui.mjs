@@ -36,8 +36,10 @@ const view = (period = '') => holidayMoneyView({ ...HOL, period })
 
 await test('holiday training: picked from the Money switch, the newest holiday with money, kept and what makes it up', async () => {
   const p = await openPortal({ money: fresh(), hash: '#money?programme=holiday', onPost: (b) => (b.action === 'holidayMoney' ? { success: true, holiday: view(b.period) } : null) })
-  assert.deepEqual([...p.d.querySelectorAll('.jm-prog [data-programme]')].map((b) => [b.textContent, b.getAttribute('aria-pressed')]), [['JFP', 'false'], ['Joners Juniors', 'false'], ['Holiday training', 'true']])
-  assert.deepEqual(p.posts.find((b) => b.action === 'holidayMoney'), { action: 'holidayMoney', period: '' })
+  // One Programme menu (13 Oct 2026), holiday training picked.
+  assert.deepEqual([...p.d.querySelectorAll('#m-prog option')].map((o) => [o.textContent, o.selected]), [['JFP', false], ['Joners Juniors', false], ['Holiday training', true], ['Pro sessions', false], ['Camps', false], ['Everything', false]])
+  // First paint from the last Stripe read (quick), never a wait on Stripe.
+  assert.deepEqual(p.posts.find((b) => b.action === 'holidayMoney'), { action: 'holidayMoney', period: '', quick: true })
   const v = view()
   assert.equal(v.period, '2026-spring')
   assert.equal(p.w.location.hash, '#money?programme=holiday&period=2026-spring')
@@ -123,7 +125,7 @@ await test('holiday training: another holiday from the picker, and a bank transf
   assert.equal(p.text('#h-kept'), 'A$0')
   assert.match(p.text('#h-lines'), /Nothing in this holiday yet/)
   // Back to JFP: the usual Money page.
-  await p.click('.jm-prog [data-programme="jfp"]')
+  await p.pick('#m-prog', 'jfp')
   assert.equal(p.w.location.hash, '#money')
   assert.ok(p.$('#m-bank'))
   assert.deepEqual(p.errors, [])

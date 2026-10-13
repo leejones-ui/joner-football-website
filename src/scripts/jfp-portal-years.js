@@ -9,6 +9,7 @@
 // server, action moneyYear), by venue, against the year before. Nothing here
 // records or changes a payment.
 import { esc, money } from './jfp-common.js'
+import { moneyHead } from './jfp-portal-programmes.js'
 
 const KIND = [['stripe', 'Stripe', '--c-series-1'], ['bank', 'Bank transfer', '--c-series-2'], ['cash', 'Cash', '--c-series-3'], ['other', 'Other or not noted', '--c-neutral']]
 const yearOf = (t) => Number(/(\d{4})\s*$/.exec(t || '')?.[1]) || 0
@@ -66,8 +67,9 @@ export function bindShowing(ui) {
     ui.render()
   })
 }
+// The same short header as every Money view: what is showing, in one small line.
 function head(ui, sub, extra = '') {
-  return `<div class="jd-head"><div><h1>Money</h1><p>${esc(sub)}</p></div><div class="jd-sync">${ui.programmeSwitch}${showingPicker(ui.terms, ui.current, ui.filter)}${extra}</div></div>`
+  return moneyHead({ controls: `${ui.programmeSwitch}${showingPicker(ui.terms, ui.current, ui.filter)}${extra}`, note: esc(sub), refresh: '' })
 }
 function bindHead(ui) {
   bindShowing(ui)

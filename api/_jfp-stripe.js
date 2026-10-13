@@ -42,6 +42,11 @@ async function linkProduct(linkId) {
   return name
 }
 
+// Pro sessions (Lee, 13 Oct 2026; keys agreed with the players work): a quick
+// link made for Pro says jfpProgramme 'pro'; a payment link for a Pro row
+// says jfpProduct 'pro'. Either way it is Pro money, never JFP term income.
+export const isProSession = (s) => s?.metadata?.jfpProgramme === 'pro' || s?.metadata?.jfpProduct === 'pro'
+
 export function classifySession(s, product) {
   if (s.metadata?.holidayBookingId) return 'holiday'
   // A quick link says its programme: only JFP is JFP term income.
@@ -91,10 +96,11 @@ export async function fillFees(payments) {
 
 // Next term paid early is kept apart. A payment that names its term counts
 // for that term; one that does not (made before the term was written on
-// it) is always next term's.
+// it) is always next term's. Pro payments are kept apart too (pro).
 const isNextTerm = (p, term) => p.nextTerm && (!p.forTerm || p.forTerm !== term)
 export function splitTerms(out, term) {
-  return { ...out, payments: out.payments.filter((p) => !isNextTerm(p, term)), next: out.payments.filter((p) => isNextTerm(p, term)) }
+  const jfp = out.payments.filter((p) => !p.pro)
+  return { ...out, payments: jfp.filter((p) => !isNextTerm(p, term)), next: jfp.filter((p) => isNextTerm(p, term)), pro: out.payments.filter((p) => p.pro) }
 }
 
 // { since, at, payments: [...this term], next: [...next term], other: { count, cents } }
@@ -104,7 +110,8 @@ export async function jfpStripePayments({ since, fresh = false, quick = false, t
   const sinceIso = /^\d{4}-\d{2}-\d{2}$/.test(since || '') ? since : '2026-09-01'
   if (!fresh) {
     const hit = await kvGetJson(CACHE)
-    if (hit && hit.since === sinceIso && Array.isArray(hit.payments) && Date.now() - Date.parse(hit.at) < (quick ? 6 * 3600 : CACHE_SECONDS) * 1000) return splitTerms(hit, term)
+    // proTagged: read since Pro payments are marked (an older copy is read again once).
+    if (hit && hit.proTagged && hit.since === sinceIso && Array.isArray(hit.payments) && Date.now() - Date.parse(hit.at) < (quick ? 6 * 3600 : CACHE_SECONDS) * 1000) return splitTerms(hit, term)
   }
   const gte = Math.floor(Date.parse(`${sinceIso}T00:00:00+10:00`) / 1000)
   const payments = []
@@ -119,7 +126,8 @@ export async function jfpStripePayments({ since, fresh = false, quick = false, t
     for (const s of d.data || []) {
       if (s.payment_status !== 'paid') continue
       const product = s.payment_link ? await linkProduct(typeof s.payment_link === 'string' ? s.payment_link : s.payment_link.id) : s.metadata?.jfpFor ? `Quick link: ${s.metadata.jfpFor}` : (s.metadata?.jfpBookingId ? 'JFP online booking' : '')
-      const kind = classifySession(s, product)
+      const pro = isProSession(s)
+      const kind = pro ? 'jfp' : classifySession(s, product)
       if (kind === 'holiday') continue
       if (kind === 'other') { other = { count: other.count + 1, cents: other.cents + (s.amount_total || 0) }; continue }
       const pi = s.payment_intent && typeof s.payment_intent === 'object' ? s.payment_intent : null
@@ -141,6 +149,7 @@ export async function jfpStripePayments({ since, fresh = false, quick = false, t
         ...feeFields(fee),
         nextTerm: NEXT_TERM_SOURCES.has(s.metadata?.source || ''),
         forTerm: s.metadata?.jfpTerm || '',
+        ...(pro ? { pro: true } : {}),
       })
     }
     if (!d.has_more || !(d.data || []).length) break
@@ -148,7 +157,7 @@ export async function jfpStripePayments({ since, fresh = false, quick = false, t
   }
   // A fee that cannot be found now shows as not known yet, never as nothing.
   try { await fillFees(payments) } catch (error) { console.error('jfp stripe fees failed', error.message) }
-  const out = { since: sinceIso, at: new Date().toISOString(), payments: payments.sort((a, b) => b.at.localeCompare(a.at)), other }
+  const out = { since: sinceIso, at: new Date().toISOString(), payments: payments.sort((a, b) => b.at.localeCompare(a.at)), other, proTagged: true }
   await kvSetJson(CACHE, out)
   return splitTerms(out, term)
 }

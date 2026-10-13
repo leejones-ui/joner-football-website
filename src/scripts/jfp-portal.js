@@ -4,10 +4,14 @@
 // the role again on the server.
 import { $, esc, api, toast, signIn, whoAmI, signOut, money } from './jfp-common.js'
 import { renderMessages } from './jfp-portal-messages.js'
-import { programmeSwitch, bindSwitch, juniorsCardShell, fillJuniorsCard } from './jfp-portal-juniors.js'
+import { juniorsCardShell, fillJuniorsCard, juniorsData } from './jfp-portal-juniors.js'
+import { programmeSwitch, bindSwitch, moneyHead, bindTip, prefetchOthers, forget, markUpdated } from './jfp-portal-programmes.js'
+import { renderProMoney, proData } from './jfp-portal-pro.js'
+import { renderCampsMoney, campsData } from './jfp-portal-camps.js'
+import { renderEverything } from './jfp-portal-everything.js'
 import { drawFamilies, sessionModal } from './jfp-portal-family.js'
 import { bankPanel, bindBank, loadBank, bankDone, bankStale } from './jfp-portal-bank.js'
-import { renderHolidayMoney, holidayStale } from './jfp-portal-holiday.js'
+import { renderHolidayMoney, holidayStale, holidayData } from './jfp-portal-holiday.js'
 import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYearChart } from './jfp-portal-years.js'
 import { renderPricesPage, quickModal, progPill, WHERE as QUICK_WHERE } from './jfp-portal-quick.js'
 import { playerFormHtml, wirePlayerForm, filledValues, customOptions, customPrices, noGroupPaymentHtml, wireNoGroupPayment, PROFILE_LISTS } from './jfp-portal-player-form.js'
@@ -99,8 +103,11 @@ function start() {
   if (hash === 'money' && qp.get('programme') === 'juniors') return go('jj-money')
   // or holiday training, one school holiday: #money?programme=holiday&period=2026-spring
   if (hash === 'money' && qp.get('programme') === 'holiday') Object.assign(P.jf, { programme: 'holiday', period: (qp.get('period') || '').slice(0, 20) })
+  // Pro sessions (one month or every month), camps (a year) and everything (a year), 13 Oct 2026.
+  if (hash === 'money' && qp.get('programme') === 'pro') Object.assign(P.jf, { programme: 'pro', month: /^\d{4}-\d{2}$/.test(qp.get('month') || '') ? qp.get('month') : '' })
+  if (hash === 'money' && ['camps', 'all'].includes(qp.get('programme'))) Object.assign(P.jf, { programme: qp.get('programme'), year: /^\d{4}$/.test(qp.get('year') || '') ? Number(qp.get('year')) : 0 })
   if (hash === 'money' && qp.get('loc')) P.moneyFilter = { ...(P.moneyFilter || {}), loc: qp.get('loc') }
-  if (hash === 'money' && !['juniors', 'holiday'].includes(qp.get('programme')) && (qp.get('year') || qp.get('term'))) P.moneyFilter = { ...(P.moneyFilter || {}), year: /^\d{4}$/.test(qp.get('year') || '') ? qp.get('year') : '', term: qp.get('year') ? '' : (qp.get('term') || '').slice(0, 30) }
+  if (hash === 'money' && !['juniors', 'holiday', 'pro', 'camps', 'all'].includes(qp.get('programme')) && (qp.get('year') || qp.get('term'))) P.moneyFilter = { ...(P.moneyFilter || {}), year: /^\d{4}$/.test(qp.get('year') || '') ? qp.get('year') : '', term: qp.get('year') ? '' : (qp.get('term') || '').slice(0, 30) }
   go(tabs().some(([k]) => k === hash) ? hash : tabs()[0][0])
 }
 
@@ -166,15 +173,19 @@ function bindShell() {
 }
 bindShell()
 
-async function go(tab, { quiet = false } = {}) {
+// instant: a Money programme switch. The view paints its last reading at
+// once, so there is no "Loading" flash in between.
+async function go(tab, { quiet = false, instant = false } = {}) {
   P.tab = tab
+  P.nav = !quiet
   if (!quiet) history.replaceState(null, '', `#${tab}`)
   renderNav()
-  if (!quiet) view().innerHTML = '<p class="muted">Loading</p>'
+  if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
   const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
+  if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
   if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts() } else cancelBanner()
   if (!quiet) view().focus({ preventScroll: true })
 }
@@ -1617,7 +1628,29 @@ const juniorsUi = () => ({ view, post, filter: P.jf, go })
 // Money > Holiday training (13 Oct 2026).
 const holidayUi = () => ({ view, post, toast, filter: P.jf, programmeSwitch: programmeSwitch('holiday'), bindSwitch: () => bindSwitch(juniorsUi()), saveFile, csvCell, aud, slug, confirm: confirmBox, bankStale, stale: () => P.tab !== 'money' || P.jf.programme !== 'holiday' })
 // What the Joners Juniors pages use from here.
-const jjUi = () => ({ view, post, need, modal, closeModal, confirmBox, go, filter: P.jf })
+const jjUi = () => ({ view, post, need, modal, closeModal, confirmBox, go, filter: P.jf, stale: () => P.tab !== 'jj-money' })
+// Money > Pro sessions, Camps and Everything (13 Oct 2026).
+const proUi = () => ({ view, post, toast, filter: P.jf, go, confirm: confirmBox, saveFile, csvCell, aud, slug, bankStale, stale: () => P.tab !== 'money' || P.jf.programme !== 'pro' })
+const campsUi = () => ({ view, post, toast, filter: P.jf, go, saveFile, csvCell, aud, stale: () => P.tab !== 'money' || P.jf.programme !== 'camps' })
+const everythingUi = () => ({
+  view, filter: P.jf, go, moneyFilter: P.moneyFilter, stale: () => P.tab !== 'money' || P.jf.programme !== 'all',
+  readers: {
+    jfp: (year) => moneyYearData(year),
+    juniors: () => juniorsData(post, { quick: true }),
+    holiday: () => holidayData(post, { period: 'all', quick: true }),
+    pro: () => proData(post, { quick: true }),
+    camps: (year) => campsData(post, { year }),
+  },
+})
+// After the first paint of a Money view, the other programmes are read
+// quietly (their quick readings), so switching to them is instant.
+const moneyReaders = () => [
+  ['jfp', async () => { if (P.money && Date.now() - (P.moneyAt || 0) < 600000) return; const r = await post('money', { quick: true }); if (r.ok && r.data?.money) { P.money = r.data.money; P.moneyAt = Date.now() } }],
+  ['juniors', () => juniorsData(post, { quick: true })],
+  ['holiday', () => holidayData(post, { quick: true })],
+  ['pro', () => proData(post, { quick: true })],
+  ['camps', () => campsData(post, {})],
+]
 // Edit a player's details from Money: name, family, fee and payment type.
 const PAY_TYPES = ['JFP Session by session', 'JFP 10 weeks', 'JFP Half term (5 weeks)', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
 function editPlayerModal(p) {
@@ -1661,8 +1694,9 @@ function editPlayerModal(p) {
 // something.
 function laterMoney(tab, apply) {
   post('money').then((r) => {
+    if (r.ok && r.data?.money) { P.moneyLatest = r.data.money; P.moneyAt = Date.now() }
     if (!r.ok || P.tab !== tab) return
-    if ($('jp-modal') || $('jp-side') || $('jp-menu') || document.querySelector('.jp-confirm-over, .jf-changed, .jm-drawer')) return
+    if ($('jp-modal') || $('jp-side') || $('jp-menu') || document.querySelector('.jp-confirm-over, .jf-changed, .jm-drawer, #m-tipbox:not([hidden])')) return
     const a = document.activeElement
     if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return
     const y = window.scrollY
@@ -1927,25 +1961,37 @@ async function renderLookBack(pre, seq) {
   return f.year ? renderMoneyYear(ui) : renderPastTerm(ui)
 }
 
+// What Money > JFP explains under its (i).
+const JFP_TIP = 'Every player\'s payments: Stripe read live, plus the bank transfers and cash you record here. Recording a payment writes the player\'s row and the payment ledger in Airtable; anything changed in Airtable shows here when you open this tab or press Refresh. Pro sessions, Joners Juniors, holiday training and camps are not in these figures: each has its own view in the Programme menu.'
+
 async function renderMoney(pre) {
+  // Opened from the menu or the programme switch (not a refresh after a change).
+  const nav = P.nav === true
+  P.nav = false
   // Joners Juniors money is its own page in the Joners Juniors section.
   if (P.jf.programme === 'juniors') { P.jf.programme = 'jfp'; return go('jj-money') }
   if (P.jf.programme === 'holiday') return renderHolidayMoney(holidayUi())
+  if (P.jf.programme === 'pro') return renderProMoney(proUi())
+  if (P.jf.programme === 'camps') return renderCampsMoney(campsUi())
+  if (P.jf.programme === 'all') return renderEverything(everythingUi())
   P.moneyFilter = { status: '', q: '', loc: '', view: 'players', term: '', year: '', ...(P.moneyFilter || {}) }
   const seq = (P.moneySeq = (P.moneySeq || 0) + 1)
   if (P.moneyFilter.term || P.moneyFilter.year) return renderLookBack(pre, seq)
   P.lookKey = ''
-  const r = pre ? { money: pre } : await need(await post('money', { quick: true }))
+  // Switching back to JFP: the last reading (up to 15 minutes old) at once,
+  // the latest behind it (laterMoney). After a change it is always read again.
+  const kept = !pre && nav && (P.moneyLatest || P.money) && Date.now() - (P.moneyAt || 0) < 900000 ? (P.moneyLatest || P.money) : null
+  const r = pre ? { money: pre } : kept ? { money: kept } : await need(await post('money', { quick: true }))
+  if (!pre && !kept) { P.moneyLatest = r.money; P.moneyAt = Date.now() }
   if (!pre) laterMoney('money', (fresh) => renderMoney(fresh))
+  if (P.tab !== 'money' || P.jf.programme !== 'jfp' || seq !== P.moneySeq) return
   P.money = r.money
   const m = P.money
   const f = P.moneyFilter
   if (f.loc && !m.locations.some((l) => l.id === f.loc)) f.loc = ''
   const setHash = () => { if (P.tab === 'money') history.replaceState(null, '', moneyHash(f)) }
   view().innerHTML = `
-    <div class="jd-head"><div><h1>Money</h1><p>Every player's payments: Stripe read live, plus the bank transfers and cash you record here.</p></div>
-      <div class="jd-sync">${programmeSwitch('jfp')}${showingPicker(m.venueTerms?.length ? m.venueTerms : [m.term], m.term, f)}<label class="muted small" for="m-since">Term payments from</label><input class="j-input" type="date" id="m-since" value="${esc(m.since)}" style="width:auto;padding:7px 10px;font-size:13.5px"><button type="button" class="j-btn j-btn-line j-btn-sm" id="m-refresh">Refresh from Stripe</button><button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-add">+ Add a player</button></div></div>
-    <p class="muted small" style="margin:-4px 0 10px">Read from Airtable and Stripe at ${esc(new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}. Recording a payment here writes the player's row and the payment ledger in Airtable; anything changed in Airtable shows here when you open this tab or refresh.</p>
+    ${moneyHead({ controls: `${programmeSwitch('jfp')}${showingPicker(m.venueTerms?.length ? m.venueTerms : [m.term], m.term, f)}<button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-add">+ Add a player</button>`, at: new Date(P.moneyAt || Date.now()).toISOString(), tip: `${esc(JFP_TIP)}<label class="jm-since"><span>Term payments counted from</span><input class="j-input" type="date" id="m-since" value="${esc(m.since)}"></label><span class="muted small">Change the date, then press Refresh.</span>`, refresh: 'm-refresh' })}
     ${m.stripeError ? `<div class="j-box j-box-amber">${esc(m.stripeError)}</div>` : ''}
     <div class="jm-scope">
       <div class="jm-locs" id="m-locs" role="group" aria-label="Venue">${[{ id: '', name: 'All', netCents: m.kpis.netIncomeCents ?? m.kpis.incomeCents }, ...moneyVenues(m)].map((l) => `<button type="button" data-mloc="${esc(l.id)}" aria-pressed="${f.loc === l.id}"><span class="nm">${esc(l.name)}</span> <span class="amt">${esc(money(l.netCents ?? l.receivedCents ?? 0))} kept</span></button>`).join('')}</div>
@@ -1969,7 +2015,7 @@ async function renderMoney(pre) {
     post, toast, confirm: confirmBox, modal, closeModal,
     redraw: () => { if ($('m-bank') && P.money === m) drawBank() },
     // Marked as holiday training, or put on last term: those views read again.
-    after: (kind) => { holidayStale(); if (kind === 'previous') { P.venueCache = {}; P.yearCache = {} } },
+    after: (kind) => { holidayStale(); if (kind === 'pro') forget('pro:'); if (kind === 'previous') { P.venueCache = {}; P.yearCache = {} } },
     record: (item, rowId) => {
       const p = m.players.find((x) => x.rowId === rowId)
       if (p) recordModal(p, { bank: { item, rowIds: item.candidates.find((c) => c.rowId === rowId)?.familyRowIds || family(p) } })
@@ -2011,6 +2057,7 @@ async function renderMoney(pre) {
   loadBank(bankUi, bankUi.redraw)
   bindSwitch(juniorsUi())
   bindShowing({ view, filter: f, render: () => renderMoney() })
+  bindTip(view())
   $('m-locs').addEventListener('click', (e) => {
     const b = e.target.closest('[data-mloc]')
     if (!b || b.dataset.mloc === f.loc) return

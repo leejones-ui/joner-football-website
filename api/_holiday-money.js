@@ -45,11 +45,13 @@ export const TYPE_NAMES = { one: '1 on 1', shared: 'Shared (2 players)', group: 
 
 // Paid holiday Checkout Sessions on the Sydney account since `since`, with
 // what Stripe kept and refunded. Kept in KV for 5 minutes; fresh reads again.
-export async function holidayStripePayments({ since, fresh = false } = {}) {
+// quick (first paint, 13 Oct 2026): any copy still kept (up to an hour) is
+// shown at once, and the page asks again for the latest behind it.
+export async function holidayStripePayments({ since, fresh = false, quick = false } = {}) {
   const sinceIso = /^\d{4}-\d{2}-\d{2}$/.test(since || '') ? since : '2026-09-01'
   if (!fresh) {
     const hit = await kvGetJson(STRIPE_CACHE).catch(() => null)
-    if (hit && hit.since <= sinceIso && Array.isArray(hit.payments) && Date.now() - Date.parse(hit.at) < STRIPE_CACHE_SECONDS * 1000) return hit
+    if (hit && hit.since <= sinceIso && Array.isArray(hit.payments) && (quick || Date.now() - Date.parse(hit.at) < STRIPE_CACHE_SECONDS * 1000)) return hit
   }
   const gte = Math.floor(Date.parse(`${sinceIso}T00:00:00+10:00`) / 1000)
   const payments = []
@@ -100,7 +102,7 @@ export async function listHolidayBank() {
 
 // Everything the holiday money view needs, read now. locationOf(name) gives
 // the venue a slot's location is (the JFP venue list).
-export async function holidayMoneyData({ period = '', fresh = false, locationOf, today } = {}) {
+export async function holidayMoneyData({ period = '', fresh = false, quick = false, locationOf, today } = {}) {
   const [config, bookings, slots, bankLines, payreqs, checkedRaw] = await Promise.all([getHolidayConfig(), listBookings({ limit: 2000 }), listSlots({ includeCancelled: true }), listHolidayBank(), listPayreqs().catch(() => []), kvCommand(['HGETALL', QUICK_CHECKED]).catch(() => [])])
   const quickLinks = payreqs.filter((q) => q?.quick && q.programme === 'holiday' && q.status === 'paid')
   const checked = {}
@@ -108,12 +110,15 @@ export async function holidayMoneyData({ period = '', fresh = false, locationOf,
   const firstDay = [...bookings.map((b) => sydneyDay(b.createdAt)), ...quickLinks.map((q) => sydneyDay(q.createdAt))].filter(Boolean).sort()[0]
   let stripe = { payments: [], error: '', at: '' }
   if (bookings.length || quickLinks.length) {
-    try { stripe = { ...(await holidayStripePayments({ since: firstDay ? addDaysIso(firstDay, -1) : '', fresh })), error: '' } } catch (error) {
+    try { stripe = { ...(await holidayStripePayments({ since: firstDay ? addDaysIso(firstDay, -1) : '', fresh, quick: quick && !fresh })), error: '' } } catch (error) {
       console.error('holiday stripe read failed', error)
       stripe.error = 'Stripe could not be read just now. Bookings show what they were paid; fees and refunds are not known.'
     }
   }
-  return holidayMoneyView({ bookings, slots, config, stripe, bankLines, quickLinks, checked, locationOf, today, period })
+  const view = holidayMoneyView({ bookings, slots, config, stripe, bankLines, quickLinks, checked, locationOf, today, period })
+  // Shown from a copy older than five minutes: the page reads again behind it.
+  view.quick = Boolean(quick && !fresh && stripe.at && Date.now() - Date.parse(stripe.at) >= STRIPE_CACHE_SECONDS * 1000)
+  return view
 }
 const addDaysIso = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
 

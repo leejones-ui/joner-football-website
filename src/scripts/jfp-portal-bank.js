@@ -7,7 +7,7 @@
 // 13 Oct 2026: every line can also be marked as holiday training ("Holiday
 // revenue") or put on last term's list ("Previous term"); hints say which a
 // line looks like; lines from before this term sit in their own fold; chips
-// pick what is shown.
+// pick what is shown. "Pro session" puts a line in Money > Pro sessions.
 import { esc, money } from './jfp-common.js'
 import { parseBankCsv } from './jfp-bank-csv.js'
 
@@ -100,7 +100,7 @@ function itemHtml(x) {
     <p class="payer">${esc(x.payer)}${x.description && x.description !== x.payer ? ` <small class="muted">${esc(x.description)}</small>` : ''}</p>
     ${c ? `<p class="cand"><b>${esc(c.player)}</b>${c.parent ? ` <small>(${esc(c.parent)})</small>` : ''} · owing ${esc(money(c.owingCents))}<br><small class="muted">${esc(c.reason)}</small>${x.candidates.length > 1 ? `<br><small class="muted">Also: ${x.candidates.slice(1).map((o) => esc(o.player)).join(', ')}</small>` : ''}</p>` : '<p class="cand muted small">No player with that name.</p>'}
     ${pv ? `<p class="cand prev small">Last term: <b>${esc(pv.player)}</b>${pv.parent ? ` (${esc(pv.parent)})` : ''} · ${pv.owingCents ? `owing ${esc(money(pv.owingCents))}` : esc(pv.status || 'paid')}<br><small class="muted">${esc(pv.reason)}</small></p>` : ''}
-    <div class="btns">${c ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-bank-rec="${esc(c.rowId)}">Record for ${esc(first(c.player))}</button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-other>Other player…</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-holiday>Holiday revenue</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-prev>Previous term</button><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-bank-ignore>Not JFP / ignore</button></div>
+    <div class="btns">${c ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-bank-rec="${esc(c.rowId)}">Record for ${esc(first(c.player))}</button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-other>Other player…</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-holiday>Holiday revenue</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-pro>Pro session</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-prev>Previous term</button><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-bank-ignore>Not JFP / ignore</button></div>
   </li>`
 }
 
@@ -135,11 +135,12 @@ export function bindBank(el, ui) {
     const un = e.target.closest('[data-bank-undo]')
     if (un) {
       un.disabled = true
-      const r = await ui.post('bankHolidayUndo', { id: un.dataset.bankUndo })
+      const kind = B.undo?.kind === 'pro' ? 'pro' : 'holiday'
+      const r = await ui.post(kind === 'pro' ? 'bankProUndo' : 'bankHolidayUndo', { id: un.dataset.bankUndo })
       if (!r.ok) { un.disabled = false; return ui.toast(r.data.error) }
       B.undo = null
       ui.toast('Put back on the list')
-      ui.after?.('holiday')
+      ui.after?.(kind)
       return loadBank(ui, ui.redraw, { force: true })
     }
     const show = e.target.closest('[data-bank-show]')
@@ -159,6 +160,7 @@ export function bindBank(el, ui) {
     if (rec) return ui.record(item, rec.dataset.bankRec)
     if (e.target.closest('[data-bank-other]')) return ui.other(item)
     if (e.target.closest('[data-bank-holiday]')) return holidayModal(item, ui)
+    if (e.target.closest('[data-bank-pro]')) return proModal(item, ui)
     if (e.target.closest('[data-bank-prev]')) return previousModal(item, ui)
     const ig = e.target.closest('[data-bank-ignore]')
     if (!ig) return
@@ -228,6 +230,34 @@ export function holidayModal(item, ui) {
     ui.closeModal()
     ui.toast(`Saved as holiday training: ${r.data.periodLabel}`)
     ui.after?.('holiday')
+    ui.redraw()
+  })
+}
+
+// ---------- Pro session (13 Oct 2026) ----------
+
+export function proModal(item, ui) {
+  const players = B.data?.pro?.players || []
+  const box = ui.modal(`<h2 style="margin-bottom:4px">Pro session</h2>${bankBox(item)}
+    <div class="j-two"><label class="j-field"><span>Pro player <span class="muted">(optional)</span></span><select class="j-select" id="pb-row"><option value="">Not sure</option>${players.map((p) => `<option value="${esc(p.rowId)}">${esc(p.player)}</option>`).join('')}</select></label>
+    <label class="j-field"><span>Session date <span class="muted">(optional)</span></span><input class="j-input" type="date" id="pb-date"></label></div>
+    <label class="j-field"><span>Note <span class="muted">(optional)</span></span><input class="j-input" id="pb-note" maxlength="200" placeholder="For example, two Pro sessions"></label>
+    <p class="muted small">It counts in Money &gt; Pro sessions as a bank transfer, and leaves this list. It is not JFP term income and can't be recorded for a player as well. You can put it back.</p>
+    <p class="j-err" id="pb-err" hidden></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="pb-go">Save as Pro session</button></div>`)
+  box.querySelector('#pb-go').addEventListener('click', async (e) => {
+    const v = (id) => box.querySelector(id).value.trim()
+    const btn = e.currentTarget
+    btn.disabled = true
+    const r = await saveWithTwin(ui, 'bankPro', { id: item.id, rowId: v('#pb-row'), sessionDate: v('#pb-date'), note: v('#pb-note') })
+    btn.disabled = false
+    if (!r) return
+    if (!r.ok) { const er = box.querySelector('#pb-err'); if (er) { er.textContent = r.data.error; er.hidden = false } return ui.toast(r.data.error) }
+    bankDone(item.id)
+    B.undo = { id: item.id, kind: 'pro', text: `Saved ${money(item.cents)} from ${item.payer} as Pro sessions${r.data.line?.player ? ` (${r.data.line.player})` : ''}.` }
+    ui.closeModal()
+    ui.toast('Saved as Pro sessions')
+    ui.after?.('pro')
     ui.redraw()
   })
 }

@@ -208,7 +208,18 @@ const telegrams = []
 // A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
 // JSON file ({ term4, term3, waiver, ledger } record arrays) to load another,
 // for example an anonymised copy of the real roster for screenshots.
-const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [], juniorsNext: [], venueHistory: [], profiles: [] }
+const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [], juniorsNext: [], venueHistory: [], profiles: [], camps: [] }
+// JFP Camps, as the Mac import writes it: invented camps, no names (Money > Camps).
+{
+  let n = 0
+  const camp = (key, camp, year, location, start, end, players, gross, refunds, costs, net, extra = {}) => ({ id: `recCAMP${String(++n).padStart(10, '0')}`, fields: { Key: key, Camp: camp, Year: year, Location: location, 'Start Date': start, 'End Date': end, Players: players, Gross: gross, Refunds: refunds, Costs: costs, Net: net, Currency: 'AUD', 'Source Sheet': 'Test camps sheet', 'Source Tab': camp, 'Imported At': '2026-10-13', Notes: 'net from sheet', ...extra } })
+  airtable.camps.push(
+    camp('2026 | Test | Autumn', 'Testville Autumn Camp', 2026, 'Testville', '2026-04-14', '2026-04-16', 40, 12000, 0, 3000, 9000),
+    camp('2026 | Test | Winter', 'Sampleton Winter Camp', 2026, 'Sampleton', '2026-07-07', '2026-07-09', 30, 9000, 500, 2500, 6000),
+    camp('2026 | Test | Spring', 'Testville Spring Camp', 2026, 'Testville', '', '', null, null, null, null, null, { Notes: 'tab empty' }),
+    camp('2025 | Test | Autumn', 'Testville Autumn Camp', 2025, 'Testville', '2025-04-15', '2025-04-17', 35, 10000, 0, 2800, 7200),
+  )
+}
 let recSeq = 1
 const recId = () => `rec${String(recSeq++).padStart(14, '0')}`
 function seedRow(day, time, location, coach, type = 'JFP 10 weeks', confirmation = 'Confirmed', extra = {}) {
@@ -319,7 +330,7 @@ function jjUnknown(key, names) {
   const bad = have && names.find((n) => !have.includes(n))
   return bad ? { status: 422, body: { error: { type: 'UNKNOWN_FIELD_NAME', message: `Unknown field name: "${bad}"` } } } : null
 }
-const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblF25gfo0fZcqdPT: 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblJJNextTerm0001: 'juniorsNext', tblgss68pIVTUOttE: 'venueHistory', tblTt7jWK3s2me45B: 'profiles' }
+const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblF25gfo0fZcqdPT: 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblJJNextTerm0001: 'juniorsNext', tblgss68pIVTUOttE: 'venueHistory', tblTt7jWK3s2me45B: 'profiles', tblrELWFdVouAn5FB: 'camps' }
 function airtableResponse(url, init) {
   const u = new URL(url)
   const parts = u.pathname.split('/').slice(3).map(decodeURIComponent) // [table, recordId?]
@@ -425,7 +436,13 @@ const paidSession = (pi) => [...sessions.values(), ...stripeSeeded, ...juniorsSe
 const allJuniors = () => [...juniorsSessions, ...[...sessions.values()].filter((x) => (x.status === 'complete' || x.payment_status === 'paid') && (x.metadata?.programme === 'Joners Juniors' || x.piMetadata?.programme === 'Joners Juniors'))]
 
 const realFetch = globalThis.fetch
-globalThis.fetch = async (url, init = {}) => {
+// Speed checks (13 Oct 2026): HARNESS_LATENCY="airtable=250,stripe=300,kv=8"
+// makes each pretend call wait like the real one does, and /__calls counts
+// the calls by service (?reset=1 starts again), so a view's fan-out shows.
+const LATENCY = Object.fromEntries(String(process.env.HARNESS_LATENCY || '').split(',').map((x) => x.split('=')).filter(([k, v]) => k && Number(v) >= 0).map(([k, v]) => [k.trim(), Number(v)]))
+const calls = {}
+const serviceOf = (u) => (u.startsWith('http://kv.local') ? 'kv' : u.startsWith('https://api.airtable.com/') ? 'airtable' : u.startsWith('https://api.stripe.com/') ? 'stripe' : 'other')
+const innerFetch = async (url, init = {}) => {
   const u = String(url)
   const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } })
   if (u.startsWith('http://kv.local')) {
@@ -567,6 +584,13 @@ globalThis.fetch = async (url, init = {}) => {
   return realFetch(url, init)
 }
 
+globalThis.fetch = async (url, init = {}) => {
+  const k = serviceOf(String(url))
+  calls[k] = (calls[k] || 0) + 1
+  if (LATENCY[k]) await new Promise((r) => setTimeout(r, LATENCY[k]))
+  return innerFetch(url, init)
+}
+
 const events = []
 const faults = new Set()
 // Payments made on Stripe payment links outside the site (seeded by tests).
@@ -690,6 +714,20 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/__juniors-sheet') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(juniorsSheet)) }
   if (url.pathname === '/__brevo-contacts') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(brevoContacts)) }
   if (url.pathname === '/__sheet') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(sheetRows)) }
+  // Test-only: add rows to a pretend Airtable table (Pro rows for Money > Pro sessions).
+  if (url.pathname === '/__airtable-add') {
+    const p = JSON.parse(await readBody(req) || '{}')
+    if (!airtable[p.table]) { res.writeHead(400); return res.end('no such table') }
+    const made = (p.rows || []).map((fields) => ({ id: recId(), fields }))
+    airtable[p.table].push(...made)
+    redis(['SET', 'jfp:roster-cleared', String(Date.now())]); redis(['DEL', 'jfp:roster-cache'])
+    res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ids: made.map((r) => r.id) }))
+  }
+  if (url.pathname === '/__calls') {
+    const out = { ...calls }
+    if (url.searchParams.get('reset') === '1') for (const k of Object.keys(calls)) delete calls[k]
+    res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(out))
+  }
   if (url.pathname === '/__events') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(events)) }
   if (url.pathname === '/__kv') {
     // Test-only direct access to the pretend KV, for time travel in tests.

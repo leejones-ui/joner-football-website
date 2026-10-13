@@ -33,7 +33,7 @@ const dollarsIn = (c) => (c == null ? '' : String(c / 100))
 export async function renderJJ(tab, ui) {
   if (tab === 'jj-dashboard') return renderDashboard(ui)
   if (tab === 'jj-players') return renderPlayers(ui)
-  if (tab === 'jj-money') return renderJuniorsMoney({ view: ui.view, post: ui.post, filter: ui.filter, go: ui.go })
+  if (tab === 'jj-money') return renderJuniorsMoney({ view: ui.view, post: ui.post, filter: ui.filter, go: ui.go, stale: ui.stale })
   if (tab === 'jj-settings') return renderSettings(ui)
   if (tab === 'jj-invites') return renderInvites(ui)
   if (tab === 'jj-requests') return renderRequests(ui)

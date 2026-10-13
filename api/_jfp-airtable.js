@@ -150,12 +150,14 @@ function term4Row({ id, fields: f }) {
 // The whole roster, joined the way the Joner Dashboard joins it: coach and
 // date of birth come from Term 3 where Term 4 does not say. Cached briefly;
 // every write clears the cache so staff changes show at once.
-export async function loadRoster({ fresh = false } = {}) {
+// maxAgeMs: how old a kept copy may be. A Money first paint (13 Oct 2026)
+// takes one up to 15 minutes old and reads Airtable again behind it.
+export async function loadRoster({ fresh = false, maxAgeMs = CACHE_SECONDS * 1000 } = {}) {
   const cleared = Number(await kvCommand(['GET', 'jfp:roster-cleared'])) || 0
   if (!fresh) {
     const cached = await kvGetJson(keys.roster())
     // Never a copy read before the last write cleared the cache.
-    if (cached && cached.at >= cleared && Date.now() - cached.at < CACHE_SECONDS * 1000) return waiverRules(await placeInGroups(cached))
+    if (cached && cached.at >= cleared && Date.now() - cached.at < maxAgeMs) return waiverRules(await placeInGroups(cached))
   }
   const startedAt = Date.now()
   // Term 3 has finished and barely changes: read it at most every 10 minutes,
@@ -260,7 +262,7 @@ export function looseTime(v) {
 }
 
 export async function bustRosterCache() {
-  await kvPipeline([['SET', 'jfp:roster-cleared', String(Date.now()), 'EX', '86400'], ['DEL', keys.roster(), keys.airtableCounts()]])
+  await kvPipeline([['SET', 'jfp:roster-cleared', String(Date.now()), 'EX', '86400'], ['DEL', keys.roster(), keys.airtableCounts(), 'jfp:ledger-cache']])
 }
 
 export function ageFromNotes(notes) { const m = /\bage (\d{1,2})\b/i.exec(notes || ''); return m ? Number(m[1]) : null }
@@ -517,6 +519,7 @@ export function appendNote(existing, line) {
 // are for a payment onto an earlier term's row (Bank transfers to check,
 // "Previous term"); everything else writes this term's.
 export async function createLedgerRow({ paymentId, config, playerNames, amountCents, paidAt, sourceIds, sessionId, intentId, notes, method = 'Stripe', term = '', sourceTable = '' }) {
+  await bustLedgerCache()
   const d = await airtable(encodeURIComponent(TABLES.ledger), {
     method: 'POST',
     body: {
@@ -630,18 +633,44 @@ export async function listVenueHistory() {
   return out
 }
 
+// The ledger for a first paint (Lee, 13 Oct 2026: Money was slow to come
+// up, and the ledger is three Airtable pages). quick reads accept a copy
+// from the last minute that no write has overtaken; everything that guards a
+// payment reads Airtable itself. Every ledger write clears it first.
+const LEDGER_CACHE = 'jfp:ledger-cache'
+const LEDGER_CLEARED = 'jfp:ledger-cleared'
+const LEDGER_CACHE_MS = 60000
+// A Money first paint takes a copy up to 15 minutes old (paint: true).
+export const PAINT_MAX_AGE_MS = 15 * 60000
+export async function bustLedgerCache() {
+  await kvPipeline([['SET', LEDGER_CLEARED, String(Date.now()), 'EX', '86400'], ['DEL', LEDGER_CACHE]]).catch((error) => console.error('jfp ledger cache clear failed', error.message))
+}
+async function ledgerCleared() {
+  const [a, b] = await kvPipeline([['GET', LEDGER_CLEARED], ['GET', 'jfp:roster-cleared']]).catch(() => [0, 0])
+  return Math.max(Number(a) || 0, Number(b) || 0)
+}
+
 const LEDGER_FIELDS = ['Payment ID', 'Term', 'Player Name', 'Amount Paid', 'Payment Method', 'Payment Status', 'Payment Date', 'Source Record ID', 'Stripe Checkout Session ID', 'Stripe Payment Intent ID', 'Notes']
 // The Stripe fee per payment (Term 3 has it). If the column is ever renamed,
 // the ledger is still read, just without fees.
 const LEDGER_FEE_FIELDS = [LEDGER_FEE]
-export async function listLedger(term) {
+export async function listLedger(term, { quick = false, paint = false } = {}) {
+  const pick = (all) => all.filter((r) => !term || r['Term'] === term)
+  if (quick || paint) {
+    const [hit, cleared] = await Promise.all([kvGetJson(LEDGER_CACHE).catch(() => null), ledgerCleared()])
+    if (hit && Array.isArray(hit.rows) && hit.at >= cleared && Date.now() - hit.at < (paint ? PAINT_MAX_AGE_MS : LEDGER_CACHE_MS)) return pick(hit.rows)
+  }
+  const startedAt = Date.now()
   let rows
   try { rows = await readTable(TABLES.ledger, [...LEDGER_FIELDS, ...LEDGER_FEE_FIELDS]) } catch (error) {
     if (!/unknown[ _]field/i.test(error.message)) throw error
     console.error('jfp ledger fee column missing', error.message)
     rows = await readTable(TABLES.ledger, LEDGER_FIELDS)
   }
-  return rows.map((r) => ({ id: r.id, ...r.fields })).filter((r) => !term || r['Term'] === term)
+  const all = rows.map((r) => ({ id: r.id, ...r.fields }))
+  // Kept only if no write landed while it was being read.
+  if (startedAt >= (await ledgerCleared())) await kvSetJson(LEDGER_CACHE, { at: startedAt, rows: all }, 3600).catch(() => {})
+  return pick(all)
 }
 
 // A payment split per player has lines "<id>", "<id>#2", "<id>#3"...: found

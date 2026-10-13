@@ -62,8 +62,16 @@ export async function openPortal({ money, hash = '#money', player = null, onPost
     el.dispatchEvent(new w.MouseEvent('click', { bubbles: true }))
     await settle()
   }
+  // A select changed by hand (the Money programme menu, a picker).
+  const pick = async (sel, value) => {
+    const el = typeof sel === 'string' ? $(sel) : sel
+    if (!el) throw new Error(`Nothing to pick: ${sel}`)
+    el.value = value
+    el.dispatchEvent(new w.Event('change', { bubbles: true }))
+    await settle()
+  }
   const csv = async (i = -1) => { const x = downloads.at(i); return { name: x.name, text: (await x.blob.text()).replace(/^﻿/, '') } }
-  return { dom, w, d, $, text, click, settle, posts, downloads, csv, errors, close: () => w.close() }
+  return { dom, w, d, $, text, click, pick, settle, posts, downloads, csv, errors, close: () => w.close() }
 }
 
 // A CSV line back into cells (quotes and doubled quotes only; enough for these checks).

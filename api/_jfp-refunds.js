@@ -8,7 +8,7 @@
 // Each refund id is applied once, however often Stripe sends the event.
 import { stripeFetch } from './_holiday-store.js'
 import { getBooking, saveBooking, getPayreq, savePayreq, getConfig, audit, formatAud, kvCommand, clean, sydneyToday } from './_jfp-store.js'
-import { getTerm4Row, updateTerm4Rows, appendNote, airtable, TABLES, findLedgerByPayment } from './_jfp-airtable.js'
+import { getTerm4Row, updateTerm4Rows, appendNote, airtable, TABLES, findLedgerByPayment, bustLedgerCache } from './_jfp-airtable.js'
 import { splitBy } from './_jfp-finalise.js'
 import { sendRefundAlert } from './_jfp-email.js'
 import { nextStatuses, setNextStatus, recordNext } from './_jfp-next.js'
@@ -67,6 +67,7 @@ export async function applyJfpRefunds(id, charge, piId) {
     if (updates.length) await updateTerm4Rows(updates)
     // The ledger keeps every movement: the refund as its own negative row,
     // and the original payment marked refunded.
+    if (jfpMoney) await bustLedgerCache()
     if (jfpMoney && !(await findLedgerByPayment(refund.id)).length) {
       await airtable(encodeURIComponent(TABLES.ledger), { method: 'POST', body: { typecast: true, records: [{ fields: {
         'Payment ID': refund.id, 'Term': record.next?.term || config.term, 'Player Name': (record.playerNames || (record.players || []).map((p) => p.name)).join(', '),

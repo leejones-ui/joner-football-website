@@ -22,7 +22,7 @@ import {
   loadRoster, countsFrom, playerAge, waiverFor, isoDate, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, clearAttendance, draftAgeBand, placeInGroups,
   createWaiverRows, waiverFields, findWaiversByTag, bustRosterCache, findTerm4ByTag,
   getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, listDropped, deleteTerm4Row, RESTORABLE,
-  listLedger, createLedgerRow, listJuniors, listVenueHistory,
+  listLedger, createLedgerRow, listJuniors, listVenueHistory, PAINT_MAX_AGE_MS,
   findLedgerByPayment, listPreviousTerm, getPreviousTermRow, updatePreviousTermRow, previousTermSpec,
 } from './_jfp-airtable.js'
 import { listCancels, staffView, noticeSummary } from './_jfp-cancel.js'
@@ -41,6 +41,8 @@ import { JJ_ACTIONS, jjAction, jjMoneyData, jjTableList } from './_jj-portal.js'
 import { JJ_REGISTER_ACTIONS, jjRegisterAction, jjDatesForGroup, classForGroup, markOne as jjMarkOne } from './_jj-registers.js'
 import { matchBank, cleanItem, csvIds, EXTERNAL_ID, BANK_LIMITS, twinOf, looksJfp, feeSizes, rowScore } from './_jfp-bank-match.js'
 import { holidayMoneyData, holidaySizes, HOLIDAY_BANK } from './_holiday-money.js'
+import { proMoneyData, isProRow, isProLedger, PRO_BANK } from './_jfp-pro-money.js'
+import { campsMoneyData, campsStripe } from './_jfp-camps.js'
 import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
 import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
 import { registerChecks, yearsOf, termsOfYear, termFromLive, termFromLedger, termFromRegister, yearSummary } from './_jfp-years.js'
@@ -923,9 +925,18 @@ const weekOf = (iso) => {
   return d.toISOString().slice(0, 10)
 }
 
-export async function moneyData(config, { since, fresh = false, quick = false } = {}) {
+// paint: a first paint on Money (13 Oct 2026): copies up to 15 minutes old
+// that no write has overtaken, then the page reads again behind it.
+export async function moneyData(config, { since, fresh = false, quick = false, paint = false } = {}) {
   // quick (first paint): the last Stripe read and the 60 second roster cache.
-  const [roster, groups, ledger, juniors, history, payreqs] = await Promise.all([loadRoster({ fresh: !quick }), listGroups(), listLedger(config.term).catch(() => []), listJuniors().catch(() => []), listVenueHistory().catch(() => []), listPayreqs().catch(() => [])])
+  const first = paint && quick && !fresh
+  const [rosterAll, groups, ledgerAll, juniors, history, payreqs] = await Promise.all([loadRoster({ fresh: !quick, ...(first ? { maxAgeMs: PAINT_MAX_AGE_MS } : {}) }), listGroups(), listLedger(config.term, { quick, paint: first }).catch(() => []), listJuniors().catch(() => []), listVenueHistory().catch(() => []), listPayreqs().catch(() => [])])
+  // Pro sessions are their own money (Money > Pro sessions): their rows and
+  // the cash or bank transfers recorded on them are not JFP term income, and
+  // Pro Stripe payments come back apart (stripe.pro).
+  const proIds = new Set(rosterAll.players.filter((r) => isProRow(r.paymentType)).map((r) => r.id))
+  const roster = proIds.size ? { ...rosterAll, players: rosterAll.players.filter((r) => !proIds.has(r.id)) } : rosterAll
+  const ledger = proIds.size ? ledgerAll.filter((l) => !isProLedger(l, proIds)) : ledgerAll
   // What each row's paid amount has in the ledger, so a row marked paid by
   // hand can have its cash, bank or Stripe payment recorded.
   const ledgerByRow = new Map()
@@ -1156,7 +1167,7 @@ async function bankExtras(config) {
   return { term, prev, hol }
 }
 async function bankCheck(config) {
-  const [src, m, ledger, ignored, recorded, extra] = await Promise.all([bankSources(), moneyData(config, { quick: true }), listLedger(config.term).catch(() => []), kvCommand(['SMEMBERS', BANK.ignored]).catch(() => []), bankRecorded(), bankExtras(config)])
+  const [src, m, ledger, ignored, recorded, extra, roster] = await Promise.all([bankSources(), moneyData(config, { quick: true }), listLedger(config.term).catch(() => []), kvCommand(['SMEMBERS', BANK.ignored]).catch(() => []), bankRecorded(), bankExtras(config), loadRoster().catch(() => ({ players: [] }))])
   const { items, counts, hidden, before } = matchBank({ items: [...src.xero, ...src.csv], players: m.players, ledger, ignored: Array.isArray(ignored) ? ignored : [], since: config.moneySince, recorded, previous: extra.prev || [], holidaySizes: extra.hol?.sizes || null, termStart: config.termStart })
   const coaches = (extra.hol?.config.coaches || []).slice().sort((a, b) => Number(b.active !== false) - Number(a.active !== false) || a.name.localeCompare(b.name)).map((c) => ({ id: c.id, name: c.name }))
   return {
@@ -1165,6 +1176,8 @@ async function bankCheck(config) {
     before: before.slice(0, 300), termStart: config.termStart,
     holiday: { periods: [...pickablePeriods(sydneyToday()).map((p) => ({ id: p.id, label: p.label, range: rangeLabel(p) })), { id: OTHER, label: OTHER_LABEL, range: '' }], coaches, locations: config.locations.map((l) => l.name), defaultLocation: locationFor(config, 'Belrose HQ').name },
     previousTerm: extra.prev ? { term: extra.term } : null,
+    // For "Pro session": the Pro players a line can be for.
+    pro: { players: roster.players.filter((r) => isProRow(r.paymentType) && r.holdsPlace).map((r) => ({ rowId: r.id, player: r.player })).sort((a, b) => a.player.localeCompare(b.player)) },
   }
 }
 async function bankUpload(res, principal, config, body) {
@@ -1230,7 +1243,7 @@ async function bankLineFor(id) {
 async function bankGuard(id, seen, body) {
   if ((await findLedgerByPayment(id)).length) return { status: 409, error: 'That bank transfer is already in the ledger.' }
   const claim = await kvCommand(['GET', bankClaim(id)])
-  if (claim) return { status: 409, error: claimKind(claim) === 'holiday' ? 'That bank transfer is already marked as holiday training.' : 'That bank transfer is already recorded.' }
+  if (claim) return { status: 409, error: claimKind(claim) === 'holiday' ? 'That bank transfer is already marked as holiday training.' : claimKind(claim) === 'pro' ? 'That bank transfer is already marked as Pro sessions.' : 'That bank transfer is already recorded.' }
   const line = { id, source: id.startsWith('XERO-') ? 'xero' : 'csv', cents: seen.cents, date: seen.date, payer: seen.payer || '', ...(body.confirmTwin === true ? { distinct: true } : {}), at: new Date().toISOString() }
   const twin = body.confirmTwin === true ? null : twinOf(line, await bankRecorded())
   if (twin) return { status: 409, code: 'twin', error: `This looks like the same transfer as the ${formatAud(twin.cents)} from ${twin.payer || 'the bank'} on ${twin.date}, already recorded from ${twin.source === 'xero' ? 'Xero' : 'the bank CSV'}. Only save it if it is a different payment.` }
@@ -1288,6 +1301,51 @@ async function bankHolidayUndo(res, principal, body) {
   let before = null
   try { before = JSON.parse(raw) } catch {}
   await audit({ by: principal.email, action: 'money.bankHolidayUndo', target: id, before: before ? { cents: before.cents, date: before.date, period: before.period } : null })
+  return res.status(200).json({ success: true, id })
+}
+
+// "Pro session" (Lee, 13 Oct 2026): the line counts in Money > Pro sessions
+// as a bank transfer, optionally for one Pro player. Claimed exactly like
+// holiday training, so it can never also be recorded for a JFP player.
+async function bankPro(res, principal, config, body) {
+  const id = String(body.id || '')
+  const sessionDate = clean(body.sessionDate, 10)
+  if (sessionDate && !ISO.test(sessionDate)) return fail(res, 400, 'The session date does not look right.')
+  const note = clean(body.note, 200)
+  let player = null
+  const rowId = clean(body.rowId, 30)
+  if (rowId) {
+    const r = (await loadRoster()).players.find((x) => x.id === rowId)
+    if (!r || !isProRow(r.paymentType)) return fail(res, 400, 'Pick a Pro player from the list, or leave it blank.')
+    player = { rowId: r.id, player: r.player }
+  }
+  const found = await bankLineFor(id)
+  if (found.error) return refuse(res, found)
+  const g = await bankGuard(id, found.seen, body)
+  if (g.error) return refuse(res, g)
+  try {
+    const claimed = { ...g.line, kind: 'pro' }
+    if ((await kvCommand(['SET', bankClaim(id), JSON.stringify(claimed), 'NX'])) !== 'OK') return fail(res, 409, 'That bank transfer is already recorded.')
+    const rec = { id, date: g.line.date, cents: g.line.cents, payer: g.line.payer, sessionDate, rowId: player?.rowId || '', player: player?.player || '', note, by: principal.email, at: g.line.at }
+    try { await kvCommand(['HSET', PRO_BANK, id, JSON.stringify(rec)]) } catch (error) { await kvCommand(['DEL', bankClaim(id)]).catch(() => {}); throw error }
+    await kvCommand(['HSET', BANK.recorded, id, JSON.stringify(claimed)]).catch((error) => console.error('jfp bank recorded list failed', error))
+    await audit({ by: principal.email, action: 'money.bankPro', target: id, after: { cents: rec.cents, date: rec.date, sessionDate, rowId: rec.rowId } })
+    return res.status(200).json({ success: true, line: rec })
+  } finally { await kvCommand(['DEL', `jfp:paylock:${id}`]).catch(() => {}) }
+}
+async function bankProUndo(res, principal, body) {
+  const id = String(body.id || '')
+  if (!EXTERNAL_ID.test(id)) return fail(res, 400, 'That bank line is not valid.')
+  const raw = await kvCommand(['HGET', PRO_BANK, id])
+  if (!raw) return fail(res, 404, 'That bank transfer is not marked as Pro sessions.')
+  const claim = await kvCommand(['GET', bankClaim(id)])
+  if (claim && claimKind(claim) !== 'pro') return fail(res, 409, 'That bank transfer is recorded for something else, so it cannot be put back from here.')
+  await kvCommand(['HDEL', PRO_BANK, id])
+  if (claimKind(await kvCommand(['HGET', BANK.recorded, id])) === 'pro') await kvCommand(['HDEL', BANK.recorded, id])
+  await kvCommand(['DEL', bankClaim(id)])
+  let before = null
+  try { before = JSON.parse(raw) } catch {}
+  await audit({ by: principal.email, action: 'money.bankProUndo', target: id, before: before ? { cents: before.cents, date: before.date, rowId: before.rowId || '' } : null })
   return res.status(200).json({ success: true, id })
 }
 
@@ -1444,7 +1502,7 @@ async function playerPayments(config, rowId) {
   let stripe = []
   try {
     const all = await jfpStripePayments({ since: config.moneySince, term: config.term })
-    stripe = [...all.payments, ...all.next.map((p) => ({ ...p, isNext: true }))].filter((p) => p.email && rowEmails(r).includes(p.email))
+    stripe = [...all.payments, ...all.next.map((p) => ({ ...p, isNext: true })), ...(all.pro || [])].filter((p) => p.email && rowEmails(r).includes(p.email))
   } catch {}
   const recordedIds = new Set(ledger.flatMap((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].filter(Boolean)))
   return {
@@ -2831,7 +2889,7 @@ async function handle(req, res) {
         return res.status(200).json({ success: true })
       }
 
-      case 'money': return res.status(200).json({ success: true, money: await moneyData(config, { since: ISO.test(body.since || '') ? body.since : '', fresh: body.fresh === true, quick: body.quick === true }) })
+      case 'money': return res.status(200).json({ success: true, money: await moneyData(config, { since: ISO.test(body.since || '') ? body.since : '', fresh: body.fresh === true, quick: body.quick === true, paint: body.quick === true }) })
       // Joners Juniors (Lee, 11 Oct 2026): its own tables and Stripe payments,
       // never added into the JFP figures above.
       case 'juniorsMoney': {
@@ -2869,7 +2927,19 @@ async function handle(req, res) {
         const rows = await listPreviousTerm(term, { fresh: body.fresh === true })
         return rows ? res.status(200).json({ success: true, term, players: rows }) : fail(res, 404, `${term || 'Last term'}'s player list is not set up in the portal yet.`)
       }
-      case 'holidayMoney': return res.status(200).json({ success: true, holiday: await holidayMoneyData({ period: clean(body.period, 20), fresh: body.fresh === true, locationOf: holidayVenue(config), today: sydneyToday() }) })
+      case 'holidayMoney': return res.status(200).json({ success: true, holiday: await holidayMoneyData({ period: clean(body.period, 20), fresh: body.fresh === true, quick: body.quick === true, locationOf: holidayVenue(config), today: sydneyToday() }) })
+      // Pro sessions and camps (Lee, 13 Oct 2026): their own Money views.
+      case 'proMoney': return res.status(200).json({ success: true, pro: await proMoneyData(config, { fresh: body.fresh === true, quick: body.quick === true, month: /^\d{4}-\d{2}$/.test(body.month || '') ? body.month : '' }) })
+      case 'bankPro': return await bankPro(res, principal, config, body)
+      case 'bankProUndo': return await bankProUndo(res, principal, body)
+      case 'campsMoney': {
+        try { return res.status(200).json({ success: true, camps: await campsMoneyData({ year: Number(body.year) || 0, fresh: body.fresh === true }) }) } catch (error) { return fail(res, 503, error.message) }
+      }
+      case 'campsStripe': {
+        const year = Number(body.year)
+        if (!Number.isInteger(year) || year < 2020 || year > 2100) return fail(res, 400, 'Pick a year, like 2026.')
+        try { return res.status(200).json({ success: true, stripe: await campsStripe({ year, fresh: body.fresh === true, quick: body.quick === true }) }) } catch (error) { return fail(res, 503, `Stripe could not be read just now (${error.message.slice(0, 80)}).`) }
+      }
 
       case 'audit': return res.status(200).json({ success: true, entries: await listAudit(Number(body.limit) || 300) })
 

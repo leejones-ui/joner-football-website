@@ -216,7 +216,7 @@ await test('Money: the Juniors page with Stripe, cash and kept after fees, earli
   assert.ok(!f.text.includes('@example.com'))
   assert.equal(p.w.location.hash, '#jj-money?term=Term%204%202026')
   // JFP from here goes back to JFP Money.
-  await p.click('[data-programme="jfp"]')
+  await p.pick('#m-prog', 'jfp')
   assert.equal(p.w.location.hash, '#money')
   assert.ok(p.$('#m-scope'), 'JFP Money is on screen')
   assert.deepEqual(p.errors, [])
@@ -224,8 +224,8 @@ await test('Money: the Juniors page with Stripe, cash and kept after fees, earli
 
 await test('JFP Money keeps a Joners Juniors link that opens the Juniors money page; an old link lands there too', async () => {
   const p = await open('#money')
-  assert.ok(p.$('[data-programme="juniors"]'))
-  await p.click('[data-programme="juniors"]')
+  assert.ok(p.$('#m-prog option[value="juniors"]'))
+  await p.pick('#m-prog', 'juniors')
   assert.match(p.w.location.hash, /^#jj-money/)
   assert.ok(p.$('#jm-kept'))
   const old = await open('#money?programme=juniors&term=Term%203%202026')

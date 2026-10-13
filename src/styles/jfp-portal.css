@@ -731,3 +731,30 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jpf-emails .jm-hist li { gap: 8px; }
 .jpf-emails small { overflow-wrap: anywhere; }
 @media (max-width: 420px) { .jpf-acts .j-btn { flex: 1 1 auto; } }
+/* Money header, every programme (Lee, 13 Oct 2026): title, the controls in
+   one row, and one small "Updated 1:53 pm · Refresh (i)" line. */
+.jm-head { align-items: center; margin-bottom: 16px; }
+.jm-head .jm-title { min-width: 0; position: relative; }
+.jm-head .jm-upd { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; margin-top: 2px; font-size: 12.5px; color: var(--j-muted); }
+.jm-link { background: none; border: 0; padding: 0; font: inherit; font-weight: 650; color: var(--j-ink-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; min-height: 32px; }
+.jm-tip { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--j-line); background: transparent; color: var(--j-ink-2); font: 700 12px/1 Georgia, serif; font-style: italic; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.jm-tip[aria-expanded="true"] { background: var(--j-ink); color: var(--j-bg, #fff); border-color: var(--j-ink); }
+/* Opens over the page, under the line, so nothing below it moves. */
+.jm-tipbox { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; width: min(62ch, calc(100vw - 32px)); padding: 12px 14px; border: 1px solid var(--j-line); border-radius: 12px; background: var(--j-surface); box-shadow: var(--j-shadow-lg); color: var(--j-ink-2); font-size: 13px; line-height: 1.5; }
+.jm-tipbox .jm-since { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 2px; font-weight: 650; }
+.jm-tipbox .jm-since input { width: auto; min-height: 40px; padding: 7px 10px; font-size: 14px; }
+.jm-prog select { font-weight: 650; }
+@media (pointer: coarse) { .jm-link { min-height: 40px; } .jm-tip { width: 32px; height: 32px; } }
+
+/* Money > Everything: each programme side by side. */
+.je-grid { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); margin-top: 14px; }
+@media (min-width: 640px) { .je-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1180px) { .je-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.je-card { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.je-card h2 { overflow-wrap: anywhere; }
+.je-kept { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.je-kept .lbl { font-size: 12px; font-weight: 650; color: var(--j-muted); text-transform: uppercase; letter-spacing: .04em; }
+.je-kept b { font-size: clamp(22px, 2.4vw, 28px); overflow-wrap: anywhere; }
+.je-taken { font-size: 14px; color: var(--j-ink-2); }
+.je-open { align-self: flex-start; margin-top: auto; }
+.je-total { margin-bottom: 0; }

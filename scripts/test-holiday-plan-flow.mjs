@@ -98,11 +98,13 @@ await test('create on confirm: only the days left ticked, nothing emailed, then 
   const ticked = plan.days.filter((d) => d.items.some((x) => x.status === 'new')).map((d) => d.date)
   const leaveOut = ticked.at(-1)
   const expect = plan.days.filter((d) => ticked.includes(d.date) && d.date !== leaveOut).reduce((t, d) => t + d.items.filter((x) => x.status === 'new').length, 0)
+  // Slots another flow test made in the same harness are not this test's.
+  const already = new Set((await hol('listSlots')).data.slots.map((s) => s.id))
   const r = await hol('createHolidays', { period: target.id, source: src.id, dates: ticked.filter((d) => d !== leaveOut) })
   assert.equal(r.status, 200, JSON.stringify(r.data))
   assert.equal(r.data.created, expect)
   assert.equal((await emails()).length, mailBefore, 'nothing is emailed')
-  const made = (await hol('listSlots')).data.slots.filter((s) => s.date >= target.start && s.date <= target.end)
+  const made = (await hol('listSlots')).data.slots.filter((s) => s.date >= target.start && s.date <= target.end && !already.has(s.id))
   assert.equal(made.length, expect)
   assert.ok(!made.some((s) => s.date === leaveOut), 'the unticked day has no slots')
   assert.ok(made.every((s) => s.status === 'open' && s.coachId === 'cara'))
@@ -111,12 +113,12 @@ await test('create on confirm: only the days left ticked, nothing emailed, then 
   const access = await fetch(`${B}/api/holiday-access`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'holiday' }) })
   const cookie = access.headers.get('set-cookie').split(';')[0]
   const pub = await (await fetch(`${B}/api/holiday-slots`, { headers: { cookie } })).json()
-  assert.equal(pub.slots.filter((s) => s.date >= target.start && s.date <= target.end).length, expect)
+  assert.equal(pub.slots.filter((s) => s.date >= target.start && s.date <= target.end && !already.has(s.id)).length, expect)
   // Again: what is there is not made twice.
   const again = await hol('createHolidays', { period: target.id, source: src.id, dates: ticked.filter((d) => d !== leaveOut) })
   assert.equal(again.status, 400, JSON.stringify(again.data))
   const plan2 = (await hol('planHolidays', { period: target.id })).data.plan
-  assert.equal(plan2.counts.exists, expect)
+  assert.equal(plan2.counts.exists, (plan.counts.exists || 0) + expect)
   assert.equal(plan2.counts.new, plan.counts.new - expect, 'only the day left out is still new')
 })
 

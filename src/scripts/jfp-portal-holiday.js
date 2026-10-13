@@ -4,20 +4,22 @@
 // marked "Holiday revenue" on Bank transfers to check. Read only, except
 // putting a bank transfer back on that list. Never added into the JFP figures.
 import { esc, money } from './jfp-common.js'
+import { moneyHead, bindTip, quietOk, markUpdated } from './jfp-portal-programmes.js'
 
 const H = { data: null, at: 0, period: '', basis: 'session' }
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 const day = (iso) => (iso ? new Date(`${String(iso).slice(0, 10)}T00:00:00`).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '')
-const time = (iso) => (iso ? new Date(iso).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '')
 const hhmm = (t) => { const m = /^(\d{2}):(\d{2})$/.exec(t || ''); if (!m) return ''; const h = Number(m[1]); return `${h % 12 || 12}${m[2] === '00' ? '' : `:${m[2]}`}${h < 12 ? 'am' : 'pm'}` }
 export const HOLIDAY_DEFINITION = 'Kept = what families paid, less refunds and Stripe\'s fee (the real fee on each payment, from Stripe). Bank transfers have no fee. A booking counts in the holiday its session is in; a bank transfer counts in the holiday you picked for it.'
 
 export function setHolidayHash(period) { history.replaceState(null, '', `#money?programme=holiday${period ? `&period=${encodeURIComponent(period)}` : ''}`) }
 
-export async function holidayData(post, { period = '', fresh = false } = {}) {
-  if (!fresh && H.data && (!period || H.data.period === period) && Date.now() - H.at < 60000) return H.data
-  const r = await post('holidayMoney', { period, ...(fresh ? { fresh: true } : {}) })
-  if (!r.ok) throw new Error(r.data?.error || 'Could not load holiday training.')
+// quick: the last Stripe read is fine (first paint); force: ask even with a
+// reading from the last minute (the refresh behind a first paint).
+export async function holidayData(post, { period = '', fresh = false, quick = false, force = false } = {}) {
+  if (!fresh && !force && H.data && (!period || H.data.period === period) && Date.now() - H.at < 60000) return H.data
+  const r = await post('holidayMoney', { period, ...(fresh ? { fresh: true } : {}), ...(quick ? { quick: true } : {}) })
+  if (!r.ok || !r.data?.holiday) throw new Error(r.data?.error || 'Could not load holiday training.')
   H.data = r.data.holiday
   H.at = Date.now()
   return H.data
@@ -108,18 +110,37 @@ export function holidayCsv(v, { csvCell, aud }) {
 // ---------- the page ----------
 
 // ui: { view, post, toast, filter, programmeSwitch, bindSwitch, saveFile, csvCell, slug, confirm, bankStale, stale() }
+// The last reading paints at once (Lee, 13 Oct 2026: switching was slow);
+// the latest is read behind it and drawn quietly if nobody is busy.
 export async function renderHolidayMoney(ui) {
-  const { view, post, toast } = ui
-  const head = (sub, sync = '') => `<div class="jd-head"><div><h1>Money</h1><p>${esc(sub)}</p></div><div class="jd-sync">${ui.programmeSwitch}${sync}</div></div>`
-  if (!H.data) view().innerHTML = `${head('Holiday training')}<p class="muted">Loading holiday training from the booking system and Stripe</p>`
+  const { view, post } = ui
+  const want = ui.filter.period || ''
+  const had = H.data && (!want || H.data.period === want) ? H.data : null
+  if (had) paintHoliday(ui, had)
+  else {
+    view().innerHTML = `${moneyHead({ controls: ui.programmeSwitch, loading: true, refresh: '' })}<p class="muted">Loading holiday training from the booking system and Stripe</p>`
+    ui.bindSwitch()
+  }
+  if (had && Date.now() - H.at < 60000 && !had.quick) return
   let v
-  try { v = await holidayData(post, { period: ui.filter.period || '' }) } catch (e) {
-    view().innerHTML = `${head('Holiday training')}<div class="j-box j-box-red">${esc(e.message)} Nothing is shown rather than a wrong total. Try again in a minute.</div><button type="button" class="j-btn j-btn-line j-btn-sm" id="h-retry" style="margin-top:10px">Try again</button>`
+  try { v = await holidayData(post, { period: want, quick: !had, force: true }) } catch (e) {
+    if (had || ui.stale?.()) return
+    view().innerHTML = `${moneyHead({ controls: ui.programmeSwitch, refresh: '' })}<div class="j-box j-box-red">${esc(e.message)} Nothing is shown rather than a wrong total. Try again in a minute.</div><button type="button" class="j-btn j-btn-line j-btn-sm" id="h-retry" style="margin-top:10px">Try again</button>`
     view().querySelector('#h-retry').addEventListener('click', () => { holidayStale(); renderHolidayMoney(ui) })
     ui.bindSwitch()
     return
   }
   if (ui.stale?.()) return
+  const redraw = (x) => { const y = window.scrollY; paintHoliday(ui, x); window.scrollTo(0, y) }
+  if (!had || quietOk()) redraw(v); else markUpdated(view(), v.stripeAt)
+  if (v.quick) {
+    const later = await holidayData(post, { period: v.period, force: true }).catch(() => null)
+    if (later && !ui.stale?.() && quietOk()) redraw(later)
+  }
+}
+
+function paintHoliday(ui, v) {
+  const { view, post, toast } = ui
   ui.filter.period = v.period
   setHolidayHash(v.period)
   const t = v.totals
@@ -132,8 +153,7 @@ export async function renderHolidayMoney(ui) {
     ['owed', 'Refunds still owed', owed, '--c-critical', v.refundsOwed.length ? plural(v.refundsOwed.length, 'booking') : 'None'],
   ]
   view().innerHTML = `
-    ${head('Holiday training: bookings paid in Stripe, and bank transfers you marked as holiday training. Not in the JFP figures.', `${picker}<button type="button" class="j-btn j-btn-line j-btn-sm" id="h-refresh">Refresh from Stripe</button><button type="button" class="j-btn j-btn-line j-btn-sm" id="h-csv">Download CSV</button>`)}
-    <p class="muted small" style="margin:-4px 0 10px" id="h-range">${v.range ? `${esc(v.label)}: ${esc(v.range)}. ` : ''}Stripe read ${esc(time(v.stripeAt) || 'just now')}.</p>
+    ${moneyHead({ controls: `${ui.programmeSwitch}${picker}<button type="button" class="j-btn j-btn-line j-btn-sm" id="h-csv">Download CSV</button>`, at: v.stripeAt || new Date().toISOString(), note: v.range ? `<span id="h-range">${esc(v.range)}</span>` : '', tip: `Bookings paid in Stripe, and bank transfers you marked as holiday training. Not in the JFP figures. ${esc(HOLIDAY_DEFINITION)}`, refresh: 'h-refresh' })}
     ${v.stripeError ? `<div class="j-box j-box-amber" style="margin-bottom:10px">${esc(v.stripeError)}</div>` : ''}
     <div class="jd-grid">
       <section class="jd-card jd-hero jm-hero jm-net" style="--i:0"><div>
@@ -141,7 +161,6 @@ export async function renderHolidayMoney(ui) {
         <p class="big" id="h-kept">${esc(money(t.keptCents))}</p>
         <p class="jm-sum" id="h-sum"><span>Taken <b>${esc(money(t.takenCents))}</b></span> · <span>Refunded <b>${esc(money(t.refundedCents))}</b></span> · <span>Stripe fees <b>${esc(money(t.feeCents))}</b></span></p>
         ${t.feesPending ? `<p class="jm-pending" id="h-pending">${plural(t.feesPending, 'fee')} still loading</p>` : ''}</div>
-        <p class="muted small" style="margin-top:10px">${esc(HOLIDAY_DEFINITION)}</p>
       </section>
       <div class="jm-tiles" data-n="4">${tiles.map(([key, l, val, c, note], i) => `<section class="jd-card jd-tile jm-tile" style="--i:${i + 1}" data-htile="${key}"><span class="lbl"><span class="jd-key"><i style="background:var(${c})"></i>${l}</span></span><span class="val">${esc(money(val || 0))}</span><span class="note">${esc(note)}</span></section>`).join('')}</div>
     </div>
@@ -156,6 +175,7 @@ export async function renderHolidayMoney(ui) {
     <section class="jd-card jh-list" id="h-lines"><h2>Bookings and transfers</h2><p class="sub">${plural(v.lines.length, 'payment')} in ${esc(v.label)}, newest session first</p>
       ${v.lines.length ? `<ul class="jm-hist">${v.lines.map(lineHtml).join('')}</ul>` : '<p class="muted small">Nothing in this holiday yet. Bank transfers for holiday training are marked on Money &gt; JFP &gt; Bank transfers to check.</p>'}</section>`
   ui.bindSwitch()
+  bindTip(view())
   view().querySelector('#h-period').addEventListener('change', (e) => { ui.filter.period = e.target.value; holidayStale(); renderHolidayMoney(ui) })
   view().querySelector('#h-refresh').addEventListener('click', async (e) => {
     e.currentTarget.disabled = true
