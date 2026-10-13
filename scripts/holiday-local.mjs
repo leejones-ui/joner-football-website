@@ -515,7 +515,7 @@ function shimRes(res) {
 }
 
 const handlers = {}
-for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data', 'jfp-messages', 'jfp-messages-relay', 'jfp-pay']) {
+for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data', 'jfp-messages', 'jfp-messages-relay', 'jfp-pay', 'jfp-admin']) {
   handlers[name] = (await import(`../api/${name}.js`)).default
 }
 

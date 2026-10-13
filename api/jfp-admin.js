@@ -2,7 +2,7 @@
 // READ-ONLY views for Lee's agent (money and requests). It cannot change
 // players, payments, messages or Airtable.
 import crypto from 'node:crypto'
-import { moneyData, createPayreq, saveGroupAction, holidayVenue } from './jfp-portal-data.js'
+import { moneyData, createPayreq, saveGroupAction, holidayVenue, addPlayer } from './jfp-portal-data.js'
 import { holidayMoneyData } from './_holiday-money.js'
 import { getTerm4Row } from './_jfp-airtable.js'
 import { listGroups, getGroup, listApplications, listPayreqs, validateGroup, getConfig, saveConfig, audit, REQUIREMENTS, clean, kvCommand, keys, normaliseStoredGroup, sydneyToday } from './_jfp-store.js'
@@ -179,7 +179,8 @@ export default async function handler(req, res) {
       if (result?.[0] !== 'ok') return fail(res, 503, 'Storage rejected the update. Re-read groups before retrying.')
     }
     return res.status(200).json({ success: true, changed: changed.length, groups: changed })
-  } catch {
+  } catch (error) {
+    console.error('jfp-admin failed', error)
     return fail(res, 503, commitAttempted ? 'Update result unconfirmed. Re-read groups and audit before retrying.' : 'Storage unavailable. Nothing has been written by this request.')
   }
 }
