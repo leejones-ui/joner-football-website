@@ -15,10 +15,10 @@
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, dateLabel,
-  formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType,
+  formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, sydneyToday, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType,
 } from './_jfp-store.js'
 import { telegramAlert } from './_jfp-notify.js'
-import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, waiverPrefill, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
+import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, savePhoto, waiverPrefill, DOB_MIN, dobMax, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
@@ -85,10 +85,15 @@ async function overview(res, parent, body = {}) {
   // player with no sessions: they show once, under Joners Juniors.
   const jjNames = new Set((juniors?.children || []).map((c) => normName(c.name)))
   const jfpPlayers = fam.players.filter((p) => !(jjNames.has(p.key) && !p.term4.length))
+  // Saved photos, and whether the account holder is the player (Pros, adults).
+  const profs = await familyProfiles(parent.email).catch(() => [])
+  const profOf = (p) => (p.term4.length ? pickProfile(profs, { key: profileKey(p.name, p.term4[0].email || parent.email), rowIds: p.term4.map((r) => r.id) }) : null)
   const players = jfpPlayers.map((p) => ({
     key: p.key,
     name: p.name,
     age: p.age,
+    self: isSelf(p, fam, profOf(p)?.dob),
+    photo: profOf(p)?.photo || '',
     needsDob: !p.dob,
     waiver: p.waiver ? { onFile: true, signedDate: p.waiver.signedDate, term: p.waiver.term } : { onFile: false },
     // A place staff have confirmed but not yet given a day and time.
@@ -274,6 +279,17 @@ async function nextTermInterest(res, parent, body) {
 
 // ---------- player information ----------
 
+// Is the person signed in the player themselves? A Pro or an adult player has
+// their own account: their name is the contact name, they are 18 or over, or
+// the row has no parent at all. Then the page says "My profile", not "Your players".
+const bareName = (n) => normName(String(n || '').replace(/\([^)]*\)/g, ' '))
+function isSelf(p, fam, profileDob = '') {
+  const age = ageOn(profileDob || p.dob || '', sydneyToday())
+  if (age != null && age >= 18) return true
+  if (!fam.parentName) return fam.players.filter((x) => x.term4.length).length === 1
+  return bareName(p.name) === bareName(fam.parentName)
+}
+
 // This family's current players, each with their saved profile or, the first
 // time, what their waiver already told us (club, emergency contact).
 async function profiles(res, parent) {
@@ -287,9 +303,9 @@ async function profiles(res, parent) {
     const key = profileKey(p.name, p.term4[0].email || parent.email)
     const prof = pickProfile(mine, { key, rowIds }) || await findProfile({ key, rowIds })
     const prefill = prof ? {} : await waiverPrefill(p.waiver?.id)
-    players.push({ key: p.key, name: p.name, age: p.age, profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || p.dob || '', parentName: prefill.parentName || fam.parentName || '', parentMobile: prefill.parentMobile || fam.mobile || '' } })
+    players.push({ key: p.key, name: p.name, age: p.age, self: isSelf(p, fam, prof?.dob), profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || p.dob || '', parentName: prefill.parentName || fam.parentName || '', parentMobile: prefill.parentMobile || fam.mobile || '' } })
   }
-  return res.status(200).json({ success: true, players, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubs: clubSuggestions(roster.waivers) } })
+  return res.status(200).json({ success: true, players, dob: { min: DOB_MIN, max: dobMax() }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubs: clubSuggestions(roster.waivers) } })
 }
 
 async function saveMyProfile(res, parent, body) {
@@ -305,6 +321,21 @@ async function saveMyProfile(res, parent, body) {
   const existing = pickProfile(await familyProfiles(parent.email), { key, rowIds }) || await findProfile({ key, rowIds })
   const saved = await saveProfile({ existing, name: p.name, key, emails: [...new Set([parent.email, ...p.term4.flatMap(rowEmails)])], rowIds, values, by: parent.email, from: 'Family account' })
   return res.status(200).json({ success: true, profile: profileView(saved) })
+}
+
+// A profile photo, from My account. Saved on the player's Airtable profile.
+async function saveMyPhoto(res, parent, body) {
+  const config = await getConfig()
+  const roster = await loadRoster()
+  const fam = familyFor(parent.email, roster, config.termStart)
+  const p = fam.players.find((x) => x.key === clean(body.playerKey, 80) && x.term4.length)
+  if (!p) return fail(res, 404, 'We could not find that player on your account.')
+  const rowIds = p.term4.map((r) => r.id)
+  const key = profileKey(p.name, p.term4[0].email || parent.email)
+  const existing = pickProfile(await familyProfiles(parent.email), { key, rowIds }) || await findProfile({ key, rowIds })
+  const out = await savePhoto({ existing, name: p.name, key, emails: [...new Set([parent.email, ...p.term4.flatMap(rowEmails)])], rowIds, dataUrl: body.image, remove: body.remove === true, by: parent.email, from: 'Family account' })
+  if (out.error) return fail(res, 400, out.error)
+  return res.status(200).json({ success: true, profile: profileView(out.profile) })
 }
 
 // Hold the place, pay next term in full, or say not returning.
@@ -478,6 +509,7 @@ export default async function handler(req, res) {
     if (body.action === 'nextTermInterest') return await nextTermInterest(res, parent, body)
     if (body.action === 'profiles') return await profiles(res, parent)
     if (body.action === 'saveProfile') return await saveMyProfile(res, parent, body)
+    if (body.action === 'savePhoto') return await saveMyPhoto(res, parent, body)
     if (['jjPay', 'jjRequestPay', 'jjNextChoice'].includes(body.action)) return await juniorsAction(req, res, parent, body)
     if (body.action === 'cancelSession') return await cancelSession(res, parent, body)
     if (body.action === 'withdrawCancel') return await withdrawSession(res, parent, body)

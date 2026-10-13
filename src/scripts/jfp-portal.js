@@ -2203,7 +2203,7 @@ async function renderCoach() {
         ${(s.coveredBy || []).length ? `<div class="j-box j-box-grey small" style="margin-bottom:8px">${s.coveredBy.map((c) => `${esc(c.dateLabel)}: covered by <b>${esc(c.coach)}</b>`).join('<br>')}</div>` : ''}
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
           <select class="j-select" style="width:auto" data-date="${esc(s.id)}">${s.dates.map((x) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select></div>
-        <div style="margin-top:10px">${s.players.filter((p) => !p.trialDate || p.trialDate === date).map((p) => `<div class="jp-player" style="cursor:default"><span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
+        <div style="margin-top:10px">${s.players.filter((p) => !p.trialDate || p.trialDate === date).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
           <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Present'}">Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Absent'}">Away</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
       </article>`
     }).join('') : '<div class="j-empty">No sessions yet.</div>'}`
@@ -2475,7 +2475,7 @@ const money0 = (n) => (n == null ? '' : `A$${Number(n).toLocaleString('en-AU')}`
 
 function plRow(p) {
   return `<tr data-pl="${esc(p.rowId)}" style="cursor:pointer">
-    <td><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted small">(${esc(p.age)})</span>` : ''}<br><span class="muted small">${esc(p.parent || 'no parent name')}</span></td>
+    <td><div style="display:flex;gap:10px;align-items:center">${avatar(p.profile?.photo, p.name, 34)}<div><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted small">(${esc(p.age)})</span>` : ''}<br><span class="muted small">${esc(p.parent || 'no parent name')}</span></div></div></td>
     <td>${p.inGroup ? esc(p.groupLabel) : '<span class="j-pill j-pill-red">Not in a group</span>'}<br><span class="muted small">${esc(p.coach || '')}</span></td>
     <td>${payPill(p)}${p.feeAud != null ? `<br><span class="muted small">${esc(money0(p.feeAud))}${p.balanceAud ? `, ${esc(money0(p.balanceAud))} owing` : ''}</span>` : ''}</td>
     <td>${footballCell(p)}</td>
@@ -2488,8 +2488,8 @@ function plRow(p) {
 function plDetail(p) {
   const row = (k, v) => (v ? `<div class="j-kv"><span>${esc(k)}</span><span>${esc(v)}</span></div>` : '')
   const born = p.dob ? new Date(`${p.dob}T00:00:00Z`).toLocaleDateString('en-AU', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }) : ''
-  modal(`<h2 style="margin-bottom:2px">${esc(p.name)}</h2>
-    <p class="muted small" style="margin-bottom:14px">${p.age != null ? `Age ${esc(p.age)}` : 'Age not on file'}${born ? ` · born ${esc(born)}` : ''}${p.club ? ` · ${esc(p.club)}` : ''}</p>
+  modal(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px">${avatar(p.profile?.photo, p.name, 64)}<div><h2 style="margin-bottom:2px">${esc(p.name)}</h2>
+    <p class="muted small">${p.age != null ? `Age ${esc(p.age)}` : 'Age not on file'}${born ? ` · born ${esc(born)}` : ''}${p.club ? ` · ${esc(p.club)}` : ''}</p></div></div>
     <h3>Player</h3>
     ${row('Full name', p.name)}
     ${row('Age', p.age != null ? `${p.age} (today, from the date of birth)` : 'not on file: add a date of birth')}

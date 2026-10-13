@@ -1997,6 +1997,40 @@ await test('player information: the family saves it, staff see it and edit it, t
   assert.equal((await other.call('/api/jfp-account', { action: 'saveProfile', playerKey: riley.key, values: { club: 'Hacked' } })).status, 404)
 })
 
+await test('my profile: a Pro is the player (My profile), adults can enter a 1989 date of birth, and a photo saves to Airtable for staff and coaches', async () => {
+  const add = await portal(lee, 'addPlayer', { groupId: TUE420, player: { name: 'Pat Self' }, parent: { email: 'self@example.com' }, payment: 'sessions', sendEmail: false, force: true })
+  assert.equal(add.status, 200, JSON.stringify(add.data))
+  const pro = client()
+  await signIn(pro, 'self@example.com')
+  const ov = (await pro.call('/api/jfp-account', { action: 'overview' })).data
+  assert.equal(ov.players.length, 1)
+  assert.equal(ov.players[0].self, true, 'a Pro with their own account is the player')
+  const pf = (await pro.call('/api/jfp-account', { action: 'profiles' })).data
+  const me = pf.players[0]
+  assert.equal(me.self, true)
+  assert.ok(pf.dob.min <= '1989-01-01', 'adult dates of birth are allowed')
+  assert.equal((await pro.call('/api/jfp-account', { action: 'saveProfile', playerKey: me.key, values: { dob: '1989-06-15' } })).status, 200, 'a 1989 date of birth saves')
+  assert.equal((await pro.call('/api/jfp-account', { action: 'saveProfile', playerKey: me.key, values: { dob: '2030-01-01' } })).status, 400, 'a future date does not')
+  assert.equal((await pro.call('/api/jfp-account', { action: 'savePhoto', playerKey: me.key, image: 'data:text/html;base64,PGI+' })).status, 400, 'only images')
+  const jpeg = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=='
+  const up = await pro.call('/api/jfp-account', { action: 'savePhoto', playerKey: me.key, image: jpeg })
+  assert.equal(up.status, 200, JSON.stringify(up.data))
+  assert.match(up.data.profile.photo, /^https:\/\//, 'the photo comes back as an Airtable link')
+  assert.equal(up.data.profile.dob, '1989-06-15', 'the details are kept')
+  const again = await pro.call('/api/jfp-account', { action: 'savePhoto', playerKey: me.key, image: jpeg })
+  const row = (await at()).profiles.find((r) => (r.fields['Term 4 Record IDs'] || '').includes(ov.players[0].enrolments[0]?.rowId || 'x') || r.fields['Player Key'] === `${me.key}|self@example.com`)
+  assert.equal((row.fields.Photo || []).length, 1, 'a new photo replaces the old one')
+  assert.equal((await pro.call('/api/jfp-account', { action: 'overview' })).data.players[0].photo, again.data.profile.photo, 'the account shows it')
+  const list = (await portal(lee, 'playersList', { fresh: true })).data.players.find((x) => x.name === 'Pat Self')
+  assert.equal(list.profile.photo, again.data.profile.photo, 'staff see it on the Players tab')
+  const rm = await pro.call('/api/jfp-account', { action: 'savePhoto', playerKey: me.key, remove: true })
+  assert.equal(rm.data.profile.photo, '', 'and it can be removed')
+  // A parent's account is not "my profile".
+  const fam = client()
+  await signIn(fam, 'returning@example.com')
+  assert.ok((await fam.call('/api/jfp-account', { action: 'profiles' })).data.players.every((p) => p.self === false), 'a family with children sees Player information')
+})
+
 await test('keep my spot: before next term opens a family can say they want it, with no payment; staff see it once', async () => {
   const fam = client()
   await signIn(fam, 'returning@example.com')

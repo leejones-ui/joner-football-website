@@ -8,8 +8,8 @@
 //
 // Children's details stay in Airtable: nothing in this file is cached in KV,
 // and the audit log records which fields changed, never their values.
-import { airtable, fq } from './_jfp-airtable.js'
-import { normName, clean, validEmail, audit } from './_jfp-store.js'
+import { airtable, fq, uploadAttachment } from './_jfp-airtable.js'
+import { normName, clean, validEmail, audit, sydneyToday } from './_jfp-store.js'
 
 export const PROFILES_TABLE = process.env.JFP_PROFILES_TABLE || 'tblTt7jWK3s2me45B'
 
@@ -38,6 +38,9 @@ export function fromRecord(r) {
   const f = r.fields || {}
   const out = { id: r.id, name: f['Player Name'] || '', key: f['Player Key'] || '', emails: list(f['Family Emails']).map((e) => e.toLowerCase()), rowIds: list(f['Term 4 Record IDs']) }
   for (const [k, col] of Object.entries(FIELD)) out[k] = k === 'positions' ? (Array.isArray(f[col]) ? f[col] : list(f[col])) : (f[col] ?? '')
+  // Airtable's own link, good for a couple of hours: read fresh on every load.
+  const ph = Array.isArray(f.Photo) ? f.Photo[0] : null
+  out.photo = ph ? (ph.thumbnails?.large?.url || ph.url || '') : ''
   out.updatedAt = f['Updated At'] || ''
   out.updatedBy = f['Updated By'] || ''
   out.updatedFrom = f['Updated From'] || ''
@@ -46,6 +49,8 @@ export function fromRecord(r) {
 
 const phoneOk = (v) => !v || String(v).replace(/\D/g, '').length >= 8
 const ISO = /^\d{4}-\d{2}-\d{2}$/
+export const DOB_MIN = '1940-01-01'
+export const dobMax = () => `${Number(sydneyToday().slice(0, 4)) - 2}${sydneyToday().slice(4)}`
 
 // Checks and tidies what a family or staff member typed. Only keys that were
 // sent are returned, so a form can save one section without clearing others.
@@ -67,7 +72,8 @@ export function cleanProfile(input = {}) {
   }
   if (has('dob')) {
     const d = String(input.dob || '')
-    if (d && (!ISO.test(d) || d < '2004-01-01' || d > '2023-12-31')) errors.push('Check the date of birth.')
+    // Children and adults (Pros, parents who train): born 1940 up to 2 years ago.
+    if (d && (!ISO.test(d) || d < DOB_MIN || d > dobMax())) errors.push('Check the date of birth.')
     else v.dob = d
   }
   if (has('level')) v.level = LEVELS.includes(input.level) ? input.level : ''
@@ -146,13 +152,28 @@ export function profileView(p) {
   if (!p) return null
   const out = {}
   for (const k of PROFILE_KEYS) out[k] = p[k] ?? (k === 'positions' ? [] : '')
-  return { ...out, updatedAt: p.updatedAt, updatedBy: p.updatedFrom === 'Family account' ? 'the family' : p.updatedBy, updatedFrom: p.updatedFrom }
+  return { ...out, photo: p.photo || '', updatedAt: p.updatedAt, updatedBy: p.updatedFrom === 'Family account' ? 'the family' : p.updatedBy, updatedFrom: p.updatedFrom }
 }
 export function profileSummary(p) {
   if (!p) return null
   const out = {}
   for (const k of SUMMARY_KEYS) out[k] = p[k] ?? (k === 'positions' ? [] : '')
-  return { ...out, updatedAt: p.updatedAt, updatedFrom: p.updatedFrom }
+  return { ...out, photo: p.photo || '', updatedAt: p.updatedAt, updatedFrom: p.updatedFrom }
+}
+
+// A profile photo (Lee, 13 Oct 2026): the browser sends a small square JPEG.
+// It replaces any earlier photo. remove: true clears it.
+const PHOTO = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/
+export async function savePhoto({ existing, name, key, emails, rowIds, dataUrl, remove, by, from }) {
+  const m = remove ? null : PHOTO.exec(String(dataUrl || ''))
+  if (!remove && !m) return { error: 'Choose a photo (JPEG or PNG).' }
+  if (m && m[2].length > 2_000_000) return { error: 'That photo is too big. Try another.' }
+  // A player with no profile yet gets one, so the photo has a row to sit on.
+  const row = existing || await saveProfile({ existing: null, name, key, emails, rowIds, values: {}, by, from })
+  await airtable(PROFILES_TABLE, { method: 'PATCH', body: { records: [{ id: row.id, fields: { Photo: [], 'Updated At': new Date().toISOString(), 'Updated By': clean(by, 100), 'Updated From': from } }] } })
+  if (m) await uploadAttachment(row.id, 'Photo', { contentType: `image/${m[1]}`, base64: m[2], filename: `${normName(name).replace(/[^a-z0-9]+/g, '-') || 'player'}.${m[1] === 'jpeg' ? 'jpg' : m[1]}` })
+  await audit({ by, action: remove ? 'profile.photoRemoved' : 'profile.photo', target: key, after: { from } })
+  return { profile: fromRecord(await airtable(`${PROFILES_TABLE}/${row.id}`)) }
 }
 
 // Prefill for a player with no profile yet, from the newest signed waiver:

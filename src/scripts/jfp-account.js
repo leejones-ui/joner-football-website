@@ -22,6 +22,7 @@ const PATHS = {
   calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.8h17M8 3v4M16 3v4"/>',
   calplus: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.8h17M8 3v4M16 3v4M12 12.8v5M9.5 15.3h5"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.4-3.8 4.3-5.7 7.5-5.7s6.1 1.9 7.5 5.7"/>',
+  camera: '<path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/>',
   xcircle: '<circle cx="12" cy="12" r="8.5"/><path d="m9.2 9.2 5.6 5.6m0-5.6-5.6 5.6"/>',
   bookmark: '<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.4"/>',
@@ -176,12 +177,17 @@ async function loadProfiles() {
 
 // ---------- shell: side bar, tab bar, menu ----------
 
+// The account holder is the player (a Pro or an adult): "My profile".
+const solo = () => Boolean(D?.players?.length === 1 && D.players[0].self)
+function face(name, photo, extra = '') {
+  return photo ? `<span class="ja-avatar ja-face" ${extra}><img src="${esc(photo)}" alt="" loading="lazy"></span>` : `<span class="ja-avatar" ${extra}>${esc(initials(name))}</span>`
+}
 function nav() {
   return [
     { label: 'My JFP', items: [
       { key: 'home', label: 'Home', icon: 'home' },
       { key: 'sessions', label: 'My sessions', icon: 'calendar' },
-      { key: 'info', label: 'Player information', icon: 'user', dot: infoGaps().length > 0 },
+      { key: 'info', label: solo() ? 'My profile' : 'Player information', icon: 'user', dot: infoGaps().length > 0 },
       { key: 'cancel', label: "Can't make a session", icon: 'xcircle' },
       { key: 'keep', label: 'Keep my spot', sub: D?.keep?.name || 'Next term', icon: 'bookmark' },
     ] },
@@ -209,7 +215,9 @@ function renderShell() {
   const gaps = infoGaps().length
   $('ja-tabs').innerHTML = tabs.map(([k, l, i]) => `<button type="button" class="ja-tab" ${k === 'more' ? 'data-more' : `data-go="${k}"`} aria-current="${current === k ? 'page' : 'false'}">${ic(i)}<span>${l}</span>${k === 'more' && gaps ? `<span class="badge">${gaps}</span>` : ''}</button>`).join('')
   $('ja-email').textContent = D?.email || ''
-  $('ja-me').textContent = initials(D?.parentName || D?.email || 'J')
+  const me = solo() ? D.players[0] : null
+  if (me?.photo) $('ja-me').innerHTML = `<img src="${esc(me.photo)}" alt="">`
+  else $('ja-me').textContent = initials(me?.name || D?.parentName || D?.email || 'J')
 }
 function moreSheet() {
   const sheet = openSheet({ title: 'Menu', subtitle: D?.email ? `Signed in as ${D.email}` : '' })
@@ -327,8 +335,8 @@ function renderHome() {
     return
   }
   const ups = upcoming().filter((x) => x.next)
-  const players = `<div class="ja-card"><div class="ja-card-head"><h3 class="ja-h3">Players</h3><button type="button" class="ja-link ja-small" data-go="info">Player information</button></div><ul class="ja-list">
-    ${D.players.map((p) => `<li class="ja-row"><span class="ja-avatar">${esc(initials(p.name))}</span><div><b>${esc(p.name)}</b><small>${p.enrolments.length ? p.enrolments.map((e) => `${esc(e.day.slice(0, 3))} ${esc(e.time)}, ${esc(e.location)}`).join(' · ') : p.placeNoSession ? 'Place confirmed, day and time to come' : 'Not booked this term'}</small></div>
+  const players = `<div class="ja-card"><div class="ja-card-head"><h3 class="ja-h3">Players</h3><button type="button" class="ja-link ja-small" data-go="info">${solo() ? 'My profile' : 'Player information'}</button></div><ul class="ja-list">
+    ${D.players.map((p) => `<li class="ja-row">${face(p.name, p.photo)}<div><b>${esc(p.name)}</b><small>${p.enrolments.length ? p.enrolments.map((e) => `${esc(e.day.slice(0, 3))} ${esc(e.time)}, ${esc(e.location)}`).join(' · ') : p.placeNoSession ? 'Place confirmed, day and time to come' : 'Not booked this term'}</small></div>
       <div class="ja-flags">${p.enrolments.map((e) => payDot(e.payment)).join('')}${p.waiver.onFile ? '<span class="ja-dot ok">Waiver</span>' : `<button type="button" class="ja-dot bad" data-waiver-player="${esc(p.key)}">Sign waiver</button>`}</div></li>`).join('')}
   </ul></div>`
   const notBooked = D.players.filter((p) => !p.enrolments.length)
@@ -392,7 +400,11 @@ const OPT = {
 function renderInfo() {
   const el = document.querySelector('[data-pane="info"]')
   if (!el || !D) return
-  const head = pageHead('Player information', 'Your players', 'Club, position and who to call. Lee and Ligia use this to put players in the right group, so keep it up to date. Changed clubs? Update it here and we see it straight away.')
+  const list = PROF?.players || []
+  const me = list.length === 1 && list[0].self
+  const head = me
+    ? pageHead('My profile', 'Your details', 'Your club, position and who to call in an emergency. Lee and Ligia use this to put you in the right group, so keep it up to date. Your photo is only seen by Joner Football staff and coaches.')
+    : pageHead('Player information', list.length === 1 ? `${first(list[0].name)}'s details` : 'Your players', 'Club, position and who to call. Lee and Ligia use this to put players in the right group, so keep it up to date. Changed clubs? Update it here and we see it straight away. Photos are only seen by Joner Football staff and coaches.')
   if (!PROF) { el.innerHTML = `${head}<div class="ja-card ja-muted">Loading player information</div>`; return }
   if (!PROF.players.length) { el.innerHTML = `${head}<div class="ja-card">Once a player is booked into JFP, their details appear here.</div>`; return }
   const o = PROF.options || OPT
@@ -406,7 +418,7 @@ function renderInfo() {
       <div class="ja-card-head"><div><h2 class="ja-h2">${esc(pl.name)}</h2>
         <div class="ja-meter"><div class="bar"><span style="width:${Math.round((done / 4) * 100)}%"></span></div><small>${miss.length ? `Still to add: ${esc(miss.filter((m) => m !== 'check the details').join(', ') || 'check and save')}` : 'All done'}</small></div>
         ${pl.profile?.updatedAt ? `<p class="ja-small ja-muted" style="margin-top:8px">Last updated ${esc(new Date(pl.profile.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}${pl.profile.updatedFrom === 'Staff portal' ? ' by Joner Football' : ''}.</p>` : '<p class="ja-small ja-muted" style="margin-top:8px">We filled in what your waiver told us. Please check it and save.</p>'}
-      </div><span class="ja-avatar">${esc(initials(pl.name))}</span></div>
+      </div>${photoPicker(pl)}</div>
       <div class="ja-form">
         <h4>Football</h4>
         ${f('club', 'Club', v.club, `placeholder="For example, Manly United" autocomplete="off" list="clubs-${esc(pl.key)}"`)}
@@ -418,18 +430,19 @@ function renderInfo() {
         ${f('repTeam', 'Rep, academy or squads <span class="muted">(optional)</span>', v.repTeam, 'placeholder="For example, Manly United academy"')}
         ${f('otherTraining', 'Other training each week <span class="muted">(optional)</span>', v.otherTraining, 'placeholder="For example, futsal on Mondays"')}
         <label class="j-field"><span>Level</span><select class="j-select" data-f="level"><option value="">Choose</option>${o.levels.map((x) => `<option ${v.level === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
-        ${seg('playingUp', o.playingUp)}
+        ${pl.self ? '' : seg('playingUp', o.playingUp)}
         <div class="j-field full"><span>Positions <span class="muted">(choose any)</span></span><div class="ja-seg" data-multi="positions">${o.positions.map((x) => `<button type="button" class="j-chip" data-val="${esc(x)}" aria-pressed="${(v.positions || []).includes(x)}">${esc(x)}</button>`).join('')}</div></div>
         ${seg('foot', o.feet)}
-        <label class="j-field full"><span>What does ${esc(first(pl.name))} want to work on? <span class="muted">(optional)</span></span><textarea class="j-textarea" data-f="goals" rows="2" maxlength="1000">${esc(v.goals || '')}</textarea></label>
+        <label class="j-field full"><span>${pl.self ? 'What do you want to work on?' : `What does ${esc(first(pl.name))} want to work on?`} <span class="muted">(optional)</span></span><textarea class="j-textarea" data-f="goals" rows="2" maxlength="1000">${esc(v.goals || '')}</textarea></label>
         <h4>Player</h4>
-        ${f('dob', 'Date of birth', v.dob, 'type="date" min="2004-01-01" max="2023-12-31"')}
-        <h4>Parents</h4>
+        ${f('dob', 'Date of birth', v.dob, `type="date" min="${esc(PROF.dob?.min || '1940-01-01')}" max="${esc(PROF.dob?.max || new Date().toISOString().slice(0, 10))}"`)}
+        ${pl.self ? `<h4>Contact</h4>
+        ${f('parentMobile', 'Your mobile', v.parentMobile, 'type="tel" inputmode="tel" autocomplete="tel"')}` : `<h4>Parents</h4>
         ${f('parentName', 'Parent name', v.parentName, 'autocomplete="name"')}
         ${f('parentMobile', 'Parent mobile', v.parentMobile, 'type="tel" inputmode="tel" autocomplete="tel"')}
         ${f('parent2Name', 'Second parent <span class="muted">(optional)</span>', v.parent2Name)}
         ${f('parent2Mobile', 'Second parent mobile', v.parent2Mobile, 'type="tel" inputmode="tel"')}
-        ${f('parent2Email', 'Second parent email <span class="muted">(optional)</span>', v.parent2Email, 'type="email" inputmode="email"')}
+        ${f('parent2Email', 'Second parent email <span class="muted">(optional)</span>', v.parent2Email, 'type="email" inputmode="email"')}`}
         <h4>Emergency contact</h4>
         ${f('emergencyName', 'Name', v.emergencyName)}
         ${f('emergencyPhone', 'Phone', v.emergencyPhone, 'type="tel" inputmode="tel"')}
@@ -437,7 +450,7 @@ function renderInfo() {
         <label class="j-field full"><span>Medical notes <span class="muted">(optional, only Lee, Ligia and the coach see them)</span></span><textarea class="j-textarea" data-f="medical" rows="2" maxlength="1000">${esc(v.medical || '')}</textarea></label>
       </div>
       <p class="j-err" data-err hidden></p>
-      <div class="ja-save"><button type="button" class="ja-btn ja-btn-red" data-save-prof="${esc(pl.key)}">Save ${esc(first(pl.name))}'s information</button><span class="ja-small ja-muted">Saves straight to our system.</span></div>
+      <div class="ja-save"><button type="button" class="ja-btn ja-btn-red" data-save-prof="${esc(pl.key)}">${pl.self ? 'Save my profile' : `Save ${esc(first(pl.name))}'s information`}</button><span class="ja-small ja-muted">Saves straight to our system.</span></div>
     </section>`
   }).join('')
 }
@@ -460,6 +473,59 @@ async function saveProf(key, btn) {
   toast('Saved. Lee and Ligia can see it now.')
   renderInfo(); renderShell(); renderHome()
   document.querySelector(`[data-prof="${CSS.escape(key)}"]`)?.scrollIntoView({ block: 'start' })
+}
+
+// ---------- profile photo ----------
+
+function photoPicker(pl) {
+  const photo = pl.profile?.photo || ''
+  return `<div class="ja-photo-wrap"><label class="ja-photo" aria-label="${photo ? 'Change photo' : 'Add a photo'}">${photo ? `<img src="${esc(photo)}" alt="">` : `<span>${esc(initials(pl.name))}</span>`}<i>${ic('camera')}</i><input type="file" accept="image/*" data-photo-for="${esc(pl.key)}" hidden></label>
+    ${photo ? `<button type="button" class="ja-link ja-small" data-photo-rm="${esc(pl.key)}">Remove</button>` : '<small>Add photo</small>'}</div>`
+}
+
+// Cropped square in the browser (600 x 600 JPEG), so even a big phone photo
+// uploads in a moment.
+function squarePhoto(file) {
+  return new Promise((resolve, reject) => {
+    const heic = /heic|heif/i.test(file.type || '') || /\.(heic|heif)$/i.test(file.name || '')
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      const side = Math.min(img.naturalWidth, img.naturalHeight)
+      const sx = (img.naturalWidth - side) / 2
+      // Portraits: keep the face, which is usually in the top part.
+      const sy = img.naturalHeight > img.naturalWidth ? Math.min((img.naturalHeight - side) * 0.25, img.naturalHeight - side) : (img.naturalHeight - side) / 2
+      const n = Math.min(600, side)
+      const cv = document.createElement('canvas')
+      cv.width = n; cv.height = n
+      cv.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, n, n)
+      URL.revokeObjectURL(url)
+      resolve(cv.toDataURL('image/jpeg', 0.85))
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(heic ? 'That photo is in iPhone HEIC format. Take a screenshot of it and choose the screenshot, or choose another photo.' : 'That file could not be read. Choose a photo.')) }
+    img.src = url
+  })
+}
+
+async function savePhotoFor(key, input, remove = false) {
+  const card = document.querySelector(`[data-prof="${CSS.escape(key)}"]`)
+  const wrap = card?.querySelector('.ja-photo-wrap')
+  let image = ''
+  if (!remove) {
+    const file = input.files?.[0]
+    if (!file) return
+    try { image = await squarePhoto(file) } catch (err) { return toast(err.message) }
+  }
+  wrap?.classList.add('is-busy')
+  const r = await api('/api/jfp-account', { action: 'savePhoto', playerKey: key, ...(remove ? { remove: true } : { image }) })
+  wrap?.classList.remove('is-busy')
+  if (!r.ok) return toast(r.data.error || 'Could not save the photo. Try again.')
+  const pl = PROF.players.find((x) => x.key === key)
+  if (pl) pl.profile = r.data.profile
+  const dp = D.players.find((x) => x.key === key)
+  if (dp) dp.photo = r.data.profile?.photo || ''
+  toast(remove ? 'Photo removed.' : 'Photo saved.')
+  renderInfo(); renderShell(); renderHome()
 }
 
 // ---------- can't make a session ----------
@@ -791,7 +857,7 @@ function waiverSheet(keys) {
   sheet.body.innerHTML = players.map((p) => `
     <div class="j-card" style="padding:12px 14px;margin-bottom:10px" data-wp="${esc(p.key)}">
       <h3 style="margin-bottom:8px">${esc(p.name)}</h3>
-      ${p.needsDob ? `<label class="j-field"><span>Date of birth</span><input class="j-input" type="date" data-f="dob" min="2004-01-01" max="${p.key.startsWith('jj:') ? new Date().toISOString().slice(0, 10) : '2023-12-31'}"></label>` : ''}
+      ${p.needsDob ? `<label class="j-field"><span>Date of birth</span><input class="j-input" type="date" data-f="dob" min="1940-01-01" max="${new Date().toISOString().slice(0, 10)}"></label>` : ''}
       <div class="j-two"><label class="j-field"><span>Emergency contact</span><input class="j-input" data-f="emergencyName"></label><label class="j-field"><span>Their phone</span><input class="j-input" type="tel" inputmode="tel" data-f="emergencyPhone"></label></div>
       <div class="j-two"><label class="j-field"><span>Current club <span class="muted">(optional)</span></span><input class="j-input" data-f="club"></label><label class="j-field"><span>Medical notes <span class="muted">(optional)</span></span><input class="j-input" data-f="medical"></label></div>
     </div>`).join('') + `
@@ -852,6 +918,8 @@ document.addEventListener('click', async (e) => {
   if (multi) { multi.setAttribute('aria-pressed', String(multi.getAttribute('aria-pressed') !== 'true')); return }
   const sp = t.closest('[data-save-prof]')
   if (sp) return saveProf(sp.dataset.saveProf, sp)
+  const prm = t.closest('[data-photo-rm]')
+  if (prm) return savePhotoFor(prm.dataset.photoRm, null, true)
   const it = t.closest('[data-interest]')
   if (it) {
     it.disabled = true
@@ -1015,3 +1083,8 @@ async function jjAct(b) {
 }
 
 boot()
+
+document.addEventListener('change', (e) => {
+  const inp = e.target.closest?.('[data-photo-for]')
+  if (inp) savePhotoFor(inp.dataset.photoFor, inp).finally(() => { inp.value = '' })
+})

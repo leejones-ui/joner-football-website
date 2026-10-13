@@ -52,6 +52,19 @@ export async function airtable(path, { method = 'GET', body } = {}, attempt = 0)
   return data
 }
 
+// Puts a file straight into an attachment field (Airtable's upload API, up
+// to 5 MB), so a player's photo lives in Airtable with the rest of their details.
+export async function uploadAttachment(recordId, field, { contentType, base64, filename }) {
+  const res = await fetch(`https://content.airtable.com/v0/${BASE}/${recordId}/${encodeURIComponent(field)}/uploadAttachment`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token()}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ contentType, file: base64, filename }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(`Airtable upload ${res.status}: ${data?.error?.message || data?.error?.type || ''}`)
+  return data
+}
+
 export async function readTable(table, fields = []) {
   const rows = []
   let offset = ''

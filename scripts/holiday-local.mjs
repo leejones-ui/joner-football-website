@@ -433,6 +433,17 @@ globalThis.fetch = async (url, init = {}) => {
     if (u.endsWith('/pipeline')) return json(payload.map((c) => ({ result: redis(c) })))
     return json({ result: redis(payload) })
   }
+  // Airtable's upload API (player photos): adds the file to the record's attachment field.
+  const up = /^https:\/\/content\.airtable\.com\/v0\/[^/]+\/(rec\w+)\/([^/]+)\/uploadAttachment$/.exec(u)
+  if (up) {
+    const rec = Object.values(airtable).flat().find((r) => r.id === up[1])
+    if (!rec) return json({ error: { type: 'NOT_FOUND' } }, 404)
+    const b = JSON.parse(init.body)
+    const field = decodeURIComponent(up[2])
+    const n = (rec.fields[field] || []).length + 1
+    rec.fields[field] = [...(rec.fields[field] || []), { id: `att${rec.id}${n}`, url: `https://dl.airtable.local/${rec.id}-${n}.jpg`, filename: b.filename, type: b.contentType, size: b.file.length, thumbnails: { large: { url: `https://dl.airtable.local/${rec.id}-${n}-large.jpg` } } }]
+    return json({ id: rec.id, fields: rec.fields })
+  }
   if (u.startsWith('https://api.airtable.com/v0/')) {
     const r = airtableResponse(u, init)
     return json(r.body, r.status)

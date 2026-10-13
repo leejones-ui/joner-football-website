@@ -2412,6 +2412,10 @@ async function handle(req, res) {
         const [s] = coachSessions(config, [{ ...g, coachId }], roster, coachId, c.date, juniors, notes)
         sessions.push({ ...s, id: g.id, dates: [{ iso: c.date, label: dateLabel(c.date) }], nextDate: c.date, covering: { for: coachLabel(coachById(config, c.coachId)), dateLabel: dateLabel(c.date) } })
       }
+      // Faces for the register: the photo a family added in My account.
+      const profs = await allProfiles().catch(() => [])
+      const photoByRow = new Map(profs.filter((x) => x.photo).flatMap((x) => x.rowIds.map((id) => [id, x.photo])))
+      for (const s of sessions) for (const p of s.players) if (photoByRow.has(p.rowId)) p.photo = photoByRow.get(p.rowId)
       for (const s of sessions) s.attendance = await attendanceFor(s.id, s.nextDate)
       // Parents who said a player cannot make a date, so the register can mark
       // them. Display only: attendance is saved exactly as before.

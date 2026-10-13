@@ -424,3 +424,18 @@ body:has(.ja) { background: #0A0A0B !important; }
 .jfp.ja select.j-select option { background: #1A1A1D; color: #F7F7F5; }
 .ja .j-toast { bottom: calc(86px + env(safe-area-inset-bottom)); }
 @media (min-width: 1024px) { .ja .j-toast { bottom: 28px; } }
+
+/* Profile photo (My profile / Player information) */
+.ja .ja-face { overflow: hidden; padding: 0; }
+.ja .ja-face img, .ja .ja-me img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
+.ja .ja-me:has(img) { padding: 0; overflow: hidden; }
+.ja .ja-photo-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
+.ja .ja-photo-wrap small { color: var(--ja-muted, #9a9aa2); font-size: 12px; }
+.ja .ja-photo { position: relative; width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: #202024; border: 1px solid var(--ja-line-2); font: 700 22px/1 Inter, system-ui, sans-serif; color: #fff; }
+.ja .ja-photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.ja .ja-photo i { position: absolute; right: -2px; bottom: -2px; width: 28px; height: 28px; border-radius: 50%; background: #E8000D; display: grid; place-items: center; border: 2px solid #0A0A0B; }
+.ja .ja-photo i svg { width: 15px; height: 15px; stroke: #fff; fill: none; stroke-width: 2; }
+.ja .ja-photo:focus-within { outline: 2px solid #E8000D; outline-offset: 3px; }
+.ja .ja-photo-wrap.is-busy .ja-photo { opacity: .5; pointer-events: none; }
+.ja .ja-photo-wrap.is-busy .ja-photo::after { content: ''; position: absolute; inset: 24px; border-radius: 50%; border: 3px solid #fff; border-top-color: transparent; animation: ja-spin .8s linear infinite; }
+@keyframes ja-spin { to { transform: rotate(360deg); } }
