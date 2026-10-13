@@ -25,7 +25,7 @@ import crypto from 'node:crypto'
 import { stripeFetch } from './_holiday-store.js'
 import { kvCommand, kvPipeline, clean, newId, formatAud, audit, claimOnce, closeCheckout, CHECKOUT_EXPIRES_MINUTES, getConfig, sydneyToday, coachById } from './_jfp-store.js'
 import { getJJRow, writeJJRow, readJJTable, tableFor, REC } from './_jj-data.js'
-import { classLabelOf, nextTermOf } from './_jj-config.js'
+import { classLabelOf, nextTermOf, classForRow, classLabelFor } from './_jj-config.js'
 import { sendJJReceipt, sendJJStaffAlert } from './_jj-email.js'
 
 export const JJ_PAYREQS = 'jj:payreqs'
@@ -295,13 +295,14 @@ async function applyNext(q, config) {
     } else {
       const from = await getJJRow(q.table, q.next.fromRowId, q.term)
       if (!from) { await flag(q, 'row-missing', q.playerNames.join(', ')); throw new Error(`row-missing: ${q.next.fromRowId}`) }
-      const cls = config.juniors.classes[0]
+      // The same class the child is in this term (more than one class, stage 3).
+      const cls = classForRow(config.juniors, from) || config.juniors.classes[0]
       const coach = coachById(config, cls?.coachId || '')
       nextRowId = await writeJJRow(table, {
         set: {
           player: from.player, parent: from.parent, ...(from.emails[0] ? { email: from.emails[0] } : {}), ...(from.emails[1] ? { email2: from.emails[1] } : {}),
           ...(from.mobile ? { mobile: from.mobile } : {}), ...(from.mobile2 ? { mobile2: from.mobile2 } : {}), ...(from.dobText ? { dob: from.dobText } : {}),
-          term, day: cls?.day, time: cls?.time, location: cls?.location, coach: coach?.airtableName || '', className: classLabelOf(config.juniors, cls),
+          term, day: cls?.day, time: cls?.time, location: cls?.location, coach: coach?.airtableName || '', className: classLabelFor(config.juniors, cls),
           fee: q.next.fullCents / 100, status, paidVia: 'Stripe', ...(from.waiverStatus ? { waiverStatus: from.waiverStatus } : {}),
           ...(from.medical ? { medical: from.medical } : {}),
         },

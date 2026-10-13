@@ -7,7 +7,7 @@
 // The same light card as the JFP emails, with a Joners Juniors heading.
 // Replies go to the Juniors inbox.
 import { formatAud, dateLabel } from './_jfp-store.js'
-import { classLabelOf, datesLabelOf, juniorsDates, termShort, nextTermOf } from './_jj-config.js'
+import { classLabelOf, datesLabelOf, juniorsDates, termShort, nextTermOf, classById, classLabelFor } from './_jj-config.js'
 
 export const JJ_INBOX = 'jonersjuniors@jonerfootball.com'
 
@@ -52,10 +52,14 @@ async function send({ to, name, subject, html, replyTo = JJ_INBOX }) {
   return true
 }
 
-// The class line every family email shows.
-function classRows(jj, { term = jj.term, dates = datesLabelOf(jj) } = {}) {
-  const cls = jj.classes[0]
-  return [['Class', esc(classLabelOf(jj, cls))], ['Where', esc(jj.location)], ['Term', `${esc(term)}${dates ? `<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(dates)}</span>` : ''}`]]
+// A child's class (children carry classId from Players, stage 3), else the first.
+const clsOf = (jj, c) => (c?.classId && classById(jj, c.classId)) || jj.classes[0]
+const childClass = (jj, c) => esc(classLabelFor(jj, clsOf(jj, c)))
+
+// The class line every family email shows (the first child's class).
+function classRows(jj, { term = jj.term, dates = datesLabelOf(jj), child = null } = {}) {
+  const cls = clsOf(jj, child)
+  return [['Class', esc(classLabelFor(jj, cls))], ['Where', esc(jj.location)], ['Term', `${esc(term)}${dates ? `<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(dates)}</span>` : ''}`]]
 }
 
 // kind 'new': sign in, sign the waiver, pay the term. The first email a
@@ -63,10 +67,10 @@ function classRows(jj, { term = jj.term, dates = datesLabelOf(jj) } = {}) {
 export function jjAccountInvite({ parentName, children, jj, signInUrl, payUrl = '', amountCents = 0, needsWaiver = false, email = '' }) {
   const names = children.map((c) => first(c.name))
   const owing = Boolean(payUrl) && amountCents > 0
-  const first1 = juniorsDates(jj)[0]
+  const first1 = juniorsDates(jj, clsOf(jj, children[0]))[0]
   const body = `${p(`Hi ${esc(first(parentName) || 'there')},`)}
 ${p(`${esc(andList(names))}'s Joners Juniors place for ${esc(termShort(jj.term))} is in your Joner Football account. Sign in with this email to see the class, every date and your payments.`)}
-${rows([...children.map((c) => [c.name, esc(classLabelOf(jj))]), ...classRows(jj).slice(1), ...(first1 ? [['First class', esc(dateLabel(first1))]] : [])])}
+${rows([...children.map((c) => [c.name, childClass(jj, c)]), ...classRows(jj, { child: children[0] }).slice(1), ...(first1 ? [['First class', esc(dateLabel(first1))]] : [])])}
 ${owing ? p(`There is <b>${esc(formatAud(amountCents))}</b> to pay for ${esc(termShort(jj.term))}. Card, Apple Pay or Google Pay.`) : p('Nothing to pay. The place is confirmed.')}
 ${needsWaiver ? p('Please also sign the waiver when you sign in. It takes a minute, and one waiver covers JFP and Joners Juniors.') : ''}
 ${button(owing ? 'Sign in and pay' : 'Sign in to your account', owing ? payUrl : signInUrl)}
@@ -82,7 +86,7 @@ export function jjReminder({ parentName, children, jj, url, amountCents = 0, nee
   const todo = [owing ? `pay the ${esc(formatAud(amountCents))} still owing` : '', needsWaiver ? 'sign the waiver' : ''].filter(Boolean)
   const body = `${p(`Hi ${esc(first(parentName) || 'there')},`)}
 ${p(`A quick reminder for ${esc(andList(names))}'s Joners Juniors place: please ${todo.join(' and ')}.`)}
-${rows([...children.map((c) => [c.name, owing && c.owingCents ? `${esc(formatAud(c.owingCents))} to pay` : c.needsWaiver ? 'Waiver to sign' : 'Done']), ...classRows(jj)])}
+${rows([...children.map((c) => [c.name, owing && c.owingCents ? `${esc(formatAud(c.owingCents))} to pay` : c.needsWaiver ? 'Waiver to sign' : 'Done']), ...classRows(jj, { child: children[0] })])}
 ${needsWaiver ? p('One waiver covers JFP and Joners Juniors. It takes a minute.') : ''}
 ${button(owing ? 'Sign in and pay' : 'Sign in and sign the waiver', url)}
 ${howToSignIn(email)}
@@ -96,13 +100,26 @@ export function jjNextInvite({ parentName, children, jj, url, email = '' }) {
   const names = children.map((c) => first(c.name))
   const body = `${p(`Hi ${esc(first(parentName) || 'there')},`)}
 ${p(`${esc(termShort(jj.term))} is going well, and ${esc(nt.name)} places for Joners Juniors go to our current families first. Would ${esc(andList(names))} like to keep ${names.length > 1 ? 'their places' : 'the place'}?`)}
-${rows([...children.map((c) => [c.name, esc(classLabelOf(jj))]), ['Next term', `${esc(nt.name)}${nt.termStart ? `<br><span style="color:#6B7280;font-weight:400;font-size:13px;">First class ${esc(dateLabel(nt.termStart))}</span>` : ''}`], ['Term fee', esc(formatAud(nt.fullCents))]])}
+${rows([...children.map((c) => [c.name, childClass(jj, c)]), ['Next term', `${esc(nt.name)}${nt.termStart ? `<br><span style="color:#6B7280;font-weight:400;font-size:13px;">First class ${esc(dateLabel(nt.termStart))}</span>` : ''}`], ['Term fee', esc(formatAud(nt.fullCents))]])}
 ${p(`<b>Pay ${esc(formatAud(nt.fullCents))}</b> and the place is locked in.`)}
 ${nt.holdCents ? p(`Not sure yet? <b>Hold the place for ${esc(formatAud(nt.holdCents))}</b>. It is non-refundable and comes off the term fee.`) : ''}
 ${p('Not coming back? Tell us in the same place and we will offer the spot to a family on the waitlist.')}
 ${button('Choose in your account', url)}
 ${howToSignIn(email)}`
   return { subject: `Keep your Joners Juniors place for ${nt.name}`, html: shell({ preheader: `${nt.name}: current families first`, heading: `${nt.name}: keep your place`, body }) }
+}
+
+// Messages (stage 3): what Lee or Ligia wrote, to a family in a class. Their
+// words, the child's class and next class, and (if ticked) the sign in button.
+// Plain text in: every line is escaped, blank lines start a new paragraph.
+export function jjMessageEmail({ parentName, children, jj, subject, text, signInUrl = '', email = '', nextDate = '' }) {
+  const paras = String(text || '').replace(/\r/g, '').split(/\n{2,}/).map((x) => x.trim()).filter(Boolean)
+  const body = `${p(`Hi ${esc(first(parentName) || 'there')},`)}
+${paras.map((x) => p(esc(x).replace(/\n/g, '<br>'))).join('\n')}
+${rows([...children.map((c) => [c.name, childClass(jj, c)]), ['Where', esc(jj.location)], ...(nextDate ? [['Next class', esc(nextDate)]] : [])])}
+${signInUrl ? `${button('Open your account', signInUrl)}${howToSignIn(email)}` : ''}
+${p('Any questions, just reply to this email.<br>The Joner Football team')}`
+  return { subject: String(subject || '').trim(), html: shell({ preheader: paras[0]?.slice(0, 90) || '', heading: String(subject || '').trim(), body }) }
 }
 
 export async function sendJJFamilyEmail({ to, parentName, built }) {

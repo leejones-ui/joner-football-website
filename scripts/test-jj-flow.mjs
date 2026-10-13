@@ -98,7 +98,7 @@ await test('Settings: saved to config.juniors, audited, on the public page at on
   const bad = await portal('jjSaveSettings', { juniors: { term: 'Term 1 2027' } })
   assert.equal(bad.status, 400); assert.match(bad.data.error, /Airtable table for Term 1 2027/)
   assert.equal((await portal('jjSaveSettings', { juniors: { priceCents: 5 } })).status, 400)
-  assert.equal((await portal('jjSaveSettings', { juniors: { classes: [{ day: 'Saturday', time: '9:15am', capacity: 12, coachId: 'nobody' }] } })).status, 400)
+  assert.equal((await portal('jjSaveClasses', { classes: [{ day: 'Saturday', time: '9:15am', capacity: 12, coachId: 'nobody' }] })).status, 400)
   const r = await portal('jjSaveSettings', { juniors: { priceCents: 24000, weeks: 10, skipDates: [{ date: '2026-11-07', reason: 'Venue booked' }] } })
   assert.equal(r.status, 200, JSON.stringify(r.data))
   assert.equal(r.data.public.feeLine, '$240 for 9 weeks')
@@ -184,10 +184,10 @@ await test('Add a child: into the Term 4 table at the saved price; a duplicate o
   assert.equal((await portal('jjAddPlayer', { player: { name: 'Q' } })).status, 400)
   assert.equal((await portal('jjAddPlayer', { player: { name: 'Bad Email' }, parent: { email: 'nope' } })).status, 400)
   const enrolled = (await players()).summary.enrolled
-  assert.equal((await portal('jjSaveSettings', { juniors: { classes: [{ ...restoreSettings.classes[0], capacity: enrolled }] } })).status, 200)
+  assert.equal((await portal('jjSaveClasses', { classes: [{ ...restoreSettings.classes[0], capacity: enrolled }] })).status, 200)
   const full = await portal('jjAddPlayer', { player: { name: 'Over Invented' }, parent: { email: 'over.parent@example.com' } })
   assert.equal(full.status, 409); assert.equal(full.data.code, 'full')
-  assert.equal((await portal('jjSaveSettings', { juniors: { classes: [{ ...restoreSettings.classes[0] }] } })).status, 200)
+  assert.equal((await portal('jjSaveClasses', { classes: [{ ...restoreSettings.classes[0] }] })).status, 200)
 })
 
 await test('Edit: name, contacts, medical and fee into Airtable, logged', async () => {
@@ -293,7 +293,8 @@ await test('Dashboard: enrolled against places, money, waivers and what needs Li
   assert.equal(d.summary.enrolled, p.summary.enrolled); assert.equal(d.summary.capacity, 12)
   assert.equal(d.counts.noWaiver, p.counts.noWaiver)
   assert.ok(d.needs.some((n) => n.kind === 'unpaid' && n.count === p.counts.unpaid))
-  assert.equal(d.attendance.ready, false)
+  // Attendance comes from the registers (stage 3): no class has run yet in this term.
+  assert.equal(d.attendance.ready, true); assert.ok(Array.isArray(d.attendance.weeks) && Array.isArray(d.attendance.streaks))
   assert.equal(d.public.feeLine, '$240 for 9 weeks')
   assert.ok(!('players' in d), 'no children list on the dashboard call')
 })

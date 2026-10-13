@@ -359,7 +359,7 @@ await test('paid on Stripe but the webhook is late: paying again is refused, and
 let reqId
 await test('the website: a full class offers the waitlist instead of checkout; the request is saved and only staff are emailed', async () => {
   const enrolled = (await portal('jjPlayers', { fresh: true })).data.summary.enrolled
-  assert.equal((await portal('jjSaveSettings', { juniors: { classes: [{ ...restore.classes[0], capacity: enrolled }] } })).status, 200)
+  assert.equal((await portal('jjSaveClasses', { classes: [{ ...restore.classes[0], capacity: enrolled }] })).status, 200)
   await kv(['DEL', `jj:rows:v1:${restore.tables['Term 4 2026']}`])
   const info = (await get('/api/juniors-info')).juniors
   assert.equal(info.full, true); assert.equal(info.waitlist, true)
@@ -416,7 +416,7 @@ await test('Requests & waitlist: in the order asked; accept asks first when full
   assert.equal((await portal('jjDecideRequest', { id: lu.id, decision: 'wait' })).status, 200)
   assert.equal((await portal('jjRequests')).data.list.find((x) => x.id === lu.id).position, 1, 'Kit is in the class, so Lu is next')
   // A place frees up: the page says who is next.
-  assert.equal((await portal('jjSaveSettings', { juniors: { classes: [{ ...restore.classes[0], capacity: 40 }] } })).status, 200)
+  assert.equal((await portal('jjSaveClasses', { classes: [{ ...restore.classes[0], capacity: 40 }] })).status, 200)
   const free = (await portal('jjRequests')).data
   assert.equal(free.placeFree, true); assert.ok(free.placesLeft > 0)
   assert.ok((await portal('jjDashboard')).data.needs.some((n) => n.kind === 'waiting'))

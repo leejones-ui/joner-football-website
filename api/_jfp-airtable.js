@@ -643,11 +643,12 @@ export async function findLedgerByPayment(paymentId, { exact = false } = {}) {
 
 // One Attendance row per player per session, keyed by Attendance ID so a
 // second tick updates rather than duplicates.
-export async function upsertAttendance({ attendanceId, playerName, week, date, group, coachName, status, markedBy }) {
+// Joners Juniors (stage 3) passes its own programme and term.
+export async function upsertAttendance({ attendanceId, playerName, week, date, group, coachName, status, markedBy, programme = 'JFP', term = 'Term 4' }) {
   const fields = {
-    'Attendance ID': attendanceId, 'Player Name': playerName, 'Term': 'Term 4', 'Year': Number(date.slice(0, 4)), 'Week Number': week,
+    'Attendance ID': attendanceId, 'Player Name': playerName, 'Term': term, 'Year': Number(date.slice(0, 4)), 'Week Number': week,
     'Session Date': date, 'Session Day': group.day, 'Session Time': group.time, 'Session Location': group.location,
-    'Coach': coachName || '', 'Attendance Status': status, 'Marked By': markedBy, 'Marked At': new Date().toISOString(), 'Programme': 'JFP',
+    'Coach': coachName || '', 'Attendance Status': status, 'Marked By': markedBy, 'Marked At': new Date().toISOString(), 'Programme': programme,
   }
   const q = new URLSearchParams({ filterByFormula: `{Attendance ID} = "${fq(attendanceId)}"`, pageSize: '1' })
   const found = await airtable(`${encodeURIComponent(TABLES.attendance)}?${q}`)

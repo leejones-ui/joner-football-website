@@ -253,7 +253,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
               <span>Select Your Class:</span>
               <select required name="numberOfDays" id="juniors-class">
                 <option value="">Select your class:</option>
-                {jj.classes.map((c) => <option>{`${c.day} ${c.time}`}</option>)}
+                {jj.classes.map((c) => <option value={c.id}>{`${c.day} ${c.time}`}</option>)}
               </select>
             </label>
             <div class="jj-stripe-only" id="juniors-stripe-only">
@@ -420,7 +420,7 @@ const sanityPage = await fetchSanityPage('joners-juniors')
           var keep = select.options[0];
           select.innerHTML = '';
           select.appendChild(keep);
-          jj.classes.forEach(function (c) { var o = document.createElement('option'); o.textContent = c.day + ' ' + c.time; select.appendChild(o); });
+          jj.classes.forEach(function (c) { var o = document.createElement('option'); o.value = c.id; o.textContent = c.day + ' ' + c.time + (jj.classes.length > 1 ? ' at ' + c.location : '') + (c.full && !jj.waitlist ? ' (full: join the waitlist)' : ''); select.appendChild(o); });
         }
         if (jj.waitlist) window.JJWaitlist(jj.registrationOpen === false ? 'closed' : 'full');
       }).catch(function () {});

@@ -497,7 +497,7 @@ globalThis.fetch = async (url, init = {}) => {
     const payload = JSON.parse(init.body)
     const id = (payload.htmlContent.match(/(?:HOL|JFP|APP|PAY|WAIT|ENQ)-[0-9A-Z-]+/) || [''])[0]
     log('brevo', `${payload.subject} [${id}]`)
-    emails.push({ at: Date.now(), to: payload.to.map((t) => t.email), subject: payload.subject, html: payload.htmlContent, attachments: (payload.attachment || []).map((a) => ({ name: a.name, content: Buffer.from(a.content, 'base64').toString('utf8') })) })
+    emails.push({ at: Date.now(), to: payload.to.map((t) => t.email), replyTo: payload.replyTo?.email || '', subject: payload.subject, html: payload.htmlContent, attachments: (payload.attachment || []).map((a) => ({ name: a.name, content: Buffer.from(a.content, 'base64').toString('utf8') })) })
     return json({ messageId: 'local' })
   }
   if (u.startsWith('https://api.telegram.org/')) {

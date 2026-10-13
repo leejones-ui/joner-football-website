@@ -55,7 +55,7 @@ export async function invitePlan(config, overview, kind, { site = '', filter = '
     const open = payreqs.find((q) => isOpen(q) && q.kind === 'term' && q.rowIds.some((id) => kids.some((k) => k.rowId === id)))
     const sent = invites[`${kind}:${email}`] || null
     const children = kids.map((p) => ({
-      rowId: p.rowId, name: p.name, pay: p.pay, payLabel: p.payLabel, owingCents: owe(p), waiver: p.waiver.onFile, needsWaiver: !p.waiver.onFile && !p.waiver.unknown,
+      rowId: p.rowId, classId: p.classId || '', name: p.name, pay: p.pay, payLabel: p.payLabel, owingCents: owe(p), waiver: p.waiver.onFile, needsWaiver: !p.waiver.onFile && !p.waiver.unknown,
       ...(kind === 'next' ? { next: nextSt[p.rowId]?.status || '' } : {}),
     }))
     let todo, status

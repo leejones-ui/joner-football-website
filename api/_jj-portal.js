@@ -12,7 +12,9 @@ import crypto from 'node:crypto'
 import { saveConfig, audit, clean, validEmail, coachById, coachLabel, sydneyToday, ageOn, normName, kvCommand, formatAud, cleanPhone, rowEmails, dateLabel } from './_jfp-store.js'
 import { loadRoster, waiverFor } from './_jfp-airtable.js'
 import { readJJTable, getJJRow, writeJJRow, tableFor, termTables, isEnrolled, dobText, REC, plain, bustJJ } from './_jj-data.js'
-import { validateJuniors, juniorsPublic, juniorsDates, capacityOf, classLabelOf, datesLabelOf } from './_jj-config.js'
+import { validateJuniors, juniorsPublic, juniorsDates, capacityOf, classLabelOf, datesLabelOf, classForRow, classById, classLabelFor } from './_jj-config.js'
+import { classesView, saveClasses, moveChild, syncTimetable } from './_jj-classes.js'
+import { attendanceSummary } from './_jj-registers.js'
 import { juniorsMoneyData, readJJLedger, saveJJLedger, dropJJLedger, JUNIORS_TABLES, METHODS } from './_jfp-juniors-money.js'
 import { jfpStripePayments } from './_jfp-stripe.js'
 import { siteUrl } from './_holiday-store.js'
@@ -23,10 +25,13 @@ import { nextTermOf } from './_jj-config.js'
 
 export const JJ_ACTIONS = new Set(['jjSettings', 'jjSaveSettings', 'jjPlayers', 'jjDashboard', 'jjAddPlayer', 'jjEditPlayer', 'jjAddNote', 'jjRemovePlayer', 'jjRestorePlayer', 'jjRecordPayment', 'jjVoidPayment',
   // Stage 2: Invites, Requests & waitlist, and the online payments behind them.
-  'jjInvites', 'jjRequests', 'jjDecideRequest', 'jjPayments', 'jjRepairPayment', 'jjCancelPayreq', 'jjPaymentChecked'])
+  'jjInvites', 'jjRequests', 'jjDecideRequest', 'jjPayments', 'jjRepairPayment', 'jjCancelPayreq', 'jjPaymentChecked',
+  // Stage 3: Classes (and moving a child between them). Registers are in _jj-registers.js (coaches too).
+  'jjClasses', 'jjSaveClasses', 'jjSyncClasses', 'jjMoveChild'])
 export const JJ_LEAVE_REASONS = ['Cost', 'Time or schedule clash', 'Moved up to JFP', 'Not ready yet', 'Moved away', 'Taking a break', 'Joined another program', 'No reply from the family', 'Other']
 const ISO = /^\d{4}-\d{2}-\d{2}$/
-const SETTINGS_KEYS = ['term', 'termStart', 'weeks', 'skipDates', 'datesLabel', 'classes', 'classLabel', 'location', 'priceCents', 'siblingPriceCents', 'registrationOpen', 'waiverVersion', 'ageLabel', 'tables', 'nextTerm']
+// Classes are saved on the Classes page (jjSaveClasses), which keeps the timetable in step.
+const SETTINGS_KEYS = ['term', 'termStart', 'weeks', 'skipDates', 'datesLabel', 'classLabel', 'location', 'priceCents', 'siblingPriceCents', 'registrationOpen', 'waiverVersion', 'ageLabel', 'tables', 'nextTerm']
 const out = (res, data) => res.status(200).json({ success: true, ...data })
 const fail = (res, status, error, extra = {}) => res.status(status).json({ success: false, error, ...extra })
 
@@ -81,6 +86,7 @@ export async function jjOverview(config, { term = '', fresh = false } = {}) {
   ])
   const byRow = new Map((money.players || []).map((p) => [p.rowId, p]))
   const cls = jj.classes[0]
+  const current = t === jj.term
   const players = rows.map((r) => {
     const m = byRow.get(r.id)
     const status = m?.status || payFromAirtable(r)
@@ -94,6 +100,8 @@ export async function jjOverview(config, { term = '', fresh = false } = {}) {
       parent: r.parent, email: r.email, emails: r.emails, mobile: r.mobile, mobile2: r.mobile2,
       medical: r.medical && !/^none( supplied)?$/i.test(r.medical) ? r.medical : '',
       notes: r.notes, className: r.className || classLabelOf(jj, cls), session: [r.day, r.time].filter(Boolean).join(' '), location: r.location, coach: r.coach,
+      // The class this term (by day, time and place); '' = in none of them.
+      classId: current ? classForRow(jj, r)?.id || '' : '',
       feeCents: r.feeCents, paidCents: m ? m.paidCents : null, owingCents: m ? m.owingCents : null,
       pay: PAY[status] || 'unpaid', payStatus: status, payLabel: PAY_DETAIL[status] || status, airtableStatus: r.status || 'Not set',
       paidVia: m?.paidVia || r.paidVia || '', paidAt: m?.paidAt || r.paidAt || '',
@@ -109,9 +117,12 @@ export async function jjOverview(config, { term = '', fresh = false } = {}) {
   const sum = (list, k) => list.reduce((x, p) => x + (p[k] || 0), 0)
   const mt = money.byTerm?.[t] || null
   const capacity = capacityOf(jj)
+  // Each class with its own places (stage 3).
+  const classes = jj.classes.map((c) => { const n = enrolled.filter((p) => p.classId === c.id).length; return { id: c.id, label: classLabelFor(jj, c), capacity: c.capacity, enrolled: n, placesLeft: Math.max(0, c.capacity - n) } })
   return {
-    term: t, current: t === jj.term, terms: termTables(config).map((x) => x.term), at: new Date().toISOString(),
-    classLabel: classLabelOf(jj, cls), datesLabel: t === jj.term ? datesLabelOf(jj) : '', capacity,
+    term: t, current, terms: termTables(config).map((x) => x.term), at: new Date().toISOString(),
+    classLabel: jj.classes.length > 1 ? `${jj.classes.length} classes` : classLabelOf(jj, cls), datesLabel: current ? datesLabelOf(jj) : '', capacity,
+    classes: current ? classes : [], unplaced: current && jj.classes.length > 1 ? enrolled.filter((p) => !p.classId).length : 0,
     players,
     counts: { all: enrolled.length, paid: count('paid'), part: count('part'), unpaid: count('unpaid'), noprice: count('noprice'), noWaiver: enrolled.filter((p) => !p.waiver.onFile).length, removed: players.length - enrolled.length },
     summary: {
@@ -140,7 +151,10 @@ export function needsList(o, jj) {
   if (s.unverified) add('unverified', `${s.unverified} marked Paid in Airtable with no payment found`, { tab: 'jj-money', count: s.unverified })
   if (s.unlinkedCount) add('unlinked', `${s.unlinkedCount} Stripe payment${s.unlinkedCount === 1 ? '' : 's'} not matched to a child (${formatAud(s.unlinkedCents)})`, { tab: 'jj-money', count: s.unlinkedCount })
   if (c.noprice) add('noprice', `${c.noprice} with no fee set`, { tab: 'jj-players', filter: 'noprice', count: c.noprice })
-  if (o.current && s.capacity && s.enrolled >= s.capacity) add('full', `The class is full (${s.enrolled} of ${s.capacity})`, { tab: 'jj-settings' })
+  const classes = o.classes?.length ? o.classes : [{ label: 'The class', capacity: s.capacity, enrolled: s.enrolled }]
+  for (const k of o.current ? classes : []) if (k.capacity && k.enrolled >= k.capacity) add('full', `${classes.length > 1 ? k.label : 'The class'} is full (${k.enrolled} of ${k.capacity})`, { tab: 'jj-classes' })
+  if (o.unplaced) add('unplaced', `${o.unplaced} ${o.unplaced === 1 ? 'child is' : 'children are'} in no class`, { tab: 'jj-classes', count: o.unplaced })
+  if (o.attendance?.streaks?.length) add('missing', `${o.attendance.streaks.length} ${o.attendance.streaks.length === 1 ? 'child has' : 'children have'} missed 2 or more in a row`, { tab: 'jj-registers', count: o.attendance.streaks.length })
   if (o.current && !jj.registrationOpen) add('closed', 'Website registrations are closed', { tab: 'jj-settings' })
   if (o.waiting) add('waiting', `${o.waiting} on the waitlist${o.current && s.placesLeft ? `, and ${s.placesLeft} place${s.placesLeft === 1 ? ' is' : 's are'} free` : ''}`, { tab: 'jj-requests', count: o.waiting })
   if (o.payAttention) add('payments', `${o.payAttention} online payment${o.payAttention === 1 ? ' needs' : 's need'} checking`, { tab: 'jj-invites', count: o.payAttention })
@@ -184,8 +198,10 @@ export async function addChildCore(principal, config, body, { tag = '', source =
     const enrolled = rows.filter(isEnrolled)
     const dup = enrolled.find((r) => normName(r.player) === normName(name) && (!email || !r.emails.length || r.emails.includes(email)))
     if (dup && body.force !== true) return no(409, `${dup.player} is already in ${term}. Add anyway?`, 'duplicate')
-    const cls = jj.classes[0]
-    if (cls && enrolled.length >= cls.capacity && body.force !== true) return no(409, `The class has ${enrolled.length} of ${cls.capacity} places taken. Add anyway?`, 'full')
+    // The class asked for, else the first with a place, else the first.
+    const inC = (c) => enrolled.filter((r) => classForRow(jj, r)?.id === c.id).length
+    const cls = classById(jj, String(body.classId || '')) || jj.classes.find((c) => inC(c) < c.capacity) || jj.classes[0]
+    if (cls && inC(cls) >= cls.capacity && body.force !== true) return no(409, `${jj.classes.length > 1 ? classLabelFor(jj, cls) : 'The class'} has ${inC(cls)} of ${cls.capacity} places taken. Add anyway?`, 'full')
     let waiverOn = false
     try { const roster = await loadRoster(); waiverOn = Boolean(waiverFor(name, { emails: email ? [email] : [], phones: [mobile], dob }, roster.waivers)) } catch {}
     const coach = coachById(config, cls?.coachId || '')
@@ -193,7 +209,7 @@ export async function addChildCore(principal, config, body, { tag = '', source =
     rowId = await writeJJRow(table, {
       set: {
         player: name, parent: plain(body.parent?.name, 100), ...(email ? { email } : {}), ...(mobile ? { mobile } : {}), ...(dob ? { dob: dobText(dob) } : {}),
-        term, day: cls?.day, time: cls?.time, location: cls?.location, coach: coach?.airtableName || '', className: classLabelOf(jj, cls),
+        term, day: cls?.day, time: cls?.time, location: cls?.location, coach: coach?.airtableName || '', className: classLabelFor(jj, cls),
         fee, status: payment === 'free' ? 'N/A' : 'Unpaid', waiverStatus: waiverOn ? 'Completed' : 'Needed',
         ...(plain(body.player?.medical, 600) ? { medical: plain(body.player.medical, 600) } : {}),
       },
@@ -277,10 +293,11 @@ async function restorePlayer(res, principal, config, body) {
   const { term, table } = rowsTerm(config, body)
   const row = await rowOr404(res, table, body.rowId, term); if (!row) return
   if (!row.removed) return fail(res, 409, `${row.player} is not removed.`)
-  const cls = config.juniors.classes[0]
-  if (term === config.juniors.term && cls && body.force !== true) {
-    const enrolled = (await readJJTable(table, { term, fresh: true })).filter(isEnrolled).length
-    if (enrolled >= cls.capacity) return fail(res, 409, `The class has ${enrolled} of ${cls.capacity} places taken. Restore anyway?`, { code: 'full' })
+  const jj = config.juniors
+  const cls = classForRow(jj, row) || jj.classes[0]
+  if (term === jj.term && cls && body.force !== true) {
+    const enrolled = (await readJJTable(table, { term, fresh: true })).filter((r) => isEnrolled(r) && classForRow(jj, r)?.id === cls.id).length
+    if (enrolled >= cls.capacity) return fail(res, 409, `${jj.classes.length > 1 ? classLabelFor(jj, cls) : 'The class'} has ${enrolled} of ${cls.capacity} places taken. Restore anyway?`, { code: 'full' })
   }
   await writeJJRow(table, { id: row.id, editNotes: (text) => text.replace(/\s*\[JJ-REMOVED:[^\]]*\]/g, ''), note: `Restored by ${principal.name}.` })
   await audit({ by: principal.email, action: 'jj.player.restore', target: row.id, after: { name: row.player, term } })
@@ -385,7 +402,7 @@ function settingsView(config) {
   const jj = config.juniors
   return {
     juniors: jj,
-    derived: { dates: juniorsDates(jj).map((iso) => ({ iso, label: dateLabel(iso) })), datesLabel: datesLabelOf(jj), classLabel: classLabelOf(jj), capacity: capacityOf(jj), next: nextTermOf(jj) },
+    derived: { dates: juniorsDates(jj).map((iso) => ({ iso, label: dateLabel(iso) })), datesLabel: datesLabelOf(jj), classLabel: classLabelOf(jj), capacity: capacityOf(jj), next: nextTermOf(jj), classes: jj.classes.map((c) => ({ id: c.id, label: classLabelFor(jj, c), capacity: c.capacity })) },
     public: juniorsPublic(jj),
     coaches: config.coaches.map((c) => ({ id: c.id, name: coachLabel(c) })),
   }
@@ -394,13 +411,9 @@ function settingsView(config) {
 async function saveSettings(res, principal, config, body) {
   const input = body.juniors && typeof body.juniors === 'object' ? body.juniors : {}
   const patch = Object.fromEntries(SETTINGS_KEYS.filter((k) => k in input).map((k) => [k, input[k]]))
-  if (!Object.keys(patch).length) return fail(res, 400, 'Nothing to change.')
+  if (!Object.keys(patch).length) return fail(res, 400, 'classes' in input ? 'Classes are changed on the Classes page.' : 'Nothing to change.')
   // Next term is changed field by field, so saving its name never drops its price or hold.
   if (patch.nextTerm && typeof patch.nextTerm === 'object') patch.nextTerm = { ...config.juniors.nextTerm, ...patch.nextTerm }
-  if (Array.isArray(patch.classes)) {
-    const bad = patch.classes.find((c) => c?.coachId && !coachById(config, c.coachId))
-    if (bad) return fail(res, 400, 'Choose a coach from the list.')
-  }
   const checked = validateJuniors(patch, config.juniors)
   if (!checked.ok) return fail(res, 400, checked.errors.join(' '))
   // Families already invited for next term under its name: the name stays.
@@ -432,9 +445,14 @@ async function invitesAction(req, res, principal, config, body) {
 
 async function requestsData(config) {
   const [list, invites, rows] = await Promise.all([listJJRequests(), readInvites(), readJJTable(tableFor(config, config.juniors.term), { term: config.juniors.term }).catch(() => [])])
-  const enrolled = rows.filter(isEnrolled).length
-  const capacity = capacityOf(config.juniors)
-  return { ...requestsView(list, { rowsById: new Map(rows.map((r) => [r.id, r])), invites, placesLeft: Math.max(0, capacity - enrolled) }), enrolled, capacity, term: config.juniors.term, registrationOpen: config.juniors.registrationOpen }
+  const jj = config.juniors
+  const live = rows.filter(isEnrolled)
+  const enrolled = live.length
+  const capacity = capacityOf(jj)
+  // Free places: each class's own, added up (a class over its places frees none elsewhere).
+  const classes = jj.classes.map((c) => { const n = live.filter((r) => classForRow(jj, r)?.id === c.id).length; return { id: c.id, label: classLabelFor(jj, c), capacity: c.capacity, enrolled: n, placesLeft: Math.max(0, c.capacity - n) } })
+  const placesLeft = classes.reduce((t, c) => t + c.placesLeft, 0)
+  return { ...requestsView(list, { rowsById: new Map(rows.map((r) => [r.id, r])), invites, placesLeft }), enrolled, capacity, classes, term: jj.term, registrationOpen: jj.registrationOpen }
 }
 
 async function decideRequest(res, principal, config, body) {
@@ -449,7 +467,7 @@ async function decideRequest(res, principal, config, body) {
     const step = (status, extra = {}) => ({ ...r, ...extra, status, decidedBy: principal.name, decidedAt: now, history: [...(r.history || []), { status, by: principal.name, at: now, ...(extra.declineReason ? { reason: extra.declineReason } : {}) }] })
     if (decision === 'accept') {
       if (r.status === 'accepted') return fail(res, 409, `${r.player.name} was already accepted.`)
-      const added = await addChildCore(principal, config, { player: { name: r.player.name, dob: r.player.dob, medical: r.player.medical }, parent: r.parent, payment: 'none', note: `From the waitlist (asked ${r.createdAt.slice(0, 10)}).`, force: body.force === true }, { tag: `[JJ-REQ:${r.id}]`, source: 'from Requests & waitlist' })
+      const added = await addChildCore(principal, config, { player: { name: r.player.name, dob: r.player.dob, medical: r.player.medical }, parent: r.parent, payment: 'none', classId: body.classId || r.classId || '', note: `From the waitlist (asked ${r.createdAt.slice(0, 10)}).`, force: body.force === true }, { tag: `[JJ-REQ:${r.id}]`, source: 'from Requests & waitlist' })
       if (!added.ok) return fail(res, added.status, added.code === 'full' ? `${added.error.replace(/ Add anyway\?$/, '')} Accept anyway?` : added.error, added.code ? { code: added.code } : {})
       await saveJJRequest(step('accepted', { rowId: added.rowId }))
       await audit({ by: principal.email, action: 'jj.request.accept', target: r.id, after: { rowId: added.rowId, name: r.player.name } })
@@ -508,9 +526,20 @@ export async function jjAction(req, res, principal, config, body, action) {
       const [reqs, pays] = await Promise.all([listJJRequests().catch(() => []), listJJPayreqs().catch(() => [])])
       o.waiting = reqs.filter((r) => r.status === 'waiting').length
       o.payAttention = pays.filter((q) => q.status === 'paid' && (q.effects?.airtable?.status !== 'done' || q.needsAttention)).length
+      // Attendance by class date and who missed two or more in a row (the registers).
+      o.attendance = await attendanceSummary(config).catch((error) => ({ ready: false, error: `Attendance could not be read: ${error.message}` }))
       const { players, ...rest } = o
-      return out(res, { ...rest, needs: needsList(o, config.juniors), registrationOpen: config.juniors.registrationOpen, public: juniorsPublic(config.juniors), attendance: { ready: false, note: 'Attendance by week arrives with Registers.' } })
+      return out(res, { ...rest, needs: needsList(o, config.juniors), registrationOpen: config.juniors.registrationOpen, public: juniorsPublic(config.juniors) })
     }
+    case 'jjClasses': return out(res, await classesView(config, { fresh: body.fresh === true }))
+    case 'jjSaveClasses': return await saveClasses(res, principal, config, body)
+    // The timetable put back in step with the classes (nothing else changes).
+    case 'jjSyncClasses': {
+      const report = await syncTimetable(config, config.juniors, principal)
+      await audit({ by: principal.email, action: 'jj.classes.sync', target: 'timetable', after: report })
+      return out(res, { ...(await classesView(config)), timetableReport: report })
+    }
+    case 'jjMoveChild': return await moveChild(res, principal, config, body)
     case 'jjAddPlayer': return await addPlayer(res, principal, config, body)
     case 'jjEditPlayer': return await editPlayer(res, principal, config, body)
     case 'jjAddNote': return await addNote(res, principal, config, body)

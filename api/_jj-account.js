@@ -10,7 +10,7 @@ import { siteUrl } from './_holiday-store.js'
 import { formatAud, dateLabel, ageOn, normName, kvCommand, audit, clean } from './_jfp-store.js'
 import { waiverFor } from './_jfp-airtable.js'
 import { readJJRows, isEnrolled, tableFor, writeJJRow, tagValues } from './_jj-data.js'
-import { juniorsDates, classLabelOf, datesLabelOf, nextTermOf, termShort } from './_jj-config.js'
+import { juniorsDates, classLabelOf, datesLabelOf, nextTermOf, termShort, classForRow, classLabelFor } from './_jj-config.js'
 import { listJJPayreqs, isOpen, noteJJView, jjNextStatuses, setJJNextStatus, createNextPayreq, ensureTermPayreq, cancelJJPayreq, startJJCheckout, getJJPayreq, JJPAY } from './_jj-pay.js'
 import { jjMoneyData } from './_jj-portal.js'
 
@@ -46,15 +46,18 @@ export async function jjAccountView({ config, parentEmail, fam, roster, pay = ''
   const f = await familyJJ(config, parentEmail, fam)
   if (!f) return null
   const jj = config.juniors
-  const cls = jj.classes[0]
+  // Each child's own class (more than one class, stage 3); the first child's for the headline.
+  const clsOf = (r) => classForRow(jj, r) || jj.classes[0]
+  const cls = f.rows[0] ? clsOf(f.rows[0]) : jj.classes[0]
   const nowIso = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
-  const dates = juniorsDates(jj)
   const nt = nextTermOf(jj)
   const [payreqs, statuses] = await Promise.all([listJJPayreqs(), nt.name ? jjNextStatuses(nt.name) : Promise.resolve({})])
   const mine = payreqs.filter((q) => ownsJJ(q, f.emails) && q.status !== 'cancelled')
   const opened = mine.find((q) => q.id === clean(pay, 60) && isOpen(q))
   if (opened) await noteJJView(opened.id)
   const children = f.rows.map((r) => {
+    const mineCls = clsOf(r)
+    const dates = juniorsDates(jj, mineCls)
     const w = waiverOf(r, f.emails, roster)
     const dob = r.dob || w.dob || ''
     const open = mine.find((q) => isOpen(q) && q.kind === 'term' && q.rowIds.includes(r.id))
@@ -72,7 +75,7 @@ export async function jjAccountView({ config, parentEmail, fam, roster, pay = ''
     return {
       key: `jj:${r.id}`, rowId: r.id, name: r.player, age: dob ? ageOn(dob, jj.termStart) : null, needsDob: !dob,
       waiver: { onFile: w.onFile, signedDate: w.signedDate || '' },
-      className: classLabelOf(jj, cls), location: jj.location, term: jj.term,
+      className: classLabelFor(jj, mineCls), classId: mineCls?.id || '', location: jj.location, term: jj.term,
       dates: dates.map(dateLabel), firstDate: dates[0] ? dateLabel(dates[0]) : '', nextDate: dates.find((d) => d >= nowIso) ? dateLabel(dates.find((d) => d >= nowIso)) : '',
       payment,
       next: showNext ? {
@@ -86,14 +89,14 @@ export async function jjAccountView({ config, parentEmail, fam, roster, pay = ''
     const ids = q.next ? [q.next.fromRowId] : q.rowIds
     return {
       id: q.id, juniors: true, amountLabel: formatAud(q.amountCents), players: q.playerNames,
-      what: q.next ? `${q.next.term}: ${q.next.choice === 'hold' ? 'hold the place' : q.next.holdPaidCents ? 'the rest of the term' : 'the full term'}` : `${termShort(q.term)}: ${classLabelOf(jj, cls)}`,
+      what: q.next ? `${q.next.term}: ${q.next.choice === 'hold' ? 'hold the place' : q.next.holdPaidCents ? 'the rest of the term' : 'the full term'}` : `${termShort(q.term)}: ${classLabelFor(jj, cls)}`,
       needsWaiver: ids.some((id) => kidsByRow.get(id) && !kidsByRow.get(id).waiver.onFile),
       places: q.kind === 'term' && q.rows.length > 1 ? q.rows.map((x) => ({ name: x.name, amountLabel: formatAud(x.owingCents) })) : [],
     }
   })
   return {
     parentName: f.rows.find((r) => r.parent)?.parent || '',
-    term: jj.term, termShort: termShort(jj.term), classLabel: classLabelOf(jj, cls), datesLabel: datesLabelOf(jj), location: jj.location, ageLabel: jj.ageLabel,
+    term: jj.term, termShort: termShort(jj.term), classLabel: classLabelFor(jj, cls), datesLabel: datesLabelOf(jj), location: jj.location, ageLabel: jj.ageLabel,
     waiverVersion: jj.waiverVersion,
     children, todo,
     nextTerm: children.some((c) => c.next) ? { name: nt.name, holdLabel: nt.holdCents ? formatAud(nt.holdCents) : '', fullLabel: formatAud(nt.fullCents) } : null,

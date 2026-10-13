@@ -36,6 +36,7 @@ import { telegramAlert } from './_jfp-notify.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
 import { JJ_ACTIONS, jjAction, jjMoneyData, jjTableList } from './_jj-portal.js'
+import { JJ_REGISTER_ACTIONS, jjRegisterAction, jjDatesForGroup, classForGroup, markOne as jjMarkOne } from './_jj-registers.js'
 import { matchBank, cleanItem, csvIds, EXTERNAL_ID, BANK_LIMITS, twinOf, looksJfp, feeSizes, rowScore } from './_jfp-bank-match.js'
 import { holidayMoneyData, holidaySizes, HOLIDAY_BANK } from './_holiday-money.js'
 import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
@@ -2045,7 +2046,8 @@ function coachSessions(config, groups, roster, coachId, date, juniors = {}, note
   const mine = groups.filter((g) => g.coachId === coachId || (g.extraCoachIds || []).includes(coachId))
   const me = coachById(config, coachId)
   return mine.map((g) => {
-    const dates = sessionDates(config, g.day)
+    // A Joners Juniors class runs on the Juniors term's dates.
+    const dates = isJuniorsGroup(g) ? jjDatesForGroup(config, g) : sessionDates(config, g.day)
     const players = isJuniorsGroup(g) ? (juniors[g.id] || []).map((p) => ({ rowId: p.rowId, name: p.name, age: p.age, coach: me?.name || '', mine: true, trial: false, status: 'Confirmed', juniors: true })) : roster.players.filter((r) => r.groupId === g.id && r.holdsPlace && !isTestName(r.player)).map((r) => {
       const c = coachByAirtableName(config, r.coach)
       const trial = /trial/i.test(r.paymentType)
@@ -2436,14 +2438,18 @@ async function handle(req, res) {
       const date = clean(body.date, 10)
       const covering = (await listCovers()).some((c) => c.status === 'active' && c.groupId === g.id && c.date === date && c.coverCoachId === principal.coachId)
       if (!isAdmin && !covering && g.coachId !== principal.coachId && !(g.extraCoachIds || []).includes(principal.coachId)) return fail(res, 403, 'Not your session.')
-      const dates = sessionDates(config, g.day)
+      const dates = isJuniorsGroup(g) ? jjDatesForGroup(config, g) : sessionDates(config, g.day)
       if (!dates.includes(date)) return fail(res, 400, 'That date is not a session for this group.')
       const status = ['Present', 'Absent', 'Trial', 'Make-up', ''].includes(body.status) ? body.status : null
       if (status === null) return fail(res, 400, 'Invalid status.')
       let row
       if (isJuniorsGroup(g)) {
         const kid = ((await juniorsFor([g], config))[g.id] || []).find((p) => p.rowId === clean(body.rowId, 30))
-        row = kid ? { id: kid.rowId, player: kid.name } : null
+        if (!kid) return fail(res, 404, 'That player is not in this session.')
+        // The Juniors register (stage 3): the same KV, who coached, and the Juniors Attendance row.
+        const cls = classForGroup(config.juniors, g)
+        if (cls && ['Present', 'Absent', ''].includes(status)) return res.status(200).json({ success: true, airtable: await jjMarkOne(config, principal, { cls, gid: g.id, date, row: { id: kid.rowId, player: kid.name }, status }) })
+        row = { id: kid.rowId, player: kid.name }
       } else {
         const roster = await loadRoster()
         row = roster.players.find((r) => r.id === clean(body.rowId, 30) && r.groupId === g.id)
@@ -2461,13 +2467,15 @@ async function handle(req, res) {
       } else {
         try {
           const week = dates.indexOf(date) + 1
-          airtable = (await clearAttendance({ attendanceId: `T4-W${week}-${g.day.slice(0, 3)}-${g.time}-${row.player}`, markedBy: principal.email })) ? 'cleared' : 'skipped'
+          airtable = (await clearAttendance({ attendanceId: `${isJuniorsGroup(g) ? 'JJ' : 'T4'}-W${week}-${g.day.slice(0, 3)}-${g.time}-${row.player}`, markedBy: principal.email })) ? 'cleared' : 'skipped'
         } catch (error) { console.error('jfp attendance clear failed', error); airtable = 'failed' }
       }
       return res.status(200).json({ success: true, airtable })
     }
 
     if (action === 'trialFeedback') return await saveTrialFeedback(res, principal, config, isAdmin, body)
+    // Joners Juniors registers (stage 3): a coach marks their own Juniors class, as in JFP.
+    if (JJ_REGISTER_ACTIONS.has(action)) return await jjRegisterAction(req, res, principal, config, body, action)
 
     if (!isAdmin) return fail(res, 403, 'Not allowed.')
 

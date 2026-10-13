@@ -4,7 +4,8 @@ import { appendRow, readRows, updateCell } from './_camp-automation.js'
 import { JUNIORS_HEADERS, JUNIORS_SHEET_TAB, normaliseRegistration, rowFromRegistration, validateJuniorsRegistration, stripeCheckoutForm } from './_juniors-flow.js'
 import { captureWebsiteContact } from './_master-contact-capture.js'
 import { configOrDefaults } from './_jj-data.js'
-import { classFull, waitlistFromForm } from './_jj-requests.js'
+import { classFromChoice } from './_jj-config.js'
+import { classFull, choiceFull, waitlistFromForm } from './_jj-requests.js'
 import { sendJJRequestAlert } from './_jj-email.js'
 import { audit } from './_jfp-store.js'
 
@@ -49,7 +50,8 @@ export default async function handler(req, res) {
     // Closed, or every place taken: the waitlist instead of Stripe (stage 2).
     const closed = config.juniors.registrationOpen === false
     const count = closed || fallback ? null : await classFull(config)
-    const full = Boolean(count?.full)
+    // The class picked on the form (more than one class, stage 3), else every class.
+    const full = choiceFull(config, count, body.classId || body.numberOfDays)
     if (closed || full) return await waitlistReply(res, body, config, { closed, full, fallback })
     const registration = normaliseRegistration(body, new Date(), config.juniors)
     const emailCheck = await validateEmailQuality(registration.email, { label: 'parent email' })
@@ -84,7 +86,8 @@ export default async function handler(req, res) {
 async function waitlistReply(res, body, config, { closed, full, fallback }) {
   if (body.waitlist !== true) return res.status(409).json({ success: false, closed, full, waitlist: true, error: closed ? 'Joners Juniors registrations are closed right now. Join the waitlist and we will contact you when a place opens.' : 'The class is full. Join the waitlist and we will contact you as soon as a place opens.' })
   if (fallback) return res.status(503).json({ success: false, error: 'Could not save your request. Please try again.' })
-  const saved = await waitlistFromForm(body, { term: config.juniors.term, why: closed ? 'closed' : 'full' })
+  const picked = config.juniors.classes.length > 1 ? classFromChoice(config.juniors, body.classId || body.numberOfDays) : null
+  const saved = await waitlistFromForm(body, { term: config.juniors.term, why: closed ? 'closed' : 'full', classId: picked?.id || '' })
   if (!saved.ok) return res.status(400).json({ success: false, error: saved.error })
   if (!saved.already) {
     await audit({ by: saved.request.parent.email, action: 'jj.request.new', target: saved.request.id, after: { why: saved.request.why, term: saved.request.term } }).catch(() => {})

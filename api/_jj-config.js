@@ -27,7 +27,10 @@ export const JJ_DEFAULTS = Object.freeze({
   datesLabel: '12 October 2026 to 19 December 2026',
   // One class for now (Lee, 13 Oct 2026). A list, so a second class later
   // is a second entry, not a rewrite.
-  classes: [{ id: 'sat-0915-belrose', day: 'Saturday', time: '9:15am', endTime: '10:00am', location: 'Belrose HQ', capacity: 12, coachId: 'sam' }],
+  // Each class has a head coach (coachId) and a shadow coach (shadowCoachId),
+  // edited on the Classes page (stage 3) and kept in step with the
+  // timetable's Joners Juniors group for that day, time and place.
+  classes: [{ id: 'sat-0915-belrose', day: 'Saturday', time: '9:15am', endTime: '10:00am', location: 'Belrose HQ', capacity: 12, coachId: 'sam', shadowCoachId: '' }],
   // '' = from the first class ("Saturday 9:15am to 10:00am").
   classLabel: '',
   // Where parents go, as the page and the emails say it.
@@ -84,7 +87,39 @@ function cleanClass(c, fallback) {
     location: jjClean(c.location, 80) || fallback?.location || 'Belrose HQ',
     capacity: Number.isInteger(capacity) && capacity >= 0 && capacity <= 60 ? capacity : (fallback?.capacity ?? 12),
     coachId: jjClean(c.coachId, 30).toLowerCase().replace(/[^a-z0-9-]/g, ''),
+    shadowCoachId: jjClean(c.shadowCoachId, 30).toLowerCase().replace(/[^a-z0-9-]/g, ''),
   }
+}
+
+// The timetable's id for a day, time and place: the same as groupId() in
+// _jfp-store.js ("sat-0915-belrose-hq"), so a class and its timetable group
+// (and the register, KV jfp:att:<gid>:<date>) line up.
+export function slotId(day, time, location) {
+  const t = jjTime24(time).replace(':', '') || String(time || '')
+  return `${String(day || '').slice(0, 3)}-${t}-${location || ''}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+export const classSlot = (c) => slotId(c?.day, c?.time, c?.location)
+export const classById = (jj, id) => (jj.classes || []).find((c) => c.id === id) || null
+// The class a Juniors row is in: its day, time and place. With one class,
+// every child is in it (as before there was more than one).
+export function classForRow(jj, row) {
+  const list = jj.classes || []
+  if (list.length === 1) return list[0]
+  const slot = slotId(row?.day, row?.time, row?.location)
+  return list.find((c) => classSlot(c) === slot) || null
+}
+// A class as families read it. With more than one class each says its own
+// day and time (the one label in Settings only fits a single class).
+export function classLabelFor(jj, cls) {
+  if (!cls) return ''
+  return (jj.classes || []).length > 1 ? classLabelOf({ ...jj, classLabel: '' }, cls) : classLabelOf(jj, cls)
+}
+// The class a website sign-up chose: its id, or the option text ("Saturday 9:15am").
+export function classFromChoice(jj, choice) {
+  const v = String(choice || '').trim().toLowerCase()
+  const list = jj.classes || []
+  if (!v) return list[0] || null
+  return list.find((c) => c.id === v) || list.find((c) => `${c.day} ${c.time}`.toLowerCase() === v || classLabelFor(jj, c).toLowerCase() === v) || list[0] || null
 }
 
 function cleanTables(input, base) {
@@ -159,7 +194,12 @@ export function validateJuniors(input = {}, current = JJ_DEFAULTS) {
     if (c?.endTime && jjTime24(c?.time) && jjTime24(c.endTime) && jjTime24(c.endTime) <= jjTime24(c.time)) errors.push(`The class must finish after it starts${n}.`)
     const cap = Number(c?.capacity)
     if (!Number.isInteger(cap) || cap < 0 || cap > 60) errors.push(`Places must be a whole number from 0 to 60${n}.`)
+    if (c?.coachId && c.coachId === c?.shadowCoachId) errors.push(`The head coach and the shadow coach must be two people${n}.`)
   })
+  if (Array.isArray(merged.classes) && merged.classes.length > 1) {
+    const slots = merged.classes.map((c) => slotId(c?.day, c?.time, c?.location))
+    if (new Set(slots).size !== slots.length) errors.push('Two classes are on the same day, time and place. Change one of them.')
+  }
   const nt = merged.nextTerm && typeof merged.nextTerm === 'object' ? merged.nextTerm : {}
   for (const [k, label] of [['priceCents', 'next term\'s price'], ['holdCents', 'hold']]) {
     if (nt[k] == null || nt[k] === '') continue
@@ -174,6 +214,9 @@ export function validateJuniors(input = {}, current = JJ_DEFAULTS) {
     for (const [t, id] of Object.entries(merged.tables)) if (!TABLE.test(String(id || '').trim())) errors.push(`The Airtable table for ${jjClean(t, 40) || 'a term'} should look like tbl followed by 14 letters and numbers.`)
   }
   const out = normaliseJuniors(merged)
+  // Every class keeps its own id (registers and moves use it).
+  const seen = new Set()
+  out.classes = out.classes.map((c) => { let id = c.id, k = 2; while (seen.has(id)) id = `${c.id}-${k++}`; seen.add(id); return { ...c, id } })
   if (!errors.length && !out.tables[out.term]) errors.push(`Add the Airtable table for ${out.term} first (under Airtable tables).`)
   if (!errors.length && out.classes[0] && dayOf(out.termStart) !== out.classes[0].day) warnings.push(`${longDate(out.termStart)} is a ${dayOf(out.termStart)}. Classes run from the first ${out.classes[0].day} on or after it.`)
   return errors.length ? { ok: false, errors } : { ok: true, juniors: out, warnings }
@@ -222,7 +265,7 @@ export function juniorsPublic(jjInput) {
     classLabel: classLabelOf(jj),
     day: cls?.day || '',
     timeLabel: timeLineOf(cls),
-    classes: jj.classes.map((c) => ({ id: c.id, label: classLabelOf({ ...jj, classLabel: '' }, c), day: c.day, time: c.time, endTime: c.endTime, location: c.location })),
+    classes: jj.classes.map((c) => ({ id: c.id, label: classLabelOf({ ...jj, classLabel: '' }, c), day: c.day, time: c.time, endTime: c.endTime, location: c.location, capacity: c.capacity })),
     location: jj.location,
     priceCents: jj.priceCents,
     priceLabel: dollars(jj.priceCents),

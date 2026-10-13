@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { JJ_DEFAULTS, normaliseJuniors, classLabelOf, datesLabelOf, timeLineOf, termShort } from './_jj-config.js'
+import { JJ_DEFAULTS, normaliseJuniors, classLabelOf, datesLabelOf, timeLineOf, termShort, classFromChoice, classLabelFor } from './_jj-config.js'
 
 // The term, dates, class, place and price come from the Joners Juniors
 // settings (config.juniors, edited in the portal), passed in as `jj`. These
@@ -28,11 +28,12 @@ export function clean(value, max = 500) {
 }
 
 // What a registration needs from the settings: term, dates, class, place, price.
-export function juniorsTerms(jjInput = DEFAULT_JJ) {
+// cls: the class the family picked (more than one class, stage 3); else the first.
+export function juniorsTerms(jjInput = DEFAULT_JJ, choice = '') {
   const jj = normaliseJuniors(jjInput)
-  const cls = jj.classes[0]
+  const cls = choice ? classFromChoice(jj, choice) : jj.classes[0]
   return {
-    term: jj.term, termShort: termShort(jj.term), termDates: datesLabelOf(jj), className: classLabelOf(jj),
+    term: jj.term, termShort: termShort(jj.term), termDates: datesLabelOf(jj), className: classLabelFor(jj, cls),
     day: cls?.day || '', time: cls?.time || '', sessionTime: timeLineOf(cls), classLocation: cls?.location || '',
     venue: jj.location, amountCents: jj.priceCents, coachId: cls?.coachId || '',
   }
@@ -40,7 +41,7 @@ export function juniorsTerms(jjInput = DEFAULT_JJ) {
 
 export function normaliseRegistration(body = {}, now = new Date(), jj = DEFAULT_JJ) {
   const player = clean(body.playerFullName || `${body.playerFirstName || ''} ${body.playerSurname || ''}`, 160).replace(/\s+/g, ' ')
-  const t = juniorsTerms(jj)
+  const t = juniorsTerms(jj, body.classId || body.numberOfDays || '')
   return {
     submittedAt: now.toISOString(),
     registrationId: clean(body.registrationId, 120) || `JJ-${now.getTime()}-${randomUUID().slice(0, 8).toUpperCase()}`,

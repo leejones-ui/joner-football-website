@@ -109,7 +109,8 @@ export async function processPaid(event) {
   const rowNumber = index + 1
   // The term this checkout was for (its metadata), else the term running now.
   const jj = config.juniors
-  const t = juniorsTerms(jj)
+  // The class on the sign-up row (its label), so a second class is written as itself.
+  const t = juniorsTerms(jj, rows[index][10] || '')
   const term = details.term || jj.term
   const registration = {
     ...t,

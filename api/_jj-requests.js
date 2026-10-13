@@ -12,7 +12,7 @@
 //                rowId?, decidedBy?, decidedAt?, declineReason?, history:[...] }
 import { kvCommand, newId, clean, validEmail, cleanPhone, normName, sydneyToday, ageOn } from './_jfp-store.js'
 import { dobIso, plain, readJJRows, isEnrolled } from './_jj-data.js'
-import { capacityOf } from './_jj-config.js'
+import { capacityOf, classForRow, classFromChoice } from './_jj-config.js'
 
 export const JJ_REQUESTS = 'jj:requests'
 const ID = /^JJREQ-\d+-[0-9A-F]{6}$/
@@ -32,17 +32,28 @@ export async function listJJRequests() {
 
 // Is the class full right now? null when it cannot be read (the website then
 // behaves as before and lets the family pay).
+// full: every class has every place taken. classes: each one's own (stage 3),
+// so a sign-up for a full class joins the waitlist even when another has room.
 export async function classFull(config) {
   try {
-    const enrolled = (await readJJRows(config)).filter(isEnrolled).length
-    const cap = capacityOf(config.juniors)
-    return { full: cap > 0 && enrolled >= cap, enrolled, capacity: cap }
+    const jj = config.juniors
+    const live = (await readJJRows(config)).filter(isEnrolled)
+    const cap = capacityOf(jj)
+    const classes = jj.classes.map((c) => { const n = live.filter((r) => classForRow(jj, r)?.id === c.id).length; return { id: c.id, full: n >= c.capacity, enrolled: n, capacity: c.capacity } })
+    return { full: classes.length ? classes.every((c) => c.full) : cap > 0 && live.length >= cap, enrolled: live.length, capacity: cap, classes }
   } catch (error) { console.error('jj class count failed', error.message); return null }
+}
+// Is the class this sign-up chose full?
+export function choiceFull(config, count, choice) {
+  if (!count) return false
+  const cls = classFromChoice(config.juniors, choice)
+  const c = cls ? (count.classes || []).find((x) => x.id === cls.id) : null
+  return c ? c.full : Boolean(count.full)
 }
 
 // From the website form (the same fields as the paid sign-up). Returns
 // { ok, request, already } or { ok:false, error }.
-export async function waitlistFromForm(body, { term, why }) {
+export async function waitlistFromForm(body, { term, why, classId = '' }) {
   const name = plain(body.playerFullName || `${body.playerFirstName || ''} ${body.playerSurname || ''}`, 80).replace(/\s+/g, ' ')
   const parentName = plain(body.parentName, 100)
   const email = validEmail(body.email)
@@ -63,6 +74,8 @@ export async function waitlistFromForm(body, { term, why }) {
     parent: { name: parentName, email, mobile },
     source: plain(body.heardAboutUs || body.source, 120),
     status: 'waiting', createdAt: new Date().toISOString(), history: [],
+    // The class they picked (more than one class): accepting puts the child there.
+    ...(classId ? { classId } : {}),
   }
   await saveJJRequest(request)
   return { ok: true, request }
@@ -81,7 +94,7 @@ export function requestsView(list, { rowsById = new Map(), invites = {}, placesL
       position: r.status === 'waiting' ? ++n : null,
       player: r.player, age: r.player.dob ? ageOn(r.player.dob, sydneyToday()) : null, parent: r.parent, source: r.source,
       rowId: r.rowId || '', inTable: Boolean(row), removed: Boolean(row?.removed), invitedAt: sent?.at || '',
-      decidedBy: r.decidedBy || '', decidedAt: r.decidedAt || '', declineReason: r.declineReason || '',
+      decidedBy: r.decidedBy || '', decidedAt: r.decidedAt || '', declineReason: r.declineReason || '', classId: r.classId || '',
     }
   })
   const waiting = view.filter((r) => r.status === 'waiting')

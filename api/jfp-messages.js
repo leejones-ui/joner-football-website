@@ -12,6 +12,7 @@ import {
   newMsg, getMsg, saveMsg, listMsgs, event, isFinal, claim, payloadHash, evidenceOf, familyPhone, maskPhone, normalisePhone, sha,
   textFor, doNotContact, getPrefs, setPref, relayStatus, routeStatus, saveRoute, sendEmailExact, keys, STATUS_LABELS, TEXT_HOURS, TEXT_EXPIRES_HOURS, textHoursOpen,
 } from './_jfp-messages.js'
+import { JJ_MESSAGE_ACTIONS, jjMessagesAction, isJJMsg } from './_jj-messages.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -55,7 +56,9 @@ function view(m) {
 }
 
 async function overview(req, config) {
-  const [plan, msgs, prefs, relay, route, roster] = await Promise.all([familyPlan(req, config), listMsgs(), getPrefs(), relayStatus(), routeStatus(), loadRoster()])
+  const [plan, allMsgs, prefs, relay, route, roster] = await Promise.all([familyPlan(req, config), listMsgs(), getPrefs(), relayStatus(), routeStatus(), loadRoster()])
+  // Joners Juniors messages have their own page (stage 3).
+  const msgs = allMsgs.filter((m) => !isJJMsg(m))
   let dnc = null, dncError = ''
   try { dnc = await doNotContact() } catch (error) { console.error('jfp messages dnc failed', error); dncError = 'Could not read Do Not Contact from Airtable, so nothing can be approved right now.' }
   const invitedRaw = (await kvCommand(['HGETALL', 'jfp:acct-invited'])) || []
@@ -104,7 +107,7 @@ async function prepare(req, res, principal, config, body) {
   // A quick link (13 Oct 2026) is paid on its own page, not the account.
   const payUrl = fam.kind === 'pay' && payreq ? (payreq.quick ? quickUrl(siteUrl(req), payreq) : payreqUrl(req, payreq)) : ''
   // Any older draft for this family is replaced by these two.
-  for (const old of (await listMsgs()).filter((m) => m.email === email && m.status === 'draft')) { old.status = 'cancelled'; event(old, principal.email, 'replaced by a new draft'); await saveMsg(old) }
+  for (const old of (await listMsgs()).filter((m) => !isJJMsg(m) && m.email === email && m.status === 'draft')) { old.status = 'cancelled'; event(old, principal.email, 'replaced by a new draft'); await saveMsg(old) }
   const by = principal.email
   const mail = accountInvite({ parentName: fam.parent, players: fam.players, config, signInUrl, payUrl, amountCents: fam.owingCents, needsWaiver: fam.needsWaiver })
   const emailMsg = await saveMsg(newMsg({ channel: 'email', family: fam, payreq, evidence: now.evidence, by, content: { ...mail, payUrl }, target: { ref: email, hash: sha(email) } }))
@@ -254,6 +257,7 @@ async function editText(res, principal, body) {
 async function approve(req, res, principal, config, body) {
   const m = await getMsg(body.id)
   if (!m) return fail(res, 404, 'Message not found.')
+  if (isJJMsg(m)) return fail(res, 409, 'Send Joners Juniors messages from Joners Juniors > Messages.')
   if (m.status !== 'draft') return fail(res, 409, `This message is already ${STATUS_LABELS[m.status] || m.status}.`)
   if (body.payloadHash !== m.payloadHash || payloadHash(m) !== m.payloadHash) return fail(res, 409, 'The message changed since you looked at it. Open it again.', { code: 'changed' })
   const prefs = await getPrefs()
@@ -267,7 +271,7 @@ async function approve(req, res, principal, config, body) {
     // Already emailed (account invite or this pay link)? Only Lee can send again.
     const invitedAt = await kvCommand(['HGET', 'jfp:acct-invited', m.email])
     const q = m.payreqId ? await getPayreq(m.payreqId) : null
-    const sentBefore = (await listMsgs()).some((x) => x.id !== m.id && x.email === m.email && x.channel === 'email' && ['sent', 'delivered', 'unknown', 'sending'].includes(x.status))
+    const sentBefore = (await listMsgs()).some((x) => !isJJMsg(x) && x.id !== m.id && x.email === m.email && x.channel === 'email' && ['sent', 'delivered', 'unknown', 'sending'].includes(x.status))
     if ((invitedAt || q?.emailedAt || sentBefore) && !(body.replace === true && isOwner(principal))) {
       return fail(res, 409, isOwner(principal) ? 'This family has been emailed before. Tick "Send again" to send another.' : 'This family has been emailed before. Only Lee can send another.', { code: 'emailed_before', invitedAt: invitedAt || q?.emailedAt || '' })
     }
@@ -336,7 +340,7 @@ async function reconcile(res, principal, body) {
   m.status = outcome
   event(m, principal.email, outcome === 'delivered' ? 'checked by hand: it went' : 'checked by hand: it did not go', { note })
   await saveMsg(m)
-  if (outcome === 'delivered' && m.channel === 'email') await kvCommand(['HSET', 'jfp:acct-invited', m.email, new Date().toISOString()])
+  if (outcome === 'delivered' && m.channel === 'email' && !isJJMsg(m)) await kvCommand(['HSET', 'jfp:acct-invited', m.email, new Date().toISOString()])
   await audit({ by: principal.email, action: 'message.reconcile', target: m.id, after: { outcome, note } })
   return res.status(200).json({ success: true, message: view(m) })
 }
@@ -352,7 +356,7 @@ async function savePref(res, principal, body) {
   // Texts: no stops anything waiting for this family.
   let stopped = 0
   if (text === 'no') {
-    for (const m of (await listMsgs()).filter((x) => x.email === email && x.channel === 'text' && ['draft', 'queued'].includes(x.status))) {
+    for (const m of (await listMsgs()).filter((x) => !isJJMsg(x) && x.email === email && x.channel === 'text' && ['draft', 'queued'].includes(x.status))) {
       if (m.status === 'queued' && !(await claim(m.id))) continue
       m.status = 'cancelled'; event(m, principal.email, 'cancelled: family does not want texts'); await saveMsg(m); stopped++
     }
@@ -450,6 +454,8 @@ export default async function handler(req, res) {
     if (!principal) return fail(res, 401, 'Please sign in.')
     if (principal.role !== 'admin') return fail(res, 403, 'Only Lee or Ligia send messages to families.')
     const action = clean(body.action, 30)
+    // Joners Juniors families (stage 3): prepare, preview, then Send.
+    if (JJ_MESSAGE_ACTIONS.has(action)) return await jjMessagesAction(req, res, principal, config, body, action)
     if (action === 'overview') return res.status(200).json({ ...(await overview(req, config)), isOwner: isOwner(principal), me: principal.email })
     if (action === 'quickText') return await quickText(res, principal, body)
     if (action === 'prepare') return await prepare(req, res, principal, config, body)

@@ -20,5 +20,7 @@ export default async function handler(req, res) {
   const count = fallback ? null : await classFull(config)
   const pub = juniorsPublic(config.juniors)
   const full = Boolean(count?.full)
-  return res.status(200).json({ success: true, juniors: { ...pub, full, waitlist: !pub.registrationOpen || full }, ...(fallback ? { fallback: true } : {}) })
+  // Each class says if it is full (stage 3), so the page can say so on the class list.
+  const classes = pub.classes.map((c) => ({ ...c, full: Boolean(count?.classes?.find((x) => x.id === c.id)?.full) }))
+  return res.status(200).json({ success: true, juniors: { ...pub, classes, full, waitlist: !pub.registrationOpen || full }, ...(fallback ? { fallback: true } : {}) })
 }
