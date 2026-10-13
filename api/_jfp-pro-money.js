@@ -107,7 +107,7 @@ export function proMoneyView({ rows = [], stripe = { pro: [], error: '' }, ledge
   }
   const byPlayer = rows.map((r) => {
     const billed = cents(r.feeAud), paid = cents(r.paidAud)
-    return { rowId: r.id, player: r.player, parent: r.parent || '', group: [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Not in a group', perSessionCents: r.perSessionCents || null, billedCents: billed, paidCents: paid, owingCents: Math.max(0, billed - paid), holdsPlace: r.holdsPlace !== false, ...per.get(r.id) }
+    return { rowId: r.id, player: r.player, parent: r.parent || '', group: [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Not in a group', perSessionCents: r.perSessionCents || null, ...(r.prepaidSessions ? { prepaidSessions: r.prepaidSessions } : {}), billedCents: billed, paidCents: paid, owingCents: Math.max(0, billed - paid), holdsPlace: r.holdsPlace !== false, ...per.get(r.id) }
   }).filter((p) => p.holdsPlace || p.count || p.billedCents).sort((a, b) => a.player.localeCompare(b.player))
   return {
     at: at || new Date().toISOString(), month: chosen, months: months.map((m) => ({ id: m, label: monthLabel(m) })),

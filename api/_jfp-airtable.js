@@ -95,7 +95,7 @@ const TERM4_FIELDS = [
   'Training Kit',
 ]
 const TERM3_FIELDS = ['Player Name', 'Parent Name', 'Email', 'Parent Email 2', 'Phone Number', 'Date of Birth', 'Coach', 'Session Day', 'Session Time', 'Session Location']
-const WAIVER_FIELDS = ['Player Full Name', 'Date of Birth', 'Parent/Guardian Name', 'Parent Email', 'Parent Mobile Number', 'Current Club', 'Term', 'Waiver Version', 'Signed Date', 'Programme', 'Waiver Accepted - Full Terms']
+const WAIVER_FIELDS = ['Player Full Name', 'Date of Birth', 'Parent/Guardian Name', 'Parent Email', 'Parent Mobile Number', 'Current Club', 'Term', 'Waiver Version', 'Signed Date', 'Programme', 'Waiver Accepted - Full Terms', 'Internal Notes']
 
 // A value inside a double-quoted Airtable formula string.
 export function fq(v) { return String(v ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') }
@@ -137,6 +137,8 @@ function term4Row({ id, fields: f }) {
     notes,
     sourceTerm3: text(f, 'Source Term 3 Record ID'),
     perSessionCents: Number(tagOf(notes, 'PERSESSION')) || null,
+    // Sessions prepaid from My account and not yet billed by staff.
+    prepaidSessions: Number(tagOf(notes, 'PREPAID')) || 0,
     // The player is their own contact (no parent): [CONTACT:self] in the notes.
     ownContact: tagOf(notes, 'CONTACT') === 'self',
     // First session for a player who starts later in the term (staff set it).
@@ -176,6 +178,9 @@ export async function loadRoster({ fresh = false, maxAgeMs = CACHE_SECONDS * 100
     email: emailsIn(text(f, 'Parent Email'))[0] || '', mobile: text(f, 'Parent Mobile Number'), club: text(f, 'Current Club'),
     term: text(f, 'Term'), version: text(f, 'Waiver Version'), signedDate: text(f, 'Signed Date'), programme: text(f, 'Programme'),
     accepted: f['Waiver Accepted - Full Terms'] === true,
+    // Which waiver was signed online: the adult one (the player for
+    // themselves) or the parent or guardian one. Older waivers say neither.
+    kind: waiverKindOf(text(f, 'Internal Notes')),
   }))
   const t3ById = new Map(term3.map((r) => [r.id, r]))
   const t3ByName = new Map(term3.map((r) => [normName(r.player), r]))
@@ -334,7 +339,7 @@ export function waiverFor(playerName, family, waivers) {
     const dobSame = same.filter((w) => isoDate(w.dob) === isoDate(family.dob))
     if (dobSame.length) { pick = dobSame[0]; how = 'same name and date of birth' }
   }
-  return pick ? { id: pick.id, signedDate: pick.signedDate, term: pick.term, version: pick.version, club: pick.club || '', dob: isoDate(pick.dob), spelling: normName(pick.player) !== n ? pick.player : '', how } : null
+  return pick ? { id: pick.id, signedDate: pick.signedDate, term: pick.term, version: pick.version, kind: pick.kind || '', club: pick.club || '', dob: isoDate(pick.dob), spelling: normName(pick.player) !== n ? pick.player : '', how } : null
 }
 
 // Short and full forms of a first name: Dom and Dominic, Joey and Joseph.
@@ -368,6 +373,8 @@ export function similar(a, b) {
   return (2 * common) / (a.length + b.length - 2)
 }
 
+export const waiverKindOf = (notes) => { const m = String(notes || '').match(/\[WAIVER:(adult|guardian)\]/); return m ? m[1] : '' }
+
 // Waiver rows the system wrote for a booking or request carry a tag in
 // Internal Notes, so a retry never writes a second waiver.
 export async function findWaiversByTag(tag) {
@@ -385,11 +392,16 @@ export async function createWaiverRows(rows) {
   return out
 }
 
-export function waiverFields({ player, parent, config, signature, acceptedAt, media, tag = '' }) {
+// kind: 'adult' (18 or over, the player signs for themselves: no parent or
+// guardian name is written) or 'guardian' (a parent or guardian signs for
+// the player). Saved as [WAIVER:adult] or [WAIVER:guardian] in Internal Notes.
+export function waiverFields({ player, parent, config, signature, acceptedAt, media, tag = '', kind = '' }) {
+  const adult = kind === 'adult'
+  const notes = [tag ? `Signed online. ${tag}` : '', kind ? `${adult ? 'Adult waiver, signed by the player for themselves.' : 'Signed by a parent or guardian.'} [WAIVER:${adult ? 'adult' : 'guardian'}]` : ''].filter(Boolean).join(' ')
   return {
     'Player Full Name': player.name,
     ...(player.dob ? { 'Date of Birth': player.dob } : {}),
-    'Parent/Guardian Name': parent.name,
+    'Parent/Guardian Name': adult ? '' : parent.name,
     'Parent Email': parent.email,
     ...(parent.mobile ? { 'Parent Mobile Number': parent.mobile } : {}),
     ...(player.mobile ? { 'Player Mobile Number': player.mobile } : {}),
@@ -407,9 +419,9 @@ export function waiverFields({ player, parent, config, signature, acceptedAt, me
     'Parent/Guardian Signature': signature,
     'Signed Date': sydneyToday(Date.parse(acceptedAt) || Date.now()),
     'Form Review Status': 'Needs Review',
-    ...(tag ? { 'Internal Notes': `Signed online. ${tag}` } : {}),
+    ...(notes ? { 'Internal Notes': notes } : {}),
     'Programme': 'JFP',
-    'JFP Program Waiver and Agreement': `JFP Program Waiver and Agreement accepted online for ${config.term} (${config.waiverVersion}). Signed by ${signature} at ${acceptedAt}.`,
+    'JFP Program Waiver and Agreement': `JFP Program Waiver and Agreement accepted online for ${config.term} (${config.waiverVersion}${adult ? ', adult version' : kind ? ', parent or guardian version' : ''}). Signed by ${signature}${adult ? ', the player, for themselves' : ''} at ${acceptedAt}.`,
   }
 }
 

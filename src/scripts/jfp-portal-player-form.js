@@ -144,6 +144,7 @@ export function noGroupPaymentHtml(px, pr) {
       <option value="offline">Already paid offline</option>
       <option value="sessions">Session by session: their own price, billed from Money</option>
       <option value="pro">Pro session: Pro sessions price, billed from Money</option></select></label>
+    <p class="muted small" id="${px}-pay-hint" style="margin-top:-6px"></p>
     <div id="${px}-paywhat" hidden><div class="j-two"><label class="j-field"><span>Paying for</span><select class="j-select" id="${px}-prod"><option value="">Type an amount</option><optgroup label="JFP price list">${(pr.products || []).filter((x) => x.key !== 'trial').map((x) => `<option value="${esc(x.key)}">${esc(x.label)} · ${esc(money(x.cents))}${x.perPlaces > 1 ? ' for two' : ''}</option>`).join('')}</optgroup>${customOptions(pr)}</select></label>
       <label class="j-field"><span>Amount (A$)</span><input class="j-input" id="${px}-amt" inputmode="decimal" placeholder="e.g. 850"></label></div>
       <label class="j-check" id="${px}-ap-wrap"><input type="checkbox" id="${px}-afterpay" checked> <span>Afterpay allowed</span></label></div>
@@ -165,6 +166,8 @@ export function wireNoGroupPayment(box, px, pr, { onChange = () => {} } = {}) {
     $('ap-wrap').hidden = pay !== 'link'
     $('fee-wrap').hidden = pay !== 'none'
     $('per-wrap').hidden = !['sessions', 'pro'].includes(pay)
+    // What they find in My account (Lee, 13 Oct 2026).
+    $('pay-hint').textContent = ['sessions', 'pro'].includes(pay) ? 'They can pay for sessions from their account.' : pay === 'none' ? 'They can pay from their account once a term fee is set.' : pay === 'link' ? 'They get a Pay step in their account for this price.' : ''
     // A per-session price picked from the list fills the per-session box.
     onChange(pay)
   }

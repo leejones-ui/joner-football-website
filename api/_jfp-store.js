@@ -195,6 +195,18 @@ export function withPerSession(notes, cents) {
   return cents > 0 ? `${base}${base ? ' ' : ''}[PERSESSION:${cents}]` : base
 }
 
+// Sessions paid in advance from My account (Lee, 13 Oct 2026): a session by
+// session player can prepay their next sessions. The sessions are added to
+// the row's fee when the link is made (as staff billing does); once paid,
+// the count sits in the notes as [PREPAID:<n>], and the next time staff bill
+// sessions from Money that many come off (see sessionInvoice), so nothing is
+// charged twice.
+export const prepaidOf = (notes) => Number(String(notes || '').match(/\[PREPAID:(\d+)\]/)?.[1]) || 0
+export function withPrepaid(notes, n) {
+  const base = String(notes || '').replace(/\s*\[PREPAID:\d+\]/g, '')
+  return n > 0 ? `${base}${base ? ' ' : ''}[PREPAID:${n}]` : base
+}
+
 // A Term 4 row's addresses (rows from an older cache only have .email).
 export const rowEmails = (r) => (r?.emails?.length ? r.emails : emailsIn(r?.email))
 

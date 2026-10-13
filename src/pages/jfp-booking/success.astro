@@ -74,6 +74,16 @@ import '../../styles/jfp.css'
       $('help').hidden = true
       return
     }
+    // Session by session (billed by staff or prepaid from My account): the
+    // sessions are paid; no term place and no kit step.
+    if (p.sessions) {
+      hero('Payment complete', 'Thank you', `${names.join(' and ')}'s sessions are paid. We have emailed you a receipt.`)
+      $('details').innerHTML = [['Players', names.join(', ')], ['Sessions', p.sessions], ['Paid', p.priceLabel], ['Reference', p.id]].map(([k2, v]) => `<dt>${esc(k2)}</dt><dd>${esc(v)}</dd>`).join('')
+      $('calendar').hidden = true
+      $('card').hidden = false
+      $('help').hidden = true
+      return
+    }
     hero('Payment complete', 'Thank you', p.trial
       ? `${names.join(' and ')}'s trial is booked${g ? ` for ${g.day} ${g.time}` : ''}${p.trialDate ? `, ${p.trialDate}` : ''}. We have emailed you the details.`
       : `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} locked in for ${p.term}${g ? `, ${g.day} ${g.time}` : ''}. We have emailed you a receipt.`)

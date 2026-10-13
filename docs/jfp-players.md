@@ -86,3 +86,52 @@ Lee, 13 Oct 2026. What the portal does now, and where it keeps things.
 - KV: `jfp:email-log` (list), `jfp:acct-one-lock:<email>` (60 s).
 - Tests: `scripts/test-jfp-players-own.mjs` (in `npm run test:jfp`) and
   `scripts/test-jfp-players-flow.mjs` (harness, `npm run test:jfp-players-flow`).
+
+## Pay from My account, with no link from staff (13 Oct 2026)
+
+Every place with something to pay and no open payment request gets a Pay
+step on Home (`overview.owed`, `api/_jfp-account-pay.js`):
+
+- `term`: a term fee owing (fee less paid, not session by session, not a
+  trial, not marked Paid or N/A, no plan/scholarship/sponsor/free type):
+  "Pay A$850 for Term 4, <group>". Made as a `balance` request, so the kit
+  step applies as for any term link.
+- `sessions`: session by session with sessions billed and owing but no open
+  link: pay what is owing.
+- `prepay`: session by session with nothing owing: the next 1 to N sessions
+  this term (N = dates left, at most 20) at `[PERSESSION:]`, or the price
+  list's default (a Pro per-session price, the 1 to 1 price, a JFP
+  per-session price, else the group's term price over the weeks). Dates told
+  "can't make it", past, or already on a paid or open prepay link are left out.
+
+`payOwed { rowId, sessions? }` (family action) works the amount out from
+Airtable (never the page), keeps one request per place (a lock, then any open
+request for the row is handed back), needs the waiver first, then runs the
+usual `pay()` checkout. Requests carry `fromAccount: true`.
+
+Prepaid sessions and staff billing: a prepay link adds the sessions to the
+row's fee when it is made (as `sessionInvoice` does), with `restoreFields` so
+a cancelled link takes them off. When paid, `runPayreqEffects` adds the count
+to `[PREPAID:<n>]` in the row's notes. `sessionInvoice` takes that many off
+the sessions it bills (and lowers the tag); if all of them were prepaid it
+bills nothing and answers `{ payreq: null, covered, message }`. Money (and
+Money > Pro sessions) show `prepaidSessions`. Not yet handled: a refund of a
+prepay payment does not lower `[PREPAID:]` (staff adjust the note).
+
+Order on sign in: 1 waiver, 2 pay, 3 player details, on Home and in the
+emails (`sendFamilyInvite` `needs.sessions` / `needs.owingCents`, the account
+invite's numbered list).
+
+## Adult waiver
+
+- Adult (18 or over by date of birth on the day they sign; with no date of
+  birth, `isSelf()`): "Adult waiver and agreement", the same terms in the
+  first person, a required "I am 18 or over and I'm signing for myself" tick
+  (`accepted.adult`), their own signature, no parent or guardian name.
+- Under 18 (and every Joners Juniors child): the parent or guardian waiver.
+- Saved in Internal Notes as `[WAIVER:adult]` or `[WAIVER:guardian]`, and in
+  the agreement text. `waiverFor()` returns `kind`; the board has
+  `waiverKind`, the Players tab `waiver.kind`; staff see "adult waiver,
+  signed by the player" or "parent or guardian waiver".
+- Tests: `scripts/test-jfp-pay-waiver-flow.mjs` (harness,
+  `npm run test:jfp-pay-waiver-flow`).

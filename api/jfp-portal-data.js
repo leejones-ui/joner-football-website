@@ -15,7 +15,7 @@ import {
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
   coachByAirtableName, sessionDates, dateLabel, formatAud, to24h, clean, newId, audit, listAudit, locationFor, validEmail, ageOn,
   normName, cleanPhone, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold, PRO_TYPE, isProType,
-  PRODUCTS, QUESTIONS, productFor, priceFor, paidSiblings, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson, kvGetJson, rowEmails, emailsIn, SESSION_TYPE, isSessionType, withPerSession,
+  PRODUCTS, QUESTIONS, productFor, priceFor, paidSiblings, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson, kvGetJson, rowEmails, emailsIn, SESSION_TYPE, isSessionType, withPerSession, prepaidOf, withPrepaid,
 } from './_jfp-store.js'
 import { coachPhotoUrl } from './jfp-groups.js'
 import {
@@ -82,6 +82,8 @@ function playerView(r, config, roster, { money }) {
     online: Boolean(r.onlineBookingId),
     addedHere: Boolean(r.adminAddId),
     waiver: Boolean(w),
+    // Which waiver: 'adult' (the player for themselves) or 'guardian'; '' for older ones.
+    ...(w?.kind ? { waiverKind: w.kind } : {}),
     kit: r.kit || '',
     dashboard: onDashboard(r),
     ownContact: r.ownContact === true,
@@ -334,7 +336,7 @@ export async function addPlayer(req, res, principal, config, body) {
     const roster = await loadRoster({ fresh: true })
     const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile], dob }, roster.waivers))
     // The player is already added: an email failure must not look like the add failed.
-    sent = await trySend('add player', () => sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq) }, amountCents, trial: isTrial, startDate: from, product, self: ownContact }))
+    sent = await trySend('add player', () => sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq), sessions: perSessionPay, owingCents: !payreq && payment === 'none' && !isTrial ? amountCents : 0 }, amountCents, trial: isTrial, startDate: from, product, self: ownContact }))
     if (payreq && sent.emailed) await savePayreq({ ...payreq, ...(custom ? { productLabel: custom.name } : {}), emailedAt: new Date().toISOString() })
   }
   const emailError = sent.emailError ? `${name} was added, but the email to ${email} did not send. ${sent.emailError} Try again with Account invite on the player.` : ''
@@ -389,7 +391,7 @@ async function playersList(req, res, config, body = {}) {
       paymentType: r.paymentType || '',
       feeAud: r.feeAud, paidAud: r.paidAud, balanceAud: r.balanceAud,
       kit: r.kit || '',
-      waiver: waiver ? { onFile: true, term: waiver.term || '', signedDate: waiver.signedDate || '', how: waiver.how || '', spelling: waiver.spelling || '' } : { onFile: false },
+      waiver: waiver ? { onFile: true, term: waiver.term || '', signedDate: waiver.signedDate || '', how: waiver.how || '', spelling: waiver.spelling || '', kind: waiver.kind || '' } : { onFile: false },
       notes: r.notes || '',
       inGroup: Boolean(gid),
       holdsPlace: r.holdsPlace,
@@ -994,6 +996,8 @@ export async function moneyData(config, { since, fresh = false, quick = false, p
         group: g ? `${g.day} ${g.time}, ${loc.name}` : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Not in a group',
         groupId: r.groupId, locationId: loc.id, locationName: loc.name, coach: g ? coachLabel(coachById(config, g.coachId)) : r.coach,
         feeCents: fee, paidCents: paid, owingCents: status === 'paid' || status === 'stripe' ? 0 : owe, perSessionCents: r.perSessionCents || null,
+        // Sessions prepaid from My account, still to come off the next billing.
+        ...(r.prepaidSessions ? { prepaidSessions: r.prepaidSessions } : {}),
         airtableStatus: r.paymentStatus || 'Not set', type: r.paymentType || '', status,
         // 'stripe': the Stripe money not on the row yet that counts for it,
         // and what is still owing after it (owingCents shows 0 until recorded).
@@ -1696,10 +1700,19 @@ async function sessionInvoice(req, res, principal, config, body) {
     const sessions = Number(a.sessions), per = Number(a.perSessionCents)
     if (!Number.isInteger(sessions) || sessions < 1 || sessions > 20) return fail(res, 400, `How many sessions for ${r.player}? (1 to 20)`)
     if (!Number.isInteger(per) || per < 100 || per > 200000) return fail(res, 400, `Enter the price per session for ${r.player}.`)
-    rows.push({ row: r, sessions, per, cents: sessions * per })
+    // Sessions the player prepaid from My account come off first ([PREPAID:n]).
+    const covered = Math.min(sessions, prepaidOf(r.notes))
+    rows.push({ row: r, sessions, per, covered, cents: (sessions - covered) * per })
   }
   const what = clean(body.what, 120)
   const amountCents = rows.reduce((t, x) => t + x.cents, 0)
+  // Every session asked for was paid in advance: nothing to bill, the
+  // prepaid count goes down and that is all.
+  if (!amountCents) {
+    await updateTerm4Rows(rows.map((x) => ({ id: x.row.id, fields: { 'Term 4 Notes': appendNote(withPrepaid(x.row.notes, prepaidOf(x.row.notes) - x.covered), `Sessions billed by ${principal.name}: ${x.sessions}, all prepaid from My account${what ? ` (${what})` : ''}.`) } })))
+    await audit({ by: principal.email, action: 'player.sessions', target: rows.map((x) => x.row.id).join(','), after: { rows: rows.map((x) => ({ id: x.row.id, sessions: x.sessions, per: x.per, prepaid: x.covered })), what, mode: 'prepaid' } })
+    return res.status(200).json({ success: true, payreq: null, covered: rows.reduce((t, x) => t + x.covered, 0), message: `Nothing to bill: ${rows.map((x) => `${x.row.player}'s ${x.covered} session${x.covered > 1 ? 's were' : ' was'}`).join(', ')} paid in advance from their account.` })
+  }
   const paidNow = body.mode === 'paid'
   const email = rows[0].row.email
   if (!paidNow && !email) return fail(res, 400, `${wordsFor(rows.map((x) => x.row)).noEmail} Add one with Edit first.`)
@@ -1721,11 +1734,12 @@ async function sessionInvoice(req, res, principal, config, body) {
     restoreFields.push({ id: r.id, fields: { 'Term 4 Fee': r.feeAud ?? 0, 'Term 4 Payment Status': r.paymentStatus || 'Unpaid' } })
     // Not yet session by session: the term fee goes; sessions build up from what is paid.
     const fee = (isSessionType(r.paymentType) ? cents(r.feeAud) : cents(r.paidAud)) + x.cents
+    const prepaidLine = x.covered ? `, ${x.covered} of them prepaid from My account so ${x.sessions - x.covered} billed` : ''
     updates.push({ id: r.id, fields: {
       'Term 4 Fee': fee / 100,
       'Term 4 Payment Status': cents(r.paidAud) >= fee ? 'Paid' : cents(r.paidAud) > 0 ? 'Partially Paid' : 'Unpaid',
       ...(isSessionType(r.paymentType) ? {} : { 'Term 4 Payment Type': SESSION_TYPE }),
-      'Term 4 Notes': appendNote(withPerSession(r.notes, x.per), `Sessions billed by ${principal.name}: ${x.sessions} x ${formatAud(x.per)} = ${formatAud(x.cents)}${what ? ` (${what})` : ''}${paidNow ? ', paid' : ', payment link'}.`),
+      'Term 4 Notes': appendNote(withPrepaid(withPerSession(r.notes, x.per), prepaidOf(r.notes) - x.covered), `Sessions billed by ${principal.name}: ${x.sessions} x ${formatAud(x.per)}${prepaidLine} = ${formatAud(x.cents)}${what ? ` (${what})` : ''}${paidNow ? ', paid' : ', payment link'}.`),
     } })
   }
   await updateTerm4Rows(updates)
@@ -1737,7 +1751,7 @@ async function sessionInvoice(req, res, principal, config, body) {
   }
   const sw = wordsFor(rows.map((x) => x.row))
   const q = await createPayreq({ req, principal, config, group: null, rows: rows.map((x) => ({ id: x.row.id, name: x.row.player })), email, parentName: rows[0].row.parent, amountCents, reason: 'sessions', afterpay: false, restoreFields, programme: programmeOfRows(rows.map((x) => x.row)), ownContact: sw.self })
-  q.places = rows.map((x) => ({ rowId: x.row.id, name: x.row.player, label: `${x.sessions} session${x.sessions > 1 ? 's' : ''} at ${formatAud(x.per)}${what ? `, ${what}` : ''}`, feeCents: x.cents, paidCents: 0, owingCents: x.cents }))
+  q.places = rows.filter((x) => x.cents > 0).map((x) => { const n = x.sessions - x.covered; return { rowId: x.row.id, name: x.row.player, label: `${n} session${n > 1 ? 's' : ''} at ${formatAud(x.per)}${x.covered ? ` (${x.covered} more prepaid)` : ''}${what ? `, ${what}` : ''}`, feeCents: x.cents, paidCents: 0, owingCents: x.cents } })
   q.groupLabel = 'Session by session'
   await savePayreq(q)
   let sent = { emailed: false }

@@ -612,6 +612,8 @@ async function openPlayerDetails(rowId, fallback) {
   return p ? plDetail(p) : fallback()
 }
 
+// Which waiver was signed online: the adult one or the parent or guardian one.
+const waiverKindLabel = (k) => (k === 'adult' ? ' (adult waiver, signed by the player)' : k === 'guardian' ? ' (parent or guardian waiver)' : '')
 function detailsModal(p, g) {
   modal(`<h2 style="margin-bottom:12px">${esc(p.name)}</h2>
     <dl class="j-kv">
@@ -620,7 +622,7 @@ function detailsModal(p, g) {
       <dt>Status</dt><dd>${esc(p.status)}</dd>
       <dt>Type</dt><dd>${esc(p.type || 'Not set')}</dd>
       <dt>Payment</dt><dd>${esc(p.paymentStatus)} · paid ${esc(money(p.paidCents))} of ${esc(money(p.feeCents))}</dd>
-      <dt>Waiver</dt><dd>${p.waiver ? 'On file' : 'Not found'}</dd>
+      <dt>Waiver</dt><dd>${p.waiver ? `On file${waiverKindLabel(p.waiverKind)}` : 'Not found'}</dd>
       <dt>${p.ownContact ? 'Contact' : 'Parent'}</dt><dd>${p.ownContact ? 'The player (own contact)' : esc(p.parent || '')}</dd>
       <dt>Email</dt><dd>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : 'None'}</dd>
       <dt>Mobile</dt><dd>${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : 'None'}</dd>
@@ -755,6 +757,15 @@ function removeModal(p, g, after) {
   })
 }
 
+// What staff see under "How they pay": what the family gets in My account.
+function payHint(v, words = {}) {
+  const they = words.self ? 'They' : 'The family'
+  if (v === 'link') return `${they} get a Pay step in their account for this price, after the waiver. No separate link needed.`
+  if (v === 'sessions' || v === 'pro') return 'They can pay for sessions from their account: the next session at their price, or more ahead. Sessions you bill from Money show there too.'
+  if (v === 'none') return 'They can pay from their account. Any term fee on the row shows there with a Pay button.'
+  return ''
+}
+
 // Add a player by hand. With spotLink, the family gets a link to this spot:
 // they sign in, add details, sign the waiver and pay. The place is held for
 // them in Airtable as Awaiting Reply until it is paid.
@@ -767,7 +778,8 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     ${playerFormHtml('ap', { add: true, opts: { clubs: P.clubs || [] } })}
     <h3>Payment</h3>
     <label class="j-field"><span>Payment</span><select class="j-select" id="ap-pay">
-      <option value="link" selected>Payment link: they sign in, confirm the waiver and pay</option><option value="offline">Already paid offline</option><option value="sessions">Session by session: their own price, billed from Money</option><option value="pro">Pro session: Pro sessions price, billed from Money</option><option value="trial">Free trial, no payment</option><option value="none">Decide later</option></select></label>
+      <option value="link" selected>A price: they sign in, sign the waiver and pay it (pick it below)</option><option value="offline">Already paid offline</option><option value="sessions">Session by session: their own price a session</option><option value="pro">Pro session: Pro sessions price a session</option><option value="trial">Free trial, no payment</option><option value="none">Decide later</option></select></label>
+    <p class="muted small" id="ap-pay-hint" style="margin-top:-6px"></p>
     <div id="ap-price"></div>
     <label class="j-field" id="ap-trial-wrap" hidden><span>Trial date</span><select class="j-select" id="ap-trial">${dateOptions(pr, g.day, nextDate(pr, g.day))}</select></label>
     <label class="j-field" id="ap-per-wrap" hidden><span>Price per session (A$) <span class="muted">(optional, or set it when you bill)</span></span><input class="j-input" id="ap-per" inputmode="decimal" placeholder="e.g. 80"></label>
@@ -782,6 +794,8 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     box.querySelector('#ap-price').hidden = !['link', 'offline'].includes(v)
     box.querySelector('#ap-per-wrap').hidden = !['sessions', 'pro'].includes(v)
     box.querySelector('#ap-trial-wrap').hidden = v !== 'trial'
+    // What the family will find when they sign in (Lee, 13 Oct 2026).
+    box.querySelector('#ap-pay-hint').textContent = payHint(v, words)
     box.querySelector('#ap-price-afterpay').closest('label').hidden = v !== 'link'
     box.querySelector('#ap-send-l').textContent = words.self
       ? `Email ${words.contact} now. They sign in, sign their waiver, pay for this group, then get the training kit.`
@@ -1661,6 +1675,7 @@ function editPlayerModal(p) {
     <div class="j-two"><label class="j-field"><span>Fee for this place (A$)</span><input class="j-input" id="ep-fee" inputmode="decimal" value="${p.feeCents == null ? '' : p.feeCents / 100}" placeholder="not set"></label>
     <label class="j-field"><span>Payment type</span><select class="j-select" id="ep-type"><option value="">Not set</option>${[...new Set([...PAY_TYPES, p.type].filter(Boolean))].map((t) => `<option ${t === p.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label></div>
     <label class="j-field" id="ep-per-wrap"><span>Price per session (A$), for session by session</span><input class="j-input" id="ep-per" inputmode="decimal" value="${p.perSessionCents ? p.perSessionCents / 100 : ''}" placeholder="e.g. 50"></label>
+    <p class="muted small" style="margin-top:-6px">Session by session: they can pay for sessions from their account. A fee with no payment link: they can pay from their account.</p>
     <div class="j-two"><label class="j-field"><span>Parent name</span><input class="j-input" id="ep-parent" value="${esc(p.parent || '')}"></label>
     <label class="j-field"><span>Mobile</span><input class="j-input" id="ep-phone" inputmode="tel" value="${esc(p.phone || '')}"></label></div>
     <label class="j-field"><span>Parent email</span><input class="j-input" id="ep-email" inputmode="email" value="${esc(p.email || '')}"></label>
@@ -2522,7 +2537,7 @@ async function plEdit(p) {
     ${playerFormHtml('pe', { row: d.row, v, opts })}
     <details class="jq-fold jpf-fold" id="pe-payfold"><summary>Payment: ${esc(d.row.paymentType || 'type not set')}${d.row.feeAud != null ? `, fee ${esc(money0(d.row.feeAud))}` : ''}</summary>
       <label class="j-field"><span>Payment type</span><select class="j-select" id="pe-type"><option value="">Not set</option>${types.map((t) => `<option ${t === d.row.paymentType ? 'selected' : ''}>${esc(t)}</option>`).join('')}${d.row.paymentType && !types.includes(d.row.paymentType) ? `<option selected>${esc(d.row.paymentType)}</option>` : ''}</select></label>
-      <p class="muted small" style="margin-top:-6px">Session by session and Pro sessions owe nothing until sessions are billed from Money. Pro sessions money shows under Pro sessions, not JFP term income.</p>
+      <p class="muted small" style="margin-top:-6px">Session by session and Pro sessions: they can pay for sessions from their account (the next session at their price, or more ahead), and sessions you bill from Money show there too. A term fee with no link: they can pay from their account. Pro sessions money shows under Pro sessions, not JFP term income.</p>
       <label class="j-field" id="pe-per-wrap"><span>Price per session (A$) <span class="muted">(session by session and Pro sessions)</span></span><input class="j-input" id="pe-per" inputmode="decimal" value="${esc(per)}" placeholder="e.g. 80"></label>
       <div class="j-two"><label class="j-field"><span>Term 4 fee (A$)</span><input class="j-input" id="pe-fee" inputmode="decimal" value="${esc(d.row.feeAud ?? '')}"></label>
       <label class="j-field"><span>Set the fee from a price <span class="muted">(optional)</span></span><select class="j-select" id="pe-price"><option value="">Choose a price</option>${pr ? `<optgroup label="JFP price list">${(pr.products || []).map((x) => `<option value="${x.cents}" data-type="${esc(x.type)}">${esc(x.label)} · ${esc(money(x.cents))}</option>`).join('')}</optgroup>${customPrices(pr).map((x) => `<option value="${x.cents}" data-type="${x.programme === 'pro' ? 'JFP Pro sessions' : ''}" data-per="${x.perSession ? '1' : ''}">${esc(x.name)} · ${esc(x.amountLabel || money(x.cents))}${x.perSession ? ' a session' : ''}</option>`).join('')}` : ''}</select></label></div>
@@ -2627,7 +2642,7 @@ function plDetail(p) {
     <h3 style="margin-top:14px">Emails</h3>
     <div id="pd-emails" class="jpf-emails"><p class="muted small">Checking the email log…</p></div>
     <h3 style="margin-top:14px">Paperwork</h3>
-    ${row('Waiver', p.waiver.onFile ? `On file${p.waiver.term ? `, ${p.waiver.term}` : ''}${p.waiver.signedDate ? `, signed ${p.waiver.signedDate}` : ''}${p.waiver.spelling ? `, signed as "${p.waiver.spelling}"` : ''}` : 'Not signed (no waiver in Airtable for this player)')}
+    ${row('Waiver', p.waiver.onFile ? `On file${waiverKindLabel(p.waiver.kind)}${p.waiver.term ? `, ${p.waiver.term}` : ''}${p.waiver.signedDate ? `, signed ${p.waiver.signedDate}` : ''}${p.waiver.spelling ? `, signed as "${p.waiver.spelling}"` : ''}` : 'Not signed (no waiver in Airtable for this player)')}
     ${row('Playing kit', p.kit || 'not confirmed')}
     ${p.notes ? `<h3 style="margin-top:14px">Notes</h3><p class="small" style="white-space:pre-wrap;max-height:220px;overflow:auto">${esc(p.notes)}</p>` : ''}
     <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="pd-text">${esc(w.textWho)}</button><button type="button" class="j-btn j-btn-dark" id="pd-edit">Edit</button></div>`, { wide: true })

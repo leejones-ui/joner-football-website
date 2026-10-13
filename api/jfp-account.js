@@ -7,6 +7,9 @@
 //   overview    everything above
 //   signWaiver  sign the waiver for players who do not have one on file
 //   pay         start Stripe Checkout for an open payment request
+//   payOwed     a place with something to pay and no request yet (term fee
+//               owing, session by session): make the request, then pay
+//               (_jfp-account-pay.js)
 //   cancelSession / withdrawCancel   "Can't make a session" (KV only)
 //   nextTermInterest   "I want to keep my spot" before next term opens (no payment)
 //   profiles / saveProfile   Player information: club, position, contacts (Airtable)
@@ -24,6 +27,7 @@ import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache,
 import { sessionFor, sameOrigin } from './_jfp-people.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, nextInterest, interestKey } from './_jfp-next.js'
 import { jjAccountView, jjPay, jjRequestPay, jjNextChoice, familyJJ, jjWaiverRows, markJJWaivers } from './_jj-account.js'
+import { owedItems, payOwed as makeOwedPayreq } from './_jfp-account-pay.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -54,8 +58,10 @@ function ownsPayreq(q, fam, email) {
   return Boolean(q) && !q.quick && emailsIn(q.email).some((e) => mine.has(e))
 }
 
-function paymentLine(row, openReq) {
+function paymentLine(row, openReq, owed) {
   if (openReq) return { state: 'due', label: `${formatAud(openReq.amountCents)} to pay`, payreqId: openReq.id }
+  // Owing with no link yet: the Pay step on Home makes one (_jfp-account-pay.js).
+  if (owed?.amountCents) return { state: 'due', label: `${owed.amountLabel} to pay` }
   if (/trial/i.test(row.paymentType)) return { state: 'trial', label: row.paymentStatus === 'Paid' ? 'Trial booked and paid' : 'Trial' }
   // Pros and casuals pay for the sessions they come to (billed from Money).
   if (isProType(row.paymentType)) return { state: 'sessions', label: 'Pro sessions, paid by the session' }
@@ -89,14 +95,22 @@ async function overview(res, parent, body = {}) {
   // Saved photos, and whether the account holder is the player (Pros, adults).
   const profs = await familyProfiles(parent.email).catch(() => [])
   const profOf = (p) => (p.term4.length ? pickProfile(profs, { key: profileKey(p.name, p.term4[0].email || parent.email), rowIds: p.term4.map((r) => r.id) }) : null)
+  // Anything owing on a place with no open payment request (term fee, or
+  // session by session): a Pay step, made into a request when they tap it.
+  const owed = owedItems({ config, players: jfpPlayers, payreqs: mine, byGroup, cancels: myCancels, nowMs })
+  const owedByRow = new Map(owed.map((x) => [x.rowId, x]))
   const players = jfpPlayers.map((p) => ({
     key: p.key,
     name: p.name,
     age: p.age,
     self: isSelf(p, fam, profOf(p)?.dob),
+    // Which waiver they sign: the adult one (18 or over, for themselves) or
+    // the parent or guardian one. The sheet changes if a date of birth typed
+    // in says otherwise; the server decides again when it is signed.
+    adult: adultFor(p, fam, profOf(p)?.dob),
     photo: profOf(p)?.photo || '',
-    needsDob: !p.dob,
-    waiver: p.waiver ? { onFile: true, signedDate: p.waiver.signedDate, term: p.waiver.term } : { onFile: false },
+    needsDob: !p.dob && !profOf(p)?.dob,
+    waiver: p.waiver ? { onFile: true, signedDate: p.waiver.signedDate, term: p.waiver.term, kind: p.waiver.kind || '' } : { onFile: false },
     // A place staff have confirmed but not yet given a day and time.
     placeNoSession: p.term4.some((r) => r.holdsPlace && !r.groupId),
     ownContact: p.term4.length > 0 && p.term4.every((r) => r.ownContact),
@@ -118,7 +132,7 @@ async function overview(res, parent, body = {}) {
         locationId: loc.id, photo: loc.photo || '', durationMin: Number(g.durationMin) || 60,
         coach: coach ? `Coach ${coachLabel(coach)}` : '', status: r.confirmation || 'Confirmed',
         dates: dates.map(dateLabel), firstDate: dates[0] ? dateLabel(dates[0]) : '',
-        payment: paymentLine(r, openReq),
+        payment: paymentLine(r, openReq, owedByRow.get(r.id)),
         sessions,
         // Coach mobiles, only where one has been entered. Never an email.
         contacts: coachesFor(config, r, byGroup[r.groupId] || null).filter((c) => c.phone).map((c) => ({ name: `Coach ${coachLabel(c)}`, phone: formatPhone(c.phone), tel: c.phone })),
@@ -176,6 +190,8 @@ async function overview(res, parent, body = {}) {
     kitPriceLabel: config.kitPriceLabel,
     players,
     todo,
+    // Order on sign in (Lee, 13 Oct 2026): 1 waiver, 2 pay, 3 player details.
+    owed,
     reasons: Object.entries(REASONS).map(([key, label]) => ({ key, label })),
     noteMax: NOTE_MAX,
     paid: mine.filter((q) => q.status === 'paid').map((q) => ({ id: q.id, amountLabel: formatAud(q.paidCents ?? q.amountCents), players: q.playerNames, paidAt: q.paidAt })),
@@ -222,6 +238,7 @@ async function signWaiver(res, parent, body) {
   const fam = withDobs(familyFor(parent.email, roster, config.termStart), dobsFrom(await listApplications(), parent.email), config.termStart)
   const a = body.waiver?.accepted || {}
   if (!(a.terms && a.makeups && a.payment && a.emergency)) return fail(res, 400, 'Tick each part of the waiver to continue.')
+  const profs = await familyProfiles(parent.email).catch(() => [])
   const signature = clean(body.waiver?.signature, 100)
   if (signature.length < 3) return fail(res, 400, 'Type your full name to sign the waiver.')
   const parentName = clean(body.parentName, 100) || fam.parentName
@@ -246,20 +263,27 @@ async function signWaiver(res, parent, body) {
     const p = fam.players.find((f) => f.key === clean(x.key, 80))
     if (!p) return fail(res, 404, 'We could not find that player on your account.')
     if (p.waiver) continue
-    const dob = p.dob || clean(x.dob, 10)
+    // The date of birth staff saved on the player information counts too.
+    const prof = p.term4.length ? pickProfile(profs, { key: profileKey(p.name, p.term4[0].email || parent.email), rowIds: p.term4.map((r) => r.id) }) : null
+    const dob = p.dob || (ISO.test(prof?.dob || '') ? prof.dob : '') || clean(x.dob, 10)
     if (!ISO.test(dob) || ageOn(dob, config.termStart) == null) return fail(res, 400, `Enter ${p.name}'s date of birth.`)
     const emergencyName = clean(x.emergencyName, 100), emergencyPhone = clean(x.emergencyPhone, 40)
     if (emergencyName.length < 2 || !phoneOk(emergencyPhone)) return fail(res, 400, `Add an emergency contact for ${p.name}.`)
+    // 18 or over by date of birth: the adult waiver, signed by the player.
+    // Under 18: always the parent or guardian waiver.
+    const kind = adultFor(p, fam, prof?.dob, dob) ? 'adult' : 'guardian'
+    if (kind === 'adult' && a.adult !== true) return fail(res, 400, `Tick "I am 18 or over and I'm signing for myself" to sign ${p.name}'s waiver.`, { code: 'adult' })
+    if (kind === 'guardian' && body.waiver?.kind === 'adult') return fail(res, 400, `${p.name} is under 18, so a parent or guardian signs. Close this and sign again.`, { code: 'guardian' })
     rows.push(waiverFields({
-      player: { name: p.name, dob, club: clean(x.club, 120), medical: clean(x.medical, 500), emergencyName, emergencyPhone },
-      parent: { name: parentName, email: parent.email, mobile }, config, signature, acceptedAt, media: body.waiver?.media === true,
+      player: { name: p.name, dob, club: clean(x.club, 120), medical: clean(x.medical, 500), emergencyName, emergencyPhone, ...(kind === 'adult' ? { mobile } : {}) },
+      parent: { name: parentName, email: parent.email, mobile }, config, signature, acceptedAt, media: body.waiver?.media === true, kind,
     }))
   }
   if (!rows.length) return res.status(200).json({ success: true, created: 0 })
   const ids = await createWaiverRows(rows)
   await bustRosterCache()
   if (jjRowIds.length) await markJJWaivers(config, jjRowIds, parentName)
-  await audit({ by: parent.email, action: 'waiver.signed', target: ids.join(','), after: { players: rows.map((r) => r['Player Full Name']) } })
+  await audit({ by: parent.email, action: 'waiver.signed', target: ids.join(','), after: { players: rows.map((r) => r['Player Full Name']), kinds: rows.map((r) => (/\[WAIVER:adult\]/.test(r['Internal Notes'] || '') ? 'adult' : 'guardian')) } })
   return res.status(200).json({ success: true, created: ids.length })
 }
 
@@ -294,6 +318,16 @@ function isSelf(p, fam, profileDob = '') {
   if (age != null && age >= 18) return true
   if (!fam.parentName) return fam.players.filter((x) => x.term4.length).length === 1
   return bareName(p.name) === bareName(fam.parentName)
+}
+
+// The adult waiver or the parent or guardian one. A date of birth decides
+// (18 or over on the day they sign); with none on file yet, isSelf() does
+// (their own contact, or the account is theirs), and the date of birth they
+// type on the waiver settles it when they sign.
+function adultFor(p, fam, profileDob = '', typedDob = '') {
+  const age = ageOn(typedDob || profileDob || p.dob || '', sydneyToday())
+  if (age != null) return age >= 18
+  return isSelf(p, fam, profileDob)
 }
 
 // This family's current players, each with their saved profile or, the first
@@ -434,6 +468,22 @@ function lineItems(q, name) {
   return out
 }
 
+// Pay for a place with no payment request yet (term fee owing, session by
+// session). Makes the request (or hands back the open one), then the same
+// checkout as pay().
+async function payOwed(req, res, parent, body) {
+  const config = await getConfig()
+  const [roster, groups, allCancels] = await Promise.all([loadRoster({ fresh: true }), listGroups(), listCancels()])
+  const fam = familyFor(parent.email, roster, config.termStart)
+  const out = await makeOwedPayreq({
+    config, parent, fam, byGroup: Object.fromEntries(groups.map((g) => [g.id, g])),
+    cancels: allCancels.filter((c) => c.email === parent.email && c.status === 'active'),
+    site: siteUrl(req), body,
+  })
+  if (!out.ok) return fail(res, out.status, out.error, out.code ? { code: out.code } : {})
+  return pay(req, res, parent, { payreqId: out.payreqId })
+}
+
 async function pay(req, res, parent, body) {
   const q = await getPayreq(body.payreqId)
   if (!q || !ownsPayreq(q, familyFor(parent.email, await loadRoster(), (await getConfig()).termStart), parent.email)) return fail(res, 404, 'We could not find that payment.')
@@ -514,6 +564,7 @@ export default async function handler(req, res) {
     if (body.action === 'signWaiver') return await signWaiver(res, parent, body)
     if (body.action === 'confirmKit') return await confirmKit(res, parent, body)
     if (body.action === 'pay') return await pay(req, res, parent, body)
+    if (body.action === 'payOwed') return await payOwed(req, res, parent, body)
     if (body.action === 'nextTermChoice') return await nextTermChoice(req, res, parent, body)
     if (body.action === 'nextTermInterest') return await nextTermInterest(res, parent, body)
     if (body.action === 'profiles') return await profiles(res, parent)

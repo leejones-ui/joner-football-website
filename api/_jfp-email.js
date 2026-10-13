@@ -184,8 +184,8 @@ export function accountInvite({ parentName, players, config, signInUrl, payUrl =
   const body = `${p(`Hi ${esc(w.hi)},`)}
 ${p(self ? `Joner Football has a new booking system, and your account is ready. Sign in with this email address to see your ${esc(term)} sessions, every date and your payments.` : `Joner Football has a new booking system, and your account is ready. Sign in with this email address to see ${esc(who)}'s ${esc(term)} sessions, every date and your payments.`)}
 ${rows(players.map((x) => [esc(x.name), esc(x.group)]))}
-${owing ? p(`There is <b>${esc(formatAud(amountCents))}</b> to pay for ${esc(term)}. You can pay by card, Apple Pay, Google Pay or Afterpay. The place is locked in once it is paid.`) : p(self ? 'Your place is confirmed. Nothing to pay.' : 'Your place is confirmed. Nothing to pay.')}
-${needsWaiver ? p(self ? 'When you sign in, please also sign your waiver. It takes a minute.' : 'When you sign in, please also sign the player waiver. It takes a minute.') : ''}
+${needsWaiver ? p(self ? 'When you sign in, first sign your waiver. It takes a minute.' : 'When you sign in, first sign the player waiver. It takes a minute.') : ''}
+${owing ? p(`${needsWaiver ? 'Then pay' : 'There is'} <b>${esc(formatAud(amountCents))}</b>${needsWaiver ? '' : ' to pay'} for ${esc(term)}. You can pay by card, Apple Pay, Google Pay or Afterpay. The place is locked in once it is paid.`) : p(self ? 'Your place is confirmed. Nothing to pay.' : 'Your place is confirmed. Nothing to pay.')}
 ${p('There is no password. Enter your email and we send you a 6 digit code.')}
 ${button(owing ? 'Sign in and pay' : 'Sign in to your account', owing ? payUrl : signInUrl)}
 ${p('Questions? Just reply to this email.')}`
@@ -207,7 +207,10 @@ ${p(self ? 'JFP has moved to our new booking system, and you already have an acc
 ${p('<b>How to sign in</b>')}
 ${ol([li(`Go to ${link('jonerfootball.com/jfp-account', signInUrl)}`), li(`Enter <b>${esc(email || 'the email this message came to')}</b>. This is the email we have on file for you, so please use this one and ${self ? 'your sessions' : 'your players'} will be there waiting.`), li('We email you a 6 digit code. Type it in. There is no password.')])}
 ${p('<b>In your account you will find</b>')}
-${list([li(self ? `Your group, coach, location and every ${esc(term)} date` : `${esc(who)}'s group, coach, location and every ${esc(term)} date`), li(`${esc(term)} information`), li(`${self ? 'Your waiver' : 'The player waiver'}${needsWaiver ? ' (<b>still to sign</b>)' : ', if it still needs signing'}`), li(`Anything left to pay for ${esc(term)}. You can pay there by card, Apple Pay, Google Pay or Afterpay.`), li('A "Can\'t make a session" button to let the coach know')])}
+${p('<b>When you sign in, in this order</b>')}
+${ol([li(`${self ? 'Sign your waiver' : 'Sign the player waiver'}${needsWaiver ? ' (<b>still to sign</b>)' : ', if it still needs signing'}`), li(`Pay anything left for ${esc(term)}, by card, Apple Pay, Google Pay or Afterpay${self ? '. Session by session? Pay for your sessions there too' : ''}.`), li(self ? 'Check your player details: club, position and who to call in an emergency' : 'Check the player details: club, position and who to call in an emergency')])}
+${p('<b>In your account you will also find</b>')}
+${list([li(self ? `Your group, coach, location and every ${esc(term)} date` : `${esc(who)}'s group, coach, location and every ${esc(term)} date`), li(`${esc(term)} information`), li('A "Can\'t make a session" button to let the coach know')])}
 ${p('<b>Already paid, or arranged payment with Ligia? Please ignore the payment part.</b>')}
 ${button('Sign in to your account', signInUrl)}
 ${p('Booked with a different email? Reply to this email and Ligia will link it for you.')}
@@ -239,17 +242,22 @@ const howToSignIn = (to, self = false) => p(`<b>How to sign in:</b> press the bu
 // group can be null: a player added on the Players tab with no session yet.
 export async function sendFamilyInvite({ to, parentName, playerNames, group, config, url, needs, amountCents, trial = false, startDate = '', product = '', self = false }) {
   const w = contactWords({ self, players: playerNames, parent: parentName })
+  // The order they find on sign in (Lee, 13 Oct 2026): 1 waiver, 2 pay,
+  // 3 player details. needs.sessions: session by session, paid from the
+  // account; needs.owingCents: a term fee with no link, paid from the account.
   const todo = []
-  if (needs.details) todo.push(self ? 'add your details' : 'add the player details')
   if (needs.waiver) todo.push(self ? 'sign your waiver' : 'sign the waiver')
   if (needs.payment) todo.push(`pay ${formatAud(amountCents)}`)
+  else if (needs.owingCents > 0) todo.push(`pay ${formatAud(needs.owingCents)}`)
+  else if (needs.sessions) todo.push(self ? 'pay for your sessions' : 'pay for the sessions')
+  if (needs.details) todo.push(self ? 'add your details' : 'add the player details')
   const list = todo.length ? `${todo.slice(0, -1).join(', ')}${todo.length > 1 ? ' and ' : ''}${todo.at(-1)}` : ''
   const what = trial && group ? `a trial session in ${esc(group.day)} ${esc(group.time)}` : `a place in ${esc(config.term)}`
   const intro = self ? `Hi ${esc(w.hi)}, you have ${what}.` : `Hi ${esc(w.hi)}, ${esc(playerNames.join(' and '))} ${playerNames.length > 1 ? 'have' : 'has'} ${what}.`
   const body = `${p(intro)}
 ${group ? rows([...(trial && startDate ? [['Trial', esc(dateLabel(startDate))]] : []), ...groupRows(config, group, trial ? '' : startDate, product)]) : p('We will confirm the group, day and time with you. Everything is in your account as soon as it is set.')}
-${list ? p(`To finish, sign in with this email address and ${esc(list)}. It takes a couple of minutes.${needs.payment ? ' The place is locked in once it is paid.' : ''}`) : p('Sign in with this email address to see the booking.')}
-${button(needs.payment ? 'Sign in and finish' : 'View the booking', url)}
+${list ? p(`To finish, sign in with this email address and ${esc(list)}. It takes a couple of minutes.${needs.payment || needs.owingCents > 0 ? ' The place is locked in once it is paid.' : ''}`) : p('Sign in with this email address to see the booking.')}
+${button(needs.payment || needs.owingCents > 0 || needs.sessions ? 'Sign in and finish' : 'View the booking', url)}
 ${howToSignIn(to, self)}
 ${kitLine(config)}`
   const subject = trial ? (self ? 'Your JFP trial' : `${playerNames.join(' and ')}: your JFP trial`) : (self ? `Your ${config.term} place` : `${playerNames.join(' and ')}: your ${config.term} place`)

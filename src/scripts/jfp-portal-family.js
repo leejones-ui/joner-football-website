@@ -153,7 +153,7 @@ export function sessionModal(p, ui) {
   const box = ui.modal(`<h2 style="margin-bottom:4px">Sessions: ${esc(p.player)}</h2>
     <p class="muted small" style="margin-bottom:12px">Pays session by session. Enter the sessions to bill and the price per session; it is added to their fee in Airtable, so Money and the ledger stay right.</p>
     ${kin.map((x) => `<div class="jf-srow" data-srow="${esc(x.rowId)}">
-      <label class="j-check"><input type="checkbox" data-on ${x.rowId === p.rowId ? 'checked' : ''}> <span><b>${esc(x.player)}</b><br><span class="muted small">${esc(x.group)}</span></span></label>
+      <label class="j-check"><input type="checkbox" data-on ${x.rowId === p.rowId ? 'checked' : ''}> <span><b>${esc(x.player)}</b><br><span class="muted small">${esc(x.group)}</span>${x.prepaidSessions ? `<br><span class="small" style="color:#027A48">${esc(x.prepaidSessions)} session${x.prepaidSessions > 1 ? 's' : ''} paid in advance from their account. They come off what you bill here.</span>` : ''}</span></label>
       <div class="j-two"><label class="j-field"><span>Sessions</span><input class="j-input" data-n inputmode="numeric" value="1"></label>
       <label class="j-field"><span>Price per session (A$)</span><input class="j-input" data-per inputmode="decimal" value="${x.perSessionCents ? x.perSessionCents / 100 : ''}" placeholder="e.g. 50"></label></div></div>`).join('')}
     <label class="j-field"><span>Which sessions (optional, shows on the invoice)</span><input class="j-input" id="ss-what" placeholder="e.g. 8 and 15 October"></label>
@@ -170,7 +170,7 @@ export function sessionModal(p, ui) {
   const picked = () => [...box.querySelectorAll('[data-srow]')].filter((r) => r.querySelector('[data-on]').checked).map((r) => ({ rowId: r.dataset.srow, sessions: Math.round(Number(r.querySelector('[data-n]').value)), perSessionCents: Math.round(Number(r.querySelector('[data-per]').value) * 100) }))
   const paint = () => {
     const rows = picked()
-    box.querySelector('#ss-total').textContent = money(rows.reduce((t, x) => t + (x.sessions > 0 && x.perSessionCents > 0 ? x.sessions * x.perSessionCents : 0), 0))
+    box.querySelector('#ss-total').textContent = money(rows.reduce((t, x) => t + (x.sessions > 0 && x.perSessionCents > 0 ? Math.max(0, x.sessions - (kin.find((k) => k.rowId === x.rowId)?.prepaidSessions || 0)) * x.perSessionCents : 0), 0))
     box.querySelector('#ss-link').hidden = mode() !== 'link'; box.querySelector('#ss-paid').hidden = mode() !== 'paid'
     box.querySelector('#ss-go').textContent = mode() === 'link' ? 'Send link' : 'Record payment'
   }
@@ -185,7 +185,7 @@ export function sessionModal(p, ui) {
     if (!r.ok && r.data.code === 'link_open') { if (await ui.confirmBox(esc(r.data.error), { ok: 'Replace it' })) return go(true); return }
     if (!r.ok) { err.textContent = r.data.error; err.hidden = false; return }
     ui.closeModal()
-    if (r.data.payreq) { try { await navigator.clipboard.writeText(r.data.payreq.url) } catch {} ui.toast(`Link for ${r.data.payreq.amountLabel} ${r.data.emailed ? 'emailed' : 'made'}. Link copied.`, 6000) } else ui.toast(`Recorded ${r.data.recorded}`)
+    if (r.data.payreq) { try { await navigator.clipboard.writeText(r.data.payreq.url) } catch {} ui.toast(`Link for ${r.data.payreq.amountLabel} ${r.data.emailed ? 'emailed' : 'made'}. Link copied.`, 6000) } else ui.toast(r.data.message || `Recorded ${r.data.recorded}`, r.data.message ? 7000 : 3600)
     ui.done()
   }
   box.querySelector('#ss-go').addEventListener('click', () => go())

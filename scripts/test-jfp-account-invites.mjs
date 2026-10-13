@@ -3,7 +3,7 @@
 // portal can see who has. Run against the local harness (fake Brevo):
 //   npm run build && node scripts/holiday-local.mjs   (one terminal)
 //   node scripts/test-jfp-account-invites.mjs         (another)
-const B = 'http://localhost:4321', O = { origin: B, 'content-type': 'application/json' }
+const B = `http://localhost:${Number(process.argv[2] || 4321)}`, O = { origin: B, 'content-type': 'application/json' }
 function client() {
   const jar = new Map(); const ck = () => [...jar].map(([k, v]) => `${k}=${v}`).join('; ')
   return async (p, body) => {

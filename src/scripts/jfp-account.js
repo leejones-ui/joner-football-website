@@ -268,8 +268,9 @@ function ticket({ p, e, next }) {
   </article>`
 }
 
-// What a family still has to do: payments (waiver, kit, pay), waivers, and
-// player information Lee and Ligia need for grouping.
+// What a family still has to do, in the order Lee wants on sign in (13 Oct
+// 2026): 1 sign the waiver, 2 pay (payment requests, then anything owing
+// with no link yet), 3 player information Lee and Ligia need for grouping.
 function infoGaps() {
   if (!PROF) return []
   return PROF.players.map((p) => ({ p, missing: missingInfo({ ...p.prefill, ...(p.profile || {}) }, Boolean(p.profile)) })).filter((x) => x.missing.length)
@@ -282,6 +283,32 @@ function missingInfo(v, saved) {
   if (!v.emergencyName || !v.emergencyPhone) out.push('emergency contact')
   return out
 }
+function stepList(kicker, title, rows) {
+  return rows.length ? `<div class="ja-card ja-todo"><div class="ja-card-head"><div><p class="ja-kicker"><i></i>${esc(kicker)}</p><h3 class="ja-h3" style="margin-top:8px;font-size:18px">${esc(title)}</h3></div></div><ul class="ja-list">${rows.map((r, i) => `<li class="ja-row"><span class="ja-num">${i + 1}</span><div><b>${esc(r.title)}</b><small>${esc(r.sub)}</small></div>${r.btn}</li>`).join('')}</ul></div>` : ''
+}
+const waiverStep = (needs, btn) => `<li class="ja-row"><span class="ja-num ${needs ? '' : 'done'}">${needs ? '1' : ic('check')}</span><div><b>Waiver</b><small>${needs ? 'Sign the JFP waiver first.' : 'On file.'}</small></div>${needs ? btn : ''}</li>`
+// Session by session with nothing billed: pay for the next sessions now.
+function prepayPicker(o) {
+  const opts = Array.from({ length: o.max }, (_, i) => i + 1)
+  return `<div class="ja-prepay" data-prepay="${esc(o.rowId)}" style="margin-top:10px">
+    <label class="j-field" style="margin:0"><span>How many sessions?</span><select class="j-select" data-owed-n="${esc(o.rowId)}">${opts.map((n) => `<option value="${n}">${n} session${n > 1 ? 's' : ''}, ${esc(money(n * o.perCents))}</option>`).join('')}</select></label>
+    <p class="ja-small ja-muted" data-owed-dates="${esc(o.rowId)}" style="margin-top:8px">${esc(o.dates[0]?.label || '')}</p></div>`
+}
+const money = (c) => `A$${(c / 100).toFixed(2).replace(/\.00$/, '')}`
+function owedCard(o) {
+  const pay = `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-owed="${esc(o.rowId)}" ${o.needsWaiver ? 'disabled title="Sign the waiver first"' : ''}>Pay</button>`
+  const what = o.kind === 'term'
+    ? `<b>Pay ${esc(o.amountLabel)}</b><small>${esc(D.term)}, ${esc(o.group)}. Locks the place in. Card, Apple Pay or Afterpay.</small>`
+    : o.kind === 'sessions'
+      ? `<b>Pay ${esc(o.amountLabel)}</b><small>For the sessions Joner Football has billed. Card or Apple Pay.</small>`
+      : `<b>Pay for your sessions</b><small>${esc(o.perLabel)} a session. Pay for the next ones now, card or Apple Pay.</small>${prepayPicker(o)}`
+  return `<div class="ja-card ja-todo" data-todo-owed="${esc(o.rowId)}">
+    <div class="ja-card-head"><div><p class="ja-kicker"><i></i>${o.kind === 'term' ? 'Pay for your place' : 'Pay for your sessions'}</p><h3 class="ja-h3" style="margin-top:8px;font-size:18px">${esc(o.player)}</h3>
+    <p class="ja-muted ja-small" style="margin-top:3px">${esc(o.group)}</p></div></div>
+    <ul class="ja-list">${waiverStep(o.needsWaiver, `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-player="${esc(o.playerKey)}">Sign</button>`)}
+      <li class="ja-row"><span class="ja-num">2</span><div>${what}</div>${pay}</li></ul>
+  </div>`
+}
 function todoCards() {
   const want = q.get('pay')
   const pays = [...D.todo].sort((x, y) => Number(y.id === want) - Number(x.id === want)).map((t) => `
@@ -289,21 +316,22 @@ function todoCards() {
       <div class="ja-card-head"><div><p class="ja-kicker"><i></i>${t.reason === 'trial' ? 'Book the trial' : t.reason === 'sessions' ? 'Sessions to pay' : 'Finish your booking'}</p><h3 class="ja-h3" style="margin-top:8px;font-size:18px">${esc(t.players.join(' and '))}</h3>
       <p class="ja-muted ja-small" style="margin-top:3px">${t.places?.length ? t.places.map((x) => `${esc(x.name)}: ${esc(x.label)}, ${esc(x.amountLabel)}`).join('<br>') : `${esc(t.group || 'JFP')}${t.what ? `, ${esc(t.what)}` : ''}`}${t.expiresAt ? `<br>Held for you until ${esc(new Date(t.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}</p></div></div>
       <ul class="ja-list">
-        <li class="ja-row"><span class="ja-num ${t.needsWaiver ? '' : 'done'}">${t.needsWaiver ? '1' : ic('check')}</span><div><b>Waiver</b><small>${t.needsWaiver ? 'Sign the JFP waiver.' : 'On file.'}</small></div>${t.needsWaiver ? `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-for="${esc(t.id)}">Sign</button>` : ''}</li>
+        ${waiverStep(t.needsWaiver, `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-for="${esc(t.id)}">Sign</button>`)}
         ${t.needsKit ? `<li class="ja-row"><span class="ja-num ${t.kit ? 'done' : ''}">${t.kit ? ic('check') : '2'}</span><div><b>JF playing kit</b><small>${t.kit ? `Done: ${esc(t.kit.toLowerCase())}.` : `Required. ${esc(D.kitPriceLabel || 'A$60')} from BE Teamsport.`}</small>${t.kit ? '' : `<span style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${D.kitUrl ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(D.kitUrl)}" target="_blank" rel="noopener noreferrer">Order the kit</a>` : ''}<button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-kit="ordered" data-kit-for="${esc(t.id)}">I have ordered it</button><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-kit="has" data-kit-for="${esc(t.id)}">Already has one</button></span>`}</div><span></span></li>` : ''}
         <li class="ja-row"><span class="ja-num">${t.needsKit ? '3' : '2'}</span><div><b>Pay ${esc(t.amountLabel)}</b><small>${t.reason === 'trial' ? 'Books the trial.' : t.reason === 'sessions' ? 'Pays for these sessions.' : 'Locks the place in.'} Card, Apple Pay${t.afterpay ? ' or Afterpay' : ''}.</small></div><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-pay="${esc(t.id)}" ${t.needsWaiver ? 'disabled title="Sign the waiver first"' : t.needsKit && !t.kit ? 'disabled title="Confirm the playing kit first"' : ''}>Pay</button></li>
       </ul>
     </div>`)
-  const inTodo = new Set(D.todo.flatMap((t) => t.players))
-  const waivers = D.players.filter((p) => !p.waiver.onFile && !inTodo.has(p.name)).map((p) => ({ title: `Sign ${first(p.name)}'s waiver`, sub: 'Every JFP player needs one on file. It takes two minutes.', btn: `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-player="${esc(p.key)}">Sign</button>` }))
+  const owed = (D.owed || []).map(owedCard)
+  // Players whose waiver is not part of a payment card above: step 1, first.
+  const inCards = new Set([...D.todo.flatMap((t) => t.players), ...(D.owed || []).map((o) => o.player)])
+  const waivers = D.players.filter((p) => !p.waiver.onFile && !inCards.has(p.name)).map((p) => ({ title: p.adult ? (D.self || solo() ? 'Sign your waiver' : `Sign ${first(p.name)}'s waiver`) : `Sign ${first(p.name)}'s waiver`, sub: 'Every JFP player needs one on file. It takes two minutes.', btn: `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-player="${esc(p.key)}">Sign</button>` }))
   const info = infoGaps().map(({ p, missing }) => {
     const need = missing.filter((m) => m !== 'check the details')
     const what = need.length ? `Add ${need.length > 1 ? `${need.slice(0, -1).join(', ')} and ${need.at(-1)}` : need[0]}.` : 'Check what your waiver told us and save.'
-    return { title: `${first(p.name)}'s player information`, sub: `${what} It helps us put ${first(p.name)} in the right group.`, btn: '<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-go="info">Update</button>' }
+    const mine = p.self || D.self
+    return { title: mine ? 'Your player details' : `${first(p.name)}'s player information`, sub: `${what} It helps us put ${mine ? 'you' : first(p.name)} in the right group.`, btn: '<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-go="info">Update</button>' }
   })
-  const rows = [...waivers, ...info]
-  const list = rows.length ? `<div class="ja-card ja-todo"><div class="ja-card-head"><div><p class="ja-kicker"><i></i>To do</p><h3 class="ja-h3" style="margin-top:8px;font-size:18px">${rows.length} thing${rows.length === 1 ? '' : 's'} to finish</h3></div></div><ul class="ja-list">${rows.map((r, i) => `<li class="ja-row"><span class="ja-num">${i + 1}</span><div><b>${esc(r.title)}</b><small>${esc(r.sub)}</small></div>${r.btn}</li>`).join('')}</ul></div>` : ''
-  return pays.join('') + jjTodoCards() + list
+  return stepList('To do first', waivers.length === 1 ? 'Sign the waiver' : 'Sign the waivers', waivers) + pays.join('') + owed.join('') + jjTodoCards() + stepList('Then', info.length === 1 ? 'Update player details' : `${info.length} player details to update`, info)
 }
 
 function renderHome() {
@@ -341,12 +369,15 @@ function renderHome() {
       <div class="ja-flags">${p.enrolments.map((e) => payDot(e.payment)).join('')}${p.waiver.onFile ? '<span class="ja-dot ok">Waiver</span>' : `<button type="button" class="ja-dot bad" data-waiver-player="${esc(p.key)}">Sign waiver</button>`}</div></li>`).join('')}
   </ul></div>`
   const notBooked = D.players.filter((p) => !p.enrolments.length)
+  // Something to do (waiver, pay, details): first on the page, above the
+  // next session, so a phone shows it straight after signing in.
+  const todo = todoCards()
   el.innerHTML = `${head}
     <div class="ja-home">
-      <div class="ja-stack">${ups.length ? ticket(ups[0]) : `<div class="ja-card"><h3 class="ja-h3">No more sessions this term</h3><p class="ja-muted" style="margin-top:6px">See you next term. <button type="button" class="ja-link" data-go="keep">Keep your spot</button>.</p></div>`}
+      <div class="ja-stack">${todo}${ups.length ? ticket(ups[0]) : `<div class="ja-card"><h3 class="ja-h3">No more sessions this term</h3><p class="ja-muted" style="margin-top:6px">See you next term. <button type="button" class="ja-link" data-go="keep">Keep your spot</button>.</p></div>`}
         ${ups.slice(1).map((x) => `<div class="ja-card"><div class="ja-row" style="border:0;padding:0"><span class="ja-avatar">${esc(initials(x.p.name))}</span><div><b>${esc(x.p.name)}: ${esc(fmt(x.next.startMs, { weekday: 'short', day: 'numeric', month: 'short' }))}, ${esc(x.e.time)}</b><small>${esc(x.e.location)}${x.e.coach ? ` · ${esc(x.e.coach)}` : ''} · ${esc(countdown(x.next.startMs))}</small></div><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-cancel-open="${esc(x.e.rowId)}" data-cancel-player="${esc(x.p.key)}" data-cancel-date="${esc(x.next.iso)}">Can't make it</button></div></div>`).join('')}
       </div>
-      <div class="ja-stack">${todoCards()}${players}${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b style="color:#fff">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b style="color:#fff">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
+      <div class="ja-stack">${players}${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b style="color:#fff">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b style="color:#fff">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
     </div>
     ${promos}${watch}`
 }
@@ -850,11 +881,22 @@ function cancelSheet(e, p, preset = '') {
 
 // ---------- waiver ----------
 
+// The adult waiver (18 or over, signing for themselves) or the parent or
+// guardian one. Juniors children are always the guardian one. A date of
+// birth typed on the sheet decides when there was none on file.
+const ageFrom = (dob) => { if (!/^\d{4}-\d{2}-\d{2}$/.test(dob || '')) return null; const t = sydIso(); let a = Number(t.slice(0, 4)) - Number(dob.slice(0, 4)); if (t.slice(5) < dob.slice(5)) a -= 1; return a }
+const isAdult = (p) => !p.key.startsWith('jj:') && p.adult === true
 function waiverSheet(keys) {
-  const players = [...D.players, ...(D.juniors?.children || [])].filter((p) => keys.includes(p.key))
+  let players = [...D.players, ...(D.juniors?.children || [])].filter((p) => keys.includes(p.key))
   if (!players.length) return
-  const sheet = openSheet({ title: 'Sign the waiver', subtitle: players.map((p) => p.name).join(', ') })
-  const w = waiverBlock(players.some((p) => p.key.startsWith('jj:')) ? `${D.term}, JFP and Joners Juniors` : D.term, { self: D.self === true })
+  // One kind per sheet: children first (a parent signs), then each adult
+  // player on their own (they sign for themselves).
+  const kids = players.filter((p) => !isAdult(p))
+  players = kids.length ? kids : players.slice(0, 1)
+  let kind = kids.length ? 'guardian' : 'adult'
+  const sheet = openSheet({ title: kind === 'adult' ? 'Sign your waiver' : 'Sign the waiver', subtitle: players.map((p) => p.name).join(', ') })
+  const term = players.some((p) => p.key.startsWith('jj:')) ? `${D.term}, JFP and Joners Juniors` : D.term
+  let w = null
   sheet.body.innerHTML = players.map((p) => `
     <div class="j-card" style="padding:12px 14px;margin-bottom:10px" data-wp="${esc(p.key)}">
       <h3 style="margin-bottom:8px">${esc(p.name)}</h3>
@@ -862,13 +904,35 @@ function waiverSheet(keys) {
       <div class="j-two"><label class="j-field"><span>Emergency contact</span><input class="j-input" data-f="emergencyName"></label><label class="j-field"><span>Their phone</span><input class="j-input" type="tel" inputmode="tel" data-f="emergencyPhone"></label></div>
       <div class="j-two"><label class="j-field"><span>Current club <span class="muted">(optional)</span></span><input class="j-input" data-f="club"></label><label class="j-field"><span>Medical notes <span class="muted">(optional)</span></span><input class="j-input" data-f="medical"></label></div>
     </div>`).join('') + `
-    <div class="j-two"><label class="j-field"><span>Your name</span><input class="j-input" id="wp-name" value="${esc((D.self ? D.players[0]?.name : D.parentName) || '')}" autocomplete="name"></label><label class="j-field"><span>Your mobile</span><input class="j-input" id="wp-mobile" type="tel" inputmode="tel" autocomplete="tel"></label></div>`
-  sheet.body.appendChild(w.el)
+    <div class="j-two"><label class="j-field"><span id="wp-name-l"></span><input class="j-input" id="wp-name" autocomplete="name"></label><label class="j-field"><span>Your mobile</span><input class="j-input" id="wp-mobile" type="tel" inputmode="tel" autocomplete="tel"></label></div>
+    <div id="wp-block"></div>`
+  const nameBox = sheet.body.querySelector('#wp-name')
+  const draw = () => {
+    const keep = w?.read()
+    w = waiverBlock(term, { kind, self: kind === 'adult' })
+    sheet.setTitle?.(kind === 'adult' ? 'Sign your waiver' : 'Sign the waiver')
+    sheet.body.querySelector('#wp-name-l').textContent = kind === 'adult' ? 'Your full name' : 'Parent or guardian name'
+    if (!nameBox.dataset.typed) nameBox.value = kind === 'adult' ? players[0].name : (D.self ? '' : D.parentName || '')
+    const box = sheet.body.querySelector('#wp-block')
+    box.replaceChildren(w.el)
+    // Ticks and signature carry over if the version changes.
+    if (keep) { for (const [k, v] of Object.entries(keep.accepted)) { const i = w.el.querySelector(`[data-w="${k}"]`); if (i) i.checked = v } w.el.querySelector('[data-w="media"]').checked = keep.media; w.el.querySelector('[data-w="signature"]').value = keep.signature }
+  }
+  draw()
+  nameBox.addEventListener('input', () => { nameBox.dataset.typed = '1' })
+  // One player whose date of birth was not on file: what they type decides.
+  if (players.length === 1 && players[0].needsDob && !players[0].key.startsWith('jj:')) {
+    sheet.body.querySelector('[data-f="dob"]').addEventListener('change', (ev) => {
+      const a = ageFrom(ev.target.value)
+      const next = a == null ? kind : a >= 18 ? 'adult' : 'guardian'
+      if (next !== kind) { kind = next; delete nameBox.dataset.typed; draw() }
+    })
+  }
   sheet.body.insertAdjacentHTML('beforeend', '<p class="j-err" id="wp-err" hidden></p>')
   sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-red ja-btn-block" id="wp-sign">Sign the waiver</button>'
   sheet.foot.querySelector('#wp-sign').addEventListener('click', async () => {
     const err = sheet.body.querySelector('#wp-err')
-    if (!w.complete()) { err.textContent = 'Tick the first four boxes and type your full name to sign.'; err.hidden = false; return }
+    if (!w.complete()) { err.textContent = kind === 'adult' ? 'Tick the first five boxes and type your full name to sign.' : 'Tick the first four boxes and type your full name to sign.'; err.hidden = false; return }
     const list = players.map((p) => {
       const box = sheet.body.querySelector(`[data-wp="${CSS.escape(p.key)}"]`)
       const v = { key: p.key }
@@ -877,13 +941,19 @@ function waiverSheet(keys) {
     })
     const btn = sheet.foot.querySelector('#wp-sign')
     btn.disabled = true
-    const r = await api('/api/jfp-account', { action: 'signWaiver', players: list, waiver: w.read(), parentName: sheet.body.querySelector('#wp-name').value.trim(), mobile: sheet.body.querySelector('#wp-mobile').value.trim() })
+    const r = await api('/api/jfp-account', { action: 'signWaiver', players: list, waiver: w.read(), parentName: nameBox.value.trim(), mobile: sheet.body.querySelector('#wp-mobile').value.trim() })
     btn.disabled = false
-    if (!r.ok) { err.textContent = r.data.error || 'Could not save the waiver. Try again.'; err.hidden = false; return }
+    if (!r.ok) {
+      // The date of birth says the other version: show it and sign again.
+      if (r.data.code === 'adult' && kind !== 'adult') { kind = 'adult'; draw() } else if (r.data.code === 'guardian' && kind !== 'guardian') { kind = 'guardian'; draw() }
+      err.textContent = r.data.error || 'Could not save the waiver. Try again.'; err.hidden = false; return
+    }
     closeSheet(true)
     toast('Waiver signed. Thank you.')
     await load()
     loadProfiles()
+    // Someone still to sign (an adult player signs their own): say so.
+    if (keys.some((k) => !players.some((p) => p.key === k) && D.players.some((p) => p.key === k && !p.waiver.onFile))) toast('Thank you. One more waiver to sign, see To do.')
   })
 }
 
@@ -931,6 +1001,24 @@ document.addEventListener('click', async (e) => {
     if (k) k.interested = true
     toast("You are on the list. We will email you first.")
     return renderKeep()
+  }
+  // Something owing with no payment link yet: the server makes the request
+  // (working out the amount itself), then opens Stripe as Pay does.
+  const ow = t.closest('[data-owed]')
+  if (ow) {
+    if (ow.disabled) return
+    ow.disabled = true
+    ow.textContent = 'Opening'
+    const n = document.querySelector(`[data-owed-n="${CSS.escape(ow.dataset.owed)}"]`)
+    const r = await api('/api/jfp-account', { action: 'payOwed', rowId: ow.dataset.owed, ...(n ? { sessions: Number(n.value) } : {}) })
+    if (r.ok && r.data.url) { location.href = r.data.url; return }
+    ow.disabled = false
+    ow.textContent = 'Try again'
+    if (r.data.code === 'waiver') { await load(); return toast('Sign the waiver first.') }
+    if (r.data.code === 'kit') { await load(); return toast('Confirm the JF playing kit first, then pay.') }
+    toast(r.data.error || 'Could not start the payment.')
+    if (r.status === 409) load()
+    return
   }
   const pay = t.closest('[data-pay]')
   if (pay) {
@@ -1084,6 +1172,15 @@ async function jjAct(b) {
 }
 
 boot()
+
+// Pay for your sessions: the dates for the number chosen.
+document.addEventListener('change', (e) => {
+  const sel = e.target.closest?.('[data-owed-n]')
+  if (!sel) return
+  const o = (D?.owed || []).find((x) => x.rowId === sel.dataset.owedN)
+  const out = document.querySelector(`[data-owed-dates="${CSS.escape(sel.dataset.owedN)}"]`)
+  if (o && out) out.textContent = o.dates.slice(0, Number(sel.value)).map((d) => d.label).join(', ')
+})
 
 document.addEventListener('change', (e) => {
   const inp = e.target.closest?.('[data-photo-for]')

@@ -148,7 +148,7 @@ await test('Pro sessions billing: the link says Pro; the family page talks to th
   const acct = (await fam.call('/api/jfp-account', {})).data
   assert.equal(acct.self, true, 'the family page knows the player is the contact')
   assert.equal(acct.players[0].ownContact, true)
-  const w = await fam.call('/api/jfp-account', { action: 'signWaiver', players: [{ key: acct.players[0].key, dob: PRO.dob, emergencyName: 'Em Contact', emergencyPhone: '0400 333 444' }], waiver: { accepted: { terms: true, makeups: true, payment: true, emergency: true }, signature: PRO.name }, parentName: PRO.name, mobile: PRO.mobile })
+  const w = await fam.call('/api/jfp-account', { action: 'signWaiver', players: [{ key: acct.players[0].key, dob: PRO.dob, emergencyName: 'Em Contact', emergencyPhone: '0400 333 444' }], waiver: { accepted: { terms: true, makeups: true, payment: true, emergency: true, adult: true }, kind: 'adult', signature: PRO.name }, parentName: PRO.name, mobile: PRO.mobile })
   assert.equal(w.status, 200, JSON.stringify(w.data))
   const pay = await fam.call('/api/jfp-account', { action: 'pay', payreqId: s.payreq.id })
   assert.equal(pay.status, 200, JSON.stringify(pay.data))

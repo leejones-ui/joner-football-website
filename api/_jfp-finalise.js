@@ -17,7 +17,7 @@ import crypto from 'node:crypto'
 import { stripeFetch } from './_holiday-store.js'
 import {
   getBooking, saveBooking, getGroup, getConfig, confirmPlaces, settlePlaces, releasePlaces, coachById, kvCommand, keys, clean,
-  getPayreq, savePayreq, ONLINE_TAG, audit, claimOnce, dropParentHold, normName, sydneyToday } from './_jfp-store.js'
+  getPayreq, savePayreq, ONLINE_TAG, audit, claimOnce, dropParentHold, normName, sydneyToday, prepaidOf, withPrepaid } from './_jfp-store.js'
 import {
   createTerm4Rows, findTerm4ByTag, updateTerm4Rows, getTerm4Row, createLedgerRow, findLedgerByPayment, createWaiverRows, waiverFields,
   findWaiversByTag, appendNote, bustRosterCache, loadRoster,
@@ -290,7 +290,9 @@ async function runPayreqEffects(payreq, retry = new Set()) {
         'Term 4 Amount Paid': paid / 100,
         'Term 4 Payment Status': paid >= fee ? 'Paid' : 'Partially Paid',
         ...(['Awaiting Reply', 'Not Contacted', 'Needs Follow-up', ''].includes(row.confirmation) ? { 'Term 4 Confirmation': 'Confirmed', 'Confirmation Date': sydneyToday() } : {}),
-        'Term 4 Notes': appendNote(row.notes, `Paid ${(share[i] / 100).toFixed(2)} online. [PAID:${payreq.id}]`),
+        // Sessions prepaid from My account: counted on the row, so the next
+        // time staff bill sessions these come off (_jfp-account-pay.js).
+        'Term 4 Notes': appendNote(payreq.prepay?.rowId === row.id ? withPrepaid(row.notes, prepaidOf(row.notes) + Number(payreq.prepay.sessions || 0)) : row.notes, `Paid ${(share[i] / 100).toFixed(2)} online${payreq.prepay?.rowId === row.id ? ` for ${payreq.prepay.sessions} prepaid session${payreq.prepay.sessions > 1 ? 's' : ''} (${(payreq.prepay.dates || []).join(', ')})` : ''}. [PAID:${payreq.id}]`),
         // Add to what earlier payments recorded; never overwrite them.
         ...(addedFee != null ? {
           'Term 4 Stripe Fee AUD': (cents(row.stripeFeeAud) + addedFee) / 100,
