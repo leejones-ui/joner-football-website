@@ -42,6 +42,9 @@ export async function applyJfpRefunds(id, charge, piId) {
     Object.assign(record, fresh)
     if ((record.refunds || []).some((x) => x.id === refund.id)) continue
     const amount = refund.amount
+    // A quick link for Juniors, holiday training or anything else is not JFP
+    // term money: noted on the link, never in the JFP ledger (Lee, 13 Oct 2026).
+    const jfpMoney = !(record.quick && record.programme && record.programme !== 'jfp')
     const rows = []
     for (const rid of record.term4Ids || []) { const r = await getTerm4Row(rid); if (r) rows.push(r) }
     // Split by what THIS payment put on each row (saved when it was paid),
@@ -64,7 +67,7 @@ export async function applyJfpRefunds(id, charge, piId) {
     if (updates.length) await updateTerm4Rows(updates)
     // The ledger keeps every movement: the refund as its own negative row,
     // and the original payment marked refunded.
-    if (!(await findLedgerByPayment(refund.id)).length) {
+    if (jfpMoney && !(await findLedgerByPayment(refund.id)).length) {
       await airtable(encodeURIComponent(TABLES.ledger), { method: 'POST', body: { typecast: true, records: [{ fields: {
         'Payment ID': refund.id, 'Term': record.next?.term || config.term, 'Player Name': (record.playerNames || (record.players || []).map((p) => p.name)).join(', '),
         'Amount Paid': -amount / 100, 'Payment Method': 'Stripe', 'Payment Status': charge.amount_refunded >= charge.amount ? 'Refunded' : 'Partially Refunded',
@@ -73,7 +76,7 @@ export async function applyJfpRefunds(id, charge, piId) {
         'Updated At': new Date().toISOString(),
       } }] } })
     }
-    const [orig] = await findLedgerByPayment(piId || record.stripePaymentIntentId || record.id)
+    const [orig] = jfpMoney ? await findLedgerByPayment(piId || record.stripePaymentIntentId || record.id) : []
     if (orig) await airtable(encodeURIComponent(TABLES.ledger), { method: 'PATCH', body: { typecast: true, records: [{ id: orig, fields: { 'Payment Status': charge.amount_refunded >= charge.amount ? 'Refunded' : 'Partially Refunded', 'Updated At': new Date().toISOString() } }] } })
     // Next term: a refunded hold or payment no longer holds the place.
     if (record.next) {

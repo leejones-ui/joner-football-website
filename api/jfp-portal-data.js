@@ -26,9 +26,9 @@ import {
   findLedgerByPayment, listPreviousTerm, getPreviousTermRow, updatePreviousTermRow, previousTermSpec,
 } from './_jfp-airtable.js'
 import { listCancels, staffView, noticeSummary } from './_jfp-cancel.js'
-import { repairJfpBooking, effectsSummary, EFFECTS, PAY_EFFECTS } from './_jfp-finalise.js'
+import { repairJfpBooking, effectsSummary, EFFECTS, payEffectsFor } from './_jfp-finalise.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
-import { sendAccountInvite, accountInvite, sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice } from './_jfp-email.js'
+import { sendAccountInvite, accountInvite, sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext } from './_jfp-next.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
@@ -39,6 +39,7 @@ import { holidayMoneyData, holidaySizes, HOLIDAY_BANK } from './_holiday-money.j
 import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
 import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
 import { registerChecks, yearsOf, termsOfYear, termFromLive, termFromLedger, termFromRegister, yearSummary } from './_jfp-years.js'
+import { PROGRAMMES, programmeLabel, PRICE_MIN, PRICE_MAX, PRICES_MAX, cleanPrice, allPrices, priceById, quickHolidayPeriods, quickLinkInput, quickStatus, QUICK_STATUS, quickOpen, quickToCheck, quickUrl, QUICK_CHECKED, QUICK_EMAILED } from './_jfp-quick.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -779,8 +780,13 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
   const holding = roster.players.filter((r) => r.holdsPlace && !isTestName(r.player))
   const net = (p) => p.amountCents - p.refundedCents
+  // A JFP quick link paid with no player named (Lee, 13 Oct 2026): it waits
+  // on the not matched list for Lee to match, and is never put on a family
+  // just because the email that paid is on a row.
+  const unplacedIds = new Set(payreqs.filter((q) => q.quick && !(q.term4Ids || []).length).map((q) => q.id))
+  const unplaced = (p) => Boolean(p.jfpRef) && unplacedIds.has(p.jfpRef)
   const stripeByEmail = new Map()
-  for (const p of stripe.payments) if (p.email) stripeByEmail.set(p.email, [...(stripeByEmail.get(p.email) || []), p])
+  for (const p of stripe.payments) if (p.email && !unplaced(p)) stripeByEmail.set(p.email, [...(stripeByEmail.get(p.email) || []), p])
   const familyEmails = new Set(holding.flatMap(rowEmails))
   // Each family: what Stripe received against what Airtable records as paid.
   const families = new Map()
@@ -828,7 +834,7 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
   players.sort((a, b) => a.player.localeCompare(b.player))
   // Paid from an email not on any row, and not already put on a row in the ledger.
   const inLedger = new Set(ledger.flatMap((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].filter(Boolean)))
-  const unmatched = stripe.payments.filter((p) => (!p.email || !familyEmails.has(p.email)) && !inLedger.has(p.id) && !(p.intentId && inLedger.has(p.intentId)) && p.amountCents - p.refundedCents > 0)
+  const unmatched = stripe.payments.filter((p) => (unplaced(p) || !p.email || !familyEmails.has(p.email)) && !inLedger.has(p.id) && !(p.intentId && inLedger.has(p.intentId)) && p.amountCents - p.refundedCents > 0)
   // Cash, bank transfer and other: the ledger, plus rows marked paid offline before the ledger had them.
   const offlineLedger = ledger.filter((l) => l['Payment Method'] && l['Payment Method'] !== 'Stripe')
   const ledgerRowIds = new Set(offlineLedger.flatMap((l) => String(l['Source Record ID'] || '').split(',').map((x) => x.trim())))
@@ -860,7 +866,7 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
     const g = byId[r.groupId]
     return g ? { key: g.id, label: `${g.day} ${g.time}`, coach: coachLabel(coachById(config, g.coachId)) } : { key: `none:${r.day}|${r.time}`, label: [r.day, r.time].filter(Boolean).join(' ') || 'Not in a group', coach: r.coach || '' }
   }
-  const alloc = allocateTermMoney({ rows: roster.players.filter((r) => !isTestName(r.player)), stripe: stripe.payments, ledger, legacy: legacyOffline })
+  const alloc = allocateTermMoney({ rows: roster.players.filter((r) => !isTestName(r.player)), stripe: stripe.payments.map((p) => (unplaced(p) ? { ...p, email: '' } : p)), ledger, legacy: legacyOffline })
   for (const p of players) {
     const m = alloc.byRow.get(p.rowId)
     p.receivedCents = totalOf(m)
@@ -953,7 +959,7 @@ export async function moneyData(config, { since, fresh = false, quick = false } 
     nextTermPayments: nextTerm.slice(0, 60).map((p) => ({ id: p.id, at: p.at, name: p.name, email: p.email, cents: net(p), feeCents: p.feeKnown ? p.feeCents : null, product: p.product, forTerm: p.forTerm })),
     locations,
     players,
-    unmatched: unmatched.map((p) => ({ id: p.id, at: p.at, name: p.name, email: p.email, cents: net(p), product: p.product })),
+    unmatched: unmatched.map((p) => ({ id: p.id, at: p.at, name: p.name, email: p.email, cents: net(p), product: p.product, ...(unplaced(p) ? { quickLink: p.jfpRef } : {}) })),
     otherStripe: stripe.other,
   }
 }
@@ -1552,10 +1558,12 @@ async function changePayreqAmount(req, res, principal, config, body) {
   let emailed = false
   if (body.sendEmail === true) {
     const group = q.groupId ? await getGroup(q.groupId) : null
-    if (group) { await sendFamilyInvite({ to: q.email, parentName: q.parentName, playerNames: q.playerNames, group, config, url: payreqUrl(req, q), needs: { details: false, waiver: false, payment: true }, amountCents, trial: q.reason === 'trial', startDate: q.startDate }); emailed = true }
+    // A quick link has its own page and its own email (13 Oct 2026).
+    if (q.quick && q.email) { await sendQuickLinkEmail({ to: q.email, parentName: q.parentName, forText: q.forText, amountCents, url: quickUrl(siteUrl(req), q), expiresAt: q.expiresAt, afterpay: q.afterpay !== false }); await kvCommand(['HSET', QUICK_EMAILED, q.id, new Date().toISOString()]); emailed = true }
+    else if (group && !q.quick) { await sendFamilyInvite({ to: q.email, parentName: q.parentName, playerNames: q.playerNames, group, config, url: payreqUrl(req, q), needs: { details: false, waiver: false, payment: true }, amountCents, trial: q.reason === 'trial', startDate: q.startDate }); emailed = true }
   }
   await audit({ by: principal.email, action: 'payreq.change', target: q.id, before: { cents: q.amountCents }, after: { cents: amountCents, emailed } })
-  return res.status(200).json({ success: true, url: payreqUrl(req, next), amountLabel: formatAud(amountCents), emailed })
+  return res.status(200).json({ success: true, url: q.quick ? quickUrl(siteUrl(req), next) : payreqUrl(req, next), amountLabel: formatAud(amountCents), emailed })
 }
 
 // After a trial: offer the rest of the term. The trial fee comes off unless
@@ -1681,6 +1689,135 @@ async function draftAges(res, principal, config) {
   }
   await audit({ by: principal.email, action: 'group.draftAges', target: 'all', after: { changed } })
   return res.status(200).json({ success: true, changed })
+}
+
+// ---------- prices and quick payment links (Lee, 13 Oct 2026) ----------
+// "We want to be able to create custom prices here, add as many as we want,
+// and be able to create payment links straight away."
+
+function pricesView(config) {
+  return {
+    priceList: allPrices(config).map((p) => ({ ...p, amountLabel: formatAud(p.cents), programmeLabel: programmeLabel(p.programme) })),
+    programmes: PROGRAMMES.map(([id, label]) => ({ id, label })),
+    holidayPeriods: quickHolidayPeriods(sydneyToday()),
+  }
+}
+
+// One change to the price list at a time, read again inside, so two people
+// adding prices together never lose one.
+async function withPrices(res, fn) {
+  if ((await kvCommand(['SET', 'jfp:prices-lock', '1', 'NX', 'EX', '10'])) !== 'OK') return fail(res, 409, 'Someone is saving a price right now. Try again in a moment.')
+  try { return await fn(await getConfig()) } finally { await kvCommand(['DEL', 'jfp:prices-lock']) }
+}
+
+// A JFP price list amount (jfp:<key>), or one of Lee's own prices (new or edited).
+async function savePrice(res, principal, body) {
+  const input = body.price || {}
+  const id = clean(input.id, 50)
+  return withPrices(res, async (config) => {
+    if (id.startsWith('jfp:')) {
+      const key = id.slice(4)
+      if (!PRODUCTS.some((x) => x.key === key)) return fail(res, 404, 'Price not found.')
+      const cents = Number(input.amountCents)
+      if (!Number.isInteger(cents) || cents < PRICE_MIN || cents > PRICE_MAX) return fail(res, 400, 'Enter an amount from A$1 to A$20,000.')
+      const next = await saveConfig({ prices: { ...config.prices, [key]: cents } })
+      await audit({ by: principal.email, action: 'price.save', target: id, before: { cents: config.prices[key] }, after: { cents } })
+      return res.status(200).json({ success: true, ...pricesView(next) })
+    }
+    const list = config.customPrices || []
+    const before = id ? list.find((p) => p.id === id) : null
+    if (id && !before) return fail(res, 404, 'Price not found.')
+    if (!before && list.length >= PRICES_MAX) return fail(res, 400, `That is ${PRICES_MAX} prices. Archive some you no longer use first.`)
+    const r = cleanPrice(input, { id: before?.id || newId('PR'), before })
+    if (!r.ok) return fail(res, 400, r.error)
+    const next = await saveConfig({ customPrices: before ? list.map((p) => (p.id === id ? r.price : p)) : [...list, r.price] })
+    await audit({ by: principal.email, action: before ? 'price.edit' : 'price.add', target: r.price.id, before: before || null, after: r.price })
+    return res.status(200).json({ success: true, price: r.price, ...pricesView(next) })
+  })
+}
+
+// Archived prices leave the lists and the link form; old links keep working.
+async function archivePrice(res, principal, body) {
+  const id = clean(body.id, 50)
+  if (id.startsWith('jfp:')) return fail(res, 400, 'The JFP price list stays. Change its amount instead.')
+  return withPrices(res, async (config) => {
+    const list = config.customPrices || []
+    const before = list.find((p) => p.id === id)
+    if (!before) return fail(res, 404, 'Price not found.')
+    const archived = body.undo !== true
+    const next = await saveConfig({ customPrices: list.map((p) => (p.id === id ? { ...p, archived, updatedAt: new Date().toISOString() } : p)) })
+    await audit({ by: principal.email, action: archived ? 'price.archive' : 'price.restore', target: id, after: { name: before.name } })
+    return res.status(200).json({ success: true, ...pricesView(next) })
+  })
+}
+
+// What the Payment links page shows of a quick link.
+function quickFields(req, q, { views = 0, emailedAt = '', checkedAt = '' } = {}) {
+  const st = quickStatus(q, { views, emailedAt })
+  return {
+    quick: true, quickStatus: st, quickStatusLabel: QUICK_STATUS[st], programmeLabel: programmeLabel(q.programme), forText: q.forText, priceName: q.priceName || '',
+    sessions: q.sessions || null, holidayPeriod: q.holidayPeriod || '', rowId: q.rowId || '', emailedAt: emailedAt || q.emailedAt || '', checkedAt,
+    toCheck: quickToCheck(q, checkedAt ? { [q.id]: checkedAt } : {}), payerName: q.status === 'paid' ? q.payerName || '' : '', payerEmail: q.status === 'paid' ? q.payerEmail || '' : '',
+    // The link families open: its own page, not the account.
+    url: quickUrl(siteUrl(req), q), quickUrl: quickUrl(siteUrl(req), q),
+  }
+}
+
+// A quick link: a price or an amount, what it is for, the programme, and
+// maybe a player and a parent email. Nothing is emailed here.
+async function quickLink(req, res, principal, config, body) {
+  const price = body.priceId ? priceById(config, body.priceId) : null
+  if (body.priceId && !price) return fail(res, 404, 'That price is not on the list any more.')
+  if (price?.archived) return fail(res, 400, 'That price is archived. Restore it first, or type an amount.')
+  let row = null
+  if (body.rowId) {
+    row = await getTerm4Row(clean(body.rowId, 30))
+    if (!row) return fail(res, 404, 'Player row not found.')
+  }
+  const r = quickLinkInput(body, { price, row, today: sydneyToday() })
+  if (!r.ok) return fail(res, r.status, r.error)
+  const group = r.link.groupId ? await getGroup(r.link.groupId) : null
+  const q = { ...r.link, id: newId('PAY'), groupLabel: group ? groupSummary(group, config) : '', createdBy: principal.email, siteUrl: siteUrl(req) }
+  // A JFP link for a player records on their row, so one open link per
+  // player, as for every other link: a second needs replace.
+  if (q.term4Ids.length) {
+    const open = (await listPayreqs()).filter((x) => ['open', 'checkout'].includes(x.status) && (x.term4Ids || []).includes(row.id))
+    if (open.length && body.replace !== true) return fail(res, 409, `${row.player} already has an open link for ${formatAud(open[0].amountCents)}. Replace it with this new one?`, { code: 'link_open' })
+    for (const o of open) {
+      const c = await cancelLink(o, principal, 'Replaced by a quick link')
+      if (c.error) return fail(res, c.status, c.error)
+    }
+  }
+  await savePayreq(q)
+  await audit({ by: principal.email, action: 'quick.create', target: q.id, after: { cents: q.amountCents, programme: q.programme, price: q.priceId, row: q.rowId, email: Boolean(q.email) } })
+  return res.status(200).json({ success: true, link: { id: q.id, url: quickUrl(siteUrl(req), q), amountLabel: formatAud(q.amountCents), forText: q.forText, programme: q.programme, programmeLabel: programmeLabel(q.programme), email: q.email, players: q.playerNames, expiresAt: q.expiresAt } })
+}
+
+// "Email it": only when Lee taps it, only to the email on the link.
+async function emailQuickLink(req, res, principal, body) {
+  const q = await getPayreq(clean(body.id, 60))
+  if (!q?.quick) return fail(res, 404, 'Payment link not found.')
+  if (!quickOpen(q)) return fail(res, 409, `This link is ${QUICK_STATUS[quickStatus(q)].toLowerCase()}. Make a new one instead.`)
+  if (!q.email) return fail(res, 400, 'This link has no parent email. Copy the link and send it yourself.')
+  // A double tap sends one email.
+  if ((await kvCommand(['SET', `jfp:quick-email-lock:${q.id}`, '1', 'NX', 'EX', '60'])) !== 'OK') return fail(res, 409, 'It was just emailed. Wait a minute before sending it again.')
+  await sendQuickLinkEmail({ to: q.email, parentName: q.parentName, forText: q.forText, amountCents: q.amountCents, url: quickUrl(siteUrl(req), q), expiresAt: q.expiresAt, afterpay: q.afterpay !== false })
+  const at = new Date().toISOString()
+  // Kept on its own key, never by rewriting the link, which may be being paid right now.
+  await kvCommand(['HSET', QUICK_EMAILED, q.id, at])
+  await audit({ by: principal.email, action: 'quick.email', target: q.id })
+  return res.status(200).json({ success: true, emailedAt: at })
+}
+
+// A paid quick link with no player, looked at: off the to check lists.
+async function quickLinkChecked(res, principal, body) {
+  const q = await getPayreq(clean(body.id, 60))
+  if (!q?.quick) return fail(res, 404, 'Payment link not found.')
+  if (q.status !== 'paid') return fail(res, 409, 'Only a paid link can be checked.')
+  if (body.undo === true) await kvCommand(['HDEL', QUICK_CHECKED, q.id])
+  else await kvCommand(['HSET', QUICK_CHECKED, q.id, new Date().toISOString()])
+  await audit({ by: principal.email, action: body.undo === true ? 'quick.uncheck' : 'quick.check', target: q.id })
+  return res.status(200).json({ success: true })
 }
 
 // ---------- requests: applications, waitlist, enquiries ----------
@@ -2057,7 +2194,7 @@ export async function familyPlan(req, config) {
     return {
       email, parent: rows[0].parent,
       players: rows.map((r) => ({ rowId: r.id, name: r.player, group: byId[r.groupId] ? `${byId[r.groupId].day} ${byId[r.groupId].time}, ${locationFor(config, byId[r.groupId].location).name}` : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Group to be confirmed' })),
-      owingCents: owingRows.reduce((t, r) => t + owe(r), 0), owingRowIds: owingRows.map((r) => r.id), openLink: open ? payreqUrl(req, open) : '',
+      owingCents: owingRows.reduce((t, r) => t + owe(r), 0), owingRowIds: owingRows.map((r) => r.id), openLink: open ? (open.quick ? quickUrl(siteUrl(req), open) : payreqUrl(req, open)) : '',
       kind: owingRows.length ? 'pay' : unpriced.length ? 'noPrice' : 'paid',
       needsWaiver: rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone], dob: r.dob }, roster.waivers)),
       invitedAt: invited[email] || '', accountInvitedAt: acctInvited[email] || '', signedInAt: signedIn[email] || '', groupId: rows[0].groupId,
@@ -2313,10 +2450,16 @@ async function handle(req, res) {
         return res.status(200).json({ success: true, invited, emailed })
       }
       case 'changePayreqAmount': return await changePayreqAmount(req, res, principal, config, body)
+      // Prices and quick payment links (Lee, 13 Oct 2026).
+      case 'savePrice': return await savePrice(res, principal, body)
+      case 'archivePrice': return await archivePrice(res, principal, body)
+      case 'quickLink': return await quickLink(req, res, principal, config, body)
+      case 'emailQuickLink': return await emailQuickLink(req, res, principal, body)
+      case 'quickLinkChecked': return await quickLinkChecked(res, principal, body)
       case 'offerTerm': return await offerTerm(req, res, principal, config, body)
       case 'pricing': {
         const today = sydneyToday()
-        return res.status(200).json({ success: true, weeks: config.weeks, today, prices: config.prices, products: PRODUCTS.map((x) => ({ ...x, cents: config.prices[x.key] })), datesByDay: Object.fromEntries(DAYS.map((d) => [d, sessionDates(config, d).map((iso) => ({ iso, label: dateLabel(iso), past: iso < today }))])) })
+        return res.status(200).json({ success: true, weeks: config.weeks, today, prices: config.prices, products: PRODUCTS.map((x) => ({ ...x, cents: config.prices[x.key] })), datesByDay: Object.fromEntries(DAYS.map((d) => [d, sessionDates(config, d).map((iso) => ({ iso, label: dateLabel(iso), past: iso < today }))])), ...pricesView(config) })
       }
       case 'removed': {
         const [roster, dropped] = await Promise.all([loadRoster({ fresh: true }), listDropped()])
@@ -2351,9 +2494,9 @@ async function handle(req, res) {
       case 'decideRequest': return await decideRequest(req, res, principal, config, body)
 
       case 'payments': {
-        const [bookings, payreqs, viewsRaw, viewedRaw] = await Promise.all([listBookings(), listPayreqs(), kvCommand(['HGETALL', 'jfp:payreq-views']), kvCommand(['HGETALL', 'jfp:payreq-viewed-at'])])
+        const [bookings, payreqs, viewsRaw, viewedRaw, emailedRaw, checkedRaw] = await Promise.all([listBookings(), listPayreqs(), kvCommand(['HGETALL', 'jfp:payreq-views']), kvCommand(['HGETALL', 'jfp:payreq-viewed-at']), kvCommand(['HGETALL', QUICK_EMAILED]), kvCommand(['HGETALL', QUICK_CHECKED])])
         const pairs = (raw) => { const o = {}; for (let i = 0; i + 1 < (raw || []).length; i += 2) o[raw[i]] = raw[i + 1]; return o }
-        const views = pairs(viewsRaw), viewed = pairs(viewedRaw)
+        const views = pairs(viewsRaw), viewed = pairs(viewedRaw), emailed = pairs(emailedRaw), checked = pairs(checkedRaw)
         return res.status(200).json({
           success: true,
           bookings: bookings.filter((b) => !['reserving'].includes(b.status)).map((b) => ({
@@ -2364,11 +2507,14 @@ async function handle(req, res) {
             effects: b.status === 'paid' ? effectsSummary(b, EFFECTS) : null, needsAttention: b.needsAttention || '', unexpected: (b.unexpectedPayments || []).map((u) => ({ reason: u.reason, amountLabel: formatAud(u.amountCents), stripeUrl: u.intentId ? `https://dashboard.stripe.com/payments/${u.intentId}` : '' })),
           })),
           payreqs: payreqs.map((q) => ({
-            id: q.id, kind: q.reason, status: q.status, createdAt: q.createdAt, paidAt: q.paidAt || '', group: q.groupLabel, players: q.playerNames, amountCents: q.amountCents,
+            id: q.id, kind: q.reason, status: q.quick && q.status === 'open' && !quickOpen(q) ? 'expired' : q.status, createdAt: q.createdAt, paidAt: q.paidAt || '', group: q.groupLabel, players: q.playerNames, amountCents: q.amountCents,
             productLabel: q.productLabel || '', startDate: q.startDate || '', trialDate: q.trialDate || '', emailedAt: q.emailedAt || '', views: Number(views[q.id] || 0), lastViewedAt: viewed[q.id] || '', expiresAt: q.expiresAt || '', afterpay: q.afterpay !== false, term4Ids: q.term4Ids,
             parentName: q.parentName, email: q.email, amountLabel: formatAud(q.paidCents ?? q.amountCents), feeLabel: q.stripeFeeCents != null ? formatAud(q.stripeFeeCents) : '',
             url: payreqUrl(req, q), stripeUrl: q.stripePaymentIntentId ? `https://dashboard.stripe.com/payments/${q.stripePaymentIntentId}` : '',
-            effects: q.status === 'paid' ? effectsSummary(q, PAY_EFFECTS) : null, createdBy: q.createdBy, needsAttention: q.needsAttention || '', unexpected: (q.unexpectedPayments || []).map((u) => ({ reason: u.reason, amountLabel: formatAud(u.amountCents), stripeUrl: u.intentId ? `https://dashboard.stripe.com/payments/${u.intentId}` : '' })),
+            effects: q.status === 'paid' ? effectsSummary(q, payEffectsFor(q)) : null, createdBy: q.createdBy, needsAttention: q.needsAttention || '', unexpected: (q.unexpectedPayments || []).map((u) => ({ reason: u.reason, amountLabel: formatAud(u.amountCents), stripeUrl: u.intentId ? `https://dashboard.stripe.com/payments/${u.intentId}` : '' })),
+            // Every link has a programme; only quick links can be anything but JFP.
+            programme: q.programme || 'jfp',
+            ...(q.quick ? quickFields(req, q, { views: Number(views[q.id] || 0), emailedAt: emailed[q.id] || '', checkedAt: checked[q.id] || '' }) : {}),
           })),
         })
       }

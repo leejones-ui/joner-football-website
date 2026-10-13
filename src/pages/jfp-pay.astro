@@ -1,0 +1,29 @@
+---
+// A quick payment link (Lee, 13 Oct 2026): what it is for, the amount, and
+// a Pay button. Anyone with the link can pay it; no sign-in.
+import BaseLayout from '../layouts/BaseLayout.astro'
+import '../styles/jfp.css'
+---
+
+<BaseLayout title="Payment | Joner Football" description="Pay Joner Football." canonical="https://jonerfootball.com/jfp-pay/" noindex noTracking hideChrome hideMobileAppCta>
+  <div class="jfp" id="jfp-pay">
+    <header class="j-top"><div class="wrap"><span class="j-brand"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span>Joner Football</span></span></div></header>
+    <div class="wrap" style="max-width:560px;padding-top:28px;padding-bottom:60px">
+      <p class="j-kicker" id="eyebrow">Payment</p>
+      <h1 id="heading" style="margin:6px 0 10px">One moment</h1>
+      <p class="muted" id="lead">Loading your payment.</p>
+      <div class="j-card" id="card" style="padding:20px;margin-top:20px" hidden>
+        <dl class="j-kv" id="details"></dl>
+        <button type="button" class="j-btn j-btn-dark j-btn-lg" id="pay" style="margin-top:18px;width:100%;min-height:48px" hidden>Pay</button>
+        <p class="muted small" id="how" style="margin-top:10px" hidden>Secure payment by Stripe. Card or Apple Pay.</p>
+        <p class="j-err" id="err" role="alert" hidden></p>
+      </div>
+      <div class="j-box j-box-grey" id="help" style="margin-top:20px" hidden>If you paid and this page does not update, do not pay again. Email <a href="mailto:ligia@jonerfootball.com">ligia@jonerfootball.com</a> and we will sort it.</div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { initPay } from '../scripts/jfp-pay.js'
+  initPay()
+</script>

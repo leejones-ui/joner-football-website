@@ -25,7 +25,7 @@ export async function holidayData(post, { period = '', fresh = false } = {}) {
 // Something changed it (a bank line marked as holiday, or put back).
 export function holidayStale() { H.data = null; H.at = 0 }
 
-const STATUS = { paid: ['Paid', 'green'], cancelled: ['Cancelled', 'grey'], bank: ['Bank transfer', 'blue'], 'stripe-only': ['Paid, not confirmed', 'amber'], 'no-booking': ['Booking not found', 'amber'] }
+const STATUS = { paid: ['Paid', 'green'], cancelled: ['Cancelled', 'grey'], bank: ['Bank transfer', 'blue'], 'stripe-only': ['Paid, not confirmed', 'amber'], 'no-booking': ['Booking not found', 'amber'], link: ['Payment link', 'green'], 'link-check': ['Payment link, to check', 'amber'] }
 const pill = (s) => `<span class="j-pill j-pill-${STATUS[s]?.[1] || 'grey'}">${esc(STATUS[s]?.[0] || s)}</span>`
 
 // A small table that stacks into one block per row on a phone.
@@ -56,11 +56,19 @@ function owedBlock(v) {
     <ul class="jm-hist">${v.refundsOwed.map((x) => `<li><span><b>${esc(x.who || x.bookingId)}</b><small>${esc([day(x.sessionDate), hhmm(x.time), x.coach].filter(Boolean).join(' · '))} · paid ${esc(money(x.takenCents))} · refund due ${esc(money(x.refundDueCents))}${x.refundedCents ? ` · refunded ${esc(money(x.refundedCents))}` : ''}${x.stripeChecked ? '' : ' · not found in Stripe'} · ${esc(x.bookingId)}</small></span><span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><span class="amt">${x.owedCents == null ? 'check' : esc(money(x.owedCents))}</span>${x.intentId ? `<a class="j-btn j-btn-line j-btn-sm" href="https://dashboard.stripe.com/payments/${esc(x.intentId)}" target="_blank" rel="noopener">Open in Stripe</a>` : ''}</span></li>`).join('')}</ul></section>`
 }
 
+// Quick links for holiday training paid with no player named (13 Oct 2026).
+function checkBlock(v) {
+  if (!v.toCheck?.length) return ''
+  return `<section class="j-box j-box-amber jh-owed" id="h-check"><p><b>Quick links to check: ${plural(v.toCheck.length, 'payment')}</b></p>
+    <p class="small" style="margin:4px 0 8px">Paid on a holiday training quick link with no player named. Look at who paid, then tick Checked. They are counted either way.</p>
+    <ul class="jm-hist">${v.toCheck.map((x) => `<li><span><b>${esc(x.note || 'Payment link')}</b><small>${esc(x.who || 'Payer not known')} · paid ${esc(day(x.paidDate))} · ${esc(x.id)}</small></span><span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><span class="amt">${esc(money(x.takenCents))}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-hcheck="${esc(x.id)}">Checked</button></span></li>`).join('')}</ul></section>`
+}
+
 function lineHtml(x) {
-  const what = x.kind === 'bank' ? `Bank transfer · ${esc(x.who || 'no payer name')}` : `${esc(x.typeName)}${x.seats > 1 ? ` · ${plural(x.seats, 'player')}` : ''}${x.who ? ` · ${esc(x.who)}` : ''}`
-  const when = x.kind === 'bank' ? `${x.sessionDate ? `Session ${esc(day(x.sessionDate))} · ` : ''}came in ${esc(day(x.paidDate))}` : `${esc(day(x.sessionDate) || 'No session date')}${x.time ? ` ${esc(hhmm(x.time))}` : ''} · paid ${esc(day(x.paidDate))}`
+  const what = x.kind === 'bank' ? `Bank transfer · ${esc(x.who || 'no payer name')}` : x.link ? `Payment link · ${esc(x.note || 'holiday training')}${x.players?.length ? ` · ${esc(x.players.join(', '))}` : ''}` : `${esc(x.typeName)}${x.seats > 1 ? ` · ${plural(x.seats, 'player')}` : ''}${x.who ? ` · ${esc(x.who)}` : ''}`
+  const when = x.kind === 'bank' ? `${x.sessionDate ? `Session ${esc(day(x.sessionDate))} · ` : ''}came in ${esc(day(x.paidDate))}` : x.link ? `Paid ${esc(day(x.paidDate))}${x.who ? ` · ${esc(x.who)}` : ''}` : `${esc(day(x.sessionDate) || 'No session date')}${x.time ? ` ${esc(hhmm(x.time))}` : ''} · paid ${esc(day(x.paidDate))}`
   const money2 = x.kind === 'bank' ? '' : ` · taken ${esc(money(x.takenCents))}${x.refundedCents ? ` · refunded ${esc(money(x.refundedCents))}` : ''} · ${x.feeCents == null ? 'fee still loading' : `fee ${esc(money(x.feeCents))}`}`
-  return `<li class="jh-line" data-hline="${esc(x.id)}"><span><b>${what}</b><small>${when}</small><small>${esc(x.coach)} · ${esc(x.location)}${money2}${x.note ? ` · ${esc(x.note)}` : ''}${x.kind === 'stripe' ? ` · ${esc(x.bookingId)}` : ''}</small></span>
+  return `<li class="jh-line" data-hline="${esc(x.id)}"><span><b>${what}</b><small>${when}</small><small>${esc(x.coach)} · ${esc(x.location)}${money2}${x.note && !x.link ? ` · ${esc(x.note)}` : ''}${x.kind === 'stripe' ? ` · ${esc(x.bookingId || x.id)}` : ''}</small></span>
     <span class="jh-right"><span class="amt">${esc(money(x.keptCents))}</span>${pill(x.status)}${x.kind === 'bank' ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-hundo="${esc(x.id)}">Put back</button>` : ''}</span></li>`
 }
 
@@ -138,6 +146,7 @@ export async function renderHolidayMoney(ui) {
       <div class="jm-tiles" data-n="4">${tiles.map(([key, l, val, c, note], i) => `<section class="jd-card jd-tile jm-tile" style="--i:${i + 1}" data-htile="${key}"><span class="lbl"><span class="jd-key"><i style="background:var(${c})"></i>${l}</span></span><span class="val">${esc(money(val || 0))}</span><span class="note">${esc(note)}</span></section>`).join('')}</div>
     </div>
     ${owedBlock(v)}
+    ${checkBlock(v)}
     <div id="h-sheet-wrap">${sheetBlock(v)}</div>
     <div class="jh-groups">
       ${groupCard('h-coach', 'By coach', 'Kept, by who ran the session', v.byCoach)}
@@ -159,6 +168,16 @@ export async function renderHolidayMoney(ui) {
     if (!b || b.dataset.basis === H.basis) return
     H.basis = b.dataset.basis
     view().querySelector('#h-sheet-wrap').innerHTML = sheetBlock(v)
+  })
+  view().querySelector('#h-check')?.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-hcheck]')
+    if (!b) return
+    b.disabled = true
+    const r = await post('quickLinkChecked', { id: b.dataset.hcheck })
+    if (!r.ok) { b.disabled = false; return toast(r.data.error) }
+    toast('Checked')
+    holidayStale()
+    renderHolidayMoney(ui)
   })
   view().querySelector('#h-lines').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-hundo]')

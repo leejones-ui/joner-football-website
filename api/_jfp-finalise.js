@@ -23,11 +23,16 @@ import {
   findWaiversByTag, appendNote, bustRosterCache, loadRoster,
 } from './_jfp-airtable.js'
 import { recordNext, setNextStatus, nextStatuses } from './_jfp-next.js'
-import { sendParentConfirmation, sendStaffAlert, sendCoachAlert, sendPaymentReceipt, sendPaymentStaffAlert, sendAttentionAlert } from './_jfp-email.js'
+import { sendParentConfirmation, sendStaffAlert, sendCoachAlert, sendPaymentReceipt, sendPaymentStaffAlert, sendAttentionAlert, sendQuickPaidAlert } from './_jfp-email.js'
 
 const LEASE_SECONDS = 120
 export const EFFECTS = ['airtable', 'waiver', 'ledger', 'parentEmail', 'staffAlert', 'coachAlert']
 export const PAY_EFFECTS = ['airtable', 'ledger', 'parentEmail', 'staffAlert']
+// A quick link with no player (Lee, 13 Oct 2026): nothing to write to a Term 4
+// row or the ledger yet (Lee matches it on Money), so staff are told it came in.
+export const QUICK_EFFECTS = ['staffAlert']
+const unplacedQuick = (r) => Boolean(r?.quick) && !(r.term4Ids || []).length
+export const payEffectsFor = (r) => (unplacedQuick(r) ? QUICK_EFFECTS : PAY_EFFECTS)
 // Safe to run again after an unclear outcome: each looks for its own rows first.
 const IDEMPOTENT = new Set(['airtable', 'waiver', 'ledger'])
 
@@ -228,8 +233,9 @@ async function runBookingEffects(booking, retry = new Set()) {
   await save(booking)
 }
 
-// The place is recorded only when the Airtable step finished.
-export function enrolled(record) { return record?.effects?.airtable?.status === 'done' }
+// The place is recorded only when the Airtable step finished. A quick link
+// with no player has no place to record: paid is all there is.
+export function enrolled(record) { return unplacedQuick(record) || record?.effects?.airtable?.status === 'done' }
 function clearAttention(record, reason) {
   const left = String(record.needsAttention || '').split(', ').filter((x) => x && x !== reason)
   record.needsAttention = left.join(', ')
@@ -242,6 +248,10 @@ async function runPayreqEffects(payreq, retry = new Set()) {
   const group = payreq.groupId ? await getGroup(payreq.groupId) : null
   const save = savePayreq
   for (const k of retry) delete payreq.effects?.[k]
+  if (unplacedQuick(payreq)) {
+    await runEffect('staffAlert', payreq, save, () => sendQuickPaidAlert({ payreq, config }))
+    return
+  }
   await runEffect('airtable', payreq, save, async () => {
     // Next term: no Term 4 row changes; the place is recorded as held or paid.
     if (payreq.next) {
@@ -329,7 +339,9 @@ async function runPayreqEffects(payreq, retry = new Set()) {
     })
   })
   if (!enrolled(payreq)) { await flagAttention(payreq, 'roster-pending', save, payreq.playerNames.join(', ')); return }
-  await runEffect('parentEmail', payreq, save, () => sendPaymentReceipt({ payreq, group, config, siteUrl: payreq.siteUrl || '' }))
+  // A quick link may have had no email on it: the receipt goes to the email that paid.
+  const to = payreq.email || payreq.payerEmail || ''
+  await runEffect('parentEmail', payreq, save, () => (to ? sendPaymentReceipt({ payreq: { ...payreq, email: to }, group, config, siteUrl: payreq.siteUrl || '' }) : false))
   await runEffect('staffAlert', payreq, save, () => sendPaymentStaffAlert({ payreq, group, config }))
   clearAttention(payreq, 'roster-pending')
   await save(payreq)
@@ -366,6 +378,8 @@ export async function finaliseJfpBooking(id, session) {
         stripeSessionId: info.sessionId || record.stripeSessionId,
         stripePaymentIntentId: info.intentId,
         ...(isPay ? { paidCents: info.amountCents || record.amountCents } : { amountPaidCents: info.amountCents || record.priceCents }),
+        // Who paid a quick link, from Stripe: it may have had no email or player on it.
+        ...(record.quick ? { payerEmail: String(session?.customer_details?.email || session?.customer_email || '').trim().toLowerCase(), payerName: String(session?.customer_details?.name || '').trim() } : {}),
         needsAttention: !isPay && heldUntil && Date.now() > heldUntil ? 'late-payment' : (record.needsAttention || ''),
       }
       record.stripeFeeCents = await stripeFee(record.stripePaymentIntentId)
@@ -375,7 +389,7 @@ export async function finaliseJfpBooking(id, session) {
     }
     // A repeat (Stripe retrying, or the parent's success page) finishes what an
     // outage left undone: failed steps, and unclear ones that are safe to repeat.
-    const retry = new Set((isPay ? PAY_EFFECTS : EFFECTS).filter((k) => {
+    const retry = new Set((isPay ? payEffectsFor(record) : EFFECTS).filter((k) => {
       const st = record.effects?.[k]?.status
       return st === 'failed' || ((st === 'uncertain' || st === 'running') && IDEMPOTENT.has(k))
     }))
@@ -398,7 +412,7 @@ export async function repairJfpBooking(id) {
   if (!lease) return { ok: false, reason: 'busy' }
   try {
     const fresh = await get(id)
-    const list = isPay ? PAY_EFFECTS : EFFECTS
+    const list = isPay ? payEffectsFor(fresh) : EFFECTS
     const retry = new Set(list.filter((k) => {
       const s = fresh.effects?.[k]?.status
       return s === 'failed' || s === 'running' || (s === 'uncertain' && IDEMPOTENT.has(k))

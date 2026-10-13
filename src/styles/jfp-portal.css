@@ -565,3 +565,48 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
   .jh-right { flex-direction: row; align-items: center; flex-wrap: wrap; width: 100%; justify-content: space-between; }
   #h-refresh, #h-csv { flex: 1 1 auto; min-height: 44px; }
 }
+/* Money > Prices and quick payment links (13 Oct 2026). Phone first: every
+   button at least 40px, nothing wider than the screen. */
+.jq-card { padding: 18px; max-width: 760px; margin-bottom: 16px; }
+.jq-card h2 { margin-bottom: 4px; }
+.jq-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.jq-price { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--j-line-2); }
+.jq-price:first-child { border-top: 0; }
+.jq-main { min-width: 0; flex: 1 1 220px; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 3px; }
+.jq-main small { color: var(--j-muted); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.jq-amt { color: var(--j-ink); }
+.jq-archived { opacity: .7; }
+.jq-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.jq-acts .j-btn, .jq-rowacts .j-btn, #pl-other-check .j-btn, #h-check .j-btn { min-height: 40px; }
+.jq-amt-in { display: flex; align-items: center; gap: 6px; }
+.jq-amt-in .j-input { width: 110px; min-height: 40px; padding: 8px 10px; }
+.jq-fold { margin-top: 10px; }
+.jq-fold > summary { min-height: 40px; display: flex; align-items: center; cursor: pointer; font-weight: 650; }
+.jq-foot { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 8px; }
+.jq-foot .j-btn { min-height: 44px; }
+.jq-chosen { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--j-line); border-radius: 10px; margin-bottom: 6px; min-width: 0; }
+.jq-chosen span { min-width: 0; overflow-wrap: anywhere; }
+.jq-chosen small { display: block; color: var(--j-muted); }
+.jq-chosen .j-btn { min-height: 40px; }
+.jq-acts-wide { margin-top: 4px; }
+.jq-acts-wide .j-btn { flex: 1 1 auto; min-height: 44px; }
+.jq-progs { flex-wrap: wrap; overflow: visible; }
+.jq-progs .j-chip { min-height: 40px; }
+.jq-rowacts { white-space: nowrap; }
+#qr-url { font-size: 14px; }
+#pl-other-check .jm-hist li > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .jp-head .jq-acts { width: 100%; }
+  .jp-head .jq-acts .j-btn { flex: 1 1 auto; }
+  .jq-price .jq-acts { width: 100%; }
+  .jq-price .jq-acts .j-btn { flex: 1 1 auto; }
+  .jq-links .jy-stack td { overflow-wrap: anywhere; align-items: flex-start; }
+  .jq-links .jy-stack td::before { flex: 0 0 auto; white-space: nowrap; }
+  .jq-links .jy-stack .jq-cell { min-width: 0; text-align: right; }
+  .jq-links .jy-stack td:first-child .jq-cell { text-align: left; }
+  .jq-links .jy-stack td:first-child { display: block; text-align: left; }
+  .jq-links .jy-stack td:first-child::before { display: none; }
+  .jy-stack td.jq-rowacts { white-space: normal; justify-content: flex-start; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
+  .jy-stack td.jq-rowacts::before { display: none; }
+  .jy-stack td.jq-rowacts .j-btn { flex: 1 1 auto; }
+}

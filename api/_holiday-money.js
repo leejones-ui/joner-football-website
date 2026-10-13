@@ -8,6 +8,9 @@
 //           refund is what Stripe has refunded on the charge.
 //   bank    bank transfers Lee marked "Holiday revenue" on Bank transfers to
 //           check (KV jfp:holiday-bank). No fee.
+//   link    quick payment links made for Holiday training (PAY-..., programme
+//           holiday, Money > Payment links): Stripe, with the real fee. One
+//           with no player named is "to check" until Lee ticks it.
 // A booking counts in the holiday its session is in (the slot's date). A bank
 // line counts in the holiday Lee picked for it.
 //
@@ -16,10 +19,13 @@
 // never also be recorded for a player.
 import { stripeFetch, listBookings, listSlots, getConfig as getHolidayConfig, kvGetJson, kvSetJson, kvCommand, coachById, formatAud } from './_holiday-store.js'
 import { feeFrom, fillFees } from './_jfp-stripe.js'
-import { HOLIDAY_PERIODS, OTHER, OTHER_LABEL, periodOf, periodById, pickablePeriods, rangeLabel, holidayPriceSizes } from './_holiday-periods.js'
+import { HOLIDAY_PERIODS, OTHER, OTHER_LABEL, periodOf, periodById, pickablePeriods, rangeLabel, holidayPriceSizes, suggestPeriod } from './_holiday-periods.js'
+import { listPayreqs } from './_jfp-store.js'
+import { QUICK_CHECKED } from './_jfp-quick.js'
 
 export const HOLIDAY_BANK = 'jfp:holiday-bank'
-const STRIPE_CACHE = 'holiday:stripe-payments:v1'
+// v2 also has the quick links made for holiday training.
+const STRIPE_CACHE = 'holiday:stripe-payments:v2'
 const STRIPE_CACHE_SECONDS = 300
 const MAX_PAGES = 20
 export const ALL = 'all'
@@ -33,7 +39,7 @@ export function sydneyDay(iso) {
 }
 const monthLabel = (ym) => new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(new Date(`${ym}-01T00:00:00Z`))
 
-export const TYPE_NAMES = { one: '1 on 1', shared: 'Shared (2 players)', group: 'Small group', bank: 'Bank transfer' }
+export const TYPE_NAMES = { one: '1 on 1', shared: 'Shared (2 players)', group: 'Small group', bank: 'Bank transfer', link: 'Payment link' }
 
 // ---------- reading ----------
 
@@ -55,7 +61,8 @@ export async function holidayStripePayments({ since, fresh = false } = {}) {
     if (after) q.set('starting_after', after)
     const d = await stripeFetch(`/checkout/sessions?${q}`)
     for (const s of d.data || []) {
-      const bookingId = String(s.metadata?.holidayBookingId || '')
+      // A holiday booking, or a quick payment link made for holiday training.
+      const bookingId = String(s.metadata?.holidayBookingId || (s.metadata?.jfpProgramme === 'holiday' ? s.metadata?.jfpBookingId || '' : ''))
       if (!bookingId || s.payment_status !== 'paid') continue
       const pi = s.payment_intent && typeof s.payment_intent === 'object' ? s.payment_intent : null
       const charge = pi?.latest_charge && typeof pi.latest_charge === 'object' ? pi.latest_charge : null
@@ -94,16 +101,19 @@ export async function listHolidayBank() {
 // Everything the holiday money view needs, read now. locationOf(name) gives
 // the venue a slot's location is (the JFP venue list).
 export async function holidayMoneyData({ period = '', fresh = false, locationOf, today } = {}) {
-  const [config, bookings, slots, bankLines] = await Promise.all([getHolidayConfig(), listBookings({ limit: 2000 }), listSlots({ includeCancelled: true }), listHolidayBank()])
-  const firstDay = bookings.map((b) => sydneyDay(b.createdAt)).filter(Boolean).sort()[0]
+  const [config, bookings, slots, bankLines, payreqs, checkedRaw] = await Promise.all([getHolidayConfig(), listBookings({ limit: 2000 }), listSlots({ includeCancelled: true }), listHolidayBank(), listPayreqs().catch(() => []), kvCommand(['HGETALL', QUICK_CHECKED]).catch(() => [])])
+  const quickLinks = payreqs.filter((q) => q?.quick && q.programme === 'holiday' && q.status === 'paid')
+  const checked = {}
+  for (let i = 0; Array.isArray(checkedRaw) && i + 1 < checkedRaw.length; i += 2) checked[checkedRaw[i]] = checkedRaw[i + 1]
+  const firstDay = [...bookings.map((b) => sydneyDay(b.createdAt)), ...quickLinks.map((q) => sydneyDay(q.createdAt))].filter(Boolean).sort()[0]
   let stripe = { payments: [], error: '', at: '' }
-  if (bookings.length) {
+  if (bookings.length || quickLinks.length) {
     try { stripe = { ...(await holidayStripePayments({ since: firstDay ? addDaysIso(firstDay, -1) : '', fresh })), error: '' } } catch (error) {
       console.error('holiday stripe read failed', error)
       stripe.error = 'Stripe could not be read just now. Bookings show what they were paid; fees and refunds are not known.'
     }
   }
-  return holidayMoneyView({ bookings, slots, config, stripe, bankLines, locationOf, today, period })
+  return holidayMoneyView({ bookings, slots, config, stripe, bankLines, quickLinks, checked, locationOf, today, period })
 }
 const addDaysIso = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
 
@@ -118,7 +128,7 @@ export async function holidaySizes() {
 const sum = (list, k) => list.reduce((t, x) => t + (x[k] || 0), 0)
 
 // One line per paid booking and per bank line marked as holiday training.
-export function holidayLines({ bookings = [], slots = [], config = { coaches: [] }, stripe = { payments: [], error: '' }, bankLines = [], locationOf = (n) => ({ id: 'other', name: n || 'No venue set' }) }) {
+export function holidayLines({ bookings = [], slots = [], config = { coaches: [] }, stripe = { payments: [], error: '' }, bankLines = [], quickLinks = [], checked = {}, locationOf = (n) => ({ id: 'other', name: n || 'No venue set' }) }) {
   const slotsById = new Map(slots.map((s) => [s.id, s]))
   const pays = new Map()
   for (const p of stripe.payments || []) pays.set(p.bookingId, [...(pays.get(p.bookingId) || []), p])
@@ -164,8 +174,38 @@ export function holidayLines({ bookings = [], slots = [], config = { coaches: []
     seen.add(b.id)
     lines.push(fromBooking(b, slotsById.get(b.slotId), list))
   }
-  // Paid in Stripe for a booking the store no longer has.
-  for (const [id, list] of pays) if (!seen.has(id)) lines.push(fromBooking(null, slotsById.get(list[0].slotId), list))
+  // A quick payment link for holiday training: Stripe's own figures when the
+  // list has it, else what the link recorded when it was paid.
+  const quickById = new Map(quickLinks.map((q) => [q.id, q]))
+  const fromLink = (q, list) => {
+    const found = list.length > 0
+    const taken = found ? sum(list, 'amountCents') : Number(q?.paidCents ?? q?.amountCents ?? 0)
+    const refunded = found ? sum(list, 'refundedCents') : Number(q?.refundedCents || 0)
+    const feeKnown = found ? list.every((p) => p.feeKnown) : Number.isInteger(q?.stripeFeeCents)
+    const fee = !feeKnown ? null : found ? sum(list, 'feeCents') : q.stripeFeeCents
+    const paidDate = sydneyDay(q?.paidAt || list[0]?.at || q?.createdAt || '')
+    const p = periodById(q?.holidayPeriod)
+    const inBreak = p && paidDate >= p.from && paidDate <= p.to
+    const loc = locationOf('')
+    const named = (q?.playerNames || []).length > 0
+    return {
+      kind: 'stripe', link: true, id: q?.id || list[0]?.bookingId, bookingId: '', status: named || checked[q?.id || list[0]?.bookingId] ? 'link' : 'link-check',
+      period: p ? p.id : suggestPeriod(paidDate).id, sessionDate: '', time: '', paidDate, monthDate: p && !inBreak ? p.start : paidDate,
+      coach: 'Not noted', locationId: loc.id, location: loc.name, type: 'link', typeName: TYPE_NAMES.link, unitCents: taken, band: `${TYPE_NAMES.link} · ${formatAud(taken)}`, seats: null,
+      who: q?.payerName || q?.parentName || '', players: q?.playerNames || [], note: q?.forText || '',
+      takenCents: taken, refundedCents: refunded, feeCents: fee, feeGstCents: feeKnown ? (found ? sum(list, 'feeGstCents') : null) : null, feePending: !feeKnown,
+      keptCents: taken - refunded - (fee || 0), stripeFound: found, stripeChecked: stripeOk, refundDueCents: 0, refundOwedCents: 0,
+      intentId: list[0]?.intentId || q?.stripePaymentIntentId || '', payMethod: list[0]?.payMethod || '',
+    }
+  }
+  for (const [id, list] of pays) {
+    if (seen.has(id)) continue
+    // Paid in Stripe for a booking the store no longer has.
+    if (!id.startsWith('PAY-')) { lines.push(fromBooking(null, slotsById.get(list[0].slotId), list)); continue }
+    seen.add(id)
+    lines.push(fromLink(quickById.get(id), list))
+  }
+  for (const q of quickLinks) if (!seen.has(q.id)) { seen.add(q.id); lines.push(fromLink(q, [])) }
   for (const x of bankLines) {
     const p = periodById(x.period)
     // No session date: the bank date, or the holiday's first day when the money came in before or after it.
@@ -222,8 +262,8 @@ export function periodList(lines, today) {
 }
 
 // The whole view for one holiday (or Other dates, or all of it).
-export function holidayMoneyView({ bookings, slots, config, stripe, bankLines, locationOf, today, period = '' } = {}) {
-  const lines = holidayLines({ bookings, slots, config, stripe, bankLines, locationOf })
+export function holidayMoneyView({ bookings, slots, config, stripe, bankLines, quickLinks = [], checked = {}, locationOf, today, period = '' } = {}) {
+  const lines = holidayLines({ bookings, slots, config, stripe, bankLines, quickLinks, checked, locationOf })
   const periods = periodList(lines, today)
   const known = new Set(periods.map((p) => p.id))
   // No holiday asked for: the newest one with money in it, else the newest.
@@ -242,6 +282,8 @@ export function holidayMoneyView({ bookings, slots, config, stripe, bankLines, l
     byType: groupBy(list, (x) => `${x.type}|${x.unitCents}`, (x) => x.band),
     byMonth: { session: byMonth(list, 'session'), paid: byMonth(list, 'paid') },
     refundsOwed: list.filter((x) => x.kind === 'stripe' && x.refundDueCents > 0 && x.refundOwedCents !== 0).map((x) => ({ bookingId: x.bookingId, sessionDate: x.sessionDate, time: x.time, coach: x.coach, who: x.who, takenCents: x.takenCents, refundDueCents: x.refundDueCents, refundedCents: x.refundedCents, owedCents: x.refundOwedCents, stripeChecked: x.stripeFound, intentId: x.intentId })),
+    // Quick links with no player named, for Lee to look at (every holiday).
+    toCheck: lines.filter((x) => x.status === 'link-check').map((x) => ({ id: x.id, paidDate: x.paidDate, takenCents: x.takenCents, who: x.who, note: x.note, period: x.period })),
     lines: list,
   }
 }

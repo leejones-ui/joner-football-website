@@ -44,6 +44,9 @@ async function linkProduct(linkId) {
 
 export function classifySession(s, product) {
   if (s.metadata?.holidayBookingId) return 'holiday'
+  // A quick link says its programme: only JFP is JFP term income.
+  const programme = s.metadata?.jfpProgramme
+  if (programme && programme !== 'jfp') return programme === 'holiday' ? 'holiday' : 'other'
   if (s.metadata?.jfpBookingId) return 'jfp'
   if (product && JFP_PRODUCT.test(product) && !NOT_JFP.test(product)) return 'jfp'
   return 'other'
@@ -115,7 +118,7 @@ export async function jfpStripePayments({ since, fresh = false, quick = false, t
     const d = await stripeFetch(`/checkout/sessions?${q}`)
     for (const s of d.data || []) {
       if (s.payment_status !== 'paid') continue
-      const product = s.payment_link ? await linkProduct(typeof s.payment_link === 'string' ? s.payment_link : s.payment_link.id) : (s.metadata?.jfpBookingId ? 'JFP online booking' : '')
+      const product = s.payment_link ? await linkProduct(typeof s.payment_link === 'string' ? s.payment_link : s.payment_link.id) : s.metadata?.jfpFor ? `Quick link: ${s.metadata.jfpFor}` : (s.metadata?.jfpBookingId ? 'JFP online booking' : '')
       const kind = classifySession(s, product)
       if (kind === 'holiday') continue
       if (kind === 'other') { other = { count: other.count + 1, cents: other.cents + (s.amount_total || 0) }; continue }

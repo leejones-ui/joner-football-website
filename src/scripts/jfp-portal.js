@@ -9,9 +9,10 @@ import { drawFamilies, sessionModal } from './jfp-portal-family.js'
 import { bankPanel, bindBank, loadBank, bankDone, bankStale } from './jfp-portal-bank.js'
 import { renderHolidayMoney, holidayStale } from './jfp-portal-holiday.js'
 import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYearChart } from './jfp-portal-years.js'
+import { renderPricesPage, quickModal, progPill, WHERE as QUICK_WHERE } from './jfp-portal-quick.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
-const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', pricing: null }
+const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', linkProg: 'all', pricing: null }
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const post = (action, body = {}) => api('/api/jfp-portal-data', { action, ...body })
 const view = () => $('view')
@@ -1075,12 +1076,17 @@ async function offerModal(r, decision) {
 
 // ---------- payment links ----------
 
-const REASON = { 'admin-add': 'Spot link', balance: 'Balance', application: 'Application offer', waitlist: 'Waitlist offer', trial: 'Trial', 'term-after-trial': 'Term after trial' }
+const REASON = { 'admin-add': 'Spot link', balance: 'Balance', application: 'Application offer', waitlist: 'Waitlist offer', trial: 'Trial', 'term-after-trial': 'Term after trial', quick: 'Quick link' }
+// Prices and quick links share the portal's own modal, toast and board.
+const quickUi = () => ({ view, post, need, toast, modal, closeModal, confirm: confirmBox, copy, payPill, board: async () => (P.board ||= await need(await post('board'))), pricing: async (fresh = false) => { if (fresh) P.pricing = null; return pricing() }, resetPricing: () => { P.pricing = null }, onPrices: () => { if (P.tab === 'prices') renderPrices() }, onLinks: () => { if (P.tab === 'payments') renderPayments() } })
+const LINK_PROGS = [['all', 'All'], ['jfp', 'JFP'], ['juniors', 'Joners Juniors'], ['holiday', 'Holiday training'], ['other', 'Other']]
 
 async function renderPayments() {
   const d = await need(await post('payments'))
   if (!P.board) P.board = await need(await post('board'))
   const eff = (e) => (!e ? '' : e.ok ? '<span class="j-pill j-pill-green">Airtable and emails done</span>' : `<span class="j-pill j-pill-red">${esc([...e.failed, ...e.uncertain, ...e.pending].join(', '))}</span>`)
+  // A quick link with no player writes nothing to Airtable: staff are emailed.
+  const effQuick = (e) => (!e ? '' : e.ok ? '<span class="j-pill j-pill-green">Staff emailed</span>' : '<span class="j-pill j-pill-red">Staff email not sent</span>')
   const when = (iso) => new Date(iso).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
   const state = (q) => {
     if (q.status === 'paid') return `<span class="j-pill j-pill-green">Paid</span><div class="muted small" style="margin-top:3px">${q.paidAt ? esc(when(q.paidAt)) : ''}</div>`
@@ -1089,20 +1095,35 @@ async function renderPayments() {
     return `${pill}<div class="muted small" style="margin-top:3px">${q.emailedAt ? `Emailed ${esc(when(q.emailedAt))}` : `Made ${esc(when(q.createdAt))}`}${q.expiresAt ? ` · holds until ${esc(new Date(q.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}</div>`
   }
   const filt = { open: (q) => ['open', 'checkout'].includes(q.status), paid: (q) => q.status === 'paid', closed: (q) => ['cancelled', 'expired'].includes(q.status) }
-  const counts = Object.fromEntries(Object.entries(filt).map(([k, f]) => [k, d.payreqs.filter(f).length]))
-  const list = d.payreqs.filter(filt[P.linkFilter] || filt.open)
+  // Programme chips (Lee, 13 Oct 2026): every link before quick links is JFP.
+  const inProg = (q) => P.linkProg === 'all' || (q.programme || 'jfp') === P.linkProg
+  const shown = d.payreqs.filter(inProg)
+  const counts = Object.fromEntries(Object.entries(filt).map(([k, f]) => [k, shown.filter(f).length]))
+  const list = shown.filter(filt[P.linkFilter] || filt.open)
+  const progCount = Object.fromEntries(LINK_PROGS.map(([k]) => [k, d.payreqs.filter((q) => k === 'all' || (q.programme || 'jfp') === k).length]))
+  // Paid quick links for Other with no player: nowhere else to look at them.
+  const otherCheck = d.payreqs.filter((q) => q.quick && q.toCheck && q.programme === 'other')
+  const quickState = (q) => {
+    const pill = { paid: 'green', expired: 'grey', cancelled: 'grey', paying: 'amber', opened: 'amber', sent: 'blue', made: 'blue' }[q.quickStatus] || 'grey'
+    return `<span class="j-pill j-pill-${pill}">${esc(q.quickStatusLabel)}</span><div class="muted small" style="margin-top:3px">${q.status === 'paid' ? (q.paidAt ? esc(when(q.paidAt)) : '') : q.emailedAt ? `Emailed ${esc(when(q.emailedAt))}` : `Made ${esc(when(q.createdAt))}`}${q.views && q.status !== 'paid' ? ` · opened ${q.views === 1 ? 'once' : `${q.views} times`}` : ''}${['open', 'checkout'].includes(q.status) && q.expiresAt ? ` · works until ${esc(new Date(q.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}</div>${q.status === 'paid' && q.toCheck ? `<div class="muted small">No player: waiting on ${esc(QUICK_WHERE[q.programme])}</div>` : ''}`
+  }
+  const who = (q) => (q.quick && !q.players.length ? `<b>No player</b><br><span class="muted small">${esc(q.status === 'paid' ? [q.payerName, q.payerEmail].filter(Boolean).join(' · ') || 'Paid' : q.email || 'No email')}</span>` : `<b>${esc(q.players.join(', '))}</b><br><span class="muted small">${esc(q.parentName)}${q.email ? ` · ${esc(q.email)}` : ''}</span>`)
+  const forCell = (q) => (q.quick ? `${esc(q.forText)}<br><span class="muted small">${progPill(q.programme, q.programmeLabel)} Quick link${q.priceName && !q.forText.startsWith(q.priceName) ? ` · ${esc(q.priceName)}` : ''}${q.afterpay ? '' : ' · card only'}</span>` : `${esc(q.group || 'No group')}<br><span class="muted small">${esc(REASON[q.kind] || q.kind)}${q.productLabel ? ` · ${esc(q.productLabel)}` : ''}${q.trialDate ? ` · trial ${esc(q.trialDate)}` : q.startDate ? ` · from ${esc(q.startDate)}` : ''}${q.afterpay ? '' : ' · card only'}</span>`)
+  const acts = (q) => `${['open', 'checkout'].includes(q.status) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-change="${esc(q.id)}">Change amount</button> <button type="button" class="j-btn j-btn-line j-btn-sm" data-copy="${esc(q.url)}">Copy</button>${q.quick ? ` <a class="j-btn j-btn-line j-btn-sm" href="${esc(q.url)}" target="_blank" rel="noopener noreferrer">Open</a>${q.email ? ` <button type="button" class="j-btn j-btn-line j-btn-sm" data-email-quick="${esc(q.id)}">Email it</button>` : ''}` : ''} <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancel-pay="${esc(q.id)}">Cancel</button>` : ''}${q.effects && !q.effects.ok ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(q.id)}">Repair</button>` : ''}${q.stripeUrl ? ` <a class="j-btn j-btn-ghost j-btn-sm" href="${esc(q.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}`
   const attention = [...d.payreqs, ...d.bookings].filter((x) => x.needsAttention)
   const attnWord = { 'paid-after-cancel': 'Paid after it was cancelled', 'second-payment': 'Paid twice', 'late-payment': 'Paid after the hold ran out' }
   view().innerHTML = `
     <div class="jp-head"><div><h1>Payment links</h1><p class="muted small">Make a link for any player, change the amount on an open one, or copy it to send yourself. You never need to open Stripe. Refunds are made in Stripe.</p></div>
-      <button type="button" class="j-btn j-btn-dark" id="pl-new">+ New payment link</button></div>
+      <div class="jq-acts"><button type="button" class="j-btn j-btn-dark" id="pl-quick">Quick link</button><button type="button" class="j-btn j-btn-line" id="pl-new">+ New payment link</button></div></div>
+    ${otherCheck.length ? `<div class="j-box j-box-amber" id="pl-other-check" style="margin-bottom:16px"><b>Other payments to check: ${otherCheck.length}</b><p class="small" style="margin:4px 0 6px">Quick links for Other, paid with no player named. Look at who paid, then tick Checked.</p><ul class="jm-hist">${otherCheck.map((q) => `<li><span><b>${esc(q.forText)}</b><small>${esc([q.payerName, q.payerEmail].filter(Boolean).join(' · ') || 'Payer not known')} · ${q.paidAt ? esc(when(q.paidAt)) : ''} · ${esc(q.id)}</small></span><span class="jq-acts"><span class="amt">${esc(q.amountLabel)}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-check-quick="${esc(q.id)}">Checked</button></span></li>`).join('')}</ul></div>` : ''}
     ${attention.length ? `<div class="j-box j-box-red" style="margin-bottom:16px"><b>Needs checking</b>${attention.map((x) => `<div style="margin-top:8px">${esc(x.players.join(', '))} · ${esc(x.parentName)} · ${esc(String(x.needsAttention).split(', ').map((k) => attnWord[k] || k).join(', '))}${(x.unexpected || []).map((u) => ` · ${esc(u.amountLabel)}${u.stripeUrl ? ` <a href="${esc(u.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}`).join('')}</div>`).join('')}<p class="small" style="margin-top:8px">A payment that arrived after a cancel is not added to Airtable. Give the family the place (add them on the timetable) or refund in Stripe.</p></div>` : ''}
+    <div class="j-chips jq-progs" id="pl-prog" role="group" aria-label="Programme" style="margin-bottom:8px">${LINK_PROGS.map(([v, l]) => `<button type="button" class="j-chip" data-prog="${v}" aria-pressed="${P.linkProg === v}">${l} ${progCount[v]}</button>`).join('')}</div>
     <div class="jp-seg" id="pl-f" style="margin-bottom:10px">${[['open', `Open ${counts.open}`], ['paid', `Paid ${counts.paid}`], ['closed', `Cancelled or expired ${counts.closed}`]].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.linkFilter === v}">${l}</button>`).join('')}</div>
-    ${list.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>For</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>
-      ${list.map((q) => `<tr><td><b>${esc(q.players.join(', '))}</b><br><span class="muted small">${esc(q.parentName)} · ${esc(q.email)}</span></td>
-        <td>${esc(q.group || 'No group')}<br><span class="muted small">${esc(REASON[q.kind] || q.kind)}${q.productLabel ? ` · ${esc(q.productLabel)}` : ''}${q.trialDate ? ` · trial ${esc(q.trialDate)}` : q.startDate ? ` · from ${esc(q.startDate)}` : ''}${q.afterpay ? '' : ' · card only'}</span></td>
-        <td>${esc(q.amountLabel)}${q.feeLabel ? `<br><span class="muted small">fee ${esc(q.feeLabel)}</span>` : ''}</td><td>${state(q)}${q.status === 'paid' ? `<div style="margin-top:4px">${eff(q.effects)}</div>` : ''}</td>
-        <td style="white-space:nowrap">${['open', 'checkout'].includes(q.status) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-change="${esc(q.id)}">Change amount</button> <button type="button" class="j-btn j-btn-line j-btn-sm" data-copy="${esc(q.url)}">Copy</button> <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancel-pay="${esc(q.id)}">Cancel</button>` : ''}${q.effects && !q.effects.ok ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(q.id)}">Repair</button>` : ''}${q.stripeUrl ? ` <a class="j-btn j-btn-ghost j-btn-sm" href="${esc(q.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}</td></tr>`).join('')}
+    ${list.length ? `<div class="jp-scroll jq-links"><table class="jp-table jy-table jy-stack" id="pl-list"><thead><tr><th>Player</th><th>For</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>
+      ${list.map((q) => `<tr data-link="${esc(q.id)}"><td data-label="Player"><div class="jq-cell">${who(q)}</div></td>
+        <td data-label="For"><div class="jq-cell">${forCell(q)}</div></td>
+        <td data-label="Amount"><div class="jq-cell">${esc(q.amountLabel)}${q.feeLabel ? `<br><span class="muted small">fee ${esc(q.feeLabel)}</span>` : ''}</div></td><td data-label="Status"><div class="jq-cell">${q.quick ? quickState(q) : state(q)}${q.status === 'paid' ? `<div style="margin-top:4px">${q.quick && !(q.term4Ids || []).length ? effQuick(q.effects) : eff(q.effects)}</div>` : ''}</div></td>
+        <td class="jq-rowacts" data-label="">${acts(q)}</td></tr>`).join('')}
     </tbody></table></div>` : '<div class="j-empty">Nothing here.</div>'}
     <h2 style="margin:22px 0 10px">Online bookings</h2>
     ${d.bookings.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Players</th><th>Group</th><th>Paid</th><th>Status</th><th>Airtable and emails</th><th></th></tr></thead><tbody>
@@ -1110,7 +1131,11 @@ async function renderPayments() {
         <td style="white-space:nowrap">${b.effects && !b.effects.ok ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(b.id)}">Repair</button>` : ''}${b.status === 'held' ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancel-booking="${esc(b.id)}">Release</button>` : ''}${b.stripeUrl ? ` <a class="j-btn j-btn-ghost j-btn-sm" href="${esc(b.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}</td></tr>`).join('')}
     </tbody></table></div>` : '<div class="j-empty">No online bookings yet.</div>'}`
   $('pl-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { P.linkFilter = b.dataset.f; renderPayments() } })
+  $('pl-prog').addEventListener('click', (e) => { const b = e.target.closest('[data-prog]'); if (b) { P.linkProg = b.dataset.prog; renderPayments() } })
   $('pl-new').addEventListener('click', () => newLinkModal())
+  $('pl-quick').addEventListener('click', () => quickModal(quickUi()))
+  view().querySelectorAll('[data-email-quick]').forEach((b) => b.addEventListener('click', async () => { const q = d.payreqs.find((x) => x.id === b.dataset.emailQuick); if (!(await confirmBox(`Email this link to <b>${esc(q.email)}</b>?`, { ok: 'Email it' }))) return; const r = await post('emailQuickLink', { id: q.id }); toast(r.ok ? 'Emailed' : r.data.error); renderPayments() }))
+  view().querySelectorAll('[data-check-quick]').forEach((b) => b.addEventListener('click', async () => { b.disabled = true; const r = await post('quickLinkChecked', { id: b.dataset.checkQuick }); toast(r.ok ? 'Checked' : r.data.error); renderPayments() }))
   view().querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => copy(b.dataset.copy)))
   view().querySelectorAll('[data-change]').forEach((b) => b.addEventListener('click', () => changeModal(d.payreqs.find((q) => q.id === b.dataset.change))))
   view().querySelectorAll('[data-repair]').forEach((b) => b.addEventListener('click', async () => { b.disabled = true; const r = await post('repair', { id: b.dataset.repair }); toast(r.ok ? (r.data.summary.ok ? 'Repaired' : 'Still not complete. Check Airtable and try again.') : r.data.error); renderPayments() }))
@@ -1149,28 +1174,8 @@ function newLinkModal() {
 
 // ---------- prices (Lee and Ligia only) ----------
 
-async function renderPrices() {
-  const pr = P.pricing = await need(await post('pricing'))
-  view().innerHTML = `<div class="jp-head"><div><h1>Prices</h1><p class="muted small">Private: only you and Ligia see this tab. Parents never see a term price on the timetable; they see what they pay when they book or open a link.</p></div></div>
-    <div class="j-card jp-prices" style="padding:18px;max-width:760px">
-      <table class="jp-table"><thead><tr><th>What</th><th>Price (A$)</th><th>Pro rata</th></tr></thead><tbody>
-      ${pr.products.map((x) => `<tr><td><b>${esc(x.label)}</b><br><span class="muted small">Airtable type: ${esc(x.type)}${x.perPlaces > 1 ? ' · covers two places' : ''}</span></td><td><input class="j-input" data-price="${esc(x.key)}" inputmode="decimal" value="${x.cents / 100}"></td><td>${x.proRata ? 'Yes, sessions left' : 'No'}</td></tr>`).join('')}
-      </tbody></table>
-      <p class="muted small" style="margin-top:12px">Joining in week 4 of ${pr.weeks} pays for ${pr.weeks - 3} sessions: A$850 x ${pr.weeks - 3}/${pr.weeks} = A$${(850 * (pr.weeks - 3)) / pr.weeks}. Two siblings in one booking pay the two place rate each. After a trial, the trial price is taken off the term. Afterpay is on for every link unless you untick it.</p>
-      <p class="j-err" id="pr-err" hidden></p>
-      <button type="button" class="j-btn j-btn-dark" id="pr-save" style="margin-top:10px">Save prices</button>
-    </div>`
-  $('pr-save').addEventListener('click', async () => {
-    const prices = {}
-    view().querySelectorAll('[data-price]').forEach((i) => { prices[i.dataset.price] = Math.round(Number(i.value) * 100) })
-    if (Object.values(prices).some((v) => !(v > 0))) { $('pr-err').textContent = 'Every price needs an amount.'; $('pr-err').hidden = false; return }
-    const r = await post('saveSettings', { config: { prices } })
-    if (!r.ok) { $('pr-err').textContent = r.data.error; $('pr-err').hidden = false; return }
-    P.pricing = null
-    toast('Prices saved')
-    renderPrices()
-  })
-}
+// The JFP price list and Lee's own prices, each with Create link (13 Oct 2026).
+async function renderPrices() { return renderPricesPage(quickUi()) }
 
 // ---------- money ----------
 

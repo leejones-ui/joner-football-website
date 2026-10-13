@@ -290,6 +290,33 @@ export async function sendPaymentStaffAlert({ payreq, group, config }) {
   return send({ to: staffTo(config), subject: `JFP payment: ${payreq.playerNames.join(', ')}`, html: shell({ heading: 'Payment received', body }), replyTo: payreq.email })
 }
 
+// ---------- quick payment links (Lee, 13 Oct 2026) ----------
+
+// Sent only when staff tap "Email it" on the link.
+export async function sendQuickLinkEmail({ to, parentName = '', forText, amountCents, url, expiresAt = '', afterpay = true }) {
+  const until = expiresAt ? new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'long' }).format(new Date(expiresAt)) : ''
+  const body = `${p(`Hi ${esc(parentName || 'there')}, here is your Joner Football payment link.`)}
+${rows([['For', esc(forText)], ['To pay', esc(formatAud(amountCents))]])}
+${button(`Pay ${formatAud(amountCents)}`, url)}
+${p(`${afterpay ? 'Card, Apple Pay or Afterpay.' : 'Card or Apple Pay.'}${until ? ` The link works until ${esc(until)}.` : ''}`)}`
+  return send({ to: [{ email: to, name: parentName || undefined }], subject: `Joner Football: ${forText}`, html: shell({ preheader: `${formatAud(amountCents)} for ${forText}`, heading: 'Your payment link', body }) })
+}
+
+// A quick link with no player was paid: staff match it on Money.
+const PROG_LABEL = { jfp: 'JFP', juniors: 'Joners Juniors', holiday: 'Holiday training', other: 'Other' }
+const WHERE = { jfp: 'Money > JFP, Stripe payments not matched to a player', juniors: 'Money > Joners Juniors', holiday: 'Money > Holiday training', other: 'Payment links, Other payments to check' }
+export async function sendQuickPaidAlert({ payreq, config }) {
+  const body = `${p(`A quick payment link was paid. No player was named on it, so it is waiting on ${esc(WHERE[payreq.programme] || WHERE.other)}.`)}${rows([
+    ['For', esc(payreq.forText)],
+    ['Programme', esc(PROG_LABEL[payreq.programme] || payreq.programme)],
+    ['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))],
+    ['Paid by', `${esc(payreq.payerName || '')} ${esc(payreq.payerEmail || payreq.email || '')}`.trim() || 'Not known'],
+    ['Stripe fee', payreq.stripeFeeCents != null ? esc(formatAud(payreq.stripeFeeCents)) : 'Pending'],
+    ['Reference', esc(payreq.id)],
+  ])}`
+  return send({ to: staffTo(config), subject: `Quick link paid: ${payreq.forText}, ${formatAud(payreq.paidCents ?? payreq.amountCents)}`, html: shell({ heading: 'Payment received', body }), ...(payreq.payerEmail ? { replyTo: payreq.payerEmail } : {}) })
+}
+
 // ---------- payments that need a person ----------
 
 const ATTENTION = {

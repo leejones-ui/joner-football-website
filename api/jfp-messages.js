@@ -6,6 +6,7 @@ import { getConfig, listPayreqs, getPayreq, savePayreq, getGroup, audit, clean, 
 import { loadRoster, getTerm4Row } from './_jfp-airtable.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { accountInvite } from './_jfp-email.js'
+import { quickUrl } from './_jfp-quick.js'
 import { familyPlan, createPayreq, payreqUrl } from './jfp-portal-data.js'
 import {
   newMsg, getMsg, saveMsg, listMsgs, event, isFinal, claim, payloadHash, evidenceOf, familyPhone, maskPhone, normalisePhone, sha,
@@ -97,7 +98,8 @@ async function prepare(req, res, principal, config, body) {
     fam = now.fam
   }
   const signInUrl = `${siteUrl(req)}/jfp-account/`
-  const payUrl = fam.kind === 'pay' && payreq ? payreqUrl(req, payreq) : ''
+  // A quick link (13 Oct 2026) is paid on its own page, not the account.
+  const payUrl = fam.kind === 'pay' && payreq ? (payreq.quick ? quickUrl(siteUrl(req), payreq) : payreqUrl(req, payreq)) : ''
   // Any older draft for this family is replaced by these two.
   for (const old of (await listMsgs()).filter((m) => m.email === email && m.status === 'draft')) { old.status = 'cancelled'; event(old, principal.email, 'replaced by a new draft'); await saveMsg(old) }
   const by = principal.email

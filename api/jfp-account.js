@@ -41,9 +41,10 @@ function withDobs(fam, dobs, termStart) {
 
 // A payment request belongs to the family when it went to any of their
 // addresses (both parents), written however Airtable had it at the time.
+// A quick link is paid on its own page (/jfp-pay/), never from the account.
 function ownsPayreq(q, fam, email) {
   const mine = new Set([email, ...(fam?.emails || [])])
-  return Boolean(q) && emailsIn(q.email).some((e) => mine.has(e))
+  return Boolean(q) && !q.quick && emailsIn(q.email).some((e) => mine.has(e))
 }
 
 function paymentLine(row, openReq) {

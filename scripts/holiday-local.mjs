@@ -351,10 +351,10 @@ const SHEET_HEADERS = ['Updated At', 'Status', 'Date', 'Start', 'End', 'Coach', 
 function stripeSession(body) {
   const id = `cs_test_${crypto.randomBytes(12).toString('hex')}`
   const params = new URLSearchParams(body)
-  const metadata = {}
-  for (const [k, v] of params) { const m = k.match(/^metadata\[(.+)\]$/); if (m) metadata[m[1]] = v }
+  const metadata = {}, piMetadata = {}
+  for (const [k, v] of params) { const m = k.match(/^metadata\[(.+)\]$/); if (m) metadata[m[1]] = v; const pm = k.match(/^payment_intent_data\[metadata\]\[(.+)\]$/); if (pm) piMetadata[pm[1]] = v }
   const session = {
-    id, object: 'checkout.session', status: 'open', payment_status: 'unpaid', metadata, created: Math.floor(Date.now() / 1000),
+    id, object: 'checkout.session', status: 'open', payment_status: 'unpaid', metadata, piMetadata, created: Math.floor(Date.now() / 1000),
     amount_total: [...params.keys()].filter((k) => /^line_items\[\d+\]\[quantity\]$/.test(k)).reduce((t, k) => { const i = k.match(/\d+/)[0]; return t + Number(params.get(`line_items[${i}][price_data][unit_amount]`)) * Number(params.get(k)) }, 0),
     line_count: [...params.keys()].filter((k) => /^line_items\[\d+\]\[quantity\]$/.test(k)).length,
     currency: 'aud', customer_email: params.get('customer_email'),
@@ -397,14 +397,15 @@ globalThis.fetch = async (url, init = {}) => {
     return json(r.body, r.status)
   }
   if (u.startsWith('https://api.stripe.com/v1/account')) return json({ id: 'acct_1QyPm0EwxK4ojTS1' })
-  if (u.startsWith('https://api.stripe.com/v1/payment_intents/search')) return json({ data: juniorsSessions.filter((x) => x.metadata.programme).map((x) => ({ id: x.payment_intent, status: 'succeeded' })), has_more: false })
+  // Juniors reads its tag from the payment intent: seeded Juniors payments, and quick links made for Juniors.
+  if (u.startsWith('https://api.stripe.com/v1/payment_intents/search')) return json({ data: [...juniorsSessions.filter((x) => x.metadata.programme), ...[...sessions.values()].filter((x) => x.payment_status === 'paid' && x.piMetadata?.programme === 'Joners Juniors')].map((x) => ({ id: x.payment_intent, status: 'succeeded' })), has_more: false })
   if (u.startsWith('https://api.stripe.com/v1/payment_links?')) return json({ data: juniorsSessions.length ? [{ id: 'plink_juniors_t4', url: JLINK, active: true }] : [], has_more: false })
   if (u.startsWith('https://api.stripe.com/v1/payment_intents/')) {
     const pi = decodeURIComponent(u.split('/payment_intents/')[1].split('?')[0])
     const s = paidSession(pi)
     if (!s) return json({ error: { message: 'No such payment_intent' } }, 404)
     log('stripe', `retrieve ${pi}`)
-    return json({ id: pi, metadata: s.metadata || {}, latest_charge: mockCharge(s, { expandBalance: new URL(u).searchParams.getAll('expand[]').includes('latest_charge.balance_transaction') }) })
+    return json({ id: pi, metadata: { ...(s.metadata || {}), ...(s.piMetadata || {}) }, latest_charge: mockCharge(s, { expandBalance: new URL(u).searchParams.getAll('expand[]').includes('latest_charge.balance_transaction') }) })
   }
   if (u.startsWith('https://api.stripe.com/v1/charges/')) {
     const ch = decodeURIComponent(u.split('/charges/')[1].split('?')[0])
@@ -422,8 +423,8 @@ globalThis.fetch = async (url, init = {}) => {
     const q = new URL(u).searchParams
     // Juniors reads by payment link or payment intent.
     if (q.get('payment_link') || q.get('payment_intent')) {
-      const hit = juniorsSessions.filter((x) => (q.get('payment_link') ? x.payment_link === q.get('payment_link') : x.payment_intent === q.get('payment_intent')))
-      return json({ data: hit.map((x) => ({ ...x, payment_intent: { id: x.payment_intent, latest_charge: { amount_refunded: 0 } } })), has_more: false })
+      const hit = [...juniorsSessions, ...(q.get('payment_intent') ? [...sessions.values()] : [])].filter((x) => (q.get('payment_link') ? x.payment_link === q.get('payment_link') : x.payment_intent === q.get('payment_intent')))
+      return json({ data: hit.map((x) => ({ ...x, payment_intent: { id: x.payment_intent, latest_charge: { amount_refunded: (x.refunds || []).reduce((t, r) => t + r.amount, 0) } } })), has_more: false })
     }
     const gte = Number(q.get('created[gte]') || 0)
     const all = [...sessions.values(), ...stripeSeeded].filter((s) => s.status === 'complete' && (s.created || 0) >= gte)
@@ -513,7 +514,7 @@ function shimRes(res) {
 }
 
 const handlers = {}
-for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data', 'jfp-messages', 'jfp-messages-relay']) {
+for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data', 'jfp-messages', 'jfp-messages-relay', 'jfp-pay']) {
   handlers[name] = (await import(`../api/${name}.js`)).default
 }
 
@@ -572,6 +573,8 @@ const server = http.createServer(async (req, res) => {
     const action = url.searchParams.get('action')
     if (action === 'pay') {
       s.payment_status = 'paid'; s.status = 'complete'; s.payment_intent = `pi_test_${crypto.randomBytes(8).toString('hex')}`
+      // Stripe asks for an email when the page did not give one (&email= and &name= in tests).
+      s.customer_details = { email: url.searchParams.get('email') || s.customer_email || '', name: url.searchParams.get('name') || '' }
       log('stripe', `paid ${s.id}`)
       if (url.searchParams.get('webhook') !== 'off') await fireWebhook('checkout.session.completed', s)
       res.writeHead(302, { location: s.success_url.replace('{CHECKOUT_SESSION_ID}', s.id) }); return res.end()

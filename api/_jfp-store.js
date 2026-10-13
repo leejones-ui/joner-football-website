@@ -15,6 +15,7 @@
 import crypto from 'node:crypto'
 import { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, newId, formatAud, claimOnce, stripeFetch } from './_holiday-store.js'
 import { cleanVenueCosts } from './_jfp-venues.js'
+import { cleanCustomPrices } from './_jfp-prices.js'
 
 export { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, newId, formatAud, claimOnce }
 
@@ -299,6 +300,9 @@ export function normaliseConfig(input = {}) {
     locations: cleanLocations(input.locations, b.locations),
     // { '<term>': { '<venueId>': [{ label, cents }] } }, set by saveVenueCosts.
     venueCosts: cleanVenueCosts(input.venueCosts),
+    // Lee's own prices (Money > Prices), each with a programme. The JFP price
+    // list above stays in prices.
+    customPrices: cleanCustomPrices(input.customPrices),
     minAge: Number(input.minAge) >= 3 && Number(input.minAge) <= 18 ? Number(input.minAge) : b.minAge,
     maxAge: Number(input.maxAge) >= 5 && Number(input.maxAge) <= 25 ? Number(input.maxAge) : b.maxAge,
   }
