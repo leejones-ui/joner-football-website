@@ -1,7 +1,8 @@
 // The Joners Juniors section of the staff portal in jsdom: the sidebar
 // group, Dashboard, Players (search, chips, a child's page, recording a
 // payment), Money (the download, the switch to and from JFP Money),
-// Settings and the pages still to come. Every name and amount is invented.
+// Settings, and (stage 3) Classes, Registers, Messages and the attendance
+// card. Every name and amount is invented.
 //   node scripts/test-jj-ui.mjs
 import assert from 'node:assert/strict'
 import { openPortal, csvRows } from './jfp-portal-dom.mjs'
@@ -89,7 +90,8 @@ const PLAYERS = {
 }
 const PUBLIC = { termDatesLine: 'Term 4: 17 October 2026 to 19 December 2026', classLabel: 'Saturday 9:15am to 10:00am', feeLine: '$220 for 10 weeks', registrationOpen: true }
 const { players: _omit, ...DASH_BASE } = PLAYERS
-const DASH = { ...DASH_BASE, needs: [{ kind: 'unpaid', label: '1 child has not paid (A$340 owing)', tab: 'jj-players', filter: 'unpaid', count: 1 }, { kind: 'waiver', label: '2 without a waiver', tab: 'jj-players', filter: 'waiver', count: 2 }], registrationOpen: true, public: PUBLIC, attendance: { ready: false, note: 'Attendance by week arrives with Registers.' } }
+const DASH = { ...DASH_BASE, needs: [{ kind: 'unpaid', label: '1 child has not paid (A$340 owing)', tab: 'jj-players', filter: 'unpaid', count: 1 }, { kind: 'waiver', label: '2 without a waiver', tab: 'jj-players', filter: 'waiver', count: 2 }], registrationOpen: true, public: PUBLIC,
+  attendance: { ready: true, taken: 2, weeks: [{ date: '2026-10-17', label: 'Sat 17 Oct', present: 3, absent: 0, children: 3, registers: 1 }, { date: '2026-10-24', label: 'Sat 24 Oct', present: 2, absent: 1, children: 3, registers: 1 }, { date: '2026-10-31', label: 'Sat 31 Oct', present: 0, absent: 0, children: 3, registers: 0 }], streaks: [{ rowId: 'recAAAAAAAAAAAAA2', name: 'Bo Junior', classLabel: 'Saturday 9:15am to 10:00am', missed: 2, lastDate: '2026-10-24', lastLabel: 'Sat 24 Oct' }] } }
 const jline = (x) => ({ term: 'Term 4 2026', refundedCents: 0, feeGstCents: 0, ...x })
 const JMONEY = {
   at: '2026-10-13T00:00:00Z', currentTerm: 'Term 4 2026', terms: ['Term 4 2026', 'Term 3 2026'], stale: false,
@@ -110,7 +112,7 @@ const JMONEY = {
 }
 const SETTINGS = {
   juniors: { term: 'Term 4 2026', termStart: '2026-10-17', weeks: 10, skipDates: [], datesLabel: '', classes: [{ id: 'sat-0915-belrose', day: 'Saturday', time: '9:15am', endTime: '10:00am', location: 'Belrose HQ', capacity: 12, coachId: 'sam' }], classLabel: '', location: 'Joner Football HQ, Unit 2, 20 Narabang Way, Belrose', priceCents: 22000, siblingPriceCents: null, registrationOpen: true, waiverVersion: 'Joners Juniors Term 4 2026 online waiver v1', ageLabel: 'Ages 3 to early primary', tables: { 'Term 3 2026': 'tblMLhYQ126P5uKLB', 'Term 4 2026': 'tblVzW8E9qumQEtXx' }, nextTerm: { name: 'Term 1 2027', termStart: '', open: false } },
-  derived: { dates: [{ iso: '2026-10-17', label: 'Sat 17 Oct' }], datesLabel: '17 October 2026 to 19 December 2026', classLabel: 'Saturday 9:15am to 10:00am', capacity: 12 },
+  derived: { dates: [{ iso: '2026-10-17', label: 'Sat 17 Oct' }], datesLabel: '17 October 2026 to 19 December 2026', classLabel: 'Saturday 9:15am to 10:00am', capacity: 12, classes: [{ id: 'sat-0915-belrose', label: 'Saturday 9:15am to 10:00am', capacity: 12 }] },
   public: PUBLIC, coaches: [{ id: 'sam', name: 'Sam York' }, { id: 'lee', name: 'Lee Jones' }],
 }
 const answers = (extra = {}) => (b) => {
@@ -141,7 +143,9 @@ await test('Dashboard: enrolled against places, collected and kept, owing, waive
   assert.match(p.text('#jj-t-owing'), /A\$340/)
   assert.match(p.text('#jj-t-waivers'), /Waivers missing\s*2/)
   assert.deepEqual([...p.d.querySelectorAll('#jj-needs button')].map((b) => b.textContent), ['1 child has not paid (A$340 owing)', '2 without a waiver'])
-  assert.match(p.text('#jj-attendance'), /arrives with Registers/)
+  assert.match(p.text('#jj-attendance'), /2 class dates marked so far\.\s*Sat 17 Oct\s*3 of 3\s*Sat 24 Oct\s*2 of 3 · 1 away/)
+  assert.ok(!p.text('#jj-attendance').includes('Sat 31 Oct'), 'a date with no register is left out')
+  assert.match(p.text('#jj-streaks'), /Bo Junior: missed 2 in a row\s*Saturday 9:15am to 10:00am · last Sat 24 Oct/)
   await p.click('#jj-needs button')
   assert.equal(p.w.location.hash, '#jj-players')
   assert.equal(p.$('#jj-chips [aria-pressed="true"]').dataset.jjchip, 'unpaid', 'opens Players on the unpaid children')
@@ -230,30 +234,66 @@ await test('JFP Money keeps a Joners Juniors link that opens the Juniors money p
   assert.deepEqual([...p.errors, ...old.errors], [])
 })
 
-await test('Settings: the term, class, price and sign-up, saved in one go', async () => {
+await test('Settings: the term, price and sign-up, saved in one go; the classes are on the Classes page', async () => {
   const p = await open('#jj-settings', { jjSaveSettings: (b) => ({ success: true, ...structuredClone(SETTINGS), juniors: { ...SETTINGS.juniors, ...b.juniors }, warnings: [] }) })
   assert.match(p.text('#jj-preview'), /Term 4: 17 October 2026 to 19 December 2026/)
   const form = p.$('#jj-sform')
   form.querySelector('[name="price"]').value = '240'
   form.querySelector('[name="registrationOpen"]').checked = false
-  form.querySelector('[name="capacity"]').value = '14'
+  assert.equal(form.querySelector('[name="capacity"]'), null, 'no class fields here any more')
+  assert.match(p.text('#jj-set-classes'), /Saturday 9:15am to 10:00am \(12 places\)\. Day, time, places and coaches are set on the Classes page/)
   await p.click('#jj-table-add')
   const added = [...p.d.querySelectorAll('#jj-tables .jj-trow')].at(-1)
   added.querySelector('[data-tterm]').value = 'Term 1 2027'; added.querySelector('[data-tid]').value = 'tblBBBBBBBBBBBBBB'
   form.dispatchEvent(new p.w.Event('submit', { bubbles: true, cancelable: true })); await p.settle()
   const sent = p.posts.find((x) => x.action === 'jjSaveSettings').juniors
-  assert.equal(sent.priceCents, 24000); assert.equal(sent.registrationOpen, false); assert.equal(sent.classes[0].capacity, 14)
+  assert.equal(sent.priceCents, 24000); assert.equal(sent.registrationOpen, false); assert.equal(sent.classes, undefined, 'Settings never sends the classes')
   assert.equal(sent.tables['Term 1 2027'], 'tblBBBBBBBBBBBBBB'); assert.equal(sent.tables['Term 4 2026'], 'tblVzW8E9qumQEtXx')
   assert.equal(sent.siblingPriceCents, null)
   assert.deepEqual(p.errors, [])
 })
 
-await test('the pages still to come say what they will do and where to go now', async () => {
-  for (const [hash, title] of [['#jj-classes', 'Classes'], ['#jj-registers', 'Registers'], ['#jj-messages', 'Messages']]) {
-    const p = await open(hash)
-    assert.equal(p.text('#view h1'), title)
-    assert.match(p.text('.jj-soon'), /Coming next/)
-    assert.deepEqual(p.errors, [])
+// ---------- stage 3: Classes, Registers, Messages (invented) ----------
+const CLASSES = {
+  term: 'Term 4 2026', unplaced: [],
+  coaches: [{ id: 'sam', name: 'Sam York' }, { id: 'lee', name: 'Lee Jones' }, { id: 'kim', name: 'Kim Shadow' }],
+  classes: [
+    { id: 'sat-0915-belrose', day: 'Saturday', time: '9:15am', endTime: '10:00am', location: 'Belrose HQ', capacity: 12, coachId: 'sam', shadowCoachId: 'kim', label: 'Saturday 9:15am to 10:00am', slot: 'sat-0915-belrose-hq', durationMin: 45, head: { id: 'sam', name: 'Sam York' }, shadow: { id: 'kim', name: 'Kim Shadow' }, enrolled: 2, placesLeft: 10, children: [{ rowId: 'recAAAAAAAAAAAAA1', name: 'Ada Junior', age: 5 }, { rowId: 'recAAAAAAAAAAAAA2', name: 'Bo Junior', age: 4 }], dates: [{ iso: '2026-10-17', label: 'Sat 17 Oct' }, { iso: '2026-12-19', label: 'Sat 19 Dec' }], timetable: { ok: true, groupId: 'sat-0915-belrose-hq', problem: '' } },
+    { id: 'sat-1015-belrose', day: 'Saturday', time: '10:15am', endTime: '11:00am', location: 'Belrose HQ', capacity: 1, coachId: 'lee', shadowCoachId: '', label: 'Saturday 10:15am to 11:00am', slot: 'sat-1015-belrose-hq', durationMin: 45, head: { id: 'lee', name: 'Lee Jones' }, shadow: null, enrolled: 1, placesLeft: 0, children: [{ rowId: 'recAAAAAAAAAAAAA3', name: 'Cal Junior', age: 6 }], dates: [{ iso: '2026-10-17', label: 'Sat 17 Oct' }], timetable: { ok: false, groupId: '', problem: 'Not on the timetable yet' } },
+  ],
+}
+const REGISTER = {
+  term: 'Term 4 2026', classes: [{ id: 'sat-0915-belrose', label: 'Saturday 9:15am to 10:00am', location: 'Belrose HQ' }, { id: 'sat-1015-belrose', label: 'Saturday 10:15am to 11:00am', location: 'Belrose HQ' }],
+  class: { id: 'sat-0915-belrose', label: 'Saturday 9:15am to 10:00am', location: 'Belrose HQ', onTimetable: true },
+  date: '2026-10-24', dateLabel: 'Sat 24 Oct',
+  dates: [{ iso: '2026-10-17', label: 'Sat 17 Oct', week: 1, past: true, marked: true }, { iso: '2026-10-24', label: 'Sat 24 Oct', week: 2, past: true, marked: false }, { iso: '2026-10-31', label: 'Sat 31 Oct', week: 3, past: false, marked: false }],
+  children: [{ rowId: 'recAAAAAAAAAAAAA1', name: 'Ada Junior', age: 5, status: '' }, { rowId: 'recAAAAAAAAAAAAA2', name: 'Bo Junior', age: 4, status: 'Absent' }],
+  counts: { present: 0, absent: 1, unmarked: 1 },
+  session: { head: { id: 'sam', name: 'Sam York' }, shadow: { id: 'kim', name: 'Kim Shadow' }, recorded: false, auto: false, by: '', at: '' },
+  canEditCoaches: true, coaches: CLASSES.coaches,
+  coachTotals: [{ id: 'sam', name: 'Sam York', head: [{ date: '2026-10-17', label: 'Sat 17 Oct' }], shadow: [] }, { id: 'kim', name: 'Kim Shadow', head: [], shadow: [{ date: '2026-10-17', label: 'Sat 17 Oct' }] }],
+}
+const MSGS = {
+  term: 'Term 4 2026', dncError: '', moneyError: '',
+  classes: [{ id: 'sat-0915-belrose', label: 'Saturday 9:15am to 10:00am', families: 2 }, { id: 'sat-1015-belrose', label: 'Saturday 10:15am to 11:00am', families: 1 }],
+  counts: { unpaid: 2, waiver: 2, all: 3 },
+  families: [{ email: 'recAAAAAAAAAAAAA1@example.com', parent: 'Ada Parent', children: [{ rowId: 'recAAAAAAAAAAAAA1', name: 'Ada Junior', classId: 'sat-0915-belrose', pay: 'paid', waiver: true }], dnc: false, lastSent: null }],
+  noEmail: [], batches: [{ id: 'JJMSG-OLD', subject: 'Welcome', label: 'Families who still owe', at: '2026-10-10T00:00:00Z', byName: 'Staff One', draft: 0, sent: 2, problem: 0, cancelled: 0, checkIt: [] }],
+}
+const STAGE3 = {
+  jjClasses: () => ({ success: true, ...structuredClone(CLASSES) }),
+  jjRegister: () => ({ success: true, ...structuredClone(REGISTER) }),
+  jjMsgOverview: () => ({ success: true, ...structuredClone(MSGS) }),
+  jjInvites: () => ({ success: true, kind: 'new', list: [], noEmail: [], blocked: '', counts: { families: 0, notSent: 0, sent: 0, opened: 0, paid: 0 }, term: 'Term 4 2026', next: null, previews: [], moneyError: '' }),
+  jjPayments: () => ({ success: true, payments: [] }),
+  jjRequests: () => ({ success: true, list: [], counts: { waiting: 0, accepted: 0, declined: 0 }, placesLeft: 0, placeFree: false, enrolled: 3, capacity: 12, classes: [], term: 'Term 4 2026', registrationOpen: true }),
+}
+
+await test('no page says "Coming next": all nine Juniors pages are real', async () => {
+  for (const tab of ['jj-dashboard', 'jj-players', 'jj-invites', 'jj-requests', 'jj-classes', 'jj-registers', 'jj-messages', 'jj-money', 'jj-settings']) {
+    const p = await open(`#${tab}`, STAGE3)
+    assert.ok(!/Coming next/.test(p.text('#view')), `${tab} is a real page`)
+    assert.ok(p.text('#view h1'), `${tab} has a heading`)
   }
 })
 
@@ -369,6 +409,109 @@ await test('Settings: next term price and hold, and a message when next term has
   form.dispatchEvent(new p.w.Event('submit', { bubbles: true, cancelable: true })); await p.settle()
   const sent = p.posts.find((x) => x.action === 'jjSaveSettings').juniors
   assert.deepEqual({ priceCents: sent.nextTerm.priceCents, holdCents: sent.nextTerm.holdCents }, { priceCents: 23000, holdCents: 5000 })
+  assert.deepEqual(p.errors, [])
+})
+
+await test('Classes: each class with its places, coaches and timetable; edit saves every class; a child moves with a full prompt', async () => {
+  let saved = null, moves = []
+  const p = await open('#jj-classes', { ...STAGE3,
+    jjSaveClasses: (b) => { saved = b; return { success: true, ...structuredClone(CLASSES), timetableReport: { created: [], updated: ['sat-0915-belrose-hq'], removed: [], problems: [] }, rowsWritten: 0 } },
+    jjMoveChild: (b) => { moves.push(b); return b.force ? { success: true, rowId: b.rowId, classId: b.classId } : { status: 409, success: false, code: 'full', error: 'Saturday 10:15am to 11:00am has 1 of 1 places taken. Move anyway?' } },
+  })
+  const c1 = p.$('[data-class="sat-0915-belrose"]'), c2 = p.$('[data-class="sat-1015-belrose"]')
+  assert.match(c1.textContent.replace(/\s+/g, ' '), /Saturday 9:15am to 10:00am.*Belrose HQ · 45 min · 2 classes.*2 of 12.*Head coach ?Sam York.*Shadow coach ?Kim Shadow.*In step.*Ada Junior.*Bo Junior/)
+  assert.match(c2.textContent.replace(/\s+/g, ' '), /1 of 1.*Not on the timetable yet/)
+  assert.ok(c2.querySelector('[data-sync]'), 'put it on the timetable')
+  // Edit: the places go up, the shadow coach changes; every class is sent.
+  await p.click('[data-edit="sat-0915-belrose"]')
+  p.$('#jc-cap').value = '14'; p.$('#jc-shadow').value = 'lee'
+  await p.click('#jc-go')
+  assert.equal(saved.classes.length, 2)
+  assert.deepEqual(saved.classes[0], { id: 'sat-0915-belrose', day: 'Saturday', time: '9:15am', endTime: '10:00am', location: 'Belrose HQ', capacity: 14, coachId: 'sam', shadowCoachId: 'lee' })
+  assert.equal(saved.classes[1].id, 'sat-1015-belrose')
+  // Move Ada to the full class: asks first, then moves.
+  await p.click('[data-move="recAAAAAAAAAAAAA1"]')
+  assert.equal(p.$('[name="jm-to"][value="sat-0915-belrose"]').disabled, true, 'not to the class she is in')
+  assert.equal(p.$('[name="jm-to"]:checked').value, 'sat-1015-belrose')
+  await p.click('#jm-go')
+  assert.match(p.text('#jp-modal'), /1 of 1 places taken\. Move anyway\?/)
+  await p.click('#jp-modal [data-yes]')
+  assert.deepEqual(moves.map((m) => [m.rowId, m.classId, Boolean(m.force)]), [['recAAAAAAAAAAAAA1', 'sat-1015-belrose', false], ['recAAAAAAAAAAAAA1', 'sat-1015-belrose', true]])
+  // Add a class.
+  await p.click('#jc-add')
+  p.$('#jc-day').value = 'Sunday'; p.$('#jc-time').value = '9am'; p.$('#jc-end').value = '9:45am'; p.$('#jc-cap').value = '8'; p.$('#jc-head').value = 'sam'
+  await p.click('#jc-go')
+  assert.equal(saved.classes.length, 3)
+  assert.deepEqual({ ...saved.classes[2], id: undefined }, { id: undefined, day: 'Sunday', time: '9am', endTime: '9:45am', location: 'Belrose HQ', capacity: 8, coachId: 'sam', shadowCoachId: '' })
+  assert.deepEqual(p.errors, [])
+})
+
+await test('Registers: here or away per child, tap again to clear, the rest marked in one go; who coached saved per session; coach totals', async () => {
+  const marks = []
+  let coaches = null
+  const p = await open('#jj-registers', { ...STAGE3,
+    jjMark: (b) => { marks.push([b.rowId, b.status, b.date, b.classId]); return { success: true, airtable: 'saved' } },
+    jjSessionCoaches: (b) => { coaches = b; return { success: true, session: REGISTER.session } },
+  })
+  assert.equal(p.$('#jr-date').value, '2026-10-24')
+  assert.match(p.text('#jr-date'), /Week 1: Sat 17 Oct · marked/)
+  assert.match(p.text('#jr-counts'), /0 here\s*1 away\s*1 not marked/)
+  assert.equal(p.$('[data-kid="recAAAAAAAAAAAAA2"] [data-mark="Absent"]').getAttribute('aria-pressed'), 'true')
+  await p.click('[data-kid="recAAAAAAAAAAAAA1"] [data-mark="Present"]')
+  assert.match(p.text('#jr-counts'), /1 here\s*1 away\s*0 not marked/)
+  await p.click('[data-kid="recAAAAAAAAAAAAA2"] [data-mark="Absent"]')
+  assert.match(p.text('#jr-counts'), /1 here\s*0 away\s*1 not marked/, 'tapping it again takes it off')
+  await p.click('#jr-all')
+  assert.deepEqual(marks, [['recAAAAAAAAAAAAA1', 'Present', '2026-10-24', 'sat-0915-belrose'], ['recAAAAAAAAAAAAA2', '', '2026-10-24', 'sat-0915-belrose'], ['recAAAAAAAAAAAAA2', 'Present', '2026-10-24', 'sat-0915-belrose']])
+  // Who coached: a different shadow coach on this date.
+  p.$('#jr-shadow').value = 'lee'
+  await p.click('#jr-save-coaches')
+  assert.deepEqual([coaches.classId, coaches.date, coaches.headId, coaches.shadowId], ['sat-0915-belrose', '2026-10-24', 'sam', 'lee'])
+  assert.match(p.text('#jr-totals'), /Sam York\s*Head: Sat 17 Oct\s*1 head\s*0 shadow\s*Kim Shadow\s*Shadow: Sat 17 Oct\s*0 head\s*1 shadow/)
+  // The other class and another date ask the server again.
+  await p.click('#jr-classes [data-cls="sat-1015-belrose"]')
+  assert.equal(p.posts.filter((b) => b.action === 'jjRegister').at(-1).classId, 'sat-1015-belrose')
+  assert.deepEqual(p.errors, [])
+})
+
+await test('Registers: a failed save puts the mark back and says so', async () => {
+  const p = await open('#jj-registers', { ...STAGE3, jjMark: () => ({ status: 403, success: false, error: 'Not your class.' }) })
+  await p.click('[data-kid="recAAAAAAAAAAAAA1"] [data-mark="Present"]')
+  assert.equal(p.$('[data-kid="recAAAAAAAAAAAAA1"] [data-mark="Present"]').getAttribute('aria-pressed'), 'false')
+  assert.match(p.text('#jr-counts'), /0 here\s*1 away\s*1 not marked/)
+  assert.match(p.text('#jp-toast') || p.d.body.textContent, /Not your class/)
+})
+
+await test('Messages: the class, a subject and message, the exact email shown, nothing sent until Send', async () => {
+  const sends = []
+  const p = await open('#jj-messages', { ...STAGE3,
+    jjMsgPrepare: (b) => ({ success: true, batch: { id: 'JJMSG-1', audience: b.audience, classId: b.classId, label: 'Everyone in Saturday 10:15am to 11:00am', subject: b.subject, count: 1 }, families: [{ email: 'c@example.com', parent: 'Cal Parent', players: ['Cal Junior'] }], previews: [{ email: 'c@example.com', parent: 'Cal Parent', subject: b.subject, html: '<p>Hi Cal,</p><p>No class this Saturday.</p>' }] }),
+    jjMsgSend: (b) => { sends.push(b); return { success: true, sent: ['c@example.com'], failed: [], skipped: [], left: 0 } },
+  })
+  assert.match(p.text('#jg-who'), /Saturday 9:15am to 10:00am \(2\)\s*Saturday 10:15am to 11:00am \(1\)\s*Still owe \(2\)\s*No waiver \(2\)\s*One family/)
+  assert.match(p.text('#jg-sent'), /Welcome\s*Families who still owe.*2 sent/)
+  await p.click('#jg-who [data-cls="sat-1015-belrose"]')
+  p.$('#jg-subject').value = 'No class this Saturday'
+  p.$('#jg-text').value = 'The hall is closed for repairs. See you next week.'
+  await p.click('#jg-prepare')
+  const prep = p.posts.find((b) => b.action === 'jjMsgPrepare')
+  assert.deepEqual([prep.audience, prep.classId, prep.subject, prep.signIn], ['class', 'sat-1015-belrose', 'No class this Saturday', true])
+  assert.ok(p.$('#jg-preview iframe').getAttribute('srcdoc').includes('No class this Saturday.'))
+  assert.equal(sends.length, 0, 'showing the email sends nothing')
+  await p.click('#jg-send')
+  assert.match(p.text('#jp-modal'), /Send "No class this Saturday" to 1 family now\?/)
+  await p.click('#jp-modal [data-yes]')
+  assert.deepEqual(sends, [{ action: 'jjMsgSend', batchId: 'JJMSG-1', confirm: true }])
+  assert.deepEqual(p.errors, [])
+})
+
+await test('Messages: one family is picked from the list; an empty message is stopped on the page', async () => {
+  const p = await open('#jj-messages', STAGE3)
+  await p.click('#jg-who [data-aud="one"]')
+  assert.ok(p.$('#jg-fam'))
+  p.$('#jg-subject').value = 'Hi'
+  await p.click('#jg-prepare')
+  assert.equal(p.posts.filter((b) => b.action === 'jjMsgPrepare').length, 0)
   assert.deepEqual(p.errors, [])
 })
 

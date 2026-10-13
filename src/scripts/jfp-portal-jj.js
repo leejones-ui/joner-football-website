@@ -6,10 +6,12 @@
 // Built in stages. Stage 1: Dashboard, Players, Money (the Juniors money
 // page in jfp-portal-juniors.js) and Settings. Stage 2: Invites (new family,
 // re-enrol, reminders, and the online payments behind them) and Requests &
-// waitlist. Classes, Registers and Messages say what they will do and where
-// to do it until stage 3.
+// waitlist. Stage 3: Classes and Registers (jfp-portal-jj-ops.js) and
+// Messages (jfp-portal-jj-messages.js), and attendance on the Dashboard.
 import { esc, money, toast } from './jfp-common.js'
 import { renderJuniorsMoney, forgetJuniors } from './jfp-portal-juniors.js'
+import { renderClasses, renderRegisters } from './jfp-portal-jj-ops.js'
+import { renderJJMessages } from './jfp-portal-jj-messages.js'
 
 export const JJ_NAV = ['Joners Juniors', [['jj-dashboard', 'Dashboard'], ['jj-players', 'Players'], ['jj-invites', 'Invites'], ['jj-requests', 'Requests & waitlist'], ['jj-classes', 'Classes'], ['jj-registers', 'Registers'], ['jj-messages', 'Messages'], ['jj-money', 'Money'], ['jj-settings', 'Settings']]]
 export const JJ_TABS = new Set(JJ_NAV[1].map(([k]) => k))
@@ -35,7 +37,10 @@ export async function renderJJ(tab, ui) {
   if (tab === 'jj-settings') return renderSettings(ui)
   if (tab === 'jj-invites') return renderInvites(ui)
   if (tab === 'jj-requests') return renderRequests(ui)
-  return renderSoon(tab, ui)
+  if (tab === 'jj-classes') return renderClasses(ui)
+  if (tab === 'jj-registers') return renderRegisters(ui)
+  if (tab === 'jj-messages') return renderJJMessages(ui)
+  return renderDashboard(ui)
 }
 
 // ---------- dashboard ----------
@@ -50,21 +55,34 @@ async function renderDashboard(ui, fresh = false) {
     ${d.moneyError ? `<div class="j-box j-box-amber" style="margin-bottom:12px">${esc(d.moneyError)} Money figures may be missing below.</div>` : ''}
     <div class="jd-grid">
       <section class="jd-card jd-tile jj-tile jd-in" style="--i:0" id="jj-t-enrolled"><span class="lbl">Enrolled</span><span class="val">${s.enrolled}<span class="muted" style="font-size:16px;font-weight:650"> / ${s.capacity}</span></span>
-        <span class="jm-meter" role="img" aria-label="${pct}% of places taken"><span style="width:${pct}%"></span></span><span class="note">${s.placesLeft ? `${s.placesLeft} place${s.placesLeft === 1 ? '' : 's'} left` : 'Full'}${c.removed ? ` · ${c.removed} left this term` : ''}</span></section>
+        <span class="jm-meter" role="img" aria-label="${pct}% of places taken"><span style="width:${pct}%"></span></span><span class="note">${(d.classes || []).length > 1 ? d.classes.map((k) => `${esc(k.label)}: ${k.enrolled} of ${k.capacity}`).join('<br>') : s.placesLeft ? `${s.placesLeft} place${s.placesLeft === 1 ? '' : 's'} left` : 'Full'}${c.removed ? ` · ${c.removed} left this term` : ''}</span></section>
       <section class="jd-card jd-tile jj-tile jd-in" style="--i:1" id="jj-t-collected"><span class="lbl">Collected</span><span class="val">${s.collectedCents == null ? '<span class="muted">not known</span>' : esc(money(s.collectedCents))}</span><span class="note">${s.keptCents == null ? 'Stripe, cash and bank' : `${esc(money(s.keptCents))} kept after Stripe fees${s.feesPending ? ' (some fees not known yet)' : ''}`}</span></section>
       <section class="jd-card jd-tile jj-tile jd-in" style="--i:2" id="jj-t-owing"><span class="lbl">Still owing</span><span class="val">${esc(money(s.owingCents || 0))}${s.owingComplete ? '' : '<span class="muted" style="font-size:14px;font-weight:650"> known</span>'}</span><span class="note">${c.unpaid + c.part} ${c.unpaid + c.part === 1 ? 'child' : 'children'}</span><button type="button" class="link" data-jj-go="jj-players" data-jj-filter="unpaid">See who</button></section>
       <section class="jd-card jd-tile jj-tile jd-in" style="--i:3" id="jj-t-waivers"><span class="lbl">Waivers missing</span><span class="val">${d.waiversUnknown ? '<span class="muted">not checked</span>' : c.noWaiver}</span><span class="note">One family waiver covers JFP and Juniors</span><button type="button" class="link" data-jj-go="jj-players" data-jj-filter="waiver">See who</button></section>
       <section class="jd-card jd-span-7 jd-in" style="--i:4"><h2>Needs you</h2><ul class="jd-list" id="jj-needs">
-        ${d.needs.map((n) => `<li><button type="button" data-jj-go="${esc(n.tab)}" data-jj-filter="${esc(n.filter || '')}">${esc(n.label)}</button><span class="muted small">${{ 'jj-money': 'Money', 'jj-settings': 'Settings', 'jj-requests': 'Waitlist', 'jj-invites': 'Invites' }[n.tab] || 'Players'}</span></li>`).join('') || '<li><span class="muted">Nothing waiting. Nice.</span></li>'}
+        ${d.needs.map((n) => `<li><button type="button" data-jj-go="${esc(n.tab)}" data-jj-filter="${esc(n.filter || '')}">${esc(n.label)}</button><span class="muted small">${{ 'jj-money': 'Money', 'jj-settings': 'Settings', 'jj-requests': 'Waitlist', 'jj-invites': 'Invites', 'jj-classes': 'Classes', 'jj-registers': 'Registers' }[n.tab] || 'Players'}</span></li>`).join('') || '<li><span class="muted">Nothing waiting. Nice.</span></li>'}
       </ul></section>
       <section class="jd-card jd-span-5 jd-in" style="--i:5"><h2>Website sign-up</h2><p class="sub">What parents see on jonerfootball.com/jonersjuniors</p>
         <dl class="jj-dl" style="margin-top:10px"><dt>Registrations</dt><dd>${d.registrationOpen ? '<span class="j-pill j-pill-green">Open</span>' : '<span class="j-pill j-pill-red">Closed</span>'}</dd>
         <dt>Term</dt><dd>${esc(d.public.termDatesLine)}</dd><dt>Class</dt><dd>${esc(d.public.classLabel)}</dd><dt>Fee</dt><dd>${esc(d.public.feeLine)}</dd></dl>
         <div class="jj-actions"><a class="j-btn j-btn-line" href="/jonersjuniors/" target="_blank" rel="noopener">Open the page</a><button type="button" class="j-btn j-btn-line" data-jj-go="jj-settings">Change in Settings</button></div></section>
-      <section class="jd-card jd-span-12 jd-in" style="--i:6" id="jj-attendance"><h2>Attendance</h2><p class="sub">${esc(d.attendance.note)} Coaches can already mark the class in My sessions.</p></section>
+      ${attendanceCard(d.attendance)}
     </div></div>`
   ui.view().querySelector('#jj-d-refresh').addEventListener('click', () => { forgetJuniors(); renderDashboard(ui, true) })
   bindGo(ui)
+}
+
+// Attendance by class date (all classes together) and who has missed two or more in a row.
+function attendanceCard(a) {
+  const head = '<section class="jd-card jd-span-12 jd-in" style="--i:6" id="jj-attendance"><h2>Attendance</h2>'
+  if (!a?.ready) return `${head}<p class="sub">${esc(a?.error || 'Attendance could not be read.')}</p></section>`
+  const weeks = a.weeks.filter((w) => w.registers)
+  if (!weeks.length) return `${head}<p class="sub">No registers yet. Coaches mark the class in My sessions, or mark it under Registers.</p><div class="jj-actions"><button type="button" class="j-btn j-btn-line" data-jj-go="jj-registers">Open Registers</button></div></section>`
+  return `${head}<p class="sub">${weeks.length} class date${weeks.length === 1 ? '' : 's'} marked so far.</p>
+    <ul class="jj-att" aria-label="Attendance by week">${weeks.map((w) => { const pct = w.children ? Math.round((w.present / w.children) * 100) : 0; return `<li><span class="d">${esc(w.label)}</span><span class="jm-meter" role="img" aria-label="${pct}% here"><span style="width:${pct}%"></span></span><span class="n">${w.present} of ${w.children}${w.absent ? ` · ${w.absent} away` : ''}</span></li>` }).join('')}</ul>
+    <h3 class="jj-sec">Missed 2 or more in a row</h3>
+    ${a.streaks.length ? `<ul class="jd-list" id="jj-streaks">${a.streaks.map((k) => `<li><button type="button" data-jj-go="jj-registers">${esc(k.name)}: missed ${k.missed} in a row</button><span class="muted small">${esc(k.classLabel)} · last ${esc(k.lastLabel)}</span></li>`).join('')}</ul>` : '<p class="muted small">Nobody. Nice.</p>'}
+  </section>`
 }
 
 function bindGo(ui) {
@@ -109,7 +127,7 @@ async function renderPlayers(ui, keep = false) {
     </div>
     <p class="muted small" id="jj-p-count" style="margin:0 0 8px">${shown.length} of ${S.chip === 'removed' ? c.removed : c.all} ${S.chip === 'removed' ? 'who left' : 'children'}${S.q || S.chip ? ' match' : ''} · read ${esc(new Date(S.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}</p>
     <div class="jj-list" id="jj-rows">${shown.map((p) => `<button type="button" class="jj-pl${p.removed ? ' is-removed' : ''}" data-jjpl="${esc(p.rowId)}">
-        <span class="jj-pl-main"><b>${esc(p.name)}${p.age != null ? ` <span class="muted" style="font-weight:500">(${esc(p.age)})</span>` : ''}</b><small>${esc(p.parent || 'No parent name')}${p.mobile ? ` · ${esc(p.mobile)}` : ''}</small>${p.removed ? `<small>Left ${esc(longDay(p.removed.at))}${p.removed.reason ? `: ${esc(p.removed.reason)}` : ''}</small>` : ''}</span>
+        <span class="jj-pl-main"><b>${esc(p.name)}${p.age != null ? ` <span class="muted" style="font-weight:500">(${esc(p.age)})</span>` : ''}</b><small>${esc(p.parent || 'No parent name')}${p.mobile ? ` · ${esc(p.mobile)}` : ''}</small>${(d.classes || []).length > 1 ? `<small>${esc(d.classes.find((k) => k.id === p.classId)?.label || 'In no class')}</small>` : ''}${p.removed ? `<small>Left ${esc(longDay(p.removed.at))}${p.removed.reason ? `: ${esc(p.removed.reason)}` : ''}</small>` : ''}</span>
         <span class="jj-pl-tags">${payPill(p)}${waiverPill(p)}${p.owingCents ? `<small>${esc(money(p.owingCents))} owing</small>` : ''}</span></button>`).join('') || `<div class="j-empty">${d.players.length ? 'Nobody matches.' : `No children in ${esc(d.term)} yet.`}</div>`}</div></div>`
   const redraw = () => renderPlayers(ui, true)
   ui.view().querySelector('#jj-q').addEventListener('input', (e) => { S.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = ui.view().querySelector('#jj-q'); i.focus(); i.setSelectionRange(at, at) })
@@ -136,7 +154,7 @@ function detailModal(ui, p) {
   const box = ui.modal(`<h2 style="margin-bottom:2px">${esc(p.name)}</h2>
     <p class="muted small" style="margin-bottom:12px">${p.age != null ? `Age ${esc(p.age)}` : 'Age not on file'}${p.dob ? ` · born ${esc(longDay(p.dob))}` : ''} · ${esc(p.term)} · ${esc(p.source)}</p>
     ${p.removed ? `<div class="j-box j-box-grey" style="margin-bottom:10px">Left on ${esc(longDay(p.removed.at))}${p.removed.reason ? `: ${esc(p.removed.reason)}` : ''}${p.removed.by ? ` (by ${esc(p.removed.by)})` : ''}. Not in the class, the counts or what is owing.</div>` : ''}
-    <h3 class="jj-sec">Child</h3>${dl([['Class', esc(p.className)], ['Medical', esc(p.medical || 'Nothing given')], ['Date of birth', esc(p.dob ? longDay(p.dob) : 'not on file')]])}
+    <h3 class="jj-sec">Child</h3>${dl([['Class', esc((S.data.classes || []).find((k) => k.id === p.classId)?.label || p.className)], ['Medical', esc(p.medical || 'Nothing given')], ['Date of birth', esc(p.dob ? longDay(p.dob) : 'not on file')]])}
     <h3 class="jj-sec">Family</h3>${dl([['Parent', esc(p.parent || 'not on file')], ['Email', (p.emails || []).map(mail).join('<br>') || 'not on file'], ['Mobile', [tel(p.mobile), tel(p.mobile2)].filter(Boolean).join('<br>') || 'not on file'], ['Also in JFP', p.jfpSiblings.length ? esc(p.jfpSiblings.join(', ')) : '']])}
     <h3 class="jj-sec">Money</h3>${dl([['Fee', p.feeCents == null ? 'not set' : esc(money(p.feeCents))], ['Paid', p.paidCents == null ? 'not known' : esc(money(p.paidCents))], ['Owing', p.owingCents == null ? 'not known' : esc(money(p.owingCents))], ['Status', `${payPill(p)} <span class="muted small">${esc(p.payLabel)}</span>`], ['Paid via', esc(p.paidVia)], ['Airtable says', esc(p.airtableStatus)]])}
     ${p.payments.length ? `<ul class="jj-pays">${p.payments.map((x) => `<li><span>${esc(x.kind === 'stripe' ? `Stripe ${x.ref}` : `${x.method} · ${x.id}`)}<br><span class="muted small">${esc(longDay(x.at))}</span></span><span><b>${esc(money(x.cents))}</b>${x.kind === 'recorded' ? ` <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-void="${esc(x.id)}">Take off</button>` : ''}</span></li>`).join('')}</ul>` : '<p class="muted small">No payments found yet.</p>'}
@@ -169,6 +187,7 @@ function addModal(ui) {
   const box = ui.modal(`<h2 style="margin-bottom:4px">Add a child</h2>
     <p class="muted small" style="margin-bottom:12px">Adds a row to the ${esc(d.term)} Joners Juniors table in Airtable, in ${esc(d.classLabel)}.</p>
     <label class="j-field"><span>Child's full name</span><input class="j-input" id="ja-name" autocomplete="off"></label>
+    ${(d.classes || []).length > 1 ? `<label class="j-field"><span>Class</span><select class="j-select" id="ja-class">${d.classes.map((k) => `<option value="${esc(k.id)}" ${k.placesLeft ? '' : 'data-full'}>${esc(k.label)} (${k.enrolled} of ${k.capacity})</option>`).join('')}</select></label>` : ''}
     <div class="j-two"><label class="j-field"><span>Date of birth <span class="muted">(optional)</span></span><input class="j-input" type="date" id="ja-dob" max="${today()}"></label>
     <label class="j-field"><span>Medical or allergies <span class="muted">(optional)</span></span><input class="j-input" id="ja-med" maxlength="600"></label></div>
     <label class="j-field"><span>Parent name</span><input class="j-input" id="ja-parent" autocomplete="off"></label>
@@ -191,7 +210,7 @@ function addModal(ui) {
       player: { name: q('#ja-name').value.trim(), dob: q('#ja-dob').value, medical: q('#ja-med').value.trim() },
       parent: { name: q('#ja-parent').value.trim(), email: q('#ja-email').value.trim(), mobile: q('#ja-mobile').value.trim() },
       feeAud: q('#ja-fee').value.trim() === '' ? undefined : Number(q('#ja-fee').value.replace(/[a$,\s]/gi, '')),
-      payment, note: q('#ja-note').value.trim(), force,
+      payment, note: q('#ja-note').value.trim(), force, ...(q('#ja-class') ? { classId: q('#ja-class').value } : {}),
       ...(payment === 'offline' ? { amountCents: centsFrom(q('#ja-amount').value), method: q('#ja-method').value } : {}),
     }
     if (body.player.name.length < 3) return toast("Enter the child's full name.")
@@ -304,8 +323,7 @@ function voidModal(ui, p, id) {
 
 async function renderSettings(ui) {
   const d = await ui.need(await ui.post('jjSettings'))
-  const j = d.juniors, c = j.classes[0]
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  const j = d.juniors
   const tableRows = Object.entries(j.tables).map(([t, id]) => `<div class="jj-trow"><input class="j-input" data-tterm value="${esc(t)}" aria-label="Term"><input class="j-input" data-tid value="${esc(id)}" aria-label="Airtable table id"><button type="button" class="j-btn j-btn-ghost" data-tdel aria-label="Remove this term">×</button></div>`).join('')
   const skipRows = (j.skipDates || []).map((s) => `<div class="jj-trow"><input class="j-input" type="date" data-sdate value="${esc(s.date)}" aria-label="Date"><input class="j-input" data-sreason value="${esc(s.reason)}" aria-label="Why"><button type="button" class="j-btn j-btn-ghost" data-tdel aria-label="Remove this date">×</button></div>`).join('')
   ui.view().innerHTML = `<div class="jj-view jj-set">
@@ -321,13 +339,8 @@ async function renderSettings(ui) {
         <p class="jj-sub">Saturdays with no class</p><div id="jj-skips">${skipRows}</div><button type="button" class="j-btn j-btn-line j-btn-sm" id="jj-skip-add">+ Add a date off</button>
       </section>
       <section class="jd-card"><h2>Class</h2>
-        <div class="j-two"><label class="j-field"><span>Day</span><select class="j-select" name="day">${days.map((x) => `<option ${x === c.day ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
-        <label class="j-field"><span>Places</span><input class="j-input" name="capacity" inputmode="numeric" value="${esc(c.capacity)}"></label></div>
-        <div class="j-two"><label class="j-field"><span>Starts</span><input class="j-input" name="time" value="${esc(c.time)}" placeholder="9:15am"></label>
-        <label class="j-field"><span>Finishes</span><input class="j-input" name="endTime" value="${esc(c.endTime)}" placeholder="10:00am"></label></div>
-        <div class="j-two"><label class="j-field"><span>Venue (as the timetable has it)</span><input class="j-input" name="classLocation" value="${esc(c.location)}"></label>
-        <label class="j-field"><span>Coach</span><select class="j-select" name="coachId"><option value="">No coach</option>${d.coaches.map((x) => `<option value="${esc(x.id)}" ${x.id === c.coachId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label></div>
-        <label class="j-field"><span>Address for parents</span><input class="j-input" name="location" value="${esc(j.location)}"></label>
+        <p class="sub" id="jj-set-classes">${esc(d.derived.classes.map((x) => `${x.label} (${x.capacity} places)`).join(', '))}. Day, time, places and coaches are set on the Classes page. <button type="button" class="link" data-jj-go="jj-classes">Open Classes</button></p>
+        <label class="j-field" style="margin-top:8px"><span>Address for parents</span><input class="j-input" name="location" value="${esc(j.location)}"></label>
         <label class="j-field"><span>Class as parents see it <span class="muted">(blank: worked out)</span></span><input class="j-input" name="classLabel" value="${esc(j.classLabel)}" placeholder="${esc(d.derived.classLabel)}"></label>
         <label class="j-field"><span>Ages</span><input class="j-input" name="ageLabel" value="${esc(j.ageLabel)}"></label>
       </section>
@@ -363,7 +376,6 @@ async function renderSettings(ui) {
     const juniors = {
       term: g('term'), termStart: g('termStart'), weeks: Number(g('weeks')), datesLabel: g('datesLabel'),
       skipDates: [...v.querySelectorAll('#jj-skips .jj-trow')].map((r) => ({ date: r.querySelector('[data-sdate]').value, reason: r.querySelector('[data-sreason]').value.trim() })).filter((x) => x.date),
-      classes: [{ ...c, day: g('day'), time: g('time'), endTime: g('endTime'), location: g('classLocation'), capacity: Number(g('capacity')), coachId: g('coachId') }],
       classLabel: g('classLabel'), location: g('location'), ageLabel: g('ageLabel'),
       priceCents: price, siblingPriceCents: sibling, registrationOpen: f.get('registrationOpen') === 'on', waiverVersion: g('waiverVersion'),
       nextTerm: { name: g('nextName'), termStart: g('nextStart'), open: f.get('nextOpen') === 'on', priceCents: centsFrom(g('nextPrice')), holdCents: centsFrom(g('nextHold')) },
@@ -378,6 +390,7 @@ async function renderSettings(ui) {
     toast(r.data.warnings?.length ? `Saved. ${r.data.warnings.join(' ')}` : 'Saved. The website shows it within a minute.', 6000)
     renderSettings(ui)
   })
+  bindGo(ui)
 }
 
 // ---------- invites (stage 2) ----------
@@ -574,19 +587,4 @@ async function inviteOne(ui, email, after = () => {}) {
     toast(x.ok && x.data.sent.length ? 'Sent.' : (x.data.failed?.[0]?.error || x.data.skipped?.[0]?.why || x.data.error || 'Not sent.'), 6000)
     after()
   })
-}
-
-// ---------- the pages still to come ----------
-
-const SOON = {
-  'jj-classes': ['Classes', 'Each Joners Juniors class with its coach, places and children.', 'There is one class for now: change its day, time, places and coach in Settings.'],
-  'jj-registers': ['Registers', 'Mark each class present or absent, with attendance by week on the Dashboard.', 'Until then, coaches mark the class in My sessions, the same as JFP.'],
-  'jj-messages': ['Messages', 'Email or text one family or the whole class.', 'Until then, email or call a family from their page in Players.'],
-}
-function renderSoon(tab, ui) {
-  const [title, what, now] = SOON[tab] || ['Coming next', '', '']
-  ui.view().innerHTML = `<div class="jj-view"><div class="jd-head"><div><h1>${esc(title)}</h1><p>Joners Juniors</p></div></div>
-    <section class="jd-card jj-soon"><span class="j-pill j-pill-violet">Coming next</span><p style="margin-top:10px">${esc(what)}</p><p class="muted small" style="margin-top:8px">${esc(now)}</p>
-    <div class="jj-actions"><button type="button" class="j-btn j-btn-line" data-jj-go="jj-players">Open Players</button><button type="button" class="j-btn j-btn-line" data-jj-go="jj-settings">Open Settings</button></div></section></div>`
-  bindGo(ui)
 }
