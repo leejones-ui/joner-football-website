@@ -34,6 +34,24 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
         </div>
       </div>
 
+      <!-- Coming up (what Lee works on) or Past holidays (a record, read only) -->
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <div class="hp-seg hp-view" role="group" aria-label="Show">
+          <button type="button" data-view="upcoming" aria-pressed="true">Coming up</button>
+          <button type="button" data-view="past" aria-pressed="false">Past holidays</button>
+        </div>
+      </div>
+
+      <div id="flash" hidden class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-4"><div class="rounded-xl border border-joner-red/40 bg-joner-red/10 px-4 py-3 text-sm" role="status"></div></div>
+
+      <!-- PAST HOLIDAYS -->
+      <div id="view-past" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8" hidden>
+        <h2 class="font-heading uppercase text-2xl">Past holidays</h2>
+        <p class="hp-muted mb-4">Every school holiday that has finished, newest first. A record only: nothing here can be changed. The money for each one is on Money &gt; Holiday training.</p>
+        <div id="record-list" class="space-y-4"><p class="text-white/60">Loading</p></div>
+      </div>
+
+      <div id="view-upcoming">
       <div class="sticky top-0 z-20 bg-joner-black/95 backdrop-blur border-b border-white/10">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex gap-2 overflow-x-auto" role="tablist">
           <button type="button" class="tab" data-tab="slots" aria-selected="true">Slots</button>
@@ -42,10 +60,19 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
         </div>
       </div>
 
-      <div id="flash" hidden class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-4"><div class="rounded-xl border border-joner-red/40 bg-joner-red/10 px-4 py-3 text-sm" role="status"></div></div>
-
       <!-- SLOTS -->
       <div id="tab-slots" class="tabpanel max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid gap-8 lg:grid-cols-[380px_1fr]">
+        <div class="hp-span">
+          <div class="hp-topbar">
+            <p class="hp-muted">Sessions from today on. Finished holidays are under Past holidays.</p>
+            <button type="button" class="btn-outline min-h-[44px] px-4" data-plan-open id="plan-open">Set up next holidays</button>
+          </div>
+          <section id="plan" class="hp-card mt-4" hidden aria-label="Set up next holidays">
+            <div class="hp-period-head"><h2 class="font-heading uppercase text-2xl">Set up next holidays</h2><button type="button" class="link-btn" data-plan-close>Close</button></div>
+            <div id="plan-form"></div>
+            <div id="plan-preview" class="mt-4"></div>
+          </section>
+        </div>
         <div class="space-y-6">
           <form id="slot-form" class="rounded-2xl border border-white/10 bg-white/[0.04] p-5 space-y-4" novalidate>
             <h2 class="font-heading uppercase text-2xl">Add Slots</h2>
@@ -128,7 +155,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
         </div>
         <div>
           <div class="flex items-center justify-between mb-4">
-            <h2 class="font-heading uppercase text-2xl">All Slots</h2>
+            <h2 class="font-heading uppercase text-2xl">Coming Up</h2>
             <label class="text-sm text-white/70 flex items-center gap-2"><input id="show-cancelled" type="checkbox" class="accent-[#E8000D]" /> Show cancelled</label>
           </div>
           <div id="slots-list" class="space-y-6"><p class="text-white/60">Loading</p></div>
@@ -206,6 +233,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
           </div>
         </form>
       </div>
+      </div>
     </section>
   </main>
 </BaseLayout>
@@ -247,13 +275,51 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
   table.bk th { color:#dcdcdc; text-transform:uppercase; letter-spacing:.08em; font-size:.78rem; }
   table.bk td { color:#f2f2f2; }
   .link-btn { color:#fff; text-decoration:underline; text-decoration-color:#E8000D; text-underline-offset:4px; }
+  /* Coming up, Past holidays, Set up next holidays (13 Oct 2026). Phone first. */
+  .hp-seg { display:flex; gap:0; border:1px solid rgba(255,255,255,.25); width:max-content; max-width:100%; }
+  .hp-seg button { min-height:44px; padding:.5rem 1rem; font-family:var(--font-heading); text-transform:uppercase; letter-spacing:.08em; font-size:.85rem; }
+  .hp-seg button[aria-pressed="true"] { background:#E8000D; }
+  .hp-seg button:disabled { opacity:.45; }
+  .hp-span { grid-column: 1 / -1; min-width:0; }
+  .hp-topbar { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; justify-content:space-between; }
+  .hp-muted { color:#d6d6d6; }
+  .hp-small { font-size:.9rem; }
+  .hp-card { border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04); border-radius:1rem; padding:1rem; min-width:0; }
+  #plan { scroll-margin-top: 80px; }
+  .hp-period-head .link-btn { display:inline-flex; align-items:center; min-height:44px; }
+  .hp-period-head { display:flex; flex-wrap:wrap; gap:.5rem 1rem; align-items:flex-start; justify-content:space-between; margin-bottom:.6rem; }
+  .hp-h3 { font-family:var(--font-heading); text-transform:uppercase; font-size:1.25rem; line-height:1.1; }
+  .hp-stats { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:.6rem; margin:.4rem 0 .6rem; }
+  @media (min-width: 640px) { .hp-stats { grid-template-columns:repeat(4, minmax(0,1fr)); } }
+  .hp-stats div { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); padding:.55rem .7rem; min-width:0; }
+  .hp-stats dt { font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:#cfcfcf; }
+  .hp-stats dd { font-size:1.15rem; font-weight:700; overflow-wrap:anywhere; }
+  .hp-details summary { cursor:pointer; min-height:40px; display:flex; align-items:center; text-decoration:underline; text-decoration-color:#E8000D; text-underline-offset:4px; }
+  .hp-list, .hp-days, .hp-items { list-style:none; margin:0; padding:0; }
+  .hp-row { display:flex; gap:.6rem; justify-content:space-between; align-items:flex-start; padding:.5rem 0; border-top:1px solid rgba(255,255,255,.08); overflow-wrap:anywhere; }
+  .hp-none { opacity:.7; }
+  .hp-tag { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; border:1px solid rgba(255,255,255,.3); padding:.1rem .4rem; white-space:nowrap; }
+  .hp-grid2 { display:grid; gap:.75rem; margin-bottom:.75rem; }
+  @media (min-width: 640px) { .hp-grid2 { grid-template-columns:1fr 1fr; } }
+  .hp-day { border-top:1px solid rgba(255,255,255,.1); padding:.6rem 0; }
+  .hp-dayhead { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; min-height:40px; }
+  .hp-dayhead input { width:1.25rem; height:1.25rem; accent-color:#E8000D; }
+  .hp-items li { padding:.2rem 0 .2rem 1.9rem; font-size:.95rem; overflow-wrap:anywhere; }
+  .hp-items li.hp-skip, .hp-off { opacity:.6; }
+  .hp-actions { display:flex; flex-wrap:wrap; gap:.6rem; margin:1rem 0 .4rem; }
+  .hp-actions button:disabled { opacity:.45; }
+  .hp-empty { border:1px dashed rgba(255,255,255,.3); padding:1.25rem; border-radius:1rem; display:flex; flex-direction:column; gap:.8rem; align-items:flex-start; }
+  .hp-note { border:1px solid rgba(255,255,255,.15); padding:1rem; display:flex; flex-direction:column; gap:.6rem; align-items:flex-start; }
 </style>
 
 <script>
+  import { splitSlots, splitBookings, emptyHtml, recordHtml, planFormHtml, planPreviewHtml, blankDates } from '../../scripts/holiday-admin-plan.js'
+
   (function () {
     const $ = (id) => document.getElementById(id)
     const KEY = 'jf_holiday_admin'
-    const state = { config: null, slots: [], bookings: [], dates: [], times: [] }
+    // today: Sydney, from the server. plan: the Set up next holidays preview; ticked: the days left ticked.
+    const state = { config: null, slots: [], bookings: [], dates: [], times: [], today: '', plan: null, ticked: null }
     const typeLabels = { one: '1 to 1', shared: 'Shared', group: 'Group' }
 
     function esc(v) { return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) }
@@ -446,6 +512,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
     async function loadSlots() {
       const data = await api('listSlots')
       state.slots = data.slots
+      state.today = data.today || state.today
       renderSlots()
     }
     $('show-cancelled').addEventListener('change', renderSlots)
@@ -478,11 +545,14 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
     }
     function renderSlots() {
       const showCancelled = $('show-cancelled').checked
-      const slots = state.slots.filter((s) => showCancelled || s.status !== 'cancelled')
-      if (!slots.length) { $('slots-list').innerHTML = '<p class="text-white/60">No slots yet. Add some on the left.</p>'; return }
+      // Coming up only: finished holidays are kept under Past holidays.
+      const upcoming = splitSlots(state.slots, state.today).upcoming
+      const slots = upcoming.filter((s) => showCancelled || s.status !== 'cancelled')
+      const none = !upcoming.some((s) => s.status !== 'cancelled')
+      if (!slots.length) { $('slots-list').innerHTML = emptyHtml(); return }
       const byDate = new Map()
       for (const s of slots) { if (!byDate.has(s.date)) byDate.set(s.date, { label: s.dateLabel, slots: [] }); byDate.get(s.date).slots.push(s) }
-      $('slots-list').innerHTML = [...byDate.values()].map((day) => `
+      $('slots-list').innerHTML = (none ? emptyHtml() : '') + [...byDate.values()].map((day) => `
         <section>
           <h3 class="font-heading uppercase text-xl mb-2">${esc(day.label)}</h3>
           <div class="space-y-2">${day.slots.map((s) => `
@@ -528,6 +598,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
       try {
         const data = await api('listBookings')
         state.bookings = data.bookings
+        state.today = data.today || state.today
         renderBookings()
       } catch (error) { $('bookings-list').innerHTML = `<p class="text-joner-red">${esc(error.message)}</p>` }
     }
@@ -535,7 +606,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
     $('b-filter').addEventListener('change', renderBookings)
     function filteredBookings() {
       const f = $('b-filter').value
-      return state.bookings.filter((b) => f === 'all' || b.status === f)
+      // Bookings for sessions still to come; past ones are in Past holidays.
+      return splitBookings(state.bookings, state.today).upcoming.filter((b) => f === 'all' || b.status === f)
     }
     function deliveryCell(b) {
       if (!b.effects) return ''
@@ -599,6 +671,77 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
       a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv)
       a.download = `holiday-bookings-${new Date().toISOString().slice(0, 10)}.csv`
       a.click()
+    })
+
+    // ----- Coming up or Past holidays -----
+    function showView(v) {
+      document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)))
+      $('view-upcoming').hidden = v !== 'upcoming'
+      $('view-past').hidden = v !== 'past'
+      if (v === 'past') loadRecord()
+    }
+    document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => showView(b.dataset.view)))
+    async function loadRecord() {
+      $('record-list').innerHTML = '<p class="text-white/60">Loading</p>'
+      try {
+        const data = await api('holidayRecord')
+        $('record-list').innerHTML = recordHtml(data.periods)
+      } catch (error) { $('record-list').innerHTML = `<p class="text-joner-red">${esc(error.message)}</p>` }
+    }
+
+    // ----- Set up next holidays -----
+    async function loadPlan(ask = {}) {
+      $('plan').hidden = false
+      $('plan-preview').innerHTML = '<p class="text-white/60">Working it out</p>'
+      try {
+        state.plan = (await api('planHolidays', ask)).plan
+        state.ticked = null
+        renderPlan()
+      } catch (error) { $('plan-preview').innerHTML = `<p class="text-joner-red">${esc(error.message)}</p>` }
+    }
+    function renderPlan() {
+      $('plan-form').innerHTML = planFormHtml(state.plan)
+      $('plan-preview').innerHTML = planPreviewHtml(state.plan, state.ticked)
+    }
+    function planAsk(extra = {}) {
+      return { period: $('hp-period')?.value || state.plan?.target.id || '', source: $('hp-source')?.value || '', mode: state.plan?.mode || 'copy', ...extra }
+    }
+    function ticked() {
+      if (!state.ticked) state.ticked = new Set(state.plan.days.filter((d) => d.items.some((x) => x.status === 'new')).map((d) => d.date))
+      return state.ticked
+    }
+    $('plan').addEventListener('change', (e) => {
+      if (e.target.id === 'hp-period' || e.target.id === 'hp-source') return loadPlan(planAsk())
+      const day = e.target.closest('[data-plan-day]')
+      if (!day) return
+      const set = ticked()
+      if (day.checked) set.add(day.dataset.planDay); else set.delete(day.dataset.planDay)
+      $('plan-preview').innerHTML = planPreviewHtml(state.plan, set)
+    })
+    document.addEventListener('click', async (e) => {
+      if (e.target.closest('[data-plan-open]')) { loadPlan(); $('plan').scrollIntoView({ behavior: 'smooth', block: 'start' }); return }
+      if (e.target.closest('[data-plan-close]')) { $('plan').hidden = true; return }
+      const mode = e.target.closest('[data-mode]')
+      if (mode && !mode.disabled && state.plan && mode.dataset.mode !== state.plan.mode) return loadPlan(planAsk({ mode: mode.dataset.mode }))
+      if (e.target.closest('[data-plan-weekdays]')) {
+        state.dates = blankDates(state.plan); renderDates()
+        $('s-date').min = state.plan.target.start; $('s-date').max = state.plan.target.end; $('s-date').value = state.plan.target.start
+        flash(`${state.dates.length} weekdays of ${state.plan.target.label} are in the dates. Add the start times and Create slots.`)
+        $('slot-form').scrollIntoView({ behavior: 'smooth', block: 'start' })
+        return
+      }
+      const create = e.target.closest('[data-plan-create]')
+      if (!create || create.disabled) return
+      const dates = [...ticked()]
+      const n = state.plan.days.filter((d) => dates.includes(d.date)).reduce((t, d) => t + d.items.filter((x) => x.status === 'new').length, 0)
+      if (!confirm(`Make ${n} session${n === 1 ? '' : 's'} for ${state.plan.target.label}? Parents can book them straight away. Nothing is emailed.`)) return
+      create.disabled = true
+      try {
+        const data = await api('createHolidays', { period: state.plan.target.id, source: state.plan.source.id, dates })
+        flash(`${data.created} session${data.created === 1 ? '' : 's'} made for ${data.period.label}.${data.skipped ? ` ${data.skipped} skipped.` : ''}`)
+        $('plan').hidden = true
+        await loadSlots()
+      } catch (error) { create.disabled = false; flash(error.message) }
     })
 
     // ----- boot -----

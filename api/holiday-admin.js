@@ -2,11 +2,12 @@
 // Nothing here is reachable without HOLIDAY_ADMIN_SECRET.
 import { rateLimit } from './_security.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
-import { getConfig as getJfpConfig } from './_jfp-store.js'
+import { getConfig as getJfpConfig, sydneyToday } from './_jfp-store.js'
+import { holidayRecord, planHolidays, planToCreate, PLAN_MAX } from './_holiday-plan.js'
 import {
   requireAdmin, getConfig, saveConfig, listSlots, getSlot, upsertSlot, cancelSlot, reopenSlot, setSlotStatus, setSlotField,
   slotOwners, publicSlot, listBookings, getBooking, saveBooking, releaseSlot, clean, sydneyIso, validateSlotInput,
-  siteUrl, stripeFetch, refundFor, formatAud, expireCheckoutSession, TYPE_LABELS,
+  siteUrl, stripeFetch, refundFor, formatAud, expireCheckoutSession, TYPE_LABELS, kvCommand,
 } from './_holiday-store.js'
 import { repairBooking, effectsSummary } from './_holiday-finalise.js'
 import { HOLIDAY_SHEET, ROSTER_HEADERS, holidaySheetId, rebuildRoster } from './_holiday-email.js'
@@ -62,6 +63,8 @@ function adminBooking(booking, slotsById, config) {
     dateLabel: view?.dateLabel || '',
     startLabel: view?.startLabel || '',
     slotId: booking.slotId,
+    // The session's day, so the page can keep past holidays out of Coming up.
+    slotDate: slot?.date || '',
     slotStatus: slot?.status || 'missing',
     stripeSessionId: booking.stripeSessionId || '',
     stripeUrl: booking.stripePaymentIntentId ? `https://dashboard.stripe.com/payments/${booking.stripePaymentIntentId}` : '',
@@ -81,7 +84,9 @@ export default async function handler(req, res) {
   // sign-in. The admin secret still works for scripts.
   if (!requireAdmin(req, body)) {
     const staff = sameOrigin(req) ? await staffPrincipal(req, await getJfpConfig()) : null
-    if (!staff || staff.role !== 'admin') return fail(res, 401, 'Sign in to the JFP portal as Lee or Ligia.')
+    if (!staff) return fail(res, 401, 'Sign in to the JFP portal as Lee or Ligia.')
+    // A coach is signed in, but holiday training is Lee and Ligia's.
+    if (staff.role !== 'admin') return fail(res, 403, 'Not allowed.')
   }
 
   const action = clean(body.action, 40)
@@ -101,7 +106,47 @@ export default async function handler(req, res) {
       }
 
       case 'listSlots':
-        return res.status(200).json({ success: true, slots: await slotsWithCounts(config) })
+        return res.status(200).json({ success: true, slots: await slotsWithCounts(config), today: sydneyToday() })
+
+      // Past holidays (Lee, 13 Oct 2026): a read only record, one school
+      // holiday at a time, newest first.
+      case 'holidayRecord': {
+        const [slots, bookings] = await Promise.all([listSlots({ includeCancelled: true }), listBookings({ limit: 2000 })])
+        const today = sydneyToday()
+        return res.status(200).json({ success: true, today, periods: holidayRecord({ slots, bookings, config, today }) })
+      }
+
+      // Set up the next holidays: a preview first (planHolidays), then the
+      // slots Lee left ticked (createHolidays). Nothing is emailed; parents
+      // can book only once the slots exist.
+      case 'planHolidays': {
+        const plan = planHolidays({ slots: await listSlots({ includeCancelled: true }), config, today: sydneyToday(), period: clean(body.period, 20), source: clean(body.source, 20), mode: body.mode === 'blank' ? 'blank' : 'copy' })
+        return plan.ok ? res.status(200).json({ success: true, plan }) : fail(res, 400, plan.error)
+      }
+      case 'createHolidays': {
+        const plan = planHolidays({ slots: await listSlots({ includeCancelled: true }), config, today: sydneyToday(), period: clean(body.period, 20), source: clean(body.source, 20), mode: 'copy' })
+        if (!plan.ok) return fail(res, 400, plan.error)
+        if (!plan.source) return fail(res, 400, 'There is no earlier holiday to copy. Add the slots below instead.')
+        const dates = (Array.isArray(body.dates) ? body.dates : []).map((d) => clean(d, 10))
+        const todo = planToCreate(plan, dates)
+        if (!todo.length) return fail(res, 400, 'Tick at least one day with new sessions.')
+        if (todo.length > PLAN_MAX) return fail(res, 400, `That is more than ${PLAN_MAX} slots at once. Untick some days.`)
+        // Two taps (or two people) at once: one makes the slots, the other waits.
+        if ((await kvCommand(['SET', 'holiday:plan-lock', '1', 'NX', 'EX', '60'])) !== 'OK') return fail(res, 409, 'The next holidays are being set up right now. Wait a moment and refresh.')
+        let created = 0
+        const errors = []
+        try {
+          // Read again inside the lock: an hour made a moment ago is not made twice.
+          const now = new Set((await listSlots()).map((s) => `${s.coachId}|${s.startsAt}`))
+          for (const t of todo) {
+            if (now.has(`${t.coachId}|${sydneyIso(t.date, t.startTime)}`)) continue
+            const result = await upsertSlot(t, config)
+            if (result.ok) { created += 1; now.add(`${t.coachId}|${result.slot.startsAt}`) } else errors.push(`${t.date} ${t.startTime}: ${result.errors.join(' ')}`)
+          }
+        } finally { await kvCommand(['DEL', 'holiday:plan-lock']) }
+        const skipped = plan.days.filter((d) => dates.includes(d.date)).flatMap((d) => d.items).length - created
+        return res.status(200).json({ success: true, created, skipped, errors: errors.slice(0, 10), period: plan.target })
+      }
 
       case 'upsertSlot': {
         const result = await upsertSlot(body.slot || {}, config)
@@ -215,7 +260,7 @@ export default async function handler(req, res) {
         const bookings = await listBookings({ limit: Math.min(1000, Number(body.limit) || 500) })
         const slots = await listSlots({ includeCancelled: true })
         const slotsById = Object.fromEntries(slots.map((s) => [s.id, s]))
-        return res.status(200).json({ success: true, bookings: bookings.map((b) => adminBooking(b, slotsById, config)) })
+        return res.status(200).json({ success: true, bookings: bookings.map((b) => adminBooking(b, slotsById, config)), today: sydneyToday() })
       }
 
       case 'cancelBooking': {
