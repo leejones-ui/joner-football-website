@@ -60,12 +60,12 @@ await test('the public page reads the settings at runtime: Term 4 2026 by defaul
   assert.equal(res.status, 200)
   assert.match(res.headers.get('cache-control') || '', /s-maxage=60/)
   const j = (await res.json()).juniors
-  assert.equal(j.termDatesLine, 'Term 4: 17 October 2026 to 19 December 2026')
+  assert.equal(j.termDatesLine, 'Term 4: 12 October 2026 to 19 December 2026')
   assert.equal(j.feeLine, '$220 for 10 weeks'); assert.equal(j.registrationOpen, true)
   assert.ok(!/Term 3|25 July|tbl|@/.test(JSON.stringify(j)))
   assert.equal((await fetch(`${B}/api/juniors-info`, { method: 'POST' })).status, 405)
   const page = await (await fetch(`${B}/jonersjuniors/`)).text()
-  assert.match(page, /Term 4: 17 October 2026 to 19 December 2026/, 'the built page starts with the Term 4 defaults')
+  assert.match(page, /Term 4: 12 October 2026 to 19 December 2026/, 'the built page starts with the Term 4 defaults')
   assert.ok(!/Term 3: 25 July/.test(page))
   assert.match(page, /\/api\/juniors-info/)
 })
@@ -102,7 +102,7 @@ await test('Settings: saved to config.juniors, audited, on the public page at on
   const r = await portal('jjSaveSettings', { juniors: { priceCents: 24000, weeks: 10, skipDates: [{ date: '2026-11-07', reason: 'Venue booked' }] } })
   assert.equal(r.status, 200, JSON.stringify(r.data))
   assert.equal(r.data.public.feeLine, '$240 for 9 weeks')
-  assert.equal(r.data.public.termDatesLine, 'Term 4: 17 October 2026 to 19 December 2026')
+  assert.equal(r.data.public.termDatesLine, 'Term 4: 12 October 2026 to 19 December 2026')
   const pub = (await get('/api/juniors-info')).juniors
   assert.equal(pub.priceCents, 24000); assert.equal(pub.weeks, 9)
   const cfg = (await portal('getSettings')).data.config
@@ -131,7 +131,7 @@ await test('website sign-up: checkout at the saved price and term; the webhook w
   const sent = (await emails()).slice(before).filter((e) => /Juniors/.test(e.subject))
   assert.equal(sent.length, 2)
   const parentMail = sent.find((e) => e.to.includes('wren.parent@example.com'))
-  assert.match(parentMail.html, /Term 4 runs from 17 October 2026 to 19 December 2026/)
+  assert.match(parentMail.html, /Term 4 runs from 12 October 2026 to 19 December 2026/)
   assert.match(parentMail.html, /Saturday training runs from 9:15am to 10:00am at Joner Football HQ/)
   assert.doesNotMatch(parentMail.html, /Term 3|25 July/)
   assert.match(sent.find((e) => e !== parentMail).html, /AUD \$240\.00/)

@@ -939,7 +939,7 @@ function jjTodoCards() {
   if (!J?.todo?.length) return ''
   const want = q.get('pay')
   return [...J.todo].sort((x, y) => Number(y.id === want) - Number(x.id === want)).map((t) => `
-    <div class="ja-card ja-todo" data-todo="${esc(t.id)}">
+    <div class="ja-card ja-todo" data-todo="${esc(t.id)}"${t.id === want ? ' style="box-shadow:0 0 0 2px #fff"' : ''}>
       <div class="ja-card-head"><div><p class="ja-kicker"><i></i>Joners Juniors</p><h3 class="ja-h3" style="margin-top:8px;font-size:18px">${esc(t.players.join(' and '))}</h3>
       <p class="ja-muted ja-small" style="margin-top:3px">${t.places?.length ? t.places.map((x) => `${esc(x.name)}: ${esc(x.amountLabel)}`).join('<br>') : esc(t.what || '')}${t.places?.length && t.what ? `<br>${esc(t.what)}` : ''}</p></div></div>
       <ul class="ja-list">

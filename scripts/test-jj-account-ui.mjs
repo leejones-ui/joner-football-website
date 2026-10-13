@@ -13,7 +13,7 @@ import { JSDOM, VirtualConsole } from 'jsdom'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const bundled = (await build({ entryPoints: [path.join(root, 'src/scripts/jfp-account.js')], bundle: true, write: false, format: 'iife', target: 'es2022', logLevel: 'silent' })).outputFiles[0].text
 const astro = fs.readFileSync(path.join(root, 'src/pages/jfp-account.astro'), 'utf8')
-const markup = astro.slice(astro.indexOf('<div class="jfp" id="jfp-account">'), astro.indexOf('<JfpFooter />')).replace('<JfpHeader active="account" />', '<button type="button" id="sign-out" hidden>Sign out</button>') + '</div>'
+const markup = astro.slice(astro.indexOf('<div class="jfp ja" id="jfp-account">'), astro.lastIndexOf('</BaseLayout>'))
 
 let passed = 0
 const test = async (n, fn) => { await fn(); passed += 1; console.log(`ok - ${n}`) }
@@ -25,6 +25,7 @@ async function openAccount(overview, onPost = () => null, search = '') {
   const dom = new JSDOM(`<!doctype html><html><body>${markup}</body></html>`, { url: `http://localhost/jfp-account/${search}`, runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole: vc })
   const w = dom.window
   w.scrollTo = () => {}
+  w.requestAnimationFrame = (f) => setTimeout(f, 0)
   w.confirm = () => true
   w.CSS = w.CSS || { escape: (v) => String(v).replace(/[^a-zA-Z0-9_-]/g, (c) => `\\${c}`) }
   w.Element.prototype.scrollIntoView = () => {}
@@ -38,6 +39,7 @@ async function openAccount(overview, onPost = () => null, search = '') {
     const custom = onPost(body)
     if (custom) { const { status, ...json } = custom; return reply(json, typeof status === 'number' ? status : 200) }
     if (body.action === 'overview') return reply({ success: true, ...structuredClone(overview) })
+    if (body.action === 'profiles') return reply({ success: true, players: [] })
     return reply({ success: true })
   }
   w.eval(bundled)
@@ -56,7 +58,7 @@ const BASE = {
   players: [{ key: 'cy senior', name: 'Cy Senior', age: 9, needsDob: false, waiver: { onFile: true }, placeNoSession: false, enrolments: [enrol] }],
   todo: [], reasons: [{ key: 'sick', label: 'Sick' }], noteMax: 300, paid: [], requests: [], bookings: [], juniors: null,
 }
-const jkid = (rowId, name, x = {}) => ({ key: `jj:${rowId}`, rowId, name, age: 4, needsDob: false, waiver: { onFile: false }, className: 'Saturday 9:15am to 10:00am', location: 'Joner Football HQ, Belrose', term: 'Term 4 2026', dates: ['17 Oct 2026', '24 Oct 2026'], firstDate: '17 Oct 2026', nextDate: '17 Oct 2026', payment: { state: 'owing', label: 'A$220 to pay', canPay: true }, next: null, ...x })
+const jkid = (rowId, name, x = {}) => ({ key: `jj:${rowId}`, rowId, name, age: 4, needsDob: false, waiver: { onFile: false }, className: 'Saturday 9:15am to 10:00am', location: 'Joner Football HQ, Belrose', term: 'Term 4 2026', dates: ['Sat 17 Oct', 'Sat 24 Oct'], firstDate: 'Sat 17 Oct', nextDate: 'Sat 17 Oct', payment: { state: 'owing', label: 'A$220 to pay', canPay: true }, next: null, ...x })
 const JUNIORS = {
   parentName: 'Pat Parent', term: 'Term 4 2026', termShort: 'Term 4', classLabel: 'Saturday 9:15am to 10:00am', datesLabel: '17 October 2026 to 19 December 2026', location: 'Joner Football HQ, Belrose', ageLabel: 'Ages 3 to early primary', waiverVersion: 'Juniors v1',
   children: [
@@ -69,31 +71,32 @@ const JUNIORS = {
 
 await test('a JFP family with no Juniors child: no Juniors block, the page is as before', async () => {
   const p = await openAccount(BASE)
-  assert.equal(p.$('#jj-wrap').hidden, true)
-  assert.match(p.text('#home'), /Cy Senior/)
-  assert.equal(p.$('#todo-wrap').hidden, true)
-  assert.equal(p.text('#jj-home'), '', 'nothing rendered in it')
-  assert.ok(!p.text('#todo').includes('Joners Juniors') && !p.text('#players').includes('Joners Juniors'))
+  assert.equal(p.$('#jj-home'), null, 'no Juniors card')
+  assert.match(p.text('[data-pane="home"]'), /Cy Senior/)
+  assert.equal(p.$('.ja-todo'), null, 'nothing to do')
+  await p.click('[data-go="sessions"]')
+  assert.ok(!p.text('[data-pane="home"]').includes('Joners Juniors') && !p.text('[data-pane="sessions"]').includes('Joners Juniors'))
   assert.deepEqual(p.errors, [])
 })
 
 await test('JFP and Juniors children on one login: the class, dates, paid status, waiver and the payment checklist', async () => {
   const p = await openAccount({ ...BASE, juniors: structuredClone(JUNIORS) }, () => null, '?pay=JJPAY-1-AAAAAA')
-  assert.equal(p.$('#jj-wrap').hidden, false)
-  assert.match(p.text('#home'), /Cy Senior/, 'the JFP player is still there')
-  assert.match(p.text('#jj-home'), /Saturday 9:15am to 10:00am · Joner Football HQ, Belrose · Term 4 2026/)
-  assert.match(p.text('[data-jjchild="recJJ000000000001"]'), /Ada Junior.*Next class 17 Oct 2026.*A\$220 to pay/)
+  assert.ok(p.$('#jj-home'), 'the Juniors card')
+  assert.match(p.text('[data-pane="home"]'), /Cy Senior/, 'the JFP player is still there')
+  assert.match(p.text('#jj-home'), /Saturday 9:15am to 10:00am\s*Joner Football HQ, Belrose · Term 4 2026/)
+  assert.match(p.text('[data-jjchild="recJJ000000000001"]'), /Ada Junior.*Next class Sat 17 Oct.*A\$220 to pay/)
   assert.ok(p.$('[data-jjchild="recJJ000000000001"] [data-waiver-player="jj:recJJ000000000001"]'), 'sign the one family waiver')
-  assert.equal(p.$('#todo-wrap').hidden, false)
   const card = p.$('[data-todo="JJPAY-1-AAAAAA"]')
   assert.match(card.textContent, /Joners Juniors/)
   assert.equal(card.querySelector('[data-jjpay]').disabled, true, 'the waiver comes first')
-  assert.match(card.getAttribute('style'), /border-color/, 'opened from the email: this one stands out')
+  assert.match(card.getAttribute('style') || '', /box-shadow/, 'opened from the email: this one stands out')
   // The waiver sheet takes the Juniors child, with the JFP and Juniors heading.
   await p.click('[data-waiver-player="jj:recJJ000000000001"]')
   assert.match(p.d.body.textContent, /JFP waiver and agreement, Term 4 2026, JFP and Joners Juniors/)
   // My sessions lists the Juniors dates too.
-  assert.match(p.text('#players'), /Ada Junior Joners Juniors.*17 Oct 2026.*24 Oct 2026/)
+  p.w.eval('document.querySelector(".j-sheet [data-close], .j-sheet .j-sheet-x")?.click()')
+  await p.click('[data-go="sessions"]')
+  assert.match(p.text('[data-pane="sessions"]'), /Ada Junior.*Joners Juniors.*17\s*Oct.*Sat.*Next.*24\s*Oct/)
   assert.deepEqual(p.errors, [])
 })
 
@@ -108,19 +111,20 @@ await test('Pay on a child with no link asks the server for the amount, then goe
     return null
   })
   await p.click('[data-jjask="recJJ000000000001"]')
-  assert.deepEqual(p.posts.filter((x) => x.action !== 'overview').map((x) => [x.action, x.rowIds?.[0] || x.payreqId]), [['jjRequestPay', 'recJJ000000000001'], ['jjPay', 'JJPAY-9-ZZZZZZ']])
-  assert.match(p.text('[data-jjchild="recJJ000000000002"]'), /Term 1 2027.*Keep the place: pay A\$230.*Hold the place: A\$50.*Not returning/)
+  assert.deepEqual(p.posts.filter((x) => !['overview', 'profiles'].includes(x.action)).map((x) => [x.action, x.rowIds?.[0] || x.payreqId]), [['jjRequestPay', 'recJJ000000000001'], ['jjPay', 'JJPAY-9-ZZZZZZ']])
+  assert.match(p.text('[data-jjchild="recJJ000000000002"]'), /Term 1 2027.*Keep the place: A\$230.*Hold the place: A\$50.*Not returning/)
   await p.click('[data-jjnext="hold"][data-row="recJJ000000000002"]')
-  const after = p.posts.filter((x) => x.action !== 'overview').slice(2)
+  const after = p.posts.filter((x) => !['overview', 'profiles'].includes(x.action)).slice(2)
   assert.deepEqual(after.map((x) => [x.action, x.choice || x.payreqId]), [['jjNextChoice', 'hold'], ['jjPay', 'JJPAY-8-YYYYYY']])
   assert.deepEqual(p.errors, [])
 })
 
 await test('a family with only a Juniors child: no "No sessions booked yet", just their child', async () => {
   const p = await openAccount({ ...BASE, players: [], parentName: 'Pat Parent', juniors: structuredClone(JUNIORS) })
-  assert.ok(!/No sessions booked yet/.test(p.text('#app')))
-  assert.equal(p.$('#jj-wrap').hidden, false)
-  assert.match(p.text('#players'), /Ada Junior/)
+  assert.ok(!/No sessions/.test(p.text('#app')))
+  assert.ok(p.$('#jj-home'))
+  await p.click('[data-go="sessions"]')
+  assert.match(p.text('[data-pane="sessions"]'), /Ada Junior/)
   assert.deepEqual(p.errors, [])
 })
 

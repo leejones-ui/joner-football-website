@@ -20,8 +20,11 @@ export const JJ_DEFAULTS = Object.freeze({
   weeks: 10,
   // [{ date, reason }]: Saturdays with no class (taken out of the dates).
   skipDates: [],
-  // '' = worked out from the dates ("17 October 2026 to 19 December 2026").
-  datesLabel: '',
+  // What the page and emails say for the term's dates. '' = worked out from
+  // the class dates ("17 October 2026 to 19 December 2026"). Term 4 2026 says
+  // the school term's dates, as the live page does (main, 13 Oct 2026); only
+  // used until Settings are first saved, and only for Term 4 2026.
+  datesLabel: '12 October 2026 to 19 December 2026',
   // One class for now (Lee, 13 Oct 2026). A list, so a second class later
   // is a second entry, not a rewrite.
   classes: [{ id: 'sat-0915-belrose', day: 'Saturday', time: '9:15am', endTime: '10:00am', location: 'Belrose HQ', capacity: 12, coachId: 'sam' }],
@@ -112,7 +115,7 @@ export function normaliseJuniors(input = {}) {
     termStart: ISO.test(src.termStart || '') ? src.termStart : b.termStart,
     weeks: Number.isInteger(weeks) && weeks >= 1 && weeks <= 20 ? weeks : b.weeks,
     skipDates: Array.isArray(src.skipDates) ? [...new Map(src.skipDates.filter((x) => ISO.test(x?.date || '')).map((x) => [x.date, { date: x.date, reason: jjClean(x.reason, 60) || 'No class' }])).values()].sort((x, y) => x.date.localeCompare(y.date)) : [],
-    datesLabel: jjClean(src.datesLabel, 80),
+    datesLabel: src.datesLabel === undefined ? ((jjClean(src.term, 40) || b.term) === b.term ? b.datesLabel : '') : jjClean(src.datesLabel, 80),
     classes: classes.length ? classes : b.classes.map((c) => ({ ...c })),
     classLabel: jjClean(src.classLabel, 80),
     location: jjClean(src.location, 160) || b.location,

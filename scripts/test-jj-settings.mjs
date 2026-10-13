@@ -21,7 +21,8 @@ await test('the defaults are Term 4 2026: ten Saturdays, 17 October to 19 Decemb
   assert.equal(dates.length, 10)
   assert.equal(dates[0], '2026-10-17'); assert.equal(dates.at(-1), '2026-12-19')
   assert.ok(dates.every((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6), 'every one a Saturday')
-  assert.equal(datesLabelOf(jj), '17 October 2026 to 19 December 2026')
+  assert.equal(datesLabelOf(jj), '12 October 2026 to 19 December 2026', 'the school term, as the live page says')
+  assert.equal(datesLabelOf(normaliseJuniors({ datesLabel: '' })), '17 October 2026 to 19 December 2026', 'blank = worked out from the classes')
   assert.equal(classLabelOf(jj), 'Saturday 9:15am to 10:00am')
   assert.equal(jj.priceCents, 22000)
   assert.equal(capacityOf(jj), 12)
@@ -31,7 +32,7 @@ await test('the defaults are Term 4 2026: ten Saturdays, 17 October to 19 Decemb
 
 await test('the public view says Term 4 and never Term 3, with no private data', () => {
   const pub = juniorsPublic(JJ_DEFAULTS)
-  assert.equal(pub.termDatesLine, 'Term 4: 17 October 2026 to 19 December 2026')
+  assert.equal(pub.termDatesLine, 'Term 4: 12 October 2026 to 19 December 2026')
   assert.equal(pub.feeLine, '$220 for 10 weeks')
   assert.equal(pub.timeLabel, '9:15am to 10:00am')
   assert.equal(pub.registrationOpen, true)
@@ -96,7 +97,7 @@ await test('the confirmation email says the saved term, dates, class, place and 
   assert.match(inside, /AUD \$240\.00/)
   // A registration with none of the new fields (made before) reads with the defaults.
   const old = confirmationEmail({ registration: { player: 'Old', parent: 'P', className: 'Saturday 9:15am to 10:00am', termDates: '' } })
-  assert.match(old, /Term 4 runs from 17 October 2026 to 19 December 2026/)
+  assert.match(old, /Term 4 runs from 12 October 2026 to 19 December 2026/)
 })
 
 await test('the webhook writes the child in the same shape as rows staff add, mapped to the columns each table has', () => {

@@ -185,13 +185,16 @@ export async function renderJuniorsMoney(ui) {
   bindSwitch(ui)
 }
 
-// JFP and Joners Juniors each have their own Money page; the switch moves between them.
+// JFP and holiday training are views of Money; Joners Juniors has its own
+// Money page in its section. The switch moves between all three.
 export function bindSwitch(ui) {
   ui.view().querySelectorAll('[data-programme]').forEach((b) => b.addEventListener('click', () => {
     const want = b.dataset.programme
     if (b.getAttribute('aria-pressed') === 'true') return
-    ui.filter.programme = 'jfp'
-    if (want === 'jfp') { history.replaceState(null, '', '#money'); ui.go('money') } else ui.go('jj-money')
+    if (want === 'juniors') { ui.filter.programme = 'jfp'; return ui.go('jj-money') }
+    ui.filter.programme = want === 'holiday' ? 'holiday' : 'jfp'
+    if (want === 'jfp') history.replaceState(null, '', '#money')
+    ui.go('money')
   }))
 }
 
