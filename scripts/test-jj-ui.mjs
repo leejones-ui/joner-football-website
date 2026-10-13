@@ -454,7 +454,7 @@ await test('Registers: here or away per child, tap again to clear, the rest mark
     jjSessionCoaches: (b) => { coaches = b; return { success: true, session: REGISTER.session } },
   })
   assert.equal(p.$('#jr-date').value, '2026-10-24')
-  assert.match(p.text('#jr-date'), /Week 1: Sat 17 Oct · marked/)
+  assert.match(p.text('#jr-date'), /Week 1: Sat 17 Oct ✓/)
   assert.match(p.text('#jr-counts'), /0 here\s*1 away\s*1 not marked/)
   assert.equal(p.$('[data-kid="recAAAAAAAAAAAAA2"] [data-mark="Absent"]').getAttribute('aria-pressed'), 'true')
   await p.click('[data-kid="recAAAAAAAAAAAAA1"] [data-mark="Present"]')

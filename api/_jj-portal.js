@@ -14,6 +14,7 @@ import { loadRoster, waiverFor } from './_jfp-airtable.js'
 import { readJJTable, getJJRow, writeJJRow, tableFor, termTables, isEnrolled, dobText, REC, plain, bustJJ } from './_jj-data.js'
 import { validateJuniors, juniorsPublic, juniorsDates, capacityOf, classLabelOf, datesLabelOf, classForRow, classById, classLabelFor } from './_jj-config.js'
 import { classesView, saveClasses, moveChild, syncTimetable } from './_jj-classes.js'
+const jjCleanLabel = (v) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)
 import { attendanceSummary } from './_jj-registers.js'
 import { juniorsMoneyData, readJJLedger, saveJJLedger, dropJJLedger, JUNIORS_TABLES, METHODS } from './_jfp-juniors-money.js'
 import { jfpStripePayments } from './_jfp-stripe.js'
@@ -414,8 +415,18 @@ async function saveSettings(res, principal, config, body) {
   if (!Object.keys(patch).length) return fail(res, 400, 'classes' in input ? 'Classes are changed on the Classes page.' : 'Nothing to change.')
   // Next term is changed field by field, so saving its name never drops its price or hold.
   if (patch.nextTerm && typeof patch.nextTerm === 'object') patch.nextTerm = { ...config.juniors.nextTerm, ...patch.nextTerm }
-  const checked = validateJuniors(patch, config.juniors)
+  let checked = validateJuniors(patch, config.juniors)
   if (!checked.ok) return fail(res, 400, checked.errors.join(' '))
+  // The dates changed but the dates line was left as it was: it would be
+  // wrong, so it goes back to being worked out from the new dates.
+  const before0 = config.juniors
+  const sameLine = !('datesLabel' in patch) || jjCleanLabel(patch.datesLabel) === before0.datesLabel
+  const ends = (jj) => { const d = juniorsDates(jj); return `${d[0] || ''}:${d.at(-1) || ''}` }
+  if (before0.datesLabel && sameLine && ends(checked.juniors) !== ends(before0)) {
+    checked = validateJuniors({ ...patch, datesLabel: '' }, config.juniors)
+    if (!checked.ok) return fail(res, 400, checked.errors.join(' '))
+    checked.warnings = [...(checked.warnings || []), `The dates line is now worked out from the dates: ${datesLabelOf(checked.juniors)}.`]
+  }
   // Families already invited for next term under its name: the name stays.
   const oldNext = config.juniors.nextTerm.name
   if (checked.juniors.nextTerm.name !== oldNext && Object.keys(await jjNextStatuses(oldNext)).length) return fail(res, 409, `Families have already been invited for ${oldNext}, so its name cannot change now.`)

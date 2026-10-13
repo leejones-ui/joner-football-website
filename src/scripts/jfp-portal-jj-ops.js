@@ -129,7 +129,7 @@ export async function renderRegisters(ui) {
     ${d.class.onTimetable ? '' : '<div class="j-box j-box-amber" style="margin-bottom:10px">This class is not on the timetable yet, so coaches cannot see it in My sessions. Put it right on the Classes page.</div>'}
     <div class="jj-reg-date">
       <button type="button" class="j-btn j-btn-line" id="jr-prev" aria-label="Earlier class" ${at <= 0 ? 'disabled' : ''}>‹</button>
-      <select class="j-select" id="jr-date" aria-label="Class date">${d.dates.map((x) => `<option value="${esc(x.iso)}" ${x.iso === d.date ? 'selected' : ''}>Week ${x.week}: ${esc(x.label)}${x.marked ? ' · marked' : ''}</option>`).join('')}</select>
+      <select class="j-select" id="jr-date" aria-label="Class date">${d.dates.map((x) => `<option value="${esc(x.iso)}" ${x.iso === d.date ? 'selected' : ''}>Week ${x.week}: ${esc(x.label)}${x.marked ? ' ✓' : ''}</option>`).join('')}</select>
       <button type="button" class="j-btn j-btn-line" id="jr-next" aria-label="Later class" ${at >= d.dates.length - 1 ? 'disabled' : ''}>›</button>
     </div>
     <section class="jd-card" id="jr-coaches" style="margin-top:12px"><h2>Who coached</h2>

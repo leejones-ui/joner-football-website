@@ -709,10 +709,12 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jj-reg-btns .j-btn { min-height: 44px; min-width: 64px; border: 1px solid var(--j-line); background: var(--j-surface); color: var(--j-ink); }
 .jj-reg-btns [data-mark="Present"][aria-pressed="true"] { background: #157f3b; border-color: #157f3b; color: #fff; }
 .jj-reg-btns [data-mark="Absent"][aria-pressed="true"] { background: #b42318; border-color: #b42318; color: #fff; }
-.jj-att { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; }
-.jj-att li { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13.5px; }
-.jj-att .d { color: var(--j-muted); }
+.jj-att { list-style: none; padding: 0; margin: 10px 0 14px; display: grid; gap: 8px; }
+.jj-att li { display: grid; grid-template-columns: max-content minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13.5px; }
+.jj-att .d { color: var(--j-muted); white-space: nowrap; min-width: 76px; }
 .jj-att .n { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .jj-view .j-textarea { min-height: 120px; }
 .jj-view .j-check { min-height: 40px; align-items: center; }
-@media (max-width: 420px) { .jj-att li { grid-template-columns: 64px minmax(0, 1fr); } .jj-att .n { grid-column: 2; } }
+@media (max-width: 420px) { .jj-att li { grid-template-columns: max-content minmax(0, 1fr); } .jj-att .n { grid-column: 2; } }
+.jj-view button.link { min-height: 40px; display: inline-flex; align-items: center; }
+.jj-view .jd-card h3.jj-sec { font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--j-muted); margin: 16px 0 6px; }

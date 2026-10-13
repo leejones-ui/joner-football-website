@@ -218,10 +218,13 @@ export async function attendanceSummary(config, { rows = null } = {}) {
     dates.forEach((d, i) => {
       const m = marks[i]
       const w = byDate.get(d) || { date: d, label: dateLabel(d), present: 0, absent: 0, children: 0, registers: 0 }
-      w.present += kids.filter((k) => m[k.id] === 'Present').length
-      w.absent += kids.filter((k) => m[k.id] === 'Absent').length
-      w.children += kids.length
-      if (Object.keys(m).length) w.registers += 1
+      // Only a class whose register was taken that day counts its children.
+      if (Object.keys(m).length) {
+        w.present += kids.filter((k) => m[k.id] === 'Present').length
+        w.absent += kids.filter((k) => m[k.id] === 'Absent').length
+        w.children += kids.length
+        w.registers += 1
+      }
       byDate.set(d, w)
     })
     for (const k of kids) {
