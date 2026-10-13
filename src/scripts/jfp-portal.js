@@ -813,6 +813,7 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
       if (!r.ok) return toast(r.data.error || 'Could not add.')
     } else if (!r.ok) { err.textContent = r.data.error || 'Could not add.'; err.hidden = false; return }
     closeModal()
+    if (r.data.emailError) toast(r.data.emailError)
     const mobile = body.parent.mobile
     const where = `${g.day} ${g.time}, ${g.locationName}`
     const textIt = (text, title) => textComposer({ modal, toast, rowIds: [r.data.rowId], parent: body.parent.name, mobile, text, title })

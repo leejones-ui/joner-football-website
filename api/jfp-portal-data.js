@@ -225,6 +225,9 @@ export async function addPlayer(req, res, principal, config, body) {
   const perSession = payment === 'sessions' && body.perSessionCents != null && body.perSessionCents !== '' ? Number(body.perSessionCents) : 0
   if (perSession && !(Number.isInteger(perSession) && perSession >= 100 && perSession <= 200000)) return fail(res, 400, 'Enter the price per session in dollars, for example 80.')
   if ((payment === 'link' || body.sendEmail) && !email) return fail(res, 400, 'Add the parent email so the family can sign in, sign the waiver and pay.')
+  // The same player twice in one group (a retry after an error) is refused.
+  const already = (await loadRoster({ fresh: true })).players.find((r) => r.holdsPlace && normName(r.player) === normName(name) && r.day === group.day && r.time === group.time && r.location === group.location)
+  if (already) return fail(res, 409, `${name} is already in this group.`, { code: 'duplicate', rowId: already.id })
   const cap = await capacityCheck(group, 1, body.force === true)
   if (cap.error) return fail(res, 409, cap.error, { code: cap.code })
   const dob = ISO.test(body.player?.dob || '') ? body.player.dob : ''
@@ -258,16 +261,19 @@ export async function addPlayer(req, res, principal, config, body) {
   const [rowId] = await createTerm4Rows([fields])
   let payreq = null
   if (payment === 'link') payreq = await createPayreq({ req, principal, config, group, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: isTrial ? 'trial' : 'admin-add', product, startDate: from, afterpay: body.afterpay !== false })
-  let emailed = false
+  let emailed = false, emailError = ''
   if (body.sendEmail === true && email) {
     const roster = await loadRoster({ fresh: true })
     const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile], dob }, roster.waivers))
-    await sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq) }, amountCents, trial: isTrial, startDate: from, product })
-    emailed = true
+// The player is already added: an email failure must not look like the add failed.
+    try {
+      await sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq) }, amountCents, trial: isTrial, startDate: from, product })
+      emailed = true
+    } catch (e) { console.error('jfp add player email failed', e); emailError = 'The player was added, but the email did not send. Try the invite again from Players.' }
     if (payreq) await savePayreq({ ...payreq, emailedAt: new Date().toISOString() })
   }
   await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed, payreq: payreq?.id || '', cents: payment === 'none' || payment === 'sessions' ? 0 : amountCents, perSessionCents: perSession || undefined } })
-  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed })
+  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed, emailError })
 }
 
 // ---------- Players tab: one row per player, searchable, with everything ----------

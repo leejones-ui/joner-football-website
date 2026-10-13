@@ -38,6 +38,9 @@ async function send({ to, subject, html, replyTo, attachment }) {
   const apiKey = process.env.BREVO_API_KEY
   if (!apiKey) throw new Error('BREVO_API_KEY is not configured.')
   const sender = process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com'
+  // Brevo refuses an empty name, and a player with no parent has none (13 Oct 2026).
+  to = (Array.isArray(to) ? to : [to]).filter((t) => t?.email).map((t) => (String(t.name || '').trim() ? { email: t.email, name: String(t.name).trim() } : { email: t.email }))
+  if (!to.length) throw new Error('No email address to send to.')
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { accept: 'application/json', 'content-type': 'application/json', 'api-key': apiKey },
