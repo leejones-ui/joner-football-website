@@ -610,3 +610,63 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
   .jy-stack td.jq-rowacts::before { display: none; }
   .jy-stack td.jq-rowacts .j-btn { flex: 1 1 auto; }
 }
+
+/* ---------- Joners Juniors section (13 Oct 2026). Phone first: nothing wider
+   than 375px, every control 40px or more. ---------- */
+.jj-view .j-btn, .jj-view .j-btn-sm, .jj-view .j-select, .jj-view .jm-chips button, .jj-view .jp-seg button { min-height: 40px; }
+.jj-view .jd-head h1 { overflow-wrap: anywhere; }
+.jj-view .jd-list button { min-height: 40px; display: inline-flex; align-items: center; }
+.jj-tile { grid-column: span 6; }
+@media (min-width: 720px) { .jj-tile { grid-column: span 3; } }
+.jj-tile .val { font-size: clamp(21px, 6vw, 28px); overflow-wrap: anywhere; }
+.jj-tile button.link { min-height: 40px; }
+.jj-list { display: grid; gap: 8px; }
+.jj-pl { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 10px 12px; background: var(--j-surface); border: 1px solid var(--j-line); border-radius: 12px; color: var(--j-ink); font: inherit; text-align: left; cursor: pointer; }
+.jj-pl:hover, .jj-pl:focus-visible { border-color: var(--j-ink-2); }
+.jj-pl.is-removed { opacity: .7; }
+.jj-pl-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.jj-pl-main b { font-size: 15px; overflow-wrap: anywhere; }
+.jj-pl-main small, .jj-pl-tags small { color: var(--j-muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.jj-pl-tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; align-items: center; flex: 0 1 auto; max-width: 48%; }
+.jj-pl-tags small { flex-basis: 100%; text-align: right; }
+.jj-sec { font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--j-muted); margin: 16px 0 6px; }
+.jj-dl { display: grid; grid-template-columns: minmax(84px, 34%) minmax(0, 1fr); gap: 6px 12px; font-size: 14px; margin: 0; }
+.jj-dl dt { color: var(--j-muted); }
+.jj-dl dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
+.jj-dl a { color: inherit; text-decoration: underline; text-underline-offset: 3px; display: inline-block; min-height: 28px; }
+.jj-pays { list-style: none; padding: 0; margin: 8px 0 0; }
+.jj-pays li { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--j-line-2); font-size: 13.5px; flex-wrap: wrap; }
+.jj-pays li > span:last-child { display: inline-flex; gap: 6px; align-items: center; margin-left: auto; }
+.jj-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.jj-actions .j-btn { flex: 1 1 140px; min-height: 44px; }
+.jj-radios { border: 0; padding: 0; margin: 0 0 8px; }
+.jj-radios legend { font-size: 13px; font-weight: 650; color: var(--j-ink-2); margin-bottom: 2px; }
+.jj-radios .j-check { min-height: 40px; align-items: center; }
+/* Juniors money: one row per child, a grid from tablet up, stacked on a phone. */
+.jj-mlist { display: grid; gap: 6px; }
+.jj-mrow { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, 1fr)); gap: 6px 10px; align-items: start; padding: 10px 12px; border: 1px solid var(--j-line); border-radius: 12px; background: var(--j-surface); font-size: 13.5px; }
+.jj-mrow.is-removed { opacity: .7; }
+.jj-mrow small { display: block; color: var(--j-muted); font-size: 12px; overflow-wrap: anywhere; }
+.jj-mrow-who { grid-column: 1 / -1; min-width: 0; overflow-wrap: anywhere; }
+.jj-mrow-fig { font-variant-numeric: tabular-nums; min-width: 0; }
+.jj-mrow-st { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.jj-mrow-st small { display: inline; }
+@media (min-width: 900px) {
+  .jj-mrow { grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)) minmax(0, 2fr); align-items: center; }
+  .jj-mrow-who, .jj-mrow-st { grid-column: auto; }
+}
+.jj-year + .jj-year { margin-top: 12px; }
+.jj-year-h { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 12px 0 4px; font-size: 14px; }
+/* Settings. */
+.jj-set .jd-card { margin-top: 12px; }
+.jj-set .jd-card h2 { margin-bottom: 10px; }
+.jj-sub { font-size: 13px; font-weight: 650; color: var(--j-ink-2); margin: 4px 0 6px; }
+.jj-trow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; gap: 6px; margin-bottom: 6px; }
+.jj-trow .j-input { min-width: 0; min-height: 44px; }
+.jj-trow .j-btn { min-height: 44px; padding: 0; }
+.jj-soon p { max-width: 62ch; }
+@media (max-width: 640px) {
+  .jj-view .jd-sync { width: 100%; }
+  .jj-view .jd-sync .j-btn { flex: 1 1 auto; }
+  .jj-pl-tags { max-width: 52%; }
+}

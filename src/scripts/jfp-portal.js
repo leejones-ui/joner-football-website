@@ -4,13 +4,14 @@
 // the role again on the server.
 import { $, esc, api, toast, signIn, whoAmI, signOut, money } from './jfp-common.js'
 import { renderMessages } from './jfp-portal-messages.js'
-import { renderJuniorsMoney, programmeSwitch, bindSwitch, juniorsCardShell, fillJuniorsCard } from './jfp-portal-juniors.js'
+import { programmeSwitch, bindSwitch, juniorsCardShell, fillJuniorsCard } from './jfp-portal-juniors.js'
 import { drawFamilies, sessionModal } from './jfp-portal-family.js'
 import { bankPanel, bindBank, loadBank, bankDone, bankStale } from './jfp-portal-bank.js'
 import { renderHolidayMoney, holidayStale } from './jfp-portal-holiday.js'
 import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYearChart } from './jfp-portal-years.js'
 import { renderPricesPage, quickModal, progPill, WHERE as QUICK_WHERE } from './jfp-portal-quick.js'
 import { textComposer, payLinkText, trialText, helloText } from './jfp-portal-text.js'
+import { JJ_NAV, JJ_TABS, JJ_ICON, renderJJ } from './jfp-portal-jj.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', linkProg: 'all', pricing: null }
@@ -45,6 +46,8 @@ const NAV = {
   admin: [
     ['Overview', [['overview', 'Dashboard']]],
     ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['requests', 'Requests'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
+    // Joners Juniors (Lee, 13 Oct 2026): its own section, the same pages as JFP.
+    JJ_NAV,
     ['Money', [['money', 'Money'], ['payments', 'Payment links'], ['prices', 'Prices']]],
     ['Coaches', [['coach', 'Registers'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['coaches', 'Coaches']]],
     ['Admin', [['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]],
@@ -72,8 +75,10 @@ const ICON = {
   removed: '<path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"/>',
   audit: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8.5"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>',
+  invites: '<path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/>',
 }
-const icon = (k) => `<span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICON[k] || ICON.overview}</svg></span>`
+// Joners Juniors pages borrow their JFP twin's icon.
+const icon = (k) => `<span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICON[JJ_ICON[k] || k] || ICON.overview}</svg></span>`
 function tabs() { return NAV[P.user.role === 'admin' ? 'admin' : 'coach'].flatMap(([, list]) => list) }
 
 function start() {
@@ -87,7 +92,9 @@ function start() {
   // or an earlier JFP term or a whole year: #money?term=Term%203%202026, #money?year=2025
   const [hash, query] = location.hash.slice(1).split('?')
   const qp = new URLSearchParams(query || '')
-  if (hash === 'money' && qp.get('programme') === 'juniors') Object.assign(P.jf, { programme: 'juniors', term: qp.get('term') || '' })
+  // Joners Juniors money has its own page now (#jj-money?term=...); old links still land there.
+  if ((hash === 'money' && qp.get('programme') === 'juniors') || hash === 'jj-money') Object.assign(P.jf, { programme: 'jfp', term: (qp.get('term') || '').slice(0, 30) })
+  if (hash === 'money' && qp.get('programme') === 'juniors') return go('jj-money')
   // or holiday training, one school holiday: #money?programme=holiday&period=2026-spring
   if (hash === 'money' && qp.get('programme') === 'holiday') Object.assign(P.jf, { programme: 'holiday', period: (qp.get('period') || '').slice(0, 20) })
   if (hash === 'money' && qp.get('loc')) P.moneyFilter = { ...(P.moneyFilter || {}), loc: qp.get('loc') }
@@ -164,7 +171,7 @@ async function go(tab, { quiet = false } = {}) {
   if (!quiet) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts() } else cancelBanner()
   if (!quiet) view().focus({ preventScroll: true })
@@ -176,7 +183,7 @@ setInterval(() => { if (P.user && document.visibilityState === 'visible') checkC
 // Stripe by itself every 2 minutes, and as soon as you come back to the
 // browser tab. It waits while you are typing, have a window or menu open, or
 // are part way through something, and keeps your place on the page.
-const AUTO = { tabs: new Set(['overview', 'board', 'families', 'money', 'requests', 'payments', 'program']), lastInput: 0, hiddenAt: 0, busy: false }
+const AUTO = { tabs: new Set(['overview', 'board', 'families', 'money', 'requests', 'payments', 'program', 'jj-dashboard', 'jj-players', 'jj-money']), lastInput: 0, hiddenAt: 0, busy: false }
 document.addEventListener('input', () => { AUTO.lastInput = Date.now() }, true)
 async function autoSync() {
   if (AUTO.busy || !P.user || !AUTO.tabs.has(P.tab) || document.visibilityState !== 'visible') return
@@ -1566,6 +1573,8 @@ const statusPill = (s) => `<span class="jm-status"><i style="background:${cssVar
 const juniorsUi = () => ({ view, post, filter: P.jf, go })
 // Money > Holiday training (13 Oct 2026).
 const holidayUi = () => ({ view, post, toast, filter: P.jf, programmeSwitch: programmeSwitch('holiday'), bindSwitch: () => bindSwitch(juniorsUi()), saveFile, csvCell, aud, slug, confirm: confirmBox, bankStale, stale: () => P.tab !== 'money' || P.jf.programme !== 'holiday' })
+// What the Joners Juniors pages use from here.
+const jjUi = () => ({ view, post, need, modal, closeModal, confirmBox, go, filter: P.jf })
 // Edit a player's details from Money: name, family, fee and payment type.
 const PAY_TYPES = ['JFP Session by session', 'JFP 10 weeks', 'JFP Half term (5 weeks)', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
 function editPlayerModal(p) {
@@ -1876,7 +1885,8 @@ async function renderLookBack(pre, seq) {
 }
 
 async function renderMoney(pre) {
-  if (P.jf.programme === 'juniors') return renderJuniorsMoney(juniorsUi())
+  // Joners Juniors money is its own page in the Joners Juniors section.
+  if (P.jf.programme === 'juniors') { P.jf.programme = 'jfp'; return go('jj-money') }
   if (P.jf.programme === 'holiday') return renderHolidayMoney(holidayUi())
   P.moneyFilter = { status: '', q: '', loc: '', view: 'players', term: '', year: '', ...(P.moneyFilter || {}) }
   const seq = (P.moneySeq = (P.moneySeq || 0) + 1)

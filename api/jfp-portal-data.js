@@ -35,6 +35,7 @@ import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
+import { JJ_ACTIONS, jjAction, jjMoneyData, jjTableList } from './_jj-portal.js'
 import { matchBank, cleanItem, csvIds, EXTERNAL_ID, BANK_LIMITS, twinOf, looksJfp, feeSizes, rowScore } from './_jfp-bank-match.js'
 import { holidayMoneyData, holidaySizes, HOLIDAY_BANK } from './_holiday-money.js'
 import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
@@ -87,7 +88,8 @@ const isoDob = (v) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(
 async function juniorsFor(groups, config) {
   if (!groups.some(isJuniorsGroup)) return {}
   let rows = []
-  try { rows = await juniorsRoster(config.term) } catch (error) { console.error('jfp juniors roster failed', error.message); return { error: 'Could not read the Joners Juniors table' } }
+  // The Juniors term running now (its own settings), from its own tables.
+  try { rows = await juniorsRoster(config.juniors?.term || config.term, { tables: jjTableList(config) }) } catch (error) { console.error('jfp juniors roster failed', error.message); return { error: 'Could not read the Joners Juniors table' } }
   const out = {}
   for (const g of groups.filter(isJuniorsGroup)) {
     out[g.id] = rows.filter((r) => r.day && r.time && r.location && makeGroupId(r.day, r.time, r.location) === makeGroupId(g.day, g.time, g.location))
@@ -2470,6 +2472,8 @@ async function handle(req, res) {
     if (!isAdmin) return fail(res, 403, 'Not allowed.')
 
     // ---------- Lee and Ligia ----------
+    // Joners Juniors: Dashboard, Players, Settings and their changes (_jj-portal.js).
+    if (JJ_ACTIONS.has(action)) return await jjAction(req, res, principal, config, body, action)
     switch (action) {
       case 'board': await sweepExpiredOffers(principal); return res.status(200).json({ success: true, ...(await boardData(config, { fresh: body.fresh === true })), coaches: coachList(config), locations: config.locations.map((l) => ({ id: l.id, name: l.name })) })
       case 'familyInvites': return await familyInvites(req, res, principal, config, body)
@@ -2634,12 +2638,8 @@ async function handle(req, res) {
       // Joners Juniors (Lee, 11 Oct 2026): its own tables and Stripe payments,
       // never added into the JFP figures above.
       case 'juniorsMoney': {
-        try {
-          const j = await juniorsMoneyData({ fresh: body.fresh === true, quick: body.quick === true }, { jfpSessionIds: async () => { try { const x = await jfpStripePayments({ since: config.moneySince, term: config.term }); return [...x.payments, ...x.next].map((p) => p.id) } catch { return [] } } })
-          // The term the JFP portal is running, if Juniors has it; else the newest.
-          const current = j.terms.includes(config.term) ? config.term : j.terms[0] || ''
-          return res.status(200).json({ success: true, juniors: { ...j, currentTerm: current } })
-        } catch (error) { return fail(res, 503, error.message) }
+        // The Juniors term in its settings, if Juniors has it; else JFP's; else the newest.
+        try { return res.status(200).json({ success: true, juniors: await jjMoneyData(config, { fresh: body.fresh === true, quick: body.quick === true }) }) } catch (error) { return fail(res, 503, error.message) }
       }
       case 'venues': {
         const v = await pastVenues(config, clean(body.term, 30))
