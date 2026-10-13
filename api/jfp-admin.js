@@ -124,6 +124,15 @@ export default async function handler(req, res) {
       commitAttempted = true
       return await saveGroupAction(res, { email: 'jfp-admin (shared admin token)', name: 'Lee' }, await getConfig(), { group: body.group || {} })
     }
+    // Add a player to a group from chat (Lee, 13 Oct 2026). Never emails a
+    // family from here: parent messages need Lee's yes on the exact words.
+    if (body && typeof body === 'object' && !Array.isArray(body) && body.action === 'addPlayer') {
+      const allowed = ['action', 'groupId', 'player', 'parent', 'payment', 'perSessionCents', 'note', 'force']
+      if (Object.keys(body).some(k => !allowed.includes(k))) return fail(res, 400, `Only ${allowed.slice(1).join(', ')} are accepted.`)
+      if (!['sessions', 'none', 'trial'].includes(body.payment)) return fail(res, 400, 'payment must be sessions, none or trial (no payment links from here).')
+      commitAttempted = true
+      return await addPlayer(req, res, { email: 'jfp-admin (shared admin token)', name: 'Lee' }, await getConfig(), { ...body, sendEmail: false })
+    }
     if (body && typeof body === 'object' && !Array.isArray(body) && body.action === 'setKit') {
       if (Object.keys(body).some(k => !['action', 'kitPriceLabel'].includes(k))) return fail(res, 400, 'Only kitPriceLabel is accepted.')
       const label = typeof body.kitPriceLabel === 'string' ? body.kitPriceLabel.trim() : ''

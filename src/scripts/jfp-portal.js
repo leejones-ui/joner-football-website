@@ -727,7 +727,7 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     <label class="j-field"><span>Payment</span><select class="j-select" id="ap-pay">
       <option value="link" selected>Payment link: they sign in, confirm the waiver and pay</option><option value="offline">Already paid offline</option><option value="sessions">Session by session: their own price, billed from Money</option><option value="trial">Free trial, no payment</option><option value="none">Decide later</option></select></label>
     <div id="ap-price"></div>
-    <label class="j-field" id="ap-per-wrap" hidden><span>Price per session (A$)</span><input class="j-input" id="ap-per" inputmode="decimal" placeholder="e.g. 80"></label>
+    <label class="j-field" id="ap-per-wrap" hidden><span>Price per session (A$) <span class="muted">(optional, or set it when you bill)</span></span><input class="j-input" id="ap-per" inputmode="decimal" placeholder="e.g. 80"></label>
     <label class="j-check"><input type="checkbox" id="ap-send" ${spotLink ? '' : 'checked'}> <span>Email the family now. They sign in, confirm the waiver (or sign it), pay for this group, then get the training kit.</span></label>
     <p class="j-err" id="ap-err" hidden></p>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ap-go"></button></div>`, { wide: true })
@@ -778,8 +778,11 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     if (body.player.name.length < 3) { err.textContent = 'Enter the player\'s full name.'; err.hidden = false; return }
     if (payment === 'offline') body.method = 'Offline'
     if (payment === 'sessions') {
-      body.perSessionCents = Math.round(Number(box.querySelector('#ap-per').value) * 100)
-      if (!(body.perSessionCents >= 100)) { err.textContent = 'Enter the price per session.'; err.hidden = false; return }
+      const per = box.querySelector('#ap-per').value.trim()
+      if (per) {
+        body.perSessionCents = Math.round(Number(per) * 100)
+        if (!(body.perSessionCents >= 100)) { err.textContent = 'Enter the price per session in dollars, for example 80.'; err.hidden = false; return }
+      }
     }
     const btn = box.querySelector('#ap-go'); btn.disabled = true
     let r = await post('addPlayer', body)
@@ -826,10 +829,10 @@ async function renderNext() {
       <p class="muted small">Full term is ${esc(d.prices.fullLabel)} (from Prices). A held place pays ${esc(d.prices.afterHoldLabel)} more later.</p>
       <button type="button" class="j-btn j-btn-dark j-btn-sm" id="nt-save" style="margin-top:8px">Save</button>
     </div>
-    <div class="jp-kpis"><div class="jp-kpi"><span>Players this term</span><b>${t.players}</b></div><div class="jp-kpi"><span>Held</span><b>${t.held}</b></div><div class="jp-kpi"><span>Paid in full</span><b>${t.paid}</b></div><div class="jp-kpi"><span>Invited, no answer</span><b>${t.invited}</b></div><div class="jp-kpi"><span>Not returning</span><b>${t.no}</b></div></div>
+    <div class="jp-kpis"><div class="jp-kpi"><span>Players this term</span><b>${t.players}</b></div><div class="jp-kpi"><span>Held</span><b>${t.held}</b></div><div class="jp-kpi"><span>Paid in full</span><b>${t.paid}</b></div><div class="jp-kpi"><span>Want to keep it</span><b>${t.interested || 0}</b></div><div class="jp-kpi"><span>Invited, no answer</span><b>${t.invited}</b></div><div class="jp-kpi"><span>Not returning</span><b>${t.no}</b></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><button type="button" class="j-btn j-btn-line j-btn-sm" id="nt-all">Select everyone not invited</button><label class="j-check" style="padding:0"><input type="checkbox" id="nt-email" checked> <span>Email the families</span></label><button type="button" class="j-btn j-btn-dark j-btn-sm" id="nt-invite">Invite selected</button></div>
     <div class="jp-scroll"><table class="jp-table"><thead><tr><th></th><th>Player</th><th>Group now</th><th>${esc(nt.name)}</th></tr></thead><tbody>
-      ${d.players.map((p) => `<tr><td><input type="checkbox" data-nt="${esc(p.rowId)}" ${p.status ? 'disabled' : ''}></td><td><b>${esc(p.name)}</b><br><span class="muted small">${esc(p.parent)} · ${esc(p.email || 'no email')}</span></td><td>${esc(p.group)}${p.coach ? `<br><span class="muted small">Coach ${esc(p.coach)}</span>` : ''}</td><td>${p.status ? `<span class="j-pill j-pill-${word[p.status][0]}">${word[p.status][1]}</span>${p.paidCents ? ` <span class="muted small">${esc(money(p.paidCents))}</span>` : ''}` : '<span class="muted small">Not invited</span>'}</td></tr>`).join('')}
+      ${d.players.map((p) => `<tr><td><input type="checkbox" data-nt="${esc(p.rowId)}" ${p.status ? 'disabled' : ''}></td><td><b>${esc(p.name)}</b><br><span class="muted small">${esc(p.parent)} · ${esc(p.email || 'no email')}</span></td><td>${esc(p.group)}${p.coach ? `<br><span class="muted small">Coach ${esc(p.coach)}</span>` : ''}</td><td>${p.status ? `<span class="j-pill j-pill-${word[p.status][0]}">${word[p.status][1]}</span>${p.paidCents ? ` <span class="muted small">${esc(money(p.paidCents))}</span>` : ''}` : p.interested ? '<span class="j-pill j-pill-amber">Wants to keep it</span> <span class="muted small">said so in My account</span>' : '<span class="muted small">Not invited</span>'}</td></tr>`).join('')}
     </tbody></table></div>`
   $('nt-save').addEventListener('click', async () => {
     const r = await post('saveNextTerm', { nextTerm: { name: $('nt-name').value.trim(), holdCents: Math.round(Number($('nt-hold').value) * 100), open: $('nt-open').checked } })
@@ -2298,7 +2301,7 @@ async function renderFamilies() {
 
 // ---------- Players: search, filters, a full record, and adding one ----------
 
-const PL = { q: '', status: '', group: '', coach: '', waiver: '', place: '', data: null, at: 0 }
+const PL = { q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '', data: null, at: 0 }
 
 function plMatch(p) {
   const q = PL.q.trim().toLowerCase()
@@ -2312,7 +2315,83 @@ function plMatch(p) {
   if (PL.waiver === 'no' && p.waiver.onFile) return false
   if (PL.place === 'in' && !p.inGroup) return false
   if (PL.place === 'out' && p.inGroup) return false
+  if (PL.level === 'none' && p.profile?.level) return false
+  if (PL.level && PL.level !== 'none' && p.profile?.level !== PL.level) return false
+  if (PL.pos && !(p.profile?.positions || []).includes(PL.pos)) return false
   return true
+}
+
+// ---------- player information: club, level, positions, contacts ----------
+// Saved in Airtable "JFP Player Profiles". Families update the same row from
+// My account, so what they change shows here (Lee, 13 Oct 2026).
+const PROFILE_OPTIONS = {
+  levels: ['A-League academy', 'NPL', 'Youth league (BYL or GYL)', 'JDL (was SAP)', 'Club Division 1', 'Club Division 2', 'Club Division 3 or lower', 'School or social only', 'Not playing club football'],
+  positions: ['Goalkeeper', 'Centre back', 'Full back', 'Defensive midfield', 'Central midfield', 'Attacking midfield', 'Winger', 'Striker'],
+}
+const POS_SHORT = { Goalkeeper: 'GK', 'Centre back': 'CB', 'Full back': 'FB', 'Defensive midfield': 'DM', 'Central midfield': 'CM', 'Attacking midfield': 'AM', Winger: 'W', Striker: 'ST' }
+
+function footballCell(p) {
+  const f = p.profile || {}
+  const top = [p.club, f.team].filter(Boolean).join(' · ')
+  const sub = [f.level, (f.positions || []).map((x) => POS_SHORT[x] || x).join('/'), f.foot ? `${f.foot} foot` : ''].filter(Boolean).join(' · ')
+  if (!top && !sub) return '<span class="muted small">Not on file</span>'
+  return `${esc(top || 'Club not on file')}${sub ? `<br><span class="muted small">${esc(sub)}</span>` : ''}${f.updatedFrom === 'Family account' ? '<br><span class="j-pill j-pill-blue" title="Updated by the family in My account">From family</span>' : ''}`
+}
+
+// One window to fix anything about a player: the Term 4 row (name, parent,
+// email, mobile) and their player information. Saves to Airtable.
+async function plEdit(p) {
+  const r = await post('getProfile', { rowId: p.rowId })
+  if (!r.ok) return toast(r.data.error || 'Could not load the player.')
+  const d = r.data
+  const v = { ...d.prefill, ...(d.profile || {}) }
+  const opts = d.options || PROFILE_OPTIONS
+  const sel = (id, list, cur, blank) => `<select class="j-select" id="${id}"><option value="">${blank}</option>${list.map((x) => `<option ${x === cur ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>`
+  const txt = (id, label, val, extra = '') => `<label class="j-field"><span>${label}</span><input class="j-input" id="${id}" value="${esc(val || '')}" ${extra}></label>`
+  const box = modal(`<h2 style="margin-bottom:2px">Edit ${esc(d.row.name)}</h2>
+    <p class="muted small" style="margin-bottom:14px">${d.profile ? `Player information last updated ${esc(new Date(d.profile.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))} by ${esc(d.profile.updatedBy || 'staff')}.` : 'No player information saved yet. Anything from their waiver is filled in for you to check.'} Saves to Airtable.</p>
+    <h3>Player and family</h3>
+    <div class="j-two">${txt('pe-name', "Player's full name", d.row.name)}${txt('pe-dob', 'Date of birth', v.dob, 'type="date"')}</div>
+    <div class="j-two">${txt('pe-parent', 'Parent name', d.row.parent)}${txt('pe-phone', 'Parent mobile', d.row.phone, 'type="tel"')}</div>
+    ${txt('pe-email', 'Parent email (they sign in with this)', d.row.email, 'type="email"')}
+    <div class="j-two">${txt('pe-p2name', 'Second parent <span class="muted">(optional)</span>', v.parent2Name)}${txt('pe-p2mob', 'Second parent mobile', v.parent2Mobile, 'type="tel"')}</div>
+    ${txt('pe-p2email', 'Second parent email <span class="muted">(optional)</span>', v.parent2Email, 'type="email"')}
+    <h3 style="margin-top:8px">Football</h3>
+    <div class="j-two">${txt('pe-club', 'Club', v.club, 'placeholder="For example, Manly United"')}${txt('pe-team', 'Team and age group', v.team, 'placeholder="For example, U13 Div 1"')}</div>
+    <div class="j-two"><label class="j-field"><span>Level</span>${sel('pe-level', opts.levels, v.level, 'Not known')}</label><label class="j-field"><span>Plays</span>${sel('pe-up', opts.playingUp || ['Own age', 'Playing up', 'Playing down'], v.playingUp, 'Not known')}</label></div>
+    <div class="j-field"><span>Positions</span><div class="j-chips" style="flex-wrap:wrap" id="pe-pos">${opts.positions.map((x) => `<button type="button" class="j-chip" data-pos="${esc(x)}" aria-pressed="${(v.positions || []).includes(x)}">${esc(x)}</button>`).join('')}</div></div>
+    <label class="j-field"><span>Stronger foot</span>${sel('pe-foot', opts.feet || ['Right', 'Left', 'Both'], v.foot, 'Not known')}</label>
+    <label class="j-field"><span>What they want to work on <span class="muted">(optional)</span></span><textarea class="j-textarea" id="pe-goals" rows="2">${esc(v.goals || '')}</textarea></label>
+    <h3 style="margin-top:8px">Emergency and medical</h3>
+    <div class="j-two">${txt('pe-ename', 'Emergency contact', v.emergencyName)}${txt('pe-ephone', 'Their phone', v.emergencyPhone, 'type="tel"')}</div>
+    ${txt('pe-erel', 'Relationship <span class="muted">(optional)</span>', v.emergencyRelation, 'placeholder="For example, grandparent"')}
+    <label class="j-field"><span>Medical notes <span class="muted">(optional)</span></span><textarea class="j-textarea" id="pe-med" rows="2">${esc(v.medical || '')}</textarea></label>
+    <p class="j-err" id="pe-err" hidden></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="pe-save">Save</button></div>`, { wide: true })
+  box.querySelector('#pe-pos').addEventListener('click', (e) => { const b = e.target.closest('[data-pos]'); if (b) b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')) })
+  box.querySelector('#pe-save').addEventListener('click', async (e) => {
+    const btn = e.currentTarget
+    const val = (id) => box.querySelector(`#${id}`).value.trim()
+    const err = box.querySelector('#pe-err'); err.hidden = true
+    const row = { name: val('pe-name'), parent: val('pe-parent'), email: val('pe-email'), phone: val('pe-phone') }
+    const changed = Object.fromEntries(Object.entries(row).filter(([k, x]) => x !== (d.row[k] || '')))
+    const values = {
+      dob: val('pe-dob'), club: val('pe-club'), team: val('pe-team'), level: val('pe-level'), playingUp: val('pe-up'), foot: val('pe-foot'),
+      positions: [...box.querySelectorAll('[data-pos][aria-pressed="true"]')].map((b) => b.dataset.pos),
+      parent2Name: val('pe-p2name'), parent2Mobile: val('pe-p2mob'), parent2Email: val('pe-p2email'),
+      emergencyName: val('pe-ename'), emergencyPhone: val('pe-ephone'), emergencyRelation: val('pe-erel'), medical: val('pe-med'), goals: val('pe-goals'),
+      parentName: row.parent, parentMobile: row.phone,
+    }
+    btn.disabled = true; btn.textContent = 'Saving'
+    if (Object.keys(changed).length) {
+      const a = await post('editPlayer', { rowId: p.rowId, fields: changed })
+      if (!a.ok) { btn.disabled = false; btn.textContent = 'Save'; err.textContent = a.data.error || 'Could not save.'; err.hidden = false; return }
+    }
+    const b = await post('saveProfile', { rowId: p.rowId, values })
+    btn.disabled = false; btn.textContent = 'Save'
+    if (!b.ok) { err.textContent = b.data.error || 'Could not save.'; err.hidden = false; return }
+    closeModal(); toast('Saved to Airtable'); P.board = null; PL.at = 0; if (P.tab === 'families') renderPlayers()
+  })
 }
 
 const money0 = (n) => (n == null ? '' : `A$${Number(n).toLocaleString('en-AU')}`)
@@ -2322,8 +2401,10 @@ function plRow(p) {
     <td><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted small">(${esc(p.age)})</span>` : ''}<br><span class="muted small">${esc(p.parent || 'no parent name')}</span></td>
     <td>${p.inGroup ? esc(p.groupLabel) : '<span class="j-pill j-pill-red">Not in a group</span>'}<br><span class="muted small">${esc(p.coach || '')}</span></td>
     <td>${payPill(p)}${p.feeAud != null ? `<br><span class="muted small">${esc(money0(p.feeAud))}${p.balanceAud ? `, ${esc(money0(p.balanceAud))} owing` : ''}</span>` : ''}</td>
+    <td>${footballCell(p)}</td>
     <td>${p.waiver.onFile ? '<span class="j-pill j-pill-green">Waiver</span>' : '<span class="j-pill j-pill-red">No waiver</span>'}</td>
     <td class="muted small">${esc(p.email || 'no email')}</td>
+    <td><button type="button" class="j-btn j-btn-line j-btn-sm" data-pl-edit="${esc(p.rowId)}">Edit</button></td>
   </tr>`
 }
 
@@ -2336,7 +2417,14 @@ function plDetail(p) {
     ${row('Full name', p.name)}
     ${row('Age', p.age != null ? `${p.age} (today, from the date of birth)` : 'not on file: add a date of birth')}
     ${row('Date of birth', born || 'not on file')}
+    <h3 style="margin-top:14px">Football</h3>
     ${row('Club', p.club || 'not on file')}
+    ${row('Team', p.profile?.team)}
+    ${row('Level', p.profile?.level)}
+    ${row('Plays', p.profile?.playingUp)}
+    ${row('Positions', (p.profile?.positions || []).join(', '))}
+    ${row('Stronger foot', p.profile?.foot)}
+    ${p.profile?.updatedAt ? row('Updated', `${new Date(p.profile.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}${p.profile.updatedFrom === 'Family account' ? ' by the family' : ''}`) : ''}
     <h3 style="margin-top:14px">Session</h3>
     ${row('Group', p.inGroup ? p.groupLabel : 'Not in a group')}
     ${row('Coach', p.coach)}
@@ -2356,7 +2444,8 @@ function plDetail(p) {
     ${row('Waiver', p.waiver.onFile ? `On file${p.waiver.term ? `, ${p.waiver.term}` : ''}${p.waiver.signedDate ? `, signed ${p.waiver.signedDate}` : ''}${p.waiver.spelling ? `, signed as "${p.waiver.spelling}"` : ''}` : 'Not signed (no waiver in Airtable for this player)')}
     ${row('Playing kit', p.kit || 'not confirmed')}
     ${p.notes ? `<h3 style="margin-top:14px">Notes</h3><p class="small" style="white-space:pre-wrap;max-height:220px;overflow:auto">${esc(p.notes)}</p>` : ''}
-    <div style="display:flex;justify-content:flex-end;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="pd-edit">Edit</button></div>`, { wide: true })
+  $('pd-edit')?.addEventListener('click', () => { closeModal(); plEdit(p) })
 }
 
 function plAddBox() {
@@ -2399,7 +2488,7 @@ async function renderPlayers(keep = false) {
   const d = PL.data
   const shown = d.players.filter(plMatch)
   const opt = (list, sel, blank) => `<option value="">${blank}</option>` + list.map((x) => `<option value="${esc(x.id)}" ${sel === x.id ? 'selected' : ''}>${esc(x.label || x.name)}</option>`).join('')
-  view().innerHTML = `<div class="jp-head"><div><h1>Players</h1><p class="muted small">Every Term 4 player. Search, filter, click anyone to see everything about them.</p></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>Players</h1><p class="muted small">Every Term 4 player. Search, filter by level or position, click anyone to see everything, or press Edit to change their details. Families update the same details in My account.</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="muted small" id="pl-synced">Read from Airtable ${esc(new Date(PL.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}</span><button type="button" class="j-btn j-btn-line" id="pl-refresh">Refresh from Airtable</button><button type="button" class="j-btn j-btn-dark" id="pl-add">+ Add a player</button><button type="button" class="j-btn j-btn-line" id="pl-invite">Send account invites</button></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <input class="j-input" id="pl-q" placeholder="Search name, parent, email, mobile, group" value="${esc(PL.q)}" style="flex:1;min-width:240px">
@@ -2408,23 +2497,27 @@ async function renderPlayers(keep = false) {
       <select class="j-select" id="pl-coach" style="width:auto">${opt(d.coaches, PL.coach, 'Any coach')}</select>
       <select class="j-select" id="pl-waiver" style="width:auto">${opt([{ id: 'yes', label: 'Waiver on file' }, { id: 'no', label: 'No waiver' }], PL.waiver, 'Any waiver')}</select>
       <select class="j-select" id="pl-place" style="width:auto">${opt([{ id: 'in', label: 'In a group' }, { id: 'out', label: 'Not in a group' }], PL.place, 'In or out')}</select>
+      <select class="j-select" id="pl-level" style="width:auto">${opt([...PROFILE_OPTIONS.levels.map((x) => ({ id: x, label: x })), { id: 'none', label: 'Level not known' }], PL.level, 'Any level')}</select>
+      <select class="j-select" id="pl-pos" style="width:auto">${opt(PROFILE_OPTIONS.positions.map((x) => ({ id: x, label: x })), PL.pos, 'Any position')}</select>
       <button type="button" class="j-btn j-btn-ghost j-btn-sm" id="pl-clear">Clear</button>
     </div>
     <p class="muted small" style="margin-bottom:8px">${shown.length} of ${d.players.length} players${shown.length !== d.players.length ? ' match' : ''} · ${d.players.filter((p) => !p.inGroup).length} not in a group · ${d.players.filter((p) => p.feeAud == null).length} with no fee · ${d.players.filter((p) => !p.waiver.onFile).length} with no waiver</p>
-    <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th>Waiver</th><th>Email</th></tr></thead>
-      <tbody>${shown.map(plRow).join('') || '<tr><td colspan="5" class="muted">Nobody matches those filters.</td></tr>'}</tbody></table></div>`
+    <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th>Football</th><th>Waiver</th><th>Email</th><th></th></tr></thead>
+      <tbody>${shown.map(plRow).join('') || '<tr><td colspan="7" class="muted">Nobody matches those filters.</td></tr>'}</tbody></table></div>`
   const redraw = () => renderPlayers(true)
   $('pl-q').addEventListener('input', (e) => { PL.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('pl-q'); i.focus(); i.setSelectionRange(at, at) })
-  for (const [id, key] of [['pl-status', 'status'], ['pl-group', 'group'], ['pl-coach', 'coach'], ['pl-waiver', 'waiver'], ['pl-place', 'place']]) {
+  for (const [id, key] of [['pl-status', 'status'], ['pl-group', 'group'], ['pl-coach', 'coach'], ['pl-waiver', 'waiver'], ['pl-place', 'place'], ['pl-level', 'level'], ['pl-pos', 'pos']]) {
     $(id).addEventListener('change', (e) => { PL[key] = e.target.value; redraw() })
   }
-  $('pl-clear').addEventListener('click', () => { Object.assign(PL, { q: '', status: '', group: '', coach: '', waiver: '', place: '' }); redraw() })
+  $('pl-clear').addEventListener('click', () => { Object.assign(PL, { q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '' }); redraw() })
   $('pl-add').addEventListener('click', () => plAddBox())
   $('pl-refresh').addEventListener('click', () => { PL.at = 0; renderPlayers() })
   $('pl-invite').addEventListener('click', () => renderFamilies())
-  view().querySelectorAll('[data-pl]').forEach((tr) => tr.addEventListener('click', () => {
+  view().querySelectorAll('[data-pl]').forEach((tr) => tr.addEventListener('click', (e) => {
     const p = d.players.find((x) => x.rowId === tr.dataset.pl)
-    if (p) plDetail(p)
+    if (!p) return
+    if (e.target.closest('[data-pl-edit]')) return plEdit(p)
+    plDetail(p)
   }))
 }
 

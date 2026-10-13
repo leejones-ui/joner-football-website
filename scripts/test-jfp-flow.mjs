@@ -255,7 +255,7 @@ await test('waitlist on a full group and an enquiry for 1 to 1 are both recorded
 })
 
 await test('6b. a Pro added session by session: own price per session, nothing owing, email with no payment', async () => {
-  assert.equal((await portal(lee, 'addPlayer', { groupId: TUE420, player: { name: 'Pat Pro' }, parent: { email: 'pro@example.com' }, payment: 'sessions', sendEmail: true })).status, 400, 'a price per session is needed')
+  assert.equal((await portal(lee, 'addPlayer', { groupId: TUE420, player: { name: 'Pat Pro' }, parent: { email: 'pro@example.com' }, payment: 'sessions', perSessionCents: 5, sendEmail: true })).status, 400, 'a price per session, when given, is a real price')
   const add = await portal(lee, 'addPlayer', { groupId: TUE420, player: { name: 'Pat Pro' }, parent: { email: 'pro@example.com' }, payment: 'sessions', perSessionCents: 8000, sendEmail: true, force: true })
   assert.equal(add.status, 200, JSON.stringify(add.data))
   const row = (await at()).term4.find((r) => r.id === add.data.rowId).fields
@@ -346,7 +346,7 @@ await test('7. roles: coaches see only their sessions and no money; parents only
   const s = JSON.stringify(mine.data)
   assert.ok(!/@|0400|Paid|850|parent/i.test(s), 'no money or contact details')
   assert.ok(mine.data.sessions.every((x) => x.id !== TUE420), 'only their own sessions')
-  for (const action of ['board', 'money', 'payments', 'addPlayer', 'getSettings', 'requests']) assert.equal((await portal(dean, action)).status, 403, `${action} is admin only`)
+  for (const action of ['board', 'money', 'payments', 'addPlayer', 'getSettings', 'requests', 'getProfile', 'saveProfile']) assert.equal((await portal(dean, action)).status, 403, `${action} is admin only`)
   const tue = mine.data.sessions.find((x) => x.id === TUE525)
   const mark = await portal(dean, 'markAttendance', { groupId: TUE525, date: tue.nextDate, rowId: tue.players[0].rowId, status: 'Present' })
   assert.equal(mark.status, 200)
@@ -1956,6 +1956,69 @@ await test('holiday training money and last term from the bank: Stripe with real
   const html = fs.readFileSync(new URL('../dist/jfp-portal/index.html', import.meta.url), 'utf8')
   const js = fs.readFileSync(new URL(`../dist/${html.match(/<script type="module" src="\/(_astro\/jfp-portal[^"]+\.js)"/)[1]}`, import.meta.url), 'utf8')
   for (const t of ['holidayMoney', 'Add to your sheet', 'Holiday revenue', 'Previous term', 'bankPreviousTerm', 'Before this term', 'Looks like holiday training']) assert.ok(js.includes(t), `the built bundle has ${t}`)
+})
+
+await test('player information: the family saves it, staff see it and edit it, the family sees that; nobody else sees it', async () => {
+  const fam = client()
+  await signIn(fam, 'returning@example.com')
+  const before = (await fam.call('/api/jfp-account', { action: 'profiles' })).data
+  const riley = before.players.find((p) => /riley/i.test(p.name))
+  assert.ok(riley, 'a booked player is listed')
+  assert.equal(riley.profile, null, 'nothing saved yet')
+  assert.equal((await fam.call('/api/jfp-account', { action: 'saveProfile', playerKey: riley.key, values: { emergencyPhone: '123' } })).status, 400, 'a real phone number')
+  const save = await fam.call('/api/jfp-account', { action: 'saveProfile', playerKey: riley.key, values: { club: 'Manly United', team: 'U12 Div 1', level: 'Club Division 1', positions: ['Winger', 'Nonsense'], foot: 'Left', emergencyName: 'Gran', emergencyPhone: '0400 111 222', medical: 'Asthma puffer in bag' } })
+  assert.equal(save.status, 200, JSON.stringify(save.data))
+  assert.deepEqual(save.data.profile.positions, ['Winger'], 'only real positions are kept')
+  const row = (await at()).profiles.find((r) => r.fields['Player Key'] === `rileyreturning|returning@example.com`)
+  assert.ok(row, 'one row in JFP Player Profiles')
+  assert.equal(row.fields['Updated From'], 'Family account')
+  const log = (await portal(lee, 'audit', { limit: 20 })).data.entries.find((e) => e.action === 'profile.save')
+  assert.ok(log && !JSON.stringify(log).includes('Asthma'), 'the audit names the fields, never the medical note')
+  // Staff see it on the Players tab, and filter by it.
+  const list = (await portal(lee, 'playersList', { fresh: true })).data.players
+  const p = list.find((x) => /riley/i.test(x.name))
+  assert.equal(p.club, 'Manly United')
+  assert.equal(p.profile.level, 'Club Division 1')
+  assert.equal(p.profile.medical, undefined, 'the list never carries medical notes')
+  // Staff edit it; the family sees the change.
+  const g = await portal(lee, 'getProfile', { rowId: p.rowId })
+  assert.equal(g.data.profile.medical, 'Asthma puffer in bag')
+  assert.equal((await portal(lee, 'saveProfile', { rowId: p.rowId, values: { club: 'Manly United FC', positions: ['Striker'] } })).status, 200)
+  const after = (await fam.call('/api/jfp-account', { action: 'profiles' })).data.players.find((x) => x.key === riley.key)
+  assert.equal(after.profile.club, 'Manly United FC')
+  assert.deepEqual(after.profile.positions, ['Striker'])
+  assert.equal(after.profile.emergencyName, 'Gran', 'fields staff did not send are kept')
+  assert.equal(after.profile.updatedFrom, 'Staff portal')
+  // Another family: none of it, and cannot save over it.
+  const other = client()
+  await signIn(other, 'parent1@example.com')
+  const theirs = (await other.call('/api/jfp-account', { action: 'profiles' })).data.players
+  assert.ok(!theirs.some((x) => x.key === riley.key))
+  assert.equal((await other.call('/api/jfp-account', { action: 'saveProfile', playerKey: riley.key, values: { club: 'Hacked' } })).status, 404)
+})
+
+await test('keep my spot: before next term opens a family can say they want it, with no payment; staff see it once', async () => {
+  const fam = client()
+  await signIn(fam, 'returning@example.com')
+  const ov = (await fam.call('/api/jfp-account', { action: 'overview' })).data
+  assert.ok(ov.keep && ov.keep.players.length, 'current spots are listed')
+  assert.equal(ov.keep.open, false)
+  const rowId = ov.keep.players[0].rowId
+  const tgBefore = (await (await fetch(`${B}/__telegram`)).json()).length
+  assert.equal((await fam.call('/api/jfp-account', { action: 'nextTermInterest', rowId })).status, 200)
+  assert.equal((await fam.call('/api/jfp-account', { action: 'nextTermInterest', rowId })).status, 200, 'pressing twice is fine')
+  const tg = await (await fetch(`${B}/__telegram`)).json()
+  assert.equal(tg.length - tgBefore, 1, 'staff are told once')
+  const again = (await fam.call('/api/jfp-account', { action: 'overview' })).data
+  assert.equal(again.keep.players.find((x) => x.rowId === rowId).interested, true)
+  assert.equal(again.nextTerm, null, 'no hold or pay buttons before it opens')
+  assert.equal((await fam.call('/api/jfp-account', { action: 'nextTermChoice', rowId, choice: 'hold' })).status, 403, 'interest never unlocks paying')
+  const staff = (await portal(lee, 'nextTerm')).data
+  assert.ok(staff.players.find((x) => x.rowId === rowId).interested, 'the Next term tab shows it')
+  assert.equal(staff.totals.interested >= 1, true)
+  const other = client()
+  await signIn(other, 'parent1@example.com')
+  assert.equal((await other.call('/api/jfp-account', { action: 'nextTermInterest', rowId })).status, 404, 'only for your own players')
 })
 
 console.log(`\n${passed} JFP flow checks passed`)

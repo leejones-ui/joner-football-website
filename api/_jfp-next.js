@@ -17,13 +17,24 @@ export async function setNextStatus(term, rowId, value) {
   await kvCommand(['HSET', keys.next(term), rowId, JSON.stringify({ ...value, at: new Date().toISOString() })])
 }
 
+// Families who said "I want to keep my spot" before next term opened
+// (Lee, 13 Oct 2026). Kept apart from the statuses on purpose: a status lets
+// a family pay before opening day, interest never does.
+export const interestKey = (term) => `jfp:next-interest:${term}`
+export async function nextInterest(term) {
+  const raw = await kvCommand(['HGETALL', interestKey(term)])
+  const out = {}
+  for (let i = 0; i + 1 < (raw || []).length; i += 2) { try { out[raw[i]] = JSON.parse(raw[i + 1]) } catch {} }
+  return out
+}
+
 // What next term costs this player in full, and the hold fee.
 export function nextPrices(config, group) {
   const full = priceFor({ ...config, skipDates: [] }, { product: group?.product || 'group', players: 1 }).unitFullCents
   return { fullCents: full, holdCents: config.nextTerm.holdCents, fullLabel: formatAud(full), holdLabel: formatAud(config.nextTerm.holdCents), afterHoldLabel: formatAud(Math.max(0, full - config.nextTerm.holdCents)) }
 }
 
-const STATUS_WORD = { invited: 'Invited', held: 'Held', paid: 'Paid in full', no: 'Not returning' }
+const STATUS_WORD = { invited: 'Invited', held: 'Held', paid: 'Paid in full', no: 'Not returning', interested: 'Wants to keep it' }
 export async function recordNext({ term, row, group, status, amountCents, holdCents, paymentId = '', note = '', by }) {
   await upsertNextHold(term, row.id, {
     'Player Name': row.player, 'Parent Name': row.parent, 'Email': row.email, 'Phone': row.phone,

@@ -8,15 +8,19 @@
 //   signWaiver  sign the waiver for players who do not have one on file
 //   pay         start Stripe Checkout for an open payment request
 //   cancelSession / withdrawCancel   "Can't make a session" (KV only)
+//   nextTermInterest   "I want to keep my spot" before next term opens (no payment)
+//   profiles / saveProfile   Player information: club, position, contacts (Airtable)
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, dateLabel,
-  formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone,
+  formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType,
 } from './_jfp-store.js'
+import { telegramAlert } from './_jfp-notify.js'
+import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, waiverPrefill, LEVELS, PLAYING_UP, POSITIONS, FEET } from './_jfp-profiles.js'
 import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
-import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq } from './_jfp-next.js'
+import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, nextInterest, interestKey } from './_jfp-next.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -50,6 +54,8 @@ function ownsPayreq(q, fam, email) {
 function paymentLine(row, openReq) {
   if (openReq) return { state: 'due', label: `${formatAud(openReq.amountCents)} to pay`, payreqId: openReq.id }
   if (/trial/i.test(row.paymentType)) return { state: 'trial', label: row.paymentStatus === 'Paid' ? 'Trial booked and paid' : 'Trial' }
+  // Pros and casuals pay for the sessions they come to (billed from Money).
+  if (isSessionType(row.paymentType)) return { state: 'sessions', label: 'Session by session' }
   if (row.paymentStatus === 'Paid') return { state: 'paid', label: 'Paid' }
   // Legacy rows can carry sibling splits and agreed plans, so no amount is
   // shown until staff raise a payment request.
@@ -93,6 +99,7 @@ async function overview(res, parent, body = {}) {
       const openReq = mine.find((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(r.id))
       return {
         rowId: r.id, day: r.day, time: r.time, location: loc.name, address: loc.address, maps: loc.maps,
+        locationId: loc.id, photo: loc.photo || '', durationMin: Number(g.durationMin) || 60,
         coach: coach ? `Coach ${coachLabel(coach)}` : '', status: r.confirmation || 'Confirmed',
         dates: dates.map(dateLabel), firstDate: dates[0] ? dateLabel(dates[0]) : '',
         payment: paymentLine(r, openReq),
@@ -125,11 +132,26 @@ async function overview(res, parent, body = {}) {
     const open = st.payreqId ? mine.find((q) => q.id === st.payreqId && ['open', 'checkout'].includes(q.status)) : null
     return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, status: st.status, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel, afterHoldLabel: st.status === 'held' ? formatAud(Math.max(0, pr.fullCents - (st.paidCents || 0))) : pr.afterHoldLabel, openPayreqId: open?.id || '' }
   }))
+  // "Keep my spot" (Lee, 13 Oct 2026): every family sees next term coming,
+  // with their current spots, even before it opens. Before it opens they can
+  // say they want to keep it; nothing is paid or promised until it opens.
+  const interest = await nextInterest(nt.name)
+  const keep = {
+    name: nt.name, open: Boolean(nt.open), holdLabel: formatAud(nt.holdCents),
+    players: fam.players.flatMap((p) => p.term4.filter((r) => r.holdsPlace && r.groupId).map((r) => {
+      const g = byGroup[r.groupId]
+      return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, coach: g ? coachLabel(coachById(config, g.coachId)) : '', status: statuses[r.id]?.status || '', interested: Boolean(interest[r.id]) }
+    })),
+  }
   return res.status(200).json({
     success: true,
     email: parent.email,
     parentName: fam.parentName,
     nextTerm: nextTerm.length ? { name: nt.name, players: nextTerm } : null,
+    keep,
+    termStart: config.termStart,
+    weeks: Number(config.weeks) || 10,
+    venues: (config.locations || []).map((l) => ({ id: l.id, name: l.name, address: l.address || '', maps: l.maps || '', photo: l.photo || '', blurb: l.blurb || '' })),
     term: config.term,
     waiverVersion: config.waiverVersion,
     kitUrl: config.kitUrl,
@@ -208,6 +230,59 @@ async function signWaiver(res, parent, body) {
   await bustRosterCache()
   await audit({ by: parent.email, action: 'waiver.signed', target: ids.join(','), after: { players: rows.map((r) => r['Player Full Name']) } })
   return res.status(200).json({ success: true, created: ids.length })
+}
+
+async function nextTermInterest(res, parent, body) {
+  const config = await getConfig()
+  const nt = config.nextTerm
+  const roster = await loadRoster()
+  const row = roster.players.find((r) => r.id === clean(body.rowId, 30) && rowEmails(r).includes(parent.email) && r.holdsPlace)
+  if (!row) return fail(res, 404, 'We could not find that player on your account.')
+  const first = await kvCommand(['HSETNX', interestKey(nt.name), row.id, JSON.stringify({ email: parent.email, at: new Date().toISOString() })])
+  // Staff hear once per player. Test rows stay quiet.
+  if (Number(first) === 1 && !/test/i.test(row.player)) {
+    const group = row.groupId ? await getGroup(row.groupId) : null
+    const where = group ? `${group.day} ${group.time}, ${locationFor(config, group.location).name}` : 'no group yet'
+    await recordNext({ term: nt.name, row, group, status: 'interested', by: parent.email }).catch((e) => console.error('jfp next interest airtable failed', e))
+    await telegramAlert(`Keep my spot, ${nt.name}: ${row.player} (${where}) wants to keep their place.`)
+  }
+  await audit({ by: parent.email, action: 'next.interest', target: row.id, after: { term: nt.name, first: Number(first) === 1 } })
+  return res.status(200).json({ success: true })
+}
+
+// ---------- player information ----------
+
+// This family's current players, each with their saved profile or, the first
+// time, what their waiver already told us (club, emergency contact).
+async function profiles(res, parent) {
+  const config = await getConfig()
+  const roster = await loadRoster()
+  const fam = familyFor(parent.email, roster, config.termStart)
+  const mine = await familyProfiles(parent.email)
+  const players = []
+  for (const p of fam.players.filter((x) => x.term4.length)) {
+    const rowIds = p.term4.map((r) => r.id)
+    const key = profileKey(p.name, p.term4[0].email || parent.email)
+    const prof = pickProfile(mine, { key, rowIds }) || await findProfile({ key, rowIds })
+    const prefill = prof ? {} : await waiverPrefill(p.waiver?.id)
+    players.push({ key: p.key, name: p.name, age: p.age, profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || p.dob || '', parentName: prefill.parentName || fam.parentName || '', parentMobile: prefill.parentMobile || fam.mobile || '' } })
+  }
+  return res.status(200).json({ success: true, players, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET } })
+}
+
+async function saveMyProfile(res, parent, body) {
+  const config = await getConfig()
+  const roster = await loadRoster({ fresh: true })
+  const fam = familyFor(parent.email, roster, config.termStart)
+  const p = fam.players.find((x) => x.key === clean(body.playerKey, 80) && x.term4.length)
+  if (!p) return fail(res, 404, 'We could not find that player on your account.')
+  const { values, errors } = cleanProfile(body.values || {})
+  if (errors.length) return fail(res, 400, errors.join(' '))
+  const rowIds = p.term4.map((r) => r.id)
+  const key = profileKey(p.name, p.term4[0].email || parent.email)
+  const existing = pickProfile(await familyProfiles(parent.email), { key, rowIds }) || await findProfile({ key, rowIds })
+  const saved = await saveProfile({ existing, name: p.name, key, emails: [...new Set([parent.email, ...p.term4.flatMap(rowEmails)])], rowIds, values, by: parent.email, from: 'Family account' })
+  return res.status(200).json({ success: true, profile: profileView(saved) })
 }
 
 // Hold the place, pay next term in full, or say not returning.
@@ -366,6 +441,9 @@ export default async function handler(req, res) {
     if (body.action === 'confirmKit') return await confirmKit(res, parent, body)
     if (body.action === 'pay') return await pay(req, res, parent, body)
     if (body.action === 'nextTermChoice') return await nextTermChoice(req, res, parent, body)
+    if (body.action === 'nextTermInterest') return await nextTermInterest(res, parent, body)
+    if (body.action === 'profiles') return await profiles(res, parent)
+    if (body.action === 'saveProfile') return await saveMyProfile(res, parent, body)
     if (body.action === 'cancelSession') return await cancelSession(res, parent, body)
     if (body.action === 'withdrawCancel') return await withdrawSession(res, parent, body)
     return await overview(res, parent, body)

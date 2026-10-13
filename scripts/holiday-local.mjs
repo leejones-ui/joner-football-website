@@ -77,6 +77,7 @@ function redis(cmd) {
     case 'INCR': { const e = live(args[0]); const n = Number(e?.value || 0) + 1; store.set(args[0], { type: 's', value: String(n), expiresAt: e?.expiresAt || 0 }); return n }
     case 'TTL': { const e = live(args[0]); return e ? (e.expiresAt ? Math.ceil((e.expiresAt - Date.now()) / 1000) : -1) : -2 }
     case 'HSET': { const h = hash(args[0]); h.set(args[1], args[2]); return 1 }
+    case 'HSETNX': { const h = hash(args[0]); if (h.has(args[1])) return 0; h.set(args[1], args[2]); return 1 }
     case 'HINCRBY': { const h = hash(args[0]); const n = Number(h.get(args[1]) || 0) + Number(args[2]); h.set(args[1], String(n)); return n }
     case 'HGET': return live(args[0])?.value.get(args[1]) ?? null
     case 'HGETALL': { const h = live(args[0]); return h ? [...h.value.entries()].flat() : [] }
@@ -198,7 +199,7 @@ const telegrams = []
 // A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
 // JSON file ({ term4, term3, waiver, ledger } record arrays) to load another,
 // for example an anonymised copy of the real roster for screenshots.
-const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [], venueHistory: [] }
+const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [], venueHistory: [], profiles: [] }
 let recSeq = 1
 const recId = () => `rec${String(recSeq++).padStart(14, '0')}`
 function seedRow(day, time, location, coach, type = 'JFP 10 weeks', confirmation = 'Confirmed', extra = {}) {
@@ -290,7 +291,7 @@ if (process.env.JFP_JUNIORS_DEMO === '1') {
     js('cs_jun_x', { customer_details: { email: 'someone@example.com' }, payment_link: 'plink_juniors_t4', created: 1791600000 }),
   )
 }
-const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblF25gfo0fZcqdPT: 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblgss68pIVTUOttE: 'venueHistory' }
+const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblF25gfo0fZcqdPT: 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblgss68pIVTUOttE: 'venueHistory', tblTt7jWK3s2me45B: 'profiles' }
 function airtableResponse(url, init) {
   const u = new URL(url)
   const parts = u.pathname.split('/').slice(3).map(decodeURIComponent) // [table, recordId?]

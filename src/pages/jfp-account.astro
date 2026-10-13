@@ -1,53 +1,55 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import JfpHeader from '../components/JfpHeader.astro'
-import JfpFooter from '../components/JfpFooter.astro'
 import '../styles/jfp.css'
+import '../styles/jfp-account.css'
+// The family account (Lee, 13 Oct 2026): the Joner Football look, phones
+// first. Everything below the sign in is drawn by src/scripts/jfp-account.js.
 ---
 
 <BaseLayout title="My account | Joner Football" description="Your Joner Football Performance players, sessions and payments." canonical="https://jonerfootball.com/jfp-account/" noindex noTracking hideChrome hideMobileAppCta>
-  <div class="jfp" id="jfp-account">
-    <JfpHeader active="account" />
-
-    <section id="signin" class="j-gate" hidden>
-      <div class="j-card">
-        <p class="j-kicker">My account</p>
-        <h1 style="margin:6px 0 16px">Sign in</h1>
-        <div id="si-mount"></div>
-        <div id="si-foot" style="margin-top:6px"></div>
+  <div class="jfp ja" id="jfp-account">
+    <section id="signin" class="ja-gate" hidden>
+      <div class="ja-gate-media">
+        <img src="/images/jfp-account/photos/ntra-field-900x1100.webp" srcset="/images/jfp-account/photos/ntra-field-900x1100.webp 900w, /images/jfp-account/photos/ntra-field-1600x900.webp 1600w" sizes="(min-width: 960px) 55vw, 100vw" alt="" fetchpriority="high">
+        <h1>Your <span>JFP</span><br>account</h1>
+      </div>
+      <div class="ja-gate-panel">
+        <div class="ja-logo" style="margin-bottom:26px"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span><b>Joner Football</b><small>Performance</small></span></div>
+        <div class="j-card">
+          <p class="ja-kicker"><i></i>My account</p>
+          <h2 class="ja-h2" style="margin:10px 0 18px">Sign in</h2>
+          <div id="si-mount"></div>
+          <div id="si-foot" style="margin-top:6px"></div>
+          <p class="ja-small ja-muted" style="margin-top:22px">Need a hand? <button type="button" class="ja-link" data-contact>Contact us</button></p>
+        </div>
       </div>
     </section>
 
-    <div id="app" class="jp-app ja-app" hidden>
-      <nav class="jp-nav" id="ja-nav" aria-label="My account">
-        <button type="button" data-panel="home" aria-current="page">Home</button>
-        <button type="button" data-panel="sessions">My sessions</button>
-        <a class="ja-navlink" href="/jfp-booking/">Timetable</a>
-        <button type="button" data-panel="term">About Term 4</button>
-        <button type="button" data-panel="cancel">Can't make a session</button>
-        <button type="button" data-panel="videos">Training videos</button>
-        <button type="button" data-panel="app">The JF App</button>
-        <button type="button" data-contact>Contact us</button>
-      </nav>
-      <main class="jp-main ja-main" id="view" tabindex="-1">
+    <div id="app" class="ja-app" hidden>
+      <aside class="ja-side" aria-label="My account">
+        <button type="button" class="ja-logo" data-go="home"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span><b>Joner Football</b><small>Performance</small></span></button>
+        <nav id="ja-nav" aria-label="Sections"></nav>
+        <div class="ja-side-foot"><span>Signed in as</span><b id="ja-email"></b><button type="button" class="ja-link ja-small" id="sign-out" style="margin-top:8px">Sign out</button></div>
+      </aside>
+      <header class="ja-bar">
+        <button type="button" class="ja-logo" data-go="home"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span><b>Joner Football</b><small>Performance</small></span></button>
+        <button type="button" class="ja-me" id="ja-me" aria-label="Account and all sections">J</button>
+      </header>
+      <main class="ja-main" id="view" tabindex="-1">
         <div id="banner"></div>
-        <header class="ja-head">
-          <div><p class="j-kicker" id="term">JFP</p><h1 id="hello">Your players</h1><p class="muted small" id="who"></p></div>
-        </header>
-        <section data-pane="home">
-          <section id="todo-wrap" class="ja-block" hidden><h2>Finish your booking</h2><div id="todo"></div></section>
-          <div id="home"></div>
-          <section id="next-wrap" class="ja-block" hidden><h2 id="next-title">Next term</h2><div id="next"></div></section>
-          <section id="requests-wrap" class="ja-block" hidden><h2>Applications, trials and waitlist</h2><div id="requests"></div></section>
-        </section>
-        <section data-pane="sessions" hidden><div id="players"></div></section>
-        <section data-pane="term" hidden><div id="term-info"></div></section>
-        <section data-pane="cancel" hidden><div id="cancel-help"></div></section>
-        <section data-pane="videos" hidden><div id="videos"></div></section>
-        <section data-pane="app" hidden><div id="app-info"></div></section>
+        <section class="ja-pane" data-pane="home"></section>
+        <section class="ja-pane" data-pane="sessions" hidden></section>
+        <section class="ja-pane" data-pane="info" hidden></section>
+        <section class="ja-pane" data-pane="cancel" hidden></section>
+        <section class="ja-pane" data-pane="keep" hidden></section>
+        <section class="ja-pane" data-pane="term" hidden></section>
+        <section class="ja-pane" data-pane="holidays" hidden></section>
+        <section class="ja-pane" data-pane="videos" hidden></section>
+        <section class="ja-pane" data-pane="app" hidden></section>
+        <section class="ja-pane" data-pane="contact" hidden></section>
       </main>
+      <nav class="ja-tabs" id="ja-tabs" aria-label="Sections"></nav>
     </div>
-    <JfpFooter />
   </div>
 </BaseLayout>
 

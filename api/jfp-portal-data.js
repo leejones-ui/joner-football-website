@@ -29,7 +29,8 @@ import { listCancels, staffView, noticeSummary } from './_jfp-cancel.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, payEffectsFor } from './_jfp-finalise.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
-import { nextStatuses, setNextStatus, nextPrices, recordNext } from './_jfp-next.js'
+import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest } from './_jfp-next.js'
+import { allProfiles, findProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, LEVELS, PLAYING_UP, POSITIONS, FEET } from './_jfp-profiles.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
@@ -196,7 +197,7 @@ function amountFor(config, group, body, players = 1) {
   return { amountCents, price, product, from }
 }
 
-async function addPlayer(req, res, principal, config, body) {
+export async function addPlayer(req, res, principal, config, body) {
   const group = await getGroup(body.groupId)
   if (!group) return fail(res, 404, 'Group not found.')
   if (isJuniorsGroup(group)) return fail(res, 400, 'Joners Juniors children are added in the Joners Juniors table, not here.')
@@ -208,8 +209,9 @@ async function addPlayer(req, res, principal, config, body) {
   const payment = ['offline', 'link', 'trial', 'none', 'sessions'].includes(body.payment) ? body.payment : 'none'
   // Session by session (the Pros, Lee 13 Oct 2026): their own price per
   // session, nothing owing until sessions are billed from Money.
-  const perSession = payment === 'sessions' ? Number(body.perSessionCents) : 0
-  if (payment === 'sessions' && !(Number.isInteger(perSession) && perSession >= 100 && perSession <= 200000)) return fail(res, 400, 'Enter the price per session.')
+  // The price can also be set when the sessions are billed.
+  const perSession = payment === 'sessions' && body.perSessionCents != null && body.perSessionCents !== '' ? Number(body.perSessionCents) : 0
+  if (perSession && !(Number.isInteger(perSession) && perSession >= 100 && perSession <= 200000)) return fail(res, 400, 'Enter the price per session in dollars, for example 80.')
   if ((payment === 'link' || body.sendEmail) && !email) return fail(res, 400, 'Add the parent email so the family can sign in, sign the waiver and pay.')
   const cap = await capacityCheck(group, 1, body.force === true)
   if (cap.error) return fail(res, 409, cap.error, { code: cap.code })
@@ -237,10 +239,10 @@ async function addPlayer(req, res, principal, config, body) {
     'Term 4 Amount Paid': payment === 'offline' ? amountCents / 100 : 0,
     'Term 4 Payment Status': payment === 'offline' ? 'Paid' : payment === 'trial' ? 'N/A' : 'Unpaid',
     'Term 4 Payment Type': isTrial ? 'JFP Trial' : payment === 'sessions' ? SESSION_TYPE : price.type,
-    'Term 4 Notes': `Added by ${principal.name} in the JFP portal${age != null ? `, age ${age}` : ''}${price.fixedSessions && !isTrial ? `, half term from ${from} (${price.sessions} sessions)` : price.proRata && !isTrial ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${payment === 'sessions' ? `\nSession by session at ${formatAud(perSession)} a session.` : ''}`,
+    'Term 4 Notes': `Added by ${principal.name} in the JFP portal${age != null ? `, age ${age}` : ''}${price.fixedSessions && !isTrial ? `, half term from ${from} (${price.sessions} sessions)` : price.proRata && !isTrial ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${payment === 'sessions' ? `\nSession by session${perSession ? ` at ${formatAud(perSession)} a session` : ''}.` : ''}`,
     ...(payment === 'offline' ? { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' } : {}),
   }
-  if (payment === 'sessions') fields['Term 4 Notes'] = withPerSession(fields['Term 4 Notes'], perSession)
+  if (perSession) fields['Term 4 Notes'] = withPerSession(fields['Term 4 Notes'], perSession)
   const [rowId] = await createTerm4Rows([fields])
   let payreq = null
   if (payment === 'link') payreq = await createPayreq({ req, principal, config, group, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: isTrial ? 'trial' : 'admin-add', product, startDate: from, afterpay: body.afterpay !== false })
@@ -261,7 +263,9 @@ async function addPlayer(req, res, principal, config, body) {
 // Every Term 4 player flattened for the Players tab: enough to search, filter
 // and show the whole picture without a second call per player.
 async function playersList(req, res, config, body = {}) {
-  const [roster, groups] = await Promise.all([loadRoster({ fresh: body.fresh === true }), listGroups()])
+  // Player information (club, level, positions) is read with the list, so the
+  // tab can filter on it when placing players. A failed read only hides it.
+  const [roster, groups, profiles] = await Promise.all([loadRoster({ fresh: body.fresh === true }), listGroups(), allProfiles().catch((e) => { console.error('jfp profiles read failed', e); return null })])
   const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
   // placeInGroups resolves each row's groupId the same way the Timetable does,
   // including the coach-split morning squads. A groupId that is not a real
@@ -273,14 +277,17 @@ async function playersList(req, res, config, body = {}) {
     const coach = coachById(config, g?.coachId) || coachByAirtableName(config, r.coach)
     const loc = locationFor(config, r.location)
     const waiver = waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)
+    const prof = profiles ? pickProfile(profiles, { key: profileKey(r.player, r.email), rowIds: [r.id] }) : null
+    const dob = prof?.dob || isoDate(r.dob) || waiver?.dob || ''
     return {
       rowId: r.id,
       name: r.player,
-      // Today's age from the date of birth (Term 3, else the waiver), so it
-      // goes up on each birthday. Club from the player's waiver.
-      dob: isoDate(r.dob) || waiver?.dob || '',
-      age: (isoDate(r.dob) || waiver?.dob) ? ageOn(isoDate(r.dob) || waiver.dob, sydneyToday()) : null,
-      club: waiver?.club || '',
+      // Today's age from the date of birth (player information, Term 3, else
+      // the waiver), so it goes up on each birthday. Club the same way.
+      dob,
+      age: dob ? ageOn(dob, sydneyToday()) : null,
+      club: prof?.club || waiver?.club || '',
+      profile: profileSummary(prof),
       parent: r.parent || '',
       email: r.email || '',
       phone: r.phone || '',
@@ -329,7 +336,6 @@ async function addPlayerNoGroup(req, res, principal, config, body) {
     ...(parentName ? { 'Parent Name': parentName } : {}),
     ...(email ? { Email: email } : {}),
     ...(mobile ? { Phone: mobile } : {}),
-    ...(dob ? { 'Date of Birth': dob } : {}),
     // No day, time or location on purpose: they are not in a group yet.
     'Term 4 Confirmation': 'Awaiting Reply',
     ...(feeAud != null ? { 'Term 4 Fee': feeAud } : {}),
@@ -338,6 +344,8 @@ async function addPlayerNoGroup(req, res, principal, config, body) {
     'Term 4 Notes': `Added by ${principal.name} in the JFP portal Players tab, with no session yet.${note ? ` ${note}` : ''}`,
   }
   const [rowId] = await createTerm4Rows([fields])
+  // Term 4 Players has no date of birth column: it goes in player information.
+  if (dob) await saveProfile({ existing: null, name, key: profileKey(name, email), emails: email ? [email] : [], rowIds: [rowId], values: { dob }, by: principal.email, from: 'Staff portal' }).catch((e) => console.error('jfp profile dob failed', e))
   await bustRosterCache()
   await audit({ by: principal.email, action: 'player.add.nogroup', target: rowId, after: { name, email, feeAud } })
   return res.status(200).json({ success: true, rowId })
@@ -476,6 +484,27 @@ async function editPlayer(res, principal, config, body) {
   await audit({ by: principal.email, action: 'player.edit', target: row.id, before, after: fields })
   const open = (await listPayreqs()).filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(row.id))
   return res.status(200).json({ success: true, openLinks: open.map((q) => ({ id: q.id, amountCents: q.amountCents, players: q.playerNames })) })
+}
+
+// Player information for one player (Players tab Edit): the saved profile,
+// else what their waiver told us, plus the Term 4 row's contact fields.
+async function getPlayerProfile(res, config, body) {
+  const row = await rowOr404(res, body.rowId); if (!row) return
+  const roster = await loadRoster()
+  const key = profileKey(row.player, row.email)
+  const prof = await findProfile({ key, rowIds: [row.id] })
+  const waiver = prof ? null : waiverFor(row.player, { emails: rowEmails(row), phones: [row.phone], dob: row.dob }, roster.waivers)
+  const prefill = waiver ? await waiverPrefill(waiver.id) : {}
+  return res.status(200).json({ success: true, row: { rowId: row.id, name: row.player, parent: row.parent, email: row.email, phone: row.phone }, profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || isoDate(row.dob) || '' }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET } })
+}
+async function savePlayerProfile(res, principal, config, body) {
+  const row = await rowOr404(res, body.rowId); if (!row) return
+  const { values, errors } = cleanProfile(body.values || {})
+  if (errors.length) return fail(res, 400, errors.join(' '))
+  const key = profileKey(row.player, row.email)
+  const existing = await findProfile({ key, rowIds: [row.id] })
+  const saved = await saveProfile({ existing, name: row.player, key, emails: rowEmails(row), rowIds: [row.id], values, by: principal.email, from: 'Staff portal' })
+  return res.status(200).json({ success: true, profile: profileView(saved) })
 }
 
 // Why players leave: Lee keeps count, because players move in and out.
@@ -2397,6 +2426,8 @@ async function handle(req, res) {
       case 'movePlayer': return await movePlayer(res, principal, config, body)
       case 'removePlayer': return await removePlayer(res, principal, config, body)
       case 'editPlayer': return await editPlayer(res, principal, config, body)
+      case 'getProfile': return await getPlayerProfile(res, config, body)
+      case 'saveProfile': return await savePlayerProfile(res, principal, config, body)
       case 'setCoachNote': return await setCoachNote(res, principal, config, body)
       case 'restorePlayer': return await restorePlayer(res, principal, body)
       case 'markPaid': return await markPaid(res, principal, body)
@@ -2407,15 +2438,15 @@ async function handle(req, res) {
       case 'sessionInvoice': return await sessionInvoice(req, res, principal, config, body)
       case 'nextTerm': {
         const nt = config.nextTerm
-        const [roster, groups, statuses] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name)])
+        const [roster, groups, statuses, interest] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name), nextInterest(nt.name)])
         const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
         const players = roster.players.filter((r) => r.holdsPlace && !isTestName(r.player)).map((r) => {
           const g = byId[r.groupId]
           const st = statuses[r.id] || null
-          return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Not in a group', groupId: r.groupId, coach: g ? coachLabel(coachById(config, g.coachId)) : '', status: st?.status || '', paidCents: st?.paidCents || 0, at: st?.at || '' }
+          return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : 'Not in a group', groupId: r.groupId, coach: g ? coachLabel(coachById(config, g.coachId)) : '', status: st?.status || '', paidCents: st?.paidCents || 0, at: st?.at || '', interested: interest[r.id]?.at || '' }
         }).sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name))
         const count = (s) => players.filter((p) => p.status === s).length
-        return res.status(200).json({ success: true, nextTerm: nt, prices: nextPrices(config, null), players, totals: { players: players.length, invited: count('invited'), held: count('held'), paid: count('paid'), no: count('no'), none: players.filter((p) => !p.status).length } })
+        return res.status(200).json({ success: true, nextTerm: nt, prices: nextPrices(config, null), players, totals: { players: players.length, invited: count('invited'), held: count('held'), paid: count('paid'), no: count('no'), interested: players.filter((p) => p.interested && !p.status).length, none: players.filter((p) => !p.status).length } })
       }
       case 'saveNextTerm': {
         // Statuses are kept under the term's name: no renaming once families have answered.
