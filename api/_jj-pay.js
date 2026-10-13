@@ -318,6 +318,9 @@ async function runEffects(q, retry = new Set()) {
   for (const k of retry) delete q.effects?.[k]
   await runEffect('airtable', q, () => (q.next ? applyNext(q, config) : applyTerm(q)), { idempotent: true })
   if (q.effects?.airtable?.status !== 'done') return
+  // Recorded now: a missing table or row is no longer a problem.
+  const left = String(q.needsAttention || '').split(', ').filter((x) => x && !['no-table', 'row-missing'].includes(x)).join(', ')
+  if (left !== (q.needsAttention || '')) { q.needsAttention = left; await saveJJPayreq(q) }
   await runEffect('parentEmail', q, () => sendJJReceipt({ payreq: q, jj: config.juniors, siteUrl: q.siteUrl || '' }))
   await runEffect('staffAlert', q, () => sendJJStaffAlert({ payreq: q }))
 }

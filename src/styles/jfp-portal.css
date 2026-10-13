@@ -670,3 +670,19 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
   .jj-view .jd-sync .j-btn { flex: 1 1 auto; }
   .jj-pl-tags { max-width: 52%; }
 }
+/* Invites and Requests & waitlist (stage 2). Phone first: cards, never a wide table. */
+.jj-fam, .jj-req { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 10px; padding: 10px 12px; background: var(--j-surface); border: 1px solid var(--j-line); border-radius: 12px; }
+.jj-fam-tick { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; margin: -4px 0 0 -6px; cursor: pointer; }
+.jj-fam-tick input { width: 20px; height: 20px; }
+.jj-fam-main { min-width: 0; flex: 1 1 180px; display: flex; flex-direction: column; gap: 2px; }
+.jj-fam-main b { font-size: 15px; overflow-wrap: anywhere; }
+.jj-fam-main small { color: var(--j-muted); font-size: 12.5px; overflow-wrap: anywhere; line-height: 1.5; }
+.jj-fam-main a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.jj-fam-tags { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; justify-content: flex-end; margin-left: auto; }
+.jj-fam-tags small { color: var(--j-muted); font-size: 12.5px; }
+.jj-req .jj-actions .j-btn { flex: 1 1 150px; }
+.jj-frame { width: 100%; height: 520px; border: 1px solid var(--j-line); border-radius: 10px; background: #fff; }
+.jj-prev { max-width: 100%; overflow: hidden; }
+#jv-kind { flex-wrap: wrap; }
+@media (max-width: 640px) { .jj-frame { height: 420px; } .jj-fam-tags { margin-left: 34px; justify-content: flex-start; } }
+.jj-view .j-box button.link { min-height: 40px; display: inline-flex; align-items: center; }

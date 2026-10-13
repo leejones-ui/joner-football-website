@@ -62,7 +62,7 @@ const account = (call, body = {}) => call('/api/jfp-account', { action: 'overvie
 
 await test('only Lee and Ligia: coaches get 403 and families 401 on every new Juniors action', async () => {
   const dean = client(); await signIn(dean, 'jonerfootballdean@gmail.com')
-  for (const action of ['jjInvites', 'jjRequests', 'jjDecideRequest', 'jjPayments', 'jjRepairPayment', 'jjCancelPayreq']) {
+  for (const action of ['jjInvites', 'jjRequests', 'jjDecideRequest', 'jjPayments', 'jjRepairPayment', 'jjCancelPayreq', 'jjPaymentChecked']) {
     assert.equal((await dean('/api/jfp-portal-data', { action })).status, 403, action)
     assert.equal((await parentEcho('/api/jfp-portal-data', { action })).status, 401, action)
   }
@@ -334,8 +334,26 @@ await test('a payment for next term with no table: Stripe is asked to retry, sta
   assert.equal((await portal('jjSaveSettings', { juniors: { tables: { ...withoutNext, 'Term 1 2027': gone } } })).status, 200)
   const fix = await portal('jjRepairPayment', { id: q.id })
   assert.equal(fix.status, 200); assert.equal(fix.data.done, true)
+  assert.equal((await payreqs())[q.id].needsAttention, '', 'recorded now: the table flag comes off')
+  assert.equal((await portal('jjPayments')).data.payments.find((x) => x.id === q.id).needsCheck, false)
+  assert.equal((await portal('jjPaymentChecked', { id: q.id })).status, 409, 'nothing left to check')
   assert.ok((await airtable()).juniorsNext.some((x) => (x.fields.Notes || '').includes(`[JJ-NEXT:${fox.rowId}]`) && x.fields['Payment Status'] === 'Paid'))
   assert.ok((await emails()).some((e) => e.to.includes('fox@example.com') && /payment received/i.test(e.subject)))
+})
+
+await test('paid on Stripe but the webhook is late: paying again is refused, and coming back to the account finishes it', async () => {
+  const fox = (await account(parentFox)).data.juniors.children.find((c) => c.name === 'Jun Foxtrot')
+  const ask = await parentFox('/api/jfp-account', { action: 'jjRequestPay', rowIds: [fox.rowId] })
+  assert.equal(ask.status, 200, JSON.stringify(ask.data))
+  const pay = await parentFox('/api/jfp-account', { action: 'jjPay', payreqId: ask.data.payreqId })
+  const { cs } = await payOnStripe(pay.data.url, { webhook: false })
+  const again = await parentFox('/api/jfp-account', { action: 'jjPay', payreqId: ask.data.payreqId })
+  assert.equal(again.status, 409); assert.equal(again.data.code, 'processing')
+  assert.equal((await airtable()).juniors4.find((x) => x.id === fox.rowId).fields['Payment Status'], 'Unpaid', 'not yet')
+  const back = await get(`/api/jfp-confirm?session_id=${cs}`)
+  assert.equal(back.status, 'paid'); assert.equal(back.kind, 'juniors')
+  assert.equal((await airtable()).juniors4.find((x) => x.id === fox.rowId).fields['Payment Status'], 'Paid')
+  assert.equal((await parentFox('/api/jfp-account', { action: 'jjPay', payreqId: ask.data.payreqId })).status, 409, 'already paid')
 })
 
 let reqId

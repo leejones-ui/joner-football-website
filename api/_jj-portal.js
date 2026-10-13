@@ -18,12 +18,12 @@ import { jfpStripePayments } from './_jfp-stripe.js'
 import { siteUrl } from './_holiday-store.js'
 import { KINDS, invitePlan, invitePreviews, sendInvites, readInvites } from './_jj-invites.js'
 import { listJJRequests, getJJRequest, saveJJRequest, requestsView } from './_jj-requests.js'
-import { listJJPayreqs, getJJPayreq, cancelJJPayreq, repairJJPayreq, jjViews, jjPayreqUrl, jjNextStatuses, isOpen, JJ_PAY_EFFECTS } from './_jj-pay.js'
+import { listJJPayreqs, getJJPayreq, saveJJPayreq, cancelJJPayreq, repairJJPayreq, jjViews, jjPayreqUrl, jjNextStatuses, isOpen, JJ_PAY_EFFECTS } from './_jj-pay.js'
 import { nextTermOf } from './_jj-config.js'
 
 export const JJ_ACTIONS = new Set(['jjSettings', 'jjSaveSettings', 'jjPlayers', 'jjDashboard', 'jjAddPlayer', 'jjEditPlayer', 'jjAddNote', 'jjRemovePlayer', 'jjRestorePlayer', 'jjRecordPayment', 'jjVoidPayment',
   // Stage 2: Invites, Requests & waitlist, and the online payments behind them.
-  'jjInvites', 'jjRequests', 'jjDecideRequest', 'jjPayments', 'jjRepairPayment', 'jjCancelPayreq'])
+  'jjInvites', 'jjRequests', 'jjDecideRequest', 'jjPayments', 'jjRepairPayment', 'jjCancelPayreq', 'jjPaymentChecked'])
 export const JJ_LEAVE_REASONS = ['Cost', 'Time or schedule clash', 'Moved up to JFP', 'Not ready yet', 'Moved away', 'Taking a break', 'Joined another program', 'No reply from the family', 'Other']
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 const SETTINGS_KEYS = ['term', 'termStart', 'weeks', 'skipDates', 'datesLabel', 'classes', 'classLabel', 'location', 'priceCents', 'siblingPriceCents', 'registrationOpen', 'waiverVersion', 'ageLabel', 'tables', 'nextTerm']
@@ -530,6 +530,17 @@ export async function jjAction(req, res, principal, config, body, action) {
       if (!r.ok) return fail(res, r.reason === 'busy' ? 409 : 400, r.reason === 'busy' ? 'That payment is being finished right now. Try again in a minute.' : 'Only a paid payment can be tried again.')
       await audit({ by: principal.email, action: 'jj.payment.repair', target: r.payreq.id, after: effectsLine(r.payreq) })
       return out(res, { done: r.payreq.effects?.airtable?.status === 'done', ...effectsLine(r.payreq) })
+    }
+    // A person has looked at a flagged payment (paid twice, paid after it was
+    // cancelled, overpaid) and sorted it in Stripe: the flag comes off, kept in the record.
+    case 'jjPaymentChecked': {
+      const q = await getJJPayreq(body.id)
+      if (!q) return fail(res, 404, 'That payment was not found.')
+      if (!q.needsAttention) return fail(res, 409, 'Nothing is flagged on that payment.')
+      const note = plain(body.note, 200)
+      await saveJJPayreq({ ...q, needsAttention: '', checked: [...(q.checked || []), { what: q.needsAttention, by: principal.name, at: new Date().toISOString(), note }] })
+      await audit({ by: principal.email, action: 'jj.payment.checked', target: q.id, before: { attention: q.needsAttention }, after: { note } })
+      return out(res, {})
     }
     case 'jjCancelPayreq': {
       const q = await getJJPayreq(body.id)

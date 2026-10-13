@@ -249,12 +249,127 @@ await test('Settings: the term, class, price and sign-up, saved in one go', asyn
 })
 
 await test('the pages still to come say what they will do and where to go now', async () => {
-  for (const [hash, title] of [['#jj-invites', 'Invites'], ['#jj-requests', 'Requests & waitlist'], ['#jj-classes', 'Classes'], ['#jj-registers', 'Registers'], ['#jj-messages', 'Messages']]) {
+  for (const [hash, title] of [['#jj-classes', 'Classes'], ['#jj-registers', 'Registers'], ['#jj-messages', 'Messages']]) {
     const p = await open(hash)
     assert.equal(p.text('#view h1'), title)
     assert.match(p.text('.jj-soon'), /Coming next/)
     assert.deepEqual(p.errors, [])
   }
+})
+
+// ---------- stage 2: Invites and Requests & waitlist ----------
+const fam = (email, parent, children, x = {}) => ({ email, parent, children, owingCents: children.reduce((t, c) => t + (c.owingCents || 0), 0), owingKnown: true, needsWaiver: children.some((c) => !c.waiver), todo: true, status: 'not sent', sentAt: '', sentBy: '', sentCount: 0, signedInAt: '', openPayreq: null, ...x })
+const child = (rowId, name, x = {}) => ({ rowId, name, pay: 'unpaid', payLabel: 'Unpaid', owingCents: 22000, waiver: false, needsWaiver: true, ...x })
+const PLAN = (kind, extra = {}) => ({
+  kind, term: 'Term 4 2026', blocked: '', moneyError: '', noEmail: [{ name: 'Nomail Junior', parent: 'Someone' }],
+  next: kind === 'next' ? { name: 'Term 1 2027', fullCents: 23000, holdCents: 5000, table: true, open: false } : null,
+  list: [
+    fam('ada@example.com', 'Ada Parent', [child('recAAAAAAAAAAAAA1', 'Ada Junior', { pay: 'paid', owingCents: 0, waiver: true, needsWaiver: false, next: '' })], { status: 'paid', owingCents: 0, needsWaiver: false }),
+    fam('bo@example.com', 'Bo Parent', [child('recAAAAAAAAAAAAA2', 'Bo Junior', { next: 'held' })]),
+    fam('cal@example.com', 'Cal Parent', [child('recAAAAAAAAAAAAA3', 'Cal Junior', { owingCents: 12000, pay: 'part', next: '' })], { status: 'opened', sentAt: '2026-10-12T00:00:00Z', sentCount: 1, sentBy: 'ligia@example.com', openPayreq: { id: 'JJPAY-1-AAAAAA', amountCents: 12000, views: 2, viewedAt: '2026-10-12T02:00:00Z', status: 'open' } }),
+  ],
+  counts: { families: 3, notSent: 2, sent: 0, opened: 1, paid: 1 },
+  previews: [{ email: 'bo@example.com', parent: 'Bo Parent', label: 'Owes $220.00', subject: 'Joners Juniors Term 4: A$220 to pay', html: '<p>Hi Bo, sign in and pay</p>' }],
+  ...extra,
+})
+const PAYS = { success: true, payments: [
+  { id: 'JJPAY-1-AAAAAA', kind: 'term', status: 'open', players: ['Cal Junior'], what: 'This term', parent: 'Cal Parent', email: 'cal@example.com', amountCents: 12000, paidCents: null, createdAt: '2026-10-12T00:00:00Z', views: 2, needsCheck: false },
+  { id: 'JJPAY-2-BBBBBB', kind: 'next', status: 'paid', players: ['Bo Junior'], what: 'Next term in full', parent: 'Bo Parent', email: 'bo@example.com', amountCents: 23000, paidCents: 23000, feeCents: 480, createdAt: '2026-10-12T00:00:00Z', paidAt: '2026-10-12T01:00:00Z', views: 1, needsCheck: true, attention: 'no-table', failed: ['airtable'], airtable: 'failed' },
+  { id: 'JJPAY-3-CCCCCC', kind: 'term', status: 'paid', players: ['Ada Junior'], what: 'This term', parent: 'Ada Parent', email: 'ada@example.com', amountCents: 22000, paidCents: 22000, feeCents: 460, createdAt: '2026-10-12T00:00:00Z', paidAt: '2026-10-12T01:00:00Z', views: 1, needsCheck: true, attention: 'second-payment', failed: [], airtable: 'done' },
+] }
+const inviteAnswers = (seen = []) => ({
+  jjInvites: (b) => { seen.push(b); return b.send ? { success: true, sent: b.emails, failed: [], skipped: [], remaining: 0 } : { success: true, ...PLAN(b.kind || 'new') } },
+  jjPayments: () => structuredClone(PAYS),
+})
+
+await test('Invites: three kinds, each family with its status; only the ones not sent are chosen; the email is shown before anything is sent', async () => {
+  const seen = []
+  const p = await open('#jj-invites', inviteAnswers(seen))
+  assert.equal(p.text('#view h1'), 'Invites')
+  assert.deepEqual([...p.d.querySelectorAll('#jv-kind [data-kind]')].map((b) => b.dataset.kind), ['new', 'next', 'reminder'])
+  const status = (email) => p.$(`[data-fam="${email}"] .jj-fam-tags .j-pill`).textContent
+  assert.equal(status('ada@example.com'), 'Paid'); assert.equal(status('bo@example.com'), 'Not sent'); assert.equal(status('cal@example.com'), 'Opened')
+  assert.match(p.text('[data-fam="cal@example.com"]'), /Sent 12 Oct.*link opened/)
+  const picked = [...p.d.querySelectorAll('[data-pick]:checked')].map((b) => b.dataset.pick)
+  assert.deepEqual(picked, ['ada@example.com', 'bo@example.com'], 'families not sent yet are chosen, the one already sent is not')
+  assert.equal(p.text('#jv-send'), 'Send to 2 chosen')
+  assert.match(p.text('#view'), /No parent email in Airtable, so no invite: Nomail Junior/)
+  assert.ok(!seen.some((b) => b.send), 'opening the page sends nothing')
+  await p.click('#jv-prev')
+  assert.ok(p.$('#jv-preview iframe').getAttribute('srcdoc').includes('sign in and pay'))
+  // Untick Ada, then send to Bo only, after saying yes.
+  const ada = p.$('[data-pick="ada@example.com"]'); ada.checked = false; ada.dispatchEvent(new p.w.Event('change', { bubbles: true }))
+  await p.click('#jv-send')
+  assert.match(p.text('#jp-modal'), /Send the sign in and pay email to 1 family now\?/)
+  await p.click('#jp-modal [data-yes]')
+  const send = seen.find((b) => b.send)
+  assert.deepEqual({ kind: send.kind, emails: send.emails }, { kind: 'new', emails: ['bo@example.com'] })
+  // The online payments list, with one that needs checking and a Try again.
+  assert.ok(p.$('[data-payreq="JJPAY-2-BBBBBB"] [data-repair]'), 'not in Airtable yet: Try again')
+  assert.ok(!p.$('[data-payreq="JJPAY-3-CCCCCC"] [data-repair]') && p.$('[data-payreq="JJPAY-3-CCCCCC"] [data-checked]'), 'recorded but flagged: Mark as checked')
+  assert.ok(p.$('[data-payreq="JJPAY-1-AAAAAA"] [data-cancelpay]'))
+  assert.deepEqual(p.errors, [])
+})
+
+await test('Invites: re-enrol shows each child\'s next-term answer, and a missing next-term table stops the send with a clear message', async () => {
+  const p = await open('#jj-invites', { ...inviteAnswers(), jjInvites: (b) => ({ success: true, ...PLAN(b.kind || 'new', b.kind === 'next' ? { blocked: 'Add the Airtable table for Term 1 2027 in Settings (Airtable tables) first.' } : {}) }) })
+  await p.click('#jv-kind [data-kind="next"]')
+  assert.match(p.text('#jv-kind [data-kind="next"]'), /Re-enrol for Term 1 2027/)
+  assert.match(p.text('#jv-blocked'), /Add the Airtable table for Term 1 2027/)
+  assert.equal(p.$('#jv-send').disabled, true)
+  assert.match(p.text('[data-fam="bo@example.com"]'), /Bo Junior\s*Held/)
+  // Reminders have their own filter.
+  await p.click('#jv-kind [data-kind="reminder"]')
+  assert.deepEqual([...p.d.querySelectorAll('#jv-filter [data-filter]')].map((b) => b.dataset.filter), ['both', 'unpaid', 'waiver'])
+  assert.deepEqual(p.errors, [])
+})
+
+const REQS = (extra = {}) => ({ success: true, term: 'Term 4 2026', enrolled: 11, capacity: 12, registrationOpen: false, placesLeft: 1, placeFree: true, counts: { waiting: 2, accepted: 1, declined: 1 },
+  list: [
+    { id: 'JJREQ-1-AAAAAA', status: 'waiting', stage: 'waiting', position: 1, why: 'full', createdAt: '2026-10-10T00:00:00Z', player: { name: 'Fay Junior', dob: '2021-01-01', medical: '' }, age: 5, parent: { name: 'Fay Parent', email: 'fay@example.com', mobile: '0400 000 111' } },
+    { id: 'JJREQ-2-BBBBBB', status: 'waiting', stage: 'waiting', position: 2, why: 'closed', createdAt: '2026-10-11T00:00:00Z', player: { name: 'Gil Junior', dob: '', medical: 'Invented allergy' }, age: null, parent: { name: 'Gil Parent', email: 'gil@example.com', mobile: '0400 000 222' } },
+    { id: 'JJREQ-3-CCCCCC', status: 'accepted', stage: 'accepted', position: null, why: 'full', createdAt: '2026-10-09T00:00:00Z', player: { name: 'Hal Junior', dob: '', medical: '' }, age: null, parent: { name: 'Hal Parent', email: 'hal@example.com', mobile: '' }, decidedBy: 'Lee', decidedAt: '2026-10-12T00:00:00Z' },
+    { id: 'JJREQ-4-DDDDDD', status: 'declined', stage: 'declined', position: null, why: 'full', createdAt: '2026-10-08T00:00:00Z', player: { name: 'Ivy Junior', dob: '', medical: '' }, age: null, parent: { name: 'Ivy Parent', email: 'ivy@example.com', mobile: '' }, decidedBy: 'Lee', decidedAt: '2026-10-12T00:00:00Z', declineReason: 'Too young' },
+  ], ...extra })
+
+await test('Requests & waitlist: in the order asked, a free place says who is next, accept (asking when full), then the invite to pay is previewed before Send', async () => {
+  const seen = []
+  let n = 0
+  const p = await open('#jj-requests', {
+    jjRequests: () => REQS(),
+    jjDecideRequest: (b) => { seen.push(b); return b.decision === 'accept' && n++ === 0 ? { status: 409, success: false, code: 'full', error: 'The class has 12 of 12 places taken. Accept anyway?' } : { success: true, status: 'accepted', rowId: 'recNEW00000000001', email: 'fay@example.com' } },
+    jjInvites: (b) => { seen.push(b); return b.send ? { success: true, sent: b.emails, failed: [], skipped: [] } : { success: true, ...PLAN('new', { list: [fam('fay@example.com', 'Fay Parent', [child('recNEW00000000001', 'Fay Junior')])], previews: [{ email: 'fay@example.com', parent: 'Fay Parent', label: 'Owes $220.00', subject: 'Joners Juniors Term 4: A$220 to pay', html: '<p>Hi Fay</p>' }] }) } },
+  })
+  assert.equal(p.text('#view h1'), 'Requests & waitlist')
+  assert.match(p.text('#jr-free'), /1 place is free\. Fay Junior is next on the waitlist/)
+  const names = [...p.d.querySelectorAll('[data-req] .jj-fam-main b')].map((b) => b.textContent.trim())
+  assert.deepEqual(names.slice(0, 2), ['1. Fay Junior (5)', '2. Gil Junior'])
+  assert.ok(p.$('[data-req="JJREQ-1-AAAAAA"] a[href="tel:0400000111"]'))
+  assert.ok(p.$('[data-req="JJREQ-3-CCCCCC"] [data-invite="hal@example.com"]'), 'accepted, not invited: offer the invite')
+  assert.ok(p.$('[data-req="JJREQ-4-DDDDDD"] [data-wait]'), 'a declined one can go back on the waitlist')
+  await p.click('[data-accept="JJREQ-1-AAAAAA"]')
+  assert.match(p.text('#jp-modal'), /12 of 12 places taken/)
+  await p.click('#jp-modal [data-yes]')
+  assert.deepEqual(seen.filter((b) => b.decision).map((b) => b.force === true), [false, true])
+  await p.settle()
+  assert.match(p.text('#jp-modal'), /Send the invite to pay\?/)
+  assert.ok(p.$('#jp-modal iframe').getAttribute('srcdoc').includes('Hi Fay'))
+  assert.ok(!seen.some((b) => b.send), 'nothing is sent before Send')
+  await p.click('#ji-send')
+  assert.deepEqual(seen.find((b) => b.send).emails, ['fay@example.com'])
+  assert.deepEqual(p.errors, [])
+})
+
+await test('Settings: next term price and hold, and a message when next term has no Airtable table', async () => {
+  const p = await open('#jj-settings', { jjSaveSettings: (b) => ({ success: true, ...structuredClone(SETTINGS), juniors: { ...SETTINGS.juniors, ...b.juniors }, warnings: [] }) })
+  assert.match(p.text('#jj-next-table'), /Add the Airtable table for Term 1 2027/)
+  const form = p.$('#jj-sform')
+  form.querySelector('[name="nextPrice"]').value = '230'
+  form.querySelector('[name="nextHold"]').value = '50'
+  form.dispatchEvent(new p.w.Event('submit', { bubbles: true, cancelable: true })); await p.settle()
+  const sent = p.posts.find((x) => x.action === 'jjSaveSettings').juniors
+  assert.deepEqual({ priceCents: sent.nextTerm.priceCents, holdCents: sent.nextTerm.holdCents }, { priceCents: 23000, holdCents: 5000 })
+  assert.deepEqual(p.errors, [])
 })
 
 console.log(`\n${passed} Joners Juniors page checks passed`)
