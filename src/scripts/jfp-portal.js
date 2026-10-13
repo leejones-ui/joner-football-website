@@ -393,6 +393,14 @@ function dotFor(p) {
 }
 
 const isJJ = (g) => g?.label === 'Joners Juniors'
+// Joners Juniors payment colours, the same four as JFP: green paid, orange
+// part paid, red unpaid; grey for no fee (N/A) or refunded.
+const JJ_PAY = {
+  paid: ['i-paid', 'green', 'Paid'], stripe: ['i-paid', 'green', 'Paid in Stripe'], credit: ['i-paid', 'green', 'Paid with credit'],
+  unverified: ['i-paid', 'green', 'Paid (amount not recorded)'], part: ['i-part', 'orange', 'Part paid'], unpaid: ['i-due', 'red', 'Unpaid'],
+  nofee: ['i-due', 'red', 'Unpaid, no fee set'], na: ['i-off', 'grey', 'No fee (N/A)'], refunded: ['i-off', 'grey', 'Refunded'],
+}
+const jjPayTip = (pay) => `${JJ_PAY[pay.status]?.[2] || pay.status}${pay.feeCents ? `, fee ${money(pay.feeCents)}` : ''}${pay.paidCents ? `, paid ${money(pay.paidCents)}` : ''}${pay.owingCents ? `, owes ${money(pay.owingCents)}` : ''}`
 // Notes for coaches and a later start week, shown wherever a coach sees the
 // player (Lee, 12 Oct 2026).
 const todayIso = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
@@ -434,7 +442,7 @@ function ttBlock(g) {
   if (isJJ(g)) {
     // Joners Juniors: children from the Juniors table, signed up on the Juniors page.
     body = P.ttView === 'parent' ? '<div class="jp-open" style="font-weight:700">Joners Juniors · sign up on the Juniors page</div>'
-      : g.players.map((p) => `<div class="jp-nm"><span class="nmx">${esc(p.name)}${p.age != null ? ` <span class="muted">${esc(p.age)}</span>` : ''}</span></div>`).join('') + `<div class="jp-open">${g.juniorsError ? esc(g.juniorsError) : `${n} from the Joners Juniors table`}</div>`
+      : g.players.map((p) => `<div class="jp-nm">${P.ttView === 'staff' && p.pay ? `<i class="${JJ_PAY[p.pay.status]?.[0] || 'i-off'}" title="${esc(jjPayTip(p.pay))}"></i>` : ''}<span class="nmx">${esc(p.name)}${p.age != null ? ` <span class="muted">${esc(p.age)}</span>` : ''}</span></div>`).join('') + `<div class="jp-open">${g.juniorsError ? esc(g.juniorsError) : `${n} from the Joners Juniors table`}</div>`
     return `<section class="jp-blk ${P.sel === g.id && P.ttView === 'staff' ? 'sel' : ''}" style="--lc:${locColor(g.locationId)}">${head}${body}</section>`
   }
   if (P.ttView === 'parent') {
@@ -489,7 +497,7 @@ function groupSide(g) {
 
 function playerRowHtml(p, gid) {
   // Joners Juniors children live in the Juniors table: shown, never moved or charged here.
-  if (p.juniors) return `<div class="jp-player jp-player-jj"><span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}</span><span class="tags"><span class="j-pill j-pill-grey" title="From the Joners Juniors table">Juniors</span></span></div>`
+  if (p.juniors) return `<div class="jp-player jp-player-jj"><span class="nm">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}</span><span class="tags">${p.pay ? `<span class="j-pill j-pill-${JJ_PAY[p.pay.status]?.[1] || 'grey'}" title="${esc(jjPayTip(p.pay))}">${esc(JJ_PAY[p.pay.status]?.[2] || p.pay.status)}</span>` : ''}<span class="j-pill j-pill-grey" title="From the Joners Juniors table">Juniors</span></span></div>`
   const tags = [
     p.status !== 'Confirmed' ? `<span class="j-pill j-pill-amber">${esc(p.status)}</span>` : '',
     payPill(p),

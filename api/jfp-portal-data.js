@@ -105,6 +105,15 @@ async function juniorsFor(groups, config) {
 async function boardData(config, { fresh = false } = {}) {
   const [groups, roster, payreqs, requests, notes] = await Promise.all([listGroups(), loadRoster({ fresh }), listPayreqs(), listApplications(), coachNotes()])
   const juniors = await juniorsFor(groups, config)
+  // Joners Juniors children get the same payment colours as JFP players on the
+  // staff timetable (Lee, 13 Oct 2026), from the Juniors money figures.
+  if (Object.values(juniors).some((list) => Array.isArray(list) && list.length)) {
+    try {
+      const jm = await juniorsMoneyData({ quick: !fresh, fresh })
+      const byRow = new Map((jm.players || []).map((x) => [x.rowId, x]))
+      for (const list of Object.values(juniors)) if (Array.isArray(list)) for (const p of list) { const m = byRow.get(p.rowId); if (m) p.pay = { status: m.status, feeCents: m.feeCents, paidCents: m.paidCents, owingCents: m.owingCents } }
+    } catch (error) { console.error('jfp juniors board money failed', error.message) }
+  }
   const pendingBy = {}
   for (const r of requests) if (r.status === 'pending') pendingBy[r.groupId] = (pendingBy[r.groupId] || 0) + 1
   const counts = countsFrom(roster)

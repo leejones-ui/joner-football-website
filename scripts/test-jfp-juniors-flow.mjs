@@ -68,6 +68,9 @@ await test('Joners Juniors on the timetable and in Coach Sam\'s hours and regist
   const g = board.groups.find((x) => x.id === id)
   assert.deepEqual(g.players.map((p) => p.name), ['Jun Alpha', 'Jun Delta', 'Jun Echo', 'Jun Foxtrot'], 'this term\'s Juniors children')
   assert.ok(g.players.every((p) => p.juniors))
+  // Payment colours on the staff timetable, from the Juniors money figures.
+  const jmById = new Map(J.players.map((x) => [x.rowId, x.status]))
+  assert.ok(g.players.every((p) => p.pay && p.pay.status === jmById.get(p.rowId)), JSON.stringify(g.players.map((p) => [p.name, p.pay?.status, jmById.get(p.rowId)])))
   assert.equal(board.totals.players, (await lee('/api/jfp-portal-data', { action: 'board' })).data.totals.players, 'JFP totals unchanged')
   const after = (await lee('/api/jfp-portal-data', { action: 'coachSessions', coachId: 'sam' })).data
   assert.equal(after.hours.perWeekMinutes - before.hours.perWeekMinutes, 45, 'Sam gets 45 minutes a week')
@@ -79,6 +82,7 @@ await test('Joners Juniors on the timetable and in Coach Sam\'s hours and regist
   assert.equal(mark.status, 200, JSON.stringify(mark.data))
   const prog = (await sam('/api/jfp-portal-data', { action: 'program' })).data
   assert.ok(prog.groups.some((x) => x.id === id && x.players.length === 4), 'coaches see the class on the Program')
+  assert.ok(!/feeCents|paidCents|owingCents|"pay"/.test(JSON.stringify(prog)), 'coaches never see Juniors money')
   const add = await lee('/api/jfp-portal-data', { action: 'addPlayer', groupId: id, player: { name: 'Not A Junior' }, parent: { name: 'P', email: 'p@example.com' }, payment: 'none' })
   assert.equal(add.status, 400)
   const pubRes = await fetch(`${B}/api/jfp-groups`, { headers: { 'x-forwarded-for': '10.9.9.9' } })
