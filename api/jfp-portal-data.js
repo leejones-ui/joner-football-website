@@ -9,7 +9,7 @@
 // dashboard always matches, and every change is recorded in the audit log.
 import crypto from 'node:crypto'
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { siteUrl } from './_holiday-store.js'
+import { siteUrl, getConfig as getHolidayConfig } from './_holiday-store.js'
 import {
   getConfig, saveConfig, listGroups, getGroup, saveGroup, deleteGroup, validateGroup, onlineCounts, placesLeft, listBookings, getBooking, holdPlaces,
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
@@ -23,6 +23,7 @@ import {
   createWaiverRows, waiverFields, findWaiversByTag, bustRosterCache, findTerm4ByTag,
   getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, listDropped, deleteTerm4Row, RESTORABLE,
   listLedger, createLedgerRow, listJuniors, listVenueHistory,
+  findLedgerByPayment, listPreviousTerm, getPreviousTermRow, updatePreviousTermRow, previousTermSpec,
 } from './_jfp-airtable.js'
 import { listCancels, staffView, noticeSummary } from './_jfp-cancel.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, PAY_EFFECTS } from './_jfp-finalise.js'
@@ -33,7 +34,9 @@ import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
-import { matchBank, cleanItem, csvIds, EXTERNAL_ID, BANK_LIMITS, twinOf, looksJfp, feeSizes } from './_jfp-bank-match.js'
+import { matchBank, cleanItem, csvIds, EXTERNAL_ID, BANK_LIMITS, twinOf, looksJfp, feeSizes, rowScore } from './_jfp-bank-match.js'
+import { holidayMoneyData, holidaySizes, HOLIDAY_BANK } from './_holiday-money.js'
+import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
 import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
 import { registerChecks, yearsOf, termsOfYear, termFromLive, termFromLedger, termFromRegister, yearSummary } from './_jfp-years.js'
 
@@ -749,6 +752,8 @@ async function markPaid(res, principal, body) {
 
 // A row with no venue written on it is shown as exactly that.
 const venueNamed = (loc) => (loc.id === 'other' ? { ...loc, name: 'No venue set' } : loc)
+// The venue a holiday slot's location is ("Joner Football HQ, Belrose" is Belrose HQ).
+export const holidayVenue = (config) => (name) => { const l = venueNamed(locationFor(config, name || '')); return { id: l.id, name: l.name } }
 
 const weekOf = (iso) => {
   const d = new Date(`${String(iso).slice(0, 10)}T00:00:00Z`)
@@ -973,10 +978,28 @@ async function bankRecorded() {
   for (let i = 1; Array.isArray(flat) && i < flat.length; i += 2) { try { const r = JSON.parse(flat[i]); if (r?.id) out.push(r) } catch {} }
   return out
 }
+// Last term's rows and every holiday price, for the hints and the two
+// buttons (Holiday revenue, Previous term). Either can be missing: the panel
+// still works without it.
+async function bankExtras(config) {
+  const term = previousTerm(config.term)
+  const [prev, hol] = await Promise.all([
+    listPreviousTerm(term).catch((error) => { console.error('jfp previous term read failed', error.message); return null }),
+    holidaySizes().catch((error) => { console.error('jfp holiday prices read failed', error.message); return null }),
+  ])
+  return { term, prev, hol }
+}
 async function bankCheck(config) {
-  const [src, m, ledger, ignored, recorded] = await Promise.all([bankSources(), moneyData(config, { quick: true }), listLedger(config.term).catch(() => []), kvCommand(['SMEMBERS', BANK.ignored]).catch(() => []), bankRecorded()])
-  const { items, counts, hidden } = matchBank({ items: [...src.xero, ...src.csv], players: m.players, ledger, ignored: Array.isArray(ignored) ? ignored : [], since: config.moneySince, recorded })
-  return { sources: { xeroAt: src.xeroAt, xeroItems: src.xero.length, csvAt: src.csvAt, csvItems: src.csv.length }, items: items.slice(0, 300), counts, hidden: hidden.slice(0, 60) }
+  const [src, m, ledger, ignored, recorded, extra] = await Promise.all([bankSources(), moneyData(config, { quick: true }), listLedger(config.term).catch(() => []), kvCommand(['SMEMBERS', BANK.ignored]).catch(() => []), bankRecorded(), bankExtras(config)])
+  const { items, counts, hidden, before } = matchBank({ items: [...src.xero, ...src.csv], players: m.players, ledger, ignored: Array.isArray(ignored) ? ignored : [], since: config.moneySince, recorded, previous: extra.prev || [], holidaySizes: extra.hol?.sizes || null, termStart: config.termStart })
+  const coaches = (extra.hol?.config.coaches || []).slice().sort((a, b) => Number(b.active !== false) - Number(a.active !== false) || a.name.localeCompare(b.name)).map((c) => ({ id: c.id, name: c.name }))
+  return {
+    sources: { xeroAt: src.xeroAt, xeroItems: src.xero.length, csvAt: src.csvAt, csvItems: src.csv.length }, items: items.slice(0, 300), counts, hidden: hidden.slice(0, 60),
+    // Older than this term's window: shown in their own fold (Lee, 13 Oct 2026).
+    before: before.slice(0, 300), termStart: config.termStart,
+    holiday: { periods: [...pickablePeriods(sydneyToday()).map((p) => ({ id: p.id, label: p.label, range: rangeLabel(p) })), { id: OTHER, label: OTHER_LABEL, range: '' }], coaches, locations: config.locations.map((l) => l.name), defaultLocation: locationFor(config, 'Belrose HQ').name },
+    previousTerm: extra.prev ? { term: extra.term } : null,
+  }
 }
 async function bankUpload(res, principal, config, body) {
   const lines = body.lines
@@ -994,14 +1017,18 @@ async function bankUpload(res, principal, config, body) {
   // Only money that could be JFP is kept: anything else on the account stays out.
   const players = (await moneyData(config, { quick: true })).players
   const sizes = feeSizes(players)
-  const fresh = parsed.map((l, i) => ({ id: ids[i], date: l.date, cents: l.cents, payer: l.description, description: l.description })).filter((x) => looksJfp(x, players, sizes))
+  // Holiday training and last term's families count as JFP money too.
+  const extra = await bankExtras(config)
+  const keep = (x) => looksJfp(x, players, sizes) || Boolean(extra.hol?.sizes.has(x.cents)) || (extra.prev || []).some((r) => rowScore(x, r).score >= 1)
+  const fresh = parsed.map((l, i) => ({ id: ids[i], date: l.date, cents: l.cents, payer: l.description, description: l.description })).filter(keep)
   if ((await kvCommand(['SET', 'jfp:bank-csv-lock', '1', 'NX', 'EX', '10'])) !== 'OK') return fail(res, 409, 'Another upload is saving. Try again in a moment.')
   try { return await bankSave(res, principal, fresh, parsed.length) } finally { await kvCommand(['DEL', 'jfp:bank-csv-lock']) }
 }
 async function bankSave(res, principal, fresh, read) {
-  // Kept with what is there, for 45 days from the last upload; older lines drop off.
+  // Kept with what is there, for 45 days from the last upload; lines older
+  // than csvKeepDays drop off (long enough for last term and the holidays).
   const old = await kvGetJson(BANK.csv).catch(() => null)
-  const keepFrom = new Date(Date.now() - BANK_LIMITS.csvDays * 86400000).toISOString().slice(0, 10)
+  const keepFrom = new Date(Date.now() - BANK_LIMITS.csvKeepDays * 86400000).toISOString().slice(0, 10)
   const byId = new Map((Array.isArray(old?.items) ? old.items : []).filter((x) => x?.date >= keepFrom).map((x) => [x.id, x]))
   const before = byId.size
   for (const x of fresh) byId.set(x.id, x)
@@ -1016,6 +1043,137 @@ async function bankIgnore(res, principal, body, undo) {
   await kvCommand([undo ? 'SREM' : 'SADD', BANK.ignored, id])
   await audit({ by: principal.email, action: undo ? 'money.bankUnignore' : 'money.bankIgnore', target: id })
   return res.status(200).json({ success: true, id })
+}
+
+// ---------- a bank line that paid for holiday training or last term (Lee, 13 Oct 2026) ----------
+// Both claim the line exactly as recording it for a player does (the claim
+// key, kept for good, and the recorded list), so it can never also be
+// recorded for a player, and it leaves Bank transfers to check.
+const claimKind = (raw) => { try { return JSON.parse(raw || '{}').kind || '' } catch { return '' } }
+async function bankLineFor(id) {
+  if (!EXTERNAL_ID.test(id)) return { status: 400, error: 'That bank line is not valid.' }
+  const src = await bankSources()
+  const seen = [...src.xero, ...src.csv].find((x) => x.id === id)
+  if (!seen) return { status: 404, error: 'That bank transfer is not in the bank feed any more. Refresh Bank transfers to check.' }
+  if (seen.date > sydneyToday()) return { status: 400, error: 'The payment date cannot be in the future.' }
+  return { seen }
+}
+// The checks recordPayment makes for a bank line, in the same order: not in
+// any term's ledger, not claimed, not the other copy of a recorded line
+// (unless Lee says so), and not being saved by someone else this second.
+async function bankGuard(id, seen, body) {
+  if ((await findLedgerByPayment(id)).length) return { status: 409, error: 'That bank transfer is already in the ledger.' }
+  const claim = await kvCommand(['GET', bankClaim(id)])
+  if (claim) return { status: 409, error: claimKind(claim) === 'holiday' ? 'That bank transfer is already marked as holiday training.' : 'That bank transfer is already recorded.' }
+  const line = { id, source: id.startsWith('XERO-') ? 'xero' : 'csv', cents: seen.cents, date: seen.date, payer: seen.payer || '', ...(body.confirmTwin === true ? { distinct: true } : {}), at: new Date().toISOString() }
+  const twin = body.confirmTwin === true ? null : twinOf(line, await bankRecorded())
+  if (twin) return { status: 409, code: 'twin', error: `This looks like the same transfer as the ${formatAud(twin.cents)} from ${twin.payer || 'the bank'} on ${twin.date}, already recorded from ${twin.source === 'xero' ? 'Xero' : 'the bank CSV'}. Only save it if it is a different payment.` }
+  if ((await kvCommand(['SET', `jfp:paylock:${id}`, '1', 'NX', 'EX', '20'])) !== 'OK') return { status: 409, error: 'That bank transfer was just recorded. Refresh to check.' }
+  return { line }
+}
+const refuse = (res, r) => fail(res, r.status, r.error, r.code ? { code: r.code } : undefined)
+
+// "Holiday revenue": the line counts in Money > Holiday training under Bank
+// transfer, in the holiday Lee picks. Kept in jfp:holiday-bank by line id.
+async function bankHoliday(res, principal, config, body) {
+  const id = String(body.id || '')
+  const period = clean(body.period, 20)
+  if (!isPeriodId(period)) return fail(res, 400, 'Pick the school holiday it was for, or Other dates.')
+  const sessionDate = clean(body.sessionDate, 10)
+  if (sessionDate && !ISO.test(sessionDate)) return fail(res, 400, 'The session date does not look right.')
+  if (sessionDate && period !== OTHER && holidayPeriodOf(sessionDate) !== period) return fail(res, 400, `That session date is not in the ${periodLabel(period)}. Pick the right holiday, or leave the date blank.`)
+  const hc = await getHolidayConfig()
+  const coachIn = clean(body.coach, 60).toLowerCase()
+  const coach = coachIn ? hc.coaches.find((c) => c.id === coachIn || c.name.toLowerCase() === coachIn) : null
+  if (coachIn && !coach) return fail(res, 400, 'Pick a coach from the list, or leave it blank.')
+  const locIn = clean(body.location, 80).toLowerCase() || 'belrose'
+  const loc = config.locations.find((l) => l.id === locIn || l.name.toLowerCase() === locIn)
+  if (!loc) return fail(res, 400, 'Pick a location from the list.')
+  const note = clean(body.note, 200)
+  const found = await bankLineFor(id)
+  if (found.error) return refuse(res, found)
+  const g = await bankGuard(id, found.seen, body)
+  if (g.error) return refuse(res, g)
+  // The claim guards from here on, so the 20 second lock is let go at the end
+  // (Lee can put a line back and save it again straight away).
+  try { return await bankHolidaySave(res, principal, { id, g, period, sessionDate, coach, loc, note }) } finally { await kvCommand(['DEL', `jfp:paylock:${id}`]).catch(() => {}) }
+}
+async function bankHolidaySave(res, principal, { id, g, period, sessionDate, coach, loc, note }) {
+  const claimed = { ...g.line, kind: 'holiday', period }
+  if ((await kvCommand(['SET', bankClaim(id), JSON.stringify(claimed), 'NX'])) !== 'OK') return fail(res, 409, 'That bank transfer is already recorded.')
+  const rec = { id, date: g.line.date, cents: g.line.cents, payer: g.line.payer, period, sessionDate, coach: coach?.name || '', location: loc.name, note, by: principal.email, at: g.line.at }
+  try { await kvCommand(['HSET', HOLIDAY_BANK, id, JSON.stringify(rec)]) } catch (error) { await kvCommand(['DEL', bankClaim(id)]).catch(() => {}); throw error }
+  await kvCommand(['HSET', BANK.recorded, id, JSON.stringify(claimed)]).catch((error) => console.error('jfp bank recorded list failed', error))
+  await audit({ by: principal.email, action: 'money.bankHoliday', target: id, after: { cents: rec.cents, date: rec.date, period, sessionDate, coach: rec.coach, location: rec.location } })
+  return res.status(200).json({ success: true, line: rec, periodLabel: periodLabel(period) })
+}
+// Put a holiday line back on Bank transfers to check. Never a line recorded for a player.
+async function bankHolidayUndo(res, principal, body) {
+  const id = String(body.id || '')
+  if (!EXTERNAL_ID.test(id)) return fail(res, 400, 'That bank line is not valid.')
+  const raw = await kvCommand(['HGET', HOLIDAY_BANK, id])
+  if (!raw) return fail(res, 404, 'That bank transfer is not marked as holiday training.')
+  const claim = await kvCommand(['GET', bankClaim(id)])
+  if (claim && claimKind(claim) !== 'holiday') return fail(res, 409, 'That bank transfer is recorded for a player, so it cannot be put back from here.')
+  // Out of the holiday figures first, the claim last, so it is never in both.
+  await kvCommand(['HDEL', HOLIDAY_BANK, id])
+  if (claimKind(await kvCommand(['HGET', BANK.recorded, id])) === 'holiday') await kvCommand(['HDEL', BANK.recorded, id])
+  await kvCommand(['DEL', bankClaim(id)])
+  let before = null
+  try { before = JSON.parse(raw) } catch {}
+  await audit({ by: principal.email, action: 'money.bankHolidayUndo', target: id, before: before ? { cents: before.cents, date: before.date, period: before.period } : null })
+  return res.status(200).json({ success: true, id })
+}
+
+// "Previous term": a bank transfer for last term's place. One ledger row
+// under last term (Payment ID = the line id), and the money onto last term's
+// row only while it still owes. Marked paid already: the ledger row only
+// (the "marked paid but missing from the ledger" fix).
+async function bankPreviousTerm(res, principal, config, body) {
+  const term = previousTerm(config.term)
+  const spec = previousTermSpec(term)
+  if (!spec) return fail(res, 400, `${term || 'Last term'}'s player list is not set up in the portal yet.`)
+  const id = String(body.id || '')
+  const found = await bankLineFor(id)
+  if (found.error) return refuse(res, found)
+  const { seen } = found
+  const amount = body.amountCents == null || body.amountCents === '' ? seen.cents : Number(body.amountCents)
+  if (!(Number.isInteger(amount) && amount > 0 && amount <= seen.cents)) return fail(res, 400, `Enter the amount, up to the ${formatAud(seen.cents)} that came in.`)
+  const row = await getPreviousTermRow(term, clean(body.rowId, 30))
+  if (!row) return fail(res, 404, `That player is not on the ${term} list.`)
+  const note = clean(body.note, 200)
+  const g = await bankGuard(id, seen, body)
+  if (g.error) return refuse(res, g)
+  try { return await bankPreviousSave(res, principal, config, { id, g, seen, amount, row, note, term, spec }) } finally { await kvCommand(['DEL', `jfp:paylock:${id}`]).catch(() => {}) }
+}
+async function bankPreviousSave(res, principal, config, { id, g, seen, amount, row, note, term, spec }) {
+  const claimed = { ...g.line, kind: 'previousTerm', term, rowIds: [row.rowId] }
+  if ((await kvCommand(['SET', bankClaim(id), JSON.stringify(claimed), 'NX'])) !== 'OK') return fail(res, 409, 'That bank transfer is already recorded.')
+  const date = seen.date
+  const from = id.startsWith('XERO-') ? 'Xero' : 'the bank CSV'
+  // The ledger row first: it is what the term's money adds up. If Airtable
+  // refuses it, nothing has changed and the line is free again.
+  let ledgerId = ''
+  try {
+    ledgerId = await createLedgerRow({ paymentId: id, config, term, sourceTable: spec.source, playerNames: [row.player], amountCents: amount, paidAt: `${date}T00:00:00+10:00`, sourceIds: [row.rowId], sessionId: '', intentId: '', method: 'Bank Transfer', notes: `Recorded in the JFP portal by ${principal.name}: a ${term} payment, bank transfer matched from ${from}.${note ? ` ${note}` : ''}` })
+  } catch (error) { await kvCommand(['DEL', bankClaim(id)]).catch(() => {}); throw error }
+  const add = Math.min(amount, row.owingCents)
+  const why = add > 0 ? `${formatAud(add)} added to the amount paid.${amount > add ? ` The other ${formatAud(amount - add)} was more than was owing, so it is only in the ledger.` : ''}`
+    : row.markedPaid ? 'Already marked paid, so it was only added to the payment ledger.'
+      : row.feeCents == null ? 'No fee is set on the row, so it was only added to the payment ledger.' : 'Nothing was owing, so it was only added to the payment ledger.'
+  const fields = { [spec.notes]: appendNote(row.notes, `Bank transfer of ${formatAud(amount)} on ${date} recorded for ${term} in the JFP portal by ${principal.name} (${id}). ${why}${note ? ` ${note}` : ''}`) }
+  if (add > 0) {
+    const paid = row.paidCents + add
+    fields[spec.paid] = paid / 100
+    fields[spec.status] = row.feeCents != null && paid >= row.feeCents ? 'Paid' : 'Partially Paid'
+  }
+  let rowUpdated = true
+  try { await updatePreviousTermRow(term, row.rowId, fields) } catch (error) { console.error('jfp previous term row failed', error); rowUpdated = false }
+  await kvCommand(['HSET', BANK.recorded, id, JSON.stringify(claimed)]).catch((error) => console.error('jfp bank recorded list failed', error))
+  // The year view is kept for 10 minutes: this term's year has to show it now.
+  await kvCommand(['DEL', yearKey(config, Number(/(\d{4})\s*$/.exec(term)?.[1]) || 0)]).catch(() => {})
+  await audit({ by: principal.email, action: 'money.bankPreviousTerm', target: row.rowId, after: { name: row.player, term, cents: amount, added: add, date, bank: id, ledger: Boolean(ledgerId), rowUpdated } })
+  return res.status(200).json({ success: true, term, ledger: Boolean(ledgerId), rowUpdated, addedCents: add, ...(rowUpdated ? {} : { warning: `Saved in the payment ledger, but ${row.player}'s ${term} row could not be updated. Add the payment to the row in Airtable.` }) })
 }
 
 // An earlier term by venue, from its payment ledger (Term 3 was reconciled to
@@ -2274,6 +2432,16 @@ async function handle(req, res) {
       case 'bankUpload': return await bankUpload(res, principal, config, body)
       case 'bankIgnore': return await bankIgnore(res, principal, body, false)
       case 'bankUnignore': return await bankIgnore(res, principal, body, true)
+      // Holiday training and last term (Lee, 13 Oct 2026).
+      case 'bankHoliday': return await bankHoliday(res, principal, config, body)
+      case 'bankHolidayUndo': return await bankHolidayUndo(res, principal, body)
+      case 'bankPreviousTerm': return await bankPreviousTerm(res, principal, config, body)
+      case 'previousTermPlayers': {
+        const term = previousTerm(config.term)
+        const rows = await listPreviousTerm(term, { fresh: body.fresh === true })
+        return rows ? res.status(200).json({ success: true, term, players: rows }) : fail(res, 404, `${term || 'Last term'}'s player list is not set up in the portal yet.`)
+      }
+      case 'holidayMoney': return res.status(200).json({ success: true, holiday: await holidayMoneyData({ period: clean(body.period, 20), fresh: body.fresh === true, locationOf: holidayVenue(config), today: sydneyToday() }) })
 
       case 'audit': return res.status(200).json({ success: true, entries: await listAudit(Number(body.limit) || 300) })
 

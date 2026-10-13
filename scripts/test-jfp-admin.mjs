@@ -86,6 +86,25 @@ try {
     for (const b of [{ action: 'setKit', kitPriceLabel: '60' }, { action: 'setKit', kitPriceLabel: 'A$60', kitUrl: 'x' }, { action: 'setKit' }, { action: 'setKit', kitPriceLabel: 'A$<b>' }]) assert.equal((await call(b)).code, 400)
     assert.equal(kv.size, 0)
   })
+  await test('GET view=holiday: holiday training money for the agent, read only', async () => {
+    const inner = globalThis.fetch
+    globalThis.fetch = async (url, init) => {
+      const cmd = JSON.parse(init.body)
+      if (!Array.isArray(cmd[0]) && (cmd[0] === 'ZREVRANGE' || (cmd[0] === 'HGETALL' && /^(holiday:|jfp:holiday-bank)/.test(cmd[1])))) return { ok: true, json: async () => ({ result: [] }) }
+      return inner(url, init)
+    }
+    try {
+      const res = { headers: {}, setHeader(k, v) { this.headers[k] = v }, status(s) { this.code = s; return this }, json(b) { this.body = b; return this } }
+      await handler({ method: 'GET', headers: { authorization: `Bearer ${token}` }, query: { view: 'holiday', period: '2026-winter' } }, res)
+      assert.equal(res.code, 200)
+      assert.deepEqual([res.body.holiday.period, res.body.holiday.label, res.body.holiday.totals.keptCents, res.body.holiday.lines.length], ['2026-winter', 'Winter holidays 2026', 0, 0])
+      assert.ok(Array.isArray(res.body.holiday.byMonth.session) && Array.isArray(res.body.holiday.periods))
+      assert.equal(writes, 0); assert.equal(audits.length, 0)
+      const bad = { headers: {}, setHeader() {}, status(s) { this.code = s; return this }, json(b) { this.body = b; return this } }
+      await handler({ method: 'GET', headers: { authorization: 'Bearer wrong' }, query: { view: 'holiday' } }, bad)
+      assert.equal(bad.code, 401)
+    } finally { globalThis.fetch = inner }
+  })
   console.log(`${passed} isolated admin tests passed; no live data accessed.`)
 } finally {
   globalThis.fetch = originalFetch

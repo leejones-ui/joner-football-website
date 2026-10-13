@@ -2,9 +2,10 @@
 // READ-ONLY views for Lee's agent (money and requests). It cannot change
 // players, payments, messages or Airtable.
 import crypto from 'node:crypto'
-import { moneyData, createPayreq, saveGroupAction } from './jfp-portal-data.js'
+import { moneyData, createPayreq, saveGroupAction, holidayVenue } from './jfp-portal-data.js'
+import { holidayMoneyData } from './_holiday-money.js'
 import { getTerm4Row } from './_jfp-airtable.js'
-import { listGroups, getGroup, listApplications, listPayreqs, validateGroup, getConfig, saveConfig, audit, REQUIREMENTS, clean, kvCommand, keys, normaliseStoredGroup } from './_jfp-store.js'
+import { listGroups, getGroup, listApplications, listPayreqs, validateGroup, getConfig, saveConfig, audit, REQUIREMENTS, clean, kvCommand, keys, normaliseStoredGroup, sydneyToday } from './_jfp-store.js'
 
 // Compare every original row before writing anything. Criteria and audit records
 // commit together; preserve every other stored field, including unknown fields.
@@ -63,6 +64,12 @@ export default async function handler(req, res) {
         const m = await moneyData(config, { fresh: req.query?.fresh === '1' })
         const links = (await listPayreqs()).filter((q) => ['open', 'checkout', 'paid'].includes(q.status)).map((q) => ({ id: q.id, status: q.status, term4Ids: q.term4Ids || [], cents: q.amountCents, createdAt: q.createdAt, paidAt: q.paidAt || '' }))
         return res.status(200).json({ success: true, kpis: m.kpis, status: m.status, players: m.players, unmatched: m.unmatched, stripeError: m.stripeError, links })
+      }
+      // Holiday training money, read only (Lee, 13 Oct 2026): ?view=holiday&period=2026-spring|other|all
+      if (view === 'holiday') {
+        const config = await getConfig()
+        const h = await holidayMoneyData({ period: clean(req.query?.period, 20), fresh: req.query?.fresh === '1', locationOf: holidayVenue(config), today: sydneyToday() })
+        return res.status(200).json({ success: true, holiday: h })
       }
       if (view === 'requests') {
         const groups = Object.fromEntries((await listGroups()).map((g) => [g.id, g]))

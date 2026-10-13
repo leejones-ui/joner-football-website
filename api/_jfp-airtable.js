@@ -498,21 +498,23 @@ export function appendNote(existing, line) {
 
 // ---------- ledger ----------
 
-// One ledger row per actual payment, never per player.
-export async function createLedgerRow({ paymentId, config, playerNames, amountCents, paidAt, sourceIds, sessionId, intentId, notes, method = 'Stripe' }) {
+// One ledger row per actual payment, never per player. term and sourceTable
+// are for a payment onto an earlier term's row (Bank transfers to check,
+// "Previous term"); everything else writes this term's.
+export async function createLedgerRow({ paymentId, config, playerNames, amountCents, paidAt, sourceIds, sessionId, intentId, notes, method = 'Stripe', term = '', sourceTable = '' }) {
   const d = await airtable(encodeURIComponent(TABLES.ledger), {
     method: 'POST',
     body: {
       typecast: true,
       records: [{ fields: {
         'Payment ID': paymentId,
-        'Term': config.term,
+        'Term': term || config.term,
         'Player Name': playerNames.join(', '),
         'Amount Paid': amountCents / 100,
         'Payment Method': ['Stripe', 'Bank Transfer', 'Cash', 'Other'].includes(method) ? method : 'Other',
         'Payment Status': 'Paid',
         'Payment Date': sydneyToday(Date.parse(paidAt || '') || Date.now()),
-        'Source Table': 'Term 4 Players',
+        'Source Table': sourceTable || 'Term 4 Players',
         'Source Record ID': sourceIds.join(', '),
         'Stripe Checkout Session ID': sessionId || '',
         'Stripe Payment Intent ID': intentId || '',
@@ -522,6 +524,57 @@ export async function createLedgerRow({ paymentId, config, playerNames, amountCe
     },
   })
   return d.records?.[0]?.id || ''
+}
+
+// ---------- the term before (Bank transfers to check, Lee 13 Oct 2026) ----------
+// A bank transfer that paid for last term is put on last term's row and in
+// the ledger under last term. Each term's table names its columns its own
+// way, so each one Lee may look back to is listed here.
+export const PREVIOUS_TERMS = {
+  'Term 3 2026': { table: process.env.JFP_TERM3_TABLE || 'tblF25gfo0fZcqdPT', source: 'Term 3 Players', fee: 'Fee Amount', paid: 'Term 3 Amount Paid', status: 'Payment Status', notes: 'Term 3 Notes', paidHow: 'Paid', day: 'Session Day', time: 'Session Time', location: 'Session Location', enrolment: 'Term 3 Enrolment Status', type: 'Term 3 Payment Type' },
+  'Term 4 2026': { table: TABLES.term4, source: 'Term 4 Players', fee: 'Term 4 Fee', paid: 'Term 4 Amount Paid', status: 'Term 4 Payment Status', notes: 'Term 4 Notes', paidHow: '', day: 'Term 3 Day', time: 'Term 3 Time', location: 'Term 3 Location', enrolment: 'Term 4 Confirmation', type: 'Term 4 Payment Type' },
+}
+export const previousTermSpec = (term) => PREVIOUS_TERMS[term] || null
+const prevCacheKey = (term) => `jfp:prev-term:v1:${String(term).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+// What a row of that term paid and still owes. Marked Paid with no amount
+// typed counts as the whole fee; a row with no fee owes nothing we know of.
+export function previousRow({ id, fields: f = {} }, spec, { notes = false } = {}) {
+  const fee = num(f, spec.fee), paid = num(f, spec.paid)
+  const status = text(f, spec.status)
+  const markedPaid = /^paid$/i.test(status)
+  const feeCents = fee == null ? null : Math.round(fee * 100)
+  const paidCents = paid != null ? Math.round(paid * 100) : markedPaid && feeCents != null ? feeCents : 0
+  return {
+    rowId: id, player: text(f, 'Player Name'), parent: text(f, 'Parent Name'),
+    day: text(f, spec.day), time: text(f, spec.time), location: text(f, spec.location),
+    feeCents, paidCents, paidTyped: paid != null, owingCents: markedPaid || feeCents == null ? 0 : Math.max(0, feeCents - paidCents),
+    status: status || 'Not set', markedPaid, paidHow: spec.paidHow ? text(f, spec.paidHow) : '', enrolment: text(f, spec.enrolment), type: text(f, spec.type),
+    ...(notes ? { notes: text(f, spec.notes) } : {}),
+  }
+}
+// Every row of that term, read at most every 10 minutes (it has finished and barely changes).
+export async function listPreviousTerm(term, { fresh = false } = {}) {
+  const spec = previousTermSpec(term)
+  if (!spec) return null
+  if (!fresh) { const hit = await kvGetJson(prevCacheKey(term)); if (Array.isArray(hit)) return hit }
+  const fields = ['Player Name', 'Parent Name', spec.fee, spec.paid, spec.status, spec.day, spec.time, spec.location, spec.enrolment, spec.type, ...(spec.paidHow ? [spec.paidHow] : [])]
+  const rows = (await readTable(spec.table, fields)).map((r) => previousRow(r, spec)).filter((r) => r.player && !/test/i.test(r.player)).sort((a, b) => a.player.localeCompare(b.player))
+  await kvSetJson(prevCacheKey(term), rows, 600)
+  return rows
+}
+export async function getPreviousTermRow(term, id) {
+  const spec = previousTermSpec(term)
+  if (!spec || !/^rec[A-Za-z0-9]{14}$/.test(id || '')) return null
+  try { return previousRow(await airtable(`${encodeURIComponent(spec.table)}/${id}`), spec, { notes: true }) } catch (error) {
+    if (/Airtable 404/.test(error.message)) return null
+    throw error
+  }
+}
+export async function updatePreviousTermRow(term, id, fields) {
+  const spec = previousTermSpec(term)
+  await airtable(encodeURIComponent(spec.table), { method: 'PATCH', body: { typecast: true, records: [{ id, fields }] } })
+  await kvCommand(['DEL', prevCacheKey(term)])
+  if (spec.table === TABLES.term4) await bustRosterCache()
 }
 
 // This term's ledger: one row per payment (Stripe, bank transfer, cash).

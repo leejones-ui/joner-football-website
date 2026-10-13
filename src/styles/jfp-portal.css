@@ -536,3 +536,32 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
   .jy-stack td.jy-blank { display: none; }
   .jy-stack td small { display: inline; margin: 0 0 0 6px; }
 }
+/* Bank transfers to check: chips, hints, before this term (13 Oct 2026). */
+.jm-bank-chips { margin: 10px 0 2px; }
+.jm-bank-chips button { min-height: 40px; }
+.jm-bank-item .top .j-pill[data-hint] { white-space: nowrap; }
+.jm-bank-item .cand.prev { color: var(--j-ink-2); }
+.jm-bank-before { margin-top: 6px; border-top: 1px solid var(--j-line-2); }
+.jm-bank-before > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; font-size: 14px; }
+.jm-bank-before > p { margin: 0 0 4px; }
+.jm-bank-undo { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 10px 0 0; }
+.jm-bank-undo span { min-width: 0; overflow-wrap: anywhere; }
+.jm-bank-undo .j-btn { min-height: 40px; }
+/* Money > Holiday training. */
+.jh-sheet, .jh-list { margin-top: 14px; }
+.jh-owed { margin-top: 14px; }
+.jh-owed .jm-hist li > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.jh-owed .j-btn { min-height: 40px; display: inline-flex; align-items: center; }
+.jh-basis button { min-height: 40px; }
+.jh-groups { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); margin-top: 14px; }
+@media (min-width: 900px) { .jh-groups { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.jh-card .jm-feelist li > span { min-width: 0; overflow-wrap: anywhere; }
+.jh-line > span:first-child { min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; gap: 2px; }
+.jh-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: 0 0 auto; }
+.jh-right .j-btn { min-height: 40px; }
+@media (max-width: 640px) {
+  .jm-bank-chips button { flex: 1 1 auto; }
+  .jh-line { flex-wrap: wrap; }
+  .jh-right { flex-direction: row; align-items: center; flex-wrap: wrap; width: 100%; justify-content: space-between; }
+  #h-refresh, #h-csv { flex: 1 1 auto; min-height: 44px; }
+}

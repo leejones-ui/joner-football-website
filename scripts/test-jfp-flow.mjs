@@ -1790,4 +1790,172 @@ await test('money by year: this term live, the term before from its ledger, olde
   for (const t of ['moneyYear', 'm-show', 'whole year', 'this term', 'Your register says']) assert.ok(js.includes(t), `the built bundle has ${t}`)
 })
 
+
+await test('holiday training money and last term from the bank: Stripe with real fees and refunds owed, bank lines claimed once, coaches kept out', async () => {
+  const kv = async (cmd) => (await fetch(`${B}/__kv?cmd=${encodeURIComponent(JSON.stringify(cmd))}`)).text()
+  const adm = async (action, extra = {}) => (await fetch(`${B}/api/holiday-admin`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-holiday-admin-secret': 'admin' }, body: JSON.stringify({ action, ...extra }) })).json()
+  const fee = (c) => Math.round(c * 0.02) + 20
+  const hol = async (period, fresh = true) => { const r = await portal(lee, 'holidayMoney', { period, fresh }); assert.equal(r.status, 200, JSON.stringify(r.data)); return r.data.holiday }
+  const check = async () => { const r = await portal(lee, 'bankCheck'); assert.equal(r.status, 200, JSON.stringify(r.data)); return r.data.bank }
+  const X = (n, date, cents, payer, description) => ({ id: `XERO-000000${n}-aaaa-4bbb-8ccc-0000000000${n}`, date, cents, payer, description, reference: '', reconciled: true })
+  const H1 = X(41, '2026-07-08', 8500, 'H HOLIDAYPAYER', 'Fast Transfer From H Holidaypayer')
+  const H2 = X(42, '2026-07-01', 12000, 'J JULYPAYER', 'Transfer from J Julypayer')
+  const T3 = X(43, '2026-08-05', 45000, 'RITA RETURNING', 'Transfer from Rita Returning')
+  const T3b = X(44, '2026-08-06', 76500, 'RITA RETURNING', 'Transfer from Rita Returning Sasha')
+
+  // Coaches never see or change any of it; another site cannot post.
+  // An invented coach, added for this check.
+  const cfg = (await portal(lee, 'getSettings')).data.config
+  assert.equal((await portal(lee, 'saveSettings', { config: { coaches: [...cfg.coaches, { id: 'testcoach', name: 'Testy', fullName: 'Testy Coach', airtableName: 'Testy Coach', email: 'coach.test@example.com' }] } })).status, 200)
+  const sam = client()
+  await signIn(sam, 'coach.test@example.com', 'staff')
+  assert.equal((await portal(sam, 'me')).data.user.role, 'coach')
+  for (const [action, body] of [['holidayMoney', {}], ['bankHoliday', { id: H1.id, period: '2026-winter' }], ['bankHolidayUndo', { id: H1.id }], ['bankPreviousTerm', { id: T3.id, rowId: 'recX' }], ['previousTermPlayers', {}]]) assert.equal((await portal(sam, action, body)).status, 403, action)
+  const leeCookie = [...lee.jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ')
+  const evil = await fetch(`${B}/api/jfp-portal-data`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: leeCookie, origin: 'https://evil.example' }, body: JSON.stringify({ action: 'bankHoliday', id: H1.id, period: '2026-winter' }) })
+  assert.equal(evil.status, 403)
+  assert.equal((await fetch(`${B}/api/jfp-portal-data?action=holidayMoney`, { headers: { cookie: leeCookie, origin: B } })).status, 405, 'POST only')
+
+  // Holiday bookings in the summer holidays, paid in Stripe; one cancelled with a refund due.
+  await adm('saveConfig', { config: { coaches: [{ id: 'cara', name: 'Cara', tier: 'coach', active: true }, { id: 'bo', name: 'Bo', tier: 'coach', active: false }], prices: { coach: { one: 12000, shared: 9000, group: 8000 } } } })
+  await adm('bulkAddSlots', { template: { coachId: 'cara', type: 'open', capacity: 6, durationMin: 60 }, dates: ['2026-12-21', '2026-12-22'], times: ['10:00'] })
+  // A trial hour at its own price (A$85 a player), never booked: its price still counts for the hints.
+  assert.equal((await adm('upsertSlot', { slot: { coachId: 'cara', date: '2026-12-23', startTime: '10:00', durationMin: 60, type: 'group', capacity: 6, priceCents: 8500, seatMode: 'shared' } })).success, true)
+  const access = await fetch(`${B}/api/holiday-access`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'holiday' }) })
+  const hcookie = access.headers.get('set-cookie').split(';')[0]
+  const hapi = async (path, body) => { const r = await fetch(`${B}${path}`, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json', cookie: hcookie, 'x-forwarded-for': '10.9.9.9' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, data: await r.json() } }
+  const open = (await hapi('/api/holiday-slots')).data.slots.filter((x) => ['2026-12-21', '2026-12-22'].includes(x.date) && !x.booked)
+  assert.equal(open.length, 2)
+  const book = async (slotId, type, players, email) => {
+    const r = await hapi('/api/holiday-book', { slotId, type, seats: players.length, players, parentName: 'Holly Parent', mobile: '0400000000', email, agreementAccepted: true })
+    assert.equal(r.status, 200, JSON.stringify(r.data))
+    const cs = r.data.url.split('cs=')[1]
+    await fetch(`${B}/mock-stripe/?cs=${cs}&action=pay`, { redirect: 'manual' })
+    return { id: r.data.bookingId, cs }
+  }
+  const b1 = await book(open[0].id, 'one', [{ name: 'Kid Holly', age: 9 }], 'holly@example.com')
+  const b2 = await book(open[1].id, 'shared', [{ name: 'Kid Holly', age: 9 }, { name: 'Kid Ivy', age: 11 }], 'holly@example.com')
+  const cancel = await adm('cancelBooking', { bookingId: b2.id })
+  assert.equal(cancel.refundDue, true)
+  let h = await hol('2026-summer')
+  assert.equal(h.label, 'Summer holidays 2026–27')
+  assert.deepEqual(h.lines.map((x) => x.bookingId).sort(), [b1.id, b2.id].sort())
+  assert.deepEqual([h.totals.stripe.takenCents, h.totals.stripe.feeCents, h.totals.refundedCents], [12000 + 18000, fee(12000) + fee(18000), 0], 'the real fee from each balance transaction')
+  assert.equal(h.totals.keptCents, 30000 - fee(12000) - fee(18000))
+  assert.equal(h.totals.feesPending, 0)
+  assert.deepEqual(h.refundsOwed.map((x) => [x.bookingId, x.owedCents]), [[b2.id, 18000]], 'cancelled, refund due, Stripe shows none')
+  assert.deepEqual(h.byCoach.map((g) => g.label), ['Cara'])
+  assert.deepEqual(h.byLocation.map((g) => g.label), ['Belrose HQ'])
+  assert.deepEqual(h.byMonth.session.map((m) => [m.month, m.keptCents]), [['2026-12', h.totals.keptCents]])
+  assert.equal(h.byMonth.paid[0].month, new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date()).slice(0, 7), 'paid today, Sydney time')
+  // Lee refunds it in Stripe: it is no longer owed, and Stripe keeps its fee.
+  await fetch(`${B}/__refund?cs=${b2.cs}&amount=18000`)
+  h = await hol('2026-summer')
+  assert.deepEqual(h.refundsOwed, [])
+  assert.deepEqual([h.totals.refundedCents, h.totals.keptCents], [18000, 12000 - fee(12000) - fee(18000)])
+  // The holiday money is never in the JFP Stripe figures.
+  const m = (await portal(lee, 'money', { fresh: true })).data.money
+  assert.ok(!m.payments.some((x) => x.id === b1.cs || x.id === b2.cs))
+  assert.ok(!m.unmatched.some((x) => x.id === b1.cs))
+
+  // Bank lines from July and August (before this term), and last term's rows.
+  const xero = JSON.parse(await kv(['GET', 'jfp:xero-bank-in']))
+  xero.items.push(H1, H2, T3, T3b)
+  await kv(['SET', 'jfp:xero-bank-in', JSON.stringify(xero)])
+  const air = await at()
+  const riley3 = air.term3.find((r) => r.fields['Player Name'] === 'Riley Returning').id
+  const sasha3 = air.term3.find((r) => r.fields['Player Name'] === 'Sasha Returning').id
+  const patch = (id, fields) => fetch(`${B}/__patch?table=term3&id=${id}&fields=${encodeURIComponent(JSON.stringify(fields))}`)
+  await patch(riley3, { 'Fee Amount': 850, 'Term 3 Amount Paid': 400, 'Payment Status': 'Partially Paid', 'Term 3 Notes': 'Enrolled online.' })
+  await patch(sasha3, { 'Fee Amount': 765, 'Payment Status': 'Paid', 'Paid': 'Paid Bank Transfer' })
+  await kv(['DEL', 'jfp:prev-term:v1:term-3-2026'])
+  let bank = await check()
+  assert.equal(bank.previousTerm.term, 'Term 3 2026')
+  assert.ok(bank.holiday.periods.some((p) => p.id === '2026-winter') && bank.holiday.periods.at(-1).id === 'other')
+  assert.deepEqual(bank.holiday.coaches.map((c) => c.id), ['cara', 'bo'], 'active coaches first')
+  for (const x of [H1, H2, T3, T3b]) assert.ok(!bank.items.some((y) => y.id === x.id), `${x.date} is not in this term's list`)
+  const bh1 = bank.before.find((x) => x.id === H1.id), bh2 = bank.before.find((x) => x.id === H2.id), bt3 = bank.before.find((x) => x.id === T3.id)
+  assert.ok(bh1 && bh2 && bt3, 'older lines are in the Before this term fold')
+  assert.deepEqual([bh1.hints.holiday, bh1.holidayPeriod], [true, { id: '2026-winter', how: 'inside' }], 'A$85 is a holiday price, in the winter holidays')
+  assert.deepEqual([bh2.hints.holiday, bh2.holidayPeriod.how], [true, 'before'], 'A$120, three days before the winter break')
+  assert.equal(bt3.hints.lastTerm, true)
+  assert.deepEqual([bt3.previous.rowId, bt3.previous.owingCents, bt3.previous.exact], [riley3, 45000, true])
+  const prevList = (await portal(lee, 'previousTermPlayers')).data
+  assert.equal(prevList.term, 'Term 3 2026')
+  assert.deepEqual((({ feeCents, paidCents, owingCents }) => [feeCents, paidCents, owingCents])(prevList.players.find((x) => x.rowId === riley3)), [85000, 40000, 45000])
+
+  // Holiday revenue: checked, claimed once, off the list, in the holiday view.
+  for (const [body, status] of [[{ id: H1.id, period: 'easter' }, 400], [{ id: 'BANK-1234567', period: '2026-winter' }, 400], [{ id: 'XERO-99999999-zzzz', period: '2026-winter' }, 404], [{ id: H1.id, period: '2026-winter', sessionDate: '2026-08-20' }, 400], [{ id: H1.id, period: '2026-winter', coach: 'nobody' }, 400], [{ id: H1.id, period: '2026-winter', location: 'Mars' }, 400]]) assert.equal((await portal(lee, 'bankHoliday', body)).status, status, JSON.stringify(body))
+  assert.equal(await kv(['GET', `jfp:bank-recorded:${H1.id}`]), 'null', 'a refused line is not claimed')
+  const saved = await portal(lee, 'bankHoliday', { id: H1.id, period: '2026-winter', sessionDate: '2026-07-09', coach: 'cara', location: 'Belrose HQ', note: 'one hour' })
+  assert.equal(saved.status, 200, JSON.stringify(saved.data))
+  assert.equal(saved.data.periodLabel, 'Winter holidays 2026')
+  assert.equal(JSON.parse(await kv(['GET', `jfp:bank-recorded:${H1.id}`])).kind, 'holiday')
+  assert.deepEqual((({ cents, date, period, coach, location }) => ({ cents, date, period, coach, location }))(JSON.parse(await kv(['HGET', 'jfp:holiday-bank', H1.id]))), { cents: 8500, date: H1.date, period: '2026-winter', coach: 'Cara', location: 'Belrose HQ' })
+  assert.equal((await portal(lee, 'bankHoliday', { id: H1.id, period: '2026-winter' })).status, 409, 'never twice')
+  assert.equal((await portal(lee, 'recordPayment', { rowIds: [air.term4[1].id], amountCents: 8500, date: H1.date, externalId: H1.id })).status, 409, 'never also for a player')
+  assert.equal((await portal(lee, 'bankPreviousTerm', { id: H1.id, rowId: riley3 })).status, 409, 'nor for last term')
+  assert.ok(!(await check()).before.some((x) => x.id === H1.id), 'it leaves the list')
+  h = await hol('2026-winter')
+  assert.deepEqual([h.totals.bank.count, h.totals.bank.keptCents, h.totals.stripe.count, h.lines[0].sessionDate, h.lines[0].coach], [1, 8500, 0, '2026-07-09', 'Cara'])
+  assert.deepEqual(h.byMonth.session.map((x) => [x.month, x.bankCents]), [['2026-07', 8500]])
+  assert.ok((await hol('all')).lines.some((x) => x.id === H1.id))
+  // Its copy in the bank CSV (kept: July is inside the 130 days now): the other copy, so it asks first.
+  const copy = { date: H1.date, cents: H1.cents, description: 'Fast Transfer From H Holidaypayer' }
+  assert.equal((await portal(lee, 'bankUpload', { lines: [copy] })).data.kept, 1, 'a holiday price is JFP money')
+  const crypto = await import('node:crypto')
+  const copyId = `CSV-${crypto.createHash('sha1').update(`${copy.date}|${copy.cents}|${copy.description}`).digest('hex')}`
+  assert.ok(!(await check()).before.some((x) => x.id === copyId), 'the copy of a holiday line is not offered')
+  const twin = await portal(lee, 'bankHoliday', { id: copyId, period: '2026-winter' })
+  assert.deepEqual([twin.status, twin.data.code], [409, 'twin'])
+  assert.equal(await kv(['GET', `jfp:bank-recorded:${copyId}`]), 'null')
+  // Put back: out of holiday training, on the list again, free to record.
+  const undo = await portal(lee, 'bankHolidayUndo', { id: H1.id })
+  assert.equal(undo.status, 200, JSON.stringify(undo.data))
+  assert.equal(await kv(['GET', `jfp:bank-recorded:${H1.id}`]), 'null')
+  assert.equal((await hol('2026-winter')).totals.count, 0)
+  assert.ok((await check()).before.some((x) => x.id === H1.id))
+  assert.equal((await portal(lee, 'bankHolidayUndo', { id: H1.id })).status, 404)
+  assert.equal((await portal(lee, 'bankHoliday', { id: H1.id, period: '2026-winter' })).status, 200)
+  assert.equal((await portal(lee, 'bankHoliday', { id: H2.id, period: '2026-winter' })).status, 200)
+  assert.equal((await hol('2026-winter')).totals.keptCents, 8500 + 12000)
+
+  // Previous term: one ledger row under Term 3, the money onto the Term 3 row while it owes.
+  for (const [body, status] of [[{ id: T3.id, rowId: riley3, amountCents: 45001 }, 400], [{ id: T3.id, rowId: 'recNOPE0000000000' }, 404], [{ id: 'XERO-99999999-zzzz', rowId: riley3 }, 404]]) assert.equal((await portal(lee, 'bankPreviousTerm', body)).status, status, JSON.stringify(body))
+  const t3Before = (await portal(lee, 'venues', { term: 'Term 3 2026' })).data.venues
+  const pt = await portal(lee, 'bankPreviousTerm', { id: T3.id, rowId: riley3, note: 'paid late' })
+  assert.equal(pt.status, 200, JSON.stringify(pt.data))
+  assert.deepEqual([pt.data.term, pt.data.ledger, pt.data.rowUpdated, pt.data.addedCents], ['Term 3 2026', true, true, 45000])
+  let air2 = await at()
+  const led = air2.ledger.filter((l) => l.fields['Payment ID'] === T3.id)
+  assert.equal(led.length, 1)
+  assert.deepEqual(['Term', 'Payment Method', 'Payment Status', 'Payment Date', 'Amount Paid', 'Source Record ID', 'Source Table'].map((k) => led[0].fields[k]), ['Term 3 2026', 'Bank Transfer', 'Paid', T3.date, 450, riley3, 'Term 3 Players'])
+  const r3 = air2.term3.find((r) => r.id === riley3).fields
+  assert.deepEqual([r3['Term 3 Amount Paid'], r3['Payment Status']], [850, 'Paid'])
+  assert.match(r3['Term 3 Notes'], /^Enrolled online\.\n\d{4}-\d{2}-\d{2}: Bank transfer of A\$450 on 2026-08-05 recorded for Term 3 2026 in the JFP portal by .+ A\$450 added to the amount paid\. paid late$/)
+  assert.equal((await portal(lee, 'bankPreviousTerm', { id: T3.id, rowId: riley3 })).status, 409, 'never twice')
+  assert.equal((await portal(lee, 'recordPayment', { rowIds: [air.term4[1].id], amountCents: 45000, date: T3.date, externalId: T3.id })).status, 409)
+  assert.ok(!(await check()).before.some((x) => x.id === T3.id))
+  // Showing Term 3 2026 (from its ledger) has it, as bank transfer money at the row's venue.
+  const t3After = (await portal(lee, 'venues', { term: 'Term 3 2026' })).data.venues
+  assert.equal(t3After.incomeCents, t3Before.incomeCents + 45000)
+  const hq = (v) => v.venues.find((x) => x.name === 'Belrose HQ')
+  assert.equal(hq(t3After).bankCents, hq(t3Before).bankCents + 45000)
+  // Already marked paid on Term 3 (and in no ledger): the ledger row only, nothing added to the row.
+  const pt2 = await portal(lee, 'bankPreviousTerm', { id: T3b.id, rowId: sasha3 })
+  assert.deepEqual([pt2.status, pt2.data.addedCents, pt2.data.rowUpdated], [200, 0, true])
+  air2 = await at()
+  const s3 = air2.term3.find((r) => r.id === sasha3).fields
+  assert.deepEqual([s3['Term 3 Amount Paid'], s3['Payment Status']], [undefined, 'Paid'])
+  assert.match(s3['Term 3 Notes'], /Already marked paid, so it was only added to the payment ledger\./)
+  assert.equal(air2.ledger.filter((l) => l.fields['Payment ID'] === T3b.id && l.fields.Term === 'Term 3 2026').length, 1)
+  const log = (await portal(lee, 'audit', { limit: 40 })).data.entries
+  for (const a of ['money.bankHoliday', 'money.bankHolidayUndo', 'money.bankPreviousTerm']) assert.ok(log.some((e) => e.action === a), a)
+  // The built portal carries the new view and buttons.
+  const fs = await import('node:fs')
+  const html = fs.readFileSync(new URL('../dist/jfp-portal/index.html', import.meta.url), 'utf8')
+  const js = fs.readFileSync(new URL(`../dist/${html.match(/<script type="module" src="\/(_astro\/jfp-portal[^"]+\.js)"/)[1]}`, import.meta.url), 'utf8')
+  for (const t of ['holidayMoney', 'Add to your sheet', 'Holiday revenue', 'Previous term', 'bankPreviousTerm', 'Before this term', 'Looks like holiday training']) assert.ok(js.includes(t), `the built bundle has ${t}`)
+})
+
 console.log(`\n${passed} JFP flow checks passed`)

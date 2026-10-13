@@ -6,11 +6,12 @@ import { $, esc, api, toast, signIn, whoAmI, signOut, money } from './jfp-common
 import { renderMessages } from './jfp-portal-messages.js'
 import { renderJuniorsMoney, programmeSwitch, bindSwitch, juniorsCardShell, fillJuniorsCard } from './jfp-portal-juniors.js'
 import { drawFamilies, sessionModal } from './jfp-portal-family.js'
-import { bankPanel, bindBank, loadBank, bankDone } from './jfp-portal-bank.js'
+import { bankPanel, bindBank, loadBank, bankDone, bankStale } from './jfp-portal-bank.js'
+import { renderHolidayMoney, holidayStale } from './jfp-portal-holiday.js'
 import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYearChart } from './jfp-portal-years.js'
 
-// jf: the Money programme switch and the Joners Juniors filters.
-const P = { jf: { programme: 'jfp', term: '', status: '', q: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', pricing: null }
+// jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
+const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', pricing: null }
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const post = (action, body = {}) => api('/api/jfp-portal-data', { action, ...body })
 const view = () => $('view')
@@ -85,8 +86,10 @@ function start() {
   const [hash, query] = location.hash.slice(1).split('?')
   const qp = new URLSearchParams(query || '')
   if (hash === 'money' && qp.get('programme') === 'juniors') Object.assign(P.jf, { programme: 'juniors', term: qp.get('term') || '' })
+  // or holiday training, one school holiday: #money?programme=holiday&period=2026-spring
+  if (hash === 'money' && qp.get('programme') === 'holiday') Object.assign(P.jf, { programme: 'holiday', period: (qp.get('period') || '').slice(0, 20) })
   if (hash === 'money' && qp.get('loc')) P.moneyFilter = { ...(P.moneyFilter || {}), loc: qp.get('loc') }
-  if (hash === 'money' && qp.get('programme') !== 'juniors' && (qp.get('year') || qp.get('term'))) P.moneyFilter = { ...(P.moneyFilter || {}), year: /^\d{4}$/.test(qp.get('year') || '') ? qp.get('year') : '', term: qp.get('year') ? '' : (qp.get('term') || '').slice(0, 30) }
+  if (hash === 'money' && !['juniors', 'holiday'].includes(qp.get('programme')) && (qp.get('year') || qp.get('term'))) P.moneyFilter = { ...(P.moneyFilter || {}), year: /^\d{4}$/.test(qp.get('year') || '') ? qp.get('year') : '', term: qp.get('year') ? '' : (qp.get('term') || '').slice(0, 30) }
   go(tabs().some(([k]) => k === hash) ? hash : tabs()[0][0])
 }
 
@@ -1539,6 +1542,8 @@ document.addEventListener('keydown', (e) => {
 const statusPill = (s) => `<span class="jm-status"><i style="background:${cssVar(STATUS[s][1])}"></i>${esc(STATUS[s][0])}</span>`
 
 const juniorsUi = () => ({ view, post, filter: P.jf, go })
+// Money > Holiday training (13 Oct 2026).
+const holidayUi = () => ({ view, post, toast, filter: P.jf, programmeSwitch: programmeSwitch('holiday'), bindSwitch: () => bindSwitch(juniorsUi()), saveFile, csvCell, aud, slug, confirm: confirmBox, bankStale, stale: () => P.tab !== 'money' || P.jf.programme !== 'holiday' })
 // Edit a player's details from Money: name, family, fee and payment type.
 const PAY_TYPES = ['JFP Session by session', 'JFP 10 weeks', 'JFP Half term (5 weeks)', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
 function editPlayerModal(p) {
@@ -1850,6 +1855,7 @@ async function renderLookBack(pre, seq) {
 
 async function renderMoney(pre) {
   if (P.jf.programme === 'juniors') return renderJuniorsMoney(juniorsUi())
+  if (P.jf.programme === 'holiday') return renderHolidayMoney(holidayUi())
   P.moneyFilter = { status: '', q: '', loc: '', view: 'players', term: '', year: '', ...(P.moneyFilter || {}) }
   const seq = (P.moneySeq = (P.moneySeq || 0) + 1)
   if (P.moneyFilter.term || P.moneyFilter.year) return renderLookBack(pre, seq)
@@ -1885,8 +1891,10 @@ async function renderMoney(pre) {
   // Bank transfers to check: read on their own, and they follow the venue too.
   const family = (p) => m.players.filter((x) => x.familyKey === p.familyKey).map((x) => x.rowId)
   const bankUi = {
-    post, toast, confirm: confirmBox,
+    post, toast, confirm: confirmBox, modal, closeModal,
     redraw: () => { if ($('m-bank') && P.money === m) drawBank() },
+    // Marked as holiday training, or put on last term: those views read again.
+    after: (kind) => { holidayStale(); if (kind === 'previous') { P.venueCache = {}; P.yearCache = {} } },
     record: (item, rowId) => {
       const p = m.players.find((x) => x.rowId === rowId)
       if (p) recordModal(p, { bank: { item, rowIds: item.candidates.find((c) => c.rowId === rowId)?.familyRowIds || family(p) } })

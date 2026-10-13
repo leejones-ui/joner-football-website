@@ -3,9 +3,13 @@
 // to the players who probably sent it. Lee confirms each one with one tap;
 // nothing here records anything. Pure functions, no network.
 import crypto from 'node:crypto'
+import { nearHoliday, suggestPeriod } from './_holiday-periods.js'
 
 export const EXTERNAL_ID = /^(XERO|CSV)-[A-Za-z0-9-]{6,80}$/
-export const BANK_LIMITS = { lines: 2000, cents: 5000000, description: 200, csvDays: 45, earlyDays: 14, sameDays: 7 }
+// csvDays: the uploaded CSV is kept this long after the last upload;
+// csvKeepDays: its lines this far back are kept (older holiday and last
+// term transfers, Lee 13 Oct 2026).
+export const BANK_LIMITS = { lines: 2000, cents: 5000000, description: 200, csvDays: 45, csvKeepDays: 130, earlyDays: 14, sameDays: 7 }
 // n: the 2nd, 3rd... line in one file with the same date, amount and
 // description (two real transfers that look alike). The first keeps the
 // plain id, so an export that overlaps an earlier one gives the same ids.
@@ -233,12 +237,44 @@ export function feeSizes(players) {
 // most likely not JFP money: it is never kept or shown.
 export const looksJfp = (item, players, sizes = feeSizes(players)) => !notFamily(item) && (sizes.has(item.cents) || players.some((p) => rowScore(item, p).score >= 1))
 
+// The best match for a bank line on last term's list (Lee, 13 Oct 2026):
+// { rowId, player, parent, location, feeCents, paidCents, owingCents, status, score, reason } or null.
+export function previousMatch(item, previous = []) {
+  let best = null
+  for (const r of previous) {
+    const { score, why } = rowScore(item, r)
+    if (!score) continue
+    const exact = (r.owingCents > 0 && item.cents === r.owingCents) || (r.feeCents > 0 && item.cents === r.feeCents)
+    if (!best || score > best.score || (score === best.score && exact && !best.exact)) best = { rowId: r.rowId, player: r.player, parent: r.parent || '', location: r.location || '', feeCents: r.feeCents, paidCents: r.paidCents, owingCents: r.owingCents, status: r.status || '', score, exact, reason: `${why}${exact ? (r.owingCents > 0 && item.cents === r.owingCents ? ", amount = what's owing" : ', amount = the fee') : ''}` }
+  }
+  return best
+}
+
+// Hints on a bank line (Lee, 13 Oct 2026):
+//   holiday   inside a school holiday or up to 10 days before one, and the
+//             amount is what a holiday session costs
+//   lastTerm  before this term started, with nobody on this term's list by
+//             that name (and not a holiday payment), or the best name match
+//             is only on last term's list, or last term's row owes exactly
+//             that amount and this term's does not. A Term 4 fee paid before
+//             the term from a family on this term's list is not flagged.
+export function hintsFor(item, { termStart = '', holidaySizes = null, grade = 'none', best = 0, previous = null } = {}) {
+  const holiday = Boolean(holidaySizes?.has(item.cents) && nearHoliday(item.date))
+  const early = Boolean(termStart && item.date < termStart && grade === 'none' && !holiday)
+  const lastTerm = early || Boolean(previous && (previous.score > best || (previous.exact && grade !== 'high')))
+  return { holiday, lastTerm }
+}
+
 // Every bank line still to check, with up to three players it is probably for.
 //   players:  moneyData players (this term's rows only)
 //   ledger:   this term's ledger rows (Airtable fields)
 //   recorded: bank lines recorded so far (see unpairedRecorded)
 // hidden: the lines Lee hid that look like JFP money, so he can show them again.
-export function matchBank({ items, players, ledger = [], ignored = [], since = '', recorded = [] }) {
+// before: lines from before this term's window (since less earlyDays), with
+// the same matches, for older holiday and last term transfers.
+//   previous:     last term's rows (listPreviousTerm), for its matches and hints
+//   holidaySizes: every amount a holiday booking costs; termStart: this term's first day
+export function matchBank({ items, players, ledger = [], ignored = [], since = '', recorded = [], previous = [], holidaySizes = null, termStart = '' }) {
   const skip = new Set(ignored)
   const from = since ? addDays(since, -BANK_LIMITS.earlyDays) : ''
   const rowsById = new Map(players.map((p) => [p.rowId, p]))
@@ -248,22 +284,28 @@ export function matchBank({ items, players, ledger = [], ignored = [], since = '
   const famOf = new Map()
   for (const p of players) for (const k of famKey(p)) famOf.set(k, [...(famOf.get(k) || []), p])
   const family = (p) => [...new Map(famKey(p).flatMap((k) => famOf.get(k) || []).map((x) => [x.rowId, x])).values()]
-  const counts = { checked: 0, high: 0, possible: 0, none: 0, recorded: 0, ignored: 0, notFamily: 0, early: 0, twins: 0, notJfp: 0 }
+  const counts = { checked: 0, high: 0, possible: 0, none: 0, recorded: 0, ignored: 0, notFamily: 0, early: 0, twins: 0, notJfp: 0, before: 0 }
   const sizes = feeSizes(players)
-  // Too early, not a family or hidden: left out before anything is matched.
+  // Last term's families and holiday prices count as JFP money too.
+  const kept = (item) => looksJfp(item, players, sizes) || Boolean(holidaySizes?.has(item.cents)) || previous.some((r) => rowScore(item, r).score >= 1)
+  // Not a family or hidden: left out before anything is matched. Too early
+  // (before this term's window) is counted, then sorted into before.
   const live = [], hidden = []
+  const early = new Set()
   for (const item of items) {
     counts.checked += 1
-    if (from && item.date < from) counts.early += 1
-    else if (notFamily(item)) counts.notFamily += 1
-    else if (skip.has(item.id)) { counts.ignored += 1; if (looksJfp(item, players, sizes)) hidden.push(item) }
+    const isEarly = Boolean(from && item.date < from)
+    if (isEarly) { counts.early += 1; early.add(item.id) }
+    if (notFamily(item)) { if (!isEarly) counts.notFamily += 1 }
+    else if (skip.has(item.id)) { if (!isEarly) counts.ignored += 1; if (kept(item)) hidden.push(item) }
     else live.push(item)
   }
   const { recorded: done, twins } = settle(live, pays, recorded)
-  const out = []
+  const out = [], before = []
   for (const item of live) {
-    if (twins.has(item.id)) { counts.twins += 1; continue }
-    if (done.has(item.id)) { counts.recorded += 1; continue }
+    const isEarly = early.has(item.id)
+    if (twins.has(item.id)) { if (!isEarly) counts.twins += 1; continue }
+    if (done.has(item.id)) { if (!isEarly) counts.recorded += 1; continue }
     const cands = []
     for (const p of players) {
       const { score, why } = rowScore(item, p)
@@ -278,16 +320,22 @@ export function matchBank({ items, players, ledger = [], ignored = [], since = '
         familyRowIds: fam.map((x) => x.rowId), familyOwingCents: famOwing,
       })
     }
-    // Nobody who could have sent it, and not an amount a place costs: not shown, only counted.
-    if (!cands.length && !sizes.has(item.cents)) { counts.notJfp += 1; continue }
+    const prev = previous.length ? previousMatch(item, previous) : null
+    // Nobody who could have sent it, and not an amount a place or a holiday
+    // session costs: not shown, only counted.
+    if (!cands.length && !sizes.has(item.cents) && !prev && !holidaySizes?.has(item.cents)) { if (!isEarly) counts.notJfp += 1; continue }
     cands.sort((a, b) => b.score - a.score || Number(b.exact) - Number(a.exact) || Number(b.owingCents > 0) - Number(a.owingCents > 0) || a.player.localeCompare(b.player))
     const top = cands.slice(0, 3)
     const grade = top.length ? gradeOf(top[0].score, top[0].exact) : 'none'
+    const hints = hintsFor(item, { termStart, holidaySizes, grade, best: top[0]?.score || 0, previous: prev })
+    const line = { ...item, grade, candidates: top, previous: prev, hints, holidayPeriod: suggestPeriod(item.date) }
+    if (isEarly) { counts.before += 1; before.push({ ...line, early: true }); continue }
     counts[grade] += 1
-    out.push({ ...item, grade, candidates: top })
+    out.push(line)
   }
   const rank = { high: 0, possible: 1, none: 2 }
   out.sort((a, b) => rank[a.grade] - rank[b.grade] || b.date.localeCompare(a.date) || a.id.localeCompare(b.id))
+  before.sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id))
   hidden.sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id))
-  return { items: out, counts, hidden: hidden.map(({ id, date, cents, payer, source }) => ({ id, date, cents, payer, source })) }
+  return { items: out, counts, hidden: hidden.map(({ id, date, cents, payer, source }) => ({ id, date, cents, payer, source })), before }
 }

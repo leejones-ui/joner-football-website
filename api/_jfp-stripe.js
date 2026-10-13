@@ -63,7 +63,7 @@ const feeFields = (f) => (f ? { feeCents: f.fee, feeGstCents: f.gst, stripeNetCe
 // read for every kept fee and every "asked lately" marker, then at most
 // FEE_LOOKUPS markers set and asked, however many are still missing.
 const tryKey = (intentId) => `jfp:stripe-fee-try:${intentId}`
-async function fillFees(payments) {
+export async function fillFees(payments) {
   const missing = payments.filter((p) => !p.feeKnown && p.intentId)
   if (!missing.length) return
   const hits = await kvPipeline(missing.flatMap((p) => [['GET', feeKey(p.intentId)], ['GET', tryKey(p.intentId)]]))

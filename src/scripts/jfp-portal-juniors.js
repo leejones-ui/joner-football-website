@@ -29,7 +29,7 @@ function setHash(term) { history.replaceState(null, '', `#money?programme=junior
 
 // The programme switch shown at the top of Money, for both programmes.
 export function programmeSwitch(current) {
-  return `<div class="jp-seg jm-prog" role="group" aria-label="Programme">${[['jfp', 'JFP'], ['juniors', 'Joners Juniors']].map(([v, l]) => `<button type="button" data-programme="${v}" aria-pressed="${current === v}">${l}</button>`).join('')}</div>`
+  return `<div class="jp-seg jm-prog" role="group" aria-label="Programme">${[['jfp', 'JFP'], ['juniors', 'Joners Juniors'], ['holiday', 'Holiday training']].map(([v, l]) => `<button type="button" data-programme="${v}" aria-pressed="${current === v}">${l}</button>`).join('')}</div>`
 }
 
 // ---------- Money: Joners Juniors ----------
