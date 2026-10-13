@@ -159,7 +159,7 @@ await test('a failed or unfinished read is an error, never a zero', async () => 
 
 await test('a refresh that fails keeps the last good figures, marked stale', async () => {
   let store = null
-  const deps = { kvGetJson: async () => store, kvSetJson: async (k, v) => { store = v }, readRows: async () => [row('a', { sessionId: 'cs_1' })], readStripe: async () => ({ sessions: [pay('cs_1')], links: {} }) }
+  const deps = { kvGetJson: async () => store, kvSetJson: async (k, v) => { store = v }, readRows: async () => [row('a', { sessionId: 'cs_1' })], readStripe: async () => ({ sessions: [pay('cs_1')], links: {} }), readLedger: async () => [], readHistory: async () => [] }
   const good = await juniorsMoneyData({ fresh: true }, deps)
   assert.equal(good.stale, false); assert.equal(good.byTerm['Term 4 2026'].collectedCents, 22000)
   const bad = await juniorsMoneyData({ fresh: true }, { ...deps, readStripe: async () => { throw new Error('Stripe down') } })
@@ -173,7 +173,7 @@ await test('the sheet: only matching columns are kept; a failed sheet does not z
   assert.deepEqual(sh.rows[0], { registrationId: 'JJ-9', status: 'paid', player: 'Kim', email: 'k@example.com', amount: '220', sessionId: 'cs_live_abc', intentId: 'pi_live_9', paidAt: '' })
   assert.ok(!JSON.stringify(sh).includes('0400000000') && !JSON.stringify(sh).includes('Asthma'))
   let store = null
-  const d = await juniorsMoneyData({ fresh: true }, { kvGetJson: async () => store, kvSetJson: async (k, v) => { store = v }, readRows: async () => [row('a', { sessionId: 'cs_1' })], readStripe: async () => ({ sessions: [pay('cs_1')], links: {} }), readSheet: async () => { throw new Error('403') } })
+  const d = await juniorsMoneyData({ fresh: true }, { kvGetJson: async () => store, kvSetJson: async (k, v) => { store = v }, readRows: async () => [row('a', { sessionId: 'cs_1' })], readStripe: async () => ({ sessions: [pay('cs_1')], links: {} }), readSheet: async () => { throw new Error('403') }, readLedger: async () => [], readHistory: async () => [] })
   assert.equal(d.byTerm['Term 4 2026'].collectedCents, 22000)
   assert.match(d.coverage.sheet.error, /could not be read/)
 })
