@@ -254,6 +254,22 @@ await test('waitlist on a full group and an enquiry for 1 to 1 are both recorded
   assert.ok(kinds.includes('waitlist') && kinds.includes('enquiry'))
 })
 
+await test('6b. a Pro added session by session: own price per session, nothing owing, email with no payment', async () => {
+  assert.equal((await portal(lee, 'addPlayer', { groupId: TUE420, player: { name: 'Pat Pro' }, parent: { email: 'pro@example.com' }, payment: 'sessions', sendEmail: true })).status, 400, 'a price per session is needed')
+  const add = await portal(lee, 'addPlayer', { groupId: TUE420, player: { name: 'Pat Pro' }, parent: { email: 'pro@example.com' }, payment: 'sessions', perSessionCents: 8000, sendEmail: true, force: true })
+  assert.equal(add.status, 200, JSON.stringify(add.data))
+  const row = (await at()).term4.find((r) => r.id === add.data.rowId).fields
+  assert.equal(row['Term 4 Fee'], 0)
+  assert.match(row['Term 4 Payment Type'], /session/i)
+  assert.match(row['Term 4 Notes'], /PERSESSION:8000/)
+  assert.equal(add.data.payreq, null, 'no payment link')
+  const mail = (await emails()).filter((e) => e.to.includes('pro@example.com'))
+  assert.equal(mail.length, 1)
+  assert.doesNotMatch(mail[0].html, /pay A\$/)
+  const rm = await portal(lee, 'removePlayer', { rowId: add.data.rowId, reason: 'Other', details: 'test' })
+  assert.equal(rm.status, 200)
+})
+
 await test('6. admin adds, moves and removes a player; the family gets the sign-in email; Airtable and the parent page update', async () => {
   const pub = client()
   await gate(pub)

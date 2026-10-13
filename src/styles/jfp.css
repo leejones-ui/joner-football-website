@@ -524,3 +524,40 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 /* Portal Messages: a confirm on top of the open message window. */
 .jp-confirm-over { position: fixed; inset: 0; z-index: 1001; background: rgba(0,0,0,.45); display: grid; place-items: center; }
 .jp-confirm-over .jp-modal { position: relative; inset: auto; transform: none; margin: 0; max-width: min(460px, calc(100vw - 24px)); }
+
+/* family account (Lee, 13 Oct 2026): a side bar like the staff portal, the
+   next session first, short words */
+.ja-app .jp-nav { top: 60px; }
+.ja-navlink { padding: 9px 12px; border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--j-ink-2); white-space: nowrap; text-decoration: none; }
+.ja-navlink:hover, .jp-nav button:hover { background: var(--j-grey-bg); }
+.ja-main { max-width: 860px; }
+.ja-head { margin: 4px 0 18px; }
+.ja-head h1 { margin-top: 4px; }
+.ja-block { margin-bottom: 22px; }
+.ja-block > h2 { margin-bottom: 10px; }
+.ja-next { background: #111827; color: #fff; border-radius: var(--j-radius); padding: 20px; margin-bottom: 14px; }
+.ja-next .k { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
+.ja-next .when { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0 2px; }
+.ja-next .where { opacity: .85; font-size: 15px; }
+.ja-next .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.ja-next .j-btn-line { background: transparent; color: #fff; border-color: rgba(255,255,255,.35); }
+.ja-next .j-btn-light { background: #fff; color: #111827; }
+.ja-next .j-pill { margin-left: 6px; }
+.ja-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 22px; }
+@media (min-width: 700px) { .ja-tiles { grid-template-columns: repeat(4, 1fr); } }
+.ja-tile { background: var(--j-surface); border: 1px solid var(--j-line); border-radius: 14px; padding: 14px; text-align: left; font: inherit; color: inherit; cursor: pointer; text-decoration: none; display: block; }
+.ja-tile:hover { border-color: var(--j-ink); }
+.ja-tile b { display: block; font-size: 15px; }
+.ja-tile span { font-size: 13px; color: var(--j-muted); }
+.ja-player { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 14px; }
+.ja-dates { list-style: none; padding: 0; margin: 10px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+.ja-dates li { font-size: 13px; padding: 6px 8px; border-radius: 8px; background: var(--j-grey-bg); }
+.ja-dates li.past { opacity: .45; }
+.ja-dates li.next { background: #111827; color: #fff; font-weight: 700; }
+.ja-dates li.off { text-decoration: line-through; opacity: .6; }
+.ja-empty { text-align: center; padding: 28px 18px; }
+.ja-empty h2 { margin-bottom: 6px; }
+.ja-empty .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+.ja-steps { counter-reset: s; list-style: none; padding: 0; margin: 0; }
+.ja-steps li { counter-increment: s; display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--j-line); }
+.ja-steps li::before { content: counter(s); flex: none; width: 26px; height: 26px; border-radius: 999px; background: var(--j-grey-bg); font-weight: 700; display: grid; place-items: center; font-size: 13px; }

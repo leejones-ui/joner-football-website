@@ -18,29 +18,34 @@ import '../styles/jfp.css'
       </div>
     </section>
 
-    <div id="app" class="wrap" style="max-width:860px;padding-bottom:60px" hidden>
-      <div id="banner" style="margin-top:18px"></div>
-      <section class="j-hero">
-        <p class="j-kicker" id="term">JFP</p>
-        <h1 style="margin-top:6px" id="hello">Your players</h1>
-        <p class="muted" id="who" style="margin-top:6px"></p>
-      </section>
-      <section id="todo-wrap" class="j-section" hidden>
-        <h2 style="margin-bottom:10px">Finish your booking</h2>
-        <div id="todo"></div>
-      </section>
-      <section id="next-wrap" class="j-section" hidden>
-        <h2 style="margin-bottom:10px" id="next-title">Next term</h2>
-        <div id="next"></div>
-      </section>
-      <section class="j-section">
-        <div id="players"></div>
-      </section>
-      <section id="requests-wrap" class="j-section" hidden>
-        <h2 style="margin-bottom:10px">Applications, trials and waitlist</h2>
-        <div id="requests"></div>
-      </section>
-      <p class="muted small">Something not right? <button type="button" class="j-foot-link" style="display:inline;text-decoration:underline" data-contact>Contact us</button>.</p>
+    <div id="app" class="jp-app ja-app" hidden>
+      <nav class="jp-nav" id="ja-nav" aria-label="My account">
+        <button type="button" data-panel="home" aria-current="page">Home</button>
+        <button type="button" data-panel="sessions">My sessions</button>
+        <a class="ja-navlink" href="/jfp-booking/">Timetable</a>
+        <button type="button" data-panel="term">About Term 4</button>
+        <button type="button" data-panel="cancel">Can't make a session</button>
+        <button type="button" data-panel="videos">Training videos</button>
+        <button type="button" data-panel="app">The JF App</button>
+        <button type="button" data-contact>Contact us</button>
+      </nav>
+      <main class="jp-main ja-main" id="view" tabindex="-1">
+        <div id="banner"></div>
+        <header class="ja-head">
+          <div><p class="j-kicker" id="term">JFP</p><h1 id="hello">Your players</h1><p class="muted small" id="who"></p></div>
+        </header>
+        <section data-pane="home">
+          <section id="todo-wrap" class="ja-block" hidden><h2>Finish your booking</h2><div id="todo"></div></section>
+          <div id="home"></div>
+          <section id="next-wrap" class="ja-block" hidden><h2 id="next-title">Next term</h2><div id="next"></div></section>
+          <section id="requests-wrap" class="ja-block" hidden><h2>Applications, trials and waitlist</h2><div id="requests"></div></section>
+        </section>
+        <section data-pane="sessions" hidden><div id="players"></div></section>
+        <section data-pane="term" hidden><div id="term-info"></div></section>
+        <section data-pane="cancel" hidden><div id="cancel-help"></div></section>
+        <section data-pane="videos" hidden><div id="videos"></div></section>
+        <section data-pane="app" hidden><div id="app-info"></div></section>
+      </main>
     </div>
     <JfpFooter />
   </div>

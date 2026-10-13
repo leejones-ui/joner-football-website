@@ -1,6 +1,7 @@
 // My account, the family page: sign in with an emailed code, then see players,
 // sessions, what is paid, waivers, and anything staff asked the family to do.
 import { $, esc, api, toast, openSheet, closeSheet, signIn, whoAmI, signOut, waiverBlock } from './jfp-common.js'
+import { termInfo, expectations, links } from '../data/jfp-term-info.js'
 
 const q = new URLSearchParams(location.search)
 let D = null
@@ -52,9 +53,11 @@ async function confirmPaid(sid) {
 async function load() {
   const r = await api('/api/jfp-account', { action: 'overview', pay: q.get('pay') || '' })
   if (r.status === 401) return showSignIn()
-  if (!r.ok) { $('players').innerHTML = `<div class="j-empty">${esc(r.data.error || 'Could not load your account.')}</div>`; return }
+  if (!r.ok) { $('home').innerHTML = `<div class="j-empty">${esc(r.data.error || 'Could not load your account.')}</div>`; return }
   D = r.data
   render()
+  const h = location.hash.slice(1)
+  if (PANELS.includes(h)) show(h)
 }
 
 function niceDate(iso) { const d = new Date(`${String(iso).slice(0, 10)}T00:00:00Z`); return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-AU', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }) }
@@ -157,7 +160,7 @@ function cancelSheet(e, p) {
 function render() {
   $('term').textContent = D.term
   if (D.kitUrl && $('kit-link')) $('kit-link').href = D.kitUrl
-  $('hello').textContent = D.parentName ? `Hi ${D.parentName.split(' ')[0]}` : 'Your players'
+  $('hello').textContent = D.parentName ? `Hi ${D.parentName.split(' ')[0]}` : 'Welcome'
   $('who').innerHTML = `Signed in as <b>${esc(D.email)}</b>`
 
   $('todo-wrap').hidden = !D.todo.length
@@ -177,26 +180,9 @@ function render() {
       </ol>
     </div>`).join('')
 
-  if (!D.players.length) {
-    $('players').innerHTML = `<div class="j-empty">We do not have any players under <b>${esc(D.email)}</b> yet.<br><br><a class="j-btn j-btn-dark" href="/jfp-booking/">See the timetable</a><p class="small" style="margin-top:12px">Already train with us? You may have booked with a different email. Sign out and sign in with that one, or <button type="button" data-contact style="display:inline;background:none;border:0;padding:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer">tell us the email you used</button> and we will link it for you.</p></div>`
-  } else {
-    $('players').innerHTML = `<h2 style="margin-bottom:10px">Players</h2>` + D.players.map((p) => `
-      <article class="j-card" style="padding:16px;margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-          <div><h3 style="font-size:18px">${esc(p.name)}</h3><p class="muted small">${p.age != null ? `Age ${esc(p.age)} on the first day of term` : 'Age not on file'}</p></div>
-          <div>${p.waiver.onFile ? `<span class="j-pill j-pill-green">Waiver on file${p.waiver.signedDate ? `, ${esc(niceDate(p.waiver.signedDate))}` : ''}</span>` : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-waiver-player="${esc(p.key)}">Sign the waiver</button>`}</div>
-        </div>
-        ${p.enrolments.length ? p.enrolments.map((e) => `
-          <div style="border-top:1px solid #F0F1F3;margin-top:12px;padding-top:12px">
-            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
-              <div><b>${esc(e.day)} ${esc(e.time)}</b> · ${esc(e.location)}${e.coach ? ` · ${esc(e.coach)}` : ''}<p class="muted small">${e.status !== 'Confirmed' ? `${esc(e.status)} · ` : ''}First session ${esc(e.firstDate)}${e.maps ? ` · <a href="${esc(e.maps)}" target="_blank" rel="noopener noreferrer">Map</a>` : ''}</p></div>
-              <div>${payPill(e.payment)}</div>
-            </div>
-            <details style="margin-top:6px"><summary class="small muted" style="cursor:pointer">All ${esc(e.dates.length)} dates</summary><p class="small" style="margin-top:6px">${esc(e.dates.join(', '))}</p></details>
-            ${cancelBlock(e, p)}
-          </div>`).join('') : p.placeNoSession ? `<p class="muted small" style="margin-top:10px">${esc(p.name)} has a place for ${esc(D.term)}. We are confirming the day and time and will be in touch.</p>` : `<p class="muted small" style="margin-top:10px">Not booked into ${esc(D.term)} yet. <a href="/jfp-booking/">See the timetable</a></p>`}
-      </article>`).join('')
-  }
+  renderHome()
+  renderSessions()
+  renderPanels()
 
   // Next term: keep your place (hold or pay in full) or say not returning.
   $('next-wrap').hidden = !D.nextTerm
@@ -222,6 +208,122 @@ function render() {
     <div><b>${esc(kind[r.kind] || r.kind)}</b> · ${esc(r.players.join(', '))}<p class="muted small">${esc(r.group)}</p></div>
     <span class="j-pill j-pill-${(state[r.status] || state.pending)[0]}">${esc(r.status === 'offered' && r.offer === 'trial' ? 'Trial offered, see To do' : (state[r.status] || state.pending)[1])}</span></div>`).join('')
 }
+
+
+// ---------- the family portal panels (Lee, 13 Oct 2026) ----------
+// Home leads with the next session; the rest sits in the side bar.
+
+const first = (name) => esc(String(name || '').split(' ')[0])
+// Every enrolment of every player, with its next session still to come.
+function upcoming() {
+  const out = []
+  for (const p of D.players) for (const e of p.enrolments) {
+    const next = (e.sessions || []).find((x) => !x.cancelled) || null
+    out.push({ p, e, next })
+  }
+  return out.sort((x, y) => (x.next?.startMs || Infinity) - (y.next?.startMs || Infinity))
+}
+function dayName(ms) { return new Date(ms).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney', weekday: 'long', day: 'numeric', month: 'long' }) }
+
+function nextCard({ p, e, next }) {
+  if (!next) return ''
+  const contact = (e.contacts || [])[0]
+  return `<article class="ja-next">
+    <div class="k">Next session · ${first(p.name)}</div>
+    <div class="when">${esc(dayName(next.startMs))}, ${esc(e.time)}</div>
+    <div class="where">${esc(e.location)}${e.coach ? ` · ${esc(e.coach)}` : ''}${e.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(e.status)}</span>` : ''}</div>
+    <div class="row">
+      ${e.maps ? `<a class="j-btn j-btn-light j-btn-sm" href="${esc(e.maps)}" target="_blank" rel="noopener noreferrer">Directions</a>` : ''}
+      <button type="button" class="j-btn j-btn-line j-btn-sm" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}">Can't make it</button>
+      ${contact ? `<a class="j-btn j-btn-line j-btn-sm" href="tel:${esc(contact.tel)}">Call ${esc(contact.name)}</a>` : ''}
+    </div>
+  </article>`
+}
+
+function renderHome() {
+  $('who').innerHTML = `Signed in as <b>${esc(D.email)}</b>`
+  const tiles = `<div class="ja-tiles">
+    <button type="button" class="ja-tile" data-go="sessions"><b>My sessions</b><span>Every date this term</span></button>
+    <button type="button" class="ja-tile" data-go="term"><b>About ${esc(D.term)}</b><span>What to bring, kit, paying</span></button>
+    <button type="button" class="ja-tile" data-go="videos"><b>Training videos</b><span>See how we train</span></button>
+    <button type="button" class="ja-tile" data-go="app"><b>The JF App</b><span>Free for JFP players</span></button>
+  </div>`
+  if (!D.players.length) {
+    $('home').innerHTML = `<div class="j-card ja-empty" style="margin-bottom:14px">
+      <h2>No sessions booked yet</h2>
+      <p class="muted">Pick a spot on the timetable and apply. We reply within 48 hours.</p>
+      <div class="row"><a class="j-btn j-btn-dark" href="${links.booking}">See the timetable</a><button type="button" class="j-btn j-btn-line" data-contact>Already train with us?</button></div>
+      <p class="muted small" style="margin-top:12px">Booked with another email? Sign out and use that one.</p>
+    </div>${tiles.replace(/<button[^>]*data-go="sessions"[\s\S]*?<\/button>/, '')}`
+    return
+  }
+  const up = upcoming()
+  const cards = up.map(nextCard).join('')
+  const waiting = D.players.filter((p) => !p.enrolments.length)
+  const players = D.players.map((p) => `<div class="j-card ja-player" style="margin-bottom:8px">
+      <div><b>${esc(p.name)}</b><br><span class="muted small">${p.enrolments.length ? p.enrolments.map((e) => `${esc(e.day)} ${esc(e.time)}, ${esc(e.location)}`).join(' · ') : p.placeNoSession ? 'Place confirmed, day and time to come' : 'Not booked this term'}</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${p.enrolments.map((e) => payPill(e.payment)).join('')}${p.waiver.onFile ? '<span class="j-pill j-pill-green">Waiver</span>' : `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-waiver-player="${esc(p.key)}">Sign waiver</button>`}</div>
+    </div>`).join('')
+  $('home').innerHTML = `${cards}${waiting.length ? `<div class="j-box j-box-grey" style="margin-bottom:14px">${waiting.map((p) => p.placeNoSession ? `<b>${esc(p.name)}</b> has a place. We will confirm the day and time with you.` : `<b>${esc(p.name)}</b> is not booked this term. <a href="${links.booking}" style="text-decoration:underline">See the timetable</a>`).join('<br>')}</div>` : ''}
+    <section class="ja-block"><h2>Players</h2>${players}</section>${tiles}`
+}
+
+function renderSessions() {
+  if (!D.players.length) { $('players').innerHTML = `<h2>My sessions</h2><div class="j-card ja-empty"><p class="muted">Nothing booked yet.</p><div class="row"><a class="j-btn j-btn-dark" href="${links.booking}">See the timetable</a></div></div>`; return }
+  $('players').innerHTML = `<h2 style="margin-bottom:10px">My sessions</h2>` + D.players.map((p) => `
+    <article class="j-card" style="padding:16px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        <div><h3 style="font-size:18px">${esc(p.name)}</h3><p class="muted small">${p.age != null ? `Age ${esc(p.age)}` : ''}</p></div>
+        <div>${p.waiver.onFile ? `<span class="j-pill j-pill-green">Waiver on file</span>` : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-waiver-player="${esc(p.key)}">Sign the waiver</button>`}</div>
+      </div>
+      ${p.enrolments.length ? p.enrolments.map((e) => {
+        const future = new Set((e.sessions || []).map((x) => x.label))
+        const off = new Set((e.sessions || []).filter((x) => x.cancelled).map((x) => x.label))
+        const nextLabel = (e.sessions || []).find((x) => !x.cancelled)?.label
+        return `<div style="border-top:1px solid var(--j-line);margin-top:12px;padding-top:12px">
+          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div><b>${esc(e.day)} ${esc(e.time)}</b> · ${esc(e.location)}${e.coach ? ` · ${esc(e.coach)}` : ''}${e.maps ? ` · <a href="${esc(e.maps)}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">Map</a>` : ''}</div>
+            <div>${payPill(e.payment)}</div>
+          </div>
+          <ul class="ja-dates">${e.dates.map((d) => `<li class="${d === nextLabel ? 'next' : off.has(d) ? 'off' : future.has(d) ? '' : 'past'}">${esc(d)}</li>`).join('')}</ul>
+          ${cancelBlock(e, p)}
+        </div>`
+      }).join('') : `<p class="muted small" style="margin-top:10px">${p.placeNoSession ? `${esc(p.name)} has a place. We will confirm the day and time.` : `Not booked this term. <a href="${links.booking}">See the timetable</a>`}</p>`}
+    </article>`).join('')
+}
+
+function renderPanels() {
+  $('term-info').innerHTML = `<h2 style="margin-bottom:10px">About ${esc(D.term)}</h2>
+    <div class="j-card" style="padding:16px;margin-bottom:12px"><dl class="j-termlist">${termInfo.map(([t, d]) => `<div><dt>${esc(t)}</dt><dd>${esc(d)}</dd></div>`).join('')}</dl></div>
+    <div class="j-card" style="padding:16px;margin-bottom:12px"><h3 style="margin-bottom:8px">Every session</h3><ul style="margin:0;padding-left:18px">${expectations.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
+    ${D.kitUrl ? `<div class="j-card ja-player"><div><b>JF playing kit</b> <span class="j-pill j-pill-red">Required</span><br><span class="muted small">${esc(D.kitPriceLabel || 'A$60')} from BE Teamsport</span></div><a class="j-btn j-btn-dark j-btn-sm" href="${esc(D.kitUrl)}" target="_blank" rel="noopener noreferrer">Order the kit</a></div>` : ''}`
+  const ups = upcoming().filter((x) => x.next)
+  $('cancel-help').innerHTML = `<h2 style="margin-bottom:10px">Can't make a session?</h2>
+    <div class="j-card" style="padding:16px;margin-bottom:12px"><ol class="ja-steps">
+      <li><span>Press <b>Can't make it</b> below, or on the session on Home.</span></li>
+      <li><span>Pick the date and tell us why. The coach sees it straight away.</span></li>
+      <li><span>Changed your mind? Press <b>Undo</b> and the coach is told you are coming.</span></li>
+    </ol><p class="muted small" style="margin-top:10px">Please tell us as early as you can. There are no make-up sessions. Less than a day to go? Call or text your coach as well.</p></div>
+    ${ups.length ? ups.map(({ p, e, next }) => `<div class="j-card ja-player" style="margin-bottom:8px"><div><b>${esc(p.name)}</b><br><span class="muted small">Next: ${esc(next.label)}, ${esc(e.time)}, ${esc(e.location)}</span></div><button type="button" class="j-btn j-btn-dark j-btn-sm" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}">Can't make it</button></div>`).join('') : '<p class="muted">No sessions coming up.</p>'}`
+  $('videos').innerHTML = `<h2 style="margin-bottom:10px">Training videos</h2>
+    <div class="j-card ja-player"><div><b>Joner Football on YouTube</b><br><span class="muted small">Drills, sessions and tips from our coaches. Try them between sessions.</span></div><a class="j-btn j-btn-dark j-btn-sm" href="${links.youtube}" target="_blank" rel="noopener noreferrer">Watch on YouTube</a></div>`
+  $('app-info').innerHTML = `<h2 style="margin-bottom:10px">The Joner Football App</h2>
+    <div class="j-card" style="padding:16px"><p>Every JFP player gets free access to the app, so training keeps going between sessions.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><a class="j-btn j-btn-dark j-btn-sm" href="${links.appStore}" target="_blank" rel="noopener noreferrer">App Store</a><a class="j-btn j-btn-dark j-btn-sm" href="${links.googlePlay}" target="_blank" rel="noopener noreferrer">Google Play</a><a class="j-btn j-btn-line j-btn-sm" href="${links.appPage}">About the app</a></div></div>`
+}
+
+function show(panel) {
+  document.querySelectorAll('[data-pane]').forEach((x) => { x.hidden = x.dataset.pane !== panel })
+  document.querySelectorAll('#ja-nav [data-panel]').forEach((b) => b.setAttribute('aria-current', b.dataset.panel === panel ? 'page' : 'false'))
+  if (location.hash !== `#${panel}`) history.replaceState(null, '', panel === 'home' ? location.pathname + location.search : `#${panel}`)
+  window.scrollTo({ top: 0 })
+}
+const PANELS = ['home', 'sessions', 'term', 'cancel', 'videos', 'app']
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (D && PANELS.includes(h)) show(h) })
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-panel], [data-go]')
+  if (b) show(b.dataset.panel || b.dataset.go)
+})
 
 document.addEventListener('click', async (e) => {
   const pay = e.target.closest('[data-pay]')

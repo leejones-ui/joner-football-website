@@ -201,7 +201,11 @@ async function addPlayer(req, res, principal, config, body) {
   const email = validEmail(body.parent?.email)
   const parentName = clean(body.parent?.name, 100)
   const mobile = clean(body.parent?.mobile, 40)
-  const payment = ['offline', 'link', 'trial', 'none'].includes(body.payment) ? body.payment : 'none'
+  const payment = ['offline', 'link', 'trial', 'none', 'sessions'].includes(body.payment) ? body.payment : 'none'
+  // Session by session (the Pros, Lee 13 Oct 2026): their own price per
+  // session, nothing owing until sessions are billed from Money.
+  const perSession = payment === 'sessions' ? Number(body.perSessionCents) : 0
+  if (payment === 'sessions' && !(Number.isInteger(perSession) && perSession >= 100 && perSession <= 200000)) return fail(res, 400, 'Enter the price per session.')
   if ((payment === 'link' || body.sendEmail) && !email) return fail(res, 400, 'Add the parent email so the family can sign in, sign the waiver and pay.')
   const cap = await capacityCheck(group, 1, body.force === true)
   if (cap.error) return fail(res, 409, cap.error, { code: cap.code })
@@ -225,13 +229,14 @@ async function addPlayer(req, res, principal, config, body) {
     // A link is a place held for this family: confirmed once they pay.
     'Term 4 Confirmation': payment === 'link' ? 'Awaiting Reply' : 'Confirmed',
     ...(payment === 'link' ? {} : { 'Confirmation Date': today }),
-    'Term 4 Fee': payment === 'trial' ? 0 : amountCents / 100,
+    'Term 4 Fee': payment === 'trial' || payment === 'sessions' ? 0 : amountCents / 100,
     'Term 4 Amount Paid': payment === 'offline' ? amountCents / 100 : 0,
     'Term 4 Payment Status': payment === 'offline' ? 'Paid' : payment === 'trial' ? 'N/A' : 'Unpaid',
-    'Term 4 Payment Type': isTrial ? 'JFP Trial' : price.type,
-    'Term 4 Notes': `Added by ${principal.name} in the JFP portal${age != null ? `, age ${age}` : ''}${price.fixedSessions && !isTrial ? `, half term from ${from} (${price.sessions} sessions)` : price.proRata && !isTrial ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}`,
+    'Term 4 Payment Type': isTrial ? 'JFP Trial' : payment === 'sessions' ? SESSION_TYPE : price.type,
+    'Term 4 Notes': `Added by ${principal.name} in the JFP portal${age != null ? `, age ${age}` : ''}${price.fixedSessions && !isTrial ? `, half term from ${from} (${price.sessions} sessions)` : price.proRata && !isTrial ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${payment === 'sessions' ? `\nSession by session at ${formatAud(perSession)} a session.` : ''}`,
     ...(payment === 'offline' ? { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' } : {}),
   }
+  if (payment === 'sessions') fields['Term 4 Notes'] = withPerSession(fields['Term 4 Notes'], perSession)
   const [rowId] = await createTerm4Rows([fields])
   let payreq = null
   if (payment === 'link') payreq = await createPayreq({ req, principal, config, group, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: isTrial ? 'trial' : 'admin-add', product, startDate: from, afterpay: body.afterpay !== false })
@@ -243,7 +248,7 @@ async function addPlayer(req, res, principal, config, body) {
     emailed = true
     if (payreq) await savePayreq({ ...payreq, emailedAt: new Date().toISOString() })
   }
-  await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed, payreq: payreq?.id || '', cents: payment === 'none' ? 0 : amountCents } })
+  await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed, payreq: payreq?.id || '', cents: payment === 'none' || payment === 'sessions' ? 0 : amountCents, perSessionCents: perSession || undefined } })
   return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed })
 }
 

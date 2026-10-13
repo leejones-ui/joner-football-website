@@ -721,8 +721,9 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     <div class="j-two"><label class="j-field"><span>Parent name</span><input class="j-input" id="ap-parent"></label><label class="j-field"><span>Mobile</span><input class="j-input" id="ap-mobile" type="tel"></label></div>
     <label class="j-field"><span>Parent email</span><input class="j-input" id="ap-email" type="email"></label>
     <label class="j-field"><span>Payment</span><select class="j-select" id="ap-pay">
-      <option value="link" selected>Payment link: they sign in, confirm the waiver and pay</option><option value="offline">Already paid offline</option><option value="trial">Free trial, no payment</option><option value="none">Decide later</option></select></label>
+      <option value="link" selected>Payment link: they sign in, confirm the waiver and pay</option><option value="offline">Already paid offline</option><option value="sessions">Session by session: their own price, billed from Money</option><option value="trial">Free trial, no payment</option><option value="none">Decide later</option></select></label>
     <div id="ap-price"></div>
+    <label class="j-field" id="ap-per-wrap" hidden><span>Price per session (A$)</span><input class="j-input" id="ap-per" inputmode="decimal" placeholder="e.g. 80"></label>
     <label class="j-check"><input type="checkbox" id="ap-send" ${spotLink ? '' : 'checked'}> <span>Email the family now. They sign in, confirm the waiver (or sign it), pay for this group, then get the training kit.</span></label>
     <p class="j-err" id="ap-err" hidden></p>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ap-go"></button></div>`, { wide: true })
@@ -731,6 +732,7 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     const v = box.querySelector('#ap-pay').value
     const send = box.querySelector('#ap-send').checked
     box.querySelector('#ap-price').hidden = !['link', 'offline'].includes(v)
+    box.querySelector('#ap-per-wrap').hidden = v !== 'sessions'
     box.querySelector('#ap-price-afterpay').closest('label').hidden = v !== 'link'
     box.querySelector('#ap-go').textContent = v === 'link' ? (send ? 'Add and email payment link' : 'Add and copy link') : send ? 'Add and email the family' : 'Add to group'
   }
@@ -771,6 +773,10 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     }
     if (body.player.name.length < 3) { err.textContent = 'Enter the player\'s full name.'; err.hidden = false; return }
     if (payment === 'offline') body.method = 'Offline'
+    if (payment === 'sessions') {
+      body.perSessionCents = Math.round(Number(box.querySelector('#ap-per').value) * 100)
+      if (!(body.perSessionCents >= 100)) { err.textContent = 'Enter the price per session.'; err.hidden = false; return }
+    }
     const btn = box.querySelector('#ap-go'); btn.disabled = true
     let r = await post('addPlayer', body)
     btn.disabled = false
