@@ -16,7 +16,7 @@ import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYear
 import { renderPricesPage, quickModal, progPill, WHERE as QUICK_WHERE } from './jfp-portal-quick.js'
 import { playerFormHtml, wirePlayerForm, filledValues, customOptions, customPrices, noGroupPaymentHtml, wireNoGroupPayment, PROFILE_LISTS } from './jfp-portal-player-form.js'
 import { contactWords } from '../../api/_jfp-contact.js'
-import { textComposer, payLinkText, trialText, helloText } from './jfp-portal-text.js'
+import { textComposer, payLinkText, trialText, helloText, inviteText } from './jfp-portal-text.js'
 import { JJ_NAV, JJ_TABS, JJ_ICON, renderJJ } from './jfp-portal-jj.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
@@ -2435,11 +2435,13 @@ async function renderFamilies() {
     el.innerHTML = keys.filter((k) => d.previews[k]).map((k) => `<div class="j-card" style="padding:12px;margin-bottom:12px"><p class="small"><b>${label[k]}</b> · Subject: ${esc(d.previews[k].subject)}</p><iframe title="Email preview" style="width:100%;height:560px;border:1px solid var(--j-line);border-radius:10px;background:#fff" srcdoc="${esc(d.previews[k].html)}"></iframe></div>`).join('')
   })
   $('fm-send').addEventListener('click', async (e) => {
+    // Read the button before any await: the browser clears currentTarget once
+    // the click is handled, which made Send do nothing after the confirm.
+    const btn = e.currentTarget
     const emails = boxes().filter((b) => b.checked).map((b) => b.dataset.fm)
     if (!emails.length) return toast('Tick the families to email.')
     const again = emails.filter((x) => done(d.list.find((f) => f.email === x) || {})).length
     if (!(await confirmBox(`Email <b>${emails.length}</b> parent${emails.length === 1 ? '' : 's'} now?${again ? ` ${again} already had it and will get it again.` : ''} ${acct ? 'A sign-in invite with no amounts in it. Anyone already signed in is skipped.' : 'Anyone who owes gets a payment link.'}`, { ok: 'Send' }))) return
-    const btn = e.currentTarget
     btn.disabled = true
     const sent = [], failed = [], skipped = []
     let stopped = ''
@@ -2454,8 +2456,13 @@ async function renderFamilies() {
     toast(`Sent ${sent.length}${failed.length ? `, ${failed.length} failed` : ''}${skipped.length ? `, ${skipped.length} skipped` : ''}`)
     await renderFamilies()
     // Every family ticked gets an answer: sent, failed (why) or skipped (why).
-    const li = (x, cls) => `<li><span><b>${esc(x.email)}</b>${x.why ? `<small>${esc(x.why)}</small>` : ''}</span><span class="j-pill j-pill-${cls}">${cls === 'green' ? 'Sent' : cls === 'red' ? 'Failed' : 'Skipped'}</span></li>`
+    const famOf = (em) => d.list.find((f) => f.email === em)
+    const li = (x, cls) => `<li><span><b>${esc(x.email)}</b>${x.why ? `<small>${esc(x.why)}</small>` : ''}</span><span style="display:flex;gap:6px;align-items:center">${acct && famOf(x.email)?.mobile ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-fm-text="${esc(x.email)}">Text</button>` : ''}<span class="j-pill j-pill-${cls}">${cls === 'green' ? 'Sent' : cls === 'red' ? 'Failed' : 'Skipped'}</span></span></li>`
     $('fm-result').innerHTML = `<div class="j-box ${failed.length || stopped ? 'j-box-red' : 'j-box-green'}" style="margin-bottom:12px"><b>Sent to ${sent.length} of ${emails.length}</b>${stopped ? `<p class="small">${esc(stopped)}</p>` : ''}<ul class="jm-hist">${[...failed.map((x) => li(x, 'red')), ...skipped.map((x) => li(x, 'amber')), ...sent.map((e) => li({ email: e }, 'green'))].join('')}</ul></div>`
+    $('fm-result').querySelectorAll('[data-fm-text]').forEach((b) => b.addEventListener('click', () => {
+      const f = famOf(b.dataset.fmText)
+      if (f) textComposer({ modal, toast, rowIds: f.players.map((x) => x.rowId), parent: f.parent, mobile: f.mobile, text: inviteText({ parent: f.parent, player: f.players[0]?.name, email: f.email, self: f.self }), title: f.self ? `Text ${f.players[0]?.name.split(' ')[0]}` : 'Text the family', self: f.self, to: f.self ? f.players[0]?.name : '' })
+    }))
   })
 }
 
@@ -2644,6 +2651,16 @@ async function sendAccountInviteFor(p, btn) {
     out.hidden = false
     out.className = `small j-box ${r.ok ? 'j-box-green' : 'j-box-red'}`
     out.textContent = r.ok ? `Sent to ${r.data.sentTo}.${r.data.signedInBefore ? ' They have signed in before, so they know the way.' : ''}` : (r.data.error || 'Not sent. Try again.')
+    // Text them the same, from 0404 780 351 or your own phone (Lee, 13 Oct 2026).
+    if (p.phone) {
+      const tb = document.createElement('button')
+      tb.type = 'button'
+      tb.className = 'j-btn j-btn-line j-btn-sm'
+      tb.style.marginLeft = '8px'
+      tb.textContent = r.ok ? 'Text them too' : 'Text the invite instead'
+      tb.addEventListener('click', () => { const self = Boolean(p.ownContact); closeModal(); textComposer({ modal, toast, rowIds: [p.rowId], parent: p.parent, mobile: p.phone, text: inviteText({ parent: p.parent, player: p.name, email: p.email, self }), title: self ? `Text ${p.name.split(' ')[0]}` : 'Text the family', self, to: self ? p.name : '' }) })
+      out.append(tb)
+    }
   }
   toast(r.ok ? `Sent to ${r.data.sentTo}` : (r.data.error || 'Not sent.'))
   loadEmailLog(p.rowId)

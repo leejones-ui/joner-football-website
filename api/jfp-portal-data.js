@@ -2469,7 +2469,7 @@ export async function familyPlan(req, config) {
     const unpriced = rows.filter((r) => !owe(r) && r.paymentStatus !== 'Paid' && !(cents(r.paidAud) > 0) && !(cents(r.feeAud) > 0))
     const open = payreqs.find((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.some((id) => owingRows.some((r) => r.id === id)))
     return {
-      email, parent: rows[0].parent,
+      email, parent: rows[0].parent, mobile: rows.find((r) => r.phone)?.phone || '',
       players: rows.map((r) => ({ rowId: r.id, name: r.player, group: byId[r.groupId] ? `${byId[r.groupId].day} ${byId[r.groupId].time}, ${locationFor(config, byId[r.groupId].location).name}` : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Group to be confirmed' })),
       owingCents: owingRows.reduce((t, r) => t + owe(r), 0), owingRowIds: owingRows.map((r) => r.id), openLink: open ? (open.quick ? quickUrl(siteUrl(req), open) : payreqUrl(req, open)) : '',
       kind: owingRows.length ? 'pay' : unpriced.length ? 'noPrice' : 'paid',

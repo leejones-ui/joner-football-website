@@ -81,3 +81,8 @@ export function trialText({ parent, player, when, where, self = false }) {
 export function helloText({ parent, player = '', self = false }) {
   return `Hi ${firstName(self ? player : parent)}, it's Lee from Joner Football. `
 }
+// The account invite as a text, next to the email (Lee, 13 Oct 2026).
+export function inviteText({ parent, player, email, self = false }) {
+  const who = self ? `Your` : `${firstName(player)}'s`
+  return `Hi ${firstName(self ? player : parent)}, it's Lee from Joner Football. ${who} JFP account is ready. Sign in at jonerfootball.com/jfp-account with ${email || 'your email address'}. We send you a 6 digit code, no password needed. We have emailed you the same. See you on the pitch!`
+}

@@ -160,7 +160,9 @@ await test('Players tab: an own contact shows as one, with Text Kai, Account inv
   assert.match(p.text('#pd-emails'), /Action needed: sign in to your JFP account.*account invite · Brevo abc@brevo ?Sent.*Your Term 4 2026 place.*Brevo 400: bad ?Failed/)
   await p.click('#pd-invite')
   assert.deepEqual(p.posts.filter((b) => b.action === 'inviteAccount'), [{ action: 'inviteAccount', rowId: 'recSELF0000000001' }])
-  assert.equal(p.text('#pd-invite-out'), 'Sent to kai@example.com.')
+  assert.match(p.text('#pd-invite-out'), /^Sent to kai@example\.com\./)
+  // and the same invite can go by text (Lee, 13 Oct 2026), when there is a mobile
+  if (/Text/.test(p.text('#pd-invite-out'))) assert.match(p.text('#pd-invite-out'), /Text them too$/)
   assert.deepEqual(p.errors, [])
   p.close()
 })
