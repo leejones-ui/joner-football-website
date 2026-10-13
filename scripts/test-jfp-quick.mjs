@@ -29,7 +29,7 @@ await test('a price needs a name, an amount from A$1 to A$20,000 and a programme
   assert.match(cleanPrice({ name: 'X', amountCents: 500, programme: 'camp' }).error, /Pick the programme/)
   const r = cleanPrice({ name: '  Camp day  ', amountCents: 6500, programme: 'holiday', perSession: true, description: 'x'.repeat(400) }, { id: 'PR-9-ZZZZZZ', now: '2026-10-13T00:00:00Z' })
   assert.deepEqual(r.price, { id: 'PR-9-ZZZZZZ', name: 'Camp day', cents: 6500, programme: 'holiday', description: 'x'.repeat(300), perSession: true, archived: false, createdAt: '2026-10-13T00:00:00Z', updatedAt: '2026-10-13T00:00:00Z' })
-  assert.deepEqual(PROGRAMMES.map(([id]) => id), ['jfp', 'juniors', 'holiday', 'other'])
+  assert.deepEqual(PROGRAMMES.map(([id]) => id), ['jfp', 'pro', 'juniors', 'holiday', 'other'], 'Pro sessions is a programme (13 Oct 2026)')
 })
 
 await test('the saved price list keeps every good price, drops broken ones, and the JFP price keys still work', () => {
@@ -283,7 +283,7 @@ const PAYMENTS = { success: true, bookings: [], payreqs: [
 
 await test('Payment links: quick links in the list with what they are for, programme and status; chips by programme', async () => {
   const p = await openPortal({ hash: '#payments', onPost: (b) => (b.action === 'payments' ? structuredClone(PAYMENTS) : b.action === 'board' ? BOARD : null) })
-  assert.deepEqual([...p.d.querySelectorAll('#pl-prog [data-prog]')].map((b) => b.textContent), ['All 5', 'JFP 1', 'Joners Juniors 1', 'Holiday training 1', 'Other 2'])
+  assert.deepEqual([...p.d.querySelectorAll('#pl-prog [data-prog]')].map((b) => b.textContent), ['All 5', 'JFP 1', 'Pro sessions 0', 'Joners Juniors 1', 'Holiday training 1', 'Other 2'])
   assert.deepEqual([...p.d.querySelectorAll('#pl-list tr[data-link]')].map((tr) => tr.dataset.link), ['PAY-1-AAAAAA', 'PAY-2-BBBBBB', 'PAY-3-CCCCCC'], 'open ones first')
   const two = p.$('tr[data-link="PAY-2-BBBBBB"]')
   const cells = (tr) => [...tr.querySelectorAll('td')].map((td) => td.textContent.replace(/\s+/g, ' ').trim())
@@ -308,7 +308,7 @@ await test('Payment links: quick links in the list with what they are for, progr
 
 await test('Payment links: Other payments to check, ticked Checked; Email it asks first; Quick link opens the form', async () => {
   const p = await openPortal({ hash: '#payments', onPost: (b) => (b.action === 'payments' ? structuredClone(PAYMENTS) : b.action === 'pricing' ? PRICING() : ['quickLinkChecked', 'emailQuickLink'].includes(b.action) ? { success: true } : null) })
-  assert.match(p.text('#pl-other-check'), /^Other payments to check: 1 ?Quick links for Other.*Kit fee ?Pat Payer · payer@example\.com/)
+  assert.match(p.text('#pl-other-check'), /^Other payments to check: 1 ?Quick links for Pro sessions or Other.*Kit fee ?Pat Payer · payer@example\.com/)
   await p.click('#pl-other-check [data-check-quick="PAY-4-DDDDDD"]')
   assert.deepEqual(p.posts.find((b) => b.action === 'quickLinkChecked'), { action: 'quickLinkChecked', id: 'PAY-4-DDDDDD' })
   await p.click('[data-email-quick="PAY-2-BBBBBB"]')

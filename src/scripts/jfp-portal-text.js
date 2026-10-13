@@ -19,9 +19,11 @@ const STATE = {
   expired: ['amber', 'Not sent in time.'],
 }
 
-export function textComposer({ modal, toast, rowIds, parent = '', mobile = '', text = '', title = 'Text the family' }) {
-  const box = modal(`<h2 style="margin-bottom:4px">${esc(title)}</h2>
-    <p class="muted small" style="margin-bottom:12px">To ${esc(parent || 'the family')}${mobile ? `, ${esc(mobile)}` : ''}. From the work number 0404 780 351, between 8am and 8pm. Check the words: this is exactly what they get.</p>
+// self: the player is their own contact, so the text goes to them (to: their name).
+export function textComposer({ modal, toast, rowIds, parent = '', mobile = '', text = '', title = '', self = false, to = '' }) {
+  const who = to || (self ? 'the player' : parent || 'the family')
+  const box = modal(`<h2 style="margin-bottom:4px">${esc(title || (self ? `Text ${who}` : 'Text the family'))}</h2>
+    <p class="muted small" style="margin-bottom:12px">To ${esc(who)}${mobile ? `, ${esc(mobile)}` : ''}. From the work number 0404 780 351, between 8am and 8pm. Check the words: this is exactly what they get.</p>
     <label class="j-field"><span>The text</span><textarea class="j-textarea" id="tx-text" rows="7" maxlength="640">${esc(text)}</textarea></label>
     <p class="muted small" id="tx-count" style="margin-top:-6px"></p>
     <div id="tx-status" style="margin-top:8px"></div>
@@ -64,13 +66,18 @@ export function textComposer({ modal, toast, rowIds, parent = '', mobile = '', t
 }
 
 // The words for the usual cases, in Lee's voice. Plain, no dashes.
+// self: the player is their own contact, so "Hi Kai, you have a spot".
 const firstName = (s) => String(s || '').trim().split(/\s+/)[0] || 'there'
-export function payLinkText({ parent, player, when, place, url }) {
-  return `Hi ${firstName(parent)}, it's Lee from Joner Football. ${firstName(player)} has a spot in our ${when} group at ${place}. To lock it in, sign in, sign the waiver and pay here: ${url} We have emailed you the same link. See you on the pitch!`
+export function payLinkText({ parent, player, when, place, url, self = false }) {
+  return self
+    ? `Hi ${firstName(player)}, it's Lee from Joner Football. You have a spot in our ${when} group at ${place}. To lock it in, sign in, sign the waiver and pay here: ${url} We have emailed you the same link. See you on the pitch!`
+    : `Hi ${firstName(parent)}, it's Lee from Joner Football. ${firstName(player)} has a spot in our ${when} group at ${place}. To lock it in, sign in, sign the waiver and pay here: ${url} We have emailed you the same link. See you on the pitch!`
 }
-export function trialText({ parent, player, when, where }) {
-  return `Hi ${firstName(parent)}, it's Lee from Joner Football. ${firstName(player)} is booked in for a trial on ${when} at ${where}. Please sign in and sign the waiver before the session: jonerfootball.com/jfp-account See you on the pitch!`
+export function trialText({ parent, player, when, where, self = false }) {
+  return self
+    ? `Hi ${firstName(player)}, it's Lee from Joner Football. You are booked in for a trial on ${when} at ${where}. Please sign in and sign your waiver before the session: jonerfootball.com/jfp-account See you on the pitch!`
+    : `Hi ${firstName(parent)}, it's Lee from Joner Football. ${firstName(player)} is booked in for a trial on ${when} at ${where}. Please sign in and sign the waiver before the session: jonerfootball.com/jfp-account See you on the pitch!`
 }
-export function helloText({ parent }) {
-  return `Hi ${firstName(parent)}, it's Lee from Joner Football. `
+export function helloText({ parent, player = '', self = false }) {
+  return `Hi ${firstName(self ? player : parent)}, it's Lee from Joner Football. `
 }

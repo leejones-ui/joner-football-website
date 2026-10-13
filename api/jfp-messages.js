@@ -2,6 +2,7 @@
 // family, approve each exact message, and see what happened to it.
 // See api/_jfp-messages.js for the rules. Every change is in the audit log.
 import { siteUrl } from './_holiday-store.js'
+import { firstName } from './_jfp-contact.js'
 import { getConfig, listPayreqs, getPayreq, savePayreq, getGroup, audit, clean, validEmail, ownerEmail, kvCommand } from './_jfp-store.js'
 import { loadRoster, getTerm4Row } from './_jfp-airtable.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
@@ -109,7 +110,7 @@ async function prepare(req, res, principal, config, body) {
   // Any older draft for this family is replaced by these two.
   for (const old of (await listMsgs()).filter((m) => !isJJMsg(m) && m.email === email && m.status === 'draft')) { old.status = 'cancelled'; event(old, principal.email, 'replaced by a new draft'); await saveMsg(old) }
   const by = principal.email
-  const mail = accountInvite({ parentName: fam.parent, players: fam.players, config, signInUrl, payUrl, amountCents: fam.owingCents, needsWaiver: fam.needsWaiver })
+  const mail = accountInvite({ parentName: fam.parent, players: fam.players, config, signInUrl, payUrl, amountCents: fam.owingCents, needsWaiver: fam.needsWaiver, self: fam.self === true })
   const emailMsg = await saveMsg(newMsg({ channel: 'email', family: fam, payreq, evidence: now.evidence, by, content: { ...mail, payUrl }, target: { ref: email, hash: sha(email) } }))
   const ph = familyPhone(now.rows)
   const route = await routeStatus()
@@ -144,7 +145,7 @@ async function prepareCampaign(req, res, principal, config) {
     if (dnc.has(f.email, ph.phone)) { out.dnc.push(f.parent || f.email); continue }
     const fam = { ...f, kind: CAMPAIGN }
     if (!live('email')) {
-      const mail = accountInvite({ parentName: f.parent, players: f.players, config, signInUrl, needsWaiver: f.needsWaiver, money: false, email: f.email })
+      const mail = accountInvite({ parentName: f.parent, players: f.players, config, signInUrl, needsWaiver: f.needsWaiver, money: false, email: f.email, self: f.self === true })
       const m = newMsg({ channel: 'email', family: fam, content: mail, target: { ref: f.email, hash: sha(f.email) }, by })
       m.campaign = CAMPAIGN; m.payloadHash = payloadHash(m)
       await saveMsg(m); out.emails++
@@ -412,17 +413,20 @@ async function quickText(res, principal, body) {
   const ids = (Array.isArray(body.rowIds) ? body.rowIds : [body.rowId]).map((x) => clean(x, 30)).filter(Boolean)
   const rows = roster.players.filter((r) => ids.includes(r.id))
   if (!rows.length) return fail(res, 404, 'Player not found in Airtable.')
+  // A player who is their own contact is called by their first name, never "this family".
+  const self = rows.every((r) => r.ownContact)
+  const who = self ? (firstName(rows[0].player) || 'This player') : 'This family'
   const email = rows[0].email
-  if (!email) return fail(res, 400, 'This family has no email in Airtable. Add one with Edit first.')
+  if (!email) return fail(res, 400, `${who} has no email in Airtable. Add one with Edit first.`)
   const ph = familyPhone(rows)
   if (!ph.phone) return fail(res, 400, `${ph.problem || 'No mobile in Airtable'}. Fix it with Edit on the Players tab, then send.`)
   const text = String(body.text || '').replace(/\r/g, '').trim()
   if (text.length < 10 || text.length > 640) return fail(res, 400, 'Keep the text between 10 and 640 characters.')
   const prefs = await getPrefs()
-  if (prefs[email]?.text === 'no') return fail(res, 409, 'This family asked not to get texts. Email them instead.')
+  if (prefs[email]?.text === 'no') return fail(res, 409, `${who} asked not to get texts. Email them instead.`)
   let dnc
   try { dnc = await doNotContact() } catch { return fail(res, 503, 'Could not check Do Not Contact in Airtable. Try again in a minute.') }
-  if (dnc.has(email, ph.phone)) return fail(res, 409, 'This family is marked Do Not Contact.')
+  if (dnc.has(email, ph.phone)) return fail(res, 409, `${who} is marked Do Not Contact.`)
   const route = await routeStatus()
   // Until Lee has checked one test text from the work number, nothing goes
   // to a family from the portal (it would sit in the queue and expire).

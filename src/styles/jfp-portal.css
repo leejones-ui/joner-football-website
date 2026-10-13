@@ -718,3 +718,16 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 @media (max-width: 420px) { .jj-att li { grid-template-columns: max-content minmax(0, 1fr); } .jj-att .n { grid-column: 2; } }
 .jj-view button.link { min-height: 40px; display: inline-flex; align-items: center; }
 .jj-view .jd-card h3.jj-sec { font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--j-muted); margin: 16px 0 6px; }
+
+/* One player form for Add and Edit (13 Oct 2026): phones first, taps 40px+. */
+.jpf h3 { margin-top: 10px; }
+.jpf .j-check { min-height: 40px; }
+.jpf-fold { margin: 6px 0 4px; border-top: 1px solid var(--j-line); }
+.jpf-fold > summary { min-height: 44px; }
+.jpf-pos .j-chip { min-height: 40px; }
+.jpf-acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 12px; }
+.jpf-acts-left { justify-content: flex-start; margin-top: 8px; }
+.jpf-acts .j-btn { min-height: 44px; }
+.jpf-emails .jm-hist li { gap: 8px; }
+.jpf-emails small { overflow-wrap: anywhere; }
+@media (max-width: 420px) { .jpf-acts .j-btn { flex: 1 1 auto; } }

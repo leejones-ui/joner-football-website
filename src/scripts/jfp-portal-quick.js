@@ -5,12 +5,12 @@
 // ui: { view, post, need, toast, modal, closeModal, confirm, copy, board(), payPill, pricing(), resetPricing() }
 import { esc, money } from './jfp-common.js'
 
-export const PROG_PILL = { jfp: 'blue', juniors: 'violet', holiday: 'amber', other: 'grey' }
+export const PROG_PILL = { jfp: 'blue', pro: 'pink', juniors: 'violet', holiday: 'amber', other: 'grey' }
 export const progPill = (id, label) => `<span class="j-pill j-pill-${PROG_PILL[id] || 'grey'}">${esc(label)}</span>`
 const cents = (v) => Math.round(Number(String(v ?? '').replace(/[^0-9.]/g, '')) * 100)
 const dollars = (c) => (c / 100).toFixed(2).replace(/\.00$/, '')
 // Where a paid link with no player waits to be matched.
-export const WHERE = { jfp: 'Money > JFP, Stripe payments not matched to a player', juniors: 'Money > Joners Juniors, payments not matched to a child', holiday: 'Money > Holiday training, Quick links to check', other: 'Payment links, Other payments to check' }
+export const WHERE = { jfp: 'Money > JFP, Stripe payments not matched to a player', pro: 'Payment links, Pro sessions and Other payments to check', juniors: 'Money > Joners Juniors, payments not matched to a child', holiday: 'Money > Holiday training, Quick links to check', other: 'Payment links, Other payments to check' }
 
 // ---------- Prices ----------
 

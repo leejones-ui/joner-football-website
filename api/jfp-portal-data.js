@@ -14,7 +14,7 @@ import {
   getConfig, saveConfig, listGroups, getGroup, saveGroup, deleteGroup, validateGroup, onlineCounts, placesLeft, listBookings, getBooking, holdPlaces,
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
   coachByAirtableName, sessionDates, dateLabel, formatAud, to24h, clean, newId, audit, listAudit, locationFor, validEmail, ageOn,
-  normName, cleanPhone, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold,
+  normName, cleanPhone, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold, PRO_TYPE, isProType,
   PRODUCTS, QUESTIONS, productFor, priceFor, paidSiblings, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson, kvGetJson, rowEmails, emailsIn, SESSION_TYPE, isSessionType, withPerSession,
 } from './_jfp-store.js'
 import { coachPhotoUrl } from './jfp-groups.js'
@@ -32,6 +32,8 @@ import { sendAccountInvite, accountInvite, sendFamilyInvite, sendPlaceOffered, s
 import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest } from './_jfp-next.js'
 import { allProfiles, findProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
+import { emailErrorText, emailsTo } from './_jfp-email-log.js'
+import { contactWords, withOwnContact, isAdult } from './_jfp-contact.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
@@ -47,6 +49,14 @@ import { PROGRAMMES, programmeLabel, PRICE_MIN, PRICE_MAX, PRICES_MAX, cleanPric
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
 const cents = (aud) => (typeof aud === 'number' ? Math.round(aud * 100) : 0)
+// An email to a family or player: never lets a failed send look like the
+// whole action failed (the row or link is already saved), and always says why.
+async function trySend(what, fn) {
+  try { const r = await fn(); return { emailed: true, messageId: r?.messageId || '' } } catch (error) { console.error(`jfp ${what} email failed`, error); return { emailed: false, emailError: emailErrorText(error) } }
+}
+// Wording for one set of rows: the player when they are their own contact.
+const wordsFor = (rows) => contactWords({ self: rows.length > 0 && rows.every((r) => r.ownContact), players: rows.map((r) => r.player), parent: rows[0]?.parent || '' })
+const programmeOfRows = (rows) => (rows.length && rows.every((r) => isProType(r.paymentType)) ? 'pro' : '')
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 const phoneOk = (v) => String(v || '').replace(/\D/g, '').length >= 8
 const isTestName = (n) => /test/i.test(n || '')
@@ -72,6 +82,7 @@ function playerView(r, config, roster, { money }) {
     waiver: Boolean(w),
     kit: r.kit || '',
     dashboard: onDashboard(r),
+    ownContact: r.ownContact === true,
     ...(money ? {
       parent: r.parent, email: r.email, phone: r.phone,
       paymentStatus: r.paymentStatus || 'Not set', feeCents: cents(r.feeAud), paidCents: cents(r.paidAud), balanceCents: cents(r.balanceAud),
@@ -209,37 +220,91 @@ function amountFor(config, group, body, players = 1) {
   return { amountCents, price, product, from }
 }
 
+// What the Add forms (Timetable and Players tab) send, read the same way:
+// the player, the contact (a parent, or the player as their own contact),
+// player information for the profile, and how they pay. { ok, v } or { error }.
+const ADD_PAYMENTS = ['offline', 'link', 'trial', 'none', 'sessions', 'pro']
+function readAdd(config, body, { group = null } = {}) {
+  const ownContact = body.ownContact === true
+  const name = clean(body.player?.name ?? body.name, 80)
+  if (name.length < 3) return { error: "Enter the player's full name." }
+  const rawEmail = body.parent?.email ?? body.email ?? ''
+  const email = rawEmail ? validEmail(rawEmail) : ''
+  if (rawEmail && !email) return { error: 'That email does not look right.' }
+  // No parent when the player is their own contact: nothing to ask for.
+  const parentName = ownContact ? '' : clean(typeof body.parent === 'object' ? body.parent?.name : body.parent, 100)
+  const mobile = clean(body.parent?.mobile ?? body.mobile, 40)
+  const dob = ISO.test(body.player?.dob || body.dob || '') ? (body.player?.dob || body.dob) : ''
+  const payment = ADD_PAYMENTS.includes(body.payment) ? body.payment : 'none'
+  if (payment === 'trial' && !group) return { error: 'A trial needs a group. Add them on the Timetable, or choose another payment.' }
+  // Session by session and Pro sessions: their own price per session, nothing
+  // owing until sessions are billed from Money (the price can wait until then).
+  const perSession = ['sessions', 'pro'].includes(payment) && body.perSessionCents != null && body.perSessionCents !== '' ? Number(body.perSessionCents) : 0
+  if (perSession && !(Number.isInteger(perSession) && perSession >= 100 && perSession <= 200000)) return { error: 'Enter the price per session in dollars, for example 80.' }
+  // One of Lee's own prices (Money > Prices), for a link or a payment already made.
+  const custom = body.priceId ? priceById(config, body.priceId) : null
+  if (body.priceId && (!custom || custom.archived)) return { error: 'That price is not on the price list any more. Choose another.' }
+  // Player information for the profile, checked before anything is written.
+  const profIn = { ...(body.profile && typeof body.profile === 'object' ? body.profile : {}) }
+  if (dob) profIn.dob = dob
+  for (const k of ['parentName', 'parentMobile', 'parent2Name', 'parent2Email', 'parent2Mobile']) if (ownContact) delete profIn[k]
+  if (!ownContact) { if (parentName) profIn.parentName = parentName; if (mobile) profIn.parentMobile = mobile }
+  const { values: profile, errors } = cleanProfile(profIn)
+  if (errors.length) return { error: errors.join(' ') }
+  const words = contactWords({ self: ownContact, players: [name], parent: parentName })
+  return { ok: true, v: { ownContact, name, email, parentName, mobile, dob, payment, perSession, custom: custom && !custom.builtin ? custom : null, profile, words } }
+}
+
+// The profile for a player just added, in the same request. The row is
+// already written, so a failed profile save is reported, not thrown.
+async function saveAddedProfile(principal, v, rowId) {
+  if (!Object.keys(v.profile).length) return {}
+  try {
+    await saveProfile({ existing: null, name: v.name, key: profileKey(v.name, v.email), emails: v.email ? [v.email] : [], rowIds: [rowId], values: v.profile, by: principal.email, from: 'Staff portal' })
+    return { profileSaved: true }
+  } catch (e) {
+    console.error('jfp add player profile failed', e)
+    return { profileSaved: false, profileError: 'The player was added, but their player information did not save. Open Edit on the Players tab and save it again.' }
+  }
+}
+
+// The payment type and notes line for Pro sessions and session by session.
+function sessionsLine(payment, perSession) {
+  const what = payment === 'pro' ? 'Pro sessions' : 'Session by session'
+  return `${what}${perSession ? ` at ${formatAud(perSession)} a session` : ''}.`
+}
+
 export async function addPlayer(req, res, principal, config, body) {
   const group = await getGroup(body.groupId)
   if (!group) return fail(res, 404, 'Group not found.')
   if (isJuniorsGroup(group)) return fail(res, 400, 'Joners Juniors children are added in the Joners Juniors table, not here.')
-  const name = clean(body.player?.name, 80)
-  if (name.length < 3) return fail(res, 400, 'Enter the player\'s full name.')
-  const email = validEmail(body.parent?.email)
-  const parentName = clean(body.parent?.name, 100)
-  const mobile = clean(body.parent?.mobile, 40)
-  const payment = ['offline', 'link', 'trial', 'none', 'sessions'].includes(body.payment) ? body.payment : 'none'
-  // Session by session (the Pros, Lee 13 Oct 2026): their own price per
-  // session, nothing owing until sessions are billed from Money.
-  // The price can also be set when the sessions are billed.
-  const perSession = payment === 'sessions' && body.perSessionCents != null && body.perSessionCents !== '' ? Number(body.perSessionCents) : 0
-  if (perSession && !(Number.isInteger(perSession) && perSession >= 100 && perSession <= 200000)) return fail(res, 400, 'Enter the price per session in dollars, for example 80.')
-  if ((payment === 'link' || body.sendEmail) && !email) return fail(res, 400, 'Add the parent email so the family can sign in, sign the waiver and pay.')
+  const read = readAdd(config, body, { group })
+  if (read.error) return fail(res, 400, read.error)
+  const { name, email, parentName, mobile, dob, payment, perSession, custom, ownContact, words } = read.v
+  if ((payment === 'link' || body.sendEmail) && !email) return fail(res, 400, ownContact ? "Add the player's email so they can sign in, sign the waiver and pay." : 'Add the parent email so the family can sign in, sign the waiver and pay.')
   // The same player twice in one group (a retry after an error) is refused.
   const already = (await loadRoster({ fresh: true })).players.find((r) => r.holdsPlace && normName(r.player) === normName(name) && r.day === group.day && r.time === group.time && r.location === group.location)
   if (already) return fail(res, 409, `${name} is already in this group.`, { code: 'duplicate', rowId: already.id })
   const cap = await capacityCheck(group, 1, body.force === true)
   if (cap.error) return fail(res, 409, cap.error, { code: cap.code })
-  const dob = ISO.test(body.player?.dob || '') ? body.player.dob : ''
   const age = dob ? ageOn(dob, config.termStart) : (Number.isInteger(Number(body.player?.age)) ? Number(body.player.age) : null)
-  if (payment === 'offline' && !(Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0)) return fail(res, 400, 'Enter the amount they paid.')
-  const { amountCents, price, product, from } = amountFor(config, group, body)
-  const sibErr = await siblingGuard(product, email, [clean(body.player?.name, 100)])
+  if (payment === 'offline' && !(Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0) && !custom) return fail(res, 400, 'Enter the amount they paid.')
+  const fromPrice = amountFor(config, group, body)
+  const { price, product, from } = fromPrice
+  const typed = Number(body.amountCents)
+  const amountCents = custom ? (Number.isInteger(typed) && typed > 0 ? typed : custom.cents) : fromPrice.amountCents
+  const sibErr = custom ? null : await siblingGuard(product, email, [name])
   if (sibErr) return fail(res, 400, sibErr)
-  const isTrial = payment === 'trial' || product === 'trial'
+  const isTrial = payment === 'trial' || (!custom && product === 'trial')
+  const isPro = payment === 'pro' || custom?.programme === 'pro'
+  const perSessionPay = payment === 'sessions' || payment === 'pro'
   const coach = coachById(config, group.coachId)
   const addId = newId('ADD')
   const today = sydneyToday()
+  const type = isTrial ? 'JFP Trial' : isPro ? PRO_TYPE : payment === 'sessions' ? SESSION_TYPE : price.type
+  let notes = `Added by ${principal.name} in the JFP portal${isTrial && from ? `. Trial offered for ${from}` : ''}${age != null ? `, age ${age}` : ''}${!custom && price.fixedSessions && !isTrial && !perSessionPay ? `, half term from ${from} (${price.sessions} sessions)` : !custom && price.proRata && !isTrial && !perSessionPay ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${custom && !perSessionPay ? `, ${custom.name}` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${perSessionPay ? `\n${sessionsLine(payment, perSession)}` : ''}`
+  if (perSession) notes = withPerSession(notes, perSession)
+  notes = withOwnContact(notes, ownContact)
   const fields = {
     'Player Name': name,
     'Parent Name': parentName,
@@ -250,30 +315,29 @@ export async function addPlayer(req, res, principal, config, body) {
     // A link is a place held for this family: confirmed once they pay.
     'Term 4 Confirmation': payment === 'link' ? 'Awaiting Reply' : 'Confirmed',
     ...(payment === 'link' ? {} : { 'Confirmation Date': today }),
-    'Term 4 Fee': payment === 'trial' || payment === 'sessions' ? 0 : amountCents / 100,
+    'Term 4 Fee': payment === 'trial' || perSessionPay ? 0 : amountCents / 100,
     'Term 4 Amount Paid': payment === 'offline' ? amountCents / 100 : 0,
     'Term 4 Payment Status': payment === 'offline' ? 'Paid' : payment === 'trial' ? 'N/A' : 'Unpaid',
-    'Term 4 Payment Type': isTrial ? 'JFP Trial' : payment === 'sessions' ? SESSION_TYPE : price.type,
-    'Term 4 Notes': `Added by ${principal.name} in the JFP portal${isTrial && from ? `. Trial offered for ${from}` : ''}${age != null ? `, age ${age}` : ''}${price.fixedSessions && !isTrial ? `, half term from ${from} (${price.sessions} sessions)` : price.proRata && !isTrial ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${payment === 'sessions' ? `\nSession by session${perSession ? ` at ${formatAud(perSession)} a session` : ''}.` : ''}`,
+    'Term 4 Payment Type': type,
+    'Term 4 Notes': notes,
     ...(payment === 'offline' ? { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' } : {}),
   }
-  if (perSession) fields['Term 4 Notes'] = withPerSession(fields['Term 4 Notes'], perSession)
   const [rowId] = await createTerm4Rows([fields])
+  const prof = await saveAddedProfile(principal, read.v, rowId)
   let payreq = null
-  if (payment === 'link') payreq = await createPayreq({ req, principal, config, group, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: isTrial ? 'trial' : 'admin-add', product, startDate: from, afterpay: body.afterpay !== false })
-  let emailed = false, emailError = ''
+  if (payment === 'link') payreq = await createPayreq({ req, principal, config, group, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: isTrial ? 'trial' : 'admin-add', product: custom ? '' : product, startDate: from, afterpay: body.afterpay !== false, programme: isPro ? 'pro' : '', ownContact })
+  if (payreq && custom) await savePayreq({ ...payreq, productLabel: custom.name })
+  let sent = { emailed: false }
   if (body.sendEmail === true && email) {
     const roster = await loadRoster({ fresh: true })
     const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile], dob }, roster.waivers))
-// The player is already added: an email failure must not look like the add failed.
-    try {
-      await sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq) }, amountCents, trial: isTrial, startDate: from, product })
-      emailed = true
-    } catch (e) { console.error('jfp add player email failed', e); emailError = 'The player was added, but the email did not send. Try the invite again from Players.' }
-    if (payreq) await savePayreq({ ...payreq, emailedAt: new Date().toISOString() })
+    // The player is already added: an email failure must not look like the add failed.
+    sent = await trySend('add player', () => sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq) }, amountCents, trial: isTrial, startDate: from, product, self: ownContact }))
+    if (payreq && sent.emailed) await savePayreq({ ...payreq, ...(custom ? { productLabel: custom.name } : {}), emailedAt: new Date().toISOString() })
   }
-  await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed, payreq: payreq?.id || '', cents: payment === 'none' || payment === 'sessions' ? 0 : amountCents, perSessionCents: perSession || undefined } })
-  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed, emailError })
+  const emailError = sent.emailError ? `${name} was added, but the email to ${email} did not send. ${sent.emailError} Try again with Account invite on the player.` : ''
+  await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed: sent.emailed, payreq: payreq?.id || '', cents: payment === 'none' || perSessionPay ? 0 : amountCents, perSessionCents: perSession || undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
+  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, ownContact, words, ...prof })
 }
 
 // ---------- Players tab: one row per player, searchable, with everything ----------
@@ -310,6 +374,9 @@ async function playersList(req, res, config, body = {}) {
       parent: r.parent || '',
       email: r.email || '',
       phone: r.phone || '',
+      // No parent: the player is their own contact (wording, emails, texts).
+      ownContact: r.ownContact === true,
+      pro: isProType(r.paymentType), perSessionCents: r.perSessionCents || null,
       groupId: gid,
       groupLabel: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : '',
       day: r.day || '', time: r.time || '', location: loc.name || r.location || '',
@@ -340,16 +407,33 @@ async function playersList(req, res, config, body = {}) {
 // Add a player straight from the Players tab, with no group. For a family who
 // has agreed a place but has no session yet, and for test rows. A player added
 // here holds no place and takes no capacity until someone puts them in a group.
+// It takes the same details as the Timetable add (player information, own
+// contact, payment) and can email a sign-in invite or a payment link.
 async function addPlayerNoGroup(req, res, principal, config, body) {
-  const name = clean(body.name, 80)
-  if (name.length < 3) return fail(res, 400, "Enter the player's full name.")
-  const email = body.email ? validEmail(body.email) : ''
-  if (body.email && !email) return fail(res, 400, 'That email does not look right.')
-  const parentName = clean(body.parent, 100)
-  const mobile = clean(body.mobile, 40)
-  const dob = ISO.test(body.dob || '') ? body.dob : ''
-  const feeAud = Number.isFinite(Number(body.feeAud)) && Number(body.feeAud) >= 0 ? Number(body.feeAud) : null
+  const read = readAdd(config, body)
+  if (read.error) return fail(res, 400, read.error)
+  const { name, email, parentName, mobile, payment, perSession, custom, ownContact, words } = read.v
+  if ((payment === 'link' || body.sendEmail === true) && !email) return fail(res, 400, ownContact ? "Add the player's email so they can sign in." : 'Add the parent email so the family can sign in.')
+  // The same player twice with no group (a double tap, or a retry) is refused.
+  const roster = await loadRoster({ fresh: true })
+  const twin = roster.players.find((r) => r.holdsPlace && normName(r.player) === normName(name) && (email ? rowEmails(r).includes(email) : !rowEmails(r).length))
+  if (twin && (!twin.groupId || body.force !== true)) {
+    const where = twin.groupId ? `in ${[twin.day, twin.time, twin.location].filter(Boolean).join(' ')}` : 'with no group yet'
+    return fail(res, 409, `${name}${email ? ` (${email})` : ''} is already in Term 4 Players ${where}.${twin.groupId ? ' Add another row anyway?' : ' Open that row instead.'}`, { code: 'duplicate', rowId: twin.id, inGroup: Boolean(twin.groupId) })
+  }
+  const feeAud = Number.isFinite(Number(body.feeAud)) && Number(body.feeAud) >= 0 && body.feeAud !== '' && body.feeAud != null ? Number(body.feeAud) : null
+  const typed = Number(body.amountCents)
+  const chosen = !custom && PRODUCTS.some((x) => x.key === body.product) ? amountFor(config, null, { ...body, amountCents: undefined }) : null
+  const amountCents = Number.isInteger(typed) && typed > 0 ? typed : custom ? custom.cents : chosen ? chosen.amountCents : 0
+  if (['link', 'offline'].includes(payment) && !amountCents) return fail(res, 400, 'Choose what they are paying for, or type the amount.')
+  const isPro = payment === 'pro' || custom?.programme === 'pro'
+  const perSessionPay = payment === 'sessions' || payment === 'pro'
   const note = clean(body.note, 300)
+  const what = custom ? custom.name : chosen ? productFor(chosen.product).label : ''
+  let notes = `Added by ${principal.name} in the JFP portal Players tab, with no session yet.${note ? ` ${note}` : ''}${what && !perSessionPay ? ` ${what}.` : ''}${payment === 'offline' ? ` Paid offline (${clean(body.method, 30) || 'not stated'}).` : ''}${perSessionPay ? ` ${sessionsLine(payment, perSession)}` : ''}`
+  if (perSession) notes = withPerSession(notes, perSession)
+  notes = withOwnContact(notes, ownContact)
+  const fee = perSessionPay ? 0 : ['link', 'offline'].includes(payment) ? amountCents / 100 : feeAud
   const fields = {
     'Player Name': name,
     ...(parentName ? { 'Parent Name': parentName } : {}),
@@ -357,17 +441,36 @@ async function addPlayerNoGroup(req, res, principal, config, body) {
     ...(mobile ? { Phone: mobile } : {}),
     // No day, time or location on purpose: they are not in a group yet.
     'Term 4 Confirmation': 'Awaiting Reply',
-    ...(feeAud != null ? { 'Term 4 Fee': feeAud } : {}),
-    'Term 4 Amount Paid': 0,
-    'Term 4 Payment Status': 'Not Set',
-    'Term 4 Notes': `Added by ${principal.name} in the JFP portal Players tab, with no session yet.${note ? ` ${note}` : ''}`,
+    ...(fee != null ? { 'Term 4 Fee': fee } : {}),
+    'Term 4 Amount Paid': payment === 'offline' ? amountCents / 100 : 0,
+    'Term 4 Payment Status': payment === 'offline' ? 'Paid' : perSessionPay || payment === 'link' ? 'Unpaid' : 'Not Set',
+    ...(isPro ? { 'Term 4 Payment Type': PRO_TYPE } : payment === 'sessions' ? { 'Term 4 Payment Type': SESSION_TYPE } : chosen ? { 'Term 4 Payment Type': chosen.price.type } : {}),
+    ...(payment === 'offline' ? { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' } : {}),
+    'Term 4 Notes': notes,
   }
   const [rowId] = await createTerm4Rows([fields])
   // Term 4 Players has no date of birth column: it goes in player information.
-  if (dob) await saveProfile({ existing: null, name, key: profileKey(name, email), emails: email ? [email] : [], rowIds: [rowId], values: { dob }, by: principal.email, from: 'Staff portal' }).catch((e) => console.error('jfp profile dob failed', e))
+  const prof = await saveAddedProfile(principal, read.v, rowId)
   await bustRosterCache()
-  await audit({ by: principal.email, action: 'player.add.nogroup', target: rowId, after: { name, email, feeAud } })
-  return res.status(200).json({ success: true, rowId })
+  let payreq = null
+  if (payment === 'link') {
+    payreq = await createPayreq({ req, principal, config, group: null, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: 'admin-add', product: chosen?.product || '', startDate: '', afterpay: body.afterpay !== false, programme: isPro ? 'pro' : '', ownContact })
+    if (what) { payreq.productLabel = what; await savePayreq(payreq) }
+  }
+  let sent = { emailed: false }
+  if (body.sendEmail === true && email) {
+    const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile], dob: read.v.dob }, roster.waivers))
+    sent = payreq
+      ? await trySend('add player no group', () => sendFamilyInvite({ to: email, parentName, playerNames: [name], group: null, config, url: payreqUrl(req, payreq), needs: { details: false, waiver: !hasWaiver, payment: true }, amountCents, self: ownContact }))
+      : await trySend('add player no group invite', () => sendAccountInvite({ to: email, parentName, players: [{ name, group: 'Group to be confirmed' }], config, signInUrl: `${siteUrl(req)}/jfp-account/`, needsWaiver: !hasWaiver, money: false, email, self: ownContact }))
+    if (sent.emailed) {
+      if (payreq) await savePayreq({ ...payreq, emailedAt: new Date().toISOString() })
+      else await kvCommand(['HSET', 'jfp:acct-only-invited', email, new Date().toISOString()])
+    }
+  }
+  const emailError = sent.emailError ? `${name} was added, but the email to ${email} did not send. ${sent.emailError}` : ''
+  await audit({ by: principal.email, action: 'player.add.nogroup', target: rowId, after: { name, email, feeAud: fee, payment, emailed: sent.emailed, payreq: payreq?.id || '', ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
+  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, ownContact, words, ...prof })
 }
 
 // No email in the link: it would end up in browser history and server logs.
@@ -376,10 +479,14 @@ export function payreqUrl(req, q) { return `${siteUrl(req)}/jfp-account/?pay=${e
 // Offers from requests hold the place for 7 days; balance and term links do not expire.
 const EXPIRING = new Set(['application', 'waitlist', 'trial'])
 
-export async function createPayreq({ req, principal, config, group, rows, email, parentName, amountCents, reason, requestId, product = '', startDate = '', afterpay = true, trialDate = '', creditCents = 0, restoreFields = null }) {
+export async function createPayreq({ req, principal, config, group, rows, email, parentName, amountCents, reason, requestId, product = '', startDate = '', afterpay = true, trialDate = '', creditCents = 0, restoreFields = null, programme = '', ownContact = false }) {
   const q = {
     id: newId('PAY'),
     email, parentName,
+    // Pro sessions players' links say so (Money's Pro view); others are JFP.
+    ...(programme === 'pro' ? { programme: 'pro' } : {}),
+    // The player is their own contact: emails about this link talk to them.
+    ...(ownContact ? { ownContact: true } : {}),
     playerNames: rows.map((r) => r.name),
     playerKeys: rows.map((r) => normName(r.name)),
     term4Ids: rows.map((r) => r.id),
@@ -466,7 +573,7 @@ async function setCoachNote(res, principal, config, body) {
 // contacts, the fee and the payment type. Payments are not edited here: they
 // are recorded or undone on their own. The balance is Airtable's formula.
 // If an open payment link no longer matches the new fee, say so.
-const PAYMENT_TYPES = [SESSION_TYPE, 'JFP 10 weeks', 'JFP Half term (5 weeks)', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
+const PAYMENT_TYPES = [SESSION_TYPE, PRO_TYPE, 'JFP 10 weeks', 'JFP Half term (5 weeks)', 'JFP Pathway 10 weeks', 'Sibling / 2 sessions per week', 'JFP Trial', 'JFP Drop-in', 'JFP 1 on 1 casual', 'JFP 1 on 1, 10 weeks', 'JFP pathway 1 on 1', 'JFP Pathway', 'Additional Term 4 session balance']
 async function editPlayer(res, principal, config, body) {
   const row = await rowOr404(res, body.rowId); if (!row) return
   const f = body.fields || {}
@@ -498,6 +605,11 @@ async function editPlayer(res, principal, config, body) {
     fields['Term 4 Notes'] = withPerSession(row.notes, Math.round(v * 100))
     before.perSessionCents = row.perSessionCents
   }
+  // The player is their own contact (no parent): a tag on the row's notes.
+  if ('ownContact' in f && Boolean(f.ownContact) !== row.ownContact) {
+    fields['Term 4 Notes'] = withOwnContact(fields['Term 4 Notes'] ?? row.notes, f.ownContact === true)
+    before.ownContact = row.ownContact
+  }
   if (!Object.keys(fields).length) return fail(res, 400, 'Nothing to change.')
   await updateTerm4Rows([{ id: row.id, fields }])
   await audit({ by: principal.email, action: 'player.edit', target: row.id, before, after: fields })
@@ -514,7 +626,7 @@ async function getPlayerProfile(res, config, body) {
   const prof = await findProfile({ key, rowIds: [row.id] })
   const waiver = prof ? null : waiverFor(row.player, { emails: rowEmails(row), phones: [row.phone], dob: row.dob }, roster.waivers)
   const prefill = waiver ? await waiverPrefill(waiver.id) : {}
-  return res.status(200).json({ success: true, row: { rowId: row.id, name: row.player, parent: row.parent, email: row.email, phone: row.phone }, profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || isoDate(row.dob) || '' }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubs: clubSuggestions(roster.waivers) } })
+  return res.status(200).json({ success: true, row: { rowId: row.id, name: row.player, parent: row.parent, email: row.email, phone: row.phone, ownContact: row.ownContact, paymentType: row.paymentType || '', feeAud: row.feeAud, paidAud: row.paidAud, perSessionCents: row.perSessionCents || null, paymentTypes: PAYMENT_TYPES }, profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || isoDate(row.dob) || '' }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubs: clubSuggestions(roster.waivers) } })
 }
 async function savePlayerProfile(res, principal, config, body) {
   const row = await rowOr404(res, body.rowId); if (!row) return
@@ -1364,7 +1476,7 @@ async function sendPaymentLink(req, res, principal, config, body) {
   for (const id of ids) { const r = await getTerm4Row(id); if (r) rows.push(r) }
   if (!rows.length) return fail(res, 404, 'Player row not found.')
   const email = validEmail(body.email) || rows[0].email
-  if (!email) return fail(res, 400, 'This player has no parent email in Airtable. Add one to send a link.')
+  if (!email) return fail(res, 400, `${wordsFor(rows).noEmail} Add one to send a link.`)
   // One open link per player, so nobody can pay the same place twice.
   const openLinks = (await listPayreqs()).filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.some((id) => ids.includes(id)))
   if (openLinks.length && body.replace !== true) return fail(res, 409, `${rows.map((r) => r.player).join(' and ')} already ${openLinks.length > 1 ? 'have open links' : `has an open link for ${formatAud(openLinks[0].amountCents)}`}. Replace it with this new one?`, { code: 'link_open' })
@@ -1409,18 +1521,19 @@ async function sendPaymentLink(req, res, principal, config, body) {
     } })))
   }
   const reason = body.reason === 'term-after-trial' ? 'term-after-trial' : chosen?.product === 'trial' ? 'trial' : 'balance'
-  const q = await createPayreq({ req, principal, config, group, rows: rows.map((r) => ({ id: r.id, name: r.player })), email, parentName: rows[0].parent, amountCents, reason, product: chosen?.product || '', startDate: chosen?.from || '', afterpay: body.afterpay !== false, creditCents: onTrial ? credit : 0, restoreFields })
-  let emailed = false
-  if (body.sendEmail === true && group) {
+  const w = wordsFor(rows)
+  const q = await createPayreq({ req, principal, config, group, rows: rows.map((r) => ({ id: r.id, name: r.player })), email, parentName: rows[0].parent, amountCents, reason, product: chosen?.product || '', startDate: chosen?.from || '', afterpay: body.afterpay !== false, creditCents: onTrial ? credit : 0, restoreFields, programme: programmeOfRows(rows), ownContact: w.self })
+  let sent = { emailed: false }
+  // A player with no group yet gets the link too (it used to send nothing).
+  if (body.sendEmail === true) {
     const roster = await loadRoster()
     const needWaiver = rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone], dob: r.dob }, roster.waivers))
-    if (reason === 'term-after-trial') await sendTermOffered({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), amountCents, startDate: chosen?.from || '', creditCents: credit })
-    else await sendFamilyInvite({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), needs: { details: false, waiver: needWaiver, payment: true }, amountCents, trial: reason === 'trial', startDate: chosen?.from || '', product: chosen?.product || '' })
-    emailed = true
-    await savePayreq({ ...q, emailedAt: new Date().toISOString() })
+    if (reason === 'term-after-trial' && group) sent = await trySend('term offered', () => sendTermOffered({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), amountCents, startDate: chosen?.from || '', creditCents: credit, self: w.self }))
+    else sent = await trySend('payment link', () => sendFamilyInvite({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), needs: { details: false, waiver: needWaiver, payment: true }, amountCents, trial: reason === 'trial' && Boolean(group), startDate: chosen?.from || '', product: chosen?.product || '', self: w.self }))
+    if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
-  await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: ids, cents: amountCents, product: chosen?.product || 'balance', emailed } })
-  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed })
+  await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: ids, cents: amountCents, product: chosen?.product || 'balance', emailed: sent.emailed } })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError: sent.emailError ? `The link is made, but the email to ${email} did not send. ${sent.emailError} Copy the link and send it yourself.` : '' })
 }
 
 // What a row's place is, for the family invoice price buttons.
@@ -1493,20 +1606,21 @@ async function familyInvoice(req, res, principal, config, body) {
   if (!amountCents) return res.status(200).json({ success: true, payreq: null, saved: updates.length, message: 'Prices saved. Nothing is owing, so no invoice was made.' })
   const groups = Object.fromEntries((await listGroups()).map((g) => [g.id, g]))
   const placeLabel = (r) => { const g = groups[r.groupId]; return g ? groupSummary(g, config) : [r.day, r.time, r.location].filter(Boolean).join(' ') }
-  const q = await createPayreq({ req, principal, config, group: null, rows: owing.map((x) => ({ id: x.row.id, name: x.row.player })), email, parentName: rows[0].row.parent, amountCents, reason: 'family', afterpay: body.afterpay !== false })
+  const fw = wordsFor(owing.map((x) => x.row))
+  const q = await createPayreq({ req, principal, config, group: null, rows: owing.map((x) => ({ id: x.row.id, name: x.row.player })), email, parentName: rows[0].row.parent, amountCents, reason: 'family', afterpay: body.afterpay !== false, programme: programmeOfRows(owing.map((x) => x.row)), ownContact: fw.self })
   q.places = owing.map((x) => ({ rowId: x.row.id, name: x.row.player, label: placeLabel(x.row), feeCents: x.feeCents, paidCents: x.paidCents, owingCents: x.owingCents }))
   q.groupLabel = [...new Set(q.places.map((x) => x.label))].join(' · ')
   await savePayreq(q)
-  let emailed = false
+  let sent = { emailed: false }
   if (body.sendEmail === true) {
     const roster = await loadRoster()
     const needWaiver = owing.some((x) => !waiverFor(x.row.player, { emails: rowEmails(x.row), phones: [x.row.phone], dob: x.row.dob }, roster.waivers))
-    await sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents, needWaiver })
-    emailed = true
-    await savePayreq({ ...q, emailedAt: new Date().toISOString() })
+    sent = await trySend('family invoice', () => sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents, needWaiver, self: fw.self }))
+    if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
+  const emailed = sent.emailed
   await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: q.term4Ids, cents: amountCents, product: 'family', emailed, replaced: openLinks.map((x) => x.id) } })
-  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed, replaced: openLinks.length })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The invoice link is made, but the email to ${email} did not send. ${sent.emailError}` : '', replaced: openLinks.length })
 }
 
 // Session by session (Lee, 12 Oct 2026): bill the sessions a player came to,
@@ -1530,7 +1644,7 @@ async function sessionInvoice(req, res, principal, config, body) {
   const amountCents = rows.reduce((t, x) => t + x.cents, 0)
   const paidNow = body.mode === 'paid'
   const email = rows[0].row.email
-  if (!paidNow && !email) return fail(res, 400, 'This player has no parent email in Airtable. Add one with Edit first.')
+  if (!paidNow && !email) return fail(res, 400, `${wordsFor(rows.map((x) => x.row)).noEmail} Add one with Edit first.`)
   if (!paidNow && rows.some((x) => !rowEmails(x.row).includes(email))) return fail(res, 400, 'These players are under different parent emails. Send them one at a time.')
   const ids = rows.map((x) => x.row.id)
   let openLinks = []
@@ -1563,18 +1677,19 @@ async function sessionInvoice(req, res, principal, config, body) {
     if (!out.ok) { await updateTerm4Rows(restoreFields); return fail(res, out.status, out.error) }
     return res.status(200).json({ success: true, recorded: formatAud(amountCents) })
   }
-  const q = await createPayreq({ req, principal, config, group: null, rows: rows.map((x) => ({ id: x.row.id, name: x.row.player })), email, parentName: rows[0].row.parent, amountCents, reason: 'sessions', afterpay: false, restoreFields })
+  const sw = wordsFor(rows.map((x) => x.row))
+  const q = await createPayreq({ req, principal, config, group: null, rows: rows.map((x) => ({ id: x.row.id, name: x.row.player })), email, parentName: rows[0].row.parent, amountCents, reason: 'sessions', afterpay: false, restoreFields, programme: programmeOfRows(rows.map((x) => x.row)), ownContact: sw.self })
   q.places = rows.map((x) => ({ rowId: x.row.id, name: x.row.player, label: `${x.sessions} session${x.sessions > 1 ? 's' : ''} at ${formatAud(x.per)}${what ? `, ${what}` : ''}`, feeCents: x.cents, paidCents: 0, owingCents: x.cents }))
   q.groupLabel = 'Session by session'
   await savePayreq(q)
-  let emailed = false
+  let sent = { emailed: false }
   if (body.sendEmail === true) {
-    await sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents, needWaiver: false, sessions: true })
-    emailed = true
-    await savePayreq({ ...q, emailedAt: new Date().toISOString() })
+    sent = await trySend('sessions invoice', () => sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents, needWaiver: false, sessions: true, self: sw.self }))
+    if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
+  const emailed = sent.emailed
   await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: ids, cents: amountCents, product: 'sessions', emailed } })
-  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The link is made, but the email to ${email} did not send. ${sent.emailError}` : '' })
 }
 
 function splitEven(total, n) {
@@ -1603,22 +1718,24 @@ async function changePayreqAmount(req, res, principal, config, body) {
   for (const id of q.term4Ids) { const r = await getTerm4Row(id); if (r) rows.push(r) }
   const share = splitEven(amountCents, rows.length || 1)
   if (rows.length && q.product) await updateTerm4Rows(rows.map((r, i) => ({ id: r.id, fields: { 'Term 4 Fee': (cents(r.paidAud) + share[i]) / 100, 'Term 4 Notes': appendNote(r.notes, `Payment link changed from ${formatAud(q.amountCents)} to ${formatAud(amountCents)} by ${principal.name}.`) } })))
-  let emailed = false
+  let sent = { emailed: false }
   if (body.sendEmail === true) {
     const group = q.groupId ? await getGroup(q.groupId) : null
     // A quick link has its own page and its own email (13 Oct 2026).
-    if (q.quick && q.email) { await sendQuickLinkEmail({ to: q.email, parentName: q.parentName, forText: q.forText, amountCents, url: quickUrl(siteUrl(req), q), expiresAt: q.expiresAt, afterpay: q.afterpay !== false }); await kvCommand(['HSET', QUICK_EMAILED, q.id, new Date().toISOString()]); emailed = true }
-    else if (group && !q.quick) { await sendFamilyInvite({ to: q.email, parentName: q.parentName, playerNames: q.playerNames, group, config, url: payreqUrl(req, q), needs: { details: false, waiver: false, payment: true }, amountCents, trial: q.reason === 'trial', startDate: q.startDate }); emailed = true }
+    if (q.quick && q.email) { sent = await trySend('quick link', () => sendQuickLinkEmail({ to: q.email, parentName: q.parentName, forText: q.forText, amountCents, url: quickUrl(siteUrl(req), q), expiresAt: q.expiresAt, afterpay: q.afterpay !== false })); if (sent.emailed) await kvCommand(['HSET', QUICK_EMAILED, q.id, new Date().toISOString()]) }
+    else if (!q.quick && q.email) sent = await trySend('changed link', () => sendFamilyInvite({ to: q.email, parentName: q.parentName, playerNames: q.playerNames, group, config, url: payreqUrl(req, q), needs: { details: false, waiver: false, payment: true }, amountCents, trial: q.reason === 'trial' && Boolean(group), startDate: q.startDate, self: q.ownContact === true }))
+    else sent = { emailed: false, emailError: 'There is no email on this link.' }
   }
+  const emailed = sent.emailed
   await audit({ by: principal.email, action: 'payreq.change', target: q.id, before: { cents: q.amountCents }, after: { cents: amountCents, emailed } })
-  return res.status(200).json({ success: true, url: q.quick ? quickUrl(siteUrl(req), next) : payreqUrl(req, next), amountLabel: formatAud(amountCents), emailed })
+  return res.status(200).json({ success: true, url: q.quick ? quickUrl(siteUrl(req), next) : payreqUrl(req, next), amountLabel: formatAud(amountCents), emailed, emailTo: emailed ? q.email : '', emailError: sent.emailError ? `The amount is changed, but the email did not send. ${sent.emailError}` : '' })
 }
 
 // After a trial: offer the rest of the term. The trial fee comes off unless
 // staff untick it (Lee: taken off). Pro rata from the start date.
 async function offerTerm(req, res, principal, config, body) {
   const row = await rowOr404(res, body.rowId); if (!row) return
-  if (!row.email && !validEmail(body.email)) return fail(res, 400, 'This player has no parent email in Airtable.')
+  if (!row.email && !validEmail(body.email)) return fail(res, 400, wordsFor([row]).noEmail)
   const group = await getGroup(clean(body.groupId, 80) || row.groupId)
   if (!group) return fail(res, 404, 'Put the player in a group first.')
   const out = { ...body, rowIds: [row.id], product: PRODUCTS.some((x) => x.key === body.product && x.key !== 'trial') ? body.product : group.product || 'group', creditTrial: body.creditTrial !== false, reason: 'term-after-trial' }
@@ -1849,12 +1966,13 @@ async function emailQuickLink(req, res, principal, body) {
   if (!q.email) return fail(res, 400, 'This link has no parent email. Copy the link and send it yourself.')
   // A double tap sends one email.
   if ((await kvCommand(['SET', `jfp:quick-email-lock:${q.id}`, '1', 'NX', 'EX', '60'])) !== 'OK') return fail(res, 409, 'It was just emailed. Wait a minute before sending it again.')
-  await sendQuickLinkEmail({ to: q.email, parentName: q.parentName, forText: q.forText, amountCents: q.amountCents, url: quickUrl(siteUrl(req), q), expiresAt: q.expiresAt, afterpay: q.afterpay !== false })
+  const sent = await trySend('quick link', () => sendQuickLinkEmail({ to: q.email, parentName: q.parentName, forText: q.forText, amountCents: q.amountCents, url: quickUrl(siteUrl(req), q), expiresAt: q.expiresAt, afterpay: q.afterpay !== false }))
+  if (!sent.emailed) { await kvCommand(['DEL', `jfp:quick-email-lock:${q.id}`]); return fail(res, 502, `Not sent to ${q.email}. ${sent.emailError}`, { code: 'email' }) }
   const at = new Date().toISOString()
   // Kept on its own key, never by rewriting the link, which may be being paid right now.
   await kvCommand(['HSET', QUICK_EMAILED, q.id, at])
   await audit({ by: principal.email, action: 'quick.email', target: q.id })
-  return res.status(200).json({ success: true, emailedAt: at })
+  return res.status(200).json({ success: true, emailedAt: at, emailTo: q.email, messageId: sent.messageId })
 }
 
 // A paid quick link with no player, looked at: off the to check lists.
@@ -1912,14 +2030,15 @@ async function decideRequest(req, res, principal, config, body) {
     // Up to three groups that would suit better (Lee, 5 Oct 2026).
     const ids = [...new Set([...(Array.isArray(body.suggestGroupIds) ? body.suggestGroupIds : []), body.suggestGroupId].map((x) => clean(x, 80)).filter((x) => x && x !== r.groupId))].slice(0, 3)
     const suggestions = (await Promise.all(ids.map((x) => getGroup(x)))).filter(Boolean)
-    let emailed = false
+    let sent = { emailed: false }
     if (body.sendEmail === true) {
       const group = (await getGroup(r.groupId)) || (r.groupId === 'one-to-one' ? { day: '1 to 1', time: 'coaching', location: 'Belrose HQ' } : null)
-      if (group) { await sendDeclined({ request: r, group, config, message: clean(body.message, 800), suggestions, siteUrl: siteUrl(req) }); emailed = true }
+      sent = group ? await trySend('declined', () => sendDeclined({ request: r, group, config, message: clean(body.message, 800), suggestions, siteUrl: siteUrl(req) })) : { emailed: false, emailError: 'The group is gone, so no email was sent.' }
     }
+    const emailed = sent.emailed
     await saveApplication({ ...r, status: 'declined', decidedBy: principal.email, decidedAt: new Date().toISOString(), note: clean(body.message || body.note, 800), suggestedGroupId: suggestions[0]?.id || '', suggestedGroupIds: suggestions.map((g) => g.id) })
     await audit({ by: principal.email, action: 'request.decline', target: r.id, after: { emailed, suggest: suggestions.map((g) => g.id).join(', ') } })
-    return res.status(200).json({ success: true, status: 'declined', emailed })
+    return res.status(200).json({ success: true, status: 'declined', emailed, emailTo: emailed ? r.email : '', emailError: sent.emailError ? `Declined, but the email did not send. ${sent.emailError}` : '' })
   }
   if (body.decision === 'done') {
     await saveApplication({ ...r, status: 'done', decidedBy: principal.email, decidedAt: new Date().toISOString(), note: clean(body.note, 300) })
@@ -1963,15 +2082,16 @@ async function decideRequest(req, res, principal, config, body) {
   }
   const q = await createPayreq({ req, principal, config, group, rows: ids.map((id, i) => ({ id, name: r.players[i].name })), email: r.email, parentName: r.parentName, amountCents, reason: trial ? 'trial' : r.kind, requestId: r.id, product, startDate, trialDate: trial ? startDate : '', afterpay: body.afterpay !== false })
   await saveApplication({ ...r, status: 'offered', offer: trial ? 'trial' : 'term', offeredGroupId: group.id, payreqId: q.id, term4Ids: ids, decidedBy: principal.email, decidedAt: new Date().toISOString() })
-  let emailed = false
+  let sent = { emailed: false }
   if (body.sendEmail !== false) {
-    if (trial) await sendTrialOffered({ request: r, group, config, url: payreqUrl(req, q), amountCents, trialDate: startDate })
-    else await sendPlaceOffered({ request: r, group, config, url: payreqUrl(req, q), amountCents, startDate, sessions: price.sessions })
-    emailed = true
-    await savePayreq({ ...q, emailedAt: new Date().toISOString() })
+    sent = trial
+      ? await trySend('trial offered', () => sendTrialOffered({ request: r, group, config, url: payreqUrl(req, q), amountCents, trialDate: startDate }))
+      : await trySend('place offered', () => sendPlaceOffered({ request: r, group, config, url: payreqUrl(req, q), amountCents, startDate, sessions: price.sessions }))
+    if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
+  const emailed = sent.emailed
   await audit({ by: principal.email, action: trial ? 'request.trial' : 'request.offer', target: r.id, after: { group: group.id, payreq: q.id, rows: ids, cents: amountCents, emailed } })
-  return res.status(200).json({ success: true, status: 'offered', payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed })
+  return res.status(200).json({ success: true, status: 'offered', payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? r.email : '', emailError: sent.emailError ? `The offer is made, but the email to ${r.email} did not send. ${sent.emailError} Copy the link and send it yourself.` : '' })
 }
 
 // ---------- money ----------
@@ -2297,6 +2417,8 @@ export async function familyPlan(req, config) {
       kind: owingRows.length ? 'pay' : unpriced.length ? 'noPrice' : 'paid',
       needsWaiver: rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone], dob: r.dob }, roster.waivers)),
       invitedAt: invited[email] || '', accountInvitedAt: acctInvited[email] || '', signedInAt: signedIn[email] || '', groupId: rows[0].groupId,
+      // The player is their own contact: the invite talks to them.
+      self: rows.every((r) => r.ownContact),
     }
   }).sort((a, b) => a.parent.localeCompare(b.parent))
   return { list, noEmail }
@@ -2305,35 +2427,41 @@ export async function familyPlan(req, config) {
 async function familyInvites(req, res, principal, config, body) {
   const plan = await familyPlan(req, config)
   const signInUrl = `${siteUrl(req)}/jfp-account/`
-  const sample = (f) => accountInvite({ parentName: f.parent, players: f.players, config, signInUrl, payUrl: f.kind === 'pay' ? signInUrl : '', amountCents: f.owingCents, needsWaiver: f.needsWaiver })
+  const sample = (f) => accountInvite({ parentName: f.parent, players: f.players, config, signInUrl, payUrl: f.kind === 'pay' ? signInUrl : '', amountCents: f.owingCents, needsWaiver: f.needsWaiver, self: f.self })
   const accountOnly = body.mode === 'account'
   if (body.send !== true) {
     const pay = plan.list.find((f) => f.kind === 'pay'), paid = plan.list.find((f) => f.kind === 'paid')
     const one = plan.list.find((f) => f.players.length === 1) || plan.list[0]
-    return res.status(200).json({ success: true, ...plan, previews: { pay: pay ? sample(pay) : null, paid: paid ? sample(paid) : null, account: one ? accountInvite({ parentName: one.parent, players: one.players, config, signInUrl, needsWaiver: one.needsWaiver, money: false, email: one.email }) : null } })
+    return res.status(200).json({ success: true, ...plan, previews: { pay: pay ? sample(pay) : null, paid: paid ? sample(paid) : null, account: one ? accountInvite({ parentName: one.parent, players: one.players, config, signInUrl, needsWaiver: one.needsWaiver, money: false, email: one.email, self: one.self }) : null } })
   }
   // Account only: every family with an email, paid or not, no amounts. Skips
   // anyone who has already signed in, and anyone already sent this one unless resend.
   if (accountOnly) {
     const want = new Set((Array.isArray(body.emails) ? body.emails : []).map(validEmail).filter(Boolean))
-    const todo = plan.list.filter((f) => want.has(f.email) && !f.signedInAt && (!f.accountInvitedAt || body.resend === true)).slice(0, 20)
-    const sent = [], failed = []
-    for (const f of todo) {
-      // One claim per family per 10 minutes: a double click or two staff never email twice.
-      if ((await kvCommand(['SET', `jfp:acct-only-lock:${f.email}`, '1', 'NX', 'EX', '600'])) !== 'OK') continue
-      try {
-        await sendAccountInvite({ to: f.email, parentName: f.parent, players: f.players, config, signInUrl, needsWaiver: f.needsWaiver, money: false, email: f.email })
-        await kvCommand(['HSET', 'jfp:acct-only-invited', f.email, new Date().toISOString()])
-        sent.push(f.email)
-      } catch (error) { console.error('jfp account invite failed', f.email, error); failed.push(f.email); await kvCommand(['DEL', `jfp:acct-only-lock:${f.email}`]) }
+    // Every family asked for is answered: sent, failed (with why) or skipped (with why).
+    const skipped = []
+    const todo = []
+    for (const e of want) {
+      const f = plan.list.find((x) => x.email === e)
+      if (!f) skipped.push({ email: e, why: 'Not found as a Term 4 family with that email.' })
+      else if (f.signedInAt) skipped.push({ email: e, why: 'Already signed in, so not chased. Use Account invite on the player to send it anyway.' })
+      else if (f.accountInvitedAt && body.resend !== true) skipped.push({ email: e, why: 'Already sent this invite.' })
+      else todo.push(f)
     }
-    await audit({ by: principal.email, action: 'family.accountInvite', target: 'term4', after: { sent: sent.length, failed: failed.length } })
-    return res.status(200).json({ success: true, sent, failed })
+    const sent = [], failed = [], errors = {}
+    for (const f of todo.slice(0, 20)) {
+      // One claim per family per 10 minutes: a double click or two staff never email twice.
+      if ((await kvCommand(['SET', `jfp:acct-only-lock:${f.email}`, '1', 'NX', 'EX', '600'])) !== 'OK') { skipped.push({ email: f.email, why: 'Sent in the last 10 minutes.' }); continue }
+      const r = await trySend('account invite', () => sendAccountInvite({ to: f.email, parentName: f.parent, players: f.players, config, signInUrl, needsWaiver: f.needsWaiver, money: false, email: f.email, self: f.self }))
+      if (r.emailed) { await kvCommand(['HSET', 'jfp:acct-only-invited', f.email, new Date().toISOString()]); sent.push(f.email) } else { failed.push(f.email); errors[f.email] = r.emailError; await kvCommand(['DEL', `jfp:acct-only-lock:${f.email}`]) }
+    }
+    await audit({ by: principal.email, action: 'family.accountInvite', target: 'term4', after: { sent: sent.length, failed: failed.length, skipped: skipped.length } })
+    return res.status(200).json({ success: true, sent, failed, errors, skipped })
   }
   // A batch of families per call, so a big send never times out.
   const want = new Set((Array.isArray(body.emails) ? body.emails : []).map(validEmail).filter(Boolean))
   const todo = plan.list.filter((f) => want.has(f.email) && f.kind !== 'noPrice' && (!f.invitedAt || body.resend === true)).slice(0, 20)
-  const sent = [], failed = []
+  const sent = [], failed = [], errors = {}
   for (const f of todo) {
     try {
       let payUrl = ''
@@ -2343,18 +2471,56 @@ async function familyInvites(req, res, principal, config, body) {
           const rowsFull = []
           for (const id of f.owingRowIds) { const r = await getTerm4Row(id); if (r) rowsFull.push(r) }
           const group = rowsFull[0]?.groupId ? await getGroup(rowsFull[0].groupId) : null
-          const q = await createPayreq({ req, principal, config, group, rows: rowsFull.map((r) => ({ id: r.id, name: r.player })), email: f.email, parentName: f.parent, amountCents: f.owingCents, reason: 'balance', product: '', startDate: '', afterpay: true, creditCents: 0, restoreFields: null })
+          const q = await createPayreq({ req, principal, config, group, rows: rowsFull.map((r) => ({ id: r.id, name: r.player })), email: f.email, parentName: f.parent, amountCents: f.owingCents, reason: 'balance', product: '', startDate: '', afterpay: true, creditCents: 0, restoreFields: null, programme: programmeOfRows(rowsFull), ownContact: f.self })
           payUrl = payreqUrl(req, q)
           await savePayreq({ ...q, emailedAt: new Date().toISOString() })
         }
       }
-      await sendAccountInvite({ to: f.email, parentName: f.parent, players: f.players, config, signInUrl, payUrl, amountCents: f.owingCents, needsWaiver: f.needsWaiver })
+      await sendAccountInvite({ to: f.email, parentName: f.parent, players: f.players, config, signInUrl, payUrl, amountCents: f.owingCents, needsWaiver: f.needsWaiver, self: f.self })
       await kvCommand(['HSET', 'jfp:acct-invited', f.email, new Date().toISOString()])
       sent.push(f.email)
-    } catch (error) { console.error('jfp family invite failed', f.email, error); failed.push(f.email) }
+    } catch (error) { console.error('jfp family invite failed', f.email, error); failed.push(f.email); errors[f.email] = emailErrorText(error) }
   }
   await audit({ by: principal.email, action: 'family.invite', target: 'term4', after: { sent: sent.length, failed: failed.length } })
-  return res.status(200).json({ success: true, sent, failed, remaining: [...want].filter((e) => !sent.includes(e) && !failed.includes(e) && plan.list.some((f) => f.email === e && f.kind !== 'noPrice' && (!f.invitedAt || body.resend === true))).length })
+  return res.status(200).json({ success: true, sent, failed, errors, remaining: [...want].filter((e) => !sent.includes(e) && !failed.includes(e) && plan.list.some((f) => f.email === e && f.kind !== 'noPrice' && (!f.invitedAt || body.resend === true))).length })
+}
+
+// Account invite for one player, from their Players record (Lee, 13 Oct
+// 2026: "account invite did nothing" for a player with no group). Works for
+// any row with an email, holding a place or not, signed in before or not,
+// and always says what happened: "Sent to x@y" or the real reason.
+async function inviteAccount(req, res, principal, config, body) {
+  const row = await rowOr404(res, body.rowId); if (!row) return
+  const w = wordsFor([row])
+  const email = rowEmails(row)[0] || ''
+  if (!email) return fail(res, 400, `${w.noEmail} Add one with Edit, then send the invite.`, { code: 'no_email' })
+  if ((await kvCommand(['SET', `jfp:acct-one-lock:${email}`, '1', 'NX', 'EX', '60'])) !== 'OK') return fail(res, 409, `An invite went to ${email} less than a minute ago. Check the Emails list on the player before sending again.`, { code: 'just_sent' })
+  const [roster, groups] = await Promise.all([loadRoster({ fresh: true }), listGroups()])
+  const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
+  // Everyone on this email, so a family invite names every player.
+  const rows = roster.players.filter((r) => rowEmails(r).includes(email) && (r.holdsPlace || r.id === row.id))
+  const all = rows.length ? rows : [row]
+  const players = all.map((r) => ({ rowId: r.id, name: r.player, group: byId[r.groupId] ? groupSummary(byId[r.groupId], config) : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Group to be confirmed' }))
+  const needsWaiver = all.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone], dob: r.dob }, roster.waivers))
+  const self = all.every((r) => r.ownContact)
+  const sent = await trySend('account invite (one)', () => sendAccountInvite({ to: email, parentName: all[0].parent, players, config, signInUrl: `${siteUrl(req)}/jfp-account/`, needsWaiver, money: false, email, self }))
+  if (!sent.emailed) { await kvCommand(['DEL', `jfp:acct-one-lock:${email}`]); await audit({ by: principal.email, action: 'family.accountInvite.one', target: row.id, after: { sent: false } }); return fail(res, 502, `Not sent to ${email}. ${sent.emailError}`, { code: 'email' }) }
+  const at = new Date().toISOString()
+  await kvCommand(['HSET', 'jfp:acct-only-invited', email, at])
+  const signedIn = await kvCommand(['HGET', 'jfp:acct-signedin', email])
+  await audit({ by: principal.email, action: 'family.accountInvite.one', target: row.id, after: { sent: true } })
+  return res.status(200).json({ success: true, sentTo: email, at, messageId: sent.messageId, signedInBefore: Boolean(signedIn), words: w })
+}
+
+// The last emails to this player or family, from the send log (Lee: "my
+// biggest worry is making sure these emails reach the players and parents").
+async function emailLogFor(res, body) {
+  const row = await rowOr404(res, body.rowId); if (!row) return
+  const prof = await findProfile({ key: profileKey(row.player, row.email), rowIds: [row.id] }).catch(() => null)
+  const addresses = [...rowEmails(row), prof?.parent2Email].filter(Boolean)
+  const list = await emailsTo(addresses, { limit: 20 })
+  if (list === null) return fail(res, 503, 'Could not read the email log. Try again in a minute.')
+  return res.status(200).json({ success: true, addresses, emails: list.map((e) => ({ at: e.at, to: e.to, subject: e.subject, kind: e.kind || '', status: e.status, messageId: e.messageId || '', error: e.error || '' })) })
 }
 
 // ---------- handler ----------
@@ -2504,6 +2670,8 @@ async function handle(req, res) {
     switch (action) {
       case 'board': await sweepExpiredOffers(principal); return res.status(200).json({ success: true, ...(await boardData(config, { fresh: body.fresh === true })), coaches: coachList(config), locations: config.locations.map((l) => ({ id: l.id, name: l.name })) })
       case 'familyInvites': return await familyInvites(req, res, principal, config, body)
+      case 'inviteAccount': return await inviteAccount(req, res, principal, config, body)
+      case 'emailLog': return await emailLogFor(res, body)
       case 'searchPlayers': return res.status(200).json({ success: true, results: await searchPlayers(config, body) })
       case 'addPlayer': return await addPlayer(req, res, principal, config, body)
       case 'playersList': return await playersList(req, res, config, body)
@@ -2555,15 +2723,17 @@ async function handle(req, res) {
           // Email only players invited just now, unless staff ask to send again.
           if (r.email && (!statuses[r.id] || (body.resend === true && statuses[r.id].status === 'invited'))) families.set(r.email, [...(families.get(r.email) || []), r])
         }
+        const failedTo = []
         if (body.sendEmail === true) {
           for (const [email, list] of families) {
             const pr = nextPrices(config, byId[list[0].groupId])
-            await sendNextTermInvite({ to: email, parentName: list[0].parent, players: list.map((r) => ({ name: r.player, group: byId[r.groupId] ? `${byId[r.groupId].day} ${byId[r.groupId].time}, ${locationFor(config, byId[r.groupId].location).name}` : `${r.day} ${r.time}` })), config, url: `${siteUrl(req)}/jfp-account/#next`, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel })
-            emailed += 1
+            const sent = await trySend('next term invite', () => sendNextTermInvite({ to: email, parentName: list[0].parent, players: list.map((r) => ({ name: r.player, group: byId[r.groupId] ? `${byId[r.groupId].day} ${byId[r.groupId].time}, ${locationFor(config, byId[r.groupId].location).name}` : `${r.day} ${r.time}` })), config, url: `${siteUrl(req)}/jfp-account/#next`, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel, self: list.every((r) => r.ownContact) }))
+            if (sent.emailed) emailed += 1
+            else failedTo.push({ email, error: sent.emailError })
           }
         }
-        await audit({ by: principal.email, action: 'next.invite', target: nt.name, after: { players: rows.length, invited, emailed } })
-        return res.status(200).json({ success: true, invited, emailed })
+        await audit({ by: principal.email, action: 'next.invite', target: nt.name, after: { players: rows.length, invited, emailed, failed: failedTo.length } })
+        return res.status(200).json({ success: true, invited, emailed, failed: failedTo })
       }
       case 'changePayreqAmount': return await changePayreqAmount(req, res, principal, config, body)
       // Prices and quick payment links (Lee, 13 Oct 2026).

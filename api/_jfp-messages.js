@@ -14,6 +14,7 @@
 //   for work. Phone numbers stay out of logs and are only resolved from
 //   Airtable at the moment the Mac claims the text.
 import crypto from 'node:crypto'
+import { logEmail } from './_jfp-email-log.js'
 import { kvCommand, kvGetJson, kvSetJson, clean, newId, formatAud } from './_holiday-store.js'
 import { airtable } from './_jfp-airtable.js'
 
@@ -196,26 +197,30 @@ export const textHoursOpen = (ms = Date.now()) => { if (process.env.JFP_TEXT_ANY
 
 // ---------- email: Brevo, keeping its message id as the receipt ----------
 
-export async function sendEmailExact({ to, name, subject, html, replyTo = 'ligia@jonerfootball.com' }) {
+export async function sendEmailExact({ to, name, subject, html, replyTo = 'ligia@jonerfootball.com', kind = 'message' }) {
   const apiKey = process.env.BREVO_API_KEY
-  if (!apiKey) { const e = new Error('BREVO_API_KEY is not configured.'); e.definite = true; throw e }
+  const failed = async (e) => { await logEmail({ to: [to], subject, kind, status: 'failed', error: e.message }); return e }
+  if (!apiKey) { const e = new Error('BREVO_API_KEY is not configured.'); e.definite = true; throw await failed(e) }
   const sender = process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com'
+  // Brevo refuses an empty name: a player with no parent has none (13 Oct 2026).
+  const recipient = String(name || '').trim() ? { email: to, name: String(name).trim() } : { email: to }
   let res
   try {
     res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: { accept: 'application/json', 'content-type': 'application/json', 'api-key': apiKey },
-      body: JSON.stringify({ sender: { name: 'Joner Football', email: sender }, to: [{ email: to, name }], replyTo: { email: replyTo, name: 'Joner Football' }, subject, htmlContent: html }),
+      body: JSON.stringify({ sender: { name: 'Joner Football', email: sender }, to: [recipient], replyTo: { email: replyTo, name: 'Joner Football' }, subject, htmlContent: html }),
     })
-  } catch (error) { error.definite = false; throw error } // network: it may or may not have gone
+  } catch (error) { error.definite = false; throw await failed(error) } // network: it may or may not have gone
   const text = await res.text()
   if (!res.ok) {
     const e = new Error(`Brevo ${res.status}: ${text.slice(0, 200)}`)
     // Brevo refused it (bad request, auth): definitely not sent. A 5xx is unclear.
     e.definite = res.status >= 400 && res.status < 500
-    throw e
+    throw await failed(e)
   }
   let messageId = ''
   try { messageId = JSON.parse(text).messageId || '' } catch {}
+  await logEmail({ to: [to], subject, kind, status: 'sent', messageId })
   return { messageId }
 }

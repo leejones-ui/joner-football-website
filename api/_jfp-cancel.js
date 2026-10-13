@@ -217,6 +217,8 @@ export async function submitCancel({ config, parentEmail, parentName, row, group
     const rec = {
       id, rev: (now?.rev || 0) + 1, status: 'active', event: 'cancelled',
       email: parentEmail, parentName: clean(parentName, 100),
+      // The player is their own contact: the emails say the player told us.
+      ...(row.ownContact ? { self: true } : {}),
       rowId: row.id, player: clean(row.player, 100), groupId: row.groupId || group?.id || '',
       day: group?.day || row.day, time: v.time, location: loc.name,
       coachIds: coaches.map((c) => c.id), coachNames: coaches.map((c) => `Coach ${coachLabel(c)}`),

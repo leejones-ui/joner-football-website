@@ -310,10 +310,11 @@ function renderHome() {
   const el = document.querySelector('[data-pane="home"]')
   if (!D) return
   const tw = termWeek()
-  const name = D.parentName ? first(D.parentName) : ''
+  // A player who is their own contact is greeted by their own name.
+  const name = D.self ? first(D.players[0]?.name) : D.parentName ? first(D.parentName) : ''
   const head = `<header class="ja-head"><p class="ja-kicker"><i></i>${esc(D.term)}${tw && !D.players.length ? ` · ${esc(tw.label)}` : ''}</p><h1 class="ja-display">${name ? `Hi ${esc(name)}` : 'Welcome'}</h1>${tw && D.players.length ? `<div class="ja-progress"><div class="bar"><span style="width:${tw.pct}%"></span></div><small>${esc(tw.label)}</small></div>` : ''}</header>`
   const promos = `<section class="ja-sec">${secHead('More from JFP')}<div class="ja-rail-wrap"><div class="ja-rail promos">
-      <button type="button" class="ja-promo" data-go="keep"><img src="${IMG}/photos/lee-coaching-field-900x1100.webp" alt="" loading="lazy"><span class="go">${ic('arrow')}</span><p class="ja-kicker"><i></i>${esc(D.keep?.name || 'Next term')}</p><h3>Keep your spot</h3><p>Same day, same time, same coach. Current families get first call.</p></button>
+      <button type="button" class="ja-promo" data-go="keep"><img src="${IMG}/photos/lee-coaching-field-900x1100.webp" alt="" loading="lazy"><span class="go">${ic('arrow')}</span><p class="ja-kicker"><i></i>${esc(D.keep?.name || 'Next term')}</p><h3>Keep your spot</h3><p>Same day, same time, same coach. Current ${D.self ? 'players' : 'families'} get first call.</p></button>
       <button type="button" class="ja-promo" data-go="holidays"><img src="${IMG}/photos/hq-indoor-800x1000.webp" alt="" loading="lazy"><span class="go">${ic('arrow')}</span><p class="ja-kicker"><i></i>School holidays</p><h3>Holiday training</h3><p>JFP players book holiday training and camps first.</p></button>
       <button type="button" class="ja-promo red" data-go="app"><img src="/images/app/joner-app-main-iphone-current-transparent.webp" alt="" loading="lazy"><span class="go">${ic('arrow')}</span><p class="ja-kicker"><i></i>Free for JFP players</p><h3>The JF App</h3><p>Keep training between sessions.</p></button>
     </div></div></section>`
@@ -335,7 +336,7 @@ function renderHome() {
     return
   }
   const ups = upcoming().filter((x) => x.next)
-  const players = `<div class="ja-card"><div class="ja-card-head"><h3 class="ja-h3">Players</h3><button type="button" class="ja-link ja-small" data-go="info">${solo() ? 'My profile' : 'Player information'}</button></div><ul class="ja-list">
+  const players = `<div class="ja-card"><div class="ja-card-head"><h3 class="ja-h3">Players</h3><button type="button" class="ja-link ja-small" data-go="info">${(solo() || D.self) ? 'My profile' : 'Player information'}</button></div><ul class="ja-list">
     ${D.players.map((p) => `<li class="ja-row">${face(p.name, p.photo)}<div><b>${esc(p.name)}</b><small>${p.enrolments.length ? p.enrolments.map((e) => `${esc(e.day.slice(0, 3))} ${esc(e.time)}, ${esc(e.location)}`).join(' · ') : p.placeNoSession ? 'Place confirmed, day and time to come' : 'Not booked this term'}</small></div>
       <div class="ja-flags">${p.enrolments.map((e) => payDot(e.payment)).join('')}${p.waiver.onFile ? '<span class="ja-dot ok">Waiver</span>' : `<button type="button" class="ja-dot bad" data-waiver-player="${esc(p.key)}">Sign waiver</button>`}</div></li>`).join('')}
   </ul></div>`
@@ -402,7 +403,7 @@ function renderInfo() {
   if (!el || !D) return
   const list = PROF?.players || []
   const me = list.length === 1 && list[0].self
-  const head = me
+  const head = (me || D.self)
     ? pageHead('My profile', 'Your details', 'Your club, position and who to call in an emergency. Lee and Ligia use this to put you in the right group, so keep it up to date. Your photo is only seen by Joner Football staff and coaches.')
     : pageHead('Player information', list.length === 1 ? `${first(list[0].name)}'s details` : 'Your players', 'Club, position and who to call. Lee and Ligia use this to put players in the right group, so keep it up to date. Changed clubs? Update it here and we see it straight away. Photos are only seen by Joner Football staff and coaches.')
   if (!PROF) { el.innerHTML = `${head}<div class="ja-card ja-muted">Loading player information</div>`; return }
@@ -433,10 +434,10 @@ function renderInfo() {
         ${pl.self ? '' : seg('playingUp', o.playingUp)}
         <div class="j-field full"><span>Positions <span class="muted">(choose any)</span></span><div class="ja-seg" data-multi="positions">${o.positions.map((x) => `<button type="button" class="j-chip" data-val="${esc(x)}" aria-pressed="${(v.positions || []).includes(x)}">${esc(x)}</button>`).join('')}</div></div>
         ${seg('foot', o.feet)}
-        <label class="j-field full"><span>${pl.self ? 'What do you want to work on?' : `What does ${esc(first(pl.name))} want to work on?`} <span class="muted">(optional)</span></span><textarea class="j-textarea" data-f="goals" rows="2" maxlength="1000">${esc(v.goals || '')}</textarea></label>
+        <label class="j-field full"><span>${(pl.self || D.self) ? 'What do you want to work on?' : `What does ${esc(first(pl.name))} want to work on?`} <span class="muted">(optional)</span></span><textarea class="j-textarea" data-f="goals" rows="2" maxlength="1000">${esc(v.goals || '')}</textarea></label>
         <h4>Player</h4>
         ${f('dob', 'Date of birth', v.dob, `type="date" min="${esc(PROF.dob?.min || '1940-01-01')}" max="${esc(PROF.dob?.max || new Date().toISOString().slice(0, 10))}"`)}
-        ${pl.self ? `<h4>Contact</h4>
+        ${(pl.self || D.self) ? `<h4>Contact</h4>
         ${f('parentMobile', 'Your mobile', v.parentMobile, 'type="tel" inputmode="tel" autocomplete="tel"')}` : `<h4>Parents</h4>
         ${f('parentName', 'Parent name', v.parentName, 'autocomplete="name"')}
         ${f('parentMobile', 'Parent mobile', v.parentMobile, 'type="tel" inputmode="tel" autocomplete="tel"')}
@@ -450,7 +451,7 @@ function renderInfo() {
         <label class="j-field full"><span>Medical notes <span class="muted">(optional, only Lee, Ligia and the coach see them)</span></span><textarea class="j-textarea" data-f="medical" rows="2" maxlength="1000">${esc(v.medical || '')}</textarea></label>
       </div>
       <p class="j-err" data-err hidden></p>
-      <div class="ja-save"><button type="button" class="ja-btn ja-btn-red" data-save-prof="${esc(pl.key)}">${pl.self ? 'Save my profile' : `Save ${esc(first(pl.name))}'s information`}</button><span class="ja-small ja-muted">Saves straight to our system.</span></div>
+      <div class="ja-save"><button type="button" class="ja-btn ja-btn-red" data-save-prof="${esc(pl.key)}">${(pl.self || D.self) ? 'Save my profile' : `Save ${esc(first(pl.name))}'s information`}</button><span class="ja-small ja-muted">Saves straight to our system.</span></div>
     </section>`
   }).join('')
 }
@@ -554,8 +555,8 @@ function renderCancel() {
 function renderKeep() {
   const el = document.querySelector('[data-pane="keep"]')
   const k = D.keep || { name: 'Next term', players: [], holdLabel: '' }
-  const top = hero({ img: `${IMG}/photos/lee-coaching-field-1600x900.webp`, imgSmall: `${IMG}/photos/lee-coaching-field-900x1100.webp`, kicker: k.name, title: 'Keep your spot', lede: `Same day, same time, same coach. Current JFP families get first call on their spot before ${esc(k.name)} opens to everyone else.` })
-  const steps = `<div class="ja-steps" style="margin-top:18px"><div class="ja-step"><b>Tell us you want it</b><p>Press the button for each player. No payment now.</p></div><div class="ja-step"><b>First to know</b><p>We email you as soon as ${esc(k.name)} bookings open, before anyone else.</p></div><div class="ja-step"><b>Lock it in</b><p>Hold it for ${esc(k.holdLabel || 'a small fee')}, which comes off the term fee, or pay the term in full. The hold fee is non-refundable.</p></div></div>`
+  const top = hero({ img: `${IMG}/photos/lee-coaching-field-1600x900.webp`, imgSmall: `${IMG}/photos/lee-coaching-field-900x1100.webp`, kicker: k.name, title: 'Keep your spot', lede: `Same day, same time, same coach. Current JFP ${D.self ? 'players' : 'families'} get first call on their spot before ${esc(k.name)} opens to everyone else.` })
+  const steps = `<div class="ja-steps" style="margin-top:18px"><div class="ja-step"><b>Tell us you want it</b><p>${D.self ? 'Press the button. No payment now.' : 'Press the button for each player. No payment now.'}</p></div><div class="ja-step"><b>First to know</b><p>We email you as soon as ${esc(k.name)} bookings open, before anyone else.</p></div><div class="ja-step"><b>Lock it in</b><p>Hold it for ${esc(k.holdLabel || 'a small fee')}, which comes off the term fee, or pay the term in full. The hold fee is non-refundable.</p></div></div>`
   // Open (or invited): the real choices.
   if (D.nextTerm) {
     el.innerHTML = `${top}<div class="ja-keep">${D.nextTerm.players.map((x) => `<div class="ja-card ja-keep-card"><p class="ja-kicker"><i></i>${esc(D.nextTerm.name)}</p><h3 class="ja-h3" style="margin-top:8px">${esc(x.player)}</h3><p class="ja-muted ja-small">Now: ${esc(x.group)}</p>
@@ -853,7 +854,7 @@ function waiverSheet(keys) {
   const players = [...D.players, ...(D.juniors?.children || [])].filter((p) => keys.includes(p.key))
   if (!players.length) return
   const sheet = openSheet({ title: 'Sign the waiver', subtitle: players.map((p) => p.name).join(', ') })
-  const w = waiverBlock(players.some((p) => p.key.startsWith('jj:')) ? `${D.term}, JFP and Joners Juniors` : D.term)
+  const w = waiverBlock(players.some((p) => p.key.startsWith('jj:')) ? `${D.term}, JFP and Joners Juniors` : D.term, { self: D.self === true })
   sheet.body.innerHTML = players.map((p) => `
     <div class="j-card" style="padding:12px 14px;margin-bottom:10px" data-wp="${esc(p.key)}">
       <h3 style="margin-bottom:8px">${esc(p.name)}</h3>
@@ -861,7 +862,7 @@ function waiverSheet(keys) {
       <div class="j-two"><label class="j-field"><span>Emergency contact</span><input class="j-input" data-f="emergencyName"></label><label class="j-field"><span>Their phone</span><input class="j-input" type="tel" inputmode="tel" data-f="emergencyPhone"></label></div>
       <div class="j-two"><label class="j-field"><span>Current club <span class="muted">(optional)</span></span><input class="j-input" data-f="club"></label><label class="j-field"><span>Medical notes <span class="muted">(optional)</span></span><input class="j-input" data-f="medical"></label></div>
     </div>`).join('') + `
-    <div class="j-two"><label class="j-field"><span>Your name</span><input class="j-input" id="wp-name" value="${esc(D.parentName || '')}" autocomplete="name"></label><label class="j-field"><span>Your mobile</span><input class="j-input" id="wp-mobile" type="tel" inputmode="tel" autocomplete="tel"></label></div>`
+    <div class="j-two"><label class="j-field"><span>Your name</span><input class="j-input" id="wp-name" value="${esc((D.self ? D.players[0]?.name : D.parentName) || '')}" autocomplete="name"></label><label class="j-field"><span>Your mobile</span><input class="j-input" id="wp-mobile" type="tel" inputmode="tel" autocomplete="tel"></label></div>`
   sheet.body.appendChild(w.el)
   sheet.body.insertAdjacentHTML('beforeend', '<p class="j-err" id="wp-err" hidden></p>')
   sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-red ja-btn-block" id="wp-sign">Sign the waiver</button>'

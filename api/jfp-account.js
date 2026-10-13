@@ -15,7 +15,7 @@
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, dateLabel,
-  formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, sydneyToday, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType,
+  formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, sydneyToday, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType, isProType,
 } from './_jfp-store.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, savePhoto, waiverPrefill, DOB_MIN, dobMax, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
@@ -58,6 +58,7 @@ function paymentLine(row, openReq) {
   if (openReq) return { state: 'due', label: `${formatAud(openReq.amountCents)} to pay`, payreqId: openReq.id }
   if (/trial/i.test(row.paymentType)) return { state: 'trial', label: row.paymentStatus === 'Paid' ? 'Trial booked and paid' : 'Trial' }
   // Pros and casuals pay for the sessions they come to (billed from Money).
+  if (isProType(row.paymentType)) return { state: 'sessions', label: 'Pro sessions, paid by the session' }
   if (isSessionType(row.paymentType)) return { state: 'sessions', label: 'Session by session' }
   if (row.paymentStatus === 'Paid') return { state: 'paid', label: 'Paid' }
   // Legacy rows can carry sibling splits and agreed plans, so no amount is
@@ -98,6 +99,7 @@ async function overview(res, parent, body = {}) {
     waiver: p.waiver ? { onFile: true, signedDate: p.waiver.signedDate, term: p.waiver.term } : { onFile: false },
     // A place staff have confirmed but not yet given a day and time.
     placeNoSession: p.term4.some((r) => r.holdsPlace && !r.groupId),
+    ownContact: p.term4.length > 0 && p.term4.every((r) => r.ownContact),
     enrolments: p.term4.filter((r) => r.holdsPlace && r.groupId).map((r) => {
       const g = byGroup[r.groupId] || { day: r.day, time: r.time, location: r.location, durationMin: 60 }
       const coach = coachById(config, g.coachId) || coachByAirtableName(config, r.coach)
@@ -161,6 +163,8 @@ async function overview(res, parent, body = {}) {
     success: true,
     email: parent.email,
     parentName: fam.parentName || juniors?.parentName || '',
+    // The player is their own contact (no parent): the page talks to them.
+    self: !juniors?.children?.length && fam.players.length > 0 && fam.players.every((p) => p.term4.length > 0 && p.term4.every((r) => r.ownContact)),
     nextTerm: nextTerm.length ? { name: nt.name, players: nextTerm } : null,
     keep,
     termStart: config.termStart,
@@ -466,6 +470,9 @@ async function pay(req, res, parent, body) {
       'metadata[source]': q.reason || 'payreq',
       // Next term paid early names its term, so Money keeps it out of this term.
       ...(q.next?.term ? { 'metadata[jfpTerm]': q.next.term } : {}),
+      // A Pro sessions player's link: recognisable as Pro money. Not
+      // jfpProgramme, so it stays where JFP links go until Money splits it.
+      ...(q.programme === 'pro' ? { 'metadata[jfpProduct]': 'pro', 'payment_intent_data[metadata][jfpProduct]': 'pro' } : {}),
       'payment_intent_data[metadata][jfpBookingId]': q.id,
       'payment_intent_data[description]': name.slice(0, 400),
     },

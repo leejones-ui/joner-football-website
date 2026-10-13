@@ -3,7 +3,9 @@
 // store imports it, so it imports nothing from the store.
 import { clean } from './_holiday-store.js'
 
-export const PROGRAMMES = [['jfp', 'JFP'], ['juniors', 'Joners Juniors'], ['holiday', 'Holiday training'], ['other', 'Other']]
+// Pro sessions (Lee, 13 Oct 2026): the Pro group, paid session by session.
+// Its own Money view; never JFP term income (see docs/jfp-players.md).
+export const PROGRAMMES = [['jfp', 'JFP'], ['pro', 'Pro sessions'], ['juniors', 'Joners Juniors'], ['holiday', 'Holiday training'], ['other', 'Other']]
 const LABELS = Object.fromEntries(PROGRAMMES)
 export const isProgramme = (p) => Object.hasOwn(LABELS, p)
 export const programmeLabel = (p) => LABELS[p] || LABELS.jfp
@@ -24,7 +26,7 @@ export function cleanPrice(input = {}, { id = '', now = new Date().toISOString()
   const cents = Number(input.amountCents ?? input.cents)
   if (!Number.isInteger(cents) || cents < PRICE_MIN || cents > PRICE_MAX) return { ok: false, error: 'Enter an amount from A$1 to A$20,000.' }
   const programme = isProgramme(input.programme) ? input.programme : ''
-  if (!programme) return { ok: false, error: 'Pick the programme: JFP, Joners Juniors, Holiday training or Other.' }
+  if (!programme) return { ok: false, error: 'Pick the programme: JFP, Pro sessions, Joners Juniors, Holiday training or Other.' }
   return { ok: true, price: { id: id || before?.id, name, cents, programme, description: clean(input.description, 300), perSession: input.perSession === true, archived: before?.archived === true, createdAt: before?.createdAt || now, updatedAt: now } }
 }
 

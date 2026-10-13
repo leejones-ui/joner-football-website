@@ -185,7 +185,11 @@ export function emailsIn(v) {
 // come to rather than a term fee. Price per session sits in the row's notes
 // as [PERSESSION:<cents>].
 export const SESSION_TYPE = 'JFP Session by session'
-export const isSessionType = (type) => /session by session|drop-in|1 on 1 casual/i.test(String(type || ''))
+// Pro sessions (Lee, 13 Oct 2026): the Pro group, paid session by session at
+// their own price, kept apart from JFP term income in Money (programme 'pro').
+export const PRO_TYPE = 'JFP Pro sessions'
+export const isProType = (type) => /pro session/i.test(String(type || ''))
+export const isSessionType = (type) => /session by session|drop-in|1 on 1 casual|pro session/i.test(String(type || ''))
 export function withPerSession(notes, cents) {
   const base = String(notes || '').replace(/\s*\[PERSESSION:\d+\]/g, '')
   return cents > 0 ? `${base}${base ? ' ' : ''}[PERSESSION:${cents}]` : base
