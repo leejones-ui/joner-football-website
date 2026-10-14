@@ -3,11 +3,12 @@
 // (JFP_RELAY_TOKEN, Vercel env and a private file on the Mac only). Each text
 // is handed out once (a lease); its receipt must come back under that lease.
 import crypto from 'node:crypto'
-import { getConfig, audit, clean } from './_jfp-store.js'
+import { getConfig, audit, clean, coachById } from './_jfp-store.js'
 import { loadRoster } from './_jfp-airtable.js'
 import {
-  listMsgs, getMsg, saveMsg, event, claim, keys, sha, familyPhone, doNotContact, getPrefs, saveRelay, routeStatus, textHoursOpen, LEASE_SECONDS,
+  listMsgs, getMsg, saveMsg, event, claim, keys, sha, familyPhone, doNotContact, getPrefs, saveRelay, routeStatus, textHoursOpen, LEASE_SECONDS, normalisePhone,
 } from './_jfp-messages.js'
+import { coachTextHoursOpen } from './_jfp-coach-alerts.js'
 import { stillValid } from './jfp-messages.js'
 import { kvCommand } from './_holiday-store.js'
 
@@ -26,9 +27,11 @@ async function cancelIt(m, why) { m.status = m.expiresAt && Date.parse(m.expires
 
 // The oldest approved text that is still exactly right, leased to the Mac.
 async function claimNext(req, res, body) {
-  if (!textHoursOpen()) return res.status(200).json({ success: true, message: null, waiting: 'outside texting hours' })
+  // Families 8am to 8pm; coaches (their alerts) 6am to 9pm.
+  const famOpen = textHoursOpen(), coachOpen = coachTextHoursOpen()
+  if (!famOpen && !coachOpen) return res.status(200).json({ success: true, message: null, waiting: 'outside texting hours' })
   const route = await routeStatus()
-  const queued = (await listMsgs()).filter((m) => m.channel === 'text' && m.status === 'queued').reverse()
+  const queued = (await listMsgs()).filter((m) => m.channel === 'text' && m.status === 'queued' && (m.coachId ? coachOpen : famOpen)).reverse()
   if (!queued.length) return res.status(200).json({ success: true, message: null })
   const config = await getConfig()
   const [roster, prefs] = await Promise.all([loadRoster({ fresh: true }), getPrefs()])
@@ -39,7 +42,12 @@ async function claimNext(req, res, body) {
     if (!m.selfTest && !route.verified) continue
     let to = ''
     if (m.selfTest) to = m.selfPhone || ''
-    else {
+    else if (m.coachId) {
+      // A coach alert: the mobile on the Coaches page, unchanged since it was written.
+      const ph = normalisePhone(coachById(config, m.coachId)?.phone)
+      if (!ph || sha(ph) !== m.target.hash) { await cancelIt(m, "the coach's mobile changed"); continue }
+      to = ph
+    } else {
       const ph = familyPhone(roster.players.filter((r) => m.rowIds.includes(r.id)))
       if (!ph.phone || sha(ph.phone) !== m.target.hash) { await cancelIt(m, 'the mobile in Airtable changed'); continue }
       if (prefs[m.email]?.text !== 'yes') { await cancelIt(m, 'the family no longer has Texts: yes'); continue }

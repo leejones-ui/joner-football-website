@@ -35,6 +35,7 @@ import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { emailErrorText, emailsTo } from './_jfp-email-log.js'
 import { contactWords, withOwnContact, isAdult } from './_jfp-contact.js'
 import { telegramAlert } from './_jfp-notify.js'
+import { noteNewPlayer, alertsStatus, newPlayerWords, registerWords } from './_jfp-coach-alerts.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
 import { JJ_ACTIONS, jjAction, jjMoneyData, jjTableList } from './_jj-portal.js'
@@ -340,6 +341,8 @@ export async function addPlayer(req, res, principal, config, body) {
     if (payreq && sent.emailed) await savePayreq({ ...payreq, ...(custom ? { productLabel: custom.name } : {}), emailedAt: new Date().toISOString() })
   }
   const emailError = sent.emailError ? `${name} was added, but the email to ${email} did not send. ${sent.emailError} Try again with Account invite on the player.` : ''
+  // The group's coach hears about it (Lee, 14 Oct 2026), a few minutes later.
+  await noteNewPlayer({ config, group, rowId, player: name, kind: 'added' }).catch((e) => console.error('jfp coach news failed', e))
   await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed: sent.emailed, payreq: payreq?.id || '', cents: payment === 'none' || perSessionPay ? 0 : amountCents, perSessionCents: perSession || undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
   return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, ownContact, words, ...prof })
 }
@@ -531,6 +534,7 @@ async function movePlayer(res, principal, config, body) {
     'Term 4 Notes': appendNote(row.notes, `Moved from ${row.day} ${row.time} ${row.location} to ${to.day} ${to.time} ${to.location} by ${principal.name}.`),
   } }])
   await audit({ by: principal.email, action: 'player.move', target: row.id, before: { group: row.groupId }, after: { group: to.id, name: row.player } })
+  await noteNewPlayer({ config, group: to, rowId: row.id, player: row.player, kind: 'moved' }).catch((e) => console.error('jfp coach news failed', e))
   return res.status(200).json({ success: true })
 }
 
@@ -1816,6 +1820,7 @@ async function offerTerm(req, res, principal, config, body) {
     if (cap.error) return fail(res, 409, cap.error, { code: cap.code })
     const coach = coachById(config, group.coachId)
     await updateTerm4Rows([{ id: row.id, fields: { 'Term 3 Day': group.day, 'Term 3 Time': group.time, 'Term 3 Location': group.location, ...(coach ? { 'Coach': coach.airtableName } : {}), 'Term 4 Notes': appendNote(row.notes, `Moved to ${group.day} ${group.time} ${group.location} after the trial by ${principal.name}.`) } }])
+    await noteNewPlayer({ config, group, rowId: row.id, player: row.player, kind: 'moved' }).catch((e) => console.error('jfp coach news failed', e))
   }
   return sendPaymentLink(req, res, principal, config, out)
 }
@@ -2162,6 +2167,7 @@ async function decideRequest(req, res, principal, config, body) {
     if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
   const emailed = sent.emailed
+  for (const [i, id] of ids.entries()) await noteNewPlayer({ config, group, rowId: id, player: r.players[i]?.name || '', kind: trial ? 'trial' : 'offered' }).catch((e) => console.error('jfp coach news failed', e))
   await audit({ by: principal.email, action: trial ? 'request.trial' : 'request.offer', target: r.id, after: { group: group.id, payreq: q.id, rows: ids, cents: amountCents, emailed } })
   return res.status(200).json({ success: true, status: 'offered', payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? r.email : '', emailError: sent.emailError ? `The offer is made, but the email to ${r.email} did not send. ${sent.emailError} Copy the link and send it yourself.` : '' })
 }
@@ -2595,6 +2601,18 @@ async function emailLogFor(res, body) {
   return res.status(200).json({ success: true, addresses, emails: list.map((e) => ({ at: e.at, to: e.to, subject: e.subject, kind: e.kind || '', status: e.status, messageId: e.messageId || '', error: e.error || '' })) })
 }
 
+// The words coaches get, shown on the Coaches page before anything is switched on.
+function coachAlertSamples(config) {
+  const coach = { name: 'Sam' }
+  const g = { day: 'Wednesday', time: '7:30am', location: 'NTRA' }
+  const today = sydneyToday()
+  return {
+    newPlayer: newPlayerWords({ config, coach, entries: [{ group: g, players: [{ name: 'Charlie Roberts', age: 14, when: 'first session Wed 15 Oct' }] }] }),
+    register: registerWords({ config, coach, group: g, date: today, stage: 1, today }),
+    registerAgain: registerWords({ config, coach, group: g, date: today, stage: 2, today }),
+  }
+}
+
 // ---------- handler ----------
 
 export default async function handler(req, res) {
@@ -2956,6 +2974,22 @@ async function handle(req, res) {
       }
 
       case 'audit': return res.status(200).json({ success: true, entries: await listAudit(Number(body.limit) || 300) })
+
+      // Coach alerts: the switches, who can get them, and the exact words.
+      case 'coachAlerts': return res.status(200).json({ success: true, ...(await alertsStatus(config)), samples: coachAlertSamples(config) })
+      case 'setCoachAlerts': {
+        const cur = config.coachAlerts || {}
+        const next = {
+          newPlayer: typeof body.newPlayer === 'boolean' ? body.newPlayer : cur.newPlayer === true,
+          register: typeof body.register === 'boolean' ? body.register : cur.register === true,
+          registerSince: cur.registerSince || '',
+        }
+        // Switching reminders on never chases sessions that already finished.
+        if (next.register && !cur.register) next.registerSince = new Date().toISOString()
+        const saved = await saveConfig({ coachAlerts: next })
+        await audit({ by: principal.email, action: 'coachAlerts.set', target: 'config', before: { newPlayer: cur.newPlayer === true, register: cur.register === true }, after: { newPlayer: next.newPlayer, register: next.register } })
+        return res.status(200).json({ success: true, ...(await alertsStatus(saved)), samples: coachAlertSamples(saved) })
+      }
 
       case 'getSettings': {
         const all = DAYS.slice(0, 7).flatMap((d) => sessionDates({ ...config, skipDates: [] }, d))

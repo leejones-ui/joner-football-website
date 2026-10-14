@@ -324,6 +324,14 @@ export function normaliseConfig(input = {}) {
     maxAge: Number(input.maxAge) >= 5 && Number(input.maxAge) <= 25 ? Number(input.maxAge) : b.maxAge,
     // Joners Juniors: its own term, dates, class, price and tables (_jj-config.js).
     juniors: normaliseJuniors(input.juniors),
+    // Coach alerts (Lee, 14 Oct 2026): new player in your group, register not
+    // done. Off until Lee switches them on; registerSince stops old sessions
+    // being chased the moment reminders go on.
+    coachAlerts: {
+      newPlayer: input.coachAlerts?.newPlayer === true,
+      register: input.coachAlerts?.register === true,
+      registerSince: /^\d{4}-\d{2}-\d{2}T/.test(input.coachAlerts?.registerSince || '') ? input.coachAlerts.registerSince : '',
+    },
   }
 }
 

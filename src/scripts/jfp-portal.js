@@ -2911,6 +2911,40 @@ async function renderPlans() {
   bindPlanner()
 }
 
+// ---------- coach alerts (Lee, 14 Oct 2026) ----------
+// A new player in your group, and a register not filled in: an email and a
+// text to the coach. Lee sees the exact words before switching either on.
+async function coachAlertsCard() {
+  const head = view().querySelector('.jp-head')
+  if (!head || $('ca-card')) return
+  const box = document.createElement('div')
+  box.id = 'ca-card'
+  box.className = 'j-card'
+  box.style.cssText = 'padding:16px;max-width:760px;margin:0 0 16px'
+  box.innerHTML = '<p class="muted small">Loading coach alerts</p>'
+  head.after(box)
+  const r = await post('coachAlerts')
+  if (!r.ok) { box.innerHTML = `<p class="small j-err">${esc(r.data.error || 'Could not load coach alerts.')}</p>`; return }
+  const d = r.data
+  const sample = (w) => `<div class="j-box j-box-grey small" style="margin-top:6px"><b>Text:</b> ${esc(w.text)}<br><b>Email subject:</b> ${esc(w.subject)}</div>`
+  const noMobile = d.coaches.filter((c) => !c.mobile).map((c) => c.name)
+  box.innerHTML = `<h3 style="margin-bottom:4px">Coach alerts: email and text</h3>
+    <p class="muted small" style="margin-bottom:10px">Texts come from 0404 780 351 (the office Mac), 6am to 9pm. You are never chased for your own sessions.</p>
+    ${d.textsOn ? '' : '<p class="j-box j-box-amber small">Texts are not on yet: go to Messages, press Send me a test text, and confirm it arrived. Until then coaches get the email only.</p>'}
+    ${noMobile.length ? `<p class="j-box j-box-amber small" style="margin-top:8px">No mobile saved for ${esc(noMobile.join(', '))}. Add it below, or they get the email only.</p>` : ''}
+    <label class="j-check" style="margin-top:12px"><input type="checkbox" id="ca-new" ${d.newPlayer ? 'checked' : ''}> <span><b>New player in your group.</b> When you or Ligia add a player to a group, move one in, or a family books online, the coach hears within about 5 minutes. A run of moves becomes one message.</span></label>
+    ${sample(d.samples.newPlayer)}
+    <label class="j-check" style="margin-top:14px"><input type="checkbox" id="ca-reg" ${d.register ? 'checked' : ''}> <span><b>Register not filled in.</b> 30 minutes after a session ends with nobody marked, the coach gets an email and a text. Still empty 4 hours after: one more, and you get a Telegram. Only sessions after you switch this on.</span></label>
+    ${sample(d.samples.register)}${sample(d.samples.registerAgain)}`
+  const save = async (patch) => {
+    const s = await post('setCoachAlerts', patch)
+    toast(s.ok ? 'Coach alerts saved' : (s.data.error || 'Not saved'))
+    box.remove(); coachAlertsCard()
+  }
+  $('ca-new').addEventListener('change', (e) => save({ newPlayer: e.target.checked }))
+  $('ca-reg').addEventListener('change', (e) => save({ register: e.target.checked }))
+}
+
 // ---------- coaches: names, emails, photos ----------
 
 function avatar(url, name, size = 56) {
@@ -3015,6 +3049,7 @@ async function renderCoaches() {
     const read = () => { rows = rows.map((c, i) => { const box = view().querySelector(`[data-co="${i}"]`); return { ...c, fullName: box.querySelector('[data-cf="fullName"]').value.trim(), email: box.querySelector('[data-cf="email"]').value.trim(), phone: box.querySelector('[data-cf="phone"]').value.trim(), alerts: box.querySelector('[data-cf="alerts"]').checked } }) }
     view().querySelectorAll('[data-photo]').forEach((b) => b.addEventListener('click', () => { read(); const c = rows[Number(b.dataset.photo)]; if (!list.some((x) => x.id === c.id)) return toast('Save coaches first, then add the photo.'); photoPicker(b, c.id, (url) => { c.photo = url; draw() }) }))
     view().querySelectorAll('[data-photo-rm]').forEach((b) => b.addEventListener('click', async () => { read(); const c = rows[Number(b.dataset.photoRm)]; const r = await post('coachPhoto', { coachId: c.id, remove: true }); if (r.ok) { c.photo = ''; draw() } else toast(r.data.error) }))
+    coachAlertsCard()
     $('co-add').addEventListener('click', () => {
       read()
       const full = $('co-new-name').value.trim().replace(/\s+/g, ' ')

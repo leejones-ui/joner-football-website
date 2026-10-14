@@ -5,6 +5,7 @@
 import { requireParentAccess, getConfig, coachLabel, kvGetJson, listGroups, onlineCounts, publicPlacesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, periodOf, dayOrder, QUESTIONS, REQUIREMENTS, ONE_TO_ONE, skippedDates } from './_jfp-store.js'
 import { airtableCounts } from './_jfp-airtable.js'
 import { sweepExpiredOffers } from './_jfp-offers.js'
+import { coachTick } from './_jfp-coach-alerts.js'
 import { reconcileStripe } from './jfp-portal-data.js'
 
 export function coachPhotoUrl(c) { return `/api/jfp-groups?coachPhoto=${encodeURIComponent(c.id)}&v=${c.photoV}` }
@@ -68,6 +69,12 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && req.query?.coachPhoto) return sendCoachPhoto(req, res)
   // The hourly Vercel cron gives back places from offers not paid within 7
   // days. A family loading the timetable never changes anything (review, 5 Oct).
+  // Every 5 minutes: coach alerts (new player in your group, register not done).
+  if (req.method === 'GET' && req.query?.coachTick) {
+    const secret = process.env.CRON_SECRET
+    if (!secret || String(req.headers?.authorization || '') !== `Bearer ${secret}`) return res.status(401).json({ success: false })
+    try { const now = process.env.JFP_TEST_CLOCK === '1' && Number(req.query.now) ? Number(req.query.now) : Date.now(); return res.status(200).json({ success: true, ...(await coachTick(await getConfig(), now)) }) } catch (error) { console.error('jfp coach tick failed', error); return res.status(500).json({ success: false }) }
+  }
   if (req.method === 'GET' && req.query?.sweep) {
     const secret = process.env.CRON_SECRET
     if (!secret || String(req.headers?.authorization || '') !== `Bearer ${secret}`) return res.status(401).json({ success: false })

@@ -487,6 +487,16 @@ function cancelSubject(rec) {
   return `${tag}Can't make it: ${base}`
 }
 
+// Coach alerts (Lee, 14 Oct 2026): a new player in your group, and a register
+// not filled in. The same words go by text (see _jfp-coach-alerts.js).
+export async function sendCoachNotice({ coach, subject, heading, paras = [], list = [], cta = null, kind = 'coach alert' }) {
+  if (!coach?.email) return null
+  const body = `${paras.map((x) => p(esc(x))).join('\n')}
+${list.length ? rows(list.map(([k, v]) => [k, esc(v)])) : ''}
+${cta ? button(cta.label, cta.url) : ''}`
+  return send({ to: [{ email: coach.email, name: `Coach ${coach.name}` }], subject, html: shell({ preheader: subject, heading, body }), replyTo: 'ligia@jonerfootball.com', kind })
+}
+
 export async function sendCancelCoachAlert({ rec, coach }) {
   if (!coach?.email) return false
   const heading = rec.event === 'withdrawn' ? 'Cancellation withdrawn' : 'A player cannot make a session'

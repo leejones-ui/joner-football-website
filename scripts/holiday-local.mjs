@@ -34,6 +34,9 @@ process.env.JFP_BOOKING_PASSWORD = process.env.JFP_BOOKING_PASSWORD || 'term4'
 process.env.JFP_PORTAL_ENABLED = 'true'
 process.env.JFP_RELAY_TOKEN = process.env.JFP_RELAY_TOKEN || 'local-relay-token-0123456789abcdef0123'
 process.env.JFP_TEXT_ANYTIME = process.env.JFP_TEXT_ANYTIME || '1'
+process.env.CRON_SECRET = process.env.CRON_SECRET || 'local-cron-secret'
+// Coach alerts tests move the clock forward (?now= on the coach tick).
+process.env.JFP_TEST_CLOCK = '1'
 process.env.JFP_SETTLE_SECONDS = process.env.JFP_SETTLE_SECONDS ?? '0'
 process.env.JFP_PORTAL_ORIGIN = `http://localhost:${PORT}`
 process.env.JFP_BOOTSTRAP_SECRET = 'boot'
@@ -89,6 +92,8 @@ function redis(cmd) {
     case 'HSETNX': { const h = hash(args[0]); if (h.has(args[1])) return 0; h.set(args[1], args[2]); return 1 }
     case 'HINCRBY': { const h = hash(args[0]); const n = Number(h.get(args[1]) || 0) + Number(args[2]); h.set(args[1], String(n)); return n }
     case 'HGET': return live(args[0])?.value.get(args[1]) ?? null
+    case 'HEXISTS': return live(args[0])?.value.has(args[1]) ? 1 : 0
+    case 'HLEN': return live(args[0])?.value.size ?? 0
     case 'HGETALL': { const h = live(args[0]); return h ? [...h.value.entries()].flat() : [] }
     case 'ZADD': {
       const z = zset(args[0]); let i = 1; let xx = false

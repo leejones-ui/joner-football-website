@@ -23,6 +23,7 @@ import {
   findWaiversByTag, appendNote, bustRosterCache, loadRoster,
 } from './_jfp-airtable.js'
 import { recordNext, setNextStatus, nextStatuses } from './_jfp-next.js'
+import { noteNewPlayer, alertsOn } from './_jfp-coach-alerts.js'
 import { sendParentConfirmation, sendStaffAlert, sendCoachAlert, sendPaymentReceipt, sendPaymentStaffAlert, sendAttentionAlert, sendQuickPaidAlert } from './_jfp-email.js'
 
 const LEASE_SECONDS = 120
@@ -228,7 +229,9 @@ async function runBookingEffects(booking, retry = new Set()) {
   if (!enrolled(booking)) { await flagAttention(booking, 'roster-pending', save, booking.players.map((p) => p.name).join(', ')); return }
   await runEffect('parentEmail', booking, save, () => sendParentConfirmation({ booking, group: g, config, siteUrl: booking.siteUrl || '' }))
   await runEffect('staffAlert', booking, save, () => sendStaffAlert({ booking, group: g, config }))
-  await runEffect('coachAlert', booking, save, () => sendCoachAlert({ booking, group: g, config }))
+  // With coach alerts on, the coach gets the new email and text instead (Lee, 14 Oct 2026).
+  if (alertsOn(config, 'newPlayer')) for (const [i, id] of (booking.term4Ids || []).entries()) await noteNewPlayer({ config, group: g, rowId: id, player: booking.players[i]?.name || '', kind: 'booked' }).catch((e) => console.error('jfp coach news failed', e))
+  else await runEffect('coachAlert', booking, save, () => sendCoachAlert({ booking, group: g, config }))
   clearAttention(booking, 'roster-pending')
   await save(booking)
 }
