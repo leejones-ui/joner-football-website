@@ -27,7 +27,42 @@ function mineList(D, kind) {
 
 // ---------- Book extra sessions ----------
 
+// Sessions a coach opened (money engineer, 14 Oct 2026): public ones for
+// everyone, and a private one from its own link (#extra?slot=<id>&k=<key>).
+// Book: choose the player, then the place is held, the charge made and the
+// family goes to Stripe (api/_jfp-family-extra.js). No coach names here.
+let LINK = null
+export function setExtraLink(query) {
+  const q = new URLSearchParams(query || '')
+  LINK = q.get('slot') ? { slot: q.get('slot'), k: q.get('k') || '', state: 'new', data: null } : null
+}
+function slotCard(s, D, { mine = false } = {}) {
+  const full = s.placesLeft < 1
+  return `<article class="ja-card" data-xslot="${esc(s.id)}"><p class="ja-kicker"><i></i>${mine ? 'Your session' : 'Extra session'}</p>
+    <h3 class="ja-h3" style="margin-top:8px">${esc(s.dateLabel)} · ${esc(s.time)}</h3>
+    <p class="ja-small ja-muted">${esc(s.location)}${s.durationMin ? ` · ${esc(String(s.durationMin))} min` : ''} · ${esc(s.priceLabel)}</p>
+    <p class="ja-small ja-muted">${full ? 'Full' : `${s.placesLeft} place${s.placesLeft === 1 ? '' : 's'} left`}${s.note ? ` · ${esc(s.note)}` : ''}</p>
+    <div class="ja-actions" data-xslot-acts>${full ? '' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-xbook="${esc(s.id)}">Book</button>`}</div>
+    <p class="j-err" data-xslot-err hidden></p></article>`
+}
+function bookableHtml(D) {
+  const x = X(D)
+  const mine = LINK?.data ? [LINK.data] : []
+  const pub = (x.bookable || []).filter((s) => !mine.some((m) => m.id === s.id))
+  const notice = LINK?.state === 'missing' ? '<div class="ja-card"><p class="ja-small">That session link is not open any more. Ask Ligia for a new one, or book a time below.</p></div>' : ''
+  if (!mine.length && !pub.length) return notice
+  return `<section class="ja-sec" id="x-bookable">${secHead('Sessions you can book now')}${notice}<div class="ja-grid ja-grid-3">${[...mine.map((s) => slotCard(s, D, { mine: true })), ...pub.map((s) => slotCard(s, D))].join('')}</div></section>`
+}
+
 export function renderExtra(el, D) {
+  if (LINK?.state === 'new') {
+    LINK.state = 'loading'
+    api('/api/jfp-account', { action: 'extraSlot', slotId: LINK.slot, k: LINK.k }).then((r) => {
+      LINK.state = r.ok ? 'ok' : 'missing'
+      LINK.data = r.ok ? r.data.slot : null
+      renderExtra(el, D)
+    })
+  }
   const x = X(D)
   const slots = x.slots.length
     ? `<section class="ja-sec">${secHead('Times you can book now')}<div class="ja-grid ja-grid-3">${x.slots.map((s) => `<article class="ja-card"><p class="ja-kicker"><i></i>${esc(s.type || '1 on 1')}</p><h3 class="ja-h3" style="margin-top:8px">${esc(s.label)}</h3><p class="ja-small ja-muted">${esc(s.where || '')}${s.priceLabel ? ` · ${esc(s.priceLabel)}` : ''}</p>${s.url ? `<div class="ja-actions"><a class="ja-btn ja-btn-red ja-btn-sm" href="${esc(s.url)}">Book</a></div>` : ''}</article>`).join('')}</div></section>`
@@ -39,6 +74,7 @@ export function renderExtra(el, D) {
       <div class="ja-card ja-info-card">${ic('chat')}<h3 class="ja-h3">Other times</h3><p class="ja-small ja-muted">Need a different time? Ask below. Other times are on request, depending on the coaches.</p></div>
     </div>
     ${x.holidaySlots ? `<div class="ja-band" style="margin-top:14px"><div><p class="ja-kicker"><i></i>School holidays</p><h2 style="margin-top:10px">Holiday sessions are open</h2><p style="margin-top:8px">Book a holiday session straight away on the holiday booking page.</p></div><a class="ja-btn ja-btn-light" href="/holiday-bookings/">Book holiday training ${ic('arrow')}</a></div>` : ''}
+    ${bookableHtml(D)}
     ${slots}
     <section class="ja-sec"><div class="ja-card ja-form-card" id="x-extra">
       <p class="ja-kicker"><i></i>Request</p><h2 class="ja-h2" style="margin-top:10px">Ask for an extra session</h2>
@@ -101,8 +137,39 @@ async function send(kind, btn, D) {
   toast('Sent. We will be in touch.')
 }
 
+// Book: pick the player (the waiver first), then hold, charge and pay.
+function bookPicker(card, D, slotId) {
+  const ps = D.players || []
+  const acts = card.querySelector('[data-xslot-acts]')
+  acts.innerHTML = ps.length
+    ? `<label class="j-field" style="margin:0;flex:1"><span>Which player?</span><select class="j-select" data-xbook-player>${ps.map((p) => `<option value="${esc(p.key)}">${esc(p.name)}${p.waiver?.onFile ? '' : ' (waiver needed)'}</option>`).join('')}</select></label><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-xbook-go="${esc(slotId)}">Book and pay</button>`
+    : '<p class="ja-small">Add your player first (My profile), then book.</p>'
+}
+async function bookGo(btn, D) {
+  const card = btn.closest('[data-xslot]')
+  const err = card.querySelector('[data-xslot-err]')
+  err.hidden = true
+  const key = card.querySelector('[data-xbook-player]')?.value || ''
+  const p = (D.players || []).find((x) => x.key === key)
+  if (p && !p.waiver?.onFile) { err.innerHTML = `Sign ${esc(p.name)}'s waiver first, then book. <button type="button" class="ja-link" data-go="waivers">Sign the waiver</button>`; err.hidden = false; return }
+  btn.disabled = true
+  btn.textContent = 'Opening'
+  const r = await api('/api/jfp-account', { action: 'bookExtra', slotId: btn.dataset.xbookGo, k: LINK?.slot === btn.dataset.xbookGo ? LINK.k : '', playerKey: key })
+  if (r.ok && r.data.url) { location.href = r.data.url; return }
+  btn.disabled = false
+  btn.textContent = 'Book and pay'
+  if (r.ok && r.data.paid) { err.textContent = 'Already booked and paid. See you there.'; err.hidden = false; return }
+  err.textContent = r.data.error || 'Could not book that. Try again.'
+  err.hidden = false
+  if (r.data.code === 'charge') toast('Your place is held.')
+}
+
 // From the page's one click handler. Returns true when the click was ours.
 export function extraClick(t, { D }) {
+  const bk = t.closest('[data-xbook]')
+  if (bk && D) { bookPicker(bk.closest('[data-xslot]'), D, bk.dataset.xbook); return true }
+  const go = t.closest('[data-xbook-go]')
+  if (go && D) { bookGo(go, D); return true }
   const chip = t.closest('[data-x-group] [data-x-chip]')
   if (chip) {
     const g = chip.closest('[data-x-group]')

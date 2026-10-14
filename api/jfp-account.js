@@ -21,6 +21,7 @@
 //               staff (_jfp-extras.js)
 import { stripeFetch, siteUrl, listSlots } from './_holiday-store.js'
 import { chargeCheckoutMeta } from './_jfp-charges.js'
+import { bookableSlots, privateSlot, bookExtraPlace } from './_jfp-family-extra.js'
 import {
   getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, dateLabel,
   formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, sydneyToday, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType, isProType,
@@ -258,7 +259,9 @@ async function extrasView(config, email) {
     listExtras().then((l) => l.filter((r) => r.email === email).slice(0, 10).map(familyExtraView)).catch(() => []),
   ])
   const price = analysisPrice(config)
-  return { analysisPriceLabel: price?.label || '', holidaySlots: slots, slots: extraSlots(), days: EXTRA_DAYS, times: EXTRA_TIMES, types: EXTRA_TYPES, mine }
+  // Extra sessions coaches opened to book now (money engineer, _jfp-family-extra.js).
+  const bookable = await bookableSlots(config)
+  return { analysisPriceLabel: price?.label || '', holidaySlots: slots, slots: extraSlots(), bookable, days: EXTRA_DAYS, times: EXTRA_TIMES, types: EXTRA_TYPES, mine }
 }
 
 async function requestExtra(res, parent, body) {
@@ -710,6 +713,16 @@ export default async function handler(req, res) {
     if (body.action === 'cancelSession') return await cancelSession(res, parent, body)
     if (body.action === 'withdrawCancel') return await withdrawSession(res, parent, body)
     if (body.action === 'requestExtra') return await requestExtra(res, parent, body)
+    // Book an extra session: hold the place, make the charge, then pay (money engineer).
+    if (body.action === 'extraSlot') { const s = await privateSlot(await getConfig(), { slotId: body.slotId, token: body.k }); return s ? res.status(200).json({ success: true, slot: s }) : fail(res, 404, 'That session is not open to book, or the link is not right.') }
+    if (body.action === 'bookExtra') {
+      const config = await getConfig()
+      const fam = familyFor(parent.email, await loadRoster({ fresh: true }), config.termStart)
+      const r = await bookExtraPlace({ config, parent, fam, body, siteUrl: siteUrl(req) })
+      if (!r.ok) return fail(res, r.status, r.error, r.code ? { code: r.code } : {})
+      if (r.paid) return res.status(200).json({ success: true, paid: true, payreqId: r.payreqId })
+      return await pay(req, res, parent, { payreqId: r.payreqId })
+    }
     return await overview(res, parent, body)
   } catch (error) {
     console.error('jfp-account failed', error)

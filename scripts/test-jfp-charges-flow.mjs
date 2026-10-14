@@ -259,4 +259,66 @@ await test('a JFP invoice part paid by bank (reference matched), the rest by car
   for (const action of ['invoiceList', 'invoiceSave', 'createCharge', 'stripeMatch', 'extraMoney', 'bankInvoice']) assert.equal((await coach.call('/api/jfp-portal-data', { action })).status, 403, action)
 })
 
+await test('the family books an extra session: public cards (no coach names), a private link, hold then charge then pay; a retry never makes two; full is said plainly', async () => {
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date(Date.now() + 3 * 86400000))
+  const pubSlot = (await ok('extraSave', { slot: { coachId: 'dean', date: day, time: '7:30am', capacity: 1, location: 'Belrose HQ', priceCents: 7000, title: 'Extra 1 on 1', visibility: 'public' } })).slot
+  const privSlot = (await ok('extraSave', { slot: { coachId: 'sam', date: day, time: '9:00am', capacity: 2, location: 'Belrose HQ', priceCents: 6500, title: 'Private 1 on 1', visibility: 'private' } })).slot
+  const o = await account()
+  const card = o.extras.bookable.find((x) => x.id === pubSlot.id)
+  assert.ok(card, 'the public session is on the page')
+  assert.deepEqual([card.coachName, card.coachId, card.priceLabel, card.placesLeft], [undefined, undefined, 'A$70', 1], 'no coach for families')
+  assert.ok(!o.extras.bookable.some((x) => x.id === privSlot.id), 'a private one only with its link')
+  const k = new URLSearchParams(privSlot.link.split('?')[1]).get('k')
+  assert.equal((await fam.call('/api/jfp-account', { action: 'extraSlot', slotId: privSlot.id, k: 'wrong' })).status, 404)
+  const ps = await fam.call('/api/jfp-account', { action: 'extraSlot', slotId: privSlot.id, k })
+  assert.deepEqual([ps.status, ps.data.slot.coachName], [200, undefined])
+  assert.equal((await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: privSlot.id, playerKey: o.players[0].key })).status, 404, 'a private session needs its key')
+  const me = o.players.find((p) => p.name === famRow.name)
+  const b1 = await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: pubSlot.id, playerKey: me.key })
+  assert.equal(b1.status, 200, JSON.stringify(b1.data))
+  const s1 = (await sessions()).find((x) => x.url === b1.data.url)
+  assert.deepEqual([s1.metadata.jfpProgramme, s1.metadata.jfpPlayer, s1.amount_total], ['extra', famRow.name, 7000])
+  const list = async () => (await ok('extraList', { coachId: '' })).slots
+  const bk = (await list()).find((x) => x.id === pubSlot.id).bookings
+  assert.equal(bk.length, 1)
+  const q = await payreq(bk[0].payreqId)
+  assert.deepEqual([q.reason, q.charge.kind, q.playerNames, q.amountCents], ['charge', 'extra', [famRow.name], 7000])
+  const charge = JSON.parse(await kv(['GET', `jfp:charge:${q.charge.id}`]))
+  assert.deepEqual([charge.ref, charge.coachId, charge.sessionDate], [`extra:${pubSlot.id}:${bk[0].id}`, 'dean', day])
+  // A retry (a double tap, back from Stripe): the same place and the same charge.
+  const b2 = await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: pubSlot.id, playerKey: me.key })
+  assert.equal(b2.status, 200, JSON.stringify(b2.data))
+  assert.equal((await list()).find((x) => x.id === pubSlot.id).bookings.length, 1)
+  const sameRef = []
+  for (const id of JSON.parse(await kv(['ZRANGE', 'jfp:charges', '0', '-1']))) { const c = JSON.parse(await kv(['GET', `jfp:charge:${id}`])); if (c.ref === charge.ref) sameRef.push(c.id) }
+  assert.deepEqual(sameRef, [charge.id], 'one charge for the booking')
+  assert.ok((await account()).todo.some((t) => t.id === q.id), 'in Home and Fees with Pay')
+  await mockPay(b2.data.url)
+  const paidView = (await list()).find((x) => x.id === pubSlot.id).bookings[0]
+  assert.deepEqual([paidView.paid, paidView.payStatus], [true, 'paid'], 'the coach sees Paid')
+  assert.ok((await extra()).lines.some((l) => l.chargeId === q.charge.id && l.coachId === 'dean'))
+  const b3 = await fam.call('/api/jfp-account', { action: 'bookExtra', slotId: pubSlot.id, playerKey: me.key })
+  assert.deepEqual([b3.status, b3.data.paid], [200, true], 'booked and paid already')
+  // Another family: the session is full.
+  const other = players.find((p) => p.email && p.holdsPlace && !p.waiver?.onFile && p.email !== famRow.email && players.filter((x) => x.email === p.email).length === 1)
+  const fam2 = client()
+  await signIn(fam2, other.email, 'parent')
+  let o2 = (await fam2.call('/api/jfp-account', { action: 'overview' })).data
+  const kid = o2.players[0]
+  // No waiver: nothing is held.
+  const nw = await fam2.call('/api/jfp-account', { action: 'bookExtra', slotId: privSlot.id, k, playerKey: kid.key })
+  assert.deepEqual([nw.status, nw.data.code], [400, 'waiver'])
+  assert.equal((await list()).find((x) => x.id === privSlot.id).bookings.length, 0)
+  const sw = await fam2.call('/api/jfp-account', { action: 'signWaiver', players: [{ key: kid.key, dob: '2013-05-05', emergencyName: 'Gran Sample', emergencyPhone: '0400 777 889' }], waiver: { accepted: { terms: true, makeups: true, payment: true, emergency: true }, media: false, kind: 'guardian', signature: 'Pat Sample' }, parentName: 'Pat Sample', mobile: '0400 777 888' })
+  assert.equal(sw.status, 200, JSON.stringify(sw.data))
+  o2 = (await fam2.call('/api/jfp-account', { action: 'overview' })).data
+  const full = await fam2.call('/api/jfp-account', { action: 'bookExtra', slotId: pubSlot.id, playerKey: kid.key })
+  assert.deepEqual([full.status, full.data.error], [409, 'That session is full.'])
+  // The private session by its link.
+  const pv = await fam2.call('/api/jfp-account', { action: 'bookExtra', slotId: privSlot.id, k, playerKey: kid.key })
+  assert.equal(pv.status, 200, JSON.stringify(pv.data))
+  assert.equal((await sessions()).find((x) => x.url === pv.data.url).amount_total, 6500)
+  assert.equal((await list()).find((x) => x.id === privSlot.id).bookings[0].payStatus, 'checkout', 'the coach sees it is being paid')
+})
+
 console.log(`\n${passed} charges and invoices flow checks passed`)

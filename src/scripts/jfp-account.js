@@ -10,7 +10,7 @@ import { hqVideos, pitchVideos, reels, socials, contacts, hq, holidays } from '.
 import { ic } from './jfp-account-icons.js'
 import { first, initials, money, pageHead, hero, secHead } from './jfp-account-ui.js'
 import { oweList, jjOweList, oweCard, aheadBlock, depositCards, placeCards, historyCard } from './jfp-account-pay.js'
-import { renderExtra, renderAnalysis, extraClick } from './jfp-account-extras.js'
+import { renderExtra, renderAnalysis, extraClick, setExtraLink } from './jfp-account-extras.js'
 
 const q = new URLSearchParams(location.search)
 let D = null
@@ -82,7 +82,9 @@ async function start() {
   $('app').hidden = false
   if (q.get('paid') && q.get('session_id')) confirmPaid(q.get('session_id'))
   await load()
-  const h = location.hash.slice(1)
+  // A private extra session link: #extra?slot=<id>&k=<key> (money engineer, 14 Oct 2026).
+  const [h, hq] = location.hash.slice(1).split('?')
+  if (h === 'extra') setExtraLink(hq)
   show(PANELS.includes(h) ? h : 'home', { keepScroll: true })
   const payId = q.get('pay')
   if (payId) {
@@ -1219,7 +1221,7 @@ document.addEventListener('click', async (e) => {
     return waiverSheet([wp.dataset.waiverPlayer])
   }
 })
-window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (D && PANELS.includes(h) && h !== current) show(h) })
+window.addEventListener('hashchange', () => { const [h, hq] = location.hash.slice(1).split('?'); if (h === 'extra' && hq) { setExtraLink(hq); const el = pane('extra'); if (el) delete el.dataset.drawn } if (D && PANELS.includes(h) && (h !== current || hq)) show(h) })
 
 // ---------- Joners Juniors: the same login, its own cards ----------
 // Nothing here shows for a family with no Juniors child (D.juniors is null).
