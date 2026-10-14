@@ -12,6 +12,7 @@
 //       priceBlock, dateOptions, nextDate, customPrices, board(), pricing(), after() }
 import { esc, money } from './jfp-common.js'
 import { quoteHtml, wireQuote } from './jfp-portal-quote.js'
+import { findExisting } from './jfp-portal-removed.js'
 
 const PAYS = [
   ['link', 'A price: on the one family payment (pick it below)'],
@@ -23,6 +24,7 @@ const PAYS = [
 ]
 const dollars = (c) => (c / 100).toFixed(2).replace(/\.00$/, '')
 const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || ''
+const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ')
 const both = (list) => (list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0] || '')
 
 // Every JFP group (hidden ones too: staff add to those); never Joners Juniors.
@@ -94,6 +96,8 @@ export function wireChild(box, px, ui, pr, { groups, onChange = () => {} }) {
     const payment = $('pay').value
     const g = group()
     const out = { groupId: g?.id || '', player: { name, dob: $('dob').value }, payment }
+    // Picked from Find an existing player as a removed player: they are back.
+    if ($('name').dataset.fromRemoved && norm(name) === norm($('name').dataset.removedName)) out.fromRemoved = $('name').dataset.fromRemoved
     if (['link', 'offline'].includes(payment)) {
       const pv = readPrice()
       if (!(pv.amountCents > 0)) return { error: `Enter ${firstName(name)}'s price.` }
@@ -189,6 +193,8 @@ export async function familyModal(ui) {
   const groups = familyGroups(await ui.board(), ui.isJJ)
   const box = ui.modal(`<h2 style="margin-bottom:4px">Add a family</h2>
     <p class="muted small" style="margin-bottom:12px">Brothers and sisters in one go: one parent, one account, one email and one payment for every child with a price. Each child keeps their own group and price. A child with no group yet takes no place until you put them in one.</p>
+    <label class="j-field"><span>Find an existing player <span class="muted">(Term 4, removed players, Term 3 or waivers)</span></span><input class="j-input" id="fa-search" placeholder="Start typing a name" autocomplete="off"></label>
+    <div id="fa-results"></div>
     <h3>Parent</h3>
     <div class="j-two"><label class="j-field"><span>Parent name</span><input class="j-input" id="fa-pname" autocomplete="off"></label>
     <label class="j-field"><span>Parent mobile</span><input class="j-input" id="fa-pmobile" type="tel" inputmode="tel" autocomplete="off"></label></div>
@@ -205,6 +211,21 @@ export async function familyModal(ui) {
   const relabel = () => { const n = list ? list.count() : 0; const go = $('fa-go'); if (!go.disabled) go.textContent = `Add ${n} ${n === 1 ? 'child' : 'children'}${$('fa-send').checked ? ' and email the parent' : ''}` }
   list = childList(box, ui, pr, { mount: $('fa-kids'), groups, noGroup: true, start: 2, onChange: () => relabel() })
   $('fa-more').addEventListener('click', () => list.add())
+  // A picked player (removed ones too) fills the parent and the next empty child.
+  findExisting(box, { post: ui.post, toast: ui.toast, input: $('fa-search'), results: $('fa-results'), form: { fill: (x) => {
+    if (x.ownContact) return ui.toast(`${x.name} is their own contact, with no parent. Add them with Add a player instead.`)
+    for (const [id, v] of [['fa-pname', x.parentName], ['fa-pemail', x.email], ['fa-pmobile', x.mobile]]) if (v) $(id).value = v
+    let k = list.kids.find((c) => !box.querySelector(`#${c.px}-name`).value.trim())
+    if (!k) { list.add(); k = list.kids.at(-1) }
+    const name = box.querySelector(`#${k.px}-name`)
+    name.value = x.name || ''
+    name.dataset.fromRemoved = x.fromRemoved || ''
+    name.dataset.removedName = x.name || ''
+    if (x.dob) box.querySelector(`#${k.px}-dob`).value = x.dob
+    const gsel = box.querySelector(`#${k.px}-group`)
+    if (x.removed?.groupId && [...gsel.options].some((o) => o.value === x.removed.groupId)) { gsel.value = x.removed.groupId; gsel.dispatchEvent(new Event('change')) }
+    relabel()
+  } } })
   $('fa-send').addEventListener('change', relabel)
   relabel()
   let busy = false

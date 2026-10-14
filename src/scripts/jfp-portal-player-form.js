@@ -59,6 +59,9 @@ export function playerFormHtml(px, { row = {}, v = {}, opts = {}, add = false } 
   </div>`
 }
 
+// Profile values and the form field each one fills.
+const PROFILE_IDS = { club: 'club', team: 'team', association: 'assoc', previousClubs: 'prev', yearsPlaying: 'years', repTeam: 'rep', otherTraining: 'other', level: 'level', playingUp: 'up', foot: 'foot', goals: 'goals', emergencyName: 'ename', emergencyPhone: 'ephone', emergencyRelation: 'erel', medical: 'med', parent2Name: 'p2name', parent2Mobile: 'p2mob', parent2Email: 'p2email' }
+
 // Wires the own-contact switch (labels, hidden parent fields, the adult
 // suggestion from the date of birth). onChange(words) lets the caller relabel
 // its buttons ("Add and email Kai"). Returns read(): { row, values, ownContact, note }.
@@ -94,12 +97,20 @@ export function wirePlayerForm(box, px, { onChange = () => {}, today = todayIso(
   return {
     words,
     // A picked existing player fills the contact fields.
+    // A removed player added back (Lee, 14 Oct 2026) also brings their own
+    // contact flag and player information (x.ownContact, x.profile).
     fill(x) {
       $('name').value = x.name || ''
-      $('dob').value = x.dob || ''
+      $('dob').value = x.dob || x.profile?.dob || ''
       $('parent').value = x.parentName || ''
       $('mobile').value = x.mobile || ''
       $('email').value = x.email || ''
+      if (typeof x.ownContact === 'boolean') { $('own').checked = x.ownContact; touched = true }
+      if (x.profile) {
+        const v = x.profile
+        for (const [k, id] of Object.entries(PROFILE_IDS)) if (v[k] && $(id)) $(id).value = v[k]
+        box.querySelectorAll(`#${px}-pos [data-pos]`).forEach((b) => b.setAttribute('aria-pressed', String((v.positions || []).includes(b.dataset.pos))))
+      }
       suggest(); apply()
     },
     read() {

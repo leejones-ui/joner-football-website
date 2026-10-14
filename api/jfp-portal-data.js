@@ -21,7 +21,7 @@ import { coachPhotoUrl } from './jfp-groups.js'
 import {
   loadRoster, countsFrom, playerAge, waiverFor, isoDate, createTerm4Rows, updateTerm4Rows, getTerm4Row, appendNote, upsertAttendance, clearAttendance, draftAgeBand, placeInGroups,
   createWaiverRows, waiverFields, findWaiversByTag, bustRosterCache, findTerm4ByTag,
-  getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, listDropped, deleteTerm4Row, RESTORABLE,
+  getTerm4Fields, findDroppedBySource, createDroppedRow, updateDroppedRow, getDroppedRow, deleteTerm4Row, RESTORABLE,
   listLedger, createLedgerRow, listJuniors, listVenueHistory, PAINT_MAX_AGE_MS,
   findLedgerByPayment, listPreviousTerm, getPreviousTermRow, updatePreviousTermRow, previousTermSpec,
 } from './_jfp-airtable.js'
@@ -47,6 +47,7 @@ import { proMoneyData, isProRow, isProLedger, PRO_BANK } from './_jfp-pro-money.
 import { billPlan, afterBill, billLine, coveredOf, withQuote } from './_jfp-quote.js'
 import { playerQuote, saveQuote, saveDefaultQuote, addQuote, termRun } from './_jfp-quote-staff.js'
 import { linkProfile, accountsWithNoSession, allAccounts } from './_jfp-account-open.js'
+import { removedPlayers, removedMatches, removedPrefill, reasonCounts, removedSource, backNote, markAddedBack } from './_jfp-removed.js'
 import { campsMoneyData, campsStripe } from './_jfp-camps.js'
 import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
 import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
@@ -360,7 +361,9 @@ export async function addPlayer(req, res, principal, config, body) {
   if (!prep.ok) return fail(res, prep.status, prep.error, { ...(prep.code ? { code: prep.code } : {}), ...(prep.rowId ? { rowId: prep.rowId } : {}) })
   const { name, email, parentName, mobile, dob, payment, perSession, custom, ownContact, words } = prep.v
   const { amountCents, isTrial, isPro, perSessionPay, product, from } = prep
-  const [rowId] = await createTerm4Rows([prep.fields])
+  const back = await removedSource(body)
+  const [rowId] = await createTerm4Rows([{ ...prep.fields, 'Term 4 Notes': backNote(prep.fields['Term 4 Notes'], back) }])
+  await markAddedBack(principal, back, { rowId, where: groupSummary(group, config) })
   const prof = await saveAddedProfile(principal, prep.v, rowId)
   let payreq = null
   if (payment === 'link') payreq = await createPayreq({ req, principal, config, group, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: isTrial ? 'trial' : 'admin-add', product: custom ? '' : product, startDate: from, afterpay: body.afterpay !== false, programme: isPro ? 'pro' : '', ownContact })
@@ -503,7 +506,9 @@ async function addPlayerNoGroup(req, res, principal, config, body) {
   if (!prep.ok) return fail(res, prep.status, prep.error, { ...(prep.code ? { code: prep.code, rowId: prep.rowId, inGroup: prep.inGroup } : {}) })
   const { name, email, parentName, mobile, payment, ownContact, words } = prep.v
   const { amountCents, isPro, fee, what, custom } = prep
-  const [rowId] = await createTerm4Rows([prep.fields])
+  const back = await removedSource(body)
+  const [rowId] = await createTerm4Rows([{ ...prep.fields, 'Term 4 Notes': backNote(prep.fields['Term 4 Notes'], back) }])
+  await markAddedBack(principal, back, { rowId, where: '' })
   // Term 4 Players has no date of birth column: it goes in player information.
   const prof = await saveAddedProfile(principal, prep.v, rowId)
   await bustRosterCache()
@@ -571,8 +576,10 @@ export async function addFamily(req, res, principal, config, body) {
     preps.push(prep)
   }
   const famId = newId('FAM')
-  const ids = await createTerm4Rows(preps.map((x) => ({ ...x.fields, 'Term 4 Notes': `${x.fields['Term 4 Notes']}\nFamily add ${famId}: ${preps.map((y) => y.v.name).join(', ')}.` })))
+  const backs = await Promise.all(kids.map((k) => removedSource(k)))
+  const ids = await createTerm4Rows(preps.map((x, i) => ({ ...x.fields, 'Term 4 Notes': backNote(`${x.fields['Term 4 Notes']}\nFamily add ${famId}: ${preps.map((y) => y.v.name).join(', ')}.`, backs[i]) })))
   const added = preps.map((x, i) => ({ ...x, rowId: ids[i], where: x.group ? groupSummary(x.group, config) : 'Group to be confirmed' }))
+  for (const [i, x] of added.entries()) await markAddedBack(principal, backs[i], { rowId: x.rowId, where: x.group ? x.where : '' })
   const profiles = []
   for (const x of added) profiles.push(await saveAddedProfile(principal, x.v, x.rowId))
   // ONE payment request for every child with a price to pay.
@@ -1986,7 +1993,9 @@ async function searchPlayers(config, body) {
   const roster = await loadRoster()
   const seen = new Map()
   const add = (key, v) => { if (!seen.has(key)) seen.set(key, v) }
-  for (const r of roster.players) if (normName(r.player).includes(q)) add(`${normName(r.player)}|${r.email}`, { name: r.player, parentName: r.parent, email: r.email, mobile: r.phone, dob: r.dob, age: playerAge(r, config.termStart), source: `Term 4: ${r.confirmation || 'no status'}${r.groupId ? `, ${r.day} ${r.time}` : ''}` })
+  for (const r of roster.players) if (r.holdsPlace && normName(r.player).includes(q)) add(`${normName(r.player)}|${r.email}`, { name: r.player, parentName: r.parent, email: r.email, mobile: r.phone, dob: r.dob, age: playerAge(r, config.termStart), source: `Term 4: ${r.confirmation || 'no status'}${r.groupId ? `, ${r.day} ${r.time}` : ''}` })
+  // Removed players stay findable, with when and why (Lee, 14 Oct 2026).
+  for (const x of removedMatches(await removedPlayers(config, { roster }), q)) add(`${normName(x.name)}|${x.email}`, x)
   for (const r of roster.term3) if (normName(r.player).includes(q)) add(`${normName(r.player)}|${r.emails[0] || ''}`, { name: r.player, parentName: r.parent, email: r.emails[0] || '', mobile: r.phone, dob: r.dob, age: ageOn(r.dob, config.termStart), source: `Term 3${r.day ? `, ${r.day} ${r.time}` : ''}` })
   for (const w of roster.waivers) if (normName(w.player).includes(q)) add(`${normName(w.player)}|${w.email}`, { name: w.player, parentName: w.parent, email: w.email, mobile: w.mobile, dob: w.dob, age: ageOn(w.dob, config.termStart), source: `Waiver ${w.term || ''}`.trim() })
   return [...seen.values()].slice(0, 12).map((p) => ({ ...p, waiver: Boolean(waiverFor(p.name, { emails: [p.email], phones: [p.mobile] }, roster.waivers)) }))
@@ -3015,21 +3024,12 @@ async function handle(req, res) {
         return res.status(200).json({ success: true, weeks: config.weeks, today, runs, prices: config.prices, products: PRODUCTS.map((x) => ({ ...x, cents: config.prices[x.key] })), datesByDay: Object.fromEntries(DAYS.map((d) => [d, sessionDates(config, d).map((iso) => ({ iso, label: dateLabel(iso), past: iso < today }))])), ...pricesView(config), defaultQuote: config.proQuote || null })
       }
       case 'removed': {
-        const [roster, dropped] = await Promise.all([loadRoster({ fresh: true }), listDropped()])
-        const log = (await listAudit(2000)).filter((e) => e.action === 'player.remove')
-        return res.status(200).json({
-          success: true,
-          reasons: LEAVE_REASONS,
-          players: [
-            ...dropped.map((d) => ({ droppedId: d.id, name: d['Player Name'] || '', parent: d['Parent Name'] || '', email: d['Email'] || '', phone: d['Phone Number'] || '', term: d['Term Player left'] || '', reason: d['Reason for leaving'] || '', details: d['Reason details'] || '', removedAt: d['Removed At'] || '', removedBy: d['Removed By'] || '', session: d['Session'] || '', coach: d['Coach'] || '', paymentStatus: d['Payment Status'] || '', type: d['Term 4 Payment Type'] || '', feeCents: cents(d['Term 4 Fee']), paidCents: cents(d['Term 4 Amount Paid']), notes: d['Term 4 Notes'] || '', restored: d['Restored'] === true, contacted: d['Contacted'] === true })),
-            // Removed before the dropped table existed: still in Term 4 as Dropped or Not Returning.
-            ...roster.players.filter((r) => !r.holdsPlace && !dropped.some((d) => d['Source Term 4 Record ID'] === r.id)).map((r) => {
-              const e = log.find((x) => x.target === r.id)
-              return { rowId: r.id, name: r.player, parent: r.parent, email: r.email, phone: r.phone, term: config.term, reason: e?.after?.reason || (r.confirmation === 'Not Returning' ? 'Not returning' : ''), details: e?.after?.details || '', removedAt: e?.at || '', removedBy: e?.by || '', session: [r.day, r.time, r.location].filter(Boolean).join(' '), coach: r.coach, paymentStatus: r.paymentStatus, type: r.paymentType, feeCents: cents(r.feeAud), paidCents: cents(r.paidAud), notes: r.notes, status: r.confirmation, legacy: true }
-            }),
-          ].sort((x, y) => String(y.removedAt).localeCompare(String(x.removedAt))),
-        })
+        // Everyone removed, why, and where they were (_jfp-removed.js).
+        const players = await removedPlayers(config)
+        return res.status(200).json({ success: true, reasons: LEAVE_REASONS, term: config.term, counts: reasonCounts(players, config.term), players })
       }
+      // Add a removed player back: everything on file for the add form.
+      case 'removedPlayer': { const out = await removedPrefill(config, body); return res.status(out.status).json(out.body) }
       case 'groups': {
         const groups = await listGroups()
         return res.status(200).json({ success: true, groups: sortGroups(groups).map((g) => ({ ...g, locationName: locationFor(config, g.location).name })), coaches: coachList(config), modes: MODES, labels: LABELS, days: DAYS.slice(0, 7), locations: config.locations.map((l) => ({ id: l.id, name: l.name, match: l.match })) })

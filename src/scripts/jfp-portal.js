@@ -24,6 +24,7 @@ import { textComposer, payLinkText, trialText, helloText, inviteText, startText 
 import { JJ_NAV, JJ_TABS, JJ_ICON, renderJJ } from './jfp-portal-jj.js'
 import { quoteHtml, wireQuote, commitmentHtml, sameTiers } from './jfp-portal-quote.js'
 import { childList, submitFamily, familyModal, familyGroups } from './jfp-portal-family-add.js'
+import { findExisting, removedView, wireRemoved, removedCount } from './jfp-portal-removed.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', linkProg: 'all', pricing: null }
@@ -751,7 +752,7 @@ const LEAVE = ['Added by mistake or twice', 'Cost', 'Time or schedule clash', 'C
 
 function removeModal(p, g, after) {
   const box = modal(`<h2 style="margin-bottom:6px">Remove ${esc(p.name)}?</h2>
-    <p class="muted small" style="margin-bottom:12px">They come off Term 4 Players${g ? ` and their place in ${esc(g.day)} ${esc(g.time)} opens up` : ''}. Their contact details, the reason and a copy of their row go to "Players dropped from term 4" in Airtable, and to Removed players here, where you can restore them.${p.paymentStatus === 'Paid' ? ' They have paid: any refund is done in Stripe.' : ''}</p>
+    <p class="muted small" style="margin-bottom:12px">They come off this term's list${g ? ` and their place in ${esc(g.day)} ${esc(g.time)} opens up` : ''}, but <b>they stay on file</b>: contact details, player information, waiver and history are kept, with the reason below. Find them any time under Players &gt; Removed, or search their name in Add a player to add them back to any group, with a new price.${p.paymentStatus === 'Paid' ? ' They have paid: any refund is done in Stripe.' : ''}</p>
     <label class="j-field"><span>Why are they leaving?</span><select class="j-select" id="rm-why"><option value="">Choose a reason</option>${LEAVE.map((r) => `<option>${esc(r)}</option>`).join('')}</select></label>
     <label class="j-field"><span>Details <span class="muted">(what the family said, anything to remember)</span></span><textarea class="j-textarea" id="rm-details"></textarea></label>
     <p class="j-err" id="rm-err" hidden></p>
@@ -763,7 +764,7 @@ function removeModal(p, g, after) {
     const r = await post('removePlayer', { rowId: p.rowId, reason, details: box.querySelector('#rm-details').value.trim() })
     btn.disabled = false
     if (!r.ok) return toast(r.data.error)
-    closeModal(); toast('Removed. Saved to Players dropped from term 4.'); P.sel = ''; closeSide(); P.board = null; PL.at = 0; (after || (() => renderBoard(true)))()
+    closeModal(); toast('Removed. Still on file under Players > Removed, ready to add back.'); P.sel = ''; closeSide(); P.board = null; PL.at = 0; (after || (() => renderBoard(true)))()
   })
 }
 
@@ -790,7 +791,7 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
   const pr = await pricing()
   const left = g.capacity - g.players.length
   const box = modal(`<h2>${spotLink ? 'Send a link to this spot' : 'Add a player'}</h2><p class="muted small" style="margin:2px 0 14px">${esc(g.day)} ${esc(g.time)} · ${esc(g.locationName)} · Coach ${esc(g.coachName || 'not set')} · ${left > 0 ? `${left} place${left === 1 ? '' : 's'} left` : 'full'}</p>
-    <label class="j-field"><span>Find an existing player <span class="muted">(Term 4, Term 3 or waivers)</span></span><input class="j-input" id="ap-search" placeholder="Start typing a name" autocomplete="off"></label>
+    <label class="j-field"><span>Find an existing player <span class="muted">(Term 4, removed players, Term 3 or waivers)</span></span><input class="j-input" id="ap-search" placeholder="Start typing a name" autocomplete="off"></label>
     <div id="ap-results"></div>
     ${playerFormHtml('ap', { add: true, opts: { clubs: P.clubs || [] } })}
     <h3>Payment</h3>
@@ -841,8 +842,12 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
   // More children of the same family (round 2): each with their own group and price.
   let kids = null
   const form = wirePlayerForm(box, 'ap', { onChange: (w) => { words = w; payWatch() } })
-  // From Accounts with no session: the family's own details, ready to add.
-  if (prefill) {
+  // Find an existing player, removed players too (jfp-portal-removed.js).
+  const finder = findExisting(box, { post, toast, input: box.querySelector('#ap-search'), results: box.querySelector('#ap-results'), form })
+  // A removed player added back: everything on file. From Accounts with no
+  // session: the family's own details, ready to add.
+  if (prefill?.removed) finder.use(prefill)
+  else if (prefill) {
     form.fill({ name: prefill.name, dob: prefill.dob, parentName: prefill.self ? '' : prefill.parentName, mobile: prefill.mobile, email: prefill.email })
     const own = box.querySelector('#ap-own')
     if (prefill.self && own && !own.checked) { own.checked = true; own.dispatchEvent(new Event('change', { bubbles: true })) }
@@ -858,24 +863,6 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
   box.querySelector('#ap-pay').addEventListener('change', payWatch)
   box.querySelector('#ap-send').addEventListener('change', payWatch)
   payWatch()
-  let timer
-  box.querySelector('#ap-search').addEventListener('input', (e) => {
-    clearTimeout(timer)
-    const qv = e.target.value.trim()
-    timer = setTimeout(async () => {
-      if (qv.length < 2) { box.querySelector('#ap-results').innerHTML = ''; return }
-      const r = await post('searchPlayers', { q: qv })
-      if (!r.ok) return
-      box.querySelector('#ap-results').innerHTML = r.data.results.length
-        ? r.data.results.map((x, i) => `<button type="button" class="j-player" data-pick="${i}"><span><b>${esc(x.name)}</b>${x.age != null ? ` <span class="muted">(${esc(x.age)})</span>` : ''}<br><span class="muted small">${esc(x.source)} · ${esc(x.parentName || '')} ${esc(x.email || '')}</span></span>${x.waiver ? '<span class="j-pill j-pill-green">Waiver</span>' : ''}</button>`).join('')
-        : '<p class="muted small" style="margin-bottom:10px">No match. Type the details below for a new player.</p>'
-      box.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
-        const x = r.data.results[Number(b.dataset.pick)]
-        form.fill(x)
-        box.querySelector('#ap-results').innerHTML = `<div class="j-box j-box-grey small" style="margin-bottom:10px">Using ${esc(x.name)} from ${esc(x.source)}.${x.waiver ? ' Waiver on file.' : ''}</div>`
-      }))
-    }, 250)
-  })
   let busy = false
   const submit = async () => {
     // Double-add safety: one request at a time; the button stays off until it answers.
@@ -892,6 +879,8 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
       ownContact: f.ownContact, profile: filledValues(f.values), note: f.note,
       payment, sendEmail: box.querySelector('#ap-send').checked, ...priced,
     }
+    const fromRemoved = finder.fromRemoved(f.row.name)
+    if (fromRemoved) body.fromRemoved = fromRemoved
     if (body.player.name.length < 3) { err.textContent = 'Enter the player\'s full name.'; err.hidden = false; return }
     if (payment === 'offline') body.method = 'Offline'
     if (payment === 'trial') body.startDate = box.querySelector('#ap-trial').value
@@ -2848,8 +2837,18 @@ async function acctAddToGroup(a) {
   box.querySelector('#ag-go').addEventListener('click', () => { const g = P.board.groups.find((x) => x.id === box.querySelector('#ag-g').value); closeModal(); if (g) addPlayerModal(g, { prefill: a }) })
 }
 
+// What the Removed list (jfp-portal-removed.js) needs from this page.
+const removedUI = () => ({
+  post, modal, closeModal, toast, confirmBox,
+  board: async () => P.board || (P.board = await need(await post('board'))),
+  groupOptions: (selected) => groupOptions(selected),
+  addToGroup: (g, x) => addPlayerModal(g, { prefill: x }),
+  addNoGroup: (x) => plAddBox({ prefill: x }),
+  after: () => { P.board = null; PL.at = 0; renderPlayers() },
+})
+
 function plMatch(p) {
-  if (PL.place === 'acct') return false
+  if (PL.place === 'acct' || PL.place === 'removed') return false
   const q = PL.q.trim().toLowerCase()
   if (q && ![p.name, p.parent, p.email, p.phone, p.groupLabel, p.coach].some((v) => String(v || '').toLowerCase().includes(q))) return false
   if (PL.status === 'paid' && p.paymentStatus !== 'Paid') return false
@@ -3084,10 +3083,12 @@ async function openPlayerRecord(rowId) {
 
 // The Players tab add (no group): the same details as Edit and the Timetable
 // add, the payment, and an email (sign-in invite, or the payment link).
-async function plAddBox() {
+async function plAddBox({ prefill = null } = {}) {
   const pr = await pricing()
   const box = modal(`<h2 style="margin-bottom:4px">Add a player</h2>
     <p class="muted small" style="margin-bottom:12px">Writes a row to Term 4 Players in Airtable with no session, and their player information. They hold no place and take no capacity until you put them in a group on the Timetable.</p>
+    <label class="j-field"><span>Find an existing player <span class="muted">(Term 4, removed players, Term 3 or waivers)</span></span><input class="j-input" id="pa-search" placeholder="Start typing a name" autocomplete="off"></label>
+    <div id="pa-results"></div>
     ${playerFormHtml('pa', { add: true, opts: { clubs: P.clubs || [] } })}
     ${noGroupPaymentHtml('pa', pr)}
     <label class="j-check"><input type="checkbox" id="pa-send"> <span id="pa-send-l"></span></label>
@@ -3104,6 +3105,8 @@ async function plAddBox() {
     if (!go.disabled) go.textContent = send ? (pay === 'link' ? 'Add and email payment link' : words.addAndEmail) : pay === 'link' ? 'Add and make link' : 'Add player'
   }
   const form = wirePlayerForm(box, 'pa', { onChange: (w) => { words = w; relabel() } })
+  const finder = findExisting(box, { post, toast, input: box.querySelector('#pa-search'), results: box.querySelector('#pa-results'), form })
+  if (prefill) finder.use(prefill)
   box.querySelector('#pa-per-wrap').insertAdjacentHTML('afterend', quoteHtml('pa', { defaultQuote: pr.defaultQuote, run: pr.runs?.noGroup }))
   const paQuote = wireQuote(box, 'pa', { perInput: box.querySelector('#pa-per'), defaultQuote: pr.defaultQuote, run: pr.runs?.noGroup })
   let paPrefilled = false
@@ -3133,6 +3136,7 @@ async function plAddBox() {
     const r = await post('addPlayerNoGroup', {
       player: { name: f.row.name, dob: f.values.dob }, parent: { name: f.row.parent, email: f.row.email, mobile: f.row.phone },
       ownContact: f.ownContact, profile: filledValues(f.values), note: f.note, sendEmail: box.querySelector('#pa-send').checked, ...payBody, ...(force ? { force: true } : {}),
+      ...(finder.fromRemoved(f.row.name) ? { fromRemoved: finder.fromRemoved(f.row.name) } : {}),
     })
     busy = false; btn.disabled = false; btn.textContent = label
     if (!r.ok) {
@@ -3174,8 +3178,13 @@ async function renderPlayers(keep = false) {
   // Read from Airtable again whenever the tab is opened after half a minute,
   // so a change made in Airtable shows here without a page reload. Typing in
   // the search box or changing a filter redraws from what is already loaded.
-  if (!PL.data || (!keep && Date.now() - PL.at > 30000)) { PL.data = await need(await post('playersList', { fresh: true })); PL.at = Date.now() }
-  const d = PL.data
+  if (!PL.data || (!keep && Date.now() - PL.at > 30000)) {
+    const [list, rm] = await Promise.all([post('playersList', { fresh: true }), post('removed')])
+    PL.data = await need(list); PL.removed = rm.ok ? rm.data : null; PL.at = Date.now()
+  }
+  // Removed players (no place held) are in their own list: Removed.
+  const d = { ...PL.data, players: PL.data.players.filter((p) => p.holdsPlace !== false) }
+  const removedN = removedCount(PL.removed)
   const shown = d.players.filter(plMatch)
   const active = ['q', 'status', 'group', 'coach', ...PL_MORE].filter((k) => PL[k]).length
   const moreSet = PL_MORE.filter((k) => PL[k]).length
@@ -3187,10 +3196,11 @@ async function renderPlayers(keep = false) {
     ['waiver', 'no', 'No waiver', n((p) => !p.waiver.onFile), 'red'],
     ['place', 'out', 'Not in a group', n((p) => !p.inGroup), 'orange'],
     ['place', 'acct', 'No session yet', (d.accounts || []).length, 'grey'],
+    ['place', 'removed', 'Removed', removedN, 'grey'],
   ].filter((c) => c[3] > 0)
   const accts = PL.place === 'acct' ? acctShown(d) : null
   const y = window.scrollY
-  view().innerHTML = `${psHead({ title: 'Players', count: accts ? `${accts.length} with no session` : shown.length === d.players.length ? d.players.length : `${shown.length} of ${d.players.length}`, primary: '<button type="button" class="j-btn j-btn-dark" id="pl-add">+ Add player</button>', more: true })}
+  view().innerHTML = `${psHead({ title: 'Players', count: accts ? `${accts.length} with no session` : PL.place === 'removed' ? `${removedN} removed` : shown.length === d.players.length ? d.players.length : `${shown.length} of ${d.players.length}`, primary: '<button type="button" class="j-btn j-btn-dark" id="pl-add">+ Add player</button>', more: true })}
     <div class="ps-tools" role="search">
       ${psSearch('pl-q', 'Search players…', PL.q, 'Search players by name, parent, email, mobile or group')}
       ${psSelect('pl-status', [{ id: 'unpaid', label: 'Not paid' }, { id: 'paid', label: 'Paid' }, { id: 'noprice', label: 'No fee set' }], PL.status, 'Payment')}
@@ -3198,7 +3208,7 @@ async function renderPlayers(keep = false) {
       ${psSelect('pl-coach', d.coaches, PL.coach, 'Coach')}
       <span class="ps-more-filters" ${PL.moreOpen ? '' : 'hidden'} id="pl-morebox">
         ${psSelect('pl-waiver', [{ id: 'yes', label: 'Waiver on file' }, { id: 'no', label: 'No waiver' }], PL.waiver, 'Waiver')}
-        ${psSelect('pl-place', [{ id: 'in', label: 'In a group' }, { id: 'out', label: 'Not in a group' }, { id: 'acct', label: `Accounts with no session (${(d.accounts || []).length})` }], PL.place, 'In a group?')}
+        ${psSelect('pl-place', [{ id: 'in', label: 'In a group' }, { id: 'out', label: 'Not in a group' }, { id: 'acct', label: `Accounts with no session (${(d.accounts || []).length})` }, { id: 'removed', label: `Removed (${removedN})` }], PL.place, 'In a group?')}
         ${psSelect('pl-level', [...PROFILE_OPTIONS.levels.map((x) => ({ id: x, label: x })), { id: 'none', label: 'Level not known' }], PL.level, 'Level')}
         ${psSelect('pl-pos', PROFILE_OPTIONS.positions.map((x) => ({ id: x, label: x })), PL.pos, 'Position')}
       </span>
@@ -3207,7 +3217,7 @@ async function renderPlayers(keep = false) {
       <span class="ps-meta">Updated ${esc(new Date(PL.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))} · <button type="button" class="ps-link" id="pl-refresh" title="Read Airtable again">Refresh</button></span>
     </div>
     ${chips.length ? `<div class="ps-chips" aria-label="Quick filters">${chips.map(([k, v, l, c, col]) => `<button type="button" class="ps-chip" data-chip="${k}:${v}" aria-pressed="${PL[k] === v}"><i style="background:var(--c-${col === 'red' ? 'critical' : col === 'orange' ? 'orange' : 'neutral'})"></i>${esc(l)} <b>${c}</b></button>`).join('')}</div>` : ''}
-    ${accts ? acctTable(d) : `<div class="ps-table-wrap"><table class="ps-table"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th data-col="football">Football</th><th>Waiver</th><th class="ps-end"><span class="sr-only">Edit</span></th></tr></thead>
+    ${accts ? acctTable(d) : PL.place === 'removed' ? removedView(PL.removed, PL.q) : `<div class="ps-table-wrap"><table class="ps-table"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th data-col="football">Football</th><th>Waiver</th><th class="ps-end"><span class="sr-only">Edit</span></th></tr></thead>
       <tbody>${shown.map(plRow).join('') || `<tr><td colspan="6"><div class="ps-empty">No players match.${active ? ' <button type="button" class="ps-link" id="pl-clear2">Clear filters</button>' : ''}</div></td></tr>`}</tbody></table></div>`}`
   if (keep) window.scrollTo(0, y)
   const redraw = () => renderPlayers(true)
@@ -3221,6 +3231,7 @@ async function renderPlayers(keep = false) {
   $('pl-morefilters').addEventListener('click', () => { PL.moreOpen = !PL.moreOpen; redraw() })
   view().querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => { const [k, v] = b.dataset.chip.split(':'); PL[k] = PL[k] === v ? '' : v; redraw() }))
   $('pl-add').addEventListener('click', () => plAddBox())
+  if (PL.place === 'removed') wireRemoved(view(), PL.removed, removedUI())
   view().querySelectorAll('[data-acct-add]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); acctAddToGroup(acctShown(d)[Number(b.dataset.acctAdd)]) }))
   $('ps-more').addEventListener('click', (e) => menu(e.currentTarget, [
     { key: 'family', label: '+ Add a family', run: () => familyModal(famUI()) },
