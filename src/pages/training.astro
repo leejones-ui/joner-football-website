@@ -130,6 +130,8 @@ const trainingSchemas = [
 
 
 import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import BookNowButton from '../components/BookNowButton.astro'
+import BookNowPanel from '../components/BookNowPanel.astro'
 import { fetchSanityPage } from '../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 
@@ -160,7 +162,8 @@ const sanityPage = await fetchSanityPage('training')
           Find The Right Training
         </h1>
         <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <a href="#choose-path" class="btn-red self-start text-center text-sm">Compare Programs</a>
+          <BookNowButton size="lg" place="training-hero" class="self-start" />
+          <a href="#choose-path" class="btn-outline self-start text-center text-sm">Compare Programs</a>
         </div>
       </div>
 
@@ -259,6 +262,15 @@ const sanityPage = await fetchSanityPage('training')
         <a href="/training/professional-training">Professional Training</a>
         <a href="/training/game-analysis">Game Analysis</a>
       </div>
+
+      <BookNowPanel
+        class="mt-10 md:mt-14"
+        eyebrow="JFP bookings are open"
+        heading="Book a spot in JFP"
+        text="See the timetable, pick a group and apply for a spot straight away."
+        place="training-jfp"
+        secondary={{ label: 'More about the JFP program', href: '/training/jfp-program' }}
+      />
     </div>
   </section>
 
@@ -296,7 +308,7 @@ const sanityPage = await fetchSanityPage('training')
   <section class="bg-joner-black py-12">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-        <a href="https://app.jonerfootball.com" target="_blank" rel="noopener" class="training-link-card">
+        <a href="/join" class="training-link-card">
           <span>Continue your training at home with the Joner Football App</span>
           <strong>Download the App</strong>
         </a>

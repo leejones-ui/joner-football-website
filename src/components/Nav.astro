@@ -1,4 +1,6 @@
 ---
+import BookNowButton from './BookNowButton.astro'
+import { APP_JOIN_URL } from '../lib/booking'
 ---
 
 <nav class="bg-joner-black sticky top-0 z-40 border-b border-gray-900" id="main-nav">
@@ -11,7 +13,7 @@
       </a>
 
       <!-- Desktop nav (hover-capable mouse devices only) -->
-      <div class="nav-desktop hidden lg:flex items-center gap-8">
+      <div class="nav-desktop hidden lg:flex items-center gap-5 xl:gap-8">
         <a href="/" class="text-white hover:text-joner-red font-body text-sm font-medium transition-colors">Home</a>
 
         <!-- Training dropdown -->
@@ -98,17 +100,22 @@
         </div>
       </div>
 
-      <!-- Desktop CTA -->
-      <div class="nav-desktop-cta hidden lg:block">
-        <a href="/app" class="btn-red nav-download-cta text-sm">Download the App</a>
+      <!-- Desktop CTAs: the app (solid red, straight to web sign-up) and
+           Train in person (outlined, the JFP booking system) -->
+      <div class="nav-desktop-cta hidden lg:flex items-center gap-2 xl:gap-3">
+        <a href={APP_JOIN_URL} class="btn-red nav-download-cta nav-cta-sm">Download the App</a>
+        <BookNowButton size="sm" variant="outline" label="Train in person" place="nav-desktop" />
       </div>
 
-      <!-- Mobile hamburger -->
-      <button id="mobile-menu-btn" class="nav-mobile-btn lg:hidden text-white p-2 min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Open menu">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path id="hamburger-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-        </svg>
-      </button>
+      <!-- Mobile: Book now stays in the top bar, next to the menu button -->
+      <div class="nav-mobile-actions lg:hidden flex items-center gap-1">
+        <BookNowButton size="sm" place="nav-mobile-bar" class="nav-mobile-book" />
+        <button id="mobile-menu-btn" class="nav-mobile-btn text-white p-2 min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Open menu">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path id="hamburger-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -169,8 +176,9 @@
           <a href="/contact" class="block px-2 py-2 text-white hover:text-joner-red text-sm min-h-[44px] flex items-center">Contact Us</a>
         </div>
       </div>
-      <div class="p-4 border-t border-gray-700">
-        <a href="/app" class="btn-red w-full text-center block">Download the App</a>
+      <div class="p-4 border-t border-gray-700 grid gap-2">
+        <a href={APP_JOIN_URL} class="btn-red w-full text-center block">Download the App</a>
+        <BookNowButton block variant="outline" label="Train in person" place="nav-mobile-menu" />
       </div>
     </div>
   </div>
@@ -184,7 +192,9 @@
     #main-nav .nav-desktop { display: none !important; }
     #main-nav .nav-desktop-cta { display: none !important; }
     #main-nav .nav-mobile-btn { display: flex !important; }
+    #main-nav .nav-mobile-actions { display: flex !important; }
   }
+  #main-nav .nav-cta-sm { min-height: 40px; padding: 0.5rem 0.9rem; font-size: 0.85rem; white-space: nowrap !important; }
   @media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-height: 601px) {
     #main-nav .nav-desktop .group.touch-open > div { display: block !important; }
     #main-nav .nav-desktop .group.touch-open > a { color: #E8000D; }

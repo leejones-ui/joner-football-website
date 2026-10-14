@@ -1,0 +1,49 @@
+---
+// The one "Book now" button for the JFP booking system. Every page uses this
+// so the label, link and look stay the same everywhere.
+import { BOOKING_URL, BOOKING_LABEL } from '../lib/booking'
+
+interface Props {
+  label?: string
+  /** red (default), light (solid white) or outline (clear with a white border, for use beside a red button) */
+  variant?: 'red' | 'light' | 'outline'
+  size?: 'sm' | 'md' | 'lg'
+  block?: boolean
+  /** where the button sits, for analytics (data-book-now) */
+  place?: string
+  class?: string
+}
+
+const { label = BOOKING_LABEL, variant = 'red', size = 'md', block = false, place = '', class: className = '' } = Astro.props
+---
+
+<a
+  href={BOOKING_URL}
+  class:list={[
+    variant === 'red' ? 'btn-red' : 'btn-outline',
+    variant === 'outline' && 'book-now-btn--outline',
+    'book-now-btn',
+    `book-now-btn--${size}`,
+    block && 'book-now-btn--block',
+    className,
+  ]}
+  data-book-now={place || undefined}
+>
+  <svg class="book-now-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+    <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
+  </svg>
+  <span>{label}</span>
+</a>
+
+<style is:global>
+  .book-now-btn { gap: 0.5rem; white-space: nowrap !important; }
+  .book-now-btn__icon { width: 1.05em; height: 1.05em; flex-shrink: 0; }
+  .book-now-btn--sm { min-height: 40px; padding: 0.5rem 0.9rem; font-size: 0.85rem; }
+  .book-now-btn--md { font-size: 0.95rem; }
+  .book-now-btn--lg { min-height: 54px; padding: 0.9rem 1.6rem; font-size: 1.05rem; }
+  .book-now-btn--block { display: flex; width: 100%; }
+  /* beats the site-wide "body .btn-outline" (solid white, !important) */
+  body a.btn-outline.book-now-btn--outline { background: transparent !important; border-color: #FFFFFF !important; color: #FFFFFF !important; }
+  body a.btn-outline.book-now-btn--outline:hover { background: #FFFFFF !important; border-color: #FFFFFF !important; color: #0A0A0A !important; }
+</style>

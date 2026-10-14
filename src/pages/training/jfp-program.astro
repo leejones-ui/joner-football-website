@@ -119,6 +119,11 @@ const faqs = [
 ]
 
 import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
+import BookNowButton from '../../components/BookNowButton.astro'
+import BookNowPanel from '../../components/BookNowPanel.astro'
+import OneToOneNote from '../../components/OneToOneNote.astro'
+import CreateAccountButton from '../../components/CreateAccountButton.astro'
+import { BOOKING_URL } from '../../lib/booking'
 import { fetchSanityPage } from '../../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../../lib/sanityPageUtils'
 
@@ -151,7 +156,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
                 Sydney's flagship player development program. Ages 8 and over. Train technically, physically, and mentally with the JFP team.
               </p>
               <div class="flex flex-wrap gap-3">
-                <a href="#training-form" class="btn-red text-sm">Book Now</a>
+                <BookNowButton size="lg" place="jfp-program-hero" />
                 <a href="#program" class="btn-outline text-sm">See The Program</a>
               </div>
             </div>
@@ -271,7 +276,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
           </script>
         </div>
         <div class="text-center">
-          <a href="#training-form" class="btn-red text-sm">Book Now</a>
+          <BookNowButton place="jfp-program-videos" />
         </div>
       </div>
     </section>
@@ -284,7 +289,8 @@ const sanityPage = await fetchSanityPage('jfp-program')
         <a href="#locations" class="shrink-0 hover:text-joner-red">Locations</a>
         <a href="#unlocks" class="shrink-0 hover:text-joner-red">Inside JFP</a>
         <a href="#videos" class="shrink-0 hover:text-joner-red">Videos</a>
-        <a href="#training-form" class="shrink-0 hover:text-joner-red">Book</a>
+        <a href={BOOKING_URL} class="shrink-0 text-joner-red hover:text-white" data-book-now="jfp-program-subnav">Book now</a>
+        <a href="#training-form" class="shrink-0 hover:text-joner-red">Enquire</a>
         <a href="#faq" class="shrink-0 hover:text-joner-red">FAQ</a>
       </div>
     </nav>
@@ -389,7 +395,9 @@ const sanityPage = await fetchSanityPage('jfp-program')
               ))}
             </div>
 
-            <a href="#training-form" class="btn-red text-sm">Book Now</a>
+            <OneToOneNote class="mb-8" />
+
+            <BookNowButton place="jfp-program-term-info" />
           </div>
         </div>
       </div>
@@ -421,7 +429,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
                   </li>
                 ))}
               </ul>
-              <a href="#training-form" class="btn-red text-sm">Book Now</a>
+              <BookNowButton place="jfp-program-what-you-get" />
             </div>
           </div>
         </div>
@@ -458,7 +466,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
           ))}
         </div>
         <div class="text-center">
-          <a href="#training-form" class="btn-red text-sm">Book Now</a>
+          <BookNowButton place="jfp-program-locations" />
         </div>
       </div>
     </section>
@@ -483,7 +491,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
         </div>
 
         <div class="mt-10 text-center">
-          <a href="#training-form" class="btn-red text-sm">Book Now</a>
+          <BookNowButton place="jfp-program-unlocks" />
         </div>
       </div>
     </section>
@@ -492,11 +500,14 @@ const sanityPage = await fetchSanityPage('jfp-program')
     <section id="training-form" class="scroll-mt-32 bg-joner-black py-16 md:py-24">
       <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <div class="mb-8 text-center">
-          <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Book Your Spot</p>
+          <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Got a question first?</p>
           <h2 class="font-heading text-3xl uppercase tracking-wide text-white sm:text-4xl">Start Your JFP Enquiry</h2>
           <p class="mx-auto mt-4 max-w-2xl font-body text-base leading-relaxed text-gray-400">
-            Tell us about the player. The team will place them in the right JFP option.
+            Ready to go? Hit Book now and apply for a spot straight away. Not sure which group? Tell us about the player and we will help.
           </p>
+          <div class="mt-6 flex justify-center">
+            <BookNowButton place="jfp-program-form" />
+          </div>
         </div>
 
         <form id="contact-smart-form" class="space-y-5 border border-gray-800 bg-joner-gray p-5 md:p-8">
@@ -583,8 +594,16 @@ const sanityPage = await fetchSanityPage('jfp-program')
             </details>
           ))}
         </div>
-        <div class="text-center">
-          <a href="#training-form" class="btn-red text-sm">Book Now</a>
+        <BookNowPanel
+          eyebrow=""
+          heading="Ready to start?"
+          text="See the timetable, pick a group and apply for a spot. We reply within 48 hours."
+          place="jfp-program-bottom"
+          secondary={{ label: 'Got a question? Send an enquiry', href: '#training-form' }}
+        />
+        <div class="mt-6 flex flex-col items-center gap-2 text-center">
+          <p class="font-body text-sm text-neutral-400">Book, pay and see your sessions in one place.</p>
+          <CreateAccountButton place="jfp-program-bottom" />
         </div>
       </div>
     </section>

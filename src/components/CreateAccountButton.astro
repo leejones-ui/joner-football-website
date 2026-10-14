@@ -1,0 +1,29 @@
+---
+// "Create your Joner Football account": the family account page, where people
+// sign in or sign up. Used on the booking, JFP program and contact pages.
+// variant "site" suits the dark main site; "jfp" uses the booking page's styles.
+import { ACCOUNT_URL } from '../lib/booking'
+
+interface Props { variant?: 'site' | 'jfp'; label?: string; place?: string; class?: string }
+const { variant = 'site', label = 'Create your Joner Football account', place = '', class: className = '' } = Astro.props
+---
+
+<a
+  href={ACCOUNT_URL}
+  class:list={[variant === 'jfp' ? 'j-btn j-btn-line' : 'btn-outline account-btn', className]}
+  data-create-account={place || undefined}
+>
+  <svg class="account-btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+  </svg>
+  <span>{label}</span>
+</a>
+
+<style is:global>
+  /* beats the site-wide "body .btn-outline" (solid white, !important) */
+  .account-btn { gap: 0.5rem; }
+  body a.btn-outline.account-btn { background: transparent !important; border-color: rgba(255, 255, 255, 0.6) !important; color: #fff !important; }
+  body a.btn-outline.account-btn:hover { background: #fff !important; border-color: #fff !important; color: #0A0A0A !important; }
+  .account-btn__icon { width: 1.05em; height: 1.05em; flex-shrink: 0; }
+</style>

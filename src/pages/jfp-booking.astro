@@ -2,6 +2,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import JfpHeader from '../components/JfpHeader.astro'
 import JfpFooter from '../components/JfpFooter.astro'
+import OneToOneNote from '../components/OneToOneNote.astro'
+import CreateAccountButton from '../components/CreateAccountButton.astro'
 import '../styles/jfp.css'
 
 import { termInfo, expectations } from '../data/jfp-term-info.js'
@@ -20,6 +22,10 @@ import { termInfo, expectations } from '../data/jfp-term-info.js'
           <p class="j-err" id="gate-err" hidden></p>
           <button class="j-btn j-btn-dark j-btn-block j-btn-lg" type="submit" id="gate-btn">Continue</button>
         </form>
+        <div class="j-gate-account">
+          <p class="muted small">New to Joner Football?</p>
+          <CreateAccountButton variant="jfp" place="booking-gate" class="j-btn-block" />
+        </div>
       </div>
     </section>
 
@@ -29,6 +35,7 @@ import { termInfo, expectations } from '../data/jfp-term-info.js'
         <section class="j-hero">
           <h1>Performance Program, <span id="term-name">Term 4</span></h1>
           <p class="muted" id="term-range"></p>
+          <div class="j-hero-account"><CreateAccountButton variant="jfp" place="booking-hero" /></div>
         </section>
         <nav class="j-tabs" aria-label="Sections">
           <a href="#timetable" data-tab="timetable" aria-current="page">Timetable</a>
@@ -67,6 +74,7 @@ import { termInfo, expectations } from '../data/jfp-term-info.js'
               <li>Questions? <button type="button" class="j-foot-link" style="display:inline;color:inherit;text-decoration:underline" data-contact>Contact us</button>.</li>
             </ul></div>
           </div>
+          <OneToOneNote variant="jfp" />
         </section>
 
         <section data-panel="pricing" hidden>
@@ -90,6 +98,11 @@ import { termInfo, expectations } from '../data/jfp-term-info.js'
     <JfpFooter />
   </div>
 </BaseLayout>
+
+<style>
+  .j-gate-account { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--j-line); display: grid; gap: 8px; }
+  .j-hero-account { margin-top: 12px; }
+</style>
 
 <script>
   import '../scripts/jfp-booking.js'

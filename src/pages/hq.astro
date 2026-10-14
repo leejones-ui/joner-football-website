@@ -78,6 +78,8 @@ const programs = [
 ]
 
 import SanityPageRenderer from '../components/sanity/SanityPageRenderer.astro'
+import BookNowButton from '../components/BookNowButton.astro'
+import BookNowPanel from '../components/BookNowPanel.astro'
 import { fetchSanityPage } from '../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 
@@ -110,7 +112,8 @@ const sanityPage = await fetchSanityPage('hq')
               Brand new indoor training facility. Professional standard surface. All-weather training. The home of Joner Football Performance in Sydney.
             </p>
             <div class="flex flex-wrap gap-3">
-              <a href="/training" class="btn-red text-sm">View Training Programs</a>
+              <BookNowButton size="lg" place="hq-hero" />
+              <a href="/training" class="btn-outline text-sm">View Training Programs</a>
               <a href="#contact" class="btn-outline text-sm">Contact The HQ</a>
             </div>
           </div>
@@ -241,6 +244,15 @@ const sanityPage = await fetchSanityPage('hq')
               </a>
             ))}
           </div>
+
+          <BookNowPanel
+            compact
+            class="mt-8"
+            eyebrow="JFP at The HQ"
+            heading="Book a spot in JFP"
+            text="See the timetable, pick a group and apply for a spot straight away."
+            place="hq-programs"
+          />
         </div>
       </div>
     </div>

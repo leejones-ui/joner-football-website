@@ -11,7 +11,7 @@ export function getSanityImageUrl(image: any, fallback = '') {
 }
 
 export const approvedCtaUrlMap: Record<string, string> = {
-  'download-app': '/app',
+  'download-app': '/join',
   'start-free-trial': 'https://app.jonerfootball.com/categories/category-vpi8uazway4',
   'view-camps': '/camps',
   'training-enquiry': '/contact?type=training',

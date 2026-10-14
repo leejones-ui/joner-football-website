@@ -1,0 +1,94 @@
+---
+// A short "book a spot" card with the shared Book now button. Used on the
+// home, training, HQ, JFP program and contact pages and in the footer.
+import BookNowButton from './BookNowButton.astro'
+
+interface Props {
+  eyebrow?: string
+  heading?: string
+  text?: string
+  place?: string
+  /** optional second link, e.g. an enquiry form on the same page */
+  secondary?: { label: string; href: string }
+  compact?: boolean
+  class?: string
+}
+
+const {
+  eyebrow = 'JFP bookings are open',
+  heading = 'Book a spot in JFP',
+  text = 'See the timetable, pick a group and apply for a spot straight away.',
+  place = '',
+  secondary,
+  compact = false,
+  class: className = '',
+} = Astro.props
+---
+
+<div class:list={['book-panel', compact && 'book-panel--compact', className]}>
+  <div class="book-panel__copy">
+    {eyebrow && <p class="book-panel__eyebrow">{eyebrow}</p>}
+    <h2 class="book-panel__heading">{heading}</h2>
+    {text && <p class="book-panel__text">{text}</p>}
+  </div>
+  <div class="book-panel__actions">
+    <BookNowButton size={compact ? 'md' : 'lg'} place={place} />
+    {secondary && <a href={secondary.href} class="book-panel__secondary">{secondary.label}</a>}
+  </div>
+</div>
+
+<style>
+  .book-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    border: 1px solid rgba(232, 0, 13, 0.55);
+    border-radius: 1rem;
+    background: linear-gradient(135deg, rgba(232, 0, 13, 0.18), rgba(255, 255, 255, 0.03) 60%);
+    padding: 1.5rem;
+    text-align: left;
+  }
+  .book-panel__eyebrow {
+    margin: 0 0 0.4rem;
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #E8000D;
+  }
+  .book-panel__heading {
+    margin: 0;
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    line-height: 1.05;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .book-panel__text {
+    margin: 0.6rem 0 0;
+    max-width: 36rem;
+    font-size: 1rem;
+    line-height: 1.55;
+    color: #d4d4d4;
+  }
+  .book-panel__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+  }
+  .book-panel__secondary {
+    color: #d4d4d4;
+    font-size: 0.9rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .book-panel__secondary:hover { color: #fff; }
+  .book-panel--compact { padding: 1.25rem; }
+  .book-panel--compact .book-panel__heading { font-size: clamp(1.35rem, 3vw, 1.8rem); }
+  @media (min-width: 768px) {
+    .book-panel { flex-direction: row; align-items: center; justify-content: space-between; padding: 2rem 2.25rem; }
+    .book-panel--compact { padding: 1.5rem 1.75rem; }
+    .book-panel__actions { flex-shrink: 0; flex-direction: column; align-items: flex-end; }
+  }
+</style>

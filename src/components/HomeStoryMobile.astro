@@ -1,4 +1,7 @@
 ---
+import BookNowButton from './BookNowButton.astro'
+
+// A third item marks the shared Book now button (JFP booking system).
 const beats = [
   {
     number: '01',
@@ -7,7 +10,7 @@ const beats = [
     title: 'Technique Above Everything',
     body: '',
     image: '/images/home-mobile-story/mobile-story-01-action.webp',
-    ctas: [['Train Today', 'https://app.jonerfootball.com']],
+    ctas: [['Book now', '', 'home-mobile-hero'], ['Train Today', 'https://app.jonerfootball.com']],
   },
   {
     number: '02',
@@ -42,7 +45,7 @@ const beats = [
     title: 'A Method Like No Other',
     body: 'Every technical detail gets coached through energy, passion & positivity.',
     image: '/images/home-mobile-story/mobile-story-04-joner-way.webp',
-    ctas: [['Train With Us In Sydney', '/contact']],
+    ctas: [['Book now', '', 'home-mobile-joner-way'], ['Train With Us In Sydney', '/contact']],
   },
   {
     number: '05',
@@ -145,7 +148,9 @@ const choices = [
               </div>
             ) : beat.ctas && (
               <div class="mobile-story-ctas">
-                {beat.ctas.map(([label, href]) => <a href={href}>{label}</a>)}
+                {beat.ctas.map(([label, href, bookPlace]) => bookPlace
+                  ? <BookNowButton place={bookPlace} class="mobile-story-book" />
+                  : <a href={href}>{label}</a>)}
               </div>
             )}
           </div>

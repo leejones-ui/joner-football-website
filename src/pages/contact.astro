@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import SanityPageExtras from '../components/sanity/SanityPageExtras.astro'
+import BookNowPanel from '../components/BookNowPanel.astro'
+import CreateAccountButton from '../components/CreateAccountButton.astro'
 
 const enquiryOptions = [
   {
@@ -76,6 +78,19 @@ const heroImage = getSanityImageUrl(sanityPage?.heroImage, '/images/contact/lee-
 
   <section class="bg-joner-black py-16 md:py-24">
     <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+      <BookNowPanel
+        class="mb-10"
+        eyebrow="JFP training in Sydney"
+        heading="Did you know you can apply for a spot straight away?"
+        text="Skip the enquiry form. See the timetable, pick a group and apply online."
+        place="contact-top"
+      />
+
+      <div class="mb-10 -mt-4 flex flex-col items-center gap-2 text-center">
+        <p class="font-body text-sm text-gray-400">Book, pay and see your sessions in one place.</p>
+        <CreateAccountButton place="contact-top" />
+      </div>
+
       <div class="mb-8 text-center">
         <p class="mx-auto max-w-2xl font-body text-base leading-relaxed text-gray-400 md:text-lg">
           {heroSubheadline}

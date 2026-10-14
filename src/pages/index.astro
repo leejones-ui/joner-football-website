@@ -4,6 +4,7 @@ import SEOFAQ from '../components/SEOFAQ.astro'
 import { faqSchema, webPageSchema } from '../lib/seoSchema'
 import ChooseNextStep from '../components/ChooseNextStep.astro'
 import HomeStoryMobile from '../components/HomeStoryMobile.astro'
+import BookNowButton from '../components/BookNowButton.astro'
 
 const storyBeats = [
   {
@@ -27,6 +28,9 @@ const storyBeats = [
     ballSize: 'clamp(6.1rem, 7.8vw, 7.2rem)',
     tone: 'dark',
     overlay: 'none',
+    ctas: [
+      { label: 'Book now', book: true, place: 'home-hero' },
+    ],
   },
   {
     number: '02',
@@ -104,6 +108,7 @@ const storyBeats = [
     overlay: 'none',
     ballVisible: false,
     ctas: [
+      { label: 'Book now', book: true, place: 'home-joner-way' },
       { label: 'Train With Us In Sydney', href: '/training#jfp' },
     ],
   },
@@ -2140,7 +2145,9 @@ const homepageSchemas = [
             )}
             {beat.ctas && beat.ctaPlacement !== 'overlay' && (
               <div class="story-cta-row">
-                {beat.ctas.map((cta, ctaIndex) => (
+                {beat.ctas.map((cta, ctaIndex) => cta.book ? (
+                  <BookNowButton size="lg" place={cta.place} class="story-book-now" />
+                ) : (
                   <a
                     class:list={["story-cta-link", cta.badge ? 'store-badge' : '']}
                     href={cta.href}

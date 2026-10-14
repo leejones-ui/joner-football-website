@@ -1,0 +1,66 @@
+---
+// Small info card: when 1 on 1 private training can be booked during the term.
+// variant "dark" suits the main site; "jfp" uses the booking page's own styles.
+import { oneToOneNote } from '../data/jfp-one-to-one.js'
+
+interface Props { variant?: 'dark' | 'jfp'; class?: string }
+const { variant = 'dark', class: className = '' } = Astro.props
+---
+
+{variant === 'jfp' ? (
+  <div class:list={['j-pbox', 'one-note-jfp', className]} id="one-to-one">
+    <h3>{oneToOneNote.title}</h3>
+    <ul class="j-good">{oneToOneNote.points.map((p) => <li>{p}</li>)}</ul>
+  </div>
+) : (
+  <aside class:list={['one-note', className]} id="one-to-one" aria-label={oneToOneNote.title}>
+    <p class="one-note__title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5" /><path d="M12 11v6M12 7.5v.01" /></svg>
+      <span>{oneToOneNote.title}</span>
+    </p>
+    <ul class="one-note__list">{oneToOneNote.points.map((p) => <li>{p}</li>)}</ul>
+  </aside>
+)}
+
+<style>
+  .one-note-jfp { margin-top: 14px; }
+  .one-note-jfp .j-good { margin: 6px 0 16px; }
+  .one-note {
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-left: 4px solid #E8000D;
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1.1rem 1.25rem;
+    text-align: left;
+  }
+  .one-note__title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.6rem;
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .one-note__title svg { width: 1.15rem; height: 1.15rem; color: #E8000D; flex-shrink: 0; }
+  .one-note__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.45rem; }
+  .one-note__list li {
+    position: relative;
+    padding-left: 1rem;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: #d4d4d4;
+  }
+  .one-note__list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 0.38rem;
+    height: 0.38rem;
+    border-radius: 999px;
+    background: #E8000D;
+  }
+</style>
