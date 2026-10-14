@@ -99,6 +99,8 @@ export function wireChild(box, px, ui, pr, { groups, onChange = () => {} }) {
       if (!(pv.amountCents > 0)) return { error: `Enter ${firstName(name)}'s price.` }
       Object.assign(out, pv)
       delete out.afterpay
+      // A later start (the start date chosen for the price) counts for the dates too.
+      if (pv.startDate) out.startsFrom = pv.startDate
       if (payment === 'offline') out.method = 'Offline'
     }
     if (payment === 'trial') out.startDate = $('trial').value
