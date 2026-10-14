@@ -327,7 +327,7 @@ async function renderSettings(ui) {
   const tableRows = Object.entries(j.tables).map(([t, id]) => `<div class="jj-trow"><input class="j-input" data-tterm value="${esc(t)}" aria-label="Term"><input class="j-input" data-tid value="${esc(id)}" aria-label="Airtable table id"><button type="button" class="j-btn j-btn-ghost" data-tdel aria-label="Remove this term">×</button></div>`).join('')
   const skipRows = (j.skipDates || []).map((s) => `<div class="jj-trow"><input class="j-input" type="date" data-sdate value="${esc(s.date)}" aria-label="Date"><input class="j-input" data-sreason value="${esc(s.reason)}" aria-label="Why"><button type="button" class="j-btn j-btn-ghost" data-tdel aria-label="Remove this date">×</button></div>`).join('')
   ui.view().innerHTML = `<div class="jj-view jj-set">
-    <div class="jd-head"><div><h1>Settings</h1><p>Joners Juniors. The website, Stripe checkout and confirmation emails use these, as soon as you save.</p></div></div>
+    <div class="jd-head"><div><h1>Settings</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Joners Juniors. The website, Stripe checkout and confirmation emails use these, as soon as you save.</div></details></div></div>
     <div class="jd-card" id="jj-preview"><h2>What parents see now</h2><dl class="jj-dl" style="margin-top:8px"><dt>Term dates</dt><dd>${esc(d.public.termDatesLine)}</dd><dt>Class</dt><dd>${esc(d.public.classLabel)}</dd><dt>Term fee</dt><dd>${esc(d.public.feeLine)}</dd><dt>Registrations</dt><dd>${d.public.registrationOpen ? 'Open' : 'Closed'}</dd></dl>
       <p class="muted small" style="margin-top:8px">${d.derived.dates.length} class${d.derived.dates.length === 1 ? '' : 'es'}: ${esc(d.derived.dates.map((x) => x.label).join(', '))}</p></div>
     <form id="jj-sform" novalidate>
@@ -424,7 +424,7 @@ async function renderInvites(ui, keep = false) {
       <div class="jj-fam-tags">${pill(STATUS[f.status] || STATUS['not sent'])}${IV.kind !== 'next' && f.owingCents ? `<small>${esc(money(f.owingCents))}</small>` : ''}${!f.owingKnown && IV.kind !== 'next' ? '<small>owing not known</small>' : ''}<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-prev="${esc(f.email)}">Preview</button></div>
     </div>`
   ui.view().innerHTML = `<div class="jj-view">
-    <div class="jd-head"><div><h1>Invites</h1><p>Joners Juniors · ${esc(d.term)}. Nothing is sent until you press Send.</p></div>
+    <div class="jd-head"><div><h1>Invites</h1><p>Joners Juniors · ${esc(d.term)} · Nothing is sent until you press Send</p></div>
       <div class="jd-sync"><button type="button" class="j-btn j-btn-line j-btn-sm" id="jv-refresh">Refresh</button></div></div>
     <div class="jp-seg" id="jv-kind" style="margin-bottom:10px">${KIND_TABS.map(([k, l]) => `<button type="button" data-kind="${k}" aria-pressed="${IV.kind === k}">${esc(k === 'next' && d.next ? `Re-enrol for ${d.next.name}` : l)}</button>`).join('')}</div>
     <p class="muted small" style="margin:0 0 10px">${esc(what)}</p>

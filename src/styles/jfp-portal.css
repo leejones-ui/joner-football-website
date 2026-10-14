@@ -758,3 +758,95 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .je-taken { font-size: 14px; color: var(--j-ink-2); }
 .je-open { align-self: flex-start; margin-top: auto; }
 .je-total { margin-bottom: 0; }
+
+/* ---------- Portal design system (Lee, 14 Oct 2026) ----------
+   One layout for every staff page: title + count on the left, the main action
+   on the right; one toolbar (search, then filters in a fixed order, then
+   More filters); quick filter chips; plain tables that become cards on a
+   phone. Tokens only, no one-off colours. */
+.jp-theme {
+  --ps-gap: 12px; --ps-radius: 10px; --ps-control: 40px;
+  --ps-text-2: var(--j-muted);
+}
+.ps-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 18px; }
+.ps-title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.ps-title h1 { font-size: 26px; line-height: 1.15; margin: 0; letter-spacing: -.01em; }
+.ps-count { font-size: 14px; font-weight: 650; color: var(--ps-text-2); font-variant-numeric: tabular-nums; }
+.ps-actions { display: flex; align-items: center; gap: 8px; }
+.ps-actions .j-btn, .ps-tools .j-btn { min-height: var(--ps-control); padding: 8px 14px; font-size: 14px; border-radius: var(--ps-radius); }
+.ps-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.ps-search { position: relative; flex: 1 1 260px; max-width: 360px; }
+.ps-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ps-text-2); pointer-events: none; }
+.ps-search input { padding: 0 12px 0 36px; height: var(--ps-control); font-size: 14.5px; border-radius: var(--ps-radius); }
+.jp-theme .ps-tools .j-select { width: auto; max-width: 210px; text-overflow: ellipsis; height: var(--ps-control); padding-top: 0; padding-bottom: 0; font-size: 14px; border-radius: var(--ps-radius); }
+.ps-tools .j-select.is-set { border-color: var(--j-ink); font-weight: 650; }
+.ps-more-filters { display: contents; }
+.ps-more-filters[hidden] { display: none; }
+.ps-link { background: none; border: 0; padding: 4px 2px; font: inherit; font-size: 14px; color: var(--ps-text-2); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.ps-link:hover { color: var(--j-ink); }
+.ps-meta { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ps-text-2); white-space: nowrap; }
+.ps-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0 14px; }
+.ps-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--j-line); background: transparent; color: var(--j-ink); border-radius: 999px; padding: 5px 11px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ps-chip b { font-variant-numeric: tabular-nums; }
+.ps-chip i { width: 8px; height: 8px; border-radius: 50%; }
+.ps-chip[aria-pressed="true"] { background: var(--j-ink); color: var(--j-bg); border-color: var(--j-ink); }
+.ps-chip:focus-visible, .ps-link:focus-visible, .ps-table tbody tr:focus-visible { outline: 2px solid var(--j-focus, #6da7ec); outline-offset: 2px; }
+/* Tables */
+.ps-table-wrap { border: 1px solid var(--j-line); border-radius: 12px; overflow: hidden; background: var(--j-surface); }
+.ps-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ps-table th { text-align: left; font-size: 12px; font-weight: 650; color: var(--ps-text-2); padding: 10px 14px; border-bottom: 1px solid var(--j-line); background: var(--j-surface); white-space: nowrap; position: sticky; top: 0; z-index: 1; }
+.ps-table td { padding: 11px 14px; border-bottom: 1px solid var(--j-line); vertical-align: middle; }
+.ps-table tbody tr:last-child td { border-bottom: 0; }
+.ps-table tbody tr { cursor: pointer; }
+.ps-table tbody tr:hover td { background: var(--j-surface-2, rgba(127,127,127,.06)); }
+.ps-table .ps-sub { display: block; font-size: 12.5px; color: var(--ps-text-2); margin-top: 1px; }
+.ps-table .ps-end { text-align: right; width: 1%; white-space: nowrap; }
+.ps-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ps-who b { font-weight: 650; }
+.ps-empty { padding: 36px 16px; text-align: center; color: var(--ps-text-2); }
+/* Status badges: one shape everywhere (dot + word). */
+.ps-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 650; white-space: nowrap; }
+.ps-badge i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.ps-badge.green i { background: #12B76A; } .ps-badge.red i { background: #E5383B; } .ps-badge.orange i { background: #F97316; }
+.ps-badge.pink i { background: #EC4899; } .ps-badge.grey i { background: #98A2B3; } .ps-badge.violet i { background: #7A5AF8; }
+.ps-badge.red { color: var(--j-red); }
+.ps-tag { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--j-surface-2, rgba(127,127,127,.12)); color: var(--ps-text-2); vertical-align: 1px; }
+.ps-tag.pink { background: rgba(236, 72, 153, .16); color: #f472b6; }
+/* Phone and small tablet: every row becomes a compact card. */
+@media (max-width: 760px) {
+  .ps-head { margin-bottom: 14px; }
+  .ps-title h1 { font-size: 22px; }
+  .ps-search { max-width: none; flex-basis: 100%; }
+  .jp-theme .ps-tools .j-select { flex: 1 1 calc(50% - 4px); width: calc(50% - 4px); max-width: none; }
+  .ps-table td.ps-ok { display: none; }
+  .ps-meta { margin-left: 0; width: 100%; }
+  .ps-table thead { display: none; }
+  .ps-table, .ps-table tbody { display: block; }
+  .ps-table tr { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 14px; border-bottom: 1px solid var(--j-line); }
+  .ps-table tbody tr:last-child { border-bottom: 0; }
+  .ps-table td { display: block; padding: 0; border: 0; }
+  .ps-table td[data-col="who"] { grid-column: 1; }
+  .ps-table td[data-col="pay"] { grid-column: 2; grid-row: 1; text-align: right; }
+  .ps-table td[data-col="group"], .ps-table td[data-col="flags"] { grid-column: 1 / -1; padding-left: 44px; font-size: 13px; }
+  .ps-table td[data-col="football"], .ps-table td.ps-end { display: none; }
+}
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ps-who b { white-space: nowrap; }
+@media (min-width: 761px) and (max-width: 1180px) {
+  .ps-table th[data-col="football"], .ps-table td[data-col="football"] { display: none; }
+}
+@media (max-width: 760px) { .ps-table td.ps-end.ps-keep { display: block; grid-column: 1 / -1; padding-left: 0; } }
+/* Every page header looks the same as ps-head: title (with help) then one short meta line. */
+.jp-theme .jp-head, .jp-theme .jd-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 18px; }
+.jp-theme .jp-head > div:first-child, .jp-theme .jd-head > div:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
+.jp-theme .jp-head h1, .jp-theme .jd-head h1 { font-size: 26px; line-height: 1.15; margin: 0; letter-spacing: -.01em; }
+.jp-theme .jp-head > div:first-child > p, .jp-theme .jd-head > div:first-child > p { flex-basis: 100%; margin: 2px 0 0; font-size: 13.5px; color: var(--j-muted); }
+.jp-theme .jp-head .j-btn, .jp-theme .jd-head .j-btn { min-height: var(--ps-control); }
+@media (max-width: 760px) { .jp-theme .jp-head h1, .jp-theme .jd-head h1 { font-size: 22px; } }
+/* "?" help: page guidance kept one tap away instead of a paragraph. */
+.ps-help { position: relative; display: inline-block; }
+.ps-help > summary { list-style: none; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--j-line); display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--j-muted); cursor: pointer; user-select: none; }
+.ps-help > summary::-webkit-details-marker { display: none; }
+.ps-help > summary:hover, .ps-help[open] > summary { color: var(--j-ink); border-color: var(--j-muted); }
+.ps-help > summary:focus-visible { outline: 2px solid var(--j-focus, #6da7ec); outline-offset: 2px; }
+.ps-help-body { position: absolute; z-index: 40; top: 30px; left: 0; width: min(360px, calc(100vw - 48px)); background: var(--j-surface); border: 1px solid var(--j-line); border-radius: 12px; box-shadow: var(--j-shadow-lg, 0 12px 32px rgba(0,0,0,.25)); padding: 12px 14px; font-size: 13.5px; font-weight: 400; line-height: 1.5; color: var(--j-ink); }

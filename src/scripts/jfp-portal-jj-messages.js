@@ -18,7 +18,7 @@ export async function renderJJMessages(ui) {
   ]
   const p = M.prepared
   ui.view().innerHTML = `<div class="jj-view">
-    <div class="jd-head"><div><h1>Messages</h1><p>Joners Juniors · ${esc(d.term)}. Write one email, see it as each family gets it, then press Send. Nothing goes before Send.</p></div></div>
+    <div class="jd-head"><div><h1>Messages</h1><p>Joners Juniors · ${esc(d.term)} · Nothing is sent until you press Send</p></div></div>
     ${d.dncError ? `<div class="j-box j-box-red" style="margin-bottom:12px">${esc(d.dncError)}</div>` : ''}
     <section class="jd-card"><h2>1. Who gets it</h2>
       <div class="jm-chips" id="jg-who" role="group" aria-label="Who gets it" style="margin-top:8px">${who.map(([a, c, l]) => `<button type="button" data-aud="${a}" data-cls="${esc(c)}" aria-pressed="${M.audience === a && (a !== 'class' || M.classId === c)}">${esc(l)}</button>`).join('')}</div>

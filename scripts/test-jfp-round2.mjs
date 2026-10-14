@@ -292,7 +292,8 @@ await test('Timetable Add: "+ Add another child (same family)" adds a brother or
 
 await test('Players tab: "+ Add a family" with no group needed, two children ready, the parent first', async () => {
   const p = await openPortal({ hash: '#families', onPost: staffAnswers })
-  await p.click('#pl-add-family')
+  await p.click('#ps-more')
+  await p.click('#jp-menu [data-i="family"]')
   assert.equal(p.d.querySelectorAll('#fa-kids [data-child-block]').length, 2)
   const [a, b] = [...p.d.querySelectorAll('#fa-kids [data-child-block]')].map((x) => x.dataset.childBlock)
   assert.equal(p.$(`#${a}-group`).value, '', 'no group yet by default')

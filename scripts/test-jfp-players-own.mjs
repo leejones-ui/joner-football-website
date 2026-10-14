@@ -153,7 +153,7 @@ const answers = (b) => {
 
 await test('Players tab: an own contact shows as one, with Text Kai, Account invite and the Emails check', async () => {
   const p = await openPortal({ hash: '#families', onPost: answers })
-  assert.match(p.text('tr[data-pl="recSELF0000000001"]'), /Kai Sampleton \(27\) ?Pro ?Own contact/)
+  assert.match(p.text('tr[data-pl="recSELF0000000001"]'), /Kai Sampleton \(?27\)? ?Pro ?Own contact/)
   await p.click('tr[data-pl="recSELF0000000001"]')
   assert.match(p.text('#jp-modal'), /Contact \(the player\).*The player is their own contact/)
   assert.equal(p.text('#pd-text'), 'Text Kai')

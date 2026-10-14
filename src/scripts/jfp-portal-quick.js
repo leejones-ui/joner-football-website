@@ -27,7 +27,7 @@ export async function renderPricesPage(ui) {
   const pr = await ui.pricing(true)
   const own = pr.priceList.filter((p) => !p.builtin && !p.archived)
   const archived = pr.priceList.filter((p) => !p.builtin && p.archived)
-  ui.view().innerHTML = `<div id="pr-page"><div class="jp-head"><div><h1>Prices</h1><p class="muted small">Private: only you and Ligia see this tab. Add as many prices as you like and make a payment link from any of them. Parents only see what they pay.</p></div>
+  ui.view().innerHTML = `<div id="pr-page"><div class="jp-head"><div><h1>Prices</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Private: only you and Ligia see this tab. Add as many prices as you like and make a payment link from any of them. Parents only see what they pay.</div></details></div>
       <button type="button" class="j-btn j-btn-dark" id="pr-add">+ Add a price</button></div>
     <section class="j-card jq-card" id="pr-own">
       <h2>Your prices</h2><p class="muted small">For JFP, Joners Juniors, holiday training or anything else.</p>

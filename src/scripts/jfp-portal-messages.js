@@ -43,7 +43,7 @@ export async function renderMessages(ui) {
     return f.kind === S.filter
   })
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Messages</h1><p class="muted small">Press Prepare on a family to see their email and text. Send the email, the text, or both. Each one goes once.</p></div></div>
+    <div class="jp-head"><div><h1>Messages</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Press Prepare on a family to see their email and text. Send the email, the text, or both. Each one goes once.</div></details></div></div>
     ${d.dncError ? `<div class="j-box j-box-red" style="margin-bottom:12px">${esc(d.dncError)}</div>` : ''}
     <div class="j-card" style="padding:14px 16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">

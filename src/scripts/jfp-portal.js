@@ -392,7 +392,7 @@ async function renderBoard(refresh) {
       <select class="j-select" id="b-coach" style="width:auto"><option value="">Any coach</option>${B.coaches.map((c) => `<option value="${esc(c.id)}" ${P.coachFilter === c.id ? 'selected' : ''}>Coach ${esc(c.name)}</option>`).join('')}</select>
       ${P.ttView === 'staff' ? '<div class="jp-legend" style="margin-left:auto"><span><i class="i-due"></i>Unpaid</span><span><i class="i-paid"></i>Paid</span><span><i class="i-part"></i>Part paid</span><span><i class="i-session"></i>Session by session</span><span><i class="i-trial"></i>Trial</span><span><b style="color:#B42318;font-size:10px">W</b> no waiver</span></div>' : ''}
     </div>
-    ${P.ttView === 'staff' ? '<p class="muted small" style="margin-bottom:8px">Tap a group for its rules, Add player or Copy spot link. Tap a name for payment and more. Drag a name onto another group to move them.</p>' : P.ttView === 'coach' ? '<p class="muted small" style="margin-bottom:8px">What a coach sees: every group, names and ages. No money, no contact details.</p>' : '<p class="muted small" style="margin-bottom:8px">What parents see: places left, never names.</p>'}
+    ${P.ttView === 'parent' ? '<p class="muted small" style="margin-bottom:8px">What parents see: places left, never names.</p>' : ''}
     <div class="jp-tt-wrap">${ttGrid(groups)}</div>
     ${B.unassigned.length && P.ttView === 'staff' ? `<div class="jp-day"><h2>Not in a group</h2></div><div class="jp-group">${B.unassigned.map((p) => playerRowHtml(p, '')).join('')}<p class="muted small" style="margin-top:8px">These rows have no session, or a session with no group (for the split morning groups, a coach with no group at that time). Move them onto a group.</p></div>` : ''}`
   $('b-refresh').addEventListener('click', () => renderBoard('hard'))
@@ -981,7 +981,7 @@ async function renderNext() {
   const nt = d.nextTerm
   const word = { invited: ['blue', 'Invited'], held: ['violet', 'Held'], paid: ['green', 'Paid in full'], no: ['grey', 'Not returning'] }
   const t = d.totals
-  view().innerHTML = `<div class="jp-head"><div><h1>Next term</h1><p class="muted small">Current families keep their place before ${esc(nt.name)} opens to everyone: hold it with a non-refundable fee (taken off the term), pay in full, or say they are not returning. Everything is saved in Airtable under "Next term holds".</p></div></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>Next term</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Current families keep their place before ${esc(nt.name)} opens to everyone: hold it with a non-refundable fee (taken off the term), pay in full, or say they are not returning. Everything is saved in Airtable under "Next term holds".</div></details></div></div>
     <div class="j-card" style="padding:16px;margin-bottom:14px;max-width:760px">
       <div class="j-two"><label class="j-field"><span>Next term</span><input class="j-input" id="nt-name" value="${esc(nt.name)}"></label><label class="j-field"><span>Hold fee (A$, non-refundable)</span><input class="j-input" id="nt-hold" inputmode="decimal" value="${nt.holdCents / 100}"></label></div>
       <label class="j-check"><input type="checkbox" id="nt-open" ${nt.open ? 'checked' : ''}> <span><b>Open to every current family</b> in My account (otherwise only the players you invite below).</span></label>
@@ -1014,7 +1014,7 @@ async function renderNext() {
 // The holiday admin (slots, bookings, prices, coaches), signed in with the
 // portal login. The parent holiday booking page is unchanged.
 async function renderHoliday() {
-  view().innerHTML = `<div class="jp-head"><div><h1>Holiday training</h1><p class="muted small">School holiday sessions: slots, bookings, prices and coaches. Parents still book at <a href="/holiday-bookings/" target="_blank" rel="noopener">jonerfootball.com/holiday-bookings</a>.</p></div></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>Holiday training</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">School holiday sessions: slots, bookings, prices and coaches. Parents still book at <a href="/holiday-bookings/" target="_blank" rel="noopener">jonerfootball.com/holiday-bookings</a>.</div></details></div></div>
     <iframe src="/jfp-portal/holiday/" title="Holiday training" style="width:100%;height:calc(100vh - 170px);min-height:640px;border:1px solid var(--j-line);border-radius:14px;background:#0A0A0A"></iframe>`
 }
 
@@ -1023,7 +1023,7 @@ async function renderHoliday() {
 async function renderProgram() {
   const d = await need(await post('program'))
   const groups = d.groups.map((g) => ({ ...g, players: g.players.map((p) => ({ ...p })) }))
-  view().innerHTML = `<div class="jp-head"><div><h1>${esc(d.term)} program</h1><p class="muted small">Every group, with names and ages. Your groups are outlined.</p></div></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>${esc(d.term)} program</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Every group, with names and ages. Your groups are outlined.</div></details></div></div>
     <div class="jp-tt-wrap">${(() => {
       const cols = DAYS.filter((dd) => groups.some((g) => g.day === dd))
       const periods = PERIODS.filter(([p]) => groups.some((g) => g.period === p))
@@ -1039,7 +1039,7 @@ async function renderGroups() {
   if (!P.board) P.board = await need(await post('board'))
   const taken = Object.fromEntries(P.board.groups.map((g) => [g.id, g.taken]))
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Groups and rules</h1><p class="muted small">Each group's coach, places, ages, whether parents book or apply, and what an application asks. Changes are live on the parent page straight away.</p></div>
+    <div class="jp-head"><div><h1>Groups and rules</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Each group's coach, places, ages, whether parents book or apply, and what an application asks. Changes are live on the parent page straight away.</div></details></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" id="g-draft">Draft age bands from players</button><button type="button" class="j-btn j-btn-dark" id="g-new">+ New group</button></div></div>
     <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Day</th><th>Time</th><th>Location</th><th>Coach</th><th>Type</th><th>Parents can</th><th>Ages</th><th>Trials</th><th>Places</th><th></th></tr></thead><tbody>
     ${d.groups.map((g) => `<tr><td>${esc(g.day)}</td><td>${esc(g.time)}</td><td>${esc(g.locationName)}</td><td>${esc(d.coaches.find((c) => c.id === g.coachId)?.name || '')}${(g.extraCoachIds || []).length ? ` +${g.extraCoachIds.length}` : ''}</td><td>${esc(g.label)}</td>
@@ -1124,7 +1124,7 @@ async function renderRequests() {
   const list = d.requests.filter((r) => P.reqFilter === 'all' || r.status === P.reqFilter)
   const kind = { application: ['violet', 'Application'], waitlist: ['amber', 'Waitlist'], enquiry: ['grey', 'Enquiry'] }
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Requests</h1><p class="muted small">Applications, waitlist and 1 to 1 enquiries. Accept for the term, offer a trial first, or decline.</p></div>
+    <div class="jp-head"><div><h1>Requests</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Applications, waitlist and 1 to 1 enquiries. Accept for the term, offer a trial first, or decline.</div></details></div>
       <div class="jp-seg" id="rq-f">${[['pending', 'Waiting'], ['offered', 'Offered'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.reqFilter === v}">${l}</button>`).join('')}</div></div>
     ${list.length ? list.map((r) => `<article class="j-card" style="padding:16px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><span class="j-pill j-pill-${kind[r.kind]?.[0] || 'grey'}">${esc(kind[r.kind]?.[1] || r.kind)}</span> <b style="margin-left:6px">${esc(r.players.map((p) => `${p.name}${p.age != null ? `, ${p.age}` : ''}`).join(' and '))}</b>
@@ -1276,7 +1276,7 @@ async function renderPayments() {
   const attention = [...d.payreqs, ...d.bookings].filter((x) => x.needsAttention)
   const attnWord = { 'paid-after-cancel': 'Paid after it was cancelled', 'second-payment': 'Paid twice', 'late-payment': 'Paid after the hold ran out' }
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Payment links</h1><p class="muted small">Make a link for any player, change the amount on an open one, or copy it to send yourself. You never need to open Stripe. Refunds are made in Stripe.</p></div>
+    <div class="jp-head"><div><h1>Payment links</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Make a link for any player, change the amount on an open one, or copy it to send yourself. You never need to open Stripe. Refunds are made in Stripe.</div></details></div>
       <div class="jq-acts"><button type="button" class="j-btn j-btn-dark" id="pl-quick">Quick link</button><button type="button" class="j-btn j-btn-line" id="pl-new">+ New payment link</button></div></div>
     ${otherCheck.length ? `<div class="j-box j-box-amber" id="pl-other-check" style="margin-bottom:16px"><b>Other payments to check: ${otherCheck.length}</b><p class="small" style="margin:4px 0 6px">Quick links for Pro sessions or Other, paid with no player named. Look at who paid, then tick Checked.</p><ul class="jm-hist">${otherCheck.map((q) => `<li><span><b>${esc(q.forText)}</b><small>${esc([q.payerName, q.payerEmail].filter(Boolean).join(' · ') || 'Payer not known')} · ${q.paidAt ? esc(when(q.paidAt)) : ''} · ${esc(q.id)}</small></span><span class="jq-acts"><span class="amt">${esc(q.amountLabel)}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-check-quick="${esc(q.id)}">Checked</button></span></li>`).join('')}</ul></div>` : ''}
     ${attention.length ? `<div class="j-box j-box-red" style="margin-bottom:16px"><b>Needs checking</b>${attention.map((x) => `<div style="margin-top:8px">${esc(x.players.join(', '))} · ${esc(x.parentName)} · ${esc(String(x.needsAttention).split(', ').map((k) => attnWord[k] || k).join(', '))}${(x.unexpected || []).map((u) => ` · ${esc(u.amountLabel)}${u.stripeUrl ? ` <a href="${esc(u.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}`).join('')}</div>`).join('')}<p class="small" style="margin-top:8px">A payment that arrived after a cancel is not added to Airtable. Give the family the place (add them on the timetable) or refund in Stripe.</p></div>` : ''}
@@ -1472,7 +1472,7 @@ async function renderOverview(redraw = false) {
   const paidPlayers = m.status.paid + m.status.stripe
   const pending = (P.requests || []).filter((r) => r.status === 'pending')
   view().innerHTML = `
-    <div class="jd-head"><div><h1>${hi}, ${esc(P.user.name.split(' ')[0])}</h1><p>Term 4 at a glance. Stripe is read live${m.stripeAt ? `, last checked ${esc(new Date(m.stripeAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}` : ''}.</p></div>
+    <div class="jd-head"><div><h1>${hi}, ${esc(P.user.name.split(' ')[0])}</h1><p>${esc(m.term || 'Term 4')}${m.stripeAt ? ` · Stripe checked ${esc(new Date(m.stripeAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}` : ''}</p></div>
       <div class="jd-sync"><button type="button" class="j-btn j-btn-line j-btn-sm" id="d-refresh">Refresh from Stripe</button></div></div>
     ${m.stripeError ? `<div class="j-box j-box-amber" style="margin-bottom:12px">${esc(m.stripeError)}</div>` : ''}
     <div class="jd-grid">
@@ -2381,7 +2381,7 @@ async function renderCoach() {
   view().innerHTML = `
     <div class="jp-head"><div style="display:flex;gap:12px;align-items:center">${avatar(d.coachPhoto, d.coach, 48)}<div><h1>${admin ? `Coach ${esc(d.coach)}` : 'My sessions'}</h1><p class="muted small">${esc(d.term)} · ${d.sessions.length} session${d.sessions.length === 1 ? '' : 's'} a week · ${hrs(d.hours.perWeekMinutes)} a week, ${hrs(d.hours.termMinutes)} across the term</p></div></div>
       ${admin ? `<div class="jp-seg" id="c-pick">${P.coaches.map((c) => `<button type="button" data-c="${esc(c.id)}" aria-pressed="${P.coachId === c.id}">${esc(c.name)}</button>`).join('')}</div>` : ''}</div>
-    ${admin ? '<p class="muted small" style="margin-bottom:10px">This is exactly what the coach sees when they sign in: times, names and ages. No money, no parent contact details.</p>' : ''}
+    
     ${trialCards(d.trials || [])}
     ${d.sessions.length ? d.sessions.map((s) => {
       const date = P.coachDate[s.id] || s.nextDate
@@ -2481,7 +2481,7 @@ async function renderCancellations() {
   const noticePill = (c) => `<span class="j-pill j-pill-${c.noticeLevel === 'very-late' ? 'red' : c.noticeLevel === 'late' ? 'amber' : 'green'}">${esc(c.noticeLabel)}</span>`
   const submitted = (iso) => new Date(iso).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Cancellations</h1><p class="muted small">${admin ? 'Every time a family tells us a player cannot make a session. The place stays held; this is only the heads up.' : 'Families who have told us a player in your groups cannot make a session. Newest first.'}</p></div></div>
+    <div class="jp-head"><div><h1>Cancellations</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">${admin ? 'Every time a family tells us a player cannot make a session. The place stays held; this is only the heads up.' : 'Families who have told us a player in your groups cannot make a session. Newest first.'}</div></details></div></div>
     <div class="jp-kpis"><div class="jp-kpi"><span>Cancellations</span><b>${sum.total}</b></div><div class="jp-kpi"><span>Under 24 h notice</span><b>${sum.under24}</b></div><div class="jp-kpi"><span>Under 2 h notice</span><b>${sum.under2}</b></div><div class="jp-kpi"><span>Average notice</span><b>${sum.total ? `${sum.averageHours} h` : 'None yet'}</b></div><div class="jp-kpi"><span>Median notice</span><b>${sum.total ? `${sum.medianHours} h` : 'None yet'}</b></div></div>
     <div class="jp-seg" id="cx-f" style="margin:14px 0 10px">${[['upcoming', `Upcoming ${d.counts.upcoming}`], ['past', `Past ${d.counts.past}`], ['all', `All ${d.counts.all}`]].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${when === v}">${l}</button>`).join('')}</div>
     ${d.cancellations.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Session</th><th>Coach</th><th>Reason</th><th>Notice</th><th>Sent</th></tr></thead><tbody>
@@ -2506,7 +2506,7 @@ async function renderFamilies() {
   const when = (iso) => new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
   const canTick = (f) => (acct ? !f.signedInAt : f.kind !== 'noPrice')
   const done = (f) => (acct ? f.accountInvitedAt : f.invitedAt)
-  view().innerHTML = `<div class="jp-head"><div><h1>Account invites</h1><p class="muted small">Every Term 4 family, grouped under the parent's email. Their account already exists: they only need to sign in once with that email.</p></div></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>Account invites</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Every Term 4 family, grouped under the parent's email. Their account already exists: they only need to sign in once with that email.</div></details></div></div>
     <div class="jp-seg" id="fm-mode" style="margin-bottom:12px"><button type="button" data-m="account" aria-pressed="${acct}">Sign-in invite, no money (everyone)</button><button type="button" data-m="pay" aria-pressed="${!acct}">With a payment link (families who owe)</button></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       <span class="j-pill j-pill-grey">${d.list.length} families</span>
@@ -2585,9 +2585,9 @@ function acctShown(d) {
 }
 function acctTable(d) {
   const list = acctShown(d)
-  return `<p class="muted small" style="margin-bottom:8px">${list.length} account${list.length === 1 ? '' : 's'} with a player and no session. They hold no place. Add to a group puts them in one, with their player information already there.</p>
-    <div class="jp-scroll"><table class="jp-table" id="pl-accts"><thead><tr><th>Player</th><th>Contact</th><th>Football</th><th>Updated</th><th></th></tr></thead>
-    <tbody>${list.map((a, i) => `<tr data-acct="${esc(a.key)}"><td><b>${esc(a.name)}</b>${a.age != null ? ` <span class="muted">(${esc(a.age)})</span>` : ''}${a.self ? ' <span class="j-pill j-pill-grey">Own contact</span>' : ''}</td><td>${esc(a.parentName || (a.self ? 'The player' : ''))}<br><span class="muted small">${esc(a.email)}${a.mobile ? ` · ${esc(a.mobile)}` : ''}</span></td><td class="small">${esc([a.club, a.level, (a.positions || []).join(', ')].filter(Boolean).join(' · ') || 'Not given')}</td><td class="small muted">${a.updatedAt ? esc(new Date(a.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })) : ''}</td><td><button type="button" class="j-btn j-btn-dark j-btn-sm" data-acct-add="${i}">Add to a group</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">No accounts without a session.</td></tr>'}</tbody></table></div>`
+  return `<p class="muted small" style="margin:0 0 8px">Families made these in My account. They hold no place until you add them to a group.</p>
+    <div class="ps-table-wrap"><table class="ps-table" id="pl-accts"><thead><tr><th>Player</th><th>Contact</th><th data-col="football">Football</th><th>Updated</th><th class="ps-end"><span class="sr-only">Add</span></th></tr></thead>
+    <tbody>${list.map((a, i) => `<tr data-acct="${esc(a.key)}"><td data-col="who"><div class="ps-who"><div><b>${esc(a.name)}</b>${a.age != null ? ` <span class="muted">(${esc(a.age)})</span>` : ''}${a.self ? ' <span class="ps-tag">Own contact</span>' : ''}</div></div></td><td data-col="group">${esc(a.parentName || (a.self ? 'The player' : ''))}<span class="ps-sub">${esc(a.email)}${a.mobile ? ` · ${esc(a.mobile)}` : ''}</span></td><td data-col="football">${esc([a.club, a.level, (a.positions || []).join(', ')].filter(Boolean).join(' · ') || 'Not given')}</td><td data-col="pay" class="muted">${a.updatedAt ? esc(new Date(a.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })) : ''}</td><td class="ps-end ps-keep"><button type="button" class="j-btn j-btn-dark j-btn-sm" data-acct-add="${i}">Add to a group</button></td></tr>`).join('') || '<tr><td colspan="5"><div class="ps-empty">No accounts without a session.</div></td></tr>'}</tbody></table></div>`
 }
 async function acctAddToGroup(a) {
   if (!a) return
@@ -2713,14 +2713,17 @@ async function plEdit(p) {
 const money0 = (n) => (n == null ? '' : `A$${Number(n).toLocaleString('en-AU')}`)
 
 function plRow(p) {
-  return `<tr data-pl="${esc(p.rowId)}" style="cursor:pointer">
-    <td><div style="display:flex;gap:10px;align-items:center">${avatar(p.profile?.photo, p.name, 34)}<div><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted small">(${esc(p.age)})</span>` : ''}${p.pro ? ' <span class="j-pill j-pill-pink">Pro</span>' : ''}<br><span class="muted small">${p.ownContact ? 'Own contact' : esc(p.parent || 'no parent name')}</span></div></div></td>
-    <td>${p.inGroup ? esc(p.groupLabel) : '<span class="j-pill j-pill-red">Not in a group</span>'}<br><span class="muted small">${esc(p.coach || '')}</span></td>
-    <td>${payPill(p)}${p.feeAud != null ? `<br><span class="muted small">${esc(money0(p.feeAud))}${p.balanceAud ? `, ${esc(money0(p.balanceAud))} owing` : ''}</span>` : ''}</td>
-    <td>${footballCell(p)}</td>
-    <td>${p.waiver.onFile ? '<span class="j-pill j-pill-green">Waiver</span>' : '<span class="j-pill j-pill-red">No waiver</span>'}</td>
-    <td class="muted small">${esc(p.email || 'no email')}</td>
-    <td><button type="button" class="j-btn j-btn-line j-btn-sm" data-pl-edit="${esc(p.rowId)}">Edit</button></td>
+  const f = p.profile || {}
+  const club = [p.club, f.team].filter(Boolean).join(' · ')
+  const football = [f.level, (f.positions || []).map((x) => POS_SHORT[x] || x).join('/')].filter(Boolean).join(' · ')
+  const fee = p.feeAud != null ? `${money0(p.feeAud)}${p.balanceAud ? ` · ${money0(p.balanceAud)} owing` : ''}` : 'No fee set'
+  return `<tr data-pl="${esc(p.rowId)}" tabindex="0" aria-label="${esc(p.name)}, open details">
+    <td data-col="who"><div class="ps-who">${avatar(p.profile?.photo, p.name, 32)}<div><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${p.pro ? ' <span class="ps-tag pink">Pro</span>' : ''}<span class="ps-sub">${p.ownContact ? 'Own contact' : esc(p.parent || 'No parent name')}</span></div></div></td>
+    <td data-col="group">${p.inGroup ? esc(p.groupLabel) : psBadge('orange', 'Not in a group')}${p.coach ? `<span class="ps-sub">${esc(p.coach)}</span>` : ''}</td>
+    <td data-col="pay">${psPayBadge(p)}<span class="ps-sub">${esc(fee)}</span></td>
+    <td data-col="football">${club || football ? `${esc(club || '')}${football ? `<span class="ps-sub">${esc(football)}</span>` : ''}` : '<span class="muted">Not on file</span>'}</td>
+    <td data-col="flags" class="${p.waiver.onFile ? 'ps-ok' : ''}">${p.waiver.onFile ? '<span class="muted">On file</span>' : psBadge('red', 'No waiver')}</td>
+    <td class="ps-end"><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-pl-edit="${esc(p.rowId)}" aria-label="Edit ${esc(p.name)}">Edit</button></td>
   </tr>`
 }
 
@@ -2903,6 +2906,33 @@ async function plAddBox() {
   box.querySelector('#pa-go').addEventListener('click', () => send(false))
 }
 
+// ---------- shared page pieces (portal design system, 14 Oct 2026) ----------
+// Every staff page: psHead (title, count, main action, More), psTools (search,
+// filters in a fixed order, More filters, Clear), psChips (quick filters),
+// ps-table (becomes cards on a phone), psBadge (dot + word).
+const SEARCH_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2" stroke-linecap="round"/></svg>'
+function psHead({ title, count = '', primary = '', more = false }) {
+  return `<header class="ps-head"><div class="ps-title"><h1>${esc(title)}</h1>${count !== '' ? `<span class="ps-count">${esc(count)}</span>` : ''}</div>
+    <div class="ps-actions">${more ? '<button type="button" class="j-btn j-btn-line" id="ps-more" aria-haspopup="menu">More</button>' : ''}${primary}</div></header>`
+}
+function psSearch(id, placeholder, value, label) {
+  return `<label class="ps-search"><span class="sr-only">${esc(label || placeholder)}</span>${SEARCH_SVG}<input class="j-input" id="${id}" type="search" placeholder="${esc(placeholder)}" value="${esc(value)}" autocomplete="off"></label>`
+}
+function psSelect(id, list, value, blank, label) {
+  return `<select class="j-select ${value ? 'is-set' : ''}" id="${id}" aria-label="${esc(label || blank)}"><option value="">${esc(blank)}</option>${list.map((x) => `<option value="${esc(x.id)}" ${value === x.id ? 'selected' : ''}>${esc(x.label || x.name)}</option>`).join('')}</select>`
+}
+const PS_PAY = { paid: ['green', 'Paid'], part: ['orange', 'Part paid'], unpaid: ['red', 'Unpaid'], session: ['pink', 'Session by session'] }
+function psBadge(color, label) { return `<span class="ps-badge ${color}"><i></i>${esc(label)}</span>` }
+function psPayBadge(p) {
+  if (p.trial) return psBadge('violet', 'Trial')
+  if (p.paymentStatus === 'N/A') return psBadge('grey', 'N/A')
+  const [c, l] = PS_PAY[payKind(p)]
+  return psBadge(c, l)
+}
+
+// ---------- players ----------
+
+const PL_MORE = ['waiver', 'place', 'level', 'pos']
 async function renderPlayers(keep = false) {
   // Read from Airtable again whenever the tab is opened after half a minute,
   // so a change made in Airtable shows here without a page reload. Typing in
@@ -2910,40 +2940,68 @@ async function renderPlayers(keep = false) {
   if (!PL.data || (!keep && Date.now() - PL.at > 30000)) { PL.data = await need(await post('playersList', { fresh: true })); PL.at = Date.now() }
   const d = PL.data
   const shown = d.players.filter(plMatch)
-  const opt = (list, sel, blank) => `<option value="">${blank}</option>` + list.map((x) => `<option value="${esc(x.id)}" ${sel === x.id ? 'selected' : ''}>${esc(x.label || x.name)}</option>`).join('')
-  view().innerHTML = `<div class="jp-head"><div><h1>Players</h1><p class="muted small">Every Term 4 player. Search, filter by level or position, click anyone to see everything, or press Edit to change their details. Families update the same details in My account.</p></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="muted small" id="pl-synced">Read from Airtable ${esc(new Date(PL.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}</span><button type="button" class="j-btn j-btn-line" id="pl-refresh">Refresh from Airtable</button><button type="button" class="j-btn j-btn-dark" id="pl-add">+ Add a player</button><button type="button" class="j-btn j-btn-line" id="pl-add-family">+ Add a family</button><button type="button" class="j-btn j-btn-line" id="pl-invite">Send account invites</button></div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      <input class="j-input" id="pl-q" placeholder="Search name, parent, email, mobile, group" value="${esc(PL.q)}" style="flex:1;min-width:240px">
-      <select class="j-select" id="pl-status" style="width:auto">${opt([{ id: 'unpaid', label: 'Not paid' }, { id: 'paid', label: 'Paid' }, { id: 'noprice', label: 'No fee set' }], PL.status, 'Any payment')}</select>
-      <select class="j-select" id="pl-group" style="width:auto">${opt(d.groups, PL.group, 'Any group')}</select>
-      <select class="j-select" id="pl-coach" style="width:auto">${opt(d.coaches, PL.coach, 'Any coach')}</select>
-      <select class="j-select" id="pl-waiver" style="width:auto">${opt([{ id: 'yes', label: 'Waiver on file' }, { id: 'no', label: 'No waiver' }], PL.waiver, 'Any waiver')}</select>
-      <select class="j-select" id="pl-place" style="width:auto">${opt([{ id: 'in', label: 'In a group' }, { id: 'out', label: 'Not in a group' }, { id: 'acct', label: `Accounts with no session (${(d.accounts || []).length})` }], PL.place, 'In or out')}</select>
-      <select class="j-select" id="pl-level" style="width:auto">${opt([...PROFILE_OPTIONS.levels.map((x) => ({ id: x, label: x })), { id: 'none', label: 'Level not known' }], PL.level, 'Any level')}</select>
-      <select class="j-select" id="pl-pos" style="width:auto">${opt(PROFILE_OPTIONS.positions.map((x) => ({ id: x, label: x })), PL.pos, 'Any position')}</select>
-      <button type="button" class="j-btn j-btn-ghost j-btn-sm" id="pl-clear">Clear</button>
+  const active = ['q', 'status', 'group', 'coach', ...PL_MORE].filter((k) => PL[k]).length
+  const moreSet = PL_MORE.filter((k) => PL[k]).length
+  if (moreSet) PL.moreOpen = true
+  const n = (f) => d.players.filter(f).length
+  const chips = [
+    ['status', 'unpaid', 'Not paid', n((p) => p.paymentStatus !== 'Paid'), 'red'],
+    ['status', 'noprice', 'No fee set', n((p) => p.feeAud == null), 'grey'],
+    ['waiver', 'no', 'No waiver', n((p) => !p.waiver.onFile), 'red'],
+    ['place', 'out', 'Not in a group', n((p) => !p.inGroup), 'orange'],
+    ['place', 'acct', 'No session yet', (d.accounts || []).length, 'grey'],
+  ].filter((c) => c[3] > 0)
+  const accts = PL.place === 'acct' ? acctShown(d) : null
+  const y = window.scrollY
+  view().innerHTML = `${psHead({ title: 'Players', count: accts ? `${accts.length} with no session` : shown.length === d.players.length ? d.players.length : `${shown.length} of ${d.players.length}`, primary: '<button type="button" class="j-btn j-btn-dark" id="pl-add">+ Add player</button>', more: true })}
+    <div class="ps-tools" role="search">
+      ${psSearch('pl-q', 'Search players…', PL.q, 'Search players by name, parent, email, mobile or group')}
+      ${psSelect('pl-status', [{ id: 'unpaid', label: 'Not paid' }, { id: 'paid', label: 'Paid' }, { id: 'noprice', label: 'No fee set' }], PL.status, 'Payment')}
+      ${psSelect('pl-group', d.groups, PL.group, 'Group')}
+      ${psSelect('pl-coach', d.coaches, PL.coach, 'Coach')}
+      <span class="ps-more-filters" ${PL.moreOpen ? '' : 'hidden'} id="pl-morebox">
+        ${psSelect('pl-waiver', [{ id: 'yes', label: 'Waiver on file' }, { id: 'no', label: 'No waiver' }], PL.waiver, 'Waiver')}
+        ${psSelect('pl-place', [{ id: 'in', label: 'In a group' }, { id: 'out', label: 'Not in a group' }, { id: 'acct', label: `Accounts with no session (${(d.accounts || []).length})` }], PL.place, 'In a group?')}
+        ${psSelect('pl-level', [...PROFILE_OPTIONS.levels.map((x) => ({ id: x, label: x })), { id: 'none', label: 'Level not known' }], PL.level, 'Level')}
+        ${psSelect('pl-pos', PROFILE_OPTIONS.positions.map((x) => ({ id: x, label: x })), PL.pos, 'Position')}
+      </span>
+      <button type="button" class="ps-link" id="pl-morefilters" aria-expanded="${Boolean(PL.moreOpen)}" aria-controls="pl-morebox">${PL.moreOpen ? 'Fewer filters' : `More filters${moreSet ? ` (${moreSet})` : ''}`}</button>
+      ${active ? '<button type="button" class="ps-link" id="pl-clear">Clear</button>' : ''}
+      <span class="ps-meta">Updated ${esc(new Date(PL.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))} · <button type="button" class="ps-link" id="pl-refresh" title="Read Airtable again">Refresh</button></span>
     </div>
-    <p class="muted small" style="margin-bottom:8px">${shown.length} of ${d.players.length} players${shown.length !== d.players.length ? ' match' : ''} · ${d.players.filter((p) => !p.inGroup).length} not in a group · ${d.players.filter((p) => p.feeAud == null).length} with no fee · ${d.players.filter((p) => !p.waiver.onFile).length} with no waiver</p>
-    ${PL.place === 'acct' ? acctTable(d) : `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th>Football</th><th>Waiver</th><th>Email</th><th></th></tr></thead>
-      <tbody>${shown.map(plRow).join('') || '<tr><td colspan="7" class="muted">Nobody matches those filters.</td></tr>'}</tbody></table></div>`}`
+    ${chips.length ? `<div class="ps-chips" aria-label="Quick filters">${chips.map(([k, v, l, c, col]) => `<button type="button" class="ps-chip" data-chip="${k}:${v}" aria-pressed="${PL[k] === v}"><i style="background:var(--c-${col === 'red' ? 'critical' : col === 'orange' ? 'orange' : 'neutral'})"></i>${esc(l)} <b>${c}</b></button>`).join('')}</div>` : ''}
+    ${accts ? acctTable(d) : `<div class="ps-table-wrap"><table class="ps-table"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th data-col="football">Football</th><th>Waiver</th><th class="ps-end"><span class="sr-only">Edit</span></th></tr></thead>
+      <tbody>${shown.map(plRow).join('') || `<tr><td colspan="6"><div class="ps-empty">No players match.${active ? ' <button type="button" class="ps-link" id="pl-clear2">Clear filters</button>' : ''}</div></td></tr>`}</tbody></table></div>`}`
+  if (keep) window.scrollTo(0, y)
   const redraw = () => renderPlayers(true)
   $('pl-q').addEventListener('input', (e) => { PL.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('pl-q'); i.focus(); i.setSelectionRange(at, at) })
   for (const [id, key] of [['pl-status', 'status'], ['pl-group', 'group'], ['pl-coach', 'coach'], ['pl-waiver', 'waiver'], ['pl-place', 'place'], ['pl-level', 'level'], ['pl-pos', 'pos']]) {
     $(id).addEventListener('change', (e) => { PL[key] = e.target.value; redraw() })
   }
-  $('pl-clear').addEventListener('click', () => { Object.assign(PL, { q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '' }); redraw() })
+  const clear = () => { Object.assign(PL, { q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '' }); redraw() }
+  $('pl-clear')?.addEventListener('click', clear)
+  $('pl-clear2')?.addEventListener('click', clear)
+  $('pl-morefilters').addEventListener('click', () => { PL.moreOpen = !PL.moreOpen; redraw() })
+  view().querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => { const [k, v] = b.dataset.chip.split(':'); PL[k] = PL[k] === v ? '' : v; redraw() }))
   $('pl-add').addEventListener('click', () => plAddBox())
-  $('pl-add-family').addEventListener('click', () => familyModal(famUI()))
-  view().querySelectorAll('[data-acct-add]').forEach((b) => b.addEventListener('click', () => acctAddToGroup(acctShown(d)[Number(b.dataset.acctAdd)])))
+  view().querySelectorAll('[data-acct-add]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); acctAddToGroup(acctShown(d)[Number(b.dataset.acctAdd)]) }))
+  $('ps-more').addEventListener('click', (e) => menu(e.currentTarget, [
+    { key: 'family', label: '+ Add a family', run: () => familyModal(famUI()) },
+    { key: 'invite', label: 'Send account invites', run: () => renderFamilies() },
+    '-',
+    { key: 'refresh', label: 'Refresh from Airtable', run: () => { PL.at = 0; renderPlayers() } },
+  ]))
   $('pl-refresh').addEventListener('click', () => { PL.at = 0; renderPlayers() })
-  $('pl-invite').addEventListener('click', () => renderFamilies())
-  view().querySelectorAll('[data-pl]').forEach((tr) => tr.addEventListener('click', (e) => {
-    const p = d.players.find((x) => x.rowId === tr.dataset.pl)
-    if (!p) return
-    if (e.target.closest('[data-pl-edit]')) return plEdit(p)
-    plDetail(p)
-  }))
+  view().querySelectorAll('[data-pl]').forEach((tr) => {
+    const open = (e) => {
+      const p = d.players.find((x) => x.rowId === tr.dataset.pl)
+      if (!p) return
+      if (e.target.closest('[data-pl-edit]')) return plEdit(p)
+      plDetail(p)
+    }
+    tr.addEventListener('click', open)
+    tr.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === tr) { e.preventDefault(); open(e) } })
+  })
 }
 
 // ---------- cover, time off, session plans ----------
@@ -2953,7 +3011,7 @@ async function renderStaff() {
   const d = await need(await post('staffOverview'))
   const pill = { active: ['green', 'Covered'], cancelled: ['grey', 'Cancelled'], pending: ['amber', 'Waiting for approval'], approved: ['green', 'Approved'], declined: ['red', 'Declined'] }
   const sessOpts = d.mySessions.map((s) => `<option value="${esc(s.id)}">${esc(s.label)}</option>`).join('')
-  view().innerHTML = `<div class="jp-head"><div><h1>Cover and time off</h1><p class="muted small">${admin ? 'Every cover and time off request. Covers apply straight away; time off waits for you or Ligia.' : 'Need someone to take a session? Choose the date and the coach, and they get it in their My sessions straight away. Time off goes to Lee and Ligia to approve.'}</p></div></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>Cover and time off</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">${admin ? 'Every cover and time off request. Covers apply straight away; time off waits for you or Ligia.' : 'Need someone to take a session? Choose the date and the coach, and they get it in their My sessions straight away. Time off goes to Lee and Ligia to approve.'}</div></details></div></div>
     <div class="jp-two" style="display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
       <div class="j-card" style="padding:16px"><h2 style="margin-bottom:10px">Request cover</h2>
         ${d.mySessions.length ? `<label class="j-field"><span>Session</span><select class="j-select" id="cv-g">${sessOpts}</select></label>
@@ -3022,14 +3080,14 @@ async function renderPlans() {
   const pl = d.plans
   if (!admin) {
     const filled = pl.weeks.filter((w) => w.title || w.focus || w.link)
-    view().innerHTML = `<div class="jp-head"><div><h1>Session plans</h1><p class="muted small">Your saved sessions, how the program runs and what each week covers.</p></div></div>
+    view().innerHTML = `<div class="jp-head"><div><h1>Session plans</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Your saved sessions, how the program runs and what each week covers.</div></details></div></div>
       ${planner}
       ${pl.structure ? `<div class="j-card" style="padding:16px;margin-bottom:14px"><h2 style="margin-bottom:8px">Program structure</h2>${pl.structure.split(/\n\s*\n/).map((x) => `<p style="margin-bottom:8px">${esc(x).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
       ${filled.length ? filled.map((w) => `<div class="j-card" style="padding:14px 16px;margin-bottom:10px"><b>Week ${w.week}${w.title ? `: ${esc(w.title)}` : ''}</b>${w.focus ? `<p class="small" style="margin-top:4px;white-space:pre-wrap">${esc(w.focus)}</p>` : ''}${w.link ? `<p style="margin-top:6px"><a class="j-btn j-btn-line j-btn-sm" href="${esc(w.link)}" target="_blank" rel="noopener noreferrer">Open the session plan</a></p>` : ''}</div>`).join('') : ''}`
     bindPlanner()
     return
   }
-  view().innerHTML = `<div class="jp-head"><div><h1>Session plans</h1><p class="muted small">Every coach's saved sessions, and what coaches see in their Session plans tab: the program structure and each week.</p></div></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>Session plans</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Every coach's saved sessions, and what coaches see in their Session plans tab: the program structure and each week.</div></details></div></div>
     ${planner}
     <div class="j-card" style="padding:16px;max-width:900px">
       <label class="j-field"><span>Program structure</span><textarea class="j-textarea" id="pl-s" rows="8" placeholder="How a JFP session runs, the standards, the term's themes. Leave a blank line between paragraphs.">${esc(pl.structure)}</textarea></label>
@@ -3143,7 +3201,7 @@ function photoPicker(el, coachId, onDone) {
 async function renderProfile() {
   const d = await need(await post('me'))
   const u = d.user
-  view().innerHTML = `<div class="jp-head"><div><h1>My profile</h1><p class="muted small">Your photo shows to parents on every group you coach.</p></div></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>My profile</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Your photo shows to parents on every group you coach.</div></details></div></div>
     <div class="j-card" style="padding:18px;max-width:520px;display:flex;gap:18px;align-items:center;flex-wrap:wrap">
       ${avatar(u.photo, u.name, 120)}
       <div><h2 style="margin-bottom:4px">${esc(u.name)}</h2><p class="muted small" style="margin-bottom:12px">${esc(u.email)}</p>
@@ -3164,7 +3222,7 @@ async function renderCoaches() {
   const cfg = sd.config
   let rows = list.map((c) => ({ ...cfg.coaches.find((x) => x.id === c.id), photo: c.photo }))
   const draw = () => {
-    view().innerHTML = `<div class="jp-head"><div><h1>Coaches</h1><p class="muted small">Full names show to parents on every group. Coaches sign in at <b>jonerfootball.com/jfp-portal</b> with the email here and a 6 digit code. Nobody is emailed from this page.</p></div></div>
+    view().innerHTML = `<div class="jp-head"><div><h1>Coaches</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Full names show to parents on every group. Coaches sign in at <b>jonerfootball.com/jfp-portal</b> with the email here and a 6 digit code. Nobody is emailed from this page.</div></details></div></div>
       <label class="j-check" style="max-width:760px"><input type="checkbox" id="co-on" ${cfg.coachLoginsEnabled ? 'checked' : ''}> <span><b>Coach logins on.</b> Coaches see the program timetable (names and ages), their own registers and their profile. Never money or parent contact details.</span></label>
       <div style="display:grid;gap:12px;max-width:760px;margin-top:12px">${rows.map((c, i) => `<div class="j-card" style="padding:14px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap" data-co="${i}">
         <div style="display:flex;flex-direction:column;gap:6px;align-items:center">${avatar(c.photo, c.fullName, 84)}<button type="button" class="j-btn j-btn-line j-btn-sm" data-photo="${i}">${c.photo ? 'Change photo' : 'Add photo'}</button>${c.photo ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-photo-rm="${i}">Remove</button>` : ''}</div>
@@ -3217,7 +3275,7 @@ async function renderRemoved() {
   const tally = {}
   for (const p of live) { const k = p.reason || 'No reason recorded'; tally[k] = (tally[k] || 0) + 1 }
   const when = (iso) => (iso ? new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
-  view().innerHTML = `<div class="jp-head"><div><h1>Removed players</h1><p class="muted small">Everyone who has left ${esc(live[0]?.term || 'this term')}, and why. Tap a name for the full detail. Kept in Airtable under "Players dropped from term 4".</p></div></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>Removed players</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Everyone who has left ${esc(live[0]?.term || 'this term')}, and why. Tap a name for the full detail. Kept in Airtable under "Players dropped from term 4".</div></details></div></div>
     ${Object.keys(tally).length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${Object.entries(tally).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<span class="j-pill j-pill-grey">${esc(k)} · ${v}</span>`).join('')}</div>` : ''}
     ${d.players.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Was in</th><th>Why they left</th><th>Removed</th><th>Payment</th><th></th></tr></thead><tbody>
       ${d.players.map((p, i) => `<tr${p.restored ? ' style="opacity:.55"' : ''}><td><button type="button" class="j-btn j-btn-ghost j-btn-sm" style="padding:0;font-weight:700" data-rm-open="${i}">${esc(p.name)}</button><br><span class="muted small">${esc(p.parent)}${p.email ? ` · ${esc(p.email)}` : ''}</span></td><td>${esc(p.session)}${p.coach ? `<br><span class="muted small">${esc(p.coach)}</span>` : ''}</td><td><b>${esc(p.reason || 'Not recorded')}</b>${p.details ? `<br><span class="muted small">${esc(p.details.slice(0, 90))}${p.details.length > 90 ? '…' : ''}</span>` : ''}</td><td class="small">${esc(when(p.removedAt))}${p.removedBy ? `<br><span class="muted">${esc(p.removedBy)}</span>` : ''}</td><td>${payPill(p)}</td><td>${p.restored ? '<span class="j-pill j-pill-green">Restored</span>' : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-restore="${i}">Restore</button>`}</td></tr>`).join('')}
@@ -3251,7 +3309,7 @@ async function renderAudit() {
     const a = e.after || {}
     return esc([a.name, a.group && `to ${a.group}`, a.payment && `payment ${a.payment}`, a.cents && money(a.cents), a.emailed && 'emailed', a.changed != null && `${a.changed} changed`].filter(Boolean).join(' · '))
   }
-  view().innerHTML = `<div class="jp-head"><div><h1>Audit log</h1><p class="muted small">Every change made in the portal and by families: who, what and when. Newest first.</p></div></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>Audit log</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Every change made in the portal and by families: who, what and when. Newest first.</div></details></div></div>
     ${d.entries.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Record</th><th>Detail</th></tr></thead><tbody>
       ${d.entries.map((e) => `<tr><td style="white-space:nowrap">${esc(new Date(e.at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</td><td>${esc(e.by)}</td><td>${esc(e.action)}</td><td class="small">${esc(e.target)}</td><td class="small">${summary(e)}</td></tr>`).join('')}
     </tbody></table></div>` : '<div class="j-empty">No changes yet.</div>'}`
@@ -3261,7 +3319,7 @@ async function renderSettings() {
   const sd = await need(await post('getSettings'))
   const c = sd.config
   let skips = [...(c.skipDates || [])]
-  view().innerHTML = `<div class="jp-head"><div><h1>Settings</h1><p class="muted small">Term details, who can sign in, and alerts.</p></div></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>Settings</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Term details, who can sign in, and alerts.</div></details></div></div>
     <div class="j-card" style="padding:18px;max-width:760px">
       <h2 style="margin-bottom:12px">Term</h2>
       <div class="j-two"><label class="j-field"><span>Term name</span><input class="j-input" id="s-term" value="${esc(c.term)}"></label><label class="j-field"><span>First day (a Monday)</span><input class="j-input" type="date" id="s-start" value="${esc(c.termStart)}"></label></div>
