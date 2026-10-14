@@ -16,7 +16,7 @@ import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYear
 import { renderPricesPage, quickModal, progPill, WHERE as QUICK_WHERE } from './jfp-portal-quick.js'
 import { playerFormHtml, wirePlayerForm, filledValues, customOptions, customPrices, noGroupPaymentHtml, wireNoGroupPayment, PROFILE_LISTS } from './jfp-portal-player-form.js'
 import { contactWords } from '../../api/_jfp-contact.js'
-import { textComposer, payLinkText, trialText, helloText, inviteText } from './jfp-portal-text.js'
+import { textComposer, payLinkText, trialText, helloText, inviteText, startText } from './jfp-portal-text.js'
 import { JJ_NAV, JJ_TABS, JJ_ICON, renderJJ } from './jfp-portal-jj.js'
 import { quoteHtml, wireQuote, commitmentHtml, sameTiers } from './jfp-portal-quote.js'
 
@@ -782,6 +782,7 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
       <option value="link" selected>A price: they sign in, sign the waiver and pay it (pick it below)</option><option value="offline">Already paid offline</option><option value="sessions">Session by session: their own price a session</option><option value="pro">Pro session: Pro sessions price a session</option><option value="trial">Free trial, no payment</option><option value="none">Decide later</option></select></label>
     <p class="muted small" id="ap-pay-hint" style="margin-top:-6px"></p>
     <div id="ap-price"></div>
+    <label class="j-field" id="ap-start-wrap" hidden><span>Starts</span><select class="j-select" id="ap-start">${dateOptions(pr, g.day, nextDate(pr, g.day))}</select></label>
     <label class="j-field" id="ap-trial-wrap" hidden><span>Trial date</span><select class="j-select" id="ap-trial">${dateOptions(pr, g.day, nextDate(pr, g.day))}</select></label>
     <label class="j-field" id="ap-per-wrap" hidden><span>Price per session (A$) <span class="muted">(optional, or set it when you bill)</span></span><input class="j-input" id="ap-per" inputmode="decimal" placeholder="e.g. 80"></label>
     ${quoteHtml('ap', { defaultQuote: pr.defaultQuote })}
@@ -801,6 +802,8 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     apQuote.show(['sessions', 'pro'].includes(v))
     if (v === 'pro' && pr.defaultQuote && !apPrefilled && !box.querySelector('#ap-per').value.trim()) { apPrefilled = true; box.querySelector('#ap-per').value = (pr.defaultQuote.perCents / 100).toFixed(2).replace(/\.00$/, ''); apQuote.set(pr.defaultQuote.tiers) }
     box.querySelector('#ap-trial-wrap').hidden = v !== 'trial'
+    // A price has its own Starts (it sets the pro rata); everyone else picks it here.
+    box.querySelector('#ap-start-wrap').hidden = ['link', 'offline', 'trial'].includes(v)
     // What the family will find when they sign in (Lee, 13 Oct 2026).
     box.querySelector('#ap-pay-hint').textContent = payHint(v, words)
     box.querySelector('#ap-price-afterpay').closest('label').hidden = v !== 'link'
@@ -856,6 +859,11 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     if (body.player.name.length < 3) { err.textContent = 'Enter the player\'s full name.'; err.hidden = false; return }
     if (payment === 'offline') body.method = 'Offline'
     if (payment === 'trial') body.startDate = box.querySelector('#ap-trial').value
+    // The first session (Lee, 14 Oct 2026: players starting in week 2 or 3).
+    else body.startsFrom = ['link', 'offline'].includes(payment) ? priced.startDate || '' : box.querySelector('#ap-start').value
+    // "Week 3 · Tue 28 Oct" reads as "Tue 28 Oct" in a text.
+    const optDate = (sel) => String(sel?.selectedOptions[0]?.textContent || '').replace(/^Week \d+ · /, '').replace(/\s\d{4}$/, '').replace(/ \(past\)$/, '')
+    const startsLabel = optDate(box.querySelector(['link', 'offline'].includes(payment) ? '#ap-price-from' : '#ap-start'))
     if (['sessions', 'pro'].includes(payment)) {
       const per = box.querySelector('#ap-per').value.trim()
       if (per) {
@@ -891,13 +899,19 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
         <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="dn-copy">Copy link</button><button type="button" class="j-btn j-btn-dark" id="dn-text" ${mobile ? '' : 'disabled title="No mobile entered"'}>Text it to ${esc(w.contact)}</button></div>
         ${mobile ? '' : '<p class="muted small" style="margin-top:8px">No mobile was entered. Add one with Edit on the Players tab to text them.</p>'}`)
       done.querySelector('#dn-copy').addEventListener('click', () => copy(url))
-      done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url, self: w.self }), `Text ${w.contact} the payment link`) })
+      done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url, self: w.self, starts: startsLabel }), `Text ${w.contact} the payment link`) })
       if (!r.data.emailed) copy(url)
     } else if (payment === 'trial' && mobile) {
-      const when = box.querySelector('#ap-trial').selectedOptions[0]?.textContent || ''
+      const when = String(box.querySelector('#ap-trial').selectedOptions[0]?.textContent || '').replace(/^Week \d+ · /, '')
       const done = modal(`<h2 style="margin-bottom:6px">Trial booked</h2><p class="muted small" style="margin-bottom:12px"><b>${esc(body.player.name)}</b> trials on ${esc(when)} in ${esc(where)}. ${esc(g.coachName ? `Coach ${g.coachName}` : 'The coach')} sees it as a trial in their sessions, and is asked for feedback after it.${sentLine}</p>
         <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="dn-text">Text ${esc(w.contact)} the trial details</button></div>`)
       done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(trialText({ parent: body.parent.name, player: body.player.name, when, where: `${g.time}, ${g.locationName}`, self: w.self }), 'Text the trial details') })
+    } else if (mobile) {
+      // Every add can be texted: the start date, the session and how to lock it in.
+      const paid = payment === 'offline'
+      const done = modal(`<h2 style="margin-bottom:6px">${esc(body.player.name)} added</h2><p class="muted small" style="margin-bottom:12px">${esc(where)}${startsLabel ? `, starting ${esc(startsLabel)}` : ''}.${sentLine} ${esc(g.coachName ? `Coach ${g.coachName}` : 'The coach')} is told.</p>
+        <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="dn-text">Text ${esc(w.contact)}</button></div>`)
+      done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(startText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, starts: startsLabel, self: w.self, paid }), `Text ${w.contact}`) })
     } else if (!r.data.emailError) toast(`Added${r.data.emailed ? `. Sent to ${r.data.emailTo || body.parent.email}` : ''}. Airtable updated.`)
     P.board = null; PL.at = 0
     renderBoard(true)
@@ -2974,16 +2988,15 @@ async function coachAlertsCard() {
   const r = await post('coachAlerts')
   if (!r.ok) { box.innerHTML = `<p class="small j-err">${esc(r.data.error || 'Could not load coach alerts.')}</p>`; return }
   const d = r.data
-  const sample = (w) => `<div class="j-box j-box-grey small" style="margin-top:6px"><b>Text:</b> ${esc(w.text)}<br><b>Email subject:</b> ${esc(w.subject)}</div>`
   const noMobile = d.coaches.filter((c) => !c.mobile).map((c) => c.name)
-  box.innerHTML = `<h3 style="margin-bottom:4px">Coach alerts: email and text</h3>
-    <p class="muted small" style="margin-bottom:10px">Texts come from 0404 780 351 (the office Mac), 6am to 9pm. You are never chased for your own sessions.</p>
-    ${d.textsOn ? '' : '<p class="j-box j-box-amber small">Texts are not on yet: go to Messages, press Send me a test text, and confirm it arrived. Until then coaches get the email only.</p>'}
-    ${noMobile.length ? `<p class="j-box j-box-amber small" style="margin-top:8px">No mobile saved for ${esc(noMobile.join(', '))}. Add it below, or they get the email only.</p>` : ''}
-    <label class="j-check" style="margin-top:12px"><input type="checkbox" id="ca-new" ${d.newPlayer ? 'checked' : ''}> <span><b>New player in your group.</b> When you or Ligia add a player to a group, move one in, or a family books online, the coach hears within about 5 minutes. A run of moves becomes one message.</span></label>
-    ${sample(d.samples.newPlayer)}
-    <label class="j-check" style="margin-top:14px"><input type="checkbox" id="ca-reg" ${d.register ? 'checked' : ''}> <span><b>Register not filled in.</b> 30 minutes after a session ends with nobody marked, the coach gets an email and a text. Still empty 4 hours after: one more, and you get a Telegram. Only sessions after you switch this on.</span></label>
-    ${sample(d.samples.register)}${sample(d.samples.registerAgain)}`
+  const words = (w) => `<details style="margin:4px 0 0 30px"><summary class="muted small" style="cursor:pointer">See the text</summary><p class="small" style="margin-top:6px">${esc(w.text)}</p></details>`
+  const warn = [!d.textsOn ? 'Texts start once you confirm your test text in Messages.' : '', noMobile.length ? `No mobile for ${noMobile.join(', ')}.` : ''].filter(Boolean)
+  box.innerHTML = `<h3 style="margin-bottom:8px">Coach alerts</h3>
+    ${warn.length ? `<p class="j-box j-box-amber small" style="margin-bottom:8px">${esc(warn.join(' '))} Until then they get the email only.</p>` : ''}
+    <label class="j-check"><input type="checkbox" id="ca-new" ${d.newPlayer ? 'checked' : ''}> <span><b>New player in your group</b>: email and text to the coach.</span></label>
+    ${words(d.samples.newPlayer)}
+    <label class="j-check" style="margin-top:10px"><input type="checkbox" id="ca-reg" ${d.register ? 'checked' : ''}> <span><b>Register not done</b>: 30 minutes after the session, again after 4 hours.</span></label>
+    ${words(d.samples.register)}`
   const save = async (patch) => {
     const s = await post('setCoachAlerts', patch)
     toast(s.ok ? 'Coach alerts saved' : (s.data.error || 'Not saved'))

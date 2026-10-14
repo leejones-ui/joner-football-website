@@ -144,6 +144,25 @@ await test('register: 30 minutes after the session a reminder, 4 hours after a s
   assert.ok(!(await emails()).slice(n).some(mine), 'a marked register is not chased')
 })
 
+await test('a player starting in week 3: the row carries the start and the coach alert names that first session', async () => {
+  const cs = (await portal('coachSessions', { coachId: 'sam' })).data.sessions.find((x) => x.id === sam.id)
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date())
+  const later = cs.dates.map((d) => d.iso).filter((d) => d > today)[2]
+  assert.ok(later, 'a session three weeks out')
+  const r = await portal('addPlayer', { groupId: sam.id, force: true, player: { name: 'Lou Later' }, parent: { name: 'Lou Parent', email: 'coach-alert-9@example.com', mobile: '0400 333 009' }, payment: 'pro', perSessionCents: 10000, startsFrom: later })
+  assert.equal(r.status, 200, JSON.stringify(r.data))
+  const row = (await (await fetch(`${B}/__airtable`)).json()).term4.find((x) => x.id === r.data.rowId)
+  assert.match(row.fields['Term 4 Notes'], new RegExp(`\\[STARTS:${later}\\]`))
+  const before = (await emails()).length
+  await tick(Date.now() + 5 * 60000)
+  const t = (await drainTexts()).find((x) => /Lou Later/.test(x.text))
+  assert.ok(t, 'Sam is told')
+  assert.ok(!/it's Lee/.test(t.text), 'no sign-off name')
+  assert.match(t.text, /^Hi Sam, new player in your Thu 4:20pm/)
+  assert.match(t.text, /first session \w{3} \d+ \w{3}/)
+  assert.ok((await emails()).length > before)
+})
+
 await test('a coach mobile changed after the text was written: the text is not sent to the old number', async () => {
   await add(sam, 'Pia Late', 5)
   await tick(Date.now() + 5 * 60000)

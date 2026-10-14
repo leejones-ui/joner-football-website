@@ -68,10 +68,21 @@ export function textComposer({ modal, toast, rowIds, parent = '', mobile = '', t
 // The words for the usual cases, in Lee's voice. Plain, no dashes.
 // self: the player is their own contact, so "Hi Kai, you have a spot".
 const firstName = (s) => String(s || '').trim().split(/\s+/)[0] || 'there'
-export function payLinkText({ parent, player, when, place, url, self = false }) {
+export function payLinkText({ parent, player, when, place, url, self = false, starts = '' }) {
+  const from = starts ? `, starting ${starts}` : ''
   return self
-    ? `Hi ${firstName(player)}, it's Lee from Joner Football. You have a spot in our ${when} group at ${place}. To lock it in, sign in, sign the waiver and pay here: ${url} We have emailed you the same link. See you on the pitch!`
-    : `Hi ${firstName(parent)}, it's Lee from Joner Football. ${firstName(player)} has a spot in our ${when} group at ${place}. To lock it in, sign in, sign the waiver and pay here: ${url} We have emailed you the same link. See you on the pitch!`
+    ? `Hi ${firstName(player)}, it's Lee from Joner Football. You have a spot in our ${when} group at ${place}${from}. To 100% lock it in, sign in, sign the waiver and pay here: ${url} We have emailed you the same link. See you on the pitch!`
+    : `Hi ${firstName(parent)}, it's Lee from Joner Football. ${firstName(player)} has a spot in our ${when} group at ${place}${from}. To 100% lock it in, sign in, sign the waiver and pay here: ${url} We have emailed you the same link. See you on the pitch!`
+}
+// After any add with no payment link: when they start and what to do next.
+export function startText({ parent, player, when, place, starts = '', self = false, paid = false }) {
+  const hi = `Hi ${firstName(self ? player : parent)}, it's Lee from Joner Football.`
+  const who = self ? 'You are' : `${firstName(player)} is`
+  const start = starts ? ` starting on ${starts}` : ''
+  const next = paid
+    ? `You are all paid. Please sign in and sign the waiver before the first session: jonerfootball.com/jfp-account`
+    : `To 100% lock in the spot, sign in, sign the waiver and pay: jonerfootball.com/jfp-account`
+  return `${hi} ${who}${start} in our ${when} group at ${place}. ${next} See you on the pitch!`
 }
 export function trialText({ parent, player, when, where, self = false }) {
   return self

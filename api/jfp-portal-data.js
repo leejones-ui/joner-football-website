@@ -315,6 +315,11 @@ export async function addPlayer(req, res, principal, config, body) {
   let notes = `Added by ${principal.name} in the JFP portal${isTrial && from ? `. Trial offered for ${from}` : ''}${age != null ? `, age ${age}` : ''}${!custom && price.fixedSessions && !isTrial && !perSessionPay ? `, half term from ${from} (${price.sessions} sessions)` : !custom && price.proRata && !isTrial && !perSessionPay ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${custom && !perSessionPay ? `, ${custom.name}` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${perSessionPay ? `\n${sessionsLine(payment, perSession)}` : ''}`
   if (perSession) notes = withPerSession(notes, perSession)
   notes = withQuote(withOwnContact(notes, ownContact), read.v.quoteTiers)
+  // Starting later in the term (Lee, 14 Oct 2026): the family's dates, the
+  // register, billing and the coach's alert all count from that session.
+  const groupDates = sessionDates(config, group.day)
+  const startsFrom = !isTrial && ISO.test(body.startsFrom || '') && groupDates.includes(body.startsFrom) && body.startsFrom > (groupDates.find((d) => d >= today) || '') ? body.startsFrom : ''
+  if (startsFrom) notes = `${notes}. Starts ${startsFrom}. [STARTS:${startsFrom}]`
   const fields = {
     'Player Name': name,
     'Parent Name': parentName,

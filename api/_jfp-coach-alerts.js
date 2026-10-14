@@ -98,7 +98,7 @@ export function newPlayerWords({ config, coach, entries }) {
   const part = (e) => `${e.players.length > 1 ? 'New players' : 'New player'} in your ${shortGroup(config, e.group)} group: ${e.players.map((x) => `${x.name}${x.age != null ? ` (${x.age})` : ''}, ${x.when}`).join('; ')}`
   let body = entries.map(part).join('. ')
   if (body.length > 420) body = `${entries.reduce((n, e) => n + e.players.length, 0)} new players across your groups (${entries.map((e) => shortGroup(config, e.group)).join(', ')})`
-  const text = `Hi ${coach.name}, it's Lee from Joner Football. ${body}. Check your coach portal before the session: ${PORTAL_SHORT}`
+  const text = `Hi ${coach.name}, ${body.charAt(0).toLowerCase()}${body.slice(1)}. Check your coach portal before the session: ${PORTAL_SHORT}`
   const n = entries.reduce((t, e) => t + e.players.length, 0)
   return {
     text,
@@ -158,8 +158,8 @@ export function registerWords({ config, coach, group, date, stage, today }) {
   const when = date === today ? 'today' : shortDate(date)
   const g = shortGroup(config, group)
   const text = stage === 1
-    ? `Hi ${coach.name}, it's Lee from Joner Football. The register for your ${g} session (${when}) is not filled in yet. Please mark it now in your coach portal: ${PORTAL_SHORT} We use it to match your invoice. Thanks!`
-    : `Hi ${coach.name}, it's Lee. Reminder: the register for ${g} (${when}) is still empty. Please mark it today so your invoice matches: ${PORTAL_SHORT}`
+    ? `Hi ${coach.name}, reminder: the register for your ${g} session (${when}) is not filled in yet. Please mark it now in your coach portal: ${PORTAL_SHORT} We use it to match your invoice. Thanks!`
+    : `Hi ${coach.name}, reminder: the register for ${g} (${when}) is still empty. Please mark it today so your invoice matches: ${PORTAL_SHORT}`
   return {
     text,
     subject: stage === 1 ? `Register not done: ${g}, ${when}` : `Still not done: the ${g} register, ${when}`,
