@@ -77,7 +77,12 @@ await test('a coach puts players on: a JFP player from Airtable and someone new;
   assert.equal((await S('extraAttach', { slotId: slot.id, name: 'Sneaky', email: 'x@example.com' })).status, 403)
   const v = (await D('extraList')).data.slots.find((x) => x.id === slot.id)
   assert.equal(v.placesLeft, 0); assert.equal(v.bookings.length, 2)
-  assert.equal(v.bookings[0].payStatus, 'no charge yet')
+  // Each booking is a charge in the family's account, tied to the player and coach.
+  assert.ok(v.bookings.every((b) => b.payreqId && b.payStatus === 'open'), JSON.stringify(v.bookings.map((b) => b.payStatus)))
+  const fam = client()
+  { const s2 = await fam.call('/api/jfp-auth', { action: 'start', email: 'sienna@example.com', audience: 'parent' }); const code = (await emails()).filter((e) => e.to.includes('sienna@example.com') && /sign-in code/.test(e.subject)).at(-1).subject.match(/(\d{6})/)[1]; await fam.call('/api/jfp-auth', { action: 'verify', challenge: s2.data.challenge, code }) }
+  const ov = (await fam.call('/api/jfp-account', { action: 'overview' })).data
+  assert.ok(JSON.stringify(ov.todo || []).includes('A$120') || JSON.stringify(ov).includes(v.bookings[0].payreqId), 'the charge is in Sienna\'s account to pay')
 })
 
 await test('register: not before the day; marks save to Airtable Attendance; a reminder if the coach forgets', async () => {
@@ -101,7 +106,8 @@ await test('register: not before the day; marks save to Airtable Attendance; a r
 await test('remove a player and cancel: a coach cannot cancel a session with players on it; Lee can', async () => {
   assert.equal((await D('extraCancel', { id: slot.id })).status, 400)
   const v = (await D('extraList')).data.slots.find((x) => x.id === slot.id)
-  assert.equal((await D('extraRemove', { slotId: slot.id, bookingId: v.bookings[1].id })).status, 200)
+  const rm = await D('extraRemove', { slotId: slot.id, bookingId: v.bookings[1].id })
+  assert.equal(rm.status, 200); assert.equal(rm.data.charged, false, 'an unpaid charge comes off')
   assert.equal((await D('extraList')).data.slots.find((x) => x.id === slot.id).placesLeft, 1)
   assert.equal((await L('extraCancel', { id: slot.id })).status, 200)
   assert.ok(!(await D('extraList')).data.slots.some((x) => x.id === slot.id))

@@ -30,7 +30,7 @@ export async function renderExtra(ui) {
   const d = S.data = await need(await post('extraList', { coachId: S.coachId }))
   const admin = d.admin
   const hours = d.weekMinutes != null ? `${Math.round((d.weekMinutes / 60) * 10) / 10} h booked this week` : ''
-  const pill = (b) => (b.paid ? '<span class="j-pill j-pill-green">Paid</span>' : b.payreqId ? '<span class="j-pill j-pill-amber">Not paid yet</span>' : '<span class="j-pill j-pill-grey">Payment link to come</span>')
+  const pill = (b) => (b.paid ? '<span class="j-pill j-pill-green">Paid</span>' : b.payStatus === 'cancelled' ? '<span class="j-pill j-pill-grey">Charge cancelled</span>' : b.payreqId ? '<span class="j-pill j-pill-amber">Not paid yet</span>' : '<span class="j-pill j-pill-red">No payment yet</span>')
   const card = (s) => `<div class="j-card" style="padding:14px 16px;margin-bottom:12px" data-xs="${esc(s.id)}">
     <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
       <div><b>${esc(s.dateLabel.replace(/\s\d{4}$/, ''))}, ${esc(s.time)}</b> <span class="muted small">${esc(s.durationMin)} min</span><br>
@@ -65,13 +65,13 @@ export async function renderExtra(ui) {
   view().querySelectorAll('[data-x-add]').forEach((b) => b.addEventListener('click', () => addPlayer(ui, slotOf(b.dataset.xAdd), again)))
   view().querySelectorAll('[data-x-cancel]').forEach((b) => b.addEventListener('click', async () => {
     if (!(await confirmBox('Cancel this extra session? It comes off families\' accounts.', { ok: 'Cancel it', danger: true }))) return
-    const r = await post('extraCancel', { id: b.dataset.xCancel }); toast(r.ok ? 'Cancelled' : r.data.error); if (r.ok) again()
+    const r = await post('extraCancel', { id: b.dataset.xCancel }); toast(r.ok ? (r.data.paid?.length ? `Cancelled. ${r.data.paid.join(', ')} had paid: refund in Stripe.` : 'Cancelled. Unpaid payments are off their accounts.') : r.data.error, 8000); if (r.ok) again()
   }))
   view().querySelectorAll('[data-x-rm]').forEach((b) => b.addEventListener('click', async () => {
     const [slotId, bookingId] = b.dataset.xRm.split('|')
     if (!(await confirmBox('Take this player off the session?', { ok: 'Remove', danger: true }))) return
     const r = await post('extraRemove', { slotId, bookingId })
-    toast(r.ok ? (r.data.charged ? 'Removed. They were charged: Lee or Ligia sort any refund.' : 'Removed') : r.data.error); if (r.ok) again()
+    toast(r.ok ? (r.data.charged ? 'Removed. They had paid: Lee or Ligia sort the refund.' : 'Removed, and the payment is off their account.') : r.data.error, 8000); if (r.ok) again()
   }))
   view().querySelectorAll('[data-x-mark]').forEach((b) => b.addEventListener('click', async () => {
     const [slotId, bookingId, st] = b.dataset.xMark.split('|')
@@ -167,12 +167,12 @@ function addPlayer(ui, s, done) {
     const slot = r.data.slot
     const text = extraText({ name: b.name, coach: coachWord(slot), slot, email: b.email })
     closeModal()
-    const doneBox = modal(`<h2 style="margin-bottom:6px">${esc(b.name)} is booked in</h2><p class="muted small" style="margin-bottom:12px">It shows in their account (${esc(b.email)}) to pay. Send them the link:</p>
+    const doneBox = modal(`<h2 style="margin-bottom:6px">${esc(b.name)} is booked in</h2><p class="muted small" style="margin-bottom:12px">${r.data.chargeError ? `<b>The payment did not go into their account:</b> ${esc(r.data.chargeError)}` : `It is in their account (${esc(b.email)}) to pay, ${esc(slot.priceLabel)}.`} Send them the link:</p>
       <label class="j-field"><span>The text</span><textarea class="j-textarea" id="xd-text" rows="9">${esc(text)}</textarea></label>
       <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="xd-copy">Copy link</button>${b.mobile ? `<a class="j-btn j-btn-dark" id="xd-sms" href="${esc(smsHref(b.mobile, text))}">Text from my phone</a>` : ''}</div>`)
     doneBox.querySelector('#xd-copy').addEventListener('click', () => copy(slot.link))
     doneBox.querySelector('#xd-text').addEventListener('input', (ev) => { const a = doneBox.querySelector('#xd-sms'); if (a) a.href = smsHref(b.mobile, ev.target.value) })
-    toast(r.data.already ? 'Already on this session' : 'Added')
+    toast(r.data.chargeError ? `Added, but the payment did not go into their account: ${r.data.chargeError}` : r.data.already ? 'Already on this session' : 'Added. It is in their account to pay.', 8000)
     done()
   })
 }

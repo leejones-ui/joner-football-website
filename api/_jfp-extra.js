@@ -161,11 +161,12 @@ export async function reserveExtraPlace({ slotId, rowId = '', profileKey = '', n
   } finally { await kvCommand(['DEL', `jfp:extra-lock:${slotId}`]) }
 }
 // The charge made after the place was held.
-export async function setBookingCharge({ slotId, bookingId, payreqId }) {
+export async function setBookingCharge({ slotId, bookingId, payreqId, chargeId = '' }) {
   const s = await getSlot(slotId)
   const b = s?.bookings?.find((x) => x.id === bookingId)
   if (!b) return false
   b.payreqId = clean(payreqId, 60)
+  if (chargeId) b.chargeId = clean(chargeId, 60)
   await putSlot(s)
   return true
 }

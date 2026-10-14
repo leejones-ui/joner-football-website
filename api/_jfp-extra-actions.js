@@ -4,8 +4,11 @@
 import { saveConfig, listPayreqs, coachById, coachLabel, clean, sydneyToday, dateLabel, formatAud, audit, normName } from './_jfp-store.js'
 import { loadRoster } from './_jfp-airtable.js'
 import { telegramAlert } from './_jfp-notify.js'
+import { createPlayerCharge, cancelCharge, listCharges } from './_jfp-charges.js'
+import { profileKey } from './_jfp-profiles.js'
+import { siteUrl } from './_holiday-store.js'
 import {
-  allSlots, getSlot, saveSlot, cancelSlot, reserveExtraPlace, removeBooking, markBooking, marksFor, staffView, extraMinutes, cleanExtraPrices, newExtraPrice,
+  allSlots, getSlot, saveSlot, cancelSlot, reserveExtraPlace, setBookingCharge, liveBookings, removeBooking, markBooking, marksFor, staffView, extraMinutes, cleanExtraPrices, newExtraPrice,
 } from './_jfp-extra.js'
 
 export const EXTRA_ACTIONS = new Set(['extraList', 'extraSave', 'extraCancel', 'extraAttach', 'extraRemove', 'extraMark', 'extraSearch', 'extraPrices'])
@@ -41,6 +44,15 @@ async function listFor(config, principal, isAdmin, body) {
   }
 }
 
+// Take a booking's unpaid charge off the family's account. 'paid' when money came in.
+async function dropCharge(b, principal) {
+  if (!b.payreqId) return 'none'
+  const id = b.chargeId || (await listCharges()).find((c) => c.payreqId === b.payreqId)?.id
+  if (!id) return 'none'
+  const r = await cancelCharge({ id, principal, why: 'Taken off the extra session' })
+  return r.ok ? 'cancelled' : /paid|Money has come in/.test(r.error || '') ? 'paid' : 'none'
+}
+
 export async function extraAction(req, res, principal, config, body, action, isAdmin) {
   // A coach needs a coach id; staff without one manage every coach.
   if (!isAdmin && !principal.coachId) return no(res, 403, 'Not allowed.')
@@ -55,11 +67,16 @@ export async function extraAction(req, res, principal, config, body, action, isA
   }
   if (action === 'extraCancel') {
     const out = await cancelSlot({ principal, isAdmin, id: clean(body.id, 60) })
-    return out.error ? no(res, 400, out.error) : ok(res, {})
+    if (out.error) return no(res, 400, out.error)
+    // Unpaid charges come off families' accounts; paid ones stay for Lee or Ligia to refund.
+    const paid = []
+    for (const b of liveBookings(out.slot)) { const r = await dropCharge(b, principal); if (r === 'paid') paid.push(b.name) }
+    return ok(res, { paid })
   }
   if (action === 'extraRemove') {
     const out = await removeBooking({ principal, isAdmin, slotId: clean(body.slotId, 60), bookingId: clean(body.bookingId, 60) })
-    return out.error ? no(res, 400, out.error) : ok(res, { charged: Boolean(out.booking.payreqId) })
+    if (out.error) return no(res, 400, out.error)
+    return ok(res, { charged: (await dropCharge(out.booking, principal)) === 'paid' })
   }
   if (action === 'extraMark') {
     const out = await markBooking({ config, principal, isAdmin, slotId: clean(body.slotId, 60), bookingId: clean(body.bookingId, 60), status: body.status ?? '' })
@@ -91,7 +108,20 @@ export async function extraAction(req, res, principal, config, body, action, isA
     if (!email) return no(res, 400, 'Add their email, so the session shows in their account to pay.')
     const out = await reserveExtraPlace({ slotId: s.id, rowId, name, email, mobile, by: principal.email, from: isAdmin ? 'staff' : 'coach' })
     if (out.error) return no(res, 409, out.error)
-    return ok(res, { booking: out.booking, already: Boolean(out.already), slot: staffView(config, out.slot, await listPayreqs()) })
+    // The payment, tied to the player and coach from the start (the Revenue
+    // session's player charges): it shows in their account to pay.
+    let chargeError = ''
+    if (!out.booking.payreqId) {
+      const c = await createPlayerCharge({
+        config, principal, ...(rowId ? { rowId } : { profileKey: profileKey(name, email) }), email, playerName: name,
+        amountCents: s.priceCents, label: `Extra session, ${dateLabel(s.date)} ${s.time}`, kind: 'extra',
+        sessionDate: s.date, coachId: s.coachId, ref: `extra:${s.id}:${out.booking.id}`, siteUrl: siteUrl(req),
+      }).catch((e) => ({ ok: false, error: e.message }))
+      if (c.ok && c.payreqId) { await setBookingCharge({ slotId: s.id, bookingId: out.booking.id, payreqId: c.payreqId, chargeId: c.charge?.id || '' }); out.booking.payreqId = c.payreqId }
+      else { chargeError = c.error || 'The payment could not be made.'; console.error('jfp extra charge failed', chargeError) }
+    }
+    const fresh = await getSlot(s.id)
+    return ok(res, { booking: out.booking, already: Boolean(out.already), chargeError, slot: staffView(config, fresh || out.slot, await listPayreqs()) })
   }
 
   // The prices coaches pick from: Lee and Ligia only.
