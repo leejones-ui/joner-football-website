@@ -35,6 +35,7 @@ import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
 import { emailErrorText, emailsTo } from './_jfp-email-log.js'
 import { contactWords, withOwnContact, isAdult } from './_jfp-contact.js'
 import { telegramAlert } from './_jfp-notify.js'
+import { EXTRA_ACTIONS, extraAction } from './_jfp-extra-actions.js'
 import { noteNewPlayer, alertsStatus, newPlayerWords, registerWords } from './_jfp-coach-alerts.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
@@ -2888,6 +2889,9 @@ async function handle(req, res) {
     if (action === 'trialFeedback') return await saveTrialFeedback(res, principal, config, isAdmin, body)
     // Joners Juniors registers (stage 3): a coach marks their own Juniors class, as in JFP.
     if (JJ_REGISTER_ACTIONS.has(action)) return await jjRegisterAction(req, res, principal, config, body, action)
+
+    // Extra sessions (Lee, 14 Oct 2026): coaches run their own; Lee and Ligia see all.
+    if (EXTRA_ACTIONS.has(action)) return await extraAction(req, res, principal, config, body, action, isAdmin)
 
     if (!isAdmin) return fail(res, 403, 'Not allowed.')
 

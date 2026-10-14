@@ -21,6 +21,7 @@ import { jjDatesForGroup } from './_jj-registers.js'
 import { newMsg, saveMsg, event, normalisePhone, maskPhone, sha, routeStatus } from './_jfp-messages.js'
 import { sendCoachNotice } from './_jfp-email.js'
 import { telegramAlert } from './_jfp-notify.js'
+import { allSlots, liveBookings, endMs as extraEnd, markTold } from './_jfp-extra.js'
 
 export const COACH_TEXT_HOURS = { from: 6, to: 21 }
 const NEWS = 'jfp:coach-news' // hash coachId -> { items: [...], lastAt }
@@ -206,7 +207,63 @@ export async function registerSweep({ config, now = Date.now() }) {
       await audit({ by: 'coach alerts', action: 'coach.register', target: `${g.id}|${date}`, after: { coach: coach.id, stage, emailed: out.emailed, texted: out.texted, why: out.textWhy || out.emailError || undefined } })
     }
   }
+  sent += await extraRegisterSweep({ config, now, since, today, yesterday })
   return { sent }
+}
+
+// ---------- 3. extra sessions (Lee, 14 Oct 2026) ----------
+
+const DAY = (iso) => new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', weekday: 'long' }).format(new Date(`${iso}T12:00:00Z`))
+const asGroup = (s) => ({ day: DAY(s.date), time: s.time, location: s.location })
+
+// A family booked a public extra session themselves: the coach hears.
+export async function flushExtraNews({ config }) {
+  if (!alertsOn(config, 'newPlayer')) return { told: 0 }
+  let told = 0
+  for (const s of await allSlots()) {
+    if (s.status !== 'open') continue
+    for (const b of liveBookings(s).filter((x) => x.from === 'family' && !x.coachTold)) {
+      if (!(await markTold(s.id, b.id))) continue
+      const coach = coachById(config, s.coachId)
+      if (!coach || isOwner(config, coach)) continue
+      const g = shortGroup(config, asGroup(s))
+      const out = await tell({
+        coach, kind: 'coach extra booking',
+        text: `Hi ${coach.name}, ${b.name} has booked your extra session: ${g}, ${shortDate(s.date)}. Details in your coach portal: ${PORTAL_SHORT}`,
+        subject: `Extra session booked: ${b.name}, ${shortDate(s.date)}`,
+        heading: 'A player booked your extra session',
+        paras: [`Hi Coach ${coach.name}, ${b.name} has booked your extra session.`],
+        list: [['Session', `${dateLabel(s.date)}, ${s.time}, ${s.location}`], ['Player', b.name]],
+      })
+      told += 1
+      await audit({ by: 'coach alerts', action: 'coach.extraBooking', target: s.id, after: { player: b.name, emailed: out.emailed, texted: out.texted } })
+    }
+  }
+  return { told }
+}
+
+// The register for an extra session with players booked, like a group's.
+async function extraRegisterSweep({ config, now, since, today, yesterday }) {
+  let sent = 0
+  for (const s of await allSlots()) {
+    if (s.status !== 'open' || ![today, yesterday].includes(s.date) || !liveBookings(s).length) continue
+    const end = extraEnd(s)
+    if (end < since || now - end < FIRST_AFTER_MS || now - end > GIVE_UP_MS) continue
+    const stage = now - end >= SECOND_AFTER_MS ? 2 : 1
+    if (Number(await kvCommand(['HEXISTS', REG_DONE, `${s.id}|${s.date}|${stage}`])) === 1) continue
+    if (Number(await kvCommand(['HLEN', `jfp:att:${s.id}:${s.date}`])) > 0) continue
+    const coach = coachById(config, s.coachId)
+    if (!coach || isOwner(config, coach)) continue
+    if (Number(await kvCommand(['HSETNX', REG_DONE, `${s.id}|${s.date}|${stage}`, new Date(now).toISOString()])) !== 1) continue
+    if (stage === 2) await kvCommand(['HSETNX', REG_DONE, `${s.id}|${s.date}|1`, new Date(now).toISOString()])
+    const g = asGroup(s)
+    const w = registerWords({ config, coach, group: g, date: s.date, stage, today })
+    const out = await tell({ coach, ...w, text: w.text.replace(' session (', ' extra session ('), kind: stage === 1 ? 'coach register' : 'coach register again' })
+    sent += 1
+    if (stage === 2) await telegramAlert(`Register still empty: Coach ${coach.name}, extra session ${shortGroup(config, g)}, ${dateLabel(s.date)}.`).catch(() => {})
+    await audit({ by: 'coach alerts', action: 'coach.register', target: `${s.id}|${s.date}`, after: { coach: coach.id, stage, extra: true, emailed: out.emailed, texted: out.texted } })
+  }
+  return sent
 }
 
 // The five-minute check (Vercel cron). One at a time.
@@ -216,7 +273,8 @@ export async function coachTick(config, now = Date.now()) {
   try {
     const news = await flushCoachNews({ config, now }).catch((e) => { console.error('jfp coach news failed', e); return { error: true } })
     const reg = await registerSweep({ config, now }).catch((e) => { console.error('jfp register sweep failed', e); return { error: true } })
-    return { news, reg }
+    const extra = await flushExtraNews({ config }).catch((e) => { console.error('jfp extra news failed', e); return { error: true } })
+    return { news, reg, extra }
   } finally { await kvCommand(['DEL', 'jfp:coach-tick-lock']) }
 }
 

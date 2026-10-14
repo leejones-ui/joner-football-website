@@ -15,6 +15,7 @@
 import crypto from 'node:crypto'
 import { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, newId, formatAud, claimOnce, stripeFetch } from './_holiday-store.js'
 import { cleanVenueCosts } from './_jfp-venues.js'
+import { cleanExtraPrices } from './_jfp-extra-prices.js'
 import { cleanCustomPrices } from './_jfp-prices.js'
 import { cleanDefaultQuote } from './_jfp-quote.js'
 import { normaliseJuniors } from './_jj-config.js'
@@ -333,6 +334,8 @@ export function normaliseConfig(input = {}) {
     // Coach alerts (Lee, 14 Oct 2026): new player in your group, register not
     // done. Off until Lee switches them on; registerSince stops old sessions
     // being chased the moment reminders go on.
+    // Extra session prices coaches pick from (Lee and Ligia set them).
+    extraPrices: cleanExtraPrices(input.extraPrices),
     coachAlerts: {
       newPlayer: input.coachAlerts?.newPlayer === true,
       register: input.coachAlerts?.register === true,
