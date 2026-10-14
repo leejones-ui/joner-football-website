@@ -2278,10 +2278,17 @@ async function decideRequest(req, res, principal, config, body) {
     'Term 4 Payment Type': trial ? 'JFP Trial' : price.type,
     'Term 4 Notes': `${trial ? `Trial offered for ${startDate}` : `Offered for the term from ${startDate}${price.proRata ? ` (${price.sessions} of ${price.of} sessions, pro rata)` : ''}`} from ${r.kind} by ${principal.name}${p.age != null ? `, age ${p.age}` : ''}${r.answers?.club ? `, plays for ${r.answers.club}${r.answers.team ? ` ${r.answers.team}` : ''}` : ''}. Holds the place for ${REQUEST_DAYS} days until paid. [${ADMIN_TAG}:${tag}] [JFP-REQ:${r.id}]`,
   })))
-  // Any waiver the family signed with the request goes to Airtable now.
-  const signed = r.players.filter((p) => p.waiver)
+  // Any waiver the family signed with the request goes to Airtable now. A
+  // waiver signed once for several sessions (a batch) is written once, with
+  // the batch's tag, however many of its requests are accepted.
+  let signed = r.players.filter((p) => p.waiver)
+  // Already on file (a booking paid from the same batch, say): not twice.
+  if (signed.length && r.batchId) {
+    const roster = await loadRoster({ fresh: true })
+    signed = signed.filter((p) => !waiverFor(p.name, { emails: [r.email], phones: [r.mobile], dob: p.dob }, roster.waivers))
+  }
   if (signed.length) {
-    const wtag = `[JFP-REQ:${r.id}]`
+    const wtag = `[JFP-REQ:${r.batchId || r.id}]`
     if (!(await findWaiversByTag(wtag)).length) {
       await createWaiverRows(signed.map((p) => waiverFields({ player: { ...p, club: p.club || r.answers?.club || r.club }, parent: { name: r.parentName, email: r.email, mobile: r.mobile }, config, signature: p.waiver.signature, acceptedAt: p.waiver.acceptedAt, media: p.waiver.media, tag: wtag })))
       await bustRosterCache()

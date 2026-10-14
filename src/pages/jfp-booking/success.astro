@@ -11,6 +11,7 @@ import '../../styles/jfp.css'
       <p class="j-kicker" id="eyebrow">Confirming payment</p>
       <h1 id="heading" style="margin:6px 0 10px">One moment</h1>
       <p class="muted" id="lead">We are checking your payment with Stripe.</p>
+      <div class="j-box j-box-amber" id="next-pay" style="margin-top:20px" hidden></div>
       <div class="j-card" id="kit" style="padding:20px;margin-top:20px;border-color:#111827" hidden>
         <p class="j-kicker">Next step, required</p>
         <h2 style="margin:4px 0 6px">Order the JF playing kit</h2>
@@ -100,7 +101,28 @@ import '../../styles/jfp.css'
     $('help').hidden = true
   }
 
+  // Several sessions picked on the timetable: this one is paid, so it comes
+  // off the family's list, and the next Book now session to pay is offered.
+  function nextToPay(bookingId) {
+    try {
+      const paying = JSON.parse(sessionStorage.getItem('jfp_paying') || 'null')
+      if (!paying || paying.bookingId !== bookingId) return
+      const picks = JSON.parse(sessionStorage.getItem('jfp_picks') || '[]').filter((id) => id !== paying.groupId)
+      sessionStorage.setItem('jfp_picks', JSON.stringify(picks))
+      sessionStorage.removeItem('jfp_paying')
+      const queue = JSON.parse(sessionStorage.getItem('jfp_queue') || 'null')
+      if (!queue || !Array.isArray(queue.groups)) return
+      queue.groups = queue.groups.filter((id) => id !== paying.groupId)
+      if (!queue.groups.length) { sessionStorage.removeItem('jfp_queue'); return }
+      sessionStorage.setItem('jfp_queue', JSON.stringify(queue))
+      const n = queue.groups.length
+      $('next-pay').innerHTML = `<b>You have ${n} more session${n === 1 ? '' : 's'} to pay for.</b> Each one is paid on its own Stripe page.<div style="margin-top:10px"><a class="j-btn j-btn-dark" href="/jfp-booking/?pay_next=1">Pay for the next session</a></div>`
+      $('next-pay').hidden = false
+    } catch {}
+  }
+
   function paid(b, k) {
+    nextToPay(b.id)
     const names = b.players.map((p) => p.name)
     hero('Payment complete', 'Thank you, you are booked in', `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} in ${b.term}, ${b.day} ${b.time}. Your confirmation email is on its way.`)
     kit(k)

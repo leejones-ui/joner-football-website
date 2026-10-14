@@ -2,10 +2,11 @@
 // (filter by location, coach, day, book or apply). Tapping a group shows who
 // it is for and how it works, then a sheet walks the family through sign in,
 // players, the group's questions, the waiver and payment (or an application,
-// waitlist request or enquiry).
+// waitlist request or enquiry). A family can also pick several sessions and
+// apply for them all in one go (Lee, 14 Oct 2026): see "several sessions".
 import { $, esc, api, recaptcha, toast, openSheet, closeSheet, signIn, whoAmI, waiverBlock, money } from './jfp-common.js'
 
-const S = { data: null, filters: { loc: '', coach: '', day: '', show: '' }, phoneDay: '', view: 'week', parent: null, family: null, hold: null, timer: null, toStripe: false }
+const S = { data: null, filters: { loc: '', coach: '', day: '', show: '' }, phoneDay: '', view: 'week', parent: null, family: null, hold: null, timer: null, toStripe: false, picks: readPicks() }
 const SHOW = [['', 'All'], ['book', 'Book now'], ['open', 'Has places']]
 const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const SHORT = { Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat', Sunday: 'Sun' }
@@ -46,11 +47,20 @@ async function showApp(q) {
       : state === 'paid'
         ? '<div class="j-box j-box-green" style="margin-top:16px"><b>Your payment went through.</b> We are confirming your place and will email you. Please do not pay again.</div>'
         : '<div class="j-box j-box-amber" style="margin-top:16px"><b>We could not confirm the cancellation yet.</b> If you finished paying, you will get a confirmation email. Please do not pay again until you hear from us. Questions? Use Contact us at the bottom of the page.</div>'
+    // Several sessions: the one not paid stays first in line to try again.
+    const q2 = readQueue()
+    if (state === 'cancelled' && q2) {
+      $('banner').insertAdjacentHTML('beforeend', `<div class="j-box j-box-grey" style="margin-top:10px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span>You have ${q2.groups.length} session${q2.groups.length === 1 ? '' : 's'} still to pay for.</span><button type="button" class="j-btn j-btn-dark j-btn-sm" id="q-resume">Continue</button></div>`)
+      $('q-resume').addEventListener('click', () => resumeQueue())
+    }
   }
+  const payNext = q.get('pay_next') === '1'
+  if (payNext) history.replaceState(null, '', location.pathname)
   showTab((location.hash || '#timetable').slice(1))
   S.parent = await whoAmI('parent')
   accountLink()
   await load()
+  if (payNext) resumeQueue()
   setInterval(() => { if (!document.querySelector('.j-sheet')) load(true) }, 45000)
 }
 
@@ -70,6 +80,7 @@ async function load(quiet) {
   renderFilters()
   renderLocations()
   renderResults()
+  renderPicks()
 }
 
 // ---------- top of page ----------
@@ -182,13 +193,13 @@ function actLabel(g) { return g.mode === 'signup' ? 'Book now' : g.mode === 'enq
 
 function block(g) {
   const [cls, text] = status(g)
-  return `<button type="button" class="j-blk j-blk-${esc(g.locationId)} ${g.full ? 'is-full' : ''}" data-group="${esc(g.id)}">
+  return `<button type="button" class="j-blk j-blk-${esc(g.locationId)} ${g.full ? 'is-full' : ''} ${picked(g) ? 'is-picked' : ''}" data-group="${esc(g.id)}" ${picked(g) ? 'aria-description="In your sessions"' : ''}>
     ${locBanner(g)}
     <span class="t">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}${g.allowOneToOne ? ' <span class="j-tag">Group or 1 to 1</span>' : ''}</span>
     <span class="c c-name">${esc(g.coachName || 'Joner Football')}</span>
     ${g.girlsOnly ? '<span class="c">Girls only</span>' : ''}
     <span class="left">${g.mode === 'enquire' ? 'On request' : g.full ? 'Fully booked' : esc(text)}</span>
-    <span class="act ${waitOnly(g) ? 'act-wait' : g.mode === 'direct' || g.mode === 'signup' ? 'act-book' : 'act-apply'}">${actLabel(g)}</span>
+    <span class="act ${picked(g) ? 'act-picked' : waitOnly(g) ? 'act-wait' : g.mode === 'direct' || g.mode === 'signup' ? 'act-book' : 'act-apply'}">${picked(g) ? '&#10003; Picked' : actLabel(g)}</span>
   </button>`
 }
 
@@ -204,14 +215,14 @@ function locBanner(g) {
 function card(g) {
   const [cls, text] = status(g)
   const btn = actLabel(g)
-  return `<article class="j-group j-card-photo ${g.full ? 'is-full' : ''}">
+  return `<article class="j-group j-card-photo ${g.full ? 'is-full' : ''} ${picked(g) ? 'is-picked' : ''}">
     <button type="button" class="j-card-hit" data-group="${esc(g.id)}" aria-label="${esc(`${g.day} ${g.time}, ${g.coachName}`)}"></button>
     ${locBanner(g)}
     <div class="bd">
       <p class="when-big">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}${g.allowOneToOne ? ' <span class="j-tag">Group or 1 to 1</span>' : ''}</p>
       <p class="meta" style="margin-top:6px">${coachChip(g, 32)}</p>
       <p class="meta">${esc(g.location)} · ${esc(g.durationMin)} min${g.girlsOnly ? ' · Girls only' : ''}</p>
-      <div class="foot"><span class="st ${cls}">${g.mode === 'enquire' ? '' : g.full ? 'Fully booked' : esc(text)}</span><span class="j-btn ${waitOnly(g) ? 'j-btn-wait' : 'j-btn-dark'} j-act">${btn}</span></div>
+      <div class="foot"><span class="st ${cls}">${g.mode === 'enquire' ? '' : g.full ? 'Fully booked' : esc(text)}</span><span class="j-btn ${picked(g) ? 'j-btn-picked' : waitOnly(g) ? 'j-btn-wait' : 'j-btn-dark'} j-act">${picked(g) ? '&#10003; Picked' : btn}</span></div>
     </div>
   </article>`
 }
@@ -304,8 +315,327 @@ function groupSheet(g) {
     <p class="muted small" style="margin-top:10px">${esc(g.sessions)} weekly sessions this term, ${esc(g.firstDate)} to ${esc(g.lastDate)}.${g.noSession?.length ? ` No session on ${esc(g.noSession.join(', '))}.` : ''}</p>`
   const kind = waitOnly(g) ? 'waitlist' : g.full ? 'application' : g.mode === 'direct' ? 'book' : g.mode === 'application' ? 'application' : 'enquiry'
   const label = { waitlist: 'Join the waitlist', book: 'Book this group', application: 'Apply for this group', enquiry: 'Enquire' }[kind]
-  sheet.foot.innerHTML = `<button type="button" class="j-btn j-btn-dark j-btn-block j-btn-lg" id="g-go">${label}</button>`
+  // Several sessions (Lee, 14 Oct 2026): add this one to the family's picks,
+  // or go straight on with just this one.
+  const canPick = Boolean(pickKind(g))
+  const on = picked(g)
+  const others = S.picks.filter((id) => id !== g.id && S.data.groups.some((x) => x.id === id)).length
+  const pickBtn = `<button type="button" class="j-btn ${others && !on ? 'j-btn-dark j-btn-lg' : 'j-btn-line'} j-btn-block" id="g-pick">${on ? '&#10003; In your sessions. Remove' : others ? `Add to my sessions (${others + 1})` : '+ Add to my sessions'}</button>`
+  const goBtn = `<button type="button" class="j-btn ${others && !on ? 'j-btn-line' : 'j-btn-dark j-btn-lg'} j-btn-block" id="g-go">${others && !on ? `${label} on its own` : label}</button>`
+  sheet.foot.innerHTML = canPick
+    ? `<div class="j-gfoot">${others && !on ? pickBtn + goBtn : goBtn + pickBtn}<p class="muted small" style="margin:2px 0 0;text-align:center">You can apply for more than one session. Pick as many as suit you.</p></div>`
+    : `<button type="button" class="j-btn j-btn-dark j-btn-block j-btn-lg" id="g-go">${label}</button>`
   sheet.foot.querySelector('#g-go').addEventListener('click', () => start(kind, g))
+  sheet.foot.querySelector('#g-pick')?.addEventListener('click', () => {
+    togglePick(g)
+    closeSheet(true)
+    if (picked(g)) toast(S.picks.length > 1 ? `Added. ${S.picks.length} sessions picked.` : 'Added. Pick another session, or tap Review below.')
+  })
+}
+
+// ---------- several sessions in one go ----------
+//
+// The family taps "Add to my sessions" on as many groups as suit, then sends
+// them together: one sign in, one set of players, the questions once, the
+// waiver once, a summary, one send. Each group keeps its own rules on the
+// server: an application, a waitlist request (full groups), or for a Book now
+// group a booking that is paid on its own Stripe page, one after another.
+
+function readPicks() { try { return JSON.parse(sessionStorage.getItem('jfp_picks') || '[]').filter((x) => typeof x === 'string').slice(0, 8) } catch { return [] } }
+function savePicks() { try { sessionStorage.setItem('jfp_picks', JSON.stringify(S.picks)) } catch {} }
+function picked(g) { return S.picks.includes(g.id) }
+// What a pick becomes. Enquiries and Joners Juniors are not pickable.
+function pickKind(g) {
+  if (!g || g.id === 'one-to-one' || g.mode === 'signup' || g.mode === 'enquire' || g.mode === 'closed') return ''
+  if (waitOnly(g)) return 'waitlist'
+  if (g.full) return 'application'
+  if (g.mode === 'direct') return 'book'
+  return g.mode === 'application' ? 'application' : ''
+}
+function togglePick(g) {
+  if (picked(g)) S.picks = S.picks.filter((id) => id !== g.id)
+  else if (S.picks.length >= 8) { toast('You can pick up to 8 sessions at a time.'); return }
+  else { S.picks = [...S.picks, g.id]; track('jfp_pick', { content_category: 'jfp_pick', content_name: g.id }) }
+  savePicks()
+  renderResults()
+  renderPicks()
+}
+function pickedGroups() { return S.picks.map((id) => S.data?.groups.find((g) => g.id === id)).filter((g) => g && pickKind(g)) }
+const KIND_WORD = { book: 'Book and pay', application: 'Apply', waitlist: 'Waitlist' }
+const andList = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`)
+
+function renderPicks() {
+  const bar = $('picks-bar')
+  if (!bar || !S.data) return
+  const list = pickedGroups()
+  if (list.length !== S.picks.length) { S.picks = list.map((g) => g.id); savePicks() }
+  bar.hidden = !list.length
+  document.body.classList.toggle('has-picks', list.length > 0)
+  if (!list.length) { bar.innerHTML = ''; return }
+  bar.innerHTML = `<div class="j-picks-in">
+    <div class="j-picks-what"><b>${list.length} session${list.length === 1 ? '' : 's'} picked</b><span class="j-picks-list">${list.map((g) => esc(`${SHORT[g.day] || g.day} ${g.time}`)).join(' · ')}</span></div>
+    <div class="j-picks-act"><button type="button" class="j-btn j-btn-ghost j-btn-sm" id="picks-clear">Clear</button><button type="button" class="j-btn j-btn-dark" id="picks-go">${list.length === 1 ? 'Continue' : 'Review and apply'}</button></div>
+  </div>`
+  bar.querySelector('#picks-clear').addEventListener('click', () => { S.picks = []; savePicks(); renderResults(); renderPicks() })
+  bar.querySelector('#picks-go').addEventListener('click', () => {
+    const gs = pickedGroups()
+    if (gs.length === 1) return start(pickKind(gs[0]) === 'book' ? 'book' : pickKind(gs[0]), gs[0])
+    startMulti(gs)
+  })
+}
+
+function startMulti(groups) {
+  Object.keys(F).forEach((k) => delete F[k])
+  Object.assign(F, { kind: 'multi', g: null, picks: groups.map((g) => ({ g, kind: pickKind(g) })), selected: new Map(), newPlayers: [], waiver: null })
+  F.titles = { multi: `Apply for ${groups.length} sessions` }
+  F.sheet = openSheet({ title: F.titles.multi, subtitle: groups.map((g) => `${SHORT[g.day] || g.day} ${g.time}`).join(' · '), onClose: () => { releaseHold(); load(true) } })
+  track('jfp_start', { content_category: 'jfp_multi', content_name: groups.map((g) => g.id).join(',') })
+  if (S.parent) return stepPlayers()
+  stepWho()
+}
+const isMulti = () => F.kind === 'multi'
+// The picks this family is sending, after the age guide on Book now groups:
+// a player outside it applies instead (the same rule as one group).
+function multiPicks() {
+  return F.picks.map((x) => {
+    if (x.kind !== 'book' || !hasAges(x.g) || !F.players) return x
+    const out = F.players.find((p) => { const a = p.existing?.age ?? ageOn(p.dob); return a != null && (a < x.g.minAge || a > x.g.maxAge) })
+    return out ? { ...x, kind: 'application', why: `${out.existing?.name || out.name} is outside the age guide, so this one is an application.` } : x
+  })
+}
+function multiQuestions() {
+  const out = new Map()
+  for (const x of multiPicks()) if (x.kind === 'application') for (const q of (x.g.questions?.length ? x.g.questions : [{ key: 'club', label: 'Club they play for' }, { key: 'team', label: 'Team and age group' }])) if (!out.has(q.key)) out.set(q.key, q)
+  return [...out.values()]
+}
+
+function stepSummary() {
+  F.sheet.setSteps(stepsFor(), 3)
+  const picks = multiPicks()
+  const names = F.players.map((p) => p.existing?.name || p.name)
+  const fam = S.family || {}
+  const inAlready = (x) => F.players.filter((p) => p.existing && (fam.players.find((f) => f.key === p.key)?.inGroups || []).includes(x.g.id)).map((p) => p.existing.name)
+  const books = picks.filter((x) => x.kind === 'book')
+  const blocked = picks.filter((x) => inAlready(x).length)
+  F.sheet.body.innerHTML = `
+    <h3 style="margin-bottom:4px">Check your sessions</h3>
+    <p class="muted small" style="margin-bottom:12px">For ${esc(names.join(' and '))}. Each session is looked at on its own.</p>
+    <div class="j-sum">${picks.map((x) => {
+      const already = inAlready(x)
+      const pill = x.kind === 'book' ? 'j-pill-green' : x.kind === 'waitlist' ? 'j-pill-amber' : 'j-pill-blue'
+      return `<div class="j-sum-row ${already.length ? 'is-bad' : ''}">
+        <div class="j-sum-main"><b>${esc(x.g.day)} ${esc(x.g.time)}</b><span class="muted small">${esc(x.g.location)}${x.g.coachName ? ` · ${esc(x.g.coachName)}` : ''}</span>
+          <span class="j-sum-tags"><span class="j-pill ${pill}">${esc(KIND_WORD[x.kind])}</span>${x.kind === 'book' ? `<span class="small" data-price="${esc(x.g.id)}">Price loading</span>` : ''}</span>
+          ${x.why ? `<span class="small muted">${esc(x.why)}</span>` : ''}
+          ${already.length ? `<span class="j-err" style="display:block;margin-top:4px">${esc(already.join(' and '))} already ${already.length > 1 ? 'have' : 'has'} a place here. Remove this session to continue.</span>` : ''}</div>
+        <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-unpick="${esc(x.g.id)}" aria-label="Remove ${esc(`${x.g.day} ${x.g.time}`)}">Remove</button>
+      </div>`
+    }).join('')}</div>
+    <ul class="j-good small" style="margin:12px 0 0">
+      ${picks.some((x) => x.kind === 'application') ? '<li>Applications: we reply to each within 48 hours with a place for the term, a trial first, or a group that suits better.</li>' : ''}
+      ${picks.some((x) => x.kind === 'waitlist') ? '<li>Waitlist: we email you if a place opens.</li>' : ''}
+      ${books.length ? `<li>Book now: ${books.length === 1 ? 'this session is' : 'these sessions are'} paid on Stripe's secure page${books.length > 1 ? ', one at a time. After each payment we bring you back for the next' : ''}. The place is yours once it is paid.</li>` : ''}
+      <li>One email lists everything you sent.</li>
+    </ul>
+    ${picks.some((x) => x.kind !== 'application') && !F.answersAsked ? `<label class="j-field" style="margin-top:14px"><span>Anything the coach should know? <span class="muted">(optional)</span></span><textarea class="j-textarea" id="s-msg">${esc(F.message || '')}</textarea></label>` : ''}
+    ${books.some((x) => x.g.girlsOnly) ? '<label class="j-check"><input type="checkbox" id="r-girls"> <span>Some of these are girls groups. Each player I am booking into them is a girl.</span></label>' : ''}
+    ${books.length ? `${kitStep()}<label class="j-check"><input type="checkbox" id="r-terms"> <span>I agree each place I book is for the rest of the term and is locked in once paid. No make-up sessions.</span></label>` : ''}
+    <p class="j-err" id="s-err" hidden></p>`
+  const label = !books.length ? `Send ${picks.length} request${picks.length === 1 ? '' : 's'}` : books.length === picks.length ? 'Continue to payment' : `Send and pay for ${books.length === 1 ? 'the booking' : 'the first booking'}`
+  F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="s-back">Back</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="s-send" ${blocked.length ? 'disabled' : ''}>${esc(label)}</button></div>`
+  F.sheet.foot.querySelector('#s-back').addEventListener('click', () => {
+    if (needsWaiverStep() && F.players.some((p) => p.isNew || !p.existing?.waiverOnFile)) return stepWaiver()
+    if (multiQuestions().length) return stepQuestions()
+    renderPlayers(); F.sheet.setSteps(stepsFor(), 1)
+  })
+  F.sheet.body.querySelectorAll('[data-unpick]').forEach((b) => b.addEventListener('click', () => {
+    F.picks = F.picks.filter((x) => x.g.id !== b.dataset.unpick)
+    S.picks = S.picks.filter((id) => id !== b.dataset.unpick); savePicks(); renderResults(); renderPicks()
+    if (!F.picks.length) return closeSheet()
+    F.sheet.setTitle(`Apply for ${F.picks.length} session${F.picks.length === 1 ? '' : 's'}`)
+    stepSummary()
+  }))
+  F.sheet.foot.querySelector('#s-send').addEventListener('click', sendMulti)
+  // The price of each Book now session, for these players.
+  for (const x of books) quoteFor(x.g).then((qt) => {
+    const el = F.sheet?.body.querySelector(`[data-price="${CSS.escape(x.g.id)}"]`)
+    if (!el) return
+    if (!qt) { el.textContent = 'Price shown before you pay'; return }
+    const n = F.players.length
+    const unit = n > 1 ? qt.eachOfTwoCents : qt.oneCents
+    el.innerHTML = `<b>${esc(money(unit * n))}</b>${n > 1 ? ` <span class="muted">(${esc(money(unit))} each)</span>` : ''}${qt.proRata ? ' <span class="muted">· rest of term</span>' : ''}`
+  })
+}
+
+const QUOTES = new Map()
+async function quoteFor(g, fresh) {
+  if (QUOTES.has(g.id) && !fresh) return QUOTES.get(g.id)
+  const r = await api('/api/jfp-book', { action: 'family', groupId: g.id })
+  const qt = r.ok ? r.data.quote : null
+  if (qt) QUOTES.set(g.id, qt)
+  if (r.ok) S.lastFamily = r.data
+  return qt
+}
+// A new player from the first payment is on the account by the next one:
+// book them by their saved record, not as new again.
+const normName = (v) => String(v || '').toLowerCase().normalize('NFKD').replace(/[^a-z]/g, '')
+function knownPlayers(list, fam) {
+  return list.map((p) => {
+    if (p.key || !fam?.players) return p
+    const on = fam.players.find((f) => normName(f.name) === normName(p.name))
+    return on ? { key: on.key, club: p.club, medical: p.medical, emergencyName: p.emergencyName, emergencyPhone: p.emergencyPhone, ...(on.needsDob ? { dob: p.dob } : {}) } : p
+  })
+}
+
+async function sendMulti() {
+  const err = F.sheet.body.querySelector('#s-err')
+  const show = (m) => { err.textContent = m; err.hidden = false; err.scrollIntoView({ block: 'nearest' }) }
+  const picks = multiPicks()
+  const books = picks.filter((x) => x.kind === 'book')
+  const asks = picks.filter((x) => x.kind !== 'book')
+  const msg = F.sheet.body.querySelector('#s-msg')
+  if (msg) F.message = msg.value.trim()
+  let pay = null
+  if (books.length) {
+    const kit = F.sheet.body.querySelector('input[name="r-kit"]:checked')?.value
+    if (!kit) return show('Confirm the JF playing kit. It is required for every player.')
+    if (!F.sheet.body.querySelector('#r-terms').checked) return show('Tick the box to agree to the term.')
+    const girls = F.sheet.body.querySelector('#r-girls')
+    if (girls && !girls.checked) return show('Confirm the players are girls to book the girls groups.')
+    pay = { kit, girls: Boolean(girls?.checked) }
+  }
+  const btn = F.sheet.foot.querySelector('#s-send')
+  btn.disabled = true
+  btn.textContent = 'Sending'
+  let sent = []
+  if (asks.length) {
+    const r = await api('/api/jfp-book', {
+      action: 'batch', picks: picks.map((x) => ({ groupId: x.g.id, kind: x.kind })), players: payloadPlayers(),
+      parentName: F.parentName, mobile: F.mobile, answers: F.answers || {}, message: F.message || '', waiver: F.waiver || undefined,
+    })
+    if (!r.ok) {
+      btn.disabled = false
+      btn.textContent = 'Try again'
+      if (r.data.code === 'signin') { S.parent = null; return stepWho() }
+      return show(r.data.error || 'Could not send. Nothing has been sent. Try again.')
+    }
+    sent = asks
+    track('Lead', { content_category: 'jfp_multi', content_name: asks.map((x) => x.g.id).join(',') })
+  }
+  // Sent: these picks are done. Book now ones are paid next, one at a time.
+  S.picks = S.picks.filter((id) => !sent.some((x) => x.g.id === id))
+  savePicks(); renderResults(); renderPicks()
+  if (!books.length) return multiDone(sent)
+  saveQueue({ groups: books.map((x) => x.g.id), players: payloadPlayers(), parentName: F.parentName, mobile: F.mobile, waiver: F.waiver || null, kit: pay.kit, girls: pay.girls, notes: F.message || '', sent: sent.map((x) => `${x.g.day} ${x.g.time}`) })
+  payQueued(sent)
+}
+
+function multiDone(sent) {
+  F.sheet.setSteps(0, 0)
+  F.sheet.setTitle('Sent', '')
+  F.sheet.body.innerHTML = `<div class="j-box j-box-green"><b>Sent.</b> We have your request${sent.length === 1 ? '' : 's'} for ${sent.length} session${sent.length === 1 ? '' : 's'}, and we have emailed you one copy listing them all.</div>
+    <ul class="j-sum" style="margin-top:12px">${sent.map((x) => `<li class="j-sum-row"><div class="j-sum-main"><b>${esc(x.g.day)} ${esc(x.g.time)}</b><span class="muted small">${esc(x.g.location)}</span></div><span class="j-pill ${x.kind === 'waitlist' ? 'j-pill-amber' : 'j-pill-blue'}">${esc(KIND_WORD[x.kind])}</span></li>`).join('')}</ul>
+    <p class="muted" style="margin-top:14px">${sent.some((x) => x.kind === 'application') ? 'We reply to each application within 48 hours. ' : ''}You can see them any time in <a href="/jfp-account/">My account</a>.</p>`
+  F.sheet.foot.innerHTML = '<button type="button" class="j-btn j-btn-dark j-btn-block" id="m-done">Done</button>'
+  F.sheet.foot.querySelector('#m-done').addEventListener('click', () => closeSheet())
+}
+
+// Book now picks still to pay, so the page can bring the family back for the
+// next one after Stripe. Kept in this tab only.
+function saveQueue(q) { try { if (q && q.groups.length) sessionStorage.setItem('jfp_queue', JSON.stringify(q)); else sessionStorage.removeItem('jfp_queue') } catch {} }
+function readQueue() { try { const q = JSON.parse(sessionStorage.getItem('jfp_queue') || 'null'); return q && Array.isArray(q.groups) && q.groups.length ? q : null } catch { return null } }
+
+// Hold the next Book now group, then go straight to its own Stripe page with
+// the details the family already gave. Its own hold, price and checks.
+async function payQueued(sent = []) {
+  const q = readQueue()
+  if (!q) return closeSheet()
+  const g = S.data.groups.find((x) => x.id === q.groups[0])
+  const rest = q.groups.slice(1).map((id) => S.data.groups.find((x) => x.id === id)).filter(Boolean)
+  const skip = () => { saveQueue({ ...q, groups: q.groups.slice(1) }); S.picks = S.picks.filter((id) => id !== q.groups[0]); savePicks(); renderResults(); renderPicks(); return readQueue() ? payQueued(sent) : (sent.length ? multiDone(sent) : closeSheet()) }
+  if (!g) return skip()
+  F.kind = 'book'
+  F.g = g
+  F.sheet.setSteps(0, 0)
+  F.sheet.setTitle(`Pay for ${g.day} ${g.time}`, groupLine(g))
+  F.sheet.body.innerHTML = `${sent.length ? `<div class="j-box j-box-green" style="margin-bottom:12px"><b>Sent.</b> Your request${sent.length === 1 ? '' : 's'} for ${esc(andList(sent.map((x) => `${x.g.day} ${x.g.time}`)))} ${sent.length === 1 ? 'is' : 'are'} with us. We have emailed you a copy.</div>` : ''}<p class="muted">Holding your place in ${esc(g.day)} ${esc(g.time)}</p>`
+  F.sheet.foot.innerHTML = ''
+  const r = await api('/api/jfp-book', { action: 'reserve', groupId: g.id, recaptchaToken: await recaptcha('jfp_reserve') })
+  if (r.status === 401 && r.data.code === 'signin') { S.parent = null; F.kind = 'multi'; return stepWho() }
+  if (!r.ok) {
+    F.sheet.body.innerHTML = `<div class="j-box j-box-amber"><b>${esc(g.day)} ${esc(g.time)}</b><br>${esc(r.data.error || 'Could not hold that place. Try again.')}</div>`
+    F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap">${r.data.code === 'full' ? '<button type="button" class="j-btn j-btn-dark" id="q-wait" style="flex:1">Join the waitlist for it</button>' : '<button type="button" class="j-btn j-btn-dark" id="q-retry" style="flex:1">Try again</button>'}<button type="button" class="j-btn j-btn-line" id="q-skip">${rest.length ? 'Skip this one' : 'Skip'}</button></div>`
+    F.sheet.foot.querySelector('#q-retry')?.addEventListener('click', () => payQueued(sent))
+    F.sheet.foot.querySelector('#q-skip').addEventListener('click', skip)
+    F.sheet.foot.querySelector('#q-wait')?.addEventListener('click', async (e) => {
+      e.target.disabled = true
+      const w = await api('/api/jfp-book', { action: 'request', kind: 'waitlist', groupId: g.id, players: q.players, parentName: q.parentName, mobile: q.mobile, message: q.notes })
+      if (!w.ok) { e.target.disabled = false; return toast(w.data.error || 'Could not send. Try again.') }
+      toast(`You are on the waitlist for ${g.day} ${g.time}.`)
+      skip()
+    })
+    return
+  }
+  S.hold = { bookingId: r.data.bookingId, releaseToken: r.data.releaseToken, expiresAt: Date.parse(r.data.expiresAt) }
+  track('InitiateCheckout', { content_category: 'jfp_term', content_name: g.id })
+  startTimer()
+  const qt = await quoteFor(g, true)
+  q.players = knownPlayers(q.players, S.lastFamily)
+  const n = q.players.length
+  const unit = qt ? (n > 1 ? qt.eachOfTwoCents : qt.oneCents) : 0
+  F.sheet.body.innerHTML = `${sent.length ? `<div class="j-box j-box-green" style="margin-bottom:12px"><b>Sent.</b> We have your request${sent.length === 1 ? '' : 's'} for ${esc(andList(sent.map((x) => `${x.g.day} ${x.g.time}`)))}.</div>` : ''}
+    <h3 style="margin-bottom:10px">Pay for this session</h3>
+    <dl class="j-kv">
+      <dt>Group</dt><dd>${esc(g.day)} ${esc(g.time)}</dd>
+      <dt>Where</dt><dd>${esc(g.location)}</dd>
+      <dt>Coach</dt><dd>${esc(g.coachName || 'Joner Football')}</dd>
+      ${qt ? `<dt>Sessions</dt><dd>${qt.proRata ? `${esc(qt.sessions)} of ${esc(qt.of)}, from ${esc(qt.firstDate)} to ${esc(g.lastDate)}` : `${esc(qt.sessions || g.sessions)} weeks, ${esc(qt.firstDate || g.firstDate)} to ${esc(g.lastDate)}`}</dd>` : ''}
+      <dt>Players</dt><dd>${esc(q.players.map((p) => p.name || [...(S.lastFamily?.players || []), ...(S.family?.players || [])].find((f) => f.key === p.key)?.name || '').filter(Boolean).join(', '))}</dd>
+      ${qt ? `<dt>Total</dt><dd>${esc(money(unit * n))}${n > 1 ? ` <span class="muted">(${esc(money(unit))} each, sibling rate)</span>` : ''}</dd>` : ''}
+    </dl>
+    ${rest.length ? `<p class="muted small" style="margin-top:10px">Next after this: ${esc(rest.map((x) => `${x.day} ${x.time}`).join(', '))}. We bring you back here after you pay.</p>` : ''}
+    <p class="muted small" style="margin-top:8px">Card, Apple Pay, Google Pay or Afterpay. You pay on Stripe's secure page.</p>
+    <p class="j-err" id="r-err" hidden></p>`
+  F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="q-skip">Skip</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="r-pay">${qt ? `Pay ${esc(money(unit * n))}` : 'Continue to payment'}</button></div>`
+  F.sheet.foot.querySelector('#q-skip').addEventListener('click', () => { releaseHold(); skip() })
+  F.sheet.foot.querySelector('#r-pay').addEventListener('click', async () => {
+    const btn = F.sheet.foot.querySelector('#r-pay')
+    const err = F.sheet.body.querySelector('#r-err')
+    btn.disabled = true
+    btn.textContent = 'Taking you to payment'
+    const res = await api('/api/jfp-book', {
+      groupId: g.id, bookingId: S.hold?.bookingId, releaseToken: S.hold?.releaseToken,
+      players: q.players, waiver: q.waiver || undefined, parentName: q.parentName, mobile: q.mobile, notes: q.notes,
+      girlsConfirmed: q.girls, agreementAccepted: true, kit: q.kit, option: 'group',
+    })
+    if (!res.ok || !res.data.url) {
+      btn.disabled = false
+      btn.textContent = 'Try again'
+      if (res.data.code === 'signin') { S.parent = null; F.kind = 'multi'; return stepWho() }
+      if (res.data.code === 'full') load(true)
+      err.textContent = res.data.error || 'Could not start the payment. Nothing has been charged.'
+      err.hidden = false
+      return
+    }
+    // The success page takes this one off the queue once it is paid and
+    // offers the next. Back from Stripe leaves it here to try again.
+    S.toStripe = true
+    clearInterval(S.timer)
+    try { sessionStorage.setItem('jfp_booking', res.data.bookingId); sessionStorage.setItem('jfp_paying', JSON.stringify({ groupId: g.id, bookingId: res.data.bookingId })) } catch {}
+    location.href = res.data.url
+  })
+}
+
+// Back from a Stripe payment with more Book now sessions to pay for.
+function resumeQueue() {
+  const q = readQueue()
+  if (!q || !S.data) return
+  Object.keys(F).forEach((k) => delete F[k])
+  Object.assign(F, { kind: 'book', g: null, picks: [], selected: new Map(), newPlayers: [], waiver: q.waiver })
+  F.sheet = openSheet({ title: 'Your next session', onClose: () => { releaseHold(); load(true) } })
+  // Signed out since the last payment: sign in again, then on to the payment.
+  if (!S.parent) return stepSignIn('current')
+  payQueued([])
 }
 
 // ---------- the booking sheet ----------
@@ -330,6 +660,7 @@ async function start(kind, g, btn) {
 // nobody can hold every group just by tapping Book.
 async function afterSignIn() {
   if (F.kind !== 'book' || S.hold) return stepPlayers()
+  if (!F.g) return payQueued([])
   F.sheet.body.innerHTML = '<p class="muted">Holding your place</p>'
   F.sheet.foot.innerHTML = ''
   const r = await api('/api/jfp-book', { action: 'reserve', groupId: F.g.id, recaptchaToken: await recaptcha('jfp_reserve') })
@@ -379,22 +710,23 @@ function startTimer() {
 }
 
 // Booking and applying both take the waiver; waitlist and enquiries do not.
-function needsWaiverStep() { return F.kind === 'book' || F.kind === 'application' }
+function needsWaiverStep() { return isMulti() ? multiPicks().some((x) => x.kind !== 'waitlist') : F.kind === 'book' || F.kind === 'application' }
 // "Current club (optional)" here and "Club they play for" (required) two steps
 // later read as the same question asked twice. Ask it once, on the step that
 // makes it compulsory, and copy the answer onto the player. (Lee, 8 Oct 2026)
 function asksClubLater() {
+  if (isMulti()) return multiQuestions().some((q) => q.key === 'club')
   const qs = F.g?.questions?.length ? F.g.questions : [{ key: 'club' }, { key: 'team' }]
   return F.kind === 'application' && qs.some((q) => q.key === 'club')
 }
 
-function stepsFor() { return F.kind === 'book' ? 4 : F.kind === 'application' ? 4 : 3 }
+function stepsFor() { return F.kind === 'book' || F.kind === 'application' || isMulti() ? 4 : 3 }
 
 function stepWho() {
   F.sheet.setSteps(stepsFor(), 0)
   const g = F.g
   F.sheet.body.innerHTML = `
-    <div class="j-box j-box-grey" style="margin-bottom:16px">${g.id === 'one-to-one' ? '<b>1 to 1 coaching</b><br>Tell us who it is for and the times that suit. Lee or Ligia will be in touch.' : `<b>${esc(agesLabel(g))}</b><br>${esc(g.sessions)} weekly sessions, ${esc(g.firstDate)} to ${esc(g.lastDate)}${hasAges(g) ? '' : `<br><span class="small">${esc(ALL_AGES)}</span>`}`}</div>
+    <div class="j-box j-box-grey" style="margin-bottom:16px">${isMulti() ? `<b>${esc(F.picks.length)} sessions</b><br>${F.picks.map((x) => `${esc(x.g.day)} ${esc(x.g.time)}, ${esc(x.g.location)}${hasAges(x.g) ? ` <span class="small">(${esc(agesLabel(x.g).toLowerCase())})</span>` : ''}`).join('<br>')}<br><span class="small">Our coaches place every player in the group that suits them, and we'll suggest another time if a different group fits better.</span>` : g.id === 'one-to-one' ? '<b>1 to 1 coaching</b><br>Tell us who it is for and the times that suit. Lee or Ligia will be in touch.' : `<b>${esc(agesLabel(g))}</b><br>${esc(g.sessions)} weekly sessions, ${esc(g.firstDate)} to ${esc(g.lastDate)}${hasAges(g) ? '' : `<br><span class="small">${esc(ALL_AGES)}</span>`}`}</div>
     <h3 style="margin-bottom:10px">Who is training?</h3>
     <button type="button" class="j-choice" data-who="current"><span class="ico">↺</span><span><b>A current JFP player</b><small>Trained with us this year. Sign in with the email we have and your details and waiver are already on file.</small></span></button>
     <button type="button" class="j-choice" data-who="new"><span class="ico">+</span><span><b>New to JFP</b><small>First time with Joner Football. A couple of minutes of details, then the waiver.</small></span></button>`
@@ -412,7 +744,7 @@ async function stepSignIn(who) {
 }
 
 async function loadFamily() {
-  const r = await api('/api/jfp-book', { action: 'family', groupId: F.g.id })
+  const r = await api('/api/jfp-book', isMulti() ? { action: 'family', groupIds: F.picks.map((x) => x.g.id) } : { action: 'family', groupId: F.g.id })
   if (r.status === 401 && r.data.code === 'signin') { S.parent = null; stepWho(); return null }
   if (!r.ok) { toast(r.data.error || 'Could not load your players.'); return null }
   S.family = r.data
@@ -423,7 +755,9 @@ function playerRow(p) {
   const on = F.selected.has(p.key)
   let status = ''
   let off = false
+  const inPicks = isMulti() ? F.picks.filter((x) => (p.inGroups || []).includes(x.g.id)) : []
   if (p.inGroup) { status = '<span class="j-pill j-pill-green">Already in this group</span>'; off = true }
+  else if (inPicks.length) status = `<span class="j-pill j-pill-green">Already in ${esc(inPicks.map((x) => `${SHORT[x.g.day] || x.g.day} ${x.g.time}`).join(', '))}</span> ${p.waiverOnFile ? '<span class="j-pill j-pill-green">Waiver on file</span>' : '<span class="j-pill j-pill-amber">Waiver needed</span>'}`
   else if (p.fits === false) status = `<span class="j-pill j-pill-amber">Age ${esc(p.age)}, outside this group: you can apply instead</span>`
   else status = `${p.age != null ? `<span class="muted small">Age ${esc(p.age)}</span> ` : ''}${p.waiverOnFile ? '<span class="j-pill j-pill-green">Waiver on file</span>' : '<span class="j-pill j-pill-amber">Waiver needed</span>'}`
   return `<button type="button" class="j-player ${on ? 'on' : ''} ${off ? 'off' : ''}" data-key="${esc(p.key)}" ${off ? 'disabled' : ''} aria-pressed="${on}">
@@ -445,9 +779,10 @@ async function stepPlayers() {
   F.sheet.setSteps(stepsFor(), 1)
   F.sheet.body.innerHTML = '<p class="muted">Loading your players</p>'
   F.sheet.foot.innerHTML = ''
-  const fam = S.family?.email === S.parent?.email && S.family?.groupId === F.g.id ? S.family : await loadFamily()
+  const fkey = isMulti() ? `multi:${F.picks.map((x) => x.g.id).join(',')}` : F.g.id
+  const fam = S.family?.email === S.parent?.email && S.family?.groupId === fkey ? S.family : await loadFamily()
   if (!fam) return
-  fam.groupId = F.g.id
+  fam.groupId = fkey
   renderPlayers()
 }
 
@@ -463,7 +798,7 @@ function renderPlayers() {
     <h3 style="margin:18px 0 8px">Your details</h3>
     <div class="j-two"><label class="j-field"><span>Parent or guardian name</span><input class="j-input" id="p-name" autocomplete="name" value="${esc(fam.parentName || '')}"></label>
     <label class="j-field"><span>Mobile</span><input class="j-input" id="p-mobile" type="tel" autocomplete="tel" inputmode="tel" value="${esc(fam.mobile || '')}"></label></div>
-    ${hasAges(g) ? `<p class="muted small">${esc(agesLabel(g))}, on the first day of term.</p>` : ''}
+    ${g && hasAges(g) ? `<p class="muted small">${esc(agesLabel(g))}, on the first day of term.</p>` : ''}
     <p class="j-err" id="pl-err" hidden></p>`
   restoreNew()
   F.sheet.foot.innerHTML = `<button type="button" class="j-btn j-btn-dark j-btn-block j-btn-lg" id="pl-next">Continue</button>`
@@ -538,7 +873,7 @@ function nextFromPlayers() {
     const age = p.existing?.age ?? ageOn(p.dob)
     if (age == null) return show(`Enter ${name || 'the player'}'s date of birth.`)
     // Book now is for players inside the band. Anyone else applies instead.
-    if (F.kind === 'book' && hasAges(g) && (age < g.minAge || age > g.maxAge)) {
+    if (F.kind === 'book' && g && hasAges(g) && (age < g.minAge || age > g.maxAge)) {
       err.innerHTML = `${esc(name)} is ${esc(age)} on the first day of term. This group books online for ages ${esc(g.minAge)} to ${esc(g.maxAge)}, so apply instead: we reply within 48 hours, maybe with a trial first. <button type="button" class="j-btn j-btn-line j-btn-sm" id="to-apply" style="margin-top:8px">Apply instead</button>`
       err.hidden = false
       err.querySelector('#to-apply').addEventListener('click', () => { releaseHold(); F.kind = 'application'; F.sheet.setTitle(F.titles.application); F.sheet.timer.hidden = true; renderPlayers(); F.sheet.setSteps(stepsFor(), 1) })
@@ -551,6 +886,7 @@ function nextFromPlayers() {
   if ((F.mobile || '').replace(/\D/g, '').length < 8) return show('Enter a mobile number we can reach you on.')
   F.players = list
   const needsWaiver = list.some((p) => p.isNew || !p.existing?.waiverOnFile)
+  if (isMulti()) return multiQuestions().length ? stepQuestions() : needsWaiver && needsWaiverStep() ? stepWaiver() : stepSummary()
   if (F.kind === 'book') return needsWaiver ? stepWaiver() : stepReview()
   if (F.kind === 'application') return stepQuestions()
   return stepMessage()
@@ -560,7 +896,7 @@ function nextFromPlayers() {
 
 function stepQuestions() {
   F.sheet.setSteps(stepsFor(), 2)
-  const qs = F.g.questions?.length ? F.g.questions : [{ key: 'club', label: 'Club they play for' }, { key: 'team', label: 'Team and age group' }]
+  const qs = isMulti() ? multiQuestions() : F.g.questions?.length ? F.g.questions : [{ key: 'club', label: 'Club they play for' }, { key: 'team', label: 'Team and age group' }]
   const a = F.answers || {}
   const seg = (key, opts) => `<div class="j-seg" data-seg="${key}">${opts.map((o) => `<button type="button" data-v="${esc(o)}" aria-pressed="${a[key] === o}">${esc(o)}</button>`).join('')}</div>`
   const field = (q) => {
@@ -572,7 +908,7 @@ function stepQuestions() {
   }
   F.sheet.body.innerHTML = `
     <h3 style="margin-bottom:4px">About the player</h3>
-    <p class="muted small" style="margin-bottom:14px">${esc(F.players.map((p) => p.existing?.name || p.name).join(' and '))} · ${esc(F.g.day)} ${esc(F.g.time)}</p>
+    <p class="muted small" style="margin-bottom:14px">${esc(F.players.map((p) => p.existing?.name || p.name).join(' and '))} · ${isMulti() ? `Asked once for your ${esc(multiPicks().filter((x) => x.kind === 'application').length)} applications` : `${esc(F.g.day)} ${esc(F.g.time)}`}</p>
     ${qs.map(field).join('')}
     <label class="j-field"><span>Anything the coach should know <span class="muted">(optional)</span></span><textarea class="j-textarea" id="q-msg">${esc(F.message || '')}</textarea></label>
     <p class="j-err" id="q-err" hidden></p>`
@@ -588,13 +924,15 @@ function stepQuestions() {
     return out
   }
   const needsWaiver = F.players.some((p) => p.isNew || !p.existing?.waiverOnFile)
-  F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="q-back">Back</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="q-next">${needsWaiver ? 'Next: waiver' : 'Send application'}</button></div>`
+  F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="q-back">Back</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="q-next">${needsWaiver ? 'Next: waiver' : isMulti() ? 'Next: check your sessions' : 'Send application'}</button></div>`
   F.sheet.foot.querySelector('#q-back').addEventListener('click', () => { F.answers = read(); renderPlayers(); F.sheet.setSteps(stepsFor(), 1) })
   F.sheet.foot.querySelector('#q-next').addEventListener('click', () => {
     F.answers = read()
+    F.answersAsked = true
     const missing = qs.find((q) => !F.answers[q.key] && ['club', 'team'].includes(q.key))
     if (missing) { const e = F.sheet.body.querySelector('#q-err'); e.textContent = `Add the ${missing.label.toLowerCase()}.`; e.hidden = false; return }
     if (needsWaiver) return stepWaiver()
+    if (isMulti()) return stepSummary()
     sendRequest(F.sheet.foot.querySelector('#q-next'))
   })
 }
@@ -613,11 +951,12 @@ function stepWaiver() {
     w.el.querySelector('[data-w="signature"]').value = v.signature
   }
   F.sheet.foot.innerHTML = `<div style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" id="w-back">Back</button><button type="button" class="j-btn j-btn-dark j-btn-lg" style="flex:1" id="w-next">${F.kind === 'application' ? 'Sign and send application' : 'Sign and continue'}</button></div>`
-  F.sheet.foot.querySelector('#w-back').addEventListener('click', () => { F.waiver = w.read(); if (F.kind === 'application') return stepQuestions(); renderPlayers(); F.sheet.setSteps(stepsFor(), 1) })
+  F.sheet.foot.querySelector('#w-back').addEventListener('click', () => { F.waiver = w.read(); if (F.kind === 'application' || (isMulti() && multiQuestions().length)) return stepQuestions(); renderPlayers(); F.sheet.setSteps(stepsFor(), 1) })
   F.sheet.foot.querySelector('#w-next').addEventListener('click', () => {
     if (!w.complete()) { const e = F.sheet.body.querySelector('#w-err'); e.textContent = 'Tick each of the first four boxes and type your full name to sign.'; e.hidden = false; return }
     F.waiver = w.read()
     if (F.kind === 'application') return sendRequest(F.sheet.foot.querySelector('#w-next'))
+    if (isMulti()) return stepSummary()
     stepReview()
   })
 }
@@ -712,7 +1051,7 @@ async function pay() {
   }
   S.toStripe = true
   clearInterval(S.timer)
-  try { sessionStorage.setItem('jfp_booking', r.data.bookingId) } catch {}
+  try { sessionStorage.setItem('jfp_booking', r.data.bookingId); sessionStorage.setItem('jfp_paying', JSON.stringify({ groupId: F.g.id, bookingId: r.data.bookingId })) } catch {}
   location.href = r.data.url
 }
 
@@ -746,6 +1085,7 @@ async function sendRequest(btn) {
   }
   F.sheet.setSteps(0, 0)
   F.sheet.timer.hidden = true
+  if (picked(F.g)) { S.picks = S.picks.filter((id) => id !== F.g.id); savePicks(); renderResults(); renderPicks() }
   track('Lead', { content_category: `jfp_${k}`, content_name: F.g.id })
   const done = k === 'waitlist'
     ? 'You are on the waitlist. If a place opens we will be in touch.'

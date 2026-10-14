@@ -37,6 +37,23 @@ export function requestText({ request, group, siteUrl }) {
   ].filter(Boolean).join('\n')
 }
 
+// Several sessions in one go: one message, every session listed.
+export function batchText({ requests, groups, paying = [], siteUrl }) {
+  const first = requests[0]
+  const players = first.players.map((p) => `${p.name}${p.age != null ? ` (${p.age})` : ''}`).join(', ')
+  const a = first.answers || {}
+  const word = { application: 'Apply', waitlist: 'Waitlist' }
+  return [
+    `JFP: ${requests.length + paying.length} sessions in one go`,
+    players,
+    ...requests.map((r, i) => `${word[r.kind] || r.kind}: ${groups[i].day} ${groups[i].time}${groups[i].location ? `, ${groups[i].location}` : ''}`),
+    ...paying.map((g) => `Booking and paying: ${g.day} ${g.time}${g.location ? `, ${g.location}` : ''}`),
+    a.club || first.club ? `Club: ${a.club || first.club}${a.team ? `, ${a.team}` : ''}` : '',
+    `Parent: ${first.parentName}`,
+    siteUrl ? `Review: ${siteUrl}/jfp-portal/#requests` : '',
+  ].filter(Boolean).join('\n')
+}
+
 // A family cannot make a session. Player, session, reason and notice only:
 // no note (it is free text and could hold a number), no email, no phone.
 export function cancelText(rec) {

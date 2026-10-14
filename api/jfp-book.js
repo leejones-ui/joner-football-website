@@ -6,6 +6,9 @@
 //               number of players, creates the Stripe Checkout Session
 //   release  -> hands the places back (closed form, back from Stripe)
 //   request  -> (signed in) application, waitlist or enquiry. No payment.
+//   batch    -> (signed in) the same players apply for, or join the waitlist
+//               of, several groups in one go. Book now groups in the same pick
+//               are paid one at a time afterwards, each through submit.
 //
 // Every action sits behind the shared booking password. Anything that reads
 // or writes a family's details also needs the parent's email-code sign-in,
@@ -15,13 +18,13 @@ import { rateLimit, verifyRecaptcha } from './_security.js'
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import {
   requireParentAccess, getConfig, getGroup, getBooking, saveBooking, indexBooking, newId, clean, holdPlaces, releasePlaces,
-  onlineCounts, placesLeft, publicPlacesLeft, tokenMatches, saveApplication, coachById, coachLabel, sessionDates, dateLabel, ageOn, ageFits, normName,
+  onlineCounts, placesLeft, publicPlacesLeft, tokenMatches, saveApplication, listApplications, coachById, coachLabel, sessionDates, dateLabel, ageOn, ageFits, normName,
   locationFor, ONE_TO_ONE, QUESTIONS, priceFor, paidSiblings, nextSessionDate, closeCheckout, parentHoldCount, noteParentHold, dropParentHold, MAX_HOLDS_PER_PARENT, keys, kvCommand, RESERVE_MINUTES, HOLD_MINUTES, CHECKOUT_EXPIRES_MINUTES, MAX_PLAYERS,
 } from './_jfp-store.js'
 import { loadRoster, countsFrom, familyFor } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
-import { sendRequestReceived, sendRequestAlert } from './_jfp-email.js'
-import { telegramAlert, requestText } from './_jfp-notify.js'
+import { sendRequestReceived, sendRequestAlert, sendBatchReceived, sendBatchAlert } from './_jfp-email.js'
+import { telegramAlert, requestText, batchText } from './_jfp-notify.js'
 import { captureWebsiteContact } from './_master-contact-capture.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -185,7 +188,11 @@ async function family(req, res, body, parent) {
     mobile: fam.mobile,
     // What this family would pay here, from the next session to the end of term.
     quote: one ? { oneCents: one.unitCents, oneToOneCents: solo?.unitCents || 0, eachOfTwoCents: two.unitCents, sessions: one.sessions, of: one.of, proRata: one.proRata, firstDate: from ? dateLabel(from) : '' } : null,
-    players: group ? familyView(fam, group, config, roster) : fam.players.map((p) => ({ key: p.key, name: p.name, age: p.age, waiverOnFile: Boolean(p.waiver) })),
+    players: group ? familyView(fam, group, config, roster) : fam.players.map((p) => ({
+      key: p.key, name: p.name, age: p.age, needsDob: p.age == null, waiverOnFile: Boolean(p.waiver),
+      // Several sessions picked: which of them each player already has a place in.
+      ...(Array.isArray(body.groupIds) ? { inGroups: body.groupIds.map((x) => clean(x, 80)).filter((gid) => p.term4.some((r) => r.groupId === gid && r.holdsPlace)) } : {}),
+    })),
   })
 }
 
@@ -361,6 +368,84 @@ async function request(req, res, body, parent) {
   return res.status(200).json({ success: true, id: record.id, kind })
 }
 
+// ---------- several sessions in one go (Lee, 14 Oct 2026) ----------
+
+export const MAX_PICKS = 8
+const PICK_WORD = { application: 'an application', waitlist: 'a waitlist request' }
+
+// Every pick is checked with the same rules as a single request (the group's
+// mode, the players, each player not already in that group or already waiting
+// on it) before anything is saved, so one bad pick sends nothing. Book now
+// picks are only named here, for the emails: the page then books and pays
+// each one through submit, with its own hold, price and Stripe page.
+async function batch(req, res, body, parent) {
+  if (!rateLimit(req, { key: 'jfp-batch', limit: 8, windowMs: 60_000 }).allowed) return fail(res, 429, 'Too many tries. Wait a minute and try again.')
+  const raw = Array.isArray(body.picks) ? body.picks : []
+  if (raw.length > MAX_PICKS) return fail(res, 400, `Pick up to ${MAX_PICKS} sessions at a time.`)
+  const config = await getConfig()
+  const picks = []
+  const seen = new Set()
+  for (const x of raw) {
+    const kind = ['application', 'waitlist', 'book'].includes(x?.kind) ? x.kind : ''
+    const groupId = clean(x?.groupId, 80)
+    if (!kind || !groupId) return fail(res, 400, 'Invalid request.')
+    if (seen.has(groupId)) return fail(res, 400, 'That session is picked twice.', { groupId })
+    seen.add(groupId)
+    const group = await getGroup(groupId)
+    if (!group) return fail(res, 404, 'One of your sessions is no longer on the timetable. Refresh the page and pick again.', { code: 'gone', groupId })
+    const ok = kind === 'book' ? group.mode === 'direct' : REQUEST_MODES[kind].includes(group.mode)
+    if (!ok) return fail(res, 409, `${group.day} ${group.time} has changed since you picked it. Refresh the page and pick again.`, { code: 'changed', groupId })
+    picks.push({ group, kind })
+  }
+  const asks = picks.filter((x) => x.kind !== 'book')
+  const paying = picks.filter((x) => x.kind === 'book').map((x) => x.group)
+  if (!asks.length) return fail(res, 400, 'Pick at least one session to apply for.')
+  const roster = await loadRoster({ fresh: true })
+  const fam = familyFor(parent.email, roster, config.termStart)
+  const who = parentDetails(body, fam)
+  if (who.error) return fail(res, 400, who.error)
+  const w = checkWaiver(body.waiver, who.parentName)
+  if (w.error) return fail(res, 400, w.error, { code: 'waiver' })
+  let players = null
+  for (const { group } of asks) {
+    const pl = checkPlayers(body.players, { family: fam, group, config, requireWaiver: false, waiver: w.waiver, roster, checkAge: false })
+    if (pl.error) return fail(res, 400, pl.code ? pl.error : `${group.day} ${group.time}: ${pl.error}`, { code: pl.code, groupId: group.id })
+    players = players || pl.players
+  }
+  // Already waiting on that group: say so, rather than a second request.
+  const open = (await listApplications()).filter((a) => a.email === parent.email && ['pending', 'offered'].includes(a.status))
+  for (const { group } of asks) {
+    for (const pl of players) {
+      const dup = open.find((a) => a.groupId === group.id && (a.players || []).some((q) => normName(q.name) === normName(pl.name)))
+      if (dup) return fail(res, 409, `${pl.name} already has ${PICK_WORD[dup.kind] || 'a request'} for ${group.day} ${group.time}. You can see it in My account. Remove that session to send the rest.`, { code: 'duplicate', groupId: group.id })
+    }
+  }
+  const batchId = newId('BAT')
+  const createdAt = new Date().toISOString()
+  const answersIn = body.answers || {}
+  const records = asks.map(({ group, kind }) => ({
+    id: newId(kind === 'waitlist' ? 'WAIT' : 'APP'),
+    kind, groupId: group.id, players,
+    email: parent.email, parentName: who.parentName, mobile: who.mobile,
+    answers: answersFor(group, answersIn),
+    club: clean(answersIn.club || body.club, 120), message: clean(body.message, 800),
+    status: 'pending', createdAt,
+    // Staff see these together in Requests; a waiver signed once is written once.
+    batchId, batchSize: picks.length,
+    ...(paying.length ? { batchPaying: paying.map((g) => g.id) } : {}),
+  }))
+  for (const r of records) await saveApplication(r)
+  const groups = asks.map((x) => x.group)
+  await Promise.all([
+    sendBatchReceived({ requests: records, groups, paying, config }).catch((e) => console.error('jfp batch ack failed', e)),
+    sendBatchAlert({ requests: records, groups, paying, config }).catch((e) => console.error('jfp batch alert failed', e)),
+    telegramAlert(batchText({ requests: records, groups, paying, siteUrl: siteUrl(req) })),
+  ])
+  const masterCapture = await captureWebsiteContact({ endpoint: 'jfp-book', form: 'jfp-batch', country: 'AU', players: players.map((x) => ({ name: x.name, age: x.age })), phone: who.mobile, email: parent.email, parentName: who.parentName, contactType: 'Parent/Guardian', source: 'jfp-application', sourceLabel: 'JFP application (several sessions)', submittedAt: createdAt })
+  if (masterCapture.status === 'failed') console.error('Master contact capture failed:', masterCapture.reason)
+  return res.status(200).json({ success: true, batchId, requests: records.map((r) => ({ id: r.id, kind: r.kind, groupId: r.groupId })), paying: paying.map((g) => g.id) })
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   if (req.method !== 'POST') return fail(res, 405, 'Method not allowed')
@@ -375,6 +460,7 @@ export default async function handler(req, res) {
     if (body.action === 'reserve') return await reserve(req, res, body, parent)
     if (body.action === 'family') return await family(req, res, body, parent)
     if (body.action === 'request') return await request(req, res, body, parent)
+    if (body.action === 'batch') return await batch(req, res, body, parent)
     return await submit(req, res, body, parent)
   } catch (error) {
     console.error('jfp-book failed', error)

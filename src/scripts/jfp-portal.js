@@ -1140,6 +1140,19 @@ function extraRequestsHtml(list) {
   return `<section style="margin-bottom:22px"><h2 style="font-size:16px;margin:0 0 10px">Extra sessions and game analysis <span class="muted small">${fresh.length} new</span></h2>${fresh.map(row).join('')}${list.length > fresh.length ? `<details class="jq-fold"><summary>Done (${list.length - fresh.length})</summary>${list.filter((r) => r.status === 'done').map(row).join('')}</details>` : ''}</section>`
 }
 
+// A family that picked several sessions in one go: their requests sit
+// together, where the first of them would be. Each keeps its own buttons.
+function batched(list) {
+  const out = []
+  const at = new Map()
+  for (const r of list) {
+    if (r.batchId && at.has(r.batchId)) { out[at.get(r.batchId)].items.push(r); continue }
+    if (r.batchId) at.set(r.batchId, out.length)
+    out.push({ items: [r] })
+  }
+  return out.map((x) => ({ ...x, batch: x.items.length > 1 || (x.items[0].batchSize || 1) > 1 }))
+}
+
 async function renderRequests() {
   const [d, xr] = await Promise.all([post('requests').then(need), post('extraRequests')])
   const extras = xr.ok ? xr.data.requests : []
@@ -1153,7 +1166,11 @@ async function renderRequests() {
       <div class="jp-seg" id="rq-f">${[['pending', 'Waiting'], ['offered', 'Offered'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.reqFilter === v}">${l}</button>`).join('')}</div></div>
     ${extraRequestsHtml(extras)}
     ${extras.length ? '<h2 style="font-size:16px;margin:0 0 10px">Applications, waitlist and enquiries</h2>' : ''}
-    ${list.length ? list.map((r) => `<article class="j-card" style="padding:16px;margin-bottom:10px">
+    ${list.length ? batched(list).map((x) => (x.batch ? `<section class="j-card" style="padding:12px;margin-bottom:12px;border:2px solid var(--j-line, #e5e7eb)">
+      <p class="small" style="margin:2px 4px 10px"><span class="j-pill j-pill-blue">${esc(Math.max(x.items[0].batchSize || 0, x.items.length))} sessions in one go</span> <b style="margin-left:6px">${esc(x.items[0].players.map((p) => p.name).join(' and '))}</b> <span class="muted">· answer each session on its own${x.items.length < (x.items[0].batchSize || 0) - (x.items[0].batchPaying || []).length ? ' · the others are under another filter' : ''}${(x.items[0].batchPaying || []).length ? ` · also booking and paying online for ${esc(x.items[0].batchPaying.length)} more` : ''}</span></p>
+      ${x.items.map(reqCard).join('')}</section>` : reqCard(x.items[0]))).join('') : '<div class="j-empty">Nothing here.</div>'}`
+  function reqCard(r) {
+    return `<article class="j-card" style="padding:16px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><span class="j-pill j-pill-${kind[r.kind]?.[0] || 'grey'}">${esc(kind[r.kind]?.[1] || r.kind)}</span> <b style="margin-left:6px">${esc(r.players.map((p) => `${p.name}${p.age != null ? `, ${p.age}` : ''}`).join(' and '))}</b>
         ${(r.siblings || []).length ? `<span class="j-pill j-pill-green" style="margin-top:4px">Sibling of ${esc(r.siblings.map((x) => x.name).join(', '))} (paid)</span>` : ''}
         <p class="muted small" style="margin-top:4px">Wants <b>${esc(r.group)}</b> · ${esc(new Date(r.createdAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</p></div>
@@ -1163,7 +1180,8 @@ async function renderRequests() {
       ${r.message ? `<p class="small j-box j-box-grey" style="margin-top:8px">${esc(r.message)}</p>` : ''}
       ${r.players.some((p) => p.isNew) ? `<p class="muted small" style="margin-top:6px">New to JFP${r.players.some((p) => p.waiver) ? ', waiver signed' : ''}.</p>` : r.players.some((p) => p.waiver) ? '<p class="muted small" style="margin-top:6px">Waiver signed with the application.</p>' : ''}
       ${['pending', 'offered'].includes(r.status) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${r.status === 'pending' && r.kind !== 'enquiry' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-offer="${esc(r.id)}">Accept for the term</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-trial="${esc(r.id)}">Trial first</button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-decline="${esc(r.id)}">Decline</button><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-done="${esc(r.id)}">Mark done</button></div>` : ''}
-    </article>`).join('') : '<div class="j-empty">Nothing here.</div>'}`
+    </article>`
+  }
   $('rq-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { P.reqFilter = b.dataset.f; renderRequests() } })
   view().querySelectorAll('[data-xr-status]').forEach((b) => b.addEventListener('click', async () => {
     b.disabled = true

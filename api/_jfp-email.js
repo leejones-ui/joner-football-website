@@ -464,6 +464,41 @@ export async function sendRequestReceived({ request, group, config }) {
   return send({ to: [{ email: request.email, name: request.parentName }], subject: `Received: your JFP ${KIND_WORD[request.kind] || 'request'}`, html: shell({ heading: 'We have your request', body }), kind: 'request received' })
 }
 
+// Several sessions in one go (Lee, 14 Oct 2026): one email that lists them all.
+// paying: Book now groups the family pays for next, one at a time on Stripe.
+function batchList(config, items) {
+  return `<ul style="margin:0 0 14px;padding-left:20px">${items.map(([word, g]) => `<li style="margin:6px 0;font-size:15px;line-height:1.5;color:#374151;"><b>${esc(g.day)} ${esc(g.time)}, ${esc(locationFor(config, g.location).name)}</b><br><span style="color:#6B7280;font-size:13px;">${esc(word)}</span></li>`).join('')}</ul>`
+}
+const BATCH_WORD = { application: 'Application: we reply within 48 hours', waitlist: 'Waitlist: we email you if a place opens' }
+
+export async function sendBatchReceived({ requests, groups, paying = [], config }) {
+  const first = requests[0]
+  const names = esc(first.players.map((x) => x.name).join(' and '))
+  const n = requests.length + paying.length
+  const body = `${p(`Thanks ${esc(first.parentName)}.`)}${p(`We have ${names} down for ${n} sessions:`)}
+${batchList(config, [...requests.map((r, i) => [BATCH_WORD[r.kind] || r.kind, groups[i]]), ...paying.map((g) => ['Book now: your place is confirmed by its own email once it is paid', g])])}
+${requests.some((r) => r.kind === 'application') ? p('Each application is looked at on its own. For each one we reply within 48 hours with a place for the term, a trial session first, or a group that suits better.') : ''}
+${p('You can see every request any time in My account.')}`
+  return send({ to: [{ email: first.email, name: first.parentName }], subject: `Received: your JFP requests for ${n} sessions`, html: shell({ heading: 'We have your requests', body }), kind: 'request received' })
+}
+
+export async function sendBatchAlert({ requests, groups, paying = [], config }) {
+  const first = requests[0]
+  const n = requests.length + paying.length
+  const body = `${p(`One family picked ${n} sessions in one go. Each request is on its own card in Requests, grouped together.`)}
+${batchList(config, [...requests.map((r, i) => [KIND_WORD[r.kind] || r.kind, groups[i]]), ...paying.map((g) => ['Booking and paying online (separate payment)', g])])}
+${rows([
+    ['Players', first.players.map((x) => `${esc(x.name)}${x.age != null ? ` (${esc(x.age)})` : ''}`).join(', ')],
+    ...Object.entries(first.answers || {}).map(([k, v]) => [ANSWER_LABELS[k] || k, esc(v)]),
+    ...(first.answers?.club ? [] : [['Club', esc(first.club || 'Not given')]]),
+    ['Parent', esc(first.parentName)],
+    ['Email', esc(first.email)],
+    ['Mobile', esc(first.mobile)],
+    ['Message', esc(first.message || 'None')],
+  ])}${p('Review them in the JFP portal.')}`
+  return send({ to: staffTo(config), subject: `JFP ${n} sessions: ${first.players.map((x) => x.name).join(', ')}`, html: shell({ heading: `New requests for ${n} sessions`, body }), replyTo: first.email })
+}
+
 // A kind no: this group is not the right fit, maybe another one is.
 export async function sendDeclined({ request, group, config, message, suggestions = [], siteUrl }) {
   const names = esc(request.players.map((x) => x.name).join(' and '))

@@ -524,3 +524,30 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 /* Portal Messages: a confirm on top of the open message window. */
 .jp-confirm-over { position: fixed; inset: 0; z-index: 1001; background: rgba(0,0,0,.45); display: grid; place-items: center; }
 .jp-confirm-over .jp-modal { position: relative; inset: auto; transform: none; margin: 0; max-width: min(460px, calc(100vw - 24px)); }
+
+/* ---------- several sessions in one go (booking page, Lee 14 Oct 2026) ---------- */
+.j-multi-note { display: flex; gap: 12px; align-items: flex-start; background: var(--j-surface); border: 1px solid var(--j-line); border-left: 4px solid var(--j-action); border-radius: 12px; padding: 12px 14px; margin: 4px 0 14px; }
+.j-multi-note svg { width: 22px; height: 22px; flex-shrink: 0; color: var(--j-green); margin-top: 1px; }
+.j-multi-note b { display: block; font-size: 15px; color: var(--j-ink); }
+.j-multi-note span { font-size: 13.5px; color: var(--j-muted); }
+.j-blk.is-picked, .j-group.is-picked { border-color: var(--j-green); box-shadow: 0 0 0 2px var(--j-green-bg), var(--j-shadow); }
+.j-blk .act-picked { background: var(--j-green-bg); color: var(--j-green); border-color: #ABEFC6; }
+.j-btn-picked { background: var(--j-green-bg); color: var(--j-green) !important; border-color: #ABEFC6; }
+.j-gfoot { display: grid; gap: 8px; }
+.j-picks { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: var(--j-surface); border-top: 1px solid var(--j-line); box-shadow: 0 -8px 24px rgba(16, 24, 40, .10); }
+.j-picks-in { max-width: 1180px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.j-picks-what { min-width: 0; display: flex; flex-direction: column; }
+.j-picks-what b { font-size: 15px; }
+.j-picks-list { font-size: 12.5px; color: var(--j-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.j-picks-act { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+body.has-picks .jfp { padding-bottom: 86px; }
+.j-sum { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.j-sum-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; border: 1px solid var(--j-line); border-radius: 12px; padding: 10px 12px; background: var(--j-surface); }
+.j-sum-row.is-bad { border-color: #FDA29B; background: var(--j-red-bg); }
+.j-sum-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.j-sum-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+@media (max-width: 420px) { .j-picks-list { max-width: 46vw; } .j-picks-act .j-btn-ghost { padding: 6px 6px; } }
+@media (min-width: 900px) { .j-picks { padding: 12px 24px; } .j-picks-in { justify-content: flex-end; gap: 20px; } .j-picks-what { margin-right: auto; } }
+body.has-picks .j-toast { bottom: calc(92px + env(safe-area-inset-bottom)); }
+.j-picks-what b { white-space: nowrap; }
+@media (max-width: 420px) { .j-picks-in { gap: 8px; } .j-picks-act .j-btn-dark { padding: 10px 12px; } }

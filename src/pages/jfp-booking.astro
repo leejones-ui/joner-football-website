@@ -2,11 +2,11 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import JfpHeader from '../components/JfpHeader.astro'
 import JfpFooter from '../components/JfpFooter.astro'
-import OneToOneNote from '../components/OneToOneNote.astro'
+import TermWorks from '../components/TermWorks.astro'
 import CreateAccountButton from '../components/CreateAccountButton.astro'
 import '../styles/jfp.css'
 
-import { termInfo, expectations } from '../data/jfp-term-info.js'
+import { termInfo, expectations, groupingLine } from '../data/jfp-term-info.js'
 ---
 
 <BaseLayout title="JFP Term 4 | Joner Football" description="Joner Football Performance Program, Term 4 timetable and bookings." canonical="https://jonerfootball.com/jfp-booking/" noindex hideChrome hideMobileAppCta>
@@ -45,6 +45,10 @@ import { termInfo, expectations } from '../data/jfp-term-info.js'
         </nav>
 
         <section data-panel="timetable">
+          <div class="j-multi-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4" /><path d="M8 12.5l2.6 2.6L16 9.6" /></svg>
+            <p><b>You can apply for more than one session. Pick as many as suit you.</b><span>Tap a session, then Add to my sessions. Send them all in one go.</span></p>
+          </div>
           <div class="j-locs" id="locs"></div>
           <div class="j-filters" role="group" aria-label="Filters">
             <select class="j-pillselect" id="f-loc" aria-label="Location"><option value="">All locations</option></select>
@@ -55,6 +59,7 @@ import { termInfo, expectations } from '../data/jfp-term-info.js'
           <div class="j-daybar" id="daybar" role="tablist" aria-label="Day"></div>
           <div id="results" aria-live="polite"></div>
         </section>
+        <div class="j-picks" id="picks-bar" role="region" aria-label="Your sessions" hidden></div>
 
         <section data-panel="term" hidden>
           <div class="j-term">
@@ -65,16 +70,17 @@ import { termInfo, expectations } from '../data/jfp-term-info.js'
               <dl class="j-termlist">{termInfo.map(([t, d]) => <div><dt>{t}</dt><dd>{d}</dd></div>)}</dl>
             </div>
           </div>
+          <h2 class="j-tw-head">How the term works</h2>
+          <TermWorks variant="jfp" />
           <div class="j-term-two">
             <div class="j-pbox"><h3>What we expect</h3><ul class="j-good">{expectations.map((e) => <li>{e}</li>)}</ul></div>
             <div class="j-pbox"><h3>Good to know</h3><ul class="j-good">
-              <li>Groups are small and placed by level, so every player is challenged.</li>
+              <li>{groupingLine}</li>
               <li>Only really bad storms cancel a session. Afternoon sessions at the HQ are indoors.</li>
               <li>A place is held once it is paid.</li>
               <li>Questions? <button type="button" class="j-foot-link" style="display:inline;color:inherit;text-decoration:underline" data-contact>Contact us</button>.</li>
             </ul></div>
           </div>
-          <OneToOneNote variant="jfp" />
         </section>
 
         <section data-panel="pricing" hidden>
@@ -102,6 +108,8 @@ import { termInfo, expectations } from '../data/jfp-term-info.js'
 <style>
   .j-gate-account { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--j-line); display: grid; gap: 8px; }
   .j-hero-account { margin-top: 12px; }
+  .j-tw-head { margin: 26px 0 12px; font-size: 20px; }
+  .j-multi-note p { margin: 0; }
 </style>
 
 <script>
