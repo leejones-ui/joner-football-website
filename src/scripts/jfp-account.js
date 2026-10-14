@@ -4,7 +4,8 @@
 // term info, holidays and camps, training videos, the app and contact.
 // Phones first: a bottom tab bar on phones, a side bar on big screens.
 import { $, esc, api, toast, openSheet, closeSheet, signIn, whoAmI, signOut, waiverBlock, recaptcha } from './jfp-common.js'
-import { termInfo, expectations, links } from '../data/jfp-term-info.js'
+import { termInfo, expectations, links, groupingLine, termExtras } from '../data/jfp-term-info.js'
+import { oneToOneSummary } from '../data/jfp-one-to-one.js'
 import { hqVideos, pitchVideos, reels, socials, contacts, hq, holidays } from '../data/jfp-account-media.js'
 import { ic } from './jfp-account-icons.js'
 import { first, initials, money, pageHead, hero, secHead } from './jfp-account-ui.js'
@@ -670,13 +671,12 @@ function renderTerm() {
   const weeks = D.weeks || 10
   const facts = [
     ...termInfo.filter(([t]) => t !== 'New booking system'),
-    ['Groups', 'Coaches group players by age first, then ability. Groups are small, and players can move up when they need a stronger challenge.'],
+    ['Groups', groupingLine],
+    ['1 on 1 training', oneToOneSummary],
   ]
   el.innerHTML = `${hero({ img: `${IMG}/photos/ntra-field-1600x900.webp`, imgSmall: `${IMG}/photos/ntra-field-900x1100.webp`, kicker: 'About', title: esc(D.term), lede: `${weeks} weeks of small-group training at Belrose HQ, North Turramurra and Rydalmere${D.termStart ? `, from the week of ${esc(niceIso(D.termStart))}` : ''}.` })}
-    <div class="ja-grid ja-grid-3">
-      ${[['01', 'Technique first', 'Ball mastery, 1v1 detail, weak foot work and game-relevant habits.'], ['02', 'High energy', 'Sharp, intense, demanding sessions. Real standards.'], ['03', 'Real development', 'Long-term growth across technical, physical and mental.']].map(([n, t, d]) => `<div class="ja-fact" style="border:1px solid var(--ja-line);border-radius:22px"><span class="n">${n}</span><h3>${t}</h3><p>${d}</p></div>`).join('')}
-    </div>
     <section class="ja-sec">${secHead('How the term works')}<div class="ja-facts">${facts.map(([t, d], i) => `<div class="ja-fact"><span class="n">${String(i + 1).padStart(2, '0')}</span><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('')}</div></section>
+    <section class="ja-sec">${secHead('Want more?')}<div class="ja-grid ja-grid-2">${termExtras.map((x) => `<div class="ja-card" style="padding:22px"><h3 class="ja-h3">${esc(x.title)}</h3><p class="ja-small ja-muted" style="margin:6px 0 14px">${esc(x.text)}</p><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-go="${esc(x.key)}">${esc(x.cta)}</button></div>`).join('')}</div></section>
     <section class="ja-sec ja-split">
       <div class="ja-card" style="padding:26px"><p class="ja-kicker"><i></i>Every session</p><h2 class="ja-h2" style="margin-top:10px">Come ready</h2>
         <ul class="ja-ticks">${[...expectations.slice(0, 1), 'JF playing kit, boots for synthetic, shin guards and a drink bottle.', 'A waterproof jacket when it is wet. Only really bad storms change a session, and Belrose HQ is indoors.', ...expectations.slice(2)].map((x) => `<li>${ic('check')}<span>${esc(x)}</span></li>`).join('')}</ul>
