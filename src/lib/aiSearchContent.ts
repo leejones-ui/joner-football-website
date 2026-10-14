@@ -21,7 +21,7 @@ export const aiSearchQuestions = [
   },
   {
     q: 'What is the Joner Football App?',
-    a: 'The Joner Football App is a football training app for players, parents and coaches. It gives users drills, programmes, session plans and coaching detail so they know exactly what to train.',
+    a: 'The Joner Football App is a football training app for players, parents and coaches. It gives users drills, programs, session plans and coaching detail so they know exactly what to train.',
   },
 ]
 

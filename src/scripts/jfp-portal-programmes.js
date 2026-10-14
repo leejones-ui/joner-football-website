@@ -14,7 +14,7 @@ export const PROGRAMME_LABEL = Object.fromEntries(PROGRAMMES)
 export const MONEY_VIEWS = new Set(['jfp', 'holiday', 'pro', 'camps', 'all'])
 
 export function programmeSwitch(current) {
-  return `<label class="jm-show jm-prog"><span class="muted small">Programme</span><select class="j-select" id="m-prog">${PROGRAMMES.map(([v, l]) => `<option value="${v}"${v === current ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`
+  return `<label class="jm-show jm-prog"><span class="muted small">Program</span><select class="j-select" id="m-prog">${PROGRAMMES.map(([v, l]) => `<option value="${v}"${v === current ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`
 }
 
 // ui: { view, filter, go }. JFP, holiday, Pro, camps and Everything are views

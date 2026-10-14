@@ -9,7 +9,7 @@ export const audiences = [
 ]
 export const goals = [
   { id: 'basics', title: 'Build the basics' },
-  { id: 'programme', title: 'Follow a training programme' },
+  { id: 'programme', title: 'Follow a training program' },
   { id: 'child', title: 'Help my child improve' },
   { id: 'level-up', title: 'Take my game further' },
   { id: 'coaching', title: 'Improve my coaching' },
@@ -22,7 +22,7 @@ export const goals = [
 export const contentGroups = [
   { title: 'Player training', options: [
     { id: 'follow-along', title: 'Solo follow-along training', tier: 'starter' },
-    { id: 'programmes', title: 'Training programmes', tier: 'plus' },
+    { id: 'programmes', title: 'Training programs', tier: 'plus' },
     { id: 'advanced', title: 'Advanced drills & 1v1s', tier: 'plus' },
     { id: 'position', title: 'Position-specific training', tier: 'max' },
     { id: 'goalkeeper', title: 'Goalkeeper training', tier: 'plus' },
@@ -75,7 +75,7 @@ export function recommendAppPlan(answers = {}) {
   for (const option of selected) if (rank[option.tier] > rank[tier]) tier = option.tier
   const name = { starter: 'Starter', plus: 'Plus', max: 'Max' }[tier]
   const matches = fullLibrary ? ['The full App library', 'Everything in Starter and Plus', 'Coaches Only, session plans and breakdowns'] : selected.map(x => x.title)
-  if (!fullLibrary && selectedGoals.includes('programme') && !content.includes('programmes')) matches.unshift('A structured training programme')
+  if (!fullLibrary && selectedGoals.includes('programme') && !content.includes('programmes')) matches.unshift('A structured training program')
   if (!fullLibrary && coaching === 'include' && !content.includes('coach-education')) matches.unshift('Coaches Only resources')
   const reason = {
     starter: 'The right fit for your solo follow-along training.',

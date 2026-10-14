@@ -26,7 +26,7 @@ export function cleanPrice(input = {}, { id = '', now = new Date().toISOString()
   const cents = Number(input.amountCents ?? input.cents)
   if (!Number.isInteger(cents) || cents < PRICE_MIN || cents > PRICE_MAX) return { ok: false, error: 'Enter an amount from A$1 to A$20,000.' }
   const programme = isProgramme(input.programme) ? input.programme : ''
-  if (!programme) return { ok: false, error: 'Pick the programme: JFP, Pro sessions, Joners Juniors, Holiday training or Other.' }
+  if (!programme) return { ok: false, error: 'Pick the program: JFP, Pro sessions, Joners Juniors, Holiday training or Other.' }
   return { ok: true, price: { id: id || before?.id, name, cents, programme, description: clean(input.description, 300), perSession: input.perSession === true, archived: before?.archived === true, createdAt: before?.createdAt || now, updatedAt: now } }
 }
 

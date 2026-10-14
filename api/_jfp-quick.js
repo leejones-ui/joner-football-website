@@ -55,7 +55,7 @@ export function quickLinkInput(body = {}, { price = null, row = null, today, now
   if (!amountCents) return bad('Choose a price or type an amount.')
   if (amountCents > PRICE_MAX) return bad('That is more than A$20,000. Make two links.')
   const programme = isProgramme(body.programme) ? body.programme : price?.programme || ''
-  if (!programme) return bad('Pick the programme.')
+  if (!programme) return bad('Pick the program.')
   const forText = clean(body.forText, FOR_MAX) || (price ? `${price.name}${sessions > 1 ? `, ${sessions} sessions` : ''}` : '')
   if (!forText) return bad('Say what it is for.')
   const email = body.email ? String(body.email).trim().toLowerCase() : ''

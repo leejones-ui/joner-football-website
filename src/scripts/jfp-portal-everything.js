@@ -5,7 +5,7 @@
 import { esc, money } from './jfp-common.js'
 import { moneyHead, bindTip, programmeSwitch, bindSwitch, PROGRAMME_LABEL } from './jfp-portal-programmes.js'
 
-export const EVERYTHING_DEFINITION = 'Each programme for the calendar year picked. JFP: the year\'s terms (this term live; earlier terms from the payment ledger or your Money Register). Joners Juniors: its terms that year. Holiday training: by session date. Pro sessions: by the day the money came in. Camps: from the camp sheets, before camp costs (the Camps view has net after costs). Taken is after refunds; kept is after Stripe\'s fees where they are known (older JFP terms from the register have none).'
+export const EVERYTHING_DEFINITION = 'Each program for the calendar year picked. JFP: the year\'s terms (this term live; earlier terms from the payment ledger or your Money Register). Joners Juniors: its terms that year. Holiday training: by session date. Pro sessions: by the day the money came in. Camps: from the camp sheets, before camp costs (the Camps view has net after costs). Taken is after refunds; kept is after Stripe\'s fees where they are known (older JFP terms from the register have none).'
 const ORDER = ['jfp', 'juniors', 'holiday', 'pro', 'camps']
 const inYear = (rows, year) => rows.filter((r) => String(r.month || '').startsWith(`${year}-`))
 const sum = (list, k) => list.reduce((t, x) => t + (x[k] || 0), 0)
@@ -52,9 +52,9 @@ function totalCard(states) {
   const waiting = ORDER.filter((p) => states[p] === undefined).map((p) => PROGRAMME_LABEL[p])
   const failed = ORDER.filter((p) => states[p]?.error).map((p) => PROGRAMME_LABEL[p])
   const kept = got.every((p) => states[p].keptCents != null) ? sum(got.map((p) => states[p]), 'keptCents') : null
-  return `<section class="jd-card jd-hero jm-hero jm-net je-total" id="e-total"><div><p class="lbl">Kept after Stripe fees, every programme</p><p class="big" id="e-kept">${kept == null ? '–' : esc(money(kept))}</p>
+  return `<section class="jd-card jd-hero jm-hero jm-net je-total" id="e-total"><div><p class="lbl">Kept after Stripe fees, every program</p><p class="big" id="e-kept">${kept == null ? '–' : esc(money(kept))}</p>
     <p class="jm-sum"><span>Taken <b id="e-taken">${esc(money(sum(got.map((p) => states[p]), 'takenCents')))}</b></span></p>
-    ${waiting.length ? `<p class="muted small">Still loading: ${esc(waiting.join(', '))}</p>` : ''}${failed.length ? `<p class="muted small">Not counted (could not be read): ${esc(failed.join(', '))}</p>` : ''}${got.some((p) => states[p].keptCents == null) ? '<p class="muted small">Kept is blank while a programme\'s fees are not known.</p>' : ''}</div></section>`
+    ${waiting.length ? `<p class="muted small">Still loading: ${esc(waiting.join(', '))}</p>` : ''}${failed.length ? `<p class="muted small">Not counted (could not be read): ${esc(failed.join(', '))}</p>` : ''}${got.some((p) => states[p].keptCents == null) ? '<p class="muted small">Kept is blank while a program\'s fees are not known.</p>' : ''}</div></section>`
 }
 
 // ui: { view, filter, go, readers: { jfp(year), juniors(), holiday(), pro(), camps(year) }, stale() }
