@@ -37,7 +37,7 @@ const view = (period = '') => holidayMoneyView({ ...HOL, period })
 await test('holiday training: picked from the Money switch, the newest holiday with money, kept and what makes it up', async () => {
   const p = await openPortal({ money: fresh(), hash: '#money?programme=holiday', onPost: (b) => (b.action === 'holidayMoney' ? { success: true, holiday: view(b.period) } : null) })
   // One Programme menu (13 Oct 2026), holiday training picked.
-  assert.deepEqual([...p.d.querySelectorAll('#m-prog option')].map((o) => [o.textContent, o.selected]), [['JFP', false], ['Joners Juniors', false], ['Holiday training', true], ['Pro sessions', false], ['Camps', false], ['Everything', false]])
+  assert.deepEqual([...p.d.querySelectorAll('#m-prog option')].map((o) => [o.textContent, o.selected]), [['JFP', false], ['Joners Juniors', false], ['Holiday training', true], ['Pro sessions', false], ['Extra sessions', false], ['Camps', false], ['Invoices', false], ['Everything', false]])
   // First paint from the last Stripe read (quick), never a wait on Stripe.
   assert.deepEqual(p.posts.find((b) => b.action === 'holidayMoney'), { action: 'holidayMoney', period: '', quick: true })
   const v = view()

@@ -600,7 +600,7 @@ const events = []
 const faults = new Set()
 // Payments made on Stripe payment links outside the site (seeded by tests).
 const stripeSeeded = []
-const stripeLinks = { plink_jfp850: 'JFP 10 weeks', plink_camp: 'Joner Camp July' }
+const stripeLinks = { plink_jfp850: 'JFP 10 weeks', plink_camp: 'Joner Camp July', plink_coach120: '1 on 1 session' }
 function log(kind, detail) { events.push({ at: new Date().toISOString(), kind, detail }); console.log(`[${kind}] ${detail}`) }
 
 // ---------- request shim ----------
@@ -621,7 +621,7 @@ function shimRes(res) {
 }
 
 const handlers = {}
-for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data', 'jfp-messages', 'jfp-messages-relay', 'jfp-pay', 'jfp-admin', 'juniors-info', 'juniors-registration', 'juniors-payment-webhook']) {
+for (const name of ['holiday-access', 'holiday-slots', 'holiday-book', 'holiday-confirm', 'holiday-payment-webhook', 'holiday-admin', 'jfp-access', 'jfp-groups', 'jfp-book', 'jfp-confirm', 'jfp-auth', 'jfp-account', 'jfp-portal-data', 'jfp-messages', 'jfp-messages-relay', 'jfp-pay', 'jfp-invoice', 'jfp-admin', 'juniors-info', 'juniors-registration', 'juniors-payment-webhook']) {
   handlers[name] = (await import(`../api/${name}.js`)).default
 }
 

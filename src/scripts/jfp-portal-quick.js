@@ -6,12 +6,12 @@
 import { esc, money } from './jfp-common.js'
 import { quoteHtml, wireQuote } from './jfp-portal-quote.js'
 
-export const PROG_PILL = { jfp: 'blue', pro: 'pink', juniors: 'violet', holiday: 'amber', other: 'grey' }
+export const PROG_PILL = { jfp: 'blue', pro: 'pink', extra: 'green', juniors: 'violet', holiday: 'amber', other: 'grey' }
 export const progPill = (id, label) => `<span class="j-pill j-pill-${PROG_PILL[id] || 'grey'}">${esc(label)}</span>`
 const cents = (v) => Math.round(Number(String(v ?? '').replace(/[^0-9.]/g, '')) * 100)
 const dollars = (c) => (c / 100).toFixed(2).replace(/\.00$/, '')
 // Where a paid link with no player waits to be matched.
-export const WHERE = { jfp: 'Money > JFP, Stripe payments not matched to a player', pro: 'Payment links, Pro sessions and Other payments to check', juniors: 'Money > Joners Juniors, payments not matched to a child', holiday: 'Money > Holiday training, Quick links to check', other: 'Payment links, Other payments to check' }
+export const WHERE = { jfp: 'Money > JFP, Stripe payments not matched to a player', extra: 'Money > Extra sessions, Quick links to check', pro: 'Payment links, Pro sessions and Other payments to check', juniors: 'Money > Joners Juniors, payments not matched to a child', holiday: 'Money > Holiday training, Quick links to check', other: 'Payment links, Other payments to check' }
 
 // ---------- Prices ----------
 
@@ -134,7 +134,8 @@ export async function quickModal(ui, { priceId = '' } = {}) {
     <label class="j-field"><span>What it is for</span><input class="j-input" id="ql-for" maxlength="120" placeholder="e.g. Holiday camp, 6 January"></label>
     <div class="j-two"><label class="j-field"><span>Program</span><select class="j-select" id="ql-prog">${programmeOptions(pr.programmes, 'jfp')}</select></label>
     <label class="j-field" id="ql-hol-wrap" hidden><span>Which holidays</span><select class="j-select" id="ql-hol">${pr.holidayPeriods.map((h) => `<option value="${esc(h.id)}">${esc(h.label)}</option>`).join('')}</select></label></div>
-    <div class="j-field"><span>Player (optional)</span><div id="ql-chosen"></div><input class="j-input" id="ql-q" placeholder="Search a player" autocomplete="off"><div id="ql-res"></div></div>
+    <div class="j-field"><span>Player</span><div id="ql-chosen"></div><input class="j-input" id="ql-q" placeholder="Search a player" autocomplete="off"><div id="ql-res"></div></div>
+    <label class="j-field" id="ql-np-wrap"><span>No player? Say why (needed without a player)</span><input class="j-input" id="ql-np" maxlength="200" placeholder="e.g. Raffle ticket, not for a player"></label>
     <label class="j-field"><span>Parent email (optional)</span><input class="j-input" id="ql-email" type="email" inputmode="email" autocomplete="off"></label>
     <label class="j-check"><input type="checkbox" id="ql-afterpay" checked> <span>Afterpay allowed</span></label>
     <p class="muted small" id="ql-note"></p>
@@ -169,6 +170,7 @@ export async function quickModal(ui, { priceId = '' } = {}) {
   const showChosen = () => {
     $('ql-chosen').innerHTML = chosen ? `<div class="jq-chosen"><span><b>${esc(chosen.p.name)}</b><small>${chosen.g ? `${esc(chosen.g.day)} ${esc(chosen.g.time)}` : 'Not in a group'}</small></span><button type="button" class="j-btn j-btn-line j-btn-sm" id="ql-unpick">Remove</button></div>` : ''
     $('ql-q').hidden = Boolean(chosen)
+    $('ql-np-wrap').hidden = Boolean(chosen)
     if (chosen) $('ql-unpick').addEventListener('click', () => { chosen = null; showChosen(); note() })
   }
   $('ql-q').addEventListener('input', async (e) => {
@@ -193,7 +195,10 @@ export async function quickModal(ui, { priceId = '' } = {}) {
       priceId: p?.id || '', amountCents: cents($('ql-amt').value), sessions: p?.perSession ? Math.max(1, Number($('ql-sess').value) || 1) : undefined,
       forText: $('ql-for').value.trim(), programme: $('ql-prog').value, holidayPeriod: $('ql-prog').value === 'holiday' ? $('ql-hol').value : '',
       rowId: chosen?.p.rowId || '', email: $('ql-email').value.trim(), afterpay: $('ql-afterpay').checked, replace,
+      // Every link names its player, or says why not (14 Oct 2026).
+      ...(chosen ? {} : { noPlayerReason: $('ql-np').value.trim() }),
     }
+    if (!chosen && body.noPlayerReason.length < 4) { err.textContent = 'Choose the player this link is for, or say why there is no player.'; err.hidden = false; return }
     if (!(body.amountCents > 0)) { err.textContent = 'Choose a price or type an amount.'; err.hidden = false; return }
     if (!body.forText) { err.textContent = 'Say what it is for.'; err.hidden = false; return }
     $('ql-go').disabled = true

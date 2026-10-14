@@ -50,7 +50,7 @@ const answers = (b) => {
 
 await test('JFP Money: one Programme menu, title and controls in one row, "Updated" with Refresh, the explanation under (i)', async () => {
   const p = await openPortal({ money: fresh(), onPost: answers })
-  assert.deepEqual([...p.d.querySelectorAll('#m-prog option')].map((o) => [o.value, o.textContent, o.selected]), [['jfp', 'JFP', true], ['juniors', 'Joners Juniors', false], ['holiday', 'Holiday training', false], ['pro', 'Pro sessions', false], ['camps', 'Camps', false], ['all', 'Everything', false]])
+  assert.deepEqual([...p.d.querySelectorAll('#m-prog option')].map((o) => [o.value, o.textContent, o.selected]), [['jfp', 'JFP', true], ['juniors', 'Joners Juniors', false], ['holiday', 'Holiday training', false], ['pro', 'Pro sessions', false], ['extra', 'Extra sessions', false], ['camps', 'Camps', false], ['invoices', 'Invoices', false], ['all', 'Everything', false]])
   assert.equal(p.d.querySelectorAll('[data-programme]').length, 0, 'no segmented buttons')
   assert.ok(p.$('.jd-head .jd-sync #m-prog') && p.$('.jd-head .jd-sync #m-show') && p.$('.jd-head .jd-sync #m-add'), 'the controls in one row')
   assert.match(p.text('.jd-head p'), /^Updated \d{1,2}:\d{2} [ap]m · Refresh i$/)

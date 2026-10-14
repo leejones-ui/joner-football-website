@@ -20,6 +20,7 @@
 //   requestExtra  Book extra sessions / Book game analysis: a request to
 //               staff (_jfp-extras.js)
 import { stripeFetch, siteUrl, listSlots } from './_holiday-store.js'
+import { chargeCheckoutMeta } from './_jfp-charges.js'
 import {
   getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, dateLabel,
   formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, sydneyToday, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType, isProType,
@@ -535,7 +536,8 @@ async function nextTermChoice(req, res, parent, body) {
 // The JF playing kit is required for a place in the program (Lee, 30 Sept).
 // A trial is one session, and next term's players already have it.
 // Session by session players already train with us: no kit step.
-function kitRequired(q) { return q.reason !== 'trial' && q.reason !== 'sessions' && !q.next }
+// Player charges and invoices (money engineer, 14 Oct 2026) need no kit step either.
+function kitRequired(q) { return q.reason !== 'trial' && q.reason !== 'sessions' && q.reason !== 'charge' && q.reason !== 'invoice' && !q.next }
 function kitDone(q, rowsById) {
   if (q.kit) return q.kit
   const rows = (q.term4Ids || []).map((id) => rowsById?.get(id)).filter(Boolean)
@@ -636,6 +638,8 @@ async function pay(req, res, parent, body) {
       // jfpProgramme, so it stays where JFP links go until Money splits it.
       ...(q.programme === 'pro' ? { 'metadata[jfpProduct]': 'pro', 'payment_intent_data[metadata][jfpProduct]': 'pro' } : {}),
       'payment_intent_data[metadata][jfpBookingId]': q.id,
+      // The player, and a charge's or invoice's own program (money engineer, 14 Oct 2026).
+      ...chargeCheckoutMeta(q),
       'payment_intent_data[description]': name.slice(0, 400),
     },
   })

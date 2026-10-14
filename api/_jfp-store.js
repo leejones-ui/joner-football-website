@@ -336,6 +336,9 @@ export function normaliseConfig(input = {}) {
     // being chased the moment reminders go on.
     // Extra session prices coaches pick from (Lee and Ligia set them).
     extraPrices: cleanExtraPrices(input.extraPrices),
+    // Invoices (Lee, 14 Oct 2026): bank details shown on an invoice only once
+    // staff save them in Settings; the ABN only if one is saved. Never hardcoded.
+    invoice: cleanInvoiceSettings(input.invoice),
     coachAlerts: {
       newPlayer: input.coachAlerts?.newPlayer === true,
       register: input.coachAlerts?.register === true,
@@ -343,6 +346,22 @@ export function normaliseConfig(input = {}) {
     },
   }
 }
+
+export const INVOICE_REFERENCE = 'INV-<n> <player>'
+export function cleanInvoiceSettings(x = {}) {
+  const digitsOnly = (v, n) => String(v ?? '').replace(/\D/g, '').slice(0, n)
+  const bsb = digitsOnly(x?.bsb, 6)
+  const accountNumber = digitsOnly(x?.accountNumber, 12)
+  const abn = digitsOnly(x?.abn, 11)
+  return {
+    accountName: clean(x?.accountName, 80),
+    bsb: bsb.length === 6 ? bsb : '',
+    accountNumber: accountNumber.length >= 5 ? accountNumber : '',
+    reference: /<n>/.test(String(x?.reference || '')) ? clean(x.reference, 40) : INVOICE_REFERENCE,
+    abn: abn.length === 11 ? abn : '',
+  }
+}
+export const hasBankDetails = (inv) => Boolean(inv?.accountName && inv?.bsb && inv?.accountNumber)
 
 export async function getConfig() { return normaliseConfig((await kvGetJson(keys.config())) || {}) }
 export async function saveConfig(partial) {

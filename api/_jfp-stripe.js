@@ -111,7 +111,7 @@ export async function jfpStripePayments({ since, fresh = false, quick = false, t
   if (!fresh) {
     const hit = await kvGetJson(CACHE)
     // proTagged: read since Pro payments are marked (an older copy is read again once).
-    if (hit && hit.proTagged && hit.since === sinceIso && Array.isArray(hit.payments) && Date.now() - Date.parse(hit.at) < (quick ? 6 * 3600 : CACHE_SECONDS) * 1000) return splitTerms(hit, term)
+    if (hit && hit.proTagged && hit.linkTagged && hit.since === sinceIso && Array.isArray(hit.payments) && Date.now() - Date.parse(hit.at) < (quick ? 6 * 3600 : CACHE_SECONDS) * 1000) return splitTerms(hit, term)
   }
   const gte = Math.floor(Date.parse(`${sinceIso}T00:00:00+10:00`) / 1000)
   const payments = []
@@ -145,6 +145,8 @@ export async function jfpStripePayments({ since, fresh = false, quick = false, t
         product: product || 'JFP',
         source: s.metadata?.jfpBookingId ? 'online' : 'link',
         jfpRef: s.metadata?.jfpBookingId || '',
+        // The Stripe payment link it came through (Match to player remembers it).
+        linkId: typeof s.payment_link === 'string' ? s.payment_link : s.payment_link?.id || '',
         payMethod: charge?.payment_method_details?.type || '',
         ...feeFields(fee),
         nextTerm: NEXT_TERM_SOURCES.has(s.metadata?.source || ''),
@@ -157,7 +159,7 @@ export async function jfpStripePayments({ since, fresh = false, quick = false, t
   }
   // A fee that cannot be found now shows as not known yet, never as nothing.
   try { await fillFees(payments) } catch (error) { console.error('jfp stripe fees failed', error.message) }
-  const out = { since: sinceIso, at: new Date().toISOString(), payments: payments.sort((a, b) => b.at.localeCompare(a.at)), other, proTagged: true }
+  const out = { since: sinceIso, at: new Date().toISOString(), payments: payments.sort((a, b) => b.at.localeCompare(a.at)), other, proTagged: true, linkTagged: true }
   await kvSetJson(CACHE, out)
   return splitTerms(out, term)
 }

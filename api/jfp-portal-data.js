@@ -52,6 +52,10 @@ import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, 
 import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
 import { registerChecks, yearsOf, termsOfYear, termFromLive, termFromLedger, termFromRegister, yearSummary } from './_jfp-years.js'
 import { listExtras, setExtraStatus, KINDS as EXTRA_KINDS } from './_jfp-extras.js'
+import { MONEY_ACTIONS, moneyAction, applyStripeMatch } from './_jfp-money-actions.js'
+import { listMatches, listRules, ruleFor } from './_jfp-stripe-match.js'
+import { listInvoices, openForBank } from './_jfp-invoices.js'
+import { invoiceRefOf } from './_jfp-bank-match.js'
 import { PROGRAMMES, programmeLabel, PRICE_MIN, PRICE_MAX, PRICES_MAX, cleanPrice, allPrices, priceById, quickHolidayPeriods, quickLinkInput, quickStatus, QUICK_STATUS, quickOpen, quickToCheck, quickUrl, QUICK_CHECKED, QUICK_EMAILED } from './_jfp-quick.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -888,6 +892,8 @@ async function recordPaymentCore(principal, config, body) {
     const sid = clean(body.stripeSessionId, 120)
     stripePay = (await jfpStripePayments({ since: config.moneySince, fresh: true, term: config.term })).payments.find((p) => p.id === sid)
     if (!stripePay) return fail(res, 404, 'That Stripe payment was not found.')
+    // Matched to a player as an extra session: it is not term income.
+    if ((await listMatches().catch(() => ({})))[stripePay.id]?.as === 'extra') return fail(res, 409, 'That Stripe payment is matched as an extra session, so it is not a term fee.')
     const ledger = await listLedger(config.term)
     if (ledger.some((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].includes(stripePay.id) || (stripePay.intentId && [l['Payment ID'], l['Stripe Payment Intent ID']].includes(stripePay.intentId)))) return fail(res, 409, 'That Stripe payment is already in the ledger.')
     if (!(amount > 0)) amount = stripePay.amountCents - stripePay.refundedCents
@@ -1005,7 +1011,8 @@ export async function reconcileStripe(config, principal = AUTO, { alert = false 
     const m = await moneyData(config, { fresh: true })
     const ledger = await listLedger(config.term)
     const known = new Set(ledger.flatMap((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].filter(Boolean)))
-    const all = (await jfpStripePayments({ since: config.moneySince, term: config.term })).payments
+    const matches = await listMatches().catch(() => ({}))
+    const all = (await jfpStripePayments({ since: config.moneySince, term: config.term })).payments.filter((p) => matches[p.id]?.as !== 'extra')
     const pays = all.filter((p) => !p.jfpRef && !known.has(p.id) && !(p.intentId && known.has(p.intentId)))
     const byEmail = new Map()
     for (const p of m.players.filter((x) => x.status === 'stripe' && x.email)) byEmail.set(p.email, [...(byEmail.get(p.email) || []), p])
@@ -1022,13 +1029,27 @@ export async function reconcileStripe(config, principal = AUTO, { alert = false 
         if (r.ok) { recorded += 1; gap -= net; done.push(`${rows.map((x) => x.player).join(', ')}: ${formatAud(net)}`) } else failed.push(`${rows[0].player}: ${r.error}`)
       }
     }
+    // Match to player, remembered (14 Oct 2026): a payment through a payment
+    // link, or from an email, staff matched before goes to the same player.
+    const rules = await listRules().catch(() => ({}))
+    const autoMatched = new Set()
+    for (const u of m.unmatched) {
+      const rule = matches[u.id] ? null : ruleFor(rules, u)
+      const p = rule ? all.find((x) => x.id === u.id) : null
+      if (!p) continue
+      const rows = []
+      for (const id of rule.rowIds || []) { const r = await getTerm4Row(id); if (r) rows.push(r) }
+      if (!rows.length) { failed.push(`${(rule.players || []).join(', ')}: the remembered player is not on Term 4 any more`); continue }
+      const r = await applyStripeMatch({ config, principal, payment: p, rows, as: rule.as || 'jfp', label: rule.label || '', rule: rule.key, recordPaymentCore })
+      if (r.ok) { autoMatched.add(u.id); recorded += 1; done.push(`${rows.map((x) => x.player).join(', ')}: ${formatAud(u.cents)} (matched by the remembered ${rule.key.startsWith('link:') ? 'payment link' : 'email'}${rule.as === 'extra' ? ', extra session' : ''})`) } else failed.push(`${rows[0].player}: ${r.error}`)
+    }
     if (alert) {
       // New payments only (last 3 days), each flagged once.
       const fresh = (p) => Date.now() - Date.parse(p.at) < 3 * 86400000
       const once = async (id) => (await kvCommand(['SET', `jfp:stripe-flagged:${id}`, '1', 'NX', 'EX', String(60 * 86400)])) === 'OK'
       const lines = []
       if (done.length) lines.push(`Recorded in Airtable automatically:\n${done.join('\n')}`)
-      for (const u of m.unmatched.filter(fresh)) if (await once(u.id)) lines.push(`Paid but not matched to a player (different email?): ${u.name || 'no name'}, ${formatAud(u.cents)}. Match it in the portal: Money tab.`)
+      for (const u of m.unmatched.filter(fresh)) if (!autoMatched.has(u.id) && !matches[u.id] && await once(u.id)) lines.push(`Paid but not matched to a player (different email?): ${u.name || 'no name'}, ${formatAud(u.cents)}. Match it in the portal: Money tab.`)
       for (const x of skipped.filter((y) => fresh(y.p))) if (await once(x.p.id)) lines.push(`Paid more than Airtable says they owe, not recorded: ${x.who}, ${formatAud(x.p.amountCents - x.p.refundedCents)}. Check the fee in Money.`)
       for (const f of failed) lines.push(`Could not record: ${f}`)
       if (lines.length) await telegramAlert(`JFP Stripe sync\n${lines.join('\n')}`)
@@ -1066,7 +1087,7 @@ const weekOf = (iso) => {
 export async function moneyData(config, { since, fresh = false, quick = false, paint = false } = {}) {
   // quick (first paint): the last Stripe read and the 60 second roster cache.
   const first = paint && quick && !fresh
-  const [rosterAll, groups, ledgerAll, juniors, history, payreqs] = await Promise.all([loadRoster({ fresh: !quick, ...(first ? { maxAgeMs: PAINT_MAX_AGE_MS } : {}) }), listGroups(), listLedger(config.term, { quick, paint: first }).catch(() => []), listJuniors().catch(() => []), listVenueHistory().catch(() => []), listPayreqs().catch(() => [])])
+  const [rosterAll, groups, ledgerAll, juniors, history, payreqs, matches, rules] = await Promise.all([loadRoster({ fresh: !quick, ...(first ? { maxAgeMs: PAINT_MAX_AGE_MS } : {}) }), listGroups(), listLedger(config.term, { quick, paint: first }).catch(() => []), listJuniors().catch(() => []), listVenueHistory().catch(() => []), listPayreqs().catch(() => []), listMatches().catch(() => ({})), listRules().catch(() => ({}))])
   // Pro sessions are their own money (Money > Pro sessions): their rows and
   // the cash or bank transfers recorded on them are not JFP term income, and
   // Pro Stripe payments come back apart (stripe.pro).
@@ -1083,6 +1104,9 @@ export async function moneyData(config, { since, fresh = false, quick = false, p
   try { stripe = { ...(await jfpStripePayments({ since: since || config.moneySince, fresh, quick: quick && !fresh, term: config.term })), error: '' } } catch (error) { console.error('jfp stripe read failed', error); stripe.error = 'Stripe could not be read just now. Airtable figures only.' }
   // The Sydney day each payment was made (before 11 am in summer is still
   // yesterday in UTC), as cash and bank transfers are dated.
+  // Matched to a player as an extra session (Match to player): Extra sessions money, not JFP.
+  const extraIds = new Set(Object.values(matches).filter((x) => x.as === 'extra').map((x) => x.id))
+  if (extraIds.size) stripe = { ...stripe, payments: stripe.payments.filter((p) => !extraIds.has(p.id)), next: (stripe.next || []).filter((p) => !extraIds.has(p.id)) }
   for (const p of [...stripe.payments, ...(stripe.next || [])]) p.day = sydneyToday(Date.parse(p.at))
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
   const holding = roster.players.filter((r) => r.holdsPlace && !isTestName(r.player))
@@ -1268,7 +1292,7 @@ export async function moneyData(config, { since, fresh = false, quick = false, p
     nextTermPayments: nextTerm.slice(0, 60).map((p) => ({ id: p.id, at: p.at, name: p.name, email: p.email, cents: net(p), feeCents: p.feeKnown ? p.feeCents : null, product: p.product, forTerm: p.forTerm })),
     locations,
     players,
-    unmatched: unmatched.map((p) => ({ id: p.id, at: p.at, name: p.name, email: p.email, cents: net(p), product: p.product, ...(unplaced(p) ? { quickLink: p.jfpRef } : {}) })),
+    unmatched: unmatched.map((p) => { const rule = ruleFor(rules, p); return { id: p.id, at: p.at, name: p.name, email: p.email, cents: net(p), product: p.product, linkId: p.linkId || '', ...(rule ? { remembered: { key: rule.key, players: rule.players, as: rule.as } } : {}), ...(unplaced(p) ? { quickLink: p.jfpRef } : {}) } }),
     otherStripe: stripe.other,
   }
 }
@@ -1305,8 +1329,8 @@ async function bankExtras(config) {
   return { term, prev, hol }
 }
 async function bankCheck(config) {
-  const [src, m, ledger, ignored, recorded, extra, roster] = await Promise.all([bankSources(), moneyData(config, { quick: true }), listLedger(config.term).catch(() => []), kvCommand(['SMEMBERS', BANK.ignored]).catch(() => []), bankRecorded(), bankExtras(config), loadRoster().catch(() => ({ players: [] }))])
-  const { items, counts, hidden, before } = matchBank({ items: [...src.xero, ...src.csv], players: m.players, ledger, ignored: Array.isArray(ignored) ? ignored : [], since: config.moneySince, recorded, previous: extra.prev || [], holidaySizes: extra.hol?.sizes || null, termStart: config.termStart })
+  const [src, m, ledger, ignored, recorded, extra, roster, invoices] = await Promise.all([bankSources(), moneyData(config, { quick: true }), listLedger(config.term).catch(() => []), kvCommand(['SMEMBERS', BANK.ignored]).catch(() => []), bankRecorded(), bankExtras(config), loadRoster().catch(() => ({ players: [] })), listInvoices().catch(() => [])])
+  const { items, counts, hidden, before } = matchBank({ items: [...src.xero, ...src.csv], players: m.players, ledger, ignored: Array.isArray(ignored) ? ignored : [], since: config.moneySince, recorded, previous: extra.prev || [], holidaySizes: extra.hol?.sizes || null, termStart: config.termStart, invoices: openForBank(invoices) })
   const coaches = (extra.hol?.config.coaches || []).slice().sort((a, b) => Number(b.active !== false) - Number(a.active !== false) || a.name.localeCompare(b.name)).map((c) => ({ id: c.id, name: c.name }))
   return {
     sources: { xeroAt: src.xeroAt, xeroItems: src.xero.length, csvAt: src.csvAt, csvItems: src.csv.length }, items: items.slice(0, 300), counts, hidden: hidden.slice(0, 60),
@@ -1336,7 +1360,7 @@ async function bankUpload(res, principal, config, body) {
   const sizes = feeSizes(players)
   // Holiday training and last term's families count as JFP money too.
   const extra = await bankExtras(config)
-  const keep = (x) => looksJfp(x, players, sizes) || Boolean(extra.hol?.sizes.has(x.cents)) || (extra.prev || []).some((r) => rowScore(x, r).score >= 1)
+  const keep = (x) => looksJfp(x, players, sizes) || Boolean(extra.hol?.sizes.has(x.cents)) || (extra.prev || []).some((r) => rowScore(x, r).score >= 1) || Boolean(invoiceRefOf(x))
   const fresh = parsed.map((l, i) => ({ id: ids[i], date: l.date, cents: l.cents, payer: l.description, description: l.description })).filter(keep)
   if ((await kvCommand(['SET', 'jfp:bank-csv-lock', '1', 'NX', 'EX', '10'])) !== 'OK') return fail(res, 409, 'Another upload is saving. Try again in a moment.')
   try { return await bankSave(res, principal, fresh, parsed.length) } finally { await kvCommand(['DEL', 'jfp:bank-csv-lock']) }
@@ -2147,8 +2171,9 @@ async function quickLink(req, res, principal, config, body) {
     row = await getTerm4Row(clean(body.rowId, 30))
     if (!row) return fail(res, 404, 'Player row not found.')
   }
-  const r = quickLinkInput(body, { price, row, today: sydneyToday() })
-  if (!r.ok) return fail(res, r.status, r.error)
+  // Every portal link is tied to a player, or says why not (Ligia, 14 Oct 2026).
+  const r = quickLinkInput(body, { price, row, today: sydneyToday(), requirePlayer: true })
+  if (!r.ok) return fail(res, r.status, r.error, r.code ? { code: r.code } : {})
   const group = r.link.groupId ? await getGroup(r.link.groupId) : null
   const q = { ...r.link, id: newId('PAY'), groupLabel: group ? groupSummary(group, config) : '', createdBy: principal.email, siteUrl: siteUrl(req) }
   // A JFP link for a player records on their row, so one open link per
@@ -2162,7 +2187,7 @@ async function quickLink(req, res, principal, config, body) {
     }
   }
   await savePayreq(q)
-  await audit({ by: principal.email, action: 'quick.create', target: q.id, after: { cents: q.amountCents, programme: q.programme, price: q.priceId, row: q.rowId, email: Boolean(q.email) } })
+  await audit({ by: principal.email, action: 'quick.create', target: q.id, after: { cents: q.amountCents, programme: q.programme, price: q.priceId, row: q.rowId, email: Boolean(q.email), ...(q.noPlayerReason ? { noPlayer: q.noPlayerReason } : {}) } })
   return res.status(200).json({ success: true, link: { id: q.id, url: quickUrl(siteUrl(req), q), amountLabel: formatAud(q.amountCents), forText: q.forText, programme: q.programme, programmeLabel: programmeLabel(q.programme), email: q.email, players: q.playerNames, expiresAt: q.expiresAt } })
 }
 
@@ -2898,6 +2923,8 @@ async function handle(req, res) {
     // ---------- Lee and Ligia ----------
     // Joners Juniors: Dashboard, Players, Settings and their changes (_jj-portal.js).
     if (JJ_ACTIONS.has(action)) return await jjAction(req, res, principal, config, body, action)
+    // Player charges, invoices and Match to player (_jfp-money-actions.js).
+    if (MONEY_ACTIONS.has(action)) return await moneyAction(req, res, principal, config, body, action, { recordPaymentCore, bankLineFor, bankGuard, bankClaim, BANK })
     switch (action) {
       case 'board': await sweepExpiredOffers(principal); return res.status(200).json({ success: true, ...(await boardData(config, { fresh: body.fresh === true })), coaches: coachList(config), locations: config.locations.map((l) => ({ id: l.id, name: l.name })) })
       case 'familyInvites': return await familyInvites(req, res, principal, config, body)
@@ -3047,6 +3074,7 @@ async function handle(req, res) {
             effects: q.status === 'paid' ? effectsSummary(q, payEffectsFor(q)) : null, createdBy: q.createdBy, needsAttention: q.needsAttention || '', unexpected: (q.unexpectedPayments || []).map((u) => ({ reason: u.reason, amountLabel: formatAud(u.amountCents), stripeUrl: u.intentId ? `https://dashboard.stripe.com/payments/${u.intentId}` : '' })),
             // Every link has a programme; only quick links can be anything but JFP.
             programme: q.programme || 'jfp',
+            ...(q.charge ? { chargeId: q.charge.id, chargeKind: q.charge.kind } : {}), ...(q.invoiceId ? { invoiceId: q.invoiceId } : {}), ...(q.noPlayerReason ? { noPlayerReason: q.noPlayerReason } : {}), ...(q.paidOffline ? { paidOffline: true, paidMethod: q.paidMethod || '' } : {}),
             ...(q.quick ? quickFields(req, q, { views: Number(views[q.id] || 0), emailedAt: emailed[q.id] || '', checkedAt: checked[q.id] || '' }) : {}),
           })),
         })
@@ -3156,7 +3184,18 @@ async function handle(req, res) {
       case 'saveSettings': {
         const input = body.config || {}
         const patch = {}
-        for (const k of ['passwordRequired', 'moneySince', 'waiverCarryover', 'term', 'termStart', 'weeks', 'prices', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations', 'kitUrl', 'kitNote', 'kitPriceLabel', 'skipDates']) if (k in input) patch[k] = input[k]
+        for (const k of ['passwordRequired', 'moneySince', 'waiverCarryover', 'term', 'termStart', 'weeks', 'prices', 'waiverUrl', 'staffEmails', 'superAdmins', 'coachLoginsEnabled', 'locations', 'kitUrl', 'kitNote', 'kitPriceLabel', 'skipDates', 'invoice']) if (k in input) patch[k] = input[k]
+        // Invoice bank details: all three or none, typed the way the bank has them.
+        if (patch.invoice) {
+          const i = patch.invoice
+          const dig = (v) => String(v ?? '').replace(/\D/g, '')
+          if (i.bsb && dig(i.bsb).length !== 6) return fail(res, 400, 'The BSB is 6 digits, like 062-000.')
+          if (i.accountNumber && (dig(i.accountNumber).length < 5 || dig(i.accountNumber).length > 12)) return fail(res, 400, 'Check the account number.')
+          if (i.abn && dig(i.abn).length !== 11) return fail(res, 400, 'An ABN is 11 digits.')
+          if ([i.accountName, i.bsb, i.accountNumber].some(Boolean) && ![i.accountName, i.bsb, i.accountNumber].every(Boolean)) return fail(res, 400, 'Fill in the account name, BSB and account number, or leave all three empty.')
+          if (i.reference && !/<n>/.test(i.reference)) return fail(res, 400, 'The reference must have <n> in it (the invoice number), like INV-<n> <player>.')
+          patch.invoice = { ...config.invoice, ...i }
+        }
         if (patch.prices) patch.prices = { ...config.prices, ...patch.prices }
         if (Array.isArray(input.coaches)) {
           // Photos are saved by their own action; a settings save never drops one.

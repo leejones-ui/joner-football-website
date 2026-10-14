@@ -8,6 +8,8 @@ import { renderExtra } from './jfp-portal-extra.js'
 import { juniorsCardShell, fillJuniorsCard, juniorsData } from './jfp-portal-juniors.js'
 import { programmeSwitch, bindSwitch, moneyHead, bindTip, prefetchOthers, forget, markUpdated } from './jfp-portal-programmes.js'
 import { renderProMoney, proData } from './jfp-portal-pro.js'
+import { renderExtraMoney } from './jfp-portal-charges.js'
+import { renderInvoices } from './jfp-portal-invoices.js'
 import { renderCampsMoney, campsData } from './jfp-portal-camps.js'
 import { renderEverything } from './jfp-portal-everything.js'
 import { drawFamilies, sessionModal } from './jfp-portal-family.js'
@@ -109,9 +111,12 @@ function start() {
   if (hash === 'money' && qp.get('programme') === 'holiday') Object.assign(P.jf, { programme: 'holiday', period: (qp.get('period') || '').slice(0, 20) })
   // Pro sessions (one month or every month), camps (a year) and everything (a year), 13 Oct 2026.
   if (hash === 'money' && qp.get('programme') === 'pro') Object.assign(P.jf, { programme: 'pro', month: /^\d{4}-\d{2}$/.test(qp.get('month') || '') ? qp.get('month') : '' })
+  // Extra sessions (one month or every month) and Invoices, 14 Oct 2026.
+  if (hash === 'money' && qp.get('programme') === 'extra') Object.assign(P.jf, { programme: 'extra', month: /^\d{4}-\d{2}$/.test(qp.get('month') || '') ? qp.get('month') : '' })
+  if (hash === 'money' && qp.get('programme') === 'invoices') Object.assign(P.jf, { programme: 'invoices' })
   if (hash === 'money' && ['camps', 'all'].includes(qp.get('programme'))) Object.assign(P.jf, { programme: qp.get('programme'), year: /^\d{4}$/.test(qp.get('year') || '') ? Number(qp.get('year')) : 0 })
   if (hash === 'money' && qp.get('loc')) P.moneyFilter = { ...(P.moneyFilter || {}), loc: qp.get('loc') }
-  if (hash === 'money' && !['juniors', 'holiday', 'pro', 'camps', 'all'].includes(qp.get('programme')) && (qp.get('year') || qp.get('term'))) P.moneyFilter = { ...(P.moneyFilter || {}), year: /^\d{4}$/.test(qp.get('year') || '') ? qp.get('year') : '', term: qp.get('year') ? '' : (qp.get('term') || '').slice(0, 30) }
+  if (hash === 'money' && !['juniors', 'holiday', 'pro', 'extra', 'invoices', 'camps', 'all'].includes(qp.get('programme')) && (qp.get('year') || qp.get('term'))) P.moneyFilter = { ...(P.moneyFilter || {}), year: /^\d{4}$/.test(qp.get('year') || '') ? qp.get('year') : '', term: qp.get('year') ? '' : (qp.get('term') || '').slice(0, 30) }
   go(tabs().some(([k]) => k === hash) ? hash : tabs()[0][0])
 }
 
@@ -1770,6 +1775,7 @@ const holidayUi = () => ({ view, post, toast, filter: P.jf, programmeSwitch: pro
 const jjUi = () => ({ view, post, need, modal, closeModal, confirmBox, go, filter: P.jf, stale: () => P.tab !== 'jj-money' })
 // Money > Pro sessions, Camps and Everything (13 Oct 2026).
 const proUi = () => ({ view, post, toast, filter: P.jf, go, confirm: confirmBox, saveFile, csvCell, aud, slug, bankStale, stale: () => P.tab !== 'money' || P.jf.programme !== 'pro' })
+const moneyKitUi = (prog) => ({ view, post, toast, modal, closeModal, confirm: confirmBox, copy, filter: P.jf, go, saveFile, csvCell, aud, board: async () => (P.board ||= await need(await post('board'))), pricing: async () => pricing(), coaches: async () => (P.coaches ||= (await need(await post('me'))).coaches), stale: () => P.tab !== 'money' || P.jf.programme !== prog })
 const campsUi = () => ({ view, post, toast, filter: P.jf, go, saveFile, csvCell, aud, stale: () => P.tab !== 'money' || P.jf.programme !== 'camps' })
 const everythingUi = () => ({
   view, filter: P.jf, go, moneyFilter: P.moneyFilter, stale: () => P.tab !== 'money' || P.jf.programme !== 'all',
@@ -2132,6 +2138,8 @@ async function renderMoney(pre) {
   if (P.jf.programme === 'juniors') { P.jf.programme = 'jfp'; return go('jj-money') }
   if (P.jf.programme === 'holiday') return renderHolidayMoney(holidayUi())
   if (P.jf.programme === 'pro') return renderProMoney(proUi())
+  if (P.jf.programme === 'extra') return renderExtraMoney(moneyKitUi('extra'))
+  if (P.jf.programme === 'invoices') return renderInvoices(moneyKitUi('invoices'))
   if (P.jf.programme === 'camps') return renderCampsMoney(campsUi())
   if (P.jf.programme === 'all') return renderEverything(everythingUi())
   P.moneyFilter = { status: '', q: '', loc: '', view: 'players', term: '', year: '', group: '', coach: '', ptype: '', owing: '', ...(P.moneyFilter || {}) }
@@ -2198,7 +2206,7 @@ async function renderMoney(pre) {
     drawTools()
     // Payments not tied to a player belong to no venue, so they show under All only.
     $('m-unmatched').innerHTML = !s.id && m.unmatched.length ? `<details class="jd-card" style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">${m.unmatched.length} Stripe payment${m.unmatched.length === 1 ? '' : 's'} not matched to a player</summary><p class="sub" style="margin:6px 0 10px">Paid with an email that is not on any Term 4 row. Match each one to the player it was for.</p>
-      <ul class="jm-hist">${m.unmatched.map((u) => `<li><span><b>${esc(u.name || u.email || 'No name')}</b><small>${esc(u.email)} · ${esc(new Date(u.at).toLocaleDateString('en-AU'))} · ${esc(u.product)}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(u.cents))}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-match="${esc(u.id)}">Match</button></span></li>`).join('')}</ul></details>` : ''
+      <ul class="jm-hist">${m.unmatched.map((u) => `<li><span><b>${esc(u.name || u.email || 'No name')}</b><small>${esc(u.email)} · ${esc(new Date(u.at).toLocaleDateString('en-AU'))} · ${esc(u.product)}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(u.cents))}</span>${u.remembered ? `<span class="j-pill j-pill-blue" title="Matches itself at the next Stripe sync">Remembered: ${esc((u.remembered.players || []).join(', '))}</span>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-match="${esc(u.id)}">Match to player</button></span></li>`).join('')}</ul></details>` : ''
   }
   // The Players page toolbar (Lee, 14 Oct 2026): search, Payment, Group,
   // Coach, More filters, Clear, then quick chips with counts.
@@ -2416,24 +2424,39 @@ function pickPlayerModal(what, pick) {
   })
 }
 
+// Match a Stripe payment to the player (14 Oct 2026): on their term fee, or
+// as an extra session (not term income), and remembered for that payment
+// link or email so the next one matches itself and is never flagged.
 function matchModal(u) {
-  const box = modal(`<h2 style="margin-bottom:4px">Match a Stripe payment</h2><p class="muted small" style="margin-bottom:12px">${esc(u.name || u.email)} · ${esc(money(u.cents))} · ${esc(new Date(u.at).toLocaleDateString('en-AU'))}</p>
+  const box = modal(`<h2 style="margin-bottom:4px">Match to player</h2><p class="muted small" style="margin-bottom:12px">${esc(u.name || u.email)} · ${esc(money(u.cents))} · ${esc(new Date(u.at).toLocaleDateString('en-AU'))} · ${esc(u.product || '')}</p>
     <label class="j-field"><span>Who was it for?</span><input class="j-input" id="mt-q" placeholder="Type a player or parent name" autocomplete="off"></label>
-    <div id="mt-res"></div>`, { wide: true })
+    <div id="mt-res"></div><div id="mt-chosen"></div>
+    <div class="j-two"><label class="j-field"><span>What it paid for</span><select class="j-select" id="mt-as"><option value="jfp">Their term fee (JFP)</option><option value="extra">An extra session (not term income)</option></select></label>
+    <label class="j-field"><span>Next time</span><select class="j-select" id="mt-rem">${u.linkId ? '<option value="link">Remember this payment link</option>' : ''}${u.email ? '<option value="email">Remember this email</option>' : ''}<option value="">Do not remember</option></select></label></div>
+    <p class="muted small">Remembered: the next payment through the same ${u.linkId ? 'Stripe payment link' : 'email'} goes to the same player on its own, and is not flagged on Telegram.</p>
+    <p class="j-err" id="mt-err" hidden></p>
+    <div class="jq-foot"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="mt-go" disabled>Match</button></div>`, { wide: true })
   const res = box.querySelector('#mt-res')
+  let pick = null
   box.querySelector('#mt-q').addEventListener('input', (e) => {
     const q = e.target.value.trim().toLowerCase()
     const hits = q.length < 2 ? [] : P.money.players.filter((p) => `${p.player} ${p.parent}`.toLowerCase().includes(q)).slice(0, 8)
     res.innerHTML = hits.map((p) => `<button type="button" class="j-player" data-pick="${esc(p.rowId)}"><span><b>${esc(p.player)}</b><br><span class="muted small">${esc(p.parent || '')} · ${esc(p.group)}</span></span>${statusPill(p.status)}</button>`).join('')
   })
-  res.addEventListener('click', async (e) => {
+  res.addEventListener('click', (e) => {
     const b = e.target.closest('[data-pick]'); if (!b) return
-    const p = P.money.players.find((x) => x.rowId === b.dataset.pick)
-    if (!(await confirmBox(`Record ${esc(money(u.cents))} from Stripe against <b>${esc(p.player)}</b>?`, { ok: 'Record' }))) return
+    pick = P.money.players.find((x) => x.rowId === b.dataset.pick)
+    res.innerHTML = ''
+    box.querySelector('#mt-chosen').innerHTML = `<div class="jq-chosen"><span><b>${esc(pick.player)}</b><small>${esc(pick.group)}</small></span></div>`
+    box.querySelector('#mt-go').disabled = false
+  })
+  box.querySelector('#mt-go').addEventListener('click', async () => {
+    if (!pick) return
+    const as = box.querySelector('#mt-as').value
     // Already marked paid by hand: only link the Stripe payment to the row.
-    const r = await post('recordPayment', { rowIds: [p.rowId], method: 'Stripe', stripeSessionId: u.id, existing: p.unledgeredCents >= u.cents && !p.owingCents })
-    if (!r.ok) return toast(r.data.error)
-    closeModal(); toast('Recorded. Airtable updated.'); renderMoney()
+    const r = await post('stripeMatch', { paymentId: u.id, rowIds: [pick.rowId], as, remember: box.querySelector('#mt-rem').value, existing: as === 'jfp' && pick.unledgeredCents >= u.cents && !pick.owingCents })
+    if (!r.ok) { const e = box.querySelector('#mt-err'); e.textContent = r.data.error; e.hidden = false; return }
+    closeModal(); toast(as === 'extra' ? 'Matched as an extra session.' : 'Recorded. Airtable updated.'); renderMoney()
   })
 }
 
@@ -3449,6 +3472,11 @@ async function renderSettings() {
       <div class="j-two"><label class="j-field"><span>JF playing kit link (required, families confirm it before paying)</span><input class="j-input" id="s-kit" value="${esc(c.kitUrl || '')}" placeholder="https://"></label>
       <label class="j-field"><span>Kit price shown to families</span><input class="j-input" id="s-kitprice" value="${esc(c.kitPriceLabel || 'A$60')}" maxlength="20"></label></div>
       <label class="j-field"><span>Line above the button</span><input class="j-input" id="s-kitnote" value="${esc(c.kitNote || '')}" maxlength="300"></label>
+      <h2 style="margin:16px 0 6px">Invoices</h2>
+      <p class="muted small" style="margin-bottom:10px">Shown on invoices only once all three bank fields are saved, so families can pay by bank transfer. Leave them empty for card only. The ABN shows on invoices only if you save one.</p>
+      <div class="j-two"><label class="j-field"><span>Account name</span><input class="j-input" id="s-inv-name" maxlength="80" value="${esc(c.invoice?.accountName || '')}"></label><label class="j-field"><span>BSB</span><input class="j-input" id="s-inv-bsb" inputmode="numeric" maxlength="7" value="${esc(c.invoice?.bsb || '')}"></label></div>
+      <div class="j-two"><label class="j-field"><span>Account number</span><input class="j-input" id="s-inv-acc" inputmode="numeric" maxlength="12" value="${esc(c.invoice?.accountNumber || '')}"></label><label class="j-field"><span>Reference format</span><input class="j-input" id="s-inv-ref" maxlength="40" value="${esc(c.invoice?.reference || 'INV-<n> <player>')}"></label></div>
+      <label class="j-field" style="max-width:360px"><span>ABN (optional)</span><input class="j-input" id="s-inv-abn" inputmode="numeric" maxlength="14" value="${esc(c.invoice?.abn || '')}"></label>
       <h2 style="margin:16px 0 12px">Waiver</h2>
       <label class="j-check"><input type="checkbox" id="s-wcarry" ${c.waiverCarryover !== false ? 'checked' : ''}> <span><b>Accept waivers signed in an earlier term.</b> Off: every family signs again for ${esc(c.term)}. Either way a waiver only counts when it carries the family's own email or mobile.</span></label>
       <label class="j-field"><span>Backup waiver form link</span><input class="j-input" id="s-waiver" value="${esc(c.waiverUrl)}"></label>
@@ -3471,6 +3499,7 @@ async function renderSettings() {
       passwordRequired: $('s-pw').checked, waiverCarryover: $('s-wcarry').checked,
       term: $('s-term').value.trim(), termStart: $('s-start').value, weeks: Number($('s-weeks').value),
       superAdmins: lines('s-admins'), staffEmails: lines('s-staff'), waiverUrl: $('s-waiver').value.trim(), kitUrl: $('s-kit').value.trim(), kitNote: $('s-kitnote').value.trim(), kitPriceLabel: $('s-kitprice').value.trim(), skipDates: skips,
+      invoice: { accountName: $('s-inv-name').value.trim(), bsb: $('s-inv-bsb').value.trim(), accountNumber: $('s-inv-acc').value.trim(), reference: $('s-inv-ref').value.trim(), abn: $('s-inv-abn').value.trim() },
       locations: c.locations.map((l) => { const box = view().querySelector(`[data-loc="${CSS.escape(l.id)}"]`); const v = { ...l }; box.querySelectorAll('[data-lf]').forEach((i) => { v[i.dataset.lf] = i.value.trim() }); return v }),
     }
     const r = await post('saveSettings', { config })

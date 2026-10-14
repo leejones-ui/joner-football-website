@@ -29,7 +29,7 @@ await test('a price needs a name, an amount from A$1 to A$20,000 and a programme
   assert.match(cleanPrice({ name: 'X', amountCents: 500, programme: 'camp' }).error, /Pick the program/)
   const r = cleanPrice({ name: '  Camp day  ', amountCents: 6500, programme: 'holiday', perSession: true, description: 'x'.repeat(400) }, { id: 'PR-9-ZZZZZZ', now: '2026-10-13T00:00:00Z' })
   assert.deepEqual(r.price, { id: 'PR-9-ZZZZZZ', name: 'Camp day', cents: 6500, programme: 'holiday', description: 'x'.repeat(300), perSession: true, archived: false, createdAt: '2026-10-13T00:00:00Z', updatedAt: '2026-10-13T00:00:00Z' })
-  assert.deepEqual(PROGRAMMES.map(([id]) => id), ['jfp', 'pro', 'juniors', 'holiday', 'other'], 'Pro sessions is a programme (13 Oct 2026)')
+  assert.deepEqual(PROGRAMMES.map(([id]) => id), ['jfp', 'pro', 'extra', 'juniors', 'holiday', 'other'], 'Pro sessions is a programme (13 Oct 2026)')
 })
 
 await test('the saved price list keeps every good price, drops broken ones, and the JFP price keys still work', () => {
@@ -261,10 +261,16 @@ await test('Quick link with a typed amount and no email: no Email it button; a r
   setValue(p, '#ql-amt', '12')
   setValue(p, '#ql-for', 'Ball')
   setValue(p, '#ql-prog', 'other', 'change')
+  // No player and no reason: refused in the page (14 Oct 2026), nothing posted.
+  await p.click('#ql-go')
+  assert.equal(p.text('#ql-err'), 'Choose the player this link is for, or say why there is no player.')
+  assert.equal(p.posts.filter((b) => b.action === 'quickLink').length, 0)
+  setValue(p, '#ql-np', 'A ball for the shop')
   await p.click('#ql-go')
   assert.equal(p.text('#ql-err'), 'Say what it is for.')
   await p.click('#ql-go')
   assert.deepEqual((({ priceId, amountCents, programme, rowId, email }) => ({ priceId, amountCents, programme, rowId, email }))(p.posts.filter((b) => b.action === 'quickLink').at(-1)), { priceId: '', amountCents: 1200, programme: 'other', rowId: '', email: '' })
+  assert.equal(p.posts.filter((b) => b.action === 'quickLink').at(-1).noPlayerReason, 'A ball for the shop')
   assert.equal(p.$('#qr-email'), null)
   assert.match(p.text('#qr-note'), /Nothing has been sent\. Copy it/)
   assert.deepEqual(p.errors, [])

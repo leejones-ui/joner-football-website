@@ -20,9 +20,14 @@ const cents = (aud) => (typeof aud === 'number' && Number.isFinite(aud) ? Math.r
 const dayOf = (iso) => (iso ? sydneyToday(Date.parse(iso)) : '')
 const METHOD = { card: 'Card', afterpay_clearpay: 'Afterpay', link: 'Card', apple_pay: 'Apple Pay', google_pay: 'Google Pay' }
 const RECEIPT_LOOKUPS = 8
+const PROGRAMME_NAME = { jfp: 'JFP', pro: 'Pro sessions', extra: 'Extra sessions', other: 'Joner Football' }
+// A charge or invoice paid by bank or cash reads paid on its request (paidOffline).
+const OFFLINE_METHOD = { bank: 'Bank transfer', cash: 'Cash', other: 'Other' }
 
 // What a JFP payment request was for, in plain words.
 export function payreqWhat(q, term) {
+  // A player charge or an invoice (money engineer, 14 Oct 2026): its own label.
+  if (q.charge || q.invoiceId) return q.groupLabel || q.productLabel || 'Joner Football'
   if (q.prepay?.commit) return `Commitment: ${q.prepay.sessions} sessions in a row at ${formatAud(q.prepay.perCents)} each`
   if (q.prepay) return `${q.prepay.sessions} session${q.prepay.sessions > 1 ? 's' : ''} paid ahead`
   if (q.reason === 'trial') return 'Trial session'
@@ -41,9 +46,11 @@ export function feesView({ config, emails, rows = [], payreqs = [], stripe = [],
   const today = sydneyToday()
   for (const q of payreqs) {
     if (q.status !== 'paid' || q.quick || !emailsIn(q.email).some((e) => mine.has(e))) continue
+    // An invoice for a place paid by bank or cash: its ledger lines below are the record.
+    if (q.paidOffline && !q.charge) continue
     seenRefs.add(q.id)
     if (q.stripePaymentIntentId) seenIntents.add(q.stripePaymentIntentId)
-    records.push({ id: q.id, date: dayOf(q.paidAt), at: q.paidAt || '', programme: q.programme === 'pro' ? 'Pro sessions' : 'JFP', what: payreqWhat(q, config.term), players: q.playerNames || [], method: 'Card', amountCents: q.paidCents ?? q.amountCents, refundedCents: q.refundedCents || 0, intentId: q.stripePaymentIntentId || '' })
+    records.push({ id: q.id, date: dayOf(q.paidAt), at: q.paidAt || '', programme: PROGRAMME_NAME[q.programme] || 'JFP', what: payreqWhat(q, config.term), players: q.playerNames || [], method: q.paidOffline ? OFFLINE_METHOD[q.paidMethod] || 'Other' : 'Card', amountCents: q.paidCents ?? q.amountCents, refundedCents: q.refundedCents || 0, intentId: q.stripePaymentIntentId || '' })
   }
   for (const q of jjPayreqs) {
     if (q.status !== 'paid' || !mine.has(String(q.email || '').toLowerCase())) continue

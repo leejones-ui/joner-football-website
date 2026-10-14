@@ -8,10 +8,10 @@
 // (never in the browser's storage: the figures have families in them).
 import { esc } from './jfp-common.js'
 
-export const PROGRAMMES = [['jfp', 'JFP'], ['juniors', 'Joners Juniors'], ['holiday', 'Holiday training'], ['pro', 'Pro sessions'], ['camps', 'Camps'], ['all', 'Everything']]
+export const PROGRAMMES = [['jfp', 'JFP'], ['juniors', 'Joners Juniors'], ['holiday', 'Holiday training'], ['pro', 'Pro sessions'], ['extra', 'Extra sessions'], ['camps', 'Camps'], ['invoices', 'Invoices'], ['all', 'Everything']]
 export const PROGRAMME_LABEL = Object.fromEntries(PROGRAMMES)
 // Money views (#money?programme=...). Joners Juniors has its own page.
-export const MONEY_VIEWS = new Set(['jfp', 'holiday', 'pro', 'camps', 'all'])
+export const MONEY_VIEWS = new Set(['jfp', 'holiday', 'pro', 'extra', 'camps', 'invoices', 'all'])
 
 export function programmeSwitch(current) {
   return `<label class="jm-show jm-prog"><span class="muted small">Program</span><select class="j-select" id="m-prog">${PROGRAMMES.map(([v, l]) => `<option value="${v}"${v === current ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`

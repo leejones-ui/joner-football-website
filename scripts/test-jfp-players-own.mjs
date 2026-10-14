@@ -41,7 +41,7 @@ await test('one helper picks the player or the family wording', () => {
 })
 
 await test('Pro sessions: a programme, a payment type, and paid session by session', () => {
-  assert.deepEqual(PROGRAMMES.map(([id]) => id), ['jfp', 'pro', 'juniors', 'holiday', 'other'])
+  assert.deepEqual(PROGRAMMES.map(([id]) => id), ['jfp', 'pro', 'extra', 'juniors', 'holiday', 'other'])
   assert.ok(isProgramme('pro')); assert.equal(programmeLabel('pro'), 'Pro sessions')
   assert.equal(PRO_TYPE, 'JFP Pro sessions')
   assert.ok(isProType(PRO_TYPE) && isSessionType(PRO_TYPE))

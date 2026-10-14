@@ -25,7 +25,9 @@ import {
 } from './_jfp-airtable.js'
 import { recordNext, setNextStatus, nextStatuses } from './_jfp-next.js'
 import { noteNewPlayer, alertsOn } from './_jfp-coach-alerts.js'
-import { sendParentConfirmation, sendStaffAlert, sendCoachAlert, sendPaymentReceipt, sendPaymentStaffAlert, sendAttentionAlert, sendQuickPaidAlert } from './_jfp-email.js'
+import { sendParentConfirmation, sendStaffAlert, sendCoachAlert, sendPaymentReceipt, sendPaymentStaffAlert, sendAttentionAlert, sendQuickPaidAlert, sendChargeReceipt, sendInvoiceReceipt } from './_jfp-email.js'
+import { addChargePayment } from './_jfp-charges.js'
+import { addInvoicePayment, publicInvoice, invoiceUrl } from './_jfp-invoices.js'
 
 const LEASE_SECONDS = 120
 export const EFFECTS = ['airtable', 'waiver', 'ledger', 'parentEmail', 'staffAlert', 'coachAlert']
@@ -34,9 +36,15 @@ export const PAY_EFFECTS = ['airtable', 'ledger', 'parentEmail', 'staffAlert']
 // row or the ledger yet (Lee matches it on Money), so staff are told it came in.
 export const QUICK_EFFECTS = ['staffAlert']
 const unplacedQuick = (r) => Boolean(r?.quick) && !(r.term4Ids || []).length
-export const payEffectsFor = (r) => (unplacedQuick(r) ? QUICK_EFFECTS : PAY_EFFECTS)
-// Safe to run again after an unclear outcome: each looks for its own rows first.
-const IDEMPOTENT = new Set(['airtable', 'waiver', 'ledger'])
+// A player charge (_jfp-charges.js): no Term 4 row, no ledger line; the
+// charge (and its invoice) is marked paid. An invoice for a place (JFP, Pro)
+// is a row link that also marks its invoice paid.
+export const CHARGE_EFFECTS = ['charge', 'parentEmail', 'staffAlert']
+export const INVOICE_EFFECTS = [...PAY_EFFECTS, 'invoice']
+export const payEffectsFor = (r) => (unplacedQuick(r) ? QUICK_EFFECTS : r?.charge ? CHARGE_EFFECTS : r?.invoiceId ? INVOICE_EFFECTS : PAY_EFFECTS)
+// Safe to run again after an unclear outcome: each looks for its own rows first
+// (a charge and an invoice skip a payment id they already have).
+const IDEMPOTENT = new Set(['airtable', 'waiver', 'ledger', 'charge', 'invoice'])
 
 export function jfpBookingIdFromSession(session) {
   return clean(session?.metadata?.jfpBookingId || '', 60)
@@ -239,7 +247,7 @@ async function runBookingEffects(booking, retry = new Set()) {
 
 // The place is recorded only when the Airtable step finished. A quick link
 // with no player has no place to record: paid is all there is.
-export function enrolled(record) { return unplacedQuick(record) || record?.effects?.airtable?.status === 'done' }
+export function enrolled(record) { return unplacedQuick(record) || (record?.charge ? record.effects?.charge?.status === 'done' : record?.effects?.airtable?.status === 'done') }
 function clearAttention(record, reason) {
   const left = String(record.needsAttention || '').split(', ').filter((x) => x && x !== reason)
   record.needsAttention = left.join(', ')
@@ -256,6 +264,7 @@ async function runPayreqEffects(payreq, retry = new Set()) {
     await runEffect('staffAlert', payreq, save, () => sendQuickPaidAlert({ payreq, config }))
     return
   }
+  if (payreq.charge) return runChargeEffects(payreq, config)
   await runEffect('airtable', payreq, save, async () => {
     // Next term: no Term 4 row changes; the place is recorded as held or paid.
     if (payreq.next) {
@@ -345,11 +354,39 @@ async function runPayreqEffects(payreq, retry = new Set()) {
       notes: `JFP payment request ${payreq.id} (${payreq.reason || 'payment'})${payreq.stripeFeeCents != null ? `. Stripe fee A$${(payreq.stripeFeeCents / 100).toFixed(2)}` : ''}`,
     })
   })
+  if (payreq.invoiceId) await runEffect('invoice', payreq, save, () => invoicePaid(payreq))
   if (!enrolled(payreq)) { await flagAttention(payreq, 'roster-pending', save, payreq.playerNames.join(', ')); return }
   // A quick link may have had no email on it: the receipt goes to the email that paid.
   const to = payreq.email || payreq.payerEmail || ''
-  await runEffect('parentEmail', payreq, save, () => (to ? sendPaymentReceipt({ payreq: { ...payreq, email: to }, group, config, siteUrl: payreq.siteUrl || '' }) : false))
+  await runEffect('parentEmail', payreq, save, () => (!to ? false : payreq.invoiceId ? invoiceReceipt(payreq, config) : sendPaymentReceipt({ payreq: { ...payreq, email: to }, group, config, siteUrl: payreq.siteUrl || '' })))
   await runEffect('staffAlert', payreq, save, () => sendPaymentStaffAlert({ payreq, group, config }))
+  clearAttention(payreq, 'roster-pending')
+  await save(payreq)
+}
+
+// ---------- player charges and invoices (14 Oct 2026) ----------
+
+const payId = (payreq) => payreq.stripePaymentIntentId || payreq.stripeSessionId || payreq.id
+async function invoicePaid(payreq) {
+  const r = await addInvoicePayment(payreq.invoiceId, { id: payId(payreq), method: 'card', cents: payreq.paidCents ?? payreq.amountCents, date: sydneyToday(Date.parse(payreq.paidAt || new Date().toISOString())), by: payreq.email, note: `Stripe ${payreq.stripeSessionId || ''}`.trim() })
+  if (!r.ok) throw new Error(`invoice ${payreq.invoiceId}: ${r.error}`)
+}
+async function invoiceReceipt(payreq, config) {
+  const { getInvoice } = await import('./_jfp-invoices.js')
+  const inv = await getInvoice(payreq.invoiceId)
+  if (!inv) return false
+  return sendInvoiceReceipt({ payreq, view: publicInvoice(inv, config), url: payreq.siteUrl ? invoiceUrl(payreq.siteUrl, inv) : '' })
+}
+async function runChargeEffects(payreq, config) {
+  const save = savePayreq
+  await runEffect('charge', payreq, save, async () => {
+    const c = await addChargePayment(payreq.charge.id, { id: payId(payreq), intentId: payreq.stripePaymentIntentId || '', payreqId: payreq.id, method: 'stripe', cents: payreq.paidCents ?? payreq.amountCents, feeCents: payreq.stripeFeeCents ?? null, date: sydneyToday(Date.parse(payreq.paidAt || new Date().toISOString())), at: payreq.paidAt, by: payreq.email })
+    if (!c) throw new Error(`charge row missing: ${payreq.charge.id}`)
+    if (payreq.invoiceId) await invoicePaid(payreq)
+  })
+  if (!enrolled(payreq)) { await flagAttention(payreq, 'roster-pending', save, payreq.playerNames.join(', ')); return }
+  await runEffect('parentEmail', payreq, save, () => (!payreq.email ? false : payreq.invoiceId ? invoiceReceipt(payreq, config) : sendChargeReceipt({ payreq, config, siteUrl: payreq.siteUrl || '' })))
+  await runEffect('staffAlert', payreq, save, () => sendPaymentStaffAlert({ payreq, group: null, config }))
   clearAttention(payreq, 'roster-pending')
   await save(payreq)
 }
@@ -371,6 +408,10 @@ export async function finaliseJfpBooking(id, session) {
     record = await get(id)
     if (record.status === 'cancelled' || record.status === 'expired') {
       return { ...(await unexpectedPayment(record, session, save, 'paid-after-cancel')), [isPay ? 'payreq' : 'booking']: record }
+    }
+    // Paid already another way (bank, cash), then a card payment arrives too.
+    if (record.status === 'paid' && record.paidOffline && info.sessionId && record.stripeSessionId !== info.sessionId) {
+      return { ...(await unexpectedPayment(record, session, save, 'second-payment')), already: true, [isPay ? 'payreq' : 'booking']: record }
     }
     if (record.status === 'paid' && record.stripeSessionId && info.sessionId && record.stripeSessionId !== info.sessionId) {
       return { ...(await unexpectedPayment(record, session, save, 'second-payment')), already: true, [isPay ? 'payreq' : 'booking']: record }

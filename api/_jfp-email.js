@@ -394,8 +394,8 @@ ${p(`${afterpay ? 'Card, Apple Pay or Afterpay.' : 'Card or Apple Pay.'}${until 
 }
 
 // A quick link with no player was paid: staff match it on Money.
-const PROG_LABEL = { jfp: 'JFP', pro: 'Pro sessions', juniors: 'Joners Juniors', holiday: 'Holiday training', other: 'Other' }
-const WHERE = { jfp: 'Money > JFP, Stripe payments not matched to a player', pro: 'Payment links, Pro sessions payments to check', juniors: 'Money > Joners Juniors', holiday: 'Money > Holiday training', other: 'Payment links, Other payments to check' }
+const PROG_LABEL = { jfp: 'JFP', pro: 'Pro sessions', extra: 'Extra sessions', juniors: 'Joners Juniors', holiday: 'Holiday training', other: 'Other' }
+const WHERE = { jfp: 'Money > JFP, Stripe payments not matched to a player', extra: 'Money > Extra sessions, Quick links to check', pro: 'Payment links, Pro sessions payments to check', juniors: 'Money > Joners Juniors', holiday: 'Money > Holiday training', other: 'Payment links, Other payments to check' }
 export async function sendQuickPaidAlert({ payreq, config }) {
   const body = `${p(`A quick payment link was paid. No player was named on it, so it is waiting on ${esc(WHERE[payreq.programme] || WHERE.other)}.`)}${rows([
     ['For', esc(payreq.forText)],
@@ -594,4 +594,38 @@ export async function sendCancelStaffAlert({ rec, config }) {
   const heading = rec.event === 'withdrawn' ? 'Cancellation withdrawn' : 'A player cannot make a session'
   await send({ to: staffTo(config), subject: cancelSubject(rec), html: shell({ preheader: `${rec.player}, ${dateLabel(rec.date)}`, heading, body: cancelBody(rec, { forStaff: true }) }), replyTo: rec.email, kind: 'cancel to staff' })
   return true
+}
+
+// ---------- player charges and invoices (14 Oct 2026) ----------
+
+// A charge paid (an extra session, video analysis, an invoice that is not a term fee).
+export async function sendChargeReceipt({ payreq, config, siteUrl = '' }) {
+  const w = contactWords({ self: payreq.ownContact === true, players: payreq.playerNames, parent: payreq.parentName })
+  const body = `${p(`Thanks ${esc(w.self ? w.hi : payreq.parentName || 'there')}. We have your payment.`)}
+${rows([['For', esc(payreq.groupLabel || payreq.productLabel || 'Joner Football')], ...(w.self ? [] : [['Player', esc((payreq.playerNames || []).join(' and '))]]), ['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))], ['Reference', esc(payreq.invoiceId || payreq.id)]])}
+${siteUrl ? button('Open My account', `${siteUrl}/jfp-account/`) : ''}`
+  return send({ to: [{ email: payreq.email, name: w.self ? w.toName : payreq.parentName }], subject: `Payment received: ${payreq.groupLabel || 'Joner Football'}`, html: shell({ heading: 'Payment received', body }), kind: 'charge receipt' })
+}
+
+// The invoice email: what it is for, the total with GST, and the link to the
+// invoice page (pay by card there, or by bank transfer with the reference).
+export function invoiceEmail({ view, url }) {
+  const lines = view.lines.map((l) => [`${esc(l.description)}${l.qty > 1 ? ` x ${l.qty}` : ''}`, esc(l.totalLabel)])
+  const body = `${p(`Hi ${esc(view.billTo.name || 'there')}, here is your invoice from Joner Football${view.players.length ? ` for ${esc(view.players.join(' and '))}` : ''}.`)}
+${rows([['Invoice', esc(view.number)], ...lines, ['Total', `${esc(view.totalLabel)}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">Includes GST of ${esc(view.gstLabel)}</span>`], ...(view.paidCents ? [['Paid so far', esc(view.paidLabel)], ['To pay', esc(view.owingLabel)]] : []), ...(view.dueLabel ? [['Due', esc(view.dueLabel)]] : [])])}
+${button('View and pay the invoice', url)}
+${p(`Pay by card on the invoice page${view.bank ? `, or by bank transfer to ${esc(view.bank.accountName)}, BSB ${esc(view.bank.bsb)}, account ${esc(view.bank.accountNumber)}, with the reference <b>${esc(view.bank.reference)}</b>` : ''}. You can download a PDF from the same page.`)}
+${view.notes ? p(esc(view.notes)) : ''}`
+  return { subject: `Invoice ${view.number} from Joner Football`, html: shell({ preheader: `${view.owingLabel} to pay${view.dueLabel ? `, due ${view.dueLabel}` : ''}`, heading: `Invoice ${view.number}`, body }) }
+}
+export async function sendInvoiceEmail({ to, name = '', view, url }) {
+  const m = invoiceEmail({ view, url })
+  return send({ to: [{ email: to, name }], subject: m.subject, html: m.html, kind: 'invoice' })
+}
+// Paid by card: the receipt says the invoice is paid (or what is left).
+export async function sendInvoiceReceipt({ payreq, view, url }) {
+  const body = `${p(`Thanks ${esc(view.billTo.name || 'there')}. We have your payment for invoice ${esc(view.number)}.`)}
+${rows([['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))], ['Invoice total', esc(view.totalLabel)], ['Still to pay', esc(view.owingLabel)], ['Reference', esc(view.number)]])}
+${url ? button('View the invoice', url) : ''}`
+  return send({ to: [{ email: payreq.email, name: view.billTo.name }], subject: `Payment received: invoice ${view.number}`, html: shell({ heading: 'Payment received', body }), kind: 'invoice receipt' })
 }

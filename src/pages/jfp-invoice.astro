@@ -1,0 +1,67 @@
+---
+// An invoice from Joner Football (Lee, 14 Oct 2026): /jfp-invoice/?i=<token>.
+// The invoice, GST, what is paid and owing, pay by card or bank transfer, and
+// Download PDF (the browser's print to PDF, laid out as an A4 invoice).
+import BaseLayout from '../layouts/BaseLayout.astro'
+import '../styles/jfp.css'
+---
+
+<BaseLayout title="Invoice | Joner Football" description="An invoice from Joner Football." canonical="https://jonerfootball.com/jfp-invoice/" noindex noTracking hideChrome hideMobileAppCta>
+  <div class="jfp" id="jfp-invoice">
+    <header class="j-top ji-noprint"><div class="wrap"><span class="j-brand"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span>Joner Football</span></span></div></header>
+    <div class="wrap ji-wrap">
+      <div id="ji-msg" class="ji-noprint">
+        <p class="j-kicker" id="eyebrow">Invoice</p>
+        <h1 id="heading" style="margin:6px 0 10px">One moment</h1>
+        <p class="muted" id="lead">Loading your invoice.</p>
+      </div>
+      <div class="ji-actions ji-noprint" id="ji-actions" hidden>
+        <button type="button" class="j-btn j-btn-dark j-btn-lg" id="pay" hidden>Pay by card</button>
+        <button type="button" class="j-btn j-btn-line j-btn-lg" id="pdf">Download PDF</button>
+      </div>
+      <p class="j-err ji-noprint" id="err" role="alert" hidden></p>
+      <article class="ji-doc" id="doc" hidden></article>
+      <div class="j-box j-box-grey ji-noprint" id="help" style="margin-top:20px" hidden>If you paid and this page does not update, do not pay again. Email <a href="mailto:ligia@jonerfootball.com">ligia@jonerfootball.com</a> and we will sort it.</div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style is:global>
+  .ji-wrap { max-width: 820px; padding-top: 24px; padding-bottom: 60px; }
+  .ji-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 16px; }
+  .ji-actions .j-btn { min-height: 48px; }
+  .ji-doc { background: #fff; color: #111827; border: 1px solid #E5E7EB; border-radius: 16px; padding: 32px 28px; }
+  .ji-doc h2 { font-size: 26px; font-weight: 800; margin: 0; letter-spacing: -.01em; }
+  .ji-doc .ji-top { display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .ji-doc .ji-biz { font-size: 13px; line-height: 1.55; color: #4B5563; text-align: right; }
+  .ji-doc .ji-biz b { color: #111827; font-size: 15px; }
+  .ji-doc .ji-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 18px; margin: 22px 0; font-size: 14px; }
+  .ji-doc .ji-meta span { display: block; color: #6B7280; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  .ji-doc table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .ji-doc th { text-align: left; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: .05em; padding: 8px 6px; border-bottom: 2px solid #111827; }
+  .ji-doc td { padding: 10px 6px; border-bottom: 1px solid #F0F1F3; vertical-align: top; }
+  .ji-doc .num { text-align: right; white-space: nowrap; }
+  .ji-doc .ji-sum { margin-left: auto; max-width: 320px; margin-top: 14px; font-size: 14px; }
+  .ji-doc .ji-sum div { display: flex; justify-content: space-between; padding: 6px 0; }
+  .ji-doc .ji-sum .ji-big { font-size: 18px; font-weight: 800; border-top: 2px solid #111827; margin-top: 4px; padding-top: 10px; }
+  .ji-doc .ji-gst { color: #6B7280; font-size: 13px; }
+  .ji-doc .ji-pay { margin-top: 24px; border-top: 1px solid #E5E7EB; padding-top: 18px; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); font-size: 14px; line-height: 1.6; }
+  .ji-doc .ji-pay h3 { font-size: 14px; font-weight: 800; margin: 0 0 4px; }
+  .ji-doc .ji-stamp { display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: #F3F4F6; color: #374151; margin-top: 8px; }
+  .ji-doc .ji-stamp.paid { background: #DCFCE7; color: #166534; }
+  .ji-doc .ji-stamp.void { background: #FEE2E2; color: #991B1B; }
+  .ji-doc .ji-notes { margin-top: 18px; font-size: 14px; color: #374151; white-space: pre-wrap; }
+  @media (max-width: 560px) { .ji-doc { padding: 22px 16px; } .ji-doc .ji-biz { text-align: left; } .ji-doc table { font-size: 13px; } }
+  @media print {
+    @page { size: A4; margin: 16mm; }
+    body { background: #fff !important; }
+    .ji-noprint, .j-top { display: none !important; }
+    .ji-wrap { max-width: none; padding: 0; }
+    .ji-doc { border: 0; border-radius: 0; padding: 0; }
+  }
+</style>
+
+<script>
+  import { initInvoice } from '../scripts/jfp-invoice.js'
+  initInvoice()
+</script>

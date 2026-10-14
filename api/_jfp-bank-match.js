@@ -274,7 +274,24 @@ export function hintsFor(item, { termStart = '', holidaySizes = null, grade = 'n
 // the same matches, for older holiday and last term transfers.
 //   previous:     last term's rows (listPreviousTerm), for its matches and hints
 //   holidaySizes: every amount a holiday booking costs; termStart: this term's first day
-export function matchBank({ items, players, ledger = [], ignored = [], since = '', recorded = [], previous = [], holidaySizes = null, termStart = '' }) {
+// An invoice number in what the bank shows (Lee, 14 Oct 2026: the invoice
+// asks families to use the reference "INV-<n> <player>"). Banks drop the dash
+// or add a space: INV-1004, INV 1004, INV1004.
+export const INV_REF = /\bINV[\s-]?(\d{3,9})\b/i
+export function invoiceRefOf(item) {
+  const m = INV_REF.exec([item?.reference, item?.description, item?.payer].filter(Boolean).join(' '))
+  return m ? `INV-${Number(m[1])}` : ''
+}
+// The open invoice a bank line names, with how well the amount fits, or null.
+export function invoiceMatch(item, invoices = []) {
+  const id = invoiceRefOf(item)
+  const inv = id ? invoices.find((x) => x.id === id) : null
+  if (!inv) return null
+  const exact = item.cents === inv.owingCents
+  return { id: inv.id, owingCents: inv.owingCents, totalCents: inv.totalCents, players: inv.players, programme: inv.programme, exact, over: item.cents > inv.owingCents, reason: `the reference names ${inv.id}, ${exact ? "amount = what's owing" : item.cents > inv.owingCents ? 'more than is owing' : 'part of what is owing'}` }
+}
+
+export function matchBank({ items, players, ledger = [], ignored = [], since = '', recorded = [], previous = [], holidaySizes = null, termStart = '', invoices = [] }) {
   const skip = new Set(ignored)
   const from = since ? addDays(since, -BANK_LIMITS.earlyDays) : ''
   const rowsById = new Map(players.map((p) => [p.rowId, p]))
@@ -287,7 +304,7 @@ export function matchBank({ items, players, ledger = [], ignored = [], since = '
   const counts = { checked: 0, high: 0, possible: 0, none: 0, recorded: 0, ignored: 0, notFamily: 0, early: 0, twins: 0, notJfp: 0, before: 0 }
   const sizes = feeSizes(players)
   // Last term's families and holiday prices count as JFP money too.
-  const kept = (item) => looksJfp(item, players, sizes) || Boolean(holidaySizes?.has(item.cents)) || previous.some((r) => rowScore(item, r).score >= 1)
+  const kept = (item) => looksJfp(item, players, sizes) || Boolean(holidaySizes?.has(item.cents)) || previous.some((r) => rowScore(item, r).score >= 1) || Boolean(invoiceRefOf(item))
   // Not a family or hidden: left out before anything is matched. Too early
   // (before this term's window) is counted, then sorted into before.
   const live = [], hidden = []
@@ -321,14 +338,16 @@ export function matchBank({ items, players, ledger = [], ignored = [], since = '
       })
     }
     const prev = previous.length ? previousMatch(item, previous) : null
+    const invoice = invoices.length ? invoiceMatch(item, invoices) : null
     // Nobody who could have sent it, and not an amount a place or a holiday
     // session costs: not shown, only counted.
-    if (!cands.length && !sizes.has(item.cents) && !prev && !holidaySizes?.has(item.cents)) { if (!isEarly) counts.notJfp += 1; continue }
+    if (!cands.length && !sizes.has(item.cents) && !prev && !holidaySizes?.has(item.cents) && !invoice) { if (!isEarly) counts.notJfp += 1; continue }
     cands.sort((a, b) => b.score - a.score || Number(b.exact) - Number(a.exact) || Number(b.owingCents > 0) - Number(a.owingCents > 0) || a.player.localeCompare(b.player))
     const top = cands.slice(0, 3)
-    const grade = top.length ? gradeOf(top[0].score, top[0].exact) : 'none'
+    // An invoice named in the reference is the best match there is.
+    const grade = invoice ? (invoice.exact ? 'high' : 'possible') : top.length ? gradeOf(top[0].score, top[0].exact) : 'none'
     const hints = hintsFor(item, { termStart, holidaySizes, grade, best: top[0]?.score || 0, previous: prev })
-    const line = { ...item, grade, candidates: top, previous: prev, hints, holidayPeriod: suggestPeriod(item.date) }
+    const line = { ...item, grade, candidates: top, previous: prev, hints, holidayPeriod: suggestPeriod(item.date), ...(invoice ? { invoice } : {}) }
     if (isEarly) { counts.before += 1; before.push({ ...line, early: true }); continue }
     counts[grade] += 1
     out.push(line)

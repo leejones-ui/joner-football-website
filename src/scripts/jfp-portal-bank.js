@@ -99,8 +99,9 @@ function itemHtml(x) {
     <div class="top"><span class="when">${esc(x.early ? whenYear(x.date) : when(x.date))}</span><b class="amt">${esc(money(x.cents))}</b><span class="j-pill ${pill}">${label}</span>${hints}</div>
     <p class="payer">${esc(x.payer)}${x.description && x.description !== x.payer ? ` <small class="muted">${esc(x.description)}</small>` : ''}</p>
     ${c ? `<p class="cand"><b>${esc(c.player)}</b>${c.parent ? ` <small>(${esc(c.parent)})</small>` : ''} · owing ${esc(money(c.owingCents))}<br><small class="muted">${esc(c.reason)}</small>${x.candidates.length > 1 ? `<br><small class="muted">Also: ${x.candidates.slice(1).map((o) => esc(o.player)).join(', ')}</small>` : ''}</p>` : '<p class="cand muted small">No player with that name.</p>'}
+    ${x.invoice ? `<p class="cand"><b>Invoice ${esc(x.invoice.id)}</b> · ${esc(x.invoice.players.join(', '))} · owing ${esc(money(x.invoice.owingCents))}<br><small class="muted">${esc(x.invoice.reason)}</small></p>` : ''}
     ${pv ? `<p class="cand prev small">Last term: <b>${esc(pv.player)}</b>${pv.parent ? ` (${esc(pv.parent)})` : ''} · ${pv.owingCents ? `owing ${esc(money(pv.owingCents))}` : esc(pv.status || 'paid')}<br><small class="muted">${esc(pv.reason)}</small></p>` : ''}
-    <div class="btns">${c ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-bank-rec="${esc(c.rowId)}">Record for ${esc(first(c.player))}</button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-other>Other player…</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-holiday>Holiday revenue</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-pro>Pro session</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-prev>Previous term</button><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-bank-ignore>Not JFP / ignore</button></div>
+    <div class="btns">${x.invoice ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-bank-inv="${esc(x.invoice.id)}">Record on ${esc(x.invoice.id)}</button>` : ''}${c ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-bank-rec="${esc(c.rowId)}">Record for ${esc(first(c.player))}</button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-other>Other player…</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-holiday>Holiday revenue</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-pro>Pro session</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-prev>Previous term</button><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-bank-ignore>Not JFP / ignore</button></div>
   </li>`
 }
 
@@ -156,6 +157,18 @@ export function bindBank(el, ui) {
     if (!li) return
     const item = findItem(li.dataset.bank)
     if (!item) return
+    // An invoice named in the reference (14 Oct 2026): on the invoice and its player.
+    const inv = e.target.closest('[data-bank-inv]')
+    if (inv) {
+      if (!(await ui.confirm(`Record <b>${esc(money(Math.min(item.cents, item.invoice.owingCents)))}</b> from ${esc(item.payer)} on invoice <b>${esc(item.invoice.id)}</b> (${esc(item.invoice.players.join(', '))})?`, { ok: 'Record' }))) return
+      const r = await saveWithTwin(ui, 'bankInvoice', { id: item.id, invoiceId: item.invoice.id })
+      if (!r) return
+      if (!r.ok) return ui.toast(r.data.error)
+      ui.toast(`Recorded on ${item.invoice.id}: ${r.data.invoice.statusLabel}.`)
+      bankDone(item.id)
+      ui.after?.('invoice')
+      return ui.redraw()
+    }
     const rec = e.target.closest('[data-bank-rec]')
     if (rec) return ui.record(item, rec.dataset.bankRec)
     if (e.target.closest('[data-bank-other]')) return ui.other(item)

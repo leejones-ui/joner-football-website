@@ -45,8 +45,13 @@ export function quickHolidayPeriods(today) {
 
 // What staff asked for, checked. price: the chosen price or null. row: the
 // chosen player's Term 4 row or null. { ok, link } or { ok: false, status, error }.
-export function quickLinkInput(body = {}, { price = null, row = null, today, now = Date.now() } = {}) {
+// requirePlayer (Lee and Ligia, 14 Oct 2026: every link tied to a player, so
+// reconciling is quick): no player needs a reason, kept on the link.
+export const NO_PLAYER_MIN = 4
+export function quickLinkInput(body = {}, { price = null, row = null, today, now = Date.now(), requirePlayer = false } = {}) {
   const bad = (error, status = 400) => ({ ok: false, status, error })
+  const noPlayerReason = row ? '' : clean(body.noPlayerReason, 200)
+  if (requirePlayer && !row && noPlayerReason.length < NO_PLAYER_MIN) return { ok: false, status: 400, code: 'player', error: 'Choose the player this link is for, or say why there is no player.' }
   const sessions = price?.perSession ? Number(body.sessions ?? 1) : 1
   if (!Number.isInteger(sessions) || sessions < 1 || sessions > SESSIONS_MAX) return bad(`Sessions must be 1 to ${SESSIONS_MAX}.`)
   const typed = body.amountCents == null || body.amountCents === '' ? null : Number(body.amountCents)
@@ -73,6 +78,7 @@ export function quickLinkInput(body = {}, { price = null, row = null, today, now
       term4Ids: row && programme === 'jfp' ? [row.id] : [], rowId: row?.id || '',
       groupId: row && programme === 'jfp' ? row.groupId || '' : '',
       holidayPeriod: period, afterpay: body.afterpay !== false,
+      ...(noPlayerReason ? { noPlayerReason } : {}),
       status: 'open', createdAt: new Date(now).toISOString(), expiresAt: new Date(now + QUICK_DAYS * 86400000).toISOString(),
     },
   }
@@ -102,9 +108,21 @@ export const quickUrl = (base, q) => `${base}/jfp-pay/?q=${encodeURIComponent(q.
 
 // The Stripe Checkout Session, the same way every JFP link is made, with the
 // programme on it. Juniors carries the tag the Juniors money reads.
+// The player goes on the line item and in the metadata (jfpPlayer, jfpRowIds),
+// so a payment can be matched at a glance in Stripe too.
+export function playerMeta(q) {
+  const names = (q.playerNames || []).filter(Boolean)
+  const rowIds = [...new Set([...(q.term4Ids || []), ...(q.rowId ? [q.rowId] : []), ...(q.chargeRowIds || [])].filter(Boolean))]
+  return {
+    ...(names.length ? { jfpPlayer: names.join(', ').slice(0, 450) } : {}),
+    ...(rowIds.length ? { jfpRowIds: rowIds.join(',').slice(0, 450) } : {}),
+    ...(q.profileKey ? { jfpProfileKey: String(q.profileKey).slice(0, 450) } : {}),
+  }
+}
 export function quickCheckoutBody(q, base, nowMs = Date.now()) {
-  const name = `Joner Football: ${q.forText}`.slice(0, 250)
-  const meta = { jfpBookingId: q.id, jfpProgramme: q.programme, ...(q.programme === 'juniors' ? { programme: JUNIORS_TAG, ...(q.playerNames?.[0] ? { player: q.playerNames[0] } : {}) } : {}) }
+  const who = (q.playerNames || []).filter(Boolean).join(', ')
+  const name = `Joner Football: ${q.forText}${who && !q.forText.includes(who) ? ` (${who})` : ''}`.slice(0, 250)
+  const meta = { jfpBookingId: q.id, jfpProgramme: q.programme, ...playerMeta(q), ...(q.programme === 'juniors' ? { programme: JUNIORS_TAG, ...(q.playerNames?.[0] ? { player: q.playerNames[0] } : {}) } : {}) }
   return {
     mode: 'payment',
     ...(q.email ? { customer_email: q.email } : {}),

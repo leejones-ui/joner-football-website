@@ -195,7 +195,7 @@ await test('an email that fails after the add is reported, the player stays adde
 })
 
 await test('quick links can be Pro sessions; the Stripe page says jfpProgramme pro', async () => {
-  const l = await ok('quickLink', { amountCents: 6500, forText: 'One Pro session', programme: 'pro' })
+  const l = await ok('quickLink', { amountCents: 6500, forText: 'One Pro session', programme: 'pro', noPlayerReason: 'Pro player to match later' })
   assert.equal(l.link.programme, 'pro'); assert.equal(l.link.programmeLabel, 'Pro sessions')
   const p = await client().call('/api/jfp-pay', { action: 'pay', id: l.link.id })
   assert.equal(p.status, 200, JSON.stringify(p.data))

@@ -92,7 +92,7 @@ await test('a JFP quick link with no player: paid on its own page, staff told, w
   const before = await money()
   const famBefore = before.players.filter((p) => p.email === famRow.email).reduce((t, p) => t + p.stripeCents, 0)
   const mail0 = (await emails()).length
-  const q = (await ok('quickLink', { amountCents: 8500, forText: 'Extra session', programme: 'jfp' })).link
+  const q = (await ok('quickLink', { amountCents: 8500, forText: 'Extra session', programme: 'jfp', noPlayerReason: 'Paid at the desk, player to match' })).link
   assert.match(q.url, /\/jfp-pay\/\?q=PAY-/)
   assert.equal((await emails()).length, mail0, 'making a link sends nothing')
   const cs = await payLink(q.id, { email: famRow.email, name: 'Pat Payer' })
@@ -150,7 +150,7 @@ await test('a JFP quick link for a player records on their row like any link; on
 
 await test('a holiday quick link: in Money > Holiday training for its holiday, to check until ticked, never in JFP', async () => {
   const m0 = await money()
-  const q = (await ok('quickLink', { priceId: globalThis.CAMP, sessions: 2, programme: 'holiday', holidayPeriod: '2026-summer' })).link
+  const q = (await ok('quickLink', { priceId: globalThis.CAMP, sessions: 2, programme: 'holiday', holidayPeriod: '2026-summer', noPlayerReason: 'Holiday family, new to us' })).link
   assert.deepEqual([q.amountLabel, q.forText, q.programme], ['A$130', 'Holiday camp day, 2 sessions', 'holiday'])
   const cs = await payLink(q.id, { email: 'holiday.payer@example.com', name: 'Holly Payer' })
   const m = await money()
@@ -194,7 +194,7 @@ await test('a Joners Juniors quick link lands with the Juniors money, named for 
 
 await test('an Other quick link: on Payment links to check; Email it only on a tap, once; statuses sent, opened, paid, expired', async () => {
   const mail0 = (await emails()).length
-  const q = (await ok('quickLink', { priceId: globalThis.KIT, email: 'parent.quick@example.com' })).link
+  const q = (await ok('quickLink', { priceId: globalThis.KIT, email: 'parent.quick@example.com', noPlayerReason: 'Kit for a new family' })).link
   assert.deepEqual([q.programme, q.amountLabel, q.email], ['other', 'A$65', 'parent.quick@example.com'])
   assert.equal((await emails()).length, mail0, 'nothing sent until Email it')
   let l = (await links()).find((x) => x.id === q.id)
@@ -215,7 +215,7 @@ await test('an Other quick link: on Payment links to check; Email it only on a t
   const changed = (await emails()).slice(before)
   assert.deepEqual(changed.map((e) => [e.to, e.subject]), [[['parent.quick@example.com'], 'Joner Football: Kit fee']])
   assert.ok(changed[0].html.includes('A$70') && changed[0].html.includes(q.url))
-  const noMail = (await ok('quickLink', { amountCents: 1500, forText: 'Ball', programme: 'other' })).link
+  const noMail = (await ok('quickLink', { amountCents: 1500, forText: 'Ball', programme: 'other', noPlayerReason: 'Shop ball' })).link
   assert.equal((await portal('emailQuickLink', { id: noMail.id })).status, 400)
   await payLink(q.id, { email: 'parent.quick@example.com', name: 'Quinn Parent' })
   l = (await links()).find((x) => x.id === q.id)
@@ -233,7 +233,7 @@ await test('an Other quick link: on Payment links to check; Email it only on a t
   assert.equal((await pay({ action: 'view', id: noMail.id })).data.link.status, 'expired')
   assert.equal((await portal('emailQuickLink', { id: noMail.id })).status, 409)
   // Cancelled: cannot be paid.
-  const c = (await ok('quickLink', { amountCents: 2000, forText: 'Cancel me', programme: 'other' })).link
+  const c = (await ok('quickLink', { amountCents: 2000, forText: 'Cancel me', programme: 'other', noPlayerReason: 'Test link' })).link
   await ok('cancelPayreq', { id: c.id })
   assert.equal((await pay({ action: 'pay', id: c.id })).status, 410)
 })
