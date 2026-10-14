@@ -273,7 +273,6 @@ function render() {
 // ---------- home ----------
 
 function ticket({ p, e, next }) {
-  const contact = (e.contacts || [])[0]
   const dateBits = fmt(next.startMs, { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '')
   return `<article class="ja-ticket">
     <img src="${esc(photoFor(e))}" ${photoSet(e)} alt="" fetchpriority="high">
@@ -286,7 +285,7 @@ function ticket({ p, e, next }) {
         ${e.maps ? `<a class="ja-btn ja-btn-light" href="${esc(e.maps)}" target="_blank" rel="noopener noreferrer">${ic('pin')}Directions</a>` : ''}
         <button type="button" class="ja-btn ja-btn-glass" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}" data-cancel-date="${esc(next.iso)}">Can't make it</button>
         <button type="button" class="ja-round" data-ics="${esc(e.rowId)}" aria-label="Add every session to your calendar" title="Add to calendar">${ic('calplus')}</button>
-        ${contact ? `<a class="ja-round" href="tel:${esc(contact.tel)}" aria-label="Call ${esc(contact.name)}">${ic('call')}</a>` : ''}
+        <button type="button" class="ja-round" data-go="contact" aria-label="Contact Lee and Ligia" title="Contact us">${ic('chat')}</button>
       </div>
     </div>
   </article>`
