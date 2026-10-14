@@ -40,7 +40,7 @@ const commonFaqs = [
   },
   {
     question: 'How are groups selected?',
-    answer: 'Players are grouped by age first, then ability. If a player needs a stronger challenge, the coaching team can move them into a more suitable group.',
+    answer: 'Players are grouped by ability, not age. A strong 12-year-old can train with 15-year-olds, and if a player needs a stronger challenge, the coaching team moves them into a more suitable group.',
   },
 ]
 
@@ -91,7 +91,7 @@ const CAMP_FALLBACKS: CampMap = {
     venue: 'Rydalmere Park',
     venueName: 'Rydalmere Park',
     venueAddress: 'Rydalmere Park, Sydney, NSW',
-    venueNotes: 'A 3 morning Sydney camp with players grouped by age and ability.',
+    venueNotes: 'A 3 morning Sydney camp with players grouped by ability, not age.',
     mapUrl: 'https://www.google.com/maps/search/?api=1&query=Rydalmere+Park+Sydney+NSW',
     dates: 'July 14-16, 2026',
     startDate: '2026-07-14',
@@ -120,7 +120,7 @@ const CAMP_FALLBACKS: CampMap = {
     includedItems: [
       '3 morning training blocks',
       'Technical coaching from the Joner Football team',
-      'Age and ability based groups',
+      'Groups by ability, not age',
       'Joner jersey for players attending all 3 days',
     ],
     dayOptions: ['1 Day - $150 AUD', '2 Days - $250 AUD', '3 Days - $350 AUD'],
@@ -151,7 +151,7 @@ const CAMP_FALLBACKS: CampMap = {
     venue: 'Rydalmere Park',
     venueName: 'Rydalmere Park',
     venueAddress: 'Rydalmere Park, Sydney, NSW',
-    venueNotes: 'A 3 morning Sydney camp with players grouped by age and ability.',
+    venueNotes: 'A 3 morning Sydney camp with players grouped by ability, not age.',
     mapUrl: 'https://www.google.com/maps/search/?api=1&query=Rydalmere+Park+Sydney+NSW',
     dates: 'July 14-16, 2026',
     startDate: '2026-07-14',
@@ -180,7 +180,7 @@ const CAMP_FALLBACKS: CampMap = {
     includedItems: [
       '3 morning training blocks',
       'Technical coaching from the Joner Football team',
-      'Age and ability based groups',
+      'Groups by ability, not age',
       'Joner jersey for players attending all 3 days',
     ],
     dayOptions: ['1 Day - $150 AUD', '2 Days - $250 AUD', '3 Days - $350 AUD'],
@@ -509,7 +509,7 @@ const schedulePlan = (camp.scheduleItems?.length ? camp.scheduleItems : []).map(
 const includedItems = camp.includedItems?.length ? camp.includedItems : [
   camp.times ? `Training blocks, ${camp.times}` : 'Technical training blocks',
   'Technical detail from the Joner Football coaching team',
-  camp.ageRange ? `For ${camp.ageRange}` : 'Players grouped by age then ability',
+  camp.ageRange ? `For ${camp.ageRange}` : 'Players grouped by ability, not age',
   camp.spotsTotal ? `Capacity capped at ${camp.spotsTotal} players` : 'Capacity capped on purpose',
 ]
 const pricingRows = (dayPaymentLinks.length ? dayPaymentLinks : camp.paymentOptions || []).map((item: any) => ({

@@ -31,12 +31,6 @@ const locations = [
   },
 ]
 
-const pillars = [
-  { number: '01', title: 'Technique First', text: 'Ball mastery, 1v1 detail, weak foot work, game-relevant habits.' },
-  { number: '02', title: 'High Energy', text: 'Sharp, intense, demanding sessions. Real standards.' },
-  { number: '03', title: 'Real Development', text: 'Long-term growth across technical, physical, and mental.' },
-]
-
 const pathwayStages = [
   {
     number: '01',
@@ -115,13 +109,17 @@ const faqs = [
   ['What does the player need to bring?', 'Soccer boots for synthetic, shin guards, drink bottle, waterproof jacket, a smile, a good attitude, and training kit supplied by Deploy.'],
   ['What should players expect?', 'Energy, enthusiasm, intensity, knowledge, new drills, and coaches who go above and beyond to help players learn.'],
   ['Will bad weather cancel the session?', 'No. Only really bad storms can alter the session. Afternoon HQ sessions are indoors, so bad weather is far less of a problem.'],
-  ['Who will be in my son or daughter\'s group?', 'Coaches group players by age first, then ability. Groups are limited and players can be moved up if they need a stronger challenge.'],
+  ['Who will be in my son or daughter\'s group?', groupingLine],
+  [oneToOneFaq.q, oneToOneFaq.a],
+  ['Can we apply for more than one session?', 'Yes. On the timetable, pick as many sessions as suit you and send them in one go. We reply to each one within 48 hours.'],
 ]
 
 import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
 import BookNowButton from '../../components/BookNowButton.astro'
 import BookNowPanel from '../../components/BookNowPanel.astro'
-import OneToOneNote from '../../components/OneToOneNote.astro'
+import TermWorks from '../../components/TermWorks.astro'
+import { groupingLine } from '../../data/jfp-term-info.js'
+import { oneToOneFaq } from '../../data/jfp-one-to-one.js'
 import CreateAccountButton from '../../components/CreateAccountButton.astro'
 import { BOOKING_URL } from '../../lib/booking'
 import { fetchSanityPage } from '../../lib/sanityPages'
@@ -385,17 +383,8 @@ const sanityPage = await fetchSanityPage('jfp-program')
               </p>
             </div>
 
-            <div class="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {pillars.map((pillar) => (
-                <div class="rounded-lg border border-white/10 bg-white/5 p-5">
-                  <div class="mb-2 font-heading text-sm uppercase tracking-widest text-joner-red">{pillar.number}</div>
-                  <h3 class="mb-2 font-heading text-lg uppercase tracking-wide text-white">{pillar.title}</h3>
-                  <p class="font-body text-sm leading-relaxed text-neutral-400">{pillar.text}</p>
-                </div>
-              ))}
-            </div>
-
-            <OneToOneNote class="mb-8" />
+            <h3 class="mb-4 font-heading text-2xl uppercase tracking-wide text-white md:text-3xl">How the term works</h3>
+            <TermWorks class="mb-8" />
 
             <BookNowButton place="jfp-program-term-info" />
           </div>

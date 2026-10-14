@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import SEOFAQ from '../components/SEOFAQ.astro'
+import OneToOneNote from '../components/OneToOneNote.astro'
+import { oneToOneFaq } from '../data/jfp-one-to-one.js'
 import GeoAnswers from '../components/GeoAnswers.astro'
 import { faqSchema, webPageSchema, breadcrumbSchema } from '../lib/seoSchema'
 
@@ -33,6 +35,7 @@ const hqSEOFAQs = [
   { q: 'Where is the Joner Football HQ?', a: 'The HQ is at Unit 2, 20 Narabang Way, Belrose, in Sydney’s Northern Beaches area, with on-site parking for drop-off and collection.' },
   { q: 'Is the HQ indoor?', a: 'Yes. The HQ is a fully indoor facility with a professional standard synthetic surface, so sessions are never cancelled for weather.' },
   { q: 'What training runs at the HQ?', a: 'JFP afternoon sessions run Monday to Saturday, Joners Juniors runs Saturdays, professional 1 on 1 sessions run by appointment, and holiday camps and events run through the year.' },
+  oneToOneFaq,
   { q: 'Can parents watch sessions?', a: 'Yes. The HQ has a dedicated parent viewing area so you can watch your player train.' },
   { q: 'How do I book training at the HQ?', a: 'Send the contact form on this page with the player’s age and what you are looking for. The team replies with the right HQ training option.' },
 ]
@@ -244,6 +247,8 @@ const sanityPage = await fetchSanityPage('hq')
               </a>
             ))}
           </div>
+
+          <OneToOneNote class="mt-6" />
 
           <BookNowPanel
             compact

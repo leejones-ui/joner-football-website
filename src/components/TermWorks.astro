@@ -1,0 +1,60 @@
+---
+// "How the term works" boxes, said once for every page (Lee, 14 Oct 2026):
+// 1 on 1 training during the term, extra training, and game analysis.
+// variant "jfp" uses the booking page's own styles; "dark" suits the main site.
+import { oneToOneNote } from '../data/jfp-one-to-one.js'
+import { termExtras } from '../data/jfp-term-info.js'
+
+interface Props { variant?: 'dark' | 'jfp'; class?: string }
+const { variant = 'dark', class: className = '' } = Astro.props
+---
+
+<div class:list={['term-works', `term-works--${variant}`, className]}>
+  <section class="tw-box tw-box--wide" id="one-to-one" aria-labelledby="tw-121">
+    <p class="tw-kicker">When to book</p>
+    <h3 id="tw-121">{oneToOneNote.title}</h3>
+    <ul class="tw-list">{oneToOneNote.points.map((p) => <li>{p}</li>)}</ul>
+  </section>
+  {termExtras.map((x) => (
+    <section class="tw-box" id={`term-${x.key}`} aria-labelledby={`tw-${x.key}`}>
+      <p class="tw-kicker">{x.key === 'extra' ? 'More training' : 'See your game'}</p>
+      <h3 id={`tw-${x.key}`}>{x.title}</h3>
+      <p class="tw-text">{x.text}</p>
+      <a class="tw-cta" href={x.href}>{x.cta}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a>
+    </section>
+  ))}
+</div>
+
+<style>
+  .term-works { display: grid; gap: 12px; grid-template-columns: 1fr; }
+  @media (min-width: 720px) { .term-works { grid-template-columns: 1fr 1fr; } .tw-box--wide { grid-column: 1 / -1; } }
+  .tw-box { border-radius: 14px; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .tw-kicker { margin: 0; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .tw-box h3 { margin: 0; }
+  .tw-list { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 7px; }
+  .tw-list li { position: relative; padding-left: 16px; line-height: 1.5; }
+  .tw-list li::before { content: ''; position: absolute; left: 0; top: .6em; width: 6px; height: 6px; border-radius: 99px; }
+  .tw-text { margin: 0; line-height: 1.5; flex: 1; }
+  .tw-cta { margin-top: 8px; align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; border-radius: 10px; padding: 10px 14px; font-weight: 700; font-size: 14px; text-decoration: none; min-height: 42px; }
+  .tw-cta svg { width: 16px; height: 16px; }
+
+  /* booking page */
+  .term-works--jfp .tw-box { background: var(--j-surface); border: 1px solid var(--j-line); }
+  .term-works--jfp .tw-box--wide { border-left: 4px solid var(--j-action); }
+  .term-works--jfp .tw-kicker { color: var(--j-muted); }
+  .term-works--jfp h3 { font-size: 17px; color: var(--j-ink); }
+  .term-works--jfp .tw-list li, .term-works--jfp .tw-text { font-size: 14px; color: var(--j-ink-2); }
+  .term-works--jfp .tw-list li::before { background: var(--j-action); }
+  .term-works--jfp .tw-cta { background: var(--j-action); color: var(--j-action-ink); }
+  .term-works--jfp .tw-cta:hover { background: #1F2937; }
+
+  /* main site, dark */
+  .term-works--dark .tw-box { background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .12); }
+  .term-works--dark .tw-box--wide { border-left: 4px solid #E8000D; }
+  .term-works--dark .tw-kicker { color: #E8000D; font-family: 'Anton', Impact, sans-serif; font-weight: 400; letter-spacing: .12em; }
+  .term-works--dark h3 { font-family: 'Anton', Impact, sans-serif; font-size: 1.2rem; letter-spacing: .03em; text-transform: uppercase; color: #fff; font-weight: 400; }
+  .term-works--dark .tw-list li, .term-works--dark .tw-text { font-size: .95rem; color: #d4d4d4; }
+  .term-works--dark .tw-list li::before { background: #E8000D; }
+  .term-works--dark .tw-cta { border: 1.5px solid rgba(255, 255, 255, .35); color: #fff; }
+  .term-works--dark .tw-cta:hover { border-color: #fff; background: rgba(255, 255, 255, .06); }
+</style>
