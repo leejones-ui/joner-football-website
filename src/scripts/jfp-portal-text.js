@@ -24,7 +24,7 @@ export function textComposer({ modal, toast, rowIds, parent = '', mobile = '', t
   const who = to || (self ? 'the player' : parent || 'the family')
   const box = modal(`${note ? `<div class="j-box j-box-green small" style="margin-bottom:12px">${note}</div>` : ''}<h2 style="margin-bottom:4px">${esc(title || (self ? `Text ${who}` : 'Text the family'))}</h2>
     <p class="muted small" style="margin-bottom:12px">To ${esc(who)}${mobile ? `, ${esc(mobile)}` : ''}. From the work number 0404 780 351, between 8am and 8pm. Check the words: this is exactly what they get.</p>
-    <label class="j-field"><span>The text</span><textarea class="j-textarea" id="tx-text" rows="7" maxlength="640">${esc(text)}</textarea></label>
+    <label class="j-field"><span>The text</span><textarea class="j-textarea" id="tx-text" rows="11" maxlength="640">${esc(text)}</textarea></label>
     <p class="muted small" id="tx-count" style="margin-top:-6px"></p>
     <div id="tx-status" style="margin-top:8px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px">
@@ -68,32 +68,49 @@ export function textComposer({ modal, toast, rowIds, parent = '', mobile = '', t
 // The words for the usual cases, in Lee's voice. Plain, no dashes.
 // self: the player is their own contact, so "Hi Kai, you have a spot".
 const firstName = (s) => String(s || '').trim().split(/\s+/)[0] || 'there'
-export function payLinkText({ parent, player, when, place, url, self = false, starts = '' }) {
+// Laid out the way Lee writes them (14 Oct 2026): greeting on its own line,
+// short paragraphs, the email they sign in with, signed "Joner".
+const SIGN = 'Joner ⚽️'
+const hiLine = (name) => `Hi ${firstName(name)},`
+const signIn = (email) => (email ? `sign in using this email (the one we have on file): ${email}` : 'sign in with the email we have on file')
+const lines = (...parts) => parts.filter(Boolean).join('\n\n')
+export function payLinkText({ parent, player, when, place, url, self = false, starts = '', email = '' }) {
   const from = starts ? `, starting ${starts}` : ''
-  return self
-    ? `Hi ${firstName(player)}, it's Lee from Joner Football. You have a spot in our ${when} group at ${place}${from}. To 100% lock it in, sign in, sign the waiver and pay here: ${url} We have emailed you the same link. See you on the pitch!`
-    : `Hi ${firstName(parent)}, it's Lee from Joner Football. ${firstName(player)} has a spot in our ${when} group at ${place}${from}. To 100% lock it in, sign in, sign the waiver and pay here: ${url} We have emailed you the same link. See you on the pitch!`
+  return lines(
+    hiLine(self ? player : parent),
+    `It's Lee from Joner Football. ${self ? 'You have' : `${firstName(player)} has`} a spot in our ${when} group at ${place}${from}.`,
+    `To 100% lock it in, ${signIn(email)}, sign the waiver and pay here: ${url}`,
+    `We have emailed you the same link. See you on the pitch!\n${SIGN}`,
+  )
 }
 // After any add with no payment link: when they start and what to do next.
-export function startText({ parent, player, when, place, starts = '', self = false, paid = false }) {
-  const hi = `Hi ${firstName(self ? player : parent)}, it's Lee from Joner Football.`
-  const who = self ? 'You are' : `${firstName(player)} is`
-  const start = starts ? ` starting on ${starts}` : ''
-  const next = paid
-    ? `You are all paid. Please sign in and sign the waiver before the first session: jonerfootball.com/jfp-account`
-    : `To 100% lock in the spot, sign in, sign the waiver and pay: jonerfootball.com/jfp-account`
-  return `${hi} ${who}${start} in our ${when} group at ${place}. ${next} See you on the pitch!`
+export function startText({ parent, player, when, place, starts = '', self = false, paid = false, email = '' }) {
+  return lines(
+    hiLine(self ? player : parent),
+    `It's Lee from Joner Football. ${self ? 'You are' : `${firstName(player)} is`}${starts ? ` starting on ${starts}` : ''} in our ${when} group at ${place}.`,
+    paid
+      ? `You are all paid. Please ${signIn(email)} at jonerfootball.com/jfp-account and sign the waiver before the first session.`
+      : `To 100% lock in the spot, ${signIn(email)} at jonerfootball.com/jfp-account, sign the waiver and pay.`,
+    `See you on the pitch!\n${SIGN}`,
+  )
 }
-export function trialText({ parent, player, when, where, self = false }) {
-  return self
-    ? `Hi ${firstName(player)}, it's Lee from Joner Football. You are booked in for a trial on ${when} at ${where}. Please sign in and sign your waiver before the session: jonerfootball.com/jfp-account See you on the pitch!`
-    : `Hi ${firstName(parent)}, it's Lee from Joner Football. ${firstName(player)} is booked in for a trial on ${when} at ${where}. Please sign in and sign the waiver before the session: jonerfootball.com/jfp-account See you on the pitch!`
+export function trialText({ parent, player, when, where, self = false, email = '' }) {
+  return lines(
+    hiLine(self ? player : parent),
+    `It's Lee from Joner Football. ${self ? 'You are' : `${firstName(player)} is`} booked in for a trial on ${when} at ${where}.`,
+    `Before the session, please ${signIn(email)} at jonerfootball.com/jfp-account and sign the waiver.`,
+    `See you on the pitch!\n${SIGN}`,
+  )
 }
 export function helloText({ parent, player = '', self = false }) {
-  return `Hi ${firstName(self ? player : parent)}, it's Lee from Joner Football. `
+  return `${hiLine(self ? player : parent)}\n\nIt's Lee from Joner Football. \n\n${SIGN}`
 }
 // The account invite as a text, next to the email (Lee, 13 Oct 2026).
 export function inviteText({ parent, player, email, self = false }) {
-  const who = self ? `Your` : `${firstName(player)}'s`
-  return `Hi ${firstName(self ? player : parent)}, it's Lee from Joner Football. ${who} JFP account is ready. Sign in at jonerfootball.com/jfp-account with ${email || 'your email address'}. We send you a 6 digit code, no password needed. We have emailed you the same. See you on the pitch!`
+  return lines(
+    hiLine(self ? player : parent),
+    `It's Lee from Joner Football. ${self ? 'Your' : `${firstName(player)}'s`} JFP account is ready.`,
+    `Go to jonerfootball.com/jfp-account and ${signIn(email)}. We send you a 6 digit code, no password needed.`,
+    `We have emailed you the same. See you on the pitch!\n${SIGN}`,
+  )
 }

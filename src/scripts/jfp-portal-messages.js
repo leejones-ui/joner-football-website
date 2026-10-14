@@ -37,7 +37,6 @@ export async function renderMessages(ui) {
   // The newest test text Lee sent himself: confirming it switches texts on.
   const lastTest = d.messages.find((m) => m.selfTest && !['draft', 'cancelled', 'expired'].includes(m.status))
   const list = d.families.filter((f) => {
-    if (S.q && !`${f.parent} ${f.email} ${f.players.map((p) => p.name).join(' ')}`.toLowerCase().includes(S.q)) return false
     if (S.filter === 'all') return true
     if (S.filter === 'notSent') return !f.lastEmail || !['sent', 'delivered'].includes(f.lastEmail.status)
     return f.kind === S.filter
@@ -62,7 +61,7 @@ export async function renderMessages(ui) {
       <input class="j-input" id="ms-q" placeholder="Search family or player" value="${esc(S.q)}" style="max-width:260px;padding:8px 10px;font-size:14px">
     </div>
     <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Parent</th><th>Players</th><th>Records</th><th>Email</th><th>Text</th><th></th></tr></thead><tbody>
-    ${list.map((f) => `<tr>
+    ${list.map((f) => `<tr ${S.q && !`${f.parent} ${f.email} ${f.players.map((p) => p.name).join(' ')}`.toLowerCase().includes(S.q) ? 'hidden' : ''} data-s="${esc(`${f.parent} ${f.email} ${f.players.map((p) => p.name).join(' ')}`.toLowerCase())}">
       <td><b>${esc(f.parent || '')}</b><br><span class="muted small">${esc(f.email)}</span>${f.dnc ? '<br><span class="j-pill j-pill-red">Do Not Contact</span>' : ''}</td>
       <td class="small">${f.players.map((x) => esc(x.name)).join('<br>')}</td>
       <td><span class="j-pill j-pill-${KIND[f.kind][0]}">${esc(KIND[f.kind][1])}${f.kind === 'pay' ? ` ${esc(money(f.owingCents))}` : ''}</span>${f.openLink ? '<br><span class="muted small">Pay link open</span>' : ''}${f.invitedAt ? `<br><span class="muted small">Emailed ${esc(when(f.invitedAt))}</span>` : ''}</td>
@@ -88,7 +87,11 @@ export async function renderMessages(ui) {
 
   const again = () => renderMessages(ui)
   view().querySelector('#ms-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { S.filter = b.dataset.f; again() } })
-  view().querySelector('#ms-q').addEventListener('change', (e) => { S.q = e.target.value.trim().toLowerCase(); again() })
+  // Filters as you type (Lee, 14 Oct 2026: it only searched on Enter).
+  view().querySelector('#ms-q').addEventListener('input', (e) => {
+    S.q = e.target.value.trim().toLowerCase()
+    view().querySelectorAll('tr[data-s]').forEach((tr) => { tr.hidden = Boolean(S.q) && !tr.dataset.s.includes(S.q) })
+  })
   view().querySelectorAll('[data-prep]').forEach((b) => b.addEventListener('click', () => prepare(ui, d, d.families.find((f) => f.email === b.dataset.prep))))
   view().querySelectorAll('[data-cancel]').forEach((b) => b.addEventListener('click', async () => {
     if (!(await confirmBox('Cancel this text? It will not be sent.', { ok: 'Cancel it', danger: true }))) return

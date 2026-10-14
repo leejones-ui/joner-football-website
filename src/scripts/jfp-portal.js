@@ -798,6 +798,7 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
     <div id="ap-kids-bar" ${spotLink ? 'hidden' : ''} style="margin:10px 0"><button type="button" class="j-btn j-btn-line j-btn-sm" id="ap-kid-add">+ Add another child (same family)</button>
       <p class="muted small" id="ap-kids-note" style="margin-top:6px">Brothers and sisters: one parent contact, one account, one email with every child, and one payment for every child with a price.</p></div>
     <label class="j-check"><input type="checkbox" id="ap-send" ${spotLink ? '' : 'checked'}> <span id="ap-send-l"></span></label>
+    <label class="j-check"><input type="checkbox" id="ap-sms" checked> <span><b>Text them too</b>, from 0404 780 351. The text opens ready to send once they are added, so you see it before it goes.</span></label>
     <p class="j-err" id="ap-err" hidden></p>
     <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ap-go"></button></div>`, { wide: true })
   const read = priceBlock(box, pr, { day: g.day, product: g.product || 'group', prefix: 'ap-price', custom: true })
@@ -931,34 +932,35 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
     const w = r.data.words || words
     if (r.data.emailError) toast(r.data.emailError)
     else if (r.data.profileError) toast(r.data.profileError)
-    const mobile = body.parent.mobile
+    // "Text them too" unticked, or no mobile: no text window.
+    const mobile = box.querySelector('#ap-sms')?.checked === false ? '' : body.parent.mobile
     const where = `${g.day} ${g.time}, ${g.locationName}`
-    const textIt = (text, title, note = '') => textComposer({ modal, toast, rowIds: [r.data.rowId], parent: body.parent.name, mobile, text, title, self: w.self, to: w.self ? body.player.name : '', note })
+    const textIt = (text, title, note = '') => textComposer({ modal, toast, rowIds: [r.data.rowId], parent: body.parent.name, mobile: body.parent.mobile, text, title, self: w.self, to: w.self ? body.player.name : '', note })
     const sentLine = r.data.emailed ? ` Sent to ${esc(r.data.emailTo || body.parent.email)}.` : r.data.emailError ? ` <b>The email did not send:</b> ${esc(r.data.emailError)}` : ''
     if (r.data.payreq) {
       const url = r.data.payreq.url
       // Email and text together (Lee, 14 Oct 2026): the text opens ready to send.
       if (mobile) {
         if (!r.data.emailed) copy(url)
-        textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url, self: w.self, starts: startsLabel }), `Now text ${w.contact}`, `<b>${esc(body.player.name)} added</b> to ${esc(where)}.${sentLine}${r.data.emailed ? '' : ' Payment link copied.'} <a href="#" data-copy-url="${esc(url)}">Copy the link</a>`)
+        textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url, self: w.self, starts: startsLabel, email: body.parent.email }), `Now text ${w.contact}`, `<b>${esc(body.player.name)} added</b> to ${esc(where)}.${sentLine}${r.data.emailed ? '' : ' Payment link copied.'} <a href="#" data-copy-url="${esc(url)}">Copy the link</a>`)
         document.querySelector('[data-copy-url]')?.addEventListener('click', (e) => { e.preventDefault(); copy(url) })
         P.board = null; PL.at = 0; renderBoard(true)
         return
       }
       const done = modal(`<h2 style="margin-bottom:6px">${r.data.emailed ? 'Payment link emailed' : 'Payment link ready'}</h2><p class="muted small" style="margin-bottom:12px"><b>${esc(body.player.name)}</b> is held in ${esc(where)} as Awaiting Reply, and locks in once ${esc(r.data.payreq.amountLabel)} is paid.${sentLine} Now text ${w.self ? 'them' : 'them'} the same link.</p>
         <label class="j-field"><span>Payment link</span><input class="j-input" value="${esc(url)}" readonly></label>
-        <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="dn-copy">Copy link</button><button type="button" class="j-btn j-btn-dark" id="dn-text" ${mobile ? '' : 'disabled title="No mobile entered"'}>Text it to ${esc(w.contact)}</button></div>
-        ${mobile ? '' : '<p class="muted small" style="margin-top:8px">No mobile was entered. Add one with Edit on the Players tab to text them.</p>'}`)
+        <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="dn-copy">Copy link</button><button type="button" class="j-btn j-btn-dark" id="dn-text" ${body.parent.mobile ? '' : 'disabled title="No mobile entered"'}>Text it to ${esc(w.contact)}</button></div>
+        ${body.parent.mobile ? '' : '<p class="muted small" style="margin-top:8px">No mobile was entered. Add one with Edit on the Players tab to text them.</p>'}`)
       done.querySelector('#dn-copy').addEventListener('click', () => copy(url))
-      done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url, self: w.self, starts: startsLabel }), `Text ${w.contact} the payment link`) })
+      done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url, self: w.self, starts: startsLabel, email: body.parent.email }), `Text ${w.contact} the payment link`) })
       if (!r.data.emailed) copy(url)
     } else if (payment === 'trial' && mobile) {
       const whenT = String(box.querySelector('#ap-trial').selectedOptions[0]?.textContent || '').replace(/^Week \d+ · /, '')
-      textIt(trialText({ parent: body.parent.name, player: body.player.name, when: whenT, where: `${g.time}, ${g.locationName}`, self: w.self }), `Now text ${w.contact} the trial`, `<b>Trial booked</b> for ${esc(body.player.name)}, ${esc(whenT)}. ${esc(g.coachName ? `Coach ${g.coachName}` : 'The coach')} sees it as a trial.${sentLine}`)
+      textIt(trialText({ parent: body.parent.name, player: body.player.name, when: whenT, where: `${g.time}, ${g.locationName}`, self: w.self, email: body.parent.email }), `Now text ${w.contact} the trial`, `<b>Trial booked</b> for ${esc(body.player.name)}, ${esc(whenT)}. ${esc(g.coachName ? `Coach ${g.coachName}` : 'The coach')} sees it as a trial.${sentLine}`)
     } else if (mobile) {
       // Every add is texted too: the start date, the session and how to lock it in.
       const paid = payment === 'offline'
-      textIt(startText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, starts: startsLabel, self: w.self, paid }), `Now text ${w.contact}`, `<b>${esc(body.player.name)} added</b> to ${esc(where)}${startsLabel ? `, starting ${esc(startsLabel)}` : ''}.${sentLine}`)
+      textIt(startText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, starts: startsLabel, self: w.self, paid, email: body.parent.email }), `Now text ${w.contact}`, `<b>${esc(body.player.name)} added</b> to ${esc(where)}${startsLabel ? `, starting ${esc(startsLabel)}` : ''}.${sentLine}`)
     } else if (!r.data.emailError) toast(`Added${r.data.emailed ? `. Sent to ${r.data.emailTo || body.parent.email}` : ''}. Airtable updated.`)
     P.board = null; PL.at = 0
     renderBoard(true)
