@@ -450,3 +450,21 @@ body:has(.ja) { background: #0A0A0B !important; }
 .ja-opt .ja-opt-dates { color: var(--ja-ink-2, #c9c9cf); }
 .ja-row-fee b, .ja-row-fee small { white-space: normal; overflow-wrap: anywhere; }
 .ja-row-fee .ja-avatar { width: 30px; height: 30px; font-size: 11px; }
+
+/* Round 2 (14 Oct 2026): paid marks on dates, upcoming sessions, the More sheet. */
+.ja-tag.green { background: var(--ja-green); color: #04210F; }
+.ja-upc b { display: block; }
+.ja-upc small { display: block; margin-top: 4px; color: var(--ja-muted); font-size: 13px; line-height: 1.45; }
+.ja-more-group { margin-top: 6px; }
+.ja-more-group + .ja-more-group { margin-top: 14px; }
+.ja-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.ja .ja-tile { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 84px; padding: 14px; border-radius: 16px; background: var(--ja-panel-2); border: 1px solid var(--ja-line); color: var(--ja-ink); text-align: left; text-decoration: none; font: 600 14px/1.25 Inter, system-ui, sans-serif; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ja .ja-tile svg { width: 22px; height: 22px; color: var(--ja-ink-2); }
+.ja .ja-tile .s { font-weight: 500; font-size: 12px; color: var(--ja-muted); }
+.ja .ja-tile .dot { position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--ja-red); }
+.ja .ja-tile .ext { position: absolute; top: 12px; right: 12px; width: 16px; height: 16px; color: var(--ja-faint); }
+.ja .ja-tile[aria-current="page"] { border-color: var(--ja-line-2); background: var(--ja-panel-3); }
+.ja .ja-tile.is-due { border-color: rgba(232, 0, 13, .55); }
+.ja .ja-tile:active { transform: scale(.98); }
+.ja .ja-btn.ja-btn-wrap { white-space: normal; height: auto; min-height: 36px; text-align: left; line-height: 1.3; padding-top: 9px; padding-bottom: 9px; max-width: 100%; }
+.ja-date .ja-tag { white-space: nowrap; }

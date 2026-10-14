@@ -184,3 +184,57 @@ receipts are looked up per payment intent (8 a read, kept in
 
 Tests: `scripts/test-jfp-pro-quotes.mjs` (in `npm run test:jfp`) and
 `scripts/test-jfp-pro-quotes-flow.mjs` (harness, `npm run test:jfp-pro-quotes-flow`).
+
+## Round 2 (14 Oct 2026)
+
+Quote runs (`_jfp-quote.js`, `_jfp-quote-staff.js`, `jfp-portal-quote.js`):
+the quote editor has quick buttons "Rest of term (N sessions)" (N = the
+sessions this player, or this group, still has: `termRun(config, row,
+group)`) and "Whole term (W sessions)" (off once the term has started), and
+any run from 2 up to N can be typed. The server checks the same: a new tier
+longer than the sessions left is refused (`cleanQuote(..., { maxN, fresh })`;
+a saved tier that no longer fits does not block other changes, it is just not
+offered). `pricing` returns `runs: { byGroup, noGroup }`; `playerQuote`
+returns `termLeft` and `termWhole`.
+
+Session by session in My account (`_jfp-account-pay.js`): every `prepay`
+item has `left`, `leftCents`/`leftLabel` and `rest` ("Pay for the rest of the
+term": every date left at the price per session, or staff's tier when it is
+exactly that run). `payOwed { option: 'rest' }` works with or without a quote.
+Home and Fees show "Upcoming sessions: N left this term at A$X" with the
+options and "Sessions you do not pay ahead are billed after they happen."
+Fees says "Nothing owing" only when nothing is billed and no session is left
+to pay for. My sessions marks each date Paid / Payment started / Not paid yet
+(`sessionMarks`: [COVERED:] dates, dates on paid pay-ahead links, then any
+undated [PREPAID:n]) and has "Pay for sessions", which opens Fees there.
+
+No coach names for families (Lee: morning groups rotate coaches): family
+emails (`groupRows`, the account invite), the Stripe item name, the payment
+success page (`jfp-confirm`), and My account (no `coach` on enrolments or
+Keep my spot; "Your coach" when a cancellation is sent, "Coach" next to a
+coach's mobile). Staff and coach views are unchanged. Holiday 1 to 1 bookings
+keep their coach.
+
+"Program", not "programme", in every display string (portal, account, public
+pages, emails). Code names, KV and metadata keys, Airtable fields, URLs
+(`/programmes`) and image paths are unchanged.
+
+Phone bar: Home, Sessions, Fees, Contact, More. More is a sheet of tiles in
+the side bar's groups (My JFP, Program, Train) with only what is not on the
+bar, and a "To do" tile first when a waiver is still to sign.
+
+Add a family (`addFamily`, `jfp-portal-family-add.js`): Timetable > Add a
+player > "+ Add another child (same family)", or Players tab > "+ Add a
+family" (no group needed). Each child: group (or none), name, date of birth,
+payment (a price, session by session, Pro with a quote, free trial, paid
+offline, decide later). One shared parent contact. Every child is checked
+before anything is written (duplicates, places, prices; the sibling rate is
+allowed because the others are the siblings), then a row each
+(`noteNewPlayer` for every child in a group), ONE `family` payment request for
+every child with a price (`places` per child, split onto each row when paid,
+as a family invoice), and ONE email to the parent (`sendFamilyWelcome`: every
+child, a waiver for each, one payment, then details). Audited as `player.add`
+per row (with `family`) and `family.add`.
+
+Tests: `scripts/test-jfp-round2.mjs` (in `npm run test:jfp`) and
+`scripts/test-jfp-round2-flow.mjs` (harness, `npm run test:jfp-round2-flow`).

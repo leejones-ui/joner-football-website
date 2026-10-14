@@ -275,7 +275,8 @@ async function submit(req, res, body, parent) {
   const coach = coachById(config, group.coachId)
   const dates = sessionDates(config, group.day).filter((d) => d >= from)
   const loc = locationFor(config, group.location)
-  const name = `${config.term}: ${group.day} ${group.time}, ${loc.name}${coach ? ` with Coach ${coachLabel(coach)}` : ''}`
+  // The family's Stripe page and receipt: no coach's name (Lee, 14 Oct 2026).
+  const name = `${config.term}: ${group.day} ${group.time}, ${loc.name}`
   let session
   try {
     session = await stripeFetch('/checkout/sessions', {

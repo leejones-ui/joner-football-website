@@ -19,6 +19,7 @@ import { contactWords } from '../../api/_jfp-contact.js'
 import { textComposer, payLinkText, trialText, helloText, inviteText, startText } from './jfp-portal-text.js'
 import { JJ_NAV, JJ_TABS, JJ_ICON, renderJJ } from './jfp-portal-jj.js'
 import { quoteHtml, wireQuote, commitmentHtml, sameTiers } from './jfp-portal-quote.js'
+import { childList, submitFamily, familyModal, familyGroups } from './jfp-portal-family-add.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', linkProg: 'all', pricing: null }
@@ -767,6 +768,13 @@ function payHint(v, words = {}) {
   return ''
 }
 
+// What the family add (jfp-portal-family-add.js) needs from this page.
+const famUI = () => ({
+  post, modal, closeModal, toast, copy, confirmBox, textComposer, priceBlock, dateOptions, nextDate, customPrices, isJJ, pricing,
+  board: async () => P.board || (P.board = await need(await post('board'))),
+  after: () => { P.board = null; PL.at = 0; if (P.tab === 'players') renderPlayers(); else renderBoard(true) },
+})
+
 // Add a player by hand. With spotLink, the family gets a link to this spot:
 // they sign in, add details, sign the waiver and pay. The place is held for
 // them in Airtable as Awaiting Reply until it is paid.
@@ -785,14 +793,17 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     <label class="j-field" id="ap-start-wrap" hidden><span>Starts</span><select class="j-select" id="ap-start">${dateOptions(pr, g.day, nextDate(pr, g.day))}</select></label>
     <label class="j-field" id="ap-trial-wrap" hidden><span>Trial date</span><select class="j-select" id="ap-trial">${dateOptions(pr, g.day, nextDate(pr, g.day))}</select></label>
     <label class="j-field" id="ap-per-wrap" hidden><span>Price per session (A$) <span class="muted">(optional, or set it when you bill)</span></span><input class="j-input" id="ap-per" inputmode="decimal" placeholder="e.g. 80"></label>
-    ${quoteHtml('ap', { defaultQuote: pr.defaultQuote })}
+    ${quoteHtml('ap', { defaultQuote: pr.defaultQuote, run: pr.runs?.byGroup?.[g.id] })}
+    <div id="ap-kids"></div>
+    <div id="ap-kids-bar" ${spotLink ? 'hidden' : ''} style="margin:10px 0"><button type="button" class="j-btn j-btn-line j-btn-sm" id="ap-kid-add">+ Add another child (same family)</button>
+      <p class="muted small" id="ap-kids-note" style="margin-top:6px">Brothers and sisters: one parent contact, one account, one email with every child, and one payment for every child with a price.</p></div>
     <label class="j-check"><input type="checkbox" id="ap-send" ${spotLink ? '' : 'checked'}> <span id="ap-send-l"></span></label>
     <p class="j-err" id="ap-err" hidden></p>
     <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ap-go"></button></div>`, { wide: true })
   const read = priceBlock(box, pr, { day: g.day, product: g.product || 'group', prefix: 'ap-price', custom: true })
   let words = contactWords({})
   // Pro quote (14 Oct 2026): the default Pro quote fills in once for a Pro add.
-  const apQuote = wireQuote(box, 'ap', { perInput: box.querySelector('#ap-per'), defaultQuote: pr.defaultQuote })
+  const apQuote = wireQuote(box, 'ap', { perInput: box.querySelector('#ap-per'), defaultQuote: pr.defaultQuote, run: pr.runs?.byGroup?.[g.id] })
   let apPrefilled = false
   const payWatch = () => {
     const v = box.querySelector('#ap-pay').value
@@ -811,9 +822,18 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
       ? `Email ${words.contact} now. They sign in, sign their waiver, pay for this group, then get the training kit.`
       : 'Email the family now. They sign in, confirm the waiver (or sign it), pay for this group, then get the training kit.'
     const go = box.querySelector('#ap-go')
-    if (!go.disabled) go.textContent = v === 'link' ? (send ? 'Add and email payment link' : 'Add and copy link') : send ? words.addAndEmail : 'Add to group'
+    // Own contact (an adult or a Pro) has no family to add.
+    box.querySelector('#ap-kids-bar').hidden = spotLink || words.self
+    const kidsN = kids ? kids.count() : 0
+    if (kidsN && words.self) box.querySelector('#ap-kids').hidden = true
+    else box.querySelector('#ap-kids').hidden = false
+    if (!go.disabled) go.textContent = kidsN && !words.self ? `Add ${kidsN + 1} children${send ? ' and email the parent' : ''}` : v === 'link' ? (send ? 'Add and email payment link' : 'Add and copy link') : send ? words.addAndEmail : 'Add to group'
   }
+  // More children of the same family (round 2): each with their own group and price.
+  let kids = null
   const form = wirePlayerForm(box, 'ap', { onChange: (w) => { words = w; payWatch() } })
+  kids = childList(box, famUI(), pr, { mount: box.querySelector('#ap-kids'), groups: familyGroups(P.board, isJJ), groupId: g.id, noGroup: false, start: 0, firstNumber: 2, onChange: () => payWatch() })
+  box.querySelector('#ap-kid-add').addEventListener('click', () => kids.add())
   // A per-session price from the list is a session-by-session player at that price.
   box.querySelector('#ap-price-prod').addEventListener('change', (e) => {
     const p = customPrices(pr).find((x) => `price:${x.id}` === e.target.value)
@@ -876,6 +896,22 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     }
     const btn = box.querySelector('#ap-go')
     const label = btn.textContent
+    // Brothers and sisters (round 2): every child in one request, one email, one payment.
+    if (kids.count() && !f.ownContact) {
+      const extra = kids.read()
+      const bad = extra.find((c) => c.error)
+      if (bad) { err.textContent = bad.error; err.hidden = false; return }
+      if (!body.parent.email) { err.textContent = 'Add the parent email: the whole family signs in with it.'; err.hidden = false; return }
+      if ((body.parent.name || '').length < 2) { err.textContent = "Enter the parent's name."; err.hidden = false; return }
+      const { parent, ownContact, sendEmail, afterpay, ...first } = body
+      busy = true; btn.disabled = true; btn.textContent = 'Adding'
+      const out = await submitFamily(famUI(), { parent, children: [first, ...extra], sendEmail, afterpay: afterpay !== false })
+      busy = false
+      if (out.ok || out.closed) return
+      btn.disabled = false; btn.textContent = label
+      err.textContent = out.error; err.hidden = false
+      return
+    }
     busy = true; btn.disabled = true; btn.textContent = 'Adding'
     let r = await post('addPlayer', body)
     if (r.status === 409 && r.data.code === 'full') {
@@ -1237,7 +1273,7 @@ async function renderPayments() {
       <div class="jq-acts"><button type="button" class="j-btn j-btn-dark" id="pl-quick">Quick link</button><button type="button" class="j-btn j-btn-line" id="pl-new">+ New payment link</button></div></div>
     ${otherCheck.length ? `<div class="j-box j-box-amber" id="pl-other-check" style="margin-bottom:16px"><b>Other payments to check: ${otherCheck.length}</b><p class="small" style="margin:4px 0 6px">Quick links for Pro sessions or Other, paid with no player named. Look at who paid, then tick Checked.</p><ul class="jm-hist">${otherCheck.map((q) => `<li><span><b>${esc(q.forText)}</b><small>${esc([q.payerName, q.payerEmail].filter(Boolean).join(' · ') || 'Payer not known')} · ${q.paidAt ? esc(when(q.paidAt)) : ''} · ${esc(q.id)}</small></span><span class="jq-acts"><span class="amt">${esc(q.amountLabel)}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-check-quick="${esc(q.id)}">Checked</button></span></li>`).join('')}</ul></div>` : ''}
     ${attention.length ? `<div class="j-box j-box-red" style="margin-bottom:16px"><b>Needs checking</b>${attention.map((x) => `<div style="margin-top:8px">${esc(x.players.join(', '))} · ${esc(x.parentName)} · ${esc(String(x.needsAttention).split(', ').map((k) => attnWord[k] || k).join(', '))}${(x.unexpected || []).map((u) => ` · ${esc(u.amountLabel)}${u.stripeUrl ? ` <a href="${esc(u.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}`).join('')}</div>`).join('')}<p class="small" style="margin-top:8px">A payment that arrived after a cancel is not added to Airtable. Give the family the place (add them on the timetable) or refund in Stripe.</p></div>` : ''}
-    <div class="j-chips jq-progs" id="pl-prog" role="group" aria-label="Programme" style="margin-bottom:8px">${LINK_PROGS.map(([v, l]) => `<button type="button" class="j-chip" data-prog="${v}" aria-pressed="${P.linkProg === v}">${l} ${progCount[v]}</button>`).join('')}</div>
+    <div class="j-chips jq-progs" id="pl-prog" role="group" aria-label="Program" style="margin-bottom:8px">${LINK_PROGS.map(([v, l]) => `<button type="button" class="j-chip" data-prog="${v}" aria-pressed="${P.linkProg === v}">${l} ${progCount[v]}</button>`).join('')}</div>
     <div class="jp-seg" id="pl-f" style="margin-bottom:10px">${[['open', `Open ${counts.open}`], ['paid', `Paid ${counts.paid}`], ['closed', `Cancelled or expired ${counts.closed}`]].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.linkFilter === v}">${l}</button>`).join('')}</div>
     ${list.length ? `<div class="jp-scroll jq-links"><table class="jp-table jy-table jy-stack" id="pl-list"><thead><tr><th>Player</th><th>For</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>
       ${list.map((q) => `<tr data-link="${esc(q.id)}"><td data-label="Player"><div class="jq-cell">${who(q)}</div></td>
@@ -1716,8 +1752,9 @@ function editPlayerModal(p) {
     const wrap = box.querySelector('#ep-q-wrap')
     if (!rq.ok || !rq.data?.quote || !wrap || !box.isConnected) return
     epQd = rq.data
-    wrap.innerHTML = `${commitmentHtml(epQd.commitment, epQd.commitments)}${quoteHtml('ep', { tiers: epQd.quote.tiers, defaultQuote: epQd.defaultQuote })}`
-    epQuote = wireQuote(box, 'ep', { perInput: box.querySelector('#ep-per'), defaultQuote: epQd.defaultQuote })
+    const epRun = { whole: epQd.termWhole, left: epQd.termLeft }
+    wrap.innerHTML = `${commitmentHtml(epQd.commitment, epQd.commitments)}${quoteHtml('ep', { tiers: epQd.quote.tiers, defaultQuote: epQd.defaultQuote, run: epRun })}`
+    epQuote = wireQuote(box, 'ep', { perInput: box.querySelector('#ep-per'), defaultQuote: epQd.defaultQuote, run: epRun, keep: epQd.quote.tiers })
   })
   box.querySelector('#ep-go').addEventListener('click', async (e) => {
     const v = (id) => box.querySelector(id).value.trim()
@@ -2024,7 +2061,7 @@ async function renderLookBack(pre, seq) {
 }
 
 // What Money > JFP explains under its (i).
-const JFP_TIP = 'Every player\'s payments: Stripe read live, plus the bank transfers and cash you record here. Recording a payment writes the player\'s row and the payment ledger in Airtable; anything changed in Airtable shows here when you open this tab or press Refresh. Pro sessions, Joners Juniors, holiday training and camps are not in these figures: each has its own view in the Programme menu.'
+const JFP_TIP = 'Every player\'s payments: Stripe read live, plus the bank transfers and cash you record here. Recording a payment writes the player\'s row and the payment ledger in Airtable; anything changed in Airtable shows here when you open this tab or press Refresh. Pro sessions, Joners Juniors, holiday training and camps are not in these figures: each has its own view in the Program menu.'
 
 async function renderMoney(pre) {
   // Opened from the menu or the programme switch (not a refresh after a change).
@@ -2588,7 +2625,7 @@ async function plEdit(p) {
       <label class="j-field"><span>Payment type</span><select class="j-select" id="pe-type"><option value="">Not set</option>${types.map((t) => `<option ${t === d.row.paymentType ? 'selected' : ''}>${esc(t)}</option>`).join('')}${d.row.paymentType && !types.includes(d.row.paymentType) ? `<option selected>${esc(d.row.paymentType)}</option>` : ''}</select></label>
       <p class="muted small" style="margin-top:-6px">Session by session and Pro sessions: they can pay for sessions from their account (the next session at their price, or more ahead), and sessions you bill from Money show there too. A term fee with no link: they can pay from their account. Pro sessions money shows under Pro sessions, not JFP term income.</p>
       <label class="j-field" id="pe-per-wrap"><span>Price per session (A$) <span class="muted">(session by session and Pro sessions)</span></span><input class="j-input" id="pe-per" inputmode="decimal" value="${esc(per)}" placeholder="e.g. 80"></label>
-      ${qd ? `${commitmentHtml(qd.commitment, qd.commitments)}${quoteHtml('pe', { tiers: qd.quote.tiers, defaultQuote: qd.defaultQuote })}` : ''}
+      ${qd ? `${commitmentHtml(qd.commitment, qd.commitments)}${quoteHtml('pe', { tiers: qd.quote.tiers, defaultQuote: qd.defaultQuote, run: { whole: qd.termWhole, left: qd.termLeft } })}` : ''}
       <div class="j-two"><label class="j-field"><span>Term 4 fee (A$)</span><input class="j-input" id="pe-fee" inputmode="decimal" value="${esc(d.row.feeAud ?? '')}"></label>
       <label class="j-field"><span>Set the fee from a price <span class="muted">(optional)</span></span><select class="j-select" id="pe-price"><option value="">Choose a price</option>${pr ? `<optgroup label="JFP price list">${(pr.products || []).map((x) => `<option value="${x.cents}" data-type="${esc(x.type)}">${esc(x.label)} · ${esc(money(x.cents))}</option>`).join('')}</optgroup>${customPrices(pr).map((x) => `<option value="${x.cents}" data-type="${x.programme === 'pro' ? 'JFP Pro sessions' : ''}" data-per="${x.perSession ? '1' : ''}">${esc(x.name)} · ${esc(x.amountLabel || money(x.cents))}${x.perSession ? ' a session' : ''}</option>`).join('')}` : ''}</select></label></div>
       ${d.row.paidAud ? `<p class="muted small">Paid so far: ${esc(money0(d.row.paidAud))}.</p>` : ''}
@@ -2596,7 +2633,7 @@ async function plEdit(p) {
     <p class="j-err" id="pe-err" hidden></p>
     <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="pe-save">Save</button></div>`, { wide: true })
   const form = wirePlayerForm(box, 'pe')
-  const peQuote = qd ? wireQuote(box, 'pe', { perInput: box.querySelector('#pe-per'), defaultQuote: qd.defaultQuote }) : null
+  const peQuote = qd ? wireQuote(box, 'pe', { perInput: box.querySelector('#pe-per'), defaultQuote: qd.defaultQuote, run: { whole: qd.termWhole, left: qd.termLeft }, keep: qd.quote.tiers }) : null
   if (qd?.quoted || qd?.commitment) box.querySelector('#pe-payfold').open = true
   const typeWatch = () => { const on = /session by session|pro session/i.test(box.querySelector('#pe-type').value); box.querySelector('#pe-per-wrap').hidden = !on; peQuote?.show(on || Boolean(qd?.quoted)) }
   box.querySelector('#pe-type').addEventListener('change', typeWatch)
@@ -2784,8 +2821,8 @@ async function plAddBox() {
     if (!go.disabled) go.textContent = send ? (pay === 'link' ? 'Add and email payment link' : words.addAndEmail) : pay === 'link' ? 'Add and make link' : 'Add player'
   }
   const form = wirePlayerForm(box, 'pa', { onChange: (w) => { words = w; relabel() } })
-  box.querySelector('#pa-per-wrap').insertAdjacentHTML('afterend', quoteHtml('pa', { defaultQuote: pr.defaultQuote }))
-  const paQuote = wireQuote(box, 'pa', { perInput: box.querySelector('#pa-per'), defaultQuote: pr.defaultQuote })
+  box.querySelector('#pa-per-wrap').insertAdjacentHTML('afterend', quoteHtml('pa', { defaultQuote: pr.defaultQuote, run: pr.runs?.noGroup }))
+  const paQuote = wireQuote(box, 'pa', { perInput: box.querySelector('#pa-per'), defaultQuote: pr.defaultQuote, run: pr.runs?.noGroup })
   let paPrefilled = false
   const readPay = wireNoGroupPayment(box, 'pa', pr, { onChange: (v) => {
     pay = v; relabel(); paQuote.show(['sessions', 'pro'].includes(v))
@@ -2845,7 +2882,7 @@ async function renderPlayers(keep = false) {
   const shown = d.players.filter(plMatch)
   const opt = (list, sel, blank) => `<option value="">${blank}</option>` + list.map((x) => `<option value="${esc(x.id)}" ${sel === x.id ? 'selected' : ''}>${esc(x.label || x.name)}</option>`).join('')
   view().innerHTML = `<div class="jp-head"><div><h1>Players</h1><p class="muted small">Every Term 4 player. Search, filter by level or position, click anyone to see everything, or press Edit to change their details. Families update the same details in My account.</p></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="muted small" id="pl-synced">Read from Airtable ${esc(new Date(PL.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}</span><button type="button" class="j-btn j-btn-line" id="pl-refresh">Refresh from Airtable</button><button type="button" class="j-btn j-btn-dark" id="pl-add">+ Add a player</button><button type="button" class="j-btn j-btn-line" id="pl-invite">Send account invites</button></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="muted small" id="pl-synced">Read from Airtable ${esc(new Date(PL.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}</span><button type="button" class="j-btn j-btn-line" id="pl-refresh">Refresh from Airtable</button><button type="button" class="j-btn j-btn-dark" id="pl-add">+ Add a player</button><button type="button" class="j-btn j-btn-line" id="pl-add-family">+ Add a family</button><button type="button" class="j-btn j-btn-line" id="pl-invite">Send account invites</button></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <input class="j-input" id="pl-q" placeholder="Search name, parent, email, mobile, group" value="${esc(PL.q)}" style="flex:1;min-width:240px">
       <select class="j-select" id="pl-status" style="width:auto">${opt([{ id: 'unpaid', label: 'Not paid' }, { id: 'paid', label: 'Paid' }, { id: 'noprice', label: 'No fee set' }], PL.status, 'Any payment')}</select>
@@ -2867,6 +2904,7 @@ async function renderPlayers(keep = false) {
   }
   $('pl-clear').addEventListener('click', () => { Object.assign(PL, { q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '' }); redraw() })
   $('pl-add').addEventListener('click', () => plAddBox())
+  $('pl-add-family').addEventListener('click', () => familyModal(famUI()))
   $('pl-refresh').addEventListener('click', () => { PL.at = 0; renderPlayers() })
   $('pl-invite').addEventListener('click', () => renderFamilies())
   view().querySelectorAll('[data-pl]').forEach((tr) => tr.addEventListener('click', (e) => {

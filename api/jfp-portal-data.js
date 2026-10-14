@@ -28,7 +28,7 @@ import {
 import { listCancels, staffView, noticeSummary } from './_jfp-cancel.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, payEffectsFor } from './_jfp-finalise.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
-import { sendAccountInvite, accountInvite, sendFamilyInvite, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
+import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest } from './_jfp-next.js'
 import { allProfiles, findProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
@@ -44,7 +44,7 @@ import { matchBank, cleanItem, csvIds, EXTERNAL_ID, BANK_LIMITS, twinOf, looksJf
 import { holidayMoneyData, holidaySizes, HOLIDAY_BANK } from './_holiday-money.js'
 import { proMoneyData, isProRow, isProLedger, PRO_BANK } from './_jfp-pro-money.js'
 import { billPlan, afterBill, billLine, coveredOf, withQuote } from './_jfp-quote.js'
-import { playerQuote, saveQuote, saveDefaultQuote, addQuote } from './_jfp-quote-staff.js'
+import { playerQuote, saveQuote, saveDefaultQuote, addQuote, termRun } from './_jfp-quote-staff.js'
 import { campsMoneyData, campsStripe } from './_jfp-camps.js'
 import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
 import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
@@ -260,7 +260,7 @@ function readAdd(config, body, { group = null } = {}) {
   if (errors.length) return { error: errors.join(' ') }
   const words = contactWords({ self: ownContact, players: [name], parent: parentName })
   // A Pro quote typed on the Add form (commitment tiers), checked now (_jfp-quote-staff.js).
-  const quote = addQuote('', body.quote, { perSession, sessionPay: ['sessions', 'pro'].includes(payment) })
+  const quote = addQuote('', body.quote, { perSession, sessionPay: ['sessions', 'pro'].includes(payment), maxN: termRun(config, {}, group).left })
   if (quote.error) return { error: quote.error }
   return { ok: true, v: { ownContact, name, email, parentName, mobile, dob, payment, perSession, custom: custom && !custom.builtin ? custom : null, profile, words, quoteTiers: quote.tiers || [] } }
 }
@@ -284,35 +284,39 @@ function sessionsLine(payment, perSession) {
   return `${what}${perSession ? ` at ${formatAud(perSession)} a session` : ''}.`
 }
 
-export async function addPlayer(req, res, principal, config, body) {
-  const group = await getGroup(body.groupId)
-  if (!group) return fail(res, 404, 'Group not found.')
-  if (isJuniorsGroup(group)) return fail(res, 400, 'Joners Juniors children are added in the Joners Juniors table, not here.')
+// One player into a group, checked, nothing written yet (round 2, 14 Oct
+// 2026: shared by Add a player and Add a family). { ok, ... } or
+// { status, error, code?, rowId? }. family: { size } when several children
+// are added in one go (no email of their own, no link of their own).
+async function prepGroupAdd({ principal, config, group, body, roster, family = null }) {
+  if (isJuniorsGroup(group)) return { status: 400, error: 'Joners Juniors children are added in the Joners Juniors table, not here.' }
   const read = readAdd(config, body, { group })
-  if (read.error) return fail(res, 400, read.error)
-  const { name, email, parentName, mobile, dob, payment, perSession, custom, ownContact, words } = read.v
-  if ((payment === 'link' || body.sendEmail) && !email) return fail(res, 400, ownContact ? "Add the player's email so they can sign in, sign the waiver and pay." : 'Add the parent email so the family can sign in, sign the waiver and pay.')
+  if (read.error) return { status: 400, error: read.error }
+  const { name, email, payment, perSession, custom, ownContact, dob } = read.v
+  if (!family && (payment === 'link' || body.sendEmail) && !email) return { status: 400, error: ownContact ? "Add the player's email so they can sign in, sign the waiver and pay." : 'Add the parent email so the family can sign in, sign the waiver and pay.' }
   // The same player twice in one group (a retry after an error) is refused.
-  const already = (await loadRoster({ fresh: true })).players.find((r) => r.holdsPlace && normName(r.player) === normName(name) && r.day === group.day && r.time === group.time && r.location === group.location)
-  if (already) return fail(res, 409, `${name} is already in this group.`, { code: 'duplicate', rowId: already.id })
+  const already = roster.players.find((r) => r.holdsPlace && normName(r.player) === normName(name) && r.day === group.day && r.time === group.time && r.location === group.location)
+  if (already) return { status: 409, error: `${name} is already in this group.`, code: 'duplicate', rowId: already.id }
   const cap = await capacityCheck(group, 1, body.force === true)
-  if (cap.error) return fail(res, 409, cap.error, { code: cap.code })
+  if (cap.error) return { status: 409, error: cap.error, code: cap.code }
   const age = dob ? ageOn(dob, config.termStart) : (Number.isInteger(Number(body.player?.age)) ? Number(body.player.age) : null)
-  if (payment === 'offline' && !(Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0) && !custom) return fail(res, 400, 'Enter the amount they paid.')
+  if (payment === 'offline' && !(Number.isInteger(Number(body.amountCents)) && Number(body.amountCents) > 0) && !custom) return { status: 400, error: 'Enter the amount they paid.' }
   const fromPrice = amountFor(config, group, body)
   const { price, product, from } = fromPrice
   const typed = Number(body.amountCents)
   const amountCents = custom ? (Number.isInteger(typed) && typed > 0 ? typed : custom.cents) : fromPrice.amountCents
-  const sibErr = custom ? null : await siblingGuard(product, email, [name])
-  if (sibErr) return fail(res, 400, sibErr)
+  // In a family add the other children are the siblings, so the sibling rate is allowed.
+  const sibErr = custom || (family && family.size > 1) ? null : await siblingGuard(product, email, [name])
+  if (sibErr) return { status: 400, error: sibErr }
   const isTrial = payment === 'trial' || (!custom && product === 'trial')
+  if (family && payment === 'link' && isTrial) return { status: 400, error: `A paid trial has its own link. Choose a free trial for ${name}, or add ${name} on their own.` }
   const isPro = payment === 'pro' || custom?.programme === 'pro'
   const perSessionPay = payment === 'sessions' || payment === 'pro'
   const coach = coachById(config, group.coachId)
   const addId = newId('ADD')
   const today = sydneyToday()
   const type = isTrial ? 'JFP Trial' : isPro ? PRO_TYPE : payment === 'sessions' ? SESSION_TYPE : price.type
-  let notes = `Added by ${principal.name} in the JFP portal${isTrial && from ? `. Trial offered for ${from}` : ''}${age != null ? `, age ${age}` : ''}${!custom && price.fixedSessions && !isTrial && !perSessionPay ? `, half term from ${from} (${price.sessions} sessions)` : !custom && price.proRata && !isTrial && !perSessionPay ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${custom && !perSessionPay ? `, ${custom.name}` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${perSessionPay ? `\n${sessionsLine(payment, perSession)}` : ''}`
+  let notes = `Added by ${principal.name} in the JFP portal${family ? ' (Add a family)' : ''}${isTrial && from ? `. Trial offered for ${from}` : ''}${age != null ? `, age ${age}` : ''}${!custom && price.fixedSessions && !isTrial && !perSessionPay ? `, half term from ${from} (${price.sessions} sessions)` : !custom && price.proRata && !isTrial && !perSessionPay ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${custom && !perSessionPay ? `, ${custom.name}` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${perSessionPay ? `\n${sessionsLine(payment, perSession)}` : ''}`
   if (perSession) notes = withPerSession(notes, perSession)
   notes = withQuote(withOwnContact(notes, ownContact), read.v.quoteTiers)
   // Starting later in the term (Lee, 14 Oct 2026): the family's dates, the
@@ -322,9 +326,9 @@ export async function addPlayer(req, res, principal, config, body) {
   if (startsFrom) notes = `${notes}. Starts ${startsFrom}. [STARTS:${startsFrom}]`
   const fields = {
     'Player Name': name,
-    'Parent Name': parentName,
+    'Parent Name': read.v.parentName,
     ...(email ? { 'Email': email } : {}),
-    ...(mobile ? { 'Phone': mobile } : {}),
+    ...(read.v.mobile ? { 'Phone': read.v.mobile } : {}),
     'Term 3 Day': group.day, 'Term 3 Time': group.time, 'Term 3 Location': group.location,
     'Coach': coach?.airtableName || '',
     // A link is a place held for this family: confirmed once they pay.
@@ -337,8 +341,18 @@ export async function addPlayer(req, res, principal, config, body) {
     'Term 4 Notes': notes,
     ...(payment === 'offline' ? { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' } : {}),
   }
-  const [rowId] = await createTerm4Rows([fields])
-  const prof = await saveAddedProfile(principal, read.v, rowId)
+  return { ok: true, v: read.v, group, fields, amountCents, isTrial, isPro, perSessionPay, product, from, custom, payment, what: custom ? custom.name : isTrial ? 'Trial session' : `${productFor(product).label}${price.proRata && from ? `, ${price.sessions} of ${price.of} sessions from ${dateLabel(from)}` : price.fixedSessions && from ? `, ${price.sessions} sessions from ${dateLabel(from)}` : ''}` }
+}
+
+export async function addPlayer(req, res, principal, config, body) {
+  const group = await getGroup(body.groupId)
+  if (!group) return fail(res, 404, 'Group not found.')
+  const prep = await prepGroupAdd({ principal, config, group, body, roster: await loadRoster({ fresh: true }) })
+  if (!prep.ok) return fail(res, prep.status, prep.error, { ...(prep.code ? { code: prep.code } : {}), ...(prep.rowId ? { rowId: prep.rowId } : {}) })
+  const { name, email, parentName, mobile, dob, payment, perSession, custom, ownContact, words } = prep.v
+  const { amountCents, isTrial, isPro, perSessionPay, product, from } = prep
+  const [rowId] = await createTerm4Rows([prep.fields])
+  const prof = await saveAddedProfile(principal, prep.v, rowId)
   let payreq = null
   if (payment === 'link') payreq = await createPayreq({ req, principal, config, group, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: isTrial ? 'trial' : 'admin-add', product: custom ? '' : product, startDate: from, afterpay: body.afterpay !== false, programme: isPro ? 'pro' : '', ownContact })
   if (payreq && custom) await savePayreq({ ...payreq, productLabel: custom.name })
@@ -353,7 +367,7 @@ export async function addPlayer(req, res, principal, config, body) {
   const emailError = sent.emailError ? `${name} was added, but the email to ${email} did not send. ${sent.emailError} Try again with Account invite on the player.` : ''
   // The group's coach hears about it (Lee, 14 Oct 2026), a few minutes later.
   await noteNewPlayer({ config, group, rowId, player: name, kind: 'added' }).catch((e) => console.error('jfp coach news failed', e))
-  await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed: sent.emailed, payreq: payreq?.id || '', cents: payment === 'none' || perSessionPay ? 0 : amountCents, perSessionCents: perSession || undefined, quote: read.v.quoteTiers.length ? read.v.quoteTiers : undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
+  await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed: sent.emailed, payreq: payreq?.id || '', cents: payment === 'none' || perSessionPay ? 0 : amountCents, perSessionCents: perSession || undefined, quote: prep.v.quoteTiers.length ? prep.v.quoteTiers : undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
   return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, ownContact, words, ...prof })
 }
 
@@ -426,28 +440,30 @@ async function playersList(req, res, config, body = {}) {
 // here holds no place and takes no capacity until someone puts them in a group.
 // It takes the same details as the Timetable add (player information, own
 // contact, payment) and can email a sign-in invite or a payment link.
-async function addPlayerNoGroup(req, res, principal, config, body) {
+// One player with no group, checked, nothing written yet (shared by the
+// Players tab add and Add a family). allowTwin: "Add another row anyway".
+async function prepNoGroupAdd({ principal, config, body, roster, family = null, allowTwin = false }) {
   const read = readAdd(config, body)
-  if (read.error) return fail(res, 400, read.error)
-  const { name, email, parentName, mobile, payment, perSession, custom, ownContact, words } = read.v
-  if ((payment === 'link' || body.sendEmail === true) && !email) return fail(res, 400, ownContact ? "Add the player's email so they can sign in." : 'Add the parent email so the family can sign in.')
+  if (read.error) return { status: 400, error: read.error }
+  const { name, email, parentName, mobile, payment, perSession, custom, ownContact } = read.v
+  if (!family && (payment === 'link' || body.sendEmail === true) && !email) return { status: 400, error: ownContact ? "Add the player's email so they can sign in." : 'Add the parent email so the family can sign in.' }
   // The same player twice with no group (a double tap, or a retry) is refused.
-  const roster = await loadRoster({ fresh: true })
   const twin = roster.players.find((r) => r.holdsPlace && normName(r.player) === normName(name) && (email ? rowEmails(r).includes(email) : !rowEmails(r).length))
-  if (twin && (!twin.groupId || body.force !== true)) {
+  if (twin && (!twin.groupId || !allowTwin)) {
     const where = twin.groupId ? `in ${[twin.day, twin.time, twin.location].filter(Boolean).join(' ')}` : 'with no group yet'
-    return fail(res, 409, `${name}${email ? ` (${email})` : ''} is already in Term 4 Players ${where}.${twin.groupId ? ' Add another row anyway?' : ' Open that row instead.'}`, { code: 'duplicate', rowId: twin.id, inGroup: Boolean(twin.groupId) })
+    return { status: 409, error: `${name}${email ? ` (${email})` : ''} is already in Term 4 Players ${where}.${twin.groupId && !family ? ' Add another row anyway?' : ' Open that row instead.'}`, code: 'duplicate', rowId: twin.id, inGroup: Boolean(twin.groupId) }
   }
   const feeAud = Number.isFinite(Number(body.feeAud)) && Number(body.feeAud) >= 0 && body.feeAud !== '' && body.feeAud != null ? Number(body.feeAud) : null
   const typed = Number(body.amountCents)
   const chosen = !custom && PRODUCTS.some((x) => x.key === body.product) ? amountFor(config, null, { ...body, amountCents: undefined }) : null
   const amountCents = Number.isInteger(typed) && typed > 0 ? typed : custom ? custom.cents : chosen ? chosen.amountCents : 0
-  if (['link', 'offline'].includes(payment) && !amountCents) return fail(res, 400, 'Choose what they are paying for, or type the amount.')
+  if (['link', 'offline'].includes(payment) && !amountCents) return { status: 400, error: family ? `Choose what ${name} is paying for, or type the amount.` : 'Choose what they are paying for, or type the amount.' }
+  if (family && payment === 'trial') return { status: 400, error: `A trial needs a group. Choose ${name}'s group, or another payment.` }
   const isPro = payment === 'pro' || custom?.programme === 'pro'
   const perSessionPay = payment === 'sessions' || payment === 'pro'
   const note = clean(body.note, 300)
   const what = custom ? custom.name : chosen ? productFor(chosen.product).label : ''
-  let notes = `Added by ${principal.name} in the JFP portal Players tab, with no session yet.${note ? ` ${note}` : ''}${what && !perSessionPay ? ` ${what}.` : ''}${payment === 'offline' ? ` Paid offline (${clean(body.method, 30) || 'not stated'}).` : ''}${perSessionPay ? ` ${sessionsLine(payment, perSession)}` : ''}`
+  let notes = `Added by ${principal.name} in the JFP portal ${family ? 'Add a family' : 'Players tab'}, with no session yet.${note ? ` ${note}` : ''}${what && !perSessionPay ? ` ${what}.` : ''}${payment === 'offline' ? ` Paid offline (${clean(body.method, 30) || 'not stated'}).` : ''}${perSessionPay ? ` ${sessionsLine(payment, perSession)}` : ''}`
   if (perSession) notes = withPerSession(notes, perSession)
   notes = withQuote(withOwnContact(notes, ownContact), read.v.quoteTiers)
   const fee = perSessionPay ? 0 : ['link', 'offline'].includes(payment) ? amountCents / 100 : feeAud
@@ -465,18 +481,27 @@ async function addPlayerNoGroup(req, res, principal, config, body) {
     ...(payment === 'offline' ? { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' } : {}),
     'Term 4 Notes': notes,
   }
-  const [rowId] = await createTerm4Rows([fields])
+  return { ok: true, v: read.v, group: null, fields, fee, amountCents, isTrial: false, isPro, perSessionPay, product: chosen?.product || '', from: '', custom, payment, what }
+}
+
+async function addPlayerNoGroup(req, res, principal, config, body) {
+  const roster = await loadRoster({ fresh: true })
+  const prep = await prepNoGroupAdd({ principal, config, body, roster, allowTwin: body.force === true })
+  if (!prep.ok) return fail(res, prep.status, prep.error, { ...(prep.code ? { code: prep.code, rowId: prep.rowId, inGroup: prep.inGroup } : {}) })
+  const { name, email, parentName, mobile, payment, ownContact, words } = prep.v
+  const { amountCents, isPro, fee, what, custom } = prep
+  const [rowId] = await createTerm4Rows([prep.fields])
   // Term 4 Players has no date of birth column: it goes in player information.
-  const prof = await saveAddedProfile(principal, read.v, rowId)
+  const prof = await saveAddedProfile(principal, prep.v, rowId)
   await bustRosterCache()
   let payreq = null
   if (payment === 'link') {
-    payreq = await createPayreq({ req, principal, config, group: null, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: 'admin-add', product: chosen?.product || '', startDate: '', afterpay: body.afterpay !== false, programme: isPro ? 'pro' : '', ownContact })
+    payreq = await createPayreq({ req, principal, config, group: null, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: 'admin-add', product: prep.product, startDate: '', afterpay: body.afterpay !== false, programme: isPro ? 'pro' : '', ownContact })
     if (what) { payreq.productLabel = what; await savePayreq(payreq) }
   }
   let sent = { emailed: false }
   if (body.sendEmail === true && email) {
-    const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile], dob: read.v.dob }, roster.waivers))
+    const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile], dob: prep.v.dob }, roster.waivers))
     sent = payreq
       ? await trySend('add player no group', () => sendFamilyInvite({ to: email, parentName, playerNames: [name], group: null, config, url: payreqUrl(req, payreq), needs: { details: false, waiver: !hasWaiver, payment: true }, amountCents, self: ownContact }))
       : await trySend('add player no group invite', () => sendAccountInvite({ to: email, parentName, players: [{ name, group: 'Group to be confirmed' }], config, signInUrl: `${siteUrl(req)}/jfp-account/`, needsWaiver: !hasWaiver, money: false, email, self: ownContact }))
@@ -486,8 +511,94 @@ async function addPlayerNoGroup(req, res, principal, config, body) {
     }
   }
   const emailError = sent.emailError ? `${name} was added, but the email to ${email} did not send. ${sent.emailError}` : ''
-  await audit({ by: principal.email, action: 'player.add.nogroup', target: rowId, after: { name, email, feeAud: fee, payment, emailed: sent.emailed, payreq: payreq?.id || '', quote: read.v.quoteTiers.length ? read.v.quoteTiers : undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
+  await audit({ by: principal.email, action: 'player.add.nogroup', target: rowId, after: { name, email, feeAud: fee, payment, emailed: sent.emailed, payreq: payreq?.id || '', quote: prep.v.quoteTiers.length ? prep.v.quoteTiers : undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
   return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, ownContact, words, ...prof })
+}
+
+// Add a family in one go (round 2, Lee 14 Oct 2026): a brother and sister,
+// say, with one parent contact. Each child has their own group (or none yet),
+// name, date of birth and price (a term price, session by session or Pro
+// with their own quote, a free trial, paid offline, or decide later). Every
+// child is checked before anything is written (duplicates, places left,
+// prices), then: a Term 4 row each (the group's coach told, as any add),
+// ONE payment request for every child with a price to pay (each child's own
+// amount on it, split onto their own rows when paid, as a family invoice),
+// and ONE email to the parent listing every child and the steps: a waiver
+// for each child, one payment, then the player details.
+const FAMILY_MAX = 6
+export async function addFamily(req, res, principal, config, body) {
+  const kids = Array.isArray(body.children) ? body.children : []
+  if (!kids.length) return fail(res, 400, 'Add at least one child.')
+  if (kids.length > FAMILY_MAX) return fail(res, 400, `Add up to ${FAMILY_MAX} children at a time.`)
+  const p = body.parent && typeof body.parent === 'object' ? body.parent : {}
+  const email = p.email ? validEmail(p.email) : ''
+  if (!email) return fail(res, 400, 'Add the parent email. The whole family signs in with it, one account for every child.')
+  const parentName = clean(p.name, 100)
+  if (parentName.length < 2) return fail(res, 400, "Enter the parent's name.")
+  const seen = new Set()
+  for (const k of kids) {
+    const n = normName(k?.player?.name || k?.name || '')
+    if (n && seen.has(n)) return fail(res, 400, `${clean(k.player?.name || k.name, 80)} is listed twice.`)
+    seen.add(n)
+  }
+  const roster = await loadRoster({ fresh: true })
+  const groups = Object.fromEntries((await listGroups()).map((g) => [g.id, g]))
+  const preps = []
+  for (const [i, k] of kids.entries()) {
+    const childBody = { ...k, parent: { name: parentName, email, mobile: p.mobile || '' }, ownContact: false, sendEmail: false, force: body.force === true }
+    const group = k.groupId ? groups[clean(k.groupId, 60)] : null
+    if (k.groupId && !group) return fail(res, 404, `Child ${i + 1}: that group was not found. Refresh and try again.`, { child: i })
+    const prep = group
+      ? await prepGroupAdd({ principal, config, group, body: childBody, roster, family: { size: kids.length } })
+      : await prepNoGroupAdd({ principal, config, body: childBody, roster, family: { size: kids.length } })
+    if (!prep.ok) {
+      const who = clean(k.player?.name || k.name, 80) || `Child ${i + 1}`
+      return fail(res, prep.status, prep.error.includes(who) ? prep.error : `${who}: ${prep.error}`, { child: i, ...(prep.code ? { code: prep.code } : {}), ...(prep.rowId ? { rowId: prep.rowId } : {}) })
+    }
+    preps.push(prep)
+  }
+  const famId = newId('FAM')
+  const ids = await createTerm4Rows(preps.map((x) => ({ ...x.fields, 'Term 4 Notes': `${x.fields['Term 4 Notes']}\nFamily add ${famId}: ${preps.map((y) => y.v.name).join(', ')}.` })))
+  const added = preps.map((x, i) => ({ ...x, rowId: ids[i], where: x.group ? groupSummary(x.group, config) : 'Group to be confirmed' }))
+  const profiles = []
+  for (const x of added) profiles.push(await saveAddedProfile(principal, x.v, x.rowId))
+  // ONE payment request for every child with a price to pay.
+  const linked = added.filter((x) => x.payment === 'link' && x.amountCents > 0)
+  let payreq = null
+  if (linked.length) {
+    const total = linked.reduce((t, x) => t + x.amountCents, 0)
+    payreq = await createPayreq({ req, principal, config, group: linked.length === 1 ? linked[0].group : null, rows: linked.map((x) => ({ id: x.rowId, name: x.v.name })), email, parentName, amountCents: total, reason: 'family', afterpay: body.afterpay !== false, programme: linked.every((x) => x.isPro) ? 'pro' : '' })
+    payreq.places = linked.map((x) => ({ rowId: x.rowId, name: x.v.name, label: `${x.where}${x.what ? `, ${x.what}` : ''}`, feeCents: x.amountCents, paidCents: 0, owingCents: x.amountCents }))
+    payreq.groupLabel = [...new Set(linked.map((x) => x.where))].join(' · ')
+    payreq.familyAdd = famId
+    await savePayreq(payreq)
+  }
+  // ONE email to the parent: every child, then the steps.
+  let sent = { emailed: false }
+  if (body.sendEmail !== false) {
+    const children = added.map((x) => ({
+      name: x.v.name, where: x.where,
+      pay: x.payment === 'link' ? `${x.what ? `${x.what}, ` : ''}${formatAud(x.amountCents)}` : x.payment === 'offline' ? 'Paid' : x.payment === 'trial' ? `Free trial${x.from ? `, ${dateLabel(x.from)}` : ''}` : x.perSessionPay ? `${x.isPro ? 'Pro sessions' : 'Session by session'}${x.v.perSession ? `, ${formatAud(x.v.perSession)} a session` : ''}` : 'We will confirm the price with you',
+      waiver: !waiverFor(x.v.name, { emails: [email], phones: [x.v.mobile], dob: x.v.dob }, roster.waivers),
+      sessions: x.perSessionPay, link: x.payment === 'link' && x.amountCents > 0,
+    }))
+    sent = await trySend('add family', () => sendFamilyWelcome({ to: email, parentName, children, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, amountCents: payreq?.amountCents || 0 }))
+    if (sent.emailed && payreq) await savePayreq({ ...payreq, emailedAt: new Date().toISOString() })
+    if (sent.emailed && !payreq) await kvCommand(['HSET', 'jfp:acct-only-invited', email, new Date().toISOString()])
+  }
+  // Each group's coach hears about their new player, as with any add.
+  for (const x of added.filter((y) => y.group)) await noteNewPlayer({ config, group: x.group, rowId: x.rowId, player: x.v.name, kind: 'added' }).catch((e) => console.error('jfp coach news failed', e))
+  for (const x of added) await audit({ by: principal.email, action: x.group ? 'player.add' : 'player.add.nogroup', target: x.rowId, after: { name: x.v.name, group: x.group?.id || '', payment: x.payment, family: famId, payreq: payreq?.id || '', cents: x.payment === 'link' || x.payment === 'offline' ? x.amountCents : 0, perSessionCents: x.v.perSession || undefined, quote: x.v.quoteTiers.length ? x.v.quoteTiers : undefined, priceId: x.custom?.id || undefined } })
+  await audit({ by: principal.email, action: 'family.add', target: famId, after: { email, rows: ids, payreq: payreq?.id || '', cents: payreq?.amountCents || 0, emailed: sent.emailed } })
+  const profileError = profiles.find((x) => x.profileError)?.profileError || ''
+  return res.status(200).json({
+    success: true, familyId: famId,
+    rows: added.map((x) => ({ rowId: x.rowId, name: x.v.name, where: x.where, payment: x.payment, amountLabel: x.payment === 'link' ? formatAud(x.amountCents) : '' })),
+    payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(payreq.amountCents) } : null,
+    emailed: sent.emailed, emailTo: sent.emailed ? email : '',
+    emailError: sent.emailError ? `The family was added, but the email to ${email} did not send. ${sent.emailError}` : '',
+    ...(profileError ? { profileError } : {}),
+  })
 }
 
 // No email in the link: it would end up in browser history and server logs.
@@ -2777,6 +2888,7 @@ async function handle(req, res) {
       case 'addPlayer': return await addPlayer(req, res, principal, config, body)
       case 'playersList': return await playersList(req, res, config, body)
       case 'addPlayerNoGroup': return await addPlayerNoGroup(req, res, principal, config, body)
+      case 'addFamily': return await addFamily(req, res, principal, config, body)
       case 'movePlayer': return await movePlayer(res, principal, config, body)
       case 'removePlayer': return await removePlayer(res, principal, config, body)
       case 'editPlayer': return await editPlayer(res, principal, config, body)
@@ -2851,7 +2963,10 @@ async function handle(req, res) {
       case 'offerTerm': return await offerTerm(req, res, principal, config, body)
       case 'pricing': {
         const today = sydneyToday()
-        return res.status(200).json({ success: true, weeks: config.weeks, today, prices: config.prices, products: PRODUCTS.map((x) => ({ ...x, cents: config.prices[x.key] })), datesByDay: Object.fromEntries(DAYS.map((d) => [d, sessionDates(config, d).map((iso) => ({ iso, label: dateLabel(iso), past: iso < today }))])), ...pricesView(config), defaultQuote: config.proQuote || null })
+        // The quote editor's Rest of term / Whole term buttons (round 2): per group, and with no group.
+        const runGroups = await listGroups().catch(() => [])
+        const runs = { byGroup: Object.fromEntries(runGroups.map((g) => [g.id, termRun(config, {}, g)])), noGroup: termRun(config, {}) }
+        return res.status(200).json({ success: true, weeks: config.weeks, today, runs, prices: config.prices, products: PRODUCTS.map((x) => ({ ...x, cents: config.prices[x.key] })), datesByDay: Object.fromEntries(DAYS.map((d) => [d, sessionDates(config, d).map((iso) => ({ iso, label: dateLabel(iso), past: iso < today }))])), ...pricesView(config), defaultQuote: config.proQuote || null })
       }
       case 'removed': {
         const [roster, dropped] = await Promise.all([loadRoster({ fresh: true }), listDropped()])

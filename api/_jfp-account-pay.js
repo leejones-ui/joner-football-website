@@ -28,7 +28,7 @@ import {
 } from './_jfp-store.js'
 import { getTerm4Row, updateTerm4Rows, appendNote, bustRosterCache } from './_jfp-airtable.js'
 import { rowSessionDates, rowTime, noticeFor } from './_jfp-cancel.js'
-import { quoteTiersOf, quoteOptions, commitmentOf } from './_jfp-quote.js'
+import { quoteTiersOf, quoteOptions, commitmentOf, restOption } from './_jfp-quote.js'
 
 const cents = (aud) => (typeof aud === 'number' && Number.isFinite(aud) ? Math.round(aud * 100) : 0)
 const isOpen = (q) => ['open', 'checkout'].includes(q?.status)
@@ -99,7 +99,11 @@ export function owedItems({ config, players, payreqs, byGroup, cancels = [], now
       // next session, or one of their commitment options. Only these.
       const tiers = quoteTiersOf(r.notes)
       const quote = tiers.length ? { options: quoteOptions({ perCents: per, tiers, dates: listed }), commitment: commitmentOf(r.notes, sydneyToday(nowMs)) } : null
-      out.push({ ...base, kind: 'prepay', title: 'Pay for your sessions', perCents: per, perLabel: formatAud(per), max: Math.min(PREPAY_MAX, dates.length), dates: listed, ...(quote ? { quote } : {}) })
+      // Round 2 (14 Oct 2026): how many sessions are left to pay for this term
+      // and what they come to, and "Pay for the rest of the term" (every date
+      // left at the price per session, or staff's tier when it is exactly that run).
+      const rest = quote ? quote.options.find((o) => o.rest) || null : restOption({ perCents: per, dates: listed })
+      out.push({ ...base, kind: 'prepay', title: 'Pay for your sessions', perCents: per, perLabel: formatAud(per), max: Math.min(PREPAY_MAX, dates.length), left: listed.length, leftCents: listed.length * per, leftLabel: formatAud(listed.length * per), dates: listed, ...(rest ? { rest: { key: rest.key, n: rest.n, totalCents: rest.totalCents, totalLabel: formatAud(rest.totalCents), perCents: rest.perCents, commit: Boolean(rest.commit) } } : {}), ...(quote ? { quote } : {}) })
     }
   }
   return out
@@ -152,7 +156,8 @@ export async function payOwed({ config, parent, fam, byGroup, cancels, site, bod
     } else {
       // A quoted player picks one of staff's options (body.option, e.g.
       // 'commit:6'); the price comes from the quote on the row, never the page.
-      const pick = body.option != null && body.option !== 'one' ? (item.quote?.options || []).find((o) => o.key === clean(body.option, 20)) : null
+      // 'rest' (the rest of the term) works with or without a quote.
+      const pick = body.option != null && body.option !== 'one' ? ((item.quote?.options || []).find((o) => o.key === clean(body.option, 20)) || (body.option === 'rest' && !item.quote ? restOption({ perCents: item.perCents, dates: item.dates }) : null)) : null
       if (body.option != null && body.option !== 'one' && !pick) return no(400, 'That option is not available any more. Refresh and choose again.', 'option')
       const n = pick ? pick.n : Number(body.sessions ?? 1)
       if (!Number.isInteger(n) || n < 1 || n > item.max) return no(400, `Choose 1 to ${item.max} session${item.max > 1 ? 's' : ''}.`)

@@ -71,7 +71,8 @@ await test('staff billing: covered dates are never billed, missed ones count as 
 await test('the options a player sees: the next session, and only the commitments that fit the dates left', () => {
   const dates = ['2026-10-14', '2026-10-21', '2026-10-28', '2026-11-04', '2026-11-11', '2026-11-18', '2026-11-25'].map((iso) => ({ iso, label: iso }))
   const o = quoteOptions({ perCents: 10000, tiers: [{ n: 6, cents: 9500 }, { n: 10, cents: 9000 }], dates })
-  assert.deepEqual(o.map((x) => x.key), ['one', 'commit:6'], '10 in a row does not fit 7 dates')
+  assert.deepEqual(o.map((x) => x.key), ['one', 'commit:6', 'rest'], '10 in a row does not fit 7 dates; the rest of the term (7) at the price per session')
+  assert.deepEqual([o[2].n, o[2].totalCents, o[2].commit], [7, 70000, undefined])
   assert.equal(o[1].totalCents, 57000); assert.equal(o[1].saveCents, 3000); assert.equal(o[1].dates.length, 6)
   assert.equal(o[0].totalCents, 10000)
 })
@@ -86,13 +87,14 @@ await test('My account: a quoted Pro gets the options; a Pro with no quote keeps
   const quoted = proRow('[PERSESSION:10000] [QUOTE:6x9500]')
   const [a] = owedItems({ config, players: fam(quoted), payreqs: [], byGroup: { [group.id]: group }, nowMs })
   assert.equal(a.kind, 'prepay'); assert.equal(a.dates.length, 10, 'all ten dates this term')
-  assert.deepEqual(a.quote.options.map((x) => [x.key, x.totalCents]), [['one', 10000], ['commit:6', 57000]])
+  assert.deepEqual(a.quote.options.map((x) => [x.key, x.totalCents]), [['one', 10000], ['commit:6', 57000], ['rest', 100000]])
+  assert.deepEqual([a.left, a.leftCents, a.rest.key, a.rest.n], [10, 100000, 'rest', 10], 'ten left this term, and the rest of the term')
   const [b] = owedItems({ config, players: fam(proRow('[PERSESSION:10000]')), payreqs: [], byGroup: { [group.id]: group }, nowMs })
   assert.equal(b.kind, 'prepay'); assert.equal(b.quote, undefined, 'no quote, no options: the plain picker')
   // Dates a paid commitment took are not offered again.
   const paid = { id: 'PAY-x', status: 'paid', term4Ids: [quoted.id], prepay: { rowId: quoted.id, sessions: 6, commit: true, dates: a.quote.options[1].dates.map((d) => d.iso) } }
   const [c] = owedItems({ config, players: fam(proRow('[PERSESSION:10000] [QUOTE:6x9500] [PREPAID:6] [COVERED:2026-10-14]')), payreqs: [paid], byGroup: { [group.id]: group }, nowMs })
-  assert.equal(c.dates.length, 4); assert.deepEqual(c.quote.options.map((x) => x.key), ['one'], '6 in a row no longer fits')
+  assert.equal(c.dates.length, 4); assert.deepEqual(c.quote.options.map((x) => x.key), ['one', 'rest'], '6 in a row no longer fits; the rest of the term (4) does')
   assert.equal(c.quote.commitment.sessions, 1)
 })
 

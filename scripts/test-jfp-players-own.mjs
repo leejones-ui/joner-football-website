@@ -91,7 +91,7 @@ const config = { term: 'Term 4 2026', kitUrl: '', locations: [], coaches: [] }
 await test('the account invite talks to the player when they are their own contact', () => {
   const self = accountInvite({ parentName: '', players: [{ name: 'Kai Sampleton', group: 'Group to be confirmed' }], config, signInUrl: 'https://x.test/jfp-account/', money: false, email: 'kai@example.com', self: true })
   assert.equal(self.subject, 'Action needed: sign in to your JFP account')
-  assert.match(self.html, /Hi Kai,/); assert.match(self.html, /you already have an account/); assert.match(self.html, /Your group, coach, location/)
+  assert.match(self.html, /Hi Kai,/); assert.match(self.html, /you already have an account/); assert.match(self.html, /Your group, time, location/); assert.doesNotMatch(self.html, /coach, location/)
   assert.doesNotMatch(self.html, /parent|Kai already has|your players/i)
   const fam = accountInvite({ parentName: 'Pat Sample', players: [{ name: 'Ivy Sample', group: 'Tue 4:20pm' }], config, signInUrl: 'https://x.test/jfp-account/', money: false, email: 'pat@example.com' })
   assert.equal(fam.subject, "Action needed: sign in to Ivy's JFP account")

@@ -89,7 +89,7 @@ import '../../styles/jfp.css'
       : `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} locked in for ${p.term}${g ? `, ${g.day} ${g.time}` : ''}. We have emailed you a receipt.`)
     if (!p.kitDone) kit(k)
     $('details').innerHTML = [
-      ...(g ? [['Group', `${g.day} ${g.time}`], ['Where', g.address || g.location], ['Coach', g.coachName || 'Joner Football']] : []),
+      ...(g ? [['Group', `${g.day} ${g.time}`], ['Where', g.address || g.location]] : []),
       ['Players', names.join(', ')],
       ...(p.trial ? [['Trial', p.trialDate || (g ? g.firstDate : '')]] : g ? [['First session', p.startDate || g.firstDate]] : []),
       ['Paid', p.priceLabel], ['Reference', p.id],
@@ -105,7 +105,7 @@ import '../../styles/jfp.css'
     hero('Payment complete', 'Thank you, you are booked in', `${names.join(' and ')} ${names.length > 1 ? 'are' : 'is'} in ${b.term}, ${b.day} ${b.time}. Your confirmation email is on its way.`)
     kit(k)
     $('details').innerHTML = [
-      ['Group', `${b.day} ${b.time}`], ['Where', b.address || b.location], ['Coach', b.coachName || 'Joner Football'],
+      ['Group', `${b.day} ${b.time}`], ['Where', b.address || b.location],
       ['Players', names.join(', ')], ['First session', b.firstDate], ['All dates', b.dates.join(', ')], ['Paid', b.priceLabel], ['Reference', b.id],
     ].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')
     $('calendar').href = ics(b)

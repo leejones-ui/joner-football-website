@@ -97,14 +97,14 @@ export function buildIcs({ uid, group, config, title, fromIso = '', only = '', p
   return lines.join('\r\n')
 }
 
+// Families see the time, the place and the dates, never a coach's name
+// (Lee, 14 Oct 2026: morning groups rotate coaches).
 function groupRows(config, group, fromIso = '', product = '') {
   const loc = locationFor(config, group.location)
-  const coach = coachById(config, group.coachId)
   const dates = limitDates(sessionDates(config, group.day).filter((d) => !fromIso || d >= fromIso), product)
   return [
     ['Group', `${esc(group.day)} ${esc(group.time)}`],
     ['Where', `${esc(loc.address || group.location)}${loc.maps ? `<br>${link('Open in Maps', loc.maps)}` : ''}`],
-    ['Coach', coach ? esc(coachLabel(coach)) : 'Joner Football coach'],
     ...(dates.length ? [['Dates', `${esc(dates.length)} ${dates.length === 1 ? 'session' : 'sessions'}, ${esc(dateLabel(dates[0]))} to ${esc(dateLabel(dates.at(-1)))}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(dates.map(dateLabel).join(', '))}</span>`]] : []),
   ]
 }
@@ -210,7 +210,7 @@ ${p('<b>In your account you will find</b>')}
 ${p('<b>When you sign in, in this order</b>')}
 ${ol([li(`${self ? 'Sign your waiver' : 'Sign the player waiver'}${needsWaiver ? ' (<b>still to sign</b>)' : ', if it still needs signing'}`), li(`Pay anything left for ${esc(term)}, by card, Apple Pay, Google Pay or Afterpay${self ? '. Session by session? Pay for your sessions there too' : ''}.`), li(self ? 'Check your player details: club, position and who to call in an emergency' : 'Check the player details: club, position and who to call in an emergency')])}
 ${p('<b>In your account you will also find</b>')}
-${list([li(self ? `Your group, coach, location and every ${esc(term)} date` : `${esc(who)}'s group, coach, location and every ${esc(term)} date`), li(`${esc(term)} information`), li('A "Can\'t make a session" button to let the coach know')])}
+${list([li(self ? `Your group, time, location and every ${esc(term)} date` : `${esc(who)}'s group, time, location and every ${esc(term)} date`), li(`${esc(term)} information`), li('A "Can\'t make a session" button to let us know')])}
 ${p('<b>Already paid, or arranged payment with Ligia? Please ignore the payment part.</b>')}
 ${button('Sign in to your account', signInUrl)}
 ${p('Booked with a different email? Reply to this email and Ligia will link it for you.')}
@@ -262,6 +262,40 @@ ${howToSignIn(to, self)}
 ${kitLine(config)}`
   const subject = trial ? (self ? 'Your JFP trial' : `${playerNames.join(' and ')}: your JFP trial`) : (self ? `Your ${config.term} place` : `${playerNames.join(' and ')}: your ${config.term} place`)
   return send({ to: [{ email: to, name: w.toName }], subject, html: shell({ preheader: group ? `${group.day} ${group.time}` : config.term, heading: trial ? 'Your JFP trial' : 'Your JFP place', body }), kind: trial ? 'trial invite' : needs.payment ? 'place and payment link' : 'place invite' })
+}
+
+// Add a family (round 2, Lee 14 Oct 2026): one email for every child added
+// together. Each child with their group (time and place, never a coach) and
+// what they pay, then the steps in the order the account shows them: a waiver
+// for each child, one payment for everyone, then each child's details.
+// children: [{ name, where, pay, link (on the one payment), waiver (still to sign), sessions }]
+export function familyWelcome({ to, parentName, children, config, url, amountCents = 0 }) {
+  const names = children.map((c) => c.name)
+  const w = contactWords({ self: false, players: names, parent: parentName })
+  const firsts = children.map((c) => String(c.name).trim().split(/\s+/)[0])
+  const both = (list) => (list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0] || '')
+  const li = (html) => `<li style="margin:0 0 6px;">${html}</li>`
+  const unsigned = children.filter((c) => c.waiver).map((c) => String(c.name).trim().split(/\s+/)[0])
+  const steps = []
+  if (unsigned.length) steps.push(li(`Sign the waiver for ${unsigned.length > 1 ? 'each child' : 'your child'}: ${esc(both(unsigned))}. One sheet covers them all and takes a couple of minutes.`))
+  if (amountCents > 0) steps.push(li(`Pay <b>${esc(formatAud(amountCents))}</b> in one payment for ${esc(both(children.filter((c) => c.link).map((c) => String(c.name).trim().split(/\s+/)[0])))}. Card, Apple Pay or Afterpay. The places are locked in once it is paid.`))
+  if (children.some((c) => c.sessions)) steps.push(li(`Session by session: pay ahead for ${esc(both(children.filter((c) => c.sessions).map((c) => String(c.name).trim().split(/\s+/)[0])))} in your account, or we bill the sessions after they happen.`))
+  steps.push(li(`Check ${children.length > 1 ? "each child's" : 'the player'} details: club, position and who to call in an emergency.`))
+  const body = `${p(`Hi ${esc(w.hi)}, ${esc(both(firsts))} ${children.length > 1 ? 'are' : 'is'} booked in with Joner Football for ${esc(config.term)}.`)}
+${rows([...children.map((c) => [esc(c.name), `${esc(c.where)}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(c.pay)}</span>`]), ...(amountCents > 0 ? [['Total to pay', esc(formatAud(amountCents))]] : [])])}
+${p(`<b>One account for the family.</b> Sign in with this email address and you will see ${children.length > 1 ? 'every child' : 'your child'}, their dates and your payments.`)}
+${p('<b>When you sign in, in this order</b>')}
+<ol style="margin:0 0 14px;padding-left:20px;font-size:15px;line-height:1.6;color:#374151;">${steps.join('')}</ol>
+${button(amountCents > 0 ? 'Sign in and finish' : 'Sign in to your account', url)}
+${howToSignIn(to)}
+${kitLine(config)}`
+  const subject = `${both(firsts)}: your ${config.term} ${children.length > 1 ? 'places' : 'place'}`
+  return { subject, html: shell({ preheader: amountCents > 0 ? `${formatAud(amountCents)} for ${children.length} player${children.length > 1 ? 's' : ''}` : config.term, heading: children.length > 1 ? 'Your family is booked in' : 'Your JFP place', body }) }
+}
+export async function sendFamilyWelcome({ to, parentName, children, ...rest }) {
+  const { subject, html } = familyWelcome({ to, parentName, children, ...rest })
+  const w = contactWords({ self: false, players: children.map((c) => c.name), parent: parentName })
+  return send({ to: [{ email: to, name: w.toName }], subject, html, replyTo: 'ligia@jonerfootball.com', kind: 'family add' })
 }
 
 // One invoice for the whole family: each place and its price, one total.
@@ -348,7 +382,7 @@ const WHERE = { jfp: 'Money > JFP, Stripe payments not matched to a player', pro
 export async function sendQuickPaidAlert({ payreq, config }) {
   const body = `${p(`A quick payment link was paid. No player was named on it, so it is waiting on ${esc(WHERE[payreq.programme] || WHERE.other)}.`)}${rows([
     ['For', esc(payreq.forText)],
-    ['Programme', esc(PROG_LABEL[payreq.programme] || payreq.programme)],
+    ['Program', esc(PROG_LABEL[payreq.programme] || payreq.programme)],
     ['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))],
     ['Paid by', `${esc(payreq.payerName || '')} ${esc(payreq.payerEmail || payreq.email || '')}`.trim() || 'Not known'],
     ['Stripe fee', payreq.stripeFeeCents != null ? esc(formatAud(payreq.stripeFeeCents)) : 'Pending'],

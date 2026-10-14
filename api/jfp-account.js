@@ -31,6 +31,8 @@ import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, 
 import { jjAccountView, jjPay, jjRequestPay, jjNextChoice, familyJJ, jjWaiverRows, markJJWaivers } from './_jj-account.js'
 import { owedItems, payOwed as makeOwedPayreq, cancelOwed as cancelOwedPayreq } from './_jfp-account-pay.js'
 import { familyFees } from './_jfp-account-fees.js'
+import { coveredOf } from './_jfp-quote.js'
+import { prepaidOf } from './_jfp-store.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -59,6 +61,24 @@ function withDobs(fam, dobs, termStart) {
 function ownsPayreq(q, fam, email) {
   const mine = new Set([email, ...(fam?.emails || [])])
   return Boolean(q) && !q.quick && emailsIn(q.email).some((e) => mine.has(e))
+}
+
+// My sessions, session by session players (round 2, 14 Oct 2026): which
+// dates are paid. Paid: a committed date ([COVERED:]) or a date on a paid
+// pay-ahead link; open: on a link not paid yet. Sessions prepaid with no
+// dates (an older [PREPAID:n]) mark the next unpaid dates still to come.
+// Anything else is billed after it happens.
+export function sessionMarks(row, payreqs, upcomingIsos = []) {
+  const paid = new Set(coveredOf(row.notes))
+  const open = new Set()
+  for (const q of payreqs) {
+    if (q.prepay?.rowId !== row.id) continue
+    if (q.status === 'paid') for (const d of q.prepay.dates || []) paid.add(d)
+    else if (['open', 'checkout'].includes(q.status)) for (const d of q.prepay.dates || []) open.add(d)
+  }
+  let extra = Math.max(0, prepaidOf(row.notes) - paid.size)
+  for (const d of upcomingIsos) { if (extra <= 0) break; if (!paid.has(d) && !open.has(d)) { paid.add(d); extra -= 1 } }
+  return { paidDates: [...paid].sort(), openDates: [...open].sort() }
 }
 
 function paymentLine(row, openReq, owed) {
@@ -119,7 +139,6 @@ async function overview(res, parent, body = {}) {
     ownContact: p.term4.length > 0 && p.term4.every((r) => r.ownContact),
     enrolments: p.term4.filter((r) => r.holdsPlace && r.groupId).map((r) => {
       const g = byGroup[r.groupId] || { day: r.day, time: r.time, location: r.location, durationMin: 60 }
-      const coach = coachById(config, g.coachId) || coachByAirtableName(config, r.coach)
       const loc = locationFor(config, r.location)
       // Mid term joiners and trials: only their own dates.
       const dates = rowSessionDates(config, r, byGroup[r.groupId] || null)
@@ -130,15 +149,18 @@ async function overview(res, parent, body = {}) {
       const sessions = dates.map((d) => ({ d, n: noticeFor({ date: d, time, nowMs }) })).filter((x) => x.n && x.n.startMs > nowMs)
         .map(({ d, n }) => ({ iso: d, label: dateLabel(d), startMs: n.startMs, cancelled: mineCancelled.has(d) ? cancelId(r.id, d) : '' }))
       const openReq = mine.find((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(r.id))
+      const sessionPay = isSessionType(r.paymentType) && !/trial/i.test(r.paymentType || '')
       return {
+        ...(sessionPay ? { sessionPay: true, isoDates: dates, ...sessionMarks(r, mine, sessions.map((x) => x.iso)) } : {}),
         rowId: r.id, day: r.day, time: r.time, location: loc.name, address: loc.address, maps: loc.maps,
         locationId: loc.id, photo: loc.photo || '', durationMin: Number(g.durationMin) || 60,
-        coach: coach ? `Coach ${coachLabel(coach)}` : '', status: r.confirmation || 'Confirmed',
+        // No coach name for families (Lee, 14 Oct 2026): time, place and money only.
+        status: r.confirmation || 'Confirmed',
         dates: dates.map(dateLabel), firstDate: dates[0] ? dateLabel(dates[0]) : '',
         payment: paymentLine(r, openReq, owedByRow.get(r.id)),
         sessions,
         // Coach mobiles, only where one has been entered. Never an email.
-        contacts: coachesFor(config, r, byGroup[r.groupId] || null).filter((c) => c.phone).map((c) => ({ name: `Coach ${coachLabel(c)}`, phone: formatPhone(c.phone), tel: c.phone })),
+        contacts: coachesFor(config, r, byGroup[r.groupId] || null).filter((c) => c.phone).map((c) => ({ name: 'Coach', phone: formatPhone(c.phone), tel: c.phone })),
         cancelled: [...mineCancelled.values()].filter((c) => c.startMs > nowMs).sort((a, b) => a.startMs - b.startMs).map(familyView),
       }
     }),
@@ -175,7 +197,7 @@ async function overview(res, parent, body = {}) {
     name: nt.name, open: Boolean(nt.open), holdLabel: formatAud(nt.holdCents),
     players: fam.players.flatMap((p) => p.term4.filter((r) => r.holdsPlace && r.groupId).map((r) => {
       const g = byGroup[r.groupId]
-      return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, coach: g ? coachLabel(coachById(config, g.coachId)) : '', status: statuses[r.id]?.status || '', interested: Boolean(interest[r.id]) }
+      return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, status: statuses[r.id]?.status || '', interested: Boolean(interest[r.id]) }
     })),
   }
   return res.status(200).json({
@@ -210,8 +232,10 @@ async function overview(res, parent, body = {}) {
 // The row must carry this family's email in Airtable, the date must be a real
 // upcoming session for that row, and the same session is only ever cancelled
 // once (see _jfp-cancel.js).
+// Families are never told a coach's name (Lee, 14 Oct 2026: morning groups
+// rotate coaches): "your coach", with the mobile where there is one.
 function toldCoaches(config, rec) {
-  return (rec.coachIds || []).map((id) => coachById(config, id)).filter(Boolean).map((c) => ({ name: `Coach ${coachLabel(c)}`, ...(c.phone ? { phone: formatPhone(c.phone), tel: c.phone } : {}) }))
+  return (rec.coachIds || []).map((id) => coachById(config, id)).filter(Boolean).map((c) => ({ name: 'Your coach', ...(c.phone ? { phone: formatPhone(c.phone), tel: c.phone } : {}) }))
 }
 
 async function cancelSession(res, parent, body) {

@@ -128,8 +128,10 @@ const atBefore = JSON.stringify((await airtable()).term4)
 await test('the account page offers upcoming sessions only, with the coach mobile and never an email', async () => {
   assert.ok(rileyEn.sessions.every((s) => s.startMs > Date.now() && !s.iso.startsWith('2020')))
   assert.ok(!rileyEn.sessions.some((s) => s.iso === PAST), 'a past session is not offered')
-  assert.deepEqual(rileyEn.contacts, [{ name: 'Coach Sam York', phone: '0411 222 333', tel: '0411222333' }])
+  // Never a coach's name to a family (round 2, 14 Oct 2026): "Coach" and the mobile.
+  assert.deepEqual(rileyEn.contacts, [{ name: 'Coach', phone: '0411 222 333', tel: '0411222333' }])
   const all = JSON.stringify(ov)
+  assert.ok(!/Sam York|Dean McDonnell/.test(all), 'no coach name reaches a family')
   assert.ok(!/jonerfootballsam@|jonerfootballdean@|leejones@/.test(all), 'no coach email reaches a parent')
   assert.deepEqual(ov.reasons.map((r) => r.label), ['Sick or injured', 'School or exams', 'Family or travel', 'Other'])
   // Dean has no mobile yet, so another family sees no contact for him.
@@ -142,7 +144,7 @@ await test('a signed-in parent cancels a valid session: saved, notice worked out
   const r = await acct(parentRiley, 'cancelSession', { rowId: RILEY.id, date: D1, reason: 'sick', note: 'Hamstring <b>tight</b>' })
   assert.equal(r.status, 200, JSON.stringify(r.data))
   assert.equal(r.data.already, false)
-  assert.deepEqual(r.data.told, [{ name: 'Coach Sam York', phone: '0411 222 333', tel: '0411222333' }])
+  assert.deepEqual(r.data.told, [{ name: 'Your coach', phone: '0411 222 333', tel: '0411222333' }])
   first = r.data.cancellation
   // The record, as staff see it.
   const list = (await portal(lee, 'cancellations', { when: 'all' })).data
@@ -415,7 +417,7 @@ await test('staff: Lee sees every cancellation, a coach only those of their own 
 await test('a coach without a phone is simply not listed to families, and the public timetable shows no contact', async () => {
   const o = await overview(parentThird)
   const en = enrol(o, THIRD.id)
-  assert.deepEqual(en.contacts.map((c) => c.name), ['Coach Sam York'])
+  assert.deepEqual(en.contacts.map((c) => c.name), ['Coach'])
   const public_ = JSON.stringify((await client().call('/api/jfp-groups')).data)
   assert.ok(!/0411|jonerfootballsam/.test(public_), 'the public timetable shows neither phone nor email')
 })

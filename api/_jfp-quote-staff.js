@@ -7,17 +7,37 @@
 //   saveQuote        { rowId, perCents, tiers: [{ n, cents }] }   (tiers [] = no commitments)
 //   saveDefaultQuote { quote: { perCents, tiers } | null }
 import { getTerm4Row, updateTerm4Rows } from './_jfp-airtable.js'
-import { audit, saveConfig, listPayreqs, withPerSession, isSessionType, sydneyToday, dateLabel, formatAud, clean } from './_jfp-store.js'
+import { audit, saveConfig, listPayreqs, withPerSession, isSessionType, sydneyToday, dateLabel, formatAud, clean, sessionDates, DAYS } from './_jfp-store.js'
 import { quoteTiersOf, withQuote, cleanQuote, cleanDefaultQuote, commitmentOf } from './_jfp-quote.js'
+import { rowSessionDates, rowTime, noticeFor } from './_jfp-cancel.js'
 
 const ok = (body) => ({ status: 200, body: { success: true, ...body } })
 const no = (status, error) => ({ status, body: { success: false, error } })
 const REC = /^rec[A-Za-z0-9]{14}$/
 
+// How long a run staff can set (round 2, 14 Oct 2026): `whole` is every
+// session of the term on the player's day, `left` the ones still to come for
+// this player (from their start week, not yet started). A player with no
+// group yet: the term's weeks, and the most sessions left on any day.
+export function termRun(config, row = {}, group = null, nowMs = Date.now()) {
+  const day = group?.day || row.day || ''
+  if (!DAYS.includes(day)) {
+    const today = sydneyToday(nowMs)
+    const left = Math.max(0, ...DAYS.map((d) => sessionDates(config, d).filter((x) => x >= today).length))
+    return { whole: Number(config.weeks) || 10, left, day: '' }
+  }
+  const time = rowTime(row, group)
+  const upcoming = (d) => { const n = noticeFor({ date: d, time, nowMs }); return n ? n.startMs > nowMs : d > sydneyToday(nowMs) }
+  return { whole: sessionDates(config, day).length, left: rowSessionDates(config, { ...row, notes: row.notes || '', day }, group).filter(upcoming).length, day }
+}
+
 export function quoteView(row, config, today = sydneyToday()) {
   const tiers = quoteTiersOf(row.notes)
   const c = commitmentOf(row.notes, today)
+  const run = termRun(config, row)
   return {
+    // The quick buttons in the quote editor: Rest of term (left) and Whole term.
+    termLeft: run.left, termWhole: run.whole,
     rowId: row.id,
     sessionPay: isSessionType(row.paymentType),
     quote: { perCents: row.perSessionCents || null, tiers },
@@ -53,7 +73,9 @@ export async function saveQuote(principal, config, body) {
     return ok(quoteView({ ...row, notes }, config))
   }
   if (!isSessionType(row.paymentType)) return no(400, 'A quote is for Pro sessions and session by session players. Set the payment type first.')
-  const r = cleanQuote({ perCents: body.perCents, tiers: body.tiers })
+  // A new run is at most the sessions this player has left this term.
+  const fresh = (body.tiers || []).filter((t) => !before.tiers.some((b) => b.n === Number(t?.n)))
+  const r = cleanQuote({ perCents: body.perCents, tiers: body.tiers }, { maxN: termRun(config, row).left, fresh: fresh.map((t) => ({ n: Number(t?.n) })) })
   if (!r.ok) return no(400, r.error)
   if (before.perCents === r.perCents && JSON.stringify(before.tiers) === JSON.stringify(r.tiers)) return ok({ ...quoteView(row, config), unchanged: true })
   const notes = withQuote(withPerSession(row.notes, r.perCents), r.tiers)
@@ -79,12 +101,14 @@ export async function saveDefaultQuote(principal, config, body) {
 
 // Add a player: the quote staff typed (or the default) goes on the new row's
 // notes. { notes } or { error }. Nothing typed: the notes as they were.
-export function addQuote(notes, input, { perSession, sessionPay }) {
+// maxN: the sessions left this term in the group they join (or the term's
+// weeks with no group), so a run is never longer than the term.
+export function addQuote(notes, input, { perSession, sessionPay, maxN = 0 }) {
   if (!input || !sessionPay) return { notes }
   const tiers = Array.isArray(input.tiers) ? input.tiers : []
   if (!tiers.length) return { notes }
   if (!perSession) return { error: 'Enter the price per session for the quote.' }
-  const r = cleanQuote({ perCents: perSession, tiers })
+  const r = cleanQuote({ perCents: perSession, tiers }, { maxN })
   if (!r.ok) return { error: r.error }
   return { notes: withQuote(notes, r.tiers), tiers: r.tiers }
 }

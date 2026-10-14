@@ -37,7 +37,7 @@ export async function renderPricesPage(ui) {
     <section class="j-card jq-card" id="pr-quote">
       <h2>Default Pro quote</h2><p class="muted small">Fills in Add a player for a Pro. Each player's own quote is set in Edit player and can be different (loyal players, for example). Changing this changes nobody's quote.</p>
       <label class="j-field" style="max-width:220px"><span>Price per session (A$)</span><input class="j-input" id="dq-per" inputmode="decimal" value="${pr.defaultQuote ? dollars(pr.defaultQuote.perCents) : ''}" placeholder="e.g. 100"></label>
-      ${quoteHtml('dq', { tiers: pr.defaultQuote?.tiers || [], title: 'Commitment options' })}
+      ${quoteHtml('dq', { tiers: pr.defaultQuote?.tiers || [], title: 'Commitment options', run: { whole: pr.weeks, left: pr.weeks } })}
       <p class="j-err" id="dq-err" hidden></p>
       <div style="display:flex;gap:8px;margin-top:10px"><button type="button" class="j-btn j-btn-dark" id="dq-save">Save default</button>${pr.defaultQuote ? '<button type="button" class="j-btn j-btn-ghost" id="dq-clear">Clear default</button>' : ''}</div>
     </section>
@@ -62,7 +62,7 @@ export async function renderPricesPage(ui) {
   })
   $('pr-add').addEventListener('click', () => priceModal(ui, null))
   // The default Pro quote (14 Oct 2026).
-  const dq = wireQuote(ui.view(), 'dq', { perInput: $('dq-per') })
+  const dq = wireQuote(ui.view(), 'dq', { perInput: $('dq-per'), run: { whole: pr.weeks, left: pr.weeks } })
   const saveDq = async (quote) => {
     const r = await ui.post('saveDefaultQuote', { quote })
     if (!r.ok) { $('dq-err').textContent = r.data.error; $('dq-err').hidden = false; return }
@@ -100,7 +100,7 @@ export async function priceModal(ui, p) {
   const box = ui.modal(`<h2 style="margin-bottom:10px">${p ? 'Edit price' : 'Add a price'}</h2>
     <label class="j-field"><span>Name</span><input class="j-input" id="pm-name" maxlength="80" value="${esc(p?.name || '')}" placeholder="e.g. Holiday camp day"></label>
     <div class="j-two"><label class="j-field"><span>Amount (A$)</span><input class="j-input" id="pm-amt" inputmode="decimal" value="${p ? dollars(p.cents) : ''}"></label>
-    <label class="j-field"><span>Programme</span><select class="j-select" id="pm-prog">${programmeOptions(pr.programmes, p?.programme || 'jfp')}</select></label></div>
+    <label class="j-field"><span>Program</span><select class="j-select" id="pm-prog">${programmeOptions(pr.programmes, p?.programme || 'jfp')}</select></label></div>
     <label class="j-field"><span>Description (optional)</span><input class="j-input" id="pm-desc" maxlength="300" value="${esc(p?.description || '')}" placeholder="Only you see this"></label>
     <label class="j-check"><input type="checkbox" id="pm-session"${p?.perSession ? ' checked' : ''}> <span>Per session (a link can be for several sessions)</span></label>
     <p class="j-err" id="pm-err" hidden></p>
@@ -132,7 +132,7 @@ export async function quickModal(ui, { priceId = '' } = {}) {
     <div class="j-two"><label class="j-field"><span>Amount (A$)</span><input class="j-input" id="ql-amt" inputmode="decimal"></label>
     <label class="j-field" id="ql-sess-wrap" hidden><span>Sessions</span><input class="j-input" id="ql-sess" type="number" min="1" max="40" value="1" inputmode="numeric"></label></div>
     <label class="j-field"><span>What it is for</span><input class="j-input" id="ql-for" maxlength="120" placeholder="e.g. Holiday camp, 6 January"></label>
-    <div class="j-two"><label class="j-field"><span>Programme</span><select class="j-select" id="ql-prog">${programmeOptions(pr.programmes, 'jfp')}</select></label>
+    <div class="j-two"><label class="j-field"><span>Program</span><select class="j-select" id="ql-prog">${programmeOptions(pr.programmes, 'jfp')}</select></label>
     <label class="j-field" id="ql-hol-wrap" hidden><span>Which holidays</span><select class="j-select" id="ql-hol">${pr.holidayPeriods.map((h) => `<option value="${esc(h.id)}">${esc(h.label)}</option>`).join('')}</select></label></div>
     <div class="j-field"><span>Player (optional)</span><div id="ql-chosen"></div><input class="j-input" id="ql-q" placeholder="Search a player" autocomplete="off"><div id="ql-res"></div></div>
     <label class="j-field"><span>Parent email (optional)</span><input class="j-input" id="ql-email" type="email" inputmode="email" autocomplete="off"></label>

@@ -49,8 +49,12 @@ export function withQuote(notes, tiers) {
 }
 
 // What staff typed: { ok, perCents, tiers } or { ok: false, error }. A tier is
-// a discount: its price must be under the price per session.
-export function cleanQuote(input = {}) {
+// a discount: its price must be under the price per session. maxN (14 Oct
+// 2026, round 2): the sessions this player has left this term; a run can be
+// anything from 2 up to that (the whole term before it starts). Only checked
+// for tiers listed in `fresh` (tiers staff are adding now), so an older tier
+// that no longer fits does not block other changes; it is simply not offered.
+export function cleanQuote(input = {}, { maxN = 0, fresh = null } = {}) {
   const per = Number(input.perCents)
   if (!Number.isInteger(per) || per < PER_MIN || per > PER_MAX) return { ok: false, error: 'Enter the price per session, for example 100.' }
   const raw = Array.isArray(input.tiers) ? input.tiers : []
@@ -62,6 +66,7 @@ export function cleanQuote(input = {}) {
     if (!Number.isInteger(c) || c < PER_MIN || c > PER_MAX) return { ok: false, error: `Enter the price each for ${n} sessions in a row.` }
     if (c >= per) return { ok: false, error: `${n} in a row at ${aud(c)} each is not less than ${aud(per)} a session. A commitment price is lower.` }
     if (tiers.some((x) => x.n === n)) return { ok: false, error: `There are two options for ${n} sessions in a row. Keep one.` }
+    if (maxN >= QUOTE_N_MIN && n > maxN && (!fresh || fresh.some((x) => x.n === n))) return { ok: false, error: `Only ${maxN} sessions are left this term, so a run can be up to ${maxN} in a row.` }
     tiers.push({ n, cents: c })
   }
   return { ok: true, perCents: per, tiers: tiers.sort((a, b) => a.n - b.n) }
@@ -128,12 +133,26 @@ export function billLine(plan) {
 // ---------- the options in My account ----------
 
 // dates: [{ iso, label }] still to come and free to pay for, in order.
-export function quoteOptions({ perCents, tiers, dates }) {
+// The options: the next session, each tier staff set that still fits, and
+// (round 2, 14 Oct 2026) the rest of the term: every date left at the price
+// per session, unless one of staff's tiers is exactly that run, in which case
+// that tier is the rest of the term (marked rest: true) at its lower price.
+export function quoteOptions({ perCents, tiers, dates, rest = true }) {
   if (!perCents || !dates.length) return []
   const out = [{ key: 'one', n: 1, perCents, totalCents: perCents, saveCents: 0, title: `Pay for the next session, ${aud(perCents)}`, dates: dates.slice(0, 1) }]
   for (const t of tiers || []) {
     if (dates.length < t.n) continue
-    out.push({ key: `commit:${t.n}`, n: t.n, perCents: t.cents, totalCents: t.n * t.cents, saveCents: t.n * (perCents - t.cents), commit: true, title: `Commit to the next ${t.n} sessions at ${aud(t.cents)} each, ${aud(t.n * t.cents)}`, dates: dates.slice(0, t.n) })
+    out.push({ key: `commit:${t.n}`, n: t.n, perCents: t.cents, totalCents: t.n * t.cents, saveCents: t.n * (perCents - t.cents), commit: true, ...(t.n === dates.length ? { rest: true } : {}), title: `Commit to the next ${t.n} sessions at ${aud(t.cents)} each, ${aud(t.n * t.cents)}`, dates: dates.slice(0, t.n) })
+  }
+  if (rest) {
+    const r = restOption({ perCents, dates })
+    if (r && !out.some((o) => o.n === r.n)) out.push(r)
   }
   return out
+}
+// Pay for the rest of the term at the price per session (2 or more dates left).
+export function restOption({ perCents, dates }) {
+  const n = dates.length
+  if (!perCents || n < 2) return null
+  return { key: 'rest', n, perCents, totalCents: n * perCents, saveCents: 0, rest: true, title: `Pay for the rest of the term, ${n} sessions, ${aud(n * perCents)}`, dates: dates.slice() }
 }

@@ -7,14 +7,13 @@ import { finaliseJfpBooking, jfpBookingIdFromSession } from './_jfp-finalise.js'
 import { jjPayreqIdFromSession, getJJPayreq, finaliseJJPayreq } from './_jj-pay.js'
 
 // fromIso: joined mid term; only: a trial's one session.
+// No coach's name: this is the family's page (Lee, 14 Oct 2026).
 function groupView(config, group, { fromIso = '', only = '' } = {}) {
-  const coach = coachById(config, group.coachId)
   const dates = only ? [only] : sessionDates(config, group.day).filter((d) => !fromIso || d >= fromIso)
   const loc = locationFor(config, group.location)
   return {
     day: group.day, time: group.time, time24: to24h(group.time), durationMin: group.durationMin || 60,
     location: loc.name, address: loc.address, maps: loc.maps,
-    coachName: coach ? (coach.fullName || coach.name) : '',
     firstDate: dates[0] ? dateLabel(dates[0]) : '', dates: dates.map(dateLabel), isoDates: dates,
   }
 }
