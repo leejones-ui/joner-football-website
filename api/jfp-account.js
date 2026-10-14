@@ -17,7 +17,9 @@
 //   profiles / saveProfile   Player information: club, position, contacts (Airtable)
 //   jjPay / jjRequestPay / jjNextChoice   Joners Juniors (stage 2, _jj-account.js):
 //               the same family login shows and pays Juniors children too
-import { stripeFetch, siteUrl } from './_holiday-store.js'
+//   requestExtra  Book extra sessions / Book game analysis: a request to
+//               staff (_jfp-extras.js)
+import { stripeFetch, siteUrl, listSlots } from './_holiday-store.js'
 import {
   getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, dateLabel,
   formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, sydneyToday, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType, isProType,
@@ -34,6 +36,7 @@ import { familyFees } from './_jfp-account-fees.js'
 import { coveredOf } from './_jfp-quote.js'
 import { accountOf, openPlayers, addMyPlayer } from './_jfp-account-open.js'
 import { prepaidOf } from './_jfp-store.js'
+import { submitExtra, listExtras, familyExtraView, analysisPrice, extraSlots, DAYS as EXTRA_DAYS, TIMES as EXTRA_TIMES, TYPES as EXTRA_TYPES } from './_jfp-extras.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -196,7 +199,7 @@ async function overview(res, parent, body = {}) {
     const st = statuses[r.id] || { status: 'invited' }
     const pr = nextPrices(config, g)
     const open = st.payreqId ? mine.find((q) => q.id === st.payreqId && ['open', 'checkout'].includes(q.status)) : null
-    return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, status: st.status, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel, afterHoldLabel: st.status === 'held' ? formatAud(Math.max(0, pr.fullCents - (st.paidCents || 0))) : pr.afterHoldLabel, openPayreqId: open?.id || '' }
+    return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, dayTime: g ? `${g.day} ${g.time}` : [r.day, r.time].filter(Boolean).join(' '), status: st.status, holdLabel: pr.holdLabel, fullLabel: pr.fullLabel, afterHoldLabel: st.status === 'held' ? formatAud(Math.max(0, pr.fullCents - (st.paidCents || 0))) : pr.afterHoldLabel, openPayreqId: open?.id || '' }
   }))
   // "Keep my spot" (Lee, 13 Oct 2026): every family sees next term coming,
   // with their current spots, even before it opens. Before it opens they can
@@ -204,6 +207,9 @@ async function overview(res, parent, body = {}) {
   const interest = await nextInterest(nt.name)
   const keep = {
     name: nt.name, open: Boolean(nt.open), holdLabel: formatAud(nt.holdCents),
+    // The deposit card (Fees and Home, only while staff have it open): held
+    // for current players until this date, when staff set one.
+    holdUntil: nt.holdUntil || '', holdUntilLabel: nt.holdUntil ? dateLabel(nt.holdUntil) : '',
     players: fam.players.flatMap((p) => p.term4.filter((r) => r.holdsPlace && r.groupId).map((r) => {
       const g = byGroup[r.groupId]
       return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, status: statuses[r.id]?.status || '', interested: Boolean(interest[r.id]) }
@@ -236,7 +242,33 @@ async function overview(res, parent, body = {}) {
     requests: requests.filter((r) => r.email === parent.email).map((r) => ({ id: r.id, kind: r.kind, status: r.status, offer: r.offer || '', players: r.players.map((x) => x.name), group: byGroup[r.groupId] ? `${byGroup[r.groupId].day} ${byGroup[r.groupId].time}, ${locationFor(config, byGroup[r.groupId].location).name}` : r.groupId === 'one-to-one' ? '1 to 1 coaching' : '', createdAt: r.createdAt })),
     bookings: bookings.filter((b) => b.email === parent.email && b.status === 'paid').map((b) => ({ id: b.id, players: b.players.map((x) => x.name), amountLabel: formatAud(b.amountPaidCents ?? b.priceCents), paidAt: b.paidAt })),
     juniors,
+    // Book extra sessions and Book game analysis (round 3).
+    extras: await extrasView(config, parent.email),
   })
+}
+
+// What the two booking pages need: the game analysis price if Lee set one,
+// whether holiday training slots are open, slots to book (none yet), and
+// this family's own requests.
+async function extrasView(config, email) {
+  const nowIso = new Date().toISOString()
+  const [slots, mine] = await Promise.all([
+    listSlots().then((l) => l.filter((x) => x.status === 'open' && String(x.startsAt || '') > nowIso).length).catch(() => 0),
+    listExtras().then((l) => l.filter((r) => r.email === email).slice(0, 10).map(familyExtraView)).catch(() => []),
+  ])
+  const price = analysisPrice(config)
+  return { analysisPriceLabel: price?.label || '', holidaySlots: slots, slots: extraSlots(), days: EXTRA_DAYS, times: EXTRA_TIMES, types: EXTRA_TYPES, mine }
+}
+
+async function requestExtra(res, parent, body) {
+  const config = await getConfig()
+  const fam = familyFor(parent.email, await loadRoster(), config.termStart)
+  const profs = await familyProfiles(parent.email).catch(() => [])
+  const open = openPlayers({ fam, profs, account: await accountOf(parent.email) })
+  const players = [...fam.players.map((p) => p.name), ...open.map((o) => o.name)]
+  const out = await submitExtra({ config, parent, parentName: fam.parentName, players, kind: clean(body.kind, 20), body })
+  if (!out.ok) return fail(res, out.status, out.error)
+  return res.status(200).json({ success: true, request: familyExtraView(out.record), emailed: out.record.deliveries.staff === 'sent' })
 }
 
 // "Can't make a session": saved in KV only, the coach(es) and the team told.
@@ -262,7 +294,11 @@ async function cancelSession(res, parent, body) {
     coverCoachId: group ? await coverCoachFor(group.id, date) : '',
   })
   if (!out.ok) return fail(res, out.status, out.error, out.code ? { code: out.code } : {})
-  return res.status(200).json({ success: true, already: out.already, cancellation: familyView(out.record), told: toldCoaches(config, out.record) })
+  // Who heard (round 3): the coach taking the session and Ligia (staff).
+  // A coach who is also on the staff email counts as told by that one.
+  const d = out.record.deliveries || {}
+  const coachTold = (out.record.coachIds || []).some((id) => d[`coach:${id}`] === 'sent' || (d[`coach:${id}`] === 'skipped' && Boolean(coachById(config, id)?.email) && d.staff === 'sent'))
+  return res.status(200).json({ success: true, already: out.already, cancellation: familyView(out.record), told: toldCoaches(config, out.record), toldWho: { coach: coachTold, staff: d.staff === 'sent' } })
 }
 
 async function withdrawSession(res, parent, body) {
@@ -669,6 +705,7 @@ export default async function handler(req, res) {
     if (['jjPay', 'jjRequestPay', 'jjNextChoice'].includes(body.action)) return await juniorsAction(req, res, parent, body)
     if (body.action === 'cancelSession') return await cancelSession(res, parent, body)
     if (body.action === 'withdrawCancel') return await withdrawSession(res, parent, body)
+    if (body.action === 'requestExtra') return await requestExtra(res, parent, body)
     return await overview(res, parent, body)
   } catch (error) {
     console.error('jfp-account failed', error)

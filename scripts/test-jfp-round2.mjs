@@ -150,39 +150,34 @@ const SESS = {
   todo: [], owed: [owedFor()], reasons: [{ key: 'sick', label: 'Sick' }], noteMax: 300, paid: [], requests: [], bookings: [], juniors: null,
 }
 
-await test('Fees for a session by session player: "Upcoming sessions: 2 left this term at A$80", how to pay ahead, never "Nothing owing"', async () => {
+await test('Fees for a session by session player: "Upcoming sessions: 2 left this term at A$80", each way to pay ahead as a card, never "Nothing owing"', async () => {
   const p = await openAccount(SESS)
   await p.click('#ja-tabs [data-go="fees"]')
   const fees = p.text('[data-pane="fees"]')
+  assert.match(fees, /Pay ahead and save/)
   assert.match(fees, /Upcoming sessions: 2 left this term at A\$80/)
   assert.match(fees, /Sessions you do not pay ahead are billed after they happen\./)
-  assert.match(fees, /Pay for the rest of the term, 2 sessions, A\$160/)
+  assert.match(p.text('[data-pane="fees"] [data-opt="rest"]'), /Rest of term\s*A\$160\s*2 sessions at A\$80.*Pay A\$160/)
   assert.doesNotMatch(fees, /Nothing owing|all paid up/)
-  // The picker on Fees is its own (Home has one too): 2 chosen here is 2 sent.
-  const sel = p.$('[data-pane="fees"] [data-owed-n]')
-  sel.value = '2'; sel.dispatchEvent(new p.w.Event('change', { bubbles: true }))
-  await p.click('[data-pane="fees"] [data-fees-owed] [data-owed]:not([data-owed-option])')
+  // One button per way to pay; the page's own copy is the one sent (Home has one too).
+  await p.click('[data-pane="fees"] [data-fees-owed] [data-owed-option="one"]')
   await p.click('[data-pane="fees"] [data-owed-option="rest"]')
   const pays = p.posts.filter((b) => b.action === 'payOwed')
-  assert.deepEqual(pays.map((b) => [b.rowId, b.sessions ?? null, b.option ?? null]), [[sessEnrol.rowId, 2, null], [sessEnrol.rowId, null, 'rest']])
+  assert.deepEqual(pays.map((b) => [b.rowId, b.sessions ?? null, b.option ?? null]), [[sessEnrol.rowId, null, 'one'], [sessEnrol.rowId, null, 'rest']])
   assert.deepEqual(p.errors, [])
   p.close()
 })
 
-await test('a quoted player: the options on Fees include the rest of the term; Home and Fees are separate choices', async () => {
+await test('a quoted player: the options on Fees include the rest of the term; Home shows the same cards, fewer of them', async () => {
   const quote = { options: [
     { key: 'one', n: 1, perCents: 10000, totalCents: 10000, saveCents: 0, dates: [{ iso: future[1], label: lbl(future[1]) }] },
     { key: 'rest', n: 2, perCents: 10000, totalCents: 20000, saveCents: 0, rest: true, dates: future.slice(1).map((iso) => ({ iso, label: lbl(iso) })) },
   ], commitment: null }
   const p = await openAccount({ ...SESS, owed: [owedFor({ quote, perCents: 10000, perLabel: 'A$100', leftLabel: 'A$200', rest: { key: 'rest', n: 2, totalCents: 20000, totalLabel: 'A$200', perCents: 10000 } })] })
   await p.click('#ja-tabs [data-go="fees"]')
-  const names = new Set([...p.d.querySelectorAll('input[type="radio"]')].map((r) => r.name))
-  assert.equal(names.size, 2, 'one radio group on Home, one on Fees')
-  assert.match(p.text('[data-pane="fees"] [data-quote]'), /Pay for the next session.*Pay for the rest of the term \(2 sessions\).*A\$200 now/)
-  const rest = p.$('[data-pane="fees"] input[value="rest"]')
-  rest.checked = true; rest.dispatchEvent(new p.w.Event('change', { bubbles: true }))
-  assert.equal(p.$('[data-pane="home"] input[value="one"]').checked, true, 'Home keeps its own choice')
-  await p.click('[data-pane="fees"] [data-fees-owed] [data-owed]')
+  assert.match(p.text('[data-pane="fees"] [data-fees-owed]'), /Next session\s*A\$100.*Rest of term\s*A\$200.*Pay A\$200/)
+  assert.ok(p.$('[data-pane="home"] [data-todo-owed] [data-owed-option="one"]'), 'the same cards on Home')
+  await p.click('[data-pane="fees"] [data-fees-owed] [data-owed-option="rest"]')
   assert.equal(p.posts.find((b) => b.action === 'payOwed').option, 'rest')
   p.close()
 })
@@ -218,10 +213,10 @@ await test('phones: Home, Sessions, Fees, Contact and More; More holds everythin
   assert.equal(p.text('#ja-tabs [data-more] .badge'), '1', 'one thing to do in More')
   await p.click('#ja-tabs [data-more]')
   const groups = [...p.d.querySelectorAll('.j-sheet .ja-more-group')].map((g) => g.querySelector('.ja-nav-label').textContent)
-  assert.deepEqual(groups, ['To do', 'My JFP', 'Program', 'Train'])
+  assert.deepEqual(groups, ['To do', 'My training', 'Program', 'Player', 'App'])
   const tiles = [...p.d.querySelectorAll('.j-sheet .ja-tile .t')].map((t) => t.textContent)
   assert.equal(tiles[0], "Sign Sol's waiver")
-  for (const t of ['Player information', "Can't make a session", 'Keep my spot', 'Training videos', 'The JF App']) assert.ok(tiles.includes(t), t)
+  for (const t of ['Player information', "Can't make it", 'Keep my spot', 'Videos', 'The JF App', 'Waivers', 'Book extra sessions', 'Book game analysis']) assert.ok(tiles.includes(t), t)
   for (const t of ['Home', 'My sessions', 'Fees', 'Contact us']) assert.ok(!tiles.includes(t), `${t} is on the bar, not in More`)
   await p.click('.j-sheet [data-go="videos"]')
   assert.equal(p.$('[data-pane="videos"]').hidden, false)

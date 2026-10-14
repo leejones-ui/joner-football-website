@@ -6,63 +6,23 @@
 import { $, esc, api, toast, openSheet, closeSheet, signIn, whoAmI, signOut, waiverBlock, recaptcha } from './jfp-common.js'
 import { termInfo, expectations, links } from '../data/jfp-term-info.js'
 import { hqVideos, pitchVideos, reels, socials, contacts, hq, holidays } from '../data/jfp-account-media.js'
+import { ic } from './jfp-account-icons.js'
+import { first, initials, money, pageHead, hero, secHead } from './jfp-account-ui.js'
+import { oweList, jjOweList, oweCard, aheadBlock, depositCards, placeCards, historyCard } from './jfp-account-pay.js'
+import { renderExtra, renderAnalysis, extraClick } from './jfp-account-extras.js'
 
 const q = new URLSearchParams(location.search)
 let D = null
 let PROF = null
 // Fees (14 Oct 2026): read when the Fees tab first opens, again after each load.
 let FEES = null
-const PANELS = ['home', 'sessions', 'fees', 'info', 'cancel', 'keep', 'term', 'holidays', 'videos', 'app', 'contact']
+const PANELS = ['home', 'sessions', 'fees', 'info', 'waivers', 'cancel', 'keep', 'term', 'holidays', 'extra', 'analysis', 'videos', 'app', 'contact']
 let current = 'home'
 const KIT_URL = 'https://www.besteamsport.com.au/collections/joner-football'
 const IMG = '/images/jfp-account'
 
-// ---------- icons ----------
-
-const PATHS = {
-  home: '<path d="M3.5 10.2 12 3.5l8.5 6.7V19a1.5 1.5 0 0 1-1.5 1.5h-4.5v-6h-5v6H5A1.5 1.5 0 0 1 3.5 19z"/>',
-  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.8h17M8 3v4M16 3v4"/>',
-  card: '<rect x="2.8" y="5.5" width="18.4" height="13" rx="2.4"/><path d="M2.8 10h18.4M6.5 14.8h4"/>',
-  calplus: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.8h17M8 3v4M16 3v4M12 12.8v5M9.5 15.3h5"/>',
-  user: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.4-3.8 4.3-5.7 7.5-5.7s6.1 1.9 7.5 5.7"/>',
-  camera: '<path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/>',
-  xcircle: '<circle cx="12" cy="12" r="8.5"/><path d="m9.2 9.2 5.6 5.6m0-5.6-5.6 5.6"/>',
-  bookmark: '<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/>',
-  info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.4"/>',
-  sun: '<circle cx="12" cy="12" r="3.8"/><path d="M12 2.8v2M12 19.2v2M4.6 4.6 6 6M18 18l1.4 1.4M2.8 12h2M19.2 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
-  grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/>',
-  play: '<circle cx="12" cy="12" r="8.5"/><path d="m10.2 8.6 5 3.4-5 3.4z" fill="currentColor"/>',
-  playsolid: '<path d="M7 4.5v15l12.5-7.5z" fill="currentColor" stroke="none"/>',
-  phone: '<rect x="6.5" y="2.8" width="11" height="18.4" rx="2.6"/><path d="M10.5 18h3"/>',
-  shirt: '<path d="M8.2 3.5 3.8 6l1.5 4.3 2-.8v11h9.4v-11l2 .8L20.2 6l-4.4-2.5c-.6 1.6-2 2.6-3.8 2.6s-3.2-1-3.8-2.6z"/>',
-  chat: '<path d="M20.5 12a8.5 8.5 0 0 1-12.3 7.6l-4.7 1.2 1.3-4.5A8.5 8.5 0 1 1 20.5 12z"/>',
-  menu: '<path d="M4 7h16M4 12h16M4 17h11"/>',
-  ext: '<path d="M7.5 16.5 16.5 7.5M9.5 7.5h7v7"/>',
-  arrow: '<path d="M5 12h14m-5.5-5.5L19 12l-5.5 5.5"/>',
-  left: '<path d="m14.5 6-6 6 6 6"/>',
-  right: '<path d="m9.5 6 6 6-6 6"/>',
-  pin: '<path d="M12 21s-6.8-6-6.8-11.2a6.8 6.8 0 0 1 13.6 0C18.8 15 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.4"/>',
-  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
-  whistle: '<circle cx="9" cy="14" r="5"/><path d="M12.5 10.5 20.5 7v4l-6 1.5M9 14h.01"/>',
-  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
-  call: '<path d="M6.5 3.5h3l1.8 4.6-2.2 1.4a11 11 0 0 0 5.4 5.4l1.4-2.2 4.6 1.8v3a2 2 0 0 1-2.2 2A16 16 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2z"/>',
-  mail: '<rect x="3" y="5.5" width="18" height="13" rx="2.2"/><path d="m3.8 7 8.2 6.2L20.2 7"/>',
-  close: '<path d="M6 6l12 12M18 6 6 18"/>',
-  apple: '<path d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.8-3.5.8s-1.8-.8-3-.8C6.9 7.3 5.4 8.2 4.6 9.7c-1.7 2.9-.4 7.3 1.2 9.6.8 1.1 1.7 2.4 3 2.4 1.2-.1 1.6-.8 3.1-.8s1.8.8 3.1.8c1.3 0 2.1-1.2 2.9-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.8-1-2.8-4.1zM14.1 5.8c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z" fill="currentColor" stroke="none"/>',
-  gplay: '<path d="M4.2 3.3 13.6 12l-9.4 8.7c-.4-.2-.7-.7-.7-1.3V4.6c0-.6.3-1.1.7-1.3zM15 10.6l2.6-2.4L6 2.1l9 8.5zm0 2.8-9 8.5 11.6-6.1zm1.3-1.4 3 1.6c.9-.5.9-1.7 0-2.2l-3-1.6-1.7 1.6z" fill="currentColor" stroke="none"/>',
-  instagram: '<rect x="3" y="3" width="18" height="18" rx="5.2"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/>',
-  youtube: '<path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.6 2.6 0 0 0 2.4 7.2C2 8.8 2 12 2 12s0 3.2.4 4.8a2.6 2.6 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8z" fill="currentColor" stroke="none"/><path d="m10 15 5.2-3L10 9z" fill="#0A0A0B" stroke="none"/>',
-  tiktok: '<path d="M16.6 3c.4 2.3 1.8 3.8 4.1 4v3.1a7.7 7.7 0 0 1-4-1.2v6.4a5.8 5.8 0 1 1-5.8-5.8c.3 0 .7 0 1 .1v3.2a2.7 2.7 0 1 0 1.8 2.5V3z" fill="currentColor" stroke="none"/>',
-  facebook: '<path d="M13.5 21v-7.4h2.5l.4-2.9h-2.9V8.9c0-.8.2-1.4 1.4-1.4h1.6V4.9c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 3.9v2.1H7.8v2.9h2.6V21z" fill="currentColor" stroke="none"/>',
-  x: '<path d="M17.8 3.5h3l-6.6 7.5 7.8 9.5h-6.1l-4.8-5.9-5.5 5.9H2.6l7-7.9L2.2 3.5h6.3l4.3 5.4zm-1 15.3h1.7L7.3 5.1H5.5z" fill="currentColor" stroke="none"/>',
-  threads: '<path d="M16.8 11.3c-.1 0-.2-.1-.3-.1-.2-3-1.8-4.7-4.6-4.7h0c-1.7 0-3 .7-3.9 2l1.5 1c.7-1 1.7-1.2 2.4-1.2h0c.9 0 1.6.3 2 .8.3.4.5.9.6 1.5-.8-.1-1.6-.2-2.5-.1-2.5.1-4.1 1.6-4 3.6.1 1 .6 1.9 1.4 2.5.7.4 1.6.7 2.6.6 1.3-.1 2.3-.6 3-1.4.5-.7.9-1.5 1-2.6.6.4 1.1.9 1.3 1.5.4 1 .4 2.7-.9 4-1.2 1.2-2.6 1.7-4.7 1.7-2.4 0-4.2-.8-5.3-2.3-1.1-1.4-1.6-3.4-1.7-6 0-2.5.6-4.5 1.7-6C7.8 4.5 9.6 3.7 12 3.7s4.3.8 5.5 2.3c.6.8 1 1.7 1.3 2.8l1.8-.5c-.4-1.4-1-2.5-1.7-3.5C17.4 2.9 15 1.9 12 1.9h0C9 1.9 6.7 2.9 5.1 4.8 3.7 6.6 3 9 3 12s.7 5.4 2.1 7.2c1.6 1.9 3.9 2.9 6.9 2.9h0c2.7 0 4.5-.7 6.1-2.2 2-2 1.9-4.5 1.3-6-.5-1.2-1.4-2.1-2.6-2.6zm-4.4 4.2c-1.1.1-2.2-.4-2.2-1.4 0-.7.5-1.5 2.2-1.6h.6c.6 0 1.2.1 1.7.2-.2 2.4-1.3 2.7-2.3 2.8z" fill="currentColor" stroke="none"/>',
-}
-const ic = (name, cls = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${cls ? ` class="${cls}"` : ''}>${PATHS[name] || ''}</svg>`
-
 // ---------- small helpers ----------
 
-const first = (name) => String(name || '').trim().split(/\s+/)[0] || ''
-const initials = (name) => String(name || '').replace(/\(.*?\)/g, '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'J'
 const sydIso = (ms = Date.now()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms))
 const dayDiff = (a, b) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000)
 const fmt = (ms, opts) => new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', ...opts }).format(new Date(ms))
@@ -101,16 +61,6 @@ const photoSet = (e) => { const w = VENUE_WIDE[e.locationId]; return w ? `srcset
 function payDot(pm) {
   const cls = { paid: 'ok', due: 'bad', trial: 'ok', sessions: 'ok', arranged: 'warn' }[pm.state] || ''
   return `<span class="ja-dot ${cls}">${esc(pm.label)}</span>`
-}
-function pageHead(kicker, title, lede = '', right = '') {
-  return `<header class="ja-head"><div class="ja-head-row"><div><p class="ja-kicker"><i></i>${esc(kicker)}</p><h1 class="ja-display">${esc(title)}</h1></div>${right}</div>${lede ? `<p class="ja-lede">${lede}</p>` : ''}</header>`
-}
-function hero({ img, imgSmall, kicker, title, lede = '', actions = '' }) {
-  return `<div class="ja-hero"><img src="${esc(imgSmall || img)}" srcset="${esc(imgSmall || img)} 900w, ${esc(img)} 1600w" sizes="(min-width: 640px) 80vw, 100vw" alt="" fetchpriority="high">
-    <p class="ja-kicker"><i></i>${esc(kicker)}</p><h1 class="ja-display">${title}</h1>${lede ? `<p class="ja-lede">${lede}</p>` : ''}${actions ? `<div class="ja-actions">${actions}</div>` : ''}</div>`
-}
-function secHead(title, sub = '', railId = '', right = '') {
-  return `<div class="ja-sec-head"><div><h2 class="ja-h2">${esc(title)}</h2>${sub ? `<p class="ja-muted ja-small">${sub}</p>` : ''}</div>${railId ? `<div class="ja-sec-nav"><button type="button" class="ja-round" data-rail-prev="${railId}" aria-label="Back">${ic('left')}</button><button type="button" class="ja-round" data-rail-next="${railId}" aria-label="More">${ic('right')}</button></div>` : right}</div>`
 }
 
 // ---------- sign in ----------
@@ -186,33 +136,66 @@ const solo = () => Boolean(D?.players?.length === 1 && D.players[0].self)
 function face(name, photo, extra = '') {
   return photo ? `<span class="ja-avatar ja-face" ${extra}><img src="${esc(photo)}" alt="" loading="lazy"></span>` : `<span class="ja-avatar" ${extra}>${esc(initials(name))}</span>`
 }
+// The side bar (round 3, Lee 14 Oct 2026): dropdown sections like the staff
+// portal's, each one opens and closes and is remembered on this device. The
+// section holding the open page always stays open. A section of one page is
+// just that page. Phones: the same sections in the More sheet.
 function nav() {
+  const unsigned = unsignedWaivers().length
   return [
-    { label: 'My JFP', items: [
-      { key: 'home', label: 'Home', icon: 'home' },
+    { label: 'Overview', items: [{ key: 'home', label: 'Home', icon: 'home' }] },
+    { label: 'My training', items: [
       { key: 'sessions', label: 'My sessions', icon: 'calendar' },
-      { key: 'fees', label: 'Fees', icon: 'card', dot: feesOwing() > 0 },
-      { key: 'info', label: solo() ? 'My profile' : 'Player information', icon: 'user', dot: infoGaps().length > 0 },
-      { key: 'cancel', label: "Can't make a session", icon: 'xcircle' },
-      { key: 'keep', label: 'Keep my spot', sub: D?.keep?.name || 'Next term', icon: 'bookmark' },
+      { key: 'cancel', label: "Can't make it", icon: 'xcircle' },
+      { key: 'keep', label: 'Keep my spot', sub: D?.keep?.open ? `${D.keep.name} is open` : D?.keep?.name || 'Next term', icon: 'bookmark', dot: Boolean(D?.keep?.open && (D?.nextTerm?.players || []).some((x) => !x.status || x.status === 'invited')) },
     ] },
+    { label: 'Fees', items: [{ key: 'fees', label: 'Fees', icon: 'card', dot: feesOwing() > 0 }] },
     { label: 'Program', items: [
-      { key: 'term', label: `About ${termShort()}`, icon: 'info' },
-      { key: 'holidays', label: 'Holiday training and camps', icon: 'sun' },
+      { key: 'term', label: 'Term info', sub: termShort(), icon: 'info' },
+      { key: 'holidays', label: 'Holiday training', icon: 'sun' },
+      { key: 'extra', label: 'Book extra sessions', icon: 'calplus' },
+      { key: 'analysis', label: 'Book game analysis', icon: 'video' },
       { href: links.booking, label: 'Timetable', icon: 'grid' },
     ] },
-    { label: 'Train', items: [
-      { key: 'videos', label: 'Training videos', icon: 'play' },
+    { label: 'Player', items: [
+      { key: 'info', label: solo() ? 'My profile' : 'Player information', icon: 'user', dot: infoGaps().length > 0 },
+      { key: 'waivers', label: 'Waivers', icon: 'sign', dot: unsigned > 0, sub: unsigned ? `${unsigned} to sign` : '' },
+    ] },
+    { label: 'Help', items: [{ key: 'contact', label: 'Contact us', icon: 'chat' }] },
+    { label: 'App', items: [
+      { key: 'videos', label: 'Videos', icon: 'play' },
       { key: 'app', label: 'The JF App', icon: 'phone' },
       { href: D?.kitUrl || KIT_URL, label: 'JF training kit', icon: 'shirt', ext: true },
     ] },
-    { label: 'Help', items: [{ key: 'contact', label: 'Contact us', icon: 'chat' }] },
   ]
 }
 function navItem(it) {
   const inner = `${ic(it.icon)}<span>${esc(it.label)}${it.sub ? `<span class="sub">${esc(it.sub)}</span>` : ''}</span>${it.ext ? ic('ext', 'ext') : it.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}`
   if (it.href) return `<a class="ja-nav-item" href="${esc(it.href)}"${it.ext ? ' target="_blank" rel="noopener noreferrer"' : ''}>${inner}</a>`
   return `<button type="button" class="ja-nav-item" data-go="${it.key}" aria-current="${current === it.key ? 'page' : 'false'}">${inner}</button>`
+}
+const NAV_KEY = 'ja-nav-open'
+// Open on a first visit: My training. Everything else until opened.
+const NAV_DEFAULT = { 'My training': true }
+function navOpen() { try { return { ...NAV_DEFAULT, ...(JSON.parse(localStorage.getItem(NAV_KEY) || '{}') || {}) } } catch { return { ...NAV_DEFAULT } } }
+function navGroup(g, open) {
+  if (g.items.length === 1) return `<div class="ja-nav-one">${navItem(g.items[0])}</div>`
+  const here = g.items.some((it) => it.key === current)
+  const shut = !here && open[g.label] !== true
+  const id = `ja-ng-${g.label.toLowerCase().replace(/[^a-z]+/g, '-')}`
+  return `<div class="ja-nav-group${shut ? ' is-shut' : ''}" data-navgrp="${esc(g.label)}">
+    <button type="button" class="ja-nav-sec" data-navsec="${esc(g.label)}" aria-expanded="${shut ? 'false' : 'true'}" aria-controls="${id}"><span>${esc(g.label)}</span>${g.items.some((it) => it.dot) ? '<span class="dot" aria-label="Needs attention"></span>' : ''}${ic('chevron', 'chev')}</button>
+    <div class="ja-nav-list" id="${id}"><div>${g.items.map(navItem).join('')}</div></div></div>`
+}
+function toggleNav(label) {
+  const grp = [...document.querySelectorAll('#ja-nav [data-navgrp]')].find((x) => x.dataset.navgrp === label)
+  if (!grp) return
+  const shut = !grp.classList.contains('is-shut')
+  grp.classList.toggle('is-shut', shut)
+  grp.querySelector('[data-navsec]').setAttribute('aria-expanded', String(!shut))
+  const saved = navOpen()
+  saved[label] = !shut
+  try { localStorage.setItem(NAV_KEY, JSON.stringify(saved)) } catch {}
 }
 // The bottom bar on phones (round 2, 14 Oct 2026): the four places families
 // go most, then More. More opens a sheet with everything else in the same
@@ -221,7 +204,8 @@ const BAR = [['home', 'Home', 'home'], ['sessions', 'Sessions', 'calendar'], ['f
 const unsignedWaivers = () => (D ? [...D.players, ...(D.juniors?.children || [])].filter((p) => !p.waiver?.onFile) : [])
 function moreCount() { return infoGaps().length + unsignedWaivers().length }
 function renderShell() {
-  $('ja-nav').innerHTML = nav().map((g) => `<div class="ja-nav-group"><p class="ja-nav-label">${esc(g.label)}</p>${g.items.map(navItem).join('')}</div>`).join('')
+  const open = navOpen()
+  $('ja-nav').innerHTML = nav().map((g) => navGroup(g, open)).join('')
   const n = moreCount()
   const inMore = !BAR.some(([k]) => k === current) && current !== 'home'
   $('ja-tabs').innerHTML = BAR.map(([k, l, i]) => `<button type="button" class="ja-tab" data-go="${k}" aria-current="${current === k ? 'page' : 'false'}">${ic(i)}<span>${l}</span>${k === 'fees' && feesOwing() ? '<span class="badge">!</span>' : ''}</button>`).join('')
@@ -252,6 +236,9 @@ function show(panel, { keepScroll = false } = {}) {
   current = panel
   document.querySelectorAll('[data-pane]').forEach((x) => { x.hidden = x.dataset.pane !== panel })
   document.querySelectorAll('#ja-nav [data-go], #ja-tabs [data-go]').forEach((b) => b.setAttribute('aria-current', b.dataset.go === panel ? 'page' : 'false'))
+  // The section holding the page opens (a page reached from a button elsewhere).
+  const grp = document.querySelector(`#ja-nav [data-go="${panel}"]`)?.closest('[data-navgrp].is-shut')
+  if (grp) { grp.classList.remove('is-shut'); grp.querySelector('[data-navsec]')?.setAttribute('aria-expanded', 'true') }
   document.querySelector('#ja-tabs [data-more]')?.setAttribute('aria-current', panel !== 'home' && !BAR.some(([k]) => k === panel) ? 'page' : 'false')
   if (location.hash.slice(1) !== panel) history.replaceState(null, '', panel === 'home' ? location.pathname + location.search : `#${panel}`)
   const el = document.querySelector(`[data-pane="${panel}"]`)
@@ -259,7 +246,8 @@ function show(panel, { keepScroll = false } = {}) {
   if (!keepScroll) window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
   requestAnimationFrame(syncRails)
 }
-const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), info: () => renderInfo(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact() }
+const pane = (k) => document.querySelector(`[data-pane="${k}"]`)
+const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact() }
 function drawPane(panel) { DRAW[panel]?.(); const el = document.querySelector(`[data-pane="${panel}"]`); if (el) el.dataset.drawn = '1' }
 
 function render() {
@@ -309,75 +297,13 @@ function missingInfo(v, saved) {
 function stepList(kicker, title, rows) {
   return rows.length ? `<div class="ja-card ja-todo"><div class="ja-card-head"><div><p class="ja-kicker"><i></i>${esc(kicker)}</p><h3 class="ja-h3" style="margin-top:8px;font-size:18px">${esc(title)}</h3></div></div><ul class="ja-list">${rows.map((r, i) => `<li class="ja-row"><span class="ja-num">${i + 1}</span><div><b>${esc(r.title)}</b><small>${esc(r.sub)}</small></div>${r.btn}</li>`).join('')}</ul></div>` : ''
 }
-const waiverStep = (needs, btn) => `<li class="ja-row"><span class="ja-num ${needs ? '' : 'done'}">${needs ? '1' : ic('check')}</span><div><b>Waiver</b><small>${needs ? 'Sign the JFP waiver first.' : 'On file.'}</small></div>${needs ? btn : ''}</li>`
-// Session by session with nothing billed: pay for the next sessions now.
-// pane: which page draws it (Home or Fees), so the two copies never share
-// a radio group or a select.
-function prepayPicker(o, pane = 'home') {
-  const opts = Array.from({ length: o.max }, (_, i) => i + 1)
-  return `<div class="ja-prepay" data-prepay="${esc(o.rowId)}" style="margin-top:10px">
-    <label class="j-field" style="margin:0"><span>How many sessions?</span><select class="j-select" data-owed-n="${esc(o.rowId)}" data-pane-of="${esc(pane)}">${opts.map((n) => `<option value="${n}">${n} session${n > 1 ? 's' : ''}, ${esc(money(n * o.perCents))}</option>`).join('')}</select></label>
-    <p class="ja-small ja-muted" data-owed-dates="${esc(o.rowId)}" style="margin-top:8px">${esc(o.dates[0]?.label || '')}</p></div>`
-}
-const money = (c) => `A$${(c / 100).toFixed(2).replace(/\.00$/, '')}`
-// A Pro with their own quote (14 Oct 2026): only the options staff set, and
-// (round 2) the rest of the term at the price per session.
-const optDates = (x) => x.dates.map((d) => d.label).join(', ')
-function optTitle(x) {
-  if (x.key === 'rest') return `Pay for the rest of the term (${x.n} sessions)`
-  if (x.commit) return x.rest ? `Commit to the rest of the term (${x.n} sessions in a row)` : `Commit to ${x.n} sessions in a row`
-  return 'Pay for the next session'
-}
-function optSub(x) {
-  if (x.commit) return `${money(x.perCents)} each, ${money(x.totalCents)} now${x.saveCents ? `. You save ${money(x.saveCents)}` : ''}.`
-  if (x.key === 'rest') return `${money(x.perCents)} a session, ${money(x.totalCents)} now.`
-  return `${money(x.perCents)} for the next session.`
-}
-function quotePicker(o, pane = 'home') {
-  const c = o.quote.commitment
-  return `<div class="ja-opts" data-quote="${esc(o.rowId)}" role="radiogroup" aria-label="How do you want to pay?">${o.quote.options.map((x, i) => `<label class="ja-opt"><input type="radio" name="q-${esc(pane)}-${esc(o.rowId)}" value="${esc(x.key)}" data-total="${esc(money(x.totalCents))}" ${i === 0 ? 'checked' : ''}>
-      <span><b>${esc(optTitle(x))}</b>
-      <small>${esc(optSub(x))}</small>
-      <small class="ja-opt-dates">${esc(optDates(x))}</small>${x.commit ? '<small class="ja-opt-dates">Missed sessions are not refunded.</small>' : ''}</span></label>`).join('')}</div>
-    ${c?.left ? `<p class="ja-small ja-muted" style="margin-top:8px">Already paid: ${esc(c.left)} committed session${c.left > 1 ? 's' : ''} to come.</p>` : ''}`
-}
-// Round 2 (Lee, 14 Oct 2026): a session by session player always sees what
-// is still to come, never "nothing owing", with every way to pay ahead.
-const BILLED_AFTER = 'Sessions you do not pay ahead are billed after they happen.'
-function upcomingLine(o) {
-  return `<b>Upcoming sessions: ${esc(o.left)} left this term at ${esc(o.perLabel)}</b><small>${esc(o.left)} session${o.left === 1 ? '' : 's'} come${o.left === 1 ? 's' : ''} to ${esc(o.leftLabel || money(o.left * o.perCents))}. ${BILLED_AFTER}</small>`
-}
-function sessionsPay(o, pane = 'home') {
-  if (o.quote?.options?.length) return `${quotePicker(o, pane)}`
-  return `${prepayPicker(o, pane)}${o.rest ? `<p style="margin-top:10px"><button type="button" class="ja-btn ja-btn-line ja-btn-sm ja-btn-wrap" data-owed="${esc(o.rowId)}" data-owed-option="rest" ${o.needsWaiver ? 'disabled title="Sign the waiver first"' : ''}>Pay for the rest of the term, ${esc(o.rest.n)} sessions, ${esc(o.rest.totalLabel)}</button></p>` : ''}`
-}
-function owedCard(o) {
-  const pay = `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-owed="${esc(o.rowId)}" ${o.needsWaiver ? 'disabled title="Sign the waiver first"' : ''}>Pay</button>`
-  const what = o.kind === 'term'
-    ? `<b>Pay ${esc(o.amountLabel)}</b><small>${esc(D.term)}, ${esc(o.group)}. Locks the place in. Card, Apple Pay or Afterpay.</small>`
-    : o.kind === 'sessions'
-      ? `<b>Pay ${esc(o.amountLabel)}</b><small>For the sessions Joner Football has billed. Card or Apple Pay.</small>`
-      : `${upcomingLine(o)}${sessionsPay(o, 'home')}`
-  return `<div class="ja-card ja-todo" data-todo-owed="${esc(o.rowId)}">
-    <div class="ja-card-head"><div><p class="ja-kicker"><i></i>${o.kind === 'term' ? 'Pay for your place' : o.kind === 'prepay' ? 'Upcoming sessions' : 'Pay for your sessions'}</p><h3 class="ja-h3" style="margin-top:8px;font-size:18px">${esc(o.player)}</h3>
-    <p class="ja-muted ja-small" style="margin-top:3px">${esc(o.group)}</p></div></div>
-    <ul class="ja-list">${waiverStep(o.needsWaiver, `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-player="${esc(o.playerKey)}">Sign</button>`)}
-      <li class="ja-row"><span class="ja-num">2</span><div>${what}</div>${pay}</li></ul>
-  </div>`
-}
+// Round 3 (Lee, 14 Oct 2026): every payment is drawn by jfp-account-pay.js,
+// the same card on Home and on Fees. Home shows what to pay now and, for
+// session by session players, the next session and the best value.
 function todoCards() {
   const want = q.get('pay')
-  const pays = [...D.todo].sort((x, y) => Number(y.id === want) - Number(x.id === want)).map((t) => `
-    <div class="ja-card ja-todo" data-todo="${esc(t.id)}">
-      <div class="ja-card-head"><div><p class="ja-kicker"><i></i>${t.reason === 'trial' ? 'Book the trial' : t.reason === 'sessions' ? 'Sessions to pay' : 'Finish your booking'}</p><h3 class="ja-h3" style="margin-top:8px;font-size:18px">${esc(t.players.join(' and '))}</h3>
-      <p class="ja-muted ja-small" style="margin-top:3px">${t.places?.length ? t.places.map((x) => `${esc(x.name)}: ${esc(x.label)}, ${esc(x.amountLabel)}`).join('<br>') : `${esc(t.group || 'JFP')}${t.what ? `, ${esc(t.what)}` : ''}`}${t.expiresAt ? `<br>Held for you until ${esc(new Date(t.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}</p></div></div>
-      <ul class="ja-list">
-        ${waiverStep(t.needsWaiver, `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-for="${esc(t.id)}">Sign</button>`)}
-        ${t.needsKit ? `<li class="ja-row"><span class="ja-num ${t.kit ? 'done' : ''}">${t.kit ? ic('check') : '2'}</span><div><b>JF playing kit</b><small>${t.kit ? `Done: ${esc(t.kit.toLowerCase())}.` : `Required. ${esc(D.kitPriceLabel || 'A$60')} from BE Teamsport.`}</small>${t.kit ? '' : `<span style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${D.kitUrl ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(D.kitUrl)}" target="_blank" rel="noopener noreferrer">Order the kit</a>` : ''}<button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-kit="ordered" data-kit-for="${esc(t.id)}">I have ordered it</button><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-kit="has" data-kit-for="${esc(t.id)}">Already has one</button></span>`}</div><span></span></li>` : ''}
-        <li class="ja-row"><span class="ja-num">${t.needsKit ? '3' : '2'}</span><div><b>Pay ${esc(t.amountLabel)}</b><small>${t.reason === 'trial' ? 'Books the trial.' : t.reason === 'sessions' ? 'Pays for these sessions.' : 'Locks the place in.'} Card, Apple Pay${t.afterpay ? ' or Afterpay' : ''}.</small></div><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-pay="${esc(t.id)}" ${t.needsWaiver ? 'disabled title="Sign the waiver first"' : t.needsKit && !t.kit ? 'disabled title="Confirm the playing kit first"' : ''}>Pay</button></li>
-      </ul>${t.canChoose ? `<p style="margin-top:10px"><button type="button" class="ja-link ja-small" data-choose-again="${esc(t.id)}">Choose a different option</button></p>` : ''}
-    </div>`)
-  const owed = (D.owed || []).map(owedCard)
+  const pays = oweList(D, want).map((x) => oweCard(x, 'home'))
+  const ahead = (D.owed || []).filter((o) => o.kind === 'prepay').map((o) => aheadBlock(D, o, { pane: 'home', compact: true }))
   // Players whose waiver is not part of a payment card above: step 1, first.
   const inCards = new Set([...D.todo.flatMap((t) => t.players), ...(D.owed || []).map((o) => o.player)])
   const waivers = D.players.filter((p) => !p.waiver.onFile && !inCards.has(p.name)).map((p) => ({ title: p.adult ? (D.self || solo() ? 'Sign your waiver' : `Sign ${first(p.name)}'s waiver`) : `Sign ${first(p.name)}'s waiver`, sub: 'Every JFP player needs one on file. It takes two minutes.', btn: `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-waiver-player="${esc(p.key)}">Sign</button>` }))
@@ -387,7 +313,7 @@ function todoCards() {
     const mine = p.self || D.self
     return { title: mine ? 'Your player details' : `${first(p.name)}'s player information`, sub: `${what} It helps us put ${mine ? 'you' : first(p.name)} in the right group.`, btn: '<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-go="info">Update</button>' }
   })
-  return stepList('To do first', waivers.length === 1 ? 'Sign the waiver' : 'Sign the waivers', waivers) + pays.join('') + owed.join('') + jjTodoCards() + stepList('Then', info.length === 1 ? 'Update player details' : `${info.length} player details to update`, info)
+  return stepList('To do first', waivers.length === 1 ? 'Sign the waiver' : 'Sign the waivers', waivers) + pays.join('') + ahead.join('') + jjTodoCards() + depositCards(D, { compact: true, self: Boolean(D.self || solo()) }) + stepList('Then', info.length === 1 ? 'Update player details' : `${info.length} player details to update`, info)
 }
 
 function renderHome() {
@@ -562,6 +488,20 @@ function renderInfo() {
   }).join('')
 }
 
+// ---------- waivers ----------
+
+// Every player's waiver in one place (round 3): signed, when and which one,
+// or Sign. JFP and Joners Juniors share the family waiver.
+function renderWaivers() {
+  const el = pane('waivers')
+  const all = [...D.players, ...(D.juniors?.children || [])]
+  const due = all.filter((p) => !p.waiver?.onFile)
+  el.innerHTML = `${pageHead('Player', 'Waivers', 'Every JFP player needs a waiver on file before they train. It takes two minutes, and one covers JFP and Joners Juniors.')}
+    ${due.length > 1 ? `<div class="ja-actions" style="margin:0 0 14px"><button type="button" class="ja-btn ja-btn-red" data-waiver-all>${ic('sign')}Sign all ${due.length} waivers</button></div>` : ''}
+    ${all.length ? `<div class="ja-card"><ul class="ja-list">${all.map((p) => `<li class="ja-row">${face(p.name, p.photo)}<div><b>${esc(p.name)}</b><small>${p.waiver?.onFile ? `Signed${p.waiver.signedDate ? ` ${esc(p.waiver.signedDate)}` : ''}${p.waiver.kind === 'adult' ? ', adult waiver (signed by the player)' : p.waiver.kind ? ', signed by a parent or guardian' : ''}${p.waiver.term ? ` · ${esc(p.waiver.term)}` : ''}` : 'Not signed yet. Needed before training.'}</small></div>${p.waiver?.onFile ? '<span class="ja-dot ok">On file</span>' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-waiver-player="${esc(p.key)}">Sign</button>`}</li>`).join('')}</ul></div>`
+      : `<div class="ja-card"><h3 class="ja-h3">No players yet</h3><p class="ja-muted" style="margin-top:6px">Add a player first, then sign their waiver here.</p><div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" data-add-player>Add a player</button></div></div>`}`
+}
+
 async function saveProf(key, btn) {
   const box = document.querySelector(`[data-prof="${CSS.escape(key)}"]`)
   const values = {}
@@ -680,9 +620,9 @@ async function savePhotoFor(key, input, remove = false) {
 function renderCancel() {
   const el = document.querySelector('[data-pane="cancel"]')
   const rows = D.players.flatMap((p) => p.enrolments.map((e) => ({ p, e })))
-  el.innerHTML = `${pageHead("Can't make it?", 'Tell your coach', 'Two taps and your coach sees it straight away.')}
+  el.innerHTML = `${pageHead("Can't make it?", 'Tell your coach', 'Two taps and the coach taking the session and Ligia hear straight away, by email.')}
     <div class="ja-steps"><div class="ja-step"><b>Pick the session</b><p>Choose the date below.</p></div><div class="ja-step"><b>Tell us why</b><p>Sick, injured, school or something else. Add a note if you like.</p></div><div class="ja-step"><b>Changed your mind?</b><p>Press Undo and your coach knows they are coming.</p></div></div>
-    <p class="j-box j-box-amber" style="margin-top:14px">Please tell us as early as you can. There are no make-up sessions. Less than a day to go? Call or text your coach as well.</p>
+    <p class="j-box j-box-amber" style="margin-top:14px">Please tell us as early as you can. There are no make-up sessions. Less than a day to go? Call or text the coach or Ligia as well.</p>
     ${rows.length ? rows.map(({ p, e }) => {
       const open = (e.sessions || []).slice(0, 4)
       return `<section class="ja-card" style="margin-top:14px"><div class="ja-enrol-head"><img src="${esc(photoFor(e))}" alt="" loading="lazy"><div><h2>${esc(p.name)}</h2><p>${esc(e.day)}s ${esc(e.time)} · ${esc(e.location)}</p></div></div>
@@ -691,7 +631,7 @@ function renderCancel() {
           const c = (e.cancelled || []).find((x) => x.date === s.iso)
           return `<li class="ja-date ${c ? 'is-off' : ''}"><span class="d"><b>${esc(dd)}</b><i>${esc(mon)}</i></span><span class="w"><b>${esc(dow)} ${esc(e.time)}${c ? '<span class="ja-tag amber">Coach told</span>' : ''}</b>${esc(countdown(s.startMs))}</span>${c ? `<button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-cancel-undo="${esc(c.id)}">Undo</button>` : `<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}" data-cancel-date="${esc(s.iso)}">Can't make it</button>`}</li>`
         }).join('')}</ol>${(e.sessions || []).length > 4 ? `<p style="margin-top:12px"><button type="button" class="ja-link ja-small" data-go="sessions">See every date</button></p>` : ''}` : '<p class="ja-muted" style="margin-top:12px">No more sessions this term.</p>'}
-        ${(e.contacts || []).length ? `<p class="ja-small ja-muted" style="margin-top:14px">On the day: ${e.contacts.map((c) => `<a class="ja-link" href="tel:${esc(c.tel)}">${esc(c.name)} ${esc(c.phone)}</a>`).join(' · ')}</p>` : ''}
+        <div style="margin-top:14px"><p class="ja-small ja-muted">On the day, call or text:</p>${reach(e, p, e.sessions?.[0])}</div>
       </section>`
     }).join('') : `<div class="ja-card" style="margin-top:14px">Nothing booked yet. <a class="ja-link" href="${links.booking}">See the timetable</a></div>`}`
 }
@@ -749,36 +689,24 @@ function renderTerm() {
 
 // ---------- fees ----------
 
-// What is owing now, from the overview: payment requests, places with
-// something owing and no request yet, and Joners Juniors.
-function feesOwe() {
-  const out = []
-  // A family invoice (siblings, round 2): each child's own place and amount.
-  for (const t of D.todo || []) out.push({ title: t.players.join(' and '), sub: t.places?.length ? t.places.map((x) => `${x.name}: ${x.label}, ${x.amountLabel}`).join(' · ') : [t.group, t.what].filter(Boolean).join(', '), amount: t.amountLabel, btn: t.needsWaiver || (t.needsKit && !t.kit) ? '<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-go="home">Finish on Home</button>' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-pay="${esc(t.id)}">Pay</button>` })
-  for (const o of (D.owed || []).filter((x) => x.kind !== 'prepay')) out.push({ title: o.player, sub: o.kind === 'term' ? `${D.term}, ${o.group}` : 'Sessions billed by Joner Football', amount: o.amountLabel, btn: o.needsWaiver ? '<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-go="home">Sign the waiver</button>' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-owed="${esc(o.rowId)}">Pay</button>` })
-  for (const t of D.juniors?.todo || []) out.push({ title: t.players.join(' and '), sub: `Joners Juniors, ${t.what}`, amount: t.amountLabel, btn: t.needsWaiver ? '<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-go="home">Sign the waiver</button>' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-jjpay="${esc(t.id)}">Pay</button>` })
-  const asked = new Set((D.juniors?.todo || []).flatMap((t) => t.players))
-  for (const c of D.juniors?.children || []) if (c.payment?.canPay && !asked.has(c.name)) out.push({ title: c.name, sub: `Joners Juniors, ${c.className || D.juniors.term}`, amount: c.payment.state === 'part' ? 'What is left' : c.payment.label.replace(/ to pay$/, ''), btn: `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-jjask="${esc(c.rowId)}">Pay</button>` })
-  return out
-}
-function feesOwing() { return D ? feesOwe().length : 0 }
+// Fees (round 3, Lee 14 Oct 2026): the clear place to pay, for every kind of
+// player. Next term's deposit when it is open, what to pay now, every way to
+// pay ahead, each place this term (with "Paid in full"), then every payment.
+function feesOwing() { return D ? oweList(D).length + jjOweList(D).length : 0 }
 function renderFees() {
   const el = document.querySelector('[data-pane="fees"]')
   if (!D) return
-  const owe = feesOwe()
+  const owe = [...oweList(D), ...jjOweList(D)]
   const ahead = (D.owed || []).filter((x) => x.kind === 'prepay')
-  const head = pageHead('Fees', 'Fees and payments', 'What you owe now, what you have paid, and every payment.')
-  // "Nothing owing" only when nothing is billed and no session is left to pay
-  // for (round 2, 14 Oct 2026). Session by session: what is still to come.
-  const oweCard = owe.length || !ahead.length ? `<div class="ja-card"><p class="ja-kicker"><i></i>Owing now</p>${owe.length
-    ? `<ul class="ja-list" style="margin-top:10px">${owe.map((x) => `<li class="ja-row ja-row-fee"><span class="ja-num">${ic('card')}</span><div><b>${esc(x.title)}: ${esc(x.amount)}</b><small>${esc(x.sub || '')}</small></div>${x.btn}</li>`).join('')}</ul>`
-    : `<h3 class="ja-h3" style="margin-top:8px">Nothing owing</h3><p class="ja-small ja-muted" style="margin-top:4px">You are all paid up.</p>`}</div>` : ''
-  const aheadCards = ahead.map((o) => `<div class="ja-card" data-fees-owed="${esc(o.rowId)}"><p class="ja-kicker"><i></i>Upcoming sessions</p><h3 class="ja-h3" style="margin-top:8px;font-size:18px">${esc(o.player)}</h3><p class="ja-muted ja-small" style="margin-top:3px">${esc(o.group)}</p>
-    <div class="ja-upc" style="margin-top:10px">${upcomingLine(o)}</div>
-    ${o.needsWaiver ? `<p class="j-box j-box-amber ja-small" style="margin-top:10px">Sign the waiver first, then pay. <button type="button" class="ja-link" data-waiver-player="${esc(o.playerKey)}">Sign the waiver</button></p>` : ''}
-    ${sessionsPay(o, 'fees')}
-    <div class="ja-actions"><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-owed="${esc(o.rowId)}" ${o.needsWaiver ? 'disabled title="Sign the waiver first"' : ''}>Pay</button></div></div>`).join('')
-  el.innerHTML = `${head}<div class="ja-stack">${oweCard}${aheadCards}<div id="fees-body"><div class="ja-card"><p class="ja-small ja-muted">Loading your payments.</p></div></div></div>`
+  const head = pageHead('Fees', 'Fees and payments', 'Pay here, pay ahead, and see everything you have paid.')
+  const deposit = depositCards(D, { self: Boolean(D.self || solo()) })
+  const now = owe.length
+    ? `<section class="ja-fees-sec">${secHead('To pay now')}<div class="ja-pay-grid">${owe.map((x) => oweCard(x, 'fees')).join('')}</div></section>`
+    : !ahead.length ? `<div class="ja-card ja-allpaid">${ic('check')}<div><h3 class="ja-h3">Nothing owing</h3><p class="ja-small ja-muted">You are all paid up.</p></div></div>` : ''
+  const pre = ahead.length ? `<section class="ja-fees-sec">${secHead('Pay ahead and save', 'Pay for sessions before they happen. Commit to a run and each session costs less.')}${ahead.map((o) => aheadBlock(D, o, { pane: 'fees' })).join('')}</section>` : ''
+  el.innerHTML = `${head}${deposit ? `<section class="ja-fees-sec">${deposit}</section>` : ''}${now}${pre}
+    <section class="ja-fees-sec">${secHead('This term', esc(D.term))}<div id="fees-places"><div class="ja-card"><p class="ja-small ja-muted">Loading your payments.</p></div></div></section>
+    <section class="ja-fees-sec">${secHead('Payment history')}<div id="fees-body"></div></section>`
   if (FEES) return fillFees()
   api('/api/jfp-account', { action: 'fees' }).then((r) => {
     FEES = r.ok ? r.data.fees : { error: r.data.error || 'Could not load your payments.' }
@@ -786,20 +714,12 @@ function renderFees() {
   })
 }
 function fillFees() {
+  const places = document.getElementById('fees-places')
   const box = document.getElementById('fees-body')
-  if (!box) return
-  if (FEES.error) { box.innerHTML = `<div class="ja-card"><p class="ja-small">${esc(FEES.error)}</p></div>`; return }
-  const f = FEES
-  const kind = { term: 'Term fee', sessions: 'Session by session', pro: 'Pro sessions', trial: 'Trial' }
-  const places = f.places.length ? `<div class="ja-card"><p class="ja-kicker"><i></i>${esc(f.term)}</p><ul class="ja-list" style="margin-top:10px">${f.places.map((x) => `<li class="ja-row ja-row-fee"><span class="ja-avatar">${esc(initials(x.player))}</span><div><b>${esc(x.player)}</b><small>${esc(kind[x.kind] || '')}, ${esc(x.group)}</small>
-      <small>${x.kind === 'term' ? `Paid ${esc(x.paidLabel)} of ${esc(x.feeLabel)}` : x.kind === 'trial' ? `Paid ${esc(x.paidLabel)}` : `Paid ${esc(x.paidLabel)} for sessions${x.owingCents ? `, ${esc(money(x.owingCents))} to pay` : ''}`}${x.prepaidSessions ? `. ${esc(x.prepaidSessions)} session${x.prepaidSessions > 1 ? 's' : ''} paid ahead` : ''}</small>
-      ${x.commitment ? `<small>Committed to ${esc(x.commitment.sessions)} sessions, ${esc(x.commitment.left)} to come${x.commitment.leftDates.length ? `: ${esc(x.commitment.leftDates.join(', '))}` : ''}</small>` : ''}</div><span></span></li>`).join('')}</ul></div>` : ''
-  const totals = f.totals.length ? `<div class="ja-card"><p class="ja-kicker"><i></i>Paid so far</p><h3 class="ja-h3" style="margin-top:8px">${esc(f.paidLabel)}</h3><p class="ja-small ja-muted" style="margin-top:4px">${f.totals.map((t) => `${esc(t.label)} ${esc(t.amountLabel)}`).join(' · ')}</p></div>` : ''
-  const recs = `<div class="ja-card"><p class="ja-kicker"><i></i>Payment records</p>${f.records.length
-    ? `<ul class="ja-list" style="margin-top:10px">${f.records.map((r) => `<li class="ja-row ja-row-fee" data-fee-record><span class="ja-num">${ic(r.method === 'Cash' || r.method === 'Bank transfer' ? 'check' : 'card')}</span><div><b>${esc(r.amountLabel)} · ${esc(r.dateLabel || 'date not recorded')}</b><small>${esc(r.what)}${r.players.length ? `, ${esc(r.players.join(' and '))}` : ''}</small><small>${esc(r.programme)} · ${esc(r.method)}${r.refundedLabel ? ` · ${esc(r.refundedLabel)} refunded` : ''}</small></div>${r.receiptUrl ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(r.receiptUrl)}" target="_blank" rel="noopener noreferrer">Receipt</a>` : '<span></span>'}</li>`).join('')}</ul>`
-    : '<p class="ja-small ja-muted" style="margin-top:8px">No payments yet.</p>'}
-    <p class="ja-small ja-muted" style="margin-top:12px">Card payments show Stripe's receipt where Stripe has one. Cash and bank transfers show once Joner Football records them. Something missing? <button type="button" class="ja-link" data-go="contact">Contact us</button></p></div>`
-  box.innerHTML = `<div class="ja-stack">${totals}${places}${recs}</div>`
+  if (!box || !places) return
+  if (FEES.error) { places.innerHTML = `<div class="ja-card"><p class="ja-small">${esc(FEES.error)}</p></div>`; box.innerHTML = ''; return }
+  places.innerHTML = placeCards(FEES, D) || '<div class="ja-card"><p class="ja-small ja-muted">No place booked this term.</p></div>'
+  box.innerHTML = historyCard(FEES)
 }
 
 // ---------- holidays and camps ----------
@@ -979,8 +899,19 @@ function downloadIcs(rowId) {
 
 const HOUR = 3600e3
 const DAY = 24 * HOUR
-function reach(list) {
-  return list.map((c) => `<span style="display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 8px 0 0"><b>${esc(c.name)}</b> <a class="ja-btn ja-btn-line ja-btn-sm" href="tel:${esc(c.tel)}">Call ${esc(c.phone)}</a><a class="ja-btn ja-btn-line ja-btn-sm" href="sms:${esc(c.tel)}">Text</a></span>`).join('')
+// Who to call or text about a session (round 3, Lee 14 Oct 2026): the coach
+// taking it (their mobile, labelled "Coach", never a name) and Ligia in the
+// office. Text opens the phone's messages with the words already in.
+const LIGIA = contacts.find((c) => /^Ligia/.test(c.name))
+function cantText(p, e, s) { return `${p.name} can't make ${s ? `${s.label} ` : ''}${e.time}`.replace(/\s+/g, ' ').trim() }
+function smsHref(tel, text) { return `sms:${tel}?&body=${encodeURIComponent(text)}` }
+function reachList(e) {
+  const coach = (e.contacts || []).find((c) => c.tel)
+  return [...(coach ? [{ who: 'Coach', phone: coach.phone, tel: coach.tel }] : []), ...(LIGIA ? [{ who: 'Ligia', phone: LIGIA.phone, tel: LIGIA.tel, sub: 'Office' }] : [])]
+}
+function reach(e, p, s) {
+  const text = cantText(p, e, s)
+  return `<div class="ja-reach" data-reach>${reachList(e).map((c) => `<div class="ja-reach-row"><span class="ja-reach-who"><b>${esc(c.who)}</b><small>${esc(c.sub ? `${c.sub} · ${c.phone}` : c.phone)}</small></span><a class="ja-btn ja-btn-line ja-btn-sm" href="tel:${esc(c.tel)}">${ic('call')}Call</a><a class="ja-btn ja-btn-line ja-btn-sm" data-sms="${esc(c.tel)}" href="${esc(smsHref(c.tel, text))}">${ic('chat')}Text</a></div>`).join('')}</div>`
 }
 function cancelSheet(e, p, preset = '') {
   const open = (e.sessions || []).filter((s) => s.startMs > Date.now())
@@ -999,12 +930,15 @@ function cancelSheet(e, p, preset = '') {
     <div class="j-field"><span>Why?</span><div id="cx-reasons" role="group" aria-label="Reason" style="display:flex;flex-wrap:wrap;gap:8px">${D.reasons.map((r) => `<button type="button" class="j-chip" data-reason="${esc(r.key)}" aria-pressed="false">${esc(r.label)}</button>`).join('')}</div></div>
     <label class="j-field"><span>Note for the coach <span class="muted" id="cx-hint">(optional)</span></span><textarea class="j-textarea" id="cx-note" maxlength="${esc(D.noteMax)}" rows="3"></textarea></label>
     <div id="cx-late"></div>
-    <p class="j-err" id="cx-err" hidden></p>`
-  sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-red ja-btn-block" id="cx-go">Tell the team</button>'
+    <p class="j-err" id="cx-err" hidden></p>
+    <div class="ja-reach-box"><p class="ja-small"><b>We email the coach taking the session and Ligia.</b> Rather call or text?</p><div id="cx-reach"></div></div>`
+  sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-red ja-btn-block" id="cx-go">Tell the coach and Ligia</button>'
   const late = () => {
     const s = open.find((x) => x.iso === sheet.body.querySelector('#cx-date').value)
     const soon = s && s.startMs - Date.now() < DAY
-    sheet.body.querySelector('#cx-late').innerHTML = soon ? `<div class="j-box j-box-amber"><b>That is under 24 hours away.</b> We will tell the team straight away.${(e.contacts || []).length ? ` Please also call or text your coach.<div>${reach(e.contacts)}</div>` : ''}</div>` : ''
+    sheet.body.querySelector('#cx-late').innerHTML = soon ? '<div class="j-box j-box-amber"><b>That is under 24 hours away.</b> We will tell them straight away. Please also call or text the coach or Ligia below.</div>' : ''
+    // The text is written for the date chosen.
+    sheet.body.querySelector('#cx-reach').innerHTML = reach(e, p, s)
   }
   late()
   sheet.body.querySelector('#cx-date').addEventListener('change', late)
@@ -1028,20 +962,22 @@ function cancelSheet(e, p, preset = '') {
     const r = await api('/api/jfp-account', { action: 'cancelSession', rowId: e.rowId, date, reason, note })
     if (!r.ok) {
       go.disabled = false
-      go.textContent = 'Tell the team'
+      go.textContent = 'Tell the coach and Ligia'
       err.textContent = r.data.error || 'Could not send that. Try again.'
       err.hidden = false
       if (r.status === 401) { closeSheet(true); showSignIn() }
       return
     }
     const c = r.data.cancellation
-    // Never a coach's name (Lee, 14 Oct 2026): "your coach".
-    const who = r.data.told.length ? 'your coach and the Joner Football team' : 'the Joner Football team'
-    const phones = r.data.told.filter((t) => t.tel)
+    // Never a coach's name (Lee, 14 Oct 2026): "the coach". Round 3: say
+    // plainly who heard, the coach taking the session and Ligia.
+    const t = r.data.toldWho || { coach: r.data.told.length > 0, staff: true }
+    const who = t.coach && t.staff ? 'the coach and Ligia' : t.coach ? 'the coach' : t.staff ? 'Ligia and the Joner Football team' : ''
+    const s = (e.sessions || []).find((x) => x.iso === c.date) || { label: c.label }
     sheet.setTitle('Thank you')
-    sheet.body.innerHTML = `<div class="j-box j-box-green"><b>${r.data.already ? 'We already had this one.' : 'Done.'}</b> We have told ${esc(who)} that ${esc(p.name)} cannot make ${esc(c.label)}.</div>
-      ${c.noticeLevel !== 'ok' ? `<p style="margin-top:12px">That is short notice, so please call or text your coach as well${phones.length ? '.' : ' if you can.'}</p>` : ''}
-      ${phones.length ? `<p class="ja-small ja-muted" style="margin-top:12px">Need to reach them quickly?</p><div>${reach(phones)}</div>` : ''}
+    sheet.body.innerHTML = `<div class="j-box j-box-green" data-cx-done><b>${r.data.already ? 'We already had this one.' : 'Done.'}</b> ${who ? `We have told ${esc(who)} that ${esc(p.name)} cannot make ${esc(c.label)}, ${esc(e.time)}.` : `We have saved that ${esc(p.name)} cannot make ${esc(c.label)}. Our email did not go, so please call or text below.`}</div>
+      ${c.noticeLevel !== 'ok' ? '<p style="margin-top:12px">That is short notice, so please call or text the coach or Ligia as well.</p>' : ''}
+      <p class="ja-small ja-muted" style="margin-top:12px">Need to reach them quickly?</p>${reach(e, p, s)}
       <p class="ja-small ja-muted" style="margin-top:12px">Changed your mind? Press Undo on the date before the session starts.</p>`
     sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-light ja-btn-block" id="cx-done">Done</button>'
     sheet.foot.querySelector('#cx-done').addEventListener('click', () => closeSheet())
@@ -1132,6 +1068,10 @@ function waiverSheet(keys) {
 document.addEventListener('click', async (e) => {
   const t = e.target
   if (t.closest('[data-more]') || t.closest('#ja-me')) return moreSheet()
+  const sec = t.closest('[data-navsec]')
+  if (sec) return toggleNav(sec.dataset.navsec)
+  if (t.closest('[data-waiver-all]')) return waiverSheet(unsignedWaivers().map((p) => p.key))
+  if (extraClick(t, { D })) return
   if (t.closest('#sign-out') || t.closest('#ja-signout2')) { await signOut('parent'); location.href = '/jfp-account/'; return }
   if (t.closest('[data-contact]')) { e.preventDefault(); if (D) { closeSheet(true); show('contact') } else contactSheet(); return }
   const go = t.closest('[data-go]')
@@ -1180,11 +1120,11 @@ document.addEventListener('click', async (e) => {
     if (ow.disabled) return
     ow.disabled = true
     ow.textContent = 'Opening'
-    // The choice on the same page as the button (Home and Fees both draw it).
-    const scope = ow.closest('[data-pane]') || document
-    const n = scope.querySelector(`[data-owed-n="${CSS.escape(ow.dataset.owed)}"]`)
-    const opt = scope.querySelector(`[data-quote="${CSS.escape(ow.dataset.owed)}"] input:checked`)
-    const r = await api('/api/jfp-account', { action: 'payOwed', rowId: ow.dataset.owed, ...(ow.dataset.owedOption ? { option: ow.dataset.owedOption } : opt ? { option: opt.value, sessions: 1 } : n ? { sessions: Number(n.value) } : {}) })
+    // Round 3: each way to pay is its own card and button. "Choose how
+    // many" reads the number from its own card.
+    const card = ow.closest('.ja-opt-card') || ow.closest('[data-pane]') || document
+    const n = ow.hasAttribute('data-owed-count') ? card.querySelector(`[data-owed-n="${CSS.escape(ow.dataset.owed)}"]`) : null
+    const r = await api('/api/jfp-account', { action: 'payOwed', rowId: ow.dataset.owed, ...(ow.dataset.owedOption ? { option: ow.dataset.owedOption } : n ? { sessions: Number(n.value) } : {}) })
     if (r.ok && r.data.url) { location.href = r.data.url; return }
     ow.disabled = false
     ow.textContent = 'Try again'
@@ -1368,22 +1308,17 @@ async function jjAct(b) {
 
 boot()
 
-// A quote option chosen: the Pay button says the total.
-document.addEventListener('change', (e) => {
-  const r = e.target.closest?.('[data-quote] input[type="radio"]')
-  if (!r) return
-  const scope = r.closest('[data-pane]') || document
-  const b = scope.querySelector(`[data-owed="${CSS.escape(r.closest('[data-quote]').dataset.quote)}"]:not([data-owed-option])`)
-  if (b && !b.disabled) b.textContent = `Pay ${r.dataset.total}`
-})
-
-// Pay for your sessions: the dates for the number chosen.
+// Choose how many: the total and the dates for the number chosen.
 document.addEventListener('change', (e) => {
   const sel = e.target.closest?.('[data-owed-n]')
   if (!sel) return
   const o = (D?.owed || []).find((x) => x.rowId === sel.dataset.owedN)
-  const out = (sel.closest('[data-pane]') || document).querySelector(`[data-owed-dates="${CSS.escape(sel.dataset.owedN)}"]`)
-  if (o && out) out.textContent = o.dates.slice(0, Number(sel.value)).map((d) => d.label).join(', ')
+  const card = sel.closest('.ja-opt-card')
+  if (!o || !card) return
+  const n = Number(sel.value)
+  card.querySelectorAll('[data-count-total]').forEach((x) => { x.textContent = money(n * o.perCents) })
+  const d = card.querySelector('[data-count-dates]')
+  if (d) d.textContent = o.dates.slice(0, n).map((x) => x.label).join(', ')
 })
 
 document.addEventListener('change', (e) => {

@@ -984,7 +984,9 @@ async function renderNext() {
   view().innerHTML = `<div class="jp-head"><div><h1>Next term</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Current families keep their place before ${esc(nt.name)} opens to everyone: hold it with a non-refundable fee (taken off the term), pay in full, or say they are not returning. Everything is saved in Airtable under "Next term holds".</div></details></div></div>
     <div class="j-card" style="padding:16px;margin-bottom:14px;max-width:760px">
       <div class="j-two"><label class="j-field"><span>Next term</span><input class="j-input" id="nt-name" value="${esc(nt.name)}"></label><label class="j-field"><span>Hold fee (A$, non-refundable)</span><input class="j-input" id="nt-hold" inputmode="decimal" value="${nt.holdCents / 100}"></label></div>
+      <label class="j-field"><span>Places held for current players until <span class="muted">(optional, shown to families)</span></span><input class="j-input" id="nt-until" type="date" value="${esc(nt.holdUntil || '')}"></label>
       <label class="j-check"><input type="checkbox" id="nt-open" ${nt.open ? 'checked' : ''}> <span><b>Open to every current family</b> in My account (otherwise only the players you invite below).</span></label>
+      <p class="j-box ${nt.open ? 'j-box-amber' : 'j-box-grey'} small" id="nt-note" style="margin:6px 0 4px"><b>${nt.open ? 'On now:' : 'What this switch does:'}</b> turning it on shows a "Keep your spot for ${esc(nt.name)}" deposit card at the top of every current family's Fees and Home in My account: "Your Wednesday 7:30am place is held for current players until ${esc(nt.holdUntil ? new Date(`${nt.holdUntil}T00:00:00Z`).toLocaleDateString('en-AU', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '') : `${nt.name} bookings open to everyone`)}. Pay a ${esc(money(nt.holdCents))} deposit to lock it in." Families who pay see "Your spot for ${esc(nt.name)} is held". Off: no card, and families can only say they want to keep it.</p>
       <p class="muted small">Full term is ${esc(d.prices.fullLabel)} (from Prices). A held place pays ${esc(d.prices.afterHoldLabel)} more later.</p>
       <button type="button" class="j-btn j-btn-dark j-btn-sm" id="nt-save" style="margin-top:8px">Save</button>
     </div>
@@ -994,7 +996,9 @@ async function renderNext() {
       ${d.players.map((p) => `<tr><td><input type="checkbox" data-nt="${esc(p.rowId)}" ${p.status ? 'disabled' : ''}></td><td><b>${esc(p.name)}</b><br><span class="muted small">${esc(p.parent)} · ${esc(p.email || 'no email')}</span></td><td>${esc(p.group)}${p.coach ? `<br><span class="muted small">Coach ${esc(p.coach)}</span>` : ''}</td><td>${p.status ? `<span class="j-pill j-pill-${word[p.status][0]}">${word[p.status][1]}</span>${p.paidCents ? ` <span class="muted small">${esc(money(p.paidCents))}</span>` : ''}` : p.interested ? '<span class="j-pill j-pill-amber">Wants to keep it</span> <span class="muted small">said so in My account</span>' : '<span class="muted small">Not invited</span>'}</td></tr>`).join('')}
     </tbody></table></div>`
   $('nt-save').addEventListener('click', async () => {
-    const r = await post('saveNextTerm', { nextTerm: { name: $('nt-name').value.trim(), holdCents: Math.round(Number($('nt-hold').value) * 100), open: $('nt-open').checked } })
+    // Turning it on reaches every family's account straight away: say so first.
+    if ($('nt-open').checked && !nt.open && !(await confirmBox(`Show the ${esc(nt.name)} deposit card in every current family's Fees and Home now?`, { ok: 'Turn it on' }))) return
+    const r = await post('saveNextTerm', { nextTerm: { name: $('nt-name').value.trim(), holdCents: Math.round(Number($('nt-hold').value) * 100), open: $('nt-open').checked, holdUntil: $('nt-until').value } })
     toast(r.ok ? 'Saved' : r.data.error); if (r.ok) renderNext()
   })
   $('nt-all').addEventListener('click', () => view().querySelectorAll('[data-nt]:not(:disabled)').forEach((c) => { c.checked = true }))
@@ -1116,9 +1120,28 @@ const ANSWER = { club: 'Club', team: 'Team', playingUp: 'Playing', trainedBefore
 // Links a family pasted, made clickable (only http and https).
 const linksHtml = (text) => String(text || '').split(/\s+/).filter((u) => /^https?:\/\/[^\s<>"']+$/.test(u)).map((u) => `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer nofollow">${esc(u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40))}</a>`).join(' · ')
 
+// Book extra sessions and Book game analysis, sent from My account (round 3).
+function extraRequestsHtml(list) {
+  if (!list.length) return ''
+  const fresh = list.filter((r) => r.status !== 'done')
+  const row = (r) => `<article class="j-card" style="padding:16px;margin-bottom:10px" data-xr="${esc(r.id)}">
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><span class="j-pill j-pill-${r.kind === 'analysis' ? 'blue' : 'violet'}">${esc(r.kindLabel)}</span> <b style="margin-left:6px">${esc(r.player)}</b>
+      <p class="muted small" style="margin-top:4px">${esc(new Date(r.createdAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</p></div>
+      <span class="j-pill j-pill-${r.status === 'done' ? 'green' : 'amber'}">${r.status === 'done' ? 'Done' : 'New'}</span></div>
+    <p class="small" style="margin-top:8px">${r.kind === 'analysis'
+      ? `<span class="muted">Match:</span> <b>${esc(r.matchDate || 'not given')}</b> · <span class="muted">Video:</span> ${r.video ? linksHtml(r.video) || esc(r.video) : '<b>they will send it</b>'}${r.priceLabel ? ` · <span class="muted">Price shown:</span> <b>${esc(r.priceLabel)}</b>` : ''}`
+      : `<span class="muted">Type:</span> <b>${esc(r.type)}</b> · <span class="muted">Days:</span> <b>${esc((r.days || []).join(', ') || 'any')}</b> · <span class="muted">Times:</span> <b>${esc((r.times || []).join(', ') || 'any')}</b>${r.coach ? ` · <span class="muted">Coach:</span> <b>${esc(r.coach)}</b>` : ''}`}</p>
+    ${r.notes ? `<p class="small j-box j-box-grey" style="margin-top:8px">${esc(r.notes)}</p>` : ''}
+    <p class="small" style="margin-top:6px">${esc(r.parentName || 'No name')} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a>${r.phone ? ` · <a href="tel:${esc(r.phone)}">${esc(r.phone)}</a>` : ''}${r.deliveries?.staff === 'failed' ? ' · <span class="j-pill j-pill-red">Email to staff did not send</span>' : ''}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="j-btn j-btn-${r.status === 'done' ? 'line' : 'dark'} j-btn-sm" data-xr-status="${r.status === 'done' ? 'new' : 'done'}" data-xr-id="${esc(r.id)}">${r.status === 'done' ? 'Back to new' : 'Mark done'}</button></div>
+  </article>`
+  return `<section style="margin-bottom:22px"><h2 style="font-size:16px;margin:0 0 10px">Extra sessions and game analysis <span class="muted small">${fresh.length} new</span></h2>${fresh.map(row).join('')}${list.length > fresh.length ? `<details class="jq-fold"><summary>Done (${list.length - fresh.length})</summary>${list.filter((r) => r.status === 'done').map(row).join('')}</details>` : ''}</section>`
+}
+
 async function renderRequests() {
-  const d = await need(await post('requests'))
-  P.pendingCount = d.requests.filter((r) => r.status === 'pending').length
+  const [d, xr] = await Promise.all([post('requests').then(need), post('extraRequests')])
+  const extras = xr.ok ? xr.data.requests : []
+  P.pendingCount = d.requests.filter((r) => r.status === 'pending').length + extras.filter((r) => r.status !== 'done').length
   renderNav()
   if (!P.board) P.board = await need(await post('board'))
   const list = d.requests.filter((r) => P.reqFilter === 'all' || r.status === P.reqFilter)
@@ -1126,6 +1149,8 @@ async function renderRequests() {
   view().innerHTML = `
     <div class="jp-head"><div><h1>Requests</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Applications, waitlist and 1 to 1 enquiries. Accept for the term, offer a trial first, or decline.</div></details></div>
       <div class="jp-seg" id="rq-f">${[['pending', 'Waiting'], ['offered', 'Offered'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.reqFilter === v}">${l}</button>`).join('')}</div></div>
+    ${extraRequestsHtml(extras)}
+    ${extras.length ? '<h2 style="font-size:16px;margin:0 0 10px">Applications, waitlist and enquiries</h2>' : ''}
     ${list.length ? list.map((r) => `<article class="j-card" style="padding:16px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><span class="j-pill j-pill-${kind[r.kind]?.[0] || 'grey'}">${esc(kind[r.kind]?.[1] || r.kind)}</span> <b style="margin-left:6px">${esc(r.players.map((p) => `${p.name}${p.age != null ? `, ${p.age}` : ''}`).join(' and '))}</b>
         ${(r.siblings || []).length ? `<span class="j-pill j-pill-green" style="margin-top:4px">Sibling of ${esc(r.siblings.map((x) => x.name).join(', '))} (paid)</span>` : ''}
@@ -1138,6 +1163,12 @@ async function renderRequests() {
       ${['pending', 'offered'].includes(r.status) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${r.status === 'pending' && r.kind !== 'enquiry' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-offer="${esc(r.id)}">Accept for the term</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-trial="${esc(r.id)}">Trial first</button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-decline="${esc(r.id)}">Decline</button><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-done="${esc(r.id)}">Mark done</button></div>` : ''}
     </article>`).join('') : '<div class="j-empty">Nothing here.</div>'}`
   $('rq-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { P.reqFilter = b.dataset.f; renderRequests() } })
+  view().querySelectorAll('[data-xr-status]').forEach((b) => b.addEventListener('click', async () => {
+    b.disabled = true
+    const r = await post('extraRequestStatus', { id: b.dataset.xrId, status: b.dataset.xrStatus })
+    if (!r.ok) { b.disabled = false; return toast(r.data.error) }
+    toast('Updated'); renderRequests()
+  }))
   view().querySelectorAll('[data-offer]').forEach((b) => b.addEventListener('click', () => offerModal(d.requests.find((r) => r.id === b.dataset.offer), 'offer')))
   view().querySelectorAll('[data-trial]').forEach((b) => b.addEventListener('click', () => offerModal(d.requests.find((r) => r.id === b.dataset.trial), 'trial')))
   view().querySelectorAll('[data-decline]').forEach((b) => b.addEventListener('click', () => declineModal(d.requests.find((r) => r.id === b.dataset.decline))))

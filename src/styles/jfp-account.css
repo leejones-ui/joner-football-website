@@ -468,3 +468,134 @@ body:has(.ja) { background: #0A0A0B !important; }
 .ja .ja-tile:active { transform: scale(.98); }
 .ja .ja-btn.ja-btn-wrap { white-space: normal; height: auto; min-height: 36px; text-align: left; line-height: 1.3; padding-top: 9px; padding-bottom: 9px; max-width: 100%; }
 .ja-date .ja-tag { white-space: nowrap; }
+
+/* ---------- Round 3 (Lee, 14 Oct 2026) ---------- */
+
+/* Side bar: dropdown sections, like the staff portal. */
+.ja-nav-one { margin-top: 6px; }
+.ja-nav-one + .ja-nav-group, .ja-nav-group + .ja-nav-one { margin-top: 14px; }
+.ja-nav-group { margin-top: 14px; }
+.ja .ja-nav-sec { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: 0; background: none; border-radius: 10px; cursor: pointer; font: 700 10.5px/1 Inter, system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--ja-faint); text-align: left; transition: color .15s, background .15s; }
+.ja .ja-nav-sec:hover { color: #fff; background: rgba(255, 255, 255, .04); }
+.ja .ja-nav-sec .chev { width: 14px; height: 14px; margin-left: auto; transition: transform .25s var(--ja-ease); }
+.ja .ja-nav-sec .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ja-red); display: none; }
+.ja-nav-group.is-shut .ja-nav-sec .dot { display: block; }
+.ja-nav-group.is-shut .ja-nav-sec .chev { transform: rotate(-90deg); }
+.ja-nav-list { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s var(--ja-ease); }
+.ja-nav-list > div { overflow: hidden; min-height: 0; }
+.ja-nav-group.is-shut .ja-nav-list { grid-template-rows: 0fr; }
+.ja-nav-group.is-shut .ja-nav-list .ja-nav-item { visibility: hidden; }
+
+/* Money: one big amount, one primary button. */
+.ja .ja-btn-lg { min-height: 54px; font-size: 16px; }
+.ja .ja-btn svg + * { min-width: 0; }
+.ja-fees-sec { margin-top: 30px; }
+.ja-fees-sec:first-of-type { margin-top: 0; }
+.ja-pay-grid { display: grid; gap: 14px; }
+@media (min-width: 900px) { .ja-pay-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
+.ja-pay, .ja-ahead { padding: 22px; }
+.ja-pay-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ja .ja-pay-who { font-family: var(--ja-display); font-weight: 400; text-transform: uppercase; font-size: 28px; line-height: 1; letter-spacing: .01em; color: #fff; margin: 12px 0 0; overflow-wrap: anywhere; }
+.ja-pay-sub { color: var(--ja-muted); font-size: 13.5px; margin-top: 6px; }
+.ja-pay-lines { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.ja-pay-lines li { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--ja-ink-2); }
+.ja-pay-lines small { display: block; color: var(--ja-muted); font-size: 12.5px; margin-top: 2px; }
+.ja-pay-lines b { color: #fff; white-space: nowrap; }
+.ja .ja-amt { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 14px; flex-wrap: wrap; }
+.ja .ja-amt span { font-family: var(--ja-display); font-weight: 400; font-size: clamp(48px, 13vw, 64px); line-height: .9; color: #fff; letter-spacing: .005em; }
+.ja .ja-amt small { font: 700 11px/1 Inter, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--ja-muted); }
+.ja-pay-steps { margin: 0 0 14px; padding: 4px 14px; border-radius: 14px; background: rgba(0, 0, 0, .25); border: 1px solid var(--ja-line); }
+.ja-pay-steps .ja-row { grid-template-columns: 30px minmax(0, 1fr) auto; }
+.ja-kit-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.ja-pay-note { margin-top: 10px; text-align: center; }
+.ja .ja-chip { display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 999px; background: rgba(255, 255, 255, .1); font: 650 12px/1 Inter, system-ui, sans-serif; color: var(--ja-ink-2); }
+.ja-allpaid { display: flex; gap: 14px; align-items: center; border-color: rgba(68, 210, 126, .35); background: linear-gradient(160deg, rgba(68, 210, 126, .12), transparent 70%), var(--ja-panel); }
+.ja-allpaid > svg { width: 40px; height: 40px; padding: 9px; border-radius: 50%; background: var(--ja-green); color: #062B14; flex: none; }
+
+/* Pay ahead and save: a card per way to pay. */
+.ja-ahead + .ja-ahead { margin-top: 14px; }
+.ja .ja-upc { margin-top: 12px; }
+.ja .ja-upc b { display: block; color: #fff; font-size: 15px; }
+.ja .ja-upc small { display: block; color: var(--ja-muted); font-size: 13px; margin-top: 4px; line-height: 1.5; }
+.ja-opts-grid { display: grid; gap: 12px; margin-top: 16px; }
+@media (min-width: 640px) { .ja-opts-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); } }
+.ja-opt-card { position: relative; display: flex; flex-direction: column; padding: 18px 16px 16px; border-radius: 18px; background: var(--ja-panel-2); border: 1px solid var(--ja-line-2); min-width: 0; }
+.ja-opt-card.is-best { border-color: var(--ja-red); background: linear-gradient(170deg, rgba(232, 0, 13, .2), rgba(232, 0, 13, .04) 70%), var(--ja-panel-2); box-shadow: 0 18px 50px rgba(232, 0, 13, .14); }
+.ja .ja-best { position: absolute; top: -11px; left: 14px; display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; background: var(--ja-red); color: #fff; font: 800 10.5px/1 Inter, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+.ja .ja-best svg { width: 12px; height: 12px; }
+.ja .ja-opt-t { font: 700 12px/1.2 Inter, system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--ja-ink-2); margin: 0; }
+.ja .ja-opt-amt { font-family: var(--ja-display); font-size: 46px; line-height: .95; color: #fff; margin: 10px 0 4px; }
+.ja .ja-opt-s { font-size: 13.5px; color: var(--ja-muted); margin: 0 0 12px; min-height: 1.4em; }
+.ja-opt-card .ja-btn { margin-top: auto; }
+.ja .ja-opt-fine { font-size: 12px; color: var(--ja-faint); margin: 8px 0 0; text-align: center; }
+.ja-count { margin: 0 0 10px; }
+.ja-fold { margin: 0 0 12px; font-size: 13px; color: var(--ja-muted); }
+.ja-fold summary { cursor: pointer; color: var(--ja-ink-2); font-weight: 600; list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+.ja-fold summary::-webkit-details-marker { display: none; }
+.ja-fold summary::after { content: '+'; font-weight: 700; color: var(--ja-muted); }
+.ja-fold[open] summary::after { content: '\2212'; }
+.ja-fold p { margin-top: 8px; line-height: 1.55; }
+.ja-paid-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.ja-paid-list li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: rgba(68, 210, 126, .1); border: 1px solid rgba(68, 210, 126, .25); }
+.ja-paid-list li.amber { background: rgba(246, 183, 60, .1); border-color: rgba(246, 183, 60, .3); }
+.ja-paid-list svg { width: 18px; height: 18px; color: var(--ja-green); flex: none; margin-top: 1px; }
+.ja-paid-list li.amber svg { color: var(--ja-amber); }
+.ja-paid-list b { display: block; color: #fff; font-size: 14px; }
+.ja-paid-list small { display: block; color: var(--ja-muted); font-size: 12.5px; margin-top: 2px; }
+
+/* Next term deposit: the one card that should stand out. */
+.ja-deposit { position: relative; overflow: hidden; padding: 24px; border: 1px solid rgba(232, 0, 13, .6); background: radial-gradient(120% 140% at 100% 0%, rgba(232, 0, 13, .38), rgba(232, 0, 13, .06) 55%, transparent 75%), #120708; display: grid; gap: 18px; }
+.ja-deposit + .ja-deposit { margin-top: 14px; }
+@media (min-width: 900px) { .ja-deposit:not(.is-done) { grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr); align-items: center; padding: 30px; } }
+.ja .ja-deposit-t { display: flex; align-items: center; gap: 10px; font-family: var(--ja-display); font-weight: 400; text-transform: uppercase; font-size: clamp(30px, 8vw, 44px); line-height: .95; color: #fff; margin: 12px 0 0; }
+.ja .ja-deposit-t svg { width: 34px; height: 34px; padding: 7px; border-radius: 50%; background: var(--ja-green); color: #062B14; flex: none; }
+.ja .ja-deposit-p { font-size: 15.5px; line-height: 1.55; color: var(--ja-ink-2); margin-top: 10px; }
+.ja-deposit-pay { padding: 18px; border-radius: 18px; background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 255, 255, .1); }
+.ja-deposit-pay .ja-amt { margin-top: 0; }
+.ja-deposit.is-done { border-color: rgba(68, 210, 126, .4); background: linear-gradient(160deg, rgba(68, 210, 126, .14), transparent 70%), var(--ja-panel); }
+.ja-deposit.is-done .ja-muted { margin-top: 8px; }
+
+/* This term: each place, "Paid in full" when it is. */
+.ja-places { display: grid; gap: 12px; }
+@media (min-width: 900px) { .ja-places { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ja-place { padding: 18px 20px; }
+.ja-place + .ja-place { margin-top: 0; }
+.ja-place-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+.ja-place-head b { display: block; color: #fff; font-size: 16px; }
+.ja-place-head small { display: block; color: var(--ja-muted); font-size: 13px; margin-top: 3px; }
+.ja-place.is-paid { border-color: rgba(68, 210, 126, .3); }
+.ja-paidfull { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px; border-radius: 14px; background: rgba(68, 210, 126, .1); }
+.ja-paidfull > svg { width: 40px; height: 40px; padding: 9px; border-radius: 50%; background: var(--ja-green); color: #062B14; }
+.ja-paidfull b { display: block; color: #fff; font-size: 15px; }
+.ja .ja-amt-s { display: block; font-family: var(--ja-display); font-size: 28px; line-height: 1; color: #fff; margin-top: 4px; }
+.ja-paidfull small { display: block; color: var(--ja-muted); font-size: 12.5px; margin-top: 4px; }
+
+/* Payment history: one tidy line each. */
+.ja-hist-total { font-size: 14px; color: var(--ja-muted); margin: 0 0 12px; }
+.ja-hist-total b { font-family: var(--ja-display); font-weight: 400; font-size: 28px; color: #fff; margin-right: 6px; vertical-align: -3px; }
+.ja-hist { list-style: none; margin: 0; padding: 0; }
+.ja-hist li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--ja-line); }
+.ja-hist li:first-child { border-top: 0; }
+.ja-hist-ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .07); }
+.ja-hist-ic svg { width: 16px; height: 16px; }
+.ja-hist b { display: block; color: #fff; font-size: 14.5px; font-weight: 650; }
+.ja-hist small { display: block; color: var(--ja-muted); font-size: 12.5px; margin-top: 2px; }
+.ja-hist-amt { display: grid; justify-items: end; gap: 4px; font-weight: 700; color: #fff; white-space: nowrap; }
+
+/* Can't make it: Coach and Ligia, Call and Text. */
+.ja-reach { display: grid; gap: 8px; margin-top: 8px; }
+.ja-reach-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, .05); border: 1px solid var(--ja-line); }
+.ja-reach-who b { display: block; color: #fff; font-size: 14.5px; }
+.ja-reach-who small { display: block; color: var(--ja-muted); font-size: 12.5px; margin-top: 2px; }
+.ja-reach-box { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--ja-line); }
+
+/* Book extra sessions and game analysis. */
+.ja-info-card { padding: 22px; }
+.ja-info-card > svg { width: 26px; height: 26px; color: var(--ja-red-2); margin-bottom: 12px; }
+.ja-info-card .ja-h3 { margin-bottom: 6px; }
+.ja-form-card { padding: 24px; }
+.ja-form-card .ja-h2 { margin-bottom: 16px; }
+.ja-price-card { padding: 24px; align-self: start; }
+.ja-sent { display: flex; gap: 14px; align-items: flex-start; }
+.ja-sent > svg { width: 40px; height: 40px; padding: 9px; border-radius: 50%; background: var(--ja-green); color: #062B14; flex: none; }
+@media (max-width: 359px) { .ja-reach-row { grid-template-columns: 1fr 1fr; } .ja-reach-row .ja-reach-who { grid-column: 1 / -1; } }

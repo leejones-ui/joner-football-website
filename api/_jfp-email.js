@@ -231,6 +231,23 @@ ${p(esc(message).replace(/\n/g, '<br>'))}`
   return send({ to: [{ email: 'ligia@jonerfootball.com', name: 'Ligia' }], subject: `JFP contact form: ${name}`, html: shell({ heading: 'New message from the JFP page', body }), replyTo: email })
 }
 
+// Book extra sessions / Book game analysis from My account (Lee, 14 Oct
+// 2026): straight to Lee and Ligia, reply goes to the family.
+export async function sendExtraRequestAlert({ rec, config }) {
+  const analysis = rec.kind === 'analysis'
+  const list = [
+    ['Player', esc(rec.player)],
+    ...(analysis
+      ? [['Match', esc(rec.matchDate ? dateLabel(rec.matchDate) : 'Date not given')], ['Video', rec.video ? link(rec.video.slice(0, 80), rec.video) : 'The family will send it'], ['Price', esc(rec.priceLabel || 'Not set (the page says "Ask us")')]]
+      : [['Type', esc(rec.type)], ['Days', esc(rec.days.join(', ') || 'Any')], ['Times', esc(rec.times.join(', ') || 'Any')], ['Coach', esc(rec.coach || 'No preference')]]),
+    ['Notes', rec.notes ? esc(rec.notes).replace(/\r?\n/g, '<br>') : 'None'],
+    ['From', esc(rec.parentName || 'Not given')], ['Email', esc(rec.email)], ...(rec.phone ? [['Mobile', esc(rec.phone)]] : []),
+  ]
+  const what = analysis ? 'Game analysis' : 'Extra session'
+  const body = `${p(analysis ? 'A family has asked for a game analysis from My account.' : 'A family has asked for an extra session from My account.')}${rows(list)}${p('Reply to this email to answer them. Every request is listed under Requests in the JFP portal, where you can mark it done.')}`
+  return send({ to: staffTo(config), subject: `${what} request: ${rec.player}`, html: shell({ preheader: `${what}: ${rec.player}`, heading: `${what} request`, body }), replyTo: rec.email, kind: analysis ? 'game analysis request' : 'extra session request' })
+}
+
 // The kit is compulsory, so every email that sets up a place says so, in the
 // same words. (Lee, 8 Oct 2026: it was missing from the payment-link email.)
 const kitLine = (config) => (config.kitUrl
@@ -540,6 +557,6 @@ export async function sendCancelCoachAlert({ rec, coach }) {
 
 export async function sendCancelStaffAlert({ rec, config }) {
   const heading = rec.event === 'withdrawn' ? 'Cancellation withdrawn' : 'A player cannot make a session'
-  await send({ to: staffTo(config), subject: cancelSubject(rec), html: shell({ preheader: `${rec.player}, ${dateLabel(rec.date)}`, heading, body: cancelBody(rec, { forStaff: true }) }), replyTo: rec.email })
+  await send({ to: staffTo(config), subject: cancelSubject(rec), html: shell({ preheader: `${rec.player}, ${dateLabel(rec.date)}`, heading, body: cancelBody(rec, { forStaff: true }) }), replyTo: rec.email, kind: 'cancel to staff' })
   return true
 }

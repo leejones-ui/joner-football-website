@@ -50,6 +50,7 @@ import { campsMoneyData, campsStripe } from './_jfp-camps.js'
 import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
 import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
 import { registerChecks, yearsOf, termsOfYear, termFromLive, termFromLedger, termFromRegister, yearSummary } from './_jfp-years.js'
+import { listExtras, setExtraStatus, KINDS as EXTRA_KINDS } from './_jfp-extras.js'
 import { PROGRAMMES, programmeLabel, PRICE_MIN, PRICE_MAX, PRICES_MAX, cleanPrice, allPrices, priceById, quickHolidayPeriods, quickLinkInput, quickStatus, QUICK_STATUS, quickOpen, quickToCheck, quickUrl, QUICK_CHECKED, QUICK_EMAILED } from './_jfp-quick.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -3006,6 +3007,13 @@ async function handle(req, res) {
         return res.status(200).json({ success: true, requests: list.map((r) => ({ ...r, siblings: paidSiblings(roster.players, r.email, (r.players || []).map((p) => p.name)).map((s) => ({ name: s.name, group: byId[s.groupId] ? groupSummary(byId[s.groupId], config) : '' })), group: byId[r.groupId] ? groupSummary(byId[r.groupId], config) : r.groupId === 'one-to-one' ? '1 to 1 coaching, times on request' : r.groupId, groupLabel: byId[r.groupId]?.label || (r.groupId === 'one-to-one' ? '1 to 1' : '') })) })
       }
       case 'decideRequest': return await decideRequest(req, res, principal, config, body)
+      // Book extra sessions and Book game analysis, from My account (round 3).
+      case 'extraRequests': return res.status(200).json({ success: true, requests: (await listExtras()).map((r) => ({ ...r, kindLabel: EXTRA_KINDS[r.kind] || r.kind })) })
+      case 'extraRequestStatus': {
+        const out = await setExtraStatus({ id: body.id, status: clean(body.status, 10), by: principal.email })
+        if (!out.ok) return fail(res, out.status, out.error)
+        return res.status(200).json({ success: true, request: out.record })
+      }
 
       case 'payments': {
         const [bookings, payreqs, viewsRaw, viewedRaw, emailedRaw, checkedRaw] = await Promise.all([listBookings(), listPayreqs(), kvCommand(['HGETALL', 'jfp:payreq-views']), kvCommand(['HGETALL', 'jfp:payreq-viewed-at']), kvCommand(['HGETALL', QUICK_EMAILED]), kvCommand(['HGETALL', QUICK_CHECKED])])
