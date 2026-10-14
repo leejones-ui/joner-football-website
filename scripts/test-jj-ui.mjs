@@ -164,7 +164,7 @@ await test('Players: search and chips; children who left only under Left', async
   await p.click('#jj-chips [data-jjchip=""]')
   const q = p.$('#jj-q'); q.value = 'cal'; q.dispatchEvent(new p.w.Event('input', { bubbles: true })); await p.settle()
   assert.deepEqual(names(), ['Cal Junior'])
-  assert.match(p.text('#jj-p-count'), /1 of 3 children match/)
+  assert.equal(p.text('#jj-p-count'), '1 of 3', 'the count in the page title')
   assert.deepEqual(p.errors, [])
 })
 
@@ -206,7 +206,7 @@ await test('Money: the Juniors page with Stripe, cash and kept after fees, earli
   assert.match(p.text('#jm-kept'), new RegExp(`Kept after Stripe fees\\s*${money(31540).replace('$', '\\$')}`))
   assert.ok(p.$('#jm-years'), 'earlier terms and years')
   assert.match(p.text('#jm-years'), /Term 1 2025.*From your Money Register/)
-  assert.equal(p.d.querySelectorAll('#jm-rows .jj-mrow').length, 3)
+  assert.equal(p.d.querySelectorAll('#jm-rows [data-jrow]').length, 3)
   await p.click('#jm-csv')
   const f = await p.csv()
   assert.equal(f.name, 'joners-juniors-money-term-4-2026.csv')
@@ -327,7 +327,7 @@ await test('Invites: three kinds, each family with its status; only the ones not
   const p = await open('#jj-invites', inviteAnswers(seen))
   assert.equal(p.text('#view h1'), 'Invites')
   assert.deepEqual([...p.d.querySelectorAll('#jv-kind [data-kind]')].map((b) => b.dataset.kind), ['new', 'next', 'reminder'])
-  const status = (email) => p.$(`[data-fam="${email}"] .jj-fam-tags .j-pill`).textContent
+  const status = (email) => p.$(`[data-fam="${email}"] [data-col="pay"] .ps-badge`).textContent
   assert.equal(status('ada@example.com'), 'Paid'); assert.equal(status('bo@example.com'), 'Not sent'); assert.equal(status('cal@example.com'), 'Opened')
   assert.match(p.text('[data-fam="cal@example.com"]'), /Sent 12 Oct.*link opened/)
   const picked = [...p.d.querySelectorAll('[data-pick]:checked')].map((b) => b.dataset.pick)
@@ -382,7 +382,7 @@ await test('Requests & waitlist: in the order asked, a free place says who is ne
   })
   assert.equal(p.text('#view h1'), 'Requests & waitlist')
   assert.match(p.text('#jr-free'), /1 place is free\. Fay Junior is next on the waitlist/)
-  const names = [...p.d.querySelectorAll('[data-req] .jj-fam-main b')].map((b) => b.textContent.trim())
+  const names = [...p.d.querySelectorAll('[data-req] [data-col="who"] b')].map((b) => b.textContent.trim())
   assert.deepEqual(names.slice(0, 2), ['1. Fay Junior (5)', '2. Gil Junior'])
   assert.ok(p.$('[data-req="JJREQ-1-AAAAAA"] a[href="tel:0400000111"]'))
   assert.ok(p.$('[data-req="JJREQ-3-CCCCCC"] [data-invite="hal@example.com"]'), 'accepted, not invited: offer the invite')
@@ -398,6 +398,26 @@ await test('Requests & waitlist: in the order asked, a free place says who is ne
   await p.click('#ji-send')
   assert.deepEqual(seen.find((b) => b.send).emails, ['fay@example.com'])
   assert.deepEqual(p.errors, [])
+})
+
+await test('Players, Invites and Requests: the same toolbar as JFP Players (filters, Clear, empty row)', async () => {
+  const p = await open('#jj-players')
+  const names = () => [...p.d.querySelectorAll('#jj-rows [data-jjpl]')].map((b) => b.querySelector('b').firstChild.textContent.trim())
+  await p.pick('#jj-pay', 'unpaid')
+  assert.deepEqual(names(), ['Bo Junior'])
+  assert.equal(p.$('#jj-chips [data-jjchip="unpaid"]').getAttribute('aria-pressed'), 'true', 'the chip follows the filter')
+  await p.pick('#jj-waiver', 'yes')
+  assert.match(p.text('#jj-rows'), /No children match\./)
+  await p.click('#jj-p-clear')
+  assert.deepEqual(names(), ['Ada Junior', 'Bo Junior', 'Cal Junior'])
+  const iv = await open('#jj-invites', inviteAnswers())
+  await iv.click('#jv-counts [data-ivchip="opened"]')
+  assert.deepEqual([...iv.d.querySelectorAll('#jv-list [data-fam]')].map((r) => r.dataset.fam), ['cal@example.com'])
+  assert.equal(iv.text('#jv-send'), 'Send to 2 chosen', 'a filter never changes who is chosen')
+  const rq = await open('#jj-requests', { jjRequests: () => REQS() })
+  await rq.click('#jrq-chips [data-rqchip="declined"]')
+  assert.deepEqual([...rq.d.querySelectorAll('#jrq-rows [data-req]')].map((r) => r.dataset.req), ['JJREQ-4-DDDDDD'])
+  assert.deepEqual([...p.errors, ...iv.errors, ...rq.errors], [])
 })
 
 await test('Settings: next term price and hold, and a message when next term has no Airtable table', async () => {

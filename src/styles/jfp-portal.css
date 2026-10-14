@@ -874,3 +874,44 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
   .jp-theme .jm-ps .jm-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; align-items: center; }
   .jp-theme .jm-ps .jm-actions .j-btn { width: auto; }
 }
+/* Payment links list (ps-table). */
+.jq-ps td[data-col="pay"] .ps-sub .ps-badge { font-size: 12px; }
+@media (max-width: 760px) {
+  .jq-ps td[data-col="amt"] { grid-column: 2; grid-row: 2; text-align: right; }
+  .jq-ps td[data-col="group"] { padding-left: 0; }
+  .jq-ps td.ps-end.ps-keep, .jr-ps td.ps-end.ps-keep, .ps-table td.ps-end.ps-keep { width: auto; }
+  .jp-theme .ps-table .jm-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; justify-content: flex-start; }
+  .jp-theme .ps-table .jm-actions .j-btn { width: auto; }
+}
+/* Messages lists (Lee, 14 Oct 2026): Players layout. Rows are not clickable
+   (Prepare / Cancel / Settle are), and on a phone the Email and Text cells
+   carry a small label because the column headers are hidden. */
+.ms-ps tbody tr { cursor: default; }
+.ms-ps .ms-lbl { display: none; }
+@media (max-width: 760px) {
+  .ms-ps td[data-col="group"], .ms-ps td[data-col="flags"] { padding-left: 0; }
+  .ms-ps .ms-lbl { display: inline; font-size: 12px; color: var(--ps-text-2); }
+  .ms-ps td.ps-end.ps-keep { margin-top: 6px; width: auto; text-align: left; }
+  .ms-ps td.ps-end.ps-keep:empty { display: none; }
+}
+/* Cancellations list: the reason sits under the session when the Reason column is hidden. */
+.cx-ps .cx-why { display: none; }
+@media (max-width: 1180px) { .cx-ps .cx-why { display: block; } }
+@media (max-width: 760px) { .cx-ps td[data-col="group"], .au-ps td[data-col="group"] { padding-left: 0; } }
+/* Lists with no photo: phone cards start every line at the left edge. */
+@media (max-width: 760px) { .ps-table.ps-flat td[data-col="group"], .ps-table.ps-flat td[data-col="flags"] { padding-left: 0; } }
+/* ---------- Joners Juniors lists on the design system (14 Oct 2026) ----------
+   Players, Invites, Online payments, Requests & waitlist and Juniors Money. */
+.ps-table tr.is-removed td { opacity: .7; }
+.jv-ps tbody tr, .jj-mps tbody tr, .jr-ps tbody tr { cursor: default; }
+.jv-ps .jj-fam-tick { margin: -8px 0 -8px -8px; flex: none; }
+.jv-ps .jv-kid { display: block; }
+.jv-ps .jv-kid + .jv-kid { margin-top: 2px; }
+.jj-row-acts { display: inline-flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.jj-view .ps-tools .j-btn, .jj-view .ps-actions .j-btn { min-height: var(--ps-control, 40px); }
+.jj-view .ps-seg button { min-height: 0; }
+@media (max-width: 760px) {
+  .jr-ps td.ps-end.ps-keep, .jv-ps td.ps-end.ps-keep { margin-top: 6px; text-align: left; }
+  .jj-row-acts { justify-content: flex-start; }
+  .jv-pays td[data-col="flags"].ps-ok { display: none; }
+}

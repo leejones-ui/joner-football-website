@@ -5,6 +5,7 @@
 // Juniors figures are never added into the JFP ones: they come from the
 // Juniors tables, their own Stripe payments and the Juniors payment ledger.
 import { esc, money, toast } from './jfp-common.js'
+import { psSearch, psSelect, psBadge, psToolsMore } from './jfp-portal-ps.js'
 import { moneyHead, bindTip, programmeSwitch, bindSwitch, quietOk, markUpdated } from './jfp-portal-programmes.js'
 // The programme picker lives with the other Money views now; kept here for old imports.
 export { programmeSwitch, bindSwitch }
@@ -17,7 +18,9 @@ const STATUS = {
 }
 const ORDER = ['paid', 'stripe', 'part', 'unpaid', 'unverified', 'credit', 'refunded', 'nofee', 'na']
 export const DEFINITION = 'Collected = money received for this term\'s Juniors enrolments, net of refunds, whenever it was paid: Stripe (Sydney account) plus the cash and bank transfers recorded in the portal. Places paid with credit are not new money. Kept = collected less Stripe\'s fees.'
-const pill = (s) => `<span class="j-pill j-pill-${STATUS[s]?.[1] || 'grey'}">${esc(STATUS[s]?.[0] || s)}</span>`
+// Dot and word, the same as every list page. The old pill colours map to the dots.
+const DOT = { green: '#12B76A', red: '#E5383B', amber: '#F97316', blue: '#2E90FA', grey: '#98A2B3' }
+const badge = (s) => psBadge(({ amber: 'orange' })[STATUS[s]?.[1]] || STATUS[s]?.[1] || 'grey', STATUS[s]?.[0] || s)
 const amt = (c) => (c == null ? '<span class="muted">unknown</span>' : esc(money(c)))
 const when = (iso) => (iso ? new Date(String(iso).length === 10 ? `${iso}T00:00:00+10:00` : iso).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', year: 'numeric' }) : '')
 const time = (iso) => (iso ? new Date(iso).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '')
@@ -156,13 +159,14 @@ function paintJuniors(ui, d) {
       <section class="jd-card jd-tile jm-tile jd-in" style="--i:4"><span class="lbl">Paid with credit</span><span class="val">${t.creditPlaces}</span><span class="note">Not new money</span></section>
       <section class="jd-card jd-tile jm-tile jd-in" style="--i:5"><span class="lbl">Amount not recorded</span><span class="val">${t.counts.unverified || 0}</span><span class="note">Marked Paid, no payment found</span></section>
     </div>
-    <div class="jm-bar">
-      <div class="jm-search"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2" stroke-linecap="round"/></svg><input class="j-input" id="jm-q" type="search" placeholder="Search child or parent" value="${esc(filter.q || '')}" autocomplete="off"></div>
-      <div class="jm-chips" id="jm-chips">${[['', 'All', inTerm.length], ...ORDER.filter((s) => t.counts[s]).map((s) => [s, STATUS[s][0], t.counts[s]])].map(([v, l, n]) => `<button type="button" data-jstatus="${v}" aria-pressed="${(filter.status || '') === v}">${esc(l)} <span class="n">${n}</span></button>`).join('')}</div>
-      <button type="button" class="j-btn j-btn-line j-btn-sm jm-csv" id="jm-csv">Download for accountant</button>
+    <div class="ps-tools jm-tools" role="search">
+      ${psSearch('jm-q', 'Search children…', filter.q || '', 'Search child or parent')}
+      <span id="jm-selects"></span>
+      ${psToolsMore('jm', { active: true, hasMore: false })}
+      <span class="ps-meta"><button type="button" class="j-btn j-btn-line jm-csv" id="jm-csv">Download for accountant</button></span>
     </div>
-    <p class="muted small" id="jm-active" style="margin:0 0 8px"></p>
-    <div class="jj-mlist" id="jm-rows" role="list"></div>
+    <div class="ps-chips" id="jm-chips" aria-label="Quick filters"></div>
+    <div class="ps-table-wrap"><table class="ps-table jm-ps jj-mps"><thead><tr><th>Child</th><th>Payment</th><th class="num" data-col="nums">Fee</th><th class="num" data-col="nums">Paid</th><th class="num">Owing</th></tr></thead><tbody id="jm-rows"></tbody></table></div>
     <p class="muted small" id="jm-count" style="margin-top:8px"></p>
     ${unlinked.length ? `<details class="jd-card" style="margin-top:18px"><summary style="cursor:pointer;font-weight:700;min-height:40px;display:flex;align-items:center">${unlinked.length} payment${unlinked.length === 1 ? '' : 's'} not matched to a child (${esc(money(t.unlinkedCents))})</summary><p class="sub" style="margin:6px 0 10px">Counted in ${esc(filter.term)}, but no Juniors row has the email or name they used.</p>
       <ul class="jm-hist">${unlinked.map((u) => `<li><span><b>${esc(u.forPlayer ? `For ${u.forPlayer}` : when(u.at))}</b><small>${u.forPlayer ? `${esc(when(u.at))} · ` : ''}${esc(u.why)} · ref ${esc(u.ref)}</small></span><span class="amt">${esc(money(u.cents))}</span></li>`).join('')}</ul></details>` : ''}
@@ -181,23 +185,35 @@ function paintJuniors(ui, d) {
         ${d.unassigned ? `<li>${d.unassigned} Juniors payment${d.unassigned === 1 ? '' : 's'} could not be given a term, so ${d.unassigned === 1 ? 'it is' : 'they are'} in no term total: ${d.unlinked.filter((u) => !u.term).map((u) => `${esc(money(u.cents))} on ${esc(when(u.at))}${u.forPlayer ? ` for ${esc(u.forPlayer)}` : ''}`).join('; ')}.</li>` : ''}
         ${d.otherCurrency.length ? `<li>${d.otherCurrency.length} payment${d.otherCurrency.length === 1 ? '' : 's'} not in AUD: not added.</li>` : ''}
       </ul></details></div>`
+  // The Players page toolbar (Lee, 14 Oct 2026): search, Payment, Clear,
+  // then quick chips with counts. Read only: no actions on a row.
+  const present = ORDER.filter((x) => t.counts[x] || filter.status === x)
+  const drawTools = () => {
+    const q = (filter.q || '').trim()
+    view().querySelector('#jm-selects').outerHTML = `<span id="jm-selects" class="ps-more-filters">${psSelect('jm-status', present.map((id) => ({ id, label: STATUS[id][0] })), filter.status || '', 'Payment')}</span>`
+    view().querySelector('#jm-clear').hidden = !(filter.status || q)
+    view().querySelector('#jm-chips').innerHTML = [['', 'All', inTerm.length], ...present.map((x) => [x, STATUS[x][0], t.counts[x] || 0])].map(([v, l, n]) => `<button type="button" class="ps-chip" data-jstatus="${v}" aria-pressed="${(filter.status || '') === v}">${v ? `<i style="background:${DOT[STATUS[v][1]] || DOT.grey}"></i>` : ''}${esc(l)} <b>${n}</b></button>`).join('')
+  }
   const draw = () => {
     const q = (filter.q || '').trim().toLowerCase()
     const list = inTerm.filter((p) => (!filter.status || p.status === filter.status) && (!q || `${p.player} ${p.parent}`.toLowerCase().includes(q)))
-    view().querySelector('#jm-rows').innerHTML = list.map((p) => `<div class="jj-mrow${p.removed ? ' is-removed' : ''}" role="listitem"><span class="jj-mrow-who"><b>${esc(p.player)}</b>${p.removed ? ' <span class="j-pill j-pill-grey">Left</span>' : ''}<small>${esc(p.parent || '')}</small></span>
-      <span class="jj-mrow-fig"><small>Fee</small>${p.feeCents == null ? '<span class="muted">not set</span>' : esc(money(p.feeCents))}</span>
-      <span class="jj-mrow-fig"><small>Paid</small>${esc(money(p.paidCents))}${p.refundedCents ? `<small>refunded ${esc(money(p.refundedCents))}</small>` : ''}</span>
-      <span class="jj-mrow-fig"><small>Owing</small>${p.owingCents ? `<b>${esc(money(p.owingCents))}</b>` : amt(p.owingCents)}</span>
-      <span class="jj-mrow-st">${pill(p.status)}<small>${esc(p.paidVia || (p.match === 'stripe' ? 'Stripe' : ''))}${p.paidAt ? ` · ${esc(when(p.paidAt))}` : ''}</small>${p.status !== 'paid' && p.airtableStatus ? `<small>Airtable: ${esc(p.airtableStatus)}</small>` : ''}</span></div>`).join('') || `<div class="j-empty">${inTerm.length ? 'No children match.' : `No Joners Juniors children in ${esc(filter.term)}.`}</div>`
-    const active = [filter.term, filter.status ? STATUS[filter.status][0] : '', q ? `"${filter.q.trim()}"` : ''].filter(Boolean)
-    view().querySelector('#jm-active').innerHTML = `Showing: Joners Juniors · ${active.map(esc).join(' · ')}${filter.status || q ? ' <button type="button" class="link" id="jm-reset">Clear</button>' : ''}`
-    view().querySelector('#jm-reset')?.addEventListener('click', () => { filter.status = ''; filter.q = ''; renderJuniorsMoney(ui) })
+    view().querySelector('#jm-rows').innerHTML = list.map((p) => `<tr class="${p.removed ? 'is-removed' : ''}" data-jrow>
+      <td data-col="who"><div class="ps-who"><div><b>${esc(p.player)}</b>${p.removed ? ' <span class="ps-tag">Left</span>' : ''}<span class="ps-sub">${esc(p.parent || '')}</span></div></div></td>
+      <td data-col="pay">${badge(p.status)}<span class="ps-sub">${esc(p.paidVia || (p.match === 'stripe' ? 'Stripe' : ''))}${p.paidAt ? ` · ${esc(when(p.paidAt))}` : ''}</span>${p.status !== 'paid' && p.airtableStatus ? `<span class="ps-sub">Airtable: ${esc(p.airtableStatus)}</span>` : ''}</td>
+      <td class="num" data-col="nums">${p.feeCents == null ? '<span class="muted">not set</span>' : esc(money(p.feeCents))}</td>
+      <td class="num" data-col="nums">${esc(money(p.paidCents))}${p.refundedCents ? `<span class="ps-sub">refunded ${esc(money(p.refundedCents))}</span>` : ''}</td>
+      <td class="num ${p.owingCents === 0 ? 'jm-zero' : ''}" data-col="owing">${p.owingCents ? `<b>${esc(money(p.owingCents))}</b>` : amt(p.owingCents)}</td></tr>`).join('') || `<tr><td colspan="5"><div class="ps-empty">${inTerm.length ? `No children match.${filter.status || q ? ' <button type="button" class="ps-link" data-jm-clear>Clear filters</button>' : ''}` : `No Joners Juniors children in ${esc(filter.term)}.`}</div></td></tr>`
     view().querySelector('#jm-count').textContent = `${list.length} of ${inTerm.length} children · paid ${money(list.reduce((s, p) => s + p.paidCents, 0))} · owing ${money(list.reduce((s, p) => s + (p.owingCents || 0), 0))}${list.some((p) => p.owingCents == null) ? ' known' : ''}`
   }
+  const clear = () => { filter.status = ''; filter.q = ''; view().querySelector('#jm-q').value = ''; drawTools(); draw() }
+  drawTools()
   draw()
-  view().querySelector('#jm-q').addEventListener('input', (e) => { filter.q = e.target.value; draw() })
+  view().querySelector('#jm-q').addEventListener('input', (e) => { filter.q = e.target.value; view().querySelector('#jm-clear').hidden = !(filter.status || filter.q.trim()); draw() })
   view().querySelector('#jm-term').addEventListener('change', (e) => { filter.term = e.target.value; filter.status = ''; renderJuniorsMoney(ui) })
-  view().querySelectorAll('[data-jstatus]').forEach((b) => b.addEventListener('click', () => { filter.status = b.dataset.jstatus; view().querySelectorAll('#jm-chips [data-jstatus]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.jstatus === filter.status))); draw() }))
+  view().querySelector('.jm-tools').addEventListener('change', (e) => { if (e.target.id !== 'jm-status') return; filter.status = e.target.value; drawTools(); draw() })
+  view().querySelector('#jm-chips').addEventListener('click', (e) => { const b = e.target.closest('[data-jstatus]'); if (!b) return; const v = b.dataset.jstatus; filter.status = filter.status === v ? '' : v; drawTools(); draw() })
+  view().querySelector('#jm-clear').addEventListener('click', clear)
+  view().querySelector('#jm-rows').addEventListener('click', (e) => { if (e.target.closest('[data-jm-clear]')) clear() })
   view().querySelector('#jm-csv').addEventListener('click', () => saveFile(`joners-juniors-money-${slug(filter.term)}.csv`, juniorsCsv(d, filter.term)))
   view().querySelector('#jm-refresh').addEventListener('click', async (e) => {
     e.currentTarget.disabled = true

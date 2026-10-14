@@ -2,19 +2,28 @@
 // message is shown exactly as it will go, and only goes when Lee or Ligia
 // approves it. Texts go through Messages on the HQ Mac.
 import { esc, api, toast, money } from './jfp-common.js'
+import { psHead, psSearch, psSelect, psBadge, psChips, psToolsMore } from './jfp-portal-ps.js'
 
 const call = (action, body = {}) => api('/api/jfp-messages', { action, ...body })
 const when = (iso) => (iso ? new Date(iso).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '')
 const ago = (iso) => { if (!iso) return 'never'; const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : when(iso) }
-const PILL = { draft: 'grey', sending: 'blue', queued: 'blue', claimed: 'blue', sent: 'green', delivered: 'green', failed: 'red', unknown: 'amber', cancelled: 'grey', expired: 'grey' }
-const pill = (m) => (m ? `<span class="j-pill j-pill-${PILL[m.status] || 'grey'}">${esc(m.statusLabel || m.status)}</span>` : '<span class="muted small">None</span>')
-const KIND = { pay: ['amber', 'Due on records'], paid: ['green', 'Paid'], noPrice: ['red', 'No fee set'] }
+// Status as the portal design system's dot + word (was a coloured pill).
+const DOT = { draft: 'grey', sending: 'violet', queued: 'violet', claimed: 'violet', sent: 'green', delivered: 'green', failed: 'red', unknown: 'orange', cancelled: 'grey', expired: 'grey' }
+const badge = (m) => (m ? psBadge(DOT[m.status] || 'grey', m.statusLabel || m.status) : '<span class="muted small">None</span>')
+const KIND = { pay: ['orange', 'Due on records'], paid: ['green', 'Paid'], noPrice: ['red', 'No fee set'] }
+const OK = ['sent', 'delivered'], WAIT = ['queued', 'claimed', 'sending'], BAD = ['failed', 'unknown']
+// One message status group, used by the filters and chips of both lists.
+const group = (m) => (!m ? 'none' : OK.includes(m.status) ? 'sent' : WAIT.includes(m.status) ? 'waiting' : m.status === 'unknown' ? 'unknown' : m.status === 'failed' ? 'failed' : 'closed')
 
-let S = { filter: 'pay', q: '' }
+// Families list filters (kind starts on Due on records, as it always has) and
+// the Sent and waiting list filters (s*).
+let S = { kind: 'pay', email: '', text: '', pref: '', dnc: '', link: '', q: '', moreOpen: false, sq: '', sstatus: '', schannel: '' }
+const F_MORE = ['pref', 'dnc', 'link']
 
 export async function renderMessages(ui) {
   const { view, need, modal, closeModal, confirmBox } = ui
   const d = await need(await call('overview'))
+  const loadedAt = Date.now()
   const route = d.route || {}
   // A stale check-in used to look exactly like a healthy one, because ok was
   // true when the Mac last spoke. Nothing running is the normal reason a text
@@ -31,18 +40,13 @@ export async function renderMessages(ui) {
       : stale
         ? `Mac last checked in ${ago(d.relay.at)} · ${warn('nothing is running on the Mac, so texts will sit here. Run ~/jfp-text watch on the HQ Mac.')}`
         : `Mac checked in ${ago(d.relay.at)}`
-  const counts = { pay: 0, paid: 0, noPrice: 0, check: 0 }
-  for (const f of d.families) counts[f.kind] += 1
   const checkIt = d.messages.filter((m) => m.status === 'unknown')
   // The newest test text Lee sent himself: confirming it switches texts on.
   const lastTest = d.messages.find((m) => m.selfTest && !['draft', 'cancelled', 'expired'].includes(m.status))
-  const list = d.families.filter((f) => {
-    if (S.filter === 'all') return true
-    if (S.filter === 'notSent') return !f.lastEmail || !['sent', 'delivered'].includes(f.lastEmail.status)
-    return f.kind === S.filter
-  })
+  const sentAll = d.messages.filter((m) => m.status !== 'draft')
+  const help = `<details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Press Prepare on a family to see their email and text. Send the email, the text, or both. Each one goes once.${d.families.some((f) => f.kind === 'noPrice') ? '<br><br>"No fee set": nothing paid and no Term 4 Fee in Airtable. A blank fee is unknown, not zero, so these families cannot be messaged until the fee is set.' : ''}</div></details>`
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Messages</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Press Prepare on a family to see their email and text. Send the email, the text, or both. Each one goes once.</div></details></div></div>
+    ${psHead({ title: 'Messages', count: String(d.families.length) }).replace('</h1>', `</h1>${help}`)}
     ${d.dncError ? `<div class="j-box j-box-red" style="margin-bottom:12px">${esc(d.dncError)}</div>` : ''}
     <div class="j-card" style="padding:14px 16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
@@ -51,63 +55,169 @@ export async function renderMessages(ui) {
         ${d.isOwner ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${route.verified ? '<button type="button" class="j-btn j-btn-line j-btn-sm" id="ms-unverify">Turn texts off</button>' : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" id="ms-test">Send me a test text</button></div>` : ''}
       </div>
     </div>
-    ${!route.verified && d.isOwner && lastTest ? `<div class="j-box ${lastTest.status === 'sent' ? 'j-box-amber' : 'j-box-grey'}" style="margin-bottom:14px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+    ${!route.verified && d.isOwner && lastTest ? `<div class="j-box ms-verify-box ${lastTest.status === 'sent' ? 'j-box-amber' : 'j-box-grey'}" style="margin-bottom:14px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
       <span>${lastTest.status === 'sent' ? `<b>One step to switch texts on.</b> Your test text went at ${esc(when(lastTest.events.at(-1)?.at))}. Did it arrive on your phone?` : `<b>Your test text is ${esc(String(lastTest.statusLabel || lastTest.status).toLowerCase())}.</b> When it has gone, confirm it here.`}</span>
       ${lastTest.status === 'sent' ? `<button type="button" class="j-btn j-btn-dark" data-verify="${esc(lastTest.id)}">Yes, it arrived: turn texts on</button>` : ''}</div>` : ''}
     <div id="ms-campaign"></div>
     ${checkIt.length ? `<div class="j-box j-box-amber" style="margin-bottom:14px"><b>${checkIt.length} message${checkIt.length === 1 ? '' : 's'} to check.</b> The system could not tell if ${checkIt.length === 1 ? 'it' : 'they'} went. Look in Brevo or in Messages on the Mac, then settle it below. Nothing is sent again by itself.</div>` : ''}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-      <div class="jp-seg" id="ms-f">${[['pay', `Due on records (${counts.pay})`], ['paid', `Paid (${counts.paid})`], ['noPrice', `No fee set (${counts.noPrice})`], ['notSent', 'Not emailed yet'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${S.filter === v}">${esc(l)}</button>`).join('')}</div>
-      <input class="j-input" id="ms-q" placeholder="Search family or player" value="${esc(S.q)}" style="max-width:260px;padding:8px 10px;font-size:14px">
+    <div class="ps-tools" role="search" id="ms-ftools">
+      ${psSearch('ms-q', 'Search family or player…', S.q, 'Search families by parent, email or player')}
+      <span class="ps-more-filters" id="ms-fsel"></span>
+      <span class="ps-meta">Updated ${esc(new Date(loadedAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))} · <button type="button" class="ps-link" id="ms-refresh" title="Read the messages again">Refresh</button></span>
     </div>
-    <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Parent</th><th>Players</th><th>Records</th><th>Email</th><th>Text</th><th></th></tr></thead><tbody>
-    ${list.map((f) => `<tr ${S.q && !`${f.parent} ${f.email} ${f.players.map((p) => p.name).join(' ')}`.toLowerCase().includes(S.q) ? 'hidden' : ''} data-s="${esc(`${f.parent} ${f.email} ${f.players.map((p) => p.name).join(' ')}`.toLowerCase())}">
-      <td><b>${esc(f.parent || '')}</b><br><span class="muted small">${esc(f.email)}</span>${f.dnc ? '<br><span class="j-pill j-pill-red">Do Not Contact</span>' : ''}</td>
-      <td class="small">${f.players.map((x) => esc(x.name)).join('<br>')}</td>
-      <td><span class="j-pill j-pill-${KIND[f.kind][0]}">${esc(KIND[f.kind][1])}${f.kind === 'pay' ? ` ${esc(money(f.owingCents))}` : ''}</span>${f.openLink ? '<br><span class="muted small">Pay link open</span>' : ''}${f.invitedAt ? `<br><span class="muted small">Emailed ${esc(when(f.invitedAt))}</span>` : ''}</td>
-      <td>${pill(f.lastEmail)}</td>
-      <td>${pill(f.lastText)}<br><span class="muted small">${f.phoneProblem ? esc(f.phoneProblem) : `${esc(f.phone)} · Texts: ${f.pref ? esc(f.pref.text) : 'not asked'}`}</span></td>
-      <td>${f.kind === 'noPrice' || f.dnc ? '' : `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-prep="${esc(f.email)}">Prepare</button>`}</td>
-    </tr>`).join('') || '<tr><td colspan="6" class="muted">No families here.</td></tr>'}
-    </tbody></table></div>
-    ${counts.noPrice ? '<p class="muted small" style="margin-top:8px">"No fee set": nothing paid and no Term 4 Fee in Airtable. A blank fee is unknown, not zero, so these families cannot be messaged until the fee is set.</p>' : ''}
+    <div id="ms-fchips"></div>
+    <div class="ps-table-wrap"><table class="ps-table ms-ps"><thead><tr><th>Parent</th><th>Players</th><th>Records</th><th>Email</th><th>Text</th><th class="ps-end"><span class="sr-only">Prepare</span></th></tr></thead><tbody id="ms-frows"></tbody></table></div>
+    <p class="muted small" id="ms-fcount" style="margin-top:8px"></p>
     ${d.noEmail.length ? `<p class="muted small">No parent email in Airtable: ${esc(d.noEmail.map((x) => x.name).join(', '))}.</p>` : ''}
     <h2 style="margin:22px 0 10px">Sent and waiting</h2>
-    <div class="jp-scroll"><table class="jp-table"><thead><tr><th>When</th><th>Parent</th><th>Channel</th><th>Status</th><th>Detail</th><th></th></tr></thead><tbody>
-    ${d.messages.filter((m) => m.status !== 'draft').slice(0, 80).map((m) => `<tr>
-      <td class="small">${esc(when(m.events.at(-1)?.at))}</td>
-      <td class="small">${m.selfTest ? '<b>Test text to Lee</b>' : `<b>${esc(m.parentName)}</b><br><span class="muted">${esc(m.email)}</span>`}</td>
-      <td class="small">${m.channel === 'email' ? 'Email' : `Text to ${esc(m.target?.ref || '')}`}</td>
-      <td>${pill(m)}${m.receipt?.senderMismatch ? '<br><span class="j-pill j-pill-red">Different sender</span>' : ''}</td>
-      <td class="small">${esc(m.events.at(-1)?.what || '')}${m.receipt?.service ? ` · ${esc(m.receipt.service)}` : ''}<br><span class="muted">Approved by ${esc(m.approvedBy || m.requestedBy || '')}</span></td>
-      <td>${m.status === 'queued' ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-cancel="${esc(m.id)}">Cancel</button>` : ''}${m.status === 'unknown' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-settle="${esc(m.id)}">Settle</button>` : ''}${d.isOwner && m.selfTest && m.status === 'sent' && !route.verified ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-verify="${esc(m.id)}">It arrived</button>` : ''}</td>
-    </tr>`).join('') || '<tr><td colspan="6" class="muted">Nothing sent yet.</td></tr>'}
-    </tbody></table></div>`
+    <div class="ps-tools" role="search" id="ms-stools">
+      ${psSearch('ms-sq', 'Search parent or email…', S.sq, 'Search sent messages by parent or email')}
+      <span class="ps-more-filters" id="ms-ssel"></span>
+    </div>
+    <div id="ms-schips"></div>
+    <div class="ps-table-wrap"><table class="ps-table ms-ps"><thead><tr><th>Parent</th><th>Channel</th><th>Status</th><th>Detail</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody id="ms-srows"></tbody></table></div>
+    <p class="muted small" id="ms-scount" style="margin-top:8px"></p>`
   drawCampaign(ui, renderMessages)
 
+  const $ = (id) => view().querySelector(`#${id}`)
   const again = () => renderMessages(ui)
-  view().querySelector('#ms-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { S.filter = b.dataset.f; again() } })
-  // Filters as you type (Lee, 14 Oct 2026: it only searched on Enter).
-  view().querySelector('#ms-q').addEventListener('input', (e) => {
-    S.q = e.target.value.trim().toLowerCase()
-    view().querySelectorAll('tr[data-s]').forEach((tr) => { tr.hidden = Boolean(S.q) && !tr.dataset.s.includes(S.q) })
+
+  // ---- Families: search, Records, Email, Text, More filters, chips, table.
+  const famHay = (f) => `${f.parent} ${f.email} ${f.players.map((p) => p.name).join(' ')}`.toLowerCase()
+  const fMatch = (f) => {
+    if (S.kind && f.kind !== S.kind) return false
+    if (S.email === 'notSent' && f.lastEmail && OK.includes(f.lastEmail.status)) return false
+    if (S.email === 'sent' && group(f.lastEmail) !== 'sent') return false
+    if (S.email === 'problem' && !BAD.includes(f.lastEmail?.status)) return false
+    if (S.text === 'noPhone' ? !f.phoneProblem : S.text === 'problem' ? !BAD.includes(f.lastText?.status) : S.text && group(f.lastText) !== S.text) return false
+    if (S.pref && (S.pref === 'unasked' ? Boolean(f.pref?.text) : f.pref?.text !== S.pref)) return false
+    if (S.dnc && Boolean(f.dnc) !== (S.dnc === 'yes')) return false
+    if (S.link && Boolean(f.openLink) !== (S.link === 'open')) return false
+    return !S.q || famHay(f).includes(S.q)
+  }
+  const fActive = () => ['q', 'kind', 'email', 'text', ...F_MORE].filter((k) => S[k]).length
+  const famRow = (f) => `<tr data-s="${esc(famHay(f))}">
+      <td data-col="who"><div class="ps-who"><div><b>${esc(f.parent || '')}</b><span class="ps-sub">${esc(f.email)}</span>${f.dnc ? `<span class="ps-sub">${psBadge('red', 'Do Not Contact')}</span>` : ''}</div></div></td>
+      <td data-col="group" class="small">${f.players.map((x) => esc(x.name)).join('<br>')}</td>
+      <td data-col="pay">${psBadge(KIND[f.kind][0], `${KIND[f.kind][1]}${f.kind === 'pay' ? ` ${money(f.owingCents)}` : ''}`)}${f.openLink ? '<span class="ps-sub">Pay link open</span>' : ''}${f.invitedAt ? `<span class="ps-sub">Emailed ${esc(when(f.invitedAt))}</span>` : ''}</td>
+      <td data-col="flags"><span class="ms-lbl">Email </span>${badge(f.lastEmail)}</td>
+      <td data-col="flags"><span class="ms-lbl">Text </span>${badge(f.lastText)}<span class="ps-sub">${f.phoneProblem ? esc(f.phoneProblem) : `${esc(f.phone)} · Texts: ${f.pref ? esc(f.pref.text) : 'not asked'}`}</span></td>
+      <td class="ps-end ps-keep">${f.kind === 'noPrice' || f.dnc ? '' : `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-prep="${esc(f.email)}">Prepare</button>`}</td>
+    </tr>`
+  const drawFamTools = () => {
+    const moreSet = F_MORE.filter((k) => S[k]).length
+    if (moreSet) S.moreOpen = true
+    $('ms-fsel').innerHTML = `${psSelect('ms-kind', [{ id: 'pay', label: 'Due on records' }, { id: 'paid', label: 'Paid' }, { id: 'noPrice', label: 'No fee set' }], S.kind, 'Records')}
+      ${psSelect('ms-email', [{ id: 'notSent', label: 'Not emailed yet' }, { id: 'sent', label: 'Emailed' }, { id: 'problem', label: 'Failed or to check' }], S.email, 'Email')}
+      ${psSelect('ms-text', [{ id: 'none', label: 'Not texted yet' }, { id: 'waiting', label: 'Waiting for the Mac' }, { id: 'sent', label: 'Texted' }, { id: 'problem', label: 'Failed or to check' }, { id: 'noPhone', label: 'No usable mobile' }], S.text, 'Text')}
+      <span class="ps-more-filters" id="ms-f-morebox" ${S.moreOpen ? '' : 'hidden'}>${psSelect('ms-pref', [{ id: 'yes', label: 'Happy to get texts' }, { id: 'no', label: 'No texts' }, { id: 'unasked', label: 'Not asked' }], S.pref, 'Texts OK?')}${psSelect('ms-dnc', [{ id: 'yes', label: 'Do Not Contact' }, { id: 'no', label: 'Can be contacted' }], S.dnc, 'Do Not Contact')}${psSelect('ms-link', [{ id: 'open', label: 'Pay link open' }, { id: 'none', label: 'No pay link open' }], S.link, 'Pay link')}</span>
+      ${psToolsMore('ms-f', { open: S.moreOpen, set: moreSet, active: fActive() })}`
+    const n = (fn) => d.families.filter(fn).length
+    $('ms-fchips').innerHTML = psChips([
+      { key: 'kind', value: 'pay', label: 'Due on records', count: n((f) => f.kind === 'pay'), color: 'orange' },
+      { key: 'kind', value: 'paid', label: 'Paid', count: n((f) => f.kind === 'paid'), color: 'green' },
+      { key: 'kind', value: 'noPrice', label: 'No fee set', count: n((f) => f.kind === 'noPrice'), color: 'red' },
+      { key: 'email', value: 'notSent', label: 'Not emailed yet', count: n((f) => !f.lastEmail || !OK.includes(f.lastEmail.status)), color: 'grey' },
+      { key: 'email', value: 'problem', label: 'Email to check', count: n((f) => BAD.includes(f.lastEmail?.status)), color: 'red' },
+      { key: 'text', value: 'problem', label: 'Text to check', count: n((f) => BAD.includes(f.lastText?.status)), color: 'red' },
+      { key: 'dnc', value: 'yes', label: 'Do Not Contact', count: n((f) => f.dnc), color: 'grey' },
+    ], (k, v) => S[k] === v)
+  }
+  const drawFam = () => {
+    const list = d.families.filter(fMatch)
+    $('ms-frows').innerHTML = list.map(famRow).join('') || `<tr><td colspan="6"><div class="ps-empty">No families here.${fActive() ? ' <button type="button" class="ps-link" data-ms-fclear>Clear filters</button>' : ''}</div></td></tr>`
+    const c = view().querySelector('.ps-head .ps-count')
+    if (c) c.textContent = list.length === d.families.length ? String(d.families.length) : `${list.length} of ${d.families.length}`
+    $('ms-fcount').textContent = `${list.length} of ${d.families.length} families`
+  }
+  const fClear = () => { Object.assign(S, { q: '', kind: '', email: '', text: '', pref: '', dnc: '', link: '' }); $('ms-q').value = ''; drawFamTools(); drawFam() }
+
+  // ---- Sent and waiting: search, Status, Channel, chips, table (newest 80).
+  const S_STATUS = [{ id: 'sent', label: 'Sent' }, { id: 'waiting', label: 'Waiting' }, { id: 'unknown', label: 'Check it' }, { id: 'failed', label: 'Failed' }, { id: 'closed', label: 'Cancelled or expired' }]
+  const sHay = (m) => (m.selfTest ? 'test text to lee' : `${m.parentName || ''} ${m.email || ''} ${m.target?.ref || ''}`).toLowerCase()
+  const sMatch = (m) => (!S.sstatus || group(m) === S.sstatus) && (!S.schannel || (S.schannel === 'email' ? m.channel === 'email' : m.channel !== 'email')) && (!S.sq || sHay(m).includes(S.sq))
+  const sActive = () => ['sq', 'sstatus', 'schannel'].filter((k) => S[k]).length
+  const sentRow = (m) => `<tr>
+      <td data-col="who"><div class="ps-who"><div>${m.selfTest ? '<b>Test text to Lee</b>' : `<b>${esc(m.parentName)}</b><span class="ps-sub">${esc(m.email)}</span>`}</div></div></td>
+      <td data-col="group" class="small">${m.channel === 'email' ? 'Email' : `Text to ${esc(m.target?.ref || '')}`}<span class="ps-sub">${esc(when(m.events.at(-1)?.at))}</span></td>
+      <td data-col="pay">${badge(m)}${m.receipt?.senderMismatch ? `<span class="ps-sub">${psBadge('red', 'Different sender')}</span>` : ''}</td>
+      <td data-col="flags" class="small">${esc(m.events.at(-1)?.what || '')}${m.receipt?.service ? ` · ${esc(m.receipt.service)}` : ''}<span class="ps-sub">Approved by ${esc(m.approvedBy || m.requestedBy || '')}</span></td>
+      <td class="ps-end ps-keep">${m.status === 'queued' ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-cancel="${esc(m.id)}">Cancel</button>` : ''}${m.status === 'unknown' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-settle="${esc(m.id)}">Settle</button>` : ''}${d.isOwner && m.selfTest && m.status === 'sent' && !route.verified ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-verify="${esc(m.id)}">It arrived</button>` : ''}</td>
+    </tr>`
+  const drawSentTools = () => {
+    $('ms-ssel').innerHTML = `${psSelect('ms-sstatus', S_STATUS, S.sstatus, 'Status')}${psSelect('ms-schannel', [{ id: 'email', label: 'Email' }, { id: 'text', label: 'Text' }], S.schannel, 'Channel')}
+      ${psToolsMore('ms-s', { active: sActive(), hasMore: false })}`
+    const n = (g) => sentAll.filter((m) => group(m) === g).length
+    $('ms-schips').innerHTML = psChips([
+      { key: 'sstatus', value: 'sent', label: 'Sent', count: n('sent'), color: 'green' },
+      { key: 'sstatus', value: 'waiting', label: 'Waiting', count: n('waiting'), color: 'violet' },
+      { key: 'sstatus', value: 'unknown', label: 'Check it', count: n('unknown'), color: 'orange' },
+      { key: 'sstatus', value: 'failed', label: 'Failed', count: n('failed'), color: 'red' },
+    ], (k, v) => S[k] === v)
+  }
+  const drawSent = () => {
+    const list = sentAll.filter(sMatch)
+    $('ms-srows').innerHTML = list.slice(0, 80).map(sentRow).join('') || `<tr><td colspan="5"><div class="ps-empty">${sentAll.length ? 'No messages match.' : 'Nothing sent yet.'}${sActive() ? ' <button type="button" class="ps-link" data-ms-sclear>Clear filters</button>' : ''}</div></td></tr>`
+    $('ms-scount').textContent = `${list.length} of ${sentAll.length} messages${list.length > 80 ? ' · newest 80 shown, search to find older ones' : ''}`
+  }
+  const sClear = () => { Object.assign(S, { sq: '', sstatus: '', schannel: '' }); $('ms-sq').value = ''; drawSentTools(); drawSent() }
+
+  drawFamTools(); drawFam(); drawSentTools(); drawSent()
+
+  // Filters as you type (Lee, 14 Oct 2026: it only searched on Enter). Only
+  // the rows redraw, so the search box keeps its focus.
+  $('ms-q').addEventListener('input', (e) => { S.q = e.target.value.trim().toLowerCase(); drawFamTools(); drawFam() })
+  $('ms-sq').addEventListener('input', (e) => { S.sq = e.target.value.trim().toLowerCase(); drawSentTools(); drawSent() })
+  $('ms-ftools').addEventListener('change', (e) => {
+    const k = { 'ms-kind': 'kind', 'ms-email': 'email', 'ms-text': 'text', 'ms-pref': 'pref', 'ms-dnc': 'dnc', 'ms-link': 'link' }[e.target.id]
+    if (k) { S[k] = e.target.value; drawFamTools(); drawFam() }
   })
-  view().querySelectorAll('[data-prep]').forEach((b) => b.addEventListener('click', () => prepare(ui, d, d.families.find((f) => f.email === b.dataset.prep))))
-  view().querySelectorAll('[data-cancel]').forEach((b) => b.addEventListener('click', async () => {
+  $('ms-ftools').addEventListener('click', (e) => {
+    if (e.target.closest('#ms-f-morefilters')) { S.moreOpen = !S.moreOpen; drawFamTools() }
+    if (e.target.closest('#ms-f-clear')) fClear()
+    if (e.target.closest('#ms-refresh')) again()
+  })
+  $('ms-stools').addEventListener('change', (e) => {
+    const k = { 'ms-sstatus': 'sstatus', 'ms-schannel': 'schannel' }[e.target.id]
+    if (k) { S[k] = e.target.value; drawSentTools(); drawSent() }
+  })
+  $('ms-stools').addEventListener('click', (e) => { if (e.target.closest('#ms-s-clear')) sClear() })
+  $('ms-fchips').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-chip]'); if (!b) return
+    const [k, v] = b.dataset.chip.split(':'); S[k] = S[k] === v ? '' : v; drawFamTools(); drawFam()
+  })
+  $('ms-schips').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-chip]'); if (!b) return
+    const [k, v] = b.dataset.chip.split(':'); S[k] = S[k] === v ? '' : v; drawSentTools(); drawSent()
+  })
+
+  const cancelMsg = async (id) => {
     if (!(await confirmBox('Cancel this text? It will not be sent.', { ok: 'Cancel it', danger: true }))) return
-    const r = await call('cancel', { id: b.dataset.cancel }); toast(r.ok ? 'Cancelled' : r.data.error); again()
-  }))
-  view().querySelectorAll('[data-settle]').forEach((b) => b.addEventListener('click', () => settle(ui, b.dataset.settle)))
-  view().querySelectorAll('[data-verify]').forEach((b) => b.addEventListener('click', async () => {
+    const r = await call('cancel', { id }); toast(r.ok ? 'Cancelled' : r.data.error); again()
+  }
+  const verify = (id) => {
     const box = modal(`<h2 style="margin-bottom:8px">Did the test text arrive?</h2><p class="small" style="margin-bottom:12px">Only say yes if it is on your phone. Every parent's text will come from the same sender.</p>
       <label class="j-field"><span>Name shown to staff for this route</span><input class="j-input" id="vr-label" value="Lee (Messages on the HQ Mac)"></label>
       <label class="j-field"><span>Texts start "Hi Sarah, it's ... from Joner Football"</span><input class="j-input" id="vr-name" value="Lee" maxlength="30"></label>
       <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="j-btn j-btn-line" data-close>Not yet</button><button type="button" class="j-btn j-btn-dark" id="vr-yes">Yes, it arrived</button></div>`)
     box.querySelector('#vr-yes').addEventListener('click', async () => {
-      const r = await call('verifyRoute', { id: b.dataset.verify, arrived: true, label: box.querySelector('#vr-label').value, senderName: box.querySelector('#vr-name').value })
+      const r = await call('verifyRoute', { id, arrived: true, label: box.querySelector('#vr-label').value, senderName: box.querySelector('#vr-name').value })
       closeModal(); toast(r.ok ? 'Texts are on' : r.data.error); again()
     })
-  }))
+  }
+  // Rows redraw as filters change, so their buttons are handled on the table body.
+  $('ms-frows').addEventListener('click', (e) => {
+    if (e.target.closest('[data-ms-fclear]')) return fClear()
+    const b = e.target.closest('[data-prep]')
+    if (b) prepare(ui, d, d.families.find((f) => f.email === b.dataset.prep))
+  })
+  $('ms-srows').addEventListener('click', (e) => {
+    if (e.target.closest('[data-ms-sclear]')) return sClear()
+    const c = e.target.closest('[data-cancel]'); if (c) return cancelMsg(c.dataset.cancel)
+    const s = e.target.closest('[data-settle]'); if (s) return settle(ui, s.dataset.settle)
+    const v = e.target.closest('[data-verify]'); if (v) return verify(v.dataset.verify)
+  })
+  view().querySelectorAll('.ms-verify-box [data-verify]').forEach((b) => b.addEventListener('click', () => verify(b.dataset.verify)))
   view().querySelector('#ms-test')?.addEventListener('click', () => {
     const box = modal(`<h2 style="margin-bottom:8px">Send yourself a test text</h2><p class="small" style="margin-bottom:12px">It goes through the same queue and the office Mac (your work number) as family texts. The Mac has to be running the text helper.</p>
       <label class="j-field"><span>Your mobile</span><input class="j-input" id="st-phone" inputmode="tel" placeholder="04xx xxx xxx"></label>

@@ -1034,15 +1034,33 @@ async function renderHoliday() {
 
 // ---------- coach: the whole program ----------
 
-async function renderProgram() {
-  const d = await need(await post('program'))
-  const groups = d.groups.map((g) => ({ ...g, players: g.players.map((p) => ({ ...p })) }))
-  view().innerHTML = `<div class="jp-head"><div><h1>${esc(d.term)} program</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Every group, with names and ages. Your groups are outlined.</div></details></div></div>
-    <div class="jp-tt-wrap">${(() => {
+async function renderProgram(keep = false) {
+  const d = keep && P.programData ? P.programData : (P.programData = await need(await post('program')))
+  P.prF = { q: '', loc: '', mine: '', ...(P.prF || {}) }
+  const F = P.prF, q = F.q.trim().toLowerCase()
+  const hit = (x) => !q || x.name.toLowerCase().includes(q)
+  const groups = d.groups.filter((g) => (!F.loc || g.locationId === F.loc) && (!F.mine || g.mine) && (!q || g.players.some(hit))).map((g) => ({ ...g, players: g.players.filter(hit) }))
+  const active = ['q', 'loc', 'mine'].filter((k) => F[k]).length
+  const locs = [...new Map(d.groups.map((g) => [g.locationId, { id: g.locationId, label: g.locationName }])).values()]
+  view().innerHTML = `${psHead({ title: `${d.term} program`, count: active ? `${groups.length} of ${d.groups.length} groups` : `${d.groups.length} groups` }).replace('</h1>', '</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Every group, with names and ages. Your groups are outlined.</div></details>')}
+    <div class="ps-tools" role="search">
+      ${psSearch('pr-q', 'Search players…', F.q, 'Search players in the program')}
+      ${locs.length > 1 ? psSelect('pr-loc', locs, F.loc, 'Venue') : ''}
+      ${psToolsMore('pr', { hasMore: false, active })}
+    </div>
+    ${psChips([{ key: 'mine', value: 'yes', label: 'My groups', count: d.groups.filter((g) => g.mine).length, color: 'green' }], (k, v) => F[k] === v)}
+    ${groups.length ? `<div class="jp-tt-wrap">${(() => {
       const cols = DAYS.filter((dd) => groups.some((g) => g.day === dd))
-      const periods = PERIODS.filter(([p]) => groups.some((g) => g.period === p))
-      return `<div class="jp-tt" style="--cols:${cols.length}">${cols.map((dd) => `<div class="j-tt-day">${esc(dd)}</div>`).join('')}${periods.map(([p, label]) => `<div class="j-tt-row">${esc(label)}</div>${cols.map((dd) => `<div class="j-tt-cell">${groups.filter((g) => g.day === dd && g.period === p).sort((a, b) => a.sortTime.localeCompare(b.sortTime)).map((g) => `<section class="jp-blk ${g.mine ? 'sel' : ''}" style="--lc:${locColor(g.locationId)}"><div class="jp-blk-head"><b>${esc(g.time)}</b><span class="n">${g.players.length}/${g.capacity}</span></div><div class="sub">${esc(g.coachName)} · ${esc(g.locationName)}</div>${g.players.map((x) => `<div class="jp-nm" style="cursor:default"><span class="nmx">${esc(x.name)}${x.age != null ? ` <span class="muted">${esc(x.age)}</span>` : ''}</span>${x.trial ? '<span class="muted" style="font-size:10px">trial</span>' : ''}</div>`).join('')}</section>`).join('')}</div>`).join('')}`).join('')}</div>`
-    })()}</div>`
+      const periods = PERIODS.filter(([pp]) => groups.some((g) => g.period === pp))
+      return `<div class="jp-tt" style="--cols:${cols.length}">${cols.map((dd) => `<div class="j-tt-day">${esc(dd)}</div>`).join('')}${periods.map(([pp, label]) => `<div class="j-tt-row">${esc(label)}</div>${cols.map((dd) => `<div class="j-tt-cell">${groups.filter((g) => g.day === dd && g.period === pp).sort((x, y) => x.sortTime.localeCompare(y.sortTime)).map((g) => `<section class="jp-blk ${g.mine ? 'sel' : ''}" style="--lc:${locColor(g.locationId)}"><div class="jp-blk-head"><b>${esc(g.time)}</b><span class="n">${d.groups.find((x) => x.id === g.id)?.players.length ?? g.players.length}/${g.capacity}</span></div><div class="sub">${esc(g.coachName)} · ${esc(g.locationName)}</div>${g.players.map((x) => `<div class="jp-nm" style="cursor:default"><span class="nmx">${esc(x.name)}${x.age != null ? ` <span class="muted">${esc(x.age)}</span>` : ''}</span>${x.trial ? '<span class="muted" style="font-size:10px">trial</span>' : ''}</div>`).join('')}</section>`).join('')}</div>`).join('')}`).join('')}</div>`
+    })()}</div>` : '<div class="ps-table-wrap"><div class="ps-empty">No groups match. <button type="button" class="ps-link" data-pr-clear>Clear filters</button></div></div>'}`
+  const redraw = () => renderProgram(true)
+  $('pr-q').addEventListener('input', (e) => { F.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('pr-q'); i.focus(); i.setSelectionRange(at, at) })
+  $('pr-loc')?.addEventListener('change', (e) => { F.loc = e.target.value; redraw() })
+  view().querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => { const [k, v] = b.dataset.chip.split(':'); F[k] = F[k] === v ? '' : v; redraw() }))
+  const clear = () => { Object.assign(F, { q: '', loc: '', mine: '' }); redraw() }
+  $('pr-clear')?.addEventListener('click', clear)
+  view().querySelector('[data-pr-clear]')?.addEventListener('click', clear)
 }
 
 // ---------- groups ----------
@@ -1161,22 +1179,38 @@ function batched(list) {
   return out.map((x) => ({ ...x, batch: x.items.length > 1 || (x.items[0].batchSize || 1) > 1 }))
 }
 
-async function renderRequests() {
-  const [d, xr] = await Promise.all([post('requests').then(need), post('extraRequests')])
+async function renderRequests(keep = false) {
+  // Typing or a filter redraws from what is already loaded.
+  const [d, xr] = keep && P.reqData ? P.reqData : (P.reqData = await Promise.all([post('requests').then(need), post('extraRequests')]))
   const extras = xr.ok ? xr.data.requests : []
   P.pendingCount = d.requests.filter((r) => r.status === 'pending').length + extras.filter((r) => r.status !== 'done').length
   renderNav()
   if (!P.board) P.board = await need(await post('board'))
-  const list = d.requests.filter((r) => P.reqFilter === 'all' || r.status === P.reqFilter)
+  P.reqF = { q: '', kind: '', group: '', ...(P.reqF || {}) }
+  const F = P.reqF, rq = F.q.trim().toLowerCase()
+  const inStatus = d.requests.filter((r) => P.reqFilter === 'all' || r.status === P.reqFilter)
+  const match = (r) => (!F.kind || r.kind === F.kind) && (!F.group || r.groupId === F.group)
+    && (!rq || `${r.players.map((p) => p.name).join(' ')} ${r.parentName} ${r.email} ${r.mobile} ${r.group} ${r.club || ''}`.toLowerCase().includes(rq))
+  const list = inStatus.filter(match)
+  const active = ['q', 'kind', 'group'].filter((k) => F[k]).length
+  const groups = [...new Map(inStatus.filter((r) => r.groupId).map((r) => [r.groupId, { id: r.groupId, label: r.group }])).values()].sort((x, y) => x.label.localeCompare(y.label))
+  const statusCount = (v) => d.requests.filter((r) => v === 'all' || r.status === v).length
   const kind = { application: ['violet', 'Application'], waitlist: ['amber', 'Waitlist'], enquiry: ['grey', 'Enquiry'] }
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Requests</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Applications, waitlist and 1 to 1 enquiries. Accept for the term, offer a trial first, or decline.</div></details></div>
-      <div class="jp-seg" id="rq-f">${[['pending', 'Waiting'], ['offered', 'Offered'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.reqFilter === v}">${l}</button>`).join('')}</div></div>
+    ${psHead({ title: 'Requests', count: active ? `${list.length} of ${inStatus.length}` : list.length }).replace('</h1>', '</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Applications, waitlist and 1 to 1 enquiries. Accept for the term, offer a trial first, or decline.</div></details>')}
     ${extraRequestsHtml(extras)}
     ${extras.length ? '<h2 style="font-size:16px;margin:0 0 10px">Applications, waitlist and enquiries</h2>' : ''}
+    <div class="ps-tools" role="search">
+      <div class="ps-seg" id="rq-f" role="group" aria-label="Status">${[['pending', 'Waiting'], ['offered', 'Offered'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.reqFilter === v}">${l} ${statusCount(v)}</button>`).join('')}</div>
+      ${psSearch('rq-q', 'Search player, parent, email or club…', F.q, 'Search requests')}
+      ${psSelect('rq-kind', [{ id: 'application', label: 'Applications' }, { id: 'waitlist', label: 'Waitlist' }, { id: 'enquiry', label: 'Enquiries' }], F.kind, 'Type')}
+      ${psSelect('rq-group', groups, F.group, 'Group')}
+      ${psToolsMore('rq', { hasMore: false, active })}
+    </div>
+    ${psChips([['application', 'Applications', 'violet'], ['waitlist', 'Waitlist', 'orange'], ['enquiry', 'Enquiries', 'grey']].map(([v, l, c]) => ({ key: 'kind', value: v, label: l, color: c, count: inStatus.filter((r) => r.kind === v).length })), (k, v) => F[k] === v)}
     ${list.length ? batched(list).map((x) => (x.batch ? `<section class="j-card" style="padding:12px;margin-bottom:12px;border:2px solid var(--j-line, #e5e7eb)">
       <p class="small" style="margin:2px 4px 10px"><span class="j-pill j-pill-blue">${esc(Math.max(x.items[0].batchSize || 0, x.items.length))} sessions in one go</span> <b style="margin-left:6px">${esc(x.items[0].players.map((p) => p.name).join(' and '))}</b> <span class="muted">· answer each session on its own${x.items.length < (x.items[0].batchSize || 0) - (x.items[0].batchPaying || []).length ? ' · the others are under another filter' : ''}${(x.items[0].batchPaying || []).length ? ` · also booking and paying online for ${esc(x.items[0].batchPaying.length)} more` : ''}</span></p>
-      ${x.items.map(reqCard).join('')}</section>` : reqCard(x.items[0]))).join('') : '<div class="j-empty">Nothing here.</div>'}`
+      ${x.items.map(reqCard).join('')}</section>` : reqCard(x.items[0]))).join('') : `<div class="ps-table-wrap"><div class="ps-empty">${active ? 'No requests match. <button type="button" class="ps-link" data-rq-clear>Clear filters</button>' : 'Nothing here.'}</div></div>`}`
   function reqCard(r) {
     return `<article class="j-card" style="padding:16px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><span class="j-pill j-pill-${kind[r.kind]?.[0] || 'grey'}">${esc(kind[r.kind]?.[1] || r.kind)}</span> <b style="margin-left:6px">${esc(r.players.map((p) => `${p.name}${p.age != null ? `, ${p.age}` : ''}`).join(' and '))}</b>
@@ -1190,7 +1224,13 @@ async function renderRequests() {
       ${['pending', 'offered'].includes(r.status) ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${r.status === 'pending' && r.kind !== 'enquiry' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-offer="${esc(r.id)}">Accept for the term</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-trial="${esc(r.id)}">Trial first</button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-decline="${esc(r.id)}">Decline</button><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-done="${esc(r.id)}">Mark done</button></div>` : ''}
     </article>`
   }
-  $('rq-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { P.reqFilter = b.dataset.f; renderRequests() } })
+  $('rq-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { P.reqFilter = b.dataset.f; renderRequests(true) } })
+  $('rq-q').addEventListener('input', (e) => { F.q = e.target.value; const at = e.target.selectionStart; renderRequests(true); const i = $('rq-q'); i.focus(); i.setSelectionRange(at, at) })
+  for (const [id, k] of [['rq-kind', 'kind'], ['rq-group', 'group']]) $(id).addEventListener('change', (e) => { F[k] = e.target.value; renderRequests(true) })
+  view().querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => { const [k, v] = b.dataset.chip.split(':'); F[k] = F[k] === v ? '' : v; renderRequests(true) }))
+  const rqClear = () => { Object.assign(F, { q: '', kind: '', group: '' }); renderRequests(true) }
+  $('rq-clear')?.addEventListener('click', rqClear)
+  view().querySelector('[data-rq-clear]')?.addEventListener('click', rqClear)
   view().querySelectorAll('[data-xr-status]').forEach((b) => b.addEventListener('click', async () => {
     b.disabled = true
     const r = await post('extraRequestStatus', { id: b.dataset.xrId, status: b.dataset.xrStatus })
@@ -1302,58 +1342,68 @@ const REASON = { 'admin-add': 'Spot link', balance: 'Balance', application: 'App
 const quickUi = () => ({ view, post, need, toast, modal, closeModal, confirm: confirmBox, copy, payPill, board: async () => (P.board ||= await need(await post('board'))), pricing: async (fresh = false) => { if (fresh) P.pricing = null; return pricing() }, resetPricing: () => { P.pricing = null }, onPrices: () => { if (P.tab === 'prices') renderPrices() }, onLinks: () => { if (P.tab === 'payments') renderPayments() } })
 const LINK_PROGS = [['all', 'All'], ['jfp', 'JFP'], ['pro', 'Pro sessions'], ['juniors', 'Joners Juniors'], ['holiday', 'Holiday training'], ['other', 'Other']]
 
-async function renderPayments() {
-  const d = await need(await post('payments'))
+async function renderPayments(keep = false) {
+  // Typing in the search box redraws from what is already loaded.
+  const d = keep && P.paymentsData ? P.paymentsData : (P.paymentsData = await need(await post('payments')))
   if (!P.board) P.board = await need(await post('board'))
-  const eff = (e) => (!e ? '' : e.ok ? '<span class="j-pill j-pill-green">Airtable and emails done</span>' : `<span class="j-pill j-pill-red">${esc([...e.failed, ...e.uncertain, ...e.pending].join(', '))}</span>`)
+  const eff = (e) => (!e ? '' : e.ok ? psBadge('green', 'Airtable and emails done') : psBadge('red', [...e.failed, ...e.uncertain, ...e.pending].join(', ')))
   // A quick link with no player writes nothing to Airtable: staff are emailed.
-  const effQuick = (e) => (!e ? '' : e.ok ? '<span class="j-pill j-pill-green">Staff emailed</span>' : '<span class="j-pill j-pill-red">Staff email not sent</span>')
+  const effQuick = (e) => (!e ? '' : e.ok ? psBadge('green', 'Staff emailed') : psBadge('red', 'Staff email not sent'))
   const when = (iso) => new Date(iso).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
   const state = (q) => {
-    if (q.status === 'paid') return `<span class="j-pill j-pill-green">Paid</span><div class="muted small" style="margin-top:3px">${q.paidAt ? esc(when(q.paidAt)) : ''}</div>`
-    if (['cancelled', 'expired'].includes(q.status)) return `<span class="j-pill j-pill-grey">${esc(q.status)}</span>`
-    const pill = q.status === 'checkout' ? '<span class="j-pill j-pill-amber">Paying now</span>' : q.views ? `<span class="j-pill j-pill-amber">Opened ${q.views === 1 ? 'once' : `${q.views} times`}</span>` : q.emailedAt ? '<span class="j-pill j-pill-blue">Emailed</span>' : '<span class="j-pill j-pill-blue">Not sent yet</span>'
-    return `${pill}<div class="muted small" style="margin-top:3px">${q.emailedAt ? `Emailed ${esc(when(q.emailedAt))}` : `Made ${esc(when(q.createdAt))}`}${q.expiresAt ? ` · holds until ${esc(new Date(q.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}</div>`
+    if (q.status === 'paid') return `${psBadge('green', 'Paid')}<span class="ps-sub">${q.paidAt ? esc(when(q.paidAt)) : ''}</span>`
+    if (['cancelled', 'expired'].includes(q.status)) return psBadge('grey', q.status === 'cancelled' ? 'Cancelled' : 'Expired')
+    const pill = q.status === 'checkout' ? psBadge('orange', 'Paying now') : q.views ? psBadge('orange', `Opened ${q.views === 1 ? 'once' : `${q.views} times`}`) : q.emailedAt ? psBadge('violet', 'Emailed') : psBadge('grey', 'Not sent yet')
+    return `${pill}<span class="ps-sub">${q.emailedAt ? `Emailed ${esc(when(q.emailedAt))}` : `Made ${esc(when(q.createdAt))}`}${q.expiresAt ? ` · holds until ${esc(new Date(q.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}</span>`
   }
   const filt = { open: (q) => ['open', 'checkout'].includes(q.status), paid: (q) => q.status === 'paid', closed: (q) => ['cancelled', 'expired'].includes(q.status) }
   // Programme chips (Lee, 13 Oct 2026): every link before quick links is JFP.
   const inProg = (q) => P.linkProg === 'all' || (q.programme || 'jfp') === P.linkProg
   const shown = d.payreqs.filter(inProg)
   const counts = Object.fromEntries(Object.entries(filt).map(([k, f]) => [k, shown.filter(f).length]))
-  const list = shown.filter(filt[P.linkFilter] || filt.open)
+  const lq = (P.linkQ || '').trim().toLowerCase()
+  const hit = (q) => !lq || `${q.players.join(' ')} ${q.parentName || ''} ${q.email || ''} ${q.payerName || ''} ${q.payerEmail || ''} ${q.forText || ''} ${q.group || ''} ${q.id}`.toLowerCase().includes(lq)
+  const list = shown.filter(filt[P.linkFilter] || filt.open).filter(hit)
   const progCount = Object.fromEntries(LINK_PROGS.map(([k]) => [k, d.payreqs.filter((q) => k === 'all' || (q.programme || 'jfp') === k).length]))
   // Paid quick links for Other (and Pro sessions, until Money has its own Pro
   // view) with no player: nowhere else to look at them.
   const otherCheck = d.payreqs.filter((q) => q.quick && q.toCheck && ['other', 'pro'].includes(q.programme))
   const quickState = (q) => {
-    const pill = { paid: 'green', expired: 'grey', cancelled: 'grey', paying: 'amber', opened: 'amber', sent: 'blue', made: 'blue' }[q.quickStatus] || 'grey'
-    return `<span class="j-pill j-pill-${pill}">${esc(q.quickStatusLabel)}</span><div class="muted small" style="margin-top:3px">${q.status === 'paid' ? (q.paidAt ? esc(when(q.paidAt)) : '') : q.emailedAt ? `Emailed ${esc(when(q.emailedAt))}` : `Made ${esc(when(q.createdAt))}`}${q.views && q.status !== 'paid' ? ` · opened ${q.views === 1 ? 'once' : `${q.views} times`}` : ''}${['open', 'checkout'].includes(q.status) && q.expiresAt ? ` · works until ${esc(new Date(q.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}</div>${q.status === 'paid' && q.toCheck ? `<div class="muted small">No player: waiting on ${esc(QUICK_WHERE[q.programme])}</div>` : ''}`
+    const pill = { paid: 'green', expired: 'grey', cancelled: 'grey', paying: 'orange', opened: 'orange', sent: 'violet', made: 'grey' }[q.quickStatus] || 'grey'
+    return `${psBadge(pill, q.quickStatusLabel)}<span class="ps-sub">${q.status === 'paid' ? (q.paidAt ? esc(when(q.paidAt)) : '') : q.emailedAt ? `Emailed ${esc(when(q.emailedAt))}` : `Made ${esc(when(q.createdAt))}`}${q.views && q.status !== 'paid' ? ` · opened ${q.views === 1 ? 'once' : `${q.views} times`}` : ''}${['open', 'checkout'].includes(q.status) && q.expiresAt ? ` · works until ${esc(new Date(q.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}` : ''}</span>${q.status === 'paid' && q.toCheck ? `<span class="ps-sub">No player: waiting on ${esc(QUICK_WHERE[q.programme])}</span>` : ''}`
   }
-  const who = (q) => (q.quick && !q.players.length ? `<b>No player</b><br><span class="muted small">${esc(q.status === 'paid' ? [q.payerName, q.payerEmail].filter(Boolean).join(' · ') || 'Paid' : q.email || 'No email')}</span>` : `<b>${esc(q.players.join(', '))}</b><br><span class="muted small">${esc(q.parentName)}${q.email ? ` · ${esc(q.email)}` : ''}</span>`)
-  const forCell = (q) => (q.quick ? `${esc(q.forText)}<br><span class="muted small">${progPill(q.programme, q.programmeLabel)} Quick link${q.priceName && !q.forText.startsWith(q.priceName) ? ` · ${esc(q.priceName)}` : ''}${q.afterpay ? '' : ' · card only'}</span>` : `${esc(q.group || 'No group')}<br><span class="muted small">${esc(REASON[q.kind] || q.kind)}${q.productLabel ? ` · ${esc(q.productLabel)}` : ''}${q.trialDate ? ` · trial ${esc(q.trialDate)}` : q.startDate ? ` · from ${esc(q.startDate)}` : ''}${q.afterpay ? '' : ' · card only'}</span>`)
+  const who = (q) => (q.quick && !q.players.length ? `<b>No player</b><span class="ps-sub">${esc(q.status === 'paid' ? [q.payerName, q.payerEmail].filter(Boolean).join(' · ') || 'Paid' : q.email || 'No email')}</span>` : `<b>${esc(q.players.join(', '))}</b><span class="ps-sub">${esc(q.parentName)}${q.email ? ` · ${esc(q.email)}` : ''}</span>`)
+  const forCell = (q) => (q.quick ? `${esc(q.forText)}<span class="ps-sub">${progPill(q.programme, q.programmeLabel)} Quick link${q.priceName && !q.forText.startsWith(q.priceName) ? ` · ${esc(q.priceName)}` : ''}${q.afterpay ? '' : ' · card only'}</span>` : `${esc(q.group || 'No group')}<span class="ps-sub">${esc(REASON[q.kind] || q.kind)}${q.productLabel ? ` · ${esc(q.productLabel)}` : ''}${q.trialDate ? ` · trial ${esc(q.trialDate)}` : q.startDate ? ` · from ${esc(q.startDate)}` : ''}${q.afterpay ? '' : ' · card only'}</span>`)
   const acts = (q) => `${['open', 'checkout'].includes(q.status) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-change="${esc(q.id)}">Change amount</button> <button type="button" class="j-btn j-btn-line j-btn-sm" data-copy="${esc(q.url)}">Copy</button>${q.quick ? ` <a class="j-btn j-btn-line j-btn-sm" href="${esc(q.url)}" target="_blank" rel="noopener noreferrer">Open</a>${q.email ? ` <button type="button" class="j-btn j-btn-line j-btn-sm" data-email-quick="${esc(q.id)}">Email it</button>` : ''}` : ''} <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancel-pay="${esc(q.id)}">Cancel</button>` : ''}${q.effects && !q.effects.ok ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(q.id)}">Repair</button>` : ''}${q.stripeUrl ? ` <a class="j-btn j-btn-ghost j-btn-sm" href="${esc(q.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}`
   const attention = [...d.payreqs, ...d.bookings].filter((x) => x.needsAttention)
   const attnWord = { 'paid-after-cancel': 'Paid after it was cancelled', 'second-payment': 'Paid twice', 'late-payment': 'Paid after the hold ran out' }
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Payment links</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Make a link for any player, change the amount on an open one, or copy it to send yourself. You never need to open Stripe. Refunds are made in Stripe.</div></details></div>
-      <div class="jq-acts"><button type="button" class="j-btn j-btn-dark" id="pl-quick">Quick link</button><button type="button" class="j-btn j-btn-line" id="pl-new">+ New payment link</button></div></div>
+    ${psHead({ title: 'Payment links', count: lq ? `${list.length} of ${shown.filter(filt[P.linkFilter] || filt.open).length}` : list.length, primary: '<button type="button" class="j-btn j-btn-line" id="pl-quick">Quick link</button><button type="button" class="j-btn j-btn-dark" id="pl-new">+ New payment link</button>' }).replace('</h1>', '</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Make a link for any player, change the amount on an open one, or copy it to send yourself. You never need to open Stripe. Refunds are made in Stripe.</div></details>')}
     ${otherCheck.length ? `<div class="j-box j-box-amber" id="pl-other-check" style="margin-bottom:16px"><b>Other payments to check: ${otherCheck.length}</b><p class="small" style="margin:4px 0 6px">Quick links for Pro sessions or Other, paid with no player named. Look at who paid, then tick Checked.</p><ul class="jm-hist">${otherCheck.map((q) => `<li><span><b>${esc(q.forText)}</b><small>${esc([q.payerName, q.payerEmail].filter(Boolean).join(' · ') || 'Payer not known')} · ${q.paidAt ? esc(when(q.paidAt)) : ''} · ${esc(q.id)}</small></span><span class="jq-acts"><span class="amt">${esc(q.amountLabel)}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-check-quick="${esc(q.id)}">Checked</button></span></li>`).join('')}</ul></div>` : ''}
     ${attention.length ? `<div class="j-box j-box-red" style="margin-bottom:16px"><b>Needs checking</b>${attention.map((x) => `<div style="margin-top:8px">${esc(x.players.join(', '))} · ${esc(x.parentName)} · ${esc(String(x.needsAttention).split(', ').map((k) => attnWord[k] || k).join(', '))}${(x.unexpected || []).map((u) => ` · ${esc(u.amountLabel)}${u.stripeUrl ? ` <a href="${esc(u.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}`).join('')}</div>`).join('')}<p class="small" style="margin-top:8px">A payment that arrived after a cancel is not added to Airtable. Give the family the place (add them on the timetable) or refund in Stripe.</p></div>` : ''}
-    <div class="j-chips jq-progs" id="pl-prog" role="group" aria-label="Program" style="margin-bottom:8px">${LINK_PROGS.map(([v, l]) => `<button type="button" class="j-chip" data-prog="${v}" aria-pressed="${P.linkProg === v}">${l} ${progCount[v]}</button>`).join('')}</div>
-    <div class="jp-seg" id="pl-f" style="margin-bottom:10px">${[['open', `Open ${counts.open}`], ['paid', `Paid ${counts.paid}`], ['closed', `Cancelled or expired ${counts.closed}`]].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.linkFilter === v}">${l}</button>`).join('')}</div>
-    ${list.length ? `<div class="jp-scroll jq-links"><table class="jp-table jy-table jy-stack" id="pl-list"><thead><tr><th>Player</th><th>For</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>
-      ${list.map((q) => `<tr data-link="${esc(q.id)}"><td data-label="Player"><div class="jq-cell">${who(q)}</div></td>
-        <td data-label="For"><div class="jq-cell">${forCell(q)}</div></td>
-        <td data-label="Amount"><div class="jq-cell">${esc(q.amountLabel)}${q.feeLabel ? `<br><span class="muted small">fee ${esc(q.feeLabel)}</span>` : ''}</div></td><td data-label="Status"><div class="jq-cell">${q.quick ? quickState(q) : state(q)}${q.status === 'paid' ? `<div style="margin-top:4px">${q.quick && !(q.term4Ids || []).length ? effQuick(q.effects) : eff(q.effects)}</div>` : ''}</div></td>
-        <td class="jq-rowacts" data-label="">${acts(q)}</td></tr>`).join('')}
-    </tbody></table></div>` : '<div class="j-empty">Nothing here.</div>'}
+    <div class="ps-tools" role="search">
+      <div class="ps-seg" id="pl-f" role="group" aria-label="Status">${[['open', 'Open', counts.open], ['paid', 'Paid', counts.paid], ['closed', 'Cancelled or expired', counts.closed]].map(([v, l, n]) => `<button type="button" data-f="${v}" aria-pressed="${P.linkFilter === v}">${l} ${n}</button>`).join('')}</div>
+      ${psSearch('pl-q', 'Search player, parent, email or link…', P.linkQ || '', 'Search payment links')}
+      ${lq ? '<button type="button" class="ps-link" id="pl-clear">Clear</button>' : ''}
+    </div>
+    <div class="ps-chips" id="pl-prog" role="group" aria-label="Program">${LINK_PROGS.map(([v, l]) => `<button type="button" class="ps-chip" data-prog="${v}" aria-pressed="${P.linkProg === v}">${l} <b>${progCount[v]}</b></button>`).join('')}</div>
+    ${list.length ? `<div class="ps-table-wrap"><table class="ps-table jq-ps ps-flat" id="pl-list"><thead><tr><th>Player</th><th>For</th><th class="num">Amount</th><th>Status</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody>
+      ${list.map((q) => `<tr data-link="${esc(q.id)}"><td data-col="who">${who(q)}</td>
+        <td data-col="group">${forCell(q)}</td>
+        <td class="num" data-col="amt">${esc(q.amountLabel)}${q.feeLabel ? `<span class="ps-sub">fee ${esc(q.feeLabel)}</span>` : ''}</td><td data-col="pay">${q.quick ? quickState(q) : state(q)}${q.status === 'paid' ? `<span class="ps-sub">${q.quick && !(q.term4Ids || []).length ? effQuick(q.effects) : eff(q.effects)}</span>` : ''}</td>
+        <td class="ps-end ps-keep"><div class="jm-actions">${acts(q)}</div></td></tr>`).join('')}
+    </tbody></table></div>` : `<div class="ps-table-wrap"><div class="ps-empty">${lq ? 'No links match. <button type="button" class="ps-link" data-pl-clear>Clear search</button>' : 'Nothing here.'}</div></div>`}
     <h2 style="margin:22px 0 10px">Online bookings</h2>
-    ${d.bookings.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Players</th><th>Group</th><th>Paid</th><th>Status</th><th>Airtable and emails</th><th></th></tr></thead><tbody>
-      ${d.bookings.map((b) => `<tr><td><b>${esc(b.players.join(', ') || 'Not chosen yet')}</b><br><span class="muted small">${esc(b.parentName)} · ${esc(b.email)}</span></td><td>${esc(b.group)}</td><td>${esc(b.amountLabel)}${b.feeLabel ? `<br><span class="muted small">fee ${esc(b.feeLabel)}</span>` : ''}</td><td><span class="j-pill j-pill-${b.status === 'paid' ? 'green' : b.status === 'held' ? 'amber' : 'grey'}">${esc(b.status)}</span>${b.needsAttention ? ` <span class="j-pill j-pill-red">${esc(b.needsAttention)}</span>` : ''}</td><td>${eff(b.effects)}</td>
-        <td style="white-space:nowrap">${b.effects && !b.effects.ok ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(b.id)}">Repair</button>` : ''}${b.status === 'held' ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancel-booking="${esc(b.id)}">Release</button>` : ''}${b.stripeUrl ? ` <a class="j-btn j-btn-ghost j-btn-sm" href="${esc(b.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}</td></tr>`).join('')}
-    </tbody></table></div>` : '<div class="j-empty">No online bookings yet.</div>'}`
+    ${d.bookings.length ? `<div class="ps-table-wrap"><table class="ps-table jq-ps ps-flat"><thead><tr><th>Players</th><th>Group</th><th class="num">Paid</th><th>Status</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody>
+      ${d.bookings.map((b) => `<tr><td data-col="who"><b>${esc(b.players.join(', ') || 'Not chosen yet')}</b><span class="ps-sub">${esc(b.parentName)} · ${esc(b.email)}</span></td><td data-col="group">${esc(b.group)}</td><td class="num" data-col="amt">${esc(b.amountLabel)}${b.feeLabel ? `<span class="ps-sub">fee ${esc(b.feeLabel)}</span>` : ''}</td><td data-col="pay">${psBadge(b.status === 'paid' ? 'green' : b.status === 'held' ? 'orange' : 'grey', b.status === 'paid' ? 'Paid' : b.status === 'held' ? 'Held' : b.status)}${b.needsAttention ? `<span class="ps-sub">${psBadge('red', b.needsAttention)}</span>` : ''}${b.effects ? `<span class="ps-sub">${eff(b.effects)}</span>` : ''}</td>
+        <td class="ps-end ps-keep"><div class="jm-actions">${b.effects && !b.effects.ok ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(b.id)}">Repair</button>` : ''}${b.status === 'held' ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancel-booking="${esc(b.id)}">Release</button>` : ''}${b.stripeUrl ? ` <a class="j-btn j-btn-ghost j-btn-sm" href="${esc(b.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}</div></td></tr>`).join('')}
+    </tbody></table></div>` : '<div class="ps-table-wrap"><div class="ps-empty">No online bookings yet.</div></div>'}`
   $('pl-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { P.linkFilter = b.dataset.f; renderPayments() } })
   $('pl-prog').addEventListener('click', (e) => { const b = e.target.closest('[data-prog]'); if (b) { P.linkProg = b.dataset.prog; renderPayments() } })
+  $('pl-q').addEventListener('input', (e) => { P.linkQ = e.target.value; const at = e.target.selectionStart; renderPayments(true); const i = $('pl-q'); i.focus(); i.setSelectionRange(at, at) })
+  const plClear = () => { P.linkQ = ''; renderPayments(true) }
+  $('pl-clear')?.addEventListener('click', plClear)
+  view().querySelector('[data-pl-clear]')?.addEventListener('click', plClear)
   $('pl-new').addEventListener('click', () => newLinkModal())
   $('pl-quick').addEventListener('click', () => quickModal(quickUi()))
   view().querySelectorAll('[data-email-quick]').forEach((b) => b.addEventListener('click', async () => { const q = d.payreqs.find((x) => x.id === b.dataset.emailQuick); if (!(await confirmBox(`Email this link to <b>${esc(q.email)}</b>?`, { ok: 'Email it' }))) return; const r = await post('emailQuickLink', { id: q.id }); toast(r.ok ? `Sent to ${r.data.emailTo || q.email}` : r.data.error); renderPayments() }))
@@ -2177,7 +2227,7 @@ async function renderMoney(pre) {
     </div>
     <div class="ps-chips" id="m-chips" aria-label="Quick filters"></div>
     <div id="m-fams" ${f.view === 'family' ? '' : 'hidden'}></div>
-    <div class="ps-table-wrap" id="m-table" ${f.view === 'family' ? 'hidden' : ''}><table class="ps-table jm-ps"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th class="num" data-col="nums">Fee</th><th class="num" data-col="nums">Paid</th><th class="num">Owing</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody id="m-rows"></tbody></table></div>
+    <div class="ps-table-wrap" id="m-table" ${f.view === 'family' ? 'hidden' : ''}><table class="ps-table jm-ps ps-flat"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th class="num" data-col="nums">Fee</th><th class="num" data-col="nums">Paid</th><th class="num">Owing</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody id="m-rows"></tbody></table></div>
     <p class="muted small" id="m-count" style="margin-top:8px"></p>
     <div id="m-unmatched"></div>`
   const scope = () => moneyScope(m, f.loc)
@@ -2503,29 +2553,56 @@ document.addEventListener('click', (e) => { const b = e.target.closest('[data-no
 
 // ---------- coach view ----------
 
-async function renderCoach() {
+async function renderCoach(keep = false) {
   const admin = P.user.role === 'admin'
   if (admin && !P.coaches) P.coaches = (await need(await post('me'))).coaches
   if (admin && !P.coachId) P.coachId = P.coaches?.[0]?.id || ''
-  const d = await need(await post('coachSessions', { coachId: P.coachId }))
+  const d = keep && P.coachData?.id === P.coachId ? P.coachData.d : await need(await post('coachSessions', { coachId: P.coachId }))
+  P.coachData = { id: P.coachId, d }
+  // The Players page toolbar (Lee, 14 Oct 2026): search, Day, Venue, quick chips.
+  P.regF = { q: '', day: '', loc: '', flag: '', ...(P.regF || {}) }
+  const F = P.regF, q = F.q.trim().toLowerCase()
+  const dateOf = (s) => P.coachDate[s.id] || s.nextDate
+  const flagOf = (s, p, date) => ({ trial: Boolean(p.trial), cancelled: Boolean((s.cancelledBy?.[date] || {})[p.rowId]), unconfirmed: p.status !== 'Confirmed' })
+  const showP = (s, p) => { const date = dateOf(s); return (!p.trialDate || p.trialDate === date) && (!q || `${p.name} ${p.coach || ''}`.toLowerCase().includes(q)) && (!F.flag || flagOf(s, p, date)[F.flag]) }
+  const sessions = d.sessions.filter((s) => (!F.day || s.day === F.day) && (!F.loc || s.location === F.loc) && (!q && !F.flag || s.players.some((p) => showP(s, p))))
+  const active = ['q', 'day', 'loc', 'flag'].filter((k) => F[k]).length
+  const flagCount = (k) => d.sessions.reduce((t, s) => t + s.players.filter((p) => { const date = dateOf(s); return (!p.trialDate || p.trialDate === date) && flagOf(s, p, date)[k] }).length, 0)
+  const days = DAYS.filter((x) => d.sessions.some((s) => s.day === x)).map((x) => ({ id: x, label: x }))
+  const locs = [...new Set(d.sessions.map((s) => s.location))].sort().map((x) => ({ id: x, label: x }))
   const hrs = (min) => `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}m` : ''}`
   view().innerHTML = `
-    <div class="jp-head"><div style="display:flex;gap:12px;align-items:center">${avatar(d.coachPhoto, d.coach, 48)}<div><h1>${admin ? `Coach ${esc(d.coach)}` : 'My sessions'}</h1><p class="muted small">${esc(d.term)} · ${d.sessions.length} session${d.sessions.length === 1 ? '' : 's'} a week · ${hrs(d.hours.perWeekMinutes)} a week, ${hrs(d.hours.termMinutes)} across the term</p></div></div>
-      ${admin ? `<div class="jp-seg" id="c-pick">${P.coaches.map((c) => `<button type="button" data-c="${esc(c.id)}" aria-pressed="${P.coachId === c.id}">${esc(c.name)}</button>`).join('')}</div>` : ''}</div>
+    <div class="jp-head"><div style="display:flex;gap:12px;align-items:center">${avatar(d.coachPhoto, d.coach, 40)}<div><h1>${admin ? `Coach ${esc(d.coach)}` : 'My sessions'}</h1><p class="muted small">${esc(d.term)} · ${d.sessions.length} session${d.sessions.length === 1 ? '' : 's'} a week · ${hrs(d.hours.perWeekMinutes)} a week, ${hrs(d.hours.termMinutes)} across the term</p></div></div>
+    </div>
+    <div class="ps-tools" role="search">
+      ${admin ? psSelect('c-pick', P.coaches.map((c) => ({ id: c.id, label: `Coach ${c.name}` })), P.coachId, 'Coach').replace(/<option value="">[^<]*<\/option>/, '') : ''}
+      ${psSearch('c-q', 'Search players…', F.q, 'Search players in these sessions')}
+      ${days.length > 1 ? psSelect('c-day', days, F.day, 'Day') : ''}
+      ${locs.length > 1 ? psSelect('c-loc', locs, F.loc, 'Venue') : ''}
+      ${psToolsMore('c', { hasMore: false, active })}
+    </div>
+    ${psChips([['trial', 'Trials', 'violet'], ['cancelled', 'Cancelled by parent', 'orange'], ['unconfirmed', 'Not confirmed', 'grey']].map(([v, l, c]) => ({ key: 'flag', value: v, label: l, color: c, count: flagCount(v) })), (k, v) => F[k] === v)}
     
     ${trialCards(d.trials || [])}
-    ${d.sessions.length ? d.sessions.map((s) => {
+    ${sessions.length ? sessions.map((s) => {
       const date = P.coachDate[s.id] || s.nextDate
       return `<article class="j-card" style="padding:16px;margin-bottom:12px" data-sess="${esc(s.id)}">
         ${s.covering ? `<div class="j-box j-box-blue small" style="margin-bottom:8px"><b>Covering for ${esc(s.covering.for)}</b> on ${esc(s.covering.dateLabel)}</div>` : ''}
         ${(s.coveredBy || []).length ? `<div class="j-box j-box-grey small" style="margin-bottom:8px">${s.coveredBy.map((c) => `${esc(c.dateLabel)}: covered by <b>${esc(c.coach)}</b>`).join('<br>')}</div>` : ''}
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
           <select class="j-select" style="width:auto" data-date="${esc(s.id)}">${s.dates.map((x) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select></div>
-        <div style="margin-top:10px">${s.players.filter((p) => !p.trialDate || p.trialDate === date).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
+        <div style="margin-top:10px">${s.players.filter((p) => showP(s, p)).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
           <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Present'}">Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Absent'}">Away</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
       </article>`
-    }).join('') : '<div class="j-empty">No sessions yet.</div>'}`
-  $('c-pick')?.addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (b) { P.coachId = b.dataset.c; renderCoach() } })
+    }).join('') : `<div class="ps-table-wrap"><div class="ps-empty">${active ? 'No sessions match. <button type="button" class="ps-link" data-c-clear>Clear filters</button>' : 'No sessions yet.'}</div></div>`}`
+  $('c-pick')?.addEventListener('change', (e) => { P.coachId = e.target.value; renderCoach() })
+  const redraw = () => renderCoach(true)
+  $('c-q').addEventListener('input', (e) => { F.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('c-q'); i.focus(); i.setSelectionRange(at, at) })
+  for (const [id, k] of [['c-day', 'day'], ['c-loc', 'loc']]) $(id)?.addEventListener('change', (e) => { F[k] = e.target.value; redraw() })
+  view().querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => { const [k, v] = b.dataset.chip.split(':'); F[k] = F[k] === v ? '' : v; redraw() }))
+  const clear = () => { Object.assign(F, { q: '', day: '', loc: '', flag: '' }); redraw() }
+  $('c-clear')?.addEventListener('click', clear)
+  view().querySelector('[data-c-clear]')?.addEventListener('click', clear)
   view().querySelectorAll('[data-trial-fb]').forEach((b) => b.addEventListener('click', () => trialFeedbackModal((d.trials || []).find((t) => t.rowId === b.dataset.trialFb), d.verdicts)))
   view().querySelectorAll('[data-date]').forEach((sel) => sel.addEventListener('change', () => { P.coachDate[sel.dataset.date] = sel.value; loadAttendance(sel.dataset.date, sel.value) }))
   view().querySelectorAll('[data-att]').forEach((b) => b.addEventListener('click', async () => {
@@ -2536,8 +2613,11 @@ async function renderCoach() {
     const status = on ? '' : b.dataset.att
     card.querySelectorAll(`[data-row="${CSS.escape(b.dataset.row)}"][data-att]`).forEach((x) => x.setAttribute('aria-pressed', String(x === b && !on)))
     const r = await post('markAttendance', { groupId: gid, date, rowId: b.dataset.row, status })
-    if (!r.ok) { toast(r.data.error || 'Could not save'); renderCoach() }
-    else if (r.data.airtable === 'failed') toast('Saved here. Airtable attendance did not update; it will not affect the session.')
+    if (!r.ok) { toast(r.data.error || 'Could not save'); return renderCoach() }
+    // Keep the loaded copy in step, so a search or filter redraw shows the tick.
+    const sess = d.sessions.find((x) => x.id === gid)
+    if (sess && date === (P.coachDate[gid] || sess.nextDate)) { if (status) sess.attendance[b.dataset.row] = status; else delete sess.attendance[b.dataset.row] }
+    if (r.data.airtable === 'failed') toast('Saved here. Airtable attendance did not update; it will not affect the session.')
   }))
 }
 
@@ -2603,50 +2683,84 @@ function cancelBanner() {
   view().prepend(box)
 }
 
-async function renderCancellations() {
+async function renderCancellations(keep = false) {
   if (P.cxNew?.count) { P.cxNew = { count: 0, latest: [] }; renderNav() }
   const admin = P.user.role === 'admin'
   const when = P.cxWhen || 'upcoming'
-  const d = await need(await post('cancellations', { when }))
+  const d = keep && P.cxData?.when === when ? P.cxData.d : await need(await post('cancellations', { when }))
+  P.cxData = { when, d }
+  P.cxF = { q: '', coach: '', notice: '', ...(P.cxF || {}) }
+  const F = P.cxF, q = F.q.trim().toLowerCase()
   const sum = d.summary
-  const noticePill = (c) => `<span class="j-pill j-pill-${c.noticeLevel === 'very-late' ? 'red' : c.noticeLevel === 'late' ? 'amber' : 'green'}">${esc(c.noticeLabel)}</span>`
+  const noticePill = (c) => psBadge(c.noticeLevel === 'very-late' ? 'red' : c.noticeLevel === 'late' ? 'orange' : 'green', c.noticeLabel)
   const submitted = (iso) => new Date(iso).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+  const noticeOf = (c) => (c.status === 'withdrawn' ? 'withdrawn' : c.noticeLevel === 'very-late' ? 'very-late' : c.noticeLevel === 'late' ? 'late' : 'ok')
+  const rows = d.cancellations.filter((c) => (!F.coach || c.coaches.includes(F.coach)) && (!F.notice || noticeOf(c) === F.notice)
+    && (!q || `${c.player} ${c.parentName || ''} ${c.email || ''} ${c.group} ${c.location} ${c.reason} ${c.note || ''}`.toLowerCase().includes(q)))
+  const active = ['q', 'coach', 'notice'].filter((k) => F[k]).length
+  const coaches = [...new Set(d.cancellations.flatMap((c) => c.coaches))].sort().map((x) => ({ id: x, label: x.replace(/^Coach /, '') }))
+  const NOTICE = [['very-late', 'Under 2 hours', 'red'], ['late', 'Under 24 hours', 'orange'], ['ok', 'Good notice', 'green'], ['withdrawn', 'Withdrawn', 'grey']]
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Cancellations</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">${admin ? 'Every time a family tells us a player cannot make a session. The place stays held; this is only the heads up.' : 'Families who have told us a player in your groups cannot make a session. Newest first.'}</div></details></div></div>
-    <div class="jp-kpis"><div class="jp-kpi"><span>Cancellations</span><b>${sum.total}</b></div><div class="jp-kpi"><span>Under 24 h notice</span><b>${sum.under24}</b></div><div class="jp-kpi"><span>Under 2 h notice</span><b>${sum.under2}</b></div><div class="jp-kpi"><span>Average notice</span><b>${sum.total ? `${sum.averageHours} h` : 'None yet'}</b></div><div class="jp-kpi"><span>Median notice</span><b>${sum.total ? `${sum.medianHours} h` : 'None yet'}</b></div></div>
-    <div class="jp-seg" id="cx-f" style="margin:14px 0 10px">${[['upcoming', `Upcoming ${d.counts.upcoming}`], ['past', `Past ${d.counts.past}`], ['all', `All ${d.counts.all}`]].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${when === v}">${l}</button>`).join('')}</div>
-    ${d.cancellations.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Session</th><th>Coach</th><th>Reason</th><th>Notice</th><th>Sent</th></tr></thead><tbody>
-      ${d.cancellations.map((c) => `<tr><td><b>${esc(c.player)}</b>${c.status === 'withdrawn' ? ' <span class="j-pill j-pill-grey">Withdrawn</span>' : ''}${admin && c.parentName ? `<br><span class="muted small">${esc(c.parentName)} · ${esc(c.email)}</span>` : ''}</td>
-        <td><b>${esc(c.dateLabel)}</b><br><span class="muted small">${esc(c.group)} · ${esc(c.location)}</span></td>
-        <td>${c.coaches.length ? esc(c.coaches.map((x) => x.replace(/^Coach /, '')).join(', ')) : '<span class="muted">None</span>'}</td>
-        <td>${esc(c.reason)}${c.note ? `<br><span class="muted small">${esc(c.note)}</span>` : ''}</td>
-        <td>${c.status === 'withdrawn' ? '<span class="muted">Withdrawn</span>' : noticePill(c)}${admin && c.notFullySent?.length ? `<br><span class="j-pill j-pill-red" title="These emails did not go">Not sent: ${esc(c.notFullySent.join(', '))}</span>` : ''}</td>
-        <td class="muted small">${esc(submitted(c.submittedAt))}</td></tr>`).join('')}
-    </tbody></table></div>` : `<div class="j-empty">${when === 'upcoming' ? 'No upcoming cancellations.' : when === 'past' ? 'No past cancellations.' : 'No cancellations yet.'}</div>`}`
+    ${psHead({ title: 'Cancellations', count: active ? `${rows.length} of ${d.cancellations.length}` : d.cancellations.length }).replace('</h1>', `</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">${admin ? 'Every time a family tells us a player cannot make a session. The place stays held; this is only the heads up.' : 'Families who have told us a player in your groups cannot make a session. Newest first.'}</div></details>`)}
+    <div class="jp-kpis" style="margin-bottom:14px"><div class="jp-kpi"><span>Cancellations</span><b>${sum.total}</b></div><div class="jp-kpi"><span>Under 24 h notice</span><b>${sum.under24}</b></div><div class="jp-kpi"><span>Under 2 h notice</span><b>${sum.under2}</b></div><div class="jp-kpi"><span>Average notice</span><b>${sum.total ? `${sum.averageHours} h` : 'None yet'}</b></div><div class="jp-kpi"><span>Median notice</span><b>${sum.total ? `${sum.medianHours} h` : 'None yet'}</b></div></div>
+    <div class="ps-tools" role="search">
+      <div class="ps-seg" id="cx-f" role="group" aria-label="When">${[['upcoming', `Upcoming ${d.counts.upcoming}`], ['past', `Past ${d.counts.past}`], ['all', `All ${d.counts.all}`]].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${when === v}">${l}</button>`).join('')}</div>
+      ${psSearch('cx-q', admin ? 'Search player, parent, session or reason…' : 'Search player, session or reason…', F.q, 'Search cancellations')}
+      ${coaches.length > 1 ? psSelect('cx-coach', coaches, F.coach, 'Coach') : ''}
+      ${psSelect('cx-notice', NOTICE.map(([id, label]) => ({ id, label })), F.notice, 'Notice')}
+      ${psToolsMore('cx', { hasMore: false, active })}
+    </div>
+    ${psChips(NOTICE.map(([v, l, c]) => ({ key: 'notice', value: v, label: l, color: c, count: d.cancellations.filter((x) => noticeOf(x) === v).length })), (k, v) => F[k] === v)}
+    <div class="ps-table-wrap"><table class="ps-table cx-ps ps-flat"><thead><tr><th>Player</th><th>Session</th><th>Notice</th><th data-col="football">Reason</th><th data-col="football">Sent</th></tr></thead><tbody>
+      ${rows.map((c) => `<tr style="cursor:default"><td data-col="who"><b>${esc(c.player)}</b>${admin && c.parentName ? `<span class="ps-sub">${esc(c.parentName)} · ${esc(c.email)}</span>` : ''}</td>
+        <td data-col="group"><b>${esc(c.dateLabel)}</b><span class="ps-sub">${esc(c.group)} · ${esc(c.location)}${c.coaches.length ? ` · ${esc(c.coaches.map((x) => x.replace(/^Coach /, '')).join(', '))}` : ''}</span><span class="ps-sub cx-why">${esc(c.reason)}${c.note ? `: ${esc(c.note)}` : ''}</span></td>
+        <td data-col="pay">${c.status === 'withdrawn' ? psBadge('grey', 'Withdrawn') : noticePill(c)}${admin && c.notFullySent?.length ? `<span class="ps-sub">${psBadge('red', `Not sent: ${c.notFullySent.join(', ')}`)}</span>` : ''}</td>
+        <td data-col="football">${esc(c.reason)}${c.note ? `<span class="ps-sub">${esc(c.note)}</span>` : ''}</td>
+        <td data-col="football" class="small muted">${esc(submitted(c.submittedAt))}</td></tr>`).join('') || `<tr><td colspan="5"><div class="ps-empty">${active ? 'No cancellations match. <button type="button" class="ps-link" data-cx-clear>Clear filters</button>' : when === 'upcoming' ? 'No upcoming cancellations.' : when === 'past' ? 'No past cancellations.' : 'No cancellations yet.'}</div></td></tr>`}
+    </tbody></table></div>`
+  const redraw = () => renderCancellations(true)
   $('cx-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { P.cxWhen = b.dataset.f; renderCancellations() } })
+  $('cx-q').addEventListener('input', (e) => { F.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('cx-q'); i.focus(); i.setSelectionRange(at, at) })
+  for (const [id, k] of [['cx-coach', 'coach'], ['cx-notice', 'notice']]) $(id)?.addEventListener('change', (e) => { F[k] = e.target.value; redraw() })
+  view().querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => { const [k, v] = b.dataset.chip.split(':'); F[k] = F[k] === v ? '' : v; redraw() }))
+  const clear = () => { Object.assign(F, { q: '', coach: '', notice: '' }); redraw() }
+  $('cx-clear')?.addEventListener('click', clear)
+  view().querySelector('[data-cx-clear]')?.addEventListener('click', clear)
 }
 
 // ---------- current families: invite to their account ----------
 
 const FM = { mode: 'account' }
-async function renderFamilies() {
-  const d = await need(await post('familyInvites'))
+async function renderFamilies(keep = false) {
+  const d = keep && P.fmData ? P.fmData : (P.fmData = await need(await post('familyInvites')))
   const acct = FM.mode === 'account'
   const kind = { pay: ['amber', 'To pay'], paid: ['green', 'Paid'], noPrice: ['red', 'Needs a price first'] }
   const signed = d.list.filter((f) => f.signedInAt).length
   const when = (iso) => new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
   const canTick = (f) => (acct ? !f.signedInAt : f.kind !== 'noPrice')
   const done = (f) => (acct ? f.accountInvitedAt : f.invitedAt)
+  P.fmF = { q: '', signed: '', sent: '', pay: '', ...(P.fmF || {}) }
+  const F = P.fmF, q = F.q.trim().toLowerCase()
+  const list = d.list.filter((f) => (!F.signed || (F.signed === 'yes' ? f.signedInAt : !f.signedInAt)) && (!F.sent || (F.sent === 'yes' ? done(f) : !done(f)))
+    && (acct || !F.pay || f.kind === F.pay) && (!q || `${f.parent || ''} ${f.email} ${(f.players || []).map((x) => x.name || x).join(' ')}`.toLowerCase().includes(q)))
+  const active = ['q', 'signed', 'sent', ...(acct ? [] : ['pay'])].filter((k) => F[k]).length
   view().innerHTML = `<div class="jp-head"><div><h1>Account invites</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Every Term 4 family, grouped under the parent's email. Their account already exists: they only need to sign in once with that email.</div></details></div></div>
     <div class="jp-seg" id="fm-mode" style="margin-bottom:12px"><button type="button" data-m="account" aria-pressed="${acct}">Sign-in invite, no money (everyone)</button><button type="button" data-m="pay" aria-pressed="${!acct}">With a payment link (families who owe)</button></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-      <span class="j-pill j-pill-grey">${d.list.length} families</span>
-      <span class="j-pill j-pill-green">${signed} signed in</span>
-      <span class="j-pill j-pill-amber">${d.list.length - signed} not signed in yet</span>
-      <span class="j-pill j-pill-grey">${d.list.filter(done).length} already sent this invite</span>
-      ${acct ? '' : `<span class="j-pill j-pill-red">${d.list.filter((f) => f.kind === 'noPrice').length} need a price</span>`}
-      ${d.noEmail.length ? `<span class="j-pill j-pill-red">${d.noEmail.length} players with no email</span>` : ''}
+    <div class="ps-tools" role="search">
+      ${psSearch('fm-q', 'Search parent, email or player…', F.q, 'Search families')}
+      ${psSelect('fm-signed', [{ id: 'yes', label: 'Signed in' }, { id: 'no', label: 'Not signed in yet' }], F.signed, 'Signed in?')}
+      ${psSelect('fm-sent', [{ id: 'yes', label: 'Already sent this invite' }, { id: 'no', label: 'Not sent yet' }], F.sent, 'Invite sent?')}
+      ${acct ? '' : psSelect('fm-pay', Object.entries(kind).map(([id, [, label]]) => ({ id, label })), F.pay, 'Payment')}
+      ${psToolsMore('fm', { hasMore: false, active })}
+      <span class="ps-meta">${active ? `${list.length} of ` : ''}${d.list.length} families</span>
     </div>
+    ${psChips([
+      { key: 'signed', value: 'yes', label: 'Signed in', count: signed, color: 'green' },
+      { key: 'signed', value: 'no', label: 'Not signed in yet', count: d.list.length - signed, color: 'orange' },
+      { key: 'sent', value: 'yes', label: 'Already sent', count: d.list.filter(done).length, color: 'grey' },
+      ...(acct ? [] : [{ key: 'pay', value: 'noPrice', label: 'Need a price', count: d.list.filter((f) => f.kind === 'noPrice').length, color: 'red' }]),
+    ], (k, v) => F[k] === v)}
+    ${d.noEmail.length ? `<p class="ps-sub-line">${psBadge('red', `${d.noEmail.length} players with no email`)}</p>` : ''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button type="button" class="j-btn j-btn-line" id="fm-back">Back to players</button>
       <button type="button" class="j-btn j-btn-line" id="fm-prev">Show the email</button>
@@ -2655,12 +2769,17 @@ async function renderFamilies() {
     <div id="fm-result" role="status"></div>
     <div id="fm-preview" hidden></div>
     <div class="jp-scroll"><table class="jp-table"><thead><tr><th><input type="checkbox" id="fm-all" aria-label="Select all"></th><th>Parent</th><th>Players</th><th>Signed in</th><th>${acct ? 'Invite sent' : 'Payment'}</th></tr></thead><tbody>
-    ${d.list.map((f) => `<tr><td><input type="checkbox" data-fm="${esc(f.email)}" ${canTick(f) ? '' : 'disabled'}></td><td><b>${f.self ? 'The player' : esc(f.parent || 'No parent name')}</b>${f.self ? ' <span class="j-pill j-pill-grey">Own contact</span>' : ''}<br><span class="muted small">${esc(f.email)}</span></td><td class="small">${f.players.map((x) => `${esc(x.name)} <span class="muted">${esc(x.group || '')}</span>`).join('<br>')}</td>
+    ${list.map((f) => `<tr><td><input type="checkbox" data-fm="${esc(f.email)}" ${canTick(f) ? '' : 'disabled'}></td><td><b>${f.self ? 'The player' : esc(f.parent || 'No parent name')}</b>${f.self ? ' <span class="j-pill j-pill-grey">Own contact</span>' : ''}<br><span class="muted small">${esc(f.email)}</span></td><td class="small">${f.players.map((x) => `${esc(x.name)} <span class="muted">${esc(x.group || '')}</span>`).join('<br>')}</td>
       <td>${f.signedInAt ? `<span class="j-pill j-pill-green">Yes, ${esc(when(f.signedInAt))}</span>` : '<span class="j-pill j-pill-amber">Not yet</span>'}</td>
       <td class="small">${acct ? (f.accountInvitedAt ? esc(when(f.accountInvitedAt)) : '<span class="muted">Not sent</span>') : `<span class="j-pill j-pill-${kind[f.kind][0]}">${kind[f.kind][1]}${f.kind === 'pay' ? ` ${esc(money(f.owingCents))}` : ''}</span>${f.invitedAt ? `<br><span class="muted">Sent ${esc(when(f.invitedAt))}</span>` : ''}`}</td></tr>`).join('')}
     </tbody></table></div>
     ${d.noEmail.length ? `<p class="muted small" style="margin-top:8px">No parent email in Airtable, so no invite: ${esc(d.noEmail.map((x) => x.name).join(', '))}.</p>` : ''}`
   $('fm-back').addEventListener('click', () => renderPlayers())
+  const fmRedraw = () => renderFamilies(true)
+  $('fm-q').addEventListener('input', (e) => { F.q = e.target.value; const at = e.target.selectionStart; fmRedraw(); const i = $('fm-q'); i.focus(); i.setSelectionRange(at, at) })
+  for (const [id, k] of [['fm-signed', 'signed'], ['fm-sent', 'sent'], ['fm-pay', 'pay']]) $(id)?.addEventListener('change', (e) => { F[k] = e.target.value; fmRedraw() })
+  view().querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => { const [k, v] = b.dataset.chip.split(':'); F[k] = F[k] === v ? '' : v; fmRedraw() }))
+  $('fm-clear')?.addEventListener('click', () => { Object.assign(F, { q: '', signed: '', sent: '', pay: '' }); fmRedraw() })
   view().querySelectorAll('#fm-mode [data-m]').forEach((b) => b.addEventListener('click', () => { FM.mode = b.dataset.m; renderFamilies() }))
   const boxes = () => [...view().querySelectorAll('[data-fm]')]
   $('fm-all').addEventListener('change', (e) => boxes().forEach((b) => { if (!b.disabled) b.checked = e.target.checked && !done(d.list.find((f) => f.email === b.dataset.fm) || {}) }))
@@ -3387,25 +3506,44 @@ async function renderCoaches() {
 
 // ---------- removed, audit, settings ----------
 
-async function renderRemoved() {
-  const d = await need(await post('removed'))
+async function renderRemoved(keep = false) {
+  const d = keep && P.removedData ? P.removedData : (P.removedData = await need(await post('removed')))
   const live = d.players.filter((p) => !p.restored)
+  P.rmF = { q: '', reason: '', show: '', ...(P.rmF || {}) }
+  const F = P.rmF, q = F.q.trim().toLowerCase()
   const tally = {}
   for (const p of live) { const k = p.reason || 'No reason recorded'; tally[k] = (tally[k] || 0) + 1 }
   const when = (iso) => (iso ? new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
-  view().innerHTML = `<div class="jp-head"><div><h1>Removed players</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Everyone who has left ${esc(live[0]?.term || 'this term')}, and why. Tap a name for the full detail. Kept in Airtable under "Players dropped from term 4".</div></details></div></div>
-    ${Object.keys(tally).length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${Object.entries(tally).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<span class="j-pill j-pill-grey">${esc(k)} · ${v}</span>`).join('')}</div>` : ''}
-    ${d.players.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Was in</th><th>Why they left</th><th>Removed</th><th>Payment</th><th></th></tr></thead><tbody>
-      ${d.players.map((p, i) => `<tr${p.restored ? ' style="opacity:.55"' : ''}><td><button type="button" class="j-btn j-btn-ghost j-btn-sm" style="padding:0;font-weight:700" data-rm-open="${i}">${esc(p.name)}</button><br><span class="muted small">${esc(p.parent)}${p.email ? ` · ${esc(p.email)}` : ''}</span></td><td>${esc(p.session)}${p.coach ? `<br><span class="muted small">${esc(p.coach)}</span>` : ''}</td><td><b>${esc(p.reason || 'Not recorded')}</b>${p.details ? `<br><span class="muted small">${esc(p.details.slice(0, 90))}${p.details.length > 90 ? '…' : ''}</span>` : ''}</td><td class="small">${esc(when(p.removedAt))}${p.removedBy ? `<br><span class="muted">${esc(p.removedBy)}</span>` : ''}</td><td>${payPill(p)}</td><td>${p.restored ? '<span class="j-pill j-pill-green">Restored</span>' : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-restore="${i}">Restore</button>`}</td></tr>`).join('')}
-    </tbody></table></div>` : '<div class="j-empty">Nobody removed.</div>'}`
+  const rows = d.players.map((p, i) => ({ p, i })).filter(({ p }) => (!F.reason || (p.reason || 'No reason recorded') === F.reason)
+    && (!F.show || (F.show === 'restored' ? p.restored : !p.restored))
+    && (!q || `${p.name} ${p.parent} ${p.email} ${p.session} ${p.coach} ${p.details}`.toLowerCase().includes(q)))
+  const active = ['q', 'reason', 'show'].filter((k) => F[k]).length
+  const reasons = Object.keys(tally).sort().map((k) => ({ id: k, label: k }))
+  view().innerHTML = `${psHead({ title: 'Removed players', count: active ? `${rows.length} of ${d.players.length}` : d.players.length }).replace('</h1>', `</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Everyone who has left ${esc(live[0]?.term || 'this term')}, and why. Tap a name for the full detail. Kept in Airtable under "Players dropped from term 4".</div></details>`)}
+    <div class="ps-tools" role="search">
+      ${psSearch('rm-q', 'Search player, parent, email or session…', F.q, 'Search removed players')}
+      ${psSelect('rm-reason', reasons, F.reason, 'Reason')}
+      ${psSelect('rm-show', [{ id: 'left', label: 'Still left' }, { id: 'restored', label: 'Restored' }], F.show, 'Restored?')}
+      ${psToolsMore('rm', { hasMore: false, active })}
+    </div>
+    ${psChips(Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([k, v]) => ({ key: 'reason', value: k, label: k, count: v, color: 'grey' })), (k, v) => F[k] === v)}
+    <div class="ps-table-wrap"><table class="ps-table ps-flat"><thead><tr><th>Player</th><th>Was in</th><th>Why they left</th><th data-col="football">Removed</th><th class="ps-end"><span class="sr-only">Restore</span></th></tr></thead><tbody>
+      ${rows.map(({ p, i }) => `<tr data-rm-open="${i}" tabindex="0" aria-label="${esc(p.name)}, details"${p.restored ? ' style="opacity:.6"' : ''}><td data-col="who"><b>${esc(p.name)}</b><span class="ps-sub">${esc(p.parent)}${p.email ? ` · ${esc(p.email)}` : ''}</span></td><td data-col="group">${esc(p.session || 'No session')}${p.coach ? `<span class="ps-sub">${esc(p.coach)}</span>` : ''}</td><td data-col="pay">${psBadge(p.restored ? 'green' : 'grey', p.restored ? 'Restored' : p.reason || 'Not recorded')}${p.details ? `<span class="ps-sub">${esc(p.details.slice(0, 90))}${p.details.length > 90 ? '…' : ''}</span>` : ''}</td><td data-col="football" class="small">${esc(when(p.removedAt))}${p.removedBy ? `<span class="ps-sub">${esc(p.removedBy)}</span>` : ''}<span class="ps-sub">${payPill(p)}</span></td><td class="ps-end ps-keep">${p.restored ? '' : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-restore="${i}">Restore</button>`}</td></tr>`).join('') || `<tr><td colspan="5"><div class="ps-empty">${d.players.length ? 'No one matches. <button type="button" class="ps-link" data-rm-clear>Clear filters</button>' : 'Nobody removed.'}</div></td></tr>`}
+    </tbody></table></div>`
+  const redraw = () => renderRemoved(true)
+  $('rm-q').addEventListener('input', (e) => { F.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('rm-q'); i.focus(); i.setSelectionRange(at, at) })
+  for (const [id, k] of [['rm-reason', 'reason'], ['rm-show', 'show']]) $(id).addEventListener('change', (e) => { F[k] = e.target.value; redraw() })
+  view().querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => { const [k, ...v] = b.dataset.chip.split(':'); const val = v.join(':'); F[k] = F[k] === val ? '' : val; redraw() }))
+  const clear = () => { Object.assign(F, { q: '', reason: '', show: '' }); redraw() }
+  $('rm-clear')?.addEventListener('click', clear)
+  view().querySelector('[data-rm-clear]')?.addEventListener('click', clear)
   const restore = async (p) => {
     if (!(await confirmBox(`Put ${esc(p.name)} back in ${esc(p.session || 'their group')} as Confirmed?`))) return
     const r = await post('restorePlayer', { droppedId: p.droppedId, rowId: p.rowId })
     toast(r.ok ? 'Restored to Term 4. Airtable updated.' : r.data.error); P.board = null; PL.at = 0; renderRemoved()
   }
-  view().querySelectorAll('[data-restore]').forEach((b) => b.addEventListener('click', () => restore(d.players[Number(b.dataset.restore)])))
-  view().querySelectorAll('[data-rm-open]').forEach((b) => b.addEventListener('click', () => {
-    const p = d.players[Number(b.dataset.rmOpen)]
+  view().querySelectorAll('[data-restore]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); restore(d.players[Number(b.dataset.restore)]) }))
+  const openRm = (p) => {
     const box = modal(`<h2 style="margin-bottom:4px">${esc(p.name)}</h2><p class="muted small" style="margin-bottom:12px">Left ${esc(p.term)}${p.removedAt ? ` on ${esc(when(p.removedAt))}` : ''}${p.removedBy ? `, removed by ${esc(p.removedBy)}` : ''}</p>
       <div class="j-box j-box-grey" style="margin-bottom:12px"><b>${esc(p.reason || 'No reason recorded')}</b>${p.details ? `<br>${esc(p.details)}` : ''}</div>
       <dl class="j-kv">
@@ -3418,19 +3556,46 @@ async function renderRemoved() {
       </dl>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button>${p.restored ? '' : '<button type="button" class="j-btn j-btn-dark" id="rm-restore">Restore to Term 4</button>'}</div>`, { wide: true })
     box.querySelector('#rm-restore')?.addEventListener('click', () => { closeModal(); restore(p) })
-  }))
+  }
+  view().querySelectorAll('tr[data-rm-open]').forEach((tr) => {
+    const p = d.players[Number(tr.dataset.rmOpen)]
+    tr.addEventListener('click', () => openRm(p))
+    tr.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === tr) { e.preventDefault(); openRm(p) } })
+  })
 }
 
-async function renderAudit() {
-  const d = await need(await post('audit'))
+// Audit actions in plain words for the filter (anything else shows as it is).
+const AUDIT_WORDS = { player: 'Players', payment: 'Payments', payreq: 'Payment links', group: 'Groups', message: 'Messages', settings: 'Settings', cancel: 'Cancellations', holiday: 'Holiday training', request: 'Requests', coach: 'Coaches' }
+async function renderAudit(keep = false) {
+  const d = keep && P.auditData ? P.auditData : (P.auditData = await need(await post('audit')))
+  P.auF = { q: '', by: '', kind: '', ...(P.auF || {}) }
+  const F = P.auF, q = F.q.trim().toLowerCase()
   const summary = (e) => {
     const a = e.after || {}
     return esc([a.name, a.group && `to ${a.group}`, a.payment && `payment ${a.payment}`, a.cents && money(a.cents), a.emailed && 'emailed', a.changed != null && `${a.changed} changed`].filter(Boolean).join(' · '))
   }
-  view().innerHTML = `<div class="jp-head"><div><h1>Audit log</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Every change made in the portal and by families: who, what and when. Newest first.</div></details></div></div>
-    ${d.entries.length ? `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Record</th><th>Detail</th></tr></thead><tbody>
-      ${d.entries.map((e) => `<tr><td style="white-space:nowrap">${esc(new Date(e.at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</td><td>${esc(e.by)}</td><td>${esc(e.action)}</td><td class="small">${esc(e.target)}</td><td class="small">${summary(e)}</td></tr>`).join('')}
-    </tbody></table></div>` : '<div class="j-empty">No changes yet.</div>'}`
+  const kindOf = (e) => String(e.action || '').split('.')[0]
+  const rows = d.entries.filter((e) => (!F.by || e.by === F.by) && (!F.kind || kindOf(e) === F.kind)
+    && (!q || `${e.by} ${e.action} ${e.target} ${JSON.stringify(e.after || {})}`.toLowerCase().includes(q)))
+  const active = ['q', 'by', 'kind'].filter((k) => F[k]).length
+  const people = [...new Set(d.entries.map((e) => e.by).filter(Boolean))].sort().map((x) => ({ id: x, label: x }))
+  const kinds = [...new Set(d.entries.map(kindOf).filter(Boolean))].sort().map((x) => ({ id: x, label: AUDIT_WORDS[x] || x }))
+  view().innerHTML = `${psHead({ title: 'Audit log', count: active ? `${rows.length} of ${d.entries.length}` : d.entries.length }).replace('</h1>', '</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Every change made in the portal and by families: who, what and when. Newest first.</div></details>')}
+    <div class="ps-tools" role="search">
+      ${psSearch('au-q', 'Search name, record or change…', F.q, 'Search the audit log')}
+      ${psSelect('au-kind', kinds, F.kind, 'What')}
+      ${psSelect('au-by', people, F.by, 'Who')}
+      ${psToolsMore('au', { hasMore: false, active })}
+    </div>
+    <div class="ps-table-wrap"><table class="ps-table au-ps ps-flat"><thead><tr><th>What</th><th>Who</th><th>When</th><th data-col="football">Record</th></tr></thead><tbody>
+      ${rows.map((e) => `<tr style="cursor:default"><td data-col="who"><b>${esc(e.action)}</b>${summary(e) ? `<span class="ps-sub">${summary(e)}</span>` : ''}</td><td data-col="group">${esc(e.by)}</td><td data-col="pay" class="small" style="white-space:nowrap">${esc(new Date(e.at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</td><td data-col="football" class="small">${esc(e.target)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="ps-empty">${d.entries.length ? 'No changes match. <button type="button" class="ps-link" data-au-clear>Clear filters</button>' : 'No changes yet.'}</div></td></tr>`}
+    </tbody></table></div>`
+  const redraw = () => renderAudit(true)
+  $('au-q').addEventListener('input', (e) => { F.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('au-q'); i.focus(); i.setSelectionRange(at, at) })
+  for (const [id, k] of [['au-kind', 'kind'], ['au-by', 'by']]) $(id).addEventListener('change', (e) => { F[k] = e.target.value; redraw() })
+  const clear = () => { Object.assign(F, { q: '', by: '', kind: '' }); redraw() }
+  $('au-clear')?.addEventListener('click', clear)
+  view().querySelector('[data-au-clear]')?.addEventListener('click', clear)
 }
 
 async function renderSettings() {

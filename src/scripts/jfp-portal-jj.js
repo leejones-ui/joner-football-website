@@ -9,6 +9,7 @@
 // waitlist. Stage 3: Classes and Registers (jfp-portal-jj-ops.js) and
 // Messages (jfp-portal-jj-messages.js), and attendance on the Dashboard.
 import { esc, money, toast } from './jfp-common.js'
+import { psHead, psSearch, psSelect, psBadge, psToolsMore } from './jfp-portal-ps.js'
 import { renderJuniorsMoney, forgetJuniors } from './jfp-portal-juniors.js'
 import { renderClasses, renderRegisters } from './jfp-portal-jj-ops.js'
 import { renderJJMessages } from './jfp-portal-jj-messages.js'
@@ -19,12 +20,15 @@ export const JJ_TABS = new Set(JJ_NAV[1].map(([k]) => k))
 export const JJ_ICON = { 'jj-dashboard': 'overview', 'jj-players': 'families', 'jj-invites': 'invites', 'jj-requests': 'requests', 'jj-classes': 'groups', 'jj-registers': 'coach', 'jj-messages': 'messages', 'jj-money': 'money', 'jj-settings': 'settings' }
 
 // Players: what is loaded, the search, the chip and the term shown.
-const S = { data: null, at: 0, q: '', chip: '', term: '' }
-export function jjPlayersFilter(chip) { S.chip = chip || ''; S.q = '' }
+const S = { data: null, at: 0, q: '', pay: '', waiver: '', cls: '', show: '', moreOpen: false, term: '' }
+export function jjPlayersFilter(chip) { setChip(chip || ''); S.q = ''; S.cls = '' }
 
 const PAY = { paid: ['Paid', 'green'], part: ['Part paid', 'orange'], unpaid: ['Unpaid', 'red'], noprice: ['No price', 'grey'] }
 const payPill = (p) => `<span class="j-pill j-pill-${PAY[p.pay]?.[1] || 'grey'}">${esc(PAY[p.pay]?.[0] || p.pay)}</span>`
-const waiverPill = (p) => (p.waiver.onFile ? '<span class="j-pill j-pill-green">Waiver</span>' : p.waiver.unknown ? '<span class="j-pill j-pill-grey">Waiver not checked</span>' : '<span class="j-pill j-pill-red">No waiver</span>')
+// Dot colours for the quick chips (the same as psChips in jfp-portal-ps.js).
+const CHIP_COLOR = { red: '#E5383B', orange: '#F97316', green: '#12B76A', pink: '#EC4899', violet: '#7A5AF8', grey: '#98A2B3', blue: '#2E90FA' }
+// The "?" next to a page title: the page's guidance, one tap away.
+const help = (text) => `<details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">${esc(text)}</div></details>`
 const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
 const longDay = (iso) => (iso ? new Date(`${String(iso).slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-AU', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }) : '')
 const centsFrom = (v) => { const x = String(v ?? '').replace(/[a$,\s]/gi, ''); return x === '' ? null : Math.round(Number(x) * 100) }
@@ -94,13 +98,26 @@ function bindGo(ui) {
 
 // ---------- players ----------
 
+// The quick chips keep their old values (the Dashboard's "See who" links use
+// them): '' all, a payment status, 'waiver' (no waiver) or 'removed' (left).
+// A chip sets the filter it stands for and clears the other chip filters.
+function setChip(chip) {
+  Object.assign(S, { pay: '', waiver: '', show: '' })
+  if (chip === 'waiver') S.waiver = 'no'
+  else if (chip === 'removed') S.show = 'left'
+  else if (chip) S.pay = chip
+}
+const chipOn = (v) => (v === '' ? !S.pay && !S.waiver && !S.show : v === 'waiver' ? S.waiver === 'no' : v === 'removed' ? S.show === 'left' : S.pay === v)
+const inClass = (p) => (S.data?.classes || []).some((k) => k.id === p.classId)
+
 function matches(p) {
   const q = S.q.trim().toLowerCase()
   if (q && ![p.name, p.parent, p.email, ...(p.emails || []), p.mobile].some((v) => String(v || '').toLowerCase().includes(q))) return false
-  if (S.chip === 'removed') return Boolean(p.removed)
-  if (p.removed) return false
-  if (S.chip === 'waiver') return !p.waiver.onFile
-  if (S.chip) return p.pay === S.chip
+  if (S.show === 'left' ? !p.removed : p.removed) return false
+  if (S.waiver === 'no' && p.waiver.onFile) return false
+  if (S.waiver === 'yes' && !p.waiver.onFile) return false
+  if (S.pay && p.pay !== S.pay) return false
+  if (S.cls && (S.cls === 'none' ? inClass(p) : p.classId !== S.cls)) return false
   return true
 }
 
@@ -110,32 +127,69 @@ async function loadPlayers(ui, fresh = false) {
   S.term = S.data.term
 }
 
+const PL_MORE = ['cls', 'show']
+function plRow(p, multi) {
+  const [label, color] = PAY[p.pay] || [p.pay, 'grey']
+  const cls = (S.data.classes || []).find((k) => k.id === p.classId)
+  return `<tr data-jjpl="${esc(p.rowId)}" class="${p.removed ? 'is-removed' : ''}" tabindex="0" aria-label="${esc(p.name)}, open details">
+    <td data-col="who"><div class="ps-who"><div><b>${esc(p.name)}${p.age != null ? ` <span class="muted" style="font-weight:500">(${esc(p.age)})</span>` : ''}</b><span class="ps-sub">${esc(p.parent || 'No parent name')}${p.mobile ? ` · ${esc(p.mobile)}` : ''}</span>${p.removed ? `<span class="ps-sub">Left ${esc(longDay(p.removed.at))}${p.removed.reason ? `: ${esc(p.removed.reason)}` : ''}</span>` : ''}</div></div></td>
+    ${multi ? `<td data-col="group">${cls ? esc(cls.label) : psBadge('orange', 'In no class')}</td>` : ''}
+    <td data-col="pay">${psBadge(color, label)}<span class="ps-sub">${p.owingCents ? `${esc(money(p.owingCents))} owing` : p.feeCents != null ? esc(money(p.feeCents)) : ''}</span></td>
+    <td data-col="flags" class="${p.waiver.onFile ? 'ps-ok' : ''}">${p.waiver.onFile ? '<span class="muted">Waiver on file</span>' : p.waiver.unknown ? psBadge('grey', 'Waiver not checked') : psBadge('red', 'No waiver')}</td>
+  </tr>`
+}
+
 async function renderPlayers(ui, keep = false) {
   if (!S.data || (!keep && Date.now() - S.at > 30000)) await loadPlayers(ui, true)
   const d = S.data, c = d.counts
+  const multi = (d.classes || []).length > 1
+  if (!multi) S.cls = ''
   const shown = d.players.filter(matches)
+  const total = S.show === 'left' ? c.removed : c.all
+  const active = ['q', 'pay', 'waiver', 'cls', 'show'].filter((k) => S[k]).length
+  const moreSet = PL_MORE.filter((k) => S[k]).length
+  if (moreSet) S.moreOpen = true
   // A chip with nobody in it is left out, unless it is the one picked.
-  const chips = [['', 'All', c.all], ['paid', 'Paid', c.paid], ['part', 'Part paid', c.part], ['unpaid', 'Unpaid', c.unpaid], ['noprice', 'No price', c.noprice], ['waiver', 'No waiver', c.noWaiver], ['removed', 'Left', c.removed]].filter(([v, , n]) => v === '' || n || S.chip === v)
+  const chips = [['', 'All', c.all, ''], ['paid', 'Paid', c.paid, 'green'], ['part', 'Part paid', c.part, 'orange'], ['unpaid', 'Unpaid', c.unpaid, 'red'], ['noprice', 'No price', c.noprice, 'grey'], ['waiver', 'No waiver', c.noWaiver, 'red'], ['removed', 'Left', c.removed, 'grey']].filter(([v, , n]) => v === '' || n || chipOn(v))
+  const y = window.scrollY
   ui.view().innerHTML = `<div class="jj-view">
-    <div class="jd-head"><div><h1>Players</h1><p>Joners Juniors · ${esc(d.term)} · ${esc(d.classLabel)} · ${d.summary.enrolled} of ${d.capacity} places</p></div>
-      <div class="jd-sync">${d.terms.length > 1 ? `<label class="muted small" for="jj-term">Term</label><select class="j-select" id="jj-term" style="width:auto;min-height:40px">${d.terms.map((t) => `<option ${t === d.term ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" id="jj-p-refresh">Refresh from Airtable</button>${d.current ? '<button type="button" class="j-btn j-btn-dark j-btn-sm" id="jj-p-add">+ Add a child</button>' : ''}</div></div>
+    ${psHead({ title: 'Players', count: shown.length === total ? String(total) : `${shown.length} of ${total}`, primary: d.current ? '<button type="button" class="j-btn j-btn-dark" id="jj-p-add">+ Add a child</button>' : '' }).replace('class="ps-count"', 'class="ps-count" id="jj-p-count"').replace('</h1>', `</h1>${help('Every Joners Juniors child in the term, read from Airtable. Tap a child for contacts, money, payments and the waiver. One family waiver covers JFP and Juniors.')}`)}
+    <p class="ps-sub-line">${esc(d.term)} · ${esc(d.classLabel)} · ${d.summary.enrolled} of ${d.capacity} places</p>
     ${d.moneyError ? `<div class="j-box j-box-amber" style="margin-bottom:10px">${esc(d.moneyError)} Payment status is from Airtable only.</div>` : ''}
     ${d.current ? '' : `<div class="j-box j-box-grey" style="margin-bottom:10px">${esc(d.term)} is not the term running now. You can look and record a late payment; new children go into the current term.</div>`}
-    <div class="jm-bar">
-      <div class="jm-search"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2" stroke-linecap="round"/></svg><input class="j-input" id="jj-q" type="search" placeholder="Search child, parent, email or mobile" value="${esc(S.q)}" autocomplete="off"></div>
-      <div class="jm-chips" id="jj-chips" role="group" aria-label="Show">${chips.map(([v, l, n]) => `<button type="button" data-jjchip="${v}" aria-pressed="${S.chip === v}">${esc(l)} <span class="n">${n}</span></button>`).join('')}</div>
+    <div class="ps-tools" role="search">
+      ${psSearch('jj-q', 'Search children…', S.q, 'Search child, parent, email or mobile')}
+      ${d.terms.length > 1 ? `<select class="j-select is-set" id="jj-term" aria-label="Term">${d.terms.map((t) => `<option ${t === d.term ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>` : ''}
+      ${psSelect('jj-pay', ['paid', 'part', 'unpaid', 'noprice'].map((id) => ({ id, label: PAY[id][0] })), S.pay, 'Payment')}
+      ${psSelect('jj-waiver', [{ id: 'yes', label: 'Waiver on file' }, { id: 'no', label: 'No waiver' }], S.waiver, 'Waiver')}
+      <span class="ps-more-filters" id="jj-p-morebox" ${S.moreOpen ? '' : 'hidden'}>
+        ${multi ? psSelect('jj-cls', [...d.classes.map((k) => ({ id: k.id, label: k.label })), { id: 'none', label: 'In no class' }], S.cls, 'Class') : ''}
+        ${psSelect('jj-show', [{ id: 'left', label: 'Children who left' }], S.show, 'Still in the class')}
+      </span>
+      ${psToolsMore('jj-p', { open: S.moreOpen, set: moreSet, active })}
+      <span class="ps-meta">Updated ${esc(new Date(S.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))} · <button type="button" class="ps-link" id="jj-p-refresh" title="Read Airtable again">Refresh</button></span>
     </div>
-    <p class="muted small" id="jj-p-count" style="margin:0 0 8px">${shown.length} of ${S.chip === 'removed' ? c.removed : c.all} ${S.chip === 'removed' ? 'who left' : 'children'}${S.q || S.chip ? ' match' : ''} · read ${esc(new Date(S.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}</p>
-    <div class="jj-list" id="jj-rows">${shown.map((p) => `<button type="button" class="jj-pl${p.removed ? ' is-removed' : ''}" data-jjpl="${esc(p.rowId)}">
-        <span class="jj-pl-main"><b>${esc(p.name)}${p.age != null ? ` <span class="muted" style="font-weight:500">(${esc(p.age)})</span>` : ''}</b><small>${esc(p.parent || 'No parent name')}${p.mobile ? ` · ${esc(p.mobile)}` : ''}</small>${(d.classes || []).length > 1 ? `<small>${esc(d.classes.find((k) => k.id === p.classId)?.label || 'In no class')}</small>` : ''}${p.removed ? `<small>Left ${esc(longDay(p.removed.at))}${p.removed.reason ? `: ${esc(p.removed.reason)}` : ''}</small>` : ''}</span>
-        <span class="jj-pl-tags">${payPill(p)}${waiverPill(p)}${p.owingCents ? `<small>${esc(money(p.owingCents))} owing</small>` : ''}</span></button>`).join('') || `<div class="j-empty">${d.players.length ? 'Nobody matches.' : `No children in ${esc(d.term)} yet.`}</div>`}</div></div>`
+    <div class="ps-chips" id="jj-chips" aria-label="Quick filters">${chips.map(([v, l, n, col]) => `<button type="button" class="ps-chip" data-jjchip="${v}" aria-pressed="${chipOn(v)}">${col ? `<i style="background:${CHIP_COLOR[col]}"></i>` : ''}${esc(l)} <b>${n}</b></button>`).join('')}</div>
+    <div class="ps-table-wrap"><table class="ps-table ps-flat jj-ps"><thead><tr><th>Child</th>${multi ? '<th>Class</th>' : ''}<th>Payment</th><th>Waiver</th></tr></thead>
+      <tbody id="jj-rows">${shown.map((p) => plRow(p, multi)).join('') || `<tr><td colspan="${multi ? 4 : 3}"><div class="ps-empty">${d.players.length ? `No children match.${active ? ' <button type="button" class="ps-link" data-jj-clear>Clear filters</button>' : ''}` : `No children in ${esc(d.term)} yet.`}</div></td></tr>`}</tbody></table></div></div>`
+  if (keep) window.scrollTo(0, y)
+  const v = ui.view()
   const redraw = () => renderPlayers(ui, true)
-  ui.view().querySelector('#jj-q').addEventListener('input', (e) => { S.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = ui.view().querySelector('#jj-q'); i.focus(); i.setSelectionRange(at, at) })
-  ui.view().querySelectorAll('[data-jjchip]').forEach((b) => b.addEventListener('click', () => { S.chip = b.dataset.jjchip; redraw() }))
-  ui.view().querySelector('#jj-p-refresh').addEventListener('click', async () => { forgetJuniors(); await loadPlayers(ui, true); redraw() })
-  ui.view().querySelector('#jj-term')?.addEventListener('change', async (e) => { S.term = e.target.value; S.chip = ''; await loadPlayers(ui, false); redraw() })
-  ui.view().querySelector('#jj-p-add')?.addEventListener('click', () => addModal(ui))
-  ui.view().querySelectorAll('[data-jjpl]').forEach((b) => b.addEventListener('click', () => { const p = d.players.find((x) => x.rowId === b.dataset.jjpl); if (p) detailModal(ui, p) }))
+  v.querySelector('#jj-q').addEventListener('input', (e) => { S.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = ui.view().querySelector('#jj-q'); i.focus(); i.setSelectionRange(at, at) })
+  for (const [id, key] of [['#jj-pay', 'pay'], ['#jj-waiver', 'waiver'], ['#jj-cls', 'cls'], ['#jj-show', 'show']]) v.querySelector(id)?.addEventListener('change', (e) => { S[key] = e.target.value; redraw() })
+  v.querySelectorAll('[data-jjchip]').forEach((b) => b.addEventListener('click', () => { const ch = b.dataset.jjchip; setChip(ch && chipOn(ch) ? '' : ch); redraw() }))
+  const clear = () => { Object.assign(S, { q: '', pay: '', waiver: '', cls: '', show: '' }); redraw() }
+  v.querySelector('#jj-p-clear')?.addEventListener('click', clear)
+  v.querySelector('[data-jj-clear]')?.addEventListener('click', clear)
+  v.querySelector('#jj-p-morefilters').addEventListener('click', () => { S.moreOpen = !S.moreOpen; redraw() })
+  v.querySelector('#jj-p-refresh').addEventListener('click', async () => { forgetJuniors(); await loadPlayers(ui, true); redraw() })
+  v.querySelector('#jj-term')?.addEventListener('change', async (e) => { S.term = e.target.value; setChip(''); S.cls = ''; await loadPlayers(ui, false); redraw() })
+  v.querySelector('#jj-p-add')?.addEventListener('click', () => addModal(ui))
+  v.querySelectorAll('[data-jjpl]').forEach((tr) => {
+    const open = () => { const p = d.players.find((x) => x.rowId === tr.dataset.jjpl); if (p) detailModal(ui, p) }
+    tr.addEventListener('click', open)
+    tr.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === tr) { e.preventDefault(); open() } })
+  })
 }
 
 // After any change: read again and show the same page.
@@ -395,12 +449,11 @@ async function renderSettings(ui) {
 
 // ---------- invites (stage 2) ----------
 
-const IV = { kind: 'new', filter: 'both', data: null, picked: null, preview: false }
+const IV = { kind: 'new', filter: 'both', data: null, picked: null, preview: false, q: '', status: '' }
 const KIND_TABS = [['new', 'New family'], ['next', 'Re-enrol'], ['reminder', 'Reminders']]
-const STATUS = { 'not sent': ['grey', 'Not sent'], sent: ['blue', 'Sent'], opened: ['violet', 'Opened'], paid: ['green', 'Paid'], answered: ['green', 'Answered'] }
-const NEXT = { invited: ['blue', 'Invited'], held: ['violet', 'Held'], paid: ['green', 'Paid'], no: ['grey', 'Not returning'], '': ['grey', 'Not invited'] }
+const STATUS = { 'not sent': ['grey', 'Not sent'], sent: ['violet', 'Sent'], opened: ['orange', 'Opened'], paid: ['green', 'Paid'], answered: ['green', 'Answered'] }
+const NEXT = { invited: ['orange', 'Invited'], held: ['violet', 'Held'], paid: ['green', 'Paid'], no: ['grey', 'Not returning'], '': ['grey', 'Not invited'] }
 const shortDay = (iso) => (iso ? new Date(iso).toLocaleDateString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short' }) : '')
-const pill = ([c, l]) => `<span class="j-pill j-pill-${c}">${esc(l)}</span>`
 
 async function loadInvites(ui) {
   IV.data = await ui.need(await ui.post('jjInvites', { kind: IV.kind, filter: IV.filter }))
@@ -409,45 +462,62 @@ async function loadInvites(ui) {
 
 async function renderInvites(ui, keep = false) {
   if (!keep || !IV.data || IV.data.kind !== IV.kind) await loadInvites(ui)
-  const d = IV.data, c = d.counts
+  const d = IV.data
   const what = {
     new: 'Sign in to the family account (the same login as JFP) and pay this term. Families who owe get a payment link for exactly what is owing.',
-    next: d.next ? `Keep the place for ${d.next.name}: pay ${money(d.next.fullCents)}${d.next.holdCents ? ` or hold it for ${money(d.next.holdCents)}` : ''}, or say not returning, in the family account.` : '',
+    next: d.next ? `Keep the place for ${d.next.name}: pay ${money(d.next.fullCents)}${d.next.holdCents ? ` or hold it for ${money(d.next.holdCents)}` : ''}, or say not returning, in the family account.` : 'The re-enrol email for next term.',
     reminder: 'For families who still owe or have no waiver, with the amount still owing.',
   }[IV.kind]
-  const famRow = (f) => `<div class="jj-fam" data-fam="${esc(f.email)}">
-      <label class="jj-fam-tick"><input type="checkbox" data-pick="${esc(f.email)}" ${IV.picked.has(f.email) ? 'checked' : ''} ${!f.todo || d.blocked ? 'disabled' : ''} aria-label="Choose ${esc(f.parent || f.email)}"></label>
-      <div class="jj-fam-main"><b>${esc(f.parent || 'No parent name')}</b><small>${esc(f.email)}</small>
-        <small>${f.children.map((k) => `${esc(k.name)}${IV.kind === 'next' ? ` ${pill(NEXT[k.next] || NEXT[''])}` : k.owingCents ? ` · ${esc(money(k.owingCents))} owing` : k.pay === 'paid' ? ' · paid' : ''}${!k.waiver && IV.kind !== 'next' ? ' · no waiver' : ''}`).join('<br>')}</small>
-        ${f.sentAt ? `<small>Sent ${esc(shortDay(f.sentAt))}${f.sentCount > 1 ? ` (${f.sentCount} times)` : ''}${f.sentBy ? ` by ${esc(f.sentBy.split('@')[0])}` : ''}${f.openPayreq?.views ? ` · link opened ${esc(shortDay(f.openPayreq.viewedAt))}` : ''}${f.signedInAt ? ` · signed in ${esc(shortDay(f.signedInAt))}` : ''}</small>` : f.signedInAt ? `<small>Signed in ${esc(shortDay(f.signedInAt))}</small>` : ''}
-      </div>
-      <div class="jj-fam-tags">${pill(STATUS[f.status] || STATUS['not sent'])}${IV.kind !== 'next' && f.owingCents ? `<small>${esc(money(f.owingCents))}</small>` : ''}${!f.owingKnown && IV.kind !== 'next' ? '<small>owing not known</small>' : ''}<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-prev="${esc(f.email)}">Preview</button></div>
-    </div>`
+  const q = IV.q.trim().toLowerCase()
+  const ivMatch = (f) => (!IV.status || (f.status || 'not sent') === IV.status)
+    && (!q || [f.parent, f.email, ...f.children.map((k) => k.name)].some((x) => String(x || '').toLowerCase().includes(q)))
+  const shown = d.list.filter(ivMatch)
+  const active = Boolean(IV.q || IV.status)
+  const n = (s) => d.list.filter((f) => (f.status || 'not sent') === s).length
+  const statuses = Object.keys(STATUS).filter((s) => n(s) || IV.status === s)
+  const famRow = (f) => {
+    const [c, l] = STATUS[f.status] || STATUS['not sent']
+    return `<tr data-fam="${esc(f.email)}">
+      <td data-col="who"><div class="ps-who"><label class="jj-fam-tick"><input type="checkbox" data-pick="${esc(f.email)}" ${IV.picked.has(f.email) ? 'checked' : ''} ${!f.todo || d.blocked ? 'disabled' : ''} aria-label="Choose ${esc(f.parent || f.email)}"></label>
+        <div><b>${esc(f.parent || 'No parent name')}</b><span class="ps-sub">${esc(f.email)}</span>
+        ${f.sentAt ? `<span class="ps-sub">Sent ${esc(shortDay(f.sentAt))}${f.sentCount > 1 ? ` (${f.sentCount} times)` : ''}${f.sentBy ? ` by ${esc(f.sentBy.split('@')[0])}` : ''}${f.openPayreq?.views ? ` · link opened ${esc(shortDay(f.openPayreq.viewedAt))}` : ''}${f.signedInAt ? ` · signed in ${esc(shortDay(f.signedInAt))}` : ''}</span>` : f.signedInAt ? `<span class="ps-sub">Signed in ${esc(shortDay(f.signedInAt))}</span>` : ''}</div></div></td>
+      <td data-col="group">${f.children.map((k) => `<span class="jv-kid">${esc(k.name)}${IV.kind === 'next' ? ` ${psBadge(...(NEXT[k.next] || NEXT['']))}` : k.owingCents ? ` · ${esc(money(k.owingCents))} owing` : k.pay === 'paid' ? ' · paid' : ''}${!k.waiver && IV.kind !== 'next' ? ' · no waiver' : ''}</span>`).join('')}</td>
+      <td data-col="pay">${psBadge(c, l)}${IV.kind !== 'next' && f.owingCents ? `<span class="ps-sub">${esc(money(f.owingCents))}</span>` : ''}${!f.owingKnown && IV.kind !== 'next' ? '<span class="ps-sub">owing not known</span>' : ''}</td>
+      <td class="ps-end ps-keep"><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-prev="${esc(f.email)}">Preview</button></td>
+    </tr>`
+  }
+  const y = window.scrollY
   ui.view().innerHTML = `<div class="jj-view">
-    <div class="jd-head"><div><h1>Invites</h1><p>Joners Juniors · ${esc(d.term)} · Nothing is sent until you press Send</p></div>
-      <div class="jd-sync"><button type="button" class="j-btn j-btn-line j-btn-sm" id="jv-refresh">Refresh</button></div></div>
-    <div class="jp-seg" id="jv-kind" style="margin-bottom:10px">${KIND_TABS.map(([k, l]) => `<button type="button" data-kind="${k}" aria-pressed="${IV.kind === k}">${esc(k === 'next' && d.next ? `Re-enrol for ${d.next.name}` : l)}</button>`).join('')}</div>
-    <p class="muted small" style="margin:0 0 10px">${esc(what)}</p>
-    ${IV.kind === 'reminder' ? `<div class="jm-chips" id="jv-filter" role="group" aria-label="Remind about" style="margin-bottom:10px">${[['both', 'Unpaid or no waiver'], ['unpaid', 'Unpaid'], ['waiver', 'No waiver']].map(([v, l]) => `<button type="button" data-filter="${v}" aria-pressed="${IV.filter === v}">${esc(l)}</button>`).join('')}</div>` : ''}
+    ${psHead({ title: 'Invites', count: shown.length === d.list.length ? String(d.list.length) : `${shown.length} of ${d.list.length}`, primary: `<button type="button" class="j-btn j-btn-line" id="jv-prev">${IV.preview ? 'Hide the email' : 'Show the email'}</button><button type="button" class="j-btn j-btn-dark" id="jv-send" ${d.blocked ? 'disabled' : ''}>Send to ${IV.picked.size} chosen</button>` }).replace('</h1>', `</h1>${help(`${what} Families not sent yet are chosen for you; tick or untick any family. Send goes to every family chosen, even one a search or filter is hiding.`)}`)}
+    <p class="ps-sub-line">${esc(d.term)} · Nothing is sent until you press Send</p>
     ${d.blocked ? `<div class="j-box j-box-amber" id="jv-blocked" style="margin-bottom:10px">${esc(d.blocked)} <button type="button" class="link" data-jj-go="jj-settings">Open Settings</button></div>` : ''}
     ${d.moneyError && IV.kind !== 'next' ? `<div class="j-box j-box-amber" style="margin-bottom:10px">${esc(d.moneyError)} Amounts may be missing, so families who owe cannot be sent a payment link until it is read.</div>` : ''}
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="jv-counts">
-      <span class="j-pill j-pill-grey">${c.families} famil${c.families === 1 ? 'y' : 'ies'}</span><span class="j-pill j-pill-grey">${c.notSent} not sent</span><span class="j-pill j-pill-blue">${c.sent} sent</span><span class="j-pill j-pill-violet">${c.opened} opened</span><span class="j-pill j-pill-green">${c.paid} ${IV.kind === 'next' ? 'answered' : 'paid'}</span>
+    <div class="ps-tools" role="search">
+      <div class="ps-seg" id="jv-kind" role="group" aria-label="Which email">${KIND_TABS.map(([k, l]) => `<button type="button" data-kind="${k}" aria-pressed="${IV.kind === k}">${esc(k === 'next' && d.next ? `Re-enrol for ${d.next.name}` : l)}</button>`).join('')}</div>
+      ${IV.kind === 'reminder' ? `<div class="ps-seg" id="jv-filter" role="group" aria-label="Remind about">${[['both', 'Unpaid or no waiver'], ['unpaid', 'Unpaid'], ['waiver', 'No waiver']].map(([v, l]) => `<button type="button" data-filter="${v}" aria-pressed="${IV.filter === v}">${esc(l)}</button>`).join('')}</div>` : ''}
+      ${psSearch('jv-q', 'Search families…', IV.q, 'Search parent, email or child')}
+      ${psSelect('jv-status', statuses.map((s) => ({ id: s, label: STATUS[s][1] })), IV.status, 'Status')}
+      ${psToolsMore('jv', { active, hasMore: false })}
+      <span class="ps-meta"><button type="button" class="ps-link" id="jv-none">Choose none</button> · <button type="button" class="ps-link" id="jv-refresh">Refresh</button></span>
     </div>
-    <div class="jj-actions" style="margin-top:0;margin-bottom:12px">
-      <button type="button" class="j-btn j-btn-line" id="jv-prev">${IV.preview ? 'Hide the email' : 'Show the email'}</button>
-      <button type="button" class="j-btn j-btn-line" id="jv-none">Choose none</button>
-      <button type="button" class="j-btn j-btn-dark" id="jv-send" ${d.blocked ? 'disabled' : ''}>Send to ${IV.picked.size} chosen</button>
-    </div>
+    <div class="ps-chips" id="jv-counts" aria-label="Quick filters">${statuses.map((s) => `<button type="button" class="ps-chip" data-ivchip="${esc(s)}" aria-pressed="${IV.status === s}"><i style="background:${CHIP_COLOR[STATUS[s][0]]}"></i>${esc(s === 'paid' && IV.kind === 'next' ? 'Answered' : STATUS[s][1])} <b>${n(s)}</b></button>`).join('')}</div>
     <div id="jv-preview">${IV.preview ? previewHtml(d.previews) : ''}</div>
-    <div class="jj-list" id="jv-list">${d.list.map(famRow).join('') || `<div class="j-empty">${IV.kind === 'reminder' ? 'Nobody to remind. Everyone has paid and signed.' : 'No families in this term yet.'}</div>`}</div>
+    <div class="ps-table-wrap"><table class="ps-table jv-ps"><thead><tr><th>Family</th><th>Children</th><th>Status</th><th class="ps-end"><span class="sr-only">Preview</span></th></tr></thead>
+      <tbody id="jv-list">${shown.map(famRow).join('') || `<tr><td colspan="4"><div class="ps-empty">${d.list.length ? `No families match.${active ? ' <button type="button" class="ps-link" data-jv-clear>Clear filters</button>' : ''}` : IV.kind === 'reminder' ? 'Nobody to remind. Everyone has paid and signed.' : 'No families in this term yet.'}</div></td></tr>`}</tbody></table></div>
     ${d.noEmail.length ? `<p class="muted small" style="margin-top:8px">No parent email in Airtable, so no invite: ${esc(d.noEmail.map((x) => x.name).join(', '))}. Add one in Players.</p>` : ''}
-    <section class="jd-card" style="margin-top:16px" id="jv-pay"><h2>Online payments</h2><p class="sub">Every Juniors payment link, who opened it and whether it is paid.</p><div id="jv-paylist"><p class="muted small">Loading</p></div></section>
+    <section style="margin-top:22px" id="jv-pay"><div class="ps-title" style="margin-bottom:10px"><h2>Online payments</h2>${help('Every Juniors payment link, who opened it and whether it is paid.')}</div><div id="jv-paylist"><p class="muted small">Loading</p></div></section>
   </div>`
+  if (keep) window.scrollTo(0, y)
   const v = ui.view()
   const redraw = () => renderInvites(ui, true)
-  v.querySelectorAll('#jv-kind [data-kind]').forEach((b) => b.addEventListener('click', async () => { IV.kind = b.dataset.kind; IV.preview = false; await renderInvites(ui) }))
-  v.querySelectorAll('#jv-filter [data-filter]').forEach((b) => b.addEventListener('click', async () => { IV.filter = b.dataset.filter; await loadInvites(ui); redraw() }))
+  v.querySelectorAll('#jv-kind [data-kind]').forEach((b) => b.addEventListener('click', async () => { IV.kind = b.dataset.kind; IV.preview = false; IV.status = ''; await renderInvites(ui) }))
+  v.querySelectorAll('#jv-filter [data-filter]').forEach((b) => b.addEventListener('click', async () => { IV.filter = b.dataset.filter; IV.status = ''; await loadInvites(ui); redraw() }))
+  v.querySelector('#jv-q').addEventListener('input', (e) => { IV.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = ui.view().querySelector('#jv-q'); i.focus(); i.setSelectionRange(at, at) })
+  v.querySelector('#jv-status').addEventListener('change', (e) => { IV.status = e.target.value; redraw() })
+  v.querySelectorAll('[data-ivchip]').forEach((b) => b.addEventListener('click', () => { IV.status = IV.status === b.dataset.ivchip ? '' : b.dataset.ivchip; redraw() }))
+  const clear = () => { IV.q = ''; IV.status = ''; redraw() }
+  v.querySelector('#jv-clear')?.addEventListener('click', clear)
+  v.querySelector('[data-jv-clear]')?.addEventListener('click', clear)
   v.querySelector('#jv-refresh').addEventListener('click', async () => { await loadInvites(ui); redraw() })
   v.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('change', () => { if (b.checked) IV.picked.add(b.dataset.pick); else IV.picked.delete(b.dataset.pick); v.querySelector('#jv-send').textContent = `Send to ${IV.picked.size} chosen` }))
   v.querySelector('#jv-none').addEventListener('click', () => { IV.picked.clear(); redraw() })
@@ -458,7 +528,7 @@ async function renderInvites(ui, keep = false) {
   }))
   v.querySelector('#jv-send').addEventListener('click', (e) => sendPicked(ui, e.currentTarget))
   bindGo(ui)
-  renderPayList(ui)
+  if (keep && PY.list) drawPayList(ui); else renderPayList(ui)
 }
 
 function previewHtml(list) {
@@ -488,15 +558,39 @@ async function sendPicked(ui, btn, only = null) {
   return true
 }
 
+// Online payments: read once, then the chips redraw from what is loaded.
+const PY = { list: null, error: '', show: '' }
+const PAY_ST = { open: ['orange', 'Waiting'], checkout: ['orange', 'On Stripe'], paid: ['green', 'Paid'], cancelled: ['grey', 'Cancelled'] }
+const PAY_CHIPS = [['waiting', 'Waiting', (q) => q.status === 'open' || q.status === 'checkout', 'orange'], ['paid', 'Paid', (q) => q.status === 'paid', 'green'], ['check', 'Needs checking', (q) => q.needsCheck, 'red'], ['cancelled', 'Cancelled', (q) => q.status === 'cancelled', 'grey']]
+
 async function renderPayList(ui) {
   const el = ui.view().querySelector('#jv-paylist')
   if (!el) return
   const r = await ui.post('jjPayments')
-  if (!r.ok) { el.innerHTML = `<p class="muted small">${esc(r.data.error || 'Could not read the payments.')}</p>`; return }
-  const list = r.data.payments
-  const st = { open: ['amber', 'Waiting'], checkout: ['amber', 'On Stripe'], paid: ['green', 'Paid'], cancelled: ['grey', 'Cancelled'] }
-  el.innerHTML = list.length ? `<ul class="jj-pays">${list.slice(0, 80).map((q) => `<li data-payreq="${esc(q.id)}"><span><b>${esc(q.players.join(', '))}</b> · ${esc(q.what)}<br><span class="muted small">${esc(q.parent || q.email)} · ${esc(shortDay(q.createdAt))}${q.views ? ` · opened ${q.views} time${q.views === 1 ? '' : 's'}` : ''}${q.paidAt ? ` · paid ${esc(shortDay(q.paidAt))}${q.feeCents != null ? `, Stripe fee ${esc(money(q.feeCents))}` : ''}` : ''}</span>${q.needsCheck ? `<br><span class="j-pill j-pill-red">Needs checking</span> <span class="muted small">${esc(q.attention || q.error || 'Airtable not updated yet')}</span>` : ''}</span>
-      <span><b>${esc(money(q.paidCents ?? q.amountCents))}</b> ${pill(st[q.status] || ['grey', q.status])}${q.needsCheck && q.airtable !== 'done' ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(q.id)}">Try again</button>` : ''}${q.needsCheck && q.airtable === 'done' && q.attention ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-checked="${esc(q.id)}">Mark as checked</button>` : ''}${q.status === 'open' || q.status === 'checkout' ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancelpay="${esc(q.id)}">Cancel</button>` : ''}</span></li>`).join('')}</ul>` : '<p class="muted small">No online payments yet.</p>'
+  PY.list = r.ok ? r.data.payments : null
+  PY.error = r.ok ? '' : r.data.error || 'Could not read the payments.'
+  drawPayList(ui)
+}
+
+function drawPayList(ui) {
+  const el = ui.view().querySelector('#jv-paylist')
+  if (!el) return
+  if (!PY.list) { el.innerHTML = `<p class="muted small">${esc(PY.error)}</p>`; return }
+  const all = PY.list
+  if (!all.length) { el.innerHTML = '<p class="muted small">No online payments yet.</p>'; return }
+  const chip = PAY_CHIPS.find(([k]) => k === PY.show)
+  const list = chip ? all.filter(chip[2]) : all
+  const chips = PAY_CHIPS.map(([k, l, f, col]) => [k, l, all.filter(f).length, col]).filter(([k, , n]) => n || PY.show === k)
+  el.innerHTML = `<div class="ps-chips" id="jv-paychips" aria-label="Show payments"><button type="button" class="ps-chip" data-paychip="" aria-pressed="${!PY.show}">All <b>${all.length}</b></button>${chips.map(([k, l, n, col]) => `<button type="button" class="ps-chip" data-paychip="${k}" aria-pressed="${PY.show === k}"><i style="background:${CHIP_COLOR[col]}"></i>${esc(l)} <b>${n}</b></button>`).join('')}</div>
+    <div class="ps-table-wrap"><table class="ps-table ps-flat jv-ps jv-pays"><thead><tr><th>For</th><th>Family</th><th>Payment</th><th>Check</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody>
+    ${list.slice(0, 80).map((q) => `<tr data-payreq="${esc(q.id)}">
+      <td data-col="who"><div class="ps-who"><div><b>${esc(q.players.join(', '))}</b><span class="ps-sub">${esc(q.what)}</span></div></div></td>
+      <td data-col="group">${esc(q.parent || q.email)}<span class="ps-sub">${esc(shortDay(q.createdAt))}${q.views ? ` · opened ${q.views} time${q.views === 1 ? '' : 's'}` : ''}${q.paidAt ? ` · paid ${esc(shortDay(q.paidAt))}${q.feeCents != null ? `, Stripe fee ${esc(money(q.feeCents))}` : ''}` : ''}</span></td>
+      <td data-col="pay">${psBadge(...(PAY_ST[q.status] || ['grey', q.status]))}<span class="ps-sub"><b>${esc(money(q.paidCents ?? q.amountCents))}</b></span></td>
+      <td data-col="flags" class="${q.needsCheck ? '' : 'ps-ok'}">${q.needsCheck ? `${psBadge('red', 'Needs checking')}<span class="ps-sub">${esc(q.attention || q.error || 'Airtable not updated yet')}</span>` : '<span class="muted">Fine</span>'}</td>
+      <td class="ps-end ps-keep">${q.needsCheck && q.airtable !== 'done' ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(q.id)}">Try again</button>` : ''}${q.needsCheck && q.airtable === 'done' && q.attention ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-checked="${esc(q.id)}">Mark as checked</button>` : ''}${q.status === 'open' || q.status === 'checkout' ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancelpay="${esc(q.id)}">Cancel</button>` : ''}</td>
+    </tr>`).join('') || `<tr><td colspan="5"><div class="ps-empty">No payments match. <button type="button" class="ps-link" data-paychip="">Clear filters</button></div></td></tr>`}</tbody></table></div>`
+  el.querySelectorAll('[data-paychip]').forEach((b) => b.addEventListener('click', () => { const k = b.dataset.paychip; PY.show = PY.show === k ? '' : k; drawPayList(ui) }))
   el.querySelectorAll('[data-repair]').forEach((b) => b.addEventListener('click', async () => {
     b.disabled = true
     const x = await ui.post('jjRepairPayment', { id: b.dataset.repair })
@@ -519,34 +613,63 @@ async function renderPayList(ui) {
 
 // ---------- requests and waitlist (stage 2) ----------
 
-async function renderRequests(ui) {
-  const d = await ui.need(await ui.post('jjRequests'))
+// Requests: what is loaded and the filters. keep: redraw from what is loaded.
+const RQ = { data: null, q: '', status: '', stage: '', why: '' }
+const RQ_STATUS = [['waiting', 'Waitlist', 'orange'], ['accepted', 'Accepted', 'green'], ['declined', 'Declined', 'grey']]
+
+async function renderRequests(ui, keep = false) {
+  if (!keep || !RQ.data) RQ.data = await ui.need(await ui.post('jjRequests'))
+  const d = RQ.data
   const tel = (m) => (m ? `<a href="tel:${esc(String(m).replace(/[^\d+]/g, ''))}">${esc(m)}</a>` : '')
-  const stage = { waiting: ['amber', 'Waiting'], accepted: ['blue', 'In the class, invite not sent'], invited: ['violet', 'Invited to pay'], paid: ['green', 'Paid'], declined: ['grey', 'Declined'] }
-  const card = (r) => `<div class="jj-req" data-req="${esc(r.id)}">
-      <div class="jj-fam-main"><b>${r.position ? `${r.position}. ` : ''}${esc(r.player.name)}${r.age != null ? ` <span class="muted" style="font-weight:500">(${esc(r.age)})</span>` : ''}</b>
-        <small>${esc(r.parent.name)} · <a href="mailto:${esc(r.parent.email)}">${esc(r.parent.email)}</a> · ${tel(r.parent.mobile)}</small>
-        <small>Asked ${esc(shortDay(r.createdAt))} · ${r.why === 'closed' ? 'registrations were closed' : 'the class was full'}${r.player.medical && !/^none/i.test(r.player.medical) ? ` · medical: ${esc(r.player.medical)}` : ''}</small>
-        ${r.decidedAt ? `<small>${esc(r.status === 'declined' ? 'Declined' : 'Accepted')} by ${esc(r.decidedBy)} on ${esc(shortDay(r.decidedAt))}${r.declineReason ? `: ${esc(r.declineReason)}` : ''}${r.invitedAt ? ` · invite sent ${esc(shortDay(r.invitedAt))}` : ''}</small>` : ''}
-      </div>
-      <div class="jj-fam-tags">${pill(stage[r.stage] || stage.waiting)}</div>
-      <div class="jj-actions" style="margin-top:8px;flex-basis:100%">
-        ${r.status === 'waiting' ? `<button type="button" class="j-btn j-btn-dark" data-accept="${esc(r.id)}">Accept: give the place</button><button type="button" class="j-btn j-btn-line" data-decline="${esc(r.id)}">Decline</button>` : ''}
-        ${r.stage === 'accepted' || r.stage === 'invited' ? `<button type="button" class="j-btn ${r.stage === 'accepted' ? 'j-btn-dark' : 'j-btn-line'}" data-invite="${esc(r.parent.email)}">${r.stage === 'accepted' ? 'Send the invite to pay' : 'Send the invite again'}</button>` : ''}
-        ${r.status === 'declined' ? `<button type="button" class="j-btn j-btn-line" data-wait="${esc(r.id)}">Back on the waitlist</button>` : ''}
-      </div>
-    </div>`
-  const sec = (title, list, empty) => `<h3 class="jj-sec">${esc(title)} (${list.length})</h3>${list.length ? `<div class="jj-list">${list.map(card).join('')}</div>` : `<p class="muted small">${esc(empty)}</p>`}`
-  const waiting = d.list.filter((r) => r.status === 'waiting')
+  const stage = { waiting: ['orange', 'Waiting'], accepted: ['orange', 'In the class, invite not sent'], invited: ['violet', 'Invited to pay'], paid: ['green', 'Paid'], declined: ['grey', 'Declined'] }
+  const q = RQ.q.trim().toLowerCase()
+  const rqMatch = (r) => (!RQ.status || r.status === RQ.status) && (!RQ.stage || r.stage === RQ.stage) && (!RQ.why || r.why === RQ.why)
+    && (!q || [r.player.name, r.parent.name, r.parent.email, r.parent.mobile].some((x) => String(x || '').toLowerCase().includes(q)))
+  // The waitlist first, in the order asked; then accepted, then declined.
+  const order = { waiting: 0, accepted: 1, declined: 2 }
+  const all = [...d.list].sort((a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3) || (a.position || 0) - (b.position || 0))
+  const shown = all.filter(rqMatch)
+  const active = ['q', 'status', 'stage', 'why'].filter((k) => RQ[k]).length
+  const waiting = d.list.filter((r) => r.status === 'waiting').sort((a, b) => (a.position || 0) - (b.position || 0))
+  const row = (r) => `<tr data-req="${esc(r.id)}">
+      <td data-col="who"><div class="ps-who"><div><b>${r.position ? `${r.position}. ` : ''}${esc(r.player.name)}${r.age != null ? ` <span class="muted" style="font-weight:500">(${esc(r.age)})</span>` : ''}</b>
+        <span class="ps-sub">${esc(r.parent.name)}</span>${r.player.medical && !/^none/i.test(r.player.medical) ? `<span class="ps-sub">Medical: ${esc(r.player.medical)}</span>` : ''}</div></div></td>
+      <td data-col="group"><a href="mailto:${esc(r.parent.email)}">${esc(r.parent.email)}</a>${r.parent.mobile ? `<span class="ps-sub">${tel(r.parent.mobile)}</span>` : ''}</td>
+      <td data-col="pay">${psBadge(...(stage[r.stage] || stage.waiting))}<span class="ps-sub">Asked ${esc(shortDay(r.createdAt))} · ${r.why === 'closed' ? 'registrations were closed' : 'the class was full'}</span>
+        ${r.decidedAt ? `<span class="ps-sub">${esc(r.status === 'declined' ? 'Declined' : 'Accepted')} by ${esc(r.decidedBy)} on ${esc(shortDay(r.decidedAt))}${r.declineReason ? `: ${esc(r.declineReason)}` : ''}${r.invitedAt ? ` · invite sent ${esc(shortDay(r.invitedAt))}` : ''}</span>` : ''}</td>
+      <td class="ps-end ps-keep"><div class="jj-row-acts">
+        ${r.status === 'waiting' ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-accept="${esc(r.id)}">Accept: give the place</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-decline="${esc(r.id)}">Decline</button>` : ''}
+        ${r.stage === 'accepted' || r.stage === 'invited' ? `<button type="button" class="j-btn ${r.stage === 'accepted' ? 'j-btn-dark' : 'j-btn-line'} j-btn-sm" data-invite="${esc(r.parent.email)}">${r.stage === 'accepted' ? 'Send the invite to pay' : 'Send the invite again'}</button>` : ''}
+        ${r.status === 'declined' ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-wait="${esc(r.id)}">Back on the waitlist</button>` : ''}
+      </div></td>
+    </tr>`
+  const y = window.scrollY
   ui.view().innerHTML = `<div class="jj-view">
-    <div class="jd-head"><div><h1>Requests & waitlist</h1><p>Joners Juniors · ${esc(d.term)} · ${d.enrolled} of ${d.capacity} places taken · website registrations ${d.registrationOpen ? 'open' : 'closed'}</p></div></div>
-    <p class="muted small" style="margin:0 0 10px">When the class is full or registrations are closed, the website form puts families here instead of taking payment. Accepting puts the child in the class and lets you send the sign in and pay email.</p>
-    ${d.placeFree ? `<div class="j-box j-box-green" id="jr-free" style="margin-bottom:12px"><b>${d.placesLeft} place${d.placesLeft === 1 ? ' is' : 's are'} free.</b> ${esc(waiting[0].player.name)} is next on the waitlist.</div>` : ''}
-    ${sec('Waitlist', waiting, 'Nobody waiting.')}
-    ${sec('Accepted', d.list.filter((r) => r.status === 'accepted'), 'None yet.')}
-    ${sec('Declined', d.list.filter((r) => r.status === 'declined'), 'None.')}
+    ${psHead({ title: 'Requests & waitlist', count: shown.length === all.length ? String(all.length) : `${shown.length} of ${all.length}` }).replace('</h1>', `</h1>${help('When the class is full or registrations are closed, the website form puts families here instead of taking payment. Accepting puts the child in the class and lets you send the sign in and pay email. Declining sends no email.')}`)}
+    <p class="ps-sub-line">${esc(d.term)} · ${d.enrolled} of ${d.capacity} places taken · website registrations ${d.registrationOpen ? 'open' : 'closed'}</p>
+    ${d.placeFree && waiting.length ? `<div class="j-box j-box-green" id="jr-free" style="margin-bottom:12px"><b>${d.placesLeft} place${d.placesLeft === 1 ? ' is' : 's are'} free.</b> ${esc(waiting[0].player.name)} is next on the waitlist.</div>` : ''}
+    <div class="ps-tools" role="search">
+      ${psSearch('jrq-q', 'Search requests…', RQ.q, 'Search child, parent, email or mobile')}
+      ${psSelect('jrq-stage', Object.entries(stage).map(([id, [, label]]) => ({ id, label })), RQ.stage, 'Stage')}
+      ${psSelect('jrq-why', [{ id: 'full', label: 'The class was full' }, { id: 'closed', label: 'Registrations were closed' }], RQ.why, 'Why they asked')}
+      ${psToolsMore('jrq', { active, hasMore: false })}
+      <span class="ps-meta"><button type="button" class="ps-link" id="jrq-refresh">Refresh</button></span>
+    </div>
+    <div class="ps-chips" id="jrq-chips" aria-label="Quick filters">${RQ_STATUS.map(([k, l, col]) => `<button type="button" class="ps-chip" data-rqchip="${k}" aria-pressed="${RQ.status === k}"><i style="background:${CHIP_COLOR[col]}"></i>${esc(l)} <b>${d.list.filter((r) => r.status === k).length}</b></button>`).join('')}</div>
+    <div class="ps-table-wrap"><table class="ps-table ps-flat jr-ps"><thead><tr><th>Child</th><th>Contact</th><th>Stage</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody id="jrq-rows">${shown.map(row).join('') || `<tr><td colspan="4"><div class="ps-empty">${all.length ? `No requests match.${active ? ' <button type="button" class="ps-link" data-jrq-clear>Clear filters</button>' : ''}` : 'Nobody waiting. Requests show here when the class is full or registrations are closed.'}</div></td></tr>`}</tbody></table></div>
   </div>`
+  if (keep) window.scrollTo(0, y)
   const v = ui.view()
+  const redraw = () => renderRequests(ui, true)
+  v.querySelector('#jrq-q').addEventListener('input', (e) => { RQ.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = ui.view().querySelector('#jrq-q'); i.focus(); i.setSelectionRange(at, at) })
+  v.querySelector('#jrq-stage').addEventListener('change', (e) => { RQ.stage = e.target.value; redraw() })
+  v.querySelector('#jrq-why').addEventListener('change', (e) => { RQ.why = e.target.value; redraw() })
+  v.querySelectorAll('[data-rqchip]').forEach((b) => b.addEventListener('click', () => { RQ.status = RQ.status === b.dataset.rqchip ? '' : b.dataset.rqchip; redraw() }))
+  const clear = () => { Object.assign(RQ, { q: '', status: '', stage: '', why: '' }); redraw() }
+  v.querySelector('#jrq-clear')?.addEventListener('click', clear)
+  v.querySelector('[data-jrq-clear]')?.addEventListener('click', clear)
+  v.querySelector('#jrq-refresh').addEventListener('click', () => renderRequests(ui))
   const decide = async (body) => {
     const r = await ui.post('jjDecideRequest', body)
     if (r.status === 409 && r.data.code === 'full') { if (await ui.confirmBox(esc(r.data.error), { ok: 'Accept anyway' })) return decide({ ...body, force: true }); return null }
