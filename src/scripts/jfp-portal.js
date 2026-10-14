@@ -13,6 +13,7 @@ import { renderInvoices } from './jfp-portal-invoices.js'
 import { renderCampsMoney, campsData } from './jfp-portal-camps.js'
 import { renderEverything } from './jfp-portal-everything.js'
 import { drawFamilies, sessionModal } from './jfp-portal-family.js'
+import { psHead, psSearch, psSelect, psBadge, psChips, psToolsMore, PS_PAY } from './jfp-portal-ps.js'
 import { bankPanel, bindBank, loadBank, bankDone, bankStale } from './jfp-portal-bank.js'
 import { renderHolidayMoney, holidayStale, holidayData } from './jfp-portal-holiday.js'
 import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYearChart } from './jfp-portal-years.js'
@@ -3040,19 +3041,6 @@ async function plAddBox() {
 // Every staff page: psHead (title, count, main action, More), psTools (search,
 // filters in a fixed order, More filters, Clear), psChips (quick filters),
 // ps-table (becomes cards on a phone), psBadge (dot + word).
-const SEARCH_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2" stroke-linecap="round"/></svg>'
-function psHead({ title, count = '', primary = '', more = false }) {
-  return `<header class="ps-head"><div class="ps-title"><h1>${esc(title)}</h1>${count !== '' ? `<span class="ps-count">${esc(count)}</span>` : ''}</div>
-    <div class="ps-actions">${more ? '<button type="button" class="j-btn j-btn-line" id="ps-more" aria-haspopup="menu">More</button>' : ''}${primary}</div></header>`
-}
-function psSearch(id, placeholder, value, label) {
-  return `<label class="ps-search"><span class="sr-only">${esc(label || placeholder)}</span>${SEARCH_SVG}<input class="j-input" id="${id}" type="search" placeholder="${esc(placeholder)}" value="${esc(value)}" autocomplete="off"></label>`
-}
-function psSelect(id, list, value, blank, label) {
-  return `<select class="j-select ${value ? 'is-set' : ''}" id="${id}" aria-label="${esc(label || blank)}"><option value="">${esc(blank)}</option>${list.map((x) => `<option value="${esc(x.id)}" ${value === x.id ? 'selected' : ''}>${esc(x.label || x.name)}</option>`).join('')}</select>`
-}
-const PS_PAY = { paid: ['green', 'Paid'], part: ['orange', 'Part paid'], unpaid: ['red', 'Unpaid'], session: ['pink', 'Session by session'] }
-function psBadge(color, label) { return `<span class="ps-badge ${color}"><i></i>${esc(label)}</span>` }
 function psPayBadge(p) {
   if (p.trial) return psBadge('violet', 'Trial')
   if (p.paymentStatus === 'N/A') return psBadge('grey', 'N/A')
