@@ -58,7 +58,7 @@ import { listMatches, listRules, ruleFor } from './_jfp-stripe-match.js'
 import { listInvoices, openForBank } from './_jfp-invoices.js'
 import { invoiceRefOf } from './_jfp-bank-match.js'
 // Saved card or bank account, auto-charge after each session (claude/card-on-file).
-import { SAVED_PAY_ACTIONS, savedPayAction, withSavedPay } from './_jfp-saved-pay.js'
+import { SAVED_PAY_ACTIONS, savedPayAction, withSavedPay, autoChargeActiveFor } from './_jfp-saved-pay.js'
 import { PROGRAMMES, programmeLabel, PRICE_MIN, PRICE_MAX, PRICES_MAX, cleanPrice, allPrices, priceById, quickHolidayPeriods, quickLinkInput, quickStatus, QUICK_STATUS, quickOpen, quickToCheck, quickUrl, QUICK_CHECKED, QUICK_EMAILED } from './_jfp-quick.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -1874,6 +1874,9 @@ async function sessionInvoice(req, res, principal, config, body) {
     const plan = billPlan({ prepaid: prepaidOf(r.notes), covered: coveredOf(r.notes), sessions, today: sydneyToday() })
     rows.push({ row: r, sessions, per, plan, covered: plan.covered, cents: (sessions - plan.covered) * per })
   }
+  // Charged automatically after each session (claude/card-on-file): never billed by hand as well.
+  const auto = await autoChargeActiveFor(config, rows.map((x) => x.row))
+  if (auto.length) return fail(res, 409, `${auto.map((r) => r.player).join(' and ')} ${auto.length > 1 ? 'are' : 'is'} charged automatically after each session (saved card or bank account). To bill by hand instead, pause auto-charge in Edit player first.`, { code: 'auto_charge' })
   const what = clean(body.what, 120)
   const amountCents = rows.reduce((t, x) => t + x.cents, 0)
   // Every session asked for was paid in advance: nothing to bill, the

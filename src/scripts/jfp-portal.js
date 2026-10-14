@@ -26,7 +26,7 @@ import { quoteHtml, wireQuote, commitmentHtml, sameTiers } from './jfp-portal-qu
 import { childList, submitFamily, familyModal, familyGroups } from './jfp-portal-family-add.js'
 import { findExisting, removedView, wireRemoved, removedCount } from './jfp-portal-removed.js'
 // Card / direct debit on file and auto-charge (claude/card-on-file).
-import { savedPayTag, savedPayDetail, mountAutoChargeEdit } from './jfp-portal-autocharge.js'
+import { savedPayTag, savedPayDetail, mountAutoChargeEdit, mountSavedPaySettings } from './jfp-portal-autocharge.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', linkProg: 'all', pricing: null }
@@ -3647,6 +3647,7 @@ async function renderSettings() {
       <div class="j-two"><label class="j-field"><span>Account name</span><input class="j-input" id="s-inv-name" maxlength="80" value="${esc(c.invoice?.accountName || '')}"></label><label class="j-field"><span>BSB</span><input class="j-input" id="s-inv-bsb" inputmode="numeric" maxlength="7" value="${esc(c.invoice?.bsb || '')}"></label></div>
       <div class="j-two"><label class="j-field"><span>Account number</span><input class="j-input" id="s-inv-acc" inputmode="numeric" maxlength="12" value="${esc(c.invoice?.accountNumber || '')}"></label><label class="j-field"><span>Reference format</span><input class="j-input" id="s-inv-ref" maxlength="40" value="${esc(c.invoice?.reference || 'INV-<n> <player>')}"></label></div>
       <label class="j-field" style="max-width:360px"><span>ABN (optional)</span><input class="j-input" id="s-inv-abn" inputmode="numeric" maxlength="14" value="${esc(c.invoice?.abn || '')}"></label>
+      <div id="s-savedpay"></div>
       <h2 style="margin:16px 0 12px">Waiver</h2>
       <label class="j-check"><input type="checkbox" id="s-wcarry" ${c.waiverCarryover !== false ? 'checked' : ''}> <span><b>Accept waivers signed in an earlier term.</b> Off: every family signs again for ${esc(c.term)}. Either way a waiver only counts when it carries the family's own email or mobile.</span></label>
       <label class="j-field"><span>Backup waiver form link</span><input class="j-input" id="s-waiver" value="${esc(c.waiverUrl)}"></label>
@@ -3661,6 +3662,8 @@ async function renderSettings() {
     $('s-skips').querySelectorAll('[data-skip-rm]').forEach((b) => b.addEventListener('click', () => { skips.splice(Number(b.dataset.skipRm), 1); drawSkips() }))
   }
   drawSkips()
+  // Saved cards, bank accounts and auto-charge switches (claude/card-on-file): saved as they change.
+  mountSavedPaySettings($('s-savedpay'), { post, toast })
   $('s-skip-add').addEventListener('click', () => { const d = $('s-skip-date').value; if (!d) return toast('Choose a date.'); skips = [...skips.filter((x) => x.date !== d), { date: d, reason: $('s-skip-why').value.trim() || 'No session' }].sort((a, b) => a.date.localeCompare(b.date)); drawSkips() })
   $('s-hols').addEventListener('click', (e) => { const b = e.target.closest('[data-hol]'); if (!b) return; skips = [...skips.filter((x) => x.date !== b.dataset.hol), { date: b.dataset.hol, reason: b.dataset.why }].sort((a, c2) => a.date.localeCompare(c2.date)); drawSkips(); toast(`${b.dataset.why} added. Save settings to apply.`) })
   $('s-save').addEventListener('click', async () => {

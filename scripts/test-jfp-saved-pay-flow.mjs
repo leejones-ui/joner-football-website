@@ -101,6 +101,28 @@ await test('setup: session by session players (JFP and Pro) in a Wednesday 5pm g
   assert.equal((await row(rows.dex))['Term 4 Payment Type'], 'JFP Pro sessions')
 })
 
+await test('ships dark: all three switches off by default; families see nothing and setup is refused; bank needs its own switch', async () => {
+  assert.deepEqual((await ok('savedPaySettings')).savedPay, { cards: false, bank: false, autoCharge: false })
+  const c = client(); await signIn(c, 'cara.card@example.com')
+  assert.equal((await c.call('/api/jfp-account', { action: 'savedPay' })).data.saved, null, 'no Save section')
+  const off = await c.call('/api/jfp-account', { action: 'savedPaySetup', kind: 'card', agree: true })
+  assert.equal(off.status, 403); assert.equal(off.data.code, 'off')
+  // Cards on, bank still off: only the card option, bank setup refused.
+  assert.deepEqual((await ok('savedPaySettings', { set: { cards: true } })).savedPay, { cards: true, bank: false, autoCharge: false })
+  const v = (await c.call('/api/jfp-account', { action: 'savedPay' })).data.saved
+  assert.equal(v.bank, false)
+  assert.equal((await c.call('/api/jfp-account', { action: 'savedPaySetup', kind: 'bank', agree: true })).status, 403)
+  // Coaches cannot change the switches.
+  const coachC = client(); await signIn(coachC, (await ok('board')).coaches.find((x) => x.id === 'sam').email, 'staff')
+  assert.equal((await coachC.call('/api/jfp-portal-data', { action: 'savedPaySettings', set: { autoCharge: true } })).status, 403)
+  assert.equal((await ok('savedPaySettings', { set: { bank: true } })).savedPay.bank, true)
+  assert.equal((await c.call('/api/jfp-account', { action: 'savedPay' })).data.saved.bank, true)
+  // A full Settings save keeps the switches.
+  const cfg = (await ok('getSettings')).config
+  await ok('saveSettings', { config: { kitNote: cfg.kitNote } })
+  assert.deepEqual((await ok('savedPaySettings')).savedPay, { cards: true, bank: true, autoCharge: false })
+})
+
 await test('Fees: consent is required, then Stripe setup mode; the card is saved (brand and last 4 only), with the consent wording and version', async () => {
   const c = client()
   await signIn(c, 'cara.card@example.com')
@@ -209,6 +231,20 @@ await test('the cron waits until 10:00 Sydney; a run needs the cron secret', asy
   assert.equal((await pis()).length, 0)
 })
 
+await test('auto charge off: the cron and Run now only preview and say so; nothing is charged', async () => {
+  const before = (await pis()).length
+  const cron = await (await fetch(`${B}/api/jfp-groups?autoCharge=1&now=${NOV5}`, { headers: { authorization: 'Bearer local-cron-secret' } })).json()
+  assert.equal(cron.off, true); assert.match(cron.message, /^Auto charge is off/); assert.ok(cron.wouldCharge > 0)
+  const run = await ok('autoChargeRun', { confirm: true, now: NOV5 })
+  assert.equal(run.off, true); assert.equal(run.summary.charged, 0); assert.match(run.message, /Auto charge is off/)
+  assert.equal((await pis()).length, before)
+  assert.equal(await rec(rows.cara, D1), null, 'nothing settled either')
+  assert.match((await ok('autoChargePanel', { now: NOV5 })).off, /Auto charge is off/)
+  // With auto charge off, hand billing is allowed as before.
+  assert.equal((await ok('savedPaySettings', { set: { autoCharge: true } })).savedPay.autoCharge, true)
+  assert.equal((await ok('autoChargePanel', { now: NOV5 })).off, undefined)
+})
+
 await test('the daily run: right dates charged, receipts sent, rows paid and in the ledger; covered, told, paused, prepaid settled', async () => {
   // Una's charge: Stripe takes it but the answer never arrives.
   await fetch(`${B}/__fail?what=${encodeURIComponent(`stripe-pi:${rows.una}`)}&on=1`)
@@ -255,6 +291,16 @@ await test('the daily run: right dates charged, receipts sent, rows paid and in 
   // Staff are told once on Telegram.
   const tg = (await getJson('/__telegram')).filter((t) => /JFP auto-charge 2026-11-05/.test(t.text))
   assert.equal(tg.length, 1); assert.match(tg[0].text, /Charged \d+/); assert.match(tg[0].text, /Dex Declined/)
+})
+
+await test('hand "Bill sessions" is refused for a player charged automatically; allowed once paused, or with no saved method', async () => {
+  const no = await portal('sessionInvoice', { rows: [{ rowId: rows.una, sessions: 1, perSessionCents: 5000 }], mode: 'link' })
+  assert.equal(no.status, 409); assert.equal(no.data.code, 'auto_charge'); assert.match(no.data.error, /Una Unsure is charged automatically after each session/)
+  const mixed = await portal('sessionInvoice', { rows: [{ rowId: rows.nobody, sessions: 1, perSessionCents: 5000 }, { rowId: rows.una, sessions: 1, perSessionCents: 5000 }], mode: 'link' })
+  assert.equal(mixed.status, 409)
+  // Pip is paused: billing by hand works.
+  assert.equal((await portal('sessionInvoice', { rows: [{ rowId: rows.pip, sessions: 1, perSessionCents: 10000 }], mode: 'paid', method: 'cash' })).status, 200)
+  assert.equal((await portal('sessionInvoice', { rows: [{ rowId: rows.rhys, sessions: 1, perSessionCents: 5000 }], mode: 'paid', method: 'cash' })).status, 200)
 })
 
 await test('declined card: the request becomes a Pay link, the family is emailed it, staff see it flagged; the Pay link is on Home', async () => {

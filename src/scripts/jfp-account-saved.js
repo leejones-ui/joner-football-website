@@ -33,10 +33,10 @@ function savedHtml(v) {
   return `<article class="ja-card ja-saved" data-saved>
     <p class="ja-kicker"><i></i>Session payments</p>
     <h3 class="ja-h3" style="margin-top:8px">Save a card or bank account for session payments</h3>
-    <p class="ja-small" style="margin-top:6px">Paying by the session? Save a card (Apple Pay and Google Pay work too) or an Australian bank account once, and we charge it the day after each session: session by session fees and extra sessions booked. No payment links to chase.</p>
+    <p class="ja-small" style="margin-top:6px">Paying by the session? Save a card (Apple Pay and Google Pay work too)${v.bank ? ' or an Australian bank account' : ''} once, and we charge it the day after each session: session by session fees and extra sessions booked. No payment links to chase.</p>
     ${v.other ? `<p class="ja-small ja-muted" style="margin-top:8px">${esc(v.other.label)} is saved by ${esc(v.other.email)} on this account and pays for your sessions. You can save your own here instead.</p>` : ''}
     ${pays.length ? `<p class="ja-small ja-muted" style="margin-top:12px">It would pay for:</p>${who}` : '<p class="ja-small ja-muted" style="margin-top:10px">Right now none of your places is paid by the session, so nothing would be charged until one is.</p>'}
-    <div class="ja-actions" style="margin-top:14px"><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-saved-start="card">${ic('card')}Save a card</button><button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-saved-start="bank">Save a bank account</button></div>
+    <div class="ja-actions" style="margin-top:14px"><button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-saved-start="card">${ic('card')}Save a card</button>${v.bank ? '<button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-saved-start="bank">Save a bank account</button>' : ''}</div>
     <p class="ja-small ja-muted" style="margin-top:10px">Stripe keeps the card or account details. Joner Football never sees or stores the numbers. Remove it here any time.</p>
   </article>`
 }
@@ -67,8 +67,8 @@ function wire(el, v) {
     if (kind) return consentSheet(v, kind)
     // Replace: choose a card or a bank account again.
     const s = openSheet({ title: 'Replace', subtitle: `Instead of ${v.method?.label || 'the saved one'}` })
-    s.body.innerHTML = '<p class="ja-small">Save a new card or bank account. The one saved now is removed once the new one is saved.</p>'
-    s.foot.innerHTML = '<div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" data-k="card">A card</button><button type="button" class="ja-btn ja-btn-light" data-k="bank">A bank account</button></div>'
+    s.body.innerHTML = `<p class="ja-small">Save a new card${v.bank ? ' or bank account' : ''}. The one saved now is removed once the new one is saved.</p>`
+    s.foot.innerHTML = `<div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" data-k="card">A card</button>${v.bank ? '<button type="button" class="ja-btn ja-btn-light" data-k="bank">A bank account</button>' : ''}</div>`
     s.foot.querySelectorAll('[data-k]').forEach((x) => x.addEventListener('click', () => { closeSheet(true); consentSheet(v, x.dataset.k) }))
   }))
   el.querySelector('[data-saved-remove]')?.addEventListener('click', () => {

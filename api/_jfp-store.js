@@ -339,6 +339,8 @@ export function normaliseConfig(input = {}) {
     // Invoices (Lee, 14 Oct 2026): bank details shown on an invoice only once
     // staff save them in Settings; the ABN only if one is saved. Never hardcoded.
     invoice: cleanInvoiceSettings(input.invoice),
+    // Saved card / bank account and auto-charge (claude/card-on-file): off until Lee turns each on in Settings.
+    savedPay: { cards: input.savedPay?.cards === true, bank: input.savedPay?.bank === true, autoCharge: input.savedPay?.autoCharge === true },
     coachAlerts: {
       newPlayer: input.coachAlerts?.newPlayer === true,
       register: input.coachAlerts?.register === true,

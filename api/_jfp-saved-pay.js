@@ -43,7 +43,7 @@
 // (payment_intent.succeeded) or turned into a Pay link if it fails.
 import { stripeSecret, siteUrl } from './_holiday-store.js'
 import {
-  kvCommand, kvGetJson, kvSetJson, kvPipeline, clean, newId, formatAud, dateLabel, sydneyToday, getConfig, listGroups, listPayreqs, getPayreq, savePayreq,
+  kvCommand, kvGetJson, kvSetJson, kvPipeline, clean, newId, formatAud, dateLabel, sydneyToday, getConfig, saveConfig, listGroups, listPayreqs, getPayreq, savePayreq,
   audit, listAudit, claimOnce, emailsIn, rowEmails, isSessionType, isProType, withPerSession, prepaidOf, withPrepaid, keys,
 } from './_jfp-store.js'
 import { loadRoster, getTerm4Row, updateTerm4Rows, appendNote, bustRosterCache } from './_jfp-airtable.js'
@@ -87,6 +87,21 @@ const addDays = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 864000
 const parse = (v) => { try { return typeof v === 'string' ? JSON.parse(v) : v } catch { return null } }
 const sydneyHour = (ms) => Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Australia/Sydney', hour: '2-digit', hourCycle: 'h23' }).format(new Date(ms)))
 const isTest = (name) => /test/i.test(name || '')
+
+// ---------- on and off (Settings, admin only) ----------
+
+// Ships dark: all three off until Lee turns them on. cards: families can save
+// a card (and staff charge it); bank: BECS too; autoCharge: the daily job and
+// Run now charge (off, they only show what they would do).
+export const switches = (config) => ({ cards: config?.savedPay?.cards === true, bank: config?.savedPay?.cards === true && config?.savedPay?.bank === true, autoCharge: config?.savedPay?.autoCharge === true })
+export const AUTO_OFF = 'Auto charge is off. Nothing was charged: this is what it would do. Turn it on in Settings.'
+
+// Is anyone in these rows charged automatically now (a saved method, not paused, auto-charge on)?
+export async function autoChargeActiveFor(config, rows) {
+  if (!switches(config).cards || !switches(config).autoCharge || !rows.length) return []
+  const [methods, pauses] = await Promise.all([methodsFor(rows.flatMap(rowEmails)), pausedRows()])
+  return rows.filter((r) => methodForRow(r, methods) && !pauses.has(r.id))
+}
 
 // ---------- the words families agree to ----------
 
@@ -197,6 +212,7 @@ const sessionRows = (fam) => fam.players.flatMap((p) => p.term4.map((r) => ({ ..
 
 // Fees > "Save a card or bank account for session payments".
 export async function familySavedView({ config, parent, fam }) {
+  if (!switches(config).cards) return null
   const email = normEmail(parent.email)
   const mine = await getMethod(email)
   const others = mine ? null : [...(await methodsFor((fam.emails || []).filter((e) => normEmail(e) !== email))).values()][0] || null
@@ -216,15 +232,18 @@ export async function familySavedView({ config, parent, fam }) {
     other: others ? { label: methodView(others).label, email: others.email } : null,
     consent: { card: consentText('card', { self }), bank: consentText('bank', { self }), becsMandate: BECS_MANDATE, becsAgreementUrl: BECS_AGREEMENT_URL, version: CONSENT_VERSION },
     consentAt: mine?.consent?.at || '',
-    players, recent, self,
+    players, recent, self, bank: switches(config).bank,
   }
 }
 const FAMILY_STATUS = { succeeded: 'Paid', processing: 'Direct debit processing', failed: 'Not paid: pay link sent', action: 'Not paid: pay link sent', uncertain: 'Being checked' }
 
 // Start a Stripe Checkout page in setup mode. body: { kind: 'card'|'bank', agree: true }.
-export async function startSetup({ req, parent, fam, body }) {
+export async function startSetup({ req, parent, fam, body, config }) {
   const kind = body.kind === 'bank' ? 'bank' : body.kind === 'card' ? 'card' : ''
   if (!kind) return { ok: false, status: 400, error: 'Choose a card or a bank account.' }
+  const on = switches(config || await getConfig())
+  if (!on.cards) return { ok: false, status: 403, error: 'Saving a payment method is not available yet.', code: 'off' }
+  if (kind === 'bank' && !on.bank) return { ok: false, status: 403, error: 'Saving a bank account is not available yet. Save a card instead.', code: 'off' }
   const email = normEmail(parent.email)
   if (!email) return { ok: false, status: 400, error: 'Sign in again to save a payment method.' }
   const self = sessionRows(fam).length > 0 && sessionRows(fam).every((r) => r.ownContact)
@@ -676,6 +695,7 @@ export async function runAutoCharges({ config, nowMs = Date.now(), dry = false, 
   config = config || await getConfig()
   const items = await planAutoCharges({ config, nowMs })
   if (dry) return { dry: true, items }
+  if (!switches(config).cards || !switches(config).autoCharge) return { dry: true, off: true, items, message: AUTO_OFF }
   if ((await kvCommand(['SET', K.runLock, by, 'NX', 'EX', '300'])) !== 'OK') return { busy: true, items: [] }
   const done = []
   try {
@@ -711,6 +731,7 @@ export async function runAutoCharges({ config, nowMs = Date.now(), dry = false, 
 export async function cronAutoCharges({ nowMs = Date.now() } = {}) {
   if (sydneyHour(nowMs) < RUN_HOUR) return { waiting: true, hour: sydneyHour(nowMs) }
   const r = await runAutoCharges({ nowMs, by: 'daily job' })
+  if (r.off) return { off: true, message: AUTO_OFF, wouldCharge: r.items.filter((x) => x.action === 'charge').length }
   return r.busy ? { busy: true } : r.summary
 }
 
@@ -792,7 +813,8 @@ async function resolveTarget({ chargeId, invoiceId }) {
 // Admin only (jfp-portal-data.js checks the role). Analysis and invoices are
 // never charged on their own; staff press this, see the amount and the
 // method, and confirm. The amount is what the request asks, never typed.
-export async function chargeSavedNow({ principal, chargeId = '', invoiceId = '' }) {
+export async function chargeSavedNow({ principal, chargeId = '', invoiceId = '', config = null }) {
+  if (!switches(config || await getConfig()).cards) return { ok: false, status: 403, error: 'Saved cards are turned off in Settings.' }
   const t = await resolveTarget({ chargeId: clean(chargeId, 60), invoiceId: clean(invoiceId, 20) })
   if (t.error) return { ok: false, status: t.status, error: t.error }
   const { c, inv, q } = t
@@ -814,8 +836,9 @@ export async function chargeSavedNow({ principal, chargeId = '', invoiceId = '' 
 }
 
 // Which open charges and invoices could be charged with a saved method (for the buttons).
-export async function savedPayFor({ chargeIds = [], invoiceIds = [] } = {}) {
+export async function savedPayFor({ chargeIds = [], invoiceIds = [], config = null } = {}) {
   const out = { charges: {}, invoices: {} }
+  if (!switches(config || await getConfig()).cards) return out
   for (const [list, kind] of [[chargeIds, 'charges'], [invoiceIds, 'invoices']]) {
     for (const id of (Array.isArray(list) ? list : []).slice(0, 200)) {
       const t = await resolveTarget(kind === 'charges' ? { chargeId: clean(id, 60) } : { invoiceId: clean(id, 20) }).catch(() => ({ error: 'x' }))
@@ -834,7 +857,8 @@ export async function notifyNewCharge({ charge: c, payreq: q, siteUrl: base = ''
   if (!c?.email || !q?.id || q.status === 'paid') return { emailed: false }
   if (!(await claimOnce(`jfp:charge-notice:${c.id}`, LONG))) return { emailed: false, already: true }
   const { m, row } = await methodForPayreq(q, c)
-  const auto = c.kind === 'extra' && Boolean(m) && Boolean(c.sessionDate) && c.sessionDate >= sydneyToday(Date.parse(m.consent?.at || m.savedAt) || 0)
+  const on = switches(await getConfig())
+  const auto = on.cards && on.autoCharge && c.kind === 'extra' && Boolean(m) && Boolean(c.sessionDate) && c.sessionDate >= sydneyToday(Date.parse(m.consent?.at || m.savedAt) || 0)
   const self = Boolean(row?.ownContact)
   const url = `${(base || siteUrl()).replace(/\/$/, '')}/jfp-account/?pay=${encodeURIComponent(q.id)}`
   const hi = self ? String(c.playerName || '').split(' ')[0] : c.parentName || ''
@@ -901,26 +925,40 @@ export async function autoChargePanel(config, { nowMs = Date.now() } = {}) {
     needsLook: recent.filter((x) => ['failed', 'action', 'uncertain'].includes(x.status)).map(recView),
     recent: recent.filter((x) => x.status !== 'skipped' || x.reason).slice(0, 30).map(recView),
     lastRun: lastRun || null,
+    switches: switches(config), ...(switches(config).autoCharge && switches(config).cards ? {} : { off: AUTO_OFF }),
   }
 }
 
 // Staff actions (Money > Pro sessions > Auto charges, Edit player).
-export const SAVED_PAY_ACTIONS = new Set(['autoChargePanel', 'autoChargeRun', 'autoChargePause', 'autoChargeStatus', 'chargeSavedPay', 'savedPayFor'])
+export const SAVED_PAY_ACTIONS = new Set(['autoChargePanel', 'autoChargeRun', 'autoChargePause', 'autoChargeStatus', 'chargeSavedPay', 'savedPayFor', 'savedPaySettings'])
 export async function savedPayAction(req, res, principal, config, body, action) {
   const testNow = process.env.JFP_TEST_CLOCK === '1' && Number(body.now) ? Number(body.now) : Date.now()
   const no = (status, error) => res.status(status).json({ success: false, error })
   if (action === 'autoChargePanel') return res.status(200).json({ success: true, ...(await autoChargePanel(config, { nowMs: testNow })) })
   if (action === 'autoChargeStatus') { const r = await autoChargeStatus(body.rowId); return r.ok ? res.status(200).json({ success: true, ...r }) : no(r.status, r.error) }
   if (action === 'autoChargePause') { const r = await setPause(principal, body.rowId, body.paused === true); return r.ok ? res.status(200).json({ success: true, paused: r.paused }) : no(r.status, r.error) }
-  if (action === 'savedPayFor') return res.status(200).json({ success: true, ...(await savedPayFor({ chargeIds: body.chargeIds, invoiceIds: body.invoiceIds })) })
+  if (action === 'savedPayFor') return res.status(200).json({ success: true, ...(await savedPayFor({ chargeIds: body.chargeIds, invoiceIds: body.invoiceIds, config })) })
+  // Settings: the three switches (read, or change one or more).
+  if (action === 'savedPaySettings') {
+    if (body.set && typeof body.set === 'object') {
+      const before = switches(config)
+      const next = { ...config.savedPay }
+      for (const k of ['cards', 'bank', 'autoCharge']) if (typeof body.set[k] === 'boolean') next[k] = body.set[k]
+      const saved = await saveConfig({ savedPay: next })
+      await audit({ by: principal.email, action: 'savedpay.settings', target: 'config', before, after: switches(saved) })
+      return res.status(200).json({ success: true, savedPay: switches(saved) })
+    }
+    return res.status(200).json({ success: true, savedPay: switches(config) })
+  }
   if (action === 'chargeSavedPay') {
     if (body.confirm !== true) return no(400, 'Confirm the charge first.')
-    const r = await chargeSavedNow({ principal, chargeId: body.chargeId, invoiceId: body.invoiceId })
+    const r = await chargeSavedNow({ principal, chargeId: body.chargeId, invoiceId: body.invoiceId, config })
     return r.ok ? res.status(200).json({ success: true, result: r.status, why: r.why, amountLabel: r.amountLabel, method: r.method }) : no(r.status, r.error)
   }
   if (action === 'autoChargeRun') {
     if (body.confirm !== true) return no(400, 'Confirm the run first.')
     const r = await runAutoCharges({ config, nowMs: testNow, by: principal.email })
+    if (r.off) return res.status(200).json({ success: true, off: true, message: AUTO_OFF, summary: { charged: 0, chargedCents: 0, processing: 0, failed: 0, skipped: 0 }, done: [], wouldCharge: r.items.filter((x) => x.action === 'charge').length })
     if (r.busy) return no(409, 'The auto-charge run is already going. Try again in a few minutes.')
     await audit({ by: principal.email, action: 'autocharge.run', target: 'run', after: r.summary })
     return res.status(200).json({ success: true, summary: r.summary, done: r.done.map((d) => ({ player: d.player, dateLabel: d.dateLabel, amountLabel: d.amountLabel, result: d.result, why: d.why || d.reasonLabel || '' })) })
@@ -933,7 +971,7 @@ export const SAVED_PAY_FAMILY = new Set(['savedPay', 'savedPaySetup', 'savedPayC
 export async function savedPayFamily(req, res, parent, body, { config, fam }) {
   const send = (r) => (r.ok ? res.status(200).json({ success: true, ...Object.fromEntries(Object.entries(r).filter(([k]) => k !== 'ok')) }) : res.status(r.status).json({ success: false, error: r.error, ...(r.code ? { code: r.code } : {}) }))
   if (body.action === 'savedPay') return res.status(200).json({ success: true, saved: await familySavedView({ config, parent, fam }) })
-  if (body.action === 'savedPaySetup') return send(await startSetup({ req, parent, fam, body }))
+  if (body.action === 'savedPaySetup') return send(await startSetup({ req, parent, fam, body, config }))
   if (body.action === 'savedPayConfirm') return send(await confirmSetup(body.sessionId, { email: parent.email, famEmails: fam.emails || [] }))
   if (body.action === 'savedPayRemove') return send(await removeSaved({ parent }))
   return res.status(400).json({ success: false, error: 'Unknown action.' })

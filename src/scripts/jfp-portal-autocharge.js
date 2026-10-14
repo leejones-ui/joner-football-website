@@ -70,6 +70,7 @@ export async function renderAutoChargePanel(el, ui) {
   const d = { needsLook: [], recent: [], ...r.data }
   const last = d.lastRun ? `Last run ${esc(new Date(d.lastRun.at).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))} (${esc(d.lastRun.by)}): ${d.lastRun.charged} charged, ${d.lastRun.processing} direct debit${d.lastRun.processing === 1 ? '' : 's'} started, ${d.lastRun.failed} not paid.` : 'Not run yet.'
   el.innerHTML = `<h2>Auto charges</h2>
+    ${d.off ? `<div class="j-box j-box-amber" style="margin:8px 0"><b>Auto charge is off.</b> The list below is what it would do. Nothing is charged until it is turned on in Settings.</div>` : ''}
     <p class="sub">Session by session and Pro players whose family saved a card or bank account. ${esc(d.schedule)}. JFP and Pro sessions alike; each charge is recorded on the player like a paid session invoice.</p>
     <p class="small muted">${last}</p>
     ${d.needsLook.length ? `<div class="j-box j-box-amber" style="margin:10px 0"><p><b>Needs a look: ${d.needsLook.length}</b></p><p class="small" style="margin:4px 0 6px">Not paid. The family was emailed a Pay link (it is on Payment links). Check with them if it stays unpaid.</p><ul class="jm-hist">${d.needsLook.map(recLine).join('')}</ul></div>` : ''}
@@ -89,6 +90,7 @@ export async function renderAutoChargePanel(el, ui) {
     const x = await ui.post('autoChargeRun', { confirm: true })
     const out = el.querySelector('#ac-out')
     if (!x.ok) { btn.disabled = false; ui.toast(x.data.error || 'Could not run.'); return }
+    if (x.data.off) { btn.disabled = false; ui.toast('Auto charge is off. Nothing was charged.', 6000); return }
     const s = x.data.summary
     ui.toast(`${s.charged} charged, ${s.processing} direct debit${s.processing === 1 ? '' : 's'} started, ${s.failed} not paid`)
     await renderAutoChargePanel(el, ui)
@@ -135,4 +137,27 @@ export async function mountInvoiceSavedButton(box, inv, ui, onDone) {
   b.type = 'button'; b.className = 'j-btn j-btn-dark j-btn-sm'; b.textContent = info.button; b.title = info.label
   b.addEventListener('click', () => chargeSaved(ui, { invoiceId: inv.id, info, onDone }))
   bar.querySelector('[data-iv="pay"]').before(b)
+}
+
+// ---------- Settings: the three switches (admin only) ----------
+const SWITCHES = [
+  ['cards', 'Saved cards', 'Families can save a card (Apple Pay and Google Pay too) in My account, Fees, and staff can use Charge saved card. Off: families do not see it.'],
+  ['bank', 'Saved bank accounts (BECS Direct Debit)', 'Turn on after BECS Direct Debit is switched on in Stripe and the webhook has payment_intent.succeeded and payment_intent.payment_failed'],
+  ['autoCharge', 'Auto charge after each session', 'Charges saved cards and accounts the day after each session (and extra sessions). Off: the daily job and Run now only show what they would do.'],
+]
+export async function mountSavedPaySettings(el, { post, toast }) {
+  if (!el) return
+  const r = await post('savedPaySettings')
+  if (!r.ok || !r.data?.savedPay || !el.isConnected) return
+  const v = r.data.savedPay
+  el.innerHTML = `<h2 style="margin:16px 0 6px">Saved cards and auto charge</h2>
+    <p class="muted small" style="margin-bottom:8px">Each switch saves straight away.</p>
+    ${SWITCHES.map(([k, l, line]) => `<label class="j-check"><input type="checkbox" data-sp="${k}" ${v[k] ? 'checked' : ''}${k === 'bank' && !v.cards ? ' disabled' : ''}> <span><b>${esc(l)}.</b> ${esc(line)}</span></label>`).join('')}`
+  el.querySelectorAll('[data-sp]').forEach((b) => b.addEventListener('change', async () => {
+    b.disabled = true
+    const x = await post('savedPaySettings', { set: { [b.dataset.sp]: b.checked } })
+    if (!x.ok) { b.checked = !b.checked; b.disabled = false; return toast(x.data.error || 'Could not save.') }
+    toast('Saved')
+    mountSavedPaySettings(el, { post, toast })
+  }))
 }
