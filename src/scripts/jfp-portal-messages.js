@@ -34,6 +34,8 @@ export async function renderMessages(ui) {
   const counts = { pay: 0, paid: 0, noPrice: 0, check: 0 }
   for (const f of d.families) counts[f.kind] += 1
   const checkIt = d.messages.filter((m) => m.status === 'unknown')
+  // The newest test text Lee sent himself: confirming it switches texts on.
+  const lastTest = d.messages.find((m) => m.selfTest && !['draft', 'cancelled', 'expired'].includes(m.status))
   const list = d.families.filter((f) => {
     if (S.q && !`${f.parent} ${f.email} ${f.players.map((p) => p.name).join(' ')}`.toLowerCase().includes(S.q)) return false
     if (S.filter === 'all') return true
@@ -41,7 +43,7 @@ export async function renderMessages(ui) {
     return f.kind === S.filter
   })
   view().innerHTML = `
-    <div class="jp-head"><div><h1>Messages</h1><p class="muted small">Email and text each family, one at a time. Prepare shows the exact email and text. Nothing goes until you approve that message, and each one goes once. Amounts are what is due on the current records, checked again just before sending.</p></div></div>
+    <div class="jp-head"><div><h1>Messages</h1><p class="muted small">Press Prepare on a family to see their email and text. Send the email, the text, or both. Each one goes once.</p></div></div>
     ${d.dncError ? `<div class="j-box j-box-red" style="margin-bottom:12px">${esc(d.dncError)}</div>` : ''}
     <div class="j-card" style="padding:14px 16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
@@ -50,6 +52,9 @@ export async function renderMessages(ui) {
         ${d.isOwner ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${route.verified ? '<button type="button" class="j-btn j-btn-line j-btn-sm" id="ms-unverify">Turn texts off</button>' : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" id="ms-test">Send me a test text</button></div>` : ''}
       </div>
     </div>
+    ${!route.verified && d.isOwner && lastTest ? `<div class="j-box ${lastTest.status === 'sent' ? 'j-box-amber' : 'j-box-grey'}" style="margin-bottom:14px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+      <span>${lastTest.status === 'sent' ? `<b>One step to switch texts on.</b> Your test text went at ${esc(when(lastTest.events.at(-1)?.at))}. Did it arrive on your phone?` : `<b>Your test text is ${esc(String(lastTest.statusLabel || lastTest.status).toLowerCase())}.</b> When it has gone, confirm it here.`}</span>
+      ${lastTest.status === 'sent' ? `<button type="button" class="j-btn j-btn-dark" data-verify="${esc(lastTest.id)}">Yes, it arrived: turn texts on</button>` : ''}</div>` : ''}
     <div id="ms-campaign"></div>
     ${checkIt.length ? `<div class="j-box j-box-amber" style="margin-bottom:14px"><b>${checkIt.length} message${checkIt.length === 1 ? '' : 's'} to check.</b> The system could not tell if ${checkIt.length === 1 ? 'it' : 'they'} went. Look in Brevo or in Messages on the Mac, then settle it below. Nothing is sent again by itself.</div>` : ''}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
@@ -149,10 +154,11 @@ async function prepare(ui, d, f, createLink = false) {
     <button type="button" class="j-btn j-btn-dark" id="pr-email">Approve and send this email</button>
     <h3 style="margin:18px 0 6px">Text</h3>
     ${tx ? `<p class="small"><b>To:</b> ${esc(tx.target.ref)} · <b>From:</b> ${esc(d.route?.label || 'Messages on the HQ Mac')}${d.route?.sender ? '' : ' (not verified yet)'}</p>
-      <div class="j-two" style="margin:8px 0"><label class="j-field"><span>Texts for this family</span><select class="j-select" id="pr-pref"><option value="">Not asked</option><option value="yes" ${f.pref?.text === 'yes' ? 'selected' : ''}>Yes, they are happy to get texts</option><option value="no" ${f.pref?.text === 'no' ? 'selected' : ''}>No texts</option></select></label>
-      <label class="j-field"><span>How they agreed</span><input class="j-input" id="pr-how" value="${esc(f.pref?.how || '')}" placeholder="e.g. they text Ligia already"></label></div>
+      <div class="j-two" style="margin:8px 0"><label class="j-field"><span>Texts for this family</span><select class="j-select" id="pr-pref"><option value="">Not asked</option><option value="yes" ${f.pref?.text !== 'no' ? 'selected' : ''}>Yes, they are happy to get texts</option><option value="no" ${f.pref?.text === 'no' ? 'selected' : ''}>No texts</option></select></label>
+      <label class="j-field"><span>How they agreed</span><input class="j-input" id="pr-how" value="${esc(f.pref?.how || (f.pref?.text ? '' : 'A current JFP family: we text them about their own booking'))}" placeholder="e.g. they text Ligia already"></label></div>
       <label class="j-field"><span>The text, exactly as it will go (${'<span id="pr-len"></span>'} characters)</span><textarea class="j-textarea" id="pr-text" rows="5">${esc(tx.text)}</textarea></label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" id="pr-save">Save changes</button><button type="button" class="j-btn j-btn-dark" id="pr-textgo" ${textOk ? '' : 'disabled title="Texts are not verified yet"'}>Approve this text</button></div>` : `<p class="muted small">No text: ${esc(r.data.phoneProblem || 'no usable mobile')}.</p>`}
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" id="pr-save">Save changes</button><button type="button" class="j-btn j-btn-dark" id="pr-textgo" ${textOk ? '' : 'disabled'}>Send this text</button></div>
+      ${textOk ? '' : `<p class="j-box j-box-amber small" style="margin-top:8px">Texts are not switched on yet. ${d.isOwner ? 'Close this, then press <b>Yes, it arrived: turn texts on</b> at the top of Messages (send yourself a test text first if there is none).' : 'Lee switches them on from the top of Messages.'}</p>`}` : `<p class="muted small">No text: ${esc(r.data.phoneProblem || 'no usable mobile')}.</p>`}
     <div style="display:flex;justify-content:flex-end;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })
   let emailHash = em.payloadHash, textHash = tx?.payloadHash, textId = tx?.id
   const len = () => { const t = box.querySelector('#pr-text'); if (t) box.querySelector('#pr-len').textContent = t.value.length }
@@ -177,10 +183,10 @@ async function prepare(ui, d, f, createLink = false) {
     const pref = box.querySelector('#pr-pref').value
     if (pref !== (f.pref?.text || '')) { const p = await call('setPref', { email: f.email, text: pref, how: box.querySelector('#pr-how').value }); if (!p.ok) return toast(p.data.error); f.pref = { text: pref } }
     if (box.querySelector('#pr-text').value.trim() !== (await call('get', { id: textId })).data.message.text) return toast('Save your changes first, then approve.')
-    if (!(await confirmAgain(ui, `Approve this text to <b>${esc(tx.target.ref)}</b>? The Mac sends it next time it checks (${d.textHours.from}am to ${d.textHours.to - 12}pm).`))) return
+    if (!(await confirmAgain(ui, `Send this text to <b>${esc(tx.target.ref)}</b>? It goes from 0404 780 351 within a minute (${d.textHours.from}am to ${d.textHours.to - 12}pm).`))) return
     const s = await call('approve', { id: textId, payloadHash: textHash })
-    toast(s.ok ? 'Text approved, waiting for the Mac' : s.data.error, 6000)
-    if (s.ok) { e.target.disabled = true; e.target.textContent = 'Approved' }
+    toast(s.ok ? 'Text on its way from 0404 780 351' : s.data.error, 6000)
+    if (s.ok) { e.target.disabled = true; e.target.textContent = 'On its way' }
   })
   box.querySelector('[data-close]')?.addEventListener('click', () => renderMessages(ui))
 }

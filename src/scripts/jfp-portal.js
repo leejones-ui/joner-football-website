@@ -890,10 +890,18 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     else if (r.data.profileError) toast(r.data.profileError)
     const mobile = body.parent.mobile
     const where = `${g.day} ${g.time}, ${g.locationName}`
-    const textIt = (text, title) => textComposer({ modal, toast, rowIds: [r.data.rowId], parent: body.parent.name, mobile, text, title, self: w.self, to: w.self ? body.player.name : '' })
+    const textIt = (text, title, note = '') => textComposer({ modal, toast, rowIds: [r.data.rowId], parent: body.parent.name, mobile, text, title, self: w.self, to: w.self ? body.player.name : '', note })
     const sentLine = r.data.emailed ? ` Sent to ${esc(r.data.emailTo || body.parent.email)}.` : r.data.emailError ? ` <b>The email did not send:</b> ${esc(r.data.emailError)}` : ''
     if (r.data.payreq) {
       const url = r.data.payreq.url
+      // Email and text together (Lee, 14 Oct 2026): the text opens ready to send.
+      if (mobile) {
+        if (!r.data.emailed) copy(url)
+        textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url, self: w.self, starts: startsLabel }), `Now text ${w.contact}`, `<b>${esc(body.player.name)} added</b> to ${esc(where)}.${sentLine}${r.data.emailed ? '' : ' Payment link copied.'} <a href="#" data-copy-url="${esc(url)}">Copy the link</a>`)
+        document.querySelector('[data-copy-url]')?.addEventListener('click', (e) => { e.preventDefault(); copy(url) })
+        P.board = null; PL.at = 0; renderBoard(true)
+        return
+      }
       const done = modal(`<h2 style="margin-bottom:6px">${r.data.emailed ? 'Payment link emailed' : 'Payment link ready'}</h2><p class="muted small" style="margin-bottom:12px"><b>${esc(body.player.name)}</b> is held in ${esc(where)} as Awaiting Reply, and locks in once ${esc(r.data.payreq.amountLabel)} is paid.${sentLine} Now text ${w.self ? 'them' : 'them'} the same link.</p>
         <label class="j-field"><span>Payment link</span><input class="j-input" value="${esc(url)}" readonly></label>
         <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="dn-copy">Copy link</button><button type="button" class="j-btn j-btn-dark" id="dn-text" ${mobile ? '' : 'disabled title="No mobile entered"'}>Text it to ${esc(w.contact)}</button></div>
@@ -902,16 +910,12 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
       done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url, self: w.self, starts: startsLabel }), `Text ${w.contact} the payment link`) })
       if (!r.data.emailed) copy(url)
     } else if (payment === 'trial' && mobile) {
-      const when = String(box.querySelector('#ap-trial').selectedOptions[0]?.textContent || '').replace(/^Week \d+ · /, '')
-      const done = modal(`<h2 style="margin-bottom:6px">Trial booked</h2><p class="muted small" style="margin-bottom:12px"><b>${esc(body.player.name)}</b> trials on ${esc(when)} in ${esc(where)}. ${esc(g.coachName ? `Coach ${g.coachName}` : 'The coach')} sees it as a trial in their sessions, and is asked for feedback after it.${sentLine}</p>
-        <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="dn-text">Text ${esc(w.contact)} the trial details</button></div>`)
-      done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(trialText({ parent: body.parent.name, player: body.player.name, when, where: `${g.time}, ${g.locationName}`, self: w.self }), 'Text the trial details') })
+      const whenT = String(box.querySelector('#ap-trial').selectedOptions[0]?.textContent || '').replace(/^Week \d+ · /, '')
+      textIt(trialText({ parent: body.parent.name, player: body.player.name, when: whenT, where: `${g.time}, ${g.locationName}`, self: w.self }), `Now text ${w.contact} the trial`, `<b>Trial booked</b> for ${esc(body.player.name)}, ${esc(whenT)}. ${esc(g.coachName ? `Coach ${g.coachName}` : 'The coach')} sees it as a trial.${sentLine}`)
     } else if (mobile) {
-      // Every add can be texted: the start date, the session and how to lock it in.
+      // Every add is texted too: the start date, the session and how to lock it in.
       const paid = payment === 'offline'
-      const done = modal(`<h2 style="margin-bottom:6px">${esc(body.player.name)} added</h2><p class="muted small" style="margin-bottom:12px">${esc(where)}${startsLabel ? `, starting ${esc(startsLabel)}` : ''}.${sentLine} ${esc(g.coachName ? `Coach ${g.coachName}` : 'The coach')} is told.</p>
-        <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="dn-text">Text ${esc(w.contact)}</button></div>`)
-      done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(startText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, starts: startsLabel, self: w.self, paid }), `Text ${w.contact}`) })
+      textIt(startText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, starts: startsLabel, self: w.self, paid }), `Now text ${w.contact}`, `<b>${esc(body.player.name)} added</b> to ${esc(where)}${startsLabel ? `, starting ${esc(startsLabel)}` : ''}.${sentLine}`)
     } else if (!r.data.emailError) toast(`Added${r.data.emailed ? `. Sent to ${r.data.emailTo || body.parent.email}` : ''}. Airtable updated.`)
     P.board = null; PL.at = 0
     renderBoard(true)

@@ -20,9 +20,9 @@ const STATE = {
 }
 
 // self: the player is their own contact, so the text goes to them (to: their name).
-export function textComposer({ modal, toast, rowIds, parent = '', mobile = '', text = '', title = '', self = false, to = '' }) {
+export function textComposer({ modal, toast, rowIds, parent = '', mobile = '', text = '', title = '', self = false, to = '', note = '' }) {
   const who = to || (self ? 'the player' : parent || 'the family')
-  const box = modal(`<h2 style="margin-bottom:4px">${esc(title || (self ? `Text ${who}` : 'Text the family'))}</h2>
+  const box = modal(`${note ? `<div class="j-box j-box-green small" style="margin-bottom:12px">${note}</div>` : ''}<h2 style="margin-bottom:4px">${esc(title || (self ? `Text ${who}` : 'Text the family'))}</h2>
     <p class="muted small" style="margin-bottom:12px">To ${esc(who)}${mobile ? `, ${esc(mobile)}` : ''}. From the work number 0404 780 351, between 8am and 8pm. Check the words: this is exactly what they get.</p>
     <label class="j-field"><span>The text</span><textarea class="j-textarea" id="tx-text" rows="7" maxlength="640">${esc(text)}</textarea></label>
     <p class="muted small" id="tx-count" style="margin-top:-6px"></p>
