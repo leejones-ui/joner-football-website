@@ -1406,6 +1406,7 @@ const STATUS = {
   paid: ['Paid', '--c-good'], stripe: ['Paid in Stripe, not recorded', '--c-series-1'], part: ['Part paid', '--c-orange'],
   unpaid: ['Unpaid', '--c-critical'], unpriced: ['Unpaid, no price set', '--c-critical'], session: ['Session by session', '--c-pink'],
 }
+const M_BADGE = { paid: ['green', 'Paid'], stripe: ['violet', 'Paid in Stripe, not recorded'], part: ['orange', 'Part paid'], unpaid: ['red', 'Unpaid'], unpriced: ['red', 'No price set'], session: ['pink', 'Session by session'] }
 const compact = (c) => { const d = c / 100; return d >= 10000 ? `A$${(d / 1000).toFixed(d >= 100000 ? 0 : 1)}K` : `A$${Math.round(d).toLocaleString('en-AU')}` }
 const niceMax = (v) => { if (v <= 0) return 100000; const p = 10 ** Math.floor(Math.log10(v)); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p }
 
@@ -2133,7 +2134,7 @@ async function renderMoney(pre) {
   if (P.jf.programme === 'pro') return renderProMoney(proUi())
   if (P.jf.programme === 'camps') return renderCampsMoney(campsUi())
   if (P.jf.programme === 'all') return renderEverything(everythingUi())
-  P.moneyFilter = { status: '', q: '', loc: '', view: 'players', term: '', year: '', ...(P.moneyFilter || {}) }
+  P.moneyFilter = { status: '', q: '', loc: '', view: 'players', term: '', year: '', group: '', coach: '', ptype: '', owing: '', ...(P.moneyFilter || {}) }
   const seq = (P.moneySeq = (P.moneySeq || 0) + 1)
   if (P.moneyFilter.term || P.moneyFilter.year) return renderLookBack(pre, seq)
   P.lookKey = ''
@@ -2158,13 +2159,16 @@ async function renderMoney(pre) {
     </div>
     <div id="m-scope"></div>
     <div id="m-bank"></div>
-    <div class="jm-bar">
-      <div class="jm-chips jm-view" role="group" aria-label="Show"><button type="button" data-money-view="players" aria-pressed="${f.view !== 'family'}">Players</button><button type="button" data-money-view="family" aria-pressed="${f.view === 'family'}">By family</button></div>
-      <div class="jm-search"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2" stroke-linecap="round"/></svg><input class="j-input" id="m-q" type="search" placeholder="Search player, parent or email" value="${esc(f.q)}" autocomplete="off"></div>
-      <div class="jm-chips" id="m-chips"></div>
+    <div class="ps-tools jm-tools" role="search">
+      <div class="ps-seg" role="group" aria-label="Show"><button type="button" data-money-view="players" aria-pressed="${f.view !== 'family'}">Players</button><button type="button" data-money-view="family" aria-pressed="${f.view === 'family'}">By family</button></div>
+      ${psSearch('m-q', 'Search player, parent or email…', f.q, 'Search Money by player, parent or email')}
+      <span id="m-selects"></span>
+      <button type="button" class="ps-link" id="m-morefilters" aria-controls="m-morebox"></button>
+      <button type="button" class="ps-link" id="m-clear" hidden>Clear</button>
     </div>
+    <div class="ps-chips" id="m-chips" aria-label="Quick filters"></div>
     <div id="m-fams" ${f.view === 'family' ? '' : 'hidden'}></div>
-    <div class="jp-scroll" id="m-table" ${f.view === 'family' ? 'hidden' : ''}><table class="jp-table jm-table"><thead><tr><th>Player</th><th>Group</th><th class="num">Fee</th><th class="num">Paid</th><th class="num">Owing</th><th>Status</th><th></th></tr></thead><tbody id="m-rows"></tbody></table></div>
+    <div class="ps-table-wrap" id="m-table" ${f.view === 'family' ? 'hidden' : ''}><table class="ps-table jm-ps"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th class="num" data-col="nums">Fee</th><th class="num" data-col="nums">Paid</th><th class="num">Owing</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody id="m-rows"></tbody></table></div>
     <p class="muted small" id="m-count" style="margin-top:8px"></p>
     <div id="m-unmatched"></div>`
   const scope = () => moneyScope(m, f.loc)
@@ -2191,23 +2195,62 @@ async function renderMoney(pre) {
     weeklyChart($('m-weekly'), s.weekly, animate, emptyWeekly(s))
     const counts = { '': s.players.length }
     for (const p of s.players) counts[p.status] = (counts[p.status] || 0) + 1
-    $('m-chips').innerHTML = [['', 'All'], ['paid', 'Paid'], ['part', 'Part paid'], ['unpaid', 'Unpaid'], ['session', 'Session by session'], ['unpriced', 'No price set'], ['stripe', 'Paid in Stripe']].filter(([v]) => v !== 'stripe' || counts.stripe || f.status === 'stripe').map(([v, l]) => `<button type="button" data-set-status="${v}" aria-pressed="${f.status === v}">${v ? `<i style="background:${cssVar(STATUS[v][1])}"></i>` : ''}${l} <span class="n">${counts[v] || 0}</span></button>`).join('')
+    drawTools()
     // Payments not tied to a player belong to no venue, so they show under All only.
     $('m-unmatched').innerHTML = !s.id && m.unmatched.length ? `<details class="jd-card" style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">${m.unmatched.length} Stripe payment${m.unmatched.length === 1 ? '' : 's'} not matched to a player</summary><p class="sub" style="margin:6px 0 10px">Paid with an email that is not on any Term 4 row. Match each one to the player it was for.</p>
       <ul class="jm-hist">${m.unmatched.map((u) => `<li><span><b>${esc(u.name || u.email || 'No name')}</b><small>${esc(u.email)} · ${esc(new Date(u.at).toLocaleDateString('en-AU'))} · ${esc(u.product)}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(u.cents))}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-match="${esc(u.id)}">Match</button></span></li>`).join('')}</ul></details>` : ''
   }
-  const draw = () => {
-    if (f.view === 'family') { $('m-count').textContent = ''; return drawFamilies($('m-fams'), { m, f, post, toast, confirmBox, statusPill, remove: (p) => removeModal({ rowId: p.rowId, name: p.player, paymentStatus: p.airtableStatus }, null, () => renderMoney()), done: () => { P.board = null; PL.at = 0; renderMoney() } }) }
-    const q = f.q.trim().toLowerCase()
+  // The Players page toolbar (Lee, 14 Oct 2026): search, Payment, Group,
+  // Coach, More filters, Clear, then quick chips with counts.
+  const M_MORE = ['ptype', 'owing']
+  const mQ = () => f.q.trim().toLowerCase()
+  const mMatch = (p) => (!f.status || p.status === f.status) && (!f.group || (f.group === 'none' ? !p.groupId : p.groupId === f.group))
+    && (!f.coach || p.coach === f.coach) && (!f.ptype || (p.type || 'none') === f.ptype)
+    && (!f.owing || (f.owing === 'yes' ? p.owingCents > 0 : !p.owingCents))
+    && (!mQ() || `${p.player} ${p.parent} ${p.email} ${p.phone}`.toLowerCase().includes(mQ()))
+  const mActive = () => ['q', 'status', 'group', 'coach', ...M_MORE].filter((k) => f[k]).length
+  const mRow = (p) => {
+    const [c, l] = M_BADGE[p.status] || ['grey', p.status]
+    const fee = p.status === 'session' ? (p.perSessionCents ? `${money(p.perSessionCents)} a session` : 'per session') : p.feeCents ? money(p.feeCents) : ''
+    return `<tr data-row="${esc(p.rowId)}" tabindex="0" aria-label="${esc(p.player)}, payment history">
+      <td data-col="who"><div class="ps-who"><div><b>${esc(p.player)}</b><span class="ps-sub">${esc(p.parent || 'No parent name')}</span></div></div></td>
+      <td data-col="group">${p.groupId ? esc(p.group) : psBadge('orange', 'Not in a group')}${p.coach ? `<span class="ps-sub">${esc(p.coach)}</span>` : ''}</td>
+      <td data-col="pay">${psBadge(c, l)}<span class="ps-sub">${esc(fee)}${p.status === 'stripe' ? ` · Stripe ${esc(money(p.stripeCents))}` : ''}</span></td>
+      <td class="num" data-col="nums">${p.feeCents ? esc(money(p.feeCents)) : '<span class="muted">not set</span>'}</td>
+      <td class="num" data-col="nums">${esc(money(p.paidCents))}</td>
+      <td class="num ${p.owingCents ? '' : 'jm-zero'}" data-col="owing">${p.owingCents ? `<b>${esc(money(p.owingCents))}</b>` : '<span class="muted">0</span>'}</td>
+      <td class="ps-end ps-keep"><div class="jm-actions">${p.hasNotes ? `<button type="button" class="jm-icon" data-notes="${esc(p.rowId)}" title="Notes" aria-label="Notes for ${esc(p.player)}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 4h9l4 4v12H6z"/><path d="M9 11h7M9 15h5"/></svg></button>` : ''}${p.status === 'session' ? `<button type="button" class="j-btn j-btn-line j-btn-sm jm-pink" data-sessions="${esc(p.rowId)}">Sessions${p.perSessionCents ? ` · ${esc(money(p.perSessionCents))}` : ''}</button>` : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-record="${esc(p.rowId)}">Record payment</button>`}<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-edit-row="${esc(p.rowId)}">Edit</button><button type="button" class="j-btn j-btn-ghost j-btn-sm jm-del" data-remove-row="${esc(p.rowId)}" aria-label="Remove ${esc(p.player)}">Remove</button></div></td></tr>`
+  }
+  // Selects and chips follow the venue picked: only its groups, coaches and counts.
+  const drawTools = () => {
     const s = scope()
-    const list = s.players.filter((p) => (!f.status || p.status === f.status) && (!q || `${p.player} ${p.parent} ${p.email}`.toLowerCase().includes(q)))
-    $('m-rows').innerHTML = list.map((p) => `<tr data-row="${esc(p.rowId)}"><td><b>${esc(p.player)}</b><br><span class="muted small">${esc(p.parent || '')}</span></td><td class="small">${esc(p.group)}</td><td class="num">${p.status === 'session' ? `${p.perSessionCents ? `${esc(money(p.perSessionCents))}<br><span class="muted small">a session</span>` : '<span class="muted">per session</span>'}${p.feeCents ? `<br><span class="muted small">${esc(money(p.feeCents))} billed</span>` : ''}` : p.feeCents ? esc(money(p.feeCents)) : '<span class="muted">not set</span>'}</td><td class="num">${esc(money(p.paidCents))}${p.status === 'stripe' ? `<br><span class="muted small">Stripe ${esc(money(p.stripeCents))}</span>` : ''}</td><td class="num">${p.owingCents ? `<b>${esc(money(p.owingCents))}</b>` : '<span class="muted">0</span>'}</td><td>${statusPill(p.status)}</td>
-      <td><div class="jm-actions">${p.hasNotes ? `<button type="button" class="jm-icon" data-notes="${esc(p.rowId)}" title="Notes" aria-label="Notes for ${esc(p.player)}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 4h9l4 4v12H6z"/><path d="M9 11h7M9 15h5"/></svg></button>` : ''}${p.status === 'session' ? `<button type="button" class="j-btn j-btn-line j-btn-sm jm-pink" data-sessions="${esc(p.rowId)}">Sessions${p.perSessionCents ? ` · ${esc(money(p.perSessionCents))}` : ''}</button>` : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-record="${esc(p.rowId)}">Record payment</button>`}<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-edit-row="${esc(p.rowId)}">Edit</button><button type="button" class="j-btn j-btn-ghost j-btn-sm jm-del" data-remove-row="${esc(p.rowId)}" aria-label="Remove ${esc(p.player)}">Remove</button></div></td></tr>`).join('') || '<tr><td colspan="7"><div class="j-empty">No players match.</div></td></tr>'
+    const uniq = (arr) => [...new Map(arr.filter((x) => x.id).map((x) => [x.id, x])).values()]
+    const groups = uniq(s.players.map((p) => ({ id: p.groupId || 'none', label: p.groupId ? p.group : 'Not in a group' }))).sort((a, b) => a.label.localeCompare(b.label))
+    const coaches = uniq(s.players.map((p) => ({ id: p.coach || '', label: p.coach }))).sort((a, b) => a.label.localeCompare(b.label))
+    const types = uniq(s.players.map((p) => ({ id: p.type || 'none', label: p.type || 'Payment type not set' }))).sort((a, b) => a.label.localeCompare(b.label))
+    for (const k of ['group', 'coach', 'ptype']) if (f[k] && !{ group: groups, coach: coaches, ptype: types }[k].some((x) => x.id === f[k])) f[k] = ''
+    const moreSet = M_MORE.filter((k) => f[k]).length
+    if (moreSet) f.moreOpen = true
+    $('m-selects').outerHTML = `<span id="m-selects" class="ps-more-filters">${psSelect('m-status', Object.entries(STATUS).filter(([v]) => v !== 'stripe' || s.players.some((p) => p.status === 'stripe')).map(([id, [label]]) => ({ id, label })), f.status, 'Payment')}
+      ${psSelect('m-group', groups, f.group, 'Group')}${psSelect('m-coach', coaches, f.coach, 'Coach')}
+      <span class="ps-more-filters" id="m-morebox" ${f.moreOpen ? '' : 'hidden'}>${psSelect('m-ptype', types, f.ptype, 'Payment type')}${psSelect('m-owing', [{ id: 'yes', label: 'Owes money' }, { id: 'no', label: 'Nothing owing' }], f.owing, 'Owing')}</span></span>`
+    $('m-morefilters').textContent = f.moreOpen ? 'Fewer filters' : `More filters${moreSet ? ` (${moreSet})` : ''}`
+    $('m-morefilters').setAttribute('aria-expanded', String(Boolean(f.moreOpen)))
+    $('m-clear').hidden = !mActive()
+    const counts = { '': s.players.length }
+    for (const p of s.players) counts[p.status] = (counts[p.status] || 0) + 1
+    $('m-chips').innerHTML = [['', 'All'], ['paid', 'Paid'], ['part', 'Part paid'], ['unpaid', 'Unpaid'], ['session', 'Session by session'], ['unpriced', 'No price set'], ['stripe', 'Paid in Stripe']].filter(([v]) => v !== 'stripe' || counts.stripe || f.status === v).map(([v, l]) => `<button type="button" class="ps-chip" data-set-status="${v}" aria-pressed="${f.status === v}">${v ? `<i style="background:${cssVar(STATUS[v][1])}"></i>` : ''}${l} <b class="n">${counts[v] || 0}</b></button>`).join('')
+  }
+  const draw = () => {
+    if (f.view === 'family') { $('m-count').textContent = ''; return drawFamilies($('m-fams'), { m, f, match: mMatch, post, toast, confirmBox, statusPill, remove: (p) => removeModal({ rowId: p.rowId, name: p.player, paymentStatus: p.airtableStatus }, null, () => renderMoney()), done: () => { P.board = null; PL.at = 0; renderMoney() } }) }
+    const s = scope()
+    const list = s.players.filter(mMatch)
+    $('m-rows').innerHTML = list.map(mRow).join('') || `<tr><td colspan="7"><div class="ps-empty">No players match.${mActive() ? ' <button type="button" class="ps-link" data-m-clear>Clear filters</button>' : ''}</div></td></tr>`
     $('m-count').textContent = `${list.length} of ${s.players.length} players${s.id ? ` at ${s.name}` : ''} · owing ${money(list.reduce((t, p) => t + p.owingCents, 0))}`
   }
   const setStatus = (v) => {
-    f.status = v
-    $('m-chips').querySelectorAll('[data-set-status]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.setStatus === f.status)))
+    f.status = f.status === v && v ? '' : v
+    drawTools()
     draw()
   }
   setHash()
@@ -2227,7 +2270,18 @@ async function renderMoney(pre) {
     draw()
   })
   $('m-csv').addEventListener('click', () => downloadMoney(m, scope()))
-  $('m-q').addEventListener('input', (e) => { f.q = e.target.value; draw() })
+  $('m-q').addEventListener('input', (e) => { f.q = e.target.value; $('m-clear').hidden = !mActive(); draw() })
+  // Filter selects are redrawn with the venue, so listen on the toolbar.
+  view().querySelector('.jm-tools').addEventListener('change', (e) => {
+    const k = { 'm-status': 'status', 'm-group': 'group', 'm-coach': 'coach', 'm-ptype': 'ptype', 'm-owing': 'owing' }[e.target.id]
+    if (!k) return
+    f[k] = e.target.value; drawTools(); draw()
+  })
+  const mClear = () => { Object.assign(f, { q: '', status: '', group: '', coach: '', ptype: '', owing: '' }); $('m-q').value = ''; drawTools(); draw() }
+  $('m-clear').addEventListener('click', mClear)
+  $('m-morefilters').addEventListener('click', () => { f.moreOpen = !f.moreOpen; drawTools() })
+  $('m-table').addEventListener('click', (e) => { if (e.target.closest('[data-m-clear]')) mClear() })
+  $('m-rows').addEventListener('keydown', (e) => { const tr = e.target.closest?.('[data-row]'); if (tr && e.target === tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); historyDrawer(tr.dataset.row) } })
   view().querySelectorAll('[data-money-view]').forEach((b) => b.addEventListener('click', () => {
     f.view = b.dataset.moneyView
     view().querySelectorAll('[data-money-view]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.moneyView === f.view)))

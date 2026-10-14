@@ -37,11 +37,11 @@ export function familiesOf(players) {
 export function drawFamilies(box, ui) {
   const { m, f } = ui
   const q = f.q.trim().toLowerCase()
-  const fams = familiesOf(m.players).filter((fam) => (!f.status || fam.places.some((p) => p.status === f.status))
-    && (!f.loc || fam.places.some((p) => p.locationId === f.loc))
-    && (!q || fam.places.some((p) => `${p.player} ${p.parent} ${p.email}`.toLowerCase().includes(q))))
+  // The Money toolbar's own match when given (every filter), else status, venue and search.
+  const match = ui.match || ((p) => (!f.status || p.status === f.status) && (!q || `${p.player} ${p.parent} ${p.email}`.toLowerCase().includes(q)))
+  const fams = familiesOf(m.players).filter((fam) => (!f.loc || fam.places.some((p) => p.locationId === f.loc)) && fam.places.some(match))
   const many = fams.filter((x) => x.places.length > 1).length
-  box.innerHTML = `<p class="muted small" style="margin:0 0 10px">${fams.length} famil${fams.length === 1 ? 'y' : 'ies'}${many ? `, ${many} with more than one place` : ''}. Set each place's price, then send the family one invoice. When it is paid, each player is marked paid with their own amount, and the payment ledger gets a line per player.</p>`
+  box.innerHTML = `<p class="ps-sub-line">${fams.length} famil${fams.length === 1 ? 'y' : 'ies'}${many ? `, ${many} with more than one place` : ''}</p>`
     + (fams.map((fam) => card(fam, ui)).join('') || '<div class="j-empty">No families match.</div>')
   box.querySelectorAll('[data-fam]').forEach((el) => bindCard(el, fams.find((x) => x.key === el.dataset.fam), ui))
 }

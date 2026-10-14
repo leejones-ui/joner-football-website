@@ -851,3 +851,26 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .ps-help > summary:hover, .ps-help[open] > summary { color: var(--j-ink); border-color: var(--j-muted); }
 .ps-help > summary:focus-visible { outline: 2px solid var(--j-focus, #6da7ec); outline-offset: 2px; }
 .ps-help-body { position: absolute; z-index: 40; top: 30px; left: 0; width: min(360px, calc(100vw - 48px)); background: var(--j-surface); border: 1px solid var(--j-line); border-radius: 12px; box-shadow: var(--j-shadow-lg, 0 12px 32px rgba(0,0,0,.25)); padding: 12px 14px; font-size: 13.5px; font-weight: 400; line-height: 1.5; color: var(--j-ink); }
+/* Segmented switch in a toolbar (Money: Players / By family). */
+.ps-seg { display: inline-flex; border: 1px solid var(--j-line); border-radius: var(--ps-radius); padding: 3px; gap: 2px; height: var(--ps-control); }
+.ps-seg button { border: 0; background: transparent; color: var(--ps-text-2); font: inherit; font-size: 13.5px; font-weight: 650; padding: 0 12px; border-radius: 7px; cursor: pointer; }
+.ps-seg button[aria-pressed="true"] { background: var(--j-ink); color: var(--j-bg); }
+.ps-seg button:focus-visible { outline: 2px solid var(--j-focus, #6da7ec); outline-offset: 1px; }
+.ps-sub-line { margin: 0 0 10px; font-size: 13px; color: var(--ps-text-2); }
+.ps-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.jm-ps .jm-actions { justify-content: flex-end; }
+@media (min-width: 761px) and (max-width: 1180px) { .jm-ps [data-col="nums"] { display: none; } }
+@media (max-width: 760px) {
+  .ps-seg { flex: 1 1 100%; } .ps-seg button { flex: 1; }
+  .jm-ps td[data-col="nums"] { display: none; }
+  .jm-ps td[data-col="owing"] { grid-column: 2; grid-row: 2; text-align: right; }
+  .jm-ps td[data-col="owing"]::before { content: 'Owing '; color: var(--ps-text-2); font-size: 12px; }
+  .jm-ps td.ps-end.ps-keep { padding-left: 0; } .jm-ps .jm-actions { justify-content: flex-start; flex-wrap: wrap; }
+}
+@media (max-width: 760px) {
+  .jm-ps td[data-col="group"] { padding-left: 0; }
+  .jm-ps td.jm-zero { display: none; }
+  .jm-ps td.ps-end.ps-keep { margin-top: 6px; width: auto; }
+  .jp-theme .jm-ps .jm-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .jp-theme .jm-ps .jm-actions .j-btn { width: auto; }
+}
