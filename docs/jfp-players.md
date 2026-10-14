@@ -238,3 +238,28 @@ per row (with `family`) and `family.add`.
 
 Tests: `scripts/test-jfp-round2.mjs` (in `npm run test:jfp`) and
 `scripts/test-jfp-round2-flow.mjs` (harness, `npm run test:jfp-round2-flow`).
+
+## Open accounts (round 2 item 8, 14 Oct 2026)
+
+Anyone can make an account at /jfp-account/ (`api/_jfp-account-open.js`):
+
+- First sign-in with a code makes an account record (KV `jfp:accounts`,
+  email -> `{ createdAt, kind, players }`). A new address with nothing on file
+  is limited to 10 sign-ups a connection a day and 200 an hour overall
+  (`code: 'signup'`, 429); a family already on a row or waiver never is.
+- My account "Add a player" (`addPlayer { name, dob, self, values }`): a
+  profile row only (`saveProfile`), never Term 4 and never a place. First and
+  last name and a date of birth; "I am the player" (18 or over) or a parent;
+  at most 8 such players an account and 12 adds a day; the same name twice is
+  refused. Player information, photo and the waiver work for these players
+  (`openPlayers`); Home says "You're not booked into a session yet" with Book
+  a session (`/jfp-booking/`).
+- Staff: Players tab > "Accounts with no session" (`playersList.accounts`,
+  profiles with no Term 4 row holding a place) with Add to a group, the
+  normal Add a player filled in from the profile (`noteNewPlayer` as always).
+  Every staff add now links an existing profile by email and name
+  (`linkProfile`) instead of making a second one, so a returning player's
+  profile shows straight away (`profileLinked` in the answer).
+
+Tests: `scripts/test-jfp-open-accounts-flow.mjs` (harness) and the open
+account checks in `scripts/test-jfp-round2.mjs`.

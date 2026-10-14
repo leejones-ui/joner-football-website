@@ -778,7 +778,7 @@ const famUI = () => ({
 // Add a player by hand. With spotLink, the family gets a link to this spot:
 // they sign in, add details, sign the waiver and pay. The place is held for
 // them in Airtable as Awaiting Reply until it is paid.
-async function addPlayerModal(g, { spotLink = false } = {}) {
+async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
   const pr = await pricing()
   const left = g.capacity - g.players.length
   const box = modal(`<h2>${spotLink ? 'Send a link to this spot' : 'Add a player'}</h2><p class="muted small" style="margin:2px 0 14px">${esc(g.day)} ${esc(g.time)} · ${esc(g.locationName)} · Coach ${esc(g.coachName || 'not set')} · ${left > 0 ? `${left} place${left === 1 ? '' : 's'} left` : 'full'}</p>
@@ -832,6 +832,13 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
   // More children of the same family (round 2): each with their own group and price.
   let kids = null
   const form = wirePlayerForm(box, 'ap', { onChange: (w) => { words = w; payWatch() } })
+  // From Accounts with no session: the family's own details, ready to add.
+  if (prefill) {
+    form.fill({ name: prefill.name, dob: prefill.dob, parentName: prefill.self ? '' : prefill.parentName, mobile: prefill.mobile, email: prefill.email })
+    const own = box.querySelector('#ap-own')
+    if (prefill.self && own && !own.checked) { own.checked = true; own.dispatchEvent(new Event('change', { bubbles: true })) }
+    box.querySelector('#ap-results').innerHTML = `<div class="j-box j-box-grey small" style="margin-bottom:10px">From ${esc(prefill.name)}'s account. Their player information is already saved and stays linked.</div>`
+  }
   kids = childList(box, famUI(), pr, { mount: box.querySelector('#ap-kids'), groups: familyGroups(P.board, isJJ), groupId: g.id, noGroup: false, start: 0, firstNumber: 2, onChange: () => payWatch() })
   box.querySelector('#ap-kid-add').addEventListener('click', () => kids.add())
   // A per-session price from the list is a session-by-session player at that price.
@@ -2569,7 +2576,30 @@ async function renderFamilies() {
 
 const PL = { q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '', data: null, at: 0 }
 
+// Accounts with no session (round 2 item 8): profiles families made in My
+// account, or kept from before, with no Term 4 row. Add to a group is the
+// normal Add a player, filled in from the profile (and linked to it).
+function acctShown(d) {
+  const q = PL.q.trim().toLowerCase()
+  return (d.accounts || []).filter((a) => !q || [a.name, a.email, a.parentName, a.club].some((v) => String(v || '').toLowerCase().includes(q)))
+}
+function acctTable(d) {
+  const list = acctShown(d)
+  return `<p class="muted small" style="margin-bottom:8px">${list.length} account${list.length === 1 ? '' : 's'} with a player and no session. They hold no place. Add to a group puts them in one, with their player information already there.</p>
+    <div class="jp-scroll"><table class="jp-table" id="pl-accts"><thead><tr><th>Player</th><th>Contact</th><th>Football</th><th>Updated</th><th></th></tr></thead>
+    <tbody>${list.map((a, i) => `<tr data-acct="${esc(a.key)}"><td><b>${esc(a.name)}</b>${a.age != null ? ` <span class="muted">(${esc(a.age)})</span>` : ''}${a.self ? ' <span class="j-pill j-pill-grey">Own contact</span>' : ''}</td><td>${esc(a.parentName || (a.self ? 'The player' : ''))}<br><span class="muted small">${esc(a.email)}${a.mobile ? ` · ${esc(a.mobile)}` : ''}</span></td><td class="small">${esc([a.club, a.level, (a.positions || []).join(', ')].filter(Boolean).join(' · ') || 'Not given')}</td><td class="small muted">${a.updatedAt ? esc(new Date(a.updatedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })) : ''}</td><td><button type="button" class="j-btn j-btn-dark j-btn-sm" data-acct-add="${i}">Add to a group</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">No accounts without a session.</td></tr>'}</tbody></table></div>`
+}
+async function acctAddToGroup(a) {
+  if (!a) return
+  if (!P.board) P.board = await need(await post('board'))
+  const box = modal(`<h2 style="margin-bottom:10px">Add ${esc(a.name)} to a group</h2>
+    <label class="j-field"><span>Which group?</span><select class="j-select" id="ag-g">${groupOptions(P.sel || '')}</select></label>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ag-go">Next</button></div>`)
+  box.querySelector('#ag-go').addEventListener('click', () => { const g = P.board.groups.find((x) => x.id === box.querySelector('#ag-g').value); closeModal(); if (g) addPlayerModal(g, { prefill: a }) })
+}
+
 function plMatch(p) {
+  if (PL.place === 'acct') return false
   const q = PL.q.trim().toLowerCase()
   if (q && ![p.name, p.parent, p.email, p.phone, p.groupLabel, p.coach].some((v) => String(v || '').toLowerCase().includes(q))) return false
   if (PL.status === 'paid' && p.paymentStatus !== 'Paid') return false
@@ -2889,14 +2919,14 @@ async function renderPlayers(keep = false) {
       <select class="j-select" id="pl-group" style="width:auto">${opt(d.groups, PL.group, 'Any group')}</select>
       <select class="j-select" id="pl-coach" style="width:auto">${opt(d.coaches, PL.coach, 'Any coach')}</select>
       <select class="j-select" id="pl-waiver" style="width:auto">${opt([{ id: 'yes', label: 'Waiver on file' }, { id: 'no', label: 'No waiver' }], PL.waiver, 'Any waiver')}</select>
-      <select class="j-select" id="pl-place" style="width:auto">${opt([{ id: 'in', label: 'In a group' }, { id: 'out', label: 'Not in a group' }], PL.place, 'In or out')}</select>
+      <select class="j-select" id="pl-place" style="width:auto">${opt([{ id: 'in', label: 'In a group' }, { id: 'out', label: 'Not in a group' }, { id: 'acct', label: `Accounts with no session (${(d.accounts || []).length})` }], PL.place, 'In or out')}</select>
       <select class="j-select" id="pl-level" style="width:auto">${opt([...PROFILE_OPTIONS.levels.map((x) => ({ id: x, label: x })), { id: 'none', label: 'Level not known' }], PL.level, 'Any level')}</select>
       <select class="j-select" id="pl-pos" style="width:auto">${opt(PROFILE_OPTIONS.positions.map((x) => ({ id: x, label: x })), PL.pos, 'Any position')}</select>
       <button type="button" class="j-btn j-btn-ghost j-btn-sm" id="pl-clear">Clear</button>
     </div>
     <p class="muted small" style="margin-bottom:8px">${shown.length} of ${d.players.length} players${shown.length !== d.players.length ? ' match' : ''} · ${d.players.filter((p) => !p.inGroup).length} not in a group · ${d.players.filter((p) => p.feeAud == null).length} with no fee · ${d.players.filter((p) => !p.waiver.onFile).length} with no waiver</p>
-    <div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th>Football</th><th>Waiver</th><th>Email</th><th></th></tr></thead>
-      <tbody>${shown.map(plRow).join('') || '<tr><td colspan="7" class="muted">Nobody matches those filters.</td></tr>'}</tbody></table></div>`
+    ${PL.place === 'acct' ? acctTable(d) : `<div class="jp-scroll"><table class="jp-table"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th>Football</th><th>Waiver</th><th>Email</th><th></th></tr></thead>
+      <tbody>${shown.map(plRow).join('') || '<tr><td colspan="7" class="muted">Nobody matches those filters.</td></tr>'}</tbody></table></div>`}`
   const redraw = () => renderPlayers(true)
   $('pl-q').addEventListener('input', (e) => { PL.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('pl-q'); i.focus(); i.setSelectionRange(at, at) })
   for (const [id, key] of [['pl-status', 'status'], ['pl-group', 'group'], ['pl-coach', 'coach'], ['pl-waiver', 'waiver'], ['pl-place', 'place'], ['pl-level', 'level'], ['pl-pos', 'pos']]) {
@@ -2905,6 +2935,7 @@ async function renderPlayers(keep = false) {
   $('pl-clear').addEventListener('click', () => { Object.assign(PL, { q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '' }); redraw() })
   $('pl-add').addEventListener('click', () => plAddBox())
   $('pl-add-family').addEventListener('click', () => familyModal(famUI()))
+  view().querySelectorAll('[data-acct-add]').forEach((b) => b.addEventListener('click', () => acctAddToGroup(acctShown(d)[Number(b.dataset.acctAdd)])))
   $('pl-refresh').addEventListener('click', () => { PL.at = 0; renderPlayers() })
   $('pl-invite').addEventListener('click', () => renderFamilies())
   view().querySelectorAll('[data-pl]').forEach((tr) => tr.addEventListener('click', (e) => {

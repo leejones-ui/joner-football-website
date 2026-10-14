@@ -32,6 +32,7 @@ import { jjAccountView, jjPay, jjRequestPay, jjNextChoice, familyJJ, jjWaiverRow
 import { owedItems, payOwed as makeOwedPayreq, cancelOwed as cancelOwedPayreq } from './_jfp-account-pay.js'
 import { familyFees } from './_jfp-account-fees.js'
 import { coveredOf } from './_jfp-quote.js'
+import { accountOf, openPlayers, addMyPlayer } from './_jfp-account-open.js'
 import { prepaidOf } from './_jfp-store.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -118,6 +119,9 @@ async function overview(res, parent, body = {}) {
   // Saved photos, and whether the account holder is the player (Pros, adults).
   const profs = await familyProfiles(parent.email).catch(() => [])
   const profOf = (p) => (p.term4.length ? pickProfile(profs, { key: profileKey(p.name, p.term4[0].email || parent.email), rowIds: p.term4.map((r) => r.id) }) : null)
+  // Players added from the account with no session yet (round 2 item 8).
+  const account = await accountOf(parent.email)
+  const open = openPlayers({ fam, profs, account }).filter((o) => !jfpPlayers.some((p) => p.key === o.key))
   // Anything owing on a place with no open payment request (term fee, or
   // session by session): a Pay step, made into a request when they tap it.
   const owed = owedItems({ config, players: jfpPlayers, payreqs: mine, byGroup, cancels: myCancels, nowMs })
@@ -165,6 +169,11 @@ async function overview(res, parent, body = {}) {
       }
     }),
   }))
+  for (const o of open) {
+    const age = ageOn(o.profile.dob || '', sydneyToday())
+    players.push({ key: o.key, name: o.name, age, self: o.self, adult: age != null ? age >= 18 : o.self, photo: o.profile.photo || '', needsDob: !o.profile.dob, waiver: { onFile: false }, placeNoSession: false, ownContact: o.self, enrolments: [], noSession: true })
+  }
+  for (const p of players) if (!p.enrolments.length && !p.placeNoSession) p.noSession = true
   const rowsById = new Map(fam.players.flatMap((p) => p.term4).map((r) => [r.id, r]))
   const todo = mine.filter((q) => ['open', 'checkout'].includes(q.status)).map((q) => {
     const blockers = q.playerKeys.filter((k) => !fam.players.find((p) => p.key === k)?.waiver)
@@ -205,7 +214,9 @@ async function overview(res, parent, body = {}) {
     email: parent.email,
     parentName: fam.parentName || juniors?.parentName || '',
     // The player is their own contact (no parent): the page talks to them.
-    self: !juniors?.children?.length && fam.players.length > 0 && fam.players.every((p) => p.term4.length > 0 && p.term4.every((r) => r.ownContact)),
+    self: !juniors?.children?.length && ((fam.players.length > 0 && fam.players.every((p) => p.term4.length > 0 && p.term4.every((r) => r.ownContact))) || (!fam.players.some((p) => p.term4.length) && open.length > 0 && open.every((o) => o.self))),
+    // Anyone can have an account (round 2 item 8): where to book a first session.
+    bookUrl: '/jfp-booking/',
     nextTerm: nextTerm.length ? { name: nt.name, players: nextTerm } : null,
     keep,
     termStart: config.termStart,
@@ -288,8 +299,11 @@ async function signWaiver(res, parent, body) {
     if (j.error) return fail(res, j.status, j.error)
     rows.push(...j.rows); jjRowIds = j.rowIds
   }
+  // Players added from the account with no session can sign too (round 2 item 8).
+  const open = list.some((x) => !fam.players.some((f) => f.key === clean(x.key, 80))) ? openPlayers({ fam, profs, account: await accountOf(parent.email) }) : []
   for (const x of list) {
-    const p = fam.players.find((f) => f.key === clean(x.key, 80))
+    const o = open.find((f) => f.key === clean(x.key, 80))
+    const p = fam.players.find((f) => f.key === clean(x.key, 80)) || (o ? { key: o.key, name: o.name, dob: o.profile.dob || '', waiver: null, term4: [] } : null)
     if (!p) return fail(res, 404, 'We could not find that player on your account.')
     if (p.waiver) continue
     // The date of birth staff saved on the player information counts too.
@@ -367,6 +381,9 @@ async function profiles(res, parent) {
   const fam = familyFor(parent.email, roster, config.termStart)
   const mine = await familyProfiles(parent.email)
   const players = []
+  // Players added from the account with no session: their profile as it is.
+  const open = openPlayers({ fam, profs: mine, account: await accountOf(parent.email) })
+  for (const o of open) players.push({ key: o.key, name: o.name, age: ageOn(o.profile.dob || '', sydneyToday()), self: o.self, noSession: true, profile: profileView(o.profile), prefill: { dob: o.profile.dob || '', parentName: o.profile.parentName || '', parentMobile: o.profile.parentMobile || '' } })
   for (const p of fam.players.filter((x) => x.term4.length)) {
     const rowIds = p.term4.map((r) => r.id)
     const key = profileKey(p.name, p.term4[0].email || parent.email)
@@ -374,6 +391,7 @@ async function profiles(res, parent) {
     const prefill = prof ? {} : await waiverPrefill(p.waiver?.id)
     players.push({ key: p.key, name: p.name, age: p.age, self: isSelf(p, fam, prof?.dob), profile: profileView(prof), prefill: { ...prefill, dob: prefill.dob || p.dob || '', parentName: prefill.parentName || fam.parentName || '', parentMobile: prefill.parentMobile || fam.mobile || '' } })
   }
+  players.sort((a, b) => a.name.localeCompare(b.name))
   return res.status(200).json({ success: true, players, dob: { min: DOB_MIN, max: dobMax() }, options: { levels: LEVELS, playingUp: PLAYING_UP, positions: POSITIONS, feet: FEET, years: YEARS, clubs: clubSuggestions(roster.waivers) } })
 }
 
@@ -382,7 +400,7 @@ async function saveMyProfile(res, parent, body) {
   const roster = await loadRoster({ fresh: true })
   const fam = familyFor(parent.email, roster, config.termStart)
   const p = fam.players.find((x) => x.key === clean(body.playerKey, 80) && x.term4.length)
-  if (!p) return fail(res, 404, 'We could not find that player on your account.')
+  if (!p) return saveOpenProfile(res, parent, fam, body)
   const { values, errors } = cleanProfile(body.values || {})
   if (errors.length) return fail(res, 400, errors.join(' '))
   const rowIds = p.term4.map((r) => r.id)
@@ -392,13 +410,40 @@ async function saveMyProfile(res, parent, body) {
   return res.status(200).json({ success: true, profile: profileView(saved) })
 }
 
+// Player information for a player added from the account with no session
+// (round 2 item 8): the same checks, their own profile row, never Term 4.
+async function saveOpenProfile(res, parent, fam, body) {
+  const o = openPlayers({ fam, profs: await familyProfiles(parent.email), account: await accountOf(parent.email) }).find((x) => x.key === clean(body.playerKey, 80))
+  if (!o) return fail(res, 404, 'We could not find that player on your account.')
+  const { values, errors } = cleanProfile(body.values || {})
+  if (errors.length) return fail(res, 400, errors.join(' '))
+  const saved = await saveProfile({ existing: o.profile, name: o.name, key: o.profile.key, emails: [parent.email], rowIds: [], values, by: parent.email, from: 'Family account' })
+  return res.status(200).json({ success: true, profile: profileView(saved) })
+}
+
+// "Add a player" in My account: a profile, no session and no place.
+async function addPlayerAction(res, parent, body) {
+  const config = await getConfig()
+  const fam = familyFor(parent.email, await loadRoster({ fresh: true }), config.termStart)
+  const out = await addMyPlayer({ email: parent.email, fam, body })
+  if (!out.ok) return fail(res, out.status, out.error, out.code ? { code: out.code } : {})
+  return res.status(200).json({ success: true, key: out.key, profile: profileView(out.profile) })
+}
+
 // A profile photo, from My account. Saved on the player's Airtable profile.
 async function saveMyPhoto(res, parent, body) {
   const config = await getConfig()
   const roster = await loadRoster()
   const fam = familyFor(parent.email, roster, config.termStart)
   const p = fam.players.find((x) => x.key === clean(body.playerKey, 80) && x.term4.length)
-  if (!p) return fail(res, 404, 'We could not find that player on your account.')
+  if (!p) {
+    // A player added from the account with no session: their own profile.
+    const o = openPlayers({ fam, profs: await familyProfiles(parent.email), account: await accountOf(parent.email) }).find((x) => x.key === clean(body.playerKey, 80))
+    if (!o) return fail(res, 404, 'We could not find that player on your account.')
+    const out = await savePhoto({ existing: o.profile, name: o.name, key: o.profile.key, emails: [parent.email], rowIds: [], dataUrl: body.image, remove: body.remove === true, by: parent.email, from: 'Family account' })
+    if (out.error) return fail(res, 400, out.error)
+    return res.status(200).json({ success: true, profile: profileView(out.profile) })
+  }
   const rowIds = p.term4.map((r) => r.id)
   const key = profileKey(p.name, p.term4[0].email || parent.email)
   const existing = pickProfile(await familyProfiles(parent.email), { key, rowIds }) || await findProfile({ key, rowIds })
@@ -620,6 +665,7 @@ export default async function handler(req, res) {
     if (body.action === 'profiles') return await profiles(res, parent)
     if (body.action === 'saveProfile') return await saveMyProfile(res, parent, body)
     if (body.action === 'savePhoto') return await saveMyPhoto(res, parent, body)
+    if (body.action === 'addPlayer') return await addPlayerAction(res, parent, body)
     if (['jjPay', 'jjRequestPay', 'jjNextChoice'].includes(body.action)) return await juniorsAction(req, res, parent, body)
     if (body.action === 'cancelSession') return await cancelSession(res, parent, body)
     if (body.action === 'withdrawCancel') return await withdrawSession(res, parent, body)

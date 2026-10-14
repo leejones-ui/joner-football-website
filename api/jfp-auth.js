@@ -10,6 +10,15 @@ import { verifyRecaptcha } from './_security.js'
 import { getConfig, kvCommand } from './_jfp-store.js'
 import { startChallenge, verifyChallenge, openSession, cookieHeader, sessionFor, closeSession, roleFor, sameOrigin, clientIp, staffPrincipal } from './_jfp-people.js'
 import { sendSignInCode } from './_jfp-email.js'
+import { noteAccount, accountOf } from './_jfp-account-open.js'
+import { loadRoster, familyFor } from './_jfp-airtable.js'
+
+// Anyone can have an account (round 2 item 8): a new address with nothing on
+// file is a sign-up, limited per connection and overall. A known family is
+// never held up, and a failed roster read counts as known.
+async function knownFamily(email, config) {
+  try { const f = familyFor(email, await loadRoster(), config.termStart); return f.players.length > 0 } catch { return true }
+}
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -64,6 +73,10 @@ export default async function handler(req, res) {
       if (v?.limited) return fail(res, 429, 'Too many tries. Wait 15 minutes and try again.')
       if (!v) return fail(res, 401, 'That code is not right or has expired. Ask for a new one.')
       if (v.audience === 'staff' && !roleFor(v.email, config)) return fail(res, 401, 'That code is not right or has expired. Ask for a new one.')
+      if (v.audience === 'parent' && !(await accountOf(v.email))) {
+        const a = await noteAccount({ email: v.email, ip: clientIp(req), known: await knownFamily(v.email, config) })
+        if (a.limited) return fail(res, 429, 'Too many new accounts from this connection today. Try again tomorrow, or contact us.', { code: 'signup' })
+      }
       const { token, seconds } = await openSession(v.email, v.audience)
       res.setHeader('Set-Cookie', cookieHeader(v.audience, token, seconds))
       // Who has signed in to their family account, so staff can chase the rest.

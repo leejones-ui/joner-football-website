@@ -307,4 +307,42 @@ await test('Players tab: "+ Add a family" with no group needed, two children rea
   p.close()
 })
 
+// ---------- item 8: open accounts ----------
+
+await test('open account with no session: "You\'re not booked into a session yet", Book a session, Add a player makes a profile only', async () => {
+  const OPEN = { ...SESS, email: 'ola.open@example.com', parentName: '', owed: [], todo: [], bookUrl: '/jfp-booking/', players: [] }
+  const p = await openAccount(OPEN, (b) => (b.action === 'addPlayer' ? { success: true, key: 'kip open', profile: {} } : b.action === 'profiles' ? { success: true, players: [], options: { levels: ['NPL'], positions: [], feet: [], playingUp: [] } } : null))
+  const home = p.text('[data-pane="home"]')
+  assert.match(home, /You're not booked\s*into a session yet/)
+  assert.equal(p.$('[data-no-session] a.ja-btn-red').getAttribute('href'), '/jfp-booking/')
+  assert.match(p.$('[data-no-session] a.ja-btn-red').textContent, /Book a session/)
+  await p.click('[data-no-session] [data-add-player]')
+  const set2 = (sel, v) => { const el = p.d.querySelector(sel); el.value = v; el.dispatchEvent(new p.w.Event('input', { bubbles: true })) }
+  set2('#ap-name', 'Kip Open'); set2('#ap-dob', '2015-05-05'); set2('#ap-club', 'Test Valley FC'); set2('#ap-pname', 'Ola Open'); set2('#ap-pmob', '0400 123 456')
+  await p.click('#ap-save')
+  const add = p.posts.find((b) => b.action === 'addPlayer')
+  assert.deepEqual([add.name, add.dob, add.self, add.values.club, add.values.parentName], ['Kip Open', '2015-05-05', false, 'Test Valley FC', 'Ola Open'])
+  // A player with no session: listed, waiver to sign, still "not booked".
+  const p2 = await openAccount({ ...OPEN, players: [{ key: 'kip open', name: 'Kip Open', age: 11, waiver: { onFile: false }, enrolments: [], noSession: true }] })
+  assert.match(p2.text('[data-pane="home"]'), /Kip Open\s*Not booked into a session yet/)
+  assert.ok(p2.$('[data-pane="home"] [data-waiver-player="kip open"]'), 'the waiver can be signed with no session')
+  assert.deepEqual([...p.errors, ...p2.errors], [])
+  p.close(); p2.close()
+})
+
+await test('staff: "Accounts with no session" lists profiles with no row; Add to a group opens the normal add, filled in', async () => {
+  const ACCTS = [{ profileId: 'recPROF0000000001', key: 'kip open|ola.open@example.com', name: 'Kip Open', email: 'ola.open@example.com', emails: ['ola.open@example.com'], self: false, dob: '2015-05-05', age: 11, club: 'Test Valley FC', level: 'NPL', positions: ['Winger'], parentName: 'Ola Open', mobile: '0400 123 456', updatedAt: '2026-10-14T01:00:00Z' }]
+  const p = await openPortal({ hash: '#families', onPost: (b) => (b.action === 'playersList' ? { ...structuredClone(PLAYERS), accounts: ACCTS } : staffAnswers(b)) })
+  assert.match(p.text('#pl-place'), /Accounts with no session \(1\)/)
+  set(p, '#pl-place', 'acct')
+  await p.settle()
+  assert.match(p.text('#pl-accts'), /Kip Open \(11\).*Ola Open.*ola\.open@example\.com.*Test Valley FC · NPL · Winger/)
+  await p.click('[data-acct-add="0"]')
+  await p.click('#ag-go')
+  assert.deepEqual(['#ap-name', '#ap-dob', '#ap-parent', '#ap-email', '#ap-mobile'].map((x) => p.$(x).value), ['Kip Open', '2015-05-05', 'Ola Open', 'ola.open@example.com', '0400 123 456'])
+  assert.match(p.text('#ap-results'), /From Kip Open's account/)
+  assert.deepEqual(p.errors, [])
+  p.close()
+})
+
 console.log(`\n${passed} round 2 checks passed`)

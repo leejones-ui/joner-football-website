@@ -22,6 +22,7 @@
     "test:jfp-pay-waiver-flow": "node scripts/test-jfp-pay-waiver-flow.mjs",
     "test:jfp-pro-quotes-flow": "node scripts/test-jfp-pro-quotes-flow.mjs",
     "test:jfp-round2-flow": "node scripts/test-jfp-round2-flow.mjs",
+    "test:jfp-open-accounts-flow": "node scripts/test-jfp-open-accounts-flow.mjs",
     "time:jfp-money": "node scripts/time-jfp-money.mjs",
     "test:jj-flow": "node scripts/test-jj-flow.mjs",
     "test:jj-stage2-flow": "node scripts/test-jj-stage2-flow.mjs",

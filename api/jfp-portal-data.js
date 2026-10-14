@@ -45,6 +45,7 @@ import { holidayMoneyData, holidaySizes, HOLIDAY_BANK } from './_holiday-money.j
 import { proMoneyData, isProRow, isProLedger, PRO_BANK } from './_jfp-pro-money.js'
 import { billPlan, afterBill, billLine, coveredOf, withQuote } from './_jfp-quote.js'
 import { playerQuote, saveQuote, saveDefaultQuote, addQuote, termRun } from './_jfp-quote-staff.js'
+import { linkProfile, accountsWithNoSession, allAccounts } from './_jfp-account-open.js'
 import { campsMoneyData, campsStripe } from './_jfp-camps.js'
 import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
 import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
@@ -267,11 +268,13 @@ function readAdd(config, body, { group = null } = {}) {
 
 // The profile for a player just added, in the same request. The row is
 // already written, so a failed profile save is reported, not thrown.
+// Round 2 item 8: a profile the family made in My account (or an earlier
+// one) is found by email and name and linked to the new row, so staff see
+// it straight away; it is never made twice.
 async function saveAddedProfile(principal, v, rowId) {
-  if (!Object.keys(v.profile).length) return {}
   try {
-    await saveProfile({ existing: null, name: v.name, key: profileKey(v.name, v.email), emails: v.email ? [v.email] : [], rowIds: [rowId], values: v.profile, by: principal.email, from: 'Staff portal' })
-    return { profileSaved: true }
+    const r = await linkProfile({ name: v.name, email: v.email, rowId, values: v.profile, by: principal.email })
+    return r.profile ? { profileSaved: true, ...(r.linked ? { profileLinked: true } : {}) } : {}
   } catch (e) {
     console.error('jfp add player profile failed', e)
     return { profileSaved: false, profileError: 'The player was added, but their player information did not save. Open Edit on the Players tab and save it again.' }
@@ -426,8 +429,12 @@ async function playersList(req, res, config, body = {}) {
   })
   const seen = new Map()
   for (const p of players) { const k = (p.email || p.name).toLowerCase(); seen.set(k, (seen.get(k) || 0) + 1) }
+  // Accounts with no session (round 2 item 8): profiles families made in My
+  // account (or kept from earlier terms) with no Term 4 row now.
+  const accounts = profiles ? accountsWithNoSession(profiles, roster.players.filter((r) => r.holdsPlace).map((r) => r.id), await allAccounts().catch(() => ({}))) : []
   return res.status(200).json({
     success: true,
+    accounts,
     players: players.sort((a, b) => a.name.localeCompare(b.name)),
     groups: groups.filter((g) => g.mode !== 'closed').map((g) => ({ id: g.id, label: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, coachId: g.coachId })),
     coaches: config.coaches.map((c) => ({ id: c.id, name: coachLabel(c) })),

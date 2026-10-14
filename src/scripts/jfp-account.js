@@ -123,7 +123,7 @@ async function boot() {
 async function showSignIn() {
   $('signin').hidden = false
   $('app').hidden = true
-  await signIn({ mount: $('si-mount'), foot: $('si-foot'), audience: 'parent', intro: 'Use the email address you gave Joner Football.' })
+  await signIn({ mount: $('si-mount'), foot: $('si-foot'), audience: 'parent', intro: 'Use the email address you gave Joner Football. New to Joner Football? Use any email address and we make your account.' })
   $('signin').hidden = true
   start()
 }
@@ -410,14 +410,18 @@ function renderHome() {
       <div class="ja-home"><div class="ja-stack">${jjHomeCard()}</div><div class="ja-stack">${todoCards()}${requestsBlock()}</div></div>${watch}`
     return
   }
-  if (!D.players.length) {
+  // Anyone can have an account (round 2 item 8): nobody booked into a
+  // session yet. Book a session, add players and their details, sign waivers.
+  if (!D.players.some((p) => p.enrolments.length || p.placeNoSession)) {
+    const list = D.players.length ? `<div class="ja-card"><div class="ja-card-head"><h3 class="ja-h3">${D.self ? 'Your profile' : 'Your players'}</h3><button type="button" class="ja-link ja-small" data-go="info">${D.self ? 'My profile' : 'Player information'}</button></div><ul class="ja-list">
+      ${D.players.map((p) => `<li class="ja-row">${face(p.name, p.photo)}<div><b>${esc(p.name)}</b><small>Not booked into a session yet</small></div><div class="ja-flags">${p.waiver.onFile ? '<span class="ja-dot ok">Waiver</span>' : `<button type="button" class="ja-dot bad" data-waiver-player="${esc(p.key)}">Sign waiver</button>`}</div></li>`).join('')}</ul></div>` : ''
     el.innerHTML = `${head}
-      <div class="ja-ticket" style="min-height:420px"><img src="${IMG}/photos/ntra-field-900x1100.webp" alt=""><div class="ja-ticket-top"><span class="ja-live"><i></i>${esc(D.term)}</span></div>
-        <div class="ja-ticket-body"><h2 class="ja-ticket-date"><span>No sessions</span><span class="t">booked yet</span></h2>
-        <p class="ja-meta">Pick a spot on the timetable and apply. We reply within 48 hours.</p>
-        <div class="ja-actions"><a class="ja-btn ja-btn-red" href="${links.booking}">See the timetable</a><button type="button" class="ja-btn ja-btn-glass" data-go="contact">Already train with us?</button></div>
-        <p class="ja-small" style="margin-top:14px;color:rgba(255,255,255,.75)">Booked with another email? Sign out and use that one.</p></div></div>
-      ${requestsBlock()}${promos}${watch}`
+      <div class="ja-ticket" style="min-height:420px" data-no-session><img src="${IMG}/photos/ntra-field-900x1100.webp" alt=""><div class="ja-ticket-top"><span class="ja-live"><i></i>${esc(D.term)}</span></div>
+        <div class="ja-ticket-body"><h2 class="ja-ticket-date"><span>You're not booked</span><span class="t">into a session yet</span></h2>
+        <p class="ja-meta">Pick a session on the timetable. ${D.players.length ? 'Your player details are saved, so booking is quick.' : 'Add your players first and booking is quick.'}</p>
+        <div class="ja-actions"><a class="ja-btn ja-btn-red" href="${esc(D.bookUrl || '/jfp-booking/')}">Book a session</a><button type="button" class="ja-btn ja-btn-glass" data-add-player>${D.players.length ? 'Add another player' : 'Add a player'}</button></div>
+        <p class="ja-small" style="margin-top:14px;color:rgba(255,255,255,.75)">Booked with another email? Sign out and use that one. Already train with us? <button type="button" class="ja-link" data-go="contact" style="color:#fff">Contact us</button></p></div></div>
+      <div class="ja-stack" style="margin-top:14px">${todoCards()}${list}${requestsBlock()}</div>${promos}${watch}`
     return
   }
   const ups = upcoming().filter((x) => x.next)
@@ -508,9 +512,11 @@ function renderInfo() {
     ? pageHead('My profile', 'Your details', 'Your club, position and who to call in an emergency. Lee and Ligia use this to put you in the right group, so keep it up to date. Your photo is only seen by Joner Football staff and coaches.')
     : pageHead('Player information', list.length === 1 ? `${first(list[0].name)}'s details` : 'Your players', 'Club, position and who to call. Lee and Ligia use this to put players in the right group, so keep it up to date. Changed clubs? Update it here and we see it straight away. Photos are only seen by Joner Football staff and coaches.')
   if (!PROF) { el.innerHTML = `${head}<div class="ja-card ja-muted">Loading player information</div>`; return }
-  if (!PROF.players.length) { el.innerHTML = `${head}<div class="ja-card">Once a player is booked into JFP, their details appear here.</div>`; return }
+  // Anyone can add a player, booked or not (round 2 item 8).
+  const addBar = `<div class="ja-actions" style="margin:0 0 14px"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-add-player>+ Add a player</button></div>`
+  if (!PROF.players.length) { el.innerHTML = `${head}<div class="ja-card"><h3 class="ja-h3">No players yet</h3><p class="ja-muted" style="margin-top:6px">Add a player (or yourself, if you are the player) and fill in their details. You do not need a session booked.</p><div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" data-add-player>Add a player</button></div></div>`; return }
   const o = PROF.options || OPT
-  el.innerHTML = head + PROF.players.map((pl) => {
+  el.innerHTML = head + addBar + PROF.players.map((pl) => {
     const v = { ...pl.prefill, ...(pl.profile || {}) }
     const miss = missingInfo(v, Boolean(pl.profile))
     const done = 4 - miss.length
@@ -575,6 +581,46 @@ async function saveProf(key, btn) {
   toast('Saved. Lee and Ligia can see it now.')
   renderInfo(); renderShell(); renderHome()
   document.querySelector(`[data-prof="${CSS.escape(key)}"]`)?.scrollIntoView({ block: 'start' })
+}
+
+// ---------- add a player (no session needed) ----------
+
+// Round 2 item 8: a player profile from the account, booked or not. The
+// player's own details are then filled in on Player information.
+function addPlayerSheet() {
+  const sheet = openSheet({ title: 'Add a player', subtitle: 'No session needed. You can book one any time.' })
+  const o = PROF?.options || OPT
+  sheet.body.innerHTML = `
+    <label class="j-check" style="margin-bottom:10px"><input type="checkbox" id="ap-self"> <span><b>I am the player</b> (18 or over, signing up for myself)</span></label>
+    <label class="j-field"><span id="ap-name-l">Player's full name</span><input class="j-input" id="ap-name" autocomplete="off"></label>
+    <label class="j-field"><span>Date of birth</span><input class="j-input" id="ap-dob" type="date" min="${esc(PROF?.dob?.min || '1940-01-01')}" max="${esc(PROF?.dob?.max || new Date().toISOString().slice(0, 10))}"></label>
+    <label class="j-field"><span>Club <span class="muted">(optional)</span></span><input class="j-input" id="ap-club" autocomplete="off" placeholder="For example, Manly United"></label>
+    <label class="j-field"><span>Level <span class="muted">(optional)</span></span><select class="j-select" id="ap-level"><option value="">Choose</option>${o.levels.map((x) => `<option>${esc(x)}</option>`).join('')}</select></label>
+    <div id="ap-parent"><div class="j-two"><label class="j-field"><span>Your name (parent or guardian)</span><input class="j-input" id="ap-pname" autocomplete="name" value="${esc(D.parentName || '')}"></label><label class="j-field"><span>Your mobile</span><input class="j-input" id="ap-pmob" type="tel" inputmode="tel" autocomplete="tel"></label></div></div>
+    <p class="j-err" id="ap-err" hidden></p>`
+  const selfBox = sheet.body.querySelector('#ap-self')
+  const sync = () => { const me = selfBox.checked; sheet.body.querySelector('#ap-parent').hidden = me; sheet.body.querySelector('#ap-name-l').textContent = me ? 'Your full name' : "Player's full name" }
+  selfBox.addEventListener('change', sync)
+  sync()
+  sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-red ja-btn-block" id="ap-save">Add the player</button>'
+  sheet.foot.querySelector('#ap-save').addEventListener('click', async (ev) => {
+    const b = ev.currentTarget
+    const g = (id) => sheet.body.querySelector(id).value.trim()
+    const err = sheet.body.querySelector('#ap-err')
+    err.hidden = true
+    const me = selfBox.checked
+    const values = { club: g('#ap-club'), level: g('#ap-level'), ...(me ? {} : { parentName: g('#ap-pname'), parentMobile: g('#ap-pmob') }) }
+    b.disabled = true
+    const r = await api('/api/jfp-account', { action: 'addPlayer', name: g('#ap-name'), dob: g('#ap-dob'), self: me, values })
+    b.disabled = false
+    if (!r.ok) { err.textContent = r.data.error || 'Could not add the player. Try again.'; err.hidden = false; return }
+    closeSheet(true)
+    toast('Added. Now fill in their details.')
+    await load()
+    await loadProfiles()
+    show('info')
+    document.querySelector(`[data-prof="${CSS.escape(r.data.key)}"]`)?.scrollIntoView({ block: 'start' })
+  })
 }
 
 // ---------- profile photo ----------
@@ -1112,6 +1158,7 @@ document.addEventListener('click', async (e) => {
   if (segBtn) { const g = segBtn.closest('[data-seg]'); const on = segBtn.getAttribute('aria-pressed') !== 'true'; g.querySelectorAll('[data-val]').forEach((b) => b.setAttribute('aria-pressed', String(on && b === segBtn))); return }
   const multi = t.closest('[data-multi] [data-val]')
   if (multi) { multi.setAttribute('aria-pressed', String(multi.getAttribute('aria-pressed') !== 'true')); return }
+  if (t.closest('[data-add-player]')) { closeSheet(true); return addPlayerSheet() }
   const sp = t.closest('[data-save-prof]')
   if (sp) return saveProf(sp.dataset.saveProf, sp)
   const prm = t.closest('[data-photo-rm]')
