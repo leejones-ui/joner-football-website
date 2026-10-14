@@ -4,6 +4,7 @@
 //
 // ui: { view, post, need, toast, modal, closeModal, confirm, copy, board(), payPill, pricing(), resetPricing() }
 import { esc, money } from './jfp-common.js'
+import { quoteHtml, wireQuote } from './jfp-portal-quote.js'
 
 export const PROG_PILL = { jfp: 'blue', pro: 'pink', juniors: 'violet', holiday: 'amber', other: 'grey' }
 export const progPill = (id, label) => `<span class="j-pill j-pill-${PROG_PILL[id] || 'grey'}">${esc(label)}</span>`
@@ -33,6 +34,13 @@ export async function renderPricesPage(ui) {
       ${own.length ? `<ul class="jq-list" id="pr-own-list">${own.map(priceRow).join('')}</ul>` : '<p class="muted small" id="pr-none">No prices of your own yet. Add one, like a holiday camp day or a kit fee.</p>'}
       ${archived.length ? `<details class="jq-fold" id="pr-archived"><summary>Archived (${archived.length})</summary><ul class="jq-list">${archived.map(priceRow).join('')}</ul></details>` : ''}
     </section>
+    <section class="j-card jq-card" id="pr-quote">
+      <h2>Default Pro quote</h2><p class="muted small">Fills in Add a player for a Pro. Each player's own quote is set in Edit player and can be different (loyal players, for example). Changing this changes nobody's quote.</p>
+      <label class="j-field" style="max-width:220px"><span>Price per session (A$)</span><input class="j-input" id="dq-per" inputmode="decimal" value="${pr.defaultQuote ? dollars(pr.defaultQuote.perCents) : ''}" placeholder="e.g. 100"></label>
+      ${quoteHtml('dq', { tiers: pr.defaultQuote?.tiers || [], title: 'Commitment options' })}
+      <p class="j-err" id="dq-err" hidden></p>
+      <div style="display:flex;gap:8px;margin-top:10px"><button type="button" class="j-btn j-btn-dark" id="dq-save">Save default</button>${pr.defaultQuote ? '<button type="button" class="j-btn j-btn-ghost" id="dq-clear">Clear default</button>' : ''}</div>
+    </section>
     <section class="j-card jq-card jp-prices" id="pr-jfp">
       <h2>JFP price list</h2><p class="muted small">The term prices every JFP link uses. Change an amount, then Save prices.</p>
       <ul class="jq-list">${pr.products.map((x) => `<li class="jq-price" data-price-id="jfp:${esc(x.key)}"><span class="jq-main"><b>${esc(x.label)}</b><small>${progPill('jfp', 'JFP')} Airtable type: ${esc(x.type)}${x.perPlaces > 1 ? ' · covers two places' : ''} · pro rata: ${x.proRata ? 'yes, sessions left' : 'no'}</small></span>
@@ -53,6 +61,20 @@ export async function renderPricesPage(ui) {
     renderPricesPage(ui)
   })
   $('pr-add').addEventListener('click', () => priceModal(ui, null))
+  // The default Pro quote (14 Oct 2026).
+  const dq = wireQuote(ui.view(), 'dq', { perInput: $('dq-per') })
+  const saveDq = async (quote) => {
+    const r = await ui.post('saveDefaultQuote', { quote })
+    if (!r.ok) { $('dq-err').textContent = r.data.error; $('dq-err').hidden = false; return }
+    ui.resetPricing(); ui.toast(quote ? 'Default Pro quote saved' : 'Default Pro quote cleared'); renderPricesPage(ui)
+  }
+  $('dq-save').addEventListener('click', () => {
+    const t = dq.read()
+    const per = cents($('dq-per').value)
+    if (t.error || !(per >= 100)) { $('dq-err').textContent = t.error || 'Enter the price per session.'; $('dq-err').hidden = false; return }
+    saveDq({ perCents: per, tiers: t.tiers })
+  })
+  $('dq-clear')?.addEventListener('click', () => saveDq(null))
   // On this page's own element: the view outlives every tab.
   $('pr-page').addEventListener('click', async (e) => {
     const row = e.target.closest('[data-price-id]')

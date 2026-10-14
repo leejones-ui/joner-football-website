@@ -18,6 +18,7 @@ import { stripeFetch } from './_holiday-store.js'
 import {
   getBooking, saveBooking, getGroup, getConfig, confirmPlaces, settlePlaces, releasePlaces, coachById, kvCommand, keys, clean,
   getPayreq, savePayreq, ONLINE_TAG, audit, claimOnce, dropParentHold, normName, sydneyToday, prepaidOf, withPrepaid } from './_jfp-store.js'
+import { commitNotes } from './_jfp-quote.js'
 import {
   createTerm4Rows, findTerm4ByTag, updateTerm4Rows, getTerm4Row, createLedgerRow, findLedgerByPayment, createWaiverRows, waiverFields,
   findWaiversByTag, appendNote, bustRosterCache, loadRoster,
@@ -295,7 +296,8 @@ async function runPayreqEffects(payreq, retry = new Set()) {
         ...(['Awaiting Reply', 'Not Contacted', 'Needs Follow-up', ''].includes(row.confirmation) ? { 'Term 4 Confirmation': 'Confirmed', 'Confirmation Date': sydneyToday() } : {}),
         // Sessions prepaid from My account: counted on the row, so the next
         // time staff bill sessions these come off (_jfp-account-pay.js).
-        'Term 4 Notes': appendNote(payreq.prepay?.rowId === row.id ? withPrepaid(row.notes, prepaidOf(row.notes) + Number(payreq.prepay.sessions || 0)) : row.notes, `Paid ${(share[i] / 100).toFixed(2)} online${payreq.prepay?.rowId === row.id ? ` for ${payreq.prepay.sessions} prepaid session${payreq.prepay.sessions > 1 ? 's' : ''} (${(payreq.prepay.dates || []).join(', ')})` : ''}. [PAID:${payreq.id}]`),
+        // A commitment also records the dates it covers ([COVERED:...], _jfp-quote.js).
+        'Term 4 Notes': appendNote(payreq.prepay?.rowId === row.id ? commitNotes(withPrepaid(row.notes, prepaidOf(row.notes) + Number(payreq.prepay.sessions || 0)), payreq.prepay) : row.notes, `Paid ${(share[i] / 100).toFixed(2)} online${payreq.prepay?.rowId === row.id ? ` for ${payreq.prepay.sessions} ${payreq.prepay.commit ? 'committed' : 'prepaid'} session${payreq.prepay.sessions > 1 ? 's' : ''} (${(payreq.prepay.dates || []).join(', ')})` : ''}. [PAID:${payreq.id}]`),
         // Add to what earlier payments recorded; never overwrite them.
         ...(addedFee != null ? {
           'Term 4 Stripe Fee AUD': (cents(row.stripeFeeAud) + addedFee) / 100,

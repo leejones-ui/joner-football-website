@@ -439,3 +439,14 @@ body:has(.ja) { background: #0A0A0B !important; }
 .ja .ja-photo-wrap.is-busy .ja-photo { opacity: .5; pointer-events: none; }
 .ja .ja-photo-wrap.is-busy .ja-photo::after { content: ''; position: absolute; inset: 24px; border-radius: 50%; border: 3px solid #fff; border-top-color: transparent; animation: ja-spin .8s linear infinite; }
 @keyframes ja-spin { to { transform: rotate(360deg); } }
+
+/* Pro quotes and Fees (14 Oct 2026) */
+.ja-num svg { width: 15px; height: 15px; }
+.ja-opts { display: grid; gap: 8px; margin-top: 10px; }
+.ja-opt { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; padding: 12px; border: 1px solid var(--ja-line); border-radius: 14px; cursor: pointer; }
+.ja-opt:has(input:checked) { border-color: var(--ja-red); background: rgba(232, 0, 13, .08); }
+.ja-opt input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--ja-red); }
+.ja-opt b { white-space: normal; }
+.ja-opt .ja-opt-dates { color: var(--ja-ink-2, #c9c9cf); }
+.ja-row-fee b, .ja-row-fee small { white-space: normal; overflow-wrap: anywhere; }
+.ja-row-fee .ja-avatar { width: 30px; height: 30px; font-size: 11px; }

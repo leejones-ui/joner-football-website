@@ -23,11 +23,12 @@
 // prepaid stay on the payment request (prepay.dates), so the account never
 // offers the same date twice.
 import {
-  clean, formatAud, newId, savePayreq, listPayreqs, audit, kvCommand, locationFor, dateLabel, sydneyToday,
+  clean, formatAud, newId, savePayreq, getPayreq, listPayreqs, audit, kvCommand, locationFor, dateLabel, sydneyToday, closeCheckout,
   isSessionType, isProType, withPerSession, rowEmails,
 } from './_jfp-store.js'
 import { getTerm4Row, updateTerm4Rows, appendNote, bustRosterCache } from './_jfp-airtable.js'
 import { rowSessionDates, rowTime, noticeFor } from './_jfp-cancel.js'
+import { quoteTiersOf, quoteOptions, commitmentOf } from './_jfp-quote.js'
 
 const cents = (aud) => (typeof aud === 'number' && Number.isFinite(aud) ? Math.round(aud * 100) : 0)
 const isOpen = (q) => ['open', 'checkout'].includes(q?.status)
@@ -93,7 +94,12 @@ export function owedItems({ config, players, payreqs, byGroup, cancels = [], now
       if (!per) continue
       const dates = prepayDates({ config, row: r, group, payreqs, cancels, nowMs })
       if (!dates.length) continue
-      out.push({ ...base, kind: 'prepay', title: 'Pay for your sessions', perCents: per, perLabel: formatAud(per), max: Math.min(PREPAY_MAX, dates.length), dates: dates.slice(0, PREPAY_MAX).map((iso) => ({ iso, label: dateLabel(iso) })) })
+      const listed = dates.slice(0, PREPAY_MAX).map((iso) => ({ iso, label: dateLabel(iso) }))
+      // A quote staff set for this player (Pro sessions, 14 Oct 2026): the
+      // next session, or one of their commitment options. Only these.
+      const tiers = quoteTiersOf(r.notes)
+      const quote = tiers.length ? { options: quoteOptions({ perCents: per, tiers, dates: listed }), commitment: commitmentOf(r.notes, sydneyToday(nowMs)) } : null
+      out.push({ ...base, kind: 'prepay', title: 'Pay for your sessions', perCents: per, perLabel: formatAud(per), max: Math.min(PREPAY_MAX, dates.length), dates: listed, ...(quote ? { quote } : {}) })
     }
   }
   return out
@@ -144,28 +150,57 @@ export async function payOwed({ config, parent, fam, byGroup, cancels, site, bod
     } else if (item.kind === 'sessions') {
       Object.assign(q, { reason: 'sessions', amountCents: item.amountCents, afterpay: false, groupLabel: 'Session by session', places: [{ rowId: r.id, name: p.name, label: 'Sessions billed by Joner Football', feeCents: item.amountCents, paidCents: 0, owingCents: item.amountCents }] })
     } else {
-      const n = Number(body.sessions ?? 1)
+      // A quoted player picks one of staff's options (body.option, e.g.
+      // 'commit:6'); the price comes from the quote on the row, never the page.
+      const pick = body.option != null && body.option !== 'one' ? (item.quote?.options || []).find((o) => o.key === clean(body.option, 20)) : null
+      if (body.option != null && body.option !== 'one' && !pick) return no(400, 'That option is not available any more. Refresh and choose again.', 'option')
+      const n = pick ? pick.n : Number(body.sessions ?? 1)
       if (!Number.isInteger(n) || n < 1 || n > item.max) return no(400, `Choose 1 to ${item.max} session${item.max > 1 ? 's' : ''}.`)
+      const per = pick ? pick.perCents : item.perCents
       const dates = item.dates.slice(0, n).map((d) => d.iso)
-      const amountCents = n * item.perCents
+      const amountCents = n * per
       const fee = cents(r.feeAud) + amountCents
       const paid = cents(r.paidAud)
       const restoreFields = [{ id: r.id, fields: { 'Term 4 Fee': r.feeAud ?? 0, 'Term 4 Payment Status': r.paymentStatus || 'Unpaid' } }]
       Object.assign(q, {
         reason: 'sessions', amountCents, afterpay: false, groupLabel: 'Session by session', restoreFields,
-        prepay: { rowId: r.id, sessions: n, perCents: item.perCents, dates },
-        places: [{ rowId: r.id, name: p.name, label: `${n} session${n > 1 ? 's' : ''} at ${formatAud(item.perCents)}: ${dates.map(dateLabel).join(', ')}`, feeCents: amountCents, paidCents: 0, owingCents: amountCents }],
+        prepay: { rowId: r.id, sessions: n, perCents: per, dates, ...(pick?.commit ? { commit: true } : {}) },
+        places: [{ rowId: r.id, name: p.name, label: `${pick?.commit ? `Commitment: ${n} sessions in a row` : `${n} session${n > 1 ? 's' : ''}`} at ${formatAud(per)}${pick?.commit ? ' each' : ''}: ${dates.map(dateLabel).join(', ')}`, feeCents: amountCents, paidCents: 0, owingCents: amountCents }],
       })
       // On the fee now, as staff billing does, so Money and the balance agree.
       await updateTerm4Rows([{ id: r.id, fields: {
         'Term 4 Fee': fee / 100,
         'Term 4 Payment Status': paid >= fee ? 'Paid' : paid > 0 ? 'Partially Paid' : 'Unpaid',
-        'Term 4 Notes': appendNote(r.perSessionCents ? r.notes : withPerSession(r.notes, item.perCents), `Prepaying from My account on ${sydneyToday()}: ${n} x ${formatAud(item.perCents)} = ${formatAud(amountCents)} (${dates.join(', ')}), payment link ${q.id}.`),
+        'Term 4 Notes': appendNote(r.perSessionCents ? r.notes : withPerSession(r.notes, item.perCents), `${pick?.commit ? `Committing from My account on ${sydneyToday()} to ${n} sessions in a row` : `Prepaying from My account on ${sydneyToday()}`}: ${n} x ${formatAud(per)} = ${formatAud(amountCents)} (${dates.join(', ')}), payment link ${q.id}.`),
       } }])
       await bustRosterCache()
     }
     await savePayreq(q)
-    await audit({ by: parent.email, action: `payreq.account.${item.kind}`, target: q.id, after: { row: r.id, cents: q.amountCents, ...(q.prepay ? { sessions: q.prepay.sessions, dates: q.prepay.dates } : {}) } })
+    await audit({ by: parent.email, action: `payreq.account.${q.prepay?.commit ? 'commit' : item.kind}`, target: q.id, after: { row: r.id, cents: q.amountCents, ...(q.prepay ? { sessions: q.prepay.sessions, per: q.prepay.perCents, dates: q.prepay.dates } : {}) } })
     return { ok: true, payreqId: q.id }
+  } finally { await kvCommand(['DEL', lock]).catch(() => {}) }
+}
+
+// The family made a prepay link from My account and wants to choose again
+// (say the next session instead of a commitment): close it, take its sessions
+// back off the fee, and the options show again. Only their own account-made
+// prepay links; anything staff sent stays for staff to change.
+export async function cancelOwed({ parent, fam, body }) {
+  const q = await getPayreq(clean(body.payreqId, 60))
+  const rowId = q?.prepay?.rowId
+  const mine = rowId && fam.players.some((p) => p.term4.some((r) => r.id === rowId && rowEmails(r).some((e) => fam.emails.includes(e))))
+  if (!q || !q.fromAccount || !mine) return no(404, 'We could not find that payment.')
+  if (q.status === 'paid') return no(409, 'This is already paid.', 'paid')
+  if (!isOpen(q)) return { ok: true, already: true }
+  const lock = `jfp:owed-lock:${rowId}`
+  if ((await kvCommand(['SET', lock, '1', 'NX', 'EX', '20'])) !== 'OK') return no(409, 'Just a moment, that is still being set up.', 'busy')
+  try {
+    const closed = q.status === 'checkout' && q.stripeSessionId ? await closeCheckout(q.stripeSessionId) : 'expired'
+    if (closed === 'complete') return no(409, 'This payment has gone through and is being processed. Refresh in a minute.', 'processing')
+    if (closed === 'error') return no(503, 'Could not close the payment page. Try again in a minute.')
+    await savePayreq({ ...q, status: 'cancelled', cancelledBy: parent.email, cancelledAt: new Date().toISOString(), cancelReason: 'Family chose again in My account' })
+    if (q.restoreFields?.length) { await updateTerm4Rows(q.restoreFields); await bustRosterCache() }
+    await audit({ by: parent.email, action: 'payreq.account.cancel', target: q.id, after: { row: rowId, cents: q.amountCents } })
+    return { ok: true }
   } finally { await kvCommand(['DEL', lock]).catch(() => {}) }
 }

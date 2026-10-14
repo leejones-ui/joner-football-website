@@ -135,3 +135,52 @@ invite's numbered list).
   signed by the player" or "parent or guardian waiver".
 - Tests: `scripts/test-jfp-pay-waiver-flow.mjs` (harness,
   `npm run test:jfp-pay-waiver-flow`).
+
+## Pro session quotes and the Fees tab (14 Oct 2026)
+
+Quotes (`api/_jfp-quote.js`, staff side `api/_jfp-quote-staff.js`):
+
+- Each Pro (or session by session) player's own quote, on the Term 4 row's
+  notes: the price per session `[PERSESSION:<cents>]` plus commitment tiers
+  `[QUOTE:6x9500,10x9000]` ("6 sessions in a row at A$95 each"). 2 to 20
+  sessions a tier, at most 4 tiers, each price lower than a session.
+- Only staff (portal admins) change it: Add a player (`addPlayer` /
+  `addPlayerNoGroup` take `quote: { tiers }`), Edit player (Players tab and
+  Money) through `saveQuote { rowId, perCents, tiers }` (`tiers: []` removes
+  the options). `playerQuote { rowId }` returns the quote, the commitment and
+  the default. Audited as `player.quote` (and in `player.add`).
+- Default Pro quote: Money > Prices, `saveDefaultQuote { quote | null }`,
+  kept as `config.proQuote`, returned by `pricing` as `defaultQuote`. It
+  only fills in Add a player when Pro is chosen; Edit offers a "Use the
+  default" button. Changing it changes nobody's quote.
+
+My account (`_jfp-account-pay.js`): a quoted row's `prepay` item carries
+`quote.options` (the next session at the per-session price, and each tier
+that fits the dates left) and `quote.commitment`. `payOwed { rowId, option }`
+(`'one'` or `'commit:<n>'`) prices it from the stored quote only; an option
+staff did not set is refused (`code: 'option'`). A commitment link carries
+`prepay.commit: true`. The family can close a pay-ahead link they made and
+choose again: `cancelOwed { payreqId }` (their own `fromAccount` prepay
+links only; the fee goes back via `restoreFields`). Todo items for those
+links have `canChoose: true`.
+
+Paid commitment (finalise): `[PREPAID:n]` as any prepay, plus the dates in
+`[COVERED:<iso>,...]`. Staff session billing (`sessionInvoice`, `billPlan`):
+covered dates on or before today are used first; a covered date the player
+missed is still counted as paid (no automatic refund) and the billing note
+says so; covered dates still to come stay prepaid; anything prepaid beyond the
+commitment comes off as before. With no covered dates the rule is unchanged.
+
+Fees tab (`api/_jfp-account-fees.js`, family action `fees`, read only): what
+is owing now (from the overview: payment requests, owed places, Joners
+Juniors, each with Pay), this term's places (fee, paid, prepaid, commitment),
+totals by programme, and every payment record newest first: their paid JFP
+and Juniors requests, Stripe payments under their addresses not otherwise
+explained (Money's cached read, never a long Stripe read), cash and bank
+ledger lines whose rows are all theirs, and paid holiday bookings. Stripe
+receipts are looked up per payment intent (8 a read, kept in
+`jfp:receipt:<pi>`). The bottom tab bar now has Fees in place of Videos
+(Videos stays in the menu).
+
+Tests: `scripts/test-jfp-pro-quotes.mjs` (in `npm run test:jfp`) and
+`scripts/test-jfp-pro-quotes-flow.mjs` (harness, `npm run test:jfp-pro-quotes-flow`).

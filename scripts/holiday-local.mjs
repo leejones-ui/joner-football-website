@@ -434,7 +434,7 @@ function mockBalance(s) {
 }
 function mockCharge(s, { expandBalance = false, late = false } = {}) {
   const id = `ch_${String(s.payment_intent).slice(3)}`
-  return { id, amount_refunded: (s.refunds || []).reduce((t, r) => t + r.amount, 0), payment_method_details: { type: s.payMethod || 'card' }, balance_transaction: late ? null : expandBalance ? mockBalance(s) : `txn_${String(s.payment_intent).slice(3)}` }
+  return { id, receipt_url: `http://localhost:${PORT}/mock-stripe/receipt/${id}`, amount_refunded: (s.refunds || []).reduce((t, r) => t + r.amount, 0), payment_method_details: { type: s.payMethod || 'card' }, balance_transaction: late ? null : expandBalance ? mockBalance(s) : `txn_${String(s.payment_intent).slice(3)}` }
 }
 const paidSession = (pi) => [...sessions.values(), ...stripeSeeded, ...juniorsSessions].find((x) => x.payment_intent === pi)
 // Juniors payments: the invented ones, and website sign-ups paid on the mock checkout.

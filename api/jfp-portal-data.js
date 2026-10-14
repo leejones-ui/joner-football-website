@@ -43,6 +43,8 @@ import { JJ_REGISTER_ACTIONS, jjRegisterAction, jjDatesForGroup, classForGroup, 
 import { matchBank, cleanItem, csvIds, EXTERNAL_ID, BANK_LIMITS, twinOf, looksJfp, feeSizes, rowScore } from './_jfp-bank-match.js'
 import { holidayMoneyData, holidaySizes, HOLIDAY_BANK } from './_holiday-money.js'
 import { proMoneyData, isProRow, isProLedger, PRO_BANK } from './_jfp-pro-money.js'
+import { billPlan, afterBill, billLine, coveredOf, withQuote } from './_jfp-quote.js'
+import { playerQuote, saveQuote, saveDefaultQuote, addQuote } from './_jfp-quote-staff.js'
 import { campsMoneyData, campsStripe } from './_jfp-camps.js'
 import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, OTHER, OTHER_LABEL } from './_holiday-periods.js'
 import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venuesFromHistory, venueTerms, juniorsByVenue, previousTerm, totalOf, emptyVenue, costsOfTerm, withCosts, costTotals, checkCostLines, costTermOk } from './_jfp-venues.js'
@@ -257,7 +259,10 @@ function readAdd(config, body, { group = null } = {}) {
   const { values: profile, errors } = cleanProfile(profIn)
   if (errors.length) return { error: errors.join(' ') }
   const words = contactWords({ self: ownContact, players: [name], parent: parentName })
-  return { ok: true, v: { ownContact, name, email, parentName, mobile, dob, payment, perSession, custom: custom && !custom.builtin ? custom : null, profile, words } }
+  // A Pro quote typed on the Add form (commitment tiers), checked now (_jfp-quote-staff.js).
+  const quote = addQuote('', body.quote, { perSession, sessionPay: ['sessions', 'pro'].includes(payment) })
+  if (quote.error) return { error: quote.error }
+  return { ok: true, v: { ownContact, name, email, parentName, mobile, dob, payment, perSession, custom: custom && !custom.builtin ? custom : null, profile, words, quoteTiers: quote.tiers || [] } }
 }
 
 // The profile for a player just added, in the same request. The row is
@@ -309,7 +314,7 @@ export async function addPlayer(req, res, principal, config, body) {
   const type = isTrial ? 'JFP Trial' : isPro ? PRO_TYPE : payment === 'sessions' ? SESSION_TYPE : price.type
   let notes = `Added by ${principal.name} in the JFP portal${isTrial && from ? `. Trial offered for ${from}` : ''}${age != null ? `, age ${age}` : ''}${!custom && price.fixedSessions && !isTrial && !perSessionPay ? `, half term from ${from} (${price.sessions} sessions)` : !custom && price.proRata && !isTrial && !perSessionPay ? `, from ${from} (${price.sessions} of ${price.of} sessions, pro rata)` : ''}${custom && !perSessionPay ? `, ${custom.name}` : ''}${payment === 'offline' ? `. Paid offline (${clean(body.method, 30) || 'not stated'})` : ''}. [${ADMIN_TAG}:${addId}]${body.note ? `\n${clean(body.note, 500)}` : ''}${perSessionPay ? `\n${sessionsLine(payment, perSession)}` : ''}`
   if (perSession) notes = withPerSession(notes, perSession)
-  notes = withOwnContact(notes, ownContact)
+  notes = withQuote(withOwnContact(notes, ownContact), read.v.quoteTiers)
   const fields = {
     'Player Name': name,
     'Parent Name': parentName,
@@ -343,7 +348,7 @@ export async function addPlayer(req, res, principal, config, body) {
   const emailError = sent.emailError ? `${name} was added, but the email to ${email} did not send. ${sent.emailError} Try again with Account invite on the player.` : ''
   // The group's coach hears about it (Lee, 14 Oct 2026), a few minutes later.
   await noteNewPlayer({ config, group, rowId, player: name, kind: 'added' }).catch((e) => console.error('jfp coach news failed', e))
-  await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed: sent.emailed, payreq: payreq?.id || '', cents: payment === 'none' || perSessionPay ? 0 : amountCents, perSessionCents: perSession || undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
+  await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed: sent.emailed, payreq: payreq?.id || '', cents: payment === 'none' || perSessionPay ? 0 : amountCents, perSessionCents: perSession || undefined, quote: read.v.quoteTiers.length ? read.v.quoteTiers : undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
   return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, ownContact, words, ...prof })
 }
 
@@ -439,7 +444,7 @@ async function addPlayerNoGroup(req, res, principal, config, body) {
   const what = custom ? custom.name : chosen ? productFor(chosen.product).label : ''
   let notes = `Added by ${principal.name} in the JFP portal Players tab, with no session yet.${note ? ` ${note}` : ''}${what && !perSessionPay ? ` ${what}.` : ''}${payment === 'offline' ? ` Paid offline (${clean(body.method, 30) || 'not stated'}).` : ''}${perSessionPay ? ` ${sessionsLine(payment, perSession)}` : ''}`
   if (perSession) notes = withPerSession(notes, perSession)
-  notes = withOwnContact(notes, ownContact)
+  notes = withQuote(withOwnContact(notes, ownContact), read.v.quoteTiers)
   const fee = perSessionPay ? 0 : ['link', 'offline'].includes(payment) ? amountCents / 100 : feeAud
   const fields = {
     'Player Name': name,
@@ -476,7 +481,7 @@ async function addPlayerNoGroup(req, res, principal, config, body) {
     }
   }
   const emailError = sent.emailError ? `${name} was added, but the email to ${email} did not send. ${sent.emailError}` : ''
-  await audit({ by: principal.email, action: 'player.add.nogroup', target: rowId, after: { name, email, feeAud: fee, payment, emailed: sent.emailed, payreq: payreq?.id || '', ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
+  await audit({ by: principal.email, action: 'player.add.nogroup', target: rowId, after: { name, email, feeAud: fee, payment, emailed: sent.emailed, payreq: payreq?.id || '', quote: read.v.quoteTiers.length ? read.v.quoteTiers : undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
   return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, ownContact, words, ...prof })
 }
 
@@ -1704,16 +1709,17 @@ async function sessionInvoice(req, res, principal, config, body) {
     const sessions = Number(a.sessions), per = Number(a.perSessionCents)
     if (!Number.isInteger(sessions) || sessions < 1 || sessions > 20) return fail(res, 400, `How many sessions for ${r.player}? (1 to 20)`)
     if (!Number.isInteger(per) || per < 100 || per > 200000) return fail(res, 400, `Enter the price per session for ${r.player}.`)
-    // Sessions the player prepaid from My account come off first ([PREPAID:n]).
-    const covered = Math.min(sessions, prepaidOf(r.notes))
-    rows.push({ row: r, sessions, per, covered, cents: (sessions - covered) * per })
+    // Sessions the player prepaid from My account come off first ([PREPAID:n]);
+    // a commitment's dates are never billed, missed ones count as paid (_jfp-quote.js).
+    const plan = billPlan({ prepaid: prepaidOf(r.notes), covered: coveredOf(r.notes), sessions, today: sydneyToday() })
+    rows.push({ row: r, sessions, per, plan, covered: plan.covered, cents: (sessions - plan.covered) * per })
   }
   const what = clean(body.what, 120)
   const amountCents = rows.reduce((t, x) => t + x.cents, 0)
   // Every session asked for was paid in advance: nothing to bill, the
   // prepaid count goes down and that is all.
   if (!amountCents) {
-    await updateTerm4Rows(rows.map((x) => ({ id: x.row.id, fields: { 'Term 4 Notes': appendNote(withPrepaid(x.row.notes, prepaidOf(x.row.notes) - x.covered), `Sessions billed by ${principal.name}: ${x.sessions}, all prepaid from My account${what ? ` (${what})` : ''}.`) } })))
+    await updateTerm4Rows(rows.map((x) => ({ id: x.row.id, fields: { 'Term 4 Notes': appendNote(afterBill(x.row.notes, x.plan, withPrepaid), `Sessions billed by ${principal.name}: ${x.sessions}, all prepaid from My account${billLine(x.plan)}${what ? ` (${what})` : ''}.`) } })))
     await audit({ by: principal.email, action: 'player.sessions', target: rows.map((x) => x.row.id).join(','), after: { rows: rows.map((x) => ({ id: x.row.id, sessions: x.sessions, per: x.per, prepaid: x.covered })), what, mode: 'prepaid' } })
     return res.status(200).json({ success: true, payreq: null, covered: rows.reduce((t, x) => t + x.covered, 0), message: `Nothing to bill: ${rows.map((x) => `${x.row.player}'s ${x.covered} session${x.covered > 1 ? 's were' : ' was'}`).join(', ')} paid in advance from their account.` })
   }
@@ -1738,12 +1744,12 @@ async function sessionInvoice(req, res, principal, config, body) {
     restoreFields.push({ id: r.id, fields: { 'Term 4 Fee': r.feeAud ?? 0, 'Term 4 Payment Status': r.paymentStatus || 'Unpaid' } })
     // Not yet session by session: the term fee goes; sessions build up from what is paid.
     const fee = (isSessionType(r.paymentType) ? cents(r.feeAud) : cents(r.paidAud)) + x.cents
-    const prepaidLine = x.covered ? `, ${x.covered} of them prepaid from My account so ${x.sessions - x.covered} billed` : ''
+    const prepaidLine = `${x.covered ? `, ${x.covered} of them prepaid from My account so ${x.sessions - x.covered} billed` : ''}${billLine(x.plan)}`
     updates.push({ id: r.id, fields: {
       'Term 4 Fee': fee / 100,
       'Term 4 Payment Status': cents(r.paidAud) >= fee ? 'Paid' : cents(r.paidAud) > 0 ? 'Partially Paid' : 'Unpaid',
       ...(isSessionType(r.paymentType) ? {} : { 'Term 4 Payment Type': SESSION_TYPE }),
-      'Term 4 Notes': appendNote(withPrepaid(withPerSession(r.notes, x.per), prepaidOf(r.notes) - x.covered), `Sessions billed by ${principal.name}: ${x.sessions} x ${formatAud(x.per)}${prepaidLine} = ${formatAud(x.cents)}${what ? ` (${what})` : ''}${paidNow ? ', paid' : ', payment link'}.`),
+      'Term 4 Notes': appendNote(afterBill(withPerSession(r.notes, x.per), x.plan, withPrepaid), `Sessions billed by ${principal.name}: ${x.sessions} x ${formatAud(x.per)}${prepaidLine} = ${formatAud(x.cents)}${what ? ` (${what})` : ''}${paidNow ? ', paid' : ', payment link'}.`),
     } })
   }
   await updateTerm4Rows(updates)
@@ -2779,6 +2785,11 @@ async function handle(req, res) {
       case 'familyInvoice': return await familyInvoice(req, res, principal, config, body)
       case 'stripeScan': return res.status(200).json({ success: true, payments: await stripeScan({ from: clean(body.from, 10), to: clean(body.to, 10) }) })
       case 'sessionInvoice': return await sessionInvoice(req, res, principal, config, body)
+      // Pro session quotes (14 Oct 2026, _jfp-quote-staff.js): staff only.
+      case 'playerQuote': case 'saveQuote': case 'saveDefaultQuote': {
+        const out = action === 'playerQuote' ? await playerQuote(config, body) : action === 'saveQuote' ? await saveQuote(principal, config, body) : await saveDefaultQuote(principal, config, body)
+        return res.status(out.status).json(out.body)
+      }
       case 'nextTerm': {
         const nt = config.nextTerm
         const [roster, groups, statuses, interest] = await Promise.all([loadRoster({ fresh: true }), listGroups(), nextStatuses(nt.name), nextInterest(nt.name)])
@@ -2835,7 +2846,7 @@ async function handle(req, res) {
       case 'offerTerm': return await offerTerm(req, res, principal, config, body)
       case 'pricing': {
         const today = sydneyToday()
-        return res.status(200).json({ success: true, weeks: config.weeks, today, prices: config.prices, products: PRODUCTS.map((x) => ({ ...x, cents: config.prices[x.key] })), datesByDay: Object.fromEntries(DAYS.map((d) => [d, sessionDates(config, d).map((iso) => ({ iso, label: dateLabel(iso), past: iso < today }))])), ...pricesView(config) })
+        return res.status(200).json({ success: true, weeks: config.weeks, today, prices: config.prices, products: PRODUCTS.map((x) => ({ ...x, cents: config.prices[x.key] })), datesByDay: Object.fromEntries(DAYS.map((d) => [d, sessionDates(config, d).map((iso) => ({ iso, label: dateLabel(iso), past: iso < today }))])), ...pricesView(config), defaultQuote: config.proQuote || null })
       }
       case 'removed': {
         const [roster, dropped] = await Promise.all([loadRoster({ fresh: true }), listDropped()])

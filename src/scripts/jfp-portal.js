@@ -18,6 +18,7 @@ import { playerFormHtml, wirePlayerForm, filledValues, customOptions, customPric
 import { contactWords } from '../../api/_jfp-contact.js'
 import { textComposer, payLinkText, trialText, helloText, inviteText } from './jfp-portal-text.js'
 import { JJ_NAV, JJ_TABS, JJ_ICON, renderJJ } from './jfp-portal-jj.js'
+import { quoteHtml, wireQuote, commitmentHtml, sameTiers } from './jfp-portal-quote.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', linkProg: 'all', pricing: null }
@@ -783,16 +784,22 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
     <div id="ap-price"></div>
     <label class="j-field" id="ap-trial-wrap" hidden><span>Trial date</span><select class="j-select" id="ap-trial">${dateOptions(pr, g.day, nextDate(pr, g.day))}</select></label>
     <label class="j-field" id="ap-per-wrap" hidden><span>Price per session (A$) <span class="muted">(optional, or set it when you bill)</span></span><input class="j-input" id="ap-per" inputmode="decimal" placeholder="e.g. 80"></label>
+    ${quoteHtml('ap', { defaultQuote: pr.defaultQuote })}
     <label class="j-check"><input type="checkbox" id="ap-send" ${spotLink ? '' : 'checked'}> <span id="ap-send-l"></span></label>
     <p class="j-err" id="ap-err" hidden></p>
     <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ap-go"></button></div>`, { wide: true })
   const read = priceBlock(box, pr, { day: g.day, product: g.product || 'group', prefix: 'ap-price', custom: true })
   let words = contactWords({})
+  // Pro quote (14 Oct 2026): the default Pro quote fills in once for a Pro add.
+  const apQuote = wireQuote(box, 'ap', { perInput: box.querySelector('#ap-per'), defaultQuote: pr.defaultQuote })
+  let apPrefilled = false
   const payWatch = () => {
     const v = box.querySelector('#ap-pay').value
     const send = box.querySelector('#ap-send').checked
     box.querySelector('#ap-price').hidden = !['link', 'offline'].includes(v)
     box.querySelector('#ap-per-wrap').hidden = !['sessions', 'pro'].includes(v)
+    apQuote.show(['sessions', 'pro'].includes(v))
+    if (v === 'pro' && pr.defaultQuote && !apPrefilled && !box.querySelector('#ap-per').value.trim()) { apPrefilled = true; box.querySelector('#ap-per').value = (pr.defaultQuote.perCents / 100).toFixed(2).replace(/\.00$/, ''); apQuote.set(pr.defaultQuote.tiers) }
     box.querySelector('#ap-trial-wrap').hidden = v !== 'trial'
     // What the family will find when they sign in (Lee, 13 Oct 2026).
     box.querySelector('#ap-pay-hint').textContent = payHint(v, words)
@@ -855,6 +862,9 @@ async function addPlayerModal(g, { spotLink = false } = {}) {
         body.perSessionCents = Math.round(Number(per) * 100)
         if (!(body.perSessionCents >= 100)) { err.textContent = 'Enter the price per session in dollars, for example 80.'; err.hidden = false; return }
       }
+      const qt = apQuote.read()
+      if (qt.error) { err.textContent = qt.error; err.hidden = false; return }
+      if (qt.tiers.length) body.quote = { tiers: qt.tiers }
     }
     const btn = box.querySelector('#ap-go')
     const label = btn.textContent
@@ -1676,11 +1686,21 @@ function editPlayerModal(p) {
     <label class="j-field"><span>Payment type</span><select class="j-select" id="ep-type"><option value="">Not set</option>${[...new Set([...PAY_TYPES, p.type].filter(Boolean))].map((t) => `<option ${t === p.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label></div>
     <label class="j-field" id="ep-per-wrap"><span>Price per session (A$), for session by session</span><input class="j-input" id="ep-per" inputmode="decimal" value="${p.perSessionCents ? p.perSessionCents / 100 : ''}" placeholder="e.g. 50"></label>
     <p class="muted small" style="margin-top:-6px">Session by session: they can pay for sessions from their account. A fee with no payment link: they can pay from their account.</p>
+    <div id="ep-q-wrap"></div>
     <div class="j-two"><label class="j-field"><span>Parent name</span><input class="j-input" id="ep-parent" value="${esc(p.parent || '')}"></label>
     <label class="j-field"><span>Mobile</span><input class="j-input" id="ep-phone" inputmode="tel" value="${esc(p.phone || '')}"></label></div>
     <label class="j-field"><span>Parent email</span><input class="j-input" id="ep-email" inputmode="email" value="${esc(p.email || '')}"></label>
     <p class="j-err" id="ep-err" hidden></p>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="ep-go">Save</button></div>`, { wide: true })
+  // Their own quote and any commitment (14 Oct 2026), read after the modal opens.
+  let epQuote = null, epQd = null
+  post('playerQuote', { rowId: p.rowId }).then((rq) => {
+    const wrap = box.querySelector('#ep-q-wrap')
+    if (!rq.ok || !rq.data?.quote || !wrap || !box.isConnected) return
+    epQd = rq.data
+    wrap.innerHTML = `${commitmentHtml(epQd.commitment, epQd.commitments)}${quoteHtml('ep', { tiers: epQd.quote.tiers, defaultQuote: epQd.defaultQuote })}`
+    epQuote = wireQuote(box, 'ep', { perInput: box.querySelector('#ep-per'), defaultQuote: epQd.defaultQuote })
+  })
   box.querySelector('#ep-go').addEventListener('click', async (e) => {
     const v = (id) => box.querySelector(id).value.trim()
     const fee = v('#ep-fee')
@@ -1693,10 +1713,19 @@ function editPlayerModal(p) {
     if (v('#ep-type') !== (p.type || '')) fields.paymentType = v('#ep-type')
     const per = v('#ep-per')
     if ((per === '' ? null : Math.round(Number(per) * 100)) !== (p.perSessionCents || null)) fields.perSessionAud = per === '' ? null : Number(per)
-    if (!Object.keys(fields).length) return closeModal()
-    e.currentTarget.disabled = true
-    const r = await post('editPlayer', { rowId: p.rowId, fields })
-    if (!r.ok) { e.currentTarget.disabled = false; const er = box.querySelector('#ep-err'); er.textContent = r.data.error; er.hidden = false; return }
+    const er = box.querySelector('#ep-err')
+    const qt = epQuote ? epQuote.read() : { tiers: [] }
+    if (qt.error) { er.textContent = qt.error; er.hidden = false; return }
+    const quoteChanged = epQuote && (!sameTiers(qt.tiers, epQd.quote.tiers) || (qt.tiers.length && 'perSessionAud' in fields))
+    if (!Object.keys(fields).length && !quoteChanged) return closeModal()
+    const btn = e.currentTarget
+    btn.disabled = true
+    const r = Object.keys(fields).length ? await post('editPlayer', { rowId: p.rowId, fields }) : { ok: true, data: {} }
+    if (!r.ok) { btn.disabled = false; er.textContent = r.data.error; er.hidden = false; return }
+    if (quoteChanged) {
+      const a = await post('saveQuote', { rowId: p.rowId, perCents: Math.round(Number(per) * 100), tiers: qt.tiers })
+      if (!a.ok) { btn.disabled = false; er.textContent = a.data.error || 'Could not save the quote.'; er.hidden = false; return }
+    }
     closeModal()
     const links = r.data.openLinks || []
     toast(links.length ? `Saved. Note: ${links.length} open payment link${links.length === 1 ? '' : 's'} for ${links.map((l) => `${l.players.join(' + ')} (${money(l.amountCents)})`).join(', ')}: change the amount in Payment links if it is now wrong.` : 'Saved to Airtable', links.length ? 9000 : 3600)
@@ -2523,9 +2552,11 @@ function footballCell(p) {
 // One window to fix anything about a player: the Term 4 row (name, contact,
 // email, mobile, own contact, payment) and their player information. Saves to Airtable.
 async function plEdit(p) {
-  const r = await post('getProfile', { rowId: p.rowId })
+  const [r, rq] = await Promise.all([post('getProfile', { rowId: p.rowId }), post('playerQuote', { rowId: p.rowId })])
   if (!r.ok) return toast(r.data.error || 'Could not load the player.')
   const d = r.data
+  // Their own quote and any commitment (14 Oct 2026). Without it Edit still works.
+  const qd = rq.ok && rq.data?.quote ? rq.data : null
   const v = { ...d.prefill, ...(d.profile || {}) }
   const opts = d.options || PROFILE_OPTIONS
   if (opts.clubs) P.clubs = opts.clubs
@@ -2539,6 +2570,7 @@ async function plEdit(p) {
       <label class="j-field"><span>Payment type</span><select class="j-select" id="pe-type"><option value="">Not set</option>${types.map((t) => `<option ${t === d.row.paymentType ? 'selected' : ''}>${esc(t)}</option>`).join('')}${d.row.paymentType && !types.includes(d.row.paymentType) ? `<option selected>${esc(d.row.paymentType)}</option>` : ''}</select></label>
       <p class="muted small" style="margin-top:-6px">Session by session and Pro sessions: they can pay for sessions from their account (the next session at their price, or more ahead), and sessions you bill from Money show there too. A term fee with no link: they can pay from their account. Pro sessions money shows under Pro sessions, not JFP term income.</p>
       <label class="j-field" id="pe-per-wrap"><span>Price per session (A$) <span class="muted">(session by session and Pro sessions)</span></span><input class="j-input" id="pe-per" inputmode="decimal" value="${esc(per)}" placeholder="e.g. 80"></label>
+      ${qd ? `${commitmentHtml(qd.commitment, qd.commitments)}${quoteHtml('pe', { tiers: qd.quote.tiers, defaultQuote: qd.defaultQuote })}` : ''}
       <div class="j-two"><label class="j-field"><span>Term 4 fee (A$)</span><input class="j-input" id="pe-fee" inputmode="decimal" value="${esc(d.row.feeAud ?? '')}"></label>
       <label class="j-field"><span>Set the fee from a price <span class="muted">(optional)</span></span><select class="j-select" id="pe-price"><option value="">Choose a price</option>${pr ? `<optgroup label="JFP price list">${(pr.products || []).map((x) => `<option value="${x.cents}" data-type="${esc(x.type)}">${esc(x.label)} · ${esc(money(x.cents))}</option>`).join('')}</optgroup>${customPrices(pr).map((x) => `<option value="${x.cents}" data-type="${x.programme === 'pro' ? 'JFP Pro sessions' : ''}" data-per="${x.perSession ? '1' : ''}">${esc(x.name)} · ${esc(x.amountLabel || money(x.cents))}${x.perSession ? ' a session' : ''}</option>`).join('')}` : ''}</select></label></div>
       ${d.row.paidAud ? `<p class="muted small">Paid so far: ${esc(money0(d.row.paidAud))}.</p>` : ''}
@@ -2546,7 +2578,9 @@ async function plEdit(p) {
     <p class="j-err" id="pe-err" hidden></p>
     <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="pe-save">Save</button></div>`, { wide: true })
   const form = wirePlayerForm(box, 'pe')
-  const typeWatch = () => { box.querySelector('#pe-per-wrap').hidden = !/session by session|pro session/i.test(box.querySelector('#pe-type').value) }
+  const peQuote = qd ? wireQuote(box, 'pe', { perInput: box.querySelector('#pe-per'), defaultQuote: qd.defaultQuote }) : null
+  if (qd?.quoted || qd?.commitment) box.querySelector('#pe-payfold').open = true
+  const typeWatch = () => { const on = /session by session|pro session/i.test(box.querySelector('#pe-type').value); box.querySelector('#pe-per-wrap').hidden = !on; peQuote?.show(on || Boolean(qd?.quoted)) }
   box.querySelector('#pe-type').addEventListener('change', typeWatch)
   box.querySelector('#pe-price').addEventListener('change', (e) => {
     const o = e.target.selectedOptions[0]
@@ -2572,10 +2606,17 @@ async function plEdit(p) {
     if (fee !== String(d.row.feeAud ?? '')) changed.feeAud = fee === '' ? null : Number(fee)
     const perNow = box.querySelector('#pe-per').value.trim().replace(/[a$,\s]/gi, '')
     if (perNow !== per) changed.perSessionAud = perNow === '' ? null : Number(perNow)
+    const qt = peQuote ? peQuote.read() : { tiers: [] }
+    if (qt.error) { err.textContent = qt.error; err.hidden = false; return }
+    const quoteChanged = peQuote && (!sameTiers(qt.tiers, qd.quote.tiers) || (qt.tiers.length && perNow !== per))
     btn.disabled = true; btn.textContent = 'Saving'
     if (Object.keys(changed).length) {
       const a = await post('editPlayer', { rowId: p.rowId, fields: changed })
       if (!a.ok) { btn.disabled = false; btn.textContent = 'Save'; err.textContent = a.data.error || 'Could not save.'; err.hidden = false; return }
+    }
+    if (quoteChanged) {
+      const a = await post('saveQuote', { rowId: p.rowId, perCents: Math.round(Number(perNow) * 100), tiers: qt.tiers })
+      if (!a.ok) { btn.disabled = false; btn.textContent = 'Save'; err.textContent = a.data.error || 'Could not save the quote.'; err.hidden = false; return }
     }
     const b = await post('saveProfile', { rowId: p.rowId, values: f.values })
     btn.disabled = false; btn.textContent = 'Save'
@@ -2725,7 +2766,13 @@ async function plAddBox() {
     if (!go.disabled) go.textContent = send ? (pay === 'link' ? 'Add and email payment link' : words.addAndEmail) : pay === 'link' ? 'Add and make link' : 'Add player'
   }
   const form = wirePlayerForm(box, 'pa', { onChange: (w) => { words = w; relabel() } })
-  const readPay = wireNoGroupPayment(box, 'pa', pr, { onChange: (v) => { pay = v; relabel() } })
+  box.querySelector('#pa-per-wrap').insertAdjacentHTML('afterend', quoteHtml('pa', { defaultQuote: pr.defaultQuote }))
+  const paQuote = wireQuote(box, 'pa', { perInput: box.querySelector('#pa-per'), defaultQuote: pr.defaultQuote })
+  let paPrefilled = false
+  const readPay = wireNoGroupPayment(box, 'pa', pr, { onChange: (v) => {
+    pay = v; relabel(); paQuote.show(['sessions', 'pro'].includes(v))
+    if (v === 'pro' && pr.defaultQuote && !paPrefilled && !box.querySelector('#pa-per').value.trim()) { paPrefilled = true; box.querySelector('#pa-per').value = (pr.defaultQuote.perCents / 100).toFixed(2).replace(/\.00$/, ''); paQuote.set(pr.defaultQuote.tiers) }
+  } })
   box.querySelector('#pa-prod').addEventListener('change', (e) => {
     const p = customPrices(pr).find((x) => `price:${x.id}` === e.target.value)
     if (p?.perSession) { box.querySelector('#pa-pay').value = p.programme === 'pro' ? 'pro' : 'sessions'; box.querySelector('#pa-per').value = (p.cents / 100).toFixed(2).replace(/\.00$/, ''); box.querySelector('#pa-pay').dispatchEvent(new Event('change')) }
@@ -2740,6 +2787,7 @@ async function plAddBox() {
     if (f.row.name.length < 3) { err.textContent = "Enter the player's full name."; err.hidden = false; return }
     const payBody = readPay()
     if (payBody.error) { err.textContent = payBody.error; err.hidden = false; return }
+    if (['sessions', 'pro'].includes(payBody.payment)) { const qt = paQuote.read(); if (qt.error) { err.textContent = qt.error; err.hidden = false; return } if (qt.tiers.length) payBody.quote = { tiers: qt.tiers } }
     const btn = box.querySelector('#pa-go')
     const label = btn.textContent
     // Double-add safety: off until the server answers.

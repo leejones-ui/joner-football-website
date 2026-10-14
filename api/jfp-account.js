@@ -10,6 +10,8 @@
 //   payOwed     a place with something to pay and no request yet (term fee
 //               owing, session by session): make the request, then pay
 //               (_jfp-account-pay.js)
+//   cancelOwed  close a pay-ahead link the family made, to choose again
+//   fees        Fees: what they have paid and every payment record (read only)
 //   cancelSession / withdrawCancel   "Can't make a session" (KV only)
 //   nextTermInterest   "I want to keep my spot" before next term opens (no payment)
 //   profiles / saveProfile   Player information: club, position, contacts (Airtable)
@@ -27,7 +29,8 @@ import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache,
 import { sessionFor, sameOrigin } from './_jfp-people.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, nextInterest, interestKey } from './_jfp-next.js'
 import { jjAccountView, jjPay, jjRequestPay, jjNextChoice, familyJJ, jjWaiverRows, markJJWaivers } from './_jj-account.js'
-import { owedItems, payOwed as makeOwedPayreq } from './_jfp-account-pay.js'
+import { owedItems, payOwed as makeOwedPayreq, cancelOwed as cancelOwedPayreq } from './_jfp-account-pay.js'
+import { familyFees } from './_jfp-account-fees.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -148,6 +151,8 @@ async function overview(res, parent, body = {}) {
       id: q.id, amountLabel: formatAud(q.amountCents), players: q.playerNames, reason: q.reason, group: q.groupLabel || '', needsWaiver: blockers.length > 0, expiresAt: q.expiresAt || '',
       what: q.reason === 'trial' ? `Trial session${q.trialDate ? `, ${dateLabel(q.trialDate)}` : ''}` : q.product === 'halfTerm' && q.startDate ? `Half term, 5 sessions from ${dateLabel(q.startDate)}` : q.startDate ? `From ${dateLabel(q.startDate)} to the end of term${q.creditCents ? `, ${formatAud(q.creditCents)} trial taken off` : ''}` : '',
       afterpay: q.afterpay !== false,
+      // Made from My account to pay ahead: the family can close it and choose again.
+      ...(q.fromAccount && q.prepay ? { canChoose: true } : {}),
       // A family invoice: each place and what it costs.
       places: ['family', 'sessions'].includes(q.reason) && Array.isArray(q.places) ? q.places.map((x) => ({ name: x.name, label: x.label, amountLabel: formatAud(x.owingCents) })) : [],
     }
@@ -539,6 +544,25 @@ async function pay(req, res, parent, body) {
   return res.status(200).json({ success: true, url: session.url })
 }
 
+// Fees (14 Oct 2026): what this family has paid and every payment record
+// (_jfp-account-fees.js). Read only.
+async function fees(res, parent) {
+  const config = await getConfig()
+  const [roster, groups, payreqs] = await Promise.all([loadRoster(), listGroups(), listPayreqs()])
+  const fam = familyFor(parent.email, roster, config.termStart)
+  const { intentIds, ...view } = await familyFees({ config, parent, fam, payreqs: payreqs.filter((q) => ownsPayreq(q, fam, parent.email)), groups })
+  return res.status(200).json({ success: true, fees: view })
+}
+
+// Close a pay-ahead link the family made, so they can choose another option.
+async function cancelOwed(res, parent, body) {
+  const config = await getConfig()
+  const fam = familyFor(parent.email, await loadRoster({ fresh: true }), config.termStart)
+  const out = await cancelOwedPayreq({ parent, fam, body })
+  if (!out.ok) return fail(res, out.status, out.error, out.code ? { code: out.code } : {})
+  return res.status(200).json({ success: true })
+}
+
 // Joners Juniors: pay, ask to pay, next term (_jj-account.js).
 async function juniorsAction(req, res, parent, body) {
   const config = await getConfig()
@@ -565,6 +589,8 @@ export default async function handler(req, res) {
     if (body.action === 'confirmKit') return await confirmKit(res, parent, body)
     if (body.action === 'pay') return await pay(req, res, parent, body)
     if (body.action === 'payOwed') return await payOwed(req, res, parent, body)
+    if (body.action === 'cancelOwed') return await cancelOwed(res, parent, body)
+    if (body.action === 'fees') return await fees(res, parent)
     if (body.action === 'nextTermChoice') return await nextTermChoice(req, res, parent, body)
     if (body.action === 'nextTermInterest') return await nextTermInterest(res, parent, body)
     if (body.action === 'profiles') return await profiles(res, parent)
