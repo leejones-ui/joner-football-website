@@ -54,7 +54,7 @@ function card(fam, ui) {
       <div class="jf-fam-now"><span class="muted small">Owing now</span><b>${esc(money(owing))}</b></div></header>
     ${fam.links.length ? `<p class="jf-fam-links">Open link${fam.links.length > 1 ? 's' : ''}: ${fam.links.map((l) => `${esc(l.players.join(' + '))} ${esc(money(l.amountCents))}${l.family ? ' (family invoice)' : ''}`).join(' · ')}</p>` : ''}
     <div class="jf-places">${fam.places.map((p) => `<div class="jf-place" data-place="${esc(p.rowId)}">
-      <div class="jf-who"><b>${esc(p.player)}</b><span class="muted small">${esc(p.group)}</span><span class="small">${ui.statusPill(p.status)}${p.paidCents ? ` <span class="muted">· ${esc(money(p.paidCents))} paid</span>` : ''}</span></div>
+      <div class="jf-who"><b>${esc(p.player)}</b><span class="muted small">${esc(p.group)}</span><span class="small">${ui.statusPill(p.status)}${p.paidCents ? ` <span class="muted">· ${esc(money(p.paidCents))} paid</span>` : ''}</span><button type="button" class="j-btn j-btn-ghost j-btn-sm jf-remove" data-remove-place aria-label="Remove ${esc(p.player)}, ${esc(p.group)}">Remove</button></div>
       <div class="jf-price">
         <div class="jm-chips jf-presets">${PRESETS.map((x) => `<button type="button" data-preset="${x.key}" title="${esc(x.hint || x.type)}">${esc(x.label)} ${esc(money(m.prices[x.key]))}</button>`).join('')}</div>
         <div class="jf-custom"><label class="muted small" for="jf-fee-${esc(p.rowId)}">This place A$</label><input class="j-input" id="jf-fee-${esc(p.rowId)}" data-fee inputmode="decimal" value="${p.feeCents ? p.feeCents / 100 : ''}" placeholder="price"><span class="muted small" data-type>${esc(p.type || 'Payment type not set')}</span></div>
@@ -87,6 +87,8 @@ function bindCard(el, fam, ui) {
   }
   const set = (id, feeCents, type) => { const s = state.get(id); s.feeCents = feeCents; if (type != null) s.type = type; placeEl(id).querySelector('[data-fee]').value = feeCents == null ? '' : feeCents / 100; paint() }
   el.addEventListener('click', async (e) => {
+    const rm = e.target.closest('[data-remove-place]')
+    if (rm) return ui.remove(fam.places.find((p) => p.rowId === rm.closest('[data-place]').dataset.place))
     const pr = e.target.closest('[data-preset]')
     if (pr) { const x = PRESETS.find((y) => y.key === pr.dataset.preset); return set(pr.closest('[data-place]').dataset.place, m.prices[x.key], x.type) }
     if (e.target.closest('[data-family-rate]')) { for (const p of fam.places.filter(familyRateFits)) set(p.rowId, m.prices.familyPlace, PRESETS[1].type); return }

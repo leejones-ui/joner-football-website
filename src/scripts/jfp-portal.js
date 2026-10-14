@@ -739,7 +739,7 @@ async function termModal(p, g) {
   box.querySelector('#tm-copy-go').addEventListener('click', () => go(false))
 }
 
-const LEAVE = ['Cost', 'Time or schedule clash', 'Club or school commitments', 'Injury', 'Not the right group or level', 'Trial was not the right fit', 'Moved away', 'Taking a break', 'Joined another program', 'Moved to 1 to 1', 'No reply from the family', 'Other']
+const LEAVE = ['Added by mistake or twice', 'Cost', 'Time or schedule clash', 'Club or school commitments', 'Injury', 'Not the right group or level', 'Trial was not the right fit', 'Moved away', 'Taking a break', 'Joined another program', 'Moved to 1 to 1', 'No reply from the family', 'Other']
 
 function removeModal(p, g, after) {
   const box = modal(`<h2 style="margin-bottom:6px">Remove ${esc(p.name)}?</h2>
@@ -2195,7 +2195,7 @@ async function renderMoney(pre) {
       <ul class="jm-hist">${m.unmatched.map((u) => `<li><span><b>${esc(u.name || u.email || 'No name')}</b><small>${esc(u.email)} · ${esc(new Date(u.at).toLocaleDateString('en-AU'))} · ${esc(u.product)}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(u.cents))}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-match="${esc(u.id)}">Match</button></span></li>`).join('')}</ul></details>` : ''
   }
   const draw = () => {
-    if (f.view === 'family') { $('m-count').textContent = ''; return drawFamilies($('m-fams'), { m, f, post, toast, confirmBox, statusPill, done: () => { P.board = null; PL.at = 0; renderMoney() } }) }
+    if (f.view === 'family') { $('m-count').textContent = ''; return drawFamilies($('m-fams'), { m, f, post, toast, confirmBox, statusPill, remove: (p) => removeModal({ rowId: p.rowId, name: p.player, paymentStatus: p.airtableStatus }, null, () => renderMoney()), done: () => { P.board = null; PL.at = 0; renderMoney() } }) }
     const q = f.q.trim().toLowerCase()
     const s = scope()
     const list = s.players.filter((p) => (!f.status || p.status === f.status) && (!q || `${p.player} ${p.parent} ${p.email}`.toLowerCase().includes(q)))

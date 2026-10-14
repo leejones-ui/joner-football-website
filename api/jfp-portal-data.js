@@ -776,7 +776,7 @@ async function savePlayerProfile(res, principal, config, body) {
 }
 
 // Why players leave: Lee keeps count, because players move in and out.
-export const LEAVE_REASONS = ['Cost', 'Time or schedule clash', 'Club or school commitments', 'Injury', 'Not the right group or level', 'Trial was not the right fit', 'Moved away', 'Taking a break', 'Joined another program', 'Moved to 1 to 1', 'No reply from the family', 'Other']
+export const LEAVE_REASONS = ['Added by mistake or twice', 'Cost', 'Time or schedule clash', 'Club or school commitments', 'Injury', 'Not the right group or level', 'Trial was not the right fit', 'Moved away', 'Taking a break', 'Joined another program', 'Moved to 1 to 1', 'No reply from the family', 'Other']
 
 // Remove a player: their Term 4 row leaves Term 4 Players, and a copy with
 // the contact details, the reason and the whole row goes to "Players dropped
