@@ -116,6 +116,7 @@ export async function extraAction(req, res, principal, config, body, action, isA
         config, principal, ...(rowId ? { rowId } : { profileKey: profileKey(name, email) }), email, playerName: name,
         amountCents: s.priceCents, label: `Extra session, ${dateLabel(s.date)} ${s.time}`, kind: 'extra',
         sessionDate: s.date, coachId: s.coachId, ref: `extra:${s.id}:${out.booking.id}`, siteUrl: siteUrl(req),
+        notifyFamily: true, // "You have a payment to make" (claude/card-on-file)
       }).catch((e) => ({ ok: false, error: e.message }))
       if (c.ok && c.payreqId) { await setBookingCharge({ slotId: s.id, bookingId: out.booking.id, payreqId: c.payreqId, chargeId: c.charge?.id || '' }); out.booking.payreqId = c.payreqId }
       else { chargeError = c.error || 'The payment could not be made.'; console.error('jfp extra charge failed', chargeError) }

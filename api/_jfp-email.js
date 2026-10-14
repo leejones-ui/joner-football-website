@@ -629,3 +629,13 @@ ${rows([['Paid', esc(formatAud(payreq.paidCents ?? payreq.amountCents))], ['Invo
 ${url ? button('View the invoice', url) : ''}`
   return send({ to: [{ email: payreq.email, name: view.billTo.name }], subject: `Payment received: invoice ${view.number}`, html: shell({ heading: 'Payment received', body }), kind: 'invoice receipt' })
 }
+
+// ---------- saved card or bank account, auto-charge (claude/card-on-file, 14 Oct 2026) ----------
+// A plain email to a family from api/_jfp-saved-pay.js: saved, removed, a
+// session charged, a debit started, or a payment that did not go through.
+export async function sendFamilyNotice({ to, name = '', subject, heading, paras = [], list = [], cta = null, kind = 'family notice', preheader = '' }) {
+  const body = `${paras.map((x) => p(esc(x))).join('\n')}
+${list.length ? rows(list.filter(([, v]) => v).map(([k, v]) => [k, esc(v)])) : ''}
+${cta ? button(cta.label, cta.url) : ''}`
+  return send({ to: [{ email: to, name }], subject, html: shell({ preheader: preheader || subject, heading, body }), kind })
+}

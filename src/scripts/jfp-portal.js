@@ -25,6 +25,8 @@ import { JJ_NAV, JJ_TABS, JJ_ICON, renderJJ } from './jfp-portal-jj.js'
 import { quoteHtml, wireQuote, commitmentHtml, sameTiers } from './jfp-portal-quote.js'
 import { childList, submitFamily, familyModal, familyGroups } from './jfp-portal-family-add.js'
 import { findExisting, removedView, wireRemoved, removedCount } from './jfp-portal-removed.js'
+// Card / direct debit on file and auto-charge (claude/card-on-file).
+import { savedPayTag, savedPayDetail, mountAutoChargeEdit } from './jfp-portal-autocharge.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', linkProg: 'all', pricing: null }
@@ -2908,10 +2910,13 @@ async function plEdit(p) {
       <div class="j-two"><label class="j-field"><span>Term 4 fee (A$)</span><input class="j-input" id="pe-fee" inputmode="decimal" value="${esc(d.row.feeAud ?? '')}"></label>
       <label class="j-field"><span>Set the fee from a price <span class="muted">(optional)</span></span><select class="j-select" id="pe-price"><option value="">Choose a price</option>${pr ? `<optgroup label="JFP price list">${(pr.products || []).map((x) => `<option value="${x.cents}" data-type="${esc(x.type)}">${esc(x.label)} · ${esc(money(x.cents))}</option>`).join('')}</optgroup>${customPrices(pr).map((x) => `<option value="${x.cents}" data-type="${x.programme === 'pro' ? 'JFP Pro sessions' : ''}" data-per="${x.perSession ? '1' : ''}">${esc(x.name)} · ${esc(x.amountLabel || money(x.cents))}${x.perSession ? ' a session' : ''}</option>`).join('')}` : ''}</select></label></div>
       ${d.row.paidAud ? `<p class="muted small">Paid so far: ${esc(money0(d.row.paidAud))}.</p>` : ''}
+      <div id="pe-autocharge"></div>
     </details>
     <p class="j-err" id="pe-err" hidden></p>
     <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="pe-save">Save</button></div>`, { wide: true })
   const form = wirePlayerForm(box, 'pe')
+  // Saved card or bank account and auto-charge (claude/card-on-file).
+  mountAutoChargeEdit(box.querySelector('#pe-autocharge'), p.rowId, { post, toast })
   const peQuote = qd ? wireQuote(box, 'pe', { perInput: box.querySelector('#pe-per'), defaultQuote: qd.defaultQuote, run: { whole: qd.termWhole, left: qd.termLeft }, keep: qd.quote.tiers }) : null
   if (qd?.quoted || qd?.commitment) box.querySelector('#pe-payfold').open = true
   const typeWatch = () => { const on = /session by session|pro session/i.test(box.querySelector('#pe-type').value); box.querySelector('#pe-per-wrap').hidden = !on; peQuote?.show(on || Boolean(qd?.quoted)) }
@@ -2967,7 +2972,7 @@ function plRow(p) {
   const football = [f.level, (f.positions || []).map((x) => POS_SHORT[x] || x).join('/')].filter(Boolean).join(' · ')
   const fee = p.feeAud != null ? `${money0(p.feeAud)}${p.balanceAud ? ` · ${money0(p.balanceAud)} owing` : ''}` : 'No fee set'
   return `<tr data-pl="${esc(p.rowId)}" tabindex="0" aria-label="${esc(p.name)}, open details">
-    <td data-col="who"><div class="ps-who">${avatar(p.profile?.photo, p.name, 32)}<div><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${p.pro ? ' <span class="ps-tag pink">Pro</span>' : ''}<span class="ps-sub">${p.ownContact ? 'Own contact' : esc(p.parent || 'No parent name')}</span></div></div></td>
+    <td data-col="who"><div class="ps-who">${avatar(p.profile?.photo, p.name, 32)}<div><b>${esc(p.name)}</b>${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${p.pro ? ' <span class="ps-tag pink">Pro</span>' : ''}${savedPayTag(p)}<span class="ps-sub">${p.ownContact ? 'Own contact' : esc(p.parent || 'No parent name')}</span></div></div></td>
     <td data-col="group">${p.inGroup ? esc(p.groupLabel) : psBadge('orange', 'Not in a group')}${p.coach ? `<span class="ps-sub">${esc(p.coach)}</span>` : ''}</td>
     <td data-col="pay">${psPayBadge(p)}<span class="ps-sub">${esc(fee)}</span></td>
     <td data-col="football">${club || football ? `${esc(club || '')}${football ? `<span class="ps-sub">${esc(football)}</span>` : ''}` : '<span class="muted">Not on file</span>'}</td>
@@ -3011,6 +3016,7 @@ function plDetail(p) {
     ${row('Balance', money0(p.balanceAud))}
     ${row('Status', p.paymentStatus)}
     ${row('Type', p.paymentType)}
+    ${savedPayDetail(p, row)}
     <h3 style="margin-top:14px">${p.ownContact ? 'Contact (the player)' : 'Family'}</h3>
     ${p.ownContact ? row('Contact', 'The player is their own contact') : row('Parent', p.parent)}
     ${row('Email', p.email || 'no email')}

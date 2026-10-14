@@ -915,3 +915,6 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
   .jj-row-acts { justify-content: flex-start; }
   .jv-pays td[data-col="flags"].ps-ok { display: none; }
 }
+/* Players: card or direct debit on file (claude/card-on-file) */
+.ps-tag.green { background: var(--j-green-bg, rgba(34, 197, 94, .16)); color: var(--j-green, #22c55e); }
+.ps-tag.grey { background: var(--j-grey-bg, rgba(127, 127, 127, .14)); color: var(--j-grey, #9ca3af); }

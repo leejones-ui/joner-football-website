@@ -73,9 +73,9 @@ async function matchForget(res, principal, body) {
 // ---------- charges (Money > Extra sessions) ----------
 
 async function createCharge(req, res, principal, config, body) {
-  const r = await createPlayerCharge({ config, principal, rowId: body.rowId, profileKey: body.profileKey, email: body.email, playerName: body.playerName, amountCents: Number(body.amountCents), label: body.label, kind: body.kind || 'extra', sessionDate: body.sessionDate, coachId: body.coachId, groupId: body.groupId, ref: body.ref ? `staff:${clean(body.ref, 80)}` : '', note: body.note, siteUrl: siteUrl(req) })
+  const r = await createPlayerCharge({ config, principal, rowId: body.rowId, profileKey: body.profileKey, email: body.email, playerName: body.playerName, amountCents: Number(body.amountCents), label: body.label, kind: body.kind || 'extra', sessionDate: body.sessionDate, coachId: body.coachId, groupId: body.groupId, ref: body.ref ? `staff:${clean(body.ref, 80)}` : '', note: body.note, siteUrl: siteUrl(req), notifyFamily: true })
   if (!r.ok) return refuse(res, r)
-  return res.status(200).json({ success: true, existing: r.existing, charge: chargeView(r.charge), payreqId: r.payreqId, accountUrl: `${siteUrl(req)}/jfp-account/?pay=${encodeURIComponent(r.payreqId)}` })
+  return res.status(200).json({ success: true, emailed: r.emailed === true, existing: r.existing, charge: chargeView(r.charge), payreqId: r.payreqId, accountUrl: `${siteUrl(req)}/jfp-account/?pay=${encodeURIComponent(r.payreqId)}` })
 }
 
 // ---------- invoices ----------

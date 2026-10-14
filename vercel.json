@@ -851,6 +851,14 @@
     {
       "path": "/api/jfp-groups?coachTick=1",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/jfp-groups?autoCharge=1",
+      "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/jfp-groups?autoCharge=1",
+      "schedule": "0 0 * * *"
     }
   ]
 }

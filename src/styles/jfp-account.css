@@ -599,3 +599,7 @@ body:has(.ja) { background: #0A0A0B !important; }
 .ja-sent { display: flex; gap: 14px; align-items: flex-start; }
 .ja-sent > svg { width: 40px; height: 40px; padding: 9px; border-radius: 50%; background: var(--ja-green); color: #062B14; flex: none; }
 @media (max-width: 359px) { .ja-reach-row { grid-template-columns: 1fr 1fr; } .ja-reach-row .ja-reach-who { grid-column: 1 / -1; } }
+
+/* Fees: saved card or bank account for session payments (claude/card-on-file) */
+.ja .ja-saved-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.ja .ja-saved-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; overflow-wrap: anywhere; }

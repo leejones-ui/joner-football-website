@@ -5,6 +5,8 @@
 //
 // ui: { view, post, toast, modal, closeModal, confirm, copy, board(), pricing(), filter, go, saveFile, csvCell, aud, stale() }
 import { esc, money } from './jfp-common.js'
+// Charge saved card / by direct debit (claude/card-on-file).
+import { mountSavedChargeButtons } from './jfp-portal-autocharge.js'
 import { moneyHead, bindTip, programmeSwitch, bindSwitch, remember, recall, quietOk } from './jfp-portal-programmes.js'
 
 export const EXTRA_DEFINITION = 'Extra sessions: extra sessions and video analysis charged to a player on top of their term, paid from My account (card), or recorded here as a bank transfer or cash, and Stripe payments you matched to a player as an extra session. Kept = taken less refunds and Stripe fees. None of it is in the JFP figures.'
@@ -146,6 +148,7 @@ function draw(ui, v) {
   root.querySelector('#x-refresh').addEventListener('click', () => renderExtraMoney(ui, { fresh: true }))
   root.querySelector('#x-new').addEventListener('click', () => chargeModal(ui, { onDone: () => renderExtraMoney(ui, { fresh: true }) }))
   root.querySelector('#x-csv').addEventListener('click', () => ui.saveFile(`extra-sessions-${v.month || 'all'}.csv`, extraCsv(v, ui)))
+  mountSavedChargeButtons(root.querySelector('#x-open'), v.open, ui, () => renderExtraMoney(ui, { fresh: true }))
   root.querySelector('#x-open')?.addEventListener('click', async (e) => {
     const li = e.target.closest('[data-charge]'); if (!li) return
     const c = v.open.find((x) => x.id === li.dataset.charge)

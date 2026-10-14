@@ -7,6 +7,8 @@ import { airtableCounts } from './_jfp-airtable.js'
 import { sweepExpiredOffers } from './_jfp-offers.js'
 import { coachTick } from './_jfp-coach-alerts.js'
 import { reconcileStripe } from './jfp-portal-data.js'
+// Auto-charge after each session (claude/card-on-file).
+import { cronAutoCharges } from './_jfp-saved-pay.js'
 
 export function coachPhotoUrl(c) { return `/api/jfp-groups?coachPhoto=${encodeURIComponent(c.id)}&v=${c.photoV}` }
 
@@ -74,6 +76,12 @@ export default async function handler(req, res) {
     const secret = process.env.CRON_SECRET
     if (!secret || String(req.headers?.authorization || '') !== `Bearer ${secret}`) return res.status(401).json({ success: false })
     try { const now = process.env.JFP_TEST_CLOCK === '1' && Number(req.query.now) ? Number(req.query.now) : Date.now(); return res.status(200).json({ success: true, ...(await coachTick(await getConfig(), now)) }) } catch (error) { console.error('jfp coach tick failed', error); return res.status(500).json({ success: false }) }
+  }
+  // Daily (10:00 Sydney time): charge saved cards and accounts for yesterday's sessions (claude/card-on-file).
+  if (req.method === 'GET' && req.query?.autoCharge) {
+    const secret = process.env.CRON_SECRET
+    if (!secret || String(req.headers?.authorization || '') !== `Bearer ${secret}`) return res.status(401).json({ success: false })
+    try { const now = process.env.JFP_TEST_CLOCK === '1' && Number(req.query.now) ? Number(req.query.now) : Date.now(); return res.status(200).json({ success: true, ...(await cronAutoCharges({ nowMs: now })) }) } catch (error) { console.error('jfp auto-charge cron failed', error); return res.status(500).json({ success: false }) }
   }
   if (req.method === 'GET' && req.query?.sweep) {
     const secret = process.env.CRON_SECRET

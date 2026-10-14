@@ -18,7 +18,7 @@ import { commitmentOf } from './_jfp-quote.js'
 
 const cents = (aud) => (typeof aud === 'number' && Number.isFinite(aud) ? Math.round(aud * 100) : 0)
 const dayOf = (iso) => (iso ? sydneyToday(Date.parse(iso)) : '')
-const METHOD = { card: 'Card', afterpay_clearpay: 'Afterpay', link: 'Card', apple_pay: 'Apple Pay', google_pay: 'Google Pay' }
+const METHOD = { card: 'Card', afterpay_clearpay: 'Afterpay', link: 'Card', apple_pay: 'Apple Pay', google_pay: 'Google Pay', au_becs_debit: 'Direct debit' }
 const RECEIPT_LOOKUPS = 8
 const PROGRAMME_NAME = { jfp: 'JFP', pro: 'Pro sessions', extra: 'Extra sessions', other: 'Joner Football' }
 // A charge or invoice paid by bank or cash reads paid on its request (paidOffline).
@@ -28,6 +28,8 @@ const OFFLINE_METHOD = { bank: 'Bank transfer', cash: 'Cash', other: 'Other' }
 export function payreqWhat(q, term) {
   // A player charge or an invoice (money engineer, 14 Oct 2026): its own label.
   if (q.charge || q.invoiceId) return q.groupLabel || q.productLabel || 'Joner Football'
+  // Charged to a saved card or bank account after the session (claude/card-on-file).
+  if (q.autoCharge?.date) return `Session on ${dateLabel(q.autoCharge.date)}, charged automatically`
   if (q.prepay?.commit) return `Commitment: ${q.prepay.sessions} sessions in a row at ${formatAud(q.prepay.perCents)} each`
   if (q.prepay) return `${q.prepay.sessions} session${q.prepay.sessions > 1 ? 's' : ''} paid ahead`
   if (q.reason === 'trial') return 'Trial session'
@@ -50,7 +52,7 @@ export function feesView({ config, emails, rows = [], payreqs = [], stripe = [],
     if (q.paidOffline && !q.charge) continue
     seenRefs.add(q.id)
     if (q.stripePaymentIntentId) seenIntents.add(q.stripePaymentIntentId)
-    records.push({ id: q.id, date: dayOf(q.paidAt), at: q.paidAt || '', programme: PROGRAMME_NAME[q.programme] || 'JFP', what: payreqWhat(q, config.term), players: q.playerNames || [], method: q.paidOffline ? OFFLINE_METHOD[q.paidMethod] || 'Other' : 'Card', amountCents: q.paidCents ?? q.amountCents, refundedCents: q.refundedCents || 0, intentId: q.stripePaymentIntentId || '' })
+    records.push({ id: q.id, date: dayOf(q.paidAt), at: q.paidAt || '', programme: PROGRAMME_NAME[q.programme] || 'JFP', what: payreqWhat(q, config.term), players: q.playerNames || [], method: q.paidOffline ? OFFLINE_METHOD[q.paidMethod] || 'Other' : q.autoCharge?.kind === 'bank' || q.savedCharge?.kind === 'bank' ? 'Direct debit' : 'Card', amountCents: q.paidCents ?? q.amountCents, refundedCents: q.refundedCents || 0, intentId: q.stripePaymentIntentId || '' })
   }
   for (const q of jjPayreqs) {
     if (q.status !== 'paid' || !mine.has(String(q.email || '').toLowerCase())) continue

@@ -39,6 +39,8 @@ import { coveredOf } from './_jfp-quote.js'
 import { accountOf, openPlayers, addMyPlayer } from './_jfp-account-open.js'
 import { prepaidOf } from './_jfp-store.js'
 import { submitExtra, listExtras, familyExtraView, analysisPrice, extraSlots, DAYS as EXTRA_DAYS, TIMES as EXTRA_TIMES, TYPES as EXTRA_TYPES } from './_jfp-extras.js'
+// Saved card or bank account for session payments (claude/card-on-file).
+import { SAVED_PAY_FAMILY, savedPayFamily } from './_jfp-saved-pay.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -723,6 +725,8 @@ export default async function handler(req, res) {
       if (r.paid) return res.status(200).json({ success: true, paid: true, payreqId: r.payreqId })
       return await pay(req, res, parent, { payreqId: r.payreqId })
     }
+    // Saved card or bank account (claude/card-on-file): Fees > save, replace, remove.
+    if (SAVED_PAY_FAMILY.has(body.action)) { const config = await getConfig(); return await savedPayFamily(req, res, parent, body, { config, fam: familyFor(parent.email, await loadRoster(), config.termStart) }) }
     return await overview(res, parent, body)
   } catch (error) {
     console.error('jfp-account failed', error)

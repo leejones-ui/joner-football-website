@@ -11,6 +11,8 @@ import { finaliseBooking, expireBooking, bookingIdFromSession } from './_holiday
 import { finaliseJfpBooking, expireJfpBooking, jfpBookingIdFromSession } from './_jfp-finalise.js'
 import { jjWebhook } from './_jj-pay.js'
 import { jfpIdForCharge, applyJfpRefunds } from './_jfp-refunds.js'
+// Saved card or bank account, auto-charge after each session (claude/card-on-file).
+import { savedPayIntentEvent, savedPaySetupEvent } from './_jfp-saved-pay.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -58,6 +60,18 @@ export default async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Refund processing failed' })
     }
   }
+  // An auto-charge after a session (claude/card-on-file): a BECS debit
+  // clearing or failing, or a card payment we already recorded. Read again
+  // from Stripe's API; anything that is not an auto-charge is ignored.
+  if (type.startsWith('payment_intent.')) {
+    try {
+      const r = await savedPayIntentEvent(type, clean(event?.data?.object?.id, 120))
+      return r ? res.status(r.status).json({ ...r.body, verified }) : res.status(200).json({ success: true, ignored: 'not-auto-charge' })
+    } catch (error) {
+      console.error('jfp auto-charge webhook failed', error)
+      return res.status(500).json({ success: false, error: 'Auto-charge processing failed' })
+    }
+  }
   const sessionIdFromEvent = clean(event?.data?.object?.id, 120)
   if (!type.startsWith('checkout.session.') || !/^cs_(test|live)_/.test(sessionIdFromEvent)) {
     return res.status(200).json({ success: true, ignored: 'not-a-checkout-session' })
@@ -81,6 +95,17 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('jj webhook failed', error)
     return res.status(500).json({ success: false, error: 'Webhook processing failed' })
+  }
+
+  // A family saved a card or bank account (claude/card-on-file): a backstop for their return page.
+  if (session?.mode === 'setup') {
+    try {
+      const r = await savedPaySetupEvent(session)
+      if (r) return res.status(r.status).json({ ...r.body, verified })
+    } catch (error) {
+      console.error('jfp saved pay webhook failed', error)
+      return res.status(500).json({ success: false, error: 'Saved payment processing failed' })
+    }
   }
 
   // One Stripe endpoint on the Sydney account serves both booking systems;

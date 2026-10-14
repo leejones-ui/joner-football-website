@@ -57,6 +57,8 @@ import { MONEY_ACTIONS, moneyAction, applyStripeMatch } from './_jfp-money-actio
 import { listMatches, listRules, ruleFor } from './_jfp-stripe-match.js'
 import { listInvoices, openForBank } from './_jfp-invoices.js'
 import { invoiceRefOf } from './_jfp-bank-match.js'
+// Saved card or bank account, auto-charge after each session (claude/card-on-file).
+import { SAVED_PAY_ACTIONS, savedPayAction, withSavedPay } from './_jfp-saved-pay.js'
 import { PROGRAMMES, programmeLabel, PRICE_MIN, PRICE_MAX, PRICES_MAX, cleanPrice, allPrices, priceById, quickHolidayPeriods, quickLinkInput, quickStatus, QUICK_STATUS, quickOpen, quickToCheck, quickUrl, QUICK_CHECKED, QUICK_EMAILED } from './_jfp-quick.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -436,6 +438,8 @@ async function playersList(req, res, config, body = {}) {
       holdsPlace: r.holdsPlace,
     }
   })
+  // Card on file / Direct debit on file, auto-charge on or paused (claude/card-on-file).
+  await withSavedPay(players)
   const seen = new Map()
   for (const p of players) { const k = (p.email || p.name).toLowerCase(); seen.set(k, (seen.get(k) || 0) + 1) }
   // Accounts with no session (round 2 item 8): profiles families made in My
@@ -2934,6 +2938,8 @@ async function handle(req, res) {
     if (JJ_ACTIONS.has(action)) return await jjAction(req, res, principal, config, body, action)
     // Player charges, invoices and Match to player (_jfp-money-actions.js).
     if (MONEY_ACTIONS.has(action)) return await moneyAction(req, res, principal, config, body, action, { recordPaymentCore, bankLineFor, bankGuard, bankClaim, BANK })
+    // Auto charges and saved payment methods (claude/card-on-file, _jfp-saved-pay.js).
+    if (SAVED_PAY_ACTIONS.has(action)) return await savedPayAction(req, res, principal, config, body, action)
     switch (action) {
       case 'board': await sweepExpiredOffers(principal); return res.status(200).json({ success: true, ...(await boardData(config, { fresh: body.fresh === true })), coaches: coachList(config), locations: config.locations.map((l) => ({ id: l.id, name: l.name })) })
       case 'familyInvites': return await familyInvites(req, res, principal, config, body)

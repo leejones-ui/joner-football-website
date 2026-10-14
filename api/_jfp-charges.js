@@ -140,7 +140,13 @@ export async function createPlayerCharge(input = {}) {
     if (claimed) await kvCommand(['SET', claimed, c.id])
     claimed = ''
     await audit({ by: principal.email, action: 'charge.create', target: c.id, after: { kind: c.kind, programme: c.programme, cents: c.amountCents, row: c.rowId, payreq: q.id, ref: c.ref } })
-    return { ok: true, existing: false, charge: c, payreq: q, payreqId: q.id }
+    // notifyFamily (claude/card-on-file): "You have a payment to make", or that
+    // it will be charged to their saved card after the session. Never fatal.
+    let emailed = false
+    if (input.notifyFamily === true) {
+      try { emailed = (await (await import('./_jfp-saved-pay.js')).notifyNewCharge({ charge: c, payreq: q, siteUrl: input.siteUrl || '' })).emailed === true } catch (error) { console.error('jfp charge email failed', c.id, error.message) }
+    }
+    return { ok: true, existing: false, charge: c, payreq: q, payreqId: q.id, ...(input.notifyFamily === true ? { emailed } : {}) }
   } finally {
     if (claimed) await kvCommand(['DEL', claimed]).catch(() => {})
   }

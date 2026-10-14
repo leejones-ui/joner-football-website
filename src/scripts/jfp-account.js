@@ -11,6 +11,8 @@ import { ic } from './jfp-account-icons.js'
 import { first, initials, money, pageHead, hero, secHead } from './jfp-account-ui.js'
 import { oweList, jjOweList, oweCard, aheadBlock, depositCards, placeCards, historyCard } from './jfp-account-pay.js'
 import { renderExtra, renderAnalysis, extraClick, setExtraLink } from './jfp-account-extras.js'
+// Fees: save a card or bank account for session payments (claude/card-on-file).
+import { mountSavedPay, savedReturn, forgetSaved } from './jfp-account-saved.js'
 
 const q = new URLSearchParams(location.search)
 let D = null
@@ -81,6 +83,8 @@ async function showSignIn() {
 async function start() {
   $('app').hidden = false
   if (q.get('paid') && q.get('session_id')) confirmPaid(q.get('session_id'))
+  // Back from saving a card or bank account on Stripe (claude/card-on-file).
+  if (q.get('saved')) await savedReturn(q.get('saved'), $('banner'))
   await load()
   // A private extra session link: #extra?slot=<id>&k=<key> (money engineer, 14 Oct 2026).
   const [h, hq] = location.hash.slice(1).split('?')
@@ -121,6 +125,7 @@ async function load() {
   if (!r.ok) { document.querySelector('[data-pane="home"]').innerHTML = `<div class="ja-card">${esc(r.data.error || 'Could not load your account.')}</div>`; return }
   D = r.data
   FEES = null
+  forgetSaved()
   render()
 }
 async function loadProfiles() {
@@ -707,8 +712,10 @@ function renderFees() {
     : !ahead.length ? `<div class="ja-card ja-allpaid">${ic('check')}<div><h3 class="ja-h3">Nothing owing</h3><p class="ja-small ja-muted">You are all paid up.</p></div></div>` : ''
   const pre = ahead.length ? `<section class="ja-fees-sec">${secHead('Pay ahead and save', 'Pay for sessions before they happen. Commit to a run and each session costs less.')}${ahead.map((o) => aheadBlock(D, o, { pane: 'fees' })).join('')}</section>` : ''
   el.innerHTML = `${head}${deposit ? `<section class="ja-fees-sec">${deposit}</section>` : ''}${now}${pre}
+    <section class="ja-fees-sec">${secHead('Session payments')}<div id="fees-saved"></div></section>
     <section class="ja-fees-sec">${secHead('This term', esc(D.term))}<div id="fees-places"><div class="ja-card"><p class="ja-small ja-muted">Loading your payments.</p></div></div></section>
     <section class="ja-fees-sec">${secHead('Payment history')}<div id="fees-body"></div></section>`
+  mountSavedPay(document.getElementById('fees-saved'))
   if (FEES) return fillFees()
   api('/api/jfp-account', { action: 'fees' }).then((r) => {
     FEES = r.ok ? r.data.fees : { error: r.data.error || 'Could not load your payments.' }

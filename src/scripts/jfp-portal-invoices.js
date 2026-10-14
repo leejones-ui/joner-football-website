@@ -6,6 +6,8 @@
 //
 // ui: { view, post, toast, modal, closeModal, confirm, copy, board(), pricing(), filter, go, stale() }
 import { esc, money } from './jfp-common.js'
+// Charge saved card / by direct debit (claude/card-on-file).
+import { mountInvoiceSavedButton } from './jfp-portal-autocharge.js'
 import { moneyHead, programmeSwitch, bindSwitch, bindTip } from './jfp-portal-programmes.js'
 import { playerPicker, pickerHtml } from './jfp-portal-charges.js'
 import { invoiceHtml } from './jfp-invoice.js'
@@ -118,6 +120,7 @@ export async function invoiceDetail(ui, id, pre = null) {
       <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-close>Close</button></div>
     <p class="muted small" style="margin-bottom:10px"><span class="j-pill j-pill-${PILL[x.status]}">${esc(x.statusLabel)}</span>${x.emailedAt ? ` · emailed ${esc(day(x.emailedAt))}` : ''}${x.viewedAt ? ` · opened ${esc(day(x.viewedAt))}` : ''}${x.payments.length ? ` · ${x.payments.map((p) => `${money(p.cents)} ${p.method} ${day(p.date)}`).join(', ')}` : ''}</p>
     <article class="ji-doc" style="border:1px solid #E5E7EB;border-radius:12px;padding:20px;background:#fff;color:#111827">${invoiceHtml(d.view)}</article>`, { wide: true })
+  mountInvoiceSavedButton(box, x, ui, () => invoiceDetail(ui, x.id))
   box.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-iv]'); if (!b) return
     const act = b.dataset.iv

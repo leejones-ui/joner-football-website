@@ -13,6 +13,8 @@
 // A refund never gives the fee back, so a refunded payment keeps its fee.
 import { stripeFetch } from './_holiday-store.js'
 import { kvGetJson, kvSetJson, kvPipeline } from './_jfp-store.js'
+// Auto-charges after a session are payment intents, not Checkout Sessions (claude/card-on-file).
+import { autoChargePayments } from './_jfp-saved-pay.js'
 
 // v2 has the fees. The old cache had none, so it is never read.
 const CACHE = 'jfp:stripe-payments:v2'
@@ -157,6 +159,8 @@ export async function jfpStripePayments({ since, fresh = false, quick = false, t
     if (!d.has_more || !(d.data || []).length) break
     after = d.data.at(-1).id
   }
+  // Saved card or bank auto-charges (claude/card-on-file): in the list like any other payment.
+  try { payments.push(...(await autoChargePayments(sinceIso)).filter((p) => !payments.some((x) => x.intentId === p.intentId))) } catch (error) { console.error('jfp auto-charge payments read failed', error.message) }
   // A fee that cannot be found now shows as not known yet, never as nothing.
   try { await fillFees(payments) } catch (error) { console.error('jfp stripe fees failed', error.message) }
   const out = { since: sinceIso, at: new Date().toISOString(), payments: payments.sort((a, b) => b.at.localeCompare(a.at)), other, proTagged: true, linkTagged: true }

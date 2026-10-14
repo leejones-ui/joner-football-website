@@ -417,7 +417,11 @@ function stripeSession(body) {
     expires_at: Number(params.get('expires_at')), payment_intent: null,
     url: `http://localhost:${PORT}/mock-stripe/?cs=${id}`,
     product_name: params.get('line_items[0][price_data][product_data][name]'),
+    // Setup mode (saved card or bank account, claude/card-on-file).
+    mode: params.get('mode') || 'payment', customer: params.get('customer') || null,
+    payment_method_types: [...params.keys()].filter((k) => /^payment_method_types\[\d+\]$/.test(k)).map((k) => params.get(k)),
   }
+  if (session.mode === 'setup') session.product_name = session.payment_method_types.includes('au_becs_debit') ? 'Save a bank account (BECS)' : 'Save a card'
   sessions.set(id, session)
   return session
 }
@@ -439,6 +443,89 @@ function mockCharge(s, { expandBalance = false, late = false } = {}) {
 const paidSession = (pi) => [...sessions.values(), ...stripeSeeded, ...juniorsSessions].find((x) => x.payment_intent === pi)
 // Juniors payments: the invented ones, and website sign-ups paid on the mock checkout.
 const allJuniors = () => [...juniorsSessions, ...[...sessions.values()].filter((x) => (x.status === 'complete' || x.payment_status === 'paid') && (x.metadata?.programme === 'Joners Juniors' || x.piMetadata?.programme === 'Joners Juniors'))]
+
+// ---------- mock stripe: customers, setup intents, payment methods, off session payments (claude/card-on-file) ----------
+// A saved method's test behaviour is picked on the mock checkout page (&pm=):
+//   card (succeeds), declined (card_declined), 3ds (requires_action),
+//   becs (processing, then /__becs?pi=&outcome=succeeded|failed fires the webhook).
+const customers = new Map()
+const setupIntents = new Map()
+const paymentMethods = new Map()
+const offIntents = new Map()
+const idemKeys = new Map()
+const stripeId = (prefix) => `${prefix}_test_${crypto.randomBytes(8).toString('hex')}`
+function makePaymentMethod(kind, customer) {
+  const id = stripeId('pm')
+  const becs = kind === 'becs' || kind === 'becs_fail'
+  const pm = becs
+    ? { id, object: 'payment_method', type: 'au_becs_debit', customer, au_becs_debit: { bsb_number: '062000', last4: '3456', fingerprint: 'fp_becs' }, behaviour: kind }
+    : { id, object: 'payment_method', type: 'card', customer, card: { brand: 'visa', last4: kind === 'declined' ? '0002' : kind === '3ds' ? '3184' : '4242', exp_month: 12, exp_year: 2030, wallet: null }, behaviour: kind }
+  paymentMethods.set(id, pm)
+  return pm
+}
+function offIntentView(pi, { expandBalance = false } = {}) {
+  const s = { amount_total: pi.amount, payment_intent: pi.id, payMethod: pi.payment_method_types[0], refunds: pi.refunds || [] }
+  return { ...pi, latest_charge: pi.status === 'succeeded' ? mockCharge(s, { expandBalance }) : null }
+}
+function createOffIntent(body) {
+  const q = new URLSearchParams(body)
+  const metadata = {}
+  for (const [k, v] of q) { const m = k.match(/^metadata\[(.+)\]$/); if (m) metadata[m[1]] = v }
+  const pm = paymentMethods.get(q.get('payment_method'))
+  if (!pm || pm.customer !== q.get('customer')) return { status: 400, body: { error: { type: 'invalid_request_error', code: 'resource_missing', message: 'No such PaymentMethod for this customer' } } }
+  const pi = { id: stripeId('pi'), object: 'payment_intent', amount: Number(q.get('amount')), amount_received: 0, currency: q.get('currency'), customer: q.get('customer'), payment_method: pm.id, payment_method_types: [q.get('payment_method_types[0]') || pm.type], off_session: q.get('off_session') === 'true', mandate: q.get('mandate') || null, description: q.get('description') || '', metadata, status: 'succeeded', created: Math.floor(Date.now() / 1000) }
+  offIntents.set(pi.id, pi)
+  log('stripe', `off session ${pi.id} ${pm.behaviour} ${pi.amount}`)
+  if (pm.behaviour === 'declined') { pi.status = 'requires_payment_method'; pi.last_payment_error = { code: 'card_declined', decline_code: 'generic_decline', message: 'Your card was declined.' }; return { status: 402, body: { error: { type: 'card_error', code: 'card_declined', decline_code: 'generic_decline', message: 'Your card was declined.', payment_intent: pi } } } }
+  if (pm.behaviour === '3ds') { pi.status = 'requires_action'; return { status: 200, body: pi } }
+  if (pm.type === 'au_becs_debit') { pi.status = 'processing'; return { status: 200, body: pi } }
+  pi.amount_received = pi.amount
+  return { status: 200, body: offIntentView(pi) }
+}
+// A fault for one player's off session create: /__fail?what=stripe-pi:<rowId>&on=1. Stripe
+// makes the payment but the answer never arrives (once); asking again with the same key gets it.
+function savedPayStripe(u, init) {
+  const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } })
+  const method = init.method || 'GET'
+  const path = u.slice('https://api.stripe.com/v1'.length).split('?')[0]
+  const idem = (init.headers || {})['idempotency-key'] || ''
+  if (path === '/customers' && method === 'GET') {
+    const email = new URL(u).searchParams.get('email')
+    return json({ data: [...customers.values()].filter((c) => c.email === email), has_more: false })
+  }
+  if (path === '/customers' && method === 'POST') {
+    if (idem && idemKeys.has(idem)) return json(idemKeys.get(idem).body, idemKeys.get(idem).status)
+    const q = new URLSearchParams(init.body)
+    const c = { id: stripeId('cus'), object: 'customer', email: q.get('email'), name: q.get('name') || '' }
+    customers.set(c.id, c)
+    if (idem) idemKeys.set(idem, { status: 200, body: c })
+    return json(c)
+  }
+  let m = path.match(/^\/setup_intents\/([^/]+)$/)
+  if (m) { const si = setupIntents.get(m[1]); if (!si) return json({ error: { message: 'No such setup intent' } }, 404); return json(new URL(u).searchParams.getAll('expand[]').includes('payment_method') ? { ...si, payment_method: paymentMethods.get(si.payment_method) } : si) }
+  m = path.match(/^\/payment_methods\/([^/]+)(\/detach)?$/)
+  if (m) {
+    const pm = paymentMethods.get(m[1])
+    if (!pm) return json({ error: { message: `No such PaymentMethod: '${m[1]}'` } }, 404)
+    if (m[2] && method === 'POST') { if (!pm.customer) return json({ error: { message: 'The payment method you provided is not attached to a customer so detachment is impossible.' } }, 400); pm.customer = null; log('stripe', `detached ${pm.id}`); return json(pm) }
+    return json(pm)
+  }
+  if (path === '/payment_intents' && method === 'POST') {
+    const fk = `stripe-pi:${new URLSearchParams(init.body).get('metadata[jfpRowId]')}`
+    if (faults.has(fk)) { faults.delete(fk); const r = createOffIntent(init.body); if (idem) idemKeys.set(idem, r); throw new Error('socket hang up (test fault)') }
+    if (idem && idemKeys.has(idem)) { const r = idemKeys.get(idem); log('stripe', `idempotent replay ${idem}`); const pi = r.body.id ? offIntents.get(r.body.id) : null; return json(pi ? offIntentView(pi) : r.body, r.status) }
+    const r = createOffIntent(init.body)
+    if (idem) idemKeys.set(idem, r)
+    return json(r.body, r.status)
+  }
+  m = path.match(/^\/payment_intents\/([^/]+)(\/cancel)?$/)
+  if (m && offIntents.has(m[1])) {
+    const pi = offIntents.get(m[1])
+    if (m[2] && method === 'POST') { if (!['requires_action', 'requires_payment_method', 'requires_confirmation'].includes(pi.status)) return json({ error: { message: `You cannot cancel this PaymentIntent because it has a status of ${pi.status}.` } }, 400); pi.status = 'canceled'; log('stripe', `canceled ${pi.id}`); return json(pi) }
+    return json(offIntentView(pi, { expandBalance: new URL(u).searchParams.getAll('expand[]').includes('latest_charge.balance_transaction') }))
+  }
+  return null
+}
 
 const realFetch = globalThis.fetch
 // Speed checks (13 Oct 2026): HARNESS_LATENCY="airtable=250,stripe=300,kv=8"
@@ -471,6 +558,7 @@ const innerFetch = async (url, init = {}) => {
     return json(r.body, r.status)
   }
   if (u.startsWith('https://api.stripe.com/v1/account')) return json({ id: 'acct_1QyPm0EwxK4ojTS1' })
+  if (u.startsWith('https://api.stripe.com/v1/')) { const r = savedPayStripe(u, init); if (r) return r }
   // Juniors reads its tag from the payment intent: seeded Juniors payments, Juniors payment requests, and quick links made for Juniors.
   if (u.startsWith('https://api.stripe.com/v1/payment_intents/search')) return json({ data: allJuniors().filter((x) => (x.metadata?.programme || x.piMetadata?.programme) === 'Joners Juniors').map((x) => ({ id: x.payment_intent, status: 'succeeded' })), has_more: false })
   if (u.startsWith('https://api.stripe.com/v1/payment_links?')) return json({ data: juniorsSessions.length ? [{ id: 'plink_juniors_t4', url: JLINK, active: true }] : [], has_more: false })
@@ -517,6 +605,7 @@ const innerFetch = async (url, init = {}) => {
     const j = juniorsSessions.find((x) => x.id === id)
     if (j) return json({ ...j, payment_intent: { id: j.payment_intent, latest_charge: mockCharge(j, { expandBalance: new URL(u).searchParams.getAll('expand[]').includes('payment_intent.latest_charge.balance_transaction') }) } })
     const s = sessions.get(id) || stripeSeeded.find((x) => x.id === id)
+    if (s?.mode === 'setup' && s.setup_intent && new URL(u).searchParams.getAll('expand[]').includes('setup_intent.payment_method')) { const si = setupIntents.get(s.setup_intent); return json({ ...s, setup_intent: { ...si, payment_method: paymentMethods.get(si.payment_method) } }) }
     return s ? json(s) : json({ error: { message: 'No such checkout session' } }, 404)
   }
   if (u.startsWith('https://api.brevo.com/v3/contacts')) {
@@ -679,6 +768,17 @@ const server = http.createServer(async (req, res) => {
     const s = sessions.get(url.searchParams.get('cs'))
     if (!s) { res.writeHead(404); return res.end('no session') }
     const action = url.searchParams.get('action')
+    // Setup mode: save the card or bank account (&pm=card|declined|3ds|becs).
+    if (action === 'pay' && s.mode === 'setup') {
+      const kind = url.searchParams.get('pm') || (s.payment_method_types.includes('au_becs_debit') ? 'becs' : 'card')
+      const pm = makePaymentMethod(kind, s.customer)
+      const si = { id: stripeId('seti'), object: 'setup_intent', status: 'succeeded', usage: 'off_session', customer: s.customer, payment_method: pm.id, mandate: pm.type === 'au_becs_debit' ? stripeId('mandate') : null, metadata: { jfpSavedPay: '1' } }
+      setupIntents.set(si.id, si)
+      s.status = 'complete'; s.setup_intent = si.id
+      log('stripe', `setup ${s.id} ${kind}`)
+      if (url.searchParams.get('webhook') !== 'off') await fireWebhook('checkout.session.completed', s)
+      res.writeHead(302, { location: s.success_url.replace('{CHECKOUT_SESSION_ID}', s.id) }); return res.end()
+    }
     if (action === 'pay') {
       s.payment_status = 'paid'; s.status = 'complete'; s.payment_intent = `pi_test_${crypto.randomBytes(8).toString('hex')}`
       // Stripe asks for an email when the page did not give one (&email= and &name= in tests).
@@ -713,6 +813,26 @@ const server = http.createServer(async (req, res) => {
     if (p.fire) await fireWebhook('checkout.session.completed', stripeSeeded.at(-1))
     res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, id: `cs_test_seed_${n}` }))
   }
+  // BECS clearing or failing: /__becs?pi=<id>&outcome=succeeded|failed (the webhook fires).
+  if (url.pathname === '/__becs') {
+    const pi = offIntents.get(url.searchParams.get('pi'))
+    if (!pi || pi.status !== 'processing') { res.writeHead(404); return res.end('no processing payment') }
+    const ok = url.searchParams.get('outcome') !== 'failed'
+    pi.status = ok ? 'succeeded' : 'requires_payment_method'
+    if (ok) pi.amount_received = pi.amount; else pi.last_payment_error = { code: 'debit_not_authorized', message: 'The customer has notified their bank that this payment was unauthorised.' }
+    await fireWebhook(ok ? 'payment_intent.succeeded' : 'payment_intent.payment_failed', { id: pi.id }, { id: pi.id, object: 'payment_intent' })
+    if (url.searchParams.get('twice')) await fireWebhook(ok ? 'payment_intent.succeeded' : 'payment_intent.payment_failed', { id: pi.id }, { id: pi.id, object: 'payment_intent' })
+    res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, status: pi.status }))
+  }
+  // Fire a payment intent webhook for an off session payment (a card success arriving as well).
+  if (url.pathname === '/__pi-webhook') {
+    const pi = offIntents.get(url.searchParams.get('pi'))
+    if (!pi) { res.writeHead(404); return res.end('no payment') }
+    await fireWebhook(url.searchParams.get('type') || 'payment_intent.succeeded', { id: pi.id }, { id: pi.id, object: 'payment_intent' })
+    res.writeHead(200); return res.end('ok')
+  }
+  if (url.pathname === '/__stripe-pis') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify([...offIntents.values()])) }
+  if (url.pathname === '/__stripe-saved') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ customers: [...customers.values()], paymentMethods: [...paymentMethods.values()], setupIntents: [...setupIntents.values()] })) }
   if (url.pathname === '/__emails') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(emails)) }
   if (url.pathname === '/__telegram') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(telegrams)) }
   if (url.pathname === '/__airtable') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(airtable)) }

@@ -5,6 +5,8 @@
 // a download. Read only, except putting a marked bank line back.
 import { esc, money } from './jfp-common.js'
 import { moneyHead, bindTip, programmeSwitch, bindSwitch, remember, recall, quietOk, markUpdated } from './jfp-portal-programmes.js'
+// Auto charges: saved cards and bank accounts charged after each session (claude/card-on-file).
+import { renderAutoChargePanel } from './jfp-portal-autocharge.js'
 
 export const PRO_DEFINITION = 'Pro sessions: Stripe payments on Pro links (the real Stripe fee on each, from Stripe), cash and bank transfers recorded on Pro players, and bank transfers you marked "Pro session" on Money &gt; JFP &gt; Bank transfers to check. Kept = taken less refunds and Stripe fees. Billed and owing come from the players\' rows in Airtable. None of it is in the JFP figures.'
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
@@ -86,6 +88,7 @@ function draw(ui, v) {
       <div class="jm-tiles" data-n="4">${tiles.map(([k, l, val, c, note], i) => `<section class="jd-card jd-tile jm-tile" style="--i:${i + 1}" data-ptile="${k}"><span class="lbl"><span class="jd-key"><i style="background:var(${c})"></i>${l}</span></span><span class="val">${esc(money(val || 0))}</span><span class="note">${esc(note)}</span></section>`).join('')}</div>
     </div>
     ${v.toCheck.length ? `<section class="j-box j-box-amber jh-owed" id="p-check"><p><b>Pro quick links to check: ${plural(v.toCheck.length, 'payment')}</b></p><p class="small" style="margin:4px 0 8px">Paid on a Pro quick link with no player named. They are counted; look at who paid in Payment links.</p><ul class="jm-hist">${v.toCheck.map((x) => `<li><span><b>${esc(x.note || 'Quick link')}</b><small>${esc(x.who || 'Payer not known')} · paid ${esc(day(x.paidDate))}</small></span><span class="amt">${esc(money(x.takenCents))}</span></li>`).join('')}</ul></section>` : ''}
+    <section class="jd-card jh-list" id="p-autocharge"></section>
     <section class="jd-card jh-sheet" id="p-months-card"><h2>By month</h2><p class="sub">By the day the money came in. Refunds and fees come off the same month.</p>
       ${v.byMonth.length ? stackTable('p-months', ['Month', 'Taken', 'Refunded', 'Stripe fees', 'Kept'], v.byMonth.map((r) => [esc(r.label), esc(money(r.takenCents)), esc(money(r.refundedCents)), esc(money(r.feeCents)), `<b>${esc(money(r.keptCents))}</b>`]), v.byMonth.length > 1 ? ['Total', esc(money(t.takenCents)), esc(money(t.refundedCents)), esc(money(t.feeCents)), esc(money(t.keptCents))] : null) : '<p class="muted small">No Pro money yet.</p>'}
     </section>
@@ -96,6 +99,7 @@ function draw(ui, v) {
       ${v.lines.length ? `<ul class="jm-hist">${v.lines.map(lineHtml).join('')}</ul>` : '<p class="muted small">Nothing yet. Bank transfers for Pro sessions are marked on Money &gt; JFP &gt; Bank transfers to check.</p>'}</section>`
   bindTip(ui.view())
   bindSwitch(ui)
+  renderAutoChargePanel(ui.view().querySelector('#p-autocharge'), ui)
   const v$ = (s) => ui.view().querySelector(s)
   v$('#p-month').addEventListener('change', (e) => { ui.filter.month = e.target.value; renderProMoney(ui) })
   v$('#p-refresh').addEventListener('click', async (e) => {
