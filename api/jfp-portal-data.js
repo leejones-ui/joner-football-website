@@ -1397,12 +1397,34 @@ export async function moneyData(config, { since, fresh = false, quick = false, p
 // recorded: every bank line recorded so far, kept for good (a hash of
 // { id, source, cents, date, payer, distinct }); claim: one key per line, set
 // before the rows are written, so no line is ever recorded twice.
-const BANK = { xero: 'jfp:xero-bank-in', csv: 'jfp:bank-csv', ignored: 'jfp:bank-ignored', recorded: 'jfp:bank-recorded' }
+const BANK = { xero: 'jfp:xero-bank-in', csv: 'jfp:bank-csv', ignored: 'jfp:bank-ignored', recorded: 'jfp:bank-recorded', refreshReq: 'jfp:bank-refresh-req', feedStatus: 'jfp:bank-feed-status' }
+// "Check payments from the bank" (Lee, 15 Oct 2026): the button writes a
+// request; the Mac polls for it every minute, runs the Xero feed and writes
+// jfp:bank-feed-status { at (when the run started), ok, latestLineDate, count, error? }.
+const isoAt = (v) => (typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? v : '')
+const cleanFeedStatus = (x) => (x && isoAt(x.at) ? { at: x.at, ok: x.ok === true, latestLineDate: ISO.test(x.latestLineDate || '') ? x.latestLineDate : '', count: Number.isInteger(x.count) ? x.count : 0, ...(x.ok === true ? {} : { error: String(x.error || 'The bank check did not finish.').slice(0, 120) }) } : null)
+async function bankRefreshState() {
+  const [req, status] = await Promise.all([kvGetJson(BANK.refreshReq).catch(() => null), kvGetJson(BANK.feedStatus).catch(() => null)])
+  const request = req && isoAt(req.at) ? { at: req.at } : null
+  const feed = cleanFeedStatus(status)
+  // Done once the Mac has started a run at or after the request.
+  return { request, status: feed, done: Boolean(request && feed && Date.parse(feed.at) >= Date.parse(request.at)) }
+}
+async function bankRefresh(res, principal) {
+  const now = new Date().toISOString()
+  // A second press while one is waiting reuses it (one run is enough).
+  const cur = await bankRefreshState()
+  if (cur.request && !cur.done && Date.now() - Date.parse(cur.request.at) < 3 * 60000) return res.status(200).json({ success: true, request: cur.request, status: cur.status, reused: true })
+  await kvSetJson(BANK.refreshReq, { at: now, by: principal.email }, 86400)
+  await audit({ by: principal.email, action: 'money.bankRefresh', target: 'xero' })
+  return res.status(200).json({ success: true, request: { at: now }, status: cur.status })
+}
 const bankClaim = (id) => `jfp:bank-recorded:${id}`
 async function bankSources() {
   const [xero, csv] = await Promise.all([kvGetJson(BANK.xero).catch(() => null), kvGetJson(BANK.csv).catch(() => null)])
   const list = (x, source) => (Array.isArray(x?.items) ? x.items.map((i) => cleanItem(i, source)).filter(Boolean) : [])
-  return { xero: list(xero, 'xero'), csv: list(csv, 'csv'), xeroAt: typeof xero?.at === 'string' ? xero.at : '', csvAt: typeof csv?.at === 'string' ? csv.at : '' }
+  const latest = (x) => (Array.isArray(x?.items) ? x.items.map((i) => String(i?.date || '')).filter((d) => ISO.test(d)).sort().at(-1) || '' : '')
+  return { xero: list(xero, 'xero'), csv: list(csv, 'csv'), xeroAt: typeof xero?.at === 'string' ? xero.at : '', csvAt: typeof csv?.at === 'string' ? csv.at : '', xeroLatest: latest(xero), csvLatest: latest(csv) }
 }
 async function bankRecorded() {
   const flat = await kvCommand(['HGETALL', BANK.recorded]).catch(() => [])
@@ -1422,11 +1444,13 @@ async function bankExtras(config) {
   return { term, prev, hol }
 }
 async function bankCheck(config) {
-  const [src, m, ledger, ignored, recorded, extra, roster, invoices] = await Promise.all([bankSources(), moneyData(config, { quick: true }), listLedger(config.term).catch(() => []), kvCommand(['SMEMBERS', BANK.ignored]).catch(() => []), bankRecorded(), bankExtras(config), loadRoster().catch(() => ({ players: [] })), listInvoices().catch(() => [])])
+  const [src, m, ledger, ignored, recorded, extra, roster, invoices, refresh] = await Promise.all([bankSources(), moneyData(config, { quick: true }), listLedger(config.term).catch(() => []), kvCommand(['SMEMBERS', BANK.ignored]).catch(() => []), bankRecorded(), bankExtras(config), loadRoster().catch(() => ({ players: [] })), listInvoices().catch(() => []), bankRefreshState().catch(() => ({}))])
   const { items, counts, hidden, before } = matchBank({ items: [...src.xero, ...src.csv], players: m.players, ledger, ignored: Array.isArray(ignored) ? ignored : [], since: config.moneySince, recorded, previous: extra.prev || [], holidaySizes: extra.hol?.sizes || null, termStart: config.termStart, invoices: openForBank(invoices) })
   const coaches = (extra.hol?.config.coaches || []).slice().sort((a, b) => Number(b.active !== false) - Number(a.active !== false) || a.name.localeCompare(b.name)).map((c) => ({ id: c.id, name: c.name }))
   return {
-    sources: { xeroAt: src.xeroAt, xeroItems: src.xero.length, csvAt: src.csvAt, csvItems: src.csv.length }, items: items.slice(0, 300), counts, hidden: hidden.slice(0, 60),
+    sources: { xeroAt: src.xeroAt, xeroItems: src.xero.length, csvAt: src.csvAt, csvItems: src.csv.length, xeroLatest: src.xeroLatest, csvLatest: src.csvLatest },
+    // The newest bank line we have and when the Mac last checked Xero (the button).
+    feed: { latestLineDate: [src.xeroLatest, src.csvLatest].sort().at(-1) || '', status: refresh.status || null, request: refresh.request || null, today: sydneyToday() }, items: items.slice(0, 300), counts, hidden: hidden.slice(0, 60),
     // Older than this term's window: shown in their own fold (Lee, 13 Oct 2026).
     before: before.slice(0, 300), termStart: config.termStart,
     holiday: { periods: [...pickablePeriods(sydneyToday()).map((p) => ({ id: p.id, label: p.label, range: rangeLabel(p) })), { id: OTHER, label: OTHER_LABEL, range: '' }], coaches, locations: config.locations.map((l) => l.name), defaultLocation: locationFor(config, 'Belrose HQ').name },
@@ -3281,6 +3305,9 @@ async function handle(req, res) {
       case 'recordStripeAll': return await recordStripeAll(res, principal, config)
       case 'bankCheck': return res.status(200).json({ success: true, bank: await bankCheck(config) })
       case 'bankUpload': return await bankUpload(res, principal, config, body)
+      // "Check payments from the bank" (15 Oct 2026): ask the Mac for a fresh Xero pull, then poll.
+      case 'bankRefresh': return await bankRefresh(res, principal)
+      case 'bankRefreshStatus': return res.status(200).json({ success: true, ...(await bankRefreshState()) })
       case 'bankIgnore': return await bankIgnore(res, principal, body, false)
       case 'bankUnignore': return await bankIgnore(res, principal, body, true)
       // Holiday training and last term (Lee, 13 Oct 2026).

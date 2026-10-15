@@ -405,7 +405,9 @@ await test('bank transfers to check: the count, where it is from, the hint, and 
   assert.equal(p.posts.filter((b) => b.action === 'bankCheck').length, 1, 'read once, on its own')
   assert.match(p.text('#m-bank summary'), /^Bank transfers to check 3 2 with a match$/)
   assert.match(p.text('#m-bank-xero'), /^From Xero, updated /)
-  assert.match(p.text('#m-bank'), /Xero only shows transfers after they're coded in Xero\. Uploading the bank CSV works straight away\./)
+  // These lines are days old, so the amber note shows with the upload in it (15 Oct 2026).
+  assert.match(p.text('#m-bank-old'), /^Xero only has bank lines up to 10 Oct\. Payments appear there after they're reconciled in Xero\. For anything newer, upload today's CommBank statement \(CSV\)\./)
+  assert.match(p.text('#m-bank-status'), /^Bank lines up to 10 Oct · checked /)
   assert.match(p.text('#m-bank'), /Upload bank statement \(CSV\)\s*CommBank NetBank > Accounts > Export > CSV/)
   assert.deepEqual(bankIds(p), [XA, CB, XC])
   const first = p.$(`#m-bank [data-bank="${XA}"]`)

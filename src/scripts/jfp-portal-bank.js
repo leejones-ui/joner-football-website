@@ -8,10 +8,16 @@
 // revenue") or put on last term's list ("Previous term"); hints say which a
 // line looks like; lines from before this term sit in their own fold; chips
 // pick what is shown. "Pro session" puts a line in Money > Pro sessions.
+//
+// 15 Oct 2026: "Check payments from the bank" asks the Mac for a fresh Xero
+// pull (bankRefresh), polls bankRefreshStatus every few seconds for up to two
+// minutes, then reads the lines again. Xero only has a line once it is
+// reconciled there, so when the newest line is over 2 days old an amber note
+// says so, with the CommBank CSV upload right beside it.
 import { esc, money } from './jfp-common.js'
 import { parseBankCsv } from './jfp-bank-csv.js'
 
-const B = { data: null, at: 0, loading: null, open: false, hiddenOpen: false, beforeOpen: false, chip: 'all', undo: null, prev: null, draw: () => {} }
+const B = { data: null, at: 0, loading: null, open: false, hiddenOpen: false, beforeOpen: false, chip: 'all', undo: null, prev: null, checking: false, draw: () => {} }
 const STALE = 5 * 60000
 const STALE_XERO = 26 * 3600000
 
@@ -19,13 +25,55 @@ const STALE_XERO = 26 * 3600000
 // Money may have been drawn again while waiting: the newest page is the one redrawn.
 export function loadBank(ui, draw, { force = false } = {}) {
   B.draw = draw
-  if (!force && B.data && Date.now() - B.at < STALE) return
-  if (B.loading) return
+  if (!force && B.data && Date.now() - B.at < STALE) return Promise.resolve()
+  if (B.loading) return B.loading
   B.loading = ui.post('bankCheck').then((r) => {
     B.loading = null
     if (!r.ok || !r.data?.bank) { if (!B.data || B.data.error) B.data = { error: r.data?.error || 'Bank transfers could not be read just now.' } } else { B.data = r.data.bank; B.at = Date.now() }
     B.draw()
   })
+  return B.loading
+}
+
+// How fresh the bank lines are: the newest line, when the Mac last checked,
+// whether the newest line is over 2 days old, and the last check's error.
+const OLD_DAYS = 2
+export function bankFreshness(d) {
+  const f = d?.feed || {}
+  // Older answers have no feed: the newest line on the list stands in.
+  const latest = f.latestLineDate || [...(d?.items || []), ...(d?.before || [])].map((x) => x.date || '').sort().at(-1) || ''
+  const today = f.today || new Date().toISOString().slice(0, 10)
+  const checkedAt = f.status?.at || d?.sources?.xeroAt || ''
+  const oldLines = Boolean(latest) && (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${latest}T00:00:00Z`)) / 86400000 > OLD_DAYS
+  return { latest, checkedAt, oldLines, error: f.status && f.status.ok === false ? f.status.error || 'The last bank check did not finish.' : '' }
+}
+const stamp = (iso) => new Date(iso).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+const ids = () => new Set([...(B.data?.items || []), ...(B.data?.before || []), ...(B.data?.hidden || [])].map((x) => x.id))
+const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+
+// The button. ui: { post, toast, redraw }. pollMs and maxMs are for tests.
+export async function checkBank(ui, { pollMs = 4000, maxMs = 120000 } = {}) {
+  if (B.checking) return
+  const seen = ids()
+  B.checking = true
+  B.open = true
+  ui.redraw()
+  const r = await ui.post('bankRefresh')
+  if (!r.ok || !r.data?.request?.at) { B.checking = false; ui.redraw(); return ui.toast(r.data?.error || 'The bank check could not start. Try again in a moment.') }
+  const asked = Date.parse(r.data.request.at)
+  const until = Date.now() + maxMs
+  let st = null
+  while (!st && Date.now() < until) {
+    await wait(pollMs)
+    const s = await ui.post('bankRefreshStatus')
+    if (s.ok && s.data?.status?.at && Date.parse(s.data.status.at) >= asked) st = s.data.status
+  }
+  B.checking = false
+  await loadBank(ui, ui.redraw, { force: true })
+  if (!st) return ui.toast("The bank check is taking longer than usual. The Mac may be busy. The list updates when it's done, or upload today's CommBank statement (CSV).", 8000)
+  if (!st.ok) return ui.toast(st.error || 'The bank check did not finish.', 8000)
+  const fresh = [...ids()].filter((id) => !seen.has(id)).length
+  ui.toast(fresh ? `Found ${fresh} new payment${fresh === 1 ? '' : 's'}` : 'No new payments')
 }
 
 const GRADE = { high: ['Likely match', 'j-pill-green'], possible: ['Possible match', 'j-pill-amber'], none: ['No match yet', 'j-pill-grey'] }
@@ -76,12 +124,21 @@ export function bankPanel(loc) {
     if (chip === 'all' && before.length) list += `<details class="jm-bank-before" id="m-bank-before"${B.beforeOpen ? ' open' : ''}><summary>Before this term (${before.length})</summary><p class="small muted">Older transfers, from before this term's payments start: holiday training and last term's fees. Sort them with the buttons.</p><ul class="jm-bank-list">${before.map(itemHtml).join('')}</ul></details>`
   }
   const undo = B.undo ? `<div class="j-box j-box-blue small jm-bank-undo" id="m-bank-undo"><span>${esc(B.undo.text)}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-undo="${esc(B.undo.id)}">Undo</button></div>` : ''
+  const fr = bankFreshness(d)
+  const live = d && !d.error
+  const upload = '<div class="jm-bank-up"><label class="j-btn j-btn-line j-btn-sm" for="m-bank-file">Upload bank statement (CSV)</label><input type="file" id="m-bank-file" accept=".csv,text/csv,text/plain" class="jm-file"><span class="small muted">CommBank NetBank &gt; Accounts &gt; Export &gt; CSV</span></div>'
+  const statusLine = B.checking ? 'Checking the bank… This can take up to two minutes.'
+    : live ? `${fr.latest ? `Bank lines up to ${when(fr.latest)}` : 'No bank lines yet'}${fr.checkedAt ? ` · checked ${stamp(fr.checkedAt)}` : ''}` : ''
+  const check = `<div class="jm-bank-up jm-bank-check"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-bank-refresh"${B.checking ? ' disabled aria-busy="true"' : ''}>${B.checking ? 'Checking the bank…' : 'Check payments from the bank'}</button>${statusLine ? `<span class="small" id="m-bank-status">${esc(statusLine)}</span>` : ''}</div>`
+  const oldNote = live && fr.oldLines ? `<div class="j-box j-box-amber small" id="m-bank-old"><p>Xero only has bank lines up to ${esc(when(fr.latest))}. Payments appear there after they're reconciled in Xero. For anything newer, upload today's CommBank statement (CSV).</p>${upload}</div>` : ''
+  const errNote = live && fr.error && !B.checking ? `<p class="j-box j-box-amber small" id="m-bank-err">${esc(fr.error)}.${/reconnect/i.test(fr.error) ? ' The lines below are from the last good check. Upload the CommBank CSV for anything newer.' : ''}</p>` : ''
   return `<details class="jm-next jm-bank" id="m-bank-box" ${B.open ? 'open' : ''}><summary>Bank transfers to check ${count}${toCheck ? ` <small class="muted">${toCheck} with a match</small>` : ''}</summary>
     <div class="jm-bank-src">
+      ${check}
+      ${errNote}
       <p class="small" id="m-bank-xero">${esc(xero)}${esc(csv)}</p>
       ${staleNote ? `<p class="j-box j-box-amber small" id="m-bank-stale">${esc(staleNote)}</p>` : ''}
-      <p class="small muted">Xero only shows transfers after they're coded in Xero. Uploading the bank CSV works straight away.</p>
-      <div class="jm-bank-up"><label class="j-btn j-btn-line j-btn-sm" for="m-bank-file">Upload bank statement (CSV)</label><input type="file" id="m-bank-file" accept=".csv,text/csv,text/plain" class="jm-file"><span class="small muted">CommBank NetBank &gt; Accounts &gt; Export &gt; CSV</span></div>
+      ${oldNote || `<p class="small muted">Xero only shows transfers after they're reconciled in Xero. Uploading the bank CSV works straight away.</p>${upload}`}
     </div>
     ${undo}${chips}
     ${list}
@@ -117,6 +174,7 @@ export function bindBank(el, ui) {
   hid?.addEventListener('toggle', () => { B.hiddenOpen = hid.open })
   const bef = el.querySelector('#m-bank-before')
   bef?.addEventListener('toggle', () => { B.beforeOpen = bef.open })
+  el.querySelector('#m-bank-refresh')?.addEventListener('click', () => checkBank(ui))
   el.querySelector('#m-bank-file')?.addEventListener('change', async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
