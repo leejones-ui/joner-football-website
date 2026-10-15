@@ -6,6 +6,7 @@
 import { siteUrl } from './_holiday-store.js'
 import { clean, formatAud, audit, newId, sydneyToday, savePayreq, getPayreq, kvCommand } from './_jfp-store.js'
 import { getTerm4Row, updateTerm4Rows, appendNote } from './_jfp-airtable.js'
+import { syncRowLinks } from './_jfp-fee-sync.js'
 import { jfpStripePayments } from './_jfp-stripe.js'
 import { createPlayerCharge, recordChargePayment, cancelCharge, chargeFromStripe, extraMoneyData, getCharge, chargeView } from './_jfp-charges.js'
 import { invoiceInput, newInvoice, getInvoice, saveInvoice, listInvoices, viewedMap, withInvoice, addInvoicePayment, settleInvoicePayreq, rowInvoicePayreq, publicInvoice, invoiceRow, invoiceUrl, owingOf, paidOf, ROW_PROGRAMMES, INVOICE_STATUS } from './_jfp-invoices.js'
@@ -147,6 +148,8 @@ async function issue(req, principal, config, inv) {
     }
     const q = rowInvoicePayreq(inv, { principal, siteUrl: siteUrl(req), id: newId('PAY') })
     await savePayreq(q)
+    // Another open link on these rows now asks for less: the invoice holds this part (_jfp-fee-sync.js).
+    await syncRowLinks(rows.map((r) => r.id), { by: principal.email, why: `invoice ${inv.id} issued` })
     return { ok: true, invoice: { ...inv, payreqId: q.id, issuedAt: new Date().toISOString(), ...(feeRaised ? { feeRaised } : {}) } }
   }
   const c = await createPlayerCharge({ config, principal, kind: 'invoice', programme: inv.programme, rowId: inv.players[0]?.rowId || '', email: inv.email, playerName: inv.players.map((p) => p.name).join(' and '), parentName: inv.parentName, amountCents: inv.totalCents, label: `Invoice ${inv.id}`, ref: `invoice:${inv.id}`, invoiceId: inv.id, siteUrl: siteUrl(req) })
@@ -195,6 +198,9 @@ async function invoiceVoid(req, res, principal, config, body) {
       if (r) await updateTerm4Rows([{ id: r.id, fields: { 'Term 4 Fee': inv.feeRaised.before.fee, 'Term 4 Payment Status': inv.feeRaised.before.status, 'Term 4 Notes': appendNote(r.notes, `Invoice ${inv.id} void by ${principal.name || principal.email}: the ${formatAud(inv.feeRaised.cents)} it added to the fee is taken off.`) } }]).catch((error) => console.error('jfp invoice void fee failed', error))
     }
     if (!inv.chargeId) { const s = await settleInvoicePayreq(next); if (!s.ok) return { ok: false, status: 409, error: s.error } }
+    // The fee is back as it was: any other open link on the rows follows it.
+    const voidRows = inv.players.map((p) => p.rowId).filter(Boolean)
+    if (voidRows.length) await syncRowLinks(voidRows, { by: principal.email, why: `invoice ${inv.id} void` })
     return { ok: true, invoice: next }
   })
   if (!out.ok) return refuse(res, out)

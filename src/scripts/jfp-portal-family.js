@@ -55,7 +55,7 @@ function card(fam, ui) {
   return `<section class="jd-card jf-fam" data-fam="${esc(fam.key)}">
     <header><div><h3>${esc(fam.names.join(', '))}</h3><p class="muted small">${esc(fam.parent || 'No parent name')}${fam.email ? ` · ${esc(fam.email)}` : ' · <b>no email</b>'} · ${fam.places.length} place${fam.places.length === 1 ? '' : 's'}</p></div>
       <div class="jf-fam-now"><span class="muted small">Owing now</span><b>${esc(money(owing))}</b></div></header>
-    ${fam.links.length ? `<p class="jf-fam-links">Open link${fam.links.length > 1 ? 's' : ''}: ${fam.links.map((l) => `${esc(l.players.join(' + '))} ${esc(money(l.amountCents))}${l.family ? ' (family invoice)' : ''}`).join(' · ')}</p>` : ''}
+    ${fam.links.length ? `<p class="jf-fam-links">Open link${fam.links.length > 1 ? 's' : ''}: ${fam.links.map((l) => `${esc(l.players.join(' + '))} ${esc(money(l.amountCents))}${l.family ? ' (family invoice)' : ''}${l.note ? ` <span class="muted small">(${esc(l.note)})</span>` : ''}`).join(' · ')}</p>` : ''}
     <div class="jf-places">${fam.places.map((p) => `<div class="jf-place" data-place="${esc(p.rowId)}">
       <div class="jf-who"><b>${esc(p.player)}</b><span class="muted small">${esc(p.group)}</span><span class="small">${ui.statusPill(p.status)}${p.paidCents ? ` <span class="muted">· ${esc(money(p.paidCents))} paid</span>` : ''}</span><button type="button" class="j-btn j-btn-ghost j-btn-sm jf-remove" data-remove-place aria-label="Remove ${esc(p.player)}, ${esc(p.group)}">Remove</button></div>
       <div class="jf-price">
@@ -157,6 +157,7 @@ function textFamily(fam, ui, { amountCents, url = '', emailed = false }) {
 async function saveOnly(el, fam, places, ui) {
   const changed = places.filter((x) => { const p = fam.places.find((y) => y.rowId === x.rowId); return x.feeCents !== (p.feeCents || null) || x.type !== (p.type || '') })
   if (!changed.length) return ui.toast('Nothing changed')
+  const moved = new Map(), gone = new Map()
   for (const x of changed) {
     const p = fam.places.find((y) => y.rowId === x.rowId)
     const fields = {}
@@ -164,8 +165,12 @@ async function saveOnly(el, fam, places, ui) {
     if (x.type && x.type !== p.type) fields.paymentType = x.type
     const r = await ui.post('editPlayer', { rowId: x.rowId, fields })
     if (!r.ok) { const err = el.querySelector('[data-err]'); err.textContent = `${p.player}: ${r.data.error}`; err.hidden = false; return }
+    // An open link follows the new fee on its own (16 Oct 2026).
+    for (const l of r.data.repricedLinks || []) moved.set(l.id, l)
+    for (const l of r.data.closedLinks || []) gone.set(l.id, l)
   }
-  ui.toast(`Saved ${changed.length} price${changed.length > 1 ? 's' : ''} to Airtable${fam.links.length ? '. The open link still asks for the old amount: send a family invoice to replace it.' : ''}`, fam.links.length ? 8000 : 3600)
+  const said = [...moved.values()].map((l) => `link updated to ${money(l.amountCents)} after the fee changed`).concat([...gone.values()].map((l) => `the ${money(l.amountCents)} link is cancelled, nothing is owing`))
+  ui.toast(`Saved ${changed.length} price${changed.length > 1 ? 's' : ''} to Airtable${said.length ? `: ${said.join(', ')}.` : ''}`, said.length ? 8000 : 3600)
   ui.done()
 }
 

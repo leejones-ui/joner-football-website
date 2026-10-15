@@ -1533,7 +1533,7 @@ async function renderPayments(keep = false) {
   const forCell = (q) => (q.quick ? `${esc(q.forText)}<span class="ps-sub">${progPill(q.programme, q.programmeLabel)} Quick link${q.priceName && !q.forText.startsWith(q.priceName) ? ` · ${esc(q.priceName)}` : ''}${q.afterpay ? '' : ' · card only'}</span>` : `${esc(q.group || 'No group')}<span class="ps-sub">${esc(REASON[q.kind] || q.kind)}${q.productLabel ? ` · ${esc(q.productLabel)}` : ''}${q.trialDate ? ` · trial ${esc(q.trialDate)}` : q.startDate ? ` · from ${esc(q.startDate)}` : ''}${q.afterpay ? '' : ' · card only'}</span>`)
   const acts = (q) => `${['open', 'checkout'].includes(q.status) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-change="${esc(q.id)}">Change amount</button> <button type="button" class="j-btn j-btn-line j-btn-sm" data-copy="${esc(q.url)}">Copy</button>${q.quick ? ` <a class="j-btn j-btn-line j-btn-sm" href="${esc(q.url)}" target="_blank" rel="noopener noreferrer">Open</a>${q.email ? ` <button type="button" class="j-btn j-btn-line j-btn-sm" data-email-quick="${esc(q.id)}">Email it</button>` : ''}` : ''} <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancel-pay="${esc(q.id)}">Cancel</button>` : ''}${q.effects && !q.effects.ok ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(q.id)}">Repair</button>` : ''}${q.stripeUrl ? ` <a class="j-btn j-btn-ghost j-btn-sm" href="${esc(q.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}`
   const attention = [...d.payreqs, ...d.bookings].filter((x) => x.needsAttention)
-  const attnWord = { 'paid-after-cancel': 'Paid after it was cancelled', 'second-payment': 'Paid twice', 'late-payment': 'Paid after the hold ran out' }
+  const attnWord = { 'paid-after-cancel': 'Paid after it was cancelled', 'second-payment': 'Paid twice', 'late-payment': 'Paid after the hold ran out', 'amount-changed': 'Paid an old amount after the fee changed' }
   view().innerHTML = `
     ${psHead({ title: 'Payment links', count: lq ? `${list.length} of ${shown.filter(filt[P.linkFilter] || filt.open).length}` : list.length, primary: '<button type="button" class="j-btn j-btn-line" id="pl-quick">Quick link</button><button type="button" class="j-btn j-btn-dark" id="pl-new">+ New payment link</button>' }).replace('</h1>', '</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Make a link for any player, change the amount on an open one, or copy it to send yourself. You never need to open Stripe. Refunds are made in Stripe.</div></details>')}
     ${otherCheck.length ? `<div class="j-box j-box-amber" id="pl-other-check" style="margin-bottom:16px"><b>Other payments to check: ${otherCheck.length}</b><p class="small" style="margin:4px 0 6px">Quick links for Pro sessions or Other, paid with no player named. Look at who paid, then tick Checked.</p><ul class="jm-hist">${otherCheck.map((q) => `<li><span><b>${esc(q.forText)}</b><small>${esc([q.payerName, q.payerEmail].filter(Boolean).join(' · ') || 'Payer not known')} · ${q.paidAt ? esc(when(q.paidAt)) : ''} · ${esc(q.id)}</small></span><span class="jq-acts"><span class="amt">${esc(q.amountLabel)}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-check-quick="${esc(q.id)}">Checked</button></span></li>`).join('')}</ul></div>` : ''}
@@ -1547,7 +1547,7 @@ async function renderPayments(keep = false) {
     ${list.length ? `<div class="ps-table-wrap"><table class="ps-table jq-ps ps-flat" id="pl-list"><thead><tr><th>Player</th><th>For</th><th class="num">Amount</th><th>Status</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody>
       ${list.map((q) => `<tr data-link="${esc(q.id)}"><td data-col="who">${who(q)}</td>
         <td data-col="group">${forCell(q)}</td>
-        <td class="num" data-col="amt">${esc(q.amountLabel)}${q.feeLabel ? `<span class="ps-sub">fee ${esc(q.feeLabel)}</span>` : ''}</td><td data-col="pay">${q.quick ? quickState(q) : state(q)}${q.status === 'paid' ? `<span class="ps-sub">${q.quick && !(q.term4Ids || []).length ? effQuick(q.effects) : eff(q.effects)}</span>` : ''}</td>
+        <td class="num" data-col="amt">${esc(q.amountLabel)}${q.feeLabel ? `<span class="ps-sub">fee ${esc(q.feeLabel)}</span>` : ''}${q.repricedNote ? `<span class="ps-sub">${esc(q.repricedNote)}</span>` : ''}${q.status === 'cancelled' && /, nothing owing$/.test(q.cancelReason || '') ? `<span class="ps-sub">${esc(q.cancelReason.charAt(0).toUpperCase() + q.cancelReason.slice(1))}</span>` : ''}</td><td data-col="pay">${q.quick ? quickState(q) : state(q)}${q.status === 'paid' ? `<span class="ps-sub">${q.quick && !(q.term4Ids || []).length ? effQuick(q.effects) : eff(q.effects)}</span>` : ''}</td>
         <td class="ps-end ps-keep"><div class="jm-actions">${acts(q)}</div></td></tr>`).join('')}
     </tbody></table></div>` : `<div class="ps-table-wrap"><div class="ps-empty">${lq ? 'No links match. <button type="button" class="ps-link" data-pl-clear>Clear search</button>' : 'Nothing here.'}</div></div>`}
     <h2 style="margin:22px 0 10px">Online bookings</h2>
@@ -2071,10 +2071,12 @@ function editPlayerModal(p) {
       if (!a.ok) { btn.disabled = false; er.textContent = a.data.error || 'Could not save the quote.'; er.hidden = false; return }
     }
     closeModal()
-    const links = r.data.openLinks || []
     const gone = r.data.closedLinks || []
-    if (gone.length && !links.length) toast(`Saved. The old ${gone.map((l) => money(l.amountCents)).join(' and ')} payment link is closed, so their account no longer asks for it.`, 6000)
-    else toast(links.length ? `Saved. Note: ${links.length} open payment link${links.length === 1 ? '' : 's'} for ${links.map((l) => `${l.players.join(' + ')} (${money(l.amountCents)})`).join(', ')}: change the amount in Payment links if it is now wrong.` : 'Saved to Airtable', links.length ? 9000 : 3600)
+    const moved = r.data.repricedLinks || []
+    // Open links follow the fee on their own (16 Oct 2026): say what moved.
+    if (moved.length) toast(`Saved. ${moved.map((l) => `Link updated to ${money(l.amountCents)} after the fee changed (was ${money(l.fromCents)})`).join('. ')}. Their account and the same link now ask for that.`, 8000)
+    else if (gone.length) toast(`Saved. Nothing is owing now, so the ${gone.map((l) => money(l.amountCents)).join(' and ')} payment link is cancelled. The place stays.`, 6000)
+    else toast('Saved to Airtable', 3600)
     P.board = null; PL.at = 0; renderMoney()
   })
 }

@@ -27,6 +27,8 @@ import {
   formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, sydneyToday, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType, isProType,
 } from './_jfp-store.js'
 import { telegramAlert } from './_jfp-notify.js'
+import { syncLinks, syncLink, NOTHING_OWING, PAID_ELSEWHERE } from './_jfp-fee-sync.js'
+import { withPayreqLease } from './_jfp-finalise.js'
 import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, savePhoto, waiverPrefill, DOB_MIN, dobMax, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { markToldAway, clearToldAway } from './_jfp-away.js'
 import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
@@ -111,7 +113,10 @@ async function overview(res, parent, body = {}) {
   // Only this family's own cancellations are ever read out of the list.
   const myCancels = allCancels.filter((c) => c.email === parent.email && c.status === 'active')
   const fam = withDobs(familyFor(parent.email, roster, config.termStart), dobsFrom(requests, parent.email), config.termStart)
-  const mine = payreqs.filter((p) => ownsPayreq(p, fam, parent.email) && p.status !== 'cancelled')
+  // Each open link at what the place owes now (a fee changed since it was
+  // made, _jfp-fee-sync.js); one left with nothing owing is gone.
+  const famRows = new Map(fam.players.flatMap((p) => p.term4).map((r) => [r.id, r]))
+  const mine = (await syncLinks(payreqs.filter((p) => ownsPayreq(p, fam, parent.email) && p.status !== 'cancelled'), { rowsById: famRows, all: payreqs, by: 'system: fee sync (My account)' })).filter((p) => p.status !== 'cancelled')
   // Opened from a payment link: staff see that the family has looked at it.
   const opened = mine.find((q) => q.id === clean(body.pay, 60) && ['open', 'checkout'].includes(q.status))
   // Counted on its own key, never by rewriting the payment record, so a
@@ -606,8 +611,12 @@ async function payOwed(req, res, parent, body) {
 }
 
 async function pay(req, res, parent, body) {
-  const q = await getPayreq(body.payreqId)
-  if (!q || !ownsPayreq(q, familyFor(parent.email, await loadRoster(), (await getConfig()).termStart), parent.email)) return fail(res, 404, 'We could not find that payment.')
+  const found = await getPayreq(body.payreqId)
+  if (!found || !ownsPayreq(found, familyFor(parent.email, await loadRoster(), (await getConfig()).termStart), parent.email)) return fail(res, 404, 'We could not find that payment.')
+  // What the place owes now, from fresh Airtable rows, before Stripe is asked
+  // for anything: a fee changed since the link was made moves it first.
+  const q = await syncLink(found, { by: 'system: fee sync (Pay)' })
+  if (q.status === 'cancelled' && [NOTHING_OWING, PAID_ELSEWHERE].includes(q.cancelReason)) return fail(res, 409, q.cancelReason === NOTHING_OWING ? 'There is nothing to pay on this any more: the fee was changed. Your account is up to date.' : 'There is nothing to pay on this any more: it is already paid. Your account is up to date.', { code: 'nothing' })
   if (q.status === 'paid') return fail(res, 409, 'This is already paid.', { code: 'paid' })
   if (!['open', 'checkout'].includes(q.status)) return fail(res, 410, 'This payment is no longer open. Contact Joner Football.')
   if (q.expiresAt && Date.parse(q.expiresAt) < Date.now()) return fail(res, 410, 'This payment link has expired. Contact Joner Football and we will send a new one.')
@@ -652,13 +661,18 @@ async function pay(req, res, parent, body) {
       'payment_intent_data[description]': name.slice(0, 400),
     },
   })
-  // Staff may have changed the amount while this page was opening.
-  const now = await getPayreq(q.id)
-  if (!now || now.amountCents !== q.amountCents || !['open', 'checkout'].includes(now.status)) {
+  // Staff may have changed the amount (or a fee) while this page was opening.
+  // Saved under the payment lease, so a reprice never lands in between.
+  const saved = await withPayreqLease(q.id, async () => {
+    const now = await getPayreq(q.id)
+    if (!now || now.amountCents !== q.amountCents || !['open', 'checkout'].includes(now.status)) return false
+    await savePayreq({ ...now, status: 'checkout', stripeSessionId: session.id, siteUrl: base })
+    return true
+  })
+  if (saved !== true) {
     await closeCheckout(session.id)
     return fail(res, 409, 'This payment was just updated. Refresh the page and try again.', { code: 'changed' })
   }
-  await savePayreq({ ...now, status: 'checkout', stripeSessionId: session.id, siteUrl: base })
   return res.status(200).json({ success: true, url: session.url })
 }
 

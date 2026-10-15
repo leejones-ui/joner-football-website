@@ -58,6 +58,14 @@ async function takeLease(id) {
 }
 export const DROP_LEASE_SCRIPT = "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0"
 async function dropLease(id, token) { if (token) await kvCommand(['EVAL', DROP_LEASE_SCRIPT, '1', keys.finalised(id), token]) }
+// The same lease for a change to an open link (a new fee, _jfp-fee-sync.js),
+// so a payment being recorded and a reprice never write over each other.
+// { busy: true } when someone else holds it.
+export async function withPayreqLease(id, fn) {
+  const lease = await takeLease(id)
+  if (!lease) return { busy: true }
+  try { return await fn() } finally { await dropLease(id, lease) }
+}
 
 function classify(error) {
   const m = String(error?.message || error)
@@ -415,6 +423,13 @@ export async function finaliseJfpBooking(id, session) {
     }
     if (record.status === 'paid' && record.stripeSessionId && info.sessionId && record.stripeSessionId !== info.sessionId) {
       return { ...(await unexpectedPayment(record, session, save, 'second-payment')), already: true, [isPay ? 'payreq' : 'booking']: record }
+    }
+    // A Checkout page only ever asks for what the link held when it opened.
+    // If the link was repriced since (a new fee, _jfp-fee-sync.js), a page
+    // for the old amount is closed first; one paid anyway is money for staff
+    // to look at, never "paid" for an amount the link no longer holds.
+    if (isPay && ['open', 'checkout'].includes(record.status) && info.sessionId && info.amountCents > 0 && info.amountCents !== record.amountCents) {
+      return { ...(await unexpectedPayment(record, session, save, 'amount-changed')), [isPay ? 'payreq' : 'booking']: record }
     }
     if (record.status !== 'paid') {
       if (!isPay) await confirmPlaces(record.groupId, record.id, record.players.length)

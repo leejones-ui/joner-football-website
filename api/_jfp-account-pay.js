@@ -22,6 +22,7 @@
 // sessions from Money that many come off the bill (sessionInvoice). The dates
 // prepaid stay on the payment request (prepay.dates), so the account never
 // offers the same date twice.
+import { stampFeeBasis } from './_jfp-fee-sync.js'
 import {
   clean, formatAud, newId, savePayreq, getPayreq, listPayreqs, audit, kvCommand, locationFor, dateLabel, sydneyToday, closeCheckout,
   isSessionType, isProType, withPerSession, rowEmails,
@@ -180,6 +181,8 @@ export async function payOwed({ config, parent, fam, byGroup, cancels, site, bod
       } }])
       await bustRosterCache()
     }
+    // What the place owes as the link is made: a later fee change moves it (_jfp-fee-sync.js).
+    if (!q.prepay) stampFeeBasis(q, new Map([[r.id, r]]), all)
     await savePayreq(q)
     await audit({ by: parent.email, action: `payreq.account.${q.prepay?.commit ? 'commit' : item.kind}`, target: q.id, after: { row: r.id, cents: q.amountCents, ...(q.prepay ? { sessions: q.prepay.sessions, per: q.prepay.perCents, dates: q.prepay.dates } : {}) } })
     return { ok: true, payreqId: q.id }

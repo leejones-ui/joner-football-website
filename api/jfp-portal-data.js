@@ -27,6 +27,7 @@ import {
 } from './_jfp-airtable.js'
 import { listCancels, staffView, noticeSummary } from './_jfp-cancel.js'
 import { repairJfpBooking, effectsSummary, EFFECTS, payEffectsFor } from './_jfp-finalise.js'
+import { feeTied, stampFeeBasisFresh, syncRowLinks, syncLinks, repricedNote } from './_jfp-fee-sync.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest } from './_jfp-next.js'
@@ -722,6 +723,9 @@ export async function createPayreq({ req, principal, config, group, rows, email,
     expiresAt: EXPIRING.has(reason) ? new Date(Date.now() + REQUEST_DAYS * 86400000).toISOString() : '',
     siteUrl: siteUrl(req),
   }
+  // What each row owes as the link is made: a later fee change moves the
+  // link from here (_jfp-fee-sync.js). A failed read only means no basis.
+  await stampFeeBasisFresh(q).catch((error) => console.error('jfp fee basis failed', q.id, error.message))
   await savePayreq(q)
   return q
 }
@@ -834,22 +838,12 @@ async function editPlayer(res, principal, config, body) {
   if (!Object.keys(fields).length) return fail(res, 400, 'Nothing to change.')
   await updateTerm4Rows([{ id: row.id, fields }])
   await audit({ by: principal.email, action: 'player.edit', target: row.id, before, after: fields })
-  let open = (await listPayreqs()).filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(row.id))
-  // A new fee or a new way to pay (Reswin, 15 Oct 2026: term pro rata to
-  // session by session) closes this player's old term link, so their account
-  // stops asking for the old amount. The place stays. Session bills, charges
-  // and links shared with other players are left for staff to sort.
-  const closed = []
-  const feeChanged = 'Term 4 Fee' in fields && Number(fields['Term 4 Fee'] ?? 0) !== Number(row.feeAud ?? 0)
-  const typeChanged = 'Term 4 Payment Type' in fields && fields['Term 4 Payment Type'] !== row.paymentType
-  if (feeChanged || typeChanged) {
-    for (const q of open.filter((x) => x.term4Ids.length === 1 && !['sessions', 'charge', 'extra', 'invoice'].includes(x.reason) && !x.chargeId && !x.invoiceId)) {
-      const c = await cancelLink(q, principal, 'The fee or the way to pay changed', { keepPlace: true })
-      if (!c.error) closed.push({ id: q.id, amountCents: q.amountCents, players: q.playerNames })
-    }
-    if (closed.length) open = open.filter((q) => !closed.some((c) => c.id === q.id))
-  }
-  return res.status(200).json({ success: true, closedLinks: closed, openLinks: open.map((q) => ({ id: q.id, amountCents: q.amountCents, players: q.playerNames })) })
+  // A new fee (Lee, 16 Oct 2026): every open link for this place asks for
+  // what it owes now, at once (_jfp-fee-sync.js). Switching to session by
+  // session leaves nothing owing, so that link is cancelled; the place stays.
+  // Charges, invoices and quick links keep their own amounts.
+  const synced = await syncRowLinks([row.id], { by: principal.email, why: 'fee changed in Edit player' })
+  return res.status(200).json({ success: true, closedLinks: synced.cancelled, repricedLinks: synced.repriced.map((x) => ({ ...x, amountLabel: formatAud(x.amountCents) })), openLinks: synced.open.map((q) => ({ id: q.id, amountCents: q.amountCents, players: q.playerNames })) })
 }
 
 // Player information for one player (Players tab Edit): the saved profile,
@@ -1192,7 +1186,10 @@ export async function moneyData(config, { since, fresh = false, quick = false, p
   const ledgerByRow = new Map()
   for (const l of ledger) for (const id of String(l['Source Record ID'] || '').split(',').map((x) => x.trim()).filter(Boolean)) ledgerByRow.set(id, (ledgerByRow.get(id) || 0) + Math.round(Number(l['Amount Paid'] || 0) * 100))
   const openLinkFor = new Map()
-  for (const q of payreqs) if (['open', 'checkout'].includes(q.status)) for (const id of q.term4Ids || []) openLinkFor.set(id, { id: q.id, amountCents: q.amountCents, players: q.playerNames, family: q.reason === 'family', createdAt: q.createdAt })
+  // Each open link at what it asks for now: a fee changed since it was made
+  // moves it (_jfp-fee-sync.js), and staff see that it moved.
+  const live = await syncLinks(payreqs.filter((q) => ['open', 'checkout'].includes(q.status)), { rowsById: new Map(rosterAll.players.map((r) => [r.id, r])), all: payreqs, by: 'system: fee sync (Money)' })
+  for (const q of live) if (['open', 'checkout'].includes(q.status)) for (const id of q.term4Ids || []) openLinkFor.set(id, { id: q.id, amountCents: q.amountCents, players: q.playerNames, family: q.reason === 'family', createdAt: q.createdAt, ...(repricedNote(q) ? { note: repricedNote(q) } : {}) })
   let stripe = { payments: [], next: [], other: { count: 0, cents: 0 }, since: since || config.moneySince, error: '' }
   try { stripe = { ...(await jfpStripePayments({ since: since || config.moneySince, fresh, quick: quick && !fresh, term: config.term })), error: '' } } catch (error) { console.error('jfp stripe read failed', error); stripe.error = 'Stripe could not be read just now. Airtable figures only.' }
   // The Sydney day each payment was made (before 11 am in summer is still
@@ -2026,6 +2023,7 @@ async function sessionInvoice(req, res, principal, config, body) {
   if (paidNow) {
     const out = await recordPaymentCore(principal, config, { rowIds: ids, amountCents, method: body.method, date: body.date, note: `${rows.map((x) => `${x.row.player} ${x.sessions} x ${formatAud(x.per)}`).join(', ')}${what ? ` (${what})` : ''}` })
     if (!out.ok) { await updateTerm4Rows(restoreFields); return fail(res, out.status, out.error) }
+    await syncRowLinks(ids, { by: principal.email, why: 'sessions billed and paid' })
     return res.status(200).json({ success: true, recorded: formatAud(amountCents) })
   }
   const sw = wordsFor(rows.map((x) => x.row))
@@ -2062,13 +2060,18 @@ async function changePayreqAmount(req, res, principal, config, body) {
     if (closed === 'complete') return fail(res, 409, 'The family has just paid the old amount. It will show as paid in a minute.')
     if (closed === 'error') return fail(res, 503, 'Could not close the family\'s payment page. Try again in a minute.')
   }
+  // Staff's amount is what the link asks for now: a family link's places go
+  // to one line, and the fee basis is taken again from here.
   const next = { ...q, amountCents, status: 'open', stripeSessionId: '', replacedSessionIds: [...new Set([...(q.replacedSessionIds || []), q.stripeSessionId].filter(Boolean))], changedAt: new Date().toISOString(), changedBy: principal.email }
+  delete next.repriced
+  if (Array.isArray(next.places) && next.places.reduce((t, x) => t + x.owingCents, 0) !== amountCents) delete next.places
   await savePayreq(next)
   // Keep the Airtable fee in step when the rows only carry this link.
   const rows = []
   for (const id of q.term4Ids) { const r = await getTerm4Row(id); if (r) rows.push(r) }
   const share = splitEven(amountCents, rows.length || 1)
   if (rows.length && q.product) await updateTerm4Rows(rows.map((r, i) => ({ id: r.id, fields: { 'Term 4 Fee': (cents(r.paidAud) + share[i]) / 100, 'Term 4 Notes': appendNote(r.notes, `Payment link changed from ${formatAud(q.amountCents)} to ${formatAud(amountCents)} by ${principal.name}.`) } })))
+  if (feeTied(next)) await savePayreq(await stampFeeBasisFresh(next))
   let sent = { emailed: false }
   if (body.sendEmail === true) {
     const group = q.groupId ? await getGroup(q.groupId) : null
@@ -3252,7 +3255,9 @@ async function handle(req, res) {
       }
 
       case 'payments': {
-        const [bookings, payreqs, viewsRaw, viewedRaw, emailedRaw, checkedRaw] = await Promise.all([listBookings(), listPayreqs(), kvCommand(['HGETALL', 'jfp:payreq-views']), kvCommand(['HGETALL', 'jfp:payreq-viewed-at']), kvCommand(['HGETALL', QUICK_EMAILED]), kvCommand(['HGETALL', QUICK_CHECKED])])
+        const [bookings, stored, viewsRaw, viewedRaw, emailedRaw, checkedRaw, roster] = await Promise.all([listBookings(), listPayreqs(), kvCommand(['HGETALL', 'jfp:payreq-views']), kvCommand(['HGETALL', 'jfp:payreq-viewed-at']), kvCommand(['HGETALL', QUICK_EMAILED]), kvCommand(['HGETALL', QUICK_CHECKED]), loadRoster()])
+        // Open links at what they ask for now (a fee changed since: _jfp-fee-sync.js).
+        const payreqs = await syncLinks(stored, { rowsById: new Map(roster.players.map((r) => [r.id, r])), all: stored, by: 'system: fee sync (Payment links)' })
         const pairs = (raw) => { const o = {}; for (let i = 0; i + 1 < (raw || []).length; i += 2) o[raw[i]] = raw[i + 1]; return o }
         const views = pairs(viewsRaw), viewed = pairs(viewedRaw), emailed = pairs(emailedRaw), checked = pairs(checkedRaw)
         return res.status(200).json({
@@ -3269,7 +3274,8 @@ async function handle(req, res) {
             productLabel: q.productLabel || '', startDate: q.startDate || '', trialDate: q.trialDate || '', emailedAt: q.emailedAt || '', views: Number(views[q.id] || 0), lastViewedAt: viewed[q.id] || '', expiresAt: q.expiresAt || '', afterpay: q.afterpay !== false, term4Ids: q.term4Ids,
             parentName: q.parentName, email: q.email, amountLabel: formatAud(q.paidCents ?? q.amountCents), feeLabel: q.stripeFeeCents != null ? formatAud(q.stripeFeeCents) : '',
             url: payreqUrl(req, q), stripeUrl: q.stripePaymentIntentId ? `https://dashboard.stripe.com/payments/${q.stripePaymentIntentId}` : '',
-            effects: q.status === 'paid' ? effectsSummary(q, payEffectsFor(q)) : null, createdBy: q.createdBy, needsAttention: q.needsAttention || '', unexpected: (q.unexpectedPayments || []).map((u) => ({ reason: u.reason, amountLabel: formatAud(u.amountCents), stripeUrl: u.intentId ? `https://dashboard.stripe.com/payments/${u.intentId}` : '' })),
+            effects: q.status === 'paid' ? effectsSummary(q, payEffectsFor(q)) : null, createdBy: q.createdBy, needsAttention: q.needsAttention || '',
+            ...(repricedNote(q) ? { repricedNote: repricedNote(q) } : {}), ...(q.cancelReason ? { cancelReason: q.cancelReason } : {}), unexpected: (q.unexpectedPayments || []).map((u) => ({ reason: u.reason, amountLabel: formatAud(u.amountCents), stripeUrl: u.intentId ? `https://dashboard.stripe.com/payments/${u.intentId}` : '' })),
             // Every link has a programme; only quick links can be anything but JFP.
             programme: q.programme || 'jfp',
             ...(q.charge ? { chargeId: q.charge.id, chargeKind: q.charge.kind } : {}), ...(q.invoiceId ? { invoiceId: q.invoiceId } : {}), ...(q.noPlayerReason ? { noPlayerReason: q.noPlayerReason } : {}), ...(q.paidOffline ? { paidOffline: true, paidMethod: q.paidMethod || '' } : {}),

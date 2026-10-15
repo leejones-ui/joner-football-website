@@ -8,6 +8,7 @@ import { loadRoster, getTerm4Row } from './_jfp-airtable.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { accountInvite } from './_jfp-email.js'
 import { quickUrl } from './_jfp-quick.js'
+import { syncLink } from './_jfp-fee-sync.js'
 import { familyPlan, createPayreq, payreqUrl } from './jfp-portal-data.js'
 import {
   newMsg, getMsg, saveMsg, listMsgs, event, isFinal, claim, payloadHash, evidenceOf, familyPhone, maskPhone, normalisePhone, sha,
@@ -28,7 +29,11 @@ export async function familyNow(req, config, email) {
   const roster = await loadRoster()
   const rows = roster.players.filter((r) => fam.players.some((p) => p.rowId === r.id))
   const payreqs = await listPayreqs()
-  const payreq = payreqs.find((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.some((id) => fam.owingRowIds.includes(id))) || null
+  const found = payreqs.find((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.some((id) => fam.owingRowIds.includes(id))) || null
+  // The link at what the place owes now (a fee changed since: _jfp-fee-sync.js),
+  // so a message never carries a link asking for an old amount.
+  const synced = found ? await syncLink(found, { all: payreqs, by: 'system: fee sync (Messages)' }) : null
+  const payreq = synced && ['open', 'checkout'].includes(synced.status) ? synced : null
   return { fam, rows, payreq, evidence: evidenceOf(rows, payreq) }
 }
 
