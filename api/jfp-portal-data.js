@@ -2581,9 +2581,60 @@ async function saveTrialFeedback(res, principal, config, isAdmin, body) {
   const line = `${sydneyToday()}, Coach ${byName} (trial ${fb.date || 'date not set'}, ${where}): ${verdict}${level ? `. Level: ${level.toLowerCase()}` : ''}${best ? `. Best group: ${best}` : ''}.\n${notes}`
   const key = profileKey(row.player, row.email)
   try { await addTrialFeedback({ existing: await findProfile({ key, rowIds: [row.id] }), name: row.player, key, emails: rowEmails(row), rowIds: [row.id], line, by: principal.email }) } catch (e) { console.error('jfp trial feedback airtable failed', e) }
-  if (!isTestName(row.player)) await telegramAlert(`Trial feedback: ${row.player} (${where}) from Coach ${byName}: ${verdict}${best ? `, best group: ${best}` : ''}. Full notes on the Players tab.`)
+  if (!isTestName(row.player)) await telegramAlert(`Trial feedback: ${row.player} (${where}) from Coach ${byName}: ${verdict}${best ? `, best group: ${best}` : ''}. Read it in the portal: Program > Trial feedback.`)
   await audit({ by: principal.email, action: 'trial.feedback', target: row.id, after: { verdict, level } })
   return res.status(200).json({ success: true })
+}
+
+// ---------- Trial feedback for Lee and Ligia (15 Oct 2026) ----------
+// Coach Sam's feedback on Lina D'Arrigo sat hidden in Registers. Every trial
+// player is listed here with the coach's feedback; a new one is counted on
+// the nav (red mark) until Lee or Ligia accept, move, decline or mark it read.
+const TRIAL_DECISION = 'jfp:trial-decision'
+const TRIAL_DECISIONS = ['accepted', 'moved', 'declined', 'seen']
+async function trialDecisionsAll() {
+  const raw = (await kvCommand(['HGETALL', TRIAL_DECISION])) || []
+  const out = {}
+  for (let i = 0; i + 1 < raw.length; i += 2) { try { out[raw[i]] = JSON.parse(raw[i + 1]) } catch {} }
+  return out
+}
+async function trialsData(config, { fresh = false } = {}) {
+  const [roster, groups, fb, dec] = await Promise.all([loadRoster({ fresh }), listGroups(), trialFeedbackAll(), trialDecisionsAll()])
+  const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
+  const today = sydneyToday()
+  const ids = new Set([...roster.players.filter((r) => r.holdsPlace && /trial/i.test(r.paymentType)).map((r) => r.id), ...Object.keys(fb)])
+  const items = []
+  for (const id of ids) {
+    const r = roster.players.find((x) => x.id === id)
+    if (!r || isTestName(r.player)) continue
+    const g = byId[r.groupId] || null
+    const f = fb[id] || null
+    const d = dec[id] || null
+    // A decision older than the latest feedback does not hide it.
+    const decided = d && (!f || d.at >= f.at) ? d : null
+    const date = trialDateOf(r)
+    items.push({
+      rowId: r.id, name: r.player, age: playerAge(r, config.termStart), parent: r.parent, email: r.email, phone: r.phone, ownContact: r.ownContact === true,
+      groupId: g ? g.id : '', group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'No group',
+      day: g?.day || r.day, time: g?.time || r.time, place: g ? locationFor(config, g.location).name : r.location,
+      coach: g ? coachLabel(coachById(config, g.coachId)) : r.coach, trialDate: date, trialDateLabel: date ? dateLabel(date) : '',
+      stillTrial: /trial/i.test(r.paymentType), paymentType: r.paymentType, paymentStatus: r.paymentStatus || '', paidCents: cents(r.paidAud),
+      feedback: f, decision: decided,
+      state: decided ? decided.decision : f ? 'new' : date && date > today ? 'upcoming' : 'waiting',
+    })
+  }
+  const order = { new: 0, waiting: 1, upcoming: 2 }
+  items.sort((a, b) => (order[a.state] ?? 3) - (order[b.state] ?? 3) || (b.feedback?.at || '').localeCompare(a.feedback?.at || '') || (a.trialDate || '').localeCompare(b.trialDate || ''))
+  return { items, newCount: items.filter((x) => x.state === 'new').length }
+}
+async function decideTrial(res, principal, body) {
+  const row = await rowOr404(res, body.rowId); if (!row) return
+  if (body.decision === 'undo') { await kvCommand(['HDEL', TRIAL_DECISION, row.id]); await audit({ by: principal.email, action: 'trial.decision', target: row.id, after: { decision: 'undo' } }); return res.status(200).json({ success: true }) }
+  if (!TRIAL_DECISIONS.includes(body.decision)) return fail(res, 400, 'Choose accept, move, decline or mark as read.')
+  const d = { decision: body.decision, at: new Date().toISOString(), by: principal.email, byName: principal.name, groupId: clean(body.groupId, 80), note: clean(body.note, 300) }
+  await kvCommand(['HSET', TRIAL_DECISION, row.id, JSON.stringify(d)])
+  await audit({ by: principal.email, action: 'trial.decision', target: row.id, after: { decision: d.decision, groupId: d.groupId } })
+  return res.status(200).json({ success: true, decision: d })
 }
 
 async function attendanceFor(gid, date) {
@@ -3129,6 +3180,9 @@ async function handle(req, res) {
       case 'deleteGroup': return await deleteGroupAction(res, principal, body)
       case 'draftAges': return await draftAges(res, principal, config)
 
+      case 'trials': return res.status(200).json({ success: true, ...(await trialsData(config, { fresh: body.fresh === true })) })
+      case 'trialCount': return res.status(200).json({ success: true, newCount: (await trialsData(config)).newCount })
+      case 'trialDecide': return await decideTrial(res, principal, body)
       case 'requests': {
         await sweepExpiredOffers(principal)
         const [list, groups, roster, profiles] = await Promise.all([listApplications(), listGroups(), loadRoster(), allProfiles().catch((e) => { console.error('jfp profiles read failed', e); return null })])

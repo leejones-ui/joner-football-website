@@ -60,7 +60,7 @@ const NAV = {
   coach: [['Coaching', [['program', 'Program'], ['coach', 'My sessions'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['profile', 'My profile']]]],
   admin: [
     ['Overview', [['overview', 'Dashboard']]],
-    ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['requests', 'Requests'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
+    ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['requests', 'Requests'], ['trials', 'Trial feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
     // Joners Juniors (Lee, 13 Oct 2026): its own section, the same pages as JFP.
     JJ_NAV,
     ['Money', [['money', 'Money'], ['payments', 'Payment links'], ['prices', 'Prices']]],
@@ -75,6 +75,7 @@ const ICON = {
   program: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   families: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M16 5.6a3 3 0 0 1 0 5.8M17.5 14.3c1.7.6 2.7 2.2 3 4.7"/>',
   requests: '<path d="M4 6.5h16v10H8.5L4 20z"/><path d="M8 10.5h8M8 13.5h5"/>',
+  trials: '<path d="M5 4.5h14v15H5z"/><path d="M8.5 9l1.8 1.8L14 7.2M8.5 14.5h7"/>',
   messages: '<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/>',
   groups: '<path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="2"/>',
   next: '<path d="M5 12h12M13 7l5 5-5 5"/>',
@@ -131,7 +132,7 @@ function renderNav() {
   $('nav').innerHTML = sections.map(([title, list]) => {
     const here = list.some(([k]) => k === P.tab)
     const shut = sections.length > 1 && !here && open[title] !== true
-    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}</button>`).join('')}</div></div>`
+    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'trials' && P.trialNew ? `<span class="count" title="New trial feedback">${P.trialNew}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}</button>`).join('')}</div></div>`
   }).join('')
 }
 
@@ -196,14 +197,23 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
-  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts() } else cancelBanner()
+  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts() } else cancelBanner()
   if (!quiet) view().focus({ preventScroll: true })
 }
 // New cancellations show up within two minutes, whatever page is open.
-setInterval(() => { if (P.user && document.visibilityState === 'visible') checkCancelAlerts() }, 120000)
+setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts() } }, 120000)
+// New trial feedback from a coach: a red count on Trial feedback within two minutes (Lee, 15 Oct 2026).
+async function checkTrialAlerts() {
+  if (P.user?.role !== 'admin') return
+  const r = await post('trialCount')
+  if (!r.ok) return
+  const before = P.trialNew || 0
+  P.trialNew = r.data.newCount
+  if (before !== P.trialNew) renderNav()
+}
 
 // Auto sync (Lee, 12 Oct 2026): the page on screen re-reads Airtable and
 // Stripe by itself every 2 minutes, and as soon as you come back to the
@@ -719,9 +729,9 @@ async function linkModal(p, g) {
 }
 
 // After a trial: the rest of the term, trial fee off, pro rata from a week.
-async function termModal(p, g) {
+async function termModal(p, g, opts = {}) {
   const pr = await pricing()
-  const box = modal(`<h2 style="margin-bottom:6px">Offer the full term</h2><p class="muted small" style="margin-bottom:12px">${esc(p.name)} trialled in ${g ? `${esc(g.day)} ${esc(g.time)}` : 'a group'}. They pay for the rest of the term to lock the place in.</p>
+  const box = modal(`<h2 style="margin-bottom:6px">${esc(opts.title || 'Offer the full term')}</h2><p class="muted small" style="margin-bottom:12px">${esc(p.name)} trialled in ${g ? `${esc(g.day)} ${esc(g.time)}` : 'a group'}. They pay for the rest of the term to lock the place in.</p>
     <label class="j-field"><span>Group</span><select class="j-select" id="tm-g">${groupOptions(g?.id)}</select></label>
     <div id="tm-price"></div>
     <div id="tm-out"></div>
@@ -740,8 +750,11 @@ async function termModal(p, g) {
     if (r.data.code === 'link_open') { if (confirm(`${r.data.error}\n\nThe old link stops working and the family uses the new one.`)) return go(sendEmail, true); return }
     if (r.data.code === 'full') { if (confirm(r.data.error)) { b1.disabled = true; const again = await post('offerTerm', { rowId: p.rowId, groupId: box.querySelector('#tm-g').value, ...v, sendEmail, replace, force: true }); b1.disabled = false; if (!again.ok) return toast(again.data.error); r.data = again.data; r.ok = true } else return }
     if (!r.ok) return toast(r.data.error)
-    box.querySelector('#tm-out').innerHTML = `<div class="j-box j-box-green" style="margin:10px 0">Offered: ${esc(r.data.payreq.amountLabel)}${r.data.emailed ? ', emailed' : ''}. <button type="button" class="j-btn j-btn-line j-btn-sm" id="tm-copy">Copy link</button></div>`
+    box.querySelector('#tm-out').innerHTML = `<div class="j-box j-box-green" style="margin:10px 0">Offered: ${esc(r.data.payreq.amountLabel)}${r.data.emailed ? ', emailed' : ''}. <button type="button" class="j-btn j-btn-line j-btn-sm" id="tm-copy">Copy link</button>${opts.text ? ' <button type="button" class="j-btn j-btn-dark j-btn-sm" id="tm-text">Text them too</button>' : ''}</div>`
     box.querySelector('#tm-copy').addEventListener('click', () => copy(r.data.payreq.url))
+    const chosen = box.querySelector('#tm-g').value
+    if (opts.after) await opts.after(r.data, chosen)
+    box.querySelector('#tm-text')?.addEventListener('click', () => opts.text(r.data, chosen))
     if (!sendEmail) copy(r.data.payreq.url)
     box.querySelector('#tm-go').hidden = true; box.querySelector('#tm-copy-go').hidden = true
     P.board = null; PL.at = 0
@@ -1257,6 +1270,75 @@ function sessionNowHtml(r) {
   return `<details class="j-box j-box-grey small" style="margin-top:8px"${r.status === 'pending' ? ' open' : ''}><summary style="cursor:pointer">${head}</summary>${rows ? `<ul style="list-style:none;margin:8px 0 0;padding:0">${rows}</ul>` : '<p class="muted" style="margin-top:6px">Nobody in this session yet.</p>'}</details>`
 }
 
+// ---------- Trial feedback (Lee, 15 Oct 2026) ----------
+// Every trial player and what their coach said, newest feedback first. Accept
+// for the group (or move to another) offers the rest of the term with the
+// trial fee off, then a text if wanted; Decline removes them (kept on file).
+const TRIAL_STATE = { new: ['red', 'New feedback'], waiting: ['amber', 'Waiting for the coach'], upcoming: ['grey', 'Trial coming up'], accepted: ['green', 'Accepted'], moved: ['green', 'Moved group'], declined: ['grey', 'Declined'], seen: ['grey', 'Read'] }
+const VERDICT_PILL = { 'Ready for this group': 'green', 'Better in another group': 'amber', 'Needs a lower level': 'amber', 'Not the right fit yet': 'red' }
+async function renderTrials(keep = false) {
+  const d = keep && P.trialData ? P.trialData : (P.trialData = await need(await post('trials', { fresh: !keep })))
+  if (!P.board) P.board = await need(await post('board'))
+  P.trialNew = d.newCount; renderNav()
+  P.trialF = P.trialF || 'open'
+  const open = (x) => ['new', 'waiting', 'upcoming'].includes(x.state)
+  const list = d.items.filter((x) => P.trialF === 'all' || (P.trialF === 'open' ? open(x) : !open(x)))
+  const count = (f) => d.items.filter((x) => f === 'all' || (f === 'open' ? open(x) : !open(x))).length
+  view().innerHTML = `
+    ${psHead({ title: 'Trial feedback', count: list.length }).replace('</h1>', '</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">What the coach said after each trial. Accept for the group, move them to another group, or decline. A red number on the menu means new feedback.</div></details>')}
+    <div class="ps-tools"><div class="ps-seg" id="tf-f" role="group" aria-label="Show">${[['open', 'To decide'], ['done', 'Decided'], ['all', 'All']].map(([v, l]) => `<button type="button" data-f="${v}" aria-pressed="${P.trialF === v}">${l} ${count(v)}</button>`).join('')}</div></div>
+    ${list.length ? list.map(trialCard).join('') : '<div class="ps-table-wrap"><div class="ps-empty">Nothing here.</div></div>'}`
+  function trialCard(x) {
+    const [c, l] = TRIAL_STATE[x.state] || ['grey', x.state]
+    const f = x.feedback
+    const dec = x.decision
+    const decGroup = dec?.groupId ? P.board.groups.find((g) => g.id === dec.groupId) : null
+    return `<article class="j-card" style="padding:16px;margin-bottom:10px${x.state === 'new' ? ';border:2px solid var(--j-red, #dc2626)' : ''}">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><b style="font-size:16px">${esc(x.name)}${x.age != null ? `, ${x.age}` : ''}</b>
+        <p class="muted small" style="margin-top:4px">Trial in <b>${esc(x.group)}</b>${x.coach ? ` · ${esc(x.coach)}` : ''}${x.trialDateLabel ? ` · ${esc(x.trialDateLabel)}` : ''}${x.stillTrial ? (/^(n\/a|)$/i.test(x.paymentStatus) ? ' · free trial' : ` · trial ${esc(x.paymentStatus.toLowerCase())}`) : ''}</p></div>
+        <span class="j-pill j-pill-${c}">${esc(l)}</span></div>
+      ${f ? `<div class="j-box j-box-grey" style="margin-top:10px"><p class="small" style="margin-bottom:6px"><span class="j-pill j-pill-${VERDICT_PILL[f.verdict] || 'grey'}">${esc(f.verdict)}</span>${f.level ? ` <span class="muted">Level:</span> <b>${esc(f.level)}</b>` : ''}${f.best ? ` · <span class="muted">Best group:</span> <b>${esc(f.best)}</b>` : ''}</p>
+        <p style="white-space:pre-wrap;line-height:1.5">${esc(f.notes || '')}</p>
+        <p class="muted small" style="margin-top:6px">${esc(f.byName || f.by || 'Coach')}, ${esc(new Date(f.at).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}</p></div>`
+        : `<p class="muted small" style="margin-top:8px">${x.state === 'upcoming' ? 'The coach is asked for feedback after the trial.' : 'No feedback from the coach yet. They are asked on their My sessions page.'}</p>`}
+      ${dec ? `<p class="small" style="margin-top:8px">${esc(TRIAL_STATE[dec.decision]?.[1] || dec.decision)}${decGroup ? ` to ${esc(decGroup.day)} ${esc(decGroup.time)}, ${esc(decGroup.locationName)}` : ''} by ${esc(dec.byName || dec.by)}, ${esc(new Date(dec.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}. <button type="button" class="ps-link" data-tf-undo="${esc(x.rowId)}">Undo</button></p>` : ''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        ${!dec || dec.decision === 'seen' ? `${x.groupId ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-tf-accept="${esc(x.rowId)}">Accept for this group</button>` : ''}
+        <button type="button" class="j-btn j-btn-line j-btn-sm" data-tf-move="${esc(x.rowId)}">Move to another group</button>
+        <button type="button" class="j-btn j-btn-line j-btn-sm" data-tf-decline="${esc(x.rowId)}">Decline</button>` : ''}
+        <button type="button" class="j-btn j-btn-line j-btn-sm" data-tf-text="${esc(x.rowId)}">Text</button>
+        ${x.state === 'new' ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-tf-seen="${esc(x.rowId)}">Mark as read</button>` : ''}
+      </div></article>`
+  }
+  const item = (id) => d.items.find((x) => x.rowId === id)
+  const decide = async (rowId, decision, groupId = '') => { const r = await post('trialDecide', { rowId, decision, groupId }); if (!r.ok) toast(r.data.error); return r.ok }
+  // Kept from this drawing: offering a place clears P.board.
+  const groupsNow = P.board.groups
+  const where = (gid, x) => { const g = groupsNow.find((y) => y.id === gid); return g ? { when: `${g.day} ${g.time}`, place: g.locationName } : { when: `${x.day} ${x.time}`, place: x.place } }
+  const textFor = (x, text) => textComposer({ modal, toast, rowIds: [x.rowId], parent: x.parent, mobile: x.phone, text, title: x.ownContact ? `Text ${x.name.split(' ')[0]}` : 'Text the family', self: x.ownContact, to: x.ownContact ? x.name : '' })
+  const offer = (x, move) => termModal({ rowId: x.rowId, name: x.name, paidCents: x.paidCents, trial: true }, P.board.groups.find((g) => g.id === x.groupId) || null, {
+    title: move ? `Move ${x.name.split(' ')[0]} to another group` : `Accept ${x.name.split(' ')[0]} for this group`,
+    // The page behind redraws at once, so the card moves to Decided.
+    after: async (data, gid) => { await decide(x.rowId, gid === x.groupId ? 'accepted' : 'moved', gid); P.trialData = null; renderTrials() },
+    text: (data, gid) => { const w = where(gid, x); textFor(x, payLinkText({ parent: x.parent, player: x.name, when: w.when, place: w.place, url: data.payreq.url, self: x.ownContact, email: x.email, emailed: Boolean(data.emailed) })) },
+  })
+  $('tf-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { P.trialF = b.dataset.f; renderTrials(true) } })
+  view().querySelectorAll('[data-tf-accept]').forEach((b) => b.addEventListener('click', () => offer(item(b.dataset.tfAccept), false)))
+  view().querySelectorAll('[data-tf-move]').forEach((b) => b.addEventListener('click', () => offer(item(b.dataset.tfMove), true)))
+  view().querySelectorAll('[data-tf-seen]').forEach((b) => b.addEventListener('click', async () => { if (await decide(b.dataset.tfSeen, 'seen')) renderTrials() }))
+  view().querySelectorAll('[data-tf-undo]').forEach((b) => b.addEventListener('click', async () => { if (await decide(b.dataset.tfUndo, 'undo')) renderTrials() }))
+  view().querySelectorAll('[data-tf-text]').forEach((b) => b.addEventListener('click', () => { const x = item(b.dataset.tfText); textFor(x, helloText({ parent: x.parent, player: x.name, self: x.ownContact })) }))
+  view().querySelectorAll('[data-tf-decline]').forEach((b) => b.addEventListener('click', async () => {
+    const x = item(b.dataset.tfDecline)
+    if (!(await confirmBox(`Decline ${esc(x.name)} after the trial? Next you can remove them from Term 4 (they stay on file). Nothing is sent to the family.`, { ok: 'Decline' }))) return
+    if (!(await decide(x.rowId, 'declined'))) return
+    const g = groupsNow.find((y) => y.id === x.groupId) || null
+    removeModal({ rowId: x.rowId, name: x.name, paymentStatus: x.paymentStatus }, g, () => { P.trialData = null; renderTrials() })
+    const why = document.querySelector('#rm-why'); if (why) why.value = 'Trial was not the right fit'
+    P.trialData = null
+  }))
+}
+
 function declineModal(r) {
   const box = modal(`<h2 style="margin-bottom:6px">Decline</h2><p class="muted small" style="margin-bottom:12px">${esc(r.players.map((p) => p.name).join(', '))} for ${esc(r.group)}.</p>
     <div class="j-field"><span>Suggest other groups <span class="muted">(optional, up to 3)</span></span><div id="dc-list"></div><button type="button" class="j-btn j-btn-line j-btn-sm" id="dc-more" style="margin-top:6px">+ Add another suggestion</button></div>
@@ -1581,7 +1663,7 @@ async function renderOverview(redraw = false) {
   if (!redraw || !P.money) {
     view().innerHTML = '<p class="muted">Loading the dashboard</p>'
     // First paint from the last reading, then the latest a moment later.
-    const [mr, rq] = await Promise.all([post('money', { quick: true }), post('requests')])
+    const [mr, rq] = await Promise.all([post('money', { quick: true }), post('requests'), checkTrialAlerts()])
     const m = await need(mr)
     laterMoney('overview', (fresh) => { P.money = fresh; renderOverview(true) })
     P.money = m.money
@@ -1615,10 +1697,11 @@ async function renderOverview(redraw = false) {
         ${chartTable(['Location', 'Players', 'Paid', 'Owing', 'Paid in (after refunds)', 'Kept after Stripe fees'], m.locations.map((l) => [l.name, l.players, l.paid, money(l.owingCents), money(l.receivedCents), money(l.netCents ?? l.receivedCents)]))}</section>
       <section class="jd-card jd-span-5 jd-in" style="--i:5"><h2>Needs you</h2><ul class="jd-list">
         ${pending.slice(0, 4).map((r) => `<li><button type="button" data-tab="requests">${esc(r.players.map((p) => p.name).join(', '))}</button><span class="muted small">${esc(r.kind === 'application' ? 'Application' : r.kind === 'waitlist' ? 'Waitlist' : 'Enquiry')}</span></li>`).join('')}
+        ${P.trialNew ? `<li><button type="button" data-tab="trials">${P.trialNew} new trial feedback from coaches</button><span class="muted small">Trial feedback</span></li>` : ''}
         ${m.status.stripe ? `<li><button type="button" data-money-filter="stripe">${m.status.stripe} Stripe payment${m.status.stripe === 1 ? '' : 's'} to record in Airtable</button><span class="muted small">Money</span></li>` : ''}
         ${m.status.unpriced ? `<li><button type="button" data-money-filter="unpriced">${m.status.unpriced} players with no price set</button><span class="muted small">Money</span></li>` : ''}
         ${m.unmatched.length ? `<li><button type="button" data-money-filter="">${m.unmatched.length} Stripe payment${m.unmatched.length === 1 ? '' : 's'} not matched to a player</button><span class="muted small">Money</span></li>` : ''}
-        ${!pending.length && !m.status.stripe && !m.status.unpriced && !m.unmatched.length ? '<li><span class="muted">Nothing waiting. Nice.</span></li>' : ''}
+        ${!P.trialNew && !pending.length && !m.status.stripe && !m.status.unpriced && !m.unmatched.length ? '<li><span class="muted">Nothing waiting. Nice.</span></li>' : ''}
       </ul></section>
       ${juniorsCardShell()}
     </div>`

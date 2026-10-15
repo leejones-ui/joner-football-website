@@ -74,13 +74,13 @@ const SIGN = 'Joner ⚽️'
 const hiLine = (name) => `Hi ${firstName(name)},`
 const signIn = (email) => (email ? `sign in using this email (the one we have on file): ${email}` : 'sign in with the email we have on file')
 const lines = (...parts) => parts.filter(Boolean).join('\n\n')
-export function payLinkText({ parent, player, when, place, url, self = false, starts = '', email = '' }) {
+export function payLinkText({ parent, player, when, place, url, self = false, starts = '', email = '', emailed = true }) {
   const from = starts ? `, starting ${starts}` : ''
   return lines(
     hiLine(self ? player : parent),
     `It's Lee from Joner Football. ${self ? 'You have' : `${firstName(player)} has`} a spot in our ${when} group at ${place}${from}.`,
     `To 100% lock it in, ${signIn(email)}, sign the waiver and pay here: ${url}`,
-    `We have emailed you the same link. See you on the pitch!\n${SIGN}`,
+    `${emailed ? 'We have emailed you the same link. ' : ''}See you on the pitch!\n${SIGN}`,
   )
 }
 // After any add with no payment link: when they start and what to do next.
