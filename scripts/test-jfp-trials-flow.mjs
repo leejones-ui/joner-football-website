@@ -88,4 +88,12 @@ await test('decline and mark as read are recorded; new feedback after a decision
   assert.equal((await L('trialDecide', { rowId: ned, decision: 'nonsense' })).status, 400)
 })
 
+
+await test('a trial player with a brother or sister in a group is shown as family, for one invoice', async () => {
+  const sib = (await ok('addPlayer', { groupId: G2, force: true, player: { name: 'Toni Sibling', age: 14 }, parent: { name: 'Lena Darrow Parent', email: 'lena.d@example.com' }, payment: 'none' })).rowId
+  const x = (await ok('trials')).items.find((i) => i.rowId === lina)
+  assert.deepEqual(x.family.map((o) => o.name), ['Toni Sibling'])
+  assert.ok(sib)
+})
+
 console.log(`\n${passed} trial feedback checks passed`)

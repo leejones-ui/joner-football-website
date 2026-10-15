@@ -2619,6 +2619,8 @@ async function trialsData(config, { fresh = false } = {}) {
       day: g?.day || r.day, time: g?.time || r.time, place: g ? locationFor(config, g.location).name : r.location,
       coach: g ? coachLabel(coachById(config, g.coachId)) : r.coach, trialDate: date, trialDateLabel: date ? dateLabel(date) : '',
       stillTrial: /trial/i.test(r.paymentType), paymentType: r.paymentType, paymentStatus: r.paymentStatus || '', paidCents: cents(r.paidAud),
+      // Brothers and sisters holding a place under the same email: they can be billed together.
+      family: r.email ? roster.players.filter((o) => o.id !== r.id && o.holdsPlace && normName(o.player) !== normName(r.player) && rowEmails(o).some((e) => rowEmails(r).includes(e)) && byId[o.groupId]).map((o) => ({ name: o.player, group: `${byId[o.groupId].day} ${byId[o.groupId].time}` })) : [],
       feedback: f, decision: decided,
       state: decided ? decided.decision : f ? 'new' : date && date > today ? 'upcoming' : 'waiting',
     })

@@ -1301,9 +1301,11 @@ async function renderTrials(keep = false) {
         <p style="white-space:pre-wrap;line-height:1.5">${esc(f.notes || '')}</p>
         <p class="muted small" style="margin-top:6px">${esc(f.byName || f.by || 'Coach')}, ${esc(new Date(f.at).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}</p></div>`
         : `<p class="muted small" style="margin-top:8px">${x.state === 'upcoming' ? 'The coach is asked for feedback after the trial.' : 'No feedback from the coach yet. They are asked on their My sessions page.'}</p>`}
+      ${x.family.length && !dec ? `<p class="small" style="margin-top:8px"><span class="j-pill j-pill-blue">Family</span> Also with us: ${esc(x.family.map((o) => `${o.name}, ${o.group}`).join('; '))}</p>` : ''}
       ${dec ? `<p class="small" style="margin-top:8px">${esc(TRIAL_STATE[dec.decision]?.[1] || dec.decision)}${decGroup ? ` to ${esc(decGroup.day)} ${esc(decGroup.time)}, ${esc(decGroup.locationName)}` : ''} by ${esc(dec.byName || dec.by)}, ${esc(new Date(dec.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}. <button type="button" class="ps-link" data-tf-undo="${esc(x.rowId)}">Undo</button></p>` : ''}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         ${!dec || dec.decision === 'seen' ? `${x.groupId ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-tf-accept="${esc(x.rowId)}">Accept for this group</button>` : ''}
+        ${x.groupId && x.family.length ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-tf-family="${esc(x.rowId)}" title="Also in the family: ${esc(x.family.map((o) => `${o.name} (${o.group})`).join(', '))}">Accept and bill with the family</button>` : ''}
         <button type="button" class="j-btn j-btn-line j-btn-sm" data-tf-move="${esc(x.rowId)}">Move to another group</button>
         <button type="button" class="j-btn j-btn-line j-btn-sm" data-tf-decline="${esc(x.rowId)}">Decline</button>` : ''}
         <button type="button" class="j-btn j-btn-line j-btn-sm" data-tf-text="${esc(x.rowId)}">Text</button>
@@ -1325,6 +1327,20 @@ async function renderTrials(keep = false) {
   $('tf-f').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { P.trialF = b.dataset.f; renderTrials(true) } })
   view().querySelectorAll('[data-tf-accept]').forEach((b) => b.addEventListener('click', () => offer(item(b.dataset.tfAccept), false)))
   view().querySelectorAll('[data-tf-move]').forEach((b) => b.addEventListener('click', () => offer(item(b.dataset.tfMove), true)))
+  // One invoice for the whole family (Lee, 15 Oct 2026): the trial is marked
+  // accepted and Money > By family opens on this family to price every place.
+  view().querySelectorAll('[data-tf-family]').forEach((b) => b.addEventListener('click', async () => {
+    const x = item(b.dataset.tfFamily)
+    if (!(await confirmBox(`Accept <b>${esc(x.name)}</b> for ${esc(x.group)} and bill the family together?<br><br>Next: Money &gt; By family opens on this family. Set each child's price there and press <b>Send family invoice</b>. It replaces their older links with one.`, { ok: 'Accept and open the family' }))) return
+    if (!(await decide(x.rowId, 'accepted', x.groupId))) return
+    P.trialData = null
+    P.jf.programme = 'jfp'
+    P.moneyFilter = { ...(P.moneyFilter || {}), view: 'family', q: x.email, status: '', group: '', coach: '', ptype: '', owing: '', loc: '', term: '', year: '' }
+    await go('money')
+    // The page redraws once more with the latest money; land on the card after that too.
+    const land = () => document.querySelector('.jf-fam')?.scrollIntoView({ block: 'start' })
+    land(); setTimeout(land, 1500); setTimeout(land, 4000)
+  }))
   view().querySelectorAll('[data-tf-seen]').forEach((b) => b.addEventListener('click', async () => { if (await decide(b.dataset.tfSeen, 'seen')) renderTrials() }))
   view().querySelectorAll('[data-tf-undo]').forEach((b) => b.addEventListener('click', async () => { if (await decide(b.dataset.tfUndo, 'undo')) renderTrials() }))
   view().querySelectorAll('[data-tf-text]').forEach((b) => b.addEventListener('click', () => { const x = item(b.dataset.tfText); textFor(x, helloText({ parent: x.parent, player: x.name, self: x.ownContact })) }))
