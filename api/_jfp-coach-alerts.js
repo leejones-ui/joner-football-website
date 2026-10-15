@@ -14,6 +14,7 @@
 // office Mac (0404 780 351) like every portal text, 6am to 9pm for coaches,
 // and only to a coach with a mobile saved on the Coaches page. Lee (the
 // owner) is never chased for his own sessions.
+import { registerTaken } from './_jfp-away.js'
 import { kvCommand, listGroups, sessionDates, coachById, dateLabel, sydneyToday, to24h, locationFor, audit } from './_jfp-store.js'
 import { loadRoster, playerAge } from './_jfp-airtable.js'
 import { coverCoachFor, sydneyWallToUtcMs } from './_jfp-cancel.js'
@@ -194,7 +195,7 @@ export async function registerSweep({ config, now = Date.now() }) {
       if (endMs < since || now - endMs < FIRST_AFTER_MS || now - endMs > GIVE_UP_MS) continue
       const stage = now - endMs >= SECOND_AFTER_MS ? 2 : 1
       if (Number(await kvCommand(['HEXISTS', REG_DONE, `${g.id}|${date}|${stage}`])) === 1) continue
-      if (Number(await kvCommand(['HLEN', `jfp:att:${g.id}:${date}`])) > 0) continue
+      if (registerTaken(await kvCommand(['HVALS', `jfp:att:${g.id}:${date}`]) || [])) continue
       if (!isJuniors(g)) { roster ||= await loadRoster(); if (!playersOn(roster, g, date)) continue }
       const coach = coachById(config, (await coverCoachFor(g.id, date)) || g.coachId)
       if (!coach || isOwner(config, coach)) continue
@@ -251,7 +252,7 @@ async function extraRegisterSweep({ config, now, since, today, yesterday }) {
     if (end < since || now - end < FIRST_AFTER_MS || now - end > GIVE_UP_MS) continue
     const stage = now - end >= SECOND_AFTER_MS ? 2 : 1
     if (Number(await kvCommand(['HEXISTS', REG_DONE, `${s.id}|${s.date}|${stage}`])) === 1) continue
-    if (Number(await kvCommand(['HLEN', `jfp:att:${s.id}:${s.date}`])) > 0) continue
+    if (registerTaken(await kvCommand(['HVALS', `jfp:att:${s.id}:${s.date}`]) || [])) continue
     const coach = coachById(config, s.coachId)
     if (!coach || isOwner(config, coach)) continue
     if (Number(await kvCommand(['HSETNX', REG_DONE, `${s.id}|${s.date}|${stage}`, new Date(now).toISOString()])) !== 1) continue

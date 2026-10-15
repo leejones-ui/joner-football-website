@@ -28,6 +28,7 @@ import {
 } from './_jfp-store.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, savePhoto, waiverPrefill, DOB_MIN, dobMax, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
+import { markToldAway, clearToldAway } from './_jfp-away.js'
 import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
@@ -300,6 +301,8 @@ async function cancelSession(res, parent, body) {
     coverCoachId: group ? await coverCoachFor(group.id, date) : '',
   })
   if (!out.ok) return fail(res, out.status, out.error, out.code ? { code: out.code } : {})
+  // The register shows them Away (told us) for that date.
+  if (out.record.status === 'active') await markToldAway({ config, group, rec: out.record }).catch((e) => console.error('jfp told-away failed', e))
   // Who heard (round 3): the coach taking the session and Ligia (staff).
   // A coach who is also on the staff email counts as told by that one.
   const d = out.record.deliveries || {}
@@ -311,6 +314,7 @@ async function withdrawSession(res, parent, body) {
   const config = await getConfig()
   const out = await withdrawCancel({ config, parentEmail: parent.email, id: clean(body.id, 40) })
   if (!out.ok) return fail(res, out.status, out.error, out.code ? { code: out.code } : {})
+  if (out.record?.status === 'withdrawn') await clearToldAway({ config, group: await getGroup(out.record.groupId), rec: out.record }).catch((e) => console.error('jfp told-away clear failed', e))
   return res.status(200).json({ success: true, already: out.already })
 }
 

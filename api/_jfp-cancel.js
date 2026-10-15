@@ -224,7 +224,7 @@ export async function submitCancel({ config, parentEmail, parentName, row, group
       coachIds: coaches.map((c) => c.id), coachNames: coaches.map((c) => `Coach ${coachLabel(c)}`),
       date, dateLabel: dateLabel(date), startMs: v.notice.startMs, startAt: new Date(v.notice.startMs).toISOString(),
       reasonKey: v.reason, reason: REASONS[v.reason], note: v.note,
-      submittedAt: new Date(nowMs).toISOString(), submittedMs: nowMs,
+      submittedAt: new Date(nowMs).toISOString(), submittedMs: nowMs, noticeAt: new Date(nowMs).toISOString(),
       noticeMinutes: v.notice.minutes, noticeHours: v.notice.hours, noticeLevel: v.notice.level, noticeLabel: noticeLabel(v.notice.minutes),
       deliveries: {}, pending: true,
     }

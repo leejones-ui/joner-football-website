@@ -94,6 +94,7 @@ function redis(cmd) {
     case 'HGET': return live(args[0])?.value.get(args[1]) ?? null
     case 'HEXISTS': return live(args[0])?.value.has(args[1]) ? 1 : 0
     case 'HLEN': return live(args[0])?.value.size ?? 0
+    case 'HVALS': { const h = live(args[0]); return h ? [...h.value.values()] : [] }
     case 'HGETALL': { const h = live(args[0]); return h ? [...h.value.entries()].flat() : [] }
     case 'ZADD': {
       const z = zset(args[0]); let i = 1; let xx = false

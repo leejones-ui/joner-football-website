@@ -422,6 +422,32 @@ await test('a coach without a phone is simply not listed to families, and the pu
   assert.ok(!/0411|jonerfootballsam/.test(public_), 'the public timetable shows neither phone nor email')
 })
 
+await test("Can't make it marks the register Away (told us); Undo clears it unless the coach has marked them since", async () => {
+  const dates = rileyEnDates(RILEY, await overview(parentRiley))
+  const day = dates.find((d) => ![D1, D2, D3].includes(d))
+  const att = () => kv(['HGET', `jfp:att:${TUE420}:${day}`, RILEY.id])
+  const row = async () => (await airtable()).attendance.find((r) => r.fields['Player Name'] === 'Riley Returning' && r.fields['Session Date'] === day)
+  const r = await acct(parentRiley, 'cancelSession', { rowId: RILEY.id, date: day, reason: 'sick', note: '' })
+  assert.equal(r.status, 200, JSON.stringify(r.data))
+  assert.equal(await att(), 'Notified', 'a value of its own, not a coach no-show')
+  assert.deepEqual([(await row()).fields['Attendance Status'], (await row()).fields['Marked By']], ['Absent', 'returning@example.com'])
+  const rec = await kv(['HGET', 'jfp:cancels', r.data.cancellation.id])
+  assert.ok(rec.noticeAt && Number.isFinite(rec.noticeHours) && Number.isFinite(rec.noticeMinutes), 'the notice is on the cancellation for auto charge')
+  // The coach sees it on the register.
+  const sam = client(); await signIn(sam, 'jonerfootballsam@gmail.com', 'staff')
+  const sess = (await portal(sam, 'coachSessions', { date: day })).data.sessions.find((x) => x.id === TUE420)
+  assert.equal(sess.attendance[RILEY.id], 'Notified')
+  // Undo: cleared, here and in Airtable.
+  assert.equal((await acct(parentRiley, 'withdrawCancel', { id: r.data.cancellation.id })).status, 200)
+  assert.equal(await att(), null)
+  assert.equal((await row()).fields['Attendance Status'] ?? null, null)
+  // Told us again, then the coach marks them Here (they came after all): Undo leaves the coach's mark.
+  assert.equal((await acct(parentRiley, 'cancelSession', { rowId: RILEY.id, date: day, reason: 'family', note: '' })).status, 200)
+  assert.equal((await portal(sam, 'markAttendance', { groupId: TUE420, date: day, rowId: RILEY.id, status: 'Present' })).status, 200)
+  assert.equal((await acct(parentRiley, 'withdrawCancel', { id: r.data.cancellation.id })).status, 200)
+  assert.equal(await att(), 'Present')
+})
+
 console.log(`${passed} passed`)
 harness.kill()
 process.exit(0)
