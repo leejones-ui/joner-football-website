@@ -1209,6 +1209,7 @@ async function renderRequests(keep = false) {
         <p class="muted small" style="margin-top:4px">Wants <b>${esc(r.group)}</b> · ${esc(new Date(r.createdAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</p></div>
         <span class="j-pill j-pill-grey">${esc(r.status === 'offered' ? (r.offer === 'trial' ? 'Trial offered' : 'Place offered') : ({ pending: 'Waiting', declined: 'Declined', done: 'Done', expired: 'Offer expired' }[r.status] || r.status))}</span></div>
       ${Object.keys(r.answers || {}).length ? `<p class="small" style="margin-top:8px">${Object.entries(r.answers).filter(([k]) => k !== 'videos').map(([k, v]) => `<span class="muted">${esc(ANSWER[k] || k)}:</span> <b>${esc(v)}</b>`).join(' · ')}${r.answers.videos ? `<br><span class="muted">Videos:</span> ${linksHtml(r.answers.videos) || esc(r.answers.videos)}` : ''}</p>` : r.club ? `<p class="small" style="margin-top:8px"><span class="muted">Club:</span> <b>${esc(r.club)}</b></p>` : ''}
+      ${sessionNowHtml(r)}
       <p class="small" style="margin-top:6px">${esc(r.parentName)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a> · <a href="tel:${esc(r.mobile)}">${esc(r.mobile)}</a></p>
       ${r.message ? `<p class="small j-box j-box-grey" style="margin-top:8px">${esc(r.message)}</p>` : ''}
       ${r.players.some((p) => p.isNew) ? `<p class="muted small" style="margin-top:6px">New to JFP${r.players.some((p) => p.waiver) ? ', waiver signed' : ''}.</p>` : r.players.some((p) => p.waiver) ? '<p class="muted small" style="margin-top:6px">Waiver signed with the application.</p>' : ''}
@@ -1239,6 +1240,21 @@ async function renderRequests(keep = false) {
       toast('Updated'); renderRequests()
     }))
   }
+}
+
+// Who is in the session they asked for, so the decision is quick (Lee, 15 Oct 2026).
+function sessionNowHtml(r) {
+  const s = r.session
+  if (!s) return ''
+  const ages = s.players.map((p) => p.age).filter((a) => a != null)
+  const levels = {}
+  for (const p of s.players) if (p.level) levels[p.level] = (levels[p.level] || 0) + 1
+  const head = [`<b>${s.taken}${s.capacity ? ` of ${s.capacity}` : ''}</b> in this session now`, s.coach ? `Coach ${esc(s.coach)}` : '',
+    ages.length ? `ages ${Math.min(...ages)}${Math.max(...ages) !== Math.min(...ages) ? ` to ${Math.max(...ages)}` : ''}` : '',
+    s.minAge != null && s.maxAge != null ? `group set for ${s.minAge} to ${s.maxAge}` : '',
+    Object.keys(levels).length ? Object.entries(levels).sort((a, b) => b[1] - a[1]).map(([l, n]) => `${esc(l)} ${n}`).join(', ') : ''].filter(Boolean).join(' · ')
+  const rows = s.players.map((p) => `<li style="padding:3px 0"><b>${esc(p.name)}</b>${p.age != null ? `, ${p.age}` : ''}${p.club ? ` <span class="muted">· ${esc(p.club)}</span>` : ''}${p.level ? ` <span class="muted">· ${esc(p.level)}</span>` : ''}${p.positions.length ? ` <span class="muted">· ${esc(p.positions.join(', '))}</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-amber">Trial</span>' : !p.confirmed ? ' <span class="j-pill j-pill-grey">Awaiting reply</span>' : ''}</li>`).join('')
+  return `<details class="j-box j-box-grey small" style="margin-top:8px"${r.status === 'pending' ? ' open' : ''}><summary style="cursor:pointer">${head}</summary>${rows ? `<ul style="list-style:none;margin:8px 0 0;padding:0">${rows}</ul>` : '<p class="muted" style="margin-top:6px">Nobody in this session yet.</p>'}</details>`
 }
 
 function declineModal(r) {
@@ -1281,6 +1297,7 @@ async function offerModal(r, decision) {
   const trial = decision === 'trial'
   const box = modal(`<h2 style="margin-bottom:6px">${trial ? 'Offer a trial first' : 'Accept for the term'}</h2><p class="muted small" style="margin-bottom:12px">${esc(r.players.map((p) => p.name).join(', '))}. The place is held in Airtable as Awaiting Reply for 7 days, and locks in once it is paid.</p>
     <label class="j-field"><span>Group</span><select class="j-select" id="of-g">${groupOptions(r.groupId)}</select></label>
+    <div id="of-who" class="j-box j-box-grey small" style="margin:-4px 0 10px"></div>
     <div id="of-body"></div>
     <label class="j-check"><input type="checkbox" id="of-send" checked> <span>Email the family ${trial ? 'the trial date and a link to pay for it' : 'the offer and payment link'}</span></label>
     <div id="of-out"></div>
@@ -1288,6 +1305,9 @@ async function offerModal(r, decision) {
   let read
   const draw = () => {
     const g = P.board.groups.find((x) => x.id === box.querySelector('#of-g').value)
+    // Who is in the chosen group now (names and ages), so moving them elsewhere is an easy call.
+    const who = (g.players || []).filter((p) => !/test/i.test(p.name)).slice().sort((a, b) => (a.age ?? 99) - (b.age ?? 99))
+    box.querySelector('#of-who').innerHTML = `<b>${who.length}${g.capacity ? ` of ${g.capacity}` : ''}</b> in this group now${g.coachName ? ` · Coach ${esc(g.coachName)}` : ''}${who.length ? `: ${who.map((p) => `${esc(p.name)}${p.age != null ? ` (${p.age})` : ''}`).join(', ')}` : ''}`
     if (trial) {
       box.querySelector('#of-body').innerHTML = `<div class="j-two"><label class="j-field"><span>Trial session</span><select class="j-select" id="of-date">${dateOptions(pr, g.day, nextDate(pr, g.day))}</select></label><label class="j-field"><span>Trial price (A$)</span><input class="j-input" id="of-amt" inputmode="decimal" value="${(pr.prices.trial * r.players.length) / 100}"></label></div>`
       read = () => ({ startDate: box.querySelector('#of-date').value, amountCents: Math.round(Number(box.querySelector('#of-amt').value) * 100) })

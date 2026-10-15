@@ -330,6 +330,30 @@ async function writeGroupAdds(list) {
   return ids
 }
 
+// Who is in a session right now, for deciding a request (Lee, 15 Oct 2026):
+// name, age, club and level of each player holding a place, and how full it is.
+function sessionNow(config, byId, roster, profiles) {
+  const memo = new Map()
+  return (gid) => {
+    const g = byId[gid]
+    if (!g || isJuniorsGroup(g)) return null
+    if (memo.has(gid)) return memo.get(gid)
+    const players = roster.players.filter((r) => r.groupId === gid && r.holdsPlace && !isTestName(r.player)).map((r) => {
+      const prof = profiles ? pickProfile(profiles, { key: profileKey(r.player, r.email), rowIds: [r.id] }) : null
+      const w = prof?.club ? null : waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)
+      const dob = prof?.dob || isoDate(r.dob) || w?.dob || ''
+      return {
+        name: r.player, age: dob ? ageOn(dob, sydneyToday()) : playerAge(r, config.termStart),
+        club: prof?.club || w?.club || '', level: prof?.level || '', positions: prof?.positions || [],
+        trial: /trial/i.test(r.paymentType), confirmed: r.confirmation === 'Confirmed',
+      }
+    }).sort((a, b) => (a.age ?? 99) - (b.age ?? 99) || a.name.localeCompare(b.name))
+    const out = { players, taken: players.length, capacity: g.capacity || null, coach: coachLabel(coachById(config, g.coachId)), minAge: g.minAge ?? null, maxAge: g.maxAge ?? null }
+    memo.set(gid, out)
+    return out
+  }
+}
+
 // The payment type and notes line for Pro sessions and session by session.
 function sessionsLine(payment, perSession) {
   const what = payment === 'pro' ? 'Pro sessions' : 'Session by session'
@@ -3093,9 +3117,10 @@ async function handle(req, res) {
 
       case 'requests': {
         await sweepExpiredOffers(principal)
-        const [list, groups, roster] = await Promise.all([listApplications(), listGroups(), loadRoster()])
+        const [list, groups, roster, profiles] = await Promise.all([listApplications(), listGroups(), loadRoster(), allProfiles().catch((e) => { console.error('jfp profiles read failed', e); return null })])
         const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
-        return res.status(200).json({ success: true, requests: list.map((r) => ({ ...r, siblings: paidSiblings(roster.players, r.email, (r.players || []).map((p) => p.name)).map((s) => ({ name: s.name, group: byId[s.groupId] ? groupSummary(byId[s.groupId], config) : '' })), group: byId[r.groupId] ? groupSummary(byId[r.groupId], config) : r.groupId === 'one-to-one' ? '1 to 1 coaching, times on request' : r.groupId, groupLabel: byId[r.groupId]?.label || (r.groupId === 'one-to-one' ? '1 to 1' : '') })) })
+        const session = sessionNow(config, byId, roster, profiles)
+        return res.status(200).json({ success: true, requests: list.map((r) => ({ ...r, session: ['pending', 'offered'].includes(r.status) ? session(r.groupId) : null, siblings: paidSiblings(roster.players, r.email, (r.players || []).map((p) => p.name)).map((s) => ({ name: s.name, group: byId[s.groupId] ? groupSummary(byId[s.groupId], config) : '' })), group: byId[r.groupId] ? groupSummary(byId[r.groupId], config) : r.groupId === 'one-to-one' ? '1 to 1 coaching, times on request' : r.groupId, groupLabel: byId[r.groupId]?.label || (r.groupId === 'one-to-one' ? '1 to 1' : '') })) })
       }
       case 'decideRequest': return await decideRequest(req, res, principal, config, body)
       // Book extra sessions and Book game analysis, from My account (round 3).
