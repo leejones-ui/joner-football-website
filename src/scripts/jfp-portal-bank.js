@@ -14,12 +14,22 @@
 // minutes, then reads the lines again. Xero only has a line once it is
 // reconciled there, so when the newest line is over 2 days old an amber note
 // says so, with the CommBank CSV upload right beside it.
+//
+// 16 Oct 2026: the same check sits up front, so it is quick to find while
+// families move to paying in the portal: bankFront() is the "Bank payments to
+// check" card (count, A$ total, when the bank was checked, Check bank now and
+// the amber note), at the top of Money and on the Dashboard. bankSummary()
+// gives the numbers, and watchBank() tells the sidebar badge when they change.
 import { esc, money } from './jfp-common.js'
 import { parseBankCsv } from './jfp-bank-csv.js'
 
 const B = { data: null, at: 0, loading: null, open: false, hiddenOpen: false, beforeOpen: false, chip: 'all', undo: null, prev: null, checking: false, draw: () => {} }
 const STALE = 5 * 60000
 const STALE_XERO = 26 * 3600000
+const watchers = new Set()
+// fn() runs whenever the bank lines are read again or one leaves the list.
+export function watchBank(fn) { watchers.add(fn) }
+const notify = () => { for (const fn of watchers) { try { fn() } catch (e) { console.error(e) } } }
 
 // ui: { post, toast }. Calls draw() when the answer comes in.
 // Money may have been drawn again while waiting: the newest page is the one redrawn.
@@ -31,6 +41,7 @@ export function loadBank(ui, draw, { force = false } = {}) {
     B.loading = null
     if (!r.ok || !r.data?.bank) { if (!B.data || B.data.error) B.data = { error: r.data?.error || 'Bank transfers could not be read just now.' } } else { B.data = r.data.bank; B.at = Date.now() }
     B.draw()
+    notify()
   })
   return B.loading
 }
@@ -74,6 +85,58 @@ export async function checkBank(ui, { pollMs = 4000, maxMs = 120000 } = {}) {
   if (!st.ok) return ui.toast(st.error || 'The bank check did not finish.', 8000)
   const fresh = [...ids()].filter((id) => !seen.has(id)).length
   ui.toast(fresh ? `Found ${fresh} new payment${fresh === 1 ? '' : 's'}` : 'No new payments')
+}
+
+// The numbers for the card and the sidebar badge. loc: one venue, or all.
+export function bankSummary(loc = '') {
+  const d = B.data
+  const items = bankItems(loc)
+  const f = bankFreshness(d)
+  return { ready: Boolean(d && !d.error), error: d?.error || '', count: items.length, cents: items.reduce((t, x) => t + (x.cents || 0), 0), matched: items.filter((x) => x.grade !== 'none').length, checking: B.checking, latest: f.latest, checkedAt: f.checkedAt, oldLines: f.oldLines, checkError: f.error }
+}
+// Opens the list on Money next time it is drawn (the Review button, the sidebar).
+export function openBankList() { B.open = true; B.chip = 'all' }
+
+const uploadHtml = (pre) => `<div class="jm-bank-up"><label class="j-btn j-btn-line j-btn-sm" for="${pre}-bank-file">Upload bank statement (CSV)</label><input type="file" id="${pre}-bank-file" accept=".csv,text/csv,text/plain" class="jm-file"><span class="small muted">CommBank NetBank &gt; Accounts &gt; Export &gt; CSV</span></div>`
+
+// The "Bank payments to check" card. pre: the id prefix ('m' on Money, 'd' on
+// the Dashboard). review: the Review button's html, if any. cls: extra classes.
+export function bankFront(pre, { loc = '', review = '', cls = '' } = {}) {
+  const d = B.data
+  const s = bankSummary(loc)
+  const count = s.ready ? `<span class="jb-n" id="${pre}-bank-count">${s.count}</span>` : ''
+  const sum = !d ? '<p class="small muted">Checking the bank lines</p>'
+    : d.error ? `<p class="j-box j-box-amber small">${esc(d.error)}</p>`
+      : s.count ? `<p class="jb-sum" id="${pre}-bank-sum"><b id="${pre}-bank-total">${esc(money(s.cents))}</b> waiting${s.matched ? ` · ${s.matched} with a match` : ''}${loc ? ' at this venue' : ''}</p>`
+        : `<p class="jb-sum small" id="${pre}-bank-sum">Nothing to check${loc ? ' at this venue' : ''}. Every bank transfer we can see is recorded or hidden.</p>`
+  const statusLine = B.checking ? 'Checking the bank… This can take up to two minutes.'
+    : s.ready ? [s.checkedAt ? `Bank checked ${stamp(s.checkedAt)}` : 'Bank not checked yet', s.latest ? `lines up to ${when(s.latest)}` : 'no bank lines yet'].join(' · ') : ''
+  const btn = `<button type="button" class="j-btn j-btn-dark j-btn-sm" id="${pre}-bank-refresh"${B.checking ? ' disabled aria-busy="true"' : ''}>${B.checking ? 'Checking the bank…' : 'Check bank now'}</button>`
+  const oldNote = s.ready && s.oldLines ? `<div class="j-box j-box-amber small" id="${pre}-bank-old"><p>Xero only has bank lines up to ${esc(when(s.latest))}. Payments appear there after they're reconciled in Xero. For anything newer, upload today's CommBank statement (CSV).</p>${uploadHtml(pre)}</div>` : ''
+  const errNote = s.ready && s.checkError && !B.checking ? `<p class="j-box j-box-amber small" id="${pre}-bank-err">${esc(s.checkError)}.${/reconnect/i.test(s.checkError) ? ' The list is from the last good check. Upload the CommBank CSV for anything newer.' : ''}</p>` : ''
+  return `<section class="jb-front ${cls}" id="${pre}-bank-front" aria-labelledby="${pre}-bank-h">
+    <div class="jb-row"><div class="jb-main"><h2 id="${pre}-bank-h">Bank payments to check ${count}</h2>${sum}${statusLine ? `<p class="small muted" id="${pre}-bank-status" aria-live="polite">${esc(statusLine)}</p>` : ''}</div>
+    <div class="jb-btns">${btn}${review}</div></div>
+    ${errNote}${oldNote}</section>`
+}
+
+// The card's buttons. ui: { post, toast, redraw }.
+export function bindBankFront(el, pre, ui) {
+  el.querySelector(`#${pre}-bank-refresh`)?.addEventListener('click', () => checkBank(ui))
+  el.querySelector(`#${pre}-bank-file`)?.addEventListener('change', (e) => uploadCsv(e, ui))
+}
+async function uploadCsv(e, ui) {
+  const file = e.target.files?.[0]
+  e.target.value = ''
+  if (!file) return
+  const p = parseBankCsv(await file.text())
+  if (p.error) return ui.toast(p.error)
+  const r = await ui.post('bankUpload', { lines: p.lines })
+  if (!r.ok) return ui.toast(r.data.error)
+  const kept = r.data.kept ?? p.lines.length
+  ui.toast(`Read ${p.lines.length} payment${p.lines.length === 1 ? '' : 's'} in. ${kept} could be JFP, ${r.data.added} new.${p.cut ? ` The oldest ${p.cut} were left out.` : ''}`, 6000)
+  B.open = true
+  loadBank(ui, ui.redraw, { force: true })
 }
 
 const GRADE = { high: ['Likely match', 'j-pill-green'], possible: ['Possible match', 'j-pill-amber'], none: ['No match yet', 'j-pill-grey'] }
@@ -126,19 +189,13 @@ export function bankPanel(loc) {
   const undo = B.undo ? `<div class="j-box j-box-blue small jm-bank-undo" id="m-bank-undo"><span>${esc(B.undo.text)}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-undo="${esc(B.undo.id)}">Undo</button></div>` : ''
   const fr = bankFreshness(d)
   const live = d && !d.error
-  const upload = '<div class="jm-bank-up"><label class="j-btn j-btn-line j-btn-sm" for="m-bank-file">Upload bank statement (CSV)</label><input type="file" id="m-bank-file" accept=".csv,text/csv,text/plain" class="jm-file"><span class="small muted">CommBank NetBank &gt; Accounts &gt; Export &gt; CSV</span></div>'
-  const statusLine = B.checking ? 'Checking the bank… This can take up to two minutes.'
-    : live ? `${fr.latest ? `Bank lines up to ${when(fr.latest)}` : 'No bank lines yet'}${fr.checkedAt ? ` · checked ${stamp(fr.checkedAt)}` : ''}` : ''
-  const check = `<div class="jm-bank-up jm-bank-check"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-bank-refresh"${B.checking ? ' disabled aria-busy="true"' : ''}>${B.checking ? 'Checking the bank…' : 'Check payments from the bank'}</button>${statusLine ? `<span class="small" id="m-bank-status">${esc(statusLine)}</span>` : ''}</div>`
-  const oldNote = live && fr.oldLines ? `<div class="j-box j-box-amber small" id="m-bank-old"><p>Xero only has bank lines up to ${esc(when(fr.latest))}. Payments appear there after they're reconciled in Xero. For anything newer, upload today's CommBank statement (CSV).</p>${upload}</div>` : ''
-  const errNote = live && fr.error && !B.checking ? `<p class="j-box j-box-amber small" id="m-bank-err">${esc(fr.error)}.${/reconnect/i.test(fr.error) ? ' The lines below are from the last good check. Upload the CommBank CSV for anything newer.' : ''}</p>` : ''
-  return `<details class="jm-next jm-bank" id="m-bank-box" ${B.open ? 'open' : ''}><summary>Bank transfers to check ${count}${toCheck ? ` <small class="muted">${toCheck} with a match</small>` : ''}</summary>
+  // The check, its status line and the amber note are up front (bankFront).
+  return `${bankFront('m', { loc, cls: 'jb-money' })}
+    <details class="jm-next jm-bank" id="m-bank-box" ${B.open ? 'open' : ''}><summary>Review the payments ${count}${toCheck ? ` <small class="muted">${toCheck} with a match</small>` : ''}</summary>
     <div class="jm-bank-src">
-      ${check}
-      ${errNote}
       <p class="small" id="m-bank-xero">${esc(xero)}${esc(csv)}</p>
       ${staleNote ? `<p class="j-box j-box-amber small" id="m-bank-stale">${esc(staleNote)}</p>` : ''}
-      ${oldNote || `<p class="small muted">Xero only shows transfers after they're reconciled in Xero. Uploading the bank CSV works straight away.</p>${upload}`}
+      ${live && fr.oldLines ? '<p class="small muted">Upload the CommBank CSV with the button in the note above.</p>' : `<p class="small muted">Xero only shows transfers after they're reconciled in Xero. Uploading the bank CSV works straight away.</p>${uploadHtml('m')}`}
     </div>
     ${undo}${chips}
     ${list}
@@ -174,20 +231,7 @@ export function bindBank(el, ui) {
   hid?.addEventListener('toggle', () => { B.hiddenOpen = hid.open })
   const bef = el.querySelector('#m-bank-before')
   bef?.addEventListener('toggle', () => { B.beforeOpen = bef.open })
-  el.querySelector('#m-bank-refresh')?.addEventListener('click', () => checkBank(ui))
-  el.querySelector('#m-bank-file')?.addEventListener('change', async (e) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    const p = parseBankCsv(await file.text())
-    if (p.error) return ui.toast(p.error)
-    const r = await ui.post('bankUpload', { lines: p.lines })
-    if (!r.ok) return ui.toast(r.data.error)
-    const kept = r.data.kept ?? p.lines.length
-    ui.toast(`Read ${p.lines.length} payment${p.lines.length === 1 ? '' : 's'} in. ${kept} could be JFP, ${r.data.added} new.${p.cut ? ` The oldest ${p.cut} were left out.` : ''}`, 6000)
-    B.open = true
-    loadBank(ui, ui.redraw, { force: true })
-  })
+  bindBankFront(el, 'm', ui)
   box.addEventListener('click', async (e) => {
     const ch = e.target.closest('[data-bank-chip]')
     if (ch) { B.chip = ch.dataset.bankChip; return ui.redraw() }
@@ -245,6 +289,7 @@ export function bindBank(el, ui) {
     B.data.hidden = [{ id: item.id, date: item.date, cents: item.cents, payer: item.payer, source: item.source }, ...(B.data.hidden || []).filter((x) => x.id !== item.id)]
     ui.toast(`Hidden: ${money(item.cents)} from ${item.payer}. Show it again under Hidden.`, 6000)
     ui.redraw()
+    notify()
   })
 }
 
@@ -254,6 +299,7 @@ export function bankDone(id) {
   if (B.data?.items) B.data.items = B.data.items.filter((x) => x.id !== id)
   if (B.data?.before) B.data.before = B.data.before.filter((x) => x.id !== id)
   B.at = 0
+  notify()
 }
 // A holiday line put back from the Holiday training view: ask the bank again next time.
 export function bankStale() { B.at = 0 }

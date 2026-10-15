@@ -21,7 +21,8 @@ function markup() {
 }
 
 // onPost(body) may answer an action itself (return the JSON), else the defaults below.
-export async function openPortal({ money, hash = '#money', player = null, onPost = null } = {}) {
+// role: 'admin' (the default) or 'coach'.
+export async function openPortal({ money, hash = '#money', player = null, onPost = null, role = 'admin' } = {}) {
   const errors = []
   const vc = new VirtualConsole()
   vc.on('jsdomError', (e) => { if (!/Not implemented: navigation/.test(e.message)) errors.push(e) })
@@ -38,7 +39,7 @@ export async function openPortal({ money, hash = '#money', player = null, onPost
   w.addEventListener('unhandledrejection', (e) => errors.push(e.reason))
   const reply = (data, status = 200) => ({ ok: status < 400, status, json: async () => data })
   w.fetch = async (url, init = {}) => {
-    if (String(url).startsWith('/api/jfp-auth')) return reply({ success: true, user: { name: 'Coach Test', role: 'admin', email: 'staff@example.com' } })
+    if (String(url).startsWith('/api/jfp-auth')) return reply({ success: true, user: { name: 'Coach Test', role, email: 'staff@example.com' } })
     const body = init.body ? JSON.parse(init.body) : {}
     posts.push(body)
     const custom = onPost?.(body)

@@ -113,6 +113,9 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jp-sidebar .jp-nav button.jp-nav-sec:hover { color: var(--j-ink); background: transparent; }
 .jp-nav-sec svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s; }
 .jp-navgrp.shut .jp-nav-sec svg { transform: rotate(-90deg); }
+/* A folded section still shows its Bank payments count (Lee, 16 Oct 2026). */
+.jp-sidebar .jp-nav .jp-nav-sec .count { margin-right: 6px; letter-spacing: 0; }
+.jp-navgrp:not(.shut) .jp-nav-sec .count { display: none; }
 .jp-navgrp.shut .jp-navlist { display: none; }
 .jp-navlist { display: flex; flex-direction: column; gap: 2px; }
 .jp-navgrp:first-child .jp-nav-sec { padding-top: 2px; }
@@ -484,6 +487,25 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jm-bank-hidden .jm-hist li { gap: 8px; }
 .jm-bank-hidden .jm-hist li > span { min-width: 0; overflow-wrap: anywhere; }
 .jm-bank-hidden .j-btn { min-height: 40px; flex: 0 0 auto; }
+/* Bank payments to check, up front on Money and the Dashboard (Lee, 16 Oct 2026). */
+.jb-front { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.jb-money { margin: 0 0 14px; border: 1px solid var(--j-line); border-radius: 14px; padding: 14px 16px; background: var(--j-surface); }
+.jb-money + .jm-bank { margin: -6px 0 16px; }
+.jb-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; }
+.jb-main { min-width: 0; flex: 1 1 260px; }
+.jb-main p { margin: 2px 0 0; overflow-wrap: anywhere; }
+.jb-front h2 { font-size: 16px; font-weight: 750; letter-spacing: -0.01em; margin: 0 0 2px; display: flex; align-items: center; gap: 8px; }
+.jb-n { display: inline-block; min-width: 24px; padding: 1px 8px; border-radius: 999px; background: var(--j-ink); color: var(--j-surface); font-size: 13px; font-weight: 750; text-align: center; font-variant-numeric: tabular-nums; }
+.jb-sum { font-size: 14px; }
+.jb-sum b { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-right: 2px; }
+.jb-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.jb-btns .j-btn { min-height: 44px; }
+.jb-front .j-box { margin: 0; }
+.jb-front .j-box p { margin: 0; }
+@media (max-width: 560px) {
+  .jb-btns { width: 100%; }
+  .jb-btns .j-btn { flex: 1 1 0; justify-content: center; }
+}
 .jv-total td { font-weight: 750; border-top: 1px solid var(--j-line); }
 .jm-bank-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
 .jm-bank-row { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 10px; border: 1px solid var(--j-line); border-radius: 10px; cursor: pointer; }

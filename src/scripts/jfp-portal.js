@@ -14,7 +14,7 @@ import { renderCampsMoney, campsData } from './jfp-portal-camps.js'
 import { renderEverything } from './jfp-portal-everything.js'
 import { drawFamilies, sessionModal } from './jfp-portal-family.js'
 import { psHead, psSearch, psSelect, psBadge, psChips, psToolsMore, PS_PAY } from './jfp-portal-ps.js'
-import { bankPanel, bindBank, loadBank, bankDone, bankStale } from './jfp-portal-bank.js'
+import { bankPanel, bindBank, loadBank, bankDone, bankStale, bankFront, bindBankFront, bankSummary, openBankList, watchBank } from './jfp-portal-bank.js'
 import { renderHolidayMoney, holidayStale, holidayData } from './jfp-portal-holiday.js'
 import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYearChart } from './jfp-portal-years.js'
 import { renderPricesPage, quickModal, progPill, WHERE as QUICK_WHERE } from './jfp-portal-quick.js'
@@ -63,7 +63,8 @@ const NAV = {
     ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['requests', 'Requests'], ['trials', 'Trial feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
     // Joners Juniors (Lee, 13 Oct 2026): its own section, the same pages as JFP.
     JJ_NAV,
-    ['Money', [['money', 'Money'], ['payments', 'Payment links'], ['prices', 'Prices']]],
+    // Bank payments (Lee, 16 Oct 2026): Money with the bank list open, its count on the badge.
+    ['Money', [['money', 'Money'], ['bank', 'Bank payments'], ['payments', 'Payment links'], ['prices', 'Prices']]],
     ['Coaches', [['coach', 'Registers'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['coaches', 'Coaches']]],
     ['Admin', [['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]],
   ],
@@ -81,6 +82,7 @@ const ICON = {
   next: '<path d="M5 12h12M13 7l5 5-5 5"/>',
   holiday: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>',
   money: '<rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v5M17.5 9.5v5"/>',
+  bank: '<path d="M3.5 9.5 12 4.5l8.5 5M5 10v7.5M9.5 10v7.5M14.5 10v7.5M19 10v7.5M3.5 20h17"/>',
   payments: '<path d="M9.5 14.5 14.5 9.5M8 12l-2 2a3 3 0 0 0 4.2 4.2l2-2M16 12l2-2a3 3 0 0 0-4.2-4.2l-2 2"/>',
   prices: '<path d="M4 4h7l9 9-7 7-9-9z"/><circle cx="8.5" cy="8.5" r="1.4"/>',
   coach: '<path d="M8 4.5h8M9 3.5h6v3H9z"/><rect x="5" y="5" width="14" height="16" rx="2.5"/><path d="M8.5 11.5l1.8 1.8 3.5-3.6M8.5 17h7"/>',
@@ -122,6 +124,8 @@ function start() {
   if (hash === 'money' && ['camps', 'all'].includes(qp.get('programme'))) Object.assign(P.jf, { programme: qp.get('programme'), year: /^\d{4}$/.test(qp.get('year') || '') ? Number(qp.get('year')) : 0 })
   if (hash === 'money' && qp.get('loc')) P.moneyFilter = { ...(P.moneyFilter || {}), loc: qp.get('loc') }
   if (hash === 'money' && !['juniors', 'holiday', 'pro', 'extra', 'invoices', 'camps', 'all'].includes(qp.get('programme')) && (qp.get('year') || qp.get('term'))) P.moneyFilter = { ...(P.moneyFilter || {}), year: /^\d{4}$/.test(qp.get('year') || '') ? qp.get('year') : '', term: qp.get('year') ? '' : (qp.get('term') || '').slice(0, 30) }
+  // The sidebar's Bank payments count: read once now, then kept up by the pages.
+  if (P.user.role === 'admin') { watchBank(renderNav); loadBank(bankUiBase(), () => {}) }
   go(tabs().some(([k]) => k === hash) ? hash : tabs()[0][0])
 }
 
@@ -132,8 +136,14 @@ function renderNav() {
   $('nav').innerHTML = sections.map(([title, list]) => {
     const here = list.some(([k]) => k === P.tab)
     const shut = sections.length > 1 && !here && open[title] !== true
-    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'trials' && P.trialNew ? `<span class="count" title="New trial feedback">${P.trialNew}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}</button>`).join('')}</div></div>`
+    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span>${list.some(([k]) => k === 'bank') ? bankBadge() : ''}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'trials' && P.trialNew ? `<span class="count" title="New trial feedback">${P.trialNew}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}${k === 'bank' ? bankBadge() : ''}</button>`).join('')}</div></div>`
   }).join('')
+}
+
+// Bank payments waiting, on the sidebar (read once at sign in, then whenever the list changes).
+function bankBadge() {
+  const s = bankSummary()
+  return s.ready && s.count ? `<span class="count" title="Bank payments to check">${s.count}</span>` : ''
 }
 
 function navOpen() {
@@ -190,6 +200,7 @@ bindShell()
 // instant: a Money programme switch. The view paints its last reading at
 // once, so there is no "Loading" flash in between.
 async function go(tab, { quiet = false, instant = false } = {}) {
+  if (tab === 'bank') return reviewBank({ quiet })
   P.tab = tab
   P.nav = !quiet
   if (!quiet) history.replaceState(null, '', `#${tab}`)
@@ -203,6 +214,17 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts() } else cancelBanner()
   if (!quiet) view().focus({ preventScroll: true })
 }
+// Bank payments (the sidebar and the Dashboard's Review): Money for this
+// term, every venue, with the bank list open at the top.
+async function reviewBank({ quiet = false } = {}) {
+  openBankList()
+  P.jf.programme = 'jfp'
+  P.moneyFilter = { ...(P.moneyFilter || {}), term: '', year: '', loc: '' }
+  await go('money', { quiet })
+  if (!quiet) $('m-bank')?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+}
+const bankUiBase = () => ({ post, toast })
+
 // New cancellations show up within two minutes, whatever page is open.
 setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts() } }, 120000)
 // New trial feedback from a coach: a red count on Trial feedback within two minutes (Lee, 15 Oct 2026).
@@ -1716,11 +1738,13 @@ async function renderOverview(redraw = false) {
   const hi = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const paidPlayers = m.status.paid + m.status.stripe
   const pending = (P.requests || []).filter((r) => r.status === 'pending')
+  const admin = P.user.role === 'admin'
   view().innerHTML = `
     <div class="jd-head"><div><h1>${hi}, ${esc(P.user.name.split(' ')[0])}</h1><p>${esc(m.term || 'Term 4')}${m.stripeAt ? ` · Stripe checked ${esc(new Date(m.stripeAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))}` : ''}</p></div>
       <div class="jd-sync"><button type="button" class="j-btn j-btn-line j-btn-sm" id="d-refresh">Refresh from Stripe</button></div></div>
     ${m.stripeError ? `<div class="j-box j-box-amber" style="margin-bottom:12px">${esc(m.stripeError)}</div>` : ''}
     <div class="jd-grid">
+      ${admin ? '<div class="jd-card jb-dash" id="d-bank"></div>' : ''}
       <section class="jd-card jd-hero jd-span-5 jd-in" style="--i:0"><div><p class="lbl">Income this term</p><p class="big">${esc(money(k.incomeCents))}</p>${typeof k.netIncomeCents === 'number' ? `<p class="jm-sum"><b>${esc(money(k.netIncomeCents))}</b> kept after Stripe fees</p>` : ''}</div>
         <div class="jd-split">${SERIES.map(([key, n, c]) => `<span><span class="jd-key"><i style="background:${cssVar(c)}"></i>${n}</span><b>${esc(money(key === 'stripe' ? k.stripeCents : key === 'bank' ? k.bankCents : k.cashCents))}</b></span>`).join('')}</div></section>
       <section class="jd-card jd-tiles jd-span-7 jd-in" style="--i:1">
@@ -1748,6 +1772,17 @@ async function renderOverview(redraw = false) {
       ${juniorsCardShell()}
     </div>`
   fillJuniorsCard(juniorsUi())
+  // Bank payments to check (Lee, 16 Oct 2026): admins only, near the top.
+  if (admin) {
+    const bankUi = { ...bankUiBase(), redraw: () => { if (P.tab === 'overview' && $('d-bank')) drawDashBank() } }
+    const drawDashBank = () => {
+      $('d-bank').innerHTML = bankFront('d', { review: '<button type="button" class="j-btn j-btn-line j-btn-sm" id="d-bank-review">Review</button>' })
+      bindBankFront($('d-bank'), 'd', bankUi)
+      $('d-bank-review').addEventListener('click', () => reviewBank())
+    }
+    drawDashBank()
+    loadBank(bankUi, bankUi.redraw)
+  }
   weeklyChart($('c-weekly'), m.weekly, !redraw)
   locationChart($('c-locs'), m.locations, !redraw)
   $('d-refresh').addEventListener('click', async (e) => {
@@ -2350,12 +2385,12 @@ async function renderMoney(pre) {
   view().innerHTML = `
     ${moneyHead({ controls: `${programmeSwitch('jfp')}${showingPicker(m.venueTerms?.length ? m.venueTerms : [m.term], m.term, f)}<button type="button" class="j-btn j-btn-dark j-btn-sm" id="m-add">+ Add a player</button>`, at: new Date(P.moneyAt || Date.now()).toISOString(), tip: `${esc(JFP_TIP)}<label class="jm-since"><span>Term payments counted from</span><input class="j-input" type="date" id="m-since" value="${esc(m.since)}"></label><span class="muted small">Change the date, then press Refresh.</span>`, refresh: 'm-refresh' })}
     ${m.stripeError ? `<div class="j-box j-box-amber">${esc(m.stripeError)}</div>` : ''}
+    <div id="m-bank"></div>
     <div class="jm-scope">
       <div class="jm-locs" id="m-locs" role="group" aria-label="Venue">${[{ id: '', name: 'All', netCents: m.kpis.netIncomeCents ?? m.kpis.incomeCents }, ...moneyVenues(m)].map((l) => `<button type="button" data-mloc="${esc(l.id)}" aria-pressed="${f.loc === l.id}"><span class="nm">${esc(l.name)}</span> <span class="amt">${esc(money(l.netCents ?? l.receivedCents ?? 0))} kept</span></button>`).join('')}</div>
       <button type="button" class="j-btn j-btn-line j-btn-sm jm-csv" id="m-csv">Download for accountant</button>
     </div>
     <div id="m-scope"></div>
-    <div id="m-bank"></div>
     <div class="ps-tools jm-tools" role="search">
       <div class="ps-seg" role="group" aria-label="Show"><button type="button" data-money-view="players" aria-pressed="${f.view !== 'family'}">Players</button><button type="button" data-money-view="family" aria-pressed="${f.view === 'family'}">By family</button></div>
       ${psSearch('m-q', 'Search player, parent or email…', f.q, 'Search Money by player, parent or email')}

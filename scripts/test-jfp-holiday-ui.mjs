@@ -151,7 +151,7 @@ const bankIds = (p) => [...p.d.querySelectorAll('#m-bank [data-bank]')].map((li)
 
 await test('bank transfers: the chips, the hints and the fold for lines from before this term', async () => {
   const p = await openPortal({ money: fresh(), onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: BANK() } : null) })
-  assert.match(p.text('#m-bank summary'), /^Bank transfers to check 1 1 with a match$/, 'the count is this term')
+  assert.match(p.text('#m-bank summary'), /^Review the payments 1 1 with a match$/, 'the count is this term')
   assert.deepEqual([...p.d.querySelectorAll('#m-bank-chips [data-bank-chip]')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()), ['All 3', 'This term 1', 'Looks like holiday 1', 'Looks like last term 2', 'Hidden 0'])
   assert.deepEqual(bankIds(p), [XN, XH, XL], 'All: this term, then the fold')
   assert.match(p.text('#m-bank-before summary'), /^Before this term \(2\)$/)

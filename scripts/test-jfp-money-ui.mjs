@@ -403,11 +403,11 @@ await test('bank transfers to check: the count, where it is from, the hint, and 
   for (const pl of m.players) if (['p2', 'p7'].includes(pl.rowId)) pl.familyKey = 'fam@example.com'
   const p = await openPortal({ money: m, onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: BANK() } : null) })
   assert.equal(p.posts.filter((b) => b.action === 'bankCheck').length, 1, 'read once, on its own')
-  assert.match(p.text('#m-bank summary'), /^Bank transfers to check 3 2 with a match$/)
+  assert.match(p.text('#m-bank summary'), /^Review the payments 3 2 with a match$/)
   assert.match(p.text('#m-bank-xero'), /^From Xero, updated /)
   // These lines are days old, so the amber note shows with the upload in it (15 Oct 2026).
   assert.match(p.text('#m-bank-old'), /^Xero only has bank lines up to 10 Oct\. Payments appear there after they're reconciled in Xero\. For anything newer, upload today's CommBank statement \(CSV\)\./)
-  assert.match(p.text('#m-bank-status'), /^Bank lines up to 10 Oct · checked /)
+  assert.match(p.text('#m-bank-status'), /^Bank checked .+ · lines up to 10 Oct$/)
   assert.match(p.text('#m-bank'), /Upload bank statement \(CSV\)\s*CommBank NetBank > Accounts > Export > CSV/)
   assert.deepEqual(bankIds(p), [XA, CB, XC])
   const first = p.$(`#m-bank [data-bank="${XA}"]`)
@@ -421,7 +421,7 @@ await test('bank transfers to check: the count, where it is from, the hint, and 
   assert.equal(p.$(`#m-bank [data-bank="${XC}"] [data-bank-rec]`), null, 'nothing to record for with no match')
   await p.click('#m-locs [data-mloc="ntra"]')
   assert.deepEqual(bankIds(p), [CB], 'a venue shows lines whose best match is there')
-  assert.match(p.text('#m-bank summary'), /check 1 1 with a match/)
+  assert.match(p.text('#m-bank summary'), /payments 1 1 with a match/)
   await p.click('#m-locs [data-mloc="rydalmere"]')
   assert.deepEqual(bankIds(p), [])
   assert.match(p.text('#m-bank'), /Nothing to check at this venue/)
