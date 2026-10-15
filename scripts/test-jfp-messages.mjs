@@ -236,6 +236,25 @@ await test('text one family from the portal: exact words, from the verified rout
   assert.equal((await msg(lee, 'setPref', { email: 'quick@example.com', text: 'no' })).status, 200)
   const no = await msg(lee, 'quickText', { rowIds: [rowId], text: 'Hi Quinn, one more thing from Joner Football.' })
   assert.equal(no.status, 409); assert.match(no.data.error, /asked not to get texts/)
+  // From a request (16 Oct 2026): the parent's mobile on the request, before
+  // they have any Term 4 row, straight after Accept, Trial or Decline.
+  const fam = client()
+  assert.equal((await fam.call('/api/jfp-access', { password: 'term4' })).status, 200)
+  const st = await fam.call('/api/jfp-auth', { action: 'start', email: 'asker@example.com', audience: 'parent' })
+  const pcode = (await emails()).filter((e) => e.to.includes('asker@example.com') && /code/i.test(e.subject)).at(-1).subject.match(/(\d{6})/)[1]
+  assert.equal((await fam.call('/api/jfp-auth', { action: 'verify', challenge: st.data.challenge, code: pcode })).status, 200)
+  const ag = (await lee.call('/api/jfp-portal-data', { action: 'saveGroup', group: { day: 'Friday', time: '5:00pm', location: 'Belrose HQ', coachId: 'sam', capacity: 8, mode: 'application' } })).data.group.id
+  const ask = await fam.call('/api/jfp-book', { action: 'request', kind: 'application', groupId: ag, players: [{ name: 'Asha Asker', dob: '2014-02-02', emergencyName: 'Ari Asker', emergencyPhone: '0400777888' }], parentName: 'Ari Asker', mobile: '0422 333 444', answers: { club: 'X', team: 'U12' }, waiver: { accepted: { terms: true, makeups: true, payment: true, emergency: true }, media: false, signature: 'Ari Asker' } })
+  assert.equal(ask.status, 200, JSON.stringify(ask.data))
+  const reqId = (await lee.call('/api/jfp-portal-data', { action: 'requests' })).data.requests.find((x) => x.email === 'asker@example.com').id
+  const viaReq = await msg(lee, 'quickText', { requestId: reqId, text: "Hi Ari,\n\nIt's Lee from Joner Football. Thanks for applying." })
+  assert.equal(viaReq.status, 200, JSON.stringify(viaReq.data))
+  assert.deepEqual([viaReq.data.message.status, viaReq.data.message.players, viaReq.data.to], ['queued', ['Asha Asker'], viaReq.data.to])
+  assert.ok(!JSON.stringify(viaReq.data).includes('0422 333 444'), 'the number is masked')
+  const sent2 = fakeSends()
+  sidecar('ok')
+  assert.equal(fakeSends(), sent2 + 1, `the Mac sent the request text: ${JSON.stringify((await msg(lee, 'get', { id: viaReq.data.message.id })).data.message.events)}`)
+  assert.equal((await msg(lee, 'quickText', { requestId: 'APP-nope', text: 'Hi there from Joner Football.' })).status, 404)
   // Route off: nothing is queued, and the portal says why.
   assert.equal((await msg(lee, 'unverifyRoute')).status, 200)
   assert.equal((await msg(lee, 'setPref', { email: 'quick@example.com', text: 'yes', how: 'asked us to text them' })).status, 200)

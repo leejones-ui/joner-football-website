@@ -20,7 +20,7 @@ const STATE = {
 }
 
 // self: the player is their own contact, so the text goes to them (to: their name).
-export function textComposer({ modal, toast, rowIds, parent = '', mobile = '', text = '', title = '', self = false, to = '', note = '' }) {
+export function textComposer({ modal, toast, rowIds = [], requestId = '', parent = '', mobile = '', text = '', title = '', self = false, to = '', note = '' }) {
   const who = to || (self ? 'the player' : parent || 'the family')
   const box = modal(`${note ? `<div class="j-box j-box-green small" style="margin-bottom:12px">${note}</div>` : ''}<h2 style="margin-bottom:4px">${esc(title || (self ? `Text ${who}` : 'Text the family'))}</h2>
     <p class="muted small" style="margin-bottom:12px">To ${esc(who)}${mobile ? `, ${esc(mobile)}` : ''}. From the work number 0404 780 351, between 8am and 8pm. Check the words: this is exactly what they get.</p>
@@ -41,7 +41,7 @@ export function textComposer({ modal, toast, rowIds, parent = '', mobile = '', t
     const btn = e.currentTarget
     btn.disabled = true
     btn.textContent = 'Sending'
-    const r = await api('/api/jfp-messages', { action: 'quickText', rowIds, text: area.value })
+    const r = await api('/api/jfp-messages', { action: 'quickText', ...(requestId ? { requestId } : { rowIds }), text: area.value })
     if (!r.ok) {
       btn.disabled = false
       btn.textContent = 'Send from 0404 780 351'
@@ -125,5 +125,35 @@ export function familyInvoiceText({ parent, players = [], amount, url = '', paid
     `It's Lee from Joner Football. Here is the invoice for ${self ? 'your place' : who}: ${amount}.${paidCents > 0 ? ` That already takes off the ${paidLabel} you have paid.` : ''}`,
     url ? `You can pay here: ${url}` : `To pay, ${signIn(email)} at jonerfootball.com/jfp-account.`,
     `${emailed && url ? 'We have emailed you the same link. ' : ''}See you on the pitch!\n${SIGN}`,
+  )
+}
+// Requests (Lee, 16 Oct 2026): text the family straight after Accept, Trial
+// or Decline, in the same layout as the other texts.
+const names = (players) => { const f = players.map(firstName); return f.length > 1 ? `${f.slice(0, -1).join(', ')} and ${f.at(-1)}` : f[0] || '' }
+export function requestOfferText({ parent, players = [], when, place, url, email = '', emailed = true }) {
+  const n = names(players)
+  return lines(
+    hiLine(parent),
+    `It's Lee from Joner Football. Great news, ${n} ${players.length > 1 ? 'have' : 'has'} a spot in our ${when} group at ${place}.`,
+    `To 100% lock it in, ${signIn(email)}, sign the waiver and pay here: ${url}`,
+    `${emailed ? 'We have emailed you the same link. ' : ''}See you on the pitch!\n${SIGN}`,
+  )
+}
+export function requestTrialText({ parent, players = [], date, when, place, url, email = '', emailed = true }) {
+  const n = names(players)
+  return lines(
+    hiLine(parent),
+    `It's Lee from Joner Football. Thanks for applying. We would love ${n} to come for a trial on ${date} in our ${when} group at ${place}.`,
+    `To lock in the trial, ${signIn(email)}, sign the waiver and pay for the trial here: ${url}`,
+    `${emailed ? 'We have emailed you the same link. ' : ''}See you on the pitch!\n${SIGN}`,
+  )
+}
+export function requestDeclineText({ parent, players = [], group, suggest = [] }) {
+  const n = names(players)
+  return lines(
+    hiLine(parent),
+    `It's Lee from Joner Football. Thanks for applying for ${group}. It is not the right group for ${n} this term, as we keep every group at one level so each player is challenged.`,
+    suggest.length ? `${suggest.length === 1 ? 'A group we think would suit' : 'Groups we think would suit'}: ${suggest.join('; ')}. You can apply for ${suggest.length === 1 ? 'it' : 'them'} on our timetable.` : 'If you would like to talk about another group or 1 to 1 coaching, just reply to our email.',
+    `Thanks again.\n${SIGN}`,
   )
 }

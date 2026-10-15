@@ -3,7 +3,7 @@
 // See api/_jfp-messages.js for the rules. Every change is in the audit log.
 import { siteUrl } from './_holiday-store.js'
 import { firstName } from './_jfp-contact.js'
-import { getConfig, listPayreqs, getPayreq, savePayreq, getGroup, audit, clean, validEmail, ownerEmail, kvCommand } from './_jfp-store.js'
+import { getConfig, listPayreqs, getPayreq, savePayreq, getGroup, getApplication, audit, clean, validEmail, ownerEmail, kvCommand } from './_jfp-store.js'
 import { loadRoster, getTerm4Row } from './_jfp-airtable.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { accountInvite } from './_jfp-email.js'
@@ -409,9 +409,20 @@ async function unverifyRoute(res, principal) {
 // through the office Mac like every portal text, between 8am and 8pm, and
 // never to a family that said no to texts or is marked Do Not Contact.
 async function quickText(res, principal, body) {
-  const roster = await loadRoster({ fresh: true })
-  const ids = (Array.isArray(body.rowIds) ? body.rowIds : [body.rowId]).map((x) => clean(x, 30)).filter(Boolean)
-  const rows = roster.players.filter((r) => ids.includes(r.id))
+  // From a request (Lee, 16 Oct 2026: text them straight away when accepting,
+  // offering a trial or declining): the parent's own mobile and email from the
+  // request, whether or not they have a Term 4 row yet.
+  let rows
+  if (body.requestId) {
+    const a = await getApplication(body.requestId)
+    if (!a) return fail(res, 404, 'Request not found.')
+    rows = (a.players || []).map((p) => ({ id: '', player: p.name, parent: a.parentName || '', email: a.email || '', phone: a.mobile || '', ownContact: false }))
+    if (!rows.length) rows = [{ id: '', player: '', parent: a.parentName || '', email: a.email || '', phone: a.mobile || '', ownContact: false }]
+  } else {
+    const roster = await loadRoster({ fresh: true })
+    const ids = (Array.isArray(body.rowIds) ? body.rowIds : [body.rowId]).map((x) => clean(x, 30)).filter(Boolean)
+    rows = roster.players.filter((r) => ids.includes(r.id))
+  }
   if (!rows.length) return fail(res, 404, 'Player not found in Airtable.')
   // A player who is their own contact is called by their first name, never "this family".
   const self = rows.every((r) => r.ownContact)
@@ -432,8 +443,10 @@ async function quickText(res, principal, body) {
   // to a family from the portal (it would sit in the queue and expire).
   if (!route.verified) return fail(res, 409, 'Portal texts are off until Lee sends himself one test text (Messages tab, Send me a test text) and confirms it arrived. Use Text from my phone for now.', { code: 'route' })
   if (prefs[email]?.text !== 'yes') await setPref(email, { text: 'yes', how: `Booked by ${principal.name || principal.email}, who texted them their own booking details`, by: principal.email, at: new Date().toISOString() })
-  const m = newMsg({ channel: 'text', family: { email, parent: rows[0].parent, players: rows.map((r) => ({ name: r.player, rowId: r.id })), kind: 'quick' }, content: { text }, target: { ref: maskPhone(ph.phone), hash: sha(ph.phone) }, by: principal.email, route: { id: 'mac', label: 'Messages on the office Mac' } })
+  const m = newMsg({ channel: 'text', family: { email, parent: rows[0].parent, players: rows.map((r) => ({ name: r.player, rowId: r.id })), kind: 'quick', ...(body.requestId ? { requestId: clean(body.requestId, 60) } : {}) }, content: { text }, target: { ref: maskPhone(ph.phone), hash: sha(ph.phone) }, by: principal.email, route: { id: 'mac', label: 'Messages on the office Mac' } })
   m.quick = true
+  m.rowIds = m.rowIds.filter(Boolean)
+  if (body.requestId) m.requestId = clean(body.requestId, 60)
   m.status = 'queued'
   m.approvedBy = principal.email
   m.approvedAt = m.createdAt

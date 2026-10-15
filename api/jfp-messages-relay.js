@@ -3,7 +3,7 @@
 // (JFP_RELAY_TOKEN, Vercel env and a private file on the Mac only). Each text
 // is handed out once (a lease); its receipt must come back under that lease.
 import crypto from 'node:crypto'
-import { getConfig, audit, clean, coachById } from './_jfp-store.js'
+import { getConfig, audit, clean, coachById, getApplication } from './_jfp-store.js'
 import { loadRoster } from './_jfp-airtable.js'
 import {
   listMsgs, getMsg, saveMsg, event, claim, keys, sha, familyPhone, doNotContact, getPrefs, saveRelay, routeStatus, textHoursOpen, LEASE_SECONDS, normalisePhone,
@@ -48,7 +48,10 @@ async function claimNext(req, res, body) {
       if (!ph || sha(ph) !== m.target.hash) { await cancelIt(m, "the coach's mobile changed"); continue }
       to = ph
     } else {
-      const ph = familyPhone(roster.players.filter((r) => m.rowIds.includes(r.id)))
+      // A text from a request: the mobile on the request, unchanged since it was written.
+      const ph = m.requestId && !m.rowIds.length
+        ? familyPhone([{ phone: (await getApplication(m.requestId))?.mobile || '' }])
+        : familyPhone(roster.players.filter((r) => m.rowIds.includes(r.id)))
       if (!ph.phone || sha(ph.phone) !== m.target.hash) { await cancelIt(m, 'the mobile in Airtable changed'); continue }
       if (prefs[m.email]?.text !== 'yes') { await cancelIt(m, 'the family no longer has Texts: yes'); continue }
       if (dnc.has(m.email, ph.phone)) { await cancelIt(m, 'marked Do Not Contact'); continue }

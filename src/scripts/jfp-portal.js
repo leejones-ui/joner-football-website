@@ -20,7 +20,7 @@ import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYear
 import { renderPricesPage, quickModal, progPill, WHERE as QUICK_WHERE } from './jfp-portal-quick.js'
 import { playerFormHtml, wirePlayerForm, filledValues, customOptions, customPrices, noGroupPaymentHtml, wireNoGroupPayment, PROFILE_LISTS } from './jfp-portal-player-form.js'
 import { contactWords } from '../../api/_jfp-contact.js'
-import { textComposer, payLinkText, trialText, helloText, inviteText, startText } from './jfp-portal-text.js'
+import { textComposer, payLinkText, trialText, helloText, inviteText, startText, requestOfferText, requestTrialText, requestDeclineText } from './jfp-portal-text.js'
 import { JJ_NAV, JJ_TABS, JJ_ICON, renderJJ } from './jfp-portal-jj.js'
 import { quoteHtml, wireQuote, commitmentHtml, sameTiers } from './jfp-portal-quote.js'
 import { childList, submitFamily, familyModal, familyGroups } from './jfp-portal-family-add.js'
@@ -1361,11 +1361,16 @@ async function renderTrials(keep = false) {
   }))
 }
 
+// Text the family from a request (Lee, 16 Oct 2026: "contacting them ASAP is
+// key"). Their mobile from the request; nothing goes until Send.
+const textBox = (r) => `<label class="j-check"><input type="checkbox" id="rq-text" ${r.mobile ? 'checked' : 'disabled'}> <span>${r.mobile ? `Text them too (${esc(r.mobile)}). You see the words first.` : 'Text them too (no mobile on this request)'}</span></label>`
+const textRequest = (r, text) => textComposer({ modal, toast, requestId: r.id, parent: r.parentName, mobile: r.mobile, text, title: 'Text the family' })
 function declineModal(r) {
   const box = modal(`<h2 style="margin-bottom:6px">Decline</h2><p class="muted small" style="margin-bottom:12px">${esc(r.players.map((p) => p.name).join(', '))} for ${esc(r.group)}.</p>
     <div class="j-field"><span>Suggest other groups <span class="muted">(optional, up to 3)</span></span><div id="dc-list"></div><button type="button" class="j-btn j-btn-line j-btn-sm" id="dc-more" style="margin-top:6px">+ Add another suggestion</button></div>
     <label class="j-field"><span>A line from you <span class="muted">(optional, goes in the email)</span></span><textarea class="j-textarea" id="dc-msg"></textarea></label>
     <label class="j-check"><input type="checkbox" id="dc-send" checked> <span>Email the family. Untick to decline without emailing.</span></label>
+    ${textBox(r)}
     <div class="j-box j-box-grey small" id="dc-preview" style="margin-top:8px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-danger" id="dc-go">Decline</button></div>`)
   const list = box.querySelector('#dc-list')
@@ -1392,7 +1397,10 @@ function declineModal(r) {
     e.currentTarget.disabled = true
     const res = await post('decideRequest', { id: r.id, decision: 'decline', suggestGroupIds: picked(), message: box.querySelector('#dc-msg').value.trim(), sendEmail: box.querySelector('#dc-send').checked })
     if (!res.ok) return toast(res.data.error)
-    closeModal(); toast(res.data.emailed ? 'Declined and emailed' : 'Declined'); renderRequests()
+    const texting = box.querySelector('#rq-text').checked
+    const suggest = picked().map(label)
+    closeModal(); toast(res.data.emailed ? 'Declined and emailed' : 'Declined'); await renderRequests()
+    if (texting) textRequest(r, requestDeclineText({ parent: r.parentName, players: r.players.map((p) => p.name), group: r.group, suggest }))
   })
 }
 
@@ -1404,6 +1412,7 @@ async function offerModal(r, decision) {
     <div id="of-who" class="j-box j-box-grey small" style="margin:-4px 0 10px"></div>
     <div id="of-body"></div>
     <label class="j-check"><input type="checkbox" id="of-send" checked> <span>Email the family ${trial ? 'the trial date and a link to pay for it' : 'the offer and payment link'}</span></label>
+    ${textBox(r)}
     <div id="of-out"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="of-go">${trial ? 'Offer trial' : 'Offer place'}</button></div>`)
   let read
@@ -1424,8 +1433,14 @@ async function offerModal(r, decision) {
   }
   draw()
   box.querySelector('#of-g').addEventListener('change', draw)
+  const offerText = (res) => {
+    const g = P.board.groups.find((x) => x.id === box.querySelector('#of-g').value) || {}
+    const base = { parent: r.parentName, players: r.players.map((p) => p.name), when: `${g.day} ${g.time}`, place: g.locationName || '', url: res.data.payreq.url, email: r.email, emailed: Boolean(res.data.emailed) }
+    return trial ? requestTrialText({ ...base, date: box.querySelector('#of-date')?.selectedOptions[0]?.textContent || '' }) : requestOfferText(base)
+  }
   const go = async () => {
     const body = { id: r.id, decision, groupId: box.querySelector('#of-g').value, ...read(), sendEmail: box.querySelector('#of-send').checked }
+    const texting = box.querySelector('#rq-text').checked
     const btn = box.querySelector('#of-go')
     if (btn.disabled) return
     btn.disabled = true
@@ -1437,15 +1452,20 @@ async function offerModal(r, decision) {
       if (!res.ok) return toast(res.data.error)
       toast(`Offered${res.data.emailed ? ' and emailed' : ''}`)
       copy(res.data.payreq.url)
+      const words = offerText(res)
       P.board = null; PL.at = 0
-      return renderRequests()
+      await renderRequests()
+      if (texting) textRequest(r, words)
+      return
     }
     if (!res.ok) return toast(res.data.error)
     box.querySelector('#of-out').innerHTML = `<div class="j-box j-box-green" style="margin:10px 0">${trial ? 'Trial offered' : 'Place offered'}, ${esc(res.data.payreq.amountLabel)}${res.data.emailed ? ', emailed' : ''}. <button type="button" class="j-btn j-btn-line j-btn-sm" id="of-copy">Copy payment link</button></div>`
     box.querySelector('#of-copy').addEventListener('click', () => copy(res.data.payreq.url))
     box.querySelector('#of-go').hidden = true
     box.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => renderRequests()))
+    const words = offerText(res)
     P.board = null; PL.at = 0
+    if (texting) await renderRequests().then(() => textRequest(r, words))
   }
   box.querySelector('#of-go').addEventListener('click', go)
 }
