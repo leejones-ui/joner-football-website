@@ -73,4 +73,14 @@ check('session date tags never run under the Can\'t make it button', () => {
   assert.match(account, /\.ja-date \.w b \{ display: flex; flex-wrap: wrap;/)
   assert.match(account, /\.ja-date > \.ja-btn, \.ja-date > \.ja-muted \{ grid-column: 2;/)
 })
+check('footer sign-up boxes have labels and Book now is 44px', () => {
+  const foot = fs.readFileSync(new URL('../src/components/Footer.astro', import.meta.url), 'utf8')
+  for (const l of ['First name', 'Email address', 'What updates you want']) assert.ok(foot.includes(`aria-label="${l}"`), `${l} label missing`)
+  const book = fs.readFileSync(new URL('../src/components/BookNowButton.astro', import.meta.url), 'utf8')
+  assert.match(book, /\.book-now-btn--sm \{ min-height: 44px;/)
+})
+check('account tabs keep a tap width at heavy zoom, staff icons are 44px', () => {
+  assert.match(account, /\.ja-tabs \{ grid-template-columns: repeat\(5, minmax\(52px, 1fr\)\); overflow-x: auto;/)
+  assert.match(portal, /\.jp-iconbtn \{ width: 44px; height: 44px;/)
+})
 console.log(`${n} UI consistency checks passed`)

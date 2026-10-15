@@ -93,7 +93,7 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jp-top-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
 .jp-toplink { font: inherit; font-size: 13.5px; font-weight: 600; color: var(--j-ink-2) !important; text-decoration: none; background: none; border: 0; padding: 8px 12px; border-radius: 10px; cursor: pointer; }
 .jp-toplink:hover { background: var(--j-grey-bg); color: var(--j-ink) !important; }
-.jp-iconbtn { width: 38px; height: 38px; display: inline-grid; place-items: center; border-radius: 10px; border: 0; background: transparent; color: var(--j-ink-2); cursor: pointer; }
+.jp-iconbtn { width: 44px; height: 44px; display: inline-grid; place-items: center; border-radius: 10px; border: 0; background: transparent; color: var(--j-ink-2); cursor: pointer; }
 .jp-iconbtn:hover { background: var(--j-grey-bg); color: var(--j-ink); }
 .jp-theme[data-theme="dark"] .i-moon, .jp-theme[data-theme="light"] .i-sun { display: none; }
 .jp-menu-btn { display: inline-grid; }
@@ -130,7 +130,7 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jp-me-txt { min-width: 0; white-space: nowrap; transition: opacity .18s; }
 .jp-me-txt b { display: block; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; }
 .jp-me-txt small { display: block; font-size: 12px; color: var(--j-muted); overflow: hidden; text-overflow: ellipsis; }
-.jp-collapse { display: none; align-items: center; gap: 12px; width: 100%; padding: 8px 12px; border-radius: 10px; border: 0; background: transparent; color: var(--j-muted); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.jp-collapse { display: none; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 8px 12px; border-radius: 10px; border: 0; background: transparent; color: var(--j-muted); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .jp-collapse:hover { background: var(--j-grey-bg); color: var(--j-ink); }
 .jp-collapse svg { flex: none; transition: transform .28s var(--jp-ease); }
 @media (min-width: 1000px) {

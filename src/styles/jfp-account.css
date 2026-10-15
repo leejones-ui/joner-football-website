@@ -660,3 +660,19 @@ body:has(.ja) { background: #0A0A0B !important; }
   .ja-date { grid-template-columns: 54px minmax(0, 1fr); row-gap: 8px; }
   .ja-date > .ja-btn, .ja-date > .ja-muted { grid-column: 2; justify-self: start; }
 }
+
+/* Very large text or heavy zoom (Lee, 15 Oct 2026): the logo words wrap
+   inside their button instead of spilling past it, and the bottom tabs keep
+   a 44px tap width, sliding sideways if the screen is narrower than that. */
+.ja .ja-logo { min-width: 0; }
+.ja .ja-logo > span { min-width: 0; }
+.ja-tabs { grid-template-columns: repeat(5, minmax(52px, 1fr)); overflow-x: auto; scrollbar-width: none; }
+@media (max-width: 300px) {
+  .ja-date { grid-template-columns: minmax(0, 1fr); }
+  .ja-date > .ja-btn, .ja-date > .ja-muted { grid-column: 1; }
+  .ja-date .d { display: flex; align-items: baseline; gap: 6px; text-align: left; }
+}
+@media (max-width: 300px) {
+  .ja-reach-row { grid-template-columns: minmax(0, 1fr); }
+  .ja-tiles { grid-template-columns: minmax(0, 1fr); }
+}
