@@ -474,7 +474,7 @@ function renderInfo() {
         ${pl.self ? '' : seg('playingUp', o.playingUp)}
         <div class="j-field full"><span>Positions <span class="muted">(choose any)</span></span><div class="ja-seg" data-multi="positions">${o.positions.map((x) => `<button type="button" class="j-chip" data-val="${esc(x)}" aria-pressed="${(v.positions || []).includes(x)}">${esc(x)}</button>`).join('')}</div></div>
         ${seg('foot', o.feet)}
-        <label class="j-field full"><span>${(pl.self || D.self) ? 'What do you want to work on?' : `What does ${esc(first(pl.name))} want to work on?`} <span class="muted">(optional)</span></span><textarea class="j-textarea" data-f="goals" rows="2" maxlength="1000">${esc(v.goals || '')}</textarea></label>
+        <label class="j-field full"><span>${(pl.self || D.self) ? 'What do you want to work on? Anything the coaches should know?' : `What does ${esc(first(pl.name))} want to work on? Anything the coaches should know?`} <span class="muted">(optional, your coach sees this)</span></span><textarea class="j-textarea" data-f="goals" rows="2" maxlength="1000">${esc(v.goals || '')}</textarea></label>
         <h4>Player</h4>
         ${f('dob', 'Date of birth', v.dob, `type="date" min="${esc(PROF.dob?.min || '1940-01-01')}" max="${esc(PROF.dob?.max || new Date().toISOString().slice(0, 10))}"`)}
         ${(pl.self || D.self) ? `<h4>Contact</h4>

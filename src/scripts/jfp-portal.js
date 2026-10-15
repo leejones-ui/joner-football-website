@@ -2703,7 +2703,7 @@ async function renderCoach(keep = false) {
         ${(s.coveredBy || []).length ? `<div class="j-box j-box-grey small" style="margin-bottom:8px">${s.coveredBy.map((c) => `${esc(c.dateLabel)}: covered by <b>${esc(c.coach)}</b>`).join('<br>')}</div>` : ''}
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
           <select class="j-select" style="width:auto" data-date="${esc(s.id)}">${s.dates.map((x) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select></div>
-        <div style="margin-top:10px">${s.players.filter((p) => showP(s, p)).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
+        <div style="margin-top:10px">${s.players.filter((p) => showP(s, p)).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${p.juniors ? esc(p.name) : `<button type="button" class="ps-link jp-cp-name" data-cp="${esc(p.rowId)}" aria-label="About ${esc(p.name)}">${esc(p.name)}</button>`}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
           <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Present'}">Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Absent'}">Away</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
       </article>`
     }).join('') : `<div class="ps-table-wrap"><div class="ps-empty">${active ? 'No sessions match. <button type="button" class="ps-link" data-c-clear>Clear filters</button>' : 'No sessions yet.'}</div></div>`}`
@@ -2715,6 +2715,7 @@ async function renderCoach(keep = false) {
   const clear = () => { Object.assign(F, { q: '', day: '', loc: '', flag: '' }); redraw() }
   $('c-clear')?.addEventListener('click', clear)
   view().querySelector('[data-c-clear]')?.addEventListener('click', clear)
+  view().querySelectorAll('[data-cp]').forEach((b) => b.addEventListener('click', () => coachPlayerModal(b.dataset.cp)))
   view().querySelectorAll('[data-trial-fb]').forEach((b) => b.addEventListener('click', () => trialFeedbackModal((d.trials || []).find((t) => t.rowId === b.dataset.trialFb), d.verdicts)))
   view().querySelectorAll('[data-date]').forEach((sel) => sel.addEventListener('change', () => { P.coachDate[sel.dataset.date] = sel.value; loadAttendance(sel.dataset.date, sel.value) }))
   view().querySelectorAll('[data-att]').forEach((b) => b.addEventListener('click', async () => {
@@ -2731,6 +2732,28 @@ async function renderCoach(keep = false) {
     if (sess && date === (P.coachDate[gid] || sess.nextDate)) { if (status) sess.attendance[b.dataset.row] = status; else delete sess.attendance[b.dataset.row] }
     if (r.data.airtable === 'failed') toast('Saved here. Airtable attendance did not update; it will not affect the session.')
   }))
+}
+
+// A player's football information for their coach (Lee, 15 Oct 2026): who
+// they play for, age, level, positions, and what they want to work on. The
+// family fills it in from My account; no contacts, medical notes or money.
+async function coachPlayerModal(rowId) {
+  const r = await post('coachPlayer', { rowId, coachId: P.coachId })
+  if (!r.ok) return toast(r.data.error || 'Could not open that player.')
+  const p = r.data.player
+  const first = p.name.split(' ')[0]
+  const club = [p.club, p.team].filter(Boolean).join(', ')
+  const rows = [
+    ['Plays for', club], ['Age', p.age != null ? String(p.age) : ''], ['Level', [p.level, p.playingUp && p.playingUp !== 'Own age' ? p.playingUp : ''].filter(Boolean).join(', ')],
+    ['Positions', (p.positions || []).join(', ')], ['Preferred foot', p.foot], ['Years playing', p.yearsPlaying], ['Rep or academy', p.repTeam], ['Other training', p.otherTraining],
+  ].filter(([, v]) => v)
+  const empty = !rows.some(([k]) => k !== 'Age') && !p.goals
+  modal(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">${avatar(p.photo, p.name, 56)}<div><h2 style="margin:0">${esc(p.name)}</h2><p class="muted small">${esc(p.session)}${p.trial ? ` · <span class="j-pill j-pill-blue">Trial${p.trialDate ? ` ${esc(p.trialDate)}` : ''}</span>` : ''}</p></div></div>
+    ${rows.length ? `<dl class="j-kv">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
+    <div class="j-box j-box-grey" style="margin-top:12px"><b>What ${esc(first)} wants to work on</b><p style="margin-top:4px;white-space:pre-wrap">${p.goals ? esc(p.goals) : '<span class="muted">Not filled in yet.</span>'}</p></div>
+    ${p.note || p.startsLabel ? `<div class="j-box j-box-amber" style="margin-top:10px"><b>Note from Lee and Ligia</b><p style="margin-top:4px">${esc([p.startsLabel, p.note].filter(Boolean).join(' · '))}</p></div>` : ''}
+    ${empty ? `<p class="muted small" style="margin-top:10px">The family has not added ${esc(first)}'s football details yet. They do it in their account under Player information.</p>` : ''}
+    <div style="display:flex;justify-content:flex-end;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`)
 }
 
 // Trials in this coach's sessions (Ligia, 13 Oct 2026): a reminder on the

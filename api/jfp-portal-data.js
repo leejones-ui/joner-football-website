@@ -3023,6 +3023,32 @@ async function handle(req, res) {
       return res.status(200).json({ success: true, trials, verdicts: TRIAL_VERDICTS, coach: coachLabel(coachById(config, coachId)), coachPhoto: coachList(config, false).find((c) => c.id === coachId)?.photo || '', term: config.term, sessions, hours: { perWeekMinutes: perWeek, termMinutes: perWeek * config.weeks, weeks: config.weeks } })
     }
 
+    // A player's football information for their coach (Lee, 15 Oct 2026):
+    // club, team, age, level, positions, foot, what they want to work on and
+    // the note from Lee and Ligia. Only players in this coach's own sessions
+    // (or one they are covering). Never contacts, medical notes or money.
+    if (action === 'coachPlayer') {
+      const coachId = isAdmin ? clean(body.coachId, 30) || principal.coachId : principal.coachId
+      const rowId = clean(body.rowId, 30)
+      const [groups, roster, notes, covers] = await Promise.all([listGroups(), loadRoster(), coachNotes(), listCovers()])
+      const r = roster.players.find((x) => x.id === rowId && x.holdsPlace)
+      const g = r && groups.find((x) => x.id === r.groupId)
+      const coversIt = (gid) => covers.some((c) => c.status === 'active' && c.groupId === gid && c.coverCoachId === coachId && c.date >= sydneyToday())
+      if (!r || !g || isJuniorsGroup(g) || (!isAdmin && !(g.coachId === coachId || (g.extraCoachIds || []).includes(coachId) || coversIt(g.id)))) return fail(res, 404, 'That player is not in your sessions.')
+      const prof = pickProfile(await allProfiles().catch(() => []), { key: profileKey(r.player, r.email), rowIds: [r.id] })
+      const w = prof?.club ? null : waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers)
+      const dob = prof?.dob || isoDate(r.dob) || w?.dob || ''
+      const trial = /trial/i.test(r.paymentType)
+      const info = coachInfo(r, notes, config)
+      return res.status(200).json({ success: true, player: {
+        rowId: r.id, name: r.player, age: dob ? ageOn(dob, sydneyToday()) : playerAge(r, config.termStart), photo: prof?.photo || '',
+        session: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, trial, trialDate: trial && trialDateOf(r) ? dateLabel(trialDateOf(r)) : '',
+        club: prof?.club || w?.club || '', team: prof?.team || '', level: prof?.level || '', playingUp: prof?.playingUp || '', positions: prof?.positions || [], foot: prof?.foot || '',
+        yearsPlaying: prof?.yearsPlaying || '', repTeam: prof?.repTeam || '', otherTraining: prof?.otherTraining || '', goals: prof?.goals || '',
+        note: info.note, startsLabel: info.startsLabel, updatedAt: prof?.updatedAt || '',
+      } })
+    }
+
     // The whole program as a timetable: names and ages, no money, no contacts.
     if (action === 'program') {
       const [groups, roster, notes] = await Promise.all([listGroups(), loadRoster(), coachNotes()])
