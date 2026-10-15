@@ -204,4 +204,22 @@ await test('quick links can be Pro sessions; the Stripe page says jfpProgramme p
   assert.ok((await ok('pricing')).programmes.some((x) => x.id === 'pro' && x.label === 'Pro sessions'))
 })
 
+
+await test('added with no session on Players, then added on the Timetable: the same row goes into the group, no second row', async () => {
+  const before = (await at()).term4.length
+  const a = await ok('addPlayerNoGroup', { player: { name: 'Mason Twinrow' }, parent: { name: 'Dana Twinrow', email: 'twinrow@example.com' }, payment: 'none' })
+  const b = await ok('addPlayer', { groupId: GID, player: { name: 'Mason Twinrow' }, parent: { name: 'Dana Twinrow', email: 'twinrow@example.com' }, payment: 'none', force: true })
+  assert.equal(b.rowId, a.rowId, 'the existing row is used'); assert.equal(b.movedRow, true)
+  assert.equal((await at()).term4.length, before + 1, 'one row, not two')
+  const f = (await row(a.rowId)).fields
+  assert.equal(f['Term 3 Day'], 'Thursday'); assert.equal(f['Term 3 Time'], '7:15pm')
+  const board = await ok('board')
+  assert.ok(board.groups.find((g) => g.id === GID).players.some((p) => p.rowId === a.rowId), 'in the group on the Timetable')
+  assert.ok(!board.unassigned.some((p) => p.rowId === a.rowId), 'not under Not in a group')
+  // A different family's child with the same name keeps their own row.
+  const x = await ok('addPlayerNoGroup', { player: { name: 'Ruby Twinrow' }, parent: { name: 'Family One', email: 'one.twin@example.com' }, payment: 'none', force: true })
+  const y = await ok('addPlayer', { groupId: GID, player: { name: 'Ruby Twinrow' }, parent: { name: 'Family Two', email: 'two.twin@example.com' }, payment: 'none', force: true })
+  assert.notEqual(y.rowId, x.rowId); assert.equal(y.movedRow, false)
+})
+
 console.log(`\n${passed} players flow checks passed`)

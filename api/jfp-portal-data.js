@@ -290,6 +290,46 @@ async function saveAddedProfile(principal, v, rowId) {
   }
 }
 
+// The same player's Term 4 row that holds a place but is in no group: same
+// name, and the same family (email, else parent name) or no contact on it.
+async function unplacedTwin(roster, name, email, parentName) {
+  const known = new Set((await listGroups()).map((g) => g.id))
+  const n = normName(name)
+  const sameFamily = (r) => (email && rowEmails(r).some((e) => e.toLowerCase() === email.toLowerCase()))
+    || (!rowEmails(r).length && (!r.parent || !parentName || normName(r.parent) === normName(parentName)))
+    || (!email && r.parent && parentName && normName(r.parent) === normName(parentName))
+  return roster.players.find((r) => r.holdsPlace && normName(r.player) === n && !(r.groupId && known.has(r.groupId)) && sameFamily(r)) || null
+}
+
+// Writes the rows for group adds: a new row, or the player's existing
+// no-group row moved into the group. That row keeps its name and contacts,
+// and its money when payments are already on it. Ids in the same order.
+async function writeGroupAdds(list) {
+  const fresh = list.map((x, i) => ({ x, i })).filter(({ x }) => !x.twin)
+  const ids = new Array(list.length)
+  if (fresh.length) (await createTerm4Rows(fresh.map(({ x }) => x.fields))).forEach((id, k) => { ids[fresh[k].i] = id })
+  const updates = []
+  for (const [i, x] of list.entries()) {
+    if (!x.twin) continue
+    const t = x.twin, f = { ...x.fields }
+    delete f['Player Name']
+    if (t.parent) delete f['Parent Name']
+    if (t.email) delete f['Email']
+    if (t.phone) delete f['Phone']
+    let line = f['Term 4 Notes']
+    if (Number(t.paidAud) > 0) {
+      for (const k of ['Term 4 Fee', 'Term 4 Amount Paid', 'Term 4 Payment Status', 'Term 4 Fee Reconciliation']) delete f[k]
+      line = `${line}\nFee and payments left as they were: this row already has a payment on it.`
+    }
+    if (t.confirmation === 'Confirmed') { delete f['Term 4 Confirmation']; delete f['Confirmation Date'] }
+    f['Term 4 Notes'] = appendNote(t.notes, `Put into ${f['Term 3 Day']} ${f['Term 3 Time']} ${f['Term 3 Location']} (was in no group). ${line}`)
+    updates.push({ id: t.id, fields: f })
+    ids[i] = t.id
+  }
+  if (updates.length) await updateTerm4Rows(updates)
+  return ids
+}
+
 // The payment type and notes line for Pro sessions and session by session.
 function sessionsLine(payment, perSession) {
   const what = payment === 'pro' ? 'Pro sessions' : 'Session by session'
@@ -309,6 +349,10 @@ async function prepGroupAdd({ principal, config, group, body, roster, family = n
   // The same player twice in one group (a retry after an error) is refused.
   const already = roster.players.find((r) => r.holdsPlace && normName(r.player) === normName(name) && r.day === group.day && r.time === group.time && r.location === group.location)
   if (already) return { status: 409, error: `${name} is already in this group.`, code: 'duplicate', rowId: already.id }
+  // Already on file with no group (added on the Players tab with no session,
+  // or a returning player not placed yet): that row goes into the group, not
+  // a second row (Massimo Marrone, 15 Oct 2026).
+  const twin = await unplacedTwin(roster, name, email, read.v.parentName)
   const cap = await capacityCheck(group, 1, body.force === true)
   if (cap.error) return { status: 409, error: cap.error, code: cap.code }
   const age = dob ? ageOn(dob, config.termStart) : (Number.isInteger(Number(body.player?.age)) ? Number(body.player.age) : null)
@@ -353,7 +397,7 @@ async function prepGroupAdd({ principal, config, group, body, roster, family = n
     'Term 4 Notes': notes,
     ...(payment === 'offline' ? { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' } : {}),
   }
-  return { ok: true, v: read.v, group, fields, amountCents, isTrial, isPro, perSessionPay, product, from, custom, payment, what: custom ? custom.name : isTrial ? 'Trial session' : `${productFor(product).label}${price.proRata && from ? `, ${price.sessions} of ${price.of} sessions from ${dateLabel(from)}` : price.fixedSessions && from ? `, ${price.sessions} sessions from ${dateLabel(from)}` : ''}` }
+  return { ok: true, v: read.v, group, fields, twin, amountCents, isTrial, isPro, perSessionPay, product, from, custom, payment, what: custom ? custom.name : isTrial ? 'Trial session' : `${productFor(product).label}${price.proRata && from ? `, ${price.sessions} of ${price.of} sessions from ${dateLabel(from)}` : price.fixedSessions && from ? `, ${price.sessions} sessions from ${dateLabel(from)}` : ''}` }
 }
 
 export async function addPlayer(req, res, principal, config, body) {
@@ -364,7 +408,7 @@ export async function addPlayer(req, res, principal, config, body) {
   const { name, email, parentName, mobile, dob, payment, perSession, custom, ownContact, words } = prep.v
   const { amountCents, isTrial, isPro, perSessionPay, product, from } = prep
   const back = await removedSource(body)
-  const [rowId] = await createTerm4Rows([{ ...prep.fields, 'Term 4 Notes': backNote(prep.fields['Term 4 Notes'], back) }])
+  const [rowId] = await writeGroupAdds([{ ...prep, fields: { ...prep.fields, 'Term 4 Notes': backNote(prep.fields['Term 4 Notes'], back) } }])
   await markAddedBack(principal, back, { rowId, where: groupSummary(group, config) })
   const prof = await saveAddedProfile(principal, prep.v, rowId)
   let payreq = null
@@ -382,7 +426,7 @@ export async function addPlayer(req, res, principal, config, body) {
   // The group's coach hears about it (Lee, 14 Oct 2026), a few minutes later.
   await noteNewPlayer({ config, group, rowId, player: name, kind: 'added' }).catch((e) => console.error('jfp coach news failed', e))
   await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed: sent.emailed, payreq: payreq?.id || '', cents: payment === 'none' || perSessionPay ? 0 : amountCents, perSessionCents: perSession || undefined, quote: prep.v.quoteTiers.length ? prep.v.quoteTiers : undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
-  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, ownContact, words, ...prof })
+  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, ownContact, words, movedRow: Boolean(prep.twin), ...prof })
 }
 
 // ---------- Players tab: one row per player, searchable, with everything ----------
@@ -511,7 +555,7 @@ async function addPlayerNoGroup(req, res, principal, config, body) {
   const { name, email, parentName, mobile, payment, ownContact, words } = prep.v
   const { amountCents, isPro, fee, what, custom } = prep
   const back = await removedSource(body)
-  const [rowId] = await createTerm4Rows([{ ...prep.fields, 'Term 4 Notes': backNote(prep.fields['Term 4 Notes'], back) }])
+  const [rowId] = await writeGroupAdds([{ ...prep, fields: { ...prep.fields, 'Term 4 Notes': backNote(prep.fields['Term 4 Notes'], back) } }])
   await markAddedBack(principal, back, { rowId, where: '' })
   // Term 4 Players has no date of birth column: it goes in player information.
   const prof = await saveAddedProfile(principal, prep.v, rowId)
@@ -581,7 +625,7 @@ export async function addFamily(req, res, principal, config, body) {
   }
   const famId = newId('FAM')
   const backs = await Promise.all(kids.map((k) => removedSource(k)))
-  const ids = await createTerm4Rows(preps.map((x, i) => ({ ...x.fields, 'Term 4 Notes': backNote(`${x.fields['Term 4 Notes']}\nFamily add ${famId}: ${preps.map((y) => y.v.name).join(', ')}.`, backs[i]) })))
+  const ids = await writeGroupAdds(preps.map((x, i) => ({ ...x, fields: { ...x.fields, 'Term 4 Notes': backNote(`${x.fields['Term 4 Notes']}\nFamily add ${famId}: ${preps.map((y) => y.v.name).join(', ')}.`, backs[i]) } })))
   const added = preps.map((x, i) => ({ ...x, rowId: ids[i], where: x.group ? groupSummary(x.group, config) : 'Group to be confirmed' }))
   for (const [i, x] of added.entries()) await markAddedBack(principal, backs[i], { rowId: x.rowId, where: x.group ? x.where : '' })
   const profiles = []
