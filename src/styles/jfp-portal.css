@@ -832,6 +832,8 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
   .ps-table td[data-col="football"], .ps-table td.ps-end { display: none; }
 }
 .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* The site's "Skip to content" link uses .sr-only too: show it when it has focus. */
+a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; left: 16px; z-index: 100; width: auto; height: auto; margin: 0; padding: 8px 16px; overflow: visible; clip: auto; white-space: normal; border-radius: 4px; background: #dc2626; color: #fff; }
 .ps-who b { white-space: nowrap; }
 @media (min-width: 761px) and (max-width: 1180px) {
   .ps-table th[data-col="football"], .ps-table td[data-col="football"] { display: none; }
@@ -918,3 +920,44 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 /* Players: card or direct debit on file (claude/card-on-file) */
 .ps-tag.green { background: var(--j-green-bg, rgba(34, 197, 94, .16)); color: var(--j-green, #22c55e); }
 .ps-tag.grey { background: var(--j-grey-bg, rgba(127, 127, 127, .14)); color: var(--j-grey, #9ca3af); }
+
+/* ---------- Consistency pass (Lee, 15 Oct 2026) ---------- */
+/* Phones and tablets: the closed menu is hidden, not just slid off-screen,
+   so Tab goes straight to the page instead of through 25 unseen buttons. */
+@media (max-width: 999px) {
+  .jp-sidebar { visibility: hidden; transition: transform .28s var(--jp-ease), visibility 0s linear .28s; }
+  .nav-open .jp-sidebar { visibility: visible; transition: transform .28s var(--jp-ease), visibility 0s; }
+}
+/* Segmented filters (All / Open / Cancelled or expired): the buttons keep
+   their words; on a narrow screen the group wraps onto a second line. */
+.ps-seg { flex-wrap: wrap; height: auto; min-height: var(--ps-control); max-width: 100%; }
+.ps-seg button { flex: 1 1 auto; min-height: calc(var(--ps-control) - 8px); line-height: 1.2; text-align: center; }
+/* Touch screens: everything you tap is at least 44 by 44. Desktop keeps the
+   compact sizes (a mouse is precise and the tables stay dense). */
+@media (pointer: coarse) {
+  .jp-theme { --ps-control: 44px; }
+  .jp-iconbtn { width: 44px; height: 44px; }
+  .jp-toplink { min-height: 44px; }
+  .jp-sidebar .jp-nav button, .jp-sidebar .jp-nav button.jp-nav-sec { min-height: 44px; }
+  .ps-chip, .ps-actions .j-btn, .ps-tools .j-btn, .jp-theme summary { min-height: 44px; }
+  .jp-theme .ps-help > summary { min-height: 22px; position: relative; }
+  .jp-theme .ps-help > summary::after { content: ''; position: absolute; inset: -12px; }
+  .jp-nm[role="button"] { min-height: 44px; }
+  .jp-theme button.link, .jp-theme .ps-link, .jd-list li > button { position: relative; }
+  .jp-theme button.link::after, .jp-theme .ps-link::after, .jd-list li > button::after { content: ''; position: absolute; left: -6px; right: -6px; top: 50%; height: 44px; transform: translateY(-50%); }
+}
+/* The rest of the controls on a touch screen: filters, the coach register's
+   Here and Away, + Add player, fields, folds and the small "i" tips. Rows
+   grow a little; nothing changes with a mouse. */
+@media (pointer: coarse) {
+  .jp-theme .jp-seg button, .jp-theme .j-daybar button, .jp-theme .ps-seg button, .jp-theme .jm-chips button,
+  .jp-theme .jp-att button, .jp-theme .jp-blk .jp-addbtn, .jp-theme .j-chip, .jp-theme .jp-player { min-height: 44px; }
+  .jp-theme .j-btn, .jp-theme .jm-link, .jp-theme .jm-linkbtn, .jp-theme .j-input, .jp-theme .j-select, .jp-theme details > summary { min-height: 44px; }
+  .jp-theme .ps-help > summary { min-height: 22px; }
+  .jp-theme .jp-att button { min-width: 52px; }
+  .jp-theme .jm-tip { position: relative; }
+  .jp-theme .jm-tip::after { content: ''; position: absolute; inset: -7px; }
+  .jp-theme .jc-status li { padding: 0; }
+  .jp-theme .jc-status li > button { min-height: 44px; min-width: 44px; text-align: left; }
+  .jp-theme .jj-view details > summary { min-height: 44px !important; }
+}

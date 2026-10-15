@@ -1,32 +1,19 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
+// Game analysis (Lee, 15 Oct 2026): keep it simple. We watch a player's game
+// and give detailed feedback: what they do well and what to work on next.
+// No coach names, no price (JFP players get a discount, amount not set yet).
+// Enquiries go to /api/contact-enquiry type 'game-analysis' (same people as
+// before). The family account has the same three steps (jfp-account-extras).
 const title = 'Game Analysis | Joner Football'
-const description = 'Joner Football Game Analysis gives players clipped actions, individual stats, video call feedback, and clear targets for their next game.'
+const description = 'Send us a game. We watch the player and give detailed feedback: what they do well and what to work on next. JFP players get an exclusive discount.'
 const canonical = 'https://jonerfootball.com/training/game-analysis/'
 
-const features = [
-  'Detailed analysis with key actions clipped and reviewed',
-  'Video calls to review performance and key moments',
-  'Individual player stats',
-  'Feedback on what the player did well',
-  'Clear areas the player can improve',
-  'Future targets for the next game',
-]
-
 const steps = [
-  {
-    title: 'Send the game',
-    copy: 'Upload or send the full match footage. We review the player, not just the highlights.',
-  },
-  {
-    title: 'We clip the actions',
-    copy: 'Key moments are clipped, tagged, and reviewed so the feedback is easy to understand.',
-  },
-  {
-    title: 'Review and targets',
-    copy: 'The player gets clear feedback, stats, and targets to take into the next game.',
-  },
+  { title: 'Enquire', copy: 'Fill in the short form below. We reply with the price and how to send the game.' },
+  { title: 'We watch the game', copy: "Your player's moments in the match, on and off the ball." },
+  { title: 'Detailed feedback', copy: 'What they do well and what to work on next.' },
 ]
 
 import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
@@ -47,263 +34,223 @@ const sanityPage = await fetchSanityPage('game-analysis')
 >
   <Fragment slot="head">
     <link rel="preload" as="image" href="/images/training/game-analysis/tactical-review.webp" fetchpriority="high" />
-    <link rel="preload" as="font" href="/fonts/Kanit-BlackItalic.ttf" type="font/ttf" crossorigin />
   </Fragment>
 
   <div class="ga-page">
-    <section class="ga-hero" id="top">
+    <section class="ga-hero">
       <div class="ga-hero-img" aria-hidden="true"></div>
       <div class="ga-wrap ga-hero-content">
-        <span class="ga-eyebrow"><span class="ga-pulse"></span> New player development feature</span>
-        <h1 class="ga-h1">
-          Game
-          <span class="ga-hook">Analysis</span>
-          <span class="ga-h1-small">Take your performance to a whole new level</span>
-        </h1>
-        <p class="ga-hero-sub">
-          Send us your game footage and get detailed player feedback, clipped actions, individual stats, and clear targets for the next match.
-        </p>
+        <h1 class="ga-eyebrow">Game analysis</h1>
+        <p class="ga-h1">We watch the game.<span class="ga-hook">You get the feedback.</span></p>
+        <p class="ga-hero-sub">Send us one of your player's games. We give detailed feedback on what they do well and what to work on next.</p>
         <div class="ga-hero-cta">
-          <a class="btn-red" href="#signup">Enquire Now</a>
-          <a class="btn-outline" href="#info">See What's Included</a>
+          <a class="btn-red" href="#enquire">Enquire now</a>
         </div>
+        <p class="ga-hero-note"><span class="ga-dot" aria-hidden="true"></span>JFP players get an exclusive discount.</p>
       </div>
     </section>
 
-    <section class="ga-info" id="info">
-      <div class="ga-wrap ga-info-layout">
-        <div class="ga-info-left">
-          <div class="ga-section-head">
-            <span class="ga-section-eyebrow">What you get</span>
-            <h2 class="ga-h2">A proper breakdown of the game, not generic feedback.</h2>
-            <span class="ga-rule"></span>
+    <section class="ga-what">
+      <div class="ga-wrap ga-what-layout">
+        <div>
+          <p class="ga-kicker">What you get</p>
+          <h2 class="ga-h2">Detailed player feedback.</h2>
+          <div class="ga-two">
+            <div class="ga-point">
+              <span class="ga-tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5" /></svg></span>
+              <h3>What they do well</h3>
+              <p>The things that are working, so they keep doing them.</p>
+            </div>
+            <div class="ga-point">
+              <span class="ga-tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span>
+              <h3>What to work on next</h3>
+              <p>The few things that will make the biggest difference, to take into training.</p>
+            </div>
           </div>
-          <p class="ga-body-copy">
-            This gives players a clearer picture of what is actually happening in games. We break down the details, clip the important actions, and turn the performance into simple next steps.
-          </p>
-          <ul class="ga-feature-list">
-            {features.map((feature) => (
-              <li>
-                <span class="ga-tick" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5" /></svg>
-                </span>
-                <span>{feature}</span>
-              </li>
-            ))}
-          </ul>
         </div>
-        <div class="ga-info-card">
-          <img src="/images/training/game-analysis/coach-review.webp" alt="Coach and player reviewing match footage and performance analysis" loading="lazy" />
+        <div class="ga-photo">
+          <img src="/images/training/game-analysis/coach-review.webp" alt="Reviewing a player's match footage" loading="lazy" />
         </div>
       </div>
     </section>
 
-    <section class="ga-process">
-      <div class="ga-process-bg" aria-hidden="true"></div>
-      <div class="ga-wrap ga-process-content">
-        <div class="ga-section-head ga-section-head--light">
-          <span class="ga-section-eyebrow">How it works</span>
-          <h2 class="ga-h2">Three simple steps.</h2>
-          <span class="ga-rule"></span>
-        </div>
-        <div class="ga-step-grid">
-          {steps.map((step, index) => (
-            <article class="ga-step-card">
-              <span>{String(index + 1).padStart(2, '0')}</span>
+    <section class="ga-how">
+      <div class="ga-wrap">
+        <p class="ga-kicker">How it works</p>
+        <ol class="ga-steps">
+          {steps.map((step, i) => (
+            <li class="ga-step">
+              <span class="ga-n">{String(i + 1).padStart(2, '0')}</span>
               <h3>{step.title}</h3>
               <p>{step.copy}</p>
-            </article>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
 
-    <section class="ga-signup" id="signup">
-      <div class="ga-wrap ga-signup-layout">
-        <div class="ga-signup-copy">
-          <span class="ga-section-eyebrow">Sign up</span>
-          <h2 class="ga-h2">Register interest in game analysis.</h2>
-          <p>
-            Leave the player details and we will follow up with the right option, price, and next steps.
-          </p>
+    <section class="ga-enquire" id="enquire">
+      <div class="ga-wrap ga-enquire-layout">
+        <div class="ga-enquire-copy">
+          <p class="ga-kicker">Enquire</p>
+          <h2 class="ga-h2">Ask about game analysis.</h2>
+          <p>Tell us about the player and we will reply with the price and how to send the game.</p>
+          <div class="ga-jfp">
+            <b>JFP players</b>
+            <span>You get an exclusive discount. Choose "Yes" for JFP on the form.</span>
+          </div>
         </div>
-        <form id="game-analysis-form" class="ga-form">
-          <input type="hidden" name="enquiryType" value="game-analysis" />
-          <input type="hidden" name="trainingInterest" value="Game Analysis" />
-          <div class="ga-form-grid">
-            <input type="text" name="name" placeholder="Parent or player name" required />
-            <input type="email" name="email" placeholder="Email address" required />
+        <form id="game-analysis-form" class="ga-form" novalidate>
+          <div class="ga-row">
+            <label class="ga-field"><span>Your name</span><input type="text" name="name" autocomplete="name" required /></label>
+            <label class="ga-field"><span>Mobile</span><input type="tel" name="phone" autocomplete="tel" inputmode="tel" required /></label>
           </div>
-          <div class="ga-form-grid">
-            <input type="tel" name="phone" placeholder="Phone number" required />
-            <input type="text" name="location" placeholder="Location" />
+          <label class="ga-field"><span>Email</span><input type="email" name="email" autocomplete="email" required /></label>
+          <div class="ga-row">
+            <label class="ga-field"><span>Player's name</span><input type="text" name="playerName" required /></label>
+            <label class="ga-field"><span>Player's age</span><input type="text" name="playerAge" inputmode="numeric" maxlength="3" required /></label>
           </div>
-          <div class="ga-form-grid">
-            <input type="text" name="playerName" placeholder="Player name" required />
-            <input type="text" name="playerAge" placeholder="Player age" required />
-          </div>
-          <div class="ga-form-grid">
-            <input type="text" name="playerLevel" placeholder="Team or level" />
-            <input type="text" name="position" placeholder="Position" />
-          </div>
-          <select name="jfpStatus" required>
-            <option value="">Is the player currently in JFP?</option>
-            <option>Yes, JFP player</option>
-            <option>No, not in JFP</option>
-            <option>Not sure</option>
-          </select>
-          <textarea name="message" placeholder="Tell us what the player wants help with, and if you already have game footage ready." rows="5" required></textarea>
+          <fieldset class="ga-field ga-jfp-q">
+            <legend>Does the player train in JFP?</legend>
+            <div class="ga-seg">
+              <label><input type="radio" name="jfpStatus" value="Yes, JFP player" required /><span>Yes</span></label>
+              <label><input type="radio" name="jfpStatus" value="No, not in JFP" /><span>No</span></label>
+            </div>
+          </fieldset>
+          <label class="ga-field"><span>What would you like feedback on?</span><textarea name="message" rows="3" maxlength="2000" placeholder="For example: a recent match, or one part of their game" required></textarea></label>
+          <label class="ga-field"><span>Link to the game <small>(optional)</small></span><input type="url" name="video" inputmode="url" placeholder="YouTube, Veo or Google Drive link" /></label>
           <label class="ga-check">
             <input type="checkbox" name="marketingOptIn" value="true" />
-            <span>Yes, send me Joner Football updates, app news, camps, and training tips by email.</span>
+            <span>Send me Joner Football news and training tips by email.</span>
           </label>
-          <p id="game-analysis-status" class="ga-form-status" hidden></p>
-          <button type="submit" class="btn-red w-full text-sm">Send game analysis enquiry</button>
+          <p id="game-analysis-status" class="ga-status" role="status" hidden></p>
+          <button type="submit" class="btn-red ga-submit">Send enquiry</button>
         </form>
       </div>
     </section>
   </div>
 
   <style>
-    .ga-page {
-      --jf-red: #cc0000;
-      --jf-dark: #050505;
-      --font-display: var(--font-heading, Anton, Impact, sans-serif);
-      --font-body: var(--font-sans, system-ui, sans-serif);
-      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-      background: #000;
-      color: #fff;
-      overflow: hidden;
-    }
+    .ga-page { --jf-red: #cc0000; --font-display: var(--font-heading, Anton, Impact, sans-serif); background: #000; color: #fff; overflow: hidden; }
     .ga-wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
-    .ga-hook { color: var(--jf-red); display: block; }
+    .ga-kicker { margin: 0 0 12px; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: var(--jf-red); }
+    .ga-h2 { margin: 0; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.1rem, 5vw, 3.4rem); line-height: 1; }
 
+    .ga-hero { position: relative; min-height: 80dvh; display: flex; align-items: flex-end; padding: 120px 0 56px; }
+    .ga-hero-img { position: absolute; inset: 0; background: url('/images/training/game-analysis/tactical-review.webp') center / cover; }
+    .ga-hero-img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.4) 0%, rgba(0,0,0,.35) 40%, rgba(0,0,0,.9) 100%), linear-gradient(90deg, rgba(0,0,0,.75), rgba(0,0,0,.2)); }
+    .ga-hero-content { position: relative; }
+    .ga-eyebrow { margin: 0; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: #fff; }
+    .ga-h1 { margin: 14px 0 0; max-width: 900px; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.8rem, 9vw, 6.4rem); line-height: .92; }
+    .ga-hook { display: block; color: var(--jf-red); }
+    .ga-hero-sub { margin: 22px 0 0; max-width: 560px; font-size: 18px; line-height: 1.55; color: rgba(255,255,255,.88); }
+    .ga-hero-cta { margin-top: 30px; }
+    .ga-hero-cta .btn-red { min-width: 220px; min-height: 52px; }
+    .ga-hero-note { display: flex; align-items: center; gap: 10px; margin: 18px 0 0; font-size: 15px; font-weight: 600; color: #fff; }
+    .ga-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--jf-red); flex: none; }
 
-    .ga-hero { position: relative; min-height: 92dvh; display: flex; align-items: flex-end; overflow: hidden; padding: 120px 0 56px; }
-    .ga-hero-img { position: absolute; inset: 0; background-image: url('/images/training/game-analysis/tactical-review.webp'); background-size: cover; background-position: center; transform: scale(1.02); }
-    .ga-hero-img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.38) 38%, rgba(0,0,0,0.88) 100%), linear-gradient(90deg, rgba(0,0,0,0.76), rgba(0,0,0,0.22)); }
-    .ga-hero-content { position: relative; width: 100%; padding-left: clamp(0px, 6vw, 86px); }
-    .ga-eyebrow { display: inline-flex; align-items: center; gap: 10px; padding: 8px 14px; background: rgba(204,0,0,0.15); border: 1px solid rgba(204,0,0,0.6); color: #fff; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.18em; }
-    .ga-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--jf-red); box-shadow: 0 0 10px rgba(204,0,0,0.9); animation: gaPulse 1.6s var(--ease-out) infinite; }
-    @keyframes gaPulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
-    .ga-h1 { font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(3.2rem, 11vw, 8rem); line-height: 0.88; margin: 18px 0 0; max-width: 900px; }
-    .ga-h1-small { display: block; color: #fff; font-size: clamp(1.25rem, 3.1vw, 2.1rem); line-height: 1.05; margin-top: 16px; max-width: 760px; }
-    .ga-hero-sub { margin-top: 22px; max-width: 620px; color: rgba(255,255,255,0.86); font-size: 17px; line-height: 1.55; }
-    .ga-hero-cta { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 14px; }
-    .ga-hero-cta .btn-red, .ga-hero-cta .btn-outline { min-width: 210px; }
+    .ga-what { background: #fff; color: #000; padding: 76px 0; }
+    .ga-what-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); gap: 48px; align-items: center; }
+    .ga-what .ga-h2 { color: #000; }
+    .ga-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 30px; }
+    .ga-point { padding: 22px; border: 1px solid rgba(0,0,0,.12); }
+    .ga-point h3 { margin: 16px 0 6px; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: 1.45rem; line-height: 1.05; }
+    .ga-point p { margin: 0; color: rgba(0,0,0,.68); line-height: 1.6; }
+    .ga-tick { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--jf-red); display: inline-grid; place-items: center; color: var(--jf-red); }
+    .ga-tick svg { width: 17px; height: 17px; }
+    .ga-photo { aspect-ratio: 4 / 5; overflow: hidden; background: #0a0a0a; }
+    .ga-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-    .ga-section-head { display: flex; flex-direction: column; gap: 14px; margin-bottom: 34px; }
-    .ga-section-head--light .ga-h2 { color: #fff; }
-    .ga-section-eyebrow { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 13px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--jf-red); }
-    .ga-h2 { font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1; margin: 0; color: #000; max-width: 900px; }
-    .ga-rule { width: 64px; height: 3px; background: var(--jf-red); margin-top: 4px; }
+    .ga-how { padding: 80px 0; background: #0a0a0a; }
+    .ga-steps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .ga-step { padding: 26px 24px; border: 1px solid rgba(255,255,255,.12); background: #111; }
+    .ga-n { font-family: var(--font-display); font-style: italic; font-weight: 900; letter-spacing: .16em; color: var(--jf-red); }
+    .ga-step h3 { margin: 18px 0 8px; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(1.5rem, 2.6vw, 2rem); line-height: 1; }
+    .ga-step p { margin: 0; color: rgba(255,255,255,.72); line-height: 1.6; }
 
-    .ga-info { background: #fff; color: #000; padding: 72px 0; }
-    .ga-info-layout { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr); gap: 42px; align-items: start; }
-    .ga-body-copy { margin: -10px 0 28px; color: rgba(0,0,0,0.66); line-height: 1.7; max-width: 640px; }
-    .ga-feature-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
-    .ga-feature-list li { display: flex; gap: 14px; align-items: flex-start; padding: 15px 0; border-top: 1px solid rgba(0,0,0,0.12); font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.15; }
-    .ga-tick { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--jf-red); display: inline-flex; align-items: center; justify-content: center; color: var(--jf-red); }
-    .ga-tick svg { width: 15px; height: 15px; }
-    .ga-info-card { aspect-ratio: 4 / 5; overflow: hidden; background: #0a0a0a; box-shadow: 0 24px 60px rgba(0,0,0,0.18); }
-    .ga-info-card img { width: 100%; height: 100%; object-fit: cover; }
-
-    .ga-process { position: relative; overflow: hidden; padding: 100px 0; background: #000; }
-    .ga-process-bg { position: absolute; inset: 0; background-image: url('/images/training/game-analysis/tactical-review.webp'); background-size: cover; background-position: center; opacity: 0.28; }
-    .ga-process-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,0.92), rgba(0,0,0,0.65)); }
-    .ga-process-content { position: relative; }
-    .ga-step-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .ga-step-card { min-height: 260px; padding: 24px; border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.54); backdrop-filter: blur(8px); display: flex; flex-direction: column; justify-content: space-between; }
-    .ga-step-card span { color: var(--jf-red); font-family: var(--font-display); font-style: italic; font-weight: 900; letter-spacing: 0.18em; }
-    .ga-step-card h3 { margin: 28px 0 0; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(1.6rem, 3vw, 2.3rem); line-height: 1; }
-    .ga-step-card p { margin: 16px 0 0; color: rgba(255,255,255,0.72); line-height: 1.6; }
-
-
-
-    .ga-signup { background: #000; color: #fff; padding: 96px 0; }
-    .ga-signup-layout { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 48px; align-items: start; }
-    .ga-signup .ga-h2 { color: #fff; }
-    .ga-signup-copy p { margin: 20px 0 0; color: rgba(255,255,255,0.72); line-height: 1.7; max-width: 460px; }
-    .ga-form { display: grid; gap: 14px; padding: 22px; background: #090909; color: #fff; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 28px 80px rgba(0,0,0,0.26); }
-    .ga-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-    .ga-form input, .ga-form select, .ga-form textarea { width: 100%; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.06); color: #fff; padding: 15px 16px; min-height: 52px; font-family: var(--font-body); outline: none; }
-    .ga-form textarea { resize: vertical; }
-    .ga-form input:focus, .ga-form select:focus, .ga-form textarea:focus { border-color: rgba(204,0,0,0.8); }
-    .ga-form input::placeholder, .ga-form textarea::placeholder { color: rgba(255,255,255,0.48); }
-    .ga-check { display: flex; gap: 12px; color: rgba(255,255,255,0.72); font-size: 0.9rem; line-height: 1.5; }
-    .ga-check input { width: 16px; min-height: 16px; margin-top: 2px; accent-color: var(--jf-red); }
-    .ga-form-status { margin: 0; font-size: 14px; }
+    .ga-enquire { padding: 88px 0; background: #000; }
+    .ga-enquire-layout { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 48px; align-items: start; }
+    .ga-enquire-copy p { margin: 18px 0 0; max-width: 440px; color: rgba(255,255,255,.75); line-height: 1.65; }
+    .ga-jfp { display: grid; gap: 4px; margin-top: 24px; padding: 16px 18px; border-left: 3px solid var(--jf-red); background: rgba(204,0,0,.12); max-width: 440px; }
+    .ga-jfp b { font-size: 15px; }
+    .ga-jfp span { color: rgba(255,255,255,.82); font-size: 15px; line-height: 1.5; }
+    .ga-form { display: grid; gap: 16px; padding: 24px; background: #0b0b0b; border: 1px solid rgba(255,255,255,.12); }
+    .ga-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .ga-field { display: grid; gap: 7px; margin: 0; padding: 0; border: 0; min-width: 0; }
+    .ga-field > span, .ga-field legend { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.9); padding: 0; }
+    .ga-field small { font-weight: 400; color: rgba(255,255,255,.55); }
+    .ga-field legend { margin-bottom: 7px; }
+    .ga-form input[type="text"], .ga-form input[type="tel"], .ga-form input[type="email"], .ga-form input[type="url"], .ga-form textarea { width: 100%; min-height: 50px; padding: 13px 14px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: #fff; font: inherit; font-size: 16px; border-radius: 0; outline: none; }
+    .ga-form textarea { resize: vertical; min-height: 96px; }
+    .ga-form input::placeholder, .ga-form textarea::placeholder { color: rgba(255,255,255,.45); }
+    .ga-form input:focus, .ga-form textarea:focus { border-color: #fff; }
+    .ga-form [aria-invalid="true"] { border-color: #ff6b6b; }
+    .ga-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .ga-seg label { position: relative; }
+    .ga-seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+    .ga-seg span { display: grid; place-items: center; min-height: 50px; border: 1px solid rgba(255,255,255,.18); font-weight: 650; cursor: pointer; }
+    .ga-seg input:checked + span { background: #fff; color: #000; border-color: #fff; }
+    .ga-seg input:focus-visible + span { outline: 2px solid #fff; outline-offset: 2px; }
+    .ga-check { display: flex; gap: 12px; align-items: flex-start; min-height: 44px; color: rgba(255,255,255,.75); font-size: 15px; line-height: 1.5; cursor: pointer; }
+    .ga-check input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--jf-red); flex: none; }
+    .ga-status { margin: 0; font-size: 15px; line-height: 1.5; }
+    .ga-status.ok { color: #4ade80; } .ga-status.bad { color: #fbbf24; }
+    .ga-submit { width: 100%; min-height: 54px; }
 
     @media (max-width: 900px) {
-      .ga-info-layout, .ga-signup-layout { grid-template-columns: 1fr; }
-      .ga-step-grid { grid-template-columns: 1fr; }
-      .ga-info-card { aspect-ratio: 16 / 10; }
+      .ga-what-layout, .ga-enquire-layout { grid-template-columns: minmax(0, 1fr); }
+      .ga-photo { aspect-ratio: 16 / 10; }
+      .ga-steps { grid-template-columns: minmax(0, 1fr); }
     }
     @media (max-width: 640px) {
-      .ga-wrap { width: min(100% - 24px, 1120px); }
-      .ga-hero { min-height: 88dvh; padding: 100px 0 44px; }
-      .ga-h1 { font-size: clamp(3rem, 16vw, 5.4rem); }
-      .ga-h1-small { font-size: clamp(1.2rem, 7vw, 1.8rem); }
-      .ga-hero-sub { font-size: 15px; }
-      .ga-hero-cta, .ga-hero-cta .btn-red, .ga-hero-cta .btn-outline { width: 100%; }
-      .ga-hero-content { padding-left: 0; }
-      .ga-info, .ga-signup { padding: 58px 0; }
-      .ga-process { padding: 70px 0; }
-      .ga-form-grid { grid-template-columns: 1fr; }
+      .ga-wrap { width: calc(100% - 32px); }
+      .ga-hero { min-height: 78dvh; padding: 100px 0 40px; }
+      .ga-hero-sub { font-size: 16px; }
+      .ga-hero-cta .btn-red { width: 100%; }
+      .ga-what, .ga-how, .ga-enquire { padding: 56px 0; }
+      .ga-two, .ga-row { grid-template-columns: minmax(0, 1fr); }
+      .ga-form { padding: 18px; }
     }
   </style>
 
   <script>
-    const form = document.getElementById('game-analysis-form')
+    const form = document.getElementById('game-analysis-form') as HTMLFormElement | null
     const status = document.getElementById('game-analysis-status')
+    const say = (text: string, ok: boolean) => { if (!status) return; status.hidden = false; status.className = 'ga-status ' + (ok ? 'ok' : 'bad'); status.textContent = text }
     if (form) {
-      form.addEventListener('submit', function (event) {
+      form.addEventListener('submit', async (event) => {
         event.preventDefault()
-        const submit = form.querySelector('button[type="submit"]')
-        const originalText = submit ? submit.textContent : 'Send game analysis enquiry'
-        const formData = new FormData(form)
-        const payload = {}
-        formData.forEach(function (value, key) { payload[key] = value })
-        payload.message = 'GAME ANALYSIS ENQUIRY\n\n' + (payload.message || '') + '\n\nJFP status: ' + (payload.jfpStatus || 'Not selected')
-        payload.marketingOptIn = formData.get('marketingOptIn') === 'true'
-
-        if (status) {
-          status.hidden = true
-          status.textContent = ''
-        }
-        if (submit) {
-          submit.disabled = true
-          submit.textContent = 'Sending...'
-        }
-
-        fetch('/api/contact-enquiry', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+        // Our own check first, so the message is plain and next to the button.
+        let firstBad: HTMLElement | null = null
+        form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input[required], textarea[required]').forEach((el) => {
+          const bad = el.type === 'radio' ? !form.querySelector(`input[name="${el.name}"]:checked`) : !el.checkValidity() || !el.value.trim()
+          if (el.type !== 'radio') el.setAttribute('aria-invalid', bad ? 'true' : 'false')
+          if (bad && !firstBad) firstBad = el
         })
-          .then(function (response) { return response.json() })
-          .then(function (data) {
-            if (!data || !data.success) throw new Error((data && data.error) || 'Could not send enquiry.')
-            form.reset()
-            if (status) {
-              status.hidden = false
-              status.style.color = '#4ade80'
-              status.textContent = 'Done. Your game analysis enquiry has been sent.'
-            }
-          })
-          .catch(function (error) {
-            if (status) {
-              status.hidden = false
-              status.style.color = '#fbbf24'
-              status.textContent = error && error.message ? error.message : 'Could not send enquiry. Please try again.'
-            }
-          })
-          .finally(function () {
-            if (submit) {
-              submit.disabled = false
-              submit.textContent = originalText
-            }
-          })
+        if (firstBad) { say('Please fill in every box (the game link is optional).', false); (firstBad as HTMLElement).focus(); return }
+        const submit = form.querySelector('button[type="submit"]') as HTMLButtonElement | null
+        const data = new FormData(form)
+        const payload: Record<string, unknown> = {}
+        data.forEach((value, key) => { payload[key] = value })
+        payload.enquiryType = 'game-analysis'
+        payload.trainingInterest = 'Game Analysis'
+        payload.message = 'GAME ANALYSIS ENQUIRY\n\n' + (payload.message || '') + '\n\nJFP player: ' + (payload.jfpStatus || 'Not answered') + (payload.video ? '\nGame link: ' + payload.video : '')
+        payload.marketingOptIn = data.get('marketingOptIn') === 'true'
+        if (status) status.hidden = true
+        if (submit) { submit.disabled = true; submit.textContent = 'Sending...' }
+        try {
+          const w = window as unknown as { JonerRecaptcha?: { getToken: (a: string) => Promise<string> } }
+          payload.recaptchaToken = w.JonerRecaptcha ? await w.JonerRecaptcha.getToken('game_analysis').catch(() => '') : ''
+          const res = await fetch('/api/contact-enquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+          const out = await res.json().catch(() => null)
+          if (!out || !out.success) throw new Error((out && out.error) || 'That did not send. Please try again.')
+          form.reset()
+          say('Sent. Thank you. We will be in touch soon with the price and how to send the game.', true)
+        } catch (error) {
+          say(error instanceof Error && error.message ? error.message : 'That did not send. Please try again.', false)
+        } finally {
+          if (submit) { submit.disabled = false; submit.textContent = 'Send enquiry' }
+        }
       })
     }
   </script>

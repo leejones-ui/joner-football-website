@@ -61,7 +61,7 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .j-top-links { display: flex; align-items: center; gap: 8px; }
 
 /* buttons */
-.j-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; font-weight: 650; font-size: 14px; padding: 10px 16px; border: 1.5px solid transparent; text-decoration: none; white-space: nowrap; min-height: 42px; transition: background .12s, border-color .12s, transform .06s; }
+.j-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; font-weight: 650; font-size: 14px; line-height: 1.25; padding: 10px 16px; border: 1.5px solid transparent; text-decoration: none; text-align: center; overflow-wrap: break-word; max-width: 100%; min-height: 42px; transition: background .12s, border-color .12s, transform .06s; }
 .j-btn:active { transform: translateY(1px); }
 .j-btn[disabled] { opacity: .5; cursor: not-allowed; }
 .j-btn-dark { background: var(--j-action); color: var(--j-action-ink); }
@@ -76,6 +76,8 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .j-btn-sm { min-height: 34px; padding: 6px 12px; font-size: 13px; border-radius: 9px; }
 .j-btn-block { width: 100%; }
 .j-btn-lg { min-height: 50px; font-size: 15px; padding: 13px 20px; border-radius: 12px; }
+/* Touch screens: every button is at least 44px tall (Lee, 15 Oct 2026). */
+@media (pointer: coarse) { .j-btn, .j-btn-sm, .j-btn-ghost { min-height: 44px; } }
 
 /* pills */
 .j-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 650; padding: 3px 9px; border-radius: 999px; white-space: nowrap; line-height: 1.5; }
@@ -126,13 +128,15 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .j-age select { border: 0; background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23111827' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 6px center; -webkit-appearance: none; appearance: none; font: inherit; font-weight: 700; font-size: 16px; padding: 6px 26px 6px 4px; color: var(--j-ink); }
 .j-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
 .j-chips::-webkit-scrollbar { display: none; }
-.j-chip { border: 1.5px solid var(--j-line); background: var(--j-surface); border-radius: 999px; font-size: 13px; font-weight: 600; padding: 7px 13px; color: var(--j-ink-2); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.j-chip { border: 1.5px solid var(--j-line); background: var(--j-surface); border-radius: 999px; font-size: 13px; font-weight: 600; line-height: 1.25; padding: 7px 13px; color: var(--j-ink-2); max-width: 100%; text-align: left; display: inline-flex; align-items: center; gap: 6px; }
+/* In a sideways-scrolling chip row a chip stays on one line; anywhere else a long choice wraps inside the chip. */
+.j-chips > .j-chip { white-space: nowrap; flex: none; }
 .j-chip[aria-pressed="true"] { background: var(--j-ink); border-color: var(--j-ink); color: #fff; }
 .j-results-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 16px 0 10px; flex-wrap: wrap; }
 
 /* group cards */
-.j-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-@media (min-width: 640px) { .j-grid { grid-template-columns: repeat(2, 1fr); } }
+.j-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 640px) { .j-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1000px) { .j-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
 .j-group { background: var(--j-surface); border: 1px solid var(--j-line); border-radius: var(--j-radius); padding: 16px; display: flex; flex-direction: column; gap: 4px; }
 .j-group .when { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--j-muted); }
@@ -165,7 +169,7 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .j-sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px 12px; border-bottom: 1px solid var(--j-line-2); }
 .j-sheet-body { padding: 18px; overflow-y: auto; flex: 1; }
 .j-sheet-foot { padding: 14px 18px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--j-line-2); background: var(--j-surface); }
-.j-close { width: 36px; height: 36px; border-radius: 10px; border: 0; background: var(--j-grey-bg); font-size: 18px; line-height: 1; flex: none; }
+.j-close { width: 44px; height: 44px; border-radius: 10px; border: 0; background: var(--j-grey-bg); font-size: 18px; line-height: 1; flex: none; }
 .j-steps { display: flex; gap: 4px; margin-top: 10px; }
 .j-steps i { height: 4px; flex: 1; border-radius: 9px; background: var(--j-line); }
 .j-steps i.on { background: var(--j-ink); }
@@ -239,6 +243,12 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .jp-player:hover { background: #FAFAFB; }
 .jp-player .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jp-player .tags { display: flex; gap: 4px; flex: none; align-items: center; }
+/* The name always shows: when the status pills do not fit beside it (a
+   narrow column, three pills), they wrap underneath instead of squeezing
+   the name to nothing. */
+.jp-player { flex-wrap: wrap; row-gap: 4px; }
+.jp-player .nm { flex: 1 1 7.5em; }
+.jp-player .tags { flex-wrap: wrap; max-width: 100%; }
 .jp-add { margin-top: 8px; border: 1.5px dashed #D0D5DD; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 650; color: var(--j-ink-2); padding: 8px; width: 100%; background: transparent; }
 .jp-add:hover { border-color: var(--j-ink); color: var(--j-ink); }
 .jp-table { width: 100%; border-collapse: collapse; font-size: 13.5px; background: var(--j-surface); }
@@ -338,6 +348,9 @@ body:has(.jfp) { background: var(--j-bg) !important; color: var(--j-ink) !import
 .jp-nm i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
 .jp-nm .w { margin-left: auto; font-size: 9.5px; font-weight: 800; color: var(--j-red); }
 .jp-nm .nmx { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Keep the whole name: "awaiting" and the W badge drop to a second line
+   when the column is too narrow for both. */
+.jp-nm { flex-wrap: wrap; }
 .i-paid { background: #12B76A; } .i-due { background: #E5383B; } .i-part { background: #F97316; } .i-session { background: #EC4899; } .i-trial { background: #7A5AF8; } .i-off { background: #98A2B3; } .i-link { background: #2E90FA; }
 .jp-open { color: var(--j-muted); font-size: 11px; margin-top: 2px; }
 .jp-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--j-muted); }
@@ -551,3 +564,11 @@ body.has-picks .jfp { padding-bottom: 86px; }
 body.has-picks .j-toast { bottom: calc(92px + env(safe-area-inset-bottom)); }
 .j-picks-what b { white-space: nowrap; }
 @media (max-width: 420px) { .j-picks-in { gap: 8px; } .j-picks-act .j-btn-dark { padding: 10px 12px; } }
+
+/* Touch screens: the booking page's filters, day pills, chips and footer
+   links are at least 44px too (after their own sizes above, so this wins). */
+@media (pointer: coarse) {
+  .j-pillselect, .j-chip, .j-filters .j-chip, .j-daybar button { min-height: 44px; }
+  .j-foot-link { position: relative; }
+  .j-foot-link::after { content: ''; position: absolute; left: -6px; right: -6px; top: 50%; height: 44px; transform: translateY(-50%); }
+}

@@ -718,6 +718,7 @@ function renderFees() {
   mountSavedPay(document.getElementById('fees-saved'))
   if (FEES) return fillFees()
   api('/api/jfp-account', { action: 'fees' }).then((r) => {
+    if (r.status === 401) return showSignIn()
     FEES = r.ok ? r.data.fees : { error: r.data.error || 'Could not load your payments.' }
     if (current === 'fees') fillFees()
   })

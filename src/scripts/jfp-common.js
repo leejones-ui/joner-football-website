@@ -42,6 +42,10 @@ export const money = (cents) => `A$${(cents / 100).toLocaleString('en-AU', { min
 
 // One sheet at a time: a bottom sheet on phones, a side panel on desktop.
 export function openSheet({ title, subtitle = '', steps = 0, step = 0, onClose }) {
+  // Focus goes back to whatever opened the sheet when it closes (the opener
+  // of the sheet this one replaces, if a sheet opened another).
+  const active = document.activeElement
+  const opener = active?.closest?.('.j-sheet') ? active.closest('.j-sheet')._opener : active
   closeSheet(true)
   const scrim = document.createElement('div')
   scrim.className = 'j-scrim'
@@ -73,7 +77,18 @@ export function openSheet({ title, subtitle = '', steps = 0, step = 0, onClose }
   scrim.addEventListener('click', close)
   sheet.querySelector('.j-close').addEventListener('click', close)
   sheet._onClose = onClose
-  sheet._esc = (e) => { if (e.key === 'Escape') close() }
+  sheet._opener = opener
+  // Escape closes; Tab stays inside the sheet while it is open.
+  sheet._esc = (e) => {
+    if (e.key === 'Escape') return close()
+    if (e.key !== 'Tab') return
+    const items = [...sheet.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter((x) => x.getClientRects().length)
+    if (!items.length) return
+    const first = items[0], last = items[items.length - 1]
+    if (!sheet.contains(document.activeElement)) { e.preventDefault(); first.focus() }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+  }
   document.addEventListener('keydown', sheet._esc)
   setTimeout(() => sheet.querySelector('.j-close').focus(), 30)
   return api
@@ -85,8 +100,10 @@ export function closeSheet(silent) {
   if (!sheet) return
   document.removeEventListener('keydown', sheet._esc)
   const cb = sheet._onClose
+  const opener = sheet._opener
   sheet.remove()
   document.body.style.overflow = ''
+  if (opener?.isConnected && !opener.closest('.j-sheet')) opener.focus({ preventScroll: true })
   if (!silent && typeof cb === 'function') cb()
 }
 
