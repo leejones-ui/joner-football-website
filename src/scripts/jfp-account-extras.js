@@ -94,20 +94,18 @@ export function renderExtra(el, D) {
 
 export function renderAnalysis(el, D) {
   const x = X(D)
-  el.innerHTML = `${hero({ img: `${IMG}/lee-coaching-field-1600x900.webp`, imgSmall: `${IMG}/lee-coaching-field-900x1100.webp`, kicker: 'Program', title: 'Book game<br>analysis', lede: "Send us a video of a match and Lee goes through your player's game: what they do well, and what to work on next." })}
-    <div class="ja-steps"><div class="ja-step"><b>Send the match</b><p>A link to the video (YouTube, Veo, Google Drive, Dropbox), or send it to us after.</p></div><div class="ja-step"><b>Lee watches it</b><p>Your player's moments in the game, on and off the ball.</p></div><div class="ja-step"><b>You get the analysis</b><p>What they do well and what to work on, to take into training.</p></div></div>
+  el.innerHTML = `${hero({ img: `${IMG}/lee-coaching-field-1600x900.webp`, imgSmall: `${IMG}/lee-coaching-field-900x1100.webp`, kicker: 'Program', title: 'Game<br>analysis', lede: "JFP players get an exclusive discount on game analysis. We watch your player's game and give them detailed feedback to take into training." })}
+    <div class="ja-steps"><div class="ja-step"><b>Enquire</b><p>Fill in the short form below.</p></div><div class="ja-step"><b>We watch the game</b><p>Your player's moments in the match, on and off the ball.</p></div><div class="ja-step"><b>Detailed feedback</b><p>What they do well and what to work on next.</p></div></div>
     <div class="ja-grid ja-grid-2" style="margin-top:14px">
-      <div class="ja-card ja-price-card"><p class="ja-kicker"><i></i>Price</p><p class="ja-amt"><span>${esc(x.analysisPriceLabel || 'Ask us')}</span>${x.analysisPriceLabel ? ' <small>a match</small>' : ''}</p><p class="ja-small ja-muted">${x.analysisPriceLabel ? 'We confirm everything by email before Lee starts.' : 'Send the request and we will tell you the price before Lee starts.'}</p></div>
+      <div class="ja-card ja-price-card"><p class="ja-kicker"><i></i>JFP players</p><p class="ja-amt"><span>Exclusive discount</span></p><p class="ja-small ja-muted">${x.analysisPriceLabel ? `Your JFP price is ${esc(x.analysisPriceLabel)} a match. ` : ''}Send an enquiry and we will reply with the price and the next steps.</p></div>
       <div class="ja-card ja-form-card" id="x-analysis">
-        <p class="ja-kicker"><i></i>Request</p><h2 class="ja-h2" style="margin-top:10px">Book an analysis</h2>
+        <p class="ja-kicker"><i></i>Enquire</p><h2 class="ja-h2" style="margin-top:10px">Ask about game analysis</h2>
         ${playerField(D, 'xa-player')}
-        <label class="j-field"><span>Match date</span><input class="j-input" id="xa-date" type="date" max="${todayIso()}"></label>
-        <label class="j-field"><span>Link to the video</span><input class="j-input" id="xa-video" type="url" inputmode="url" placeholder="https://" autocomplete="off"></label>
-        <label class="j-check"><input type="checkbox" id="xa-later"> <span>I'll send it</span></label>
-        <label class="j-field"><span>Anything Lee should know? <span class="muted">(optional)</span></span><textarea class="j-textarea" id="xa-notes" rows="3" maxlength="1000" placeholder="For example, their shirt number, position, or what you want him to look at"></textarea></label>
+        <label class="j-field"><span>Link to a match video <span class="muted">(optional)</span></span><input class="j-input" id="xa-video" type="url" inputmode="url" placeholder="https://" autocomplete="off"></label>
+        <label class="j-field"><span>Anything we should know? <span class="muted">(optional)</span></span><textarea class="j-textarea" id="xa-notes" rows="3" maxlength="1000" placeholder="For example, their position, or what you would like us to look at"></textarea></label>
         <label class="j-field"><span>Your mobile <span class="muted">(optional)</span></span><input class="j-input" id="xa-phone" type="tel" inputmode="tel" autocomplete="tel"></label>
         <p class="j-err" id="xa-err" hidden></p>
-        <div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" data-x-send="analysis">Send the request</button></div>
+        <div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" data-x-send="analysis">Send the enquiry</button></div>
       </div>
     </div>
     ${mineList(D, 'analysis')}`
@@ -121,19 +119,19 @@ async function send(kind, btn, D) {
   const err = root.querySelector(kind === 'analysis' ? '#xa-err' : '#x-err')
   err.hidden = true
   const body = kind === 'analysis'
-    ? { kind, player: v('xa-player'), matchDate: v('xa-date'), video: v('xa-video'), sendLater: root.querySelector('#xa-later').checked, notes: v('xa-notes'), phone: v('xa-phone') }
+    ? { kind, player: v('xa-player'), video: v('xa-video'), notes: v('xa-notes'), phone: v('xa-phone') }
     : { kind, player: v('x-player'), type: picked(root, 'type')[0] || 'Either', days: picked(root, 'days'), times: picked(root, 'times'), coach: v('x-coach'), notes: v('x-notes'), phone: v('x-phone') }
   // The same checks the server makes, so the family hears straight away.
-  if (kind === 'analysis' && !body.sendLater && !/^https?:\/\/\S{4,}/.test(body.video)) { err.textContent = 'Paste a link to the match video, or tick "I\'ll send it".'; err.hidden = false; return }
+  if (kind === 'analysis' && body.video && !/^https?:\/\/\S{4,}/.test(body.video)) { err.textContent = 'That video link does not look right. Paste the full link, or leave it empty.'; err.hidden = false; return }
   if (kind === 'extra' && !body.days.length && !body.times.length && body.notes.length < 3) { err.textContent = 'Choose the days or times that suit, or add a note.'; err.hidden = false; return }
   btn.disabled = true
   btn.textContent = 'Sending'
   const r = await api('/api/jfp-account', { action: 'requestExtra', ...body })
   btn.disabled = false
-  btn.textContent = 'Send the request'
+  btn.textContent = kind === 'analysis' ? 'Send the enquiry' : 'Send the request'
   if (!r.ok) { err.textContent = r.data.error || 'Could not send that. Try again.'; err.hidden = false; return }
   if (D.extras) D.extras.mine = [r.data.request, ...(D.extras.mine || [])]
-  root.innerHTML = `<div class="ja-sent" data-x-sent>${ic('check')}<div><h3 class="ja-h3">Sent. Thank you.</h3><p class="ja-small ja-muted" style="margin-top:4px">${kind === 'analysis' ? `Lee and Ligia have your request for ${esc(r.data.request.player)}.${body.sendLater ? ' Reply to our email with the video when you have it.' : ''}` : `Ligia has your request for ${esc(r.data.request.player)} and will come back to you with times.`} We reply to ${esc(D.email)}.</p></div></div>`
+  root.innerHTML = `<div class="ja-sent" data-x-sent>${ic('check')}<div><h3 class="ja-h3">Sent. Thank you.</h3><p class="ja-small ja-muted" style="margin-top:4px">${kind === 'analysis' ? `We have your game analysis enquiry for ${esc(r.data.request.player)} and will reply with the price and next steps.` : `Ligia has your request for ${esc(r.data.request.player)} and will come back to you with times.`} We reply to ${esc(D.email)}.</p></div></div>`
   toast('Sent. We will be in touch.')
 }
 

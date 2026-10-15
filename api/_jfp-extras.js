@@ -7,7 +7,8 @@
 //   extra     an extra 1 on 1 or small group session with a coach. 1 on 1
 //             during term is school hours only (about 7:30am to 2pm) and the
 //             school holidays; other times on request
-//   analysis  Lee analyses a match video of the player
+//   analysis  a game analysis enquiry (JFP players get a discount); it
+//             goes to Ligia and Dean, who does the analysis
 //
 // Slots (extra 1 on 1 times staff open up) can be listed on the page later:
 // extraSlots() returns them, and today there are none.
@@ -55,9 +56,9 @@ export function cleanExtra(kind, body = {}, { players = [], today = sydneyToday(
   const matchDate = clean(body.matchDate, 10)
   if (matchDate && (!ISO.test(matchDate) || matchDate > today)) return { ok: false, status: 400, error: 'Choose the date of the match (today or earlier).' }
   const video = clean(body.video, 500)
-  const later = body.sendLater === true
-  if (!later && !URL_OK.test(video)) return { ok: false, status: 400, error: 'Paste a link to the match video, or tick "I\'ll send it".' }
-  return { ok: true, value: { kind, player: known || player, matchDate, video: later ? '' : video, sendLater: later, notes } }
+  // An enquiry since 15 Oct 2026 (Lee): the video link is optional.
+  if (video && !URL_OK.test(video)) return { ok: false, status: 400, error: 'That video link does not look right. Paste the full link, or leave it empty.' }
+  return { ok: true, value: { kind, player: known || player, matchDate, video, sendLater: !video, notes } }
 }
 
 function parse(v) { try { return JSON.parse(v) } catch { return null } }
@@ -80,7 +81,7 @@ export function familyExtraView(r) {
   return { id: r.id, kind: r.kind, kindLabel: KINDS[r.kind], player: r.player, status: r.status, createdAt: r.createdAt, ...(r.matchDate ? { matchLabel: dateLabel(r.matchDate) } : {}) }
 }
 
-// A family's request: saved, Lee and Ligia emailed, Telegram told.
+// A family's request: saved, staff emailed (game analysis: Ligia and Dean too), Telegram told.
 export async function submitExtra({ config, parent, parentName = '', players = [], kind, body, notify = { email: sendExtraRequestAlert, telegram: telegramAlert } }) {
   const v = cleanExtra(kind, body, { players })
   if (!v.ok) return v

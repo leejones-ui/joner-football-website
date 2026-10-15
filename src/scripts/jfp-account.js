@@ -162,7 +162,7 @@ function nav() {
       { key: 'term', label: 'Term info', sub: termShort(), icon: 'info' },
       { key: 'holidays', label: 'Holiday training', icon: 'sun' },
       { key: 'extra', label: 'Book extra sessions', icon: 'calplus' },
-      { key: 'analysis', label: 'Book game analysis', icon: 'video' },
+      { key: 'analysis', label: 'Game analysis', icon: 'video' },
       { href: links.booking, label: 'Timetable', icon: 'grid' },
     ] },
     { label: 'Player', items: [

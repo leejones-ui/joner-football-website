@@ -238,14 +238,17 @@ export async function sendExtraRequestAlert({ rec, config }) {
   const list = [
     ['Player', esc(rec.player)],
     ...(analysis
-      ? [['Match', esc(rec.matchDate ? dateLabel(rec.matchDate) : 'Date not given')], ['Video', rec.video ? link(rec.video.slice(0, 80), rec.video) : 'The family will send it'], ['Price', esc(rec.priceLabel || 'Not set (the page says "Ask us")')]]
+      ? [['Match', esc(rec.matchDate ? dateLabel(rec.matchDate) : 'Date not given')], ['Video', rec.video ? link(rec.video.slice(0, 80), rec.video) : 'No link yet'], ['Price', esc(rec.priceLabel || 'Not set (the page says "Ask us")')]]
       : [['Type', esc(rec.type)], ['Days', esc(rec.days.join(', ') || 'Any')], ['Times', esc(rec.times.join(', ') || 'Any')], ['Coach', esc(rec.coach || 'No preference')]]),
     ['Notes', rec.notes ? esc(rec.notes).replace(/\r?\n/g, '<br>') : 'None'],
     ['From', esc(rec.parentName || 'Not given')], ['Email', esc(rec.email)], ...(rec.phone ? [['Mobile', esc(rec.phone)]] : []),
   ]
   const what = analysis ? 'Game analysis' : 'Extra session'
-  const body = `${p(analysis ? 'A family has asked for a game analysis from My account.' : 'A family has asked for an extra session from My account.')}${rows(list)}${p('Reply to this email to answer them. Every request is listed under Requests in the JFP portal, where you can mark it done.')}`
-  return send({ to: staffTo(config), subject: `${what} request: ${rec.player}`, html: shell({ preheader: `${what}: ${rec.player}`, heading: `${what} request`, body }), replyTo: rec.email, kind: analysis ? 'game analysis request' : 'extra session request' })
+  // Game analysis enquiries also go to Dean, who does the analysis (Lee, 15 Oct 2026).
+  const dean = analysis ? (config.coaches || []).find((c) => c.id === 'dean')?.email : ''
+  const to = [...staffTo(config), ...(dean && !staffTo(config).some((x) => x.email === dean.toLowerCase()) ? [{ email: dean.toLowerCase() }] : [])]
+  const body = `${p(analysis ? 'A family has asked about game analysis from My account.' : 'A family has asked for an extra session from My account.')}${rows(list)}${p('Reply to this email to answer them. Every request is listed under Requests in the JFP portal, where you can mark it done.')}`
+  return send({ to, subject: `${what} ${analysis ? 'enquiry' : 'request'}: ${rec.player}`, html: shell({ preheader: `${what}: ${rec.player}`, heading: `${what} request`, body }), replyTo: rec.email, kind: analysis ? 'game analysis request' : 'extra session request' })
 }
 
 // The kit is compulsory, so every email that sets up a place says so, in the

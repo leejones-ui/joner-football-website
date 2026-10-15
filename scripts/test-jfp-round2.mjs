@@ -216,7 +216,7 @@ await test('phones: Home, Sessions, Fees, Contact and More; More holds everythin
   assert.deepEqual(groups, ['To do', 'My training', 'Program', 'Player', 'App'])
   const tiles = [...p.d.querySelectorAll('.j-sheet .ja-tile .t')].map((t) => t.textContent)
   assert.equal(tiles[0], "Sign Sol's waiver")
-  for (const t of ['Player information', "Can't make it", 'Keep my spot', 'Videos', 'The JF App', 'Waivers', 'Book extra sessions', 'Book game analysis']) assert.ok(tiles.includes(t), t)
+  for (const t of ['Player information', "Can't make it", 'Keep my spot', 'Videos', 'The JF App', 'Waivers', 'Book extra sessions', 'Game analysis']) assert.ok(tiles.includes(t), t)
   for (const t of ['Home', 'My sessions', 'Fees', 'Contact us']) assert.ok(!tiles.includes(t), `${t} is on the bar, not in More`)
   await p.click('.j-sheet [data-go="videos"]')
   assert.equal(p.$('[data-pane="videos"]').hidden, false)

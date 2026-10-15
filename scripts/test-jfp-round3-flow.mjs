@@ -130,17 +130,18 @@ await test("Can't make it on Thursday: the Thursday coach and Ligia are emailed 
 })
 
 await test('Book extra sessions and Book game analysis: Lee and Ligia emailed and logged, the family sees them, staff see them under Requests', async () => {
-  const bad = await parent.call('/api/jfp-account', { action: 'requestExtra', kind: 'analysis', player: KIDS[0] })
-  assert.equal(bad.status, 400); assert.match(bad.data.error, /link to the match video/)
+  const bad = await parent.call('/api/jfp-account', { action: 'requestExtra', kind: 'analysis', player: KIDS[0], video: 'not a link' })
+  assert.equal(bad.status, 400); assert.match(bad.data.error, /video link/)
   const x = await parent.call('/api/jfp-account', { action: 'requestExtra', kind: 'extra', player: KIDS[0], type: '1 on 1', days: ['Monday', 'Friday'], times: ['School hours (about 7:30am to 2pm)'], notes: 'Weak foot', coach: '' })
   assert.equal(x.status, 200, JSON.stringify(x.data)); assert.equal(x.data.emailed, true)
   const a = await parent.call('/api/jfp-account', { action: 'requestExtra', kind: 'analysis', player: KIDS[1], matchDate: ymd(Date.now() - 3 * 86400000), video: 'https://video.example.com/match/42', notes: 'Number 9' })
   assert.equal(a.status, 200, JSON.stringify(a.data))
-  const mails = (await emails()).filter((m) => /^(Extra session|Game analysis) request: /.test(m.subject))
-  assert.deepEqual(mails.map((m) => m.subject), [`Extra session request: ${KIDS[0]}`, `Game analysis request: ${KIDS[1]}`])
+  const mails = (await emails()).filter((m) => /^(Extra session request|Game analysis enquiry): /.test(m.subject))
+  assert.deepEqual(mails.map((m) => m.subject), [`Extra session request: ${KIDS[0]}`, `Game analysis enquiry: ${KIDS[1]}`])
+  assert.ok(mails[1].to.includes(coachEmail('dean')) && !mails[0].to.includes(coachEmail('dean')), 'game analysis also goes to Dean')
   assert.ok(mails.every((m) => STAFF.every((x) => m.to.includes(x)) && m.replyTo === PARENT.email), 'to Lee and Ligia (staff), replies to the family')
   assert.match(mails[1].html, /video\.example\.com\/match\/42/)
-  const log = (await emailLog()).filter((l) => /request: /.test(l.subject)).map((l) => l.kind).sort()
+  const log = (await emailLog()).filter((l) => /request: |enquiry: /.test(l.subject)).map((l) => l.kind).sort()
   assert.deepEqual(log, ['extra session request', 'game analysis request'])
   const d = (await parent.call('/api/jfp-account', { action: 'overview' })).data
   assert.deepEqual(d.extras.mine.map((m) => [m.kind, m.player, m.status]).sort(), [['analysis', KIDS[1], 'new'], ['extra', KIDS[0], 'new']])

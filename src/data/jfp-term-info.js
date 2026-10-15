@@ -15,7 +15,7 @@ export const groupingLine = 'Coaches group players by ability, not age. A strong
 // links open the family account's own pages for them.
 export const termExtras = [
   { key: 'extra', title: 'Extra training', text: 'Want more? Book extra 1 on 1 or small group sessions with our coaches.', cta: 'Book extra sessions', href: '/jfp-account/#extra' },
-  { key: 'analysis', title: 'Game analysis', text: 'A 1 on 1 video breakdown of your player\'s game: strengths, decisions and what to work on next.', cta: 'Book game analysis', href: '/jfp-account/#analysis' },
+  { key: 'analysis', title: 'Game analysis', text: 'JFP players get an exclusive discount. We watch your player\'s game and give detailed feedback.', cta: 'Ask about game analysis', href: '/jfp-account/#analysis' },
 ]
 
 export const expectations = [
