@@ -4,6 +4,7 @@
 // each player's row by what that place owed, and the payment ledger gets one
 // line per player.
 import { esc, money } from './jfp-common.js'
+import { textComposer, familyInvoiceText } from './jfp-portal-text.js'
 
 // Price buttons. type is what the row's Payment Type becomes.
 const PRESETS = [
@@ -28,6 +29,8 @@ export function familiesOf(players) {
     key, places,
     parent: places.find((p) => p.parent)?.parent || '',
     email: places.find((p) => p.email)?.email || '',
+    phone: places.find((p) => p.phone)?.phone || '',
+    self: places.length === 1 && Boolean(places[0].ownContact),
     names: [...new Set(places.map((p) => p.player))],
     links: [...new Map(places.filter((p) => p.openLink).map((p) => [p.openLink.id, p.openLink])).values()],
   })).sort((a, b) => (b.places.length > 1) - (a.places.length > 1) || a.names[0].localeCompare(b.names[0]))
@@ -63,6 +66,8 @@ function card(fam, ui) {
       ${fam.places.filter(familyRateFits).length > 1 ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-family-rate>Family rate: ${esc(money(m.prices.familyPlace))} a place</button>` : '<span></span>'}
       <div class="jf-total"><span class="muted small">Invoice</span><b data-total></b></div>
       <label class="j-check small"><input type="checkbox" data-email ${fam.email ? 'checked' : 'disabled'}> <span>Email it to the family</span></label>
+      <label class="j-check small" ${fam.phone ? '' : 'title="No mobile on file: add one with Edit"'}><input type="checkbox" data-text ${fam.phone ? 'checked' : 'disabled'}> <span>Text it too${fam.phone ? '' : ' (no mobile)'}</span></label>
+      <button type="button" class="j-btn j-btn-line j-btn-sm" data-text-now>Text the family</button>
       <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-save>Save prices only</button>
       <button type="button" class="j-btn j-btn-dark j-btn-sm" data-send ${fam.email ? '' : 'disabled title="Add a parent email with Edit first"'}>Send family invoice</button>
     </footer>
@@ -92,6 +97,11 @@ function bindCard(el, fam, ui) {
     const pr = e.target.closest('[data-preset]')
     if (pr) { const x = PRESETS.find((y) => y.key === pr.dataset.preset); return set(pr.closest('[data-place]').dataset.place, m.prices[x.key], x.type) }
     if (e.target.closest('[data-family-rate]')) { for (const p of fam.places.filter(familyRateFits)) set(p.rowId, m.prices.familyPlace, PRESETS[1].type); return }
+    if (e.target.closest('[data-text-now]')) {
+      // The open link if there is one, else the amount and where to pay.
+      const link = fam.links[0]
+      return textFamily(fam, ui, { amountCents: link ? link.amountCents : total(), url: link ? `${location.origin}/jfp-account/?pay=${encodeURIComponent(link.id)}` : '', emailed: Boolean(link) })
+    }
     const send = e.target.closest('[data-send]'), save = e.target.closest('[data-save]')
     if (!send && !save) return
     const places = fam.places.map((p) => ({ rowId: p.rowId, ...state.get(p.rowId) }))
@@ -103,7 +113,7 @@ function bindCard(el, fam, ui) {
     const email = el.querySelector('[data-email]').checked
     const lines = fam.places.map((p) => `${esc(p.player)}, ${esc(p.group)}: ${esc(money(state.get(p.rowId).feeCents))}${p.paidCents ? ` (${esc(money(p.paidCents))} paid)` : ''}`).join('<br>')
     if (!(await ui.confirmBox(`<b>One invoice for ${esc(money(total()))}</b> to ${esc(fam.email)}${email ? ', emailed now' : ', not emailed (you can copy the link)'}.<br><br>${lines}`, { ok: 'Send invoice' }))) return
-    await submit(el, fam, places, { sendEmail: email }, ui)
+    await submit(el, fam, places, { sendEmail: email }, ui, false, el.querySelector('[data-text]').checked)
   })
   el.querySelectorAll('[data-fee]').forEach((inp) => inp.addEventListener('input', () => {
     const id = inp.closest('[data-place]').dataset.place, v = inp.value.trim()
@@ -113,13 +123,13 @@ function bindCard(el, fam, ui) {
   paint()
 }
 
-async function submit(el, fam, places, opts, ui, replace = false) {
+async function submit(el, fam, places, opts, ui, replace = false, text = false) {
   const btn = el.querySelector('[data-send]')
   btn.disabled = true
   const r = await ui.post('familyInvoice', { places, ...opts, replace })
   btn.disabled = false
   if (!r.ok && r.data.code === 'link_open') {
-    if (await ui.confirmBox(esc(r.data.error), { ok: 'Replace with one invoice' })) return submit(el, fam, places, opts, ui, true)
+    if (await ui.confirmBox(esc(r.data.error), { ok: 'Replace with one invoice' })) return submit(el, fam, places, opts, ui, true, text)
     return
   }
   if (!r.ok) { const err = el.querySelector('[data-err]'); err.textContent = r.data.error; err.hidden = false; return }
@@ -127,6 +137,20 @@ async function submit(el, fam, places, opts, ui, replace = false) {
   try { await navigator.clipboard.writeText(r.data.payreq.url) } catch {}
   ui.toast(`Family invoice ${r.data.payreq.amountLabel} ${r.data.emailed ? `emailed to ${fam.email}` : 'made'}. Link copied.${r.data.replaced ? ` ${r.data.replaced} older link${r.data.replaced > 1 ? 's' : ''} closed.` : ''}`, 7000)
   ui.done()
+  // The text opens with the words filled in; nothing goes until Send.
+  if (text && fam.phone) textFamily(fam, ui, { amountCents: r.data.payreq.amountCents, url: r.data.payreq.url, emailed: Boolean(r.data.emailed) })
+}
+
+// Text the family about their invoice, in the Messages composer: Lee or
+// Ligia can change every word before it goes.
+function textFamily(fam, ui, { amountCents, url = '', emailed = false }) {
+  const paidCents = fam.places.reduce((t, p) => t + (p.paidCents || 0), 0)
+  const first = fam.places[0]
+  return textComposer({
+    modal: ui.modal, toast: ui.toast, rowIds: fam.places.map((p) => p.rowId), parent: fam.parent, mobile: fam.phone,
+    title: fam.self ? `Text ${first.player.split(' ')[0]}` : 'Text the family', self: fam.self, to: fam.self ? first.player : '',
+    text: familyInvoiceText({ parent: fam.parent, players: fam.names, amount: money(amountCents), url, paidCents, paidLabel: money(paidCents), email: fam.email, emailed, self: fam.self }),
+  })
 }
 
 // Prices only, no invoice: each changed place through Edit's own action.

@@ -2413,7 +2413,7 @@ async function renderMoney(pre) {
     $('m-chips').innerHTML = [['', 'All'], ['paid', 'Paid'], ['part', 'Part paid'], ['unpaid', 'Unpaid'], ['session', 'Session by session'], ['unpriced', 'No price set'], ['stripe', 'Paid in Stripe']].filter(([v]) => v !== 'stripe' || counts.stripe || f.status === v).map(([v, l]) => `<button type="button" class="ps-chip" data-set-status="${v}" aria-pressed="${f.status === v}">${v ? `<i style="background:${cssVar(STATUS[v][1])}"></i>` : ''}${l} <b class="n">${counts[v] || 0}</b></button>`).join('')
   }
   const draw = () => {
-    if (f.view === 'family') { $('m-count').textContent = ''; return drawFamilies($('m-fams'), { m, f, match: mMatch, post, toast, confirmBox, statusPill, remove: (p) => removeModal({ rowId: p.rowId, name: p.player, paymentStatus: p.airtableStatus }, null, () => renderMoney()), done: () => { P.board = null; PL.at = 0; renderMoney() } }) }
+    if (f.view === 'family') { $('m-count').textContent = ''; return drawFamilies($('m-fams'), { m, f, match: mMatch, post, toast, modal, confirmBox, statusPill, remove: (p) => removeModal({ rowId: p.rowId, name: p.player, paymentStatus: p.airtableStatus }, null, () => renderMoney()), done: () => { P.board = null; PL.at = 0; renderMoney() } }) }
     const s = scope()
     const list = s.players.filter(mMatch)
     $('m-rows').innerHTML = list.map(mRow).join('') || `<tr><td colspan="7"><div class="ps-empty">No players match.${mActive() ? ' <button type="button" class="ps-link" data-m-clear>Clear filters</button>' : ''}</div></td></tr>`

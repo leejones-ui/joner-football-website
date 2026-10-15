@@ -114,3 +114,16 @@ export function inviteText({ parent, player, email, self = false }) {
     `We have emailed you the same. See you on the pitch!\n${SIGN}`,
   )
 }
+// Money > By family: the family invoice as a text (Lee, 15 Oct 2026: "the
+// way it is in Messages should also be built into the money tab"). paidCents:
+// what they have paid already, which the amount already takes off.
+export function familyInvoiceText({ parent, players = [], amount, url = '', paidCents = 0, paidLabel = '', email = '', emailed = true, self = false }) {
+  const names = players.map(firstName)
+  const who = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0] || ''
+  return lines(
+    hiLine(self ? players[0] : parent),
+    `It's Lee from Joner Football. Here is the invoice for ${self ? 'your place' : who}: ${amount}.${paidCents > 0 ? ` That already takes off the ${paidLabel} you have paid.` : ''}`,
+    url ? `You can pay here: ${url}` : `To pay, ${signIn(email)} at jonerfootball.com/jfp-account.`,
+    `${emailed && url ? 'We have emailed you the same link. ' : ''}See you on the pitch!\n${SIGN}`,
+  )
+}

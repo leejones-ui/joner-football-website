@@ -577,4 +577,31 @@ await test("bank transfers: nothing from Xero yet, and a failed read says so", a
   q.close()
 })
 
+await test('By family: Text it too opens the text with the invoice link after sending; Text the family any time; the words can be changed', async () => {
+  const m = fresh()
+  for (const pl of m.players) if (['p2', 'p7'].includes(pl.rowId)) Object.assign(pl, { familyKey: 'fam@example.com', email: 'fam@example.com', phone: '0400 111 222', paidCents: 0 })
+  const p = await openPortal({ money: m, onPost: (b) => (b.action === 'familyInvoice' ? { success: true, payreq: { id: 'PAY-1', url: 'https://jonerfootball.com/jfp-account/?pay=PAY-1', amountCents: 130000, amountLabel: money(130000) }, emailed: true, replaced: 0 } : b.action === 'quickText' ? { success: true, message: { id: 'M1', status: 'queued' }, hoursOpen: true } : b.action === 'get' ? { success: true, message: { id: 'M1', status: 'sent', statusLabel: 'Sent' } } : null) })
+  await p.click('[data-money-view="family"]')
+  const fam = () => p.$('#m-fams [data-fam="fam@example.com"]')
+  assert.ok(fam().querySelector('[data-text]').checked, 'ticked when there is a mobile')
+  await p.click('#m-fams [data-fam="fam@example.com"] [data-text-now]')
+  assert.match(p.$('#tx-text').value, /^Hi Ben,\n\nIt's Lee from Joner Football\. Here is the invoice for /)
+  p.$('[data-close]').click()
+  for (const b of fam().querySelectorAll('[data-preset="sibling"]')) b.click()
+  await p.click('#m-fams [data-fam="fam@example.com"] [data-send]')
+  await p.click('[data-yes]')
+  await new Promise((r) => setTimeout(r, 20))
+  assert.equal(p.posts.filter((b) => b.action === 'familyInvoice').length, 1)
+  const words = p.$('#tx-text').value
+  assert.match(words, /You can pay here: https:\/\/jonerfootball\.com\/jfp-account\/\?pay=PAY-1/)
+  assert.match(words, /We have emailed you the same link\./)
+  assert.doesNotMatch(words, /\u2014/)
+  assert.equal(p.posts.filter((b) => b.action === 'quickText').length, 0, 'nothing is texted until Send')
+  p.$('#tx-text').value = 'Hi Ben, changed words'
+  await p.click('#tx-send')
+  const sent = p.posts.find((b) => b.action === 'quickText')
+  assert.deepEqual([sent.text, sent.rowIds.sort()], ['Hi Ben, changed words', ['p2', 'p7']])
+  p.close()
+})
+
 console.log(`${passed} money page checks passed`)

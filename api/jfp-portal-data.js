@@ -1243,7 +1243,7 @@ export async function moneyData(config, { since, fresh = false, quick = false, p
       const g = byId[r.groupId]
       const loc = g ? locationFor(config, g.location) : locationFor(config, r.location || '')
       players.push({
-        rowId: r.id, player: r.player, parent: r.parent, email: r.email, phone: r.phone || '', familyKey: email, openLink: openLinkFor.get(r.id) || null, unledgeredCents: Math.max(0, paid - (ledgerByRow.get(r.id) || 0)), product: productOfRow(r, g),
+        rowId: r.id, player: r.player, parent: r.parent, email: r.email, phone: r.phone || '', ownContact: r.ownContact === true, familyKey: email, openLink: openLinkFor.get(r.id) || null, unledgeredCents: Math.max(0, paid - (ledgerByRow.get(r.id) || 0)), product: productOfRow(r, g),
         group: g ? `${g.day} ${g.time}, ${loc.name}` : [r.day, r.time, r.location].filter(Boolean).join(' ') || 'Not in a group',
         groupId: r.groupId, locationId: loc.id, locationName: loc.name, coach: g ? coachLabel(coachById(config, g.coachId)) : r.coach,
         feeCents: fee, paidCents: paid, owingCents: status === 'paid' || status === 'stripe' ? 0 : owe, perSessionCents: r.perSessionCents || null,
@@ -1933,7 +1933,7 @@ async function familyInvoice(req, res, principal, config, body) {
   }
   const emailed = sent.emailed
   await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: q.term4Ids, cents: amountCents, product: 'family', emailed, replaced: openLinks.map((x) => x.id) } })
-  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The invoice link is made, but the email to ${email} did not send. ${sent.emailError}` : '', replaced: openLinks.length })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountCents, amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The invoice link is made, but the email to ${email} did not send. ${sent.emailError}` : '', replaced: openLinks.length })
 }
 
 // Session by session (Lee, 12 Oct 2026): bill the sessions a player came to,
@@ -2016,7 +2016,7 @@ async function sessionInvoice(req, res, principal, config, body) {
   }
   const emailed = sent.emailed
   await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: ids, cents: amountCents, product: 'sessions', emailed } })
-  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The link is made, but the email to ${email} did not send. ${sent.emailError}` : '' })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountCents, amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The link is made, but the email to ${email} did not send. ${sent.emailError}` : '' })
 }
 
 function splitEven(total, n) {
@@ -2430,7 +2430,7 @@ async function decideRequest(req, res, principal, config, body) {
   const emailed = sent.emailed
   for (const [i, id] of ids.entries()) await noteNewPlayer({ config, group, rowId: id, player: r.players[i]?.name || '', kind: trial ? 'trial' : 'offered' }).catch((e) => console.error('jfp coach news failed', e))
   await audit({ by: principal.email, action: trial ? 'request.trial' : 'request.offer', target: r.id, after: { group: group.id, payreq: q.id, rows: ids, cents: amountCents, emailed } })
-  return res.status(200).json({ success: true, status: 'offered', payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? r.email : '', emailError: sent.emailError ? `The offer is made, but the email to ${r.email} did not send. ${sent.emailError} Copy the link and send it yourself.` : '' })
+  return res.status(200).json({ success: true, status: 'offered', payreq: { id: q.id, url: payreqUrl(req, q), amountCents, amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? r.email : '', emailError: sent.emailError ? `The offer is made, but the email to ${r.email} did not send. ${sent.emailError} Copy the link and send it yourself.` : '' })
 }
 
 // ---------- money ----------
