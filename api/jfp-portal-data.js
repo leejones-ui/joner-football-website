@@ -1979,7 +1979,7 @@ async function sessionInvoice(req, res, principal, config, body) {
   }
   // Charged automatically after each session (claude/card-on-file): never billed by hand as well.
   const auto = await autoChargeActiveFor(config, rows.map((x) => x.row))
-  if (auto.length) return fail(res, 409, `${auto.map((r) => r.player).join(' and ')} ${auto.length > 1 ? 'are' : 'is'} charged automatically after each session (saved card or bank account). To bill by hand instead, pause auto-charge in Edit player first.`, { code: 'auto_charge' })
+  if (auto.length) return fail(res, 409, `${auto.map((r) => r.player).join(' and ')} ${auto.length > 1 ? 'are' : 'is'} charged automatically after each session (saved card or bank account). To bill by hand instead, turn auto charge off for them in Edit player first.`, { code: 'auto_charge' })
   const what = clean(body.what, 120)
   const amountCents = rows.reduce((t, x) => t + x.cents, 0)
   // Every session asked for was paid in advance: nothing to bill, the

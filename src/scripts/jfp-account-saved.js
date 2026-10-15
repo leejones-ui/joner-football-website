@@ -14,7 +14,7 @@ const STATUS_TAG = { succeeded: 'green', processing: 'amber', failed: 'amber', a
 function savedHtml(v) {
   const pays = (v.players || []).filter((p) => p.perCents)
   const who = pays.length
-    ? `<ul class="ja-saved-list">${pays.map((p) => `<li><b>${esc(p.name)}</b> <span class="ja-muted">${esc(p.perLabel)} a session${p.when ? `, ${esc(p.when)}` : ''}${p.paused ? ', paused by Joner Football' : ''}</span></li>`).join('')}</ul>`
+    ? `<ul class="ja-saved-list">${pays.map((p) => `<li><b>${esc(p.name)}</b> <span class="ja-muted">${esc(p.perLabel)} a session${p.when ? `, ${esc(p.when)}` : ''}${v.method && !p.auto ? ', not charged automatically yet: Joner Football turns it on' : ''}</span></li>`).join('')}</ul>`
     : '<p class="ja-small ja-muted">Right now none of your places is paid by the session, so nothing is charged to it.</p>'
   const recent = (v.recent || []).length
     ? `<ul class="ja-saved-list">${v.recent.map((x) => `<li><span>${esc(x.dateLabel)}, ${esc(x.player)}: ${esc(x.amountLabel)}</span> <span class="ja-tag ${STATUS_TAG[x.status] || 'grey'}">${esc(x.statusLabel)}</span>${x.payreqId ? ` <a class="ja-link" href="/jfp-account/?pay=${encodeURIComponent(x.payreqId)}">Pay now</a>` : ''}</li>`).join('')}</ul>`
@@ -24,7 +24,7 @@ function savedHtml(v) {
       <p class="ja-kicker"><i></i>${v.method.kind === 'bank' ? 'Direct debit on file' : 'Card on file'}</p>
       <h3 class="ja-h3" style="margin-top:8px">${esc(v.method.label)}</h3>
       <p class="ja-small ja-muted">${esc(v.method.detail || '')}${v.method.savedLabel ? `${v.method.detail ? '. ' : ''}Saved ${esc(v.method.savedLabel)}.` : ''}</p>
-      <p class="ja-small" style="margin-top:10px">We charge it the day after each session, at the agreed price: session by session fees and extra sessions booked. You get a receipt each time. Sessions you told us about at least 24 hours before, and sessions already paid ahead, are not charged.${v.method.kind === 'bank' ? ' Direct debits take 2 to 3 business days to clear.' : ''}</p>
+      <p class="ja-small" style="margin-top:10px">We charge it the day after each session once the coach has marked the register, at the agreed price: session by session fees and extra sessions booked. You get a receipt each time. Sessions you told us about at least 24 hours before, and sessions already paid ahead, are not charged.${v.method.kind === 'bank' ? ' Direct debits take 2 to 3 business days to clear.' : ''}</p>
       <p class="ja-small ja-muted" style="margin-top:12px">It pays for:</p>${who}
       ${recent ? `<p class="ja-small ja-muted" style="margin-top:12px">Latest charges:</p>${recent}` : ''}
       <div class="ja-actions" style="margin-top:14px"><button type="button" class="ja-btn ja-btn-light ja-btn-sm" data-saved-start>Replace</button><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-saved-remove>Remove</button></div>

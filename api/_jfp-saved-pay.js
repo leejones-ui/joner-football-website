@@ -16,20 +16,34 @@
 //      method is read from Stripe and saved under the family email
 //   Replace runs the same again (the old one is detached); Remove detaches it.
 //
-// Charging (daily job, 10:00 Sydney time, and staff "Run now"):
-//   every session by session row that holds a place, whose family has a
-//   saved method, for each session date since the method was saved (and
-//   since the player joined or moved into the group), the day after:
-//     covered        a committed date ([COVERED:]) or a date on a paid pay
-//                    ahead link: skipped
-//     told in time   "Can't make it" sent 24 hours or more before: skipped.
-//                    Told late or not at all (a no-show): charged
-//     paused         staff paused auto-charge for the player: skipped
+// Charging (daily job, 10:00 Sydney time, and staff "Run now"). Lee's rules
+// (16 Oct 2026, claude/autocharge-rules):
+//   Three locks: the family saved a method and agreed; staff turned auto
+//   charge ON for that player (per player, default off, Edit player or
+//   Money > Pro sessions > Auto charges); the global autoCharge switch is on.
+//   Only session by session players (isSessionType: Session by session,
+//   drop-in, 1 on 1 casual, Pro sessions; price [PERSESSION:] or the price
+//   list). Term fee players are never charged for sessions; their extra
+//   sessions are, as before. For each session date since the method was
+//   saved, the player joined or moved in, and auto charge was turned on:
+//     covered        a committed date ([COVERED:]), a date on a paid pay
+//                    ahead link, a paid auto charge or a paid charge for that
+//                    date: skipped
+//     told in time   an active "Can't make it" with 24 hours or more notice:
+//                    skipped, whatever the register says
+//     the register   (jfp:att:<group>:<date>, field rowId) decides the rest:
+//                    Present: charged; Absent (coach-marked no-show): charged;
+//                    Notified with late notice (under 24 h): charged;
+//                    not marked: waits ("Needs a look": register not marked)
+//                    and is looked at again each run inside the lookback
 //     open link      the date is on a pay ahead link not paid yet: left
 //     prepaid        an older undated [PREPAID:n]: one comes off, no charge
 //     no price       no price per session: left for staff
-//     otherwise      charged: the player's price ([PERSESSION:] or the
-//                    price list's default), off session, with the saved method
+//     otherwise      charged: the player's price, off session, saved method
+//   Extra sessions: their own register (jfp:att:<slotId>:<date>, field the
+//   booking id, from the charge ref extra:<slotId>:<bookingId>) decides the
+//   same way. Joners Juniors classes are not session by session rows, so
+//   they never come in here (their register is the same jfp:att key).
 //   One record per player row and date (jfp:autocharge:<row>:<date>, set
 //   once with NX), and the same Stripe idempotency key on every try, so a
 //   session is never charged twice.
@@ -48,6 +62,7 @@ import {
 } from './_jfp-store.js'
 import { loadRoster, getTerm4Row, updateTerm4Rows, appendNote, bustRosterCache } from './_jfp-airtable.js'
 import { listCancels, rowSessionDates, rowTime, noticeFor, LATE_MINUTES } from './_jfp-cancel.js'
+import { NOTIFIED } from './_jfp-away.js'
 import { perSessionFor } from './_jfp-account-pay.js'
 import { coveredOf } from './_jfp-quote.js'
 import { finaliseJfpBooking } from './_jfp-finalise.js'
@@ -55,7 +70,12 @@ import { sendFamilyNotice } from './_jfp-email.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { listCharges, getCharge, chargeStatus } from './_jfp-charges.js'
 
-export const CONSENT_VERSION = 'jfp-auto-charge-v2 (14 Oct 2026)'
+export const CONSENT_VERSION = 'jfp-auto-charge-v3 (16 Oct 2026)'
+// v3 also covers "any other amount we agree with you in writing before
+// charging" (Lee, 16 Oct 2026). Families who saved under v2 keep v2: it covers
+// session fees and extra sessions only.
+export const consentVersionOf = (m) => Number(String(m?.consent?.version || '').match(/auto-charge-v(\d+)/)?.[1]) || 0
+export const coversOther = (m) => consentVersionOf(m) >= 3
 // Sessions further back than this are never charged automatically (a job
 // that did not run for a while does not surprise a family with a pile).
 export const LOOKBACK_DAYS = 14
@@ -71,7 +91,10 @@ export const K = {
   method: (email) => `jfp:savedpay:method:${email}`,
   setup: (sessionId) => `jfp:savedpay:setup:${sessionId}`,
   lock: (email) => `jfp:savedpay:lock:${email}`,
-  pause: 'jfp:autocharge:pause',
+  // Per player switch (Lee, 16 Oct 2026): rowId -> { on, by, at }. Replaces
+  // the old pause hash (jfp:autocharge:pause, no longer read), so every
+  // player starts OFF until staff turn them on.
+  on: 'jfp:autocharge:on',
   charge: (rowId, date) => `jfp:autocharge:${rowId}:${date}`,
   index: 'jfp:autocharge:index',
   last: 'jfp:autocharge:last',
@@ -96,23 +119,25 @@ const isTest = (name) => /test/i.test(name || '')
 export const switches = (config) => ({ cards: config?.savedPay?.cards === true, bank: config?.savedPay?.cards === true && config?.savedPay?.bank === true, autoCharge: config?.savedPay?.autoCharge === true })
 export const AUTO_OFF = 'Auto charge is off. Nothing was charged: this is what it would do. Turn it on in Settings.'
 
-// Is anyone in these rows charged automatically now (a saved method, not paused, auto-charge on)?
+// Is anyone in these rows charged automatically now (session by session, a
+// saved method, auto charge on for them, auto charge on)?
 export async function autoChargeActiveFor(config, rows) {
   if (!switches(config).cards || !switches(config).autoCharge || !rows.length) return []
-  const [methods, pauses] = await Promise.all([methodsFor(rows.flatMap(rowEmails)), pausedRows()])
-  return rows.filter((r) => methodForRow(r, methods) && !pauses.has(r.id))
+  const [methods, on] = await Promise.all([methodsFor(rows.flatMap(rowEmails)), onRows()])
+  return rows.filter((r) => isSessionType(r.paymentType) && methodForRow(r, methods) && on.has(r.id))
 }
 
 // ---------- the words families agree to ----------
 
 // Shown on the page, saved with the method. No em dashes in family copy.
 // v2 (Lee, 14 Oct 2026): it covers session by session fees and the extra
-// sessions booked, each charged after the session.
+// sessions booked, each charged after the session. v3 (16 Oct 2026) adds any
+// other amount agreed in writing before charging.
 export function consentText(kind, { self = false } = {}) {
   const what = kind === 'bank' ? 'this bank account' : 'this card'
   return self
-    ? `I authorise Joner Football to charge ${what} for my session by session fees and the extra sessions I book, after each session I attend or miss without notice, at the agreed price, until I remove it.`
-    : `I authorise Joner Football to charge ${what} for my player's session by session fees and the extra sessions booked for them, after each session they attend or miss without notice, at the agreed price, until I remove it.`
+    ? `I authorise Joner Football to charge ${what} for my session by session fees and the extra sessions I book, after each session I attend or miss without notice, at the agreed price, and any other amount we agree with you in writing before charging, until I remove it.`
+    : `I authorise Joner Football to charge ${what} for my player's session by session fees and the extra sessions booked for them, after each session they attend or miss without notice, at the agreed price, and any other amount we agree with you in writing before charging, until I remove it.`
 }
 // Stripe's BECS Direct Debit Request wording (Stripe shows it on its own page too).
 export const BECS_MANDATE = 'By providing your bank account details, you agree to this Direct Debit Request and the Direct Debit Request service agreement, and authorise Stripe Payments Australia Pty Ltd ACN 160 180 343 Direct Debit User ID number 507156 ("Stripe") to debit your account through the Bulk Electronic Clearing System (BECS) on behalf of Joner Football (the "Merchant") for any amounts separately communicated to you by the Merchant. You certify that you are either an account holder or an authorised signatory on the account listed above.'
@@ -193,12 +218,14 @@ export async function methodsFor(emails) {
 // The method that pays for a row: the first of its emails with one.
 const methodForRow = (r, methods) => rowEmails(r).map((e) => methods.get(normEmail(e))).find(Boolean) || null
 
-async function pausedRows() {
-  const flat = await kvCommand(['HGETALL', K.pause]).catch(() => [])
+// Every switch record, and the rows switched on now (Map rowId -> { on, by, at }).
+async function switchRecs() {
+  const flat = await kvCommand(['HGETALL', K.on]).catch(() => [])
   const out = new Map()
   for (let i = 0; Array.isArray(flat) && i + 1 < flat.length; i += 2) { const v = parse(flat[i + 1]); if (v) out.set(flat[i], v) }
   return out
 }
+async function onRows() { return new Map([...(await switchRecs())].filter(([, v]) => v.on === true)) }
 async function lastResults() {
   const flat = await kvCommand(['HGETALL', K.last]).catch(() => [])
   const out = new Map()
@@ -216,13 +243,13 @@ export async function familySavedView({ config, parent, fam }) {
   const email = normEmail(parent.email)
   const mine = await getMethod(email)
   const others = mine ? null : [...(await methodsFor((fam.emails || []).filter((e) => normEmail(e) !== email))).values()][0] || null
-  const [groups, pauses] = await Promise.all([listGroups(), pausedRows()])
+  const [groups, on] = await Promise.all([listGroups(), onRows()])
   const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
   const rows = sessionRows(fam)
   const players = rows.map((r) => {
     const g = byGroup[r.groupId] || null
     const per = perSessionFor(config, r, g)
-    return { rowId: r.id, name: r.player, perCents: per, perLabel: per ? formatAud(per) : '', when: g ? `${g.day}s ${g.time}` : '', paused: pauses.has(r.id) }
+    return { rowId: r.id, name: r.player, perCents: per, perLabel: per ? formatAud(per) : '', when: g ? `${g.day}s ${g.time}` : '', auto: on.has(r.id) }
   })
   const ids = new Set(rows.map((r) => r.id))
   const recent = (await recentCharges({ limit: 300 })).filter((x) => ids.has(x.rowId)).slice(0, 8).map((x) => ({ date: x.date, dateLabel: dateLabel(x.date), player: x.player, amountLabel: formatAud(x.amountCents), status: x.status, statusLabel: FAMILY_STATUS[x.status] || '', payreqId: ['failed', 'action'].includes(x.status) ? x.payreqId : '' })).filter((x) => x.statusLabel)
@@ -316,7 +343,7 @@ export async function confirmSetup(sessionId, { email: signedIn = '', famEmails 
       try {
         await sendFamilyNotice({
           to: email, subject: `${v.label} saved for session payments`, heading: 'Saved for session payments', kind: 'saved payment method',
-          paras: ['Thanks. From now on we charge it the day after each session, at the agreed price: session by session fees and the extra sessions booked. We email you a receipt each time.', `What you agreed to: ${m.consent?.text || consentText(m.kind)}`, ...(m.kind === 'bank' ? ['Direct debits take 2 to 3 business days to clear. Stripe sends you its Direct Debit Request by email too.'] : []), 'You can replace or remove it any time in My account, Fees.'],
+          paras: ['Thanks. Once Joner Football switches on automatic charging for your sessions, we charge it the day after each session (after the register is marked), at the agreed price: session by session fees and the extra sessions booked. We email you a receipt each time.', `What you agreed to: ${m.consent?.text || consentText(m.kind)}`, ...(m.kind === 'bank' ? ['Direct debits take 2 to 3 business days to clear. Stripe sends you its Direct Debit Request by email too.'] : []), 'You can replace or remove it any time in My account, Fees.'],
           list: [['Saved', v.label], ['On', v.savedLabel]],
           cta: { label: 'Open My account', url: `${siteUrl()}/jfp-account/#fees` },
         })
@@ -342,15 +369,34 @@ export async function removeSaved({ parent }) {
 // ---------- the plan: who, which date, how much, or why not ----------
 
 const SKIP = {
-  covered: 'Paid in advance (commitment or pay ahead)',
+  covered: 'Already paid (commitment, pay ahead or a paid charge)',
+  billed: 'Already billed by hand',
   told: 'Told us in time',
-  paused: 'Auto-charge paused',
+  off: 'Auto charge off for this player',
+  'term-fee': 'Term fee player',
   'open-link': 'On a pay ahead link not paid yet',
   prepaid: 'Prepaid from My account: one comes off, nothing charged',
   'no-price': 'No price per session set',
 }
+const WAIT = {
+  register: 'Register not marked',
+  'no-register': 'No register for this extra session',
+  'register-odd': 'Register says told us, but there is no cancellation',
+}
 // Kept for good (the date is settled); the others are looked at again next run.
-const PERMANENT = new Set(['covered', 'told', 'paused', 'prepaid'])
+const PERMANENT = new Set(['covered', 'billed', 'told', 'prepaid'])
+
+// "2 days ahead", "30 hours ahead".
+export function aheadLabel(minutes) {
+  const m = Math.max(0, Number(minutes) || 0)
+  return m >= 2 * 1440 ? `${Math.floor(m / 1440)} days ahead` : `${Math.floor(m / 60)} hours ahead`
+}
+// What the preview says: "Charge: marked here", "Skip: told us 2 days ahead", "Wait: register not marked".
+const lower = (t) => (t ? t[0].toLowerCase() + t.slice(1) : '')
+function whyOf(x) {
+  if (x.action === 'charge') return `Charge${x.note ? `: ${lower(x.note)}` : ''}`
+  return `${x.action === 'wait' ? 'Wait' : 'Skip'}: ${lower(x.reasonLabel || '')}`
+}
 
 // The latest moment a row started holding its current place: moved into
 // the group, or put back after being removed. Sessions before it are not
@@ -360,15 +406,28 @@ function placeSince(events, rowId) {
   for (const e of events) if (e.target === rowId && ['player.move', 'player.restore'].includes(e.action)) at = Math.max(at, Date.parse(e.at) || 0)
   return at
 }
+// The last day staff billed sessions by hand for a row (Money "Bill
+// sessions", a link or paid by bank or cash): session invoices are counts,
+// not dates, so every session up to that day counts as billed.
+function billedUpTo(events, rowId) {
+  let at = 0
+  for (const e of events) if (e.action === 'player.sessions' && String(e.target || '').split(',').includes(rowId)) at = Math.max(at, Date.parse(e.at) || 0)
+  return at ? sydneyToday(at) : ''
+}
+// An extra session's register: jfp:att:<slotId>:<date>, field the booking id.
+const extraRef = (c) => { const m = String(c.ref || '').match(/^extra:([^:]+):([^:]+)$/); return m ? { slotId: m[1], bookingId: m[2] } : null }
+const stuckRec = (rec, nowMs) => rec.status === 'uncertain' || (rec.status === 'charging' && nowMs - (Date.parse(rec.at) || 0) > STALE_CHARGING_MS)
 
 // fresh: Airtable read now (a run); the preview takes the roster cache.
+// Each item: action 'charge' | 'skip' | 'wait' (register not marked: not
+// settled, looked at again next run), with why ("Charge: no-show").
 export async function planAutoCharges({ config, nowMs = Date.now(), fresh = true } = {}) {
   config = config || await getConfig()
   const today = sydneyToday(nowMs)
   const from = addDays(today, -LOOKBACK_DAYS)
-  const [roster, groups, payreqs, cancels, pauses, events] = await Promise.all([loadRoster({ fresh }), listGroups(), listPayreqs(), listCancels(), pausedRows(), listAudit(5000).catch(() => [])])
+  const [roster, groups, payreqs, cancels, on, events, allCharges] = await Promise.all([loadRoster({ fresh }), listGroups(), listPayreqs(), listCancels(), onRows(), listAudit(5000).catch(() => []), listCharges().catch(() => [])])
   const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
-  const rows = roster.players.filter((r) => r.holdsPlace && r.groupId && byGroup[r.groupId] && isSessionType(r.paymentType) && !/trial/i.test(r.paymentType || '') && !isTest(r.player))
+  const rows = roster.players.filter((r) => r.holdsPlace && r.groupId && byGroup[r.groupId] && !/trial/i.test(r.paymentType || '') && !isTest(r.player))
   const methods = await methodsFor(rows.flatMap(rowEmails))
   const items = []
   for (const r of rows) {
@@ -376,66 +435,105 @@ export async function planAutoCharges({ config, nowMs = Date.now(), fresh = true
     if (!m) continue
     const group = byGroup[r.groupId]
     const time = rowTime(r, group)
-    const since = Math.max(Date.parse(m.consent?.at || m.savedAt) || 0, placeSince(events, r.id))
-    const dates = rowSessionDates(config, r, group).filter((d) => d < today && d >= from)
+    const sw = on.get(r.id) || null
+    const session = isSessionType(r.paymentType)
+    const placeAt = Math.max(Date.parse(m.consent?.at || m.savedAt) || 0, placeSince(events, r.id))
+    const since = Math.max(placeAt, session && sw ? Date.parse(sw.at) || 0 : 0)
+    const held = (d, after) => { const n = noticeFor({ date: d, time, nowMs }); return Boolean(n) && n.startMs > after && n.startMs <= nowMs }
+    const per = perSessionFor(config, r, group)
+    const base = (d) => ({ rowId: r.id, player: r.player, email: m.email, date: d, dateLabel: dateLabel(d), amountCents: per, amountLabel: per ? formatAud(per) : '', method: methodView(m), programme: isProType(r.paymentType) ? 'pro' : 'jfp', register: '', self: r.ownContact === true, parentName: r.ownContact ? '' : r.parent || '' })
+    // Term fee players, and players auto charge is not on for: one line
+    // (their latest session), never settled, never charged.
+    if (!session || !sw) {
+      const last = rowSessionDates(config, r, group).filter((d) => d < today && d >= from && held(d, placeAt)).at(-1)
+      if (last) items.push({ ...base(last), action: 'skip', reason: session ? 'off' : 'term-fee' })
+      continue
+    }
+    const dates = rowSessionDates(config, r, group).filter((d) => d < today && d >= from && held(d, since))
     if (!dates.length) continue
     const pre = payreqs.filter((q) => q.prepay?.rowId === r.id)
-    const covered = new Set([...coveredOf(r.notes), ...pre.filter((q) => q.status === 'paid').flatMap((q) => q.prepay.dates || [])])
+    // Paid ahead from My account ("pay N sessions ahead", or a commitment): dated.
+    const ahead = new Set([...coveredOf(r.notes), ...pre.filter((q) => q.status === 'paid').flatMap((q) => q.prepay.dates || [])])
+    const covered = new Set([
+      ...ahead,
+      // A paid auto charge for the date (the record is the first guard; this is the second).
+      ...payreqs.filter((q) => q.status === 'paid' && q.autoCharge?.rowId === r.id && q.autoCharge.date).map((q) => q.autoCharge.date),
+      // A paid charge for this player and date (an invoice for that session).
+      ...allCharges.filter((c) => c.kind !== 'extra' && c.rowId === r.id && c.sessionDate && chargeStatus(c) === 'paid').map((c) => c.sessionDate),
+    ])
     const onOpen = new Set(pre.filter((q) => ['open', 'checkout'].includes(q.status)).flatMap((q) => q.prepay.dates || []))
-    let undated = Math.max(0, prepaidOf(r.notes) - covered.size)
-    const per = perSessionFor(config, r, group)
+    const billed = billedUpTo(events, r.id)
+    let undated = Math.max(0, prepaidOf(r.notes) - ahead.size)
     const recs = await kvPipeline(dates.map((d) => ['GET', K.charge(r.id, d)]))
     const marks = await kvPipeline(dates.map((d) => ['HGET', keys.attendance(group.id, d), r.id]))
     dates.forEach((d, i) => {
-      const n = noticeFor({ date: d, time, nowMs })
-      if (!n || n.startMs <= since || n.startMs > nowMs) return
       const rec = parse(recs[i])
-      const base = { rowId: r.id, player: r.player, email: m.email, date: d, dateLabel: dateLabel(d), amountCents: per, amountLabel: per ? formatAud(per) : '', method: methodView(m), programme: isProType(r.paymentType) ? 'pro' : 'jfp', register: marks[i] || '', self: r.ownContact === true, parentName: r.ownContact ? '' : r.parent || '' }
+      const x = { ...base(d), register: marks[i] || '' }
       if (rec) {
         // An earlier try whose outcome is not known yet: tried again with the same key.
-        const stuck = rec.status === 'uncertain' || (rec.status === 'charging' && nowMs - (Date.parse(rec.at) || 0) > STALE_CHARGING_MS)
-        if (stuck) items.push({ ...base, amountCents: rec.amountCents, amountLabel: formatAud(rec.amountCents), action: 'charge', retry: rec, note: 'Trying again: the last try did not finish' })
+        if (stuckRec(rec, nowMs)) items.push({ ...x, amountCents: rec.amountCents, amountLabel: formatAud(rec.amountCents), action: 'charge', retry: rec, note: 'Trying again: the last try did not finish' })
         return
       }
-      if (covered.has(d)) return items.push({ ...base, action: 'skip', reason: 'covered' })
-      const c = cancels.find((x) => x.rowId === r.id && x.date === d && x.status === 'active')
-      if (c && c.noticeMinutes >= LATE_MINUTES) return items.push({ ...base, action: 'skip', reason: 'told', reasonLabel: `${SKIP.told} (${c.noticeLabel || `${Math.floor(c.noticeMinutes / 60)} h notice`})` })
-      if (pauses.has(r.id)) return items.push({ ...base, action: 'skip', reason: 'paused' })
-      if (onOpen.has(d)) return items.push({ ...base, action: 'skip', reason: 'open-link' })
-      if (undated > 0) { undated -= 1; return items.push({ ...base, action: 'skip', reason: 'prepaid' }) }
-      if (!per) return items.push({ ...base, action: 'skip', reason: 'no-price' })
-      const note = c ? `Told us late (${c.noticeLabel || 'under 24 h notice'}): charged` : base.register === 'Absent' ? 'Marked absent with no notice: charged' : ''
-      items.push({ ...base, action: 'charge', ...(note ? { note } : {}) })
+      if (covered.has(d)) return items.push({ ...x, action: 'skip', reason: 'covered' })
+      if (billed && d <= billed) return items.push({ ...x, action: 'skip', reason: 'billed', reasonLabel: `Already billed by hand (sessions up to ${dateLabel(billed)})` })
+      // Told us 24 hours or more before: never charged, whatever the register says.
+      const c = cancels.find((y) => y.rowId === r.id && y.date === d && y.status === 'active')
+      if (c && c.noticeMinutes >= LATE_MINUTES) return items.push({ ...x, action: 'skip', reason: 'told', reasonLabel: `Told us ${aheadLabel(c.noticeMinutes)}` })
+      // The register decides the rest.
+      let note = ''
+      if (x.register === 'Present') note = 'Marked here'
+      else if (x.register === 'Absent') note = c ? `Told us late (${aheadLabel(c.noticeMinutes)}), marked absent` : 'No-show'
+      else if (x.register === NOTIFIED) {
+        if (!c) return items.push({ ...x, action: 'wait', reason: 'register-odd' })
+        note = `Told us late (${aheadLabel(c.noticeMinutes)})`
+      } else if (!x.register) return items.push({ ...x, action: 'wait', reason: 'register' })
+      else return items.push({ ...x, action: 'wait', reason: 'register', reasonLabel: `Register says "${clean(x.register, 20)}"` })
+      if (onOpen.has(d)) return items.push({ ...x, action: 'skip', reason: 'open-link' })
+      if (undated > 0) { undated -= 1; return items.push({ ...x, action: 'skip', reason: 'prepaid' }) }
+      if (!per) return items.push({ ...x, action: 'skip', reason: 'no-price' })
+      items.push({ ...x, action: 'charge', note })
     })
   }
   // Extra sessions (Lee, 14 Oct 2026, round 2): an open charge for a family
-  // with a saved method is charged the day after its session, like a session.
-  const charges = (await listCharges().catch(() => [])).filter((c) => c.kind === 'extra' && c.payreqId && c.sessionDate && c.sessionDate < today && c.sessionDate >= from && chargeStatus(c) === 'open' && !isTest(c.playerName))
+  // with a saved method, auto charge on for the player, is charged the day
+  // after its session once its register is marked. Term fee players too.
+  const charges = allCharges.filter((c) => c.kind === 'extra' && c.payreqId && c.sessionDate && c.sessionDate < today && c.sessionDate >= from && chargeStatus(c) === 'open' && !isTest(c.playerName))
   if (charges.length) {
     const rowsById = new Map(roster.players.map((r) => [r.id, r]))
     const emailsOf = (c) => [c.email, ...(rowsById.get(c.rowId) ? rowEmails(rowsById.get(c.rowId)) : [])]
     const cm = await methodsFor(charges.flatMap(emailsOf))
     const byId = new Map(payreqs.map((q) => [q.id, q]))
     const recs = await kvPipeline(charges.map((c) => ['GET', K.charge(c.id, c.sessionDate)]))
+    const refs = charges.map(extraRef)
+    const marks = await kvPipeline(charges.map((c, i) => (refs[i] ? ['HGET', `jfp:att:${refs[i].slotId}:${c.sessionDate}`, refs[i].bookingId] : ['GET', 'jfp:autocharge:none'])))
     charges.forEach((c, i) => {
       const m = emailsOf(c).map((e) => cm.get(normEmail(e))).find(Boolean)
       if (!m || c.sessionDate < sydneyToday(Date.parse(m.consent?.at || m.savedAt) || 0)) return
       const q = byId.get(c.payreqId)
       if (!q || !['open', 'checkout', 'charging'].includes(q.status)) return
       const r = rowsById.get(c.rowId)
-      const base = { type: 'payreq', key: c.id, chargeId: c.id, payreqId: q.id, what: c.label, rowId: c.rowId || '', player: c.playerName, email: m.email, date: c.sessionDate, dateLabel: dateLabel(c.sessionDate), amountCents: q.amountCents, amountLabel: formatAud(q.amountCents), method: methodView(m), programme: 'extra', register: '', self: Boolean(r?.ownContact), parentName: r?.ownContact ? '' : c.parentName || '' }
+      const sw = c.rowId ? on.get(c.rowId) : null
+      const x = { type: 'payreq', key: c.id, chargeId: c.id, payreqId: q.id, what: c.label, rowId: c.rowId || '', player: c.playerName, email: m.email, date: c.sessionDate, dateLabel: dateLabel(c.sessionDate), amountCents: q.amountCents, amountLabel: formatAud(q.amountCents), method: methodView(m), programme: 'extra', register: refs[i] ? marks[i] || '' : '', self: Boolean(r?.ownContact), parentName: r?.ownContact ? '' : c.parentName || '' }
       const rec = parse(recs[i])
       if (rec) {
-        const stuck = rec.status === 'uncertain' || (rec.status === 'charging' && nowMs - (Date.parse(rec.at) || 0) > STALE_CHARGING_MS)
-        if (stuck) items.push({ ...base, amountCents: rec.amountCents, amountLabel: formatAud(rec.amountCents), action: 'charge', retry: rec, note: 'Trying again: the last try did not finish' })
+        if (sw && stuckRec(rec, nowMs)) items.push({ ...x, amountCents: rec.amountCents, amountLabel: formatAud(rec.amountCents), action: 'charge', retry: rec, note: 'Trying again: the last try did not finish' })
         return
       }
-      if (c.rowId && pauses.has(c.rowId)) return items.push({ ...base, action: 'skip', reason: 'paused' })
-      if (q.status === 'checkout') return items.push({ ...base, action: 'skip', reason: 'open-link', reasonLabel: 'The family has its payment page open' })
-      items.push({ ...base, action: 'charge', note: c.label })
+      if (!sw) return items.push({ ...x, action: 'skip', reason: 'off', ...(c.rowId ? {} : { reasonLabel: 'Auto charge off: no player record to turn it on for' }) })
+      // Sessions before auto charge was turned on for the player are not its to charge.
+      if (c.sessionDate < sydneyToday(Date.parse(sw.at) || 0)) return
+      if (q.status === 'checkout') return items.push({ ...x, action: 'skip', reason: 'open-link', reasonLabel: 'The family has its payment page open' })
+      if (!refs[i]) return items.push({ ...x, action: 'wait', reason: 'no-register' })
+      if (x.register === 'Present') return items.push({ ...x, action: 'charge', note: `Marked here (${c.label})` })
+      if (x.register === 'Absent') return items.push({ ...x, action: 'charge', note: `No-show (${c.label})` })
+      items.push({ ...x, action: 'wait', reason: 'register' })
     })
   }
-  for (const x of items) if (x.action === 'skip') { x.reasonLabel = x.reasonLabel || SKIP[x.reason]; x.permanent = PERMANENT.has(x.reason) }
+  for (const x of items) {
+    if (x.action === 'skip') { x.reasonLabel = x.reasonLabel || SKIP[x.reason]; x.permanent = PERMANENT.has(x.reason) }
+    if (x.action === 'wait') x.reasonLabel = x.reasonLabel || WAIT[x.reason]
+    x.why = whyOf(x)
+  }
   return items.sort((a, b) => a.date.localeCompare(b.date) || a.player.localeCompare(b.player))
 }
 
@@ -595,7 +693,7 @@ async function processingNow(rec, pi) {
 // A charge's or invoice's request paid with the saved method.
 async function succeedPayreq(rec, q, piId, amount) {
   if (q.status !== 'paid') {
-    q = { ...q, stripePaymentIntentId: piId, savedCharge: { kind: rec.kind, method: rec.method?.label || '' }, effects: { ...(q.effects || {}), staffAlert: { status: 'done', at: new Date().toISOString(), note: 'saved payment: daily summary' } } }
+    q = { ...q, stripePaymentIntentId: piId, savedCharge: { kind: rec.kind, method: rec.method?.label || '', ...(rec.agreed ? { agreed: rec.agreed } : {}) }, effects: { ...(q.effects || {}), staffAlert: { status: 'done', at: new Date().toISOString(), note: 'saved payment: daily summary' } } }
     await savePayreq(q)
     const f = await finaliseJfpBooking(q.id, { id: '', payment_intent: piId, amount_total: amount })
     if (f.busy) return { busy: true }
@@ -613,7 +711,7 @@ export async function chargeOne(item) {
   const at = new Date().toISOString()
   let rec = item.retry || null
   if (!rec) {
-    const fresh = { ...(item.type === 'payreq' ? { type: 'payreq', key: item.key, chargeId: item.chargeId || '', invoiceId: item.invoiceId || '', what: item.what || '' } : {}), rowId: item.rowId || '', date: item.date, player: item.player, email: item.email, parentName: item.parentName || '', self: item.self === true, amountCents: item.amountCents, method: item.method, programme: item.programme, status: 'charging', at, payreqId: item.payreqId || newId('PAY'), tries: 0, ...(item.by ? { by: item.by } : {}) }
+    const fresh = { ...(item.type === 'payreq' ? { type: 'payreq', key: item.key, chargeId: item.chargeId || '', invoiceId: item.invoiceId || '', what: item.what || '' } : {}), rowId: item.rowId || '', date: item.date, player: item.player, email: item.email, parentName: item.parentName || '', self: item.self === true, amountCents: item.amountCents, method: item.method, programme: item.programme, status: 'charging', at, payreqId: item.payreqId || newId('PAY'), tries: 0, ...(item.by ? { by: item.by } : {}), ...(item.agreed ? { agreed: item.agreed } : {}) }
     if ((await kvCommand(['SET', K.charge(keyOf(fresh), item.date), JSON.stringify(fresh), 'NX'])) !== 'OK') return { status: 'already' }
     rec = await saveRec(fresh)
   }
@@ -630,7 +728,7 @@ export async function chargeOne(item) {
     // A charge's or invoice's own request: only while it is open (never while the family is on its card page).
     if (!q || ['cancelled', 'expired'].includes(q.status)) { await saveRec({ ...rec, status: 'skipped', reason: 'cancelled', error: 'The charge was cancelled', updatedAt: at }); return { status: 'skipped', why: 'The charge was cancelled' } }
     if (q.status === 'checkout') { await kvCommand(['DEL', K.charge(keyOf(rec), rec.date)]); return { status: 'skipped', why: 'The family has its payment page open right now' } }
-    if (['open', 'charging'].includes(q.status)) { rec.amountCents = rec.tries > 1 ? rec.amountCents : q.amountCents; await savePayreq({ ...q, status: 'charging', savedCharge: { kind: rec.kind, method: rec.method?.label || '' } }) }
+    if (['open', 'charging'].includes(q.status)) { rec.amountCents = rec.tries > 1 ? rec.amountCents : q.amountCents; await savePayreq({ ...q, status: 'charging', savedCharge: { kind: rec.kind, method: rec.method?.label || '', ...(rec.agreed ? { agreed: rec.agreed } : {}) } }) }
   } else if (!q) {
     const row = await getTerm4Row(rec.rowId)
     if (!row) { await saveRec({ ...rec, status: 'skipped', reason: 'row-missing', error: 'Player row not found', updatedAt: at }); return { status: 'skipped', why: 'Player row not found' } }
@@ -657,6 +755,7 @@ export async function chargeOne(item) {
       'metadata[jfpRowId]': rec.rowId,
       ...(rec.chargeId ? { 'metadata[jfpCharge]': rec.chargeId } : {}),
       ...(rec.invoiceId ? { 'metadata[jfpInvoice]': rec.invoiceId } : {}),
+      ...(rec.agreed ? { 'metadata[jfpAgreed]': '1' } : {}),
       'metadata[jfpDate]': rec.date,
       'metadata[jfpProgramme]': rec.programme,
       ...(rec.programme === 'pro' ? { 'metadata[jfpProduct]': 'pro' } : {}),
@@ -701,6 +800,8 @@ export async function runAutoCharges({ config, nowMs = Date.now(), dry = false, 
   try {
     for (const x of items) {
       if (x.action === 'skip') { if (x.permanent && await settleSkip(x)) done.push({ ...x, result: 'skipped' }); continue }
+      // Register not marked: nothing is written, the next run looks again.
+      if (x.action !== 'charge') continue
       try {
         const out = await chargeOne(x)
         done.push({ ...x, result: out.status, why: out.why || '' })
@@ -712,7 +813,7 @@ export async function runAutoCharges({ config, nowMs = Date.now(), dry = false, 
   } finally { await kvCommand(['DEL', K.runLock]).catch(() => {}) }
   const count = (s) => done.filter((d) => d.result === s)
   const sum = (l) => l.reduce((t, d) => t + (d.amountCents || 0), 0)
-  const summary = { at: new Date(nowMs).toISOString(), by, charged: count('succeeded').length, chargedCents: sum(count('succeeded')), processing: count('processing').length, failed: done.filter((d) => ['failed', 'action', 'error', 'uncertain'].includes(d.result)).length, skipped: count('skipped').length }
+  const summary = { at: new Date(nowMs).toISOString(), by, charged: count('succeeded').length, chargedCents: sum(count('succeeded')), processing: count('processing').length, failed: done.filter((d) => ['failed', 'action', 'error', 'uncertain'].includes(d.result)).length, skipped: count('skipped').length, waiting: items.filter((x) => x.action === 'wait').length }
   await kvSetJson(K.lastRun, summary)
   if (summary.charged || summary.processing || summary.failed) {
     const line = (d) => `${d.player}, ${dateLabel(d.date)}, ${formatAud(d.amountCents)}${d.why ? `: ${d.why}` : ''}`
@@ -721,6 +822,7 @@ export async function runAutoCharges({ config, nowMs = Date.now(), dry = false, 
     if (summary.processing) parts.push(`Direct debits started ${summary.processing}:\n${count('processing').map(line).join('\n')}`)
     const bad = done.filter((d) => ['failed', 'action', 'error', 'uncertain'].includes(d.result))
     if (bad.length) parts.push(`Not paid (pay link emailed, flagged in Money > Pro sessions > Auto charges):\n${bad.map(line).join('\n')}`)
+    if (summary.waiting) parts.push(`Waiting for the register to be marked: ${summary.waiting}`)
     await telegramAlert(parts.join('\n\n')).catch(() => {})
   }
   return { dry: false, items, done, summary }
@@ -812,9 +914,15 @@ async function resolveTarget({ chargeId, invoiceId }) {
 
 // Admin only (jfp-portal-data.js checks the role). Analysis and invoices are
 // never charged on their own; staff press this, see the amount and the
-// method, and confirm. The amount is what the request asks, never typed.
-export async function chargeSavedNow({ principal, chargeId = '', invoiceId = '', config = null }) {
+// method, tick "The family has agreed to this amount" and confirm (Lee, 16
+// Oct 2026: refused without the tick; the tick is kept with the payment). The
+// amount is what the request asks, never typed. A v2 saver agreed to session
+// fees and extra sessions only: staff are told to ask them to re-save the
+// card, and the tick still lets it go through.
+const AGREED = 'Tick "The family has agreed to this amount" first.'
+export async function chargeSavedNow({ principal, chargeId = '', invoiceId = '', agreed = false, config = null }) {
   if (!switches(config || await getConfig()).cards) return { ok: false, status: 403, error: 'Saved cards are turned off in Settings.' }
+  if (agreed !== true) return { ok: false, status: 400, error: AGREED, code: 'agreed' }
   const t = await resolveTarget({ chargeId: clean(chargeId, 60), invoiceId: clean(invoiceId, 20) })
   if (t.error) return { ok: false, status: t.status, error: t.error }
   const { c, inv, q } = t
@@ -828,9 +936,11 @@ export async function chargeSavedNow({ principal, chargeId = '', invoiceId = '',
   const date = sydneyToday()
   const before = await getRec(key, date)
   if (before) return { ok: false, status: 409, error: before.status === 'succeeded' ? 'Already charged today.' : ['failed', 'action'].includes(before.status) ? `Tried today already: ${before.error || 'not paid'}. The family has been emailed the Pay link.` : 'A charge for this is already going through.' }
-  const item = { type: 'payreq', key, chargeId: c?.id || '', invoiceId: inv?.id || q.invoiceId || '', payreqId: q.id, what: c?.label || (inv ? `Invoice ${inv.id}` : q.groupLabel || q.productLabel || 'Joner Football'), rowId: c?.rowId || (q.term4Ids || [])[0] || (q.chargeRowIds || [])[0] || '', player: (q.playerNames || []).join(' and '), email: m.email, date, amountCents: q.amountCents, method: methodView(m), programme: q.programme || c?.programme || 'jfp', self: Boolean(row?.ownContact), parentName: row?.ownContact ? '' : q.parentName || '', by: principal.email }
+  const covers = coversOther(m) || c?.kind === 'extra'
+  const agreedRec = { by: principal.email, at: new Date().toISOString(), text: 'The family has agreed to this amount', amountCents: q.amountCents, consentVersion: m.consent?.version || '', coveredByConsent: covers }
+  const item = { agreed: agreedRec, type: 'payreq', key, chargeId: c?.id || '', invoiceId: inv?.id || q.invoiceId || '', payreqId: q.id, what: c?.label || (inv ? `Invoice ${inv.id}` : q.groupLabel || q.productLabel || 'Joner Football'), rowId: c?.rowId || (q.term4Ids || [])[0] || (q.chargeRowIds || [])[0] || '', player: (q.playerNames || []).join(' and '), email: m.email, date, amountCents: q.amountCents, method: methodView(m), programme: q.programme || c?.programme || 'jfp', self: Boolean(row?.ownContact), parentName: row?.ownContact ? '' : q.parentName || '', by: principal.email }
   const out = await chargeOne(item)
-  await audit({ by: principal.email, action: 'savedpay.charge', target: key, after: { payreq: q.id, cents: item.amountCents, method: item.method?.label, status: out.status } })
+  await audit({ by: principal.email, action: 'savedpay.charge', target: key, after: { payreq: q.id, cents: item.amountCents, method: item.method?.label, status: out.status, agreed: true, consentVersion: agreedRec.consentVersion, coveredByConsent: covers } })
   if (out.status === 'already') return { ok: false, status: 409, error: 'A charge for this is already going through.' }
   return { ok: true, status: out.status, why: out.why || '', amountLabel: formatAud(item.amountCents), method: item.method?.label || '' }
 }
@@ -844,7 +954,11 @@ export async function savedPayFor({ chargeIds = [], invoiceIds = [], config = nu
       const t = await resolveTarget(kind === 'charges' ? { chargeId: clean(id, 60) } : { invoiceId: clean(id, 20) }).catch(() => ({ error: 'x' }))
       if (t.error || t.q.status !== 'open') continue
       const { m } = await methodForPayreq(t.q, t.c)
-      if (m) { const v = methodView(m); out[kind][id] = { kind: v.kind, label: v.label, button: v.kind === 'bank' ? 'Charge by direct debit' : 'Charge saved card', amountLabel: formatAud(t.q.amountCents) } }
+      if (m) {
+        const v = methodView(m)
+        const covers = coversOther(m) || t.c?.kind === 'extra'
+        out[kind][id] = { kind: v.kind, label: v.label, button: v.kind === 'bank' ? 'Charge by direct debit' : 'Charge saved card', amountLabel: formatAud(t.q.amountCents), consentVersion: consentVersionOf(m), covers, ...(covers ? {} : { note: `Ask them to re-save the ${v.kind === 'bank' ? 'bank account' : 'card'} to agree to other amounts` }) }
+      }
     }
   }
   return out
@@ -858,7 +972,8 @@ export async function notifyNewCharge({ charge: c, payreq: q, siteUrl: base = ''
   if (!(await claimOnce(`jfp:charge-notice:${c.id}`, LONG))) return { emailed: false, already: true }
   const { m, row } = await methodForPayreq(q, c)
   const on = switches(await getConfig())
-  const auto = on.cards && on.autoCharge && c.kind === 'extra' && Boolean(m) && Boolean(c.sessionDate) && c.sessionDate >= sydneyToday(Date.parse(m.consent?.at || m.savedAt) || 0)
+  const sw = c.rowId ? (await onRows()).get(c.rowId) : null
+  const auto = on.cards && on.autoCharge && c.kind === 'extra' && Boolean(m) && Boolean(sw) && Boolean(c.sessionDate) && c.sessionDate >= sydneyToday(Date.parse(m.consent?.at || m.savedAt) || 0) && c.sessionDate >= sydneyToday(Date.parse(sw.at) || 0)
   const self = Boolean(row?.ownContact)
   const url = `${(base || siteUrl()).replace(/\/$/, '')}/jfp-account/?pay=${encodeURIComponent(q.id)}`
   const hi = self ? String(c.playerName || '').split(' ')[0] : c.parentName || ''
@@ -874,24 +989,25 @@ export async function notifyNewCharge({ charge: c, payreq: q, siteUrl: base = ''
 // ---------- staff ----------
 
 // Players list and Edit player: "Card on file" / "Direct debit on file" / none,
-// auto-charge on or paused, and the last result. Adds savedPay to each player.
+// auto charge on or off for the player, and the last result. Adds savedPay to each player.
 export async function withSavedPay(players) {
   try {
     const roster = await loadRoster()
     const emailsOf = new Map(roster.players.map((r) => [r.id, rowEmails(r)]))
     const methods = await methodsFor(players.flatMap((p) => emailsOf.get(p.rowId) || [p.email]))
-    const [pauses, last] = await Promise.all([pausedRows(), lastResults()])
+    const [on, last] = await Promise.all([onRows(), lastResults()])
     for (const p of players) {
       const m = (emailsOf.get(p.rowId) || [p.email]).map((e) => methods.get(normEmail(e))).find(Boolean)
       const l = last.get(p.rowId)
-      p.savedPay = m ? { kind: m.kind, label: methodView(m).staffLabel, method: methodView(m).label, paused: pauses.has(p.rowId), ...(l ? { last: lastView(l) } : {}) } : null
+      p.savedPay = m ? { kind: m.kind, label: methodView(m).staffLabel, method: methodView(m).label, on: on.has(p.rowId), sessionPay: isSessionType(p.paymentType), ...(l ? { last: lastView(l) } : {}) } : null
     }
   } catch (error) { console.error('jfp saved pay list failed', error.message) }
   return players
 }
-const STAFF_STATUS = { succeeded: 'Charged', processing: 'Direct debit processing', failed: 'Not paid', action: 'Needs the cardholder', uncertain: 'Being checked', charging: 'Charging', skipped: 'Not charged' }
+const STAFF_STATUS = { succeeded: 'Charged', processing: 'Direct debit processing', failed: 'Not paid', action: 'Needs the cardholder', uncertain: 'Being checked', charging: 'Charging', skipped: 'Not charged', wait: 'Register not marked' }
 function lastView(l) { return { date: l.date, dateLabel: dateLabel(l.date), status: l.status, label: `${STAFF_STATUS[l.status] || l.status}${l.status === 'skipped' && l.error ? `: ${l.error}` : ['failed', 'action'].includes(l.status) && l.error ? `: ${l.error}` : ''}`, amountLabel: formatAud(l.amountCents || 0), payreqId: l.payreqId || '' } }
 const recView = (x) => ({ rowId: x.rowId, player: x.player, date: x.date, dateLabel: dateLabel(x.date), amountLabel: formatAud(x.amountCents || 0), status: x.status, statusLabel: STAFF_STATUS[x.status] || x.status, why: x.error || '', method: x.method?.label || '', payreqId: x.payreqId || '', at: x.updatedAt || x.at })
+const consentView = (m) => (m?.consent ? { at: m.consent.at, version: m.consent.version, coversOther: coversOther(m) } : null)
 
 export async function autoChargeStatus(rowId) {
   const id = clean(rowId, 30)
@@ -899,30 +1015,51 @@ export async function autoChargeStatus(rowId) {
   if (!r) return { ok: false, status: 404, error: 'Player row not found.' }
   const methods = await methodsFor(rowEmails(r))
   const m = methodForRow(r, methods)
-  const pause = (await pausedRows()).get(id) || null
-  return { ok: true, sessionPay: isSessionType(r.paymentType), method: methodView(m), email: m?.email || '', consent: m?.consent ? { at: m.consent.at, version: m.consent.version } : null, paused: Boolean(pause), pausedBy: pause?.by || '', pausedAt: pause?.at || '', recent: (await recentCharges({ rowId: id, limit: 8 })).map(recView) }
+  const sw = (await switchRecs()).get(id) || null
+  return { ok: true, sessionPay: isSessionType(r.paymentType), method: methodView(m), email: m?.email || '', consent: consentView(m), on: sw?.on === true, switchBy: sw?.by || '', switchAt: sw?.at || '', recent: (await recentCharges({ rowId: id, limit: 8 })).map(recView) }
 }
 
-export async function setPause(principal, rowId, paused) {
+// The per player switch (Edit player, Money > Pro sessions > Auto charges).
+// Default off; every change is in the audit log. nowMs: the test clock only.
+export async function setAutoChargeOn(principal, rowId, on, { nowMs = Date.now() } = {}) {
   const id = clean(rowId, 30)
-  if (!(await getTerm4Row(id))) return { ok: false, status: 404, error: 'Player row not found.' }
-  if (paused) await kvCommand(['HSET', K.pause, id, JSON.stringify({ by: principal.email, at: new Date().toISOString() })])
-  else await kvCommand(['HDEL', K.pause, id])
-  await audit({ by: principal.email, action: paused ? 'autocharge.pause' : 'autocharge.resume', target: id })
-  return { ok: true, paused: Boolean(paused) }
+  const r = await getTerm4Row(id)
+  if (!r) return { ok: false, status: 404, error: 'Player row not found.' }
+  const before = (await switchRecs()).get(id) || null
+  if (Boolean(before?.on) === Boolean(on)) return { ok: true, on: Boolean(on), already: true }
+  const rec = { on: Boolean(on), by: principal.email, at: new Date(nowMs).toISOString() }
+  await kvCommand(['HSET', K.on, id, JSON.stringify(rec)])
+  await audit({ by: principal.email, action: on ? 'autocharge.on' : 'autocharge.off', target: id, before: { on: Boolean(before?.on) }, after: { on: rec.on, player: clean(r.player, 100), sessionPay: isSessionType(r.paymentType) } })
+  return { ok: true, on: rec.on }
+}
+
+// Everyone with a saved method, and whether auto charge is on for them (Money > Auto charges).
+async function switchList() {
+  const [roster, recs] = await Promise.all([loadRoster(), switchRecs()])
+  const rows = roster.players.filter((r) => r.holdsPlace && !/trial/i.test(r.paymentType || '') && !isTest(r.player))
+  const methods = await methodsFor(rows.flatMap(rowEmails))
+  return rows.map((r) => {
+    const m = methodForRow(r, methods)
+    if (!m) return null
+    const sw = recs.get(r.id) || null
+    return { rowId: r.id, player: r.player, sessionPay: isSessionType(r.paymentType), programme: isProType(r.paymentType) ? 'pro' : 'jfp', method: methodView(m).label, consentVersion: consentVersionOf(m), on: sw?.on === true, by: sw?.by || '', at: sw?.at || '' }
+  }).filter(Boolean).sort((a, b) => Number(b.sessionPay) - Number(a.sessionPay) || a.player.localeCompare(b.player))
 }
 
 // Money > Pro sessions > Auto charges: the preview (what the next run would
-// do), what needs a look, the latest results, the last run.
+// do and why), what needs a look (not paid, register not marked), the per
+// player switches, the latest results, the last run.
 export async function autoChargePanel(config, { nowMs = Date.now() } = {}) {
-  const [items, recent, lastRun] = await Promise.all([planAutoCharges({ config, nowMs, fresh: false }), recentCharges({ limit: 60 }), kvGetJson(K.lastRun)])
-  const view = (x) => ({ rowId: x.rowId, player: x.player, date: x.date, dateLabel: x.dateLabel, amountLabel: x.amountLabel, method: x.method?.label || '', action: x.action, reason: x.reason || '', reasonLabel: x.reasonLabel || '', note: x.note || '', register: x.register || '', programme: x.programme })
+  const [items, recent, lastRun, players] = await Promise.all([planAutoCharges({ config, nowMs, fresh: false }), recentCharges({ limit: 60 }), kvGetJson(K.lastRun), switchList()])
+  const view = (x) => ({ rowId: x.rowId, player: x.player, date: x.date, dateLabel: x.dateLabel, amountLabel: x.amountLabel, method: x.method?.label || '', action: x.action, reason: x.reason || '', reasonLabel: x.reasonLabel || '', note: x.note || '', why: x.why || '', register: x.register || '', programme: x.programme })
+  const waiting = items.filter((x) => x.action === 'wait').map((x) => ({ rowId: x.rowId, player: x.player, date: x.date, dateLabel: x.dateLabel, amountLabel: x.amountLabel, status: 'wait', statusLabel: x.reasonLabel, why: x.programme === 'extra' ? 'Extra session: mark its register to charge it' : 'Mark the register to charge it', method: x.method?.label || '', payreqId: '' }))
   return {
-    schedule: `Every day from ${RUN_HOUR}:00 Sydney time, for sessions the day before (up to ${LOOKBACK_DAYS} days back, never before the card or account was saved)`,
+    schedule: `Every day from ${RUN_HOUR}:00 Sydney time, for sessions whose register is marked (up to ${LOOKBACK_DAYS} days back, never before the card or account was saved or auto charge was turned on for the player)`,
     preview: items.map(view),
     toCharge: items.filter((x) => x.action === 'charge').length,
     toChargeLabel: formatAud(items.filter((x) => x.action === 'charge').reduce((t, x) => t + (x.amountCents || 0), 0)),
-    needsLook: recent.filter((x) => ['failed', 'action', 'uncertain'].includes(x.status)).map(recView),
+    needsLook: [...recent.filter((x) => ['failed', 'action', 'uncertain'].includes(x.status)).map(recView), ...waiting],
+    players,
     recent: recent.filter((x) => x.status !== 'skipped' || x.reason).slice(0, 30).map(recView),
     lastRun: lastRun || null,
     switches: switches(config), ...(switches(config).autoCharge && switches(config).cards ? {} : { off: AUTO_OFF }),
@@ -930,13 +1067,17 @@ export async function autoChargePanel(config, { nowMs = Date.now() } = {}) {
 }
 
 // Staff actions (Money > Pro sessions > Auto charges, Edit player).
-export const SAVED_PAY_ACTIONS = new Set(['autoChargePanel', 'autoChargeRun', 'autoChargePause', 'autoChargeStatus', 'chargeSavedPay', 'savedPayFor', 'savedPaySettings'])
+export const SAVED_PAY_ACTIONS = new Set(['autoChargePanel', 'autoChargeRun', 'autoChargeSwitch', 'autoChargeStatus', 'chargeSavedPay', 'savedPayFor', 'savedPaySettings'])
 export async function savedPayAction(req, res, principal, config, body, action) {
   const testNow = process.env.JFP_TEST_CLOCK === '1' && Number(body.now) ? Number(body.now) : Date.now()
   const no = (status, error) => res.status(status).json({ success: false, error })
   if (action === 'autoChargePanel') return res.status(200).json({ success: true, ...(await autoChargePanel(config, { nowMs: testNow })) })
   if (action === 'autoChargeStatus') { const r = await autoChargeStatus(body.rowId); return r.ok ? res.status(200).json({ success: true, ...r }) : no(r.status, r.error) }
-  if (action === 'autoChargePause') { const r = await setPause(principal, body.rowId, body.paused === true); return r.ok ? res.status(200).json({ success: true, paused: r.paused }) : no(r.status, r.error) }
+  if (action === 'autoChargeSwitch') {
+    if (typeof body.on !== 'boolean') return no(400, 'Say on or off.')
+    const r = await setAutoChargeOn(principal, body.rowId, body.on, { nowMs: testNow })
+    return r.ok ? res.status(200).json({ success: true, on: r.on, already: Boolean(r.already) }) : no(r.status, r.error)
+  }
   if (action === 'savedPayFor') return res.status(200).json({ success: true, ...(await savedPayFor({ chargeIds: body.chargeIds, invoiceIds: body.invoiceIds, config })) })
   // Settings: the three switches (read, or change one or more).
   if (action === 'savedPaySettings') {
@@ -952,8 +1093,8 @@ export async function savedPayAction(req, res, principal, config, body, action) 
   }
   if (action === 'chargeSavedPay') {
     if (body.confirm !== true) return no(400, 'Confirm the charge first.')
-    const r = await chargeSavedNow({ principal, chargeId: body.chargeId, invoiceId: body.invoiceId, config })
-    return r.ok ? res.status(200).json({ success: true, result: r.status, why: r.why, amountLabel: r.amountLabel, method: r.method }) : no(r.status, r.error)
+    const r = await chargeSavedNow({ principal, chargeId: body.chargeId, invoiceId: body.invoiceId, agreed: body.agreed === true, config })
+    return r.ok ? res.status(200).json({ success: true, result: r.status, why: r.why, amountLabel: r.amountLabel, method: r.method }) : res.status(r.status).json({ success: false, error: r.error, ...(r.code ? { code: r.code } : {}) })
   }
   if (action === 'autoChargeRun') {
     if (body.confirm !== true) return no(400, 'Confirm the run first.')

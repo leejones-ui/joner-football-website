@@ -4,9 +4,15 @@
 // session payment intents, BECS), captured email and Telegram.
 //
 // Families save a card or bank account in My account > Fees (consent first),
-// then the daily run (and staff "Run now") charges the right dates only:
-// skips covered, told-in-time, paused, before-start, prepaid; charges
-// no-shows and late notice; a rerun charges nothing twice; a declined card or
+// then the daily run (and staff "Run now") charges the right dates only.
+// Lee's rules (16 Oct 2026, claude/autocharge-rules): session by session
+// players only (term fee players never, their extras yes); three locks (saved
+// and agreed, staff turned it on for the player, the Settings switch); the
+// register decides (Present and Absent charged, Notified with late notice
+// charged, told 24 h ahead never, not marked waits and is retried); already
+// paid (pay ahead, PREPAID, COVERED, a paid charge, billed by hand) skipped;
+// consent v3 and the "The family has agreed to this amount" tick.
+// Also: a rerun charges nothing twice; a declined card or
 // one that needs the cardholder becomes a Pay link and is flagged; BECS goes
 // processing then paid (or a Pay link) on the webhook; removing the method
 // stops charges; an unclear Stripe answer is tried again with the same key.
@@ -53,6 +59,10 @@ async function signIn(c, email, audience = 'parent') {
 // reaches back to 22 Oct, so the Wednesday sessions charged are 28 Oct and 4 Nov.
 const NOV5 = Date.parse('2026-11-05T10:30:00+11:00')
 const NOV12 = Date.parse('2026-11-12T10:30:00+11:00')
+// Staff turn auto charge on for the players on 20 Oct (the test clock).
+const OCT20 = Date.parse('2026-10-20T09:00:00+11:00')
+const mark = (date, rowId, v) => kv(['HSET', `jfp:att:${GROUP}:${date}`, rowId, v])
+const V3 = 'jfp-auto-charge-v3 (16 Oct 2026)'
 const D1 = '2026-10-28', D2 = '2026-11-04', D3 = '2026-11-11'
 
 const lee = client()
@@ -97,6 +107,16 @@ await test('setup: session by session players (JFP and Pro) in a Wednesday 5pm g
   rows.tia = await addSession('Tia Threeds', 'tia.threeds@example.com')
   rows.una = await addSession('Una Unsure', 'una.unsure@example.com')
   rows.nobody = await addSession('Noel Nocard', 'noel.nocard@example.com')
+  rows.tom = await addSession('Tom Termfee', 'tom.termfee@example.com')
+  rows.mo = await addSession('Mo Unmarked', 'mo.unmarked@example.com')
+  rows.zed = await addSession('Zed Zealous', 'zed.zealous@example.com')
+  rows.paige = await addSession('Paige Payahead', 'paige.payahead@example.com')
+  rows.ivy = await addSession('Ivy Invoiced', 'ivy.invoiced@example.com')
+  rows.hal = await addSession('Hal Handbilled', 'hal.handbilled@example.com')
+  rows.olly = await addSession('Olly Off', 'olly.off@example.com')
+  // Tom pays a term fee: never charged for sessions, even with a saved card.
+  await patch(rows.tom, { 'Term 4 Payment Type': 'JFP Term 4 Small group' })
+  await bust()
   assert.equal((await row(rows.cara))['Term 4 Payment Type'], 'JFP Session by session')
   assert.equal((await row(rows.dex))['Term 4 Payment Type'], 'JFP Pro sessions')
 })
@@ -128,7 +148,8 @@ await test('Fees: consent is required, then Stripe setup mode; the card is saved
   await signIn(c, 'cara.card@example.com')
   const v = (await c.call('/api/jfp-account', { action: 'savedPay' })).data.saved
   assert.equal(v.method, null)
-  assert.equal(v.consent.card, "I authorise Joner Football to charge this card for my player's session by session fees and the extra sessions booked for them, after each session they attend or miss without notice, at the agreed price, until I remove it.")
+  assert.equal(v.consent.card, "I authorise Joner Football to charge this card for my player's session by session fees and the extra sessions booked for them, after each session they attend or miss without notice, at the agreed price, and any other amount we agree with you in writing before charging, until I remove it.")
+  assert.equal(v.consent.version, V3)
   assert.match(v.consent.becsMandate, /Direct Debit Request/)
   assert.deepEqual(v.players.map((p) => [p.name, p.perLabel]), [['Cara Card', 'A$50']])
   assert.ok(!/—/.test(JSON.stringify(v)), 'no em dashes in family copy')
@@ -145,7 +166,7 @@ await test('Fees: consent is required, then Stripe setup mode; the card is saved
   assert.equal(conf.status, 200, JSON.stringify(conf.data))
   assert.equal(conf.data.method.label, 'Visa ending 4242')
   const m = JSON.parse(await kv(['GET', 'jfp:savedpay:method:cara.card@example.com']))
-  assert.match(m.pmId, /^pm_test_/); assert.equal(m.last4, '4242'); assert.equal(m.consent.version, 'jfp-auto-charge-v2 (14 Oct 2026)')
+  assert.match(m.pmId, /^pm_test_/); assert.equal(m.last4, '4242'); assert.equal(m.consent.version, V3)
   assert.match(m.consent.text, /I authorise Joner Football to charge this card/); assert.ok(m.consent.at)
   assert.ok(!JSON.stringify(m).includes('4242424242'), 'no card number kept')
   const after = (await c.call('/api/jfp-account', { action: 'savedPay' })).data.saved
@@ -167,26 +188,75 @@ await test('the other families save theirs: a declined card, a bank account (BEC
   const bm = JSON.parse(await kv(['GET', 'jfp:savedpay:method:bea.bank@example.com']))
   assert.match(bm.consent.mandate, /Direct Debit Request/); assert.match(bm.mandateId, /^mandate_test_/); assert.equal(bm.bsbStart, '062')
   assert.ok(!JSON.stringify(bm).includes('062000'), 'only the first 3 of the BSB')
-  for (const e of ['cody.covered', 'nia.noshow', 'sam.starter', 'pip.paused', 'rhys.removed', 'ula.undated', 'una.unsure']) await saveMethod(`${e}@example.com`)
+  for (const e of ['cody.covered', 'nia.noshow', 'sam.starter', 'pip.paused', 'rhys.removed', 'ula.undated', 'una.unsure', 'tom.termfee', 'mo.unmarked', 'zed.zealous', 'paige.payahead', 'ivy.invoiced', 'hal.handbilled', 'olly.off']) await saveMethod(`${e}@example.com`)
   await saveMethod('tia.threeds@example.com', 'card', '3ds')
 })
 
 let cody = null
-await test('the special cases are set up: covered date, told in time, register absent, late notice, start date, paused, removed, undated prepaid', async () => {
-  // Cody: 28 Oct is covered by a commitment; told us about 4 Nov weeks ahead.
+let paigeDates = []
+await test('three locks: auto charge is off for every player until staff turn it on (audited, admin only); term fee players can be switched on (for extras)', async () => {
+  const st = await ok('autoChargeStatus', { rowId: rows.cara })
+  assert.equal(st.on, false, 'off by default'); assert.equal(st.consent.coversOther, true)
+  // The old pause hash is not read: a row in it is simply off.
+  await kv(['HSET', 'jfp:autocharge:pause', rows.olly, JSON.stringify({ by: 'old', at: '2026-10-14T00:00:00.000Z' })])
+  assert.equal((await portal('autoChargeSwitch', { rowId: rows.cara })).status, 400, 'on or off must be said')
+  for (const k of ['cara', 'dex', 'bea', 'cody', 'nia', 'sam', 'rhys', 'ula', 'tia', 'una', 'tom', 'mo', 'zed', 'paige', 'ivy', 'hal']) {
+    const r = await ok('autoChargeSwitch', { rowId: rows[k], on: true, now: OCT20 })
+    assert.equal(r.on, true)
+  }
+  assert.equal((await ok('autoChargeSwitch', { rowId: rows.cara, on: true, now: OCT20 })).already, true)
+  const log = JSON.parse(await kv(['LRANGE', 'jfp:audit', '0', '300'])).map((x) => JSON.parse(x)).filter((x) => x.action === 'autocharge.on')
+  assert.ok(log.some((x) => x.target === rows.cara && x.by === 'leejones@jonerfootball.com' && x.after.on === true), 'audited')
+  const sw = JSON.parse(await kv(['HGET', 'jfp:autocharge:on', rows.cara]))
+  assert.equal(sw.at, new Date(OCT20).toISOString())
+  const coachC = client(); await signIn(coachC, (await ok('board')).coaches.find((x) => x.id === 'sam').email, 'staff')
+  assert.equal((await coachC.call('/api/jfp-portal-data', { action: 'autoChargeSwitch', rowId: rows.pip, on: true })).status, 403)
+})
+
+await test('the special cases are set up: covered date, told in time, the register, late notice, start date, off, removed, undated prepaid, pay ahead, a paid charge, billed by hand', async () => {
+  // Cody: 28 Oct is covered by a commitment; told us about 4 Nov weeks ahead
+  // (Can't make it marks his register Notified).
   await patch(rows.cody, { 'Term 4 Notes': `${(await row(rows.cody))['Term 4 Notes']} [PREPAID:1] [COVERED:${D1}]` })
   cody = (await saveMethod('cody.covered@example.com')).c
   await bust()
   const cx = await cody.call('/api/jfp-account', { action: 'cancelSession', rowId: rows.cody, date: D2, reason: 'school' })
   assert.equal(cx.status, 200, JSON.stringify(cx.data))
-  // Nia: marked absent on 28 Oct (no notice), and told us 2 hours before 4 Nov.
-  await kv(['HSET', `jfp:att:${GROUP}:${D1}`, rows.nia, 'Absent'])
-  await kv(['HSET', 'jfp:cancels', 'CXL-TESTLATE00000001', JSON.stringify({ id: 'CXL-TESTLATE00000001', status: 'active', email: 'nia.noshow@example.com', rowId: rows.nia, player: 'Nia Noshow', groupId: GROUP, date: D2, noticeMinutes: 120, noticeLevel: 'very-late', noticeLabel: 'late: 2 h', submittedAt: '2026-11-04T04:00:00.000Z' })])
-  // Sam starts on 4 Nov; Ula has one undated prepaid session; Pip is paused.
+  assert.equal(await kv(['HGET', `jfp:att:${GROUP}:${D2}`, rows.cody]), 'Notified')
+  // The coach marks the register for the rest.
+  for (const k of ['cara', 'dex', 'bea', 'sam', 'pip', 'ula', 'tia', 'una', 'tom', 'mo', 'paige', 'ivy', 'hal', 'olly', 'rhys', 'nobody']) for (const d of [D1, D2]) await mark(d, rows[k], 'Present')
+  // Nia: a coach-marked no-show on 28 Oct, and told us 2 hours before 4 Nov (register Notified).
+  await mark(D1, rows.nia, 'Absent')
+  await mark(D2, rows.nia, 'Notified')
+  await kv(['HSET', 'jfp:cancels', 'CXL-TESTLATE00000001', JSON.stringify({ id: 'CXL-TESTLATE00000001', status: 'active', email: 'nia.noshow@example.com', rowId: rows.nia, player: 'Nia Noshow', groupId: GROUP, date: D2, noticeAt: '2026-11-04T04:00:00.000Z', noticeMinutes: 120, noticeHours: 2, noticeLevel: 'very-late', noticeLabel: 'late: 2 h', submittedAt: '2026-11-04T04:00:00.000Z' })])
+  // Zed told us 3 days ahead for 28 Oct, but the coach marked him here anyway: never charged.
+  await kv(['HSET', 'jfp:cancels', 'CXL-TESTAHEAD0000001', JSON.stringify({ id: 'CXL-TESTAHEAD0000001', status: 'active', email: 'zed.zealous@example.com', rowId: rows.zed, player: 'Zed Zealous', groupId: GROUP, date: D1, noticeAt: '2026-10-25T06:00:00.000Z', noticeMinutes: 3 * 1440 + 30, noticeHours: 72.5, noticeLevel: 'ok', noticeLabel: '72 h notice', submittedAt: '2026-10-25T06:00:00.000Z' })])
+  await mark(D1, rows.zed, 'Present'); await mark(D2, rows.zed, 'Present')
+  // Mo: 28 Oct marked; nobody marked 4 Nov yet.
+  await kv(['HDEL', `jfp:att:${GROUP}:${D2}`, rows.mo])
+  // Sam starts on 4 Nov; Ula has one undated prepaid session.
   await patch(rows.sam, { 'Term 4 Notes': `${(await row(rows.sam))['Term 4 Notes']} [STARTS:${D2}]` })
   await patch(rows.ula, { 'Term 4 Notes': `${(await row(rows.ula))['Term 4 Notes']} [PREPAID:1]` })
   await bust()
-  assert.equal((await ok('autoChargePause', { rowId: rows.pip, paused: true })).paused, true)
+  // Paige pays 2 sessions ahead from My account (the portal's pay ahead path).
+  const paige = client(); await signIn(paige, 'paige.payahead@example.com')
+  const pk = (await paige.call('/api/jfp-account', { action: 'overview' })).data.players.find((x) => x.name === 'Paige Payahead').key
+  const w = await paige.call('/api/jfp-account', { action: 'signWaiver', players: [{ key: pk, dob: '2012-03-20', emergencyName: 'Gran Payahead', emergencyPhone: '0400 777 999' }], waiver: { accepted: { terms: true, makeups: true, payment: true, emergency: true }, media: false, kind: 'guardian', signature: 'Parent Payahead' }, parentName: 'Parent Payahead', mobile: '0400 777 998' })
+  assert.equal(w.status, 200, JSON.stringify(w.data))
+  const owed = (await paige.call('/api/jfp-account', { action: 'overview' })).data.owed.find((x) => x.rowId === rows.paige)
+  assert.equal(owed?.kind, 'prepay', JSON.stringify(owed))
+  const pay = await paige.call('/api/jfp-account', { action: 'payOwed', rowId: rows.paige, sessions: 2 })
+  assert.equal(pay.status, 200, JSON.stringify(pay.data))
+  const back = await fetch(`${pay.data.url}&action=pay`, { redirect: 'manual' })
+  const sid = new URL(back.headers.get('location')).searchParams.get('session_id')
+  assert.equal((await paige.call(`/api/jfp-confirm?session_id=${sid}`)).data.status, 'paid')
+  const ids = JSON.parse(await kv(['ZRANGE', 'jfp:payreqs', '0', '-1']))
+  paigeDates = (await Promise.all(ids.map((id) => payreq(id)))).find((q) => q?.prepay?.rowId === rows.paige && q.status === 'paid').prepay.dates
+  assert.equal(paigeDates.length, 2)
+  // Ivy: a paid invoice charge for the 28 Oct session.
+  const ic = await ok('createCharge', { rowId: rows.ivy, kind: 'invoice', amountCents: 5000, label: 'Session 28 Oct', sessionDate: D1, notifyFamily: false })
+  assert.equal((await portal('chargeRecord', { id: ic.charge.id, method: 'cash', amountCents: 5000 })).status, 200)
+  // Hal: staff billed his sessions by hand on 29 Oct.
+  await kv(['LPUSH', 'jfp:audit', JSON.stringify({ at: '2026-10-29T01:00:00.000Z', by: 'leejones@jonerfootball.com', action: 'player.sessions', target: rows.hal, after: { mode: 'paid' } })])
   // Rhys removes his card: nothing is charged.
   const rhys = client(); await signIn(rhys, 'rhys.removed@example.com')
   assert.equal((await rhys.call('/api/jfp-account', { action: 'savedPayRemove' })).status, 200)
@@ -196,24 +266,49 @@ await test('the special cases are set up: covered date, told in time, register a
 })
 
 let preview = null
-await test('staff preview (dry run): who, date, amount, method, and every skip reason; nothing is charged', async () => {
+await test('staff preview (dry run): who, date, amount, method, and the reason for every line; nothing is charged', async () => {
   const before = (await pis()).length
   preview = await ok('autoChargePanel', { now: NOV5 })
   const p = (name, date) => preview.preview.find((x) => x.player === name && x.date === date)
   assert.equal(p('Cara Card', D1).action, 'charge'); assert.equal(p('Cara Card', D1).amountLabel, 'A$50'); assert.equal(p('Cara Card', D1).method, 'Visa ending 4242')
+  assert.equal(p('Cara Card', D1).why, 'Charge: marked here'); assert.equal(p('Cara Card', D1).register, 'Present')
   assert.equal(p('Cara Card', D2).action, 'charge')
   assert.equal(p('Dex Declined', D1).amountLabel, 'A$100'); assert.equal(p('Dex Declined', D1).programme, 'pro')
   assert.equal(p('Bea Bank', D1).method, 'Bank account ending 3456')
   assert.equal(p('Cody Covered', D1).reason, 'covered')
-  assert.equal(p('Cody Covered', D2).reason, 'told'); assert.match(p('Cody Covered', D2).reasonLabel, /^Told us in time \(\d+ h notice\)$/)
-  assert.equal(p('Nia Noshow', D1).action, 'charge'); assert.match(p('Nia Noshow', D1).note, /absent with no notice/); assert.equal(p('Nia Noshow', D1).register, 'Absent')
-  assert.equal(p('Nia Noshow', D2).action, 'charge'); assert.match(p('Nia Noshow', D2).note, /Told us late/)
+  // Told us weeks ahead: never charged, the register says Notified.
+  assert.equal(p('Cody Covered', D2).reason, 'told'); assert.match(p('Cody Covered', D2).why, /^Skip: told us \d+ days ahead$/); assert.equal(p('Cody Covered', D2).register, 'Notified')
+  // Told us 3 days ahead, marked here anyway: still never charged.
+  assert.equal(p('Zed Zealous', D1).why, 'Skip: told us 3 days ahead'); assert.equal(p('Zed Zealous', D1).register, 'Present')
+  assert.equal(p('Zed Zealous', D2).why, 'Charge: marked here')
+  // Coach-marked no-show: charged (Lee's rule). Told us 2 hours before (Notified): charged.
+  assert.equal(p('Nia Noshow', D1).action, 'charge'); assert.equal(p('Nia Noshow', D1).why, 'Charge: no-show'); assert.equal(p('Nia Noshow', D1).register, 'Absent')
+  assert.equal(p('Nia Noshow', D2).action, 'charge'); assert.equal(p('Nia Noshow', D2).register, 'Notified'); assert.match(p('Nia Noshow', D2).why, /^Charge: told us late \(2 hours ahead\)$/)
+  // Register not marked: waits, and is on Needs a look.
+  assert.equal(p('Mo Unmarked', D1).action, 'charge')
+  assert.equal(p('Mo Unmarked', D2).action, 'wait'); assert.equal(p('Mo Unmarked', D2).why, 'Wait: register not marked')
+  assert.ok(preview.needsLook.some((x) => x.player === 'Mo Unmarked' && x.date === D2 && x.statusLabel === 'Register not marked'))
   assert.equal(p('Sam Starter', D1), undefined, 'before the start date: not listed')
   assert.equal(p('Sam Starter', D2).action, 'charge')
-  assert.equal(p('Pip Paused', D1).reason, 'paused')
+  // Off for the player (and the old pause hash is not read): one line, never charged.
+  assert.equal(p('Pip Paused', D2).why, 'Skip: auto charge off for this player'); assert.equal(p('Pip Paused', D1), undefined, 'one line per player')
+  assert.equal(p('Olly Off', D2).why, 'Skip: auto charge off for this player')
+  // Term fee player, switched on and marked here: never charged for a session.
+  assert.equal(p('Tom Termfee', D2).why, 'Skip: term fee player'); assert.equal(p('Tom Termfee', D1), undefined)
   assert.equal(p('Rhys Removed', D1), undefined, 'no saved method: not listed')
   assert.equal(p('Noel Nocard', D1), undefined)
   assert.equal(p('Ula Undated', D1).reason, 'prepaid'); assert.equal(p('Ula Undated', D2).action, 'charge')
+  // Already paid: pay ahead dates, a paid charge for the date, billed by hand.
+  for (const d of [D1, D2]) {
+    if (paigeDates.includes(d)) assert.equal(p('Paige Payahead', d).reason, 'covered', `paid ahead ${d}`)
+    else assert.equal(p('Paige Payahead', d).action, 'charge')
+  }
+  assert.ok(paigeDates.some((d) => [D1, D2].includes(d)), `a paid ahead date is in the window: ${paigeDates}`)
+  assert.equal(p('Ivy Invoiced', D1).reason, 'covered'); assert.equal(p('Ivy Invoiced', D2).action, 'charge')
+  assert.equal(p('Hal Handbilled', D1).reason, 'billed'); assert.match(p('Hal Handbilled', D1).why, /^Skip: already billed by hand/); assert.equal(p('Hal Handbilled', D2).action, 'charge')
+  // The panel lists every saved method with its switch.
+  const pl = (n) => preview.players.find((x) => x.player === n)
+  assert.equal(pl('Cara Card').on, true); assert.equal(pl('Pip Paused').on, false); assert.equal(pl('Tom Termfee').sessionPay, false)
   assert.ok(!preview.preview.some((x) => x.date === '2026-10-14' || x.date === '2026-10-21'), 'never before the card was saved or beyond the lookback')
   assert.ok(!preview.preview.some((x) => x.date >= '2026-11-05'), 'never a session still to come')
   assert.equal((await pis()).length, before, 'a preview charges nothing')
@@ -245,7 +340,7 @@ await test('auto charge off: the cron and Run now only preview and say so; nothi
   assert.equal((await ok('autoChargePanel', { now: NOV5 })).off, undefined)
 })
 
-await test('the daily run: right dates charged, receipts sent, rows paid and in the ledger; covered, told, paused, prepaid settled', async () => {
+await test('the daily run: right dates charged, receipts sent, rows paid and in the ledger; covered, told, prepaid settled; off, term fee and register not marked left alone', async () => {
   // Una's charge: Stripe takes it but the answer never arrives.
   await fetch(`${B}/__fail?what=${encodeURIComponent(`stripe-pi:${rows.una}`)}&on=1`)
   const res = await fetch(`${B}/api/jfp-groups?autoCharge=1&now=${NOV5}`, { headers: { authorization: 'Bearer local-cron-secret' } })
@@ -274,8 +369,17 @@ await test('the daily run: right dates charged, receipts sent, rows paid and in 
   assert.equal((await rec(rows.nia, D1)).status, 'succeeded'); assert.equal((await rec(rows.nia, D2)).status, 'succeeded')
   // Sam: only from the start date.
   assert.equal(await rec(rows.sam, D1), null); assert.equal((await rec(rows.sam, D2)).status, 'succeeded')
-  // Pip: paused, settled as not charged.
-  assert.equal((await rec(rows.pip, D1)).reason, 'paused'); assert.equal((await rec(rows.pip, D2)).reason, 'paused')
+  // Pip and Olly: auto charge off for them, nothing written. Tom: term fee, nothing.
+  for (const k of ['pip', 'olly', 'tom']) for (const d of [D1, D2]) assert.equal(await rec(rows[k], d), null, `${k} ${d}`)
+  assert.equal((await row(rows.tom))['Term 4 Amount Paid'] || 0, 0)
+  // Zed: told us 3 days ahead, settled; 4 Nov charged.
+  assert.equal((await rec(rows.zed, D1)).reason, 'told'); assert.equal((await rec(rows.zed, D2)).status, 'succeeded')
+  // Mo: 28 Oct charged; 4 Nov waits for the register, nothing settled.
+  assert.equal((await rec(rows.mo, D1)).status, 'succeeded'); assert.equal(await rec(rows.mo, D2), null)
+  assert.ok(out.waiting >= 1, JSON.stringify(out))
+  // Already paid: Paige's paid ahead dates, Ivy's paid charge, Hal billed by hand.
+  for (const d of [D1, D2]) { const r = await rec(rows.paige, d); if (paigeDates.includes(d)) assert.equal(r.reason, 'covered'); else assert.equal(r.status, 'succeeded') }
+  assert.equal((await rec(rows.ivy, D1)).reason, 'covered'); assert.equal((await rec(rows.hal, D1)).reason, 'billed')
   // Ula: the undated prepaid session comes off on 28 Oct, then 4 Nov is charged.
   assert.equal((await rec(rows.ula, D1)).reason, 'prepaid'); assert.equal((await rec(rows.ula, D2)).status, 'succeeded')
   assert.doesNotMatch((await row(rows.ula))['Term 4 Notes'], /\[PREPAID:1\]/)
@@ -293,12 +397,12 @@ await test('the daily run: right dates charged, receipts sent, rows paid and in 
   assert.equal(tg.length, 1); assert.match(tg[0].text, /Charged \d+/); assert.match(tg[0].text, /Dex Declined/)
 })
 
-await test('hand "Bill sessions" is refused for a player charged automatically; allowed once paused, or with no saved method', async () => {
+await test('hand "Bill sessions" is refused for a player charged automatically; allowed when auto charge is off for them, or with no saved method', async () => {
   const no = await portal('sessionInvoice', { rows: [{ rowId: rows.una, sessions: 1, perSessionCents: 5000 }], mode: 'link' })
   assert.equal(no.status, 409); assert.equal(no.data.code, 'auto_charge'); assert.match(no.data.error, /Una Unsure is charged automatically after each session/)
   const mixed = await portal('sessionInvoice', { rows: [{ rowId: rows.nobody, sessions: 1, perSessionCents: 5000 }, { rowId: rows.una, sessions: 1, perSessionCents: 5000 }], mode: 'link' })
   assert.equal(mixed.status, 409)
-  // Pip is paused: billing by hand works.
+  // Pip is off: billing by hand works.
   assert.equal((await portal('sessionInvoice', { rows: [{ rowId: rows.pip, sessions: 1, perSessionCents: 10000 }], mode: 'paid', method: 'cash' })).status, 200)
   assert.equal((await portal('sessionInvoice', { rows: [{ rowId: rows.rhys, sessions: 1, perSessionCents: 5000 }], mode: 'paid', method: 'cash' })).status, 200)
 })
@@ -381,6 +485,15 @@ await test('a rerun charges nothing twice; the uncertain one is asked again with
   assert.equal((await ledgerFor(rows.cara)).length, 2)
 })
 
+await test('register not marked is retried: once the coach marks it, the next run charges it (inside the two weeks)', async () => {
+  assert.equal((await ok('autoChargePanel', { now: NOV5 })).preview.find((x) => x.player === 'Mo Unmarked' && x.date === D2).action, 'wait')
+  await mark(D2, rows.mo, 'Present')
+  const r = await ok('autoChargeRun', { confirm: true, now: NOV5 })
+  assert.equal(r.summary.charged, 1, JSON.stringify(r.done))
+  assert.equal((await rec(rows.mo, D2)).status, 'succeeded')
+  assert.ok(!(await ok('autoChargePanel', { now: NOV5 })).needsLook.some((x) => x.player === 'Mo Unmarked'))
+})
+
 // ---------- round 2: extra sessions, analysis and invoices, emails, coach amounts ----------
 const dean = client()
 // A coach login from the default coach list (the same one test-jfp-extra uses).
@@ -388,23 +501,23 @@ const COACH_EMAIL = (await ok('board')).coaches.find((c) => c.id === 'dean').ema
 await signIn(dean, COACH_EMAIL, 'staff')
 const coach = async (action, body = {}) => dean.call('/api/jfp-portal-data', { action, ...body })
 const XDAY = '2026-11-11'
-let slot = null, niaExtra = null, noelExtra = null
+let slot = null, niaExtra = null, noelExtra = null, niaBooking = '', zedExtra = null, zedBooking = ''
 await test('coaches never send an amount: a price they type is refused or ignored on every path; money actions are admin only', async () => {
   assert.equal((await coach('extraSave', { slot: { date: XDAY, time: '4:00pm', capacity: 3, location: 'Belrose HQ', priceCents: 99 } })).status, 400, 'a coach cannot type a price')
   const pr = await ok('extraPrices', { add: { label: 'Extra session 1 hour', dollars: '120', durationMin: 60 } })
   const priceId = pr.prices.at(-1).id
-  const made = await coach('extraSave', { slot: { date: XDAY, time: '4:00pm', capacity: 3, location: 'Belrose HQ', priceId, priceCents: 99, amountCents: 99, visibility: 'private' } })
+  const made = await coach('extraSave', { slot: { date: XDAY, time: '4:00pm', capacity: 5, location: 'Belrose HQ', priceId, priceCents: 99, amountCents: 99, visibility: 'private' } })
   assert.equal(made.status, 200, JSON.stringify(made.data))
   slot = made.data.slot
   assert.equal(slot.priceCents, 12000, "the coach's typed price is ignored: Lee's price list")
   const a = await coach('extraAttach', { slotId: slot.id, rowId: rows.nia, amountCents: 1, priceCents: 1 })
   assert.equal(a.status, 200, JSON.stringify(a.data))
-  niaExtra = await payreq(a.data.booking.payreqId)
+  niaExtra = await payreq(a.data.booking.payreqId); niaBooking = a.data.booking.id
   assert.equal(niaExtra.amountCents, 12000, 'the charge is the session price, never an amount a coach sends')
   const b = await coach('extraAttach', { slotId: slot.id, rowId: rows.nobody, amountCents: 5 })
   noelExtra = await payreq(b.data.booking.payreqId)
   assert.equal(noelExtra.amountCents, 12000)
-  for (const [action, body] of [['createCharge', { rowId: rows.nia, kind: 'analysis', amountCents: 5 }], ['chargeSavedPay', { chargeId: niaExtra.charge.id, confirm: true }], ['chargeRecord', { id: niaExtra.charge.id, method: 'cash', amountCents: 5 }], ['autoChargeRun', { confirm: true }], ['autoChargePause', { rowId: rows.nia, paused: true }], ['savedPayFor', { chargeIds: [niaExtra.charge.id] }], ['invoiceSave', { programme: 'other', rowIds: [rows.nia], lines: [{ description: 'x', qty: 1, unitCents: 5 }] }]]) {
+  for (const [action, body] of [['createCharge', { rowId: rows.nia, kind: 'analysis', amountCents: 5 }], ['chargeSavedPay', { chargeId: niaExtra.charge.id, confirm: true }], ['chargeRecord', { id: niaExtra.charge.id, method: 'cash', amountCents: 5 }], ['autoChargeRun', { confirm: true }], ['autoChargeSwitch', { rowId: rows.nia, on: false }], ['savedPayFor', { chargeIds: [niaExtra.charge.id] }], ['invoiceSave', { programme: 'other', rowIds: [rows.nia], lines: [{ description: 'x', qty: 1, unitCents: 5 }] }]]) {
     assert.equal((await coach(action, body)).status, 403, `${action} is admin only`)
   }
   assert.equal((await payreq(niaExtra.id)).amountCents, 12000)
@@ -439,13 +552,21 @@ await test('video analysis: never auto-charged; "Charge saved card" (confirm) ch
   assert.equal(f.charges[analysis.id].button, 'Charge saved card'); assert.equal(f.charges[analysis.id].label, 'Visa ending 4242'); assert.equal(f.charges[analysis.id].amountLabel, 'A$99')
   assert.equal(f.charges[noelExtra.charge.id], undefined, 'no saved method, no button')
   assert.equal((await portal('chargeSavedPay', { chargeId: analysis.id })).status, 400, 'confirm first')
-  const r = await ok('chargeSavedPay', { chargeId: analysis.id, confirm: true, amountCents: 1 })
+  // "The family has agreed to this amount" must be ticked.
+  const noTick = await portal('chargeSavedPay', { chargeId: analysis.id, confirm: true })
+  assert.equal(noTick.status, 400); assert.equal(noTick.data.code, 'agreed'); assert.match(noTick.data.error, /The family has agreed to this amount/)
+  assert.equal(f.charges[analysis.id].covers, true, 'a v3 saver agreed to other amounts in writing')
+  assert.equal(f.charges[analysis.id].note, undefined)
+  const r = await ok('chargeSavedPay', { chargeId: analysis.id, confirm: true, agreed: true, amountCents: 1 })
   assert.equal(r.result, 'succeeded'); assert.equal(r.amountLabel, 'A$99', 'the amount comes from the charge, never the request')
   const ch = JSON.parse(await kv(['GET', `jfp:charge:${analysis.id}`]))
   assert.equal(ch.status, 'paid'); assert.equal(ch.payments[0].method, 'stripe'); assert.match(ch.payments[0].intentId, /^pi_test_/); assert.equal(ch.payments[0].cents, 9900)
   const pi = (await pis()).find((x) => x.id === ch.payments[0].intentId)
-  assert.equal(pi.amount, 9900); assert.equal(pi.metadata.jfpCharge, analysis.id)
-  assert.equal((await portal('chargeSavedPay', { chargeId: analysis.id, confirm: true })).status, 409, 'never twice')
+  assert.equal(pi.amount, 9900); assert.equal(pi.metadata.jfpCharge, analysis.id); assert.equal(pi.metadata.jfpAgreed, '1')
+  // The tick is kept with the payment.
+  const aq = await payreq(analysis.payreqId || ch.payreqId)
+  assert.equal(aq.savedCharge.agreed.by, 'leejones@jonerfootball.com'); assert.equal(aq.savedCharge.agreed.amountCents, 9900); assert.equal(aq.savedCharge.agreed.consentVersion, V3)
+  assert.equal((await portal('chargeSavedPay', { chargeId: analysis.id, confirm: true, agreed: true })).status, 409, 'never twice')
   assert.ok((await emails()).some((e) => e.to.includes('ula.undated@example.com') && /Payment received/.test(e.subject)))
   const ula = client(); await signIn(ula, 'ula.undated@example.com')
   const fees = (await ula.call('/api/jfp-account', { action: 'fees' })).data.fees
@@ -460,7 +581,8 @@ await test('invoices: "Charge by direct debit" on an Other invoice (BECS, paid w
   const sent = await ok('invoiceSend', { id: d.invoice.id, sendEmail: false })
   const f = await ok('savedPayFor', { invoiceIds: [d.invoice.id] })
   assert.equal(f.invoices[d.invoice.id].button, 'Charge by direct debit')
-  const r = await ok('chargeSavedPay', { invoiceId: d.invoice.id, confirm: true })
+  assert.equal((await portal('chargeSavedPay', { invoiceId: d.invoice.id, confirm: true })).data.code, 'agreed', 'no tick, no charge')
+  const r = await ok('chargeSavedPay', { invoiceId: d.invoice.id, confirm: true, agreed: true })
   assert.equal(r.result, 'processing')
   const pi = (await pis()).filter((x) => x.metadata.jfpInvoice === d.invoice.id)
   assert.equal(pi.length, 1)
@@ -473,22 +595,62 @@ await test('invoices: "Charge by direct debit" on an Other invoice (BECS, paid w
   const j = await ok('invoiceSave', { programme: 'jfp', rowIds: [rows.ula], lines: [{ description: 'Holiday catch up', qty: 1, unitCents: 3000 }] })
   await ok('invoiceSend', { id: j.invoice.id, sendEmail: false })
   const before = (await row(rows.ula))['Term 4 Amount Paid'] || 0
-  assert.equal((await ok('chargeSavedPay', { invoiceId: j.invoice.id, confirm: true })).result, 'succeeded')
+  assert.equal((await ok('chargeSavedPay', { invoiceId: j.invoice.id, confirm: true, agreed: true })).result, 'succeeded')
   assert.equal((await ok('invoiceGet', { id: j.invoice.id })).invoice.status, 'paid')
   assert.equal((await row(rows.ula))['Term 4 Amount Paid'], before + 30)
 })
 
-await test('pause works and turning it back on charges only the sessions after; removing the method stops charges', async () => {
-  assert.equal((await ok('autoChargePause', { rowId: rows.pip, paused: false })).paused, false)
+await test('consent v2 savers keep v2: staff are told to ask them to re-save for other amounts; the tick still lets it through; extras are covered by v2', async () => {
+  for (const e of ['ula.undated', 'zed.zealous']) {
+    const m = JSON.parse(await kv(['GET', `jfp:savedpay:method:${e}@example.com`]))
+    m.consent = { ...m.consent, version: 'jfp-auto-charge-v2 (14 Oct 2026)' }
+    await kv(['SET', `jfp:savedpay:method:${e}@example.com`, JSON.stringify(m)])
+  }
+  assert.equal((await ok('autoChargeStatus', { rowId: rows.ula })).consent.coversOther, false)
+  const c = (await ok('createCharge', { rowId: rows.ula, kind: 'analysis', amountCents: 4400, label: 'Video analysis 2', notifyFamily: false })).charge
+  const f = await ok('savedPayFor', { chargeIds: [c.id] })
+  assert.equal(f.charges[c.id].covers, false); assert.equal(f.charges[c.id].note, 'Ask them to re-save the card to agree to other amounts')
+  assert.equal((await portal('chargeSavedPay', { chargeId: c.id, confirm: true })).data.code, 'agreed')
+  const r = await ok('chargeSavedPay', { chargeId: c.id, confirm: true, agreed: true })
+  assert.equal(r.result, 'succeeded')
+  const q = await payreq(JSON.parse(await kv(['GET', `jfp:charge:${c.id}`])).payreqId)
+  assert.equal(q.savedCharge.agreed.consentVersion, 'jfp-auto-charge-v2 (14 Oct 2026)'); assert.equal(q.savedCharge.agreed.coveredByConsent, false)
+  const log = JSON.parse(await kv(['LRANGE', 'jfp:audit', '0', '100'])).map((x) => JSON.parse(x)).find((x) => x.action === 'savedpay.charge' && x.target === c.id)
+  assert.equal(log.after.agreed, true); assert.equal(log.after.coveredByConsent, false)
+  // Zed (v2) is put on the extra session: v2 covers extra sessions.
+  const z = await coach('extraAttach', { slotId: slot.id, rowId: rows.zed })
+  assert.equal(z.status, 200, JSON.stringify(z.data))
+  zedExtra = await payreq(z.data.booking.payreqId); zedBooking = z.data.booking.id
+  const fz = await ok('savedPayFor', { chargeIds: [zedExtra.charge.id] })
+  assert.equal(fz.charges[zedExtra.charge.id].covers, true); assert.equal(fz.charges[zedExtra.charge.id].note, undefined)
+})
+
+let tomExtra = null, tomBooking = ''
+await test('turning auto charge on charges only the sessions after; the extra session register decides; a term fee player\'s extra is charged; removing the method stops charges', async () => {
+  // Tom pays a term fee; his extra session is still charged once marked.
+  const t = await coach('extraAttach', { slotId: slot.id, rowId: rows.tom })
+  assert.equal(t.status, 200, JSON.stringify(t.data))
+  tomExtra = await payreq(t.data.booking.payreqId); tomBooking = t.data.booking.id
+  // Pip is turned on on 6 Nov: 28 Oct and 4 Nov are never his to charge.
+  assert.equal((await ok('autoChargeSwitch', { rowId: rows.pip, on: true, now: Date.parse('2026-11-06T09:00:00+11:00') })).on, true)
   // Cara removes her card before the next session.
   const cara = client(); await signIn(cara, 'cara.card@example.com')
   assert.equal((await cara.call('/api/jfp-account', { action: 'savedPayRemove' })).status, 200)
+  for (const k of ['pip', 'cody', 'cara']) await mark(D3, rows[k], 'Present')
+  // The extra session's register: Nia here, Tom a no-show, Zed not marked.
+  await kv(['HSET', `jfp:att:${slot.id}:${XDAY}`, niaBooking, 'Present'])
+  await kv(['HSET', `jfp:att:${slot.id}:${XDAY}`, tomBooking, 'Absent'])
+  const pv = await ok('autoChargePanel', { now: NOV12 })
+  const px = (name) => pv.preview.find((x) => x.player === name && x.programme === 'extra')
+  assert.match(px('Nia Noshow').why, /^Charge: marked here/); assert.match(px('Tom Termfee').why, /^Charge: no-show/)
+  assert.equal(px('Zed Zealous').why, 'Wait: register not marked')
+  assert.equal(pv.preview.find((x) => x.player === 'Tom Termfee' && x.date === D3).why, 'Skip: term fee player')
   const r = await ok('autoChargeRun', { confirm: true, now: NOV12 })
   assert.equal((await rec(rows.pip, D3)).status, 'succeeded')
-  assert.equal((await rec(rows.pip, D1)).reason, 'paused', 'paused sessions stay not charged')
+  assert.equal(await rec(rows.pip, D1), null, 'sessions before it was turned on stay not charged'); assert.equal(await rec(rows.pip, D2), null)
   assert.equal(await rec(rows.cara, D3), null, 'no saved method: not charged')
   assert.equal((await rec(rows.cody, D3)).status, 'succeeded', 'the next session after the covered and told ones is charged')
-  assert.ok(r.summary.charged >= 3)
+  assert.equal(await rec(rows.tom, D3), null, 'term fee session: never')
   // Nia's extra session (11 Nov) is charged the day after, A$120, on the charge; Noel (no card) still has his Pay link.
   const xr = await rec(niaExtra.charge.id, XDAY)
   assert.equal(xr.status, 'succeeded', JSON.stringify(xr))
@@ -497,8 +659,17 @@ await test('pause works and turning it back on charges only the sessions after; 
   assert.equal((await payreq(niaExtra.id)).status, 'paid')
   assert.equal((await payreq(noelExtra.id)).status, 'open')
   assert.equal((await pis()).filter((p) => p.metadata.jfpCharge === niaExtra.charge.id).length, 1)
+  assert.equal((await rec(tomExtra.charge.id, XDAY)).status, 'succeeded', 'a term fee player\'s extra session is charged')
+  assert.equal(await rec(zedExtra.charge.id, XDAY), null, 'extra register not marked: waits')
+  assert.equal((await payreq(zedExtra.id)).status, 'open')
+  assert.ok(r.summary.charged >= 4, JSON.stringify(r.summary)); assert.ok(r.summary.waiting >= 1)
+  // Once marked, the next run charges Zed's extra.
+  await kv(['HSET', `jfp:att:${slot.id}:${XDAY}`, zedBooking, 'Present'])
   const again = await ok('autoChargeRun', { confirm: true, now: NOV12 })
-  assert.equal(again.summary.charged, 0, 'the extra is never charged twice')
+  assert.equal(again.summary.charged, 1, JSON.stringify(again.done))
+  assert.equal((await rec(zedExtra.charge.id, XDAY)).status, 'succeeded')
+  const third = await ok('autoChargeRun', { confirm: true, now: NOV12 })
+  assert.equal(third.summary.charged, 0, 'the extra is never charged twice')
 })
 
 await test('staff see it: Players list tag, Edit player status, Money panel; families see it on Fees', async () => {
@@ -506,10 +677,10 @@ await test('staff see it: Players list tag, Edit player status, Money panel; fam
   const p = (n) => pl.players.find((x) => x.name === n)
   assert.equal(p('Bea Bank').savedPay.label, 'Direct debit on file')
   assert.equal(p('Dex Declined').savedPay.label, 'Card on file'); assert.equal(p('Dex Declined').savedPay.last.status, 'failed')
-  assert.equal(p('Pip Paused').savedPay.paused, false)
+  assert.equal(p('Pip Paused').savedPay.on, true); assert.equal(p('Olly Off').savedPay.on, false); assert.equal(p('Tom Termfee').savedPay.sessionPay, false)
   assert.equal(p('Noel Nocard').savedPay, null); assert.equal(p('Cara Card').savedPay, null)
   const st = await ok('autoChargeStatus', { rowId: rows.dex })
-  assert.equal(st.method.staffLabel, 'Card on file'); assert.equal(st.paused, false); assert.ok(st.recent.length >= 1); assert.ok(st.consent.at)
+  assert.equal(st.method.staffLabel, 'Card on file'); assert.equal(st.on, true); assert.equal(st.switchBy, 'leejones@jonerfootball.com'); assert.ok(st.recent.length >= 1); assert.ok(st.consent.at)
   const panel = await ok('autoChargePanel', { now: NOV12 })
   assert.match(panel.schedule, /10:00 Sydney time/); assert.ok(panel.lastRun.at); assert.ok(panel.recent.length > 0)
   // Fees: the auto-charges are in the history, charged automatically.
