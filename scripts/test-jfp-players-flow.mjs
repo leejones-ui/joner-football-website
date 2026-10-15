@@ -222,4 +222,20 @@ await test('added with no session on Players, then added on the Timetable: the s
   assert.notEqual(y.rowId, x.rowId); assert.equal(y.movedRow, false)
 })
 
+
+await test('switching a player from a term link to session by session closes the old link; the place stays', async () => {
+  const a = await ok('addPlayer', { groupId: GID, player: { name: 'Rory Switchpay' }, parent: { name: 'Sam Switchpay', email: 'switchpay@example.com' }, payment: 'link', force: true })
+  assert.ok(a.payreq?.id)
+  const e = await ok('editPlayer', { rowId: a.rowId, fields: { paymentType: 'JFP Session by session', feeAud: 0 } })
+  assert.equal(e.closedLinks.length, 1); assert.equal(e.openLinks.length, 0)
+  const q = JSON.parse(await kv(['GET', `jfp:payreq:${a.payreq.id}`]))
+  assert.equal(q.status, 'cancelled')
+  const f = (await row(a.rowId)).fields
+  assert.equal(f['Term 3 Day'], 'Thursday', 'still in the group'); assert.notEqual(f['Term 4 Confirmation'], 'Not Returning')
+  // Editing only the phone leaves a link alone.
+  const b = await ok('addPlayer', { groupId: GID, player: { name: 'Remy Keeplink' }, parent: { name: 'K L', email: 'keeplink@example.com' }, payment: 'link', force: true })
+  const e2 = await ok('editPlayer', { rowId: b.rowId, fields: { phone: '0400 000 111' } })
+  assert.equal(e2.closedLinks.length, 0); assert.equal(e2.openLinks.length, 1)
+})
+
 console.log(`\n${passed} players flow checks passed`)

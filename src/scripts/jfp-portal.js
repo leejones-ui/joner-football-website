@@ -1912,7 +1912,9 @@ function editPlayerModal(p) {
     }
     closeModal()
     const links = r.data.openLinks || []
-    toast(links.length ? `Saved. Note: ${links.length} open payment link${links.length === 1 ? '' : 's'} for ${links.map((l) => `${l.players.join(' + ')} (${money(l.amountCents)})`).join(', ')}: change the amount in Payment links if it is now wrong.` : 'Saved to Airtable', links.length ? 9000 : 3600)
+    const gone = r.data.closedLinks || []
+    if (gone.length && !links.length) toast(`Saved. The old ${gone.map((l) => money(l.amountCents)).join(' and ')} payment link is closed, so their account no longer asks for it.`, 6000)
+    else toast(links.length ? `Saved. Note: ${links.length} open payment link${links.length === 1 ? '' : 's'} for ${links.map((l) => `${l.players.join(' + ')} (${money(l.amountCents)})`).join(', ')}: change the amount in Payment links if it is now wrong.` : 'Saved to Airtable', links.length ? 9000 : 3600)
     P.board = null; PL.at = 0; renderMoney()
   })
 }

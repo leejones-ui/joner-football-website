@@ -834,8 +834,22 @@ async function editPlayer(res, principal, config, body) {
   if (!Object.keys(fields).length) return fail(res, 400, 'Nothing to change.')
   await updateTerm4Rows([{ id: row.id, fields }])
   await audit({ by: principal.email, action: 'player.edit', target: row.id, before, after: fields })
-  const open = (await listPayreqs()).filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(row.id))
-  return res.status(200).json({ success: true, openLinks: open.map((q) => ({ id: q.id, amountCents: q.amountCents, players: q.playerNames })) })
+  let open = (await listPayreqs()).filter((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(row.id))
+  // A new fee or a new way to pay (Reswin, 15 Oct 2026: term pro rata to
+  // session by session) closes this player's old term link, so their account
+  // stops asking for the old amount. The place stays. Session bills, charges
+  // and links shared with other players are left for staff to sort.
+  const closed = []
+  const feeChanged = 'Term 4 Fee' in fields && Number(fields['Term 4 Fee'] ?? 0) !== Number(row.feeAud ?? 0)
+  const typeChanged = 'Term 4 Payment Type' in fields && fields['Term 4 Payment Type'] !== row.paymentType
+  if (feeChanged || typeChanged) {
+    for (const q of open.filter((x) => x.term4Ids.length === 1 && !['sessions', 'charge', 'extra', 'invoice'].includes(x.reason) && !x.chargeId && !x.invoiceId)) {
+      const c = await cancelLink(q, principal, 'The fee or the way to pay changed', { keepPlace: true })
+      if (!c.error) closed.push({ id: q.id, amountCents: q.amountCents, players: q.playerNames })
+    }
+    if (closed.length) open = open.filter((q) => !closed.some((c) => c.id === q.id))
+  }
+  return res.status(200).json({ success: true, closedLinks: closed, openLinks: open.map((q) => ({ id: q.id, amountCents: q.amountCents, players: q.playerNames })) })
 }
 
 // Player information for one player (Players tab Edit): the saved profile,
