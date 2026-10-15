@@ -69,4 +69,8 @@ check('sheets keep keyboard focus inside and give it back on close', () => {
   assert.match(common, /e\.key !== 'Tab'/)
   assert.match(common, /opener\.focus\(\{ preventScroll: true \}\)/)
 })
+check('session date tags never run under the Can\'t make it button', () => {
+  assert.match(account, /\.ja-date \.w b \{ display: flex; flex-wrap: wrap;/)
+  assert.match(account, /\.ja-date > \.ja-btn, \.ja-date > \.ja-muted \{ grid-column: 2;/)
+})
 console.log(`${n} UI consistency checks passed`)

@@ -650,3 +650,13 @@ body:has(.ja) { background: #0A0A0B !important; }
 @media (max-width: 1023px) {
   html:has(.ja-tabs) { scroll-padding-top: calc(70px + env(safe-area-inset-top)); scroll-padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
 }
+
+/* Session dates: the day, time and tags (Next, Paid, Not paid yet) wrap as a
+   group and never run under the button. On a phone the button goes on its
+   own line under them, so the tags get the full width (Lee, 15 Oct 2026). */
+.ja-date .w b { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.ja-date .w b .ja-tag { margin-left: 0; max-width: 100%; white-space: normal; line-height: 1.2; }
+@media (max-width: 560px) {
+  .ja-date { grid-template-columns: 54px minmax(0, 1fr); row-gap: 8px; }
+  .ja-date > .ja-btn, .ja-date > .ja-muted { grid-column: 2; justify-self: start; }
+}
