@@ -2125,7 +2125,7 @@ export async function saveGroupAction(res, principal, config, body) {
   for (const k of ['capacity', 'durationMin']) if (k in patch) patch[k] = Number(patch[k])
   for (const k of ['minAge', 'maxAge']) if (k in patch) patch[k] = patch[k] === '' || patch[k] == null ? null : Number(patch[k])
   if (!existing) {
-    let v = validateGroup({ capacity: 6, mode: 'closed', durationMin: 60, label: 'Small group', ...patch }, config)
+    let v = validateGroup({ capacity: 6, mode: 'application', durationMin: 60, label: 'Small group', ...patch }, config)
     if (!v.ok) return fail(res, 400, v.errors.join(' '))
     // A second coach at a session that already runs: it becomes that coach's
     // own group (id ends in the coach), never one group that takes everyone's
@@ -2136,7 +2136,7 @@ export async function saveGroupAction(res, principal, config, body) {
     if (sameSession.length && !v.group.byCoach) {
       if (!v.group.coachId) return fail(res, 400, 'A group already runs at that day, time and location. Choose the coach for this extra group.')
       if (sameSession.some((x) => x.coachId === v.group.coachId)) return fail(res, 409, 'That coach already has a group at that day, time and location.')
-      v = validateGroup({ capacity: 6, mode: 'closed', durationMin: 60, label: 'Small group', ...patch, byCoach: true }, config)
+      v = validateGroup({ capacity: 6, mode: 'application', durationMin: 60, label: 'Small group', ...patch, byCoach: true }, config)
       if (!v.ok) return fail(res, 400, v.errors.join(' '))
       // The groups already there keep their ids from now on when edited.
       for (const x of sameSession) if (!x.byCoach) await saveGroup({ ...x, byCoach: true })

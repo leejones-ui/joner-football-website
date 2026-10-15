@@ -56,4 +56,9 @@ await test('Dean is not this player\'s coach: refused', async () => {
   assert.match(r.data.error, /not in your sessions/)
 })
 
+await test('a session added to the timetable is on the public booking page unless hidden on purpose', async () => {
+  const g = (await ok('saveGroup', { group: { day: 'Friday', time: '7:45pm', location: 'Belrose HQ', coachId: 'dean', capacity: 1, label: '1 to 1' } })).group
+  assert.equal(g.mode, 'application')
+})
+
 console.log(`${passed} coach player checks passed`)

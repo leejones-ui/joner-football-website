@@ -315,7 +315,7 @@ const payPill = (p) => {
   const [c, l] = PAY_KIND[payKind(p)]
   return `<span class="j-pill j-pill-${c}">${l}</span>`
 }
-const modeLabel = { direct: 'Book now', application: 'Apply only', enquire: 'Enquire', closed: 'Hidden' }
+const modeLabel = { direct: 'Book now', application: 'Apply only', enquire: 'Enquire', closed: 'Hidden (not on the booking page)' }
 const modePill = (g) => ({ direct: 'green', application: 'violet', enquire: 'grey', closed: 'grey' }[g.mode])
 const agesText = (g) => (g.minAge != null ? `${g.girlsOnly === 'yes' ? 'Girls ' : ''}${g.minAge} to ${g.maxAge}` : 'Ages not set')
 const timeAgo = (ms) => new Date(ms).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })
@@ -484,7 +484,7 @@ async function coachNoteModal(p, g) {
 function ttBlock(g) {
   const n = g.players.length
   const left = g.capacity - n
-  const tag = g.mode === 'direct' ? 'Book now' : g.mode === 'application' ? 'Apply' : g.mode === 'enquire' ? 'Enquire' : 'Hidden'
+  const tag = g.mode === 'direct' ? 'Book now' : g.mode === 'application' ? 'Apply' : g.mode === 'enquire' ? 'Enquire' : 'Hidden from families'
   const head = `<div class="jp-blk-head" data-open="${esc(g.id)}"><b>${esc(g.time)}</b>${g.pendingRequests && P.ttView === 'staff' ? ` <span class="j-pill j-pill-violet" style="font-size:10px;padding:0 6px">${g.pendingRequests} new</span>` : ''}<span class="n">${P.ttView === 'parent' ? '' : `${n}/${g.capacity}`}</span></div>
     <div class="sub" data-open="${esc(g.id)}">${esc(g.coachName || 'No coach')} · ${esc(tag)}${g.label !== 'Small group' ? ` · ${esc(g.label)}` : ''}${g.minAge != null ? ` · ${g.girlsOnly === 'yes' ? 'girls ' : ''}${g.minAge} to ${g.maxAge}` : ''}</div>`
   let body
@@ -1111,7 +1111,7 @@ function groupModal(g) {
     <label class="j-field"><span>Start time</span><select class="j-select" id="gm-time">${opt(times.map((t) => [t, t]), v.time)}</select></label></div>
     <div class="j-two"><label class="j-field"><span>Location</span><select class="j-select" id="gm-loc">${opt(places.map((x) => [x, x === 'NTRA' ? 'North Turramurra (NTRA)' : x === 'Rydalmere' ? 'Rydalmere Park' : x]), v.location)}</select></label>
     <label class="j-field"><span>Coach</span><select class="j-select" id="gm-coach"><option value="">Not set</option>${opt(d.coaches.map((c) => [c.id, c.name]), v.coachId)}</select></label></div>
-    <div class="j-two"><label class="j-field"><span>Parents can</span><select class="j-select" id="gm-mode">${opt(d.modes.map((m) => [m, modeLabel[m]]), v.mode)}</select></label>
+    <div class="j-two"><label class="j-field"><span>Parents can</span><select class="j-select" id="gm-mode">${opt(d.modes.map((m) => [m, modeLabel[m]]), v.mode)}</select><small class="j-err" id="gm-hidden" ${v.mode === 'closed' ? '' : 'hidden'} style="display:block;margin-top:4px">Not on the public booking page: families cannot see it or join its waitlist. For a full session, pick Apply only and tick "Show as fully booked" instead.</small></label>
     <label class="j-field"><span>Type</span><select class="j-select" id="gm-label">${opt(d.labels.map((x) => [x, x]), v.label)}</select></label></div>
     <div class="j-two"><label class="j-field"><span>Youngest age</span><select class="j-select" id="gm-min">${opt(ages, v.minAge ?? '')}</select></label><label class="j-field"><span>Oldest age</span><select class="j-select" id="gm-max">${opt(ages, v.maxAge ?? '')}</select></label></div>
     <div class="j-two"><label class="j-field"><span>Age band</span><select class="j-select" id="gm-agest">${opt([['draft', 'Draft, to confirm'], ['confirmed', 'Confirmed']], v.ageStatus)}</select></label>
@@ -1131,8 +1131,14 @@ function groupModal(g) {
     ${g ? '<p class="muted small">Changing the day, time or location moves every player in this group in Airtable too.</p>' : ''}
     <p class="j-err" id="gm-err" hidden></p>
     <div style="display:flex;gap:8px;justify-content:space-between;margin-top:10px">${g ? '<button type="button" class="j-btn j-btn-danger" id="gm-del">Delete</button>' : '<span></span>'}<span style="display:flex;gap:8px"><button type="button" class="j-btn j-btn-line" data-close>Cancel</button><button type="button" class="j-btn j-btn-dark" id="gm-save">Save</button></span></div>`, { wide: true })
+  // Every session on the timetable is on the public booking page unless it is
+  // hidden on purpose (Lee, 15 Oct 2026: Dean's Thursday 6:30pm and 7:30pm
+  // were hidden by mistake). Hidden asks twice.
+  let hiddenOk = v.mode === 'closed' && Boolean(g)
+  box.querySelector('#gm-mode').addEventListener('change', (e) => { box.querySelector('#gm-hidden').hidden = e.target.value !== 'closed'; hiddenOk = false })
   box.querySelector('#gm-save').addEventListener('click', async () => {
     const val = (id) => box.querySelector(id).value
+    if (val('#gm-mode') === 'closed' && !hiddenOk) { hiddenOk = true; const e = box.querySelector('#gm-err'); e.textContent = 'This session will be hidden from the public booking page. Press Save again to keep it hidden.'; e.hidden = false; return }
     const group = { day: val('#gm-day'), time: val('#gm-time').trim(), location: val('#gm-loc').trim(), coachId: val('#gm-coach'), mode: val('#gm-mode'), label: val('#gm-label'), minAge: val('#gm-min'), maxAge: val('#gm-max'), ageStatus: val('#gm-agest'), girlsOnly: val('#gm-girls'), capacity: val('#gm-cap'), durationMin: val('#gm-dur'), publicNote: val('#gm-note'), extraCoachIds: [...box.querySelector('#gm-extra').selectedOptions].map((o) => o.value).filter((c) => c !== val('#gm-coach')), product: val('#gm-prod'), trials: box.querySelector('#gm-trials').checked, showFull: box.querySelector('#gm-full').checked, applyWhenFull: box.querySelector('#gm-awf').checked, allowOneToOne: box.querySelector('#gm-1to1').checked, questions: [...box.querySelectorAll('[data-qk]')].filter((c) => c.checked).map((c) => c.dataset.qk), requirements: [...box.querySelectorAll('[data-rk]')].filter((c) => c.checked).map((c) => c.dataset.rk), requirementsText: val('#gm-reqtext'), ...(g ? {} : { byCoach: Boolean(box.querySelector('#gm-bycoach')?.checked) }) }
     const r = await post('saveGroup', { id: g?.id, group })
     if (!r.ok) { const e = box.querySelector('#gm-err'); e.textContent = r.data.error; e.hidden = false; return }
