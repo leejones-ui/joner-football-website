@@ -135,7 +135,7 @@ async function submit(el, fam, places, opts, ui, replace = false, text = false) 
   if (!r.ok) { const err = el.querySelector('[data-err]'); err.textContent = r.data.error; err.hidden = false; return }
   if (!r.data.payreq) { ui.toast(r.data.message || 'Prices saved'); return ui.done() }
   try { await navigator.clipboard.writeText(r.data.payreq.url) } catch {}
-  ui.toast(`Family invoice ${r.data.payreq.amountLabel} ${r.data.emailed ? `emailed to ${fam.email}` : 'made'}. Link copied.${r.data.replaced ? ` ${r.data.replaced} older link${r.data.replaced > 1 ? 's' : ''} closed.` : ''}`, 7000)
+  ui.toast(`Family invoice ${r.data.payreq.amountLabel} ${r.data.emailed ? `emailed to ${fam.email}` : 'made'}. Link copied.${r.data.replaced ? ` ${r.data.replaced} older link${r.data.replaced > 1 ? 's' : ''} closed.` : ''}${r.data.emailError ? ` ${r.data.emailError}` : r.data.pdfWarning ? ` ${r.data.pdfWarning}` : ''}`, 9000)
   ui.done()
   // The text opens with the words filled in; nothing goes until Send.
   if (text && fam.phone) textFamily(fam, ui, { amountCents: r.data.payreq.amountCents, url: r.data.payreq.url, emailed: Boolean(r.data.emailed) })
@@ -216,7 +216,7 @@ export function sessionModal(p, ui) {
     if (!r.ok && r.data.code === 'link_open') { if (await ui.confirmBox(esc(r.data.error), { ok: 'Replace it' })) return go(true); return }
     if (!r.ok) { err.textContent = r.data.error; err.hidden = false; return }
     ui.closeModal()
-    if (r.data.payreq) { try { await navigator.clipboard.writeText(r.data.payreq.url) } catch {} ui.toast(`Link for ${r.data.payreq.amountLabel} ${r.data.emailed ? 'emailed' : 'made'}. Link copied.`, 6000) } else ui.toast(r.data.message || `Recorded ${r.data.recorded}`, r.data.message ? 7000 : 3600)
+    if (r.data.payreq) { try { await navigator.clipboard.writeText(r.data.payreq.url) } catch {} ui.toast(`Link for ${r.data.payreq.amountLabel} ${r.data.emailed ? 'emailed' : 'made'}. Link copied.${r.data.emailError ? ` ${r.data.emailError}` : r.data.pdfWarning ? ` ${r.data.pdfWarning}` : ''}`, 8000) } else ui.toast(r.data.message || `Recorded ${r.data.recorded}`, r.data.message ? 7000 : 3600)
     ui.done()
   }
   box.querySelector('#ss-go').addEventListener('click', () => go())

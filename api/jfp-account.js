@@ -38,6 +38,7 @@ import { nextStatuses, setNextStatus, nextPrices, recordNext, createNextPayreq, 
 import { jjAccountView, jjPay, jjRequestPay, jjNextChoice, familyJJ, jjWaiverRows, markJJWaivers } from './_jj-account.js'
 import { owedItems, payOwed as makeOwedPayreq, cancelOwed as cancelOwedPayreq } from './_jfp-account-pay.js'
 import { familyFees } from './_jfp-account-fees.js'
+import { docForPayreq, pdfDownload } from './_jfp-fee-pdf.js'
 import { coveredOf } from './_jfp-quote.js'
 import { accountOf, openPlayers, addMyPlayer } from './_jfp-account-open.js'
 import { prepaidOf } from './_jfp-store.js'
@@ -686,6 +687,16 @@ async function fees(res, parent) {
   return res.status(200).json({ success: true, fees: view })
 }
 
+// The PDF tax invoice for one of this family's own payment requests (Fees,
+// Lee 16 Oct 2026). Anyone else's, a quick link or a cancelled one: not found.
+async function invoicePdf(req, res, parent, body) {
+  const config = await getConfig()
+  const q = await getPayreq(clean(body.payreqId, 60))
+  const fam = familyFor(parent.email, await loadRoster(), config.termStart)
+  if (!q || q.status === 'cancelled' || !ownsPayreq(q, fam, parent.email)) return fail(res, 404, 'Invoice not found.')
+  return res.status(200).json({ success: true, ...(await pdfDownload(await docForPayreq(q, config, siteUrl(req)))) })
+}
+
 // Close a pay-ahead link the family made, so they can choose another option.
 async function cancelOwed(res, parent, body) {
   const config = await getConfig()
@@ -723,6 +734,7 @@ export default async function handler(req, res) {
     if (body.action === 'payOwed') return await payOwed(req, res, parent, body)
     if (body.action === 'cancelOwed') return await cancelOwed(res, parent, body)
     if (body.action === 'fees') return await fees(res, parent)
+    if (body.action === 'invoicePdf') return await invoicePdf(req, res, parent, body)
     if (body.action === 'nextTermChoice') return await nextTermChoice(req, res, parent, body)
     if (body.action === 'nextTermInterest') return await nextTermInterest(res, parent, body)
     if (body.action === 'profiles') return await profiles(res, parent)

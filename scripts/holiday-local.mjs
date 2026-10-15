@@ -620,7 +620,7 @@ const innerFetch = async (url, init = {}) => {
     const payload = JSON.parse(init.body)
     const id = (payload.htmlContent.match(/(?:HOL|JFP|APP|PAY|WAIT|ENQ)-[0-9A-Z-]+/) || [''])[0]
     log('brevo', `${payload.subject} [${id}]`)
-    emails.push({ at: Date.now(), to: payload.to.map((t) => t.email), replyTo: payload.replyTo?.email || '', subject: payload.subject, html: payload.htmlContent, attachments: (payload.attachment || []).map((a) => ({ name: a.name, content: Buffer.from(a.content, 'base64').toString('utf8') })) })
+    emails.push({ at: Date.now(), to: payload.to.map((t) => t.email), replyTo: payload.replyTo?.email || '', subject: payload.subject, html: payload.htmlContent, attachments: (payload.attachment || []).map((a) => ({ name: a.name, content: Buffer.from(a.content, 'base64').toString('utf8'), ...(/\.pdf$/i.test(a.name) ? { base64: a.content } : {}) })) })
     return json({ messageId: 'local' })
   }
   if (u.startsWith('https://api.telegram.org/')) {
@@ -688,6 +688,8 @@ globalThis.fetch = async (url, init = {}) => {
 
 const events = []
 const faults = new Set()
+// The invoice PDF reads this (only with JFP_TEST_CLOCK): /__fail?what=pdf&on=1.
+globalThis.__jfpTestFaults = faults
 // Payments made on Stripe payment links outside the site (seeded by tests).
 const stripeSeeded = []
 const stripeLinks = { plink_jfp850: 'JFP 10 weeks', plink_camp: 'Joner Camp July', plink_coach120: '1 on 1 session' }

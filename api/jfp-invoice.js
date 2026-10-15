@@ -7,12 +7,14 @@
 //   pay      a Stripe Checkout Session tied to the invoice and the player
 //            (metadata.jfpBookingId = the invoice's payment request)
 //   confirm  after Stripe: is it paid? Records it if the webhook has not yet
+//   pdf      the designed PDF tax invoice (_jfp-invoice-pdf.js), this one only
 import { stripeFetch, siteUrl } from './_holiday-store.js'
 import { getConfig, getPayreq, savePayreq, closeCheckout, kvCommand, clean } from './_jfp-store.js'
 import { finaliseJfpBooking, jfpBookingIdFromSession } from './_jfp-finalise.js'
 import { sameOrigin } from './_jfp-people.js'
 import { rateLimit } from './_security.js'
 import { invoiceByToken, publicInvoice, invoiceCheckoutBody, owingOf, invoiceStatus, VIEWED, getInvoice } from './_jfp-invoices.js'
+import { docForInvoice, pdfDownload } from './_jfp-fee-pdf.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -86,6 +88,7 @@ export default async function handler(req, res) {
     if (body.action === 'view') return await view(res, inv, config)
     if (body.action === 'pay') return await pay(req, res, inv)
     if (body.action === 'confirm') return await confirm(res, inv, config, body.sessionId)
+    if (body.action === 'pdf') return res.status(200).json({ success: true, ...(await pdfDownload(docForInvoice(inv, config, siteUrl(req)))) })
     return fail(res, 400, 'Unknown action')
   } catch (error) {
     console.error('jfp-invoice failed', error)

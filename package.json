@@ -28,6 +28,7 @@
     "test:jfp-open-accounts-flow": "node scripts/test-jfp-open-accounts-flow.mjs",
     "test:jfp-round3-flow": "node scripts/test-jfp-round3-flow.mjs",
     "test:jfp-charges-flow": "node scripts/test-jfp-charges-flow.mjs",
+    "test:jfp-invoice-pdf-flow": "node scripts/test-jfp-invoice-pdf-flow.mjs",
     "time:jfp-money": "node scripts/time-jfp-money.mjs",
     "test:jj-flow": "node scripts/test-jj-flow.mjs",
     "test:jj-stage2-flow": "node scripts/test-jj-stage2-flow.mjs",
@@ -62,12 +63,15 @@
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.2",
+    "@pdf-lib/fontkit": "^1.1.1",
     "@sanity/client": "^7.20.0",
     "@sanity/vision": "^5.19.0",
     "@tailwindcss/vite": "^4.2.2",
     "astro": "^6.4.8",
     "framer-motion": "^12.38.0",
     "libphonenumber-js": "^1.13.13",
+    "pdf-lib": "^1.17.1",
+    "qrcode-generator": "^2.0.4",
     "sanity": "^5.19.0",
     "styled-components": "^6.4.1",
     "tailwindcss": "^4.2.2"

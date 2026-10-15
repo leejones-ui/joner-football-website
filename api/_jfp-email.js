@@ -35,6 +35,8 @@ function button(label, href) {
   return `<p style="margin:20px 0 8px;"><a href="${esc(href)}" style="background:#111827;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:15px;padding:14px 22px;border-radius:10px;display:inline-block;">${esc(label)}</a></p>`
 }
 function link(label, href) { return `<a href="${esc(href)}" style="color:#1D4ED8;text-decoration:underline;">${esc(label)}</a>` }
+// The PDF tax invoice on a fee email (_jfp-invoice-pdf.js), when it was made.
+const pdfLine = (attachment) => (attachment?.length ? p('Your tax invoice is attached as a PDF, for your records.') : '')
 
 // Every send is written to the email log (sent with Brevo's message id, or
 // failed with the reason), so staff can see what reached a family.
@@ -260,7 +262,7 @@ const kitLine = (config) => (config.kitUrl
 const howToSignIn = (to, self = false) => p(`<b>How to sign in:</b> press the button, enter <b>${esc(to)}</b>, and we email you a six digit code. Type the code in and you are in. There is no password to set up or remember. Your account keeps every booking, so you can add another session${self ? '' : ' or another child'} from the same place.`)
 
 // group can be null: a player added on the Players tab with no session yet.
-export async function sendFamilyInvite({ to, parentName, playerNames, group, config, url, needs, amountCents, trial = false, startDate = '', product = '', self = false }) {
+export async function sendFamilyInvite({ to, parentName, playerNames, group, config, url, needs, amountCents, trial = false, startDate = '', product = '', self = false, attachment }) {
   const w = contactWords({ self, players: playerNames, parent: parentName })
   // The order they find on sign in (Lee, 13 Oct 2026): 1 waiver, 2 pay,
   // 3 player details. needs.sessions: session by session, paid from the
@@ -278,10 +280,11 @@ export async function sendFamilyInvite({ to, parentName, playerNames, group, con
 ${group ? rows([...(trial && startDate ? [['Trial', esc(dateLabel(startDate))]] : []), ...groupRows(config, group, trial ? '' : startDate, product)]) : p('We will confirm the group, day and time with you. Everything is in your account as soon as it is set.')}
 ${list ? p(`To finish, sign in with this email address and ${esc(list)}. It takes a couple of minutes.${needs.payment || needs.owingCents > 0 ? ' The place is locked in once it is paid.' : ''}`) : p('Sign in with this email address to see the booking.')}
 ${button(needs.payment || needs.owingCents > 0 || needs.sessions ? 'Sign in and finish' : 'View the booking', url)}
+${pdfLine(attachment)}
 ${howToSignIn(to, self)}
 ${kitLine(config)}`
   const subject = trial ? (self ? 'Your JFP trial' : `${playerNames.join(' and ')}: your JFP trial`) : (self ? `Your ${config.term} place` : `${playerNames.join(' and ')}: your ${config.term} place`)
-  return send({ to: [{ email: to, name: w.toName }], subject, html: shell({ preheader: group ? `${group.day} ${group.time}` : config.term, heading: trial ? 'Your JFP trial' : 'Your JFP place', body }), kind: trial ? 'trial invite' : needs.payment ? 'place and payment link' : 'place invite' })
+  return send({ to: [{ email: to, name: w.toName }], subject, html: shell({ preheader: group ? `${group.day} ${group.time}` : config.term, heading: trial ? 'Your JFP trial' : 'Your JFP place', body }), kind: trial ? 'trial invite' : needs.payment ? 'place and payment link' : 'place invite', attachment })
 }
 
 // Add a family (round 2, Lee 14 Oct 2026): one email for every child added
@@ -289,7 +292,7 @@ ${kitLine(config)}`
 // what they pay, then the steps in the order the account shows them: a waiver
 // for each child, one payment for everyone, then each child's details.
 // children: [{ name, where, pay, link (on the one payment), waiver (still to sign), sessions }]
-export function familyWelcome({ to, parentName, children, config, url, amountCents = 0 }) {
+export function familyWelcome({ to, parentName, children, config, url, amountCents = 0, attachment }) {
   const names = children.map((c) => c.name)
   const w = contactWords({ self: false, players: names, parent: parentName })
   const firsts = children.map((c) => String(c.name).trim().split(/\s+/)[0])
@@ -307,6 +310,7 @@ ${p(`<b>One account for the family.</b> Sign in with this email address and you 
 ${p('<b>When you sign in, in this order</b>')}
 <ol style="margin:0 0 14px;padding-left:20px;font-size:15px;line-height:1.6;color:#374151;">${steps.join('')}</ol>
 ${button(amountCents > 0 ? 'Sign in and finish' : 'Sign in to your account', url)}
+${pdfLine(attachment)}
 ${howToSignIn(to)}
 ${kitLine(config)}`
   const subject = `${both(firsts)}: your ${config.term} ${children.length > 1 ? 'places' : 'place'}`
@@ -315,11 +319,11 @@ ${kitLine(config)}`
 export async function sendFamilyWelcome({ to, parentName, children, ...rest }) {
   const { subject, html } = familyWelcome({ to, parentName, children, ...rest })
   const w = contactWords({ self: false, players: children.map((c) => c.name), parent: parentName })
-  return send({ to: [{ email: to, name: w.toName }], subject, html, replyTo: 'ligia@jonerfootball.com', kind: 'family add' })
+  return send({ to: [{ email: to, name: w.toName }], subject, html, replyTo: 'ligia@jonerfootball.com', kind: 'family add', attachment: rest.attachment })
 }
 
 // One invoice for the whole family: each place and its price, one total.
-export async function sendFamilyInvoice({ to, parentName, places, config, url, amountCents, needWaiver = false, sessions = false, self = false }) {
+export async function sendFamilyInvoice({ to, parentName, places, config, url, amountCents, needWaiver = false, sessions = false, self = false, attachment }) {
   const names = [...new Set(places.map((x) => x.name))]
   const w = contactWords({ self, players: names, parent: parentName })
   const intro = self
@@ -329,20 +333,22 @@ export async function sendFamilyInvoice({ to, parentName, places, config, url, a
 ${rows([...places.map((x) => [esc(x.name), `${esc(x.label)}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">${esc(formatAud(x.owingCents))}${x.paidCents ? ` (${esc(formatAud(x.feeCents))}, ${esc(formatAud(x.paidCents))} already paid)` : ''}</span>`]), ['Total to pay', esc(formatAud(amountCents))]])}
 ${p(`Sign in with this email address to ${needWaiver ? (self ? 'sign your waiver and ' : 'sign the waiver and ') : ''}pay. ${sessions ? 'Card or Apple Pay.' : 'Card, Apple Pay or Afterpay. The places are locked in once it is paid.'}`)}
 ${button('Sign in and pay', url)}
+${pdfLine(attachment)}
 ${howToSignIn(to, self)}
 ${kitLine(config)}`
   const subject = self ? (sessions ? 'Your JFP sessions invoice' : `Your ${config.term} invoice`) : (sessions ? `${names.join(' and ')}: JFP sessions invoice` : `${names.join(' and ')}: your ${config.term} invoice`)
-  return send({ to: [{ email: to, name: w.toName }], subject, html: shell({ preheader: `${formatAud(amountCents)} for ${names.length} player${names.length > 1 ? 's' : ''}`, heading: sessions ? 'Your sessions invoice' : self ? 'Your invoice' : 'Your family invoice', body }), kind: sessions ? 'sessions invoice' : 'family invoice' })
+  return send({ to: [{ email: to, name: w.toName }], subject, html: shell({ preheader: `${formatAud(amountCents)} for ${names.length} player${names.length > 1 ? 's' : ''}`, heading: sessions ? 'Your sessions invoice' : self ? 'Your invoice' : 'Your family invoice', body }), kind: sessions ? 'sessions invoice' : 'family invoice', attachment })
 }
 
 // After a good trial: the rest of the term, with the trial fee taken off.
-export async function sendTermOffered({ to, parentName, playerNames, group, config, url, amountCents, startDate, creditCents = 0, self = false }) {
+export async function sendTermOffered({ to, parentName, playerNames, group, config, url, amountCents, startDate, creditCents = 0, self = false, attachment }) {
   const w = contactWords({ self, players: playerNames, parent: parentName })
   const body = `${p(self ? `Hi ${esc(w.hi)}. Great trial. We would love you to join ${esc(group.day)} ${esc(group.time)} for the rest of ${esc(config.term)}.` : `Hi ${esc(w.hi)}. Great trial. We would love ${esc(playerNames.join(' and '))} to join ${esc(group.day)} ${esc(group.time)} for the rest of ${esc(config.term)}.`)}
 ${rows([...groupRows(config, group, startDate), ['To pay', `${esc(formatAud(amountCents))}${creditCents ? `<br><span style="color:#6B7280;font-weight:400;font-size:13px;">The ${esc(formatAud(creditCents))} trial is already taken off.</span>` : ''}`]])}
 ${p('Sign in with this email address to pay and lock in the place. Card, Apple Pay or Afterpay.')}
-${button('Sign in and pay', url)}`
-  return send({ to: [{ email: to, name: w.toName }], subject: self ? `The rest of ${config.term}` : `${playerNames.join(' and ')}: the rest of ${config.term}`, html: shell({ heading: 'Your place for the term', body }), kind: 'term after trial' })
+${button('Sign in and pay', url)}
+${pdfLine(attachment)}`
+  return send({ to: [{ email: to, name: w.toName }], subject: self ? `The rest of ${config.term}` : `${playerNames.join(' and ')}: the rest of ${config.term}`, html: shell({ heading: 'Your place for the term', body }), kind: 'term after trial', attachment })
 }
 
 export async function sendPaymentReceipt({ payreq, group, config, siteUrl }) {
@@ -622,18 +628,19 @@ ${siteUrl ? button('Open My account', `${siteUrl}/jfp-account/`) : ''}`
 
 // The invoice email: what it is for, the total with GST, and the link to the
 // invoice page (pay by card there, or by bank transfer with the reference).
-export function invoiceEmail({ view, url }) {
+export function invoiceEmail({ view, url, attachment }) {
   const lines = view.lines.map((l) => [`${esc(l.description)}${l.qty > 1 ? ` x ${l.qty}` : ''}`, esc(l.totalLabel)])
   const body = `${p(`Hi ${esc(view.billTo.name || 'there')}, here is your invoice from Joner Football${view.players.length ? ` for ${esc(view.players.join(' and '))}` : ''}.`)}
 ${rows([['Invoice', esc(view.number)], ...lines, ['Total', `${esc(view.totalLabel)}<br><span style="color:#6B7280;font-weight:400;font-size:13px;">Includes GST of ${esc(view.gstLabel)}</span>`], ...(view.paidCents ? [['Paid so far', esc(view.paidLabel)], ['To pay', esc(view.owingLabel)]] : []), ...(view.dueLabel ? [['Due', esc(view.dueLabel)]] : [])])}
 ${button('View and pay the invoice', url)}
 ${p(`Pay by card on the invoice page${view.bank ? `, or by bank transfer to ${esc(view.bank.accountName)}, BSB ${esc(view.bank.bsb)}, account ${esc(view.bank.accountNumber)}, with the reference <b>${esc(view.bank.reference)}</b>` : ''}. You can download a PDF from the same page.`)}
-${view.notes ? p(esc(view.notes)) : ''}`
+${view.notes ? p(esc(view.notes)) : ''}
+${pdfLine(attachment)}`
   return { subject: `Invoice ${view.number} from Joner Football`, html: shell({ preheader: `${view.owingLabel} to pay${view.dueLabel ? `, due ${view.dueLabel}` : ''}`, heading: `Invoice ${view.number}`, body }) }
 }
-export async function sendInvoiceEmail({ to, name = '', view, url }) {
-  const m = invoiceEmail({ view, url })
-  return send({ to: [{ email: to, name }], subject: m.subject, html: m.html, kind: 'invoice' })
+export async function sendInvoiceEmail({ to, name = '', view, url, attachment }) {
+  const m = invoiceEmail({ view, url, attachment })
+  return send({ to: [{ email: to, name }], subject: m.subject, html: m.html, kind: 'invoice', attachment })
 }
 // Paid by card: the receipt says the invoice is paid (or what is left).
 export async function sendInvoiceReceipt({ payreq, view, url }) {

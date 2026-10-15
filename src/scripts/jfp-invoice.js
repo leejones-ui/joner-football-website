@@ -1,7 +1,8 @@
 // The invoice page (/jfp-invoice/?i=<token>). Shows this one invoice, then
-// Pay by card (Stripe) or the bank details, and Download PDF (the browser's
-// print, laid out as an A4 invoice). After Stripe it checks the payment.
-import { $, esc, api } from './jfp-common.js'
+// Pay by card (Stripe) or the bank details, and Download PDF (the designed PDF
+// from the server, or the browser's print as an A4 invoice if that fails).
+// After Stripe it checks the payment.
+import { $, esc, api, savePdf } from './jfp-common.js'
 
 const hero = (e, h, l) => { $('eyebrow').textContent = e; $('heading').textContent = h; $('lead').textContent = l }
 
@@ -34,7 +35,13 @@ export async function initInvoice({ search = location.search, wait = (ms) => new
   const q = new URLSearchParams(search)
   const token = q.get('i') || ''
   const sid = q.get('session_id') || ''
-  $('pdf').addEventListener('click', () => print())
+  // The designed PDF from the server; the browser's print if that fails.
+  $('pdf').addEventListener('click', async () => {
+    $('pdf').disabled = true
+    const r = token ? await api('/api/jfp-invoice', { action: 'pdf', token }) : { ok: false }
+    $('pdf').disabled = false
+    if (r.ok && r.data.pdf) savePdf(r.data); else print()
+  })
   if (!token) { hero('Invoice', 'Invoice not found', 'Open the invoice link you were sent.'); $('help').hidden = false; return }
   if (sid) return confirmLoop(token, sid, wait)
   const r = await api('/api/jfp-invoice', { action: 'view', token })

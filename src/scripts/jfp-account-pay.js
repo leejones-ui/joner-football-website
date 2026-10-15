@@ -44,6 +44,7 @@ export function oweList(D, want = '') {
       btn: `data-pay="${esc(t.id)}"`,
       blocked: t.needsWaiver ? 'Sign the waiver first' : t.needsKit && !t.kit ? 'Confirm the playing kit first' : '',
       choose: t.canChoose ? t.id : '',
+      pdf: t.id,
     })
   }
   for (const o of (D.owed || []).filter((x) => x.kind !== 'prepay')) {
@@ -90,6 +91,7 @@ export function oweCard(x, pane = 'fees') {
     <button type="button" class="ja-btn ja-btn-red ja-btn-block ja-btn-lg" ${x.btn} ${x.blocked ? `disabled title="${esc(x.blocked)}"` : ''}>${ic('lock')}Pay ${esc(x.amount)}</button>
     <p class="ja-small ja-muted ja-pay-note">${esc(x.blocked ? `${x.blocked}, then pay.` : x.note)}</p>
     ${x.choose ? `<p><button type="button" class="ja-link ja-small" data-choose-again="${esc(x.choose)}">Choose a different option</button></p>` : ''}
+    ${x.pdf ? `<p><button type="button" class="ja-link ja-small" data-fee-pdf="${esc(x.pdf)}">Download the invoice (PDF)</button></p>` : ''}
   </article>`
 }
 
@@ -225,7 +227,7 @@ export function placeCards(F, D) {
 export function historyCard(F) {
   const totals = F.totals.length ? `<p class="ja-hist-total"><b>${esc(F.paidLabel)}</b> paid so far${F.totals.length > 1 ? `: ${F.totals.map((t) => `${esc(t.label)} ${esc(t.amountLabel)}`).join(' · ')}` : ''}</p>` : ''
   return `<div class="ja-card">${totals}${F.records.length
-    ? `<ul class="ja-hist">${F.records.map((r) => `<li data-fee-record><span class="ja-hist-ic">${ic(r.method === 'Cash' || r.method === 'Bank transfer' ? 'check' : 'card')}</span><div><b>${esc(r.what)}${r.players.length ? `, ${esc(r.players.join(' and '))}` : ''}</b><small>${esc(r.dateLabel || 'Date not recorded')} · ${esc(r.programme)} · ${esc(r.method)}${r.refundedLabel ? ` · ${esc(r.refundedLabel)} refunded` : ''}</small></div><span class="ja-hist-amt">${esc(r.amountLabel)}${r.receiptUrl ? `<a class="ja-link ja-small" href="${esc(r.receiptUrl)}" target="_blank" rel="noopener noreferrer">Receipt</a>` : ''}</span></li>`).join('')}</ul>`
+    ? `<ul class="ja-hist">${F.records.map((r) => `<li data-fee-record><span class="ja-hist-ic">${ic(r.method === 'Cash' || r.method === 'Bank transfer' ? 'check' : 'card')}</span><div><b>${esc(r.what)}${r.players.length ? `, ${esc(r.players.join(' and '))}` : ''}</b><small>${esc(r.dateLabel || 'Date not recorded')} · ${esc(r.programme)} · ${esc(r.method)}${r.refundedLabel ? ` · ${esc(r.refundedLabel)} refunded` : ''}</small></div><span class="ja-hist-amt">${esc(r.amountLabel)}${r.receiptUrl ? `<a class="ja-link ja-small" href="${esc(r.receiptUrl)}" target="_blank" rel="noopener noreferrer">Receipt</a>` : ''}${/^PAY-/.test(r.id || '') ? `<button type="button" class="ja-link ja-small" data-fee-pdf="${esc(r.id)}">Invoice PDF</button>` : ''}</span></li>`).join('')}</ul>`
     : '<p class="ja-small ja-muted">No payments yet.</p>'}
     <p class="ja-small ja-muted" style="margin-top:14px">Card payments show Stripe's receipt where Stripe has one. Cash and bank transfers show once Joner Football records them. Something missing? <button type="button" class="ja-link" data-go="contact">Contact us</button></p></div>`
 }

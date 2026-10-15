@@ -175,7 +175,7 @@ export function familyDone(ui, d, body) {
   const url = d.payreq?.url || ''
   const sent = d.emailed ? `One email sent to ${esc(d.emailTo)}.` : d.emailError ? `<b>The email did not send:</b> ${esc(d.emailError)}` : 'No email sent.'
   const box = ui.modal(`<h2 style="margin-bottom:6px">${names.length > 1 ? `${names.length} children added` : 'Child added'}</h2>
-    <p class="muted small" style="margin-bottom:10px">One family account for ${esc(body.parent.email)}. ${sent}${d.profileError ? ` <b>${esc(d.profileError)}</b>` : ''}</p>
+    <p class="muted small" style="margin-bottom:10px">One family account for ${esc(body.parent.email)}. ${sent}${d.pdfWarning ? ` <b>${esc(d.pdfWarning)}</b>` : ''}${d.profileError ? ` <b>${esc(d.profileError)}</b>` : ''}</p>
     <ul class="jm-hist" style="margin-bottom:12px">${d.rows.map((x) => `<li><span><b>${esc(x.name)}</b><small>${esc(x.where)}${x.amountLabel ? ` · ${esc(x.amountLabel)} on the family payment` : ''}</small></span></li>`).join('')}</ul>
     ${url ? `<label class="j-field"><span>Family payment link, ${esc(d.payreq.amountLabel)} for everyone</span><input class="j-input" value="${esc(url)}" readonly></label>` : ''}
     <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button>${url ? '<button type="button" class="j-btn j-btn-line" id="fd-copy">Copy link</button>' : ''}<button type="button" class="j-btn j-btn-dark" id="fd-text" ${body.parent.mobile ? '' : 'disabled title="No mobile entered"'}>Text the parent</button></div>`)

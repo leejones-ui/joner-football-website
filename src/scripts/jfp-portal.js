@@ -2,7 +2,7 @@
 // coaches see the program timetable (names and ages) and their own registers.
 // Every change goes to Airtable through /api/jfp-portal-data, which checks
 // the role again on the server.
-import { $, esc, api, toast, signIn, whoAmI, signOut, money } from './jfp-common.js'
+import { $, esc, api, toast, signIn, whoAmI, signOut, money, savePdf } from './jfp-common.js'
 import { renderMessages } from './jfp-portal-messages.js'
 import { renderExtra } from './jfp-portal-extra.js'
 import { juniorsCardShell, fillJuniorsCard, juniorsData } from './jfp-portal-juniors.js'
@@ -711,7 +711,7 @@ async function linkModal(p, g) {
   const owing = Math.max(0, p.feeCents - p.paidCents)
   const w = contactWords({ self: p.ownContact, players: [p.name], parent: p.parent })
   const box = modal(`<h2 style="margin-bottom:6px">Payment link</h2><p class="muted small" style="margin-bottom:12px">${esc(p.name)}${g ? ` · ${esc(g.day)} ${esc(g.time)}` : ''}. ${w.self ? `${esc(w.contact)} signs in with their own email, signs the waiver if needed, then pays.` : 'The family signs in with their email, signs the waiver if needed, then pays.'}</p>
-    ${p.payreq ? `<div class="j-box j-box-grey" style="margin-bottom:12px">A link for ${esc(p.payreq.amountLabel)} is already open. To change its amount, use Payment links. A new link here leaves the old one open.</div>` : ''}
+    ${p.payreq ? `<div class="j-box j-box-grey" style="margin-bottom:12px">A link for ${esc(p.payreq.amountLabel)} is already open. To change its amount, use Payment links. A new link here leaves the old one open. <button type="button" class="j-btn j-btn-line j-btn-sm" data-inv-pdf="${esc(p.payreq.id)}">Invoice PDF</button></div>` : ''}
     <div class="jp-seg" id="ln-mode" style="margin-bottom:12px"><button type="button" data-m="price" aria-pressed="true">From the price list</button><button type="button" data-m="owing" aria-pressed="false">What is owing${owing ? ` (${esc(money(owing))})` : ''}</button></div>
     <div id="ln-price"></div>
     <label class="j-field"><span>${w.self ? "Player's email" : 'Parent email'}</span><input class="j-input" id="ln-email" type="email" value="${esc(p.email || '')}"></label>
@@ -740,7 +740,7 @@ async function linkModal(p, g) {
       return go(sendEmail, true)
     }
     if (!r.ok) return toast(r.data.error)
-    box.querySelector('#ln-out').innerHTML = `<div class="j-box ${r.data.emailError ? 'j-box-amber' : 'j-box-green'}" style="margin:10px 0">Link for ${esc(r.data.payreq.amountLabel)} created${r.data.emailed ? `. Sent to ${esc(r.data.emailTo)}` : ''}.${r.data.emailError ? ` ${esc(r.data.emailError)}` : ''} <button type="button" class="j-btn j-btn-line j-btn-sm" id="ln-copy">Copy link</button></div>`
+    box.querySelector('#ln-out').innerHTML = `<div class="j-box ${r.data.emailError ? 'j-box-amber' : 'j-box-green'}" style="margin:10px 0">Link for ${esc(r.data.payreq.amountLabel)} created${r.data.emailed ? `. Sent to ${esc(r.data.emailTo)}` : ''}.${r.data.emailError ? ` ${esc(r.data.emailError)}` : ''}${r.data.pdfWarning ? ` <b>${esc(r.data.pdfWarning)}</b>` : ''} <button type="button" class="j-btn j-btn-line j-btn-sm" id="ln-copy">Copy link</button> <button type="button" class="j-btn j-btn-line j-btn-sm" data-inv-pdf="${esc(r.data.payreq.id)}">Invoice PDF</button></div>`
     box.querySelector('#ln-copy').addEventListener('click', () => copy(r.data.payreq.url))
     if (!sendEmail) copy(r.data.payreq.url)
     box.querySelector('#ln-go').hidden = true; box.querySelector('#ln-copy-go').hidden = true
@@ -965,6 +965,7 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
     closeModal()
     const w = r.data.words || words
     if (r.data.emailError) toast(r.data.emailError)
+    else if (r.data.pdfWarning) toast(r.data.pdfWarning, 8000)
     else if (r.data.profileError) toast(r.data.profileError)
     // "Text them too" unticked, or no mobile: no text window.
     const mobile = box.querySelector('#ap-sms')?.checked === false ? '' : body.parent.mobile
@@ -1531,7 +1532,7 @@ async function renderPayments(keep = false) {
   }
   const who = (q) => (q.quick && !q.players.length ? `<b>No player</b><span class="ps-sub">${esc(q.status === 'paid' ? [q.payerName, q.payerEmail].filter(Boolean).join(' · ') || 'Paid' : q.email || 'No email')}</span>` : `<b>${esc(q.players.join(', '))}</b><span class="ps-sub">${esc(q.parentName)}${q.email ? ` · ${esc(q.email)}` : ''}</span>`)
   const forCell = (q) => (q.quick ? `${esc(q.forText)}<span class="ps-sub">${progPill(q.programme, q.programmeLabel)} Quick link${q.priceName && !q.forText.startsWith(q.priceName) ? ` · ${esc(q.priceName)}` : ''}${q.afterpay ? '' : ' · card only'}</span>` : `${esc(q.group || 'No group')}<span class="ps-sub">${esc(REASON[q.kind] || q.kind)}${q.productLabel ? ` · ${esc(q.productLabel)}` : ''}${q.trialDate ? ` · trial ${esc(q.trialDate)}` : q.startDate ? ` · from ${esc(q.startDate)}` : ''}${q.afterpay ? '' : ' · card only'}</span>`)
-  const acts = (q) => `${['open', 'checkout'].includes(q.status) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-change="${esc(q.id)}">Change amount</button> <button type="button" class="j-btn j-btn-line j-btn-sm" data-copy="${esc(q.url)}">Copy</button>${q.quick ? ` <a class="j-btn j-btn-line j-btn-sm" href="${esc(q.url)}" target="_blank" rel="noopener noreferrer">Open</a>${q.email ? ` <button type="button" class="j-btn j-btn-line j-btn-sm" data-email-quick="${esc(q.id)}">Email it</button>` : ''}` : ''} <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancel-pay="${esc(q.id)}">Cancel</button>` : ''}${q.effects && !q.effects.ok ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(q.id)}">Repair</button>` : ''}${q.stripeUrl ? ` <a class="j-btn j-btn-ghost j-btn-sm" href="${esc(q.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}`
+  const acts = (q) => `${['open', 'checkout'].includes(q.status) ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-change="${esc(q.id)}">Change amount</button> <button type="button" class="j-btn j-btn-line j-btn-sm" data-copy="${esc(q.url)}">Copy</button>${q.quick ? ` <a class="j-btn j-btn-line j-btn-sm" href="${esc(q.url)}" target="_blank" rel="noopener noreferrer">Open</a>${q.email ? ` <button type="button" class="j-btn j-btn-line j-btn-sm" data-email-quick="${esc(q.id)}">Email it</button>` : ''}` : ''} <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-cancel-pay="${esc(q.id)}">Cancel</button>` : ''}${!q.quick && !['cancelled', 'expired'].includes(q.status) ? ` <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-inv-pdf="${esc(q.id)}" title="The PDF tax invoice for this link">PDF</button>` : ''}${q.effects && !q.effects.ok ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-repair="${esc(q.id)}">Repair</button>` : ''}${q.stripeUrl ? ` <a class="j-btn j-btn-ghost j-btn-sm" href="${esc(q.stripeUrl)}" target="_blank" rel="noopener noreferrer">Stripe</a>` : ''}`
   const attention = [...d.payreqs, ...d.bookings].filter((x) => x.needsAttention)
   const attnWord = { 'paid-after-cancel': 'Paid after it was cancelled', 'second-payment': 'Paid twice', 'late-payment': 'Paid after the hold ran out', 'amount-changed': 'Paid an old amount after the fee changed' }
   view().innerHTML = `
@@ -2708,7 +2709,7 @@ async function historyDrawer(rowId) {
       <h3>Ledger</h3>
       ${p.ledger.length ? `<ul class="jm-hist">${p.ledger.map((l) => `<li><span>${esc(l.date)}<small>${esc(l.method)}${l.status && l.status !== 'Paid' ? ` · ${esc(l.status)}` : ''}</small></span><span class="amt">${esc(money(l.cents))}</span></li>`).join('')}</ul>` : '<p class="muted small">Nothing in the payment ledger yet.</p>'}
       <h3>Payment links</h3>
-      ${p.links.length ? `<ul class="jm-hist">${p.links.map((q) => `<li><span>${esc(when(q.createdAt))}<small>${esc({ open: 'Open', checkout: 'At checkout', paid: `Paid ${when(q.paidAt)}`, cancelled: 'Cancelled', expired: 'Expired' }[q.status] || q.status)}</small></span><span class="amt">${esc(money(q.cents))}</span></li>`).join('')}</ul>` : '<p class="muted small">No payment links.</p>'}
+      ${p.links.length ? `<ul class="jm-hist">${p.links.map((q) => `<li><span>${esc(when(q.createdAt))}<small>${esc({ open: 'Open', checkout: 'At checkout', paid: `Paid ${when(q.paidAt)}`, cancelled: 'Cancelled', expired: 'Expired' }[q.status] || q.status)}</small></span><span style="display:flex;gap:8px;align-items:center"><span class="amt">${esc(money(q.cents))}</span>${['cancelled', 'expired'].includes(q.status) ? '' : `<button type="button" class="j-btn j-btn-line j-btn-sm" data-inv-pdf="${esc(q.id)}">PDF</button>`}</span></li>`).join('')}</ul>` : '<p class="muted small">No payment links.</p>'}
       <h3>Changes</h3>
       ${p.history.length ? `<ul class="jm-hist">${p.history.map((h) => `<li><span>${esc(h.action.replace(/\./g, ' '))}<small>${esc(h.by)}</small></span><span class="muted small">${esc(when(h.at))}</span></li>`).join('')}</ul>` : '<p class="muted small">No changes recorded.</p>'}
     </div>`
@@ -2725,6 +2726,16 @@ async function historyDrawer(rowId) {
 }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.querySelector('.jm-drawer') && !document.querySelector('.jp-modal')) closeDrawer() })
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-notes-row]'); if (b) { e.preventDefault(); notesModal(b.dataset.notesRow) } })
+// The PDF tax invoice for a payment link (Lee, 16 Oct 2026): anywhere a link shows.
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-inv-pdf]')
+  if (!b) return
+  e.preventDefault()
+  b.disabled = true
+  const r = await post('invoicePdf', { payreqId: b.dataset.invPdf })
+  b.disabled = false
+  if (r.ok && r.data.pdf) savePdf(r.data); else toast(r.data.error || 'Could not make the PDF.')
+})
 
 // ---------- coach view ----------
 
@@ -3360,7 +3371,7 @@ async function plAddBox({ prefill = null } = {}) {
       return
     }
     closeModal()
-    const extra = r.data.emailError || r.data.profileError || ''
+    const extra = r.data.emailError || r.data.pdfWarning || r.data.profileError || ''
     if (r.data.payreq) {
       const url = r.data.payreq.url
       const done = modal(`<h2 style="margin-bottom:6px">${r.data.emailed ? 'Added and payment link emailed' : 'Added, payment link ready'}</h2><p class="muted small" style="margin-bottom:12px"><b>${esc(f.row.name)}</b> is in Term 4 Players with no group yet. ${esc(r.data.payreq.amountLabel)} to pay.${r.data.emailed ? ` Sent to ${esc(r.data.emailTo)}.` : ''}${extra ? ` <b>${esc(extra)}</b>` : ''}</p>
@@ -3850,7 +3861,9 @@ async function renderSettings() {
       <label class="j-field"><span>Kit price shown to families</span><input class="j-input" id="s-kitprice" value="${esc(c.kitPriceLabel || 'A$60')}" maxlength="20"></label></div>
       <label class="j-field"><span>Line above the button</span><input class="j-input" id="s-kitnote" value="${esc(c.kitNote || '')}" maxlength="300"></label>
       <h2 style="margin:16px 0 6px">Invoices</h2>
-      <p class="muted small" style="margin-bottom:10px">Shown on invoices only once all three bank fields are saved, so families can pay by bank transfer. Leave them empty for card only. The ABN shows on invoices only if you save one.</p>
+      <p class="muted small" style="margin-bottom:10px">Bank details show on invoices only when bank transfer is switched on below and all three bank fields are saved. Off: card only. The ABN shows on invoices only if you save one.</p>
+      <label class="j-check"><input type="checkbox" id="s-inv-pdf" ${c.invoice?.attachPdf !== false ? 'checked' : ''}> <span><b>Attach a PDF invoice to fee emails.</b> Payment links, family and sessions invoices, players added with a link, and Money &gt; Invoices emails carry a PDF tax invoice.</span></label>
+      <label class="j-check"><input type="checkbox" id="s-inv-bank" ${c.invoice?.bankEnabled === true ? 'checked' : ''}> <span><b>Offer bank transfer on invoices.</b> Off: invoices, their page and the PDF show card only, even with bank details saved.</span></label>
       <div class="j-two"><label class="j-field"><span>Account name</span><input class="j-input" id="s-inv-name" maxlength="80" value="${esc(c.invoice?.accountName || '')}"></label><label class="j-field"><span>BSB</span><input class="j-input" id="s-inv-bsb" inputmode="numeric" maxlength="7" value="${esc(c.invoice?.bsb || '')}"></label></div>
       <div class="j-two"><label class="j-field"><span>Account number</span><input class="j-input" id="s-inv-acc" inputmode="numeric" maxlength="12" value="${esc(c.invoice?.accountNumber || '')}"></label><label class="j-field"><span>Reference format</span><input class="j-input" id="s-inv-ref" maxlength="40" value="${esc(c.invoice?.reference || 'INV-<n> <player>')}"></label></div>
       <label class="j-field" style="max-width:360px"><span>ABN (optional)</span><input class="j-input" id="s-inv-abn" inputmode="numeric" maxlength="14" value="${esc(c.invoice?.abn || '')}"></label>
@@ -3879,7 +3892,7 @@ async function renderSettings() {
       passwordRequired: $('s-pw').checked, waiverCarryover: $('s-wcarry').checked,
       term: $('s-term').value.trim(), termStart: $('s-start').value, weeks: Number($('s-weeks').value),
       superAdmins: lines('s-admins'), staffEmails: lines('s-staff'), waiverUrl: $('s-waiver').value.trim(), kitUrl: $('s-kit').value.trim(), kitNote: $('s-kitnote').value.trim(), kitPriceLabel: $('s-kitprice').value.trim(), skipDates: skips,
-      invoice: { accountName: $('s-inv-name').value.trim(), bsb: $('s-inv-bsb').value.trim(), accountNumber: $('s-inv-acc').value.trim(), reference: $('s-inv-ref').value.trim(), abn: $('s-inv-abn').value.trim() },
+      invoice: { accountName: $('s-inv-name').value.trim(), bsb: $('s-inv-bsb').value.trim(), accountNumber: $('s-inv-acc').value.trim(), reference: $('s-inv-ref').value.trim(), abn: $('s-inv-abn').value.trim(), attachPdf: $('s-inv-pdf').checked, bankEnabled: $('s-inv-bank').checked },
       locations: c.locations.map((l) => { const box = view().querySelector(`[data-loc="${CSS.escape(l.id)}"]`); const v = { ...l }; box.querySelectorAll('[data-lf]').forEach((i) => { v[i.dataset.lf] = i.value.trim() }); return v }),
     }
     const r = await post('saveSettings', { config })

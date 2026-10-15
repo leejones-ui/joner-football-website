@@ -20,9 +20,10 @@
 // Income and 220 In-Person Coaching are GST on Income), and prices include
 // GST, so an invoice says "Includes GST of A$X" (one eleventh).
 import crypto from 'node:crypto'
-import { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, formatAud, savePayreq, getPayreq, normName, audit, sydneyToday, validEmail, closeCheckout, dateLabel, hasBankDetails, CHECKOUT_EXPIRES_MINUTES } from './_jfp-store.js'
+import { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, formatAud, savePayreq, getPayreq, normName, audit, sydneyToday, validEmail, closeCheckout, dateLabel, CHECKOUT_EXPIRES_MINUTES } from './_jfp-store.js'
 import { programmeLabel } from './_jfp-prices.js'
 import { playerMeta } from './_jfp-quick.js'
+import { bankOffered } from './_jfp-invoice-pdf.js'
 
 export const INVOICE_PROGRAMMES = ['jfp', 'pro', 'extra', 'other']
 export const ROW_PROGRAMMES = new Set(['jfp', 'pro'])
@@ -193,7 +194,8 @@ export const invoiceUrl = (base, inv) => `${base}/jfp-invoice/?i=${encodeURIComp
 export function publicInvoice(inv, config, { viewedAt = '' } = {}) {
   const st = invoiceStatus(inv, viewedAt)
   const owing = owingOf(inv)
-  const bank = hasBankDetails(config.invoice) ? { accountName: config.invoice.accountName, bsb: `${config.invoice.bsb.slice(0, 3)}-${config.invoice.bsb.slice(3)}`, accountNumber: config.invoice.accountNumber, reference: bankReference(config, inv) } : null
+  // Only when bank transfer is switched on in Settings > Invoices (Lee, 16 Oct 2026).
+  const bank = bankOffered(config) ? { accountName: config.invoice.accountName, bsb: `${config.invoice.bsb.slice(0, 3)}-${config.invoice.bsb.slice(3)}`, accountNumber: config.invoice.accountNumber, reference: bankReference(config, inv) } : null
   return {
     number: inv.id, status: st, statusLabel: INVOICE_STATUS[st],
     issueDate: inv.issueDate, issueLabel: dateLabel(inv.issueDate), dueDate: inv.dueDate || '', dueLabel: inv.dueDate ? dateLabel(inv.dueDate) : '',

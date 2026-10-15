@@ -3,7 +3,7 @@
 // position, contacts), can't make a session, keep my spot for next term,
 // term info, holidays and camps, training videos, the app and contact.
 // Phones first: a bottom tab bar on phones, a side bar on big screens.
-import { $, esc, api, toast, openSheet, closeSheet, signIn, whoAmI, signOut, waiverBlock, recaptcha } from './jfp-common.js'
+import { $, esc, api, toast, openSheet, closeSheet, signIn, whoAmI, signOut, waiverBlock, recaptcha, savePdf } from './jfp-common.js'
 import { termInfo, expectations, links, groupingLine, termExtras } from '../data/jfp-term-info.js'
 import { oneToOneSummary } from '../data/jfp-one-to-one.js'
 import { hqVideos, pitchVideos, reels, socials, contacts, hq, holidays } from '../data/jfp-account-media.js'
@@ -1160,6 +1160,15 @@ document.addEventListener('click', async (e) => {
     if (!r.ok) { again.disabled = false; toast(r.data.error || 'Could not change that.'); if (r.status === 409) load(); return }
     await load()
     return toast('Choose how you want to pay.')
+  }
+  // The PDF tax invoice for one of the family's own payments (Fees).
+  const fp = t.closest('[data-fee-pdf]')
+  if (fp) {
+    fp.disabled = true
+    const r = await api('/api/jfp-account', { action: 'invoicePdf', payreqId: fp.dataset.feePdf })
+    fp.disabled = false
+    if (r.ok && r.data.pdf) savePdf(r.data); else toast(r.data.error || 'Could not get the invoice. Try again.')
+    return
   }
   const pay = t.closest('[data-pay]')
   if (pay) {

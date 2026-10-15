@@ -5,7 +5,7 @@
 // payment (bank transfer or cash), and Void.
 //
 // ui: { view, post, toast, modal, closeModal, confirm, copy, board(), pricing(), filter, go, stale() }
-import { esc, money } from './jfp-common.js'
+import { esc, money, savePdf } from './jfp-common.js'
 // Charge saved card / by direct debit (claude/card-on-file).
 import { mountInvoiceSavedButton } from './jfp-portal-autocharge.js'
 import { moneyHead, programmeSwitch, bindSwitch, bindTip } from './jfp-portal-programmes.js'
@@ -18,7 +18,7 @@ const day = (iso) => (iso ? new Date(`${String(iso).slice(0, 10)}T00:00:00`).toL
 const PILL = { draft: 'grey', sent: 'blue', viewed: 'violet', part: 'orange', paid: 'green', void: 'grey' }
 const FILTERS = [['', 'All'], ['draft', 'Draft'], ['sent', 'Sent'], ['viewed', 'Viewed'], ['part', 'Part paid'], ['paid', 'Paid'], ['void', 'Void'], ['overdue', 'Overdue']]
 const PROGS = [['jfp', 'JFP'], ['pro', 'Pro sessions'], ['extra', 'Extra sessions'], ['other', 'Other']]
-const TIP = 'Invoices for parents who ask for one. JFP and Pro sessions invoices are for a player\'s place: when paid (card in My account or on the invoice page, or a bank transfer with the invoice number in the reference) it is recorded on the player\'s row like any JFP payment. Extra sessions and Other invoices count in their own program. Prices include GST (one eleventh). Bank details show on the invoice only once they are saved in Settings.'
+const TIP = 'Invoices for parents who ask for one. JFP and Pro sessions invoices are for a player\'s place: when paid (card in My account or on the invoice page, or a bank transfer with the invoice number in the reference) it is recorded on the player\'s row like any JFP payment. Extra sessions and Other invoices count in their own program. Prices include GST (one eleventh). Bank details show on the invoice only when bank transfer is switched on in Settings > Invoices and all three fields are saved. The email carries the invoice as a PDF unless that is switched off there.'
 
 export async function renderInvoices(ui) {
   ui.filter.invStatus ||= ''
@@ -114,7 +114,8 @@ export async function invoiceDetail(ui, id, pre = null) {
       ${open ? '<button type="button" class="j-btn j-btn-dark j-btn-sm" data-iv="email">Preview email and send</button>' : ''}
       ${x.status === 'draft' ? '<button type="button" class="j-btn j-btn-line j-btn-sm" data-iv="ready">Mark ready, no email</button>' : ''}
       <button type="button" class="j-btn j-btn-line j-btn-sm" data-iv="copy">Copy link</button>
-      <a class="j-btn j-btn-line j-btn-sm" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">Open page and PDF</a>
+      <button type="button" class="j-btn j-btn-line j-btn-sm" data-iv="pdf">Download PDF</button>
+      <a class="j-btn j-btn-line j-btn-sm" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">Open page</a>
       ${open && x.status !== 'draft' ? '<button type="button" class="j-btn j-btn-line j-btn-sm" data-iv="pay">Record payment</button>' : ''}
       ${open && !x.paidCents ? '<button type="button" class="j-btn j-btn-ghost j-btn-sm" data-iv="void">Void</button>' : ''}
       <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-close>Close</button></div>
@@ -126,6 +127,7 @@ export async function invoiceDetail(ui, id, pre = null) {
     const act = b.dataset.iv
     if (act === 'edit') return invoiceForm(ui, x)
     if (act === 'copy') return ui.copy(x.url)
+    if (act === 'pdf') { b.disabled = true; const r = await ui.post('invoicePdf', { id: x.id }); b.disabled = false; return r.ok ? savePdf(r.data) : ui.toast(r.data.error || 'Could not make the PDF.') }
     if (act === 'ready') { const r = await ui.post('invoiceSend', { id: x.id, sendEmail: false }); if (!r.ok) return ui.toast(r.data.error); ui.toast(`${x.id} is ready. Copy the link to send it yourself.`); return invoiceDetail(ui, x.id, r.data) }
     if (act === 'email') return emailPreview(ui, d)
     if (act === 'pay') return payModal(ui, x)
@@ -148,7 +150,7 @@ function emailPreview(ui, d) {
     e.currentTarget.disabled = true
     const r = await ui.post('invoiceSend', { id: d.invoice.id, sendEmail: true })
     if (!r.ok) { e.currentTarget.disabled = false; const x = box.querySelector('#ie-err'); x.textContent = r.data.error; x.hidden = false; return }
-    if (r.data.emailError) ui.toast(r.data.emailError, 8000); else ui.toast(`Emailed to ${r.data.emailTo}`)
+    if (r.data.emailError) ui.toast(r.data.emailError, 8000); else if (r.data.pdfWarning) ui.toast(`Emailed to ${r.data.emailTo}. ${r.data.pdfWarning}`, 9000); else ui.toast(`Emailed to ${r.data.emailTo} with the PDF invoice`)
     invoiceDetail(ui, d.invoice.id, r.data)
   })
 }

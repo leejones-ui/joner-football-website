@@ -94,14 +94,17 @@ await test('invoices: lines, GST included (one eleventh), statuses, and what the
   assert.equal(invoiceStatus({ ...inv, issuedAt: 'x', payments: [{ cents: 100 }] }), 'part')
   assert.equal(invoiceStatus({ ...inv, issuedAt: 'x', payments: [{ cents: 85000 }] }), 'paid')
   assert.equal(invoiceStatus({ ...inv, voidedAt: 'x' }), 'void')
-  // No bank details saved: none shown, no ABN; saved: shown, with the reference.
+  // No bank details saved: none shown, no ABN; saved but bank transfer not
+  // switched on (Lee, 16 Oct 2026: not yet): still none; switched on: shown, with the reference.
   let pub = publicInvoice({ ...inv, issuedAt: 'x' }, config)
   assert.deepEqual([pub.bank, pub.business.abn, pub.gstLabel, pub.canPayCard], [null, undefined, 'A$77.27', true])
-  const withBank = normaliseConfig({ invoice: { accountName: 'Example Trust', bsb: '062-000', accountNumber: '1234 5678', abn: '12 345 678 901' } })
+  const savedOff = normaliseConfig({ invoice: { accountName: 'Example Trust', bsb: '062-000', accountNumber: '1234 5678', abn: '12 345 678 901' } })
+  assert.deepEqual([publicInvoice({ ...inv, issuedAt: 'x' }, savedOff).bank, publicInvoice({ ...inv, issuedAt: 'x' }, savedOff).business.abn], [null, '12 345 678 901'])
+  const withBank = normaliseConfig({ invoice: { accountName: 'Example Trust', bsb: '062-000', accountNumber: '1234 5678', abn: '12 345 678 901', bankEnabled: true } })
   pub = publicInvoice({ ...inv, issuedAt: 'x' }, withBank)
   assert.deepEqual([pub.bank.bsb, pub.bank.accountNumber, pub.bank.reference, pub.business.abn], ['062-000', '12345678', 'INV-1004 Tess', '12 345 678 901'])
   assert.equal(bankReference(withBank, inv), 'INV-1004 Tess')
-  assert.deepEqual(cleanInvoiceSettings({ bsb: '12', accountNumber: '1', reference: 'no number' }), { accountName: '', bsb: '', accountNumber: '', reference: 'INV-<n> <player>', abn: '' })
+  assert.deepEqual(cleanInvoiceSettings({ bsb: '12', accountNumber: '1', reference: 'no number' }), { accountName: '', bsb: '', accountNumber: '', reference: 'INV-<n> <player>', abn: '', bankEnabled: false, attachPdf: true })
   assert.ok(!JSON.stringify(pub).includes('createdBy'), 'no staff names')
   assert.equal(publicInvoice(inv, config).canPayCard, false, 'a draft cannot be paid')
 })

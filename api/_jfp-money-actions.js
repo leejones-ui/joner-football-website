@@ -12,6 +12,7 @@ import { createPlayerCharge, recordChargePayment, cancelCharge, chargeFromStripe
 import { invoiceInput, newInvoice, getInvoice, saveInvoice, listInvoices, viewedMap, withInvoice, addInvoicePayment, settleInvoicePayreq, rowInvoicePayreq, publicInvoice, invoiceRow, invoiceUrl, owingOf, paidOf, ROW_PROGRAMMES, INVOICE_STATUS } from './_jfp-invoices.js'
 import { listMatches, listRules, matchInput, rememberKey, saveMatch, saveRule, dropRule, silenceFlag } from './_jfp-stripe-match.js'
 import { invoiceEmail, sendInvoiceEmail } from './_jfp-email.js'
+import { invoicePdfAttachment } from './_jfp-fee-pdf.js'
 
 export const MONEY_ACTIONS = new Set(['stripeMatch', 'stripeMatchRules', 'stripeMatchForget', 'extraMoney', 'createCharge', 'chargeRecord', 'chargeCancel', 'invoiceList', 'invoiceGet', 'invoiceSave', 'invoiceEmailPreview', 'invoiceSend', 'invoiceVoid', 'invoicePay', 'bankInvoice'])
 const ISO = /^\d{4}-\d{2}-\d{2}$/
@@ -168,19 +169,22 @@ async function invoiceSend(req, res, principal, config, body) {
   })
   if (!out.ok) return refuse(res, out)
   let inv = out.invoice
-  let emailed = false, emailError = ''
+  let emailed = false, emailError = '', pdfWarning = ''
   if (body.sendEmail === true) {
     if ((await kvCommand(['SET', `jfp:invoice-email-lock:${inv.id}`, '1', 'NX', 'EX', '30'])) !== 'OK') return fail(res, 409, 'It was just emailed. Wait a moment before sending it again.')
     try {
-      await sendInvoiceEmail({ to: inv.email, name: inv.parentName, view: publicInvoice(inv, config), url: invoiceUrl(siteUrl(req), inv) })
+      // The PDF tax invoice rides along; if it cannot be made the email still goes.
+      const pdf = await invoicePdfAttachment(inv, config, siteUrl(req))
+      await sendInvoiceEmail({ to: inv.email, name: inv.parentName, view: publicInvoice(inv, config), url: invoiceUrl(siteUrl(req), inv), attachment: pdf.attachment })
       emailed = true
+      pdfWarning = pdf.pdfWarning || ''
       const saved = await withInvoice(inv.id, async (x) => { const next = { ...x, emailedAt: new Date().toISOString(), emailCount: (x.emailCount || 0) + 1 }; await saveInvoice(next); return { ok: true, invoice: next } })
       if (saved.ok) inv = saved.invoice
     } catch (error) { emailError = `The invoice is ready, but the email to ${inv.email} did not send. ${String(error.message || error).slice(0, 160)} Copy the link and send it yourself.` }
     await kvCommand(['DEL', `jfp:invoice-email-lock:${inv.id}`]).catch(() => {})
   }
   await audit({ by: principal.email, action: 'invoice.send', target: inv.id, after: { emailed, payreq: inv.payreqId } })
-  return res.status(200).json({ success: true, emailed, emailTo: emailed ? inv.email : '', emailError, ...(await invoiceDetail(req, config, inv)) })
+  return res.status(200).json({ success: true, emailed, emailTo: emailed ? inv.email : '', emailError, pdfWarning, ...(await invoiceDetail(req, config, inv)) })
 }
 
 async function invoiceVoid(req, res, principal, config, body) {

@@ -163,7 +163,7 @@ await test('createPlayerCharge: idempotent on ref, in the family\'s Home and Fee
 })
 
 await test('a JFP invoice: draft, email preview, Send, viewed, paid by card on its page, recorded on the player\'s row', async () => {
-  await ok('saveSettings', { config: { invoice: { accountName: 'Example Football Trust', bsb: '062-000', accountNumber: '12345678', reference: 'INV-<n> <player>', abn: '' } } })
+  await ok('saveSettings', { config: { invoice: { accountName: 'Example Football Trust', bsb: '062-000', accountNumber: '12345678', reference: 'INV-<n> <player>', abn: '', bankEnabled: true } } })
   assert.equal((await portal('saveSettings', { config: { invoice: { accountName: 'X', bsb: '12', accountNumber: '12345678' } } })).status, 400)
   const before = (await money()).players.find((p) => p.rowId === famRow.rowId)
   const d = await ok('invoiceSave', { programme: 'jfp', rowIds: [famRow.rowId], lines: [{ description: 'Term 4 small group', qty: 1, unitCents: 3300 }], dueDate: '2026-10-31', notes: 'Thanks for training with us.' })

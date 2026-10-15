@@ -56,7 +56,8 @@ import { registerChecks, yearsOf, termsOfYear, termFromLive, termFromLedger, ter
 import { listExtras, setExtraStatus, KINDS as EXTRA_KINDS } from './_jfp-extras.js'
 import { MONEY_ACTIONS, moneyAction, applyStripeMatch } from './_jfp-money-actions.js'
 import { listMatches, listRules, ruleFor } from './_jfp-stripe-match.js'
-import { listInvoices, openForBank } from './_jfp-invoices.js'
+import { listInvoices, openForBank, getInvoice } from './_jfp-invoices.js'
+import { feePdfAttachment, docForPayreq, docForInvoice, pdfDownload } from './_jfp-fee-pdf.js'
 import { invoiceRefOf } from './_jfp-bank-match.js'
 // Saved card or bank account, auto-charge after each session (claude/card-on-file).
 import { SAVED_PAY_ACTIONS, savedPayAction, withSavedPay, autoChargeActiveFor } from './_jfp-saved-pay.js'
@@ -70,6 +71,10 @@ const cents = (aud) => (typeof aud === 'number' ? Math.round(aud * 100) : 0)
 async function trySend(what, fn) {
   try { const r = await fn(); return { emailed: true, messageId: r?.messageId || '' } } catch (error) { console.error(`jfp ${what} email failed`, error); return { emailed: false, emailError: emailErrorText(error) } }
 }
+// The PDF tax invoice for a fee email (_jfp-fee-pdf.js). Made before the
+// send; when it cannot be made the email goes without it and staff are told.
+const feePdf = (req, config, q) => feePdfAttachment(q, config, siteUrl(req))
+const pdfWarningOf = (sent, pdf) => (sent.emailed && pdf.pdfWarning ? pdf.pdfWarning : '')
 // Wording for one set of rows: the player when they are their own contact.
 const wordsFor = (rows) => contactWords({ self: rows.length > 0 && rows.every((r) => r.ownContact), players: rows.map((r) => r.player), parent: rows[0]?.parent || '' })
 const programmeOfRows = (rows) => (rows.length && rows.every((r) => isProType(r.paymentType)) ? 'pro' : '')
@@ -439,19 +444,20 @@ export async function addPlayer(req, res, principal, config, body) {
   let payreq = null
   if (payment === 'link') payreq = await createPayreq({ req, principal, config, group, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: isTrial ? 'trial' : 'admin-add', product: custom ? '' : product, startDate: from, afterpay: body.afterpay !== false, programme: isPro ? 'pro' : '', ownContact })
   if (payreq && custom) await savePayreq({ ...payreq, productLabel: custom.name })
-  let sent = { emailed: false }
+  let sent = { emailed: false }, pdf = {}
   if (body.sendEmail === true && email) {
     const roster = await loadRoster({ fresh: true })
     const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile], dob }, roster.waivers))
+    pdf = payreq ? await feePdf(req, config, { ...payreq, ...(custom ? { productLabel: custom.name } : {}) }) : {}
     // The player is already added: an email failure must not look like the add failed.
-    sent = await trySend('add player', () => sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq), sessions: perSessionPay, owingCents: !payreq && payment === 'none' && !isTrial ? amountCents : 0 }, amountCents, trial: isTrial, startDate: from, product, self: ownContact }))
+    sent = await trySend('add player', () => sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq), sessions: perSessionPay, owingCents: !payreq && payment === 'none' && !isTrial ? amountCents : 0 }, amountCents, trial: isTrial, startDate: from, product, self: ownContact, attachment: pdf.attachment }))
     if (payreq && sent.emailed) await savePayreq({ ...payreq, ...(custom ? { productLabel: custom.name } : {}), emailedAt: new Date().toISOString() })
   }
   const emailError = sent.emailError ? `${name} was added, but the email to ${email} did not send. ${sent.emailError} Try again with Account invite on the player.` : ''
   // The group's coach hears about it (Lee, 14 Oct 2026), a few minutes later.
   await noteNewPlayer({ config, group, rowId, player: name, kind: 'added' }).catch((e) => console.error('jfp coach news failed', e))
   await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed: sent.emailed, payreq: payreq?.id || '', cents: payment === 'none' || perSessionPay ? 0 : amountCents, perSessionCents: perSession || undefined, quote: prep.v.quoteTiers.length ? prep.v.quoteTiers : undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
-  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, ownContact, words, movedRow: Boolean(prep.twin), ...prof })
+  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, pdfWarning: pdfWarningOf(sent, pdf), ownContact, words, movedRow: Boolean(prep.twin), ...prof })
 }
 
 // ---------- Players tab: one row per player, searchable, with everything ----------
@@ -590,11 +596,12 @@ async function addPlayerNoGroup(req, res, principal, config, body) {
     payreq = await createPayreq({ req, principal, config, group: null, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: 'admin-add', product: prep.product, startDate: '', afterpay: body.afterpay !== false, programme: isPro ? 'pro' : '', ownContact })
     if (what) { payreq.productLabel = what; await savePayreq(payreq) }
   }
-  let sent = { emailed: false }
+  let sent = { emailed: false }, pdf = {}
   if (body.sendEmail === true && email) {
     const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile], dob: prep.v.dob }, roster.waivers))
+    if (payreq) pdf = await feePdf(req, config, payreq)
     sent = payreq
-      ? await trySend('add player no group', () => sendFamilyInvite({ to: email, parentName, playerNames: [name], group: null, config, url: payreqUrl(req, payreq), needs: { details: false, waiver: !hasWaiver, payment: true }, amountCents, self: ownContact }))
+      ? await trySend('add player no group', () => sendFamilyInvite({ to: email, parentName, playerNames: [name], group: null, config, url: payreqUrl(req, payreq), needs: { details: false, waiver: !hasWaiver, payment: true }, amountCents, self: ownContact, attachment: pdf.attachment }))
       : await trySend('add player no group invite', () => sendAccountInvite({ to: email, parentName, players: [{ name, group: 'Group to be confirmed' }], config, signInUrl: `${siteUrl(req)}/jfp-account/`, needsWaiver: !hasWaiver, money: false, email, self: ownContact }))
     if (sent.emailed) {
       if (payreq) await savePayreq({ ...payreq, emailedAt: new Date().toISOString() })
@@ -603,7 +610,7 @@ async function addPlayerNoGroup(req, res, principal, config, body) {
   }
   const emailError = sent.emailError ? `${name} was added, but the email to ${email} did not send. ${sent.emailError}` : ''
   await audit({ by: principal.email, action: 'player.add.nogroup', target: rowId, after: { name, email, feeAud: fee, payment, emailed: sent.emailed, payreq: payreq?.id || '', quote: prep.v.quoteTiers.length ? prep.v.quoteTiers : undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
-  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, ownContact, words, ...prof })
+  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, pdfWarning: pdfWarningOf(sent, pdf), ownContact, words, ...prof })
 }
 
 // Add a family in one go (round 2, Lee 14 Oct 2026): a brother and sister,
@@ -667,15 +674,16 @@ export async function addFamily(req, res, principal, config, body) {
     await savePayreq(payreq)
   }
   // ONE email to the parent: every child, then the steps.
-  let sent = { emailed: false }
+  let sent = { emailed: false }, pdf = {}
   if (body.sendEmail !== false) {
+    if (payreq) pdf = await feePdf(req, config, payreq)
     const children = added.map((x) => ({
       name: x.v.name, where: x.where,
       pay: x.payment === 'link' ? `${x.what ? `${x.what}, ` : ''}${formatAud(x.amountCents)}` : x.payment === 'offline' ? 'Paid' : x.payment === 'trial' ? `Free trial${x.from ? `, ${dateLabel(x.from)}` : ''}` : x.perSessionPay ? `${x.isPro ? 'Pro sessions' : 'Session by session'}${x.v.perSession ? `, ${formatAud(x.v.perSession)} a session` : ''}` : 'We will confirm the price with you',
       waiver: !waiverFor(x.v.name, { emails: [email], phones: [x.v.mobile], dob: x.v.dob }, roster.waivers),
       sessions: x.perSessionPay, link: x.payment === 'link' && x.amountCents > 0,
     }))
-    sent = await trySend('add family', () => sendFamilyWelcome({ to: email, parentName, children, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, amountCents: payreq?.amountCents || 0 }))
+    sent = await trySend('add family', () => sendFamilyWelcome({ to: email, parentName, children, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, amountCents: payreq?.amountCents || 0, attachment: pdf.attachment }))
     if (sent.emailed && payreq) await savePayreq({ ...payreq, emailedAt: new Date().toISOString() })
     if (sent.emailed && !payreq) await kvCommand(['HSET', 'jfp:acct-only-invited', email, new Date().toISOString()])
   }
@@ -688,7 +696,7 @@ export async function addFamily(req, res, principal, config, body) {
     success: true, familyId: famId,
     rows: added.map((x) => ({ rowId: x.rowId, name: x.v.name, where: x.where, payment: x.payment, amountLabel: x.payment === 'link' ? formatAud(x.amountCents) : '' })),
     payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(payreq.amountCents) } : null,
-    emailed: sent.emailed, emailTo: sent.emailed ? email : '',
+    emailed: sent.emailed, emailTo: sent.emailed ? email : '', pdfWarning: pdfWarningOf(sent, pdf),
     emailError: sent.emailError ? `The family was added, but the email to ${email} did not send. ${sent.emailError}` : '',
     ...(profileError ? { profileError } : {}),
   })
@@ -1857,17 +1865,34 @@ async function sendPaymentLink(req, res, principal, config, body) {
   const reason = body.reason === 'term-after-trial' ? 'term-after-trial' : chosen?.product === 'trial' ? 'trial' : 'balance'
   const w = wordsFor(rows)
   const q = await createPayreq({ req, principal, config, group, rows: rows.map((r) => ({ id: r.id, name: r.player })), email, parentName: rows[0].parent, amountCents, reason, product: chosen?.product || '', startDate: chosen?.from || '', afterpay: body.afterpay !== false, creditCents: onTrial ? credit : 0, restoreFields, programme: programmeOfRows(rows), ownContact: w.self })
-  let sent = { emailed: false }
+  let sent = { emailed: false }, pdf = {}
   // A player with no group yet gets the link too (it used to send nothing).
   if (body.sendEmail === true) {
+    pdf = await feePdf(req, config, q)
     const roster = await loadRoster()
     const needWaiver = rows.some((r) => !waiverFor(r.player, { emails: [email], phones: [r.phone], dob: r.dob }, roster.waivers))
-    if (reason === 'term-after-trial' && group) sent = await trySend('term offered', () => sendTermOffered({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), amountCents, startDate: chosen?.from || '', creditCents: credit, self: w.self }))
-    else sent = await trySend('payment link', () => sendFamilyInvite({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), needs: { details: false, waiver: needWaiver, payment: true }, amountCents, trial: reason === 'trial' && Boolean(group), startDate: chosen?.from || '', product: chosen?.product || '', self: w.self }))
+    if (reason === 'term-after-trial' && group) sent = await trySend('term offered', () => sendTermOffered({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), amountCents, startDate: chosen?.from || '', creditCents: credit, self: w.self, attachment: pdf.attachment }))
+    else sent = await trySend('payment link', () => sendFamilyInvite({ to: email, parentName: rows[0].parent, playerNames: rows.map((r) => r.player), group, config, url: payreqUrl(req, q), needs: { details: false, waiver: needWaiver, payment: true }, amountCents, trial: reason === 'trial' && Boolean(group), startDate: chosen?.from || '', product: chosen?.product || '', self: w.self, attachment: pdf.attachment }))
     if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
   await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: ids, cents: amountCents, product: chosen?.product || 'balance', emailed: sent.emailed } })
-  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError: sent.emailError ? `The link is made, but the email to ${email} did not send. ${sent.emailError} Copy the link and send it yourself.` : '' })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountLabel: formatAud(amountCents) }, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError: sent.emailError ? `The link is made, but the email to ${email} did not send. ${sent.emailError} Copy the link and send it yourself.` : '', pdfWarning: pdfWarningOf(sent, pdf) })
+}
+
+// The PDF tax invoice, for Lee and Ligia to download (Money > Invoices, a
+// player's open link): a custom invoice by its number, or any payment request.
+async function staffInvoicePdf(req, res, config, body) {
+  let doc = null
+  if (body.id) {
+    const inv = await getInvoice(body.id)
+    if (!inv) return fail(res, 404, 'Invoice not found.')
+    doc = docForInvoice(inv, config, siteUrl(req))
+  } else {
+    const q = await getPayreq(clean(body.payreqId, 60))
+    if (!q || q.quick) return fail(res, 404, 'Payment link not found.')
+    doc = await docForPayreq(q, config, siteUrl(req))
+  }
+  return res.status(200).json({ success: true, ...(await pdfDownload(doc)) })
 }
 
 // What a row's place is, for the family invoice price buttons.
@@ -1945,16 +1970,17 @@ async function familyInvoice(req, res, principal, config, body) {
   q.places = owing.map((x) => ({ rowId: x.row.id, name: x.row.player, label: placeLabel(x.row), feeCents: x.feeCents, paidCents: x.paidCents, owingCents: x.owingCents }))
   q.groupLabel = [...new Set(q.places.map((x) => x.label))].join(' · ')
   await savePayreq(q)
-  let sent = { emailed: false }
+  let sent = { emailed: false }, pdf = {}
   if (body.sendEmail === true) {
+    pdf = await feePdf(req, config, q)
     const roster = await loadRoster()
     const needWaiver = owing.some((x) => !waiverFor(x.row.player, { emails: rowEmails(x.row), phones: [x.row.phone], dob: x.row.dob }, roster.waivers))
-    sent = await trySend('family invoice', () => sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents, needWaiver, self: fw.self }))
+    sent = await trySend('family invoice', () => sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents, needWaiver, self: fw.self, attachment: pdf.attachment }))
     if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
   const emailed = sent.emailed
   await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: q.term4Ids, cents: amountCents, product: 'family', emailed, replaced: openLinks.map((x) => x.id) } })
-  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountCents, amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The invoice link is made, but the email to ${email} did not send. ${sent.emailError}` : '', replaced: openLinks.length })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountCents, amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The invoice link is made, but the email to ${email} did not send. ${sent.emailError}` : '', pdfWarning: pdfWarningOf(sent, pdf), replaced: openLinks.length })
 }
 
 // Session by session (Lee, 12 Oct 2026): bill the sessions a player came to,
@@ -2031,14 +2057,15 @@ async function sessionInvoice(req, res, principal, config, body) {
   q.places = rows.filter((x) => x.cents > 0).map((x) => { const n = x.sessions - x.covered; return { rowId: x.row.id, name: x.row.player, label: `${n} session${n > 1 ? 's' : ''} at ${formatAud(x.per)}${x.covered ? ` (${x.covered} more prepaid)` : ''}${what ? `, ${what}` : ''}`, feeCents: x.cents, paidCents: 0, owingCents: x.cents } })
   q.groupLabel = 'Session by session'
   await savePayreq(q)
-  let sent = { emailed: false }
+  let sent = { emailed: false }, pdf = {}
   if (body.sendEmail === true) {
-    sent = await trySend('sessions invoice', () => sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents, needWaiver: false, sessions: true, self: sw.self }))
+    pdf = await feePdf(req, config, q)
+    sent = await trySend('sessions invoice', () => sendFamilyInvoice({ to: email, parentName: rows[0].row.parent, places: q.places, config, url: payreqUrl(req, q), amountCents, needWaiver: false, sessions: true, self: sw.self, attachment: pdf.attachment }))
     if (sent.emailed) await savePayreq({ ...q, emailedAt: new Date().toISOString() })
   }
   const emailed = sent.emailed
   await audit({ by: principal.email, action: 'payreq.create', target: q.id, after: { rows: ids, cents: amountCents, product: 'sessions', emailed } })
-  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountCents, amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The link is made, but the email to ${email} did not send. ${sent.emailError}` : '' })
+  return res.status(200).json({ success: true, payreq: { id: q.id, url: payreqUrl(req, q), amountCents, amountLabel: formatAud(amountCents) }, emailed, emailTo: emailed ? email : '', emailError: sent.emailError ? `The link is made, but the email to ${email} did not send. ${sent.emailError}` : '', pdfWarning: pdfWarningOf(sent, pdf) })
 }
 
 function splitEven(total, n) {
@@ -3151,6 +3178,7 @@ async function handle(req, res) {
       case 'markPaid': return await markPaid(res, principal, body)
       case 'setTrial': return await setTrial(res, principal, body)
       case 'sendPaymentLink': return await sendPaymentLink(req, res, principal, config, body)
+      case 'invoicePdf': return await staffInvoicePdf(req, res, config, body)
       case 'familyInvoice': return await familyInvoice(req, res, principal, config, body)
       case 'stripeScan': return res.status(200).json({ success: true, payments: await stripeScan({ from: clean(body.from, 10), to: clean(body.to, 10) }) })
       case 'sessionInvoice': return await sessionInvoice(req, res, principal, config, body)

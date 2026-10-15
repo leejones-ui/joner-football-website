@@ -22,6 +22,17 @@ export async function api(path, body, { method = 'POST' } = {}) {
   }
 }
 
+// Save a PDF the server sent as base64 ({ filename, pdf }), e.g. a tax invoice.
+export function savePdf({ filename, pdf }) {
+  const bytes = Uint8Array.from(atob(pdf), (c) => c.charCodeAt(0))
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }))
+  const a = Object.assign(document.createElement('a'), { href: url, download: filename || 'Joner-Football-invoice.pdf', rel: 'noopener' })
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 30000)
+}
+
 export function recaptcha(action) {
   try { return window.JonerRecaptcha?.getToken ? window.JonerRecaptcha.getToken(action) : Promise.resolve('') } catch { return Promise.resolve('') }
 }

@@ -361,6 +361,10 @@ export function cleanInvoiceSettings(x = {}) {
     accountNumber: accountNumber.length >= 5 ? accountNumber : '',
     reference: /<n>/.test(String(x?.reference || '')) ? clean(x.reference, 40) : INVOICE_REFERENCE,
     abn: abn.length === 11 ? abn : '',
+    // Bank transfer on invoices only once staff switch it on (Lee, 16 Oct 2026: not yet).
+    bankEnabled: x?.bankEnabled === true,
+    // The PDF tax invoice on fee emails (_jfp-invoice-pdf.js): on unless switched off.
+    attachPdf: x?.attachPdf !== false,
   }
 }
 export const hasBankDetails = (inv) => Boolean(inv?.accountName && inv?.bsb && inv?.accountNumber)
