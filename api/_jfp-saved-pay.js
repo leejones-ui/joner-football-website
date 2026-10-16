@@ -1068,9 +1068,14 @@ export async function autoChargePanel(config, { nowMs = Date.now() } = {}) {
 
 // Staff actions (Money > Pro sessions > Auto charges, Edit player).
 export const SAVED_PAY_ACTIONS = new Set(['autoChargePanel', 'autoChargeRun', 'autoChargeSwitch', 'autoChargeStatus', 'chargeSavedPay', 'savedPayFor', 'savedPaySettings'])
+const CARD_MONEY_ACTIONS = new Set(['autoChargeRun', 'autoChargeSwitch', 'chargeSavedPay'])
 export async function savedPayAction(req, res, principal, config, body, action) {
   const testNow = process.env.JFP_TEST_CLOCK === '1' && Number(body.now) ? Number(body.now) : Date.now()
   const no = (status, error) => res.status(status).json({ success: false, error })
+  // Taking money from a family's card is Lee and Ligia only (Lee, 17 Oct 2026):
+  // the Hermes agent key can read these but never charge, run, or switch them.
+  const changesSettings = action === 'savedPaySettings' && body.set && typeof body.set === 'object'
+  if (principal?.via === 'hermes' && (CARD_MONEY_ACTIONS.has(action) || changesSettings)) return no(403, 'Only Lee or Ligia can do this, in the portal.')
   if (action === 'autoChargePanel') return res.status(200).json({ success: true, ...(await autoChargePanel(config, { nowMs: testNow })) })
   if (action === 'autoChargeStatus') { const r = await autoChargeStatus(body.rowId); return r.ok ? res.status(200).json({ success: true, ...r }) : no(r.status, r.error) }
   if (action === 'autoChargeSwitch') {
