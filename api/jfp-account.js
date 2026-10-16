@@ -39,6 +39,8 @@ import { jjAccountView, jjPay, jjRequestPay, jjNextChoice, familyJJ, jjWaiverRow
 import { owedItems, payOwed as makeOwedPayreq, cancelOwed as cancelOwedPayreq } from './_jfp-account-pay.js'
 import { familyFees } from './_jfp-account-fees.js'
 import { docForPayreq, pdfDownload } from './_jfp-fee-pdf.js'
+import { docFromRecord } from './_jfp-invoice-pdf.js'
+import { calendarToken, emailForToken, familyCalendar } from './_jfp-calendar.js'
 import { coveredOf } from './_jfp-quote.js'
 import { accountOf, openPlayers, addMyPlayer } from './_jfp-account-open.js'
 import { prepaidOf } from './_jfp-store.js'
@@ -695,6 +697,18 @@ async function fees(res, parent) {
 
 // The PDF tax invoice for one of this family's own payment requests (Fees,
 // Lee 16 Oct 2026). Anyone else's, a quick link or a cancelled one: not found.
+// A receipt PDF for one of this family's own payment records (Lee, 17 Oct 2026).
+async function receiptPdf(res, parent, body) {
+  const config = await getConfig()
+  const [roster, groups, payreqs] = await Promise.all([loadRoster(), listGroups(), listPayreqs()])
+  const fam = familyFor(parent.email, roster, config.termStart)
+  const view = await familyFees({ config, parent, fam, payreqs: payreqs.filter((q) => ownsPayreq(q, fam, parent.email)), groups })
+  const r = (view.records || []).find((x) => x.id && x.id === clean(body.id, 120))
+  if (!r) return fail(res, 404, 'Receipt not found.')
+  const name = fam.parentName || fam.players?.[0]?.name || ''
+  return res.status(200).json({ success: true, ...(await pdfDownload(docFromRecord(r, config, { name, email: parent.email }))) })
+}
+
 async function invoicePdf(req, res, parent, body) {
   const config = await getConfig()
   const q = await getPayreq(clean(body.payreqId, 60))
@@ -727,6 +741,16 @@ async function juniorsAction(req, res, parent, body) {
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   res.setHeader('X-Content-Type-Options', 'nosniff')
+  // The calendar feed (GET ?cal=<token>): a phone calendar reads it, no sign in.
+  if (req.method === 'GET' && req.query?.cal) {
+    try {
+      const email = await emailForToken(req.query.cal)
+      if (!email) return res.status(404).end('Not found')
+      res.setHeader('Content-Type', 'text/calendar; charset=utf-8')
+      res.setHeader('Content-Disposition', 'inline; filename="jfp-sessions.ics"')
+      return res.status(200).end(await familyCalendar(email))
+    } catch (error) { console.error('jfp calendar failed', error); return res.status(500).end('Try again soon') }
+  }
   if (req.method !== 'POST') return fail(res, 405, 'Method not allowed')
   if (!sameOrigin(req)) return fail(res, 403, 'Invalid request origin')
   let body
@@ -741,6 +765,8 @@ export default async function handler(req, res) {
     if (body.action === 'payOwed') return await payOwed(req, res, parent, body)
     if (body.action === 'cancelOwed') return await cancelOwed(res, parent, body)
     if (body.action === 'fees') return await fees(res, parent)
+    if (body.action === 'calendarLink') { const t = await calendarToken(parent.email); return res.status(200).json({ success: true, url: `${siteUrl(req)}/api/jfp-account?cal=${t}` }) }
+    if (body.action === 'receiptPdf') return await receiptPdf(res, parent, body)
     if (body.action === 'invoicePdf') return await invoicePdf(req, res, parent, body)
     if (body.action === 'nextTermChoice') return await nextTermChoice(req, res, parent, body)
     if (body.action === 'nextTermInterest') return await nextTermInterest(res, parent, body)

@@ -123,6 +123,19 @@ export function docFromPayreq(q, config, { number, groups = {}, payUrl = '' }) {
   }
 }
 
+// A receipt for one payment a family made (My account > Fees, Lee 17 Oct
+// 2026): card, cash or bank. record: one of familyFees' records.
+export function docFromRecord(r, config, { name = '', email = '' } = {}) {
+  const amount = Math.max(0, Number(r.amountCents) || 0)
+  const details = [r.players?.length ? r.players.join(' and ') : '', r.programme].filter(Boolean)
+  return {
+    receipt: true, number: `R-${String(r.id || '').replace(/[^A-Za-z0-9-]/g, '').slice(-24)}`, issueDate: r.date || '', dueDate: '', method: r.method || '',
+    from: business(config), to: { name: name || email, email, players: [] },
+    lines: [{ title: !r.what || r.what === 'Recorded by Joner Football' ? `${config.term || 'Joner Football'} payment` : r.what, details, amountCents: amount }], ...totals(amount, amount), status: 'paid',
+    notes: r.refundedCents ? `${formatAud(r.refundedCents)} of this payment was refunded.` : '', payUrl: '', bank: null,
+  }
+}
+
 // ---------- drawing ----------
 
 let lib = null
@@ -200,7 +213,8 @@ export async function renderInvoicePdf(doc) {
   const { ANTON_TTF, LOGO_PNG } = L.assets
   const pdf = await PDFDocument.create()
   pdf.registerFontkit(fontkit)
-  pdf.setTitle(`Tax invoice ${doc.number}`)
+  const KIND = doc.receipt ? 'Receipt' : 'Tax invoice'
+  pdf.setTitle(`${KIND} ${doc.number}`)
   pdf.setAuthor('Joner Football')
   pdf.setCreator(SITE)
   pdf.setProducer(SITE)
@@ -217,19 +231,21 @@ export async function renderInvoicePdf(doc) {
   const newPage = (first) => {
     const page = pdf.addPage(A4)
     pages.push(page)
-    if (!first) { page.drawText(s(`Tax invoice ${doc.number} (continued)`), { x: M, y: H - M - 10, size: 10, font: bold, color: C.grey }); return { page, y: H - M - 40 } }
+    if (!first) { page.drawText(s(`${KIND} ${doc.number} (continued)`), { x: M, y: H - M - 10, size: 10, font: bold, color: C.grey }); return { page, y: H - M - 40 } }
     // The logo is white, so it sits on a small black square.
     page.drawRectangle({ x: M, y: H - M - 56, width: 56, height: 56, color: C.black })
     page.drawImage(logo, { x: M + 3, y: H - M - 53, width: 50, height: 50 })
     page.drawText('JONER FOOTBALL', { x: M + 70, y: H - M - 26, size: 20, font: anton, color: C.ink })
     page.drawText(SITE, { x: M + 70, y: H - M - 44, size: 9.5, font: reg, color: C.grey })
-    right(page, 'TAX INVOICE', W - M, H - M - 30, anton, 28, C.ink)
+    right(page, KIND.toUpperCase(), W - M, H - M - 30, anton, 28, C.ink)
     return { page, y: H - M - 96 }
   }
   let { page, y } = newPage(true)
 
   // Number and dates.
-  const meta = [['Invoice number', doc.number], ['Issue date', longDate(doc.issueDate)], ['Due date', doc.dueDate ? longDate(doc.dueDate) : 'On receipt']]
+  const meta = doc.receipt
+    ? [['Receipt number', doc.number], ['Date paid', doc.issueDate ? longDate(doc.issueDate) : 'Not recorded'], ['Paid by', doc.method || 'Not recorded']]
+    : [['Invoice number', doc.number], ['Issue date', longDate(doc.issueDate)], ['Due date', doc.dueDate ? longDate(doc.dueDate) : 'On receipt']]
   const colW = (W - 2 * M) / 3
   meta.forEach(([k, v], i) => {
     page.drawText(k, { x: M + i * colW, y, size: 8.5, font: reg, color: C.grey })
@@ -252,7 +268,7 @@ export async function renderInvoicePdf(doc) {
   }
   const fromRows = [[doc.from.name, bold, 11, C.ink], [doc.from.address, reg, 9.5, C.ink], [doc.from.email, reg, 9.5, C.ink], ...(doc.from.abn ? [[`ABN ${doc.from.abn}`, reg, 9.5, C.ink]] : [])]
   const toRows = [[doc.to.name, bold, 11, C.ink], ...(doc.to.email && doc.to.email !== doc.to.name ? [[doc.to.email, reg, 9.5, C.ink]] : [])]
-  y = Math.min(block(M, 'From', fromRows), block(M + half + 24, 'Bill to', toRows)) - 18
+  y = Math.min(block(M, 'From', fromRows), block(M + half + 24, doc.receipt ? 'Received from' : 'Bill to', toRows)) - 18
 
   // The lines: player, session and term, amount.
   const amtX = W - M

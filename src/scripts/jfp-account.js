@@ -3,7 +3,7 @@
 // position, contacts), can't make a session, keep my spot for next term,
 // term info, holidays and camps, training videos, the app and contact.
 // Phones first: a bottom tab bar on phones, a side bar on big screens.
-import { $, esc, api, toast, openSheet, closeSheet, signIn, whoAmI, signOut, waiverBlock, recaptcha, savePdf } from './jfp-common.js'
+import { $, esc, api, toast, openSheet, closeSheet, signIn, signOut, waiverBlock, recaptcha, savePdf } from './jfp-common.js'
 import { termInfo, expectations, links, groupingLine, termExtras } from '../data/jfp-term-info.js'
 import { oneToOneSummary } from '../data/jfp-one-to-one.js'
 import { hqVideos, pitchVideos, reels, socials, contacts, hq, holidays } from '../data/jfp-account-media.js'
@@ -90,9 +90,39 @@ const standalone = () => window.matchMedia?.('(display-mode: standalone)').match
 
 // ---------- sign in ----------
 
+// The last copy of the account (Lee, 17 Oct 2026): painted at once on open,
+// and kept for when there is no signal. Cleared on sign out or a new person.
+const LAST = 'ja-last'
+function readLast() { try { const v = JSON.parse(localStorage.getItem(LAST) || 'null'); return v?.d?.email ? v : null } catch { return null } }
+function saveLast(d) { try { localStorage.setItem(LAST, JSON.stringify({ at: Date.now(), d })) } catch {} }
+function clearLast() { try { localStorage.removeItem(LAST) } catch {} }
+const offlineBanner = () => { $('banner').innerHTML = `<div class="j-box j-box-amber" style="margin-bottom:16px" data-offline><b>No signal.</b> This is your last copy${LASTAT ? ` from ${esc(fmt(LASTAT, { weekday: 'short', hour: 'numeric', minute: '2-digit' }))}` : ''}.</div>` }
+let LASTAT = 0
+function paintLast(last) {
+  $('app').hidden = false
+  setTheme(theme())
+  D = last.d
+  LASTAT = last.at
+  render()
+  const h = location.hash.slice(1).split('?')[0]
+  show(PANELS.includes(h) ? h : 'home', { keepScroll: true })
+}
+
+// Opens with no signal and, later, shows push notifications.
+function registerWorker() {
+  if (!('serviceWorker' in navigator) || location.protocol !== 'https:' && location.hostname !== 'localhost') return
+  navigator.serviceWorker.register('/jfp-account-sw.js', { scope: '/jfp-account/' }).catch(() => {})
+}
+
 async function boot() {
-  const user = await whoAmI('parent')
-  if (!user) return showSignIn()
+  registerWorker()
+  const last = readLast()
+  if (last) paintLast(last)
+  const r = await api('/api/jfp-auth?audience=parent', null, { method: 'GET' })
+  if (r.status === 0 && last) return offlineBanner()
+  const user = r.ok ? r.data.user || null : null
+  if (!user) { clearLast(); D = null; return showSignIn() }
+  if (last && String(user.email || '').toLowerCase() !== String(last.d.email || '').toLowerCase()) { clearLast(); D = null }
   start()
 }
 async function showSignIn() {
@@ -146,9 +176,12 @@ async function confirmPaid(sid) {
 
 async function load() {
   const r = await api('/api/jfp-account', { action: 'overview', pay: q.get('pay') || '' })
-  if (r.status === 401) return showSignIn()
+  if (r.status === 401) { clearLast(); return showSignIn() }
+  if (r.status === 0 && D) return offlineBanner()
   if (!r.ok) { document.querySelector('[data-pane="home"]').innerHTML = `<div class="ja-card">${esc(r.data.error || 'Could not load your account.')}</div>`; return }
   D = r.data
+  saveLast(D)
+  document.querySelector('[data-offline]')?.remove()
   FEES = null
   forgetSaved()
   render()
@@ -1070,6 +1103,23 @@ window.addEventListener('resize', () => requestAnimationFrame(syncRails))
 
 // ---------- calendar ----------
 
+// Subscribe once (Lee, 17 Oct 2026): the phone's calendar reads the family's
+// private feed and keeps itself up to date. Download once stays as a fallback.
+async function calendarSheet(rowId) {
+  const sheet = openSheet({ title: 'Add to your calendar', subtitle: 'Every session. Updates by itself.' })
+  sheet.body.innerHTML = '<p class="ja-muted">Getting your link</p>'
+  const r = await api('/api/jfp-account', { action: 'calendarLink' })
+  if (!r.ok) { sheet.body.innerHTML = `<p class="ja-muted">${esc(r.data.error || 'Could not get your link. Try again.')}</p>`; return }
+  const https = r.data.url, webcal = https.replace(/^https?:/, 'webcal:')
+  sheet.body.innerHTML = `<div class="ja-mlist">
+    <a class="ja-mrow" href="${esc(webcal)}"><span class="ja-mr-ic">${ic('calplus')}</span><span class="ja-mr-tx"><b>iPhone, iPad or Mac</b></span>${ic('right', 'ja-mr-go')}</a>
+    <a class="ja-mrow" href="https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}" target="_blank" rel="noopener noreferrer"><span class="ja-mr-ic">${ic('calendar')}</span><span class="ja-mr-tx"><b>Google Calendar</b></span>${ic('ext', 'ja-mr-go')}</a>
+    <button type="button" class="ja-mrow" id="cal-copy"><span class="ja-mr-ic">${ic('ext')}</span><span class="ja-mr-tx"><b>Copy the link</b></span></button>
+    <button type="button" class="ja-mrow" id="cal-once"><span class="ja-mr-ic">${ic('calplus')}</span><span class="ja-mr-tx"><b>Download once</b></span></button></div>`
+  sheet.body.querySelector('#cal-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(https); toast('Link copied.') } catch { toast(https) } })
+  sheet.body.querySelector('#cal-once').addEventListener('click', () => downloadIcs(rowId))
+}
+
 function icsFor(p, e) {
   const pad = (n) => String(n).padStart(2, '0')
   const stamp = (ms) => { const d = new Date(ms); return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z` }
@@ -1285,7 +1335,7 @@ document.addEventListener('click', async (e) => {
   if (sec) return toggleNav(sec.dataset.navsec)
   if (t.closest('[data-waiver-all]')) return waiverSheet(unsignedWaivers().map((p) => p.key))
   if (extraClick(t, { D })) return
-  if (t.closest('#sign-out') || t.closest('#ja-signout2') || t.closest('#sign-out-fam')) { await signOut('parent'); location.href = '/jfp-account/'; return }
+  if (t.closest('#sign-out') || t.closest('#ja-signout2') || t.closest('#sign-out-fam')) { clearLast(); await signOut('parent'); location.href = '/jfp-account/'; return }
   if (t.closest('[data-contact]')) { e.preventDefault(); if (D) { closeSheet(true); show('contact') } else contactSheet(); return }
   const go = t.closest('[data-go]')
   if (go) {
@@ -1304,7 +1354,7 @@ document.addEventListener('click', async (e) => {
   const rp = t.closest('[data-rail-prev], [data-rail-next]')
   if (rp) { const r = $(rp.dataset.railPrev || rp.dataset.railNext); if (r) r.scrollBy({ left: (rp.dataset.railPrev ? -1 : 1) * r.clientWidth * 0.92, behavior: 'smooth' }); return }
   const ics = t.closest('[data-ics]')
-  if (ics) return downloadIcs(ics.dataset.ics)
+  if (ics) return calendarSheet(ics.dataset.ics)
   const tp = t.closest('[data-topic-pick]')
   if (tp) { topic = tp.getAttribute('aria-pressed') === 'true' ? '' : tp.dataset.topicPick; document.querySelectorAll('[data-topic-pick]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.topicPick === topic))); return }
   if (t.closest('#ct-send')) return sendContact(t.closest('#ct-send'))
@@ -1373,6 +1423,15 @@ document.addEventListener('click', async (e) => {
     const r = await api('/api/jfp-account', { action: 'invoicePdf', payreqId: fp.dataset.feePdf })
     fp.disabled = false
     if (r.ok && r.data.pdf) savePdf(r.data); else toast(r.data.error || 'Could not get the invoice. Try again.')
+    return
+  }
+  // A receipt PDF for any payment on Fees, cash and bank included.
+  const fr = t.closest('[data-fee-receipt]')
+  if (fr) {
+    fr.disabled = true
+    const r = await api('/api/jfp-account', { action: 'receiptPdf', id: fr.dataset.feeReceipt })
+    fr.disabled = false
+    if (r.ok && r.data.pdf) savePdf(r.data); else toast(r.data.error || 'Could not get the receipt. Try again.')
     return
   }
   const pay = t.closest('[data-pay]')
