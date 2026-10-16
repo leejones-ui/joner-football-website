@@ -12,12 +12,17 @@ import { startChallenge, verifyChallenge, openSession, cookieHeader, sessionFor,
 import { sendSignInCode } from './_jfp-email.js'
 import { noteAccount, accountOf } from './_jfp-account-open.js'
 import { loadRoster, familyFor } from './_jfp-airtable.js'
+import { playerLoginOf } from './_jfp-player-logins.js'
 
 // Anyone can have an account (round 2 item 8): a new address with nothing on
 // file is a sign-up, limited per connection and overall. A known family is
 // never held up, and a failed roster read counts as known.
 async function knownFamily(email, config) {
-  try { const f = familyFor(email, await loadRoster(), config.termStart); return f.players.length > 0 } catch { return true }
+  try {
+    // A player login (12+) set up by their parent counts as known.
+    if (await playerLoginOf(email)) return true
+    const f = familyFor(email, await loadRoster(), config.termStart); return f.players.length > 0
+  } catch { return true }
 }
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }

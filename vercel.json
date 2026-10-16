@@ -849,6 +849,10 @@
       "schedule": "15 * * * *"
     },
     {
+      "path": "/api/jfp-groups?pushTick=1",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/jfp-groups?coachTick=1",
       "schedule": "*/5 * * * *"
     },

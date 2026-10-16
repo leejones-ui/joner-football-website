@@ -536,6 +536,13 @@ const LATENCY = Object.fromEntries(String(process.env.HARNESS_LATENCY || '').spl
 const calls = {}
 const serviceOf = (u) => (u.startsWith('http://kv.local') ? 'kv' : u.startsWith('https://api.airtable.com/') ? 'airtable' : u.startsWith('https://api.stripe.com/') ? 'stripe' : 'other')
 const innerFetch = async (url, init = {}) => {
+  // Web Push (My account notifications): a pretend push service. Each post is
+  // kept (headers and the encrypted body, base64) for tests at /__pushes; an
+  // endpoint with 'gone' in it answers 410 like a phone that turned them off.
+  if (process.env.JFP_PUSH_TEST_HOST && String(url).startsWith(`https://${process.env.JFP_PUSH_TEST_HOST}/`)) {
+    pushes.push({ url: String(url), headers: init.headers, body: Buffer.from(init.body).toString('base64') })
+    return new Response('', { status: String(url).includes('gone') ? 410 : 201 })
+  }
   const u = String(url)
   const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } })
   if (u.startsWith('http://kv.local')) {
@@ -687,6 +694,7 @@ globalThis.fetch = async (url, init = {}) => {
 }
 
 const events = []
+const pushes = []
 const faults = new Set()
 // The invoice PDF reads this (only with JFP_TEST_CLOCK): /__fail?what=pdf&on=1.
 globalThis.__jfpTestFaults = faults
@@ -836,6 +844,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (url.pathname === '/__stripe-pis') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify([...offIntents.values()])) }
   if (url.pathname === '/__stripe-saved') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ customers: [...customers.values()], paymentMethods: [...paymentMethods.values()], setupIntents: [...setupIntents.values()] })) }
+  if (url.pathname === '/__pushes') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(pushes)) }
   if (url.pathname === '/__emails') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(emails)) }
   if (url.pathname === '/__telegram') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(telegrams)) }
   if (url.pathname === '/__airtable') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(airtable)) }

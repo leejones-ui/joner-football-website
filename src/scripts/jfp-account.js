@@ -13,13 +13,14 @@ import { oweList, jjOweList, oweCard, aheadBlock, depositCards, placeCards, hist
 import { renderExtra, renderAnalysis, extraClick, setExtraLink } from './jfp-account-extras.js'
 // Fees: save a card or bank account for session payments (claude/card-on-file).
 import { mountSavedPay, savedReturn, forgetSaved } from './jfp-account-saved.js'
+import { attendanceLine, pastMark, unreadNotes, notesHomeBlock, renderNotes, renderAlerts, pushOffered, loginRow, loginSheet } from './jfp-account-more.js'
 
 const q = new URLSearchParams(location.search)
 let D = null
 let PROF = null
 // Fees (14 Oct 2026): read when the Fees tab first opens, again after each load.
 let FEES = null
-const PANELS = ['home', 'sessions', 'fees', 'family', 'news', 'info', 'waivers', 'cancel', 'keep', 'term', 'holidays', 'extra', 'analysis', 'videos', 'app', 'contact']
+const PANELS = ['home', 'sessions', 'fees', 'family', 'news', 'notes', 'alerts', 'info', 'waivers', 'cancel', 'keep', 'term', 'holidays', 'extra', 'analysis', 'videos', 'app', 'contact']
 let current = 'home'
 const KIT_URL = 'https://www.besteamsport.com.au/collections/joner-football'
 const IMG = '/images/jfp-account'
@@ -65,6 +66,7 @@ const photoSet = (e) => { const w = VENUE_WIDE[e.locationId]; return w ? `srcset
 // as they are (emails and Stripe use them); only what the page shows changes.
 const ARRANGED = 'Nothing to pay yet'
 function payDot(pm) {
+  if (!pm) return ''
   const cls = { paid: 'ok', due: 'bad', trial: 'ok', sessions: 'ok', arranged: '' }[pm.state] || ''
   return `<span class="ja-dot ${cls}">${esc(pm.state === 'arranged' ? ARRANGED : pm.label)}</span>`
 }
@@ -187,6 +189,7 @@ async function load() {
   render()
 }
 async function loadProfiles() {
+  if (D?.playerLogin) return
   const r = await api('/api/jfp-account', { action: 'profiles' })
   if (!r.ok) return
   PROF = r.data
@@ -210,6 +213,23 @@ function face(name, photo, extra = '') {
 // sections in the More sheet.
 function nav() {
   const unsigned = unsignedWaivers().length
+  const notesItem = { key: 'notes', label: 'Coach notes', icon: 'whistle', count: unreadNotes(D) }
+  const alertsItem = pushOffered(D) ? [{ key: 'alerts', label: 'Notifications', icon: 'bell' }] : []
+  // A player's own login (12+): their sessions, notes and videos. No money or family.
+  if (D?.playerLogin) return [
+    { label: 'My JFP', items: [
+      { key: 'home', label: 'Home', icon: 'home' },
+      { key: 'sessions', label: 'Sessions', icon: 'calendar' },
+      notesItem,
+      { key: 'news', label: 'Announcements', icon: 'bell', count: unreadNews() },
+    ] },
+    { label: 'Manage', items: [{ key: 'cancel', label: "Can't make it", icon: 'xcircle' }, ...alertsItem, { key: 'contact', label: 'Contact us', icon: 'chat' }] },
+    { label: 'Explore Joner', items: [
+      { key: 'videos', label: 'Videos', icon: 'play' },
+      { key: 'term', label: `${termShort()} info`, icon: 'info' },
+      { key: 'app', label: 'The JF App', icon: 'phone' },
+    ] },
+  ]
   return [
     { label: 'My JFP', items: [
       { key: 'home', label: 'Home', icon: 'home' },
@@ -217,9 +237,11 @@ function nav() {
       { key: 'fees', label: 'Fees', icon: 'card', dot: feesOwing() > 0 },
       { key: 'family', label: solo() ? 'My profile' : 'Family', icon: 'user', dot: familyCount() > 0 },
       { key: 'news', label: 'Announcements', icon: 'bell', count: unreadNews() },
+      notesItem,
     ] },
     { label: 'Manage', items: [
       { key: 'cancel', label: "Can't make it", icon: 'xcircle' },
+      ...alertsItem,
       { key: 'keep', label: 'Keep my spot', icon: 'bookmark', dot: Boolean(D?.keep?.open && (D?.nextTerm?.players || []).some((x) => !x.status || x.status === 'invited')) },
       { key: 'info', label: solo() ? 'My profile' : 'Player information', icon: 'user', dot: infoGaps().length > 0 },
       { key: 'waivers', label: 'Waivers', icon: 'sign', dot: unsigned > 0 },
@@ -268,7 +290,9 @@ function toggleNav(label) {
 // The bottom bar on phones (redesign, Lee 17 Oct 2026): Home, Sessions, Fees,
 // Family, More. A badge always counts what is on the page it opens: Fees
 // counts payments to make, Family counts waivers and details to sort.
-const BAR = [['home', 'Home', 'home'], ['sessions', 'Sessions', 'calendar'], ['fees', 'Fees', 'card'], ['family', 'Family', 'user']]
+const FAMILY_BAR = [['home', 'Home', 'home'], ['sessions', 'Sessions', 'calendar'], ['fees', 'Fees', 'card'], ['family', 'Family', 'user']]
+const PLAYER_BAR = [['home', 'Home', 'home'], ['sessions', 'Sessions', 'calendar'], ['notes', 'Notes', 'whistle'], ['videos', 'Videos', 'play']]
+let BAR = FAMILY_BAR
 const unsignedWaivers = () => (D ? [...D.players, ...(D.juniors?.children || [])].filter((p) => !p.waiver?.onFile) : [])
 function familyCount() { return infoGaps().length + unsignedWaivers().length }
 const badge = (n) => n ? `<span class="badge" aria-label="${n} to sort">${n}</span>` : ''
@@ -276,10 +300,11 @@ const badge = (n) => n ? `<span class="badge" aria-label="${n} to sort">${n}</sp
 const unreadNews = () => (D?.announcements || []).filter((a) => !a.read).length
 const newsBadge = (n) => n ? `<span class="badge ja-nbadge" aria-label="${n} unread">${n > 9 ? '9+' : n}</span>` : ''
 function renderShell() {
+  BAR = D?.playerLogin ? PLAYER_BAR : FAMILY_BAR
   const open = navOpen()
   $('ja-nav').innerHTML = nav().map((g) => navGroup(g, open)).join('')
   const inMore = !BAR.some(([k]) => k === current)
-  $('ja-tabs').innerHTML = BAR.map(([k, l, i]) => `<button type="button" class="ja-tab" data-go="${k}" aria-current="${current === k ? 'page' : 'false'}">${ic(i)}<span>${k === 'family' && solo() ? 'Me' : l}</span>${badge(k === 'fees' ? feesOwing() : k === 'family' ? familyCount() : 0)}</button>`).join('')
+  $('ja-tabs').innerHTML = BAR.map(([k, l, i]) => `<button type="button" class="ja-tab" data-go="${k}" aria-current="${current === k ? 'page' : 'false'}">${ic(i)}<span>${k === 'family' && solo() ? 'Me' : l}</span>${k === 'notes' ? newsBadge(unreadNotes(D)) : badge(k === 'fees' ? feesOwing() : k === 'family' ? familyCount() : 0)}</button>`).join('')
     + `<button type="button" class="ja-tab" data-more aria-haspopup="dialog" aria-current="${inMore ? 'page' : 'false'}">${ic('menu')}<span>More</span></button>`
   $('ja-email').textContent = D?.email || ''
   const unread = unreadNews()
@@ -315,8 +340,8 @@ function accountSheet() {
   const sheet = openSheet({ title: who || 'Your account', subtitle: D?.email ? `Signed in as ${D.email}` : '' })
   sheet.body.innerHTML = `<div class="ja-more-group"><p class="ja-nav-label">Look</p>${themeSwitch()}</div>
     <div class="ja-more-group"><p class="ja-nav-label">Your account</p><div class="ja-mlist">
-      ${moreRow({ key: 'family', label: solo() ? 'My profile' : 'Your family', icon: 'user', dot: familyCount() > 0 })}
-      ${moreRow({ key: 'fees', label: 'Fees and receipts', icon: 'card', dot: feesOwing() > 0 })}
+      ${D?.playerLogin ? '' : moreRow({ key: 'family', label: solo() ? 'My profile' : 'Your family', icon: 'user', dot: familyCount() > 0 })}
+      ${D?.playerLogin ? '' : moreRow({ key: 'fees', label: 'Fees and receipts', icon: 'card', dot: feesOwing() > 0 })}
       ${moreRow({ key: 'contact', label: 'Contact us', icon: 'chat' })}
     </div></div>${installCard()}`
   sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-line ja-btn-block" id="ja-signout2">Sign out</button>'
@@ -354,7 +379,7 @@ function show(panel, { keepScroll = false } = {}) {
   requestAnimationFrame(syncRails)
 }
 const pane = (k) => document.querySelector(`[data-pane="${k}"]`)
-const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact() }
+const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact(), notes: () => renderNotes(pane('notes'), D, () => renderShell()), alerts: () => renderAlerts(pane('alerts'), D) }
 function drawPane(panel) { DRAW[panel]?.(); const el = document.querySelector(`[data-pane="${panel}"]`); if (el) el.dataset.drawn = '1' }
 
 function render() {
@@ -529,10 +554,10 @@ function renderHome() {
   el.innerHTML = `${head}
     <div class="ja-home">
       <div class="ja-stack"><p class="ja-label">Next up</p>${nextBlock}${doneBlock}</div>
-      <div class="ja-stack">${strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${newsBlock()}
+      <div class="ja-stack">${D.playerLogin ? '' : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${notesHomeBlock(D)}${newsBlock()}
         ${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b class="ja-ink">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b class="ja-ink">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
     </div>
-    ${promos}${watch}`
+    ${D.playerLogin ? '' : promos}${watch}`
 }
 
 function requestsBlock() {
@@ -584,16 +609,16 @@ function renderSessions() {
         const isNext = label === nextLabel
         const pm = mark(e.isoDates?.[i] || s?.iso, Boolean(s) && !c)
         const cls = !s ? 'is-past' : c ? 'is-off' : isNext ? 'is-next' : ''
-        const right = !s ? '<span class="ja-muted ja-small">Done</span>'
+        const right = !s ? pastMark(e, i)
           : c ? `<button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-cancel-undo="${esc(c.id)}">Undo</button>`
           : `<button type="button" class="ja-btn ${isNext ? 'ja-btn-line' : 'ja-btn-ghost'} ja-btn-sm" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}" data-cancel-date="${esc(s.iso)}" aria-label="${esc(`${first(p.name)} can't make ${dow} ${dd} ${mon}`)}">Can't make it</button>`
         const aria = `${p.name}, ${dow} ${dd} ${mon}, ${e.time}, ${e.location}${!s ? ', done' : c ? ', you told us they cannot make it' : isNext ? ', next session' : ''}`
         return `<li class="ja-date ${cls}" aria-label="${esc(aria)}"><span class="d"><b>${esc(dd)}</b><i>${esc(mon)}</i></span><span class="w"><b>${esc(dow)} ${esc(e.time)}${isNext ? '<span class="ja-tag">Next</span>' : ''}${c ? '<span class="ja-tag amber">You told us</span>' : ''}${pm}</b>Week ${i + 1}${isNext && s ? ` · ${esc(countdown(s.startMs))}` : ''}${c ? `, ${esc(c.reason)}` : ''}</span>${right}</li>`
       }
       return `<section class="ja-card ja-scard" data-enrol="${esc(e.rowId)}">
-        <div class="ja-enrol-head"><img src="${esc(photoFor(e))}" alt="" loading="lazy"><div><h2>${esc(p.name)}</h2><p>${esc(e.day)}s ${esc(e.time)} · ${esc(e.location)} · ${esc(e.durationMin || 60)} min</p><p style="margin-top:6px">${payDot(e.payment)}</p></div></div>
+        <div class="ja-enrol-head"><img src="${esc(photoFor(e))}" alt="" loading="lazy"><div><h2>${esc(p.name)}</h2><p>${esc(e.day)}s ${esc(e.time)} · ${esc(e.location)} · ${esc(e.durationMin || 60)} min</p>${e.payment ? `<p style="margin-top:6px">${payDot(e.payment)}</p>` : ''}</div></div>
         ${e.sessionPay ? `<p class="ja-small ja-muted" style="margin-top:10px">Paid: paid ahead. Not paid yet: billed after the session, or pay ahead now.</p>` : ''}
-        ${done.length && !all ? `<p class="ja-done-line">${ic('check')}<span>${done.length} done this term</span></p>` : ''}
+        ${done.length && !all ? attendanceLine(e) || `<p class="ja-done-line">${ic('check')}<span>${done.length} done this term</span></p>` : ''}
         <ol class="ja-dates">${shown.map(date).join('')}</ol>
         ${rows.length > shown.length || all ? `<p class="ja-more-dates"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-expand="${esc(e.rowId)}" aria-expanded="${all}">${all ? 'Show less' : `Show all ${rows.length} weeks`}</button></p>` : ''}
         <div class="ja-actions">${canPay ? `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-go-pay="${esc(e.rowId)}">${ic('card')}Pay for sessions</button>` : ''}${e.maps ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(e.maps)}" target="_blank" rel="noopener noreferrer">${ic('pin')}Directions</a>` : ''}<button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-ics="${esc(e.rowId)}">${ic('calplus')}Add to calendar</button></div>
@@ -944,6 +969,7 @@ function renderFamily() {
       <div class="ja-kid-facts">
         <div><span>Waiver</span>${w}</div>
         ${jj ? '' : `<div><span>Player details</span>${details}</div>`}
+        ${jj ? '' : loginRow(p, D)}
       </div>
       <div class="ja-kid-act">${p.waiver?.onFile ? '' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-waiver-player="${esc(p.key)}">${ic('sign')}Sign waiver</button>`}${jj ? '' : `<button type="button" class="ja-btn ${miss ? 'ja-btn-light' : 'ja-btn-line'} ja-btn-sm" data-go="info">${miss ? 'Update details' : 'View details'}</button>`}</div>
     </article>`
@@ -1320,6 +1346,8 @@ function waiverSheet(keys) {
 // ---------- clicks ----------
 
 document.addEventListener('click', async (e) => {
+  const ls = e.target.closest('[data-login-set]')
+  if (ls) { const p = D.players.find((x) => x.key === ls.dataset.loginSet); if (p) loginSheet(p, D, () => load()); return }
   const t = e.target
   if (t.closest('[data-more]')) return moreSheet()
   if (t.closest('#ja-me')) return accountSheet()
@@ -1341,7 +1369,7 @@ document.addEventListener('click', async (e) => {
   if (go) {
     if (go.dataset.topic) topic = go.dataset.topic
     closeSheet(true)
-    if (go.dataset.go === 'contact' || go.dataset.go === 'news') delete document.querySelector(`[data-pane="${go.dataset.go}"]`)?.dataset.drawn
+    if (['contact', 'news', 'notes', 'alerts'].includes(go.dataset.go)) delete document.querySelector(`[data-pane="${go.dataset.go}"]`)?.dataset.drawn
     // A player row on Home opens Sessions on that player.
     if (go.dataset.kid) { sessKid = go.dataset.kid; delete pane('sessions')?.dataset.drawn }
     show(go.dataset.go)

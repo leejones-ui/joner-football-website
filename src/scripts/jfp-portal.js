@@ -5,6 +5,7 @@
 import { $, esc, api, toast, signIn, whoAmI, signOut, money, savePdf } from './jfp-common.js'
 import { renderMessages } from './jfp-portal-messages.js'
 import { renderAnnouncements } from './jfp-portal-announce.js'
+import { familyNotesModal, renderFamilyNotesPage } from './jfp-portal-fnotes.js'
 import { renderExtra } from './jfp-portal-extra.js'
 import { juniorsCardShell, fillJuniorsCard, juniorsData } from './jfp-portal-juniors.js'
 import { programmeSwitch, bindSwitch, moneyHead, bindTip, prefetchOthers, forget, markUpdated } from './jfp-portal-programmes.js'
@@ -62,7 +63,7 @@ const NAV = {
   coach: [['Coaching', [['program', 'Program'], ['coach', 'My sessions'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['profile', 'My profile']]]],
   admin: [
     ['Overview', [['overview', 'Dashboard']]],
-    ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['announce', 'Announcements'], ['requests', 'Requests'], ['accounts', 'New accounts'], ['trials', 'Trial feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
+    ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['announce', 'Announcements'], ['fnotes', 'Coach notes'], ['requests', 'Requests'], ['accounts', 'New accounts'], ['trials', 'Trial feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
     // Joners Juniors (Lee, 13 Oct 2026): its own section, the same pages as JFP.
     JJ_NAV,
     // Bank payments (Lee, 16 Oct 2026): Money with the bank list open, its count on the badge.
@@ -79,6 +80,7 @@ const ICON = {
   families: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M16 5.6a3 3 0 0 1 0 5.8M17.5 14.3c1.7.6 2.7 2.2 3 4.7"/>',
   requests: '<path d="M4 6.5h16v10H8.5L4 20z"/><path d="M8 10.5h8M8 13.5h5"/>',
   trials: '<path d="M5 4.5h14v15H5z"/><path d="M8.5 9l1.8 1.8L14 7.2M8.5 14.5h7"/>',
+  fnotes: '<path d="M5 4.5h14v11H9l-4 4z"/><path d="M8.5 8.5h7M8.5 11.5h4.5"/>',
   announce: '<path d="M4 10v4h3l6 4V6L7 10z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/>',
   messages: '<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/>',
   groups: '<path d="M4 6h16M4 12h16M4 18h10"/><circle cx="18" cy="18" r="2"/>',
@@ -212,7 +214,7 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
   if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts() } else cancelBanner()
@@ -679,6 +681,7 @@ function playerMenu(el) {
     { key: 'info', label: 'Details', run: () => openPlayerDetails(p.rowId, () => detailsModal(p, g)) },
     { key: 'move', label: 'Move to another group', run: () => moveModal(p, g) },
     { key: 'note', label: p.note || p.startsFrom ? 'Edit note for coaches' : 'Note for coaches (or a later start)', run: () => coachNoteModal(p, g) },
+    { key: 'fnote', label: 'Note to family', run: () => familyNotesModal({ post, modal, closeModal, confirmBox }, { rowId: p.rowId, name: p.name }) },
     '-',
     ...(p.trial ? [{ key: 'term', label: 'Offer full term (after trial)', run: () => termModal(p, g) }] : []),
     ...(p.paymentStatus !== 'Paid' || p.trial ? [{ key: 'link', label: p.payreq ? `Payment link open (${p.payreq.amountLabel})` : 'Send a payment link', run: () => linkModal(p, g) }, { key: 'paid', label: 'Mark paid offline', run: () => paidModal(p) }] : []),
@@ -717,7 +720,8 @@ function detailsModal(p, g) {
       <dt>Mobile</dt><dd>${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : 'None'}</dd>
       ${p.linkNotes || p.notes ? `<dt>Notes</dt><dd><button type="button" class="j-btn j-btn-line j-btn-sm" data-notes-row="${esc(p.rowId)}">Show notes</button></dd>` : ''}
     </dl>
-    <div style="display:flex;justify-content:flex-end;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`)
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="cp-fnote">Note to family</button></div>`)
+  document.getElementById('cp-fnote')?.addEventListener('click', () => { closeModal(); familyNotesModal({ post, modal, closeModal, confirmBox }, { rowId, name: p.name }) })
 }
 
 function groupOptions(selected, { exclude } = {}) {

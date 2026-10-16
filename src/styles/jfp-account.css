@@ -857,3 +857,14 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 /* Cards side by side in a grid line up at the top (Lee, 17 Oct 2026): the
    stacked-card gap is for lists, never for grid columns. */
 .jfp.ja :is(.ja-grid, .ja-home, .ja-places, .ja-pay-grid, .ja-sgrid, .ja-kids, .ja-split, .ja-opts-grid, .ja-keep) > .ja-card + .ja-card { margin-top: 0; }
+/* Attendance (Lee, 17 Oct 2026): "Came to 8 of 9" and a dot per week run. */
+.ja-att-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding: 10px 12px; border-radius: 14px; background: var(--ja-panel-2); color: var(--ja-hi); font-size: 14px; font-weight: 600; }
+.ja-att-line > svg { width: 20px; height: 20px; padding: 3px; border-radius: 50%; background: var(--ja-green); color: #fff; flex: none; }
+.ja-att-dots { display: inline-flex; gap: 5px; margin-left: auto; flex-wrap: wrap; }
+.ja-att-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--ja-line); }
+.ja-att-dots i.came { background: var(--ja-green); }
+.ja-att-dots i.missed { background: var(--ja-red); }
+.ja-att-word { font-size: 13px; font-weight: 700; }
+.ja-att-word.came { color: var(--ja-green); }
+.ja-att-word.missed { color: var(--ja-red); }
+.ja-tag.grey { background: var(--ja-panel-3); color: var(--ja-hi); }

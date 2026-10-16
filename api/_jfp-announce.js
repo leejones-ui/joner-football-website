@@ -117,6 +117,8 @@ export async function announceAction(req, res, principal, config, body, action, 
     const rec = was ? { ...a, updatedAt: now, updatedBy: principal.email } : { ...a, id: newId('ANN'), createdAt: now, by: principal.email }
     await kvCommand(['HSET', KEY, rec.id, JSON.stringify(rec)])
     await audit({ by: principal.email, action: was ? 'announce.edit' : 'announce.add', target: rec.id, after: { title: rec.title, audience: rec.audience, from: rec.from, until: rec.until } })
+    // A new notice that shows today goes to phones with notifications on (never blocks the save).
+    if (!was) try { const { pushAnnouncement } = await import('./_jfp-push.js'); await pushAnnouncement(rec) } catch (error) { console.error('jfp announce push failed', error) }
     return ok({ announcement: rec, announcements: await list(), options })
   }
   return no(400, 'Unknown action.')

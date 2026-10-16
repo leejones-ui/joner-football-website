@@ -23,7 +23,7 @@ import { stripeFetch, siteUrl, listSlots } from './_holiday-store.js'
 import { chargeCheckoutMeta } from './_jfp-charges.js'
 import { bookableSlots, privateSlot, bookExtraPlace } from './_jfp-family-extra.js'
 import {
-  getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, dateLabel,
+  keys, getConfig, getGroup, listGroups, listPayreqs, getPayreq, savePayreq, listApplications, listBookings, clean, dateLabel,
   formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, sydneyToday, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType, isProType,
 } from './_jfp-store.js'
 import { telegramAlert } from './_jfp-notify.js'
@@ -45,6 +45,11 @@ import { coveredOf } from './_jfp-quote.js'
 import { accountOf, openPlayers, addMyPlayer } from './_jfp-account-open.js'
 import { prepaidOf } from './_jfp-store.js'
 import { announcementsFor, markAnnouncementsRead } from './_jfp-announce.js'
+import { attendanceFor } from './_jfp-attendance-view.js'
+import { playerLoginOf, loginsForFamily, setPlayerLogin, removePlayerLogin, PLAYER_MIN_AGE } from './_jfp-player-logins.js'
+import { pushView, saveSub, dropSub, setPrefs } from './_jfp-push.js'
+import { roleFor } from './_jfp-people.js'
+import { familyNotesFor, markFamilyNotesRead } from './_jfp-family-notes.js'
 import { submitExtra, listExtras, familyExtraView, analysisPrice, extraSlots, DAYS as EXTRA_DAYS, TIMES as EXTRA_TIMES, TYPES as EXTRA_TYPES } from './_jfp-extras.js'
 // Saved card or bank account for session payments (claude/card-on-file).
 import { SAVED_PAY_FAMILY, savedPayFamily } from './_jfp-saved-pay.js'
@@ -110,7 +115,10 @@ function paymentLine(row, openReq, owed) {
   return { state: 'arranged', label: 'Payment arranged with Joner Football' }
 }
 
-async function overview(res, parent, body = {}) {
+async function overview(res, parent, body = {}, opts = {}) {
+  // Read marks (announcements, coach notes) belong to whoever is signed in:
+  // a player with their own login keeps their own (player logins).
+  const readEmail = opts.readEmail || parent.email
   const config = await getConfig()
   const [roster, groups, payreqs, requests, bookings, allCancels] = await Promise.all([loadRoster(), listGroups(), listPayreqs(), listApplications(), listBookings(), listCancels()])
   const nowMs = Date.now()
@@ -143,6 +151,17 @@ async function overview(res, parent, body = {}) {
   // session by session): a Pay step, made into a request when they tap it.
   const owed = owedItems({ config, players: jfpPlayers, payreqs: mine, byGroup, cancels: myCancels, nowMs })
   const owedByRow = new Map(owed.map((x) => [x.rowId, x]))
+  // Attendance (Lee, 17 Oct 2026): the coach's register for every session
+  // already run, one read for the whole family. A failed read shows none.
+  const attAsk = []
+  for (const p of jfpPlayers) for (const r of p.term4) if (r.holdsPlace && r.groupId) {
+    const g = byGroup[r.groupId] || null
+    for (const d of rowSessionDates(config, r, g)) { const n = noticeFor({ date: d, time: rowTime(r, g), nowMs }); if (n && n.startMs <= nowMs) attAsk.push([r.id, r.groupId, d]) }
+  }
+  let attVals = []
+  try { attVals = attAsk.length ? await kvPipeline(attAsk.map(([id, gid, d]) => ['HGET', keys.attendance(gid, d), id])) : [] } catch (error) { console.error('jfp attendance read failed', error) }
+  const attOf = new Map(attAsk.map(([id, , d], i) => [`${id}|${d}`, attVals[i] || '']))
+  const logins = opts.player ? [] : await loginsForFamily(fam.emails).catch(() => [])
   const players = jfpPlayers.map((p) => ({
     key: p.key,
     name: p.name,
@@ -154,6 +173,8 @@ async function overview(res, parent, body = {}) {
     adult: adultFor(p, fam, profOf(p)?.dob),
     photo: profOf(p)?.photo || '',
     needsDob: !p.dob && !profOf(p)?.dob,
+    // Player logins (12+): their own sign in, set by the parent.
+    login: (logins.find((x) => x.playerKey === p.key) || {}).email || '',
     waiver: p.waiver ? { onFile: true, signedDate: p.waiver.signedDate, term: p.waiver.term, kind: p.waiver.kind || '' } : { onFile: false },
     // A place staff have confirmed but not yet given a day and time.
     placeNoSession: p.term4.some((r) => r.holdsPlace && !r.groupId),
@@ -179,6 +200,7 @@ async function overview(res, parent, body = {}) {
         status: r.confirmation || 'Confirmed',
         dates: dates.map(dateLabel), firstDate: dates[0] ? dateLabel(dates[0]) : '',
         payment: paymentLine(r, openReq, owedByRow.get(r.id)),
+        attendance: attendanceFor(dates, (d) => attOf.get(`${r.id}|${d}`)),
         sessions,
         // Coach mobiles, only where one has been entered. Never an email.
         contacts: coachesFor(config, r, byGroup[r.groupId] || null).filter((c) => c.phone).map((c) => ({ name: 'Coach', phone: formatPhone(c.phone), tel: c.phone })),
@@ -232,11 +254,16 @@ async function overview(res, parent, body = {}) {
   // Announcements (Lee, 17 Oct 2026): notices for everyone, this family's
   // locations or groups. Read only; a failed read shows none, never an error.
   const myRows = fam.players.flatMap((p) => p.term4)
-  const announcements = await announcementsFor({ groupIds: myRows.map((r) => r.groupId), locationIds: myRows.map((r) => locationFor(config, r.location).id), email: parent.email })
+  const announcements = await announcementsFor({ groupIds: myRows.map((r) => r.groupId), locationIds: myRows.map((r) => locationFor(config, r.location).id), email: readEmail })
+  // Coach notes for this family's players (Lee, 17 Oct 2026), from "Coach".
+  const notes = await familyNotesFor(myRows.map((r) => r.id), readEmail)
   return res.status(200).json({
     success: true,
     email: parent.email,
     announcements,
+    notes,
+    playerMinAge: PLAYER_MIN_AGE,
+    push: await pushView(readEmail).then((x) => ({ available: Boolean(x.available), key: x.key || '' })).catch((error) => { console.error('jfp push view failed', error); return { available: false, key: '' } }),
     parentName: fam.parentName || juniors?.parentName || '',
     // The player is their own contact (no parent): the page talks to them.
     self: !juniors?.children?.length && ((fam.players.length > 0 && fam.players.every((p) => p.term4.length > 0 && p.term4.every((r) => r.ownContact))) || (!fam.players.some((p) => p.term4.length) && open.length > 0 && open.every((o) => o.self))),
@@ -738,6 +765,71 @@ async function juniorsAction(req, res, parent, body) {
   return res.status(200).json({ success: true, ...rest })
 }
 
+
+// ---------- player logins (Lee, 17 Oct 2026: 12+, sessions, attendance, coach notes) ----------
+
+async function playerLoginAction(res, parent, body) {
+  const config = await getConfig()
+  const roster = await loadRoster()
+  const fam = familyFor(parent.email, roster, config.termStart)
+  const player = fam.players.find((p) => p.key === clean(body.playerKey, 80) && p.term4.some((r) => r.holdsPlace))
+  if (!player) return fail(res, 404, 'That player is not on your account.')
+  if (body.action === 'playerLoginRemove') { await removePlayerLogin({ parent, fam, playerKey: player.key }); return res.status(200).json({ success: true }) }
+  const profs = await familyProfiles(parent.email).catch(() => [])
+  const prof = pickProfile(profs, { key: profileKey(player.name, player.term4[0].email || parent.email), rowIds: player.term4.map((r) => r.id) })
+  const dob = prof?.dob || player.dob || ''
+  const age = dob ? ageOn(dob, sydneyToday()) : null
+  const e = String(body.email || '').trim().toLowerCase()
+  const r = await setPlayerLogin({ parent, fam, player, age, email: e, isStaffEmail: Boolean(roleFor(e, config)), isFamilyEmail: familyFor(e, roster, config.termStart).players.length > 0 })
+  if (r.error) return fail(res, 400, r.error)
+  return res.status(200).json({ success: true, login: r.login.email })
+}
+
+// The player's own view: the family overview cut down to them. No money,
+// no brothers or sisters, no parent name or contacts.
+async function playerView(login) {
+  let out = null
+  const cap = { c: 200, status(c) { this.c = c; return this }, json(d) { out = { c: this.c, d } }, setHeader() { return this } }
+  await overview(cap, { email: login.parentEmail }, {}, { readEmail: login.email, player: true })
+  if (!out?.d?.success) return out || { c: 500, d: { success: false, error: 'Could not load your account.' } }
+  const d = out.d
+  const config = await getConfig()
+  const fam = familyFor(login.parentEmail, await loadRoster(), config.termStart)
+  const rows = (fam.players.find((p) => p.key === login.playerKey)?.term4 || []).filter((r) => r.holdsPlace)
+  const rowIds = new Set(rows.map((r) => r.id))
+  const players = d.players.filter((p) => p.key === login.playerKey).map((p) => ({
+    key: p.key, name: p.name, age: p.age, self: true, photo: p.photo, adult: p.adult, needsDob: false, waiver: { onFile: true }, placeNoSession: p.placeNoSession, noSession: p.noSession, ownContact: true, login: '',
+    enrolments: p.enrolments.map(({ payment, sessionPay, paidDates, openDates, ...e }) => e),
+  }))
+  return { c: 200, d: {
+    success: true, playerLogin: true, email: login.email, parentName: '', self: true, players,
+    announcements: await announcementsFor({ groupIds: rows.map((r) => r.groupId), locationIds: rows.map((r) => locationFor(config, r.location).id), email: login.email }),
+    notes: (d.notes || []).filter((n) => rowIds.has(n.rowId)),
+    push: d.push, term: d.term, termStart: d.termStart, weeks: d.weeks, venues: d.venues, reasons: d.reasons, noteMax: d.noteMax,
+    todo: [], owed: [], paid: [], requests: [], bookings: [], juniors: null, nextTerm: null, keep: { name: d.keep?.name || '', open: false, players: [] }, extras: null,
+  }, rowIds }
+}
+
+async function playerAction(req, res, login, body) {
+  const a = body.action
+  if (!a || a === 'overview') { const v = await playerView(login); return res.status(v.c).json(v.d) }
+  if (a === 'announceRead') return res.status(200).json({ success: true, read: await markAnnouncementsRead(login.email, body.ids) })
+  if (a === 'calendarLink') { const t = await calendarToken(login.email); return res.status(200).json({ success: true, url: `${siteUrl(req)}/api/jfp-account?cal=${t}` }) }
+  const v = await playerView(login)
+  if (a === 'noteRead') return res.status(200).json({ success: true, read: await markFamilyNotesRead(login.email, body.ids, v.rowIds || new Set()) })
+  // Can't make it: only their own sessions; saved under the family, so the parent sees it too.
+  if (a === 'cancelSession') {
+    if (!v.rowIds?.has(clean(body.rowId, 30))) return fail(res, 404, 'That session is not yours.')
+    return await cancelSession(res, { email: login.parentEmail }, body)
+  }
+  if (a === 'withdrawCancel') {
+    const c = (await listCancels()).find((x) => x.id === clean(body.id, 40))
+    if (!c || !v.rowIds?.has(c.rowId)) return fail(res, 404, 'That session is not yours.')
+    return await withdrawSession(res, { email: login.parentEmail }, body)
+  }
+  return fail(res, 403, 'Ask your parent to do this from their account.', { code: 'parent-only' })
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -758,7 +850,17 @@ export default async function handler(req, res) {
   try {
     const parent = await sessionFor(req, 'parent')
     if (!parent) return fail(res, 401, 'Sign in with your email to continue.', { code: 'signin' })
+    // Push notifications (Lee, 17 Oct 2026): this device on or off, and the switches.
+    if (body.action === 'pushState') return res.status(200).json({ success: true, push: await pushView(parent.email, String(body.endpoint || '')) })
+    if (body.action === 'pushSubscribe') { const r = await saveSub(parent.email, body.sub, req.headers?.['user-agent']); if (r.error) return fail(res, 400, r.error); return res.status(200).json({ success: true, push: await pushView(parent.email, body.sub.endpoint) }) }
+    if (body.action === 'pushUnsubscribe') { await dropSub(parent.email, String(body.endpoint || '')); return res.status(200).json({ success: true, push: await pushView(parent.email, '') }) }
+    if (body.action === 'pushPrefs') { await setPrefs(parent.email, body.prefs || {}); return res.status(200).json({ success: true, push: await pushView(parent.email, String(body.endpoint || '')) }) }
+    // A player's own login (12+): only their own things, never money.
+    const login = await playerLoginOf(parent.email)
+    if (login) return await playerAction(req, res, login, body)
+    if (body.action === 'playerLoginSet' || body.action === 'playerLoginRemove') return await playerLoginAction(res, parent, body)
     if (body.action === 'announceRead') return res.status(200).json({ success: true, read: await markAnnouncementsRead(parent.email, body.ids) })
+    if (body.action === 'noteRead') { const config = await getConfig(); const rows = familyFor(parent.email, await loadRoster(), config.termStart).players.flatMap((p) => p.term4); return res.status(200).json({ success: true, read: await markFamilyNotesRead(parent.email, body.ids, new Set(rows.map((r) => r.id))) }) }
     if (body.action === 'signWaiver') return await signWaiver(res, parent, body)
     if (body.action === 'confirmKit') return await confirmKit(res, parent, body)
     if (body.action === 'pay') return await pay(req, res, parent, body)

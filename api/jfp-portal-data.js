@@ -38,6 +38,8 @@ import { contactWords, withOwnContact, isAdult } from './_jfp-contact.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { EXTRA_ACTIONS, extraAction } from './_jfp-extra-actions.js'
 import { ANNOUNCE_ACTIONS, announceAction } from './_jfp-announce.js'
+import { FAMILY_NOTE_ACTIONS, familyNoteAction } from './_jfp-family-notes.js'
+import { pushFamilyNote } from './_jfp-push.js'
 import { noteNewPlayer, alertsStatus, newPlayerWords, registerWords } from './_jfp-coach-alerts.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
@@ -3146,6 +3148,21 @@ async function handle(req, res) {
       return res.status(200).json({ success: true, airtable })
     }
 
+    // Coach notes for families (Lee, 17 Oct 2026): a coach writes to the family
+    // of a player in their own sessions (or one they cover); Lee and Ligia any.
+    if (FAMILY_NOTE_ACTIONS.has(action)) {
+      const access = async (rowId) => {
+        const [groups, roster, covers] = await Promise.all([listGroups(), loadRoster(), listCovers()])
+        const r = roster.players.find((x) => x.id === rowId && x.holdsPlace)
+        const g = r && groups.find((x) => x.id === r.groupId)
+        if (!r || !g || isJuniorsGroup(g)) return null
+        const coachId = principal.coachId
+        const covering = covers.some((c) => c.status === 'active' && c.groupId === g.id && c.coverCoachId === coachId && c.date >= sydneyToday())
+        if (!isAdmin && !(g.coachId === coachId || (g.extraCoachIds || []).includes(coachId) || covering)) return null
+        return { row: r, group: g }
+      }
+      return await familyNoteAction(res, principal, body, action, { isAdmin, access, onNew: (rec, row) => pushFamilyNote(rec, row) })
+    }
     if (action === 'trialFeedback') return await saveTrialFeedback(res, principal, config, isAdmin, body)
     // Joners Juniors registers (stage 3): a coach marks their own Juniors class, as in JFP.
     if (JJ_REGISTER_ACTIONS.has(action)) return await jjRegisterAction(req, res, principal, config, body, action)

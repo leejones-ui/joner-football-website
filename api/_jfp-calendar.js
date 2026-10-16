@@ -62,7 +62,12 @@ export function icsText(events, nowMs = Date.now()) {
 export async function familyCalendar(email) {
   const config = await getConfig()
   const [roster, groups, cancels] = await Promise.all([loadRoster(), listGroups(), listCancels()])
-  const fam = familyFor(email, roster, config.termStart)
+  // A player's own login (12+): only their own sessions, from the family's rows.
+  const { playerLoginOf } = await import('./_jfp-player-logins.js')
+  const login = await playerLoginOf(email)
+  const famEmail = login ? login.parentEmail : email
+  const fam = familyFor(famEmail, roster, config.termStart)
+  const players = login ? fam.players.filter((p) => p.key === login.playerKey) : fam.players
   const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
-  return icsText(calendarEvents({ config, players: fam.players, byGroup, cancels: cancels.filter((c) => c.email === email) }))
+  return icsText(calendarEvents({ config, players, byGroup, cancels: cancels.filter((c) => c.email === famEmail) }))
 }
