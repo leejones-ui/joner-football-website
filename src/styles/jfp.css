@@ -680,6 +680,18 @@ body.has-picks .j-toast { bottom: calc(92px + env(safe-area-inset-bottom)); }
 #jfp-book .j-reqmore summary { cursor: pointer; font-weight: 700; font-size: 14px; color: var(--j-ink); padding: 6px 0; }
 #jfp-book .j-reqmore[open] summary { margin-bottom: 2px; }
 
+/* Header: Create account in Joner red next to Sign in (Lee, 17 Oct 2026). */
+.j-top-create { background: var(--color-joner-red, #E8000D); color: #fff !important; border-color: var(--color-joner-red, #E8000D); }
+.j-top-create:hover { background: #C4000B; border-color: #C4000B; }
+.j-top-short { display: none; }
+@media (max-width: 560px) {
+  .j-top-about { display: none; }
+  .j-top-long { display: none; }
+  .j-top-short { display: inline; }
+  .j-top .j-brand span { font-size: 14px; }
+}
+@media (max-width: 360px) { .j-top .j-brand span { display: none; } }
+
 /* Below the timetable: the account button, out of the way of choosing. */
 #jfp-book .j-newacct { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 28px 0 8px; padding: 16px; border: 1px solid var(--j-line); border-radius: 14px; background: var(--j-surface); font-size: 14px; font-weight: 650; color: var(--j-ink-2); }
 

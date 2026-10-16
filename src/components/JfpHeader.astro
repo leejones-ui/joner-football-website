@@ -1,6 +1,7 @@
 ---
 // One header for the family pages: the logo and "Joner Football" once,
-// About JFP, and the account button ("Sign in" until a family signs in).
+// About JFP, Create account (Lee, 17 Oct 2026) and the account button
+// ("Sign in" until a family signs in, then My account and no Create account).
 interface Props { active?: 'booking' | 'account'; accountLabel?: string }
 const { active = 'booking', accountLabel = 'Sign in' } = Astro.props
 ---
@@ -9,9 +10,10 @@ const { active = 'booking', accountLabel = 'Sign in' } = Astro.props
     <a class="j-brand" href="/jfp-booking/"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span>Joner Football</span></a>
     <nav class="j-top-links" aria-label="Main">
       {active === 'account' && <a class="j-toplink" href="/jfp-booking/">Timetable</a>}
-      <a class="j-toplink" href="/training/jfp-program" target="_blank" rel="noopener">About JFP</a>
+      <a class="j-toplink j-top-about" href="/training/jfp-program" target="_blank" rel="noopener">About JFP</a>
+      {active === 'booking' && <a class="j-btn j-btn-sm j-top-create" id="acct-create" href="/jfp-account/" data-create-account="booking-header"><span class="j-top-long">Create your account</span><span class="j-top-short">Create account</span></a>}
       {active === 'booking'
-        ? <a class="j-btn j-btn-dark j-btn-sm" id="acct-link" href="/jfp-account/">{accountLabel}</a>
+        ? <a class="j-btn j-btn-line j-btn-sm" id="acct-link" href="/jfp-account/">{accountLabel}</a>
         : <button type="button" class="j-btn j-btn-line j-btn-sm" id="sign-out" hidden>Sign out</button>}
     </nav>
   </div>

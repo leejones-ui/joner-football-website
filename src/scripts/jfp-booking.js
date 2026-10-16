@@ -89,6 +89,8 @@ async function load(quiet) {
 function accountLink() {
   const a = $('acct-link')
   if (a) a.textContent = S.parent ? 'My account' : 'Sign in'
+  const c = $('acct-create')
+  if (c) c.hidden = Boolean(S.parent)
 }
 
 function renderMeta() {
