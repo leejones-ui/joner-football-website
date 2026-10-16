@@ -3,6 +3,7 @@
 import { formatAud, dateLabel, sessionDates, coachById, coachLabel, locationFor, to24h, limitDates } from './_jfp-store.js'
 import { logEmail } from './_jfp-email-log.js'
 import { contactWords } from './_jfp-contact.js'
+import { holdIfAgent } from './_jfp-agent.js'
 
 export function esc(v) {
   return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
@@ -48,6 +49,9 @@ async function send({ to, subject, html, replyTo, attachment, kind = '' }) {
   if (!apiKey) throw await failed(new Error('BREVO_API_KEY is not configured.'))
   const sender = process.env.BREVO_SENDER_EMAIL || 'leejones@jonerfootball.com'
   if (!to.length) throw await failed(new Error('No email address to send to.'))
+  // Hermes asked for this without Lee's yes on it: held for Lee, not sent.
+  const held = await holdIfAgent({ to, subject, html, replyTo, attachment, kind })
+  if (held) { await logEmail({ to, subject, kind, status: 'held', error: 'Held for Lee: Hermes asked, not yet confirmed' }); return { ok: true, held: true, heldId: held.id, messageId: '' } }
   let res
   try {
     res = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -659,3 +663,6 @@ ${list.length ? rows(list.filter(([, v]) => v).map(([k, v]) => [k, esc(v)])) : '
 ${cta ? button(cta.label, cta.url) : ''}`
   return send({ to: [{ email: to, name }], subject, html: shell({ preheader: preheader || subject, heading, body }), kind })
 }
+
+// A held Hermes email, sent as it was (after Lee's yes).
+export async function sendHeldEmail(h) { return send({ to: h.to, subject: h.subject, html: h.html, replyTo: h.replyTo, attachment: h.attachment, kind: h.kind }) }

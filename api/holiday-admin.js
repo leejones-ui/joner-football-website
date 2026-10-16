@@ -2,6 +2,7 @@
 // Nothing here is reachable without HOLIDAY_ADMIN_SECRET.
 import { rateLimit } from './_security.js'
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
+import { withAgent } from './_jfp-agent.js'
 import { getConfig as getJfpConfig, sydneyToday } from './_jfp-store.js'
 import { holidayRecord, planHolidays, planToCreate, PLAN_MAX } from './_holiday-plan.js'
 import {
@@ -71,7 +72,9 @@ function adminBooking(booking, slotsById, config) {
   }
 }
 
-export default async function handler(req, res) {
+export default function handler(req, res) { return withAgent(req, 'holiday', () => handleAdmin(req, res), res) }
+
+async function handleAdmin(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   if (req.method !== 'POST') return fail(res, 405, 'Method not allowed')
 

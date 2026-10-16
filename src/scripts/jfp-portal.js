@@ -27,6 +27,7 @@ import { childList, submitFamily, familyModal, familyGroups } from './jfp-portal
 import { findExisting, removedView, wireRemoved, removedCount } from './jfp-portal-removed.js'
 // Card / direct debit on file and auto-charge (claude/card-on-file).
 import { savedPayTag, savedPayDetail, mountAutoChargeEdit, mountSavedPaySettings } from './jfp-portal-autocharge.js'
+import { mountHermesSettings } from './jfp-portal-hermes.js'
 
 // jf: the Money programme switch, the Joners Juniors filters and the holiday picked.
 const P = { jf: { programme: 'jfp', term: '', status: '', q: '', period: '' }, user: null, tab: '', board: null, loc: '', day: '', coachFilter: '', ttView: 'staff', sel: '', groups: null, coachId: '', coachDate: {}, reqFilter: 'pending', linkFilter: 'open', linkProg: 'all', pricing: null }
@@ -60,7 +61,7 @@ const NAV = {
   coach: [['Coaching', [['program', 'Program'], ['coach', 'My sessions'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['profile', 'My profile']]]],
   admin: [
     ['Overview', [['overview', 'Dashboard']]],
-    ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['requests', 'Requests'], ['trials', 'Trial feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
+    ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['requests', 'Requests'], ['accounts', 'New accounts'], ['trials', 'Trial feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
     // Joners Juniors (Lee, 13 Oct 2026): its own section, the same pages as JFP.
     JJ_NAV,
     // Bank payments (Lee, 16 Oct 2026): Money with the bank list open, its count on the badge.
@@ -94,6 +95,7 @@ const ICON = {
   removed: '<path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"/>',
   audit: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8.5"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>',
+  accounts: '<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20c.8-3.6 3.4-5.6 6.5-5.6 1.4 0 2.6.4 3.6 1.1M18 14v6M15 17h6"/>',
   invites: '<path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/>',
 }
 // Joners Juniors pages borrow their JFP twin's icon.
@@ -136,7 +138,7 @@ function renderNav() {
   $('nav').innerHTML = sections.map(([title, list]) => {
     const here = list.some(([k]) => k === P.tab)
     const shut = sections.length > 1 && !here && open[title] !== true
-    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span>${list.some(([k]) => k === 'bank') ? bankBadge() : ''}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'trials' && P.trialNew ? `<span class="count" title="New trial feedback">${P.trialNew}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}${k === 'bank' ? bankBadge() : ''}</button>`).join('')}</div></div>`
+    return `<div class="jp-navgrp${shut ? ' shut' : ''}"><button type="button" class="jp-nav-sec" data-navsec="${esc(title)}" aria-expanded="${shut ? 'false' : 'true'}"><span>${esc(title)}</span>${list.some(([k]) => k === 'bank') ? bankBadge() : ''}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button><div class="jp-navlist">${list.map(([k, label]) => `<button type="button" data-tab="${k}" data-label="${esc(label)}" aria-current="${P.tab === k ? 'page' : 'false'}">${icon(k)}<span class="jp-lbl">${esc(label)}</span>${k === 'requests' && P.pendingCount ? `<span class="count">${P.pendingCount}</span>` : ''}${k === 'accounts' && P.acctNew?.count ? `<span class="count" title="New accounts since you last looked">${P.acctNew.count}</span>` : ''}${k === 'trials' && P.trialNew ? `<span class="count" title="New trial feedback">${P.trialNew}</span>` : ''}${k === 'cancellations' && P.cxNew?.count ? `<span class="count" title="New since you last looked">${P.cxNew.count}</span>` : ''}${k === 'bank' ? bankBadge() : ''}</button>`).join('')}</div></div>`
   }).join('')
 }
 
@@ -208,10 +210,10 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
-  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts() } else cancelBanner()
+  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts() } else cancelBanner()
   if (!quiet) view().focus({ preventScroll: true })
 }
 // Bank payments (the sidebar and the Dashboard's link): Money for this
@@ -226,7 +228,7 @@ async function reviewBank({ quiet = false } = {}) {
 const bankUiBase = () => ({ post, toast })
 
 // New cancellations show up within two minutes, whatever page is open.
-setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts() } }, 120000)
+setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts() } }, 120000)
 // New trial feedback from a coach: a red count on Trial feedback within two minutes (Lee, 15 Oct 2026).
 async function checkTrialAlerts() {
   if (P.user?.role !== 'admin') return
@@ -235,6 +237,46 @@ async function checkTrialAlerts() {
   const before = P.trialNew || 0
   P.trialNew = r.data.newCount
   if (before !== P.trialNew) renderNav()
+}
+
+// New accounts (Lee, 16 Oct 2026): a red count on New accounts within two
+// minutes of someone new making an account from the booking page.
+async function checkAccountAlerts() {
+  if (P.user?.role !== 'admin') return
+  const r = await post('accountAlerts')
+  if (!r.ok) return
+  const before = P.acctNew?.count || 0
+  P.acctNew = r.data
+  if (before !== P.acctNew.count) { renderNav(); if (P.tab === 'overview' && before < P.acctNew.count) toast(P.acctNew.count === 1 ? 'Someone new made an account' : `${P.acctNew.count} new accounts`) }
+}
+
+// New accounts: who signed up, the players they added, and whether they have
+// booked. Opening it clears the count. Add to a group is the normal add,
+// filled in from their account.
+async function renderNewAccounts(keep = false) {
+  const show = P.naShow || 'new'
+  const d = keep && P.naData?.show === show ? P.naData : (P.naData = await need(await post('newAccounts', { show })))
+  if (P.acctNew?.count) { P.acctNew = { count: 0, latest: [] }; renderNav() }
+  const ago = (iso) => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${Math.max(1, m)} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) }
+  const tag = (a) => (a.booked ? '<span class="ps-badge green"><i></i>Booked</span>' : a.players.length ? '<span class="ps-badge orange"><i></i>No session yet</span>' : '<span class="ps-badge grey"><i></i>No player added yet</span>')
+  const T = d.totals
+  view().innerHTML = `${psHead({ title: 'New accounts', count: d.accounts.length }).replace('</h1>', '</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Everyone who made an account (mostly from Create an account on the booking page). New to us means nothing was on file for that email. The red count shows new ones since you last opened this page.</div></details>')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px">
+      <span class="ps-tag">${T.thisWeek} new this week</span><span class="ps-tag">${T.newToUs} new to us in all</span><span class="ps-tag">${T.notBooked} not booked</span>
+    </div>
+    <div class="j-chips" style="margin:0 0 12px">${[['new', 'New to us'], ['all', 'All accounts']].map(([k, l]) => `<button type="button" class="j-chip" data-na-show="${k}" aria-pressed="${show === k}">${l}</button>`).join('')}</div>
+    <div class="ps-table-wrap"><table class="ps-table"><thead><tr><th>Account</th><th>Players</th><th data-col="pay">Signed up</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody>
+    ${d.accounts.map((a, i) => `<tr><td data-col="who"><b>${esc(a.parent || a.email)}</b>${a.isNew ? ' <span class="ps-badge red"><i></i>New</span>' : ''}${a.kind === 'family' ? ' <span class="ps-tag">Known family</span>' : ''}<span class="ps-sub">${esc(a.email)}${a.mobile ? ` · ${esc(a.mobile)}` : ''}</span></td>
+      <td data-col="group">${a.players.map((p) => `<div>${esc(p.name)}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${p.session ? ` <span class="muted small">· ${esc(p.session)}</span>` : ''}${p.club || p.level ? `<span class="ps-sub">${esc([p.club, p.level].filter(Boolean).join(' · '))}</span>` : ''}</div>`).join('') || '<span class="muted">None added yet</span>'}<div style="margin-top:4px">${tag(a)}</div></td>
+      <td data-col="pay" class="small" style="white-space:nowrap">${esc(ago(a.createdAt))}${a.lastSignIn ? `<span class="ps-sub">Last in ${esc(ago(a.lastSignIn))}</span>` : ''}</td>
+      <td class="ps-end ps-keep">${a.players.filter((p) => !p.session).map((p, j) => `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-na-add="${i}:${j}" style="margin:2px 0">Add ${esc(p.name.split(' ')[0])} to a group</button>`).join('<br>')}</td></tr>`).join('') || `<tr><td colspan="4"><div class="ps-empty">${show === 'new' ? 'No new accounts yet. They show here as soon as someone signs up.' : 'No accounts yet.'}</div></td></tr>`}
+    </tbody></table></div>`
+  view().querySelectorAll('[data-na-show]').forEach((b) => b.addEventListener('click', () => { P.naShow = b.dataset.naShow; renderNewAccounts() }))
+  view().querySelectorAll('[data-na-add]').forEach((b) => b.addEventListener('click', () => {
+    const [i, j] = b.dataset.naAdd.split(':').map(Number)
+    const a = d.accounts[i], p = a.players.filter((x) => !x.session)[j]
+    acctAddToGroup({ key: p.key, name: p.name, dob: p.dob, self: p.self, parentName: a.parent, mobile: a.mobile, email: a.email, club: p.club, level: p.level })
+  }))
 }
 
 // Auto sync (Lee, 12 Oct 2026): the page on screen re-reads Airtable and
@@ -1728,7 +1770,7 @@ async function renderOverview(redraw = false) {
   if (!redraw || !P.money) {
     view().innerHTML = '<p class="muted">Loading the dashboard</p>'
     // First paint from the last reading, then the latest a moment later.
-    const [mr, rq] = await Promise.all([post('money', { quick: true }), post('requests'), checkTrialAlerts()])
+    const [mr, rq] = await Promise.all([post('money', { quick: true }), post('requests'), checkTrialAlerts(), checkAccountAlerts()])
     const m = await need(mr)
     laterMoney('overview', (fresh) => { P.money = fresh; renderOverview(true) })
     P.money = m.money
@@ -1763,11 +1805,12 @@ async function renderOverview(redraw = false) {
         ${chartTable(['Location', 'Players', 'Paid', 'Owing', 'Paid in (after refunds)', 'Kept after Stripe fees'], m.locations.map((l) => [l.name, l.players, l.paid, money(l.owingCents), money(l.receivedCents), money(l.netCents ?? l.receivedCents)]))}</section>
       <section class="jd-card jd-span-5 jd-in" style="--i:5"><h2>Needs you</h2><ul class="jd-list">
         ${pending.slice(0, 4).map((r) => `<li><button type="button" data-tab="requests">${esc(r.players.map((p) => p.name).join(', '))}</button><span class="muted small">${esc(r.kind === 'application' ? 'Application' : r.kind === 'waitlist' ? 'Waitlist' : 'Enquiry')}</span></li>`).join('')}
+        ${P.acctNew?.count ? `<li><button type="button" data-tab="accounts">${P.acctNew.count === 1 ? '1 new account' : `${P.acctNew.count} new accounts`} since you last looked</button><span class="muted small">New accounts</span></li>` : ''}
         ${P.trialNew ? `<li><button type="button" data-tab="trials">${P.trialNew} new trial feedback from coaches</button><span class="muted small">Trial feedback</span></li>` : ''}
         ${m.status.stripe ? `<li><button type="button" data-money-filter="stripe">${m.status.stripe} Stripe payment${m.status.stripe === 1 ? '' : 's'} to record in Airtable</button><span class="muted small">Money</span></li>` : ''}
         ${m.status.unpriced ? `<li><button type="button" data-money-filter="unpriced">${m.status.unpriced} players with no price set</button><span class="muted small">Money</span></li>` : ''}
         ${m.unmatched.length ? `<li><button type="button" data-money-filter="">${m.unmatched.length} Stripe payment${m.unmatched.length === 1 ? '' : 's'} not matched to a player</button><span class="muted small">Money</span></li>` : ''}
-        ${!P.trialNew && !pending.length && !m.status.stripe && !m.status.unpriced && !m.unmatched.length ? '<li><span class="muted">Nothing waiting. Nice.</span></li>' : ''}
+        ${!P.trialNew && !P.acctNew?.count && !pending.length && !m.status.stripe && !m.status.unpriced && !m.unmatched.length ? '<li><span class="muted">Nothing waiting. Nice.</span></li>' : ''}
       </ul></section>
       ${juniorsCardShell()}
     </div>`
@@ -3837,7 +3880,7 @@ async function renderRemoved(keep = false) {
 }
 
 // Audit actions in plain words for the filter (anything else shows as it is).
-const AUDIT_WORDS = { player: 'Players', payment: 'Payments', payreq: 'Payment links', group: 'Groups', message: 'Messages', settings: 'Settings', cancel: 'Cancellations', holiday: 'Holiday training', request: 'Requests', coach: 'Coaches' }
+const AUDIT_WORDS = { player: 'Players', payment: 'Payments', payreq: 'Payment links', group: 'Groups', message: 'Messages', settings: 'Settings', cancel: 'Cancellations', holiday: 'Holiday training', request: 'Requests', coach: 'Coaches', agent: 'Hermes' }
 async function renderAudit(keep = false) {
   const d = keep && P.auditData ? P.auditData : (P.auditData = await need(await post('audit')))
   P.auF = { q: '', by: '', kind: '', ...(P.auF || {}) }
@@ -3860,7 +3903,7 @@ async function renderAudit(keep = false) {
       ${psToolsMore('au', { hasMore: false, active })}
     </div>
     <div class="ps-table-wrap"><table class="ps-table au-ps ps-flat"><thead><tr><th>What</th><th>Who</th><th>When</th><th data-col="football">Record</th></tr></thead><tbody>
-      ${rows.map((e) => `<tr style="cursor:default"><td data-col="who"><b>${esc(e.action)}</b>${summary(e) ? `<span class="ps-sub">${summary(e)}</span>` : ''}</td><td data-col="group">${esc(e.by)}</td><td data-col="pay" class="small" style="white-space:nowrap">${esc(new Date(e.at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</td><td data-col="football" class="small">${esc(e.target)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="ps-empty">${d.entries.length ? 'No changes match. <button type="button" class="ps-link" data-au-clear>Clear filters</button>' : 'No changes yet.'}</div></td></tr>`}
+      ${rows.map((e) => `<tr style="cursor:default"><td data-col="who"><b>${esc(e.action)}</b>${summary(e) ? `<span class="ps-sub">${summary(e)}</span>` : ''}</td><td data-col="group">${esc(e.via || e.by)}</td><td data-col="pay" class="small" style="white-space:nowrap">${esc(new Date(e.at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }))}</td><td data-col="football" class="small">${esc(e.target)}</td></tr>`).join('') || `<tr><td colspan="4"><div class="ps-empty">${d.entries.length ? 'No changes match. <button type="button" class="ps-link" data-au-clear>Clear filters</button>' : 'No changes yet.'}</div></td></tr>`}
     </tbody></table></div>`
   const redraw = () => renderAudit(true)
   $('au-q').addEventListener('input', (e) => { F.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('au-q'); i.focus(); i.setSelectionRange(at, at) })
@@ -3874,7 +3917,7 @@ async function renderAudit(keep = false) {
 // (label left, control right). Switches save straight away; everything else
 // waits for the Save bar, which only shows when something has changed. The
 // keys, defaults and save actions are the same as before.
-const SETTINGS_SECTIONS = [['term', 'Term and dates'], ['booking', 'Booking and kit'], ['access', 'Sign in and alerts'], ['payments', 'Invoices and payments'], ['locations', 'Locations']]
+const SETTINGS_SECTIONS = [['term', 'Term and dates'], ['booking', 'Booking and kit'], ['access', 'Sign in and alerts'], ['payments', 'Invoices and payments'], ['locations', 'Locations'], ['hermes', 'Hermes access']]
 let settingsDirty = false
 window.addEventListener('beforeunload', (e) => { if (settingsDirty && $('ss-bar')) { e.preventDefault(); e.returnValue = '' } })
 document.addEventListener('click', (e) => {
@@ -3905,6 +3948,7 @@ async function renderSettings() {
       + group('Alerts', row('Booking alert emails', `<textarea class="j-textarea" id="s-staff" rows="3" data-ss>${esc(c.staffEmails.join('\n'))}</textarea>`, { id: 's-staff', hint: 'Lee always gets them. One per line.' })),
     payments: group('Invoices', sw('s-inv-pdf', c.invoice?.attachPdf !== false, 'PDF on fee emails', 'Payment links, family and session invoices') + sw('s-inv-bank', c.invoice?.bankEnabled === true, 'Offer bank transfer', 'Needs the account name, BSB and number below') + row('Account name', inp('s-inv-name', c.invoice?.accountName || '', 'maxlength="80"'), { id: 's-inv-name' }) + row('BSB', inp('s-inv-bsb', c.invoice?.bsb || '', 'inputmode="numeric" maxlength="7"'), { id: 's-inv-bsb', cls: 'is-short' }) + row('Account number', inp('s-inv-acc', c.invoice?.accountNumber || '', 'inputmode="numeric" maxlength="12"'), { id: 's-inv-acc', cls: 'is-short' }) + row('Reference', inp('s-inv-ref', c.invoice?.reference || 'INV-<n> <player>', 'maxlength="40"'), { id: 's-inv-ref', hint: 'Keep &lt;n&gt;, the invoice number' }) + row('ABN', inp('s-inv-abn', c.invoice?.abn || '', 'inputmode="numeric" maxlength="14"'), { id: 's-inv-abn', cls: 'is-short', hint: 'Optional. Shown on invoices when saved.' }))
       + '<section class="ss-group ss-savedpay" id="s-savedpay"></section>',
+    hermes: '<section class="ss-group" id="s-hermes"></section>',
     locations: c.locations.map((l) => `<section class="ss-group" data-loc="${esc(l.id)}"><h2>${esc(l.name)}</h2><div class="ss-list">${row('Line under the photo', `<input class="j-input" id="s-loc-${esc(l.id)}-blurb" data-lf="blurb" data-ss value="${esc(l.blurb)}">`, { id: `s-loc-${esc(l.id)}-blurb` })}${row('Photo path', `<input class="j-input" id="s-loc-${esc(l.id)}-photo" data-lf="photo" data-ss value="${esc(l.photo)}">`, { id: `s-loc-${esc(l.id)}-photo` })}${row('Address', `<input class="j-input" id="s-loc-${esc(l.id)}-address" data-lf="address" data-ss value="${esc(l.address)}">`, { id: `s-loc-${esc(l.id)}-address` })}</div></section>`).join(''),
   }
   view().innerHTML = `<div class="jp-head"><div><h1>Settings</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Switches save straight away. Other changes show a Save bar at the bottom. A waiver only counts when it carries the family's own email or mobile. Bank details show on invoices only when bank transfer is on and all three bank fields are saved.</div></details></div></div>
@@ -3930,6 +3974,7 @@ async function renderSettings() {
   drawSkips()
   // Saved cards, bank accounts and auto-charge switches (claude/card-on-file): saved as they change.
   mountSavedPaySettings($('s-savedpay'), { post, toast })
+  mountHermesSettings($('s-hermes'), { post, toast, modal, closeModal })
   $('s-skip-add').addEventListener('click', () => { const d = $('s-skip-date').value; if (!d) return toast('Choose a date.'); skips = [...skips.filter((x) => x.date !== d), { date: d, reason: $('s-skip-why').value.trim() || 'No session' }].sort((a, b) => a.date.localeCompare(b.date)); $('s-skip-date').value = ''; $('s-skip-why').value = ''; drawSkips(); markDirty() })
   $('s-hols').addEventListener('click', (e) => { const b = e.target.closest('[data-hol]'); if (!b) return; skips = [...skips.filter((x) => x.date !== b.dataset.hol), { date: b.dataset.hol, reason: b.dataset.why }].sort((a, c2) => a.date.localeCompare(c2.date)); drawSkips(); markDirty(); toast(`${b.dataset.why} added`) })
   // Switches save on their own, sending only their own key (the server keeps the rest).

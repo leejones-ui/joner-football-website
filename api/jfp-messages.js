@@ -15,6 +15,7 @@ import {
   textFor, doNotContact, getPrefs, setPref, relayStatus, routeStatus, saveRoute, sendEmailExact, keys, STATUS_LABELS, TEXT_HOURS, TEXT_EXPIRES_HOURS, textHoursOpen,
 } from './_jfp-messages.js'
 import { JJ_MESSAGE_ACTIONS, jjMessagesAction, isJJMsg } from './_jj-messages.js'
+import { withAgent, inAgent, agentConfirmed } from './_jfp-agent.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -462,7 +463,13 @@ async function quickText(res, principal, body) {
   return res.status(200).json({ success: true, message: view(m), routeVerified: Boolean(route.verified), hoursOpen: textHoursOpen(), to: maskPhone(ph.phone) })
 }
 
-export default async function handler(req, res) {
+export default function handler(req, res) { return withAgent(req, 'messages', () => handle(req, res), res) }
+
+// Hermes may draft, preview and read; sending needs Lee's yes on that exact
+// message (x-jfp-confirmed). Lee, 16 Oct 2026.
+const AGENT_SENDS = new Set(['quickText', 'approve', 'sendCampaign', 'selfTest', 'jjMsgSend'])
+
+async function handle(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   res.setHeader('X-Content-Type-Options', 'nosniff')
   if (process.env.JFP_PORTAL_ENABLED !== 'true') return fail(res, 503, 'The JFP portal is not open yet.')
@@ -476,6 +483,7 @@ export default async function handler(req, res) {
     if (!principal) return fail(res, 401, 'Please sign in.')
     if (principal.role !== 'admin') return fail(res, 403, 'Only Lee or Ligia send messages to families.')
     const action = clean(body.action, 30)
+    if (inAgent() && AGENT_SENDS.has(action) && !agentConfirmed()) return fail(res, 428, 'Hermes: show Lee the exact message, get his yes, then send it again with the confirm flag. Nothing was sent.')
     // Joners Juniors families (stage 3): prepare, preview, then Send.
     if (JJ_MESSAGE_ACTIONS.has(action)) return await jjMessagesAction(req, res, principal, config, body, action)
     if (action === 'overview') return res.status(200).json({ ...(await overview(req, config)), isOwner: isOwner(principal), me: principal.email })

@@ -19,6 +19,7 @@ import { cleanExtraPrices } from './_jfp-extra-prices.js'
 import { cleanCustomPrices } from './_jfp-prices.js'
 import { cleanDefaultQuote } from './_jfp-quote.js'
 import { normaliseJuniors } from './_jj-config.js'
+import { agentNow, AGENT_NAME } from './_jfp-agent-context.js'
 
 export { kvCommand, kvPipeline, kvGetJson, kvSetJson, clean, newId, formatAud, claimOnce }
 
@@ -719,7 +720,8 @@ export async function listPayreqs(limit = 1000) { return listIndex(keys.payreqs(
 
 // Every staff change, newest first. Kept to the last 5000.
 export async function audit(entry) {
-  const row = { at: new Date().toISOString(), ...entry }
+  // Done by Hermes for Lee: marked on every row (Lee, 16 Oct 2026).
+  const row = { at: new Date().toISOString(), ...entry, ...(agentNow()?.valid ? { via: AGENT_NAME } : {}) }
   await kvPipeline([['LPUSH', keys.audit(), JSON.stringify(row)], ['LTRIM', keys.audit(), '0', '4999']])
   return row
 }

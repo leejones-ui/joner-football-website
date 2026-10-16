@@ -60,6 +60,9 @@ import { listInvoices, openForBank, getInvoice } from './_jfp-invoices.js'
 import { feePdfAttachment, docForPayreq, docForInvoice, pdfDownload } from './_jfp-fee-pdf.js'
 import { invoiceRefOf } from './_jfp-bank-match.js'
 // Saved card or bank account, auto-charge after each session (claude/card-on-file).
+import { accountAlerts, newAccountsData } from './_jfp-new-accounts.js'
+import { withAgent, inAgent, agentState, setAgentEnabled, listHeld, takeHeld, heldView } from './_jfp-agent.js'
+import { sendHeldEmail } from './_jfp-email.js'
 import { SAVED_PAY_ACTIONS, savedPayAction, withSavedPay, autoChargeActiveFor } from './_jfp-saved-pay.js'
 import { PROGRAMMES, programmeLabel, PRICE_MIN, PRICE_MAX, PRICES_MAX, cleanPrice, allPrices, priceById, quickHolidayPeriods, quickLinkInput, quickStatus, QUICK_STATUS, quickOpen, quickToCheck, quickUrl, QUICK_CHECKED, QUICK_EMAILED } from './_jfp-quick.js'
 
@@ -2986,7 +2989,7 @@ function coachAlertSamples(config) {
 export default async function handler(req, res) {
   const holds = []
   try {
-    return await requestHolds.run(holds, () => handle(req, res))
+    return await requestHolds.run(holds, () => withAgent(req, 'portal', () => handle(req, res), res))
   } finally {
     for (const h of holds) await releasePlaces(h.gid, h.holdId).catch((e) => console.error('jfp staff hold release failed', e))
   }
@@ -3393,7 +3396,35 @@ async function handle(req, res) {
         try { return res.status(200).json({ success: true, stripe: await campsStripe({ year, fresh: body.fresh === true, quick: body.quick === true }) }) } catch (error) { return fail(res, 503, `Stripe could not be read just now (${error.message.slice(0, 80)}).`) }
       }
 
+      // New accounts from the booking page (Lee, 16 Oct 2026): the badge and the list.
+      case 'accountAlerts': return res.status(200).json({ success: true, ...(await accountAlerts(principal)) })
+      case 'newAccounts': {
+        const [profiles, roster] = await Promise.all([allProfiles().catch(() => []), loadRoster()])
+        return res.status(200).json({ success: true, ...(await newAccountsData(principal, config, { profiles, roster, show: body.show === 'all' ? 'all' : 'new' })) })
+      }
       case 'audit': return res.status(200).json({ success: true, entries: await listAudit(Number(body.limit) || 300) })
+
+      // Hermes access (Lee, 16 Oct 2026): the switch, emails held for Lee's
+      // yes, and what Hermes did. Only a signed-in person flips the switch.
+      case 'agentAccess': {
+        const st = (await agentState()) || {}
+        const recent = (await listAudit(600)).filter((e) => e.via).slice(0, 40)
+        return res.status(200).json({ success: true, agent: { set: Boolean(st.hash), enabled: Boolean(st.enabled), keySetAt: st.keySetAt || '', lastUsedAt: st.lastUsedAt || '', lastAction: st.lastAction || '', switchedAt: st.switchedAt || '', switchedBy: st.switchedBy || '' }, held: (await listHeld()).map(heldView), recent })
+      }
+      case 'agentSwitch': {
+        if (inAgent()) return fail(res, 403, 'Hermes cannot switch its own access. Lee does that in Settings.')
+        if (!(await agentState())?.hash) return fail(res, 400, 'Hermes has no key yet. Ask the JFP agent to set one up on the Mac mini.')
+        await setAgentEnabled(body.enabled === true, principal.email)
+        return res.status(200).json({ success: true, enabled: body.enabled === true })
+      }
+      case 'agentRelease': case 'agentDiscard': {
+        const h = await takeHeld(body.id)
+        if (!h) return fail(res, 404, 'That email was already sent or discarded.')
+        if (action === 'agentDiscard') { await audit({ by: principal.email, action: 'agent.held.discard', target: h.id, after: { to: (h.to || []).map((t) => t.email), subject: h.subject } }); return res.status(200).json({ success: true }) }
+        try { await sendHeldEmail(h) } catch (error) { await kvCommand(['HSET', 'jfp:agent:held', h.id, JSON.stringify(h)]); return fail(res, 502, `Not sent: ${String(error.message).slice(0, 120)}. It is still held.`) }
+        await audit({ by: principal.email, action: 'agent.held.send', target: h.id, after: { to: (h.to || []).map((t) => t.email), subject: h.subject } })
+        return res.status(200).json({ success: true })
+      }
 
       // Coach alerts: the switches, who can get them, and the exact words.
       case 'coachAlerts': return res.status(200).json({ success: true, ...(await alertsStatus(config)), samples: coachAlertSamples(config) })

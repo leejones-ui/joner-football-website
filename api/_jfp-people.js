@@ -12,6 +12,8 @@
 // the role is never stored in the session.
 import crypto from 'node:crypto'
 import { kvCommand, clean, validEmail, coachLabel } from './_jfp-store.js'
+import { isAgentRequest } from './_jfp-agent-context.js'
+import { agentPrincipal } from './_jfp-agent.js'
 
 export const PARENT_COOKIE = '__Host-jfp_parent'
 export const STAFF_COOKIE = '__Host-jfp_staff'
@@ -114,6 +116,8 @@ export async function closeSession(req, audience) {
 
 // Signed-in staff member with their current role, or null.
 export async function staffPrincipal(req, config) {
+  // Hermes with the Mac mini's key acts as Lee (api/_jfp-agent.js).
+  if (isAgentRequest(req)) return agentPrincipal(req)
   const s = await sessionFor(req, 'staff')
   if (!s) return null
   const r = roleFor(s.email, config)
@@ -128,7 +132,11 @@ function nameFor(r, config) {
 }
 
 // Requests that change anything must come from our own pages.
+// A Hermes call carries its own key header instead (a browser on another site
+// cannot send a custom header without a CORS preflight we never allow); the key
+// itself is checked in staffPrincipal.
 export function sameOrigin(req) {
+  if (isAgentRequest(req)) return true
   const expected = process.env.JFP_PORTAL_ORIGIN
   if (!expected) return false
   try { return new URL(req.headers?.origin).origin === new URL(expected).origin } catch { return false }
