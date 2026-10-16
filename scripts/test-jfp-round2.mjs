@@ -225,7 +225,7 @@ await test('phones: Home, Sessions, Fees, Family and More (Lee, 17 Oct 2026); th
   const groups = [...p.d.querySelectorAll('.j-sheet .ja-more-group')].map((g) => g.querySelector('.ja-nav-label').textContent)
   assert.deepEqual(groups, ['My family', 'Explore Joner'])
   const rows = [...p.d.querySelectorAll('.j-sheet .ja-mrow b')].map((t) => t.textContent)
-  for (const t of ['Player details', "Can't make it", 'Keep my spot', 'Videos', 'The JF App', 'Waivers', 'Book extra sessions', 'Game analysis', 'Contact us']) assert.ok(rows.includes(t), t)
+  for (const t of ['Player information', "Can't make it", 'Keep my spot', 'Videos', 'The JF App', 'Waivers', 'Book extra sessions', 'Game analysis', 'Contact us']) assert.ok(rows.includes(t), t)
   for (const t of ['Home', 'Sessions', 'Fees', 'Family']) assert.ok(!rows.includes(t), `${t} is on the bar, not in More`)
   await p.click('.j-sheet [data-go="videos"]')
   assert.equal(p.$('[data-pane="videos"]').hidden, false)

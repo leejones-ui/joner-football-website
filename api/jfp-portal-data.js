@@ -37,6 +37,7 @@ import { emailErrorText, emailsTo } from './_jfp-email-log.js'
 import { contactWords, withOwnContact, isAdult } from './_jfp-contact.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { EXTRA_ACTIONS, extraAction } from './_jfp-extra-actions.js'
+import { ANNOUNCE_ACTIONS, announceAction } from './_jfp-announce.js'
 import { noteNewPlayer, alertsStatus, newPlayerWords, registerWords } from './_jfp-coach-alerts.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
 import { juniorsMoneyData, juniorsRoster } from './_jfp-juniors-money.js'
@@ -3157,6 +3158,8 @@ async function handle(req, res) {
     // ---------- Lee and Ligia ----------
     // Joners Juniors: Dashboard, Players, Settings and their changes (_jj-portal.js).
     if (JJ_ACTIONS.has(action)) return await jjAction(req, res, principal, config, body, action)
+    // Announcements to families, one way (Lee, 17 Oct 2026; _jfp-announce.js).
+    if (ANNOUNCE_ACTIONS.has(action)) return await announceAction(req, res, principal, config, body, action, await listGroups())
     // Player charges, invoices and Match to player (_jfp-money-actions.js).
     if (MONEY_ACTIONS.has(action)) return await moneyAction(req, res, principal, config, body, action, { recordPaymentCore, bankLineFor, bankGuard, bankClaim, BANK })
     // Auto charges and saved payment methods (claude/card-on-file, _jfp-saved-pay.js).

@@ -42,6 +42,7 @@ import { docForPayreq, pdfDownload } from './_jfp-fee-pdf.js'
 import { coveredOf } from './_jfp-quote.js'
 import { accountOf, openPlayers, addMyPlayer } from './_jfp-account-open.js'
 import { prepaidOf } from './_jfp-store.js'
+import { announcementsFor } from './_jfp-announce.js'
 import { submitExtra, listExtras, familyExtraView, analysisPrice, extraSlots, DAYS as EXTRA_DAYS, TIMES as EXTRA_TIMES, TYPES as EXTRA_TYPES } from './_jfp-extras.js'
 // Saved card or bank account for session payments (claude/card-on-file).
 import { SAVED_PAY_FAMILY, savedPayFamily } from './_jfp-saved-pay.js'
@@ -226,9 +227,14 @@ async function overview(res, parent, body = {}) {
       return { rowId: r.id, player: r.player, group: g ? `${g.day} ${g.time}, ${locationFor(config, g.location).name}` : `${r.day} ${r.time}`, status: statuses[r.id]?.status || '', interested: Boolean(interest[r.id]) }
     })),
   }
+  // Announcements (Lee, 17 Oct 2026): notices for everyone, this family's
+  // locations or groups. Read only; a failed read shows none, never an error.
+  const myRows = fam.players.flatMap((p) => p.term4)
+  const announcements = await announcementsFor({ groupIds: myRows.map((r) => r.groupId), locationIds: myRows.map((r) => locationFor(config, r.location).id) })
   return res.status(200).json({
     success: true,
     email: parent.email,
+    announcements,
     parentName: fam.parentName || juniors?.parentName || '',
     // The player is their own contact (no parent): the page talks to them.
     self: !juniors?.children?.length && ((fam.players.length > 0 && fam.players.every((p) => p.term4.length > 0 && p.term4.every((r) => r.ownContact))) || (!fam.players.some((p) => p.term4.length) && open.length > 0 && open.every((o) => o.self))),
