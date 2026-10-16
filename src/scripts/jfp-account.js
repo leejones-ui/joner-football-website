@@ -185,26 +185,26 @@ function nav() {
       { key: 'family', label: solo() ? 'My profile' : 'Family', icon: 'user', dot: familyCount() > 0 },
     ] },
     { label: 'My family', items: [
-      { key: 'cancel', label: "Can't make it", sub: 'Tell the coach', icon: 'xcircle' },
-      { key: 'keep', label: 'Keep my spot', sub: D?.keep?.open ? `${D.keep.name} is open` : D?.keep?.name || 'Next term', icon: 'bookmark', dot: Boolean(D?.keep?.open && (D?.nextTerm?.players || []).some((x) => !x.status || x.status === 'invited')) },
-      { key: 'info', label: solo() ? 'My profile' : 'Player information', sub: 'Club, position, emergency contact', icon: 'user', dot: infoGaps().length > 0 },
-      { key: 'waivers', label: 'Waivers', icon: 'sign', dot: unsigned > 0, sub: unsigned ? `${unsigned} to sign` : 'All on file' },
-      { key: 'contact', label: 'Contact us', sub: 'Lee, Ligia and the coaches', icon: 'chat' },
+      { key: 'cancel', label: "Can't make it", icon: 'xcircle' },
+      { key: 'keep', label: 'Keep my spot', icon: 'bookmark', dot: Boolean(D?.keep?.open && (D?.nextTerm?.players || []).some((x) => !x.status || x.status === 'invited')) },
+      { key: 'info', label: solo() ? 'My profile' : 'Player information', icon: 'user', dot: infoGaps().length > 0 },
+      { key: 'waivers', label: 'Waivers', icon: 'sign', dot: unsigned > 0 },
+      { key: 'contact', label: 'Contact us', icon: 'chat' },
     ] },
     { label: 'Explore Joner', items: [
-      { key: 'term', label: `${termShort()} info`, sub: 'Dates, what to bring, rules', icon: 'info' },
-      { key: 'holidays', label: 'Holiday training', sub: 'Book first as a JFP player', icon: 'sun' },
-      { key: 'extra', label: 'Book extra sessions', sub: 'Add another weekly session', icon: 'calplus' },
-      { key: 'analysis', label: 'Game analysis', sub: 'A coach reviews a match', icon: 'video' },
-      { href: links.booking, label: 'Timetable', sub: 'Every JFP session', icon: 'grid' },
-      { key: 'videos', label: 'Videos', sub: 'Drills to do at home', icon: 'play' },
-      { key: 'app', label: 'The JF App', sub: 'Free for JFP players', icon: 'phone' },
+      { key: 'term', label: `${termShort()} info`, icon: 'info' },
+      { key: 'holidays', label: 'Holiday training', icon: 'sun' },
+      { key: 'extra', label: 'Book extra sessions', icon: 'calplus' },
+      { key: 'analysis', label: 'Game analysis', icon: 'video' },
+      { href: links.booking, label: 'Timetable', icon: 'grid' },
+      { key: 'videos', label: 'Videos', icon: 'play' },
+      { key: 'app', label: 'The JF App', icon: 'phone' },
       { href: D?.kitUrl || KIT_URL, label: 'JF training kit', icon: 'shirt', ext: true },
     ] },
   ]
 }
 function navItem(it) {
-  const inner = `${ic(it.icon)}<span>${esc(it.label)}${it.sub ? `<span class="sub">${esc(it.sub)}</span>` : ''}</span>${it.ext ? ic('ext', 'ext') : it.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}`
+  const inner = `${ic(it.icon)}<span>${esc(it.label)}</span>${it.ext ? ic('ext', 'ext') : it.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}`
   if (it.href) return `<a class="ja-nav-item" href="${esc(it.href)}"${it.ext ? ' target="_blank" rel="noopener noreferrer"' : ''}>${inner}</a>`
   return `<button type="button" class="ja-nav-item" data-go="${it.key}" aria-current="${current === it.key ? 'page' : 'false'}">${inner}</button>`
 }
@@ -256,11 +256,11 @@ function renderShell() {
   if (foot && !foot.querySelector('.ja-seg2')) foot.insertAdjacentHTML('beforeend', `<div style="margin-top:12px">${themeSwitch()}</div>`)
 }
 function moreRow(it) {
-  const inner = `<span class="ja-mr-ic">${ic(it.icon)}</span><span class="ja-mr-tx"><b>${esc(it.label)}</b>${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span>${it.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}${it.ext ? ic('ext', 'ja-mr-go') : ic('right', 'ja-mr-go')}`
+  const inner = `<span class="ja-mr-ic">${ic(it.icon)}</span><span class="ja-mr-tx"><b>${esc(it.label)}</b></span>${it.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}${it.ext ? ic('ext', 'ja-mr-go') : ic('right', 'ja-mr-go')}`
   if (it.href) return `<a class="ja-mrow" href="${esc(it.href)}"${it.ext ? ' target="_blank" rel="noopener noreferrer"' : ''}>${inner}</a>`
   return `<button type="button" class="ja-mrow" data-go="${it.key}" aria-current="${current === it.key ? 'page' : 'false'}">${inner}</button>`
 }
-const installCard = () => standalone() ? '' : `<button type="button" class="ja-install-cta" data-install><span class="j">J</span><span><b>Put My JFP on your home screen</b><small>Opens like an app. Three taps.</small></span>${ic('right', 'ja-mr-go')}</button>`
+const installCard = () => standalone() ? '' : `<button type="button" class="ja-install-cta" data-install><span class="j">J</span><span><b>Put My JFP on your home screen</b></span>${ic('right', 'ja-mr-go')}</button>`
 function moreSheet() {
   const sheet = openSheet({ title: 'More', subtitle: '' })
   sheet.sheet.classList.add('ja-more-sheet')
@@ -275,9 +275,9 @@ function accountSheet() {
   const sheet = openSheet({ title: who || 'Your account', subtitle: D?.email ? `Signed in as ${D.email}` : '' })
   sheet.body.innerHTML = `<div class="ja-more-group"><p class="ja-nav-label">Look</p>${themeSwitch()}</div>
     <div class="ja-more-group"><p class="ja-nav-label">Your account</p><div class="ja-mlist">
-      ${moreRow({ key: 'family', label: solo() ? 'My profile' : 'Your family', sub: solo() ? 'Your details and waiver' : 'Children, waivers and details', icon: 'user', dot: familyCount() > 0 })}
-      ${moreRow({ key: 'fees', label: 'Fees and receipts', sub: feesOwing() ? 'Something to pay' : 'What you have paid', icon: 'card', dot: feesOwing() > 0 })}
-      ${moreRow({ key: 'contact', label: 'Contact us', sub: 'Lee, Ligia and the coaches', icon: 'chat' })}
+      ${moreRow({ key: 'family', label: solo() ? 'My profile' : 'Your family', icon: 'user', dot: familyCount() > 0 })}
+      ${moreRow({ key: 'fees', label: 'Fees and receipts', icon: 'card', dot: feesOwing() > 0 })}
+      ${moreRow({ key: 'contact', label: 'Contact us', icon: 'chat' })}
     </div></div>${installCard()}`
   sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-line ja-btn-block" id="ja-signout2">Sign out</button>'
 }
