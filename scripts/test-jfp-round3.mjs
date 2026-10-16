@@ -100,7 +100,7 @@ await test('pay ahead: the best value is the biggest saving; no saving, no "best
 const root = fileURLToPath(new URL('../', import.meta.url))
 const bundled = (await build({ entryPoints: [path.join(root, 'src/scripts/jfp-account.js')], bundle: true, write: false, format: 'iife', target: 'es2022', logLevel: 'silent' })).outputFiles[0].text
 const astro = fs.readFileSync(path.join(root, 'src/pages/jfp-account.astro'), 'utf8')
-const markup = astro.slice(astro.indexOf('<div class="jfp ja" id="jfp-account">'), astro.lastIndexOf('</BaseLayout>'))
+const markup = astro.slice(astro.indexOf('<div class="jfp ja" id="jfp-account"'), astro.lastIndexOf('</BaseLayout>'))
 const FEES0 = { term: 'Term 4 2026', places: [], totals: [], paidCents: 0, paidLabel: 'A$0', records: [] }
 
 async function openAccount(overview, { onPost = () => null, fees = FEES0, store = {} } = {}) {
@@ -162,7 +162,10 @@ await test('Fees, a term fee owing: one card, a big A$850 and one "Pay A$850"; H
   assert.ok(card, 'the pay card on Fees')
   assert.match(card.textContent.replace(/\s+/g, ' '), /Term fee to pay.*Ari Family.*Wednesday 7:30am, North Turramurra.*A\$850 to pay.*Pay A\$850/)
   assert.equal(card.querySelectorAll('.ja-btn-red').length, 1, 'one primary button')
-  assert.ok(p.$('[data-pane="home"] [data-pay-card="owed:recTRM00000000001"]'), 'the same card on Home')
+  // Redesign (17 Oct 2026): Home's "to sort" line opens the same card in a sheet.
+  await p.click('[data-pane="home"] [data-todo-open]')
+  assert.ok(p.$('.j-sheet [data-pay-card="owed:recTRM00000000001"]'), 'the same card from Home')
+  p.$('.j-sheet .j-close').click(); await p.settle()
   await p.click(card.querySelector('[data-owed]'))
   assert.deepEqual(p.posts.filter((b) => b.action === 'payOwed').map((b) => [b.rowId, b.option ?? null, b.sessions ?? null]), [['recTRM00000000001', null, null]])
   assert.deepEqual(p.errors, [])
@@ -205,7 +208,8 @@ await test('Pay ahead and save: a card each (next session, 6 in a row, rest of t
   await p.click(cards[1].querySelector('[data-owed]'))
   assert.equal(p.posts.find((b) => b.action === 'payOwed').option, 'commit:6')
   // Home: the same cards, the next session and the best value, then all the ways.
-  const home = p.$('[data-pane="home"] [data-todo-owed="recPRO00000000001"]')
+  await p.click('[data-pane="home"] [data-todo-open]')
+  const home = p.$('.j-sheet [data-todo-owed="recPRO00000000001"]')
   assert.deepEqual([...home.querySelectorAll('.ja-opt-card')].map((c) => c.dataset.opt), ['one', 'commit:8'])
   await p.click(home.querySelector('[data-go-pay]'))
   assert.equal(p.$('[data-pane="fees"]').hidden, false)
@@ -238,7 +242,9 @@ await test('next term deposit: nothing while it is off; when on, "Keep your spot
   await p.click('#ja-tabs [data-go="fees"]')
   const card = p.$('[data-pane="fees"] [data-deposit="recTRM00000000001"]')
   assert.match(card.textContent.replace(/\s+/g, ' '), /Keep your spot for Term 1 2027 Ari's Wednesday 7:30am place is held for current players until Fri 4 Dec\. Pay a A\$100 deposit to lock it in\..*A\$100 deposit.*Pay A\$100 deposit/)
-  assert.ok(p.$('[data-pane="home"] [data-deposit="recTRM00000000001"]'), 'on Home too')
+  await p.click('[data-pane="home"] [data-todo-open]')
+  assert.ok(p.$('.j-sheet [data-deposit="recTRM00000000001"]'), 'from Home too')
+  p.$('.j-sheet .j-close').click(); await p.settle()
   assert.ok(p.$('#ja-nav [data-go="keep"] .dot'), 'Keep my spot is marked')
   await p.click(card.querySelector('[data-next="hold"]'))
   assert.deepEqual(p.posts.filter((b) => ['nextTermChoice', 'pay'].includes(b.action)).map((b) => [b.action, b.choice || b.payreqId]), [['nextTermChoice', 'hold'], ['pay', 'PAY-NEXT-1']])
@@ -270,30 +276,30 @@ await test("Can't make it: Coach and Ligia, each with Call and Text (the message
 })
 
 await test('side bar: dropdown sections that open, close and are remembered; the open page keeps its section open', async () => {
+  // Redesign (Lee, 17 Oct 2026): My JFP (the four main pages), My family, Explore Joner.
   const p = await openAccount(BASE)
   const groups = p.$$('#ja-nav [data-navgrp]').map((g) => [g.dataset.navgrp, g.classList.contains('is-shut')])
-  assert.deepEqual(groups, [['My training', false], ['Program', true], ['Player', true], ['App', true]])
-  assert.deepEqual(p.$$('#ja-nav .ja-nav-one [data-go]').map((b) => b.dataset.go), ['home', 'fees', 'contact'])
-  await p.click('#ja-nav [data-navsec="Program"]')
-  assert.equal(p.$('#ja-nav [data-navgrp="Program"]').classList.contains('is-shut'), false)
-  assert.equal(JSON.parse(p.w.localStorage.getItem('ja-nav-open')).Program, true)
-  await p.click('#ja-nav [data-navsec="My training"]')
-  assert.equal(p.$('#ja-nav [data-navgrp="My training"]').getAttribute('class').includes('is-shut'), true)
+  assert.deepEqual(groups, [['My JFP', false], ['My family', false], ['Explore Joner', true]])
+  await p.click('#ja-nav [data-navsec="Explore Joner"]')
+  assert.equal(p.$('#ja-nav [data-navgrp="Explore Joner"]').classList.contains('is-shut'), false)
+  assert.equal(JSON.parse(p.w.localStorage.getItem('ja-nav-open'))['Explore Joner'], true)
+  await p.click('#ja-nav [data-navsec="My family"]')
+  assert.equal(p.$('#ja-nav [data-navgrp="My family"]').getAttribute('class').includes('is-shut'), true)
   // Going to a page in a shut section opens it.
   await p.click('#ja-tabs [data-more]')
   await p.click('.j-sheet [data-go="waivers"]')
-  assert.equal(p.$('#ja-nav [data-navgrp="Player"]').classList.contains('is-shut'), false)
+  assert.equal(p.$('#ja-nav [data-navgrp="My family"]').classList.contains('is-shut'), false)
   p.close()
-  const again = await openAccount(BASE, { store: { 'ja-nav-open': JSON.stringify({ Program: true, 'My training': false }) } })
-  assert.equal(again.$('#ja-nav [data-navgrp="Program"]').classList.contains('is-shut'), false, 'remembered open')
-  assert.equal(again.$('#ja-nav [data-navgrp="My training"]').classList.contains('is-shut'), true, 'remembered shut')
+  const again = await openAccount(BASE, { store: { 'ja-nav-open': JSON.stringify({ 'Explore Joner': true, 'My family': false }) } })
+  assert.equal(again.$('#ja-nav [data-navgrp="Explore Joner"]').classList.contains('is-shut'), false, 'remembered open')
+  assert.equal(again.$('#ja-nav [data-navgrp="My family"]').classList.contains('is-shut'), true, 'remembered shut')
   again.close()
 })
 
 await test('Waivers: each player, on file or Sign; sign them all at once', async () => {
   const p = await openAccount({ ...BASE, players: [BASE.players[0], { key: 'bea family', name: 'Bea Family', age: 9, needsDob: false, waiver: { onFile: false }, enrolments: [] }, { key: 'cal family', name: 'Cal Family', age: 7, needsDob: false, waiver: { onFile: false }, enrolments: [] }] })
   await p.click('#ja-nav [data-go="waivers"]')
-  assert.match(p.text('[data-pane="waivers"]'), /Ari Family\s*Signed 2026-10-01, signed by a parent or guardian\s*On file.*Bea Family\s*Not signed yet.*Sign/)
+  assert.match(p.text('[data-pane="waivers"]'), /Ari Family\s*Signed 1 Oct 2026, signed by a parent or guardian\s*On file.*Bea Family\s*Not signed yet.*Sign/)
   await p.click('[data-waiver-all]')
   assert.match(p.text('.j-sheet'), /Bea Family.*Cal Family/)
   p.close()

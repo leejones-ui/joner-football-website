@@ -19,7 +19,7 @@ let D = null
 let PROF = null
 // Fees (14 Oct 2026): read when the Fees tab first opens, again after each load.
 let FEES = null
-const PANELS = ['home', 'sessions', 'fees', 'info', 'waivers', 'cancel', 'keep', 'term', 'holidays', 'extra', 'analysis', 'videos', 'app', 'contact']
+const PANELS = ['home', 'sessions', 'fees', 'family', 'info', 'waivers', 'cancel', 'keep', 'term', 'holidays', 'extra', 'analysis', 'videos', 'app', 'contact']
 let current = 'home'
 const KIT_URL = 'https://www.besteamsport.com.au/collections/joner-football'
 const IMG = '/images/jfp-account'
@@ -61,10 +61,32 @@ const VENUE_WIDE = { ntra: [`${IMG}/photos/ntra-field-1600x900.webp`, 1600], bel
 const photoFor = (e) => VENUE_PHOTO[e.locationId] || e.photo || VENUE_PHOTO.ntra
 // Portrait on phones, landscape on big screens.
 const photoSet = (e) => { const w = VENUE_WIDE[e.locationId]; return w ? `srcset="${photoFor(e)} 800w, ${w[0]} ${w[1]}w" sizes="(min-width: 1100px) 55vw, 100vw"` : '' }
+// Plain words for a parent (redesign, 17 Oct 2026). The server labels stay
+// as they are (emails and Stripe use them); only what the page shows changes.
+const ARRANGED = 'Nothing to pay yet'
 function payDot(pm) {
-  const cls = { paid: 'ok', due: 'bad', trial: 'ok', sessions: 'ok', arranged: 'warn' }[pm.state] || ''
-  return `<span class="ja-dot ${cls}">${esc(pm.label)}</span>`
+  const cls = { paid: 'ok', due: 'bad', trial: 'ok', sessions: 'ok', arranged: '' }[pm.state] || ''
+  return `<span class="ja-dot ${cls}">${esc(pm.state === 'arranged' ? ARRANGED : pm.label)}</span>`
 }
+// "2026-07-19" -> "19 Jul 2026". Anything else is shown as it came.
+function humanDate(v) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || ''))
+  if (!m) return String(v || '')
+  return new Intl.DateTimeFormat('en-AU', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${m[1]}-${m[2]}-${m[3]}T00:00:00Z`))
+}
+
+// ---------- light or dark ----------
+// Light by default (Lee, 17 Oct 2026). The choice is kept on this device; the
+// page reads it before it paints (inline script in jfp-account.astro).
+const theme = () => $('jfp-account')?.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
+function setTheme(t) {
+  $('jfp-account')?.setAttribute('data-theme', t)
+  try { localStorage.setItem('ja-theme', t) } catch {}
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'dark' ? '#0A0A0B' : '#F5F5F3')
+  document.querySelectorAll('[data-theme-pick]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themePick === t)))
+}
+const themeSwitch = () => `<div class="ja-seg2" role="group" aria-label="Look">${[['light', 'Light'], ['dark', 'Dark']].map(([k, l]) => `<button type="button" data-theme-pick="${k}" aria-pressed="${theme() === k}">${l}</button>`).join('')}</div>`
+const standalone = () => window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true
 
 // ---------- sign in ----------
 
@@ -82,6 +104,7 @@ async function showSignIn() {
 }
 async function start() {
   $('app').hidden = false
+  setTheme(theme())
   if (q.get('paid') && q.get('session_id')) confirmPaid(q.get('session_id'))
   // Back from saving a card or bank account on Stripe (claude/card-on-file).
   if (q.get('saved')) await savedReturn(q.get('saved'), $('banner'))
@@ -93,8 +116,10 @@ async function start() {
   const payId = q.get('pay')
   if (payId) {
     show('home')
-    const el = document.querySelector(`[data-todo="${CSS.escape(payId)}"]`)
-    if (el) { el.scrollIntoView({ block: 'center' }); el.style.boxShadow = '0 0 0 2px #fff' }
+    // The payment cards live in the To sort sheet (redesign, 17 Oct 2026).
+    if (todoSummary().n) todoSheet()
+    const el = document.querySelector(`.j-sheet [data-todo="${CSS.escape(payId)}"]`) || document.querySelector(`[data-todo="${CSS.escape(payId)}"]`)
+    if (el) { el.scrollIntoView({ block: 'center' }); el.style.boxShadow = '0 0 0 2px var(--ja-red, #E30613)' }
     else if (D && !D.todo.length && !(D.juniors?.todo || []).length) toast('That payment is already done or no longer open.')
   }
   loadProfiles()
@@ -135,6 +160,7 @@ async function loadProfiles() {
   renderShell()
   renderHome()
   renderInfo()
+  if (pane('family')?.dataset.drawn) renderFamily()
 }
 
 // ---------- shell: side bar, tab bar, menu ----------
@@ -144,35 +170,35 @@ const solo = () => Boolean(D?.players?.length === 1 && D.players[0].self)
 function face(name, photo, extra = '') {
   return photo ? `<span class="ja-avatar ja-face" ${extra}><img src="${esc(photo)}" alt="" loading="lazy"></span>` : `<span class="ja-avatar" ${extra}>${esc(initials(name))}</span>`
 }
-// The side bar (round 3, Lee 14 Oct 2026): dropdown sections like the staff
-// portal's, each one opens and closes and is remembered on this device. The
-// section holding the open page always stays open. A section of one page is
-// just that page. Phones: the same sections in the More sheet.
+// The side bar (redesign, Lee 17 Oct 2026): the four main pages, then "My
+// family" (the family's own things) and "Explore Joner" (everything else JFP
+// offers). Sections open and close and are remembered on this device; the
+// section holding the open page always stays open. Phones: the same two
+// sections in the More sheet.
 function nav() {
   const unsigned = unsignedWaivers().length
   return [
-    { label: 'Overview', items: [{ key: 'home', label: 'Home', icon: 'home' }] },
-    { label: 'My training', items: [
-      { key: 'sessions', label: 'My sessions', icon: 'calendar' },
-      { key: 'cancel', label: "Can't make it", icon: 'xcircle' },
+    { label: 'My JFP', items: [
+      { key: 'home', label: 'Home', icon: 'home' },
+      { key: 'sessions', label: 'Sessions', icon: 'calendar' },
+      { key: 'fees', label: 'Fees', icon: 'card', dot: feesOwing() > 0 },
+      { key: 'family', label: solo() ? 'My profile' : 'Family', icon: 'user', dot: familyCount() > 0 },
+    ] },
+    { label: 'My family', items: [
+      { key: 'cancel', label: "Can't make it", sub: 'Tell the coach', icon: 'xcircle' },
       { key: 'keep', label: 'Keep my spot', sub: D?.keep?.open ? `${D.keep.name} is open` : D?.keep?.name || 'Next term', icon: 'bookmark', dot: Boolean(D?.keep?.open && (D?.nextTerm?.players || []).some((x) => !x.status || x.status === 'invited')) },
+      { key: 'info', label: solo() ? 'My details' : 'Player details', sub: 'Club, position, emergency contact', icon: 'user', dot: infoGaps().length > 0 },
+      { key: 'waivers', label: 'Waivers', icon: 'sign', dot: unsigned > 0, sub: unsigned ? `${unsigned} to sign` : 'All on file' },
+      { key: 'contact', label: 'Contact us', sub: 'Lee, Ligia and the coaches', icon: 'chat' },
     ] },
-    { label: 'Fees', items: [{ key: 'fees', label: 'Fees', icon: 'card', dot: feesOwing() > 0 }] },
-    { label: 'Program', items: [
-      { key: 'term', label: 'Term info', sub: termShort(), icon: 'info' },
-      { key: 'holidays', label: 'Holiday training', icon: 'sun' },
-      { key: 'extra', label: 'Book extra sessions', icon: 'calplus' },
-      { key: 'analysis', label: 'Game analysis', icon: 'video' },
-      { href: links.booking, label: 'Timetable', icon: 'grid' },
-    ] },
-    { label: 'Player', items: [
-      { key: 'info', label: solo() ? 'My profile' : 'Player information', icon: 'user', dot: infoGaps().length > 0 },
-      { key: 'waivers', label: 'Waivers', icon: 'sign', dot: unsigned > 0, sub: unsigned ? `${unsigned} to sign` : '' },
-    ] },
-    { label: 'Help', items: [{ key: 'contact', label: 'Contact us', icon: 'chat' }] },
-    { label: 'App', items: [
-      { key: 'videos', label: 'Videos', icon: 'play' },
-      { key: 'app', label: 'The JF App', icon: 'phone' },
+    { label: 'Explore Joner', items: [
+      { key: 'term', label: `${termShort()} info`, sub: 'Dates, what to bring, rules', icon: 'info' },
+      { key: 'holidays', label: 'Holiday training', sub: 'Book first as a JFP player', icon: 'sun' },
+      { key: 'extra', label: 'Book extra sessions', sub: 'Add another weekly session', icon: 'calplus' },
+      { key: 'analysis', label: 'Game analysis', sub: 'A coach reviews a match', icon: 'video' },
+      { href: links.booking, label: 'Timetable', sub: 'Every JFP session', icon: 'grid' },
+      { key: 'videos', label: 'Videos', sub: 'Drills to do at home', icon: 'play' },
+      { key: 'app', label: 'The JF App', sub: 'Free for JFP players', icon: 'phone' },
       { href: D?.kitUrl || KIT_URL, label: 'JF training kit', icon: 'shirt', ext: true },
     ] },
   ]
@@ -183,8 +209,8 @@ function navItem(it) {
   return `<button type="button" class="ja-nav-item" data-go="${it.key}" aria-current="${current === it.key ? 'page' : 'false'}">${inner}</button>`
 }
 const NAV_KEY = 'ja-nav-open'
-// Open on a first visit: My training. Everything else until opened.
-const NAV_DEFAULT = { 'My training': true }
+// Open on a first visit: My JFP and My family. Explore Joner until opened.
+const NAV_DEFAULT = { 'My JFP': true, 'My family': true }
 function navOpen() { try { return { ...NAV_DEFAULT, ...(JSON.parse(localStorage.getItem(NAV_KEY) || '{}') || {}) } } catch { return { ...NAV_DEFAULT } } }
 function navGroup(g, open) {
   if (g.items.length === 1) return `<div class="ja-nav-one">${navItem(g.items[0])}</div>`
@@ -205,39 +231,72 @@ function toggleNav(label) {
   saved[label] = !shut
   try { localStorage.setItem(NAV_KEY, JSON.stringify(saved)) } catch {}
 }
-// The bottom bar on phones (round 2, 14 Oct 2026): the four places families
-// go most, then More. More opens a sheet with everything else in the same
-// groups as the side bar on big screens, as tiles, with what needs doing first.
-const BAR = [['home', 'Home', 'home'], ['sessions', 'Sessions', 'calendar'], ['fees', 'Fees', 'card'], ['contact', 'Contact', 'chat']]
+// The bottom bar on phones (redesign, Lee 17 Oct 2026): Home, Sessions, Fees,
+// Family, More. A badge always counts what is on the page it opens: Fees
+// counts payments to make, Family counts waivers and details to sort.
+const BAR = [['home', 'Home', 'home'], ['sessions', 'Sessions', 'calendar'], ['fees', 'Fees', 'card'], ['family', 'Family', 'user']]
 const unsignedWaivers = () => (D ? [...D.players, ...(D.juniors?.children || [])].filter((p) => !p.waiver?.onFile) : [])
-function moreCount() { return infoGaps().length + unsignedWaivers().length }
+function familyCount() { return infoGaps().length + unsignedWaivers().length }
+const badge = (n) => n ? `<span class="badge" aria-label="${n} to sort">${n}</span>` : ''
 function renderShell() {
   const open = navOpen()
   $('ja-nav').innerHTML = nav().map((g) => navGroup(g, open)).join('')
-  const n = moreCount()
-  const inMore = !BAR.some(([k]) => k === current) && current !== 'home'
-  $('ja-tabs').innerHTML = BAR.map(([k, l, i]) => `<button type="button" class="ja-tab" data-go="${k}" aria-current="${current === k ? 'page' : 'false'}">${ic(i)}<span>${l}</span>${k === 'fees' && feesOwing() ? '<span class="badge">!</span>' : ''}</button>`).join('')
-    + `<button type="button" class="ja-tab" data-more aria-haspopup="dialog" aria-current="${inMore ? 'page' : 'false'}">${ic('menu')}<span>More</span>${n ? `<span class="badge">${n}</span>` : ''}</button>`
+  const inMore = !BAR.some(([k]) => k === current)
+  $('ja-tabs').innerHTML = BAR.map(([k, l, i]) => `<button type="button" class="ja-tab" data-go="${k}" aria-current="${current === k ? 'page' : 'false'}">${ic(i)}<span>${k === 'family' && solo() ? 'Me' : l}</span>${badge(k === 'fees' ? feesOwing() : k === 'family' ? familyCount() : 0)}</button>`).join('')
+    + `<button type="button" class="ja-tab" data-more aria-haspopup="dialog" aria-current="${inMore ? 'page' : 'false'}">${ic('menu')}<span>More</span></button>`
   $('ja-email').textContent = D?.email || ''
+  // The name button (top right) opens the account sheet: who is signed in,
+  // light or dark, details, contact and sign out.
   const me = solo() ? D.players[0] : null
-  if (me?.photo) $('ja-me').innerHTML = `<img src="${esc(me.photo)}" alt="">`
-  else $('ja-me').textContent = initials(me?.name || D?.parentName || D?.email || 'J')
+  const who = me?.name || D?.parentName || ''
+  const av = me?.photo ? `<span class="ja-me-av"><img src="${esc(me.photo)}" alt=""></span>` : `<span class="ja-me-av">${esc(initials(who || D?.email || 'J'))}</span>`
+  $('ja-me').innerHTML = `${av}<span class="ja-me-name">${esc(first(who) || 'Account')}</span>`
+  $('ja-me').setAttribute('aria-label', `Your account${D?.email ? `, signed in as ${D.email}` : ''}`)
+  const foot = document.querySelector('.ja-side-foot')
+  if (foot && !foot.querySelector('.ja-seg2')) foot.insertAdjacentHTML('beforeend', `<div style="margin-top:12px">${themeSwitch()}</div>`)
 }
-function moreTile(it) {
-  const inner = `${ic(it.icon)}<span class="t">${esc(it.label)}</span>${it.sub ? `<span class="s">${esc(it.sub)}</span>` : ''}${it.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}${it.ext ? ic('ext', 'ext') : ''}`
-  if (it.href) return `<a class="ja-tile" href="${esc(it.href)}"${it.ext ? ' target="_blank" rel="noopener noreferrer"' : ''}>${inner}</a>`
-  if (it.waivers) return `<button type="button" class="ja-tile is-due" data-waiver-player="${esc(it.waivers[0])}">${inner}</button>`
-  return `<button type="button" class="ja-tile" data-go="${it.key}" aria-current="${current === it.key ? 'page' : 'false'}">${inner}</button>`
+function moreRow(it) {
+  const inner = `<span class="ja-mr-ic">${ic(it.icon)}</span><span class="ja-mr-tx"><b>${esc(it.label)}</b>${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span>${it.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}${it.ext ? ic('ext', 'ja-mr-go') : ic('right', 'ja-mr-go')}`
+  if (it.href) return `<a class="ja-mrow" href="${esc(it.href)}"${it.ext ? ' target="_blank" rel="noopener noreferrer"' : ''}>${inner}</a>`
+  return `<button type="button" class="ja-mrow" data-go="${it.key}" aria-current="${current === it.key ? 'page' : 'false'}">${inner}</button>`
 }
+const installCard = () => standalone() ? '' : `<button type="button" class="ja-install-cta" data-install><span class="j">J</span><span><b>Put My JFP on your home screen</b><small>Opens like an app. Three taps.</small></span>${ic('right', 'ja-mr-go')}</button>`
 function moreSheet() {
-  const sheet = openSheet({ title: 'More', subtitle: D?.email ? `Signed in as ${D.email}` : '' })
-  const onBar = new Set(BAR.map(([k]) => k))
-  const groups = nav().map((g) => ({ ...g, items: g.items.filter((it) => !onBar.has(it.key)) })).filter((g) => g.items.length)
-  // Something to do first (a waiver to sign) sits at the top.
-  const w = unsignedWaivers()
-  const todo = w.length ? [{ label: 'To do', items: [{ waivers: w.map((p) => p.key), label: w.length === 1 ? (w[0].adult ? 'Sign your waiver' : `Sign ${first(w[0].name)}'s waiver`) : `Sign ${w.length} waivers`, sub: 'Needed before training', icon: 'check', dot: true }] }] : []
-  sheet.body.innerHTML = [...todo, ...groups].map((g) => `<div class="ja-more-group"><p class="ja-nav-label">${esc(g.label)}</p><div class="ja-tiles">${g.items.map(moreTile).join('')}</div></div>`).join('')
+  const sheet = openSheet({ title: 'More', subtitle: '' })
+  sheet.sheet.classList.add('ja-more-sheet')
+  const groups = nav().slice(1)
+  sheet.body.innerHTML = installCard() + groups.map((g) => `<div class="ja-more-group"><p class="ja-nav-label">${esc(g.label)}</p><div class="ja-mlist">${g.items.map(moreRow).join('')}</div></div>`).join('')
   sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-line ja-btn-block" id="ja-signout2">Sign out</button>'
+}
+// The name button: "how do I check my account?" (Lee, 17 Oct 2026).
+function accountSheet() {
+  const me = solo() ? D.players[0] : null
+  const who = me?.name || D?.parentName || ''
+  const sheet = openSheet({ title: who || 'Your account', subtitle: D?.email ? `Signed in as ${D.email}` : '' })
+  sheet.body.innerHTML = `<div class="ja-more-group"><p class="ja-nav-label">Look</p>${themeSwitch()}</div>
+    <div class="ja-more-group"><p class="ja-nav-label">Your account</p><div class="ja-mlist">
+      ${moreRow({ key: 'family', label: solo() ? 'My profile' : 'Your family', sub: solo() ? 'Your details and waiver' : 'Children, waivers and details', icon: 'user', dot: familyCount() > 0 })}
+      ${moreRow({ key: 'fees', label: 'Fees and receipts', sub: feesOwing() ? 'Something to pay' : 'What you have paid', icon: 'card', dot: feesOwing() > 0 })}
+      ${moreRow({ key: 'contact', label: 'Contact us', sub: 'Lee, Ligia and the coaches', icon: 'chat' })}
+    </div></div>${installCard()}`
+  sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-line ja-btn-block" id="ja-signout2">Sign out</button>'
+}
+// Add to Home Screen: the steps for iPhone (Safari) and Android (Chrome).
+function installSheet() {
+  const sheet = openSheet({ title: 'Put it on your home screen', subtitle: 'It opens like an app, with no app store.' })
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || !/android/i.test(navigator.userAgent)
+  const steps = {
+    ios: ['Open this page in Safari and tap Share at the bottom', 'Scroll down and tap Add to Home Screen', 'Tap Add. Look for the red J on your home screen'],
+    android: ['Open this page in Chrome and tap the three dots, top right', 'Tap Add to Home screen or Install app', 'Tap Install. Look for the red J on your home screen'],
+  }
+  const draw = (k) => {
+    sheet.body.innerHTML = `<div class="ja-seg2" role="group" aria-label="Your phone">${[['ios', 'iPhone'], ['android', 'Android']].map(([x, l]) => `<button type="button" data-os="${x}" aria-pressed="${x === k}">${l}</button>`).join('')}</div>
+      <ol class="ja-isteps">${steps[k].map((t, i) => `<li><span class="n">${i + 1}</span><span>${esc(t)}</span></li>`).join('')}</ol>`
+    sheet.body.querySelectorAll('[data-os]').forEach((b) => b.addEventListener('click', () => draw(b.dataset.os)))
+  }
+  draw(ios ? 'ios' : 'android')
+  sheet.foot.innerHTML = '<button type="button" class="ja-btn ja-btn-red ja-btn-block" id="ja-inst-ok">Got it</button>'
+  sheet.foot.querySelector('#ja-inst-ok').addEventListener('click', () => closeSheet())
 }
 function show(panel, { keepScroll = false } = {}) {
   if (!PANELS.includes(panel)) panel = 'home'
@@ -247,7 +306,7 @@ function show(panel, { keepScroll = false } = {}) {
   // The section holding the page opens (a page reached from a button elsewhere).
   const grp = document.querySelector(`#ja-nav [data-go="${panel}"]`)?.closest('[data-navgrp].is-shut')
   if (grp) { grp.classList.remove('is-shut'); grp.querySelector('[data-navsec]')?.setAttribute('aria-expanded', 'true') }
-  document.querySelector('#ja-tabs [data-more]')?.setAttribute('aria-current', panel !== 'home' && !BAR.some(([k]) => k === panel) ? 'page' : 'false')
+  document.querySelector('#ja-tabs [data-more]')?.setAttribute('aria-current', !BAR.some(([k]) => k === panel) ? 'page' : 'false')
   if (location.hash.slice(1) !== panel) history.replaceState(null, '', panel === 'home' ? location.pathname + location.search : `#${panel}`)
   const el = document.querySelector(`[data-pane="${panel}"]`)
   if (el && !el.dataset.drawn) drawPane(panel)
@@ -255,7 +314,7 @@ function show(panel, { keepScroll = false } = {}) {
   requestAnimationFrame(syncRails)
 }
 const pane = (k) => document.querySelector(`[data-pane="${k}"]`)
-const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact() }
+const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact() }
 function drawPane(panel) { DRAW[panel]?.(); const el = document.querySelector(`[data-pane="${panel}"]`); if (el) el.dataset.drawn = '1' }
 
 function render() {
@@ -268,23 +327,30 @@ function render() {
 
 // ---------- home ----------
 
+// The next session (redesign, 17 Oct 2026): a photo strip with the countdown,
+// then the player, the day and time large, the place, Directions and Can't
+// make it. Never a coach's name (Lee, 14 Oct 2026).
 function ticket({ p, e, next }) {
-  const dateBits = fmt(next.startMs, { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '')
-  return `<article class="ja-ticket">
-    <img src="${esc(photoFor(e))}" ${photoSet(e)} alt="" fetchpriority="high">
-    <div class="ja-ticket-top"><span class="ja-live"><i></i>Next session</span><span class="ja-when">${esc(countdown(next.startMs))}</span></div>
-    <div class="ja-ticket-body">
-      <p class="ja-ticket-player">${esc(p.name)}</p>
-      <h2 class="ja-ticket-date"><span>${esc(dateBits)}</span><span class="t">${esc(e.time)}</span></h2>
-      <div class="ja-meta"><span>${ic('pin')}${esc(e.location)}</span><span>${ic('clock')}${esc(e.durationMin || 60)} min</span>${e.status && e.status !== 'Confirmed' ? `<span class="ja-tag amber">${esc(e.status)}</span>` : ''}</div>
-      <div class="ja-actions">
-        ${e.maps ? `<a class="ja-btn ja-btn-light" href="${esc(e.maps)}" target="_blank" rel="noopener noreferrer">${ic('pin')}Directions</a>` : ''}
-        <button type="button" class="ja-btn ja-btn-glass" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}" data-cancel-date="${esc(next.iso)}">Can't make it</button>
-        <button type="button" class="ja-round" data-ics="${esc(e.rowId)}" aria-label="Add every session to your calendar" title="Add to calendar">${ic('calplus')}</button>
-        <button type="button" class="ja-round" data-go="contact" aria-label="Contact Lee and Ligia" title="Contact us">${ic('chat')}</button>
+  const day = fmt(next.startMs, { weekday: 'short' })
+  const when = countdown(next.startMs)
+  const label = `${p.name}, ${fmt(next.startMs, { weekday: 'long', day: 'numeric', month: 'long' })}, ${e.time}, ${e.location}`
+  return `<article class="ja-next" aria-label="Next session: ${esc(label)}">
+    <div class="ja-next-ph"><img src="${esc(VENUE_CARD[e.locationId] || photoFor(e))}" alt="" fetchpriority="high"><span class="ja-next-when">${esc(when)}</span>${e.status && e.status !== 'Confirmed' ? `<span class="ja-next-st">${esc(e.status)}</span>` : '<span class="ja-next-st ok"><i></i>Session on</span>'}</div>
+    <div class="ja-next-bd">
+      <p class="ja-next-who">${esc(p.name)}</p>
+      <h2 class="ja-next-t">${esc(day)} ${esc(e.time)}</h2>
+      <p class="ja-next-dt">${esc(fmt(next.startMs, { weekday: 'long', day: 'numeric', month: 'long' }))}</p>
+      <div class="ja-next-where"><span class="ja-mr-ic">${ic('pin')}</span><span><b>${esc(e.location)}</b><small>${esc(e.durationMin || 60)} min</small></span></div>
+      <div class="ja-next-act">
+        ${e.maps ? `<a class="ja-btn ja-btn-line" href="${esc(e.maps)}" target="_blank" rel="noopener noreferrer">${ic('pin')}Directions</a>` : ''}
+        <button type="button" class="ja-btn ja-btn-line" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}" data-cancel-date="${esc(next.iso)}">${ic('xcircle')}Can't make it</button>
       </div>
     </div>
   </article>`
+}
+// The other players' next sessions, one row each.
+function nextRow(x) {
+  return `<button type="button" class="ja-nrow" data-go="sessions" data-kid="${esc(x.p.key)}"><span class="ja-avatar">${esc(initials(x.p.name))}</span><span class="ja-mr-tx"><b>${esc(first(x.p.name))} · ${esc(fmt(x.next.startMs, { weekday: 'short' }))} ${esc(x.e.time)}</b><small>${esc(x.e.location)}</small></span><span class="ja-nrow-when">${esc(countdown(x.next.startMs))}</span>${ic('right', 'ja-mr-go')}</button>`
 }
 
 // What a family still has to do, in the order Lee wants on sign in (13 Oct
@@ -323,6 +389,30 @@ function todoCards() {
   })
   return stepList('To do first', waivers.length === 1 ? 'Sign the waiver' : 'Sign the waivers', waivers) + pays.join('') + ahead.join('') + jjTodoCards() + depositCards(D, { compact: true, self: Boolean(D.self || solo()) }) + stepList('Then', info.length === 1 ? 'Update player details' : `${info.length} player details to update`, info)
 }
+// One line on Home instead of a stack of cards (redesign, 17 Oct 2026):
+// "N things to sort", red when there is money to pay. Tapping it opens the
+// same cards in a sheet.
+function todoSummary() {
+  const pay = oweList(D).length + (D.juniors?.todo || []).length
+  const ahead = (D.owed || []).filter((o) => o.kind === 'prepay').length
+  const waivers = D.players.filter((p) => !p.waiver.onFile).length
+  const info = infoGaps().length
+  const deposit = depositCards(D, { compact: true, self: Boolean(D.self || solo()) }) ? 1 : 0
+  const bits = [pay && `${pay} to pay`, waivers && `${waivers} waiver${waivers > 1 ? 's' : ''}`, info && `${info} player detail${info > 1 ? 's' : ''}`, deposit && 'next term', ahead && !pay && 'pay ahead']
+  return { n: pay + waivers + info + deposit + (pay ? 0 : ahead), pay, line: bits.filter(Boolean).join(' · ') }
+}
+function todoStrip() {
+  const t = todoSummary()
+  if (!t.n) return ''
+  return `<button type="button" class="ja-strip${t.pay ? ' is-pay' : ''}" data-todo-open><span class="n">${t.n}</span><span class="ja-mr-tx"><b>${t.n === 1 ? '1 thing to sort' : `${t.n} things to sort`}</b><small>${esc(t.line)}</small></span>${ic('right', 'ja-mr-go')}</button>`
+}
+function todoSheet() {
+  const sheet = openSheet({ title: 'To sort', subtitle: 'Waivers first, then payments, then player details.' })
+  sheet.sheet.classList.add('ja-todo-sheet')
+  sheet.body.innerHTML = `<div class="ja-stack">${todoCards()}</div>`
+  return sheet
+}
+
 
 function renderHome() {
   const el = document.querySelector('[data-pane="home"]')
@@ -330,7 +420,8 @@ function renderHome() {
   const tw = termWeek()
   // A player who is their own contact is greeted by their own name.
   const name = D.self ? first(D.players[0]?.name) : D.parentName ? first(D.parentName) : ''
-  const head = `<header class="ja-head"><p class="ja-kicker"><i></i>${esc(D.term)}${tw && !D.players.length ? ` · ${esc(tw.label)}` : ''}</p><h1 class="ja-display">${name ? `Hi ${esc(name)}` : 'Welcome'}</h1>${tw && D.players.length ? `<div class="ja-progress"><div class="bar"><span style="width:${tw.pct}%"></span></div><small>${esc(tw.label)}</small></div>` : ''}</header>`
+  const today = fmt(Date.now(), { weekday: 'long', day: 'numeric', month: 'long' })
+  const head = `<header class="ja-head"><p class="ja-kicker"><i></i>${esc(today)}${tw && /^Week/.test(tw.label) ? ` · ${esc(tw.label)}` : ''}</p><h1 class="ja-display">${name ? `Hi ${esc(name)}` : 'Welcome'}</h1></header>`
   const promos = `<section class="ja-sec">${secHead('More from JFP')}<div class="ja-rail-wrap"><div class="ja-rail promos">
       <button type="button" class="ja-promo" data-go="keep"><img src="${IMG}/photos/lee-coaching-field-900x1100.webp" alt="" loading="lazy"><span class="go">${ic('arrow')}</span><p class="ja-kicker"><i></i>${esc(D.keep?.name || 'Next term')}</p><h3>Keep your spot</h3><p>Same day, same time, same group. Current ${D.self ? 'players' : 'families'} get first call.</p></button>
       <button type="button" class="ja-promo" data-go="holidays"><img src="${IMG}/photos/hq-indoor-800x1000.webp" alt="" loading="lazy"><span class="go">${ic('arrow')}</span><p class="ja-kicker"><i></i>School holidays</p><h3>Holiday training</h3><p>JFP players book holiday training and camps first.</p></button>
@@ -358,20 +449,21 @@ function renderHome() {
     return
   }
   const ups = upcoming().filter((x) => x.next)
-  const players = `<div class="ja-card"><div class="ja-card-head"><h3 class="ja-h3">Players</h3><button type="button" class="ja-link ja-small" data-go="info">${(solo() || D.self) ? 'My profile' : 'Player information'}</button></div><ul class="ja-list">
-    ${D.players.map((p) => `<li class="ja-row">${face(p.name, p.photo)}<div><b>${esc(p.name)}</b><small>${p.enrolments.length ? p.enrolments.map((e) => `${esc(e.day.slice(0, 3))} ${esc(e.time)}, ${esc(e.location)}`).join(' · ') : p.placeNoSession ? 'Place confirmed, day and time to come' : 'Not booked this term'}</small></div>
-      <div class="ja-flags">${p.enrolments.map((e) => payDot(e.payment)).join('')}${p.waiver.onFile ? '<span class="ja-dot ok">Waiver</span>' : `<button type="button" class="ja-dot bad" data-waiver-player="${esc(p.key)}">Sign waiver</button>`}</div></li>`).join('')}
-  </ul></div>`
   const notBooked = D.players.filter((p) => !p.enrolments.length)
-  // Something to do (waiver, pay, details): first on the page, above the
-  // next session, so a phone shows it straight after signing in.
-  const todo = todoCards()
+  // Today first (redesign, 17 Oct 2026): the next session, the other
+  // players' next sessions, one "to sort" line, then everything else.
+  const nextBlock = ups.length
+    ? `${ticket(ups[0])}${ups.length > 1 ? `<div class="ja-card ja-nlist">${ups.slice(1).map(nextRow).join('')}</div>` : ''}`
+    : `<div class="ja-card"><h3 class="ja-h3">No more sessions this term</h3><p class="ja-muted" style="margin-top:6px">See you next term. <button type="button" class="ja-link" data-go="keep">Keep your spot</button>.</p></div>`
+  // Players booked this term with nothing still to come, by name.
+  const finished = upcoming().filter((x) => !x.next)
+  const doneBlock = finished.length ? `<div class="ja-card ja-nlist">${finished.map((x) => `<button type="button" class="ja-nrow" data-go="sessions" data-kid="${esc(x.p.key)}"><span class="ja-avatar">${esc(initials(x.p.name))}</span><span class="ja-mr-tx"><b>${esc(x.p.name)}</b><small>${esc(x.e.day)}s ${esc(x.e.time)}, ${esc(x.e.location)} · No more sessions this term</small></span>${ic('right', 'ja-mr-go')}</button>`).join('')}</div>` : ''
+  const strip = todoStrip()
   el.innerHTML = `${head}
     <div class="ja-home">
-      <div class="ja-stack">${todo}${ups.length ? ticket(ups[0]) : `<div class="ja-card"><h3 class="ja-h3">No more sessions this term</h3><p class="ja-muted" style="margin-top:6px">See you next term. <button type="button" class="ja-link" data-go="keep">Keep your spot</button>.</p></div>`}
-        ${ups.slice(1).map((x) => `<div class="ja-card"><div class="ja-row" style="border:0;padding:0"><span class="ja-avatar">${esc(initials(x.p.name))}</span><div><b>${esc(x.p.name)}: ${esc(fmt(x.next.startMs, { weekday: 'short', day: 'numeric', month: 'short' }))}, ${esc(x.e.time)}</b><small>${esc(x.e.location)} · ${esc(countdown(x.next.startMs))}</small></div><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-cancel-open="${esc(x.e.rowId)}" data-cancel-player="${esc(x.p.key)}" data-cancel-date="${esc(x.next.iso)}">Can't make it</button></div></div>`).join('')}
-      </div>
-      <div class="ja-stack">${players}${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b style="color:#fff">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b style="color:#fff">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
+      <div class="ja-stack"><p class="ja-label">Next up</p>${nextBlock}${doneBlock}</div>
+      <div class="ja-stack">${strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}
+        ${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b class="ja-ink">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b class="ja-ink">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
     </div>
     ${promos}${watch}`
 }
@@ -393,8 +485,14 @@ function renderSessions() {
       : `${pageHead('My sessions', D.term, 'Nothing booked yet.')}<a class="ja-btn ja-btn-red" href="${links.booking}">See the timetable</a>`
     return
   }
-  el.innerHTML = `${pageHead('My sessions', D.term, 'Every date this term. The next one is in red. Can\'t make one? Tap it and tell your coach.')}
-    ${D.players.filter((p) => p.enrolments.length).map((p) => p.enrolments.map((e) => {
+  // Redesign (17 Oct 2026): a chip per player, past dates fold into one
+  // "N done" line, the next 3 dates show, then "Show all". The next date has
+  // the solid Can't make it; later dates a quieter one.
+  const kids = D.players.filter((p) => p.enrolments.length)
+  if (sessKid !== 'all' && !kids.some((p) => p.key === sessKid)) sessKid = 'all'
+  const chips = kids.length > 1 || D.juniors ? `<div class="ja-kchips" role="group" aria-label="Show sessions for">${[['all', 'All'], ...kids.map((p) => [p.key, first(p.name)])].map(([k, l]) => `<button type="button" class="ja-kchip" data-kid-pick="${esc(k)}" aria-pressed="${sessKid === k}">${k === 'all' ? '' : `<span class="ja-avatar">${esc(initials(kids.find((p) => p.key === k)?.name))}</span>`}${esc(l)}</button>`).join('')}</div>` : ''
+  el.innerHTML = `${pageHead(D.term, 'Sessions', '')}${chips}<div class="ja-sgrid">
+    ${kids.filter((p) => sessKid === 'all' || p.key === sessKid).map((p) => p.enrolments.map((e) => {
       const future = new Map((e.sessions || []).map((s) => [s.label, s]))
       const told = new Map((e.cancelled || []).map((c) => [c.label, c]))
       const nextLabel = (e.sessions || []).find((s) => !s.cancelled)?.label
@@ -409,24 +507,34 @@ function renderSessions() {
         if (openSet.has(iso)) return '<span class="ja-tag amber">Payment started</span>'
         return '<span class="ja-tag grey">Not paid yet</span>'
       }
-      return `<section class="ja-card" style="margin-bottom:14px" data-enrol="${esc(e.rowId)}">
+      const rows = e.dates.map((label, i) => ({ label, i, s: future.get(label), c: told.get(label) }))
+      const done = rows.filter((r) => !r.s)
+      const ahead = rows.filter((r) => r.s)
+      const all = expanded.has(e.rowId)
+      const shown = all ? rows : ahead.slice(0, 3)
+      const date = ({ label, i, s, c }) => {
+        const [dow, dd, mon] = label.split(' ')
+        const isNext = label === nextLabel
+        const pm = mark(e.isoDates?.[i] || s?.iso, Boolean(s) && !c)
+        const cls = !s ? 'is-past' : c ? 'is-off' : isNext ? 'is-next' : ''
+        const right = !s ? '<span class="ja-muted ja-small">Done</span>'
+          : c ? `<button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-cancel-undo="${esc(c.id)}">Undo</button>`
+          : `<button type="button" class="ja-btn ${isNext ? 'ja-btn-line' : 'ja-btn-ghost'} ja-btn-sm" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}" data-cancel-date="${esc(s.iso)}" aria-label="${esc(`${first(p.name)} can't make ${dow} ${dd} ${mon}`)}">Can't make it</button>`
+        const aria = `${p.name}, ${dow} ${dd} ${mon}, ${e.time}, ${e.location}${!s ? ', done' : c ? ', you told us they cannot make it' : isNext ? ', next session' : ''}`
+        return `<li class="ja-date ${cls}" aria-label="${esc(aria)}"><span class="d"><b>${esc(dd)}</b><i>${esc(mon)}</i></span><span class="w"><b>${esc(dow)} ${esc(e.time)}${isNext ? '<span class="ja-tag">Next</span>' : ''}${c ? '<span class="ja-tag amber">You told us</span>' : ''}${pm}</b>Week ${i + 1}${isNext && s ? ` · ${esc(countdown(s.startMs))}` : ''}${c ? `, ${esc(c.reason)}` : ''}</span>${right}</li>`
+      }
+      return `<section class="ja-card ja-scard" data-enrol="${esc(e.rowId)}">
         <div class="ja-enrol-head"><img src="${esc(photoFor(e))}" alt="" loading="lazy"><div><h2>${esc(p.name)}</h2><p>${esc(e.day)}s ${esc(e.time)} · ${esc(e.location)} · ${esc(e.durationMin || 60)} min</p><p style="margin-top:6px">${payDot(e.payment)}</p></div></div>
-        <div class="ja-actions">${canPay ? `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-go-pay="${esc(e.rowId)}">${ic('card')}Pay for sessions</button>` : ''}${e.maps ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(e.maps)}" target="_blank" rel="noopener noreferrer">${ic('pin')}Directions</a>` : ''}<button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-ics="${esc(e.rowId)}">${ic('calplus')}Add to calendar</button></div>
         ${e.sessionPay ? `<p class="ja-small ja-muted" style="margin-top:10px">Paid: paid ahead. Not paid yet: billed after the session, or pay ahead now.</p>` : ''}
-        <ol class="ja-dates">${e.dates.map((label, i) => {
-          const [dow, dd, mon] = label.split(' ')
-          const s = future.get(label)
-          const c = told.get(label)
-          const pm = mark(e.isoDates?.[i] || s?.iso, Boolean(s) && !c)
-          const cls = !s ? 'is-past' : c ? 'is-off' : label === nextLabel ? 'is-next' : ''
-          const right = !s ? '<span class="ja-muted ja-small">Done</span>'
-            : c ? `<button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-cancel-undo="${esc(c.id)}">Undo</button>`
-            : `<button type="button" class="ja-btn ${label === nextLabel ? 'ja-btn-light' : 'ja-btn-line'} ja-btn-sm" data-cancel-open="${esc(e.rowId)}" data-cancel-player="${esc(p.key)}" data-cancel-date="${esc(s.iso)}">Can't make it</button>`
-          return `<li class="ja-date ${cls}"><span class="d"><b>${esc(dd)}</b><i>${esc(mon)}</i></span><span class="w"><b>${esc(dow)} ${esc(e.time)}${label === nextLabel ? '<span class="ja-tag">Next</span>' : ''}${c ? '<span class="ja-tag amber">You told us</span>' : ''}${pm}</b>Week ${i + 1}${c ? `, ${esc(c.reason)}` : ''}</span>${right}</li>`
-        }).join('')}</ol>
+        ${done.length && !all ? `<p class="ja-done-line">${ic('check')}<span>${done.length} done this term</span></p>` : ''}
+        <ol class="ja-dates">${shown.map(date).join('')}</ol>
+        ${rows.length > shown.length || all ? `<p class="ja-more-dates"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-expand="${esc(e.rowId)}" aria-expanded="${all}">${all ? 'Show less' : `Show all ${rows.length} weeks`}</button></p>` : ''}
+        <div class="ja-actions">${canPay ? `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-go-pay="${esc(e.rowId)}">${ic('card')}Pay for sessions</button>` : ''}${e.maps ? `<a class="ja-btn ja-btn-line ja-btn-sm" href="${esc(e.maps)}" target="_blank" rel="noopener noreferrer">${ic('pin')}Directions</a>` : ''}<button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-ics="${esc(e.rowId)}">${ic('calplus')}Add to calendar</button></div>
       </section>`
-    }).join('')).join('')}${jjSessions()}`
+    }).join('')).join('')}</div>${sessKid === 'all' ? jjSessions() : ''}`
 }
+let sessKid = 'all'
+const expanded = new Set()
 
 // ---------- player information ----------
 
@@ -506,7 +614,7 @@ function renderWaivers() {
   const due = all.filter((p) => !p.waiver?.onFile)
   el.innerHTML = `${pageHead('Player', 'Waivers', 'Every JFP player needs a waiver on file before they train. It takes two minutes, and one covers JFP and Joners Juniors.')}
     ${due.length > 1 ? `<div class="ja-actions" style="margin:0 0 14px"><button type="button" class="ja-btn ja-btn-red" data-waiver-all>${ic('sign')}Sign all ${due.length} waivers</button></div>` : ''}
-    ${all.length ? `<div class="ja-card"><ul class="ja-list">${all.map((p) => `<li class="ja-row">${face(p.name, p.photo)}<div><b>${esc(p.name)}</b><small>${p.waiver?.onFile ? `Signed${p.waiver.signedDate ? ` ${esc(p.waiver.signedDate)}` : ''}${p.waiver.kind === 'adult' ? ', adult waiver (signed by the player)' : p.waiver.kind ? ', signed by a parent or guardian' : ''}${p.waiver.term ? ` · ${esc(p.waiver.term)}` : ''}` : 'Not signed yet. Needed before training.'}</small></div>${p.waiver?.onFile ? '<span class="ja-dot ok">On file</span>' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-waiver-player="${esc(p.key)}">Sign</button>`}</li>`).join('')}</ul></div>`
+    ${all.length ? `<div class="ja-card"><ul class="ja-list">${all.map((p) => `<li class="ja-row">${face(p.name, p.photo)}<div><b>${esc(p.name)}</b><small>${p.waiver?.onFile ? `Signed${p.waiver.signedDate ? ` ${esc(humanDate(p.waiver.signedDate))}` : ''}${p.waiver.kind === 'adult' ? ', adult waiver (signed by the player)' : p.waiver.kind ? ', signed by a parent or guardian' : ''}${p.waiver.term ? ` · ${esc(p.waiver.term)}` : ''}` : 'Not signed yet. Needed before training.'}</small></div>${p.waiver?.onFile ? '<span class="ja-dot ok">On file</span>' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-waiver-player="${esc(p.key)}">Sign</button>`}</li>`).join('')}</ul></div>`
       : `<div class="ja-card"><h3 class="ja-h3">No players yet</h3><p class="ja-muted" style="margin-top:6px">Add a player first, then sign their waiver here.</p><div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" data-add-player>Add a player</button></div></div>`}`
 }
 
@@ -705,16 +813,19 @@ function renderFees() {
   if (!D) return
   const owe = [...oweList(D), ...jjOweList(D)]
   const ahead = (D.owed || []).filter((x) => x.kind === 'prepay')
-  const head = pageHead('Fees', 'Fees and payments', 'Pay here, pay ahead, and see everything you have paid.')
+  const head = pageHead(D.term, 'Fees', '')
   const deposit = depositCards(D, { self: Boolean(D.self || solo()) })
+  // Redesign (17 Oct 2026): this term in plain words first, then what to pay
+  // now, paying ahead, a saved card (only when there is one) and receipts.
   const now = owe.length
     ? `<section class="ja-fees-sec">${secHead('To pay now')}<div class="ja-pay-grid">${owe.map((x) => oweCard(x, 'fees')).join('')}</div></section>`
     : !ahead.length ? `<div class="ja-card ja-allpaid">${ic('check')}<div><h3 class="ja-h3">Nothing owing</h3><p class="ja-small ja-muted">You are all paid up.</p></div></div>` : ''
   const pre = ahead.length ? `<section class="ja-fees-sec">${secHead('Pay ahead and save', 'Pay for sessions before they happen. Commit to a run and each session costs less.')}${ahead.map((o) => aheadBlock(D, o, { pane: 'fees' })).join('')}</section>` : ''
-  el.innerHTML = `${head}${deposit ? `<section class="ja-fees-sec">${deposit}</section>` : ''}${now}${pre}
-    <section class="ja-fees-sec">${secHead('Session payments')}<div id="fees-saved"></div></section>
-    <section class="ja-fees-sec">${secHead('This term', esc(D.term))}<div id="fees-places"><div class="ja-card"><p class="ja-small ja-muted">Loading your payments.</p></div></div></section>
-    <section class="ja-fees-sec">${secHead('Payment history')}<div id="fees-body"></div></section>`
+  el.innerHTML = `${head}
+    <section class="ja-fees-sec">${secHead('This term')}<div id="fees-places"><div class="ja-card ja-skel"><p class="ja-small ja-muted">Loading your payments.</p></div></div></section>
+    ${now}${deposit ? `<section class="ja-fees-sec">${deposit}</section>` : ''}${pre}
+    <section class="ja-fees-sec ja-saved-sec">${secHead('Saved card or bank account')}<div id="fees-saved"></div></section>
+    <section class="ja-fees-sec">${secHead('Payments and receipts')}<div id="fees-body"></div></section>`
   mountSavedPay(document.getElementById('fees-saved'))
   if (FEES) return fillFees()
   api('/api/jfp-account', { action: 'fees' }).then((r) => {
@@ -728,8 +839,57 @@ function fillFees() {
   const box = document.getElementById('fees-body')
   if (!box || !places) return
   if (FEES.error) { places.innerHTML = `<div class="ja-card"><p class="ja-small">${esc(FEES.error)}</p></div>`; box.innerHTML = ''; return }
-  places.innerHTML = placeCards(FEES, D) || '<div class="ja-card"><p class="ja-small ja-muted">No place booked this term.</p></div>'
+  places.innerHTML = plainPlaces(placeCards(FEES, D)) || '<div class="ja-card"><p class="ja-small ja-muted">No place booked this term.</p></div>'
   box.innerHTML = historyCard(FEES)
+}
+
+// Words a parent understands (redesign, 17 Oct 2026). The server's
+// "Group to be confirmed" and "Paid A$0 of A$0" mean nothing to a family.
+function plainPlaces(html) {
+  return String(html || '')
+    .replace(/Group to be confirmed/g, 'Day and time to come')
+    .replace(/Paid A\$0 of A\$0\.( Pay the rest above\.)?/g, 'No fee set yet. We will send a payment link if anything is due.')
+}
+
+// ---------- family ----------
+
+// Family (redesign, Lee 17 Oct 2026): every child with their session, age,
+// waiver and details, then your own details, light or dark, and sign out.
+// No coach names for families (Lee, 14 Oct 2026).
+function renderFamily() {
+  const el = pane('family')
+  if (!el || !D) return
+  const kids = [...D.players, ...(D.juniors?.children || [])]
+  const gaps = new Map(infoGaps().map((g) => [g.p.key, g.missing]))
+  const nW = unsignedWaivers().length, nI = infoGaps().length
+  const name = D.self ? first(D.players[0]?.name) : first(D.parentName)
+  const strip = nW + nI ? `<div class="ja-strip is-flat"><span class="n">${nW + nI}</span><span class="ja-mr-tx"><b>${nW + nI === 1 ? '1 thing to sort here' : `${nW + nI} things to sort here`}</b><small>${[nW && `${nW} waiver${nW > 1 ? 's' : ''} to sign`, nI && `${nI} with details missing`].filter(Boolean).join(' · ')}</small></span></div>` : ''
+  const card = (p) => {
+    const jj = p.key.startsWith('jj:')
+    const where = jj ? `Joners Juniors · ${p.className || D.juniors?.classLabel || ''}` : p.enrolments?.length ? p.enrolments.map((e) => `${e.day}s ${e.time}, ${e.location}`).join(' · ') : p.placeNoSession ? 'Place confirmed, day and time to come' : 'Not booked this term'
+    const miss = gaps.get(p.key)
+    const w = p.waiver?.onFile
+      ? `<span class="ja-tag green">Signed${p.waiver.signedDate ? ` ${esc(humanDate(p.waiver.signedDate))}` : ''}</span>`
+      : `<span class="ja-tag red">To sign</span>`
+    const details = jj ? '' : !PROF ? '<span class="ja-muted ja-small">Loading</span>' : miss ? `<span class="ja-tag amber">${miss.filter((m) => m !== 'check the details').length ? 'Details missing' : 'Check and save'}</span>` : '<span class="ja-tag green">Complete</span>'
+    return `<article class="ja-kid" aria-label="${esc(p.name)}">
+      <div class="ja-kid-head">${face(p.name, p.photo)}<div><h3>${esc(p.name)}</h3><p>${p.age != null && p.age !== '' ? `Age ${esc(p.age)} · ` : ''}${esc(where)}</p></div></div>
+      <div class="ja-kid-facts">
+        <div><span>Waiver</span>${w}</div>
+        ${jj ? '' : `<div><span>Player details</span>${details}</div>`}
+      </div>
+      <div class="ja-kid-act">${p.waiver?.onFile ? '' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-waiver-player="${esc(p.key)}">${ic('sign')}Sign waiver</button>`}${jj ? '' : `<button type="button" class="ja-btn ${miss ? 'ja-btn-light' : 'ja-btn-line'} ja-btn-sm" data-go="info">${miss ? 'Update details' : 'View details'}</button>`}</div>
+    </article>`
+  }
+  el.innerHTML = `${pageHead(name ? `${name}'s family` : 'Your family', solo() ? 'My profile' : 'Family', '')}${strip}
+    <p class="ja-label" style="margin-top:18px">${solo() ? 'You' : 'Players'}</p>
+    ${kids.length ? `<div class="ja-kids">${kids.map(card).join('')}</div>` : '<div class="ja-card"><p class="ja-muted">No players yet.</p></div>'}
+    <div class="ja-actions" style="margin:14px 0 0"><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-add-player>+ Add a player</button>${nW > 1 ? `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-waiver-all>${ic('sign')}Sign all ${nW} waivers</button>` : ''}</div>
+    <p class="ja-label" style="margin-top:26px">Your account</p>
+    <div class="ja-card ja-acct"><div class="ja-acct-row"><div><b>${esc(D.parentName || (D.self ? D.players[0]?.name : '') || 'Signed in')}</b><small>${esc(D.email || '')}</small></div><button type="button" class="ja-btn ja-btn-line ja-btn-sm" id="sign-out-fam">Sign out</button></div>
+      <div class="ja-acct-row"><div><b>Look</b><small>Light or dark, on this phone or computer</small></div>${themeSwitch()}</div>
+      ${standalone() ? '' : `<div class="ja-acct-row"><div><b>Home screen</b><small>Open My JFP like an app</small></div><button type="button" class="ja-btn ja-btn-line ja-btn-sm" data-install>How</button></div>`}
+    </div>`
 }
 
 // ---------- holidays and camps ----------
@@ -1077,18 +1237,29 @@ function waiverSheet(keys) {
 
 document.addEventListener('click', async (e) => {
   const t = e.target
-  if (t.closest('[data-more]') || t.closest('#ja-me')) return moreSheet()
+  if (t.closest('[data-more]')) return moreSheet()
+  if (t.closest('#ja-me')) return accountSheet()
+  const th = t.closest('[data-theme-pick]')
+  if (th) return setTheme(th.dataset.themePick)
+  if (t.closest('[data-install]')) return installSheet()
+  if (t.closest('[data-todo-open]')) return todoSheet()
+  const kp = t.closest('[data-kid-pick]')
+  if (kp) { sessKid = kp.dataset.kidPick; return renderSessions() }
+  const ex = t.closest('[data-expand]')
+  if (ex) { const id = ex.dataset.expand; if (expanded.has(id)) expanded.delete(id); else expanded.add(id); renderSessions(); document.querySelector(`[data-enrol="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest' }); return }
   const sec = t.closest('[data-navsec]')
   if (sec) return toggleNav(sec.dataset.navsec)
   if (t.closest('[data-waiver-all]')) return waiverSheet(unsignedWaivers().map((p) => p.key))
   if (extraClick(t, { D })) return
-  if (t.closest('#sign-out') || t.closest('#ja-signout2')) { await signOut('parent'); location.href = '/jfp-account/'; return }
+  if (t.closest('#sign-out') || t.closest('#ja-signout2') || t.closest('#sign-out-fam')) { await signOut('parent'); location.href = '/jfp-account/'; return }
   if (t.closest('[data-contact]')) { e.preventDefault(); if (D) { closeSheet(true); show('contact') } else contactSheet(); return }
   const go = t.closest('[data-go]')
   if (go) {
     if (go.dataset.topic) topic = go.dataset.topic
     closeSheet(true)
     if (go.dataset.go === 'contact') delete document.querySelector('[data-pane="contact"]')?.dataset.drawn
+    // A player row on Home opens Sessions on that player.
+    if (go.dataset.kid) { sessKid = go.dataset.kid; delete pane('sessions')?.dataset.drawn }
     show(go.dataset.go)
     return
   }
@@ -1149,7 +1320,7 @@ document.addEventListener('click', async (e) => {
   if (gp) {
     show('fees')
     const el = document.querySelector(`[data-pane="fees"] [data-fees-owed="${CSS.escape(gp.dataset.goPay)}"]`)
-    if (el) { el.scrollIntoView({ block: 'start' }); el.style.boxShadow = '0 0 0 2px #fff' }
+    if (el) { el.scrollIntoView({ block: 'start' }); el.style.boxShadow = '0 0 0 2px var(--ja-hi)' }
     return
   }
   // A pay-ahead link they made: close it and choose again.
@@ -1250,7 +1421,7 @@ function jjTodoCards() {
   if (!J?.todo?.length) return ''
   const want = q.get('pay')
   return [...J.todo].sort((x, y) => Number(y.id === want) - Number(x.id === want)).map((t) => `
-    <div class="ja-card ja-todo" data-todo="${esc(t.id)}"${t.id === want ? ' style="box-shadow:0 0 0 2px #fff"' : ''}>
+    <div class="ja-card ja-todo" data-todo="${esc(t.id)}"${t.id === want ? ' style="box-shadow:0 0 0 2px var(--ja-hi)"' : ''}>
       <div class="ja-card-head"><div><p class="ja-kicker"><i></i>Joners Juniors</p><h3 class="ja-h3" style="margin-top:8px;font-size:18px">${esc(t.players.join(' and '))}</h3>
       <p class="ja-muted ja-small" style="margin-top:3px">${t.places?.length ? t.places.map((x) => `${esc(x.name)}: ${esc(x.amountLabel)}`).join('<br>') : esc(t.what || '')}${t.places?.length && t.what ? `<br>${esc(t.what)}` : ''}</p></div></div>
       <ul class="ja-list">

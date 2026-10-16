@@ -96,7 +96,7 @@ await test('family emails: the family add email and the account invite name no c
 const root = fileURLToPath(new URL('../', import.meta.url))
 const bundled = (await build({ entryPoints: [path.join(root, 'src/scripts/jfp-account.js')], bundle: true, write: false, format: 'iife', target: 'es2022', logLevel: 'silent' })).outputFiles[0].text
 const astro = fs.readFileSync(path.join(root, 'src/pages/jfp-account.astro'), 'utf8')
-const markup = astro.slice(astro.indexOf('<div class="jfp ja" id="jfp-account">'), astro.lastIndexOf('</BaseLayout>'))
+const markup = astro.slice(astro.indexOf('<div class="jfp ja" id="jfp-account"'), astro.lastIndexOf('</BaseLayout>'))
 
 async function openAccount(overview, onPost = () => null) {
   const errors = [], posts = []
@@ -176,7 +176,11 @@ await test('a quoted player: the options on Fees include the rest of the term; H
   const p = await openAccount({ ...SESS, owed: [owedFor({ quote, perCents: 10000, perLabel: 'A$100', leftLabel: 'A$200', rest: { key: 'rest', n: 2, totalCents: 20000, totalLabel: 'A$200', perCents: 10000 } })] })
   await p.click('#ja-tabs [data-go="fees"]')
   assert.match(p.text('[data-pane="fees"] [data-fees-owed]'), /Next session\s*A\$100.*Rest of term\s*A\$200.*Pay A\$200/)
-  assert.ok(p.$('[data-pane="home"] [data-todo-owed] [data-owed-option="one"]'), 'the same cards on Home')
+  // Redesign (17 Oct 2026): Home's "to sort" line opens the same cards in a sheet.
+  await p.click('#ja-tabs [data-go="home"]')
+  await p.click('[data-todo-open]')
+  assert.ok(p.$('.j-sheet [data-todo-owed] [data-owed-option="one"]'), 'the same cards from Home')
+  p.d.querySelector('.j-sheet .j-close')?.click(); await p.settle()
   await p.click('[data-pane="fees"] [data-fees-owed] [data-owed-option="rest"]')
   assert.equal(p.posts.find((b) => b.action === 'payOwed').option, 'rest')
   p.close()
@@ -193,6 +197,9 @@ await test('"Nothing owing" only when nothing is billed and no session is left t
 await test('My sessions: Paid / Payment started / Not paid yet on each date, and Pay for sessions opens Fees at the options; no coach name', async () => {
   const p = await openAccount(SESS)
   await p.click('#ja-tabs [data-go="sessions"]')
+  // Redesign (17 Oct 2026): past dates fold into "N done"; Show all lists every week.
+  assert.match(p.text('[data-pane="sessions"] [data-enrol]'), /1 done this term/)
+  await p.click('[data-pane="sessions"] [data-expand]')
   const card = p.$('[data-pane="sessions"] [data-enrol]')
   const rows = [...card.querySelectorAll('.ja-date')].map((li) => li.textContent.replace(/\s+/g, ' ').trim())
   assert.match(rows[0], /Paid/, 'a past date paid ahead'); assert.match(rows[0], /Done/)
@@ -207,21 +214,28 @@ await test('My sessions: Paid / Payment started / Not paid yet on each date, and
   p.close()
 })
 
-await test('phones: Home, Sessions, Fees, Contact and More; More holds everything else in groups, a waiver to sign first', async () => {
+await test('phones: Home, Sessions, Fees, Family and More (Lee, 17 Oct 2026); the badge sits on the page it counts; More holds My family and Explore Joner', async () => {
   const p = await openAccount({ ...SESS, players: [{ ...SESS.players[0], waiver: { onFile: false } }] })
-  assert.deepEqual([...p.d.querySelectorAll('#ja-tabs .ja-tab')].map((b) => b.textContent.replace(/[^A-Za-z ]/g, '').trim()), ['Home', 'Sessions', 'Fees', 'Contact', 'More'])
-  assert.equal(p.text('#ja-tabs [data-more] .badge'), '1', 'one thing to do in More')
+  assert.deepEqual([...p.d.querySelectorAll('#ja-tabs .ja-tab')].map((b) => b.textContent.replace(/[^A-Za-z ]/g, '').trim()), ['Home', 'Sessions', 'Fees', 'Family', 'More'])
+  assert.equal(p.text('#ja-tabs [data-go="family"] .badge'), '1', 'the waiver to sign counts on Family')
+  assert.equal(p.$('#ja-tabs [data-more] .badge'), null, 'no badge on More')
+  await p.click('#ja-tabs [data-go="family"]')
+  assert.ok(p.$('[data-pane="family"] [data-waiver-player]'), 'Family has the Sign button')
   await p.click('#ja-tabs [data-more]')
   const groups = [...p.d.querySelectorAll('.j-sheet .ja-more-group')].map((g) => g.querySelector('.ja-nav-label').textContent)
-  assert.deepEqual(groups, ['To do', 'My training', 'Program', 'Player', 'App'])
-  const tiles = [...p.d.querySelectorAll('.j-sheet .ja-tile .t')].map((t) => t.textContent)
-  assert.equal(tiles[0], "Sign Sol's waiver")
-  for (const t of ['Player information', "Can't make it", 'Keep my spot', 'Videos', 'The JF App', 'Waivers', 'Book extra sessions', 'Game analysis']) assert.ok(tiles.includes(t), t)
-  for (const t of ['Home', 'My sessions', 'Fees', 'Contact us']) assert.ok(!tiles.includes(t), `${t} is on the bar, not in More`)
+  assert.deepEqual(groups, ['My family', 'Explore Joner'])
+  const rows = [...p.d.querySelectorAll('.j-sheet .ja-mrow b')].map((t) => t.textContent)
+  for (const t of ['Player details', "Can't make it", 'Keep my spot', 'Videos', 'The JF App', 'Waivers', 'Book extra sessions', 'Game analysis', 'Contact us']) assert.ok(rows.includes(t), t)
+  for (const t of ['Home', 'Sessions', 'Fees', 'Family']) assert.ok(!rows.includes(t), `${t} is on the bar, not in More`)
   await p.click('.j-sheet [data-go="videos"]')
   assert.equal(p.$('[data-pane="videos"]').hidden, false)
   assert.equal(p.$('.j-sheet'), null, 'the sheet closes')
   assert.equal(p.$('#ja-tabs [data-more]').getAttribute('aria-current'), 'page', 'More is lit while a More page is open')
+  // The name button opens the account sheet: light or dark, and sign out.
+  await p.click('#ja-me')
+  assert.ok(p.$('.j-sheet [data-theme-pick="dark"]') && p.$('.j-sheet #ja-signout2'))
+  await p.click('.j-sheet [data-theme-pick="dark"]')
+  assert.equal(p.$('#jfp-account').getAttribute('data-theme'), 'dark')
   assert.deepEqual(p.errors, [])
   p.close()
 })

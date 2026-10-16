@@ -13,7 +13,7 @@ async function test(name, fn) { await fn(); passed += 1; console.log(`ok - ${nam
 const root = fileURLToPath(new URL('../', import.meta.url))
 const bundled = (await build({ entryPoints: [path.join(root, 'src/scripts/jfp-account.js')], bundle: true, write: false, format: 'iife', target: 'es2022', logLevel: 'silent' })).outputFiles[0].text
 const astro = fs.readFileSync(path.join(root, 'src/pages/jfp-account.astro'), 'utf8')
-const markup = astro.slice(astro.indexOf('<div class="jfp ja" id="jfp-account">'), astro.lastIndexOf('</BaseLayout>'))
+const markup = astro.slice(astro.indexOf('<div class="jfp ja" id="jfp-account"'), astro.lastIndexOf('</BaseLayout>'))
 
 async function openAccount(overview, { onPost = () => null, hash = '' } = {}) {
   const errors = [], posts = []

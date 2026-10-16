@@ -6,8 +6,12 @@ import '../styles/jfp-account.css'
 // first. Everything below the sign in is drawn by src/scripts/jfp-account.js.
 ---
 
-<BaseLayout title="My account | Joner Football" description="Your Joner Football Performance players, sessions and payments." canonical="https://jonerfootball.com/jfp-account/" noindex noTracking hideChrome hideMobileAppCta>
-  <div class="jfp ja" id="jfp-account">
+<BaseLayout title="My account | Joner Football" description="Your Joner Football Performance players, sessions and payments." canonical="https://jonerfootball.com/jfp-account/" noindex noTracking hideChrome hideMobileAppCta manifest="/jfp-account.webmanifest?v=1" themeColor="#F5F5F3">
+  <div class="jfp ja" id="jfp-account" data-theme="light">
+    <script is:inline>
+      // Light by default (Lee, 17 Oct 2026); a family can switch to dark and it sticks.
+      try { if (localStorage.getItem('ja-theme') === 'dark') document.getElementById('jfp-account').setAttribute('data-theme', 'dark') } catch (e) {}
+    </script>
     <section id="signin" class="ja-gate" hidden>
       <div class="ja-gate-media">
         <img src="/images/jfp-account/photos/ntra-field-900x1100.webp" srcset="/images/jfp-account/photos/ntra-field-900x1100.webp 900w, /images/jfp-account/photos/ntra-field-1600x900.webp 1600w" sizes="(min-width: 960px) 55vw, 100vw" alt="" fetchpriority="high">
@@ -33,13 +37,14 @@ import '../styles/jfp-account.css'
       </aside>
       <header class="ja-bar">
         <button type="button" class="ja-logo" data-go="home"><img src="/images/joner-logo-white.png" alt="" width="30" height="30"><span><b>Joner Football</b><small>Performance</small></span></button>
-        <button type="button" class="ja-me" id="ja-me" aria-label="Account and all sections">J</button>
+        <button type="button" class="ja-me" id="ja-me" aria-label="Your account">J</button>
       </header>
       <main class="ja-main" id="view" tabindex="-1">
         <div id="banner"></div>
         <section class="ja-pane" data-pane="home"></section>
         <section class="ja-pane" data-pane="sessions" hidden></section>
         <section class="ja-pane" data-pane="fees" hidden></section>
+        <section class="ja-pane" data-pane="family" hidden></section>
         <section class="ja-pane" data-pane="info" hidden></section>
         <section class="ja-pane" data-pane="waivers" hidden></section>
         <section class="ja-pane" data-pane="cancel" hidden></section>
