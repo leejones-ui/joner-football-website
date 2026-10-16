@@ -3833,59 +3833,82 @@ async function renderAudit(keep = false) {
   view().querySelector('[data-au-clear]')?.addEventListener('click', clear)
 }
 
+// Settings (Lee, 16 Oct 2026): one section at a time, one row per setting
+// (label left, control right). Switches save straight away; everything else
+// waits for the Save bar, which only shows when something has changed. The
+// keys, defaults and save actions are the same as before.
+const SETTINGS_SECTIONS = [['term', 'Term and dates'], ['booking', 'Booking and kit'], ['access', 'Sign in and alerts'], ['payments', 'Invoices and payments'], ['locations', 'Locations']]
+let settingsDirty = false
+window.addEventListener('beforeunload', (e) => { if (settingsDirty && $('ss-bar')) { e.preventDefault(); e.returnValue = '' } })
+document.addEventListener('click', (e) => {
+  if (!settingsDirty || !$('ss-bar') || !e.target.closest('[data-tab]')) return
+  if (confirm('You have unsaved changes in Settings. Leave without saving?')) { settingsDirty = false; return }
+  e.preventDefault(); e.stopImmediatePropagation()
+}, true)
 async function renderSettings() {
+  settingsDirty = false
   const sd = await need(await post('getSettings'))
   const c = sd.config
   let skips = [...(c.skipDates || [])]
-  view().innerHTML = `<div class="jp-head"><div><h1>Settings</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Term details, who can sign in, and alerts.</div></details></div></div>
-    <div class="j-card" style="padding:18px;max-width:760px">
-      <h2 style="margin-bottom:12px">Term</h2>
-      <div class="j-two"><label class="j-field"><span>Term name</span><input class="j-input" id="s-term" value="${esc(c.term)}"></label><label class="j-field"><span>First day (a Monday)</span><input class="j-input" type="date" id="s-start" value="${esc(c.termStart)}"></label></div>
-      <div class="j-two"><label class="j-field"><span>Weeks</span><input class="j-input" id="s-weeks" inputmode="numeric" value="${c.weeks}"></label><div class="j-field"><span>Prices</span><p class="small" style="padding-top:10px">In the <a href="#prices" data-tab="prices">Prices</a> tab.</p></div></div>
-      <h2 style="margin:16px 0 12px">Booking page</h2>
-      <label class="j-check"><input type="checkbox" id="s-pw" ${c.passwordRequired ? 'checked' : ''}> <span><b>Ask for the booking password.</b> Off: anyone with the link sees the timetable (it is still hidden from Google). The password itself is set in Vercel (JFP_BOOKING_PASSWORD).</span></label>
-      <h2 style="margin:16px 0 12px">Who can sign in</h2>
-      <label class="j-field"><span>Super admins (full access and money), one email per line</span><textarea class="j-textarea" id="s-admins">${esc(c.superAdmins.join('\n'))}</textarea></label>
-      <label class="j-field"><span>Booking alert emails (Lee always gets them), one per line</span><textarea class="j-textarea" id="s-staff">${esc(c.staffEmails.join('\n'))}</textarea></label>
-      <p class="small">Coach logins, names, emails and photos are in the <a href="#coaches" data-tab="coaches">Coaches</a> tab. Coach logins are <b>${c.coachLoginsEnabled ? 'on' : 'off'}</b>.</p>
-      <h2 style="margin:16px 0 6px">No session dates</h2>
-      <p class="muted small" style="margin-bottom:10px">Public holidays and cancelled sessions. Groups on that day skip it: their dates, calendars and pro rata count only real sessions. Save settings after changing.</p>
-      <div id="s-skips"></div>
-      <div class="j-two" style="margin-top:8px"><label class="j-field"><span>Date</span><input class="j-input" type="date" id="s-skip-date"></label><label class="j-field"><span>Why</span><input class="j-input" id="s-skip-why" placeholder="Public holiday, coach away..."></label></div>
-      <button type="button" class="j-btn j-btn-line j-btn-sm" id="s-skip-add">Add date</button>
-      <p class="small" style="margin:12px 0 6px"><b>NSW public holidays</b> <span class="muted">(tap to add)</span></p>
-      <div style="display:flex;gap:6px;flex-wrap:wrap" id="s-hols">${sd.holidays.map((h) => `<button type="button" class="j-chip" data-hol="${esc(h.date)}" data-why="${esc(h.reason)}">${esc(h.label)} ${esc(h.reason)}${h.inTerm ? ' · this term' : ''}</button>`).join('')}</div>
-      <p class="muted small" style="margin-top:6px">${sd.holidays.some((h) => h.inTerm) ? 'Some public holidays fall in this term.' : 'No NSW public holidays fall in this term.'}</p>
-      <h2 style="margin:16px 0 12px">Training kit</h2>
-      <div class="j-two"><label class="j-field"><span>JF playing kit link (required, families confirm it before paying)</span><input class="j-input" id="s-kit" value="${esc(c.kitUrl || '')}" placeholder="https://"></label>
-      <label class="j-field"><span>Kit price shown to families</span><input class="j-input" id="s-kitprice" value="${esc(c.kitPriceLabel || 'A$60')}" maxlength="20"></label></div>
-      <label class="j-field"><span>Line above the button</span><input class="j-input" id="s-kitnote" value="${esc(c.kitNote || '')}" maxlength="300"></label>
-      <h2 style="margin:16px 0 6px">Invoices</h2>
-      <p class="muted small" style="margin-bottom:10px">Bank details show on invoices only when bank transfer is switched on below and all three bank fields are saved. Off: card only. The ABN shows on invoices only if you save one.</p>
-      <label class="j-check"><input type="checkbox" id="s-inv-pdf" ${c.invoice?.attachPdf !== false ? 'checked' : ''}> <span><b>Attach a PDF invoice to fee emails.</b> Payment links, family and sessions invoices, players added with a link, and Money &gt; Invoices emails carry a PDF tax invoice.</span></label>
-      <label class="j-check"><input type="checkbox" id="s-inv-bank" ${c.invoice?.bankEnabled === true ? 'checked' : ''}> <span><b>Offer bank transfer on invoices.</b> Off: invoices, their page and the PDF show card only, even with bank details saved.</span></label>
-      <div class="j-two"><label class="j-field"><span>Account name</span><input class="j-input" id="s-inv-name" maxlength="80" value="${esc(c.invoice?.accountName || '')}"></label><label class="j-field"><span>BSB</span><input class="j-input" id="s-inv-bsb" inputmode="numeric" maxlength="7" value="${esc(c.invoice?.bsb || '')}"></label></div>
-      <div class="j-two"><label class="j-field"><span>Account number</span><input class="j-input" id="s-inv-acc" inputmode="numeric" maxlength="12" value="${esc(c.invoice?.accountNumber || '')}"></label><label class="j-field"><span>Reference format</span><input class="j-input" id="s-inv-ref" maxlength="40" value="${esc(c.invoice?.reference || 'INV-<n> <player>')}"></label></div>
-      <label class="j-field" style="max-width:360px"><span>ABN (optional)</span><input class="j-input" id="s-inv-abn" inputmode="numeric" maxlength="14" value="${esc(c.invoice?.abn || '')}"></label>
-      <div id="s-savedpay"></div>
-      <h2 style="margin:16px 0 12px">Waiver</h2>
-      <label class="j-check"><input type="checkbox" id="s-wcarry" ${c.waiverCarryover !== false ? 'checked' : ''}> <span><b>Accept waivers signed in an earlier term.</b> Off: every family signs again for ${esc(c.term)}. Either way a waiver only counts when it carries the family's own email or mobile.</span></label>
-      <label class="j-field"><span>Backup waiver form link</span><input class="j-input" id="s-waiver" value="${esc(c.waiverUrl)}"></label>
-      <p class="muted small">Parents sign the waiver on the booking page. This link is the backup.</p>
-      <h2 style="margin:16px 0 12px">Locations</h2>
-      ${c.locations.map((l) => `<div class="j-card" style="padding:12px;margin-bottom:8px" data-loc="${esc(l.id)}"><b>${esc(l.name)}</b><div class="j-two" style="margin-top:8px"><label class="j-field"><span>Line under the photo</span><input class="j-input" data-lf="blurb" value="${esc(l.blurb)}"></label><label class="j-field"><span>Photo path</span><input class="j-input" data-lf="photo" value="${esc(l.photo)}"></label></div><label class="j-field"><span>Address</span><input class="j-input" data-lf="address" value="${esc(l.address)}"></label></div>`).join('')}
-      <p class="j-err" id="s-err" hidden></p>
-      <button type="button" class="j-btn j-btn-dark j-btn-lg" id="s-save" style="margin-top:8px">Save settings</button>
-    </div>`
+  let sec = 'term'
+  try { const v = localStorage.getItem('jfp-settings-sec'); if (SETTINGS_SECTIONS.some(([k]) => k === v)) sec = v } catch {}
+  const row = (label, control, { hint = '', id = '', cls = '' } = {}) => `<div class="ss-row ${cls}"><div class="ss-lbl">${id ? `<label for="${id}">${esc(label)}</label>` : `<span>${esc(label)}</span>`}${hint ? `<small>${hint}</small>` : ''}</div><div class="ss-ctl">${control}</div></div>`
+  const sw = (id, on, label, hint) => row(label, `<span class="ss-saved" data-saved-for="${id}" aria-live="polite"></span><label class="ss-switch"><input type="checkbox" role="switch" id="${id}" ${on ? 'checked' : ''}><span aria-hidden="true"></span></label>`, { hint, id, cls: 'is-switch' })
+  const inp = (id, value, attrs = '') => `<input class="j-input" id="${id}" value="${esc(value)}" data-ss ${attrs}>`
+  const group = (title, rows, extra = '') => `<section class="ss-group">${title ? `<h2>${esc(title)}</h2>` : ''}<div class="ss-list">${rows}</div>${extra}</section>`
+  const panels = {
+    term: group('Term', row('Term name', inp('s-term', c.term), { id: 's-term' }) + row('First day', `<input class="j-input" type="date" id="s-start" value="${esc(c.termStart)}" data-ss>`, { id: 's-start', hint: 'A Monday' }) + row('Weeks', inp('s-weeks', c.weeks, 'inputmode="numeric"'), { id: 's-weeks', cls: 'is-short' }) + row('Prices', '<a class="j-btn j-btn-line j-btn-sm" href="#prices" data-tab="prices">Open Prices</a>'))
+      + `<section class="ss-group"><h2>No session dates</h2><div class="ss-list"><div id="s-skips"></div>
+        <div class="ss-row ss-add"><div class="ss-addrow"><input class="j-input" type="date" id="s-skip-date" aria-label="Date"><input class="j-input" id="s-skip-why" placeholder="Why, e.g. coach away" aria-label="Why"><button type="button" class="j-btn j-btn-line j-btn-sm" id="s-skip-add">Add</button></div></div></div>
+        <details class="ss-more"><summary>NSW public holidays${sd.holidays.some((h) => h.inTerm) ? ' (some fall in this term)' : ''}</summary><div class="ss-chips" id="s-hols">${sd.holidays.map((h) => `<button type="button" class="j-chip" data-hol="${esc(h.date)}" data-why="${esc(h.reason)}">${esc(h.label)} ${esc(h.reason)}${h.inTerm ? ' · this term' : ''}</button>`).join('')}</div></details></section>`,
+    booking: group('Booking page', sw('s-pw', c.passwordRequired, 'Booking password', 'Off: anyone with the link sees the timetable. The password is set in Vercel.'))
+      + group('Training kit', row('Kit link', inp('s-kit', c.kitUrl || '', 'placeholder="https://"'), { id: 's-kit', hint: 'Families confirm the kit before paying' }) + row('Kit price', inp('s-kitprice', c.kitPriceLabel || 'A$60', 'maxlength="20"'), { id: 's-kitprice', cls: 'is-short' }) + row('Line above the button', inp('s-kitnote', c.kitNote || '', 'maxlength="300"'), { id: 's-kitnote' }))
+      + group('Waiver', sw('s-wcarry', c.waiverCarryover !== false, 'Earlier waivers count', `Off: every family signs again for ${esc(c.term)}`) + row('Backup waiver link', inp('s-waiver', c.waiverUrl), { id: 's-waiver', hint: 'Families normally sign on the booking page' })),
+    access: group('Who can sign in', row('Super admins', `<textarea class="j-textarea" id="s-admins" rows="3" data-ss>${esc(c.superAdmins.join('\n'))}</textarea>`, { id: 's-admins', hint: 'Full access and money. One email per line.' }) + row('Coach logins', `<span class="ss-val">${c.coachLoginsEnabled ? 'On' : 'Off'}</span><a class="j-btn j-btn-line j-btn-sm" href="#coaches" data-tab="coaches">Coaches</a>`, { hint: 'Names, emails and photos live in Coaches' }))
+      + group('Alerts', row('Booking alert emails', `<textarea class="j-textarea" id="s-staff" rows="3" data-ss>${esc(c.staffEmails.join('\n'))}</textarea>`, { id: 's-staff', hint: 'Lee always gets them. One per line.' })),
+    payments: group('Invoices', sw('s-inv-pdf', c.invoice?.attachPdf !== false, 'PDF on fee emails', 'Payment links, family and session invoices') + sw('s-inv-bank', c.invoice?.bankEnabled === true, 'Offer bank transfer', 'Needs the account name, BSB and number below') + row('Account name', inp('s-inv-name', c.invoice?.accountName || '', 'maxlength="80"'), { id: 's-inv-name' }) + row('BSB', inp('s-inv-bsb', c.invoice?.bsb || '', 'inputmode="numeric" maxlength="7"'), { id: 's-inv-bsb', cls: 'is-short' }) + row('Account number', inp('s-inv-acc', c.invoice?.accountNumber || '', 'inputmode="numeric" maxlength="12"'), { id: 's-inv-acc', cls: 'is-short' }) + row('Reference', inp('s-inv-ref', c.invoice?.reference || 'INV-<n> <player>', 'maxlength="40"'), { id: 's-inv-ref', hint: 'Keep &lt;n&gt;, the invoice number' }) + row('ABN', inp('s-inv-abn', c.invoice?.abn || '', 'inputmode="numeric" maxlength="14"'), { id: 's-inv-abn', cls: 'is-short', hint: 'Optional. Shown on invoices when saved.' }))
+      + '<section class="ss-group ss-savedpay" id="s-savedpay"></section>',
+    locations: c.locations.map((l) => `<section class="ss-group" data-loc="${esc(l.id)}"><h2>${esc(l.name)}</h2><div class="ss-list">${row('Line under the photo', `<input class="j-input" id="s-loc-${esc(l.id)}-blurb" data-lf="blurb" data-ss value="${esc(l.blurb)}">`, { id: `s-loc-${esc(l.id)}-blurb` })}${row('Photo path', `<input class="j-input" id="s-loc-${esc(l.id)}-photo" data-lf="photo" data-ss value="${esc(l.photo)}">`, { id: `s-loc-${esc(l.id)}-photo` })}${row('Address', `<input class="j-input" id="s-loc-${esc(l.id)}-address" data-lf="address" data-ss value="${esc(l.address)}">`, { id: `s-loc-${esc(l.id)}-address` })}</div></section>`).join(''),
+  }
+  view().innerHTML = `<div class="jp-head"><div><h1>Settings</h1><details class="ps-help"><summary aria-label="About this page" title="About this page">?</summary><div class="ps-help-body">Switches save straight away. Other changes show a Save bar at the bottom. A waiver only counts when it carries the family's own email or mobile. Bank details show on invoices only when bank transfer is on and all three bank fields are saved.</div></details></div></div>
+    <div class="ss">
+      <nav class="ss-nav" aria-label="Settings sections">${SETTINGS_SECTIONS.map(([k, l]) => `<button type="button" data-sset="${k}" aria-current="${k === sec}">${esc(l)}</button>`).join('')}</nav>
+      <div class="ss-body">${SETTINGS_SECTIONS.map(([k]) => `<div class="ss-panel" data-panel="${k}" ${k === sec ? '' : 'hidden'}>${panels[k]}</div>`).join('')}</div>
+    </div>
+    <div class="ss-bar" id="ss-bar" hidden><span class="ss-bar-msg" id="s-err" role="status">Unsaved changes</span><button type="button" class="j-btn j-btn-line j-btn-sm" id="s-discard">Discard</button><button type="button" class="j-btn j-btn-dark j-btn-sm" id="s-save">Save changes</button></div>`
+  view().querySelector('.ss-nav [aria-current="true"]')?.scrollIntoView({ block: 'nearest', inline: 'center' })
+  const markDirty = () => { settingsDirty = true; $('ss-bar').hidden = false; $('s-err').textContent = 'Unsaved changes'; $('s-err').classList.remove('is-err') }
+  view().querySelector('.ss-nav').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sset]'); if (!b) return
+    sec = b.dataset.sset; try { localStorage.setItem('jfp-settings-sec', sec) } catch {}
+    view().querySelectorAll('[data-sset]').forEach((x) => x.setAttribute('aria-current', String(x === b)))
+    view().querySelectorAll('.ss-panel').forEach((p) => { p.hidden = p.dataset.panel !== sec })
+    b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+  })
+  view().querySelector('.ss-body').addEventListener('input', (e) => { if (e.target.matches('[data-ss]')) markDirty() })
   const drawSkips = () => {
-    $('s-skips').innerHTML = skips.length ? skips.map((x, i) => `<div class="jp-player" style="cursor:default"><span><b>${esc(x.date)}</b> ${esc(x.reason)}</span><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-skip-rm="${i}">Remove</button></div>`).join('') : '<p class="muted small">None. Every week of the term runs.</p>'
-    $('s-skips').querySelectorAll('[data-skip-rm]').forEach((b) => b.addEventListener('click', () => { skips.splice(Number(b.dataset.skipRm), 1); drawSkips() }))
+    $('s-skips').innerHTML = skips.length ? skips.map((x, i) => `<div class="ss-row is-switch"><div class="ss-lbl"><span>${esc(x.date)}</span><small>${esc(x.reason)}</small></div><div class="ss-ctl"><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-skip-rm="${i}">Remove</button></div></div>`).join('') : '<div class="ss-row"><div class="ss-lbl"><small>None. Every week of the term runs.</small></div></div>'
+    $('s-skips').querySelectorAll('[data-skip-rm]').forEach((b) => b.addEventListener('click', () => { skips.splice(Number(b.dataset.skipRm), 1); drawSkips(); markDirty() }))
   }
   drawSkips()
   // Saved cards, bank accounts and auto-charge switches (claude/card-on-file): saved as they change.
   mountSavedPaySettings($('s-savedpay'), { post, toast })
-  $('s-skip-add').addEventListener('click', () => { const d = $('s-skip-date').value; if (!d) return toast('Choose a date.'); skips = [...skips.filter((x) => x.date !== d), { date: d, reason: $('s-skip-why').value.trim() || 'No session' }].sort((a, b) => a.date.localeCompare(b.date)); drawSkips() })
-  $('s-hols').addEventListener('click', (e) => { const b = e.target.closest('[data-hol]'); if (!b) return; skips = [...skips.filter((x) => x.date !== b.dataset.hol), { date: b.dataset.hol, reason: b.dataset.why }].sort((a, c2) => a.date.localeCompare(c2.date)); drawSkips(); toast(`${b.dataset.why} added. Save settings to apply.`) })
+  $('s-skip-add').addEventListener('click', () => { const d = $('s-skip-date').value; if (!d) return toast('Choose a date.'); skips = [...skips.filter((x) => x.date !== d), { date: d, reason: $('s-skip-why').value.trim() || 'No session' }].sort((a, b) => a.date.localeCompare(b.date)); $('s-skip-date').value = ''; $('s-skip-why').value = ''; drawSkips(); markDirty() })
+  $('s-hols').addEventListener('click', (e) => { const b = e.target.closest('[data-hol]'); if (!b) return; skips = [...skips.filter((x) => x.date !== b.dataset.hol), { date: b.dataset.hol, reason: b.dataset.why }].sort((a, c2) => a.date.localeCompare(c2.date)); drawSkips(); markDirty(); toast(`${b.dataset.why} added`) })
+  // Switches save on their own, sending only their own key (the server keeps the rest).
+  const INSTANT = { 's-pw': (v) => ({ passwordRequired: v }), 's-wcarry': (v) => ({ waiverCarryover: v }), 's-inv-pdf': (v) => ({ invoice: { attachPdf: v } }), 's-inv-bank': (v) => ({ invoice: { bankEnabled: v } }) }
+  for (const [id, patch] of Object.entries(INSTANT)) {
+    const box = $(id)
+    box.addEventListener('change', async () => {
+      const tick = view().querySelector(`[data-saved-for="${id}"]`)
+      box.disabled = true; tick.textContent = 'Saving'
+      const r = await post('saveSettings', { config: patch(box.checked) })
+      box.disabled = false
+      if (!r.ok) { box.checked = !box.checked; tick.textContent = ''; return toast(r.data.error || 'Could not save.') }
+      tick.textContent = 'Saved'; clearTimeout(tick._t); tick._t = setTimeout(() => { tick.textContent = '' }, 2200)
+    })
+  }
+  $('s-discard').addEventListener('click', () => { settingsDirty = false; renderSettings() })
   $('s-save').addEventListener('click', async () => {
     const lines = (id) => $(id).value.split(/\s*[\n,]\s*/).map((s) => s.trim()).filter(Boolean)
     const config = {
@@ -3895,8 +3918,11 @@ async function renderSettings() {
       invoice: { accountName: $('s-inv-name').value.trim(), bsb: $('s-inv-bsb').value.trim(), accountNumber: $('s-inv-acc').value.trim(), reference: $('s-inv-ref').value.trim(), abn: $('s-inv-abn').value.trim(), attachPdf: $('s-inv-pdf').checked, bankEnabled: $('s-inv-bank').checked },
       locations: c.locations.map((l) => { const box = view().querySelector(`[data-loc="${CSS.escape(l.id)}"]`); const v = { ...l }; box.querySelectorAll('[data-lf]').forEach((i) => { v[i.dataset.lf] = i.value.trim() }); return v }),
     }
+    $('s-save').disabled = true
     const r = await post('saveSettings', { config })
-    if (!r.ok) { $('s-err').textContent = r.data.error; $('s-err').hidden = false; return }
+    $('s-save').disabled = false
+    if (!r.ok) { $('s-err').textContent = r.data.error; $('s-err').classList.add('is-err'); return }
+    settingsDirty = false; $('ss-bar').hidden = true
     toast('Settings saved')
   })
 }
