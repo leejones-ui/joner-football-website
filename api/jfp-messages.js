@@ -16,6 +16,7 @@ import {
 } from './_jfp-messages.js'
 import { JJ_MESSAGE_ACTIONS, jjMessagesAction, isJJMsg } from './_jj-messages.js'
 import { withAgent, inAgent, agentConfirmed } from './_jfp-agent.js'
+import { GUIDE_ACTIONS, guideAction } from './_jfp-guide-actions.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
@@ -44,6 +45,9 @@ export async function stillValid(req, config, m) {
   // A text Lee or Ligia wrote and sent from a player's page (quickText): the
   // words are theirs, so there is no prepared amount or link to go stale.
   if (m.quick) return { ok: true }
+  // The account guide is written again from the records at send (_jfp-guide-actions.js),
+  // and goes to requests and new accounts too, who hold no Term 4 place.
+  if (m.campaign === 'guide') return { ok: true }
   const now = await familyNow(req, config, m.email)
   if (!now.fam) return { ok: false, why: 'The family no longer holds a Term 4 place.' }
   // The sign-in message carries no amount or link, so payments moving never make it wrong.
@@ -467,7 +471,7 @@ export default function handler(req, res) { return withAgent(req, 'messages', ()
 
 // Hermes may draft, preview and read; sending needs Lee's yes on that exact
 // message (x-jfp-confirmed). Lee, 16 Oct 2026.
-const AGENT_SENDS = new Set(['quickText', 'approve', 'sendCampaign', 'selfTest', 'jjMsgSend'])
+const AGENT_SENDS = new Set(['quickText', 'approve', 'sendCampaign', 'sendGuide', 'selfTest', 'jjMsgSend'])
 
 async function handle(req, res) {
   res.setHeader('Cache-Control', 'no-store')
@@ -489,6 +493,8 @@ async function handle(req, res) {
     if (action === 'overview') return res.status(200).json({ ...(await overview(req, config)), isOwner: isOwner(principal), me: principal.email })
     if (action === 'quickText') return await quickText(res, principal, body)
     if (action === 'prepare') return await prepare(req, res, principal, config, body)
+    // The account guide to everyone (Lee, 16 Oct 2026): _jfp-guide-actions.js.
+    if (GUIDE_ACTIONS.has(action)) return await guideAction(req, res, principal, config, body, action)
     if (action === 'campaign') return res.status(200).json({ success: true, ...campaignSummary(await listMsgs(1000)), route: await routeStatus(), isOwner: isOwner(principal) })
     if (action === 'prepareCampaign') return await prepareCampaign(req, res, principal, config)
     if (action === 'sendCampaign') return await sendCampaign(req, res, principal, config, body)

@@ -10,6 +10,8 @@ import {
 } from './_jfp-messages.js'
 import { coachTextHoursOpen } from './_jfp-coach-alerts.js'
 import { stillValid } from './jfp-messages.js'
+import { guidePhoneRaw } from './_jfp-guide.js'
+import { allProfiles } from './_jfp-profiles.js'
 import { kvCommand } from './_holiday-store.js'
 
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
@@ -49,9 +51,12 @@ async function claimNext(req, res, body) {
       to = ph
     } else {
       // A text from a request: the mobile on the request, unchanged since it was written.
+      // The account guide to a new account: the mobile on their player profile.
       const ph = m.requestId && !m.rowIds.length
         ? familyPhone([{ phone: (await getApplication(m.requestId))?.mobile || '' }])
-        : familyPhone(roster.players.filter((r) => m.rowIds.includes(r.id)))
+        : m.accountEmail && !m.rowIds.length
+          ? familyPhone([{ phone: guidePhoneRaw({ email: m.accountEmail }, await allProfiles().catch(() => [])) }])
+          : familyPhone(roster.players.filter((r) => m.rowIds.includes(r.id)))
       if (!ph.phone || sha(ph.phone) !== m.target.hash) { await cancelIt(m, 'the mobile in Airtable changed'); continue }
       if (prefs[m.email]?.text !== 'yes') { await cancelIt(m, 'the family no longer has Texts: yes'); continue }
       if (dnc.has(m.email, ph.phone)) { await cancelIt(m, 'marked Do Not Contact'); continue }

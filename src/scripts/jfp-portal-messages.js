@@ -58,6 +58,7 @@ export async function renderMessages(ui) {
     ${!route.verified && d.isOwner && lastTest ? `<div class="j-box ms-verify-box ${lastTest.status === 'sent' ? 'j-box-amber' : 'j-box-grey'}" style="margin-bottom:14px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
       <span>${lastTest.status === 'sent' ? `<b>One step to switch texts on.</b> Your test text went at ${esc(when(lastTest.events.at(-1)?.at))}. Did it arrive on your phone?` : `<b>Your test text is ${esc(String(lastTest.statusLabel || lastTest.status).toLowerCase())}.</b> When it has gone, confirm it here.`}</span>
       ${lastTest.status === 'sent' ? `<button type="button" class="j-btn j-btn-dark" data-verify="${esc(lastTest.id)}">Yes, it arrived: turn texts on</button>` : ''}</div>` : ''}
+    <div id="ms-guide"></div>
     <div id="ms-campaign"></div>
     ${checkIt.length ? `<div class="j-box j-box-amber" style="margin-bottom:14px"><b>${checkIt.length} message${checkIt.length === 1 ? '' : 's'} to check.</b> The system could not tell if ${checkIt.length === 1 ? 'it' : 'they'} went. Look in Brevo or in Messages on the Mac, then settle it below. Nothing is sent again by itself.</div>` : ''}
     <div class="ps-tools" role="search" id="ms-ftools">
@@ -77,6 +78,7 @@ export async function renderMessages(ui) {
     <div id="ms-schips"></div>
     <div class="ps-table-wrap"><table class="ps-table ms-ps"><thead><tr><th>Parent</th><th>Channel</th><th>Status</th><th>Detail</th><th class="ps-end"><span class="sr-only">Actions</span></th></tr></thead><tbody id="ms-srows"></tbody></table></div>
     <p class="muted small" id="ms-scount" style="margin-top:8px"></p>`
+  drawGuide(ui, renderMessages)
   drawCampaign(ui, renderMessages)
 
   const $ = (id) => view().querySelector(`#${id}`)
@@ -374,4 +376,83 @@ async function drawCampaign(ui, rerender) {
   }
   document.getElementById('mc-send-e')?.addEventListener('click', (ev) => sendAll('email', e.draft, ev.currentTarget))
   document.getElementById('mc-send-t')?.addEventListener('click', (ev) => sendAll('text', t.draft, ev.currentTarget))
+}
+
+// The account guide to everyone (Lee, 16 Oct 2026): every Term 4 family,
+// recent requests and new accounts. Prepare, look at each group's email and
+// text exactly, then Lee sends emails and texts in batches.
+let GUIDE_PREP = null
+const GUIDE_LABEL = { term: 'Term 4 families', enquiry: 'Requests (last 60 days)', account: 'New accounts' }
+async function drawGuide(ui, rerender) {
+  const { need, confirmBox } = ui
+  const el = document.getElementById('ms-guide')
+  if (!el) return
+  const c = await need(await call('guide'))
+  const e = c.email, t = c.text
+  const split = (x) => Object.entries(x.byGroup).filter(([, n]) => n).map(([g, n]) => `${n} ${GUIDE_LABEL[g].toLowerCase()}`).join(', ')
+  el.innerHTML = `<div class="j-card" style="padding:14px 16px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+      <div><b>Account guide to everyone</b> <span class="muted small">Email + text: how the account works, the email to sign in with, player information, fees and waiver if still to do, Can't make it, extra sessions, holiday training.</span>
+        <p class="small" style="margin-top:6px">Emails: <b>${e.draft}</b> ready${e.draft ? ` (${esc(split(e))})` : ''} · ${e.sent} sent${e.problem ? ` · <span style="color:var(--j-red)">${e.problem} to check</span>` : ''} &nbsp;|&nbsp; Texts: <b>${t.draft}</b> ready · ${t.queued} waiting for the Mac · ${t.sent} sent${t.problem ? ` · <span style="color:var(--j-red)">${t.problem} to check</span>` : ''}</p></div>
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px">
+      ${Object.entries(GUIDE_LABEL).map(([g, l]) => `<label class="small" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" data-gg="${g}" checked> ${esc(l)}</label>`).join('')}
+      <button type="button" class="j-btn j-btn-line j-btn-sm" id="mg-prep">${e.draft || t.draft ? 'Prepare again' : 'Prepare'}</button>
+      ${c.samples.length ? '<button type="button" class="j-btn j-btn-line j-btn-sm" id="mg-show">Show exactly what goes</button>' : ''}
+      ${c.isOwner && e.draft ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" id="mg-send-e">Send ${e.draft} emails</button>` : ''}
+      ${c.isOwner && t.draft ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" id="mg-send-t" ${c.route?.verified ? '' : 'disabled title="Verify the text route first"'}>Queue ${t.draft} texts</button>` : ''}
+    </div>
+    <p class="muted small" style="margin-top:6px">Do Not Contact and "Texts: no" are left out. Each email is written again from the records the moment it goes, so a to-do or an amount is never out of date. Anyone already sent it is not sent it again.</p>
+    <div id="mg-out" class="small" style="margin-top:6px"></div>
+    <div id="mg-preview" hidden style="margin-top:12px"></div>
+  </div>`
+  document.getElementById('mg-prep').addEventListener('click', async (ev) => {
+    const groups = [...el.querySelectorAll('[data-gg]:checked')].map((x) => x.dataset.gg)
+    if (!groups.length) return toast('Tick who gets it.')
+    const b = ev.currentTarget; b.disabled = true; b.textContent = 'Preparing...'
+    const r = await call('prepareGuide', { groups })
+    if (!r.ok) { b.disabled = false; b.textContent = 'Prepare'; return toast(r.data.error) }
+    const x = r.data
+    toast(`Ready: ${x.emails} emails, ${x.texts} texts`)
+    GUIDE_PREP = x
+    rerender(ui)
+  })
+  if (GUIDE_PREP) {
+    const x = GUIDE_PREP
+    const line = (label, list) => (list.length ? `<details><summary>${list.length} ${esc(label)}</summary><p class="muted">${esc(list.join(' · '))}</p></details>` : '')
+    document.getElementById('mg-out').innerHTML = line('Do Not Contact, left out', x.dnc) + line('with no usable mobile (email only)', x.noPhone) + line('said no to texts (email only)', x.noTexts) + line('already sent it', x.already) + line('Term 4 players with no email in Airtable', x.noEmail)
+  }
+  document.getElementById('mg-show')?.addEventListener('click', () => {
+    const p = document.getElementById('mg-preview')
+    p.hidden = !p.hidden
+    const draw = (i) => {
+      const x = c.samples[i]
+      p.innerHTML = `<div class="j-chips" style="margin-bottom:10px">${c.samples.map((y, j) => `<button type="button" class="j-chip" data-gs="${j}" aria-pressed="${i === j}">${esc(GUIDE_LABEL[y.group])}</button>`).join('')}</div>
+        <p class="small">Example: ${esc(x.to)}</p>
+        ${x.subject ? `<p class="small"><b>Email</b> · Subject: ${esc(x.subject)}</p><iframe title="Email preview" style="width:100%;height:720px;border:1px solid var(--j-line);border-radius:10px;background:#fff" srcdoc="${esc(x.html)}"></iframe>` : ''}
+        ${x.text ? `<p class="small" style="margin-top:12px"><b>Text</b> (${x.text.length} characters)</p><div class="j-box" style="white-space:pre-wrap">${esc(x.text)}</div>` : '<p class="muted small">No text for this example (no usable mobile).</p>'}
+        <p class="muted small" style="margin-top:8px">Everyone in a group gets the same words with their own name, players, email and to-do list.</p>`
+      p.querySelectorAll('[data-gs]').forEach((b) => b.addEventListener('click', () => draw(Number(b.dataset.gs))))
+    }
+    if (!p.hidden) draw(0)
+  })
+  const sendAll = async (channel, n, b) => {
+    const basis = channel === 'text' ? 'Service message about their Joner Football account: current JFP families, their own request, or the account they made (Lee, 16 Oct 2026)' : ''
+    if (!(await confirmBox(channel === 'email'
+      ? `Email the account guide to <b>${n}</b> people now? Each goes once. Do Not Contact is left out.`
+      : `Queue <b>${n}</b> account guide texts from your work number? They go between 8am and 8pm, each once. Texts: no and Do Not Contact are left out.`, { ok: 'Send' }))) return
+    b.disabled = true
+    let sent = 0, queued = 0, skipped = 0, problem = 0
+    for (let i = 0; i < 40; i++) {
+      b.textContent = channel === 'email' ? `Sending... ${sent}` : `Queuing... ${queued}`
+      const r = await call('sendGuide', { channel, confirm: true, basis })
+      if (!r.ok) { toast(r.data.error || 'Stopped. Nothing is lost: press again.'); break }
+      sent += r.data.sent; queued += r.data.queued; skipped += r.data.skipped.length; problem += r.data.problem
+      if (!r.data.left) break
+    }
+    toast(channel === 'email' ? `Sent ${sent} emails${skipped ? `, ${skipped} left out` : ''}${problem ? `, ${problem} to check` : ''}` : `Queued ${queued} texts${skipped ? `, ${skipped} left out` : ''}`)
+    rerender(ui)
+  }
+  document.getElementById('mg-send-e')?.addEventListener('click', (ev) => sendAll('email', e.draft, ev.currentTarget))
+  document.getElementById('mg-send-t')?.addEventListener('click', (ev) => sendAll('text', t.draft, ev.currentTarget))
 }

@@ -666,3 +666,85 @@ ${cta ? button(cta.label, cta.url) : ''}`
 
 // A held Hermes email, sent as it was (after Lee's yes).
 export async function sendHeldEmail(h) { return send({ to: h.to, subject: h.subject, html: h.html, replyTo: h.replyTo, attachment: h.attachment, kind: h.kind }) }
+
+// ---------- the account guide to everyone (Lee, 16 Oct 2026) ----------
+// "get them all familiar with their JFP accounts": how to sign in and with
+// which email, the player information we need, fees and waiver if still to
+// do, Can't make it, extra sessions, holiday training, payment preferences
+// and the term. One template; the to-do box and the players are theirs.
+// r: { group: 'term' | 'enquiry' | 'account', email, parent, self, players:
+//      [{ name, group, missing: [] }], owingCents, needsWaiver }
+export function accountGuide(r, { config, signInUrl }) {
+  const names = r.players.map((x) => x.name).filter(Boolean)
+  const w = contactWords({ self: r.self, players: names, parent: r.parent })
+  const firsts = names.map((n) => n.split(/\s+/)[0])
+  const who = firsts.length > 1 ? `${firsts.slice(0, -1).join(', ')} and ${firsts.at(-1)}` : firsts[0] || (r.self ? 'you' : 'your player')
+  const your = r.self ? 'your' : `${who}'s`
+  const term = config.term.replace(/\s*\d{4}$/, '')
+  const inTerm = r.group === 'term'
+  const acct = (hash) => `${signInUrl}${hash}`
+  const li = (html) => `<li style="margin:0 0 8px;">${html}</li>`
+  const ul = (items) => `<ul style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.6;color:#374151;">${items.join('')}</ul>`
+  const ol = (items) => `<ol style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.6;color:#374151;">${items.join('')}</ol>`
+  const h2 = (t) => `<h2 style="margin:26px 0 10px;font-size:18px;line-height:1.3;font-weight:800;color:#111827;">${t}</h2>`
+  const box = (inner, tone = 'grey') => `<div style="margin:6px 0 18px;padding:16px 18px;border-radius:12px;background:${tone === 'amber' ? '#FFF7ED' : '#F9FAFB'};border:1px solid ${tone === 'amber' ? '#FED7AA' : '#E5E7EB'};">${inner}</div>`
+
+  // What this family still has to do, from the records when this was made.
+  const todo = []
+  for (const x of r.players) if (x.missing.length) todo.push(`<b>${esc(r.self ? 'Your profile' : `${x.name.split(/\s+/)[0]}'s player information`)}</b>: ${esc(x.missing.join(', '))}`)
+  if (inTerm && r.needsWaiver) todo.push(`<b>Sign the waiver</b>${r.self ? '' : ' for each player'}. It takes a minute.`)
+  if (inTerm && r.owingCents > 0) todo.push(`<b>Pay ${esc(formatAud(r.owingCents))}</b> still owing for ${esc(term)}`)
+  if (!inTerm && !r.players.length) todo.push(`<b>Add ${r.self ? 'your profile' : 'your player'}</b> in Player information`)
+  const todoHtml = todo.length
+    ? box(`<p style="margin:0 0 8px;font-size:15px;font-weight:800;color:#9A3412;">Still to do on your account</p>${ul(todo.map(li))}<p style="margin:0;font-size:14px;color:#6B7280;">Already done it in the last day or two? Thank you, ignore that line.</p>`, 'amber')
+    : box(`<p style="margin:0;font-size:15px;color:#374151;"><b>Your account is up to date.</b> Thank you. Please still read the rest: it is how everything works from now on.</p>`)
+
+  const body = `${p(`Hi ${esc(w.hi)},`)}
+${p(`From now on, everything at Joner Football runs through ${r.self ? 'your own' : 'your'} Joner Football account: sessions, fees, waivers, player information, cancellations, holiday training and extra sessions. This email explains how it all works. Please read it to the end and keep it handy.`)}
+${inTerm ? rows(r.players.map((x) => [esc(x.name), esc(x.group || 'Group to be confirmed')])) : ''}
+${todoHtml}
+
+${h2('1. Sign in (or create your account)')}
+${ol([li(`Go to ${link('jonerfootball.com/jfp-account', signInUrl)}`), li(`Enter <b>${esc(r.email)}</b>. ${inTerm ? `Please use this exact email. It is the one on our records, so ${r.self ? 'your sessions are' : 'your players are'} already there waiting.` : 'Please use this exact email, the one you gave us, so we can match you up.'}`), li('We email you a 6 digit code. Type it in. There is no password.')])}
+${p('First time? The same steps create your account. Signed up with a different email? Reply to this email and we will link it for you.')}
+
+${h2(`2. Complete ${r.self ? 'your profile' : 'your player information'} in full`)}
+${p(`This one is important. We need to know everything about ${r.self ? 'you as a player' : 'each player'}, and we ask every family to complete it in full before ${inTerm ? 'their next session' : 'training with us'}. Open <b>${r.self ? 'My profile' : 'Player information'}</b> and fill in:`)}
+${ul([li('Date of birth, club and team, and the level they play'), li('Positions and strongest foot'), li('What they want to work on, and anything the coaches should know'), li('Medical notes and allergies'), li('An emergency contact and their mobile')])}
+${p('Coaches use it to group and coach your player properly, and we need it in an emergency. A photo helps the coaches learn names too.')}
+
+${inTerm ? `${h2('3. Waiver and fees')}
+${p(`The waiver is signed once, in <b>Waivers</b>. Fees are in <b>Fees</b>: pay by card, Apple Pay, Google Pay or Afterpay, and download a tax invoice for any payment. ${r.owingCents > 0 ? `Your account shows <b>${esc(formatAud(r.owingCents))}</b> still to pay for ${esc(term)}. If you have already paid or something looks wrong, just reply and we will sort it.` : 'Nothing is owing on our records right now.'}`)}
+${p('<b>Payment preferences:</b> in Fees you can save a card. It is kept securely by Stripe (we never see the numbers), it makes paying for extra and session by session training quick, and you can replace or remove it at any time.')}` : `${h2('3. Booking a place')}
+${p(`See every group on the ${link('JFP timetable', 'https://jonerfootball.com/jfp-booking/')} and apply for the sessions that suit. We reply within 48 hours with a place, a trial first, or a group that suits better. Coaches group players by ability, not age. Your waiver and fees then sit in your account too.`)}`}
+
+${h2(`4. Can't make a session? Tell us in your account`)}
+${p(`Use <b>Can't make it</b> in your account, as early as you can. Your coach sees it straight away. Please do not just stay away: the coaches plan every session around who is coming. There are no make-up sessions.`)}
+
+${h2('5. Extra sessions')}
+${ul([li(`<b>Public extra sessions:</b> our coaches post extra sessions in your account under <b>Book extra sessions</b>. Places go first come, first served, so check your account regularly to see what has opened up, and book and pay there.`), li(`<b>1 on 1 or small group during the day:</b> in <b>Book extra sessions</b>, ask for a session, choose your preferred coach and the days and times that suit. It comes straight to us and we come back to you with a time.`)])}
+
+${h2('6. Holiday training and everything else')}
+${ul([li(`<b>Holiday training:</b> JFP players get first booking rights. Dates and times go in <b>Holiday training</b>, and we email JFP families first.`), li(`<b>Term info:</b> ${esc(config.term)}, ${esc(String(config.weeks))} weeks from ${esc(dateLabel(config.termStart))}. Sessions are 60 minutes. The JF playing kit is compulsory.`), li('<b>Keep my spot:</b> hold your place for next term when it opens.'), li('<b>Game analysis:</b> an exclusive discount for JFP players.'), li('<b>The Joner Football App:</b> free for every JFP player, so training keeps going between sessions.')])}
+
+${button('Sign in to my account', signInUrl)}
+${p('Any questions at all, just reply to this email.')}
+${p('See you at training,<br>Lee and the Joner Football team')}`
+  const subject = todo.length && inTerm ? `Your Joner Football account: how it all works (and what is left to do)` : 'Your Joner Football account: how it all works'
+  return { subject, html: shell({ preheader: 'Sign in, complete your player information, and how fees, cancellations and extra sessions work now', heading: 'Everything now runs through your Joner Football account', body }) }
+}
+
+// The text that goes with it. Short; the email has the detail.
+export function accountGuideText(r, { sender = 'Lee' } = {}) {
+  const w = contactWords({ self: r.self, players: r.players.map((x) => x.name), parent: r.parent })
+  // Only the players with something missing are named.
+  const firsts = r.players.filter((x) => x.missing.length).map((x) => x.name.split(/\s+/)[0])
+  const who = firsts.length > 1 ? `${firsts.slice(0, -1).join(', ')} and ${firsts.at(-1)}` : firsts[0] || ''
+  const todo = []
+  if (firsts.length) todo.push(r.self ? 'your profile' : `${who}'s player information`)
+  if (r.group !== 'term' && !r.players.length) todo.push(r.self ? 'add your profile' : 'add your player')
+  if (r.group === 'term' && r.needsWaiver) todo.push('the waiver')
+  if (r.group === 'term' && r.owingCents > 0) todo.push(`${formatAud(r.owingCents)} in fees`)
+  const list = todo.length > 1 ? `${todo.slice(0, -1).join(', ')} and ${todo.at(-1)}` : todo[0]
+  return `Hi ${w.hi}, it's ${sender} from Joner Football. Everything now runs through your Joner Football account: fees, waivers, player info, cancellations, holiday training and extra sessions. Sign in at jonerfootball.com/jfp-account with ${r.email} (no password, just a code).${list ? ` Still to do: ${list}.` : ''} We've emailed you the full guide. Any questions, just reply.`
+}
