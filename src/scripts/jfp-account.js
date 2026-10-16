@@ -184,7 +184,7 @@ function nav() {
       { key: 'fees', label: 'Fees', icon: 'card', dot: feesOwing() > 0 },
       { key: 'family', label: solo() ? 'My profile' : 'Family', icon: 'user', dot: familyCount() > 0 },
     ] },
-    { label: 'My family', items: [
+    { label: 'Manage', items: [
       { key: 'cancel', label: "Can't make it", icon: 'xcircle' },
       { key: 'keep', label: 'Keep my spot', icon: 'bookmark', dot: Boolean(D?.keep?.open && (D?.nextTerm?.players || []).some((x) => !x.status || x.status === 'invited')) },
       { key: 'info', label: solo() ? 'My profile' : 'Player information', icon: 'user', dot: infoGaps().length > 0 },
@@ -209,8 +209,8 @@ function navItem(it) {
   return `<button type="button" class="ja-nav-item" data-go="${it.key}" aria-current="${current === it.key ? 'page' : 'false'}">${inner}</button>`
 }
 const NAV_KEY = 'ja-nav-open'
-// Open on a first visit: My JFP and My family. Explore Joner until opened.
-const NAV_DEFAULT = { 'My JFP': true, 'My family': true }
+// Open on a first visit: My JFP and Manage. Explore Joner until opened.
+const NAV_DEFAULT = { 'My JFP': true, 'Manage': true }
 function navOpen() { try { return { ...NAV_DEFAULT, ...(JSON.parse(localStorage.getItem(NAV_KEY) || '{}') || {}) } } catch { return { ...NAV_DEFAULT } } }
 function navGroup(g, open) {
   if (g.items.length === 1) return `<div class="ja-nav-one">${navItem(g.items[0])}</div>`

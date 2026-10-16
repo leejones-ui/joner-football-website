@@ -223,7 +223,7 @@ await test('phones: Home, Sessions, Fees, Family and More (Lee, 17 Oct 2026); th
   assert.ok(p.$('[data-pane="family"] [data-waiver-player]'), 'Family has the Sign button')
   await p.click('#ja-tabs [data-more]')
   const groups = [...p.d.querySelectorAll('.j-sheet .ja-more-group')].map((g) => g.querySelector('.ja-nav-label').textContent)
-  assert.deepEqual(groups, ['My family', 'Explore Joner'])
+  assert.deepEqual(groups, ['Manage', 'Explore Joner'])
   const rows = [...p.d.querySelectorAll('.j-sheet .ja-mrow b')].map((t) => t.textContent)
   for (const t of ['Player information', "Can't make it", 'Keep my spot', 'Videos', 'The JF App', 'Waivers', 'Book extra sessions', 'Game analysis', 'Contact us']) assert.ok(rows.includes(t), t)
   for (const t of ['Home', 'Sessions', 'Fees', 'Family']) assert.ok(!rows.includes(t), `${t} is on the bar, not in More`)

@@ -276,23 +276,23 @@ await test("Can't make it: Coach and Ligia, each with Call and Text (the message
 })
 
 await test('side bar: dropdown sections that open, close and are remembered; the open page keeps its section open', async () => {
-  // Redesign (Lee, 17 Oct 2026): My JFP (the four main pages), My family, Explore Joner.
+  // Redesign (Lee, 17 Oct 2026): My JFP (the four main pages), Manage, Explore Joner.
   const p = await openAccount(BASE)
   const groups = p.$$('#ja-nav [data-navgrp]').map((g) => [g.dataset.navgrp, g.classList.contains('is-shut')])
-  assert.deepEqual(groups, [['My JFP', false], ['My family', false], ['Explore Joner', true]])
+  assert.deepEqual(groups, [['My JFP', false], ['Manage', false], ['Explore Joner', true]])
   await p.click('#ja-nav [data-navsec="Explore Joner"]')
   assert.equal(p.$('#ja-nav [data-navgrp="Explore Joner"]').classList.contains('is-shut'), false)
   assert.equal(JSON.parse(p.w.localStorage.getItem('ja-nav-open'))['Explore Joner'], true)
-  await p.click('#ja-nav [data-navsec="My family"]')
-  assert.equal(p.$('#ja-nav [data-navgrp="My family"]').getAttribute('class').includes('is-shut'), true)
+  await p.click('#ja-nav [data-navsec="Manage"]')
+  assert.equal(p.$('#ja-nav [data-navgrp="Manage"]').getAttribute('class').includes('is-shut'), true)
   // Going to a page in a shut section opens it.
   await p.click('#ja-tabs [data-more]')
   await p.click('.j-sheet [data-go="waivers"]')
-  assert.equal(p.$('#ja-nav [data-navgrp="My family"]').classList.contains('is-shut'), false)
+  assert.equal(p.$('#ja-nav [data-navgrp="Manage"]').classList.contains('is-shut'), false)
   p.close()
-  const again = await openAccount(BASE, { store: { 'ja-nav-open': JSON.stringify({ 'Explore Joner': true, 'My family': false }) } })
+  const again = await openAccount(BASE, { store: { 'ja-nav-open': JSON.stringify({ 'Explore Joner': true, 'Manage': false }) } })
   assert.equal(again.$('#ja-nav [data-navgrp="Explore Joner"]').classList.contains('is-shut'), false, 'remembered open')
-  assert.equal(again.$('#ja-nav [data-navgrp="My family"]').classList.contains('is-shut'), true, 'remembered shut')
+  assert.equal(again.$('#ja-nav [data-navgrp="Manage"]').classList.contains('is-shut'), true, 'remembered shut')
   again.close()
 })
 
