@@ -164,12 +164,13 @@ await test('a signed-in parent cancels a valid session: saved, notice worked out
   assert.equal(`${s.year}-${s.month}-${s.day} ${s.hour}:${s.minute}`, `${D1} 16:20`, 'start time is 4:20pm Sydney time')
   assert.ok(Math.abs(rec.noticeMinutes - Math.floor((startMs - before) / 60000)) <= 1, `notice ${rec.noticeMinutes} min`)
   assert.match(rec.noticeLabel, rec.noticeMinutes >= 1440 ? /^\d+ h notice$/ : /^late: /)
-  // Emails: one to the staff (Lee and Ligia), one to Sam; none to anyone else.
+  // Emails: one to the staff (Ligia; Lee gets Telegram instead), one to Sam; none to anyone else.
   const mail = (await emails()).filter((e) => /Can't make it/.test(e.subject))
   assert.equal(mail.length, 2)
-  const staff = mail.find((e) => e.to.includes('leejones@jonerfootball.com'))
+  assert.ok(!mail.some((e) => e.to.includes('leejones@jonerfootball.com')), 'Lee is not emailed')
+  const staff = mail.find((e) => e.to.includes('ligia@jonerfootball.com'))
   const coach = mail.find((e) => e.to.includes('jonerfootballsam@gmail.com'))
-  assert.deepEqual(staff.to.sort(), ['leejones@jonerfootball.com', 'ligia@jonerfootball.com'])
+  assert.deepEqual(staff.to, ['ligia@jonerfootball.com'])
   assert.deepEqual(coach.to, ['jonerfootballsam@gmail.com'])
   for (const m of [staff, coach]) {
     assert.match(m.subject, /Riley Returning, Tuesday 4:20pm/)

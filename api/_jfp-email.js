@@ -594,9 +594,18 @@ export async function sendCancelCoachAlert({ rec, coach }) {
   return true
 }
 
+// Lee gets cancellations on Telegram and in the portal's Cancellations tab, not
+// by email (Lee, 16 Oct 2026). Ligia and the other staff still get the email.
+export function cancelStaffTo(config) {
+  const lee = (process.env.JFP_OWNER_EMAIL || process.env.CAMP_SIGNUP_EMAIL || 'leejones@jonerfootball.com').toLowerCase()
+  return staffTo(config).filter((t) => t.email !== lee)
+}
+
 export async function sendCancelStaffAlert({ rec, config }) {
   const heading = rec.event === 'withdrawn' ? 'Cancellation withdrawn' : 'A player cannot make a session'
-  await send({ to: staffTo(config), subject: cancelSubject(rec), html: shell({ preheader: `${rec.player}, ${dateLabel(rec.date)}`, heading, body: cancelBody(rec, { forStaff: true }) }), replyTo: rec.email, kind: 'cancel to staff' })
+  const to = cancelStaffTo(config)
+  if (!to.length) return 'off'
+  await send({ to, subject: cancelSubject(rec), html: shell({ preheader: `${rec.player}, ${dateLabel(rec.date)}`, heading, body: cancelBody(rec, { forStaff: true }) }), replyTo: rec.email, kind: 'cancel to staff' })
   return true
 }
 
