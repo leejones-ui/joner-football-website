@@ -7,7 +7,7 @@
 import { $, esc, api, recaptcha, toast, openSheet, closeSheet, signIn, whoAmI, waiverBlock, money } from './jfp-common.js'
 
 const S = { data: null, filters: { loc: '', coach: '', day: '', show: '' }, phoneDay: '', view: 'week', parent: null, family: null, hold: null, timer: null, toStripe: false, picks: readPicks() }
-const SHOW = [['', 'All'], ['book', 'Book now'], ['open', 'Has places']]
+const SHOW = [['', 'All'], ['open', 'Has places'], ['book', 'Book and pay']]
 const DAY_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const SHORT = { Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat', Sunday: 'Sun' }
 
@@ -120,11 +120,15 @@ function days(list) { return [...new Set(list.map((g) => g.day))].sort((a, b) =>
 
 function renderLocations() {
   $('locs').innerHTML = S.data.locations.map((l) => {
-    const badge = l.full ? 'Fully booked' : `${l.groups} group${l.groups === 1 ? '' : 's'} · ${l.spots} spot${l.spots === 1 ? '' : 's'} left`
-    return `<button type="button" class="j-loc" data-loc="${esc(l.id)}" aria-pressed="${S.filters.loc === l.id}">
-      <div class="img">${l.photo ? `<img src="${esc(l.photo)}" alt="" loading="lazy" decoding="async">` : ''}<span class="badge">${esc(badge)}</span></div>
-      <div class="body"><h3><span class="j-dot j-dot-${esc(l.id)}"></span> ${esc(l.name)}</h3>${l.maps ? `<p><a href="${esc(l.maps)}" target="_blank" rel="noopener noreferrer" data-stop>Map</a></p>` : ''}</div>
-    </button>`
+    // Booking redesign (Lee, 16 Oct 2026): the photo is the choice, the
+    // name sits on it, and one line says how many places are left.
+    const left = l.full ? 'Full' : `${l.spots} place${l.spots === 1 ? '' : 's'} left`
+    return `<div class="j-loc${S.filters.loc === l.id ? ' is-on' : ''}">
+      <button type="button" class="j-loc-hit" data-loc="${esc(l.id)}" aria-pressed="${S.filters.loc === l.id}" aria-label="${esc(`${l.name}, ${left}`)}">
+        <span class="img">${l.photo ? `<img src="${esc(l.photo)}" alt="" loading="lazy" decoding="async">` : ''}<span class="nm">${esc(l.name)}</span>${S.filters.loc === l.id ? '<span class="tick" aria-hidden="true">&#10003;</span>' : ''}</span>
+      </button>
+      <span class="body"><span class="${l.full ? 'is-full' : ''}">${esc(left)}</span>${l.maps ? `<a href="${esc(l.maps)}" target="_blank" rel="noopener noreferrer" data-stop>Map</a>` : ''}</span>
+    </div>`
   }).join('')
 }
 
@@ -177,63 +181,57 @@ function agesLabel(g) {
   return g.girlsOnly ? `Girls, age guide ${g.minAge} to ${g.maxAge}` : `Age guide ${g.minAge} to ${g.maxAge}`
 }
 
+// One status system for every card and the sheet (Lee, 16 Oct 2026).
 function status(g) {
   // Joners Juniors: signed up on its own page (ages 3 to early primary).
-  if (g.mode === 'signup') return ['s-book', 'Ages 3 to early primary']
-  if (g.mode === 'enquire') return ['s-grey', 'Enquire']
-  if (g.full) return ['s-full', 'Join the waitlist']
-  const left = `${g.placesLeft} ${g.placesLeft === 1 ? 'spot' : 'spots'} left`
-  return g.mode === 'direct' ? ['s-book', left] : ['s-apply', left]
+  if (g.mode === 'signup') return ['s-ok', 'Ages 3 to early primary']
+  if (g.mode === 'enquire') return ['s-grey', 'On request']
+  if (g.full) return ['s-full', g.applyWhenFull ? 'Full, applications open' : 'Full']
+  return [g.placesLeft === 1 ? 's-low' : 's-ok', `${g.placesLeft} ${g.placesLeft === 1 ? 'place' : 'places'} left`]
 }
 
 // A full group normally takes the waitlist. Groups Lee marks "keep taking
 // applications" (popular spots) still say Apply when full.
 function waitOnly(g) { return g.full && !g.applyWhenFull }
-function actLabel(g) { return g.mode === 'signup' ? 'Book now' : g.mode === 'enquire' ? 'Enquire' : waitOnly(g) ? 'Join the waitlist' : g.mode === 'direct' && !g.full ? 'Book' : 'Apply' }
+function actLabel(g) { return g.mode === 'signup' ? 'Sign up' : g.mode === 'enquire' ? 'Enquire' : waitOnly(g) ? 'Join waitlist' : g.mode === 'direct' && !g.full ? 'Book' : 'Apply' }
 
-function block(g) {
-  const [cls, text] = status(g)
-  return `<button type="button" class="j-blk j-blk-${esc(g.locationId)} ${g.full ? 'is-full' : ''} ${picked(g) ? 'is-picked' : ''}" data-group="${esc(g.id)}" ${picked(g) ? 'aria-description="In your sessions"' : ''}>
-    ${locBanner(g)}
-    <span class="t">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}${g.allowOneToOne ? ' <span class="j-tag">Group or 1 to 1</span>' : ''}</span>
-    <span class="c c-name">${esc(g.coachName || 'Joner Football')}</span>
-    ${g.girlsOnly ? '<span class="c">Girls only</span>' : ''}
-    <span class="left">${g.mode === 'enquire' ? 'On request' : g.full ? 'Fully booked' : esc(text)}</span>
-    <span class="act ${picked(g) ? 'act-picked' : waitOnly(g) ? 'act-wait' : g.mode === 'direct' || g.mode === 'signup' ? 'act-book' : 'act-apply'}">${picked(g) ? '&#10003; Picked' : actLabel(g)}</span>
-  </button>`
+// One session card everywhere (Lee, 16 Oct 2026): time, coach, where, one
+// status and one action. The card lays itself out by its own width, so the
+// same card is a row on a phone and a tile in the laptop week grid.
+function tagsOf(g) {
+  return [g.label && !['Small group', '1 to 1'].includes(g.label) ? g.label : '', g.allowOneToOne ? 'Group or 1 to 1' : '', g.girlsOnly ? 'Girls only' : ''].filter(Boolean)
 }
-
-// Every group carries its location as a banner across the top, in the
-// location's colour. Fully booked sits in the same strip, so every card's
-// time and button line up whether it is full or not.
-function locBanner(g) {
-  return `<span class="j-lb j-lb-${esc(g.locationId)}"><span>${esc(g.locationBanner || g.location)}</span>${g.full ? '<span class="full">Fully booked</span>' : ''}</span>`
-}
-
-// A group as a card: the location banner, then the time and who it is for
-// stand out, then the coach, places left and one button.
-function card(g) {
+function sessionCard(g) {
   const [cls, text] = status(g)
-  const btn = actLabel(g)
-  return `<article class="j-group j-card-photo ${g.full ? 'is-full' : ''} ${picked(g) ? 'is-picked' : ''}">
-    <button type="button" class="j-card-hit" data-group="${esc(g.id)}" aria-label="${esc(`${g.day} ${g.time}, ${g.coachName}`)}"></button>
-    ${locBanner(g)}
-    <div class="bd">
-      <p class="when-big">${esc(g.time)}${g.label && !['Small group', '1 to 1'].includes(g.label) ? ` <span class="j-tag">${esc(g.label)}</span>` : ''}${g.allowOneToOne ? ' <span class="j-tag">Group or 1 to 1</span>' : ''}</p>
-      <p class="meta" style="margin-top:6px">${coachChip(g, 32)}</p>
-      <p class="meta">${esc(g.location)} · ${esc(g.durationMin)} min${g.girlsOnly ? ' · Girls only' : ''}</p>
-      <div class="foot"><span class="st ${cls}">${g.mode === 'enquire' ? '' : g.full ? 'Fully booked' : esc(text)}</span><span class="j-btn ${picked(g) ? 'j-btn-picked' : waitOnly(g) ? 'j-btn-wait' : 'j-btn-dark'} j-act">${picked(g) ? '&#10003; Picked' : btn}</span></div>
+  // The photo already says coach: the name alone fits a narrow card.
+  const chip = coachChip(g, 26).replace(/(<span>)Coach\s+/, '$1')
+  const on = picked(g)
+  const act = actLabel(g)
+  const tags = tagsOf(g)
+  const name = [`${g.day} ${g.time}`, g.coachName, g.location, text, on ? 'In your sessions' : act].filter(Boolean).join(', ')
+  return `<article class="j-ses ${g.full ? 'is-full' : ''} ${on ? 'is-picked' : ''} ${tags.length ? 'has-tags' : ''}">
+    <button type="button" class="j-ses-hit" data-group="${esc(g.id)}" aria-label="${esc(name)}"></button>
+    <div class="j-ses-in">
+      <p class="j-ses-time">${esc(g.time)}</p>
+      <p class="j-ses-st ${cls}">${esc(text)}</p>
+      ${tags.length ? `<p class="j-ses-tags">${tags.map((t) => `<span class="j-tag" title="${esc(t)}">${esc(t)}</span>`).join('')}</p>` : ''}
+      <p class="j-ses-coach">${chip}</p>
+      <p class="j-ses-where">${esc(g.location)} · ${esc(g.durationMin)} min</p>
+      <span class="j-ses-act ${on ? 'is-picked' : waitOnly(g) ? 'is-wait' : 'is-go'}" aria-hidden="true">${on ? '&#10003; Picked' : esc(act)}</span>
     </div>
   </article>`
 }
+const block = sessionCard
+const card = sessionCard
 
 function renderResults() {
   const list = visible()
   const f = S.filters
   $('f-reset').hidden = !(f.loc || f.coach || f.day || f.show)
   if (!list.length) {
-    $('results').innerHTML = '<div class="j-empty">No groups match those filters. Try another coach, day or location.</div>'
+    $('results').innerHTML = '<div class="j-empty">No sessions match those filters. Try another coach, day or location.</div>'
     $('daybar').innerHTML = ''
+    $('results-head').textContent = ''
     return
   }
   const cols = days(list)
@@ -241,7 +239,11 @@ function renderResults() {
   // A phone always shows one day; a laptop starts on the whole week.
   const view = phone ? 'day' : S.view
   if (!cols.includes(S.phoneDay)) S.phoneDay = cols[0]
-  $('daybar').innerHTML = `${phone ? '' : `<button type="button" role="tab" data-pday="week" aria-selected="${view === 'week'}">Whole week</button>`}${cols.map((d) => `<button type="button" role="tab" data-pday="${esc(d)}" aria-selected="${view === 'day' && S.phoneDay === d}">${esc(phone ? SHORT[d] || d : d)}</button>`).join('')}`
+  // Each day shows how many of its sessions still have places.
+  const openOn = (d) => list.filter((g) => g.day === d && !g.full && g.mode !== 'enquire').length
+  $('daybar').innerHTML = `${phone ? '' : `<button type="button" role="tab" data-pday="week" aria-selected="${view === 'week'}">Whole week</button>`}${cols.map((d) => `<button type="button" role="tab" data-pday="${esc(d)}" aria-selected="${view === 'day' && S.phoneDay === d}" aria-label="${esc(`${d}, ${openOn(d)} with places`)}"><span>${esc(phone ? SHORT[d] || d : d)}</span><small>${openOn(d)}</small></button>`).join('')}`
+  const shown = view === 'week' ? list : list.filter((g) => g.day === S.phoneDay)
+  $('results-head').innerHTML = `<b>${shown.length} session${shown.length === 1 ? '' : 's'}</b> · Pick as many as suit you.`
   const periods = [['am', 'Morning'], ['pm', 'Afternoon']].filter(([p]) => list.some((g) => g.period === p))
   if (view === 'week') {
     $('results').innerHTML = `<div class="j-tt" style="--cols:${cols.length};display:grid">
@@ -286,35 +288,35 @@ function groupSheet(g) {
   const sheet = openSheet({ title: `${g.day} ${g.time}`, subtitle: `${g.location} · ${g.coachName || 'Joner Football'} · ${g.durationMin} minutes` })
   const taken = Math.max(0, g.capacity - Math.max(0, g.placesLeft ?? 0))
   const pills = [
-    g.mode === 'direct' ? '<span class="j-pill j-pill-green">Book now</span>' : g.mode === 'application' ? '<span class="j-pill j-pill-blue">Apply only</span>' : '<span class="j-pill j-pill-grey">Enquire</span>',
-    g.full ? '<span class="j-pill j-pill-red">Fully booked</span>' : g.placesLeft != null ? `<span class="j-pill j-pill-grey">${taken} of ${g.capacity} places taken</span>` : '',
+    g.mode === 'direct' ? '<span class="j-pill j-pill-green">Book and pay</span>' : g.mode === 'application' ? '<span class="j-pill j-pill-grey">Apply to join</span>' : '<span class="j-pill j-pill-grey">Enquire</span>',
+    g.full ? `<span class="j-pill j-pill-red">${g.applyWhenFull && !waitOnly(g) ? 'Full, applications open' : 'Full'}</span>` : g.placesLeft != null ? `<span class="j-pill j-pill-grey">${taken} of ${g.capacity} places taken</span>` : '',
     g.label && !['Small group'].includes(g.label) ? `<span class="j-pill j-pill-grey">${esc(g.label)}</span>` : '',
   ].join(' ')
   // Ages as a guide, then what the group asks of a player. Nothing that
   // invites a family to pick a group above the player's level.
   const who = `<ul class="j-req">${requirementsOf(g).map((r) => `<li>${esc(r)}</li>`).join('')}</ul>
-    ${g.requirementsText ? `<p class="j-reqhead">Session notes</p><div class="j-reqtext">${g.requirementsText.split(/\n\s*\n/).map((para) => `<p>${esc(para).replace(/\n/g, '<br>')}</p>`).join('')}</div>` : ''}
+    ${g.requirementsText ? `<details class="j-reqmore"><summary>About this session</summary><div class="j-reqtext">${g.requirementsText.split(/\n\s*\n/).map((para) => `<p>${esc(para).replace(/\n/g, '<br>')}</p>`).join('')}</div></details>` : ''}
     ${g.publicNote ? `<p style="margin-top:6px">${esc(g.publicNote)}</p>` : ''}
     <p class="small" style="margin-top:6px">${hasAges(g) ? `Our coaches place every player with others at their level, so each ${g.mode === 'direct' ? 'booking is for players who meet the above' : 'application is reviewed'}.` : esc(ALL_AGES)}</p>`
   const steps = waitOnly(g)
-    ? ['This group is fully booked right now.', 'Join the waitlist and we will contact you if a place opens.']
+    ? ['This session is full right now.', 'Join the waitlist and we will contact you if a place opens.']
     : g.mode === 'direct'
       ? [`Sign in with your email, then add the player and sign the waiver.`, `Pay and the place is yours${g.sessions ? `: every session from the next one to ${esc(g.lastDate)}` : ''}.`, 'Joining after the term starts? You only pay for the sessions left.']
       : ['Apply with the player\'s club and team. It takes 2 minutes.', `We reply within 48 hours with one of three answers:`, 'The place is only held once it is paid.']
   const outcomes = !waitOnly(g) && g.mode === 'application' ? `<div class="j-outcomes">
       <div class="j-card"><b>Accepted for the term</b><span>If we know the player or they fit the group. Pay to lock in the place.</span></div>
-      ${g.trials ? `<div class="j-card"><b>Trial first, ${esc(S.data.trialPriceLabel)}</b><span>One session in this group. If it is a good fit, pay for the rest of the term in My account, with the trial taken off.</span></div>` : ''}
-      <div class="j-card"><b>Not this group</b><span>If it is not the right level, we will tell you, and suggest a group that is.</span></div>
+      ${g.trials ? `<div class="j-card"><b>Trial first, ${esc(S.data.trialPriceLabel)}</b><span>One session first. If it is a good fit, pay for the rest of the term in My account, with the trial taken off.</span></div>` : ''}
+      <div class="j-card"><b>Not this session</b><span>If it is not the right level, we will tell you, and suggest a session that is.</span></div>
     </div>` : ''
   sheet.body.innerHTML = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${pills}</div>
     ${g.coachName ? `<div style="margin-bottom:14px">${coachChip(g, 56)}</div>` : ''}
-    <div class="j-box j-box-grey" style="margin-bottom:16px"><b>Requirements for this spot</b>${who}</div>
+    <div class="j-box j-box-grey" style="margin-bottom:16px"><b>Who it is for</b>${who}</div>
     <h3 style="margin-bottom:6px">How it works</h3>
     <ol class="j-steps-list">${steps.map((t, i) => `<li><span class="n">${i + 1}</span><span>${t}${i === 1 ? outcomes : ''}</span></li>`).join('')}</ol>
     <p class="muted small" style="margin-top:10px">${esc(g.sessions)} weekly sessions this term, ${esc(g.firstDate)} to ${esc(g.lastDate)}.${g.noSession?.length ? ` No session on ${esc(g.noSession.join(', '))}.` : ''}</p>`
   const kind = waitOnly(g) ? 'waitlist' : g.full ? 'application' : g.mode === 'direct' ? 'book' : g.mode === 'application' ? 'application' : 'enquiry'
-  const label = { waitlist: 'Join the waitlist', book: 'Book this group', application: 'Apply for this group', enquiry: 'Enquire' }[kind]
+  const label = { waitlist: 'Join the waitlist', book: 'Book this session', application: 'Apply for this session', enquiry: 'Enquire' }[kind]
   // Several sessions (Lee, 14 Oct 2026): add this one to the family's picks,
   // or go straight on with just this one.
   const canPick = Boolean(pickKind(g))
@@ -648,7 +650,7 @@ async function start(kind, g, btn) {
   if (!g) return
   Object.keys(F).forEach((k) => delete F[k])
   Object.assign(F, { kind, g, selected: new Map(), newPlayers: [], waiver: null })
-  const titles = { book: 'Book this group', application: 'Apply for this group', waitlist: 'Join the waitlist', enquiry: 'Enquire about 1 to 1' }
+  const titles = { book: 'Book this session', application: 'Apply for this session', waitlist: 'Join the waitlist', enquiry: 'Enquire about 1 to 1' }
   F.titles = titles
   F.sheet = openSheet({ title: titles[kind], subtitle: groupLine(g), onClose: () => { releaseHold(); load(true) } })
   track('jfp_start', { content_category: `jfp_${kind}`, content_name: g.id })

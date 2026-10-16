@@ -565,10 +565,132 @@ body.has-picks .j-toast { bottom: calc(92px + env(safe-area-inset-bottom)); }
 .j-picks-what b { white-space: nowrap; }
 @media (max-width: 420px) { .j-picks-in { gap: 8px; } .j-picks-act .j-btn-dark { padding: 10px 12px; } }
 
+/* ===== Booking page redesign (Lee, 16 Oct 2026) =====
+   Scoped to #jfp-book. Clean and light, Joner red only for urgency and the
+   chosen state, no location colours (a place is its photo and its name), one
+   session card everywhere, and the day bar stays on screen. Layout only. */
+#jfp-book { --j-joner: #E8000D; --j-joner-bg: #FFF1F1; }
+#jfp-book .j-hero { padding: clamp(18px, 3vw, 36px) 0 0; }
+#jfp-book .j-hero h1 { font-size: clamp(26px, 3.4vw, 44px); text-wrap: balance; }
+#jfp-book .j-hero p { margin-top: 6px; font-size: clamp(14px, 1.2vw, 17px); }
+#jfp-book .j-tabs { margin: 14px 0 16px; gap: 2px; }
+#jfp-book .j-tabs a { padding: 10px 12px; font-size: 14.5px; }
+#jfp-book .j-tabs a:hover { transform: none; }
+@media (max-width: 420px) { #jfp-book .j-tabs a { padding: 10px 9px; font-size: 14px; } }
+#jfp-book .j-step { font-size: 15px; font-weight: 750; letter-spacing: -0.01em; margin: 2px 0 10px; }
+
+/* Locations: three photo tiles in one row, the name on the photo. */
+#jfp-book .j-locs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-flow: row; grid-auto-columns: auto; gap: 10px; margin: 0; padding: 0; overflow: visible; }
+@media (min-width: 720px) { #jfp-book .j-locs { gap: 16px; } }
+#jfp-book .j-loc { position: relative; background: transparent; border: 0; border-radius: 0; overflow: visible; box-shadow: none; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#jfp-book .j-loc-hit { display: block; width: 100%; padding: 0; border: 0; background: none; border-radius: 14px; text-align: left; }
+#jfp-book .j-loc .img { position: relative; display: block; height: clamp(92px, 26vw, 120px); border-radius: 14px; overflow: hidden; background: #E5E7EB; box-shadow: inset 0 0 0 1px rgba(16,24,40,.06); transition: box-shadow .14s; }
+@media (min-width: 720px) { #jfp-book .j-loc .img { height: clamp(130px, 11vw, 190px); } }
+#jfp-book .j-loc .img img { transition: transform .3s ease; }
+#jfp-book .j-loc .img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,0) 58%); }
+#jfp-book .j-loc .nm { position: absolute; left: 10px; right: 10px; bottom: 8px; z-index: 1; color: #fff; font-weight: 800; font-size: clamp(13px, 3.6vw, 20px); line-height: 1.15; letter-spacing: -0.01em; text-shadow: 0 1px 2px rgba(0,0,0,.35); overflow-wrap: break-word; }
+@media (min-width: 720px) { #jfp-book .j-loc .nm { left: 14px; bottom: 12px; } }
+#jfp-book .j-loc .tick { position: absolute; top: 8px; right: 8px; z-index: 1; width: 26px; height: 26px; border-radius: 50%; background: var(--j-joner); color: #fff; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+#jfp-book .j-loc.is-on .img { box-shadow: 0 0 0 3px var(--j-joner); }
+#jfp-book .j-loc-hit:hover .img img { transform: scale(1.04); }
+#jfp-book .j-loc-hit:focus-visible { outline-offset: 3px; border-radius: 14px; }
+#jfp-book .j-loc .body { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; padding: 0 2px; font-size: 12.5px; font-weight: 650; color: var(--j-ink-2); }
+@media (max-width: 719px) { #jfp-book .j-loc .body { flex-direction: column; } }
+#jfp-book .j-loc .body .is-full { color: var(--j-muted); }
+#jfp-book .j-loc .body a { color: var(--j-muted); font-weight: 600; position: relative; }
+@media (prefers-reduced-motion: reduce) { #jfp-book .j-loc .img img { transition: none; } #jfp-book .j-loc-hit:hover .img img { transform: none; } }
+
+/* The day bar and filters. On a phone the day bar sticks under the header;
+   on a laptop the whole bar does. */
+#jfp-book .j-bar { display: contents; }
+#jfp-book .j-filters { padding: 12px 0 0; gap: 8px; }
+#jfp-book .j-daybar { position: sticky; top: 60px; z-index: 20; margin: 12px -16px 0; padding: 8px 16px; border-radius: 0; background: rgba(246,247,249,.94); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); display: flex; flex-wrap: nowrap; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+#jfp-book .j-daybar::-webkit-scrollbar { display: none; }
+@media (max-width: 899px) { #jfp-book .j-daybar { box-shadow: 0 1px 0 var(--j-line); } }
+#jfp-book .j-daybar button { flex: 1 0 auto; min-width: 48px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 5px 8px; border: 1.5px solid var(--j-line); background: var(--j-surface); border-radius: 12px; line-height: 1.15; box-shadow: none; }
+#jfp-book .j-daybar button span { font-size: 13.5px; font-weight: 700; color: var(--j-ink); }
+#jfp-book .j-daybar button small { font-size: 11px; font-weight: 650; color: var(--j-muted); }
+#jfp-book .j-daybar button[data-pday="week"] { flex-direction: row; }
+#jfp-book .j-daybar button[aria-selected="true"] { background: var(--j-ink); border-color: var(--j-ink); box-shadow: none; color: #fff; }
+#jfp-book .j-daybar button[aria-selected="true"] span, #jfp-book .j-daybar button[aria-selected="true"] small { color: #fff; }
+#jfp-book .j-chip[aria-pressed="true"] { background: var(--j-ink); border-color: var(--j-ink); }
+@media (max-width: 899px) {
+  #jfp-book .j-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  #jfp-book .j-filters .j-chips, #jfp-book .j-filters #f-reset { grid-column: 1 / -1; }
+}
+@media (min-width: 768px) and (max-width: 899px) { #jfp-book .j-daybar { margin: 12px -28px 0; padding: 8px 28px; } }
+@media (min-width: 900px) {
+  #jfp-book .j-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; position: sticky; top: 60px; z-index: 20; margin: 18px calc(-1 * clamp(16px, 4vw, 64px)) 0; padding: 10px clamp(16px, 4vw, 64px); background: rgba(246,247,249,.94); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 1px 0 var(--j-line); }
+  #jfp-book .j-daybar { position: static; margin: 0; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; display: inline-flex; }
+  #jfp-book .j-daybar button { flex: none; flex-direction: row; gap: 7px; padding: 8px 14px; }
+  #jfp-book .j-daybar button small { font-size: 12px; }
+  #jfp-book .j-filters { padding: 0; flex-wrap: nowrap; }
+}
+#jfp-book .j-hint { margin: 14px 0 4px; font-size: 13px; color: var(--j-muted); }
+#jfp-book .j-hint b { color: var(--j-ink); font-weight: 700; }
+
+/* The week grid and the day list. */
+#jfp-book .j-tt { gap: 10px; margin-top: 6px; }
+#jfp-book .j-tt-row { padding-top: 14px; }
+#jfp-book .j-tt-cell { gap: 10px; }
+#jfp-book .j-grid { gap: 10px; }
+@media (min-width: 640px) { #jfp-book .j-grid { gap: 12px; } }
+
+/* One session card. Stacked when narrow (the week grid), a row when wide. */
+#jfp-book .j-ses { position: relative; container-type: inline-size; background: var(--j-surface); border: 1px solid var(--j-line); border-radius: 14px; transition: border-color .14s, box-shadow .14s; }
+#jfp-book .j-ses:hover { border-color: #C9CED6; box-shadow: var(--j-shadow); }
+#jfp-book .j-ses-hit { position: absolute; inset: 0; z-index: 2; width: 100%; background: transparent; border: 0; border-radius: inherit; padding: 0; }
+#jfp-book .j-ses-hit:focus-visible { outline: 2px solid var(--j-focus); outline-offset: 2px; }
+#jfp-book .j-ses p { margin: 0; }
+#jfp-book .j-ses-in { display: flex; flex-direction: column; gap: 3px; padding: 12px; min-width: 0; height: 100%; }
+#jfp-book .j-ses-time { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; color: var(--j-ink); }
+#jfp-book .j-ses-st { order: 5; font-size: 12.5px; font-weight: 700; color: var(--j-ink-2); margin-top: 4px; }
+#jfp-book .j-ses-st.s-low { color: var(--j-joner); }
+#jfp-book .j-ses-st.s-full, #jfp-book .j-ses-st.s-grey { color: var(--j-muted); }
+#jfp-book .j-ses-tags { display: flex; gap: 4px; min-width: 0; overflow: hidden; }
+#jfp-book .j-ses-tags .j-tag { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; flex: 0 1 auto; vertical-align: 0; font-size: 11px; padding: 2px 8px; }
+#jfp-book .j-ses-coach { min-width: 0; margin-top: 4px; }
+#jfp-book .j-ses-coach .j-coach { font-size: 13px; gap: 7px; max-width: 100%; }
+#jfp-book .j-ses-coach .j-coach > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+#jfp-book .j-ses-where { font-size: 12.5px; color: var(--j-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#jfp-book .j-ses-act { order: 6; display: flex; align-items: center; justify-content: center; margin-top: auto; min-height: 40px; padding: 0 14px; border-radius: 10px; font-size: 14px; font-weight: 700; white-space: nowrap; border: 1.5px solid var(--j-action); background: var(--j-action); color: #fff; }
+#jfp-book .j-ses-st + .j-ses-act, #jfp-book .j-ses-in > .j-ses-act { margin-top: 10px; }
+#jfp-book .j-ses-act.is-wait { background: #fff; color: var(--j-ink); border-color: #D0D5DD; }
+#jfp-book .j-ses-act.is-picked { background: var(--j-joner-bg); color: var(--j-joner); border-color: #FFC9C9; }
+#jfp-book .j-ses:hover .j-ses-act.is-go { background: #000; }
+#jfp-book .j-ses.is-full { background: #FBFBFC; }
+#jfp-book .j-ses.is-full .j-ses-time, #jfp-book .j-ses.is-full .j-ses-coach { opacity: .7; }
+#jfp-book .j-ses.is-picked { border-color: var(--j-joner); box-shadow: 0 0 0 1px var(--j-joner); }
+@container (min-width: 300px) {
+  #jfp-book .j-ses-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 3px; align-items: center; padding: 12px 14px; }
+  #jfp-book .j-ses-time { grid-column: 1; grid-row: 1; font-size: 22px; }
+  #jfp-book .j-ses-st { grid-column: 2; grid-row: 1; margin: 0; text-align: right; }
+  #jfp-book .j-ses-tags { grid-column: 1 / -1; }
+  #jfp-book .j-ses-coach, #jfp-book .j-ses-where { grid-column: 1; }
+  #jfp-book .j-ses-act { grid-column: 2; grid-row: 2 / span 2; align-self: end; margin: 0 !important; min-width: 96px; }
+  #jfp-book .j-ses.has-tags .j-ses-act { grid-row: 3 / span 2; }
+  #jfp-book .j-ses-tags { grid-row: 2; }
+}
+/* The week grid gets every card in a row the same shape: room for one tag line. */
+#jfp-book .j-tt .j-ses-in { min-height: 100%; }
+
+/* The session sheet: a bottom sheet on a phone, a narrower dialog on a laptop. */
+@media (min-width: 900px) { #jfp-book .j-sheet { width: min(620px, calc(100vw - 48px)); } }
+#jfp-book .j-reqmore { margin-top: 10px; }
+#jfp-book .j-reqmore summary { cursor: pointer; font-weight: 700; font-size: 14px; color: var(--j-ink); padding: 6px 0; }
+#jfp-book .j-reqmore[open] summary { margin-bottom: 2px; }
+
+/* Below the timetable: the account button, out of the way of choosing. */
+#jfp-book .j-newacct { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 28px 0 8px; padding: 16px; border: 1px solid var(--j-line); border-radius: 14px; background: var(--j-surface); font-size: 14px; font-weight: 650; color: var(--j-ink-2); }
+
 /* Touch screens: the booking page's filters, day pills, chips and footer
    links are at least 44px too (after their own sizes above, so this wins). */
 @media (pointer: coarse) {
   .j-pillselect, .j-chip, .j-filters .j-chip, .j-daybar button { min-height: 44px; }
   .j-foot-link { position: relative; }
   .j-foot-link::after { content: ''; position: absolute; left: -6px; right: -6px; top: 50%; height: 44px; transform: translateY(-50%); }
+  #jfp-book .j-loc .body a::after { content: ''; position: absolute; left: -8px; right: -8px; top: 50%; height: 44px; transform: translateY(-50%); }
+  #jfp-book .j-daybar button { min-height: 48px; }
+  #jfp-book .j-ses-act { min-height: 44px; }
+  #jfp-book .j-tabs a { min-height: 44px; display: inline-flex; align-items: center; }
 }

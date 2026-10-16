@@ -222,8 +222,11 @@ await test('staff Requests page groups the batch (portal script)', async () => {
   const src = await (await import('node:fs/promises')).readFile(new URL('../src/scripts/jfp-portal.js', import.meta.url), 'utf8')
   assert.match(src, /function batched\(list\)/)
   assert.match(src, /sessions in one go/)
-  const page = await import('node:fs/promises').then((fs) => fs.readFile(new URL('../src/pages/jfp-booking.astro', import.meta.url), 'utf8'))
-  assert.ok(page.includes('You can apply for more than one session. Pick as many as suit you.'))
+  // The booking page says families can pick several (redesign, 16 Oct 2026:
+  // a line above the timetable and the sheet, not a tip box).
+  const book = await import('node:fs/promises').then((fs) => fs.readFile(new URL('../src/scripts/jfp-booking.js', import.meta.url), 'utf8'))
+  assert.ok(book.includes('Pick as many as suit you.'))
+  assert.ok(book.includes('You can apply for more than one session. Pick as many as suit you.'))
 })
 
 console.log(`\n${passed} multi-session checks passed`)
