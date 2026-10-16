@@ -8,6 +8,8 @@
 import { kvCommand, clean, newId, sydneyToday, dateLabel, audit, locationFor } from './_jfp-store.js'
 
 const KEY = 'jfp:announce'
+// Read marks: one field per sign-in email, a JSON list of announcement ids.
+const READ = 'jfp:announce-read'
 const MAX_TITLE = 90
 const MAX_BODY = 1200
 const ISO = /^\d{4}-\d{2}-\d{2}$/
@@ -46,15 +48,31 @@ function audienceLabel(config, a) {
 
 // What one family sees: live notices for everyone, their locations or their
 // groups. Only the words, the date and who it is for; never staff emails.
-export async function announcementsFor({ groupIds = [], locationIds = [] } = {}, today = sydneyToday()) {
-  let all = []
+export async function announcementsFor({ groupIds = [], locationIds = [], email = '' } = {}, today = sydneyToday()) {
+  let all = [], read = new Set()
   try { all = await allAnnouncements() } catch (error) { console.error('jfp announce read failed', error); return [] }
+  if (email) try { read = new Set(await readIds(email)) } catch (error) { console.error('jfp announce read marks failed', error) }
   const g = new Set(groupIds.filter(Boolean)), l = new Set(locationIds.filter(Boolean))
   return all.filter((a) => a.from <= today && (!a.until || a.until >= today))
     .filter((a) => a.audience?.type === 'all' || (a.audience?.type === 'location' && l.has(a.audience.id)) || (a.audience?.type === 'group' && g.has(a.audience.id)))
     .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)))
     .slice(0, 10)
-    .map((a) => ({ id: a.id, title: a.title, body: a.body, dateLabel: dateLabel(a.from), from: a.from, pinned: Boolean(a.pinned), forLabel: a.audience?.type === 'all' ? '' : a.audience.label || '' }))
+    .map((a) => ({ id: a.id, title: a.title, body: a.body, dateLabel: dateLabel(a.from), from: a.from, pinned: Boolean(a.pinned), read: read.has(a.id), forLabel: a.audience?.type === 'all' ? '' : a.audience.label || '' }))
+}
+
+async function readIds(email) {
+  const v = parse(await kvCommand(['HGET', READ, String(email).toLowerCase()]))
+  return Array.isArray(v) ? v : []
+}
+// A family opened Announcements: these ids are read for that sign-in email.
+// Only real announcement ids are kept, newest 200.
+export async function markAnnouncementsRead(email, ids = []) {
+  const want = new Set((Array.isArray(ids) ? ids : []).map((x) => clean(x, 40)).filter(Boolean))
+  if (!email || !want.size) return readIds(email)
+  const live = new Set((await allAnnouncements()).map((a) => a.id))
+  const next = [...new Set([...(await readIds(email)), ...[...want].filter((x) => live.has(x))])].filter((x) => live.has(x)).slice(-200)
+  await kvCommand(['HSET', READ, String(email).toLowerCase(), JSON.stringify(next)])
+  return next
 }
 
 // Staff portal actions, Lee and Ligia only (checked by the caller).

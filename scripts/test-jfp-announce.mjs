@@ -110,7 +110,7 @@ await test('notices reach everyone, one location or one group, and only from the
   assert.deepEqual(new Set(r), new Set(['Tuesday 4:20 runs late', 'Welcome to Term 4', 'HQ car park works']))
   assert.deepEqual(new Set(t), new Set(['Welcome to Term 4', 'HQ car park works']), 'the Wednesday family does not see the Tuesday notice')
   const one = (await acct(riley, 'overview')).data.announcements.find((a) => a.title === 'Welcome to Term 4')
-  assert.deepEqual(Object.keys(one).sort(), ['body', 'dateLabel', 'forLabel', 'from', 'id', 'pinned', 'title'], 'families never see who posted it')
+  assert.deepEqual(Object.keys(one).sort(), ['body', 'dateLabel', 'forLabel', 'from', 'id', 'pinned', 'read', 'title'], 'families never see who posted it')
   assert.equal(one.body, 'Great to have you.\nSee you at training.')
 })
 
@@ -129,6 +129,23 @@ await test('editing keeps the id; deleting removes it for families at once; both
   assert.equal((await portal(lee, 'announceDelete', { id: tueOnly.id })).status, 404)
   const log = JSON.stringify((await portal(lee, 'audit')).data)
   for (const a of ['announce.add', 'announce.edit', 'announce.delete']) assert.ok(log.includes(a), a)
+})
+
+await test('unread: new notices start unread; opening marks them read for that family only', async () => {
+  const ov = async (c) => (await acct(c, 'overview')).data.announcements
+  const before = await ov(riley)
+  assert.ok(before.length && before.every((a) => a.read === false), 'all unread at first')
+  const r = await acct(riley, 'announceRead', { ids: [...before.map((a) => a.id), 'ANN-not-real', '<script>'] })
+  assert.equal(r.status, 200, JSON.stringify(r.data))
+  assert.ok(!r.data.read.includes('ANN-not-real'), 'made-up ids are not kept')
+  assert.ok((await ov(riley)).every((a) => a.read === true), 'read after opening')
+  assert.ok((await ov(third)).every((a) => a.read === false), 'the other family still has them unread')
+  const fresh = await save({ title: 'Brand new notice', body: 'Just posted.', audience: { type: 'all' } })
+  const after = await ov(riley)
+  assert.equal(after.find((a) => a.id === fresh.id).read, false, 'a new one is unread again')
+  assert.equal(after.filter((a) => !a.read).length, 1)
+  const anon = await fetch(`${B}/api/jfp-account`, { method: 'POST', headers: { 'content-type': 'application/json', origin: B }, body: JSON.stringify({ action: 'announceRead', ids: [fresh.id] }) })
+  assert.equal(anon.status, 401, 'signed-out marks are refused')
 })
 
 await test('coaches and families cannot post', async () => {

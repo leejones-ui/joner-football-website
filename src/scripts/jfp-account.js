@@ -19,7 +19,7 @@ let D = null
 let PROF = null
 // Fees (14 Oct 2026): read when the Fees tab first opens, again after each load.
 let FEES = null
-const PANELS = ['home', 'sessions', 'fees', 'family', 'info', 'waivers', 'cancel', 'keep', 'term', 'holidays', 'extra', 'analysis', 'videos', 'app', 'contact']
+const PANELS = ['home', 'sessions', 'fees', 'family', 'news', 'info', 'waivers', 'cancel', 'keep', 'term', 'holidays', 'extra', 'analysis', 'videos', 'app', 'contact']
 let current = 'home'
 const KIT_URL = 'https://www.besteamsport.com.au/collections/joner-football'
 const IMG = '/images/jfp-account'
@@ -183,6 +183,7 @@ function nav() {
       { key: 'sessions', label: 'Sessions', icon: 'calendar' },
       { key: 'fees', label: 'Fees', icon: 'card', dot: feesOwing() > 0 },
       { key: 'family', label: solo() ? 'My profile' : 'Family', icon: 'user', dot: familyCount() > 0 },
+      { key: 'news', label: 'Announcements', icon: 'bell', count: unreadNews() },
     ] },
     { label: 'Manage', items: [
       { key: 'cancel', label: "Can't make it", icon: 'xcircle' },
@@ -204,7 +205,7 @@ function nav() {
   ]
 }
 function navItem(it) {
-  const inner = `${ic(it.icon)}<span>${esc(it.label)}</span>${it.ext ? ic('ext', 'ext') : it.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}`
+  const inner = `${ic(it.icon)}<span>${esc(it.label)}</span>${it.ext ? ic('ext', 'ext') : it.count ? newsBadge(it.count) : it.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}`
   if (it.href) return `<a class="ja-nav-item" href="${esc(it.href)}"${it.ext ? ' target="_blank" rel="noopener noreferrer"' : ''}>${inner}</a>`
   return `<button type="button" class="ja-nav-item" data-go="${it.key}" aria-current="${current === it.key ? 'page' : 'false'}">${inner}</button>`
 }
@@ -218,7 +219,7 @@ function navGroup(g, open) {
   const shut = !here && open[g.label] !== true
   const id = `ja-ng-${g.label.toLowerCase().replace(/[^a-z]+/g, '-')}`
   return `<div class="ja-nav-group${shut ? ' is-shut' : ''}" data-navgrp="${esc(g.label)}">
-    <button type="button" class="ja-nav-sec" data-navsec="${esc(g.label)}" aria-expanded="${shut ? 'false' : 'true'}" aria-controls="${id}"><span>${esc(g.label)}</span>${g.items.some((it) => it.dot) ? '<span class="dot" aria-label="Needs attention"></span>' : ''}${ic('chevron', 'chev')}</button>
+    <button type="button" class="ja-nav-sec" data-navsec="${esc(g.label)}" aria-expanded="${shut ? 'false' : 'true'}" aria-controls="${id}"><span>${esc(g.label)}</span>${g.items.some((it) => it.dot || it.count) ? '<span class="dot" aria-label="Needs attention"></span>' : ''}${ic('chevron', 'chev')}</button>
     <div class="ja-nav-list" id="${id}"><div>${g.items.map(navItem).join('')}</div></div></div>`
 }
 function toggleNav(label) {
@@ -238,6 +239,9 @@ const BAR = [['home', 'Home', 'home'], ['sessions', 'Sessions', 'calendar'], ['f
 const unsignedWaivers = () => (D ? [...D.players, ...(D.juniors?.children || [])].filter((p) => !p.waiver?.onFile) : [])
 function familyCount() { return infoGaps().length + unsignedWaivers().length }
 const badge = (n) => n ? `<span class="badge" aria-label="${n} to sort">${n}</span>` : ''
+// Announcements (Lee, 17 Oct 2026): a red number counts the ones not opened yet.
+const unreadNews = () => (D?.announcements || []).filter((a) => !a.read).length
+const newsBadge = (n) => n ? `<span class="badge ja-nbadge" aria-label="${n} unread">${n > 9 ? '9+' : n}</span>` : ''
 function renderShell() {
   const open = navOpen()
   $('ja-nav').innerHTML = nav().map((g) => navGroup(g, open)).join('')
@@ -245,6 +249,9 @@ function renderShell() {
   $('ja-tabs').innerHTML = BAR.map(([k, l, i]) => `<button type="button" class="ja-tab" data-go="${k}" aria-current="${current === k ? 'page' : 'false'}">${ic(i)}<span>${k === 'family' && solo() ? 'Me' : l}</span>${badge(k === 'fees' ? feesOwing() : k === 'family' ? familyCount() : 0)}</button>`).join('')
     + `<button type="button" class="ja-tab" data-more aria-haspopup="dialog" aria-current="${inMore ? 'page' : 'false'}">${ic('menu')}<span>More</span></button>`
   $('ja-email').textContent = D?.email || ''
+  const unread = unreadNews()
+  $('ja-bell').innerHTML = `${ic('bell')}${newsBadge(unread)}`
+  $('ja-bell').setAttribute('aria-label', unread ? `Announcements, ${unread} unread` : 'Announcements')
   // The name button (top right) opens the account sheet: who is signed in,
   // light or dark, details, contact and sign out.
   const me = solo() ? D.players[0] : null
@@ -314,7 +321,7 @@ function show(panel, { keepScroll = false } = {}) {
   requestAnimationFrame(syncRails)
 }
 const pane = (k) => document.querySelector(`[data-pane="${k}"]`)
-const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact() }
+const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact() }
 function drawPane(panel) { DRAW[panel]?.(); const el = document.querySelector(`[data-pane="${panel}"]`); if (el) el.dataset.drawn = '1' }
 
 function render() {
@@ -417,20 +424,28 @@ function todoSheet() {
 // Announcements (Lee, 17 Oct 2026): one-way notices from Joner Football,
 // newest (or pinned) first. Families read them here; there is no reply.
 const annBody = (t) => esc(t).replace(/\n/g, '<br>')
-const annNew = (a) => a.from && Date.now() - Date.parse(`${a.from}T00:00:00+10:00`) < 3 * 86400000
 function newsBlock() {
   const list = D?.announcements || []
   if (!list.length) return ''
   const a = list[0]
   return `<p class="ja-label">From Joner Football</p><article class="ja-card ja-news" aria-label="Announcement: ${esc(a.title)}">
-    <p class="ja-news-meta">${annNew(a) ? '<span class="ja-tag red">New</span>' : ''}${a.pinned ? '<span class="ja-tag">Pinned</span>' : ''}<span>${esc(a.dateLabel)}${a.forLabel ? ` · ${esc(a.forLabel)}` : ''}</span></p>
+    <p class="ja-news-meta">${!a.read ? '<span class="ja-tag red">New</span>' : ''}${a.pinned ? '<span class="ja-tag">Pinned</span>' : ''}<span>${esc(a.dateLabel)}${a.forLabel ? ` · ${esc(a.forLabel)}` : ''}</span></p>
     <h3 class="ja-h3">${esc(a.title)}</h3><p class="ja-news-body">${annBody(a.body)}</p>
-    ${list.length > 1 ? `<button type="button" class="ja-btn ja-btn-ghost ja-btn-sm" data-news-open>See all ${list.length} announcements</button>` : ''}</article>`
+    ${list.length > 1 ? `<button type="button" class="ja-btn ja-btn-ghost ja-btn-sm" data-go="news">See all ${list.length} announcements</button>` : ''}</article>`
 }
-function newsSheet() {
-  const sheet = openSheet({ title: 'Announcements', subtitle: 'From Joner Football' })
-  sheet.body.innerHTML = `<div class="ja-stack">${(D?.announcements || []).map((a) => `<article class="ja-card ja-news"><p class="ja-news-meta">${a.pinned ? '<span class="ja-tag">Pinned</span>' : ''}<span>${esc(a.dateLabel)}${a.forLabel ? ` · ${esc(a.forLabel)}` : ''}</span></p><h3 class="ja-h3">${esc(a.title)}</h3><p class="ja-news-body is-full">${annBody(a.body)}</p></article>`).join('')}</div>`
-  return sheet
+// The Announcements page: every notice, newest (pinned) first. Opening it
+// marks them read for this sign-in email, so the red number goes.
+function renderNews() {
+  const el = pane('news')
+  const list = D?.announcements || []
+  el.innerHTML = `${pageHead('From Joner Football', 'Announcements', '')}<div class="ja-stack ja-news-list">${list.map((a) => `<article class="ja-card ja-news${a.read ? '' : ' is-unread'}" aria-label="${a.read ? '' : 'New: '}${esc(a.title)}"><p class="ja-news-meta">${a.read ? '' : '<span class="ja-tag red">New</span>'}${a.pinned ? '<span class="ja-tag">Pinned</span>' : ''}<span>${esc(a.dateLabel)}${a.forLabel ? ` · ${esc(a.forLabel)}` : ''}</span></p><h3 class="ja-h3">${esc(a.title)}</h3><p class="ja-news-body is-full">${annBody(a.body)}</p></article>`).join('') || '<div class="ja-card"><p class="ja-muted">No announcements right now.</p></div>'}</div>`
+  const ids = list.filter((a) => !a.read).map((a) => a.id)
+  if (!ids.length) return
+  api('/api/jfp-account', { action: 'announceRead', ids }).then((r) => {
+    if (!r.ok) return
+    for (const a of D.announcements || []) if (ids.includes(a.id)) a.read = true
+    renderShell()
+  })
 }
 
 function renderHome() {
@@ -1262,7 +1277,6 @@ document.addEventListener('click', async (e) => {
   if (th) return setTheme(th.dataset.themePick)
   if (t.closest('[data-install]')) return installSheet()
   if (t.closest('[data-todo-open]')) return todoSheet()
-  if (t.closest('[data-news-open]')) return newsSheet()
   const kp = t.closest('[data-kid-pick]')
   if (kp) { sessKid = kp.dataset.kidPick; return renderSessions() }
   const ex = t.closest('[data-expand]')
@@ -1277,7 +1291,7 @@ document.addEventListener('click', async (e) => {
   if (go) {
     if (go.dataset.topic) topic = go.dataset.topic
     closeSheet(true)
-    if (go.dataset.go === 'contact') delete document.querySelector('[data-pane="contact"]')?.dataset.drawn
+    if (go.dataset.go === 'contact' || go.dataset.go === 'news') delete document.querySelector(`[data-pane="${go.dataset.go}"]`)?.dataset.drawn
     // A player row on Home opens Sessions on that player.
     if (go.dataset.kid) { sessKid = go.dataset.kid; delete pane('sessions')?.dataset.drawn }
     show(go.dataset.go)

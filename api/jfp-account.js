@@ -42,7 +42,7 @@ import { docForPayreq, pdfDownload } from './_jfp-fee-pdf.js'
 import { coveredOf } from './_jfp-quote.js'
 import { accountOf, openPlayers, addMyPlayer } from './_jfp-account-open.js'
 import { prepaidOf } from './_jfp-store.js'
-import { announcementsFor } from './_jfp-announce.js'
+import { announcementsFor, markAnnouncementsRead } from './_jfp-announce.js'
 import { submitExtra, listExtras, familyExtraView, analysisPrice, extraSlots, DAYS as EXTRA_DAYS, TIMES as EXTRA_TIMES, TYPES as EXTRA_TYPES } from './_jfp-extras.js'
 // Saved card or bank account for session payments (claude/card-on-file).
 import { SAVED_PAY_FAMILY, savedPayFamily } from './_jfp-saved-pay.js'
@@ -230,7 +230,7 @@ async function overview(res, parent, body = {}) {
   // Announcements (Lee, 17 Oct 2026): notices for everyone, this family's
   // locations or groups. Read only; a failed read shows none, never an error.
   const myRows = fam.players.flatMap((p) => p.term4)
-  const announcements = await announcementsFor({ groupIds: myRows.map((r) => r.groupId), locationIds: myRows.map((r) => locationFor(config, r.location).id) })
+  const announcements = await announcementsFor({ groupIds: myRows.map((r) => r.groupId), locationIds: myRows.map((r) => locationFor(config, r.location).id), email: parent.email })
   return res.status(200).json({
     success: true,
     email: parent.email,
@@ -734,6 +734,7 @@ export default async function handler(req, res) {
   try {
     const parent = await sessionFor(req, 'parent')
     if (!parent) return fail(res, 401, 'Sign in with your email to continue.', { code: 'signin' })
+    if (body.action === 'announceRead') return res.status(200).json({ success: true, read: await markAnnouncementsRead(parent.email, body.ids) })
     if (body.action === 'signWaiver') return await signWaiver(res, parent, body)
     if (body.action === 'confirmKit') return await confirmKit(res, parent, body)
     if (body.action === 'pay') return await pay(req, res, parent, body)
