@@ -45,7 +45,7 @@ const dayClock = (at) => {
 // refresh: the id of the Refresh button, or '' for none.
 export function moneyHead({ controls = '', at = '', note = '', tip = '', refresh = 'm-refresh', loading = false } = {}) {
   const when = loading ? 'Loading' : at ? `Updated ${esc(dayClock(at))}` : ''
-  return `<div class="jd-head jm-head"><div class="jm-title"><h1>Money</h1><p class="jm-upd" id="m-upd">${[when ? `<span id="m-when">${when}</span>` : '', note ? `<span>${note}</span>` : ''].filter(Boolean).join(' · ')}${refresh ? `${when || note ? ' · ' : ''}<button type="button" class="jm-link" id="${refresh}">Refresh</button>` : ''}${tip ? ` <span class="jm-tipwrap"><button type="button" class="jm-tip" data-tip aria-expanded="false" aria-label="About these figures" title="About these figures">i</button></span>` : ''}</p>${tip ? `<div class="jm-tipbox" id="m-tipbox" role="note" hidden>${tip}</div>` : ''}</div><div class="jd-sync">${controls}</div></div>`
+  return `<div class="jd-head jm-head"><div class="jm-title"><h1>Money</h1><p class="jm-upd" id="m-upd">${[when ? `<span id="m-when">${when}</span>` : '', note ? `<span>${note}</span>` : ''].filter(Boolean).join(' · ')}${refresh ? `${when || note ? ' · ' : ''}<button type="button" class="jm-link" id="${refresh}">Refresh</button>` : ''}${tip ? ` <span class="jm-tipwrap"><button type="button" class="jm-tip" data-tip aria-expanded="false" aria-label="About these figures" title="About these figures">?</button></span>` : ''}</p>${tip ? `<div class="jm-tipbox" id="m-tipbox" role="note" hidden>${tip}</div>` : ''}</div><div class="jd-sync">${controls}</div></div>`
 }
 export function bindTip(root) {
   const b = root.querySelector('[data-tip]'), box = root.querySelector('#m-tipbox')

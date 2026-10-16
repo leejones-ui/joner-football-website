@@ -10,6 +10,7 @@
 // Auto charge needs three locks (Lee, 16 Oct 2026): the family saved a method
 // and agreed, staff turned it on for the player, and the Settings switch is on.
 // The server (api/_jfp-saved-pay.js) decides everything again on each run.
+import { psHelp } from './jfp-portal-ps.js'
 import { esc } from './jfp-common.js'
 
 const PILL = { succeeded: 'green', processing: 'amber', failed: 'red', action: 'red', uncertain: 'amber', charging: 'grey', skipped: 'grey', wait: 'amber' }
@@ -86,13 +87,12 @@ export async function renderAutoChargePanel(el, ui) {
   el.innerHTML = '<h2>Auto charges</h2><p class="muted small">Loading</p>'
   const r = await ui.post('autoChargePanel')
   if (!el.isConnected) return
-  if (!r.ok) { el.innerHTML = `<h2>Auto charges</h2><p class="small j-err">${esc(r.data.error || 'Could not load auto charges.')}</p>`; return }
+  if (!r.ok) { el.innerHTML = `<h2 class="jm-h2help">Auto charges ${psHelp(`Session by session and Pro players whose family saved a card or bank account and agreed, once you turn auto charge on for the player below. ${d.schedule}. Present or a no-show is charged; told us 24 hours or more ahead is not; register not marked waits. Term fee players are never charged for sessions. Each charge is recorded on the player like a paid session invoice.`)}</h2><p class="small j-err">${esc(r.data.error || 'Could not load auto charges.')}</p>`; return }
   if (!Array.isArray(r.data?.preview)) { el.innerHTML = ''; el.hidden = true; return }
   const d = { needsLook: [], recent: [], ...r.data }
   const last = d.lastRun ? `Last run ${esc(new Date(d.lastRun.at).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))} (${esc(d.lastRun.by)}): ${d.lastRun.charged} charged, ${d.lastRun.processing} direct debit${d.lastRun.processing === 1 ? '' : 's'} started, ${d.lastRun.failed} not paid.` : 'Not run yet.'
-  el.innerHTML = `<h2>Auto charges</h2>
+  el.innerHTML = `<h2 class="jm-h2help">Auto charges ${psHelp(`Session by session and Pro players whose family saved a card or bank account and agreed, once you turn auto charge on for the player below. ${d.schedule}. Present or a no-show is charged; told us 24 hours or more ahead is not; register not marked waits. Term fee players are never charged for sessions. Each charge is recorded on the player like a paid session invoice.`)}</h2>
     ${d.off ? `<div class="j-box j-box-amber" style="margin:8px 0"><b>Auto charge is off.</b> The list below is what it would do. Nothing is charged until it is turned on in Settings.</div>` : ''}
-    <p class="sub">Session by session and Pro players whose family saved a card or bank account and agreed, once you turn auto charge on for the player below. ${esc(d.schedule)}. Present or a no-show is charged; told us 24 hours or more ahead is not; register not marked waits. Term fee players are never charged for sessions. Each charge is recorded on the player like a paid session invoice.</p>
     <p class="small muted">${last}</p>
     ${d.needsLook.length ? `<div class="j-box j-box-amber" style="margin:10px 0"><p><b>Needs a look: ${d.needsLook.length}</b></p><p class="small" style="margin:4px 0 6px">Not paid: the family was emailed a Pay link (it is on Payment links); check with them if it stays unpaid. Register not marked: nothing is charged until the coach marks it; each run looks again for up to two weeks.</p><ul class="jm-hist">${d.needsLook.map(recLine).join('')}</ul></div>` : ''}
     <h3 style="margin-top:12px">Next run would do</h3>
@@ -101,7 +101,7 @@ export async function renderAutoChargePanel(el, ui) {
     <div style="display:flex;gap:8px;margin-top:10px"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="ac-run" ${d.preview.length ? '' : 'disabled'}>Run now</button><button type="button" class="j-btn j-btn-line j-btn-sm" id="ac-refresh">Refresh</button></div>
     <p class="small" id="ac-out" role="status" hidden></p>
     <h3 style="margin-top:14px">Players</h3>
-    <p class="small muted">Off for everyone until you turn it on. Sessions before you turn it on are never charged automatically.</p>
+    <p class="small muted">Off until you turn it on. Earlier sessions are never charged.</p>
     ${playersTable(d.players || [])}
     <h3 style="margin-top:14px">Latest</h3>
     ${d.recent.length ? `<ul class="jm-hist">${d.recent.map(recLine).join('')}</ul>` : '<p class="muted small">No auto charges yet.</p>'}`
@@ -187,9 +187,9 @@ export async function mountInvoiceSavedButton(box, inv, ui, onDone) {
 
 // ---------- Settings: the three switches (admin only) ----------
 const SWITCHES = [
-  ['cards', 'Saved cards', 'Families can save a card (Apple Pay and Google Pay too) in My account, Fees, and staff can use Charge saved card. Off: families do not see it.'],
-  ['bank', 'Saved bank accounts (BECS Direct Debit)', 'Turn on after BECS Direct Debit is switched on in Stripe and the webhook has payment_intent.succeeded and payment_intent.payment_failed'],
-  ['autoCharge', 'Auto charge after each session', 'Charges saved cards and accounts the day after each session once the register is marked (and extra sessions), only for players you turned auto charge on for. Off: the daily job and Run now only show what they would do.'],
+  ['cards', 'Saved cards', 'Families can save a card, Apple Pay or Google Pay. Off: hidden from families.'],
+  ['bank', 'Saved bank accounts (BECS Direct Debit)', 'Turn on after BECS is on in Stripe and the webhook has payment_intent.succeeded and payment_failed.'],
+  ['autoCharge', 'Auto charge after each session', 'Charges saved cards after a marked session, for players switched on. Off: preview only.'],
 ]
 export async function mountSavedPaySettings(el, { post, toast }) {
   if (!el) return

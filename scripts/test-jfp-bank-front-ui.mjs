@@ -1,6 +1,6 @@
-// Bank payments to check, up front (Lee, 16 Oct 2026), in jsdom: the
-// Dashboard card (admins only), the same card at the top of Money, the
-// sidebar's Bank payments badge, and Check bank now from the Dashboard.
+// Bank payments to check (Lee, 16 Oct 2026), in jsdom. Redesign: on Money a
+// folded row low on the page with Check bank now inside; on the Dashboard a
+// one-line link (admins only, when lines wait); the sidebar's badge.
 //   node scripts/test-jfp-bank-front-ui.mjs
 // Every name and amount here is invented.
 import assert from 'node:assert/strict'
@@ -43,23 +43,18 @@ const TOTAL = 85000 + 42500 + 1234
 const stamp = (iso) => new Date(iso).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
 const until = async (p, ok, ms = 12000) => { const end = Date.now() + ms; while (!ok()) { if (Date.now() > end) throw new Error('timed out'); await p.settle() } }
 
-await test('Dashboard: an admin sees "Bank payments to check" near the top, with the count, A$ total and when the bank was checked', async () => {
+await test('Dashboard: an admin sees one line in the header, "3 bank payments to check · A$", and no card', async () => {
   const p = await openPortal({ money: fresh(), hash: '#overview', onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: BANK({ latest: 1 }) } : null) })
-  const card = p.$('#d-bank')
-  assert.ok(card, 'the card is there')
-  assert.equal(card, p.$('.jd-grid').firstElementChild, 'first on the dashboard grid')
-  assert.equal(p.text('#d-bank-h'), 'Bank payments to check 3')
+  const line = p.$('#d-bank')
+  assert.ok(line, 'the line is there')
+  assert.ok(line.closest('.jd-head'), 'in the header, not the grid')
+  assert.equal(p.$('.jd-grid #d-bank'), null)
+  assert.equal(p.text('#d-bank-review'), `3 bank payments to check · ${money(TOTAL)}`)
   assert.equal(p.text('#d-bank-count'), '3', 'this term only, not the line from before it')
   assert.equal(p.text('#d-bank-total'), money(TOTAL))
-  assert.equal(p.text('#d-bank-sum'), `${money(TOTAL)} waiting · 2 with a match`)
-  assert.equal(p.text('#d-bank-status'), `Bank checked ${stamp(CHECKED)} · lines up to ${short(day(1))}`)
-  assert.equal(p.text('#d-bank-refresh'), 'Check bank now')
-  assert.ok(p.$('#d-bank-refresh').classList.contains('j-btn-dark'), 'the main button')
-  assert.equal(p.text('#d-bank-review'), 'Review')
-  assert.equal(p.$('#d-bank-old'), null, 'lines from yesterday: no amber note')
-  assert.equal(p.$('#d-bank-file'), null)
-  assert.equal(p.posts.filter((b) => b.action === 'bankCheck').length, 1, 'the bank read once, for the card and the badge')
-  assert.ok(!/—/.test(card.innerHTML), 'no em dashes')
+  for (const id of ['#d-bank-refresh', '#d-bank-old', '#d-bank-file', '#d-bank-status']) assert.equal(p.$(id), null, `${id}: the check itself is on Money`)
+  assert.equal(p.posts.filter((b) => b.action === 'bankCheck').length, 1, 'the bank read once, for the line and the badge')
+  assert.ok(!/—/.test(line.innerHTML), 'no em dashes')
   assert.deepEqual(p.errors, [])
   p.close()
 })
@@ -79,11 +74,11 @@ await test('the sidebar: Bank payments under Money, with the count on the usual 
   // Nothing waiting: no badge.
   const q = await openPortal({ money: fresh(), hash: '#overview', onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: { ...BANK(), items: [] } } : null) })
   assert.equal(q.$('#nav [data-tab="bank"] .count'), null)
-  assert.equal(q.text('#d-bank-sum'), 'Nothing to check. Every bank transfer we can see is recorded or hidden.')
+  assert.equal(q.$('#d-bank-review'), null, 'nothing waiting: no line on the Dashboard')
   q.close()
 })
 
-await test('a coach: no card, no Bank payments in the sidebar, and the bank is never asked', async () => {
+await test('a coach: no line, no Bank payments in the sidebar, and the bank is never asked', async () => {
   const p = await openPortal({ money: fresh(), hash: '#overview', role: 'coach', onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: BANK() } : null) })
   assert.equal(p.$('#d-bank'), null)
   assert.equal(p.$('#nav [data-tab="bank"]'), null)
@@ -92,19 +87,20 @@ await test('a coach: no card, no Bank payments in the sidebar, and the bank is n
   p.close()
 })
 
-await test('lines over 2 days old: the same amber note and CSV upload as on Money', async () => {
-  const p = await openPortal({ money: fresh(), hash: '#overview', onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: BANK({ latest: 5 }) } : null) })
-  assert.match(p.text('#d-bank-old'), new RegExp(`^Xero only has bank lines up to ${short(day(5))}\\. Payments appear there after they're reconciled in Xero\\. For anything newer, upload today's CommBank statement \\(CSV\\)\\.`))
-  assert.ok(p.$('#d-bank-old label[for="d-bank-file"]'), 'the upload sits in the note')
+await test('lines over 2 days old: the amber note and CSV upload inside the open bank row on Money', async () => {
+  const p = await openPortal({ money: fresh(), hash: '#bank', onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: BANK({ latest: 5 }) } : null) })
+  await until(p, () => p.$('#m-bank-old'))
+  assert.match(p.text('#m-bank-old'), new RegExp(`^Xero only has bank lines up to ${short(day(5))}\\. Payments appear there after they're reconciled in Xero\\. For anything newer, upload today's CommBank statement \\(CSV\\)\\.`))
+  assert.ok(p.$('#m-bank-old label[for="m-bank-file"]'), 'the upload sits in the note')
   assert.equal(p.d.querySelectorAll('input[type="file"]').length, 1)
   p.close()
 })
 
-await test('Check bank now from the Dashboard: asks the Mac, waits, reads the bank again, and the card, count and badge move', async () => {
+await test('Check bank now on Money: asks the Mac, waits, reads the bank again, and the row, count and badge move', async () => {
   const asked = new Date().toISOString()
   let found = false
   const p = await openPortal({
-    money: fresh(), hash: '#overview',
+    money: fresh(), hash: '#bank',
     onPost: (b) => {
       if (b.action === 'bankCheck') return { success: true, bank: found ? BANK({ latest: 0, extra: [line(XNEW, day(0), 17000, 'N NEWPAY', 'possible', [cand('p2', 'Jax Test')])], checkedAt: new Date().toISOString() }) : BANK({ latest: 5 }) }
       if (b.action === 'bankRefresh') return { success: true, request: { at: asked }, status: null }
@@ -113,24 +109,26 @@ await test('Check bank now from the Dashboard: asks the Mac, waits, reads the ba
       return null
     },
   })
-  assert.equal(p.text('#d-bank-count'), '3')
-  await p.click('#d-bank-refresh')
+  await until(p, () => p.$('#m-bank-refresh'))
+  assert.equal(p.text('#m-bank-count'), '3')
+  await p.click('#m-bank-refresh')
   assert.equal(p.posts.filter((b) => b.action === 'bankRefresh').length, 1, 'the request for the Mac')
-  assert.equal(p.$('#d-bank-refresh').disabled, true, 'busy while it checks')
-  assert.match(p.text('#d-bank-status'), /^Checking the bank… This can take up to two minutes\.$/)
+  assert.equal(p.$('#m-bank-refresh').disabled, true, 'busy while it checks')
+  assert.match(p.text('#m-bank-status'), /^Checking the bank… This can take up to two minutes\.$/)
   await until(p, () => p.text('.j-toast') === 'Found 1 new payment')
-  assert.equal(p.text('#d-bank-count'), '4')
-  assert.equal(p.text('#d-bank-total'), money(TOTAL + 17000))
-  assert.match(p.text('#d-bank-status'), new RegExp(`^Bank checked .+ · lines up to ${short(day(0))}$`))
-  assert.equal(p.$('#d-bank-old'), null, 'fresh lines: the amber note goes')
-  assert.equal(p.$('#d-bank-refresh').disabled, false)
-  assert.equal(p.text('#d-bank-refresh'), 'Check bank now')
+  assert.equal(p.text('#m-bank-count'), '4')
+  assert.equal(p.text('#m-bank-total'), money(TOTAL + 17000))
+  assert.match(p.text('#m-bank-status'), new RegExp(`^Checked .+ · lines to ${short(day(0))}$`))
+  assert.equal(p.$('#m-bank-old'), null, 'fresh lines: the amber note goes')
+  assert.equal(p.$('#m-bank-refresh').disabled, false)
+  assert.equal(p.text('#m-bank-refresh'), 'Check bank now')
   assert.equal(p.text('#nav [data-tab="bank"] .count'), '4', 'the badge follows')
+  assert.equal(p.text('#m-kpi-bank .val'), '4', 'the To check number follows')
   assert.deepEqual(p.errors, [])
   p.close()
 })
 
-await test('Review on the Dashboard opens Money with the bank list open, at the top of the page', async () => {
+await test('the Dashboard line opens Money with the bank row open', async () => {
   const p = await openPortal({ money: fresh(), hash: '#overview', onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: BANK() } : null) })
   await p.click('#d-bank-review')
   await until(p, () => p.$('#m-bank-box'))
@@ -140,20 +138,26 @@ await test('Review on the Dashboard opens Money with the bank list open, at the 
   p.close()
 })
 
-await test('Money: "Bank payments to check" is the first thing under the title, with the same button and status line', async () => {
+await test('Money: the bank is one folded row under the player list, "Bank payments 3 to check", not at the top', async () => {
   const p = await openPortal({ money: fresh(), hash: '#money', onPost: (b) => (b.action === 'bankCheck' ? { success: true, bank: BANK({ latest: 5 }) } : null) })
   const bank = p.$('#m-bank')
-  assert.ok(bank.compareDocumentPosition(p.$('.jm-scope')) & 4, 'before the venues')
-  assert.ok(bank.compareDocumentPosition(p.$('#m-scope')) & 4, 'before the figures')
-  assert.equal(bank.firstElementChild.id, 'm-bank-front')
-  assert.equal(p.text('#m-bank-h'), 'Bank payments to check 3')
-  assert.equal(p.text('#m-bank-sum'), `${money(TOTAL)} waiting · 2 with a match`)
+  assert.ok(p.$('#m-table').compareDocumentPosition(bank) & 4, 'after the player list')
+  assert.ok(p.$('#m-kpis').compareDocumentPosition(bank) & 4, 'after the numbers')
+  assert.equal(bank.firstElementChild.id, 'm-bank-box')
+  assert.equal(p.$('#m-bank-box').tagName, 'DETAILS')
+  assert.equal(p.$('#m-bank-box').open, false, 'folded until asked')
+  assert.match(p.text('#m-bank-box summary'), new RegExp(`^Bank payments 3 to check · 2 matched · checked `))
+  assert.equal(p.text('#m-bank-h'), 'Bank payments')
+  assert.equal(p.text('#m-bank-count'), '3')
+  assert.equal(p.text('#m-bank-sum'), `${money(TOTAL)} waiting · 2 matched`)
   assert.equal(p.text('#m-bank-refresh'), 'Check bank now')
-  assert.equal(p.text('#m-bank-status'), `Bank checked ${stamp(CHECKED)} · lines up to ${short(day(5))}`)
-  assert.ok(p.$('#m-bank-front #m-bank-old label[for="m-bank-file"]'), 'the amber note and upload are up front')
+  assert.equal(p.text('#m-bank-status'), `Checked ${stamp(CHECKED)} · lines to ${short(day(5))}`)
+  assert.ok(p.$('#m-bank-box #m-bank-old label[for="m-bank-file"]'), 'the amber note and upload are inside the row')
   assert.equal(p.d.querySelectorAll('input[type="file"]').length, 1, 'one upload only')
-  assert.equal(p.$('#m-bank-box').open, false, 'the list itself stays folded until asked')
-  assert.match(p.text('#m-bank-box summary'), /^Review the payments 3 2 with a match$/)
+  // The To check number opens it.
+  assert.equal(p.text('#m-kpi-bank .val'), '3')
+  await p.click('#m-kpi-bank')
+  assert.equal(p.$('#m-bank-box').open, true)
   p.close()
 })
 
@@ -171,4 +175,4 @@ await test('the sidebar Bank payments opens Money with the list open', async () 
   q.close()
 })
 
-console.log(`\n${passed} bank payments up front checks passed`)
+console.log(`\n${passed} bank payments checks passed`)

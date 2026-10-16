@@ -487,25 +487,6 @@ body:has(.jp-theme[data-theme="dark"]) { background: #0e0e0d !important; color: 
 .jm-bank-hidden .jm-hist li { gap: 8px; }
 .jm-bank-hidden .jm-hist li > span { min-width: 0; overflow-wrap: anywhere; }
 .jm-bank-hidden .j-btn { min-height: 40px; flex: 0 0 auto; }
-/* Bank payments to check, up front on Money and the Dashboard (Lee, 16 Oct 2026). */
-.jb-front { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.jb-money { margin: 0 0 14px; border: 1px solid var(--j-line); border-radius: 14px; padding: 14px 16px; background: var(--j-surface); }
-.jb-money + .jm-bank { margin: -6px 0 16px; }
-.jb-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; }
-.jb-main { min-width: 0; flex: 1 1 260px; }
-.jb-main p { margin: 2px 0 0; overflow-wrap: anywhere; }
-.jb-front h2 { font-size: 16px; font-weight: 750; letter-spacing: -0.01em; margin: 0 0 2px; display: flex; align-items: center; gap: 8px; }
-.jb-n { display: inline-block; min-width: 24px; padding: 1px 8px; border-radius: 999px; background: var(--j-ink); color: var(--j-surface); font-size: 13px; font-weight: 750; text-align: center; font-variant-numeric: tabular-nums; }
-.jb-sum { font-size: 14px; }
-.jb-sum b { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-right: 2px; }
-.jb-btns { display: flex; flex-wrap: wrap; gap: 8px; }
-.jb-btns .j-btn { min-height: 44px; }
-.jb-front .j-box { margin: 0; }
-.jb-front .j-box p { margin: 0; }
-@media (max-width: 560px) {
-  .jb-btns { width: 100%; }
-  .jb-btns .j-btn { flex: 1 1 0; justify-content: center; }
-}
 .jv-total td { font-weight: 750; border-top: 1px solid var(--j-line); }
 .jm-bank-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
 .jm-bank-row { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 10px; border: 1px solid var(--j-line); border-radius: 10px; cursor: pointer; }
@@ -1070,3 +1051,149 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
   .jp-theme .ss-savedpay > .j-check input { box-shadow: 0 0 0 8px transparent; }
   .jp-theme .ss-more > summary { min-height: 44px; }
 }
+/* ---------- Money redesign (Lee, 16 Oct 2026) ----------
+   One compact header row, venue tabs, a strip of four numbers, the player
+   list, then folded sections (Breakdown, Next term, Paid with no money,
+   Bank payments, Unmatched Stripe). Money selectors only. */
+.jm-head { align-items: center; margin-bottom: 12px; }
+.jm-head .jm-show > span.muted { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.jm-head .jd-sync .j-btn, .jm-head .jm-show select { min-height: var(--ps-control); }
+.jm-head .jm-tip { font-weight: 700; }
+/* Venue tabs: an underline in Joner red marks the one showing. */
+.jm-scope { display: flex; align-items: flex-end; gap: 10px; margin: 0 0 18px; border-bottom: 1px solid var(--j-line); }
+.jm-scope .jm-locs { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 0 2px; }
+.jm-scope .jm-locs button { min-height: 42px; flex-direction: row; align-items: baseline; gap: 6px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; margin-bottom: -1px; padding: 10px 12px 8px; background: none; color: var(--j-muted); }
+.jm-scope .jm-locs button:hover { color: var(--j-ink); border-color: transparent; border-bottom-color: var(--j-line); }
+.jm-scope .jm-locs button[aria-pressed="true"] { background: none; color: var(--j-ink); border-bottom-color: var(--c-accent); }
+.jm-scope .jm-locs .nm { font-size: 14px; font-weight: 650; }
+.jm-scope .jm-locs .amt { font-size: 12.5px; font-weight: 500; opacity: 1; color: var(--j-muted); }
+.jm-scope .jm-csv { margin: 0 0 6px auto; min-height: 36px; width: auto; }
+/* The four numbers. */
+.jm-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 16px; border: 1px solid var(--j-line); border-radius: 14px; background: var(--j-surface); overflow: hidden; }
+.jm-kpi { position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 16px 18px; border-left: 1px solid var(--j-line); }
+.jm-kpi:first-child { border-left: 0; }
+.jm-kpi-main::before { content: ''; position: absolute; left: 18px; right: 18px; top: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--c-accent); }
+.jm-kpi .lbl { font-size: 12.5px; font-weight: 600; color: var(--j-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jm-kpi .val { font-size: clamp(22px, 2.2vw, 30px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.jm-kpi-sub { margin: 0; font-size: 12.5px; color: var(--j-muted); font-variant-numeric: tabular-nums; }
+.jm-kpi-sub b { color: var(--j-ink); }
+.jm-kpi .jm-meter { height: 6px; margin-top: 6px; }
+.jm-kpi .jm-pending { margin: 0; font-size: 12px; }
+.jm-kpi .jm-profit { margin: 2px 0 0; font-size: 12.5px; color: var(--j-muted); cursor: help; }
+.jm-kpi .jm-profit b { font-size: 13px; margin-left: 2px; }
+.jm-kpi .jm-linkbtn { margin-top: 4px; min-height: 0; font-size: 12.5px; text-align: left; color: var(--j-muted); }
+.jm-kpi .jm-linkbtn:hover { color: var(--j-ink); }
+.jm-kpi[data-kpi="check"] { padding: 0; }
+.jm-kpi[data-kpi="check"] > .lbl { padding: 16px 18px 0; }
+.jm-kpi[data-kpi="check"] > .val, .jm-kpi[data-kpi="check"] > .jm-kpi-sub { padding: 0 18px; }
+.jm-kpi[data-kpi="check"] > .jm-kpi-sub { padding-bottom: 16px; }
+.jm-kpi-btn { display: flex; flex-direction: column; gap: 4px; width: 100%; height: 100%; padding: 16px 18px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.jm-kpi-btn:hover { background: var(--j-surface-2, rgba(127, 127, 127, .06)); }
+.jm-kpi-btn:focus-visible { outline: 2px solid var(--j-focus); outline-offset: -2px; }
+/* Paid in Stripe, not in Airtable: one line, black, white and red. */
+#m-top .jm-alert { margin: 0 0 14px; padding: 10px 14px; background: var(--j-surface); border: 1px solid var(--j-line); border-left: 3px solid var(--c-accent); border-radius: 12px; font-size: 14px; color: var(--j-ink); }
+.jm-count { margin: 8px 2px 0; font-size: 13px; color: var(--j-muted); font-variant-numeric: tabular-nums; }
+/* Folded sections. */
+#m-scope { margin-top: 28px; }
+.jm-sec { margin-top: 8px; border: 1px solid var(--j-line); border-radius: 12px; background: var(--j-surface); min-width: 0; }
+.jm-secs > .jm-sec:first-child { margin-top: 0; }
+.jm-sec > summary { list-style: none; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 16px; cursor: pointer; border-radius: 12px; }
+.jm-sec > summary::-webkit-details-marker { display: none; }
+.jm-sec > summary:hover { background: var(--j-surface-2, rgba(127, 127, 127, .05)); }
+.jm-sec > summary:focus-visible { outline: 2px solid var(--j-focus); outline-offset: -2px; }
+.jm-sec[open] > summary { border-bottom: 1px solid var(--j-line-2); border-radius: 12px 12px 0 0; }
+.jm-sec-t { flex: none; font-size: 14.5px; font-weight: 700; color: var(--j-ink); }
+.jm-sec-m { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--j-muted); font-variant-numeric: tabular-nums; }
+.jm-sec-m b { color: var(--j-ink); font-weight: 650; }
+.jm-sec-n { display: inline-block; min-width: 22px; margin-right: 2px; padding: 1px 7px; border-radius: 999px; background: var(--j-grey-bg, #f2f2f0); color: var(--j-ink); font-size: 12px; font-weight: 750; text-align: center; font-variant-numeric: tabular-nums; }
+.jm-sec-n.on { background: var(--c-accent); color: #fff; }
+.jm-sec-chev { flex: none; margin-left: auto; color: var(--j-muted); transition: transform .2s var(--jp-ease); }
+.jm-sec[open] > summary .jm-sec-chev { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .jm-sec-chev { transition: none; } }
+.jm-sec-body { padding: 14px 16px 16px; min-width: 0; }
+.jm-sec > summary .jm-help { flex: none; }
+.jm-sec > summary .jm-help .ps-help-body { left: auto; right: -8px; font-size: 13px; font-weight: 400; color: var(--j-ink-2); cursor: auto; }
+.jm-split-grid > * { grid-column: auto; min-width: 0; }
+.jm-sec .jm-h3 { margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--j-muted); }
+.jm-hist-go { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+/* Breakdown: Stripe, bank, cash; the weekly chart; the fees. */
+#m-scope .jm-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0; border: 1px solid var(--j-line-2); border-radius: 10px; }
+#m-scope .jm-tile { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-left: 1px solid var(--j-line-2); min-width: 0; grid-column: auto; }
+#m-scope .jm-tile:first-child { border-left: 0; }
+#m-scope .jm-tile .lbl { font-size: 12.5px; color: var(--j-muted); font-weight: 600; }
+#m-scope .jm-tile .val { font-size: 18px; font-weight: 750; font-variant-numeric: tabular-nums; }
+#m-scope .jm-note { margin: 8px 2px 0; font-size: 12.5px; }
+.jm-split-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 24px; margin-top: 18px; }
+.jm-split-grid .jm-fee-total { margin-top: 0; }
+.jm-split-grid .jm-fee-total b { font-size: 20px; }
+/* Bank payments: the check bar, the notes, the list. */
+.jb-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; min-width: 0; }
+.jb-bar .jm-bank-up { margin: 0; }
+.jb-meta { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0 0 0 auto; font-size: 13px; color: var(--j-muted); font-variant-numeric: tabular-nums; }
+.jb-meta b { color: var(--j-ink); }
+.jb-note { margin: 10px 0 0; }
+.jb-note p { margin: 0; }
+.jb-src { clear: both; margin: 12px 0 0; font-size: 12px; color: var(--j-muted); }
+.jb-empty { margin: 12px 0 0; }
+.jm-bank .jm-bank-chips { margin: 14px 0 2px; }
+.jm-bank .jm-bank-chips .ps-chip { flex: 0 0 auto; }
+.jm-bank .jm-bank-undo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.jm-bank .jm-bank-item { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 12px 0; }
+.jm-bank .jm-bank-item .top { gap: 6px 12px; }
+.jm-bank .jm-bank-item .when { min-width: 52px; font-variant-numeric: tabular-nums; }
+.jm-bank .jm-bank-item .amt { font-size: 16px; }
+.jm-bank .jm-bank-item .payer { margin: 2px 0 0; font-weight: 600; }
+.jm-bank .jm-bank-item .cand { margin: 2px 0 0; color: var(--j-ink-2); }
+.jm-bank .jm-bank-item .cand small.muted { display: block; font-size: 12.5px; }
+.jm-bank .jm-bank-item .btns { gap: 6px; margin-top: 8px; align-items: center; }
+@media (pointer: fine) { .jm-bank .jm-bank-item .btns .j-btn { min-height: 34px; } }
+.jm-more { position: relative; }
+.jm-more > summary { list-style: none; display: inline-flex; align-items: center; cursor: pointer; }
+.jm-more > summary::-webkit-details-marker { display: none; }
+.jm-more-list { position: absolute; z-index: 30; left: 0; top: calc(100% + 4px); display: flex; flex-direction: column; min-width: 190px; padding: 4px; background: var(--j-surface); border: 1px solid var(--j-line); border-radius: 10px; box-shadow: var(--j-shadow-lg); }
+.jm-more-list button { min-height: 38px; padding: 8px 10px; border: 0; border-radius: 7px; background: none; color: var(--j-ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.jm-more-list button:hover, .jm-more-list button:focus-visible { background: var(--j-surface-2, rgba(127, 127, 127, .08)); }
+.jm-more-list [data-bank-ignore] { color: var(--j-red); }
+@media (pointer: coarse) { .jm-more-list button { min-height: 44px; } }
+/* Dashboard: one line in the header when bank payments wait. */
+.jd-banklink { padding: 0; border: 0; background: none; color: var(--j-ink); font: inherit; font-weight: 650; text-decoration: underline; text-decoration-color: var(--c-accent); text-underline-offset: 3px; cursor: pointer; }
+.jd-banklink b { font-variant-numeric: tabular-nums; }
+@media (pointer: coarse) { .jd-banklink { position: relative; } .jd-banklink::after { content: ''; position: absolute; left: -6px; right: -6px; top: 50%; height: 44px; transform: translateY(-50%); } }
+@media (max-width: 760px) {
+  .jm-head .jd-sync { width: 100%; }
+  .jm-head .jm-show { flex: 1 1 40%; }
+  .jm-head .jm-show select { width: 100%; }
+  .jm-head .jm-csv { width: auto; }
+  .jm-head #m-add { flex: 1 1 auto; }
+  .jm-scope .jm-locs .amt { display: none; }
+  .jm-scope .jm-locs button { padding: 10px 10px 8px; }
+  .jm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .jm-kpi { padding: 14px; }
+  .jm-kpi:nth-child(odd) { border-left: 0; }
+  .jm-kpi:nth-child(n + 3) { border-top: 1px solid var(--j-line); }
+  .jm-kpi-main::before { left: 14px; right: 14px; }
+  .jm-kpi[data-kpi="check"] > .lbl { padding: 14px 14px 0; }
+  .jm-kpi[data-kpi="check"] > .val, .jm-kpi[data-kpi="check"] > .jm-kpi-sub { padding: 0 14px; }
+  .jm-kpi[data-kpi="check"] > .jm-kpi-sub { padding-bottom: 14px; }
+  .jm-kpi-btn { padding: 14px; }
+  .jm-split-grid { grid-template-columns: minmax(0, 1fr); }
+  #m-scope .jm-tiles { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
+  #m-scope .jm-tile { padding: 10px; }
+  #m-scope .jm-tile .val { font-size: 16px; }
+  .jm-sec > summary { flex-wrap: wrap; gap: 2px 10px; padding: 10px 14px; }
+  .jm-sec-t { order: 0; }
+  .jm-sec-chev { order: 1; }
+  .jm-sec > summary .jm-help { order: 1; }
+  .jm-sec-chev { margin-left: auto; }
+  .jm-sec-m { order: 3; flex-basis: 100%; white-space: normal; }
+  .jm-sec > summary .jm-help .ps-help-body { left: auto; right: -40px; }
+  .jm-head .jm-prog { flex: 0 1 34%; }
+  .jm-head .jm-show:not(.jm-prog) { flex: 1 1 56%; }
+  .jm-sec-body { padding: 12px 14px 14px; }
+  .jb-meta { margin-left: 0; flex-basis: 100%; }
+  .jm-bank .jm-bank-item .btns .j-btn { flex: 0 1 auto; }
+  .jm-more-list { left: auto; right: 0; }
+}
+/* "?" help beside a Money card title. */
+.jm-h2help { display: flex; align-items: center; gap: 8px; }
+.jm-help .ps-help-body { font-size: 13px; font-weight: 400; line-height: 1.5; letter-spacing: normal; text-transform: none; color: var(--j-ink-2); }

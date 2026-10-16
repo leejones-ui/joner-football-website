@@ -3,6 +3,7 @@
 // each), cash and bank transfers recorded on Pro players, and bank lines
 // marked "Pro session" on Bank transfers to check. By month, by player, and
 // a download. Read only, except putting a marked bank line back.
+import { psHelp } from './jfp-portal-ps.js'
 import { esc, money } from './jfp-common.js'
 import { moneyHead, bindTip, programmeSwitch, bindSwitch, remember, recall, quietOk, markUpdated } from './jfp-portal-programmes.js'
 // Auto charges: saved cards and bank accounts charged after each session (claude/card-on-file).
@@ -89,14 +90,14 @@ function draw(ui, v) {
     </div>
     ${v.toCheck.length ? `<section class="j-box j-box-amber jh-owed" id="p-check"><p><b>Pro quick links to check: ${plural(v.toCheck.length, 'payment')}</b></p><p class="small" style="margin:4px 0 8px">Paid on a Pro quick link with no player named. They are counted; look at who paid in Payment links.</p><ul class="jm-hist">${v.toCheck.map((x) => `<li><span><b>${esc(x.note || 'Quick link')}</b><small>${esc(x.who || 'Payer not known')} · paid ${esc(day(x.paidDate))}</small></span><span class="amt">${esc(money(x.takenCents))}</span></li>`).join('')}</ul></section>` : ''}
     <section class="jd-card jh-list" id="p-autocharge"></section>
-    <section class="jd-card jh-sheet" id="p-months-card"><h2>By month</h2><p class="sub">By the day the money came in. Refunds and fees come off the same month.</p>
+    <section class="jd-card jh-sheet" id="p-months-card"><h2 class="jm-h2help">By month ${psHelp('By the day the money came in. Refunds and fees come off the same month.')}</h2>
       ${v.byMonth.length ? stackTable('p-months', ['Month', 'Taken', 'Refunded', 'Stripe fees', 'Kept'], v.byMonth.map((r) => [esc(r.label), esc(money(r.takenCents)), esc(money(r.refundedCents)), esc(money(r.feeCents)), `<b>${esc(money(r.keptCents))}</b>`]), v.byMonth.length > 1 ? ['Total', esc(money(t.takenCents)), esc(money(t.refundedCents)), esc(money(t.feeCents)), esc(money(t.keptCents))] : null) : '<p class="muted small">No Pro money yet.</p>'}
     </section>
     <section class="jd-card jh-sheet" id="p-players-card"><h2>By player</h2><p class="sub">Billed and paid so far from Airtable; taken and kept ${v.month ? `in ${esc(label)}` : 'here'}.</p>
       ${v.byPlayer.length || v.unmatched ? stackTable('p-players', ['Player', 'Billed', 'Paid', 'Owing', 'Kept'], [...v.byPlayer.map((p) => [`${esc(p.player)}${p.perSessionCents ? ` <small class="muted">${esc(money(p.perSessionCents))} a session</small>` : ''}${p.prepaidSessions ? ` <small class="muted">${esc(p.prepaidSessions)} prepaid</small>` : ''}`, esc(money(p.billedCents)), esc(money(p.paidCents)), p.owingCents ? `<b>${esc(money(p.owingCents))}</b>` : '<span class="muted">0</span>', esc(money(p.keptCents))]), ...(v.unmatched ? [['<span class="muted">Not matched to a player</span>', '', '', '', esc(money(v.unmatched.keptCents))]] : [])]) : '<p class="muted small">No Pro players yet. A player is Pro when their payment type is JFP Pro sessions.</p>'}
     </section>
     <section class="jd-card jh-list" id="p-lines"><h2>Payments</h2><p class="sub">${plural(v.lines.length, 'payment')}, newest first</p>
-      ${v.lines.length ? `<ul class="jm-hist">${v.lines.map(lineHtml).join('')}</ul>` : '<p class="muted small">Nothing yet. Bank transfers for Pro sessions are marked on Money &gt; JFP &gt; Bank transfers to check.</p>'}</section>`
+      ${v.lines.length ? `<ul class="jm-hist">${v.lines.map(lineHtml).join('')}</ul>` : '<p class="muted small">Nothing yet. Mark bank transfers in Money &gt; Bank payments.</p>'}</section>`
   bindTip(ui.view())
   bindSwitch(ui)
   renderAutoChargePanel(ui.view().querySelector('#p-autocharge'), ui)

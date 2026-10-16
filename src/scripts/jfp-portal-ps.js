@@ -18,6 +18,10 @@ export function psSelect(id, list, value, blank, label) {
   return `<select class="j-select ${value ? 'is-set' : ''}" id="${id}" aria-label="${esc(label || blank)}"><option value="">${esc(blank)}</option>${list.map((x) => `<option value="${esc(x.id)}" ${value === x.id ? 'selected' : ''}>${esc(x.label || x.name)}</option>`).join('')}</select>`
 }
 export const PS_PAY = { paid: ['green', 'Paid'], part: ['orange', 'Part paid'], unpaid: ['red', 'Unpaid'], session: ['pink', 'Session by session'] }
+// The "?" help: guidance one tap away instead of a paragraph (Money redesign, 16 Oct 2026).
+export function psHelp(text, label = 'About this') {
+  return `<details class="ps-help jm-help"><summary aria-label="${esc(label)}" title="${esc(label)}">?</summary><div class="ps-help-body">${esc(text)}</div></details>`
+}
 export function psBadge(color, label) { return `<span class="ps-badge ${color}"><i></i>${esc(label)}</span>` }
 // Quick filter chips. list: [{ key, value, label, count, color }] where color
 // is a ps-badge colour (red, orange, green, pink, violet, grey). pressed(key, value).

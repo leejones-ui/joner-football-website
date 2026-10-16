@@ -5,7 +5,8 @@
 //   node scripts/test-jfp-bank-refresh-flow.mjs 4795                          (another)
 // Every name and amount here is invented.
 import assert from 'node:assert/strict'
-import { loadBank, bankPanel, bankFreshness, checkBank, bankFront, bankSummary } from '../src/scripts/jfp-portal-bank.js'
+import { loadBank, bankPanel, bankFreshness, checkBank, bankLink, bankSummary } from '../src/scripts/jfp-portal-bank.js'
+import { money } from '../src/scripts/jfp-common.js'
 
 const PORT = Number(process.argv[2] || 4321)
 const B = `http://localhost:${PORT}`
@@ -90,26 +91,26 @@ await test('the newest line is over 2 days old: the amber note says so, with the
   assert.equal(bankFreshness(check).oldLines, true)
   const html = await panel()
   assert.match(html, /id="m-bank-refresh"[^>]*>Check bank now</)
-  assert.match(html, new RegExp(`Bank checked [^<]+ · lines up to ${new Date(`${day(15)}T00:00:00`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}<`))
-  const note = html.match(/<div class="j-box j-box-amber small" id="m-bank-old">([\s\S]*?)<\/div><\/div>/)
+  assert.match(html, new RegExp(`Checked [^<]+ · lines to ${new Date(`${day(15)}T00:00:00`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}<`))
+  const note = html.match(/<div class="j-box j-box-amber small jb-note" id="m-bank-old">([\s\S]*?)<\/div><\/div>/)
   assert.ok(note, 'the amber note is there')
   assert.match(note[1], /Xero only has bank lines up to .+\. Payments appear there after they're reconciled in Xero\. For anything newer, upload today's CommBank statement \(CSV\)\./)
-  assert.match(note[1], /for="m-bank-file">Upload bank statement \(CSV\)/, 'the upload button sits in the note')
+  assert.match(note[1], /for="m-bank-file"[^>]*>Upload bank CSV/, 'the upload button sits in the note')
   assert.equal((html.match(/id="m-bank-file"/g) || []).length, 1, 'one upload input only')
   assert.ok(!/—/.test(html), 'no em dashes')
 })
 
-await test('the Dashboard card: the same count, A$ total and amber note, from the real bank read', async () => {
+await test('the Dashboard link: the same count and A$ total, from the real bank read', async () => {
   const check = (await portal('bankCheck')).data.bank
   await panel()
   const s = bankSummary()
   assert.equal(s.count, check.items.length, 'this term\'s lines')
   assert.equal(s.cents, check.items.reduce((t, x) => t + x.cents, 0))
-  const html = bankFront('d', { review: '<button type="button" id="d-bank-review">Review</button>' })
+  // Redesign (16 Oct 2026): one line on the Dashboard; the check is on Money.
+  const html = bankLink('d')
   assert.match(html, new RegExp(`id="d-bank-count">${check.items.length}<`))
-  assert.match(html, /id="d-bank-refresh"[^>]*>Check bank now</)
-  assert.match(html, /id="d-bank-old"/, 'lines 15 days old: the amber note')
-  assert.match(html, /for="d-bank-file">Upload bank statement \(CSV\)/)
+  assert.match(html, new RegExp(`id="d-bank-total">${money(s.cents).replace('$', '\\$')}<`))
+  assert.ok(!/d-bank-refresh|d-bank-old|d-bank-file/.test(html), 'no button, note or upload on the Dashboard')
   assert.ok(!/—/.test(html), 'no em dashes')
 })
 

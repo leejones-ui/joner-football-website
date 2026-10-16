@@ -53,7 +53,7 @@ await test('JFP Money: one Programme menu, title and controls in one row, "Updat
   assert.deepEqual([...p.d.querySelectorAll('#m-prog option')].map((o) => [o.value, o.textContent, o.selected]), [['jfp', 'JFP', true], ['juniors', 'Joners Juniors', false], ['holiday', 'Holiday training', false], ['pro', 'Pro sessions', false], ['extra', 'Extra sessions', false], ['camps', 'Camps', false], ['invoices', 'Invoices', false], ['all', 'Everything', false]])
   assert.equal(p.d.querySelectorAll('[data-programme]').length, 0, 'no segmented buttons')
   assert.ok(p.$('.jd-head .jd-sync #m-prog') && p.$('.jd-head .jd-sync #m-show') && p.$('.jd-head .jd-sync #m-add'), 'the controls in one row')
-  assert.match(p.text('.jd-head p'), /^Updated \d{1,2}:\d{2} [ap]m · Refresh i$/)
+  assert.match(p.text('.jd-head p'), /^Updated \d{1,2}:\d{2} [ap]m · Refresh \?$/)
   assert.ok(p.$('#m-refresh') && p.$('#m-since'), 'Refresh and the payments date are still there')
   const tip = p.$('#m-tipbox')
   assert.equal(tip.hidden, true)
@@ -97,7 +97,7 @@ await test('Pro sessions: kept, by month, by player with billed and owing, every
   let undone = false
   const p = await openPortal({ money: fresh(), hash: '#money?programme=pro', onPost: (b) => (b.action === 'bankProUndo' ? (undone = true, { success: true, id: b.id }) : answers(b)) })
   assert.equal(p.$('#m-prog').value, 'pro')
-  assert.match(p.text('.jd-head p'), /^Updated 1:53 pm · Refresh i$/)
+  assert.match(p.text('.jd-head p'), /^Updated 1:53 pm · Refresh \?$/)
   assert.match(p.$('#m-tipbox').textContent, /None of it is in the JFP figures/)
   assert.equal(p.text('#p-kept'), money(11800))
   assert.equal(p.text('#p-sum'), `Taken ${money(12000)} · Refunded A$0 · Stripe fees ${money(200)}`)

@@ -4,6 +4,7 @@
 // so the session shows in that family's account to pay, and marks the
 // register on the day. Lee and Ligia see every coach's sessions and set the
 // prices coaches pick from.
+import { psHelp } from './jfp-portal-ps.js'
 import { esc } from './jfp-common.js'
 
 const S = { coachId: '', data: null }
@@ -50,7 +51,7 @@ export async function renderExtra(ui) {
       ${b.mobile ? `<a class="j-btn j-btn-line j-btn-sm" href="${esc(smsHref(b.mobile, extraText({ name: b.name, coach: coachWord(s), slot: s, email: b.email })))}">Text</a>` : ''}
       <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-x-rm="${esc(s.id)}|${esc(b.id)}">Remove</button></span></li>`).join('')}</ul>` : '<p class="muted small" style="margin-top:8px">No one booked yet.</p>'}
   </div>`
-  view().innerHTML = `<div class="jp-head"><div><h1>Extra sessions</h1><p class="muted small">Open extra hours. Public ones show in families' accounts to book. Private ones have their own link for a player you have booked yourself. Every payment lands against the player and you.${hours ? ` <b>${esc(hours)}.</b>` : ''}</p></div>
+  view().innerHTML = `<div class="jp-head"><div><h1>Extra sessions</h1>${psHelp('Open extra hours. Public ones show in families\' accounts to book. Private ones have their own link for a player you have booked yourself. Every payment lands against the player and you.', 'About this page')}${hours ? `<p class="muted small"><b>${esc(hours)}</b></p>` : ''}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${admin ? `<select class="j-select" id="xs-coach" style="width:auto"><option value="">Every coach</option>${d.coaches.map((c) => `<option value="${esc(c.id)}" ${S.coachId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>` : ''}<button type="button" class="j-btn j-btn-dark" id="xs-new">+ New extra session</button></div></div>
     ${admin ? pricesCard(d) : ''}
     ${d.prices.length ? '' : `<p class="j-box j-box-amber small" style="margin-bottom:12px">${admin ? 'Add a price below first: coaches pick from your prices.' : 'Lee and Ligia have not set extra session prices yet. Ask them, then you can open sessions.'}</p>`}

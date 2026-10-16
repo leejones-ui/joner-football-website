@@ -15,13 +15,14 @@
 // reconciled there, so when the newest line is over 2 days old an amber note
 // says so, with the CommBank CSV upload right beside it.
 //
-// 16 Oct 2026: the same check sits up front, so it is quick to find while
-// families move to paying in the portal: bankFront() is the "Bank payments to
-// check" card (count, A$ total, when the bank was checked, Check bank now and
-// the amber note), at the top of Money and on the Dashboard. bankSummary()
-// gives the numbers, and watchBank() tells the sidebar badge when they change.
+// 16 Oct 2026 (redesign): one folded row low on Money, "Bank payments
+// 3 to check · checked 2:07 pm". Open, it has Check bank now, the amber notes,
+// the CSV upload and the list. The Dashboard has a one-line link (bankLink).
+// bankSummary() gives the numbers, and watchBank() tells the sidebar badge
+// when they change.
 import { esc, money } from './jfp-common.js'
 import { parseBankCsv } from './jfp-bank-csv.js'
+import { psBadge } from './jfp-portal-ps.js'
 
 const B = { data: null, at: 0, loading: null, open: false, hiddenOpen: false, beforeOpen: false, chip: 'all', undo: null, prev: null, checking: false, draw: () => {} }
 const STALE = 5 * 60000
@@ -97,30 +98,39 @@ export function bankSummary(loc = '') {
 // Opens the list on Money next time it is drawn (the Review button, the sidebar).
 export function openBankList() { B.open = true; B.chip = 'all' }
 
-const uploadHtml = (pre) => `<div class="jm-bank-up"><label class="j-btn j-btn-line j-btn-sm" for="${pre}-bank-file">Upload bank statement (CSV)</label><input type="file" id="${pre}-bank-file" accept=".csv,text/csv,text/plain" class="jm-file"><span class="small muted">CommBank NetBank &gt; Accounts &gt; Export &gt; CSV</span></div>`
-
-// The "Bank payments to check" card. pre: the id prefix ('m' on Money, 'd' on
-// the Dashboard). review: the Review button's html, if any. cls: extra classes.
-export function bankFront(pre, { loc = '', review = '', cls = '' } = {}) {
-  const d = B.data
-  const s = bankSummary(loc)
-  const count = s.ready ? `<span class="jb-n" id="${pre}-bank-count">${s.count}</span>` : ''
-  const sum = !d ? '<p class="small muted">Checking the bank lines</p>'
-    : d.error ? `<p class="j-box j-box-amber small">${esc(d.error)}</p>`
-      : s.count ? `<p class="jb-sum" id="${pre}-bank-sum"><b id="${pre}-bank-total">${esc(money(s.cents))}</b> waiting${s.matched ? ` · ${s.matched} with a match` : ''}${loc ? ' at this venue' : ''}</p>`
-        : `<p class="jb-sum small" id="${pre}-bank-sum">Nothing to check${loc ? ' at this venue' : ''}. Every bank transfer we can see is recorded or hidden.</p>`
-  const statusLine = B.checking ? 'Checking the bank… This can take up to two minutes.'
-    : s.ready ? [s.checkedAt ? `Bank checked ${stamp(s.checkedAt)}` : 'Bank not checked yet', s.latest ? `lines up to ${when(s.latest)}` : 'no bank lines yet'].join(' · ') : ''
-  const btn = `<button type="button" class="j-btn j-btn-dark j-btn-sm" id="${pre}-bank-refresh"${B.checking ? ' disabled aria-busy="true"' : ''}>${B.checking ? 'Checking the bank…' : 'Check bank now'}</button>`
-  const oldNote = s.ready && s.oldLines ? `<div class="j-box j-box-amber small" id="${pre}-bank-old"><p>Xero only has bank lines up to ${esc(when(s.latest))}. Payments appear there after they're reconciled in Xero. For anything newer, upload today's CommBank statement (CSV).</p>${uploadHtml(pre)}</div>` : ''
-  const errNote = s.ready && s.checkError && !B.checking ? `<p class="j-box j-box-amber small" id="${pre}-bank-err">${esc(s.checkError)}.${/reconnect/i.test(s.checkError) ? ' The list is from the last good check. Upload the CommBank CSV for anything newer.' : ''}</p>` : ''
-  return `<section class="jb-front ${cls}" id="${pre}-bank-front" aria-labelledby="${pre}-bank-h">
-    <div class="jb-row"><div class="jb-main"><h2 id="${pre}-bank-h">Bank payments to check ${count}</h2>${sum}${statusLine ? `<p class="small muted" id="${pre}-bank-status" aria-live="polite">${esc(statusLine)}</p>` : ''}</div>
-    <div class="jb-btns">${btn}${review}</div></div>
-    ${errNote}${oldNote}</section>`
+const uploadHtml = (pre) => `<div class="jm-bank-up"><label class="j-btn j-btn-line j-btn-sm" for="${pre}-bank-file" title="CommBank NetBank &gt; Accounts &gt; Export &gt; CSV">Upload bank CSV</label><input type="file" id="${pre}-bank-file" accept=".csv,text/csv,text/plain" class="jm-file"></div>`
+// "2:07 pm" today, "16 Oct" before today.
+const shortStamp = (iso) => {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
 }
 
-// The card's buttons. ui: { post, toast, redraw }.
+// Redesign (Lee, 16 Oct 2026: "make the check bank a dropdown ... not at the
+// top"): on Money the bank is one folded row low on the page,
+// "Bank payments 3 to check · checked 2:07 pm". Open, it has Check bank now,
+// the status line, the amber notes, the CSV upload and the list. The
+// Dashboard only gets a one-line link (bankLink), and only when lines wait.
+export function bankLink(pre) {
+  const s = bankSummary()
+  if (!s.ready || !s.count) return ''
+  return `<button type="button" class="jd-banklink" id="${pre}-bank-review"><span id="${pre}-bank-count">${s.count}</span> bank payment${s.count === 1 ? '' : 's'} to check · <b id="${pre}-bank-total">${esc(money(s.cents))}</b></button>`
+}
+
+// The check itself, inside the open bank row. pre: the id prefix.
+function bankCheckBar(pre, loc) {
+  const d = B.data
+  const s = bankSummary(loc)
+  const sum = !d || d.error ? '' : s.count ? `<span id="${pre}-bank-sum"><b id="${pre}-bank-total">${esc(money(s.cents))}</b> waiting${s.matched ? ` · ${s.matched} matched` : ''}</span>` : `<span id="${pre}-bank-sum">Nothing to check${loc ? ' at this venue' : ''}</span>`
+  const statusLine = B.checking ? 'Checking the bank… This can take up to two minutes.'
+    : s.ready ? [s.checkedAt ? `Checked ${stamp(s.checkedAt)}` : 'Not checked yet', s.latest ? `lines to ${when(s.latest)}` : 'no lines yet'].join(' · ') : ''
+  const btn = `<button type="button" class="j-btn j-btn-dark j-btn-sm" id="${pre}-bank-refresh"${B.checking ? ' disabled aria-busy="true"' : ''}>${B.checking ? 'Checking the bank…' : 'Check bank now'}</button>`
+  const oldNote = s.ready && s.oldLines ? `<div class="j-box j-box-amber small jb-note" id="${pre}-bank-old"><p>Xero only has bank lines up to ${esc(when(s.latest))}. Payments appear there after they're reconciled in Xero. For anything newer, upload today's CommBank statement (CSV).</p>${uploadHtml(pre)}</div>` : ''
+  const errNote = s.ready && s.checkError && !B.checking ? `<p class="j-box j-box-amber small jb-note" id="${pre}-bank-err">${esc(s.checkError)}.${/reconnect/i.test(s.checkError) ? ' The list is from the last good check. Upload the CommBank CSV for anything newer.' : ''}</p>` : ''
+  return `<div class="jb-bar" id="${pre}-bank-front">${btn}${!(s.ready && s.oldLines) ? uploadHtml(pre) : ''}<p class="jb-meta"><span id="${pre}-bank-status" aria-live="polite">${esc(statusLine)}</span>${sum ? `<span class="jb-dot" aria-hidden="true">·</span>${sum}` : ''}</p></div>${errNote}${oldNote}`
+}
+
+// The Check bank now button and the CSV upload. ui: { post, toast, redraw }.
 export function bindBankFront(el, pre, ui) {
   el.querySelector(`#${pre}-bank-refresh`)?.addEventListener('click', () => checkBank(ui))
   el.querySelector(`#${pre}-bank-file`)?.addEventListener('change', (e) => uploadCsv(e, ui))
@@ -139,11 +149,11 @@ async function uploadCsv(e, ui) {
   loadBank(ui, ui.redraw, { force: true })
 }
 
-const GRADE = { high: ['Likely match', 'j-pill-green'], possible: ['Possible match', 'j-pill-amber'], none: ['No match yet', 'j-pill-grey'] }
+const GRADE = { high: ['Likely match', 'green'], possible: ['Possible match', 'orange'], none: ['No match yet', 'grey'] }
 const when = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
 const whenYear = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
 const first = (name) => String(name || '').split(/\s+/)[0] || 'this player'
-const CHIPS = [['all', 'All'], ['term', 'This term'], ['holiday', 'Looks like holiday'], ['last', 'Looks like last term'], ['hidden', 'Hidden']]
+const CHIPS = [['all', 'All'], ['term', 'This term'], ['holiday', 'Holiday?'], ['last', 'Last term?'], ['hidden', 'Hidden']]
 
 // The items for the venue picked: the top candidate's venue. Lines with no
 // candidate belong to no venue, so they show under All only.
@@ -163,17 +173,16 @@ export function bankPanel(loc) {
   const before = beforeItems(loc)
   const toCheck = items.filter((x) => x.grade !== 'none').length
   const src = d?.sources || {}
-  const xero = src.xeroAt ? `From Xero, updated ${new Date(src.xeroAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : 'No Xero update in the last 3 days'
-  const csv = src.csvAt ? ` · Bank CSV uploaded ${new Date(src.csvAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}` : ''
+  const xero = src.xeroAt ? `Xero ${new Date(src.xeroAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : 'No Xero update in the last 3 days'
+  const csv = src.csvAt ? ` · CSV ${new Date(src.csvAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}` : ''
   // The Mac sends Xero twice a day. Over a day old means it has stopped.
   const stale = d && !d.error && (!src.xeroAt || Date.now() - Date.parse(src.xeroAt) > STALE_XERO)
   const staleNote = !stale ? '' : src.xeroAt ? `Xero hasn't updated since ${new Date(src.xeroAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}. Upload the bank CSV for now.` : 'Xero has stopped sending. Upload the bank CSV for now.'
   const hidden = loc ? [] : d?.hidden || []
-  const count = !d ? '<span class="n muted">checking</span>' : d.error ? '' : `<span class="n">${items.length}</span>`
   const all = [...items, ...before]
   const n = { all: all.length, term: items.length, holiday: all.filter(hinted('holiday')).length, last: all.filter(hinted('lastTerm')).length, hidden: hidden.length }
   const chip = n[B.chip] != null ? B.chip : 'all'
-  const chips = d && !d.error && (all.length || hidden.length) ? `<div class="jm-chips jm-bank-chips" id="m-bank-chips" role="group" aria-label="Show">${CHIPS.map(([k, l]) => `<button type="button" data-bank-chip="${k}" aria-pressed="${chip === k}">${l} <span class="n">${n[k]}</span></button>`).join('')}</div>` : ''
+  const chips = d && !d.error && (all.length || hidden.length) ? `<div class="ps-chips jm-bank-chips" id="m-bank-chips" role="group" aria-label="Show">${CHIPS.map(([k, l]) => `<button type="button" class="ps-chip" data-bank-chip="${k}" aria-pressed="${chip === k}">${l} <b class="n">${n[k]}</b></button>`).join('')}</div>` : ''
   let list
   if (!d) list = '<p class="muted small">Checking the bank lines</p>'
   else if (d.error) list = `<div class="j-box j-box-amber small">${esc(d.error)}</div>`
@@ -181,41 +190,40 @@ export function bankPanel(loc) {
   else {
     const shown = chip === 'holiday' ? all.filter(hinted('holiday')) : chip === 'last' ? all.filter(hinted('lastTerm')) : items
     list = shown.length ? `<ul class="jm-bank-list">${shown.map(itemHtml).join('')}</ul>`
-      : chip === 'all' || chip === 'term' ? `<p class="muted small">Nothing to check${loc ? ' at this venue' : ''}. Every bank transfer we can see is recorded or hidden.</p>`
-        : `<p class="muted small">No bank transfers ${chip === 'holiday' ? 'look like holiday training' : 'look like last term'}${loc ? ' at this venue' : ''}.</p>`
+      : chip === 'all' || chip === 'term' ? `<p class="muted small jb-empty">Nothing to check${loc ? ' at this venue' : ''}. Every bank transfer we can see is recorded or hidden.</p>`
+        : `<p class="muted small jb-empty">No bank transfers ${chip === 'holiday' ? 'look like holiday training' : 'look like last term'}${loc ? ' at this venue' : ''}.</p>`
     // Lines from before this term: their own fold, under All.
-    if (chip === 'all' && before.length) list += `<details class="jm-bank-before" id="m-bank-before"${B.beforeOpen ? ' open' : ''}><summary>Before this term (${before.length})</summary><p class="small muted">Older transfers, from before this term's payments start: holiday training and last term's fees. Sort them with the buttons.</p><ul class="jm-bank-list">${before.map(itemHtml).join('')}</ul></details>`
+    if (chip === 'all' && before.length) list += `<details class="jm-bank-before" id="m-bank-before"${B.beforeOpen ? ' open' : ''}><summary>Before this term (${before.length})</summary><ul class="jm-bank-list">${before.map(itemHtml).join('')}</ul></details>`
   }
-  const undo = B.undo ? `<div class="j-box j-box-blue small jm-bank-undo" id="m-bank-undo"><span>${esc(B.undo.text)}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-undo="${esc(B.undo.id)}">Undo</button></div>` : ''
-  const fr = bankFreshness(d)
-  const live = d && !d.error
-  // The check, its status line and the amber note are up front (bankFront).
-  return `${bankFront('m', { loc, cls: 'jb-money' })}
-    <details class="jm-next jm-bank" id="m-bank-box" ${B.open ? 'open' : ''}><summary>Review the payments ${count}${toCheck ? ` <small class="muted">${toCheck} with a match</small>` : ''}</summary>
-    <div class="jm-bank-src">
-      <p class="small" id="m-bank-xero">${esc(xero)}${esc(csv)}</p>
-      ${staleNote ? `<p class="j-box j-box-amber small" id="m-bank-stale">${esc(staleNote)}</p>` : ''}
-      ${live && fr.oldLines ? '<p class="small muted">Upload the CommBank CSV with the button in the note above.</p>' : `<p class="small muted">Xero only shows transfers after they're reconciled in Xero. Uploading the bank CSV works straight away.</p>${uploadHtml('m')}`}
-    </div>
+  const undo = B.undo ? `<div class="j-box j-box-grey small jm-bank-undo" id="m-bank-undo"><span>${esc(B.undo.text)}</span><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-undo="${esc(B.undo.id)}">Undo</button></div>` : ''
+  const s = bankSummary(loc)
+  const count = !d ? '<span class="jm-sec-m muted">checking</span>' : d.error ? '<span class="jm-sec-m">can\'t read</span>' : `<span class="jm-sec-m"><span class="jm-sec-n${items.length ? ' on' : ''}" id="m-bank-count">${items.length}</span> to check${toCheck ? ` · ${toCheck} matched` : ''}${s.checkedAt ? ` · checked ${esc(shortStamp(s.checkedAt))}` : ''}</span>`
+  return `<details class="jm-sec jm-bank" id="m-bank-box" ${B.open ? 'open' : ''}><summary><span class="jm-sec-t" id="m-bank-h">Bank payments</span> ${count}${CHEVRON}</summary>
+    <div class="jm-sec-body">
+    ${bankCheckBar('m', loc)}
+    ${staleNote ? `<p class="j-box j-box-amber small jb-note" id="m-bank-stale">${esc(staleNote)}</p>` : ''}
     ${undo}${chips}
     ${list}
-    ${hidden.length && chip === 'all' ? `<details class="jm-bank-hidden" id="m-bank-hidden"${B.hiddenOpen ? ' open' : ''}><summary>Hidden (${hidden.length})</summary>${hiddenList(hidden)}</details>` : ''}</details>`
+    ${hidden.length && chip === 'all' ? `<details class="jm-bank-hidden" id="m-bank-hidden"${B.hiddenOpen ? ' open' : ''}><summary>Hidden (${hidden.length})</summary>${hiddenList(hidden)}</details>` : ''}
+    <p class="jb-src" id="m-bank-xero">${esc(xero)}${esc(csv)}</p></div></details>`
 }
+export const CHEVRON = '<svg class="jm-sec-chev" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
 const hiddenList = (hidden) => `<ul class="jm-hist">${hidden.map((x) => `<li data-bank-hid="${esc(x.id)}"><span><b>${esc(money(x.cents))}</b> <small>${esc(when(x.date))} · ${esc(x.payer)}</small></span><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-show>Show again</button></li>`).join('')}</ul>`
 
 function itemHtml(x) {
   const c = x.candidates[0]
-  const [label, pill] = GRADE[x.grade] || GRADE.none
+  const [label, color] = GRADE[x.grade] || GRADE.none
   const pv = x.previous
-  const hints = `${x.hints?.holiday ? '<span class="j-pill j-pill-blue" data-hint="holiday">Looks like holiday training</span>' : ''}${x.hints?.lastTerm ? '<span class="j-pill j-pill-violet" data-hint="last">Looks like last term</span>' : ''}`
+  const hints = `${x.hints?.holiday ? '<span class="ps-tag" data-hint="holiday">Holiday?</span>' : ''}${x.hints?.lastTerm ? '<span class="ps-tag" data-hint="last">Last term?</span>' : ''}`
   return `<li class="jm-bank-item" data-bank="${esc(x.id)}">
-    <div class="top"><span class="when">${esc(x.early ? whenYear(x.date) : when(x.date))}</span><b class="amt">${esc(money(x.cents))}</b><span class="j-pill ${pill}">${label}</span>${hints}</div>
+    <div class="top"><span class="when">${esc(x.early ? whenYear(x.date) : when(x.date))}</span><b class="amt">${esc(money(x.cents))}</b>${psBadge(color, label)}${hints}</div>
     <p class="payer">${esc(x.payer)}${x.description && x.description !== x.payer ? ` <small class="muted">${esc(x.description)}</small>` : ''}</p>
-    ${c ? `<p class="cand"><b>${esc(c.player)}</b>${c.parent ? ` <small>(${esc(c.parent)})</small>` : ''} · owing ${esc(money(c.owingCents))}<br><small class="muted">${esc(c.reason)}</small>${x.candidates.length > 1 ? `<br><small class="muted">Also: ${x.candidates.slice(1).map((o) => esc(o.player)).join(', ')}</small>` : ''}</p>` : '<p class="cand muted small">No player with that name.</p>'}
-    ${x.invoice ? `<p class="cand"><b>Invoice ${esc(x.invoice.id)}</b> · ${esc(x.invoice.players.join(', '))} · owing ${esc(money(x.invoice.owingCents))}<br><small class="muted">${esc(x.invoice.reason)}</small></p>` : ''}
-    ${pv ? `<p class="cand prev small">Last term: <b>${esc(pv.player)}</b>${pv.parent ? ` (${esc(pv.parent)})` : ''} · ${pv.owingCents ? `owing ${esc(money(pv.owingCents))}` : esc(pv.status || 'paid')}<br><small class="muted">${esc(pv.reason)}</small></p>` : ''}
-    <div class="btns">${x.invoice ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-bank-inv="${esc(x.invoice.id)}">Record on ${esc(x.invoice.id)}</button>` : ''}${c ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-bank-rec="${esc(c.rowId)}">Record for ${esc(first(c.player))}</button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-other>Other player…</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-holiday>Holiday revenue</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-pro>Pro session</button><button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-prev>Previous term</button><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-bank-ignore>Not JFP / ignore</button></div>
+    ${c ? `<p class="cand"><b>${esc(c.player)}</b>${c.parent ? ` <small>(${esc(c.parent)})</small>` : ''} · owing ${esc(money(c.owingCents))}<small class="muted">${esc(c.reason)}${x.candidates.length > 1 ? ` · Also: ${x.candidates.slice(1).map((o) => esc(o.player)).join(', ')}` : ''}</small></p>` : '<p class="cand muted small">No player with that name.</p>'}
+    ${x.invoice ? `<p class="cand"><b>Invoice ${esc(x.invoice.id)}</b> · ${esc(x.invoice.players.join(', '))} · owing ${esc(money(x.invoice.owingCents))}<small class="muted">${esc(x.invoice.reason)}</small></p>` : ''}
+    ${pv ? `<p class="cand prev small">Last term: <b>${esc(pv.player)}</b>${pv.parent ? ` (${esc(pv.parent)})` : ''} · ${pv.owingCents ? `owing ${esc(money(pv.owingCents))}` : esc(pv.status || 'paid')}<small class="muted">${esc(pv.reason)}</small></p>` : ''}
+    <div class="btns">${x.invoice ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-bank-inv="${esc(x.invoice.id)}">Record on ${esc(x.invoice.id)}</button>` : ''}${c ? `<button type="button" class="j-btn j-btn-dark j-btn-sm" data-bank-rec="${esc(c.rowId)}">Record for ${esc(first(c.player))}</button>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-bank-other>Other player…</button>
+      <details class="jm-more"><summary class="j-btn j-btn-ghost j-btn-sm">More</summary><div class="jm-more-list" role="menu"><button type="button" role="menuitem" data-bank-holiday>Holiday revenue</button><button type="button" role="menuitem" data-bank-pro>Pro session</button><button type="button" role="menuitem" data-bank-prev>Previous term</button><button type="button" role="menuitem" data-bank-ignore>Not JFP / ignore</button></div></details></div>
   </li>`
 }
 
@@ -257,6 +265,7 @@ export function bindBank(el, ui) {
     }
     const li = e.target.closest('[data-bank]')
     if (!li) return
+    if (e.target.closest('.jm-more-list')) e.target.closest('.jm-more').open = false
     const item = findItem(li.dataset.bank)
     if (!item) return
     // An invoice named in the reference (14 Oct 2026): on the invoice and its player.

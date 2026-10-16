@@ -3,6 +3,7 @@
 // real fee from Stripe, and what Stripe has refunded) and bank transfers Lee
 // marked "Holiday revenue" on Bank transfers to check. Read only, except
 // putting a bank transfer back on that list. Never added into the JFP figures.
+import { psHelp } from './jfp-portal-ps.js'
 import { esc, money } from './jfp-common.js'
 import { moneyHead, bindTip, quietOk, markUpdated } from './jfp-portal-programmes.js'
 
@@ -42,8 +43,7 @@ function groupCard(id, title, sub, list) {
 function sheetBlock(v) {
   const rows = v.byMonth[H.basis] || []
   const total = rows.reduce((t, r) => t + r.keptCents, 0)
-  return `<section class="jd-card jh-sheet" id="h-sheet"><h2>Add to your sheet</h2>
-    <p class="sub">Holiday training kept, per calendar month, for your month-end sheet. It is not in the "JFP / JJ / training" row.</p>
+  return `<section class="jd-card jh-sheet" id="h-sheet"><h2 class="jm-h2help">Add to your sheet ${psHelp('Holiday training kept, per calendar month, for your month-end sheet. It is not in the "JFP / JJ / training" row.')}</h2>
     <div class="jp-seg jh-basis" role="group" aria-label="Month by" style="margin:10px 0 4px"><button type="button" data-basis="session" aria-pressed="${H.basis === 'session'}">By session date</button><button type="button" data-basis="paid" aria-pressed="${H.basis === 'paid'}">By payment date</button></div>
     <p class="muted small" id="h-basis-note">${H.basis === 'session' ? 'Each booking in the month its session is on. A bank transfer with no session date goes in the month it came in, or the holiday\'s first day if it came in before or after the holiday.' : 'Each booking in the month it was paid; each bank transfer in the month it came in.'} Refunds and fees come off the same month.</p>
     ${rows.length ? stackTable('h-months', ['Month', 'Stripe kept', 'Bank transfer', 'Kept'], rows.map((r) => [esc(r.label), esc(money(r.stripeCents)), esc(money(r.bankCents)), `<b>${esc(money(r.keptCents))}</b>`]), rows.length > 1 ? ['Total', esc(money(rows.reduce((t, r) => t + r.stripeCents, 0))), esc(money(rows.reduce((t, r) => t + r.bankCents, 0))), esc(money(total))] : null) : '<p class="muted small">Nothing in this holiday yet.</p>'}
@@ -173,7 +173,7 @@ function paintHoliday(ui, v) {
       ${groupCard('h-type', 'By session type', '1 on 1, shared or small group, and the price a player', v.byType)}
     </div>
     <section class="jd-card jh-list" id="h-lines"><h2>Bookings and transfers</h2><p class="sub">${plural(v.lines.length, 'payment')} in ${esc(v.label)}, newest session first</p>
-      ${v.lines.length ? `<ul class="jm-hist">${v.lines.map(lineHtml).join('')}</ul>` : '<p class="muted small">Nothing in this holiday yet. Bank transfers for holiday training are marked on Money &gt; JFP &gt; Bank transfers to check.</p>'}</section>`
+      ${v.lines.length ? `<ul class="jm-hist">${v.lines.map(lineHtml).join('')}</ul>` : '<p class="muted small">Nothing in this holiday yet. Mark bank transfers in Money &gt; Bank payments.</p>'}</section>`
   ui.bindSwitch()
   bindTip(view())
   view().querySelector('#h-period').addEventListener('change', (e) => { ui.filter.period = e.target.value; holidayStale(); renderHolidayMoney(ui) })
