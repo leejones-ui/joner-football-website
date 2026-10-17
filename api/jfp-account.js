@@ -50,6 +50,7 @@ import { playerLoginOf, loginsForFamily, setPlayerLogin, removePlayerLogin, PLAY
 import { pushView, saveSub, dropSub, setPrefs } from './_jfp-push.js'
 import { roleFor } from './_jfp-people.js'
 import { familyNotesFor, markFamilyNotesRead } from './_jfp-family-notes.js'
+import { reportsForFamily, familyView as reportFamilyView, readSetFor, markReportsRead, getReport, REPORT_ATTRS, REPORT_SCALE } from './_jfp-reports.js'
 import { submitExtra, listExtras, familyExtraView, analysisPrice, extraSlots, DAYS as EXTRA_DAYS, TIMES as EXTRA_TIMES, TYPES as EXTRA_TYPES } from './_jfp-extras.js'
 // Saved card or bank account for session payments (claude/card-on-file).
 import { SAVED_PAY_FAMILY, savedPayFamily } from './_jfp-saved-pay.js'
@@ -257,11 +258,15 @@ async function overview(res, parent, body = {}, opts = {}) {
   const announcements = await announcementsFor({ groupIds: myRows.map((r) => r.groupId), locationIds: myRows.map((r) => locationFor(config, r.location).id), email: readEmail })
   // Coach notes for this family's players (Lee, 17 Oct 2026), from "Coach".
   const notes = await familyNotesFor(myRows.map((r) => r.id), readEmail)
+  // Player reports (Lee, 18 Oct 2026): a short list for the menu count; the
+  // reports themselves load when the tab opens.
+  const reports = opts.player ? [] : await reportsSummary(parent.email, null)
   return res.status(200).json({
     success: true,
     email: parent.email,
     announcements,
     notes,
+    reports,
     playerMinAge: PLAYER_MIN_AGE,
     push: await pushView(readEmail).then((x) => ({ available: Boolean(x.available), key: x.key || '' })).catch((error) => { console.error('jfp push view failed', error); return { available: false, key: '' } }),
     parentName: fam.parentName || juniors?.parentName || '',
@@ -785,6 +790,50 @@ async function playerLoginAction(res, parent, body) {
   return res.status(200).json({ success: true, login: r.login.email })
 }
 
+// Player reports (Lee, 18 Oct 2026): the reports sent to this family, newest
+// first. A player login sees only their own. Read only, plus "opened".
+async function reportsScope(email, login) {
+  const config = await getConfig()
+  if (login) {
+    const fam = familyFor(login.parentEmail, await loadRoster(), config.termStart)
+    const rows = fam.players.find((p) => p.key === login.playerKey)?.term4 || []
+    return { email: login.email, rowIds: rows.map((r) => r.id), playerKey: login.playerKey, parentEmail: login.parentEmail }
+  }
+  const fam = familyFor(email, await loadRoster(), config.termStart)
+  return { email, rowIds: fam.players.flatMap((p) => p.term4).map((r) => r.id) }
+}
+async function myReports(email, login) {
+  const scope = await reportsScope(email, login)
+  const list = await reportsForFamily(scope)
+  const read = await readSetFor(scope.email, list.map((r) => r.id))
+  return { list, read, scope }
+}
+async function reportsSummary(email, login) {
+  try {
+    const { list, read } = await myReports(email, login)
+    return list.slice(0, 60).map((r) => ({ id: r.id, player: r.player, termNo: r.termNo, year: r.year, sentAt: r.sentAt, unread: !read.has(r.id) }))
+  } catch (error) { console.error('jfp reports summary failed', error); return [] }
+}
+async function reportsAction(res, email, login, body) {
+  const { list, read, scope } = await myReports(email, login)
+  if (body.action === 'reports') return res.status(200).json({ success: true, reports: list.map((r) => reportFamilyView(r, read)), form: { attrs: REPORT_ATTRS, scale: REPORT_SCALE } })
+  if (body.action === 'reportRead') return res.status(200).json({ success: true, read: await markReportsRead(scope.email, body.ids, new Set(list.map((r) => r.id))) })
+  // reportPdf: only a report this family can see.
+  const id = clean(body.id, 40)
+  if (!list.some((r) => r.id === id)) return fail(res, 404, 'That report is not in your account.')
+  const rec = await getReport(id)
+  try {
+    const { renderReportPdf, reportFilename } = await import('./_jfp-report-pdf.js')
+    const bytes = await renderReportPdf(rec)
+    await markReportsRead(scope.email, [id], new Set([id]))
+    return res.status(200).json({ success: true, filename: reportFilename(rec), pdf: Buffer.from(bytes).toString('base64') })
+  } catch (error) {
+    console.error('jfp report pdf failed', error)
+    return fail(res, 500, 'The PDF could not be made just now. Try again in a moment.')
+  }
+}
+const REPORT_FAMILY = new Set(['reports', 'reportRead', 'reportPdf'])
+
 // The player's own view: the family overview cut down to them. No money,
 // no brothers or sisters, no parent name or contacts.
 async function playerView(login) {
@@ -805,6 +854,7 @@ async function playerView(login) {
     success: true, playerLogin: true, email: login.email, parentName: '', self: true, players,
     announcements: await announcementsFor({ groupIds: rows.map((r) => r.groupId), locationIds: rows.map((r) => locationFor(config, r.location).id), email: login.email }),
     notes: (d.notes || []).filter((n) => rowIds.has(n.rowId)),
+    reports: await reportsSummary(login.email, login),
     push: d.push, term: d.term, termStart: d.termStart, weeks: d.weeks, venues: d.venues, reasons: d.reasons, noteMax: d.noteMax,
     todo: [], owed: [], paid: [], requests: [], bookings: [], juniors: null, nextTerm: null, keep: { name: d.keep?.name || '', open: false, players: [] }, extras: null,
   }, rowIds }
@@ -814,6 +864,7 @@ async function playerAction(req, res, login, body) {
   const a = body.action
   if (!a || a === 'overview') { const v = await playerView(login); return res.status(v.c).json(v.d) }
   if (a === 'announceRead') return res.status(200).json({ success: true, read: await markAnnouncementsRead(login.email, body.ids) })
+  if (REPORT_FAMILY.has(a)) return await reportsAction(res, login.email, login, body)
   if (a === 'calendarLink') { const t = await calendarToken(login.email); return res.status(200).json({ success: true, url: `${siteUrl(req)}/api/jfp-account?cal=${t}` }) }
   const v = await playerView(login)
   if (a === 'noteRead') return res.status(200).json({ success: true, read: await markFamilyNotesRead(login.email, body.ids, v.rowIds || new Set()) })
@@ -860,6 +911,7 @@ export default async function handler(req, res) {
     if (login) return await playerAction(req, res, login, body)
     if (body.action === 'playerLoginSet' || body.action === 'playerLoginRemove') return await playerLoginAction(res, parent, body)
     if (body.action === 'announceRead') return res.status(200).json({ success: true, read: await markAnnouncementsRead(parent.email, body.ids) })
+    if (REPORT_FAMILY.has(body.action)) return await reportsAction(res, parent.email, null, body)
     if (body.action === 'noteRead') { const config = await getConfig(); const rows = familyFor(parent.email, await loadRoster(), config.termStart).players.flatMap((p) => p.term4); return res.status(200).json({ success: true, read: await markFamilyNotesRead(parent.email, body.ids, new Set(rows.map((r) => r.id))) }) }
     if (body.action === 'signWaiver') return await signWaiver(res, parent, body)
     if (body.action === 'confirmKit') return await confirmKit(res, parent, body)

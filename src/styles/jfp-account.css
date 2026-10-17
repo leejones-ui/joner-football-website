@@ -868,3 +868,9 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 .ja-att-word.came { color: var(--ja-green); }
 .ja-att-word.missed { color: var(--ja-red); }
 .ja-tag.grey { background: var(--ja-panel-3); color: var(--ja-hi); }
+
+/* Player reports (Lee, 18 Oct 2026): the report reads as a printed card,
+   white in light and dark, the same as the PDF. */
+.ja .rp-card { margin-top: 10px; }
+.jfp.ja .ja-report.is-unread { box-shadow: 0 0 0 1.5px var(--ja-red) inset; }
+.ja .ja-report-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }

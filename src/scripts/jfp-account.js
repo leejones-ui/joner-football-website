@@ -13,6 +13,7 @@ import { oweList, jjOweList, oweCard, aheadBlock, depositCards, placeCards, hist
 import { renderExtra, renderAnalysis, extraClick, setExtraLink } from './jfp-account-extras.js'
 // Fees: save a card or bank account for session payments (claude/card-on-file).
 import { mountSavedPay, savedReturn, forgetSaved } from './jfp-account-saved.js'
+import { renderReports, reportsHomeBlock, unreadReports } from './jfp-account-reports.js'
 import { attendanceLine, pastMark, unreadNotes, notesHomeBlock, renderNotes, renderAlerts, pushOffered, loginRow, loginSheet } from './jfp-account-more.js'
 
 const q = new URLSearchParams(location.search)
@@ -20,7 +21,7 @@ let D = null
 let PROF = null
 // Fees (14 Oct 2026): read when the Fees tab first opens, again after each load.
 let FEES = null
-const PANELS = ['home', 'sessions', 'fees', 'family', 'news', 'notes', 'alerts', 'info', 'waivers', 'cancel', 'keep', 'term', 'holidays', 'extra', 'analysis', 'videos', 'app', 'contact']
+const PANELS = ['home', 'sessions', 'fees', 'family', 'news', 'notes', 'reports', 'alerts', 'info', 'waivers', 'cancel', 'keep', 'term', 'holidays', 'extra', 'analysis', 'videos', 'app', 'contact']
 let current = 'home'
 const KIT_URL = 'https://www.besteamsport.com.au/collections/joner-football'
 const IMG = '/images/jfp-account'
@@ -214,6 +215,7 @@ function face(name, photo, extra = '') {
 function nav() {
   const unsigned = unsignedWaivers().length
   const notesItem = { key: 'notes', label: 'Coach notes', icon: 'whistle', count: unreadNotes(D) }
+  const reportsItem = { key: 'reports', label: 'Player reports', icon: 'spark', count: unreadReports(D) }
   const alertsItem = pushOffered(D) ? [{ key: 'alerts', label: 'Notifications', icon: 'bell' }] : []
   // A player's own login (12+): their sessions, notes and videos. No money or family.
   if (D?.playerLogin) return [
@@ -221,6 +223,7 @@ function nav() {
       { key: 'home', label: 'Home', icon: 'home' },
       { key: 'sessions', label: 'Sessions', icon: 'calendar' },
       notesItem,
+      reportsItem,
       { key: 'news', label: 'Announcements', icon: 'bell', count: unreadNews() },
     ] },
     { label: 'Manage', items: [{ key: 'cancel', label: "Can't make it", icon: 'xcircle' }, ...alertsItem, { key: 'contact', label: 'Contact us', icon: 'chat' }] },
@@ -238,6 +241,7 @@ function nav() {
       { key: 'family', label: solo() ? 'My profile' : 'Family', icon: 'user', dot: familyCount() > 0 },
       { key: 'news', label: 'Announcements', icon: 'bell', count: unreadNews() },
       notesItem,
+      reportsItem,
     ] },
     { label: 'Manage', items: [
       { key: 'cancel', label: "Can't make it", icon: 'xcircle' },
@@ -379,7 +383,7 @@ function show(panel, { keepScroll = false } = {}) {
   requestAnimationFrame(syncRails)
 }
 const pane = (k) => document.querySelector(`[data-pane="${k}"]`)
-const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact(), notes: () => renderNotes(pane('notes'), D, () => renderShell()), alerts: () => renderAlerts(pane('alerts'), D) }
+const DRAW = { home: () => renderHome(), sessions: () => renderSessions(), fees: () => renderFees(), family: () => renderFamily(), news: () => renderNews(), info: () => renderInfo(), waivers: () => renderWaivers(), cancel: () => renderCancel(), keep: () => renderKeep(), term: () => renderTerm(), holidays: () => renderHolidays(), extra: () => renderExtra(pane('extra'), D), analysis: () => renderAnalysis(pane('analysis'), D), videos: () => renderVideos(), app: () => renderApp(), contact: () => renderContact(), notes: () => renderNotes(pane('notes'), D, () => renderShell()), reports: () => renderReports(pane('reports'), D, () => renderShell()), alerts: () => renderAlerts(pane('alerts'), D) }
 function drawPane(panel) { DRAW[panel]?.(); const el = document.querySelector(`[data-pane="${panel}"]`); if (el) el.dataset.drawn = '1' }
 
 function render() {
@@ -554,7 +558,7 @@ function renderHome() {
   el.innerHTML = `${head}
     <div class="ja-home">
       <div class="ja-stack"><p class="ja-label">Next up</p>${nextBlock}${doneBlock}</div>
-      <div class="ja-stack">${D.playerLogin ? '' : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${notesHomeBlock(D)}${newsBlock()}
+      <div class="ja-stack">${D.playerLogin ? '' : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${reportsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
         ${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b class="ja-ink">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b class="ja-ink">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
     </div>
     ${D.playerLogin ? '' : promos}${watch}`
@@ -1369,7 +1373,7 @@ document.addEventListener('click', async (e) => {
   if (go) {
     if (go.dataset.topic) topic = go.dataset.topic
     closeSheet(true)
-    if (['contact', 'news', 'notes', 'alerts'].includes(go.dataset.go)) delete document.querySelector(`[data-pane="${go.dataset.go}"]`)?.dataset.drawn
+    if (['contact', 'news', 'notes', 'reports', 'alerts'].includes(go.dataset.go)) delete document.querySelector(`[data-pane="${go.dataset.go}"]`)?.dataset.drawn
     // A player row on Home opens Sessions on that player.
     if (go.dataset.kid) { sessKid = go.dataset.kid; delete pane('sessions')?.dataset.drawn }
     show(go.dataset.go)

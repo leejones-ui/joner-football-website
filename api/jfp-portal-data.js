@@ -40,6 +40,7 @@ import { EXTRA_ACTIONS, extraAction } from './_jfp-extra-actions.js'
 import { ANNOUNCE_ACTIONS, announceAction } from './_jfp-announce.js'
 import { HOURS_ACTIONS, hoursAction } from './_jfp-hours.js'
 import { FAMILY_NOTE_ACTIONS, familyNoteAction } from './_jfp-family-notes.js'
+import { REPORT_ACTIONS, reportAction } from './_jfp-report-actions.js'
 import { pushFamilyNote } from './_jfp-push.js'
 import { noteNewPlayer, alertsStatus, newPlayerWords, registerWords } from './_jfp-coach-alerts.js'
 import { stripeScan, jfpStripePayments, feeTotals } from './_jfp-stripe.js'
@@ -3177,6 +3178,13 @@ async function handle(req, res) {
     if (action === 'trialFeedback') return await saveTrialFeedback(res, principal, config, isAdmin, body)
     // Joners Juniors registers (stage 3): a coach marks their own Juniors class, as in JFP.
     if (JJ_REGISTER_ACTIONS.has(action)) return await jjRegisterAction(req, res, principal, config, body, action)
+
+    // Player reports (Lee, 18 Oct 2026): coaches for their own players only;
+    // Lee and Ligia for anyone (_jfp-report-actions.js).
+    if (REPORT_ACTIONS.has(action)) {
+      const [groups, roster] = await Promise.all([listGroups(), loadRoster({ fresh: ['reportSend', 'reportRecipients'].includes(action) })])
+      return await reportAction(req, res, principal, config, body, action, { isAdmin, groups, roster, isJuniorsGroup })
+    }
 
     // Extra sessions (Lee, 14 Oct 2026): coaches run their own; Lee and Ligia see all.
     if (EXTRA_ACTIONS.has(action)) return await extraAction(req, res, principal, config, body, action, isAdmin)

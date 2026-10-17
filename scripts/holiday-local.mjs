@@ -72,6 +72,7 @@ function redis(cmd) {
   const [name, ...args] = cmd
   switch (String(name).toUpperCase()) {
     case 'GET': return live(args[0])?.value ?? null
+    case 'MGET': return args.map((k) => live(k)?.value ?? null)
     case 'SET': {
       const [key, value, ...opts] = args
       const nx = opts.includes('NX')
@@ -88,10 +89,11 @@ function redis(cmd) {
     case 'SREM': { const e = live(args[0]); let n = 0; if (e) for (const m of args.slice(1)) if (e.value.delete(m)) n++; return n }
     case 'INCR': { const e = live(args[0]); const n = Number(e?.value || 0) + 1; store.set(args[0], { type: 's', value: String(n), expiresAt: e?.expiresAt || 0 }); return n }
     case 'TTL': { const e = live(args[0]); return e ? (e.expiresAt ? Math.ceil((e.expiresAt - Date.now()) / 1000) : -1) : -2 }
-    case 'HSET': { const h = hash(args[0]); h.set(args[1], args[2]); return 1 }
+    case 'HSET': { const h = hash(args[0]); let n = 0; for (let i = 1; i + 1 < args.length; i += 2) { if (!h.has(args[i])) n += 1; h.set(args[i], args[i + 1]) } return n }
     case 'HSETNX': { const h = hash(args[0]); if (h.has(args[1])) return 0; h.set(args[1], args[2]); return 1 }
     case 'HINCRBY': { const h = hash(args[0]); const n = Number(h.get(args[1]) || 0) + Number(args[2]); h.set(args[1], String(n)); return n }
     case 'HGET': return live(args[0])?.value.get(args[1]) ?? null
+    case 'HMGET': { const h = live(args[0])?.value; return args.slice(1).map((f) => h?.get(f) ?? null) }
     case 'HEXISTS': return live(args[0])?.value.has(args[1]) ? 1 : 0
     case 'HLEN': return live(args[0])?.value.size ?? 0
     case 'HVALS': { const h = live(args[0]); return h ? [...h.value.values()] : [] }

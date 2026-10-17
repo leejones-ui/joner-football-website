@@ -7,6 +7,7 @@ import { renderMessages } from './jfp-portal-messages.js'
 import { renderAnnouncements } from './jfp-portal-announce.js'
 import { familyNotesModal, renderFamilyNotesPage } from './jfp-portal-fnotes.js'
 import { renderExtra } from './jfp-portal-extra.js'
+import { renderReports, writeReportFor } from './jfp-portal-reports.js'
 import { renderHours } from './jfp-portal-hours.js'
 import { juniorsCardShell, fillJuniorsCard, juniorsData } from './jfp-portal-juniors.js'
 import { programmeSwitch, bindSwitch, moneyHead, bindTip, prefetchOthers, forget, markUpdated } from './jfp-portal-programmes.js'
@@ -62,7 +63,7 @@ async function showSignIn() {
 // The sidebar: sections, each tab with a line icon. Coaches only ever get
 // their own five tabs; the server checks every request again.
 const NAV = {
-  coach: [['Coaching', [['program', 'Program'], ['coach', 'My sessions'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['hours', 'My hours'], ['plans', 'Session plans'], ['profile', 'My profile']]]],
+  coach: [['Coaching', [['program', 'Program'], ['coach', 'My sessions'], ['extra', 'Extra sessions'], ['reports', 'Player reports'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['hours', 'My hours'], ['plans', 'Session plans'], ['profile', 'My profile']]]],
   admin: [
     ['Overview', [['overview', 'Dashboard']]],
     ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['announce', 'Announcements'], ['fnotes', 'Coach notes'], ['requests', 'Requests'], ['accounts', 'New accounts'], ['trials', 'Trial feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
@@ -70,11 +71,12 @@ const NAV = {
     JJ_NAV,
     // Bank payments (Lee, 16 Oct 2026): Money with the bank list open, its count on the badge.
     ['Money', [['money', 'Money'], ['bank', 'Bank payments'], ['payments', 'Payment links'], ['prices', 'Prices']]],
-    ['Coaches', [['coach', 'Registers'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['hours', 'Coach hours'], ['plans', 'Session plans'], ['coaches', 'Coaches']]],
+    ['Coaches', [['coach', 'Registers'], ['reports', 'Player reports'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['hours', 'Coach hours'], ['plans', 'Session plans'], ['coaches', 'Coaches']]],
     ['Admin', [['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]],
   ],
 }
 const ICON = {
+  reports: '<path d="M6 3.5h9l3.5 3.5v13.5H6z"/><path d="M14.5 3.5V7.5h4M9 17v-3M12 17v-5.5M15 17v-2"/>',
   extra: '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>',
   overview: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 4v4h6V4z"/>',
   board: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -217,7 +219,7 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user }), reports: () => renderReports(reportsUi()), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
   if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts() } else cancelBanner()
@@ -2965,8 +2967,10 @@ async function coachPlayerModal(rowId) {
     <div class="j-box j-box-grey" style="margin-top:12px"><b>What ${esc(first)} wants to work on</b><p style="margin-top:4px;white-space:pre-wrap">${p.goals ? esc(p.goals) : '<span class="muted">Not filled in yet.</span>'}</p></div>
     ${p.note || p.startsLabel ? `<div class="j-box j-box-amber" style="margin-top:10px"><b>Note from Lee and Ligia</b><p style="margin-top:4px">${esc([p.startsLabel, p.note].filter(Boolean).join(' · '))}</p></div>` : ''}
     ${empty ? `<p class="muted small" style="margin-top:10px">The family has not added ${esc(first)}'s football details yet. They do it in their account under Player information.</p>` : ''}
-    <div style="display:flex;justify-content:flex-end;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`)
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-dark" id="cp-report">Write player report</button></div>`)
+  document.getElementById('cp-report')?.addEventListener('click', () => writeReportFor(reportsUi(), rowId))
 }
+const reportsUi = () => ({ view, post, need, modal, closeModal, confirmBox, toast, user: P.user })
 
 // Trials in this coach's sessions (Ligia, 13 Oct 2026): a reminder on the
 // day, then a short form after it so Lee and Ligia hear how it went.

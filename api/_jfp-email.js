@@ -673,6 +673,25 @@ ${cta ? button(cta.label, cta.url) : ''}`
   return send({ to: [{ email: to, name }], subject, html: shell({ preheader: preheader || subject, heading, body }), kind })
 }
 
+// ---------- player reports (Lee, 18 Oct 2026) ----------
+// One email per family (both parents on it) and one to a player's own login.
+// The report is attached as a PDF and is in My account under Player reports.
+// No coach names: "their coach".
+export async function sendPlayerReport({ to, player, first, self, greet, term, url, pdf }) {
+  const whose = self ? 'your' : `${esc(first)}'s`
+  const body = `${p(`Hi ${esc(greet || 'there')},`)}
+${p(`${self ? 'Your' : `${esc(first)}'s`} coach has written ${whose} ${esc(term)} player report. It is attached as a PDF, and it is saved in your JFP account under Player reports, so you can open it again any time.`)}
+${p(self ? 'Have a read, and bring any questions to your next session.' : `Have a read with ${esc(first)}, and bring any questions to the next session.`)}
+${button('Open Player reports', url)}`
+  return send({
+    to, subject: self ? `Your JFP player report, ${term}` : `${first}'s JFP player report, ${term}`,
+    html: shell({ preheader: `${self ? 'Your' : `${first}'s`} ${term} player report is ready.`, heading: self ? 'Your player report' : `${first}'s player report`, body }),
+    replyTo: 'ligia@jonerfootball.com',
+    attachment: pdf?.base64 ? [{ name: pdf.filename, content: pdf.base64 }] : undefined,
+    kind: 'player report',
+  })
+}
+
 // A held Hermes email, sent as it was (after Lee's yes).
 export async function sendHeldEmail(h) { return send({ to: h.to, subject: h.subject, html: h.html, replyTo: h.replyTo, attachment: h.attachment, kind: h.kind }) }
 
