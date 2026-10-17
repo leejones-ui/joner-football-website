@@ -38,6 +38,7 @@ import { contactWords, withOwnContact, isAdult } from './_jfp-contact.js'
 import { telegramAlert } from './_jfp-notify.js'
 import { EXTRA_ACTIONS, extraAction } from './_jfp-extra-actions.js'
 import { ANNOUNCE_ACTIONS, announceAction } from './_jfp-announce.js'
+import { HOURS_ACTIONS, hoursAction } from './_jfp-hours.js'
 import { FAMILY_NOTE_ACTIONS, familyNoteAction } from './_jfp-family-notes.js'
 import { pushFamilyNote } from './_jfp-push.js'
 import { noteNewPlayer, alertsStatus, newPlayerWords, registerWords } from './_jfp-coach-alerts.js'
@@ -3022,6 +3023,7 @@ async function handle(req, res) {
       return res.status(200).json({ success: true, user: { ...principal, coachId: myCoachId, photo: mine?.photo || '' }, coaches: isAdmin ? coachList(config) : [] })
     }
     if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
+    if (HOURS_ACTIONS.has(action)) return await hoursAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
     if (['staffOverview', 'requestCover', 'cancelCover', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
 
     if (action === 'cancellations') return await cancellationsData(res, principal, config, body, isAdmin)
@@ -3203,6 +3205,8 @@ async function handle(req, res) {
       case 'sendPaymentLink': return await sendPaymentLink(req, res, principal, config, body)
       case 'invoicePdf': return await staffInvoicePdf(req, res, config, body)
       case 'familyInvoice': return await familyInvoice(req, res, principal, config, body)
+      case 'nightly': { const { lastNightly, NIGHTLY_LABEL } = await import('./_jfp-nightly.js'); return res.status(200).json({ success: true, ...(await lastNightly()), labels: NIGHTLY_LABEL }) }
+      case 'nightlyRun': { const { runNightly, lastNightly, NIGHTLY_LABEL } = await import('./_jfp-nightly.js'); await runNightly({ alert: false }); return res.status(200).json({ success: true, ...(await lastNightly()), labels: NIGHTLY_LABEL }) }
       case 'stripeScan': return res.status(200).json({ success: true, payments: await stripeScan({ from: clean(body.from, 10), to: clean(body.to, 10) }) })
       case 'sessionInvoice': return await sessionInvoice(req, res, principal, config, body)
       // Pro session quotes (14 Oct 2026, _jfp-quote-staff.js): staff only.

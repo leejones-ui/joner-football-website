@@ -478,6 +478,15 @@ export async function sendRequestReceived({ request, group, config }) {
   return send({ to: [{ email: request.email, name: request.parentName }], subject: `Received: your JFP ${KIND_WORD[request.kind] || 'request'}`, html: shell({ heading: 'We have your request', body }), kind: 'request received' })
 }
 
+// A place opened in a group the family is waiting for (Lee, 18 Oct 2026).
+// No hold and no offer: the link opens that session on the timetable, and
+// whoever books first gets it.
+export async function sendPlaceOpened({ request, group, config, url }) {
+  const names = esc(request.players.map((x) => x.name).join(' and '))
+  const body = `${p(`Good news, ${esc(request.parentName)}.`)}${p(`A place has opened in ${esc(group.day)} ${esc(group.time)}, the group ${names} ${request.players.length > 1 ? 'are' : 'is'} on the waitlist for.`)}${p('Places go to whoever books first, so book soon if you would like it.')}${rows(groupRows(config, group))}${button('Book the place', url)}${p('Already sorted, or no longer need it? Reply and we will take you off the waitlist.')}`
+  return send({ to: [{ email: request.email, name: request.parentName }], subject: `A place has opened: JFP ${group.day} ${group.time}`, html: shell({ preheader: 'A place has opened in the group you are waiting for.', heading: 'A place has opened', body }), kind: 'waitlist place opened' })
+}
+
 // Several sessions in one go (Lee, 14 Oct 2026): one email that lists them all.
 // paying: Book now groups the family pays for next, one at a time on Stripe.
 function batchList(config, items) {

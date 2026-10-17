@@ -214,7 +214,7 @@ const telegrams = []
 // A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
 // JSON file ({ term4, term3, waiver, ledger } record arrays) to load another,
 // for example an anonymised copy of the real roster for screenshots.
-const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [], juniorsNext: [], venueHistory: [], profiles: [], camps: [] }
+const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [], juniorsNext: [], venueHistory: [], profiles: [], camps: [], applications: [] }
 // JFP Camps, as the Mac import writes it: invented camps, no names (Money > Camps).
 {
   let n = 0
@@ -336,7 +336,7 @@ function jjUnknown(key, names) {
   const bad = have && names.find((n) => !have.includes(n))
   return bad ? { status: 422, body: { error: { type: 'UNKNOWN_FIELD_NAME', message: `Unknown field name: "${bad}"` } } } : null
 }
-const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblF25gfo0fZcqdPT: 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblJJNextTerm0001: 'juniorsNext', tblgss68pIVTUOttE: 'venueHistory', tblTt7jWK3s2me45B: 'profiles', tblrELWFdVouAn5FB: 'camps' }
+const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblF25gfo0fZcqdPT: 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblJJNextTerm0001: 'juniorsNext', tblgss68pIVTUOttE: 'venueHistory', tblTt7jWK3s2me45B: 'profiles', tblrELWFdVouAn5FB: 'camps', tblAnkpS9vF4PI8nD: 'applications' }
 function airtableResponse(url, init) {
   const u = new URL(url)
   const parts = u.pathname.split('/').slice(3).map(decodeURIComponent) // [table, recordId?]

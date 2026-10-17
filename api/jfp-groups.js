@@ -85,6 +85,12 @@ export default async function handler(req, res) {
     if (!secret || String(req.headers?.authorization || '') !== `Bearer ${secret}`) return res.status(401).json({ success: false })
     try { const now = process.env.JFP_TEST_CLOCK === '1' && Number(req.query.now) ? Number(req.query.now) : Date.now(); return res.status(200).json({ success: true, ...(await pushTick(now)) }) } catch (error) { console.error('jfp push tick failed', error); return res.status(500).json({ success: false }) }
   }
+  // Nightly money check (about 9pm Sydney): Stripe against Airtable, read only (_jfp-nightly.js).
+  if (req.method === 'GET' && req.query?.nightly) {
+    const secret = process.env.CRON_SECRET
+    if (!secret || String(req.headers?.authorization || '') !== `Bearer ${secret}`) return res.status(401).json({ success: false })
+    try { const { runNightly } = await import('./_jfp-nightly.js'); const r = await runNightly(); return res.status(200).json({ success: true, ok: r.ok, counts: r.counts, newCount: r.newCount }) } catch (error) { console.error('jfp nightly check failed', error); return res.status(500).json({ success: false }) }
+  }
   // Daily (10:00 Sydney time): charge saved cards and accounts for yesterday's sessions (claude/card-on-file).
   if (req.method === 'GET' && req.query?.autoCharge) {
     const secret = process.env.CRON_SECRET
@@ -97,6 +103,8 @@ export default async function handler(req, res) {
     // Backstop for the Stripe webhook: any JFP payment Airtable does not show yet.
     let stripe = null
     try { stripe = await reconcileStripe(await getConfig(), undefined, { alert: true }) } catch (error) { console.error('jfp stripe sync failed', error) }
+    // A place opened in a group with a waitlist: email those waiting (_jfp-waitlist-open.js).
+    try { const { waitlistTick } = await import('./_jfp-waitlist-open.js'); await waitlistTick(await getConfig()) } catch (error) { console.error('jfp waitlist place check failed', error) }
     try { await sweepExpiredOffers({ email: 'hourly check' }); return res.status(200).json({ success: true, stripe: stripe ? { recorded: stripe.recorded, failed: stripe.failed?.length || 0, busy: Boolean(stripe.busy) } : null }) } catch (error) { console.error('jfp offer sweep failed', error); return res.status(500).json({ success: false }) }
   }
   res.setHeader('Cache-Control', 'no-store')

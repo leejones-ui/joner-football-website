@@ -61,6 +61,9 @@ async function showApp(q) {
   accountLink()
   await load()
   if (payNext) resumeQueue()
+  // ?group=<id> (the "a place has opened" email, 18 Oct 2026): open that session.
+  const want = q.get('group')
+  if (want && !payNext) { const g = S.data?.groups?.find((x) => x.id === want); history.replaceState(null, '', location.pathname + location.hash); if (g) groupSheet(g) }
   setInterval(() => { if (!document.querySelector('.j-sheet')) load(true) }, 45000)
 }
 

@@ -706,7 +706,13 @@ async function listIndex(indexKey, recordKey, limit) {
 export async function listBookings(limit = 1000) { return listIndex(keys.bookings(), keys.booking, limit) }
 
 // kind: application (Pathway, squads), waitlist (full groups), enquiry (1 to 1)
-export async function saveApplication(a) { await kvSetJson(keys.application(a.id), a, LONG); await kvCommand(['ZADD', keys.applications(), String(Date.parse(a.createdAt)), a.id]); return a }
+export async function saveApplication(a) {
+  await kvSetJson(keys.application(a.id), a, LONG)
+  await kvCommand(['ZADD', keys.applications(), String(Date.parse(a.createdAt)), a.id])
+  // Same row in Airtable "JFP Applications" (Lee, 18 Oct 2026). Never blocks the save.
+  try { const { mirrorApplication } = await import('./_jfp-app-sync.js'); await mirrorApplication(a) } catch (error) { console.error('jfp application copy skipped', error) }
+  return a
+}
 export async function getApplication(id) { const c = clean(id, 60); return c ? kvGetJson(keys.application(c)) : null }
 export async function listApplications(limit = 1000) { return listIndex(keys.applications(), keys.application, limit) }
 

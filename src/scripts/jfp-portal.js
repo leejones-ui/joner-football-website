@@ -7,6 +7,7 @@ import { renderMessages } from './jfp-portal-messages.js'
 import { renderAnnouncements } from './jfp-portal-announce.js'
 import { familyNotesModal, renderFamilyNotesPage } from './jfp-portal-fnotes.js'
 import { renderExtra } from './jfp-portal-extra.js'
+import { renderHours } from './jfp-portal-hours.js'
 import { juniorsCardShell, fillJuniorsCard, juniorsData } from './jfp-portal-juniors.js'
 import { programmeSwitch, bindSwitch, moneyHead, bindTip, prefetchOthers, forget, markUpdated } from './jfp-portal-programmes.js'
 import { renderProMoney, proData } from './jfp-portal-pro.js'
@@ -60,7 +61,7 @@ async function showSignIn() {
 // The sidebar: sections, each tab with a line icon. Coaches only ever get
 // their own five tabs; the server checks every request again.
 const NAV = {
-  coach: [['Coaching', [['program', 'Program'], ['coach', 'My sessions'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['profile', 'My profile']]]],
+  coach: [['Coaching', [['program', 'Program'], ['coach', 'My sessions'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['hours', 'My hours'], ['plans', 'Session plans'], ['profile', 'My profile']]]],
   admin: [
     ['Overview', [['overview', 'Dashboard']]],
     ['Program', [['board', 'Timetable'], ['families', 'Players'], ['messages', 'Messages'], ['announce', 'Announcements'], ['fnotes', 'Coach notes'], ['requests', 'Requests'], ['accounts', 'New accounts'], ['trials', 'Trial feedback'], ['groups', 'Groups and rules'], ['next', 'Next term'], ['holiday', 'Holiday training']]],
@@ -68,7 +69,7 @@ const NAV = {
     JJ_NAV,
     // Bank payments (Lee, 16 Oct 2026): Money with the bank list open, its count on the badge.
     ['Money', [['money', 'Money'], ['bank', 'Bank payments'], ['payments', 'Payment links'], ['prices', 'Prices']]],
-    ['Coaches', [['coach', 'Registers'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['plans', 'Session plans'], ['coaches', 'Coaches']]],
+    ['Coaches', [['coach', 'Registers'], ['extra', 'Extra sessions'], ['cancellations', 'Cancellations'], ['staff', 'Cover and time off'], ['hours', 'Coach hours'], ['plans', 'Session plans'], ['coaches', 'Coaches']]],
     ['Admin', [['removed', 'Removed players'], ['audit', 'Audit log'], ['settings', 'Settings']]],
   ],
 }
@@ -92,6 +93,7 @@ const ICON = {
   prices: '<path d="M4 4h7l9 9-7 7-9-9z"/><circle cx="8.5" cy="8.5" r="1.4"/>',
   coach: '<path d="M8 4.5h8M9 3.5h6v3H9z"/><rect x="5" y="5" width="14" height="16" rx="2.5"/><path d="M8.5 11.5l1.8 1.8 3.5-3.6M8.5 17h7"/>',
   cancellations: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M10 13.2l4 4M14 13.2l-4 4"/>',
+  hours: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   staff: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9 15l2 2 4-4"/>',
   plans: '<rect x="4" y="3.5" width="16" height="17" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M4 12h16"/>',
   coaches: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6"/>',
@@ -214,7 +216,7 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   if (!quiet && !instant) view().innerHTML = '<p class="muted">Loading</p>'
   closeSide()
   setDrawer(false)
-  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
+  const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), hours: () => renderHours({ view, post, need, modal, closeModal, confirmBox, user: P.user }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
   if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts() } else cancelBanner()
@@ -1316,6 +1318,7 @@ async function renderRequests(keep = false) {
         <span class="j-pill j-pill-grey">${esc(r.status === 'offered' ? (r.offer === 'trial' ? 'Trial offered' : 'Place offered') : ({ pending: 'Waiting', declined: 'Declined', done: 'Done', expired: 'Offer expired' }[r.status] || r.status))}</span></div>
       ${Object.keys(r.answers || {}).length ? `<p class="small" style="margin-top:8px">${Object.entries(r.answers).filter(([k]) => k !== 'videos').map(([k, v]) => `<span class="muted">${esc(ANSWER[k] || k)}:</span> <b>${esc(v)}</b>`).join(' · ')}${r.answers.videos ? `<br><span class="muted">Videos:</span> ${linksHtml(r.answers.videos) || esc(r.answers.videos)}` : ''}</p>` : r.club ? `<p class="small" style="margin-top:8px"><span class="muted">Club:</span> <b>${esc(r.club)}</b></p>` : ''}
       ${sessionNowHtml(r)}
+      ${(r.placeOpenTold || []).length ? `<p class="small" style="margin-top:6px"><span class="j-pill j-pill-green">Told a place opened</span> <span class="muted">${esc(r.placeOpenTold.map((t) => new Date(t).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })).join(', '))}</span></p>` : ''}
       <p class="small" style="margin-top:6px">${esc(r.parentName)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a> · <a href="tel:${esc(r.mobile)}">${esc(r.mobile)}</a></p>
       ${r.message ? `<p class="small j-box j-box-grey" style="margin-top:8px">${esc(r.message)}</p>` : ''}
       ${r.players.some((p) => p.isNew) ? `<p class="muted small" style="margin-top:6px">New to JFP${r.players.some((p) => p.waiver) ? ', waiver signed' : ''}.</p>` : r.players.some((p) => p.waiver) ? '<p class="muted small" style="margin-top:6px">Waiver signed with the application.</p>' : ''}
@@ -1788,6 +1791,27 @@ function chartTable(head, rows, id = '') {
 // ---------- dashboard ----------
 
 let resizeTimer = 0
+// Nightly money check (Lee, 18 Oct 2026): Stripe against Airtable every
+// night, read only. The Dashboard shows the last run; Run now checks again.
+function nightlyCard(d) {
+  const el = $('d-nightly')
+  if (!el) return
+  const L = d.labels || {}, last = d.last
+  const when = (iso) => new Date(iso).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Australia/Sydney' })
+  const head = `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap"><div><h2>Nightly money check</h2><p class="sub">${last ? `Last run ${esc(when(last.at))}` : 'Runs every night at 9pm'}</p></div><button type="button" class="j-btn j-btn-line j-btn-sm" id="d-nightly-run">Run now</button></div>`
+  const body = !last ? '<p class="muted">No run yet.</p>'
+    : last.ok ? '<p><span class="j-pill j-pill-green">All matched</span> Stripe and Airtable agree.</p>'
+    : `<ul class="jd-list">${Object.entries(last.counts).map(([k, n]) => `<li><span>${esc(L[k] || k)}</span><b>${n}</b></li>`).join('')}</ul>
+      <details style="margin-top:10px"><summary class="small" style="cursor:pointer">${last.newCount ? `<b>${last.newCount} new since the night before</b> · ` : ''}See the list</summary><ul class="jd-list" style="margin-top:8px">${last.items.map((x) => `<li><span>${x.new ? '<span class="j-pill j-pill-red" style="margin-right:6px">New</span>' : ''}${esc(x.text)}</span></li>`).join('')}</ul><p class="muted small" style="margin-top:8px">Fix them on Money. Nothing here changes a record.</p></details>`
+  el.innerHTML = head + body
+  $('d-nightly-run')?.addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true; e.currentTarget.textContent = 'Checking'
+    const r = await post('nightlyRun')
+    if (!r.ok) { toast(r.data.error || 'Could not run the check.'); e.currentTarget.disabled = false; e.currentTarget.textContent = 'Run now'; return }
+    nightlyCard(r.data)
+  })
+}
+async function loadNightly() { const r = await post('nightly'); if (r.ok) nightlyCard(r.data) }
 async function renderOverview(redraw = false) {
   if (!redraw || !P.money) {
     view().innerHTML = '<p class="muted">Loading the dashboard</p>'
@@ -1833,9 +1857,11 @@ async function renderOverview(redraw = false) {
         ${m.unmatched.length ? `<li><button type="button" data-money-filter="">${m.unmatched.length} Stripe payment${m.unmatched.length === 1 ? '' : 's'} not matched to a player</button><span class="muted small">Money</span></li>` : ''}
         ${!P.trialNew && !P.acctNew?.count && !pending.length && !m.status.stripe && !m.status.unpriced && !m.unmatched.length ? '<li><span class="muted">Nothing waiting. Nice.</span></li>' : ''}
       </ul></section>
+      ${admin ? '<section class="jd-card jd-span-12 jd-in" style="--i:6" id="d-nightly"><h2>Nightly money check</h2><p class="sub">Loading</p></section>' : ''}
       ${juniorsCardShell()}
     </div>`
   fillJuniorsCard(juniorsUi())
+  if (admin) loadNightly()
   // Bank payments to check (Lee, 16 Oct 2026): admins only, one line in the
   // header when lines wait; the check itself is on Money.
   if (admin) {
