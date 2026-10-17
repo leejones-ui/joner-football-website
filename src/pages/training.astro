@@ -138,6 +138,18 @@ import { fetchSanityPage } from '../lib/sanityPages'
 import { shouldReplaceSanityPage } from '../lib/sanityPageUtils'
 
 const sanityPage = await fetchSanityPage('training')
+import StickyMobileCta from '../components/StickyMobileCta.astro'
+import { BOOKING_URL } from '../lib/booking'
+
+// Redesign (Oct 2026): same content, links and enquiry form as before, in the
+// newer site style (game analysis, reviews): full photo hero, black and white
+// sections, italic display headings, square cards, Option C buttons.
+const journey = [
+  { id: 'joners-juniors', stage: 'Stage 1', title: 'Joners Juniors', copy: 'Foundation habits', href: '/jonersjuniors/', image: '/images/training/joners-juniors-wheel.jpg', alt: 'Joners Juniors training' },
+  { stage: 'Flagship', title: 'JFP Program', copy: 'Small-group development', href: '/training/jfp-program', image: '/images/training/lee-coaching-action.webp', alt: 'Joner Football Performance training', main: true },
+  { stage: 'Next level', title: 'Analysis & Feedback', copy: 'Clearer player decisions', href: '/training/game-analysis', image: '/images/training/jf-game-analysis-generated.jpg', alt: 'Joner Football game analysis' },
+]
+const inputClass = 'tr-input'
 ---
 
 {shouldReplaceSanityPage(sanityPage) ? (
@@ -149,257 +161,201 @@ const sanityPage = await fetchSanityPage('training')
   schema={trainingSchemas}
   hideMobileAppCta={true}
 >
+  <Fragment slot="head">
+    <link rel="preload" as="image" href="/images/contact/lee-coaching-landscape.webp" fetchpriority="high" />
+  </Fragment>
 
-  <!-- Hero -->
-  <section class="relative min-h-[calc(100vh-80px)] w-full overflow-hidden bg-joner-black py-12 sm:py-16 lg:py-20">
-    <div class="absolute inset-0">
-      <img src="/images/contact/lee-coaching-landscape.webp" alt="Lee Jones coaching at Joner Football" class="h-full w-full object-cover object-center" />
-    </div>
-    <div class="absolute inset-0 bg-gradient-to-b from-joner-black/58 via-joner-black/24 to-joner-black/70 lg:bg-gradient-to-r lg:from-joner-black/82 lg:via-joner-black/48 lg:to-joner-black/18"></div>
-
-    <div class="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 px-4 sm:px-6 lg:min-h-[calc(100vh-180px)] lg:grid-cols-[0.9fr_1.1fr] lg:gap-10 lg:px-8">
-      <div class="max-w-2xl pt-8 lg:pt-0">
-        <p class="mb-4 font-heading text-sm uppercase tracking-[0.28em] text-joner-red">Sydney Training Hub</p>
-        <h1 class="mb-5 max-w-[9ch] font-heading text-4xl font-bold uppercase leading-[1.02] tracking-wide text-white sm:max-w-[10ch] sm:text-6xl sm:leading-[0.98] lg:text-7xl">
-          Find The Right Training
-        </h1>
-        <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <BookNowButton size="lg" place="training-hero" class="self-start" />
-          <a href="#choose-path" class="btn-outline self-start text-center text-sm">Compare Programs</a>
+  <div class="tr-page">
+    <!-- Hero -->
+    <section class="tr-hero">
+      <img class="tr-hero-img" src="/images/contact/lee-coaching-landscape.webp" alt="Lee Jones coaching at Joner Football" fetchpriority="high" />
+      <div class="tr-hero-shade" aria-hidden="true"></div>
+      <div class="tr-wrap tr-hero-content">
+        <p class="tr-eyebrow">Sydney training hub</p>
+        <h1 class="tr-h1">Find the right <span class="tr-hook">training.</span></h1>
+        <p class="tr-hero-sub">JFP small groups, pro training, Joners Juniors and game analysis. Based at The HQ in Belrose.</p>
+        <div class="tr-hero-cta">
+          <BookNowButton size="lg" place="training-hero" />
+          <a href="#choose-path" class="btn-outline">Compare programs</a>
         </div>
       </div>
+    </section>
 
-      <div class="training-orbit mx-auto" aria-label="Joner Football training pathway wheel">
-        <div class="training-orbit__ring" aria-hidden="true"></div>
-        <div class="training-orbit__spin">
-          {trainingPrograms.map((program, index) => (
-            <a
-              href={program.href}
-              class={`training-orbit__node training-orbit__node--${index + 1}`}
-              aria-label={`Open ${program.title}`}
-            >
-              <span class="training-orbit__node-content">
-                <img src={program.circleImage} alt="" aria-hidden="true" class={`training-orbit__node-photo ${program.imageClass || ''}`} loading="lazy" />
-                <span class="training-orbit__node-label">{program.label}</span>
-                <span class="training-orbit__tooltip">{program.title}<small>{program.subtitle}</small></span>
+    <!-- Choose your training -->
+    <section id="choose-path" class="tr-choose scroll-mt-24" aria-labelledby="training-next-step-title">
+      <div class="tr-wrap">
+        <p class="tr-kicker">What we offer</p>
+        <h2 id="training-next-step-title" class="tr-h2">Choose your training.</h2>
+        <div class="tr-cards" aria-label="Choose your Joner Football training path">
+          {trainingPrograms.map((program) => (
+            <a id={program.label === 'PRO' ? 'pro-training' : undefined} href={program.href} class="tr-card scroll-mt-24" aria-label={`View ${program.title}`}>
+              <span class="tr-card-photo">
+                <img src={program.cardImage || program.circleImage} alt="" aria-hidden="true" loading="lazy" />
+                <span class="tr-card-badge">{program.label}</span>
+              </span>
+              <span class="tr-card-body">
+                <span class="tr-card-title">{program.title}</span>
+                <span class="tr-card-sub">{program.subtitle}</span>
+              </span>
+              <span class="tr-card-arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </span>
             </a>
           ))}
         </div>
-        <div class="training-orbit__center">
-          <img src="/images/joner-logo-white.png" alt="Joner Football" />
-        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Choose your next step -->
-  <section id="choose-path" class="training-next-step scroll-mt-24" aria-labelledby="training-next-step-title">
-    <div class="training-next-step__content">
-      <header class="training-next-step__header">
-        <p class="training-next-step__eyebrow">What We Offer</p>
-        <h2 id="training-next-step-title" class="training-next-step__title">
-          <span>Choose Your</span>
-          <span>Training</span>
-        </h2>
-        <span class="training-next-step__rule" aria-hidden="true"></span>
-      </header>
+    <!-- JFP pathway -->
+    <section id="jfp" class="tr-journey scroll-mt-24" aria-labelledby="jfp-pathway-title">
+      <div class="tr-wrap">
+        <p class="tr-kicker">JFP pathway</p>
+        <h2 id="jfp-pathway-title" class="tr-h2">The journey.</h2>
+        <ol class="tr-steps" aria-label="JFP player pathway">
+          {journey.map((step, i) => (
+            <li>
+              <a id={step.id} href={step.href} class:list={['tr-step', 'scroll-mt-24', step.main && 'tr-step--main']}>
+                <span class="tr-step-photo"><img src={step.image} alt={step.alt} loading="lazy" /></span>
+                <span class="tr-step-body">
+                  <span class="tr-n">{String(i + 1).padStart(2, '0')} · {step.stage}</span>
+                  <strong>{step.title}</strong>
+                  <small>{step.copy}</small>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ol>
+        <nav class="tr-also" aria-label="More training options">
+          <a href="/app">JF App</a>
+          <a href="/hq">The HQ</a>
+          <a href="/training/professional-training">Professional Training</a>
+          <a href="/training/game-analysis">Game Analysis</a>
+        </nav>
 
-      <div class="training-next-step__grid" aria-label="Choose your Joner Football training path">
-        {trainingPrograms.map((program) => (
-          <a id={program.label === 'PRO' ? 'pro-training' : undefined} href={program.href} class="training-next-step__card scroll-mt-24" aria-label={`View ${program.title}`}>
-            <img src={program.cardImage || program.circleImage} alt="" aria-hidden="true" loading="lazy" class="training-next-step__card-bg" />
-            <span class="training-next-step__shade" aria-hidden="true"></span>
-            <span class="training-next-step__badge">{program.label}</span>
-            <span class="training-next-step__body">
-              <span class="training-next-step__card-title">{program.title}</span>
-              <span class="training-next-step__card-subtitle">{program.subtitle}</span>
-            </span>
-            <span class="training-next-step__arrow" aria-hidden="true">→</span>
-          </a>
-        ))}
+        <BookNowPanel
+          class="mt-10 md:mt-14"
+          eyebrow="JFP bookings are open"
+          heading="Book a spot in JFP"
+          text="See the timetable, pick a group and apply for a spot straight away."
+          place="training-jfp"
+          secondary={{ label: 'More about the JFP program', href: '/training/jfp-program' }}
+        />
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- JFP pathway -->
-  <section id="jfp" class="jfp-pathway-lite scroll-mt-24" aria-labelledby="jfp-pathway-title">
-    <div class="jfp-pathway-lite__inner">
-      <header class="jfp-pathway-lite__header">
-        <p>JFP Pathway</p>
-        <h2 id="jfp-pathway-title">The Journey</h2>
-        <span aria-hidden="true"></span>
-      </header>
-
-      <div class="jfp-pathway-lite__map" aria-label="JFP player pathway">
-        <a id="joners-juniors" href="/jonersjuniors/" class="jfp-pathway-lite__stage scroll-mt-24">
-          <img src="/images/training/joners-juniors-wheel.jpg" alt="Joners Juniors training" loading="lazy" />
-          <span>Stage 1</span>
-          <strong>Joners Juniors</strong>
-          <small>Foundation habits</small>
-        </a>
-
-        <div class="jfp-pathway-lite__connector" aria-hidden="true"></div>
-
-        <a href="/training/jfp-program" class="jfp-pathway-lite__stage jfp-pathway-lite__stage--main">
-          <img src="/images/training/lee-coaching-action.webp" alt="Joner Football Performance training" loading="lazy" />
-          <span>Flagship</span>
-          <strong>JFP Program</strong>
-          <small>Small-group development</small>
-        </a>
-
-        <div class="jfp-pathway-lite__connector" aria-hidden="true"></div>
-
-        <a href="/training/game-analysis" class="jfp-pathway-lite__stage">
-          <img src="/images/training/jf-game-analysis-generated.jpg" alt="Joner Football game analysis" loading="lazy" />
-          <span>Next Level</span>
-          <strong>Analysis & Feedback</strong>
-          <small>Clearer player decisions</small>
-        </a>
-      </div>
-
-      <div class="jfp-pathway-lite__unlocks" aria-label="What the pathway unlocks">
-        <a href="/app">JF App</a>
-        <a href="/hq">The HQ</a>
-        <a href="/training/professional-training">Professional Training</a>
-        <a href="/training/game-analysis">Game Analysis</a>
-      </div>
-
-      <BookNowPanel
-        class="mt-10 md:mt-14"
-        eyebrow="JFP bookings are open"
-        heading="Book a spot in JFP"
-        text="See the timetable, pick a group and apply for a spot straight away."
-        place="training-jfp"
-        secondary={{ label: 'More about the JFP program', href: '/training/jfp-program' }}
-      />
-    </div>
-  </section>
-
-  <!-- ===== TRAINING HIGHLIGHT VIDEOS ===== -->
-  <section class="bg-joner-black py-16 md:py-20">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-10">
-        <p class="text-joner-red font-heading text-sm uppercase tracking-widest mb-3">See It In Action</p>
-        <h2 class="font-heading text-3xl md:text-5xl font-bold text-white uppercase">Training Highlights</h2>
-      </div>
-
-      <p class="md:hidden text-gray-500 text-xs uppercase tracking-[0.2em] font-heading text-center mb-4">Swipe highlights</p>
-      <div class="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-2 lg:grid-cols-4 md:overflow-visible md:pb-0 scrollbar-hide">
-        {trainingVideos.map((video) => (
-          <div class="training-video-card flex-shrink-0 w-[82vw] snap-center md:w-auto">
-            <div class="training-video-card__banner">{video.title}</div>
-            <div class="training-video-card__frame">
-              <iframe
-                srcdoc={`<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}img{height:100%;object-fit:cover}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/${video.id}?autoplay=1&start=${video.start}><img src=https://img.youtube.com/vi/${video.id}/hqdefault.jpg alt='${video.title}'><span>&#x25BA;</span></a>`}
-                src={`https://www.youtube.com/embed/${video.id}?start=${video.start}`}
-                title={`${video.title}, Joner Football`}
-                loading="lazy"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen
-                class="absolute inset-0 h-full w-full"
-              ></iframe>
+    <!-- Training highlight videos -->
+    <section class="tr-videos">
+      <div class="tr-wrap">
+        <p class="tr-kicker">See it in action</p>
+        <h2 class="tr-h2">Training highlights.</h2>
+        <p class="tr-swipe">Swipe for more</p>
+        <div class="tr-video-row">
+          {trainingVideos.map((video) => (
+            <div class="tr-video">
+              <div class="tr-video-frame">
+                <iframe
+                  srcdoc={`<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%;background:#0a0a0a}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}img{height:100%;object-fit:cover}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:#fff;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/${video.id}?autoplay=1&start=${video.start}><img src=https://img.youtube.com/vi/${video.id}/hqdefault.jpg alt='${video.title}'><span>&#x25BA;</span></a>`}
+                  src={`https://www.youtube.com/embed/${video.id}?start=${video.start}`}
+                  title={`${video.title}, Joner Football`}
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                ></iframe>
+              </div>
+              <p class="tr-video-title">{video.title}</p>
             </div>
+          ))}
+        </div>
+
+        <div class="tr-links">
+          <a href="/join" class="tr-link">
+            <span>Continue your training at home with the Joner Football App</span>
+            <strong>Download the App <span aria-hidden="true">→</span></strong>
+          </a>
+          <a href="/camps/" class="tr-link">
+            <span>Take your development further at our global camps</span>
+            <strong>View Camps <span aria-hidden="true">→</span></strong>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Training enquiry form -->
+    <section id="jfp-form" class="tr-enquire scroll-mt-32">
+      <div class="tr-wrap tr-enquire-layout">
+        <div class="tr-enquire-copy">
+          <p class="tr-kicker">Enquire</p>
+          <h2 class="tr-h2">Start your training enquiry.</h2>
+          <p>Tell us what you are looking for and the team will point you to the right Joner Football program.</p>
+        </div>
+
+        <form id="contact-smart-form" class="tr-form">
+          <div class="tr-field">
+            <label for="enquiryType">What can we help with?</label>
+            <select id="enquiryType" name="enquiryType" required class={inputClass}>
+              <option value="training-sydney">Training Enquiries (Sydney)</option>
+              <option value="joners-juniors">Joners Juniors Enquiries</option>
+              <option value="general">General Enquiries</option>
+            </select>
+            <p id="form-intro" class="tr-hint">Tell us about the player and what type of training you are looking for.</p>
           </div>
-        ))}
+
+          <div class="tr-row">
+            <input data-name-field type="text" name="name" placeholder="Full name" required aria-label="Your name" class={inputClass} />
+            <input type="email" name="email" placeholder="Email address" required aria-label="Email address" class={inputClass} />
+          </div>
+
+          <div class="tr-row">
+            <input type="tel" name="phone" placeholder="Phone number" required aria-label="Phone number" class={inputClass} />
+            <select name="trainingLocation" aria-label="Preferred Sydney location" class={inputClass}>
+              <option value="">Preferred Sydney location</option>
+              <option>HQ (Belrose)</option>
+              <option>North Turramurra</option>
+              <option>Rydalmere Park</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <div data-fields="training-sydney joners-juniors" class="tr-row">
+            <input type="text" name="playerName" placeholder="Player name" aria-label="Player name" class={`conditional-required ${inputClass}`} />
+            <input data-player-age-field type="text" name="playerAge" placeholder="Player age" aria-label="Player age" class={`conditional-required ${inputClass}`} />
+          </div>
+
+          <div data-fields="training-sydney" class="tr-row">
+            <input type="text" name="playerLevel" placeholder="Player level or team" aria-label="Player level or team" class={inputClass} />
+            <select name="trainingInterest" aria-label="Training interest" class={inputClass}>
+              <option value="">Training interest</option>
+              <option>Joner Football Performance</option>
+              <option>Professional Training</option>
+              <option>Private training</option>
+              <option>Group training</option>
+              <option>Game analysis</option>
+              <option>Not sure yet</option>
+            </select>
+          </div>
+
+          <div data-fields="joners-juniors" class="tr-row hidden">
+            <select name="juniorProgram" aria-label="Program interest" class={inputClass}>
+              <option value="">Program interest</option>
+              <option>Joners Juniors</option>
+              <option>Joner Football Performance pathway</option>
+              <option>Not sure yet</option>
+            </select>
+            <input type="text" name="parentGoal" placeholder="Main goal for the player" aria-label="Main goal for the player" class={inputClass} />
+          </div>
+
+          <textarea name="message" placeholder="Message" required rows="5" aria-label="Message" class={`${inputClass} tr-textarea`}></textarea>
+
+          <label class="tr-check">
+            <input type="checkbox" name="marketingOptIn" value="true" />
+            <span>Yes, send me Joner Football updates, offers, app news, camps, and training tips by email.</span>
+          </label>
+
+          <p id="contact-form-status" class="hidden font-body text-sm"></p>
+          <button type="submit" class="btn-red tr-submit">Send Training Enquiry</button>
+        </form>
       </div>
-    </div>
-  </section>
-
-  <!-- Cross-links -->
-  <section class="bg-joner-black py-12">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
-        <a href="/join" class="training-link-card">
-          <span>Continue your training at home with the Joner Football App</span>
-          <strong>Download the App</strong>
-        </a>
-        <a href="/camps/" class="training-link-card">
-          <span>Take your development further at our global camps</span>
-          <strong>View Camps</strong>
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <!-- Training Enquiry Form -->
-  <section id="jfp-form" class="bg-joner-black py-16 md:py-24 scroll-mt-32">
-    <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-      <div class="mb-8 text-center">
-        <p class="mb-3 font-heading text-sm uppercase tracking-[0.24em] text-joner-red">Enquire</p>
-        <h2 class="font-heading text-3xl uppercase tracking-wide text-white sm:text-4xl">Start Your Training Enquiry</h2>
-        <p class="mx-auto mt-4 max-w-2xl font-body text-base leading-relaxed text-gray-400">
-          Tell us what you are looking for and the team will point you to the right Joner Football program.
-        </p>
-      </div>
-
-      <form id="contact-smart-form" class="space-y-5 border border-gray-800 bg-joner-gray p-5 md:p-8">
-        <div>
-          <label for="enquiryType" class="mb-2 block font-heading text-xs uppercase tracking-[0.22em] text-gray-400">What can we help with?</label>
-          <select id="enquiryType" name="enquiryType" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
-            <option value="training-sydney">Training Enquiries (Sydney)</option>
-            <option value="joners-juniors">Joners Juniors Enquiries</option>
-            <option value="general">General Enquiries</option>
-          </select>
-          <p id="form-intro" class="mt-3 font-body text-sm text-gray-400">Tell us about the player and what type of training you are looking for.</p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <input data-name-field type="text" name="name" placeholder="Full name" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
-          <input type="email" name="email" placeholder="Email address" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
-        </div>
-
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <input type="tel" name="phone" placeholder="Phone number" required class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
-          <select name="trainingLocation" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
-            <option value="">Preferred Sydney location</option>
-            <option>HQ (Belrose)</option>
-            <option>North Turramurra</option>
-            <option>Rydalmere Park</option>
-            <option>Other</option>
-          </select>
-        </div>
-
-        <div data-fields="training-sydney joners-juniors" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <input type="text" name="playerName" placeholder="Player name" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
-          <input data-player-age-field type="text" name="playerAge" placeholder="Player age" class="conditional-required min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
-        </div>
-
-        <div data-fields="training-sydney" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <input type="text" name="playerLevel" placeholder="Player level or team" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
-          <select name="trainingInterest" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
-            <option value="">Training interest</option>
-            <option>Joner Football Performance</option>
-            <option>Professional Training</option>
-            <option>Private training</option>
-            <option>Group training</option>
-            <option>Game analysis</option>
-            <option>Not sure yet</option>
-          </select>
-        </div>
-
-        <div data-fields="joners-juniors" class="grid hidden grid-cols-1 gap-4 sm:grid-cols-2">
-          <select name="juniorProgram" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white focus:border-joner-red focus:outline-none">
-            <option value="">Program interest</option>
-            <option>Joners Juniors</option>
-            <option>Joner Football Performance pathway</option>
-            <option>Not sure yet</option>
-          </select>
-          <input type="text" name="parentGoal" placeholder="Main goal for the player" class="min-h-[52px] w-full border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none" />
-        </div>
-
-        <textarea name="message" placeholder="Message" required rows="5" class="w-full resize-none border border-gray-700 bg-joner-black px-4 py-3 font-body text-base text-white placeholder-gray-500 focus:border-joner-red focus:outline-none"></textarea>
-
-        <label class="flex gap-3 border border-gray-800 bg-joner-black/60 p-4 font-body text-sm leading-relaxed text-gray-300">
-          <input type="checkbox" name="marketingOptIn" value="true" class="mt-1 h-4 w-4 shrink-0 accent-joner-red" />
-          <span>Yes, send me Joner Football updates, offers, app news, camps, and training tips by email.</span>
-        </label>
-
-        <p id="contact-form-status" class="hidden font-body text-sm"></p>
-        <button type="submit" class="btn-red w-full text-sm">Send Training Enquiry</button>
-      </form>
-    </div>
-  </section>
+    </section>
 
   <script is:inline>
     (function () {
@@ -531,20 +487,19 @@ const sanityPage = await fetchSanityPage('training')
     })();
   </script>
 
-  <!-- App CTA -->
-  <section class="bg-joner-black border-t border-white/10 py-12 md:py-16">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-      <h2 class="font-heading text-2xl md:text-4xl font-bold text-white uppercase mb-4">
-        Train Anywhere, Anytime
-      </h2>
-      <p class="text-neutral-300 font-body mb-6">
-        Supplement your sessions with 1,500+ drills on the Joner Football App.
-      </p>
-      <a href="/app" class="btn-red text-base px-8 py-4 inline-block">
-        Try the World's #1 Football App Free
-      </a>
-    </div>
-  </section>
+
+    <!-- App CTA -->
+    <section class="tr-app">
+      <div class="tr-wrap tr-app-inner">
+        <div>
+          <p class="tr-kicker">Anywhere</p>
+          <h2 class="tr-h2">Train anywhere, anytime.</h2>
+          <p>Supplement your sessions with 1,500+ drills on the Joner Football App.</p>
+        </div>
+        <a href="/app" class="btn-red tr-app-btn">Try the World's #1 Football App Free</a>
+      </div>
+    </section>
+  </div>
 
   <GeoAnswers
     title="Sydney football training, explained fast."
@@ -581,826 +536,127 @@ const sanityPage = await fetchSanityPage('training')
     items={trainingSEOFAQs}
   />
 
+  <StickyMobileCta href={BOOKING_URL} label="Book now" />
+
   <style>
-    @keyframes training-orbit-spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
+    .tr-page { --jf-red: #E8000D; --font-display: var(--font-heading, Anton, Impact, sans-serif); background: #000; color: #fff; overflow: hidden; }
+    .tr-wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    .tr-kicker, .tr-eyebrow { margin: 0 0 12px; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: var(--jf-red); }
+    .tr-eyebrow { color: #fff; }
+    .tr-h2 { margin: 0; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.1rem, 5vw, 3.4rem); line-height: 1; }
+
+    /* Hero */
+    .tr-hero { position: relative; min-height: 80dvh; display: flex; align-items: flex-end; padding: 120px 0 56px; }
+    .tr-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
+    .tr-hero-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.2) 0%, rgba(0,0,0,.12) 40%, rgba(0,0,0,.88) 100%), linear-gradient(90deg, rgba(0,0,0,.7), rgba(0,0,0,0) 70%); }
+    .tr-hero-content { position: relative; }
+    .tr-h1 { margin: 14px 0 0; max-width: 900px; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.8rem, 9vw, 6.4rem); line-height: .92; }
+    .tr-hook { display: block; color: var(--jf-red); }
+    .tr-hero-sub { margin: 22px 0 0; max-width: 560px; font-size: 18px; line-height: 1.55; color: rgba(255,255,255,.88); }
+    .tr-hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+    .tr-hero-cta > a { min-width: 200px; min-height: 52px; display: inline-flex; align-items: center; justify-content: center; }
+
+    /* Choose your training (white) */
+    .tr-choose { background: #fff; color: #000; padding: 80px 0; }
+    .tr-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 32px; }
+    .tr-card { position: relative; display: flex; flex-direction: column; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #000; text-decoration: none; transition: border-color .2s ease, transform .2s ease; }
+    .tr-card:hover { border-color: #000; transform: translateY(-2px); }
+    .tr-card:focus-visible { outline: 3px solid var(--jf-red); outline-offset: 2px; }
+    .tr-card-photo { position: relative; display: block; aspect-ratio: 16 / 10; overflow: hidden; background: #0a0a0a; }
+    .tr-card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
+    .tr-card:hover .tr-card-photo img { transform: scale(1.04); }
+    .tr-card-badge { position: absolute; left: 12px; top: 12px; padding: 5px 9px; background: #000; color: #fff; font-family: var(--font-display); font-style: italic; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+    .tr-card-body { display: grid; gap: 6px; padding: 20px 56px 22px 20px; }
+    .tr-card-title { font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: 1.5rem; line-height: 1.05; }
+    .tr-card-sub { color: rgba(0,0,0,.66); line-height: 1.5; font-size: 15px; }
+    .tr-card-arrow { position: absolute; right: 18px; bottom: 22px; width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--jf-red); color: var(--jf-red); display: grid; place-items: center; }
+    .tr-card-arrow svg { width: 15px; height: 15px; }
+
+    /* Journey (dark) */
+    .tr-journey { background: #0a0a0a; padding: 80px 0; }
+    .tr-steps { list-style: none; margin: 32px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .tr-step { display: flex; flex-direction: column; height: 100%; border: 1px solid rgba(255,255,255,.12); background: #111; color: #fff; text-decoration: none; transition: border-color .2s ease; }
+    .tr-step:hover { border-color: rgba(255,255,255,.5); }
+    .tr-step--main { border-color: var(--jf-red); }
+    .tr-step-photo { display: block; aspect-ratio: 16 / 10; overflow: hidden; }
+    .tr-step-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .tr-step-body { display: grid; gap: 8px; padding: 22px; }
+    .tr-n { font-family: var(--font-display); font-style: italic; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; font-size: 13px; color: var(--jf-red); }
+    .tr-step strong { font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(1.5rem, 2.6vw, 2rem); line-height: 1; }
+    .tr-step small { font-size: 15px; color: rgba(255,255,255,.72); }
+    .tr-also { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    .tr-also a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid rgba(255,255,255,.18); color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; }
+    .tr-also a:hover { border-color: #fff; }
+
+    /* Videos (black) */
+    .tr-videos { padding: 80px 0; background: #000; }
+    .tr-swipe { display: none; }
+    .tr-video-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 32px; }
+    .tr-video-frame { position: relative; aspect-ratio: 16 / 9; background: #0a0a0a; border: 1px solid rgba(255,255,255,.12); }
+    .tr-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    .tr-video-title { margin: 12px 0 0; font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: 1.1rem; line-height: 1.1; }
+    .tr-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 48px; }
+    .tr-link { display: grid; gap: 10px; padding: 24px; border: 1px solid rgba(255,255,255,.12); background: #0b0b0b; color: #fff; text-decoration: none; transition: border-color .2s ease; }
+    .tr-link:hover { border-color: rgba(255,255,255,.5); }
+    .tr-link span { color: rgba(255,255,255,.75); line-height: 1.5; }
+    .tr-link strong { font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: 1.4rem; color: #fff; }
+    .tr-link strong span { color: var(--jf-red); }
+
+    /* Enquiry */
+    .tr-enquire { padding: 88px 0; background: #0a0a0a; border-top: 1px solid rgba(255,255,255,.08); }
+    .tr-enquire-layout { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 48px; align-items: start; }
+    .tr-enquire-copy p:not(.tr-kicker) { margin: 18px 0 0; max-width: 440px; color: rgba(255,255,255,.75); line-height: 1.65; }
+    .tr-form { display: grid; gap: 16px; padding: 24px; background: #000; border: 1px solid rgba(255,255,255,.12); }
+    .tr-field { display: grid; gap: 7px; }
+    .tr-field label { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.9); }
+    .tr-hint { margin: 0; font-size: 14px; color: rgba(255,255,255,.6); }
+    .tr-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .tr-row.hidden { display: none; }
+    .tr-input { width: 100%; min-height: 50px; padding: 13px 14px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: #fff; font: inherit; font-size: 16px; border-radius: 0; outline: none; }
+    select.tr-input { appearance: none; -webkit-appearance: none; padding-right: 40px; background-image: linear-gradient(45deg, transparent 50%, #fff 50%), linear-gradient(135deg, #fff 50%, transparent 50%); background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; }
+    select.tr-input option { background: #0b0b0b; color: #fff; }
+    .tr-input::placeholder { color: rgba(255,255,255,.45); }
+    .tr-input:focus { border-color: #fff; }
+    .tr-textarea { resize: vertical; min-height: 120px; }
+    .tr-check { display: flex; gap: 12px; align-items: flex-start; min-height: 44px; color: rgba(255,255,255,.75); font-size: 15px; line-height: 1.5; cursor: pointer; }
+    .tr-check input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--jf-red); flex: none; }
+    .tr-submit { width: 100%; min-height: 54px; }
+
+    /* App CTA (white) */
+    .tr-app { background: #fff; color: #000; padding: 64px 0; }
+    .tr-app-inner { display: flex; align-items: center; justify-content: space-between; gap: 32px; }
+    .tr-app-inner p:not(.tr-kicker) { margin: 12px 0 0; color: rgba(0,0,0,.68); line-height: 1.6; }
+    .tr-app-btn { min-height: 54px; padding: 0 28px; display: inline-flex; align-items: center; justify-content: center; text-align: center; flex: none; }
+
+    @media (max-width: 1024px) {
+      .tr-video-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
-
-    @keyframes training-orbit-counter {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(-360deg); }
-    }
-
-    .training-orbit {
-      position: relative;
-      width: min(78vw, 520px);
-      aspect-ratio: 1;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(26,26,26,0.84);
-      box-shadow: 0 28px 80px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(227,6,19,0.24);
-    }
-
-    .training-orbit__ring {
-      position: absolute;
-      inset: 13%;
-      border-radius: 999px;
-      border: 1px dashed rgba(255,255,255,0.22);
-    }
-
-    .training-orbit__spin {
-      position: absolute;
-      inset: 0;
-      animation: training-orbit-spin 24s linear infinite;
-    }
-
-    .training-orbit:hover .training-orbit__spin {
-      animation-play-state: paused;
-    }
-
-    .training-orbit__node {
-      position: absolute;
-      left: calc(50% - 49px);
-      top: calc(50% - 49px);
-      display: flex;
-      width: 98px;
-      height: 98px;
-      align-items: center;
-      justify-content: center;
-      overflow: visible;
-      border-radius: 999px;
-      border: 2px solid rgba(255,255,255,0.72);
-      background: #0A0A0A;
-      color: #fff;
-      font-family: Anton, Impact, sans-serif;
-      font-size: 0.88rem;
-      letter-spacing: 0.06em;
-      text-decoration: none;
-      box-shadow: 0 14px 34px rgba(0,0,0,0.45);
-      transition: background 160ms ease;
-    }
-
-    .training-orbit__node:hover,
-    .training-orbit__node:focus-visible {
-      background: #fff;
-      color: #E30613;
-      z-index: 50;
-    }
-
-    .training-orbit__node-content {
-      position: relative;
-      display: flex;
-      width: 100%;
-      height: 100%;
-      align-items: center;
-      justify-content: center;
-      overflow: visible;
-      border-radius: inherit;
-      animation: training-orbit-counter 24s linear infinite;
-    }
-
-    .training-orbit:hover .training-orbit__node-content {
-      animation-play-state: paused;
-    }
-
-    .training-orbit__node-photo {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      opacity: 0.56;
-      filter: grayscale(0.16) contrast(1.1) brightness(0.82);
-      border-radius: inherit;
-      transition: opacity 160ms ease, filter 160ms ease, transform 160ms ease;
-    }
-
-    .training-orbit__node-label {
-      position: relative;
-      z-index: 2;
-      max-width: 86px;
-      text-align: center;
-      line-height: 0.88;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.9);
-    }
-
-    .training-orbit__node:hover .training-orbit__node-photo,
-    .training-orbit__node:focus-visible .training-orbit__node-photo {
-      opacity: 0.72;
-      filter: grayscale(0.05) contrast(1.16) brightness(0.86);
-      transform: scale(1.08);
-    }
-
-    .training-orbit__node--1 { transform: rotate(0deg) translateX(min(31vw, 202px)) rotate(0deg); }
-    .training-orbit__node--2 { transform: rotate(60deg) translateX(min(31vw, 202px)) rotate(-60deg); }
-    .training-orbit__node--3 { transform: rotate(120deg) translateX(min(31vw, 202px)) rotate(-120deg); }
-    .training-orbit__node--4 { transform: rotate(180deg) translateX(min(31vw, 202px)) rotate(-180deg); }
-    .training-orbit__node--5 { transform: rotate(240deg) translateX(min(31vw, 202px)) rotate(-240deg); }
-    .training-orbit__node--6 { transform: rotate(300deg) translateX(min(31vw, 202px)) rotate(-300deg); }
-
-    .training-orbit__tooltip {
-      pointer-events: none;
-      position: absolute;
-      left: 50%;
-      top: calc(100% + 14px);
-      z-index: 20;
-      width: max-content;
-      max-width: 190px;
-      transform: translateX(-50%) translateY(6px);
-      border: 1px solid rgba(255,255,255,0.2);
-      background: rgba(10,10,10,0.95);
-      color: #FFFFFF;
-      opacity: 0;
-      padding: 0.7rem 0.8rem;
-      text-align: center;
-      font-family: Anton, Impact, sans-serif;
-      font-size: 0.9rem;
-      letter-spacing: 0.08em;
-      line-height: 1.05;
-      text-transform: uppercase;
-      transition: opacity 160ms ease, transform 160ms ease;
-      box-shadow: 0 16px 34px rgba(0,0,0,0.42);
-    }
-
-    .training-orbit__tooltip small {
-      display: block;
-      margin-top: 0.3rem;
-      color: #E30613;
-      font-size: 0.65rem;
-      letter-spacing: 0.12em;
-    }
-
-    .training-orbit__node:hover .training-orbit__tooltip,
-    .training-orbit__node:focus-visible .training-orbit__tooltip {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-
-    .training-orbit__node--5 .training-orbit__tooltip,
-    .training-orbit__node--6 .training-orbit__tooltip {
-      top: auto;
-      bottom: calc(100% + 14px);
-    }
-
-    .training-orbit__center {
-      position: absolute;
-      z-index: 1;
-      inset: 30%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 999px;
-      border: 4px solid rgba(227,6,19,0.82);
-      background: #0A0A0A;
-      text-align: center;
-      box-shadow: inset 0 0 30px rgba(255,255,255,0.05), 0 18px 50px rgba(0,0,0,0.42);
-    }
-
-    .training-orbit__center img {
-      width: 84%;
-      height: 84%;
-      object-fit: contain;
-      margin: 0;
-      display: block;
-    }
-
-
-    .training-orbit__node-photo--contain {
-      object-fit: contain;
-      padding: 10px;
-      background: #0A0A0A;
-      transform: scale(0.82);
-    }
-
-    .training-orbit__node:hover .training-orbit__node-photo--contain,
-    .training-orbit__node:focus-visible .training-orbit__node-photo--contain {
-      transform: scale(0.9);
-    }
-
-    .training-next-step {
-      position: relative;
-      overflow: hidden;
-      isolation: isolate;
-      background-image:
-        radial-gradient(circle at 86% 72%, rgba(227,6,19,0.14), transparent 20rem),
-        linear-gradient(90deg, #020202 0%, rgba(2,2,2,0.98) 30%, rgba(2,2,2,0.78) 58%, rgba(2,2,2,0.38) 100%),
-        url('/images/home-storyboard/08-action-coach-night.webp');
-      background-size: cover;
-      background-position: center;
-      color: #fff;
-      padding: clamp(4.5rem, 8vw, 8rem) 0;
-    }
-
-    .training-next-step::after {
-      content: "";
-      position: absolute;
-      right: -5rem;
-      bottom: -7rem;
-      width: clamp(15rem, 19vw, 21rem);
-      aspect-ratio: 1;
-      border: 1px solid rgba(227,6,19,0.6);
-      border-radius: 999px;
-      box-shadow:
-        inset 0 0 0 0.75rem transparent,
-        inset 0 0 0 1.55rem rgba(227,6,19,0.38),
-        inset 0 0 0 2.35rem transparent,
-        inset 0 0 0 3.15rem rgba(227,6,19,0.32),
-        inset 0 0 0 3.95rem transparent,
-        inset 0 0 0 4.75rem rgba(227,6,19,0.25);
-      pointer-events: none;
-      z-index: -1;
-    }
-
-    .training-next-step__content {
-      width: min(100%, 76rem);
-      margin: 0 auto;
-      padding: 0 clamp(1.25rem, 4vw, 3rem);
-    }
-
-    .training-next-step__header {
-      max-width: 42rem;
-      margin-bottom: clamp(1.6rem, 3vw, 2.6rem);
-    }
-
-    .training-next-step__eyebrow {
-      margin: 0 0 0.85rem;
-      font-family: Anton, Impact, sans-serif;
-      font-size: 0.82rem;
-      letter-spacing: 0.28em;
-      color: #E30613;
-      text-transform: uppercase;
-    }
-
-    .training-next-step__title {
-      margin: 0;
-      font-family: Anton, Impact, sans-serif;
-      font-size: clamp(4rem, 7vw, 7rem);
-      line-height: 0.88;
-      letter-spacing: 0.035em;
-      text-transform: uppercase;
-      text-shadow: 0 1.25rem 2.6rem rgba(0,0,0,0.7);
-    }
-
-    .training-next-step__title span {
-      display: block;
-    }
-
-    .training-next-step__title span:last-child {
-      color: #E30613;
-    }
-
-    .training-next-step__rule {
-      display: block;
-      width: 4.25rem;
-      height: 3px;
-      margin-top: 1.1rem;
-      background: #E30613;
-      box-shadow: 0 0 1rem rgba(227,6,19,0.48);
-    }
-
-    .training-next-step__grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: clamp(0.8rem, 1.2vw, 1rem);
-    }
-
-    .training-next-step__card {
-      position: relative;
-      display: flex;
-      min-height: clamp(13rem, 17vw, 16rem);
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.34);
-      border-radius: 0.55rem;
-      background: #050505;
-      color: #fff;
-      text-decoration: none;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 1rem 2.2rem rgba(0,0,0,0.32), 0 0 0 1px rgba(227,6,19,0.08);
-      transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
-    }
-
-    .training-next-step__card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      z-index: 1;
-      pointer-events: none;
-      background: radial-gradient(circle at 82% 18%, rgba(227,6,19,0.22), transparent 30%), linear-gradient(135deg, rgba(255,255,255,0.14), transparent 34%);
-      opacity: 0.72;
-      mix-blend-mode: screen;
-      transition: opacity 220ms ease;
-    }
-
-    .training-next-step__card:hover,
-    .training-next-step__card:focus-visible {
-      transform: translateY(-4px);
-      border-color: rgba(255,255,255,0.72);
-      box-shadow: inset 0 0 0 1px rgba(227,6,19,0.45), 0 1.35rem 2.75rem rgba(0,0,0,0.36), 0 0 2.2rem rgba(227,6,19,0.22);
-      outline: none;
-    }
-
-    .training-next-step__card-bg {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      opacity: 0.72;
-      filter: grayscale(0) contrast(1.32) brightness(1.12) saturate(1.24);
-      transition: opacity 220ms ease, transform 420ms ease, filter 220ms ease;
-    }
-
-    .training-next-step__card:hover .training-next-step__card-bg,
-    .training-next-step__card:focus-visible .training-next-step__card-bg {
-      opacity: 0.88;
-      transform: scale(1.055);
-      filter: grayscale(0) contrast(1.38) brightness(1.16) saturate(1.32);
-    }
-
-    .training-next-step__card-bg.training-orbit__node-photo--contain {
-      object-fit: contain;
-      padding: 1.2rem;
-      background: #050505;
-      transform: scale(0.82);
-    }
-
-    .training-next-step__card:hover .training-next-step__card-bg.training-orbit__node-photo--contain,
-    .training-next-step__card:focus-visible .training-next-step__card-bg.training-orbit__node-photo--contain {
-      transform: scale(0.9);
-    }
-
-    .training-next-step__shade {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.58)), linear-gradient(90deg, rgba(0,0,0,0.62), rgba(0,0,0,0.06));
-    }
-
-    .training-next-step__badge,
-    .training-next-step__body,
-    .training-next-step__arrow {
-      position: relative;
-      z-index: 2;
-    }
-
-    .training-next-step__badge {
-      position: absolute;
-      left: 1rem;
-      top: 1rem;
-      max-width: 6.6rem;
-      font-family: Anton, Impact, sans-serif;
-      font-size: 0.82rem;
-      line-height: 0.9;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #fff;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.9);
-    }
-
-    .training-next-step__body {
-      align-self: flex-end;
-      display: flex;
-      flex-direction: column;
-      gap: 0.55rem;
-      padding: 4.3rem 1.2rem 1.15rem;
-    }
-
-    .training-next-step__card-title {
-      font-family: Anton, Impact, sans-serif;
-      font-size: clamp(1.8rem, 2.6vw, 2.55rem);
-      line-height: 0.95;
-      letter-spacing: 0.035em;
-      text-transform: uppercase;
-    }
-
-    .training-next-step__card-subtitle {
-      max-width: 18rem;
-      font-family: Inter, system-ui, sans-serif;
-      font-size: 0.84rem;
-      line-height: 1.4;
-      color: rgba(255,255,255,0.76);
-    }
-
-    .training-next-step__arrow {
-      position: absolute;
-      right: 1rem;
-      bottom: 1rem;
-      color: #E30613;
-      font-family: Anton, Impact, sans-serif;
-      font-size: 1.5rem;
-    }
-
-    .training-video-card {
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.18);
-      background: #070707;
-      box-shadow: 0 1rem 2.5rem rgba(0,0,0,0.28);
-    }
-
-    .training-video-card__banner {
-      background: linear-gradient(90deg, #E30613, #7e0209);
-      padding: 0.72rem 0.9rem;
-      color: #fff;
-      font-family: Anton, Impact, sans-serif;
-      font-size: 0.82rem;
-      letter-spacing: 0.12em;
-      line-height: 1;
-      text-align: center;
-      text-transform: uppercase;
-    }
-
-    .training-video-card__frame {
-      position: relative;
-      width: 100%;
-      border-top: 1px solid rgba(255,255,255,0.14);
-      aspect-ratio: 16 / 9;
-      background: #0a0a0a;
-    }
-
-
-    .training-link-card {
-      display: flex;
-      min-height: 8.75rem;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 1rem;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
-      padding: 1.5rem;
-      text-align: center;
-      text-decoration: none;
-      transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
-    }
-
-    .training-link-card:hover,
-    .training-link-card:focus-visible {
-      transform: translateY(-2px);
-      border-color: rgba(227,6,19,0.72);
-      background: linear-gradient(180deg, rgba(227,6,19,0.14), rgba(255,255,255,0.02));
-      outline: none;
-    }
-
-    .training-link-card span {
-      max-width: 22rem;
-      color: rgba(255,255,255,0.82);
-      font-family: Inter, system-ui, sans-serif;
-      font-size: 0.95rem;
-      line-height: 1.45;
-    }
-
-    .training-link-card strong {
-      display: inline-flex;
-      min-width: 11.5rem;
-      align-items: center;
-      justify-content: center;
-      background: #E30613;
-      padding: 0.85rem 1.25rem;
-      color: #fff;
-      font-family: Anton, Impact, sans-serif;
-      font-size: 0.86rem;
-      font-weight: 400;
-      letter-spacing: 0.18em;
-      line-height: 1;
-      text-transform: uppercase;
-      box-shadow: 0 0.9rem 2rem rgba(227,6,19,0.22);
-    }
-
-    @media (max-width: 640px) {
-      .training-link-card {
-        min-height: 8rem;
-        gap: 0.85rem;
-        padding: 1.25rem;
-      }
-
-      .training-link-card strong {
-        width: 100%;
-      }
-    }
-
-    .jfp-pathway-lite {
-      position: relative;
-      overflow: hidden;
-      background: #050505;
-      color: #fff;
-      padding: clamp(4rem, 7vw, 7rem) 0;
-    }
-
-    .jfp-pathway-lite::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(circle at 50% 40%, rgba(227,6,19,0.16), transparent 24rem),
-        radial-gradient(circle at 18% 80%, rgba(255,255,255,0.08), transparent 18rem);
-      pointer-events: none;
-    }
-
-    .jfp-pathway-lite__inner {
-      position: relative;
-      width: min(100%, 78rem);
-      margin: 0 auto;
-      padding: 0 clamp(1.25rem, 4vw, 3rem);
-    }
-
-    .jfp-pathway-lite__header {
-      margin-bottom: clamp(2rem, 4vw, 3.5rem);
-      text-align: center;
-      text-transform: uppercase;
-    }
-
-    .jfp-pathway-lite__header p,
-    .jfp-pathway-lite__header h2,
-    .jfp-pathway-lite__stage strong,
-    .jfp-pathway-lite__stage span,
-    .jfp-pathway-lite__unlocks a {
-      font-family: Anton, Impact, sans-serif;
-    }
-
-    .jfp-pathway-lite__header p {
-      margin: 0 0 0.8rem;
-      color: #E30613;
-      font-size: 0.85rem;
-      letter-spacing: 0.28em;
-    }
-
-    .jfp-pathway-lite__header h2 {
-      margin: 0;
-      font-size: clamp(4rem, 7vw, 7rem);
-      line-height: 0.9;
-      letter-spacing: 0.04em;
-    }
-
-    .jfp-pathway-lite__header span {
-      display: block;
-      width: 4.5rem;
-      height: 3px;
-      margin: 1.2rem auto 0;
-      background: #E30613;
-    }
-
-    .jfp-pathway-lite__map {
-      display: grid;
-      grid-template-columns: 1fr auto 1.18fr auto 1fr;
-      align-items: center;
-      gap: clamp(0.8rem, 1.4vw, 1.25rem);
-    }
-
-    .jfp-pathway-lite__stage {
-      position: relative;
-      min-height: clamp(18rem, 24vw, 24rem);
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.22);
-      border-radius: 1rem;
-      background: #0A0A0A;
-      color: #fff;
-      text-decoration: none;
-      box-shadow: 0 1.5rem 4rem rgba(0,0,0,0.38);
-      transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
-    }
-
-    .jfp-pathway-lite__stage:hover,
-    .jfp-pathway-lite__stage:focus-visible {
-      transform: translateY(-5px);
-      border-color: rgba(227,6,19,0.75);
-      box-shadow: 0 2rem 5rem rgba(0,0,0,0.48), 0 0 2.5rem rgba(227,6,19,0.22);
-      outline: none;
-    }
-
-    .jfp-pathway-lite__stage img {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      opacity: 0.72;
-      filter: contrast(1.18) brightness(0.84) saturate(1.08);
-      transition: transform 360ms ease, opacity 220ms ease, filter 220ms ease;
-    }
-
-    .jfp-pathway-lite__stage:hover img,
-    .jfp-pathway-lite__stage:focus-visible img {
-      transform: scale(1.04);
-      opacity: 0.84;
-      filter: contrast(1.25) brightness(0.94) saturate(1.14);
-    }
-
-    .jfp-pathway-lite__stage::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.86)), linear-gradient(90deg, rgba(0,0,0,0.74), transparent 70%);
-    }
-
-    .jfp-pathway-lite__stage span,
-    .jfp-pathway-lite__stage strong,
-    .jfp-pathway-lite__stage small {
-      position: absolute;
-      z-index: 1;
-      left: 1.25rem;
-      right: 1.25rem;
-    }
-
-    .jfp-pathway-lite__stage span {
-      top: 1.1rem;
-      color: #E30613;
-      font-size: 0.78rem;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-    }
-
-    .jfp-pathway-lite__stage strong {
-      bottom: 3.4rem;
-      font-size: clamp(2.2rem, 3vw, 3.25rem);
-      line-height: 0.9;
-      letter-spacing: 0.035em;
-      text-transform: uppercase;
-      text-shadow: 0 0.7rem 1.8rem rgba(0,0,0,0.88);
-    }
-
-    .jfp-pathway-lite__stage small {
-      bottom: 1.35rem;
-      color: rgba(255,255,255,0.78);
-      font-family: Inter, system-ui, sans-serif;
-      font-size: 0.9rem;
-    }
-
-    .jfp-pathway-lite__stage--main {
-      min-height: clamp(21rem, 28vw, 28rem);
-      border-color: rgba(227,6,19,0.55);
-    }
-
-    .jfp-pathway-lite__connector {
-      width: clamp(2.8rem, 5vw, 5.2rem);
-      height: 2px;
-      background: linear-gradient(90deg, rgba(227,6,19,0), rgba(227,6,19,0.9), rgba(227,6,19,0));
-      box-shadow: 0 0 1rem rgba(227,6,19,0.46);
-    }
-
-    .jfp-pathway-lite__unlocks {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 0.75rem;
-      margin-top: clamp(1.25rem, 2.4vw, 2rem);
-    }
-
-    .jfp-pathway-lite__unlocks a {
-      display: block;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.04);
-      padding: 0.95rem 1rem;
-      color: #fff;
-      text-align: center;
-      text-decoration: none;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      transition: border-color 160ms ease, background 160ms ease;
-    }
-
-    .jfp-pathway-lite__unlocks a:hover,
-    .jfp-pathway-lite__unlocks a:focus-visible {
-      border-color: #E30613;
-      background: rgba(227,6,19,0.14);
-      outline: none;
-    }
-
     @media (max-width: 900px) {
-      .jfp-pathway-lite__map {
-        grid-template-columns: 1fr;
-      }
-
-      .jfp-pathway-lite__connector {
-        width: 2px;
-        height: 3rem;
-        margin: 0 auto;
-        background: linear-gradient(180deg, rgba(227,6,19,0), rgba(227,6,19,0.9), rgba(227,6,19,0));
-      }
-
-      .jfp-pathway-lite__unlocks {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
+      .tr-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .tr-steps, .tr-enquire-layout { grid-template-columns: minmax(0, 1fr); }
+      .tr-app-inner { flex-direction: column; align-items: flex-start; }
     }
-
     @media (max-width: 640px) {
-      .jfp-pathway-lite__stage,
-      .jfp-pathway-lite__stage--main {
-        min-height: 16rem;
-      }
-
-      .jfp-pathway-lite__stage strong {
-        font-size: 2.15rem;
-      }
-
-      .jfp-pathway-lite__unlocks {
-        grid-template-columns: 1fr;
-      }
-
-      .jfp-pathway-lite {
-        padding-bottom: 12rem;
-      }
-    }
-
-    @media (max-width: 900px) {
-      .training-next-step__grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
-    @media (max-width: 640px) {
-      .training-next-step {
-        padding: 4.25rem 0 8rem;
-        background-image:
-          linear-gradient(90deg, #020202 0%, rgba(2,2,2,0.98) 30%, rgba(2,2,2,0.78) 58%, rgba(2,2,2,0.38) 100%),
-          url('/images/home-storyboard/08-action-coach-night.webp');
-        background-position: 58% top;
-      }
-
-      .training-next-step::after {
-        display: none;
-      }
-
-      .training-next-step__header {
-        margin-bottom: 8rem;
-      }
-
-      .training-next-step__grid {
-        display: flex;
-        gap: 0.85rem;
-        overflow-x: auto;
-        margin-inline: calc(50% - 50vw);
-        padding: 0 1rem 0.35rem;
-        scroll-padding-inline: 1rem;
-        scroll-snap-type: x mandatory;
-        scroll-behavior: smooth;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior-x: contain;
-        scrollbar-width: none;
-      }
-
-      .training-next-step__grid::-webkit-scrollbar {
-        display: none;
-      }
-
-      .training-next-step__card {
-        flex: 0 0 88vw;
-        min-height: 13.75rem;
-        scroll-snap-align: center;
-        scroll-snap-stop: always;
-      }
-
-      .training-next-step__card-bg {
-        opacity: 0.9;
-        filter: contrast(1.2) brightness(1.22) saturate(1.22);
-      }
-
-      .training-next-step__shade {
-        background: linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.56)), linear-gradient(90deg, rgba(0,0,0,0.50), rgba(0,0,0,0.02));
-      }
-
-      .training-video-card {
-        width: 88vw;
-        scroll-snap-align: center;
-        scroll-snap-stop: always;
-      }
-    }
-
-    .training-tabs::-webkit-scrollbar {
-      display: none;
-    }
-
-    .training-tabs {
-      scrollbar-width: none;
-    }
-
-    @media (max-width: 640px) {
-      .training-orbit {
-        width: min(82vw, 340px);
-        margin-top: 0.25rem;
-      }
-
-      .training-orbit__node {
-        left: calc(50% - 36px);
-        top: calc(50% - 36px);
-        width: 72px;
-        height: 72px;
-        font-size: 0.62rem;
-      }
-
-      .training-orbit__node--1 { transform: rotate(0deg) translateX(min(31vw, 126px)) rotate(0deg); }
-      .training-orbit__node--2 { transform: rotate(60deg) translateX(min(31vw, 126px)) rotate(-60deg); }
-      .training-orbit__node--3 { transform: rotate(120deg) translateX(min(31vw, 126px)) rotate(-120deg); }
-      .training-orbit__node--4 { transform: rotate(180deg) translateX(min(31vw, 126px)) rotate(-180deg); }
-      .training-orbit__node--5 { transform: rotate(240deg) translateX(min(31vw, 126px)) rotate(-240deg); }
-      .training-orbit__node--6 { transform: rotate(300deg) translateX(min(31vw, 126px)) rotate(-300deg); }
-
-      .training-orbit__node-label {
-        max-width: 64px;
-      }
-
-      .training-orbit__tooltip {
-        display: none;
-      }
+      .tr-hero { min-height: 78dvh; padding: 100px 0 40px; }
+      .tr-hero-sub { font-size: 16px; }
+      .tr-hero-cta > a { width: 100%; }
+      .tr-choose, .tr-journey, .tr-videos, .tr-enquire { padding: 56px 0; }
+      .tr-cards, .tr-row, .tr-links { grid-template-columns: minmax(0, 1fr); }
+      .tr-cards { gap: 10px; }
+      .tr-card { flex-direction: row; align-items: stretch; }
+      .tr-card-photo { flex: 0 0 116px; aspect-ratio: auto; min-height: 104px; }
+      .tr-card-badge { left: 8px; top: 8px; padding: 3px 6px; font-size: 10px; }
+      .tr-card-body { align-content: center; padding: 14px 50px 14px 14px; }
+      .tr-card-title { font-size: 1.2rem; }
+      .tr-card-sub { font-size: 14px; }
+      .tr-card-arrow { right: 12px; bottom: auto; top: 50%; transform: translateY(-50%); }
+      .tr-swipe { display: block; margin: 14px 0 0; font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.5); }
+      .tr-video-row { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; margin: 16px -16px 0; padding: 0 16px 6px; scrollbar-width: none; }
+      .tr-video-row::-webkit-scrollbar { display: none; }
+      .tr-video { flex: 0 0 82%; scroll-snap-align: center; }
+      .tr-form { padding: 18px; }
+      .tr-app-btn { width: 100%; }
     }
   </style>
-
 </BaseLayout>
 )}

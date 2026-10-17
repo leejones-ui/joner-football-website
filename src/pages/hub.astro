@@ -36,6 +36,7 @@ const heroImage = getSanityImageUrl(sanityPage?.heroImage, '/images/hub-hero-des
         <div class="hub-gate__copy">
           <p class="hub-gate__eyebrow">{heroEyebrow}</p>
           <h1>{heroHeadline}</h1>
+          <span class="hub-gate__rule" aria-hidden="true"></span>
           <p>{heroSubheadline}</p>
         </div>
         <form class="hub-gate__form" id="hub-access-form" data-brevo-custom data-list-id="2" novalidate>
@@ -52,7 +53,7 @@ const heroImage = getSanityImageUrl(sanityPage?.heroImage, '/images/hub-hero-des
             <input type="checkbox" name="marketingConsent" required />
             <span>I agree to receive Joner Football emails, including free resources, training ideas, app updates and promotional emails. I understand I can unsubscribe anytime.</span>
           </label>
-          <button type="submit">Enter Free Hub</button>
+          <button type="submit" class="btn-red">Enter Free Hub</button>
           <p class="hub-gate__message" id="hub-access-message" role="status" aria-live="polite"></p>
         </form>
       </div>
@@ -166,75 +167,41 @@ const heroImage = getSanityImageUrl(sanityPage?.heroImage, '/images/hub-hero-des
 </script>
 
 <style is:global>
-  @import url('https://fonts.googleapis.com/css2?family=Kanit:ital,wght@1,600;1,900&display=swap');
-  .hub-gate-page { background: #000; color: #fff; }
+  /* Redesign (Oct 2026): newer site style (game analysis, reviews). Layout and
+     styling only: the form fields, names, list id, endpoint, reCAPTCHA and
+     success behaviour are unchanged. */
+  .hub-gate-page { --jf-red: #E8000D; --font-display: var(--font-heading, Anton, Impact, sans-serif); background: #000; color: #fff; }
   .hub-gate[hidden], #hub-content[hidden] { display: none; }
   .hub-gate { min-height: calc(100vh - 80px); position: relative; display: flex; align-items: center; overflow: hidden; background: #000; }
   .hub-gate__media, .hub-gate__scrim { position: absolute; inset: 0; }
-  .hub-gate__media img { width: 100%; height: 100%; object-fit: cover; object-position: 60% 22%; opacity: .84; }
-  .hub-gate__scrim { background: linear-gradient(90deg, rgba(0,0,0,.92) 0%, rgba(0,0,0,.76) 50%, rgba(0,0,0,.35) 100%); }
-  .hub-gate__inner { position: relative; z-index: 1; width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding: 80px 0; display: grid; grid-template-columns: 1.1fr .9fr; gap: 44px; align-items: center; }
-  .hub-gate__eyebrow { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; color: #E30613; text-transform: uppercase; letter-spacing: .2em; font-size: .82rem; }
-  .hub-gate__copy h1 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: clamp(3.3rem, 7.8vw, 7rem); line-height: .86; margin: 14px 0 20px; max-width: 720px; }
-  .hub-gate__copy p:not(.hub-gate__eyebrow) { color: rgba(255,255,255,.82); font-size: 1.15rem; line-height: 1.6; max-width: 560px; }
-  .hub-gate__form { border: 1px solid rgba(255,255,255,.18); background: rgba(0,0,0,.78); backdrop-filter: blur(10px); padding: clamp(26px, 4vw, 42px); box-shadow: 0 24px 80px rgba(0,0,0,.45); }
-  .hub-gate__form h2 { font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-size: 2.4rem; margin: 0 0 22px; }
-  .hub-gate__form label { display: block; margin-bottom: 16px; }
-  .hub-gate__form span { display: block; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; color: rgba(255,255,255,.78); font-size: .82rem; letter-spacing: .08em; margin-bottom: 8px; }
-  .hub-gate__form input { width: 100%; min-height: 52px; background: #080808; border: 1px solid rgba(255,255,255,.18); color: #fff; padding: 14px 16px; font-size: 1rem; outline: none; }
-  .hub-gate__form input:focus { border-color: #E30613; }
-  .hub-gate__consent { display: grid !important; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; margin: 12px 0 14px !important; }
-  .hub-gate__consent input { width: 22px; min-height: 22px; height: 22px; margin-top: 2px; accent-color: #E30613; }
-  .hub-gate__consent span { display: block; font-family: system-ui, sans-serif; font-style: normal; text-transform: none; letter-spacing: 0; font-size: .88rem; line-height: 1.45; color: rgba(255,255,255,.78); margin: 0; }
-  .hub-gate__note { color: rgba(255,255,255,.62); font-size: .9rem; line-height: 1.45; margin: 6px 0 20px; }
-  .hub-gate__form button { width: 100%; min-height: 56px; border: 0; background: #E30613; color: #fff; font-family: 'Kanit', 'Oswald', sans-serif; font-style: italic; text-transform: uppercase; font-weight: 900; letter-spacing: .06em; cursor: pointer; }
+  .hub-gate__media img { width: 100%; height: 100%; object-fit: cover; object-position: 60% 22%; }
+  .hub-gate__scrim { background: linear-gradient(180deg, rgba(0,0,0,.2) 0%, rgba(0,0,0,.15) 45%, rgba(0,0,0,.85) 100%), linear-gradient(90deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,.55) 50%, rgba(0,0,0,.2) 100%); }
+  .hub-gate__inner { position: relative; z-index: 1; width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 88px 0; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 48px; align-items: center; }
+  .hub-gate__eyebrow { margin: 0; font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: #fff; }
+  .hub-gate__copy h1 { font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(2.8rem, 8vw, 6.2rem); line-height: .92; margin: 14px 0 0; max-width: 9ch; }
+  .hub-gate__rule { display: block; width: 56px; height: 4px; background: var(--jf-red); margin: 24px 0 0; }
+  .hub-gate__copy p:not(.hub-gate__eyebrow) { margin: 22px 0 0; color: rgba(255,255,255,.88); font-size: 18px; line-height: 1.55; max-width: 520px; }
+  .hub-gate__form { display: grid; gap: 16px; border: 1px solid rgba(255,255,255,.12); background: rgba(11,11,11,.92); padding: clamp(20px, 3vw, 32px); }
+  .hub-gate__form h2 { font-family: var(--font-display); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: clamp(1.9rem, 3.4vw, 2.6rem); line-height: 1; margin: 0 0 4px; }
+  .hub-gate__form label { display: grid; gap: 7px; margin: 0; }
+  .hub-gate__form label > span { font-family: var(--font-body, Inter, system-ui, sans-serif); font-size: 14px; font-weight: 600; color: rgba(255,255,255,.9); }
+  .hub-gate__form input[type="text"], .hub-gate__form input[type="email"] { width: 100%; min-height: 50px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.18); color: #fff; padding: 13px 14px; font: inherit; font-size: 16px; border-radius: 0; outline: none; }
+  .hub-gate__form input::placeholder { color: rgba(255,255,255,.45); }
+  .hub-gate__form input[type="text"]:focus, .hub-gate__form input[type="email"]:focus { border-color: #fff; }
+  .hub-gate__consent { display: grid !important; grid-template-columns: 20px 1fr; gap: 12px; align-items: start; }
+  .hub-gate__consent input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--jf-red); }
+  .hub-gate__consent span { font-weight: 400 !important; font-size: 14px !important; line-height: 1.5; color: rgba(255,255,255,.75) !important; }
+  .hub-gate__form button { width: 100%; min-height: 54px; cursor: pointer; font-size: 16px; }
   .hub-gate__form button:disabled { opacity: .65; cursor: not-allowed; }
-  .hub-gate__message { min-height: 20px; color: #fbbf24; font-size: .9rem; margin: 14px 0 0; }
+  .hub-gate__message { min-height: 20px; color: #fbbf24; font-size: 15px; margin: 0; }
+  .hub-gate__message:empty { min-height: 0; }
   @media (max-width: 860px) {
-    .hub-gate {
-      min-height: calc(100svh - 4rem);
-      align-items: stretch;
-    }
-
-    .hub-gate__media img {
-      object-position: 58% 22%;
-      opacity: .78;
-    }
-
-    .hub-gate__scrim {
-      background:
-        linear-gradient(180deg, rgba(0,0,0,.9) 0%, rgba(0,0,0,.56) 45%, rgba(0,0,0,.96) 100%),
-        linear-gradient(90deg, rgba(0,0,0,.7) 0%, rgba(0,0,0,.2) 62%, rgba(0,0,0,.42) 100%);
-    }
-
-    .hub-gate__inner {
-      width: calc(100% - 32px);
-      grid-template-columns: 1fr;
-      gap: 22px;
-      padding: 72px 0 32px;
-      align-content: end;
-      align-items: end;
-    }
-
-    .hub-gate__copy h1 {
-      font-size: clamp(3.25rem, 16vw, 5.4rem);
-      max-width: 9ch;
-    }
-
-    .hub-gate__copy p:not(.hub-gate__eyebrow) {
-      max-width: 21rem;
-      font-size: 1rem;
-      line-height: 1.55;
-    }
-
-    .hub-gate__form {
-      padding: 20px;
-      background: rgba(0,0,0,.84);
-    }
-
-    .hub-gate__form h2 {
-      font-size: 2rem;
-    }
+    .hub-gate { min-height: calc(100svh - 4rem); align-items: stretch; }
+    .hub-gate__media img { object-position: 58% 18%; }
+    .hub-gate__scrim { background: linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,.55) 40%, rgba(0,0,0,.96) 70%); }
+    .hub-gate__inner { grid-template-columns: minmax(0, 1fr); gap: 26px; padding: 140px 0 32px; align-content: end; align-items: end; }
+    .hub-gate__copy p:not(.hub-gate__eyebrow) { font-size: 16px; }
+    .hub-gate__form { padding: 18px; }
   }
 </style>
 )}
