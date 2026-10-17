@@ -217,7 +217,7 @@ async function go(tab, { quiet = false, instant = false } = {}) {
   const fn = JJ_TABS.has(tab) ? () => renderJJ(tab, jjUi()) : { overview: renderOverview, next: renderNext, holiday: renderHoliday, board: renderBoard, program: renderProgram, groups: renderGroups, requests: renderRequests, accounts: renderNewAccounts, trials: renderTrials, payments: renderPayments, prices: renderPrices, money: renderMoney, coach: renderCoach, cancellations: renderCancellations, coaches: renderCoaches, profile: renderProfile, staff: renderStaff, plans: renderPlans, families: renderPlayers, messages: () => renderMessages({ view, need, modal, closeModal, confirmBox }), announce: () => renderAnnouncements({ view, need, modal, closeModal, confirmBox }), fnotes: () => renderFamilyNotesPage({ view, post, need, modal, closeModal, confirmBox }), extra: () => renderExtra({ view, post, need, modal, closeModal, confirmBox, toast, copy, user: P.user }), removed: renderRemoved, audit: renderAudit, settings: renderSettings }[tab]
   try { await fn() } catch (e) { console.error(e); if (!quiet) view().innerHTML = `<div class="j-box j-box-red">Something went wrong loading this page. ${esc(e.message || '')}</div>` }
   if (P.user?.role === 'admin' && (tab === 'money' || tab === 'jj-money')) prefetchOthers(tab === 'jj-money' ? 'juniors' : P.jf.programme, moneyReaders())
-  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts() } else cancelBanner()
+  if (!P.cxChecked) { P.cxChecked = true; checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts() } else cancelBanner()
   if (!quiet) view().focus({ preventScroll: true })
 }
 // Bank payments (the sidebar and the Dashboard's link): Money for this
@@ -232,7 +232,22 @@ async function reviewBank({ quiet = false } = {}) {
 const bankUiBase = () => ({ post, toast })
 
 // New cancellations show up within two minutes, whatever page is open.
-setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts() } }, 120000)
+setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts() } }, 120000)
+// The red count on Requests (Lee, 18 Oct 2026: it showed nothing until the
+// page was opened, then 4). One count everywhere, read when the portal opens
+// and every two minutes: new applications and waitlist, plus extra session
+// and game analysis requests not marked done.
+const requestCount = (reqs = [], extras = []) => reqs.filter((r) => r.status === 'pending').length + extras.filter((r) => r.status !== 'done').length
+async function checkRequestAlerts() {
+  if (P.user?.role !== 'admin') return
+  const [rq, xr] = await Promise.all([post('requests'), post('extraRequests')])
+  if (!rq.ok) return
+  P.requests = rq.data.requests
+  P.extraReqs = xr.ok ? xr.data.requests : []
+  const before = P.pendingCount || 0
+  P.pendingCount = requestCount(P.requests, P.extraReqs)
+  if (before !== P.pendingCount) renderNav()
+}
 // New trial feedback from a coach: a red count on Trial feedback within two minutes (Lee, 15 Oct 2026).
 async function checkTrialAlerts() {
   if (P.user?.role !== 'admin') return
@@ -1264,7 +1279,8 @@ async function renderRequests(keep = false) {
   // Typing or a filter redraws from what is already loaded.
   const [d, xr] = keep && P.reqData ? P.reqData : (P.reqData = await Promise.all([post('requests').then(need), post('extraRequests')]))
   const extras = xr.ok ? xr.data.requests : []
-  P.pendingCount = d.requests.filter((r) => r.status === 'pending').length + extras.filter((r) => r.status !== 'done').length
+  P.requests = d.requests; P.extraReqs = extras
+  P.pendingCount = requestCount(d.requests, extras)
   renderNav()
   if (!P.board) P.board = await need(await post('board'))
   P.reqF = { q: '', kind: '', group: '', ...(P.reqF || {}) }
@@ -1776,11 +1792,10 @@ async function renderOverview(redraw = false) {
   if (!redraw || !P.money) {
     view().innerHTML = '<p class="muted">Loading the dashboard</p>'
     // First paint from the last reading, then the latest a moment later.
-    const [mr, rq] = await Promise.all([post('money', { quick: true }), post('requests'), checkTrialAlerts(), checkAccountAlerts()])
+    const [mr] = await Promise.all([post('money', { quick: true }), checkRequestAlerts(), checkTrialAlerts(), checkAccountAlerts()])
     const m = await need(mr)
     laterMoney('overview', (fresh) => { P.money = fresh; renderOverview(true) })
     P.money = m.money
-    if (rq.ok) { P.pendingCount = rq.data.requests.filter((r) => r.status === 'pending').length; P.requests = rq.data.requests; renderNav() }
   }
   const m = P.money, k = m.kpis
   const hour = Number(new Date().toLocaleString('en-AU', { hour: 'numeric', hour12: false, timeZone: 'Australia/Sydney' }))
@@ -1799,7 +1814,7 @@ async function renderOverview(redraw = false) {
         <div class="jd-tile"><span class="lbl">Still owing</span><span class="val">${esc(money(k.owingCents))}</span><span class="note">${m.status.unpaid + m.status.part} players</span><button type="button" class="link" data-money-filter="unpaid">See who</button></div>
         <div class="jd-tile"><span class="lbl">Players paid</span><span class="val">${paidPlayers}<span class="muted" style="font-size:16px;font-weight:650"> / ${k.players}</span></span><span class="note">${Math.round((paidPlayers / Math.max(k.players, 1)) * 100)}% of the term</span></div>
         <div class="jd-tile"><span class="lbl">Paid in Stripe, not in Airtable</span><span class="val">${m.status.stripe}</span><span class="note">Record them in one click</span><button type="button" class="link" data-money-filter="stripe">Review</button></div>
-        <div class="jd-tile"><span class="lbl">Requests waiting</span><span class="val">${pending.length}</span><span class="note">Applications and waitlist</span><button type="button" class="link" data-tab="requests">Open requests</button></div>
+        <div class="jd-tile"><span class="lbl">Requests waiting</span><span class="val">${P.pendingCount || 0}</span><span class="note">Applications, waitlist and extra sessions</span><button type="button" class="link" data-tab="requests">Open requests</button></div>
       </section>
       <section class="jd-card jd-span-8 jd-in" style="--i:2"><h2>Income by week</h2><p class="sub">Stripe payments (live) and recorded bank transfers and cash</p>
         <div class="jc" id="c-weekly"></div>
