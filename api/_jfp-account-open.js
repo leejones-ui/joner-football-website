@@ -105,9 +105,16 @@ export async function linkProfile({ name, email, rowId, values = {}, by }) {
 
 // Players tab, "Accounts with no session": every profile with no Term 4 row
 // that still exists. profiles: allProfiles(); rowIds: every Term 4 row id.
-export function accountsWithNoSession(profiles, rowIds, accounts = {}) {
+// Removed players stay off this list (Lee, 18 Oct 2026): a profile tied to a
+// removed row, or with the same name and email as someone removed, is not
+// "No session yet". removed: [{ rowIds: [...], name, email }].
+export function accountsWithNoSession(profiles, rowIds, accounts = {}, removed = []) {
   const ids = new Set(rowIds)
-  return profiles.filter((p) => !p.rowIds.some((id) => ids.has(id))).map((p) => {
+  const goneIds = new Set(removed.flatMap((x) => x.rowIds || []).filter(Boolean))
+  const norm = (v) => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ')
+  const goneNames = new Set(removed.filter((x) => x.name && x.email).map((x) => `${norm(x.name)}|${norm(x.email)}`))
+  const isGone = (p) => p.rowIds.some((id) => goneIds.has(id)) || (p.emails || []).some((e) => goneNames.has(`${norm(p.name)}|${norm(e)}`))
+  return profiles.filter((p) => !p.rowIds.some((id) => ids.has(id)) && !isGone(p)).map((p) => {
     const email = p.emails[0] || ''
     const acct = accounts[email] || null
     const self = Boolean(acct?.players?.some((x) => x.key === p.key && x.self))

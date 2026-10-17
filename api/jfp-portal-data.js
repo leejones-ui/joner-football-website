@@ -527,7 +527,9 @@ async function playersList(req, res, config, body = {}) {
   for (const p of players) { const k = (p.email || p.name).toLowerCase(); seen.set(k, (seen.get(k) || 0) + 1) }
   // Accounts with no session (round 2 item 8): profiles families made in My
   // account (or kept from earlier terms) with no Term 4 row now.
-  const accounts = profiles ? accountsWithNoSession(profiles, roster.players.filter((r) => r.holdsPlace).map((r) => r.id), await allAccounts().catch(() => ({}))) : []
+  // Removed players are not "No session yet" (Lee, 18 Oct 2026).
+  const removed = profiles ? (await removedPlayers(config, { roster }).catch((e) => { console.error('jfp removed read failed', e); return [] })).map((x) => ({ rowIds: [x.sourceRowId, x.rowId], name: x.name, email: x.email })) : []
+  const accounts = profiles ? accountsWithNoSession(profiles, roster.players.filter((r) => r.holdsPlace).map((r) => r.id), await allAccounts().catch(() => ({})), removed) : []
   return res.status(200).json({
     success: true,
     accounts,

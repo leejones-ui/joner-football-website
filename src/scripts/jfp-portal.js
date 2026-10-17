@@ -234,8 +234,10 @@ async function reviewBank({ quiet = false } = {}) {
 }
 const bankUiBase = () => ({ post, toast })
 
-// New cancellations show up within two minutes, whatever page is open.
-setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts() } }, 120000)
+// How often the portal re-reads by itself (Lee, 18 Oct 2026: "every 30 mins").
+const REFRESH_MS = 30 * 60 * 1000
+// New cancellations, trials, accounts and requests show up within 30 minutes, whatever page is open.
+setInterval(() => { if (P.user && document.visibilityState === 'visible') { checkCancelAlerts(); checkTrialAlerts(); checkAccountAlerts(); checkRequestAlerts() } }, REFRESH_MS)
 // The red count on Requests (Lee, 18 Oct 2026: it showed nothing until the
 // page was opened, then 4). One count everywhere, read when the portal opens
 // and every two minutes: new applications and waitlist, plus extra session
@@ -301,9 +303,9 @@ async function renderNewAccounts(keep = false) {
   }))
 }
 
-// Auto sync (Lee, 12 Oct 2026): the page on screen re-reads Airtable and
-// Stripe by itself every 2 minutes, and as soon as you come back to the
-// browser tab. It waits while you are typing, have a window or menu open, or
+// Auto sync (Lee, 12 Oct 2026; every 30 minutes from 18 Oct 2026): the page
+// on screen re-reads Airtable and Stripe by itself every 30 minutes, and when
+// you come back to the browser tab after 30 minutes or more away. It waits while you are typing, have a window or menu open, or
 // are part way through something, and keeps your place on the page.
 const AUTO = { tabs: new Set(['overview', 'board', 'families', 'money', 'requests', 'payments', 'program', 'jj-dashboard', 'jj-players', 'jj-money']), lastInput: 0, hiddenAt: 0, busy: false }
 document.addEventListener('input', () => { AUTO.lastInput = Date.now() }, true)
@@ -317,10 +319,10 @@ async function autoSync() {
   const y = window.scrollY
   try { P.board = null; PL.at = 0; await go(P.tab, { quiet: true }); window.scrollTo(0, y) } finally { AUTO.busy = false }
 }
-setInterval(autoSync, 120000)
+setInterval(autoSync, REFRESH_MS)
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') AUTO.hiddenAt = Date.now()
-  else if (AUTO.hiddenAt && Date.now() - AUTO.hiddenAt > 60000) autoSync()
+  else if (AUTO.hiddenAt && Date.now() - AUTO.hiddenAt > REFRESH_MS) autoSync()
 })
 
 async function need(r) {
