@@ -31,13 +31,11 @@ export default defineConfig({
         '/checkout-success/',
         '/camp-success/',
         '/download-success/',
-        '/camps/test-signup/',
         '/home-ball-prototype/',
         '/home-concept/',
         '/home-object-prototype/',
         '/home-storyboard-prototype/',
         '/draftjoin/',
-        '/join-old-2026-06-15/',
 
         '/new-coaching-role/',
         '/training/joners-juniors/',
