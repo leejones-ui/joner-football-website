@@ -59,6 +59,7 @@ import { allocateTermMoney, collectedOf, venuesForTerm, venuesFromLedger, venues
 import { registerChecks, yearsOf, termsOfYear, termFromLive, termFromLedger, termFromRegister, yearSummary } from './_jfp-years.js'
 import { listExtras, setExtraStatus, KINDS as EXTRA_KINDS } from './_jfp-extras.js'
 import { MONEY_ACTIONS, moneyAction, applyStripeMatch } from './_jfp-money-actions.js'
+import { listStripeClass } from './_jfp-stripe-class.js'
 import { listMatches, listRules, ruleFor } from './_jfp-stripe-match.js'
 import { listInvoices, openForBank, getInvoice } from './_jfp-invoices.js'
 import { feePdfAttachment, docForPayreq, docForInvoice, pdfDownload } from './_jfp-fee-pdf.js'
@@ -1399,6 +1400,8 @@ export async function moneyData(config, { since, fresh = false, quick = false, p
     players,
     unmatched: unmatched.map((p) => { const rule = ruleFor(rules, p); return { id: p.id, at: p.at, name: p.name, email: p.email, cents: net(p), product: p.product, linkId: p.linkId || '', ...(rule ? { remembered: { key: rule.key, players: rule.players, as: rule.as } } : {}), ...(unplaced(p) ? { quickLink: p.jfpRef } : {}) } }),
     otherStripe: stripe.other,
+    // Stripe payments marked holiday training, Pro sessions or not JFP (18 Oct 2026), newest first, to put back.
+    stripeMarked: (await listStripeClass()).sort((a, b) => String(b.date).localeCompare(String(a.date)) || a.id.localeCompare(b.id)).slice(0, 60).map((x) => ({ id: x.id, kind: x.kind, cents: x.cents, date: x.date, name: x.payer || x.email || '', product: x.product || '', ...(x.period ? { periodLabel: periodLabel(x.period) } : {}), ...(x.player ? { player: x.player } : {}) })),
   }
 }
 

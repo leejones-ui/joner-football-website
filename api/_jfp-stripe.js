@@ -15,6 +15,8 @@ import { stripeFetch } from './_holiday-store.js'
 import { kvGetJson, kvSetJson, kvPipeline } from './_jfp-store.js'
 // Auto-charges after a session are payment intents, not Checkout Sessions (claude/card-on-file).
 import { autoChargePayments } from './_jfp-saved-pay.js'
+// Payments Lee marked as holiday training, Pro sessions or not JFP (18 Oct 2026).
+import { listStripeClass, applyStripeClass } from './_jfp-stripe-class.js'
 
 // v2 has the fees. The old cache had none, so it is never read.
 const CACHE = 'jfp:stripe-payments:v2'
@@ -113,7 +115,7 @@ export async function jfpStripePayments({ since, fresh = false, quick = false, t
   if (!fresh) {
     const hit = await kvGetJson(CACHE)
     // proTagged: read since Pro payments are marked (an older copy is read again once).
-    if (hit && hit.proTagged && hit.linkTagged && hit.since === sinceIso && Array.isArray(hit.payments) && Date.now() - Date.parse(hit.at) < (quick ? 6 * 3600 : CACHE_SECONDS) * 1000) return splitTerms(hit, term)
+    if (hit && hit.proTagged && hit.linkTagged && hit.since === sinceIso && Array.isArray(hit.payments) && Date.now() - Date.parse(hit.at) < (quick ? 6 * 3600 : CACHE_SECONDS) * 1000) return applyStripeClass(splitTerms(hit, term), await listStripeClass())
   }
   const gte = Math.floor(Date.parse(`${sinceIso}T00:00:00+10:00`) / 1000)
   const payments = []
@@ -165,7 +167,7 @@ export async function jfpStripePayments({ since, fresh = false, quick = false, t
   try { await fillFees(payments) } catch (error) { console.error('jfp stripe fees failed', error.message) }
   const out = { since: sinceIso, at: new Date().toISOString(), payments: payments.sort((a, b) => b.at.localeCompare(a.at)), other, proTagged: true, linkTagged: true }
   await kvSetJson(CACHE, out)
-  return splitTerms(out, term)
+  return applyStripeClass(splitTerms(out, term), await listStripeClass())
 }
 
 // What Stripe kept on this term's payments, all of them, refunded ones too.

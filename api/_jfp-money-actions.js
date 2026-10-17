@@ -3,9 +3,12 @@
 // hands these actions here with the helpers they share with Money > JFP
 // (recordPaymentCore and the bank line guards), so a bank line or a Stripe
 // payment is guarded exactly the same way wherever it is recorded.
-import { siteUrl } from './_holiday-store.js'
-import { clean, formatAud, audit, newId, sydneyToday, savePayreq, getPayreq, kvCommand } from './_jfp-store.js'
-import { getTerm4Row, updateTerm4Rows, appendNote } from './_jfp-airtable.js'
+import { siteUrl, getConfig as getHolidayConfig } from './_holiday-store.js'
+import { clean, formatAud, audit, newId, sydneyToday, savePayreq, getPayreq, kvCommand, locationFor } from './_jfp-store.js'
+import { getTerm4Row, updateTerm4Rows, appendNote, listLedger, loadRoster } from './_jfp-airtable.js'
+import { isPeriodId, periodOf as holidayPeriodOf, periodLabel, pickablePeriods, rangeLabel, suggestPeriod, OTHER, OTHER_LABEL } from './_holiday-periods.js'
+import { isProRow } from './_jfp-pro-money.js'
+import { STRIPE_CLASS, STRIPE_PAY_ID, CLASS_LABEL, getStripeClass } from './_jfp-stripe-class.js'
 import { syncRowLinks } from './_jfp-fee-sync.js'
 import { jfpStripePayments } from './_jfp-stripe.js'
 import { createPlayerCharge, recordChargePayment, cancelCharge, chargeFromStripe, extraMoneyData, getCharge, chargeView } from './_jfp-charges.js'
@@ -14,7 +17,7 @@ import { listMatches, listRules, matchInput, rememberKey, saveMatch, saveRule, d
 import { invoiceEmail, sendInvoiceEmail } from './_jfp-email.js'
 import { invoicePdfAttachment } from './_jfp-fee-pdf.js'
 
-export const MONEY_ACTIONS = new Set(['stripeMatch', 'stripeMatchRules', 'stripeMatchForget', 'extraMoney', 'createCharge', 'chargeRecord', 'chargeCancel', 'invoiceList', 'invoiceGet', 'invoiceSave', 'invoiceEmailPreview', 'invoiceSend', 'invoiceVoid', 'invoicePay', 'bankInvoice'])
+export const MONEY_ACTIONS = new Set(['stripeClassOptions', 'stripeHoliday', 'stripeHolidayUndo', 'stripePro', 'stripeProUndo', 'stripeNotJfp', 'stripeNotJfpUndo', 'stripeMatch', 'stripeMatchRules', 'stripeMatchForget', 'extraMoney', 'createCharge', 'chargeRecord', 'chargeCancel', 'invoiceList', 'invoiceGet', 'invoiceSave', 'invoiceEmailPreview', 'invoiceSend', 'invoiceVoid', 'invoicePay', 'bankInvoice'])
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 const fail = (res, status, error, extra = {}) => res.status(status).json({ success: false, error, ...extra })
 const refuse = (res, r) => fail(res, r.status || 400, r.error, r.code ? { code: r.code } : {})
@@ -70,6 +73,106 @@ async function matchForget(res, principal, body) {
   await dropRule(k)
   await audit({ by: principal.email, action: 'stripe.matchForget', target: k })
   return res.status(200).json({ success: true })
+}
+
+// ---------- a Stripe payment that is not JFP term income (Lee, 18 Oct 2026) ----------
+// The Stripe twin of the bank line buttons: Holiday training (the same
+// questions as bankHoliday), Pro sessions and Not JFP. Stored in
+// jfp:stripe-class (_jfp-stripe-class.js) with the payment's Stripe fee.
+// Classification only: no money moves, nothing is written to Airtable, so
+// Hermes may do it as well as Lee and Ligia.
+
+// What the modal asks: the holidays, coaches and locations bankHoliday takes,
+// the Pro players, and the holiday a payment on this date most likely paid for.
+async function stripeClassOptions(res, config, body) {
+  const [hc, roster] = await Promise.all([getHolidayConfig().catch(() => ({ coaches: [] })), loadRoster().catch(() => ({ players: [] }))])
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(body.date || '') ? body.date : ''
+  return res.status(200).json({
+    success: true,
+    holiday: {
+      periods: [...pickablePeriods(sydneyToday()).map((p) => ({ id: p.id, label: p.label, range: rangeLabel(p) })), { id: OTHER, label: OTHER_LABEL, range: '' }],
+      coaches: (hc.coaches || []).slice().sort((a, b) => Number(b.active !== false) - Number(a.active !== false) || a.name.localeCompare(b.name)).map((c) => ({ id: c.id, name: c.name })),
+      locations: config.locations.map((l) => l.name), defaultLocation: locationFor(config, 'Belrose HQ').name,
+      suggested: suggestPeriod(date),
+    },
+    pro: { players: roster.players.filter((r) => isProRow(r.paymentType) && r.holdsPlace).map((r) => ({ rowId: r.id, player: r.player })).sort((a, b) => a.player.localeCompare(b.player)) },
+  })
+}
+
+// The questions for each kind, checked as bankHoliday and bankPro check them.
+async function classFields(kind, config, body) {
+  const sessionDate = clean(body.sessionDate, 10)
+  if (sessionDate && !ISO.test(sessionDate)) return { status: 400, error: 'The session date does not look right.' }
+  const note = clean(body.note, 200)
+  if (kind === 'holiday') {
+    const period = clean(body.period, 20)
+    if (!isPeriodId(period)) return { status: 400, error: 'Pick the school holiday it was for, or Other dates.' }
+    if (sessionDate && period !== OTHER && holidayPeriodOf(sessionDate) !== period) return { status: 400, error: `That session date is not in the ${periodLabel(period)}. Pick the right holiday, or leave the date blank.` }
+    const hc = await getHolidayConfig()
+    const coachIn = clean(body.coach, 60).toLowerCase()
+    const coach = coachIn ? hc.coaches.find((c) => c.id === coachIn || c.name.toLowerCase() === coachIn) : null
+    if (coachIn && !coach) return { status: 400, error: 'Pick a coach from the list, or leave it blank.' }
+    const locIn = clean(body.location, 80).toLowerCase() || 'belrose'
+    const loc = config.locations.find((l) => l.id === locIn || l.name.toLowerCase() === locIn)
+    if (!loc) return { status: 400, error: 'Pick a location from the list.' }
+    return { fields: { period, sessionDate, coach: coach?.name || '', location: loc.name, note } }
+  }
+  if (kind === 'pro') {
+    const rowId = clean(body.rowId, 30)
+    let player = null
+    if (rowId) {
+      const r = (await loadRoster()).players.find((x) => x.id === rowId)
+      if (!r || !isProRow(r.paymentType)) return { status: 400, error: 'Pick a Pro player from the list, or leave it blank.' }
+      player = r
+    }
+    return { fields: { sessionDate, rowId: player?.id || '', player: player?.player || '', note } }
+  }
+  return { fields: { note } }
+}
+
+const already = (kind) => `That Stripe payment is already marked as ${CLASS_LABEL[kind]}.`
+async function stripeClassify(res, principal, config, body, kind) {
+  const id = clean(body.id, 220)
+  if (!STRIPE_PAY_ID.test(id)) return fail(res, 400, 'Choose the Stripe payment.')
+  const f = await classFields(kind, config, body)
+  if (f.error) return refuse(res, f)
+  // Twice is nothing new: the same answer again, no second audit entry.
+  const had = await getStripeClass(id)
+  if (had) return had.kind === kind ? res.status(200).json({ success: true, already: true, line: had }) : fail(res, 409, already(had.kind))
+  if ((await kvCommand(['SET', `jfp:paylock:${id}`, '1', 'NX', 'EX', '20'])) !== 'OK') return fail(res, 409, 'That Stripe payment is being saved just now. Refresh to check.')
+  try {
+    const all = await jfpStripePayments({ since: config.moneySince, fresh: true, term: config.term })
+    const p = [...all.payments, ...(all.next || [])].find((x) => x.id === id)
+    if (!p) return fail(res, (all.pro || []).some((x) => x.id === id) ? 409 : 404, (all.pro || []).some((x) => x.id === id) ? 'That Stripe payment is already Pro sessions money.' : 'That Stripe payment was not found in JFP payments.')
+    if ((await listMatches())[p.id]) return fail(res, 409, 'That Stripe payment is matched to a player. It cannot be marked as well.')
+    const ledger = await listLedger(config.term)
+    if (ledger.some((l) => [l['Payment ID'], l['Stripe Checkout Session ID'], l['Stripe Payment Intent ID']].some((v) => v && (v === p.id || (p.intentId && v === p.intentId))))) return fail(res, 409, 'That Stripe payment is already recorded for a player.')
+    const rec = {
+      id: p.id, intentId: p.intentId || '', kind, cents: p.amountCents, refundedCents: p.refundedCents || 0,
+      feeCents: p.feeKnown ? p.feeCents || 0 : null, feeGstCents: p.feeKnown ? p.feeGstCents || 0 : null, feeKnown: Boolean(p.feeKnown), payMethod: p.payMethod || '',
+      date: sydneyToday(Date.parse(p.at)), payer: p.name || '', email: p.email || '', product: p.product || '', linkId: p.linkId || '',
+      ...f.fields, by: principal.email, at: new Date().toISOString(),
+    }
+    if (Number(await kvCommand(['HSETNX', STRIPE_CLASS, id, JSON.stringify(rec)])) !== 1) {
+      const now = await getStripeClass(id)
+      return now?.kind === kind ? res.status(200).json({ success: true, already: true, line: now }) : fail(res, 409, already(now?.kind || kind))
+    }
+    // Not flagged on Telegram as "not matched to a player" any more.
+    await silenceFlag(p.id).catch(() => {})
+    await audit({ by: principal.email, action: `money.stripe${kind[0].toUpperCase()}${kind.slice(1)}`, target: id, after: { cents: rec.cents, feeCents: rec.feeCents, date: rec.date, ...f.fields } })
+    return res.status(200).json({ success: true, line: rec, ...(kind === 'holiday' ? { periodLabel: periodLabel(rec.period) } : {}) })
+  } finally { await kvCommand(['DEL', `jfp:paylock:${id}`]).catch(() => {}) }
+}
+// Back to JFP payments (Unmatched Stripe, if no family email is on a row).
+async function stripeUnclassify(res, principal, body, kind) {
+  const id = clean(body.id, 220)
+  if (!STRIPE_PAY_ID.test(id)) return fail(res, 400, 'Choose the Stripe payment.')
+  const had = await getStripeClass(id)
+  if (!had) return fail(res, 404, `That Stripe payment is not marked as ${CLASS_LABEL[kind]}.`)
+  if (had.kind !== kind) return fail(res, 409, `That Stripe payment is marked as ${CLASS_LABEL[had.kind]}, not ${CLASS_LABEL[kind]}.`)
+  await kvCommand(['HDEL', STRIPE_CLASS, id])
+  await audit({ by: principal.email, action: `money.stripe${kind[0].toUpperCase()}${kind.slice(1)}Undo`, target: id, before: { cents: had.cents, date: had.date, ...(had.period ? { period: had.period } : {}) } })
+  return res.status(200).json({ success: true, id })
 }
 
 // ---------- charges (Money > Extra sessions) ----------
@@ -282,6 +385,13 @@ async function bankInvoice(req, res, principal, config, body, deps) {
 
 export async function moneyAction(req, res, principal, config, body, action, deps) {
   switch (action) {
+    case 'stripeClassOptions': return stripeClassOptions(res, config, body)
+    case 'stripeHoliday': return stripeClassify(res, principal, config, body, 'holiday')
+    case 'stripeHolidayUndo': return stripeUnclassify(res, principal, body, 'holiday')
+    case 'stripePro': return stripeClassify(res, principal, config, body, 'pro')
+    case 'stripeProUndo': return stripeUnclassify(res, principal, body, 'pro')
+    case 'stripeNotJfp': return stripeClassify(res, principal, config, body, 'notJfp')
+    case 'stripeNotJfpUndo': return stripeUnclassify(res, principal, body, 'notJfp')
     case 'stripeMatch': return stripeMatch(res, principal, config, body, deps)
     case 'stripeMatchRules': return matchRules(res)
     case 'stripeMatchForget': return matchForget(res, principal, body)

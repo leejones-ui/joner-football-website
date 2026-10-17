@@ -64,6 +64,7 @@ const MONEY = {
   nextTermPayments: [{ id: 'cs_n1', at: '2026-10-09T00:00:00.000Z', name: 'Next Parent', email: 'next@example.com', cents: 50000, feeCents: 1020, product: 'JFP Term 1 2027 hold', forTerm: 'Term 1 2027' }],
   locations, players,
   unmatched: [{ id: 'cs_3', at: '2026-10-09T00:00:00.000Z', name: '@Stranger', email: 'stranger@example.com', cents: 10000, product: 'JFP' }],
+  stripeMarked: [{ id: 'cs_9', kind: 'holiday', cents: 12000, date: '2026-09-22', name: 'Hana Test', product: '1 on 1 session', periodLabel: 'Spring holidays 2026' }],
 }
 const fresh = () => structuredClone(MONEY)
 // Redesign (16 Oct 2026): Stripe, bank, cash and other sit in the Breakdown
@@ -94,6 +95,10 @@ await test('all venues: kept after Stripe fees leads, with taken, fees, refunds,
   assert.match(p.text('#m-next summary'), /^Next term A\$500 paid early · not in this term$/)
   assert.ok(p.$('#m-unmatched details'), 'the unmatched list shows under All')
   assert.match(p.text('#m-unmatched summary'), /^Unmatched Stripe 1 not linked to a player/)
+  // More (18 Oct 2026): the bank line choices for a Stripe payment, and the ones marked, to put back.
+  assert.deepEqual([...p.d.querySelectorAll('#m-unmatched [data-sc-id="cs_3"]')].map((b) => [b.dataset.sc, b.textContent]), [['holiday', 'Holiday training'], ['pro', 'Pro sessions'], ['notJfp', 'Not JFP']])
+  assert.match(p.text('#m-stripe-marked'), /Marked as not JFP term income \(1\)Hana TestHoliday training · Spring holidays 2026/)
+  assert.ok(p.$('#m-stripe-marked [data-sc-undo="cs_9"][data-sc-kind="holiday"]'))
   assert.match(p.text('#m-top .jm-alert'), /1 player has paid in Stripe, not in Airtable yet/)
   assert.deepEqual([chip(p, ''), chip(p, 'paid'), chip(p, 'unpaid'), chip(p, 'part'), chip(p, 'stripe')], ['7', '2', '2', '1', '1'])
   assert.equal(rows(p), 7)

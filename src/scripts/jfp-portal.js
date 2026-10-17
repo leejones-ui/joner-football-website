@@ -19,6 +19,7 @@ import { drawFamilies, sessionModal } from './jfp-portal-family.js'
 import { psHead, psSearch, psSelect, psBadge, psChips, psToolsMore, psHelp, PS_PAY } from './jfp-portal-ps.js'
 import { bankPanel, bindBank, loadBank, bankDone, bankStale, bankLink, bankSummary, openBankList, watchBank } from './jfp-portal-bank.js'
 import { renderHolidayMoney, holidayStale, holidayData } from './jfp-portal-holiday.js'
+import { stripeMore, stripeMarkedFold, onStripeClass } from './jfp-portal-stripe-class.js'
 import { showingPicker, bindShowing, renderPastTerm, renderMoneyYear, redrawYearChart } from './jfp-portal-years.js'
 import { renderPricesPage, quickModal, progPill, WHERE as QUICK_WHERE } from './jfp-portal-quick.js'
 import { playerFormHtml, wirePlayerForm, filledValues, customOptions, customPrices, noGroupPaymentHtml, wireNoGroupPayment, PROFILE_LISTS } from './jfp-portal-player-form.js'
@@ -2555,7 +2556,9 @@ async function renderMoney(pre) {
     for (const p of s.players) counts[p.status] = (counts[p.status] || 0) + 1
     drawTools()
     // Payments not tied to a player belong to no venue, so they show under All only.
-    $('m-unmatched').innerHTML = !s.id && m.unmatched.length ? sec('m-unmatched-box', 'Unmatched Stripe', `<b>${m.unmatched.length}</b> not linked to a player`, `<ul class="jm-hist">${m.unmatched.map((u) => `<li><span><b>${esc(u.name || u.email || 'No name')}</b><small>${esc(u.email)} · ${esc(new Date(u.at).toLocaleDateString('en-AU'))} · ${esc(u.product)}</small></span><span class="jm-hist-go"><span class="amt">${esc(money(u.cents))}</span>${u.remembered ? `<span class="ps-tag" title="Matches itself at the next Stripe sync">Remembered: ${esc((u.remembered.players || []).join(', '))}</span>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-match="${esc(u.id)}">Match to player</button></span></li>`).join('')}</ul>`, 'Paid with an email that is not on any Term 4 row. Match each one to the player it was for.') : ''
+    // More (18 Oct 2026): holiday training, Pro sessions or not JFP, like a bank line; Marked puts one back.
+    const marked = m.stripeMarked || []
+    $('m-unmatched').innerHTML = !s.id && (m.unmatched.length || marked.length) ? sec('m-unmatched-box', 'Unmatched Stripe', `<b>${m.unmatched.length}</b> not linked to a player`, `<ul class="jm-hist">${m.unmatched.map((u) => `<li><span><b>${esc(u.name || u.email || 'No name')}</b><small>${esc(u.email)} · ${esc(new Date(u.at).toLocaleDateString('en-AU'))} · ${esc(u.product)}</small></span><span class="jm-hist-go"><span class="amt">${esc(money(u.cents))}</span>${u.remembered ? `<span class="ps-tag" title="Matches itself at the next Stripe sync">Remembered: ${esc((u.remembered.players || []).join(', '))}</span>` : ''}<button type="button" class="j-btn j-btn-line j-btn-sm" data-match="${esc(u.id)}">Match to player</button>${stripeMore(u)}</span></li>`).join('')}</ul>${stripeMarkedFold(marked)}`, 'Paid with an email that is not on any Term 4 row. Match each one to the player it was for, or use More if it was holiday training, Pro sessions or not JFP.') : ''
     keepFolds($('m-unmatched'))
   }
   // The Players page toolbar (Lee, 14 Oct 2026): search, Payment, Group,
@@ -2685,7 +2688,11 @@ async function renderMoney(pre) {
     if (!r2.ok) return toast(r2.data.error)
     toast('Up to date with Stripe'); renderMoney()
   })
-  $('m-unmatched').addEventListener('click', (e) => { const b = e.target.closest('[data-match]'); if (b) matchModal(m.unmatched.find((u) => u.id === b.dataset.match)) })
+  const stripeClassUi = { post, toast, confirm: confirmBox, modal, closeModal, after: (kind) => { holidayStale(); if (kind === 'pro') forget('pro:'); renderMoney() } }
+  $('m-unmatched').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-match]'); if (b) return matchModal(m.unmatched.find((u) => u.id === b.dataset.match))
+    await onStripeClass(e, m.unmatched, stripeClassUi)
+  })
 }
 
 async function notesModal(rowId) {

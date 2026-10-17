@@ -28,7 +28,7 @@ export async function holidayData(post, { period = '', fresh = false, quick = fa
 // Something changed it (a bank line marked as holiday, or put back).
 export function holidayStale() { H.data = null; H.at = 0 }
 
-const STATUS = { paid: ['Paid', 'green'], cancelled: ['Cancelled', 'grey'], bank: ['Bank transfer', 'blue'], 'stripe-only': ['Paid, not confirmed', 'amber'], 'no-booking': ['Booking not found', 'amber'], link: ['Payment link', 'green'], 'link-check': ['Payment link, to check', 'amber'] }
+const STATUS = { paid: ['Paid', 'green'], cancelled: ['Cancelled', 'grey'], bank: ['Bank transfer', 'blue'], 'stripe-only': ['Paid, not confirmed', 'amber'], 'no-booking': ['Booking not found', 'amber'], link: ['Payment link', 'green'], 'link-check': ['Payment link, to check', 'amber'], marked: ['Stripe, marked', 'blue'] }
 const pill = (s) => `<span class="j-pill j-pill-${STATUS[s]?.[1] || 'grey'}">${esc(STATUS[s]?.[0] || s)}</span>`
 
 // A small table that stacks into one block per row on a phone.
@@ -67,11 +67,11 @@ function checkBlock(v) {
 }
 
 function lineHtml(x) {
-  const what = x.kind === 'bank' ? `Bank transfer · ${esc(x.who || 'no payer name')}` : x.link ? `Payment link · ${esc(x.note || 'holiday training')}${x.players?.length ? ` · ${esc(x.players.join(', '))}` : ''}` : `${esc(x.typeName)}${x.seats > 1 ? ` · ${plural(x.seats, 'player')}` : ''}${x.who ? ` · ${esc(x.who)}` : ''}`
-  const when = x.kind === 'bank' ? `${x.sessionDate ? `Session ${esc(day(x.sessionDate))} · ` : ''}came in ${esc(day(x.paidDate))}` : x.link ? `Paid ${esc(day(x.paidDate))}${x.who ? ` · ${esc(x.who)}` : ''}` : `${esc(day(x.sessionDate) || 'No session date')}${x.time ? ` ${esc(hhmm(x.time))}` : ''} · paid ${esc(day(x.paidDate))}`
+  const what = x.kind === 'bank' ? `Bank transfer · ${esc(x.who || 'no payer name')}` : x.marked ? `Stripe payment · ${esc(x.who || 'no name')}` : x.link ? `Payment link · ${esc(x.note || 'holiday training')}${x.players?.length ? ` · ${esc(x.players.join(', '))}` : ''}` : `${esc(x.typeName)}${x.seats > 1 ? ` · ${plural(x.seats, 'player')}` : ''}${x.who ? ` · ${esc(x.who)}` : ''}`
+  const when = x.kind === 'bank' || x.marked ? `${x.sessionDate ? `Session ${esc(day(x.sessionDate))} · ` : ''}came in ${esc(day(x.paidDate))}` : x.link ? `Paid ${esc(day(x.paidDate))}${x.who ? ` · ${esc(x.who)}` : ''}` : `${esc(day(x.sessionDate) || 'No session date')}${x.time ? ` ${esc(hhmm(x.time))}` : ''} · paid ${esc(day(x.paidDate))}`
   const money2 = x.kind === 'bank' ? '' : ` · taken ${esc(money(x.takenCents))}${x.refundedCents ? ` · refunded ${esc(money(x.refundedCents))}` : ''} · ${x.feeCents == null ? 'fee still loading' : `fee ${esc(money(x.feeCents))}`}`
   return `<li class="jh-line" data-hline="${esc(x.id)}"><span><b>${what}</b><small>${when}</small><small>${esc(x.coach)} · ${esc(x.location)}${money2}${x.note && !x.link ? ` · ${esc(x.note)}` : ''}${x.kind === 'stripe' ? ` · ${esc(x.bookingId || x.id)}` : ''}</small></span>
-    <span class="jh-right"><span class="amt">${esc(money(x.keptCents))}</span>${pill(x.status)}${x.kind === 'bank' ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-hundo="${esc(x.id)}">Put back</button>` : ''}</span></li>`
+    <span class="jh-right"><span class="amt">${esc(money(x.keptCents))}</span>${pill(x.status)}${x.kind === 'bank' || x.marked ? `<button type="button" class="j-btn j-btn-line j-btn-sm" data-hundo="${esc(x.id)}">Put back</button>` : ''}</span></li>`
 }
 
 // ---------- the CSV ----------
@@ -203,11 +203,13 @@ function paintHoliday(ui, v) {
     const b = e.target.closest('[data-hundo]')
     if (!b) return
     const x = v.lines.find((l) => l.id === b.dataset.hundo)
-    if (!(await ui.confirm(`Put <b>${esc(money(x.takenCents))}</b> from ${esc(x.who || 'the bank')} back on Bank transfers to check? It comes out of holiday training.`, { ok: 'Put it back' }))) return
+    // A Stripe payment marked from Unmatched Stripe goes back to JFP payments.
+    const where = x.marked ? 'in JFP payments (Unmatched Stripe)' : 'on Bank transfers to check'
+    if (!(await ui.confirm(`Put <b>${esc(money(x.takenCents))}</b> from ${esc(x.who || (x.marked ? 'Stripe' : 'the bank'))} back ${where}? It comes out of holiday training.`, { ok: 'Put it back' }))) return
     b.disabled = true
-    const r = await post('bankHolidayUndo', { id: x.id })
+    const r = await post(x.marked ? 'stripeHolidayUndo' : 'bankHolidayUndo', { id: x.id })
     if (!r.ok) { b.disabled = false; return toast(r.data.error) }
-    toast('Back on Bank transfers to check')
+    toast(`Back ${where}`)
     ui.bankStale?.()
     holidayStale()
     renderHolidayMoney(ui)

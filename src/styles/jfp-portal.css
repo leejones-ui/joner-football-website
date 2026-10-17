@@ -1197,3 +1197,7 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 /* "?" help beside a Money card title. */
 .jm-h2help { display: flex; align-items: center; gap: 8px; }
 .jm-help .ps-help-body { font-size: 13px; font-weight: 400; line-height: 1.5; letter-spacing: normal; text-transform: none; color: var(--j-ink-2); }
+/* Unmatched Stripe > More (18 Oct 2026): the menu sits at the right end of the row. */
+#m-unmatched .jm-hist-go .jm-more-list { left: auto; right: 0; }
+#m-unmatched [data-sc="notJfp"] { color: var(--j-red); }
+#m-stripe-marked .jm-hist li > span:first-child { min-width: 0; overflow-wrap: anywhere; }

@@ -52,7 +52,8 @@ export function proLines({ rows = [], stripe = { pro: [] }, ledger = [], bankLin
   const lines = []
   for (const p of stripe.pro || []) {
     const q = p.jfpRef ? payreqById.get(p.jfpRef) : null
-    let rowIds = (q?.term4Ids || []).filter((id) => proIds.has(id))
+    // A Stripe payment Lee marked as Pro sessions can name the player (markedRowIds).
+    let rowIds = (q?.term4Ids || p.markedRowIds || []).filter((id) => proIds.has(id))
     // A link made from a row says which rows. A quick link with no player
     // waits for Lee to look at it; it is never put on a family by email.
     const unplaced = Boolean(q?.quick) && !rowIds.length
@@ -60,7 +61,7 @@ export function proLines({ rows = [], stripe = { pro: [] }, ledger = [], bankLin
     const fee = p.feeKnown ? p.feeCents || 0 : null
     lines.push({
       kind: 'stripe', id: p.id, intentId: p.intentId || '', paidDate: sydneyToday(Date.parse(p.at)), rowIds,
-      who: nameOf(rowIds) || p.name || p.email || '', payer: p.name || '', note: q?.forText || (p.jfpRef ? 'Pro sessions link' : p.product || ''), quick: Boolean(q?.quick), toCheck: unplaced,
+      who: nameOf(rowIds) || p.name || p.email || '', payer: p.name || '', note: q?.forText || (p.jfpRef ? 'Pro sessions link' : p.marked ? `Marked as Pro sessions · ${p.product || 'Stripe'}` : p.product || ''), quick: Boolean(q?.quick), toCheck: unplaced,
       takenCents: p.amountCents, refundedCents: p.refundedCents || 0, feeCents: fee, feeGstCents: p.feeKnown ? p.feeGstCents || 0 : null,
       keptCents: p.amountCents - (p.refundedCents || 0) - (fee || 0), feePending: !p.feeKnown, payMethod: p.payMethod || '',
     })
