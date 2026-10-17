@@ -2937,7 +2937,8 @@ async function renderCoach(keep = false) {
 
 // A player's football information for their coach (Lee, 15 Oct 2026): who
 // they play for, age, level, positions, and what they want to work on. The
-// family fills it in from My account; no contacts, medical notes or money.
+// family fills it in from My account; medical notes too (Lee, 18 Oct 2026),
+// never contacts or money.
 async function coachPlayerModal(rowId) {
   const r = await post('coachPlayer', { rowId, coachId: P.coachId })
   if (!r.ok) return toast(r.data.error || 'Could not open that player.')
@@ -2951,6 +2952,7 @@ async function coachPlayerModal(rowId) {
   const empty = !rows.some(([k]) => k !== 'Age') && !p.goals
   modal(`<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">${avatar(p.photo, p.name, 56)}<div><h2 style="margin:0">${esc(p.name)}</h2><p class="muted small">${esc(p.session)}${p.trial ? ` · <span class="j-pill j-pill-blue">Trial${p.trialDate ? ` ${esc(p.trialDate)}` : ''}</span>` : ''}</p></div></div>
     ${rows.length ? `<dl class="j-kv">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
+    <div class="j-box ${p.medical ? 'j-box-amber' : 'j-box-grey'}" style="margin-top:12px"><b>Medical notes</b><p style="margin-top:4px;white-space:pre-wrap">${p.medical ? esc(p.medical) : '<span class="muted">None given.</span>'}</p></div>
     <div class="j-box j-box-grey" style="margin-top:12px"><b>What ${esc(first)} wants to work on</b><p style="margin-top:4px;white-space:pre-wrap">${p.goals ? esc(p.goals) : '<span class="muted">Not filled in yet.</span>'}</p></div>
     ${p.note || p.startsLabel ? `<div class="j-box j-box-amber" style="margin-top:10px"><b>Note from Lee and Ligia</b><p style="margin-top:4px">${esc([p.startsLabel, p.note].filter(Boolean).join(' · '))}</p></div>` : ''}
     ${empty ? `<p class="muted small" style="margin-top:10px">The family has not added ${esc(first)}'s football details yet. They do it in their account under Player information.</p>` : ''}

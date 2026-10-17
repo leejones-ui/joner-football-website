@@ -3,7 +3,8 @@
 //   npm run build && node scripts/holiday-local.mjs 4321
 //   node scripts/test-jfp-coach-player-flow.mjs 4321
 // Club, team, age, level, positions, what they want to work on and the note
-// from Lee and Ligia. Only their own players; never contacts or medical notes.
+// from Lee and Ligia, and medical notes (Lee, 18 Oct 2026). Only their own
+// players; never contacts or money.
 // Every name here is invented.
 import assert from 'node:assert/strict'
 
@@ -39,15 +40,16 @@ const rowId = (await ok('addPlayer', { groupId: G, force: true, player: { name: 
 await ok('saveProfile', { rowId, values: { club: 'Gladesville Ravens', team: 'U12 Div 1', level: 'Club Division 1', positions: ['Winger', 'Striker'], foot: 'Left', goals: 'Weak foot finishing. Shy at first, give him time.', medical: 'Asthma, puffer in bag', emergencyName: 'Aunt Example', emergencyPhone: '0400 999 888' } })
 await ok('setCoachNote', { rowId, text: 'Back from a sprained ankle, ease in' })
 
-await test('Sam sees his player: plays for, level, positions, foot, what they want to work on, the note; no contacts or medical', async () => {
+await test('Sam sees his player: plays for, level, positions, foot, what they want to work on, the note, medical notes; no contacts or money', async () => {
   const r = await sam.call('/api/jfp-portal-data', { action: 'coachPlayer', rowId })
   assert.equal(r.status, 200, JSON.stringify(r.data))
   const p = r.data.player
   assert.deepEqual([p.name, p.club, p.team, p.level, p.positions, p.foot, p.trial], ['Remy Calloway', 'Gladesville Ravens', 'U12 Div 1', 'Club Division 1', ['Winger', 'Striker'], 'Left', true])
   assert.match(p.goals, /Weak foot finishing/)
   assert.equal(p.note, 'Back from a sprained ankle, ease in')
+  assert.equal(p.medical, 'Asthma, puffer in bag')
   const all = JSON.stringify(r.data)
-  for (const bad of ['Asthma', '0400', 'remy.c@example.com', 'Remy Parent', 'Aunt Example', 'feeCents', 'paidCents']) assert.ok(!all.includes(bad), `no ${bad}`)
+  for (const bad of ['0400', 'remy.c@example.com', 'Remy Parent', 'Aunt Example', 'feeCents', 'paidCents']) assert.ok(!all.includes(bad), `no ${bad}`)
 })
 
 await test('Dean is not this player\'s coach: refused', async () => {

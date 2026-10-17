@@ -3064,7 +3064,9 @@ async function handle(req, res) {
     // A player's football information for their coach (Lee, 15 Oct 2026):
     // club, team, age, level, positions, foot, what they want to work on and
     // the note from Lee and Ligia. Only players in this coach's own sessions
-    // (or one they are covering). Never contacts, medical notes or money.
+    // (or one they are covering). Never contacts or money. Medical notes yes
+    // (Lee, 18 Oct 2026: "coaches can see medical notes"): the profile's, else
+    // what the signed waiver said.
     if (action === 'coachPlayer') {
       const coachId = isAdmin ? clean(body.coachId, 30) || principal.coachId : principal.coachId
       const rowId = clean(body.rowId, 30)
@@ -3078,12 +3080,14 @@ async function handle(req, res) {
       const dob = prof?.dob || isoDate(r.dob) || w?.dob || ''
       const trial = /trial/i.test(r.paymentType)
       const info = coachInfo(r, notes, config)
+      const wv = prof ? null : (w || waiverFor(r.player, { emails: rowEmails(r), phones: [r.phone], dob: r.dob }, roster.waivers))
+      const medical = String(prof ? prof.medical || '' : wv ? (await waiverPrefill(wv.id).catch(() => ({}))).medical || '' : '').trim()
       return res.status(200).json({ success: true, player: {
         rowId: r.id, name: r.player, age: dob ? ageOn(dob, sydneyToday()) : playerAge(r, config.termStart), photo: prof?.photo || '',
         session: `${g.day} ${g.time}, ${locationFor(config, g.location).name}`, trial, trialDate: trial && trialDateOf(r) ? dateLabel(trialDateOf(r)) : '',
         club: prof?.club || w?.club || '', team: prof?.team || '', level: prof?.level || '', playingUp: prof?.playingUp || '', positions: prof?.positions || [], foot: prof?.foot || '',
         yearsPlaying: prof?.yearsPlaying || '', repTeam: prof?.repTeam || '', otherTraining: prof?.otherTraining || '', goals: prof?.goals || '',
-        note: info.note, startsLabel: info.startsLabel, updatedAt: prof?.updatedAt || '',
+        note: info.note, startsLabel: info.startsLabel, updatedAt: prof?.updatedAt || '', medical,
       } })
     }
 
