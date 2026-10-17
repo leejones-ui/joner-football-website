@@ -10,6 +10,10 @@ const appSeoSitemapRules = /** @type {const} */ ({
   '/app/for-coaches/': { priority: 0.85, changefreq: 'monthly' },
   '/free-bundle/': { priority: 0.8, changefreq: 'monthly' },
   '/reviews/': { priority: 0.9, changefreq: 'weekly' },
+  '/training/jfp-program/': { priority: 0.9, changefreq: 'weekly' },
+  '/training/jfp-program/belrose-hq/': { priority: 0.8, changefreq: 'monthly' },
+  '/training/jfp-program/north-turramurra/': { priority: 0.8, changefreq: 'monthly' },
+  '/training/jfp-program/rydalmere/': { priority: 0.8, changefreq: 'monthly' },
 });
 
 export default defineConfig({
@@ -25,6 +29,11 @@ export default defineConfig({
         '/jfp-portal/',
         '/jfp-portal/holiday/',
         '/jfp-account/',
+        '/jfp-invoice/',
+        '/jfp-pay/',
+        '/stay/',
+        '/camps/sydney-big-1-july/',
+        '/camps/sydney-july-2026/',
         '/holiday-bookings/',
         '/holiday-bookings/success/',
         '/holiday-admin/',
@@ -39,7 +48,6 @@ export default defineConfig({
 
         '/new-coaching-role/',
         '/training/joners-juniors/',
-        '/training/jfp-program/',
         '/email-assets/',
         '/free-bundle/watch/',
       ];

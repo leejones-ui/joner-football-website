@@ -1,9 +1,12 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 
-const title = 'JFP Program | Joner Football'
-const description = 'Joner Football Performance is a term by term Sydney football training program for ages 8 and over, built around technical, physical and mental development.'
-const canonical = '/training/jfp-program/'
+import { faqSchema, breadcrumbSchema, webPageSchema } from '../../lib/seoSchema'
+import { venues, venuePath, jfpTerm, priceText, jfpServiceSchema, JFP_URL, SITE } from '../../data/jfp-public.js'
+
+const title = 'JFP Small Group Football Training in Sydney | Joner Football'
+const description = 'Joner Football Performance (JFP): small group football training for ages 8 and over at our indoor HQ in Belrose, North Turramurra and Rydalmere. 10 week terms.'
+const canonical = JFP_URL
 
 const stats = [
   { value: '2013', label: 'Program launched' },
@@ -13,23 +16,13 @@ const stats = [
   { value: '3', label: 'Sydney locations' },
 ]
 
-const locations = [
-  {
-    title: 'HQ Facility Belrose',
-    text: 'Afternoon sessions inside the Joner Football HQ. Indoor, weatherproof, high quality.',
-    mapUrl: 'https://www.google.com/maps/search/?api=1&query=20+Narabang+Way+Belrose+NSW+2085',
-  },
-  {
-    title: 'North Turramurra',
-    text: 'Early morning field sessions for players who want extra work before school.',
-    mapUrl: 'https://www.google.com/maps/search/?api=1&query=North+Turramurra+Recreation+Area+NSW',
-  },
-  {
-    title: 'Rydalmere Park',
-    text: 'Morning field sessions for the wider Sydney football community.',
-    mapUrl: 'https://www.google.com/maps/search/?api=1&query=Rydalmere+Park+Sydney+NSW',
-  },
-]
+const locations = venues.map((v) => ({
+  title: v.name,
+  area: v.area,
+  text: v.card,
+  href: venuePath(v),
+  mapUrl: v.maps,
+}))
 
 const pathwayStages = [
   {
@@ -65,7 +58,7 @@ const pathwayStages = [
   },
 ]
 
-const unlocks = [
+const includes = [
   { title: '10 Week Terms', text: 'Clear term structure to build habits and measure progress.' },
   { title: 'Player Reports', text: 'Development feedback so parents and players know what is improving.' },
   { title: 'Elite Coaching', text: 'High-detail technical coaching from the Joner Football team.' },
@@ -105,14 +98,32 @@ const coaching = [
   { id: '-V88Iy1X-is', title: 'Passing Drills to Improve Speed and Accuracy' },
 ]
 
-const faqs = [
-  ['What does the player need to bring?', 'Soccer boots for synthetic, shin guards, drink bottle, waterproof jacket, a smile, a good attitude, and training kit supplied by Deploy.'],
-  ['What should players expect?', 'Energy, enthusiasm, intensity, knowledge, new drills, and coaches who go above and beyond to help players learn.'],
-  ['Will bad weather cancel the session?', 'No. Only really bad storms can alter the session. Afternoon HQ sessions are indoors, so bad weather is far less of a problem.'],
-  ['Who will be in my son or daughter\'s group?', groupingLine],
-  [oneToOneFaq.q, oneToOneFaq.a],
-  ['Can we apply for more than one session?', 'Yes. On the timetable, pick as many sessions as suit you and send them in one go. We reply to each one within 48 hours.'],
+// Visible FAQ and FAQPage JSON-LD come from this one list, so they always match.
+const faqItems = [
+  { q: 'What is JFP?', a: 'JFP (Joner Football Performance) is Joner Football\'s term by term small group football training program in Sydney, run since 2013. Players train technically, physically and mentally in 60 minute sessions, up to three times a week.' },
+  { q: 'What ages is JFP for?', a: 'JFP small groups are for players aged 8 and over, of all ability levels. Younger players can start in JFP Pathway sessions at Belrose HQ, and children aged 3 to 6 can join Joners Juniors on Saturday mornings.' },
+  { q: 'Where does JFP train?', a: 'At three places in Sydney: the indoor Joner Football HQ in Belrose on the Northern Beaches, North Turramurra Recreation Area on the Upper North Shore (Wednesday and Thursday mornings), and Rydalmere Park near Parramatta (Friday mornings).' },
+  { q: 'How do terms work?', a: `JFP runs in ${jfpTerm.weeks} week terms with one 60 minute session a week in each group you join. ${jfpTerm.term} runs from ${jfpTerm.termRange}. Joining late? You only pay for the sessions left.` },
+  { q: 'How much does JFP cost?', a: `${jfpTerm.term} prices: a small group place is ${priceText.group} for the term. Two sessions a week, or two siblings, is ${priceText.twoAWeek}. A JFP Pathway term for younger players is ${priceText.pathway}. The full price list is on the booking page.` },
+  { q: 'Can my child do a trial session?', a: `Yes. When you apply, coaches may offer a trial session first. A trial costs ${priceText.trial} and comes off the term fee if your player joins.` },
+  { q: 'What kit does my child need?', a: `The JF playing kit is compulsory for every JFP player (${priceText.kit}, ordered from BE Teamsport). Players also need boots for synthetic grass, shin guards, a drink bottle and a waterproof jacket.` },
+  { q: 'How do I book?', a: 'Open the JFP timetable on the booking page, pick the sessions that suit you and apply. You can apply for more than one session at once. We reply to each within 48 hours with a place, a trial first, or a group that suits better.' },
+  { q: 'Who will be in my son or daughter\'s group?', a: groupingLine },
+  { q: 'Will bad weather cancel the session?', a: 'No. Only really bad storms can alter the session. Belrose HQ sessions are indoors, so bad weather is far less of a problem.' },
+  { q: oneToOneFaq.q, a: oneToOneFaq.a },
 ]
+
+const schema = [
+  webPageSchema({ name: title, description, url: JFP_URL }),
+  breadcrumbSchema([
+    { name: 'Home', url: `${SITE}/` },
+    { name: 'Sydney Football Training', url: `${SITE}/training/` },
+    { name: 'JFP Program', url: JFP_URL },
+  ]),
+  jfpServiceSchema(),
+  faqSchema(faqItems),
+]
+
 
 import SanityPageRenderer from '../../components/sanity/SanityPageRenderer.astro'
 import BookNowButton from '../../components/BookNowButton.astro'
@@ -131,7 +142,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
 {shouldReplaceSanityPage(sanityPage) ? (
   <SanityPageRenderer page={sanityPage} />
 ) : (
-<BaseLayout title={title} description={description} canonical={canonical} noindex={true} hideMobileAppCta>
+<BaseLayout title={title} description={description} canonical={canonical} schema={schema} ogImage={`${SITE}/images/training/jfp/jfp-training-1.webp`} hideMobileAppCta>
   <Fragment slot="head">
   </Fragment>
 
@@ -146,12 +157,12 @@ const sanityPage = await fetchSanityPage('jfp-program')
 
           <div class="relative z-10 flex min-h-[620px] flex-col lg:min-h-[700px] lg:flex-row">
             <div class="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10 sm:py-14 lg:p-14">
-              <p class="mb-4 font-heading text-xs uppercase tracking-[0.25em] text-joner-red sm:text-sm">Sydney player development</p>
+              <p class="mb-4 font-heading text-xs uppercase tracking-[0.25em] text-joner-red sm:text-sm">Small group football training, Sydney</p>
               <h1 class="mb-6 text-white font-heading text-5xl font-bold uppercase leading-[0.9] sm:text-6xl md:text-7xl lg:text-8xl">
                 Joner Football<br />Performance
               </h1>
               <p class="mb-8 max-w-lg font-body text-base leading-relaxed text-neutral-300 sm:text-lg">
-                Sydney's flagship player development program. Ages 8 and over. Train technically, physically, and mentally with the JFP team.
+                Small group football training for ages 8 and over at our indoor HQ in Belrose, North Turramurra and Rydalmere Park. Train technically, physically, and mentally with the JFP team.
               </p>
               <div class="flex flex-wrap gap-3">
                 <BookNowButton size="lg" place="jfp-program-hero" />
@@ -285,7 +296,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
         <a href="#program" class="shrink-0 hover:text-joner-red">Program</a>
         <a href="#what-you-get" class="shrink-0 hover:text-joner-red">What You Get</a>
         <a href="#locations" class="shrink-0 hover:text-joner-red">Locations</a>
-        <a href="#unlocks" class="shrink-0 hover:text-joner-red">Inside JFP</a>
+        <a href="#includes" class="shrink-0 hover:text-joner-red">Inside JFP</a>
         <a href="#videos" class="shrink-0 hover:text-joner-red">Videos</a>
         <a href={BOOKING_URL} class="shrink-0 text-joner-red hover:text-white" data-book-now="jfp-program-subnav">Book now</a>
         <a href="#training-form" class="shrink-0 hover:text-joner-red">Enquire</a>
@@ -429,28 +440,37 @@ const sanityPage = await fetchSanityPage('jfp-program')
       <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.12),transparent_60%)] pointer-events-none"></div>
       <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="mb-10 text-center">
-          <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">North Turramurra | Belrose HQ | Rydalmere Park</p>
+          <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">Belrose HQ | North Turramurra | Rydalmere Park</p>
           <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
-            Locations
+            Where JFP trains in Sydney
           </h2>
         </div>
         <div class="mb-10 grid grid-cols-1 gap-5 md:grid-cols-3">
           {locations.map((location) => (
             <article class="flex flex-col rounded-xl border border-white/10 bg-black/45 p-6 backdrop-blur-sm">
-              <h3 class="mb-4 font-heading text-2xl uppercase leading-none text-white">{location.title}</h3>
+              <p class="mb-2 font-heading text-xs uppercase tracking-[0.22em] text-joner-red">{location.area}</p>
+              <h3 class="mb-4 font-heading text-2xl uppercase leading-none text-white">
+                <a href={location.href} class="hover:text-joner-red">{location.title}</a>
+              </h3>
               <p class="mb-5 flex-1 font-body text-sm leading-relaxed text-neutral-400 md:text-base">{location.text}</p>
-              <a
-                href={location.mapUrl}
-                target="_blank"
-                rel="noopener"
-                class="inline-flex items-center gap-2 self-start font-heading text-xs uppercase tracking-[0.22em] text-joner-red hover:text-white"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-                <span>Open in Google Maps</span>
-              </a>
+              <div class="flex flex-wrap items-center gap-x-5 gap-y-3">
+                <a href={location.href} class="inline-flex min-h-[44px] items-center gap-2 font-heading text-xs uppercase tracking-[0.22em] text-white hover:text-joner-red">
+                  <span>JFP at {location.title}</span>
+                  <span aria-hidden="true">&rarr;</span>
+                </a>
+                <a
+                  href={location.mapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex min-h-[44px] items-center gap-2 font-heading text-xs uppercase tracking-[0.22em] text-joner-red hover:text-white"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  <span>Map</span>
+                </a>
+              </div>
             </article>
           ))}
         </div>
@@ -460,18 +480,18 @@ const sanityPage = await fetchSanityPage('jfp-program')
       </div>
     </section>
 
-    <section id="unlocks" class="scroll-mt-24 bg-gradient-to-b from-joner-black via-joner-gray to-joner-black py-16 md:py-24 relative overflow-hidden">
+    <section id="includes" class="scroll-mt-24 bg-gradient-to-b from-joner-black via-joner-gray to-joner-black py-16 md:py-24 relative overflow-hidden">
       <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.14),transparent_60%)] pointer-events-none"></div>
       <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="mb-10 text-center">
           <p class="mb-3 font-heading text-sm uppercase tracking-widest text-joner-red">Inside JFP</p>
           <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl lg:text-6xl">
-            What JFP unlocks.
+            What JFP includes.
           </h2>
         </div>
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {unlocks.map((item) => (
+          {includes.map((item) => (
             <article class="rounded-lg border border-white/10 bg-white/5 p-5">
               <h4 class="mb-2 font-heading text-lg uppercase leading-tight text-white">{item.title}</h4>
               <p class="font-body text-sm leading-relaxed text-neutral-400">{item.text}</p>
@@ -480,7 +500,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
         </div>
 
         <div class="mt-10 text-center">
-          <BookNowButton place="jfp-program-unlocks" />
+          <BookNowButton place="jfp-program-includes" />
         </div>
       </div>
     </section>
@@ -573,7 +593,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
           <h2 class="font-heading text-4xl font-bold uppercase leading-tight text-white md:text-5xl">Know before you book.</h2>
         </div>
         <div class="mb-10 space-y-3">
-          {faqs.map(([question, answer]) => (
+          {faqItems.map(({ q: question, a: answer }) => (
             <details class="group rounded-lg border border-white/10 bg-white/5 p-5">
               <summary class="flex cursor-pointer list-none justify-between gap-4 font-heading text-xl uppercase leading-tight text-white">
                 <span>{question}</span>
