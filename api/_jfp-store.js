@@ -80,8 +80,8 @@ export const PRODUCTS = [
   // the family pays the A$1,500 sibling price.
   { key: 'sibling', label: 'Sibling rate, second child', type: 'Sibling / 2 sessions per week', proRata: true, perPlaces: 1 },
   { key: 'oneToOneTerm', label: 'Term of 1 to 1s', type: 'JFP 1 on 1, 10 weeks', proRata: true, perPlaces: 1 },
-  { key: 'pathway', label: 'JFP Pathway (45 minute class)', type: 'JFP Pathway 10 weeks', proRata: true, perPlaces: 1 },
-  { key: 'pathwayOneToOne', label: 'Pathway 1 to 1 private (45 minutes)', type: 'JFP pathway 1 on 1', proRata: true, perPlaces: 1 },
+  { key: 'pathway', label: 'JFP Pathway', type: 'JFP Pathway 10 weeks', proRata: true, perPlaces: 1 },
+  { key: 'pathwayOneToOne', label: 'Pathway 1 to 1 private', type: 'JFP pathway 1 on 1', proRata: true, perPlaces: 1 },
   { key: 'trial', label: 'Trial session', type: 'JFP Trial', proRata: false, perPlaces: 1 },
   { key: 'oneToOne', label: 'One off 1 to 1', type: 'JFP 1 on 1 casual', proRata: false, perPlaces: 1 },
 ]

@@ -26,7 +26,6 @@ interface VenueCopy {
   description: string
   eyebrow: string
   h1: string
-  intro: string
   facts: { value: string; label: string }[]
   sessions: { title: string; text: string; href?: string; linkLabel?: string }[]
   venueHeading: string
@@ -39,21 +38,20 @@ interface VenueCopy {
 const copy: Record<string, VenueCopy> = {
   'belrose-hq': {
     title: 'Football Training in Belrose, Northern Beaches | JFP at Joner Football HQ',
-    description: 'Small group football training at the indoor Joner Football HQ in Belrose. After school, early morning and Saturday JFP groups for ages 8 and over. All weather.',
+    description: 'Small group football training at the indoor Joner Football HQ in Belrose. After school, early morning and Saturday JFP groups from age 3 right up to pro. All weather.',
     eyebrow: 'Belrose, Northern Beaches',
     h1: 'Football training at Belrose HQ',
-    intro: 'Joner Football Performance small groups at our own indoor facility in Belrose, on Sydney\'s Northern Beaches. All weather, all year, for players aged 8 and over.',
     facts: [
       { value: 'Indoor', label: 'All weather' },
       { value: 'Mon to Sat', label: 'Training days' },
       { value: '60 min', label: 'Sessions' },
-      { value: '8+', label: 'JFP ages' },
+      { value: '3 to pro', label: 'Ages' },
     ],
     sessions: [
       { title: 'After school small groups', text: 'Afternoon and early evening groups from Monday to Friday. This is the busiest time of the week, so places go quickly.' },
       { title: 'Early morning groups', text: 'Before school groups on some weekdays, for players who want extra work before class.' },
       { title: 'Saturday morning groups', text: 'Small groups on Saturday mornings, for families who cannot make a weekday.' },
-      { title: 'JFP Pathway', text: 'Shorter sessions for younger players who are not ready for a full JFP group yet, on Friday afternoon and Saturday morning.' },
+      { title: 'JFP Pathway', text: 'Groups for younger players who are not ready for a full JFP group yet, on Friday afternoon and Saturday morning.' },
       { title: 'Joners Juniors', text: 'Fun first football for children aged 3 to 6 on Saturday mornings.', href: '/jonersjuniors', linkLabel: 'Joners Juniors' },
       { title: '1 on 1 training', text: oneToOneSummary },
     ],
@@ -69,17 +67,16 @@ const copy: Record<string, VenueCopy> = {
     faqs: [
       { q: 'Where is JFP in Belrose?', a: 'At the Joner Football HQ, Unit 2, 20 Narabang Way, Belrose NSW 2085, with on-site parking for drop-off and collection.' },
       { q: 'Is training at Belrose HQ indoors?', a: 'Yes. The HQ is a fully indoor facility with a professional standard synthetic surface, so sessions run whatever the weather.' },
-      { q: 'What ages train at Belrose HQ?', a: 'JFP small groups are for players aged 8 and over. Younger players can start in JFP Pathway sessions, and children aged 3 to 6 can join Joners Juniors on Saturday mornings.' },
+      { q: 'What ages train at Belrose HQ?', a: 'From age 3 right up to pro players, all levels and abilities. The youngest players, aged 3 to 6, start in Joners Juniors on Saturday mornings.' },
       { q: 'Can parents watch?', a: 'Yes. The HQ has a parent viewing area so you can watch your player train.' },
       { q: 'How do I book a JFP session in Belrose?', a: 'Open the JFP timetable on the booking page, choose Belrose HQ and apply for the sessions that suit you. We reply within 48 hours with a place, a trial first, or a group that suits better.' },
     ],
   },
   'north-turramurra': {
     title: 'Soccer Training North Turramurra, Upper North Shore | JFP Small Groups',
-    description: 'Before school JFP football training at North Turramurra Recreation Area on Wednesday and Thursday mornings. Small groups for ages 8 and over, coached by Joner Football.',
+    description: 'Before school JFP football training at North Turramurra Recreation Area on Wednesday and Thursday mornings. Small groups for all levels and abilities, coached by Joner Football.',
     eyebrow: 'North Turramurra, Upper North Shore',
     h1: 'Football training in North Turramurra',
-    intro: 'Early morning JFP small groups at North Turramurra Recreation Area on the Upper North Shore. Train before school on Wednesday and Thursday, then head to class.',
     facts: [
       { value: 'Outdoor', label: 'Field sessions' },
       { value: 'Wed and Thu', label: 'Training days' },
@@ -109,10 +106,9 @@ const copy: Record<string, VenueCopy> = {
   },
   rydalmere: {
     title: 'Soccer Training Rydalmere and Parramatta | JFP Small Groups',
-    description: 'Friday morning JFP football training at Rydalmere Park near Parramatta. Before school small groups for ages 8 and over, grouped by ability, coached by Joner Football.',
+    description: 'Friday morning JFP football training at Rydalmere Park near Parramatta. Before school small groups for all levels and abilities, coached by Joner Football.',
     eyebrow: 'Rydalmere, near Parramatta',
     h1: 'Football training in Rydalmere',
-    intro: 'Friday morning JFP small groups at Rydalmere Park, close to Parramatta. Quality before school training for players in Sydney\'s west and north west.',
     facts: [
       { value: 'Outdoor', label: 'Field sessions' },
       { value: 'Friday', label: 'Training day' },
@@ -171,7 +167,7 @@ const schema = [
     provider: { '@type': 'Organization', '@id': `${SITE}/#organization`, name: 'Joner Football' },
     availableAtOrFrom: { '@id': locationId },
     areaServed: [v.locality, ...v.nearby].map((name) => ({ '@type': 'Place', name: `${name} NSW` })),
-    audience: { '@type': 'PeopleAudience', suggestedMinAge: 8 },
+    audience: { '@type': 'PeopleAudience', suggestedMinAge: 3 },
   },
   webPageSchema({ name: c.title, description: c.description, url }),
   breadcrumbSchema([
@@ -203,8 +199,7 @@ const schema = [
           <div class="relative z-10 flex flex-col lg:min-h-[560px] lg:flex-row">
             <div class="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10 sm:py-14 lg:p-14">
               <p class="mb-4 font-heading text-xs uppercase tracking-[0.25em] text-joner-red sm:text-sm">{c.eyebrow}</p>
-              <h1 class="mb-6 font-heading text-5xl font-bold uppercase leading-[0.92] text-white sm:text-6xl lg:text-7xl">{c.h1}</h1>
-              <p class="mb-8 max-w-lg font-body text-base leading-relaxed text-neutral-300 sm:text-lg">{c.intro}</p>
+              <h1 class="mb-8 font-heading text-[clamp(2.25rem,11.5vw,3rem)] font-bold uppercase leading-[0.92] text-white sm:text-6xl lg:text-7xl">{c.h1}</h1>
               <div class="flex flex-wrap gap-3">
                 <BookNowButton size="lg" place={`jfp-venue-${v.slug}-hero`} />
                 <a href={v.maps} target="_blank" rel="noopener noreferrer" class="btn-outline text-sm">Open in Google Maps</a>
@@ -302,7 +297,7 @@ const schema = [
           <a href="/training/jfp-program/" class="group flex min-w-0 flex-col rounded-xl border border-white/10 bg-white/[0.04] p-6 hover:border-white/30">
             <span class="mb-2 font-heading text-xs uppercase tracking-[0.22em] text-joner-red">The program</span>
             <span class="mb-2 font-heading text-2xl uppercase leading-none text-white">About JFP</span>
-            <span class="font-body text-sm leading-relaxed text-neutral-400">Terms, prices, kit, trials and how to book.</span>
+            <span class="font-body text-sm leading-relaxed text-neutral-400">Terms, kit, trials and how to book.</span>
           </a>
         </div>
       </div>
@@ -315,7 +310,6 @@ const schema = [
         <BookNowPanel
           eyebrow=""
           heading={`Train at ${v.name}`}
-          text="See the timetable, pick a group and apply for a place. We reply within 48 hours."
           place={`jfp-venue-${v.slug}-bottom`}
         />
       </div>

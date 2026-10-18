@@ -2,7 +2,8 @@
 // pages), written once here so the visible copy, the FAQ and the JSON-LD all
 // say the same thing. Source: the live booking config (api/_jfp-store.js and
 // /api/jfp-groups) on 18 Oct 2026.
-// UPDATE EACH TERM: term, termRange and prices. Times change every term, so the
+// UPDATE EACH TERM: term and termRange. Prices are NOT shown on public pages
+// (Lee, 18 Oct 2026): they live only in the JFP booking system. Times change every term, so the
 // pages describe the pattern and send families to the live timetable.
 import { BOOKING_URL } from '../lib/booking'
 
@@ -14,26 +15,6 @@ export const jfpTerm = {
   term: 'Term 4 2026',
   termRange: 'Monday 12 October to Saturday 19 December 2026',
   weeks: 10,
-}
-
-// Prices exactly as the public Pricing tab on /jfp-booking/ shows them.
-export const jfpPrices = {
-  group: 850,
-  twoAWeek: 1500,
-  pathway: 450,
-  trial: 85,
-  kit: 60,
-}
-
-export const kitUrl = 'https://www.besteamsport.com.au/collections/joner-football'
-
-const aud = (n) => `A$${n.toLocaleString('en-AU')}`
-export const priceText = {
-  group: aud(jfpPrices.group),
-  twoAWeek: aud(jfpPrices.twoAWeek),
-  pathway: aud(jfpPrices.pathway),
-  trial: aud(jfpPrices.trial),
-  kit: aud(jfpPrices.kit),
 }
 
 export const venues = [
@@ -115,7 +96,7 @@ export function jfpServiceSchema() {
     name: 'Joner Football Performance (JFP)',
     alternateName: 'JFP',
     serviceType: 'Small group youth football training',
-    description: `Term by term small group football (soccer) training in Sydney for players aged 8 and over. ${jfpTerm.weeks} week terms, 60 minute sessions, up to three sessions a week, at the indoor Joner Football HQ in Belrose, North Turramurra and Rydalmere Park.`,
+    description: `Term by term small group football (soccer) training in Sydney for players from age 3 right up to pro, all levels and abilities. ${jfpTerm.weeks} week terms, 60 minute sessions, up to three sessions a week, at the indoor Joner Football HQ in Belrose, North Turramurra and Rydalmere Park.`,
     url: JFP_URL,
     provider: { '@type': 'Organization', '@id': `${SITE}/#organization`, name: 'Joner Football' },
     areaServed: [
@@ -124,17 +105,7 @@ export function jfpServiceSchema() {
       { '@type': 'AdministrativeArea', name: 'Upper North Shore' },
       { '@type': 'AdministrativeArea', name: 'Parramatta' },
     ],
-    audience: { '@type': 'PeopleAudience', suggestedMinAge: 8 },
+    audience: { '@type': 'PeopleAudience', suggestedMinAge: 3 },
     availableChannel: { '@type': 'ServiceChannel', serviceUrl: `${SITE}${BOOK_URL}` },
-    hasOfferCatalog: {
-      '@type': 'OfferCatalog',
-      name: `JFP prices, ${jfpTerm.term}`,
-      itemListElement: [
-        { '@type': 'Offer', name: 'Small group, one session a week for the term', price: String(jfpPrices.group), priceCurrency: 'AUD', url: `${SITE}${BOOK_URL}` },
-        { '@type': 'Offer', name: 'Two sessions a week, or two siblings', price: String(jfpPrices.twoAWeek), priceCurrency: 'AUD', url: `${SITE}${BOOK_URL}` },
-        { '@type': 'Offer', name: 'JFP Pathway term, younger players', price: String(jfpPrices.pathway), priceCurrency: 'AUD', url: `${SITE}${BOOK_URL}` },
-        { '@type': 'Offer', name: 'Trial session (comes off the term fee)', price: String(jfpPrices.trial), priceCurrency: 'AUD', url: `${SITE}${BOOK_URL}` },
-      ],
-    },
   }
 }

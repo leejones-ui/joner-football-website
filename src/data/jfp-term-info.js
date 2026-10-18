@@ -2,7 +2,7 @@
 // booking page and in the family account ("About Term 4"), so it is said once.
 export const termInfo = [
   ['10 weeks', 'One session a week in your group, from the first week of term to the last.'],
-  ['Session length', 'Every JFP session is 60 minutes. Pathway sessions are 45 minutes.'],
+  ['Session length', 'Every JFP session is 60 minutes.'],
   ['JF playing kit', 'Compulsory from this term on. Every player trains in it. Order from the Joner Football shop.'],
   ['Joner Football App', 'Every JFP player gets free access to the app, so training keeps going between sessions.'],
   ['New booking system', 'Choose the sessions you want and apply. You can apply for more than one session in one go. We reply to each within 48 hours with a place, a trial first, or a group that suits better.'],
