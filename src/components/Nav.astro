@@ -107,9 +107,11 @@ import { APP_JOIN_URL } from '../lib/booking'
         <BookNowButton size="sm" variant="outline" label="Train in person" place="nav-desktop" />
       </div>
 
-      <!-- Mobile: Book now stays in the top bar, next to the menu button -->
-      <div class="nav-mobile-actions lg:hidden flex items-center gap-1">
-        <BookNowButton size="sm" place="nav-mobile-bar" class="nav-mobile-book" />
+      <!-- Mobile: the same two buttons as desktop (the app in red, Book now
+           outlined), next to the menu button (Lee, 18 Oct) -->
+      <div class="nav-mobile-actions lg:hidden flex items-center gap-1.5">
+        <a href={APP_JOIN_URL} class="btn-red nav-download-cta nav-mobile-cta">Download App</a>
+        <BookNowButton size="sm" variant="outline" place="nav-mobile-bar" class="nav-mobile-book nav-mobile-cta" />
         <button id="mobile-menu-btn" class="nav-mobile-btn text-white p-2 min-h-[44px] min-w-[44px] flex items-center justify-center" aria-label="Open menu">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path id="hamburger-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -193,6 +195,14 @@ import { APP_JOIN_URL } from '../lib/booking'
     #main-nav .nav-desktop-cta { display: none !important; }
     #main-nav .nav-mobile-btn { display: flex !important; }
     #main-nav .nav-mobile-actions { display: flex !important; }
+  }
+  /* The Book now button is a child component, so these need :global */
+  #main-nav :global(.nav-mobile-cta) { height: 40px; min-height: 40px !important; padding: 0 0.7rem !important; font-size: 0.8rem !important; line-height: 1 !important; white-space: nowrap !important; }
+  #main-nav :global(.nav-mobile-book) { gap: 0.35rem; }
+  @media (max-width: 374px) {
+    #main-nav :global(.nav-mobile-book .book-now-btn__icon) { display: none; }
+    #main-nav :global(.nav-mobile-cta) { padding: 0 0.5rem !important; font-size: 0.75rem !important; }
+    #main-nav .nav-mobile-btn { min-width: 40px !important; padding: 0.25rem !important; }
   }
   #main-nav .nav-cta-sm { min-height: 40px; padding: 0.5rem 0.9rem; font-size: 0.85rem; white-space: nowrap !important; }
   @media (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-height: 601px) {

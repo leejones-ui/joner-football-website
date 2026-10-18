@@ -10,7 +10,7 @@ const beats = [
     title: 'Technique Above Everything',
     body: '',
     image: '/images/home-mobile-story/mobile-story-01-action.webp',
-    ctas: [['Book now', '', 'home-mobile-hero'], ['Train Today', 'https://app.jonerfootball.com']],
+    ctas: [['Book now', '', 'home-mobile-hero']],
   },
   {
     number: '02',
@@ -228,7 +228,8 @@ const choices = [
   .mobile-story-ctas, .mobile-story-choices { transition: opacity 480ms cubic-bezier(.22,.61,.36,1), transform 560ms cubic-bezier(.22,.61,.36,1), visibility 0s linear 560ms; }
   .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-ctas,
   .mobile-story.is-motion .mobile-story-beat:not(.is-active) .mobile-story-choices { opacity: 0; transform: translateY(0.85rem); visibility: hidden; }
-  .mobile-story-beat:nth-child(1) .mobile-story-copy { inset: 0 1.4rem 0 3.8rem; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
+  .mobile-story-beat:nth-child(1) .mobile-story-ctas { justify-content: center; }
+  .mobile-story-beat:nth-child(1) .mobile-story-copy { inset: 0 3.8rem 0 3.8rem; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
   .mobile-story-beat:nth-child(2) .mobile-story-copy { inset: 0 1.4rem 0 3.8rem; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; max-width: none; }
   .mobile-story-beat:nth-child(3) .mobile-story-copy { top: 12svh; }
   .mobile-story-beat:nth-child(4) .mobile-story-copy { top: 36svh; left: 3.8rem; right: 1.4rem; text-align: center; }
