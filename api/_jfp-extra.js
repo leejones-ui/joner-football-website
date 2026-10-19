@@ -67,6 +67,7 @@ export function familyView(config, s) {
     id: s.id, coachId: s.coachId, coachName: coachLabel(coachById(config, s.coachId)), date: s.date, dateLabel: dateLabel(s.date),
     time: s.time, durationMin: s.durationMin, location: loc.name, address: loc.address || '', capacity: s.capacity, placesLeft: placesLeft(s),
     priceCents: s.priceCents, priceLabel: formatAud(s.priceCents), label: s.title || s.priceLabel, visibility: s.visibility, note: s.publicNote || '',
+    createdAt: s.createdAt || '',
   }
 }
 

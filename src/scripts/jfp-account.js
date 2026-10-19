@@ -14,6 +14,7 @@ import { renderExtra, renderAnalysis, extraClick, setExtraLink } from './jfp-acc
 // Fees: save a card or bank account for session payments (claude/card-on-file).
 import { mountSavedPay, savedReturn, forgetSaved } from './jfp-account-saved.js'
 import { renderReports, reportsHomeBlock, unreadReports } from './jfp-account-reports.js'
+import { newSessions, markSeen, newSessionsPopup } from './jfp-account-new.js'
 import { attendanceLine, pastMark, unreadNotes, notesHomeBlock, renderNotes, renderAlerts, pushOffered, loginRow, loginSheet } from './jfp-account-more.js'
 
 const q = new URLSearchParams(location.search)
@@ -154,7 +155,7 @@ async function start() {
     const el = document.querySelector(`.j-sheet [data-todo="${CSS.escape(payId)}"]`) || document.querySelector(`[data-todo="${CSS.escape(payId)}"]`)
     if (el) { el.scrollIntoView({ block: 'center' }); el.style.boxShadow = '0 0 0 2px var(--ja-red, #E30613)' }
     else if (D && !D.todo.length && !(D.juniors?.todo || []).length) toast('That payment is already done or no longer open.')
-  }
+  } else if (h !== 'extra' && h !== 'holidays') newSessionsPopup(D, (k) => show(k))
   loadProfiles()
 }
 
@@ -253,8 +254,8 @@ function nav() {
     ] },
     { label: 'Explore Joner', items: [
       { key: 'term', label: `${termShort()} info`, icon: 'info' },
-      { key: 'holidays', label: 'Holiday training', icon: 'sun' },
-      { key: 'extra', label: 'Book extra sessions', icon: 'calplus' },
+      { key: 'holidays', label: 'Holiday training', icon: 'sun', count: newSessions(D).holiday.length },
+      { key: 'extra', label: 'Book extra sessions', icon: 'calplus', count: newSessions(D).extra.length },
       { key: 'analysis', label: 'Game analysis', icon: 'video' },
       { href: links.booking, label: 'Timetable', icon: 'grid' },
       { key: 'videos', label: 'Videos', icon: 'play' },
@@ -309,7 +310,7 @@ function renderShell() {
   $('ja-nav').innerHTML = nav().map((g) => navGroup(g, open)).join('')
   const inMore = !BAR.some(([k]) => k === current)
   $('ja-tabs').innerHTML = BAR.map(([k, l, i]) => `<button type="button" class="ja-tab" data-go="${k}" aria-current="${current === k ? 'page' : 'false'}">${ic(i)}<span>${k === 'family' && solo() ? 'Me' : l}</span>${k === 'notes' ? newsBadge(unreadNotes(D)) : badge(k === 'fees' ? feesOwing() : k === 'family' ? familyCount() : 0)}</button>`).join('')
-    + `<button type="button" class="ja-tab" data-more aria-haspopup="dialog" aria-current="${inMore ? 'page' : 'false'}">${ic('menu')}<span>More</span></button>`
+    + `<button type="button" class="ja-tab" data-more aria-haspopup="dialog" aria-current="${inMore ? 'page' : 'false'}">${ic('menu')}<span>More</span>${newsBadge(newSessions(D).n)}</button>`
   $('ja-email').textContent = D?.email || ''
   const unread = unreadNews()
   $('ja-bell').innerHTML = `${ic('bell')}${newsBadge(unread)}`
@@ -325,7 +326,7 @@ function renderShell() {
   if (foot && !foot.querySelector('.ja-seg2')) foot.insertAdjacentHTML('beforeend', `<div style="margin-top:12px">${themeSwitch()}</div>`)
 }
 function moreRow(it) {
-  const inner = `<span class="ja-mr-ic">${ic(it.icon)}</span><span class="ja-mr-tx"><b>${esc(it.label)}</b></span>${it.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}${it.ext ? ic('ext', 'ja-mr-go') : ic('right', 'ja-mr-go')}`
+  const inner = `<span class="ja-mr-ic">${ic(it.icon)}</span><span class="ja-mr-tx"><b>${esc(it.label)}</b></span>${it.count ? newsBadge(it.count) : it.dot ? '<span class="dot" aria-label="Needs attention"></span>' : ''}${it.ext ? ic('ext', 'ja-mr-go') : ic('right', 'ja-mr-go')}`
   if (it.href) return `<a class="ja-mrow" href="${esc(it.href)}"${it.ext ? ' target="_blank" rel="noopener noreferrer"' : ''}>${inner}</a>`
   return `<button type="button" class="ja-mrow" data-go="${it.key}" aria-current="${current === it.key ? 'page' : 'false'}">${inner}</button>`
 }
@@ -383,6 +384,8 @@ function show(panel, { keepScroll = false } = {}) {
   if (location.hash.slice(1) !== panel) history.replaceState(null, '', panel === 'home' ? location.pathname + location.search : `#${panel}`)
   const el = document.querySelector(`[data-pane="${panel}"]`)
   if (el && !el.dataset.drawn) drawPane(panel)
+  // Opening Book extra sessions or Holiday training: the new ones are seen.
+  if ((panel === 'extra' || panel === 'holidays') && markSeen(D, panel === 'extra' ? 'extra' : 'holiday')) renderShell()
   if (!keepScroll) window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
   requestAnimationFrame(syncRails)
 }
@@ -997,16 +1000,39 @@ function renderFamily() {
 
 function renderHolidays() {
   const el = document.querySelector('[data-pane="holidays"]')
-  el.innerHTML = `${hero({ img: `${IMG}/photos/hq-indoor-960x720.webp`, imgSmall: `${IMG}/photos/hq-indoor-800x1000.webp`, kicker: 'School holidays', title: 'Holiday training<br>and camps', lede: 'Extra training at Joner Football HQ in the school holidays, and Joner Football Camps.' })}
-    <div class="ja-band"><div><p class="ja-kicker"><i></i>JFP players</p><h2 style="margin-top:10px">You book first</h2><p style="margin-top:8px">Joner Football Performance players get exclusive first booking rights for holiday training and camps.</p></div></div>
+  // The sessions on offer first, no photo (Lee, 19 Oct 2026).
+  const h = D.extras?.holiday || { sessions: [] }
+  const list = h.sessions || []
+  const open = list.filter((x) => !x.full).length
+  const byDay = []
+  for (const x of list) { const last = byDay.at(-1); if (last && last.date === x.date) last.items.push(x); else byDay.push({ date: x.date, label: x.dateLabel, items: [x] }) }
+  const row = (x) => `<li class="ja-row ${x.full ? 'is-off' : ''}"><span class="ja-num">${ic('clock')}</span><div><b>${esc(x.time)}</b><small>${esc(x.typeLabel)}${x.durationMin ? ` · ${esc(String(x.durationMin))} min` : ''}${x.fromLabel && !x.full ? ` · from ${esc(x.fromLabel)}` : ''}</small></div><span class="ja-small ${x.full ? 'ja-muted' : ''}">${x.full ? 'Taken' : x.placesLeft != null ? `${x.placesLeft} place${x.placesLeft === 1 ? '' : 's'} left` : 'Open'}</span></li>`
+  const book = `<button type="button" class="ja-btn ja-btn-red" data-hol-book>Book holiday training ${ic('arrow')}</button>`
+  const sessions = list.length
+    ? `<section class="ja-sec" id="hol-sessions">${secHead('Sessions you can book')}
+        <div class="ja-actions" style="margin:0 0 12px">${open ? book : ''}<span class="ja-small ja-muted">${open ? `${open} open · ` : 'All taken just now · '}${esc(h.where || `${hq.name}, Belrose`)}</span></div>
+        <p class="j-err" data-hol-err hidden></p>
+        <div class="ja-grid ja-grid-2">${byDay.map((d) => `<article class="ja-card"><p class="ja-kicker"><i></i>${esc(d.label)}</p><ul class="ja-list" style="margin-top:8px">${d.items.map(row).join('')}</ul></article>`).join('')}</div></section>`
+    : `<section class="ja-sec" id="hol-sessions"><article class="ja-card" style="padding:24px"><p class="ja-kicker"><i></i>Holiday training</p><h2 class="ja-h2" style="margin-top:10px">No holiday sessions to book yet</h2>
+        <p class="ja-lede" style="font-size:15px">${esc(holidays.last)} training is done. The next block runs in the NSW summer school holidays, ${esc(holidays.from)} to ${esc(holidays.to)}. The sessions show here as soon as they open.</p>
+        <dl class="ja-dl"><div><dt>Where</dt><dd>${esc(hq.name)}, Belrose</dd></div><div><dt>Sessions</dt><dd>1 to 1, shared and small groups, 60 or 90 minutes</dd></div></dl></article></section>`
+  el.innerHTML = `${pageHead('School holidays', 'Holiday training', 'Training at Joner Football HQ in the school holidays. JFP players book first.')}
+    ${sessions}
+    <div class="ja-band" style="margin-top:14px"><div><p class="ja-kicker"><i></i>JFP players</p><h2 style="margin-top:10px">You book first</h2><p style="margin-top:8px">Joner Football Performance players get first booking rights for holiday training and camps.</p></div></div>
     <div class="ja-grid ja-grid-2" style="margin-top:14px">
-      <article class="ja-card" style="padding:24px"><p class="ja-kicker"><i></i>Holiday training</p><h2 class="ja-h2" style="margin-top:10px">Next up: summer</h2>
-        <p class="ja-lede" style="font-size:15px">${esc(holidays.last)} training is done. The next block runs in the NSW summer school holidays.</p>
-        <dl class="ja-dl"><div><dt>When</dt><dd>${esc(holidays.from)} to ${esc(holidays.to)} (NSW school holidays)</dd></div><div><dt>Where</dt><dd>${esc(hq.name)}, Belrose</dd></div><div><dt>Sessions</dt><dd>1 to 1, shared and small groups, 60 or 90 minutes</dd></div></dl>
-        <p class="ja-small ja-muted" style="margin-top:14px">We email JFP families the dates and times first. Keep an eye on your inbox.</p>
-      </article>
       <article class="ja-card ja-venue"><img src="${IMG}/photos/camp-rydalmere-1200x800.webp" alt="Joner Football Camp in Sydney" loading="lazy"><div class="bd"><p class="ja-kicker"><i></i>Joner Football Camps</p><h3 style="margin-top:6px">Camps</h3><p>Dates, locations and everything else about our camps are on the website.</p><div class="ja-actions"><a class="ja-btn ja-btn-red" href="/camps" target="_blank" rel="noopener">See our camps ${ic('ext')}</a></div></div></article>
     </div>`
+  el.querySelector('[data-hol-book]')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget
+    const err = el.querySelector('[data-hol-err]')
+    btn.disabled = true
+    const r = await api('/api/jfp-account', { action: 'holidayAccess' })
+    btn.disabled = false
+    // Not a JFP family: the booking page asks for the password from their message.
+    if (r.ok || r.data.code === 'password') { location.href = r.data.url || '/holiday-bookings/'; return }
+    err.textContent = r.data.error || 'Could not open holiday booking. Try again.'
+    err.hidden = false
+  })
 }
 
 // ---------- training videos ----------

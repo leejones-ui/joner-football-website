@@ -5,7 +5,7 @@
 // at the top of the page later (D.extras.slots, empty today).
 import { esc, api, toast } from './jfp-common.js'
 import { ic } from './jfp-account-icons.js'
-import { hero, secHead } from './jfp-account-ui.js'
+import { hero, secHead, pageHead } from './jfp-account-ui.js'
 
 const IMG = '/images/jfp-account/photos'
 const todayIso = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
@@ -67,15 +67,15 @@ export function renderExtra(el, D) {
   const slots = x.slots.length
     ? `<section class="ja-sec">${secHead('Times you can book now')}<div class="ja-grid ja-grid-3">${x.slots.map((s) => `<article class="ja-card"><p class="ja-kicker"><i></i>${esc(s.type || '1 on 1')}</p><h3 class="ja-h3" style="margin-top:8px">${esc(s.label)}</h3><p class="ja-small ja-muted">${esc(s.where || '')}${s.priceLabel ? ` · ${esc(s.priceLabel)}` : ''}</p>${s.url ? `<div class="ja-actions"><a class="ja-btn ja-btn-red ja-btn-sm" href="${esc(s.url)}">Book</a></div>` : ''}</article>`).join('')}</div></section>`
     : ''
-  el.innerHTML = `${hero({ img: `${IMG}/lee-one-on-one-1200x900.webp`, imgSmall: `${IMG}/lee-one-on-one-1200x900.webp`, kicker: 'Program', title: 'Book extra<br>sessions', lede: 'Extra 1 on 1 or small group sessions with our coaches, on top of your JFP group. Tell us what suits and Ligia will come back to you with times.' })}
+  el.innerHTML = `${pageHead('Program', 'Book extra sessions', 'Extra 1 on 1 or small group sessions with our coaches, on top of your JFP group.')}
+    ${bookableHtml(D) || '<section class="ja-sec" id="x-bookable"><div class="ja-card"><p class="ja-small">No extra sessions are open to book right now. New ones show here as soon as a coach adds them, or ask for a time below.</p></div></section>'}
+    ${slots}
     <div class="ja-grid ja-grid-3">
       <div class="ja-card ja-info-card">${ic('clock')}<h3 class="ja-h3">1 on 1 in term time</h3><p class="ja-small ja-muted">During the school term, 1 on 1 sessions run in school hours only, from about 7:30am to 2pm.</p></div>
-      <div class="ja-card ja-info-card">${ic('sun')}<h3 class="ja-h3">School holidays</h3><p class="ja-small ja-muted">1 on 1 and small group sessions run through the school holidays at Joner Football HQ, Belrose.</p>${x.holidaySlots ? '<p style="margin-top:12px"><a class="ja-btn ja-btn-red ja-btn-sm" href="/holiday-bookings/">Book holiday training</a></p>' : ''}</div>
+      <div class="ja-card ja-info-card">${ic('sun')}<h3 class="ja-h3">School holidays</h3><p class="ja-small ja-muted">1 on 1 and small group sessions run through the school holidays at Joner Football HQ, Belrose.</p>${x.holidaySlots ? '<p style="margin-top:12px"><a class="ja-btn ja-btn-red ja-btn-sm" href="#holidays">Book holiday training</a></p>' : ''}</div>
       <div class="ja-card ja-info-card">${ic('chat')}<h3 class="ja-h3">Other times</h3><p class="ja-small ja-muted">Need a different time? Ask below. Other times are on request, depending on the coaches.</p></div>
     </div>
-    ${x.holidaySlots ? `<div class="ja-band" style="margin-top:14px"><div><p class="ja-kicker"><i></i>School holidays</p><h2 style="margin-top:10px">Holiday sessions are open</h2><p style="margin-top:8px">Book a holiday session straight away on the holiday booking page.</p></div><a class="ja-btn ja-btn-light" href="/holiday-bookings/">Book holiday training ${ic('arrow')}</a></div>` : ''}
-    ${bookableHtml(D)}
-    ${slots}
+    ${x.holidaySlots ? `<div class="ja-band" style="margin-top:14px"><div><p class="ja-kicker"><i></i>School holidays</p><h2 style="margin-top:10px">Holiday sessions are open</h2><p style="margin-top:8px">Book a holiday session straight away on the holiday booking page.</p></div><a class="ja-btn ja-btn-light" href="#holidays">Book holiday training ${ic('arrow')}</a></div>` : ''}
     <section class="ja-sec"><div class="ja-card ja-form-card" id="x-extra">
       <p class="ja-kicker"><i></i>Request</p><h2 class="ja-h2" style="margin-top:10px">Ask for an extra session</h2>
       ${playerField(D, 'x-player')}

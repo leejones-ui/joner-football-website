@@ -1201,3 +1201,17 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 #m-unmatched .jm-hist-go .jm-more-list { left: auto; right: 0; }
 #m-unmatched [data-sc="notJfp"] { color: var(--j-red); }
 #m-stripe-marked .jm-hist li > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+
+/* Big date picker for extra sessions (Lee, 19 Oct 2026). */
+.jcal { border: 1px solid var(--j-line); border-radius: 14px; padding: 12px; background: var(--j-surface); }
+.jcal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 17px; }
+.jcal-nav { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--j-line); background: var(--j-surface); color: var(--j-ink); font-size: 24px; line-height: 1; }
+.jcal-nav:disabled { opacity: .3; }
+.jcal-dow, .jcal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.jcal-dow span { text-align: center; font-size: 12px; font-weight: 700; color: var(--j-muted); padding: 4px 0; }
+.jcal-day { min-height: 48px; border-radius: 12px; border: 1px solid var(--j-line); background: var(--j-surface); color: var(--j-ink); font-size: 17px; font-weight: 650; }
+.jcal-day:disabled { opacity: .3; border-color: transparent; }
+.jcal-day[aria-pressed="true"] { background: var(--j-ink); border-color: var(--j-ink); color: var(--j-surface); }
+.jcal-picked { margin: 10px 2px 0; color: var(--j-ink-2); }
+.xf-times { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.xf-times .j-input { width: auto; min-width: 130px; }

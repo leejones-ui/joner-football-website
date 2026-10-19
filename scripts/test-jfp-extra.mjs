@@ -53,7 +53,10 @@ await test('a coach opens a private session from a price; Lee hears on Telegram;
   const r = await D('extraSave', { slot: { date: plus(1), time: '4:30pm', capacity: 2, location: 'Belrose HQ', priceId, visibility: 'private', title: 'Finishing' } })
   assert.equal(r.status, 200, JSON.stringify(r.data))
   slot = r.data.slot
-  assert.equal(slot.coachId, 'dean'); assert.equal(slot.priceCents, 12000); assert.equal(slot.token, undefined, 'the private token is only inside the link')
+  assert.equal(slot.coachId, 'dean'); assert.equal(slot.token, undefined, 'the private token is only inside the link')
+  // Coaches never see what a session costs (Lee, 19 Oct 2026); Lee does.
+  assert.equal(slot.priceCents, undefined); assert.equal(slot.priceLabel, undefined)
+  assert.equal((await L('extraList')).data.slots.find((x) => x.id === slot.id).priceCents, 12000)
   assert.match(slot.link, /jfp-account\/#extra\?slot=XS-.*&k=/)
   assert.ok((await telegrams()).slice(tg).some((t) => /Extra session opened by Coach Dean/.test(JSON.stringify(t))))
   assert.ok(!(await S('extraList')).data.slots.some((x) => x.id === slot.id), 'Sam does not see it')

@@ -7,13 +7,33 @@ import { telegramAlert } from './_jfp-notify.js'
 import { createPlayerCharge, cancelCharge, listCharges } from './_jfp-charges.js'
 import { profileKey } from './_jfp-profiles.js'
 import { siteUrl } from './_holiday-store.js'
+import { queueAnnounce, announceSettings } from './_jfp-extra-announce.js'
 import {
   allSlots, getSlot, saveSlot, cancelSlot, reserveExtraPlace, setBookingCharge, liveBookings, removeBooking, markBooking, marksFor, staffView, extraMinutes, cleanExtraPrices, newExtraPrice,
 } from './_jfp-extra.js'
 
-export const EXTRA_ACTIONS = new Set(['extraList', 'extraSave', 'extraCancel', 'extraAttach', 'extraRemove', 'extraMark', 'extraSearch', 'extraPrices'])
+export const EXTRA_ACTIONS = new Set(['extraList', 'extraSave', 'extraSaveMany', 'extraCancel', 'extraAttach', 'extraRemove', 'extraMark', 'extraSearch', 'extraPrices', 'extraAnnounce'])
 const ok = (res, body) => res.status(200).json({ success: true, ...body })
+
+// Prices stay with Lee and Ligia (Lee, 19 Oct 2026): a coach sees the kind of
+// session and its length, never what it costs or what it is worth.
+function forCoach(v, isAdmin) {
+  if (isAdmin || !v) return v
+  const { priceCents, priceLabel, ...rest } = v
+  return rest
+}
+const priceForCoach = (p, isAdmin) => (isAdmin ? { ...p, priceLabel: formatAud(p.cents) } : { id: p.id, label: p.label, durationMin: p.durationMin })
 const no = (res, status, error) => res.status(status).json({ success: false, error })
+
+const MANY_MAX = 24
+
+// A new public session: the JFP family email (built off until Lee says yes to
+// the wording, see _jfp-extra-announce.js).
+async function announcePublic(config, slots) {
+  const pub = slots.filter((x) => x.visibility === 'public')
+  if (!pub.length) return
+  await queueAnnounce(config, pub).catch((e) => console.error('jfp extra announce failed', e.message))
+}
 
 // Monday to Sunday of the week a date is in.
 function weekOf(iso) {
@@ -30,11 +50,11 @@ async function listFor(config, principal, isAdmin, body) {
   const today = sydneyToday()
   const mine = slots.filter((s) => s.status === 'open' && (!coachId || s.coachId === coachId) && s.date >= (body.past ? '0000' : today))
   const views = []
-  for (const s of mine.slice(0, 200)) views.push({ ...staffView(config, s, payreqs), marks: s.date <= today ? await marksFor(s) : {} })
+  for (const s of mine.slice(0, 200)) views.push(forCoach({ ...staffView(config, s, payreqs), marks: s.date <= today ? await marksFor(s) : {} }, isAdmin))
   const [mon, sun] = weekOf(today)
   return {
     slots: views,
-    prices: cleanExtraPrices(config.extraPrices).filter((p) => !p.archived).map((p) => ({ ...p, priceLabel: formatAud(p.cents) })),
+    prices: cleanExtraPrices(config.extraPrices).filter((p) => !p.archived).map((p) => priceForCoach(p, isAdmin)),
     allPrices: isAdmin ? cleanExtraPrices(config.extraPrices).map((p) => ({ ...p, priceLabel: formatAud(p.cents) })) : undefined,
     venues: (config.locations || []).map((l) => l.name),
     coaches: isAdmin ? config.coaches.map((c) => ({ id: c.id, name: coachLabel(c) })) : undefined,
@@ -63,7 +83,29 @@ export async function extraAction(req, res, principal, config, body, action, isA
     if (out.error) return no(res, 400, out.error)
     // Lee and Ligia hear when a coach opens a session themselves.
     if (out.created && !isAdmin) await telegramAlert(`Extra session opened by Coach ${coachLabel(coachById(config, out.slot.coachId))}: ${dateLabel(out.slot.date)} ${out.slot.time}, ${out.slot.location}, ${out.slot.capacity} place${out.slot.capacity === 1 ? '' : 's'}, ${formatAud(out.slot.priceCents)} (${out.slot.visibility}).`).catch(() => {})
-    return ok(res, { slot: staffView(config, out.slot, await listPayreqs()) })
+    if (out.created) await announcePublic(config, [out.slot])
+    return ok(res, { slot: forCoach(staffView(config, out.slot, await listPayreqs()), isAdmin) })
+  }
+  // Several sessions in one go (Lee, 19 Oct 2026): the same session on each
+  // picked date, at each picked start time. All are checked before any is made.
+  if (action === 'extraSaveMany') {
+    const base = body.slot || {}
+    const dates = [...new Set((Array.isArray(body.dates) ? body.dates : []).map((d) => clean(d, 10)))].sort()
+    const times = [...new Set((Array.isArray(body.times) ? body.times : [base.time]).map((t) => clean(t, 10)).filter(Boolean))]
+    if (!dates.length) return no(res, 400, 'Pick at least one date.')
+    if (!times.length) return no(res, 400, 'Pick a start time, like 4:30pm.')
+    if (dates.length * times.length > MANY_MAX) return no(res, 400, `That is ${dates.length * times.length} sessions. Make up to ${MANY_MAX} at a time.`)
+    const made = []
+    for (const date of dates) for (const time of times) {
+      const out = await saveSlot({ config, principal, isAdmin, input: { ...base, id: '', date, time } })
+      if (out.error) return no(res, 400, made.length ? `${dateLabel(date)} ${time}: ${out.error} The ${made.length} before it were made.` : `${dateLabel(date)} ${time}: ${out.error}`)
+      made.push(out.slot)
+    }
+    const s0 = made[0]
+    if (!isAdmin) await telegramAlert(`${made.length} extra sessions opened by Coach ${coachLabel(coachById(config, s0.coachId))}: ${made.map((x) => `${dateLabel(x.date)} ${x.time}`).join(', ')}, ${s0.location}, ${s0.visibility}.`)
+    await announcePublic(config, made)
+    const payreqs = await listPayreqs()
+    return ok(res, { slots: made.map((x) => forCoach(staffView(config, x, payreqs), isAdmin)) })
   }
   if (action === 'extraCancel') {
     const out = await cancelSlot({ principal, isAdmin, id: clean(body.id, 60) })
@@ -122,7 +164,13 @@ export async function extraAction(req, res, principal, config, body, action, isA
       else { chargeError = c.error || 'The payment could not be made.'; console.error('jfp extra charge failed', chargeError) }
     }
     const fresh = await getSlot(s.id)
-    return ok(res, { booking: out.booking, already: Boolean(out.already), chargeError, slot: staffView(config, fresh || out.slot, await listPayreqs()) })
+    return ok(res, { booking: out.booking, already: Boolean(out.already), chargeError, slot: forCoach(staffView(config, fresh || out.slot, await listPayreqs()), isAdmin) })
+  }
+
+  // The JFP family email on a new public session: Lee and Ligia only.
+  if (action === 'extraAnnounce') {
+    if (!isAdmin) return no(res, 403, 'Only Lee or Ligia can change this.')
+    return ok(res, await announceSettings({ config, principal, body }))
   }
 
   // The prices coaches pick from: Lee and Ligia only.

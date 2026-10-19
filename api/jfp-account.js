@@ -19,7 +19,7 @@
 //               the same family login shows and pays Juniors children too
 //   requestExtra  Book extra sessions / Book game analysis: a request to
 //               staff (_jfp-extras.js)
-import { stripeFetch, siteUrl, listSlots } from './_holiday-store.js'
+import { stripeFetch, siteUrl, listSlots, getConfig as holidayConfig, slotOwners, publicSlot, signAccessCookie, accessCookieHeader } from './_holiday-store.js'
 import { chargeCheckoutMeta } from './_jfp-charges.js'
 import { bookableSlots, privateSlot, bookExtraPlace } from './_jfp-family-extra.js'
 import {
@@ -302,15 +302,67 @@ async function overview(res, parent, body = {}, opts = {}) {
 // whether holiday training slots are open, slots to book (none yet), and
 // this family's own requests.
 async function extrasView(config, email) {
-  const nowIso = new Date().toISOString()
-  const [slots, mine] = await Promise.all([
-    listSlots().then((l) => l.filter((x) => x.status === 'open' && String(x.startsAt || '') > nowIso).length).catch(() => 0),
+  const [holiday, mine, seen] = await Promise.all([
+    holidaySessions().catch((e) => { console.error('jfp account holiday sessions failed', e); return { label: '', sessions: [] } }),
     listExtras().then((l) => l.filter((r) => r.email === email).slice(0, 10).map(familyExtraView)).catch(() => []),
+    sessionsSeen(email),
   ])
   const price = analysisPrice(config)
   // Extra sessions coaches opened to book now (money engineer, _jfp-family-extra.js).
   const bookable = await bookableSlots(config)
-  return { analysisPriceLabel: price?.label || '', holidaySlots: slots, slots: extraSlots(), bookable, days: EXTRA_DAYS, times: EXTRA_TIMES, types: EXTRA_TYPES, mine }
+  return { analysisPriceLabel: price?.label || '', holidaySlots: holiday.sessions.filter((s) => !s.full).length, holiday, seen, slots: extraSlots(), bookable, days: EXTRA_DAYS, times: EXTRA_TIMES, types: EXTRA_TYPES, mine }
+}
+
+// Holiday training sessions still to come (Lee, 19 Oct 2026: show what is on
+// at the top of the tab). The same list the holiday booking page shows, but no
+// coach names and no bookings, only whether a time is taken.
+const HOLIDAY_SHOW = 60
+async function holidaySessions() {
+  const hc = await holidayConfig()
+  const cutoffMs = Date.now() + hc.bookingCutoffHours * 3_600_000
+  const active = new Set(hc.coaches.filter((c) => c.active).map((c) => c.id))
+  const slots = (await listSlots()).filter((x) => x.status !== 'cancelled' && active.has(x.coachId) && new Date(x.startsAt).getTime() > cutoffMs)
+    .sort((a, b) => String(a.startsAt).localeCompare(String(b.startsAt))).slice(0, HOLIDAY_SHOW)
+  const owners = await slotOwners(slots.map((x) => x.id))
+  const sessions = slots.map((x) => {
+    const v = publicSlot(x, hc, owners[x.id])
+    const prices = v.options.map((o) => o.priceCents).filter((c) => c > 0)
+    return {
+      id: v.id, date: v.date, dateLabel: v.dateLabel, time: `${v.startLabel} to ${v.endLabel}`, durationMin: v.durationMin,
+      typeLabel: v.title || v.typeLabel || 'Holiday session', full: Boolean(v.booked), ...(v.shared ? { placesLeft: v.remaining } : {}),
+      fromLabel: prices.length ? formatAud(Math.min(...prices)) : '', createdAt: x.createdAt || '',
+    }
+  })
+  return { label: hc.holidayLabel, where: hc.defaultLocation || '', sessions }
+}
+
+// New sessions to book (Lee, 19 Oct 2026): when this family last opened Book
+// extra sessions and Holiday training. Anything added since shows as a red
+// number and a pop up. { extra: iso, holiday: iso }, nothing yet = all new.
+const SEEN_KEY = 'jfp:sessions-seen'
+async function sessionsSeen(email) {
+  try { return JSON.parse((await kvCommand(['HGET', SEEN_KEY, email])) || '{}') || {} } catch { return {} }
+}
+async function markSessionsSeen(res, parent, body) {
+  const kinds = (Array.isArray(body.kinds) ? body.kinds : [body.kind]).filter((k) => ['extra', 'holiday'].includes(k))
+  if (!kinds.length) return fail(res, 400, 'Nothing to mark.')
+  const seen = await sessionsSeen(parent.email)
+  const now = new Date().toISOString()
+  for (const k of kinds) seen[k] = now
+  await kvCommand(['HSET', SEEN_KEY, parent.email, JSON.stringify(seen)])
+  return res.status(200).json({ success: true, seen })
+}
+
+// Book holiday training from My account: a JFP family goes straight in, no
+// shared password (Lee, 19 Oct 2026). Families with no JFP player still use
+// the password from their message.
+async function holidayAccess(res, parent) {
+  const config = await getConfig()
+  const fam = familyFor(parent.email, await loadRoster(), config.termStart)
+  if (!fam.players.some((p) => p.term4.length)) return fail(res, 403, 'Holiday booking from here is for JFP families. Use the password from your Joner Football message on the holiday booking page.', { code: 'password' })
+  if (!process.env.HOLIDAY_BOOKING_PASSWORD || !process.env.HOLIDAY_SIGNING_SECRET) return fail(res, 503, 'Holiday bookings are not open yet.')
+  res.setHeader('Set-Cookie', accessCookieHeader(signAccessCookie()))
+  return res.status(200).json({ success: true, url: '/holiday-bookings/' })
 }
 
 async function requestExtra(res, parent, body) {
@@ -932,6 +984,8 @@ export default async function handler(req, res) {
     if (body.action === 'cancelSession') return await cancelSession(res, parent, body)
     if (body.action === 'withdrawCancel') return await withdrawSession(res, parent, body)
     if (body.action === 'requestExtra') return await requestExtra(res, parent, body)
+    if (body.action === 'holidayAccess') return await holidayAccess(res, parent)
+    if (body.action === 'sessionsSeen') return await markSessionsSeen(res, parent, body)
     // Book an extra session: hold the place, make the charge, then pay (money engineer).
     if (body.action === 'extraSlot') { const s = await privateSlot(await getConfig(), { slotId: body.slotId, token: body.k }); return s ? res.status(200).json({ success: true, slot: s }) : fail(res, 404, 'That session is not open to book, or the link is not right.') }
     if (body.action === 'bookExtra') {

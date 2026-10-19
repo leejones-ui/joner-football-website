@@ -175,6 +175,9 @@ async function family(req, res, body, parent) {
   const group = body.groupId ? await getGroup(body.groupId) : null
   const roster = await loadRoster()
   const fam = familyFor(parent.email, roster, config.termStart)
+  // Already applied or waiting (Lee, 19 Oct 2026): the page says so straight away.
+  const open = await openRequestsOf(parent.email)
+  const appliedTo = (name, gid) => open.find((a) => a.groupId === gid && (a.players || []).some((q) => normName(q.name) === normName(name)))?.kind || ''
   const from = group ? nextSessionDate(config, group.day, Date.now(), group.time) : ''
   // One player whose brother or sister already has a paid place: sibling rate.
   const sib = group && (group.product || 'group') === 'group' && paidSiblings(roster.players, parent.email).length > 0
@@ -188,10 +191,10 @@ async function family(req, res, body, parent) {
     mobile: fam.mobile,
     // What this family would pay here, from the next session to the end of term.
     quote: one ? { oneCents: one.unitCents, oneToOneCents: solo?.unitCents || 0, eachOfTwoCents: two.unitCents, sessions: one.sessions, of: one.of, proRata: one.proRata, firstDate: from ? dateLabel(from) : '' } : null,
-    players: group ? familyView(fam, group, config, roster) : fam.players.map((p) => ({
+    players: group ? familyView(fam, group, config, roster).map((p) => ({ ...p, applied: appliedTo(p.name, group.id) })) : fam.players.map((p) => ({
       key: p.key, name: p.name, age: p.age, needsDob: p.age == null, waiverOnFile: Boolean(p.waiver),
       // Several sessions picked: which of them each player already has a place in.
-      ...(Array.isArray(body.groupIds) ? { inGroups: body.groupIds.map((x) => clean(x, 80)).filter((gid) => p.term4.some((r) => r.groupId === gid && r.holdsPlace)) } : {}),
+      ...(Array.isArray(body.groupIds) ? { inGroups: body.groupIds.map((x) => clean(x, 80)).filter((gid) => p.term4.some((r) => r.groupId === gid && r.holdsPlace)), appliedGroups: body.groupIds.map((x) => clean(x, 80)).filter((gid) => appliedTo(p.name, gid)) } : {}),
     })),
   })
 }
@@ -348,6 +351,9 @@ async function request(req, res, body, parent) {
   if (w.error) return fail(res, 400, w.error, { code: 'waiver' })
   const pl = checkPlayers(body.players, { family: fam, group, config, requireWaiver: false, waiver: w.waiver, roster, checkAge: false })
   if (pl.error) return fail(res, 400, pl.error, { code: pl.code })
+  // One request per player per session (Lee, 19 Oct 2026: a family sent the same waitlist twice).
+  const dupMsg = await duplicateRequest(parent.email, group, pl.players)
+  if (dupMsg) return fail(res, 409, dupMsg, { code: 'duplicate', groupId: group.id })
   const record = {
     id: newId(kind === 'waitlist' ? 'WAIT' : kind === 'enquiry' ? 'ENQ' : 'APP'),
     kind, groupId: group.id, players: pl.players,
@@ -368,10 +374,24 @@ async function request(req, res, body, parent) {
   return res.status(200).json({ success: true, id: record.id, kind })
 }
 
+async function openRequestsOf(email) {
+  return (await listApplications()).filter((a) => a.email === email && ['pending', 'offered'].includes(a.status))
+}
+
+// The message when a player already has an open request for this session, or ''.
+async function duplicateRequest(email, group, players) {
+  const open = await openRequestsOf(email)
+  for (const pl of players) {
+    const dup = open.find((a) => a.groupId === group.id && (a.players || []).some((q) => normName(q.name) === normName(pl.name)))
+    if (dup) return `You have already applied for this spot. ${pl.name} already has ${PICK_WORD[dup.kind] || 'a request'} for ${group.day} ${group.time}, and we will be in touch about it. You can see it in My account.`
+  }
+  return ''
+}
+
 // ---------- several sessions in one go (Lee, 14 Oct 2026) ----------
 
 export const MAX_PICKS = 8
-const PICK_WORD = { application: 'an application', waitlist: 'a waitlist request' }
+const PICK_WORD = { application: 'an application', waitlist: 'a waitlist request', enquiry: 'an enquiry' }
 
 // Every pick is checked with the same rules as a single request (the group's
 // mode, the players, each player not already in that group or already waiting

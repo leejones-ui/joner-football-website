@@ -25,6 +25,13 @@ async function knownFamily(email, config) {
   } catch { return true }
 }
 
+// Throwaway inbox services: an account made with one is not a real family.
+const THROWAWAY = new Set(['mailinator.com', 'guerrillamail.com', 'guerrillamail.net', 'guerrillamailblock.com', 'sharklasers.com', 'grr.la', 'yopmail.com', 'yopmail.fr', '10minutemail.com', '10minutemail.net', 'tempmail.com', 'temp-mail.org', 'temp-mail.io', 'tempmail.net', 'tempmailo.com', 'tempr.email', 'getnada.com', 'nada.email', 'dispostable.com', 'maildrop.cc', 'throwawaymail.com', 'fakeinbox.com', 'trashmail.com', 'trashmail.de', 'mohmal.com', 'emailondeck.com', 'mintemail.com', 'discard.email', 'mailnesia.com', 'burnermail.io', 'spamgourmet.com', 'mailcatch.com', 'mytemp.email', 'tmpmail.org', 'tmpmail.net', 'moakt.com', 'emailfake.com', 'fakemail.net', 'spambox.us', 'inboxkitten.com', 'mail.tm', 'tmails.net', 'byom.de', 'minuteinbox.com', 'luxusmail.org', 'trbvm.com', 'cs.email', 'mailpoof.com', 'linshiyouxiang.net', 'emailtemporanea.net'])
+export function throwawayEmail(email) {
+  const d = String(email || '').toLowerCase().split('@')[1] || ''
+  return THROWAWAY.has(d) || /(^|\.)(temp|trash|throwaway|disposable|fake)[a-z0-9-]*mail\./.test(d)
+}
+
 function parse(req) { return typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}) }
 function fail(res, status, error, extra = {}) { return res.status(status).json({ success: false, error, ...extra }) }
 const audienceOf = (v) => (v === 'staff' ? 'staff' : 'parent')
@@ -60,6 +67,13 @@ export default async function handler(req, res) {
       const rc = await verifyRecaptcha(req, body.recaptchaToken)
       if (!rc.ok) return fail(res, 400, rc.error)
       const email = String(body.email || '').trim().toLowerCase()
+      // A brand-new email (no account, not a family on file) must pass the
+      // human check for real, and cannot be a throwaway inbox (Lee, 19 Oct 2026).
+      if (audience === 'parent' && email.includes('@') && !(await accountOf(email)) && !(await knownFamily(email, config))) {
+        if (throwawayEmail(email)) return fail(res, 400, 'Please use your everyday email address. Throwaway inboxes cannot open an account.', { code: 'throwaway' })
+        const human = await verifyRecaptcha(req, body.recaptchaToken, { strict: true, openOnError: true })
+        if (!human.ok) return fail(res, 400, 'We could not check that you are a person. Refresh the page and try again. Still stuck? Email ligia@jonerfootball.com.', { code: 'human' })
+      }
       // Staff: only emails with a role get a code. Everyone gets the same
       // answer, so the form never reveals who has access.
       const allowed = audience === 'parent' || Boolean(roleFor(email, config))

@@ -53,9 +53,11 @@ export function rateLimit(req, { key = 'form', limit = 5, windowMs = 60_000 } = 
   }
 }
 
-export async function verifyRecaptcha(req, token) {
+// opts.strict: no fail-open for this call (JFP sign-ups, Lee 19 Oct 2026).
+// opts.openOnError: with strict, still let it through when Google is down.
+export async function verifyRecaptcha(req, token, opts = {}) {
   const secret = process.env.RECAPTCHA_SECRET_KEY
-  const strict = process.env.RECAPTCHA_STRICT === 'true'
+  const strict = opts.strict === true || process.env.RECAPTCHA_STRICT === 'true'
   if (!secret) return { ok: true, skipped: true, reason: 'missing-secret' }
   if (!token) {
     if (!strict) {
@@ -89,7 +91,9 @@ export async function verifyRecaptcha(req, token) {
       return { ok: true, skipped: true, reason: 'verification-fail-open', recaptchaErrors: data['error-codes'] }
     }
   } catch (error) {
-    if (!strict) {
+    // opts.openOnError: Google itself could not be reached. A bot cannot cause
+    // that, so a real family is not locked out by an outage.
+    if (!strict || opts.openOnError === true) {
       console.warn('reCAPTCHA verification errored; fail-open to protect customer form submissions.', error?.message || error)
       return { ok: true, skipped: true, reason: 'verification-error-fail-open' }
     }

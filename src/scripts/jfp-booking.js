@@ -423,18 +423,21 @@ function stepSummary() {
   const fam = S.family || {}
   const inAlready = (x) => F.players.filter((p) => p.existing && (fam.players.find((f) => f.key === p.key)?.inGroups || []).includes(x.g.id)).map((p) => p.existing.name)
   const books = picks.filter((x) => x.kind === 'book')
-  const blocked = picks.filter((x) => inAlready(x).length)
+  const appliedAlready = (x) => x.kind === 'book' ? [] : F.players.filter((p) => p.existing && (fam.players.find((f) => f.key === p.key)?.appliedGroups || []).includes(x.g.id)).map((p) => p.existing.name)
+  const blocked = picks.filter((x) => inAlready(x).length || appliedAlready(x).length)
   F.sheet.body.innerHTML = `
     <h3 style="margin-bottom:4px">Check your sessions</h3>
     <p class="muted small" style="margin-bottom:12px">For ${esc(names.join(' and '))}. Each session is looked at on its own.</p>
     <div class="j-sum">${picks.map((x) => {
       const already = inAlready(x)
+      const applied = appliedAlready(x)
       const pill = x.kind === 'book' ? 'j-pill-green' : x.kind === 'waitlist' ? 'j-pill-amber' : 'j-pill-blue'
-      return `<div class="j-sum-row ${already.length ? 'is-bad' : ''}">
+      return `<div class="j-sum-row ${already.length || applied.length ? 'is-bad' : ''}">
         <div class="j-sum-main"><b>${esc(x.g.day)} ${esc(x.g.time)}</b><span class="muted small">${esc(x.g.location)}${x.g.coachName ? ` · ${esc(x.g.coachName)}` : ''}</span>
           <span class="j-sum-tags"><span class="j-pill ${pill}">${esc(KIND_WORD[x.kind])}</span>${x.kind === 'book' ? `<span class="small" data-price="${esc(x.g.id)}">Price loading</span>` : ''}</span>
           ${x.why ? `<span class="small muted">${esc(x.why)}</span>` : ''}
-          ${already.length ? `<span class="j-err" style="display:block;margin-top:4px">${esc(already.join(' and '))} already ${already.length > 1 ? 'have' : 'has'} a place here. Remove this session to continue.</span>` : ''}</div>
+          ${already.length ? `<span class="j-err" style="display:block;margin-top:4px">${esc(already.join(' and '))} already ${already.length > 1 ? 'have' : 'has'} a place here. Remove this session to continue.</span>` : ''}
+          ${!already.length && applied.length ? `<span class="j-err" style="display:block;margin-top:4px">You have already applied for this spot for ${esc(applied.join(' and '))}. Remove this session to continue.</span>` : ''}</div>
         <button type="button" class="j-btn j-btn-ghost j-btn-sm" data-unpick="${esc(x.g.id)}" aria-label="Remove ${esc(`${x.g.day} ${x.g.time}`)}">Remove</button>
       </div>`
     }).join('')}</div>
@@ -764,6 +767,7 @@ function playerRow(p) {
   let off = false
   const inPicks = isMulti() ? F.picks.filter((x) => (p.inGroups || []).includes(x.g.id)) : []
   if (p.inGroup) { status = '<span class="j-pill j-pill-green">Already in this group</span>'; off = true }
+  else if (p.applied) { status = '<span class="j-pill j-pill-amber">You have already applied for this spot</span>'; off = true }
   else if (inPicks.length) status = `<span class="j-pill j-pill-green">Already in ${esc(inPicks.map((x) => `${SHORT[x.g.day] || x.g.day} ${x.g.time}`).join(', '))}</span> ${p.waiverOnFile ? '<span class="j-pill j-pill-green">Waiver on file</span>' : '<span class="j-pill j-pill-amber">Waiver needed</span>'}`
   else if (p.fits === false) status = `<span class="j-pill j-pill-amber">Age ${esc(p.age)}, outside this group: you can apply instead</span>`
   else status = `${p.age != null ? `<span class="muted small">Age ${esc(p.age)}</span> ` : ''}${p.waiverOnFile ? '<span class="j-pill j-pill-green">Waiver on file</span>' : '<span class="j-pill j-pill-amber">Waiver needed</span>'}`

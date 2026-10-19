@@ -881,3 +881,4 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
 @media (pointer: coarse) and (max-width: 959px) {
   .ja:has(input:not([type=checkbox]):not([type=radio]):focus, textarea:focus, select:focus) .ja-tabs { display: none; }
 }
+.ja-row.is-off { opacity: .55; }
