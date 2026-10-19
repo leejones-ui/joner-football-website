@@ -263,7 +263,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
               </div>
             ))}
           </div>
-          <p class="mt-1 pl-1 text-sm text-white/60">Swipe for more. <a href="https://www.youtube.com/@jonerfootball" target="_blank" rel="noopener noreferrer" class="underline hover:text-white">All videos on YouTube</a></p>
+          <p class="mt-1 pl-1 text-sm text-white/60">Swipe for more. <a href="https://www.youtube.com/@jonerfootball" target="_blank" rel="noopener noreferrer" class="-my-3 inline-block py-3 underline hover:text-white">All videos on YouTube</a></p>
           <script is:inline>
             document.querySelectorAll('.jfp-yt-nav').forEach((b) => b.addEventListener('click', () => {
               const row = document.getElementById('jfp-yt')
@@ -450,7 +450,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
             <article class="flex flex-col rounded-xl border border-white/10 bg-black/45 p-6 backdrop-blur-sm">
               <p class="mb-2 font-heading text-xs uppercase tracking-[0.22em] text-joner-red">{location.area}</p>
               <h3 class="mb-4 font-heading text-2xl uppercase leading-none text-white">
-                <a href={location.href} class="hover:text-joner-red">{location.title}</a>
+                <a href={location.href} class="-my-2.5 inline-block py-2.5 hover:text-joner-red">{location.title}</a>
               </h3>
               <p class="mb-5 flex-1 font-body text-sm leading-relaxed text-neutral-400 md:text-base">{location.text}</p>
               <div class="flex flex-wrap items-center gap-x-5 gap-y-3">
@@ -599,7 +599,7 @@ const sanityPage = await fetchSanityPage('jfp-program')
                 <span>{question}</span>
                 <span class="text-joner-red transition-transform group-open:rotate-45">+</span>
               </summary>
-              <p class="mt-4 font-body text-base leading-relaxed text-neutral-400">{answer}{link && <> <a href={link.href} class="text-white underline hover:text-joner-red">{link.label}</a></>}</p>
+              <p class="mt-4 font-body text-base leading-relaxed text-neutral-400">{answer}{link && <> <a href={link.href} class="-my-3 inline-block py-3 text-white underline hover:text-joner-red">{link.label}</a></>}</p>
             </details>
           ))}
         </div>
