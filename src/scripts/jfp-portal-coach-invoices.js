@@ -48,7 +48,7 @@ export async function renderCoachInvoices(ui) {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date())
   const [from, to] = rangeOf(S.range, today)
   const d = await need(await post('coachInvList', admin ? { coachId: S.coachId } : { from, to }))
-  const reload = () => renderInvoices(ui)
+  const reload = () => renderCoachInvoices(ui)
   const card = (inv) => `<div class="j-card" style="padding:14px 16px;margin-bottom:10px" data-inv="${esc(inv.id)}">
     <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">
       <div><b>${esc(inv.number)}</b>${admin ? ` · ${esc(inv.coach)}` : ''} <span class="j-pill j-pill-${PILL[inv.status] || 'grey'}">${esc(inv.statusLabel)}</span>${inv.flagCount ? ` <span class="j-pill j-pill-red">${inv.flagCount} to check</span>` : ''}
@@ -68,7 +68,7 @@ export async function renderCoachInvoices(ui) {
       <details class="j-card" style="padding:14px 16px;margin-top:16px"><summary><b>Hourly rates</b> <span class="muted small">shown on each coach's invoices</span></summary>
         <div style="margin-top:10px">${d.coaches.map((c) => `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap"><span style="min-width:140px">${esc(c.name)}</span><input class="j-input" style="width:120px" inputmode="decimal" data-rate="${esc(c.id)}" value="${d.rates[c.id] ? (d.rates[c.id] / 100).toFixed(2) : ''}" placeholder="A$ an hour"><button type="button" class="j-btn j-btn-line j-btn-sm" data-rate-save="${esc(c.id)}">Save</button></div>`).join('')}</div></details>`
     view().querySelector('#inv-coach').addEventListener('change', (e) => { S.coachId = e.target.value; reload() })
-    view().querySelector('#inv-status').addEventListener('change', (e) => { S.status = e.target.value; renderInvoices(ui) })
+    view().querySelector('#inv-status').addEventListener('change', (e) => { S.status = e.target.value; renderCoachInvoices(ui) })
     view().querySelectorAll('[data-rate-save]').forEach((b) => b.addEventListener('click', async () => {
       const r = await post('coachInvRate', { coachId: b.dataset.rateSave, dollars: view().querySelector(`[data-rate="${b.dataset.rateSave}"]`).value })
       toast(r.ok ? 'Rate saved. It applies to new invoices.' : r.data.error)
