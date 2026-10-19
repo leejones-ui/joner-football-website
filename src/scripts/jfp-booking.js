@@ -68,7 +68,7 @@ async function showApp(q) {
 }
 
 function showTab(tab) {
-  if (!['timetable', 'term', 'pricing'].includes(tab)) tab = 'timetable'
+  if (!['timetable', 'extra', 'term', 'pricing'].includes(tab)) tab = 'timetable'
   document.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== tab })
   document.querySelectorAll('.j-tabs [data-tab]').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'))
 }
@@ -91,12 +91,12 @@ async function load(quiet) {
 function renderExtras() {
   const box = $('extras-week')
   const list = S.data.extras || []
-  box.hidden = !list.length
-  if (!list.length) { box.innerHTML = ''; return }
+  const n = $('extra-count')
+  if (n) { n.hidden = !list.length; n.textContent = String(list.length) }
   box.innerHTML = `<section class="j-extras" aria-labelledby="extras-h">
     <h2 class="j-step" id="extras-h">Extra sessions this week</h2>
-    <p class="j-hint">One off sessions on top of the term. Sign in to book.</p>
-    <div class="j-extras-list">${list.map((x) => `<a class="j-extra${x.full ? ' is-full' : ''}" href="/jfp-account/#extra"><b>${esc(x.dateLabel)}, ${esc(x.time)}</b><span>${esc(x.label)} · ${esc(String(x.durationMin))} min · ${esc(x.location)}</span><span class="${x.full ? 'is-full' : 'left'}">${x.full ? 'Full' : `${x.placesLeft} place${x.placesLeft === 1 ? '' : 's'} left`}</span></a>`).join('')}</div>
+    <p class="j-hint">One off sessions on top of the term, in the next 7 days. Sign in to book.</p>
+    ${list.length ? `<div class="j-extras-list">${list.map((x) => `<a class="j-extra${x.full ? ' is-full' : ''}" href="/jfp-account/#extra"><b>${esc(x.dateLabel)}, ${esc(x.time)}</b><span><b>${esc(x.kind)}</b>${x.coach ? ` with ${esc(x.coach)}` : ''}</span><span>${esc(String(x.durationMin))} min · ${esc(x.location)}</span><span class="${x.full ? 'is-full' : 'left'}">${x.full ? 'Full' : `${x.placesLeft} place${x.placesLeft === 1 ? '' : 's'} left`}</span></a>`).join('')}</div>` : '<div class="j-empty">No extra sessions this week yet. New ones show here as soon as a coach adds them.</div>'}
   </section>`
 }
 

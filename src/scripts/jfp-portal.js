@@ -3290,7 +3290,7 @@ async function renderFamilies(keep = false) {
 
 // ---------- Players: search, filters, a full record, and adding one ----------
 
-const PL = { term: '', q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '', data: null, at: 0 }
+const PL = { term: '', acct: '', q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '', data: null, at: 0 }
 
 // Accounts with no session (round 2 item 8): profiles families made in My
 // account, or kept from before, with no Term 4 row. Add to a group is the
@@ -3335,6 +3335,9 @@ function plMatch(p) {
   if (PL.coach && p.coachId !== PL.coach) return false
   if (PL.waiver === 'yes' && !p.waiver.onFile) return false
   if (PL.waiver === 'no' && p.waiver.onFile) return false
+  if (PL.acct === 'in' && !['active', 'signedin'].includes(p.account?.status)) return false
+  if (PL.acct === 'never' && !['never', 'invited'].includes(p.account?.status)) return false
+  if (PL.acct === 'invited' && p.account?.status !== 'invited') return false
   if (PL.place === 'in' && !p.inGroup) return false
   if (PL.place === 'out' && p.inGroup) return false
   if (PL.level === 'none' && p.profile?.level) return false
@@ -3441,6 +3444,15 @@ async function plEdit(p) {
 
 const money0 = (n) => (n == null ? '' : `A$${Number(n).toLocaleString('en-AU')}`)
 
+// Signed in or not (Lee, 19 Oct 2026): has the family made and used their account themselves.
+const ago = (iso) => { const d = Math.floor((Date.now() - Date.parse(iso)) / 86400000); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d < 60 ? `${d} days ago` : new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) }
+function acctBadge(p) {
+  const a = p.account
+  if (!a) return ''
+  if (a.status === 'active' || a.status === 'signedin') return psBadge(a.status === 'active' ? 'green' : 'violet', `Signed in ${ago(a.lastSignIn || a.createdAt)}`)
+  if (a.status === 'invited') return psBadge('orange', 'Invited, not signed in')
+  return psBadge('grey', 'Never signed in')
+}
 function plRow(p) {
   const f = p.profile || {}
   const club = [p.club, f.team].filter(Boolean).join(' · ')
@@ -3451,7 +3463,7 @@ function plRow(p) {
     <td data-col="group">${p.inGroup ? esc(p.groupLabel) : psBadge('orange', 'Not in a group')}${p.coach ? `<span class="ps-sub">${esc(p.coach)}</span>` : ''}</td>
     <td data-col="pay">${psPayBadge(p)}<span class="ps-sub">${esc(fee)}</span></td>
     <td data-col="football">${club || football ? `${esc(club || '')}${football ? `<span class="ps-sub">${esc(football)}</span>` : ''}` : '<span class="muted">Not on file</span>'}</td>
-    <td data-col="flags" class="${p.waiver.onFile ? 'ps-ok' : ''}">${p.waiver.onFile ? '<span class="muted">On file</span>' : psBadge('red', 'No waiver')}</td>
+    <td data-col="flags" class="${p.waiver.onFile ? 'ps-ok' : ''}">${p.waiver.onFile ? '<span class="muted">Waiver on file</span>' : psBadge('red', 'No waiver')}${p.account ? `<span class="ps-sub">${acctBadge(p)}</span>` : ''}</td>
     <td class="ps-end"><button type="button" class="j-btn j-btn-ghost j-btn-sm" data-pl-edit="${esc(p.rowId)}" aria-label="Edit ${esc(p.name)}">Edit</button></td>
   </tr>`
 }
@@ -3480,6 +3492,12 @@ function plDetail(p) {
     ${p.trial ? `<h3 style="margin-top:14px">Trial</h3>
     ${row('Trial date', p.trialDate || 'not set')}
     ${p.trialFeedback ? `${row('Coach said', `${p.trialFeedback.verdict}${p.trialFeedback.level ? `, level ${p.trialFeedback.level.toLowerCase()}` : ''}${p.trialFeedback.best ? `, best group: ${p.trialFeedback.best}` : ''}`)}${row('From', `Coach ${p.trialFeedback.byName}, ${new Date(p.trialFeedback.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`)}<p class="small" style="white-space:pre-wrap;margin:6px 0 0">${esc(p.trialFeedback.notes)}</p>` : row('Coach feedback', 'not in yet (the coach is asked after the trial)')}` : ''}
+    ${p.account ? `<h3 style="margin-top:14px">Account</h3>
+    ${row('Status', p.account.status === 'never' ? 'Never signed in. The family has not opened My account.' : p.account.status === 'invited' ? `Invited ${ago(p.account.invitedAt)}, not signed in yet` : `Signed in themselves, last ${ago(p.account.lastSignIn || p.account.createdAt)}`)}
+    ${row('Account made', p.account.createdAt ? `${new Date(p.account.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}${p.account.selfSignup ? ', signed up on the website before booking' : ', on their first sign-in'}` : '')}
+    ${row('Sign-ins', p.account.signIns ? `${p.account.signIns} since 19 Oct 2026` : '')}
+    ${row('Invite sent', p.account.invitedAt ? ago(p.account.invitedAt) : '')}
+    ${row('Player login', p.account.playerLogin ? `${p.account.playerLogin.email}, ${p.account.playerLogin.lastSignIn ? `signed in ${ago(p.account.playerLogin.lastSignIn)}` : 'not signed in yet'}` : '')}` : ''}
     <h3 style="margin-top:14px">Session</h3>
     ${row('Group', p.inGroup ? p.groupLabel : 'Not in a group')}
     ${row('Coach', p.coach)}
@@ -3654,7 +3672,7 @@ function psPayBadge(p) {
 
 // ---------- players ----------
 
-const PL_MORE = ['waiver', 'place', 'level', 'pos']
+const PL_MORE = ['waiver', 'acct', 'place', 'level', 'pos']
 async function renderPlayers(keep = false) {
   // Read from Airtable again whenever the tab is opened after half a minute,
   // so a change made in Airtable shows here without a page reload. Typing in
@@ -3676,6 +3694,7 @@ async function renderPlayers(keep = false) {
     ['status', 'unpaid', 'Not paid', n((p) => p.paymentStatus !== 'Paid'), 'red'],
     ['status', 'noprice', 'No fee set', n((p) => p.feeAud == null), 'grey'],
     ['waiver', 'no', 'No waiver', n((p) => !p.waiver.onFile), 'red'],
+    ['acct', 'never', 'Never signed in', n((p) => ['never', 'invited'].includes(p.account?.status)), 'grey'],
     ['place', 'out', 'Not in a group', n((p) => !p.inGroup), 'orange'],
     ['place', 'acct', 'No session yet', (d.accounts || []).length, 'grey'],
     ['place', 'removed', 'Removed', removedN, 'grey'],
@@ -3691,6 +3710,7 @@ async function renderPlayers(keep = false) {
       ${psSelect('pl-coach', d.coaches, PL.coach, 'Coach')}
       <span class="ps-more-filters" ${PL.moreOpen ? '' : 'hidden'} id="pl-morebox">
         ${psSelect('pl-waiver', [{ id: 'yes', label: 'Waiver on file' }, { id: 'no', label: 'No waiver' }], PL.waiver, 'Waiver')}
+        ${psSelect('pl-acct', [{ id: 'in', label: 'Signed in themselves' }, { id: 'never', label: 'Never signed in' }, { id: 'invited', label: 'Invited, not signed in' }], PL.acct, 'Account')}
         ${psSelect('pl-place', [{ id: 'in', label: 'In a group' }, { id: 'out', label: 'Not in a group' }, { id: 'acct', label: `Accounts with no session (${(d.accounts || []).length})` }, { id: 'removed', label: `Removed (${removedN})` }], PL.place, 'In a group?')}
         ${psSelect('pl-level', [...PROFILE_OPTIONS.levels.map((x) => ({ id: x, label: x })), { id: 'none', label: 'Level not known' }], PL.level, 'Level')}
         ${psSelect('pl-pos', PROFILE_OPTIONS.positions.map((x) => ({ id: x, label: x })), PL.pos, 'Position')}
@@ -3700,16 +3720,16 @@ async function renderPlayers(keep = false) {
       <span class="ps-meta">Updated ${esc(new Date(PL.at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }))} · <button type="button" class="ps-link" id="pl-refresh" title="Read Airtable again">Refresh</button></span>
     </div>
     ${chips.length ? `<div class="ps-chips" aria-label="Quick filters">${chips.map(([k, v, l, c, col]) => `<button type="button" class="ps-chip" data-chip="${k}:${v}" aria-pressed="${PL[k] === v}"><i style="background:var(--c-${col === 'red' ? 'critical' : col === 'orange' ? 'orange' : 'neutral'})"></i>${esc(l)} <b>${c}</b></button>`).join('')}</div>` : ''}
-    ${accts ? acctTable(d) : PL.place === 'removed' ? removedView(PL.removed, PL.q) : `<div class="ps-table-wrap"><table class="ps-table"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th data-col="football">Football</th><th>Waiver</th><th class="ps-end"><span class="sr-only">Edit</span></th></tr></thead>
+    ${accts ? acctTable(d) : PL.place === 'removed' ? removedView(PL.removed, PL.q) : `<div class="ps-table-wrap"><table class="ps-table"><thead><tr><th>Player</th><th>Group</th><th>Payment</th><th data-col="football">Football</th><th>Waiver and account</th><th class="ps-end"><span class="sr-only">Edit</span></th></tr></thead>
       <tbody>${shown.map(plRow).join('') || `<tr><td colspan="6"><div class="ps-empty">No players match.${active ? ' <button type="button" class="ps-link" id="pl-clear2">Clear filters</button>' : ''}</div></td></tr>`}</tbody></table></div>`}`
   if (keep) window.scrollTo(0, y)
   const redraw = () => renderPlayers(true)
   wirePlTerm()
   $('pl-q').addEventListener('input', (e) => { PL.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('pl-q'); i.focus(); i.setSelectionRange(at, at) })
-  for (const [id, key] of [['pl-status', 'status'], ['pl-group', 'group'], ['pl-coach', 'coach'], ['pl-waiver', 'waiver'], ['pl-place', 'place'], ['pl-level', 'level'], ['pl-pos', 'pos']]) {
+  for (const [id, key] of [['pl-status', 'status'], ['pl-group', 'group'], ['pl-coach', 'coach'], ['pl-waiver', 'waiver'], ['pl-acct', 'acct'], ['pl-place', 'place'], ['pl-level', 'level'], ['pl-pos', 'pos']]) {
     $(id).addEventListener('change', (e) => { PL[key] = e.target.value; redraw() })
   }
-  const clear = () => { Object.assign(PL, { q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '' }); redraw() }
+  const clear = () => { Object.assign(PL, { q: '', status: '', group: '', coach: '', waiver: '', acct: '', place: '', level: '', pos: '' }); redraw() }
   $('pl-clear')?.addEventListener('click', clear)
   $('pl-clear2')?.addEventListener('click', clear)
   $('pl-morefilters').addEventListener('click', () => { PL.moreOpen = !PL.moreOpen; redraw() })

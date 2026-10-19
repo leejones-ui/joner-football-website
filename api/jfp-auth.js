@@ -99,7 +99,7 @@ export default async function handler(req, res) {
       const { token, seconds } = await openSession(v.email, v.audience)
       res.setHeader('Set-Cookie', cookieHeader(v.audience, token, seconds))
       // Who has signed in to their family account, so staff can chase the rest.
-      if (v.audience === 'parent') { try { await kvCommand(['HSET', 'jfp:acct-signedin', v.email, new Date().toISOString()]) } catch {} }
+      if (v.audience === 'parent') { try { await Promise.all([kvCommand(['HSET', 'jfp:acct-signedin', v.email, new Date().toISOString()]), kvCommand(['HINCRBY', 'jfp:acct-signins', v.email, '1'])]) } catch {} }
       const role = v.audience === 'staff' ? roleFor(v.email, config) : null
       return res.status(200).json({ success: true, audience: v.audience, email: v.email, role: role?.role || 'parent' })
     }

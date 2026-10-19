@@ -5,6 +5,7 @@
 import { requireParentAccess, getConfig, coachLabel, kvGetJson, listGroups, onlineCounts, publicPlacesLeft, coachById, sessionDates, dateLabel, formatAud, to24h, locationFor, periodOf, dayOrder, QUESTIONS, REQUIREMENTS, ONE_TO_ONE, skippedDates } from './_jfp-store.js'
 import { airtableCounts } from './_jfp-airtable.js'
 import { listExtraSlots } from './_jfp-extra.js'
+import { sessionKind } from './_jfp-family-extra.js'
 import { sweepExpiredOffers } from './_jfp-offers.js'
 import { coachTick } from './_jfp-coach-alerts.js'
 import { pushTick } from './_jfp-push.js'
@@ -30,7 +31,7 @@ export async function weekExtras(config, nowMs = Date.now()) {
   const until = new Date(nowMs + WEEK_MS).toISOString().slice(0, 10)
   try {
     return (await listExtraSlots({ config, publicOnly: true })).filter((s) => s.date <= until).sort((a, b) => `${a.date}${to24h(a.time)}`.localeCompare(`${b.date}${to24h(b.time)}`)).slice(0, 12)
-      .map((s) => ({ id: s.id, date: s.date, dateLabel: s.dateLabel, time: s.time, durationMin: s.durationMin, location: s.location, label: s.label && !/\$|A\$/.test(s.label) ? s.label : 'Extra session', placesLeft: s.placesLeft, full: s.placesLeft <= 0 }))
+      .map((s) => ({ id: s.id, date: s.date, dateLabel: s.dateLabel, time: s.time, durationMin: s.durationMin, location: s.location, kind: sessionKind(s.capacity), coach: s.coachName ? `Coach ${s.coachName}` : '', placesLeft: s.placesLeft, full: s.placesLeft <= 0 }))
   } catch (error) { console.error('jfp week extras failed', error.message); return [] }
 }
 
@@ -182,9 +183,9 @@ export default async function handler(req, res) {
       locations,
       coaches,
       groups: list,
-      // Public extra sessions in the next 7 days (Lee, 19 Oct 2026). A session
-      // drops off by itself once it has started. No coach and no price here:
-      // families book in My account.
+      // Public extra sessions in the next 7 days, on their own tab (Lee, 19 Oct
+      // 2026). A session drops off by itself once it has started. The coach and
+      // the kind of session, no price: families book in My account.
       extras: await weekExtras(config),
       // One enquiry card for private coaching, whenever the program runs any.
       privateCoaching: groups.some((g) => g.label === '1 to 1') ? { ...publicGroup(ONE_TO_ONE, config, null), sortTime: '99:99', firstDate: '', lastDate: '', sessions: 0 } : null,

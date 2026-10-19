@@ -38,8 +38,9 @@ export function setExtraLink(query) {
 }
 function slotCard(s, D, { mine = false } = {}) {
   const full = s.placesLeft < 1
-  return `<article class="ja-card" data-xslot="${esc(s.id)}"><p class="ja-kicker"><i></i>${mine ? 'Your session' : 'Extra session'}</p>
+  return `<article class="ja-card" data-xslot="${esc(s.id)}"><p class="ja-kicker"><i></i>${mine ? 'Your session' : esc(s.kind || 'Extra session')}</p>
     <h3 class="ja-h3" style="margin-top:8px">${esc(s.dateLabel)} · ${esc(s.time)}</h3>
+    <p class="ja-small" style="margin-top:4px"><b>${esc(s.kind || 'Extra session')}</b>${s.coach ? ` with ${esc(s.coach)}` : ''}${s.label && s.label !== s.kind ? ` · ${esc(s.label)}` : ''}</p>
     <p class="ja-small ja-muted">${esc(s.location)}${s.durationMin ? ` · ${esc(String(s.durationMin))} min` : ''} · ${esc(s.priceLabel)}</p>
     <p class="ja-small ja-muted">${full ? 'Full' : `${s.placesLeft} place${s.placesLeft === 1 ? '' : 's'} left`}${s.note ? ` · ${esc(s.note)}` : ''}</p>
     <div class="ja-actions" data-xslot-acts>${full ? '' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-xbook="${esc(s.id)}">Book</button>`}</div>

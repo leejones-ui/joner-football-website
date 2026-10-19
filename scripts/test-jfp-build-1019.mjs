@@ -110,7 +110,8 @@ await test('a coach opens several extra sessions at once, and never sees a price
 await test('families see the new sessions (a red number and a pop up) until they open the tab', async () => {
   const x = (await acct(fam, 'overview')).data.extras
   assert.equal(x.bookable.length, 4)
-  assert.ok(!/coachId|coachName|Sam/.test(JSON.stringify(x.bookable)))
+  assert.ok(!/coachId|coachName/.test(JSON.stringify(x.bookable)), 'no coach id')
+  assert.ok(x.bookable.every((b) => /^Coach Sam/.test(b.coach) && b.kind === '1 on 1'), `the coach and the kind of session (Lee, 19 Oct): ${JSON.stringify(x.bookable[0])}`)
   assert.deepEqual(x.seen, {})
   const s = await acct(fam, 'sessionsSeen', { kind: 'extra' })
   assert.equal(s.status, 200)
@@ -250,7 +251,8 @@ await test('the public booking page lists public extra sessions in the next 7 da
   assert.equal(g.status, 200, JSON.stringify(g.data).slice(0, 200))
   const ids = new Set(MANY.map((x) => x.id))
   assert.equal(g.data.extras.filter((x) => ids.has(x.id)).length, 4)
-  assert.ok(!/coach|price|A\$|private|token/i.test(JSON.stringify(g.data.extras)), JSON.stringify(g.data.extras[0]))
+  assert.ok(!/coachId|price|A\$|private|token/i.test(JSON.stringify(g.data.extras)), JSON.stringify(g.data.extras[0]))
+  assert.ok(g.data.extras.every((x) => x.kind && x.coach), 'kind of session and coach')
   const later = await ok(sam, 'extraSave', { slot: { date: day(12), time: '4:00pm', capacity: 2, location: 'Belrose HQ', priceId: (await ok(sam, 'extraList')).prices[0].id, visibility: 'public' } })
   const g2 = await c.call('/api/jfp-groups')
   assert.ok(!g2.data.extras.some((x) => x.id === later.slot.id), 'more than a week away is not shown yet')
@@ -273,6 +275,23 @@ await test('free JF App access: only a paid Term 4 place can ask; Lee sees the l
   assert.ok(l.list.some((x) => x.appEmail === 'ava.plays@example.com' && x.status === 'requested'))
   await ok(lee, 'appAccessMark', { parentEmail: 'pat.ashdown@example.com', status: 'done' })
   assert.equal((await acct(fam, 'appAccessState')).data.app.request.status, 'done')
+})
+
+await test('Players tab: who has signed in themselves, who never has, and invites', async () => {
+  const before = (await ok(lee, 'playersList', { fresh: true })).players
+  const ava = before.find((p) => p.name === 'Ava Ashdown')
+  assert.ok(['active', 'signedin'].includes(ava.account.status), JSON.stringify(ava.account))
+  assert.ok(ava.account.createdAt && ava.account.lastSignIn)
+  const cara = await ok(lee, 'addPlayer', { groupId: THU, force: true, player: { name: 'Cara Neverlogged', age: 11 }, parent: { name: 'Cy Neverlogged', email: 'cy.never@example.com', mobile: '0400 222 333' }, payment: 'full' })
+  assert.ok(cara)
+  const after = (await ok(lee, 'playersList', { fresh: true })).players
+  const c = after.find((p) => p.name === 'Cara Neverlogged')
+  assert.equal(c.account.status, 'never')
+  const cy = client()
+  await signIn(cy, 'cy.never@example.com')
+  await signIn(cy, 'cy.never@example.com')
+  const c2 = (await ok(lee, 'playersList', { fresh: true })).players.find((p) => p.name === 'Cara Neverlogged')
+  assert.equal(c2.account.status, 'active'); assert.equal(c2.account.signIns, 2); assert.equal(c2.account.selfSignup, false)
 })
 
 console.log(`${passed} passed`)

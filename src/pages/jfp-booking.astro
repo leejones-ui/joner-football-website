@@ -38,13 +38,17 @@ import { termInfo, expectations, groupingLine } from '../data/jfp-term-info.js'
         </section>
         <nav class="j-tabs" aria-label="Sections">
           <a href="#timetable" data-tab="timetable" aria-current="page">Timetable</a>
-          <a href="#term" data-tab="term"><span id="term-tab">Term 4</span> info</a>
+          <a href="#extra" data-tab="extra">Extra sessions<span class="j-tabn" id="extra-count" hidden></span></a>
+          <a href="#term" data-tab="term"><span id="term-tab">Term 4</span>&nbsp;info</a>
           <a href="#pricing" data-tab="pricing">Pricing</a>
           <a href="https://www.besteamsport.com.au/collections/joner-football" id="kit-tab" target="_blank" rel="noopener noreferrer">Training kit</a>
         </nav>
 
+        <section data-panel="extra" hidden>
+          <div id="extras-week"></div>
+        </section>
+
         <section data-panel="timetable">
-          <div id="extras-week" hidden></div>
           <h2 class="j-step">Where do you train?</h2>
           <div class="j-locs" id="locs"></div>
           <div class="j-bar">

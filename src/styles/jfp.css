@@ -757,3 +757,5 @@ body.has-picks .j-toast { bottom: calc(92px + env(safe-area-inset-bottom)); }
 .j-extra .left { color: var(--j-green, #15803d); opacity: 1; font-weight: 600; }
 .j-extra .is-full, .j-extra.is-full .left { color: var(--j-muted, #6b7280); }
 .j-extra.is-full { opacity: .7; }
+.j-tabs .j-tabn { display: inline-block; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 9px; background: var(--j-red, #E5383B); color: #fff; font-size: 11px; line-height: 18px; text-align: center; vertical-align: 1px; }
+.j-extra span b { opacity: 1; }

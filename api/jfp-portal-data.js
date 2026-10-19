@@ -9,6 +9,7 @@
 // dashboard always matches, and every change is recorded in the audit log.
 import { playersHistory, HISTORY_TERMS } from './_jfp-players-history.js'
 import { listAppAccess, markAppAccess } from './_jfp-app-access.js'
+import { accountMaps, accountFor } from './_jfp-account-status.js'
 import crypto from 'node:crypto'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { siteUrl, getConfig as getHolidayConfig } from './_holiday-store.js'
@@ -525,6 +526,9 @@ async function playersList(req, res, config, body = {}) {
       holdsPlace: r.holdsPlace,
     }
   })
+  // Who has signed in to their account themselves (Lee, 19 Oct 2026).
+  const maps = await accountMaps().catch((e) => { console.error('jfp account status read failed', e); return null })
+  if (maps) { const byRow = new Map(placed.players.map((r) => [r.id, r])); for (const p of players) { const r = byRow.get(p.rowId); p.account = accountFor(maps, { emails: r ? rowEmails(r) : [p.email], playerKey: normName(p.name) }) } }
   // Card on file / Direct debit on file, auto-charge on or paused (claude/card-on-file).
   await withSavedPay(players)
   const seen = new Map()

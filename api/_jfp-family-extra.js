@@ -10,17 +10,24 @@
 // usual Stripe page. If the charge cannot be made the place stays held and
 // the coach sees "Payment link to come".
 //
-// Families never see a coach's name or another family's details.
+// Families see the coach and what kind of session it is (Lee, 19 Oct 2026:
+// "parents will want to know that"), never another family's details.
 import { listExtraSlots, getExtraSlot, reserveExtraPlace, setBookingCharge } from './_jfp-extra.js'
 import { createPlayerCharge } from './_jfp-charges.js'
 import { getPayreq, clean } from './_jfp-store.js'
 import { profileKey } from './_jfp-profiles.js'
 
-// What a family may see of a session: no coach, no other bookings.
+// 1 on 1, shared or a small group, from how many players the session takes.
+export function sessionKind(capacity) {
+  const n = Number(capacity) || 1
+  return n <= 1 ? '1 on 1' : n === 2 ? 'Shared session, 2 players' : `Group of ${n}`
+}
+// What a family may see of a session: the coach's name and the kind of
+// session, never the coach's id or other bookings.
 export function familySlot(s) {
   if (!s) return null
   const { coachId, coachName, ...rest } = s
-  return rest
+  return { ...rest, coach: coachName ? `Coach ${coachName}` : '', kind: sessionKind(s.capacity) }
 }
 export async function bookableSlots(config) {
   return (await listExtraSlots({ config, publicOnly: true }).catch(() => [])).map(familySlot)
