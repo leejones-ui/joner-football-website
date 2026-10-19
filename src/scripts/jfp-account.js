@@ -1061,10 +1061,34 @@ function renderApp() {
       <div class="ja-actions"><a class="ja-store" href="${links.appStore}" target="_blank" rel="noopener noreferrer">${ic('apple')}<span><small>Download on the</small><b>App Store</b></span></a><a class="ja-store" href="${links.googlePlay}" target="_blank" rel="noopener noreferrer">${ic('gplay')}<span><small>Get it on</small><b>Google Play</b></span></a></div></div>
       <img class="shot" src="/images/app/joner-app-main-iphone-current-transparent.webp" alt="The Joner Football App on a phone" loading="lazy"></div>
     <div class="ja-grid ja-grid-3">
-      <div class="ja-card" style="padding:24px"><p class="ja-kicker"><i></i>Booked into JFP</p><h2 class="ja-h2" style="margin-top:10px">Get your free access</h2><p class="ja-muted" style="margin-top:8px">Send us a message and we will set up free access for your player.</p><div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" data-go="contact" data-topic="The JF App">Ask for access</button></div></div>
+      <div class="ja-card" style="padding:24px" id="app-free"><p class="ja-kicker"><i></i>Booked into JFP</p><h2 class="ja-h2" style="margin-top:10px">Get your free access</h2><p class="ja-muted" style="margin-top:8px">Checking your places…</p></div>
       <div class="ja-card" style="padding:24px"><p class="ja-kicker"><i></i>Not in JFP</p><h2 class="ja-h2" style="margin-top:10px">Join the app</h2><p class="ja-muted" style="margin-top:8px">Anyone can join the Joner Football App on its own.</p><div class="ja-actions"><a class="ja-btn ja-btn-line" href="/join" target="_blank" rel="noopener">Join page ${ic('ext')}</a></div></div>
       <div class="ja-card" style="padding:24px"><p class="ja-kicker"><i></i>What is inside</p><h2 class="ja-h2" style="margin-top:10px">About the app</h2><p class="ja-muted" style="margin-top:8px">See what the app has for players, parents and coaches.</p><div class="ja-actions"><a class="ja-btn ja-btn-line" href="${links.appPage}" target="_blank" rel="noopener">About the app ${ic('ext')}</a></div></div>
     </div>`
+  appFreeCard()
+}
+
+// Free access (Lee, 19 Oct 2026): a paid Term 4 place, an email for the app,
+// then Lee or Ligia set it up. Free accounts and trials see how to get it.
+async function appFreeCard() {
+  const box = document.getElementById('app-free')
+  if (!box) return
+  const r = await api('/api/jfp-account', { action: 'appAccessState' })
+  const a = r.ok ? r.data.app : null
+  const head = '<p class="ja-kicker"><i></i>Booked into JFP</p><h2 class="ja-h2" style="margin-top:10px">Get your free access</h2>'
+  if (!a || !a.eligible) { box.innerHTML = `${head}<p class="ja-muted" style="margin-top:8px">Free app access comes with a paid Term 4 place. Once your term is paid, ask here.</p><div class="ja-actions"><button type="button" class="ja-btn ja-btn-line" data-go="contact" data-topic="The JF App">Ask a question</button></div>`; return }
+  const q = a.request
+  if (q && q.status === 'done') { box.innerHTML = `${head}<p class="ja-muted" style="margin-top:8px">Set up for <b>${esc(q.appEmail)}</b>. Download the app and sign in with that email.</p>`; return }
+  box.innerHTML = `${head}<p class="ja-muted" style="margin-top:8px">${q ? `Asked for <b>${esc(q.appEmail)}</b>. We will set it up and let you know when it is ready. Wrong email? Change it below.` : `For ${esc(a.players.join(' and '))}. Enter the email the app login will use.`}</p>
+    <label class="j-field" style="margin-top:12px"><span>Email for the app</span><input class="j-input" id="app-email" type="email" inputmode="email" autocomplete="email" value="${esc(q?.appEmail || D.email || '')}"></label>
+    <div class="ja-actions"><button type="button" class="ja-btn ja-btn-red" id="app-go">${q ? 'Update the email' : 'Get free access'}</button></div>`
+  box.querySelector('#app-go').addEventListener('click', async (e) => {
+    e.currentTarget.disabled = true
+    const res = await api('/api/jfp-account', { action: 'appAccess', appEmail: box.querySelector('#app-email').value })
+    if (!res.ok) { toast(res.data.error || 'Could not send that. Try again.'); e.currentTarget.disabled = false; return }
+    toast('Thanks. We will set it up and let you know.')
+    appFreeCard()
+  })
 }
 
 // ---------- contact ----------

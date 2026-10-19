@@ -27,6 +27,7 @@ import {
   formatAud, coachById, coachByAirtableName, coachLabel, locationFor, ageOn, sydneyToday, normName, emailsIn, rowEmails, audit, closeCheckout, kvPipeline, kvCommand, CHECKOUT_EXPIRES_MINUTES, formatPhone, isSessionType, isProType,
 } from './_jfp-store.js'
 import { telegramAlert } from './_jfp-notify.js'
+import { eligiblePlayers, appAccessOf, familyAppView, requestAppAccess } from './_jfp-app-access.js'
 import { syncLinks, syncLink, NOTHING_OWING, PAID_ELSEWHERE } from './_jfp-fee-sync.js'
 import { withPayreqLease } from './_jfp-finalise.js'
 import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, savePhoto, waiverPrefill, DOB_MIN, dobMax, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
@@ -985,6 +986,14 @@ export default async function handler(req, res) {
     if (body.action === 'withdrawCancel') return await withdrawSession(res, parent, body)
     if (body.action === 'requestExtra') return await requestExtra(res, parent, body)
     if (body.action === 'holidayAccess') return await holidayAccess(res, parent)
+    if (body.action === 'appAccess' || body.action === 'appAccessState') {
+      const config = await getConfig()
+      const fam = familyFor(parent.email, await loadRoster(), config.termStart)
+      if (body.action === 'appAccessState') return res.status(200).json({ success: true, app: familyAppView(await appAccessOf(parent.email), eligiblePlayers(fam)) })
+      const out = await requestAppAccess({ parent, fam, body, notify: telegramAlert })
+      if (!out.ok) return fail(res, out.status, out.error)
+      return res.status(200).json({ success: true, already: Boolean(out.already), app: familyAppView(out.record, eligiblePlayers(fam)) })
+    }
     if (body.action === 'sessionsSeen') return await markSessionsSeen(res, parent, body)
     // Book an extra session: hold the place, make the charge, then pay (money engineer).
     if (body.action === 'extraSlot') { const s = await privateSlot(await getConfig(), { slotId: body.slotId, token: body.k }); return s ? res.status(200).json({ success: true, slot: s }) : fail(res, 404, 'That session is not open to book, or the link is not right.') }

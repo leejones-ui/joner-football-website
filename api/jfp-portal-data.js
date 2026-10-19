@@ -8,6 +8,7 @@
 // Staff changes write straight into Airtable Term 4 Players, so Lee's
 // dashboard always matches, and every change is recorded in the audit log.
 import { playersHistory, HISTORY_TERMS } from './_jfp-players-history.js'
+import { listAppAccess, markAppAccess } from './_jfp-app-access.js'
 import crypto from 'node:crypto'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { siteUrl, getConfig as getHolidayConfig } from './_holiday-store.js'
@@ -3279,6 +3280,9 @@ async function handle(req, res) {
       case 'searchPlayers': return res.status(200).json({ success: true, results: await searchPlayers(config, body) })
       case 'addPlayer': return await addPlayer(req, res, principal, config, body)
       case 'playersList': return await playersList(req, res, config, body)
+      // JF App access asked for by JFP families (Lee, 19 Oct 2026). Set up in Uscreen by hand.
+      case 'appAccessList': return res.status(200).json({ success: true, list: await listAppAccess() })
+      case 'appAccessMark': { const out = await markAppAccess({ parentEmail: body.parentEmail, status: body.status, by: principal.email }); if (!out.ok) return fail(res, out.status, out.error); return res.status(200).json({ success: true, record: out.record }) }
       // Past and present players and JF Master Players (Lee, 19 Oct 2026): Lee and Ligia only.
       case 'playersHistory': {
         if (!isAdmin) return fail(res, 403, 'Only Lee or Ligia can see past players.')

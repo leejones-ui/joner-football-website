@@ -3712,6 +3712,7 @@ async function renderPlayers(keep = false) {
   $('ps-more').addEventListener('click', (e) => menu(e.currentTarget, [
     { key: 'family', label: '+ Add a family', run: () => familyModal(famUI()) },
     { key: 'invite', label: 'Send account invites', run: () => renderFamilies() },
+    { key: 'app', label: 'JF App access', run: () => appAccessModal() },
     '-',
     { key: 'refresh', label: 'Refresh from Airtable', run: () => { PL.at = 0; renderPlayers() } },
   ]))
@@ -3726,6 +3727,22 @@ async function renderPlayers(keep = false) {
     tr.addEventListener('click', open)
     tr.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === tr) { e.preventDefault(); open(e) } })
   })
+}
+
+// JF App access asked for by paid Term 4 families (Lee, 19 Oct 2026). Lee or
+// Ligia set each one up in Uscreen by hand, then mark it done here.
+async function appAccessModal() {
+  const d = await need(await post('appAccessList'))
+  const row = (x) => `<div class="jp-player" style="cursor:default"><span class="nm" style="flex:1 1 auto;min-width:0"><b>${esc(x.players.join(', '))}</b> ${x.status === 'done' ? psBadge('green', 'Set up') : psBadge('orange', 'Waiting')}<br><span class="small">App email: <b>${esc(x.appEmail)}</b></span><br><span class="muted small">${esc(x.parentName || x.parentEmail)} · asked ${esc(new Date(x.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }))}${x.previous ? ` · changed from ${esc(x.previous)}` : ''}</span></span>
+    <button type="button" class="j-btn ${x.status === 'done' ? 'j-btn-ghost' : 'j-btn-dark'} j-btn-sm" data-app-mark="${esc(x.parentEmail)}" data-to="${x.status === 'done' ? 'requested' : 'done'}">${x.status === 'done' ? 'Undo' : 'Mark set up'}</button></div>`
+  modal(`<h2>JF App access</h2><p class="muted small" style="margin-bottom:12px">Families with a paid Term 4 place ask in My account. Give that email access in Uscreen, then mark it set up. Nothing changes in Uscreen from here.</p>
+    ${d.list.length ? d.list.map(row).join('') : '<p class="muted">No requests yet.</p>'}
+    <div style="display:flex;justify-content:flex-end;margin-top:14px"><button type="button" class="j-btn j-btn-line" data-close>Close</button></div>`, { wide: true })
+  document.querySelectorAll('[data-app-mark]').forEach((b) => b.addEventListener('click', async () => {
+    const r = await post('appAccessMark', { parentEmail: b.dataset.appMark, status: b.dataset.to })
+    if (!r.ok) return toast(r.data.error)
+    closeModal(); appAccessModal()
+  }))
 }
 
 // ---------- players: past terms and JF Master Players ----------
