@@ -32,6 +32,7 @@ import { syncLinks, syncLink, NOTHING_OWING, PAID_ELSEWHERE } from './_jfp-fee-s
 import { withPayreqLease } from './_jfp-finalise.js'
 import { familyProfiles, findProfile, pickProfile, profileKey, profileView, cleanProfile, saveProfile, savePhoto, waiverPrefill, DOB_MIN, dobMax, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { markToldAway, clearToldAway } from './_jfp-away.js'
+import { coachPhotoUrl } from './jfp-groups.js'
 import { listCancels, submitCancel, withdrawCancel, rowSessionDates, rowTime, noticeFor, coachesFor, coverCoachFor, familyView, cancelId, REASONS, NOTE_MAX } from './_jfp-cancel.js'
 import { loadRoster, familyFor, createWaiverRows, waiverFields, bustRosterCache, updateTerm4Rows } from './_jfp-airtable.js'
 import { sessionFor, sameOrigin } from './_jfp-people.js'
@@ -157,6 +158,9 @@ async function overview(res, parent, body = {}, opts = {}) {
   // Attendance (Lee, 17 Oct 2026): the coach's register for every session
   // already run, one read for the whole family. A failed read shows none.
   const offMap = await sessionOffMap()
+  // Coach profiles for families (Lee, 20 Oct 2026): only while Lee has them on.
+  const cprof = config.coachProfilesFamilies === true ? await import('./_jfp-coach-profiles.js') : null
+  const cprofAll = cprof ? await cprof.allProfiles() : {}
   const attAsk = []
   for (const p of jfpPlayers) for (const r of p.term4) if (r.holdsPlace && r.groupId) {
     const g = byGroup[r.groupId] || null
@@ -211,6 +215,7 @@ async function overview(res, parent, body = {}, opts = {}) {
         sessions,
         // Coach mobiles, only where one has been entered. Never an email.
         contacts: coachesFor(config, r, byGroup[r.groupId] || null).filter((c) => c.phone).map((c) => ({ name: 'Coach', phone: formatPhone(c.phone), tel: c.phone })),
+        ...(cprof ? { coaches: coachesFor(config, r, byGroup[r.groupId] || null).map((c) => cprof.profileView(config, c, cprofAll[c.id], c.photoV ? coachPhotoUrl(c) : '')) } : {}),
         cancelled: [...mineCancelled.values()].filter((c) => c.startMs > nowMs).sort((a, b) => a.startMs - b.startMs).map(familyView),
       }
     }),

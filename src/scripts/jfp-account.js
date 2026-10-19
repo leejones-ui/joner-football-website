@@ -15,6 +15,7 @@ import { renderExtra, renderAnalysis, extraClick, setExtraLink } from './jfp-acc
 import { mountSavedPay, savedReturn, forgetSaved } from './jfp-account-saved.js'
 import { renderReports, reportsHomeBlock, unreadReports } from './jfp-account-reports.js'
 import { newSessions, markSeen, newSessionsPopup } from './jfp-account-new.js'
+import { coachRow, coachSheet } from './jfp-account-coach.js'
 import { attendanceLine, pastMark, unreadNotes, notesHomeBlock, makeupsHomeBlock, askMakeup, renderNotes, renderAlerts, pushOffered, loginRow, loginSheet } from './jfp-account-more.js'
 
 const q = new URLSearchParams(location.search)
@@ -958,7 +959,8 @@ function plainPlaces(html) {
 
 // Family (redesign, Lee 17 Oct 2026): every child with their session, age,
 // waiver and details, then your own details, light or dark, and sign out.
-// No coach names for families (Lee, 14 Oct 2026).
+// No coach names for families (Lee, 14 Oct 2026), unless Lee switches on
+// coach profiles for families (20 Oct 2026): then each card shows its coaches.
 function renderFamily() {
   const el = pane('family')
   if (!el || !D) return
@@ -982,6 +984,7 @@ function renderFamily() {
         ${jj ? '' : `<div><span>Player details</span>${details}</div>`}
         ${jj ? '' : loginRow(p, D)}
       </div>
+      ${jj ? '' : coachRow(p)}
       <div class="ja-kid-act">${p.waiver?.onFile ? '' : `<button type="button" class="ja-btn ja-btn-red ja-btn-sm" data-waiver-player="${esc(p.key)}">${ic('sign')}Sign waiver</button>`}${jj ? '' : `<button type="button" class="ja-btn ${miss ? 'ja-btn-light' : 'ja-btn-line'} ja-btn-sm" data-go="info">${miss ? 'Update details' : 'View details'}</button>`}</div>
     </article>`
   }
@@ -1468,6 +1471,8 @@ document.addEventListener('click', async (e) => {
   const multi = t.closest('[data-multi] [data-val]')
   if (multi) { multi.setAttribute('aria-pressed', String(multi.getAttribute('aria-pressed') !== 'true')); return }
   if (t.closest('[data-add-player]')) { closeSheet(true); return addPlayerSheet() }
+  const cpf = t.closest('[data-coach-profile]')
+  if (cpf) return coachSheet(cpf.dataset.coachProfile)
   const sp = t.closest('[data-save-prof]')
   if (sp) return saveProf(sp.dataset.saveProf, sp)
   const prm = t.closest('[data-photo-rm]')

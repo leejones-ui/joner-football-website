@@ -882,3 +882,11 @@ body:has(.ja[data-theme="light"]) { background: #F5F5F3 !important; }
   .ja:has(input:not([type=checkbox]):not([type=radio]):focus, textarea:focus, select:focus) .ja-tabs { display: none; }
 }
 .ja-row.is-off { opacity: .55; }
+
+/* Your coach (20 Oct 2026): only when Lee has coach profiles on for families. */
+.ja-coach-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.ja-coach-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border: 1px solid var(--ja-line, rgba(0,0,0,.12)); border-radius: 999px; background: transparent; color: inherit; font: inherit; cursor: pointer; min-height: 40px; text-align: left; }
+.ja-coach-chip span { display: flex; flex-direction: column; line-height: 1.2; }
+.ja-coach-chip small { font-size: 11px; opacity: .7; }
+.ja-cp-sec { margin-top: 14px; }
+.ja-cp-list { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 4px; }

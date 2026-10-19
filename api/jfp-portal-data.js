@@ -3437,6 +3437,33 @@ async function handle(req, res) {
       return res.status(200).json({ success: true, user: { ...principal, coachId: myCoachId, photo: mine?.photo || '' }, coaches: isAdmin ? coachList(config) : [] })
     }
     if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
+    // Coach profiles (Lee, 20 Oct 2026): a coach edits their own, Lee and
+    // Ligia any; every coach reads them all on Our coaches.
+    if (action === 'coachProfiles' || action === 'coachProfileSave' || action === 'coachProfilesFamilies') {
+      const cp = await import('./_jfp-coach-profiles.js')
+      const myCoachId = principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || ''
+      if (action === 'coachProfileSave') {
+        const coachId = clean(body.coachId, 30) || myCoachId
+        if (!coachId) return fail(res, 400, 'Your login is not linked to a coach yet. Ask Lee.')
+        if (!isAdmin && coachId !== myCoachId) return fail(res, 403, 'You can only change your own profile.')
+        const out = await cp.saveProfile({ config, principal, coachId, input: body.profile || {}, isAdmin })
+        if (out.error) return fail(res, 400, out.error)
+        const c = coachById(config, coachId)
+        return res.status(200).json({ success: true, profile: cp.profileView(config, c, out.profile, c.photoV ? coachPhotoUrl(c) : '') })
+      }
+      if (action === 'coachProfilesFamilies') {
+        if (!isAdmin) return fail(res, 403, 'Only Lee or Ligia change this.')
+        if (typeof body.on === 'boolean') {
+          await saveConfig({ coachProfilesFamilies: body.on })
+          await audit({ by: principal.email, action: 'coach.profiles.families', target: 'config', after: { on: body.on } })
+          return res.status(200).json({ success: true, on: body.on })
+        }
+        return res.status(200).json({ success: true, on: config.coachProfilesFamilies === true })
+      }
+      const all = await cp.allProfiles()
+      const coaches = config.coaches.map((c) => ({ ...cp.profileView(config, c, all[c.id], c.photoV ? coachPhotoUrl(c) : ''), mine: c.id === myCoachId, canEdit: isAdmin || c.id === myCoachId }))
+      return res.status(200).json({ success: true, coaches, myCoachId, admin: isAdmin, families: config.coachProfilesFamilies === true, roles: cp.ROLES, ages: cp.AGES, skills: cp.SKILLS })
+    }
     if (INVOICE_ACTIONS.has(action)) return await invoiceAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
     if (HOURS_ACTIONS.has(action)) return await hoursAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
     if (['ideasGet', 'ideasSave', 'ideasApp', 'ideasLinks', 'ideasLinkAdd', 'ideasLinkDelete', 'staffOverview', 'staffAlerts', 'requestCover', 'cancelCover', 'declineCover', 'requestSwap', 'answerSwap', 'cancelTimeOff', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete', 'plan2List', 'plan2Save', 'plan2Get', 'plan2Delete', 'plan2Library', 'plan2Use'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)

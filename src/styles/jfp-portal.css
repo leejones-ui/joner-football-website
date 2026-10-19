@@ -1292,3 +1292,28 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .ji-facebook { background: #1877f2; }
 /* Extra sessions on the Timetable: dashed, so they read apart from term groups. */
 .jp-blk-extra { border-style: dashed; cursor: pointer; }
+
+/* Coach profiles (20 Oct 2026). */
+.cp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 12px; max-width: 1000px; }
+.cp-card { display: flex; gap: 12px; align-items: center; padding: 14px; text-align: left; cursor: pointer; font: inherit; color: inherit; min-width: 0; }
+.cp-card:hover { border-color: var(--j-focus); }
+.cp-card-bd { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cp-face { border-radius: 50%; object-fit: cover; object-position: 50% 20%; flex: none; background: #eef0f3; }
+.cp-ini { display: inline-flex; align-items: center; justify-content: center; color: #555; font-weight: 700; }
+.cp-role { color: var(--j-focus); font-weight: 600; font-size: 13px; }
+.cp-top { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.cp-top h2 { margin: 0 0 2px; }
+.cp-sec { border-top: 1px solid var(--j-line); padding-top: 10px; margin-top: 12px; }
+.cp-kick { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--j-ink-2); margin: 0 0 6px; }
+.cp-about { white-space: pre-line; overflow-wrap: anywhere; }
+.cp-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.cp-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.cp-tags i { font-style: normal; font-size: 12px; border: 1px solid var(--j-line); border-radius: 999px; padding: 2px 9px; }
+.cp-form { display: grid; gap: 14px; }
+.cp-block h3 { font-size: 15px; margin: 0 0 8px; }
+.cp-rep { display: grid; gap: 8px; margin-bottom: 8px; }
+.cp-rep-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.cp-rep-row .j-field { min-width: 120px; margin: 0; }
+.cp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cp-chips .j-chip { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; min-height: 40px; }
+.cp-chips .j-chip:has(input:checked) { border-color: var(--j-focus); background: color-mix(in srgb, var(--j-focus) 12%, transparent); }
