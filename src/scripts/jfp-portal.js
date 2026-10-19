@@ -422,7 +422,8 @@ async function copy(text) {
 
 // Four payment colours everywhere in the portal (Lee, 12 Oct 2026):
 // red unpaid, green paid, orange part paid, pink session by session.
-const SESSION_RE = /session by session|drop-in|1 on 1 casual/i
+// Pros pay by the session too (Lee, 19 Oct 2026: Hudson Bell showed green after paying one session).
+const SESSION_RE = /session by session|drop-in|1 on 1 casual|pro session/i
 function payKind(p) {
   if (SESSION_RE.test(p.type || p.paymentType || '')) return 'session'
   const s = p.paymentStatus
