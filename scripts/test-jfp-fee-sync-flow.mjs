@@ -239,4 +239,18 @@ await test('a hand-typed amount (a A$200 deposit) is not pushed up to the fee; q
   assert.equal((await payreq(charge.payreqId)).amountCents, 9000)
 })
 
+await test('a trial player priced for the term on a family invoice is no longer a trial (Lee, 19 Oct 2026)', async () => {
+  const f = await family('Trialfam', ['Gil', 'Hal'], [850, 85])
+  const [a, b] = f.rowIds
+  await ok('setTrial', { rowId: b, trial: true })
+  assert.equal((await row(b))['Term 4 Payment Type'], 'JFP Trial')
+  await ok('familyInvoice', { places: [{ rowId: a, feeCents: 66500 }, { rowId: b, feeCents: 66500 }], sendEmail: false })
+  assert.equal((await row(b))['Term 4 Payment Type'], 'JFP 10 weeks')
+  // A trial still priced at the trial stays a trial.
+  const g = await family('Trialstay', ['Ida'], [85])
+  await ok('setTrial', { rowId: g.rowIds[0], trial: true })
+  await ok('familyInvoice', { places: [{ rowId: g.rowIds[0], feeCents: 8500 }], sendEmail: false })
+  assert.equal((await row(g.rowIds[0]))['Term 4 Payment Type'], 'JFP Trial')
+})
+
 console.log(`\n${passed} fee sync checks passed`)

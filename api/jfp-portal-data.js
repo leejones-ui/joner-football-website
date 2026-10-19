@@ -1969,6 +1969,11 @@ async function familyInvoice(req, res, principal, config, body) {
     const fields = {}
     if (cents(r.feeAud) !== x.feeCents || r.feeAud == null) fields['Term 4 Fee'] = x.feeCents / 100
     if (x.type && x.type !== r.paymentType) fields['Term 4 Payment Type'] = x.type
+    // A trial player priced for the term on a family invoice is on the term
+    // now, not a trial (Lee, 19 Oct 2026: Lina D'Arrigo stayed purple after
+    // her family paid A$665 for her place).
+    const trialPrice = config.prices?.trial ?? 8500
+    if (!x.type && /trial/i.test(r.paymentType || '') && x.feeCents > trialPrice) fields['Term 4 Payment Type'] = 'JFP 10 weeks'
     const status = x.feeCents > 0 && paid >= x.feeCents ? 'Paid' : paid > 0 ? 'Partially Paid' : 'Unpaid'
     if (Object.keys(fields).length && status !== r.paymentStatus) fields['Term 4 Payment Status'] = status
     if (Object.keys(fields).length) {
