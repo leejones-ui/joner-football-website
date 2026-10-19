@@ -1215,3 +1215,28 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .jcal-picked { margin: 10px 2px 0; color: var(--j-ink-2); }
 .xf-times { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .xf-times .j-input { width: auto; min-width: 130px; }
+
+/* Register: date picker + Whole term (Lee, 19 Oct 2026) */
+.jp-reg-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; max-width: 100%; }
+.jp-reg-tools .j-select { max-width: 100%; }
+.jp-reg-tools .j-btn { min-height: 44px; }
+.tr-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--j-line); border-radius: 10px; max-width: 100%; }
+.tr-table { border-collapse: collapse; font-size: 13px; width: 100%; }
+.tr-table th, .tr-table td { padding: 7px 6px; border-bottom: 1px solid var(--j-line); text-align: center; white-space: nowrap; }
+.tr-table thead th { font-size: 11px; font-weight: 650; color: var(--j-ink-2); background: var(--j-surface); }
+.tr-table thead th small { display: block; font-weight: 500; opacity: .75; }
+.tr-table tbody th { text-align: left; font-weight: 600; position: sticky; left: 0; background: var(--j-surface); z-index: 1; max-width: 9.5rem; overflow: hidden; text-overflow: ellipsis; }
+.tr-table thead th:first-child { text-align: left; position: sticky; left: 0; z-index: 2; }
+.tr-table tr:last-child > * { border-bottom: 0; }
+.tr-table td { min-width: 34px; font-weight: 700; }
+.tr-p, .tr-table .tr-p { color: var(--j-green); }
+.tr-a, .tr-table .tr-a { color: var(--j-red); }
+.tr-n, .tr-table .tr-n { color: #c77700; }
+.tr-x, .tr-table .tr-x { color: var(--j-ink-3, #999); }
+.tr-table .tr-p { background: var(--j-green-bg); }
+.tr-table .tr-a { background: var(--j-red-bg); }
+.tr-table .tr-f { background: transparent; }
+.tr-table .tr-tot { font-weight: 700; color: var(--j-ink); }
+.tr-key { margin-top: 10px; display: flex; gap: 6px 12px; flex-wrap: wrap; }
+.tr-key span { white-space: nowrap; }
+.tr-key b { font-weight: 700; }

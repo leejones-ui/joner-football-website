@@ -2877,8 +2877,20 @@ document.addEventListener('click', async (e) => {
 
 // ---------- coach view ----------
 
+// The register's marks for one date. Every date of the term comes with the
+// sessions (Lee, 19 Oct 2026: a past date picked after a refresh showed the
+// next date's empty register, so marks looked lost).
+const attOf = (s, date) => s.attendanceByDate?.[date] || (date === s.nextDate ? s.attendance : null) || {}
+// The date picked on each session stays picked after a refresh or the 2 minute re-read.
+function coachDates() {
+  if (!P.coachDateLoaded) { P.coachDateLoaded = true; try { Object.assign(P.coachDate, JSON.parse(sessionStorage.getItem('jfp-coach-date') || '{}')) } catch {} }
+  return P.coachDate
+}
+function saveCoachDates() { try { sessionStorage.setItem('jfp-coach-date', JSON.stringify(P.coachDate)) } catch {} }
+
 async function renderCoach(keep = false) {
   const admin = P.user.role === 'admin'
+  coachDates()
   if (admin && !P.coaches) P.coaches = (await need(await post('me'))).coaches
   if (admin && !P.coachId) P.coachId = P.coaches?.[0]?.id || ''
   const d = keep && P.coachData?.id === P.coachId ? P.coachData.d : await need(await post('coachSessions', { coachId: P.coachId }))
@@ -2886,7 +2898,7 @@ async function renderCoach(keep = false) {
   // The Players page toolbar (Lee, 14 Oct 2026): search, Day, Venue, quick chips.
   P.regF = { q: '', day: '', loc: '', flag: '', ...(P.regF || {}) }
   const F = P.regF, q = F.q.trim().toLowerCase()
-  const dateOf = (s) => P.coachDate[s.id] || s.nextDate
+  const dateOf = (s) => (s.dates.some((x) => x.iso === P.coachDate[s.id]) ? P.coachDate[s.id] : s.nextDate)
   const flagOf = (s, p, date) => ({ trial: Boolean(p.trial), cancelled: Boolean((s.cancelledBy?.[date] || {})[p.rowId]), unconfirmed: p.status !== 'Confirmed' })
   const showP = (s, p) => { const date = dateOf(s); return (!p.trialDate || p.trialDate === date) && (!q || `${p.name} ${p.coach || ''}`.toLowerCase().includes(q)) && (!F.flag || flagOf(s, p, date)[F.flag]) }
   const sessions = d.sessions.filter((s) => (!F.day || s.day === F.day) && (!F.loc || s.location === F.loc) && (!q && !F.flag || s.players.some((p) => showP(s, p))))
@@ -2909,14 +2921,15 @@ async function renderCoach(keep = false) {
     
     ${trialCards(d.trials || [])}
     ${sessions.length ? sessions.map((s) => {
-      const date = P.coachDate[s.id] || s.nextDate
+      const date = dateOf(s)
+      const att = attOf(s, date)
       return `<article class="j-card" style="padding:16px;margin-bottom:12px" data-sess="${esc(s.id)}">
         ${s.covering ? `<div class="j-box j-box-blue small" style="margin-bottom:8px"><b>Covering for ${esc(s.covering.for)}</b> on ${esc(s.covering.dateLabel)}</div>` : ''}
         ${(s.coveredBy || []).length ? `<div class="j-box j-box-grey small" style="margin-bottom:8px">${s.coveredBy.map((c) => `${esc(c.dateLabel)}: covered by <b>${esc(c.coach)}</b>`).join('<br>')}</div>` : ''}
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
-          <select class="j-select" style="width:auto" data-date="${esc(s.id)}">${s.dates.map((x) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select></div>
+          <span class="jp-reg-tools"><select class="j-select" style="width:auto" data-date="${esc(s.id)}" aria-label="Session date">${s.dates.map((x, i) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>Week ${i + 1} · ${esc(x.label)}${Object.keys(attOf(s, x.iso)).length ? ' ✓' : ''}</option>`).join('')}</select><button type="button" class="j-btn j-btn-line" data-term="${esc(s.id)}">Whole term</button></span></div>
         <div style="margin-top:10px">${s.players.filter((p) => showP(s, p)).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${p.juniors ? esc(p.name) : `<button type="button" class="ps-link jp-cp-name" data-cp="${esc(p.rowId)}" aria-label="About ${esc(p.name)}">${esc(p.name)}</button>`}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
-          <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${s.attendance[p.rowId] === 'Present'}">Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" aria-pressed="${['Absent', 'Notified'].includes(s.attendance[p.rowId])}" ${s.attendance[p.rowId] === 'Notified' ? 'title="The family told us they cannot make it"' : ''}>${s.attendance[p.rowId] === 'Notified' ? 'Away (told us)' : 'Away'}</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
+          <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${att[p.rowId] === 'Present'}">Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" aria-pressed="${['Absent', 'Notified'].includes(att[p.rowId])}" ${att[p.rowId] === 'Notified' ? 'title="The family told us they cannot make it"' : ''}>${att[p.rowId] === 'Notified' ? 'Away (told us)' : 'Away'}</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
       </article>`
     }).join('') : `<div class="ps-table-wrap"><div class="ps-empty">${active ? 'No sessions match. <button type="button" class="ps-link" data-c-clear>Clear filters</button>' : 'No sessions yet.'}</div></div>`}`
   $('c-pick')?.addEventListener('change', (e) => { P.coachId = e.target.value; renderCoach() })
@@ -2929,7 +2942,8 @@ async function renderCoach(keep = false) {
   view().querySelector('[data-c-clear]')?.addEventListener('click', clear)
   view().querySelectorAll('[data-cp]').forEach((b) => b.addEventListener('click', () => coachPlayerModal(b.dataset.cp)))
   view().querySelectorAll('[data-trial-fb]').forEach((b) => b.addEventListener('click', () => trialFeedbackModal((d.trials || []).find((t) => t.rowId === b.dataset.trialFb), d.verdicts)))
-  view().querySelectorAll('[data-date]').forEach((sel) => sel.addEventListener('change', () => { P.coachDate[sel.dataset.date] = sel.value; loadAttendance(sel.dataset.date, sel.value) }))
+  view().querySelectorAll('[data-date]').forEach((sel) => sel.addEventListener('change', () => { P.coachDate[sel.dataset.date] = sel.value; saveCoachDates(); renderCoach(true) }))
+  view().querySelectorAll('[data-term]').forEach((b) => b.addEventListener('click', () => termRegister(d.sessions.find((x) => x.id === b.dataset.term))))
   view().querySelectorAll('[data-att]').forEach((b) => b.addEventListener('click', async () => {
     const card = b.closest('[data-sess]')
     const gid = card.dataset.sess
@@ -2941,7 +2955,11 @@ async function renderCoach(keep = false) {
     if (!r.ok) { toast(r.data.error || 'Could not save'); return renderCoach() }
     // Keep the loaded copy in step, so a search or filter redraw shows the tick.
     const sess = d.sessions.find((x) => x.id === gid)
-    if (sess && date === (P.coachDate[gid] || sess.nextDate)) { if (status) sess.attendance[b.dataset.row] = status; else delete sess.attendance[b.dataset.row] }
+    if (sess) {
+      const day = ((sess.attendanceByDate ||= {})[date] ||= {})
+      if (status) day[b.dataset.row] = status; else delete day[b.dataset.row]
+      if (date === sess.nextDate) sess.attendance = day
+    }
     if (r.data.airtable === 'failed') toast('Saved here. Airtable attendance did not update; it will not affect the session.')
   }))
 }
@@ -3009,7 +3027,30 @@ function trialFeedbackModal(t, verdicts = []) {
   })
 }
 
-async function loadAttendance() { renderCoach() }
+// The whole term at a glance (Lee, 19 Oct 2026): one row a player, one
+// column a week, from the same register the coaches mark.
+function termRegister(s) {
+  if (!s) return
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
+  const mark = (v) => v === 'Present' ? ['p', '✓', 'Here'] : v === 'Notified' ? ['n', 'T', 'Away, told us'] : v === 'Absent' ? ['a', '✗', 'Away'] : v ? ['o', v.slice(0, 1), v] : null
+  const run = s.dates.filter((x) => x.iso <= today)
+  const taken = run.filter((x) => Object.keys(attOf(s, x.iso)).length)
+  const rows = s.players.map((p) => {
+    let came = 0, marked = 0
+    const cells = s.dates.map((x) => {
+      const m = mark(attOf(s, x.iso)[p.rowId])
+      if (m) { marked++; if (m[0] === 'p') came++ }
+      const future = x.iso > today
+      return `<td class="${m ? `tr-${m[0]}` : future ? 'tr-f' : 'tr-x'}" title="${esc(`${x.label}: ${m ? m[2] : future ? 'Not yet' : 'Not marked'}`)}">${m ? m[1] : future ? '' : '·'}</td>`
+    }).join('')
+    return `<tr><th scope="row">${esc(p.name)}</th>${cells}<td class="tr-tot">${came}/${marked}</td></tr>`
+  }).join('')
+  modal(`<h2>${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h2>
+    <p class="muted small" style="margin:4px 0 12px">Register taken ${taken.length} of ${run.length} session${run.length === 1 ? '' : 's'} so far</p>
+    ${s.players.length ? `<div class="tr-wrap"><table class="tr-table"><thead><tr><th scope="col">Player</th>${s.dates.map((x, i) => `<th scope="col" title="${esc(x.label)}">W${i + 1}<small>${esc(x.label.replace(/^\w+\s/, ''))}</small></th>`).join('')}<th scope="col">Came</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="tr-key muted small"><span><b class="tr-p">✓</b> Here</span><span><b class="tr-a">✗</b> Away</span><span><b class="tr-n">T</b> Away, told us</span><span><b class="tr-x">·</b> Not marked</span></p>` : '<p class="muted small">No players yet.</p>'}
+    <div class="j-actions" style="margin-top:14px"><button type="button" class="j-btn j-btn-dark" data-close>Done</button></div>`, { wide: true })
+}
 
 // ---------- cancellations: families who told us a player cannot make a session ----------
 

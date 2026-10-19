@@ -14,7 +14,7 @@ import {
   getConfig, saveConfig, listGroups, getGroup, saveGroup, deleteGroup, validateGroup, onlineCounts, placesLeft, listBookings, getBooking, holdPlaces,
   saveBooking, releasePlaces, listApplications, getApplication, saveApplication, listPayreqs, getPayreq, savePayreq, coachById,
   coachByAirtableName, sessionDates, dateLabel, formatAud, to24h, clean, newId, audit, listAudit, locationFor, validEmail, ageOn,
-  normName, cleanPhone, groupId as makeGroupId, kvCommand, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold, PRO_TYPE, isProType,
+  normName, cleanPhone, groupId as makeGroupId, kvCommand, kvPipeline, keys, ADMIN_TAG, MODES, LABELS, DAYS, sortGroups, closeCheckout, dropParentHold, PRO_TYPE, isProType,
   PRODUCTS, QUESTIONS, productFor, priceFor, paidSiblings, nextSessionDate, sydneyToday, periodOf, NSW_HOLIDAYS, coachLabel, kvSetJson, kvGetJson, rowEmails, emailsIn, SESSION_TYPE, isSessionType, withPerSession, prepaidOf, withPrepaid,
 } from './_jfp-store.js'
 import { coachPhotoUrl } from './jfp-groups.js'
@@ -2706,11 +2706,34 @@ async function decideTrial(res, principal, body) {
   return res.status(200).json({ success: true, decision: d })
 }
 
-async function attendanceFor(gid, date) {
-  const raw = await kvCommand(['HGETALL', keys.attendance(gid, date)])
-  const out = {}
-  for (let i = 0; i + 1 < (raw || []).length; i += 2) out[raw[i]] = raw[i + 1]
-  return out
+// Every date's marks for each session, read in one go. A player moved from
+// another group at the same day, time and place (Lee rearranges the Friday
+// Rydalmere coaches) keeps the marks taken there: own group first, then the
+// others. s.attendance stays the next date's marks.
+async function attendanceByDate(sessions, groups) {
+  const asks = []
+  for (const s of sessions) {
+    const g = groups.find((x) => x.id === s.id)
+    const sibs = g ? groups.filter((x) => x.id !== g.id && x.day === g.day && x.time === g.time && x.location === g.location).map((x) => x.id) : []
+    s._ids = [s.id, ...sibs]
+    for (const d of s.dates) for (const id of s._ids) asks.push([s, d.iso, id])
+  }
+  const raws = asks.length ? await kvPipeline(asks.map(([, d, id]) => ['HGETALL', keys.attendance(id, d)])) : []
+  const hash = (x) => { const a = x?.result ?? x ?? []; const o = {}; for (let i = 0; i + 1 < a.length; i += 2) o[a[i]] = a[i + 1]; return o }
+  const got = new Map()
+  asks.forEach(([s, d, id], i) => got.set(`${s.id}|${id}|${d}`, hash(raws[i])))
+  for (const s of sessions) {
+    const rows = new Set(s.players.map((p) => p.rowId))
+    s.attendanceByDate = {}
+    for (const d of s.dates) {
+      const own = got.get(`${s.id}|${s.id}|${d.iso}`) || {}
+      const out = { ...own }
+      for (const id of s._ids.slice(1)) for (const [row, v] of Object.entries(got.get(`${s.id}|${id}|${d.iso}`) || {})) if (rows.has(row) && !(row in out)) out[row] = v
+      s.attendanceByDate[d.iso] = out
+    }
+    s.attendance = s.attendanceByDate[s.nextDate] || {}
+    delete s._ids
+  }
 }
 
 // ---------- staff: cover, time off, session plans (Lee, 5 Oct 2026) ----------
@@ -3054,7 +3077,9 @@ async function handle(req, res) {
       const profs = await allProfiles().catch(() => [])
       const photoByRow = new Map(profs.filter((x) => x.photo).flatMap((x) => x.rowIds.map((id) => [id, x.photo])))
       for (const s of sessions) for (const p of s.players) if (photoByRow.has(p.rowId)) p.photo = photoByRow.get(p.rowId)
-      for (const s of sessions) s.attendance = await attendanceFor(s.id, s.nextDate)
+      // The register for every date of the term (Lee, 19 Oct 2026): a past date
+      // picked in the list shows what was marked, and the Whole term grid.
+      await attendanceByDate(sessions, groups)
       // Parents who said a player cannot make a date, so the register can mark
       // them. Display only: attendance is saved exactly as before.
       const away = (await listCancels()).filter((r) => r.status === 'active')
