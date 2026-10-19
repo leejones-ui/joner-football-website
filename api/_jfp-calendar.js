@@ -6,6 +6,7 @@ import crypto from 'node:crypto'
 import { kvCommand, getConfig, listGroups, locationFor, clean } from './_jfp-store.js'
 import { loadRoster, familyFor } from './_jfp-airtable.js'
 import { listCancels, rowSessionDates, rowTime, noticeFor } from './_jfp-cancel.js'
+import { sessionOffMap } from './_jfp-makeups.js'
 
 const BY_TOKEN = 'jfp:cal-token', BY_EMAIL = 'jfp:cal-email'
 
@@ -30,7 +31,7 @@ const fold = (line) => { const out = []; let s = line; while (s.length > 74) { o
 const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || 'JFP'
 
 // Events for one family. Pure (unit tested): rows carry player names.
-export function calendarEvents({ config, players, byGroup, cancels = [], nowMs = Date.now() }) {
+export function calendarEvents({ config, players, byGroup, cancels = [], nowMs = Date.now(), offMap = new Map() }) {
   const told = new Set(cancels.filter((c) => c.status === 'active').map((c) => `${c.rowId}|${c.date}`))
   const out = []
   for (const p of players) {
@@ -40,6 +41,7 @@ export function calendarEvents({ config, players, byGroup, cancels = [], nowMs =
       const time = rowTime(r, g)
       const mins = Number(g?.durationMin) || 60
       for (const d of rowSessionDates(config, r, g)) {
+        if (offMap.has(`${r.groupId}|${d}`)) continue // cancelled for an emergency
         const n = noticeFor({ date: d, time, nowMs })
         if (!n) continue
         const off = told.has(`${r.id}|${d}`)
@@ -69,5 +71,5 @@ export async function familyCalendar(email) {
   const fam = familyFor(famEmail, roster, config.termStart)
   const players = login ? fam.players.filter((p) => p.key === login.playerKey) : fam.players
   const byGroup = Object.fromEntries(groups.map((g) => [g.id, g]))
-  return icsText(calendarEvents({ config, players, byGroup, cancels: cancels.filter((c) => c.email === famEmail) }))
+  return icsText(calendarEvents({ config, players, byGroup, cancels: cancels.filter((c) => c.email === famEmail), offMap: await sessionOffMap() }))
 }

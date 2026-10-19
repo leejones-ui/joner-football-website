@@ -172,6 +172,8 @@ export async function pushTick(nowMs = Date.now()) {
   if (!subs.length) return { sent: 0 }
   const { loadRoster, familyFor } = await import('./_jfp-airtable.js')
   const { rowSessionDates, rowTime, listCancels } = await import('./_jfp-cancel.js')
+  const { sessionOffMap } = await import('./_jfp-makeups.js')
+  const offMap = await sessionOffMap()
   const { listPayreqs } = await import('./_jfp-store.js')
   const { playerLoginOf } = await import('./_jfp-player-logins.js')
   const { skippedDates } = await import('./_jfp-store.js')
@@ -196,7 +198,7 @@ export async function pushTick(nowMs = Date.now()) {
       const g = byGroup[r.groupId] || null
       const where = locationFor(config, r.location).name
       const who = login ? 'You have' : `${first(r.player)} has`
-      if (rowSessionDates(config, r, g).includes(tomorrow)) {
+      if (rowSessionDates(config, r, g).includes(tomorrow) && !offMap.has(`${r.groupId}|${tomorrow}`)) {
         if (told.has(`${r.id}|${tomorrow}`)) continue
         const cover = covers.find((c) => c.status === 'active' && c.groupId === r.groupId && c.date === tomorrow)
         if (cover) sent += (await pushTo([email], 'changes', { title: 'Different coach tomorrow', body: `${who} JFP at ${rowTime(r, g)}, ${where}. Another Joner coach is running it.`, url: '/jfp-account/#sessions' }, `cover-${r.id}-${tomorrow}`)).sent

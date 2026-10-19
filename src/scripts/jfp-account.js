@@ -15,7 +15,7 @@ import { renderExtra, renderAnalysis, extraClick, setExtraLink } from './jfp-acc
 import { mountSavedPay, savedReturn, forgetSaved } from './jfp-account-saved.js'
 import { renderReports, reportsHomeBlock, unreadReports } from './jfp-account-reports.js'
 import { newSessions, markSeen, newSessionsPopup } from './jfp-account-new.js'
-import { attendanceLine, pastMark, unreadNotes, notesHomeBlock, renderNotes, renderAlerts, pushOffered, loginRow, loginSheet } from './jfp-account-more.js'
+import { attendanceLine, pastMark, unreadNotes, notesHomeBlock, makeupsHomeBlock, askMakeup, renderNotes, renderAlerts, pushOffered, loginRow, loginSheet } from './jfp-account-more.js'
 
 const q = new URLSearchParams(location.search)
 let D = null
@@ -565,7 +565,7 @@ function renderHome() {
   el.innerHTML = `${head}
     <div class="ja-home">
       <div class="ja-stack"><p class="ja-label">Next up</p>${nextBlock}${doneBlock}</div>
-      <div class="ja-stack">${D.playerLogin ? '' : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${reportsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
+      <div class="ja-stack">${D.playerLogin ? '' : strip ? `<p class="ja-label">To do</p>${strip}` : `<div class="ja-strip is-done">${ic('check')}<span class="ja-mr-tx"><b>All sorted</b><small>Nothing to sign or pay right now.</small></span></div>`}${reportsHomeBlock(D)}${makeupsHomeBlock(D)}${notesHomeBlock(D)}${newsBlock()}
         ${jjHomeCard()}${notBooked.length ? `<div class="ja-card"><p class="ja-small ja-muted">${notBooked.map((p) => p.placeNoSession ? `<b class="ja-ink">${esc(p.name)}</b> has a place. We will confirm the day and time.` : `<b class="ja-ink">${esc(p.name)}</b> is not booked this term. <a class="ja-link" href="${links.booking}">See the timetable</a>`).join('<br>')}</p></div>` : ''}${requestsBlock()}</div>
     </div>
     ${D.playerLogin ? '' : promos}${watch}`
@@ -841,7 +841,7 @@ function renderCancel() {
   const rows = D.players.flatMap((p) => p.enrolments.map((e) => ({ p, e })))
   el.innerHTML = `${pageHead("Can't make it?", 'Tell your coach', 'Two taps and the coach taking the session and Ligia hear straight away, by email.')}
     <div class="ja-steps"><div class="ja-step"><b>Pick the session</b><p>Choose the date below.</p></div><div class="ja-step"><b>Tell us why</b><p>Sick, injured, school or something else. Add a note if you like.</p></div><div class="ja-step"><b>Changed your mind?</b><p>Press Undo and your coach knows they are coming.</p></div></div>
-    <p class="j-box j-box-amber" style="margin-top:14px">Please tell us as early as you can. There are no make-up sessions. Less than a day to go? Call or text the coach or Ligia as well.</p>
+    <p class="j-box j-box-amber" style="margin-top:14px">Please tell us as early as you can. There are no make-up sessions for sessions you miss (if we cancel one, you get a free make-up or credit). Less than a day to go? Call or text the coach or Ligia as well.</p>
     ${rows.length ? rows.map(({ p, e }) => {
       const open = (e.sessions || []).slice(0, 4)
       return `<section class="ja-card" style="margin-top:14px"><div class="ja-enrol-head"><img src="${esc(photoFor(e))}" alt="" loading="lazy"><div><h2>${esc(p.name)}</h2><p>${esc(e.day)}s ${esc(e.time)} · ${esc(e.location)}</p></div></div>
@@ -1439,6 +1439,7 @@ document.addEventListener('click', async (e) => {
   if (sec) return toggleNav(sec.dataset.navsec)
   if (t.closest('[data-waiver-all]')) return waiverSheet(unsignedWaivers().map((p) => p.key))
   if (extraClick(t, { D })) return
+  const mk = t.closest('[data-makeup-ask]'); if (mk) return askMakeup(mk.dataset.makeupAsk, load)
   if (t.closest('#sign-out') || t.closest('#ja-signout2') || t.closest('#sign-out-fam')) { clearLast(); await signOut('parent'); location.href = '/jfp-account/'; return }
   if (t.closest('[data-contact]')) { e.preventDefault(); if (D) { closeSheet(true); show('contact') } else contactSheet(); return }
   const go = t.closest('[data-go]')

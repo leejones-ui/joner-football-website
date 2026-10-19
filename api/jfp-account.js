@@ -46,6 +46,7 @@ import { coveredOf } from './_jfp-quote.js'
 import { accountOf, openPlayers, addMyPlayer } from './_jfp-account-open.js'
 import { prepaidOf } from './_jfp-store.js'
 import { announcementsFor, markAnnouncementsRead } from './_jfp-announce.js'
+import { familyMakeups, makeupRequest, sessionOffMap } from './_jfp-makeups.js'
 import { attendanceFor } from './_jfp-attendance-view.js'
 import { playerLoginOf, loginsForFamily, setPlayerLogin, removePlayerLogin, PLAYER_MIN_AGE } from './_jfp-player-logins.js'
 import { pushView, saveSub, dropSub, setPrefs } from './_jfp-push.js'
@@ -155,6 +156,7 @@ async function overview(res, parent, body = {}, opts = {}) {
   const owedByRow = new Map(owed.map((x) => [x.rowId, x]))
   // Attendance (Lee, 17 Oct 2026): the coach's register for every session
   // already run, one read for the whole family. A failed read shows none.
+  const offMap = await sessionOffMap()
   const attAsk = []
   for (const p of jfpPlayers) for (const r of p.term4) if (r.holdsPlace && r.groupId) {
     const g = byGroup[r.groupId] || null
@@ -190,12 +192,15 @@ async function overview(res, parent, body = {}, opts = {}) {
       // can offer "Can't make a session" and show how soon the next one is.
       const mineCancelled = new Map(myCancels.filter((c) => c.rowId === r.id).map((c) => [c.date, c]))
       const time = rowTime(r, byGroup[r.groupId] || null)
-      const sessions = dates.map((d) => ({ d, n: noticeFor({ date: d, time, nowMs }) })).filter((x) => x.n && x.n.startMs > nowMs)
+      // Sessions we cancelled for an emergency are not offered for Can't make it; they are listed apart.
+      const ourOff = dates.filter((d) => offMap.has(`${r.groupId}|${d}`))
+      const sessions = dates.filter((d) => !offMap.has(`${r.groupId}|${d}`)).map((d) => ({ d, n: noticeFor({ date: d, time, nowMs }) })).filter((x) => x.n && x.n.startMs > nowMs)
         .map(({ d, n }) => ({ iso: d, label: dateLabel(d), startMs: n.startMs, cancelled: mineCancelled.has(d) ? cancelId(r.id, d) : '' }))
       const openReq = mine.find((q) => ['open', 'checkout'].includes(q.status) && q.term4Ids.includes(r.id))
       const sessionPay = isSessionType(r.paymentType) && !/trial/i.test(r.paymentType || '')
       return {
         ...(sessionPay ? { sessionPay: true, isoDates: dates, ...sessionMarks(r, mine, sessions.map((x) => x.iso)) } : {}),
+        cancelledByUs: ourOff.map((d) => ({ iso: d, label: dateLabel(d), reason: offMap.get(`${r.groupId}|${d}`)?.reason || '' })),
         rowId: r.id, day: r.day, time: r.time, location: loc.name, address: loc.address, maps: loc.maps,
         locationId: loc.id, photo: loc.photo || '', durationMin: Number(g.durationMin) || 60,
         // No coach name for families (Lee, 14 Oct 2026): time, place and money only.
@@ -259,6 +264,7 @@ async function overview(res, parent, body = {}, opts = {}) {
   const announcements = await announcementsFor({ groupIds: myRows.map((r) => r.groupId), locationIds: myRows.map((r) => locationFor(config, r.location).id), email: readEmail })
   // Coach notes for this family's players (Lee, 17 Oct 2026), from "Coach".
   const notes = await familyNotesFor(myRows.map((r) => r.id), readEmail)
+  const makeups = await familyMakeups(myRows.map((r) => r.id), config)
   // Player reports (Lee, 18 Oct 2026): a short list for the menu count; the
   // reports themselves load when the tab opens.
   const reports = opts.player ? [] : await reportsSummary(parent.email, null)
@@ -267,6 +273,7 @@ async function overview(res, parent, body = {}, opts = {}) {
     email: parent.email,
     announcements,
     notes,
+    makeups,
     reports,
     playerMinAge: PLAYER_MIN_AGE,
     push: await pushView(readEmail).then((x) => ({ available: Boolean(x.available), key: x.key || '' })).catch((error) => { console.error('jfp push view failed', error); return { available: false, key: '' } }),
@@ -982,6 +989,7 @@ export default async function handler(req, res) {
     if (body.action === 'savePhoto') return await saveMyPhoto(res, parent, body)
     if (body.action === 'addPlayer') return await addPlayerAction(res, parent, body)
     if (['jjPay', 'jjRequestPay', 'jjNextChoice'].includes(body.action)) return await juniorsAction(req, res, parent, body)
+    if (body.action === 'makeupRequest') { const fam2 = familyFor(parent.email, await loadRoster(), (await getConfig()).termStart); const out = await makeupRequest({ rowIds: fam2.players.flatMap((p) => p.term4.map((r) => r.id)), body, config: await getConfig() }); return out.status === 200 ? res.status(200).json({ success: true }) : fail(res, out.status, out.error) }
     if (body.action === 'cancelSession') return await cancelSession(res, parent, body)
     if (body.action === 'withdrawCancel') return await withdrawSession(res, parent, body)
     if (body.action === 'requestExtra') return await requestExtra(res, parent, body)

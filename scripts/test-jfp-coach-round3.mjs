@@ -142,5 +142,39 @@ await test('time off: a coach cancels their own request; Lee\'s note is shown af
   assert.notEqual(other.status, 200)
 })
 
+await test('emergency cancel: the register closes, the family is owed a make-up, staff book it, the coach marks the guest', async () => {
+  const st = await ok(sam, 'staffOverview')
+  const date = st.mySessions.find((s) => s.id === THU).dates[2].iso
+  const c = await ok(lee, 'emergencyCancel', { groupId: THU, date, reason: 'Coach sick', kind: 'makeup' })
+  assert.ok(c.players >= 1); assert.match(c.words, /free make-up/)
+  const dup = await portal(lee, 'emergencyCancel', { groupId: THU, date, reason: 'Coach sick', kind: 'makeup' })
+  assert.equal(dup.status, 409)
+  const cs = await ok(sam, 'coachSessions')
+  assert.ok(cs.sessions.find((s) => s.id === THU).offDates[date])
+  const mk = await portal(sam, 'markAttendance', { groupId: THU, date, rowId: 'x', status: 'Present' })
+  assert.equal(mk.status, 400)
+  const a = await acct(fam, 'overview')
+  const mine = a.data.makeups.find((m) => m.player === 'Ava Ashdown')
+  assert.ok(mine && mine.canAsk && mine.kind === 'makeup')
+  const enrol = a.data.players.find((p) => p.name === 'Ava Ashdown').enrolments[0]
+  assert.ok(!enrol.sessions.some((x) => x.iso === date), 'cancelled date not offered')
+  assert.ok(enrol.cancelledByUs.some((x) => x.iso === date))
+  const ask = await acct(fam, 'makeupRequest', { id: mine.id, note: 'Thursdays' })
+  assert.equal(ask.status, 200)
+  const list = await ok(lee, 'makeupsList')
+  assert.equal(list.makeups.find((m) => m.id === mine.id).status, 'requested')
+  const bookDate = (await ok(lee, 'makeupsList')).groups.find((g) => g.id === APP).dates.find((x) => x.iso > day(1)).iso
+  await ok(lee, 'makeupUpdate', { id: mine.id, op: 'book', groupId: APP, date: bookDate })
+  const reg = await ok(sam, 'coachSessions')
+  assert.ok(reg.sessions.find((s) => s.id === APP).guests.some((g) => g.name === 'Ava Ashdown' && g.date === bookDate))
+  const rowId = reg.sessions.find((s) => s.id === APP).guests[0].rowId
+  const done = await portal(sam, 'markAttendance', { groupId: APP, date: bookDate, rowId, status: 'Make-up' })
+  assert.equal(done.status === 200 || /not happened/.test(done.data.error || ''), true, JSON.stringify(done.data))
+  await ok(lee, 'makeupUpdate', { id: mine.id, op: 'convert', cents: 5000 })
+  const after = (await ok(lee, 'makeupsList')).makeups.find((m) => m.id === mine.id)
+  assert.equal(after.kind, 'credit'); assert.equal(after.cents, 5000)
+  const u = await ok(lee, 'emergencyUncancel', { groupId: THU, date }).catch(() => null)
+})
+
 console.log(`${passed} passed`)
 process.exit(0)

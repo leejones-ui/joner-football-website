@@ -36,6 +36,7 @@ import { feeTied, stampFeeBasisFresh, syncRowLinks, syncLinks, repricedNote } fr
 import { staffPrincipal, sameOrigin } from './_jfp-people.js'
 import { sendAccountInvite, accountInvite, sendFamilyInvite, sendFamilyWelcome, sendPlaceOffered, sendTrialOffered, sendTermOffered, sendDeclined, sendNextTermInvite, sendFamilyInvoice, sendQuickLinkEmail } from './_jfp-email.js'
 import { nextStatuses, setNextStatus, nextPrices, recordNext, nextInterest } from './_jfp-next.js'
+import { MAKEUP_ADMIN_ACTIONS, emergencyCancel, emergencyUncancel, makeupsList, makeupUpdate, sessionOffMap, guestsFor, guestAllowed, markGuestUsed } from './_jfp-makeups.js'
 import { attendanceFor } from './_jfp-attendance-view.js'
 import { allProfiles, findProfile, pickProfile, profileKey, profileView, profileSummary, cleanProfile, saveProfile, waiverPrefill, addTrialFeedback, clubSuggestions, LEVELS, PLAYING_UP, POSITIONS, FEET, YEARS } from './_jfp-profiles.js'
 import { releaseOffer, sweepExpiredOffers } from './_jfp-offers.js'
@@ -3325,6 +3326,13 @@ async function handle(req, res) {
       // The register for every date of the term (Lee, 19 Oct 2026): a past date
       // picked in the list shows what was marked, and the Whole term grid.
       await attendanceByDate(sessions, groups)
+      // Cancelled for an emergency, and make-up guests booked into a session.
+      const offs = await sessionOffMap()
+      for (const s of sessions) {
+        s.offDates = {}
+        for (const d of s.dates) { const o = offs.get(`${s.id}|${d.iso}`); if (o) s.offDates[d.iso] = o.reason }
+        s.guests = await guestsFor(s.id, s.dates.map((d) => d.iso))
+      }
       // Parents who said a player cannot make a date, so the register can mark
       // them. Display only: attendance is saved exactly as before.
       const away = (await listCancels()).filter((r) => r.status === 'active')
@@ -3413,12 +3421,13 @@ async function handle(req, res) {
       if (!isAdmin && !covering && g.coachId !== principal.coachId && !(g.extraCoachIds || []).includes(principal.coachId)) return fail(res, 403, 'Not your session.')
       const dates = isJuniorsGroup(g) ? jjDatesForGroup(config, g) : sessionDates(config, g.day)
       if (!dates.includes(date)) return fail(res, 400, 'That date is not a session for this group.')
+      if ((await sessionOffMap()).has(`${g.id}|${date}`)) return fail(res, 400, 'That session was cancelled, so there is no register for it.')
       // Coaches mark a session on or after its day (Lee, 19 Oct 2026: Dean's
       // Monday and Friday registers were saved against the next week).
       if (!isAdmin && date > sydneyToday()) return fail(res, 400, 'That session has not happened yet. Pick the date you coached.')
       const status = ['Present', 'Absent', 'Trial', 'Make-up', ''].includes(body.status) ? body.status : null
       if (status === null) return fail(res, 400, 'Invalid status.')
-      let row
+      let row, guest = null
       if (isJuniorsGroup(g)) {
         const kid = ((await juniorsFor([g], config))[g.id] || []).find((p) => p.rowId === clean(body.rowId, 30))
         if (!kid) return fail(res, 404, 'That player is not in this session.')
@@ -3429,10 +3438,13 @@ async function handle(req, res) {
       } else {
         const roster = await loadRoster()
         row = roster.players.find((r) => r.id === clean(body.rowId, 30) && r.groupId === g.id)
+        // A free make-up booked into this session on this date.
+        if (!row) { guest = await guestAllowed(g.id, date, clean(body.rowId, 30)); if (guest) row = roster.players.find((r) => r.id === guest.rowId) }
       }
       if (!row) return fail(res, 404, 'That player is not in this session.')
       const key = keys.attendance(g.id, date)
       if (status) await kvCommand(['HSET', key, row.id, status]); else await kvCommand(['HDEL', key, row.id])
+      if (guest) await markGuestUsed(guest, status)
       let airtable = 'skipped'
       if (status) {
         try {
@@ -3479,6 +3491,11 @@ async function handle(req, res) {
     if (EXTRA_ACTIONS.has(action)) return await extraAction(req, res, principal, config, body, action, isAdmin)
 
     if (!isAdmin) return fail(res, 403, 'Not allowed.')
+    if (MAKEUP_ADMIN_ACTIONS.has(action)) {
+      const out = action === 'emergencyCancel' ? await emergencyCancel({ principal, config, body }) : action === 'emergencyUncancel' ? await emergencyUncancel({ principal, body }) : action === 'makeupUpdate' ? await makeupUpdate({ principal, config, body }) : { status: 200, ...(await makeupsList({ config })) }
+      const { status, error, ...rest } = out
+      return status === 200 ? res.status(200).json({ success: true, ...rest }) : fail(res, status, error)
+    }
 
     // ---------- Lee and Ligia ----------
     // Joners Juniors: Dashboard, Players, Settings and their changes (_jj-portal.js).
