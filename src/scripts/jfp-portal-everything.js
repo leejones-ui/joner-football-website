@@ -5,8 +5,9 @@
 import { esc, money } from './jfp-common.js'
 import { moneyHead, bindTip, programmeSwitch, bindSwitch, PROGRAMME_LABEL } from './jfp-portal-programmes.js'
 
-export const EVERYTHING_DEFINITION = 'Each program for the calendar year picked. JFP: the year\'s terms (this term live; earlier terms from the payment ledger or your Money Register). Joners Juniors: its terms that year. Holiday training: by session date. Pro sessions: by the day the money came in. Camps: from the camp sheets, before camp costs (the Camps view has net after costs). Taken is after refunds; kept is after Stripe\'s fees where they are known (older JFP terms from the register have none).'
-const ORDER = ['jfp', 'juniors', 'holiday', 'pro', 'camps']
+export const EVERYTHING_DEFINITION = 'Each program for the calendar year picked. JFP: the year\'s terms (this term live; earlier terms from the payment ledger or your Money Register). Joners Juniors: its terms that year. Holiday training: by session date. Pro sessions are part of JFP. Camps: from the camp sheets, before camp costs (the Camps view has net after costs). Taken is after refunds; kept is after Stripe\'s fees where they are known (older JFP terms from the register have none).'
+// Pro sessions are counted in JFP (Lee, 19 Oct 2026), so not added again here.
+const ORDER = ['jfp', 'juniors', 'holiday', 'camps']
 const inYear = (rows, year) => rows.filter((r) => String(r.month || '').startsWith(`${year}-`))
 const sum = (list, k) => list.reduce((t, x) => t + (x[k] || 0), 0)
 

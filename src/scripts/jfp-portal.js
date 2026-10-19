@@ -963,6 +963,8 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
     <label class="j-field" id="ap-start-wrap" hidden><span>Starts</span><select class="j-select" id="ap-start">${dateOptions(pr, g.day, nextDate(pr, g.day))}</select></label>
     <label class="j-field" id="ap-trial-wrap" hidden><span>Trial date</span><select class="j-select" id="ap-trial">${dateOptions(pr, g.day, nextDate(pr, g.day))}</select></label>
     <label class="j-field" id="ap-per-wrap" hidden><span>Price per session (A$) <span class="muted">(optional, or set it when you bill)</span></span><input class="j-input" id="ap-per" inputmode="decimal" placeholder="e.g. 80"></label>
+    <div class="j-field" id="ap-owed-wrap" hidden><span>Still owing for sessions they already had <span class="muted">(tick each one: it goes on their payment link with this add)</span></span>
+      ${(pr.datesByDay[g.day] || []).map((d, i) => ({ ...d, week: i + 1 })).filter((d) => d.past).map((d) => `<label class="j-check"><input type="checkbox" data-owed="${esc(d.iso)}"> <span>Week ${d.week} · ${esc(d.label)}</span></label>`).join('')}</div>
     ${quoteHtml('ap', { defaultQuote: pr.defaultQuote, run: pr.runs?.byGroup?.[g.id] })}
     <div id="ap-kids"></div>
     <div id="ap-kids-bar" ${spotLink ? 'hidden' : ''} style="margin:10px 0"><button type="button" class="j-btn j-btn-line j-btn-sm" id="ap-kid-add">+ Add another child (same family)</button>
@@ -981,6 +983,7 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
     const send = box.querySelector('#ap-send').checked
     box.querySelector('#ap-price').hidden = !['link', 'offline'].includes(v)
     box.querySelector('#ap-per-wrap').hidden = !['sessions', 'pro'].includes(v)
+    box.querySelector('#ap-owed-wrap').hidden = !['sessions', 'pro'].includes(v) || !box.querySelector('[data-owed]')
     apQuote.show(['sessions', 'pro'].includes(v))
     if (v === 'pro' && pr.defaultQuote && !apPrefilled && !box.querySelector('#ap-per').value.trim()) { apPrefilled = true; box.querySelector('#ap-per').value = (pr.defaultQuote.perCents / 100).toFixed(2).replace(/\.00$/, ''); apQuote.set(pr.defaultQuote.tiers) }
     box.querySelector('#ap-trial-wrap').hidden = v !== 'trial'
@@ -1059,6 +1062,12 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
       const qt = apQuote.read()
       if (qt.error) { err.textContent = qt.error; err.hidden = false; return }
       if (qt.tiers.length) body.quote = { tiers: qt.tiers }
+      // Sessions already had, billed on the link that goes with the add.
+      const owed = [...box.querySelectorAll('[data-owed]:checked')].map((x) => x.dataset.owed)
+      if (owed.length) {
+        if (!body.perSessionCents) { err.textContent = 'Enter the price per session to bill the sessions already had.'; err.hidden = false; return }
+        body.owedDates = owed
+      }
     }
     const btn = box.querySelector('#ap-go')
     const label = btn.textContent
@@ -1078,6 +1087,7 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
       err.textContent = out.error; err.hidden = false
       return
     }
+    const owedLabel = [...box.querySelectorAll('[data-owed]:checked')].map((x) => x.closest('label').textContent.replace(/^\s*Week \d+ · /, '').replace(/\s\d{4}$/, '').trim()).join(', ')
     busy = true; btn.disabled = true; btn.textContent = 'Adding'
     let r = await post('addPlayer', body)
     if (r.status === 409 && r.data.code === 'full') {
@@ -1101,7 +1111,7 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
       // Email and text together (Lee, 14 Oct 2026): the text opens ready to send.
       if (mobile) {
         if (!r.data.emailed) copy(url)
-        textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url, self: w.self, starts: startsLabel, email: body.parent.email }), `Now text ${w.contact}`, `<b>${esc(body.player.name)} added</b> to ${esc(where)}.${sentLine}${r.data.emailed ? '' : ' Payment link copied.'} <a href="#" data-copy-url="${esc(url)}">Copy the link</a>`)
+        textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url, self: w.self, starts: startsLabel, email: body.parent.email, owed: owedLabel }), `Now text ${w.contact}`, `<b>${esc(body.player.name)} added</b> to ${esc(where)}.${sentLine}${r.data.emailed ? '' : ' Payment link copied.'} <a href="#" data-copy-url="${esc(url)}">Copy the link</a>`)
         document.querySelector('[data-copy-url]')?.addEventListener('click', (e) => { e.preventDefault(); copy(url) })
         P.board = null; PL.at = 0; renderBoard(true)
         return
@@ -1111,7 +1121,7 @@ async function addPlayerModal(g, { spotLink = false, prefill = null } = {}) {
         <div class="jpf-acts"><button type="button" class="j-btn j-btn-line" data-close>Close</button><button type="button" class="j-btn j-btn-line" id="dn-copy">Copy link</button><button type="button" class="j-btn j-btn-dark" id="dn-text" ${body.parent.mobile ? '' : 'disabled title="No mobile entered"'}>Text it to ${esc(w.contact)}</button></div>
         ${body.parent.mobile ? '' : '<p class="muted small" style="margin-top:8px">No mobile was entered. Add one with Edit on the Players tab to text them.</p>'}`)
       done.querySelector('#dn-copy').addEventListener('click', () => copy(url))
-      done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url, self: w.self, starts: startsLabel, email: body.parent.email }), `Text ${w.contact} the payment link`) })
+      done.querySelector('#dn-text').addEventListener('click', () => { closeModal(); textIt(payLinkText({ parent: body.parent.name, player: body.player.name, when: `${g.day} ${g.time}`, place: g.locationName, url, self: w.self, starts: startsLabel, email: body.parent.email, owed: owedLabel }), `Text ${w.contact} the payment link`) })
       if (!r.data.emailed) copy(url)
     } else if (payment === 'trial' && mobile) {
       const whenT = String(box.querySelector('#ap-trial').selectedOptions[0]?.textContent || '').replace(/^Week \d+ · /, '')

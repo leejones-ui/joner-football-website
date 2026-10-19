@@ -220,4 +220,33 @@ await test('a family Fees tab lists the term payment they made', async () => {
   assert.equal(f.places[0].owingCents, 0)
 })
 
+await test('a Pro added on the Timetable can be billed for sessions already had, on the link sent with the add (Lee, 19 Oct 2026)', async () => {
+  const pr = await ok('pricing')
+  const past = (pr.datesByDay.Wednesday || []).filter((d) => d.past).map((d) => d.iso)
+  if (!past.length) { console.log('  (no past Wednesday in the test term: owed sessions not checked)'); return }
+  const owed = past.slice(-1)
+  const a = await addPro('Otto Owed', 'otto.owed@example.com', { owedDates: [...owed, '2020-01-01'] })
+  assert.ok(a.payreq, 'a payment link goes with the add')
+  assert.equal(a.payreq.amountLabel, 'A$100')
+  const r = await row(a.rowId)
+  assert.equal(r['Term 4 Fee'], 100)
+  assert.equal(r['Term 4 Payment Type'], 'JFP Pro sessions')
+  assert.match(r['Term 4 Notes'], /Sessions billed by .*: 1 x A\$100 = A\$100/)
+  const [q] = await payreqsFor(a.rowId)
+  assert.equal(q.amountCents, 10000)
+  assert.equal(q.programme, 'pro')
+  assert.equal(q.places[0].owingCents, 10000)
+  assert.ok((await auditOf('player.sessions')).some((x) => x.target === a.rowId), 'auto charge sees them as billed')
+  const mail = (await emails()).filter((e) => e.to.includes('otto.owed@example.com')).at(-1)
+  assert.ok(mail && /A\$100/.test(mail.html || mail.text || mail.subject || ''), 'the email asks for the A$100')
+  // With no price a session, nothing is added.
+  const bad = await portal('addPlayer', { groupId: GROUP, force: true, player: { name: 'Nora Noprice' }, parent: { email: 'nora.np@example.com' }, ownContact: true, payment: 'pro', owedDates: owed })
+  assert.equal(bad.status, 400)
+  // A future date is never billed as owed.
+  const fut = (pr.datesByDay.Wednesday || []).filter((d) => !d.past).map((d) => d.iso)
+  const b = await addPro('Fay Future', 'fay.future@example.com', { owedDates: fut.slice(0, 1) })
+  assert.equal(b.payreq, null)
+  assert.equal((await row(b.rowId))['Term 4 Fee'] || 0, 0)
+})
+
 console.log(`\n${passed} Pro quote and Fees flow checks passed`)

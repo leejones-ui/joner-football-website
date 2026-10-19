@@ -33,17 +33,19 @@ const seed = (body) => fetch(`${B}/__stripe-seed`, { method: 'POST', body: JSON.
 const year = Number(new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }).slice(0, 4))
 
 let proRow = ''
-await test('a Pro row and Pro Stripe payments are Pro money, not JFP term income', async () => {
+await test('a Pro row and Pro Stripe payments count in JFP term income (Lee, 19 Oct 2026), and Money > Pro sessions still shows them', async () => {
   const before = (await portal(lee, 'money', { fresh: true })).data.money
   const added = await (await fetch(`${B}/__airtable-add`, { method: 'POST', body: JSON.stringify({ table: 'term4', rows: [{ 'Player Name': 'Pro Sampleplayer', 'Parent Name': 'Pro Parent', Email: 'pro.family@example.com', Phone: '0400000000', 'Term 3 Day': 'Tuesday', 'Term 3 Time': '5:25pm', 'Term 3 Location': 'Belrose HQ', 'Term 4 Confirmation': 'Confirmed', 'Term 4 Payment Type': 'JFP Pro sessions', 'Term 4 Fee': 80, 'Term 4 Amount Paid': 0, 'Term 4 Payment Status': 'Unpaid', 'Term 4 Notes': '[PERSESSION:4000]' }] }) })).json()
   proRow = added.ids[0]
   await seed({ email: 'pro.family@example.com', name: 'Pro Parent', cents: 4000, metadata: { jfpBookingId: 'PAY-PRO-QUICK', jfpProgramme: 'pro', source: 'quick', jfpFor: 'Pro session' } })
   await seed({ email: 'pro.family@example.com', name: 'Pro Parent', cents: 4000, metadata: { jfpBookingId: 'PAY-PRO-ROW', jfpProduct: 'pro' } })
   const m = (await portal(lee, 'money', { fresh: true })).data.money
-  assert.ok(!m.players.some((p) => p.rowId === proRow), 'the Pro row is not on JFP Money')
-  assert.equal(m.players.length, before.players.length)
-  assert.equal(m.kpis.incomeCents, before.kpis.incomeCents, 'JFP income has no Pro money in it')
-  assert.equal(m.kpis.stripePayments, before.kpis.stripePayments)
+  const p = m.players.find((x) => x.rowId === proRow)
+  assert.ok(p, 'the Pro row is on JFP Money')
+  assert.equal(p.status, 'session', 'pink, paid by the session')
+  assert.equal(m.players.length, before.players.length + 1)
+  assert.equal(m.kpis.stripePayments, before.kpis.stripePayments + 2, 'the Pro Stripe payments count in JFP')
+  assert.ok(m.kpis.incomeCents >= before.kpis.incomeCents + 8000, 'JFP income has the Pro money in it')
   assert.ok(!m.unmatched.some((u) => u.email === 'pro.family@example.com'), 'nor on the not matched list')
   const pro = (await portal(lee, 'proMoney', { fresh: true })).data.pro
   assert.equal(pro.totals.stripe.count, 2)

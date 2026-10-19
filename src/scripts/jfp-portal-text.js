@@ -74,12 +74,13 @@ const SIGN = 'Joner ⚽️'
 const hiLine = (name) => `Hi ${firstName(name)},`
 const signIn = (email) => (email ? `sign in using this email (the one we have on file): ${email}` : 'sign in with the email we have on file')
 const lines = (...parts) => parts.filter(Boolean).join('\n\n')
-export function payLinkText({ parent, player, when, place, url, self = false, starts = '', email = '', emailed = true }) {
+// owed: sessions already had, on this link (Lee, 19 Oct 2026), e.g. "Wed 15 Oct".
+export function payLinkText({ parent, player, when, place, url, self = false, starts = '', email = '', emailed = true, owed = '' }) {
   const from = starts ? `, starting ${starts}` : ''
   return lines(
     hiLine(self ? player : parent),
     `It's Lee from Joner Football. ${self ? 'You have' : `${firstName(player)} has`} a spot in our ${when} group at ${place}${from}.`,
-    `To 100% lock it in, ${signIn(email)}, sign the waiver and pay here: ${url}`,
+    owed ? `To lock it in, ${signIn(email)}, sign the waiver and pay for the session${owed.includes(',') ? 's' : ''} already had (${owed}) here: ${url}\nYour account also shows the options for the sessions ahead.` : `To 100% lock it in, ${signIn(email)}, sign the waiver and pay here: ${url}`,
     `${emailed ? 'We have emailed you the same link. ' : ''}See you on the pitch!\n${SIGN}`,
   )
 }

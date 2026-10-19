@@ -55,7 +55,7 @@ import { JJ_ACTIONS, jjAction, jjMoneyData, jjTableList } from './_jj-portal.js'
 import { JJ_REGISTER_ACTIONS, jjRegisterAction, jjDatesForGroup, classForGroup, markOne as jjMarkOne } from './_jj-registers.js'
 import { matchBank, cleanItem, csvIds, EXTERNAL_ID, BANK_LIMITS, twinOf, looksJfp, feeSizes, rowScore } from './_jfp-bank-match.js'
 import { holidayMoneyData, holidaySizes, HOLIDAY_BANK } from './_holiday-money.js'
-import { proMoneyData, isProRow, isProLedger, PRO_BANK } from './_jfp-pro-money.js'
+import { proMoneyData, isProRow, PRO_BANK } from './_jfp-pro-money.js'
 import { billPlan, afterBill, billLine, coveredOf, withQuote } from './_jfp-quote.js'
 import { playerQuote, saveQuote, saveDefaultQuote, addQuote, termRun } from './_jfp-quote-staff.js'
 import { linkProfile, accountsWithNoSession, allAccounts } from './_jfp-account-open.js'
@@ -425,6 +425,14 @@ async function prepGroupAdd({ principal, config, group, body, roster, family = n
   const groupDates = sessionDates(config, group.day)
   const startsFrom = !isTrial && ISO.test(body.startsFrom || '') && groupDates.includes(body.startsFrom) && body.startsFrom > (groupDates.find((d) => d >= today) || '') ? body.startsFrom : ''
   if (startsFrom) notes = `${notes}. Starts ${startsFrom}. [STARTS:${startsFrom}]`
+  // Sessions already had and still owing (Lee, 19 Oct 2026: Pros who trained
+  // in week 1 before they were added): billed with the add, on one link.
+  const nextSession = groupDates.find((d) => d >= today) || '9999'
+  const owed = perSessionPay && !family && Array.isArray(body.owedDates) ? [...new Set(body.owedDates.filter((d) => ISO.test(d) && groupDates.includes(d) && d < nextSession))].sort().slice(0, 10) : []
+  if (owed.length && !perSession) return { status: 400, error: 'Enter the price per session to bill the sessions already had.' }
+  if (owed.length && !family && !email) return { status: 400, error: ownContact ? "Add the player's email to send the bill for the sessions already had." : 'Add the parent email to send the bill for the sessions already had.' }
+  const owedCents = owed.length * (perSession || 0)
+  if (owed.length) notes = appendNote(notes, `Sessions billed by ${principal.name}: ${owed.length} x ${formatAud(perSession)} = ${formatAud(owedCents)} (${owed.map(dateLabel).join(', ')}), payment link with the add.`)
   const fields = {
     'Player Name': name,
     'Parent Name': read.v.parentName,
@@ -435,14 +443,14 @@ async function prepGroupAdd({ principal, config, group, body, roster, family = n
     // A link is a place held for this family: confirmed once they pay.
     'Term 4 Confirmation': payment === 'link' ? 'Awaiting Reply' : 'Confirmed',
     ...(payment === 'link' ? {} : { 'Confirmation Date': today }),
-    'Term 4 Fee': payment === 'trial' || perSessionPay ? 0 : amountCents / 100,
+    'Term 4 Fee': payment === 'trial' ? 0 : perSessionPay ? owedCents / 100 : amountCents / 100,
     'Term 4 Amount Paid': payment === 'offline' ? amountCents / 100 : 0,
     'Term 4 Payment Status': payment === 'offline' ? 'Paid' : payment === 'trial' ? 'N/A' : 'Unpaid',
     'Term 4 Payment Type': type,
     'Term 4 Notes': notes,
     ...(payment === 'offline' ? { 'Term 4 Fee Reconciliation': 'Non-Stripe — verified' } : {}),
   }
-  return { ok: true, v: read.v, group, fields, twin, amountCents, isTrial, isPro, perSessionPay, product, from, custom, payment, what: custom ? custom.name : isTrial ? 'Trial session' : `${productFor(product).label}${price.proRata && from ? `, ${price.sessions} of ${price.of} sessions from ${dateLabel(from)}` : price.fixedSessions && from ? `, ${price.sessions} sessions from ${dateLabel(from)}` : ''}` }
+  return { ok: true, v: read.v, group, fields, twin, amountCents, owed, owedCents, isTrial, isPro, perSessionPay, product, from, custom, payment, what: custom ? custom.name : isTrial ? 'Trial session' : `${productFor(product).label}${price.proRata && from ? `, ${price.sessions} of ${price.of} sessions from ${dateLabel(from)}` : price.fixedSessions && from ? `, ${price.sessions} sessions from ${dateLabel(from)}` : ''}` }
 }
 
 export async function addPlayer(req, res, principal, config, body) {
@@ -459,20 +467,29 @@ export async function addPlayer(req, res, principal, config, body) {
   let payreq = null
   if (payment === 'link') payreq = await createPayreq({ req, principal, config, group, rows: [{ id: rowId, name }], email, parentName, amountCents, reason: isTrial ? 'trial' : 'admin-add', product: custom ? '' : product, startDate: from, afterpay: body.afterpay !== false, programme: isPro ? 'pro' : '', ownContact })
   if (payreq && custom) await savePayreq({ ...payreq, productLabel: custom.name })
+  if (prep.owed.length && !payreq && email) {
+    const owedWhat = prep.owed.map(dateLabel).join(', ')
+    payreq = await createPayreq({ req, principal, config, group: null, rows: [{ id: rowId, name }], email, parentName, amountCents: prep.owedCents, reason: 'sessions', afterpay: false, restoreFields: [{ id: rowId, fields: { 'Term 4 Fee': 0, 'Term 4 Payment Status': 'Unpaid' } }], programme: isPro ? 'pro' : '', ownContact })
+    payreq.places = [{ rowId, name, label: `${prep.owed.length} session${prep.owed.length > 1 ? 's' : ''} at ${formatAud(perSession)}, ${owedWhat}`, feeCents: prep.owedCents, paidCents: 0, owingCents: prep.owedCents }]
+    payreq.groupLabel = 'Session by session'
+    await savePayreq(payreq)
+    // Auto charge counts these as billed by hand.
+    await audit({ by: principal.email, action: 'player.sessions', target: rowId, after: { rows: [{ id: rowId, sessions: prep.owed.length, per: perSession }], what: owedWhat, mode: 'link', withAdd: true } })
+  }
   let sent = { emailed: false }, pdf = {}
   if (body.sendEmail === true && email) {
     const roster = await loadRoster({ fresh: true })
     const hasWaiver = Boolean(waiverFor(name, { emails: [email], phones: [mobile], dob }, roster.waivers))
     pdf = payreq ? await feePdf(req, config, { ...payreq, ...(custom ? { productLabel: custom.name } : {}) }) : {}
     // The player is already added: an email failure must not look like the add failed.
-    sent = await trySend('add player', () => sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq), sessions: perSessionPay, owingCents: !payreq && payment === 'none' && !isTrial ? amountCents : 0 }, amountCents, trial: isTrial, startDate: from, product, self: ownContact, attachment: pdf.attachment }))
+    sent = await trySend('add player', () => sendFamilyInvite({ to: email, parentName, playerNames: [name], group, config, url: payreq ? payreqUrl(req, payreq) : `${siteUrl(req)}/jfp-account/`, needs: { details: !hasWaiver && !dob, waiver: !hasWaiver, payment: Boolean(payreq), sessions: perSessionPay, owingCents: !payreq && payment === 'none' && !isTrial ? amountCents : 0 }, amountCents: payreq?.amountCents ?? amountCents, trial: isTrial, startDate: from, product, self: ownContact, attachment: pdf.attachment }))
     if (payreq && sent.emailed) await savePayreq({ ...payreq, ...(custom ? { productLabel: custom.name } : {}), emailedAt: new Date().toISOString() })
   }
   const emailError = sent.emailError ? `${name} was added, but the email to ${email} did not send. ${sent.emailError} Try again with Account invite on the player.` : ''
   // The group's coach hears about it (Lee, 14 Oct 2026), a few minutes later.
   await noteNewPlayer({ config, group, rowId, player: name, kind: 'added' }).catch((e) => console.error('jfp coach news failed', e))
   await audit({ by: principal.email, action: 'player.add', target: rowId, after: { name, group: group.id, payment, emailed: sent.emailed, payreq: payreq?.id || '', cents: payment === 'none' || perSessionPay ? 0 : amountCents, perSessionCents: perSession || undefined, quote: prep.v.quoteTiers.length ? prep.v.quoteTiers : undefined, ownContact: ownContact || undefined, priceId: custom?.id || undefined } })
-  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, pdfWarning: pdfWarningOf(sent, pdf), ownContact, words, movedRow: Boolean(prep.twin), ...prof })
+  return res.status(200).json({ success: true, rowId, payreq: payreq ? { id: payreq.id, url: payreqUrl(req, payreq), amountLabel: formatAud(payreq.amountCents ?? amountCents) } : null, emailed: sent.emailed, emailTo: sent.emailed ? email : '', emailError, pdfWarning: pdfWarningOf(sent, pdf), ownContact, words, movedRow: Boolean(prep.twin), ...prof })
 }
 
 // ---------- Players tab: one row per player, searchable, with everything ----------
@@ -1203,12 +1220,12 @@ export async function moneyData(config, { since, fresh = false, quick = false, p
   // quick (first paint): the last Stripe read and the 60 second roster cache.
   const first = paint && quick && !fresh
   const [rosterAll, groups, ledgerAll, juniors, history, payreqs, matches, rules] = await Promise.all([loadRoster({ fresh: !quick, ...(first ? { maxAgeMs: PAINT_MAX_AGE_MS } : {}) }), listGroups(), listLedger(config.term, { quick, paint: first }).catch(() => []), listJuniors().catch(() => []), listVenueHistory().catch(() => []), listPayreqs().catch(() => []), listMatches().catch(() => ({})), listRules().catch(() => ({}))])
-  // Pro sessions are their own money (Money > Pro sessions): their rows and
-  // the cash or bank transfers recorded on them are not JFP term income, and
-  // Pro Stripe payments come back apart (stripe.pro).
-  const proIds = new Set(rosterAll.players.filter((r) => isProRow(r.paymentType)).map((r) => r.id))
-  const roster = proIds.size ? { ...rosterAll, players: rosterAll.players.filter((r) => !proIds.has(r.id)) } : rosterAll
-  const ledger = proIds.size ? ledgerAll.filter((l) => !isProLedger(l, proIds)) : ledgerAll
+  // Pro players are JFP players paying by the session (Lee, 19 Oct 2026:
+  // "this all should count towards term revenue"): their rows, the cash or
+  // bank recorded on them and their Stripe payments are on Money > JFP like
+  // everyone else. Money > Pro sessions still shows them on their own.
+  const roster = rosterAll
+  const ledger = ledgerAll
   // What each row's paid amount has in the ledger, so a row marked paid by
   // hand can have its cash, bank or Stripe payment recorded.
   const ledgerByRow = new Map()
@@ -1225,6 +1242,7 @@ export async function moneyData(config, { since, fresh = false, quick = false, p
   // Matched to a player as an extra session (Match to player): Extra sessions money, not JFP.
   const extraIds = new Set(Object.values(matches).filter((x) => x.as === 'extra').map((x) => x.id))
   if (extraIds.size) stripe = { ...stripe, payments: stripe.payments.filter((p) => !extraIds.has(p.id)), next: (stripe.next || []).filter((p) => !extraIds.has(p.id)) }
+  if (stripe.pro?.length) stripe = { ...stripe, payments: [...stripe.payments, ...stripe.pro] }
   for (const p of [...stripe.payments, ...(stripe.next || [])]) p.day = sydneyToday(Date.parse(p.at))
   const byId = Object.fromEntries(groups.map((g) => [g.id, g]))
   const holding = roster.players.filter((r) => r.holdsPlace && !isTestName(r.player))
