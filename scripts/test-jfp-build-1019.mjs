@@ -229,5 +229,19 @@ await test('the whole program register: Lee sees every coach in a week; a coach 
   assert.ok(mine.sessions.every((s) => s.coachId === 'sam'))
 })
 
+await test('players across terms and JF Master Players: Lee only, never a phone number', async () => {
+  assert.equal((await portal(sam, 'playersHistory', { term: 'all' })).status, 403)
+  const all = await ok(lee, 'playersHistory', { term: 'all' })
+  const olly = all.people.find((p) => p.player === 'Olly Oldtimer')
+  assert.deepEqual(olly.terms, ['Term 2 2026', 'First players table'])
+  assert.ok(all.people.some((p) => p.player === 'Ava Ashdown' && p.current))
+  assert.ok(!/0400999888|Phone|Date of Birth|Medical/.test(JSON.stringify(all)))
+  const t2 = await ok(lee, 'playersHistory', { term: 'term2' })
+  assert.equal(t2.rows.length, 1)
+  const m = await ok(lee, 'playersHistory', { term: 'master' })
+  assert.equal(m.master.length, 2)
+  assert.equal((await portal(lee, 'playersHistory', { term: 'nope' })).status, 400)
+})
+
 console.log(`${passed} passed`)
 process.exit(0)

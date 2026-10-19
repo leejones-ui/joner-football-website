@@ -216,7 +216,7 @@ const telegrams = []
 // A pretend JFP roster: realistic groups, invented players. Set JFP_SEED to a
 // JSON file ({ term4, term3, waiver, ledger } record arrays) to load another,
 // for example an anonymised copy of the real roster for screenshots.
-const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [], juniorsNext: [], venueHistory: [], profiles: [], camps: [], applications: [] }
+const airtable = { term4: [], ledger: [], term3: [], waiver: [], attendance: [], dropped: [], nextHolds: [], master: [], juniors3: [], juniors4: [], juniorsNext: [], venueHistory: [], profiles: [], camps: [], applications: [], players1: [], term2: [], masterPlayers: [] }
 // JFP Camps, as the Mac import writes it: invented camps, no names (Money > Camps).
 {
   let n = 0
@@ -255,6 +255,10 @@ if (process.env.JFP_SEED && fs.existsSync(process.env.JFP_SEED)) {
   airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': 'Riley Returning', 'Parent Email': 'returning@example.com', 'Date of Birth': '2015-03-02', 'Term': 'Term 3 2026', 'Signed Date': '2026-07-14', 'Waiver Accepted - Full Terms': true } })
   airtable.waiver.push({ id: recId(), fields: { 'Player Full Name': 'Sasha Returning', 'Parent Email': 'returning@example.com', 'Date of Birth': '2016-06-10', 'Term': 'Term 3 2026', 'Signed Date': '2026-07-14', 'Waiver Accepted - Full Terms': true } })
   // Term 3 money for revenue by venue: two payments on Term 3 rows, one from a player no longer listed.
+  // Older terms and JF Master Players (Players tab, past players): invented.
+  airtable.players1.push({ id: recId(), fields: { 'Player Name': 'Olly Oldtimer', 'Parent Name': 'Opal Oldtimer', 'Email': 'old@example.com', 'Session Day': 'Monday', 'Session Time': '4:00pm', 'Location': 'Belrose HQ', 'Coach': 'Lee', 'Status': 'Active', 'Phone Number': '0400999888' } })
+  airtable.term2.push({ id: recId(), fields: { 'Player Name': 'Olly Oldtimer', 'Parent Name': 'Opal Oldtimer', 'Email': 'old@example.com', 'Session Day': 'Monday', 'Session Time': '4:00pm', 'Session Location': 'Belrose HQ', 'Coach': 'Sam Yorks', 'Status': 'Active' } })
+  airtable.masterPlayers.push({ id: recId(), fields: { 'Player Name': 'Olly Oldtimer', 'Parent Names from Sources': 'Opal Oldtimer', 'Source Tables': 'Players, Term 2 Players', 'Review Status': 'Matched' } }, { id: recId(), fields: { 'Player Name': 'Mia Masterlist', 'Parent Names from Sources': 'Mo Masterlist', 'Source Tables': 'JF App', 'Review Status': 'Needs review' } })
   const [riley3, sasha3] = airtable.term3
   const t3pay = (id, name, amount, method, source, extra = {}) => airtable.ledger.push({ id: recId(), fields: { 'Payment ID': id, 'Term': 'Term 3 2026', 'Player Name': name, 'Amount Paid': amount, 'Payment Method': method, 'Payment Status': 'Paid', 'Payment Date': '2026-07-20', 'Source Table': 'Term 3 Players', 'Source Record ID': source, ...extra } })
   // Term 3 Stripe lines carry their fee (an invented one here).
@@ -338,7 +342,7 @@ function jjUnknown(key, names) {
   const bad = have && names.find((n) => !have.includes(n))
   return bad ? { status: 422, body: { error: { type: 'UNKNOWN_FIELD_NAME', message: `Unknown field name: "${bad}"` } } } : null
 }
-const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblF25gfo0fZcqdPT: 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblJJNextTerm0001: 'juniorsNext', tblgss68pIVTUOttE: 'venueHistory', tblTt7jWK3s2me45B: 'profiles', tblrELWFdVouAn5FB: 'camps', tblAnkpS9vF4PI8nD: 'applications' }
+const TABLE_KEYS = { tbl6OIjkU6UsQCeZV: 'term4', tblfrXQLMhOcE2PWH: 'ledger', 'Term 3 Players': 'term3', tblF25gfo0fZcqdPT: 'term3', tblLziUfKOv1N0f40: 'waiver', tblfwc1VO3ind7cVk: 'attendance', tblLa3AFkRvlUEQEI: 'dropped', tblahicOyFRUCf7bL: 'nextHolds', 'Joner Football Master Database': 'master', tblMLhYQ126P5uKLB: 'juniors3', tblVzW8E9qumQEtXx: 'juniors4', tblJJNextTerm0001: 'juniorsNext', tblgss68pIVTUOttE: 'venueHistory', tblTt7jWK3s2me45B: 'profiles', tblrELWFdVouAn5FB: 'camps', tblAnkpS9vF4PI8nD: 'applications', tblY4W1OmMzNTAirt: 'players1', tblFXWwF7l7iKMm2j: 'term2', tblGMVuC2QaoOxdsN: 'masterPlayers' }
 function airtableResponse(url, init) {
   const u = new URL(url)
   const parts = u.pathname.split('/').slice(3).map(decodeURIComponent) // [table, recordId?]

@@ -3282,7 +3282,7 @@ async function renderFamilies(keep = false) {
 
 // ---------- Players: search, filters, a full record, and adding one ----------
 
-const PL = { q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '', data: null, at: 0 }
+const PL = { term: '', q: '', status: '', group: '', coach: '', waiver: '', place: '', level: '', pos: '', data: null, at: 0 }
 
 // Accounts with no session (round 2 item 8): profiles families made in My
 // account, or kept from before, with no Term 4 row. Add to a group is the
@@ -3651,6 +3651,7 @@ async function renderPlayers(keep = false) {
   // Read from Airtable again whenever the tab is opened after half a minute,
   // so a change made in Airtable shows here without a page reload. Typing in
   // the search box or changing a filter redraws from what is already loaded.
+  if (PL.term) return renderPlayersPast(keep)
   if (!PL.data || (!keep && Date.now() - PL.at > 30000)) {
     const [list, rm] = await Promise.all([post('playersList', { fresh: true }), post('removed')])
     PL.data = await need(list); PL.removed = rm.ok ? rm.data : null; PL.at = Date.now()
@@ -3675,6 +3676,7 @@ async function renderPlayers(keep = false) {
   const y = window.scrollY
   view().innerHTML = `${psHead({ title: 'Players', count: accts ? `${accts.length} with no session` : PL.place === 'removed' ? `${removedN} removed` : shown.length === d.players.length ? d.players.length : `${shown.length} of ${d.players.length}`, primary: '<button type="button" class="j-btn j-btn-dark" id="pl-add">+ Add player</button>', more: true })}
     <div class="ps-tools" role="search">
+      ${plTermSelect(d.players.length)}
       ${psSearch('pl-q', 'Search players…', PL.q, 'Search players by name, parent, email, mobile or group')}
       ${psSelect('pl-status', [{ id: 'unpaid', label: 'Not paid' }, { id: 'paid', label: 'Paid' }, { id: 'noprice', label: 'No fee set' }], PL.status, 'Payment')}
       ${psSelect('pl-group', d.groups, PL.group, 'Group')}
@@ -3694,6 +3696,7 @@ async function renderPlayers(keep = false) {
       <tbody>${shown.map(plRow).join('') || `<tr><td colspan="6"><div class="ps-empty">No players match.${active ? ' <button type="button" class="ps-link" id="pl-clear2">Clear filters</button>' : ''}</div></td></tr>`}</tbody></table></div>`}`
   if (keep) window.scrollTo(0, y)
   const redraw = () => renderPlayers(true)
+  wirePlTerm()
   $('pl-q').addEventListener('input', (e) => { PL.q = e.target.value; const at = e.target.selectionStart; redraw(); const i = $('pl-q'); i.focus(); i.setSelectionRange(at, at) })
   for (const [id, key] of [['pl-status', 'status'], ['pl-group', 'group'], ['pl-coach', 'coach'], ['pl-waiver', 'waiver'], ['pl-place', 'place'], ['pl-level', 'level'], ['pl-pos', 'pos']]) {
     $(id).addEventListener('change', (e) => { PL[key] = e.target.value; redraw() })
@@ -3723,6 +3726,64 @@ async function renderPlayers(keep = false) {
     tr.addEventListener('click', open)
     tr.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === tr) { e.preventDefault(); open(e) } })
   })
+}
+
+// ---------- players: past terms and JF Master Players ----------
+// Lee, 19 Oct 2026: search past and present players, a term filter, and the
+// JF Master Players list for Lee and Ligia. Read only, from Airtable: name,
+// parent, email, session and coach (no phones, dates of birth or medical notes).
+const PLH = { data: {}, terms: null }
+function plTermSelect(current) {
+  const terms = PLH.terms || [{ id: 'first', label: 'First players table' }, { id: 'term2', label: 'Term 2 2026' }, { id: 'term3', label: 'Term 3 2026' }]
+  const opts = [['', `Current players (Term 4)${current != null ? ` · ${current}` : ''}`], ['all', 'All players, past and present'], ...[...terms].reverse().map((t) => [t.id, t.label]), ['master', 'JF Master Players']]
+  return `<label class="sr-only" for="pl-term">Term</label><select class="j-select ps-select" id="pl-term" style="width:auto">${opts.map(([v, l]) => `<option value="${esc(v)}" ${PL.term === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`
+}
+function wirePlTerm() { $('pl-term')?.addEventListener('change', (e) => { PL.term = e.target.value; renderPlayers() }) }
+async function renderPlayersPast(keep = false) {
+  const t = PL.term
+  if (!PLH.data[t] || (!keep && Date.now() - PLH.data[t].at > 600000)) {
+    const r = await need(await post('playersHistory', { term: t }))
+    PLH.terms = r.terms
+    PLH.data[t] = { at: Date.now(), r }
+  }
+  const r = PLH.data[t].r
+  const q = PL.q.trim().toLowerCase()
+  const has = (...v) => !q || v.some((x) => String(x || '').toLowerCase().includes(q))
+  const current = PL.data ? PL.data.players.filter((p) => p.holdsPlace !== false).length : null
+  let rows = '', total = 0, shown = 0, head = ''
+  if (t === 'master') {
+    const list = r.master || []
+    const hit = list.filter((m) => has(m.player, m.parents, m.sources))
+    total = list.length; shown = hit.length
+    head = '<th>Player</th><th>Parents</th><th>Found in</th><th>Review</th>'
+    rows = hit.slice(0, 500).map((m) => `<tr><td><b>${esc(m.player)}</b></td><td>${esc(m.parents)}</td><td class="muted small">${esc(m.sources)}</td><td>${m.review ? psBadge(/match|ok|done/i.test(m.review) ? 'green' : 'grey', m.review) : ''}</td></tr>`).join('')
+  } else if (t === 'all') {
+    const list = r.people || []
+    const hit = list.filter((p) => has(p.player, p.parent, p.email, p.session, p.coach))
+    total = list.length; shown = hit.length
+    head = '<th>Player</th><th>Terms</th><th>Last session</th><th>Parent</th>'
+    rows = hit.slice(0, 500).map((p) => `<tr><td><b>${esc(p.player)}</b>${p.current ? ` ${psBadge('green', 'Current')}` : ''}</td><td class="small">${p.terms.map(esc).join(', ')}</td><td class="small">${esc(p.session)}${p.coach ? `<br><span class="muted">${esc(p.coach)}</span>` : ''}</td><td class="small">${esc(p.parent)}<br><span class="muted">${esc(p.email)}</span></td></tr>`).join('')
+  } else {
+    const list = r.rows || []
+    const hit = list.filter((p) => has(p.player, p.parent, p.email, p.session, p.coach))
+    total = list.length; shown = hit.length
+    head = '<th>Player</th><th>Session</th><th>Status</th><th>Parent</th>'
+    rows = hit.slice(0, 500).map((p) => `<tr><td><b>${esc(p.player)}</b></td><td class="small">${esc(p.session)}${p.coach ? `<br><span class="muted">${esc(p.coach)}</span>` : ''}</td><td class="small">${esc(p.status)}</td><td class="small">${esc(p.parent)}<br><span class="muted">${esc(p.email)}</span></td></tr>`).join('')
+  }
+  const title = t === 'master' ? 'JF Master Players' : t === 'all' ? 'All players, past and present' : (PLH.terms || []).find((x) => x.id === t)?.label || 'Past players'
+  view().innerHTML = `${psHead({ title, count: shown === total ? total : `${shown} of ${total}` })}
+    <div class="ps-tools" role="search">
+      ${plTermSelect(current)}
+      ${psSearch('pl-q', t === 'master' ? 'Search names, parents or where found…' : 'Search players, parents, emails…', PL.q, 'Search these players')}
+      <span class="ps-meta">From Airtable, read only · <button type="button" class="ps-link" id="plh-refresh">Refresh</button></span>
+    </div>
+    ${(r.failed || []).length ? `<p class="j-box j-box-amber small">Could not read ${esc(r.failed.join(', '))} just now. Refresh to try again.</p>` : ''}
+    ${t === 'master' ? '<p class="muted small" style="margin:0 0 10px">Everyone Joner Football has a record of, matched across lists. Being on this list is not permission to market to a family.</p>' : ''}
+    <div class="ps-table-wrap"><table class="ps-table"><thead><tr>${head}</tr></thead><tbody>${rows || `<tr><td colspan="4"><div class="ps-empty">No players match.</div></td></tr>`}</tbody></table></div>
+    ${shown > 500 ? `<p class="muted small">Showing the first 500. Search to narrow it down.</p>` : ''}`
+  wirePlTerm()
+  $('pl-q').addEventListener('input', (e) => { PL.q = e.target.value; const at = e.target.selectionStart; renderPlayersPast(true); const i = $('pl-q'); i.focus(); i.setSelectionRange(at, at) })
+  $('plh-refresh').addEventListener('click', async () => { PLH.data[t] = { at: Date.now(), r: await need(await post('playersHistory', { term: t, fresh: true })) }; renderPlayersPast(true) })
 }
 
 // ---------- cover, time off, session plans ----------

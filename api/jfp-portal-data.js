@@ -7,6 +7,7 @@
 //
 // Staff changes write straight into Airtable Term 4 Players, so Lee's
 // dashboard always matches, and every change is recorded in the audit log.
+import { playersHistory, HISTORY_TERMS } from './_jfp-players-history.js'
 import crypto from 'node:crypto'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { siteUrl, getConfig as getHolidayConfig } from './_holiday-store.js'
@@ -3278,6 +3279,13 @@ async function handle(req, res) {
       case 'searchPlayers': return res.status(200).json({ success: true, results: await searchPlayers(config, body) })
       case 'addPlayer': return await addPlayer(req, res, principal, config, body)
       case 'playersList': return await playersList(req, res, config, body)
+      // Past and present players and JF Master Players (Lee, 19 Oct 2026): Lee and Ligia only.
+      case 'playersHistory': {
+        if (!isAdmin) return fail(res, 403, 'Only Lee or Ligia can see past players.')
+        const out = await playersHistory({ body, roster: await loadRoster(), termLabel: config.term })
+        if (out.error) return fail(res, 400, out.error)
+        return res.status(200).json({ success: true, terms: HISTORY_TERMS, ...out })
+      }
       case 'addPlayerNoGroup': return await addPlayerNoGroup(req, res, principal, config, body)
       case 'addFamily': return await addFamily(req, res, principal, config, body)
       case 'movePlayer': return await movePlayer(res, principal, config, body)
