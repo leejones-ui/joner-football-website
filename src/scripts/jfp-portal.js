@@ -2956,7 +2956,13 @@ async function renderCoach(keep = false) {
   // The Players page toolbar (Lee, 14 Oct 2026): search, Day, Venue, quick chips.
   P.regF = { q: '', day: '', loc: '', flag: '', ...(P.regF || {}) }
   const F = P.regF, q = F.q.trim().toLowerCase()
-  const dateOf = (s) => (s.dates.some((x) => x.iso === P.coachDate[s.id]) ? P.coachDate[s.id] : s.nextDate)
+  // With no date picked: the last session that has run and is not fully
+  // marked (within a week), so a register done later lands on the right day.
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
+  const weekAgo = new Date(Date.now() - 6 * 864e5).toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
+  const lastRun = (s) => { const x = s.dates.filter((v) => v.iso <= today).at(-1)?.iso; return x && x >= weekAgo && s.players.some((p) => !(p.trialDate && p.trialDate !== x) && !attOf(s, x)[p.rowId]) ? x : '' }
+  const dateOf = (s) => (s.dates.some((x) => x.iso === P.coachDate[s.id]) ? P.coachDate[s.id] : lastRun(s) || s.nextDate)
+  const early = (date) => !admin && date > today
   const flagOf = (s, p, date) => ({ trial: Boolean(p.trial), cancelled: Boolean((s.cancelledBy?.[date] || {})[p.rowId]), unconfirmed: p.status !== 'Confirmed' })
   const showP = (s, p) => { const date = dateOf(s); return (!p.trialDate || p.trialDate === date) && (!q || `${p.name} ${p.coach || ''}`.toLowerCase().includes(q)) && (!F.flag || flagOf(s, p, date)[F.flag]) }
   const order = (s) => `${DAYS.indexOf(s.day)}${s.sortTime || ''}`
@@ -2987,13 +2993,15 @@ async function renderCoach(keep = false) {
     ${sessions.length ? sessions.map((s) => {
       const date = dateOf(s)
       const att = attOf(s, date)
+      const off = early(date) ? 'disabled' : ''
       return `<article class="j-card" style="padding:16px;margin-bottom:12px" data-sess="${esc(s.id)}">
         ${s.covering ? `<div class="j-box j-box-blue small" style="margin-bottom:8px"><b>Covering for ${esc(s.covering.for)}</b> on ${esc(s.covering.dateLabel)}</div>` : ''}
         ${(s.coveredBy || []).length ? `<div class="j-box j-box-grey small" style="margin-bottom:8px">${s.coveredBy.map((c) => `${esc(c.dateLabel)}: covered by <b>${esc(c.coach)}</b>`).join('<br>')}</div>` : ''}
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><h3 style="font-size:17px">${esc(s.day)} ${esc(s.time)} · ${esc(s.location)}</h3><p class="muted small">${all && s.coachName ? `<b>Coach ${esc(s.coachName)}</b> · ` : ''}${esc(s.label)}${s.minAge != null ? ` · ages ${s.minAge} to ${s.maxAge}` : ''} · ${s.durationMin} min · ${s.players.length} player${s.players.length === 1 ? '' : 's'}</p></div>
           <span class="jp-reg-tools"><select class="j-select" style="width:auto" data-date="${esc(s.id)}" aria-label="Session date">${s.dates.map((x, i) => `<option value="${esc(x.iso)}" ${x.iso === date ? 'selected' : ''}>Week ${i + 1} · ${esc(x.label)}${Object.keys(attOf(s, x.iso)).length ? ' ✓' : ''}</option>`).join('')}</select><button type="button" class="j-btn j-btn-line" data-term="${esc(s.id)}">Whole term</button></span></div>
+        ${off ? '<p class="j-box j-box-grey small" style="margin-top:10px">This session has not happened yet. The register opens on the day.</p>' : ''}
         <div style="margin-top:10px">${s.players.filter((p) => showP(s, p)).map((p) => `<div class="jp-player" style="cursor:default">${avatar(p.photo, p.name, 32)}<span class="nm" style="flex:1 1 auto;min-width:0">${p.juniors ? esc(p.name) : `<button type="button" class="ps-link jp-cp-name" data-cp="${esc(p.rowId)}" aria-label="About ${esc(p.name)}">${esc(p.name)}</button>`}${p.age != null ? ` <span class="muted">(${esc(p.age)})</span>` : ''}${!p.mine ? ` <span class="muted small">· ${esc(p.coach)}</span>` : ''}${(s.cancelledBy?.[date] || {})[p.rowId] ? ` <span class="j-pill j-pill-amber" title="${esc(`${s.cancelledBy[date][p.rowId].reason}, ${s.cancelledBy[date][p.rowId].notice}`)}">Cancelled by parent</span>` : ''}${p.trial ? ' <span class="j-pill j-pill-blue">Trial</span>' : ''}${p.status !== 'Confirmed' ? ` <span class="j-pill j-pill-amber">${esc(p.status)}</span>` : ''}${noteLine(p, date)}</span>
-          <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${att[p.rowId] === 'Present'}">Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" aria-pressed="${['Absent', 'Notified'].includes(att[p.rowId])}" ${att[p.rowId] === 'Notified' ? 'title="The family told us they cannot make it"' : ''}>${att[p.rowId] === 'Notified' ? 'Away (told us)' : 'Away'}</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
+          <span class="jp-att"><button type="button" class="p" data-att="Present" data-row="${esc(p.rowId)}" aria-pressed="${att[p.rowId] === 'Present'}" ${off}>Here</button><button type="button" class="a" data-att="Absent" data-row="${esc(p.rowId)}" ${off} aria-pressed="${['Absent', 'Notified'].includes(att[p.rowId])}" ${att[p.rowId] === 'Notified' ? 'title="The family told us they cannot make it"' : ''}>${att[p.rowId] === 'Notified' ? 'Away (told us)' : 'Away'}</button></span></div>`).join('') || '<p class="muted small">No players yet.</p>'}</div>
       </article>`
     }).join('') : `<div class="ps-table-wrap"><div class="ps-empty">${active ? 'No sessions match. <button type="button" class="ps-link" data-c-clear>Clear filters</button>' : 'No sessions yet.'}</div></div>`}`
   $('c-pick')?.addEventListener('change', (e) => { P.coachId = e.target.value; if (P.coachId === 'all' && !P.regWeek) P.regWeek = weekStart(0); F.day = ''; renderCoach() })

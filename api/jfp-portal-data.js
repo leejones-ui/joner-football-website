@@ -3199,6 +3199,9 @@ async function handle(req, res) {
       if (!isAdmin && !covering && g.coachId !== principal.coachId && !(g.extraCoachIds || []).includes(principal.coachId)) return fail(res, 403, 'Not your session.')
       const dates = isJuniorsGroup(g) ? jjDatesForGroup(config, g) : sessionDates(config, g.day)
       if (!dates.includes(date)) return fail(res, 400, 'That date is not a session for this group.')
+      // Coaches mark a session on or after its day (Lee, 19 Oct 2026: Dean's
+      // Monday and Friday registers were saved against the next week).
+      if (!isAdmin && date > sydneyToday()) return fail(res, 400, 'That session has not happened yet. Pick the date you coached.')
       const status = ['Present', 'Absent', 'Trial', 'Make-up', ''].includes(body.status) ? body.status : null
       if (status === null) return fail(res, 400, 'Invalid status.')
       let row
