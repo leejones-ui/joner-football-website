@@ -1281,5 +1281,14 @@ a.sr-only[href="#main-content"]:focus { position: fixed !important; top: 16px; l
 .ji-kick { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--j-ink-2); margin: 0 0 8px; }
 .ji-steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
 .ji-steps li b { display: block; }
+.ji-addrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 12px 0 4px; }
+.ji-addf { padding: 16px; margin: 8px 0 4px; display: grid; gap: 10px; }
+.ji-cw { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ji-cw .ji-card { flex: 1; }
+.ji-rm { align-self: flex-start; }
+.ji-badge.ji-coach { background: #14532d; }
+.ji-tiktok { background: linear-gradient(135deg, #111, #25f4ee 160%); }
+.ji-youtube { background: #c4302b; }
+.ji-facebook { background: #1877f2; }
 /* Extra sessions on the Timetable: dashed, so they read apart from term groups. */
 .jp-blk-extra { border-style: dashed; cursor: pointer; }

@@ -3962,9 +3962,9 @@ async function pastPlayerModal(x) {
 async function renderHelp() {
   const rows = [
     ['Money: payments, fees, refunds, discounts, credits, "can I pay later"', 'Ligia and Lee', 'Tell the parent you will pass it on. Do not quote prices or promise anything. Ligia: ligia@jonerfootball.com.'],
-    ['Trial players, moving group, a place for a sibling, anything about joining', 'Ligia', 'Say Ligia will be in touch. Use "Trial players" to tell her how the trial went.'],
-    ['Complaints or a parent who is upset', 'Dean, then Lee', 'Stay calm, listen, do not argue. Tell Dean the same day.'],
-    ['Something goes wrong on the day: injury, no-show coach, venue problem', 'Dean', 'Call Dean first. For an injury, look after the player, then tell Dean and write a coach note on the player.'],
+    ['Trial players, moving group, a place for a sibling, anything about joining', 'Lee and Ligia', 'Say Lee or Ligia will be in touch. Use "Trial players" to tell her how the trial went.'],
+    ['Complaints or a parent who is upset', 'Ligia', 'Stay calm, listen, do not argue. Tell Ligia the same day: ligia@jonerfootball.com.'],
+    ['Something goes wrong on the day: injury, no-show coach, venue problem', 'Lee or the senior coach', 'Call Lee or the senior coach on the day. For an injury, look after the player, then tell Lee and write a coach note on the player.'],
     ['You cannot make a session', 'Cover and time off', 'Ask for cover or a swap as early as you can. The other coach is told straight away.'],
     ['A player cannot come', 'Nothing to do', 'The family uses Can\'t make it. You see it in Cancellations. The place stays held.'],
     ['Your hours, pay or invoices', 'Lee', 'Ask Lee directly.'],

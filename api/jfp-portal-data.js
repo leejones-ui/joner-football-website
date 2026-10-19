@@ -2854,6 +2854,8 @@ const SESSION_IDEAS = [
   { label: 'Joner Football on YouTube', url: 'https://www.youtube.com/@jonerfootball', note: 'Free drills, Shorts and full sessions.' },
 ]
 
+// The Session ideas topics a coach can file a link under (match TOPICS in jfp-portal-ideas.js).
+const IDEA_TOPICS = ['speed', 'ball', 'dribble', 'pass', 'shoot', '1v1', 'defend', 'head', 'aware', 'warm', 'gk', 'session', 'other']
 async function staffAction(req, res, principal, config, body, isAdmin, action) {
   const me = principal.coachId || ''
   const groups = await listGroups()
@@ -2885,6 +2887,41 @@ async function staffAction(req, res, principal, config, body, isAdmin, action) {
     }
     const { default: lib } = await import('./_jfp-ideas-library.js')
     return res.status(200).json({ success: true, ideas: Array.isArray(config.sessionIdeas) ? config.sessionIdeas : SESSION_IDEAS, admin: isAdmin, library: lib.library, programs: lib.programs, guide: lib.guide })
+  }
+  // Links any coach adds to the Session ideas library (Lee, 20 Oct 2026: "a
+  // passing drill they have seen on insta"). Filed under a topic; the coach
+  // who added it, Lee or Ligia can take it off.
+  if (action === 'ideasLinks' || action === 'ideasLinkAdd' || action === 'ideasLinkDelete') {
+    const KEY = 'jfp:idea-links'
+    if (action === 'ideasLinkAdd') {
+      const url = clean(body.url, 600)
+      const title = clean(body.title, 100)
+      const topic = clean(body.topic, 20)
+      if (!/^https:\/\/[^\s/]+\.[^\s]+$/.test(url)) return fail(res, 400, 'Paste the full link, starting https://')
+      if (title.length < 2) return fail(res, 400, 'Give it a short name, like "Rondo 4v1".')
+      if (!IDEA_TOPICS.includes(topic)) return fail(res, 400, 'Choose a group for it.')
+      const all = ((await kvCommand(['HVALS', KEY])) || []).map((x) => { try { return JSON.parse(x) } catch { return null } }).filter(Boolean)
+      if (all.some((x) => x.url === url)) return fail(res, 409, 'That link is already in the library.')
+      if (all.filter((x) => x.byEmail === principal.email && x.at > new Date(Date.now() - 86400000).toISOString()).length >= 40) return fail(res, 429, 'That is a lot of links today. Try again tomorrow.')
+      const link = { id: newId('IL'), url, title, topic, note: clean(body.note, 240), by: principal.name || coachLabel(coachById(config, me)) || principal.email, byEmail: principal.email, coachId: me, at: new Date().toISOString() }
+      await kvCommand(['HSET', KEY, link.id, JSON.stringify(link)])
+      await audit({ by: principal.email, action: 'ideas.link.add', target: link.id, after: { url, topic } })
+      return res.status(200).json({ success: true, link: { ...link, mine: true } })
+    }
+    if (action === 'ideasLinkDelete') {
+      const id = clean(body.id, 40)
+      const raw = await kvCommand(['HGET', KEY, id])
+      if (!raw) return fail(res, 404, 'That link has already gone.')
+      const link = JSON.parse(raw)
+      if (!isAdmin && link.byEmail !== principal.email) return fail(res, 403, 'Only the coach who added it, Lee or Ligia can take it off.')
+      await kvCommand(['HDEL', KEY, id])
+      await audit({ by: principal.email, action: 'ideas.link.delete', target: id, after: { url: link.url } })
+      return res.status(200).json({ success: true })
+    }
+    const list = ((await kvCommand(['HVALS', KEY])) || []).map((x) => { try { return JSON.parse(x) } catch { return null } }).filter(Boolean)
+      .sort((p, q) => String(q.at).localeCompare(String(p.at)))
+      .map(({ byEmail, ...x }) => ({ ...x, mine: byEmail === principal.email, canRemove: isAdmin || byEmail === principal.email }))
+    return res.status(200).json({ success: true, links: list })
   }
   // The JF App's videos for the Session ideas search (read from Uscreen, cached 12 hours).
   if (action === 'ideasApp') {
@@ -3373,7 +3410,7 @@ async function handle(req, res) {
     if (action === 'coachPhoto') return await saveCoachPhoto(res, principal, config, body, isAdmin)
     if (INVOICE_ACTIONS.has(action)) return await invoiceAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
     if (HOURS_ACTIONS.has(action)) return await hoursAction(res, principal, config, body, action, { isAdmin, myCoachId: principal.coachId || config.coaches.find((c) => c.email && c.email === principal.email)?.id || '', listCovers })
-    if (['ideasGet', 'ideasSave', 'ideasApp', 'staffOverview', 'staffAlerts', 'requestCover', 'cancelCover', 'declineCover', 'requestSwap', 'answerSwap', 'cancelTimeOff', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete', 'plan2List', 'plan2Save', 'plan2Get', 'plan2Delete', 'plan2Library', 'plan2Use'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
+    if (['ideasGet', 'ideasSave', 'ideasApp', 'ideasLinks', 'ideasLinkAdd', 'ideasLinkDelete', 'staffOverview', 'staffAlerts', 'requestCover', 'cancelCover', 'declineCover', 'requestSwap', 'answerSwap', 'cancelTimeOff', 'requestTimeOff', 'decideTimeOff', 'savePlans', 'planList', 'planSave', 'planGet', 'planDelete', 'plan2List', 'plan2Save', 'plan2Get', 'plan2Delete', 'plan2Library', 'plan2Use'].includes(action)) return await staffAction(req, res, principal, config, body, isAdmin, action)
 
     if (action === 'cancellations') return await cancellationsData(res, principal, config, body, isAdmin)
     if (action === 'cancelAlerts') return await cancelAlerts(res, principal, config, isAdmin)

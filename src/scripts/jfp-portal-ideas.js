@@ -19,8 +19,11 @@ const TOPICS = [
   ['gk', 'Goalkeepers', /goalkeep|keeper|\bgk\b/i],
   ['session', 'Full sessions', /full (training )?session|follow-along|session\b/i],
 ]
-const SOURCES = [['all', 'Everything'], ['app', 'JF App'], ['sheet', 'Drill links'], ['programs', 'JFP programs'], ['plan', 'How we plan']]
+const SOURCES = [['all', 'Everything'], ['app', 'JF App'], ['sheet', 'Drill links'], ['coach', 'From coaches'], ['programs', 'JFP programs'], ['plan', 'How we plan']]
 const S = { q: '', topic: '', source: 'all', app: null, appState: 'idle', shown: 48 }
+const PLATFORMS = [[/instagram\.com/, 'Instagram'], [/tiktok\.com/, 'TikTok'], [/youtube\.com|youtu\.be/, 'YouTube'], [/(^|\.)x\.com|twitter\.com/, 'X'], [/facebook\.com|fb\.watch/, 'Facebook']]
+const platformOf = (u) => (PLATFORMS.find(([re]) => re.test(host(u))) || [0, host(u) || 'Link'])[1]
+const topicLabel = (id) => (TOPICS.find((t) => t[0] === id) || [0, 'Other'])[1]
 
 const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, '') } catch { return '' } }
 const norm = (s) => String(s || '').toLowerCase()
@@ -28,7 +31,10 @@ const topicsOf = (text) => TOPICS.filter((t) => t[2].test(text)).map((t) => t[0]
 
 export async function renderIdeas(ui) {
   const { view, post, need, toast } = ui
-  const d = await need(await post('ideasGet'))
+  const [d, lr] = await Promise.all([post('ideasGet').then(need), post('ideasLinks')])
+  // Links coaches add themselves (Lee, 20 Oct 2026), filed under a topic.
+  let coachLinks = lr.ok ? lr.data.links || [] : []
+  const coachItems = () => coachLinks.map((l) => ({ ...l, kind: 'coach', platform: platformOf(l.url), topicName: topicLabel(l.topic), hay: norm(`${topicLabel(l.topic)} ${l.title} ${l.note || ''} ${l.by} ${platformOf(l.url)}`), topics: [...new Set([l.topic, ...topicsOf(`${l.title} ${l.note || ''}`)])] }))
   const lib = d.library || []
   const programs = d.programs || []
   const guide = d.guide || null
@@ -47,6 +53,10 @@ export async function renderIdeas(ui) {
 
   const match = (x) => (!S.topic || x.topics.includes(S.topic)) && (!S.q || S.q.split(/\s+/).every((w) => x.hay.includes(w)))
   const card = (x) => {
+    if (x.kind === 'coach') return `<div class="ji-cw"><a class="j-card ji-card" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">
+        <span class="ji-img ji-${esc(norm(x.platform))}"><span class="ji-plat">${esc(x.platform)}</span><span class="ji-badge ji-coach">From ${esc(String(x.by).split(' ')[0])}</span></span>
+        <span class="ji-bd"><b>${esc(x.title)}</b><span class="muted small">${esc(x.topicName)}${x.note ? ` · ${esc(x.note)}` : ''}</span></span></a>
+        ${x.canRemove ? `<button type="button" class="j-btn j-btn-ghost j-btn-sm ji-rm" data-il-rm="${esc(x.id)}">Remove</button>` : ''}</div>`
     if (x.kind === 'app') return `<a class="j-card ji-card" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">
         <span class="ji-img">${x.img ? `<img src="${esc(x.img)}" alt="" loading="lazy">` : ''}<span class="ji-badge ji-app">JF App</span>${x.min ? `<span class="ji-min">${x.min} min</span>` : ''}</span>
         <span class="ji-bd"><b>${esc(x.title)}</b>${x.text ? `<span class="muted small">${esc(x.text)}</span>` : ''}<span class="ji-tags">${x.cats.slice(0, 2).map((c) => `<i>${esc(c)}</i>`).join('')}</span></span></a>`
@@ -79,13 +89,17 @@ export async function renderIdeas(ui) {
     const out = []
     const showApp = S.source === 'all' || S.source === 'app'
     const showSheet = S.source === 'all' || S.source === 'sheet'
-    if (showApp || showSheet) {
+    const showCoach = S.source === 'all' || S.source === 'coach'
+    if (showApp || showSheet || showCoach) {
       const app = showApp ? appItems().filter(match) : []
       const links = showSheet ? sheet.filter(match) : []
-      const list = S.source === 'all' ? interleave(app, links) : [...app, ...links]
+      const mine = showCoach ? coachItems().filter(match) : []
+      // Coaches' own links lead: they are the newest and the most local.
+      const list = [...mine, ...(S.source === 'all' ? interleave(app, links) : [...app, ...links])]
+      const emptyCoach = S.source === 'coach' && !coachLinks.length ? '<p class="muted">No coach links yet. Seen a good drill on Instagram, TikTok or YouTube? Press Add a link.</p>' : ''
       const appNote = showApp && S.appState === 'loading' ? '<p class="muted small">Loading the JF App videos…</p>' : showApp && S.appState === 'failed' ? '<p class="muted small">The JF App videos could not load just now. The drill links still work.</p>' : ''
-      out.push(`<section class="ji-sec"><div class="ji-sec-h"><h2>Videos and drills</h2><span class="muted small">${list.length} found${showApp && S.app ? ` · ${S.app.length} in the JF App` : ''} · ${sheet.length} drill links</span></div>${appNote}
-        <div class="ji-grid">${list.slice(0, S.shown).map(card).join('') || '<p class="muted">Nothing matches. Try fewer words or another topic.</p>'}</div>
+      out.push(`<section class="ji-sec"><div class="ji-sec-h"><h2>Videos and drills</h2><span class="muted small">${list.length} found${showApp && S.app ? ` · ${S.app.length} in the JF App` : ''} · ${sheet.length} drill links${coachLinks.length ? ` · ${coachLinks.length} from coaches` : ''}</span></div>${appNote}
+        ${emptyCoach}<div class="ji-grid">${list.slice(0, S.shown).map(card).join('') || (emptyCoach ? '' : '<p class="muted">Nothing matches. Try fewer words or another topic.</p>')}</div>
         ${list.length > S.shown ? `<button type="button" class="j-btn j-btn-line" id="ji-more" style="margin-top:12px">Show more (${list.length - S.shown} left)</button>` : ''}</section>`)
     }
     if (S.source === 'all' || S.source === 'programs') out.push(`<section class="ji-sec"><div class="ji-sec-h"><h2>JFP programs, week by week</h2><span class="muted small">From Lee's spreadsheet</span></div>${progHtml()}</section>`)
@@ -99,10 +113,51 @@ export async function renderIdeas(ui) {
   }
   const wireResults = () => {
     view().querySelector('#ji-more')?.addEventListener('click', () => { S.shown += 48; paint() })
+    view().querySelectorAll('[data-il-rm]').forEach((b) => b.addEventListener('click', async () => {
+      if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Tap again to remove'; return }
+      b.disabled = true
+      const r = await post('ideasLinkDelete', { id: b.dataset.ilRm })
+      if (!r.ok) { b.disabled = false; return toast(r.data.error) }
+      coachLinks = coachLinks.filter((l) => l.id !== b.dataset.ilRm); toast('Removed'); paint()
+    }))
+  }
+  // Any coach: add a link they have found, filed under a topic.
+  const addLink = () => {
+    const box = view().querySelector('#ji-add-box')
+    if (!box.hidden) { box.hidden = true; return }
+    box.hidden = false
+    box.innerHTML = `<form class="j-card ji-addf" id="ji-add-form" novalidate>
+      <p class="ji-kick">Add a link to the library</p>
+      <label class="j-field"><span>Link</span><input class="j-input" name="url" inputmode="url" placeholder="https://www.instagram.com/reel/…" required></label>
+      <div class="j-two"><label class="j-field"><span>Name it</span><input class="j-input" name="title" maxlength="100" placeholder="Rondo 4v1, tight spaces" required></label>
+      <label class="j-field"><span>Group</span><select class="j-input" name="topic" required><option value="">Choose a group</option>${TOPICS.map(([id, label]) => `<option value="${id}" ${S.topic === id ? 'selected' : ''}>${esc(label)}</option>`).join('')}<option value="other">Other</option></select></label></div>
+      <label class="j-field"><span>Note <span class="muted">(optional)</span></span><input class="j-input" name="note" maxlength="240" placeholder="Good for U10s, needs 8 cones"></label>
+      <p class="muted small">Every coach, Lee and Ligia will see it, with your name on it.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="submit" class="j-btn j-btn-dark">Add to library</button><button type="button" class="j-btn j-btn-line" id="ji-add-cancel">Cancel</button></div></form>`
+    const f = box.querySelector('form')
+    f.url.focus()
+    box.querySelector('#ji-add-cancel').addEventListener('click', () => { box.hidden = true })
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const url = f.url.value.trim(); const title = f.title.value.trim(); const topic = f.topic.value
+      if (!/^https:\/\/\S+\.\S+$/.test(url)) return toast('Paste the full link, starting https://')
+      if (title.length < 2) return toast('Give it a short name.')
+      if (!topic) return toast('Choose a group for it.')
+      const btn = f.querySelector('[type="submit"]'); btn.disabled = true
+      const r = await post('ideasLinkAdd', { url, title, topic, note: f.note.value.trim() })
+      btn.disabled = false
+      if (!r.ok) return toast(r.data.error)
+      coachLinks = [{ ...r.data.link, canRemove: true }, ...coachLinks]
+      box.hidden = true; toast(`Added to ${topicLabel(topic)}`)
+      S.source = 'coach'; S.topic = ''; S.q = ''; S.shown = 48
+      read()
+    })
   }
   const read = () => {
     view().innerHTML = `<div class="jp-head"><div><h1>Session ideas</h1><p class="muted small" style="margin-top:4px">Drills, videos and full sessions to take into your groups. Search the JF App and Lee's drill library together.</p></div></div>
       ${quick()}
+      <div class="ji-addrow"><button type="button" class="j-btn j-btn-dark j-btn-sm" id="ji-add">+ Add a link</button><span class="muted small">Seen a good drill on Instagram, TikTok or YouTube? Add it to a group for every coach.</span></div>
+      <div id="ji-add-box" hidden></div>
       <label class="ji-search"><span class="sr-only">Search</span><input class="j-input" id="ji-q" type="search" placeholder="Search: passing, 1v1, warm up, finishing…" value="${esc(S.q)}" autocomplete="off"></label>
       <div class="ji-chips" role="group" aria-label="Where to look">${SOURCES.map(([id, label]) => `<button type="button" class="j-chip" data-src="${id}" aria-pressed="${S.source === id}">${esc(label)}</button>`).join('')}</div>
       <div class="ji-chips" role="group" aria-label="Topic"><button type="button" class="j-chip" data-topic="" aria-pressed="${!S.topic}">All topics</button>${TOPICS.map(([id, label]) => `<button type="button" class="j-chip" data-topic="${id}" aria-pressed="${S.topic === id}">${esc(label)}</button>`).join('')}</div>
@@ -112,6 +167,7 @@ export async function renderIdeas(ui) {
     view().querySelectorAll('[data-src]').forEach((b) => b.addEventListener('click', () => { S.source = b.dataset.src; S.shown = 48; view().querySelectorAll('[data-src]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); paint() }))
     view().querySelectorAll('[data-topic]').forEach((b) => b.addEventListener('click', () => { S.topic = b.dataset.topic; S.shown = 48; view().querySelectorAll('[data-topic]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); paint() }))
     view().querySelector('#id-edit')?.addEventListener('click', edit)
+    view().querySelector('#ji-add').addEventListener('click', addLink)
     wireResults()
     loadApp()
   }
@@ -147,4 +203,4 @@ function interleave(a, b) {
   for (let i = 0; i < Math.max(a.length, b.length); i += 1) { if (a[i]) out.push(a[i]); if (b[i]) out.push(b[i]) }
   return out
 }
-export const _test = { TOPICS, topicsOf, interleave, host }
+export const _test = { TOPICS, topicsOf, interleave, host, platformOf }
