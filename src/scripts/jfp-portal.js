@@ -2978,6 +2978,43 @@ function weekDate(day) {
   t.setUTCDate(t.getUTCDate() + DAYS.indexOf(day))
   return t.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' })
 }
+// Register taps made without signal wait on this phone and go when it is back online.
+const QKEY = 'jfp:offline-marks'
+const readQueue = () => { try { return JSON.parse(localStorage.getItem(QKEY) || '[]') } catch { return [] } }
+const writeQueue = (q) => { try { localStorage.setItem(QKEY, JSON.stringify(q)) } catch {} showQueue() }
+function queueMark(m) {
+  const q = readQueue().filter((x) => !(x.groupId === m.groupId && x.date === m.date && x.rowId === m.rowId))
+  q.push({ ...m, at: Date.now() })
+  writeQueue(q.slice(-300))
+}
+let flushing = false
+async function flushMarks() {
+  if (flushing) return
+  flushing = true
+  try {
+    let q = readQueue()
+    let sent = 0
+    for (const m of [...q]) {
+      const r = await post('markAttendance', { groupId: m.groupId, date: m.date, rowId: m.rowId, status: m.status })
+      if (r.status === 0) break
+      q = q.filter((x) => !(x.groupId === m.groupId && x.date === m.date && x.rowId === m.rowId && x.at === m.at))
+      if (r.ok) sent += 1; else toast(r.data.error || 'One saved tap could not be sent.')
+      writeQueue(q)
+    }
+    if (sent) { toast(`Sent ${sent} saved tap${sent === 1 ? '' : 's'}.`); if (P.tab === 'coach') renderCoach(true) }
+  } finally { flushing = false }
+}
+function showQueue() {
+  let el = document.getElementById('off-queue')
+  const n = readQueue().length
+  if (!n) { el?.remove(); return }
+  if (!el) { el = document.createElement('div'); el.id = 'off-queue'; el.setAttribute('role', 'status'); el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:#1b1b1b;color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;z-index:60;box-shadow:0 4px 16px rgba(0,0,0,.3)'; document.body.appendChild(el) }
+  el.textContent = `${n} tap${n === 1 ? '' : 's'} saved on this phone, waiting for signal`
+}
+window.addEventListener('online', () => flushMarks())
+setInterval(() => { if (readQueue().length && navigator.onLine !== false) flushMarks() }, 20000)
+setTimeout(() => { showQueue(); if (readQueue().length) flushMarks() }, 1500)
+
 async function renderCoach(keep = false) {
   const admin = P.user.role === 'admin'
   coachDates()
@@ -3073,8 +3110,11 @@ async function renderCoach(keep = false) {
     const on = b.getAttribute('aria-pressed') === 'true'
     const status = on ? '' : b.dataset.att
     card.querySelectorAll(`[data-row="${CSS.escape(b.dataset.row)}"][data-att]`).forEach((x) => x.setAttribute('aria-pressed', String(x === b && !on)))
-    const r = await post('markAttendance', { groupId: gid, date, rowId: b.dataset.row, status })
-    if (!r.ok) { toast(r.data.error || 'Could not save'); return renderCoach() }
+    const mark = { groupId: gid, date, rowId: b.dataset.row, status }
+    const r = await post('markAttendance', mark)
+    // No signal on the pitch (Lee, 19 Oct 2026): keep the tap on this phone and send it later.
+    if (r.status === 0) { queueMark(mark); toast('No signal. Saved on this phone, it sends when you are back online.') }
+    else if (!r.ok) { toast(r.data.error || 'Could not save'); return renderCoach() }
     // Keep the loaded copy in step, so a search or filter redraw shows the tick.
     const sess = d.sessions.find((x) => x.id === gid)
     if (sess) {
@@ -3082,7 +3122,7 @@ async function renderCoach(keep = false) {
       if (status) day[b.dataset.row] = status; else delete day[b.dataset.row]
       if (date === sess.nextDate) sess.attendance = day
     }
-    if (r.data.airtable === 'failed') toast('Saved here. Airtable attendance did not update; it will not affect the session.')
+    if (r.data?.airtable === 'failed') toast('Saved here. Airtable attendance did not update; it will not affect the session.')
     // Keep the "not marked off" counts right (Lee and Ligia check these).
     if (admin || F.flag === 'unmarked') { const y = window.scrollY; renderCoach(true).then(() => window.scrollTo(0, y)) }
   }))
